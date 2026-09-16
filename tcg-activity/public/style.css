@@ -216,6 +216,18 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
 .v-lore { color: #cbd3e1; font-style: italic; margin: 12px 0; line-height: 1.5; font-family: Georgia, serif; }
 .v-artist { color: #8b94a7; font-size: 12px; }
 .v-hint { color: #5f6b80; font-size: 11px; margin-top: 12px; }
+/* Card viewer: Ability + Tags sections (faceted card info). */
+.v-sec-head { color: #8b94a7; text-transform: uppercase; letter-spacing: 1px; font-size: 11px; margin-bottom: 5px; }
+.v-ability { margin: 12px 0; padding: 10px 12px; background: rgba(127, 176, 255, .08); border: 1px solid rgba(127, 176, 255, .22); border-radius: 10px; }
+.v-ability-name { font-weight: 800; font-size: 15px; color: #cfe0ff; }
+.v-ability-desc { color: #cbd3e1; font-size: 13px; line-height: 1.45; margin-top: 3px; }
+.v-ability-meta { color: #8b94a7; font-size: 11px; margin-top: 5px; text-transform: capitalize; }
+.v-tags { margin: 12px 0; }
+.v-tag-rows { display: flex; flex-direction: column; gap: 6px; }
+.v-tag-row { display: flex; gap: 10px; align-items: baseline; }
+.v-tag-facet { color: #8b94a7; min-width: 60px; text-transform: uppercase; letter-spacing: 1px; font-size: 11px; }
+.v-tag-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.v-chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; background: #1c2434; color: #cbd3e1; border: 1px solid #263149; }
 .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; background: #5b6577; color: #fff; }
 .badge.gold { background: #f5b942; color: #0a0d14; }
 .badge.illustrated_rare { background: #3b82f6; }

@@ -1968,12 +1968,44 @@ function openViewer(card) {
   el('v-rarity').textContent = RARITY_LABEL[card.rarity] || card.rarity;
   el('v-lore').textContent = locked ? '' : (card.lore ? `“${card.lore}”` : '');
   el('v-artist').textContent = locked ? 'Not in your collection yet' : (card.artist ? `Art by ${card.artist}` : '');
+  fillViewerAbility(card.ability);
+  fillViewerTags(card.tags);
   el('card3d').classList.toggle('locked', locked);
   el('card3d').classList.toggle('holo-on', !locked && card.rarity !== 'normal'); // normal = no foil; locked = hidden
   renderAscension(card);
   rx = 0; ry = 0; hoverX = 0; hoverY = 0; applyView();
   el('viewer').classList.remove('hidden');
   enableGyro();
+}
+
+// The Ability section of the card viewer (name, plain-words effect, meta).
+function fillViewerAbility(ab) {
+  const box = el('v-ability');
+  if (!ab || !ab.name) { box.classList.add('hidden'); return; }
+  el('v-ability-name').textContent = ab.name;
+  el('v-ability-desc').textContent = ab.desc || '';
+  const meta = [];
+  if (ab.kind) meta.push(ab.kind);
+  if (ab.effect) meta.push(ab.effect);
+  if (ab.target) meta.push(`target: ${ab.target}`);
+  if (ab.cooldown != null && ab.cooldown !== '') meta.push(`cooldown: ${ab.cooldown}`);
+  el('v-ability-meta').textContent = meta.join(' · ');
+  box.classList.remove('hidden');
+}
+
+// The Tags section of the card viewer, grouped by facet.
+const V_TAG_FACETS = [['class', 'Class'], ['type', 'Type'], ['origin', 'Origin'], ['genre', 'Genre'], ['realm', 'Realm'], ['traits', 'Traits']];
+function fillViewerTags(tags) {
+  const box = el('v-tags');
+  const has = tags && V_TAG_FACETS.some(([f]) => tags[f] && (Array.isArray(tags[f]) ? tags[f].length : tags[f]));
+  if (!has) { box.classList.add('hidden'); return; }
+  el('v-tag-rows').innerHTML = V_TAG_FACETS
+    .filter(([f]) => tags[f] && (Array.isArray(tags[f]) ? tags[f].length : tags[f]))
+    .map(([f, label]) => {
+      const vals = Array.isArray(tags[f]) ? tags[f] : [tags[f]];
+      return `<div class="v-tag-row"><span class="v-tag-facet">${label}</span><span class="v-tag-chips">${vals.map((v) => `<span class="v-chip">${esc(v)}</span>`).join('')}</span></div>`;
+    }).join('');
+  box.classList.remove('hidden');
 }
 
 function closeViewer() { el('viewer').classList.add('hidden'); }

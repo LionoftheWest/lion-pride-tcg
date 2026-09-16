@@ -225,7 +225,7 @@ app.get('/api/collection', async (req, res) => {
   if (cached && Date.now() - cached.at < COLL_TTL) return res.json(cached.payload);
   const { data, error } = await supabase
     .from('player_cards')
-    .select('quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, subject:subjects(name, type, cp_mod))')
+    .select('quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, subject:subjects(name, type, cp_mod, tags, ability))')
     .eq('player_id', me.id);
   if (error) return res.status(500).json({ error: error.message });
   const cards = (data || []).map((row) => {
@@ -249,6 +249,8 @@ app.get('/api/collection', async (req, res) => {
       tradeable: row.card?.tradeable !== false,
       subject: row.card?.subject?.name,
       type: row.card?.subject?.type || null,
+      tags: row.card?.subject?.tags || null,
+      ability: row.card?.subject?.ability || null,
     };
   });
   // Total CP comes from SQL (authoritative — includes the +25% set-completion
@@ -450,7 +452,7 @@ async function getCatalogBase() {
   catalogInflight = (async () => {
     const { data, error } = await supabase
       .from('cards')
-      .select('id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name)')
+      .select('id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, tags, ability)')
       .order('id');
     if (error) { if (catalogCache) return catalogCache.cards; throw new Error(error.message); }
     const cards = (data || []).map((c) => ({
@@ -463,6 +465,9 @@ async function getCatalogBase() {
       artist: c.artist_credit,
       lore: c.lore,
       subject: c.subject?.name,
+      type: c.subject?.type || null,
+      tags: c.subject?.tags || null,
+      ability: c.subject?.ability || null,
     }));
     catalogCache = { at: Date.now(), cards };
     return cards;
