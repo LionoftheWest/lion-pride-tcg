@@ -1555,6 +1555,7 @@ function resolveHit(node, r, atk) {
     if (r.crit) calloutAt(bx, by - 26, 'CRIT!', '#ffd23e');
     else if (r.outcome === 'blocked') calloutAt(bx, by - 26, 'BLOCK', '#7fb0ff');
     if (r.bonus) calloutAt(bx, by - 52, 'WEAK!', '#ff7a3f');
+    else if (r.resisted) calloutAt(bx, by - 52, 'RESIST', '#7fb0ff');
     flashDamage(node, r.damage, big);
   }
   const h = huntState.hunt;

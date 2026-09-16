@@ -20,15 +20,16 @@ declare
   v_buff numeric; v_debuff numeric; v_shield int; v_absorb int; v_critchance numeric;
   v_enrage numeric; v_enr_until int; v_weaken numeric; v_wk_until int; v_expose numeric; v_exp_until int; v_stun_until int;
   v_bmult numeric; v_r numeric;
+  v_resist jsonb; v_tags text[]; v_wtags text[]; v_wm int; v_rm int; v_stack int; v_wmult numeric;
 begin
-  select status, closes_at, weak_points, tier, hp_max into v_status, v_closes, v_weak, v_tier, v_hpmax
+  select status, closes_at, weak_points, resist_points, tier, hp_max into v_status, v_closes, v_weak, v_resist, v_tier, v_hpmax
     from hunts where id = p_hunt for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'no_hunt'); end if;
   if v_status <> 'active' or now() >= v_closes then
     return jsonb_build_object('ok', false, 'error', 'hunt_over'); end if;
 
-  select pc.quantity, pc.ascension, c.rarity::text, c.season, s.type, s.cp_mod, c.name, s.ability
-    into v_qty, v_asc, v_rarity, v_season, v_type, v_mod, v_cardname, v_ability
+  select pc.quantity, pc.ascension, c.rarity::text, c.season, s.type, s.cp_mod, c.name, s.ability, s.tag_slugs
+    into v_qty, v_asc, v_rarity, v_season, v_type, v_mod, v_cardname, v_ability, v_tags
   from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
   where pc.player_id = p_player and pc.card_id = p_card;
   if not found or v_qty < 1 then return jsonb_build_object('ok', false, 'error', 'not_owned'); end if;
@@ -67,10 +68,34 @@ begin
   v_aamt := coalesce((v_ability->>'amount')::numeric, 0);
   v_athresh := coalesce((v_ability->>'threshold')::numeric, 0);
 
-  v_bonus := exists (select 1 from jsonb_array_elements(v_weak) w
+  -- Weakness / resistance by tags (plus legacy type/rarity/season). A boss is weak
+  -- to some tags and resists others. The bonus and the penalty diminish per extra
+  -- matching tag on a card, and a squad soft cap diminishes the bonus when many
+  -- committed cards share the boss's weak tags (so a mono-tag deck is not the only
+  -- answer). Final multiplier is clamped to [0.25, 2.5].
+  select count(*) into v_wm from jsonb_array_elements(coalesce(v_weak, '[]'::jsonb)) w
     where (w->>'kind' = 'type'   and w->>'value' = v_type)
        or (w->>'kind' = 'rarity' and w->>'value' = v_rarity)
-       or (w->>'kind' = 'season' and w->>'value' = v_season));
+       or (w->>'kind' = 'season' and w->>'value' = v_season)
+       or (w->>'kind' = 'tag'    and w->>'value' = any(v_tags));
+  select count(*) into v_rm from jsonb_array_elements(coalesce(v_resist, '[]'::jsonb)) w
+    where (w->>'kind' = 'type'   and w->>'value' = v_type)
+       or (w->>'kind' = 'rarity' and w->>'value' = v_rarity)
+       or (w->>'kind' = 'season' and w->>'value' = v_season)
+       or (w->>'kind' = 'tag'    and w->>'value' = any(v_tags));
+  select array_agg(w->>'value') into v_wtags
+    from jsonb_array_elements(coalesce(v_weak, '[]'::jsonb)) w where w->>'kind' = 'tag';
+  v_stack := 0;
+  if v_wtags is not null and array_length(v_wtags, 1) > 0 then
+    select count(distinct h.card_id) into v_stack
+    from hunt_card_hp h join cards c on c.id = h.card_id join subjects s on s.id = c.subject_id
+    where h.hunt_id = p_hunt and h.player_id = p_player and h.hit_date = v_day and s.tag_slugs && v_wtags;
+  end if;
+  v_bonus := v_wm > 0;
+  v_wmult := 1
+    + (1 - power(0.5, v_wm)) * (case when v_stack <= 3 then 1 else power(0.5, v_stack - 3) end)
+    - 0.8 * (1 - power(0.5, v_rm));
+  v_wmult := greatest(0.25, least(2.5, v_wmult));
 
   v_critchance := (case when v_bonus then 0.20 else 0.10 end) + (case when v_aeff = 'focus' then v_aamt else 0 end);
   v_miss  := random() < 0.08;
@@ -79,7 +104,7 @@ begin
   if v_miss then
     v_dmg := 0; v_outcome := 'miss';
   else
-    v_base := v_cp * (case when v_bonus then 2 else 1 end) * (0.85 + random() * 0.30);
+    v_base := v_cp * v_wmult * (0.85 + random() * 0.30);
     v_base := v_base * v_buff * v_debuff;                                         -- empower / curse
     if v_exp_until >= v_round and v_expose > 0 then v_base := v_base * (1 + v_expose); end if;  -- expose
     if v_aeff = 'execute' and v_hp < v_athresh * v_hpmax then v_base := v_base * (1 + v_aamt); end if;
@@ -208,7 +233,7 @@ begin
       'hp', v_cardhp, 'max_hp', v_maxhp, 'downed', v_downed)) || coalesce(v_slam, '[]'::jsonb);
 
   return jsonb_build_object('ok', true, 'damage', v_dmg, 'outcome', v_outcome,
-    'bonus', v_bonus, 'crit', v_crit, 'cp', v_cp, 'heal', v_heal, 'ability', v_aeff,
+    'bonus', v_bonus, 'resisted', v_rm > 0, 'crit', v_crit, 'cp', v_cp, 'heal', v_heal, 'ability', v_aeff,
     'hp_remaining', v_hp, 'status', v_status, 'defeated', v_status = 'defeated',
     'countered', v_counter, 'counter_dmg', v_cdmg,
     'card_hp', v_cardhp, 'card_max_hp', v_maxhp, 'card_downed', v_downed, 'shield', v_shield,
