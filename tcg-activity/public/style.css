@@ -754,6 +754,10 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
 .lockin-btn { background: linear-gradient(180deg, #f5b942, #e09a1e); color: #0a0d14; border: none; padding: 10px 20px;
   border-radius: 999px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; white-space: nowrap; box-shadow: 0 5px 14px rgba(245,185,66,.3); }
 .lockin-btn:disabled { opacity: .4; cursor: default; box-shadow: none; }
+.autopick-btn { background: #1c2434; color: #cfe0ff; border: 1px solid #2f3d57; padding: 10px 16px; border-radius: 999px;
+  font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.autopick-btn:hover { background: #243050; }
+.autopick-btn.busy { opacity: .6; cursor: wait; }
 .squad-battlebar { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
 .sb-title { font-size: 13px; font-weight: 800; color: #ffd76e; }
 .edit-team { background: #121826; border: 1px solid #2c3852; color: #dfe6f2; border-radius: 8px; padding: 6px 12px; font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; }

@@ -391,6 +391,53 @@ app.post('/api/hunt/support', async (req, res) => {
   res.json(data);
 });
 
+// Auto-pick a squad: the best cards you own against TODAY'S boss. Scores each
+// attacker by expected damage (CP x the same weakness/resistance multiplier the
+// battle uses), tops the squad up with your best support, and returns the card
+// ids. The client fills the picker; the player can still edit before Lock In.
+app.get('/api/hunt/autopick', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!FEATURE_HUNT) return res.json({ ids: [] });
+  const hunt = await activeHunt();
+  if (!hunt) return res.json({ ids: [] });
+  const cap = 8; // matches settings.hunt_daily_card_cap / the /api/hunt dailyCap
+  const { data } = await supabase
+    .from('player_cards')
+    .select('ascension, card:cards(id, rarity, season, subject:subjects(type, cp_mod, tag_slugs, ability))')
+    .eq('player_id', me.id);
+  const weak = hunt.weak_points || [];
+  const resist = hunt.resist_points || [];
+  const matchCount = (entries, c) => (entries || []).reduce((n, e) => {
+    if (e.kind === 'tag') return n + ((c.tag_slugs || []).includes(e.value) ? 1 : 0);
+    if (e.kind === 'type') return n + (c.type === e.value ? 1 : 0);
+    if (e.kind === 'rarity') return n + (c.rarity === e.value ? 1 : 0);
+    if (e.kind === 'season') return n + (c.season === e.value ? 1 : 0);
+    return n;
+  }, 0);
+  const mult = (wm, rm) => Math.max(0.25, Math.min(2.5, 1 + (1 - 0.5 ** wm) - 0.8 * (1 - 0.5 ** rm)));
+  const ATT = new Set(['Character', 'Creature']);
+  const scored = (data || []).map((row) => {
+    const c = row.card; const sub = c?.subject || {};
+    const info = { id: c?.id, rarity: c?.rarity, season: c?.season, type: sub.type, tag_slugs: sub.tag_slugs || [] };
+    const cp = cardPower(c?.rarity, row.ascension, sub.cp_mod);
+    const isAtt = ATT.has(sub.type);
+    const ab = sub.ability;
+    const score = isAtt
+      ? cp * mult(matchCount(weak, info), matchCount(resist, info)) * (ab?.kind === 'attack' ? 1.1 : 1)
+      : cp * (ab?.kind === 'support' ? 1.2 : 1);
+    return { id: c?.id, isAtt, score };
+  }).filter((x) => x.id);
+  const atts = scored.filter((x) => x.isAtt).sort((a, b) => b.score - a.score);
+  const sups = scored.filter((x) => !x.isAtt).sort((a, b) => b.score - a.score);
+  const desiredSupport = Math.min(2, sups.length);
+  const ids = [];
+  for (const c of atts) { if (ids.length >= cap - desiredSupport) break; ids.push(c.id); }
+  for (const c of sups) { if (ids.length >= cap) break; ids.push(c.id); }
+  for (const c of [...atts, ...sups]) { if (ids.length >= cap) break; if (!ids.includes(c.id)) ids.push(c.id); }
+  res.json({ ids: ids.slice(0, cap) });
+});
+
 // The live attack feed: every recent attack on the active boss (who, damage, card).
 // High volume by design — this is the in-app equivalent of the community feed, so the
 // Discord channel stays quiet. A 2s cache collapses many viewers into one DB read.

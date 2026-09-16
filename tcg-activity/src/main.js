@@ -1065,6 +1065,7 @@ function selectPhaseHTML(d) {
     <div class="squad-grid" id="huntGrid"></div>
     <div class="squad-foot">
       <div class="pager" id="huntPager"></div>
+      <button class="autopick-btn" id="autoPickBtn">✨ Auto-pick</button>
       <button class="lockin-btn" id="lockInBtn" disabled>🔒 Lock In <b id="selCount">${squad.sel.size}</b>/${cap}</button>
     </div>`;
 }
@@ -1272,6 +1273,21 @@ function wireSelectPhase() {
     SFX?.play?.('reveal');
     el('main').innerHTML = mainHead(TITLES.battling) + huntHTML(huntState);
     wireHunt(); mountBossFor(huntState.hunt); paintTeam(); startHuntTicker();
+  });
+  // Auto-pick: the server scores the player's cards against today's boss and
+  // returns the best squad. It replaces the current selection; the player can edit.
+  el('autoPickBtn')?.addEventListener('click', async () => {
+    const btn = el('autoPickBtn');
+    btn.disabled = true; btn.classList.add('busy');
+    let ids = [];
+    try { ids = (await api('/api/hunt/autopick')).ids || []; } catch { ids = []; }
+    btn.disabled = false; btn.classList.remove('busy');
+    if (!ids.length) { calloutAt(window.innerWidth / 2, 120, 'NO PICKS', '#ff8f5c'); return; }
+    squad.sel = new Set(ids.slice(0, cap));
+    squad.page = 0;
+    SFX?.play?.('page');
+    paintHuntPage();
+    updateLockBtn();
   });
   paintHuntPage();
   updateLockBtn();
