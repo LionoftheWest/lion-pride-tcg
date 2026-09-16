@@ -14,7 +14,27 @@
     "season": "Season 1",
     "event": "",
     "tierDetails": {},
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "arcane",
+        "cute",
+        "copy",
+        "smash"
+      ]
+    }
   },
   {
     "id": "mr-mob-s-mr-mime",
@@ -30,7 +50,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "arcane",
+        "fairy",
+        "caster",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "blastninja-s-blastoise",
@@ -48,7 +88,26 @@
     "event": "",
     "updatedAt": 1789074367944,
     "pushedAt": 1789074663495,
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "water",
+        "armored",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "noobeth-s-venusaur",
@@ -64,7 +123,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "nature",
+        "poison",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "heero-s-meowscarada",
@@ -82,7 +160,27 @@
     "event": "",
     "type": "Creature",
     "updatedAt": 1789422238460,
-    "pushedAt": 1789424032752
+    "pushedAt": 1789424032752,
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "nature",
+        "shadow",
+        "stealth",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "broken-warden-s-umbreon",
@@ -100,7 +198,26 @@
     "event": "",
     "type": "Creature",
     "updatedAt": 1789422744487,
-    "pushedAt": 1789424032616
+    "pushedAt": 1789424032616,
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "shadow",
+        "beast",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "jelly-s-urshifu",
@@ -116,7 +233,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "fighting",
+        "water",
+        "melee",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "lionofthewest-s-tsareena",
@@ -132,7 +269,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "nature",
+        "royal",
+        "melee",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "gsnipes-cinderrace",
@@ -148,7 +305,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "fire",
+        "ranged",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "r2vq-s-talonflame",
@@ -164,7 +340,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "fire",
+        "air",
+        "ranged",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "brego-s-link",
@@ -180,7 +376,28 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "updatedAt": 1789598127570,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "hero",
+        "melee",
+        "royal",
+        "smash"
+      ]
+    }
   },
   {
     "id": "beetle-s-cloud",
@@ -196,7 +413,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "melee",
+        "mercenary",
+        "smash"
+      ]
+    }
   },
   {
     "id": "wiifu-s-sora",
@@ -212,7 +449,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "light",
+        "melee",
+        "hero",
+        "smash"
+      ]
+    }
   },
   {
     "id": "lionofthewest-s-pichu",
@@ -228,7 +485,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "lightning",
+        "cute",
+        "smash"
+      ]
+    }
   },
   {
     "id": "kaminari-s-incineroar",
@@ -244,7 +520,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "fire",
+        "beast",
+        "melee",
+        "smash"
+      ]
+    }
   },
   {
     "id": "geno-s-megaman",
@@ -260,7 +556,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "robot",
+        "ranged",
+        "smash"
+      ]
+    }
   },
   {
     "id": "grim-s-jigglypuff",
@@ -276,7 +591,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "arcane",
+        "fairy",
+        "cute",
+        "smash"
+      ]
+    }
   },
   {
     "id": "grim-s-pokemon-trainer",
@@ -292,7 +627,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "trainer",
+        "smash"
+      ]
+    }
   },
   {
     "id": "piotr-s-little-mac",
@@ -308,7 +662,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "boxer",
+        "melee",
+        "smash"
+      ]
+    }
   },
   {
     "id": "texafornia-s-richter",
@@ -324,7 +698,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "light",
+        "whip",
+        "smash"
+      ]
+    }
   },
   {
     "id": "maddawg-s-wolf",
@@ -340,7 +734,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "beast",
+        "ranged",
+        "smash"
+      ]
+    }
   },
   {
     "id": "keeb-s-mii-gunner",
@@ -356,7 +769,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "armored",
+        "ranged",
+        "smash"
+      ]
+    }
   },
   {
     "id": "notjosh-s-random-pick",
@@ -372,7 +804,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "lionofthewest-s-pikachu",
@@ -388,7 +838,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "lightning",
+        "smash"
+      ]
+    }
   },
   {
     "id": "kaminari-s-krool",
@@ -406,7 +874,27 @@
     "event": "",
     "updatedAt": 1789500822056,
     "pushedAt": 1789501192661,
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "monster",
+        "royal",
+        "armored",
+        "smash"
+      ]
+    }
   },
   {
     "id": "ottozone-s-rob",
@@ -422,7 +910,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "robot",
+        "ranged",
+        "smash"
+      ]
+    }
   },
   {
     "id": "wiifu-s-wiifit-trainer",
@@ -440,7 +947,26 @@
     "event": "",
     "updatedAt": 1789074825588,
     "type": "Character",
-    "pushedAt": 1789424348562
+    "pushedAt": 1789424348562,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "support",
+        "smash"
+      ]
+    }
   },
   {
     "id": "chevynova-s-bowser",
@@ -456,7 +982,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "monster",
+        "royal",
+        "fire",
+        "smash"
+      ]
+    }
   },
   {
     "id": "e-mandarkstar-s-ganondorf",
@@ -472,7 +1018,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "shadow",
+        "royal",
+        "melee",
+        "smash"
+      ]
+    }
   },
   {
     "id": "lazypie-s-zero-suit-samus",
@@ -488,7 +1054,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "armored",
+        "ranged",
+        "smash"
+      ]
+    }
   },
   {
     "id": "bonzan-s-donkey-kong",
@@ -505,7 +1091,28 @@
     "season": "Season 1",
     "event": "",
     "type": "Character",
-    "updatedAt": 1789597227468
+    "updatedAt": 1789597227468,
+    "pushedAt": 1789597622567,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "beast",
+        "strong",
+        "melee",
+        "smash"
+      ]
+    }
   },
   {
     "id": "vioarr-s-link",
@@ -521,7 +1128,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "hero",
+        "melee",
+        "royal",
+        "smash"
+      ]
+    }
   },
   {
     "id": "foxtrot-s-krool",
@@ -538,7 +1165,27 @@
     "season": "Season 1",
     "event": "",
     "type": "Character",
-    "updatedAt": 1789500814283
+    "updatedAt": 1789500814283,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "monster",
+        "royal",
+        "armored",
+        "smash"
+      ]
+    }
   },
   {
     "id": "rad-dad-s-ness",
@@ -554,7 +1201,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "arcane",
+        "psychic",
+        "smash"
+      ]
+    }
   },
   {
     "id": "pringle-s-banjo-kazooie",
@@ -572,7 +1238,27 @@
     "event": "",
     "type": "Character",
     "updatedAt": 1789504951406,
-    "pushedAt": 1789505489858
+    "pushedAt": 1789505489858,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "beast",
+        "bird",
+        "duo",
+        "smash"
+      ]
+    }
   },
   {
     "id": "xeno-s-blueprint",
@@ -588,7 +1274,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Item"
+    "type": "Item",
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "object",
+        "tech",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "zeoic-s-redstone-machine",
@@ -614,7 +1319,27 @@
         "event": ""
       }
     },
-    "pushedAt": 1789504690986
+    "pushedAt": 1789504690986,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "object",
+        "tech",
+        "mechanical",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "alydoor-s-cafe",
@@ -630,7 +1355,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Place"
+    "type": "Place",
+    "tags": {
+      "class": "support",
+      "type": "place",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "location",
+        "cozy",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "kobedunk-s-lumberjack",
@@ -647,7 +1391,26 @@
     "season": "Season 1",
     "event": "",
     "type": "Character",
-    "updatedAt": 1789497104628
+    "updatedAt": 1789497104628,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "human",
+        "melee",
+        "strong",
+        "party"
+      ]
+    }
   },
   {
     "id": "fluffy-s-repo",
@@ -663,7 +1426,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "notjosh-s-waluigi",
@@ -677,7 +1457,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "trickster",
+        "smash"
+      ]
+    }
   },
   {
     "id": "zeoic-the-server-master",
@@ -691,7 +1490,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "human",
+        "tech",
+        "community",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "baego",
@@ -705,7 +1524,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "community",
+        "smash"
+      ]
+    }
   },
   {
     "id": "ling-ling-s-talonflame",
@@ -718,7 +1556,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "fire",
+        "air",
+        "ranged",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "i-m-a-tree",
@@ -731,7 +1589,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "mr-mobs-dirt-house",
@@ -744,7 +1620,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Place"
+    "type": "Place",
+    "tags": {
+      "class": "support",
+      "type": "place",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "location",
+        "blocky",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "king-of-the-swamp",
@@ -757,7 +1652,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Place"
+    "type": "Place",
+    "tags": {
+      "class": "support",
+      "type": "place",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "location",
+        "swamp",
+        "smash"
+      ]
+    }
   },
   {
     "id": "mr-mobs-mew",
@@ -770,7 +1684,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "arcane",
+        "legendary",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "long-live-the-king",
@@ -783,7 +1716,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "lionofthewest-s-dodrio",
@@ -796,7 +1746,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "air",
+        "beast",
+        "ranged",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "onyen-tutoring",
@@ -809,7 +1779,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "up-b-oos",
@@ -822,7 +1810,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "grudge-match",
@@ -835,7 +1841,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "mr-worldwide",
@@ -848,7 +1872,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "human",
+        "meme",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "wiifu-s-bowling-ball",
@@ -861,7 +1904,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Item"
+    "type": "Item",
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "object",
+        "heavy",
+        "smash"
+      ]
+    }
   },
   {
     "id": "gym-rat-lion",
@@ -874,7 +1936,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "strong",
+        "community",
+        "smash"
+      ]
+    }
   },
   {
     "id": "memelord-lion",
@@ -889,7 +1971,25 @@
     "event": "",
     "type": "Character",
     "updatedAt": 1789497038331,
-    "pushedAt": 1789497162176
+    "pushedAt": 1789497162176,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "meme"
+      ],
+      "genre": [
+        "meme"
+      ],
+      "realm": [
+        "internet"
+      ],
+      "traits": [
+        "human",
+        "meme",
+        "community"
+      ]
+    }
   },
   {
     "id": "the-dad-gaming",
@@ -904,7 +2004,26 @@
     "event": "",
     "type": "Character",
     "updatedAt": 1789422931282,
-    "pushedAt": 1789424146786
+    "pushedAt": 1789424146786,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "human",
+        "community",
+        "smash"
+      ]
+    }
   },
   {
     "id": "rotom-washed",
@@ -917,7 +2036,27 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Creature"
+    "type": "Creature",
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "water",
+        "lightning",
+        "spirit",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "mrs-lionofthewest",
@@ -930,7 +2069,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "human",
+        "community",
+        "party"
+      ]
+    }
   },
   {
     "id": "modded-vs-vanilla",
@@ -942,7 +2099,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "event",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "create-a-colony",
@@ -954,7 +2129,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Place"
+    "type": "Place",
+    "tags": {
+      "class": "support",
+      "type": "place",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "location",
+        "blocky",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "cockroachs-never-die",
@@ -966,7 +2160,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "super-battle-golf-flash-bang",
@@ -978,7 +2189,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "call-of-dragons",
@@ -990,7 +2218,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "meme"
+      ],
+      "genre": [
+        "meme"
+      ],
+      "realm": [
+        "internet"
+      ],
+      "traits": [
+        "event",
+        "meme"
+      ]
+    }
   },
   {
     "id": "australian-connections",
@@ -1002,7 +2247,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "4-in-the-pink",
@@ -1014,7 +2277,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "krool-name-swap",
@@ -1028,7 +2308,25 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789423121970,
-    "pushedAt": 1789424148274
+    "pushedAt": 1789424148274,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "fluffy-s-repo-clutch",
@@ -1040,7 +2338,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "30-dantucker-pings",
@@ -1052,7 +2367,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "lazy-sd",
@@ -1064,7 +2397,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "the-server-crashed",
@@ -1076,7 +2427,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "event",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "failed-wordle",
@@ -1088,7 +2457,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "gerudo-fight-club",
@@ -1100,7 +2486,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "whats-a-c3",
@@ -1114,7 +2518,24 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789505186719,
-    "pushedAt": 1789505453048
+    "pushedAt": 1789505453048,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "meme"
+      ],
+      "genre": [
+        "meme"
+      ],
+      "realm": [
+        "internet"
+      ],
+      "traits": [
+        "event",
+        "meme"
+      ]
+    }
   },
   {
     "id": "build-a-house-mime",
@@ -1126,7 +2547,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "b-button-spam",
@@ -1138,7 +2577,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "panda-express-run",
@@ -1152,7 +2609,25 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789511612482,
-    "pushedAt": 1789511624995
+    "pushedAt": 1789511624995,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "better-in-cancun",
@@ -1164,7 +2639,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "smash-server-hamster-wheel",
@@ -1176,7 +2669,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "ketchup-on-hotdogs",
@@ -1190,7 +2701,24 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789511905065,
-    "pushedAt": 1789511909385
+    "pushedAt": 1789511909385,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "meme"
+      ],
+      "genre": [
+        "meme"
+      ],
+      "realm": [
+        "internet"
+      ],
+      "traits": [
+        "event",
+        "meme"
+      ]
+    }
   },
   {
     "id": "pineapple-on-pizza",
@@ -1202,7 +2730,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "meme"
+      ],
+      "genre": [
+        "meme"
+      ],
+      "realm": [
+        "internet"
+      ],
+      "traits": [
+        "event",
+        "meme"
+      ]
+    }
   },
   {
     "id": "xeno-s-unfinished-project",
@@ -1216,7 +2761,26 @@
     "event": "",
     "type": "Item",
     "updatedAt": 1789511838503,
-    "pushedAt": 1789511845226
+    "pushedAt": 1789511845226,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "object",
+        "tech",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "lorcana-prices",
@@ -1228,7 +2792,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "meme"
+      ],
+      "genre": [
+        "meme"
+      ],
+      "realm": [
+        "internet"
+      ],
+      "traits": [
+        "event",
+        "meme"
+      ]
+    }
   },
   {
     "id": "mob-s-hiding-spot-meccha",
@@ -1242,7 +2823,24 @@
     "event": "",
     "type": "Place",
     "updatedAt": 1789505443631,
-    "pushedAt": 1789505454532
+    "pushedAt": 1789505454532,
+    "tags": {
+      "class": "support",
+      "type": "place",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "location",
+        "party"
+      ]
+    }
   },
   {
     "id": "polar-bear-build",
@@ -1254,7 +2852,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Place"
+    "type": "Place",
+    "tags": {
+      "class": "support",
+      "type": "place",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "location",
+        "ice",
+        "party"
+      ]
+    }
   },
   {
     "id": "meta-abuser",
@@ -1266,7 +2882,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "sunny-s-duck-feet",
@@ -1278,7 +2912,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "meme"
+      ],
+      "genre": [
+        "meme"
+      ],
+      "realm": [
+        "internet"
+      ],
+      "traits": [
+        "event",
+        "meme"
+      ]
+    }
   },
   {
     "id": "xeno-s-stone-shovel",
@@ -1292,7 +2943,26 @@
     "event": "",
     "type": "Item",
     "updatedAt": 1789512104421,
-    "pushedAt": 1789512110025
+    "pushedAt": 1789512110025,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "minecraft"
+      ],
+      "genre": [
+        "sandbox",
+        "survival"
+      ],
+      "realm": [
+        "blocky"
+      ],
+      "traits": [
+        "object",
+        "tool",
+        "minecraft"
+      ]
+    }
   },
   {
     "id": "bad-news-bears",
@@ -1306,7 +2976,26 @@
     "event": "",
     "type": "Creature",
     "updatedAt": 1789505901712,
-    "pushedAt": 1789505923912
+    "pushedAt": 1789505923912,
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "earth",
+        "beast",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "geats",
@@ -1320,7 +3009,25 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789505989442,
-    "pushedAt": 1789506015499
+    "pushedAt": 1789506015499,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "tuesday-shenanigans",
@@ -1334,7 +3041,24 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789511763043,
-    "pushedAt": 1789511775453
+    "pushedAt": 1789511775453,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [
+        "community"
+      ],
+      "realm": [
+        "community"
+      ],
+      "traits": [
+        "event",
+        "community"
+      ]
+    }
   },
   {
     "id": "smash-tag-check",
@@ -1346,7 +3070,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [
+        "community"
+      ],
+      "realm": [
+        "community"
+      ],
+      "traits": [
+        "event",
+        "community"
+      ]
+    }
   },
   {
     "id": "the-weekly-poll",
@@ -1358,7 +3099,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "meme"
+      ],
+      "genre": [
+        "meme"
+      ],
+      "realm": [
+        "internet"
+      ],
+      "traits": [
+        "event",
+        "meme"
+      ]
+    }
   },
   {
     "id": "call-hr",
@@ -1372,7 +3130,25 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789511330247,
-    "pushedAt": 1789511638675
+    "pushedAt": 1789511638675,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "post-it-note-tournament",
@@ -1386,7 +3162,25 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789505291080,
-    "pushedAt": 1789505456212
+    "pushedAt": 1789505456212,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "kroc-bot",
@@ -1398,7 +3192,26 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "robot",
+        "community",
+        "smash"
+      ]
+    }
   },
   {
     "id": "the-best-sauce-is",
@@ -1410,7 +3223,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "frick",
@@ -1424,7 +3254,24 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789512299892,
-    "pushedAt": 1789512304643
+    "pushedAt": 1789512304643,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "enter-foxtrot",
@@ -1436,7 +3283,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "tasty-little-morsel",
@@ -1448,7 +3312,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "the-timezone-chart",
@@ -1462,7 +3344,24 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789506309210,
-    "pushedAt": 1789506318004
+    "pushedAt": 1789506318004,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "2-week-game-fever",
@@ -1474,7 +3373,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "palworld-mountain-base",
@@ -1488,7 +3404,25 @@
     "event": "",
     "type": "Place",
     "updatedAt": 1789512542229,
-    "pushedAt": 1789512547310
+    "pushedAt": 1789512547310,
+    "tags": {
+      "class": "support",
+      "type": "place",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "location",
+        "mountain",
+        "party"
+      ]
+    }
   },
   {
     "id": "hole-in-one",
@@ -1500,7 +3434,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "crew-battle",
@@ -1512,7 +3463,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "cocky-little-freak",
@@ -1524,7 +3493,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "shave-your-head",
@@ -1536,7 +3523,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "patooie",
@@ -1550,7 +3555,25 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789512399971,
-    "pushedAt": 1789512404503
+    "pushedAt": 1789512404503,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [
+        "fighting",
+        "crossover"
+      ],
+      "realm": [
+        "crossover"
+      ],
+      "traits": [
+        "event",
+        "smash"
+      ]
+    }
   },
   {
     "id": "foxtrots-one-weakness",
@@ -1562,7 +3585,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [
+        "party"
+      ],
+      "realm": [
+        "real-world"
+      ],
+      "traits": [
+        "event",
+        "party"
+      ]
+    }
   },
   {
     "id": "blade-s-beans-on-toast",
@@ -1574,7 +3614,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Item"
+    "type": "Item",
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "meme"
+      ],
+      "genre": [
+        "meme"
+      ],
+      "realm": [
+        "internet"
+      ],
+      "traits": [
+        "object",
+        "food",
+        "meme"
+      ]
+    }
   },
   {
     "id": "well-well-well",
@@ -1586,7 +3644,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "i-ll-get-it-back-don-t-worry",
@@ -1598,7 +3674,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "oh-naur",
@@ -1610,7 +3704,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "pokemon"
+      ],
+      "genre": [
+        "creature-battler",
+        "moba"
+      ],
+      "realm": [
+        "pokemon-world"
+      ],
+      "traits": [
+        "event",
+        "pokemon"
+      ]
+    }
   },
   {
     "id": "soggy-bread",
@@ -1622,7 +3734,25 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Item"
+    "type": "Item",
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [
+        "community"
+      ],
+      "realm": [
+        "community"
+      ],
+      "traits": [
+        "object",
+        "food",
+        "community"
+      ]
+    }
   },
   {
     "id": "otto-the-electoral-college",
@@ -1636,7 +3766,24 @@
     "event": "",
     "type": "Moment",
     "updatedAt": 1789506514002,
-    "pushedAt": 1789506520501
+    "pushedAt": 1789506520501,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [
+        "community"
+      ],
+      "realm": [
+        "community"
+      ],
+      "traits": [
+        "event",
+        "community"
+      ]
+    }
   },
   {
     "id": "discord-pizza-party",
@@ -1648,7 +3795,24 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Moment"
+    "type": "Moment",
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [
+        "community"
+      ],
+      "realm": [
+        "community"
+      ],
+      "traits": [
+        "event",
+        "community"
+      ]
+    }
   },
   {
     "id": "thechamp",
@@ -1660,6 +3824,23 @@
     ],
     "season": "Season 1",
     "event": "",
-    "type": "Character"
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "community"
+      ],
+      "genre": [
+        "community"
+      ],
+      "realm": [
+        "community"
+      ],
+      "traits": [
+        "human",
+        "community"
+      ]
+    }
   }
 ]
