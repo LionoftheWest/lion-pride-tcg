@@ -121,11 +121,32 @@ function renderGrid() {
 function openCard(c) {
   current = c;
   el('d-name').value = c.name || ''; // the Title is the only card-wide field
-  el('d-tradeable').checked = c.tradeable !== false; // card-level trade lock
+  fillCardInfo(c); // tags + ability (subject-level)
   el('push-status').textContent = '';
   el('pbar-row').classList.add('hidden');
   renderPreviews();
   el('overlay').classList.remove('hidden');
+}
+
+// Populate the Card Info editors (faceted tags + ability) from the card.
+function fillCardInfo(c) {
+  const t = c.tags || {};
+  const csv = (v) => (Array.isArray(v) ? v.join(', ') : (v || ''));
+  el('t-class').value = t.class || (['Item', 'Place', 'Moment'].includes(c.type) ? 'support' : 'attacker');
+  el('t-type').value = c.type || (t.type ? t.type[0].toUpperCase() + t.type.slice(1) : 'Character');
+  el('t-origin').value = csv(t.origin);
+  el('t-genre-tag').value = csv(t.genre);
+  el('t-realm').value = csv(t.realm);
+  el('t-traits').value = csv(t.traits);
+  const a = c.ability || {};
+  el('a-name').value = a.name || '';
+  el('a-kind').value = a.kind || 'support';
+  el('a-effect').value = a.effect || '';
+  el('a-amount').value = a.amount == null ? '' : a.amount;
+  el('a-target').value = a.target || '';
+  el('a-cooldown').value = a.cooldown == null ? '' : a.cooldown;
+  el('a-desc').value = a.desc || '';
+  el('ci-status').textContent = '';
 }
 
 // The card level holds only the Title + the tier list (finishes).
@@ -147,15 +168,41 @@ async function saveCardDetails() {
 // The Title saves at the card level; the subject / description / season / event
 // are per tier and save to that tier (see saveTierDetails).
 el('d-name').addEventListener('change', saveCardDetails);
-// Card-level trade lock. Applies to all tiers; reflects in the live DB at once.
-el('d-tradeable').addEventListener('change', async () => {
+
+// Save the Card Info (faceted tags + ability) — subject-level, pushes live.
+el('ci-save').addEventListener('click', async () => {
   if (!current) return;
-  const tradeable = el('d-tradeable').checked;
-  await fetch(`/api/tradeable/${current.id}`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tradeable }),
-  });
-  current.tradeable = tradeable;
-  load();
+  const list = (id) => el(id).value.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const num = (id) => (el(id).value === '' ? null : Number(el(id).value));
+  const tags = {
+    class: el('t-class').value,
+    type: el('t-type').value,
+    origin: list('t-origin'),
+    genre: list('t-genre-tag'),
+    realm: list('t-realm'),
+    traits: list('t-traits'),
+  };
+  const ability = {
+    name: el('a-name').value.trim(),
+    kind: el('a-kind').value,
+    effect: el('a-effect').value.trim(),
+    amount: num('a-amount'),
+    target: el('a-target').value.trim(),
+    cooldown: num('a-cooldown'),
+    desc: el('a-desc').value.trim(),
+  };
+  el('ci-status').textContent = 'Saving…';
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch(`/api/tags/${current.id}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(tags) }).then((r) => r.json()),
+      fetch(`/api/ability/${current.id}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(ability) }).then((r) => r.json()),
+    ]);
+    current.tags = r1.tags; current.ability = r2.ability;
+    el('ci-status').textContent = '✓ Saved';
+    load();
+  } catch (e) {
+    el('ci-status').textContent = '❌ ' + (e.message || e);
+  }
 });
 ['d-genre', 'd-lore', 'd-season', 'd-event'].forEach((id) =>
   el(id).addEventListener('change', saveTierDetails));
@@ -353,6 +400,11 @@ function openTier(rarity) {
   el('d-lore').value = det.lore || '';
   el('d-season').value = det.season || '';
   el('d-event').value = det.event || '';
+  // Per-tier trade lock. Gold never trades, so it is locked and cannot be toggled.
+  const isGold = rarity === 'gold';
+  el('t-tradeable').checked = isGold ? false : (det.tradeable !== false);
+  el('t-tradeable').disabled = isGold;
+  el('t-trade-note').textContent = isGold ? '(gold never trades)' : '';
   // The Event / Promo period only applies to a manual tier.
   el('d-event').classList.toggle('hidden', !SPECIAL_TIERS.includes(rarity));
   populateSource(slot);
@@ -412,6 +464,18 @@ el('tier-source').onchange = async () => {
   refreshTierFrame(false);
   renderPreviews();
 };
+
+// Per-tier trade lock: save to this tier's live Supabase row.
+el('t-tradeable').addEventListener('change', async () => {
+  if (!current || !tierSlot) return;
+  const tradeable = el('t-tradeable').checked;
+  const r = await (await fetch(`/api/tradeable/${current.id}/${tierSlot}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tradeable }),
+  })).json();
+  const s = current.slots.find((x) => x.slot === tierSlot);
+  if (s && s.details) s.details.tradeable = r.tradeable;
+  load();
+});
 
 el('tier-close').onclick = () => el('tier-editor').classList.add('hidden');
 el('tier-upload').onclick = () => pickFile(tierSlot);

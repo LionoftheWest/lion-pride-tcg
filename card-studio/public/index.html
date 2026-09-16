@@ -27,9 +27,6 @@
       <div class="panel-head">
         <div class="panel-fields">
           <input id="d-name" class="f-name" placeholder="Card name" />
-          <label id="d-tradeable-row" class="tradeable-row" title="Lock this card from all trading and gifting">
-            <input type="checkbox" id="d-tradeable" checked /> Tradeable
-          </label>
         </div>
       </div>
       <div class="panel-progress hidden" id="pbar-row">
@@ -38,6 +35,36 @@
       </div>
 
       <div class="panel-body">
+        <div class="cardinfo" id="cardinfo">
+          <div class="ci-head">Card Info <span class="muted">— tags &amp; ability (hidden on the card face; shown in the Card Information view)</span></div>
+          <div class="ci-grid">
+            <label class="fld">Class
+              <select id="t-class"><option value="attacker">attacker</option><option value="support">support</option></select>
+            </label>
+            <label class="fld">Type
+              <select id="t-type">
+                <option>Character</option><option>Creature</option><option>Item</option><option>Place</option><option>Moment</option>
+              </select>
+            </label>
+            <label class="fld">Origin <span class="muted">(comma-separated)</span><input id="t-origin" class="cd-input" placeholder="e.g. pokemon" /></label>
+            <label class="fld">Genre<input id="t-genre-tag" class="cd-input" placeholder="e.g. moba, creature-battler" /></label>
+            <label class="fld">Realm<input id="t-realm" class="cd-input" placeholder="e.g. pokemon-world" /></label>
+            <label class="fld">Traits<input id="t-traits" class="cd-input" placeholder="e.g. water, armored" /></label>
+          </div>
+          <div class="ci-head" style="margin-top:10px">Ability <span class="muted">— blank name = no ability</span></div>
+          <div class="ci-grid">
+            <label class="fld">Name<input id="a-name" class="cd-input" placeholder="e.g. Tidal Guard" /></label>
+            <label class="fld">Kind
+              <select id="a-kind"><option value="attack">attack</option><option value="support">support</option></select>
+            </label>
+            <label class="fld">Effect<input id="a-effect" class="cd-input" placeholder="e.g. shield / lifesteal" /></label>
+            <label class="fld">Amount<input id="a-amount" class="cd-input" type="number" step="0.05" placeholder="e.g. 0.3" /></label>
+            <label class="fld">Target<input id="a-target" class="cd-input" placeholder="e.g. ally / self / boss" /></label>
+            <label class="fld">Cooldown<input id="a-cooldown" class="cd-input" type="number" step="1" placeholder="rounds" /></label>
+          </div>
+          <textarea id="a-desc" class="cd-input" rows="2" placeholder="What it does (shown to players)"></textarea>
+          <div class="ci-foot"><button id="ci-save">Save card info</button><span id="ci-status" class="muted small"></span></div>
+        </div>
         <div class="previews" id="previews"></div>
       </div>
     </div>
@@ -93,6 +120,9 @@
           </div>
         </div>
         <div class="tier-right">
+          <label id="t-trade-row" class="tradeable-row" title="Lock this tier from trading and gifting. Gold never trades.">
+            <input type="checkbox" id="t-tradeable" checked /> Tradeable <span class="muted" id="t-trade-note"></span>
+          </label>
           <label class="fld">Artist credit <span class="muted">(optional — blank if none)</span><input id="tier-artist" placeholder="e.g. @artisthandle" /></label>
           <label class="fld">Or reuse art from another tier<select id="tier-source"></select></label>
 

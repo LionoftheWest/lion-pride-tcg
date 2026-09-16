@@ -35,11 +35,18 @@ export function getCard(id) {
  */
 export function slotDetails(card, slot) {
   const d = (card && card.tierDetails && card.tierDetails[slot]) || {};
+  // Gold never trades (a hard rule in trades.sql). Every other tier defaults to
+  // tradeable, and can be locked per tier. Fall back to the old card-level flag
+  // so cards edited before per-tier tradeability keep their setting.
+  const tradeable = slot === 'gold'
+    ? false
+    : (d.tradeable ?? card.tradeable ?? true) !== false;
   return {
     genre: d.genre ?? card.genre ?? '',
     lore: d.lore ?? card.lore ?? '',
     season: d.season ?? card.season ?? 'Season 1',
     event: d.event ?? card.event ?? '',
+    tradeable,
   };
 }
 

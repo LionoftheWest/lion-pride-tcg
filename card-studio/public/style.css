@@ -217,3 +217,14 @@ button:disabled { opacity: .5; cursor: default; }
 /* Card-level trade lock toggle in the panel head */
 .tradeable-row { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #cbd3e1; margin-top: 8px; cursor: pointer; user-select: none; }
 .tradeable-row input { width: 15px; height: 15px; cursor: pointer; }
+.tradeable-row input:disabled { cursor: not-allowed; opacity: .5; }
+
+/* Card Info: faceted tags + ability editor (full-width block above the tiers). */
+.cardinfo { flex-basis: 100%; background: #0c1019; border: 1px solid #1c2333; border-radius: 10px; padding: 12px 14px; }
+.ci-head { font-size: 12px; color: #aeb6c6; font-weight: 600; margin-bottom: 6px; }
+.ci-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px; }
+.ci-grid .fld { margin: 4px 0; }
+.ci-foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+#ci-save { background: #2b6cff; color: #fff; border: 0; padding: 8px 14px; border-radius: 8px; cursor: pointer; font: inherit; }
+#ci-save:hover { background: #3f7bff; }
+#a-desc { margin-top: 8px; }

@@ -77,7 +77,7 @@ export async function pushCard(card, artFor, outDir, onProgress) {
 
   const { data: subject, error: se } = await supabase
     .from('subjects')
-    .upsert({ key: card.id, name: card.name, description: card.genre, type: card.type ?? null }, { onConflict: 'key' })
+    .upsert({ key: card.id, name: card.name, description: card.genre, type: card.type ?? null, tags: card.tags ?? {}, ability: card.ability ?? null }, { onConflict: 'key' })
     .select('id')
     .single();
   if (se) throw new Error(`subject: ${se.message}`);
@@ -139,8 +139,9 @@ export async function pushCard(card, artFor, outDir, onProgress) {
     const rowSeason = det.season || null;
     const rowEvent = needsPeriod(rarity) ? (det.event || null) : null;
     const inPool = inDrawPool(rarity);
-    // A card marked untradeable in the portal locks ALL its tiers from trading.
-    const tradeable = card.tradeable !== false;
+    // Tradeability is per tier now (det.tradeable): gold never trades, every
+    // other tier follows its own portal toggle.
+    const tradeable = det.tradeable !== false;
     if (existing) {
       await supabase
         .from('cards')

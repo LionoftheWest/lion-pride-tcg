@@ -333,6 +333,76 @@ app.post('/api/tradeable/:id', async (req, res) => {
   res.json({ ok: true, tradeable });
 });
 
+// Set the faceted tags for a card (subject-level: class, type, origin, genre,
+// realm, traits). Reflects into subjects.tags; the DB trigger recomputes
+// subjects.tag_slugs. The tags are hidden on the card face — they show in the
+// Card Information view and drive the battle engine.
+app.post('/api/tags/:id', async (req, res) => {
+  const c = cardById(req.params.id);
+  if (!c) return res.status(404).json({ error: 'no card' });
+  const b = req.body || {};
+  const arr = (v) => (Array.isArray(v) ? v : String(v || '').split(','))
+    .map((x) => String(x).trim().toLowerCase()).filter(Boolean);
+  const tags = {
+    class: String(b.class || 'attacker').trim().toLowerCase(),
+    type: String(b.type || c.type || '').trim().toLowerCase(),
+    origin: arr(b.origin),
+    genre: arr(b.genre),
+    realm: arr(b.realm),
+    traits: arr(b.traits),
+  };
+  updateCard(c.id, { tags });
+  touch(c.id);
+  try {
+    const { data: subject } = await supabase.from('subjects').select('id').eq('key', c.id).maybeSingle();
+    if (subject) await supabase.from('subjects').update({ tags }).eq('id', subject.id);
+  } catch { /* live sync is best-effort */ }
+  res.json({ ok: true, tags });
+});
+
+// Set (or clear) the ability for a card (subject-level). An empty name clears it.
+// Reflects into subjects.ability.
+app.post('/api/ability/:id', async (req, res) => {
+  const c = cardById(req.params.id);
+  if (!c) return res.status(404).json({ error: 'no card' });
+  const b = req.body || {};
+  const num = (v) => (v === '' || v == null ? null : Number(v));
+  const name = String(b.name || '').trim();
+  const ability = name ? {
+    name,
+    kind: String(b.kind || 'support').trim(),
+    effect: String(b.effect || '').trim(),
+    amount: num(b.amount),
+    target: String(b.target || '').trim() || null,
+    cooldown: num(b.cooldown),
+    desc: String(b.desc || '').trim(),
+  } : null;
+  updateCard(c.id, { ability });
+  touch(c.id);
+  try {
+    const { data: subject } = await supabase.from('subjects').select('id').eq('key', c.id).maybeSingle();
+    if (subject) await supabase.from('subjects').update({ ability }).eq('id', subject.id);
+  } catch { /* live sync is best-effort */ }
+  res.json({ ok: true, ability });
+});
+
+// Lock / unlock ONE tier from trading. Gold never trades (a hard rule), so it is
+// always locked and cannot be toggled. Updates that tier's live Supabase row.
+app.post('/api/tradeable/:id/:slot', async (req, res) => {
+  const c = cardById(req.params.id);
+  if (!c) return res.status(404).json({ error: 'no card' });
+  const slot = req.params.slot;
+  if (slot === 'gold') return res.json({ ok: true, tradeable: false, locked: true });
+  const tradeable = req.body?.tradeable !== false;
+  setSlotDetails(c.id, slot, { tradeable });
+  touch(c.id);
+  try {
+    const { data: subject } = await supabase.from('subjects').select('id').eq('key', c.id).maybeSingle();
+    if (subject) await supabase.from('cards').update({ tradeable }).eq('subject_id', subject.id).eq('rarity', slot);
+  } catch { /* live sync is best-effort */ }
+  res.json({ ok: true, tradeable });
+});
+
 // Set (or clear) the "pull art from another card" source for a slot.
 app.post('/api/artsource/:id/:slot', (req, res) => {
   const c = cardById(req.params.id);
