@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Card Studio</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>🎴 Card Studio</h1>
+    <div class="stats" id="stats">Loading…</div>
+    <div class="pushq" id="pushq"></div>
+    <div class="spacer"></div>
+    <input id="search" placeholder="Search cards…" />
+    <button id="newcard">＋ New card</button>
+    <button id="view">🖼 Gallery</button>
+    <button id="pushall">⚡ Queue Render<span id="push-badge" class="pbadge hidden">0</span></button>
+  </header>
+
+  <main id="grid"></main>
+  <main id="gallery" class="hidden"></main>
+
+  <div id="overlay" class="hidden">
+    <div id="panel">
+      <button id="close" title="Close">✕</button>
+      <div class="panel-head">
+        <div class="panel-fields">
+          <input id="d-name" class="f-name" placeholder="Card name" />
+          <label id="d-tradeable-row" class="tradeable-row" title="Lock this card from all trading and gifting">
+            <input type="checkbox" id="d-tradeable" checked /> Tradeable
+          </label>
+        </div>
+      </div>
+      <div class="panel-progress hidden" id="pbar-row">
+        <span id="push-status" class="muted small"></span>
+        <div class="pbar" id="pbar"><div class="pfill" id="pfill"></div></div>
+      </div>
+
+      <div class="panel-body">
+        <div class="previews" id="previews"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="framer" class="hidden">
+    <div id="framer-panel">
+      <div class="framer-head">
+        <span id="framer-title">Frame artwork</span>
+        <button id="framer-close" title="Close">✕</button>
+      </div>
+      <div class="framer-stage"><iframe id="framer-frame"></iframe></div>
+      <p class="muted small framer-hint">Drag the art to move it · scroll or use − / + to zoom</p>
+      <div class="framer-controls">
+        <button id="zoom-out" title="Zoom out">−</button>
+        <input id="zoom-range" type="range" min="1" max="4" step="0.01" value="1">
+        <button id="zoom-in" title="Zoom in">+</button>
+        <button id="framer-reset">Reset</button>
+        <button id="framer-save">Save framing</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="creator" class="hidden">
+    <div id="creator-panel">
+      <div class="framer-head">
+        <span id="creator-title">Create a new card</span>
+        <button id="creator-close" title="Close">✕</button>
+      </div>
+      <label class="fld">Card name<input id="c-name" placeholder="e.g. Ottozone's R.O.B." /></label>
+      <label class="fld">Season / origin <span class="muted">(required)</span><input id="c-season" placeholder="e.g. Season 1" /></label>
+      <div class="creator-foot">
+        <span id="creator-status" class="muted small"></span>
+        <button id="creator-save">Create card</button>
+      </div>
+      <p class="muted small" style="margin-top:12px">Add the subject, description, artwork, and tiers on the card screen that opens next.</p>
+    </div>
+  </div>
+
+  <div id="tier-editor" class="hidden">
+    <div id="tier-panel">
+      <div class="framer-head">
+        <span id="tier-title">Tier</span>
+        <button id="tier-close" title="Close">✕</button>
+      </div>
+      <div class="tier-cols">
+        <div class="tier-left">
+          <div class="tier-stage" id="tier-stage"><iframe id="tier-frame"></iframe></div>
+          <div class="tier-drop" id="tier-drop">Drop art here, or click Upload</div>
+          <div class="tier-controls">
+            <button id="tier-upload">⬆ Upload art</button>
+            <button id="tier-framebtn">✥ Frame</button>
+          </div>
+        </div>
+        <div class="tier-right">
+          <label class="fld">Artist credit <span class="muted">(optional — blank if none)</span><input id="tier-artist" placeholder="e.g. @artisthandle" /></label>
+          <label class="fld">Or reuse art from another tier<select id="tier-source"></select></label>
+
+          <div class="tier-carddetails">
+            <div class="cd-head">Card details <span class="muted">— this tier only</span></div>
+            <input id="d-genre" class="cd-input" placeholder="Subject (e.g. Pokemon Unite)" />
+            <textarea id="d-lore" class="cd-input" rows="2" placeholder="Description / lore"></textarea>
+            <div class="cd-row">
+              <input id="d-season" class="cd-input" placeholder="Season / origin" />
+              <input id="d-event" class="cd-input hidden" placeholder="Event / Promo period" />
+            </div>
+            <label class="fld">Or pull details from another tier<select id="cd-source"></select></label>
+          </div>
+
+          <button id="tier-delete" class="tier-del">🗑 Delete this tier</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="addtier" class="hidden">
+    <div id="addtier-panel">
+      <div class="framer-head">
+        <span>Add a tier</span>
+        <button id="addtier-close" title="Close">✕</button>
+      </div>
+      <p class="muted small">Pick a tier to add to this card.</p>
+      <div class="addtier-list" id="addtier-list"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

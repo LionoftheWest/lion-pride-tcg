@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 500px; height: 700px; background: transparent; overflow: hidden; }
+  .flair { position: absolute; inset: 0; }
+
+  /* Ring: a HOLOGRAPHIC metal border whose COLOUR marks the tier — Normal, Bronze,
+     Silver, Gold, then the Rainbow prestige level. Semi-transparent so the art
+     shows through; transparent interior via mask-exclude. Each gradient runs
+     through the metal tones PLUS iridescent glints (cyan / violet), so the border
+     reads as a holo-foil of that metal rather than a flat colour. */
+  .ring {
+    position: absolute; inset: 3px; border-radius: 31px; padding: 14px; opacity: .92;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  /* Level 1 - Normal: bright clean steel-white foil, very light shine, no rainbow. */
+  .f1 .ring { opacity: .82; background: conic-gradient(from 200deg, #9aa7b6, #dfe7f0, #ffffff, #c6d2e0, #eef4fb, #aab6c4, #9aa7b6);
+    filter: drop-shadow(0 0 7px rgba(225,235,248,.6)); }
+  /* Level 2 - Bronze: vibrant copper foil. */
+  .f2 .ring { background: conic-gradient(from 200deg, #5a2c0c, #b5642a, #ec8a38, #ffbe6e, #ffe6bf, #dd7a2c, #7a3f16);
+    filter: drop-shadow(0 0 13px rgba(230,140,55,.95)); }
+  /* Level 3 - Silver: bright clean silver foil. */
+  .f3 .ring { background: conic-gradient(from 200deg, #64707c, #aebccb, #eef4fb, #ffffff, #cdd9e6, #93a1af, #64707c);
+    filter: drop-shadow(0 0 14px rgba(215,228,244,.95)); }
+  /* Level 4 - Gold: vibrant rich gold foil. */
+  .f4 .ring { background: conic-gradient(from 200deg, #7a5606, #d9a016, #ffce34, #fff2a6, #ffdb5a, #c69113, #7a5606);
+    filter: drop-shadow(0 0 16px rgba(255,205,70,1)); }
+  /* Level 5 - Prestige: vibrant rainbow holo. */
+  .f5 .ring { background: conic-gradient(from 0deg, #ff5a5a, #ffd23e, #4fd6f0, #b45ad8, #ffca3a, #ff5a5a);
+    filter: drop-shadow(0 0 18px #ffd23e) drop-shadow(0 0 9px #fff); }
+
+  /* Star-gems: a vertical column on the LEFT edge, centered. This is the only zone
+     clear on BOTH templates — framed cards put the title top-left + pip top-right,
+     full-art puts the title at the bottom; the side edges carry no text. */
+  .gems { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 5px; }
+  .gem {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 14px; color: #3a2a05;
+    background: radial-gradient(circle at 35% 30%, #fff7d6, #ffd76e 55%, #b8892a);
+    box-shadow: 0 0 6px #ffe08a, inset 0 1px 1px #fff8; border: 1px solid #7a5a12;
+  }
+  .f5 .gem { background: radial-gradient(circle at 35% 30%, #fff, #ffd76e 45%, #b06ab3 90%); box-shadow: 0 0 8px #ffd76e; }
+
+  /* PRESTIGE: a big holographic crown over the WHOLE card. A crisp white outline +
+     a dark shadow keep the crown SHAPE readable over any art (light or dark), while
+     the holo fill stays semi-transparent so the artwork still reads through it. */
+  .crown-big { position: absolute; inset: 0; display: grid; place-items: center; }
+  .crown-big svg { width: 90%; height: auto; transform: rotate(-8deg); }
+  .cbody, .cband { fill: url(#holo); fill-opacity: .28; stroke: rgba(255,255,255,.7); stroke-width: 2.5; stroke-linejoin: round;
+    paint-order: stroke fill; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)) drop-shadow(0 0 9px rgba(255,215,110,.45)); }
+  .cgem { fill: rgba(255,246,207,.8); stroke: rgba(255,255,255,.7); stroke-width: 2; filter: drop-shadow(0 0 4px #ffd76e); }
+</style>
+</head>
+<body>
+  <div class="flair %%TIER%%">
+    <div class="ring"></div>
+    %%CROWN%%
+    <div class="gems">%%GEMS%%</div>
+  </div>
+</body>
+</html>

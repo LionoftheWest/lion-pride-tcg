@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:500px; height:700px; }
+  body { font-family:'Segoe UI', system-ui, sans-serif; background:transparent; }
+
+  .card {
+    width:500px; height:700px; border-radius:32px; overflow:hidden; position:relative;
+    border:15px solid transparent;
+    background:
+      url("file:///C:/Users/vaugh/discord/card-studio/assets/spiral_bg.png") center center / cover no-repeat padding-box,
+      radial-gradient(120% 90% at 50% 50%, #241019 0%, #0c070a 72%) padding-box,
+      linear-gradient(150deg, #e11d2a, #f59e0b, #e11d2a) border-box;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* soft dark vignette so the crest reads over the spiral */
+  .card::before {
+    content:''; position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 50%, transparent 46%, rgba(10,6,8,.28) 92%);
+  }
+
+  .crest {
+    width:300px; height:300px; border-radius:50%; overflow:hidden; position:relative; z-index:1;
+    box-shadow:0 16px 50px rgba(0,0,0,.6), 0 0 0 10px rgba(20,10,14,.55);
+  }
+  .crest img { width:104%; height:104%; object-fit:cover; margin:-2%; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="crest"><img src="file:///C:/Users/vaugh/discord/card-studio/assets/lion-logo.jpg"></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lion Pride TCG — Card Gallery</title>
+  <link rel="stylesheet" href="/gallery.css" />
+</head>
+<body>
+  <header>
+    <h1>🦁 Lion Pride TCG</h1>
+    <p class="tagline">Card Gallery</p>
+    <input id="search" placeholder="Search cards…" />
+    <div class="count" id="count"></div>
+  </header>
+  <main id="gallery" class="loading">Loading the collection…</main>
+  <footer>Lion Pride TCG · view-only gallery</footer>
+
+  <div id="viewer" class="hidden">
+    <button id="viewer-close" title="Close">✕</button>
+    <div class="viewer-stage" id="viewer-stage">
+      <div class="card3d" id="card3d">
+        <div class="face front">
+          <canvas id="v-front"></canvas>
+          <div class="holo" id="v-holo"></div>
+          <div class="glare" id="v-glare"></div>
+        </div>
+        <div class="face back"><img id="v-back" alt="card back"></div>
+      </div>
+    </div>
+    <div class="viewer-info">
+      <div class="v-subject" id="v-subject"></div>
+      <h3 id="v-name"></h3>
+      <span class="badge" id="v-badge"></span>
+      <div class="v-fields">
+        <div><span class="v-label">Season</span><span id="v-season"></span></div>
+        <div id="v-event-row" class="hidden"><span class="v-label">Event</span><span id="v-event"></span></div>
+        <div><span class="v-label">Rarity</span><span id="v-rarity"></span></div>
+      </div>
+      <p class="v-lore" id="v-lore"></p>
+      <p class="v-artist" id="v-artist"></p>
+    </div>
+  </div>
+
+  <script src="/gallery.js"></script>
+</body>
+</html>

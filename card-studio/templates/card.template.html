@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --accent:%%ACCENT%%; --accent-soft:%%ACCENT_SOFT%%; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:500px; height:700px; }
+  body { font-family:'Segoe UI', system-ui, sans-serif; background:transparent; }
+
+  .card {
+    width:500px; height:700px; padding:18px; border-radius:32px;
+    border:15px solid var(--accent);
+    background: radial-gradient(130% 90% at 50% -10%, #1c2434 0%, #0a0d14 62%);
+    box-shadow: inset 0 0 46px rgba(0,0,0,.65), 0 0 0 2px rgba(0,0,0,.5);
+    display:flex; flex-direction:column; gap:12px; position:relative; overflow:hidden;
+  }
+  .card::before {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(130deg, transparent 42%, rgba(255,255,255,.07) 50%, transparent 58%);
+  }
+
+  /* Illustrated Rare — a soft accent inner ring */
+  .card.illustrated_rare { box-shadow: inset 0 0 0 2px rgba(96,165,250,.40), inset 0 0 46px rgba(0,0,0,.6); }
+
+  /* Secret Illustrated Rare — a holographic wash behind everything */
+  .card.secret_rare::after {
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.20; mix-blend-mode:screen;
+    background:conic-gradient(from 200deg, #ff5f6d, #6dd5ed, #b06ab3, #f7b733, #ff5f6d);
+  }
+
+  /* Gold — metallic gradient border with rounded corners */
+  .card.gold {
+    border:8px solid transparent;
+    background:
+      radial-gradient(130% 90% at 50% -10%, #241d0e 0%, #0a0d14 62%) padding-box,
+      linear-gradient(145deg, #8a6d1a, #f7d774, #fff6cf, #caa02e, #8a6d1a) border-box;
+  }
+
+  .titlebar { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .name { font-size:28px; font-weight:800; color:#fff; letter-spacing:.2px; text-shadow:0 2px 8px rgba(0,0,0,.7); line-height:1.05; }
+  .pip {
+    font-size:11px; text-transform:uppercase; letter-spacing:1.5px; font-weight:800;
+    color:#0a0d14; background:var(--accent); padding:5px 11px; border-radius:999px; white-space:nowrap;
+    box-shadow:0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  .subject { font-size:12px; color:var(--accent-soft); letter-spacing:2px; text-transform:uppercase; }
+  .art {
+    flex:1 1 auto; border-radius:18px; overflow:hidden; border:2px solid rgba(255,255,255,.09);
+    background:linear-gradient(135deg,#2a3348,#121826);
+    display:flex; align-items:center; justify-content:center; color:#3d4860; font-size:16px; letter-spacing:3px;
+    position:relative; z-index:1;
+  }
+  /* The placement script (bottom of body) sizes + positions the image from its
+     natural dimensions, so pan works on both axes and zoom adds real overflow. */
+  .art img { position:absolute; top:0; left:0; display:block; }
+  .lore {
+    background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.08); border-radius:14px;
+    padding:12px 15px; min-height:88px; color:#cbd3e1; position:relative; z-index:1;
+    font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:15px; line-height:1.4;
+  }
+  .footer { display:flex; justify-content:space-between; align-items:center; font-size:11px; position:relative; z-index:1; min-height:14px; }
+  .artist { color:#79839a; font-style:italic; }
+  .brand { color:var(--accent-soft); font-weight:800; letter-spacing:.6px; text-transform:uppercase; opacity:.9; }
+
+  /* Mask mode (framed). Default: holo in the ART WINDOW only (IR). */
+  .card.maskmode { background:#000 !important; border-color:#000 !important; }
+  .card.maskmode::before, .card.maskmode::after { display:none !important; }
+  .card.maskmode * { background:transparent !important; color:transparent !important; text-shadow:none !important; box-shadow:none !important; }
+  .card.maskmode .art { background:#fff !important; }
+  .card.maskmode .art img { display:none !important; }
+  /* Secret Rare: holo on the BORDER instead of the art window. */
+  .card.secret_rare.maskmode { border-color:#fff !important; }
+  .card.secret_rare.maskmode .art { background:#000 !important; }
+</style>
+</head>
+<body>
+  <div class="card %%CLASS%%">
+    <div class="titlebar">
+      <div class="name">%%NAME%%</div>
+    </div>
+    <div class="subject">%%GENRE%%</div>
+    <div class="art">%%ART%%</div>
+    <div class="lore">&ldquo;%%LORE%%&rdquo;</div>
+    <div class="footer">
+      <span class="artist">%%ARTIST%%</span>
+      <span class="brand">Lion Pride TCG</span>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var img=document.querySelector('.art-img'); if(!img) return;
+    function place(){
+      var c=img.parentElement, cw=c.clientWidth, ch=c.clientHeight;
+      var nw=img.naturalWidth, nh=img.naturalHeight; if(!nw||!nh) return;
+      var fx=(parseFloat(img.getAttribute('data-ax'))||50)/100;
+      var fy=(parseFloat(img.getAttribute('data-ay'))||50)/100;
+      var z=parseFloat(img.getAttribute('data-az'))||1;
+      var cover=Math.max(cw/nw, ch/nh)*z, dw=nw*cover, dh=nh*cover;
+      var tx=Math.min(0,Math.max(cw-dw, cw/2 - fx*dw));
+      var ty=Math.min(0,Math.max(ch-dh, ch/2 - fy*dh));
+      img.style.width=dw+'px'; img.style.height=dh+'px'; img.style.left=tx+'px'; img.style.top=ty+'px';
+    }
+    window.__placeArt=place;
+    if(img.complete && img.naturalWidth) place();
+    img.addEventListener('load', place);
+  })();
+  </script>
+</body>
+</html>

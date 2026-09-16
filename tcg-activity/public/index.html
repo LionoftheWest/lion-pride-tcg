@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Lion Pride TCG</title>
+  <link rel="stylesheet" href="/style.css?v=__CSSV__" />
+</head>
+<body>
+  <div id="loader">
+    <div class="ldr">
+      <div class="ldr-logo">🦁</div>
+      <div class="ldr-title">LION PRIDE TCG</div>
+      <div class="ldr-bar"><span></span></div>
+      <div class="ldr-msg" id="loaderMsg">Entering the Pride…</div>
+    </div>
+  </div>
+  <header id="topbar">
+    <div class="title"><span class="logo">🦁</span> Lion Pride TCG</div>
+    <div class="topright">
+      <button id="bellBtn" class="iconbtn hidden" title="Notifications">🔔</button>
+      <button id="boardBtn" class="iconbtn hidden" title="Leaderboard">🏆</button>
+      <button id="giftBtn" class="iconbtn hidden" title="Gift a pack">🎁</button>
+      <button id="mute" class="iconbtn hidden" title="Sound on/off">🔊</button>
+      <nav id="nav" class="hidden">
+        <button data-view="gallery">Gallery</button>
+        <button data-view="trading">Trading</button>
+        <button data-view="collection" class="active">Collection</button>
+        <button data-view="battling">Battling</button>
+      </nav>
+    </div>
+  </header>
+  <div id="status">Loading…</div>
+  <div id="body" class="hidden">
+    <main id="main"></main>
+    <aside id="feed">
+      <div class="feed-head">Community Live Feed</div>
+      <div class="feed-list" id="feedList"></div>
+    </aside>
+  </div>
+
+  <!-- Full-screen pack-opening takeover: dims everything, plays the reveal. -->
+  <div id="stage" class="hidden"></div>
+
+  <!-- Gift a pack: find a player (in the VC or not) and send from your balance. -->
+  <div id="gift" class="hidden"></div>
+
+  <!-- Trade builder: pick a player, pick your card, gift it or request one back. -->
+  <div id="trade" class="hidden"></div>
+
+  <!-- In-app notifications (the bell). -->
+  <div id="notif" class="hidden"></div>
+
+  <!-- Leaderboard: top players by Total Collection Power (the trophy). -->
+  <div id="board" class="hidden"></div>
+
+  <!-- 3D card viewer: drag to pivot, click to flip, holo shines on tilt. -->
+  <div id="viewer" class="hidden">
+    <button id="viewer-close" title="Close">✕</button>
+    <div class="viewer-stage" id="viewer-stage">
+      <div class="card3d" id="card3d">
+        <div class="face front">
+          <img id="v-front" alt="">
+          <div class="holo"></div>
+          <div class="glare"></div>
+        </div>
+        <div class="face back"><img id="v-back" alt="card back"></div>
+      </div>
+    </div>
+    <div class="viewer-info">
+      <div class="v-subject" id="v-subject"></div>
+      <h3 id="v-name"></h3>
+      <span class="badge" id="v-badge"></span>
+      <div class="v-fields">
+        <div><span class="v-label">Season</span><span id="v-season"></span></div>
+        <div id="v-event-row" class="hidden"><span class="v-label">Event</span><span id="v-event"></span></div>
+        <div><span class="v-label">Rarity</span><span id="v-rarity"></span></div>
+      </div>
+      <p class="v-lore" id="v-lore"></p>
+      <p class="v-artist" id="v-artist"></p>
+      <div id="v-asc" class="v-asc hidden">
+        <div class="v-asc-line"><span class="v-stars" id="v-stars"></span><span class="v-power" id="v-power"></span></div>
+        <button id="v-ascend" class="v-ascend hidden"></button>
+        <div class="v-asc-note" id="v-asc-note"></div>
+      </div>
+      <p class="v-hint">Drag to pivot · click to flip</p>
+    </div>
+  </div>
+
+  <script type="module" src="/__BUNDLE__"></script>
+</body>
+</html>

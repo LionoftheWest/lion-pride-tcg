@@ -1,0 +1,1665 @@
+[
+  {
+    "id": "mztaken-s-kirby",
+    "name": "MzTaken's Kirby",
+    "genre": "Super Smash Bros",
+    "lore": "Shes screaming, we're screaming, everyone's screaming",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "tierDetails": {},
+    "type": "Character"
+  },
+  {
+    "id": "mr-mob-s-mr-mime",
+    "name": "Mr. Mob's Mime",
+    "genre": "Pokemon Unite",
+    "lore": "Barrier Mime > Power Swap Mime",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "blastninja-s-blastoise",
+    "name": "Blastninja's Blastoise",
+    "genre": "Pokemon Unite",
+    "lore": "Watch out for those haunches",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "updatedAt": 1789074367944,
+    "pushedAt": 1789074663495,
+    "type": "Creature"
+  },
+  {
+    "id": "noobeth-s-venusaur",
+    "name": "Noobeth's Venusaur",
+    "genre": "Pokemon Unite",
+    "lore": "For Noob!",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "heero-s-meowscarada",
+    "name": "Heero's Meowscarada",
+    "genre": "Pokemon Unite",
+    "lore": "Whats a bottom lane?",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature",
+    "updatedAt": 1789422238460,
+    "pushedAt": 1789424032752
+  },
+  {
+    "id": "broken-warden-s-umbreon",
+    "name": "Broken Warden's Umbreon",
+    "genre": "Pokemon Unite",
+    "lore": "Oh so thats how it feels to be mean looked...",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature",
+    "updatedAt": 1789422744487,
+    "pushedAt": 1789424032616
+  },
+  {
+    "id": "jelly-s-urshifu",
+    "name": "Jelly's Urshifu",
+    "genre": "Pokemon Unite",
+    "lore": "*spam buttons*",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "lionofthewest-s-tsareena",
+    "name": "LionoftheWest's Tsareena",
+    "genre": "Pokemon Unite",
+    "lore": "Inting for stacks",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "gsnipes-cinderrace",
+    "name": "GSnipes Cinderrace",
+    "genre": "Pokemon Unite",
+    "lore": "Missed the Zapdos Shot",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "r2vq-s-talonflame",
+    "name": "R2VQ's Talonflame",
+    "genre": "Pokemon Unite",
+    "lore": "The Original Flame Bird",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "brego-s-link",
+    "name": "Brego's Link",
+    "genre": "Super Smash Bros",
+    "lore": "Up B OOS works 60% of the time, every time",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "beetle-s-cloud",
+    "name": "Beetle's Cloud",
+    "genre": "Super Smash Bros",
+    "lore": "Still needs permission to stay up late for Try Hard Tourneys",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "wiifu-s-sora",
+    "name": "Wiifu's Sora",
+    "genre": "Super Smash Bros",
+    "lore": "Do you understand the Kingdom Hearts Lore? Good me neither",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "lionofthewest-s-pichu",
+    "name": "LionoftheWest's Pichu",
+    "genre": "Super Smash Bros",
+    "lore": "You're either dead at 5% or I am",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "kaminari-s-incineroar",
+    "name": "Kaminari's Incineroar",
+    "genre": "Super Smash Bros",
+    "lore": "Free Hugs for everyone",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "geno-s-megaman",
+    "name": "Geno's Megaman",
+    "genre": "Super Smash Bros",
+    "lore": "Always clutches in doubles",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "grim-s-jigglypuff",
+    "name": "Grim's Jigglypuff",
+    "genre": "Super Smash Bros",
+    "lore": "Somehow always gets a Rest Confirm",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "grim-s-pokemon-trainer",
+    "name": "Grim's Pokemon Trainer",
+    "genre": "Super Smash Bros",
+    "lore": "Forgotten in the PC Box 30",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "piotr-s-little-mac",
+    "name": "Piotr's Little Mac",
+    "genre": "Super Smash Bros",
+    "lore": "Trains with kangroo's",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "texafornia-s-richter",
+    "name": "Texafornia's Richter",
+    "genre": "Super Smash Bros",
+    "lore": "Taek Dis!",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "maddawg-s-wolf",
+    "name": "Maddawg's Wolf",
+    "genre": "Super Smash Bros",
+    "lore": "Not a Space Furry",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "keeb-s-mii-gunner",
+    "name": "Keeb's Mii Gunner",
+    "genre": "Super Smash Bros",
+    "lore": "B...B...B...B...B...",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "notjosh-s-random-pick",
+    "name": "NotJosh's Random Pick",
+    "genre": "Super Smash Bros",
+    "lore": "Current King of the Randoms",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "lionofthewest-s-pikachu",
+    "name": "LionoftheWest's Pikachu",
+    "genre": "Super Smash Bros",
+    "lore": "That one \"Stupid Rat\" everyone talks about",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "kaminari-s-krool",
+    "name": "Kaminari's King K. Rool",
+    "genre": "Super Smash Bros",
+    "lore": "MY SWAMP",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "updatedAt": 1789500822056,
+    "pushedAt": 1789501192661,
+    "type": "Character"
+  },
+  {
+    "id": "ottozone-s-rob",
+    "name": "Ottozone's Rob",
+    "genre": "Super Smash Bros",
+    "lore": "I only play this for the tier list rating",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "wiifu-s-wiifit-trainer",
+    "name": "Wiifu's Wiifit Trainer",
+    "genre": "Super Smash Bros",
+    "lore": "I'm going to make you salute the sun",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "updatedAt": 1789074825588,
+    "type": "Character",
+    "pushedAt": 1789424348562
+  },
+  {
+    "id": "chevynova-s-bowser",
+    "name": "ChevyNova's Bowser",
+    "genre": "Super Smash Bros",
+    "lore": "Chevy's tried and true about 28% of the time",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "e-mandarkstar-s-ganondorf",
+    "name": "E-Mandarkstar's Ganondorf",
+    "genre": "Super Smash Bros",
+    "lore": "Dash Attack, Up Air, Neutral, Doriyah, repeat 20x",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "lazypie-s-zero-suit-samus",
+    "name": "Lazypie's Zero Suit Samus",
+    "genre": "Super Smash Bros",
+    "lore": "Missed it by THAT much",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "bonzan-s-donkey-kong",
+    "name": "Bonzan's Donkey Kong",
+    "genre": "Super Smash Bros",
+    "lore": "OH GREAT HEAVENS",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character",
+    "updatedAt": 1789597227468
+  },
+  {
+    "id": "vioarr-s-link",
+    "name": "Vioarr's Link",
+    "genre": "Super Smash Bros",
+    "lore": "50/50 to hit the bomb recovery or SD",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "foxtrot-s-krool",
+    "name": "Foxtrot's King K. Rool",
+    "genre": "Super Smash Bros",
+    "lore": "\"Oh you play (insert character), you must be GAY\"",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character",
+    "updatedAt": 1789500814283
+  },
+  {
+    "id": "rad-dad-s-ness",
+    "name": "Rad Dad's Ness",
+    "genre": "Super Smash Bros",
+    "lore": "Ness actually dresses like Rad-Dad, not the other way around",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "pringle-s-banjo-kazooie",
+    "name": "Pringle's Banjo & Kazooie",
+    "genre": "Super Smash Bros",
+    "lore": "Regular Pringles? Nah. Pizza Pringles? YES",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character",
+    "updatedAt": 1789504951406,
+    "pushedAt": 1789505489858
+  },
+  {
+    "id": "xeno-s-blueprint",
+    "name": "Xeno's Blueprint",
+    "genre": "Minecraft",
+    "lore": "Xeno's idea for what he's going to do in this server",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Item"
+  },
+  {
+    "id": "zeoic-s-redstone-machine",
+    "name": "Zeoic's Redstone Machine",
+    "genre": "Minecraft",
+    "lore": "He'll automate making crafting tables to win if he has to",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Item",
+    "updatedAt": 1789504305185,
+    "tierDetails": {
+      "gold": {
+        "genre": "Minecraft",
+        "lore": "He'll automate making crafting tables to win if he has to",
+        "season": "Season 1",
+        "event": ""
+      }
+    },
+    "pushedAt": 1789504690986
+  },
+  {
+    "id": "alydoor-s-cafe",
+    "name": "Alydoor's Cafe",
+    "genre": "Minecraft",
+    "lore": "Usually what Xeno will actually build in a server",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Place"
+  },
+  {
+    "id": "kobedunk-s-lumberjack",
+    "name": "KobeDunk's Hole-in-One",
+    "genre": "Party Games",
+    "lore": "Who needs more wood?",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character",
+    "updatedAt": 1789497104628
+  },
+  {
+    "id": "fluffy-s-repo",
+    "name": "Fluffy's REPO",
+    "genre": "Party Games",
+    "lore": "Somehow ends up being the last one alive every time",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "notjosh-s-waluigi",
+    "name": "NotJosh's Waluigi",
+    "genre": "Super Smash Bros",
+    "lore": "Maybe in Smash 6...?",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "zeoic-the-server-master",
+    "name": "Zeoic, the Server Master",
+    "genre": "Minecraft",
+    "lore": "We have yet to find what he can't host",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "baego",
+    "name": "Baego",
+    "genre": "Super Smash Bros",
+    "lore": "Dark Side? No this is definitely the better side",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "ling-ling-s-talonflame",
+    "name": "Ling Ling's Talonflame",
+    "genre": "Pokemon Unite",
+    "lore": "Legends say he haunts many unite players to this day...",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "i-m-a-tree",
+    "name": "I'm a Tree!",
+    "genre": "Pokemon Unite",
+    "lore": "Throw everything you got at it",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "mr-mobs-dirt-house",
+    "name": "Mr. Mobs Dirt House",
+    "genre": "Minecraft",
+    "lore": "It ain't much but...well it ain't much.",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Place"
+  },
+  {
+    "id": "king-of-the-swamp",
+    "name": "King of the Swamp",
+    "genre": "Super Smash Bros",
+    "lore": "Singles? Doubles? Doesn't matter",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Place"
+  },
+  {
+    "id": "mr-mobs-mew",
+    "name": "Mr. Mobs Mew",
+    "genre": "Pokemon Unite",
+    "lore": "\"Why do I have to press so many buttons\"",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "long-live-the-king",
+    "name": "\"Long live the King\"",
+    "genre": "Party Games",
+    "lore": "No this was not scripted",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "lionofthewest-s-dodrio",
+    "name": "LionoftheWest's Dodrio",
+    "genre": "Pokemon Unite",
+    "lore": "Still doesn't understand how this works",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "onyen-tutoring",
+    "name": "Onyen Tutoring",
+    "genre": "Pokemon Unite",
+    "lore": "$150/hour and you'll be a Master! At what, we don't know",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "up-b-oos",
+    "name": "UP B OOS",
+    "genre": "Super Smash Bros",
+    "lore": "Shielding? UP B OOS. Missed the Grab? UP B OOS. Want to win? UP B OOS.",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "grudge-match",
+    "name": "Grudge Match",
+    "genre": "Super Smash Bros",
+    "lore": "There's only one way to settle this...",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "mr-worldwide",
+    "name": "Mr. Worldwide",
+    "genre": "Pokemon Unite",
+    "lore": "Great, now you can't play with anyone else",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "wiifu-s-bowling-ball",
+    "name": "Wiifu's Bowling Ball",
+    "genre": "Super Smash Bros",
+    "lore": "So this is why he doesn't join us on Monday nights",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Item"
+  },
+  {
+    "id": "gym-rat-lion",
+    "name": "Gym Rat Lion",
+    "genre": "Super Smash Bros",
+    "lore": "Chocolate Milk is the best recovery drink",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "memelord-lion",
+    "name": "Memelord Lion",
+    "genre": "Memes",
+    "lore": "You ever heard of Mental Warfare? Welcome to Meme Warfare",
+    "finishes": [
+      "normal",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character",
+    "updatedAt": 1789497038331,
+    "pushedAt": 1789497162176
+  },
+  {
+    "id": "the-dad-gaming",
+    "name": "The Dad Gaming",
+    "genre": "Super Smash Bros",
+    "lore": "Ode to the TDG Crew, RIP 2020-2025",
+    "finishes": [
+      "normal",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character",
+    "updatedAt": 1789422931282,
+    "pushedAt": 1789424146786
+  },
+  {
+    "id": "rotom-washed",
+    "name": "Rotom Washed",
+    "genre": "Pokemon Unite",
+    "lore": "Who?",
+    "finishes": [
+      "normal",
+      "gold"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature"
+  },
+  {
+    "id": "mrs-lionofthewest",
+    "name": "Mrs. LionoftheWest",
+    "genre": "Party Games",
+    "lore": "She purposely avoids looking in this server",
+    "finishes": [
+      "normal",
+      "full_art"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "modded-vs-vanilla",
+    "name": "Modded vs Vanilla",
+    "genre": "Minecraft",
+    "lore": "Warning: You won't be able to go back",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "create-a-colony",
+    "name": "Create-a-Colony",
+    "genre": "Minecraft",
+    "lore": "Potato Cannons, armored Kangaroos, Horse charges...anything can happen",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Place"
+  },
+  {
+    "id": "cockroachs-never-die",
+    "name": "Cockroachs Never Die",
+    "genre": "Party Games",
+    "lore": "Wait, how are you alive?!",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "super-battle-golf-flash-bang",
+    "name": "Super Battle Golf Flash Bang",
+    "genre": "Party Games",
+    "lore": "Worst/Best Item in game",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "call-of-dragons",
+    "name": "Call of Dragons",
+    "genre": "Memes",
+    "lore": "The true war happened in World Chat",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "australian-connections",
+    "name": "Australian Connections",
+    "genre": "Super Smash Bros",
+    "lore": "Oh you see th-th-that litt-le-ma...c...",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "4-in-the-pink",
+    "name": "4 In the Pink",
+    "genre": "Party Games",
+    "lore": "There was only one reason why they won",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "krool-name-swap",
+    "name": "Krool Name Swap",
+    "genre": "Super Smash Bros",
+    "lore": "Wait a minute...",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789423121970,
+    "pushedAt": 1789424148274
+  },
+  {
+    "id": "fluffy-s-repo-clutch",
+    "name": "Fluffy's REPO Clutch",
+    "genre": "Party Games",
+    "lore": "\"Guys?...ah crap I hate this frickin game...\"",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "30-dantucker-pings",
+    "name": "30 DanTucker Pings",
+    "genre": "Super Smash Bros",
+    "lore": "@TheDanTucker",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "lazy-sd",
+    "name": "Lazy SD",
+    "genre": "Super Smash Bros",
+    "lore": "3 Inevitable Things in Life: Death, Taxes, and Lazy SD's",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "the-server-crashed",
+    "name": "The Server Crashed!",
+    "genre": "Minecraft",
+    "lore": "Yeah I though that might happen...",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "failed-wordle",
+    "name": "Failed Wordle",
+    "genre": "Party Games",
+    "lore": "Stupid game, stupid word",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "gerudo-fight-club",
+    "name": "Gerudo Fight Club",
+    "genre": "Super Smash Bros",
+    "lore": "Suavemente!",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "whats-a-c3",
+    "name": "Whats a C3?",
+    "genre": "Memes",
+    "lore": "Can never replace what was...",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789505186719,
+    "pushedAt": 1789505453048
+  },
+  {
+    "id": "build-a-house-mime",
+    "name": "Build a House (Mime)",
+    "genre": "Pokemon Unite",
+    "lore": "Wait I thought you could only put down 2 walls...",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "b-button-spam",
+    "name": "B Button Spam",
+    "genre": "Super Smash Bros",
+    "lore": "Tjolts, Grenades, Blasters, oh my!",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "panda-express-run",
+    "name": "Panda Express Run",
+    "genre": "Pokemon Unite",
+    "lore": "Turns out they have brisket?",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789511612482,
+    "pushedAt": 1789511624995
+  },
+  {
+    "id": "better-in-cancun",
+    "name": "Better in Cancun",
+    "genre": "Pokemon Unite",
+    "lore": "Pretty sure Noob just lives there now",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "smash-server-hamster-wheel",
+    "name": "Smash Server Hamster Wheel",
+    "genre": "Super Smash Bros",
+    "lore": "A Communication Error has Occu--",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "ketchup-on-hotdogs",
+    "name": "Ketchup on Hotdogs",
+    "genre": "Memes",
+    "lore": "The right way to eat a hot dog",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789511905065,
+    "pushedAt": 1789511909385
+  },
+  {
+    "id": "pineapple-on-pizza",
+    "name": "Pineapple on Pizza",
+    "genre": "Memes",
+    "lore": "The wrong way to eat a pizza",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "xeno-s-unfinished-project",
+    "name": "Xeno's Unfinished Project",
+    "genre": "Minecraft",
+    "lore": "What actually happens for Xeno's season",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Item",
+    "updatedAt": 1789511838503,
+    "pushedAt": 1789511845226
+  },
+  {
+    "id": "lorcana-prices",
+    "name": "Lorcana Prices",
+    "genre": "Memes",
+    "lore": "\"Wait go back to Pokemon!\"",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "mob-s-hiding-spot-meccha",
+    "name": "Mob's \"Hiding\" Spot (Meccha)",
+    "genre": "Party Games",
+    "lore": "3D Games are hard",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Place",
+    "updatedAt": 1789505443631,
+    "pushedAt": 1789505454532
+  },
+  {
+    "id": "polar-bear-build",
+    "name": "Polar Bear Build",
+    "genre": "Party Games",
+    "lore": "I don't care if its not built in the game, I'm doing it!",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Place"
+  },
+  {
+    "id": "meta-abuser",
+    "name": "Meta-Abuser",
+    "genre": "Super Smash Bros",
+    "lore": "Carried",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "sunny-s-duck-feet",
+    "name": "Sunny's Duck Feet",
+    "genre": "Memes",
+    "lore": "Quack",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "xeno-s-stone-shovel",
+    "name": "Xeno's Stone Shovel",
+    "genre": "Minecraft",
+    "lore": "Would rather go through 120 stone shovels than get a diamond one",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Item",
+    "updatedAt": 1789512104421,
+    "pushedAt": 1789512110025
+  },
+  {
+    "id": "bad-news-bears",
+    "name": "Bad News Bears",
+    "genre": "Pokémon Unite",
+    "lore": "The Actual Competitive Team",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Creature",
+    "updatedAt": 1789505901712,
+    "pushedAt": 1789505923912
+  },
+  {
+    "id": "geats",
+    "name": "Geats",
+    "genre": "Pokémon Unite",
+    "lore": "Popularity comes with a price...",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789505989442,
+    "pushedAt": 1789506015499
+  },
+  {
+    "id": "tuesday-shenanigans",
+    "name": "Tuesday Shenanigans",
+    "genre": "",
+    "lore": "So what game are we playing this week?",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789511763043,
+    "pushedAt": 1789511775453
+  },
+  {
+    "id": "smash-tag-check",
+    "name": "Smash Tag Check!",
+    "genre": "",
+    "lore": "Since we can't actually check for W/L Ratios...",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "the-weekly-poll",
+    "name": "The Weekly Poll",
+    "genre": "Memes",
+    "lore": "If it doesn't cause fueds, it wasn't good enough",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "call-hr",
+    "name": "Call HR!",
+    "genre": "Pokémon Unite",
+    "lore": "You really think they're going to do anything?",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789511330247,
+    "pushedAt": 1789511638675
+  },
+  {
+    "id": "post-it-note-tournament",
+    "name": "Post-it Note Tournament",
+    "genre": "Pokémon Unite",
+    "lore": "We have technology! *bam bam bam*",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789505291080,
+    "pushedAt": 1789505456212
+  },
+  {
+    "id": "kroc-bot",
+    "name": "Kroc Bot",
+    "genre": "Super Smash Bros",
+    "lore": "We only want one thing and thats the Peaches Theme Song",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  },
+  {
+    "id": "the-best-sauce-is",
+    "name": "The Best Sauce is…?",
+    "genre": "Party Games",
+    "lore": "You know it is",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "frick",
+    "name": "FRICK",
+    "genre": "Party Games",
+    "lore": "Top tier Swear Word",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789512299892,
+    "pushedAt": 1789512304643
+  },
+  {
+    "id": "enter-foxtrot",
+    "name": "Enter Foxtrot",
+    "genre": "Party Games",
+    "lore": "Tag him and just watch it all go down",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "tasty-little-morsel",
+    "name": "Tasty Little Morsel",
+    "genre": "Pokémon Unite",
+    "lore": "Ooooo look out",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "the-timezone-chart",
+    "name": "The Timezone Chart",
+    "genre": "Party Games",
+    "lore": "*taps the sign*",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789506309210,
+    "pushedAt": 1789506318004
+  },
+  {
+    "id": "2-week-game-fever",
+    "name": "2 - Week Game Fever",
+    "genre": "Party Games",
+    "lore": "50 hours of playing in 2 weeks never to touch it again",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "palworld-mountain-base",
+    "name": "Palworld Mountain Base",
+    "genre": "Party Games",
+    "lore": "\"Wait how in the world is this possible\"",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Place",
+    "updatedAt": 1789512542229,
+    "pushedAt": 1789512547310
+  },
+  {
+    "id": "hole-in-one",
+    "name": "Hole in One!",
+    "genre": "Party Games",
+    "lore": "In Super Battle Golf? You're cheating. In Golf with Friends? Skill",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "crew-battle",
+    "name": "Crew Battle!",
+    "genre": "Super Smash Bros",
+    "lore": "The real competition is the team name and art",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "cocky-little-freak",
+    "name": "Cocky little Freak!",
+    "genre": "Pokémon Unite",
+    "lore": "COCKY LITTLE FREAK",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "shave-your-head",
+    "name": "Shave your Head",
+    "genre": "Super Smash Bros",
+    "lore": "Hooray you just streamed for 24 hours straight!",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "patooie",
+    "name": "Patooie!",
+    "genre": "Super Smash Bros",
+    "lore": "Still will hit Lion somehow",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789512399971,
+    "pushedAt": 1789512404503
+  },
+  {
+    "id": "foxtrots-one-weakness",
+    "name": "Foxtrots One Weakness",
+    "genre": "Party Games",
+    "lore": "Sheeeee's heeeerrrreeeee",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "blade-s-beans-on-toast",
+    "name": "Blade's Beans on Toast",
+    "genre": "Memes",
+    "lore": "Why",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Item"
+  },
+  {
+    "id": "well-well-well",
+    "name": "Well, well, well...",
+    "genre": "Pokémon Unite",
+    "lore": "The common VC greeting",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "i-ll-get-it-back-don-t-worry",
+    "name": "I'll get it back don't worry",
+    "genre": "Pokémon Unite",
+    "lore": "What you say when you unite with 30 seconds to Rayquaza",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "oh-naur",
+    "name": "Oh Naur",
+    "genre": "Pokémon Unite",
+    "lore": "Oh naaaaauuuuuuurrrrr",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "soggy-bread",
+    "name": "Soggy Bread",
+    "genre": "",
+    "lore": "Doesn't matter if it's soup or water, it's disgusting",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Item"
+  },
+  {
+    "id": "otto-the-electoral-college",
+    "name": "Otto & The Electoral College",
+    "genre": "",
+    "lore": "Schroedingers Cat would be easier to find",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment",
+    "updatedAt": 1789506514002,
+    "pushedAt": 1789506520501
+  },
+  {
+    "id": "discord-pizza-party",
+    "name": "Discord Pizza Party",
+    "genre": "",
+    "lore": "Obligatory Company appreciation Day (B.Y.O.P.)",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Moment"
+  },
+  {
+    "id": "thechamp",
+    "name": "TheChamp",
+    "genre": "",
+    "lore": "2024 is the year! No 2025 is! Actually 2026! …maybe 2027?",
+    "finishes": [
+      "normal"
+    ],
+    "season": "Season 1",
+    "event": "",
+    "type": "Character"
+  }
+]

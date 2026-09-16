@@ -1,0 +1,22 @@
+{
+  "name": "tcg-activity",
+  "private": true,
+  "type": "module",
+  "description": "Lion Pride TCG — Discord Activity (embedded app): log in and view your collection inside Discord.",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node server.js",
+    "dev": "node build.mjs && node server.js"
+  },
+  "dependencies": {
+    "@discord/embedded-app-sdk": "^1.9.0",
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "three": "^0.160.0",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

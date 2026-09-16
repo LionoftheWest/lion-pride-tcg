@@ -1,0 +1,33 @@
+# --- Secrets: never commit real env files (keep the .example templates) ---
+.env
+**/.env
+!.env.example
+!**/.env.example
+*.key
+*.pem
+
+# --- Dependencies ---
+node_modules/
+**/node_modules/
+
+# --- Generated build output ---
+**/out/
+**/dist/
+tcg-activity/public/main.*.js
+card-studio/public-gallery/
+card-studio/gallery-deploy/dist/
+
+# --- Separate project, not part of lion-pride-tcg ---
+smash-ranker/
+
+# --- Local-only data / overrides ---
+*.local.json
+
+# --- Large binaries / tools ---
+cloudflared.exe
+*.exe
+
+# --- Logs & OS cruft ---
+*.log
+.DS_Store
+Thumbs.db

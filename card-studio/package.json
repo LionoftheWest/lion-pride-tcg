@@ -1,0 +1,16 @@
+{
+  "name": "card-studio",
+  "private": true,
+  "type": "module",
+  "description": "Local studio: sheet -> card faces -> Supabase",
+  "scripts": {
+    "studio": "node src/server.js",
+    "sync-tiers": "node scripts/sync-tiers.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}

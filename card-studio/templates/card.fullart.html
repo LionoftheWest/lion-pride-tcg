@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { --accent:%%ACCENT%%; --accent-soft:%%ACCENT_SOFT%%; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:500px; height:700px; }
+  body { font-family:'Segoe UI', system-ui, sans-serif; background:transparent; }
+
+  /* Full Art — the illustration fills the whole card; text overlays a scrim. */
+  .card { width:500px; height:700px; border-radius:32px; position:relative; overflow:hidden; border:15px solid var(--accent); background:#0a0d14; }
+
+  /* Gold — the Full Art image with a metallic gold frame + warm gold wash. */
+  .card.gold {
+    border:16px solid transparent;
+    background:
+      linear-gradient(#0a0d14,#0a0d14) padding-box,
+      linear-gradient(145deg, #8a6d1a, #f7d774, #fff6cf, #caa02e, #8a6d1a) border-box;
+  }
+  .card.gold::after {
+    content:''; position:absolute; inset:0; z-index:1; pointer-events:none; mix-blend-mode:overlay;
+    background:linear-gradient(160deg, rgba(255,215,120,.30), rgba(255,255,255,.05) 42%, rgba(180,130,20,.38));
+  }
+
+  /* Promo — Full Art with a platinum (silver) metallic border. */
+  .card.promo {
+    border:16px solid transparent;
+    background:
+      linear-gradient(#0a0d14,#0a0d14) padding-box,
+      linear-gradient(135deg, #7d828c, #eef1f6, #ffffff, #c3cad6, #9aa0ac, #eef1f6, #7d828c) border-box;
+  }
+
+  .art { position:absolute; inset:0; overflow:hidden; }
+  /* The placement script (bottom of body) sizes + positions the image from its
+     natural dimensions, so pan works on both axes and zoom adds real overflow. */
+  .art img { position:absolute; top:0; left:0; display:block; }
+  .art.placeholder { display:flex; align-items:center; justify-content:center; letter-spacing:4px; font-size:18px; color:#5a4258; background:linear-gradient(135deg,#3a2036,#141826); }
+
+  .pip {
+    position:absolute; top:16px; right:16px; z-index:2;
+    font-size:11px; text-transform:uppercase; letter-spacing:1.5px; font-weight:800;
+    color:#0a0d14; background:var(--accent); padding:5px 11px; border-radius:999px;
+    box-shadow:0 0 16px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  .scrim {
+    position:absolute; left:0; right:0; bottom:0; z-index:2; padding:20px 22px 22px;
+    background:linear-gradient(to top, rgba(5,6,10,.97) 30%, rgba(5,6,10,.75) 62%, transparent);
+  }
+  .subject { font-size:12px; color:var(--accent-soft); letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
+  .name { font-size:31px; font-weight:800; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,.95); line-height:1.05; }
+  .lore { margin-top:8px; color:#d8dee9; font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:14px; line-height:1.35; }
+  .fa-footer { display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:11px; min-height:14px; }
+  .artist { color:#c9c2cf; font-style:italic; }
+  .brand { color:var(--accent-soft); font-weight:800; letter-spacing:.6px; text-transform:uppercase; opacity:.9; }
+
+  /* Mask mode: white interior (the holo region, incl. rounded corners), black border. */
+  .card.maskmode { background:#fff !important; border-color:#000 !important; }
+  .card.maskmode::after { display:none !important; }
+  .card.maskmode * { background:transparent !important; color:transparent !important; text-shadow:none !important; box-shadow:none !important; }
+  .card.maskmode .art img { display:none !important; }
+  /* Promo mask: white interior (holo art region), solid black border (platinum). */
+  .card.promo.maskmode { background:#fff !important; border:16px solid #000 !important; }
+</style>
+</head>
+<body>
+  <div class="card %%CLASS%%">
+    <div class="art placeholder">%%ART%%</div>
+    <div class="scrim">
+      <div class="subject">%%GENRE%%</div>
+      <div class="name">%%NAME%%</div>
+      <div class="lore">&ldquo;%%LORE%%&rdquo;</div>
+      <div class="fa-footer">
+        <span class="artist">%%ARTIST%%</span>
+        <span class="brand">Lion Pride TCG</span>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var img=document.querySelector('.art-img'); if(!img) return;
+    function place(){
+      var c=img.parentElement, cw=c.clientWidth, ch=c.clientHeight;
+      var nw=img.naturalWidth, nh=img.naturalHeight; if(!nw||!nh) return;
+      var fx=(parseFloat(img.getAttribute('data-ax'))||50)/100;
+      var fy=(parseFloat(img.getAttribute('data-ay'))||50)/100;
+      var z=parseFloat(img.getAttribute('data-az'))||1;
+      var cover=Math.max(cw/nw, ch/nh)*z, dw=nw*cover, dh=nh*cover;
+      var tx=Math.min(0,Math.max(cw-dw, cw/2 - fx*dw));
+      var ty=Math.min(0,Math.max(ch-dh, ch/2 - fy*dh));
+      img.style.width=dw+'px'; img.style.height=dh+'px'; img.style.left=tx+'px'; img.style.top=ty+'px';
+    }
+    window.__placeArt=place;
+    if(img.complete && img.naturalWidth) place();
+    img.addEventListener('load', place);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Blender render outputs (assets are hosted, not committed)
+blender/out/
