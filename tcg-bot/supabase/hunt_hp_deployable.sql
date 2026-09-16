@@ -27,12 +27,16 @@ returns bigint language sql stable set search_path = public as $$
 $$;
 
 -- Spawn: HP now scales to deployable power.
+-- The boss picks its weak + resist TAGS from the live card pool, and rotates them
+-- each week (it avoids the tags used in the last 4 hunts) so every card gets its
+-- turn to shine. Falls back to the whole pool when fresh tags run low. Tiers set
+-- how many weak/resist tags the boss carries. See card-tags-and-battle-engine.md.
 create or replace function spawn_hunt(p_days int default 3)
 returns bigint language plpgsql security invoker set search_path = public as $$
 declare
-  v_players int; v_tier text; v_nweak int; v_tiermult numeric;
-  v_weak jsonb; v_hp bigint; v_name text; v_id bigint; v_pow bigint;
-  c_types text[] := array['Character','Creature','Item','Place','Moment'];
+  v_players int; v_tier text; v_nweak int; v_nresist int; v_tiermult numeric;
+  v_weak jsonb; v_resist jsonb; v_hp bigint; v_name text; v_id bigint; v_pow bigint;
+  v_pool text[]; v_recent text[]; v_fresh text[]; v_weaktags text[]; v_resisttags text[];
   c_names text[] := array['The Salt Kraken','The Lag Beast','The Tilt Titan','Server Gremlin',
                           'The Whiff Wyrm','Rage-Quit Revenant','The Ping Phantom','Meta Hydra',
                           'The Desync Dragon','Frame-Drop Fiend'];
@@ -41,15 +45,44 @@ begin
   select greatest(1, count(*)) into v_players from players;
   v_tier := (array['Normal','Heroic','Mythic'])[1 + floor(random() * 3)];
   v_tiermult := case v_tier when 'Normal' then 10 when 'Heroic' then 16 else 22 end;
-  v_nweak := case v_tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end;
-  select jsonb_agg(jsonb_build_object('kind', 'type', 'value', t)) into v_weak
-    from (select unnest(c_types) t order by random() limit v_nweak) x;
+  v_nweak   := case v_tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end;
+  v_nresist := case v_tier when 'Normal' then 0 when 'Heroic' then 1 else 2 end;
+
+  -- The tag pool: distinct trait/origin slugs across attacker cards in the draw pool.
+  select array_agg(distinct slug) into v_pool from (
+    select unnest(s.tag_slugs) slug from subjects s
+    where s.tags->>'class' = 'attacker'
+      and exists (select 1 from cards c where c.subject_id = s.id and c.in_draw_pool)
+  ) t where slug like 'trait:%' or slug like 'origin:%';
+
+  -- Tags used as weak in the last 4 hunts (rotation prefers fresh tags).
+  select coalesce(array_agg(distinct e->>'value'), '{}') into v_recent
+  from (select weak_points from hunts order by id desc limit 4) h,
+       lateral jsonb_array_elements(coalesce(h.weak_points, '[]'::jsonb)) e
+  where e->>'kind' = 'tag';
+
+  if v_pool is null or array_length(v_pool, 1) is null then
+    v_weak := '[]'::jsonb; v_resist := '[]'::jsonb;              -- no tags yet: no weakness
+  else
+    select coalesce(array_agg(p), '{}') into v_fresh
+      from unnest(v_pool) p where p <> all(v_recent);
+    select array_agg(t) into v_weaktags from (
+      select t from unnest(case when coalesce(array_length(v_fresh, 1), 0) >= v_nweak then v_fresh else v_pool end) t
+      order by random() limit v_nweak) x;
+    select array_agg(t) into v_resisttags from (
+      select t from unnest(v_pool) t where t <> all(coalesce(v_weaktags, '{}'))
+      order by random() limit v_nresist) x;
+    select coalesce(jsonb_agg(jsonb_build_object('kind', 'tag', 'value', t)), '[]'::jsonb)
+      into v_weak from unnest(coalesce(v_weaktags, '{}')) t;
+    select coalesce(jsonb_agg(jsonb_build_object('kind', 'tag', 'value', t)), '[]'::jsonb)
+      into v_resist from unnest(coalesce(v_resisttags, '{}')) t;
+  end if;
 
   v_pow := deployable_power();
   v_hp := greatest(500, round(v_pow * v_tiermult));
   v_name := c_names[1 + floor(random() * array_length(c_names, 1))];
-  insert into hunts (name, tier, weak_points, hp_max, hp_remaining, closes_at)
-    values (v_name, v_tier, v_weak, v_hp, v_hp, now() + make_interval(days => p_days))
+  insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at)
+    values (v_name, v_tier, v_weak, v_resist, v_hp, v_hp, now() + make_interval(days => p_days))
     returning id into v_id;
   return v_id;
 end $$;

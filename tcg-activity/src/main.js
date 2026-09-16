@@ -1018,19 +1018,32 @@ function cooldownHTML(d) {
   return `<div class="soon cooldown">🦁<b>The hunt is resting.</b>${outcome}${timer}</div>`;
 }
 
+// Strip the facet prefix from a tag slug for display (trait:water -> water).
+function tagLabel(v) { return String(v || '').split(':').pop(); }
+// The boss's weak + resist tags as chips ("Weak to fire · Resists water").
+function weakResistHTML(h) {
+  const chips = (arr, cls) => (arr || []).map((w) => `<span class="${cls}">${esc(tagLabel(w.value))}</span>`).join(' ');
+  const w = chips(h.weak_points, 'weak-chip');
+  const r = chips(h.resist_points, 'resist-chip');
+  const parts = [];
+  if (w) parts.push(`Weak to ${w}`);
+  if (r) parts.push(`Resists ${r}`);
+  return `<span class="weaks">${parts.join(' · ') || 'No weakness'}</span>`;
+}
+
 function huntHTML(d) {
   const h = d.hunt;
   usedIds = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   // Battle phase = a full-bleed arena (boss fills the pane, squad overlays the bottom).
   if (squad.phase === 'battle') return `<div class="main-body hunt arena-mode">${battlePhaseHTML(d)}</div>`;
   const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
-  const weak = (h.weak_points || []).map((w) => `<span class="weak-chip">${esc(w.value)}</span>`).join(' ');
+  // weak + resist chips are rendered by weakResistHTML(h)
   const defeated = h.status === 'defeated' || h.hp_remaining <= 0;
   const boss = `<div class="boss${defeated ? ' down' : ''}">
       <div class="boss-stage"><canvas id="bossCanvas"></canvas></div>
       <div class="boss-top"><span class="boss-name">${esc(h.name)}</span><span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span></div>
       <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext" id="hpText">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
-      <div class="boss-meta"><span class="weaks">Weak to ${weak}</span>${defeated ? '<span class="closes">DEFEATED</span>' : cdSpan(h.closes_at, 'Beat in', 'closes countdown')}</div>
+      <div class="boss-meta">${weakResistHTML(h)}${defeated ? '<span class="closes">DEFEATED</span>' : cdSpan(h.closes_at, 'Beat in', 'closes countdown')}</div>
       <div class="boss-meta"><span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span><span id="usedSlot" class="used-slot">Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}</span><button class="hunt-lb" id="huntLbBtn">🏆 Standings</button></div>
     </div>`;
   return `<div class="main-body hunt">${boss}${selectPhaseHTML(d)}</div>`;
@@ -1060,7 +1073,7 @@ function selectPhaseHTML(d) {
 function battlePhaseHTML(d) {
   const h = d.hunt;
   const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
-  const weak = (h.weak_points || []).map((w) => `<span class="weak-chip">${esc(w.value)}</span>`).join(' ');
+  // weak + resist chips are rendered by weakResistHTML(h)
   const defeated = h.status === 'defeated' || h.hp_remaining <= 0;
   const canEdit = (d.usedToday || 0) === 0;
   return `<div class="hunt-arena${defeated ? ' down' : ''}">
@@ -1069,7 +1082,7 @@ function battlePhaseHTML(d) {
       <div class="arena-titlerow">
         <span class="boss-name">${esc(h.name)}</span>
         <span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span>
-        <span class="weaks">Weak to ${weak}</span>
+        ${weakResistHTML(h)}
         <span class="spacer"></span>
         ${defeated ? '<span class="closes">DEFEATED</span>' : cdSpan(h.closes_at, 'Beat in', 'closes countdown')}
       </div>
