@@ -1044,7 +1044,7 @@ function huntHTML(d) {
       <div class="boss-top"><span class="boss-name">${esc(h.name)}</span><span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span></div>
       <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext" id="hpText">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
       <div class="boss-meta">${weakResistHTML(h)}${defeated ? '<span class="closes">DEFEATED</span>' : cdSpan(h.closes_at, 'Beat in', 'closes countdown')}</div>
-      <div class="boss-meta"><span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span><span id="usedSlot" class="used-slot">Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}</span><button class="hunt-lb" id="huntLbBtn">🏆 Standings</button></div>
+      <div class="boss-meta"><span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span><span class="fighters-now" id="fighterCount"></span><span id="usedSlot" class="used-slot">Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}</span><button class="hunt-lb" id="huntLbBtn">🏆 Standings</button></div>
     </div>`;
   return `<div class="main-body hunt">${boss}${selectPhaseHTML(d)}</div>`;
 }
@@ -1090,6 +1090,7 @@ function battlePhaseHTML(d) {
       <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext" id="hpText">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
       <div class="arena-subrow">
         <span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span>
+        <span class="fighters-now" id="fighterCount"></span>
         <span id="usedSlot" class="used-slot">Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}</span>
         ${canEdit ? '<button class="edit-team" id="editTeam">↺ Change squad</button>' : ''}
         <button class="hunt-lb" id="huntLbBtn">🏆 Standings</button>
@@ -1216,6 +1217,7 @@ async function refreshHuntFeed() {
   let d; try { d = await api('/api/hunt/feed'); } catch { return; }
   const feed = d?.feed || [];
   live.attacks = feed.slice(0, 20);
+  if (d && d.hp_max != null) applySharedHp(d.hp_remaining, d.hp_max, d.status, d.fighters);
   if (currentView !== 'battling') return;
   const list = el('feedList');
   if (!list || !list.classList.contains('attacks')) { renderFeedSidebar(); return; }
@@ -1227,6 +1229,28 @@ async function refreshHuntFeed() {
   fresh.slice().reverse().forEach((e) => list.insertAdjacentHTML('afterbegin', bossFeedRow(e))); // oldest first -> newest ends on top
   feedTopId = feed[0].id || feedTopId;
   while (list.children.length > 20) list.lastElementChild.remove();
+}
+
+// Apply the SHARED boss health from the feed poll, so a player who is only watching
+// still sees the bar drop as others attack — and sees the defeat the moment it lands.
+function applySharedHp(hp, max, status, fighters) {
+  if (!huntState || !huntState.hunt || hp == null) return;
+  const h = huntState.hunt;
+  // Never raise the bar past what this client already knows (its own attack may be
+  // ahead of the 2s-cached feed) — only reflect further damage.
+  if (typeof h.hp_remaining === 'number' && hp > h.hp_remaining && status !== 'defeated') hp = h.hp_remaining;
+  h.hp_remaining = hp; h.status = status;
+  const fill = document.querySelector('.hpfill');
+  if (fill) fill.style.width = `${Math.max(0, Math.round((100 * hp) / max))}%`;
+  const hpText = el('hpText');
+  if (hpText) hpText.textContent = status === 'defeated' ? 'DEFEATED!' : `${hp.toLocaleString()} / ${max.toLocaleString()} HP`;
+  const fc = el('fighterCount');
+  if (fc) fc.textContent = fighters > 0 ? `🗡 ${fighters} hunting now` : '';
+  if (status === 'defeated' && !document.querySelector('.hunt-arena.down, .boss.down')) {
+    (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down');
+    bossHandle?.defeat();
+    onBossDefeated(); // guarded by the .down check above so it runs once
+  }
 }
 
 // First time a card engages the boss today, it counts toward the daily squad tally.

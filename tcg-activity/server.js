@@ -463,8 +463,14 @@ async function queryHuntFeed(huntId) {
     damage: r.damage, outcome: r.outcome, crit: r.crit, bonus: r.bonus, downed: r.card_downed,
     countered: r.countered, counterDmg: r.counter_dmg,
   }));
-  huntFeedCache = { at: Date.now(), huntId, data: feed };
-  return feed;
+  // "Hunters now" = distinct players who attacked in the last 5 minutes.
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: recent } = await supabase
+    .from('hunt_combat_log').select('player_id').eq('hunt_id', huntId).gt('ts', cutoff).limit(2000);
+  const fighters = new Set((recent || []).map((r) => r.player_id)).size;
+  const data = { feed, fighters };
+  huntFeedCache = { at: Date.now(), huntId, data };
+  return data;
 }
 app.get('/api/hunt/feed', async (req, res) => {
   const me = await caller(req);
@@ -472,7 +478,10 @@ app.get('/api/hunt/feed', async (req, res) => {
   if (!FEATURE_HUNT) return res.json({ feed: [] });
   const hunt = await activeHunt();
   if (!hunt) return res.json({ feed: [] });
-  res.json({ feed: await queryHuntFeed(hunt.id) });
+  const fd = await queryHuntFeed(hunt.id);
+  // The boss health is fetched fresh (activeHunt), so every viewer sees the shared
+  // health drop live as others attack, and sees the defeat the moment it lands.
+  res.json({ feed: fd.feed, fighters: fd.fighters, hp_remaining: hunt.hp_remaining, hp_max: hunt.hp_max, status: hunt.status });
 });
 
 // Per-hunt contribution leaderboard.

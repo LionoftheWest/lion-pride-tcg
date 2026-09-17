@@ -663,6 +663,8 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
 .boss-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #b8c0cf; margin-top: 2px; gap: 8px; }
 .weak-chip { background: #f4c14b22; color: #ffd76e; border: 1px solid #f4c14b55; border-radius: 6px; padding: 1px 6px; font-size: 11px; }
 .resist-chip { background: #7fb0ff1f; color: #9cc3ff; border: 1px solid #7fb0ff55; border-radius: 6px; padding: 1px 6px; font-size: 11px; }
+.fighters-now { color: #9cc3ff; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.fighters-now:empty { display: none; }
 .hunt-lb { background: #2a2410; color: #ffd76e; border: 1px solid #f4c14b55; border-radius: 8px; padding: 4px 10px; cursor: pointer; font-weight: 600; white-space: nowrap; }
 /* Live countdowns: deadline (active boss) + next-spawn (cooldown) */
 .countdown { font-variant-numeric: tabular-nums; white-space: nowrap; }
