@@ -1,16 +1,29 @@
 @echo off
-title Card Studio - Remote Access
+title Card Studio - Remote Access (permanent URL)
 cd /d "%~dp0"
 echo ============================================================
-echo   Card Studio - Remote Access (phone from anywhere)
-echo   Make sure the normal "Card Studio" window is running too.
-echo   Login:  nathan   /   (your STUDIO_PASS in the .env file)
-echo   Keep this window open. Close it to turn remote access off.
+echo   Card Studio - Remote Access
+echo.
+echo   Permanent URL:  https://studio.lionpridetcg.duckdns.org
+echo   Login:          your STUDIO_USER / STUDIO_PASS (from .env)
+echo.
+echo   Keep the normal "Card Studio" window running too.
+echo   Close THIS window to turn remote access off.
 echo ============================================================
 echo.
-echo Starting the password gate...
-start "studio-proxy" /min cmd /c "node src\remote-proxy.js"
+echo Starting the password gate on 4322...
+start "studio-gate" /min cmd /c "node src\remote-proxy.js"
 timeout /t 2 >nul
-echo Starting the secure tunnel - your phone URL appears below:
+echo Connecting the secure tunnel to your VM. Keep this window open.
+echo (It reconnects by itself if the connection drops.)
 echo.
-cloudflared.exe tunnel --url http://localhost:4322 --no-autoupdate
+:loop
+ssh -i "%USERPROFILE%\Downloads\ssh-key-2026-09-08.key" ^
+    -o StrictHostKeyChecking=accept-new ^
+    -o ServerAliveInterval=30 -o ServerAliveCountMax=3 ^
+    -o ExitOnForwardFailure=yes ^
+    -N -R 127.0.0.1:4399:localhost:4322 ubuntu@129.146.118.111
+echo.
+echo Tunnel closed or dropped. Reconnecting in 5 seconds... (press Ctrl+C to stop)
+timeout /t 5 >nul
+goto loop
