@@ -44,7 +44,10 @@ begin
   update hunts set status = 'expired' where status = 'active';
   select greatest(1, count(*)) into v_players from players;
   v_tier := (array['Normal','Heroic','Mythic'])[1 + floor(random() * 3)];
-  v_tiermult := case v_tier when 'Normal' then 10 when 'Heroic' then 16 else 22 end;
+  -- Tier HP multipliers, retuned 2026-09-16 for the tag engine (combat-sim.mjs).
+  -- The tag weakness bonus is gentler than the old flat x2, so HP dropped from
+  -- 10/16/22 to 8/12/15 to keep the ~4-day Thu->Mon win windows.
+  v_tiermult := case v_tier when 'Normal' then 8 when 'Heroic' then 12 else 15 end;
   v_nweak   := case v_tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end;
   v_nresist := case v_tier when 'Normal' then 0 when 'Heroic' then 1 else 2 end;
 
@@ -113,9 +116,9 @@ returns jsonb language sql stable set search_path = public as $$
     'deployable_power', deployable_power(),
     'avg_power_owner', case when a.owners > 0 then round(a.total_power::numeric / a.owners, 1) else 0 end,
     'boss_hp', jsonb_build_object(
-      'Normal', greatest(500, round(deployable_power() * 10)),
-      'Heroic', greatest(500, round(deployable_power() * 16)),
-      'Mythic', greatest(500, round(deployable_power() * 22))),
+      'Normal', greatest(500, round(deployable_power() * 8)),
+      'Heroic', greatest(500, round(deployable_power() * 12)),
+      'Mythic', greatest(500, round(deployable_power() * 15))),
     'by_rarity',   (select jsonb_object_agg(rarity, cnt) from (select rarity, count(*) cnt from owned group by rarity) r),
     'by_ascension',(select jsonb_object_agg(ascension::text, cnt) from (select ascension, count(*) cnt from owned group by ascension) x)
   ) from agg a;
