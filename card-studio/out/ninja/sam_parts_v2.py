@@ -40,6 +40,11 @@ PROMPTS.append(("shin_L", mid(25, 27, 0.55)))                      # left shin/l
 PROMPTS.append(("shin_R", mid(26, 28, 0.55)))
 PROMPTS.append(("wrap_L", mid(13, 15, 0.65)))                      # left forearm wrap
 PROMPTS.append(("wrap_R", mid(14, 16, 0.65)))
+# RIGID PROPS - these are white/grey so they must BYPASS the skin filter
+PROMPTS.append(("mask",  pt(0)))                                   # fox kabuki mask (face)
+PROMPTS.append(("ear_L", pt(0) + np.array([ 0.060 * chW, -0.135 * chH])))
+PROMPTS.append(("ear_R", pt(0) + np.array([-0.060 * chW, -0.135 * chH])))
+PROPS = {"mask", "ear_L", "ear_R"}
 PROMPTS = [(n, p) for n, p in PROMPTS if 0 <= p[0] < W and 0 <= p[1] < H]
 
 # skin mask (exclude bare limbs/face from garments): high value, low saturation, warm
@@ -77,7 +82,7 @@ for k, (name, p, seg) in enumerate(raw):
 
 white = np.ones((H, W, 3), np.float32); used = {}; visible = []
 for k, (name, p, seg0) in enumerate(raw):
-    seg = (own == k) & ~skin
+    seg = (own == k) if name.split('_')[0] in {'mask','ear'} else ((own == k) & ~skin)
     if seg.sum() < 1200: continue
     lbl, n = ndimage.label(seg)                            # keep the largest connected piece
     if n > 1: seg = lbl == (1 + np.argmax([(lbl == i).sum() for i in range(1, n + 1)]))
@@ -86,8 +91,9 @@ for k, (name, p, seg0) in enumerate(raw):
     nm = base + side; c = used.get(nm, 0); used[nm] = c + 1
     if c: nm = f"{nm}{c+1}"
     bw = X.max() - X.min() + 1; bh = Y.max() - Y.min() + 1; fill = a / max(1, bw * bh)
-    pt_type = "accessory" if base == "ear" else "garment"
-    sim = "rigid" if base == "ear" else "cloth"
+    is_prop = base in ("ear", "mask")
+    pt_type = "prop" if is_prop else "garment"
+    sim = "rigid" if is_prop else "cloth"
     flat = base == "ear" or a < 5000 or min(bw, bh) < 0.05 * chH or fill < 0.32
     method = "extrude" if flat else "generate"
     cut = f"g_{nm}.png"; mask = f"g_{nm}_mask.png"

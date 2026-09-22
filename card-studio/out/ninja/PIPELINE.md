@@ -113,8 +113,12 @@ Axis per target engine. Mixamo clips play natively on a `mixamorig` skeleton.
 - [x] 1 Reference plane at 1:1
 - [x] 2 Generate — clean high-poly (gate: 1 island, 0 dropped verts; W 0.839 D 0.482 H 1.809)
 - [x] 3 Import & prep — all gates pass (309,666 tris, 0 quads = retopo required)
-- [ ] 4 Separate into parts   <-- NEXT
-- [ ] 5 Retopology (head → body → hair → clothing)
+- [x] 4 Separate into parts - 12 parts, symmetric (ears 1494/1503), each tagged with its
+      category + attach method. Projection MUST use the CLEAN cutout bbox: the raw rembg
+      char_bbox still contains background strokes and its centre is ~75px off, which
+      shifts the whole projection and dumps a band into 'body'. Dilate masks ~5px so the
+      generated garment's rim (thicker than the painted silhouette) is captured.
+- [ ] 5 Retopology (head → body → hair → clothing)   <-- NEXT
 - [ ] 6 Model stylised folds
 - [ ] 7 UV per part
 - [ ] 8 Bake high→low
