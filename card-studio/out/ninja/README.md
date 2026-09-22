@@ -55,7 +55,31 @@ silhouette auto-detection (the least-reliable step). Output: `ninja_foundation.b
 - **Rigify** (bundled with Blender) for non-biped skeleton metarigs.
 - The venv `card-studio/ml/venv` (uv-managed) with torch + hy3dgen + segment-anything.
 
+## Stage 2 — rig + motion (`rig.py`)
+
+```sh
+blender -b -P rig.py -- <ninja_dir> [clip]   # clip in behemoth/mixamo/*.fbx, default swipe
+```
+
+Takes `ninja_foundation.blend` and makes it a skinned, animated character:
+1. **Consolidate** the per-bone base capsules into ONE continuous body mesh (join + voxel
+   remesh + shade smooth).
+2. **Skin** the body AND each separate garment/accessory to the skeleton with automatic
+   weights — the parts stay separate (swap-able) but now deform with the rig.
+3. **Apply a Mixamo-rig clip** natively (the skeleton is mixamorig). The clip's Hips
+   TRANSLATION is stripped so it plays IN PLACE (its root motion is in the source rig's
+   units and would fling this differently-scaled rig off-world). Do NOT `transform_apply`
+   the armature — it is a native Mixamo object (tiny non-uniform scale + 90deg X rot,
+   bones in cm space) and applying scale garbles the rest pose.
+
+Output: `ninja_rigged.blend` + `ninja_rig_manifest.json`.
+
+**KNOWN LIMITATION:** the consolidated base body is a crude proxy — the voxel remesh
+fuses the legs and inflates the arms, so the silhouette is bulky. It animates correctly
+but needs a proper humanoid base mesh (or slimmer capsules + finer remesh) to look good.
+The "sculpt the base clean" work is the next improvement.
+
 ## Not in this stage (later steps)
 
-Rigging (weight-bind + Rigify Generate Rig), cloth sim on `sim=cloth` parts, sculpt/
-retopo refinement, texturing, animation. This stage only builds the foundation.
+Cloth sim on `sim=cloth` parts, a proper anatomy base body, sculpt/retopo refinement,
+texturing, and real ninja-specific Mixamo moves (needs a browser login).
