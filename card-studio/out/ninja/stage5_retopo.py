@@ -10,13 +10,22 @@ WHY VOXEL REMESH AND NOT QUADRIFLOW:
   refuses on degenerates; recalculating normals does not help.
 - The Remesh modifier in VOXEL mode rebuilds from a signed-distance field, ignores those
   defects, works headless, and outputs 100% QUADS.
-Measured: 309,666 tris / 0% quads  ->  9,300 faces / 100% quads, shape within 0.5%.
+POLY BUDGET - READ THIS: the pipeline's "stylised PC 5k-15k tris" budget is for REALTIME
+GAME assets. This project delivers RENDERED VIDEO CLIPS, so that budget does not apply.
+Here retopology is for DEFORMATION QUALITY (clean quads), NOT polygon reduction. Using a
+game budget threw away the Stage 1 detail for no reason.
+Measured at 1.8m character height:
+   voxel 0.022 ->   8,228 faces  (detail LOST - too coarse)
+   voxel 0.012 ->  33,466 faces
+   voxel 0.008 ->  78,828 faces  <- DEFAULT: full Stage 1 detail retained
+   voxel 0.006 -> 141,854 faces  (max fidelity)
+All 100% quads; shape at 0.008 is within ~0.5% of the high-poly.
 Run: blender -b -P stage5_retopo.py -- <ninja_dir> [voxel_size]
 """
 import bpy, bmesh, sys, os
 from mathutils import Vector
 ND = sys.argv[sys.argv.index("--") + 1]
-VOX = float(sys.argv[sys.argv.index("--") + 2]) if len(sys.argv) > sys.argv.index("--") + 2 else 0.022
+VOX = float(sys.argv[sys.argv.index("--") + 2]) if len(sys.argv) > sys.argv.index("--") + 2 else 0.008
 bpy.ops.wm.open_mainfile(filepath=os.path.join(ND, "character_stage2.blend"))
 sc = bpy.context.scene; vl = bpy.context.view_layer
 bpy.data.collections["HIGH_POLY"].hide_select = False

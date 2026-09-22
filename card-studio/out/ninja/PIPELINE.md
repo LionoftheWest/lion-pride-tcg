@@ -92,6 +92,16 @@ Paint on the baked maps. Colour comes from the concept art.
 - "Landmarks" = places where separate objects touch and must move together.
 - Keep the underlying body model for animation (do not delete body under clothes if it deforms).
 
+## POLY BUDGET - this project is RENDER, not realtime
+The "stylised PC 5k-15k tris" budget in the source pipeline is for REALTIME GAME assets.
+This project delivers RENDERED VIDEO CLIPS, so it does NOT apply. Retopology here exists for
+DEFORMATION QUALITY (clean quads), not polygon reduction. Applying a game budget destroyed
+the Stage 1 detail for nothing. Measured at 1.8m character height (all 100% quads):
+  voxel 0.022 ->   8,228 faces  detail LOST
+  voxel 0.012 ->  33,466 faces
+  voxel 0.008 ->  78,828 faces  DEFAULT - full Stage 1 detail retained, shape within ~0.5%
+  voxel 0.006 -> 141,854 faces  max fidelity
+
 ## 11. Export / animate
 Axis per target engine. Mixamo clips play natively on a `mixamorig` skeleton.
 
@@ -118,7 +128,7 @@ Axis per target engine. Mixamo clips play natively on a `mixamorig` skeleton.
       char_bbox still contains background strokes and its centre is ~75px off, which
       shifts the whole projection and dumps a band into 'body'. Dilate masks ~5px so the
       generated garment's rim (thicker than the painted silhouette) is captured.
-- [x] 5 Retopology - 309,666 tris / 0% quads -> 8,228 faces / 100% QUADS, shape within ~3%.
+- [x] 5 Retopology - 309,666 tris / 0% quads -> 78,828 faces / 100% QUADS, full detail kept.
       Retopology means rebuilding the SAME SHAPE with clean topology, NOT replacing the
       character with a generic base body.
       QUADRIFLOW DOES NOT WORK HERE: it silently no-ops in background (-b) mode, and with a
