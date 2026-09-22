@@ -118,7 +118,19 @@ Axis per target engine. Mixamo clips play natively on a `mixamorig` skeleton.
       char_bbox still contains background strokes and its centre is ~75px off, which
       shifts the whole projection and dumps a band into 'body'. Dilate masks ~5px so the
       generated garment's rim (thicker than the painted silhouette) is captured.
-- [ ] 5 Retopology (head → body → hair → clothing)   <-- NEXT
+- [x] 5 Retopology - 309,666 tris / 0% quads -> 8,228 faces / 100% QUADS, shape within ~3%.
+      Retopology means rebuilding the SAME SHAPE with clean topology, NOT replacing the
+      character with a generic base body.
+      QUADRIFLOW DOES NOT WORK HERE: it silently no-ops in background (-b) mode, and with a
+      VIEW_3D context override it CANCELS with "needs to be manifold and have face normals
+      pointing in a consistent direction". Diagnosed: 0 non-manifold edges, 0 non-manifold
+      verts, but 5 ZERO-AREA faces - it refuses on degenerates, and recalculating normals
+      does not help. Use the REMESH modifier in VOXEL mode: rebuilds from a signed-distance
+      field, ignores the defects, runs headless, outputs 100% quads.
+      NOTE: voxel remesh gives UNIFORM quads with no intentional edge loops at joints. That
+      is weaker than hand retopology but vastly better than triangle soup, and appropriate
+      for a stylised character.
+- [ ] 5b Rig the retopologised character (fit skeleton + weights)   <-- NEXT
 - [ ] 6 Model stylised folds
 - [ ] 7 UV per part
 - [ ] 8 Bake high→low
