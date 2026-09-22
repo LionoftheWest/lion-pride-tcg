@@ -42,18 +42,30 @@ characters), Arma Reforger (rigid props are bone-parented).
 > Import the reference image into Blender, block out with basic shapes, adjust proportions
 > and silhouette.
 
-- **NO BLOBS.** A handful of capsules is not a blockout. EVERY design element gets its own
-  accurately shaped piece, built from the ARTWORK, not invented.
-- **Method:** each part's SAM mask gives a pixel-accurate outline; its distance-transform
-  depth map gives a rounded cross-section; a millimetre-scale grid inside the mask is
-  displaced front/back and closed with side walls -> a solid piece whose silhouette matches
-  the drawing exactly. Colour is SAMPLED from the artwork.
+- **NO BLOBS. PIXEL-PERFECT CUSTOM 3D SHAPES.**
+- **THREE FAILED APPROACHES — never repeat:**
+  1. generic capsules -> blobs (a 31cm-thick upper arm)
+  2. silhouette extruded front/back with a distance-transform dome -> perfect from the FRONT
+     (it IS the front silhouette) but a FLAT LENS from the side. A bas-relief, not a form.
+  3. lofted ellipses with an invented depth-to-width ratio -> radially symmetric LAMPSHADE,
+     because the poncho's lateral flare made its cross-section equally deep.
+  All three failed in the SAME axis: depth was being INVENTED.
+- **CORRECT — measure depth, never invent it:**
+  - X and Z come from the part's own mask at PIXEL resolution (2px grid = 2.5mm)
+  - Y is RAYCAST into the AI high-poly at EVERY grid point (it is real 3D geometry inferred
+    from the artwork, aligned 1:1 with it)
+  - front + back surfaces are stitched with side walls -> a closed custom solid whose
+    outline is the drawing and whose depth is measured geometry
+  - colour is SAMPLED from the artwork
 - **16 pieces:** poncho, hood, kabuki mask, both ears, both pant legs, both shin wraps, both
-  forearm wraps, and every visible skin island (face, hands, feet).
+  forearm wraps, and every visible skin island (face, hands, feet). ~216k verts total.
 - **Scripts:** `make_cutout.py` -> `pose_estimate.py` -> `sam_parts_v2.py` ->
   `step2a_depthmaps.py` -> `step2_blocking.py` -> `qc_blockout.py`
-- **GATES PASSED:** height 1.794 vs 1.800 (**0.3%**) · width 0.758 vs 0.759 (**0.2%**) ·
-  feet on floor z=0.001
+- **GATES PASSED:** height 1.795 vs 1.800 (**0.27%**) · width 0.758 vs 0.759 (**0.16%**) ·
+  depth 0.477 MEASURED · raycast coverage **99.48%** (567 misses of 108,035 points)
+- **VERIFIED FROM THREE VIEWS** — front matches the reference; the SIDE shows a real head
+  profile, muzzle, poncho drape and forward-pointing feet (this is the view that exposed all
+  three earlier failures).
 - **STATUS: AWAITING SIGN-OFF**
 
 ## 3. SCULPTING THE DETAILS

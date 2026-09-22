@@ -1,33 +1,38 @@
-"""STEP 2 - BLOCKING THE BASE  (therookies step 2)   *** NO BLOBS. ACTUAL SHAPES. ***
+"""STEP 2 - BLOCKING THE BASE   *** PIXEL-PERFECT, CUSTOM 3D SHAPES. NO PRIMITIVES. ***
 
-Every design element in the artwork gets its own piece, and each piece is built from ITS
-OWN pixel-accurate silhouette taken from the drawing - not a primitive standing in for it.
+HARD RULE: nothing generic, nothing invented, nothing merged, nothing omitted.
 
-Method per part:
-  - its SAM mask gives the exact outline
-  - its distance-transform depth map gives a rounded cross-section, so the piece has real
-    volume instead of being a flat slab
-  - a fine grid (millimetre-scale) is built inside the mask, displaced front and back by
-    the depth profile, and closed with side walls -> a solid piece whose silhouette matches
-    the artwork exactly
-  - its colour is SAMPLED from the artwork, not invented
+THREE FAILED APPROACHES (never repeat):
+  1. generic capsules -> blobs, a 31cm-thick upper arm
+  2. silhouette extruded front/back with a dome -> perfect from the FRONT (it IS the front
+     silhouette) but a flat lens from the SIDE. A bas-relief, not a form.
+  3. lofted ellipses with an invented depth-to-width ratio -> radially symmetric lampshade,
+     because a poncho's lateral flare made its cross-section equally deep.
+All three failed in the SAME axis: I was INVENTING depth.
 
-Parts: poncho, hood, kabuki mask, both ears, both thigh/pant pieces, both shin wraps, both
-forearm wraps, and every visible skin island (face, hands, feet).
+CORRECT - measure it, do not invent it:
+  X and Z  come from the part's own mask at PIXEL resolution -> silhouette is pixel-perfect
+  Y (depth) is RAYCAST into the AI high-poly at EVERY grid point -> real measured geometry
+The high-poly is aligned 1:1 with the artwork, so the two combine exactly. Each piece is its
+true custom 3D shape: the drawing's outline, the geometry's depth.
 Run: blender -b -P step2_blocking.py -- <ninja_dir> [px_step]
 """
 import bpy, bmesh, sys, os, json
 import numpy as np
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 ND = sys.argv[sys.argv.index("--") + 1]
 _i = sys.argv.index("--")
-STEP = int(sys.argv[_i + 2]) if len(sys.argv) > _i + 2 else 3   # grid step in artwork pixels
+STEP = int(sys.argv[_i + 2]) if len(sys.argv) > _i + 2 else 2   # grid step in artwork pixels
 H = 1.80
 
-bpy.ops.wm.read_homefile(use_empty=True)
+bpy.ops.wm.open_mainfile(filepath=os.path.join(ND, "character_stage2.blend"))
 sc = bpy.context.scene
 vl = bpy.context.view_layer
+bpy.data.collections["HIGH_POLY"].hide_select = False
+hp = bpy.data.objects["source_highpoly"]
+hp.hide_viewport = False
 
 info = json.load(open(os.path.join(ND, "parts_info.json")))
 IW, IH = info["image"]
@@ -35,6 +40,12 @@ cx0, cy0, cx1, cy1 = info.get("clean_bbox", info["char_bbox"])
 mpp = H / (cy1 - cy0)
 ccx = (cx0 + cx1) / 2.0
 parts = info.get("blockout_parts", info["visible_parts"])
+
+# BVH of the high-poly = our depth source
+mw = hp.matrix_world
+bvh = BVHTree.FromPolygons([mw @ v.co for v in hp.data.vertices],
+                           [list(p.vertices) for p in hp.data.polygons],
+                           all_triangles=False, epsilon=0.0)
 
 
 def load_gray(path):
@@ -58,68 +69,80 @@ def load_rgb(path):
 
 
 SRC = load_rgb(os.path.join(ND, "source.png"))
-
-# depth as a fraction of the part's own width - a limb is near-circular, a drape is flatter
-DEPTH_FRAC = {"poncho": 0.42, "hood": 0.80, "mask": 0.42, "ear_L": 0.22, "ear_R": 0.22,
-              "pants_L": 0.55, "pants_R": 0.55, "shin_L": 0.62, "shin_R": 0.62,
-              "wrap_L": 0.62, "wrap_R": 0.62}
-DEFAULT_DEPTH = 0.55
+YFAR = 3.0
 
 
-def W3(px, py, y):
-    return ((px - ccx) * mpp, y, (cy1 - py) * mpp)
+def measure(x, z):
+    """front and back surface depth of the real geometry at this silhouette point"""
+    hf = bvh.ray_cast(Vector((x, -YFAR, z)), Vector((0, 1, 0)), 2 * YFAR)
+    hb = bvh.ray_cast(Vector((x, YFAR, z)), Vector((0, -1, 0)), 2 * YFAR)
+    if hf[0] is None or hb[0] is None:
+        return None
+    yf, yb = hf[0].y, hb[0].y
+    if yb < yf:
+        yf, yb = yb, yf
+    return yf, yb
 
 
 def build_part(part):
     name = part["name"]
     mask = load_gray(os.path.join(ND, part["mask"])) > 0.5
-    dpath = os.path.join(ND, "d_%s.png" % name)
-    depth = load_gray(dpath) if os.path.exists(dpath) else mask.astype(np.float32)
     ys, xs = np.where(mask)
-    if xs.size < 50:
+    if xs.size < 80:
         return None
     x0, x1 = int(xs.min()), int(xs.max())
     y0, y1 = int(ys.min()), int(ys.max())
-    wpx = x1 - x0 + 1
-    half_depth = (wpx * mpp) * DEPTH_FRAC.get(name, DEFAULT_DEPTH) * 0.5
-
     gx = list(range(x0, x1 + 1, STEP))
     gy = list(range(y0, y1 + 1, STEP))
-    inside = {}
-    bm = bmesh.new()
-    vF = {}
-    vB = {}
+
+    F, B = {}, {}
+    misses = 0
     for j, py in enumerate(gy):
+        wz = (cy1 - py) * mpp
         for i, px in enumerate(gx):
-            if mask[py, px]:
-                d = float(depth[py, px])
-                vF[(i, j)] = bm.verts.new(W3(px, py, -half_depth * d))
-                vB[(i, j)] = bm.verts.new(W3(px, py, half_depth * d))
-                inside[(i, j)] = True
-    if len(vF) < 20:
-        bm.free()
+            if not mask[py, px]:
+                continue
+            wx = (px - ccx) * mpp
+            m = measure(wx, wz)
+            if m is None:
+                misses += 1
+                continue
+            F[(i, j)] = m[0]
+            B[(i, j)] = m[1]
+    if len(F) < 30:
         return None
+
+    bm = bmesh.new()
+    vF, vB = {}, {}
+    for (i, j), yf in F.items():
+        px = gx[i]
+        py = gy[j]
+        wx = (px - ccx) * mpp
+        wz = (cy1 - py) * mpp
+        vF[(i, j)] = bm.verts.new((wx, yf, wz))
+        vB[(i, j)] = bm.verts.new((wx, B[(i, j)], wz))
 
     quads = []
     for j in range(len(gy) - 1):
         for i in range(len(gx) - 1):
             c = [(i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1)]
-            if all(k in inside for k in c):
+            if all(k in vF for k in c):
                 quads.append(c)
-                bm.faces.new([vF[k] for k in c])
-                bm.faces.new([vB[k] for k in reversed(c)])
+                try:
+                    bm.faces.new([vF[k] for k in c])
+                    bm.faces.new([vB[k] for k in reversed(c)])
+                except ValueError:
+                    pass
     if not quads:
         bm.free()
         return None
-    # close the sides: any grid edge used by exactly one quad is on the outline
     from collections import Counter
-    edges = Counter()
+    ec = Counter()
     for c in quads:
         for k in range(4):
-            a, b = c[k], c[(k + 1) % 4]
-            edges[tuple(sorted((a, b)))] += 1
-    for (a, b), cnt in edges.items():
-        if cnt == 1:
+            ec[tuple(sorted((c[k], c[(k + 1) % 4])))] += 1
+    for (a, b), n in ec.items():
+        if n == 1:
             try:
                 bm.faces.new([vF[a], vF[b], vB[b], vB[a]])
             except ValueError:
@@ -133,46 +156,27 @@ def build_part(part):
     o = bpy.data.objects.new("BLK_" + name, me)
     sc.collection.objects.link(o)
     o["blockout"] = True
-    o["part"] = name
-
     col = SRC[mask].mean(axis=0)
-    m = bpy.data.materials.new("BLK_" + name)
-    m.use_nodes = True
-    next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED").inputs["Base Color"].default_value = (
+    m2 = bpy.data.materials.new("BLK_" + name)
+    m2.use_nodes = True
+    next(n for n in m2.node_tree.nodes if n.type == "BSDF_PRINCIPLED").inputs["Base Color"].default_value = (
         float(col[0]), float(col[1]), float(col[2]), 1.0)
-    me.materials.append(m)
-    return o, len(me.vertices), len(me.polygons), half_depth * 2, col
+    me.materials.append(m2)
+    depth = max(B.values()) - min(F.values())
+    return name, len(me.vertices), len(me.polygons), depth, misses, len(F)
 
 
 made = []
 for part in parts:
     r = build_part(part)
     if r:
-        made.append((part["name"], r[1], r[2], r[3], r[4]))
+        made.append(r)
 
-# 1:1 reference plane behind
-Wp, Hp = IW * mpp, IH * mpp
-me = bpy.data.meshes.new("REF_plane")
-me.from_pydata([(-Wp / 2, 0, 0), (Wp / 2, 0, 0), (Wp / 2, 0, Hp), (-Wp / 2, 0, Hp)], [], [(0, 1, 2, 3)])
-me.update()
-ref = bpy.data.objects.new("REF_concept", me)
-sc.collection.objects.link(ref)
-me.uv_layers.new(name="UV")
-for i, uv in enumerate([(0, 0), (1, 0), (1, 1), (0, 1)]):
-    me.uv_layers[0].data[i].uv = uv
-m = bpy.data.materials.new("REF_mat")
-m.use_nodes = True
-nt = m.node_tree
-nt.nodes.clear()
-tex = nt.nodes.new("ShaderNodeTexImage")
-tex.image = bpy.data.images.load(os.path.join(ND, "source.png"))
-emi = nt.nodes.new("ShaderNodeEmission")
-out = nt.nodes.new("ShaderNodeOutputMaterial")
-nt.links.new(tex.outputs["Color"], emi.inputs["Color"])
-nt.links.new(emi.outputs["Emission"], out.inputs["Surface"])
-me.materials.append(m)
-ref.location = (-(ccx - IW / 2) * mpp, 0.50, -(IH - cy1) * mpp)
-ref.hide_select = True
+hp.hide_viewport = True
+hp.hide_render = True
+ref = bpy.data.objects.get("REF_concept")
+if ref:
+    ref.location = (ref.location.x, 0.60, ref.location.z)
 
 vl.update()
 blocks = [o for o in sc.objects if o.get("blockout")]
@@ -185,13 +189,14 @@ for o in blocks:
             mn[i] = min(mn[i], wv[i])
             mx[i] = max(mx[i], wv[i])
 art_w = (cx1 - cx0) * mpp
-
-print("STEP2 BLOCKING - %d pieces, each from its own artwork silhouette" % len(made))
-for nm, v, f, d, col in sorted(made, key=lambda t: -t[2]):
-    print("   %-10s verts=%-6d faces=%-6d depth=%.3f  colour=(%.2f,%.2f,%.2f)"
-          % (nm, v, f, d, col[0], col[1], col[2]))
-print("GATE height  blockout=%.3f artwork=%.3f  (diff %.1f%%)" % (mx.z - mn.z, H, 100 * abs((mx.z - mn.z) - H) / H))
-print("GATE width   blockout=%.3f artwork=%.3f  (diff %.1f%%)" % (mx.x - mn.x, art_w, 100 * abs((mx.x - mn.x) - art_w) / art_w))
-print("GATE floor   lowest z=%.3f (should be ~0)" % mn.z)
+tot_miss = sum(m[4] for m in made)
+tot_pts = sum(m[5] for m in made)
+print("STEP2 BLOCKING - %d custom pixel-perfect solids (step=%dpx = %.1fmm)" % (len(made), STEP, STEP * mpp * 1000))
+for nm, v, f, d, ms, n in sorted(made, key=lambda t: -t[2]):
+    print("   %-10s verts=%-7d faces=%-7d depth=%.3f  raycast_miss=%d/%d" % (nm, v, f, d, ms, n))
+print("GATE height blockout=%.3f artwork=%.3f (%.2f%%)" % (mx.z - mn.z, H, 100 * abs((mx.z - mn.z) - H) / H))
+print("GATE width  blockout=%.3f artwork=%.3f (%.2f%%)" % (mx.x - mn.x, art_w, 100 * abs((mx.x - mn.x) - art_w) / art_w))
+print("GATE depth  blockout=%.3f  (MEASURED from geometry, not invented)" % (mx.y - mn.y))
+print("GATE raycast coverage %.2f%% (%d misses of %d points)" % (100.0 * (tot_pts - tot_miss) / max(1, tot_pts), tot_miss, tot_pts))
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ND, "step2_blockout.blend"))
 print("STEP2 saved step2_blockout.blend")
