@@ -9,6 +9,7 @@ import subprocess, sys, os, shutil, json
 
 ND = r"C:\Users\vaugh\discord\card-studio\out\ninja"
 VENV = r"C:\Users\vaugh\discord\card-studio\ml\venv\Scripts\python.exe"
+MP_VENV = r"C:\Users\vaugh\discord\card-studio\ml\mp_venv\Scripts\python.exe"
 BLENDER = r"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe"
 
 env = os.environ.copy()
@@ -27,14 +28,22 @@ if os.path.abspath(img) != os.path.join(ND, "source.png"):
 
 # SAM is the segmenter (full layering). Set env SEGMENTER=heuristic to use parts_seg.py instead.
 SEGMENTER = "sam_parts.py" if os.environ.get("SEGMENTER", "sam") != "heuristic" else "parts_seg.py"
-step("1/3 detect plan + SAM segment", [VENV, os.path.join(ND, SEGMENTER)])
+step("1/4 detect plan + SAM segment", [VENV, os.path.join(ND, SEGMENTER)])
 info = json.load(open(os.path.join(ND, "parts_info.json")))
 print("body_plan:", info["body_plan"], "| parts:", [p["name"] for p in info["visible_parts"]])
+# Pose estimate (biped only) -> pose.json so the assembler normalizes image-posed limb
+# parts onto the T-pose skeleton. Non-fatal: a stylized miss just falls back to bbox place.
+if info["body_plan"] == "biped":
+    print("\n=== 2/4 estimate pose (MediaPipe) ===")
+    if subprocess.run([MP_VENV, os.path.join(ND, "pose_estimate.py")], env=env).returncode != 0:
+        print("  no pose detected — assembler falls back to bbox placement")
+else:
+    print("non-biped plan — skipping human pose estimate")
 generated, skipped = [], []
 for p in info["visible_parts"]:                       # DYNAMIC — whatever the segmenter emitted
     if not p.get("bbox") or p.get("method") == "extrude":   # extrude parts are meshed in Blender, not generated
         skipped.append(p["name"]); continue
-    print("\n=== 2/3 generate %s (area %d) ===" % (p["name"], p.get("area", 0)))
+    print("\n=== 3/4 generate %s (area %d) ===" % (p["name"], p.get("area", 0)))
     r = subprocess.run([VENV, os.path.join(ND, "gen_part.py"),
                         os.path.join(ND, p["cutout"]), os.path.join(ND, p["name"] + ".glb")], env=env)
     if r.returncode != 0:                             # a bad part must NOT kill the whole build
@@ -42,5 +51,5 @@ for p in info["visible_parts"]:                       # DYNAMIC — whatever the
     else:
         generated.append(p["name"])
 print("generated:", generated, "| skipped:", skipped)
-step("3/3 assemble + anatomy-fill + tag (Blender)", [BLENDER, "-b", "-P", os.path.join(ND, "assemble.py"), "--", ND])
+step("4/4 assemble + pose-normalize + anatomy-fill + tag (Blender)", [BLENDER, "-b", "-P", os.path.join(ND, "assemble.py"), "--", ND])
 print("\nDONE -> %s\\ninja_foundation.blend  (+ foundation_manifest.json)" % ND)

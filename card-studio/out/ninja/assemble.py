@@ -9,6 +9,7 @@ except Exception as e: print("rigify enable:", e)
 
 ND = sys.argv[-1]
 info = json.load(open(os.path.join(ND, "parts_info.json")))
+POSE = json.load(open(os.path.join(ND, "pose.json"))) if os.path.exists(os.path.join(ND, "pose.json")) else None
 cb = info["char_bbox"]; chTop, chBot = cb[1], cb[3]; chH = chBot - chTop; chCx = (cb[0] + cb[2]) / 2
 LM = info["landmarks"]; PLAN = info["body_plan"]
 Hworld = 1.8
@@ -91,14 +92,19 @@ def extrude_from_mask(part):
     o.location+=Vector(((pcx-chCx)*(Hworld/chH),0.0,Hworld*(1-(pcy-chTop)/chH)))-cen
     tag(o, part["part_type"], part["sim"]); return o
 
-vis={}
-for part in info["visible_parts"]:
+vis={}; gen_boxes=[]     # bboxes of generated garments -> drop small cloth shards SAM
+for part in info["visible_parts"]:           # over-split off an already-generated garment
     if not part.get("bbox"): continue
+    bb=part["bbox"]
     if part.get("method")=="extrude" and part.get("mask"):
+        if part.get("part_type")!="accessory" and part.get("area",0)<12000:
+            cx=(bb[0]+bb[2])/2; cz=(bb[1]+bb[3])/2
+            if any(g[0]<=cx<=g[2] and g[1]<=cz<=g[3] for g in gen_boxes):
+                print("skip nested fragment", part["name"]); continue
         o=extrude_from_mask(part)
         if o: vis[part["name"]]=o
     elif os.path.exists(os.path.join(ND, part["name"]+".glb")):
-        vis[part["name"]]=imp_part(part)     # volumetric parts that generated
+        vis[part["name"]]=imp_part(part); gen_boxes.append(tuple(bb))  # volumetric parts
 # ground, then tuck a 'lower' garment under an 'upper' one if both exist
 allv=list(vis.values())
 mn=Vector((1e9,)*3);mx=Vector((-1e9,)*3)
@@ -137,6 +143,55 @@ if SK["kind"] == "mixamo_fbx":   # biped: extra shoulder-width fit from landmark
     arm.scale=(arm.scale[0]*wf, arm.scale[1], arm.scale[2]); bpy.context.view_layer.update()
     smn,smx=wbb(arm); arm.location.z-=smn.z; bpy.context.view_layer.update()
 tag(arm, "skeleton", "none")
+
+# ---- pose-normalize: swing image-posed limb parts onto the T-pose skeleton ----
+# Deterministic + headless-safe: pose the fitted skeleton to the image pose (MediaPipe
+# landmarks), record each bone's capture->rest rigid delta, then move each garment part
+# by its NEAREST bone's delta. Limb parts (sleeve/gauntlet/greave) swing to T-pose;
+# torso/head/leg parts sit on non-aimed bones -> identity delta -> stay put. So the whole
+# foundation lands in one consistent T-pose, native-Mixamo ready, without auto-weight
+# distortion of the generated blobs. No pose.json (stylized miss) -> skip, keep bbox place.
+def cen(o): mn, mx = wbb(o); return (mn + mx) / 2
+if POSE and SK["kind"] == "mixamo_fbx" and vis:
+    LM33 = POSE["landmarks"]; IW, IH = POSE["image"]
+    AIM = [("mixamorig:LeftArm", 11, 13), ("mixamorig:LeftForeArm", 13, 15),
+           ("mixamorig:RightArm", 12, 14), ("mixamorig:RightForeArm", 14, 16),
+           ("mixamorig:LeftUpLeg", 23, 25), ("mixamorig:LeftLeg", 25, 27),
+           ("mixamorig:RightUpLeg", 24, 26), ("mixamorig:RightLeg", 26, 28)]
+    STATIC = ["mixamorig:Hips", "mixamorig:Spine", "mixamorig:Spine1", "mixamorig:Spine2",
+              "mixamorig:Neck", "mixamorig:Head"]
+    CANDS = [b for b, _, _ in AIM] + STATIC
+    def bworld(bn):
+        pb = arm.pose.bones.get(bn); return (arm.matrix_world @ pb.matrix).copy() if pb else None
+    rest_bw = {bn: bworld(bn) for bn in CANDS}
+    def img_dir(a, b):
+        la, lb = LM33[a], LM33[b]
+        if la["v"] < 0.3 or lb["v"] < 0.3: return None
+        d = Vector(((lb["x"] - la["x"]) * IW, 0.0, -(lb["y"] - la["y"]) * IH))
+        return d.normalized() if d.length > 1e-6 else None
+    def aim(bn, wdir):
+        pb = arm.pose.bones.get(bn)
+        if not pb or wdir is None: return
+        bpy.context.view_layer.update()
+        hw = arm.matrix_world @ pb.head; tw = arm.matrix_world @ pb.tail
+        cur = (tw - hw)
+        if cur.length < 1e-6: return
+        q = cur.normalized().rotation_difference(wdir); T = Matrix.Translation(hw)
+        pb.matrix = arm.matrix_world.inverted() @ (T @ q.to_matrix().to_4x4() @ T.inverted() @ (arm.matrix_world @ pb.matrix))
+        bpy.context.view_layer.update()
+    for bn, a, b in AIM: aim(bn, img_dir(a, b))   # parents listed before children
+    cap_bw = {bn: bworld(bn) for bn in CANDS}      # bone worlds in the capture (image) pose
+    def bmid(bn):
+        pb = arm.pose.bones.get(bn); return arm.matrix_world @ (pb.head + pb.tail) / 2 if pb else None
+    for nm, o in vis.items():                       # parts are still at their image bbox place
+        pc = cen(o); best, bd = None, 1e18
+        for bn in CANDS:
+            m = bmid(bn)
+            if m and (pc - m).length < bd: bd = (pc - m).length; best = bn
+        if best and rest_bw[best] and cap_bw[best]:
+            o.matrix_world = (rest_bw[best] @ cap_bw[best].inverted()) @ o.matrix_world
+    for pb in arm.pose.bones: pb.matrix_basis.identity()   # skeleton back to T-pose rest
+    bpy.context.view_layer.update()
 
 # ---- base body: ONE capsule per bone (the skeleton's bones ARE the part list) ----
 def capsule(p0,p1,r,name):
