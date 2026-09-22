@@ -1,169 +1,180 @@
-# Character pipeline — the researched, correct process
-Follow in order. Do not skip stages. Do not chase detail before its stage.
+# HARD RULE - NO BLOBS, NO CUT CORNERS
 
-## Sources
-- **Blender Studio — Stylized Character Workflow** (Blender Animation Studio) — AUTHORITATIVE
-  for our case (stylized, body + outfit). studio.blender.org/training/stylized-character-workflow/
-- github.com/73K-Y/3D-Workflow-Pipeline — AI-mesh → retopo → rig. NOTE: single-mesh only;
-  it does **not** cover modular characters (clothing/props). Do not follow it blindly here.
-- therookies.co step-by-step breakdown — separates parts at the sculpt stage.
-- CG Cookie / Blender Artists — clothing rigging + cloth sim.
-- GameDev.net + Unreal modular-character docs — modular/swappable parts.
-- Arma Reforger gear docs / MoCap Online — rigid props attach by bone parenting.
+**Every stage must be PINPOINT ACCURATE to the artwork. No generic primitives standing in
+for real forms. No "close enough".**
 
-## 0. Branch on CHARACTER TYPE first
-- **Clothed humanoid** (fox-ninja): body is a standard human under clothing → use a
-  retopologised humanoid base; the render supplies GARMENTS + PROPS.
-- **Creature / non-human** (stone golem, WolfLink): the body IS the character → generate and
-  retopologise the body itself. No garment derivation.
+Look at the reference blockout in the source article: every armour plate, horn, strap,
+finger and boot is its own accurately placed shape. That is the standard. A handful of
+capsules is NOT a blockout.
 
-## 1. Reference
-Concept art gathered. Load it into Blender as a **1:1 reference plane** and work against it.
-Blocking and proportion decisions are made visually against this, not from pixel math.
+Concretely, at every stage:
+- EVERY design element in the concept art gets its own piece. Nothing is merged for
+  convenience and nothing is omitted because it is small.
+- Shapes are DERIVED FROM THE ARTWORK (its silhouette, its measured proportions), never
+  invented or eyeballed.
+- If a measurement can be taken from the source, TAKE IT. Do not substitute a guess.
+- Verify against the 1:1 reference plane before calling a stage done.
+- Do not advance a stage until Nathan signs it off.
 
-## 2. Generate (AI) — REFERENCE ONLY
-Whole character, image-to-3D, refine/high settings.
-> "The AI mesh is triangle soup. A sculpt reference, **not a production mesh**.
-> Never use it directly. Never skip retopology."
+# THE PROCESS — follow these 8 stages in order. Do not skip. Do not reorder.
 
-**Input mask is critical** (each of these produced background geometry):
+**Canonical source:** The Rookies — *Step-by-Step 3D Character Workflow Using Blender and
+Substance 3D* (Jorge / orc character).
+https://www.therookies.co/blog/breakdowns/step-by-step-3d-character-workflow-using-blender-and-substance-3d-for-beginners
+
+This is THE process. Everything else below is a free-tool substitution or a project note.
+Supporting refs: github.com/73K-Y/3D-Workflow-Pipeline (AI-mesh + retopo + rig, single-mesh
+only), Blender Studio *Stylized Character Workflow* (body/outfit separation, retopo order),
+CG Cookie / Blender Artists (clothing rigging, cloth sim), Unreal + GameDev.net (modular
+characters), Arma Reforger (rigid props are bone-parented).
+
+---
+
+## 1. CONCEPT SEARCH
+> "Establish creative direction before modeling begins."
+
+- **Have:** the fox-ninja concept art (`source.png`). Kabuki fox mask over a human face,
+  green hooded poncho, black pants, green wraps on forearms and shins, bare feet.
+- **STATUS: DONE**
+
+## 2. BLOCKING THE BASE
+> "This part helped me build a solid base before delving into the details."
+> Import the reference image into Blender, block out with basic shapes, adjust proportions
+> and silhouette.
+
+- **NO BLOBS.** A handful of capsules is not a blockout. EVERY design element gets its own
+  accurately shaped piece, built from the ARTWORK, not invented.
+- **Method:** each part's SAM mask gives a pixel-accurate outline; its distance-transform
+  depth map gives a rounded cross-section; a millimetre-scale grid inside the mask is
+  displaced front/back and closed with side walls -> a solid piece whose silhouette matches
+  the drawing exactly. Colour is SAMPLED from the artwork.
+- **16 pieces:** poncho, hood, kabuki mask, both ears, both pant legs, both shin wraps, both
+  forearm wraps, and every visible skin island (face, hands, feet).
+- **Scripts:** `make_cutout.py` -> `pose_estimate.py` -> `sam_parts_v2.py` ->
+  `step2a_depthmaps.py` -> `step2_blocking.py` -> `qc_blockout.py`
+- **GATES PASSED:** height 1.794 vs 1.800 (**0.3%**) · width 0.758 vs 0.759 (**0.2%**) ·
+  feet on floor z=0.001
+- **STATUS: AWAITING SIGN-OFF**
+
+## 3. SCULPTING THE DETAILS
+> "Separate each part (body, hair, armour) to manage the complexity."
+> High-poly version; research anatomy; add edge wear and detail.
+
+- **Our substitution:** the AI high-poly IS the sculpt (309,666 tris). We do not hand-sculpt.
+- **Part separation happens HERE** (their rule), by projecting the SAM masks onto the mesh.
+- **Scripts:** `sam_parts_v2.py`, `stage4_separate.py`
+- **STATUS: DONE** — 12 parts, symmetric (ears 1494/1503)
+
+## 4. RETOPOLOGY
+> "This step is key to optimising the model for animation or games."
+> "Pay close attention to edge loops around eyes, mouth, and hands."
+
+- **Our substitution:** Blender REMESH modifier in VOXEL mode (Quadriflow refuses this mesh).
+- **Script:** `stage5_retopo.py`
+- **STATUS: DONE** — 309,666 tris / 0% quads -> **78,828 faces / 100% quads**, shape within 0.5%
+
+## 5. UVs & BAKING   <<< WE ARE HERE
+> "After retopology, I unwrapped the model using Blender and the UV Toolkit add-on. I split
+> the model into two UV sets: one for the body, and another for the armour, ensuring good
+> distribution for baking and texturing."
+> "I exported both the high- and low-poly models in FBX and baked the maps... This gave me
+> **normal, AO, and curvature maps, which were key to capturing the sculpted detail on the
+> low-res mesh.**"
+
+- **This is the stage that RECOVERS the detail retopology removes.** Skipping it is why the
+  low-poly looked flat.
+- **Our substitution:** they bake in Substance 3D Painter (paid). We bake in **Blender Cycles**
+  (Selected-to-Active, extrusion 0.02-0.05, order Normal -> AO), which is free.
+- **UV sets:** they split body / armour. Ours: body / poncho / props.
+- **ORDER IS LOAD-BEARING:** baking requires the low-poly and high-poly to be ALIGNED, so this
+  MUST run on the A-pose retopo, BEFORE any rigging or T-posing.
+- **Script:** `stage8_uv_bake.py`
+- **STATUS: IN PROGRESS**
+
+## 6. TEXTURING
+> "Use baked maps as foundation. Paint textures staying close to original concept. Maintain
+> cartoon, stylised visual approach. Use masks and layers."
+
+- **Our substitution:** no Substance. Colour comes from the concept art (the clean per-part
+  cutouts from `sam_parts_v2.py`) projected onto the UVs, layered over the baked normal/AO.
+- **STATUS: NOT STARTED**
+
+## 7. RIGGING
+> "Start with the human base rig from Rigify. Manually adjust the rig to fit the anatomy.
+> Facial bones and hands were the most challenging."
+
+- **Our substitution:** Mixamo `mixamorig` skeleton instead of Rigify, because the downloaded
+  Mixamo clips then play NATIVELY. Plus the modular rules the Rookies does not cover:
+  - body (pants/shins/wraps/hood merged in) -> skinned normally
+  - poncho (loose) -> spine-weighted, and should be CLOTH SIMULATED
+  - mask + ears (rigid props) -> BONE-PARENTED to the head, never skinned
+- **Scripts:** `stage6b_modular_rig.py`, `stage6c_to_tpose.py`
+- **STATUS: PROTOTYPED OUT OF ORDER — must be re-run after stage 6 texturing**
+
+## 8. LIGHTING & RENDERING
+> "Simple scene with a base plane. Three-point lighting plus additional lights to enhance
+> shapes and materials. Import all textures. Focus on making the character feel alive."
+> Render engine: **Blender Cycles**.
+
+- **Our target:** rendered video clips (mp4 + alpha webm) to replace the raid-boss sprites.
+- **Script:** `stage7_animate.py` (clip playback), render pass to follow.
+- **STATUS: NOT STARTED**
+
+---
+
+# PROJECT NOTES (free-tool substitutions + traps)
+
+**We deliver RENDERED VIDEO, not a realtime game asset.** The "stylised PC 5k-15k tris"
+budget from the GitHub pipeline does NOT apply. Retopology here is for DEFORMATION QUALITY,
+not polygon reduction. Measured at 1.8m height (all 100% quads):
+`voxel 0.022 -> 8,228 faces (detail LOST)` · `0.012 -> 33,466` ·
+**`0.008 -> 78,828 (DEFAULT, full detail)`** · `0.006 -> 141,854 (max)`
+
+**Input mask (stage 2)** — each of these produced background geometry:
 - `img.convert("RGB")` on an RGBA cutout KEEPS the original background pixels under the
-  transparency → composite onto flat colour: `flat.paste(cut, mask=cut.split()[3])`.
-- rembg keeps painted background strokes that TOUCH the character (connected → island
-  filtering cannot remove them) → intersect with a **SAM** body region.
-- SAM **clips thin appendages** (fox ears fell to 33% coverage) → add pose-derived foreground
-  prompt points ON them. Target gate: **1 island, 0 dropped verts**.
+  transparency. Composite onto flat colour: `flat.paste(cut, mask=cut.split()[3])`.
+- rembg keeps painted background strokes that TOUCH the character (connected, so island
+  filtering cannot remove them) -> intersect with a SAM body region.
+- SAM CLIPS thin appendages (fox ears fell to 33% coverage) -> add pose-derived foreground
+  prompt points ON them. Target gate: 1 island, 0 dropped verts.
 
-## 3. Import & prep — QUALITY GATES
-Apply ALL transforms. Gates: normals correct · scale = 1,1,1 · proportions match the
-reference plane · no floating/fused background geometry · confirm tri/quad makeup.
+**Part projection (stage 3)** — use the CLEAN cutout bbox, not the raw rembg `char_bbox`
+(which still contains strokes; its centre sits ~75px off and dumps a band into "body").
+Dilate masks ~5px: the generated garment is thicker than the painted silhouette.
 
-## 4. SEPARATE INTO PARTS  ← the modular step
-> Rookies: "I separated each part (**body, hair, armour**) to manage the complexity."
-> Blender Studio: body and clothing are **separate objects**; sculpt the body first, then
-> create clothing basemeshes that sit on top.
+**Retopology (stage 4)** — QUADRIFLOW DOES NOT WORK HERE. It silently no-ops in background
+(-b) mode, and with a VIEW_3D context override it CANCELS: "needs to be manifold and have
+face normals pointing in a consistent direction". Diagnosed: 0 non-manifold edges, 0
+non-manifold verts, but **5 ZERO-AREA faces**; it refuses on degenerates and
+`normals_make_consistent` does not help. Use the REMESH modifier in VOXEL mode.
 
-Our parts: body · poncho · hood · pants · wraps · fox mask · ears.
+**Weighting (stage 7)** — three attempts, only the third works:
+1. auto-weight then DELETE disallowed groups -> vertices with ZERO weight stay pinned at rest
+   while neighbours move -> the mesh TEARS
+2. nearest-2-bones by inverse distance -> HARD discontinuities, adjacent faces rip apart
+   (measured 1,898 boundary edges, poncho shredded)
+3. CORRECT: auto-weight (smooth bone-heat), then REDISTRIBUTE each disallowed bone's weight
+   onto the allowed bones the vertex already has, normalise, smooth
 
-## 5. Retopology — ORDER: head → body → hair → clothing
-- Quads only in deformation zones. ≥3 edge loops at elbow/knee/shoulder, ≥2 at wrist.
-  No poles at stress points. Follow surface curvature.
-- **Clothes are retopologised separately**, and:
-  > "The clothes are **mostly copies of the underlying body** but with different edge flow
-  > where the geometry is different (shoulders) and where I modeled in wrinkles."
-  This is exactly the derive-from-body method — it also inherits the body's weights.
-- Stylized poly density: prioritise **clean topology for rigging**, not minimum polycount.
+**Separate only what moves INDEPENDENTLY** — splitting pants/shins/wraps/hood off the body
+gained nothing and created ragged seams and gaps. Only the loose poncho and rigid props.
 
-## 6. STYLIZED DETAIL RULE (corrects the naive "all detail goes to maps")
-> "I definitely wanted to **hard-model the wrinkles** to not rely on any displacement or
-> normal maps, since they are already very stylised & big elements."
-- **Big stylised forms (major folds, poncho hem, cuffs) → MODEL them in the geometry.**
-- **Fine surface detail (fabric weave, scratches, pores) → BAKE to normal/AO maps.**
+**A-REST vs T-REST** — Mixamo clips store rotations relative to a T-POSE rest. Binding at
+A-pose (needed so the skeleton matches the mesh) doubly-rotates every clip and mangles the
+mesh. Fix: pose limbs back to T, APPLY the armature modifier per part (bakes mesh to T-pose),
+apply pose as rest, re-add modifiers.
 
-## 7. UV unwrap — per part
-Unwrap **each mesh separately** (body, clothes, mask, ears); shells clean and unstacked.
-
-## 8. Bake high → low
-Normal / AO / curvature from the high-poly onto the clean low-poly. Cycles, Selected-to-Active,
-extrusion 0.02–0.05. Bake order: Normal → Diffuse → Roughness.
-
-## 9. Texture
-Paint on the baked maps. Colour comes from the concept art.
-
-## 10. Rig + attach — BY PART CATEGORY
-| Category | Examples | Build | Attach |
-|---|---|---|---|
-| Body | base mesh | retopologised quads | skinned to full skeleton |
-| Conforming garment | pants, wraps, hood | **derived from body surface** | inherits body weights |
-| Loose cloth | poncho, cape | separate panel | **simulate resting shape, then skin it** |
-| Rigid prop | fox mask, weapons | own object, any topology | **bone-parent (Ctrl+P → Bone)** |
-
-> "Colliders and rigid props **don't support skinning and have to be parented to bone**."
-> Soft/deformable accessories use skinning with weight painting.
-
-- Separately-modelled garments: **Data Transfer → "Nearest Face Interpolated"** copies body
-  weights onto the garment.
-- **Simulate cloth in a NATURAL pose (arms down), never T-pose** — in T-pose the cloth tents
-  over outstretched arms (measured 1.70 m wide).
-- Weight a poncho to the **spine only** so the arms move freely underneath.
-- A poncho is a SQUARE worn as a diamond (point at front). Flat-pattern radius must equal the
-  **drape length**; sizing from shoulder width makes it too short to hang.
-- Weight-paint problem zones (always need manual fixing): shoulders, groin, wrists, knees, neck.
-- "Landmarks" = places where separate objects touch and must move together.
-- Keep the underlying body model for animation (do not delete body under clothes if it deforms).
-
-## POLY BUDGET - this project is RENDER, not realtime
-The "stylised PC 5k-15k tris" budget in the source pipeline is for REALTIME GAME assets.
-This project delivers RENDERED VIDEO CLIPS, so it does NOT apply. Retopology here exists for
-DEFORMATION QUALITY (clean quads), not polygon reduction. Applying a game budget destroyed
-the Stage 1 detail for nothing. Measured at 1.8m character height (all 100% quads):
-  voxel 0.022 ->   8,228 faces  detail LOST
-  voxel 0.012 ->  33,466 faces
-  voxel 0.008 ->  78,828 faces  DEFAULT - full Stage 1 detail retained, shape within ~0.5%
-  voxel 0.006 -> 141,854 faces  max fidelity
-
-## 11. Export / animate
-Axis per target engine. Mixamo clips play natively on a `mixamorig` skeleton.
-
-## Blender / Mixamo traps (each cost a debugging loop)
-- The Mixamo armature is a native Mixamo object: ~0.0088 NON-UNIFORM scale + 90° X rotation,
-  bones in cm space. **Never `transform_apply(scale)`** on it (teleports the rest pose).
-- Parenting anything to it requires `obj.matrix_parent_inverse = arm.matrix_world.inverted()`
-  or the child shrinks 100×.
-- Blender 5.2 actions are LAYERED — no `action.fcurves`. Use
+**Mixamo/Blender traps**
+- The Mixamo FBX ships with a **T-pose ACTION attached**; it re-evaluates on file load and
+  OVERWRITES any pose you set. Clear `animation_data` before posing.
+- The Mixamo armature has ~0.0088 NON-UNIFORM scale + 90deg X rotation, bones in cm space.
+  NEVER `transform_apply(scale)` it. When parenting to it set
+  `obj.matrix_parent_inverse = arm.matrix_world.inverted()` or the child shrinks 100x.
+- Blender 5.2 actions are LAYERED (no `action.fcurves`): use
   `act.layers[].strips[].channelbag(slot).fcurves`.
-- Strip a clip's Hips **location** curves or its root motion (authored in the source rig's cm
-  units) flings the rig off-world.
-- The FBX importer fails in the live Blender MCP context ("mode_set poll: Context missing
-  active object") — import in a headless script, then open the result.
-- The Mixamo X Bot body is a free, already-retopologised base: 14,222 faces, **98.8% quads**,
-  proper edge loops. Excellent retopo target for clothed humanoids.
+- Strip a clip's Hips LOCATION curves or its root motion flings the rig off-world.
+- The FBX importer fails in the live Blender MCP context; import in a headless script.
 
-## Project status (fox-ninja)
-- [x] 1 Reference plane at 1:1
-- [x] 2 Generate — clean high-poly (gate: 1 island, 0 dropped verts; W 0.839 D 0.482 H 1.809)
-- [x] 3 Import & prep — all gates pass (309,666 tris, 0 quads = retopo required)
-- [x] 4 Separate into parts - 12 parts, symmetric (ears 1494/1503), each tagged with its
-      category + attach method. Projection MUST use the CLEAN cutout bbox: the raw rembg
-      char_bbox still contains background strokes and its centre is ~75px off, which
-      shifts the whole projection and dumps a band into 'body'. Dilate masks ~5px so the
-      generated garment's rim (thicker than the painted silhouette) is captured.
-- [x] 5 Retopology - 309,666 tris / 0% quads -> 78,828 faces / 100% QUADS, full detail kept.
-      Retopology means rebuilding the SAME SHAPE with clean topology, NOT replacing the
-      character with a generic base body.
-      QUADRIFLOW DOES NOT WORK HERE: it silently no-ops in background (-b) mode, and with a
-      VIEW_3D context override it CANCELS with "needs to be manifold and have face normals
-      pointing in a consistent direction". Diagnosed: 0 non-manifold edges, 0 non-manifold
-      verts, but 5 ZERO-AREA faces - it refuses on degenerates, and recalculating normals
-      does not help. Use the REMESH modifier in VOXEL mode: rebuilds from a signed-distance
-      field, ignores the defects, runs headless, outputs 100% quads.
-      NOTE: voxel remesh gives UNIFORM quads with no intentional edge loops at joints. That
-      is weaker than hand retopology but vastly better than triangle soup, and appropriate
-      for a stylised character.
-- [x] 6 Rig - modular, per category. Body (with pants/shins/wraps/hood merged in) skinned
-      normally; poncho skinned to the SPINE only; mask + ears bone-parented to the head.
-- [x] 6c A-REST -> T-REST conversion. Mixamo clips store rotations relative to a T-POSE rest.
-      We bind at A-pose (so the skeleton matches the mesh), which doubly-rotates every clip
-      and mangles the mesh. Fix: pose the limbs back to T, APPLY the armature modifier on each
-      skinned part (bakes the mesh to T-pose), apply pose as rest, re-add the modifiers.
-- [x] 7 Animation - downloaded Mixamo clips play natively; strip the clip's Hips LOCATION
-      curves or its root motion (authored in the source rig's cm units) flings the rig away.
-- [ ] 8 Poncho cloth sim + seam cleanup   <-- NEXT
-
-## WEIGHTING - three attempts, only the third works
-1. auto-weight then DELETE the disallowed groups -> vertices left with ZERO weight stay
-   pinned at rest while neighbours move -> the mesh TEARS.
-2. weight to the nearest 2 bones by inverse distance -> HARD discontinuities; adjacent faces
-   follow different bones and rip apart (measured 1,898 boundary edges, mesh shredded).
-3. CORRECT: auto-weight first (smooth bone-heat gradients), then REDISTRIBUTE each disallowed
-   bone's weight onto the allowed bones the vertex already has, normalise, then smooth.
-
-## SEPARATE ONLY WHAT MOVES INDEPENDENTLY
-Splitting pants/shins/wraps/hood off the body gained nothing and created ragged seams and
-gaps. They simply follow the body. Separate only: the LOOSE poncho, and the RIGID props.
-- [ ] 6 Model stylised folds
-- [ ] 7 UV per part
-- [ ] 8 Bake high→low
-- [ ] 9 Texture
-- [ ] 10 Rig + attach by category
-- [ ] 11 Export / animate
+**Character type branches at stage 2**
+- clothed humanoid (fox-ninja) -> body is a standard human under clothing
+- creature / non-human (stone golem, WolfLink) -> the body IS the character
