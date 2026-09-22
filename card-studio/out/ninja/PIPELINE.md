@@ -140,7 +140,27 @@ Axis per target engine. Mixamo clips play natively on a `mixamorig` skeleton.
       NOTE: voxel remesh gives UNIFORM quads with no intentional edge loops at joints. That
       is weaker than hand retopology but vastly better than triangle soup, and appropriate
       for a stylised character.
-- [ ] 5b Rig the retopologised character (fit skeleton + weights)   <-- NEXT
+- [x] 6 Rig - modular, per category. Body (with pants/shins/wraps/hood merged in) skinned
+      normally; poncho skinned to the SPINE only; mask + ears bone-parented to the head.
+- [x] 6c A-REST -> T-REST conversion. Mixamo clips store rotations relative to a T-POSE rest.
+      We bind at A-pose (so the skeleton matches the mesh), which doubly-rotates every clip
+      and mangles the mesh. Fix: pose the limbs back to T, APPLY the armature modifier on each
+      skinned part (bakes the mesh to T-pose), apply pose as rest, re-add the modifiers.
+- [x] 7 Animation - downloaded Mixamo clips play natively; strip the clip's Hips LOCATION
+      curves or its root motion (authored in the source rig's cm units) flings the rig away.
+- [ ] 8 Poncho cloth sim + seam cleanup   <-- NEXT
+
+## WEIGHTING - three attempts, only the third works
+1. auto-weight then DELETE the disallowed groups -> vertices left with ZERO weight stay
+   pinned at rest while neighbours move -> the mesh TEARS.
+2. weight to the nearest 2 bones by inverse distance -> HARD discontinuities; adjacent faces
+   follow different bones and rip apart (measured 1,898 boundary edges, mesh shredded).
+3. CORRECT: auto-weight first (smooth bone-heat gradients), then REDISTRIBUTE each disallowed
+   bone's weight onto the allowed bones the vertex already has, normalise, then smooth.
+
+## SEPARATE ONLY WHAT MOVES INDEPENDENTLY
+Splitting pants/shins/wraps/hood off the body gained nothing and created ragged seams and
+gaps. They simply follow the body. Separate only: the LOOSE poncho, and the RIGID props.
 - [ ] 6 Model stylised folds
 - [ ] 7 UV per part
 - [ ] 8 Bake high→low
