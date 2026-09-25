@@ -19,29 +19,17 @@ bot has its own deploy — see `tcg-bot/docs/HOSTING.md`.)
 
 ## Deploy an update
 
-The `Dockerfile` runs `npm run build` **inside** the image, so you only need to
-ship the changed `src/` (and `public/`, `server.js`, `package.json` if those
-changed). **Never overwrite the VM `.env`** — it holds the secrets.
+Use the script. It is the only deploy path (see the root `CLAUDE.md`):
 
 ```sh
-KEY=~/Downloads/ssh-key-2026-09-08.key
-IP=$(dig +short lionpridetcg.duckdns.org | tail -1)   # or nslookup
-
-# 1. back up what you are about to replace, then ship it
-ssh -i $KEY ubuntu@$IP "cp /home/ubuntu/activity/src/boss.js /home/ubuntu/activity/src/boss.js.bak.$(date +%s)"
-scp -i $KEY tcg-activity/src/boss.js tcg-activity/src/boss-video.js ubuntu@$IP:/home/ubuntu/activity/src/
-
-# 2. rebuild the image (old container keeps running), then swap
-ssh -i $KEY ubuntu@$IP '
-  cd /home/ubuntu/activity &&
-  sudo docker build -t tcg-activity . &&
-  sudo docker rm -f tcg-activity &&
-  sudo docker run -d --name tcg-activity --network host --restart unless-stopped --env-file .env tcg-activity'
-
-# 3. keep the secrets owner-only. A redeploy on 2026-09-16 left .env at 644 (it held
-#    the service key + client secret). Any tarball of the app dir holds a .env too.
-ssh -i $KEY ubuntu@$IP 'cd /home/ubuntu && chmod 600 activity/.env gallery/.env tcg-bot/.env *.tgz 2>/dev/null; stat -c "%a %n" activity/.env gallery/.env tcg-bot/.env'
+# from a worktree at origin/main, with the change committed + pushed
+ops/deploy.sh activity        # or: bot, gallery
 ```
+
+It refuses uncommitted or unpushed code, ships the committed tree (never the local
+`.env` - the VM `.env` is the source of truth), builds with `--no-cache`, swaps the
+container, checks that `/api/config` returns `"hunt":true`, rolls back to the
+previous image if the check fails, and sets every VM `.env` to `600`.
 
 ## Verify (server + edge)
 
@@ -65,14 +53,9 @@ Discord's proxy can never serve a stale script.
 
 ## Rollback
 
-```sh
-ssh -i $KEY ubuntu@$IP '
-  cd /home/ubuntu/activity/src &&
-  cp "$(ls -t boss.js.bak.* | head -1)" boss.js &&
-  cd /home/ubuntu/activity &&
-  sudo docker build -t tcg-activity . && sudo docker rm -f tcg-activity &&
-  sudo docker run -d --name tcg-activity --network host --restart unless-stopped --env-file .env tcg-activity'
-```
+`ops/deploy.sh` rolls back by itself when the health check fails. To go back by
+choice, deploy the older commit: check it out in a worktree and run the script
+with `ALLOW_BRANCH=1`. The previous image is also kept as `tcg-activity:prev`.
 
 ## Assets
 

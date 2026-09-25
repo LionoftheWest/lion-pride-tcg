@@ -21,15 +21,16 @@ ssh -i <key> ubuntu@<ip> "bash setup-vm.sh"   # swap + Docker
 
 ## Deploy / update the bot
 
-From the project root, copy the code and secrets, then build and run:
+From a worktree at `origin/main`, with the change committed and pushed:
 
 ```sh
-ssh -i <key> ubuntu@<ip> "mkdir -p /home/ubuntu/tcg-bot"
-scp -i <key> package.json package-lock.json tsconfig.json Dockerfile .env ubuntu@<ip>:/home/ubuntu/tcg-bot/
-scp -i <key> -r src ubuntu@<ip>:/home/ubuntu/tcg-bot/
-scp -i <key> deploy/run-bot.sh ubuntu@<ip>:/home/ubuntu/
-ssh -i <key> ubuntu@<ip> "bash run-bot.sh"    # build image + (re)start container
+ops/deploy.sh bot
 ```
+
+The script ships only `src`, the package files, `tsconfig.json`, and the `Dockerfile`.
+It keeps the VM `.env`, runs the container with `--network host` (the Activity calls
+the internal API at `127.0.0.1:4451`), waits for `Ready. Logged in`, rolls back on a
+failure, and registers the slash commands.
 
 **Only one instance may run per bot token.** Do not run the local dev bot at the
 same time as the VM — two gateway connections cause duplicate responses.
