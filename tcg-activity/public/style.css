@@ -134,12 +134,24 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
 .pdots { display: flex; gap: 6px; }
 .pdot { width: 7px; height: 7px; border-radius: 50%; background: #2a3348; }
 .pdot.on { background: #f5b942; }
+.pcount { min-width: 56px; text-align: center; color: #cbd3e1; font-weight: 700; font-size: 13px; letter-spacing: .3px; font-variant-numeric: tabular-nums; }
+.card-info { position: absolute; top: 4px; left: 4px; z-index: 4; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(8,10,16,.72); color: #fff; font-size: 12px; line-height: 24px; cursor: pointer; opacity: .82; }
+.card-info:hover { opacity: 1; background: rgba(8,10,16,.92); }
 
 /* Gallery: search + filters + season accordion */
 .gal-controls { flex: 0 0 auto; display: flex; gap: 10px; margin-bottom: 10px; }
 .ginput { flex: 1 1 auto; min-width: 0; background: #10141f; border: 1px solid #2c3852; color: #e6ebf3; border-radius: 8px; padding: 10px 14px; font: inherit; font-size: 14px; }
 .ginput::placeholder { color: #6b7488; }
 .gselect { background: #10141f; border: 1px solid #2c3852; color: #e6ebf3; border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+/* Gallery section tabs (Cards | Raid Bosses | …) */
+.gal-sections { display: flex; gap: 6px; margin-right: auto; }
+.gsec { background: #10141f; border: 1px solid #2c3852; color: #9fb0c8; border-radius: 8px; padding: 10px 14px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.gsec:hover { border-color: #3a4a6b; color: #cbd6e8; }
+.gsec.active { background: #1e2740; border-color: #f5b942; color: #eef2f8; }
+/* Raid-boss tiles reuse .c; a warm ring + a dark stage behind the model shot. */
+.boss-tile { cursor: pointer; }
+.page-grid .boss-tile .art { border-color: #6a3b1e; background: radial-gradient(circle at 50% 42%, #241a1a 0%, #0a0808 78%); }
+.boss-tile:hover .art { border-color: #ff8a3c; }
 .gal-bar { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 6px 4px 10px; }
 .gal-bar .gs-name { font-weight: 800; font-size: 16px; color: #eef2f8; }
 .gal-bar .gs-count { color: #f5b942; font-size: 14px; font-weight: 700; }
@@ -608,6 +620,22 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
 .atk-spark { position: fixed; z-index: 85; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle, #fff, var(--ac, #7fe3ff) 60%, transparent); animation: atkSpark .7s ease-out forwards; }
 @keyframes atkSpark { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.2); } }
+/* ---- Element attack theming (tag-driven visuals) ---- */
+.atk-bolt.el { background: radial-gradient(circle, #fff, var(--ac) 50%, var(--ac2, var(--ac)) 74%, transparent 82%);
+  box-shadow: 0 0 20px var(--ac), 0 0 40px var(--ac2, var(--ac)); }
+.atk-bolt .bolt-glyph { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 15px; line-height: 1; filter: drop-shadow(0 0 4px var(--ac)); }
+.atk-bolt.big .bolt-glyph { font-size: 21px; }
+.atk-el { position: fixed; z-index: 86; font-size: 17px; margin: -9px; pointer-events: none; filter: drop-shadow(0 0 5px var(--ac, #fff)); animation: atkEl .76s ease-out forwards; }
+@keyframes atkEl { 0% { opacity: 0; transform: translate(0, 0) scale(.5); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.15); } }
+.fx-aura.el-charge { border-color: var(--ac); box-shadow: 0 0 20px var(--ac), inset 0 0 16px var(--ac); }
+/* The element badge (top-center) + a faint element ring on a roster card. */
+.squad-grid .c .celem { position: absolute; left: 50%; top: 3px; transform: translateX(-50%); z-index: 3; font-size: 11px; line-height: 1;
+  padding: 1px 4px; border-radius: 8px; background: rgba(6, 8, 14, .55); filter: drop-shadow(0 0 4px var(--el, #fff)); }
+.squad-grid .c[data-el]:not([data-el=""]) .art { box-shadow: inset 0 0 12px -3px var(--el, transparent); }
+/* Turn lock: while the boss acts, the roster dims and stops taking taps. */
+.turn-locked .squad-grid { pointer-events: none; filter: saturate(.7) brightness(.85); transition: filter .2s ease; }
+/* Viewer: the highlighted element chip. */
+.v-chip.elem { border-color: var(--el, #7fe3ff); color: #fff; background: rgba(255, 255, 255, .06); font-weight: 800; }
 /* The card lunges up and charges its rarity color as it fires an attack. */
 .hcard.attacking { z-index: 6; animation: hcardLunge .5s cubic-bezier(.3, .8, .3, 1); }
 @keyframes hcardLunge {
@@ -663,6 +691,7 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
 .boss-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #b8c0cf; margin-top: 2px; gap: 8px; }
 .weak-chip { background: #f4c14b22; color: #ffd76e; border: 1px solid #f4c14b55; border-radius: 6px; padding: 1px 6px; font-size: 11px; }
 .resist-chip { background: #7fb0ff1f; color: #9cc3ff; border: 1px solid #7fb0ff55; border-radius: 6px; padding: 1px 6px; font-size: 11px; }
+.passive-chip { display: inline-block; margin-left: 8px; background: #b0603022; color: #ffb08a; border: 1px solid #ff8a5a66; border-radius: 6px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
 .fighters-now { color: #9cc3ff; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .fighters-now:empty { display: none; }
 .hunt-lb { background: #2a2410; color: #ffd76e; border: 1px solid #f4c14b55; border-radius: 8px; padding: 4px 10px; cursor: pointer; font-weight: 600; white-space: nowrap; }
@@ -760,6 +789,117 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
   font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .autopick-btn:hover { background: #243050; }
 .autopick-btn.busy { opacity: .6; cursor: wait; }
+
+/* ---- Squad-select redesign: mini boss panel + synergy readout + 8-slot tray ---- */
+.miniboss { flex: 0 0 auto; position: relative; overflow: hidden; display: flex; gap: 10px; align-items: center; background: linear-gradient(#241a2a, #1a1420); border: 1px solid #3a2a44; border-radius: 12px; padding: 8px 10px; }
+.miniboss.down { filter: grayscale(.5) brightness(.7); }
+.mb-stage { flex: 0 0 auto; position: relative; width: 88px; height: 88px; border-radius: 10px; overflow: hidden; background: #05060a; }
+.mb-stage canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; touch-action: none; }
+.mb-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.mb-live { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px; color: #ff6a6a; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff4a4a; box-shadow: 0 0 8px #ff4a4a; animation: livepulse 1.4s ease-in-out infinite; }
+@keyframes livepulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.mb-name { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 3px 0; }
+.mb-name .boss-name { font-weight: 800; font-size: 15px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hpbar.mini { height: 15px; margin: 3px 0; }
+.hpbar.mini .hptext { font-size: 10px; }
+.mb-meta { font-size: 11px; color: #c7cede; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mb-lb { flex: 0 0 auto; align-self: flex-start; font-size: 14px; padding: 4px 8px; }
+
+.squad-panel { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.squad-synergy { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 22px; }
+.cp-pill { background: #1c2436; border: 1px solid #f5b94255; color: #ffd76e; font-weight: 800; font-size: 12px; padding: 3px 10px; border-radius: 999px; }
+/* CP + synergies on the left, the 8-card squad on the right, one row */
+.squad-toprow { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+.squad-left { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.squad-toprow .squad-tray { flex: 0 0 auto; justify-content: flex-start; }
+.cp-big { display: flex; align-items: baseline; gap: 8px; }
+.cp-big .cp-num { font-size: 26px; font-weight: 900; color: #ffd76e; text-shadow: 0 0 14px rgba(245,185,66,.35); line-height: 1; }
+.cp-big .cp-lbl { font-size: 12px; font-weight: 800; letter-spacing: 1px; color: #b9c2d4; }
+.cp-boost { color: #86ffb6; font-weight: 800; margin-left: 4px; }
+.syn-chip { background: #16202f; border: 1px solid #2f3d57; color: #cfe0ff; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: capitalize; }
+.syn-chip b { color: #7fe3ff; }
+.syn-chip.weakhit { border-color: #ffd76e66; color: #ffd76e; }
+.syn-chip.syn-element { border-color: #5aa0ff55; }
+.syn-chip.syn-origin { border-color: #f5b94255; }
+.syn-chip.syn-trait { border-color: #a06aff55; }
+.syn-chip.on { background: #14261a; border-color: #4ad07a; color: #c6f4d6; } /* ACTIVE synergy */
+.syn-chip.on b { color: #86ffb6; }
+.syn-none { font-size: 11px; color: #8b94a7; }
+.squad-tray { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+.slot { width: 52px; height: 74px; flex: 0 0 auto; border-radius: 7px; position: relative; overflow: hidden; }
+.slot.empty { border: 1px dashed #2f3d57; background: #0d1119; display: flex; align-items: center; justify-content: center; color: #45536e; font-size: 12px; font-weight: 700; }
+.slot.filled { border: 1px solid #2f3d57; background: #05060a; cursor: pointer; box-shadow: inset 0 0 10px -3px var(--el, transparent); }
+.slot.filled img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.slot-pow { position: absolute; left: 3px; bottom: 3px; font-size: 9px; font-weight: 900; color: #ffd76e; background: rgba(0,0,0,.6); border-radius: 4px; padding: 0 3px; }
+.slot-x { position: absolute; top: 2px; right: 3px; width: 14px; height: 14px; line-height: 14px; text-align: center; font-size: 9px; color: #fff; background: rgba(0,0,0,.6); border-radius: 50%; opacity: .85; }
+.squad-foot { flex-wrap: wrap; }
+.enter-btn { background: #16202f; color: #6f7d95; border: 1px solid #2f3d57; padding: 10px 18px; border-radius: 999px; font: inherit; font-weight: 800; font-size: 14px; cursor: default; white-space: nowrap; }
+.enter-btn:disabled { opacity: .55; }
+.enter-btn.ready { background: linear-gradient(180deg, #3ad07a, #1fa85a); color: #05130b; border-color: transparent; cursor: pointer; box-shadow: 0 5px 14px rgba(58,208,122,.35); }
+.lockin-btn.locked { background: linear-gradient(180deg, #8bd8a0, #5cb97a); }
+
+/* Squad knocked out — wipe overlay + locked-for-the-day picker footer */
+.squad-down-ov { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, rgba(60,8,10,.7), rgba(5,6,10,.93)); animation: sdIn .45s ease forwards; }
+@keyframes sdIn { from { opacity: 0; } to { opacity: 1; } }
+.sd-text { font-size: 46px; font-weight: 900; letter-spacing: 3px; color: #ff5a5a; text-shadow: 0 0 28px rgba(255,60,60,.6), 0 3px 10px #000; animation: sdPop .6s cubic-bezier(.2,1.4,.4,1) forwards; }
+@keyframes sdPop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.sd-sub { font-size: 15px; font-weight: 700; color: #e8d7c0; text-shadow: 0 2px 8px #000; }
+.squad-foot.ko { flex-direction: column; align-items: stretch; gap: 8px; }
+.ko-note { font-size: 13px; font-weight: 700; color: #ffb0a0; text-align: center; }
+.enter-btn.ko-cd { text-align: center; background: #241018; border-color: #7a2f36; color: #ffcabf; cursor: default; }
+/* KO: the picker stays browsable (inspect + page), only re-picking is blocked. */
+.select-mode.ko .squad-tray { opacity: .7; }
+
+/* Open Pack button up by the brand title; boss square atop the sidebar feed */
+.open-top { margin-left: 6px; background: linear-gradient(180deg, #f5b942, #e09a1e); color: #0a0d14; border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 800; font-size: 13px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 12px rgba(245,185,66,.3); }
+.open-top:hover { filter: brightness(1.06); }
+#topbar .topright { margin-left: auto; }
+#bossMini:not(:empty) { flex: 0 0 auto; margin-bottom: 8px; }
+
+/* Bigger sidebar raid-boss square (stacked): the 3D boss fills the top; the feed shortens. */
+#bossMini .miniboss { margin: 0; position: relative; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; }
+#bossMini .mb-stage { width: 100%; height: 150px; }
+#bossMini .mb-info { gap: 0; }
+#bossMini .mb-live { font-size: 10px; letter-spacing: .5px; }
+#bossMini .mb-name { flex-wrap: wrap; gap: 6px; margin: 3px 0; }
+#bossMini .mb-name .boss-name { font-size: 15px; }
+#bossMini .boss-tier { font-size: 10px; padding: 2px 7px; }
+#bossMini .hpbar.mini { height: 16px; margin: 4px 0; }
+#bossMini .hpbar.mini .hptext { font-size: 10px; }
+#bossMini .mb-meta { font-size: 11px; gap: 4px 6px; line-height: 1.35; }
+#bossMini .mb-lb { position: absolute; top: 8px; right: 8px; padding: 4px 7px; font-size: 13px; z-index: 3; }
+#bossMini .weak-chip, #bossMini .resist-chip, #bossMini .passive-chip { font-size: 10px; padding: 1px 6px; }
+/* keep the live feed from dominating — cap it so the boss square gets the room */
+#feed #feedList { max-height: 44vh; }
+#bossMini .mb-meta .hunt-lb { font-size: 10px; padding: 3px 8px; }
+.mb-stage.mb-open { cursor: pointer; }
+.mb-expand { position: absolute; top: 6px; right: 6px; font-size: 14px; color: #fff; background: rgba(0,0,0,.5); border-radius: 6px; padding: 1px 5px; opacity: .7; pointer-events: none; }
+.mb-open:hover .mb-expand { opacity: 1; }
+
+/* Boss detail modal */
+#bossModal { position: fixed; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; background: rgba(4,5,9,.8); }
+#bossModal.hidden { display: none; }
+#bossModalClose { position: absolute; top: 16px; right: 18px; z-index: 2; background: #1a2230; color: #fff; border: 1px solid #2f3d57; width: 38px; height: 38px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+.bm-card { display: flex; gap: 20px; max-width: 760px; width: 92%; max-height: 88vh; background: linear-gradient(#1a1420, #12101a); border: 1px solid #3a2a44; border-radius: 16px; padding: 20px; box-shadow: 0 24px 70px rgba(0,0,0,.7); overflow: auto; }
+.bm-stage { flex: 0 0 320px; width: 320px; height: 360px; border-radius: 12px; overflow: hidden; background: #05060a; position: relative; }
+.bm-stage canvas { width: 100%; height: 100%; display: block; }
+.bm-info { flex: 1 1 auto; min-width: 0; }
+.bm-info .bm-name { font-size: 26px; margin: 6px 0 10px; display: flex; align-items: center; gap: 10px; }
+.bm-info .hpbar { height: 22px; }
+.bm-sec { margin-top: 14px; }
+.bm-sec-h { font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #9aa4b6; margin-bottom: 6px; }
+.bm-weaks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.bm-moves { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.bm-moves li { font-size: 13px; color: #dfe6f2; background: #16202f; border: 1px solid #2f3d57; border-radius: 8px; padding: 6px 10px; }
+.bm-moves li b { color: #ffd76e; }
+.bm-when { color: #ffb0a0; font-weight: 700; }
+.bm-stat { display: flex; align-items: center; gap: 8px; margin: 5px 0; flex-wrap: wrap; }
+.bm-k { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #9aa4b6; min-width: 84px; }
+.bm-v { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.bm-none { color: #6b7488; }
+@media (max-width: 560px) { .bm-card { flex-direction: column; } .bm-stage { flex: 0 0 auto; width: 100%; height: 220px; } }
 .squad-battlebar { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
 .sb-title { font-size: 13px; font-weight: 800; color: #ffd76e; }
 .edit-team { background: #121826; border: 1px solid #2c3852; color: #dfe6f2; border-radius: 8px; padding: 6px 12px; font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; }
@@ -795,6 +935,10 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
   background: linear-gradient(to top, rgba(8,6,14,.92) 40%, rgba(8,6,14,0)); grid-template-columns: none; }
 .squad-grid.hand .c { width: var(--sw, 96px); flex: 0 0 auto; }
 .squad-grid.hand .cap { font-size: 9px; margin-top: 2px; }
+/* Compact hand: name only (the ability shows in the picker), and a scrim so the
+   boss + attack stage read through the bottom strip. */
+.squad-grid.hand .cability { display: none; }
+.squad-grid.hand { background: linear-gradient(to top, rgba(6, 8, 14, .62), rgba(6, 8, 14, .12) 72%, transparent); padding: 4px 6px 3px; }
 .hcard { position: relative; cursor: pointer; border-radius: 8px; transition: transform .1s; }
 .hcard:hover { transform: translateY(-2px); }
 .hcard.rested { opacity: .38; cursor: default; filter: grayscale(.6); }

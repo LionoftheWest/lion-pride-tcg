@@ -12,6 +12,8 @@
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { mountBoss } from './boss.js';
+import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
+import { cardElement, ELEMENTS } from './elements.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -65,9 +67,50 @@ const SFX = (() => {
       const data = buf.getChannelData(0);
       for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
       noise = buf;
+      loadSamples();
     } catch { ctx = null; }
     return ctx;
   }
+  // Real recorded attack sounds (public/sfx/<element>.mp3). Fall back to the
+  // synthesized slot below until a sample finishes decoding.
+  const ELEMENT_SFX = ['fire', 'water', 'lightning', 'ice', 'nature', 'earth', 'air', 'shadow', 'light', 'arcane', 'psychic', 'toxic', 'metal', 'physical'];
+  const BOSS_SFX = ['curse', 'defeat', 'enrage', 'slam', 'strike', 'stunned'];
+  const MON_SFX = ['roar1', 'roar2', 'roar3', 'roar4', 'growl1', 'growl2', 'growl3'];
+  const UI_SFX = ['tear', 'flip', 'page', 'rare', 'reveal', 'click'];
+  const samples = {};
+  let samplesLoading = false;
+  function decodeInto(url, key) {
+    fetch(url)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+      .then((buf) => ctx.decodeAudioData(buf))
+      .then((audio) => { samples[key] = audio; })
+      .catch(() => {});
+  }
+  function loadSamples() {
+    if (samplesLoading || !ctx) return;
+    samplesLoading = true;
+    for (const n of ELEMENT_SFX) decodeInto(`sfx/${n}.mp3`, n);
+    for (const n of BOSS_SFX) decodeInto(`sfx/boss/${n}.mp3`, `boss:${n}`);
+    for (const n of MON_SFX) decodeInto(`sfx/monster/${n}.mp3`, `mon:${n}`);
+    // UI sounds override the synthesized slots of the same name (tear/flip/page/rare),
+    // plus 'reveal' (cards spill out) and 'click' (open a card).
+    for (const n of UI_SFX) decodeInto(`sfx/ui/${n}.mp3`, n);
+  }
+  const active = new Set(); // playing sample sources, so we can cut them when leaving battle
+  function playSample(name, peak = 0.9, maxDur = 2.5) {
+    if (!samples[name]) return false;
+    const src = ctx.createBufferSource();
+    src.buffer = samples[name];
+    const g = ctx.createGain();
+    g.gain.value = peak;
+    src.connect(g).connect(master);
+    active.add(src);
+    src.onended = () => active.delete(src);
+    src.start();
+    if (maxDur) { try { src.stop(ctx.currentTime + maxDur); } catch {} } // cap length so long clips can't overrun
+    return true;
+  }
+  function stopAllSamples() { for (const s of active) { try { s.stop(); } catch {} } active.clear(); }
   function envelope(gain, t0, dur, peak) {
     gain.setValueAtTime(0.0001, t0);
     gain.exponentialRampToValueAtTime(peak, t0 + Math.min(0.02, dur * 0.25));
@@ -111,12 +154,51 @@ const SFX = (() => {
       [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone({ freq: f, type: 'triangle', dur: 0.5, peak: 0.32 }), i * 120));
       setTimeout(() => tone({ freq: 1568, type: 'sine', dur: 0.8, peak: 0.22 }), 520);
     },
+    // Per-element attack sounds, synthesized to match each 3D effect.
+    fire: () => { swish({ dur: 0.6, f0: 180, f1: 900, q: 0.7, peak: 0.5 }); tone({ freq: 90, type: 'sawtooth', dur: 0.5, peak: 0.25, glide: 60 }); },
+    water: () => { swish({ dur: 0.5, f0: 300, f1: 1500, q: 0.8, peak: 0.45 }); tone({ freq: 420, type: 'sine', dur: 0.4, peak: 0.2, glide: 160 }); },
+    lightning: () => { swish({ dur: 0.12, f0: 2000, f1: 5000, q: 1.4, peak: 0.5 }); tone({ freq: 1800, type: 'square', dur: 0.08, peak: 0.3, glide: 400 }); setTimeout(() => swish({ dur: 0.25, f0: 800, f1: 3000, q: 1, peak: 0.3 }), 40); },
+    ice: () => { [1400, 1900, 2500].forEach((f, i) => setTimeout(() => tone({ freq: f, type: 'triangle', dur: 0.3, peak: 0.22 }), i * 60)); swish({ dur: 0.3, f0: 1200, f1: 3400, q: 1.2, peak: 0.3 }); },
+    nature: () => { swish({ dur: 0.5, f0: 400, f1: 1400, q: 0.7, peak: 0.35 }); tone({ freq: 260, type: 'sine', dur: 0.4, peak: 0.18, glide: 380 }); },
+    earth: () => { tone({ freq: 70, type: 'sine', dur: 0.6, peak: 0.5, glide: 40 }); swish({ dur: 0.5, f0: 120, f1: 500, q: 0.6, peak: 0.4 }); },
+    air: () => swish({ dur: 0.6, f0: 500, f1: 2600, q: 0.5, peak: 0.4 }),
+    shadow: () => { swish({ dur: 0.6, f0: 200, f1: 700, q: 0.8, peak: 0.4 }); tone({ freq: 300, type: 'sine', dur: 0.6, peak: 0.22, glide: 90 }); },
+    light: () => { [784, 1047, 1319, 1568].forEach((f, i) => setTimeout(() => tone({ freq: f, type: 'sine', dur: 0.5, peak: 0.24 }), i * 70)); swish({ dur: 0.35, f0: 1500, f1: 3800, q: 0.9, peak: 0.28 }); },
+    arcane: () => { [880, 1175, 1397].forEach((f, i) => setTimeout(() => tone({ freq: f, type: 'triangle', dur: 0.45, peak: 0.22 }), i * 80)); swish({ dur: 0.3, f0: 1000, f1: 2600, q: 1, peak: 0.24 }); },
+    psychic: () => { tone({ freq: 600, type: 'sine', dur: 0.5, peak: 0.26, glide: 900 }); tone({ freq: 520, type: 'sine', dur: 0.5, peak: 0.2, glide: 300 }); },
+    toxic: () => { swish({ dur: 0.45, f0: 150, f1: 800, q: 0.9, peak: 0.4 }); tone({ freq: 140, type: 'square', dur: 0.3, peak: 0.2, glide: 70 }); },
+    metal: () => { tone({ freq: 2400, type: 'square', dur: 0.18, peak: 0.3, glide: 1600 }); tone({ freq: 3200, type: 'sine', dur: 0.5, peak: 0.18 }); swish({ dur: 0.2, f0: 1800, f1: 4200, q: 1.4, peak: 0.3 }); },
+    physical: () => { tone({ freq: 80, type: 'sine', dur: 0.22, peak: 0.5, glide: 45 }); swish({ dur: 0.18, f0: 200, f1: 900, q: 0.8, peak: 0.35 }); },
   };
-  return {
-    play(name) { if (muted || !ensure()) return; if (ctx.state === 'suspended') ctx.resume(); try { slots[name] && slots[name](); } catch {} },
+  const api = {
+    play(name) { if (muted || !ensure()) return; if (ctx.state === 'suspended') ctx.resume(); try { if (playSample(name)) return; slots[name] && slots[name](); } catch {} },
+    sample(key, peak) { if (muted || !ensure()) return false; if (ctx.state === 'suspended') ctx.resume(); try { return playSample(key, peak); } catch { return false; } },
+    playBoss(kind) { return api.sample(`boss:${kind}`, 0.85); },
+    stopAll() { stopAllSamples(); },
     unlock() { if (ensure() && ctx.state === 'suspended') ctx.resume(); },
-    toggle() { muted = !muted; try { localStorage.setItem('lp_muted', muted ? '1' : '0'); } catch {} if (master) master.gain.value = muted ? 0 : 0.55; return muted; },
+    toggle() { muted = !muted; try { localStorage.setItem('lp_muted', muted ? '1' : '0'); } catch {} if (master) master.gain.value = muted ? 0 : 0.55; Music.syncMute(); return muted; },
     muted: () => muted,
+  };
+  return api;
+})();
+
+// Battle background music — cycles the 4 tracks while the player is in a fight.
+// All tracks are preloaded so the hand-off between songs is instant (no load gap).
+const Music = (() => {
+  const TRACKS = ['sfx/music/battle1.mp3', 'sfx/music/battle2.mp3', 'sfx/music/battle3.mp3', 'sfx/music/battle4.mp3'];
+  let els = null, i = 0, on = false;
+  function ensure() {
+    if (!els) {
+      els = TRACKS.map((src) => { const a = new Audio(src); a.volume = 0.24; a.preload = 'auto'; try { a.load(); } catch {} return a; });
+      els.forEach((a, idx) => a.addEventListener('ended', () => { if (!on) return; i = (idx + 1) % els.length; playCurrent(); }));
+    }
+    return els;
+  }
+  function playCurrent() { ensure(); const a = els[i]; try { a.currentTime = 0; } catch {} if (on && !SFX.muted()) a.play().catch(() => {}); }
+  return {
+    start() { if (on) return; on = true; ensure(); i = Math.floor(Math.random() * els.length); playCurrent(); },
+    stop() { on = false; if (els) els.forEach((a) => a.pause()); },
+    syncMute() { if (!els) return; if (SFX.muted() || !on) els.forEach((a) => a.pause()); else playCurrent(); },
   };
 })();
 
@@ -133,7 +215,7 @@ let bossHandle = null; // the live WebGL boss creature on the battle screen (Pha
 
 const live = { pulls: [], presence: [], attacks: [] };
 const ATTACKER_TYPES = ['Character', 'Creature']; // only these can attack; others are support
-const squad = { page: 0, q: '', rarity: 'all', type: 'all' }; // battle picker (gallery-style)
+const squad = { page: 0, q: '', rarity: 'all', type: 'all', locked: false, ko: false }; // battle picker (gallery-style)
 let usedIds = new Set(); // card ids already sent at the boss today (client mirror of the cap)
 let feedTopId = 0; // newest boss-feed event id shown (so polls only animate in newer ones)
 let huntDay = ''; // UTC date of the current hunt render; a change means the daily reset hit
@@ -143,7 +225,10 @@ const cache = {};
 let myCardIds = new Set(); // card ids the caller owns — so feed cards you own show their art
 const page = { collection: 0 };
 // Gallery view controls (search / filter / which season is expanded).
-const gallery = { q: '', rarity: 'all', owned: 'all', season: null, page: 0 };
+// `section` is the Gallery sub-tab: 'cards' (the collection catalog) or 'bosses'
+// (the raid-boss bestiary). Add more entries to GAL_SECTIONS to grow it.
+const gallery = { q: '', rarity: 'all', owned: 'all', season: null, page: 0, section: 'cards' };
+const GAL_SECTIONS = [['cards', 'Cards'], ['bosses', 'Raid Bosses']];
 
 async function main() {
   loaderMsg('Connecting to Discord…');
@@ -173,6 +258,10 @@ async function main() {
 
   setStatus('');
   el('nav').classList.remove('hidden');
+  el('openTop')?.addEventListener('click', openPacks); // Open Pack button by the brand title
+  el('bossMini')?.addEventListener('click', (e) => { if (e.target.closest('.mb-stage')) openBossModal(); }); // click the boss -> detail
+  el('bossModalClose')?.addEventListener('click', closeBossModal);
+  el('bossModal')?.addEventListener('click', (e) => { if (e.target === el('bossModal')) closeBossModal(); });
   el('body').classList.remove('hidden');
   el('loader').classList.add('gone'); // fade the loading screen away
 
@@ -229,13 +318,14 @@ async function refreshPackStatus() {
 }
 
 function updateOpenButton() {
-  const slot = el('openSlot');
-  if (!slot) return;
-  slot.innerHTML = packsAvailable > 0
-    ? `<button class="open-btn" id="openBtn">Open Pack${packsAvailable > 1 ? ` ×${packsAvailable}` : ''}</button>`
-    : '';
-  const btn = el('openBtn');
-  if (btn) btn.addEventListener('click', openPacks);
+  const btn = el('openTop'); // the Open Pack button lives up by the brand title now
+  if (!btn) return;
+  if (packsAvailable > 0) {
+    btn.textContent = `🎴 Open Pack${packsAvailable > 1 ? ` ×${packsAvailable}` : ''}`;
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+  }
 }
 
 const api = (path) => fetch(path, { headers: { authorization: `Bearer ${token}` } }).then((r) => r.json());
@@ -358,7 +448,6 @@ async function show(view) {
 function mainHead(title) {
   return `<div class="main-head">
     <div class="mh-title">${title}<span id="presSlot">${presenceHTML()}</span><span id="powerSlot" class="power-slot"></span></div>
-    <span id="openSlot"></span>
   </div>`;
 }
 
@@ -381,7 +470,22 @@ function updatePresence() {
 // Tear down the live boss when we leave the battle screen (frees the WebGL context).
 function disposeBoss() {
   if (bossHandle) { try { bossHandle.dispose(); } catch (e) { /* ignore */ } bossHandle = null; }
+  stopMonsterIdle();
+  Music.stop();
+  SFX.stopAll(); // cut any attack/boss sound still playing when the battle screen closes
 }
+
+// Each monster gets its own randomized "voice" (roars + growls) from the shared
+// ambient pool, seeded by name so the same boss sounds consistent across the week.
+let bossVoice = null;
+let monsterIdle = null;
+const _ROARS = ['roar1', 'roar2', 'roar3', 'roar4'];
+const _GROWLS = ['growl1', 'growl2', 'growl3'];
+function hashStr(s) { s = String(s || 'boss'); let h = 0; for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+function pickBossVoice(name) { const h = hashStr(name); return { roar: _ROARS[h % _ROARS.length], growls: [_GROWLS[h % _GROWLS.length], _GROWLS[(h >> 4) % _GROWLS.length]] }; }
+function bossGrowl(peak) { if (!bossVoice) return; const g = bossVoice.growls[Math.floor(Math.random() * bossVoice.growls.length)]; SFX.sample(`mon:${g}`, peak == null ? 0.45 : peak); }
+function startMonsterIdle() { stopMonsterIdle(); monsterIdle = setInterval(() => { if (currentView === 'battling' && squad.phase === 'battle') bossGrowl(0.24); }, 8000 + Math.random() * 4000); }
+function stopMonsterIdle() { if (monsterIdle) { clearInterval(monsterIdle); monsterIdle = null; } }
 
 // Build the seeded creature into the battle-screen canvas (WebGL). Fails silently
 // if the webview has no WebGL — the rest of the screen still works.
@@ -391,12 +495,21 @@ function mountBossFor(hunt) {
   if (!cv || !hunt) return;
   try {
     bossHandle = mountBoss(cv, hunt.name || 'boss', hunt.tier);
-    if (hunt.status === 'defeated' || hunt.hp_remaining <= 0) bossHandle.defeat();
+    bossVoice = pickBossVoice(hunt.name || hunt.id);
+    if (hunt.status === 'defeated' || hunt.hp_remaining <= 0) {
+      bossHandle.defeat();
+    } else if (squad.phase === 'battle') {
+      // Boss ambient + music only during the ACTIVE fight (post Lock In), never in squad select.
+      setTimeout(() => { if (squad.phase === 'battle') SFX.sample(`mon:${bossVoice.roar}`, 0.7); }, 320); // spawn roar
+      Music.start();
+      startMonsterIdle();
+    }
   } catch (e) { bossHandle = null; }
 }
 
 function renderMain(view) {
   disposeBoss(); // any view change tears the boss down; renderHunt re-mounts it
+  { const bm = el('bossMini'); if (bm) bm.innerHTML = ''; } // clear the sidebar boss square
   stopHuntTicker(); // stop the boss/cooldown countdown; renderHunt restarts it
   if (view === 'gallery') { renderGallery(); return; }
   if (view === 'trading') { renderTrading(); return; }
@@ -514,31 +627,43 @@ function renderGallery() {
   const seasonSel = seasons.length > 1
     ? `<select id="gseason" class="gselect">${seasons.map((s) => `<option value="${esc(s)}"${gallery.season === s ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select>`
     : '';
-  el('main').innerHTML =
-    mainHead('Gallery') +
-    `<div class="gal-controls">
-       <input id="gsearch" class="ginput" placeholder="Search cards…" value="${esc(gallery.q)}">
+  const sectionTabs = `<div class="gal-sections">${GAL_SECTIONS
+    .map(([v, l]) => `<button class="gsec${gallery.section === v ? ' active' : ''}" data-section="${v}">${l}</button>`).join('')}</div>`;
+  // The card filters only make sense in the Cards section; the Raid Bosses
+  // section is a fixed bestiary, so it shows just the section tabs.
+  const cardControls = gallery.section === 'cards'
+    ? `<input id="gsearch" class="ginput" placeholder="Search cards…" value="${esc(gallery.q)}">
        <select id="gfilter" class="gselect">${rarityOpts}</select>
        <select id="gowned" class="gselect">${ownedOpts}</select>
-       ${seasonSel}
-     </div>
+       ${seasonSel}`
+    : '';
+  el('main').innerHTML =
+    mainHead('Gallery') +
+    `<div class="gal-controls">${sectionTabs}${cardControls}</div>
      <div class="main-body">
        <div class="gal-bar" id="galBar"></div>
        <div class="page-grid" id="pageGrid"></div>
        <div class="pager" id="pager"></div>
      </div>`;
   updateOpenButton();
-  el('gsearch').addEventListener('input', (e) => { gallery.q = e.target.value; gallery.page = 0; paintGalleryPage(); });
-  el('gfilter').addEventListener('change', (e) => { gallery.rarity = e.target.value; gallery.page = 0; paintGalleryPage(); });
-  el('gowned').addEventListener('change', (e) => { gallery.owned = e.target.value; gallery.page = 0; paintGalleryPage(); });
-  const gs = el('gseason');
-  if (gs) gs.addEventListener('change', (e) => { gallery.season = e.target.value; gallery.page = 0; paintGalleryPage(); });
+  el('main').querySelectorAll('.gsec').forEach((btn) => btn.addEventListener('click', () => {
+    if (gallery.section === btn.dataset.section) return;
+    gallery.section = btn.dataset.section; gallery.page = 0; renderGallery();
+  }));
+  if (gallery.section === 'cards') {
+    el('gsearch').addEventListener('input', (e) => { gallery.q = e.target.value; gallery.page = 0; paintGalleryPage(); });
+    el('gfilter').addEventListener('change', (e) => { gallery.rarity = e.target.value; gallery.page = 0; paintGalleryPage(); });
+    el('gowned').addEventListener('change', (e) => { gallery.owned = e.target.value; gallery.page = 0; paintGalleryPage(); });
+    const gs = el('gseason');
+    if (gs) gs.addEventListener('change', (e) => { gallery.season = e.target.value; gallery.page = 0; paintGalleryPage(); });
+  }
   paintGalleryPage();
 }
 
 function paintGalleryPage(dir) {
   const grid = el('pageGrid');
   if (!grid) return;
+  if (gallery.section === 'bosses') { paintBossGrid(dir); return; }
   const inSeason = galleryCards().filter((c) => (c.season || 'Season 1') === gallery.season);
   const items = applyFilters(inSeason);
   const bar = el('galBar');
@@ -555,15 +680,40 @@ function paintGalleryPage(dir) {
   galleryPager(pages);
 }
 
+// ---- Raid Boss bestiary (a Gallery section) --------------------------------
+// A no-scroll paged grid of boss thumbnails, reusing the card grid machinery.
+// Clicking a boss opens the shared boss viewer (#bossModal) with the live model.
+function bossTile(b, idx) {
+  return `<div class="c boss-tile" data-boss="${idx}">
+    <div class="art"><img src="${thumbFor(b)}" alt="${esc(b.title)}" loading="lazy"></div>
+    <div class="cap">${esc(b.title)}</div>
+  </div>`;
+}
+function paintBossGrid(dir) {
+  const grid = el('pageGrid');
+  if (!grid) return;
+  const items = BOSS_LIST;
+  const bar = el('galBar');
+  if (bar) bar.innerHTML = `<span class="gs-name">Raid Bosses</span><span class="gs-count">${items.length}</span>`;
+  const perPage = computeLayout(grid);
+  const pages = Math.max(1, Math.ceil(items.length / perPage));
+  gallery.page = Math.min(Math.max(0, gallery.page), pages - 1);
+  const start = gallery.page * perPage;
+  const slice = items.slice(start, start + perPage);
+  mainItems = []; // boss tiles use data-boss, not the card-viewer data-idx path
+  grid.innerHTML = slice.map((b, i) => bossTile(b, start + i)).join('');
+  gridAnim(grid, dir);
+  galleryPager(pages);
+}
+
 function galleryPager(pages) {
   const pager = el('pager');
   if (!pager) return;
   if (pages <= 1) { pager.innerHTML = ''; return; }
   const p = gallery.page;
-  const dots = Array.from({ length: pages }, (_, i) => `<span class="pdot${i === p ? ' on' : ''}"></span>`).join('');
   pager.innerHTML =
     `<button class="parrow" id="prev" ${p === 0 ? 'disabled' : ''}>‹</button>
-     <span class="pdots">${dots}</span>
+     <span class="pcount">${p + 1} of ${pages}</span>
      <button class="parrow" id="next" ${p >= pages - 1 ? 'disabled' : ''}>›</button>`;
   el('prev').addEventListener('click', () => { gallery.page -= 1; paintGalleryPage('prev'); });
   el('next').addEventListener('click', () => { gallery.page += 1; paintGalleryPage('next'); });
@@ -574,10 +724,9 @@ function renderPager(view, pages) {
   if (!pager) return;
   if (pages <= 1) { pager.innerHTML = ''; return; }
   const p = page[view];
-  const dots = Array.from({ length: pages }, (_, i) => `<span class="pdot${i === p ? ' on' : ''}"></span>`).join('');
   pager.innerHTML =
     `<button class="parrow" id="prev" ${p === 0 ? 'disabled' : ''}>‹</button>
-     <span class="pdots">${dots}</span>
+     <span class="pcount">${p + 1} of ${pages}</span>
      <button class="parrow" id="next" ${p >= pages - 1 ? 'disabled' : ''}>›</button>`;
   el('prev').addEventListener('click', () => { page[view] -= 1; paintPage(view, 'prev'); });
   el('next').addEventListener('click', () => { page[view] += 1; paintPage(view, 'next'); });
@@ -664,13 +813,13 @@ function showReveal(msg) {
      <div class="reveal-grid hidden" id="revealGrid">${tiles}</div>
      <div class="reveal-prompt hidden" id="revealPrompt">Tap each card to reveal it</div>
      <div class="reacts" id="reactBar">${REACTIONS.map((e) => `<button class="react" data-emoji="${e}">${e}</button>`).join('')}
-       <button class="reveal-close" id="revealClose">Back</button>
+       <button class="reveal-close hidden" id="revealDone">Done</button>
      </div>`;
   el('reactBar').addEventListener('click', (e) => {
     const emoji = e.target?.dataset?.emoji;
     if (emoji && roomWs && roomWs.readyState === 1) roomWs.send(JSON.stringify({ type: 'react', emoji }));
   });
-  el('revealClose').addEventListener('click', endReveal);
+  el('revealDone').addEventListener('click', endReveal); // only shown once every card is revealed
   el('packOpen').addEventListener('click', () => tearPack(rare));
   setupPackTilt(el('packOpen'));
   // Preload the tear animation NOW (while the player reads "tap the pack") so the
@@ -714,7 +863,7 @@ function tearPack(rare) {
   const shell = el('packShell'); if (shell) shell.style.transform = '';
   if (img) { img.src = pack.dataset.tear || `/tear_open.webp?t=${Date.now()}`; }
   const stage = el('stage');
-  if (rare) setTimeout(() => { sunRays(stage); packSparkles(); SFX.play('rare'); }, 900);
+  if (rare) setTimeout(() => { sunRays(stage); packSparkles(); }, 900); // rare sound waits for the actual rare flip
   // Once the rip has played, the cards EJECT from inside the pack and the pack
   // sinks away beneath them. The pack is PINNED (position:fixed) and taken OUT OF
   // FLOW first, so the reveal grid settles in the CENTRE immediately. Otherwise the
@@ -742,6 +891,7 @@ function tearPack(rare) {
       fc.style.setProperty('--fromY', `${(oy - (r.top + r.height / 2)).toFixed(0)}px`);
       fc.style.setProperty('--fromR', `${(Math.random() * 34 - 17).toFixed(1)}deg`);
     });
+    SFX.play('reveal'); // cards spill out of the opened pack
     requestAnimationFrame(() => grid.classList.add('go')); // eject the cards
     const rp = el('revealPrompt');
     if (rp) rp.classList.remove('hidden');
@@ -792,7 +942,9 @@ function flipCard(fc, card) {
   }
   if (flippedCount >= revealItems.length) {
     const p = el('revealPrompt');
-    if (p) p.textContent = 'Tap a card to inspect it · Back to close';
+    if (p) p.textContent = ''; // no subtitle once everything is revealed
+    const done = el('revealDone');
+    if (done) done.classList.remove('hidden'); // now they may leave
   }
 }
 
@@ -919,6 +1071,11 @@ function fmtLeft(ms) {
 function cdSpan(iso, prefix, cls) {
   return `<span class="${cls}" data-until="${iso}" data-prefix="${esc(prefix)}">${esc(prefix)} ${fmtLeft(new Date(iso) - Date.now())}</span>`;
 }
+// Next UTC midnight — when the daily squad resets (one squad per day).
+function nextUtcResetISO() {
+  const n = new Date();
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1, 0, 0, 0)).toISOString();
+}
 let huntTicker = null;
 let huntTick = 0;
 function stopHuntTicker() { if (huntTicker) { clearInterval(huntTicker); huntTicker = null; } }
@@ -949,7 +1106,7 @@ async function renderHunt() {
   disposeBoss(); // renderHunt can be called directly (e.g. hunt_over) — reset the boss
   // Instant open: paint the last known state right away, then refresh in the background.
   if (huntCache) { paintHuntView(huntCache); backgroundRefreshHunt(); return; }
-  el('main').innerHTML = mainHead(TITLES.battling) + '<div class="main-body"><div class="loading">Summoning the hunt…</div></div>';
+  el('main').innerHTML = '<div class="main-body"><div class="loading">Summoning the hunt…</div></div>';
   let d;
   try { d = await api('/api/hunt'); } catch { d = null; }
   huntCache = d;
@@ -959,18 +1116,34 @@ async function renderHunt() {
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
 function paintHuntView(d) {
   if (!d || !d.hunt) {
-    el('main').innerHTML = mainHead(TITLES.battling) + `<div class="main-body">${cooldownHTML(d)}</div>`;
+    el('main').innerHTML = `<div class="main-body">${cooldownHTML(d)}</div>`;
+    renderBossMini(); // no active boss -> clears the sidebar square
     startHuntTicker(); // count down to the next spawn
     return;
   }
   huntState = d;
   huntDay = utcToday(); // remember the day so the ticker can detect the daily reset
   const saved = loadTeam(d.hunt.id);
-  if (saved && saved.length) { squad.phase = 'battle'; squad.sel = new Set(saved); }
-  else { squad.phase = 'select'; squad.page = 0; squad.sel = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id)); }
-  el('main').innerHTML = mainHead(TITLES.battling) + huntHTML(d);
-  wireHunt();
-  mountBossFor(d.hunt); // spawn the live creature into the boss canvas
+  // A saved squad only holds while the server still shows committed cards. If the day's
+  // squad was reset server-side (usedToday === 0), the device lock is stale — drop it and
+  // return to squad selection so the player re-picks.
+  // One squad per day: if every committed attacker is downed, the day's run is over.
+  const committedAtk = (d.roster || []).filter((c) => c.used && ATTACKER_TYPES.includes(c.type));
+  const koForDay = committedAtk.length > 0 && committedAtk.every((c) => c.downed);
+  if (koForDay) {
+    squad.phase = 'select'; squad.ko = true; squad.locked = false; squad.page = 0;
+    squad.sel = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
+  } else if (saved && saved.length && (d.usedToday || 0) > 0) {
+    squad.phase = 'battle'; squad.ko = false; squad.sel = new Set(saved);
+  } else {
+    if (saved) clearTeam(d.hunt.id);
+    squad.phase = 'select'; squad.ko = false; squad.locked = false; squad.page = 0;
+    squad.sel = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
+  }
+  el('main').innerHTML = huntHTML(d); // no "Battling" head — more room for the picker/arena
+  renderBossMini();     // sidebar boss square (holds #huntLbBtn + #bossCanvas in select/ko)
+  wireHunt();           // wire after the square exists so the standings button binds
+  mountBossFor(d.hunt); // spawn the live creature into the boss canvas (sidebar or arena)
   refreshHuntFeed();    // load the live attack feed
   startHuntTicker(); // count down to the Monday deadline + poll the feed
 }
@@ -1028,7 +1201,10 @@ function weakResistHTML(h) {
   const parts = [];
   if (w) parts.push(`Weak to ${w}`);
   if (r) parts.push(`Resists ${r}`);
-  return `<span class="weaks">${parts.join(' · ') || 'No weakness'}</span>`;
+  const base = `<span class="weaks">${parts.join(' · ') || 'No weakness'}</span>`;
+  const pk = h.passive && h.passive.kind;
+  const passive = pk ? `<span class="passive-chip" title="${esc(h.passive.label || '')}">☠ ${esc(pk.charAt(0).toUpperCase() + pk.slice(1))}</span>` : '';
+  return base + passive;
 }
 
 function huntHTML(d) {
@@ -1036,17 +1212,81 @@ function huntHTML(d) {
   usedIds = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   // Battle phase = a full-bleed arena (boss fills the pane, squad overlays the bottom).
   if (squad.phase === 'battle') return `<div class="main-body hunt arena-mode">${battlePhaseHTML(d)}</div>`;
+  // The boss now lives as a compact square atop the Raid Boss feed (right sidebar),
+  // so the whole main pane is the squad picker.
+  return `<div class="main-body hunt select-mode${squad.ko ? ' ko' : ''}">${selectPhaseHTML(d)}</div>`;
+}
+
+// Compact "raid boss live" square — rendered into the right sidebar during squad select.
+function bossMiniHTML(d) {
+  const h = d && d.hunt;
+  if (!h) return '';
   const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
-  // weak + resist chips are rendered by weakResistHTML(h)
   const defeated = h.status === 'defeated' || h.hp_remaining <= 0;
-  const boss = `<div class="boss${defeated ? ' down' : ''}">
-      <div class="boss-stage"><canvas id="bossCanvas"></canvas></div>
-      <div class="boss-top"><span class="boss-name">${esc(h.name)}</span><span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span></div>
-      <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext" id="hpText">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
-      <div class="boss-meta">${weakResistHTML(h)}${defeated ? '<span class="closes">DEFEATED</span>' : cdSpan(h.closes_at, 'Beat in', 'closes countdown')}</div>
-      <div class="boss-meta"><span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span><span class="fighters-now" id="fighterCount"></span><span id="usedSlot" class="used-slot">Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}</span><button class="hunt-lb" id="huntLbBtn">🏆 Standings</button></div>
+  return `<div class="miniboss${defeated ? ' down' : ''}">
+      <div class="mb-stage mb-open" id="mbStage" title="View boss details"><canvas id="bossCanvas"></canvas><span class="mb-expand">⤢</span></div>
+      <div class="mb-info">
+        <div class="mb-live"><span class="live-dot"></span>RAID BOSS LIVE</div>
+        <div class="mb-name"><span class="boss-name">${esc(h.name)}</span><span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span></div>
+        <div class="hpbar mini"><div class="hpfill" style="width:${pct}%"></div><span class="hptext" id="hpText">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
+        <div class="mb-meta">${defeated ? '<span class="closes">DEFEATED</span>' : cdSpan(h.closes_at, 'Beat in', 'closes countdown')}<button class="hunt-lb" id="huntLbBtn">🏆 Standings</button></div>
+      </div>
     </div>`;
-  return `<div class="main-body hunt">${boss}${selectPhaseHTML(d)}</div>`;
+}
+// Fill (or clear) the sidebar boss square. Called on view/phase change only — NOT on
+// feed polls — so the WebGL canvas is never torn out from under a live mount.
+function renderBossMini() {
+  const bm = el('bossMini');
+  if (!bm) return;
+  bm.innerHTML = (currentView === 'battling' && huntState && huntState.hunt && squad.phase !== 'battle') ? bossMiniHTML(huntState) : '';
+}
+
+// Boss detail popup: a big 3D view + full stats + move pool (generic for now).
+let bossModalHandle = null;
+const BOSS_MOVES = [
+  ['Slam', 'A heavy ground smash for big damage'],
+  ['Strike', 'A quick jab at your card'],
+  ['Enrage', 'Powers up — harder hits for a few rounds'],
+  ['Curse', 'Hexes a card so it hits softer'],
+  ['Stunned', 'A support can rob it of a turn'],
+];
+function openBossModal() {
+  const h = huntState && huntState.hunt;
+  if (!h) return;
+  const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
+  const defeated = h.status === 'defeated' || h.hp_remaining <= 0;
+  const chipList = (arr, cls) => (arr || []).map((w) => `<span class="${cls}">${esc(tagLabel(w.value))}</span>`).join(' ');
+  const wk = chipList(h.weak_points, 'weak-chip');
+  const rs = chipList(h.resist_points, 'resist-chip');
+  const pk = h.passive && h.passive.kind;
+  const passive = pk ? `<span class="passive-chip" title="${esc(h.passive.label || '')}">☠ ${esc(pk.charAt(0).toUpperCase() + pk.slice(1))}</span>` : '';
+  el('bossModalInfo').innerHTML =
+    `<div class="mb-live"><span class="live-dot"></span>RAID BOSS LIVE</div>
+     <h2 class="bm-name"><span class="boss-name">${esc(h.name)}</span><span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span></h2>
+     <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
+     <div class="bm-sec">
+       <div class="bm-stat"><span class="bm-k">Weakness</span><span class="bm-v">${wk || '<span class="bm-none">None</span>'}</span></div>
+       <div class="bm-stat"><span class="bm-k">Resistance</span><span class="bm-v">${rs || '<span class="bm-none">None</span>'}</span></div>
+       ${passive ? `<div class="bm-stat"><span class="bm-k">Passive</span><span class="bm-v">${passive}</span></div>` : ''}
+     </div>
+     <div class="bm-sec"><div class="bm-sec-h">Move Pool</div><ul class="bm-moves">${BOSS_MOVES.map(([n, d]) => `<li><b>${n}</b> — ${d}</li>`).join('')}</ul></div>`;
+  el('bossModal').classList.remove('hidden');
+  try { bossModalHandle = mountBoss(el('bossModalCanvas'), h.name || 'boss', h.tier); if (defeated) bossModalHandle.defeat(); } catch (e) { bossModalHandle = null; }
+}
+function closeBossModal() {
+  if (bossModalHandle) { try { bossModalHandle.dispose(); } catch (e) { /* ignore */ } bossModalHandle = null; }
+  el('bossModal').classList.add('hidden');
+}
+// Gallery bestiary viewer: the same #bossModal, but showing a canonical model +
+// its lore instead of a live hunt's stats. Reuses bossModalHandle + closeBossModal.
+function openBossGallery(b) {
+  if (!b) return;
+  el('bossModalInfo').innerHTML =
+    `<div class="mb-live gal-boss-tag">RAID BOSS</div>
+     <h2 class="bm-name"><span class="boss-name">${esc(b.title)}</span></h2>
+     <p class="v-lore">${esc(b.blurb || '')}</p>`;
+  el('bossModal').classList.remove('hidden');
+  try { bossModalHandle = mountBoss(el('bossModalCanvas'), seedForBoss(b), 'Mythic'); } catch (e) { bossModalHandle = null; }
 }
 
 // --- Phase 1: pick the squad from the whole collection (paginated, gallery-style) ---
@@ -1062,12 +1302,102 @@ function selectPhaseHTML(d) {
       <select id="hrarity" class="gselect">${rarityOpts}</select>
       <select id="htype" class="gselect">${typeOpts}</select>
     </div>
+    <div class="pager" id="huntPager"></div>
     <div class="squad-grid" id="huntGrid"></div>
-    <div class="squad-foot">
-      <div class="pager" id="huntPager"></div>
-      <button class="autopick-btn" id="autoPickBtn">✨ Auto-pick</button>
-      <button class="lockin-btn" id="lockInBtn" disabled>🔒 Lock In <b id="selCount">${squad.sel.size}</b>/${cap}</button>
+    <div class="squad-panel">
+      <div class="squad-toprow">
+        <div class="squad-left">
+          <div class="cp-big" id="cpBig"></div>
+          <div class="squad-synergy" id="squadSynergy"></div>
+        </div>
+        <div class="squad-tray" id="squadTray"></div>
+      </div>
+      ${squad.ko ? `<div class="squad-foot ko">
+        <div class="ko-note">💀 Your squad is down — one squad per day. Regroup at the reset.</div>
+        <span class="enter-btn ko-cd">🔒 ${cdSpan(nextUtcResetISO(), 'Next battle in', 'countdown kores')}</span>
+      </div>` : `<div class="squad-foot">
+        <button class="autopick-btn" id="autoPickBtn">✨ Auto-pick</button>
+        <button class="lockin-btn" id="lockInBtn" disabled>🔒 Lock In <b id="selCount">${squad.sel.size}</b>/${cap}</button>
+        <button class="enter-btn" id="enterBattleBtn" disabled>Enter Battle ▶</button>
+      </div>`}
     </div>`;
+}
+
+// The live synergy readout + the 8 squad slots, recomputed as the player picks.
+const SYN_MAX = 5, SYN_MIN = 3; // a synergy is ACTIVE at 3 cards and maxes out at 5 (GAME_LABELS defined below, shared with the card viewer)
+const titleCase = (s) => String(s || '').replace(/[-_]/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+function computeSquadStats() {
+  const roster = huntState?.roster || [];
+  const sel = [...squad.sel].map((id) => roster.find((c) => c.id === id)).filter(Boolean);
+  const attackers = sel.filter((c) => ATTACKER_TYPES.includes(c.type));
+  const cp = attackers.reduce((s, c) => s + (c.power || 0), 0);
+  const elem = {}, origin = {}, kind = {};
+  for (const c of attackers) {
+    const t = c.tags || {};
+    const e = cardElement(t); if (e) elem[e] = (elem[e] || 0) + 1;
+    if (t.origin) origin[t.origin] = (origin[t.origin] || 0) + 1;
+    for (const tr of (Array.isArray(t.traits) ? t.traits : [])) {
+      if (!cardElement([tr])) { const k = String(tr).toLowerCase(); kind[k] = (kind[k] || 0) + 1; } // element traits handled above
+    }
+  }
+  const syn = [];
+  for (const [e, n] of Object.entries(elem)) syn.push({ key: 'element', label: `${ELEMENTS[e]?.glyph || ''} ${titleCase(e)}`.trim(), n });
+  for (const [o, n] of Object.entries(origin)) syn.push({ key: 'origin', label: GAME_LABELS[o] || titleCase(o), n });
+  for (const [k, n] of Object.entries(kind)) syn.push({ key: 'trait', label: titleCase(k), n });
+  syn.sort((a, b) => b.n - a.n);
+  // Effective CP = raw power scaled by each card's synergy multiplier (mirrors the engine).
+  const em = (n) => (n >= 5 ? 1.20 : n >= 3 ? 1.12 : 1);
+  const om = (n) => (n >= 5 ? 1.18 : n >= 3 ? 1.10 : 1);
+  const km = (n) => (n >= 5 ? 1.14 : n >= 3 ? 1.08 : 1);
+  let effCp = 0;
+  for (const c of attackers) {
+    const t = c.tags || {};
+    const e = cardElement(t);
+    let kBest = 0;
+    for (const tr of (Array.isArray(t.traits) ? t.traits : [])) { if (!cardElement([tr])) { const k = String(tr).toLowerCase(); if ((kind[k] || 0) > kBest) kBest = kind[k]; } }
+    const mult = Math.min(1.6, em(e ? (elem[e] || 0) : 0) * om(t.origin ? (origin[t.origin] || 0) : 0) * km(kBest));
+    effCp += (c.power || 0) * mult;
+  }
+  const weakHits = sel.filter((c) => c.matches).length;
+  return { sel, cp, effCp: Math.round(effCp), syn, weakHits };
+}
+function paintSquadPanel(cap) {
+  cap = cap || huntState?.dailyCap || 8;
+  const st = computeSquadStats();
+  const cpEl = el('cpBig');
+  if (cpEl) {
+    const boost = st.effCp > st.cp ? ` <span class="cp-boost">+${(st.effCp - st.cp).toLocaleString()}</span>` : '';
+    cpEl.innerHTML = `<span class="cp-num">⚡ ${st.effCp.toLocaleString()}</span><span class="cp-lbl">TEAM CP${boost}</span>`;
+  }
+  const synEl = el('squadSynergy');
+  if (synEl) {
+    const chips = st.syn.filter((s) => s.n >= 2).map((s) => {
+      const on = s.n >= SYN_MIN;
+      return `<span class="syn-chip syn-${s.key}${on ? ' on' : ''}">${s.label} <b>${Math.min(s.n, SYN_MAX)}/${SYN_MAX}</b></span>`;
+    }).join('');
+    const weak = st.weakHits ? `<span class="syn-chip weakhit">×2 weakness · ${st.weakHits}</span>` : '';
+    synEl.innerHTML = `${chips || '<span class="syn-none">Group cards by element, game, or trait for a synergy</span>'}${weak}`;
+  }
+  const tray = el('squadTray');
+  if (tray) {
+    let html = '';
+    for (let i = 0; i < cap; i++) {
+      const c = st.sel[i];
+      if (c) {
+        const supp = !ATTACKER_TYPES.includes(c.type);
+        const eln = supp ? null : cardElement(c.tags);
+        const look = eln ? ELEMENTS[eln] : null;
+        html += `<div class="slot filled${eln ? ` el-${eln}` : ''}" data-id="${c.id}"${look ? ` style="--el:${look.color};--el2:${look.color2}"` : ''}>
+          ${c.image_url ? `<img src="${c.image_url}" alt="">` : ''}<span class="slot-pow">${supp ? '🛡' : `⚡${c.power}`}</span><span class="slot-x">✕</span></div>`;
+      } else {
+        html += `<div class="slot empty">${i + 1}</div>`;
+      }
+    }
+    tray.innerHTML = html;
+  }
+  // The synergy chips + tray change the panel height as you pick, which changes how much
+  // room the gallery has — re-size the grid so both card rows always fit (no clipping).
+  sizeSquadGrid();
 }
 
 // --- Phase 2: a full-bleed arena. Boss fills the pane; squad overlays the bottom. ---
@@ -1076,7 +1406,6 @@ function battlePhaseHTML(d) {
   const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
   // weak + resist chips are rendered by weakResistHTML(h)
   const defeated = h.status === 'defeated' || h.hp_remaining <= 0;
-  const canEdit = (d.usedToday || 0) === 0;
   return `<div class="hunt-arena${defeated ? ' down' : ''}">
     <div class="arena-stage"><canvas id="bossCanvas"></canvas></div>
     <div class="arena-top">
@@ -1091,8 +1420,6 @@ function battlePhaseHTML(d) {
       <div class="arena-subrow">
         <span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span>
         <span class="fighters-now" id="fighterCount"></span>
-        <span id="usedSlot" class="used-slot">Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}</span>
-        ${canEdit ? '<button class="edit-team" id="editTeam">↺ Change squad</button>' : ''}
         <button class="hunt-lb" id="huntLbBtn">🏆 Standings</button>
       </div>
     </div>
@@ -1119,9 +1446,15 @@ function huntTile(c, mode) {
   const shield = (mode === 'battle' && c.shield > 0) ? `<span class="shield-b">🛡${c.shield}</span>` : '';
   const ab = c.ability;
   const abLine = ab ? `<div class="cability" title="${esc(ab.desc || '')}">${esc(ab.name)}</div>` : '';
-  const typeTag = `<span class="ctype ct-${esc((c.type || '').toLowerCase())}">${esc(c.type || '')}</span>`;
-  return `<div class="${cls}" data-id="${c.id}" data-type="${esc(c.type || '')}" data-used="${usedIds.has(c.id) ? 1 : 0}" data-max="${max}" title="${ab ? esc(ab.name + ' — ' + (ab.desc || '')) : ''}">
-    <div class="art">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}${typeTag}${c.matches && !support ? '<span class="x2">×2</span>' : ''}${shield}${overlay}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span></div>
+  // The card type (Creature/Character/...) is intentionally NOT shown on the roster
+  // tile — it covered the card name. It still shows in the Card Information view.
+  // The card's ELEMENT (attackers only) tints the card + drives its attack visual.
+  const elem = !support ? cardElement(c.tags) : null;
+  const look = elem ? ELEMENTS[elem] : null;
+  const elBadge = look ? `<span class="celem" title="${look.name}">${look.glyph}</span>` : '';
+  const elStyle = look ? ` style="--el:${look.color};--el2:${look.color2}"` : '';
+  return `<div class="${cls}${elem ? ` el-${elem}` : ''}" data-id="${c.id}" data-el="${elem || ''}" data-type="${esc(c.type || '')}" data-used="${usedIds.has(c.id) ? 1 : 0}" data-max="${max}"${elStyle} title="${ab ? esc(ab.name + ' — ' + (ab.desc || '')) : ''}">
+    <div class="art">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×2</span>' : ''}${shield}${overlay}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">🔍</button></div>
     ${hpbar}
     <div class="cap">${esc(c.name)}${abLine}</div>
   </div>`;
@@ -1164,8 +1497,10 @@ function sizeSquadGrid() {
     const n = Math.max(1, (huntState?.roster || []).filter((c) => squad.sel.has(c.id)).length);
     const cols = Math.min(8, n);
     const byWidth = (aw - (cols + 1) * gap) / cols;
-    const byHeight = (ah * 0.34 - capH) * 5 / 7;
-    const sw = Math.max(56, Math.min(150, Math.floor(Math.min(byWidth, byHeight))));
+    // Give the boss + the attack stage most of the pane — the hand is a compact
+    // bottom strip (was 0.34 of the height; now ~0.24, capped smaller).
+    const byHeight = (ah * 0.24 - capH) * 5 / 7;
+    const sw = Math.max(52, Math.min(112, Math.floor(Math.min(byWidth, byHeight))));
     grid.style.setProperty('--sw', `${sw}px`);
     return;
   }
@@ -1193,8 +1528,7 @@ function huntPager(pages) {
   if (!pager) return;
   if (pages <= 1) { pager.innerHTML = ''; return; }
   const p = squad.page;
-  const dots = Array.from({ length: pages }, (_, i) => `<span class="pdot${i === p ? ' on' : ''}"></span>`).join('');
-  pager.innerHTML = `<button class="parrow" id="hprev" ${p === 0 ? 'disabled' : ''}>‹</button><span class="pdots">${dots}</span><button class="parrow" id="hnext" ${p >= pages - 1 ? 'disabled' : ''}>›</button>`;
+  pager.innerHTML = `<button class="parrow" id="hprev" ${p === 0 ? 'disabled' : ''}>‹</button><span class="pcount">${p + 1} of ${pages}</span><button class="parrow" id="hnext" ${p >= pages - 1 ? 'disabled' : ''}>›</button>`;
   el('hprev')?.addEventListener('click', () => { squad.page -= 1; paintHuntPage('prev'); });
   el('hnext')?.addEventListener('click', () => { squad.page += 1; paintHuntPage('next'); });
 }
@@ -1279,6 +1613,8 @@ function wireSelectPhase() {
     const node = e.target.closest?.('.c');
     if (!node) return;
     const id = Number(node.dataset.id);
+    if (e.target.closest?.('.card-info')) { const cc = (huntState?.roster || []).find((x) => x.id === id); if (cc) openViewer(cc); return; } // inspect, don't select
+    if (squad.ko) return; // squad down for the day — inspect only, no re-pick
     if (squad.sel.has(id)) { squad.sel.delete(id); node.classList.remove('selected'); }
     else {
       if (squad.sel.size >= cap) { const b = node.getBoundingClientRect(); calloutAt(b.left + b.width / 2, b.top + 18, `MAX ${cap}`, '#ff8f5c'); return; }
@@ -1288,15 +1624,36 @@ function wireSelectPhase() {
     const art = node.querySelector('.art');
     art.querySelector('.sel-check')?.remove();
     if (squad.sel.has(id)) { const s = document.createElement('span'); s.className = 'sel-check'; s.textContent = '✓'; art.appendChild(s); }
-    updateLockBtn();
+    onSquadChanged();
   });
+  // Remove a card by tapping its slot in the squad tray.
+  el('squadTray')?.addEventListener('click', (e) => {
+    if (squad.ko) return; // squad locked for the day
+    const slot = e.target.closest?.('.slot.filled'); if (!slot) return;
+    const id = Number(slot.dataset.id);
+    squad.sel.delete(id);
+    const node = el('huntGrid')?.querySelector(`.c[data-id="${id}"]`);
+    if (node) { node.classList.remove('selected'); node.querySelector('.sel-check')?.remove(); }
+    onSquadChanged();
+  });
+  // Lock In commits the squad and UNLOCKS "Enter Battle" — it does not enter yet.
   el('lockInBtn')?.addEventListener('click', () => {
     if (squad.sel.size < 1) return;
     saveTeam(huntState.hunt.id, [...squad.sel]);
+    squad.locked = true;
+    const eb = el('enterBattleBtn'); if (eb) { eb.disabled = false; eb.classList.add('ready'); }
+    el('lockInBtn')?.classList.add('locked');
+    SFX?.play?.('flip');
+  });
+  // Enter Battle switches to the full arena scene (the boss + attacking).
+  el('enterBattleBtn')?.addEventListener('click', () => {
+    if (!squad.locked || squad.sel.size < 1) return;
+    disposeBoss();
+    squadDownShown = false;
     squad.phase = 'battle';
     SFX?.play?.('reveal');
-    el('main').innerHTML = mainHead(TITLES.battling) + huntHTML(huntState);
-    wireHunt(); mountBossFor(huntState.hunt); paintTeam(); startHuntTicker();
+    el('main').innerHTML = huntHTML(huntState);
+    renderBossMini(); wireHunt(); mountBossFor(huntState.hunt); paintTeam(); startHuntTicker();
   });
   // Auto-pick: the server scores the player's cards against today's boss and
   // returns the best squad. It replaces the current selection; the player can edit.
@@ -1311,10 +1668,17 @@ function wireSelectPhase() {
     squad.page = 0;
     SFX?.play?.('page');
     paintHuntPage();
-    updateLockBtn();
+    onSquadChanged();
   });
+  function onSquadChanged() {
+    squad.locked = false;
+    const eb = el('enterBattleBtn'); if (eb) { eb.disabled = true; eb.classList.remove('ready'); }
+    el('lockInBtn')?.classList.remove('locked');
+    updateLockBtn();
+    paintSquadPanel(cap);
+  }
   paintHuntPage();
-  updateLockBtn();
+  onSquadChanged();
 }
 
 // Phase 2: tap an attacker to attack; tap a support to fire its ability (ally effects then
@@ -1326,13 +1690,6 @@ function clearTargeting() {
   document.querySelectorAll('.squad-grid .c.casting').forEach((n) => n.classList.remove('casting'));
 }
 function wireBattlePhase() {
-  el('editTeam')?.addEventListener('click', () => {
-    if ((huntState.usedToday || 0) > 0) return; // team locks once you have attacked
-    clearTeam(huntState.hunt.id);
-    squad.phase = 'select';
-    el('main').innerHTML = mainHead(TITLES.battling) + huntHTML(huntState);
-    wireHunt(); mountBossFor(huntState.hunt); startHuntTicker();
-  });
   el('huntGrid')?.addEventListener('click', (e) => {
     const node = e.target.closest?.('.c');
     if (!node) return;
@@ -1340,6 +1697,7 @@ function wireBattlePhase() {
     const cx = b.left + b.width / 2;
     const id = Number(node.dataset.id);
     const card = (huntState.roster || []).find((c) => c.id === id);
+    if (e.target.closest?.('.card-info')) { if (card) openViewer(card); return; } // inspect, don't attack/cast
     const support = card && !ATTACKER_TYPES.includes(card.type);
     // Completing a support that needed a target: this attacker is the target.
     if (pendingSupport && !support && !node.classList.contains('downed')) {
@@ -1402,6 +1760,29 @@ async function refreshHuntState() {
   const slot = el('usedSlot'); if (slot) slot.innerHTML = `Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}`;
   if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); }
   paintTeam();
+  // One squad per day: if every committed attacker is down, end the run with a wipe.
+  const committedAtk = (huntState.roster || []).filter((c) => c.used && ATTACKER_TYPES.includes(c.type));
+  if (squad.phase === 'battle' && h.status !== 'defeated' && committedAtk.length > 0 && committedAtk.every((c) => c.downed)) squadDownSequence();
+}
+
+// The whole squad is down. Show a wipe overlay, then swing back to the picker view
+// (locked for the day) with a countdown to the daily reset on the Enter Battle button.
+let squadDownShown = false;
+function squadDownSequence() {
+  if (squadDownShown) return;
+  squadDownShown = true;
+  lockArena(true);
+  const host = el('main') || document.body;
+  const ov = document.createElement('div');
+  ov.className = 'squad-down-ov';
+  ov.innerHTML = '<div class="sd-text">SQUAD DOWN</div><div class="sd-sub">One squad per day — regroup at the reset</div>';
+  host.appendChild(ov);
+  SFX?.play?.('page');
+  setTimeout(async () => {
+    let d; try { d = await api('/api/hunt'); } catch { d = huntCache; }
+    squadDownShown = false;
+    if (currentView === 'battling' && d) { huntCache = d; paintHuntView(d); }
+  }, 2600);
 }
 
 function flashDamage(node, dmg, bonus) {
@@ -1418,19 +1799,25 @@ const RARITY_ATK = {
   full_art: '#ff6ad0', gold: '#ffd23e', event: '#37e0a0', promo: '#ff6a5a',
 };
 
-// A glowing bolt flies from the tapped card up to the boss. Returns { impact, cancel }.
-function launchAttack(node, color) {
+// A glowing bolt flies from the tapped card up to the boss, then bursts. When the
+// card has an ELEMENT, the bolt carries that element's colors + glyph. Returns
+// { impact, cancel }.
+function launchAttack(node, color, elem) {
   const ac = color || '#7fe3ff';
+  const look = elem ? ELEMENTS[elem] : null;
   const target = document.querySelector('.arena-stage') || document.querySelector('.boss-stage') || document.querySelector('.boss');
   if (!target) return { impact() {}, cancel() {} };
   const cr = node.getBoundingClientRect(), br = target.getBoundingClientRect();
   const sx = cr.left + cr.width / 2, sy = cr.top + cr.height / 2;
   const bx = br.left + br.width / 2, by = br.top + br.height * 0.55;
   const bolt = document.createElement('div');
-  bolt.className = 'atk-bolt';
+  bolt.className = `atk-bolt${elem ? ` el ${elem}` : ''}`;
   bolt.style.setProperty('--ac', ac);
+  if (look) bolt.style.setProperty('--ac2', look.color2);
+  bolt.style.setProperty('--dur', `${PACE.hit}ms`);
   bolt.style.left = `${sx}px`; bolt.style.top = `${sy}px`;
   bolt.style.transform = 'translate(0,0) scale(.6)';
+  if (look) bolt.innerHTML = `<span class="bolt-glyph">${look.glyph}</span>`; // the element rides the bolt
   document.body.appendChild(bolt);
   requestAnimationFrame(() => { bolt.style.transform = `translate(${bx - sx}px, ${by - sy}px) scale(1)`; });
   SFX?.play?.('page');
@@ -1440,14 +1827,15 @@ function launchAttack(node, color) {
     impact(bonus) {
       if (done) return; done = true;
       bolt.remove();
-      impactBurst(bx, by, bonus ? '#ffd23e' : ac, bonus);
+      impactBurst(bx, by, bonus ? '#ffd23e' : ac, bonus, elem);
     },
     cancel() { done = true; bolt.remove(); },
   };
 }
 
-// A flash + shockwave ring + spark shower at the boss on impact.
-function impactBurst(x, y, color, big) {
+// A flash + shockwave ring + spark shower at the boss on impact. With an element,
+// its glyph also scatters outward so the hit reads as fire / water / shock / etc.
+function impactBurst(x, y, color, big, elem) {
   const mk = (cls) => { const d = document.createElement('div'); d.className = cls; d.style.left = `${x}px`; d.style.top = `${y}px`; d.style.setProperty('--ac', color); document.body.appendChild(d); return d; };
   const flash = mk('atk-flash'); setTimeout(() => flash.remove(), 520);
   const ring = mk('atk-ring'); setTimeout(() => ring.remove(), 620);
@@ -1455,6 +1843,16 @@ function impactBurst(x, y, color, big) {
     const s = mk('atk-spark'); const ang = Math.random() * Math.PI * 2, d = 40 + Math.random() * (big ? 95 : 62);
     s.style.setProperty('--dx', `${Math.cos(ang) * d}px`); s.style.setProperty('--dy', `${Math.sin(ang) * d}px`);
     setTimeout(() => s.remove(), 720);
+  }
+  const look = elem ? ELEMENTS[elem] : null;
+  if (look) {
+    for (let i = 0; i < (big ? 8 : 5); i += 1) {
+      const g = document.createElement('div'); g.className = 'atk-el'; g.textContent = look.glyph;
+      const ang = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, d = 34 + Math.random() * (big ? 78 : 52);
+      g.style.left = `${x}px`; g.style.top = `${y}px`;
+      g.style.setProperty('--dx', `${Math.cos(ang) * d}px`); g.style.setProperty('--dy', `${Math.sin(ang) * d}px`);
+      document.body.appendChild(g); setTimeout(() => g.remove(), 760);
+    }
   }
 }
 
@@ -1565,15 +1963,31 @@ function curseMark(node) {
   setTimeout(() => s.remove(), 1000);
 }
 
+// ===== Turn pacing =====
+// Deliberate beats so the exchange reads: your hit lands, a pause, the boss's
+// turn banner, the boss acts, then control returns. All values are tunable.
+// Tempo: let the player's attack animation fully play out before the boss reacts.
+const PACE = { hit: 440, afterHit: 1600, bossHold: 1700 };
+let bossActing = false; // true while the boss takes its turn — taps are ignored
+function lockArena(on) {
+  const a = document.querySelector('.hunt-arena') || document.querySelector('.main-body.hunt');
+  if (a) a.classList.toggle('turn-locked', !!on);
+}
+
 async function huntAttack(cardId, node) {
+  if (bossActing) return; // the boss is mid-turn — wait for it to finish
   if (node.classList.contains('busy')) return;
   node.classList.add('busy');
   const rarity = ['gold', 'full_art', 'secret_rare', 'illustrated_rare', 'event', 'promo'].find((rr) => node.classList.contains(rr)) || 'normal';
-  const color = RARITY_ATK[rarity] || '#7fe3ff';
+  // The attack color/look comes from the card's ELEMENT when it has one, else its rarity.
+  const elem = node.dataset.el || null;
+  const look = elem ? ELEMENTS[elem] : null;
+  const color = look ? look.color : (RARITY_ATK[rarity] || '#7fe3ff');
   node.style.setProperty('--ac', color);
   node.classList.add('attacking'); // the card lunges + charges as it fires
+  if (elem) auraOn(node, color, `fx-aura el-charge ${elem}`); // an element aura blooms as it casts
   setTimeout(() => node.classList.remove('attacking'), 520);
-  const atk = launchAttack(node, color); // the bolt flies immediately on tap
+  const atk = { impact() {}, cancel() {} }; // no DOM bolt — the boss's 3D effect is the whole show
   const t0 = performance.now();
   let r;
   const wasNew = node.dataset.used !== '1';
@@ -1587,7 +2001,7 @@ async function huntAttack(cardId, node) {
     return;
   }
   if (wasNew) markCardEngaged(node); // first engage counts toward the daily squad tally
-  const wait = Math.max(0, 340 - (performance.now() - t0));
+  const wait = Math.max(0, PACE.hit - (performance.now() - t0));
   setTimeout(() => resolveHit(node, r, atk), wait);
 }
 
@@ -1605,11 +2019,18 @@ function resolveHit(node, r, atk) {
   } else {
     atk.impact(big);
     bossHandle?.flinch();
+    bossHandle?.attack?.(node.dataset.el || 'physical'); // the element's 3D attack effect plays on the boss
+    SFX?.play?.(node.dataset.el || 'physical'); // ...with its matching synthesized sound
     if (r.crit) calloutAt(bx, by - 26, 'CRIT!', '#ffd23e');
     else if (r.outcome === 'blocked') calloutAt(bx, by - 26, 'BLOCK', '#7fb0ff');
     if (r.bonus) calloutAt(bx, by - 52, 'WEAK!', '#ff7a3f');
     else if (r.resisted) calloutAt(bx, by - 52, 'RESIST', '#7fb0ff');
     flashDamage(node, r.damage, big);
+    if (r.synergy && r.synergy.element) { // themed-squad element synergy bonus
+      const sc = (ELEMENTS[r.synergy.element] || {}).color || '#9fe3ff';
+      calloutAt(bx, by - 78, `${String(r.synergy.element).toUpperCase()} SYNERGY`, sc);
+    }
+    if (r.burned) { const b = node.getBoundingClientRect(); calloutAt(b.left + b.width / 2, b.top + 14, 'BURN', '#ff7a3f'); } // flaming boss singed this card
   }
   const h = huntState.hunt;
   h.hp_remaining = r.hp_remaining; h.status = r.status;
@@ -1622,12 +2043,19 @@ function resolveHit(node, r, atk) {
   if (md) md.innerHTML = `Your damage: <b>${huntState.myDamage.toLocaleString()}</b>`;
   setCardHp(node, r.card_hp, r.card_max_hp);
   if (r.heal > 0 && r.ability === 'lifesteal') healPop(node, r.heal); // vampiric attacker mends itself
-  if (r.defeated) { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); SFX?.play?.('reveal'); onBossDefeated(); return; }
-  SFX?.play?.(r.outcome === 'miss' ? 'page' : 'flip');
-  // The attack ended the round. Now the boss takes its hidden turn (a surprise from its pool).
+  if (r.defeated) { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); SFX.playBoss('defeat'); if (bossVoice) setTimeout(() => SFX.sample(`mon:${bossVoice.roar}`, 0.85), 220); onBossDefeated(); return; }
+  if (r.outcome === 'miss') SFX?.play?.('page'); // hits already played their element sound
+  // The attack ended the round. Now the boss takes its hidden turn (a surprise from its
+  // pool). Pace it: a beat to read your hit, then the banner, then the boss acts, then
+  // control returns. The roster is locked while the boss is acting so turns read clearly.
   if (r.boss_action) {
-    showBossTurn();
-    setTimeout(() => resolveBossTurn(r.boss_action), 460);
+    bossActing = true;
+    lockArena(true);
+    setTimeout(() => showBossTurn(), PACE.afterHit);
+    setTimeout(() => resolveBossTurn(r.boss_action), PACE.afterHit + 320);
+    // The attack advanced the round server-side. Refresh so support cooldowns tick down
+    // (and card HP / shields reconcile to the server truth) once the boss turn ends.
+    setTimeout(() => { bossActing = false; lockArena(false); refreshHuntState(); }, PACE.afterHit + PACE.bossHold);
   } else if (r.card_downed) {
     markDowned(node);
   }
@@ -1662,7 +2090,7 @@ function showBossTurn() {
   b.className = 'boss-turn-banner';
   b.textContent = "⚔ Boss's Turn";
   arena.appendChild(b);
-  setTimeout(() => b.remove(), 900);
+  setTimeout(() => b.remove(), 1250);
 }
 
 // Resolve the boss action drawn on the server (a surprise from its pool). Each kind reads
@@ -1683,32 +2111,36 @@ function resolveBossTurn(act) {
   });
   if (act.kind === 'stunned') { // a support stun robbed the boss of its turn
     bossHandle?.stun();
+    bossHandle?.bossAct?.('stunned');
     calloutAt(bx, by - 18, 'STUNNED', '#ffe23e');
     bossGlyph('✦', '#ffe23e');
-    SFX?.play?.('page');
+    SFX.playBoss('stunned');
     return;
   }
   if (act.kind === 'enrage') { // the boss roars — harder hits for the next rounds
     bossHandle?.enrage();
+    bossHandle?.bossAct?.('enrage');
     screenShake();
     calloutAt(bx, by - 18, 'ENRAGE!', '#ff5a3c');
     bossGlyph('🔥', '#ff3a10');
-    SFX?.play?.('tear');
+    SFX.playBoss('enrage'); bossGrowl(0.6);
     return;
   }
   if (act.kind === 'curse') { // a hex sinks onto the attacker — it hits softer
+    bossHandle?.bossAct?.('curse');
     calloutAt(bx, by - 18, 'CURSE!', '#b060ff');
     curseMark(squadNode((act.targets || [])[0]?.card_id));
-    SFX?.play?.('tear');
+    SFX.playBoss('curse'); bossGrowl(0.5);
     return;
   }
   // strike / slam — real damage.
   bossHandle?.counter();
+  bossHandle?.bossAct?.(act.kind);
   screenShake();
   calloutAt(bx, by - 18, act.kind === 'slam' ? 'SLAM!' : 'STRIKE!', '#ff6a5a');
   if (act.kind === 'slam') setTimeout(() => screenShake(), 120);
   syncTargets(true, act.kind === 'slam');
-  SFX?.play?.('tear');
+  SFX.playBoss(act.kind); bossGrowl(0.6);
 }
 
 async function openHuntBoard() {
@@ -2008,6 +2440,7 @@ function applyView() {
 // card opened from the community feed) show a blurred, greyed front with the
 // flavor text hidden — you can tell the art is cool, but not make it out.
 function openViewer(card) {
+  SFX.play('click'); // opening a card
   const locked = !!card.locked;
   el('v-front').src = card.image_url || '';
   el('v-back').src = cardBack;
@@ -2047,18 +2480,29 @@ function fillViewerAbility(ab) {
   box.classList.remove('hidden');
 }
 
-// The Tags section of the card viewer, grouped by facet.
-const V_TAG_FACETS = [['class', 'Class'], ['type', 'Type'], ['origin', 'Origin'], ['genre', 'Genre'], ['realm', 'Realm'], ['traits', 'Traits']];
+// The Tags section of the card viewer. Element shows first as a highlighted chip,
+// then the facets (Game, Type, Class, Kinds). The dominant element word is hidden
+// from Kinds so it is not shown twice.
+const GAME_LABELS = { smash: 'Super Smash Bros', pokemon: 'Pokemon', minecraft: 'Minecraft', party: 'Party Games', meme: 'Memes', community: 'Community' };
+const V_TAG_FACETS = [['origin', 'Game'], ['type', 'Type'], ['class', 'Class'], ['traits', 'Kinds']];
 function fillViewerTags(tags) {
   const box = el('v-tags');
-  const has = tags && V_TAG_FACETS.some(([f]) => tags[f] && (Array.isArray(tags[f]) ? tags[f].length : tags[f]));
-  if (!has) { box.classList.add('hidden'); return; }
-  el('v-tag-rows').innerHTML = V_TAG_FACETS
-    .filter(([f]) => tags[f] && (Array.isArray(tags[f]) ? tags[f].length : tags[f]))
-    .map(([f, label]) => {
-      const vals = Array.isArray(tags[f]) ? tags[f] : [tags[f]];
-      return `<div class="v-tag-row"><span class="v-tag-facet">${label}</span><span class="v-tag-chips">${vals.map((v) => `<span class="v-chip">${esc(v)}</span>`).join('')}</span></div>`;
-    }).join('');
+  if (!tags) { box.classList.add('hidden'); return; }
+  const elem = cardElement(tags);
+  const rows = [];
+  if (elem) {
+    const lk = ELEMENTS[elem];
+    rows.push(`<div class="v-tag-row"><span class="v-tag-facet">Element</span><span class="v-tag-chips"><span class="v-chip elem" style="--el:${lk.color}">${lk.glyph} ${lk.name}</span></span></div>`);
+  }
+  for (const [f, label] of V_TAG_FACETS) {
+    let vals = Array.isArray(tags[f]) ? tags[f] : (tags[f] ? [tags[f]] : []);
+    if (f === 'traits' && elem) vals = vals.filter((v) => String(v).toLowerCase() !== elem);
+    if (f === 'origin') vals = vals.map((v) => GAME_LABELS[v] || v);
+    if (!vals.length) continue;
+    rows.push(`<div class="v-tag-row"><span class="v-tag-facet">${label}</span><span class="v-tag-chips">${vals.map((v) => `<span class="v-chip">${esc(v)}</span>`).join('')}</span></div>`);
+  }
+  if (!rows.length) { box.classList.add('hidden'); return; }
+  el('v-tag-rows').innerHTML = rows.join('');
   box.classList.remove('hidden');
 }
 
@@ -2187,7 +2631,7 @@ function initViewer() {
   stage.addEventListener('pointerup', () => {
     dragging = false;
     el('card3d').classList.remove('dragging');
-    if (!moved) { ry += 180; applyView(); } // a click (no drag) flips the card
+    if (!moved) { ry += 180; applyView(); SFX.play('flip'); } // a click (no drag) flips the card
   });
   stage.addEventListener('pointerleave', () => { hoverX = 0; hoverY = 0; applyView(); });
 
@@ -2195,16 +2639,20 @@ function initViewer() {
   el('viewer').addEventListener('click', (e) => { if (e.target === el('viewer')) closeViewer(); });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (!el('viewer').classList.contains('hidden')) closeViewer();
-    else if (!el('stage').classList.contains('hidden')) endReveal();
+    if (!el('bossModal').classList.contains('hidden')) closeBossModal();
+    else if (!el('viewer').classList.contains('hidden')) closeViewer();
+    else if (!el('stage').classList.contains('hidden')) { if (revealItems.length && flippedCount >= revealItems.length) endReveal(); } // locked until all revealed
     else if (!el('trade').classList.contains('hidden')) closeTrade();
     else if (!el('gift').classList.contains('hidden')) closeGiftPanel();
     else if (!el('notif').classList.contains('hidden')) closeNotifs();
     else if (!el('board').classList.contains('hidden')) closeBoard();
   });
 
-  // Click a card anywhere → open it in the viewer.
+  // Click a card anywhere → open it in the viewer. A boss tile (Raid Bosses
+  // gallery) opens the boss viewer instead.
   el('main').addEventListener('click', (e) => {
+    const bt = e.target.closest?.('.c[data-boss]');
+    if (bt) { openBossGallery(BOSS_LIST[Number(bt.dataset.boss)]); return; }
     const c = e.target.closest?.('.c[data-idx]');
     if (c) { const it = mainItems[Number(c.dataset.idx)]; if (it) openViewer(it); }
   });
@@ -2215,8 +2663,8 @@ function initViewer() {
     if (r) { const it = live.pulls[Number(r.dataset.idx)]; if (it) openViewer({ ...it, locked: !myCardIds.has(it.id) }); }
   });
   // Reveal cards: a face-down card flips on tap; a revealed card opens the viewer.
-  // NOTE: a stray click on the backdrop must NOT close the reveal (you'd lose the
-  // last cards) — exit only via the Back button or Escape.
+  // NOTE: the reveal is LOCKED until every card is flipped — no backdrop close, no
+  // Back button; the Done button (and Escape) only work once all are revealed.
   el('stage').addEventListener('click', (e) => {
     const fc = e.target.closest?.('.fc[data-idx]');
     if (!fc) return;

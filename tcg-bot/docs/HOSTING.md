@@ -7,7 +7,7 @@ disposable — collections survive restarts, redeploys, and rebuilds.
 ## The VM
 
 - Provider: Oracle Cloud, Always Free `VM.Standard.E2.1.Micro` (x86_64, 1 GB + 2 GB swap).
-- OS: Ubuntu 24.04. User: `ubuntu`. Public IP: `137.131.48.8`.
+- OS: Ubuntu 24.04. User: `ubuntu`. Public IP: resolve `lionpridetcg.duckdns.org` first. The stack moved to an Oracle Ampere A1 box (`129.146.118.111`, 2026-09-21). See `ops/migrate-to-a1.sh`.
 - The bot runs as a Docker container named `tcg-bot` with `--restart unless-stopped`,
   and Docker is enabled at boot — so it survives crashes and VM reboots.
 - The 5 secrets live in `/home/ubuntu/tcg-bot/.env` on the VM (never in git).
@@ -21,15 +21,16 @@ ssh -i <key> ubuntu@<ip> "bash setup-vm.sh"   # swap + Docker
 
 ## Deploy / update the bot
 
-From the project root, copy the code and secrets, then build and run:
+From a worktree at `origin/main`, with the change committed and pushed:
 
 ```sh
-ssh -i <key> ubuntu@<ip> "mkdir -p /home/ubuntu/tcg-bot"
-scp -i <key> package.json package-lock.json tsconfig.json Dockerfile .env ubuntu@<ip>:/home/ubuntu/tcg-bot/
-scp -i <key> -r src ubuntu@<ip>:/home/ubuntu/tcg-bot/
-scp -i <key> deploy/run-bot.sh ubuntu@<ip>:/home/ubuntu/
-ssh -i <key> ubuntu@<ip> "bash run-bot.sh"    # build image + (re)start container
+ops/deploy.sh bot
 ```
+
+The script ships only `src`, the package files, `tsconfig.json`, and the `Dockerfile`.
+It keeps the VM `.env`, runs the container with `--network host` (the Activity calls
+the internal API at `127.0.0.1:4451`), waits for `Ready. Logged in`, rolls back on a
+failure, and registers the slash commands.
 
 **Only one instance may run per bot token.** Do not run the local dev bot at the
 same time as the VM — two gateway connections cause duplicate responses.

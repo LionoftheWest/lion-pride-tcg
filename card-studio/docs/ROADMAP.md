@@ -35,5 +35,5 @@ Add an output PNG arg with `--background` for a side-by-side still.
 - **Live Blender preview (watch tweaks in real time):**
   `& "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --python blender\live_preview.py -- <facePng> <rarity> [maskPng]`
   Then edit `blender/card_scene.py` and the window rebuilds itself.
-- **The bot runs 24/7 on the Oracle VM** (137.131.48.8) — independent of this PC.
+- **The bot runs 24/7 on the Oracle VM** (resolve `lionpridetcg.duckdns.org`; 129.146.118.111 on 2026-09-21) — independent of this PC.
   Re-push a card from the studio to update its live art.

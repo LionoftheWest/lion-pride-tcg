@@ -1,0 +1,2627 @@
+{
+ "height_m": 1.612,
+ "joints": {
+  "Vertebra C7": [
+   0.0,
+   0.0194,
+   0.887
+  ],
+  "Vertebra T1": [
+   0.0,
+   0.0234,
+   0.8787
+  ],
+  "Vertebra T2": [
+   0.0,
+   0.0293,
+   0.8687
+  ],
+  "Vertebra T3": [
+   -0.0,
+   0.0365,
+   0.8549
+  ],
+  "Vertebra T4": [
+   0.0,
+   0.041,
+   0.8398
+  ],
+  "Vertebra T5": [
+   0.0,
+   0.0429,
+   0.8245
+  ],
+  "Vertebra T6": [
+   0.0,
+   0.0456,
+   0.8069
+  ],
+  "Vertebra T7": [
+   0.0,
+   0.0463,
+   0.7882
+  ],
+  "Vertebra T8": [
+   -0.0,
+   0.0446,
+   0.7688
+  ],
+  "Vertebra T9": [
+   0.0,
+   0.0408,
+   0.7522
+  ],
+  "Vertebra T10": [
+   0.0,
+   0.0374,
+   0.7327
+  ],
+  "Vertebra T11": [
+   -0.0,
+   0.0329,
+   0.7152
+  ],
+  "Vertebra T12": [
+   0.0,
+   0.0264,
+   0.6953
+  ],
+  "Vertebra L1": [
+   0.0,
+   0.0226,
+   0.6728
+  ],
+  "Vertebra L2": [
+   0.0,
+   0.0192,
+   0.6539
+  ],
+  "Vertebra L3": [
+   0.0,
+   0.0185,
+   0.635
+  ],
+  "Vertebra L4": [
+   0.0,
+   0.0176,
+   0.6163
+  ],
+  "Vertebra L5": [
+   0.0,
+   0.02,
+   0.5982
+  ],
+  "Vertebra C3": [
+   0.0,
+   0.0114,
+   0.9226
+  ],
+  "Vertebra C4": [
+   0.0,
+   0.0118,
+   0.9134
+  ],
+  "Vertebra C5": [
+   0.0,
+   0.0136,
+   0.9041
+  ],
+  "Vertebra C6": [
+   0.0,
+   0.0146,
+   0.895
+  ],
+  "Sacrum": [
+   -0.0,
+   0.0366,
+   0.5617
+  ],
+  "Coccyx": [
+   0.0,
+   0.0477,
+   0.5112
+  ],
+  "Mandible": [
+   0.0,
+   -0.0348,
+   0.9283
+  ],
+  "Frontal bone": [
+   0.0,
+   -0.0307,
+   1.0
+  ],
+  "Occipital bone": [
+   0.0,
+   0.0337,
+   0.9742
+  ],
+  "hip.l": [
+   0.0411,
+   0.0075,
+   0.5432
+  ],
+  "femhead.l": [
+   0.0519,
+   0.0017,
+   0.5351
+  ],
+  "knee.l": [
+   0.0314,
+   0.0192,
+   0.2533
+  ],
+  "ankle.l": [
+   0.0336,
+   0.0197,
+   0.0334
+  ],
+  "heel.l": [
+   0.0493,
+   0.0302,
+   0.0121
+  ],
+  "ball.l": [
+   0.0446,
+   -0.0518,
+   0.0
+  ],
+  "sternoclav.l": [
+   0.0125,
+   -0.0304,
+   0.8573
+  ],
+  "shoulder.l": [
+   0.0941,
+   0.0257,
+   0.8663
+  ],
+  "elbow.l": [
+   0.1284,
+   0.0214,
+   0.6611
+  ],
+  "wrist.l": [
+   0.1777,
+   -0.011,
+   0.518
+  ],
+  "hand.l": [
+   0.1676,
+   -0.0156,
+   0.4866
+  ],
+  "hip.r": [
+   -0.0411,
+   0.0075,
+   0.5432
+  ],
+  "femhead.r": [
+   -0.0519,
+   0.0017,
+   0.5351
+  ],
+  "knee.r": [
+   -0.0314,
+   0.0192,
+   0.2533
+  ],
+  "ankle.r": [
+   -0.0336,
+   0.0197,
+   0.0334
+  ],
+  "heel.r": [
+   -0.0493,
+   0.0302,
+   0.0121
+  ],
+  "ball.r": [
+   -0.0446,
+   -0.0518,
+   0.0
+  ],
+  "sternoclav.r": [
+   -0.0125,
+   -0.0304,
+   0.8573
+  ],
+  "shoulder.r": [
+   -0.0941,
+   0.0257,
+   0.8663
+  ],
+  "elbow.r": [
+   -0.1284,
+   0.0214,
+   0.6611
+  ],
+  "wrist.r": [
+   -0.1777,
+   -0.011,
+   0.518
+  ],
+  "hand.r": [
+   -0.1676,
+   -0.0156,
+   0.4866
+  ]
+ },
+ "muscle_seeds": {
+  "(Abdominal part of pectoralis major muscle).l": [
+   0.0714,
+   -0.0429,
+   0.761
+  ],
+  "(Abdominal part of pectoralis major muscle).r": [
+   -0.0714,
+   -0.0429,
+   0.761
+  ],
+  "(Adductor minimus).l": [
+   0.0485,
+   0.0002,
+   0.4609
+  ],
+  "(Adductor minimus).r": [
+   -0.0485,
+   0.0002,
+   0.4609
+  ],
+  "(Opponens digiti minimi muscle of foot).l": [
+   0.0732,
+   -0.0093,
+   0.0002
+  ],
+  "(Opponens digiti minimi muscle of foot).r": [
+   -0.0732,
+   -0.0093,
+   0.0002
+  ],
+  "Abductor digiti minimi of foot.l": [
+   0.0654,
+   0.0089,
+   -0.0015
+  ],
+  "Abductor digiti minimi of foot.r": [
+   -0.0654,
+   0.0089,
+   -0.0015
+  ],
+  "Abductor digiti minimi of hand.l": [
+   0.1462,
+   -0.0257,
+   0.4876
+  ],
+  "Abductor digiti minimi of hand.r": [
+   -0.1462,
+   -0.0257,
+   0.4876
+  ],
+  "Abductor hallucis.l": [
+   0.0388,
+   -0.0057,
+   0.0043
+  ],
+  "Abductor hallucis.r": [
+   -0.0388,
+   -0.0057,
+   0.0043
+  ],
+  "Abductor pollicis brevis.l": [
+   0.1787,
+   -0.0249,
+   0.51
+  ],
+  "Abductor pollicis brevis.r": [
+   -0.1787,
+   -0.0249,
+   0.51
+  ],
+  "Abductor pollicis longus.l": [
+   0.1613,
+   0.0066,
+   0.5672
+  ],
+  "Abductor pollicis longus.r": [
+   -0.1613,
+   0.0066,
+   0.5672
+  ],
+  "Acromial part of deltoid muscle.l": [
+   0.1263,
+   0.0189,
+   0.8344
+  ],
+  "Acromial part of deltoid muscle.r": [
+   -0.1263,
+   0.0189,
+   0.8344
+  ],
+  "Adductor brevis.l": [
+   0.0441,
+   -0.006,
+   0.4519
+  ],
+  "Adductor brevis.r": [
+   -0.0441,
+   -0.006,
+   0.4519
+  ],
+  "Adductor longus.l": [
+   0.0356,
+   -0.0127,
+   0.4244
+  ],
+  "Adductor longus.r": [
+   -0.0356,
+   -0.0127,
+   0.4244
+  ],
+  "Adductor magnus.l": [
+   0.0389,
+   0.01,
+   0.3964
+  ],
+  "Adductor magnus.r": [
+   -0.0389,
+   0.01,
+   0.3964
+  ],
+  "Anconeus muscle.l": [
+   0.1403,
+   0.0328,
+   0.6514
+  ],
+  "Anconeus muscle.r": [
+   -0.1403,
+   0.0328,
+   0.6514
+  ],
+  "Anterior belly of digastric muscle.l": [
+   0.0062,
+   -0.0334,
+   0.9182
+  ],
+  "Anterior belly of digastric muscle.r": [
+   -0.0062,
+   -0.0334,
+   0.9182
+  ],
+  "Ary-epiglottic part of oblique arytenoid muscle.l": [
+   0.0043,
+   -0.0084,
+   0.9128
+  ],
+  "Ary-epiglottic part of oblique arytenoid muscle.r": [
+   -0.0043,
+   -0.0084,
+   0.9128
+  ],
+  "Ascending part of trapezius muscle.l": [
+   0.0213,
+   0.0354,
+   0.9041
+  ],
+  "Ascending part of trapezius muscle.r": [
+   -0.0213,
+   0.0354,
+   0.9041
+  ],
+  "Brachialis muscle.l": [
+   0.1334,
+   0.0163,
+   0.706
+  ],
+  "Brachialis muscle.r": [
+   -0.1334,
+   0.0163,
+   0.706
+  ],
+  "Brachioradialis muscle.l": [
+   0.16,
+   0.008,
+   0.6372
+  ],
+  "Brachioradialis muscle.r": [
+   -0.16,
+   0.008,
+   0.6372
+  ],
+  "Bucinator.l": [
+   0.0196,
+   -0.0355,
+   0.939
+  ],
+  "Bucinator.r": [
+   -0.0196,
+   -0.0355,
+   0.939
+  ],
+  "Clavicular head of pectoralis major muscle.l": [
+   0.0716,
+   -0.0125,
+   0.8395
+  ],
+  "Clavicular head of pectoralis major muscle.r": [
+   -0.0716,
+   -0.0125,
+   0.8395
+  ],
+  "Clavicular part of deltoid muscle.l": [
+   0.0991,
+   0.0023,
+   0.8413
+  ],
+  "Clavicular part of deltoid muscle.r": [
+   -0.0991,
+   0.0023,
+   0.8413
+  ],
+  "Coccygeus muscle.l": [
+   0.0139,
+   0.0421,
+   0.5228
+  ],
+  "Coccygeus muscle.r": [
+   -0.0139,
+   0.0421,
+   0.5228
+  ],
+  "Common tendinous ring.l": [
+   0.01,
+   -0.0211,
+   0.979
+  ],
+  "Common tendinous ring.r": [
+   -0.01,
+   -0.0211,
+   0.979
+  ],
+  "Coracobrachialis muscle.l": [
+   0.1023,
+   0.0117,
+   0.8035
+  ],
+  "Coracobrachialis muscle.r": [
+   -0.1023,
+   0.0117,
+   0.8035
+  ],
+  "Corrugator supercilii.l": [
+   0.0132,
+   -0.0499,
+   0.987
+  ],
+  "Corrugator supercilii.r": [
+   -0.0132,
+   -0.0499,
+   0.987
+  ],
+  "Deep head of flexor pollicis brevis.l": [
+   0.1796,
+   -0.0241,
+   0.508
+  ],
+  "Deep head of flexor pollicis brevis.r": [
+   -0.1796,
+   -0.0241,
+   0.508
+  ],
+  "Deep head of pronator teres.l": [
+   0.1515,
+   0.0073,
+   0.6285
+  ],
+  "Deep head of pronator teres.r": [
+   -0.1515,
+   0.0073,
+   0.6285
+  ],
+  "Deep part of masseter.l": [
+   0.0304,
+   -0.0152,
+   0.9468
+  ],
+  "Deep part of masseter.r": [
+   -0.0304,
+   -0.0152,
+   0.9468
+  ],
+  "Depressor anguli oris.l": [
+   0.0147,
+   -0.041,
+   0.9229
+  ],
+  "Depressor anguli oris.r": [
+   -0.0147,
+   -0.041,
+   0.9229
+  ],
+  "Depressor labii inferioris.l": [
+   0.0115,
+   -0.0464,
+   0.9268
+  ],
+  "Depressor labii inferioris.r": [
+   -0.0115,
+   -0.0464,
+   0.9268
+  ],
+  "Depressor septi nasi.l": [
+   0.0038,
+   -0.0539,
+   0.9467
+  ],
+  "Depressor septi nasi.r": [
+   -0.0038,
+   -0.0539,
+   0.9467
+  ],
+  "Descending part of trapezius muscle.l": [
+   0.0238,
+   0.0651,
+   0.8011
+  ],
+  "Descending part of trapezius muscle.r": [
+   -0.0238,
+   0.0651,
+   0.8011
+  ],
+  "Diaphragm.c": [
+   -0.0025,
+   -0.0064,
+   0.7165
+  ],
+  "Dorsal interossei muscles of foot.l": [
+   0.0639,
+   -0.031,
+   0.0094
+  ],
+  "Dorsal interossei muscles of foot.r": [
+   -0.0639,
+   -0.031,
+   0.0094
+  ],
+  "Dorsal interossei muscles of hand.l": [
+   0.1716,
+   -0.0178,
+   0.4792
+  ],
+  "Dorsal interossei muscles of hand.r": [
+   -0.1716,
+   -0.0178,
+   0.4792
+  ],
+  "Dorsal parts of lateral intertransversarii lumborum muscles.l": [
+   0.0215,
+   0.0223,
+   0.6483
+  ],
+  "Dorsal parts of lateral intertransversarii lumborum muscles.r": [
+   -0.0215,
+   0.0223,
+   0.6483
+  ],
+  "Extensor carpi radialis brevis.l": [
+   0.162,
+   0.0153,
+   0.6011
+  ],
+  "Extensor carpi radialis brevis.r": [
+   -0.162,
+   0.0153,
+   0.6011
+  ],
+  "Extensor carpi radialis longus.l": [
+   0.164,
+   0.015,
+   0.6203
+  ],
+  "Extensor carpi radialis longus.r": [
+   -0.164,
+   0.015,
+   0.6203
+  ],
+  "Extensor digiti minimi.l": [
+   0.1514,
+   0.0092,
+   0.5692
+  ],
+  "Extensor digiti minimi.r": [
+   -0.1514,
+   0.0092,
+   0.5692
+  ],
+  "Extensor digitorum brevis.l": [
+   0.0649,
+   -0.0166,
+   0.0167
+  ],
+  "Extensor digitorum brevis.r": [
+   -0.0649,
+   -0.0166,
+   0.0167
+  ],
+  "Extensor digitorum longus.l": [
+   0.0669,
+   0.0184,
+   0.154
+  ],
+  "Extensor digitorum longus.r": [
+   -0.0669,
+   0.0184,
+   0.154
+  ],
+  "Extensor digitorum.l": [
+   0.1616,
+   0.0001,
+   0.532
+  ],
+  "Extensor digitorum.r": [
+   -0.1616,
+   0.0001,
+   0.532
+  ],
+  "Extensor hallucis brevis.l": [
+   0.0528,
+   -0.0159,
+   0.0201
+  ],
+  "Extensor hallucis brevis.r": [
+   -0.0528,
+   -0.0159,
+   0.0201
+  ],
+  "Extensor hallucis longus.l": [
+   0.0576,
+   0.0093,
+   0.0874
+  ],
+  "Extensor hallucis longus.r": [
+   -0.0576,
+   0.0093,
+   0.0874
+  ],
+  "Extensor indicis.l": [
+   0.1649,
+   -0.0084,
+   0.5128
+  ],
+  "Extensor indicis.r": [
+   -0.1649,
+   -0.0084,
+   0.5128
+  ],
+  "Extensor pollicis brevis.l": [
+   0.17,
+   -0.0037,
+   0.5352
+  ],
+  "Extensor pollicis brevis.r": [
+   -0.17,
+   -0.0037,
+   0.5352
+  ],
+  "Extensor pollicis longus.l": [
+   0.1673,
+   -0.0055,
+   0.5357
+  ],
+  "Extensor pollicis longus.r": [
+   -0.1673,
+   -0.0055,
+   0.5357
+  ],
+  "External abdominal oblique muscle.l": [
+   0.0421,
+   -0.0471,
+   0.6529
+  ],
+  "External abdominal oblique muscle.r": [
+   -0.0421,
+   -0.0471,
+   0.6529
+  ],
+  "External anal sphincter.l": [
+   0.0029,
+   0.0347,
+   0.4892
+  ],
+  "External anal sphincter.r": [
+   -0.0029,
+   0.0347,
+   0.4892
+  ],
+  "External intercostal muscles.l": [
+   0.0601,
+   0.0163,
+   0.7726
+  ],
+  "External intercostal muscles.r": [
+   -0.0601,
+   0.0163,
+   0.7726
+  ],
+  "External part of thyro-arytenoid muscle.l": [
+   0.0036,
+   -0.0081,
+   0.9023
+  ],
+  "External part of thyro-arytenoid muscle.r": [
+   -0.0036,
+   -0.0081,
+   0.9023
+  ],
+  "Fibularis brevis muscle.l": [
+   0.065,
+   0.0304,
+   0.0704
+  ],
+  "Fibularis brevis muscle.r": [
+   -0.065,
+   0.0304,
+   0.0704
+  ],
+  "Fibularis longus muscle.l": [
+   0.0697,
+   0.0247,
+   0.1206
+  ],
+  "Fibularis longus muscle.r": [
+   -0.0697,
+   0.0247,
+   0.1206
+  ],
+  "Fibularis tertius muscle.l": [
+   0.0649,
+   0.0099,
+   0.0403
+  ],
+  "Fibularis tertius muscle.r": [
+   -0.0649,
+   0.0099,
+   0.0403
+  ],
+  "Flexor carpi radialis.l": [
+   0.1429,
+   -0.0053,
+   0.6019
+  ],
+  "Flexor carpi radialis.r": [
+   -0.1429,
+   -0.0053,
+   0.6019
+  ],
+  "Flexor digiti minimi of foot.l": [
+   0.0757,
+   -0.0181,
+   -0.0029
+  ],
+  "Flexor digiti minimi of foot.r": [
+   -0.0757,
+   -0.0181,
+   -0.0029
+  ],
+  "Flexor digiti minimi of hand.l": [
+   0.1494,
+   -0.0255,
+   0.4878
+  ],
+  "Flexor digiti minimi of hand.r": [
+   -0.1494,
+   -0.0255,
+   0.4878
+  ],
+  "Flexor digitorum brevis.l": [
+   0.0614,
+   -0.0231,
+   -0.0047
+  ],
+  "Flexor digitorum brevis.r": [
+   -0.0614,
+   -0.0231,
+   -0.0047
+  ],
+  "Flexor digitorum longus.l": [
+   0.0509,
+   0.0027,
+   0.0527
+  ],
+  "Flexor digitorum longus.r": [
+   -0.0509,
+   0.0027,
+   0.0527
+  ],
+  "Flexor digitorum profundus.l": [
+   0.1564,
+   -0.013,
+   0.5329
+  ],
+  "Flexor digitorum profundus.r": [
+   -0.1564,
+   -0.013,
+   0.5329
+  ],
+  "Flexor hallucis longus.l": [
+   0.0531,
+   0.0177,
+   0.0743
+  ],
+  "Flexor hallucis longus.r": [
+   -0.0531,
+   0.0177,
+   0.0743
+  ],
+  "Flexor pollicis longus.l": [
+   0.1682,
+   -0.0076,
+   0.5517
+  ],
+  "Flexor pollicis longus.r": [
+   -0.1682,
+   -0.0076,
+   0.5517
+  ],
+  "Frontalis muscle.l": [
+   0.0182,
+   -0.0464,
+   1.0037
+  ],
+  "Frontalis muscle.r": [
+   -0.0182,
+   -0.0464,
+   1.0037
+  ],
+  "Genioglossus muscle.l": [
+   0.003,
+   -0.0325,
+   0.9277
+  ],
+  "Genioglossus muscle.r": [
+   -0.003,
+   -0.0325,
+   0.9277
+  ],
+  "Geniohyoid muscle.l": [
+   0.0032,
+   -0.0265,
+   0.9211
+  ],
+  "Geniohyoid muscle.r": [
+   -0.0032,
+   -0.0265,
+   0.9211
+  ],
+  "Gluteus maximus muscle.l": [
+   0.0482,
+   0.0421,
+   0.5163
+  ],
+  "Gluteus maximus muscle.r": [
+   -0.0482,
+   0.0421,
+   0.5163
+  ],
+  "Gluteus medius muscle.l": [
+   0.0722,
+   0.0192,
+   0.5561
+  ],
+  "Gluteus medius muscle.r": [
+   -0.0722,
+   0.0192,
+   0.5561
+  ],
+  "Gluteus minimus muscle.l": [
+   0.0741,
+   0.0088,
+   0.5458
+  ],
+  "Gluteus minimus muscle.r": [
+   -0.0741,
+   0.0088,
+   0.5458
+  ],
+  "Gracilis muscle.l": [
+   0.0161,
+   0.0031,
+   0.3798
+  ],
+  "Gracilis muscle.r": [
+   -0.0161,
+   0.0031,
+   0.3798
+  ],
+  "Humeral head of extensor carpi ulnaris.l": [
+   0.1469,
+   0.0154,
+   0.5875
+  ],
+  "Humeral head of extensor carpi ulnaris.r": [
+   -0.1469,
+   0.0154,
+   0.5875
+  ],
+  "Humeral head of flexor carpi ulnaris.l": [
+   0.1311,
+   0.0042,
+   0.5939
+  ],
+  "Humeral head of flexor carpi ulnaris.r": [
+   -0.1311,
+   0.0042,
+   0.5939
+  ],
+  "Humero-ulnar head of flexor digitorum superficialis.l": [
+   0.1486,
+   -0.0111,
+   0.5511
+  ],
+  "Humero-ulnar head of flexor digitorum superficialis.r": [
+   -0.1486,
+   -0.0111,
+   0.5511
+  ],
+  "Hyoglossus muscle.l": [
+   0.0061,
+   -0.029,
+   0.9242
+  ],
+  "Hyoglossus muscle.r": [
+   -0.0061,
+   -0.029,
+   0.9242
+  ],
+  "Iliacus muscle.l": [
+   0.0536,
+   -0.0067,
+   0.5494
+  ],
+  "Iliacus muscle.r": [
+   -0.0536,
+   -0.0067,
+   0.5494
+  ],
+  "Iliococcygeus muscle.l": [
+   0.0176,
+   0.0274,
+   0.5103
+  ],
+  "Iliococcygeus muscle.r": [
+   -0.0176,
+   0.0274,
+   0.5103
+  ],
+  "Iliocostalis colli muscle.c": [
+   0.0333,
+   0.0365,
+   0.8611
+  ],
+  "Iliocostalis colli muscle.r": [
+   -0.0333,
+   0.0365,
+   0.8611
+  ],
+  "Iliocostalis lumborum muscle.l": [
+   0.0348,
+   0.0465,
+   0.6507
+  ],
+  "Iliocostalis lumborum muscle.r": [
+   -0.0348,
+   0.0465,
+   0.6507
+  ],
+  "Iliocostalis thoracis muscle.l": [
+   0.0432,
+   0.051,
+   0.7819
+  ],
+  "Iliocostalis thoracis muscle.r": [
+   -0.0432,
+   0.051,
+   0.7819
+  ],
+  "Iliopectineal arch.l": [
+   0.0362,
+   -0.026,
+   0.5252
+  ],
+  "Iliopectineal arch.r": [
+   -0.0361,
+   -0.0259,
+   0.5252
+  ],
+  "Iliotibial tract.l": [
+   0.0856,
+   0.0071,
+   0.4564
+  ],
+  "Iliotibial tract.r": [
+   -0.0856,
+   0.0071,
+   0.4564
+  ],
+  "Inferior gemellus muscle.l": [
+   0.0502,
+   0.0285,
+   0.5099
+  ],
+  "Inferior gemellus muscle.r": [
+   -0.0502,
+   0.0285,
+   0.5099
+  ],
+  "Inferior head of lateral pterygoid muscle.l": [
+   0.0202,
+   -0.0131,
+   0.9582
+  ],
+  "Inferior head of lateral pterygoid muscle.r": [
+   -0.0202,
+   -0.0131,
+   0.9582
+  ],
+  "Inferior oblique muscle.l": [
+   0.0206,
+   -0.0396,
+   0.9682
+  ],
+  "Inferior oblique muscle.r": [
+   -0.0206,
+   -0.0396,
+   0.9682
+  ],
+  "Inferior pharyngeal constrictor.l": [
+   0.0065,
+   -0.0011,
+   0.9055
+  ],
+  "Inferior pharyngeal constrictor.r": [
+   -0.0065,
+   -0.0011,
+   0.9055
+  ],
+  "Inferior rectus muscle.l": [
+   0.0154,
+   -0.0343,
+   0.9688
+  ],
+  "Inferior rectus muscle.r": [
+   -0.0154,
+   -0.0343,
+   0.9688
+  ],
+  "Inferior tarsus.l": [
+   0.0196,
+   -0.0459,
+   0.9689
+  ],
+  "Inferior tarsus.r": [
+   -0.0196,
+   -0.0459,
+   0.9689
+  ],
+  "Infraspinatus muscle.l": [
+   0.0799,
+   0.0497,
+   0.829
+  ],
+  "Infraspinatus muscle.r": [
+   -0.0799,
+   0.0497,
+   0.829
+  ],
+  "Innermost intercostal muscles.l": [
+   0.0672,
+   0.0059,
+   0.7587
+  ],
+  "Innermost intercostal muscles.r": [
+   -0.0672,
+   0.0059,
+   0.7587
+  ],
+  "Internal abdominal oblique muscle.l": [
+   0.0351,
+   -0.0457,
+   0.6366
+  ],
+  "Internal abdominal oblique muscle.r": [
+   -0.0351,
+   -0.0457,
+   0.6366
+  ],
+  "Internal intercostal muscles.l": [
+   0.0631,
+   -0.0032,
+   0.7521
+  ],
+  "Internal intercostal muscles.r": [
+   -0.0631,
+   -0.0032,
+   0.7521
+  ],
+  "Interspinales colli muscles.l": [
+   0.0022,
+   0.0335,
+   0.9104
+  ],
+  "Interspinales colli muscles.r": [
+   -0.0022,
+   0.0335,
+   0.9104
+  ],
+  "Interspinales lumborum muscles.l": [
+   0.0017,
+   0.0423,
+   0.652
+  ],
+  "Interspinales lumborum muscles.r": [
+   -0.0017,
+   0.0423,
+   0.652
+  ],
+  "Interspinales thoracis muscles.l": [
+   0.002,
+   0.0555,
+   0.8591
+  ],
+  "Interspinales thoracis muscles.r": [
+   -0.002,
+   0.0555,
+   0.8591
+  ],
+  "Lateral crico-arytenoid muscle.l": [
+   0.0063,
+   -0.0021,
+   0.9018
+  ],
+  "Lateral crico-arytenoid muscle.r": [
+   -0.0063,
+   -0.0021,
+   0.9018
+  ],
+  "Lateral head of flexor hallucis brevis.l": [
+   0.0448,
+   -0.0234,
+   0.0044
+  ],
+  "Lateral head of flexor hallucis brevis.r": [
+   -0.0448,
+   -0.0234,
+   0.0044
+  ],
+  "Lateral head of gastrocnemius.l": [
+   0.0656,
+   0.0462,
+   0.2139
+  ],
+  "Lateral head of gastrocnemius.r": [
+   -0.0656,
+   0.0462,
+   0.2139
+  ],
+  "Lateral head of triceps brachii.l": [
+   0.131,
+   0.037,
+   0.7472
+  ],
+  "Lateral head of triceps brachii.r": [
+   -0.131,
+   0.037,
+   0.7472
+  ],
+  "Lateral rectus muscle.l": [
+   0.0229,
+   -0.0348,
+   0.9757
+  ],
+  "Lateral rectus muscle.r": [
+   -0.0229,
+   -0.0348,
+   0.9757
+  ],
+  "Latissimus dorsi muscle.l": [
+   0.0508,
+   0.0447,
+   0.7034
+  ],
+  "Latissimus dorsi muscle.r": [
+   -0.0508,
+   0.0447,
+   0.7034
+  ],
+  "Levator anguli oris.l": [
+   0.0122,
+   -0.0483,
+   0.9499
+  ],
+  "Levator anguli oris.r": [
+   -0.0122,
+   -0.0483,
+   0.9499
+  ],
+  "Levator labii superioris.l": [
+   0.014,
+   -0.0475,
+   0.9586
+  ],
+  "Levator labii superioris.r": [
+   -0.014,
+   -0.0475,
+   0.9586
+  ],
+  "Levator nasolabialis.l": [
+   0.0085,
+   -0.05,
+   0.9625
+  ],
+  "Levator nasolabialis.r": [
+   -0.0085,
+   -0.05,
+   0.9625
+  ],
+  "Levator palpebrae superioris.l": [
+   0.018,
+   -0.0406,
+   0.9812
+  ],
+  "Levator palpebrae superioris.r": [
+   -0.018,
+   -0.0406,
+   0.9812
+  ],
+  "Levator scapulae.l": [
+   0.0305,
+   0.0297,
+   0.8894
+  ],
+  "Levator scapulae.r": [
+   -0.0305,
+   0.0297,
+   0.8894
+  ],
+  "Levatores breves costarum.l": [
+   0.029,
+   0.0475,
+   0.785
+  ],
+  "Levatores breves costarum.r": [
+   -0.029,
+   0.0475,
+   0.785
+  ],
+  "Levatores longi costarum.l": [
+   0.0301,
+   0.0481,
+   0.795
+  ],
+  "Levatores longi costarum.r": [
+   -0.0301,
+   0.0481,
+   0.795
+  ],
+  "Linea alba.c": [
+   0.0008,
+   -0.0565,
+   0.6568
+  ],
+  "Long head of biceps brachii.l": [
+   0.1271,
+   0.0083,
+   0.7484
+  ],
+  "Long head of biceps brachii.r": [
+   -0.1271,
+   0.0083,
+   0.7484
+  ],
+  "Long head of biceps femoris.l": [
+   0.059,
+   0.0299,
+   0.3664
+  ],
+  "Long head of biceps femoris.r": [
+   -0.059,
+   0.0299,
+   0.3664
+  ],
+  "Long head of triceps brachii.l": [
+   0.1119,
+   0.0374,
+   0.755
+  ],
+  "Long head of triceps brachii.r": [
+   -0.1119,
+   0.0374,
+   0.755
+  ],
+  "Longissimus capitis muscle.l": [
+   0.0209,
+   0.0201,
+   0.9094
+  ],
+  "Longissimus capitis muscle.r": [
+   -0.0209,
+   0.0201,
+   0.9094
+  ],
+  "Longissimus colli muscle.l": [
+   0.0204,
+   0.0303,
+   0.876
+  ],
+  "Longissimus colli muscle.r": [
+   -0.0204,
+   0.0303,
+   0.876
+  ],
+  "Longissimus thoracis muscle.l": [
+   0.0206,
+   0.0463,
+   0.7265
+  ],
+  "Longissimus thoracis muscle.r": [
+   -0.0206,
+   0.0463,
+   0.7265
+  ],
+  "Longus capitis muscle.l": [
+   0.0114,
+   0.0011,
+   0.9236
+  ],
+  "Longus capitis muscle.r": [
+   -0.0114,
+   0.0011,
+   0.9236
+  ],
+  "Longus colli muscle.l": [
+   0.0078,
+   0.0048,
+   0.9021
+  ],
+  "Longus colli muscle.r": [
+   -0.0078,
+   0.0048,
+   0.9021
+  ],
+  "Lumbrical muscles of foot.l": [
+   0.0494,
+   -0.0228,
+   0.0011
+  ],
+  "Lumbrical muscles of foot.r": [
+   -0.0494,
+   -0.0228,
+   0.0011
+  ],
+  "Lumbrical muscles of hand.l": [
+   0.166,
+   -0.024,
+   0.4731
+  ],
+  "Lumbrical muscles of hand.r": [
+   -0.166,
+   -0.024,
+   0.4731
+  ],
+  "Medial head of flexor hallucis brevis.l": [
+   0.0402,
+   -0.0306,
+   0.0039
+  ],
+  "Medial head of flexor hallucis brevis.r": [
+   -0.0402,
+   -0.0306,
+   0.0039
+  ],
+  "Medial head of gastrocnemius.l": [
+   0.0373,
+   0.0395,
+   0.2173
+  ],
+  "Medial head of gastrocnemius.r": [
+   -0.0373,
+   0.0395,
+   0.2173
+  ],
+  "Medial head of triceps brachii.l": [
+   0.1212,
+   0.0292,
+   0.7155
+  ],
+  "Medial head of triceps brachii.r": [
+   -0.1212,
+   0.0292,
+   0.7155
+  ],
+  "Medial pterygoid muscle.l": [
+   0.0177,
+   -0.0155,
+   0.9467
+  ],
+  "Medial pterygoid muscle.r": [
+   -0.0177,
+   -0.0155,
+   0.9467
+  ],
+  "Medial rectus muscle.l": [
+   0.011,
+   -0.0366,
+   0.9749
+  ],
+  "Medial rectus muscle.r": [
+   -0.011,
+   -0.0366,
+   0.9749
+  ],
+  "Mentalis muscle.l": [
+   0.0046,
+   -0.049,
+   0.92
+  ],
+  "Mentalis muscle.r": [
+   -0.0046,
+   -0.049,
+   0.92
+  ],
+  "Middle pharyngeal constrictor.l": [
+   0.0073,
+   -0.0075,
+   0.9278
+  ],
+  "Middle pharyngeal constrictor.r": [
+   -0.0073,
+   -0.0075,
+   0.9278
+  ],
+  "Multifidus colli muscle.l": [
+   0.0093,
+   0.0215,
+   0.9118
+  ],
+  "Multifidus colli muscle.r": [
+   -0.0093,
+   0.0215,
+   0.9118
+  ],
+  "Multifidus lumborum muscle.l": [
+   0.0136,
+   0.0272,
+   0.6473
+  ],
+  "Multifidus lumborum muscle.r": [
+   -0.0136,
+   0.0272,
+   0.6473
+  ],
+  "Multifidus thoracis muscle.l": [
+   0.0088,
+   0.0472,
+   0.7977
+  ],
+  "Multifidus thoracis muscle.r": [
+   -0.0088,
+   0.0472,
+   0.7977
+  ],
+  "Mylohyoid muscle.l": [
+   0.0051,
+   -0.0308,
+   0.9199
+  ],
+  "Mylohyoid muscle.r": [
+   -0.0051,
+   -0.0308,
+   0.9199
+  ],
+  "Nasalis muscle.l": [
+   0.0052,
+   -0.0552,
+   0.9678
+  ],
+  "Nasalis muscle.r": [
+   -0.0052,
+   -0.0552,
+   0.9678
+  ],
+  "Oblique head of adductor hallucis.l": [
+   0.0566,
+   -0.0178,
+   0.0068
+  ],
+  "Oblique head of adductor hallucis.r": [
+   -0.0566,
+   -0.0178,
+   0.0068
+  ],
+  "Oblique head of adductor pollicis.l": [
+   0.1749,
+   -0.0201,
+   0.5002
+  ],
+  "Oblique head of adductor pollicis.r": [
+   -0.1749,
+   -0.0201,
+   0.5002
+  ],
+  "Oblique part of cricothyroid muscle.l": [
+   0.0071,
+   -0.0073,
+   0.8947
+  ],
+  "Oblique part of cricothyroid muscle.r": [
+   -0.0071,
+   -0.0073,
+   0.8947
+  ],
+  "Obliquus inferior capitis muscle.l": [
+   0.0135,
+   0.0208,
+   0.9338
+  ],
+  "Obliquus inferior capitis muscle.r": [
+   -0.0135,
+   0.0208,
+   0.9338
+  ],
+  "Obliquus superior capitis muscle.l": [
+   0.0235,
+   0.025,
+   0.9512
+  ],
+  "Obliquus superior capitis muscle.r": [
+   -0.0235,
+   0.025,
+   0.9512
+  ],
+  "Obturator externus.l": [
+   0.0414,
+   0.0071,
+   0.5028
+  ],
+  "Obturator externus.r": [
+   -0.0414,
+   0.0071,
+   0.5028
+  ],
+  "Obturator internus.l": [
+   0.0303,
+   0.0118,
+   0.5126
+  ],
+  "Obturator internus.r": [
+   -0.0303,
+   0.0118,
+   0.5126
+  ],
+  "Occipitalis muscle.l": [
+   0.0248,
+   0.053,
+   0.9802
+  ],
+  "Occipitalis muscle.r": [
+   -0.0248,
+   0.053,
+   0.9802
+  ],
+  "Omohyoid muscle.l": [
+   0.0372,
+   0.0059,
+   0.8765
+  ],
+  "Omohyoid muscle.r": [
+   -0.0372,
+   0.0059,
+   0.8765
+  ],
+  "Opponens digiti minimi muscle of hand.l": [
+   0.1502,
+   -0.022,
+   0.4907
+  ],
+  "Opponens digiti minimi muscle of hand.r": [
+   -0.1502,
+   -0.022,
+   0.4907
+  ],
+  "Opponens pollicis muscle.l": [
+   0.1762,
+   -0.0217,
+   0.5041
+  ],
+  "Opponens pollicis muscle.r": [
+   -0.1762,
+   -0.0217,
+   0.5041
+  ],
+  "Orbicularis oris muscle.l": [
+   0.0088,
+   -0.0514,
+   0.937
+  ],
+  "Orbicularis oris muscle.r": [
+   -0.0088,
+   -0.0514,
+   0.937
+  ],
+  "Orbital part of orbicularis oculi.l": [
+   0.0204,
+   -0.0445,
+   0.9753
+  ],
+  "Orbital part of orbicularis oculi.r": [
+   -0.0204,
+   -0.0445,
+   0.9753
+  ],
+  "Palatopharyngeus muscle.l": [
+   0.0062,
+   -0.0043,
+   0.9204
+  ],
+  "Palatopharyngeus muscle.r": [
+   -0.0062,
+   -0.0043,
+   0.9204
+  ],
+  "Palmar interossei muscles.l": [
+   0.1521,
+   -0.0225,
+   0.4821
+  ],
+  "Palmar interossei muscles.r": [
+   -0.1521,
+   -0.0225,
+   0.4821
+  ],
+  "Palmaris longus muscle.l": [
+   0.1519,
+   -0.0163,
+   0.5392
+  ],
+  "Palmaris longus muscle.r": [
+   -0.1519,
+   -0.0163,
+   0.5392
+  ],
+  "Palpebral part of orbicularis oculi.l": [
+   0.0193,
+   -0.0454,
+   0.9736
+  ],
+  "Palpebral part of orbicularis oculi.r": [
+   -0.0193,
+   -0.0454,
+   0.9736
+  ],
+  "Pectineus muscle.l": [
+   0.0354,
+   -0.0199,
+   0.4933
+  ],
+  "Pectineus muscle.r": [
+   -0.0354,
+   -0.0199,
+   0.4933
+  ],
+  "Pectoralis minor muscle.l": [
+   0.0685,
+   -0.0231,
+   0.8143
+  ],
+  "Pectoralis minor muscle.r": [
+   -0.0685,
+   -0.0231,
+   0.8143
+  ],
+  "Piriformis muscle.l": [
+   0.0433,
+   0.0281,
+   0.5371
+  ],
+  "Piriformis muscle.r": [
+   -0.0433,
+   0.0281,
+   0.5371
+  ],
+  "Plantar interossei muscles.l": [
+   0.0672,
+   -0.0301,
+   0.004
+  ],
+  "Plantar interossei muscles.r": [
+   -0.0672,
+   -0.0301,
+   0.004
+  ],
+  "Plantaris muscle.l": [
+   0.0476,
+   0.0388,
+   0.1793
+  ],
+  "Plantaris muscle.r": [
+   -0.0476,
+   0.0388,
+   0.1793
+  ],
+  "Platysma.l": [
+   0.0246,
+   -0.0161,
+   0.8911
+  ],
+  "Platysma.r": [
+   -0.0246,
+   -0.0161,
+   0.8911
+  ],
+  "Popliteus muscle.l": [
+   0.0537,
+   0.0306,
+   0.2363
+  ],
+  "Popliteus muscle.r": [
+   -0.0537,
+   0.0306,
+   0.2363
+  ],
+  "Posterior belly of digastric muscle.l": [
+   0.025,
+   0.0019,
+   0.9437
+  ],
+  "Posterior belly of digastric muscle.r": [
+   -0.025,
+   0.0019,
+   0.9437
+  ],
+  "Posterior crico-arytenoid muscle.l": [
+   0.004,
+   0.0022,
+   0.8992
+  ],
+  "Posterior crico-arytenoid muscle.r": [
+   -0.004,
+   0.0022,
+   0.8992
+  ],
+  "Procerus muscle.l": [
+   0.0056,
+   -0.0535,
+   0.988
+  ],
+  "Procerus muscle.r": [
+   -0.0056,
+   -0.0535,
+   0.988
+  ],
+  "Pronator quadratus.l": [
+   0.1576,
+   -0.0086,
+   0.5424
+  ],
+  "Pronator quadratus.r": [
+   -0.1576,
+   -0.0086,
+   0.5424
+  ],
+  "Psoas major.l": [
+   0.0285,
+   0.0035,
+   0.5997
+  ],
+  "Psoas major.r": [
+   -0.0285,
+   0.0035,
+   0.5997
+  ],
+  "Pubo-analis muscle.l": [
+   0.0102,
+   0.0144,
+   0.499
+  ],
+  "Pubo-analis muscle.r": [
+   -0.0102,
+   0.0144,
+   0.499
+  ],
+  "Pubococcygeus muscle.l": [
+   0.0103,
+   0.0214,
+   0.5048
+  ],
+  "Pubococcygeus muscle.r": [
+   -0.0103,
+   0.0214,
+   0.5048
+  ],
+  "Pyramidalis muscle.l": [
+   0.0088,
+   -0.0379,
+   0.5306
+  ],
+  "Pyramidalis muscle.r": [
+   -0.0088,
+   -0.0379,
+   0.5306
+  ],
+  "Quadratus femoris muscle.l": [
+   0.0566,
+   0.0208,
+   0.4922
+  ],
+  "Quadratus femoris muscle.r": [
+   -0.0566,
+   0.0208,
+   0.4922
+  ],
+  "Quadratus lumborum muscle.l": [
+   0.025,
+   0.0332,
+   0.6386
+  ],
+  "Quadratus lumborum muscle.r": [
+   -0.025,
+   0.0332,
+   0.6386
+  ],
+  "Quadratus plantae muscle.l": [
+   0.0531,
+   0.014,
+   0.0022
+  ],
+  "Quadratus plantae muscle.r": [
+   -0.0531,
+   0.014,
+   0.0022
+  ],
+  "Radial head of flexor digitorum superficialis.l": [
+   0.1547,
+   -0.0028,
+   0.5872
+  ],
+  "Radial head of flexor digitorum superficialis.r": [
+   -0.1547,
+   -0.0028,
+   0.5872
+  ],
+  "Rectus abdominis muscle.l": [
+   0.0255,
+   -0.0604,
+   0.6728
+  ],
+  "Rectus abdominis muscle.r": [
+   -0.0255,
+   -0.0604,
+   0.6728
+  ],
+  "Rectus anterior capitis muscle.l": [
+   0.0087,
+   0.0015,
+   0.9513
+  ],
+  "Rectus anterior capitis muscle.r": [
+   -0.0087,
+   0.0015,
+   0.9513
+  ],
+  "Rectus femoris muscle.l": [
+   0.0644,
+   -0.0147,
+   0.3938
+  ],
+  "Rectus femoris muscle.r": [
+   -0.0644,
+   -0.0147,
+   0.3938
+  ],
+  "Rectus lateralis capitis muscle.l": [
+   0.0225,
+   0.0092,
+   0.9485
+  ],
+  "Rectus lateralis capitis muscle.r": [
+   -0.0225,
+   0.0092,
+   0.9485
+  ],
+  "Rectus posterior major capitis muscle.l": [
+   0.0127,
+   0.0309,
+   0.9438
+  ],
+  "Rectus posterior major capitis muscle.r": [
+   -0.0127,
+   0.0309,
+   0.9438
+  ],
+  "Rectus posterior minor capitis muscle.l": [
+   0.0065,
+   0.0356,
+   0.9497
+  ],
+  "Rectus posterior minor capitis muscle.r": [
+   -0.0065,
+   0.0356,
+   0.9497
+  ],
+  "Rhomboid major muscle.l": [
+   0.0187,
+   0.0619,
+   0.831
+  ],
+  "Rhomboid major muscle.r": [
+   -0.0187,
+   0.0619,
+   0.831
+  ],
+  "Rhomboid minor muscle.l": [
+   0.0175,
+   0.0551,
+   0.8632
+  ],
+  "Rhomboid minor muscle.r": [
+   -0.0175,
+   0.0551,
+   0.8632
+  ],
+  "Risorius muscle.l": [
+   0.0254,
+   -0.0318,
+   0.9353
+  ],
+  "Risorius muscle.r": [
+   -0.0254,
+   -0.0318,
+   0.9353
+  ],
+  "Rotatores.l": [
+   0.0091,
+   0.0417,
+   0.7512
+  ],
+  "Rotatores.r": [
+   -0.0091,
+   0.0417,
+   0.7512
+  ],
+  "Sartorius muscle.l": [
+   0.0393,
+   -0.0121,
+   0.39
+  ],
+  "Sartorius muscle.r": [
+   -0.0393,
+   -0.0121,
+   0.39
+  ],
+  "Scalenus anterior muscle.l": [
+   0.0208,
+   0.0007,
+   0.8893
+  ],
+  "Scalenus anterior muscle.r": [
+   -0.0208,
+   0.0007,
+   0.8893
+  ],
+  "Scalenus medius muscle.l": [
+   0.0221,
+   0.0074,
+   0.8956
+  ],
+  "Scalenus medius muscle.r": [
+   -0.0221,
+   0.0074,
+   0.8956
+  ],
+  "Scalenus posterior muscle.l": [
+   0.0284,
+   0.0147,
+   0.8852
+  ],
+  "Scalenus posterior muscle.r": [
+   -0.0284,
+   0.0147,
+   0.8852
+  ],
+  "Scapular spinal part of deltoid muscle.l": [
+   0.1132,
+   0.0419,
+   0.8197
+  ],
+  "Scapular spinal part of deltoid muscle.r": [
+   -0.1132,
+   0.0419,
+   0.8197
+  ],
+  "Semimembranosus muscle.l": [
+   0.0279,
+   0.0265,
+   0.3458
+  ],
+  "Semimembranosus muscle.r": [
+   -0.0279,
+   0.0265,
+   0.3458
+  ],
+  "Semispinalis colli muscle.l": [
+   0.0111,
+   0.0358,
+   0.8807
+  ],
+  "Semispinalis colli muscle.r": [
+   -0.0111,
+   0.0358,
+   0.8807
+  ],
+  "Semispinalis thoracis muscle.l": [
+   0.0096,
+   0.0537,
+   0.7939
+  ],
+  "Semispinalis thoracis muscle.r": [
+   -0.0096,
+   0.0537,
+   0.7939
+  ],
+  "Semitendinosus muscle.l": [
+   0.0311,
+   0.0326,
+   0.3634
+  ],
+  "Semitendinosus muscle.r": [
+   -0.0311,
+   0.0326,
+   0.3634
+  ],
+  "Serratus anterior muscle.l": [
+   0.0714,
+   0.0205,
+   0.7947
+  ],
+  "Serratus anterior muscle.r": [
+   -0.0714,
+   0.0205,
+   0.7947
+  ],
+  "Serratus posterior inferior muscle.l": [
+   0.0282,
+   0.0477,
+   0.6739
+  ],
+  "Serratus posterior inferior muscle.r": [
+   -0.0282,
+   0.0477,
+   0.6739
+  ],
+  "Serratus posterior superior muscle.l": [
+   0.0286,
+   0.0459,
+   0.8605
+  ],
+  "Serratus posterior superior muscle.r": [
+   -0.0286,
+   0.0459,
+   0.8605
+  ],
+  "Short head of biceps brachii.l": [
+   0.1143,
+   0.0066,
+   0.7625
+  ],
+  "Short head of biceps brachii.r": [
+   -0.1143,
+   0.0066,
+   0.7625
+  ],
+  "Short head of biceps femoris.l": [
+   0.0662,
+   0.0219,
+   0.3168
+  ],
+  "Short head of biceps femoris.r": [
+   -0.0662,
+   0.0219,
+   0.3168
+  ],
+  "Soleus muscle.l": [
+   0.0534,
+   0.036,
+   0.163
+  ],
+  "Soleus muscle.r": [
+   -0.0534,
+   0.036,
+   0.163
+  ],
+  "Spinalis capitis muscle.l": [
+   0.0149,
+   0.0304,
+   0.9301
+  ],
+  "Spinalis capitis muscle.r": [
+   -0.0149,
+   0.0304,
+   0.9301
+  ],
+  "Spinalis colli muscle.l": [
+   0.0029,
+   0.0389,
+   0.8918
+  ],
+  "Spinalis colli muscle.r": [
+   -0.0029,
+   0.0389,
+   0.8918
+  ],
+  "Spinalis thoracis muscle.l": [
+   0.0033,
+   0.054,
+   0.7538
+  ],
+  "Spinalis thoracis muscle.r": [
+   -0.0033,
+   0.054,
+   0.7538
+  ],
+  "Splenius capitis muscle.l": [
+   0.0127,
+   0.0369,
+   0.8996
+  ],
+  "Splenius capitis muscle.r": [
+   -0.0127,
+   0.0369,
+   0.8996
+  ],
+  "Splenius colli muscle.l": [
+   0.0111,
+   0.0497,
+   0.8472
+  ],
+  "Splenius colli muscle.r": [
+   -0.0111,
+   0.0497,
+   0.8472
+  ],
+  "Sternocleidomastoid muscle.l": [
+   0.0223,
+   -0.0096,
+   0.8987
+  ],
+  "Sternocleidomastoid muscle.r": [
+   -0.0223,
+   -0.0096,
+   0.8987
+  ],
+  "Sternocostal head of pectoralis major muscle.l": [
+   0.0542,
+   -0.0454,
+   0.7979
+  ],
+  "Sternocostal head of pectoralis major muscle.r": [
+   -0.0542,
+   -0.0454,
+   0.7979
+  ],
+  "Sternohyoid muscle.l": [
+   0.0079,
+   -0.0166,
+   0.8793
+  ],
+  "Sternohyoid muscle.r": [
+   -0.0079,
+   -0.0166,
+   0.8793
+  ],
+  "Sternothyroid muscle.l": [
+   0.0085,
+   -0.0139,
+   0.8662
+  ],
+  "Sternothyroid muscle.r": [
+   -0.0085,
+   -0.0139,
+   0.8662
+  ],
+  "Straight part of cricothyroid muscle.l": [
+   0.0047,
+   -0.0067,
+   0.898
+  ],
+  "Straight part of cricothyroid muscle.r": [
+   -0.0047,
+   -0.0067,
+   0.898
+  ],
+  "Stylohyoid muscle.l": [
+   0.0157,
+   -0.0106,
+   0.9318
+  ],
+  "Stylohyoid muscle.r": [
+   -0.0157,
+   -0.0106,
+   0.9318
+  ],
+  "Stylopharyngeus muscle.l": [
+   0.0135,
+   -0.0066,
+   0.9304
+  ],
+  "Stylopharyngeus muscle.r": [
+   -0.0135,
+   -0.0066,
+   0.9304
+  ],
+  "Subclavius muscle.l": [
+   0.0382,
+   -0.0165,
+   0.853
+  ],
+  "Subclavius muscle.r": [
+   -0.0382,
+   -0.0165,
+   0.853
+  ],
+  "Subscapularis muscle.l": [
+   0.0727,
+   0.0317,
+   0.8297
+  ],
+  "Subscapularis muscle.r": [
+   -0.0727,
+   0.0317,
+   0.8297
+  ],
+  "Superficial head of flexor pollicis brevis.l": [
+   0.1783,
+   -0.0282,
+   0.5029
+  ],
+  "Superficial head of flexor pollicis brevis.r": [
+   -0.1783,
+   -0.0282,
+   0.5029
+  ],
+  "Superficial head of pronator teres.l": [
+   0.1489,
+   0.0067,
+   0.6357
+  ],
+  "Superficial head of pronator teres.r": [
+   -0.1489,
+   0.0067,
+   0.6357
+  ],
+  "Superficial part of masseter.l": [
+   0.0309,
+   -0.0231,
+   0.9453
+  ],
+  "Superficial part of masseter.r": [
+   -0.0309,
+   -0.0231,
+   0.9453
+  ],
+  "Superior gemellus muscle.l": [
+   0.0481,
+   0.0242,
+   0.5209
+  ],
+  "Superior gemellus muscle.r": [
+   -0.0481,
+   0.0242,
+   0.5209
+  ],
+  "Superior head of lateral pterygoid muscle.l": [
+   0.0209,
+   -0.0122,
+   0.9637
+  ],
+  "Superior head of lateral pterygoid muscle.r": [
+   -0.0209,
+   -0.0122,
+   0.9637
+  ],
+  "Superior oblique muscle.l": [
+   0.0149,
+   -0.0363,
+   0.9803
+  ],
+  "Superior oblique muscle.r": [
+   -0.0149,
+   -0.0363,
+   0.9803
+  ],
+  "Superior pharyngeal constrictor.l": [
+   0.0094,
+   -0.0099,
+   0.9466
+  ],
+  "Superior pharyngeal constrictor.r": [
+   -0.0094,
+   -0.0099,
+   0.9466
+  ],
+  "Superior rectus muscle.l": [
+   0.0169,
+   -0.0363,
+   0.9803
+  ],
+  "Superior rectus muscle.r": [
+   -0.0169,
+   -0.0363,
+   0.9803
+  ],
+  "Superior tarsus.l": [
+   0.0196,
+   -0.0464,
+   0.9777
+  ],
+  "Superior tarsus.r": [
+   -0.0196,
+   -0.0464,
+   0.9777
+  ],
+  "Supinator.l": [
+   0.1536,
+   0.0176,
+   0.6389
+  ],
+  "Supinator.r": [
+   -0.1536,
+   0.0176,
+   0.6389
+  ],
+  "Supraspinatus muscle.l": [
+   0.0921,
+   0.028,
+   0.8542
+  ],
+  "Supraspinatus muscle.r": [
+   -0.0921,
+   0.028,
+   0.8542
+  ],
+  "Temporalis muscle.l": [
+   0.0375,
+   -0.0102,
+   0.9869
+  ],
+  "Temporalis muscle.r": [
+   -0.0375,
+   -0.0102,
+   0.9869
+  ],
+  "Temporoparietalis muscle.l": [
+   0.041,
+   0.0106,
+   0.9997
+  ],
+  "Temporoparietalis muscle.r": [
+   -0.041,
+   0.0106,
+   0.9997
+  ],
+  "Tendinous arch of levator ani.l": [
+   0.0223,
+   0.0088,
+   0.512
+  ],
+  "Tendinous arch of levator ani.r": [
+   -0.0223,
+   0.0088,
+   0.512
+  ],
+  "Teres major muscle.l": [
+   0.0908,
+   0.0353,
+   0.7936
+  ],
+  "Teres major muscle.r": [
+   -0.0908,
+   0.0353,
+   0.7936
+  ],
+  "Teres minor muscle.l": [
+   0.0939,
+   0.0397,
+   0.8221
+  ],
+  "Teres minor muscle.r": [
+   -0.0939,
+   0.0397,
+   0.8221
+  ],
+  "Thyro-epiglottic part of thyro-arytenoid muscle.l": [
+   0.0037,
+   -0.0106,
+   0.9104
+  ],
+  "Thyro-epiglottic part of thyro-arytenoid muscle.r": [
+   -0.0037,
+   -0.0106,
+   0.9104
+  ],
+  "Thyrohyoid muscle.l": [
+   0.0089,
+   -0.0122,
+   0.9078
+  ],
+  "Thyrohyoid muscle.r": [
+   -0.0089,
+   -0.0122,
+   0.9078
+  ],
+  "Tibialis anterior muscle.l": [
+   0.0564,
+   0.0053,
+   0.1285
+  ],
+  "Tibialis anterior muscle.r": [
+   -0.0564,
+   0.0053,
+   0.1285
+  ],
+  "Tibialis posterior muscle.l": [
+   0.0478,
+   0.0152,
+   0.0833
+  ],
+  "Tibialis posterior muscle.r": [
+   -0.0478,
+   0.0152,
+   0.0833
+  ],
+  "Transverse arytenoid muscle.c": [
+   -0.0005,
+   -0.0036,
+   0.9026
+  ],
+  "Transverse head of adductor hallucis.l": [
+   0.0637,
+   -0.0394,
+   -0.0023
+  ],
+  "Transverse head of adductor hallucis.r": [
+   -0.0637,
+   -0.0394,
+   -0.0023
+  ],
+  "Transverse head of adductor pollicis.l": [
+   0.1772,
+   -0.0199,
+   0.4891
+  ],
+  "Transverse head of adductor pollicis.r": [
+   -0.1772,
+   -0.0199,
+   0.4891
+  ],
+  "Transverse part of trapezius muscle.l": [
+   0.0305,
+   0.054,
+   0.8633
+  ],
+  "Transverse part of trapezius muscle.r": [
+   -0.0305,
+   0.054,
+   0.8633
+  ],
+  "Transversus abdominis muscle.l": [
+   0.0513,
+   -0.0196,
+   0.6526
+  ],
+  "Transversus abdominis muscle.r": [
+   -0.0513,
+   -0.0196,
+   0.6526
+  ],
+  "Transversus thoracis muscle.l": [
+   0.0208,
+   -0.0542,
+   0.7794
+  ],
+  "Transversus thoracis muscle.r": [
+   -0.0208,
+   -0.0542,
+   0.7794
+  ],
+  "Trochlea of superior oblique muscle.l": [
+   0.0092,
+   -0.0468,
+   0.9834
+  ],
+  "Trochlea of superior oblique muscle.r": [
+   -0.0092,
+   -0.0468,
+   0.9834
+  ],
+  "Ulnar head of extensor carpi ulnaris.l": [
+   0.1434,
+   0.0044,
+   0.5725
+  ],
+  "Ulnar head of extensor carpi ulnaris.r": [
+   -0.1434,
+   0.0044,
+   0.5725
+  ],
+  "Ulnar head of flexor carpi ulnaris.l": [
+   0.1333,
+   0.0163,
+   0.6079
+  ],
+  "Ulnar head of flexor carpi ulnaris.r": [
+   -0.1333,
+   0.0163,
+   0.6079
+  ],
+  "Vastus intermedius muscle.l": [
+   0.0647,
+   -0.0079,
+   0.3548
+  ],
+  "Vastus intermedius muscle.r": [
+   -0.0647,
+   -0.0079,
+   0.3548
+  ],
+  "Vastus lateralis muscle.l": [
+   0.0774,
+   -0.0024,
+   0.3624
+  ],
+  "Vastus lateralis muscle.r": [
+   -0.0774,
+   -0.0024,
+   0.3624
+  ],
+  "Vastus medialis muscle.l": [
+   0.0434,
+   -0.0102,
+   0.3464
+  ],
+  "Vastus medialis muscle.r": [
+   -0.0434,
+   -0.0102,
+   0.3464
+  ],
+  "Ventral parts of lateral intertransversarii lumborum muscles.l": [
+   0.0141,
+   0.0154,
+   0.6374
+  ],
+  "Ventral parts of lateral intertransversarii lumborum muscles.r": [
+   -0.0141,
+   0.0154,
+   0.6374
+  ],
+  "Zygomaticus major muscle.l": [
+   0.0231,
+   -0.0405,
+   0.9457
+  ],
+  "Zygomaticus major muscle.r": [
+   -0.0231,
+   -0.0405,
+   0.9457
+  ],
+  "Zygomaticus minor muscle.l": [
+   0.0177,
+   -0.0466,
+   0.9553
+  ],
+  "Zygomaticus minor muscle.r": [
+   -0.0177,
+   -0.0466,
+   0.9553
+  ]
+ }
+}

@@ -298,7 +298,7 @@ app.get('/api/leaderboard', async (req, res) => {
 async function activeHunt() {
   const { data } = await supabase
     .from('hunts')
-    .select('id, name, tier, weak_points, resist_points, hp_max, hp_remaining, opens_at, closes_at, status')
+    .select('id, name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, opens_at, closes_at, status')
     .eq('status', 'active')
     .gt('closes_at', new Date().toISOString())
     .order('id', { ascending: false })
@@ -329,7 +329,7 @@ app.get('/api/hunt', async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: cards }, { data: hpRows }, { data: contrib }, { data: cstate }] = await Promise.all([
     supabase.from('player_cards')
-      .select('ascension, card:cards(id, name, rarity, image_url, season, subject:subjects(type, cp_mod, ability))')
+      .select('ascension, card:cards(id, name, rarity, image_url, season, subject:subjects(type, cp_mod, ability, tags))')
       .eq('player_id', me.id),
     supabase.from('hunt_card_hp').select('card_id, hp_remaining, max_hp, downed, shield, cd_until_round').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today),
     supabase.from('hunt_hits').select('damage').eq('hunt_id', hunt.id).eq('player_id', me.id),
@@ -350,6 +350,7 @@ app.get('/api/hunt', async (req, res) => {
       hp: st ? st.hp_remaining : maxHp, max_hp: maxHp, downed: st?.downed || false,
       used: !!st, // this card is committed for today (counts toward the daily cap)
       ability: c?.subject?.ability || null,
+      tags: c?.subject?.tags || null, // faceted tags -> drives the element attack visual
       shield: st?.shield || 0, cdReady: st?.cd_until_round || 0, // support cooldown ready-round
     };
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));

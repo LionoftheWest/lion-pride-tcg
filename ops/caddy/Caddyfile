@@ -1,0 +1,18 @@
+lionpridetcg.duckdns.org {
+    encode zstd gzip
+    route {
+        redir /app /app/
+        handle /cimg/* {
+            reverse_proxy localhost:4441
+        }
+        handle_path /app/* {
+            reverse_proxy localhost:4441
+        }
+        reverse_proxy localhost:4331
+    }
+}
+
+studio.lionpridetcg.duckdns.org {
+    encode zstd gzip
+    reverse_proxy localhost:4399
+}
