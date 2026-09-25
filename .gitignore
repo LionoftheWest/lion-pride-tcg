@@ -31,3 +31,12 @@ cloudflared.exe
 *.log
 .DS_Store
 Thumbs.db
+
+# --- Python cruft ---
+__pycache__/
+*.pyc
+
+# --- card-studio/ml: venvs, cloned model repos, weights, generated meshes (GBs) ---
+# Keep only our own driver scripts.
+card-studio/ml/*
+!card-studio/ml/*.py

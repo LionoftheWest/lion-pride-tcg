@@ -37,6 +37,10 @@ ssh -i $KEY ubuntu@$IP '
   sudo docker build -t tcg-activity . &&
   sudo docker rm -f tcg-activity &&
   sudo docker run -d --name tcg-activity --network host --restart unless-stopped --env-file .env tcg-activity'
+
+# 3. keep the secrets owner-only. A redeploy on 2026-09-16 left .env at 644 (it held
+#    the service key + client secret). Any tarball of the app dir holds a .env too.
+ssh -i $KEY ubuntu@$IP 'cd /home/ubuntu && chmod 600 activity/.env gallery/.env tcg-bot/.env *.tgz 2>/dev/null; stat -c "%a %n" activity/.env gallery/.env tcg-bot/.env'
 ```
 
 ## Verify (server + edge)
@@ -45,6 +49,9 @@ The container serves the bundle built **inside the image** — the host `public/
 copy is irrelevant. Verify the container / the HTTPS edge, not the host file:
 
 ```sh
+# every .env prints 600
+ssh -i $KEY ubuntu@$IP 'stat -c "%a %n" /home/ubuntu/*/.env'
+
 # container is up + config responds
 ssh -i $KEY ubuntu@$IP "sudo docker ps --filter name=tcg-activity; curl -s -o /dev/null -w '%{http_code}\n' http://localhost:4441/api/config"
 
