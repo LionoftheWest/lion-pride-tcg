@@ -7,7 +7,7 @@ disposable — collections survive restarts, redeploys, and rebuilds.
 ## The VM
 
 - Provider: Oracle Cloud, Always Free `VM.Standard.E2.1.Micro` (x86_64, 1 GB + 2 GB swap).
-- OS: Ubuntu 24.04. User: `ubuntu`. Public IP: `137.131.48.8`.
+- OS: Ubuntu 24.04. User: `ubuntu`. Public IP: resolve `lionpridetcg.duckdns.org` first. The stack moved to an Oracle Ampere A1 box (`129.146.118.111`, 2026-09-21). See `ops/migrate-to-a1.sh`.
 - The bot runs as a Docker container named `tcg-bot` with `--restart unless-stopped`,
   and Docker is enabled at boot — so it survives crashes and VM reboots.
 - The 5 secrets live in `/home/ubuntu/tcg-bot/.env` on the VM (never in git).

@@ -17,6 +17,7 @@
   </div>
   <header id="topbar">
     <div class="title"><span class="logo">🦁</span> Lion Pride TCG</div>
+    <button id="openTop" class="open-top hidden">🎴 Open Pack</button>
     <div class="topright">
       <button id="bellBtn" class="iconbtn hidden" title="Notifications">🔔</button>
       <button id="boardBtn" class="iconbtn hidden" title="Leaderboard">🏆</button>
@@ -34,6 +35,7 @@
   <div id="body" class="hidden">
     <main id="main"></main>
     <aside id="feed">
+      <div id="bossMini"></div>
       <div class="feed-head">Community Live Feed</div>
       <div class="feed-list" id="feedList"></div>
     </aside>
@@ -53,6 +55,15 @@
 
   <!-- Leaderboard: top players by Total Collection Power (the trophy). -->
   <div id="board" class="hidden"></div>
+
+  <!-- Boss detail: click the mini boss square for the full view + stats + move pool. -->
+  <div id="bossModal" class="hidden">
+    <button id="bossModalClose" title="Close">✕</button>
+    <div class="bm-card">
+      <div class="bm-stage"><canvas id="bossModalCanvas"></canvas></div>
+      <div class="bm-info" id="bossModalInfo"></div>
+    </div>
+  </div>
 
   <!-- 3D card viewer: drag to pivot, click to flip, holo shines on tilt. -->
   <div id="viewer" class="hidden">
@@ -93,7 +104,6 @@
         <button id="v-ascend" class="v-ascend hidden"></button>
         <div class="v-asc-note" id="v-asc-note"></div>
       </div>
-      <p class="v-hint">Drag to pivot · click to flip</p>
     </div>
   </div>
 
