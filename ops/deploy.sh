@@ -24,7 +24,6 @@ case "$SVC" in
             HEALTH='curl -fsS -o /dev/null http://127.0.0.1:4331/' ;;
   *) echo "unknown service: $SVC (use activity, bot, or gallery)"; exit 2 ;;
 esac
-[ "${FORCE_UNHEALTHY:-}" = 1 ] && HEALTH=false
 
 cd "$(git rev-parse --show-toplevel)"
 
@@ -52,7 +51,7 @@ echo "== deploy $SVC @ $SHORT -> $IP:/home/ubuntu/$DIR"
 git archive --format=tar "$SHA:$SRC" $PATHS | $SSH "rm -rf ~/$DIR.new && mkdir ~/$DIR.new && tar -x -C ~/$DIR.new"
 
 # 3. On the VM: build, swap, health check, roll back on failure, lock the secrets.
-$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' bash -s" <<'REMOTE'
+$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' FORCE='${FORCE_UNHEALTHY:-}' bash -s" <<'REMOTE'
 set -euo pipefail
 cd /home/ubuntu
 cp -p "$DIR/.env" "$DIR.new/.env"
@@ -67,7 +66,9 @@ run() {
   sudo docker rm -f "$NAME" >/dev/null 2>&1 || true
   sudo docker run -d --name "$NAME" --network host --restart unless-stopped --env-file "/home/ubuntu/$DIR/.env" "$1" >/dev/null
 }
-healthy() { for _ in $(seq 1 20); do sleep 3; if eval "$HEALTH"; then return 0; fi; done; return 1; }
+# FORCE=1 fails only the NEW build's check, so the rollback check stays real.
+healthy() { [ "${1:-}" = new ] && [ "$FORCE" = 1 ] && return 1
+            for _ in $(seq 1 20); do sleep 3; if eval "$HEALTH"; then return 0; fi; done; return 1; }
 lock() { chmod 600 /home/ubuntu/*/.env /home/ubuntu/*.tgz 2>/dev/null || true; stat -c '%a %n' /home/ubuntu/*/.env; }
 
 sudo docker tag "$NAME:latest" "$NAME:prev"
@@ -75,9 +76,9 @@ rm -rf "$DIR.prev"; mv "$DIR" "$DIR.prev"; mv "$DIR.new" "$DIR"
 echo "-- start $NAME:$SHORT"
 run "$NAME:$SHORT"
 
-if ! healthy; then
+if ! healthy new; then
   echo "-- HEALTH CHECK FAILED, rolling back"; sudo docker logs --tail 15 "$NAME" 2>&1 || true
-  rm -rf "$DIR"; mv "$DIR.prev" "$DIR"; run "$NAME:prev"
+  rm -rf "$DIR"; mv "$DIR.prev" "$DIR"; run "$NAME:prev"; sudo docker rmi -f "$NAME:$SHORT" >/dev/null 2>&1 || true
   if healthy; then echo "ROLLED BACK to the previous image (healthy)"; else echo "ROLLBACK ALSO UNHEALTHY - check now"; fi
   lock; exit 1
 fi
