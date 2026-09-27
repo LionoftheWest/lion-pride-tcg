@@ -69,8 +69,11 @@ async function earnMultiplier(): Promise<number> {
   return multiplierCache.value;
 }
 
-/** Count one message toward today, and earn packs the first time a threshold hits. */
-export async function recordMessage(id: string, username: string): Promise<void> {
+/**
+ * Count one message toward today, and earn packs the first time a threshold hits.
+ * Returns the number of packs this message earned (0 for almost every message).
+ */
+export async function recordMessage(id: string, username: string): Promise<number> {
   if (!knownPlayers.has(id)) {
     await ensurePlayer(id, username);
   }
@@ -96,8 +99,22 @@ export async function recordMessage(id: string, username: string): Promise<void>
     if (earnErr) throw new Error(`claim_daily_earn failed: ${earnErr.message}`);
     if (granted && granted > 0) {
       await notifyPlayer(id, 'pack_earned', `🎁 You earned ${granted} pack${granted === 1 ? '' : 's'}! Open them in the Lion Pride TCG activity.`);
+      return granted;
     }
   }
+  return 0;
+}
+
+/** Claim the one-time first-pack @mention. True only the first time for this player. */
+export async function claimFirstPackPing(id: string): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc('claim_first_pack_ping', { p_player: id });
+  if (error) throw new Error(`claimFirstPackPing failed: ${error.message}`);
+  return data === true;
+}
+
+/** Undo a claim whose channel post failed, so a later earn tries again. */
+export async function releaseFirstPackPing(id: string): Promise<void> {
+  await getSupabase().from('players').update({ first_pack_ping_at: null }).eq('id', id);
 }
 
 /** The player's current pack balance. */

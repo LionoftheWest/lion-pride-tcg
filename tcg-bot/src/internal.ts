@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import type { Client } from 'discord.js';
+import type { Client, MessageCreateOptions } from 'discord.js';
 import { openOnePack, openTestPacks, getPackBalance, giftPacks } from './store.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
@@ -14,12 +14,14 @@ const PORT = Number(process.env.INTERNAL_PORT) || 4451;
 const NOTIF_CHANNEL = process.env.NOTIF_CHANNEL_ID ?? '';
 
 // Post a message to the public notifications channel (best-effort).
-export async function announce(client: Client, message: string): Promise<boolean> {
+// A string posts plain text; an options object can also carry buttons.
+export async function announce(client: Client, message: string | MessageCreateOptions): Promise<boolean> {
   if (!NOTIF_CHANNEL) return false;
   try {
     const channel = await client.channels.fetch(NOTIF_CHANNEL);
     if (channel && channel.isTextBased() && 'send' in channel) {
-      await channel.send({ content: message, allowedMentions: { parse: ['users'] } });
+      const body = typeof message === 'string' ? { content: message } : message;
+      await channel.send({ ...body, allowedMentions: { parse: ['users'] } });
       return true;
     }
   } catch { /* channel missing or no permission — ignore */ }

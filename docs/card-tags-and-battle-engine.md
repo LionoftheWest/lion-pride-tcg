@@ -104,6 +104,10 @@ The approved model is ROTATE plus SOFT CAPS. It has three parts.
 - The boss weakness tags rotate every week. The spawn job picks the tags.
 - The job tracks recent weeks and avoids a repeat, so coverage stays broad.
 - Every card gets its week to shine. No single tag stays strong for long.
+- The spawn job picks only from tags that a fair share of the draw-pool attackers
+  carry: at least 4 cards (and 7%), at most 35%. A tag with one card is a weakness
+  that no squad can use, and `origin:smash` (59% of attackers) makes every squad
+  match. See `tcg-bot/supabase/hunt_weak_tag_coverage.sql` (2026-09-27).
 
 ### 4.2 Soft caps on stacking
 
