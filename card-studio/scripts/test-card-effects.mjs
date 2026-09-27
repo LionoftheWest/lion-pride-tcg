@@ -12,7 +12,9 @@ import { fileURLToPath } from 'node:url';
 dotenv.config({ override: true });
 const token = process.env.SUPABASE_ACCESS_TOKEN;
 const ref = ((process.env.SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
-const file = process.argv[2] || fileURLToPath(new URL('../../tcg-bot/supabase/card_effects.sql', import.meta.url));
+// Every card-effect migration, in apply order (the engine as it is live after the last one).
+const files = process.argv.length > 2 ? process.argv.slice(2)
+  : ['card_effects.sql', 'card_effects_ascension.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
 const q = async (sql) => {
   const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -21,7 +23,7 @@ const q = async (sql) => {
   return r.json();
 };
 
-const migration = readFileSync(file, 'utf8');
+const migration = files.map((f) => readFileSync(f, 'utf8')).join('\n');
 if (migration.includes('$mig$')) throw new Error('the migration must not contain $mig$');
 
 const body = String.raw`
@@ -167,9 +169,26 @@ begin
              and (options->>'card_id')::bigint = n[3] and options->>'sender_id' = 'tst_g'
              and options->>'title' in ('the Clown','Sir Whiffs-a-Lot')),'r',r);
 
+  -- C19 ascension: a Normal sticker (1h, cd 1h) at 2 stars = 1h x1.2 = 72m, cd x0.84 = 50.4m.
+  update subjects set effect = '{"primitive":"sticker","base":{"duration_s":3600},"cooldown_h":1}' where id = s[4];
+  insert into player_cards (player_id, card_id, quantity, ascension) values ('tst_d', n[4], 1, 2);
+  r := play_card_effect('tst_d', n[4], 'tst_g');  -- g has no sticker (h got one in C17)
+  d := (r->>'ready_at')::timestamptz - now();
+  res := res || jsonb_build_object('case','C19 each star: +10% effect, -8% cooldown','ok',
+    (r->>'duration_s')::int = 4320 and (r->>'ascension')::int = 2 and d between interval '50 minutes' and interval '51 minutes','r',r);
+  -- C20 the global cooldown knob halves every cooldown.
+  update settings set value = '0.5'::jsonb where key = 'card_effect_cooldown_scale';
+  insert into player_cards (player_id, card_id, quantity) values ('tst_h', n[4], 1);
+  r := play_card_effect('tst_h', n[4], 'tst_b');
+  d := (r->>'ready_at')::timestamptz - now();
+  res := res || jsonb_build_object('case','C20 cooldown_scale 0.5 halves the cooldown','ok',
+    d between interval '29 minutes' and interval '31 minutes','r',r);
+  update settings set value = '1'::jsonb where key = 'card_effect_cooldown_scale';
+
   raise exception 'TEST_RESULTS %', res;
 end $test$;`;
 
+const before = await q(`select (select count(*) from card_plays) live_plays, (select count(*) from effect_primitives where enabled) live_enabled`);
 const out = await q(body);
 const msg = JSON.stringify(out);
 const m = msg.match(/TEST_RESULTS (\[.*\])/);
@@ -177,6 +196,6 @@ if (!m) { console.error('NO RESULTS:', msg.slice(0, 1500)); process.exit(1); }
 const results = JSON.parse(m[1].replace(/\\"/g, '"').replace(/\\n.*$/, ''));
 let fail = 0;
 for (const x of results) { if (!x.ok) fail++; console.log(`${x.ok ? 'PASS' : 'FAIL'}  ${x.case}${x.ok ? '' : '  ' + JSON.stringify(x.r)}`); }
-const after = await q(`select to_regclass('public.card_plays') is null tables_gone, (select count(*) from players where id like 'tst\\_%') test_players`);
-console.log(`\n${results.length - fail}/${results.length} passed | after rollback: ${JSON.stringify(after)}`);
+const after = await q(`select (select count(*) from players where id like 'tst\\_%') test_players, (select count(*) from card_plays) live_plays, (select count(*) from effect_primitives where enabled) live_enabled`);
+console.log(`\n${results.length - fail}/${results.length} passed | before: ${JSON.stringify(before)} | after rollback: ${JSON.stringify(after)}`);
 process.exitCode = fail ? 1 : 0;

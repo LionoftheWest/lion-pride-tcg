@@ -41,7 +41,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
         .eq('player_id', me.id).is('consumed_at', null).or(`expires_at.is.null,expires_at.gt.${now}`),
       supabase.from('card_plays').select('id, player_id, card_id, primitive, kind, outcome, rarity, amount, duration_s, created_at, sender:players!card_plays_player_id_fkey(username)')
         .eq('target_id', me.id).is('seen_at', null).order('id', { ascending: false }).limit(10),
-      supabase.from('settings').select('value').eq('key', 'card_effect_tiers').maybeSingle(),
+      supabase.from('settings').select('key, value').in('key', ['card_effect_tiers', 'card_effect_ascension', 'card_effect_cooldown_scale']),
       supabase.from('effect_primitives').select('primitive, kind, channel, max_amount, max_duration_s, enabled'),
     ]);
     const err = cds.error || act.error || inc.error || prims.error;
@@ -56,7 +56,9 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
         amount: p.amount, duration_s: p.duration_s, created_at: p.created_at,
         sender: p.sender?.username || 'Someone', card: art.get(Number(p.card_id)) || null,
       })),
-      tiers: tiers.data?.value || null,
+      tiers: (tiers.data || []).find((x) => x.key === 'card_effect_tiers')?.value || null,
+      ascension: (tiers.data || []).find((x) => x.key === 'card_effect_ascension')?.value || null,
+      cooldownScale: Number((tiers.data || []).find((x) => x.key === 'card_effect_cooldown_scale')?.value ?? 1) || 1,
       primitives: Object.fromEntries((prims.data || []).map((p) => [p.primitive, p])),
     });
   });

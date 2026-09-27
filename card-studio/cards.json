@@ -65,7 +65,7 @@
       "base": {
         "duration_s": 86400
       },
-      "cooldown_h": 48
+      "cooldown_h": 24.0
     }
   },
   {
@@ -104,7 +104,7 @@
       "base": {
         "duration_s": 86400
       },
-      "cooldown_h": 36
+      "cooldown_h": 18.0
     }
   },
   {
@@ -856,7 +856,7 @@
       "base": {
         "duration_s": 600
       },
-      "cooldown_h": 24
+      "cooldown_h": 12.0
     }
   },
   {
@@ -1692,7 +1692,7 @@
       "base": {
         "duration_s": 86400
       },
-      "cooldown_h": 24
+      "cooldown_h": 12.0
     }
   },
   {
@@ -2263,7 +2263,7 @@
       "base": {
         "duration_s": 86400
       },
-      "cooldown_h": 24,
+      "cooldown_h": 12.0,
       "options": {
         "titles": [
           "the Ketchup Criminal",
@@ -2371,7 +2371,7 @@
       "primitive": "cleanse",
       "name": "Hide and Seek",
       "desc": "Removes every prank from the target.",
-      "cooldown_h": 24
+      "cooldown_h": 12.0
     }
   },
   {
@@ -2521,7 +2521,7 @@
       "base": {
         "duration_s": 43200
       },
-      "cooldown_h": 12
+      "cooldown_h": 6.0
     }
   },
   {
@@ -2551,7 +2551,7 @@
       "primitive": "confetti",
       "name": "Game Night",
       "desc": "Confetti bursts over the target the next time they open the app.",
-      "cooldown_h": 6
+      "cooldown_h": 3.0
     }
   },
   {
@@ -2720,7 +2720,7 @@
       "base": {
         "duration_s": 1800
       },
-      "cooldown_h": 24
+      "cooldown_h": 12.0
     }
   },
   {
@@ -2951,7 +2951,7 @@
       "base": {
         "duration_s": 43200
       },
-      "cooldown_h": 12
+      "cooldown_h": 6.0
     }
   },
   {
