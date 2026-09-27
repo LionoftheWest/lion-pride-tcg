@@ -21,32 +21,19 @@ picks ONE primitive and makes it its own with these parts:
 | A name and a text in the card's voice | "Breakfast Blessing: Blade serves you beans on toast." |
 | Numbers inside the budget for its rarity | +1 luck charge, cooldown 72h |
 | A **tag condition** (optional) | Stronger if the target owns a `trait:fire` card |
-| A **namesake bonus** (optional) | Stronger if played ON the member that the card is named after |
 | Its own visual | The card's own art is the sticker, the confetti, or the badge |
 
 So 127 cards give 127 different plays, but the engine has only about 15 things to
 balance.
 
-**The namesake bonus** is the deepest social hook. Many cards are named after members
-("LionoftheWest's Pichu", "Keeb's Mii Gunner", "Blade's Beans on Toast"). A card played
-on its namesake gets a bonus (for example, a double effect) and a special post:
-"@A played **Keeb's Mii Gunner** on @Keeb himself!" This needs a map from each card
-to the namesake's Discord ID. The portal gets that field.
+## 2. Each card gets the effect that fits THAT card (Nathan, 2026-09-27)
 
-## 2. Which cards get a boon, and which get a prank
+There is no split by type. Each card gets the boon or prank that fits the card itself:
+its subject, its joke, its game. For example, a bowling ball card knocks the target
+into Prank Corner, and a breakfast card gives a boon. I draft all 127 from each card's
+name, lore, and tags. Nathan edits them in the portal.
 
-The card **type** sets the flavor (from pve-and-social-design.md, Section 7):
-
-| Type | Count | Gets | Flavor |
-|---|---|---|---|
-| Moment | 54 | Prank | Chaos, in-jokes |
-| Character | 32 | Boon | Help a friend |
-| Creature | 18 | Boon | Luck |
-| Item | 7 | Boon or prank | Tools and tricks |
-| Place | 7 | Room effect | Everyone in the room (the Activity voice-channel room) |
-| No type yet | 9 | — | Give them a type first |
-
-That is about 57 boons, 58 pranks, and 7 room effects.
+No namesake bonus (Nathan): it would let members spam one person.
 
 ## 3. The effect primitives
 
@@ -136,7 +123,7 @@ Hard limits that come from Discord:
   says that voice receive is not officially supported by Discord, so it can break
   after a Discord change. We build it last, behind its own flag, `FEATURE_VOICE_SPEAK`.
 - Everyone in the channel hears the sound, not only the target. So a sound prank
-  needs the target in Prank Zone, and it counts as a prank on the whole room for the caps.
+  counts as a prank on the whole room for the caps.
 
 The sound library:
 - Sounds come only from a curated library in the repo (at most 5 seconds each, volume
@@ -170,18 +157,34 @@ The sound library:
 - Discord's developer policy forbids spam and harassment. An unlimited ping storm or
   repeated timeouts on one member can get the bot flagged or removed. So the limits
   above are hard limits in the database, not settings in the Activity.
-- A member can report the bot. The consent rule (Section 5) is our main protection.
+- A member can report the bot. The hard limits and the target caps are our protection.
 
 ## 3B. Server changes that only Nathan can make
 
 1. **Move the bot's role.** Server Settings > Roles: drag "Lion Pride TCG" above the
    member roles (Pokemon Unite, Super Smash Bros, Memes, and the others), and below
    "Lion Pride Mod" and the admin roles. Today the bot is below 28 of 30 roles.
-2. **Remove Administrator from the bot (recommended).** Give it only: View Channels,
-   Send Messages, Embed Links, Attach Files, Read Message History, Add Reactions,
-   Manage Nicknames, Manage Roles, Moderate Members, and Move Members. Today the bot
-   has Administrator. With Administrator, a leaked token or a bug can do anything in
-   the server.
+2. **Replace Administrator with these 16 permissions (recommended).** Permissions
+   integer: `1102094650432`.
+
+   | Permission | What it is for |
+   |---|---|
+   | View Channels | see the channels |
+   | Send Messages | every post |
+   | Embed Links, Attach Files | the card art in posts |
+   | Read Message History, Add Reactions | the reaction storm |
+   | Use External Emojis | card emojis |
+   | Use Application Commands | the admin commands |
+   | Connect, Speak | join voice and play sounds |
+   | Mute Members, Deafen Members | voice mute and deafen |
+   | Move Members | the Prank Corner move |
+   | Manage Nicknames | rename, crown |
+   | Manage Roles | the clown, spotlight, and color roles |
+   | Moderate Members | timeout |
+
+   The bot also needs the GuildVoiceStates gateway intent. That intent is not
+   privileged, so it needs no Developer Portal change.
+
 3. Make a "Prank Corner" voice channel and a prank text channel. The bot can also
    make them after you approve.
 
@@ -199,31 +202,38 @@ The sound library:
 5. **Every play is one atomic database call** (`play_card_effect`). It checks
    ownership, the cooldown, the caps, and the shield in one transaction.
 
-### 4.2 Caps
+### 4.2 Cooldowns and caps
 
-| Cap | Proposal |
-|---|---|
-| The cooldown for each player and each card (it stays with the player after a trade) | 24h to 7 days, set by rarity and effect |
-| Plays that a member can SEND each day | 5 |
-| Boons that a member can RECEIVE each day | 3 |
-| Pranks that a member can RECEIVE each day | 2 |
-| `gift_pack`: packs made in total, per member, per week (sent + received) | 2 |
-| The same sender on the same target | once each day |
-| A pair who play on each other | Each week, the second and later mutual boons give half the effect (this stops two friends from farming) |
-| Hunt bonus from boons, per member, per day | at most +25% in total |
+**The cooldown is the main limit (Nathan).** Each card has its own cooldown, and a
+rarer copy has a shorter one (4.3). The cooldown belongs to the player and the card,
+not to the copy, so a trade does not reset it.
 
-### 4.3 The power budget by rarity
+A cooldown alone leaves gaps. So these limits exist too, as settings that Nathan can
+tune (0 turns a limit off):
 
-A rarer copy of the same card is stronger, or its cooldown is shorter. A Normal copy
-still does the full effect type, so every member can play.
-
-| Rarity | Effect size | Cooldown |
+| Limit | Why the cooldown cannot do it | Default |
 |---|---|---|
-| Normal | ×1.0 | the longest |
-| Illustrated Rare | ×1.15 | −15% |
-| Secret Rare | ×1.3 | −25% |
-| Full Art | ×1.3 | −30% |
-| Gold | ×1.5 | −40% |
+| Plays that one member SENDS each day | A member with 60 cards can play 60 cards in one minute, each on its own cooldown. | 10 |
+| Pranks that one member RECEIVES each day | 20 members can all prank the same person in the same minute, each with a ready card. | 5 (of these, 2 Discord timeouts) |
+| The same sender on the same target each day | One member can target the same person with every card. | 3 |
+| Packs made by `gift_pack` per member per week | Two friends can mint packs for each other forever. | 2 |
+
+### 4.3 Tier scaling (dynamic, for each card)
+
+Each card defines its values at the Normal tier. A rarer copy makes the effect
+stronger or longer, and the cooldown shorter:
+
+| Tier | Effect (amount or duration) | Cooldown |
+|---|---|---|
+| Normal | ×1.0 | ×1.0 |
+| Illustrated Rare | ×1.15 | ×0.9 |
+| Secret Rare | ×1.3 | ×0.8 |
+| Full Art | ×1.3 | ×0.75 |
+| Gold | ×1.5 | ×0.65 |
+
+Example: a card with "timeout 20s, cooldown 48h" gives 20s every 48h as a Normal, and
+30s every 31h as a Gold. The hard limits in Section 3A still apply to every tier (a
+timeout is never longer than 60s).
 
 ### 4.4 The balance test
 
@@ -239,16 +249,9 @@ primitive can cause another primitive, except `reflect` at depth 1.
 
 ## 5. Consent and safety
 
-- **Two levels of consent:**
-  - **In-Activity pranks** (stickers, titles, confetti): every member can receive
-    them, unless the member turns on **Prank Shield** in the Activity profile.
-  - **Discord pranks** (nickname, timeout, pings, voice move, clown role): only for
-    members who turned on **Prank Zone** in the Activity profile (opt-in). These act
-    on the member's real Discord account, so the member must agree first.
-  - Boons (in the Activity and in Discord) never need consent.
-- Discord prank caps per target: 2 each day, 1 timeout each day, 1 nickname at a time.
-- Admins and mods can be exempt (a decision for Nathan).
-- A member can remove a prank from themself one time each day ("Shake it off").
+- **No consent (Nathan, 2026-09-27): every member is a target for boons and pranks.**
+- Discord itself protects: the server owner, and each member whose top role is at or
+  above the bot's role.
 - Every play is logged (`card_plays` table), so an admin can see and undo any play.
 - A prank never removes cards, packs, or Hunt progress.
 - The titles are chosen from a fixed list that each card defines. Members never type
@@ -270,7 +273,7 @@ primitive can cause another primitive, except `reflect` at depth 1.
 ## 7. Data
 
 - `subjects.effect jsonb`: `{ kind: boon|prank|counter|room, primitive, name, desc,
-  amount, cooldown_hours, condition?: { tag }, namesake?: { discord_id, bonus } }`.
+  base: { amount, duration_s }, cooldown_h, condition?: { tag }, options }` (Normal-tier values).
 - `card_plays(id, player_id, card_id, target_id, primitive, amount, reflected, created_at)`.
 - `player_effects(player_id, primitive, amount, source_play_id, expires_at, consumed_at)`.
 - `players.prank_shield boolean default false`.
@@ -288,17 +291,15 @@ primitive can cause another primitive, except `reflect` at depth 1.
 6. Write all 127 cards: a draft script picks the primitive from the type and the tags,
    I write each name and text, and Nathan edits them in the portal.
 
-## 9. Decisions for Nathan
+## 9. Decisions (Nathan, 2026-09-27)
 
-1. Discord pranks: opt-in with **Prank Zone** (recommended), or open to everyone with
-   an opt-out? Are the limits correct (60s timeout, 1h nickname, 3 pings in 5 min)?
-2. Is the type split correct (Moment = prank, Character and Creature = boon, Place = room)?
-3. Do you want the namesake bonus? If yes, somebody must map each namesake card to a
-   Discord member. I can draft the map from the names, and you correct it.
-4. Does the bot post every play, or one daily digest ("Today: 14 boons, 9 pranks. Top
-   giver: @A")? A post for every play can flood the channel when many members play.
-5. Are the caps in Section 4.2 correct?
-6. Will you make the two server changes in Section 3B (move the bot role, and remove
-   Administrator)? Without the role move, the Discord pranks cannot touch most members.
-7. Voice: is the order correct (mute and deafen first, entrance sounds second,
-   "sound when they speak" last, behind its own flag)? Curated sounds only?
+1. No consent. Every member is a target.
+2. No type split. Each card gets the effect that fits the card.
+3. No namesake bonus.
+4. The bot posts every play. Each card has a cooldown, and the tier scales the effect
+   and the cooldown (4.3).
+5. The cooldown is the main limit. The limits in 4.2 stay as tunable settings, because
+   a cooldown cannot stop 20 members who prank one person at the same time.
+6. The bot permissions are in Section 3B.
+7. Voice order: mute and deafen first, entrance sounds second, "sound when they
+   speak" last. Sounds come only from the curated library.
