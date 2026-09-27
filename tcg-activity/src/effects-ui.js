@@ -59,11 +59,17 @@ function scaled(card) {
   const e = card.effect || {};
   const t = state.tiers?.[card.rarity] || { power: 1, cd: 1 };
   const p = state.primitives?.[e.primitive] || {};
-  let amount = e.base?.amount != null ? Math.round(e.base.amount * t.power * 100) / 100 : null;
-  let dur = e.base?.duration_s != null ? Math.round(e.base.duration_s * t.power) : null;
+  // The same math as play_card_effect(): tier x ascension stars x the global knob.
+  const stars = Number(card.ascension) || 0;
+  const a = state.ascension || {};
+  const power = t.power * (1 + (Number(a.power_per_star) || 0) * stars);
+  const cd = t.cd * Math.max(0.2, 1 - (Number(a.cd_per_star) || 0) * stars) * (Number(state.cooldownScale) || 1);
+  let amount = e.base?.amount != null ? Math.round(e.base.amount * power * 100) / 100 : null;
+  let dur = e.base?.duration_s != null ? Math.round(e.base.duration_s * power) : null;
   if (amount != null && p.max_amount != null) amount = Math.min(amount, Number(p.max_amount));
   if (dur != null && p.max_duration_s != null) dur = Math.min(dur, p.max_duration_s);
-  return { amount, dur, cooldownH: (Number(e.cooldown_h) || 24) * t.cd, kind: p.kind, enabled: !!p.enabled };
+  return { amount, dur, cooldownH: (Number(e.cooldown_h) || 24) * cd, kind: p.kind, enabled: !!p.enabled, stars,
+    starBonus: stars ? { power: Math.round((Number(a.power_per_star) || 0) * stars * 100), cd: Math.round((1 - Math.max(0.2, 1 - (Number(a.cd_per_star) || 0) * stars)) * 100) } : null };
 }
 
 export function fmtDur(sec) {
@@ -122,6 +128,7 @@ function paintViewerEffect(card) {
   if (s.amount != null) meta.push(`Power ${s.amount}`);
   if (s.dur) meta.push(`Lasts ${fmtDur(s.dur)}`);
   meta.push(`Cooldown ${fmtDur(s.cooldownH * 3600)}`);
+  if (s.starBonus) meta.push(`★${s.stars}: +${s.starBonus.power}% effect, −${s.starBonus.cd}% cooldown`);
   const wait = readyIn(card);
   let btn = '';
   if (!card.locked) {

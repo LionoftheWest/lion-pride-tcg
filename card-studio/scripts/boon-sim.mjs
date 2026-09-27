@@ -20,8 +20,10 @@ import { fileURLToPath } from 'node:url';
 dotenv.config({ override: true });
 const token = process.env.SUPABASE_ACCESS_TOKEN;
 const ref = ((process.env.SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
-const file = process.argv[2] || fileURLToPath(new URL('../../tcg-bot/supabase/card_effects.sql', import.meta.url));
-const migration = readFileSync(file, 'utf8');
+// Every card-effect migration, in apply order (the engine as it is live after the last one).
+const files = process.argv.length > 2 ? process.argv.slice(2)
+  : ['card_effects.sql', 'card_effects_ascension.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
+const migration = files.map((f) => readFileSync(f, 'utf8')).join('\n');
 
 // [primitive, base, cooldown_h] — realistic Normal-tier values for the test cards.
 const EFFECTS = [
