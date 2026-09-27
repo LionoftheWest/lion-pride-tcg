@@ -15,6 +15,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -216,6 +217,9 @@ const packStatusCache = new Map(); // userId -> { at, packs }
 const PACK_STATUS_TTL = 8000;
 function bustUser(userId) { collCache.delete(userId); ownedCache.delete(userId); packStatusCache.delete(userId); }
 
+// The card-effect columns exist only after card_effects.sql (see effects.js flags).
+const EFFECT_COLS = EFFECTS_SCHEMA ? ', id, effect' : '';
+
 // Step 2: the caller's own collection.
 app.get('/api/collection', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -225,7 +229,7 @@ app.get('/api/collection', async (req, res) => {
   if (cached && Date.now() - cached.at < COLL_TTL) return res.json(cached.payload);
   const { data, error } = await supabase
     .from('player_cards')
-    .select('quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, subject:subjects(name, type, cp_mod, tags, ability))')
+    .select(`quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS}))`)
     .eq('player_id', me.id);
   if (error) return res.status(500).json({ error: error.message });
   const cards = (data || []).map((row) => {
@@ -251,6 +255,8 @@ app.get('/api/collection', async (req, res) => {
       type: row.card?.subject?.type || null,
       tags: row.card?.subject?.tags || null,
       ability: row.card?.subject?.ability || null,
+      subject_id: row.card?.subject?.id ?? null,
+      effect: row.card?.subject?.effect || null,
     };
   });
   // Total CP comes from SQL (authoritative — includes the +25% set-completion
@@ -509,7 +515,7 @@ async function getCatalogBase() {
   catalogInflight = (async () => {
     const { data, error } = await supabase
       .from('cards')
-      .select('id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, tags, ability)')
+      .select(`id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, tags, ability${EFFECT_COLS})`)
       .order('id');
     if (error) { if (catalogCache) return catalogCache.cards; throw new Error(error.message); }
     const cards = (data || []).map((c) => ({
@@ -525,6 +531,8 @@ async function getCatalogBase() {
       type: c.subject?.type || null,
       tags: c.subject?.tags || null,
       ability: c.subject?.ability || null,
+      subject_id: c.subject?.id ?? null,
+      effect: c.subject?.effect || null,
     }));
     catalogCache = { at: Date.now(), cards };
     return cards;
@@ -802,6 +810,7 @@ app.post('/api/gift', async (req, res) => {
 async function caller(req) {
   return whoAmI((req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
 }
+registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg });
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.
