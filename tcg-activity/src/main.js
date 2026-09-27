@@ -296,7 +296,7 @@ async function main() {
   setInterval(refreshPackStatus, 45000); // packs can be earned while the app is open
   refreshTradeBadge();
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
-  initEffects({ api, apiPost, el, esc, SFX }); // card boons/pranks (does nothing when the flag is off)
+  initEffects({ api, apiPost, el, esc, SFX, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   show('collection');
 }
 
