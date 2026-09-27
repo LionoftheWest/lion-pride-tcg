@@ -87,6 +87,72 @@ That is about 57 boons, 58 pranks, and 7 room effects.
 | `room_rally` | Everyone in the sender's voice-channel room: +X% on the next Hunt attack. |
 | `room_confetti` | Everyone in the room sees the card's art burst. |
 
+## 3A. Real Discord effects (Nathan, 2026-09-27)
+
+Nathan wants real pranks and boons in Discord too, not only in the Activity. The
+member still plays the card in the Activity. The Activity calls the bot's internal
+endpoint (the same pattern as pack opening), and the bot does the Discord action.
+
+### Discord pranks
+
+| Primitive | What happens in Discord | Limit | Permission |
+|---|---|---|---|
+| `nickname` | The nickname changes to a name from the card's fixed list, for example "Keeb the Clown". | 1 hour, then the bot restores it | Manage Nicknames |
+| `timeout` | A Discord timeout. The member cannot type or talk. | 60 seconds at most | Moderate Members |
+| `ping_parade` | The bot @mentions the target, with the card art, several times. | 3 pings over 5 minutes, in one prank channel | none |
+| `reaction_storm` | The bot reacts with the card's emoji to the target's next messages. | the next 5 messages, within 1 hour | Add Reactions |
+| `voice_corner` | The bot moves the target from their voice channel to a "Prank Corner" voice channel. | once, the member can move back | Move Members |
+| `clown_role` | A colored "Clown" role. | 1 hour | Manage Roles |
+
+### Discord boons
+
+| Primitive | What happens in Discord | Limit | Permission |
+|---|---|---|---|
+| `crown` | A "👑" goes in front of the nickname. | 24 hours | Manage Nicknames |
+| `spotlight_role` | A shown-separately, colored "Spotlight" role at the top of the member list. | 24 hours | Manage Roles |
+| `hype` | The bot posts a hype message about the target, with the card art. | once | none |
+| `color_role` | The target picks a name color. | 24 hours | Manage Roles |
+
+### How the bot undoes each effect
+
+- `discord_effects(id, play_id, target_id, kind, original_value, expires_at, reverted_at)`.
+- A loop in the bot runs every 30 seconds and at each start. It reverses each expired
+  effect, so a restart cannot leave a member renamed.
+- The bot restores a nickname only if the member did not change it again. The bot
+  never overwrites a name that the member chose.
+- Discord ends a timeout by itself.
+- Each action writes an audit-log reason: "Lion Pride TCG: @A played <card>".
+- An admin **Undo all** button reverses every active Discord effect at once.
+- The kill switch is the flag `FEATURE_DISCORD_EFFECTS`, default OFF.
+
+### Who cannot be targeted (Discord rules and ours)
+
+- The server owner. No bot can do this.
+- Each member whose highest role is at or above the bot's role. Today that is almost
+  everyone (Section 3B).
+- Mods and admins (our rule).
+- Members who did not opt in (Section 5).
+
+### Discord's rules
+
+- Discord's developer policy forbids spam and harassment. An unlimited ping storm or
+  repeated timeouts on one member can get the bot flagged or removed. So the limits
+  above are hard limits in the database, not settings in the Activity.
+- A member can report the bot. The consent rule (Section 5) is our main protection.
+
+## 3B. Server changes that only Nathan can make
+
+1. **Move the bot's role.** Server Settings > Roles: drag "Lion Pride TCG" above the
+   member roles (Pokemon Unite, Super Smash Bros, Memes, and the others), and below
+   "Lion Pride Mod" and the admin roles. Today the bot is below 28 of 30 roles.
+2. **Remove Administrator from the bot (recommended).** Give it only: View Channels,
+   Send Messages, Embed Links, Attach Files, Read Message History, Add Reactions,
+   Manage Nicknames, Manage Roles, Moderate Members, and Move Members. Today the bot
+   has Administrator. With Administrator, a leaked token or a bug can do anything in
+   the server.
+3. Make a "Prank Corner" voice channel and a prank text channel. The bot can also
+   make them after you approve.
+
 ## 4. Balance: no loops, no broken combinations
 
 ### 4.1 Rules in the engine (every card obeys them)
@@ -141,8 +207,14 @@ primitive can cause another primitive, except `reflect` at depth 1.
 
 ## 5. Consent and safety
 
-- **Prank Shield** is a toggle in the Activity profile. When it is on, pranks cannot
-  target that member. Boons still can.
+- **Two levels of consent:**
+  - **In-Activity pranks** (stickers, titles, confetti): every member can receive
+    them, unless the member turns on **Prank Shield** in the Activity profile.
+  - **Discord pranks** (nickname, timeout, pings, voice move, clown role): only for
+    members who turned on **Prank Zone** in the Activity profile (opt-in). These act
+    on the member's real Discord account, so the member must agree first.
+  - Boons (in the Activity and in Discord) never need consent.
+- Discord prank caps per target: 2 each day, 1 timeout each day, 1 nickname at a time.
 - Admins and mods can be exempt (a decision for Nathan).
 - A member can remove a prank from themself one time each day ("Shake it off").
 - Every play is logged (`card_plays` table), so an admin can see and undo any play.
@@ -186,8 +258,10 @@ primitive can cause another primitive, except `reflect` at depth 1.
 
 ## 9. Decisions for Nathan
 
-1. Pranks in the Activity only (cosmetic, no Discord permissions)? Or also in Discord,
-   for example a nickname change (this needs the Manage Nicknames permission)?
+1. Discord pranks: opt-in with **Prank Zone** (recommended), or open to everyone with
+   an opt-out? Are the limits correct (60s timeout, 1h nickname, 3 pings in 5 min)?
+6. Will you make the two server changes in Section 3B (move the bot role, and remove
+   Administrator)? Without the role move, the Discord pranks cannot touch most members.
 2. Is the type split correct (Moment = prank, Character and Creature = boon, Place = room)?
 3. Do you want the namesake bonus? If yes, somebody must map each namesake card to a
    Discord member. I can draft the map from the names, and you correct it.
