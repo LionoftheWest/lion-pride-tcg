@@ -235,6 +235,60 @@ It replaces the "counters" group (ward, reflect, cleanse are now Neutral).
    hijack of a ward).
 6. **Passing ends:** at most 5 passes and 1 hour.
 
+## 3D. The raid boss layer (Nathan, 2026-09-27)
+
+Boons, pranks, and Neutral cards can also change a member's Hunt fight. Each one acts
+on the target's NEXT Hunt attack (or on today's squad), and it is used up then.
+
+### Hunt boons
+
+| Primitive | Effect |
+|---|---|
+| `rally` | The next attack deals +X% damage. |
+| `crit_charm` | The next attack has +X% crit chance. |
+| `weak_lens` | The next attack counts as a match to one of the boss's weaknesses. |
+| `card_shield` | One squad card blocks the boss's next hit. |
+| `mend` | Heals one damaged squad card by X HP. |
+| `second_wind` | Brings back one downed squad card for today. |
+| `insight` | Shows the next boss's weaknesses before it spawns. |
+| `squad_buddy` | +10% for both the sender and the target, if both attack today. |
+
+### Hunt pranks
+
+| Primitive | Effect |
+|---|---|
+| `butterfingers` | The next attack deals -X% damage. |
+| `fumble` | The next attack misses. |
+| `no_crit` | The next attack cannot crit. |
+| `aggro` | The boss's next counter-attack hits the target's squad twice as hard. |
+| `tired_card` | One of the target's squad cards starts today with -X HP. |
+| `resist_curse` | The next attack counts as a match to one of the boss's resistances. |
+
+### Hunt Neutral cards
+
+| Primitive | Effect |
+|---|---|
+| `taunt` | The boss's next counter-attack on the holder goes to another member's squad. |
+| `double_or_nothing` | The next attack: 50% for x2 damage, 50% for a miss. |
+| `mirror_match` | The next attack deals the same damage as the target's last attack. |
+| `delay_strike` | The next attack lands 1 hour later, with +10%. |
+
+### Rules for the raid layer
+
+1. **No reward loss (Nathan: no permanent issues).** A Hunt prank lowers the damage that
+   hits the boss. The target's CREDITED damage (the base for reward packs and the
+   leaderboard) stays at the full value. The prank slows the shared fight. It never
+   takes packs from the target.
+2. **Daily limits for each member:** Hunt boons add at most +25% in total each day.
+   Hunt pranks remove at most -25% in total each day. At most one `fumble` each day.
+3. **No stacking** of the same Hunt effect (the engine rule 4.1.4).
+4. **The same Neutral rules** (3C): depth 1, and no Neutral on Neutral.
+5. **One hook in `hunt_attack`.** The attack calls one function that reads and uses up
+   the attacker's Hunt effects, and returns the damage multiplier, the flags (miss,
+   no crit, weak match), and the credited multiplier. The rest of `hunt_attack` stays.
+6. **The boss HP stays fair.** The simulation must show that a server can still beat a
+   boss in its window when members prank each other at the caps.
+
 ## 4. Balance: no loops, no broken combinations
 
 ### 4.1 Rules in the engine (every card obeys them)
@@ -350,3 +404,7 @@ primitive can cause another primitive, except `reflect` at depth 1.
 6. The bot permissions are in Section 3B.
 7. Voice order: mute and deafen first, entrance sounds second, "sound when they
    speak" last. Sounds come only from the curated library.
+8. The Message Content intent: yes, for SpOnGeBoB and Parrot (the bot reads message
+   text, and it stores none).
+9. No real losses: no prank causes permanent harm (no card, pack, or reward loss).
+10. The raid boss layer (3D), with credited damage kept at full value.
