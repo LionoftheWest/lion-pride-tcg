@@ -289,6 +289,58 @@ on the target's NEXT Hunt attack (or on today's squad), and it is used up then.
 6. **The boss HP stays fair.** The simulation must show that a server can still beat a
    boss in its window when members prank each other at the caps.
 
+### Raid layer, part 2: effects that use the existing Hunt rules
+
+**More Hunt boons**
+
+| Primitive | Effect | Uses |
+|---|---|---|
+| `element_infusion` | The next attack also gets the element of the sender's card. | element synergy + attack FX |
+| `synergy_link` | Today the target's squad counts +1 card for element synergy. | squad synergy (3 = x1.12, 5 = x1.20) |
+| `passive_break` | The next attack ignores the boss passive (armored, shrouded, flaming, volatile). | boss passives |
+| `battle_cry` | The first attack of the day is a sure crit. | crits |
+| `rearguard` | Today the target's squad takes -X% from Slam. | boss Slam |
+| `scout_report` | The target sees the boss's next action before the next round. | boss actions (surprise today) |
+| `quick_hands` | One support card of the target: its Hunt cooldown is 1 round shorter today. | support cooldowns (not effect cooldowns) |
+| `extra_deploy` | +1 squad slot today (8 becomes 9). | the daily cap |
+
+**More Hunt pranks**
+
+| Primitive | Effect | Uses |
+|---|---|---|
+| `stage_fright` | The target's support cards cannot be played next round. | support cards |
+| `enrage_bait` | The boss enrages on the target's next attack. | boss Enrage |
+| `element_scramble` | The next attack gets a random element (it can break synergy). | elements |
+| `heavy_armor` | The next attack meets an extra "armored" passive. | boss passives |
+| `curse_magnet` | The boss's next Curse always picks the target's squad. | boss Curse |
+
+**More Hunt Neutral cards**
+
+| Primitive | Effect |
+|---|---|
+| `swap_squads` | The sender and the target swap one squad card for today. |
+| `echo_strike` | The next attack repeats at 25% one hour later. |
+| `sacrifice` | The sender's card takes the next boss hit for one of the target's cards. |
+| `tag_team` | The target's next attack is credited 75% to the target and 25% to the sender. Credit moves; none is created. |
+
+**Boss-level effects (Gold copies only, once per boss for each member)**
+
+| Primitive | Effect |
+|---|---|
+| `boss_taunt` | The boss's next Slam hits only the sender's squad (it protects the server). |
+| `weakness_swap` | One boss weakness tag changes to another tag for 1 hour. |
+| `boss_curse` | The boss takes +5% damage from everyone for 1 hour. |
+| `bounty` | The sender puts a pack from their OWN balance on the boss. The top damage dealer in the next hour gets it. Packs move; none is created. |
+
+**Rules for part 2**
+- Every effect obeys Section 3D: credited damage stays full, the daily +25% / -25%
+  limits, and no stacking.
+- A boss-level effect needs a Gold copy, and each member can use one once per boss.
+  At most 3 boss-level effects can be active on one boss at the same time.
+- `extra_deploy` counts toward the +25% daily boon limit as +12.5%.
+- The simulation adds a strategy: every member uses every Hunt prank at the caps. The
+  boss must still fall inside its window at the normal player count.
+
 ## 4. Balance: no loops, no broken combinations
 
 ### 4.1 Rules in the engine (every card obeys them)
@@ -408,3 +460,4 @@ primitive can cause another primitive, except `reflect` at depth 1.
    text, and it stores none).
 9. No real losses: no prank causes permanent harm (no card, pack, or reward loss).
 10. The raid boss layer (3D), with credited damage kept at full value.
+11. Nathan likes every idea in the catalog (Sections 3, 3A, 3C, 3D). All go into the phases.
