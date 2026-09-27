@@ -18,7 +18,7 @@ import { BONUS_THRESHOLD } from '../draw.js';
 import { buildBrowser, type BrowseMode, type BrowserItem } from './browser.js';
 import { REVEAL_NEXT, revealNext, startManualReveal } from './reveal.js';
 import { buildPanelHome, homeRow, PANEL_ID } from './panel.js';
-import { LAUNCH_ACTIVITY_ID } from '../first-pack.js';
+import { LAUNCH_ACTIVITY_ID } from './launch.js';
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 

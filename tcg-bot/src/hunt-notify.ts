@@ -1,6 +1,7 @@
-import type { Client } from 'discord.js';
+import type { Client, MessageCreateOptions } from 'discord.js';
 import { getSupabase } from './supabase.js';
 import { announce } from './internal.js';
+import { launchActivityRow } from './ui/launch.js';
 
 // Poll the hunt_events outbox and post each event to the notifications channel. The game
 // logic (SQL) writes events; the bot is the only process that can post to Discord, so it
@@ -38,7 +39,7 @@ function format(ev: { kind: string; payload: Record<string, unknown> }): string 
     case 'spawn': {
       const when = p.closes_at ? ` Beat it by <t:${epoch(String(p.closes_at))}:F> (<t:${epoch(String(p.closes_at))}:R>).` : '';
       return `🦁 **A wild ${p.name} appeared!**  [${p.tier}] — ${Number(p.hp).toLocaleString()} HP.\n`
-        + `Weak to **${weakText(p.weak)}**.${when} Open the Activity and join the hunt!`;
+        + `Weak to **${weakText(p.weak)}**.${when} Press **Open Lion Pride TCG** to join the hunt!`;
     }
     case 'nudge': {
       const when = p.closes_at ? `<t:${epoch(String(p.closes_at))}:R>` : 'soon';
@@ -78,6 +79,12 @@ function format(ev: { kind: string; payload: Record<string, unknown> }): string 
   }
 }
 
+/** A raid post: the event text plus the button that opens the Activity (every kind). */
+export function huntPost(ev: { kind: string; payload: Record<string, unknown> }): MessageCreateOptions | null {
+  const content = format(ev);
+  return content ? { content, components: [launchActivityRow()] } : null;
+}
+
 let running = false;
 async function drain(client: Client): Promise<void> {
   if (running) return;
@@ -91,8 +98,8 @@ async function drain(client: Client): Promise<void> {
       .order('id', { ascending: true })
       .limit(BATCH);
     for (const ev of events ?? []) {
-      const msg = format(ev as never);
-      if (msg) await announce(client, msg);
+      const post = huntPost(ev as never);
+      if (post) await announce(client, post);
       await supabase.from('hunt_events').update({ posted_at: new Date().toISOString() }).eq('id', ev.id);
       await new Promise((r) => setTimeout(r, 1200)); // pace posts under the channel rate limit
     }
