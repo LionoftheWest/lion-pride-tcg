@@ -224,11 +224,26 @@ begin
     select id into v_reflect_id from player_effects
      where player_id = p_target and primitive = 'reflect' and consumed_at is null
        and (expires_at is null or expires_at > now()) order by id limit 1;
-    if v_reflect_id is not null then v_final := p_player; v_outcome := 'reflected'; end if;
-    select id into v_ward_id from player_effects
-     where player_id = v_final and primitive = 'ward' and consumed_at is null
-       and (expires_at is null or expires_at > now()) order by id limit 1;
-    if v_ward_id is not null then v_outcome := 'blocked'; end if;
+    if v_reflect_id is not null then
+      v_final := p_player; v_outcome := 'reflected';
+      -- The caps count where a prank LANDS. A sender at their own prank (or timeout)
+      -- cap cannot receive the bounce, so it fizzles (found by boon-sim.mjs: a victim
+      -- got 5 pranks + 1 of their own reflected back = 6 > cap 5).
+      if (coalesce((v_caps->>'prank_recv_per_day')::int, 0) > 0
+          and (select count(*) from card_plays where target_id = v_final and kind = 'prank' and created_at >= v_day)
+              >= (v_caps->>'prank_recv_per_day')::int)
+         or (v_prim.primitive = 'timeout' and coalesce((v_caps->>'timeout_recv_per_day')::int, 0) > 0
+          and (select count(*) from card_plays where target_id = v_final and primitive = 'timeout' and created_at >= v_day)
+              >= (v_caps->>'timeout_recv_per_day')::int) then
+        v_outcome := 'blocked';
+      end if;
+    end if;
+    if v_outcome <> 'blocked' then
+      select id into v_ward_id from player_effects
+       where player_id = v_final and primitive = 'ward' and consumed_at is null
+         and (expires_at is null or expires_at > now()) order by id limit 1;
+      if v_ward_id is not null then v_outcome := 'blocked'; end if;
+    end if;
   end if;
 
   -- No stacking (checked on the member it would land on). Refused plays keep the cooldown.

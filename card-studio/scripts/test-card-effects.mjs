@@ -146,6 +146,18 @@ begin
   res := res || jsonb_build_object('case','C16 cleanse removes pranks, keeps boons','ok',
     r->>'outcome' = 'applied' and not card_effect_active('tst_b','timeout') and card_effect_active('tst_b','lucky_pull'),'r',r);
 
+  -- C17 a reflected prank that lands on a sender AT their prank cap fizzles (boon-sim finding).
+  select count(*) into v from card_plays where target_id = 'tst_h' and kind = 'prank' and created_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc';
+  update settings set value = jsonb_set(value, '{prank_recv_per_day}', to_jsonb(v + 1)) where key = 'card_effect_caps';
+  insert into player_cards (player_id, card_id, quantity) values ('tst_h', n[3], 1);
+  insert into player_effects (player_id, primitive, expires_at) values ('tst_h', 'sticker', now() + interval '1 hour');  -- not counted: not a play
+  update card_plays set target_id = 'tst_h' where id = (select max(id) from card_plays where kind = 'prank');     -- h is now AT the cap
+  insert into player_effects (player_id, primitive) values ('tst_f', 'reflect');
+  r := play_card_effect('tst_h', n[3], 'tst_f');
+  res := res || jsonb_build_object('case','C17 a bounce onto a capped sender fizzles','ok',
+    r->>'outcome' = 'blocked' and r->>'target' = 'tst_h' and not card_effect_active('tst_h','title'),'r',r);
+  update settings set value = jsonb_set(value, '{prank_recv_per_day}', '0') where key = 'card_effect_caps';
+
   raise exception 'TEST_RESULTS %', res;
 end $test$;`;
 
