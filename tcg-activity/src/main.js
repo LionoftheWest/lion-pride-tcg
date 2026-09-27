@@ -2441,7 +2441,20 @@ function applyView() {
 // You only see full art of cards you OWN. Unowned cards (gallery-locked, or any
 // card opened from the community feed) show a blurred, greyed front with the
 // flavor text hidden — you can tell the art is cool, but not make it out.
+// Cards from the Hunt squad, the feed, or a pack reveal come from other endpoints
+// and miss fields (next_cost, quantity, ...). Fill ONLY the missing ones from the
+// member's collection, so the Ascend line never shows "undefined".
+const VIEWER_FILL = ['next_cost', 'can_ascend', 'quantity', 'ascension', 'power', 'lore', 'artist', 'season', 'event', 'subject', 'subject_id', 'effect', 'tags', 'ability'];
+function withOwned(card) {
+  const own = (cache.collection?.cards || []).find((c) => c.id === card?.id);
+  if (!own) return card;
+  const out = { ...card };
+  for (const k of VIEWER_FILL) if (out[k] === undefined && own[k] !== undefined) out[k] = own[k];
+  return out;
+}
+
 function openViewer(card) {
+  card = withOwned(card);
   SFX.play('click'); // opening a card
   const locked = !!card.locked;
   el('v-front').src = card.image_url || '';
