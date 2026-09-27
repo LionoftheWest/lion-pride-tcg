@@ -275,10 +275,15 @@ on the target's NEXT Hunt attack (or on today's squad), and it is used up then.
 
 ### Rules for the raid layer
 
-1. **No reward loss (Nathan: no permanent issues).** A Hunt prank lowers the damage that
-   hits the boss. The target's CREDITED damage (the base for reward packs and the
-   leaderboard) stays at the full value. The prank slows the shared fight. It never
-   takes packs from the target.
+1. **Hunt effects change the credited damage (Nathan, 2026-09-27).** A Hunt prank or
+   boon changes the damage that hits the boss AND the member's credited damage, so it
+   changes the leaderboard and the reward packs. This is strategy: a leader can prank
+   the member just behind them. The limits below keep it fair:
+   - The daily -25% limit and the one-Fumble limit stop a dogpile on one member.
+   - The Neutral cards (ward, reflect, taunt, decoy) are the counterplay.
+   - Every Hunt prank also slows the shared boss. Too many pranks, and the boss
+     escapes, so everybody gets only consolation packs. The simulation measures where
+     that point is (rule 6).
 2. **Daily limits for each member:** Hunt boons add at most +25% in total each day.
    Hunt pranks remove at most -25% in total each day. At most one `fumble` each day.
 3. **No stacking** of the same Hunt effect (the engine rule 4.1.4).
@@ -333,7 +338,7 @@ on the target's NEXT Hunt attack (or on today's squad), and it is used up then.
 | `bounty` | The sender puts a pack from their OWN balance on the boss. The top damage dealer in the next hour gets it. Packs move; none is created. |
 
 **Rules for part 2**
-- Every effect obeys Section 3D: credited damage stays full, the daily +25% / -25%
+- Every effect obeys Section 3D: pranks change credited damage, the daily +25% / -25%
   limits, and no stacking.
 - A boss-level effect needs a Gold copy, and each member can use one once per boss.
   At most 3 boss-level effects can be active on one boss at the same time.
@@ -459,5 +464,7 @@ primitive can cause another primitive, except `reflect` at depth 1.
 8. The Message Content intent: yes, for SpOnGeBoB and Parrot (the bot reads message
    text, and it stores none).
 9. No real losses: no prank causes permanent harm (no card, pack, or reward loss).
-10. The raid boss layer (3D), with credited damage kept at full value.
+10. The raid boss layer (3D). Hunt effects DO change credited damage, the leaderboard,
+    and the rewards (Nathan: pranking a rival near you on the board is strategy).
 11. Nathan likes every idea in the catalog (Sections 3, 3A, 3C, 3D). All go into the phases.
+12. The phase order A-E is approved. Nathan still has to move the bot role.
