@@ -1,13 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { firstPackMessage, firstPackPingEnabled } from './first-pack.js';
+import { firstPackMessage, firstPackPingEnabled, LAUNCH_ACTIVITY_ID } from './first-pack.js';
 
-test('the first-pack message @mentions the member and names /open', () => {
+test('the first-pack post @mentions the member and opens the Activity, not a command', () => {
   const m = firstPackMessage('123', 3);
-  assert.match(m, /<@123>/);
-  assert.match(m, /\/open/);
-  assert.match(m, /\*\*3 packs\*\*/);
-  assert.match(firstPackMessage('9', 1), /\*\*1 pack\*\*/); // singular
+  assert.match(m.content ?? '', /<@123>/);
+  assert.match(m.content ?? '', /\*\*3 packs\*\*/);
+  assert.doesNotMatch(m.content ?? '', /\/[a-z]+/, 'must not tell the member to type a slash command');
+  assert.match(firstPackMessage('9', 1).content ?? '', /\*\*1 pack\*\*/); // singular
+
+  const rows = (m.components ?? []).map((r) => ('toJSON' in r ? r.toJSON() : r)) as {
+    components: { custom_id?: string; label?: string }[];
+  }[];
+  const buttons = rows.flatMap((r) => r.components);
+  assert.equal(buttons.length, 1);
+  assert.equal(buttons[0].custom_id, LAUNCH_ACTIVITY_ID);
+  assert.equal(buttons[0].label, 'Open Lion Pride TCG');
 });
 
 test('the flag is off unless it is exactly "1"', () => {

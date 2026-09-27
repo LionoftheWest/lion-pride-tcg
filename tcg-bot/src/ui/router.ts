@@ -18,6 +18,7 @@ import { BONUS_THRESHOLD } from '../draw.js';
 import { buildBrowser, type BrowseMode, type BrowserItem } from './browser.js';
 import { REVEAL_NEXT, revealNext, startManualReveal } from './reveal.js';
 import { buildPanelHome, homeRow, PANEL_ID } from './panel.js';
+import { LAUNCH_ACTIVITY_ID } from '../first-pack.js';
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
@@ -77,6 +78,12 @@ export async function handleComponent(
   const id = interaction.customId;
   const userId = interaction.user.id;
   const username = interaction.user.username;
+
+  // "Open Lion Pride TCG" button on a bot post: open the Activity for whoever clicked.
+  if (id === LAUNCH_ACTIVITY_ID) {
+    await interaction.launchActivity();
+    return;
+  }
 
   // Open the private panel from the public hub (or any legacy hub button).
   if (id.startsWith('hub:')) {
