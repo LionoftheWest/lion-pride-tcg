@@ -57,7 +57,16 @@
       ]
     },
     "updatedAt": 1789677577157,
-    "pushedAt": 1789677577612
+    "pushedAt": 1789677577612,
+    "effect": {
+      "primitive": "reflect",
+      "name": "Barrier",
+      "desc": "The next prank on the target bounces back to its sender.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 48
+    }
   },
   {
     "id": "blastninja-s-blastoise",
@@ -87,6 +96,15 @@
         "armored",
         "beast"
       ]
+    },
+    "effect": {
+      "primitive": "ward",
+      "name": "Shell Shield",
+      "desc": "The next prank on the target does nothing.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 36
     }
   },
   {
@@ -830,6 +848,15 @@
         "humanoid",
         "support"
       ]
+    },
+    "effect": {
+      "primitive": "upside_down",
+      "name": "Salute the Sun",
+      "desc": "Flips the target's collection into a yoga pose.",
+      "base": {
+        "duration_s": 600
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -1657,6 +1684,15 @@
         "humanoid",
         "community"
       ]
+    },
+    "effect": {
+      "primitive": "googly_eyes",
+      "name": "Meme Warfare",
+      "desc": "Googly eyes on every card the target owns.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -2219,6 +2255,22 @@
         "meme"
       ],
       "traits": []
+    },
+    "effect": {
+      "primitive": "title",
+      "name": "Condiment Crime",
+      "desc": "Gives the target a ketchup title.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24,
+      "options": {
+        "titles": [
+          "the Ketchup Criminal",
+          "Hot Dog Heretic",
+          "Mustard Denier"
+        ]
+      }
     }
   },
   {
@@ -2314,7 +2366,13 @@
         "location"
       ]
     },
-    "ability": null
+    "ability": null,
+    "effect": {
+      "primitive": "cleanse",
+      "name": "Hide and Seek",
+      "desc": "Removes every prank from the target.",
+      "cooldown_h": 24
+    }
   },
   {
     "id": "polar-bear-build",
@@ -2455,6 +2513,15 @@
         "pokemon"
       ],
       "traits": []
+    },
+    "effect": {
+      "primitive": "sticker",
+      "name": "Price of Fame",
+      "desc": "Pins this card to the target's name for all to see.",
+      "base": {
+        "duration_s": 43200
+      },
+      "cooldown_h": 12
     }
   },
   {
@@ -2479,6 +2546,12 @@
       "traits": [
         "community"
       ]
+    },
+    "effect": {
+      "primitive": "confetti",
+      "name": "Game Night",
+      "desc": "Confetti bursts over the target the next time they open the app.",
+      "cooldown_h": 6
     }
   },
   {
@@ -2639,6 +2712,15 @@
         "party"
       ],
       "traits": []
+    },
+    "effect": {
+      "primitive": "rubber_chicken",
+      "name": "Censored",
+      "desc": "Every sound in the target's Activity is bleeped into a squeak.",
+      "base": {
+        "duration_s": 1800
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -2861,6 +2943,15 @@
         "smash"
       ],
       "traits": []
+    },
+    "effect": {
+      "primitive": "sticker",
+      "name": "Patooie!",
+      "desc": "Spits this card onto the target's name. It sticks.",
+      "base": {
+        "duration_s": 43200
+      },
+      "cooldown_h": 12
     }
   },
   {
