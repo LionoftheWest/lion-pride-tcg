@@ -9,7 +9,6 @@ const EVENTS: { kind: string; payload: Record<string, unknown> }[] = [
   { kind: 'nudge', payload: { name: 'The Salt Kraken', hp_remaining: 1200, hp_max: 2768, closes_at: closes } },
   { kind: 'defeat', payload: { name: 'The Salt Kraken', tier: 'Normal', settle: { participants: 3, total_packs: 9 }, top: [{ player_id: '1', damage: 900 }] } },
   { kind: 'expired', payload: { name: 'The Salt Kraken', settle: { participants: 1, total_packs: 2 }, top: [] } },
-  { kind: 'attack', payload: { player_id: '1', damage: 321, card: 'Baego', crit: true } },
   { kind: 'player_done', payload: { player_id: '1', total: 1500, cards_used: 4, top_card: 'Baego', top_damage: 600, boss_hp: 1200, boss_hp_max: 2768 } },
 ];
 
@@ -31,4 +30,8 @@ for (const ev of EVENTS) {
 
 test('an unknown event posts nothing', () => {
   assert.equal(huntPost({ kind: 'nope', payload: {} }), null);
+});
+
+test('a single hit never posts: only the end-of-day summary does', () => {
+  assert.equal(huntPost({ kind: 'attack', payload: { player_id: '1', damage: 321, card: 'Baego', crit: true, downed: true } }), null);
 });
