@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { supabase } from '../src/supabase.js';
 
 const DRY = process.argv.includes('--dry');
+// jsonb stores keys in its own order, so compare with sorted keys.
+const canon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1))) : x));
 const cards = JSON.parse(readFileSync(fileURLToPath(new URL('../cards.json', import.meta.url)), 'utf8'));
 
 const { data: prims, error: pe } = await supabase.from('effect_primitives').select('primitive');
@@ -37,7 +39,7 @@ else {
         const s = byKey.get(c.id);
         if (!s) { if (c.effect) missing++; continue; }
         const want = c.effect || null;
-        if (JSON.stringify(want) === JSON.stringify(s.effect ?? null)) continue;
+        if (canon(want) === canon(s.effect ?? null)) continue;
         changed++;
         console.log(`${DRY ? '[dry] ' : ''}${c.id}: ${s.effect?.primitive || '-'} -> ${want?.primitive || '-'}${want ? ` (${want.name})` : ''}`);
         if (!DRY) {

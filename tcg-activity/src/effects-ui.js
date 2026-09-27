@@ -83,12 +83,39 @@ function readyIn(card) {
   return Math.max(0, (new Date(at).getTime() - Date.now()) / 1000);
 }
 
+// Cards opened from the Hunt squad, the live feed, or a pack reveal come from other
+// endpoints without `effect`. Find the effect by card id: first in what the app has
+// loaded (deps.lookup), then in the catalog, which this module loads once itself.
+let catalogById = null;
+async function effectFor(card) {
+  if (card?.effect?.primitive) return card;
+  const hit = deps.lookup?.(card?.id);
+  if (hit?.effect) return { ...card, effect: hit.effect, subject_id: hit.subject_id };
+  if (!catalogById) {
+    try { catalogById = new Map(((await deps.api('/api/catalog')).cards || []).map((c) => [c.id, c])); }
+    catch { catalogById = new Map(); }
+  }
+  const c = catalogById.get(card?.id);
+  return c?.effect ? { ...card, effect: c.effect, subject_id: c.subject_id } : card;
+}
+
 // ---- The card viewer section ----
-export function fillViewerEffect(card) {
-  const { el, esc } = deps || {};
+let viewerSeq = 0;
+export async function fillViewerEffect(card) {
+  const { el } = deps || {};
   const box = el?.('v-effect');
   if (!box) return;
-  if (!state.enabled || !card?.effect?.primitive) { box.classList.add('hidden'); return; }
+  const seq = ++viewerSeq;
+  if (!state.enabled) { box.classList.add('hidden'); return; }
+  const full = await effectFor(card);
+  if (seq !== viewerSeq) return; // the member opened another card meanwhile
+  paintViewerEffect(full);
+}
+
+function paintViewerEffect(card) {
+  const { el, esc } = deps;
+  const box = el('v-effect');
+  if (!card?.effect?.primitive) { box.classList.add('hidden'); return; }
   const e = card.effect;
   const s = scaled(card);
   const meta = [];
