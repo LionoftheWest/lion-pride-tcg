@@ -40,6 +40,18 @@ insert into effect_primitives (primitive, kind, channel, max_amount, max_duratio
   ('jinx',           'prank',   'app',     null, null,   'next pack reveal in cursed style'),
   ('confetti',       'prank',   'app',     null, null,   'card art bursts on next open'),
   ('swap_showcase',  'prank',   'app',     null, 129600, 'showcase shows a random Normal'),
+  ('googly_eyes',    'prank',   'app',     null, 129600, 'googly eyes on all the target card art'),
+  ('upside_down',    'prank',   'app',     null, 900,    'the target collection is upside down'),
+  ('rubber_chicken', 'prank',   'app',     null, 5400,   'every Activity sound is a squeak'),
+  ('mustache',       'prank',   'app',     null, 129600, 'a mustache on each showcase card'),
+  ('fog',            'prank',   'app',     null, 900,    'the target cards show ???'),
+  ('fake_gold',      'prank',   'app',     null, null,   'next reveal: a gold glow, then a Normal'),
+  ('photobomb',      'prank',   'app',     null, null,   'next reveal shows the sender card first'),
+  ('slow_motion',    'prank',   'app',     null, null,   'next pack opening at half speed'),
+  ('gift_wrap',      'prank',   'app',     null, null,   'looks like a gift, then confetti'),
+  ('redirect',       'neutral', 'app',     null, 172800, 'the next prank goes to another member'),
+  ('decoy',          'neutral', 'app',     null, 172800, 'the next prank hits a cardboard cutout'),
+  ('delay',          'neutral', 'app',     null, 172800, 'the next prank lands 1 hour later'),
   -- Discord pranks
   ('nickname',       'prank',   'discord', null, 3600,   'nickname from the card list, then restored'),
   ('timeout',        'prank',   'discord', null, 60,     'Discord timeout'),
@@ -80,7 +92,8 @@ create table if not exists card_plays (
   duration_s  int,
   outcome     text not null check (outcome in ('applied', 'blocked', 'reflected')),
   created_at  timestamptz not null default now(),
-  posted_at   timestamptz
+  posted_at   timestamptz,          -- the bot posted it in the notifications channel
+  seen_at     timestamptz           -- the target saw the banner in the Activity
 );
 create index if not exists card_plays_player_day on card_plays (player_id, created_at);
 create index if not exists card_plays_target_day on card_plays (target_id, created_at);
@@ -153,7 +166,7 @@ declare
   v_amount numeric; v_dur int; v_cooldown_h numeric; v_ready timestamptz;
   v_day timestamptz := date_trunc('day', now() at time zone 'utc') at time zone 'utc';
   v_final text := p_target; v_outcome text := 'applied'; v_play bigint;
-  v_reflect_id bigint; v_ward_id bigint;
+  v_reflect_id bigint; v_ward_id bigint; v_opts jsonb;
 begin
   if p_player = p_target then return jsonb_build_object('ok', false, 'error', 'self_target'); end if;
   if not exists (select 1 from players where id = p_target) then
@@ -273,6 +286,13 @@ begin
   values (p_player, v_subject, now() + make_interval(secs => v_cooldown_h * 3600))
   on conflict (player_id, subject_id) do update set ready_at = excluded.ready_at;
 
+  -- What the visuals need: which card, who sent it, and ONE title from the card's list.
+  v_opts := coalesce(v_eff->'options', '{}'::jsonb) || jsonb_build_object('card_id', p_card, 'sender_id', p_player);
+  if jsonb_typeof(v_eff->'options'->'titles') = 'array' and jsonb_array_length(v_eff->'options'->'titles') > 0 then
+    v_opts := v_opts || jsonb_build_object('title',
+      v_eff->'options'->'titles'->>(floor(random() * jsonb_array_length(v_eff->'options'->'titles')))::int);
+  end if;
+
   if v_outcome <> 'blocked' then
     if v_prim.primitive = 'gift_pack' then
       perform grant_packs(v_final, greatest(1, v_amount::int), 'boon', p_player);
@@ -285,11 +305,11 @@ begin
          and primitive in (select primitive from effect_primitives where kind = 'prank');
     elsif v_prim.channel = 'app' then
       insert into player_effects (player_id, primitive, amount, duration_s, options, source_play_id, expires_at)
-      values (v_final, v_prim.primitive, v_amount, v_dur, coalesce(v_eff->'options', '{}'::jsonb), v_play,
+      values (v_final, v_prim.primitive, v_amount, v_dur, v_opts, v_play,
               case when v_dur is not null and v_dur > 0 then now() + make_interval(secs => v_dur) end);
     else
       insert into discord_effects (play_id, target_id, primitive, amount, duration_s, options, revert_at)
-      values (v_play, v_final, v_prim.primitive, v_amount, v_dur, coalesce(v_eff->'options', '{}'::jsonb),
+      values (v_play, v_final, v_prim.primitive, v_amount, v_dur, v_opts,
               case when v_dur is not null and v_dur > 0 then now() + make_interval(secs => v_dur) end);
     end if;
   end if;

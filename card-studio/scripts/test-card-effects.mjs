@@ -158,6 +158,15 @@ begin
     r->>'outcome' = 'blocked' and r->>'target' = 'tst_h' and not card_effect_active('tst_h','title'),'r',r);
   update settings set value = jsonb_set(value, '{prank_recv_per_day}', '0') where key = 'card_effect_caps';
 
+  -- C18 the effect records the card + the sender, and picks ONE title from the card's list.
+  update subjects set effect = '{"primitive":"title","base":{"duration_s":3600},"cooldown_h":1,"options":{"titles":["the Clown","Sir Whiffs-a-Lot"]}}' where id = s[3];
+  insert into player_cards (player_id, card_id, quantity) values ('tst_g', n[3], 1);
+  r := play_card_effect('tst_g', n[3], 'tst_e');
+  res := res || jsonb_build_object('case','C18 options carry card, sender, one title','ok',
+    exists (select 1 from player_effects where player_id = 'tst_e' and primitive = 'title'
+             and (options->>'card_id')::bigint = n[3] and options->>'sender_id' = 'tst_g'
+             and options->>'title' in ('the Clown','Sir Whiffs-a-Lot')),'r',r);
+
   raise exception 'TEST_RESULTS %', res;
 end $test$;`;
 
