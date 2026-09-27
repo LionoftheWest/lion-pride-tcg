@@ -58,7 +58,7 @@ No namesake bonus (Nathan): it would let members spam one person.
 | `confetti` | The next time the target opens the Activity, the card's art bursts over the screen. |
 | `swap_showcase` | 24h: the target's showcase shows a random Normal card. |
 
-### Counters and neutral effects (they make it interactive)
+### Neutral effects (see Section 3C)
 
 | Primitive | Effect |
 |---|---|
@@ -187,6 +187,53 @@ The sound library:
 
 3. Make a "Prank Corner" voice channel and a prank text channel. The bot can also
    make them after you approve.
+
+## 3C. Neutral cards: the third group (Nathan, 2026-09-27)
+
+A Neutral card is neither a boon nor a prank. It changes what happens to OTHER plays.
+It replaces the "counters" group (ward, reflect, cleanse are now Neutral).
+
+### React to a play (set in advance on yourself or a friend)
+
+| Primitive | Effect |
+|---|---|
+| `reflect` | The next prank on the holder goes back to its sender. |
+| `redirect` | The next prank on the holder goes to a random member, or to a member named when the card is played. |
+| `decoy` | The next prank hits a cardboard cutout. The post says "Direct hit!", but nothing happens. |
+| `delay` | The next prank on the holder lands 1 hour later. |
+| `ward` | The next prank on the holder does nothing. |
+| `boomerang` | The next boon that the holder SENDS returns as a small fixed copy (never a pack or a card). |
+
+### Act on active effects
+
+| Primitive | Effect |
+|---|---|
+| `cleanse` | Removes all pranks from the target now. |
+| `hijack` | Moves one active boon from the target to the sender. |
+| `trade_places` | Swaps one active prank of the sender with one active boon of the target. |
+| `body_swap` | The sender and the target swap nicknames for 1 hour. |
+| `freeze` | All effects on the target pause for 1 hour, then continue. |
+
+### Chance and passing
+
+| Primitive | Effect |
+|---|---|
+| `mystery_box` | A random boon or prank of the same rarity. It never picks itself. |
+| `hot_potato` | A timer that members pass. It goes off on the holder at the end. |
+| `chain_letter` | Pass it within 1 hour, or it goes off on the holder. |
+| `duel` | Both members pick a card. The higher card wins, and the loser gets the winner's effect. |
+
+### Safety rules for Neutral cards
+
+1. **Depth 1.** A Neutral effect changes a play at most once. A reflected prank cannot
+   be redirected, and a redirected prank cannot be reflected. No ping-pong is possible.
+2. **Neutral effects create no value.** They move, block, delay, swap, or end effects
+   that exist. The one exception is `boomerang`: a small fixed copy, never a pack or a card.
+3. **The caps count where an effect lands** (the boon-sim finding for `reflect`).
+4. **A fixed order** when a member holds several: decoy, ward, reflect, redirect, delay.
+5. **A Neutral effect cannot act on a Neutral effect** (no reflect of a reflect, no
+   hijack of a ward).
+6. **Passing ends:** at most 5 passes and 1 hour.
 
 ## 4. Balance: no loops, no broken combinations
 

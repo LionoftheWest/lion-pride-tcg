@@ -14,7 +14,7 @@
 -- The fixed set of effect types. `enabled` rolls them out phase by phase (all OFF now).
 create table if not exists effect_primitives (
   primitive      text primary key,
-  kind           text not null check (kind in ('boon', 'prank', 'counter')),
+  kind           text not null check (kind in ('boon', 'prank', 'neutral')),
   channel        text not null check (channel in ('app', 'discord', 'voice')),
   max_amount     numeric,          -- hard ceiling on the amount after tier scaling
   max_duration_s int,              -- hard ceiling on the duration after tier scaling
@@ -31,9 +31,9 @@ insert into effect_primitives (primitive, kind, channel, max_amount, max_duratio
   ('rally',          'boon',    'app',     25,   null,   'next Hunt attack +amount %'),
   ('mend',           'boon',    'app',     30,   null,   'heal one damaged Hunt card by amount HP'),
   ('spotlight',      'boon',    'app',     null, 172800, 'profile glow + title'),
-  ('ward',           'counter', 'app',     null, 172800, 'blocks the next prank'),
-  ('reflect',        'counter', 'app',     null, 172800, 'bounces the next prank to its sender'),
-  ('cleanse',        'counter', 'app',     null, null,   'removes all pranks now'),
+  ('ward',           'neutral', 'app',     null, 172800, 'blocks the next prank'),
+  ('reflect',        'neutral', 'app',     null, 172800, 'bounces the next prank to its sender'),
+  ('cleanse',        'neutral', 'app',     null, null,   'removes all pranks now'),
   -- pranks in the Activity
   ('sticker',        'prank',   'app',     null, 129600, 'card art on profile + showcase'),
   ('title',          'prank',   'app',     null, 129600, 'silly title from the card list'),
