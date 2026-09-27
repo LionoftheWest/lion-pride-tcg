@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { firstPackMessage, firstPackPingEnabled, LAUNCH_ACTIVITY_ID } from './first-pack.js';
+import { firstPackMessage, firstPackPingEnabled } from './first-pack.js';
+import { LAUNCH_ACTIVITY_ID } from './ui/launch.js';
 
 test('the first-pack post @mentions the member and opens the Activity, not a command', () => {
   const m = firstPackMessage('123', 3);
