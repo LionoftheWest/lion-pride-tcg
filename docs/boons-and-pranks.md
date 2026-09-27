@@ -292,8 +292,6 @@ primitive can cause another primitive, except `reflect` at depth 1.
 
 1. Discord pranks: opt-in with **Prank Zone** (recommended), or open to everyone with
    an opt-out? Are the limits correct (60s timeout, 1h nickname, 3 pings in 5 min)?
-7. Voice: is the order correct (mute and deafen first, entrance sounds second,
-   "sound when they speak" last, behind its own flag)? Curated sounds only?
 6. Will you make the two server changes in Section 3B (move the bot role, and remove
    Administrator)? Without the role move, the Discord pranks cannot touch most members.
 2. Is the type split correct (Moment = prank, Character and Creature = boon, Place = room)?
@@ -302,3 +300,5 @@ primitive can cause another primitive, except `reflect` at depth 1.
 4. Does the bot post every play, or one daily digest ("Today: 14 boons, 9 pranks. Top
    giver: @A")? A post for every play can flood the channel when many members play.
 5. Are the caps in Section 4.2 correct?
+7. Voice: is the order correct (mute and deafen first, entrance sounds second,
+   "sound when they speak" last, behind its own flag)? Curated sounds only?
