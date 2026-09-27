@@ -385,6 +385,7 @@ function renderFeedSidebar() {
       ? atk.map(bossFeedRow).join('')
       : '<p class="empty small">No attacks yet — be the first to strike.</p>';
     feedTopId = (atk[0] && atk[0].id) || 0; // remember the newest so polls only add newer
+    fitFeedRows(list);
     return;
   }
   if (head) head.textContent = 'Community Live Feed';
@@ -1565,7 +1566,25 @@ async function refreshHuntFeed() {
   fresh.slice().reverse().forEach((e) => list.insertAdjacentHTML('afterbegin', bossFeedRow(e))); // oldest first -> newest ends on top
   feedTopId = feed[0].id || feedTopId;
   while (list.children.length > 20) list.lastElementChild.remove();
+  fitFeedRows(list);
 }
+
+// No scrolling in the Activity: drop the oldest rows that do not FULLY fit, so no row
+// shows cut in half (Nathan, 2026-09-27). live.attacks keeps them; a resize re-renders.
+function fitFeedRows(list) {
+  const box = list.getBoundingClientRect();
+  if (!box.height) return;
+  let last = list.lastElementChild;
+  while (last && list.children.length > 1 && last.getBoundingClientRect().bottom > box.bottom + 1) {
+    last.remove();
+    last = list.lastElementChild;
+  }
+}
+let feedResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(feedResizeTimer);
+  feedResizeTimer = setTimeout(() => { if (currentView === 'battling') renderFeedSidebar(); }, 150);
+});
 
 // Apply the SHARED boss health from the feed poll, so a player who is only watching
 // still sees the bar drop as others attack — and sees the defeat the moment it lands.
@@ -1787,13 +1806,6 @@ function squadDownSequence() {
   }, 2600);
 }
 
-function flashDamage(node, dmg, bonus) {
-  const s = document.createElement('span');
-  s.className = 'dmg-pop' + (bonus ? ' crit' : '');
-  s.textContent = `-${dmg}${bonus ? ' ×2!' : ''}`;
-  node.appendChild(s);
-  setTimeout(() => s.remove(), 900);
-}
 
 // Each rarity fires its own energy color, so attacks read at a glance.
 const RARITY_ATK = {
@@ -1880,11 +1892,18 @@ function markDowned(node) {
 function recoilCard(node, dmg) {
   node.classList.remove('hit'); void node.offsetWidth; node.classList.add('hit');
   setTimeout(() => node.classList.remove('hit'), 500);
-  const s = document.createElement('span');
-  s.className = 'dmg-pop counter';
-  s.textContent = `-${dmg}`;
-  node.appendChild(s);
-  setTimeout(() => s.remove(), 900);
+  const r = node.getBoundingClientRect(); // the number sits ABOVE the card, not on it
+  bigDamage(r.left + r.width / 2, r.top - 8, dmg, 'from-boss');
+}
+// A big damage number in its own layer (never inside a card): 'hit' / 'crit' over the
+// boss for the player's damage, 'from-boss' in red above a squad card for the boss's damage.
+function bigDamage(x, y, dmg, kind) {
+  const s = document.createElement('div');
+  s.className = `dmg-big ${kind}`;
+  s.textContent = `-${Number(dmg || 0).toLocaleString()}`;
+  s.style.left = `${x}px`; s.style.top = `${y}px`;
+  document.body.appendChild(s);
+  setTimeout(() => s.remove(), 1400);
 }
 function screenShake() {
   const b = document.querySelector('.main-body.hunt') || el('main');
@@ -2027,7 +2046,7 @@ function resolveHit(node, r, atk) {
     else if (r.outcome === 'blocked') calloutAt(bx, by - 26, 'BLOCK', '#7fb0ff');
     if (r.bonus) calloutAt(bx, by - 52, 'WEAK!', '#ff7a3f');
     else if (r.resisted) calloutAt(bx, by - 52, 'RESIST', '#7fb0ff');
-    flashDamage(node, r.damage, big);
+    bigDamage(bx, by + 18, r.damage, big ? 'crit' : 'hit'); // over the boss, not on the card (Nathan)
     if (r.synergy && r.synergy.element) { // themed-squad element synergy bonus
       const sc = (ELEMENTS[r.synergy.element] || {}).color || '#9fe3ff';
       calloutAt(bx, by - 78, `${String(r.synergy.element).toUpperCase()} SYNERGY`, sc);
@@ -2043,7 +2062,9 @@ function resolveHit(node, r, atk) {
   huntState.myDamage = (huntState.myDamage || 0) + (r.damage || 0);
   const md = el('myDmg');
   if (md) md.innerHTML = `Your damage: <b>${huntState.myDamage.toLocaleString()}</b>`;
-  setCardHp(node, r.card_hp, r.card_max_hp);
+  // The server returns the card HP AFTER the boss's answer. Show it only when the boss's
+  // attack lands (resolveBossTurn, or refreshHuntState after the turn), not at the hit.
+  if (!r.boss_action) setCardHp(node, r.card_hp, r.card_max_hp);
   if (r.heal > 0 && r.ability === 'lifesteal') healPop(node, r.heal); // vampiric attacker mends itself
   if (r.defeated) { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); SFX.playBoss('defeat'); if (bossVoice) setTimeout(() => SFX.sample(`mon:${bossVoice.roar}`, 0.85), 220); onBossDefeated(); return; }
   if (r.outcome === 'miss') SFX?.play?.('page'); // hits already played their element sound
