@@ -1,5 +1,6 @@
 import type { Message } from 'discord.js';
 import { recordMessage } from '../store.js';
+import { maybeFirstPackPing } from '../first-pack.js';
 
 /**
  * Count each human message toward the author's daily activity.
@@ -11,7 +12,8 @@ export async function onMessageCreate(message: Message): Promise<void> {
   if (!message.inGuild()) return;
 
   try {
-    await recordMessage(message.author.id, message.author.username);
+    const earned = await recordMessage(message.author.id, message.author.username);
+    if (earned > 0) await maybeFirstPackPing(message.client, message.author.id);
   } catch (error) {
     // A failed count must never crash the bot. Log it and move on.
     console.error('Failed to record activity:', error);
