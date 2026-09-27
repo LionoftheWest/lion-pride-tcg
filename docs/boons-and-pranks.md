@@ -113,6 +113,38 @@ endpoint (the same pattern as pack opening), and the bot does the Discord action
 | `hype` | The bot posts a hype message about the target, with the card art. | once | none |
 | `color_role` | The target picks a name color. | 24 hours | Manage Roles |
 
+### Voice-channel pranks and boons (Nathan, 2026-09-27)
+
+| Primitive | What happens | Limit | Difficulty |
+|---|---|---|---|
+| `vc_mute` | A server mute in voice. | 30 seconds, then the bot unmutes | Easy (Mute Members) |
+| `vc_deafen` | A server deafen in voice. | 30 seconds | Easy (Deafen Members) |
+| `speak_sound` | When the target speaks, the bot plays the card's sound (for example a fart) in that channel. | 60 seconds, at most 5 sounds, at least 5s apart | Hard (see below) |
+| `entrance_sound` | When the target joins a voice channel, the bot plays a sound. As a prank, the card picks the sound. As a boon, the target picks it from the library. | the next 3 joins, or 24 hours | Medium |
+
+How the bot plays a sound:
+- It joins the voice channel, plays a short Ogg Opus file, and leaves.
+- `@discordjs/voice` 0.19.2 supports Discord's voice encryption (DAVE) through
+  `@snazzah/davey`, and a `linux-arm64-gnu` build exists for the VM (checked 2026-09-27).
+- Ogg Opus files play without ffmpeg and without a native Opus encoder.
+- The bot needs the GuildVoiceStates intent (not privileged), plus Connect and Speak.
+
+Hard limits that come from Discord:
+- **The bot can be in only ONE voice channel in the server at a time.** So only one
+  sound prank can run at a time. The others wait in a queue, or they are refused.
+- **`speak_sound` needs voice RECEIVE** to know when the target speaks. discord.js
+  says that voice receive is not officially supported by Discord, so it can break
+  after a Discord change. We build it last, behind its own flag, `FEATURE_VOICE_SPEAK`.
+- Everyone in the channel hears the sound, not only the target. So a sound prank
+  needs the target in Prank Zone, and it counts as a prank on the whole room for the caps.
+
+The sound library:
+- Sounds come only from a curated library in the repo (at most 5 seconds each, volume
+  normalized, so there is no ear-rape). The portal attaches a sound to a card.
+- Members do not upload sounds. An upload could be anything, and nobody reviews it
+  before it plays to a whole room. A later option: members submit a sound, and an
+  admin approves it in the portal.
+
 ### How the bot undoes each effect
 
 - `discord_effects(id, play_id, target_id, kind, original_value, expires_at, reverted_at)`.
@@ -260,6 +292,8 @@ primitive can cause another primitive, except `reflect` at depth 1.
 
 1. Discord pranks: opt-in with **Prank Zone** (recommended), or open to everyone with
    an opt-out? Are the limits correct (60s timeout, 1h nickname, 3 pings in 5 min)?
+7. Voice: is the order correct (mute and deafen first, entrance sounds second,
+   "sound when they speak" last, behind its own flag)? Curated sounds only?
 6. Will you make the two server changes in Section 3B (move the bot role, and remove
    Administrator)? Without the role move, the Discord pranks cannot touch most members.
 2. Is the type split correct (Moment = prank, Character and Creature = boon, Place = room)?
