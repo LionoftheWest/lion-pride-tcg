@@ -957,3 +957,43 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
 .dmg-pop { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); font-weight: 800; color: #ff7a3f; pointer-events: none; animation: dmgpop .9s ease-out forwards; text-shadow: 0 1px 3px #000; }
 .dmg-pop.crit { color: #ffd76e; font-size: 18px; }
 @keyframes dmgpop { 0% { opacity: 0; transform: translate(-50%, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -30px); } }
+
+/* ---- Card effects: boons, pranks, neutral (effects-ui.js) ---- */
+#effectPick { position: fixed; inset: 0; z-index: 76; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 12, .72); }
+#effectPick.hidden { display: none; }
+.eff-confirm { color: #e6ebf3; font-size: 14px; text-align: center; padding: 14px 6px; }
+.eff-confirm-btns { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+.eff-no { width: auto; border-radius: 999px; padding: 7px 16px; font-weight: 700; }
+.gift-msg.err { color: #f04747; }
+.v-effect { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #10141f; border: 1px solid #222b3f; }
+.v-effect-name { font-weight: 800; color: #eef2f8; font-size: 15px; margin-top: 2px; }
+.v-effect-desc { color: #c3cad6; font-size: 13px; margin-top: 3px; }
+.v-effect-meta { color: #8b95a7; font-size: 12px; margin-top: 5px; }
+.v-play { margin-top: 9px; width: 100%; background: linear-gradient(180deg, #f5b942, #e09a1e); color: #0a0d14; border: 0; padding: 8px 14px; border-radius: 999px; font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; }
+.v-play:disabled { background: #263149; color: #8b95a7; cursor: default; }
+#effectBanners { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.eff-banner { pointer-events: auto; display: flex; align-items: center; gap: 10px; min-width: 280px; max-width: 520px; padding: 8px 10px; border-radius: 12px; background: #151b2a; border: 1px solid #2c3752; color: #e6ebf3; font-size: 13px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); animation: effIn .35s ease-out; }
+.eff-banner.prank { border-color: #7a3dd6; } .eff-banner.boon { border-color: #d1a13a; } .eff-banner.neutral { border-color: #3aa5d1; }
+.eff-banner img { width: 34px; height: 48px; object-fit: cover; border-radius: 4px; }
+.eff-banner span { flex: 1; }
+.eff-banner button { background: transparent; color: #8b95a7; border: 0; font-size: 14px; cursor: pointer; }
+@keyframes effIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+.eff-confetti { position: fixed; inset: 0; z-index: 95; pointer-events: none; overflow: hidden; }
+.eff-confetti > * { position: absolute; top: -60px; animation: effFall 3.2s ease-in forwards; }
+.eff-confetti i { width: 10px; height: 16px; background: hsl(var(--hue), 90%, 60%); border-radius: 2px; }
+.eff-confetti img { width: 46px; height: 64px; object-fit: cover; border-radius: 5px; }
+@keyframes effFall { to { transform: translateY(110vh) rotate(540deg); } }
+/* Name decorations */
+.nb { display: inline-flex; align-items: center; gap: 5px; }
+.nb-sticker { width: 18px; height: 25px; object-fit: cover; border-radius: 3px; transform: rotate(-8deg); }
+.nb-title { color: #c79bff; font-size: .85em; font-style: italic; }
+.nb-spot { color: #ffd76a; text-shadow: 0 0 8px rgba(255, 200, 80, .8); }
+/* Pranks on MY screen */
+body.fx-upside #main { transform: rotate(180deg); transition: transform .6s; }
+body.fx-fog #main .c .art img { filter: blur(9px) grayscale(1); }
+body.fx-fog #main .c .cap { visibility: hidden; }
+body.fx-googly .c .art { position: relative; }
+body.fx-googly .c .art::after { content: ''; position: absolute; left: 28%; top: 26%; width: 44%; height: 18%; pointer-events: none;
+  background: radial-gradient(circle at 30% 55%, #111 0 13%, #fff 14% 30%, transparent 31%), radial-gradient(circle at 72% 45%, #111 0 13%, #fff 14% 30%, transparent 31%);
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.6)); animation: googly 1.4s ease-in-out infinite alternate; }
+@keyframes googly { to { transform: translate(3px, 2px) rotate(6deg); } }

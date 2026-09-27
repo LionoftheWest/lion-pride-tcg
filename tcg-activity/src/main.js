@@ -14,6 +14,7 @@ import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { mountBoss } from './boss.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import { cardElement, ELEMENTS } from './elements.js';
+import { initEffects, fillViewerEffect, nameBadge } from './effects-ui.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -295,6 +296,7 @@ async function main() {
   setInterval(refreshPackStatus, 45000); // packs can be earned while the app is open
   refreshTradeBadge();
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
+  initEffects({ api, apiPost, el, esc, SFX }); // card boons/pranks (does nothing when the flag is off)
   show('collection');
 }
 
@@ -1047,7 +1049,7 @@ async function openBoard() {
     const rows = (d.leaders || []).map((p, i) => {
       const meCls = p.player_id === d.me ? ' me' : '';
       const rank = ['🥇', '🥈', '🥉'][i] || `${i + 1}`;
-      return `<div class="board-row${meCls}"><span class="board-rank">${rank}</span><span class="board-name">${esc(p.username || 'Player')}</span><span class="board-cp">⚡ ${p.power}</span></div>`;
+      return `<div class="board-row${meCls}"><span class="board-rank">${rank}</span><span class="board-name">${nameBadge(p.player_id, p.username)}</span><span class="board-cp">⚡ ${p.power}</span></div>`;
     }).join('');
     el('boardList').innerHTML = rows || '<p class="empty">No players yet.</p>';
   } catch {
@@ -2158,7 +2160,7 @@ async function openHuntBoard() {
     const rows = (d.leaders || []).map((p, i) => {
       const meCls = p.player_id === d.me ? ' me' : '';
       const rank = ['🥇', '🥈', '🥉'][i] || `${i + 1}`;
-      return `<div class="board-row${meCls}"><span class="board-rank">${rank}</span><span class="board-name">${esc(p.username || 'Player')}</span><span class="board-cp">⚔️ ${p.damage}</span></div>`;
+      return `<div class="board-row${meCls}"><span class="board-rank">${rank}</span><span class="board-name">${nameBadge(p.player_id, p.username)}</span><span class="board-cp">⚔️ ${p.damage}</span></div>`;
     }).join('');
     el('boardList').innerHTML = rows || '<p class="empty">No damage dealt yet.</p>';
   } catch {
@@ -2174,7 +2176,7 @@ async function loadPlayers(q) {
     const players = data.players || [];
     box.innerHTML = players.length
       ? players.map((p) => `<div class="gift-row" data-id="${p.id}" data-name="${esc(p.username)}">
-          <span class="gift-name">${esc(p.username)}</span>
+          <span class="gift-name">${nameBadge(p.id, p.username)}</span>
           <button class="gift-send">Gift 1</button>
         </div>`).join('')
       : '<p class="empty small">No players found.</p>';
@@ -2376,7 +2378,7 @@ async function tradeLoadPlayers(q) {
     const d = await api(`/api/players?q=${encodeURIComponent(q)}`);
     const ps = d.players || [];
     box.innerHTML = ps.length
-      ? ps.map((p) => `<div class="gift-row" data-id="${p.id}" data-name="${esc(p.username)}"><span class="gift-name">${esc(p.username)}</span><button class="gift-send">Pick</button></div>`).join('')
+      ? ps.map((p) => `<div class="gift-row" data-id="${p.id}" data-name="${esc(p.username)}"><span class="gift-name">${nameBadge(p.id, p.username)}</span><button class="gift-send">Pick</button></div>`).join('')
       : '<p class="empty small">No players found.</p>';
   } catch { box.innerHTML = '<p class="empty small">Could not load players.</p>'; }
 }
@@ -2457,6 +2459,7 @@ function openViewer(card) {
   el('v-artist').textContent = locked ? 'Not in your collection yet' : (card.artist ? `Art by ${card.artist}` : '');
   fillViewerAbility(card.ability);
   fillViewerTags(card.tags);
+  fillViewerEffect(card);
   el('card3d').classList.toggle('locked', locked);
   el('card3d').classList.toggle('holo-on', !locked && card.rarity !== 'normal'); // normal = no foil; locked = hidden
   renderAscension(card);
