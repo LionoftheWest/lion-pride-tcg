@@ -102,3 +102,28 @@ body.ui-v2 .v2sq .squad-grid .c .x2 { top: 32px; right: 6px; bottom: auto; left:
 body.ui-v2 .v2sq .squad-grid .c .shield-b { top: 32px; left: 6px; }
 body.ui-v2 .v2sq .squad-grid .c .card-info { top: auto; bottom: auto; left: 50%; top: 6px; transform: translateX(-50%); opacity: .7; z-index: 3; } /* visible on touch screens too */
 body.ui-v2 .v2sq .squad-grid .c:hover .card-info { opacity: 1; }
+
+/* ---- The raid magnifier: the card + its battle info (Nathan, 2026-09-28) ---- */
+body.ui-v2 #viewer.raid-info { background: rgba(5, 5, 10, .78); backdrop-filter: blur(6px); gap: 32px; }
+body.ui-v2 #viewer.raid-info .viewer-stage { width: min(320px, 50vmin); }
+body.ui-v2 #viewer.raid-info .viewer-info { width: 340px; max-width: 340px; max-height: 82vh; overflow: hidden; padding: 18px; box-sizing: border-box; border-radius: 18px;
+  background: var(--bg-raised); border: 1px solid var(--border); color: var(--text-primary); font-family: var(--font-ui); }
+body.ui-v2 #viewer.raid-info .viewer-info h3 { font: 800 22px var(--font-display); margin: 2px 0 8px; }
+body.ui-v2 #viewer.raid-info .v-fields, body.ui-v2 #viewer.raid-info .v-lore, body.ui-v2 #viewer.raid-info .v-asc, body.ui-v2 #viewer.raid-info .v-artist { display: none; }
+body.ui-v2 .v-raid { margin: 8px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+body.ui-v2 .v-raid.hidden { display: none; }
+body.ui-v2 .vr-head { display: flex; gap: 6px; flex-wrap: wrap; }
+body.ui-v2 .vr-role, body.ui-v2 .vr-weak, body.ui-v2 .vr-down { font: 800 10.5px var(--font-ui); letter-spacing: .8px; padding: 4px 9px; border-radius: 7px; border: 1px solid; }
+body.ui-v2 .vr-role.atk { color: #FF8696; border-color: rgba(255, 77, 99, .45); background: var(--danger-soft); }
+body.ui-v2 .vr-role.sup { color: #7FB2FF; border-color: rgba(127, 178, 255, .45); background: rgba(127, 178, 255, .12); }
+body.ui-v2 .vr-weak { color: var(--on-gold); background: var(--gold); border-color: var(--gold); }
+body.ui-v2 .vr-down { color: var(--text-muted); border-color: var(--border-strong); }
+body.ui-v2 .vr-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+body.ui-v2 .vr-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
+body.ui-v2 .vr-stat b { font: 700 13px var(--font-num); white-space: nowrap; }
+body.ui-v2 .vr-stat span { font-size: 10.5px; color: var(--text-muted); }
+body.ui-v2 .vr-stat.low b { color: var(--danger); }
+body.ui-v2 .vr-hpbar { display: block; height: 6px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+body.ui-v2 .vr-hpbar > i { display: block; height: 100%; background: linear-gradient(90deg, #B3213A, var(--danger)); }
+body.ui-v2 .vr-note { font-size: 12.5px; color: var(--text-secondary); }
+body.ui-v2 #viewer.raid-info .v-ability, body.ui-v2 #viewer.raid-info .v-effect, body.ui-v2 #viewer.raid-info .v-tags { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
