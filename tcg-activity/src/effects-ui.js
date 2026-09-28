@@ -106,21 +106,23 @@ async function effectFor(card) {
 }
 
 // ---- The card viewer section ----
-let viewerSeq = 0;
-export async function fillViewerEffect(card) {
+const viewerSeq = {}; // box id -> the latest request
+// boxId: the viewer's #v-effect by default; the v2 Collection panel passes its own box.
+export async function fillViewerEffect(card, boxId = 'v-effect') {
   const { el } = deps || {};
-  const box = el?.('v-effect');
+  const box = el?.(boxId);
   if (!box) return;
-  const seq = ++viewerSeq;
+  const seq = viewerSeq[boxId] = (viewerSeq[boxId] || 0) + 1;
   if (!state.enabled) { box.classList.add('hidden'); return; }
   const full = await effectFor(card);
-  if (seq !== viewerSeq) return; // the member opened another card meanwhile
-  paintViewerEffect(full);
+  if (seq !== viewerSeq[boxId]) return; // the member opened another card meanwhile
+  paintViewerEffect(full, boxId);
 }
 
-function paintViewerEffect(card) {
+function paintViewerEffect(card, boxId) {
   const { el, esc } = deps;
-  const box = el('v-effect');
+  const box = el(boxId);
+  if (!box) return;
   if (!card?.effect?.primitive) { box.classList.add('hidden'); return; }
   const e = card.effect;
   const s = scaled(card);
@@ -134,14 +136,14 @@ function paintViewerEffect(card) {
   if (!card.locked) {
     if (!s.enabled) btn = '<button class="v-play" disabled>Unlocks soon</button>';
     else if (wait > 0) btn = `<button class="v-play" disabled>Ready in ${fmtDur(wait)}</button>`;
-    else btn = '<button class="v-play" id="v-play">Play on a member</button>';
+    else btn = '<button class="v-play">Play on a member</button>';
   }
   box.innerHTML = `<div class="v-sec-head">${KIND_ICON[s.kind] || '🎴'} ${KIND_LABEL[s.kind] || 'Effect'}</div>
     <div class="v-effect-name">${esc(e.name || e.primitive)}</div>
     <div class="v-effect-desc">${esc(e.desc || '')}</div>
     <div class="v-effect-meta">${meta.join(' · ')}</div>${btn}`;
   box.classList.remove('hidden');
-  el('v-play')?.addEventListener('click', () => openPicker(card));
+  box.querySelector('.v-play:not([disabled])')?.addEventListener('click', () => openPicker(card));
 }
 
 // ---- The member picker ----

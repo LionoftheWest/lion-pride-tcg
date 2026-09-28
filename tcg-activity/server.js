@@ -121,7 +121,9 @@ app.get(['/', '/index.html'], (req, res) => {
 });
 app.use(express.static(PUBLIC, {
   setHeaders: (res, path) => {
-    if (/^main\..*\.js$/.test(path.split(/[\\/]/).pop())) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    const base = path.split(/[\\/]/).pop();
+    if (/^main\..*\.js$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    else if (/\.woff2$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=2592000');
     else res.setHeader('Cache-Control', 'no-store');
   },
 }));
@@ -142,6 +144,16 @@ const ascendCost = (rarity, asc) => ((asc || 0) >= 5 ? null : (ASC_COST[rarity] 
 
 // Phase 2: The Pride Hunt (weekly co-op raid). Flag-gated.
 const FEATURE_HUNT = process.env.FEATURE_HUNT === '1';
+
+// The v2 UI (docs/design.md). Default OFF: FEATURE_UI_V2=1 for everyone, or
+// UI_V2_USERS=id,id for a preview. The client asks after login.
+const UI_V2_ALL = process.env.FEATURE_UI_V2 === '1';
+const UI_V2_USERS = new Set((process.env.UI_V2_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
+app.get('/api/flags', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)) });
+});
 
 app.get('/api/config', (req, res) => res.json({ clientId: CLIENT_ID, backUrl: CARD_BACK, features: { ascension: FEATURE_ASCENSION, hunt: FEATURE_HUNT } }));
 
@@ -502,6 +514,21 @@ app.get('/api/hunt/leaderboard', async (req, res) => {
   res.json({ leaders: data || [], me: me.id });
 });
 
+// The v2 Home profile: packs opened + the hunt rank. Cards owned comes from the
+// collection the client already has.
+app.get('/api/profile', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const hunt = FEATURE_HUNT ? await activeHunt() : null;
+  const [{ count: packsOpened }, lb] = await Promise.all([
+    supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', me.id).eq('reason', 'opened'),
+    hunt ? supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 }) : Promise.resolve({ data: [] }),
+  ]);
+  const leaders = lb.data || [];
+  const idx = leaders.findIndex((r) => String(r.player_id) === String(me.id));
+  res.json({ packsOpened: packsOpened || 0, huntRank: idx >= 0 ? idx + 1 : null, huntPlayers: leaders.length });
+});
+
 // The card catalog is identical for every player except the "owned" overlay, so
 // the heavy cards+subjects join is cached (60s) and shared. Per request we run
 // only ONE light query — the caller's owned card ids — instead of the full join.
@@ -515,7 +542,7 @@ async function getCatalogBase() {
   catalogInflight = (async () => {
     const { data, error } = await supabase
       .from('cards')
-      .select(`id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, tags, ability${EFFECT_COLS})`)
+      .select(`id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS})`)
       .order('id');
     if (error) { if (catalogCache) return catalogCache.cards; throw new Error(error.message); }
     const cards = (data || []).map((c) => ({
@@ -527,6 +554,7 @@ async function getCatalogBase() {
       event: c.event || null,
       artist: c.artist_credit,
       lore: c.lore,
+      power: cardPower(c.rarity, 0, c.subject?.cp_mod), // the base (unascended) power
       subject: c.subject?.name,
       type: c.subject?.type || null,
       tags: c.subject?.tags || null,
@@ -654,12 +682,16 @@ setInterval(async () => {
 // The transport is a WebSocket on /ws, carried through the same proxy as the page.
 const rooms = new Map(); // instanceId -> Map(ws -> { id, name })
 
+const STATUS_KINDS = new Set(['home', 'collection', 'hunt', 'trading', 'opening', 'battle']);
 function presenceList(instanceId) {
   const members = rooms.get(instanceId);
   if (!members) return [];
   // A user may have two tabs open — show each person once.
   const byId = new Map();
-  for (const u of members.values()) byId.set(u.id, u);
+  for (const u of members.values()) {
+    const prev = byId.get(u.id);
+    if (!prev || (u.status?.at || 0) > (prev.status?.at || 0)) byId.set(u.id, u);
+  }
   return [...byId.values()];
 }
 
@@ -971,7 +1003,7 @@ wss.on('connection', async (ws, req) => {
 
   let members = rooms.get(instanceId);
   if (!members) { members = new Map(); rooms.set(instanceId, members); }
-  members.set(ws, { id: me.id, name: me.global_name || me.username });
+  members.set(ws, { id: me.id, name: me.global_name || me.username, status: null });
   roomSend(instanceId, { type: 'presence', users: presenceList(instanceId) });
 
   // Reactions: a viewer taps an emoji; everyone in the room sees it.
@@ -981,6 +1013,12 @@ wss.on('connection', async (ws, req) => {
     if (msg?.type === 'react' && typeof msg.emoji === 'string') {
       const who = members.get(ws);
       roomSend(instanceId, { type: 'react', user: who?.name || 'Someone', emoji: msg.emoji.slice(0, 8) });
+    } else if (msg?.type === 'status') {
+      // What this member does now (v2 Home "Live in voice"). Allow-listed values only.
+      const who = members.get(ws);
+      if (!who || !STATUS_KINDS.has(msg.kind)) return;
+      who.status = { kind: msg.kind, card: typeof msg.card === 'string' ? msg.card.slice(0, 60) : null, at: Date.now() };
+      roomSend(instanceId, { type: 'presence', users: presenceList(instanceId) });
     }
   });
 

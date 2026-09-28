@@ -1,0 +1,96 @@
+/* Lion Pride TCG — UI v2 (docs/design.md, design/08-v3-*.png).
+   Every rule is scoped under body.ui-v2, so the v1 look is untouched until the
+   flag (/api/flags -> uiV2) turns the class on. */
+
+@font-face { font-family: 'Bricolage Grotesque'; src: url('/fonts/bricolage-grotesque-latin-wght-normal.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('/fonts/inter-latin-wght-normal.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2'); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: 'Instrument Serif'; src: url('/fonts/instrument-serif-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Instrument Serif'; src: url('/fonts/instrument-serif-latin-400-italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
+
+body.ui-v2 {
+  --bg-base: #0A0A12; --bg-raised: #11111B; --surface: #181824; --surface-2: #20202F; --surface-3: #2A2A3D;
+  --border: #2A2A3E; --border-strong: #3B3B57;
+  --text-primary: #F5F2EC; --text-secondary: #AEABC0; --text-muted: #6F6C86;
+  --gold: #F4B73C; --gold-strong: #E0971C; --gold-soft: #F4B73C1F; --on-gold: #1C1203;
+  --hunt: #7C5CFF; --hunt-soft: #7C5CFF24; --danger: #FF4D63; --danger-soft: #FF4D6324;
+  --success: #5BE38A; --success-soft: #5BE38A1F;
+  --boon: #3DD9B4; --boon-soft: #3DD9B41F; --prank: #B28CFF; --prank-soft: #B28CFF1F;
+  --r-normal: #A3ACBC; --r-illustrated_rare: #3E8BFF; --r-secret_rare: #B15CFF; --r-full_art: #FF4FA3; --r-gold: #F7BE35;
+  --el-fire: #FF6A3D; --el-water: #3CB6FF; --el-lightning: #FFD43B; --el-ice: #9BEBFF; --el-nature: #5BD66B; --el-earth: #C98D55; --el-shadow: #8A6CFF; --el-light: #FFF1B8;
+  --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-num: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
+  --font-flavor: 'Instrument Serif', Georgia, serif;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+  --rad-sm: 6px; --rad-md: 10px; --rad-lg: 16px; --rad-card: 14px; --rad-pill: 999px;
+  --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 360ms; --dur-reveal: 700ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --topbar-h: 64px; --dock-h: 72px;
+  background: var(--bg-base); color: var(--text-primary); font-family: var(--font-ui);
+}
+@media (prefers-reduced-motion: reduce) { body.ui-v2 * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+
+/* ---- Top bar ------------------------------------------------------------ */
+body.ui-v2 #topbar { height: var(--topbar-h); padding: 0 var(--sp-5); display: flex; align-items: center; gap: var(--sp-3); background: transparent; border: 0; box-shadow: none; }
+body.ui-v2 #topbar .title { display: flex; align-items: center; gap: var(--sp-3); font-family: var(--font-display); font-weight: 700; font-size: 17px; letter-spacing: 0; color: var(--text-primary); }
+body.ui-v2 #topbar .title .logo { width: 36px; height: 36px; border-radius: var(--rad-md); display: grid; place-items: center; font-size: 19px;
+  background: linear-gradient(180deg, var(--gold), var(--gold-strong)); box-shadow: 0 4px 14px rgba(244, 183, 60, .28); }
+body.ui-v2 .v2-season { font: 600 11px var(--font-ui); letter-spacing: .8px; text-transform: uppercase; color: var(--text-secondary);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--rad-pill); padding: 5px 10px; }
+body.ui-v2 #topbar .topright { margin-left: auto; display: flex; align-items: center; gap: var(--sp-2); }
+body.ui-v2 #nav, body.ui-v2 #openTop { display: none !important; }
+body.ui-v2 .v2-pill { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: var(--rad-pill);
+  background: var(--surface); border: 1px solid var(--border); font: 600 13px var(--font-ui); color: var(--text-secondary); }
+body.ui-v2 .v2-pill b { font: 700 14px var(--font-num); color: var(--text-primary); }
+body.ui-v2 #topbar .iconbtn { width: 38px; height: 38px; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-secondary); font-size: 16px; transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+body.ui-v2 #topbar .iconbtn:hover { background: var(--surface-2); transform: translateY(-1px); }
+body.ui-v2 .v2-avatar { width: 38px; height: 38px; border-radius: 50%; padding: 2px; background: linear-gradient(180deg, var(--gold), var(--gold-strong)); }
+body.ui-v2 .v2-avatar img, body.ui-v2 .v2-avatar span { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; object-fit: cover;
+  background: linear-gradient(135deg, #7C5CFF, #FF4FA3); font: 700 14px var(--font-ui); color: #fff; }
+
+/* ---- Body: the feed sidebar moves INTO the screens in v2 ------------------ */
+body.ui-v2 #body { height: calc(100vh - var(--topbar-h)); padding: 0 var(--sp-5) calc(var(--dock-h) + var(--sp-4)); box-sizing: border-box; display: block; }
+body.ui-v2 #feed { display: none; }
+body.ui-v2 #main { height: 100%; width: 100%; max-width: none; background: none; border: 0; border-radius: 0; padding: 0; }
+
+/* ---- The dock (always visible) ------------------------------------------- */
+body.ui-v2 #dock { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 60; width: 504px; height: var(--dock-h);
+  display: flex; flex-wrap: nowrap; gap: 0; align-items: center; justify-content: space-between; padding: 0 var(--sp-3); box-sizing: border-box;
+  background: rgba(17, 17, 27, .92); border: 1px solid var(--border); border-radius: 22px; backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .55); }
+#dock { display: none; }
+body.ui-v2 #dock { display: flex; }
+body.ui-v2 #dock .dk { flex: 1; height: 54px; border: 0; border-radius: 14px; background: transparent; color: var(--text-muted); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: 600 11px var(--font-ui); position: relative;
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+body.ui-v2 #dock .dk, body.ui-v2 #dock .dk-open { padding: 0; min-width: 0; width: auto; line-height: 1; }
+body.ui-v2 #dock .dk svg { width: 20px; height: 20px; }
+body.ui-v2 #dock .dk:hover { color: var(--text-secondary); }
+body.ui-v2 #dock .dk.active { color: var(--gold); background: var(--surface-2); }
+body.ui-v2 #dock .dk.active::after { content: ''; position: absolute; bottom: 4px; width: 18px; height: 3px; border-radius: 3px; background: var(--gold); }
+body.ui-v2 #dock .dk .dot { position: absolute; top: 8px; right: calc(50% - 16px); width: 7px; height: 7px; border-radius: 50%; background: var(--danger); display: none; }
+body.ui-v2 #dock .dk.live .dot { display: block; }
+/* The OPEN button sits recessed in the dock (Nathan: smaller, set into the dock). */
+body.ui-v2 #dock .dk-open { flex: 0 0 64px; height: 64px; margin: -6px var(--sp-2) 0; border-radius: 50%; border: 0; cursor: pointer; position: relative;
+  background: radial-gradient(circle at 50% 35%, #FFD170, var(--gold) 55%, var(--gold-strong)); color: var(--on-gold);
+  box-shadow: 0 0 0 5px rgba(17, 17, 27, .92), inset 0 -3px 8px rgba(0, 0, 0, .25), 0 6px 20px rgba(244, 183, 60, .35);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; font: 800 10px var(--font-ui); letter-spacing: .6px;
+  transition: transform var(--dur-fast) var(--ease-spring); }
+body.ui-v2 #dock .dk-open:hover { transform: translateY(-2px) scale(1.03); }
+body.ui-v2 #dock .dk-open:active { transform: scale(.97); }
+body.ui-v2 #dock .dk-open svg { width: 22px; height: 22px; }
+body.ui-v2 #dock .dk-open[disabled] { filter: grayscale(.7) brightness(.7); cursor: default; }
+body.ui-v2 #dock .dk-badge { position: absolute; top: -4px; right: -6px; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: var(--rad-pill);
+  background: var(--danger); color: #fff; font: 700 11px var(--font-num); display: grid; place-items: center; border: 2px solid var(--bg-raised); }
+body.ui-v2 #dock .dk-badge:empty { display: none; }
+
+/* Screen change motion: the new view rises in. */
+body.ui-v2 #main > * { animation: v2Rise var(--dur-base) var(--ease-out); }
+@keyframes v2Rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* v2-only pieces of the shared markup */
+.v2-only { display: none !important; }
+body.ui-v2 .v2-only { display: inline-flex !important; }
+body.ui-v2 #topbar .v2-name { font-family: var(--font-display); }
