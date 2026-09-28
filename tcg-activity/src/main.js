@@ -1338,6 +1338,13 @@ function restingHTML(d) {
   </div>`;
 }
 
+// Every boss passive as a chip (hunts.passive.list; an older hunt has only passive.kind).
+function passiveChips(h) {
+  const p = h && h.passive;
+  const list = Array.isArray(p?.list) && p.list.length ? p.list : (p?.kind ? [{ kind: p.kind, label: p.label }] : []);
+  return list.map((x) => `<span class="passive-chip" title="${esc(x.label || '')}">☠ ${esc(String(x.kind).charAt(0).toUpperCase() + String(x.kind).slice(1))}</span>`).join('');
+}
+
 // Strip the facet prefix from a tag slug for display (trait:water -> water).
 function tagLabel(v) { return String(v || '').split(':').pop(); }
 // The boss's weak + resist tags as chips ("Weak to fire · Resists water").
@@ -1349,9 +1356,7 @@ function weakResistHTML(h) {
   if (w) parts.push(`Weak to ${w}`);
   if (r) parts.push(`Resists ${r}`);
   const base = `<span class="weaks">${parts.join(' · ') || 'No weakness'}</span>`;
-  const pk = h.passive && h.passive.kind;
-  const passive = pk ? `<span class="passive-chip" title="${esc(h.passive.label || '')}">☠ ${esc(pk.charAt(0).toUpperCase() + pk.slice(1))}</span>` : '';
-  return base + passive;
+  return base + passiveChips(h);
 }
 
 function huntHTML(d) {
@@ -1405,8 +1410,7 @@ function openBossModal() {
   const chipList = (arr, cls) => (arr || []).map((w) => `<span class="${cls}">${esc(tagLabel(w.value))}</span>`).join(' ');
   const wk = chipList(h.weak_points, 'weak-chip');
   const rs = chipList(h.resist_points, 'resist-chip');
-  const pk = h.passive && h.passive.kind;
-  const passive = pk ? `<span class="passive-chip" title="${esc(h.passive.label || '')}">☠ ${esc(pk.charAt(0).toUpperCase() + pk.slice(1))}</span>` : '';
+  const passive = passiveChips(h);
   el('bossModalInfo').innerHTML =
     `<div class="mb-live"><span class="live-dot"></span>RAID BOSS LIVE</div>
      <h2 class="bm-name"><span class="boss-name">${esc(h.name)}</span><span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span></h2>
@@ -1673,8 +1677,9 @@ function huntTile(c, mode) {
   const hppct = Math.max(0, Math.round((100 * (c.hp ?? max)) / max));
   const round = huntState?.round || 0;
   const cdLeft = support && (c.cdReady || 0) > round ? (c.cdReady - round) : 0; // rounds until ready
+  const stunned = !support && (c.cdReady || 0) >= round + 1; // the boss stunned it: it waits a round
   const cls = `c ${c.rarity}${c.matches && !support ? ' match' : ''}${support ? ' support' : ''}`
-    + `${mode === 'select' && selected ? ' selected' : ''}${mode === 'battle' && downed ? ' downed' : ''}${mode === 'battle' && cdLeft ? ' cooldown' : ''}`;
+    + `${mode === 'select' && selected ? ' selected' : ''}${mode === 'battle' && downed ? ' downed' : ''}${mode === 'battle' && cdLeft ? ' cooldown' : ''}${mode === 'battle' && stunned && !downed ? ' stunned' : ''}`;
   const overlay = mode === 'select'
     ? (selected ? (uiV2 ? `<span class="sel-num">${[...squad.sel].indexOf(c.id) + 1}</span>` : '<span class="sel-check">✓</span>') : '')
     : (downed ? '<span class="downed-x">DOWNED</span>' : (cdLeft ? `<span class="cd-x">${cdLeft}</span>` : ''));
@@ -2308,6 +2313,7 @@ async function huntAttack(cardId, node) {
     if (r?.error === 'downed') markDowned(node);
     else if (r?.error === 'hunt_over') renderHunt();
     else if (r?.error === 'day_limit') { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, `LIMIT ${r.cap || 8}`, '#ff8f5c'); }
+    else if (r?.error === 'stunned') { const b = node.getBoundingClientRect(); node.classList.add('stunned'); calloutAt(b.left + 30, b.top, 'STUNNED', '#ffe23e'); }
     return;
   }
   if (wasNew) markCardEngaged(node); // first engage counts toward the daily squad tally
@@ -2355,6 +2361,9 @@ function resolveHit(node, r, atk) {
   // attack lands (resolveBossTurn, or refreshHuntState after the turn), not at the hit.
   if (!r.boss_action) setCardHp(node, r.card_hp, r.card_max_hp);
   if (r.heal > 0 && r.ability === 'lifesteal') healPop(node, r.heal); // vampiric attacker mends itself
+  if (r.boss_heal > 0) setTimeout(() => calloutAt(bx, by - 104, `+${Number(r.boss_heal).toLocaleString()} HP`, '#5be38a'), PACE.afterHit + 420);
+  if (r.phase) setTimeout(() => { calloutAt(bx, by - 130, r.phase === 'rage' ? 'RAGE PHASE!' : `NEW PASSIVE: ${String(r.phase).toUpperCase()}`, '#ff3a3a'); screenShake(); }, PACE.afterHit + 700);
+  if (Array.isArray(r.passives) && huntState?.hunt) huntState.hunt.passive = { ...(huntState.hunt.passive || {}), list: r.passives.map((k) => ({ kind: k, label: k })) };
   if (r.defeated) { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); SFX.playBoss('defeat'); if (bossVoice) setTimeout(() => SFX.sample(`mon:${bossVoice.roar}`, 0.85), 220); onBossDefeated(); return; }
   if (r.outcome === 'miss') SFX?.play?.('page'); // hits already played their element sound
   // The attack ended the round. Now the boss takes its hidden turn (a surprise from its
@@ -2438,6 +2447,20 @@ function resolveBossTurn(act) {
     SFX.playBoss('enrage'); bossGrowl(0.6);
     return;
   }
+  if (act.kind === 'charging') { // the Cataclysm is coming next round
+    bossHandle?.bossAct?.('charging');
+    calloutAt(bx, by - 18, 'CHARGING…', '#ff9a3c');
+    bossGlyph('⚠', '#ff9a3c');
+    SFX.playBoss('enrage'); bossGrowl(0.5);
+    return;
+  }
+  if (act.kind === 'regenerate') { // the boss heals
+    bossHandle?.bossAct?.('regenerate');
+    calloutAt(bx, by - 18, 'REGENERATE', '#5be38a');
+    bossGlyph('✚', '#5be38a');
+    SFX.playBoss('curse');
+    return;
+  }
   if (act.kind === 'curse') { // a hex sinks onto the attacker — it hits softer
     bossHandle?.bossAct?.('curse');
     calloutAt(bx, by - 18, 'CURSE!', '#b060ff');
@@ -2445,14 +2468,18 @@ function resolveBossTurn(act) {
     SFX.playBoss('curse'); bossGrowl(0.5);
     return;
   }
-  // strike / slam — real damage.
+  // strike / slam / cataclysm / drain / stun — real damage.
+  const aoe = act.kind === 'slam' || act.kind === 'cataclysm';
   bossHandle?.counter();
   bossHandle?.bossAct?.(act.kind);
   screenShake();
-  calloutAt(bx, by - 18, act.kind === 'slam' ? 'SLAM!' : 'STRIKE!', '#ff6a5a');
-  if (act.kind === 'slam') setTimeout(() => screenShake(), 120);
-  syncTargets(true, act.kind === 'slam');
-  SFX.playBoss(act.kind); bossGrowl(0.6);
+  const WORD = { slam: 'SLAM!', cataclysm: 'CATACLYSM!', drain: 'DRAIN!', stun: 'STUN!' };
+  calloutAt(bx, by - 18, WORD[act.kind] || 'STRIKE!', act.kind === 'drain' ? '#5be38a' : act.kind === 'stun' ? '#ffe23e' : '#ff6a5a');
+  if (aoe) setTimeout(() => screenShake(), 120);
+  if (act.kind === 'cataclysm') setTimeout(() => screenShake(), 260);
+  if (act.kind === 'stun') { const n = squadNode((act.targets || [])[0]?.card_id); if (n) n.classList.add('stunned'); }
+  syncTargets(true, aoe);
+  SFX.playBoss(act.kind === 'cataclysm' ? 'slam' : (act.kind === 'drain' || act.kind === 'stun') ? 'strike' : act.kind); bossGrowl(0.6);
 }
 
 async function openHuntBoard() {
