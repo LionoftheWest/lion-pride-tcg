@@ -9,8 +9,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
-// The combat migration + the fixed HP on top (spawn_hunt is replaced by the second file).
-const mig = ['hunt_boss_difficulty.sql', 'hunt_boss_hp_fixed.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')).join(String.fromCharCode(10));
+// The combat migration + the fixed HP + the flat boss ATK (each later file replaces functions).
+const mig = ['hunt_boss_difficulty.sql', 'hunt_boss_hp_fixed.sql', 'hunt_boss_attack.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')).join(String.fromCharCode(10));
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 
 const body = String.raw`do $t$
@@ -33,9 +33,10 @@ begin
     if jsonb_array_length(rec.passive->'list') <> (case rec.tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end)
        or (select count(distinct x->>'kind') from jsonb_array_elements(rec.passive->'list') x) <> jsonb_array_length(rec.passive->'list')
        or rec.hp_max <> (case rec.tier when 'Normal' then 60000 else 80000 end)
-       or rec.hp_remaining <> rec.hp_max or rec.hp_share <> rec.hp_max / 10 then ok := false; end if;
+       or rec.hp_remaining <> rec.hp_max or rec.hp_share <> rec.hp_max / 10
+       or (rec.stats->>'atk')::int <> (case rec.tier when 'Normal' then 58 when 'Heroic' then 73 else 93 end) then ok := false; end if;
   end loop;
-  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP 60k/80k/80k, share = HP / 10', 'ok', ok,
+  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP 60k/80k/80k, share = HP / 10, ATK 58/73/93', 'ok', ok,
     'tiers', (select count(distinct t) from unnest(kinds) t));
   -- The HP does not follow the players: 30 more card holders, the same HP.
   insert into players (id, username) select 'tst_x' || g, 'tst x' from generate_series(1, 30) g;
@@ -50,11 +51,22 @@ begin
   update settings set value = '{"Normal":1234,"Heroic":1234,"Mythic":1234,"crew":2}' where key = 'hunt_hp';
   h := spawn_hunt(3); select * into rec from hunts where id = h;
   res := res || jsonb_build_object('case', 'the settings dial hunt_hp sets the HP and the share', 'ok', rec.hp_max = 1234 and rec.hp_share = 617);
+  -- Per-boss stats: hunt_boss_stats[name].atk_mult scales that boss only.
+  update settings set value = '{"Normal":100,"Heroic":100,"Mythic":100}' where key = 'hunt_atk';
+  update settings set value = jsonb_build_object(rec.name, jsonb_build_object('atk_mult', 1.5)) where key = 'hunt_boss_stats';
+  k := rec.name; ok := true; n := 0;
+  for i in 1..80 loop
+    h := spawn_hunt(3); select * into rec from hunts where id = h;
+    if rec.name = k then n := n + 1; if (rec.stats->>'atk')::int <> 150 then ok := false; end if;
+    elsif (rec.stats->>'atk')::int <> 100 then ok := false; end if;
+  end loop;
+  res := res || jsonb_build_object('case', 'hunt_atk sets the tier ATK, hunt_boss_stats atk_mult scales one boss', 'ok', ok and n > 0, 'hits', n);
   kinds := '{}';
 
   -- 2. A long fight on a quiet test boss (no passives, big HP) to sample the boss turn.
   insert into hunts (name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, closes_at, hp_share)
     values ('Test Boss', 'Normal', '[]', '[]', '{"list": []}', 1000000, 1000000, now() + interval '1 day', 100000) returning id into h;
+  update hunts set stats = '{"atk": 40}' where id = h;  -- 40, not 58: on a Gold card the old % model gives ~1.45 x 40
   for i in 1..400 loop
     select card_id into c from unnest(ids) card_id
       where not exists (select 1 from hunt_card_hp x where x.hunt_id = h and x.player_id = 'tst_boss' and x.card_id = card_id and x.hit_date = d
@@ -73,7 +85,7 @@ begin
     v := (r->'boss_action'->>'round')::int;
     if (k = 'charging') <> (v % 8 = 7) or (k = 'cataclysm') <> (v % 8 = 0 and k <> 'stunned') then bad_cycle := bad_cycle + 1; end if;
     if k = 'strike' and (r->>'card_max_hp')::int > 0 then
-      strikes := array_append(strikes, round((r->>'counter_dmg')::numeric / (r->>'card_max_hp')::numeric, 3));
+      strikes := array_append(strikes, round((r->>'counter_dmg')::numeric / 40, 3));
     end if;
     if k in ('drain', 'regenerate') then heals := heals || jsonb_build_object('k', k, 'heal', (r->>'boss_heal')::int); end if;
   end loop;
@@ -81,12 +93,44 @@ begin
     (select bool_and(m = any(kinds)) from unnest(array['strike','slam','drain','stun','enrage','curse','regenerate','charging','cataclysm']) m),
     'counts', (select jsonb_object_agg(m, cnt) from (select m, count(*) cnt from unnest(kinds) m group by m) z));
   res := res || jsonb_build_object('case', 'Charging exactly on round 8n-1, Cataclysm on 8n', 'ok', bad_cycle = 0, 'bad', bad_cycle);
-  res := res || jsonb_build_object('case', 'strike = 18-28% of the card HP (x1.4 when enraged)', 'ok',
-    (select min(s) >= 0.17 and max(s) <= 0.40 and percentile_cont(0.5) within group (order by s) between 0.18 and 0.28 from unnest(strikes) s),
+  res := res || jsonb_build_object('case', 'strike = ATK x 0.85-1.15 (x1.4 when enraged), not a share of the card HP', 'ok',
+    (select max(s) <= 1.62 and percentile_cont(0.5) within group (order by s) between 0.9 and 1.1 from unnest(strikes) s),
     'min', (select min(s) from unnest(strikes) s), 'median', (select percentile_cont(0.5) within group (order by s) from unnest(strikes) s), 'max', (select max(s) from unnest(strikes) s));
   res := res || jsonb_build_object('case', 'drain heals 1.5% and regenerate 3% of the player share (100000)', 'ok',
     (select bool_and((x->>'heal')::int = case x->>'k' when 'drain' then 1500 else 3000 end) from jsonb_array_elements(heals) x) and jsonb_array_length(heals) > 0,
     'heals', (select jsonb_agg(distinct x) from jsonb_array_elements(heals) x));
+
+  -- 2b. A flat ATK ignores the card HP: ATK 1000 strikes a ~252 HP card for 850-1150 and downs it.
+  update hunts set stats = '{"atk": 1000}' where id = h;
+  r := null;
+  for i in 1..200 loop
+    delete from hunt_card_hp where hunt_id = h and player_id = 'tst_boss';
+    delete from hunt_combat_state where hunt_id = h and player_id = 'tst_boss';
+    r := hunt_attack('tst_boss', h, ids[1]);
+    exit when r->'boss_action'->>'kind' = 'strike';
+  end loop;
+  res := res || jsonb_build_object('case', 'ATK 1000: one strike = 850-1150 and downs the card', 'ok',
+    r->'boss_action'->>'kind' = 'strike' and (r->>'counter_dmg')::int + coalesce((r->>'shield')::int, 0) between 850 and 1150 and (r->>'card_downed')::boolean,
+    'dmg', r->>'counter_dmg', 'max_hp', r->>'card_max_hp', 'atk', r->>'atk');
+  -- 2c. Slam / Cataclysm roll once per card: a card cannot take damage AND keep a shield.
+  update hunts set stats = '{"atk": 150}' where id = h;
+  n := 0; v := 0;
+  for i in 1..300 loop
+    if i % 6 = 1 then
+      delete from hunt_card_hp where hunt_id = h and player_id = 'tst_boss';
+      delete from hunt_combat_state where hunt_id = h and player_id = 'tst_boss';
+      for c in select unnest(ids[2:8]) loop perform hunt_attack('tst_boss', h, c); end loop;
+    end if;
+    update hunt_card_hp set shield = 50, hp_remaining = max_hp, downed = false where hunt_id = h and player_id = 'tst_boss';
+    r := hunt_attack('tst_boss', h, ids[1]);
+    if r->'boss_action'->>'kind' in ('slam', 'cataclysm') then
+      n := n + 1;
+      v := v + (select count(*) from jsonb_array_elements(r->'boss_action'->'targets') t
+                join hunt_card_hp x on x.hunt_id = h and x.player_id = 'tst_boss' and x.hit_date = d and x.card_id = (t->>'card_id')::bigint
+                where (t->>'card_id')::bigint <> ids[1] and (t->>'dmg')::int > 0 and x.shield > 0);
+    end if;
+  end loop;
+  res := res || jsonb_build_object('case', 'slam/cataclysm: damage and a shield left over never together', 'ok', n > 0 and v = 0, 'area_hits', n, 'bad', v);
 
   -- 3. Stun: the stunned card waits while another card can attack; the day never sticks.
   delete from hunt_card_hp where hunt_id = h and player_id = 'tst_boss';

@@ -20,6 +20,7 @@ body.ui-v2 .sq-boss-t b { font-size: 13px; white-space: nowrap; overflow: hidden
 body.ui-v2 .sq-wr { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 body.ui-v2 .sq-wr i { font: 700 9.5px var(--font-ui); font-style: normal; letter-spacing: .8px; color: var(--text-muted); margin-right: 1px; }
 body.ui-v2 .sq-wr i + .sq-tag { margin-left: 0; }
+body.ui-v2 .sq-wr .sq-atk { font: 800 11px var(--font-ui); color: #ff9a8a; margin-right: 6px; }
 body.ui-v2 .sq-wr .sq-tag + i { margin-left: 6px; }
 body.ui-v2 .sq-tag { font-size: 12px; line-height: 1; }
 body.ui-v2 .sq-tag.txt { font: 600 10.5px var(--font-ui); color: var(--text-secondary); text-transform: capitalize; }
