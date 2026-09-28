@@ -106,3 +106,12 @@ body.ui-v2 .se-ring.frame-silver { background: linear-gradient(135deg, #F1F4F8, 
 body.ui-v2 .se-ring.frame-gold { background: linear-gradient(135deg, #FFE7A8, #B8791A); }
 body.ui-v2 .se-ring.frame-holo { background: conic-gradient(#FF4FA3, #FFD43B, #5BE38A, #3CB6FF, #B15CFF, #FF4FA3); }
 body.ui-v2 .ach-all { height: 32px; padding: 0 14px; font-size: 12.5px; }
+/* The pure Achievements view: no card panel, the grid takes the width. */
+body.ui-v2 .v2-collection.ach-mode { grid-template-columns: 216px minmax(0, 1fr); }
+body.ui-v2 .v2-collection.ach-mode .v2-ach-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+/* The editor keeps Save in view: the title list is a drop-down, the footer never shrinks. */
+body.ui-v2 .v2-select { height: 38px; border-radius: var(--rad-md); border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); font: 600 13px var(--font-ui); padding: 0 10px; outline: none; }
+body.ui-v2 .v2-select:focus { border-color: var(--gold); }
+body.ui-v2 .v2-select option:disabled { color: var(--text-muted); }
+body.ui-v2 .se-foot { flex: 0 0 auto; padding-top: 8px; }
+body.ui-v2 .se-side .f-chips { flex: 0 1 auto; min-height: 0; overflow: hidden; }

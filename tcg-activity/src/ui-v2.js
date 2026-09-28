@@ -230,7 +230,8 @@ export async function renderCollectionV2() {
       <div class="v2-grid" id="colGrid"></div>`;
   }
 
-  el('main').innerHTML = `<div class="v2-collection">
+  // The pure Achievements view shows only achievements (no card panel).
+  el('main').innerHTML = `<div class="v2-collection${col.view === 'ach' ? ' ach-mode' : ''}">
     <aside class="v2-side filters">
       <div class="f-head"><b>Filters</b>${hasFilters() ? '<button class="link-btn" id="colClear">Clear all</button>' : ''}</div>
       <input class="v2-search" id="colSearch" placeholder="Search cards, tags…" value="${esc(col.q)}">
@@ -242,7 +243,7 @@ export async function renderCollectionV2() {
       <div class="side-h">Game</div><div class="f-chips">${gameChips}</div>
     </aside>
     <section class="v2-center" id="colCenter">${center}</section>
-    <aside class="v2-panel" id="colPanel"></aside>
+    ${col.view === 'ach' ? '' : '<aside class="v2-panel" id="colPanel"></aside>'}
   </div>`;
 
   const toCards = () => { col.view = 'cards'; col.page = 0; };
@@ -289,7 +290,7 @@ export async function renderCollectionV2() {
   else if (col.view === 'achDetail') paintAchDetail(achs.find((x) => x.key === col.achKey));
   else paintColGrid();
   const selCard = cards.find((c) => c.id === col.sel) || inSeason.find((c) => c.owned) || inSeason[0];
-  paintPanel(selCard);
+  if (col.view !== 'ach') paintPanel(selCard);
 }
 
 // The filter panel never scrolls: when it is too tall, the chip counts go, then the
@@ -746,7 +747,11 @@ function paintSpotEditor() {
       <div class="side-h">Spotlight <span class="n">${sp.ids.length}/3</span></div>
       <div class="se-slots" id="seSlots">${slots}</div>
       <div class="side-h">Title</div>
-      <div class="f-chips se-titles" id="seTitles">${pill('title', '', 'None', !sp.title)}${titles.map((t) => pill('title', t, esc(t), sp.title === t)).join('')}${lockedTitles.map((t) => locked(esc(t), unlockBy('title', t))).join('')}</div>
+      <select class="v2-select" id="seTitle">
+        <option value=""${sp.title ? '' : ' selected'}>None</option>
+        ${titles.map((t) => `<option value="${esc(t)}"${sp.title === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}
+        ${lockedTitles.length ? `<optgroup label="Locked">${lockedTitles.map((t) => `<option disabled>🔒 ${esc(t)} · ${esc(unlockBy('title', t).join(' or '))}</option>`).join('')}</optgroup>` : ''}
+      </select>
       <div class="side-h">Frame</div>
       <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, `<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, sp.frame === f)).join('')}${lockedFrames.map((f) => locked(`<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, unlockBy('frame', f))).join('')}</div>
       <div class="se-foot"><span class="tr-msg" id="seMsg"></span><button class="v2-btn gold" id="seSave">Save</button></div>
@@ -767,16 +772,8 @@ function paintSpotEditor() {
   };
   paintCards(grid, el('sePager'), list, sp, pick);
   grid.querySelectorAll('.v2-cell').forEach((n) => { const c = list[Number(n.dataset.idx)]; if (c && sp.ids.includes(Number(c.id))) n.classList.add('sel', 'in-spot'); });
-  requestAnimationFrame(() => {
-    const box = el('seTitles');
-    if (!box) return;
-    const bottom = box.getBoundingClientRect().top + 120;
-    const extra = [...box.querySelectorAll('.f-chip.locked')].filter((n) => n.getBoundingClientRect().bottom > bottom);
-    extra.forEach((n) => n.remove());
-    if (extra.length) box.insertAdjacentHTML('beforeend', `<span class="f-chip locked more">+${extra.length} more</span>`);
-  });
+  el('seTitle').addEventListener('change', (e) => { sp.title = e.target.value || null; paintSpotEditor(); });
   el('seSlots').onclick = (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; sp.ids.splice(Number(b.dataset.slot), 1); paintSpotEditor(); };
-  box.querySelectorAll('[data-title]').forEach((b) => b.addEventListener('click', () => { sp.title = b.dataset.title || null; paintSpotEditor(); }));
   box.querySelectorAll('[data-frame]').forEach((b) => b.addEventListener('click', () => { sp.frame = b.dataset.frame || null; paintSpotEditor(); }));
   el('seQ').addEventListener('input', (e) => { sp.q = e.target.value; sp.page = 0; paintSpotEditor(); const i = el('seQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
   el('seClose').addEventListener('click', () => box.classList.add('hidden'));
