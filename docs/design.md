@@ -112,3 +112,27 @@ Work in progress: `design/03-final-v1.pen` (the three combined screens).
 | **Streaks** | Yes | Track how many days in a row a player opens packs. Streak rewards, for example extra packs. |
 | **Shards (a redeem currency)** | Yes, later | Not "shards" as in the concepts. A currency to redeem the cards that a player wants, and each tier costs more. A whole new economy: design it on its own first. |
 | **Showcase** | Yes, later | A player's own showcase of cards. A separate system to design. |
+
+## 9. Decisions on the final v1 screens (Nathan, 2026-09-27)
+
+- **Attack rule:** today's rule stays (one squad per day, each card attacks until it is
+  downed). No attack charges.
+- **No boss phases** for now.
+- **Future seasons:** no dates in the UI. The code keeps a place for more seasons, so a
+  new season is easy to add.
+- **The card information panel shows everything:** tags, attributes/stats (Power, HP,
+  Crit), the boon/prank/neutral effect with its cooldown, the ability, and the artist
+  and the credits (the original company for famous characters).
+- **Home:** needs a place for the player **Showcase** and other profile things.
+- **Collection:** the sets are only the real Season Releases of card packs.
+- **Hunt:** show MORE of the boss. The cards are a little smaller. Keep the stat chips
+  above each card. A squad is **8 cards**.
+
+Work in progress: `design/05-final-v2.pen`.
+
+## 10. More new systems (backlog, not built)
+
+| System | Nathan's decision | Notes |
+|---|---|---|
+| **Achievements** ("mini missions") | Yes, later | Tied to set collections: collect certain cards and get extra rewards. |
+| **Profile** | Yes, later | The home of the Showcase and other profile things. |
