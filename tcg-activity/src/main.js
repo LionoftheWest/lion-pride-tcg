@@ -17,6 +17,7 @@ import { modelFor } from './boss-model.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled } from './effects-ui.js';
+import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2 } from './ui-v2-social.js';
 
@@ -323,7 +324,11 @@ function startV2() {
   if (board) board.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
   el('v2Avatar').title = meUser?.name || '';
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
-  el('dockOpen').addEventListener('click', openPacks);
+  // 5+ packs: the chooser (x1 / x5 / x10); fewer: open one, as before.
+  el('dockOpen').addEventListener('click', () => {
+    if (packsAvailable >= 5) openChooser(openDeps(), packsAvailable, (n) => openPacks(n));
+    else openPacks(1);
+  });
   api('/api/catalog').then((d) => {
     cache.catalog = d;
     const seasons = [...new Set((d.cards || []).map((c) => c.season || 'Season 1'))];
@@ -802,12 +807,17 @@ function renderPager(view, pages) {
 
 // ---- Opening + reveal ------------------------------------------------------
 
-async function openPacks() {
+const openDeps = () => ({
+  el, esc, SFX, RARITY_LABEL, cardBack: () => cardBack,
+  onClose: () => { sendStatus(VIEW_STATUS[currentView]); refreshOwned(); refreshPackStatus(); show(currentView); },
+});
+async function openPacks(count) {
+  const n = [1, 5, 10].includes(count) ? count : 1; // a click handler passes an event
   const btn = el('openBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
   try {
     sendStatus('opening');
-    const data = await apiPost('/api/open', { instanceId });
+    const data = await apiPost('/api/open', { instanceId, count: n });
     if (data.error) note('Could not open right now.');
     else if (!data.cards || !data.cards.length)
       note('No unopened packs. Post in the server to earn one — 25 messages gets a bonus pack. Resets 00:00 UTC.');
@@ -817,7 +827,8 @@ async function openPacks() {
       // Always show MY reveal locally. The room broadcast echoes back to me too,
       // so suppress that echo briefly to avoid opening the takeover twice.
       suppressOpenUntil = Date.now() + 3000;
-      showReveal({ user: 'You', cards: data.cards });
+      if (uiV2 && (data.packs || []).length > 1) showMultiReveal(openDeps(), data.packs);
+      else showReveal({ user: 'You', cards: data.cards });
     }
   } catch {
     note('Could not open right now.');

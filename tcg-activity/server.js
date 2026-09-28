@@ -1025,15 +1025,26 @@ app.post('/api/open', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   if (!INTERNAL_TOKEN) return res.status(503).json({ error: 'opening is not configured' });
+  // 1, 5 or 10 packs at once (Nathan: "in increments of 1x, 5x, 10x"); the bot stops
+  // early if the balance runs out. Cards the member did not own before get isNew.
+  const count = [1, 5, 10].includes(Number(req.body?.count)) ? Number(req.body.count) : 1;
   try {
+    const { data: before } = await supabase.from('player_cards').select('card_id').eq('player_id', me.id);
+    const had = new Set((before || []).map((r) => r.card_id));
     const r = await fetch(`${BOT_INTERNAL_URL}/open`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-internal-token': INTERNAL_TOKEN },
-      body: JSON.stringify({ userId: me.id, username: me.global_name || me.username }),
+      body: JSON.stringify({ userId: me.id, username: me.global_name || me.username, count }),
     });
     const data = await r.json();
     if (!r.ok) return res.status(502).json({ error: data?.error || 'open failed' });
-    const packs = (data.packs || []).map((pack) => pack.map(cardForClient));
+    const seen = new Set();
+    const packs = (data.packs || []).map((pack) => pack.map((c) => {
+      const out = cardForClient(c);
+      out.isNew = !had.has(out.id) && !seen.has(out.id);
+      seen.add(out.id);
+      return out;
+    }));
     const cards = packs.flat();
     bustUser(me.id);      // new cards → their collection changed
     pullsCache = null;    // new pull → refresh the community feed now, not in 3s

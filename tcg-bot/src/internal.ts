@@ -61,6 +61,7 @@ export function startInternalServer(client: Client): void {
           toId?: string;
           amount?: number;
           message?: string;
+          count?: number;
         };
         // Announce: post a directed event to the public notifications channel.
         if (route === '/announce') {
@@ -82,14 +83,22 @@ export function startInternalServer(client: Client): void {
           if (isTester) return json(200, { packs: 1 });
           return json(200, { packs: await getPackBalance(String(userId)) });
         }
+        // Open 1, 5 or 10 packs (the Activity's multi-open). Each pack is spent and
+        // drawn on its own; if the balance runs out part way, it stops there.
+        const count = [1, 5, 10].includes(Number(body.count)) ? Number(body.count) : 1;
         // Testers open on demand (draw without spending the balance). Everyone
-        // else spends one pack from their balance and draws it.
+        // else spends one pack from their balance for each pack drawn.
         if (isTester) {
-          const r = await openTestPacks(String(userId), String(username ?? 'Player'), 1);
+          const r = await openTestPacks(String(userId), String(username ?? 'Player'), count);
           return json(200, { packs: r.packs });
         }
-        const pack = await openOnePack(String(userId), String(username ?? 'Player'));
-        json(200, { packs: pack ? [pack] : [] });
+        const packs = [];
+        for (let i = 0; i < count; i += 1) {
+          const pack = await openOnePack(String(userId), String(username ?? 'Player'));
+          if (!pack) break;
+          packs.push(pack);
+        }
+        json(200, { packs });
       } catch (error) {
         json(500, { error: String((error as Error)?.message ?? error) });
       }
