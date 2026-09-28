@@ -8,6 +8,9 @@
 // week, so a changed model gets a new versioned file name.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+// The models are meshopt-compressed with WebP textures (gltf-transform resample + webp +
+// meshopt, 2026-09-28): 40.8 MB -> 18.1 MB for the 12 bosses.
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { createAttackFX } from './attack-fx.js';
 
@@ -15,20 +18,20 @@ const MODEL_BASE = '/api/img/storage/v1/object/public/card-art/boss/models';
 
 // key -> the model file, the name pattern of the weekly boss, and the credit.
 export const MODEL_BOSSES = {
-  warrok: { file: 'warrok-v1.glb', names: /rage-?quit warlord|warrok/i, credit: 'Model: Warrok W Kurniawan — Mixamo (Adobe)' },
-  mutant: { file: 'mutant-v1.glb', names: /netcode mutant|\bmutant\b/i, credit: 'Model: Mutant — Mixamo (Adobe)' },
-  maw:    { file: 'maw-v1.glb',    names: /maw of the meta|\bmaw\b/i, credit: 'Model: Maw J Laygo — Mixamo (Adobe)' },
-  parasite:       { file: 'parasite-v1.glb',       names: /lagspike parasite|\bparasite\b/i, credit: 'Model: Parasite L Starkie — Mixamo (Adobe)' },
-  pumpkinhulk:    { file: 'pumpkinhulk-v1.glb',    names: /patch-?day pumpkin|pumpkinhulk/i, credit: 'Model: Pumpkinhulk L Shaw — Mixamo (Adobe)' },
-  nightshade:     { file: 'nightshade-v1.glb',     names: /ranked nightshade|\bnightshade\b/i, credit: 'Model: Nightshade J Friedrich — Mixamo (Adobe)' },
-  vampire:        { file: 'vampire-v1.glb',        names: /grind vampire|\bvampire\b/i, credit: 'Model: Vampire A Lusth — Mixamo (Adobe)' },
-  demon:          { file: 'demon-v1.glb',          names: /ban-?wave demon/i, credit: 'Model: Demon T Wiezzorek — Mixamo (Adobe)' },
+  warrok: { file: 'warrok-z1.glb', names: /rage-?quit warlord|warrok/i, credit: 'Model: Warrok W Kurniawan — Mixamo (Adobe)' },
+  mutant: { file: 'mutant-z1.glb', names: /netcode mutant|\bmutant\b/i, credit: 'Model: Mutant — Mixamo (Adobe)' },
+  maw:    { file: 'maw-z1.glb',    names: /maw of the meta|\bmaw\b/i, credit: 'Model: Maw J Laygo — Mixamo (Adobe)' },
+  parasite:       { file: 'parasite-z1.glb',       names: /lagspike parasite|\bparasite\b/i, credit: 'Model: Parasite L Starkie — Mixamo (Adobe)' },
+  pumpkinhulk:    { file: 'pumpkinhulk-z1.glb',    names: /patch-?day pumpkin|pumpkinhulk/i, credit: 'Model: Pumpkinhulk L Shaw — Mixamo (Adobe)' },
+  nightshade:     { file: 'nightshade-z1.glb',     names: /ranked nightshade|\bnightshade\b/i, credit: 'Model: Nightshade J Friedrich — Mixamo (Adobe)' },
+  vampire:        { file: 'vampire-z1.glb',        names: /grind vampire|\bvampire\b/i, credit: 'Model: Vampire A Lusth — Mixamo (Adobe)' },
+  demon:          { file: 'demon-z1.glb',          names: /ban-?wave demon/i, credit: 'Model: Demon T Wiezzorek — Mixamo (Adobe)' },
   // Not "brute": that key is the procedural Ogre Brute in boss.js.
-  smurf:          { file: 'smurf-v1.glb',          names: /smurf brute/i, credit: 'Model: Brute — Mixamo (Adobe)' },
-  warzombie:      { file: 'warzombie-v1.glb',      names: /afk warzombie|warzombie/i, credit: 'Model: Warzombie F Pedroso — Mixamo (Adobe)' },
-  skeletonzombie: { file: 'skeletonzombie-v1.glb', names: /hardstuck skeleton|skeletonzombie/i, credit: 'Model: Skeletonzombie T Avelange — Mixamo (Adobe)' },
+  smurf:          { file: 'smurf-z1.glb',          names: /smurf brute/i, credit: 'Model: Brute — Mixamo (Adobe)' },
+  warzombie:      { file: 'warzombie-z1.glb',      names: /afk warzombie|warzombie/i, credit: 'Model: Warzombie F Pedroso — Mixamo (Adobe)' },
+  skeletonzombie: { file: 'skeletonzombie-z1.glb', names: /hardstuck skeleton|skeletonzombie/i, credit: 'Model: Skeletonzombie T Avelange — Mixamo (Adobe)' },
   // Her own game rig + the Mixamo clips retargeted (card-studio/blender/retarget_kerrigan.py).
-  kerrigan:       { file: 'kerrigan-v2.glb',       names: /zerg-?rush queen|kerrigan/i, credit: 'Model: Sarah Kerrigan Infested — Vasian-Digital3D (CC-BY 4.0); animations: Mixamo (Adobe)' },
+  kerrigan:       { file: 'kerrigan-z1.glb',       names: /zerg-?rush queen|kerrigan/i, credit: 'Model: Sarah Kerrigan Infested — Vasian-Digital3D (CC-BY 4.0); animations: Mixamo (Adobe)' },
 };
 
 /** The model key for a boss name (or an `arch:<key>` seed), or null. */
@@ -83,7 +86,7 @@ export function mountModelBoss(canvas, key, tier) {
   const holder = new THREE.Group(); scene.add(holder);
   let mixer = null, actions = {}, twins = {}, idle = null, current = null, holding = false, dead = false, defeatPending = false;
   const TS = { Heroic: 1.1, Mythic: 1.22 }[tier] || 1.0;
-  new GLTFLoader().load(`${MODEL_BASE}/${def.file}`, (g) => {
+  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(`${MODEL_BASE}/${def.file}`, (g) => {
     const m = g.scene;
     m.traverse((o) => { if (o.isMesh && !isMobile) { o.castShadow = true; o.receiveShadow = true; } if (o.isMesh) o.frustumCulled = false; });
     // Measure AFTER the world matrices are current (the Mixamo armature carries a 0.01

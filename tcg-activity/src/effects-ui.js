@@ -1,3 +1,4 @@
+import { thumb } from './thumb.js';
 // Card effects (boons, pranks, neutral) in the Activity. Design: docs/boons-and-pranks.md.
 // Everything here is driven by /api/effects/*; the server returns {enabled:false} when
 // the flag is off, and then this module shows nothing and changes nothing.
@@ -277,7 +278,7 @@ function showIncoming() {
       : `${esc(p.sender)} played <b>${esc(p.card?.name || 'a card')}</b> on you!`;
     const div = document.createElement('div');
     div.className = `eff-banner ${p.kind}`;
-    div.innerHTML = `${p.card?.image_url ? `<img src="${p.card.image_url}" alt="">` : ''}<span>${icon} ${text}</span><button aria-label="Close">✕</button>`;
+    div.innerHTML = `${p.card?.image_url ? `<img src="${thumb(p.card.image_url)}" data-full="${p.card.image_url || ''}" alt="">` : ''}<span>${icon} ${text}</span><button aria-label="Close">✕</button>`;
     div.querySelector('button').addEventListener('click', () => div.remove());
     host.appendChild(div);
     setTimeout(() => div.remove(), 12000);
@@ -353,7 +354,7 @@ function testLanding(card, r) {
   const onName = r.primitive === 'sticker' || r.primitive === 'title' || r.primitive === 'spotlight';
   const div = document.createElement('div');
   div.className = `eff-banner ${r.kind || ''} eff-test`;
-  div.innerHTML = `${card.image_url ? `<img src="${card.image_url}" alt="">` : ''}<span>🧪 Test: <b>${esc(card.effect?.name || card.name || 'a card')}</b> ${r.primitive === 'cleanse' ? ` removed ${r.removed || 0} prank${r.removed === 1 ? '' : 's'} from you` : ` is on you${onName && me ? `. Your name now: ${nameBadge(me.id, me.name)}` : ''}`}</span><button aria-label="Close">✕</button>`;
+  div.innerHTML = `${card.image_url ? `<img src="${thumb(card.image_url)}" data-full="${card.image_url || ''}" alt="">` : ''}<span>🧪 Test: <b>${esc(card.effect?.name || card.name || 'a card')}</b> ${r.primitive === 'cleanse' ? ` removed ${r.removed || 0} prank${r.removed === 1 ? '' : 's'} from you` : ` is on you${onName && me ? `. Your name now: ${nameBadge(me.id, me.name)}` : ''}`}</span><button aria-label="Close">✕</button>`;
   div.querySelector('button').addEventListener('click', () => div.remove());
   host.appendChild(div);
   setTimeout(() => div.remove(), 12000);

@@ -3,6 +3,7 @@
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { thumb } from './thumb.js';
 import { fillViewerEffect, nameBadge } from './effects-ui.js';
 import { mountBoss } from './boss.js';
 import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
@@ -25,7 +26,7 @@ const fmt = (n) => Number(n || 0).toLocaleString();
 
 /** A round Discord avatar: the picture from /api/avatar, the initial when there is none. */
 export function avatarHTML(id, name, cls = '', frame = null) {
-  const img = id ? `<img src="/api/avatar/${esc(id)}" alt="" onerror="this.remove()">` : '';
+  const img = id ? `<img src="/api/avatar/${esc(id)}" alt="" data-err="remove">` : '';
   const f = frame && FRAMES[frame] ? ` frame-${frame}` : '';
   return `<span class="v2-avatar ${cls}${f}"><span>${initial(name)}</span>${img}</span>`;
 }
@@ -70,7 +71,7 @@ export function tileHTML(c, idx, selected) {
   }
   const el = elemOf(c);
   return `<div class="v2-cell${selected ? ' sel' : ''}" data-idx="${idx}">
-    <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
+    <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
     <div class="v2-cap">${el ? `<span class="cap-el" title="${esc(el.name)}">${elIcon(el.key)}</span>` : ''}<span class="cap-pow">⚡ ${c.power ?? ''}</span>
       ${c.ascension > 0 ? `<span class="cap-stars">${'★'.repeat(c.ascension)}</span>` : ''}${c.quantity > 1 ? `<span class="cap-qty">×${c.quantity}</span>` : ''}</div>
   </div>`;
@@ -528,7 +529,7 @@ function spotlightOf(cards, ids) {
   return [...owned].sort((a, b) => (b.power || 0) - (a.power || 0) || ((RARITY_ORDER.indexOf(b.rarity)) - RARITY_ORDER.indexOf(a.rarity))).slice(0, 3);
 }
 function spotHTML(cards) {
-  return cards.map((c, i) => `<button class="spot-card r-${c.rarity}" data-si="${i}" title="${esc(c.name)}"><img src="${c.image_url || ''}" alt="${esc(c.name)}"></button>`).join('')
+  return cards.map((c, i) => `<button class="spot-card r-${c.rarity}" data-si="${i}" title="${esc(c.name)}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}"></button>`).join('')
     || '<p class="v2-empty">No cards yet.</p>';
 }
 
@@ -683,10 +684,10 @@ export function paintPulls() {
   const all = ctx.live.pulls || [];
   const pulls = pullsTab.v === 'top' ? all.filter((p) => TOP_RARITY.has(p.rarity)) : all;
   const [first, ...rest] = pulls;
-  const row = (p, i) => `<div class="pl-row" data-pi="${i}"><img src="${p.image_url || ''}" alt="" loading="lazy"><div class="pl-t"><b>${nameBadge(p.player_id, p.player)}</b> pulled <span style="color:var(--r-${p.rarity}, var(--text-primary))">${esc(p.name)}</span></div><span class="mono dim">${ctx.ago(p.at)}</span></div>`;
+  const row = (p, i) => `<div class="pl-row" data-pi="${i}"><img src="${thumb(p.image_url)}" data-full="${p.image_url || ''}" alt="" loading="lazy"><div class="pl-t"><b>${nameBadge(p.player_id, p.player)}</b> pulled <span style="color:var(--r-${p.rarity}, var(--text-primary))">${esc(p.name)}</span></div><span class="mono dim">${ctx.ago(p.at)}</span></div>`;
   box.innerHTML = `<div class="tile-h"><b><span class="live-dot"></span> Live pulls</b><span class="grow"></span>
       <div class="seg"><button data-t="all" class="${pullsTab.v === 'all' ? 'on' : ''}">All</button><button data-t="top" class="${pullsTab.v === 'top' ? 'on' : ''}">Top pulls</button></div></div>
-    ${first ? `<div class="pl-top r-${first.rarity}" data-pi="0"><img src="${first.image_url || ''}" alt=""><div><span class="pl-k">${esc((ctx.RARITY_LABEL[first.rarity] || first.rarity).toUpperCase())} · ${ctx.ago(first.at)}</span><b>${nameBadge(first.player_id, first.player)} pulled ${esc(first.name)}</b></div></div>` : '<p class="v2-empty">No pulls yet.</p>'}
+    ${first ? `<div class="pl-top r-${first.rarity}" data-pi="0"><img src="${thumb(first.image_url)}" data-full="${first.image_url || ''}" alt=""><div><span class="pl-k">${esc((ctx.RARITY_LABEL[first.rarity] || first.rarity).toUpperCase())} · ${ctx.ago(first.at)}</span><b>${nameBadge(first.player_id, first.player)} pulled ${esc(first.name)}</b></div></div>` : '<p class="v2-empty">No pulls yet.</p>'}
     <div class="pl-list" id="plList">${rest.slice(0, 8).map((p, i) => row(p, i + 1)).join('')}</div>`;
   box.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => { pullsTab.v = b.dataset.t; paintPulls(); }));
   box.onclick = (e) => { const r = e.target.closest('[data-pi]'); if (r && pulls[Number(r.dataset.pi)]) ctx.openViewer(pulls[Number(r.dataset.pi)]); };
@@ -732,7 +733,7 @@ function paintSpotEditor() {
   const locked = (label, by) => `<span class="f-chip locked" title="Unlock: ${esc(by.join(' or '))}">🔒 ${label}</span>`;
   const slots = [0, 1, 2].map((i) => {
     const c = byId.get(sp.ids[i]);
-    return c ? `<button class="se-slot r-${c.rarity}" data-slot="${i}" title="Remove ${esc(c.name)}"><img src="${c.image_url}" alt=""><span class="se-x">✕</span></button>`
+    return c ? `<button class="se-slot r-${c.rarity}" data-slot="${i}" title="Remove ${esc(c.name)}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""><span class="se-x">✕</span></button>`
       : `<div class="se-slot empty"><span>${i + 1}</span></div>`;
   }).join('');
   const q = sp.q.trim().toLowerCase();
@@ -862,7 +863,7 @@ function paintMember() {
     <section class="mem-center">
       ${mem.all ? '' : `<div class="mem-col mem-spot">
         <div class="side-h">✨ Spotlight</div>
-        <div class="mem-spot-row" id="memSpot">${spotOrder.map((c) => `<button class="spot-card r-${c.rarity}${c === spot[0] ? ' main' : ''}" data-id="${c.id}"><img src="${c.image_url || ''}" alt="${esc(c.name)}"></button>`).join('') || '<p class="v2-empty">No cards yet.</p>'}</div>
+        <div class="mem-spot-row" id="memSpot">${spotOrder.map((c) => `<button class="spot-card r-${c.rarity}${c === spot[0] ? ' main' : ''}" data-id="${c.id}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}"></button>`).join('') || '<p class="v2-empty">No cards yet.</p>'}</div>
       </div>`}
       <div class="mem-col mem-season${mem.all ? ' full' : ''}">
         <div class="v2-col-head"><h2>${esc(col.season || 'Season 1')} <span class="sub">${ownedN}/${season.length}</span></h2>
@@ -886,7 +887,7 @@ function paintMember() {
     paintCards(grid, el('memPager'), owned, mem, (c) => ctx.openViewer(c));
   } else {
     grid.innerHTML = season.map((c) => (c.owned
-      ? `<button class="mem-mini-card r-${c.rarity}" data-id="${c.id}"><img src="${c.image_url || ''}" alt=""></button>`
+      ? `<button class="mem-mini-card r-${c.rarity}" data-id="${c.id}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""></button>`
       : '<span class="mem-mini-card lock">🔒</span>')).join('');
     grid.onclick = (e) => { const b = e.target.closest('[data-id]'); const c = b && cards.find((x) => String(x.id) === b.dataset.id); if (c) ctx.openViewer(c); };
   }
@@ -917,7 +918,7 @@ function huntBoxHTML(p) {
   return `<div class="tile-h"><b>⚔ ${esc(h.name)}</b><span class="grow"></span>${p.huntRank ? `<span class="mem-rank">#${p.huntRank}</span>` : ''}</div>
     <div class="mem-hstats"><div><b>${fmt(h.damage)}</b><span>Damage</span></div><div><b>${fmt(h.attacks)}</b><span>Attacks</span></div><div><b class="hunt">${h.share}%</b><span>Of boss HP</span></div></div>
     <div class="mem-bars">${bars || '<p class="v2-empty">No attacks yet.</p>'}</div>
-    ${top ? `<div class="mem-top-card"><img src="${top.image_url}" alt=""><div><span class="side-h">Top card</span><b>${esc(top.name)}</b></div><span class="mono">⚡ ${fmt(h.topCard.damage)}</span></div>` : ''}`;
+    ${top ? `<div class="mem-top-card"><img src="${thumb(top.image_url)}" data-full="${top.image_url || ''}" alt=""><div><span class="side-h">Top card</span><b>${esc(top.name)}</b></div><span class="mono">⚡ ${fmt(h.topCard.damage)}</span></div>` : ''}`;
 }
 
 // Cards they own that I do not ("You need"), and cards I own that they do not.
@@ -929,9 +930,9 @@ function needHTML(theirs) {
   const youNeed = theirs.filter((c) => c.owned && !iOwn.has(c.id)).sort((a, b) => rank(b) - rank(a));
   const theyNeed = mine.filter((c) => c.owned && !theyOwn.has(c.id)).sort((a, b) => rank(b) - rank(a));
   return `<div class="tile-h"><b>⇄ You need</b><span class="grow"></span><span class="n mono">${youNeed.length}</span></div>
-    <div class="need-list">${youNeed.slice(0, 6).map((c) => `<div class="need-row"><button class="need-card" data-id="${c.id}"><img src="${c.image_url || ''}" alt=""></button>
+    <div class="need-list">${youNeed.slice(0, 6).map((c) => `<div class="need-row"><button class="need-card" data-id="${c.id}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""></button>
       <div><b>${esc(c.name)}</b><span style="color:var(--r-${c.rarity})">◆ ${esc(ctx.RARITY_LABEL[c.rarity] || c.rarity)}</span></div><button class="v2-chip-btn need-ask">Ask</button></div>`).join('') || '<p class="v2-empty">You have every card they have.</p>'}</div>
-    <div class="they-need"><span>They need</span><span class="tn-cards">${theyNeed.slice(0, 4).map((c) => `<button class="need-card sm" data-id="${c.id}"><img src="${c.image_url || ''}" alt=""></button>`).join('')}</span><b class="mono">${theyNeed.length}</b></div>`;
+    <div class="they-need"><span>They need</span><span class="tn-cards">${theyNeed.slice(0, 4).map((c) => `<button class="need-card sm" data-id="${c.id}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""></button>`).join('')}</span><b class="mono">${theyNeed.length}</b></div>`;
 }
 function selfNeedHTML(achs) {
   return `<div class="tile-h"><b>🏆 Closest achievements</b></div>

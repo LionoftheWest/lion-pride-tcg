@@ -12,5 +12,8 @@
     "csv-parse": "^5.5.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
   }
 }

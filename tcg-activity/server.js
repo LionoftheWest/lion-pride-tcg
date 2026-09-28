@@ -57,7 +57,7 @@ const SUPA_HOST = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const toProxyImg = (url) => (url && SUPA_HOST ? url.replace(SUPA_HOST + '/', '/api/img/') : url);
 // The shared card back, for the 3D viewer's flip. Same storage bucket the gallery
 // uses; routed through /cdn like all other art.
-const CARD_BACK = SUPA_HOST ? toProxyImg(`${SUPA_HOST}/storage/v1/object/public/card-art/cards/card-back.png`) : '';
+const CARD_BACK = SUPA_HOST ? toProxyImg(`${SUPA_HOST}/storage/v1/object/public/card-art/thumbs/cards/card-back.webp`) : '';
 // The bot's internal open endpoint (localhost on the same VM) and the shared
 // secret that guards it. Opening a pack goes through the bot so the bot stays the
 // single source of truth for draw odds and the daily-pack economy.

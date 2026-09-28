@@ -10,6 +10,7 @@ import { supabase } from './supabase.js';
 import { renderPng } from './render.js';
 import { artKeyFor, ANIMATED, inDrawPool, needsPeriod } from './rarity.js';
 import { getFrame } from './frames.js';
+import { makeThumb, thumbObject } from './thumbs.js';
 import { getArtist } from './artists.js';
 import { slotDetails } from './cardstore.js';
 
@@ -124,6 +125,12 @@ export async function pushCard(card, artFor, outDir, onProgress) {
       .from(BUCKET)
       .upload(object, buffer, { contentType, upsert: true });
     if (ue) throw new Error(`upload ${rarity}: ${ue.message}`);
+    // Its thumbnail (the Activity's grids and reveals load it; the zoom keeps the full image).
+    const { out: thumbBuf } = await makeThumb(buffer);
+    const { error: te } = await supabase.storage
+      .from(BUCKET)
+      .upload(thumbObject(object), thumbBuf, { contentType: 'image/webp', upsert: true });
+    if (te) throw new Error(`thumbnail ${rarity}: ${te.message}`);
 
     const url = `${supabase.storage.from(BUCKET).getPublicUrl(object).data.publicUrl}?v=${Date.now()}`;
 
