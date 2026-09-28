@@ -211,3 +211,9 @@ body.ui-v2 .fx-pair { display: flex; }
 body.ui-v2 .fx-pair .v2-avatar + .v2-avatar { margin-left: -6px; }
 body.ui-v2 .fx-onyou { flex: 0 1 auto; max-height: 40%; }
 body.ui-v2 .fx-recent { flex: 1 1 auto; }
+/* The kind label on each effect card stays on one line (it wrapped under its icon). */
+body.ui-v2 .fx-kind { white-space: nowrap; }
+body.ui-v2 .fx-kind.on-card { width: max-content; }
+/* The picture layer must not paint the gradient (ui-v2.css styles img + span alike),
+   or an empty picture hides the member's initial. */
+body.ui-v2 .v2-avatar > img { background: none; }

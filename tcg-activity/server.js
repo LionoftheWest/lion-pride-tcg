@@ -131,17 +131,22 @@ async function hashFor(id) {
   avatarHash.set(id, { hash, at: Date.now() });
   return hash;
 }
+// No picture: a 1x1 transparent PNG (200), so the initial under it shows. A 404 made
+// Discord show a broken-image icon (Nathan, 2026-09-27). Short cache: it becomes the
+// real picture once the member's hash is saved at their next login.
+const NO_AVATAR = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+const noAvatar = (res) => { res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'public, max-age=300'); res.end(NO_AVATAR); };
 app.get('/api/avatar/:id', async (req, res) => {
   const id = String(req.params.id || '');
   if (!/^\d{5,25}$/.test(id)) return res.status(400).end();
   try {
     const hash = await hashFor(id);
-    if (!hash || !/^(a_)?[0-9a-f]{32}$/.test(hash)) return res.status(404).end();
+    if (!hash || !/^(a_)?[0-9a-f]{32}$/.test(hash)) return noAvatar(res);
     const key = `${id}:${hash}`;
     let img = avatarBytes.get(key);
     if (!img) {
       const r = await fetch(`https://cdn.discordapp.com/avatars/${id}/${hash}.png?size=128`);
-      if (!r.ok) return res.status(404).end();
+      if (!r.ok) return noAvatar(res);
       img = { type: r.headers.get('content-type') || 'image/png', buf: Buffer.from(await r.arrayBuffer()) };
       if (avatarBytes.size > 500) avatarBytes.delete(avatarBytes.keys().next().value);
       avatarBytes.set(key, img);
