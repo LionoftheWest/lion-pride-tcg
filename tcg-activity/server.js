@@ -20,6 +20,7 @@ import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
+import { Readable } from 'node:stream';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -96,12 +97,44 @@ app.disable('x-powered-by');
 // Baseline security headers. These are safe inside Discord's iframe proxy. We do
 // NOT set frame-ancestors or X-Frame-Options — Discord must be able to embed the
 // Activity, and a wrong value there would break the embed.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'", // the templates set inline style attributes
+  "img-src 'self' data: blob:", // blob: = the boss model textures
+  "media-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' wss: https://discord.com", // the room WebSocket + the SDK's token exchange
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors https://discord.com https://*.discord.com https://*.discordsays.com",
+  'report-uri /api/csp-report',
+].join('; ');
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader(process.env.CSP_ENFORCE === '1' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only', CSP);
   next();
 });
+// CSP violation reports (report-only mode): logged, so the policy can be checked in the real client.
+let cspReports = 0;
+app.post('/api/csp-report', express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'], limit: '16kb' }), (req, res) => {
+  if (cspReports < 500) {
+    cspReports += 1;
+    const r = req.body?.['csp-report'] || req.body || {};
+    console.log('csp-report', JSON.stringify({ dir: r['violated-directive'] || r.effectiveDirective, blocked: r['blocked-uri'] || r.blockedURL, src: r['source-file'] || r.sourceFile, line: r['line-number'] || r.lineNumber }).slice(0, 400));
+  }
+  res.status(204).end();
+});
 app.use(express.json());
+// The member read limit (readLimit): every signed-in GET /api/* call. Images, avatars and
+// the config are public and browser-cached, so they are not counted.
+app.use('/api', async (req, res, next) => {
+  if (req.method !== 'GET' || !req.headers.authorization || /^\/(img|avatar)\/|^\/config$/.test(req.path)) return next();
+  const me = await caller(req).catch(() => null);
+  if (me && !readLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  next();
+});
 
 // Card-art proxy: stream a Supabase storage object through this server. This replaces
 // Discord's flaky /cdn image proxy. Only the public card-art storage path is allowed.
@@ -109,14 +142,16 @@ app.get(/^\/api\/img\/(.+)/, async (req, res) => {
   if (!SUPA_HOST) return res.status(404).end();
   const path = decodeURIComponent(req.params[0] || '');
   const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
-  if (!path.startsWith('storage/v1/object/public/card-art/')) return res.status(400).end();
+  if (!path.startsWith('storage/v1/object/public/card-art/') || /\.\.|\\|\/\/|%/.test(path)) return res.status(400).end(); // no traversal, no double-encoding
   try {
     const r = await fetch(`${SUPA_HOST}/${path}${query}`);
-    if (!r.ok) return res.status(r.status).end();
+    if (!r.ok || !r.body) return res.status(r.ok ? 502 : r.status).end();
     res.setHeader('Content-Type', r.headers.get('content-type') || 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-    res.end(Buffer.from(await r.arrayBuffer()));
-  } catch { res.status(502).end(); }
+    const len = r.headers.get('content-length');
+    if (len) res.setHeader('Content-Length', len);
+    Readable.fromWeb(r.body).on('error', () => res.destroy()).pipe(res);
+  } catch { if (!res.headersSent) res.status(502).end(); else res.destroy(); }
 });
 
 // Discord avatar proxy: /api/avatar/<discord id>. The hash is saved at login
@@ -525,17 +560,23 @@ app.get('/api/hunt', async (req, res) => {
     return res.json({ hunt: null, nextSpawnAt: nextSpawnAt || null, lastResult: last || null, lastBoard, myLast, lastFeed });
   }
   const today = new Date().toISOString().slice(0, 10);
-  const [{ data: cards }, { data: hpRows }, { data: contrib }, { data: cstate }] = await Promise.all([
-    supabase.from('player_cards')
-      .select('ascension, first_obtained_at, card:cards(id, name, rarity, image_url, season, subject:subjects(type, cp_mod, ability, tags))')
-      .eq('player_id', me.id),
-    supabase.from('hunt_card_hp').select('card_id, hp_remaining, max_hp, downed, shield, cd_until_round').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today),
-    supabase.from('hunt_hits').select('damage').eq('hunt_id', hunt.id).eq('player_id', me.id),
-    supabase.from('hunt_combat_state').select('round').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
-  ]);
+  // One call (hunt_view.sql) instead of 4: 100 players opening the Hunt at once waited ~6 s.
+  let cards, hpRows, myDamage, round;
+  const { data: view, error: viewErr } = await supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today });
+  if (!viewErr && view) {
+    cards = view.cards; hpRows = view.hp; myDamage = Number(view.damage) || 0; round = view.round || 0;
+  } else { // the function is not live yet: the 4 separate calls
+    const [{ data: c }, { data: hp }, { data: contrib }, { data: cstate }] = await Promise.all([
+      supabase.from('player_cards')
+        .select('ascension, first_obtained_at, card:cards(id, name, rarity, image_url, season, subject:subjects(type, cp_mod, ability, tags))')
+        .eq('player_id', me.id),
+      supabase.from('hunt_card_hp').select('card_id, hp_remaining, max_hp, downed, shield, cd_until_round').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today),
+      supabase.from('hunt_hits').select('damage').eq('hunt_id', hunt.id).eq('player_id', me.id),
+      supabase.from('hunt_combat_state').select('round').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
+    ]);
+    cards = c; hpRows = hp; myDamage = (contrib || []).reduce((t, h) => t + h.damage, 0); round = cstate?.round || 0;
+  }
   const hpMap = new Map((hpRows || []).map((h) => [h.card_id, h]));
-  const myDamage = (contrib || []).reduce((s, h) => s + h.damage, 0);
-  const round = cstate?.round || 0;
   const roster = (cards || []).map((row) => {
     const c = row.card; const type = c?.subject?.type;
     const power = cardPower(c?.rarity, row.ascension, c?.subject?.cp_mod);
@@ -1071,6 +1112,18 @@ function roomSend(instanceId, obj) {
 const RL_BURST = 10;   // bucket capacity (max burst)
 const RL_REFILL = 5;   // tokens restored per second
 const rlBuckets = new Map(); // userId -> { tokens, at }
+const RL_READ_BURST = 60, RL_READ_REFILL = 10; // per member: 60 at once, 10 per second after
+const readBuckets = new Map();
+function readLimit(userId) {
+  const now = Date.now();
+  let b = readBuckets.get(userId);
+  if (!b) { b = { tokens: RL_READ_BURST, at: now }; readBuckets.set(userId, b); }
+  b.tokens = Math.min(RL_READ_BURST, b.tokens + ((now - b.at) / 1000) * RL_READ_REFILL);
+  b.at = now;
+  if (b.tokens < 1) return false;
+  b.tokens -= 1;
+  return true;
+}
 function rateLimit(userId) {
   const now = Date.now();
   let b = rlBuckets.get(userId);
@@ -1085,6 +1138,7 @@ function rateLimit(userId) {
 setInterval(() => {
   const cutoff = Date.now() - 60000;
   for (const [id, b] of rlBuckets) if (b.at < cutoff && b.tokens >= RL_BURST) rlBuckets.delete(id);
+  for (const [id, b] of readBuckets) if (b.at < cutoff) readBuckets.delete(id);
 }, 300000).unref();
 
 // Open the caller's earned packs. The draw + economy run in the bot (via its

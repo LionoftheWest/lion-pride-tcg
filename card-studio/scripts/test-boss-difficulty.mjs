@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 // The combat migration + the fixed HP + the flat boss ATK (each later file replaces functions).
-const mig = ['hunt_boss_difficulty.sql', 'hunt_boss_hp_fixed.sql', 'hunt_boss_attack.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')).join(String.fromCharCode(10));
+const mig = ['hunt_boss_difficulty.sql', 'hunt_boss_hp_fixed.sql', 'hunt_boss_attack.sql', 'hunt_attack_execute_fix.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')).join(String.fromCharCode(10));
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 
 const body = String.raw`do $t$
@@ -176,6 +176,28 @@ begin
   res := res || jsonb_build_object('case', 'thorns: the card loses 10% of its own damage', 'ok',
     (r->>'damage')::int = 0 and (r->>'card_hp')::int = mx or (r->>'card_hp')::int = mx - greatest(1, round((r->>'damage')::int * 0.10)),
     'damage', r->>'damage', 'card_hp', r->>'card_hp', 'max', mx, 'boss', r->'boss_action'->>'kind');
+
+  -- 6. Execute: below its threshold the card hits harder (amount 1.0 = double). Same card,
+  -- same boss HP (10%), with and without the ability; a quiet boss (ATK 1) so the card lives.
+  update hunts set hp_remaining = 100000, hp_max = 1000000, passive = '{"list": [], "phase2": true}', stats = '{"atk": 1}' where id = h;
+  select s.id, s.ability into i, r from cards c join subjects s on s.id = c.subject_id where c.id = ids[3];
+  strikes := '{}';
+  for n in 1..2 loop
+    if n = 1 then update subjects set ability = null where id = i;
+    else update subjects set ability = '{"kind": "attack", "effect": "execute", "amount": 1.0, "threshold": 0.5}' where id = i; end if;
+    for v in 1..24 loop
+      delete from hunt_card_hp where hunt_id = h and player_id = 'tst_boss';
+      delete from hunt_combat_state where hunt_id = h and player_id = 'tst_boss';
+      delete from hunt_hits where hunt_id = h and player_id = 'tst_boss';
+      r := hunt_attack('tst_boss', h, ids[3]);
+      if (r->>'outcome') = 'hit' then strikes := array_append(strikes, (n * 1000000 + (r->>'damage')::int)::numeric); end if;
+    end loop;
+  end loop;
+  res := res || jsonb_build_object('case', 'execute below the threshold doubles the damage (amount 1.0)', 'ok',
+    (select percentile_cont(0.5) within group (order by s - 2000000) from unnest(strikes) s where s >= 2000000)
+      >= 1.6 * (select percentile_cont(0.5) within group (order by s - 1000000) from unnest(strikes) s where s < 2000000),
+    'without', (select percentile_cont(0.5) within group (order by s - 1000000) from unnest(strikes) s where s < 2000000),
+    'with', (select percentile_cont(0.5) within group (order by s - 2000000) from unnest(strikes) s where s >= 2000000));
 
   raise exception 'RES %', res;
 end $t$;`;
