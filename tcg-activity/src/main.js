@@ -304,7 +304,7 @@ async function main() {
   setInterval(refreshPackStatus, 45000); // packs can be earned while the app is open
   refreshTradeBadge();
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
-  initEffects({ api, apiPost, el, esc, SFX, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
+  initEffects({ api, apiPost, el, esc, SFX, user: () => meUser, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   try { uiV2 = !!(await api('/api/flags'))?.uiV2; } catch { uiV2 = false; }
   if (uiV2) { startV2(); show('home'); } else show('collection');
 }

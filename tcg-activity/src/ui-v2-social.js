@@ -524,7 +524,7 @@ function paintEffects() {
   el('fxClear')?.addEventListener('click', () => { fx.pick = null; fx.msg = ''; paintEffects(); });
   el('fxTest')?.addEventListener('click', async () => {
     const r = await testCard(fx.pick);
-    fx.msg = r?.ok ? `Test: ${pretty(r.primitive)} is on you${r.duration_s ? ` for ${fmtDur(r.duration_s)}` : ''}` : (r?.error === 'not_testable' ? 'This effect cannot be tested on yourself.' : effectError(r?.error));
+    fx.msg = r?.ok ? (r.primitive === 'cleanse' ? `Test: removed ${r.removed || 0} prank${r.removed === 1 ? '' : 's'} from you` : `Test: ${pretty(r.primitive)} is on you${r.duration_s ? ` for ${fmtDur(r.duration_s)}` : ''}`) : (r?.error === 'not_testable' ? 'This effect cannot be tested on yourself.' : effectError(r?.error));
     await loadFx(); paintEffects();
   });
   el('fxClearTests')?.addEventListener('click', async () => { await clearTests(); fx.msg = 'Tests cleared'; await loadFx(); paintEffects(); });

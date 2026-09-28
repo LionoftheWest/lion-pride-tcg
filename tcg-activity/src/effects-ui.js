@@ -339,8 +339,25 @@ export async function reloadEffects() { await refreshEffects(); return state; }
 // effects and badges, so the visuals start at once.
 export async function testCard(card) {
   const r = await deps.apiPost('/api/effects/test', { cardId: card.id }).catch(() => ({ ok: false }));
-  if (r?.ok) { await refreshEffects(); await refreshBadges(); }
+  if (r?.ok) { await refreshEffects(); await refreshBadges(); testLanding(card, r); }
   return r || { ok: false };
+}
+
+// A test has no play record, so the landing a real target gets (the banner, the
+// confetti) is played here, at once. A sticker / title shows your name with the badge.
+function testLanding(card, r) {
+  const { el, esc } = deps;
+  const host = el('effectBanners');
+  if (!host) return;
+  const me = deps.user?.();
+  const onName = r.primitive === 'sticker' || r.primitive === 'title' || r.primitive === 'spotlight';
+  const div = document.createElement('div');
+  div.className = `eff-banner ${r.kind || ''} eff-test`;
+  div.innerHTML = `${card.image_url ? `<img src="${card.image_url}" alt="">` : ''}<span>🧪 Test: <b>${esc(card.effect?.name || card.name || 'a card')}</b> ${r.primitive === 'cleanse' ? ` removed ${r.removed || 0} prank${r.removed === 1 ? '' : 's'} from you` : ` is on you${onName && me ? `. Your name now: ${nameBadge(me.id, me.name)}` : ''}`}</span><button aria-label="Close">✕</button>`;
+  div.querySelector('button').addEventListener('click', () => div.remove());
+  host.appendChild(div);
+  setTimeout(() => div.remove(), 12000);
+  if (r.primitive === 'confetti' || r.primitive === 'gift_wrap') confetti(card.image_url);
 }
 export async function clearTests() {
   const r = await deps.apiPost('/api/effects/test/clear', {}).catch(() => ({ ok: false }));
