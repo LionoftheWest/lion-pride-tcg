@@ -17,6 +17,7 @@ export const BOSS_LIST = [
   { arch: 'demon', title: 'The Ban-Wave Demon', blurb: 'When it wakes, whole servers go quiet.', credit: 'Model: Demon T Wiezzorek — Mixamo (Adobe)' },
   { arch: 'smurf', title: 'The Smurf Brute', blurb: 'A veteran in a fresh account, swinging a very old axe.', credit: 'Model: Brute — Mixamo (Adobe)' },
   { arch: 'warzombie', title: 'The AFK Warzombie', blurb: 'Left its post long ago. It still hits hard.', credit: 'Model: Warzombie F Pedroso — Mixamo (Adobe)' },
+  { arch: 'kerrigan', title: 'The Zerg-Rush Queen', blurb: 'She never comes alone. Neither does the swarm behind her.', credit: 'Model: Sarah Kerrigan Infested — Vasian-Digital3D (CC-BY 4.0); animations: Mixamo (Adobe)' },
   { arch: 'skeletonzombie', title: 'The Hardstuck Skeleton', blurb: 'Same rank for years, and it blames you.', credit: 'Model: Skeletonzombie T Avelange — Mixamo (Adobe)' },
   { arch: 'behemoth', title: 'Lava Behemoth', blurb: 'A rock titan with molten veins and crystal growth.' },
   { arch: 'brute', title: 'Ogre Brute', blurb: 'A hulking bruiser that leads with its fists.' },
