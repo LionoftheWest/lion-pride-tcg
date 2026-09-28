@@ -46,7 +46,7 @@ async function battle(pid) {
     const card = alive[k % alive.length];
     k += 1;
     const s = performance.now();
-    const { data, error } = TARGET ? await viaApp(pid, card) : await sb.rpc('hunt_attack', { p_player: pid, p_hunt: HUNT, p_card: card });
+    const { data, error } = TARGET ? await viaApp(pid, card) : await sb.rpc(process.env.RPC || 'hunt_attack', { p_player: pid, p_hunt: HUNT, p_card: card });
     const ms = performance.now() - s;
     const rec = { ms, at: s - t0, kind: error ? `ERR ${error.code || ''} ${String(error.message).slice(0, 60)}` : data?.ok ? 'ok' : `no:${data?.error}` };
     calls.push(rec);
