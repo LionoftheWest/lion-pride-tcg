@@ -136,3 +136,20 @@ Work in progress: `design/05-final-v2.pen`.
 |---|---|---|
 | **Achievements** ("mini missions") | Yes, later | Tied to set collections: collect certain cards and get extra rewards. |
 | **Profile** | Yes, later | The home of the Showcase and other profile things. |
+
+## 11. v3 approved and built (Nathan, 2026-09-27)
+
+Nathan approved `design/08-v3-home.png`, `08-v3-collection.png`, `08-v3-hunt.png`, and
+`08-v3-achievements.png` ("I like all of those, lets implement" and "Achievment, I also
+approve of this"). The build is PR #10 (`feat/ui-v2`), behind `UI_V2_USERS` /
+`FEATURE_UI_V2`.
+
+Built now:
+- The shell (top bar + dock), Home, Collection with the card panel, the Achievements view
+  (progress only), and the Hunt layout.
+- "Live in voice" shows the current activity of each member in the room.
+
+Not built yet (the parts of the designs that need a new system):
+- The achievement **rewards** and the Claim button (needs a claim table + RPC).
+- The **streak** pill, the **free daily pack**, and the **Showcase** (Section 8 / 10).
+- The expected-damage number above each Hunt card (the chip shows power and WEAK now).
