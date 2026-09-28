@@ -320,3 +320,17 @@ function wrapChicken() {
   const orig = SFX.play.bind(SFX);
   SFX.play = (name, ...rest) => (document.body.classList.contains('fx-chicken') && !SFX.muted() ? squeak() : orig(name, ...rest));
 }
+
+// ---- For the Community tab's Boons & Pranks view (the same math as the viewer) ----
+export const effectState = () => state;
+export const effectScaled = (card) => scaled(card);
+export const effectReadyIn = (card) => readyIn(card);
+export const EFFECT_KIND = { label: KIND_LABEL, icon: KIND_ICON };
+export const effectError = (code) => ERR[code] || 'That did not work. Try again.';
+/** Play a card on a member. Returns the server result; refreshes cooldowns + effects. */
+export async function playCard(card, targetId) {
+  const r = await deps.apiPost('/api/effects/play', { cardId: card.id, targetId }).catch(() => ({ ok: false }));
+  if (r?.ok) { deps.SFX?.play?.(r.kind === 'prank' ? 'rare' : 'reveal'); await refreshEffects(); }
+  return r || { ok: false };
+}
+export async function reloadEffects() { await refreshEffects(); return state; }

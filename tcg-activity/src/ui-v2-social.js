@@ -3,6 +3,7 @@
 // Uses the shared helpers of ui-v2.js; the data comes from the existing APIs.
 
 import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember } from './ui-v2.js';
+import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur } from './effects-ui.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -185,7 +186,7 @@ function paintBoard() {
 
 // ---- Trading, with Gift inside (designs 14 + 13) ----------------------------------------
 
-const tr = { mode: 'offer', giftKind: 'card', to: null, give: null, get: null, side: 'mine', filter: 'all', q: '', page: 0, members: [], theirs: {}, offers: null, msg: '' };
+const tr = { tab: 'trades', mode: 'offer', giftKind: 'card', to: null, give: null, get: null, side: 'mine', filter: 'all', q: '', page: 0, members: [], theirs: {}, offers: null, msg: '' };
 
 export async function renderTradingV2() {
   const { el, api } = ctx();
@@ -201,7 +202,21 @@ export async function renderTradingV2() {
   tr.offers = offers;
   if (!tr.to && tr.members[0]) tr.to = tr.members[0];
   if (tr.to) await loadTheirs(tr.to.id);
-  paintTrade();
+  if (tr.tab === 'effects' && ctx().effectsEnabled?.()) { await loadFx(); paintEffects(); } else { tr.tab = 'trades'; paintTrade(); }
+}
+
+// The Community sub-tabs (design 16): Trades, Boons & Pranks (only while effects are on).
+function commTabs() {
+  const fx = ctx().effectsEnabled?.();
+  return `<div class="seg" id="commTabs"><button data-tab="trades" class="${tr.tab === 'trades' ? 'on' : ''}">⇄ Trades</button>${fx ? `<button data-tab="effects" class="${tr.tab === 'effects' ? 'on' : ''}">✨ Boons & Pranks</button>` : ''}</div>`;
+}
+function wireCommTabs() {
+  ctx().el('commTabs')?.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-tab]');
+    if (!b || b.dataset.tab === tr.tab) return;
+    tr.tab = b.dataset.tab; tr.page = 0; tr.msg = '';
+    if (tr.tab === 'effects') { await loadFx(); paintEffects(); } else paintTrade();
+  });
 }
 
 async function loadTheirs(id) {
@@ -273,7 +288,7 @@ function paintTrade() {
   const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
   el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}">
     <section class="tr-main">
-      <div class="tr-top"><div class="seg"><button class="on">⇄ Trades</button></div><span class="grow"></span>
+      <div class="tr-top">${commTabs()}<span class="grow"></span>
         <div class="seg" id="trMode"><button data-m="offer" class="${tr.mode === 'offer' ? 'on' : ''}">⇄ Offer</button><button data-m="gift" class="${tr.mode === 'gift' ? 'on' : ''}">🎁 Gift</button></div></div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
         ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${esc(p.name)}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
@@ -300,6 +315,7 @@ function paintTrade() {
     </aside>
   </div>`;
 
+  wireCommTabs();
   // Grid
   const items = gridItems();
   const pickId = tr.side === 'theirs' && tr.mode === 'offer' ? tr.get?.id : tr.give?.id;
@@ -394,3 +410,126 @@ async function resolve(path, body) {
   paintTrade();
 }
 
+
+// ---- Boons & Pranks (design 16) -------------------------------------------------------------
+const fx = { pick: null, filter: 'all', page: 0, onTarget: [], recent: [], msg: '' };
+const pretty = (p) => String(p || '').split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+const kindOf = (c) => effectScaled(c).kind || 'neutral';
+
+async function loadFx() {
+  const { api } = ctx();
+  const [st, on, rec] = await Promise.all([
+    reloadEffects(),
+    tr.to ? api(`/api/effects/on?id=${encodeURIComponent(tr.to.id)}`).catch(() => ({ active: [] })) : { active: [] },
+    api('/api/effects/recent').catch(() => ({ plays: [] })),
+  ]);
+  fx.onTarget = on.active || [];
+  fx.recent = rec.plays || [];
+  return st;
+}
+
+function fxCards() {
+  const b = new Map((ctx().cache.catalog?.cards || []).map((c) => [c.id, c]));
+  return (ctx().cache.collection?.cards || []).filter((c) => c.effect?.primitive)
+    .map((c) => ({ ...(b.get(c.id) || {}), ...c, owned: true, locked: false }))
+    .filter((c) => fx.filter === 'all' || kindOf(c) === fx.filter)
+    .sort((a, b) => (effectReadyIn(a) > 0) - (effectReadyIn(b) > 0) || (b.power || 0) - (a.power || 0));
+}
+
+function paintEffects() {
+  const { el } = ctx();
+  const st = effectState();
+  const toName = tr.to?.name || 'a member';
+  const c = fx.pick;
+  const cap = st.sendCap || 0;
+  const used = st.playsToday || 0;
+  const left = cap ? Math.max(0, cap - used) : null;
+  let composer;
+  if (c) {
+    const sc = effectScaled(c);
+    const wait = effectReadyIn(c);
+    const k = kindOf(c);
+    const ready = sc.enabled && wait <= 0;
+    composer = `<div class="tr-deal fx-deal">
+        <div class="tr-side"><div class="tr-slot r-${c.rarity}"><img src="${c.image_url || ''}" alt=""></div>
+          <div class="tr-info"><span class="fx-tags"><span class="fx-kind k-${k}">${EFFECT_KIND.icon[k] || ''} ${esc((EFFECT_KIND.label[k] || k).toUpperCase())}</span>
+            <span class="fx-state ${ready ? 'ok' : ''}">${!sc.enabled ? 'Unlocks soon' : wait > 0 ? `Ready in ${fmtDur(wait)}` : '● Ready'}</span></span>
+            <h3>${esc(c.effect.name || pretty(c.effect.primitive))}</h3>
+            <p class="fx-desc">${esc(c.effect.desc || '')}</p>
+            <span class="tr-chips">${sc.dur ? `<i>⏱ ${fmtDur(sc.dur)}</i>` : ''}<i>↻ ${fmtDur(sc.cooldownH * 3600)} cooldown</i>${sc.amount != null ? `<i>✦ ${sc.amount}</i>` : ''}</span></div></div>
+        <span class="tr-swap">→</span>
+        <div class="tr-side right tr-to"><div class="tr-info"><span class="tr-who">To</span><h3>${esc(toName)}</h3></div>${avatarHTML(tr.to?.id, toName, 'huge')}</div>
+      </div>
+      <div class="tr-foot"><span class="side-h fx-on">On ${esc(toName)}</span>${fx.onTarget.length ? fx.onTarget.map((e) => `<span class="f-chip">${esc(pretty(e.primitive))}</span>`).join('') : '<span class="dim">Nothing active</span>'}
+        <span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg)}</span>
+        <button class="v2-btn" id="fxClear">↺ Clear</button>
+        <button class="v2-btn fx-play k-${k}" id="fxPlay" ${ready && tr.to && (left == null || left > 0) ? '' : 'disabled'}>✨ Play ${esc((EFFECT_KIND.label[k] || '').toLowerCase())}</button></div>`;
+  } else {
+    composer = `<div class="fx-empty"><b>Pick an effect card</b><span class="dim">Then play it on ${esc(toName)}.</span></div>
+      <div class="tr-foot"><span class="side-h fx-on">On ${esc(toName)}</span>${fx.onTarget.length ? fx.onTarget.map((e) => `<span class="f-chip">${esc(pretty(e.primitive))}</span>`).join('') : '<span class="dim">Nothing active</span>'}<span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg)}</span></div>`;
+  }
+  const cards = fxCards();
+  const onYou = (st.active || []).map((e) => {
+    const total = (Number(e.duration_s) || 0) * 1000;
+    const leftMs = e.expires_at ? new Date(e.expires_at) - Date.now() : null;
+    const pct = total && leftMs != null ? Math.max(0, Math.min(100, Math.round((100 * leftMs) / total))) : 100;
+    return `<div class="fx-on-row"><span class="nt-ico">✨</span><div><b>${esc(pretty(e.primitive))}</b><span class="dim">${esc(e.card?.name || '')}</span><i class="fx-bar"><i style="width:${pct}%"></i></i></div>
+      <span class="mono fx-left">${leftMs != null ? fmtDur(leftMs / 1000) : ''}</span></div>`;
+  }).join('');
+  const rec = fx.recent.map((r) => `<div class="fx-rec k-${esc(r.kind)}"><span class="fx-pair">${avatarHTML(r.from_id, r.from, 'xs')}${avatarHTML(r.to_id, r.to, 'xs')}</span>
+      <div><b>${esc(r.from)} → ${esc(r.to)}</b><span>${EFFECT_KIND.icon[r.kind] || ''} ${esc(r.outcome === 'reflected' ? 'Reflected' : r.outcome === 'blocked' ? 'Blocked' : pretty(r.primitive))}</span></div>
+      <span class="mono dim">${ctx().ago(r.at)}</span></div>`).join('');
+
+  el('main').innerHTML = `<div class="v2-trade community fx-view">
+    <section class="tr-main">
+      <div class="tr-top">${commTabs()}<span class="grow"></span>
+        ${cap ? `<div class="fx-today"><span>Plays today</span><i class="fx-bar"><i style="width:${Math.round((100 * used) / cap)}%"></i></i><b class="mono">${used}/${cap}</b></div>` : ''}</div>
+      <div class="tr-members" id="trMembers"><span class="side-h">To</span>
+        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${esc(p.name)}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
+        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="Find a member"></div>
+      <div class="tr-compose">${composer}</div>
+      <div class="tr-gridhead"><div class="seg"><button class="on">Your effect cards <b>${(ctx().cache.collection?.cards || []).filter((x) => x.effect?.primitive).length}</b></button></div>
+        <span class="grow"></span>
+        <div class="seg" id="fxFilter">${[['all', 'All'], ['boon', '● Boon'], ['prank', '● Prank'], ['neutral', '● Neutral']].map(([v, l]) => `<button data-f="${v}" class="${fx.filter === v ? 'on' : ''} k-${v}">${l}</button>`).join('')}</div>
+        <div class="v2-pager" id="fxPager"></div></div>
+      <div class="v2-grid" id="fxGrid"></div>
+    </section>
+    <aside class="tr-offers v2-tile fx-side">
+      <div class="tile-h"><b>On you</b><span class="grow"></span><span class="n mono">${(st.active || []).length}</span></div>
+      <div class="of-list fx-onyou" id="fxOnYou">${onYou || '<p class="v2-empty">Nothing is active on you.</p>'}</div>
+      <div class="tile-h"><b>Recent plays</b><span class="grow"></span><span class="live-chip sm">● LIVE</span></div>
+      <div class="of-list fx-recent" id="fxRecent">${rec || '<p class="v2-empty">No plays yet.</p>'}</div>
+    </aside>
+  </div>`;
+
+  paintCards(el('fxGrid'), el('fxPager'), cards, fx, (card) => { fx.pick = card; fx.msg = ''; paintEffects(); }, fx.pick?.id);
+  // Each effect card shows its kind above it and its cooldown on it.
+  el('fxGrid').querySelectorAll('.v2-cell').forEach((n) => {
+    const card = cards[Number(n.dataset.idx)];
+    if (!card) return;
+    const k = kindOf(card);
+    n.insertAdjacentHTML('afterbegin', `<span class="fx-kind k-${k} on-card">${EFFECT_KIND.icon[k] || ''} ${esc((EFFECT_KIND.label[k] || k).toUpperCase())}</span>`);
+    const w = effectReadyIn(card);
+    if (w > 0) { n.classList.add('cooling'); n.querySelector('.v2-card')?.insertAdjacentHTML('beforeend', `<span class="fx-cd">⏳ ${fmtDur(w)}</span>`); }
+  });
+  wireCommTabs();
+  el('fxFilter').onclick = (e) => { const b = e.target.closest('[data-f]'); if (!b) return; fx.filter = b.dataset.f; fx.page = 0; paintEffects(); };
+  el('trMembers').onclick = async (e) => {
+    const b = e.target.closest('.tr-mem'); if (!b) return;
+    tr.to = tr.members.find((p) => p.id === b.dataset.id) || tr.to; fx.msg = '';
+    try { fx.onTarget = (await ctx().api(`/api/effects/on?id=${encodeURIComponent(tr.to.id)}`)).active || []; } catch { fx.onTarget = []; }
+    paintEffects();
+  };
+  el('fxClear')?.addEventListener('click', () => { fx.pick = null; fx.msg = ''; paintEffects(); });
+  el('fxPlay')?.addEventListener('click', async () => {
+    const btn = el('fxPlay'); btn.disabled = true;
+    const r = await playCard(fx.pick, tr.to.id);
+    fx.msg = r?.ok
+      ? (r.outcome === 'blocked' ? `${tr.to.name} blocked it` : r.outcome === 'reflected' ? 'It bounced back to you' : `Played on ${tr.to.name}`)
+      : effectError(r?.error);
+    if (r?.ok) fx.pick = null;
+    await loadFx();
+    paintEffects();
+  });
+  requestAnimationFrame(() => { fitChildren(el('fxOnYou')); fitChildren(el('fxRecent')); fitRow(el('trMembers'), el('trFind')); });
+}

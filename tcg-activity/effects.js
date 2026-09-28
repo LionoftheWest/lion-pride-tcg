@@ -35,7 +35,8 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     if (!me) return res.status(401).json({ error: 'not authenticated' });
     if (!effectsEnabledFor(me.id)) return res.json({ enabled: false });
     const now = new Date().toISOString();
-    const [cds, act, inc, tiers, prims] = await Promise.all([
+    const dayStart = `${now.slice(0, 10)}T00:00:00Z`;
+    const [cds, act, inc, tiers, prims, sent, caps] = await Promise.all([
       supabase.from('card_effect_cooldowns').select('subject_id, ready_at').eq('player_id', me.id).gt('ready_at', now),
       supabase.from('player_effects').select('id, primitive, amount, duration_s, options, expires_at')
         .eq('player_id', me.id).is('consumed_at', null).or(`expires_at.is.null,expires_at.gt.${now}`),
@@ -43,6 +44,8 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
         .eq('target_id', me.id).is('seen_at', null).order('id', { ascending: false }).limit(10),
       supabase.from('settings').select('key, value').in('key', ['card_effect_tiers', 'card_effect_ascension', 'card_effect_cooldown_scale']),
       supabase.from('effect_primitives').select('primitive, kind, channel, max_amount, max_duration_s, enabled'),
+      supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('player_id', me.id).gte('created_at', dayStart),
+      supabase.from('settings').select('value').eq('key', 'card_effect_caps').maybeSingle(),
     ]);
     const err = cds.error || act.error || inc.error || prims.error;
     if (err) return res.status(500).json({ error: err.message });
@@ -60,7 +63,43 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
       ascension: (tiers.data || []).find((x) => x.key === 'card_effect_ascension')?.value || null,
       cooldownScale: Number((tiers.data || []).find((x) => x.key === 'card_effect_cooldown_scale')?.value ?? 1) || 1,
       primitives: Object.fromEntries((prims.data || []).map((p) => [p.primitive, p])),
+      // The Community tab's "Plays today" (the same daily limit play_card_effect uses).
+      playsToday: sent.count || 0,
+      sendCap: Number(caps.data?.value?.send_per_day) || null,
     });
+  });
+
+  // The effects active on a member (the Community tab shows them under the target).
+  app.get('/api/effects/on', async (req, res) => {
+    const me = await caller(req);
+    if (!me) return res.status(401).json({ error: 'not authenticated' });
+    if (!effectsEnabledFor(me.id)) return res.json({ active: [] });
+    const id = String(req.query.id || '');
+    if (!/^[\w-]{1,40}$/.test(id)) return res.status(400).json({ error: 'bad id' });
+    const now = new Date().toISOString();
+    const { data, error } = await supabase.from('player_effects').select('primitive, expires_at, options')
+      .eq('player_id', id).is('consumed_at', null).or(`expires_at.is.null,expires_at.gt.${now}`);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ active: data || [] });
+  });
+
+  // The recent plays across the server (a live feed on the Community tab).
+  let recentCache = null;
+  app.get('/api/effects/recent', async (req, res) => {
+    const me = await caller(req);
+    if (!me) return res.status(401).json({ error: 'not authenticated' });
+    if (!effectsEnabledFor(me.id)) return res.json({ plays: [] });
+    if (!recentCache || Date.now() - recentCache.at > 5000) {
+      const { data, error } = await supabase.from('card_plays')
+        .select('id, player_id, target_id, primitive, kind, outcome, created_at, sender:players!card_plays_player_id_fkey(username), target:players!card_plays_target_id_fkey(username)')
+        .order('id', { ascending: false }).limit(20);
+      if (error) return res.status(500).json({ error: error.message });
+      recentCache = { at: Date.now(), plays: (data || []).map((p) => ({
+        id: p.id, from_id: p.player_id, to_id: p.target_id, from: p.sender?.username || 'Someone', to: p.target?.username || 'Someone',
+        primitive: p.primitive, kind: p.kind, outcome: p.outcome, at: p.created_at,
+      })) };
+    }
+    res.json({ plays: recentCache.plays });
   });
 
   // The target saw these plays: mark them, and use up the show-once effects.
