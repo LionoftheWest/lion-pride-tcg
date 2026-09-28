@@ -157,6 +157,16 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     const { data: prim } = await supabase.from('effect_primitives').select('primitive, kind, channel, max_amount, max_duration_s').eq('primitive', eff.primitive).maybeSingle();
     if (!prim) return res.status(400).json({ ok: false, error: 'no_effect' });
     if (prim.channel !== 'app' || prim.primitive === 'gift_pack') return res.status(400).json({ ok: false, error: 'not_testable' });
+    // Cleanse acts at once in a real play (play_card_effect removes the pranks); the
+    // test does the same on the tester: every prank on them ends.
+    if (prim.primitive === 'cleanse') {
+      const { data: pranks } = await supabase.from('effect_primitives').select('primitive').eq('kind', 'prank');
+      const { data: gone, error: cerr } = await supabase.from('player_effects').update({ consumed_at: new Date().toISOString() })
+        .eq('player_id', me.id).is('consumed_at', null).in('primitive', (pranks || []).map((x) => x.primitive)).select('id');
+      if (cerr) return res.status(500).json({ ok: false, error: cerr.message });
+      badgeCache = null;
+      return res.json({ ok: true, primitive: 'cleanse', kind: prim.kind, duration_s: null, removed: (gone || []).length });
+    }
     let dur = Number(eff.base?.duration_s) || 0;
     if (prim.max_duration_s != null) dur = Math.min(dur, prim.max_duration_s);
     dur = dur > 0 ? Math.min(dur, TEST_MAX_S) : null;
@@ -168,9 +178,12 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     // One test of each effect at a time: a new test replaces the old one.
     await supabase.from('player_effects').update({ consumed_at: new Date().toISOString() })
       .eq('player_id', me.id).eq('primitive', prim.primitive).is('consumed_at', null).eq('options->>test', 'true');
+    // Show-once effects (confetti, gift wrap) play in the client at once, so their test
+    // row is stored as already shown (it would otherwise wait for a real play record).
+    const shownNow = SHOW_ONCE.includes(prim.primitive) ? new Date().toISOString() : null;
     const { error } = await supabase.from('player_effects').insert({
       player_id: String(me.id), primitive: prim.primitive, amount, duration_s: dur, options: opts,
-      expires_at: dur ? new Date(Date.now() + dur * 1000).toISOString() : null,
+      expires_at: dur ? new Date(Date.now() + dur * 1000).toISOString() : null, consumed_at: shownNow,
     });
     if (error) return res.status(500).json({ ok: false, error: error.message });
     badgeCache = null; // the sticker / title shows at once
