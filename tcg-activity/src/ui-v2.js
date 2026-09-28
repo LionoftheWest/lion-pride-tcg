@@ -598,48 +598,149 @@ export function paintPulls() {
 
 export function homeTick() { tickCloses(); }
 
-// ---- A member's profile (click a member in "Live in voice") -------------------
+// ---- A member's profile (design/15-member-profile-screen.png, approved 2026-09-27) ----
+// Opened from a tile in "Live in voice". Left: who they are, what they do now, the
+// actions, the stats and badges. Centre: the spotlight and their season. Right: their
+// live hunt, and the cards each of you has that the other one needs.
 
-const mem = { page: 0 };
+const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const mem = { page: 0, all: false };
+let memData = null;
+
 export async function openMember(id) {
   const { el } = ctx;
+  let box = el('memberModal');
+  if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="memberModal" class="v2-screen hidden"></div>'); box = el('memberModal'); }
+  box.innerHTML = '<div class="v2-loading">Loading…</div>';
+  box.classList.remove('hidden');
+  box.onclick = (e) => { if (e.target.closest('#memBack')) closeMember(); };
+  await ensureCatalog();
   const me = ctx.user();
   const self = String(id) === String(me?.id);
-  let box = el('memberModal');
-  if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="memberModal" class="v2-modal hidden"></div>'); box = el('memberModal'); }
-  box.innerHTML = '<div class="v2-modal-card"><div class="v2-loading">Loading…</div></div>';
-  box.classList.remove('hidden');
-  box.onclick = (e) => { if (e.target === box || e.target.closest('#memClose')) box.classList.add('hidden'); };
-  await ensureCatalog();
   let p = null;
   try { p = await ctx.api(`/api/profile${self ? '' : `?id=${encodeURIComponent(id)}`}`); } catch { p = null; }
-  if (!p || p.error) { box.querySelector('.v2-modal-card').innerHTML = '<button class="v2-icon mem-close" id="memClose">✕</button><p class="v2-empty">This member has no profile yet.</p>'; return; }
-  const cards = mergedCards(self ? undefined : (p.cards || []));
-  const spot = spotlightOf(cards, p.spotlight);
-  const ownedCards = cards.filter((c) => c.owned).sort((a, b) => (b.power || 0) - (a.power || 0));
-  const achs = measure(cards, p.stats);
+  if (!p || p.error) { box.innerHTML = '<div class="mem-empty"><button class="v2-btn" id="memBack">← Home</button><p class="v2-empty">This member has no profile yet.</p></div>'; return; }
+  memData = { p, self, cards: mergedCards(self ? undefined : (p.cards || [])) };
+  mem.all = false; mem.page = 0;
+  paintMember();
+}
+export function closeMember() { ctx.el('memberModal')?.classList.add('hidden'); }
+
+function paintMember() {
+  const { el } = ctx;
+  const box = el('memberModal');
+  const { p, self, cards } = memData;
   const s = p.stats || {};
-  const line = (k, v) => `<div class="mem-stat"><span>${k}</span><b>${v}</b></div>`;
-  box.querySelector('.v2-modal-card').innerHTML = `<button class="v2-icon mem-close" id="memClose" aria-label="Close">✕</button>
-    <aside class="mem-side">
-      <div class="prof-head">${avatarHTML(p.id, p.name, 'big')}<h3>${esc(p.name)}</h3></div>
-      ${profileStats(p, cards)}
-      <div class="mem-stats">
-        ${line('Collection power', p.power != null ? `⚡ ${fmt(p.power)}` : '—')}
-        ${line('Hunts joined', fmt(s.huntsJoined))}
-        ${line('Bosses defeated', fmt(s.bossesDefeated))}
-        ${line('Hunt damage', fmt(s.totalDamage))}
-        ${line('Best hit', fmt(s.bestHit))}
-        ${line('Achievements', `${achs.filter((a) => a.done).length} / ${achs.length}`)}
+  const achs = measure(cards, s);
+  const done = achs.filter((a) => a.done);
+  const pres = (ctx.live.presence || []).find((x) => String(x.id) === String(p.id));
+  const [sIco, sTxt] = STATUS_TEXT[pres?.status?.kind] || [];
+  const season = cards.filter((c) => (c.season || 'Season 1') === (col.season || 'Season 1'));
+  const ownedN = season.filter((c) => c.owned).length;
+  const byR = (r) => cards.filter((c) => c.owned && c.rarity === r).length;
+  const spot = spotlightOf(cards, p.spotlight);
+  const spotOrder = spot.length === 3 ? [spot[1], spot[0], spot[2]] : spot; // the strongest in the middle
+  const stat = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
+  const effects = !self && ctx.effectsEnabled?.();
+
+  box.innerHTML = `<div class="mem-screen">
+    <aside class="mem-col mem-left">
+      <div class="mem-top"><button class="v2-chip-btn" id="memBack">← Home</button></div>
+      <div class="mem-id">
+        ${avatarHTML(p.id, p.name, `huge${pres ? ' live' : ''}`)}
+        <h2>${esc(p.name)}</h2>
+        <div class="mem-badges">${done.slice(0, 5).map((a) => `<span class="mem-badge" title="${esc(a.name)}">${a.icon}</span>`).join('')}${done.length > 5 ? `<span class="mem-more">+${done.length - 5}</span>` : ''}</div>
       </div>
-      <div class="side-h">Spotlight</div>
-      <div class="spot-row" id="memSpot">${spotHTML(spot)}</div>
+      ${pres ? `<div class="mem-status">🎧 In voice · ${sIco || ''} ${esc(sTxt || 'Here')}</div>` : ''}
+      ${effects ? `<div class="mem-acts"><button class="v2-btn boon" id="memBoon">🎁 Boon</button><button class="v2-btn prank" id="memPrank">😈 Prank</button></div>` : ''}
+      ${self ? '' : '<button class="v2-btn" id="memTrade">⇄ Offer a trade</button>'}
+      <div class="mem-grid-stats">
+        ${stat(`${ownedN}/${season.length}`, 'Cards')}
+        ${stat(p.huntRank ? `#${p.huntRank}` : '—', 'Hunt rank')}
+        ${stat(`${done.length}/${achs.length}`, 'Achievements')}
+        ${stat(fmt(s.packsOpened), 'Packs opened')}
+        ${stat(p.power != null ? fmt(p.power) : '—', 'Power')}
+        ${stat(byR('full_art'), 'Full Arts')}
+      </div>
+      <div class="side-h">Achievements <span class="n">${done.length}/${achs.length}</span></div>
+      <div class="mem-ach" id="memAch">${[...done, ...achs.filter((a) => !a.done)].slice(0, 18).map((a) => `<span class="mem-ab${a.done ? ' on' : ''}" title="${esc(a.name)} · ${esc(a.desc)}">${a.done ? a.icon : '🔒'}</span>`).join('')}</div>
     </aside>
-    <section class="mem-main">
-      <div class="v2-col-head"><h2>Collection <span class="sub">${ownedCards.length} cards</span></h2><span class="grow"></span><div class="v2-pager" id="memPager"></div></div>
-      <div class="v2-grid" id="memGrid"></div>
-    </section>`;
-  el('memSpot').onclick = (e) => { const b = e.target.closest('[data-si]'); if (b) ctx.openViewer(spot[Number(b.dataset.si)]); };
-  mem.page = 0;
-  paintCards(el('memGrid'), el('memPager'), ownedCards, mem, (c) => ctx.openViewer(c));
+
+    <section class="mem-center">
+      ${mem.all ? '' : `<div class="mem-col mem-spot">
+        <div class="side-h">✨ Spotlight</div>
+        <div class="mem-spot-row" id="memSpot">${spotOrder.map((c) => `<button class="spot-card r-${c.rarity}${c === spot[0] ? ' main' : ''}" data-id="${c.id}"><img src="${c.image_url || ''}" alt="${esc(c.name)}"></button>`).join('') || '<p class="v2-empty">No cards yet.</p>'}</div>
+      </div>`}
+      <div class="mem-col mem-season${mem.all ? ' full' : ''}">
+        <div class="v2-col-head"><h2>${esc(col.season || 'Season 1')} <span class="sub">${ownedN}/${season.length}</span></h2>
+          <i class="bar mem-bar"><i style="width:${Math.round((100 * ownedN) / (season.length || 1))}%"></i></i><span class="grow"></span>
+          ${mem.all ? '<div class="v2-pager" id="memPager"></div>' : ''}<button class="link-btn" id="memAll">${mem.all ? 'Back' : 'View all ›'}</button></div>
+        <div class="${mem.all ? 'v2-grid' : 'mem-mini'}" id="memGrid"></div>
+        ${mem.all ? '' : `<div class="mem-rar">${RARITY_ORDER.map((r) => `<span style="--rc:var(--r-${r})"><i>◆</i>${esc(ctx.RARITY_LABEL[r] || r)} <b>${byR(r)}</b></span>`).join('')}</div>`}
+      </div>
+    </section>
+
+    <aside class="mem-right">
+      <div class="mem-col mem-hunt">${huntBoxHTML(p)}</div>
+      <div class="mem-col mem-need">${self ? selfNeedHTML(achs) : needHTML(cards)}</div>
+    </aside>
+  </div>`;
+
+  // The mini season grid (or all their cards, paged).
+  const grid = el('memGrid');
+  if (mem.all) {
+    const owned = cards.filter((c) => c.owned).sort((a, b) => (b.power || 0) - (a.power || 0));
+    paintCards(grid, el('memPager'), owned, mem, (c) => ctx.openViewer(c));
+  } else {
+    grid.innerHTML = season.map((c) => (c.owned
+      ? `<button class="mem-mini-card r-${c.rarity}" data-id="${c.id}"><img src="${c.image_url || ''}" alt=""></button>`
+      : '<span class="mem-mini-card lock">🔒</span>')).join('');
+    grid.onclick = (e) => { const b = e.target.closest('[data-id]'); const c = b && cards.find((x) => String(x.id) === b.dataset.id); if (c) ctx.openViewer(c); };
+  }
+  el('memSpot')?.addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); const c = b && cards.find((x) => String(x.id) === b.dataset.id); if (c) ctx.openViewer(c); });
+  el('memAll').addEventListener('click', () => { mem.all = !mem.all; mem.page = 0; paintMember(); });
+  el('memBoon')?.addEventListener('click', () => ctx.playOnMember('boon', { id: p.id, name: p.name }));
+  el('memPrank')?.addEventListener('click', () => ctx.playOnMember('prank', { id: p.id, name: p.name }));
+  const trade = () => { closeMember(); ctx.openTrade({ id: p.id, name: p.name }); };
+  el('memTrade')?.addEventListener('click', trade);
+  box.querySelectorAll('.need-ask').forEach((b) => b.addEventListener('click', trade));
+  box.querySelectorAll('.need-card').forEach((b) => b.addEventListener('click', () => {
+    const c = [...cards, ...mergedCards()].find((x) => String(x.id) === b.dataset.id);
+    if (c && c.image_url) ctx.openViewer(c);
+  }));
+  // Fit after the browser lays the new screen out (measured too early, it emptied the lists).
+  requestAnimationFrame(() => { fitChildren(box.querySelector('.need-list')); fitChildren(el('memAch')); if (!mem.all) fitChildren(el('memGrid')); });
+}
+
+// Their damage in the live hunt, per day, and their best card.
+function huntBoxHTML(p) {
+  const h = p.hunt;
+  if (!h) return '<div class="tile-h"><b>⚔ Pride Hunt</b></div><p class="v2-empty">No boss is live.</p>';
+  const days = h.byDay || [];
+  const max = Math.max(1, ...days.map((d) => d.damage));
+  const today = new Date().toISOString().slice(0, 10);
+  const bars = days.map((d) => `<div class="hb"><i style="height:${Math.max(6, Math.round((100 * d.damage) / max))}%" class="${d.date === today ? 'now' : ''}" title="${fmt(d.damage)}"></i><span>${DAY[new Date(`${d.date}T12:00:00Z`).getUTCDay()]}</span></div>`).join('');
+  const top = h.topCard && (ctx.cache.catalog?.cards || []).find((c) => Number(c.id) === h.topCard.id);
+  return `<div class="tile-h"><b>⚔ ${esc(h.name)}</b><span class="grow"></span>${p.huntRank ? `<span class="mem-rank">#${p.huntRank}</span>` : ''}</div>
+    <div class="mem-hstats"><div><b>${fmt(h.damage)}</b><span>Damage</span></div><div><b>${fmt(h.attacks)}</b><span>Attacks</span></div><div><b class="hunt">${h.share}%</b><span>Of boss HP</span></div></div>
+    <div class="mem-bars">${bars || '<p class="v2-empty">No attacks yet.</p>'}</div>
+    ${top ? `<div class="mem-top-card"><img src="${top.image_url}" alt=""><div><span class="side-h">Top card</span><b>${esc(top.name)}</b></div><span class="mono">⚡ ${fmt(h.topCard.damage)}</span></div>` : ''}`;
+}
+
+// Cards they own that I do not ("You need"), and cards I own that they do not.
+function needHTML(theirs) {
+  const mine = mergedCards();
+  const iOwn = new Set(mine.filter((c) => c.owned).map((c) => c.id));
+  const theyOwn = new Set(theirs.filter((c) => c.owned).map((c) => c.id));
+  const rank = (c) => RARITY_ORDER.indexOf(c.rarity);
+  const youNeed = theirs.filter((c) => c.owned && !iOwn.has(c.id)).sort((a, b) => rank(b) - rank(a));
+  const theyNeed = mine.filter((c) => c.owned && !theyOwn.has(c.id)).sort((a, b) => rank(b) - rank(a));
+  return `<div class="tile-h"><b>⇄ You need</b><span class="grow"></span><span class="n mono">${youNeed.length}</span></div>
+    <div class="need-list">${youNeed.slice(0, 6).map((c) => `<div class="need-row"><button class="need-card" data-id="${c.id}"><img src="${c.image_url || ''}" alt=""></button>
+      <div><b>${esc(c.name)}</b><span style="color:var(--r-${c.rarity})">◆ ${esc(ctx.RARITY_LABEL[c.rarity] || c.rarity)}</span></div><button class="v2-chip-btn need-ask">Ask</button></div>`).join('') || '<p class="v2-empty">You have every card they have.</p>'}</div>
+    <div class="they-need"><span>They need</span><span class="tn-cards">${theyNeed.slice(0, 4).map((c) => `<button class="need-card sm" data-id="${c.id}"><img src="${c.image_url || ''}" alt=""></button>`).join('')}</span><b class="mono">${theyNeed.length}</b></div>`;
+}
+function selfNeedHTML(achs) {
+  return `<div class="tile-h"><b>🏆 Closest achievements</b></div>
+    <div class="need-list">${achs.filter((a) => !a.done).slice(0, 5).map((a) => achHTML(a, false, true)).join('')}</div>`;
 }

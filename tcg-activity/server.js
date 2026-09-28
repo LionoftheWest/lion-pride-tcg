@@ -616,6 +616,22 @@ app.get('/api/profile', async (req, res) => {
     cards: owned.data ? owned.data.map((r) => ({ id: r.card_id, quantity: r.quantity, ascension: r.ascension || 0 })) : undefined,
   };
   payload.packsOpened = payload.stats.packsOpened; // the v2 Home reads this name
+  // The live hunt, for the profile's hunt box: damage, attacks, share of the boss HP,
+  // damage per day, and the card that hit hardest.
+  if (hunt) {
+    const { data: hh } = await supabase.from('hunt_hits').select('card_id, damage, hit_date').eq('hunt_id', hunt.id).eq('player_id', id).limit(5000);
+    const rows = hh || [];
+    const byDay = {}; const byCard = {};
+    for (const r of rows) { byDay[r.hit_date] = (byDay[r.hit_date] || 0) + (r.damage || 0); byCard[r.card_id] = (byCard[r.card_id] || 0) + (r.damage || 0); }
+    const top = Object.entries(byCard).sort((a, b) => b[1] - a[1])[0];
+    const damage = rows.reduce((t, r) => t + (r.damage || 0), 0);
+    payload.hunt = {
+      name: hunt.name, tier: hunt.tier, damage, attacks: rows.length,
+      share: hunt.hp_max ? Math.round((1000 * damage) / hunt.hp_max) / 10 : 0,
+      byDay: Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0])).map(([date, dmg]) => ({ date, damage: dmg })),
+      topCard: top ? { id: Number(top[0]), damage: top[1] } : null,
+    };
+  }
   profileCache.set(id, { at: Date.now(), payload });
   res.json(payload);
 });

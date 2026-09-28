@@ -15,7 +15,7 @@ import { mountBoss } from './boss.js';
 import { BOSS_LIST, seedForBoss, thumbFor, THUMB_BASE } from './boss-meta.js';
 import { modelFor } from './boss-model.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { initEffects, fillViewerEffect, nameBadge } from './effects-ui.js';
+import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled } from './effects-ui.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick } from './ui-v2.js';
 
 const el = (id) => document.getElementById(id);
@@ -301,7 +301,7 @@ async function main() {
   setInterval(refreshPackStatus, 45000); // packs can be earned while the app is open
   refreshTradeBadge();
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
-  initEffects({ api, apiPost, el, esc, SFX, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
+  initEffects({ api, apiPost, el, esc, SFX, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   try { uiV2 = !!(await api('/api/flags'))?.uiV2; } catch { uiV2 = false; }
   if (uiV2) { startV2(); show('home'); } else show('collection');
 }
@@ -311,6 +311,7 @@ function startV2() {
   document.body.classList.add('ui-v2');
   initV2({
     api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned,
+    playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),
     features: () => features, user: () => meUser, currentView: () => currentView,
   });
   el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>`;
@@ -2567,8 +2568,8 @@ async function onTradeAction(e) {
 
 // The trade builder: recipient -> your card -> gift it, or request one back.
 const trade = { step: 1, toId: null, toName: null, myCard: null, mine: [], theirs: [] };
-function openTradeBuilder() {
-  Object.assign(trade, { step: 1, toId: null, toName: null, myCard: null });
+function openTradeBuilder(to) {
+  Object.assign(trade, { step: to ? 2 : 1, toId: to?.id || null, toName: to?.name || null, myCard: null });
   el('trade').className = 'open';
   el('trade').onclick = (e) => { if (e.target === el('trade')) closeTrade(); };
   renderTradeStep();

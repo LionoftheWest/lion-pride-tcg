@@ -171,6 +171,35 @@ function openPicker(card) {
   el('effSearch').focus();
 }
 
+// From a member's profile: pick one of MY ready cards of this kind, then confirm the
+// play on that member (the same confirm + play path as the card viewer).
+export function playOnMember(kind, target) {
+  const { el, esc } = deps;
+  if (!state.enabled) return;
+  const mine = (deps.ownedCards?.() || []).filter((c) => c.effect?.primitive && scaled(c).kind === kind);
+  const m = el('effectPick');
+  m.className = 'open';
+  const row = (c, i) => {
+    const s = scaled(c); const wait = readyIn(c);
+    const why = !s.enabled ? 'Unlocks soon' : wait > 0 ? `Ready in ${fmtDur(wait)}` : '';
+    return `<div class="gift-row" data-i="${i}"><span class="gift-name">${esc(c.name)} · ${esc(c.effect.name || '')}</span>
+      ${why ? `<span class="gift-bal">${why}</span>` : '<button class="gift-send eff-pick">Pick</button>'}</div>`;
+  };
+  m.innerHTML = `<div class="gift-card">
+      <div class="gift-head"><span>${KIND_ICON[kind] || '🎴'} ${KIND_LABEL[kind] || 'Card'} for ${esc(target.name)}</span><button class="gift-close" id="effClose">✕</button></div>
+      <div class="gift-results" id="effResults">${mine.length ? mine.map(row).join('') : `<p class="empty">You have no ${esc((KIND_LABEL[kind] || '').toLowerCase())} cards yet.</p>`}</div>
+      <div class="gift-msg" id="effMsg"></div>
+    </div>`;
+  el('effClose').addEventListener('click', closePicker);
+  m.addEventListener('click', (ev) => { if (ev.target === m) closePicker(); });
+  el('effResults').addEventListener('click', (ev) => {
+    const b = ev.target.closest?.('.eff-pick');
+    if (!b) return;
+    pickerCard = mine[Number(b.closest('.gift-row').dataset.i)];
+    confirmPlay(target.id, target.name);
+  });
+}
+
 function closePicker() { const m = deps.el('effectPick'); m.className = 'hidden'; m.innerHTML = ''; pickerCard = null; }
 
 async function loadTargets(q) {
@@ -193,7 +222,7 @@ function confirmPlay(id, name) {
   const box = el('effResults');
   box.innerHTML = `<div class="eff-confirm">Play <b>${esc(pickerCard.name)}</b> on <b>${esc(name)}</b>?
       <div class="eff-confirm-btns"><button class="gift-send" id="effYes">Play it</button><button class="gift-close eff-no" id="effNo">Back</button></div></div>`;
-  el('effNo').addEventListener('click', () => loadTargets(el('effSearch')?.value || ''));
+  el('effNo').addEventListener('click', () => (el('effSearch') ? loadTargets(el('effSearch').value || '') : closePicker()));
   el('effYes').addEventListener('click', () => doPlay(id, name));
 }
 
