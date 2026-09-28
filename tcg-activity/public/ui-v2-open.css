@@ -74,3 +74,5 @@ body.ui-v2 .mr-card.mr-burst { z-index: 2; }
 body.ui-v2 .mr-card.mr-burst::after { content: ''; position: absolute; inset: -30%; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle, rgba(255, 215, 110, .55), transparent 60%); animation: mrRing .9s ease-out forwards; }
 @keyframes mrRing { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+/* The cards are the whole window (Nathan, 2026-09-27). */
+body.ui-v2 .mr-wrap.full { grid-template-columns: minmax(0, 1fr); }
