@@ -1,6 +1,18 @@
--- Boss HP up (Nathan, 2026-09-28: "if this is the HARDEST level of boss...we need to keep
--- tuning up the health"). spawn_hunt = the live definition with only the HP multipliers
--- changed (9/10/9 -> 22/30/44). New spawns only; the active boss keeps its HP.
+-- Fixed boss HP (Nathan, 2026-09-28: "it should be a set HP that can handle tons of players
+-- regardless"; "10+ players ... up to 7x/player a week ... a legit challenge to destroy").
+-- The HP no longer depends on the player count or the card power: one number per tier from
+-- the settings dial 'hunt_hp' (boss-sim.mjs FIXED mode, calibrated on the real fights of
+-- 2026-09-28: one top squad battle = ~3,400 net damage on a Normal, ~1,600 on a Mythic).
+--   Normal  80,000: 10 top squads a day win on day ~3.
+--   Heroic 100,000: 10 top squads a day win on day ~5.7 (86%).
+--   Mythic 100,000: 10 top squads EVERY day for 7 days win 40% of the time.
+-- crew = the HP share that sizes the boss heals (hp_share = HP / crew), so a heal is the
+-- same size for any number of players. spawn_hunt = the live definition with the HP block
+-- replaced. New spawns only.
+
+insert into settings (key, value) values ('hunt_hp',
+  '{"Normal":80000,"Heroic":100000,"Mythic":100000,"crew":10}'::jsonb)
+  on conflict (key) do nothing;
 
 CREATE OR REPLACE FUNCTION public.spawn_hunt(p_days integer DEFAULT 3)
  RETURNS bigint
@@ -12,6 +24,7 @@ declare
   v_weak jsonb; v_resist jsonb; v_hp bigint; v_name text; v_id bigint; v_pow bigint;
   v_pool text[]; v_recent text[]; v_fresh text[]; v_weaktags text[]; v_resisttags text[];
   v_passive jsonb; v_pk text; v_plist jsonb; v_hunters int;
+  v_cfg jsonb;
   v_plabels jsonb := jsonb_build_object(
     'armored',      'Armored: melee attackers deal less',
     'shrouded',     'Shrouded: attacks miss more often',
@@ -27,15 +40,7 @@ declare
                           'The AFK Warzombie','The Hardstuck Skeleton'];
 begin
   update hunts set status = 'expired' where status = 'active';
-  select greatest(1, count(*)) into v_players from players;
   v_tier := (array['Normal','Heroic','Mythic'])[1 + floor(random() * 3)];
-  -- HP x deployable power (boss-sim.mjs: an active server wins Normal ~day 3, Heroic ~day 4.4,
-  -- Mythic ~55% by day 5; the bosses hit 3-4x harder than before, 2026-09-28).
-  -- Recalibrated on Nathan's real Mythic fight (2026-09-28, 34% in 22 attacks with 5 cards
-  -- still up: support heals keep the squad alive longer than boss-sim.mjs assumed). At the
-  -- real pace one player clears ~60% of a x9 Mythic per day, so: Normal x22 (solo ~day 3),
-  -- Heroic x30 (solo ~week), Mythic x44 (solo ~60% in the week; it needs a second player).
-  v_tiermult := case v_tier when 'Normal' then 22 when 'Heroic' then 30 else 44 end;
   v_nweak   := case v_tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end;
   v_nresist := case v_tier when 'Normal' then 0 when 'Heroic' then 1 else 2 end;
 
@@ -86,14 +91,14 @@ begin
           order by random() limit case v_tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end) x;
   v_passive := jsonb_build_object('kind', v_plist->0->>'kind', 'label', v_plist->0->>'label', 'list', v_plist);
 
-  v_pow := deployable_power();
-  v_hp := greatest(500, round(v_pow * v_tiermult));
+  -- Fixed HP per tier (the settings dial 'hunt_hp', see the header).
+  select value into v_cfg from settings where key = 'hunt_hp';
+  v_cfg := coalesce(v_cfg, '{"Normal":80000,"Heroic":100000,"Mythic":100000,"crew":10}'::jsonb);
+  v_hp := greatest(500, coalesce((v_cfg->>v_tier)::bigint, 100000));
+  v_hunters := greatest(1, coalesce((v_cfg->>'crew')::int, 10));
   v_name := c_names[1 + floor(random() * array_length(c_names, 1))];
-  -- One player's share of the HP: the boss heals are sized to it (boss-sim.mjs found that
-  -- heals sized to the FULL HP grow with the player count and make a big server lose).
-  select greatest(1, count(distinct pc.player_id)) into v_hunters
-    from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
-    where pc.quantity >= 1 and s.type in ('Character', 'Creature');
+  -- The boss heals are sized to HP / crew (boss-sim.mjs: heals sized to the FULL HP make
+  -- every heal worth several squad battles).
   insert into hunts (name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, closes_at, hp_share)
     values (v_name, v_tier, v_weak, v_resist, v_passive, v_hp, v_hp, now() + make_interval(days => p_days),
             greatest(1, round(v_hp::numeric / v_hunters)))
