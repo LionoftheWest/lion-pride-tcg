@@ -1,4 +1,4 @@
-import { thumb } from './thumb.js';
+import { thumb, revealThumb } from './thumb.js';
 // Opening several packs at once (design/17-*, approved 2026-09-27): the chooser above the
 // dock (x1 / x5 / x10, only what the member can afford) and the multi-pack reveal
 // (every card face-down with the REAL card back, shuffled, tap to flip or
@@ -53,7 +53,7 @@ export function showMultiReveal(deps, packs) {
         <button class="v2-btn gold" id="mrAll">Reveal all</button><button class="v2-icon" id="mrClose" aria-label="Close">✕</button></div>
       <div class="mr-grid" id="mrGrid">${items.map((c, i) => `<button class="mr-card r-${c.rarity}${(RANK[c.rarity] ?? 0) >= 2 ? ' hot' : ''}" data-i="${i}">
           <span class="mr-in"><span class="mr-face mr-back"><img src="${esc(d.cardBack())}" alt=""></span>
-          <span class="mr-face mr-front"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">${c.isNew ? '<i class="mr-newtag">NEW</i>' : ''}</span></span></button>`).join('')}</div>
+          <span class="mr-face mr-front"><img src="${revealThumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">${c.isNew ? '<i class="mr-newtag">NEW</i>' : ''}</span></span></button>`).join('')}</div>
     </section>
   </div>`;
   fit();

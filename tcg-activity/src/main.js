@@ -11,7 +11,7 @@
  * shows in the main header and opens reveal in the main pane for everyone.
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
-import { thumb, installImgFallback } from './thumb.js';
+import { thumb, revealThumb, installImgFallback } from './thumb.js';
 installImgFallback();
 import { mountBoss } from './boss.js';
 import { BOSS_LIST, seedForBoss, thumbFor, THUMB_BASE } from './boss-meta.js';
@@ -896,7 +896,7 @@ function showReveal(msg) {
     return `<div class="fc c ${c.rarity}${hot}" data-idx="${i}" style="--i:${i}">
       <div class="pf">
         <div class="pf-face pf-back"><img src="${cardBack}" alt=""></div>
-        <div class="pf-face pf-front">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">` : ''}</div>
+        <div class="pf-face pf-front">${c.image_url ? `<img src="${revealThumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">` : ''}</div>
       </div>
       <div class="fc-cap">${esc(c.name)}</div>
     </div>`;
