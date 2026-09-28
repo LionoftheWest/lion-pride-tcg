@@ -709,6 +709,14 @@ function paintSpotEditor() {
   const claimed = achs.filter((a) => claimedSet().has(a.key));
   const titles = [...new Set(claimed.map((a) => rewardOf(a.key).title).filter(Boolean))];
   const frames = [...new Set(claimed.map((a) => rewardOf(a.key).frame).filter(Boolean))];
+  // Every title and frame in the game, so the locked ones show what exists and which
+  // achievement unlocks them (Nathan: "there aren't any frames/titles in the game").
+  const unlockBy = (kind, v) => achs.filter((a) => rewardOf(a.key)[kind] === v).map((a) => a.name);
+  const allTitles = [...new Set(achs.map((a) => rewardOf(a.key).title).filter(Boolean))];
+  const allFrames = [...new Set(achs.map((a) => rewardOf(a.key).frame).filter(Boolean))];
+  const lockedTitles = allTitles.filter((t) => !titles.includes(t));
+  const lockedFrames = allFrames.filter((f) => !frames.includes(f));
+  const locked = (label, by) => `<span class="f-chip locked" title="Unlock: ${esc(by.join(' or '))}">🔒 ${label}</span>`;
   const slots = [0, 1, 2].map((i) => {
     const c = byId.get(sp.ids[i]);
     return c ? `<button class="se-slot r-${c.rarity}" data-slot="${i}" title="Remove ${esc(c.name)}"><img src="${c.image_url}" alt=""><span class="se-x">✕</span></button>`
@@ -726,9 +734,9 @@ function paintSpotEditor() {
       <div class="side-h">Spotlight <span class="n">${sp.ids.length}/3</span></div>
       <div class="se-slots" id="seSlots">${slots}</div>
       <div class="side-h">Title</div>
-      <div class="f-chips">${pill('title', '', 'None', !sp.title)}${titles.map((t) => pill('title', t, esc(t), sp.title === t)).join('')}${titles.length ? '' : '<span class="dim se-hint">Redeem achievements to unlock titles.</span>'}</div>
+      <div class="f-chips se-titles" id="seTitles">${pill('title', '', 'None', !sp.title)}${titles.map((t) => pill('title', t, esc(t), sp.title === t)).join('')}${lockedTitles.map((t) => locked(esc(t), unlockBy('title', t))).join('')}</div>
       <div class="side-h">Frame</div>
-      <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, esc(FRAMES[f]), sp.frame === f)).join('')}${frames.length ? '' : '<span class="dim se-hint">Redeem achievements to unlock frames.</span>'}</div>
+      <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, `<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, sp.frame === f)).join('')}${lockedFrames.map((f) => locked(`<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, unlockBy('frame', f))).join('')}</div>
       <div class="se-foot"><span class="tr-msg" id="seMsg"></span><button class="v2-btn gold" id="seSave">Save</button></div>
     </aside>
     <section class="se-main">
@@ -747,6 +755,14 @@ function paintSpotEditor() {
   };
   paintCards(grid, el('sePager'), list, sp, pick);
   grid.querySelectorAll('.v2-cell').forEach((n) => { const c = list[Number(n.dataset.idx)]; if (c && sp.ids.includes(Number(c.id))) n.classList.add('sel', 'in-spot'); });
+  requestAnimationFrame(() => {
+    const box = el('seTitles');
+    if (!box) return;
+    const bottom = box.getBoundingClientRect().top + 120;
+    const extra = [...box.querySelectorAll('.f-chip.locked')].filter((n) => n.getBoundingClientRect().bottom > bottom);
+    extra.forEach((n) => n.remove());
+    if (extra.length) box.insertAdjacentHTML('beforeend', `<span class="f-chip locked more">+${extra.length} more</span>`);
+  });
   el('seSlots').onclick = (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; sp.ids.splice(Number(b.dataset.slot), 1); paintSpotEditor(); };
   box.querySelectorAll('[data-title]').forEach((b) => b.addEventListener('click', () => { sp.title = b.dataset.title || null; paintSpotEditor(); }));
   box.querySelectorAll('[data-frame]').forEach((b) => b.addEventListener('click', () => { sp.frame = b.dataset.frame || null; paintSpotEditor(); }));
