@@ -1921,7 +1921,7 @@ function wireSelectPhase() {
     const node = e.target.closest?.('.c');
     if (!node) return;
     const id = Number(node.dataset.id);
-    if (e.target.closest?.('.card-info')) { const cc = (huntState?.roster || []).find((x) => x.id === id); if (cc) openViewer(cc); return; } // inspect, don't select
+    if (e.target.closest?.('.card-info')) { const cc = (huntState?.roster || []).find((x) => x.id === id); if (cc) openViewer(cc, { raid: true }); return; } // inspect, don't select
     if (squad.ko) return; // squad down for the day — inspect only, no re-pick
     if (squad.sel.has(id)) { squad.sel.delete(id); node.classList.remove('selected'); }
     else {
@@ -2007,7 +2007,7 @@ function wireBattlePhase() {
     const cx = b.left + b.width / 2;
     const id = Number(node.dataset.id);
     const card = (huntState.roster || []).find((c) => c.id === id);
-    if (e.target.closest?.('.card-info')) { if (card) openViewer(card); return; } // inspect, don't attack/cast
+    if (e.target.closest?.('.card-info')) { if (card) openViewer(card, { raid: true }); return; } // inspect, don't attack/cast
     const support = card && !ATTACKER_TYPES.includes(card.type);
     // Completing a support that needed a target: this attacker is the target.
     if (pendingSupport && !support && !node.classList.contains('downed')) {
@@ -2765,9 +2765,11 @@ function withOwned(card) {
   return out;
 }
 
-function openViewer(card) {
+function openViewer(card, opts = {}) {
   card = withOwned(card);
-  el('viewer').classList.toggle('card-only', uiV2);
+  el('viewer').classList.toggle('card-only', uiV2 && !opts.raid);
+  el('viewer').classList.toggle('raid-info', uiV2 && !!opts.raid);
+  fillRaidInfo(opts.raid ? card : null);
   SFX.play('click'); // opening a card
   const locked = !!card.locked;
   el('v-front').src = card.image_url || '';
@@ -2792,6 +2794,34 @@ function openViewer(card) {
   rx = 0; ry = 0; hoverX = 0; hoverY = 0; applyView();
   el('viewer').classList.remove('hidden');
   enableGyro();
+}
+
+// The raid numbers of a squad card: the same values the fight uses (hunt_synergy_passives
+// crit 10%, 20% on a weakness; HP from /api/hunt).
+function fillRaidInfo(c) {
+  const box = el('v-raid');
+  if (!box) return;
+  if (!c) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const support = !ATTACKER_TYPES.includes(c.type);
+  const elem = cardElement(c.tags);
+  const look = elem ? ELEMENTS[elem] : null;
+  const max = c.max_hp || 0;
+  const hp = c.hp ?? max;
+  const round = huntState?.round || 0;
+  const cd = support && (c.cdReady || 0) > round ? c.cdReady - round : 0;
+  const stat = (v, k, cls = '') => `<div class="vr-stat ${cls}"><b>${v}</b><span>${k}</span></div>`;
+  box.innerHTML = `<div class="vr-head"><span class="vr-role ${support ? 'sup' : 'atk'}">${support ? '🛡 Support' : '⚔ Attacker'}</span>
+      ${c.matches && !support ? '<span class="vr-weak">×2 WEAKNESS</span>' : ''}${c.downed ? '<span class="vr-down">DOWNED</span>' : ''}</div>
+    <div class="vr-stats">
+      ${stat(support ? '—' : `⚡ ${c.power ?? 0}`, 'Power')}
+      ${stat(max ? `${hp}/${max}` : '—', 'HP', max && hp / max < 0.35 ? 'low' : '')}
+      ${stat(support ? '—' : (c.matches ? '20%' : '10%'), 'Crit')}
+      ${stat(look ? `${look.glyph} ${look.name}` : '—', 'Element')}
+    </div>
+    ${max ? `<i class="vr-hpbar"><i style="width:${Math.max(0, Math.round((100 * hp) / max))}%"></i></i>` : ''}
+    ${c.shield > 0 ? `<div class="vr-note">🛡 Shield ${c.shield}</div>` : ''}
+    ${cd ? `<div class="vr-note">⏳ Ready in ${cd} round${cd === 1 ? '' : 's'}</div>` : ''}`;
+  box.classList.remove('hidden');
 }
 
 // The Ability section of the card viewer (name, plain-words effect, meta).

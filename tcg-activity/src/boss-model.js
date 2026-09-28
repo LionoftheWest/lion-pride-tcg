@@ -75,7 +75,7 @@ export function mountModelBoss(canvas, key, tier) {
 
   // The boss: fit its height to the stage (bigger on the harder tiers), feet on the ground.
   const holder = new THREE.Group(); scene.add(holder);
-  let mixer = null, actions = {}, idle = null, dead = false, defeatPending = false;
+  let mixer = null, actions = {}, twins = {}, idle = null, current = null, holding = false, dead = false, defeatPending = false;
   const TS = { Heroic: 1.1, Mythic: 1.22 }[tier] || 1.0;
   new GLTFLoader().load(`${MODEL_BASE}/${def.file}`, (g) => {
     const m = g.scene;
@@ -91,24 +91,47 @@ export function mountModelBoss(canvas, key, tier) {
     m.position.set(-(b2.min.x + b2.max.x) / 2, -1.7 - b2.min.y, -(b2.min.z + b2.max.z) / 2);
     holder.add(m);
     mixer = new THREE.AnimationMixer(m);
-    for (const clip of g.animations) actions[clip.name] = mixer.clipAction(clip);
+    for (const clip of g.animations) { actions[clip.name] = mixer.clipAction(clip); twins[clip.name] = mixer.clipAction(clip.clone()); }
     idle = actions.idle || Object.values(actions)[0] || null;
+    current = idle;
     canvas.dataset.bossDebug = JSON.stringify({ clips: Object.keys(actions), measured: +size.y.toFixed(3), fitted: +(b2.max.y - b2.min.y).toFixed(3) });
-    if (idle) idle.play();
+    if (idle) { idle.setEffectiveWeight(1); idle.play(); }
+    if (typeof window !== 'undefined' && window.__BOSS_DEBUG) canvas.__boss = { model: m, mixer, act: (ev) => once(ev), pause: () => { running = false; cancelAnimationFrame(raf); }, step: (dt) => { mixer.update(dt); backToIdle(); } }; // tests only
     if (defeatPending) { dead = false; once('defeat', true); dead = true; } // defeated before the model loaded
-    mixer.addEventListener('finished', (e) => {
-      if (dead || !idle || e.action === idle) return;
-      idle.reset().fadeIn(0.25).play(); e.action.fadeOut(0.25);
-    });
   });
 
-  // Play a one-shot clip, then return to idle. `hold` keeps the last frame (death).
+  // Every change is a crossfade whose weights add up to 1, so the model never drops
+  // toward its rest pose (the "snap" Nathan saw, 2026-09-28). Measured with
+  // discord-ui-preview/animtest: fast hits jumped a bone 135 degrees in one frame.
+  // - One-shots hold their last frame and blend back to idle BEFORE they end.
+  // - A clip that is already playing blends from its twin (no restart at frame 0).
+  // - A hit reaction does not cut off the boss's own move (slam, strike, roar...).
+  const FADE_IN = 0.28, FADE_BACK = 0.4;
+  const REACT = new Set(['hit']);
+  function crossTo(next, fade) {
+    if (!current || current === next) return;
+    next.reset(); next.setEffectiveTimeScale(1); next.setEffectiveWeight(1); next.play();
+    current.crossFadeTo(next, fade, false);
+    current = next;
+  }
   function once(event, hold) {
-    const a = actions[CLIP_FOR[event]];
-    if (!a || !mixer || dead) return;
-    for (const other of Object.values(actions)) if (other !== a && other.isRunning() && other !== idle) other.fadeOut(0.12);
-    a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = !!hold; a.fadeIn(0.12).play();
-    if (idle) idle.fadeOut(0.12);
+    const name = CLIP_FOR[event];
+    if (!actions[name] || !mixer || dead) return;
+    const cur = current && current !== idle ? current.getClip().name : null;
+    // Keep the boss's own move: a hit during it is skipped (unless the move is almost done).
+    if (REACT.has(name) && cur && !REACT.has(cur) && current.time < current.getClip().duration - FADE_BACK) return;
+    const next = cur === name && current === actions[name] ? twins[name] : actions[name];
+    next.setLoop(THREE.LoopOnce, 1); next.clampWhenFinished = true;
+    crossTo(next, FADE_IN);
+    holding = !!hold;
+  }
+  // Back to idle a little before the one-shot ends (the clip holds its last frame).
+  function backToIdle() {
+    if (!current || current === idle || holding || dead || !idle) return;
+    if (current.time >= current.getClip().duration - FADE_BACK || !current.isRunning()) {
+      idle.setLoop(THREE.LoopRepeat, Infinity);
+      crossTo(idle, FADE_BACK);
+    }
   }
 
   let running = true, raf = 0, last = performance.now();
@@ -122,7 +145,7 @@ export function mountModelBoss(canvas, key, tier) {
   function frame() {
     if (!running) return;
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (mixer) mixer.update(dt);
+    if (mixer) { mixer.update(dt); backToIdle(); }
     holder.rotation.y = Math.sin((now - t0) / 1000 * 0.4) * 0.12; // a slow sway toward the squad
     fx.update(dt, (now - t0) / 1000);
     renderer.render(scene, camera);
