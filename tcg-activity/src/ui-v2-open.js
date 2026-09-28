@@ -76,7 +76,8 @@ function fit() {
 }
 
 function flip(b) {
-  if (b.classList.contains('up')) return;
+  // A card already face up opens in the zoomed 3D view (the reveal stays behind it).
+  if (b.classList.contains('up')) { d.openViewer?.(items[Number(b.dataset.i)]); return; }
   b.classList.add('up');
   flipped += 1;
   const c = items[Number(b.dataset.i)];
