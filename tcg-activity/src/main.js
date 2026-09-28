@@ -310,7 +310,7 @@ async function main() {
 function startV2() {
   document.body.classList.add('ui-v2');
   initV2({
-    api, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago,
+    api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned,
     features: () => features, user: () => meUser, currentView: () => currentView,
   });
   el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>`;
@@ -1154,10 +1154,10 @@ function startHuntTicker() {
     if (huntTick % 3 === 0 && currentView === 'battling') refreshHuntFeed(); // poll the boss feed every 3s
     // The UTC day rolled over: the daily reset happened. Re-fetch so downed cards reset
     // and the locked squad expires (back to squad selection).
-    if (huntDay && utcToday() !== huntDay) { huntDay = utcToday(); stopHuntTicker(); if (view === 'battling') renderHunt(); return; }
+    if (huntDay && utcToday() !== huntDay) { huntDay = utcToday(); stopHuntTicker(); if (currentView === 'battling') renderHunt(); return; }
     // A deadline passed: the server state changed. Refresh after a short delay so the
     // cron has spawned/closed, then re-render (boss appears, or cooldown begins).
-    if (expired) { stopHuntTicker(); setTimeout(() => { if (view === 'battling') renderHunt(); }, 5000); }
+    if (expired) { stopHuntTicker(); setTimeout(() => { if (currentView === 'battling') renderHunt(); }, 5000); }
   }, 1000);
 }
 
@@ -1175,7 +1175,16 @@ async function renderHunt() {
 }
 
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
+let huntResting = false; // v2: the resting scene shows the last hunt's feed; do not poll it away
 function paintHuntView(d) {
+  huntResting = !!(uiV2 && (!d || !d.hunt));
+  if (huntResting) {
+    el('main').innerHTML = `<div class="main-body hunt arena-mode resting">${restingHTML(d)}</div>`;
+    live.attacks = (d && d.lastFeed) || [];
+    renderFeedSidebar();
+    startHuntTicker();
+    return;
+  }
   if (!d || !d.hunt) {
     el('main').innerHTML = `<div class="main-body">${cooldownHTML(d)}</div>`;
     renderBossMini(); // no active boss -> clears the sidebar square
@@ -1250,6 +1259,41 @@ function cooldownHTML(d) {
     ? `<div class="cd-timer">${cdSpan(next, 'Next boss in', 'countdown big')}</div>`
     : '<span>A new boss appears each week.</span>';
   return `<div class="soon cooldown">🦁<b>The hunt is resting.</b>${outcome}${timer}</div>`;
+}
+
+// v2 resting scene: the last boss's title, final HP and result, the countdown where the
+// boss stands, your damage + standings on the right, the top hunters along the bottom.
+function restingHTML(d) {
+  const h = d && d.lastResult;
+  const next = d && d.nextSpawnAt;
+  const pct = h && h.hp_max ? Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max)) : 0;
+  const won = h && h.status === 'defeated';
+  const board = (d && d.lastBoard) || [];
+  const top = board.length
+    ? board.map((r, i) => `<div class="rest-hunter${i === 0 ? ' first' : ''}"><span class="rh-i">${i + 1}</span><b>${esc(r.username)}</b><span class="rh-d">${Number(r.damage).toLocaleString()}</span></div>`).join('')
+    : '<p class="empty small">No hunters last time.</p>';
+  return `<div class="hunt-arena resting${won ? ' won' : ' lost'}">
+    <div class="arena-stage rest-stage">
+      <div class="rest-count">
+        <span class="rest-k">Next boss in</span>
+        ${next ? cdSpan(next, '', 'rest-timer') : '<span class="rest-timer">soon</span>'}
+      </div>
+    </div>
+    <div class="arena-top">
+      ${h ? `<div class="arena-titlerow">
+        <span class="boss-name">${esc(h.name)}</span>
+        <span class="boss-tier tier-${esc(String(h.tier || '').toLowerCase())}">${esc(h.tier || '')}</span>
+        ${weakResistHTML(h)}
+        <span class="spacer"></span>
+        <span class="closes rest-result">${won ? '🏆 Defeated' : '💀 Escaped'}</span>
+      </div>
+      <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext">${won ? 'DEFEATED' : `${Number(h.hp_remaining).toLocaleString()} / ${Number(h.hp_max).toLocaleString()} HP left`}</span></div>
+      <div class="arena-subrow">
+        <span>Your damage <b>${Number((d && d.myLast) || 0).toLocaleString()}</b></span>
+      </div>` : '<div class="arena-titlerow"><span class="boss-name">The hunt is resting</span></div>'}
+    </div>
+    <div class="rest-board">${top}</div>
+  </div>`;
 }
 
 // Strip the facet prefix from a tag slug for display (trait:water -> water).
@@ -1737,6 +1781,7 @@ function updateLockBtn() {
 // The live boss-attack feed (shown in the right sidebar on the battle page). Polled
 // while the battle screen is open. Newest first, capped.
 async function refreshHuntFeed() {
+  if (huntResting) return; // no live boss: keep the last hunt's feed on screen
   let d; try { d = await api('/api/hunt/feed'); } catch { return; }
   const feed = d?.feed || [];
   live.attacks = feed.slice(0, 20);
@@ -2678,6 +2723,7 @@ function withOwned(card) {
 
 function openViewer(card) {
   card = withOwned(card);
+  el('viewer').classList.toggle('card-only', uiV2);
   SFX.play('click'); // opening a card
   const locked = !!card.locked;
   el('v-front').src = card.image_url || '';

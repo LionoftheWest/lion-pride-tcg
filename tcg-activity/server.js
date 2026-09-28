@@ -112,6 +112,39 @@ app.get(/^\/api\/img\/(.+)/, async (req, res) => {
   } catch { res.status(502).end(); }
 });
 
+// Discord avatar proxy: /api/avatar/<discord id>. The hash is saved at login
+// (players.avatar). Discord blocks unmapped fetches, so the picture comes through here.
+const avatarHash = new Map(); // id -> { hash, at }
+const avatarBytes = new Map(); // id:hash -> { type, buf }
+async function hashFor(id) {
+  const hit = avatarHash.get(id);
+  if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.hash;
+  const { data } = await supabase.from('players').select('avatar').eq('id', id).maybeSingle();
+  const hash = data?.avatar || null;
+  avatarHash.set(id, { hash, at: Date.now() });
+  return hash;
+}
+app.get('/api/avatar/:id', async (req, res) => {
+  const id = String(req.params.id || '');
+  if (!/^\d{5,25}$/.test(id)) return res.status(400).end();
+  try {
+    const hash = await hashFor(id);
+    if (!hash || !/^(a_)?[0-9a-f]{32}$/.test(hash)) return res.status(404).end();
+    const key = `${id}:${hash}`;
+    let img = avatarBytes.get(key);
+    if (!img) {
+      const r = await fetch(`https://cdn.discordapp.com/avatars/${id}/${hash}.png?size=128`);
+      if (!r.ok) return res.status(404).end();
+      img = { type: r.headers.get('content-type') || 'image/png', buf: Buffer.from(await r.arrayBuffer()) };
+      if (avatarBytes.size > 500) avatarBytes.delete(avatarBytes.keys().next().value);
+      avatarBytes.set(key, img);
+    }
+    res.setHeader('Content-Type', img.type);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.end(img.buf);
+  } catch { res.status(502).end(); }
+});
+
 // index.html is served with the hashed bundle name injected. It must never be
 // cached (no-store) so a redeploy is picked up; the hashed bundle itself can be
 // cached forever because its URL changes whenever its content changes.
@@ -152,6 +185,11 @@ const UI_V2_USERS = new Set((process.env.UI_V2_USERS || '').split(',').map((s) =
 app.get('/api/flags', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const hash = me.avatar || null;
+  if (hash && avatarHash.get(String(me.id))?.hash !== hash) {
+    avatarHash.set(String(me.id), { hash, at: Date.now() });
+    supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
+  }
   res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)) });
 });
 
@@ -339,10 +377,21 @@ app.get('/api/hunt', async (req, res) => {
     // Cooldown: no active boss. Return the next spawn time + the last boss outcome.
     const [{ data: nextSpawnAt }, { data: last }] = await Promise.all([
       supabase.rpc('next_hunt_spawn'),
-      supabase.from('hunts').select('name, tier, status')
+      supabase.from('hunts').select('id, name, tier, status, hp_max, hp_remaining, weak_points, resist_points, passive, closes_at')
         .in('status', ['defeated', 'expired']).order('id', { ascending: false }).limit(1).maybeSingle(),
     ]);
-    return res.json({ hunt: null, nextSpawnAt: nextSpawnAt || null, lastResult: last || null });
+    let lastBoard = [], myLast = 0, lastFeed = [];
+    if (last) {
+      const [lb, mine, fd] = await Promise.all([
+        supabase.rpc('hunt_leaderboard', { p_hunt: last.id, p_limit: 5 }),
+        supabase.from('hunt_hits').select('damage').eq('hunt_id', last.id).eq('player_id', me.id),
+        queryHuntFeed(last.id).catch(() => ({ feed: [] })),
+      ]);
+      lastBoard = lb.data || [];
+      myLast = (mine.data || []).reduce((t, h) => t + (h.damage || 0), 0);
+      lastFeed = (fd.feed || []).slice(0, 8);
+    }
+    return res.json({ hunt: null, nextSpawnAt: nextSpawnAt || null, lastResult: last || null, lastBoard, myLast, lastFeed });
   }
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: cards }, { data: hpRows }, { data: contrib }, { data: cstate }] = await Promise.all([
@@ -515,19 +564,77 @@ app.get('/api/hunt/leaderboard', async (req, res) => {
   res.json({ leaders: data || [], me: me.id });
 });
 
-// The v2 Home profile: packs opened + the hunt rank. Cards owned comes from the
-// collection the client already has.
+// The v2 profile of any member (?id=<discord id>, default = the caller): the stats the
+// achievements need, the hunt rank, the spotlight, and for another member their cards.
+const profileCache = new Map(); // id -> { at, payload }
+const PROFILE_TTL = 20000;
 app.get('/api/profile', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const id = String(req.query.id || me.id);
+  if (!/^\d{1,25}$/.test(id)) return res.status(400).json({ error: 'bad id' });
+  const self = id === String(me.id);
+  const hit = profileCache.get(id);
+  if (hit && Date.now() - hit.at < PROFILE_TTL) return res.json({ ...hit.payload, cards: self ? undefined : hit.payload.cards });
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
-  const [{ count: packsOpened }, lb] = await Promise.all([
-    supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', me.id).eq('reason', 'opened'),
+  const [player, opened, gifted, hits, plays, pranked, trades, lb, cp, owned] = await Promise.all([
+    supabase.from('players').select('id, username, avatar, spotlight').eq('id', id).maybeSingle(),
+    supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', 'opened'),
+    supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('granted_by', id).eq('reason', 'gift'),
+    supabase.from('hunt_hits').select('hunt_id, damage').eq('player_id', id).limit(20000),
+    supabase.from('card_plays').select('kind').eq('player_id', id).limit(20000),
+    supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('target_id', id).eq('kind', 'prank').neq('player_id', id),
+    supabase.from('trade_offers').select('id', { count: 'exact', head: true }).eq('status', 'accepted').or(`from_id.eq.${id},to_id.eq.${id}`),
     hunt ? supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 }) : Promise.resolve({ data: [] }),
+    supabase.rpc('my_collection_power', { p_player_id: id }),
+    self ? Promise.resolve({ data: null }) : supabase.from('player_cards').select('card_id, quantity, ascension').eq('player_id', id),
   ]);
+  if (!player.data) return res.status(404).json({ error: 'no such player' });
+  const hitRows = hits.data || [];
+  const joined = [...new Set(hitRows.map((h) => h.hunt_id))];
+  let defeated = 0;
+  if (joined.length) {
+    const { count } = await supabase.from('hunts').select('id', { count: 'exact', head: true }).in('id', joined).eq('status', 'defeated');
+    defeated = count || 0;
+  }
+  const kinds = (plays.data || []).reduce((m, r) => { m[r.kind] = (m[r.kind] || 0) + 1; return m; }, {});
   const leaders = lb.data || [];
-  const idx = leaders.findIndex((r) => String(r.player_id) === String(me.id));
-  res.json({ packsOpened: packsOpened || 0, huntRank: idx >= 0 ? idx + 1 : null, huntPlayers: leaders.length });
+  const idx = leaders.findIndex((r) => String(r.player_id) === id);
+  const payload = {
+    id, name: player.data.username, hasAvatar: !!player.data.avatar,
+    spotlight: player.data.spotlight || [],
+    power: cp.data != null ? Number(cp.data) : null,
+    huntRank: idx >= 0 ? idx + 1 : null, huntPlayers: leaders.length,
+    stats: {
+      packsOpened: opened.count || 0, packsGifted: gifted.count || 0,
+      huntsJoined: joined.length, bossesDefeated: defeated,
+      totalDamage: hitRows.reduce((t, h) => t + (h.damage || 0), 0),
+      bestHit: hitRows.reduce((m, h) => Math.max(m, h.damage || 0), 0),
+      boonsPlayed: kinds.boon || 0, pranksPlayed: kinds.prank || 0, neutralPlayed: kinds.neutral || 0,
+      pranksReceived: pranked.count || 0, tradesDone: trades.count || 0,
+    },
+    cards: owned.data ? owned.data.map((r) => ({ id: r.card_id, quantity: r.quantity, ascension: r.ascension || 0 })) : undefined,
+  };
+  payload.packsOpened = payload.stats.packsOpened; // the v2 Home reads this name
+  profileCache.set(id, { at: Date.now(), payload });
+  res.json(payload);
+});
+
+// Save the caller's spotlight: up to 3 cards the caller owns (empty = automatic).
+app.post('/api/spotlight', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const ids = Array.isArray(req.body?.cardIds) ? [...new Set(req.body.cardIds.map(Number))] : null;
+  if (!ids || ids.length > 3 || ids.some((n) => !Number.isInteger(n) || n <= 0)) return res.status(400).json({ error: 'bad cards' });
+  if (ids.length) {
+    const { data } = await supabase.from('player_cards').select('card_id').eq('player_id', me.id).in('card_id', ids);
+    if ((data || []).length !== ids.length) return res.status(400).json({ error: 'not owned' });
+  }
+  const { error } = await supabase.from('players').update({ spotlight: ids }).eq('id', me.id);
+  if (error) return res.status(500).json({ error: error.message });
+  profileCache.delete(String(me.id));
+  res.json({ ok: true, spotlight: ids });
 });
 
 // The card catalog is identical for every player except the "owned" overlay, so

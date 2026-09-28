@@ -1,0 +1,110 @@
+/* Lion Pride TCG — UI v2 round 2 (Nathan, 2026-09-27): card framing, card-only viewer,
+   element filters in the sidebar, achievement detail, spotlight, avatars, member
+   profiles, the resting hunt, and the top bar clean-up. Scoped under body.ui-v2. */
+
+/* ---- Top bar: no packs pill (the dock OPEN has the count), no sound button, no
+   avatar circle, no season chip. ---- */
+body.ui-v2 #v2Packs, body.ui-v2 #mute, body.ui-v2 #v2Avatar, body.ui-v2 #v2Season { display: none !important; }
+
+/* ---- Avatars: the Discord picture over the initial ---- */
+body.ui-v2 .v2-avatar { position: relative; overflow: hidden; }
+body.ui-v2 .v2-avatar > img { position: absolute; inset: 2px; width: calc(100% - 4px); height: calc(100% - 4px); border-radius: 50%; object-fit: cover; }
+
+/* ---- A card cell: the printed card as it is, a caption row under it ---- */
+body.ui-v2 .v2-cell { width: var(--cw, 150px); cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+body.ui-v2 .v2-cell .v2-card { width: 100%; border: 0; border-radius: 4.6% / 3.3%; background: transparent; overflow: visible; transition: transform var(--dur-base) var(--ease-spring), filter var(--dur-base); }
+body.ui-v2 .v2-cell .v2-card > img { position: static; display: block; width: 100%; height: 100%; object-fit: contain; }
+body.ui-v2 .v2-cell:hover .v2-card { transform: translateY(-4px); }
+body.ui-v2 .v2-cell .v2-card:not(.r-normal):not(.locked) { box-shadow: none; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--rc) 45%, transparent)); }
+body.ui-v2 .v2-cell.sel .v2-card { outline: 2.5px solid var(--gold); outline-offset: 3px; }
+body.ui-v2 .v2-cell .v2-card.locked { border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg-raised); }
+body.ui-v2 .v2-cap { height: 20px; display: flex; align-items: center; justify-content: center; gap: 6px; font: 700 11px var(--font-num); color: var(--text-secondary); white-space: nowrap; }
+body.ui-v2 .v2-cap .cap-el { font-size: 12px; }
+body.ui-v2 .v2-cap .cap-stars { color: var(--gold); letter-spacing: -1px; }
+body.ui-v2 .v2-cap .cap-qty { color: var(--text-muted); }
+body.ui-v2 .v2-grid { grid-template-columns: repeat(var(--cols, 5), var(--cw, 150px)); }
+
+/* ---- The panel preview: the printed card at its true 5:7, never stretched ---- */
+body.ui-v2 .p-top { align-items: flex-start; }
+body.ui-v2 .p-art { flex: 0 0 96px; width: 96px; aspect-ratio: 5 / 7; align-self: flex-start; cursor: pointer; }
+body.ui-v2 .p-art > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+body.ui-v2 .p-art.locked { border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg-raised); display: grid; place-items: center; cursor: default; }
+body.ui-v2 .p-actions .v2-icon.on { color: var(--gold); border-color: rgba(244, 183, 60, .55); background: var(--gold-soft); }
+body.ui-v2 .p-actions .v2-btn:disabled { filter: grayscale(.6) brightness(.7); }
+
+/* ---- Element filters in the sidebar ---- */
+body.ui-v2 .el-grid { display: flex; flex-wrap: wrap; gap: 2px; }
+body.ui-v2 .el-grid .el-btn { width: 28px; height: 28px; }
+body.ui-v2 .v2-chip-btn { height: 30px; padding: 0 12px; border-radius: var(--rad-pill); border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); font: 600 12px var(--font-ui); cursor: pointer; white-space: nowrap; }
+body.ui-v2 .v2-chip-btn:hover { color: var(--text-primary); }
+body.ui-v2 .v2-col-head h2 .sub { white-space: nowrap; }
+
+/* ---- Achievements: buttons, the detail view ---- */
+body.ui-v2 button.v2-ach { font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
+body.ui-v2 button.v2-ach:hover { border-color: var(--border-strong); }
+body.ui-v2 .side-more.on { border-color: var(--gold); color: var(--gold); }
+body.ui-v2 .ach-head { gap: 10px; }
+body.ui-v2 .ach-head .v2-icon { width: 36px; height: 36px; flex: 0 0 36px; font-size: 18px; }
+body.ui-v2 .ah-ico.big { width: 40px; height: 40px; border-radius: 11px; background: var(--surface-3); display: grid; place-items: center; font-size: 20px; }
+body.ui-v2 .ah-bar.wide { height: 6px; margin: 0 0 12px; flex: 0 0 6px; }
+body.ui-v2 .ach-stat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+body.ui-v2 .ach-stat b { font: 800 56px var(--font-num); color: var(--gold); }
+body.ui-v2 .ach-stat span { color: var(--text-muted); font-size: 14px; }
+
+/* ---- Spotlight (the Home profile + member profiles) ---- */
+body.ui-v2 .link-btn { border: 0; background: none; color: var(--gold); font: 700 11px var(--font-ui); letter-spacing: .4px; cursor: pointer; text-transform: none; }
+body.ui-v2 .spot-row { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; gap: 10px; }
+body.ui-v2 .spot-card { height: 100%; max-height: 150px; aspect-ratio: 5 / 7; padding: 0; border: 0; background: none; cursor: pointer; transition: transform var(--dur-base) var(--ease-spring); }
+body.ui-v2 .spot-card:hover { transform: translateY(-4px) rotate(-1deg); }
+body.ui-v2 .spot-card img { width: 100%; height: 100%; object-fit: contain; display: block; }
+body.ui-v2 .spot-card.r-illustrated_rare img { filter: drop-shadow(0 0 8px rgba(62, 139, 255, .45)); }
+body.ui-v2 .spot-card.r-secret_rare img { filter: drop-shadow(0 0 8px rgba(177, 92, 255, .45)); }
+body.ui-v2 .spot-card.r-full_art img { filter: drop-shadow(0 0 8px rgba(255, 79, 163, .45)); }
+body.ui-v2 .spot-card.r-gold img { filter: drop-shadow(0 0 8px rgba(247, 190, 53, .5)); }
+body.ui-v2 .prof-head .prof-cp { margin-left: auto; font: 700 14px var(--font-num); color: var(--gold); }
+body.ui-v2 .v2-tile.prof .side-h { margin: 2px 0 0; align-items: center; }
+
+/* ---- Live in voice: every tile is a button (it opens that member's profile) ---- */
+body.ui-v2 button.vc-tile { font: inherit; color: inherit; text-align: left; cursor: pointer; }
+body.ui-v2 button.vc-tile:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+body.ui-v2 .vc-tile.self { border-color: rgba(244, 183, 60, .35); }
+body.ui-v2 .vc-tile .you { font-style: normal; font: 700 9.5px var(--font-ui); letter-spacing: .6px; color: var(--on-gold); background: var(--gold); border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: 1px; }
+
+/* ---- The member profile window ---- */
+body.ui-v2 .v2-modal { position: fixed; inset: 0; z-index: 90; background: rgba(5, 5, 10, .72); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 24px 24px 100px; box-sizing: border-box; }
+body.ui-v2 .v2-modal.hidden { display: none; }
+body.ui-v2 .v2-modal-card { position: relative; width: min(1120px, 100%); height: min(560px, 100%); display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px;
+  background: var(--bg-raised); border: 1px solid var(--border); border-radius: 20px; padding: 18px; box-sizing: border-box; box-shadow: 0 30px 80px rgba(0, 0, 0, .6); animation: v2Rise var(--dur-base) var(--ease-out); }
+body.ui-v2 .mem-close { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; z-index: 2; }
+body.ui-v2 .mem-side { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; }
+body.ui-v2 .mem-stats { display: flex; flex-direction: column; gap: 4px; }
+body.ui-v2 .mem-stat { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-secondary); padding: 3px 2px; border-bottom: 1px solid var(--border); }
+body.ui-v2 .mem-stat b { font-family: var(--font-num); color: var(--text-primary); }
+body.ui-v2 .mem-side .spot-row { max-height: 130px; }
+body.ui-v2 .mem-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding-right: 40px; }
+
+/* ---- The card viewer: the card only, over a clear background ---- */
+body.ui-v2 #viewer.card-only { background: transparent; }
+body.ui-v2 #viewer.card-only .viewer-info { display: none; }
+body.ui-v2 #viewer.card-only .viewer-stage { width: min(380px, 62vmin); filter: drop-shadow(0 24px 50px rgba(0, 0, 0, .7)); }
+body.ui-v2 #viewer.card-only #viewer-close { background: rgba(17, 17, 27, .85); border: 1px solid var(--border); }
+
+/* ---- The resting hunt: the full scene, the countdown where the boss stands ---- */
+body.ui-v2 .hunt-arena.resting .rest-stage { display: grid; place-items: center; }
+body.ui-v2 .rest-count { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 30px; }
+body.ui-v2 .rest-k { font: 700 12px var(--font-ui); letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); }
+body.ui-v2 .rest-timer { font: 800 64px var(--font-num); color: var(--text-primary); text-shadow: 0 0 40px rgba(124, 92, 255, .55); letter-spacing: 1px; }
+body.ui-v2 .hunt-arena.resting .rest-result { font: 800 13px var(--font-ui); letter-spacing: 1px; text-transform: uppercase; }
+body.ui-v2 .hunt-arena.resting.won .rest-result { color: var(--success); }
+body.ui-v2 .hunt-arena.resting.lost .rest-result { color: var(--danger); }
+body.ui-v2 .hunt-arena.resting.won .hpfill { background: linear-gradient(90deg, #1f7a45, var(--success)); }
+body.ui-v2 .rest-board { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 2; display: flex; gap: 10px; }
+body.ui-v2 .rest-hunter { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: rgba(17, 17, 27, .85); border: 1px solid var(--border); font-size: 12.5px; }
+body.ui-v2 .rest-hunter.first { border-color: rgba(244, 183, 60, .55); }
+body.ui-v2 .rest-hunter .rh-i { font: 700 11px var(--font-num); color: var(--text-muted); }
+body.ui-v2 .rest-hunter.first .rh-i { color: var(--gold); }
+body.ui-v2 .rest-hunter .rh-d { font: 700 12px var(--font-num); color: var(--gold); }
+/* The sidebar holds sets, rarity, elements and achievements at 720px: tighter rows. */
+body.ui-v2 .v2-side .side-row { padding: 5px 10px; }
+body.ui-v2 .v2-side .side-h { margin: 10px 0 5px; }
+body.ui-v2 .v2-side .v2-ach.mini { padding: 6px 9px; gap: 4px; }
