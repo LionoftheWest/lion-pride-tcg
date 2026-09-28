@@ -35,9 +35,14 @@ const bundleName = readdirSync(PUBLIC).find((f) => /^main\..*\.js$/.test(f));
 // style.css is not hashed, so version its URL by content so Discord's proxy can
 // never serve stale CSS after a redeploy.
 const cssVersion = createHash('sha1').update(readFileSync(join(PUBLIC, 'style.css'))).digest('hex').slice(0, 8);
+// Every other stylesheet link (the ui-v2*.css files) gets its own content version the
+// same way: without it, Discord served a stale ui-v2-open.css after a deploy (the new
+// reveal ran with the old 420px column, 2026-09-27).
+const cssV = (name) => createHash('sha1').update(readFileSync(join(PUBLIC, name))).digest('hex').slice(0, 8);
 const indexHtml = readFileSync(join(PUBLIC, 'index.html'), 'utf8')
   .replace('__BUNDLE__', bundleName)
-  .replace('__CSSV__', cssVersion);
+  .replace('__CSSV__', cssVersion)
+  .replace(/href="\/([\w.-]+\.css)"/g, (m, name) => `href="/${name}?v=${cssV(name)}"`);
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 // Discord's iframe can only load external URLs that are mapped. Card art lives on
