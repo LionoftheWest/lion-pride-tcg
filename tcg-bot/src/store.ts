@@ -4,6 +4,7 @@ import {
   type PackAward,
   type Rarity,
   BONUS_THRESHOLD,
+  PACK_SIZE,
   drawPack,
   groupByRarity,
   packsToAward,
@@ -232,6 +233,29 @@ export async function openOnePack(id: string, username: string): Promise<Card[] 
   const pack = drawPack(pool);
   await grantCards(id, pack);
   return pack;
+}
+
+/**
+ * Open up to `count` packs (the Activity's 1x/5x/10x) in ONE database call (open_packs,
+ * tcg-bot/supabase/open_packs_batch.sql). The per-pack loop was 2 REST calls per pack:
+ * 100 players opening 10 at once waited 38 s (pressure test, 2026-09-28). Stops where the
+ * balance runs out, like the loop. Falls back to the loop if the function is not live yet.
+ */
+export async function openPacks(id: string, username: string, count: number): Promise<Card[][]> {
+  await ensurePlayer(id, username);
+  const pool = await getDrawPool();
+  if (pool.normal.length === 0) throw new Error('The card pool is empty. Add at least one Normal draw card with /seed first.');
+  const packs = Array.from({ length: count }, () => drawPack(pool));
+  const { data, error } = await getSupabase().rpc('open_packs', {
+    p_player_id: id, p_cards: packs.flat().map((c) => c.id), p_size: PACK_SIZE,
+  });
+  if (error?.code === 'PGRST202') {
+    const out: Card[][] = []; // the migration is not applied yet: the old per-pack path
+    for (let i = 0; i < count; i += 1) { const p = await openOnePack(id, username); if (!p) break; out.push(p); }
+    return out;
+  }
+  if (error) throw new Error(`open_packs failed: ${error.message}`);
+  return packs.slice(0, Number(data) || 0);
 }
 
 /** Read a member's activity row for today. Absent means no messages yet. */

@@ -20,6 +20,10 @@ const INCLUDE_OPEN = process.env.INCLUDE_OPEN === '1';
 // ACTIVE users who each make many repeat requests and so hit warm per-user
 // caches — the realistic "hundreds of concurrent players" shape.
 const USERS = Number(process.env.USERS || 0);
+// UID_PREFIX logs in as real scratch players (lt:lt_open_0000...), so the per-user reads
+// return real collections instead of empty ones.
+const UID_PREFIX = process.env.UID_PREFIX || '';
+const uidOf = (n) => (UID_PREFIX ? `${UID_PREFIX}${String(n).padStart(4, '0')}` : n);
 
 // Weighted mix of what a real session does (mostly reads; the feed + collection
 // are the chatty ones).
@@ -31,6 +35,12 @@ const MIX = [
   { path: '/api/players', w: 1, auth: true },
   { path: '/api/config', w: 1, auth: false },
 ];
+// MIX=v2: the current screens too (the Hunt, the v2 board and profile, effects, trades, notifications).
+if (process.env.MIX === 'v2') MIX.push(
+  { path: '/api/hunt', w: 3, auth: true }, { path: '/api/hunt/feed', w: 3, auth: true }, { path: '/api/hunt/leaderboard', w: 1, auth: true },
+  { path: '/api/leaderboard/v2', w: 1, auth: true }, { path: '/api/profile', w: 1, auth: true }, { path: '/api/effects/me', w: 1, auth: true },
+  { path: '/api/effects/recent', w: 1, auth: true }, { path: '/api/notifications', w: 1, auth: true }, { path: '/api/trades', w: 1, auth: true },
+  { path: '/api/flags', w: 1, auth: true });
 if (INCLUDE_OPEN) MIX.push({ path: '/api/open', w: 1, auth: true, method: 'POST' });
 
 const bag = [];
@@ -47,15 +57,16 @@ async function oneRequest(uid, stat) {
   const t0 = performance.now();
   try {
     const headers = {};
-    if (m.auth) headers.authorization = `Bearer lt:${uid}`;
+    if (m.auth) headers.authorization = `Bearer lt:${uidOf(uid)}`;
     const opts = { method: m.method || 'GET', headers };
     if (m.method === 'POST') { opts.headers['content-type'] = 'application/json'; opts.body = '{}'; }
     const r = await fetch(TARGET + m.path, opts);
-    await r.arrayBuffer(); // drain the body so keep-alive can reuse the socket
+    const buf = await r.arrayBuffer(); // drain the body so keep-alive can reuse the socket
+    if (r.status >= 500) console.error(`ERR-BODY ${m.path} ${Buffer.from(buf).toString().slice(0, 160)}`);
     const dt = performance.now() - t0;
     stat.lat.push(dt);
     stat.status[r.status] = (stat.status[r.status] || 0) + 1;
-    if (r.status >= 400) stat.errors += 1;
+    if (r.status >= 400) { stat.errors += 1; if (r.status >= 500) console.error(`ERR ${r.status} ${m.path}`); }
   } catch (e) {
     stat.lat.push(performance.now() - t0);
     stat.errors += 1;
