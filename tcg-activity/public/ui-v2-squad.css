@@ -127,3 +127,8 @@ body.ui-v2 .vr-hpbar { display: block; height: 6px; border-radius: 4px; backgrou
 body.ui-v2 .vr-hpbar > i { display: block; height: 100%; background: linear-gradient(90deg, #B3213A, var(--danger)); }
 body.ui-v2 .vr-note { font-size: 12.5px; color: var(--text-secondary); }
 body.ui-v2 #viewer.raid-info .v-ability, body.ui-v2 #viewer.raid-info .v-effect, body.ui-v2 #viewer.raid-info .v-tags { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
+
+/* A card the boss stunned waits one round (hunt_boss_difficulty.sql). */
+.squad-grid .c.stunned .art { filter: grayscale(.5) brightness(.75); }
+.squad-grid .c.stunned .art::after { content: '💫'; position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 28px; z-index: 4; animation: stunSpin 1.2s linear infinite; }
+@keyframes stunSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }

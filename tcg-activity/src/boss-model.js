@@ -39,7 +39,11 @@ export function modelFor(seedStr) {
 }
 
 // Fight event -> animation clip in the GLB (names from mixamo_to_glb.py).
-const CLIP_FOR = { flinch: 'hit', counter: 'strike', slam: 'slam', strike: 'strike', enrage: 'roar', stun: 'hit', curse: 'flex', defeat: 'death', attack: 'hit' };
+const CLIP_FOR = { flinch: 'hit', counter: 'strike', slam: 'slam', strike: 'strike', enrage: 'roar', stun: 'hit', curse: 'flex', defeat: 'death', attack: 'hit',
+  cataclysm: 'slam', drain: 'punch', stunhit: 'punch', regenerate: 'flex', charging: 'roar' };
+// The boss's own moves (hunt_boss_difficulty.sql) -> the CLIP_FOR key ("stun" = the boss is
+// stunned; "stunhit" = the boss stuns a card).
+const MOVE = { slam: 'slam', strike: 'strike', curse: 'curse', cataclysm: 'cataclysm', drain: 'drain', stun: 'stunhit', regenerate: 'regenerate', charging: 'charging' };
 
 export function mountModelBoss(canvas, key, tier) {
   const def = MODEL_BOSSES[key];
@@ -156,7 +160,7 @@ export function mountModelBoss(canvas, key, tier) {
   return {
     credit: def.credit,
     attack(element) { try { fx.fire(element || 'physical'); } catch (e) { /* ignore */ } },
-    bossAct(kind) { try { fx.bossFire(kind); } catch (e) { /* ignore */ } if (kind === 'slam' || kind === 'strike' || kind === 'curse') once(kind); },
+    bossAct(kind) { try { fx.bossFire(kind); } catch (e) { /* ignore */ } if (MOVE[kind]) once(MOVE[kind]); },
     flinch() { once('flinch'); },
     counter() { once('counter'); },
     enrage() { once('enrage'); },

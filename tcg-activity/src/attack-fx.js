@@ -366,6 +366,12 @@ export function createAttackFX(scene, camera) {
   // The BOSS's own attacks on its turn (origin = the boss, aimed at the player).
   function bossFire(kind) {
     const O = new THREE.Vector3(0, 1.15, 0.7), ground = new THREE.Vector3(0, -1.45, 0.3);
+    // The newer moves use the existing forms: Cataclysm = a double slam, drain / stun =
+    // a strike, charging = the enrage burst, regenerate = a soft green flash.
+    if (kind === 'cataclysm') { bossFire('slam'); setTimeout(() => bossFire('slam'), 220); flash(O, 0xff3a3a, true); return; }
+    if (kind === 'drain' || kind === 'stun') { bossFire('strike'); if (kind === 'drain') flash(O, 0x5be38a, true); else flash(O, 0xffe23e, true); return; }
+    if (kind === 'charging') { bossFire('enrage'); return; }
+    if (kind === 'regenerate') { flash(O, 0x5be38a, true); for (let i = 0; i < 3; i++) ring(O, 0x5be38a); return; }
     if (kind === 'slam' || kind === 'strike') {
       flash(ground, 0xffcf7a, true);
       for (let i = 0; i < 3; i++) groundRing(ground, i % 2 ? 0xffb14a : 0xffd8a0);
