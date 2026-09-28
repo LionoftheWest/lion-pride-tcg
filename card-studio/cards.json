@@ -65,7 +65,15 @@
       "base": {
         "duration_s": 86400
       },
-      "cooldown_h": 24.0
+      "cooldown_h": 24
+    },
+    "ability": {
+      "desc": "+50% damage when the boss is below 25% HP.",
+      "kind": "attack",
+      "name": "Final Act",
+      "amount": 0.5,
+      "effect": "execute",
+      "threshold": 0.25
     }
   },
   {
@@ -104,7 +112,13 @@
       "base": {
         "duration_s": 86400
       },
-      "cooldown_h": 18.0
+      "cooldown_h": 18
+    },
+    "ability": {
+      "desc": "Ignores the boss damage reduction.",
+      "kind": "attack",
+      "name": "Hydro Cannon",
+      "effect": "pierce"
     }
   },
   {
@@ -135,7 +149,15 @@
       ]
     },
     "updatedAt": 1789677578021,
-    "pushedAt": 1789677578455
+    "pushedAt": 1789677578455,
+    "ability": {
+      "desc": "Heal for 25% of the damage dealt.",
+      "kind": "attack",
+      "name": "Leech Seed",
+      "amount": 0.25,
+      "effect": "lifesteal",
+      "target": "self"
+    }
   },
   {
     "id": "heero-s-meowscarada",
@@ -165,6 +187,13 @@
         "shadow",
         "stealth"
       ]
+    },
+    "ability": {
+      "desc": "30% chance to strike twice.",
+      "kind": "attack",
+      "name": "Double Slash",
+      "amount": 0.3,
+      "effect": "rampage"
     }
   },
   {
@@ -194,6 +223,14 @@
         "shadow",
         "beast"
       ]
+    },
+    "ability": {
+      "desc": "Heal for 20% of the damage dealt.",
+      "kind": "attack",
+      "name": "Moonlight",
+      "amount": 0.2,
+      "effect": "lifesteal",
+      "target": "self"
     }
   },
   {
@@ -759,7 +796,14 @@
       ]
     },
     "updatedAt": 1789677997511,
-    "pushedAt": 1789677997786
+    "pushedAt": 1789677997786,
+    "ability": {
+      "desc": "+20% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Thunderbolt",
+      "amount": 0.2,
+      "effect": "focus"
+    }
   },
   {
     "id": "kaminari-s-krool",
@@ -819,7 +863,14 @@
       ]
     },
     "updatedAt": 1789677995980,
-    "pushedAt": 1789677996240
+    "pushedAt": 1789677996240,
+    "ability": {
+      "desc": "+15% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Lock On",
+      "amount": 0.15,
+      "effect": "focus"
+    }
   },
   {
     "id": "wiifu-s-wiifit-trainer",
@@ -856,7 +907,7 @@
       "base": {
         "duration_s": 600
       },
-      "cooldown_h": 12.0
+      "cooldown_h": 12
     }
   },
   {
@@ -947,7 +998,14 @@
       ]
     },
     "updatedAt": 1789677997104,
-    "pushedAt": 1789677997395
+    "pushedAt": 1789677997395,
+    "ability": {
+      "desc": "25% chance to strike twice.",
+      "kind": "attack",
+      "name": "Rapid Fire",
+      "amount": 0.25,
+      "effect": "rampage"
+    }
   },
   {
     "id": "bonzan-s-donkey-kong",
@@ -1124,7 +1182,18 @@
       ]
     },
     "updatedAt": 1789680646698,
-    "pushedAt": 1789682248444
+    "pushedAt": 1789682248444,
+    "ability": {
+      "desc": "Boss hits softer — scales with your Melee cards",
+      "kind": "support",
+      "name": "Melee Weaken",
+      "amount": 0.3,
+      "effect": "weaken",
+      "target": "boss",
+      "affinity": "trait:melee",
+      "cooldown": 3,
+      "duration": 2
+    }
   },
   {
     "id": "zeoic-s-redstone-machine",
@@ -1161,6 +1230,17 @@
         "object",
         "robot"
       ]
+    },
+    "ability": {
+      "desc": "Heal an ally — extra strong on Pokemon cards",
+      "kind": "support",
+      "name": "Pokemon Mend",
+      "amount": 0.3,
+      "effect": "heal",
+      "target": "ally",
+      "affinity": "origin:pokemon",
+      "cooldown": 2,
+      "duration": 1
     }
   },
   {
@@ -1189,7 +1269,18 @@
       ]
     },
     "updatedAt": 1789681087247,
-    "pushedAt": 1789682271390
+    "pushedAt": 1789682271390,
+    "ability": {
+      "desc": "Boss takes more — scales with your Metal cards",
+      "kind": "support",
+      "name": "Metal Expose",
+      "amount": 0.3,
+      "effect": "expose",
+      "target": "boss",
+      "affinity": "trait:metal",
+      "cooldown": 3,
+      "duration": 2
+    }
   },
   {
     "id": "kobedunk-s-lumberjack",
@@ -1245,7 +1336,18 @@
       "traits": []
     },
     "updatedAt": 1789684495924,
-    "pushedAt": 1789684852688
+    "pushedAt": 1789684852688,
+    "ability": {
+      "desc": "Clear curses — themed around Nature cards",
+      "kind": "support",
+      "name": "Nature Cleanse",
+      "amount": 0,
+      "effect": "cleanse",
+      "target": "team",
+      "affinity": "trait:nature",
+      "cooldown": 2,
+      "duration": 1
+    }
   },
   {
     "id": "notjosh-s-waluigi",
@@ -1401,7 +1503,18 @@
       ]
     },
     "updatedAt": 1789679953602,
-    "pushedAt": 1789682251389
+    "pushedAt": 1789682251389,
+    "ability": {
+      "desc": "Skip the boss turn — themed around Monster cards",
+      "kind": "support",
+      "name": "Monster Stun",
+      "amount": 0,
+      "effect": "stun",
+      "target": "boss",
+      "affinity": "trait:monster",
+      "cooldown": 4,
+      "duration": 1
+    }
   },
   {
     "id": "king-of-the-swamp",
@@ -1435,7 +1548,17 @@
       ]
     },
     "updatedAt": 1789679843584,
-    "ability": null,
+    "ability": {
+      "desc": "Heal an ally — extra strong on Lightning cards",
+      "kind": "support",
+      "name": "Lightning Mend",
+      "amount": 0.3,
+      "effect": "heal",
+      "target": "ally",
+      "affinity": "trait:lightning",
+      "cooldown": 2,
+      "duration": 1
+    },
     "pushedAt": 1789681426137
   },
   {
@@ -1692,7 +1815,7 @@
       "base": {
         "duration_s": 86400
       },
-      "cooldown_h": 12.0
+      "cooldown_h": 12
     }
   },
   {
@@ -1967,6 +2090,17 @@
         "smash"
       ],
       "traits": []
+    },
+    "ability": {
+      "desc": "Shield an ally — extra strong on Party cards",
+      "kind": "support",
+      "name": "Party Shield",
+      "amount": 0.4,
+      "effect": "shield",
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1
     }
   },
   {
@@ -2122,6 +2256,17 @@
         "meme"
       ],
       "traits": []
+    },
+    "ability": {
+      "desc": "Boss hits softer — scales with your Smash cards",
+      "kind": "support",
+      "name": "Smash Weaken",
+      "amount": 0.3,
+      "effect": "weaken",
+      "target": "boss",
+      "affinity": "origin:smash",
+      "cooldown": 3,
+      "duration": 2
     }
   },
   {
@@ -2189,6 +2334,17 @@
         "pokemon"
       ],
       "traits": []
+    },
+    "ability": {
+      "desc": "Shield an ally — extra strong on Bird cards",
+      "kind": "support",
+      "name": "Bird Shield",
+      "amount": 0.4,
+      "effect": "shield",
+      "target": "ally",
+      "affinity": "trait:bird",
+      "cooldown": 2,
+      "duration": 1
     }
   },
   {
@@ -2263,7 +2419,7 @@
       "base": {
         "duration_s": 86400
       },
-      "cooldown_h": 12.0,
+      "cooldown_h": 12,
       "options": {
         "titles": [
           "the Ketchup Criminal",
@@ -2271,6 +2427,17 @@
           "Mustard Denier"
         ]
       }
+    },
+    "ability": {
+      "desc": "Skip the boss turn — themed around Earth cards",
+      "kind": "support",
+      "name": "Earth Stun",
+      "amount": 0,
+      "effect": "stun",
+      "target": "boss",
+      "affinity": "trait:earth",
+      "cooldown": 4,
+      "duration": 1
     }
   },
   {
@@ -2317,6 +2484,17 @@
       "traits": [
         "object"
       ]
+    },
+    "ability": {
+      "desc": "Boss takes more — scales with your Cute cards",
+      "kind": "support",
+      "name": "Cute Expose",
+      "amount": 0.3,
+      "effect": "expose",
+      "target": "boss",
+      "affinity": "trait:cute",
+      "cooldown": 3,
+      "duration": 2
     }
   },
   {
@@ -2366,12 +2544,22 @@
         "location"
       ]
     },
-    "ability": null,
+    "ability": {
+      "desc": "Boss takes more — scales with your Agile cards",
+      "kind": "support",
+      "name": "Agile Expose",
+      "amount": 0.3,
+      "effect": "expose",
+      "target": "boss",
+      "affinity": "trait:agile",
+      "cooldown": 3,
+      "duration": 2
+    },
     "effect": {
       "primitive": "cleanse",
       "name": "Hide and Seek",
       "desc": "Removes every prank from the target.",
-      "cooldown_h": 12.0
+      "cooldown_h": 12
     }
   },
   {
@@ -2465,6 +2653,17 @@
       "traits": [
         "object"
       ]
+    },
+    "ability": {
+      "desc": "Clear curses — themed around Fire cards",
+      "kind": "support",
+      "name": "Fire Cleanse",
+      "amount": 0,
+      "effect": "cleanse",
+      "target": "team",
+      "affinity": "trait:fire",
+      "cooldown": 2,
+      "duration": 1
     }
   },
   {
@@ -2491,6 +2690,14 @@
         "beast",
         "strong"
       ]
+    },
+    "ability": {
+      "desc": "+40% damage when the boss is below 30% HP.",
+      "kind": "attack",
+      "name": "Rally Cap",
+      "amount": 0.4,
+      "effect": "execute",
+      "threshold": 0.3
     }
   },
   {
@@ -2521,7 +2728,18 @@
       "base": {
         "duration_s": 43200
       },
-      "cooldown_h": 6.0
+      "cooldown_h": 6
+    },
+    "ability": {
+      "desc": "Clear curses — themed around Arcane cards",
+      "kind": "support",
+      "name": "Arcane Cleanse",
+      "amount": 0,
+      "effect": "cleanse",
+      "target": "team",
+      "affinity": "trait:arcane",
+      "cooldown": 2,
+      "duration": 1
     }
   },
   {
@@ -2551,7 +2769,18 @@
       "primitive": "confetti",
       "name": "Game Night",
       "desc": "Confetti bursts over the target the next time they open the app.",
-      "cooldown_h": 3.0
+      "cooldown_h": 3
+    },
+    "ability": {
+      "desc": "Boss hits softer — scales with your Community cards",
+      "kind": "support",
+      "name": "Community Weaken",
+      "amount": 0.3,
+      "effect": "weaken",
+      "target": "boss",
+      "affinity": "trait:community",
+      "cooldown": 3,
+      "duration": 2
     }
   },
   {
@@ -2620,6 +2849,17 @@
         "pokemon"
       ],
       "traits": []
+    },
+    "ability": {
+      "desc": "Heal an ally — extra strong on Caster cards",
+      "kind": "support",
+      "name": "Caster Mend",
+      "amount": 0.3,
+      "effect": "heal",
+      "target": "ally",
+      "affinity": "trait:caster",
+      "cooldown": 2,
+      "duration": 1
     }
   },
   {
@@ -2642,6 +2882,17 @@
         "pokemon"
       ],
       "traits": []
+    },
+    "ability": {
+      "desc": "Skip the boss turn — themed around Air cards",
+      "kind": "support",
+      "name": "Air Stun",
+      "amount": 0,
+      "effect": "stun",
+      "target": "boss",
+      "affinity": "trait:air",
+      "cooldown": 4,
+      "duration": 1
     }
   },
   {
@@ -2720,7 +2971,18 @@
       "base": {
         "duration_s": 1800
       },
-      "cooldown_h": 12.0
+      "cooldown_h": 12
+    },
+    "ability": {
+      "desc": "Direct boss damage — scales with your Hero cards",
+      "kind": "support",
+      "name": "Hero Smite",
+      "amount": 200,
+      "effect": "smite",
+      "target": "boss",
+      "affinity": "trait:hero",
+      "cooldown": 4,
+      "duration": 1
     }
   },
   {
@@ -2743,7 +3005,18 @@
       "traits": []
     },
     "updatedAt": 1789677893135,
-    "pushedAt": 1789681786247
+    "pushedAt": 1789681786247,
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Meme cards",
+      "kind": "support",
+      "name": "Meme Empower",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "origin:meme",
+      "cooldown": 2,
+      "duration": 1
+    }
   },
   {
     "id": "tasty-little-morsel",
@@ -2787,6 +3060,17 @@
         "party"
       ],
       "traits": []
+    },
+    "ability": {
+      "desc": "Direct boss damage — scales with your Armored cards",
+      "kind": "support",
+      "name": "Armored Smite",
+      "amount": 200,
+      "effect": "smite",
+      "target": "boss",
+      "affinity": "trait:armored",
+      "cooldown": 4,
+      "duration": 1
     }
   },
   {
@@ -2833,6 +3117,17 @@
       "traits": [
         "location"
       ]
+    },
+    "ability": {
+      "desc": "Shield an ally — extra strong on Light cards",
+      "kind": "support",
+      "name": "Light Shield",
+      "amount": 0.4,
+      "effect": "shield",
+      "target": "ally",
+      "affinity": "trait:light",
+      "cooldown": 2,
+      "duration": 1
     }
   },
   {
@@ -2951,7 +3246,18 @@
       "base": {
         "duration_s": 43200
       },
-      "cooldown_h": 6.0
+      "cooldown_h": 6
+    },
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Humanoid cards",
+      "kind": "support",
+      "name": "Humanoid Empower",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "trait:humanoid",
+      "cooldown": 2,
+      "duration": 1
     }
   },
   {
@@ -3140,6 +3446,17 @@
       "traits": [
         "community"
       ]
+    },
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Beast cards",
+      "kind": "support",
+      "name": "Beast Empower",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "trait:beast",
+      "cooldown": 2,
+      "duration": 1
     }
   },
   {
