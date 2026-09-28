@@ -808,7 +808,7 @@ function renderPager(view, pages) {
 // ---- Opening + reveal ------------------------------------------------------
 
 const openDeps = () => ({
-  el, esc, SFX, RARITY_LABEL, cardBack: () => cardBack,
+  el, esc, SFX, RARITY_LABEL, cardBack: () => cardBack, openViewer,
   onClose: () => { sendStatus(VIEW_STATUS[currentView]); refreshOwned(); refreshPackStatus(); show(currentView); },
 });
 async function openPacks(count) {
