@@ -32,15 +32,17 @@ const KIND_EMOJI: Record<string, string> = { boon: '🎁', prank: '😈', neutra
 export function effectPost(p: PlayRow): MessageCreateOptions {
   const who = `**${p.sender || 'Someone'}**`;
   const card = `**${p.card || 'a card'}**`;
-  const name = p.effect_name ? `**${p.effect_name}**` : 'its effect';
+  // When the effect has the card's own name (Patooie! / Patooie!), name it once.
+  const same = !!p.effect_name && !!p.card && p.effect_name.trim().toLowerCase() === p.card.trim().toLowerCase();
+  const name = p.effect_name && !same ? `**${p.effect_name}**` : null;
   const desc = p.effect_desc ? ` ${p.effect_desc}` : '';
   let content: string;
   if (p.outcome === 'blocked') {
     content = `🛡️ ${who} played ${card} on <@${p.aimed_at}>... but it was blocked!`;
   } else if (p.outcome === 'reflected') {
-    content = `🪞 ${who} played ${card} on <@${p.aimed_at}>... and it bounced back! ${who} got ${name}.${desc}`;
+    content = `🪞 ${who} played ${card} on <@${p.aimed_at}>... and it bounced back! ${who} got ${name ?? 'it'}.${desc}`;
   } else {
-    content = `${KIND_EMOJI[p.kind] ?? '🎴'} ${who} played ${card} on <@${p.target_id}>: ${name}.${desc}`;
+    content = `${KIND_EMOJI[p.kind] ?? '🎴'} ${who} played ${card} on <@${p.target_id}>${name ? `: ${name}.` : '.'}${desc}`;
   }
   return { content, components: [launchActivityRow()] };
 }

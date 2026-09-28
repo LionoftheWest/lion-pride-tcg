@@ -217,3 +217,18 @@ body.ui-v2 .fx-kind.on-card { width: max-content; }
 /* The picture layer must not paint the gradient (ui-v2.css styles img + span alike),
    or an empty picture hides the member's initial. */
 body.ui-v2 .v2-avatar > img { background: none; }
+
+/* ---- Card effects on the v2 screens (they drew only on the v1 card markup) ---- */
+/* Name badges: the sticker, the title, the spotlight glow. */
+body.ui-v2 .nb { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; }
+body.ui-v2 .nb-sticker { width: 16px; height: 22px; flex: 0 0 16px; object-fit: cover; border-radius: 3px; transform: rotate(-8deg); box-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
+body.ui-v2 .nb-title { font: italic 600 .8em var(--font-ui); color: var(--prank); white-space: nowrap; }
+body.ui-v2 .nb-spot { color: var(--gold); text-shadow: 0 0 10px rgba(244, 183, 60, .8); }
+/* Googly eyes + fog (pranks shown on the target's own screen) on the v2 card layouts. */
+body.ui-v2.fx-googly :is(.v2-cell .v2-card:not(.locked), .p-art, .spot-card, .mr-front, .mem-mini-card:not(.lock), .se-slot:not(.empty), .tr-slot:not(.empty), .v2sq .squad-grid .c .art) { position: relative; }
+body.ui-v2.fx-googly :is(.v2-cell .v2-card:not(.locked), .p-art, .spot-card, .mr-front, .mem-mini-card:not(.lock), .se-slot:not(.empty), .tr-slot:not(.empty))::after {
+  content: ''; position: absolute; left: 28%; top: 26%; width: 44%; height: 18%; pointer-events: none; z-index: 3;
+  background: radial-gradient(circle at 30% 55%, #111 0 13%, #fff 14% 30%, transparent 31%), radial-gradient(circle at 72% 45%, #111 0 13%, #fff 14% 30%, transparent 31%);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .6)); animation: googly 1.4s ease-in-out infinite alternate; }
+body.ui-v2.fx-fog :is(.v2-cell .v2-card, .p-art, .spot-card, .mr-front, .mem-mini-card, .pl-row, .pl-top, .se-slot, .tr-slot) img { filter: blur(9px) grayscale(1); }
+body.ui-v2.fx-fog :is(.v2-cap, .mr-newtag) { visibility: hidden; }

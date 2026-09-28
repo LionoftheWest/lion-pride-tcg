@@ -895,7 +895,7 @@ app.get('/api/catalog', async (req, res) => {
 // all players. Sourced from player_cards.first_obtained_at (a per-player-per-card
 // timestamp), so it is a "new cards entering the community" feed. Auth-gated like
 // the rest, but the data is everyone's — the point is to see what others pull.
-const PULLS_SELECT = 'first_obtained_at, player:players(username), card:cards(id, name, rarity, image_url, season, event, artist_credit, lore)';
+const PULLS_SELECT = 'first_obtained_at, player_id, player:players(username), card:cards(id, name, rarity, image_url, season, event, artist_credit, lore)';
 // The community feed is identical for everyone, so a 3s cache collapses N viewers'
 // /api/pulls calls into one DB query every 3s. The 5s SSE poller (> 3s) still gets
 // fresh data each tick, so pushed updates are unaffected.
@@ -916,6 +916,7 @@ async function queryPulls() {
   const mapped = (data || []).map((row) => ({
     at: row.first_obtained_at,
     player: row.player?.username || 'Someone',
+    player_id: row.player_id, // the v2 feed shows this member's name badge (sticker / title)
     id: row.card?.id,
     name: row.card?.name,
     rarity: row.card?.rarity,
