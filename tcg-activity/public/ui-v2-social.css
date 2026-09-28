@@ -217,3 +217,5 @@ body.ui-v2 .fx-kind.on-card { width: max-content; }
 /* The picture layer must not paint the gradient (ui-v2.css styles img + span alike),
    or an empty picture hides the member's initial. */
 body.ui-v2 .v2-avatar > img { background: none; }
+body.ui-v2 .fx-test { border-style: dashed; color: var(--text-primary); }
+body.ui-v2 .fx-testtag { font-style: normal; font: 800 9px var(--font-ui); letter-spacing: .6px; color: var(--on-gold); background: var(--gold); border-radius: 4px; padding: 1px 5px; margin-left: 4px; }

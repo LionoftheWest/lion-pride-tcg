@@ -3,7 +3,7 @@
 // Uses the shared helpers of ui-v2.js; the data comes from the existing APIs.
 
 import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember } from './ui-v2.js';
-import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur } from './effects-ui.js';
+import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests } from './effects-ui.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -463,6 +463,7 @@ function paintEffects() {
       <div class="tr-foot"><span class="side-h fx-on">On ${esc(toName)}</span>${fx.onTarget.length ? fx.onTarget.map((e) => `<span class="f-chip">${esc(pretty(e.primitive))}</span>`).join('') : '<span class="dim">Nothing active</span>'}
         <span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg)}</span>
         <button class="v2-btn" id="fxClear">↺ Clear</button>
+        ${st.canTest ? `<button class="v2-btn fx-test" id="fxTest" title="Try it on yourself: no post, no cooldown">🧪 Test on me</button>` : ''}
         <button class="v2-btn fx-play k-${k}" id="fxPlay" ${ready && tr.to && (left == null || left > 0) ? '' : 'disabled'}>✨ Play ${esc((EFFECT_KIND.label[k] || '').toLowerCase())}</button></div>`;
   } else {
     composer = `<div class="fx-empty"><b>Pick an effect card</b><span class="dim">Then play it on ${esc(toName)}.</span></div>
@@ -473,7 +474,7 @@ function paintEffects() {
     const total = (Number(e.duration_s) || 0) * 1000;
     const leftMs = e.expires_at ? new Date(e.expires_at) - Date.now() : null;
     const pct = total && leftMs != null ? Math.max(0, Math.min(100, Math.round((100 * leftMs) / total))) : 100;
-    return `<div class="fx-on-row"><span class="nt-ico">✨</span><div><b>${esc(pretty(e.primitive))}</b><span class="dim">${esc(e.card?.name || '')}</span><i class="fx-bar"><i style="width:${pct}%"></i></i></div>
+    return `<div class="fx-on-row"><span class="nt-ico">${e.options?.test ? '🧪' : '✨'}</span><div><b>${esc(pretty(e.primitive))}${e.options?.test ? ' <i class="fx-testtag">TEST</i>' : ''}</b><span class="dim">${esc(e.card?.name || '')}</span><i class="fx-bar"><i style="width:${pct}%"></i></i></div>
       <span class="mono fx-left">${leftMs != null ? fmtDur(leftMs / 1000) : ''}</span></div>`;
   }).join('');
   const rec = fx.recent.map((r) => `<div class="fx-rec k-${esc(r.kind)}"><span class="fx-pair">${avatarHTML(r.from_id, r.from, 'xs')}${avatarHTML(r.to_id, r.to, 'xs')}</span>
@@ -495,7 +496,7 @@ function paintEffects() {
       <div class="v2-grid" id="fxGrid"></div>
     </section>
     <aside class="tr-offers v2-tile fx-side">
-      <div class="tile-h"><b>On you</b><span class="grow"></span><span class="n mono">${(st.active || []).length}</span></div>
+      <div class="tile-h"><b>On you</b><span class="grow"></span>${st.canTest && (st.active || []).some((e) => e.options?.test) ? '<button class="link-btn" id="fxClearTests">Clear tests</button>' : ''}<span class="n mono">${(st.active || []).length}</span></div>
       <div class="of-list fx-onyou" id="fxOnYou">${onYou || '<p class="v2-empty">Nothing is active on you.</p>'}</div>
       <div class="tile-h"><b>Recent plays</b><span class="grow"></span><span class="live-chip sm">● LIVE</span></div>
       <div class="of-list fx-recent" id="fxRecent">${rec || '<p class="v2-empty">No plays yet.</p>'}</div>
@@ -521,6 +522,12 @@ function paintEffects() {
     paintEffects();
   };
   el('fxClear')?.addEventListener('click', () => { fx.pick = null; fx.msg = ''; paintEffects(); });
+  el('fxTest')?.addEventListener('click', async () => {
+    const r = await testCard(fx.pick);
+    fx.msg = r?.ok ? `Test: ${pretty(r.primitive)} is on you${r.duration_s ? ` for ${fmtDur(r.duration_s)}` : ''}` : (r?.error === 'not_testable' ? 'This effect cannot be tested on yourself.' : effectError(r?.error));
+    await loadFx(); paintEffects();
+  });
+  el('fxClearTests')?.addEventListener('click', async () => { await clearTests(); fx.msg = 'Tests cleared'; await loadFx(); paintEffects(); });
   el('fxPlay')?.addEventListener('click', async () => {
     const btn = el('fxPlay'); btn.disabled = true;
     const r = await playCard(fx.pick, tr.to.id);

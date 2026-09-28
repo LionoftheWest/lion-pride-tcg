@@ -15,6 +15,12 @@ const PREVIEW = new Set((process.env.CARD_EFFECTS_USERS || '').split(',').map((s
 export const EFFECTS_SCHEMA = ALL || PREVIEW.size > 0;
 /** True if this member can see and play effects. */
 export const effectsEnabledFor = (id) => ALL || PREVIEW.has(String(id));
+// Test mode (Nathan, 2026-09-28): EFFECT_TEST_USERS=id,id may try a card's effect on
+// THEMSELVES. No card_plays row (so no Discord post, no ping), no cooldown, no daily
+// count. Default empty = off.
+const TESTERS = new Set((process.env.EFFECT_TEST_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
+const canTest = (id) => effectsEnabledFor(id) && TESTERS.has(String(id));
+const TEST_MAX_S = 600; // a test effect lasts at most 10 minutes
 
 // Effects that show once and are then used up when the target sees them.
 const SHOW_ONCE = ['confetti', 'gift_wrap'];
@@ -65,6 +71,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
       primitives: Object.fromEntries((prims.data || []).map((p) => [p.primitive, p])),
       // The Community tab's "Plays today" (the same daily limit play_card_effect uses).
       playsToday: sent.count || 0,
+      canTest: canTest(me.id),
       sendCap: Number(caps.data?.value?.send_per_day) || null,
     });
   });
@@ -130,6 +137,57 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
 
   // Name decorations for every member with an active title/sticker/spotlight.
   let badgeCache = null; // { at, badges }
+
+  // Try a card's effect on yourself (test mode). Only effects that act in the Activity;
+  // a gift pack is refused (it would pay real packs), Discord/voice ones are not built.
+  app.post('/api/effects/test', async (req, res) => {
+    const me = await caller(req);
+    if (!me) return res.status(401).json({ error: 'not authenticated' });
+    if (!canTest(me.id)) return res.status(403).json({ ok: false, error: 'not_a_tester' });
+    if (!rateLimit(me.id)) return res.status(429).json({ ok: false, error: 'slow_down' });
+    const cardId = Math.floor(Number(req.body?.cardId));
+    if (!Number.isFinite(cardId)) return res.status(400).json({ ok: false, error: 'bad_request' });
+    const [{ data: own }, { data: card }] = await Promise.all([
+      supabase.from('player_cards').select('card_id').eq('player_id', me.id).eq('card_id', cardId).maybeSingle(),
+      supabase.from('cards').select('id, subject:subjects(effect)').eq('id', cardId).maybeSingle(),
+    ]);
+    if (!own) return res.status(400).json({ ok: false, error: 'not_owned' });
+    const eff = card?.subject?.effect;
+    if (!eff?.primitive) return res.status(400).json({ ok: false, error: 'no_effect' });
+    const { data: prim } = await supabase.from('effect_primitives').select('primitive, kind, channel, max_amount, max_duration_s').eq('primitive', eff.primitive).maybeSingle();
+    if (!prim) return res.status(400).json({ ok: false, error: 'no_effect' });
+    if (prim.channel !== 'app' || prim.primitive === 'gift_pack') return res.status(400).json({ ok: false, error: 'not_testable' });
+    let dur = Number(eff.base?.duration_s) || 0;
+    if (prim.max_duration_s != null) dur = Math.min(dur, prim.max_duration_s);
+    dur = dur > 0 ? Math.min(dur, TEST_MAX_S) : null;
+    let amount = eff.base?.amount != null ? Number(eff.base.amount) : null;
+    if (amount != null && prim.max_amount != null) amount = Math.min(amount, Number(prim.max_amount));
+    const opts = { ...(eff.options || {}), card_id: cardId, sender_id: String(me.id), test: true };
+    const titles = eff.options?.titles;
+    if (Array.isArray(titles) && titles.length) opts.title = titles[Math.floor(Math.random() * titles.length)];
+    // One test of each effect at a time: a new test replaces the old one.
+    await supabase.from('player_effects').update({ consumed_at: new Date().toISOString() })
+      .eq('player_id', me.id).eq('primitive', prim.primitive).is('consumed_at', null).eq('options->>test', 'true');
+    const { error } = await supabase.from('player_effects').insert({
+      player_id: String(me.id), primitive: prim.primitive, amount, duration_s: dur, options: opts,
+      expires_at: dur ? new Date(Date.now() + dur * 1000).toISOString() : null,
+    });
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    badgeCache = null; // the sticker / title shows at once
+    res.json({ ok: true, primitive: prim.primitive, kind: prim.kind, duration_s: dur });
+  });
+
+  // End every test effect on yourself.
+  app.post('/api/effects/test/clear', async (req, res) => {
+    const me = await caller(req);
+    if (!me) return res.status(401).json({ error: 'not authenticated' });
+    if (!canTest(me.id)) return res.status(403).json({ ok: false, error: 'not_a_tester' });
+    const { error } = await supabase.from('player_effects').update({ consumed_at: new Date().toISOString() })
+      .eq('player_id', me.id).is('consumed_at', null).eq('options->>test', 'true');
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    badgeCache = null;
+    res.json({ ok: true });
+  });
   app.get('/api/effects/badges', async (req, res) => {
     const me = await caller(req);
     if (!me) return res.status(401).json({ error: 'not authenticated' });

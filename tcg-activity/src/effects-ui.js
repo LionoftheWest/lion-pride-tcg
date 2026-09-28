@@ -334,3 +334,16 @@ export async function playCard(card, targetId) {
   return r || { ok: false };
 }
 export async function reloadEffects() { await refreshEffects(); return state; }
+
+// Test mode: try a card's effect on yourself (no post, no cooldown). Refreshes the
+// effects and badges, so the visuals start at once.
+export async function testCard(card) {
+  const r = await deps.apiPost('/api/effects/test', { cardId: card.id }).catch(() => ({ ok: false }));
+  if (r?.ok) { await refreshEffects(); await refreshBadges(); }
+  return r || { ok: false };
+}
+export async function clearTests() {
+  const r = await deps.apiPost('/api/effects/test/clear', {}).catch(() => ({ ok: false }));
+  if (r?.ok) { await refreshEffects(); await refreshBadges(); }
+  return r || { ok: false };
+}
