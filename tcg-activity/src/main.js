@@ -15,6 +15,7 @@ import { mountBoss } from './boss.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import { cardElement, ELEMENTS } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge } from './effects-ui.js';
+import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick } from './ui-v2.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -209,6 +210,8 @@ let currentView = 'collection';
 let cardBack = '';
 let features = {}; // server feature flags (e.g., ascension), from /api/config
 let packsAvailable = 0;
+let uiV2 = false;   // the v2 UI (docs/design.md), from /api/flags after login
+let meUser = null;  // { id, name } of the signed-in member
 let mainItems = []; // the cards backing the current main-pane grid (for click → viewer)
 let revealItems = []; // the cards in the current pack reveal (for click → viewer)
 let huntState = null; // the active hunt + roster (Phase 2), for live attack updates
@@ -221,7 +224,7 @@ let usedIds = new Set(); // card ids already sent at the boss today (client mirr
 let feedTopId = 0; // newest boss-feed event id shown (so polls only animate in newer ones)
 let huntDay = ''; // UTC date of the current hunt render; a change means the daily reset hit
 const utcToday = () => new Date().toISOString().slice(0, 10);
-window.addEventListener('resize', () => { if (currentView === 'battling') sizeSquadGrid(); });
+window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (uiV2 && squad.phase !== 'battle') paintHuntPage(); else sizeSquadGrid(); });
 const cache = {};
 let myCardIds = new Set(); // card ids the caller owns — so feed cards you own show their art
 const page = { collection: 0 };
@@ -254,8 +257,9 @@ async function main() {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ code }),
   })).json();
-  await discordSdk.commands.authenticate({ access_token });
+  const auth = await discordSdk.commands.authenticate({ access_token });
   token = access_token;
+  if (auth?.user) meUser = { id: auth.user.id, name: auth.user.global_name || auth.user.username };
 
   setStatus('');
   el('nav').classList.remove('hidden');
@@ -297,8 +301,43 @@ async function main() {
   refreshTradeBadge();
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
   initEffects({ api, apiPost, el, esc, SFX, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
-  show('collection');
+  try { uiV2 = !!(await api('/api/flags'))?.uiV2; } catch { uiV2 = false; }
+  if (uiV2) { startV2(); show('home'); } else show('collection');
 }
+
+// The v2 shell: the body class switches the CSS, the dock replaces the tab nav.
+function startV2() {
+  document.body.classList.add('ui-v2');
+  initV2({
+    api, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago,
+    features: () => features, user: () => meUser, currentView: () => currentView,
+  });
+  el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>`;
+  el('v2Avatar').title = meUser?.name || '';
+  document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
+  el('dockOpen').addEventListener('click', openPacks);
+  api('/api/catalog').then((d) => {
+    cache.catalog = d;
+    const seasons = [...new Set((d.cards || []).map((c) => c.season || 'Season 1'))];
+    el('v2Season').textContent = seasons[seasons.length - 1] || 'Season 1';
+  }).catch(() => {});
+  setInterval(() => { if (currentView === 'home') homeTick(); }, 30000);
+  // The red dot on the Hunt button while a boss is live.
+  const huntDot = () => { if (!features.hunt) return; api('/api/hunt').then((d) => {
+    document.querySelector('#dock .dk[data-view="battling"]')?.classList.toggle('live', !!(d?.hunt && d.hunt.status !== 'defeated'));
+  }).catch(() => {}); };
+  huntDot();
+  setInterval(huntDot, 300000);
+  updateOpenButton();
+}
+
+// Tell the room what this member does now (v2 Home "Live in voice").
+let myStatus = 'home';
+function sendStatus(kind) {
+  myStatus = kind || myStatus;
+  if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus })); } catch { /* dropped */ } }
+}
+const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading' };
 
 // Load which cards the caller owns (for feed-card ownership). Also warms the
 // collection cache. Refreshed whenever the collection can have changed.
@@ -320,6 +359,14 @@ async function refreshPackStatus() {
 }
 
 function updateOpenButton() {
+  if (uiV2) {
+    const badge = el('dockBadge');
+    if (badge) badge.textContent = packsAvailable > 0 ? String(packsAvailable) : '';
+    const open = el('dockOpen');
+    if (open) open.disabled = packsAvailable <= 0;
+    const pill = el('v2Packs');
+    if (pill) pill.innerHTML = `🎴 <b>${packsAvailable}</b> pack${packsAvailable === 1 ? '' : 's'}`;
+  }
   const btn = el('openTop'); // the Open Pack button lives up by the brand title now
   if (!btn) return;
   if (packsAvailable > 0) {
@@ -358,10 +405,11 @@ function connectStreams() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const openWs = () => {
     roomWs = new WebSocket(`${proto}://${location.host}/ws?token=${encodeURIComponent(token)}&instanceId=${encodeURIComponent(instanceId)}`);
+    roomWs.onopen = () => sendStatus();
     roomWs.onmessage = (ev) => {
       let msg;
       try { msg = JSON.parse(ev.data); } catch { return; }
-      if (msg.type === 'presence') { live.presence = msg.users; updatePresence(); }
+      if (msg.type === 'presence') { live.presence = msg.users; updatePresence(); if (uiV2 && currentView === 'home') paintVoice(); }
       else if (msg.type === 'open') { if (Date.now() < suppressOpenUntil) return; showReveal(msg); }
       else if (msg.type === 'react') floatReact(msg);
     };
@@ -373,6 +421,7 @@ function connectStreams() {
 // ---- Community Live Feed (persistent right sidebar) ------------------------
 
 function renderFeedSidebar() {
+  if (uiV2 && currentView === 'home') paintPulls();
   const list = el('feedList');
   if (!list) return;
   const head = document.querySelector('.feed-head');
@@ -439,6 +488,9 @@ function ago(iso) {
 async function show(view) {
   currentView = view;
   document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+  document.querySelectorAll('#dock .dk').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+  document.body.dataset.view = view;
+  sendStatus(VIEW_STATUS[view]);
   if (DATA[view] && !cache[DATA[view].key]) {
     el('main').innerHTML = '<div class="loading">Loading…</div>';
     cache[DATA[view].key] = await api(DATA[view].ep);
@@ -512,6 +564,9 @@ function mountBossFor(hunt) {
 
 function renderMain(view) {
   disposeBoss(); // any view change tears the boss down; renderHunt re-mounts it
+  disposeHomeV2();
+  if (uiV2 && view === 'home') { stopHuntTicker(); renderHomeV2(); return; }
+  if (uiV2 && view === 'collection') { stopHuntTicker(); renderCollectionV2(); return; }
   { const bm = el('bossMini'); if (bm) bm.innerHTML = ''; } // clear the sidebar boss square
   stopHuntTicker(); // stop the boss/cooldown countdown; renderHunt restarts it
   if (view === 'gallery') { renderGallery(); return; }
@@ -741,6 +796,7 @@ async function openPacks() {
   const btn = el('openBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
   try {
+    sendStatus('opening');
     const data = await apiPost('/api/open', { instanceId });
     if (data.error) note('Could not open right now.');
     else if (!data.cards || !data.cards.length)
@@ -761,7 +817,7 @@ async function openPacks() {
 }
 
 function note(text) {
-  const head = document.querySelector('.main-head');
+  const head = uiV2 ? el('topbar') : document.querySelector('.main-head');
   if (!head) return;
   const n = document.createElement('div');
   n.className = 'open-note';
@@ -981,6 +1037,7 @@ function rareBanner(text) {
 }
 
 function endReveal() {
+  sendStatus(VIEW_STATUS[currentView]);
   clearTimeout(revealTimer);
   const stage = el('stage');
   stage.classList.add('closing');
@@ -1507,6 +1564,7 @@ function sizeSquadGrid() {
     grid.style.setProperty('--sw', `${sw}px`);
     return;
   }
+  if (uiV2) return; // fitSquadGrid sized it
   const w = grid.clientWidth || 600, h = grid.clientHeight || 360;
   const cols = 4, rows = 2, cap = 34;
   const byWidth = (w - (cols - 1) * gap) / cols;
@@ -1518,13 +1576,41 @@ function paintHuntPage(dir) {
   const grid = el('huntGrid');
   if (!grid) return;
   const items = huntFiltered();
-  const perPage = 8;
+  const perPage = uiV2 ? fitSquadGrid(grid) : 8;
   const pages = Math.max(1, Math.ceil(items.length / perPage));
   squad.page = Math.min(Math.max(0, squad.page), pages - 1);
   const slice = items.slice(squad.page * perPage, squad.page * perPage + perPage);
   grid.innerHTML = slice.length ? slice.map((c) => huntTile(c, 'select')).join('') : '<p class="empty">No cards match.</p>';
   sizeSquadGrid();
   huntPager(pages);
+}
+// v2: fill the picker with as many cards as fit (min 96px wide, 5:7 art + the caption).
+function fitSquadGrid(grid) {
+  const gap = 10, cap = 34;
+  const w = grid.clientWidth || 600, h = grid.clientHeight || 360;
+  let best = { n: 0, sw: 96, cols: 4 };
+  for (let rows = 1; rows <= 5; rows++) {
+    for (let cols = 2; cols <= 12; cols++) {
+      const sw = Math.floor(Math.min((w - (cols - 1) * gap) / cols, ((h - (rows - 1) * gap) / rows - cap) * 5 / 7, 150));
+      if (sw < 96) continue;
+      const n = cols * rows;
+      if (n > best.n || (n === best.n && sw > best.sw)) best = { n, sw, cols };
+    }
+  }
+  grid.style.setProperty('--sw', `${best.sw}px`);
+  grid.style.setProperty('--scols', best.cols);
+  // The squad panel below can grow after this paint (synergy chips wrap): re-fit then.
+  if (!grid._fitObs && window.ResizeObserver) {
+    let last = `${w}x${h}`;
+    grid._fitObs = new ResizeObserver(() => {
+      const now = `${grid.clientWidth}x${grid.clientHeight}`;
+      if (now === last || !grid.isConnected || squad.phase === 'battle') return;
+      last = now;
+      requestAnimationFrame(() => paintHuntPage());
+    });
+    grid._fitObs.observe(grid);
+  }
+  return Math.max(1, best.n);
 }
 function huntPager(pages) {
   const pager = el('huntPager');

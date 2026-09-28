@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Lion Pride TCG</title>
   <link rel="stylesheet" href="/style.css?v=__CSSV__" />
+  <link rel="stylesheet" href="/ui-v2.css" />
+  <link rel="stylesheet" href="/ui-v2-screens.css" />
 </head>
 <body>
   <div id="loader">
@@ -16,13 +18,15 @@
     </div>
   </div>
   <header id="topbar">
-    <div class="title"><span class="logo">🦁</span> Lion Pride TCG</div>
+    <div class="title"><span class="logo">🦁</span> <span class="v2-name">Lion Pride TCG</span><span class="v2-season v2-only" id="v2Season"></span></div>
     <button id="openTop" class="open-top hidden">🎴 Open Pack</button>
     <div class="topright">
+      <span class="v2-pill v2-only" id="v2Packs" title="Packs to open"></span>
       <button id="bellBtn" class="iconbtn hidden" title="Notifications">🔔</button>
       <button id="boardBtn" class="iconbtn hidden" title="Leaderboard">🏆</button>
       <button id="giftBtn" class="iconbtn hidden" title="Gift a pack">🎁</button>
       <button id="mute" class="iconbtn hidden" title="Sound on/off">🔊</button>
+      <span class="v2-avatar v2-only" id="v2Avatar"></span>
       <nav id="nav" class="hidden">
         <button data-view="gallery">Gallery</button>
         <button data-view="trading">Trading</button>
@@ -40,6 +44,16 @@
       <div class="feed-list" id="feedList"></div>
     </aside>
   </div>
+
+
+  <!-- UI v2 dock (hidden unless body.ui-v2). -->
+  <nav id="dock" aria-label="Main">
+    <button class="dk" data-view="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+    <button class="dk" data-view="collection"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg><span>Collection</span></button>
+    <button class="dk-open" id="dockOpen" title="Open a pack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg><span>OPEN</span><i class="dk-badge" id="dockBadge"></i></button>
+    <button class="dk" data-view="battling"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 17.5 5-5"/><path d="m3 3 11 11"/><path d="m21 3-11 11"/><path d="m9.5 17.5-5-5"/><path d="M3 21l3-3"/><path d="m21 21-3-3"/></svg><span>Hunt</span><i class="dot"></i></button>
+    <button class="dk" data-view="trading"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg><span>Trade</span><i class="dot"></i></button>
+  </nav>
 
   <!-- Full-screen pack-opening takeover: dims everything, plays the reveal. -->
   <div id="stage" class="hidden"></div>
