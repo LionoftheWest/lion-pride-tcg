@@ -27,6 +27,8 @@ export const MODEL_BOSSES = {
   smurf:          { file: 'smurf-v1.glb',          names: /smurf brute/i, credit: 'Model: Brute — Mixamo (Adobe)' },
   warzombie:      { file: 'warzombie-v1.glb',      names: /afk warzombie|warzombie/i, credit: 'Model: Warzombie F Pedroso — Mixamo (Adobe)' },
   skeletonzombie: { file: 'skeletonzombie-v1.glb', names: /hardstuck skeleton|skeletonzombie/i, credit: 'Model: Skeletonzombie T Avelange — Mixamo (Adobe)' },
+  // Her own game rig + the Mixamo clips retargeted (card-studio/blender/retarget_kerrigan.py).
+  kerrigan:       { file: 'kerrigan-v2.glb',       names: /zerg-?rush queen|kerrigan/i, credit: 'Model: Sarah Kerrigan Infested — Vasian-Digital3D (CC-BY 4.0); animations: Mixamo (Adobe)' },
 };
 
 /** The model key for a boss name (or an `arch:<key>` seed), or null. */
