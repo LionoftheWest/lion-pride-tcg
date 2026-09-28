@@ -60,7 +60,7 @@ sidebar holds the live feed (the community pulls, or the Raid Boss feed during a
 | # | Screen | Status | Files |
 |---|---|---|---|
 | 0 | **Design system**: colors, type, rarity + effect colors, buttons, chips, panels, card tile, motion | Not started | `design/00-design-system.pen` |
-| 1 | **Shell**: top bar, navigation, feed sidebar | Not started | |
+| 1 | **Shell**: top bar, navigation, feed sidebar | Concept chosen: B navigation (see Section 7) | `design/02-B-home.png` |
 | 2 | **Card Information** (including the battle stats, the effect, and ascension) | Not started | |
 | 3 | **Collection** grid and filters | Not started | |
 | 4 | **Battling: fight** (boss, squad, turns, damage numbers, feed) | Not started | |
@@ -85,3 +85,30 @@ To define in Screen 0, then use everywhere:
 
 - Screen 2 needs the battle stats. Does ascension keep a fixed upgrade, or does it give
   stat points that the player spends? (See the card-stats proposal.)
+
+## 7. Layout decisions (Nathan, 2026-09-27)
+
+From the three concepts (A Arena Rail, B Game Lobby, C Broadcast; `design/02-*.png`):
+
+- **Hunt:** C's look (the cards overlay the boss scene) + A's clarity (the cards laid
+  out in a clear row). **No Attack button:** the player taps a card to attack with it,
+  so a separate Attack button would confuse. The design must make "tap a card to hit" obvious.
+- **Collection:** C's information panel with the stats (Power, HP, Crit, the ability) +
+  A's **sets sidebar**, because more card sets will come out.
+- **Home:** B, with all its parts. The "Opening together" window becomes a **real-time
+  Activity window**: what each player in your voice channel is doing right now (opening
+  packs with the cards revealing live, browsing the collection, building a squad,
+  attacking the boss, trading, playing a prank).
+- **Rarity names stay:** Normal, Illustrated Rare, Secret Rare, Full Art, Gold.
+- **Placeholder art** in the designs is only a placeholder.
+
+Work in progress: `design/03-final-v1.pen` (the three combined screens).
+
+## 8. New systems that the designs need (backlog, not built)
+
+| System | Nathan's decision | Notes |
+|---|---|---|
+| **Real-time Activity window** | Yes (Home) | Needs live presence per member (the Activity already has a voice-channel WebSocket room). Each client reports its current activity; the room broadcasts it. |
+| **Streaks** | Yes | Track how many days in a row a player opens packs. Streak rewards, for example extra packs. |
+| **Shards (a redeem currency)** | Yes, later | Not "shards" as in the concepts. A currency to redeem the cards that a player wants, and each tier costs more. A whole new economy: design it on its own first. |
+| **Showcase** | Yes, later | A player's own showcase of cards. A separate system to design. |
