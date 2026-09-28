@@ -1,6 +1,6 @@
 // Opening several packs at once (design/17-*, approved 2026-09-27): the chooser above the
 // dock (x1 / x5 / x10, only what the member can afford) and the multi-pack reveal
-// (every card face-down with the REAL card back, the rarest first, tap to flip or
+// (every card face-down with the REAL card back, shuffled, tap to flip or
 // Reveal all, a celebration for Secret Rare and better, a New tag for first cards).
 
 const RANK = { normal: 0, illustrated_rare: 1, secret_rare: 2, full_art: 3, gold: 4, event: 3, promo: 2 };
@@ -36,7 +36,10 @@ let flipped = 0;
 export function showMultiReveal(deps, packs) {
   d = deps;
   const { el, esc } = d;
-  items = packs.flat().map((c) => ({ ...c })).sort((a, b) => (RANK[b.rarity] ?? 0) - (RANK[a.rarity] ?? 0) || (b.isNew - a.isNew));
+  // Shuffled (Nathan: "keep them shuffled so its special"): the grid position never
+  // tells where the rare cards are. Fisher-Yates.
+  items = packs.flat().map((c) => ({ ...c }));
+  for (let i = items.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
   flipped = 0;
   const stage = el('stage');
   stage.className = 'open v2-multi';
