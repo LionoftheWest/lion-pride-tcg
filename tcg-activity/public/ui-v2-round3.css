@@ -105,3 +105,4 @@ body.ui-v2 .se-ring { display: inline-block; width: 12px; height: 12px; border-r
 body.ui-v2 .se-ring.frame-silver { background: linear-gradient(135deg, #F1F4F8, #8C96A6); }
 body.ui-v2 .se-ring.frame-gold { background: linear-gradient(135deg, #FFE7A8, #B8791A); }
 body.ui-v2 .se-ring.frame-holo { background: conic-gradient(#FF4FA3, #FFD43B, #5BE38A, #3CB6FF, #B15CFF, #FF4FA3); }
+body.ui-v2 .ach-all { height: 32px; padding: 0 14px; font-size: 12.5px; }

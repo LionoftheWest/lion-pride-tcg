@@ -155,6 +155,17 @@ async function redeem(key, btn) {
   toast(`🎁 ${rewardLabel(r.reward || rewardOf(key))}`);
   loadMyProfile(true).then(() => { if (ctx.currentView() === 'collection') renderCollectionV2(); });
 }
+async function redeemAll(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Redeeming…'; }
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim-all', {}); } catch { r = null; }
+  if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Try again'; } return; }
+  ctx.refreshPacks?.();
+  const parts = [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.titles?.length ? `${r.titles.length} title${r.titles.length === 1 ? '' : 's'}` : null, r.frames?.length ? `${r.frames.length} frame${r.frames.length === 1 ? '' : 's'}` : null].filter(Boolean);
+  toast(`🎁 ${r.claimed.length} redeemed${parts.length ? ` · ${parts.join(' + ')}` : ''}`);
+  await loadMyProfile(true);
+  if (ctx.currentView() === 'collection') renderCollectionV2();
+}
 function toast(text) {
   const n = document.createElement('div');
   n.className = 'v2-toast';
@@ -205,7 +216,7 @@ export async function renderCollectionV2() {
     <button data-tab="ach" class="${col.view !== 'cards' ? 'on' : ''}">Achievements <i>${achDone}/${achs.length}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button></div>`;
   let center;
   if (col.view === 'ach') {
-    center = `<div class="v2-col-head">${tabs}<span class="grow"></span>${ready ? `<span class="ach-ready">🎁 ${ready} to redeem</span>` : ''}<div class="v2-pager" id="achPager"></div></div>
+    center = `<div class="v2-col-head">${tabs}<span class="grow"></span>${ready ? `<span class="ach-ready">🎁 ${ready} to redeem</span><button class="v2-btn gold ach-all" id="achAll">Redeem All</button>` : ''}<div class="v2-pager" id="achPager"></div></div>
       <div class="v2-ach-grid" id="achGrid"></div>`;
   } else if (col.view === 'achDetail') {
     const a = achs.find((x) => x.key === col.achKey);
@@ -260,6 +271,7 @@ export async function renderCollectionV2() {
     col.view = b.dataset.tab === 'ach' ? 'ach' : 'cards';
     renderCollectionV2();
   });
+  el('achAll')?.addEventListener('click', () => redeemAll(el('achAll')));
   // An achievement opens its detail (the cards it needs); Redeem pays it.
   el('colCenter').addEventListener('click', (e) => {
     const r = e.target.closest('[data-redeem]');
