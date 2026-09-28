@@ -18,6 +18,15 @@ export const MODEL_BOSSES = {
   warrok: { file: 'warrok-v1.glb', names: /rage-?quit warlord|warrok/i, credit: 'Model: Warrok W Kurniawan — Mixamo (Adobe)' },
   mutant: { file: 'mutant-v1.glb', names: /netcode mutant|\bmutant\b/i, credit: 'Model: Mutant — Mixamo (Adobe)' },
   maw:    { file: 'maw-v1.glb',    names: /maw of the meta|\bmaw\b/i, credit: 'Model: Maw J Laygo — Mixamo (Adobe)' },
+  parasite:       { file: 'parasite-v1.glb',       names: /lagspike parasite|\bparasite\b/i, credit: 'Model: Parasite L Starkie — Mixamo (Adobe)' },
+  pumpkinhulk:    { file: 'pumpkinhulk-v1.glb',    names: /patch-?day pumpkin|pumpkinhulk/i, credit: 'Model: Pumpkinhulk L Shaw — Mixamo (Adobe)' },
+  nightshade:     { file: 'nightshade-v1.glb',     names: /ranked nightshade|\bnightshade\b/i, credit: 'Model: Nightshade J Friedrich — Mixamo (Adobe)' },
+  vampire:        { file: 'vampire-v1.glb',        names: /grind vampire|\bvampire\b/i, credit: 'Model: Vampire A Lusth — Mixamo (Adobe)' },
+  demon:          { file: 'demon-v1.glb',          names: /ban-?wave demon/i, credit: 'Model: Demon T Wiezzorek — Mixamo (Adobe)' },
+  // Not "brute": that key is the procedural Ogre Brute in boss.js.
+  smurf:          { file: 'smurf-v1.glb',          names: /smurf brute/i, credit: 'Model: Brute — Mixamo (Adobe)' },
+  warzombie:      { file: 'warzombie-v1.glb',      names: /afk warzombie|warzombie/i, credit: 'Model: Warzombie F Pedroso — Mixamo (Adobe)' },
+  skeletonzombie: { file: 'skeletonzombie-v1.glb', names: /hardstuck skeleton|skeletonzombie/i, credit: 'Model: Skeletonzombie T Avelange — Mixamo (Adobe)' },
 };
 
 /** The model key for a boss name (or an `arch:<key>` seed), or null. */
