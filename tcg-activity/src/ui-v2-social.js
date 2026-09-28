@@ -3,7 +3,7 @@
 // Uses the shared helpers of ui-v2.js; the data comes from the existing APIs.
 
 import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember } from './ui-v2.js';
-import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur } from './effects-ui.js';
+import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge } from './effects-ui.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -130,11 +130,11 @@ function paintBoard() {
   const meIdx = rows.findIndex((r) => r.id === d.me);
   const val = (r, mm = m) => (mm.key === 'cards' ? `${fmt(r.cards)}/${fmt(d.totalCards)}` : mm.key === 'achievements' ? `${r.achievements}/${d.achievementCount}` : mm.short ? short(r[mm.key]) : fmt(r[mm.key]));
   const pod = [rows[1], rows[0], rows[2]].map((r, i) => (r ? `<div class="lb-pod p${[2, 1, 3][i]}${r.id === d.me ? ' me' : ''}" data-member="${esc(r.id)}">
-      ${avatarHTML(r.id, r.name, 'big', r.frame)}<span class="lb-place">${[2, 1, 3][i]}</span><b class="lb-name">${esc(r.name)}</b>${titleHTML(r.title)}
+      ${avatarHTML(r.id, r.name, 'big', r.frame)}<span class="lb-place">${[2, 1, 3][i]}</span><b class="lb-name">${nameBadge(r.id, r.name)}</b>${titleHTML(r.title)}
       <span class="lb-val">${m.icon} ${val(r)}</span>
       <span class="lb-sub">⚔ ${short(r.huntDamage)} · 💀 ${r.bosses} · 📚 ${r.cards}</span></div>` : '<div class="lb-pod empty"></div>')).join('');
   const line = (r, i) => `<div class="lb-row${r.id === d.me ? ' me' : ''}" data-member="${esc(r.id)}"><span class="lb-i mono">${i + 1}</span>
-      <span class="lb-p">${avatarHTML(r.id, r.name, 'sm', r.frame)}<b>${esc(r.name)}</b>${titleHTML(r.title)}${r.id === d.me ? '<i class="you">You</i>' : ''}</span>
+      <span class="lb-p">${avatarHTML(r.id, r.name, 'sm', r.frame)}<b>${nameBadge(r.id, r.name)}</b>${titleHTML(r.title)}${r.id === d.me ? '<i class="you">You</i>' : ''}</span>
       ${METRICS.map((mm) => `<span class="lb-c mono${mm.key === m.key ? ' on' : ''}">${val(r, mm)}</span>`).join('')}</div>`;
   const rest = rows.slice(3);
   const pinMe = meIdx >= 3;
@@ -152,7 +152,7 @@ function paintBoard() {
   const liveRows = live ? live.leaders.slice(0, 4) : [];
   const liveMe = live ? live.leaders.findIndex((x) => String(x.player_id) === d.me) : -1;
   const maxLive = Math.max(1, ...(live?.leaders || []).map((x) => Number(x.damage)));
-  const lrow = (x, i) => `<div class="lb-live${String(x.player_id) === d.me ? ' me' : ''}"><span class="mono">${i + 1}</span>${avatarHTML(x.player_id, x.username, 'sm')}<b>${esc(x.username)}</b><span class="mono">${fmt(x.damage)}</span><i class="lb-lbar"><i style="width:${Math.round((100 * x.damage) / maxLive)}%"></i></i></div>`;
+  const lrow = (x, i) => `<div class="lb-live${String(x.player_id) === d.me ? ' me' : ''}"><span class="mono">${i + 1}</span>${avatarHTML(x.player_id, x.username, 'sm')}<b>${nameBadge(x.player_id, x.username)}</b><span class="mono">${fmt(x.damage)}</span><i class="lb-lbar"><i style="width:${Math.round((100 * x.damage) / maxLive)}%"></i></i></div>`;
 
   el('main').innerHTML = `<div class="v2-board">
     <section class="lb-main">
@@ -291,7 +291,7 @@ function paintTrade() {
       <div class="tr-top">${commTabs()}<span class="grow"></span>
         <div class="seg" id="trMode"><button data-m="offer" class="${tr.mode === 'offer' ? 'on' : ''}">⇄ Offer</button><button data-m="gift" class="${tr.mode === 'gift' ? 'on' : ''}">🎁 Gift</button></div></div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
-        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${esc(p.name)}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
+        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name)}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
         <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="Find a member"></div>
       <div class="tr-compose">${composer}</div>
       <div class="tr-gridhead">
@@ -306,11 +306,11 @@ function paintTrade() {
     <aside class="tr-offers v2-tile">
       <div class="tile-h"><b>Offers</b>${inc.length ? `<span class="nt-count">${inc.length}</span>` : ''}</div>
       <div class="side-h">Incoming <span class="n">${inc.length}</span></div>
-      <div class="of-list" id="ofIn">${inc.map((o) => `<div class="of-row"><div class="of-who">${avatarHTML(o.from_id, o.from_name, 'xs')}<b>${esc(o.from_name || 'Someone')}</b></div>
+      <div class="of-list" id="ofIn">${inc.map((o) => `<div class="of-row"><div class="of-who">${avatarHTML(o.from_id, o.from_name, 'xs')}<b>${nameBadge(o.from_id, o.from_name || 'Someone')}</b></div>
         <div class="of-cards">${offerCard(o.offer, 'Get')}<span>⇄</span>${offerCard(o.request, 'Give')}</div>
         <div class="of-acts"><button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button><button class="v2-btn of-decline" data-id="${o.id}">✕ Decline</button></div></div>`).join('') || '<p class="v2-empty">No incoming offers.</p>'}</div>
       <div class="side-h">Sent <span class="n">${out.length}</span></div>
-      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${esc(o.to_name || 'Someone')}</b><span class="dim">Waiting</span></div>
+      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone')}</b><span class="dim">Waiting</span></div>
         <div class="of-cards">${offerCard(o.offer, 'Give')}<span>⇄</span>${offerCard(o.request, 'Get')}</div><button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button></div>`).join('') || '<p class="v2-empty">No sent offers.</p>'}</div>
     </aside>
   </div>`;
@@ -463,6 +463,7 @@ function paintEffects() {
       <div class="tr-foot"><span class="side-h fx-on">On ${esc(toName)}</span>${fx.onTarget.length ? fx.onTarget.map((e) => `<span class="f-chip">${esc(pretty(e.primitive))}</span>`).join('') : '<span class="dim">Nothing active</span>'}
         <span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg)}</span>
         <button class="v2-btn" id="fxClear">↺ Clear</button>
+        ${st.canTest ? `<button class="v2-btn fx-test" id="fxTest" title="Try it on yourself: no post, no cooldown">🧪 Test on me</button>` : ''}
         <button class="v2-btn fx-play k-${k}" id="fxPlay" ${ready && tr.to && (left == null || left > 0) ? '' : 'disabled'}>✨ Play ${esc((EFFECT_KIND.label[k] || '').toLowerCase())}</button></div>`;
   } else {
     composer = `<div class="fx-empty"><b>Pick an effect card</b><span class="dim">Then play it on ${esc(toName)}.</span></div>
@@ -473,11 +474,11 @@ function paintEffects() {
     const total = (Number(e.duration_s) || 0) * 1000;
     const leftMs = e.expires_at ? new Date(e.expires_at) - Date.now() : null;
     const pct = total && leftMs != null ? Math.max(0, Math.min(100, Math.round((100 * leftMs) / total))) : 100;
-    return `<div class="fx-on-row"><span class="nt-ico">✨</span><div><b>${esc(pretty(e.primitive))}</b><span class="dim">${esc(e.card?.name || '')}</span><i class="fx-bar"><i style="width:${pct}%"></i></i></div>
+    return `<div class="fx-on-row"><span class="nt-ico">${e.options?.test ? '🧪' : '✨'}</span><div><b>${esc(pretty(e.primitive))}${e.options?.test ? ' <i class="fx-testtag">TEST</i>' : ''}</b><span class="dim">${esc(e.card?.name || '')}</span><i class="fx-bar"><i style="width:${pct}%"></i></i></div>
       <span class="mono fx-left">${leftMs != null ? fmtDur(leftMs / 1000) : ''}</span></div>`;
   }).join('');
   const rec = fx.recent.map((r) => `<div class="fx-rec k-${esc(r.kind)}"><span class="fx-pair">${avatarHTML(r.from_id, r.from, 'xs')}${avatarHTML(r.to_id, r.to, 'xs')}</span>
-      <div><b>${esc(r.from)} → ${esc(r.to)}</b><span>${EFFECT_KIND.icon[r.kind] || ''} ${esc(r.outcome === 'reflected' ? 'Reflected' : r.outcome === 'blocked' ? 'Blocked' : pretty(r.primitive))}</span></div>
+      <div><b>${nameBadge(r.from_id, r.from)} → ${nameBadge(r.to_id, r.to)}</b><span>${EFFECT_KIND.icon[r.kind] || ''} ${esc(r.outcome === 'reflected' ? 'Reflected' : r.outcome === 'blocked' ? 'Blocked' : pretty(r.primitive))}</span></div>
       <span class="mono dim">${ctx().ago(r.at)}</span></div>`).join('');
 
   el('main').innerHTML = `<div class="v2-trade community fx-view">
@@ -485,7 +486,7 @@ function paintEffects() {
       <div class="tr-top">${commTabs()}<span class="grow"></span>
         ${cap ? `<div class="fx-today"><span>Plays today</span><i class="fx-bar"><i style="width:${Math.round((100 * used) / cap)}%"></i></i><b class="mono">${used}/${cap}</b></div>` : ''}</div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
-        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${esc(p.name)}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
+        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name)}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
         <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="Find a member"></div>
       <div class="tr-compose">${composer}</div>
       <div class="tr-gridhead"><div class="seg"><button class="on">Your effect cards <b>${(ctx().cache.collection?.cards || []).filter((x) => x.effect?.primitive).length}</b></button></div>
@@ -495,7 +496,7 @@ function paintEffects() {
       <div class="v2-grid" id="fxGrid"></div>
     </section>
     <aside class="tr-offers v2-tile fx-side">
-      <div class="tile-h"><b>On you</b><span class="grow"></span><span class="n mono">${(st.active || []).length}</span></div>
+      <div class="tile-h"><b>On you</b><span class="grow"></span>${st.canTest && (st.active || []).some((e) => e.options?.test) ? '<button class="link-btn" id="fxClearTests">Clear tests</button>' : ''}<span class="n mono">${(st.active || []).length}</span></div>
       <div class="of-list fx-onyou" id="fxOnYou">${onYou || '<p class="v2-empty">Nothing is active on you.</p>'}</div>
       <div class="tile-h"><b>Recent plays</b><span class="grow"></span><span class="live-chip sm">● LIVE</span></div>
       <div class="of-list fx-recent" id="fxRecent">${rec || '<p class="v2-empty">No plays yet.</p>'}</div>
@@ -521,6 +522,12 @@ function paintEffects() {
     paintEffects();
   };
   el('fxClear')?.addEventListener('click', () => { fx.pick = null; fx.msg = ''; paintEffects(); });
+  el('fxTest')?.addEventListener('click', async () => {
+    const r = await testCard(fx.pick);
+    fx.msg = r?.ok ? `Test: ${pretty(r.primitive)} is on you${r.duration_s ? ` for ${fmtDur(r.duration_s)}` : ''}` : (r?.error === 'not_testable' ? 'This effect cannot be tested on yourself.' : effectError(r?.error));
+    await loadFx(); paintEffects();
+  });
+  el('fxClearTests')?.addEventListener('click', async () => { await clearTests(); fx.msg = 'Tests cleared'; await loadFx(); paintEffects(); });
   el('fxPlay')?.addEventListener('click', async () => {
     const btn = el('fxPlay'); btn.disabled = true;
     const r = await playCard(fx.pick, tr.to.id);
