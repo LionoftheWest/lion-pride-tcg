@@ -114,3 +114,32 @@ export function measure(cards, stats) {
     return { ...a, have: r.have, need: Math.max(1, r.need), set: r.set, done: r.have >= Math.max(1, r.need) };
   }).sort((a, b) => (a.done - b.done) || (b.have / b.need - a.have / a.need));
 }
+
+// ---- Rewards (redeemed once each; the server checks completion before it pays) ----
+// packs = unopened packs; title = a name tag for the profile; frame = an avatar ring.
+// Easy goals give 1 pack, medium 2, hard 3-5; the hardest also unlock a title or frame.
+export const FRAMES = { silver: 'Silver frame', gold: 'Gold frame', holo: 'Holo frame' };
+export const REWARDS = {
+  first: { packs: 1 }, own10: { packs: 1 }, own25: { packs: 2 }, own50: { packs: 2, frame: 'silver' },
+  own100: { packs: 3, title: 'Archivist', frame: 'gold' }, s1: { packs: 5, title: 'Season 1 Champion', frame: 'holo' },
+  ir1: { packs: 1 }, sr1: { packs: 1 }, fa1: { packs: 1 }, g1: { packs: 1 },
+  ir10: { packs: 2, title: 'Rare Hunter' }, sr5: { packs: 3, title: 'Secret Keeper' }, fa5: { packs: 3, title: 'Full House' },
+  g5: { packs: 3, title: 'Golden Touch', frame: 'gold' },
+  fire5: { packs: 1, title: 'Flame Keeper' }, light5: { packs: 1, title: 'Dawn Bringer' }, lightning5: { packs: 1, title: 'Storm Chaser' },
+  nature5: { packs: 1, title: 'Wild Child' }, shadow5: { packs: 1, title: 'Night Walker' }, psychic5: { packs: 1, title: 'Mind Reader' },
+  water5: { packs: 1, title: 'Tide Caller' }, rainbow: { packs: 3, title: 'Rainbow Pride', frame: 'holo' },
+  smash20: { packs: 2, title: 'Smash Fan' }, poke10: { packs: 2, title: 'Trainer' }, party5: { packs: 1, title: 'Party Starter' },
+  mc5: { packs: 1, title: 'Blockhead' },
+  place3: { packs: 1 }, moment10: { packs: 2, title: 'Timekeeper' }, item5: { packs: 1, title: 'Loot Goblin' },
+  support10: { packs: 2, title: 'Support Crew' }, royal10: { packs: 2, title: 'Royalty' }, beast10: { packs: 2, title: 'Beast Master' },
+  fullset: { packs: 3, title: 'Completionist' }, double5: { packs: 2 },
+  dup2: { packs: 1 }, dup5: { packs: 2 }, asc1: { packs: 1 }, asc3: { packs: 2, frame: 'silver' }, asc5: { packs: 3, title: 'Maxed Out', frame: 'gold' },
+  packs10: { packs: 1 }, gift1: { packs: 1, title: 'Generous' },
+  hunt1: { packs: 1 }, hunt4: { packs: 2, title: 'Hunt Regular' }, dmg1k: { packs: 1, title: 'Heavy Hitter' }, hit500: { packs: 2, title: 'Big Hitter' },
+  slay1: { packs: 2 }, slay3: { packs: 3, title: 'Boss Breaker', frame: 'silver' },
+  boon1: { packs: 1 }, prank5: { packs: 2, title: 'Prankster' }, trade1: { packs: 1, title: 'Trader' },
+};
+export const rewardOf = (key) => REWARDS[key] || { packs: 1 };
+export function rewardLabel(r) {
+  return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.title ? `"${r.title}" title` : null, r.frame ? FRAMES[r.frame] : null].filter(Boolean).join(' + ');
+}

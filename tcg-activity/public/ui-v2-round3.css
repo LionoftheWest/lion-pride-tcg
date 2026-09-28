@@ -1,0 +1,107 @@
+/* Lion Pride TCG — UI v2 round 3 (Nathan, 2026-09-27): gold element icons, one filter
+   panel, achievement rewards, titles + frames, the resting hunt on Home, the spotlight
+   editor. Scoped under body.ui-v2. */
+
+/* ---- Gold element icons ---- */
+body.ui-v2 .el-ico { width: 16px; height: 16px; color: var(--gold); display: block; }
+body.ui-v2 .el-btn { display: grid; place-items: center; filter: none; opacity: .75; border: 1px solid transparent; background: transparent; }
+body.ui-v2 .el-btn:hover { opacity: 1; background: var(--surface); }
+body.ui-v2 .el-btn.on { opacity: 1; border-color: rgba(244, 183, 60, .6); background: var(--gold-soft); }
+body.ui-v2 .v2-cap .cap-el .el-ico { width: 13px; height: 13px; }
+body.ui-v2 .tag.el { gap: 5px; border-color: rgba(244, 183, 60, .55); }
+body.ui-v2 .tag.el .el-ico { width: 13px; height: 13px; }
+
+/* ---- One filter panel ---- */
+body.ui-v2 .v2-side.filters { gap: 0; }
+body.ui-v2 .f-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font: 700 15px var(--font-display); }
+body.ui-v2 .f-own { margin: 10px 0 0; width: 100%; }
+body.ui-v2 .f-own button { flex: 1; }
+body.ui-v2 .f-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+body.ui-v2 .f-chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: var(--rad-pill); border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-secondary); font: 600 11.5px var(--font-ui); cursor: pointer; white-space: nowrap; }
+body.ui-v2 .f-chip:hover { color: var(--text-primary); }
+body.ui-v2 .f-chip.on { color: var(--gold); border-color: rgba(244, 183, 60, .6); background: var(--gold-soft); }
+body.ui-v2 .f-chip i { font-style: normal; font: 600 10px var(--font-num); color: var(--text-muted); }
+body.ui-v2 .f-chip .dia { color: var(--rc); font-size: 9px; }
+body.ui-v2 .v2-side.filters .side-h { margin: 12px 0 6px; }
+body.ui-v2 .v2-side.filters.tight .f-chip i { display: none; }
+body.ui-v2 .v2-side.filters.tight .side-h { margin: 8px 0 4px; }
+body.ui-v2 .v2-side.filters.tighter .f-chip { height: 22px; padding: 0 7px; font-size: 11px; }
+body.ui-v2 .col-tabs button i { font-style: normal; font: 600 10.5px var(--font-num); color: var(--text-muted); margin-left: 4px; }
+body.ui-v2 .col-tabs { flex: 0 0 auto; }
+body.ui-v2 .tab-dot { margin-left: 5px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--danger); color: #fff; font: 700 10px var(--font-num); display: inline-grid; place-items: center; }
+body.ui-v2 .col-title { font-size: 19px !important; }
+body.ui-v2 .ach-ready { font: 700 12px var(--font-ui); color: var(--gold); }
+
+/* ---- Achievement rewards ---- */
+body.ui-v2 .v2-ach.ready { border-color: rgba(244, 183, 60, .65); box-shadow: 0 0 18px rgba(244, 183, 60, .15); }
+body.ui-v2 .ah-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+body.ui-v2 .ah-reward { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .ah-redeem { flex: 0 0 auto; height: 26px; padding: 0 12px; border-radius: var(--rad-pill); display: inline-grid; place-items: center; cursor: pointer;
+  background: linear-gradient(180deg, #FFCB5C, var(--gold-strong)); color: var(--on-gold); font: 800 11.5px var(--font-ui); }
+body.ui-v2 .ah-redeem.busy { opacity: .6; }
+body.ui-v2 .ah-claimed { flex: 0 0 auto; font: 700 11px var(--font-ui); color: var(--success); }
+body.ui-v2 .ach-head .v2-btn { height: 36px; padding: 0 14px; }
+body.ui-v2 .v2-toast { position: fixed; z-index: 120; left: 50%; top: 80px; transform: translateX(-50%); padding: 12px 20px; border-radius: 14px; font: 700 14px var(--font-ui);
+  background: linear-gradient(180deg, #2a2210, #1a150a); border: 1px solid rgba(244, 183, 60, .6); color: var(--gold); box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+  animation: v2Rise var(--dur-base) var(--ease-out); transition: opacity .5s, transform .5s; }
+body.ui-v2 .v2-toast.out { opacity: 0; transform: translate(-50%, -10px); }
+
+/* ---- Titles + avatar frames ---- */
+body.ui-v2 .v2-title { display: inline-block; font: 700 10.5px var(--font-ui); letter-spacing: .5px; color: var(--gold); background: var(--gold-soft); border: 1px solid rgba(244, 183, 60, .4);
+  border-radius: 6px; padding: 2px 7px; white-space: nowrap; }
+body.ui-v2 .prof-name { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+body.ui-v2 .v2-avatar.frame-silver { background: linear-gradient(135deg, #F1F4F8, #8C96A6 60%, #E3E8EF); }
+body.ui-v2 .v2-avatar.frame-gold { background: linear-gradient(135deg, #FFE7A8, #F4B73C 50%, #B8791A); box-shadow: 0 0 12px rgba(244, 183, 60, .5); }
+body.ui-v2 .v2-avatar.frame-holo { background: conic-gradient(from 0deg, #FF4FA3, #FFD43B, #5BE38A, #3CB6FF, #B15CFF, #FF4FA3); box-shadow: 0 0 14px rgba(177, 92, 255, .5); animation: v2Holo 6s linear infinite; }
+@keyframes v2Holo { to { filter: hue-rotate(360deg); } }
+body.ui-v2 .lb-pod .v2-title, body.ui-v2 .mem-id .v2-title { margin-top: -2px; }
+body.ui-v2 .lb-row .v2-title { font-size: 9.5px; padding: 1px 5px; }
+
+/* ---- The resting hunt on Home ---- */
+body.ui-v2 .hero-info.rest { gap: 8px; }
+body.ui-v2 .rest-res { font: 800 12px var(--font-ui); letter-spacing: .8px; text-transform: uppercase; }
+body.ui-v2 .rest-res.won { color: var(--success); }
+body.ui-v2 .rest-res.lost { color: var(--danger); }
+body.ui-v2 .rest-stats { display: flex; gap: 22px; }
+body.ui-v2 .rest-stats b { display: block; font: 800 18px var(--font-num); }
+body.ui-v2 .rest-stats span { font-size: 11px; color: var(--text-muted); }
+body.ui-v2 .hero-rest-side { position: relative; display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px; min-height: 0; overflow: hidden; }
+body.ui-v2 .rest-boss { height: 100%; max-height: 190px; object-fit: contain; filter: grayscale(.4) drop-shadow(0 10px 30px rgba(0, 0, 0, .6)); opacity: .9; }
+body.ui-v2 .rest-top { display: flex; flex-direction: column; gap: 6px; min-width: 170px; }
+body.ui-v2 .rest-top .side-h { margin: 0 0 2px; }
+body.ui-v2 .rest-hr { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(17, 17, 27, .8); border: 1px solid var(--border); font-size: 12.5px; }
+body.ui-v2 .rest-hr:first-of-type { border-color: rgba(244, 183, 60, .5); }
+body.ui-v2 .rest-hr b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .rest-hr .mono { color: var(--gold); font-size: 12px; }
+body.ui-v2 .rest-hr .mono:first-child { color: var(--text-muted); }
+
+/* ---- The spotlight + style editor ---- */
+body.ui-v2 .se-card { grid-template-columns: 300px minmax(0, 1fr); }
+body.ui-v2 .se-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
+body.ui-v2 .se-side .side-h { margin: 6px 0 0; }
+body.ui-v2 .se-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+body.ui-v2 .se-slot { position: relative; aspect-ratio: 5 / 7; padding: 0; border: 0; background: none; cursor: pointer; }
+body.ui-v2 .se-slot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+body.ui-v2 .se-slot .se-x { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px;
+  background: var(--danger); color: #fff; border: 2px solid var(--bg-raised); }
+body.ui-v2 .se-slot.empty { border: 1.5px dashed var(--border-strong); border-radius: 10px; display: grid; place-items: center; color: var(--text-muted); font: 700 14px var(--font-num); cursor: default; }
+body.ui-v2 .se-hint { font-size: 11.5px; }
+body.ui-v2 .se-foot { margin-top: auto; display: flex; align-items: center; gap: 10px; }
+body.ui-v2 .se-foot .v2-btn { margin-left: auto; min-width: 110px; }
+body.ui-v2 .se-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding-right: 40px; }
+body.ui-v2 .se-main .v2-search { width: 200px; height: 34px; }
+body.ui-v2 .v2-cell.in-spot .v2-card { outline: 2.5px solid var(--gold); outline-offset: 3px; }
+
+/* Spotlight slots fit the column: the ✕ sits inside the card corner. */
+body.ui-v2 .se-slots { gap: 8px; padding: 2px; }
+body.ui-v2 .se-slot { min-width: 0; }
+body.ui-v2 .se-slot .se-x { top: 4px; right: 4px; width: 20px; height: 20px; border-width: 1.5px; opacity: .9; }
+body.ui-v2 .se-slot:hover .se-x { opacity: 1; transform: scale(1.1); }
+/* Locked titles + frames: visible, greyed, with the unlocking achievement in the tooltip. */
+body.ui-v2 .f-chip.locked { opacity: .5; cursor: help; border-style: dashed; }
+body.ui-v2 .f-chip.locked.more { opacity: .7; }
+body.ui-v2 .se-ring { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 2px; background: var(--surface-3); }
+body.ui-v2 .se-ring.frame-silver { background: linear-gradient(135deg, #F1F4F8, #8C96A6); }
+body.ui-v2 .se-ring.frame-gold { background: linear-gradient(135deg, #FFE7A8, #B8791A); }
+body.ui-v2 .se-ring.frame-holo { background: conic-gradient(#FF4FA3, #FFD43B, #5BE38A, #3CB6FF, #B15CFF, #FF4FA3); }
