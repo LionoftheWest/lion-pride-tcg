@@ -24,7 +24,8 @@ export const B = {                                            // the boss number
 };
 const U = (a, b) => a + Math.random() * (b - a);
 const maxHp = (cp) => Math.max(30, Math.round(cp * 1.8));
-const pick = (n) => [...PASSIVES].sort(() => Math.random() - 0.5).slice(0, n);
+const pick = (n) => (process.env.PASSIVES ? process.env.PASSIVES.split(',') : [...PASSIVES].sort(() => Math.random() - 0.5).slice(0, n));
+const DMG = Number(process.env.DMG || 1); // calibration: real damage per attack / simulated
 
 function fightDay(boss, deck) {
   const cards = deck.map((cp) => ({ cp, hp: maxHp(cp), max: maxHp(cp), stun: -1, debuff: 1 }));
@@ -40,7 +41,7 @@ function fightDay(boss, deck) {
     let dmg = 0;
     if (Math.random() >= 0.08 + (has('shrouded') ? 0.10 : 0)) {
       const crit = Math.random() < 0.12, block = !crit && Math.random() < 0.12;
-      dmg = card.cp * 1.1 * U(0.85, 1.15) * 1.08 * card.debuff;
+      dmg = card.cp * 1.1 * U(0.85, 1.15) * 1.08 * card.debuff * DMG;
       if (has('armored') && Math.random() < 0.5) dmg *= 0.72;           // half the deck is melee
       if (crit) dmg *= 2; if (block) dmg *= 0.5;
       dmg = Math.max(1, Math.round(dmg));
@@ -88,6 +89,52 @@ function week(tier, players) {
   return { killed: boss.hp <= 0, days, pct: Math.round(100 * (1 - Math.max(0, boss.hp) / max)), attacksPerDay: rounds / days };
 }
 
+// Fixed HP (Nathan, 2026-09-28: "a set HP that can handle tons of players regardless").
+//   FIXED=80000,120000,160000 DAYS=7 CREW=10 PLAYERS=5,10,15 SCALE=1 node scripts/boss-sim.mjs
+// SCALE = each player's deck as a fraction of the reference deck. BATTLE=1 prints the net
+// damage of one daily battle per tier (the calibration: real Mythic 2026-09-28 = 1,556).
+if (process.env.FIXED || process.env.BATTLE) {
+  const HP = (process.env.FIXED || '1e9,1e9,1e9').split(',').map(Number);
+  const DAYS = Number(process.env.DAYS || 7), CREW = Number(process.env.CREW || 10);
+  const deck = DECK.map((cp) => cp * Number(process.env.SCALE || 1));
+  const tiers = Object.keys(TIERS);
+  if (process.env.BATTLE) {
+    for (const [i, tier] of tiers.entries()) {
+      let net = 0, n = 400;
+      for (let k = 0; k < n; k++) {
+        const max = 1e7, boss = { hp: max, max, share: max / 1e3, lethal: TIERS[tier].lethal, passives: pick(TIERS[tier].passives), phase25: false };
+        fightDay(boss, deck); net += max - boss.hp;
+      }
+      console.log(`${tier.padEnd(7)} one battle: ${Math.round(net / n)} net damage`);
+    }
+    process.exit(0);
+  }
+  console.log(`fixed HP ${HP.join('/')}, ${DAYS} days, heal share = HP / ${CREW}, deck x${process.env.SCALE || 1}`);
+  for (const players of (process.env.PLAYERS || '5,10,15,20').split(',').map(Number)) {
+    for (const [i, tier] of tiers.entries()) {
+      const runs = Array.from({ length: 300 }, () => {
+        const max = HP[i], boss = { hp: max, max, share: Math.round(max / CREW), lethal: TIERS[tier].lethal, passives: pick(TIERS[tier].passives), phase25: false };
+        let day = 0;
+        for (; day < DAYS && boss.hp > 0; day++) for (let p = 0; p < players && boss.hp > 0; p++) fightDay(boss, deck);
+        return { killed: boss.hp <= 0, day, pct: 100 * (1 - Math.max(0, boss.hp) / max) };
+      });
+      const k = runs.filter((r) => r.killed);
+      console.log(`${String(players).padStart(2)} players  ${tier.padEnd(7)} HP ${String(HP[i]).padStart(7)}  killed ${String(Math.round(100 * k.length / runs.length)).padStart(3)}%${k.length ? ` (day ${(k.reduce((t, r) => t + r.day, 0) / k.length).toFixed(1)})` : ''}  avg ${Math.round(runs.reduce((t, r) => t + r.pct, 0) / runs.length)}% of HP`);
+    }
+  }
+  process.exit(0);
+}
+if (process.env.CALIBRATE) {
+  const t = TIERS[process.env.CALIBRATE];
+  let dealt = 0, att = 0, n = 300;
+  for (let i = 0; i < n; i++) {
+    const max = Math.round(DP * t.hp);
+    const boss = { hp: max, max, share: max, lethal: t.lethal, passives: pick(t.passives), phase25: false };
+    const r = fightDay(boss, DECK); dealt += r.dealt / max; att += r.rounds;
+  }
+  console.log(`${process.env.CALIBRATE} one day: ${(100 * dealt / n).toFixed(1)}% of HP in ${(att / n).toFixed(1)} attacks = ${(100 * dealt / att).toFixed(2)}% per attack`);
+  process.exit(0);
+}
 const TRIALS = 400;
 console.log(`deck ${DECK.join(',')} (deployable power ${DP}), HP multipliers ${MULT.join('/')}`);
 for (const players of (process.env.PLAYERS || '1,3,6').split(',').map(Number)) {

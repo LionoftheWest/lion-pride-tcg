@@ -9,7 +9,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
-const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/hunt_boss_difficulty.sql', import.meta.url)), 'utf8');
+// The combat migration + the fixed HP on top (spawn_hunt is replaced by the second file).
+const mig = ['hunt_boss_difficulty.sql', 'hunt_boss_hp_fixed.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')).join(String.fromCharCode(10));
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 
 const body = String.raw`do $t$
@@ -20,25 +21,36 @@ declare
 begin
   execute $m$${mig}$m$;
 
-  -- 1. Spawns: passives per tier (1/2/3, all different), HP x 9/10/9, hp_share = HP / hunters.
-  insert into players (id, username) values ('tst_boss', 'tst boss');
+  -- 1. Spawns: passives 1/2/3 (all different), the fixed HP per tier, heals sized to HP / crew.
   select array_agg(id) into ids from (select c.id from cards c join subjects s on s.id = c.subject_id
     where s.type in ('Character','Creature') and c.rarity::text = 'gold' order by c.id limit 8) x;
+  insert into players (id, username) values ('tst_boss', 'tst boss');
   insert into player_cards (player_id, card_id, quantity) select 'tst_boss', unnest(ids), 1;
-  select greatest(1, count(distinct pc.player_id)) into hunters from player_cards pc join cards c on c.id = pc.card_id
-    join subjects s on s.id = c.subject_id where pc.quantity >= 1 and s.type in ('Character','Creature');
-  dp := deployable_power();
-  ok := true; n := 0;
-  for i in 1..24 loop
-    h := spawn_hunt(3);
-    select * into rec from hunts where id = h;
-    n := n + 1;
+  ok := true; kinds := '{}';
+  for i in 1..15 loop
+    h := spawn_hunt(3); select * into rec from hunts where id = h;
+    kinds := array_append(kinds, rec.tier);
     if jsonb_array_length(rec.passive->'list') <> (case rec.tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end)
        or (select count(distinct x->>'kind') from jsonb_array_elements(rec.passive->'list') x) <> jsonb_array_length(rec.passive->'list')
-       or rec.hp_max <> greatest(500, round(dp * (case rec.tier when 'Normal' then 9 when 'Heroic' then 10 else 9 end)))
-       or rec.hp_share <> greatest(1, round(rec.hp_max::numeric / hunters)) then ok := false; end if;
+       or rec.hp_max <> (case rec.tier when 'Normal' then 60000 else 80000 end)
+       or rec.hp_remaining <> rec.hp_max or rec.hp_share <> rec.hp_max / 10 then ok := false; end if;
   end loop;
-  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP x9/10/9, hp_share = HP/hunters (24 spawns)', 'ok', ok, 'hunters', hunters, 'dp', dp);
+  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP 60k/80k/80k, share = HP / 10', 'ok', ok,
+    'tiers', (select count(distinct t) from unnest(kinds) t));
+  -- The HP does not follow the players: 30 more card holders, the same HP.
+  insert into players (id, username) select 'tst_x' || g, 'tst x' from generate_series(1, 30) g;
+  insert into player_cards (player_id, card_id, quantity) select 'tst_x' || g, unnest(ids), 1 from generate_series(1, 30) g;
+  ok := true;
+  for i in 1..6 loop
+    h := spawn_hunt(3); select * into rec from hunts where id = h;
+    if rec.hp_max <> (case rec.tier when 'Normal' then 60000 else 80000 end) then ok := false; end if;
+  end loop;
+  res := res || jsonb_build_object('case', 'the HP does not change with the player count', 'ok', ok);
+  -- The dial: a changed setting changes the next spawn.
+  update settings set value = '{"Normal":1234,"Heroic":1234,"Mythic":1234,"crew":2}' where key = 'hunt_hp';
+  h := spawn_hunt(3); select * into rec from hunts where id = h;
+  res := res || jsonb_build_object('case', 'the settings dial hunt_hp sets the HP and the share', 'ok', rec.hp_max = 1234 and rec.hp_share = 617);
+  kinds := '{}';
 
   -- 2. A long fight on a quiet test boss (no passives, big HP) to sample the boss turn.
   insert into hunts (name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, closes_at, hp_share)
@@ -92,7 +104,7 @@ begin
   -- 4. Phases: below 50% the rage phase is reported; below 25% the boss gains a passive.
   delete from hunt_card_hp where hunt_id = h and player_id = 'tst_boss';
   delete from hunt_combat_state where hunt_id = h and player_id = 'tst_boss';
-  update hunts set hp_remaining = 500001, passive = '{"list": []}' where id = h;
+  update hunts set hp_remaining = 500001, passive = '{"list": []}', hp_share = 100 where id = h;  -- tiny heals (see below)
   ph := null;
   for i in 1..8 loop
     select hp_remaining into prev from hunts where id = h;
@@ -103,7 +115,7 @@ begin
   res := res || jsonb_build_object('case', 'the hit that crosses 50% reports the rage phase', 'ok', ph = 'rage', 'r', r->>'phase', 'hp', r->>'hp_remaining');
   delete from hunt_card_hp where hunt_id = h and player_id = 'tst_boss';
   delete from hunt_combat_state where hunt_id = h and player_id = 'tst_boss';
-  update hunts set hp_remaining = 250001 where id = h;
+  update hunts set hp_remaining = 250001, hp_share = 100 where id = h;  -- tiny heals: a 3,000 regenerate must not undo the crossing hit
   for i in 1..8 loop r := hunt_attack('tst_boss', h, ids[i]); exit when r->>'phase' is not null; end loop;
   select jsonb_array_length(passive->'list') into v from hunts where id = h;
   res := res || jsonb_build_object('case', 'below 25% the boss gains one passive (once)', 'ok', v = 1 and (select (passive->>'phase2')::boolean from hunts where id = h), 'list', (select passive->'list' from hunts where id = h), 'phase', r->>'phase');
@@ -123,7 +135,7 @@ begin
 
   raise exception 'RES %', res;
 end $t$;`;
-const out = JSON.stringify(await q(body)); const m = out.match(/RES (\[.*\])/);
+const out = JSON.stringify(await q(`set statement_timeout = '5min';` + String.fromCharCode(10) + body)); const m = out.match(/RES (\[.*\])/);
 if (!m) { console.log(out.slice(0, 2500)); process.exitCode = 1; }
 else {
   const rs = JSON.parse(m[1].replace(/\\"/g, '"').replace(/\n.*$/, '')); let f = 0;

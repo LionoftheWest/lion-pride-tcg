@@ -132,3 +132,23 @@ body.ui-v2 #viewer.raid-info .v-ability, body.ui-v2 #viewer.raid-info .v-effect,
 .squad-grid .c.stunned .art { filter: grayscale(.5) brightness(.75); }
 .squad-grid .c.stunned .art::after { content: '💫'; position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 28px; z-index: 4; animation: stunSpin 1.2s linear infinite; }
 @keyframes stunSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* ---- App shell: pinned to the real visible window (Nathan, 2026-09-28: the top bar
+   went missing in smaller Discord windows). dvh = the visible height. ---- */
+html:has(body.ui-v2), body.ui-v2 { height: 100%; overflow: hidden; }
+body.ui-v2 { position: fixed; inset: 0; margin: 0; }
+body.ui-v2 #topbar { position: relative; z-index: 20; flex: 0 0 auto; }
+body.ui-v2 #body { height: calc(100vh - var(--topbar-h)); height: calc(100dvh - var(--topbar-h)); }
+
+/* ---- Hunt fight: use the whole arena ---- */
+body.ui-v2 .arena-mode .arena-top { left: 0; right: 0; width: auto; transform: none; padding: 14px 20px 0; }
+body.ui-v2 .arena-mode .arena-titlerow { flex-wrap: nowrap; min-width: 0; }
+body.ui-v2 .arena-mode .arena-titlerow .boss-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; font-size: clamp(18px, 2.1vw, 28px); }
+body.ui-v2 .arena-mode .arena-titlerow .closes { white-space: nowrap; }
+body.ui-v2 .arena-traits { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+body.ui-v2 .arena-traits .weaks { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; font: 700 11px var(--font-ui); letter-spacing: .6px; text-transform: uppercase; color: var(--text-secondary); }
+body.ui-v2 .arena-traits .passive-chip { margin-left: 4px; }
+body.ui-v2 .hunt-arena .arena-subrow { left: auto; right: 20px; top: 128px; transform: none; }
+/* The live hits line up with the arena's left edge, under the HP bar. */
+body.ui-v2:has(.arena-mode) #feed { left: calc(var(--sp-5) + 20px); top: calc(var(--topbar-h) + 138px); width: 250px; height: calc(100% - var(--topbar-h) - 138px - var(--dock-h) - 40px - 32vh); min-height: 120px; }
+body.ui-v2 .squad-grid.hand { padding: 44px 16px 16px; }
