@@ -13,6 +13,8 @@
  *              SUPABASE_SERVICE_ROLE_KEY, PORT (default 4441)
  */
 import 'dotenv/config';
+import { measure as measureAchievements, ACHIEVEMENTS } from './src/achievements.js';
+const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
@@ -351,6 +353,78 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // ---- The Pride Hunt (Phase 2) ----------------------------------------------
+// The v2 leaderboard (design/12-leaderboard-screen.png): every player with cards, with
+// collection power, hunt damage, bosses downed, cards owned, and achievements done.
+// One pass over a few tables, cached 60s (the member count is small).
+let boardV2Cache = null;
+app.get('/api/leaderboard/v2', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const hunt = FEATURE_HUNT ? await activeHunt() : null;
+  if (!boardV2Cache || Date.now() - boardV2Cache.at > 60000) {
+    try {
+      const [players, owned, hits, hunts, opened, gifted, plays, trades, catalog] = await Promise.all([
+        supabase.from('players').select('id, username, avatar'),
+        supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1).limit(100000),
+        supabase.from('hunt_hits').select('player_id, hunt_id, damage').limit(100000),
+        supabase.from('hunts').select('id, status'),
+        supabase.from('pack_ledger').select('player_id').eq('reason', 'opened').limit(100000),
+        supabase.from('pack_ledger').select('granted_by').eq('reason', 'gift').limit(100000),
+        supabase.from('card_plays').select('player_id, kind').limit(100000),
+        supabase.from('trade_offers').select('from_id, to_id').eq('status', 'accepted').limit(100000),
+        getCatalogBase(),
+      ]);
+      const defeated = new Set((hunts.data || []).filter((h) => h.status === 'defeated').map((h) => h.id));
+      const byPlayer = new Map();
+      const row = (id) => {
+        if (!byPlayer.has(id)) byPlayer.set(id, { cards: [], hits: [], opened: 0, gifted: 0, boons: 0, pranks: 0, trades: 0 });
+        return byPlayer.get(id);
+      };
+      for (const r of owned.data || []) row(r.player_id).cards.push(r);
+      for (const r of hits.data || []) row(r.player_id).hits.push(r);
+      for (const r of opened.data || []) row(r.player_id).opened += 1;
+      for (const r of gifted.data || []) if (r.granted_by) row(r.granted_by).gifted += 1;
+      for (const r of plays.data || []) { const x = row(r.player_id); if (r.kind === 'boon') x.boons += 1; if (r.kind === 'prank') x.pranks += 1; }
+      for (const r of trades.data || []) { row(r.from_id).trades += 1; row(r.to_id).trades += 1; }
+      const names = new Map((players.data || []).map((p) => [String(p.id), p]));
+      const byId = new Map(catalog.map((c) => [c.id, c]));
+      const cp = new Map(catalog.map((c) => [c.id, c]));
+      const rows = [];
+      for (const [id, x] of byPlayer) {
+        if (!x.cards.length && !x.hits.length) continue;
+        const mine = new Map(x.cards.map((r) => [r.card_id, r]));
+        const merged = catalog.map((c) => { const m = mine.get(c.id); return m ? { ...c, owned: true, quantity: m.quantity, ascension: m.ascension || 0 } : { ...c, owned: false, quantity: 0, ascension: 0 }; });
+        const joined = new Set(x.hits.map((h) => h.hunt_id));
+        const stats = {
+          packsOpened: x.opened, packsGifted: x.gifted, huntsJoined: joined.size,
+          bossesDefeated: [...joined].filter((h) => defeated.has(h)).length,
+          totalDamage: x.hits.reduce((t, h) => t + (h.damage || 0), 0),
+          bestHit: x.hits.reduce((m, h) => Math.max(m, h.damage || 0), 0),
+          boonsPlayed: x.boons, pranksPlayed: x.pranks, tradesDone: x.trades,
+        };
+        const power = x.cards.reduce((t, r) => t + cardPower(cp.get(r.card_id)?.rarity, r.ascension, byId.get(r.card_id)?.cp_mod), 0);
+        rows.push({
+          id, name: names.get(String(id))?.username || 'Someone', hasAvatar: !!names.get(String(id))?.avatar,
+          power, huntDamage: stats.totalDamage, bosses: stats.bossesDefeated, cards: x.cards.length,
+          achievements: measureAchievements(merged, stats).filter((a) => a.done).length,
+        });
+      }
+      // The authoritative power (with the set-completion bonus), the same number as the profile.
+      await Promise.all(rows.map(async (r) => {
+        const { data } = await supabase.rpc('my_collection_power', { p_player_id: r.id });
+        if (data != null) r.power = Number(data);
+      }));
+      boardV2Cache = { at: Date.now(), rows, totalCards: catalog.length };
+    } catch (e) { return res.status(500).json({ error: e.message }); }
+  }
+  let live = null;
+  if (hunt) {
+    const { data } = await supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 });
+    live = { name: hunt.name, tier: hunt.tier, share: hunt.hp_max ? Math.round((100 * (hunt.hp_max - hunt.hp_remaining)) / hunt.hp_max) : 0, leaders: data || [] };
+  }
+  res.json({ me: String(me.id), rows: boardV2Cache.rows, totalCards: boardV2Cache.totalCards, achievementCount: ACHIEVEMENT_COUNT, live });
+});
+
 async function activeHunt() {
   const { data } = await supabase
     .from('hunts')
@@ -679,6 +753,7 @@ async function getCatalogBase() {
       artist: c.artist_credit,
       lore: c.lore,
       power: cardPower(c.rarity, 0, c.subject?.cp_mod), // the base (unascended) power
+      cp_mod: c.subject?.cp_mod ?? 1,
       subject: c.subject?.name,
       type: c.subject?.type || null,
       tags: c.subject?.tags || null,

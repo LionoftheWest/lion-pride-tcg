@@ -9,6 +9,7 @@ import { measure } from './achievements.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
+export const v2ctx = () => ctx;
 
 const RARITY_ORDER = ['normal', 'illustrated_rare', 'secret_rare', 'full_art', 'gold'];
 const TOP_RARITY = new Set(['secret_rare', 'full_art', 'gold', 'event', 'promo']);
@@ -28,7 +29,7 @@ export function avatarHTML(id, name, cls = '') {
 // ---- Shared card data ------------------------------------------------------
 
 // The full catalog with a collection merged in (default: the caller's).
-function mergedCards(ownedList = ctx.cache.collection?.cards || []) {
+export function mergedCards(ownedList = ctx.cache.collection?.cards || []) {
   const owned = new Map(ownedList.map((c) => [c.id, c]));
   const seasonIdx = new Map();
   return (ctx.cache.catalog?.cards || []).map((c) => {
@@ -50,14 +51,14 @@ async function loadMyProfile(force) {
   try { myProfile = await ctx.api('/api/profile'); } catch { /* keep */ }
   return myProfile;
 }
-async function ensureCatalog() {
+export async function ensureCatalog() {
   if (ctx.cache.catalog) return;
   try { ctx.cache.catalog = await ctx.api('/api/catalog'); } catch { ctx.cache.catalog = { cards: [] }; }
 }
 
 // One card cell: the card image exactly as it is printed (500x700, its own frame),
 // and a caption row under it. A missing card is a locked slot with its number.
-function tileHTML(c, idx, selected) {
+export function tileHTML(c, idx, selected) {
   if (c.locked) {
     return `<div class="v2-cell${selected ? ' sel' : ''}" data-idx="${idx}"><div class="v2-card locked"><span class="lk">🔒</span><span class="num">${numLabel(c.num)}</span></div><div class="v2-cap"></div></div>`;
   }
@@ -91,7 +92,7 @@ function fitGrid(grid, n) {
 }
 
 // Paint a paged card grid. items: cards; state: { page }; onPick(card).
-function paintCards(grid, pager, items, state, onPick, selId, dir) {
+export function paintCards(grid, pager, items, state, onPick, selId, dir) {
   const per = fitGrid(grid, items.length);
   const pages = Math.max(1, Math.ceil(items.length / per));
   state.page = Math.min(Math.max(0, state.page), pages - 1);
@@ -516,7 +517,7 @@ function tickCloses() {
   document.querySelectorAll('[data-until]').forEach((n) => { n.textContent = left(n.dataset.until); });
 }
 // No scrolling: remove children from the end until the box fits.
-function fitChildren(box) {
+export function fitChildren(box) {
   if (!box) return;
   const bottom = box.getBoundingClientRect().bottom;
   while (box.lastElementChild && box.children.length > 0 && box.lastElementChild.getBoundingClientRect().bottom > bottom + 1) box.lastElementChild.remove();
@@ -552,7 +553,7 @@ function paintProfile() {
   el('spotEdit').addEventListener('click', () => ctx.show('collection'));
 }
 
-const STATUS_TEXT = {
+export const STATUS_TEXT = {
   home: ['🏠', 'On the home screen'], collection: ['📚', 'Browsing collection'], hunt: ['⚔', 'In the hunt'],
   battle: ['⚔', 'Attacking the boss'], trading: ['⇄', 'Trading'], opening: ['🎴', 'Opening a pack'],
 };

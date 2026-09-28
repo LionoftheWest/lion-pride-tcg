@@ -17,6 +17,7 @@ import { modelFor } from './boss-model.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled } from './effects-ui.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick } from './ui-v2.js';
+import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2 } from './ui-v2-social.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -312,9 +313,13 @@ function startV2() {
   initV2({
     api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned,
     playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),
+    updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
   });
   el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>`;
+  const bell = el('bellBtn'); const board = el('boardBtn');
+  if (bell) { const b = bell.querySelector('.navbadge'); bell.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'; if (b) bell.appendChild(b); }
+  if (board) board.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
   el('v2Avatar').title = meUser?.name || '';
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
   el('dockOpen').addEventListener('click', openPacks);
@@ -339,7 +344,7 @@ function sendStatus(kind) {
   myStatus = kind || myStatus;
   if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus })); } catch { /* dropped */ } }
 }
-const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading' };
+const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home' };
 
 // Load which cards the caller owns (for feed-card ownership). Also warms the
 // collection cache. Refreshed whenever the collection can have changed.
@@ -569,6 +574,8 @@ function renderMain(view) {
   disposeHomeV2();
   if (uiV2 && view === 'home') { stopHuntTicker(); renderHomeV2(); return; }
   if (uiV2 && view === 'collection') { stopHuntTicker(); renderCollectionV2(); return; }
+  if (uiV2 && view === 'leaderboard') { stopHuntTicker(); renderLeaderboardV2(); return; }
+  if (uiV2 && view === 'trading') { stopHuntTicker(); renderTradingV2(); return; }
   { const bm = el('bossMini'); if (bm) bm.innerHTML = ''; } // clear the sidebar boss square
   stopHuntTicker(); // stop the boss/cooldown countdown; renderHunt restarts it
   if (view === 'gallery') { renderGallery(); return; }
@@ -1095,6 +1102,7 @@ function closeGiftPanel() { el('gift').className = 'hidden'; el('gift').innerHTM
 
 // Leaderboard: top players by Total Collection Power (the trophy button).
 async function openBoard() {
+  if (uiV2) return openLeaderboardV2();
   const b = el('board');
   b.className = 'open';
   b.innerHTML =
@@ -2479,6 +2487,7 @@ async function sendGift(toId, name, btn) {
 
 // ---- In-app notifications (the bell) ---------------------------------------
 async function openNotifs() {
+  if (uiV2) return openNotifsV2();
   const g = el('notif');
   g.className = 'open';
   g.innerHTML =
@@ -2673,6 +2682,7 @@ async function doOffer(theirCard) {
 }
 
 function updateTradeBadge(n) {
+  document.querySelector('#dock .dk[data-view="trading"]')?.classList.toggle('live', n > 0);
   const btn = document.querySelector('#nav button[data-view="trading"]');
   if (!btn) return;
   let b = btn.querySelector('.navbadge');
