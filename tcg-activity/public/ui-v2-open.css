@@ -1,0 +1,76 @@
+/* Lion Pride TCG — UI v2 multi-pack open (design 17, approved 2026-09-27; the cards
+   face down show the real card back). Scoped under body.ui-v2. */
+
+/* ---- The chooser above the dock ---- */
+body.ui-v2 .v2-chooser { position: fixed; z-index: 70; left: 50%; bottom: calc(var(--dock-h) + 30px); transform: translateX(-50%); width: 390px; padding: 16px; box-sizing: border-box;
+  background: var(--bg-raised); border: 1px solid rgba(244, 183, 60, .45); border-radius: 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .65); animation: v2Rise var(--dur-base) var(--ease-out); }
+body.ui-v2 .v2-chooser.hidden { display: none; }
+body.ui-v2 .v2-chooser::after { content: ''; position: absolute; left: 50%; bottom: -8px; width: 14px; height: 14px; transform: translateX(-50%) rotate(45deg); background: var(--bg-raised);
+  border-right: 1px solid rgba(244, 183, 60, .45); border-bottom: 1px solid rgba(244, 183, 60, .45); }
+body.ui-v2 .ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+body.ui-v2 .ch-head > b { font: 800 17px var(--font-display); }
+body.ui-v2 .ch-count { font-size: 12.5px; color: var(--text-secondary); padding: 5px 10px; border-radius: var(--rad-pill); background: var(--surface); border: 1px solid var(--border); }
+body.ui-v2 .ch-count b { font-family: var(--font-num); color: var(--text-primary); }
+body.ui-v2 .ch-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 10px; }
+body.ui-v2 .ch-opt { height: 128px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast); }
+body.ui-v2 .ch-opt:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+body.ui-v2 .ch-opt.best { border-color: var(--gold); background: linear-gradient(180deg, rgba(244, 183, 60, .14), var(--surface)); }
+body.ui-v2 .ch-opt b { font: 800 26px var(--font-num); }
+body.ui-v2 .ch-opt b i { font-style: normal; font-size: 14px; color: var(--text-muted); margin-right: 1px; }
+body.ui-v2 .ch-opt.best b { color: var(--gold); }
+body.ui-v2 .ch-stack { position: relative; width: 58px; height: 56px; }
+body.ui-v2 .ch-stack img { position: absolute; top: 0; left: 50%; height: 56px; width: auto; transform: translateX(-50%); filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .5)); }
+body.ui-v2 .ch-stack.s2 img:nth-child(1) { transform: translateX(-62%) rotate(-8deg); }
+body.ui-v2 .ch-stack.s2 img:nth-child(2) { transform: translateX(-38%) rotate(6deg); }
+body.ui-v2 .ch-stack.s3 img:nth-child(1) { transform: translateX(-70%) rotate(-12deg); }
+body.ui-v2 .ch-stack.s3 img:nth-child(2) { transform: translateX(-50%) rotate(0deg); }
+body.ui-v2 .ch-stack.s3 img:nth-child(3) { transform: translateX(-30%) rotate(12deg); }
+
+/* ---- The multi-pack reveal (in the #stage takeover, above the app, the dock stays) ---- */
+body.ui-v2 #stage.v2-multi { position: fixed; z-index: 58; inset: var(--topbar-h) var(--sp-5) calc(var(--dock-h) + 28px); background: var(--bg-base); display: block; animation: v2Rise var(--dur-base) var(--ease-out); }
+body.ui-v2 #stage.v2-multi.closing { opacity: 0; transition: opacity .25s; }
+body.ui-v2 .mr-wrap { height: 100%; display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: var(--sp-4); }
+body.ui-v2 .mr-pack { position: relative; overflow: hidden; border-radius: 20px; border: 1px solid var(--border); background: radial-gradient(ellipse at 50% 40%, rgba(244, 183, 60, .22), transparent 65%), var(--bg-raised);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 18px; }
+body.ui-v2 .mr-glow { position: absolute; inset: 0; background: repeating-conic-gradient(from 0deg at 50% 42%, rgba(244, 183, 60, .10) 0 6deg, transparent 6deg 18deg); animation: mrSpin 40s linear infinite; }
+@keyframes mrSpin { to { transform: rotate(360deg); } }
+body.ui-v2 .mr-packimg { position: relative; height: 52%; animation: mrPop .7s var(--ease-spring); }
+body.ui-v2 .mr-packimg img { height: 100%; width: auto; filter: drop-shadow(0 20px 40px rgba(0, 0, 0, .6)); }
+@keyframes mrPop { from { transform: scale(.6) rotate(-6deg); opacity: 0; } }
+body.ui-v2 .mr-badge { position: absolute; right: -18px; bottom: 12%; padding: 6px 14px; border-radius: 16px; background: linear-gradient(180deg, #FFCB5C, var(--gold-strong)); color: var(--on-gold);
+  font: 800 28px var(--font-num); transform: rotate(-8deg); box-shadow: 0 8px 20px rgba(0, 0, 0, .5); }
+body.ui-v2 .mr-badge i { font-style: normal; font-size: 16px; }
+body.ui-v2 .mr-title { position: relative; font: 800 20px var(--font-display); letter-spacing: 2px; text-transform: uppercase; margin-top: 8px; }
+body.ui-v2 .mr-sub { position: relative; font-size: 12.5px; color: var(--text-muted); }
+body.ui-v2 .mr-counts { position: relative; margin-top: auto; width: 100%; display: grid; grid-template-columns: repeat(5, 1fr); padding: 12px 6px; border-radius: 14px; background: rgba(10, 10, 18, .7); border: 1px solid var(--border); }
+body.ui-v2 .mr-counts div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+body.ui-v2 .mr-counts b { font: 800 18px var(--font-num); color: var(--rc); }
+body.ui-v2 .mr-counts span { font: 700 9px var(--font-ui); letter-spacing: .6px; text-transform: uppercase; color: var(--rc); white-space: nowrap; }
+body.ui-v2 .mr-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+body.ui-v2 .mr-head { display: flex; align-items: center; gap: 12px; }
+body.ui-v2 .mr-head h2 { margin: 0; font: 800 22px var(--font-display); }
+body.ui-v2 .mr-new { font: 800 11px var(--font-ui); letter-spacing: .8px; color: var(--success); padding: 4px 9px; border-radius: 7px; border: 1px solid rgba(91, 227, 138, .45); background: var(--success-soft); }
+body.ui-v2 .mr-flip { font-size: 15px; color: var(--text-secondary); }
+body.ui-v2 .mr-head .v2-btn { height: 40px; }
+body.ui-v2 .mr-head .v2-icon { width: 40px; height: 40px; flex-basis: 40px; }
+body.ui-v2 .mr-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--mc, 10), var(--mw, 70px)); gap: 8px; align-content: start; justify-content: center; }
+body.ui-v2 .mr-card { position: relative; width: var(--mw, 70px); aspect-ratio: 5 / 7; padding: 0; border: 0; background: none; cursor: pointer; animation: mrDeal .45s var(--ease-out) backwards; }
+body.ui-v2 .mr-card:nth-child(n) { animation-delay: calc(var(--i, 0) * 1ms); }
+@keyframes mrDeal { from { transform: translateY(14px) scale(.9); opacity: 0; } }
+body.ui-v2 .mr-in { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; transform: perspective(800px) rotateY(0deg); transition: transform .55s var(--ease-out); }
+body.ui-v2 .mr-card.up .mr-in { transform: perspective(800px) rotateY(180deg); }
+body.ui-v2 .mr-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 6%; overflow: hidden; }
+body.ui-v2 .mr-face img { width: 100%; height: 100%; object-fit: contain; display: block; }
+body.ui-v2 .mr-front { transform: rotateY(180deg); }
+body.ui-v2 .mr-card:not(.up):hover .mr-in { transform: perspective(800px) translateY(-3px); }
+body.ui-v2 .mr-newtag { position: absolute; top: 4%; right: 5%; font-style: normal; font: 800 8.5px var(--font-ui); letter-spacing: .6px; color: #04230f; background: var(--success); border-radius: 4px; padding: 1px 4px; }
+body.ui-v2 .mr-card.up.r-illustrated_rare .mr-front { box-shadow: 0 0 10px rgba(62, 139, 255, .55); }
+body.ui-v2 .mr-card.up.r-secret_rare .mr-front { box-shadow: 0 0 14px rgba(177, 92, 255, .7); }
+body.ui-v2 .mr-card.up.r-full_art .mr-front { box-shadow: 0 0 16px rgba(255, 79, 163, .75); }
+body.ui-v2 .mr-card.up.r-gold .mr-front { box-shadow: 0 0 18px rgba(247, 190, 53, .85); }
+/* The celebration for Secret Rare and better. */
+body.ui-v2 .mr-card.mr-burst { z-index: 2; }
+body.ui-v2 .mr-card.mr-burst::after { content: ''; position: absolute; inset: -30%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 215, 110, .55), transparent 60%); animation: mrRing .9s ease-out forwards; }
+@keyframes mrRing { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
