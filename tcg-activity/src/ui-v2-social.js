@@ -2,7 +2,7 @@
 // Leaderboard (design 12), and Trading with Gift inside it (designs 14 + 13).
 // Uses the shared helpers of ui-v2.js; the data comes from the existing APIs.
 
-import { v2ctx, avatarHTML, ensureCatalog, paintCards, fitChildren, openMember } from './ui-v2.js';
+import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember } from './ui-v2.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -129,11 +129,11 @@ function paintBoard() {
   const meIdx = rows.findIndex((r) => r.id === d.me);
   const val = (r, mm = m) => (mm.key === 'cards' ? `${fmt(r.cards)}/${fmt(d.totalCards)}` : mm.key === 'achievements' ? `${r.achievements}/${d.achievementCount}` : mm.short ? short(r[mm.key]) : fmt(r[mm.key]));
   const pod = [rows[1], rows[0], rows[2]].map((r, i) => (r ? `<div class="lb-pod p${[2, 1, 3][i]}${r.id === d.me ? ' me' : ''}" data-member="${esc(r.id)}">
-      ${avatarHTML(r.id, r.name, 'big')}<span class="lb-place">${[2, 1, 3][i]}</span><b class="lb-name">${esc(r.name)}</b>
+      ${avatarHTML(r.id, r.name, 'big', r.frame)}<span class="lb-place">${[2, 1, 3][i]}</span><b class="lb-name">${esc(r.name)}</b>${titleHTML(r.title)}
       <span class="lb-val">${m.icon} ${val(r)}</span>
       <span class="lb-sub">⚔ ${short(r.huntDamage)} · 💀 ${r.bosses} · 📚 ${r.cards}</span></div>` : '<div class="lb-pod empty"></div>')).join('');
   const line = (r, i) => `<div class="lb-row${r.id === d.me ? ' me' : ''}" data-member="${esc(r.id)}"><span class="lb-i mono">${i + 1}</span>
-      <span class="lb-p">${avatarHTML(r.id, r.name, 'sm')}<b>${esc(r.name)}</b>${r.id === d.me ? '<i class="you">You</i>' : ''}</span>
+      <span class="lb-p">${avatarHTML(r.id, r.name, 'sm', r.frame)}<b>${esc(r.name)}</b>${titleHTML(r.title)}${r.id === d.me ? '<i class="you">You</i>' : ''}</span>
       ${METRICS.map((mm) => `<span class="lb-c mono${mm.key === m.key ? ' on' : ''}">${val(r, mm)}</span>`).join('')}</div>`;
   const rest = rows.slice(3);
   const pinMe = meIdx >= 3;

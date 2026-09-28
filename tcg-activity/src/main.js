@@ -14,6 +14,7 @@ import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { mountBoss } from './boss.js';
 import { BOSS_LIST, seedForBoss, thumbFor, THUMB_BASE } from './boss-meta.js';
 import { modelFor } from './boss-model.js';
+import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled } from './effects-ui.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick } from './ui-v2.js';
@@ -1470,7 +1471,7 @@ function selectPhaseV2(d) {
   const weak = chips(h.weak_points), resist = chips(h.resist_points);
   const roster = d.roster || [];
   const elems = ELEMENT_ORDER.filter((e) => roster.some((c) => cardElement(c.tags) === e));
-  const elBtns = elems.map((e) => `<button class="el-btn${squad.el === e ? ' on' : ''}" data-el="${e}" title="${ELEMENTS[e].name}" style="--el:${ELEMENTS[e].color}">${ELEMENTS[e].glyph}</button>`).join('');
+  const elBtns = elems.map((e) => `<button class="el-btn${squad.el === e ? ' on' : ''}" data-el="${e}" title="${ELEMENTS[e].name}">${elIcon(e)}</button>`).join('');
   const sorts = [['power', 'Power'], ['rarity', 'Rarity'], ['new', 'New']]
     .map(([v, l]) => `<button data-sort="${v}" class="${squad.sort === v ? 'on' : ''}">${l}</button>`).join('');
   const foot = squad.ko

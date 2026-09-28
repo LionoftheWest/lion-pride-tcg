@@ -5,7 +5,10 @@
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { fillViewerEffect } from './effects-ui.js';
 import { mountBoss } from './boss.js';
-import { measure } from './achievements.js';
+import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
+import { elIcon } from './element-icons.js';
+import { modelFor as modelKey } from './boss-model.js';
+const THUMBS = '/api/img/storage/v1/object/public/card-art/boss/thumbs';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -21,10 +24,13 @@ function esc(s) { return ctx.esc(s ?? ''); }
 const fmt = (n) => Number(n || 0).toLocaleString();
 
 /** A round Discord avatar: the picture from /api/avatar, the initial when there is none. */
-export function avatarHTML(id, name, cls = '') {
+export function avatarHTML(id, name, cls = '', frame = null) {
   const img = id ? `<img src="/api/avatar/${esc(id)}" alt="" onerror="this.remove()">` : '';
-  return `<span class="v2-avatar ${cls}"><span>${initial(name)}</span>${img}</span>`;
+  const f = frame && FRAMES[frame] ? ` frame-${frame}` : '';
+  return `<span class="v2-avatar ${cls}${f}"><span>${initial(name)}</span>${img}</span>`;
 }
+/** A title tag (an achievement reward) for a name. */
+export const titleHTML = (t) => (t ? `<span class="v2-title">${esc(t)}</span>` : '');
 
 // ---- Shared card data ------------------------------------------------------
 
@@ -65,7 +71,7 @@ export function tileHTML(c, idx, selected) {
   const el = elemOf(c);
   return `<div class="v2-cell${selected ? ' sel' : ''}" data-idx="${idx}">
     <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
-    <div class="v2-cap">${el ? `<span class="cap-el" title="${esc(el.name)}">${el.glyph}</span>` : ''}<span class="cap-pow">⚡ ${c.power ?? ''}</span>
+    <div class="v2-cap">${el ? `<span class="cap-el" title="${esc(el.name)}">${elIcon(el.key)}</span>` : ''}<span class="cap-pow">⚡ ${c.power ?? ''}</span>
       ${c.ascension > 0 ? `<span class="cap-stars">${'★'.repeat(c.ascension)}</span>` : ''}${c.quantity > 1 ? `<span class="cap-qty">×${c.quantity}</span>` : ''}</div>
   </div>`;
 }
@@ -120,18 +126,50 @@ export function paintCards(grid, pager, items, state, onPick, selId, dir) {
 
 // ---- Achievements ------------------------------------------------------------
 
+const claimedSet = () => new Set(myProfile?.claimed || []);
 function achHTML(a, big, mini) {
   const pct = Math.round((100 * a.have) / a.need);
-  return `<button class="v2-ach${a.done ? ' done' : ''}${big ? ' big' : ''}${mini ? ' mini' : ''}" data-ach="${esc(a.key)}" title="${esc(a.desc)}">
+  const claimed = claimedSet().has(a.key);
+  const r = rewardOf(a.key);
+  const foot = big
+    ? `<div class="ah-foot"><span class="ah-reward">🎁 ${esc(rewardLabel(r))}</span>${a.done ? (claimed ? '<span class="ah-claimed">Claimed ✓</span>' : `<span class="ah-redeem" data-redeem="${esc(a.key)}">Redeem</span>`) : ''}</div>`
+    : '';
+  return `<button class="v2-ach${a.done ? ' done' : ''}${a.done && !claimed ? ' ready' : ''}${big ? ' big' : ''}${mini ? ' mini' : ''}" data-ach="${esc(a.key)}" title="${esc(a.desc)}">
     <div class="ah-top"><span class="ah-ico">${a.icon}</span><b>${esc(a.name)}</b><span class="ah-n">${a.done ? '✓' : `${fmt(a.have)}/${fmt(a.need)}`}</span></div>
     ${mini ? '' : `<div class="ah-desc">${esc(a.desc)}</div>`}
-    <div class="ah-bar"><i style="width:${pct}%"></i></div>
+    <div class="ah-bar"><i style="width:${pct}%"></i></div>${foot}
   </button>`;
+}
+
+// Redeem: the server checks the achievement and pays it once.
+async function redeem(key, btn) {
+  if (btn) { btn.textContent = 'Redeeming…'; btn.classList.add('busy'); }
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim', { key }); } catch { r = null; }
+  if (!r?.ok) {
+    if (btn) { btn.textContent = r?.error === 'claimed' ? 'Claimed ✓' : 'Try again'; btn.classList.remove('busy'); }
+    return;
+  }
+  myProfile = { ...(myProfile || {}), claimed: [...(myProfile?.claimed || []), key] };
+  ctx.refreshPacks?.();
+  toast(`🎁 ${rewardLabel(r.reward || rewardOf(key))}`);
+  loadMyProfile(true).then(() => { if (ctx.currentView() === 'collection') renderCollectionV2(); });
+}
+function toast(text) {
+  const n = document.createElement('div');
+  n.className = 'v2-toast';
+  n.textContent = text;
+  document.body.appendChild(n);
+  setTimeout(() => n.classList.add('out'), 2600);
+  setTimeout(() => n.remove(), 3200);
 }
 
 // ---- Collection ------------------------------------------------------------
 
-const col = { season: null, rarity: 'all', element: null, q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0 };
+const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0 };
+const TYPES = [['character', 'Character'], ['creature', 'Creature'], ['moment', 'Moment'], ['item', 'Item'], ['place', 'Place']];
+const GAMES = [['smash', 'Smash Bros'], ['pokemon', 'Pokemon'], ['party', 'Party'], ['minecraft', 'Minecraft'], ['meme', 'Memes'], ['community', 'Community']];
+const hasFilters = () => col.rarity !== 'all' || col.element || col.type || col.game || col.own !== 'all' || col.q.trim();
 let colItems = [];
 
 export async function renderCollectionV2() {
@@ -145,50 +183,52 @@ export async function renderCollectionV2() {
   const inSeason = cards.filter((c) => (c.season || 'Season 1') === col.season);
   const achs = measure(cards, myProfile?.stats);
   const achDone = achs.filter((a) => a.done).length;
+  const ready = achs.filter((a) => a.done && !claimedSet().has(a.key)).length;
+  const cnt = (f) => inSeason.filter(f).length;
 
+  // One panel, filters only (Nathan: "ONE thing, which is just a filtered panel").
+  const chip = (group, value, label, on, n) => `<button class="f-chip${on ? ' on' : ''}" data-f="${group}" data-v="${esc(value)}">${label}${n != null ? `<i>${n}</i>` : ''}</button>`;
   const setRows = seasons.map((s) => {
     const set = cards.filter((c) => (c.season || 'Season 1') === s);
     const have = set.filter((c) => c.owned).length;
     return `<button class="side-row set${s === col.season ? ' on' : ''}" data-season="${esc(s)}"><span>${esc(s)}</span><span class="n">${have}/${set.length}</span><i class="bar"><i style="width:${Math.round((100 * have) / (set.length || 1))}%"></i></i></button>`;
   }).join('');
-  const rarityRows = RARITY_ORDER.filter((r) => inSeason.some((c) => c.rarity === r)).map((r) => {
-    const set = inSeason.filter((c) => c.rarity === r);
-    return `<button class="side-row rar${col.rarity === r ? ' on' : ''}" data-rarity="${r}" style="--rc:var(--r-${r})"><span><i class="dia">◆</i>${esc(ctx.RARITY_LABEL[r] || r)}</span><span class="n">${set.filter((c) => c.owned).length}/${set.length}</span></button>`;
-  }).join('');
-  // Element filters live in the sidebar, so the page arrows in the header are never
-  // pushed off the screen (that hid pages 2+ of every element, Nathan 2026-09-27).
-  const elemBtns = ELEMENT_ORDER.filter((e) => inSeason.some((c) => cardElement(c.tags) === e)).map((e) => {
-    const n = inSeason.filter((c) => cardElement(c.tags) === e).length;
-    return `<button class="el-btn${col.element === e ? ' on' : ''}" data-el="${e}" title="${ELEMENTS[e].name} · ${n}" style="--el:${ELEMENTS[e].color}">${ELEMENTS[e].glyph}</button>`;
-  }).join('');
+  const rarityChips = RARITY_ORDER.filter((r) => inSeason.some((c) => c.rarity === r))
+    .map((r) => chip('rarity', r, `<b class="dia" style="--rc:var(--r-${r})">◆</b>${esc(ctx.RARITY_LABEL[r] || r)}`, col.rarity === r, cnt((c) => c.rarity === r))).join('');
+  const elemBtns = ELEMENT_ORDER.filter((e) => inSeason.some((c) => cardElement(c.tags) === e))
+    .map((e) => `<button class="el-btn${col.element === e ? ' on' : ''}" data-el="${e}" title="${ELEMENTS[e].name} · ${cnt((c) => cardElement(c.tags) === e)}">${elIcon(e)}</button>`).join('');
+  const typeChips = TYPES.filter(([k]) => inSeason.some((c) => c.tags?.type === k)).map(([k, l]) => chip('type', k, l, col.type === k)).join('');
+  const gameChips = GAMES.filter(([k]) => inSeason.some((c) => [].concat(c.tags?.origin || []).includes(k))).map(([k, l]) => chip('game', k, l, col.game === k)).join('');
+  const ownSeg = [['all', 'All'], ['owned', 'Owned'], ['missing', 'Missing']].map(([v, l]) => `<button data-own="${v}" class="${col.own === v ? 'on' : ''}">${l}</button>`).join('');
 
+  const tabs = `<div class="seg col-tabs"><button data-tab="cards" class="${col.view === 'cards' ? 'on' : ''}">Cards</button>
+    <button data-tab="ach" class="${col.view !== 'cards' ? 'on' : ''}">Achievements <i>${achDone}/${achs.length}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button></div>`;
   let center;
   if (col.view === 'ach') {
-    center = `<div class="v2-col-head"><h2>Achievements <span class="sub">${achDone} / ${achs.length}</span></h2><span class="grow"></span><div class="v2-pager" id="achPager"></div><button class="v2-icon" id="achClose" aria-label="Close">✕</button></div>
+    center = `<div class="v2-col-head">${tabs}<span class="grow"></span>${ready ? `<span class="ach-ready">🎁 ${ready} to redeem</span>` : ''}<div class="v2-pager" id="achPager"></div></div>
       <div class="v2-ach-grid" id="achGrid"></div>`;
   } else if (col.view === 'achDetail') {
     const a = achs.find((x) => x.key === col.achKey);
     center = a ? achDetailHead(a) : '';
   } else {
     const filtered = colFiltered();
-    const parts = [col.element ? ELEMENTS[col.element].name : null, col.rarity !== 'all' ? ctx.RARITY_LABEL[col.rarity] : null, col.q.trim() ? `"${col.q.trim()}"` : null].filter(Boolean);
-    const sub = parts.length
-      ? `${esc(parts.join(' · '))} · ${filtered.length} cards · ${filtered.filter((c) => c.owned).length} owned`
+    const sub = hasFilters()
+      ? `${filtered.length} cards · ${filtered.filter((c) => c.owned).length} owned`
       : `${inSeason.filter((c) => c.owned).length}/${inSeason.length} · ${Math.round((100 * inSeason.filter((c) => c.owned).length) / (inSeason.length || 1))}%`;
-    center = `<div class="v2-col-head"><h2>${esc(col.season)} <span class="sub">${sub}</span></h2><span class="grow"></span>
-        ${parts.length ? '<button class="v2-chip-btn" id="colClear">Clear filters ✕</button>' : ''}<div class="v2-pager" id="colPager"></div></div>
+    center = `<div class="v2-col-head">${tabs}<h2 class="col-title">${esc(col.season)} <span class="sub">${sub}</span></h2><span class="grow"></span><div class="v2-pager" id="colPager"></div></div>
       <div class="v2-grid" id="colGrid"></div>`;
   }
 
   el('main').innerHTML = `<div class="v2-collection">
-    <aside class="v2-side">
+    <aside class="v2-side filters">
+      <div class="f-head"><b>Filters</b>${hasFilters() ? '<button class="link-btn" id="colClear">Clear all</button>' : ''}</div>
       <input class="v2-search" id="colSearch" placeholder="Search cards, tags…" value="${esc(col.q)}">
-      <div class="side-h">Sets</div>${setRows}
-      <div class="side-h">Rarity</div>${rarityRows}
+      ${seasons.length > 1 ? `<div class="side-h">Set</div>${setRows}` : ''}
+      <div class="seg f-own">${ownSeg}</div>
+      <div class="side-h">Rarity</div><div class="f-chips">${rarityChips}</div>
       <div class="side-h">Element</div><div class="el-grid">${elemBtns}</div>
-      <div class="side-h">Achievements <span class="n">${achDone} / ${achs.length}</span></div>
-      <div class="side-ach" id="sideAch">${achs.slice(0, 4).map((a) => achHTML(a, false, true)).join('')}</div>
-      <button class="side-more${col.view === 'ach' ? ' on' : ''}" id="achToggle">See All Achievements</button>
+      <div class="side-h">Type</div><div class="f-chips">${typeChips}</div>
+      <div class="side-h">Game</div><div class="f-chips">${gameChips}</div>
     </aside>
     <section class="v2-center" id="colCenter">${center}</section>
     <aside class="v2-panel" id="colPanel"></aside>
@@ -200,26 +240,53 @@ export async function renderCollectionV2() {
     if (col.view !== 'cards') { toCards(); renderCollectionV2().then(() => { const s = el('colSearch'); s?.focus(); s?.setSelectionRange(s.value.length, s.value.length); }); return; }
     paintColGrid(); paintHead();
   });
-  el('main').querySelectorAll('.side-row.set').forEach((b) => b.addEventListener('click', () => { col.season = b.dataset.season; toCards(); renderCollectionV2(); }));
-  el('main').querySelectorAll('.side-row.rar').forEach((b) => b.addEventListener('click', () => { col.rarity = col.rarity === b.dataset.rarity ? 'all' : b.dataset.rarity; toCards(); renderCollectionV2(); }));
-  el('main').querySelectorAll('.el-grid .el-btn').forEach((b) => b.addEventListener('click', () => { col.element = col.element === b.dataset.el ? null : b.dataset.el; toCards(); renderCollectionV2(); }));
-  el('colClear')?.addEventListener('click', () => { col.element = null; col.rarity = 'all'; col.q = ''; toCards(); renderCollectionV2(); });
-  el('achToggle').addEventListener('click', () => { col.view = col.view === 'ach' ? 'cards' : 'ach'; renderCollectionV2(); });
-  el('achClose')?.addEventListener('click', () => { col.view = 'cards'; renderCollectionV2(); });
-  // Any achievement (sidebar or grid) opens its detail: the cards it needs.
-  el('main').addEventListener('click', (e) => {
+  const side = el('main').querySelector('.v2-side');
+  side.addEventListener('click', (e) => {
+    const f = e.target.closest('[data-f]');
+    const set = e.target.closest('[data-season]');
+    const elb = e.target.closest('.el-btn');
+    const own = e.target.closest('[data-own]');
+    if (f) { const k = f.dataset.f; const v = f.dataset.v; col[k] = col[k] === v ? (k === 'rarity' ? 'all' : null) : v; }
+    else if (set) col.season = set.dataset.season;
+    else if (elb) col.element = col.element === elb.dataset.el ? null : elb.dataset.el;
+    else if (own) col.own = own.dataset.own;
+    else if (e.target.closest('#colClear')) { col.rarity = 'all'; col.element = null; col.type = null; col.game = null; col.own = 'all'; col.q = ''; }
+    else return;
+    toCards(); renderCollectionV2();
+  });
+  el('main').querySelector('.col-tabs')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tab]');
+    if (!b) return;
+    col.view = b.dataset.tab === 'ach' ? 'ach' : 'cards';
+    renderCollectionV2();
+  });
+  // An achievement opens its detail (the cards it needs); Redeem pays it.
+  el('colCenter').addEventListener('click', (e) => {
+    const r = e.target.closest('[data-redeem]');
+    if (r) { e.stopPropagation(); redeem(r.dataset.redeem, r); return; }
     const b = e.target.closest('[data-ach]');
     if (!b) return;
     col.view = 'achDetail'; col.achKey = b.dataset.ach; col.detailPage = 0;
     renderCollectionV2();
   });
 
-  fitChildren(el('sideAch'));
-  if (col.view === 'ach') paintAch(achs);
+  requestAnimationFrame(() => { fitChips(side); });
+  // Ready to redeem first, then the ones in progress, then the ones already claimed.
+  const order = (a) => (a.done ? (claimedSet().has(a.key) ? 2 : 0) : 1);
+  if (col.view === 'ach') paintAch([...achs].sort((a, b) => order(a) - order(b)));
   else if (col.view === 'achDetail') paintAchDetail(achs.find((x) => x.key === col.achKey));
   else paintColGrid();
   const selCard = cards.find((c) => c.id === col.sel) || inSeason.find((c) => c.owned) || inSeason[0];
   paintPanel(selCard);
+}
+
+// The filter panel never scrolls: when it is too tall, the chip counts go, then the
+// long chip rows become one row each.
+function fitChips(side) {
+  if (!side) return;
+  const over = () => side.scrollHeight > side.clientHeight + 1;
+  if (over()) side.classList.add('tight');
+  if (over()) side.classList.add('tighter');
 }
 
 function paintHead() {
@@ -228,7 +295,7 @@ function paintHead() {
   const h = el('colCenter')?.querySelector('.v2-col-head .sub');
   if (!h || col.view !== 'cards') return;
   const f = colFiltered();
-  if (col.q.trim() || col.element || col.rarity !== 'all') h.textContent = `${f.length} cards · ${f.filter((c) => c.owned).length} owned`;
+  if (hasFilters()) h.textContent = `${f.length} cards · ${f.filter((c) => c.owned).length} owned`;
 }
 
 // The achievements grid, paged: a page holds the cards that fully fit (no scrolling).
@@ -258,8 +325,8 @@ function achDetailHead(a) {
   return `<div class="v2-col-head ach-head">
       <button class="v2-icon" id="achBack" aria-label="Back">‹</button>
       <span class="ah-ico big">${a.icon}</span>
-      <h2>${esc(a.name)} <span class="sub">${esc(a.desc)} · ${a.done ? 'Complete' : `${fmt(a.have)} / ${fmt(a.need)}`}</span></h2>
-      <span class="grow"></span><div class="v2-pager" id="detPager"></div></div>
+      <h2>${esc(a.name)} <span class="sub">${esc(a.desc)} · ${a.done ? 'Complete' : `${fmt(a.have)} / ${fmt(a.need)}`} · 🎁 ${esc(rewardLabel(rewardOf(a.key)))}</span></h2>
+      <span class="grow"></span>${a.done ? (claimedSet().has(a.key) ? '<span class="ah-claimed">Claimed ✓</span>' : `<button class="v2-btn gold" data-redeem="${esc(a.key)}">🎁 Redeem</button>`) : ''}<div class="v2-pager" id="detPager"></div></div>
     <div class="ah-bar wide"><i style="width:${pct}%"></i></div>
     ${a.set ? '<div class="v2-grid" id="detGrid"></div>' : `<div class="ach-stat"><b>${fmt(a.have)}</b><span>of ${fmt(a.need)}</span></div>`}`;
 }
@@ -279,6 +346,10 @@ function colFiltered() {
     if ((c.season || 'Season 1') !== col.season) return false;
     if (col.rarity !== 'all' && c.rarity !== col.rarity) return false;
     if (col.element && cardElement(c.tags) !== col.element) return false;
+    if (col.type && c.tags?.type !== col.type) return false;
+    if (col.game && ![].concat(c.tags?.origin || []).includes(col.game)) return false;
+    if (col.own === 'owned' && !c.owned) return false;
+    if (col.own === 'missing' && c.owned) return false;
     if (q) {
       const t = c.tags || {};
       const hay = [c.name, c.subject, t.type, t.class, t.origin, ...(t.traits || []), ...(t.genre || [])].flat().filter(Boolean).join(' ').toLowerCase();
@@ -324,7 +395,7 @@ function paintPanel(c) {
   const bar = (label, val, max, color, shown) => `<div class="stat"><b>${shown}</b><span>${label}</span><i class="sbar"><i style="width:${Math.min(100, Math.round((100 * val) / max))}%;background:${color}"></i></i></div>`;
   const t = c.tags || {};
   const chips = [];
-  if (el0) chips.push(`<span class="tag el" style="--el:${el0.color}">${el0.glyph} ${el0.name}</span>`);
+  if (el0) chips.push(`<span class="tag el">${elIcon(el0.key)} ${el0.name}</span>`);
   for (const f of TAG_FACETS) {
     let vals = Array.isArray(t[f]) ? t[f] : (t[f] ? [t[f]] : []);
     if (f === 'traits' && el0) vals = vals.filter((v) => String(v).toLowerCase() !== el0.key);
@@ -485,9 +556,23 @@ function paintHero(d) {
   if (!box) return;
   const h = d?.hunt;
   if (!h) {
-    box.innerHTML = `<div class="hero-info"><span class="live-chip calm">PRIDE HUNT</span><h2>The hunt is resting</h2>
-      <p class="hero-sub">${d?.lastResult ? esc(d.lastResult.status === 'defeated' ? `The pride defeated ${d.lastResult.name}.` : `${d.lastResult.name} escaped.`) : ''}</p>
-      ${d?.nextSpawnAt ? `<div class="hero-next"><span>Next boss in</span><b class="mono" data-until="${esc(d.nextSpawnAt)}"></b></div>` : ''}</div>`;
+    const last = d?.lastResult;
+    const won = last?.status === 'defeated';
+    const board = (d?.lastBoard || []).slice(0, 3);
+    const key = last ? modelKey(last.name) : null;
+    box.innerHTML = `<div class="hero-info rest">
+        <span class="live-chip calm">PRIDE HUNT · RESTING</span>
+        ${last ? `<h2>${esc(last.name)}</h2><span class="rest-res ${won ? 'won' : 'lost'}">${won ? '🏆 Defeated by the pride' : '💀 Escaped'}</span>` : '<h2>The hunt is resting</h2>'}
+        ${last ? `<div class="rest-stats">
+          <div><b>${fmt(d.myLast || 0)}</b><span>Your damage</span></div>
+          <div><b>${fmt(last.hp_max || 0)}</b><span>Boss HP</span></div>
+          <div><b>${esc(last.tier || '')}</b><span>Tier</span></div></div>` : ''}
+        ${d?.nextSpawnAt ? `<div class="hero-next"><span>Next boss in</span><b class="mono" data-until="${esc(d.nextSpawnAt)}"></b></div>` : ''}
+      </div>
+      <div class="hero-rest-side">
+        ${key ? `<img class="rest-boss" src="${THUMBS}/${key}.png" alt="">` : ''}
+        ${board.length ? `<div class="rest-top"><span class="side-h">Top hunters</span>${board.map((r, i) => `<div class="rest-hr"><span class="mono">${i + 1}</span>${avatarHTML(r.player_id, r.username, 'xs')}<b>${esc(r.username)}</b><span class="mono">${fmt(r.damage)}</span></div>`).join('')}</div>` : ''}
+      </div>`;
     tickCloses();
     return;
   }
@@ -543,14 +628,13 @@ function paintProfile() {
   const me = ctx.user();
   const cards = mergedCards();
   const spot = spotlightOf(cards, myProfile?.spotlight);
-  box.innerHTML = `<div class="prof-head">${avatarHTML(me?.id, me?.name, 'big')}<h3>${esc(me?.name || '')}</h3>
+  box.innerHTML = `<div class="prof-head">${avatarHTML(me?.id, me?.name, 'big', myProfile?.frame)}<div class="prof-name"><h3>${esc(me?.name || '')}</h3>${titleHTML(myProfile?.title)}</div>
       ${myProfile?.power != null ? `<span class="prof-cp">⚡ ${fmt(myProfile.power)}</span>` : ''}</div>
     ${profileStats(myProfile, cards)}
     <div class="side-h">Spotlight <button class="link-btn" id="spotEdit">Edit</button></div>
     <div class="spot-row" id="spotRow">${spotHTML(spot)}</div>`;
   el('spotRow').onclick = (e) => { const b = e.target.closest('[data-si]'); if (b) ctx.openViewer(spot[Number(b.dataset.si)]); };
-  // Edit = the Collection, where the ☆ on a card adds it to the Spotlight.
-  el('spotEdit').addEventListener('click', () => ctx.show('collection'));
+  el('spotEdit').addEventListener('click', () => openSpotEditor());
 }
 
 export const STATUS_TEXT = {
@@ -598,6 +682,89 @@ export function paintPulls() {
 }
 
 export function homeTick() { tickCloses(); }
+
+// ---- The Spotlight + style editor (Nathan: easier select / deselect) ----------------
+// Three slots on top (tap a slot to empty it), your cards below (tap to add or remove),
+// and the titles + frames the member has redeemed. Save writes both.
+const sp = { ids: [], title: null, frame: null, q: '', page: 0 };
+export async function openSpotEditor() {
+  const { el } = ctx;
+  await Promise.all([ensureCatalog(), loadMyProfile()]);
+  const cards = mergedCards();
+  sp.ids = spotlightOf(cards, myProfile?.spotlight).map((c) => Number(c.id));
+  sp.title = myProfile?.title || null; sp.frame = myProfile?.frame || null; sp.q = ''; sp.page = 0;
+  let box = el('spotEditor');
+  if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="spotEditor" class="v2-modal hidden"></div>'); box = el('spotEditor'); }
+  box.classList.remove('hidden');
+  box.onclick = (e) => { if (e.target === box) box.classList.add('hidden'); };
+  paintSpotEditor();
+}
+function paintSpotEditor() {
+  const { el } = ctx;
+  const box = el('spotEditor');
+  const cards = mergedCards();
+  const owned = cards.filter((c) => c.owned);
+  const byId = new Map(owned.map((c) => [Number(c.id), c]));
+  const achs = measure(cards, myProfile?.stats);
+  const claimed = achs.filter((a) => claimedSet().has(a.key));
+  const titles = [...new Set(claimed.map((a) => rewardOf(a.key).title).filter(Boolean))];
+  const frames = [...new Set(claimed.map((a) => rewardOf(a.key).frame).filter(Boolean))];
+  const slots = [0, 1, 2].map((i) => {
+    const c = byId.get(sp.ids[i]);
+    return c ? `<button class="se-slot r-${c.rarity}" data-slot="${i}" title="Remove ${esc(c.name)}"><img src="${c.image_url}" alt=""><span class="se-x">✕</span></button>`
+      : `<div class="se-slot empty"><span>${i + 1}</span></div>`;
+  }).join('');
+  const q = sp.q.trim().toLowerCase();
+  const list = owned.filter((c) => !q || [c.name, c.subject].filter(Boolean).join(' ').toLowerCase().includes(q))
+    .sort((a, b) => (sp.ids.includes(Number(b.id)) - sp.ids.includes(Number(a.id))) || (b.power || 0) - (a.power || 0));
+  const pill = (group, v, label, on) => `<button class="f-chip${on ? ' on' : ''}" data-${group}="${esc(v ?? '')}">${label}</button>`;
+  const me = ctx.user();
+  box.innerHTML = `<div class="v2-modal-card se-card">
+    <button class="v2-icon mem-close" id="seClose" aria-label="Close">✕</button>
+    <aside class="se-side">
+      <div class="prof-head">${avatarHTML(me?.id, me?.name, 'big', sp.frame)}<div class="prof-name"><h3>${esc(me?.name || '')}</h3>${titleHTML(sp.title)}</div></div>
+      <div class="side-h">Spotlight <span class="n">${sp.ids.length}/3</span></div>
+      <div class="se-slots" id="seSlots">${slots}</div>
+      <div class="side-h">Title</div>
+      <div class="f-chips">${pill('title', '', 'None', !sp.title)}${titles.map((t) => pill('title', t, esc(t), sp.title === t)).join('')}${titles.length ? '' : '<span class="dim se-hint">Redeem achievements to unlock titles.</span>'}</div>
+      <div class="side-h">Frame</div>
+      <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, esc(FRAMES[f]), sp.frame === f)).join('')}${frames.length ? '' : '<span class="dim se-hint">Redeem achievements to unlock frames.</span>'}</div>
+      <div class="se-foot"><span class="tr-msg" id="seMsg"></span><button class="v2-btn gold" id="seSave">Save</button></div>
+    </aside>
+    <section class="se-main">
+      <div class="v2-col-head"><h2>Your cards <span class="sub">Tap a card to add or remove it</span></h2><span class="grow"></span>
+        <input class="v2-search" id="seQ" placeholder="Search cards…" value="${esc(sp.q)}"><div class="v2-pager" id="sePager"></div></div>
+      <div class="v2-grid" id="seGrid"></div>
+    </section>
+  </div>`;
+  const grid = el('seGrid');
+  const pick = (c) => {
+    const id = Number(c.id);
+    if (sp.ids.includes(id)) sp.ids = sp.ids.filter((x) => x !== id);
+    else if (sp.ids.length < 3) sp.ids = [...sp.ids, id];
+    else { el('seMsg').textContent = 'The Spotlight holds 3 cards'; return; }
+    paintSpotEditor();
+  };
+  paintCards(grid, el('sePager'), list, sp, pick);
+  grid.querySelectorAll('.v2-cell').forEach((n) => { const c = list[Number(n.dataset.idx)]; if (c && sp.ids.includes(Number(c.id))) n.classList.add('sel', 'in-spot'); });
+  el('seSlots').onclick = (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; sp.ids.splice(Number(b.dataset.slot), 1); paintSpotEditor(); };
+  box.querySelectorAll('[data-title]').forEach((b) => b.addEventListener('click', () => { sp.title = b.dataset.title || null; paintSpotEditor(); }));
+  box.querySelectorAll('[data-frame]').forEach((b) => b.addEventListener('click', () => { sp.frame = b.dataset.frame || null; paintSpotEditor(); }));
+  el('seQ').addEventListener('input', (e) => { sp.q = e.target.value; sp.page = 0; paintSpotEditor(); const i = el('seQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
+  el('seClose').addEventListener('click', () => box.classList.add('hidden'));
+  el('seSave').addEventListener('click', async () => {
+    const btn = el('seSave'); btn.disabled = true; btn.textContent = 'Saving…';
+    const [a, b] = await Promise.all([
+      ctx.apiPost('/api/spotlight', { cardIds: sp.ids }).catch(() => null),
+      (sp.title !== (myProfile?.title || null) || sp.frame !== (myProfile?.frame || null)) ? ctx.apiPost('/api/cosmetics', { title: sp.title, frame: sp.frame }).catch(() => null) : Promise.resolve({ ok: true }),
+    ]);
+    if (!a?.ok || !b?.ok) { btn.disabled = false; btn.textContent = 'Save'; el('seMsg').textContent = 'Could not save. Try again.'; return; }
+    myProfile = { ...(myProfile || {}), spotlight: a.spotlight, title: sp.title, frame: sp.frame };
+    box.classList.add('hidden');
+    if (ctx.currentView() === 'home') paintProfile();
+    toast('Profile saved');
+  });
+}
 
 // ---- A member's profile (design/15-member-profile-screen.png, approved 2026-09-27) ----
 // Opened from a tile in "Live in voice". Left: who they are, what they do now, the
@@ -648,8 +815,8 @@ function paintMember() {
     <aside class="mem-col mem-left">
       <div class="mem-top"><button class="v2-chip-btn" id="memBack">← Home</button></div>
       <div class="mem-id">
-        ${avatarHTML(p.id, p.name, `huge${pres ? ' live' : ''}`)}
-        <h2>${esc(p.name)}</h2>
+        ${avatarHTML(p.id, p.name, `huge${pres ? ' live' : ''}`, p.frame)}
+        <h2>${esc(p.name)}</h2>${titleHTML(p.title)}
         <div class="mem-badges">${done.slice(0, 5).map((a) => `<span class="mem-badge" title="${esc(a.name)}">${a.icon}</span>`).join('')}${done.length > 5 ? `<span class="mem-more">+${done.length - 5}</span>` : ''}</div>
       </div>
       ${pres ? `<div class="mem-status">🎧 In voice · ${sIco || ''} ${esc(sTxt || 'Here')}</div>` : ''}

@@ -13,7 +13,7 @@
  *              SUPABASE_SERVICE_ROLE_KEY, PORT (default 4441)
  */
 import 'dotenv/config';
-import { measure as measureAchievements, ACHIEVEMENTS } from './src/achievements.js';
+import { measure as measureAchievements, ACHIEVEMENTS, rewardOf } from './src/achievements.js';
 const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
@@ -364,7 +364,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
   if (!boardV2Cache || Date.now() - boardV2Cache.at > 60000) {
     try {
       const [players, owned, hits, hunts, opened, gifted, plays, trades, catalog] = await Promise.all([
-        supabase.from('players').select('id, username, avatar'),
+        supabase.from('players').select('id, username, avatar, title, frame'),
         supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1).limit(100000),
         supabase.from('hunt_hits').select('player_id, hunt_id, damage').limit(100000),
         supabase.from('hunts').select('id, status'),
@@ -405,6 +405,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         const power = x.cards.reduce((t, r) => t + cardPower(cp.get(r.card_id)?.rarity, r.ascension, byId.get(r.card_id)?.cp_mod), 0);
         rows.push({
           id, name: names.get(String(id))?.username || 'Someone', hasAvatar: !!names.get(String(id))?.avatar,
+          title: names.get(String(id))?.title || null, frame: names.get(String(id))?.frame || null,
           power, huntDamage: stats.totalDamage, bosses: stats.bossesDefeated, cards: x.cards.length,
           achievements: measureAchievements(merged, stats).filter((a) => a.done).length,
         });
@@ -642,17 +643,14 @@ app.get('/api/hunt/leaderboard', async (req, res) => {
 // achievements need, the hunt rank, the spotlight, and for another member their cards.
 const profileCache = new Map(); // id -> { at, payload }
 const PROFILE_TTL = 20000;
-app.get('/api/profile', async (req, res) => {
-  const me = await caller(req);
-  if (!me) return res.status(401).json({ error: 'not authenticated' });
-  const id = String(req.query.id || me.id);
-  if (!/^\d{1,25}$/.test(id)) return res.status(400).json({ error: 'bad id' });
-  const self = id === String(me.id);
-  const hit = profileCache.get(id);
-  if (hit && Date.now() - hit.at < PROFILE_TTL) return res.json({ ...hit.payload, cards: self ? undefined : hit.payload.cards });
+// Everything the profile shows for one player (the stats also drive the achievements).
+// Always with the player's cards: the route strips them for the caller's own profile.
+// (Before, a self request cached a payload with no cards, and another member who opened
+// that profile within 20s saw an empty collection.)
+async function loadProfile(id) {
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
-  const [player, opened, gifted, hits, plays, pranked, trades, lb, cp, owned] = await Promise.all([
-    supabase.from('players').select('id, username, avatar, spotlight').eq('id', id).maybeSingle(),
+  const [player, opened, gifted, hits, plays, pranked, trades, lb, cp, owned, claims] = await Promise.all([
+    supabase.from('players').select('id, username, avatar, spotlight, title, frame').eq('id', id).maybeSingle(),
     supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', 'opened'),
     supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('granted_by', id).eq('reason', 'gift'),
     supabase.from('hunt_hits').select('hunt_id, damage').eq('player_id', id).limit(20000),
@@ -661,9 +659,10 @@ app.get('/api/profile', async (req, res) => {
     supabase.from('trade_offers').select('id', { count: 'exact', head: true }).eq('status', 'accepted').or(`from_id.eq.${id},to_id.eq.${id}`),
     hunt ? supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 }) : Promise.resolve({ data: [] }),
     supabase.rpc('my_collection_power', { p_player_id: id }),
-    self ? Promise.resolve({ data: null }) : supabase.from('player_cards').select('card_id, quantity, ascension').eq('player_id', id),
+    supabase.from('player_cards').select('card_id, quantity, ascension').eq('player_id', id),
+    supabase.from('achievement_claims').select('key').eq('player_id', id),
   ]);
-  if (!player.data) return res.status(404).json({ error: 'no such player' });
+  if (!player.data) return null;
   const hitRows = hits.data || [];
   const joined = [...new Set(hitRows.map((h) => h.hunt_id))];
   let defeated = 0;
@@ -677,6 +676,8 @@ app.get('/api/profile', async (req, res) => {
   const payload = {
     id, name: player.data.username, hasAvatar: !!player.data.avatar,
     spotlight: player.data.spotlight || [],
+    title: player.data.title || null, frame: player.data.frame || null,
+    claimed: (claims.data || []).map((c) => c.key),
     power: cp.data != null ? Number(cp.data) : null,
     huntRank: idx >= 0 ? idx + 1 : null, huntPlayers: leaders.length,
     stats: {
@@ -687,7 +688,7 @@ app.get('/api/profile', async (req, res) => {
       boonsPlayed: kinds.boon || 0, pranksPlayed: kinds.prank || 0, neutralPlayed: kinds.neutral || 0,
       pranksReceived: pranked.count || 0, tradesDone: trades.count || 0,
     },
-    cards: owned.data ? owned.data.map((r) => ({ id: r.card_id, quantity: r.quantity, ascension: r.ascension || 0 })) : undefined,
+    cards: (owned.data || []).map((r) => ({ id: r.card_id, quantity: r.quantity, ascension: r.ascension || 0 })),
   };
   payload.packsOpened = payload.stats.packsOpened; // the v2 Home reads this name
   // The live hunt, for the profile's hunt box: damage, attacks, share of the boss HP,
@@ -706,8 +707,64 @@ app.get('/api/profile', async (req, res) => {
       topCard: top ? { id: Number(top[0]), damage: top[1] } : null,
     };
   }
-  profileCache.set(id, { at: Date.now(), payload });
-  res.json(payload);
+  return payload;
+}
+
+app.get('/api/profile', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const id = String(req.query.id || me.id);
+  if (!/^\d{1,25}$/.test(id)) return res.status(400).json({ error: 'bad id' });
+  const self = id === String(me.id);
+  let payload = profileCache.get(id)?.at > Date.now() - PROFILE_TTL ? profileCache.get(id).payload : null;
+  if (!payload) {
+    payload = await loadProfile(id);
+    if (!payload) return res.status(404).json({ error: 'no such player' });
+    profileCache.set(id, { at: Date.now(), payload });
+  }
+  res.json({ ...payload, cards: self ? undefined : payload.cards });
+});
+
+// Redeem a finished achievement. The server measures it with the same rules the player
+// sees (src/achievements.js); claim_achievement records it once and pays its packs.
+app.post('/api/achievements/claim', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const key = String(req.body?.key || '');
+  const def = ACHIEVEMENTS.find((a) => a.key === key);
+  if (!def) return res.status(400).json({ error: 'unknown achievement' });
+  const p = await loadProfile(String(me.id));
+  if (!p) return res.status(404).json({ error: 'no such player' });
+  if (p.claimed.includes(key)) return res.json({ ok: false, error: 'claimed' });
+  const catalog = await getCatalogBase();
+  const mine = new Map(p.cards.map((c) => [c.id, c]));
+  const merged = catalog.map((c) => { const m = mine.get(c.id); return m ? { ...c, owned: true, quantity: m.quantity, ascension: m.ascension } : { ...c, owned: false, quantity: 0, ascension: 0 }; });
+  const a = measureAchievements(merged, p.stats).find((x) => x.key === key);
+  if (!a?.done) return res.status(400).json({ error: 'not_done', have: a?.have, need: a?.need });
+  const r = rewardOf(key);
+  const { data, error } = await supabase.rpc('claim_achievement', { p_player: me.id, p_key: key, p_packs: r.packs || 0, p_title: r.title || null, p_frame: r.frame || null });
+  if (error) return res.status(500).json({ error: error.message });
+  profileCache.delete(String(me.id)); bustUser(me.id); boardV2Cache = null;
+  res.json({ ...data, reward: r });
+});
+
+// Equip an unlocked title and/or frame (null = none). Only rewards the caller claimed.
+app.post('/api/cosmetics', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const { data: claims } = await supabase.from('achievement_claims').select('title, frame').eq('player_id', me.id);
+  const titles = new Set((claims || []).map((c) => c.title).filter(Boolean));
+  const frames = new Set((claims || []).map((c) => c.frame).filter(Boolean));
+  const patch = {};
+  if ('title' in (req.body || {})) { const t = req.body.title; if (t !== null && !titles.has(t)) return res.status(400).json({ error: 'title locked' }); patch.title = t; }
+  if ('frame' in (req.body || {})) { const f = req.body.frame; if (f !== null && !frames.has(f)) return res.status(400).json({ error: 'frame locked' }); patch.frame = f; }
+  if (!Object.keys(patch).length) return res.status(400).json({ error: 'nothing to change' });
+  const { error } = await supabase.from('players').update(patch).eq('id', me.id);
+  if (error) return res.status(500).json({ error: error.message });
+  profileCache.delete(String(me.id)); boardV2Cache = null;
+  res.json({ ok: true, ...patch });
 });
 
 // Save the caller's spotlight: up to 3 cards the caller owns (empty = automatic).
