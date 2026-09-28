@@ -366,13 +366,48 @@ app.get('/api/leaderboard', async (req, res) => {
 // The v2 leaderboard (design/12-leaderboard-screen.png): every player with cards, with
 // collection power, hunt damage, bosses downed, cards owned, and achievements done.
 // One pass over a few tables, cached 60s (the member count is small).
+// Single-flight + a small gate (the pressure test, 2026-09-28). Supabase serves ~60 REST
+// calls/s in total and PostgREST has 11 connections. So a shared cache that expires under
+// load must refresh ONCE (not once per waiting request), and the RPCs that lock the boss
+// row must not hold every connection while they wait for the lock (100 attackers did, and
+// pack opens and screens then failed with PGRST003).
+const inflight = new Map();
+function singleFlight(key, fn) {
+  if (inflight.has(key)) return inflight.get(key);
+  const p = Promise.resolve().then(fn).finally(() => inflight.delete(key));
+  inflight.set(key, p);
+  return p;
+}
+function makeGate(limit) {
+  let active = 0;
+  const waiting = [];
+  const next = () => { if (active < limit && waiting.length) { active += 1; waiting.shift()(); } };
+  return async (fn) => {
+    await new Promise((resolve) => { waiting.push(resolve); next(); });
+    try { return await fn(); } finally { active -= 1; next(); }
+  };
+}
+// hunt_attack / hunt_support lock the boss row: at most this many wait on it at once.
+const huntRpcGate = makeGate(Number(process.env.HUNT_RPC_CONCURRENCY || 4));
+// The fight standings (top 100), shared by the Hunt standings and the v2 board. 2 s.
+const huntLeadersCache = new Map();
+async function huntLeaders(huntId) {
+  const c = huntLeadersCache.get(huntId);
+  if (c && Date.now() - c.at < 2000) return c.data;
+  return singleFlight(`leaders:${huntId}`, async () => {
+    const { data, error } = await supabase.rpc('hunt_leaderboard', { p_hunt: huntId, p_limit: 100 });
+    if (error) throw new Error(error.message);
+    huntLeadersCache.set(huntId, { at: Date.now(), data: data || [] });
+    return data || [];
+  });
+}
+
 let boardV2Cache = null;
 app.get('/api/leaderboard/v2', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
-  if (!boardV2Cache || Date.now() - boardV2Cache.at > 60000) {
-    try {
+  const rebuildBoard = () => singleFlight('boardV2', async () => {
       const [players, owned, hits, hunts, opened, gifted, plays, trades, catalog] = await Promise.all([
         supabase.from('players').select('id, username, avatar, title, frame'),
         supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1).limit(100000),
@@ -426,26 +461,37 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         if (data != null) r.power = Number(data);
       }));
       boardV2Cache = { at: Date.now(), rows, totalCards: catalog.length };
-    } catch (e) { return res.status(500).json({ error: e.message }); }
+  });
+  if (!boardV2Cache) {
+    try { await rebuildBoard(); } catch (e) { return res.status(500).json({ error: e.message }); }
+  } else if (Date.now() - boardV2Cache.at > 60000) {
+    rebuildBoard().catch((e) => console.error('board rebuild failed:', e.message)); // serve the old copy meanwhile
   }
   let live = null;
   if (hunt) {
-    const { data } = await supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 });
-    live = { name: hunt.name, tier: hunt.tier, share: hunt.hp_max ? Math.round((100 * (hunt.hp_max - hunt.hp_remaining)) / hunt.hp_max) : 0, leaders: data || [] };
+    const leaders = await huntLeaders(hunt.id).catch(() => []);
+    live = { name: hunt.name, tier: hunt.tier, share: hunt.hp_max ? Math.round((100 * (hunt.hp_max - hunt.hp_remaining)) / hunt.hp_max) : 0, leaders };
   }
   res.json({ me: String(me.id), rows: boardV2Cache.rows, totalCards: boardV2Cache.totalCards, achievementCount: ACHIEVEMENT_COUNT, live });
 });
 
+// The active boss, shared for 1 s (100 viewers polled it 33 times a second). An attack
+// writes its new HP into the cache, so viewers still see the boss health drop live.
+let activeHuntCache = null; // { at, data }
 async function activeHunt() {
-  const { data } = await supabase
-    .from('hunts')
-    .select('id, name, tier, weak_points, resist_points, passive, stats, hp_max, hp_remaining, opens_at, closes_at, status')
-    .eq('status', 'active')
-    .gt('closes_at', new Date().toISOString())
-    .order('id', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data || null;
+  if (activeHuntCache && Date.now() - activeHuntCache.at < 1000) return activeHuntCache.data;
+  return singleFlight('activeHunt', async () => {
+    let q = supabase
+      .from('hunts')
+      .select('id, name, tier, weak_points, resist_points, passive, stats, hp_max, hp_remaining, opens_at, closes_at, status')
+      .eq('status', 'active')
+      .gt('closes_at', new Date().toISOString());
+    // Load tests only (LOADTEST is never set in production): fight a scratch boss.
+    if (LOADTEST && process.env.LOADTEST_HUNT_ID) q = q.eq('id', Number(process.env.LOADTEST_HUNT_ID));
+    const { data } = await q.order('id', { ascending: false }).limit(1).maybeSingle();
+    activeHuntCache = { at: Date.now(), data: data || null };
+    return data || null;
+  });
 }
 const matchesWeak = (weak, { type, rarity, season }) => (weak || []).some((w) =>
   (w.kind === 'type' && w.value === type)
@@ -522,8 +568,10 @@ app.post('/api/hunt/attack', async (req, res) => {
   if (!hunt) return res.status(400).json({ error: 'no active hunt' });
   const cardId = Number(req.body?.cardId);
   if (!cardId) return res.status(400).json({ error: 'bad card' });
-  const { data, error } = await supabase.rpc('hunt_attack', { p_player: me.id, p_hunt: hunt.id, p_card: cardId });
+  const { data, error } = await huntRpcGate(() => supabase.rpc('hunt_attack', { p_player: me.id, p_hunt: hunt.id, p_card: cardId }));
   if (error) return res.status(500).json({ error: error.message });
+  if (data?.defeated) activeHuntCache = null;
+  else if (data?.ok && activeHuntCache?.data?.id === hunt.id) activeHuntCache.data = { ...activeHuntCache.data, hp_remaining: data.hp_remaining };
   // The RPC settles the killing blow inline and records the defeat + reward notification
   // in the hunt_events outbox, which the bot posts. No announce here (it would duplicate).
   res.json(data);
@@ -540,7 +588,7 @@ app.post('/api/hunt/support', async (req, res) => {
   const cardId = Number(req.body?.cardId);
   const targetId = req.body?.targetId ? Number(req.body.targetId) : null;
   if (!cardId) return res.status(400).json({ error: 'bad card' });
-  const { data, error } = await supabase.rpc('hunt_support', { p_player: me.id, p_hunt: hunt.id, p_card: cardId, p_target: targetId });
+  const { data, error } = await huntRpcGate(() => supabase.rpc('hunt_support', { p_player: me.id, p_hunt: hunt.id, p_card: cardId, p_target: targetId }));
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -599,6 +647,7 @@ let huntFeedCache = null; // { at, huntId, data }
 async function queryHuntFeed(huntId) {
   const now = Date.now();
   if (huntFeedCache && huntFeedCache.huntId === huntId && now - huntFeedCache.at < 2000) return huntFeedCache.data;
+  return singleFlight(`feed:${huntId}`, async () => {
   const { data: rows } = await supabase
     .from('hunt_combat_log')
     .select('id, ts, player_id, card_id, damage, outcome, crit, bonus, card_downed, countered, counter_dmg')
@@ -625,6 +674,7 @@ async function queryHuntFeed(huntId) {
   const data = { feed, fighters };
   huntFeedCache = { at: Date.now(), huntId, data };
   return data;
+  });
 }
 app.get('/api/hunt/feed', async (req, res) => {
   const me = await caller(req);
@@ -644,9 +694,9 @@ app.get('/api/hunt/leaderboard', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const hunt = await activeHunt();
   if (!hunt) return res.json({ leaders: [], me: me.id });
-  const { data, error } = await supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 20 });
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ leaders: data || [], me: me.id });
+  try {
+    res.json({ leaders: (await huntLeaders(hunt.id)).slice(0, 20), me: me.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // A layout report from the real client (v2 only, once per session): window + element

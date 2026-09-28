@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import type { Client, MessageCreateOptions } from 'discord.js';
-import { openOnePack, openTestPacks, getPackBalance, giftPacks } from './store.js';
+import { openPacks, openTestPacks, getPackBalance, giftPacks } from './store.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
 // VM (it binds to 127.0.0.1, and the container runs with --network host). It lets
@@ -92,12 +92,8 @@ export function startInternalServer(client: Client): void {
           const r = await openTestPacks(String(userId), String(username ?? 'Player'), count);
           return json(200, { packs: r.packs });
         }
-        const packs = [];
-        for (let i = 0; i < count; i += 1) {
-          const pack = await openOnePack(String(userId), String(username ?? 'Player'));
-          if (!pack) break;
-          packs.push(pack);
-        }
+        // One database call for all the packs (open_packs); it stops where the balance runs out.
+        const packs = await openPacks(String(userId), String(username ?? 'Player'), count);
         json(200, { packs });
       } catch (error) {
         json(500, { error: String((error as Error)?.message ?? error) });
