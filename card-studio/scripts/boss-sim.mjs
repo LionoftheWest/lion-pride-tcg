@@ -9,7 +9,7 @@
  *   node scripts/boss-sim.mjs            # the default deck = Nathan's top 8 (2026-09-28)
  *   node scripts/boss-sim.mjs 9,10,9     # HP multipliers per tier (the chosen values)
  */
-const DECK = [140, 132, 75, 40, 40, 38, 21, 20];           // cp of the top 8 attackers
+const DECK = (process.env.DECK || '140,132,75,40,40,38,21,20').split(',').map(Number);         // cp of the top 8 attackers
 const DP = DECK.reduce((a, b) => a + b, 0);                   // deployable_power()
 const MULT = (process.argv[2] || '9,10,9').split(',').map(Number);
 const TIERS = { Normal: { hp: MULT[0], lethal: 1.0, passives: 1 }, Heroic: { hp: MULT[1], lethal: 1.25, passives: 2 }, Mythic: { hp: MULT[2], lethal: 1.6, passives: 3 } };
@@ -23,6 +23,11 @@ export const B = {                                            // the boss number
   roll: [['strike', 0.40], ['slam', 0.62], ['drain', 0.72], ['stun', 0.80], ['enrage', 0.87], ['curse', 0.93], ['regenerate', 1]],
 };
 const U = (a, b) => a + Math.random() * (b - a);
+// Flat boss ATK (hunt_boss_attack.sql): damage = ATK x move x 0.85-1.15 x the multipliers.
+// PCT=1 runs the old model (a percentage of the card's own HP x the tier "lethal").
+const FLAT = !process.env.PCT;
+const ATK = JSON.parse(process.env.ATK || '{"Normal":58,"Heroic":73,"Mythic":93}');
+const COEF = { strike: 1.0, drain: 0.8, cataclysm: 0.75, stun: 0.45, slam: 0.35, burn: 0.4 };
 const maxHp = (cp) => Math.max(30, Math.round(cp * 1.8));
 const pick = (n) => (process.env.PASSIVES ? process.env.PASSIVES.split(',') : [...PASSIVES].sort(() => Math.random() - 0.5).slice(0, n));
 const DMG = Number(process.env.DMG || 1); // calibration: real damage per attack / simulated
@@ -51,23 +56,23 @@ function fightDay(boss, deck) {
     if (has('thorns') && dmg > 0) card.hp -= Math.round(dmg * B.thorns);
     // The boss turn.
     const lost = 1 - boss.hp / boss.max;
-    let mult = boss.lethal * (round <= enrUntil ? B.enrage : 1) * (has('volatile') ? 1.25 : 1)
+    let mult = (FLAT ? 1 : boss.lethal) * (round <= enrUntil ? B.enrage : 1) * (has('volatile') ? 1.25 : 1)
       * (lost >= 0.5 ? B.phase50 : 1) * (has('frenzied') ? 1 + B.frenzied * Math.floor(lost * 10) : 1);
-    const hit = (c, r) => { c.hp -= Math.max(1, Math.round(c.max * U(r[0], r[1]) * mult)); };
+    const hit = (c, r, move) => { c.hp -= Math.max(1, Math.round(FLAT ? boss.atk * COEF[move] * U(0.85, 1.15) * mult : c.max * U(r[0], r[1]) * mult)); };
     let act;
     const EVERY = Number(process.env.CATA_EVERY || 8);
     if (EVERY && round % EVERY === EVERY - 1) act = 'charging';
     else if (EVERY && round % EVERY === 0) act = 'cataclysm';
     else { const r = Math.random(); act = B.roll.find(([, p]) => r < p)[0]; }
-    if (act === 'strike') hit(card, B.strike);
-    else if (act === 'slam') for (const c of alive) hit(c, B.slam);
-    else if (act === 'cataclysm') for (const c of alive) hit(c, B.cataclysm);
-    else if (act === 'drain') { hit(card, B.drain); const h = Math.round(boss.share * B.drainHeal); boss.hp = Math.min(boss.max, boss.hp + h); healed += h; }
-    else if (act === 'stun') { card.hp -= Math.round(card.max * B.stunHit * mult); card.stun = round + 1; }
+    if (act === 'strike') hit(card, B.strike, 'strike');
+    else if (act === 'slam') for (const c of alive) hit(c, B.slam, 'slam');
+    else if (act === 'cataclysm') for (const c of alive) hit(c, B.cataclysm, 'cataclysm');
+    else if (act === 'drain') { hit(card, B.drain, 'drain'); const h = Math.round(boss.share * B.drainHeal); boss.hp = Math.min(boss.max, boss.hp + h); healed += h; }
+    else if (act === 'stun') { if (FLAT) hit(card, null, 'stun'); else card.hp -= Math.round(card.max * B.stunHit * mult); card.stun = round + 1; }
     else if (act === 'enrage') enrUntil = round + 2;
     else if (act === 'curse') card.debuff = B.curse;
     else if (act === 'regenerate') { const h = Math.round(boss.share * (lost >= 0.5 ? B.regenLow : B.regen)); boss.hp = Math.min(boss.max, boss.hp + h); healed += h; }
-    if (has('flaming') && Math.random() < 0.30) card.hp -= Math.round(card.max * 0.10);
+    if (has('flaming') && Math.random() < 0.30) card.hp -= Math.round(FLAT ? boss.atk * COEF.burn * U(0.85, 1.15) : card.max * 0.10);
     if (has('regenerating')) { const h = Math.round(boss.share * B.regenPassive); boss.hp = Math.min(boss.max, boss.hp + h); healed += h; }
     // Phase 2: below 25% the boss gains one more passive (once).
     if (!boss.phase25 && boss.hp / boss.max < 0.25) { boss.phase25 = true; const extra = PASSIVES.find((p) => !has(p)); if (extra) boss.passives.push(extra); }
@@ -80,7 +85,7 @@ function week(tier, players) {
   const max = Math.round(DP * players * t.hp);
   // Heals are sized to ONE player's share of the HP (hunts.hp_share), or every extra
   // player would give the boss more healing turns than damage (found by this sim).
-  const boss = { hp: max, max, share: Math.round(max / players), lethal: t.lethal, passives: pick(t.passives), phase25: false };
+  const boss = { hp: max, max, share: Math.round(max / players), lethal: t.lethal, atk: ATK[tier], passives: pick(t.passives), phase25: false };
   let days = 0, rounds = 0;
   for (let d = 0; d < 5 && boss.hp > 0; d++) {
     for (let p = 0; p < players && boss.hp > 0; p++) rounds += fightDay(boss, DECK).rounds / players;
@@ -102,7 +107,7 @@ if (process.env.FIXED || process.env.BATTLE) {
     for (const [i, tier] of tiers.entries()) {
       let net = 0, n = 400;
       for (let k = 0; k < n; k++) {
-        const max = 1e7, boss = { hp: max, max, share: max / 1e3, lethal: TIERS[tier].lethal, passives: pick(TIERS[tier].passives), phase25: false };
+        const max = 1e7, boss = { hp: max, max, share: max / 1e3, lethal: TIERS[tier].lethal, atk: ATK[tier], passives: pick(TIERS[tier].passives), phase25: false };
         fightDay(boss, deck); net += max - boss.hp;
       }
       console.log(`${tier.padEnd(7)} one battle: ${Math.round(net / n)} net damage`);
@@ -113,7 +118,7 @@ if (process.env.FIXED || process.env.BATTLE) {
   for (const players of (process.env.PLAYERS || '5,10,15,20').split(',').map(Number)) {
     for (const [i, tier] of tiers.entries()) {
       const runs = Array.from({ length: 300 }, () => {
-        const max = HP[i], boss = { hp: max, max, share: Math.round(max / CREW), lethal: TIERS[tier].lethal, passives: pick(TIERS[tier].passives), phase25: false };
+        const max = HP[i], boss = { hp: max, max, share: Math.round(max / CREW), lethal: TIERS[tier].lethal, atk: ATK[tier], passives: pick(TIERS[tier].passives), phase25: false };
         let day = 0;
         for (; day < DAYS && boss.hp > 0; day++) for (let p = 0; p < players && boss.hp > 0; p++) fightDay(boss, deck);
         return { killed: boss.hp <= 0, day, pct: 100 * (1 - Math.max(0, boss.hp) / max) };
@@ -129,7 +134,7 @@ if (process.env.CALIBRATE) {
   let dealt = 0, att = 0, n = 300;
   for (let i = 0; i < n; i++) {
     const max = Math.round(DP * t.hp);
-    const boss = { hp: max, max, share: max, lethal: t.lethal, passives: pick(t.passives), phase25: false };
+    const boss = { hp: max, max, share: max, lethal: t.lethal, atk: ATK[tier], passives: pick(t.passives), phase25: false };
     const r = fightDay(boss, DECK); dealt += r.dealt / max; att += r.rounds;
   }
   console.log(`${process.env.CALIBRATE} one day: ${(100 * dealt / n).toFixed(1)}% of HP in ${(att / n).toFixed(1)} attacks = ${(100 * dealt / att).toFixed(2)}% per attack`);

@@ -439,7 +439,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
 async function activeHunt() {
   const { data } = await supabase
     .from('hunts')
-    .select('id, name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, opens_at, closes_at, status')
+    .select('id, name, tier, weak_points, resist_points, passive, stats, hp_max, hp_remaining, opens_at, closes_at, status')
     .eq('status', 'active')
     .gt('closes_at', new Date().toISOString())
     .order('id', { ascending: false })

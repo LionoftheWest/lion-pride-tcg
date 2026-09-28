@@ -1375,7 +1375,9 @@ function weakResistHTML(h) {
   if (w) parts.push(`Weak to ${w}`);
   if (r) parts.push(`Resists ${r}`);
   const base = `<span class="weaks">${parts.join(' · ') || 'No weakness'}</span>`;
-  return base + passiveChips(h);
+  // The boss ATK (hunts.stats, hunt_boss_attack.sql): every hit is ATK x the move.
+  const atk = Number(h.stats?.atk) > 0 ? `<span class="atk-chip">⚔ ATK ${Number(h.stats.atk)}</span>` : '';
+  return atk + base + passiveChips(h);
 }
 
 function huntHTML(d) {
@@ -1414,12 +1416,16 @@ function renderBossMini() {
 
 // Boss detail popup: a big 3D view + full stats + move pool (generic for now).
 let bossModalHandle = null;
+// The boss moves (hunt_boss_attack.sql): damage = ATK x the value below.
 const BOSS_MOVES = [
-  ['Slam', 'A heavy ground smash for big damage'],
-  ['Strike', 'A quick jab at your card'],
-  ['Enrage', 'Powers up — harder hits for a few rounds'],
-  ['Curse', 'Hexes a card so it hits softer'],
-  ['Stunned', 'A support can rob it of a turn'],
+  ['Strike', 'One card, 1× ATK'],
+  ['Drain', 'One card, 0.8× ATK, the boss heals'],
+  ['Stun', 'One card, 0.45× ATK, the card skips a turn'],
+  ['Slam', 'Every card, 0.35× ATK'],
+  ['Cataclysm', 'Every card, 0.75× ATK, every 8th round after Charging'],
+  ['Enrage', '1.4× harder hits for 2 rounds'],
+  ['Curse', 'The card hits 30% softer'],
+  ['Regenerate', 'The boss heals'],
 ];
 function openBossModal() {
   const h = huntState && huntState.hunt;
@@ -1435,6 +1441,7 @@ function openBossModal() {
      <h2 class="bm-name"><span class="boss-name">${esc(h.name)}</span><span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span></h2>
      <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
      <div class="bm-sec">
+       ${Number(h.stats?.atk) > 0 ? `<div class="bm-stat"><span class="bm-k">Attack</span><span class="bm-v"><span class="atk-chip">⚔ ATK ${Number(h.stats.atk)}</span></span></div>` : ''}
        <div class="bm-stat"><span class="bm-k">Weakness</span><span class="bm-v">${wk || '<span class="bm-none">None</span>'}</span></div>
        <div class="bm-stat"><span class="bm-k">Resistance</span><span class="bm-v">${rs || '<span class="bm-none">None</span>'}</span></div>
        ${passive ? `<div class="bm-stat"><span class="bm-k">Passive</span><span class="bm-v">${passive}</span></div>` : ''}
@@ -1540,7 +1547,7 @@ function selectPhaseV2(d) {
       <button class="sq-boss" id="sqBoss" title="Boss details">
         ${key ? `<img src="${THUMB_BASE}/${key}.png" alt="">` : '<span class="sq-boss-ph">🦁</span>'}
         <span class="sq-boss-t"><b>${esc(h.name)}</b>
-          <span class="sq-wr">${weak ? `<i>WEAK</i>${weak}` : ''}${resist ? `<i>RESISTS</i>${resist}` : ''}</span></span>
+          <span class="sq-wr">${Number(h.stats?.atk) > 0 ? `<i>ATK</i><b class="sq-atk">${Number(h.stats.atk)}</b>` : ''}${weak ? `<i>WEAK</i>${weak}` : ''}${resist ? `<i>RESISTS</i>${resist}` : ''}</span></span>
       </button>
       <div class="cp-big" id="cpBig"></div>
       <div class="sq-list" id="squadTray"></div>
