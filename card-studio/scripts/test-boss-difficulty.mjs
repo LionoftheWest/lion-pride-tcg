@@ -32,10 +32,10 @@ begin
     kinds := array_append(kinds, rec.tier);
     if jsonb_array_length(rec.passive->'list') <> (case rec.tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end)
        or (select count(distinct x->>'kind') from jsonb_array_elements(rec.passive->'list') x) <> jsonb_array_length(rec.passive->'list')
-       or rec.hp_max <> (case rec.tier when 'Normal' then 80000 when 'Heroic' then 100000 else 100000 end)
+       or rec.hp_max <> (case rec.tier when 'Normal' then 60000 else 80000 end)
        or rec.hp_remaining <> rec.hp_max or rec.hp_share <> rec.hp_max / 10 then ok := false; end if;
   end loop;
-  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP 80k/100k/100k, share = HP / 10', 'ok', ok,
+  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP 60k/80k/80k, share = HP / 10', 'ok', ok,
     'tiers', (select count(distinct t) from unnest(kinds) t));
   -- The HP does not follow the players: 30 more card holders, the same HP.
   insert into players (id, username) select 'tst_x' || g, 'tst x' from generate_series(1, 30) g;
@@ -43,7 +43,7 @@ begin
   ok := true;
   for i in 1..6 loop
     h := spawn_hunt(3); select * into rec from hunts where id = h;
-    if rec.hp_max <> (case rec.tier when 'Normal' then 80000 else 100000 end) then ok := false; end if;
+    if rec.hp_max <> (case rec.tier when 'Normal' then 60000 else 80000 end) then ok := false; end if;
   end loop;
   res := res || jsonb_build_object('case', 'the HP does not change with the player count', 'ok', ok);
   -- The dial: a changed setting changes the next spawn.

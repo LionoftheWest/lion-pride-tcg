@@ -3,15 +3,17 @@
 -- The HP no longer depends on the player count or the card power: one number per tier from
 -- the settings dial 'hunt_hp' (boss-sim.mjs FIXED mode, calibrated on the real fights of
 -- 2026-09-28: one top squad battle = ~3,400 net damage on a Normal, ~1,600 on a Mythic).
---   Normal  80,000: 10 top squads a day win on day ~3.
---   Heroic 100,000: 10 top squads a day win on day ~5.7 (86%).
---   Mythic 100,000: 10 top squads EVERY day for 7 days win 40% of the time.
+-- The hunt runs Thu 21:00 -> Mon 23:00 UTC (5 daily battles per player; Nathan keeps the
+-- cool-down between bosses). Top squads = a squad like the strongest one today (top-8 507):
+--   Normal  60,000: 10 top squads a day win on day ~2.3.
+--   Heroic  80,000: 10 top squads a day win on day ~4.3 (95%).
+--   Mythic  80,000: 10 top squads every day win 25% of the time, 15 win 93%.
 -- crew = the HP share that sizes the boss heals (hp_share = HP / crew), so a heal is the
 -- same size for any number of players. spawn_hunt = the live definition with the HP block
 -- replaced. New spawns only.
 
 insert into settings (key, value) values ('hunt_hp',
-  '{"Normal":80000,"Heroic":100000,"Mythic":100000,"crew":10}'::jsonb)
+  '{"Normal":60000,"Heroic":80000,"Mythic":80000,"crew":10}'::jsonb)
   on conflict (key) do nothing;
 
 CREATE OR REPLACE FUNCTION public.spawn_hunt(p_days integer DEFAULT 3)
@@ -93,8 +95,8 @@ begin
 
   -- Fixed HP per tier (the settings dial 'hunt_hp', see the header).
   select value into v_cfg from settings where key = 'hunt_hp';
-  v_cfg := coalesce(v_cfg, '{"Normal":80000,"Heroic":100000,"Mythic":100000,"crew":10}'::jsonb);
-  v_hp := greatest(500, coalesce((v_cfg->>v_tier)::bigint, 100000));
+  v_cfg := coalesce(v_cfg, '{"Normal":60000,"Heroic":80000,"Mythic":80000,"crew":10}'::jsonb);
+  v_hp := greatest(500, coalesce((v_cfg->>v_tier)::bigint, 80000));
   v_hunters := greatest(1, coalesce((v_cfg->>'crew')::int, 10));
   v_name := c_names[1 + floor(random() * array_length(c_names, 1))];
   -- The boss heals are sized to HP / crew (boss-sim.mjs: heals sized to the FULL HP make
