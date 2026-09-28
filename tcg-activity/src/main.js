@@ -11,6 +11,8 @@
  * shows in the main header and opens reveal in the main pane for everyone.
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
+import { thumb, revealThumb, installImgFallback } from './thumb.js';
+installImgFallback();
 import { mountBoss } from './boss.js';
 import { BOSS_LIST, seedForBoss, thumbFor, THUMB_BASE } from './boss-meta.js';
 import { modelFor } from './boss-model.js';
@@ -496,7 +498,7 @@ function bossFeedRow(e) {
 
 function feedRow(p, idx, top) {
   return `<div class="frow${top ? ' top' : ''}" data-idx="${idx}">
-    <div class="fthumb">${p.image_url ? `<img src="${p.image_url}" alt="" loading="lazy">` : ''}</div>
+    <div class="fthumb">${p.image_url ? `<img src="${thumb(p.image_url)}" data-full="${p.image_url || ''}" alt="" loading="lazy">` : ''}</div>
     <div class="ftext"><b>${esc(p.player)}</b> pulled
       <span class="fcard">${esc(p.name)}</span>
       <span class="ftier">${RARITY_LABEL[p.rarity] || p.rarity} · ${ago(p.at)}</span>
@@ -650,7 +652,7 @@ function cardTile(c, idx) {
   const asc = showAsc ? ` asc-${c.ascension}` : '';
   const stars = showAsc ? `<div class="tile-stars">${'★'.repeat(c.ascension)}</div>` : '';
   return `<div class="c ${c.rarity}${dim}${asc}" data-idx="${idx}">
-    <div class="art">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}${stars}</div>
+    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${stars}</div>
     <div class="cap">${esc(c.name)}${qty}</div>
   </div>`;
 }
@@ -894,7 +896,7 @@ function showReveal(msg) {
     return `<div class="fc c ${c.rarity}${hot}" data-idx="${i}" style="--i:${i}">
       <div class="pf">
         <div class="pf-face pf-back"><img src="${cardBack}" alt=""></div>
-        <div class="pf-face pf-front">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}">` : ''}</div>
+        <div class="pf-face pf-front">${c.image_url ? `<img src="${revealThumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">` : ''}</div>
       </div>
       <div class="fc-cap">${esc(c.name)}</div>
     </div>`;
@@ -1636,7 +1638,7 @@ function paintSquadPanel(cap) {
         const eln = supp ? null : cardElement(c.tags);
         const look = eln ? ELEMENTS[eln] : null;
         html += `<div class="slot filled sq-row r-${c.rarity}" data-id="${c.id}"><span class="sq-i">${i + 1}</span>
-          ${c.image_url ? `<img src="${c.image_url}" alt="">` : '<i class="sq-noimg"></i>'}<span class="sq-name">${esc(c.name)}</span>
+          ${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="">` : '<i class="sq-noimg"></i>'}<span class="sq-name">${esc(c.name)}</span>
           ${c.matches && !supp ? '<span class="sq-x2">×2</span>' : ''}${look ? `<span class="sq-el">${look.glyph}</span>` : ''}
           <span class="sq-pow">${supp ? '🛡' : `⚡ ${c.power}`}</span><span class="slot-x">✕</span></div>`;
       } else {
@@ -1653,7 +1655,7 @@ function paintSquadPanel(cap) {
         const eln = supp ? null : cardElement(c.tags);
         const look = eln ? ELEMENTS[eln] : null;
         html += `<div class="slot filled${eln ? ` el-${eln}` : ''}" data-id="${c.id}"${look ? ` style="--el:${look.color};--el2:${look.color2}"` : ''}>
-          ${c.image_url ? `<img src="${c.image_url}" alt="">` : ''}<span class="slot-pow">${supp ? '🛡' : `⚡${c.power}`}</span><span class="slot-x">✕</span></div>`;
+          ${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="">` : ''}<span class="slot-pow">${supp ? '🛡' : `⚡${c.power}`}</span><span class="slot-x">✕</span></div>`;
       } else {
         html += `<div class="slot empty">${i + 1}</div>`;
       }
@@ -1722,7 +1724,7 @@ function huntTile(c, mode) {
   const elBadge = look ? `<span class="celem" title="${look.name}">${look.glyph}</span>` : '';
   const elStyle = look ? ` style="--el:${look.color};--el2:${look.color2}"` : '';
   return `<div class="${cls}${elem ? ` el-${elem}` : ''}" data-id="${c.id}" data-el="${elem || ''}" data-type="${esc(c.type || '')}" data-used="${usedIds.has(c.id) ? 1 : 0}" data-max="${max}"${elStyle} title="${ab ? esc(ab.name + ' — ' + (ab.desc || '')) : ''}">
-    <div class="art">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×2</span>' : ''}${shield}${overlay}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">🔍</button></div>
+    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×2</span>' : ''}${shield}${overlay}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">🔍</button></div>
     ${hpbar}
     <div class="cap">${esc(c.name)}${abLine}</div>
   </div>`;
@@ -2612,7 +2614,7 @@ async function renderTrading() {
   const inc = data.incoming || [];
   const out = data.outgoing || [];
   updateTradeBadge(inc.length);
-  const mini = (c) => (c ? `<div class="tmini ${c.rarity}"><div class="art">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}">` : ''}</div><span>${esc(c.name)}</span></div>` : '');
+  const mini = (c) => (c ? `<div class="tmini ${c.rarity}"><div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">` : ''}</div><span>${esc(c.name)}</span></div>` : '');
   const incHtml = inc.length ? inc.map((o) => `
     <div class="trade-row">
       <div class="tr-who"><b>${esc(o.from_name || 'Someone')}</b> offers you</div>
@@ -2682,7 +2684,7 @@ function wireTradeNav() {
 function tradeTile(c, i, big) {
   const locked = c.tradeable === false ? ' locked' : '';
   return `<div class="ttile ${c.rarity}${big ? ' big' : ''}${locked}" data-i="${i}">
-    <div class="art">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}">` : ''}</div>
+    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">` : ''}</div>
     <div class="cap">${esc(c.name)}${c.quantity > 1 ? ` <span class="q">×${c.quantity}</span>` : ''}</div>
   </div>`;
 }

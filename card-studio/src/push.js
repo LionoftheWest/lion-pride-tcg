@@ -10,6 +10,7 @@ import { supabase } from './supabase.js';
 import { renderPng } from './render.js';
 import { artKeyFor, ANIMATED, inDrawPool, needsPeriod } from './rarity.js';
 import { getFrame } from './frames.js';
+import { makeThumbs, gridObject, revealObject } from './thumbs.js';
 import { getArtist } from './artists.js';
 import { slotDetails } from './cardstore.js';
 
@@ -124,6 +125,13 @@ export async function pushCard(card, artFor, outDir, onProgress) {
       .from(BUCKET)
       .upload(object, buffer, { contentType, upsert: true });
     if (ue) throw new Error(`upload ${rarity}: ${ue.message}`);
+    // Its thumbnails (src/thumbs.js): the still grid copy, and the animated reveal copy.
+    const th = await makeThumbs(buffer);
+    for (const [obj, buf] of [[gridObject(object), th.grid], [revealObject(object), th.reveal]]) {
+      if (!buf) continue;
+      const { error: te } = await supabase.storage.from(BUCKET).upload(obj, buf, { contentType: 'image/webp', upsert: true });
+      if (te) throw new Error(`thumbnail ${rarity}: ${te.message}`);
+    }
 
     const url = `${supabase.storage.from(BUCKET).getPublicUrl(object).data.publicUrl}?v=${Date.now()}`;
 

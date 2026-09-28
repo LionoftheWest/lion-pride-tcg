@@ -3,6 +3,7 @@
 // Uses the shared helpers of ui-v2.js; the data comes from the existing APIs.
 
 import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember } from './ui-v2.js';
+import { thumb } from './thumb.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge } from './effects-ui.js';
 
 const ctx = () => v2ctx();
@@ -246,7 +247,7 @@ function gridItems() {
 
 function slotHTML(c, who, empty) {
   if (!c) return `<div class="tr-slot empty"><span>${esc(empty)}</span></div>`;
-  return `<div class="tr-slot r-${c.rarity}"><img src="${c.image_url || ''}" alt=""></div>
+  return `<div class="tr-slot r-${c.rarity}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""></div>
     <div class="tr-info"><span class="tr-who">${who}</span><h3>${esc(c.name)}</h3><span class="tr-rar" style="color:var(--r-${c.rarity})">◆ ${esc(ctx().RARITY_LABEL[c.rarity] || c.rarity)}</span>
       <span class="tr-chips"><i>⚡ ${fmt(c.power)}</i>${c.quantity ? `<i>×${c.quantity}</i>` : ''}</span></div>`;
 }
@@ -284,7 +285,7 @@ function paintTrade() {
   }
   const theirsN = tr.to ? (tr.theirs[tr.to.id] || []).length : 0;
   const mineN = (ctx().cache.collection?.cards || []).length;
-  const offerCard = (c, tag) => (c ? `<div class="of-card"><img src="${c.image_url || ''}" alt=""><span>${tag}</span></div>` : '');
+  const offerCard = (c, tag) => (c ? `<div class="of-card"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""><span>${tag}</span></div>` : '');
   const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
   el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}">
     <section class="tr-main">
@@ -451,7 +452,7 @@ function paintEffects() {
     const k = kindOf(c);
     const ready = sc.enabled && wait <= 0;
     composer = `<div class="tr-deal fx-deal">
-        <div class="tr-side"><div class="tr-slot r-${c.rarity}"><img src="${c.image_url || ''}" alt=""></div>
+        <div class="tr-side"><div class="tr-slot r-${c.rarity}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""></div>
           <div class="tr-info"><span class="fx-tags"><span class="fx-kind k-${k}">${EFFECT_KIND.icon[k] || ''} ${esc((EFFECT_KIND.label[k] || k).toUpperCase())}</span>
             <span class="fx-state ${ready ? 'ok' : ''}">${!sc.enabled ? 'Unlocks soon' : wait > 0 ? `Ready in ${fmtDur(wait)}` : '● Ready'}</span></span>
             <h3>${esc(c.effect.name || pretty(c.effect.primitive))}</h3>
