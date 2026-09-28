@@ -725,6 +725,45 @@ app.get('/api/profile', async (req, res) => {
   res.json({ ...payload, cards: self ? undefined : payload.cards });
 });
 
+// The caller's achievements, measured on the server with the same rules the player sees.
+async function measureFor(id) {
+  const p = await loadProfile(id);
+  if (!p) return null;
+  const catalog = await getCatalogBase();
+  const mine = new Map(p.cards.map((c) => [c.id, c]));
+  const merged = catalog.map((c) => { const m = mine.get(c.id); return m ? { ...c, owned: true, quantity: m.quantity, ascension: m.ascension } : { ...c, owned: false, quantity: 0, ascension: 0 }; });
+  return { p, achs: measureAchievements(merged, p.stats) };
+}
+async function claimOne(id, key) {
+  const r = rewardOf(key);
+  const { data, error } = await supabase.rpc('claim_achievement', { p_player: id, p_key: key, p_packs: r.packs || 0, p_title: r.title || null, p_frame: r.frame || null });
+  if (error) throw new Error(error.message);
+  return { ...data, key, reward: r };
+}
+
+// Redeem ALL finished, unclaimed achievements at once (Nathan: "a lot to go one by
+// one"). Each one goes through claim_achievement, so each still pays only once.
+app.post('/api/achievements/claim-all', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const m = await measureFor(String(me.id));
+  if (!m) return res.status(404).json({ error: 'no such player' });
+  const todo = m.achs.filter((a) => a.done && !m.p.claimed.includes(a.key));
+  const claimed = []; let packs = 0; const titles = []; const frames = [];
+  try {
+    for (const a of todo) {
+      const r = await claimOne(me.id, a.key);
+      if (!r.ok) continue; // claimed meanwhile (another tab): skip it
+      claimed.push(a.key); packs += r.reward.packs || 0;
+      if (r.reward.title) titles.push(r.reward.title);
+      if (r.reward.frame) frames.push(r.reward.frame);
+    }
+  } catch (e) { return res.status(500).json({ error: e.message, claimed }); }
+  finally { profileCache.delete(String(me.id)); bustUser(me.id); boardV2Cache = null; }
+  res.json({ ok: true, claimed, packs, titles, frames: [...new Set(frames)] });
+});
+
 // Redeem a finished achievement. The server measures it with the same rules the player
 // sees (src/achievements.js); claim_achievement records it once and pays its packs.
 app.post('/api/achievements/claim', async (req, res) => {
@@ -734,19 +773,15 @@ app.post('/api/achievements/claim', async (req, res) => {
   const key = String(req.body?.key || '');
   const def = ACHIEVEMENTS.find((a) => a.key === key);
   if (!def) return res.status(400).json({ error: 'unknown achievement' });
-  const p = await loadProfile(String(me.id));
-  if (!p) return res.status(404).json({ error: 'no such player' });
-  if (p.claimed.includes(key)) return res.json({ ok: false, error: 'claimed' });
-  const catalog = await getCatalogBase();
-  const mine = new Map(p.cards.map((c) => [c.id, c]));
-  const merged = catalog.map((c) => { const m = mine.get(c.id); return m ? { ...c, owned: true, quantity: m.quantity, ascension: m.ascension } : { ...c, owned: false, quantity: 0, ascension: 0 }; });
-  const a = measureAchievements(merged, p.stats).find((x) => x.key === key);
+  const m = await measureFor(String(me.id));
+  if (!m) return res.status(404).json({ error: 'no such player' });
+  if (m.p.claimed.includes(key)) return res.json({ ok: false, error: 'claimed' });
+  const a = m.achs.find((x) => x.key === key);
   if (!a?.done) return res.status(400).json({ error: 'not_done', have: a?.have, need: a?.need });
-  const r = rewardOf(key);
-  const { data, error } = await supabase.rpc('claim_achievement', { p_player: me.id, p_key: key, p_packs: r.packs || 0, p_title: r.title || null, p_frame: r.frame || null });
-  if (error) return res.status(500).json({ error: error.message });
+  let out;
+  try { out = await claimOne(me.id, key); } catch (e) { return res.status(500).json({ error: e.message }); }
   profileCache.delete(String(me.id)); bustUser(me.id); boardV2Cache = null;
-  res.json({ ...data, reward: r });
+  res.json(out);
 });
 
 // Equip an unlocked title and/or frame (null = none). Only rewards the caller claimed.

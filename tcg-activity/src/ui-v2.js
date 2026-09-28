@@ -155,6 +155,17 @@ async function redeem(key, btn) {
   toast(`🎁 ${rewardLabel(r.reward || rewardOf(key))}`);
   loadMyProfile(true).then(() => { if (ctx.currentView() === 'collection') renderCollectionV2(); });
 }
+async function redeemAll(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Redeeming…'; }
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim-all', {}); } catch { r = null; }
+  if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Try again'; } return; }
+  ctx.refreshPacks?.();
+  const parts = [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.titles?.length ? `${r.titles.length} title${r.titles.length === 1 ? '' : 's'}` : null, r.frames?.length ? `${r.frames.length} frame${r.frames.length === 1 ? '' : 's'}` : null].filter(Boolean);
+  toast(`🎁 ${r.claimed.length} redeemed${parts.length ? ` · ${parts.join(' + ')}` : ''}`);
+  await loadMyProfile(true);
+  if (ctx.currentView() === 'collection') renderCollectionV2();
+}
 function toast(text) {
   const n = document.createElement('div');
   n.className = 'v2-toast';
@@ -205,7 +216,7 @@ export async function renderCollectionV2() {
     <button data-tab="ach" class="${col.view !== 'cards' ? 'on' : ''}">Achievements <i>${achDone}/${achs.length}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button></div>`;
   let center;
   if (col.view === 'ach') {
-    center = `<div class="v2-col-head">${tabs}<span class="grow"></span>${ready ? `<span class="ach-ready">🎁 ${ready} to redeem</span>` : ''}<div class="v2-pager" id="achPager"></div></div>
+    center = `<div class="v2-col-head">${tabs}<span class="grow"></span>${ready ? `<span class="ach-ready">🎁 ${ready} to redeem</span><button class="v2-btn gold ach-all" id="achAll">Redeem All</button>` : ''}<div class="v2-pager" id="achPager"></div></div>
       <div class="v2-ach-grid" id="achGrid"></div>`;
   } else if (col.view === 'achDetail') {
     const a = achs.find((x) => x.key === col.achKey);
@@ -219,7 +230,8 @@ export async function renderCollectionV2() {
       <div class="v2-grid" id="colGrid"></div>`;
   }
 
-  el('main').innerHTML = `<div class="v2-collection">
+  // The pure Achievements view shows only achievements (no card panel).
+  el('main').innerHTML = `<div class="v2-collection${col.view === 'ach' ? ' ach-mode' : ''}">
     <aside class="v2-side filters">
       <div class="f-head"><b>Filters</b>${hasFilters() ? '<button class="link-btn" id="colClear">Clear all</button>' : ''}</div>
       <input class="v2-search" id="colSearch" placeholder="Search cards, tags…" value="${esc(col.q)}">
@@ -231,7 +243,7 @@ export async function renderCollectionV2() {
       <div class="side-h">Game</div><div class="f-chips">${gameChips}</div>
     </aside>
     <section class="v2-center" id="colCenter">${center}</section>
-    <aside class="v2-panel" id="colPanel"></aside>
+    ${col.view === 'ach' ? '' : '<aside class="v2-panel" id="colPanel"></aside>'}
   </div>`;
 
   const toCards = () => { col.view = 'cards'; col.page = 0; };
@@ -260,6 +272,7 @@ export async function renderCollectionV2() {
     col.view = b.dataset.tab === 'ach' ? 'ach' : 'cards';
     renderCollectionV2();
   });
+  el('achAll')?.addEventListener('click', () => redeemAll(el('achAll')));
   // An achievement opens its detail (the cards it needs); Redeem pays it.
   el('colCenter').addEventListener('click', (e) => {
     const r = e.target.closest('[data-redeem]');
@@ -277,7 +290,7 @@ export async function renderCollectionV2() {
   else if (col.view === 'achDetail') paintAchDetail(achs.find((x) => x.key === col.achKey));
   else paintColGrid();
   const selCard = cards.find((c) => c.id === col.sel) || inSeason.find((c) => c.owned) || inSeason[0];
-  paintPanel(selCard);
+  if (col.view !== 'ach') paintPanel(selCard);
 }
 
 // The filter panel never scrolls: when it is too tall, the chip counts go, then the
@@ -734,7 +747,11 @@ function paintSpotEditor() {
       <div class="side-h">Spotlight <span class="n">${sp.ids.length}/3</span></div>
       <div class="se-slots" id="seSlots">${slots}</div>
       <div class="side-h">Title</div>
-      <div class="f-chips se-titles" id="seTitles">${pill('title', '', 'None', !sp.title)}${titles.map((t) => pill('title', t, esc(t), sp.title === t)).join('')}${lockedTitles.map((t) => locked(esc(t), unlockBy('title', t))).join('')}</div>
+      <select class="v2-select" id="seTitle">
+        <option value=""${sp.title ? '' : ' selected'}>None</option>
+        ${titles.map((t) => `<option value="${esc(t)}"${sp.title === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}
+        ${lockedTitles.length ? `<optgroup label="Locked">${lockedTitles.map((t) => `<option disabled>🔒 ${esc(t)} · ${esc(unlockBy('title', t).join(' or '))}</option>`).join('')}</optgroup>` : ''}
+      </select>
       <div class="side-h">Frame</div>
       <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, `<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, sp.frame === f)).join('')}${lockedFrames.map((f) => locked(`<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, unlockBy('frame', f))).join('')}</div>
       <div class="se-foot"><span class="tr-msg" id="seMsg"></span><button class="v2-btn gold" id="seSave">Save</button></div>
@@ -755,16 +772,8 @@ function paintSpotEditor() {
   };
   paintCards(grid, el('sePager'), list, sp, pick);
   grid.querySelectorAll('.v2-cell').forEach((n) => { const c = list[Number(n.dataset.idx)]; if (c && sp.ids.includes(Number(c.id))) n.classList.add('sel', 'in-spot'); });
-  requestAnimationFrame(() => {
-    const box = el('seTitles');
-    if (!box) return;
-    const bottom = box.getBoundingClientRect().top + 120;
-    const extra = [...box.querySelectorAll('.f-chip.locked')].filter((n) => n.getBoundingClientRect().bottom > bottom);
-    extra.forEach((n) => n.remove());
-    if (extra.length) box.insertAdjacentHTML('beforeend', `<span class="f-chip locked more">+${extra.length} more</span>`);
-  });
+  el('seTitle').addEventListener('change', (e) => { sp.title = e.target.value || null; paintSpotEditor(); });
   el('seSlots').onclick = (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; sp.ids.splice(Number(b.dataset.slot), 1); paintSpotEditor(); };
-  box.querySelectorAll('[data-title]').forEach((b) => b.addEventListener('click', () => { sp.title = b.dataset.title || null; paintSpotEditor(); }));
   box.querySelectorAll('[data-frame]').forEach((b) => b.addEventListener('click', () => { sp.frame = b.dataset.frame || null; paintSpotEditor(); }));
   el('seQ').addEventListener('input', (e) => { sp.q = e.target.value; sp.page = 0; paintSpotEditor(); const i = el('seQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
   el('seClose').addEventListener('click', () => box.classList.add('hidden'));
