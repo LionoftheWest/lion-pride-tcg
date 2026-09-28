@@ -6,6 +6,10 @@
 export const THUMB_BASE = '/api/img/storage/v1/object/public/card-art/boss/thumbs';
 
 export const BOSS_LIST = [
+  // Rigged model bosses (boss-model.js). `credit` shows in the gallery viewer.
+  { arch: 'warrok', title: 'The Rage-Quit Warlord', blurb: 'A horned brute that flips the table and the arena with it.', credit: 'Model: Warrok W Kurniawan — Mixamo (Adobe)' },
+  { arch: 'mutant', title: 'The Netcode Mutant', blurb: 'Spliced from bad packets. Its blades hit before you see them.', credit: 'Model: Mutant — Mixamo (Adobe)' },
+  { arch: 'maw', title: 'Maw of the Meta', blurb: 'An antlered devourer that feeds on whatever build is strongest.', credit: 'Model: Maw J Laygo — Mixamo (Adobe)' },
   { arch: 'behemoth', title: 'Lava Behemoth', blurb: 'A rock titan with molten veins and crystal growth.' },
   { arch: 'brute', title: 'Ogre Brute', blurb: 'A hulking bruiser that leads with its fists.' },
   { arch: 'golem', title: 'Iron Golem', blurb: 'An animated guardian of living metal.' },

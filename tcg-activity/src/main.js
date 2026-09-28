@@ -1287,7 +1287,7 @@ function openBossGallery(b) {
   el('bossModalInfo').innerHTML =
     `<div class="mb-live gal-boss-tag">RAID BOSS</div>
      <h2 class="bm-name"><span class="boss-name">${esc(b.title)}</span></h2>
-     <p class="v-lore">${esc(b.blurb || '')}</p>`;
+     <p class="v-lore">${esc(b.blurb || '')}</p>${b.credit ? `<p class="v-artist bm-credit">${esc(b.credit)}</p>` : ''}`;
   el('bossModal').classList.remove('hidden');
   try { bossModalHandle = mountBoss(el('bossModalCanvas'), seedForBoss(b), 'Mythic'); } catch (e) { bossModalHandle = null; }
 }
