@@ -400,6 +400,22 @@ const apiPost = (path, body) =>
 
 // ---- Live streams (stay open for the whole session) ------------------------
 
+// While the member opens packs, the live feed holds its updates: the member's own new
+// pulls reach the feed before the reveal is on screen and spoiled it (Nathan,
+// 2026-09-27). The held list is shown when the reveal closes.
+let feedHold = false;
+let heldPulls = null;
+function setPulls(pulls) {
+  if (feedHold) { heldPulls = pulls; return; }
+  live.pulls = pulls;
+  if (currentView !== 'battling') renderFeedSidebar();
+}
+function holdFeed() { feedHold = true; }
+function releaseFeed() {
+  feedHold = false;
+  if (heldPulls) { const p = heldPulls; heldPulls = null; setPulls(p); }
+}
+
 let pullsStream = null;
 let roomWs = null;
 
@@ -407,12 +423,12 @@ function connectStreams() {
   try {
     pullsStream = new EventSource(`/api/pulls/stream?token=${encodeURIComponent(token)}`);
     pullsStream.onmessage = (ev) => {
-      try { const d = JSON.parse(ev.data); if (d.pulls) { live.pulls = d.pulls; if (currentView !== 'battling') renderFeedSidebar(); } } catch { /* bad frame */ }
+      try { const d = JSON.parse(ev.data); if (d.pulls) setPulls(d.pulls); } catch { /* bad frame */ }
     };
   } catch { /* no EventSource; poll below */ }
   setInterval(async () => {
     if (document.hidden || pullsStream) return;
-    try { const d = await api('/api/pulls'); if (d.pulls) { live.pulls = d.pulls; if (currentView !== 'battling') renderFeedSidebar(); } } catch { /* retry */ }
+    try { const d = await api('/api/pulls'); if (d.pulls) setPulls(d.pulls); } catch { /* retry */ }
   }, 15000);
 
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -809,10 +825,12 @@ function renderPager(view, pages) {
 
 const openDeps = () => ({
   el, esc, SFX, RARITY_LABEL, cardBack: () => cardBack, openViewer,
-  onClose: () => { sendStatus(VIEW_STATUS[currentView]); refreshOwned(); refreshPackStatus(); show(currentView); },
+  onClose: () => { sendStatus(VIEW_STATUS[currentView]); releaseFeed(); refreshOwned(); refreshPackStatus(); show(currentView); },
 });
 async function openPacks(count) {
   const n = [1, 5, 10].includes(count) ? count : 1; // a click handler passes an event
+  holdFeed();
+  let revealed = false;
   const btn = el('openBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
   try {
@@ -827,12 +845,14 @@ async function openPacks(count) {
       // Always show MY reveal locally. The room broadcast echoes back to me too,
       // so suppress that echo briefly to avoid opening the takeover twice.
       suppressOpenUntil = Date.now() + 3000;
+      revealed = true;
       if (uiV2 && (data.packs || []).length > 1) showMultiReveal(openDeps(), data.packs);
       else showReveal({ user: 'You', cards: data.cards });
     }
   } catch {
     note('Could not open right now.');
   } finally {
+    if (!revealed) releaseFeed();
     refreshPackStatus(); // packs were consumed — hides the button when none remain
   }
 }
@@ -1059,6 +1079,7 @@ function rareBanner(text) {
 
 function endReveal() {
   sendStatus(VIEW_STATUS[currentView]);
+  releaseFeed();
   clearTimeout(revealTimer);
   const stage = el('stage');
   stage.classList.add('closing');
