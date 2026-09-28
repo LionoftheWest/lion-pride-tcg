@@ -1,0 +1,104 @@
+/* Lion Pride TCG — UI v2 Hunt squad select (design/09-hunt-select-screen.png).
+   Scoped under body.ui-v2; tokens live in ui-v2.css. */
+
+body.ui-v2 .main-body.hunt.select-mode { height: 100%; }
+body.ui-v2 .v2sq { height: 100%; display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: var(--sp-4); min-height: 0; }
+
+/* ---- The squad column ---- */
+body.ui-v2 .sq-side { min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px;
+  background: var(--bg-raised); border: 1px solid var(--border); border-radius: 18px; padding: 14px; box-sizing: border-box; }
+body.ui-v2 .sq-h { display: flex; align-items: baseline; justify-content: space-between; }
+body.ui-v2 .sq-h > b { font: 700 19px var(--font-display); }
+body.ui-v2 .sq-n { font: 600 13px var(--font-num); color: var(--text-muted); }
+body.ui-v2 .sq-n b { color: var(--gold); font-size: 17px; }
+body.ui-v2 .sq-boss { display: flex; align-items: center; gap: 10px; padding: 6px 8px; flex: 0 0 auto; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-primary); text-align: left; cursor: pointer; font: inherit; }
+body.ui-v2 .sq-boss:hover { border-color: var(--hunt); }
+body.ui-v2 .sq-boss img, body.ui-v2 .sq-boss-ph { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 8px; object-fit: cover; background: var(--hunt-soft); display: grid; place-items: center; }
+body.ui-v2 .sq-boss-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+body.ui-v2 .sq-boss-t b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .sq-wr { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+body.ui-v2 .sq-wr i { font: 700 9.5px var(--font-ui); font-style: normal; letter-spacing: .8px; color: var(--text-muted); margin-right: 1px; }
+body.ui-v2 .sq-wr i + .sq-tag { margin-left: 0; }
+body.ui-v2 .sq-wr .sq-tag + i { margin-left: 6px; }
+body.ui-v2 .sq-tag { font-size: 12px; line-height: 1; }
+body.ui-v2 .sq-tag.txt { font: 600 10.5px var(--font-ui); color: var(--text-secondary); text-transform: capitalize; }
+body.ui-v2 .sq-side .cp-big { display: flex; align-items: baseline; gap: 8px; margin: 2px 0; }
+body.ui-v2 .sq-side .cp-big .cp-num { font: 800 22px var(--font-num); color: var(--text-primary); }
+body.ui-v2 .sq-side .cp-big .cp-lbl { font-size: 12px; color: var(--text-muted); letter-spacing: .6px; }
+body.ui-v2 .sq-side .cp-boost { color: var(--success); font-family: var(--font-num); }
+body.ui-v2 .sq-list { display: flex; flex-direction: column; gap: 3px; flex: 0 0 auto; }
+body.ui-v2 .sq-row { display: flex; align-items: center; gap: 8px; height: 29px; flex: 0 0 29px; padding: 0 8px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border);
+  font-size: 12.5px; box-sizing: border-box; width: auto; aspect-ratio: auto; }
+body.ui-v2 .sq-row .sq-i { width: 12px; font: 600 11px var(--font-num); color: var(--text-muted); }
+body.ui-v2 .sq-row img, body.ui-v2 .sq-row .sq-noimg { width: 17px; height: 23px; border-radius: 4px; object-fit: cover; border: 1.5px solid var(--rc, var(--r-normal)); position: static; }
+body.ui-v2 .sq-row.r-normal { --rc: var(--r-normal); }
+body.ui-v2 .sq-row.r-illustrated_rare { --rc: var(--r-illustrated_rare); }
+body.ui-v2 .sq-row.r-secret_rare { --rc: var(--r-secret_rare); }
+body.ui-v2 .sq-row.r-full_art { --rc: var(--r-full_art); }
+body.ui-v2 .sq-row.r-gold { --rc: var(--r-gold); }
+body.ui-v2 .sq-row .sq-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .sq-row .sq-x2 { font: 800 9.5px var(--font-ui); color: var(--on-gold); background: var(--gold); border-radius: 4px; padding: 1px 4px; }
+body.ui-v2 .sq-row .sq-el { font-size: 11px; }
+body.ui-v2 .sq-row .sq-pow { font: 700 12px var(--font-num); min-width: 40px; text-align: right; }
+body.ui-v2 .sq-row .slot-x { position: static; color: var(--text-muted); font-size: 11px; cursor: pointer; opacity: 1; background: none; }
+body.ui-v2 .sq-row.filled { cursor: pointer; }
+body.ui-v2 .sq-row.filled:hover { border-color: var(--danger); }
+body.ui-v2 .sq-row.filled:hover .slot-x { color: var(--danger); }
+body.ui-v2 .sq-row.empty { background: transparent; border-style: dashed; color: var(--text-muted); }
+body.ui-v2 .sq-row.empty.next { border: 1.5px solid var(--gold); color: var(--text-secondary); }
+body.ui-v2 .sq-row .sq-plus { width: 20px; height: 20px; border-radius: 5px; border: 1px solid currentColor; display: grid; place-items: center; font-size: 13px; }
+body.ui-v2 .sq-side .side-h { margin: 4px 0 0; }
+body.ui-v2 .sq-side .squad-synergy { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 5px; flex: 1 1 0; min-height: 22px; overflow: hidden; }
+body.ui-v2 .sq-side .syn-chip { font: 600 11px var(--font-ui); padding: 4px 9px; border-radius: var(--rad-pill); background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted); }
+body.ui-v2 .sq-side .syn-chip.on { color: var(--gold); border-color: rgba(244, 183, 60, .55); background: var(--gold-soft); }
+body.ui-v2 .sq-side .syn-chip.weakhit { color: var(--gold); }
+body.ui-v2 .sq-side .syn-none { font-size: 11.5px; color: var(--text-muted); }
+body.ui-v2 .sq-foot { margin-top: auto; display: flex; gap: 8px; }
+body.ui-v2 .sq-foot .v2-btn { flex: 1; padding: 0 10px; font-size: 13px; }
+body.ui-v2 .sq-foot .v2-btn:disabled { filter: grayscale(.8) brightness(.6); cursor: default; transform: none; }
+body.ui-v2 .sq-foot .enter-btn:not(.ready) { display: none; }
+body.ui-v2 .sq-foot .lockin-btn.locked { display: none; }
+body.ui-v2 .sq-foot .ko-note { font-size: 12px; color: var(--text-secondary); }
+body.ui-v2 .sq-foot { flex-wrap: wrap; }
+
+/* ---- The card grid ---- */
+body.ui-v2 .sq-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+body.ui-v2 .sq-top { display: flex; align-items: center; gap: 10px; }
+body.ui-v2 .sq-top .v2-search { width: 240px; flex: 0 1 240px; min-width: 120px; }
+body.ui-v2 .sq-top .el-row { flex: 0 1 auto; overflow: hidden; }
+body.ui-v2 .sq-top .v2-icon { width: 36px; height: 36px; flex-basis: 36px; }
+body.ui-v2 .v2-pager .parrow { width: 26px; height: 26px; border: 0; background: transparent; color: var(--text-secondary); font-size: 16px; cursor: pointer; border-radius: 6px; padding: 0; }
+body.ui-v2 .v2-pager .parrow:disabled { opacity: .3; cursor: default; }
+body.ui-v2 .v2-pager .pcount { font: 600 12px var(--font-num); padding: 0 2px; }
+body.ui-v2 .v2sq .squad-grid { flex: 1; min-height: 0; overflow: hidden; display: grid; grid-template-columns: repeat(var(--scols, 8), var(--sw, 110px)); gap: 10px; align-content: start; justify-content: center; }
+body.ui-v2 .v2sq .squad-grid .c { position: relative; width: var(--sw, 110px); aspect-ratio: 5 / 7; opacity: 1; filter: none; outline: 0; transition: transform var(--dur-base) var(--ease-spring); }
+body.ui-v2 .v2sq .squad-grid .c:hover { transform: translateY(-4px); }
+body.ui-v2 .v2sq .squad-grid .c .art { position: absolute; inset: 0; aspect-ratio: auto; border-radius: 12px; border: 2px solid var(--rc, var(--r-normal)); background: var(--surface); box-shadow: none; }
+body.ui-v2 .v2sq .squad-grid .c.normal { --rc: var(--r-normal); }
+body.ui-v2 .v2sq .squad-grid .c.illustrated_rare { --rc: var(--r-illustrated_rare); }
+body.ui-v2 .v2sq .squad-grid .c.secret_rare { --rc: var(--r-secret_rare); }
+body.ui-v2 .v2sq .squad-grid .c.full_art { --rc: var(--r-full_art); }
+body.ui-v2 .v2sq .squad-grid .c.gold { --rc: var(--r-gold); }
+body.ui-v2 .v2sq .squad-grid .c:not(.normal) .art { box-shadow: 0 0 14px color-mix(in srgb, var(--rc) 30%, transparent); }
+body.ui-v2 .v2sq .squad-grid .c .art img { object-fit: cover; }
+body.ui-v2 .v2sq .squad-grid .c .art::after { content: ''; position: absolute; inset: 55% 0 0; background: linear-gradient(transparent, rgba(6, 6, 12, .92)); pointer-events: none; }
+body.ui-v2 .v2sq .squad-grid .c .cap { position: absolute; left: 7px; right: 7px; bottom: 6px; z-index: 2; margin: 0; text-align: left; font: 700 11px var(--font-ui); color: #fff; text-shadow: 0 1px 3px #000; }
+body.ui-v2 .v2sq .squad-grid .c .cability { font-size: 9.5px; }
+body.ui-v2 .v2sq .squad-grid .c .tpow { z-index: 3; }
+/* A picked card dims and shows its squad slot number. */
+body.ui-v2 .v2sq .squad-grid .c.selected .art img { filter: brightness(.38) saturate(.6); }
+body.ui-v2 .v2sq .squad-grid .c.selected .cap { opacity: .55; }
+body.ui-v2 .v2sq .squad-grid .c .sel-num { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 4; width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--gold); color: var(--on-gold); font: 800 16px var(--font-num); box-shadow: 0 4px 14px rgba(0, 0, 0, .5); }
+body.ui-v2 .v2sq .squad-grid .c.support .art img { filter: grayscale(.25); }
+body.ui-v2 .v2sq .squad-grid .c.match .art { border-color: var(--gold); }
+body.ui-v2 .v2sq.ko .squad-grid .c { cursor: default; }
+
+/* Chips on the card: element top-left, power top-right, the name + ability at the bottom. */
+body.ui-v2 .v2sq .squad-grid .c .tpow { top: 6px; right: 6px; bottom: auto; left: auto; }
+body.ui-v2 .v2sq .squad-grid .c .celem { left: 6px; top: 6px; transform: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: rgba(10, 10, 18, .75); border: 1.5px solid var(--el, var(--border)); font-size: 11px; }
+body.ui-v2 .v2sq .squad-grid .c .x2 { top: 32px; right: 6px; bottom: auto; left: auto; z-index: 3; }
+body.ui-v2 .v2sq .squad-grid .c .shield-b { top: 32px; left: 6px; }
+body.ui-v2 .v2sq .squad-grid .c .card-info { top: auto; bottom: auto; left: 50%; top: 6px; transform: translateX(-50%); opacity: .7; z-index: 3; } /* visible on touch screens too */
+body.ui-v2 .v2sq .squad-grid .c:hover .card-info { opacity: 1; }

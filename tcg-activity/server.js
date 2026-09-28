@@ -347,7 +347,7 @@ app.get('/api/hunt', async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: cards }, { data: hpRows }, { data: contrib }, { data: cstate }] = await Promise.all([
     supabase.from('player_cards')
-      .select('ascension, card:cards(id, name, rarity, image_url, season, subject:subjects(type, cp_mod, ability, tags))')
+      .select('ascension, first_obtained_at, card:cards(id, name, rarity, image_url, season, subject:subjects(type, cp_mod, ability, tags))')
       .eq('player_id', me.id),
     supabase.from('hunt_card_hp').select('card_id, hp_remaining, max_hp, downed, shield, cd_until_round').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today),
     supabase.from('hunt_hits').select('damage').eq('hunt_id', hunt.id).eq('player_id', me.id),
@@ -370,6 +370,7 @@ app.get('/api/hunt', async (req, res) => {
       ability: c?.subject?.ability || null,
       tags: c?.subject?.tags || null, // faceted tags -> drives the element attack visual
       shield: st?.shield || 0, cdReady: st?.cd_until_round || 0, // support cooldown ready-round
+      got: row.first_obtained_at || null, // the squad picker's "New" sort
     };
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
   // Daily distinct-card cap (must match hunt_daily_card_cap in the SQL, default 8).
