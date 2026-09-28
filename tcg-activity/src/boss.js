@@ -9,6 +9,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { createAttackFX } from './attack-fx.js';
 import { clipSetFor, mountVideoBoss } from './boss-video.js';
+import { modelFor, mountModelBoss } from './boss-model.js';
 
 function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i += 1) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function rng(seed) { return function () { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -624,6 +625,9 @@ function buildBrute(seedStr){
 
 // Mount a boss into a <canvas>. Returns { flinch, counter, enrage, stun, defeat, dispose }.
 export function mountBoss(canvas, seedStr, tier) {
+  // A real rigged model boss (boss-model.js) comes first, when the name maps to one.
+  const mk = modelFor(seedStr);
+  if (mk) { try { return mountModelBoss(canvas, mk, tier); } catch (e) { /* fall back */ } }
   // Hybrid: if this archetype has a pre-rendered clip set, play the video boss
   // (with the attack-FX overlay). Otherwise fall through to the live WebGL boss.
   const clip = clipSetFor(archetypeOf(seedStr));
