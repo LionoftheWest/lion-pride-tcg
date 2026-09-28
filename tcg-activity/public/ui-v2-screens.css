@@ -265,8 +265,6 @@ body.ui-v2:has(.arena-mode) #feed .afrow b { color: var(--text-primary); font-fa
 body.ui-v2:has(.arena-mode) #feed .empty { color: var(--text-muted); font-size: 12px; }
 
 /* ---- Hunt (squad select): the picker left, the boss + feed on the right ---- */
-body.ui-v2[data-view="battling"] #body:has(.select-mode) { display: flex; gap: var(--sp-4); }
-body.ui-v2[data-view="battling"] #body:has(.select-mode) #feed { display: flex; flex: 0 0 300px; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 18px; padding: var(--sp-3); box-sizing: border-box; }
 body.ui-v2 .select-mode .ginput, body.ui-v2 .select-mode .gselect { height: 40px; border-radius: var(--rad-md); border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); font: 500 13px var(--font-ui); }
 body.ui-v2 .select-mode .squad-panel { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 18px; }
 body.ui-v2 .select-mode .lockin-btn, body.ui-v2 .select-mode .enter-btn:not(:disabled) { background: linear-gradient(180deg, #FFCB5C, var(--gold-strong)); color: var(--on-gold); border: 0; border-radius: var(--rad-md); }

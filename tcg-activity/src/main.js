@@ -12,8 +12,9 @@
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { mountBoss } from './boss.js';
-import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
-import { cardElement, ELEMENTS } from './elements.js';
+import { BOSS_LIST, seedForBoss, thumbFor, THUMB_BASE } from './boss-meta.js';
+import { modelFor } from './boss-model.js';
+import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge } from './effects-ui.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick } from './ui-v2.js';
 
@@ -219,7 +220,7 @@ let bossHandle = null; // the live WebGL boss creature on the battle screen (Pha
 
 const live = { pulls: [], presence: [], attacks: [] };
 const ATTACKER_TYPES = ['Character', 'Creature']; // only these can attack; others are support
-const squad = { page: 0, q: '', rarity: 'all', type: 'all', locked: false, ko: false }; // battle picker (gallery-style)
+const squad = { page: 0, q: '', rarity: 'all', type: 'all', locked: false, ko: false, sort: 'power', el: null }; // battle picker (gallery-style); sort + el are v2 only
 let usedIds = new Set(); // card ids already sent at the boss today (client mirror of the cap)
 let feedTopId = 0; // newest boss-feed event id shown (so polls only animate in newer ones)
 let huntDay = ''; // UTC date of the current hunt render; a change means the daily reset hit
@@ -1298,7 +1299,7 @@ function bossMiniHTML(d) {
 function renderBossMini() {
   const bm = el('bossMini');
   if (!bm) return;
-  bm.innerHTML = (currentView === 'battling' && huntState && huntState.hunt && squad.phase !== 'battle') ? bossMiniHTML(huntState) : '';
+  bm.innerHTML = (!uiV2 && currentView === 'battling' && huntState && huntState.hunt && squad.phase !== 'battle') ? bossMiniHTML(huntState) : '';
 }
 
 // Boss detail popup: a big 3D view + full stats + move pool (generic for now).
@@ -1351,6 +1352,7 @@ function openBossGallery(b) {
 
 // --- Phase 1: pick the squad from the whole collection (paginated, gallery-style) ---
 function selectPhaseHTML(d) {
+  if (uiV2) return selectPhaseV2(d);
   const cap = d.dailyCap || 8;
   const rarities = [...new Set((d.roster || []).map((c) => c.rarity))];
   const rarityOpts = ['all', ...rarities]
@@ -1381,6 +1383,74 @@ function selectPhaseHTML(d) {
         <button class="enter-btn" id="enterBattleBtn" disabled>Enter Battle ▶</button>
       </div>`}
     </div>`;
+}
+
+// No scrolling: chips that do not fit fold into one "+N" chip (the names are in its tooltip).
+function foldChips(box) {
+  const bottom = box.getBoundingClientRect().bottom;
+  const fits = (n) => n.getBoundingClientRect().bottom <= bottom + 1;
+  const hidden = [...box.children].filter((n) => !fits(n));
+  if (!hidden.length) return;
+  hidden.forEach((n) => { n.style.display = 'none'; });
+  const more = document.createElement('span');
+  more.className = 'syn-chip more';
+  box.appendChild(more);
+  const label = () => { more.textContent = `+${hidden.length}`; more.title = hidden.map((n) => n.textContent.trim()).join(', '); };
+  label();
+  while (!fits(more)) {
+    const last = [...box.children].filter((n) => n !== more && n.style.display !== 'none').pop();
+    if (!last) break;
+    last.style.display = 'none'; hidden.unshift(last); label();
+  }
+}
+
+// v2 squad select (design/09-hunt-select-screen.png): the squad column on the left,
+// the card grid fills the rest. The ids match v1, so wireSelectPhase drives both.
+function selectPhaseV2(d) {
+  const h = d.hunt;
+  const cap = d.dailyCap || 8;
+  const key = modelFor(h.name || '');
+  const chips = (arr) => (arr || []).map((w) => {
+    const t = tagLabel(w.value); const e = ELEMENTS[t];
+    return e ? `<span class="sq-tag" title="${esc(e.name)}" style="--el:${e.color}">${e.glyph}</span>` : `<span class="sq-tag txt">${esc(t)}</span>`;
+  }).join('');
+  const weak = chips(h.weak_points), resist = chips(h.resist_points);
+  const roster = d.roster || [];
+  const elems = ELEMENT_ORDER.filter((e) => roster.some((c) => cardElement(c.tags) === e));
+  const elBtns = elems.map((e) => `<button class="el-btn${squad.el === e ? ' on' : ''}" data-el="${e}" title="${ELEMENTS[e].name}" style="--el:${ELEMENTS[e].color}">${ELEMENTS[e].glyph}</button>`).join('');
+  const sorts = [['power', 'Power'], ['rarity', 'Rarity'], ['new', 'New']]
+    .map(([v, l]) => `<button data-sort="${v}" class="${squad.sort === v ? 'on' : ''}">${l}</button>`).join('');
+  const foot = squad.ko
+    ? `<div class="ko-note">💀 Your squad is down for today.</div><span class="enter-btn ko-cd">🔒 ${cdSpan(nextUtcResetISO(), 'Next battle in', 'countdown kores')}</span>`
+    : `<button class="v2-btn" id="autoPickBtn">✨ Auto-pick</button>
+       <button class="v2-btn gold lockin-btn" id="lockInBtn" disabled>🔒 Lock in</button>
+       <button class="v2-btn gold enter-btn" id="enterBattleBtn" disabled>Enter battle ▶</button>`;
+  return `<div class="v2sq">
+    <aside class="sq-side">
+      <div class="sq-h"><b>Squad</b><span class="sq-n"><b id="selCount">${squad.sel.size}</b> / ${cap}</span></div>
+      <button class="sq-boss" id="sqBoss" title="Boss details">
+        ${key ? `<img src="${THUMB_BASE}/${key}.png" alt="">` : '<span class="sq-boss-ph">🦁</span>'}
+        <span class="sq-boss-t"><b>${esc(h.name)}</b>
+          <span class="sq-wr">${weak ? `<i>WEAK</i>${weak}` : ''}${resist ? `<i>RESISTS</i>${resist}` : ''}</span></span>
+      </button>
+      <div class="cp-big" id="cpBig"></div>
+      <div class="sq-list" id="squadTray"></div>
+      <div class="side-h">Synergies</div>
+      <div class="squad-synergy" id="squadSynergy"></div>
+      <div class="sq-foot">${foot}</div>
+    </aside>
+    <section class="sq-main">
+      <div class="sq-top">
+        <input id="hsearch" class="v2-search" placeholder="Search cards, tags…" value="${esc(squad.q)}">
+        <div class="el-row">${elBtns}</div>
+        <span class="grow"></span>
+        <div class="seg" id="sqSort">${sorts}</div>
+        <div class="v2-pager" id="huntPager"></div>
+        <button class="v2-icon" id="huntLbBtn" title="Standings">🏆</button>
+      </div>
+      <div class="squad-grid" id="huntGrid"></div>
+    </section>
+  </div>`;
 }
 
 // The live synergy readout + the 8 squad slots, recomputed as the player picks.
@@ -1431,7 +1501,9 @@ function paintSquadPanel(cap) {
   }
   const synEl = el('squadSynergy');
   if (synEl) {
-    const chips = st.syn.filter((s) => s.n >= 2).map((s) => {
+    const shown = st.syn.filter((s) => s.n >= 2);
+    if (uiV2) shown.sort((a, b) => ((b.n >= SYN_MIN) - (a.n >= SYN_MIN)) || (b.n - a.n)); // active first: the first row is the one that fits
+    const chips = shown.map((s) => {
       const on = s.n >= SYN_MIN;
       return `<span class="syn-chip syn-${s.key}${on ? ' on' : ''}">${s.label} <b>${Math.min(s.n, SYN_MAX)}/${SYN_MAX}</b></span>`;
     }).join('');
@@ -1439,7 +1511,24 @@ function paintSquadPanel(cap) {
     synEl.innerHTML = `${chips || '<span class="syn-none">Group cards by element, game, or trait for a synergy</span>'}${weak}`;
   }
   const tray = el('squadTray');
-  if (tray) {
+  if (tray && uiV2) {
+    let html = '';
+    for (let i = 0; i < cap; i++) {
+      const c = st.sel[i];
+      if (c) {
+        const supp = !ATTACKER_TYPES.includes(c.type);
+        const eln = supp ? null : cardElement(c.tags);
+        const look = eln ? ELEMENTS[eln] : null;
+        html += `<div class="slot filled sq-row r-${c.rarity}" data-id="${c.id}"><span class="sq-i">${i + 1}</span>
+          ${c.image_url ? `<img src="${c.image_url}" alt="">` : '<i class="sq-noimg"></i>'}<span class="sq-name">${esc(c.name)}</span>
+          ${c.matches && !supp ? '<span class="sq-x2">×2</span>' : ''}${look ? `<span class="sq-el">${look.glyph}</span>` : ''}
+          <span class="sq-pow">${supp ? '🛡' : `⚡ ${c.power}`}</span><span class="slot-x">✕</span></div>`;
+      } else {
+        html += `<div class="slot empty sq-row${i === st.sel.length ? ' next' : ''}"><span class="sq-i">${i + 1}</span><span class="sq-plus">+</span><span class="sq-name">Empty</span></div>`;
+      }
+    }
+    tray.innerHTML = html;
+  } else if (tray) {
     let html = '';
     for (let i = 0; i < cap; i++) {
       const c = st.sel[i];
@@ -1455,6 +1544,7 @@ function paintSquadPanel(cap) {
     }
     tray.innerHTML = html;
   }
+  if (uiV2 && synEl) foldChips(synEl); // after the tray: the tray height sets the room left
   // The synergy chips + tray change the panel height as you pick, which changes how much
   // room the gallery has — re-size the grid so both card rows always fit (no clipping).
   sizeSquadGrid();
@@ -1500,7 +1590,7 @@ function huntTile(c, mode) {
   const cls = `c ${c.rarity}${c.matches && !support ? ' match' : ''}${support ? ' support' : ''}`
     + `${mode === 'select' && selected ? ' selected' : ''}${mode === 'battle' && downed ? ' downed' : ''}${mode === 'battle' && cdLeft ? ' cooldown' : ''}`;
   const overlay = mode === 'select'
-    ? (selected ? '<span class="sel-check">✓</span>' : '')
+    ? (selected ? (uiV2 ? `<span class="sel-num">${[...squad.sel].indexOf(c.id) + 1}</span>` : '<span class="sel-check">✓</span>') : '')
     : (downed ? '<span class="downed-x">DOWNED</span>' : (cdLeft ? `<span class="cd-x">${cdLeft}</span>` : ''));
   const hpbar = (mode === 'battle' && !support) ? `<div class="thp"><i style="width:${hppct}%"></i></div>` : '';
   const shield = (mode === 'battle' && c.shield > 0) ? `<span class="shield-b">🛡${c.shield}</span>` : '';
@@ -1541,10 +1631,20 @@ function huntFiltered() {
     if (squad.rarity !== 'all' && c.rarity !== squad.rarity) return false;
     if (squad.type === 'attackers' && support) return false;
     if (squad.type === 'support' && !support) return false;
-    if (q && !(c.name || '').toLowerCase().includes(q)) return false;
+    if (squad.el && cardElement(c.tags) !== squad.el) return false;
+    if (q) {
+      const t = c.tags || {};
+      const hay = uiV2 ? [c.name, t.type, t.class, t.origin, ...(t.traits || []), ...(t.genre || [])].flat().filter(Boolean).join(' ').toLowerCase() : (c.name || '').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
-  });
+  }).sort(uiV2 ? SQUAD_SORT[squad.sort] || SQUAD_SORT.power : () => 0);
 }
+const SQUAD_SORT = {
+  power: (a, b) => (a.downed - b.downed) || (b.power - a.power),
+  rarity: (a, b) => (a.downed - b.downed) || ((RARITY_RANK[b.rarity] ?? 0) - (RARITY_RANK[a.rarity] ?? 0)) || (b.power - a.power),
+  new: (a, b) => String(b.got || '').localeCompare(String(a.got || '')) || (b.power - a.power),
+};
 // Size the picker cards. Select phase: 4x2 page fits the grid height. Battle phase: a
 // single row (the hand) fits across the arena width, capped to ~34% of arena height.
 function sizeSquadGrid() {
@@ -1586,7 +1686,7 @@ function paintHuntPage(dir) {
 }
 // v2: fill the picker with as many cards as fit (min 96px wide, 5:7 art + the caption).
 function fitSquadGrid(grid) {
-  const gap = 10, cap = 34;
+  const gap = 10, cap = 0; // v2: the name sits on the card art
   const w = grid.clientWidth || 600, h = grid.clientHeight || 360;
   let best = { n: 0, sw: 96, cols: 4 };
   for (let rows = 1; rows <= 5; rows++) {
@@ -1713,6 +1813,20 @@ function wireHunt() {
 // Phase 1: pick up to the daily cap; Lock In switches to the battle view.
 function wireSelectPhase() {
   const cap = huntState?.dailyCap || 8;
+  if (uiV2) {
+    el('sqSort')?.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-sort]'); if (!b) return;
+      squad.sort = b.dataset.sort; squad.page = 0;
+      el('sqSort').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+      paintHuntPage();
+    });
+    document.querySelectorAll('.sq-top .el-btn').forEach((b) => b.addEventListener('click', () => {
+      squad.el = squad.el === b.dataset.el ? null : b.dataset.el; squad.page = 0;
+      document.querySelectorAll('.sq-top .el-btn').forEach((x) => x.classList.toggle('on', x.dataset.el === squad.el));
+      paintHuntPage();
+    }));
+    el('sqBoss')?.addEventListener('click', openBossModal);
+  }
   el('hsearch')?.addEventListener('input', (e) => { squad.q = e.target.value; squad.page = 0; paintHuntPage(); });
   el('hrarity')?.addEventListener('change', (e) => { squad.rarity = e.target.value; squad.page = 0; paintHuntPage(); });
   el('htype')?.addEventListener('change', (e) => { squad.type = e.target.value; squad.page = 0; paintHuntPage(); });
@@ -1727,6 +1841,7 @@ function wireSelectPhase() {
       if (squad.sel.size >= cap) { const b = node.getBoundingClientRect(); calloutAt(b.left + b.width / 2, b.top + 18, `MAX ${cap}`, '#ff8f5c'); return; }
       squad.sel.add(id); node.classList.add('selected');
     }
+    if (uiV2) { paintHuntPage(); onSquadChanged(); return; } // the slot numbers shift: repaint
     // refresh the check overlay on this tile
     const art = node.querySelector('.art');
     art.querySelector('.sel-check')?.remove();
@@ -1741,6 +1856,7 @@ function wireSelectPhase() {
     squad.sel.delete(id);
     const node = el('huntGrid')?.querySelector(`.c[data-id="${id}"]`);
     if (node) { node.classList.remove('selected'); node.querySelector('.sel-check')?.remove(); }
+    if (uiV2) paintHuntPage();
     onSquadChanged();
   });
   // Lock In commits the squad and UNLOCKS "Enter Battle" — it does not enter yet.
