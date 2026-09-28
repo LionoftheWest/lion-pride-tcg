@@ -152,4 +152,4 @@ Built now:
 Not built yet (the parts of the designs that need a new system):
 - The achievement **rewards** and the Claim button (needs a claim table + RPC).
 - The **streak** pill, the **free daily pack**, and the **Showcase** (Section 8 / 10).
-- The expected-damage number above each Hunt card (the chip shows power and WEAK now).
+- The expected-damage number above each Hunt card (each card shows its power and a ×2 badge for a weakness now).
