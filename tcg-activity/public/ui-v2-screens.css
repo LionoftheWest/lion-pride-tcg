@@ -272,3 +272,18 @@ body.ui-v2 .select-mode .squad-panel { background: var(--bg-raised); border: 1px
 body.ui-v2 .select-mode .lockin-btn, body.ui-v2 .select-mode .enter-btn:not(:disabled) { background: linear-gradient(180deg, #FFCB5C, var(--gold-strong)); color: var(--on-gold); border: 0; border-radius: var(--rad-md); }
 body.ui-v2 .soon.cooldown { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-family: var(--font-ui); }
 body.ui-v2 .soon.cooldown b { font: 800 26px var(--font-display); }
+body.ui-v2 .select-mode .squad-grid { grid-template-columns: repeat(var(--scols, 4), var(--sw, 120px)); gap: 10px; align-content: start; }
+/* Grid items default to min-width:auto, so one wide row (the tags) widened the whole
+   panel past its column and cut the right edge. Every column may shrink. */
+body.ui-v2 .v2-collection > *, body.ui-v2 .v2-home > * { min-width: 0; }
+body.ui-v2 .v2-panel > * { min-width: 0; max-width: 100%; }
+body.ui-v2 .p-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.ui-v2 .p-tags .tag.hidden { display: none; }
+body.ui-v2 .p-tags .tag.more { color: var(--text-primary); cursor: help; }
+body.ui-v2 .p-lore.clamp { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; }
+/* The stats sit beside the art, under the stars. */
+body.ui-v2 .p-id .p-stats { margin-top: auto; gap: 6px; }
+body.ui-v2 .p-id .p-stats .stat { padding: 5px 7px; gap: 2px; }
+body.ui-v2 .p-id .p-stats .stat b { font-size: 13px; }
+body.ui-v2 .p-id .p-stats .stat span { font-size: 10px; }
+body.ui-v2 .p-id { flex: 1; }

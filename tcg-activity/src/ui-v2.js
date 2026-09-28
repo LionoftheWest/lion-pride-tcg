@@ -293,14 +293,14 @@ function paintPanel(c) {
         <h3>${esc(c.name)}</h3>
         <span class="p-rar" style="--rc:var(--r-${c.rarity})">● ${esc(ctx.RARITY_LABEL[c.rarity] || c.rarity)}</span>
         <span class="p-stars">${'★'.repeat(a)}<i>${'☆'.repeat(5 - a)}</i><span class="p-own">${owned}</span></span>
+        <div class="p-stats">
+          ${bar('Power', power, maxPow, 'var(--gold)', power)}
+          ${bar('HP', hp, cardHp(maxPow), 'var(--danger)', hp)}
+          ${bar('Crit', 10, 25, 'var(--el-lightning)', '10%')}
+        </div>
       </div>
     </div>
     ${c.lore ? `<p class="p-lore">“${esc(c.lore)}”</p>` : ''}
-    <div class="p-stats">
-      ${bar('Power', power, maxPow, 'var(--gold)', power)}
-      ${bar('HP', hp, cardHp(maxPow), 'var(--danger)', hp)}
-      ${bar('Crit', 10, 25, 'var(--el-lightning)', '10%')}
-    </div>
     ${abHTML}
     <div class="pbox fx hidden" id="colEffect"></div>
     ${chips.length ? `<div class="p-tags" id="pTags">${chips.join('')}</div>` : ''}
@@ -319,9 +319,26 @@ function fitPanel(box) {
   const over = () => box.scrollHeight > box.clientHeight + 1;
   box.querySelector('.p-lore')?.classList.remove('hidden');
   const tags = box.querySelector('.p-tags');
-  if (tags) tags.classList.remove('one-row');
-  if (over() && tags) tags.classList.add('one-row');
-  if (over()) box.querySelector('.p-lore')?.classList.add('hidden');
+  if (tags) {
+    tags.classList.remove('one-row');
+    tags.querySelector('.tag.more')?.remove();
+    tags.querySelectorAll('.tag').forEach((t) => t.classList.remove('hidden'));
+  }
+  if (over() && tags) {
+    // One row of tags; the rest fold into a "+N" chip (the full list is in its tooltip).
+    tags.classList.add('one-row');
+    const all = [...tags.querySelectorAll('.tag')];
+    const right = tags.getBoundingClientRect().right;
+    const hidden = all.filter((t) => t.getBoundingClientRect().right > right - 44);
+    if (hidden.length) {
+      hidden.forEach((t) => t.classList.add('hidden'));
+      tags.insertAdjacentHTML('beforeend', `<span class="tag more" title="${esc(hidden.map((t) => t.textContent.trim()).join(', '))}">+${hidden.length}</span>`);
+    }
+  }
+  const lore = box.querySelector('.p-lore');
+  lore?.classList.remove('clamp');
+  if (over() && lore) { lore.classList.add('clamp'); lore.title = lore.textContent; }
+  if (over()) lore?.classList.add('hidden');
 }
 
 export function refreshCollectionV2() {

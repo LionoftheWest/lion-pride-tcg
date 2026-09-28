@@ -224,7 +224,7 @@ let usedIds = new Set(); // card ids already sent at the boss today (client mirr
 let feedTopId = 0; // newest boss-feed event id shown (so polls only animate in newer ones)
 let huntDay = ''; // UTC date of the current hunt render; a change means the daily reset hit
 const utcToday = () => new Date().toISOString().slice(0, 10);
-window.addEventListener('resize', () => { if (currentView === 'battling') sizeSquadGrid(); });
+window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (uiV2 && squad.phase !== 'battle') paintHuntPage(); else sizeSquadGrid(); });
 const cache = {};
 let myCardIds = new Set(); // card ids the caller owns — so feed cards you own show their art
 const page = { collection: 0 };
@@ -1564,6 +1564,7 @@ function sizeSquadGrid() {
     grid.style.setProperty('--sw', `${sw}px`);
     return;
   }
+  if (uiV2) return; // fitSquadGrid sized it
   const w = grid.clientWidth || 600, h = grid.clientHeight || 360;
   const cols = 4, rows = 2, cap = 34;
   const byWidth = (w - (cols - 1) * gap) / cols;
@@ -1575,13 +1576,41 @@ function paintHuntPage(dir) {
   const grid = el('huntGrid');
   if (!grid) return;
   const items = huntFiltered();
-  const perPage = 8;
+  const perPage = uiV2 ? fitSquadGrid(grid) : 8;
   const pages = Math.max(1, Math.ceil(items.length / perPage));
   squad.page = Math.min(Math.max(0, squad.page), pages - 1);
   const slice = items.slice(squad.page * perPage, squad.page * perPage + perPage);
   grid.innerHTML = slice.length ? slice.map((c) => huntTile(c, 'select')).join('') : '<p class="empty">No cards match.</p>';
   sizeSquadGrid();
   huntPager(pages);
+}
+// v2: fill the picker with as many cards as fit (min 96px wide, 5:7 art + the caption).
+function fitSquadGrid(grid) {
+  const gap = 10, cap = 34;
+  const w = grid.clientWidth || 600, h = grid.clientHeight || 360;
+  let best = { n: 0, sw: 96, cols: 4 };
+  for (let rows = 1; rows <= 5; rows++) {
+    for (let cols = 2; cols <= 12; cols++) {
+      const sw = Math.floor(Math.min((w - (cols - 1) * gap) / cols, ((h - (rows - 1) * gap) / rows - cap) * 5 / 7, 150));
+      if (sw < 96) continue;
+      const n = cols * rows;
+      if (n > best.n || (n === best.n && sw > best.sw)) best = { n, sw, cols };
+    }
+  }
+  grid.style.setProperty('--sw', `${best.sw}px`);
+  grid.style.setProperty('--scols', best.cols);
+  // The squad panel below can grow after this paint (synergy chips wrap): re-fit then.
+  if (!grid._fitObs && window.ResizeObserver) {
+    let last = `${w}x${h}`;
+    grid._fitObs = new ResizeObserver(() => {
+      const now = `${grid.clientWidth}x${grid.clientHeight}`;
+      if (now === last || !grid.isConnected || squad.phase === 'battle') return;
+      last = now;
+      requestAnimationFrame(() => paintHuntPage());
+    });
+    grid._fitObs.observe(grid);
+  }
+  return Math.max(1, best.n);
 }
 function huntPager(pages) {
   const pager = el('huntPager');
