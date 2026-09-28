@@ -9,7 +9,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
-const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/hunt_boss_difficulty.sql', import.meta.url)), 'utf8');
+// The combat migration + the HP retune on top (spawn_hunt is replaced by the second file).
+const mig = ['hunt_boss_difficulty.sql', 'hunt_boss_hp_up.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')).join(String.fromCharCode(10));
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 
 const body = String.raw`do $t$
@@ -35,10 +36,10 @@ begin
     n := n + 1;
     if jsonb_array_length(rec.passive->'list') <> (case rec.tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end)
        or (select count(distinct x->>'kind') from jsonb_array_elements(rec.passive->'list') x) <> jsonb_array_length(rec.passive->'list')
-       or rec.hp_max <> greatest(500, round(dp * (case rec.tier when 'Normal' then 9 when 'Heroic' then 10 else 9 end)))
+       or rec.hp_max <> greatest(500, round(dp * (case rec.tier when 'Normal' then 22 when 'Heroic' then 30 else 44 end)))
        or rec.hp_share <> greatest(1, round(rec.hp_max::numeric / hunters)) then ok := false; end if;
   end loop;
-  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP x9/10/9, hp_share = HP/hunters (24 spawns)', 'ok', ok, 'hunters', hunters, 'dp', dp);
+  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP x22/30/44, hp_share = HP/hunters (24 spawns)', 'ok', ok, 'hunters', hunters, 'dp', dp);
 
   -- 2. A long fight on a quiet test boss (no passives, big HP) to sample the boss turn.
   insert into hunts (name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, closes_at, hp_share)

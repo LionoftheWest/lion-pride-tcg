@@ -1218,7 +1218,25 @@ async function renderHunt() {
 
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
 let huntResting = false; // v2: the resting scene shows the last hunt's feed; do not poll it away
+let layoutSent = false;
+function sendLayoutDiag() {
+  if (layoutSent || !uiV2) return;
+  layoutSent = true;
+  setTimeout(() => {
+    const r = (id) => { const n = typeof id === 'string' ? el(id) : id; if (!n) return null; const b = n.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; };
+    const vv = window.visualViewport;
+    const d = {
+      inner: [innerWidth, innerHeight], outer: [outerWidth, outerHeight], dpr: devicePixelRatio,
+      vv: vv ? [Math.round(vv.width), Math.round(vv.height), Math.round(vv.offsetTop), Math.round(vv.pageTop), +vv.scale.toFixed(2)] : null,
+      scroll: [scrollX, scrollY, document.documentElement.scrollWidth, document.documentElement.scrollHeight],
+      topbar: r('topbar'), body: r('body'), main: r('main'), dock: r('dock'), arena: r(document.querySelector('.hunt-arena')),
+      scrolled: [...document.querySelectorAll('*')].filter((e) => e.scrollTop || e.scrollLeft).slice(0, 5).map((e) => `${e.tagName}#${e.id}.${e.className}`.slice(0, 60) + ` ${e.scrollLeft},${e.scrollTop}`),
+    };
+    apiPost('/api/diag/layout', d).catch(() => {});
+  }, 6000);
+}
 function paintHuntView(d) {
+  sendLayoutDiag();
   huntResting = !!(uiV2 && (!d || !d.hunt));
   if (huntResting) {
     el('main').innerHTML = `<div class="main-body hunt arena-mode resting">${restingHTML(d)}</div>`;
@@ -1325,10 +1343,11 @@ function restingHTML(d) {
       ${h ? `<div class="arena-titlerow">
         <span class="boss-name">${esc(h.name)}</span>
         <span class="boss-tier tier-${esc(String(h.tier || '').toLowerCase())}">${esc(h.tier || '')}</span>
-        ${weakResistHTML(h)}
+        ${uiV2 ? '' : weakResistHTML(h)}
         <span class="spacer"></span>
         <span class="closes rest-result">${won ? '🏆 Defeated' : '💀 Escaped'}</span>
       </div>
+      ${uiV2 ? `<div class="arena-traits">${weakResistHTML(h)}</div>` : ''}
       <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext">${won ? 'DEFEATED' : `${Number(h.hp_remaining).toLocaleString()} / ${Number(h.hp_max).toLocaleString()} HP left`}</span></div>
       <div class="arena-subrow">
         <span>Your damage <b>${Number((d && d.myLast) || 0).toLocaleString()}</b></span>
@@ -1652,10 +1671,11 @@ function battlePhaseHTML(d) {
       <div class="arena-titlerow">
         <span class="boss-name">${esc(h.name)}</span>
         <span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span>
-        ${weakResistHTML(h)}
+        ${uiV2 ? '' : weakResistHTML(h)}
         <span class="spacer"></span>
         ${defeated ? '<span class="closes">DEFEATED</span>' : cdSpan(h.closes_at, 'Beat in', 'closes countdown')}
       </div>
+      ${uiV2 ? `<div class="arena-traits">${weakResistHTML(h)}</div>` : ''}
       <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext" id="hpText">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
       <div class="arena-subrow">
         <span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span>
@@ -1750,8 +1770,8 @@ function sizeSquadGrid() {
     const byWidth = (aw - (cols + 1) * gap) / cols;
     // Give the boss + the attack stage most of the pane — the hand is a compact
     // bottom strip (was 0.34 of the height; now ~0.24, capped smaller).
-    const byHeight = (ah * 0.24 - capH) * 5 / 7;
-    const sw = Math.max(52, Math.min(112, Math.floor(Math.min(byWidth, byHeight))));
+    const byHeight = (ah * (uiV2 ? 0.31 : 0.24) - capH) * 5 / 7;
+    const sw = Math.max(52, Math.min(uiV2 ? 150 : 112, Math.floor(Math.min(byWidth, byHeight))));
     grid.style.setProperty('--sw', `${sw}px`);
     return;
   }

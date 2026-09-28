@@ -24,7 +24,8 @@ export const B = {                                            // the boss number
 };
 const U = (a, b) => a + Math.random() * (b - a);
 const maxHp = (cp) => Math.max(30, Math.round(cp * 1.8));
-const pick = (n) => [...PASSIVES].sort(() => Math.random() - 0.5).slice(0, n);
+const pick = (n) => (process.env.PASSIVES ? process.env.PASSIVES.split(',') : [...PASSIVES].sort(() => Math.random() - 0.5).slice(0, n));
+const DMG = Number(process.env.DMG || 1); // calibration: real damage per attack / simulated
 
 function fightDay(boss, deck) {
   const cards = deck.map((cp) => ({ cp, hp: maxHp(cp), max: maxHp(cp), stun: -1, debuff: 1 }));
@@ -40,7 +41,7 @@ function fightDay(boss, deck) {
     let dmg = 0;
     if (Math.random() >= 0.08 + (has('shrouded') ? 0.10 : 0)) {
       const crit = Math.random() < 0.12, block = !crit && Math.random() < 0.12;
-      dmg = card.cp * 1.1 * U(0.85, 1.15) * 1.08 * card.debuff;
+      dmg = card.cp * 1.1 * U(0.85, 1.15) * 1.08 * card.debuff * DMG;
       if (has('armored') && Math.random() < 0.5) dmg *= 0.72;           // half the deck is melee
       if (crit) dmg *= 2; if (block) dmg *= 0.5;
       dmg = Math.max(1, Math.round(dmg));
@@ -88,6 +89,17 @@ function week(tier, players) {
   return { killed: boss.hp <= 0, days, pct: Math.round(100 * (1 - Math.max(0, boss.hp) / max)), attacksPerDay: rounds / days };
 }
 
+if (process.env.CALIBRATE) {
+  const t = TIERS[process.env.CALIBRATE];
+  let dealt = 0, att = 0, n = 300;
+  for (let i = 0; i < n; i++) {
+    const max = Math.round(DP * t.hp);
+    const boss = { hp: max, max, share: max, lethal: t.lethal, passives: pick(t.passives), phase25: false };
+    const r = fightDay(boss, DECK); dealt += r.dealt / max; att += r.rounds;
+  }
+  console.log(`${process.env.CALIBRATE} one day: ${(100 * dealt / n).toFixed(1)}% of HP in ${(att / n).toFixed(1)} attacks = ${(100 * dealt / att).toFixed(2)}% per attack`);
+  process.exit(0);
+}
 const TRIALS = 400;
 console.log(`deck ${DECK.join(',')} (deployable power ${DP}), HP multipliers ${MULT.join('/')}`);
 for (const players of (process.env.PLAYERS || '1,3,6').split(',').map(Number)) {

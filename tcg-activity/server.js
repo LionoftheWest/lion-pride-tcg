@@ -649,6 +649,16 @@ app.get('/api/hunt/leaderboard', async (req, res) => {
   res.json({ leaders: data || [], me: me.id });
 });
 
+// A layout report from the real client (v2 only, once per session): window + element
+// sizes, to find why Discord hid the top bar in smaller windows (2026-09-28). Logged only.
+app.post('/api/diag/layout', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).end();
+  if (!rateLimit(me.id)) return res.status(429).end();
+  console.log('layout-diag', String(me.id).slice(-4), JSON.stringify(req.body || {}).slice(0, 1500));
+  res.json({ ok: true });
+});
+
 // The v2 profile of any member (?id=<discord id>, default = the caller): the stats the
 // achievements need, the hunt rank, the spotlight, and for another member their cards.
 const profileCache = new Map(); // id -> { at, payload }
