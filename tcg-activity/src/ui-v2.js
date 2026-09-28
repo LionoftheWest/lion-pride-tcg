@@ -1,27 +1,36 @@
-// UI v2 screens (docs/design.md, design/08-v3-*.png): Home, Collection, Achievements.
-// main.js owns the data, the streams, and the Hunt; this module only paints. It is
-// used only when /api/flags says uiV2, so the v1 screens are untouched.
+// UI v2 screens (docs/design.md, design/08-v3-*.png): Home, Collection, Achievements,
+// member profiles. main.js owns the data, the streams, and the Hunt; this module only
+// paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { fillViewerEffect } from './effects-ui.js';
 import { mountBoss } from './boss.js';
+import { measure } from './achievements.js';
 
-let ctx = null; // { api, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, features, packs, user }
+let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
+export const v2ctx = () => ctx;
 
 const RARITY_ORDER = ['normal', 'illustrated_rare', 'secret_rare', 'full_art', 'gold'];
 const TOP_RARITY = new Set(['secret_rare', 'full_art', 'gold', 'event', 'promo']);
 const GAP = 14;
+const CAP_H = 24; // the caption row under each card (element, power, stars, copies)
 
 const initial = (name) => esc(String(name || '?').trim().charAt(0).toUpperCase() || '?');
 function esc(s) { return ctx.esc(s ?? ''); }
 const fmt = (n) => Number(n || 0).toLocaleString();
 
+/** A round Discord avatar: the picture from /api/avatar, the initial when there is none. */
+export function avatarHTML(id, name, cls = '') {
+  const img = id ? `<img src="/api/avatar/${esc(id)}" alt="" onerror="this.remove()">` : '';
+  return `<span class="v2-avatar ${cls}"><span>${initial(name)}</span>${img}</span>`;
+}
+
 // ---- Shared card data ------------------------------------------------------
 
-// The full catalog with the caller's copy merged in (quantity, ascension, power).
-function mergedCards() {
-  const owned = new Map((ctx.cache.collection?.cards || []).map((c) => [c.id, c]));
+// The full catalog with a collection merged in (default: the caller's).
+export function mergedCards(ownedList = ctx.cache.collection?.cards || []) {
+  const owned = new Map(ownedList.map((c) => [c.id, c]));
   const seasonIdx = new Map();
   return (ctx.cache.catalog?.cards || []).map((c) => {
     const s = c.season || 'Season 1';
@@ -33,86 +42,109 @@ function mergedCards() {
 }
 const cardHp = (power) => Math.max(30, Math.round((power || 0) * 1.8)); // = /api/hunt max_hp
 const numLabel = (n) => `#${String(n).padStart(3, '0')}`;
-
 function elemOf(c) { const e = cardElement(c.tags); return e ? { key: e, ...ELEMENTS[e] } : null; }
 
-// One card tile: art, element + power chips, name + rarity over the art.
-function tileHTML(c, idx, selected) {
+// The caller's profile (stats for the achievements, the spotlight). Loaded once per view.
+let myProfile = null;
+async function loadMyProfile(force) {
+  if (myProfile && !force) return myProfile;
+  try { myProfile = await ctx.api('/api/profile'); } catch { /* keep */ }
+  return myProfile;
+}
+export async function ensureCatalog() {
+  if (ctx.cache.catalog) return;
+  try { ctx.cache.catalog = await ctx.api('/api/catalog'); } catch { ctx.cache.catalog = { cards: [] }; }
+}
+
+// One card cell: the card image exactly as it is printed (500x700, its own frame),
+// and a caption row under it. A missing card is a locked slot with its number.
+export function tileHTML(c, idx, selected) {
   if (c.locked) {
-    return `<div class="v2-card locked${selected ? ' sel' : ''}" data-idx="${idx}"><span class="lk">🔒</span><span class="num">${numLabel(c.num)}</span></div>`;
+    return `<div class="v2-cell${selected ? ' sel' : ''}" data-idx="${idx}"><div class="v2-card locked"><span class="lk">🔒</span><span class="num">${numLabel(c.num)}</span></div><div class="v2-cap"></div></div>`;
   }
   const el = elemOf(c);
-  const stars = c.ascension > 0 ? `<span class="stars">${'★'.repeat(c.ascension)}</span>` : '';
-  const qty = c.quantity > 1 ? `<span class="qty">×${c.quantity}</span>` : '';
-  return `<div class="v2-card r-${c.rarity}${selected ? ' sel' : ''}" data-idx="${idx}">
-    ${c.image_url ? `<img src="${c.image_url}" alt="" loading="lazy">` : ''}
-    ${el ? `<span class="chip-el" style="--el:${el.color}">${el.glyph}</span>` : ''}
-    <span class="chip-pow">⚡ ${c.power ?? ''}</span>${qty}
-    <div class="shade"></div>
-    <div class="meta"><b>${esc(c.name)}</b><span class="rar">◆ ${esc(ctx.RARITY_LABEL[c.rarity] || c.rarity)}</span>${stars}</div>
+  return `<div class="v2-cell${selected ? ' sel' : ''}" data-idx="${idx}">
+    <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
+    <div class="v2-cap">${el ? `<span class="cap-el" title="${esc(el.name)}">${el.glyph}</span>` : ''}<span class="cap-pow">⚡ ${c.power ?? ''}</span>
+      ${c.ascension > 0 ? `<span class="cap-stars">${'★'.repeat(c.ascension)}</span>` : ''}${c.quantity > 1 ? `<span class="cap-qty">×${c.quantity}</span>` : ''}</div>
   </div>`;
 }
 
-// ---- Achievements (progress from the collection; rewards come with the claim system) ----
-
-const ELEMENT_SET_NAMES = {
-  water: 'Tide Callers', fire: 'Flame Keepers', lightning: 'Storm Chasers', ice: 'Frost Guard', nature: 'Wild Growth',
-  earth: 'Stone Hearts', air: 'Sky Riders', shadow: 'Night Walkers', light: 'Dawn Bringers', arcane: 'Spell Weavers',
-  psychic: 'Mind Readers', toxic: 'Venom Club', metal: 'Iron Works',
-};
-const RARITY_SET_NAMES = { illustrated_rare: 'Rare Hunter', secret_rare: 'Secret Keeper', full_art: 'Full House', gold: 'Golden Touch' };
-
-export function achievements(cards = mergedCards()) {
-  const list = [];
-  const push = (key, icon, name, desc, set) => {
-    if (!set.length) return;
-    list.push({ key, icon, name, desc, have: set.filter((c) => c.owned).length, need: set.length });
-  };
-  push('first', '🎴', 'First Pull', 'Own your first card', cards.length ? [cards.find((c) => c.owned) || cards[0]] : []);
-  for (const e of ELEMENT_ORDER) {
-    const set = cards.filter((c) => cardElement(c.tags) === e);
-    if (set.length >= 3) push(`el:${e}`, ELEMENTS[e].glyph, ELEMENT_SET_NAMES[e] || ELEMENTS[e].name, `Collect all ${set.length} ${ELEMENTS[e].name} cards`, set);
+// Fit a grid of cells to its box: the most cards that fit with no scroll.
+function fitGrid(grid, n) {
+  const w = grid.clientWidth || 600;
+  const h = grid.clientHeight || 420;
+  let best = { cols: 1, rows: 1, cw: 80 };
+  for (let rows = 1; rows <= 4; rows++) {
+    const byH = ((h - (rows - 1) * GAP) / rows - CAP_H) * 5 / 7;
+    for (let cols = 2; cols <= 9; cols++) {
+      const byW = (w - (cols - 1) * GAP) / cols;
+      const cw = Math.floor(Math.min(byW, byH));
+      if (cw < 96) continue;
+      // Prefer the largest card that still shows at least 10 slots (or all cards).
+      const score = Math.min(cols * rows, Math.max(10, n)) * 1000 + cw;
+      if (score > best.score || !best.score) best = { cols, rows, cw, score };
+    }
   }
-  for (const r of Object.keys(RARITY_SET_NAMES)) {
-    const set = cards.filter((c) => c.rarity === r);
-    push(`r:${r}`, '◆', RARITY_SET_NAMES[r], `Own every ${ctx.RARITY_LABEL[r] || r}`, set);
-  }
-  const seasons = [...new Set(cards.map((c) => c.season || 'Season 1'))];
-  for (const s of seasons) {
-    const set = cards.filter((c) => (c.season || 'Season 1') === s);
-    push(`s:${s}`, '🏆', `${s} Complete`, `Collect all ${set.length} cards`, set);
-  }
-  // Nearest to done first, finished ones last.
-  return list.sort((a, b) => ((a.have >= a.need) - (b.have >= b.need)) || (b.have / b.need - a.have / a.need));
+  grid.style.setProperty('--cw', `${best.cw}px`);
+  grid.style.setProperty('--cols', best.cols);
+  return best.cols * best.rows;
 }
+
+// Paint a paged card grid. items: cards; state: { page }; onPick(card).
+export function paintCards(grid, pager, items, state, onPick, selId, dir) {
+  const per = fitGrid(grid, items.length);
+  const pages = Math.max(1, Math.ceil(items.length / per));
+  state.page = Math.min(Math.max(0, state.page), pages - 1);
+  const start = state.page * per;
+  grid.innerHTML = items.length
+    ? items.slice(start, start + per).map((c, i) => tileHTML(c, start + i, c.id === selId)).join('')
+    : '<p class="v2-empty">No cards match.</p>';
+  if (dir) { grid.classList.remove('slide-next', 'slide-prev'); void grid.offsetWidth; grid.classList.add(dir === 'next' ? 'slide-next' : 'slide-prev'); }
+  grid.onclick = (e) => {
+    const t = e.target.closest('.v2-cell');
+    const c = t && items[Number(t.dataset.idx)];
+    if (c) onPick(c, t);
+  };
+  if (!pager) return;
+  pager.innerHTML = pages > 1
+    ? `<button data-p="-1" ${state.page === 0 ? 'disabled' : ''}>‹</button><span>${state.page + 1} / ${pages}</span><button data-p="1" ${state.page >= pages - 1 ? 'disabled' : ''}>›</button>`
+    : '';
+  pager.onclick = (e) => {
+    const b = e.target.closest('button[data-p]');
+    if (!b || b.disabled) return;
+    state.page += Number(b.dataset.p);
+    paintCards(grid, pager, items, state, onPick, selId, Number(b.dataset.p) > 0 ? 'next' : 'prev');
+  };
+}
+
+// ---- Achievements ------------------------------------------------------------
 
 function achHTML(a, big, mini) {
-  const done = a.have >= a.need;
   const pct = Math.round((100 * a.have) / a.need);
-  return `<div class="v2-ach${done ? ' done' : ''}${big ? ' big' : ''}${mini ? ' mini' : ''}" title="${esc(a.desc)}">
-    <div class="ah-top"><span class="ah-ico">${a.icon}</span><b>${esc(a.name)}</b><span class="ah-n">${done ? '✓' : `${a.have}/${a.need}`}</span></div>
+  return `<button class="v2-ach${a.done ? ' done' : ''}${big ? ' big' : ''}${mini ? ' mini' : ''}" data-ach="${esc(a.key)}" title="${esc(a.desc)}">
+    <div class="ah-top"><span class="ah-ico">${a.icon}</span><b>${esc(a.name)}</b><span class="ah-n">${a.done ? '✓' : `${fmt(a.have)}/${fmt(a.need)}`}</span></div>
     ${mini ? '' : `<div class="ah-desc">${esc(a.desc)}</div>`}
     <div class="ah-bar"><i style="width:${pct}%"></i></div>
-  </div>`;
+  </button>`;
 }
 
 // ---- Collection ------------------------------------------------------------
 
-const col = { season: null, rarity: 'all', element: null, q: '', page: 0, sel: null, achOpen: false, achPage: 0 };
+const col = { season: null, rarity: 'all', element: null, q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0 };
 let colItems = [];
 
 export async function renderCollectionV2() {
   const { el } = ctx;
-  if (!ctx.cache.catalog) {
-    el('main').innerHTML = '<div class="v2-loading">Loading…</div>';
-    try { ctx.cache.catalog = await ctx.api('/api/catalog'); } catch { ctx.cache.catalog = { cards: [] }; }
-  }
+  if (!ctx.cache.catalog) el('main').innerHTML = '<div class="v2-loading">Loading…</div>';
+  await Promise.all([ensureCatalog(), loadMyProfile()]);
+  if (ctx.currentView() !== 'collection') return;
   const cards = mergedCards();
   const seasons = [...new Set(cards.map((c) => c.season || 'Season 1'))];
   if (!seasons.includes(col.season)) col.season = seasons[0] || 'Season 1';
   const inSeason = cards.filter((c) => (c.season || 'Season 1') === col.season);
-  const achs = achievements(cards);
-  const achDone = achs.filter((a) => a.have >= a.need).length;
+  const achs = measure(cards, myProfile?.stats);
+  const achDone = achs.filter((a) => a.done).length;
 
   const setRows = seasons.map((s) => {
     const set = cards.filter((c) => (c.season || 'Season 1') === s);
@@ -123,41 +155,80 @@ export async function renderCollectionV2() {
     const set = inSeason.filter((c) => c.rarity === r);
     return `<button class="side-row rar${col.rarity === r ? ' on' : ''}" data-rarity="${r}" style="--rc:var(--r-${r})"><span><i class="dia">◆</i>${esc(ctx.RARITY_LABEL[r] || r)}</span><span class="n">${set.filter((c) => c.owned).length}/${set.length}</span></button>`;
   }).join('');
-  const elems = ELEMENT_ORDER.filter((e) => inSeason.some((c) => cardElement(c.tags) === e));
-  const elemBtns = elems.map((e) => `<button class="el-btn${col.element === e ? ' on' : ''}" data-el="${e}" title="${ELEMENTS[e].name}" style="--el:${ELEMENTS[e].color}">${ELEMENTS[e].glyph}</button>`).join('');
-  const have = inSeason.filter((c) => c.owned).length;
+  // Element filters live in the sidebar, so the page arrows in the header are never
+  // pushed off the screen (that hid pages 2+ of every element, Nathan 2026-09-27).
+  const elemBtns = ELEMENT_ORDER.filter((e) => inSeason.some((c) => cardElement(c.tags) === e)).map((e) => {
+    const n = inSeason.filter((c) => cardElement(c.tags) === e).length;
+    return `<button class="el-btn${col.element === e ? ' on' : ''}" data-el="${e}" title="${ELEMENTS[e].name} · ${n}" style="--el:${ELEMENTS[e].color}">${ELEMENTS[e].glyph}</button>`;
+  }).join('');
 
-  const center = col.achOpen
-    ? `<div class="v2-col-head"><h2>Achievements <span class="sub">${achDone} / ${achs.length}</span></h2><span class="grow"></span><div class="v2-pager" id="achPager"></div><button class="v2-icon" id="achClose" aria-label="Close">✕</button></div>
-       <div class="v2-ach-grid" id="achGrid"></div>`
-    : `<div class="v2-col-head"><h2>${esc(col.season)} <span class="sub">${have}/${inSeason.length} · ${Math.round((100 * have) / (inSeason.length || 1))}%</span></h2>
-         <span class="grow"></span><div class="el-row">${elemBtns}</div><div class="v2-pager" id="colPager"></div></div>
-       <div class="v2-grid" id="colGrid"></div>`;
+  let center;
+  if (col.view === 'ach') {
+    center = `<div class="v2-col-head"><h2>Achievements <span class="sub">${achDone} / ${achs.length}</span></h2><span class="grow"></span><div class="v2-pager" id="achPager"></div><button class="v2-icon" id="achClose" aria-label="Close">✕</button></div>
+      <div class="v2-ach-grid" id="achGrid"></div>`;
+  } else if (col.view === 'achDetail') {
+    const a = achs.find((x) => x.key === col.achKey);
+    center = a ? achDetailHead(a) : '';
+  } else {
+    const filtered = colFiltered();
+    const parts = [col.element ? ELEMENTS[col.element].name : null, col.rarity !== 'all' ? ctx.RARITY_LABEL[col.rarity] : null, col.q.trim() ? `"${col.q.trim()}"` : null].filter(Boolean);
+    const sub = parts.length
+      ? `${esc(parts.join(' · '))} · ${filtered.length} cards · ${filtered.filter((c) => c.owned).length} owned`
+      : `${inSeason.filter((c) => c.owned).length}/${inSeason.length} · ${Math.round((100 * inSeason.filter((c) => c.owned).length) / (inSeason.length || 1))}%`;
+    center = `<div class="v2-col-head"><h2>${esc(col.season)} <span class="sub">${sub}</span></h2><span class="grow"></span>
+        ${parts.length ? '<button class="v2-chip-btn" id="colClear">Clear filters ✕</button>' : ''}<div class="v2-pager" id="colPager"></div></div>
+      <div class="v2-grid" id="colGrid"></div>`;
+  }
 
   el('main').innerHTML = `<div class="v2-collection">
     <aside class="v2-side">
       <input class="v2-search" id="colSearch" placeholder="Search cards, tags…" value="${esc(col.q)}">
       <div class="side-h">Sets</div>${setRows}
       <div class="side-h">Rarity</div>${rarityRows}
+      <div class="side-h">Element</div><div class="el-grid">${elemBtns}</div>
       <div class="side-h">Achievements <span class="n">${achDone} / ${achs.length}</span></div>
       <div class="side-ach" id="sideAch">${achs.slice(0, 4).map((a) => achHTML(a, false, true)).join('')}</div>
-      <button class="side-more" id="achToggle">${col.achOpen ? 'Show less ⌃' : `Show all ${achs.length} ⌄`}</button>
+      <button class="side-more${col.view === 'ach' ? ' on' : ''}" id="achToggle">See All Achievements</button>
     </aside>
-    <section class="v2-center">${center}</section>
+    <section class="v2-center" id="colCenter">${center}</section>
     <aside class="v2-panel" id="colPanel"></aside>
   </div>`;
 
-  el('colSearch').addEventListener('input', (e) => { col.q = e.target.value; col.page = 0; if (col.achOpen) { col.achOpen = false; renderCollectionV2(); return; } paintColGrid(); });
-  el('main').querySelectorAll('.side-row.set').forEach((b) => b.addEventListener('click', () => { col.season = b.dataset.season; col.page = 0; col.achOpen = false; renderCollectionV2(); }));
-  el('main').querySelectorAll('.side-row.rar').forEach((b) => b.addEventListener('click', () => { col.rarity = col.rarity === b.dataset.rarity ? 'all' : b.dataset.rarity; col.page = 0; col.achOpen = false; renderCollectionV2(); }));
-  el('main').querySelectorAll('.el-btn').forEach((b) => b.addEventListener('click', () => { col.element = col.element === b.dataset.el ? null : b.dataset.el; col.page = 0; renderCollectionV2(); }));
-  el('achToggle').addEventListener('click', () => { col.achOpen = !col.achOpen; renderCollectionV2(); });
-  el('achClose')?.addEventListener('click', () => { col.achOpen = false; renderCollectionV2(); });
+  const toCards = () => { col.view = 'cards'; col.page = 0; };
+  el('colSearch').addEventListener('input', (e) => {
+    col.q = e.target.value; col.page = 0;
+    if (col.view !== 'cards') { toCards(); renderCollectionV2().then(() => { const s = el('colSearch'); s?.focus(); s?.setSelectionRange(s.value.length, s.value.length); }); return; }
+    paintColGrid(); paintHead();
+  });
+  el('main').querySelectorAll('.side-row.set').forEach((b) => b.addEventListener('click', () => { col.season = b.dataset.season; toCards(); renderCollectionV2(); }));
+  el('main').querySelectorAll('.side-row.rar').forEach((b) => b.addEventListener('click', () => { col.rarity = col.rarity === b.dataset.rarity ? 'all' : b.dataset.rarity; toCards(); renderCollectionV2(); }));
+  el('main').querySelectorAll('.el-grid .el-btn').forEach((b) => b.addEventListener('click', () => { col.element = col.element === b.dataset.el ? null : b.dataset.el; toCards(); renderCollectionV2(); }));
+  el('colClear')?.addEventListener('click', () => { col.element = null; col.rarity = 'all'; col.q = ''; toCards(); renderCollectionV2(); });
+  el('achToggle').addEventListener('click', () => { col.view = col.view === 'ach' ? 'cards' : 'ach'; renderCollectionV2(); });
+  el('achClose')?.addEventListener('click', () => { col.view = 'cards'; renderCollectionV2(); });
+  // Any achievement (sidebar or grid) opens its detail: the cards it needs.
+  el('main').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ach]');
+    if (!b) return;
+    col.view = 'achDetail'; col.achKey = b.dataset.ach; col.detailPage = 0;
+    renderCollectionV2();
+  });
 
   fitChildren(el('sideAch'));
-  if (col.achOpen) paintAch(achs); else paintColGrid();
+  if (col.view === 'ach') paintAch(achs);
+  else if (col.view === 'achDetail') paintAchDetail(achs.find((x) => x.key === col.achKey));
+  else paintColGrid();
   const selCard = cards.find((c) => c.id === col.sel) || inSeason.find((c) => c.owned) || inSeason[0];
   paintPanel(selCard);
+}
+
+function paintHead() {
+  // The header sub-line follows the search as the member types.
+  const { el } = ctx;
+  const h = el('colCenter')?.querySelector('.v2-col-head .sub');
+  if (!h || col.view !== 'cards') return;
+  const f = colFiltered();
+  if (col.q.trim() || col.element || col.rarity !== 'all') h.textContent = `${f.length} cards · ${f.filter((c) => c.owned).length} owned`;
 }
 
 // The achievements grid, paged: a page holds the cards that fully fit (no scrolling).
@@ -180,6 +251,28 @@ function paintAch(achs, dir) {
   el('aNext')?.addEventListener('click', () => { col.achPage += 1; paintAch(achs, 'next'); });
 }
 
+// One achievement opened: its progress, and the cards it needs (owned ones in full
+// colour, missing ones as the normal locked slot).
+function achDetailHead(a) {
+  const pct = Math.round((100 * a.have) / a.need);
+  return `<div class="v2-col-head ach-head">
+      <button class="v2-icon" id="achBack" aria-label="Back">‹</button>
+      <span class="ah-ico big">${a.icon}</span>
+      <h2>${esc(a.name)} <span class="sub">${esc(a.desc)} · ${a.done ? 'Complete' : `${fmt(a.have)} / ${fmt(a.need)}`}</span></h2>
+      <span class="grow"></span><div class="v2-pager" id="detPager"></div></div>
+    <div class="ah-bar wide"><i style="width:${pct}%"></i></div>
+    ${a.set ? '<div class="v2-grid" id="detGrid"></div>' : `<div class="ach-stat"><b>${fmt(a.have)}</b><span>of ${fmt(a.need)}</span></div>`}`;
+}
+function paintAchDetail(a) {
+  const { el } = ctx;
+  el('achBack')?.addEventListener('click', () => { col.view = 'ach'; renderCollectionV2(); });
+  const grid = el('detGrid');
+  if (!a || !grid) return;
+  const items = [...a.set].sort((x, y) => (y.owned - x.owned) || (x.num - y.num));
+  const st = { page: col.detailPage };
+  paintCards(grid, el('detPager'), items, st, (c, t) => { col.detailPage = st.page; pickCard(c, t, grid); }, col.sel);
+}
+
 function colFiltered() {
   const q = col.q.trim().toLowerCase();
   return mergedCards().filter((c) => {
@@ -195,57 +288,23 @@ function colFiltered() {
   });
 }
 
-// Fit the grid to the box: the most cards that fit with no scroll (5:7 cards).
-function fitGrid(grid, n) {
-  const w = grid.clientWidth || 600;
-  const h = grid.clientHeight || 420;
-  let best = { cols: 1, rows: 1, cw: 80 };
-  for (let rows = 1; rows <= 4; rows++) {
-    const byH = ((h - (rows - 1) * GAP) / rows) * 5 / 7;
-    for (let cols = 2; cols <= 8; cols++) {
-      const byW = (w - (cols - 1) * GAP) / cols;
-      const cw = Math.floor(Math.min(byW, byH));
-      if (cw < 104) continue;
-      // Prefer the largest card that still shows at least 10 slots (or all cards).
-      const score = Math.min(cols * rows, Math.max(10, n)) * 1000 + cw;
-      if (score > best.score || !best.score) best = { cols, rows, cw, score };
-    }
-  }
-  grid.style.setProperty('--cw', `${best.cw}px`);
-  grid.style.setProperty('--cols', best.cols);
-  return best.cols * best.rows;
+// Tap a card: it becomes the panel card, and an owned card opens in the 3D viewer
+// right away (Nathan: no extra "View card" click).
+function pickCard(c, node, grid) {
+  col.sel = c.id;
+  grid.querySelectorAll('.v2-cell.sel').forEach((n) => n.classList.remove('sel'));
+  node?.classList.add('sel');
+  paintPanel(c);
+  if (!c.locked) ctx.openViewer(c);
 }
 
-function paintColGrid(dir) {
+const colState = { get page() { return col.page; }, set page(v) { col.page = v; } };
+function paintColGrid() {
   const { el } = ctx;
   const grid = el('colGrid');
   if (!grid) return;
   colItems = colFiltered();
-  const per = fitGrid(grid, colItems.length);
-  const pages = Math.max(1, Math.ceil(colItems.length / per));
-  col.page = Math.min(Math.max(0, col.page), pages - 1);
-  const start = col.page * per;
-  grid.innerHTML = colItems.length
-    ? colItems.slice(start, start + per).map((c, i) => tileHTML(c, start + i, c.id === col.sel)).join('')
-    : '<p class="v2-empty">No cards match.</p>';
-  if (dir) { grid.classList.remove('slide-next', 'slide-prev'); void grid.offsetWidth; grid.classList.add(dir === 'next' ? 'slide-next' : 'slide-prev'); }
-  grid.onclick = (e) => {
-    const t = e.target.closest('.v2-card');
-    if (!t) return;
-    const c = colItems[Number(t.dataset.idx)];
-    if (!c) return;
-    if (col.sel === c.id && !c.locked) { ctx.openViewer(c); return; } // a second tap opens the 3D card
-    col.sel = c.id;
-    grid.querySelectorAll('.v2-card.sel').forEach((n) => n.classList.remove('sel'));
-    t.classList.add('sel');
-    paintPanel(c);
-  };
-  const pager = el('colPager');
-  pager.innerHTML = pages > 1
-    ? `<button id="cPrev" ${col.page === 0 ? 'disabled' : ''}>‹</button><span>${col.page + 1} / ${pages}</span><button id="cNext" ${col.page >= pages - 1 ? 'disabled' : ''}>›</button>`
-    : '';
-  el('cPrev')?.addEventListener('click', () => { col.page -= 1; paintColGrid('prev'); });
-  el('cNext')?.addEventListener('click', () => { col.page += 1; paintColGrid('next'); });
+  paintCards(grid, el('colPager'), colItems, colState, (c, t) => pickCard(c, t, grid), col.sel);
 }
 
 const TAG_FACETS = ['type', 'class', 'origin', 'genre', 'traits'];
@@ -285,9 +344,11 @@ function paintPanel(c) {
       ? '<div class="asc"><div class="pb-h"><span class="side-h">Ascension</span><span>★5 max</span></div></div>'
       : `<div class="asc"><div class="pb-h"><span class="side-h">Ascension</span><span class="mono">${Math.min(spare, need || 0)} / ${need} copies</span></div><i class="sbar"><i style="width:${need ? Math.min(100, Math.round((100 * spare) / need)) : 0}%;background:var(--gold)"></i></i></div>`;
   }
+  const inSpot = (myProfile?.spotlight || []).map(Number).includes(Number(c.id));
+  const canAsc = !c.locked && ctx.features().ascension && a < 5 && c.can_ascend;
   const owned = c.locked ? 'Not in your collection yet' : `${c.quantity} ${c.quantity === 1 ? 'copy' : 'copies'}`;
   box.innerHTML = `<div class="p-top">
-      <div class="p-art v2-card r-${c.rarity}${c.locked ? ' locked' : ''}">${!c.locked && c.image_url ? `<img src="${c.image_url}" alt="">` : '<span class="lk">🔒</span>'}</div>
+      <div class="p-art${c.locked ? ' locked' : ''}" id="pArt">${!c.locked && c.image_url ? `<img src="${c.image_url}" alt="">` : '<span class="lk">🔒</span>'}</div>
       <div class="p-id">
         <span class="p-num">${numLabel(c.num)} · ${esc(c.season || 'Season 1').toUpperCase()}</span>
         <h3>${esc(c.name)}</h3>
@@ -306,11 +367,39 @@ function paintPanel(c) {
     ${chips.length ? `<div class="p-tags" id="pTags">${chips.join('')}</div>` : ''}
     ${ascHTML}
     ${c.artist ? `<div class="p-credit">🎨 Art by <b>${esc(c.artist)}</b></div>` : ''}
-    <div class="p-actions">${c.locked ? '' : '<button class="v2-btn gold" id="pView">View card</button>'}<button class="v2-icon" id="pTrade" title="Trade">⇄</button></div>`;
-  el('pView')?.addEventListener('click', () => ctx.openViewer(c));
+    <div class="p-actions">
+      ${canAsc ? `<button class="v2-btn gold" id="pAscend">Ascend to ★${a + 1} · uses ${c.next_cost}</button>` : ''}
+      ${c.locked ? '' : `<button class="v2-icon${inSpot ? ' on' : ''}" id="pSpot" title="${inSpot ? 'Remove from Spotlight' : 'Add to Spotlight'}">${inSpot ? '★' : '☆'}</button>`}
+      <button class="v2-icon" id="pTrade" title="Trade">⇄</button>
+    </div>`;
+  el('pArt')?.addEventListener('click', () => { if (!c.locked) ctx.openViewer(c); });
   el('pTrade')?.addEventListener('click', () => ctx.show('trading'));
+  el('pSpot')?.addEventListener('click', () => toggleSpotlight(c));
+  el('pAscend')?.addEventListener('click', () => ascend(c));
   fitPanel(box);
   fillViewerEffect(c, 'colEffect').then(() => fitPanel(box));
+}
+
+async function ascend(c) {
+  const btn = ctx.el('pAscend');
+  if (btn) { btn.disabled = true; btn.textContent = 'Ascending…'; }
+  let r = null;
+  try { r = await ctx.apiPost('/api/ascend', { cardId: c.id }); } catch { r = null; }
+  if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } return; }
+  await ctx.refreshOwned();
+  renderCollectionV2();
+}
+
+async function toggleSpotlight(c) {
+  const cur = (myProfile?.spotlight || []).map(Number);
+  const id = Number(c.id);
+  let next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+  if (next.length > 3) next = next.slice(next.length - 3); // the oldest pick leaves
+  let r = null;
+  try { r = await ctx.apiPost('/api/spotlight', { cardIds: next }); } catch { r = null; }
+  if (!r?.ok) return;
+  if (myProfile) myProfile.spotlight = r.spotlight;
+  paintPanel(c);
 }
 
 // No scrolling: keep the tags to the rows that fit, then drop the lore if still tight.
@@ -345,10 +434,23 @@ export function refreshCollectionV2() {
   if (ctx.currentView() === 'collection') renderCollectionV2();
 }
 
+// ---- Spotlight -------------------------------------------------------------
+
+// The spotlight cards of a merged collection: the saved picks, else the 3 strongest.
+function spotlightOf(cards, ids) {
+  const owned = cards.filter((c) => c.owned);
+  const picked = (ids || []).map((id) => owned.find((c) => Number(c.id) === Number(id))).filter(Boolean);
+  if (picked.length) return picked;
+  return [...owned].sort((a, b) => (b.power || 0) - (a.power || 0) || ((RARITY_ORDER.indexOf(b.rarity)) - RARITY_ORDER.indexOf(a.rarity))).slice(0, 3);
+}
+function spotHTML(cards) {
+  return cards.map((c, i) => `<button class="spot-card r-${c.rarity}" data-si="${i}" title="${esc(c.name)}"><img src="${c.image_url || ''}" alt="${esc(c.name)}"></button>`).join('')
+    || '<p class="v2-empty">No cards yet.</p>';
+}
+
 // ---- Home ------------------------------------------------------------------
 
 let heroBoss = null;
-let profile = null;
 const pullsTab = { v: 'all' };
 
 export function disposeHomeV2() {
@@ -367,12 +469,12 @@ export async function renderHomeV2() {
   paintVoice();
   paintPulls();
   paintProfile();
-  const [hunt, prof] = await Promise.all([
+  const [hunt] = await Promise.all([
     ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null),
-    ctx.api('/api/profile').catch(() => null),
+    loadMyProfile(true),
+    ensureCatalog(),
   ]);
   if (ctx.currentView() !== 'home') return;
-  profile = prof;
   paintProfile();
   paintHero(hunt);
 }
@@ -391,7 +493,7 @@ function paintHero(d) {
   }
   const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
   const segs = Array.from({ length: 10 }, (_, i) => `<i class="${i * 10 < pct ? 'on' : ''}"></i>`).join('');
-  const rank = profile?.huntRank ? `#${profile.huntRank} of ${profile.huntPlayers}` : '';
+  const rank = myProfile?.huntRank ? `#${myProfile.huntRank} of ${myProfile.huntPlayers}` : '';
   box.innerHTML = `<div class="hero-info">
       <span class="live-chip">● PRIDE HUNT · LIVE NOW</span>
       <h2>${esc(h.name)}</h2>
@@ -415,10 +517,23 @@ function tickCloses() {
   document.querySelectorAll('[data-until]').forEach((n) => { n.textContent = left(n.dataset.until); });
 }
 // No scrolling: remove children from the end until the box fits.
-function fitChildren(box) {
+export function fitChildren(box) {
   if (!box) return;
   const bottom = box.getBoundingClientRect().bottom;
   while (box.lastElementChild && box.children.length > 0 && box.lastElementChild.getBoundingClientRect().bottom > bottom + 1) box.lastElementChild.remove();
+}
+
+function profileStats(p, cards) {
+  const total = ctx.cache.catalog?.cards?.length || 0;
+  const ownedN = cards.filter((c) => c.owned).length;
+  const achs = total ? measure(cards, p?.stats) : [];
+  const stat = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
+  return `<div class="prof-stats">
+      ${stat(total ? `${ownedN}/${total}` : ownedN, 'Cards')}
+      ${stat(p?.huntRank ? `#${p.huntRank}` : '—', 'Hunt rank')}
+      ${stat(achs.length ? `${achs.filter((a) => a.done).length}/${achs.length}` : '—', 'Achievements')}
+      ${stat(p ? fmt(p.stats?.packsOpened ?? p.packsOpened) : '—', 'Packs opened')}
+    </div>`;
 }
 
 function paintProfile() {
@@ -427,23 +542,18 @@ function paintProfile() {
   if (!box) return;
   const me = ctx.user();
   const cards = mergedCards();
-  const total = ctx.cache.catalog?.cards?.length || 0;
-  const ownedN = (ctx.cache.collection?.cards || []).length;
-  const achs = total ? achievements(cards) : [];
-  const stat = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
-  box.innerHTML = `<div class="prof-head"><span class="v2-avatar big"><span>${initial(me?.name)}</span></span><h3>${esc(me?.name || '')}</h3></div>
-    <div class="prof-stats">
-      ${stat(total ? `${ownedN}/${total}` : ownedN, 'Cards')}
-      ${stat(profile?.huntRank ? `#${profile.huntRank}` : '—', 'Hunt rank')}
-      ${stat(achs.length ? `${achs.filter((a) => a.have >= a.need).length}/${achs.length}` : '—', 'Achievements')}
-      ${stat(profile ? fmt(profile.packsOpened) : '—', 'Packs opened')}
-    </div>
-    ${achs.length ? `<div class="side-h">Closest achievements</div><div class="prof-ach" id="profAch">${achs.filter((a) => a.have < a.need).slice(0, 3).map((a) => achHTML(a, false, true)).join('')}</div>` : ''}`;
-  fitChildren(el('profAch'));
-  if (!ctx.cache.catalog) ctx.api('/api/catalog').then((d) => { ctx.cache.catalog = d; if (ctx.currentView() === 'home') paintProfile(); }).catch(() => {});
+  const spot = spotlightOf(cards, myProfile?.spotlight);
+  box.innerHTML = `<div class="prof-head">${avatarHTML(me?.id, me?.name, 'big')}<h3>${esc(me?.name || '')}</h3>
+      ${myProfile?.power != null ? `<span class="prof-cp">⚡ ${fmt(myProfile.power)}</span>` : ''}</div>
+    ${profileStats(myProfile, cards)}
+    <div class="side-h">Spotlight <button class="link-btn" id="spotEdit">Edit</button></div>
+    <div class="spot-row" id="spotRow">${spotHTML(spot)}</div>`;
+  el('spotRow').onclick = (e) => { const b = e.target.closest('[data-si]'); if (b) ctx.openViewer(spot[Number(b.dataset.si)]); };
+  // Edit = the Collection, where the ☆ on a card adds it to the Spotlight.
+  el('spotEdit').addEventListener('click', () => ctx.show('collection'));
 }
 
-const STATUS_TEXT = {
+export const STATUS_TEXT = {
   home: ['🏠', 'On the home screen'], collection: ['📚', 'Browsing collection'], hunt: ['⚔', 'In the hunt'],
   battle: ['⚔', 'Attacking the boss'], trading: ['⇄', 'Trading'], opening: ['🎴', 'Opening a pack'],
 };
@@ -452,17 +562,21 @@ export function paintVoice() {
   const { el } = ctx;
   const box = el('homeVoice');
   if (!box) return;
-  const people = ctx.live.presence || [];
   const me = ctx.user();
-  const others = people.filter((p) => String(p.id) !== String(me?.id));
+  const people = [...(ctx.live.presence || [])];
+  // The member always sees their own tile, first (Nathan: not "Just you right now").
+  if (me && !people.some((p) => String(p.id) === String(me.id))) people.unshift({ id: me.id, name: me.name, status: { kind: 'home' } });
+  people.sort((a, b) => (String(b.id) === String(me?.id)) - (String(a.id) === String(me?.id)));
   const tile = (p) => {
     const [ico, txt] = STATUS_TEXT[p.status?.kind] || ['•', 'Here'];
-    return `<div class="vc-tile k-${esc(p.status?.kind || 'here')}"><div class="vc-head"><span class="v2-avatar sm"><span>${initial(p.name)}</span></span>
-      <div><b>${esc(p.name)}</b><span class="vc-st">${ico} ${esc(txt)}</span></div></div>
-      ${p.status?.card ? `<div class="vc-card">${esc(p.status.card)}</div>` : ''}</div>`;
+    const self = String(p.id) === String(me?.id);
+    return `<button class="vc-tile k-${esc(p.status?.kind || 'here')}${self ? ' self' : ''}" data-member="${esc(p.id)}"><div class="vc-head">${avatarHTML(p.id, p.name, 'sm')}
+      <div><b>${esc(p.name)}${self ? ' <i class="you">You</i>' : ''}</b><span class="vc-st">${ico} ${esc(txt)}</span></div></div>
+      ${p.status?.card ? `<div class="vc-card">${esc(p.status.card)}</div>` : ''}</button>`;
   };
-  box.innerHTML = `<div class="tile-h"><b>🎧 Live in voice</b><span class="dim">${people.length}</span>${others.length ? '<span class="live-chip sm">● LIVE</span>' : ''}</div>
-    <div class="vc-grid">${others.length ? others.slice(0, 6).map(tile).join('') : '<p class="v2-empty">Just you right now.</p>'}</div>`;
+  box.innerHTML = `<div class="tile-h"><b>🎧 Live in voice</b><span class="dim">${people.length}</span>${people.length > 1 ? '<span class="live-chip sm">● LIVE</span>' : ''}</div>
+    <div class="vc-grid">${people.slice(0, 6).map(tile).join('')}</div>`;
+  box.onclick = (e) => { const t = e.target.closest('[data-member]'); if (t) openMember(t.dataset.member); };
 }
 
 export function paintPulls() {
@@ -484,3 +598,150 @@ export function paintPulls() {
 }
 
 export function homeTick() { tickCloses(); }
+
+// ---- A member's profile (design/15-member-profile-screen.png, approved 2026-09-27) ----
+// Opened from a tile in "Live in voice". Left: who they are, what they do now, the
+// actions, the stats and badges. Centre: the spotlight and their season. Right: their
+// live hunt, and the cards each of you has that the other one needs.
+
+const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const mem = { page: 0, all: false };
+let memData = null;
+
+export async function openMember(id) {
+  const { el } = ctx;
+  let box = el('memberModal');
+  if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="memberModal" class="v2-screen hidden"></div>'); box = el('memberModal'); }
+  box.innerHTML = '<div class="v2-loading">Loading…</div>';
+  box.classList.remove('hidden');
+  box.onclick = (e) => { if (e.target.closest('#memBack')) closeMember(); };
+  await ensureCatalog();
+  const me = ctx.user();
+  const self = String(id) === String(me?.id);
+  let p = null;
+  try { p = await ctx.api(`/api/profile${self ? '' : `?id=${encodeURIComponent(id)}`}`); } catch { p = null; }
+  if (!p || p.error) { box.innerHTML = '<div class="mem-empty"><button class="v2-btn" id="memBack">← Home</button><p class="v2-empty">This member has no profile yet.</p></div>'; return; }
+  memData = { p, self, cards: mergedCards(self ? undefined : (p.cards || [])) };
+  mem.all = false; mem.page = 0;
+  paintMember();
+}
+export function closeMember() { ctx.el('memberModal')?.classList.add('hidden'); }
+
+function paintMember() {
+  const { el } = ctx;
+  const box = el('memberModal');
+  const { p, self, cards } = memData;
+  const s = p.stats || {};
+  const achs = measure(cards, s);
+  const done = achs.filter((a) => a.done);
+  const pres = (ctx.live.presence || []).find((x) => String(x.id) === String(p.id));
+  const [sIco, sTxt] = STATUS_TEXT[pres?.status?.kind] || [];
+  const season = cards.filter((c) => (c.season || 'Season 1') === (col.season || 'Season 1'));
+  const ownedN = season.filter((c) => c.owned).length;
+  const byR = (r) => cards.filter((c) => c.owned && c.rarity === r).length;
+  const spot = spotlightOf(cards, p.spotlight);
+  const spotOrder = spot.length === 3 ? [spot[1], spot[0], spot[2]] : spot; // the strongest in the middle
+  const stat = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
+  const effects = !self && ctx.effectsEnabled?.();
+
+  box.innerHTML = `<div class="mem-screen">
+    <aside class="mem-col mem-left">
+      <div class="mem-top"><button class="v2-chip-btn" id="memBack">← Home</button></div>
+      <div class="mem-id">
+        ${avatarHTML(p.id, p.name, `huge${pres ? ' live' : ''}`)}
+        <h2>${esc(p.name)}</h2>
+        <div class="mem-badges">${done.slice(0, 5).map((a) => `<span class="mem-badge" title="${esc(a.name)}">${a.icon}</span>`).join('')}${done.length > 5 ? `<span class="mem-more">+${done.length - 5}</span>` : ''}</div>
+      </div>
+      ${pres ? `<div class="mem-status">🎧 In voice · ${sIco || ''} ${esc(sTxt || 'Here')}</div>` : ''}
+      ${effects ? `<div class="mem-acts"><button class="v2-btn boon" id="memBoon">🎁 Boon</button><button class="v2-btn prank" id="memPrank">😈 Prank</button></div>` : ''}
+      ${self ? '' : '<button class="v2-btn" id="memTrade">⇄ Offer a trade</button>'}
+      <div class="mem-grid-stats">
+        ${stat(`${ownedN}/${season.length}`, 'Cards')}
+        ${stat(p.huntRank ? `#${p.huntRank}` : '—', 'Hunt rank')}
+        ${stat(`${done.length}/${achs.length}`, 'Achievements')}
+        ${stat(fmt(s.packsOpened), 'Packs opened')}
+        ${stat(p.power != null ? fmt(p.power) : '—', 'Power')}
+        ${stat(byR('full_art'), 'Full Arts')}
+      </div>
+      <div class="side-h">Achievements <span class="n">${done.length}/${achs.length}</span></div>
+      <div class="mem-ach" id="memAch">${[...done, ...achs.filter((a) => !a.done)].slice(0, 18).map((a) => `<span class="mem-ab${a.done ? ' on' : ''}" title="${esc(a.name)} · ${esc(a.desc)}">${a.done ? a.icon : '🔒'}</span>`).join('')}</div>
+    </aside>
+
+    <section class="mem-center">
+      ${mem.all ? '' : `<div class="mem-col mem-spot">
+        <div class="side-h">✨ Spotlight</div>
+        <div class="mem-spot-row" id="memSpot">${spotOrder.map((c) => `<button class="spot-card r-${c.rarity}${c === spot[0] ? ' main' : ''}" data-id="${c.id}"><img src="${c.image_url || ''}" alt="${esc(c.name)}"></button>`).join('') || '<p class="v2-empty">No cards yet.</p>'}</div>
+      </div>`}
+      <div class="mem-col mem-season${mem.all ? ' full' : ''}">
+        <div class="v2-col-head"><h2>${esc(col.season || 'Season 1')} <span class="sub">${ownedN}/${season.length}</span></h2>
+          <i class="bar mem-bar"><i style="width:${Math.round((100 * ownedN) / (season.length || 1))}%"></i></i><span class="grow"></span>
+          ${mem.all ? '<div class="v2-pager" id="memPager"></div>' : ''}<button class="link-btn" id="memAll">${mem.all ? 'Back' : 'View all ›'}</button></div>
+        <div class="${mem.all ? 'v2-grid' : 'mem-mini'}" id="memGrid"></div>
+        ${mem.all ? '' : `<div class="mem-rar">${RARITY_ORDER.map((r) => `<span style="--rc:var(--r-${r})"><i>◆</i>${esc(ctx.RARITY_LABEL[r] || r)} <b>${byR(r)}</b></span>`).join('')}</div>`}
+      </div>
+    </section>
+
+    <aside class="mem-right">
+      <div class="mem-col mem-hunt">${huntBoxHTML(p)}</div>
+      <div class="mem-col mem-need">${self ? selfNeedHTML(achs) : needHTML(cards)}</div>
+    </aside>
+  </div>`;
+
+  // The mini season grid (or all their cards, paged).
+  const grid = el('memGrid');
+  if (mem.all) {
+    const owned = cards.filter((c) => c.owned).sort((a, b) => (b.power || 0) - (a.power || 0));
+    paintCards(grid, el('memPager'), owned, mem, (c) => ctx.openViewer(c));
+  } else {
+    grid.innerHTML = season.map((c) => (c.owned
+      ? `<button class="mem-mini-card r-${c.rarity}" data-id="${c.id}"><img src="${c.image_url || ''}" alt=""></button>`
+      : '<span class="mem-mini-card lock">🔒</span>')).join('');
+    grid.onclick = (e) => { const b = e.target.closest('[data-id]'); const c = b && cards.find((x) => String(x.id) === b.dataset.id); if (c) ctx.openViewer(c); };
+  }
+  el('memSpot')?.addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); const c = b && cards.find((x) => String(x.id) === b.dataset.id); if (c) ctx.openViewer(c); });
+  el('memAll').addEventListener('click', () => { mem.all = !mem.all; mem.page = 0; paintMember(); });
+  el('memBoon')?.addEventListener('click', () => ctx.playOnMember('boon', { id: p.id, name: p.name }));
+  el('memPrank')?.addEventListener('click', () => ctx.playOnMember('prank', { id: p.id, name: p.name }));
+  const trade = () => { closeMember(); ctx.openTrade({ id: p.id, name: p.name }); };
+  el('memTrade')?.addEventListener('click', trade);
+  box.querySelectorAll('.need-ask').forEach((b) => b.addEventListener('click', trade));
+  box.querySelectorAll('.need-card').forEach((b) => b.addEventListener('click', () => {
+    const c = [...cards, ...mergedCards()].find((x) => String(x.id) === b.dataset.id);
+    if (c && c.image_url) ctx.openViewer(c);
+  }));
+  // Fit after the browser lays the new screen out (measured too early, it emptied the lists).
+  requestAnimationFrame(() => { fitChildren(box.querySelector('.need-list')); fitChildren(el('memAch')); if (!mem.all) fitChildren(el('memGrid')); });
+}
+
+// Their damage in the live hunt, per day, and their best card.
+function huntBoxHTML(p) {
+  const h = p.hunt;
+  if (!h) return '<div class="tile-h"><b>⚔ Pride Hunt</b></div><p class="v2-empty">No boss is live.</p>';
+  const days = h.byDay || [];
+  const max = Math.max(1, ...days.map((d) => d.damage));
+  const today = new Date().toISOString().slice(0, 10);
+  const bars = days.map((d) => `<div class="hb"><i style="height:${Math.max(6, Math.round((100 * d.damage) / max))}%" class="${d.date === today ? 'now' : ''}" title="${fmt(d.damage)}"></i><span>${DAY[new Date(`${d.date}T12:00:00Z`).getUTCDay()]}</span></div>`).join('');
+  const top = h.topCard && (ctx.cache.catalog?.cards || []).find((c) => Number(c.id) === h.topCard.id);
+  return `<div class="tile-h"><b>⚔ ${esc(h.name)}</b><span class="grow"></span>${p.huntRank ? `<span class="mem-rank">#${p.huntRank}</span>` : ''}</div>
+    <div class="mem-hstats"><div><b>${fmt(h.damage)}</b><span>Damage</span></div><div><b>${fmt(h.attacks)}</b><span>Attacks</span></div><div><b class="hunt">${h.share}%</b><span>Of boss HP</span></div></div>
+    <div class="mem-bars">${bars || '<p class="v2-empty">No attacks yet.</p>'}</div>
+    ${top ? `<div class="mem-top-card"><img src="${top.image_url}" alt=""><div><span class="side-h">Top card</span><b>${esc(top.name)}</b></div><span class="mono">⚡ ${fmt(h.topCard.damage)}</span></div>` : ''}`;
+}
+
+// Cards they own that I do not ("You need"), and cards I own that they do not.
+function needHTML(theirs) {
+  const mine = mergedCards();
+  const iOwn = new Set(mine.filter((c) => c.owned).map((c) => c.id));
+  const theyOwn = new Set(theirs.filter((c) => c.owned).map((c) => c.id));
+  const rank = (c) => RARITY_ORDER.indexOf(c.rarity);
+  const youNeed = theirs.filter((c) => c.owned && !iOwn.has(c.id)).sort((a, b) => rank(b) - rank(a));
+  const theyNeed = mine.filter((c) => c.owned && !theyOwn.has(c.id)).sort((a, b) => rank(b) - rank(a));
+  return `<div class="tile-h"><b>⇄ You need</b><span class="grow"></span><span class="n mono">${youNeed.length}</span></div>
+    <div class="need-list">${youNeed.slice(0, 6).map((c) => `<div class="need-row"><button class="need-card" data-id="${c.id}"><img src="${c.image_url || ''}" alt=""></button>
+      <div><b>${esc(c.name)}</b><span style="color:var(--r-${c.rarity})">◆ ${esc(ctx.RARITY_LABEL[c.rarity] || c.rarity)}</span></div><button class="v2-chip-btn need-ask">Ask</button></div>`).join('') || '<p class="v2-empty">You have every card they have.</p>'}</div>
+    <div class="they-need"><span>They need</span><span class="tn-cards">${theyNeed.slice(0, 4).map((c) => `<button class="need-card sm" data-id="${c.id}"><img src="${c.image_url || ''}" alt=""></button>`).join('')}</span><b class="mono">${theyNeed.length}</b></div>`;
+}
+function selfNeedHTML(achs) {
+  return `<div class="tile-h"><b>🏆 Closest achievements</b></div>
+    <div class="need-list">${achs.filter((a) => !a.done).slice(0, 5).map((a) => achHTML(a, false, true)).join('')}</div>`;
+}

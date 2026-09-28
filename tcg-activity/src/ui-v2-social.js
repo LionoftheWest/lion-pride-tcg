@@ -1,0 +1,396 @@
+// UI v2 social screens, approved 2026-09-27: the Notifications panel (design 11), the
+// Leaderboard (design 12), and Trading with Gift inside it (designs 14 + 13).
+// Uses the shared helpers of ui-v2.js; the data comes from the existing APIs.
+
+import { v2ctx, avatarHTML, ensureCatalog, paintCards, fitChildren, openMember } from './ui-v2.js';
+
+const ctx = () => v2ctx();
+const esc = (s) => ctx().esc(s ?? '');
+const fmt = (n) => Number(n || 0).toLocaleString();
+const short = (n) => (n >= 10000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}k` : fmt(n));
+const stripEmoji = (t) => String(t || '').replace(/^[\p{Extended_Pictographic}️‍\s]+/u, '');
+
+// ---- Notifications (design 11) ------------------------------------------------
+
+const NOTE_KINDS = {
+  pack_earned: { icon: '📦', tab: 'all', label: 'Pack', act: 'Open' },
+  pack_gift: { icon: '🎁', tab: 'trades', label: 'Gift', act: 'Open' },
+  card_gift: { icon: '🎴', tab: 'trades', label: 'Gift', act: 'View' },
+  trade_offer: { icon: '⇄', tab: 'trades', label: 'Trade offer', act: 'View' },
+  trade_accepted: { icon: '✅', tab: 'trades', label: 'Trade', act: 'View' },
+};
+const noteKind = (k) => NOTE_KINDS[k] || (String(k).startsWith('hunt') ? { icon: '⚔', tab: 'hunt', label: 'Hunt', act: 'Hunt' } : { icon: '🔔', tab: 'all', label: '' });
+let noteTab = 'all';
+let noteItems = [];
+let noteHunt = null;
+
+export async function openNotifsV2() {
+  const { el, api } = ctx();
+  let box = el('v2Notifs');
+  if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="v2Notifs" class="v2-drop hidden"></div>'); box = el('v2Notifs'); }
+  if (!box.classList.contains('hidden')) { closeNotifsV2(); return; }
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="v2-loading">Loading…</div>';
+  const [n, h] = await Promise.all([api('/api/notifications').catch(() => ({ items: [] })), ctx().features().hunt ? api('/api/hunt').catch(() => null) : null]);
+  noteItems = n.items || [];
+  noteHunt = h && h.hunt ? h.hunt : null;
+  paintNotifs();
+  setTimeout(() => document.addEventListener('pointerdown', outside, { capture: true }), 0);
+}
+function outside(e) {
+  const box = ctx().el('v2Notifs');
+  if (box && !box.contains(e.target) && !e.target.closest('#bellBtn')) closeNotifsV2();
+}
+export async function closeNotifsV2() {
+  const { el, apiPost } = ctx();
+  const box = el('v2Notifs');
+  if (!box || box.classList.contains('hidden')) return;
+  box.classList.add('hidden');
+  document.removeEventListener('pointerdown', outside, { capture: true });
+  if (noteItems.some((x) => !x.read)) { try { await apiPost('/api/notifications/read', {}); } catch { /* keep */ } ctx().updateNotifBadge(0); }
+}
+function paintNotifs() {
+  const { el } = ctx();
+  const box = el('v2Notifs');
+  const unread = noteItems.filter((x) => !x.read).length;
+  const list = noteItems.filter((x) => noteTab === 'all' || noteKind(x.kind).tab === noteTab);
+  const today = new Date().toDateString();
+  const row = (x) => {
+    const k = noteKind(x.kind);
+    return `<div class="nt-row${x.read ? '' : ' unread'}"><span class="nt-ico">${k.icon}</span>
+      <div class="nt-t"><b>${esc(stripEmoji(x.message))}</b>${k.label ? `<span>${esc(k.label)}</span>` : ''}</div>
+      ${k.act ? `<button class="v2-chip-btn nt-act" data-act="${esc(k.act)}">${esc(k.act)}</button>` : ''}
+      <span class="nt-time mono">${ctx().ago(x.created_at)}</span>${x.read ? '' : '<i class="nt-dot"></i>'}</div>`;
+  };
+  const todays = list.filter((x) => new Date(x.created_at).toDateString() === today);
+  const earlier = list.filter((x) => new Date(x.created_at).toDateString() !== today);
+  const h = noteHunt;
+  const pct = h && h.hp_max ? Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max)) : 0;
+  box.innerHTML = `<div class="nt-head"><h3>Notifications</h3>${unread ? `<span class="nt-count">${unread}</span>` : ''}<span class="grow"></span>
+      ${unread ? '<button class="link-btn" id="ntRead">✓ Mark all read</button>' : ''}<button class="v2-icon" id="ntClose" aria-label="Close">✕</button></div>
+    <div class="seg nt-tabs">${[['all', 'All'], ['hunt', 'Hunt'], ['trades', 'Trades']].map(([v, l]) => `<button data-t="${v}" class="${noteTab === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ${h && noteTab !== 'trades' ? `<div class="nt-hunt"><div><span class="live-chip sm">● PRIDE HUNT</span><b>${esc(h.name)}</b><i class="nt-hp"><i style="width:${pct}%"></i></i></div><button class="v2-btn gold" data-act="Hunt">⚔ Hunt</button></div>` : ''}
+    <div class="nt-list" id="ntList">
+      ${todays.length ? `<div class="side-h">Today</div>${todays.map(row).join('')}` : ''}
+      ${earlier.length ? `<div class="side-h">Earlier</div>${earlier.map(row).join('')}` : ''}
+      ${list.length ? '' : '<p class="v2-empty">Nothing here yet.</p>'}
+    </div>`;
+  el('ntClose').addEventListener('click', closeNotifsV2);
+  el('ntRead')?.addEventListener('click', async () => {
+    try { await ctx().apiPost('/api/notifications/read', {}); } catch { /* keep */ }
+    noteItems = noteItems.map((x) => ({ ...x, read: true })); ctx().updateNotifBadge(0); paintNotifs();
+  });
+  box.querySelectorAll('.nt-tabs button').forEach((b) => b.addEventListener('click', () => { noteTab = b.dataset.t; paintNotifs(); }));
+  box.onclick = (e) => {
+    const a = e.target.closest('[data-act]');
+    if (!a) return;
+    closeNotifsV2();
+    const act = a.dataset.act;
+    if (act === 'Hunt') ctx().show('battling');
+    else if (act === 'Open') ctx().openPacks();
+    else if (act === 'View') ctx().show('trading');
+  };
+  requestAnimationFrame(() => fitChildren(el('ntList')));
+}
+
+// ---- Leaderboard (design 12) ------------------------------------------------------
+
+const METRICS = [
+  { key: 'power', label: 'Collection Power', icon: '⚡', col: 'Power' },
+  { key: 'huntDamage', label: 'Hunt damage', icon: '⚔', col: 'Hunt dmg', short: true },
+  { key: 'bosses', label: 'Bosses downed', icon: '💀', col: 'Bosses' },
+  { key: 'cards', label: 'Cards', icon: '📚', col: 'Cards' },
+  { key: 'achievements', label: 'Achievements', icon: '🏆', col: 'Ach.' },
+];
+const board = { metric: 'power', data: null, back: 'home' };
+
+export function openLeaderboardV2() {
+  const c = ctx();
+  if (c.currentView() !== 'leaderboard') board.back = c.currentView();
+  c.show('leaderboard');
+}
+
+export async function renderLeaderboardV2() {
+  const { el, api } = ctx();
+  el('main').innerHTML = '<div class="v2-loading">Loading…</div>';
+  try { board.data = await api('/api/leaderboard/v2'); } catch { board.data = null; }
+  if (ctx().currentView() !== 'leaderboard') return;
+  paintBoard();
+}
+
+function ranked(rows, key) { return [...rows].sort((a, b) => (b[key] || 0) - (a[key] || 0) || a.name.localeCompare(b.name)); }
+
+function paintBoard() {
+  const { el } = ctx();
+  const d = board.data;
+  if (!d || d.error) { el('main').innerHTML = '<p class="v2-empty">The leaderboard is not available.</p>'; return; }
+  const m = METRICS.find((x) => x.key === board.metric);
+  const rows = ranked(d.rows, m.key);
+  const meIdx = rows.findIndex((r) => r.id === d.me);
+  const val = (r, mm = m) => (mm.key === 'cards' ? `${fmt(r.cards)}/${fmt(d.totalCards)}` : mm.key === 'achievements' ? `${r.achievements}/${d.achievementCount}` : mm.short ? short(r[mm.key]) : fmt(r[mm.key]));
+  const pod = [rows[1], rows[0], rows[2]].map((r, i) => (r ? `<div class="lb-pod p${[2, 1, 3][i]}${r.id === d.me ? ' me' : ''}" data-member="${esc(r.id)}">
+      ${avatarHTML(r.id, r.name, 'big')}<span class="lb-place">${[2, 1, 3][i]}</span><b class="lb-name">${esc(r.name)}</b>
+      <span class="lb-val">${m.icon} ${val(r)}</span>
+      <span class="lb-sub">⚔ ${short(r.huntDamage)} · 💀 ${r.bosses} · 📚 ${r.cards}</span></div>` : '<div class="lb-pod empty"></div>')).join('');
+  const line = (r, i) => `<div class="lb-row${r.id === d.me ? ' me' : ''}" data-member="${esc(r.id)}"><span class="lb-i mono">${i + 1}</span>
+      <span class="lb-p">${avatarHTML(r.id, r.name, 'sm')}<b>${esc(r.name)}</b>${r.id === d.me ? '<i class="you">You</i>' : ''}</span>
+      ${METRICS.map((mm) => `<span class="lb-c mono${mm.key === m.key ? ' on' : ''}">${val(r, mm)}</span>`).join('')}</div>`;
+  const rest = rows.slice(3);
+  const pinMe = meIdx >= 3;
+
+  // The right column: my ranks + the live hunt.
+  const me = rows[meIdx];
+  const above = meIdx > 0 ? rows[meIdx - 1] : null;
+  const gap = above && me ? (above[m.key] || 0) - (me[m.key] || 0) : 0;
+  const progress = above && me && above[m.key] ? Math.round((100 * (me[m.key] || 0)) / above[m.key]) : 100;
+  const tiles = METRICS.map((mm) => {
+    const r = ranked(d.rows, mm.key).findIndex((x) => x.id === d.me);
+    return `<div class="lb-tile${mm.key === m.key ? ' on' : ''}"><span class="lb-tr">${r >= 0 ? `#${r + 1}` : '—'}</span><b>${me ? val(me, mm) : '—'}</b><span>${mm.icon} ${esc(mm.label)}</span></div>`;
+  }).join('');
+  const live = d.live;
+  const liveRows = live ? live.leaders.slice(0, 4) : [];
+  const liveMe = live ? live.leaders.findIndex((x) => String(x.player_id) === d.me) : -1;
+  const maxLive = Math.max(1, ...(live?.leaders || []).map((x) => Number(x.damage)));
+  const lrow = (x, i) => `<div class="lb-live${String(x.player_id) === d.me ? ' me' : ''}"><span class="mono">${i + 1}</span>${avatarHTML(x.player_id, x.username, 'sm')}<b>${esc(x.username)}</b><span class="mono">${fmt(x.damage)}</span><i class="lb-lbar"><i style="width:${Math.round((100 * x.damage) / maxLive)}%"></i></i></div>`;
+
+  el('main').innerHTML = `<div class="v2-board">
+    <section class="lb-main">
+      <div class="lb-head"><button class="v2-icon" id="lbBack" aria-label="Back">←</button><h2>Leaderboard</h2></div>
+      <div class="lb-tabs">${METRICS.map((mm) => `<button class="lb-tab${mm.key === m.key ? ' on' : ''}" data-m="${mm.key}">${mm.icon} ${esc(mm.label)}</button>`).join('')}</div>
+      <div class="lb-podium">${pod}</div>
+      <div class="lb-table">
+        <div class="lb-row lb-th"><span class="lb-i">#</span><span class="lb-p">Player</span>${METRICS.map((mm) => `<span class="lb-c${mm.key === m.key ? ' on' : ''}">${mm.key === m.key ? '▾ ' : ''}${esc(mm.col)}</span>`).join('')}</div>
+        <div class="lb-rows" id="lbRows">${rest.map((r, i) => line(r, i + 3)).join('') || '<p class="v2-empty">More players show here once they open packs.</p>'}</div>
+        ${pinMe ? `<div class="lb-pin">${line(me, meIdx)}</div>` : ''}
+      </div>
+    </section>
+    <aside class="lb-side">
+      <div class="v2-tile lb-mine">
+        <div class="prof-head">${avatarHTML(d.me, me?.name || ctx().user()?.name, 'big')}<div><h3>${esc(me?.name || ctx().user()?.name || '')}</h3><span class="dim">${esc(m.label)}</span></div>
+          <b class="lb-rank">${meIdx >= 0 ? `#${meIdx + 1}` : '—'}</b></div>
+        ${above ? `<div class="lb-to"><span>To #${meIdx}</span><b class="mono">${m.short ? short(gap) : fmt(gap)}</b></div><i class="lb-tobar"><i style="width:${progress}%"></i></i>` : (meIdx === 0 ? '<div class="lb-to"><span>You lead this board</span></div>' : '')}
+        <div class="lb-tiles">${tiles}</div>
+      </div>
+      <div class="v2-tile lb-hunt">${live ? `<div class="tile-h"><b>⚔ ${esc(live.name)}</b><span class="grow"></span><span class="live-chip sm">● LIVE</span></div>
+        <div class="side-h">Top damage</div>
+        <div class="lb-lives">${liveRows.map(lrow).join('') || '<p class="v2-empty">No attacks yet.</p>'}${liveMe >= 4 ? lrow(live.leaders[liveMe], liveMe) : ''}</div>`
+        : '<div class="tile-h"><b>⚔ Pride Hunt</b></div><p class="v2-empty">No boss is live.</p>'}</div>
+    </aside>
+  </div>`;
+  el('lbBack').addEventListener('click', () => ctx().show(board.back || 'home'));
+  el('main').querySelectorAll('.lb-tab').forEach((b) => b.addEventListener('click', () => { board.metric = b.dataset.m; paintBoard(); }));
+  el('main').querySelector('.v2-board').addEventListener('click', (e) => { const t = e.target.closest('[data-member]'); if (t) openMember(t.dataset.member); });
+  requestAnimationFrame(() => fitChildren(el('lbRows')));
+}
+
+// ---- Trading, with Gift inside (designs 14 + 13) ----------------------------------------
+
+const tr = { mode: 'offer', giftKind: 'card', to: null, give: null, get: null, side: 'mine', filter: 'all', q: '', page: 0, members: [], theirs: {}, offers: null, msg: '' };
+
+export async function renderTradingV2() {
+  const { el, api } = ctx();
+  el('main').innerHTML = '<div class="v2-loading">Loading…</div>';
+  await ensureCatalog();
+  const [players, offers] = await Promise.all([api('/api/players').catch(() => ({ players: [] })), api('/api/trades').catch(() => ({}))]);
+  if (!ctx().cache.collection) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
+  if (ctx().currentView() !== 'trading') return;
+  const me = String(ctx().user()?.id || '');
+  const voice = (ctx().live.presence || []).filter((p) => String(p.id) !== me).map((p) => ({ id: String(p.id), name: p.name, voice: true }));
+  const rest = (players.players || []).filter((p) => !voice.some((v) => v.id === String(p.id))).map((p) => ({ id: String(p.id), name: p.username }));
+  tr.members = [...voice, ...rest];
+  tr.offers = offers;
+  if (!tr.to && tr.members[0]) tr.to = tr.members[0];
+  if (tr.to) await loadTheirs(tr.to.id);
+  paintTrade();
+}
+
+async function loadTheirs(id) {
+  if (tr.theirs[id]) return;
+  try {
+    const d = await ctx().api(`/api/player-cards?id=${encodeURIComponent(id)}`);
+    tr.theirs[id] = (d.cards || []).map((c) => ({ ...c, owned: true, locked: false }));
+  } catch { tr.theirs[id] = []; }
+}
+
+const base = () => new Map((ctx().cache.catalog?.cards || []).map((c) => [c.id, c]));
+function withBase(c, b) { const x = b.get(c.id) || {}; return { ...x, ...c, power: c.power ?? x.power, tags: c.tags || x.tags, num: c.num || 0 }; }
+
+function gridItems() {
+  const b = base();
+  const mine = (ctx().cache.collection?.cards || []).map((c) => withBase({ ...c, owned: true, locked: false }, b));
+  const theirs = (tr.to ? tr.theirs[tr.to.id] || [] : []).map((c) => withBase(c, b));
+  let items = tr.side === 'theirs' && tr.mode === 'offer' ? theirs : mine;
+  if (tr.mode === 'gift') items = items.filter((c) => c.tradeable !== false && c.rarity !== 'gold'); // gifts: no Gold, no locked cards
+  if (tr.mode === 'offer' && tr.side === 'theirs' && tr.give) items = items.filter((c) => c.rarity === tr.give.rarity && c.tradeable !== false); // same rarity lane
+  if (tr.filter === 'dupes') items = items.filter((c) => (c.quantity || 0) > 1);
+  if (tr.filter === 'rare') items = items.filter((c) => c.rarity !== 'normal');
+  const q = tr.q.trim().toLowerCase();
+  if (q) items = items.filter((c) => [c.name, c.subject, ...(c.tags?.traits || [])].filter(Boolean).join(' ').toLowerCase().includes(q));
+  return items.sort((a, b) => ((b.quantity || 0) > 1) - ((a.quantity || 0) > 1) || (b.power || 0) - (a.power || 0));
+}
+
+function slotHTML(c, who, empty) {
+  if (!c) return `<div class="tr-slot empty"><span>${esc(empty)}</span></div>`;
+  return `<div class="tr-slot r-${c.rarity}"><img src="${c.image_url || ''}" alt=""></div>
+    <div class="tr-info"><span class="tr-who">${who}</span><h3>${esc(c.name)}</h3><span class="tr-rar" style="color:var(--r-${c.rarity})">◆ ${esc(ctx().RARITY_LABEL[c.rarity] || c.rarity)}</span>
+      <span class="tr-chips"><i>⚡ ${fmt(c.power)}</i>${c.quantity ? `<i>×${c.quantity}</i>` : ''}</span></div>`;
+}
+
+function paintTrade() {
+  const { el } = ctx();
+  const toName = tr.to?.name || 'a member';
+  const packs = ctx().packs();
+  const me = ctx().user();
+  const inc = tr.offers?.incoming || [];
+  const out = tr.offers?.outgoing || [];
+  let composer;
+  if (tr.mode === 'offer') {
+    const diff = tr.give && tr.get ? (tr.get.power || 0) - (tr.give.power || 0) : null;
+    composer = `<div class="tr-deal">
+        <div class="tr-side">${slotHTML(tr.give, `${avatarHTML(me?.id, me?.name, 'xs')} You give`, 'Pick your card')}</div>
+        <span class="tr-swap">⇄</span>
+        <div class="tr-side right">${slotHTML(tr.get, `${avatarHTML(tr.to?.id, toName, 'xs')} You get`, tr.give ? `Pick a ${ctx().RARITY_LABEL[tr.give.rarity] || ''} from ${toName}` : 'Then pick their card')}</div>
+      </div>
+      <div class="tr-foot">${diff != null ? `<span class="tr-diff ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '↗ +' : '↘ '}${diff} power</span>` : '<span class="dim">Swaps are the same rarity.</span>'}
+        <span class="grow"></span><span class="tr-msg" id="trMsg">${esc(tr.msg)}</span>
+        <button class="v2-btn" id="trClear">↺ Clear</button><button class="v2-btn gold" id="trSend" ${tr.give && tr.get && tr.to ? '' : 'disabled'}>➤ Send offer</button></div>`;
+  } else {
+    const pack = tr.giftKind === 'pack';
+    composer = `<div class="tr-deal">
+        <div class="tr-side">${pack
+          ? `<div class="tr-slot pack"><span>👑</span><b>Season 1</b></div><div class="tr-info"><span class="tr-who">You give</span><h3>1 pack</h3><span class="tr-chips"><i>🎴 ${packs} → ${Math.max(0, packs - 1)}</i></span></div>`
+          : slotHTML(tr.give, `${avatarHTML(me?.id, me?.name, 'xs')} You give`, 'Pick a card to gift')}</div>
+        <span class="tr-swap">→</span>
+        <div class="tr-side right tr-to"><div class="tr-info"><span class="tr-who">To</span><h3>${esc(toName)}</h3></div>${avatarHTML(tr.to?.id, toName, 'huge')}</div>
+      </div>
+      <div class="tr-foot"><div class="seg" id="trGiftKind"><button data-k="card" class="${pack ? '' : 'on'}">Card</button><button data-k="pack" class="${pack ? 'on' : ''}">Pack</button></div>
+        <span class="grow"></span><span class="tr-msg" id="trMsg">${esc(tr.msg)}</span>
+        <button class="v2-btn" id="trClear">↺ Clear</button><button class="v2-btn gold" id="trSend" ${tr.to && (pack ? packs > 0 : tr.give) ? '' : 'disabled'}>🎁 Send gift</button></div>`;
+  }
+  const theirsN = tr.to ? (tr.theirs[tr.to.id] || []).length : 0;
+  const mineN = (ctx().cache.collection?.cards || []).length;
+  const offerCard = (c, tag) => (c ? `<div class="of-card"><img src="${c.image_url || ''}" alt=""><span>${tag}</span></div>` : '');
+  const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
+  el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}">
+    <section class="tr-main">
+      <div class="tr-top"><div class="seg"><button class="on">⇄ Trades</button></div><span class="grow"></span>
+        <div class="seg" id="trMode"><button data-m="offer" class="${tr.mode === 'offer' ? 'on' : ''}">⇄ Offer</button><button data-m="gift" class="${tr.mode === 'gift' ? 'on' : ''}">🎁 Gift</button></div></div>
+      <div class="tr-members" id="trMembers"><span class="side-h">To</span>
+        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${esc(p.name)}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
+        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="Find a member"></div>
+      <div class="tr-compose">${composer}</div>
+      <div class="tr-gridhead">
+        ${tr.mode === 'offer' ? `<div class="seg" id="trSide"><button data-s="mine" class="${tr.side === 'mine' ? 'on' : ''}">Your cards <b>${mineN}</b></button><button data-s="theirs" class="${tr.side === 'theirs' ? 'on' : ''}">${esc(toName)}'s cards <b>${theirsN}</b></button></div>` : `<div class="seg"><button class="on">Your cards <b>${mineN}</b></button></div>`}
+        <input class="v2-search" id="trQ" placeholder="Search cards, tags…" value="${esc(tr.q)}">
+        <span class="grow"></span>
+        <div class="seg" id="trFilter">${[['all', 'All'], ['dupes', 'Dupes'], ['rare', 'Rare+']].map(([v, l]) => `<button data-f="${v}" class="${tr.filter === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+        <div class="v2-pager" id="trPager"></div>
+      </div>
+      <div class="v2-grid" id="trGrid"></div>
+    </section>
+    <aside class="tr-offers v2-tile">
+      <div class="tile-h"><b>Offers</b>${inc.length ? `<span class="nt-count">${inc.length}</span>` : ''}</div>
+      <div class="side-h">Incoming <span class="n">${inc.length}</span></div>
+      <div class="of-list" id="ofIn">${inc.map((o) => `<div class="of-row"><div class="of-who">${avatarHTML(o.from_id, o.from_name, 'xs')}<b>${esc(o.from_name || 'Someone')}</b></div>
+        <div class="of-cards">${offerCard(o.offer, 'Get')}<span>⇄</span>${offerCard(o.request, 'Give')}</div>
+        <div class="of-acts"><button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button><button class="v2-btn of-decline" data-id="${o.id}">✕ Decline</button></div></div>`).join('') || '<p class="v2-empty">No incoming offers.</p>'}</div>
+      <div class="side-h">Sent <span class="n">${out.length}</span></div>
+      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${esc(o.to_name || 'Someone')}</b><span class="dim">Waiting</span></div>
+        <div class="of-cards">${offerCard(o.offer, 'Give')}<span>⇄</span>${offerCard(o.request, 'Get')}</div><button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button></div>`).join('') || '<p class="v2-empty">No sent offers.</p>'}</div>
+    </aside>
+  </div>`;
+
+  // Grid
+  const items = gridItems();
+  const pickId = tr.side === 'theirs' && tr.mode === 'offer' ? tr.get?.id : tr.give?.id;
+  const onPick = (c) => {
+    tr.msg = '';
+    if (tr.mode === 'offer' && tr.side === 'theirs') tr.get = c;
+    else {
+      tr.give = c;
+      if (tr.mode === 'offer') { if (tr.get && tr.get.rarity !== c.rarity) tr.get = null; tr.side = 'theirs'; tr.page = 0; }
+    }
+    paintTrade();
+  };
+  paintCards(el('trGrid'), el('trPager'), items, tr, onPick, pickId);
+
+  // Controls
+  const main = el('main');
+  el('trMode').onclick = (e) => { const b = e.target.closest('[data-m]'); if (!b) return; tr.mode = b.dataset.m; tr.side = 'mine'; tr.give = null; tr.get = null; tr.page = 0; tr.msg = ''; paintTrade(); };
+  el('trGiftKind')?.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (!b) return; tr.giftKind = b.dataset.k; tr.msg = ''; paintTrade(); });
+  el('trSide')?.addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (!b) return; tr.side = b.dataset.s; tr.page = 0; paintTrade(); });
+  el('trFilter').onclick = (e) => { const b = e.target.closest('[data-f]'); if (!b) return; tr.filter = b.dataset.f; tr.page = 0; paintTrade(); };
+  el('trQ').addEventListener('input', (e) => { tr.q = e.target.value; tr.page = 0; paintCards(el('trGrid'), el('trPager'), gridItems(), tr, onPick, pickId); });
+  el('trMembers').onclick = async (e) => {
+    const b = e.target.closest('.tr-mem'); if (!b) return;
+    tr.to = tr.members.find((p) => p.id === b.dataset.id) || tr.to; tr.get = null; tr.msg = '';
+    await loadTheirs(tr.to.id); paintTrade();
+  };
+  let t = null;
+  el('trFind').addEventListener('input', (e) => {
+    clearTimeout(t);
+    const q = e.target.value.trim();
+    t = setTimeout(async () => {
+      if (!q) return;
+      try {
+        const d = await ctx().api(`/api/players?q=${encodeURIComponent(q)}`);
+        const found = (d.players || []).map((p) => ({ id: String(p.id), name: p.username }));
+        if (found[0]) { tr.members = [...found, ...tr.members.filter((m) => !found.some((f) => f.id === m.id))]; tr.to = found[0]; await loadTheirs(tr.to.id); paintTrade(); }
+      } catch { /* keep */ }
+    }, 350);
+  });
+  el('trClear').addEventListener('click', () => { tr.give = null; tr.get = null; tr.side = 'mine'; tr.msg = ''; paintTrade(); });
+  el('trSend').addEventListener('click', send);
+  main.querySelectorAll('.of-accept').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/accept', { offerId: Number(b.dataset.id) })));
+  main.querySelectorAll('.of-decline').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'decline' })));
+  main.querySelectorAll('.of-cancel').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'cancel' })));
+  requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); fitRow(el('trMembers'), el('trFind')); });
+}
+
+// No cut chips: drop the member chips that do not fully fit left of the search box.
+function fitRow(row, stop) {
+  if (!row || !stop) return;
+  const right = () => row.getBoundingClientRect().right - 10;
+  while (stop.getBoundingClientRect().right > right()) {
+    const last = [...row.querySelectorAll('.tr-mem:not(.on)')].pop();
+    if (!last) break;
+    last.remove();
+  }
+}
+
+async function send() {
+  const { apiPost } = ctx();
+  const btn = ctx().el('trSend');
+  if (btn) btn.disabled = true;
+  let r = null;
+  try {
+    if (tr.mode === 'offer') r = await apiPost('/api/trade/offer', { toId: tr.to.id, offerCardId: tr.give.id, requestCardId: tr.get.id });
+    else if (tr.giftKind === 'pack') r = await apiPost('/api/gift', { toId: tr.to.id, amount: 1 });
+    else r = await apiPost('/api/trade/gift', { toId: tr.to.id, cardId: tr.give.id });
+  } catch { r = null; }
+  if (r?.ok) {
+    tr.msg = tr.mode === 'offer' ? `Offer sent to ${tr.to.name}` : `Gift sent to ${tr.to.name}`;
+    tr.give = null; tr.get = null; tr.side = 'mine';
+    delete tr.theirs[tr.to.id];
+    await Promise.all([ctx().refreshOwned(), ctx().refreshPacks?.()]);
+    await refreshOffers();
+  } else {
+    tr.msg = tr.mode === 'offer' ? 'Could not send the offer (the card may be in another offer).' : 'Could not send the gift.';
+  }
+  paintTrade();
+}
+async function refreshOffers() {
+  try { tr.offers = await ctx().api('/api/trades'); } catch { /* keep */ }
+  ctx().updateTradeBadge?.((tr.offers?.incoming || []).length);
+}
+async function resolve(path, body) {
+  let r = null;
+  try { r = await ctx().apiPost(path, body); } catch { r = null; }
+  tr.msg = r?.ok ? '' : 'That did not work. Try again.';
+  if (r?.ok && path.endsWith('accept')) await ctx().refreshOwned();
+  tr.theirs = {};
+  if (tr.to) await loadTheirs(tr.to.id);
+  await refreshOffers();
+  paintTrade();
+}
+

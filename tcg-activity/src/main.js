@@ -15,8 +15,9 @@ import { mountBoss } from './boss.js';
 import { BOSS_LIST, seedForBoss, thumbFor, THUMB_BASE } from './boss-meta.js';
 import { modelFor } from './boss-model.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { initEffects, fillViewerEffect, nameBadge } from './effects-ui.js';
+import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled } from './effects-ui.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick } from './ui-v2.js';
+import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2 } from './ui-v2-social.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -301,7 +302,7 @@ async function main() {
   setInterval(refreshPackStatus, 45000); // packs can be earned while the app is open
   refreshTradeBadge();
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
-  initEffects({ api, apiPost, el, esc, SFX, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
+  initEffects({ api, apiPost, el, esc, SFX, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   try { uiV2 = !!(await api('/api/flags'))?.uiV2; } catch { uiV2 = false; }
   if (uiV2) { startV2(); show('home'); } else show('collection');
 }
@@ -310,10 +311,15 @@ async function main() {
 function startV2() {
   document.body.classList.add('ui-v2');
   initV2({
-    api, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago,
+    api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned,
+    playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),
+    updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
   });
   el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>`;
+  const bell = el('bellBtn'); const board = el('boardBtn');
+  if (bell) { const b = bell.querySelector('.navbadge'); bell.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'; if (b) bell.appendChild(b); }
+  if (board) board.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
   el('v2Avatar').title = meUser?.name || '';
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
   el('dockOpen').addEventListener('click', openPacks);
@@ -338,7 +344,7 @@ function sendStatus(kind) {
   myStatus = kind || myStatus;
   if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus })); } catch { /* dropped */ } }
 }
-const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading' };
+const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home' };
 
 // Load which cards the caller owns (for feed-card ownership). Also warms the
 // collection cache. Refreshed whenever the collection can have changed.
@@ -568,6 +574,8 @@ function renderMain(view) {
   disposeHomeV2();
   if (uiV2 && view === 'home') { stopHuntTicker(); renderHomeV2(); return; }
   if (uiV2 && view === 'collection') { stopHuntTicker(); renderCollectionV2(); return; }
+  if (uiV2 && view === 'leaderboard') { stopHuntTicker(); renderLeaderboardV2(); return; }
+  if (uiV2 && view === 'trading') { stopHuntTicker(); renderTradingV2(); return; }
   { const bm = el('bossMini'); if (bm) bm.innerHTML = ''; } // clear the sidebar boss square
   stopHuntTicker(); // stop the boss/cooldown countdown; renderHunt restarts it
   if (view === 'gallery') { renderGallery(); return; }
@@ -1094,6 +1102,7 @@ function closeGiftPanel() { el('gift').className = 'hidden'; el('gift').innerHTM
 
 // Leaderboard: top players by Total Collection Power (the trophy button).
 async function openBoard() {
+  if (uiV2) return openLeaderboardV2();
   const b = el('board');
   b.className = 'open';
   b.innerHTML =
@@ -1154,10 +1163,10 @@ function startHuntTicker() {
     if (huntTick % 3 === 0 && currentView === 'battling') refreshHuntFeed(); // poll the boss feed every 3s
     // The UTC day rolled over: the daily reset happened. Re-fetch so downed cards reset
     // and the locked squad expires (back to squad selection).
-    if (huntDay && utcToday() !== huntDay) { huntDay = utcToday(); stopHuntTicker(); if (view === 'battling') renderHunt(); return; }
+    if (huntDay && utcToday() !== huntDay) { huntDay = utcToday(); stopHuntTicker(); if (currentView === 'battling') renderHunt(); return; }
     // A deadline passed: the server state changed. Refresh after a short delay so the
     // cron has spawned/closed, then re-render (boss appears, or cooldown begins).
-    if (expired) { stopHuntTicker(); setTimeout(() => { if (view === 'battling') renderHunt(); }, 5000); }
+    if (expired) { stopHuntTicker(); setTimeout(() => { if (currentView === 'battling') renderHunt(); }, 5000); }
   }, 1000);
 }
 
@@ -1175,7 +1184,16 @@ async function renderHunt() {
 }
 
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
+let huntResting = false; // v2: the resting scene shows the last hunt's feed; do not poll it away
 function paintHuntView(d) {
+  huntResting = !!(uiV2 && (!d || !d.hunt));
+  if (huntResting) {
+    el('main').innerHTML = `<div class="main-body hunt arena-mode resting">${restingHTML(d)}</div>`;
+    live.attacks = (d && d.lastFeed) || [];
+    renderFeedSidebar();
+    startHuntTicker();
+    return;
+  }
   if (!d || !d.hunt) {
     el('main').innerHTML = `<div class="main-body">${cooldownHTML(d)}</div>`;
     renderBossMini(); // no active boss -> clears the sidebar square
@@ -1250,6 +1268,41 @@ function cooldownHTML(d) {
     ? `<div class="cd-timer">${cdSpan(next, 'Next boss in', 'countdown big')}</div>`
     : '<span>A new boss appears each week.</span>';
   return `<div class="soon cooldown">🦁<b>The hunt is resting.</b>${outcome}${timer}</div>`;
+}
+
+// v2 resting scene: the last boss's title, final HP and result, the countdown where the
+// boss stands, your damage + standings on the right, the top hunters along the bottom.
+function restingHTML(d) {
+  const h = d && d.lastResult;
+  const next = d && d.nextSpawnAt;
+  const pct = h && h.hp_max ? Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max)) : 0;
+  const won = h && h.status === 'defeated';
+  const board = (d && d.lastBoard) || [];
+  const top = board.length
+    ? board.map((r, i) => `<div class="rest-hunter${i === 0 ? ' first' : ''}"><span class="rh-i">${i + 1}</span><b>${esc(r.username)}</b><span class="rh-d">${Number(r.damage).toLocaleString()}</span></div>`).join('')
+    : '<p class="empty small">No hunters last time.</p>';
+  return `<div class="hunt-arena resting${won ? ' won' : ' lost'}">
+    <div class="arena-stage rest-stage">
+      <div class="rest-count">
+        <span class="rest-k">Next boss in</span>
+        ${next ? cdSpan(next, '', 'rest-timer') : '<span class="rest-timer">soon</span>'}
+      </div>
+    </div>
+    <div class="arena-top">
+      ${h ? `<div class="arena-titlerow">
+        <span class="boss-name">${esc(h.name)}</span>
+        <span class="boss-tier tier-${esc(String(h.tier || '').toLowerCase())}">${esc(h.tier || '')}</span>
+        ${weakResistHTML(h)}
+        <span class="spacer"></span>
+        <span class="closes rest-result">${won ? '🏆 Defeated' : '💀 Escaped'}</span>
+      </div>
+      <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext">${won ? 'DEFEATED' : `${Number(h.hp_remaining).toLocaleString()} / ${Number(h.hp_max).toLocaleString()} HP left`}</span></div>
+      <div class="arena-subrow">
+        <span>Your damage <b>${Number((d && d.myLast) || 0).toLocaleString()}</b></span>
+      </div>` : '<div class="arena-titlerow"><span class="boss-name">The hunt is resting</span></div>'}
+    </div>
+    <div class="rest-board">${top}</div>
+  </div>`;
 }
 
 // Strip the facet prefix from a tag slug for display (trait:water -> water).
@@ -1737,6 +1790,7 @@ function updateLockBtn() {
 // The live boss-attack feed (shown in the right sidebar on the battle page). Polled
 // while the battle screen is open. Newest first, capped.
 async function refreshHuntFeed() {
+  if (huntResting) return; // no live boss: keep the last hunt's feed on screen
   let d; try { d = await api('/api/hunt/feed'); } catch { return; }
   const feed = d?.feed || [];
   live.attacks = feed.slice(0, 20);
@@ -2433,6 +2487,7 @@ async function sendGift(toId, name, btn) {
 
 // ---- In-app notifications (the bell) ---------------------------------------
 async function openNotifs() {
+  if (uiV2) return openNotifsV2();
   const g = el('notif');
   g.className = 'open';
   g.innerHTML =
@@ -2522,8 +2577,8 @@ async function onTradeAction(e) {
 
 // The trade builder: recipient -> your card -> gift it, or request one back.
 const trade = { step: 1, toId: null, toName: null, myCard: null, mine: [], theirs: [] };
-function openTradeBuilder() {
-  Object.assign(trade, { step: 1, toId: null, toName: null, myCard: null });
+function openTradeBuilder(to) {
+  Object.assign(trade, { step: to ? 2 : 1, toId: to?.id || null, toName: to?.name || null, myCard: null });
   el('trade').className = 'open';
   el('trade').onclick = (e) => { if (e.target === el('trade')) closeTrade(); };
   renderTradeStep();
@@ -2627,6 +2682,7 @@ async function doOffer(theirCard) {
 }
 
 function updateTradeBadge(n) {
+  document.querySelector('#dock .dk[data-view="trading"]')?.classList.toggle('live', n > 0);
   const btn = document.querySelector('#nav button[data-view="trading"]');
   if (!btn) return;
   let b = btn.querySelector('.navbadge');
@@ -2678,6 +2734,7 @@ function withOwned(card) {
 
 function openViewer(card) {
   card = withOwned(card);
+  el('viewer').classList.toggle('card-only', uiV2);
   SFX.play('click'); // opening a card
   const locked = !!card.locked;
   el('v-front').src = card.image_url || '';

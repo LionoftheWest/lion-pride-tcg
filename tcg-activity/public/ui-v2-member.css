@@ -1,0 +1,86 @@
+/* Lion Pride TCG — UI v2 member profile (design/15-member-profile-screen.png, approved
+   2026-09-27). A screen over the main pane: the top bar and the dock stay visible. */
+
+body.ui-v2 .v2-screen { position: fixed; z-index: 55; top: var(--topbar-h); left: var(--sp-5); right: var(--sp-5); bottom: calc(var(--dock-h) + 28px);
+  background: var(--bg-base); animation: v2Rise var(--dur-base) var(--ease-out); }
+body.ui-v2 .v2-screen.hidden { display: none; }
+body.ui-v2 .mem-screen { height: 100%; display: grid; grid-template-columns: 280px minmax(0, 1fr) 320px; gap: var(--sp-4); }
+body.ui-v2 .mem-col { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 18px; padding: 14px; box-sizing: border-box; min-height: 0; overflow: hidden; }
+body.ui-v2 .mem-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px; }
+
+/* Left: who they are */
+body.ui-v2 .mem-left { display: flex; flex-direction: column; gap: 9px; }
+body.ui-v2 .mem-top { display: flex; }
+body.ui-v2 .mem-id { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+body.ui-v2 .mem-id h2 { margin: 0; font: 800 22px var(--font-display); }
+body.ui-v2 .v2-avatar.huge { width: 84px; height: 84px; padding: 3px; }
+body.ui-v2 .v2-avatar.huge span { font-size: 32px; }
+body.ui-v2 .v2-avatar.huge.live { box-shadow: 0 0 0 3px var(--bg-raised), 0 0 0 5px var(--success); }
+body.ui-v2 .mem-badges { display: flex; gap: 4px; align-items: center; }
+body.ui-v2 .mem-badge { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--surface-2); border: 1.5px solid var(--gold); }
+body.ui-v2 .mem-more { font: 600 11px var(--font-num); color: var(--text-muted); margin-left: 2px; }
+body.ui-v2 .mem-status { font-size: 12px; color: var(--gold); padding: 7px 10px; border-radius: var(--rad-md); background: var(--gold-soft); border: 1px solid rgba(244, 183, 60, .35); text-align: center; }
+body.ui-v2 .mem-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+body.ui-v2 .mem-left .v2-btn { height: 38px; font-size: 13px; }
+body.ui-v2 .v2-btn.boon { color: var(--boon); border-color: rgba(61, 217, 180, .45); background: var(--boon-soft); }
+body.ui-v2 .v2-btn.prank { color: var(--prank); border-color: rgba(178, 140, 255, .45); background: var(--prank-soft); }
+body.ui-v2 .mem-grid-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 4px; padding: 10px 4px; border-radius: var(--rad-md); background: var(--surface); }
+body.ui-v2 .mem-grid-stats div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+body.ui-v2 .mem-grid-stats b { font: 700 14px var(--font-num); }
+body.ui-v2 .mem-grid-stats span { font-size: 10px; color: var(--text-muted); }
+body.ui-v2 .mem-left .side-h { margin: 2px 0 0; }
+body.ui-v2 .mem-ach { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; overflow: hidden; flex: 1; align-content: flex-start; }
+body.ui-v2 .mem-ab { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; background: var(--surface); border: 1.5px solid var(--border); filter: grayscale(1); opacity: .55; }
+body.ui-v2 .mem-ab.on { filter: none; opacity: 1; border-color: var(--gold); }
+
+/* Centre: spotlight + season */
+body.ui-v2 .mem-center { display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); min-height: 0; }
+body.ui-v2 .mem-center:has(.mem-season.full) { grid-template-rows: minmax(0, 1fr); }
+body.ui-v2 .mem-spot { display: flex; flex-direction: column; }
+body.ui-v2 .mem-spot .side-h { margin: 0 0 6px; }
+body.ui-v2 .mem-spot-row { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: center; gap: 14px; }
+body.ui-v2 .mem-spot-row .spot-card { height: 82%; max-height: none; }
+body.ui-v2 .mem-spot-row .spot-card.main { height: 100%; }
+body.ui-v2 .mem-season { display: flex; flex-direction: column; gap: 8px; }
+body.ui-v2 .mem-season .v2-col-head { margin: 0; }
+body.ui-v2 .mem-bar { display: block; width: 160px; height: 5px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+body.ui-v2 .mem-bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--r-full_art), var(--gold)); }
+body.ui-v2 .mem-mini { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
+body.ui-v2 .mem-mini-card { width: 48px; aspect-ratio: 5 / 7; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 5px; }
+body.ui-v2 .mem-mini-card img { width: 100%; height: 100%; object-fit: contain; display: block; }
+body.ui-v2 .mem-mini-card.lock { display: grid; place-items: center; border: 1px solid var(--border); background: var(--bg-base); font-size: 11px; opacity: .6; cursor: default; }
+body.ui-v2 .mem-rar { display: flex; gap: 6px; flex-wrap: wrap; }
+body.ui-v2 .mem-rar span { font-size: 11px; color: var(--text-secondary); padding: 3px 8px; border-radius: var(--rad-pill); background: var(--surface); border: 1px solid var(--border); }
+body.ui-v2 .mem-rar i { font-style: normal; color: var(--rc); margin-right: 4px; }
+body.ui-v2 .mem-rar b { font-family: var(--font-num); color: var(--rc); margin-left: 2px; }
+
+/* Right: live hunt + needs */
+body.ui-v2 .mem-right { display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); min-height: 0; }
+body.ui-v2 .mem-hunt, body.ui-v2 .mem-need { display: flex; flex-direction: column; gap: 8px; }
+body.ui-v2 .mem-right .tile-h { margin: 0; font-size: 13.5px; }
+body.ui-v2 .mem-rank { font: 700 11px var(--font-num); color: var(--hunt); background: var(--hunt-soft); border-radius: 6px; padding: 2px 7px; }
+body.ui-v2 .mem-hstats { display: grid; grid-template-columns: repeat(3, 1fr); }
+body.ui-v2 .mem-hstats b { display: block; font: 800 18px var(--font-num); }
+body.ui-v2 .mem-hstats b.hunt { color: #9D85FF; }
+body.ui-v2 .mem-hstats span { font-size: 10.5px; color: var(--text-muted); }
+body.ui-v2 .mem-bars { flex: 1; min-height: 40px; display: flex; align-items: flex-end; gap: 8px; padding: 8px 10px 0; border-radius: var(--rad-md); background: var(--surface); }
+body.ui-v2 .mem-bars .hb { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+body.ui-v2 .mem-bars .hb i { width: 100%; border-radius: 6px 6px 2px 2px; background: var(--surface-3); }
+body.ui-v2 .mem-bars .hb i.now { background: linear-gradient(180deg, #9D85FF, var(--hunt)); }
+body.ui-v2 .mem-bars .hb span { font-size: 10px; color: var(--text-muted); padding-bottom: 4px; }
+body.ui-v2 .mem-top-card { display: flex; align-items: center; gap: 10px; }
+body.ui-v2 .mem-top-card img { width: 30px; aspect-ratio: 5 / 7; object-fit: contain; }
+body.ui-v2 .mem-top-card .side-h { margin: 0; }
+body.ui-v2 .mem-top-card b { display: block; font-size: 12.5px; }
+body.ui-v2 .mem-top-card .mono { margin-left: auto; font-size: 13px; color: var(--gold); }
+body.ui-v2 .need-list { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
+body.ui-v2 .need-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border); }
+body.ui-v2 .need-row > div { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 12.5px; }
+body.ui-v2 .need-row > div b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .need-row > div span { font: 700 10px var(--font-ui); letter-spacing: .5px; text-transform: uppercase; }
+body.ui-v2 .need-card { width: 30px; aspect-ratio: 5 / 7; padding: 0; border: 0; background: none; cursor: pointer; flex: 0 0 auto; }
+body.ui-v2 .need-card.sm { width: 22px; }
+body.ui-v2 .need-card img { width: 100%; height: 100%; object-fit: contain; display: block; }
+body.ui-v2 .they-need { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+body.ui-v2 .they-need .tn-cards { display: flex; gap: 3px; flex: 1; }
+body.ui-v2 .they-need b { color: var(--text-primary); }
