@@ -51,3 +51,11 @@ test('the post poller is off unless FEATURE_CARD_EFFECT_POSTS is exactly "1"', (
     if (before === undefined) delete process.env.FEATURE_CARD_EFFECT_POSTS; else process.env.FEATURE_CARD_EFFECT_POSTS = before;
   }
 });
+
+test("an effect with the card's own name is named once", () => {
+  const p = effectPost({ ...base, card: 'Patooie!', effect_name: 'Patooie!', effect_desc: "Spits this card onto the target's name. It sticks." });
+  assert.equal((p.content ?? '').match(/Patooie!/g)?.length, 1, p.content);
+  assert.match(p.content ?? '', /on <@20>\. Spits this card/);
+  const r = effectPost({ ...base, outcome: 'reflected', card: 'Patooie!', effect_name: 'Patooie!' });
+  assert.equal((r.content ?? '').match(/Patooie!/g)?.length, 1, r.content);
+});

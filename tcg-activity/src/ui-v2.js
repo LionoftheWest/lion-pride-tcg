@@ -3,7 +3,7 @@
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { fillViewerEffect } from './effects-ui.js';
+import { fillViewerEffect, nameBadge } from './effects-ui.js';
 import { mountBoss } from './boss.js';
 import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
@@ -641,7 +641,7 @@ function paintProfile() {
   const me = ctx.user();
   const cards = mergedCards();
   const spot = spotlightOf(cards, myProfile?.spotlight);
-  box.innerHTML = `<div class="prof-head">${avatarHTML(me?.id, me?.name, 'big', myProfile?.frame)}<div class="prof-name"><h3>${esc(me?.name || '')}</h3>${titleHTML(myProfile?.title)}</div>
+  box.innerHTML = `<div class="prof-head">${avatarHTML(me?.id, me?.name, 'big', myProfile?.frame)}<div class="prof-name"><h3>${nameBadge(me?.id, me?.name || '')}</h3>${titleHTML(myProfile?.title)}</div>
       ${myProfile?.power != null ? `<span class="prof-cp">⚡ ${fmt(myProfile.power)}</span>` : ''}</div>
     ${profileStats(myProfile, cards)}
     <div class="side-h">Spotlight <button class="link-btn" id="spotEdit">Edit</button></div>
@@ -668,7 +668,7 @@ export function paintVoice() {
     const [ico, txt] = STATUS_TEXT[p.status?.kind] || ['•', 'Here'];
     const self = String(p.id) === String(me?.id);
     return `<button class="vc-tile k-${esc(p.status?.kind || 'here')}${self ? ' self' : ''}" data-member="${esc(p.id)}"><div class="vc-head">${avatarHTML(p.id, p.name, 'sm')}
-      <div><b>${esc(p.name)}${self ? ' <i class="you">You</i>' : ''}</b><span class="vc-st">${ico} ${esc(txt)}</span></div></div>
+      <div><b>${nameBadge(p.id, p.name)}${self ? ' <i class="you">You</i>' : ''}</b><span class="vc-st">${ico} ${esc(txt)}</span></div></div>
       ${p.status?.card ? `<div class="vc-card">${esc(p.status.card)}</div>` : ''}</button>`;
   };
   box.innerHTML = `<div class="tile-h"><b>🎧 Live in voice</b><span class="dim">${people.length}</span>${people.length > 1 ? '<span class="live-chip sm">● LIVE</span>' : ''}</div>
@@ -683,10 +683,10 @@ export function paintPulls() {
   const all = ctx.live.pulls || [];
   const pulls = pullsTab.v === 'top' ? all.filter((p) => TOP_RARITY.has(p.rarity)) : all;
   const [first, ...rest] = pulls;
-  const row = (p, i) => `<div class="pl-row" data-pi="${i}"><img src="${p.image_url || ''}" alt="" loading="lazy"><div class="pl-t"><b>${esc(p.player)}</b> pulled <span style="color:var(--r-${p.rarity}, var(--text-primary))">${esc(p.name)}</span></div><span class="mono dim">${ctx.ago(p.at)}</span></div>`;
+  const row = (p, i) => `<div class="pl-row" data-pi="${i}"><img src="${p.image_url || ''}" alt="" loading="lazy"><div class="pl-t"><b>${nameBadge(p.player_id, p.player)}</b> pulled <span style="color:var(--r-${p.rarity}, var(--text-primary))">${esc(p.name)}</span></div><span class="mono dim">${ctx.ago(p.at)}</span></div>`;
   box.innerHTML = `<div class="tile-h"><b><span class="live-dot"></span> Live pulls</b><span class="grow"></span>
       <div class="seg"><button data-t="all" class="${pullsTab.v === 'all' ? 'on' : ''}">All</button><button data-t="top" class="${pullsTab.v === 'top' ? 'on' : ''}">Top pulls</button></div></div>
-    ${first ? `<div class="pl-top r-${first.rarity}" data-pi="0"><img src="${first.image_url || ''}" alt=""><div><span class="pl-k">${esc((ctx.RARITY_LABEL[first.rarity] || first.rarity).toUpperCase())} · ${ctx.ago(first.at)}</span><b>${esc(first.player)} pulled ${esc(first.name)}</b></div></div>` : '<p class="v2-empty">No pulls yet.</p>'}
+    ${first ? `<div class="pl-top r-${first.rarity}" data-pi="0"><img src="${first.image_url || ''}" alt=""><div><span class="pl-k">${esc((ctx.RARITY_LABEL[first.rarity] || first.rarity).toUpperCase())} · ${ctx.ago(first.at)}</span><b>${nameBadge(first.player_id, first.player)} pulled ${esc(first.name)}</b></div></div>` : '<p class="v2-empty">No pulls yet.</p>'}
     <div class="pl-list" id="plList">${rest.slice(0, 8).map((p, i) => row(p, i + 1)).join('')}</div>`;
   box.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => { pullsTab.v = b.dataset.t; paintPulls(); }));
   box.onclick = (e) => { const r = e.target.closest('[data-pi]'); if (r && pulls[Number(r.dataset.pi)]) ctx.openViewer(pulls[Number(r.dataset.pi)]); };
@@ -841,7 +841,7 @@ function paintMember() {
       <div class="mem-top"><button class="v2-chip-btn" id="memBack">← Home</button></div>
       <div class="mem-id">
         ${avatarHTML(p.id, p.name, `huge${pres ? ' live' : ''}`, p.frame)}
-        <h2>${esc(p.name)}</h2>${titleHTML(p.title)}
+        <h2>${nameBadge(p.id, p.name)}</h2>${titleHTML(p.title)}
         <div class="mem-badges">${done.slice(0, 5).map((a) => `<span class="mem-badge" title="${esc(a.name)}">${a.icon}</span>`).join('')}${done.length > 5 ? `<span class="mem-more">+${done.length - 5}</span>` : ''}</div>
       </div>
       ${pres ? `<div class="mem-status">🎧 In voice · ${sIco || ''} ${esc(sTxt || 'Here')}</div>` : ''}
