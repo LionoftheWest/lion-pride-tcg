@@ -6,13 +6,13 @@ import { handleComponent } from './ui/router.js';
 import { startInternalServer } from './internal.js';
 import { startHuntNotifier } from './hunt-notify.js';
 import { startEffectNotifier } from './effect-notify.js';
-import { startDiscordEffects, discordEffectsEnabled, onEffectMessage } from './discord-effects.js';
+import { startDiscordEffects, discordEffectsEnabled, onEffectMessage, tick as effectsTick } from './discord-effects.js';
 import type { Command } from './types.js';
 
 // GuildMessages lets the bot count activity. It does NOT read message text, so
 // the privileged Message Content intent is not needed.
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates],
 });
 
 const commands = new Collection<string, Command>();
@@ -30,6 +30,8 @@ client.once(Events.ClientReady, (ready) => {
 client.on(Events.MessageCreate, onMessageCreate);
 // The reaction storm prank: the bot reacts to the target's next messages.
 client.on(Events.MessageCreate, (m) => { if (discordEffectsEnabled() && !m.author.bot && m.inGuild()) void onEffectMessage(m); });
+// A member joins voice: a waiting voice prank runs, an overdue unmute is lifted (at once).
+client.on(Events.VoiceStateUpdate, (before, after) => { if (discordEffectsEnabled() && !before.channelId && after.channelId) void effectsTick(client); });
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isAutocomplete()) {
