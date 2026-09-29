@@ -12,7 +12,7 @@ import { join } from 'node:path';
 
 // Clear any previous bundle(s) so only the current hash remains.
 for (const f of readdirSync('public')) {
-  if (/^main\..*\.js$/.test(f)) unlinkSync(join('public', f));
+  if (/^(main|chunk)\..*\.js$/.test(f)) unlinkSync(join('public', f));
 }
 
 await esbuild.build({
@@ -22,6 +22,9 @@ await esbuild.build({
   target: 'es2020',
   outdir: 'public',
   entryNames: 'main.[hash]',
+  // The 3D code (three.js, boss.js) is its own chunk, loaded by src/boss-lazy.js.
+  splitting: true,
+  chunkNames: 'chunk.[hash]',
   minify: true,
 });
 

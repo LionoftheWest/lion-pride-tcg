@@ -5,10 +5,10 @@
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { thumb } from './thumb.js';
 import { fillViewerEffect, nameBadge } from './effects-ui.js';
-import { mountBoss } from './boss.js';
+import { mountBoss } from './boss-lazy.js';
 import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
-import { modelFor as modelKey } from './boss-model.js';
+import { modelFor as modelKey } from './boss-models.js';
 const THUMBS = '/api/img/storage/v1/object/public/card-art/boss/thumbs';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }

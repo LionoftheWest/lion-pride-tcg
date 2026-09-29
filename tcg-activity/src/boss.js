@@ -8,6 +8,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { createAttackFX } from './attack-fx.js';
+import { adaptiveQuality, shadowsOff } from './quality.js';
 import { clipSetFor, mountVideoBoss } from './boss-video.js';
 import { modelFor, mountModelBoss } from './boss-model.js';
 
@@ -705,9 +706,18 @@ export function mountBoss(canvas, seedStr, tier) {
   let ro = null;
   try { ro = new ResizeObserver(size); ro.observe(canvas); } catch (e) { /* older webviews */ }
 
+  // A slow machine steps down: shadows off, 1x resolution, no bloom, 0.75x (quality.js).
+  let bloom = !!composer;
+  const quality = adaptiveQuality(canvas, [
+    () => shadowsOff(renderer, scene),
+    () => { renderer.setPixelRatio(1); if (composer) composer.setPixelRatio(1); size(); },
+    () => { bloom = false; },
+    () => { renderer.setPixelRatio(0.75); size(); },
+  ]);
   function frame() {
     if (!running) return;
     const now = performance.now(), t = (now - t0) / 1000, g = built.group;
+    quality(now);
     g.rotation.set(0, Math.sin(t * 0.5) * 0.16, 0);
     g.position.set(0, Math.sin(t * 1.3) * 0.06, 0);
     const s = 1 + Math.sin(t * 1.7) * 0.02, bb = built.bodyBase;
@@ -725,7 +735,7 @@ export function mountBoss(canvas, seedStr, tier) {
     if (defeatAt > 0) { const k = Math.min((now - defeatAt) / 1100, 1); g.rotation.x = 1.1 * k; g.position.y = Math.sin(t * 1.3) * 0.06 - 1.4 * k * k; built.glowMat.emissiveIntensity = baseEmis * (1 - k); }
     const dt = Math.min(0.05, (now - lastNow) / 1000); lastNow = now;
     fx.update(dt, t);
-    if (composer) composer.render(); else renderer.render(scene, camera);
+    if (bloom) composer.render(); else renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
   }
   raf = requestAnimationFrame(frame);

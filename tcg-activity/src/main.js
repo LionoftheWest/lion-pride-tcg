@@ -13,9 +13,9 @@
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 installImgFallback();
-import { mountBoss } from './boss.js';
+import { mountBoss, preloadBoss } from './boss-lazy.js';
 import { BOSS_LIST, seedForBoss, thumbFor, THUMB_BASE } from './boss-meta.js';
-import { modelFor } from './boss-model.js';
+import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled } from './effects-ui.js';
@@ -298,6 +298,7 @@ async function main() {
   }
   refreshNotifBadge();
   setInterval(refreshNotifBadge, 45000);
+  setTimeout(() => preloadBoss().catch(() => {}), 3000); // the 3D code, in the background (boss-lazy.js)
 
   connectStreams();
   renderFeedSidebar();
