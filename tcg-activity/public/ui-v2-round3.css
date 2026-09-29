@@ -75,6 +75,8 @@ body.ui-v2 .rest-stage { position: absolute; inset: 0; z-index: 0;
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22%, #000 100%);
   mask-image: linear-gradient(to right, transparent 0, #000 22%, #000 100%); }
 body.ui-v2 .hero-rest-side:has(.rest-stage) { justify-content: flex-end; align-items: flex-end; }
+/* A narrow card: a shorter left fade (the boss is centred there; no arm in the fade). */
+@media (max-width: 1400px) { body.ui-v2 .rest-stage { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 100%); mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 100%); } }
 body.ui-v2 .hero-rest-side .rest-top { position: relative; z-index: 1; padding: 10px 12px; border-radius: 14px; background: rgba(12, 10, 22, .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 body.ui-v2 .rest-stage canvas { width: 100%; height: 100%; display: block; background: transparent; }
 body.ui-v2 .rest-top { display: flex; flex-direction: column; gap: 6px; min-width: 170px; }

@@ -108,7 +108,11 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
       if (chest) chest.getWorldPosition(cp); else cp.set(hp.x, hp.y - bodyH * 0.3, hp.z);
       const viewH = Math.max(0.3, (tp.y - cp.y) * 1.3); // the head and the upper chest
       const cy = tp.y + viewH * 0.2 - viewH / 2; // room above the head (the idle lifts it)
-      portraitView = { viewH, cy, z: hp.z };
+      // The arm span (the elbows) + a margin: the whole bust must fit across a narrow card.
+      let xmin = Infinity, xmax = -Infinity;
+      m.traverse((o) => { if (o.isBone && /forearm|elbow/i.test(o.name) && !/twist/i.test(o.name)) { o.getWorldPosition(wp); xmin = Math.min(xmin, wp.x); xmax = Math.max(xmax, wp.x); } });
+      const span = Number.isFinite(xmin) ? (xmax - xmin) + viewH * 0.45 : viewH * 1.1;
+      portraitView = { viewH, cy, z: hp.z, span, mx: Number.isFinite(xmin) ? (xmin + xmax) / 2 : hp.x };
       portraitCamera();
       canvas.dataset.portrait = JSON.stringify({ head: head ? head.name : null, top: top ? top.name : null, y: +hp.y.toFixed(2), topY: +tp.y.toFixed(2), chest: chest ? chest.name : null, viewH: +viewH.toFixed(2) });
     }
@@ -157,15 +161,19 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
   function portraitCamera() {
     if (!portraitView) return;
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    // A narrow card shows 35% more (a smaller head), so the standings do not cover the face.
+    // Fit the head + chest by height and the whole bust (both arms) by width (Nathan: the
+    // right arm was cut in a narrow card). A narrow card centres the boss.
     const narrow = camera.aspect < 1.6;
-    const vh = portraitView.viewH * (narrow ? 1.35 : 1);
-    const dist = Math.max((vh / 2) / t, (vh * 0.8 / 2) / (t * camera.aspect));
-    // The boss at 38% of the width (30% in a narrow card), clear of the standings on the right.
-    const at = narrow ? 0.3 : 0.38;
-    const x = (0.5 - at) * 2 * dist * t * camera.aspect;
-    const cy = portraitView.cy - (vh - portraitView.viewH) / 2;
+    const at = narrow ? 0.5 : 0.38;
+    const vhFit = portraitView.viewH;
+    const distH = (vhFit / 2) / t;
+    const distW = (portraitView.span * 1.08) / (2 * t * camera.aspect * Math.min(at, 1 - at) * 2);
+    const dist = Math.max(distH, distW);
+    const vh = 2 * dist * t; // the height actually shown
+    const x = portraitView.mx + (0.5 - at) * 2 * dist * t * camera.aspect;
+    const cy = portraitView.cy - (vh - portraitView.viewH) / 2; // the head top stays in place
     camera.position.set(x, cy, portraitView.z + dist); camera.lookAt(x, cy, portraitView.z);
+    canvas.dataset.fit = distW > distH ? 'width' : 'height';
   }
   function size() {
     const w = canvas.clientWidth || 300, h = canvas.clientHeight || 220;
