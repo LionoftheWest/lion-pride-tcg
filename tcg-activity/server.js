@@ -636,7 +636,7 @@ app.get('/api/hunt', async (req, res) => {
     const sc = statCards?.[String(c?.id)];
     const power = sc ? sc.cp : cardPower(c?.rarity, row.ascension, c?.subject?.cp_mod);
     const st = hpMap.get(c?.id);
-    const maxHp = st?.max_hp ?? (sc ? sc.hp : Math.max(30, Math.round(power * 1.8)));
+    const maxHp = st?.max_hp ?? (sc ? sc.hp : Math.max(60, Math.round(power * 1.8))); // = card_max_hp (floor 60)
     return {
       id: c?.id, name: c?.name, rarity: c?.rarity, image_url: toProxyImg(c?.image_url),
       ascension: row.ascension || 0, power, critAdd: sc?.crit || 0,

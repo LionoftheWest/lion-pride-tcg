@@ -82,7 +82,7 @@ function squadOf(cards, weakSet, resistSet) {
   return cards.filter((c) => ATTACKERS.has(c.type)).sort((a, b) => score(b) - score(a)).slice(0, CAP);
 }
 
-const cardMaxHp = (cp) => Math.max(30, Math.round(cp * 1.8));
+const cardMaxHp = (cp) => Math.max(60, Math.round(cp * 1.8));
 function fightUntilDowned(cp, mult, wm, counterMult) {
   let hp = cardMaxHp(cp), dmg = 0, guard = 0;
   while (hp > 0 && guard < 300) {

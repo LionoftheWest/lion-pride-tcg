@@ -28,7 +28,7 @@ const U = (a, b) => a + Math.random() * (b - a);
 const FLAT = !process.env.PCT;
 const ATK = JSON.parse(process.env.ATK || '{"Normal":58,"Heroic":73,"Mythic":93}');
 const COEF = { strike: 1.0, drain: 0.8, cataclysm: 0.75, stun: 0.45, slam: 0.35, burn: 0.4 };
-const maxHp = (cp) => Math.max(30, Math.round(cp * 1.8));
+const maxHp = (cp) => Math.max(60, Math.round(cp * 1.8));
 const pick = (n) => (process.env.PASSIVES ? process.env.PASSIVES.split(',') : [...PASSIVES].sort(() => Math.random() - 0.5).slice(0, n));
 const DMG = Number(process.env.DMG || 1); // calibration: real damage per attack / simulated
 
