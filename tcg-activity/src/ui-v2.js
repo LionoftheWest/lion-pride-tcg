@@ -48,7 +48,7 @@ export function mergedCards(ownedList = ctx.cache.collection?.cards || []) {
     return mine ? { ...c, ...mine, owned: true, locked: false, num: n } : { ...c, owned: false, locked: true, quantity: 0, ascension: 0, num: n };
   });
 }
-const cardHp = (power) => Math.max(30, Math.round((power || 0) * 1.8)); // = /api/hunt max_hp
+const cardHp = (power) => Math.max(60, Math.round((power || 0) * 1.8)); // = /api/hunt max_hp (card_max_hp floor 60)
 const numLabel = (n) => `#${String(n).padStart(3, '0')}`;
 function elemOf(c) { const e = cardElement(c.tags); return e ? { key: e, ...ELEMENTS[e] } : null; }
 

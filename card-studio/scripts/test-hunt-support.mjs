@@ -15,8 +15,8 @@ begin
   insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at) values ('Test Boss', 'Normal', '[]', '[]', 5000, 5000, now() + interval '1 day') returning id into h;
   select c.id into heal from cards c join subjects s on s.id=c.subject_id where s.key='zeoic-s-redstone-machine' and c.rarity::text='normal' limit 1;
   select c.id into shl from cards c join subjects s on s.id=c.subject_id where s.ability->>'effect'='shield' and c.rarity::text='normal' limit 1;
-  select c.id into tgt from cards c join subjects s on s.id=c.subject_id where s.tags->>'class'='attacker' and not ('origin:pokemon' = any(s.tag_slugs)) and c.rarity::text='normal' and card_max_hp(card_power('normal',0,s.cp_mod))=30 limit 1;
-  select c.id into pk from cards c join subjects s on s.id=c.subject_id where s.tags->>'class'='attacker' and 'origin:pokemon' = any(s.tag_slugs) and c.rarity::text='normal' and card_max_hp(card_power('normal',0,s.cp_mod))=30 limit 1;
+  select c.id into tgt from cards c join subjects s on s.id=c.subject_id where s.tags->>'class'='attacker' and not ('origin:pokemon' = any(s.tag_slugs)) and c.rarity::text='normal' and card_max_hp(card_power('normal',0,s.cp_mod))=card_max_hp(0) limit 1;
+  select c.id into pk from cards c join subjects s on s.id=c.subject_id where s.tags->>'class'='attacker' and 'origin:pokemon' = any(s.tag_slugs) and c.rarity::text='normal' and card_max_hp(card_power('normal',0,s.cp_mod))=card_max_hp(0) limit 1;
   insert into players (id, username) values ('tst_heal','tst heal');
   insert into player_cards (player_id, card_id, quantity) values ('tst_heal',heal,1),('tst_heal',shl,1),('tst_heal',tgt,1),('tst_heal',pk,1);
   -- heal a 30-HP card at 5 HP: 30% of 30 = 9 -> 14
