@@ -19,7 +19,7 @@ import { setFlair } from './flair.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled } from './effects-ui.js';
+import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2 } from './ui-v2-social.js';
@@ -854,8 +854,10 @@ async function openPacks(count) {
       // so suppress that echo briefly to avoid opening the takeover twice.
       suppressOpenUntil = Date.now() + 3000;
       revealed = true;
+      const prank = effectsEnabled() ? packPrank() : null; // a jinx / fake gold / photobomb / slow motion on me
       if (uiV2 && (data.packs || []).length > 1) showMultiReveal(openDeps(), data.packs);
       else showReveal({ user: 'You', cards: data.cards });
+      if (prank) runPackPrank(prank, el('stage'));
     }
   } catch {
     note('Could not open right now.');

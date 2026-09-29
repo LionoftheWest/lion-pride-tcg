@@ -462,6 +462,15 @@
       "effect": "execute",
       "amount": 0.4,
       "threshold": 0.3
+    },
+    "effect": {
+      "primitive": "mustache",
+      "name": "Grown-Up Stache",
+      "desc": "Draws a mustache on the target's spotlight cards for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12
     }
   },
   {
@@ -700,6 +709,15 @@
       "effect": "lifesteal",
       "amount": 0.15,
       "target": "self"
+    },
+    "effect": {
+      "primitive": "swap_showcase",
+      "name": "PC Box Swap",
+      "desc": "The target's spotlight shows a random Normal card for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12
     }
   },
   {
@@ -1334,6 +1352,12 @@
       "effect": "lifesteal",
       "amount": 0.2,
       "target": "self"
+    },
+    "effect": {
+      "primitive": "photobomb",
+      "name": "Twinning",
+      "desc": "This card photobombs the target's next pack.",
+      "cooldown_h": 12
     }
   },
   {
@@ -1409,6 +1433,15 @@
       "affinity": "trait:melee",
       "cooldown": 3,
       "duration": 2
+    },
+    "effect": {
+      "primitive": "decoy",
+      "name": "Scale Model",
+      "desc": "The next prank on the target hits a cardboard cutout instead.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 18
     }
   },
   {
@@ -1457,6 +1490,15 @@
       "affinity": "origin:pokemon",
       "cooldown": 2,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "decoy",
+      "name": "Dummy Bot",
+      "desc": "The next prank on the target hits a cardboard cutout instead.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 18
     }
   },
   {
@@ -1496,6 +1538,15 @@
       "affinity": "trait:metal",
       "cooldown": 3,
       "duration": 2
+    },
+    "effect": {
+      "primitive": "redirect",
+      "name": "Wrong Order",
+      "desc": "The next prank on the target goes to a random member instead.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 18
     }
   },
   {
@@ -1616,6 +1667,12 @@
       "effect": "execute",
       "amount": 0.35,
       "threshold": 0.25
+    },
+    "effect": {
+      "primitive": "fake_gold",
+      "name": "Maybe in Smash 6",
+      "desc": "The target's next pack flashes gold... then it doesn't.",
+      "cooldown_h": 12
     }
   },
   {
@@ -1737,6 +1794,12 @@
       "kind": "attack",
       "name": "Haunting Dive",
       "effect": "pierce"
+    },
+    "effect": {
+      "primitive": "jinx",
+      "name": "Haunted Pack",
+      "desc": "The target's next pack opens cursed.",
+      "cooldown_h": 12
     }
   },
   {
@@ -1919,6 +1982,12 @@
       "name": "Too Many Buttons",
       "effect": "focus",
       "amount": 0.12
+    },
+    "effect": {
+      "primitive": "slow_motion",
+      "name": "Too Many Buttons",
+      "desc": "The target's next pack opens in slow motion.",
+      "cooldown_h": 12
     }
   },
   {
@@ -1996,6 +2065,12 @@
       "name": "Triple Peck",
       "effect": "rampage",
       "amount": 0.2
+    },
+    "effect": {
+      "primitive": "slow_motion",
+      "name": "Still Loading",
+      "desc": "The target's next pack opens in slow motion.",
+      "cooldown_h": 12
     }
   },
   {
@@ -3047,6 +3122,15 @@
       "affinity": "origin:smash",
       "cooldown": 3,
       "duration": 2
+    },
+    "effect": {
+      "primitive": "redirect",
+      "name": "Pass the Blame",
+      "desc": "The next prank on the target goes to a random member instead.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 18
     }
   },
   {
@@ -3388,6 +3472,15 @@
       "affinity": "trait:cute",
       "cooldown": 3,
       "duration": 2
+    },
+    "effect": {
+      "primitive": "delay",
+      "name": "Coming Soon",
+      "desc": "The next prank on the target lands 1 hour later.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 18
     }
   },
   {
@@ -3644,6 +3737,15 @@
       "affinity": "trait:fire",
       "cooldown": 2,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "delay",
+      "name": "Still Digging",
+      "desc": "The next prank on the target lands 1 hour later.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 18
     }
   },
   {
@@ -5487,6 +5589,15 @@
       "kind": "attack",
       "name": "Flame Choke",
       "effect": "pierce"
+    },
+    "effect": {
+      "primitive": "mustache",
+      "name": "Gerudo Stache",
+      "desc": "Draws a mustache on the target's spotlight cards for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12
     }
   },
   {

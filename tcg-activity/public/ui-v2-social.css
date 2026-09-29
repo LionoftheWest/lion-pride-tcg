@@ -234,3 +234,18 @@ body.ui-v2.fx-googly :is(.v2-cell .v2-card:not(.locked), .p-art, .spot-card, .mr
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .6)); animation: googly 1.4s ease-in-out infinite alternate; }
 body.ui-v2.fx-fog :is(.v2-cell .v2-card, .p-art, .spot-card, .mr-front, .mem-mini-card, .pl-row, .pl-top, .se-slot, .tr-slot) img { filter: blur(9px) grayscale(1); }
 body.ui-v2.fx-fog :is(.v2-cap, .mr-newtag) { visibility: hidden; }
+
+/* Batch 3 pranks (effects_batch3.sql). */
+.spot-card { position: relative; }
+.fx-stache { position: absolute; left: 22%; right: 22%; top: 38%; width: 56%; fill: #1b120c; filter: drop-shadow(0 1px 1px rgba(255,255,255,.35)); pointer-events: none; }
+#stage.fx-jinx { filter: hue-rotate(250deg) saturate(.6) brightness(.8) contrast(1.2); transform: rotate(180deg); transition: transform .8s ease; }
+.fx-fakegold, .fx-photobomb { position: absolute; inset: 0; z-index: 60; display: grid; place-items: center; pointer-events: none; }
+.fx-fakegold { background: radial-gradient(circle, rgba(255, 215, 110, .95), rgba(255, 170, 40, .35) 45%, transparent 70%); animation: fxFake 2.6s ease forwards; }
+.fx-fakegold b { font-family: 'Bricolage Grotesque', sans-serif; font-size: 72px; color: #fff6cf; text-shadow: 0 0 30px #ffb400; }
+.fx-fakegold i { position: absolute; top: 62%; font-style: italic; font-size: 26px; color: #fff; opacity: 0; animation: fxPsych 2.6s ease forwards; }
+@keyframes fxFake { 0% { opacity: 0; } 12% { opacity: 1; } 60% { opacity: 1; filter: none; } 100% { opacity: 0; filter: grayscale(1); } }
+@keyframes fxPsych { 0%, 55% { opacity: 0; } 70%, 90% { opacity: 1; } 100% { opacity: 0; } }
+.fx-photobomb { background: rgba(0, 0, 0, .55); animation: fxBomb 1.9s ease forwards; }
+.fx-photobomb img { max-height: 70%; border-radius: 14px; transform: rotate(-8deg); box-shadow: 0 20px 60px rgba(0,0,0,.7); }
+.fx-photobomb b { position: absolute; top: 12%; font-size: 64px; }
+@keyframes fxBomb { 0% { opacity: 0; transform: scale(1.3); } 15% { opacity: 1; transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }

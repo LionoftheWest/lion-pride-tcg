@@ -42,6 +42,12 @@ export function effectPost(p: PlayRow): MessageCreateOptions {
     content = `🛡️ ${who} played ${card} on <@${p.aimed_at}>... but it was blocked!`;
   } else if (p.outcome === 'reflected') {
     content = `🪞 ${who} played ${card} on <@${p.aimed_at}>... and it bounced back! ${who} got ${name ?? 'it'}.${desc}`;
+  } else if (p.outcome === 'decoyed') {
+    content = `🎯 ${who} played ${card} on <@${p.aimed_at}>... Direct hit! 🪧 On a cardboard cutout.`;
+  } else if (p.outcome === 'redirected') {
+    content = `🔀 ${who} played ${card} on <@${p.aimed_at}>... but it went to <@${p.target_id}>${name ? `: ${name}` : ''}!`;
+  } else if (p.outcome === 'delayed') {
+    content = `⏳ ${who} played ${card} on <@${p.target_id}>... it lands in 1 hour.`;
   } else if (p.primitive === 'hype') {
     content = `🔥🔥🔥 ${who} is HYPING <@${p.target_id}> with ${card}${name ? `: ${name}` : ''}! 🔥🔥🔥`;
   } else {

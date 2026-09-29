@@ -40,3 +40,10 @@ describe('discord effects: the pure rules', () => {
     assert.match(String(p.content), /HYPING <@42> with \*\*The Dad Gaming\*\*: \*\*TDG Crew\*\*/);
   });
 });
+
+describe('the play post for the batch 3 counters', () => {
+  const base = { id: 1, player_id: 'a', target_id: '42', aimed_at: '42', kind: 'prank', sender: 'Nathan', card: 'Lazy SD', effect_name: 'Self Destruct' };
+  it('decoyed: a direct hit on a cutout', () => assert.match(String(effectPost({ ...base, outcome: 'decoyed' }).content), /Direct hit! 🪧/));
+  it('redirected: names the member it went to', () => assert.match(String(effectPost({ ...base, target_id: '77', outcome: 'redirected' }).content), /on <@42>\.\.\. but it went to <@77>/));
+  it('delayed: lands in 1 hour', () => assert.match(String(effectPost({ ...base, outcome: 'delayed' }).content), /lands in 1 hour/));
+});
