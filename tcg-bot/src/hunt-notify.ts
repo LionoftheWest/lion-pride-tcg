@@ -97,7 +97,7 @@ async function drain(client: Client): Promise<void> {
       .limit(BATCH);
     for (const ev of events ?? []) {
       const post = huntPost(ev as never);
-      if (post) await announce(client, post);
+      if (post) await announce(client, post, 'raid');
       await supabase.from('hunt_events').update({ posted_at: new Date().toISOString() }).eq('id', ev.id);
       await new Promise((r) => setTimeout(r, 1200)); // pace posts under the channel rate limit
     }

@@ -254,3 +254,13 @@ body.ui-v2.fx-fog :is(.v2-cap, .mr-newtag) { visibility: hidden; }
 .eff-banner .eff-colors { display: flex; width: 100%; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 .eff-banner .eff-color { width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); background: var(--c); cursor: pointer; padding: 0; }
 .eff-banner .eff-color:hover { transform: scale(1.15); }
+
+/* The bell > Settings: the Discord ping switches (notify_prefs.sql). */
+.ps-list { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px 8px; }
+.ps-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface, #181824); cursor: pointer; font-weight: 600; }
+.ps-row.off { opacity: .45; cursor: default; }
+.ps-row input { position: absolute; opacity: 0; pointer-events: none; }
+.ps-sw { position: relative; width: 38px; height: 22px; border-radius: 99px; background: #3a3a4d; flex: none; transition: background .15s; }
+.ps-sw::after { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.ps-row input:checked + .ps-sw { background: var(--gold, #F4B73C); }
+.ps-row input:checked + .ps-sw::after { transform: translateX(16px); }

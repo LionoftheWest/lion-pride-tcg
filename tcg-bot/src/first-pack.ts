@@ -26,7 +26,7 @@ export async function maybeFirstPackPing(client: Client, playerId: string): Prom
   if (!firstPackPingEnabled()) return false;
   if (!(await claimFirstPackPing(playerId))) return false;
   const balance = await getPackBalance(playerId);
-  if (await announce(client, firstPackMessage(playerId, balance))) return true;
+  if (await announce(client, firstPackMessage(playerId, balance), 'packs')) return true;
   // The post failed (no channel or no permission): free the claim so a later earn retries.
   await releaseFirstPackPing(playerId);
   return false;

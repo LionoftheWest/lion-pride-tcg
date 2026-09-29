@@ -262,7 +262,7 @@ export async function tick(client: Client): Promise<void> {
       let sent = Number(row.options.sent ?? 0);
       const start = new Date(row.created_at).getTime();
       while (sent < times.length && Date.now() >= start + times[sent]! * 1000) {
-        await announce(client, `🔔 <@${row.target_id}> — **${row.options.card ?? 'a card'}** (${sent + 1}/${times.length})`);
+        await announce(client, `🔔 <@${row.target_id}> — **${row.options.card ?? 'a card'}** (${sent + 1}/${times.length})`, 'plays'); // muted = no ping
         sent += 1;
       }
       await patchRow(sb, row.id, sent >= times.length ? { status: 'done', options: { ...row.options, sent } } : { options: { ...row.options, sent } });
