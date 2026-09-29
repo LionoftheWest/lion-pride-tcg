@@ -14,6 +14,13 @@ body.ui-v2 .sq-n b { color: var(--gold); font-size: 17px; }
 body.ui-v2 .sq-boss { display: flex; align-items: center; gap: 10px; padding: 6px 8px; flex: 0 0 auto; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border);
   color: var(--text-primary); text-align: left; cursor: pointer; font: inherit; }
 body.ui-v2 .sq-boss:hover { border-color: var(--hunt); }
+/* The live boss head fills the box (no thumbnail); the left side fades under the name. */
+body.ui-v2 .sq-boss { position: relative; overflow: hidden; min-height: 50px; }
+body.ui-v2 .sq-boss-live { position: absolute; inset: 0; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, transparent 30%, #000 70%);
+  mask-image: linear-gradient(to right, transparent 0, transparent 30%, #000 70%); }
+body.ui-v2 .sq-boss-live canvas { width: 100%; height: 100%; display: block; }
+body.ui-v2 .sq-boss .sq-boss-t { position: relative; z-index: 1; }
 body.ui-v2 .sq-boss img, body.ui-v2 .sq-boss-ph { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 8px; object-fit: cover; background: var(--hunt-soft); display: grid; place-items: center; }
 body.ui-v2 .sq-boss-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 body.ui-v2 .sq-boss-t b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

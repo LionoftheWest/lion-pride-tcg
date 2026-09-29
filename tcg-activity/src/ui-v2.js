@@ -4,11 +4,13 @@
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { thumb } from './thumb.js';
+import { flairHTML } from './flair.js';
 import { fillViewerEffect, nameBadge } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
 import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
+import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -70,7 +72,7 @@ export function tileHTML(c, idx, selected) {
   }
   const el = elemOf(c);
   return `<div class="v2-cell${selected ? ' sel' : ''}" data-idx="${idx}">
-    <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
+    <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${flairHTML(c.ascension)}</div>
     <div class="v2-cap">${el ? `<span class="cap-el" title="${esc(el.name)}">${elIcon(el.key)}</span>` : ''}<span class="cap-pow">⚡ ${c.power ?? ''}</span>
       ${c.ascension > 0 ? `<span class="cap-stars">${'★'.repeat(c.ascension)}</span>` : ''}${c.quantity > 1 ? `<span class="cap-qty">×${c.quantity}</span>` : ''}</div>
   </div>`;
@@ -177,7 +179,11 @@ function toast(text) {
 
 // ---- Collection ------------------------------------------------------------
 
-const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0 };
+const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0, boss: 0 };
+// The Raid Bosses tab: the rigged model bosses (the ones the weekly hunt spawns).
+const RAID_BOSSES = BOSS_LIST.filter((b) => modelKey(`arch:${b.arch}`));
+let galBoss = null; // the live boss in the Raid Bosses panel
+function disposeGalBoss() { if (galBoss) { try { galBoss.dispose(); } catch { /* ignore */ } galBoss = null; } }
 const TYPES = [['character', 'Character'], ['creature', 'Creature'], ['moment', 'Moment'], ['item', 'Item'], ['place', 'Place']];
 const GAMES = [['smash', 'Smash Bros'], ['pokemon', 'Pokemon'], ['party', 'Party'], ['minecraft', 'Minecraft'], ['meme', 'Memes'], ['community', 'Community']];
 const hasFilters = () => col.rarity !== 'all' || col.element || col.type || col.game || col.own !== 'all' || col.q.trim();
@@ -185,6 +191,7 @@ let colItems = [];
 
 export async function renderCollectionV2() {
   const { el } = ctx;
+  disposeGalBoss();
   if (!ctx.cache.catalog) el('main').innerHTML = '<div class="v2-loading">Loading…</div>';
   await Promise.all([ensureCatalog(), loadMyProfile()]);
   if (ctx.currentView() !== 'collection') return;
@@ -213,9 +220,14 @@ export async function renderCollectionV2() {
   const ownSeg = [['all', 'All'], ['owned', 'Owned'], ['missing', 'Missing']].map(([v, l]) => `<button data-own="${v}" class="${col.own === v ? 'on' : ''}">${l}</button>`).join('');
 
   const tabs = `<div class="seg col-tabs"><button data-tab="cards" class="${col.view === 'cards' ? 'on' : ''}">Cards</button>
-    <button data-tab="ach" class="${col.view !== 'cards' ? 'on' : ''}">Achievements <i>${achDone}/${achs.length}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button></div>`;
+    <button data-tab="ach" class="${col.view === 'ach' || col.view === 'achDetail' ? 'on' : ''}">Achievements <i>${achDone}/${achs.length}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button>
+    <button data-tab="bosses" class="${col.view === 'bosses' ? 'on' : ''}">Raid Bosses <i>${RAID_BOSSES.length}</i></button></div>`;
   let center;
-  if (col.view === 'ach') {
+  if (col.view === 'bosses') {
+    center = `<div class="v2-col-head">${tabs}<span class="grow"></span></div>
+      <div class="v2-boss-grid" id="bossGrid">${RAID_BOSSES.map((b, i) => `<button class="boss-cell${i === col.boss ? ' on' : ''}" data-bi="${i}">
+        <img src="${thumbFor(b)}" alt="" loading="lazy"><span>${esc(b.title)}</span></button>`).join('')}</div>`;
+  } else if (col.view === 'ach') {
     center = `<div class="v2-col-head">${tabs}<span class="grow"></span>${ready ? `<span class="ach-ready">🎁 ${ready} to redeem</span><button class="v2-btn gold ach-all" id="achAll">Redeem All</button>` : ''}<div class="v2-pager" id="achPager"></div></div>
       <div class="v2-ach-grid" id="achGrid"></div>`;
   } else if (col.view === 'achDetail') {
@@ -231,7 +243,7 @@ export async function renderCollectionV2() {
   }
 
   // The pure Achievements view shows only achievements (no card panel).
-  el('main').innerHTML = `<div class="v2-collection${col.view === 'ach' ? ' ach-mode' : ''}">
+  el('main').innerHTML = `<div class="v2-collection${col.view === 'ach' ? ' ach-mode' : ''}${col.view === 'bosses' ? ' boss-mode' : ''}">
     <aside class="v2-side filters">
       <div class="f-head"><b>Filters</b>${hasFilters() ? '<button class="link-btn" id="colClear">Clear all</button>' : ''}</div>
       <input class="v2-search" id="colSearch" placeholder="Search cards, tags…" value="${esc(col.q)}">
@@ -269,12 +281,19 @@ export async function renderCollectionV2() {
   el('main').querySelector('.col-tabs')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-tab]');
     if (!b) return;
-    col.view = b.dataset.tab === 'ach' ? 'ach' : 'cards';
+    col.view = b.dataset.tab === 'ach' ? 'ach' : b.dataset.tab === 'bosses' ? 'bosses' : 'cards';
     renderCollectionV2();
   });
   el('achAll')?.addEventListener('click', () => redeemAll(el('achAll')));
   // An achievement opens its detail (the cards it needs); Redeem pays it.
   el('colCenter').addEventListener('click', (e) => {
+    const bc = e.target.closest('[data-bi]');
+    if (bc) {
+      col.boss = Number(bc.dataset.bi);
+      el('bossGrid').querySelectorAll('.boss-cell').forEach((x) => x.classList.toggle('on', x === bc));
+      paintBossPanel();
+      return;
+    }
     const r = e.target.closest('[data-redeem]');
     if (r) { e.stopPropagation(); redeem(r.dataset.redeem, r); return; }
     const b = e.target.closest('[data-ach]');
@@ -288,6 +307,7 @@ export async function renderCollectionV2() {
   const order = (a) => (a.done ? (claimedSet().has(a.key) ? 2 : 0) : 1);
   if (col.view === 'ach') paintAch([...achs].sort((a, b) => order(a) - order(b)));
   else if (col.view === 'achDetail') paintAchDetail(achs.find((x) => x.key === col.achKey));
+  else if (col.view === 'bosses') { paintBossPanel(); return; }
   else paintColGrid();
   const selCard = cards.find((c) => c.id === col.sel) || inSeason.find((c) => c.owned) || inSeason[0];
   if (col.view !== 'ach') paintPanel(selCard);
@@ -432,7 +452,7 @@ function paintPanel(c) {
   const canAsc = !c.locked && ctx.features().ascension && a < 5 && c.can_ascend;
   const owned = c.locked ? 'Not in your collection yet' : `${c.quantity} ${c.quantity === 1 ? 'copy' : 'copies'}`;
   box.innerHTML = `<div class="p-top">
-      <div class="p-art${c.locked ? ' locked' : ''}" id="pArt">${!c.locked && c.image_url ? `<img src="${c.image_url}" alt="">` : '<span class="lk">🔒</span>'}</div>
+      <div class="p-art${c.locked ? ' locked' : ''}" id="pArt">${!c.locked && c.image_url ? `<img src="${c.image_url}" alt="">${flairHTML(a)}` : '<span class="lk">🔒</span>'}</div>
       <div class="p-id">
         <span class="p-num">${numLabel(c.num)} · ${esc(c.season || 'Season 1').toUpperCase()}</span>
         <h3>${esc(c.name)}</h3>
@@ -464,12 +484,28 @@ function paintPanel(c) {
   fillViewerEffect(c, 'colEffect').then(() => fitPanel(box));
 }
 
+// The Raid Bosses panel: the selected boss, alive (idle + an occasional flex or taunt),
+// with its story and the model credit.
+function paintBossPanel() {
+  const box = ctx.el('colPanel');
+  const b = RAID_BOSSES[col.boss] || RAID_BOSSES[0];
+  if (!box || !b) return;
+  disposeGalBoss();
+  box.innerHTML = `<div class="boss-stage"><canvas id="galBossCanvas"></canvas></div>
+    <div class="boss-info"><span class="side-h">Raid Boss</span><h3>${esc(b.title)}</h3>
+      <p class="p-lore">${esc(b.blurb || '')}</p>${b.credit ? `<div class="p-credit">${esc(b.credit)}</div>` : ''}</div>`;
+  try { galBoss = mountBoss(ctx.el('galBossCanvas'), seedForBoss(b), 'Mythic', { portrait: true, portraitOpts: { at: 0.5 } }); } catch { galBoss = null; }
+}
+
 async function ascend(c) {
   const btn = ctx.el('pAscend');
   if (btn) { btn.disabled = true; btn.textContent = 'Ascending…'; }
   let r = null;
   try { r = await ctx.apiPost('/api/ascend', { cardId: c.id }); } catch { r = null; }
   if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } return; }
+  const after = { ...c, ascension: r.ascension, quantity: r.quantity, power: r.power, next_cost: r.next_cost,
+    can_ascend: r.next_cost != null && r.quantity >= 1 + r.next_cost };
+  ctx.celebrateAscend(c, after);
   await ctx.refreshOwned();
   renderCollectionV2();
 }
@@ -538,6 +574,7 @@ let heroBoss = null;
 const pullsTab = { v: 'all' };
 
 export function disposeHomeV2() {
+  disposeGalBoss();
   if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
 }
 
