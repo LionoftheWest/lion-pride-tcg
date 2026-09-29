@@ -625,10 +625,10 @@ function buildBrute(seedStr){
 }
 
 // Mount a boss into a <canvas>. Returns { flinch, counter, enrage, stun, defeat, dispose }.
-export function mountBoss(canvas, seedStr, tier) {
+export function mountBoss(canvas, seedStr, tier, opts = {}) {
   // A real rigged model boss (boss-model.js) comes first, when the name maps to one.
   const mk = modelFor(seedStr);
-  if (mk) { try { return mountModelBoss(canvas, mk, tier); } catch (e) { /* fall back */ } }
+  if (mk) { try { return mountModelBoss(canvas, mk, tier, opts); } catch (e) { /* fall back */ } }
   // Hybrid: if this archetype has a pre-rendered clip set, play the video boss
   // (with the attack-FX overlay). Otherwise fall through to the live WebGL boss.
   const clip = clipSetFor(archetypeOf(seedStr));

@@ -25,7 +25,10 @@ const CLIP_FOR = { flinch: 'hit', counter: 'strike', slam: 'slam', strike: 'stri
 // stunned; "stunhit" = the boss stuns a card).
 const MOVE = { slam: 'slam', strike: 'strike', curse: 'curse', cataclysm: 'cataclysm', drain: 'drain', stun: 'stunhit', regenerate: 'regenerate', charging: 'charging' };
 
-export function mountModelBoss(canvas, key, tier) {
+// opts.portrait (the Home card of the resting hunt, Nathan 2026-09-29): no floor, no shadows,
+// a transparent background, and the camera framed on the head and the upper chest.
+export function mountModelBoss(canvas, key, tier, opts = {}) {
+  const portrait = !!opts.portrait;
   const def = MODEL_BOSSES[key];
   if (!def) throw new Error(`no model boss ${key}`);
   const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 620px)').matches);
@@ -34,7 +37,7 @@ export function mountModelBoss(canvas, key, tier) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
-  if (!isMobile) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
+  if (!isMobile && !portrait) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
@@ -47,7 +50,7 @@ export function mountModelBoss(canvas, key, tier) {
   const key1 = new THREE.DirectionalLight(0xfff0dc, 2.6); key1.position.set(3.5, 6, 5); scene.add(key1);
   const rim = new THREE.DirectionalLight(0xbcd6ff, 2.4); rim.position.set(-3.5, 4.5, -2.5); scene.add(rim);
   const rim2 = new THREE.DirectionalLight(0xff7a52, 1.6); rim2.position.set(3.5, 3, -2.5); scene.add(rim2);
-  if (!isMobile) {
+  if (!isMobile && !portrait) {
     key1.castShadow = true; key1.shadow.mapSize.set(1024, 1024);
     const sc = key1.shadow.camera; sc.near = 1; sc.far = 24; sc.left = -4.5; sc.right = 4.5; sc.top = 5; sc.bottom = -4.5; sc.updateProjectionMatrix();
     key1.shadow.bias = -0.0006;
@@ -63,7 +66,7 @@ export function mountModelBoss(canvas, key, tier) {
   const TS = { Heroic: 1.1, Mythic: 1.22 }[tier] || 1.0;
   new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(`${MODEL_BASE}/${def.file}`, (g) => {
     const m = g.scene;
-    m.traverse((o) => { if (o.isMesh && !isMobile) { o.castShadow = true; o.receiveShadow = true; } if (o.isMesh) o.frustumCulled = false; });
+    m.traverse((o) => { if (o.isMesh && !isMobile && !portrait) { o.castShadow = true; o.receiveShadow = true; } if (o.isMesh) o.frustumCulled = false; });
     // Measure AFTER the world matrices are current (the Mixamo armature carries a 0.01
     // scale; an un-updated matrix gives a tiny box and a huge boss).
     m.updateMatrixWorld(true);
@@ -80,6 +83,35 @@ export function mountModelBoss(canvas, key, tier) {
     current = idle;
     canvas.dataset.bossDebug = JSON.stringify({ clips: Object.keys(actions), measured: +size.y.toFixed(3), fitted: +(b2.max.y - b2.min.y).toFixed(3) });
     if (idle) { idle.setEffectiveWeight(1); idle.play(); }
+    if (portrait) {
+      // Aim at the head bone in the idle pose; show about half the body: the head and the chest.
+      // The Head bone sits at the base of the skull: the top of the head is the HeadTop_End bone
+      // (Mixamo) or ~13% of the body height above it.
+      mixer.update(0.5); m.updateMatrixWorld(true);
+      // The top: the HIGHEST head / hair / forehead bone (Mixamo: HeadTop_End; Kerrigan: her
+      // upper hair bones, above a face bone that sits at the nose).
+      let head = null, top = null, topY = -Infinity;
+      const wp = new THREE.Vector3();
+      m.traverse((o) => {
+        if (!o.isBone || /neck|wing/i.test(o.name)) return;
+        if (!head && /head/i.test(o.name) && !/top|end/i.test(o.name)) head = o;
+        if (/head|hair|forehead/i.test(o.name)) { o.getWorldPosition(wp); if (wp.y > topY) { topY = wp.y; top = o; } }
+      });
+      const hp = new THREE.Vector3(), tp = new THREE.Vector3();
+      if (head) head.getWorldPosition(hp); else hp.set(0, b2.min.y + (b2.max.y - b2.min.y) * 0.85, 0);
+      const bodyH = Math.max(0.4, hp.y - b2.min.y);
+      if (top && topY > hp.y) top.getWorldPosition(tp); else tp.set(hp.x, hp.y + bodyH * 0.13, hp.z);
+      // Down to the chest bone (Mixamo Spine2, Kerrigan spine_upper_1c), with a margin.
+      let chest = null;
+      m.traverse((o) => { if (!chest && o.isBone && /spine2$|spine_upper_1c|upperchest/i.test(o.name)) chest = o; });
+      const cp = new THREE.Vector3();
+      if (chest) chest.getWorldPosition(cp); else cp.set(hp.x, hp.y - bodyH * 0.3, hp.z);
+      const viewH = Math.max(0.3, (tp.y - cp.y) * 1.3); // the head and the upper chest
+      const cy = tp.y + viewH * 0.12 - viewH / 2; // room above the head (the idle lifts it)
+      portraitView = { viewH, cy, z: hp.z };
+      portraitCamera();
+      canvas.dataset.portrait = JSON.stringify({ head: head ? head.name : null, top: top ? top.name : null, y: +hp.y.toFixed(2), topY: +tp.y.toFixed(2), chest: chest ? chest.name : null, viewH: +viewH.toFixed(2) });
+    }
     if (typeof window !== 'undefined' && window.__BOSS_DEBUG) canvas.__boss = { model: m, mixer, fx, act: (ev) => once(ev), pause: () => { running = false; cancelAnimationFrame(raf); }, step: (dt) => { mixer.update(dt); backToIdle(); } }; // tests only
     if (defeatPending) { dead = false; once('defeat', true); dead = true; } // defeated before the model loaded
   });
@@ -120,9 +152,18 @@ export function mountModelBoss(canvas, key, tier) {
 
   let running = true, raf = 0, last = performance.now();
   const t0 = last;
+  // Portrait: fit the head + chest by height, and by width when the view is narrow.
+  let portraitView = null;
+  function portraitCamera() {
+    if (!portraitView) return;
+    const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const dist = Math.max((portraitView.viewH / 2) / t, (portraitView.viewH * 0.8 / 2) / (t * camera.aspect));
+    camera.position.set(0, portraitView.cy, portraitView.z + dist); camera.lookAt(0, portraitView.cy, portraitView.z);
+  }
   function size() {
     const w = canvas.clientWidth || 300, h = canvas.clientHeight || 220;
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    portraitCamera();
   }
   size();
   let ro = null; try { ro = new ResizeObserver(size); ro.observe(canvas); } catch (e) { /* older webviews */ }
