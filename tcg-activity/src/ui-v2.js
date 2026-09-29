@@ -9,7 +9,6 @@ import { mountBoss } from './boss-lazy.js';
 import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
-const THUMBS = '/api/img/storage/v1/object/public/card-art/boss/thumbs';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -584,10 +583,12 @@ function paintHero(d) {
         ${d?.nextSpawnAt ? `<div class="hero-next"><span>Next boss in</span><b class="mono" data-until="${esc(d.nextSpawnAt)}"></b></div>` : ''}
       </div>
       <div class="hero-rest-side">
-        ${key ? `<img class="rest-boss" src="${THUMBS}/${key}.png" alt="">` : ''}
+        ${key ? '<div class="rest-stage"><canvas id="restCanvas"></canvas></div>' : ''}
         ${board.length ? `<div class="rest-top"><span class="side-h">Top hunters</span>${board.map((r, i) => `<div class="rest-hr"><span class="mono">${i + 1}</span>${avatarHTML(r.player_id, r.username, 'xs')}<b>${esc(r.username)}</b><span class="mono">${fmt(r.damage)}</span></div>`).join('')}</div>` : ''}
       </div>`;
     tickCloses();
+    // The last boss, alive: its idle animation, framed on the head and chest (no picture box).
+    if (key) { try { heroBoss = mountBoss(el('restCanvas'), last.name, last.tier, { portrait: true }); } catch { heroBoss = null; } }
     return;
   }
   const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));

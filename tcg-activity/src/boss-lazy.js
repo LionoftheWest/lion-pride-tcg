@@ -8,8 +8,8 @@ export function preloadBoss() {
   if (!loading) loading = import('./boss.js').then((m) => (mod = m)).catch((e) => { loading = null; throw e; });
   return loading;
 }
-export function mountBoss(canvas, seedStr, tier) {
-  if (mod) return mod.mountBoss(canvas, seedStr, tier);
+export function mountBoss(canvas, seedStr, tier, opts) {
+  if (mod) return mod.mountBoss(canvas, seedStr, tier, opts);
   let real = null, gone = false;
   const queue = [];
   const handle = new Proxy({}, {
@@ -25,7 +25,7 @@ export function mountBoss(canvas, seedStr, tier) {
   });
   preloadBoss().then((m) => {
     if (gone) return;
-    real = m.mountBoss(canvas, seedStr, tier);
+    real = m.mountBoss(canvas, seedStr, tier, opts);
     for (const [k, a] of queue.splice(0)) if (typeof real[k] === 'function') real[k](...a);
   }).catch((e) => console.error('boss code failed to load', e));
   return handle;

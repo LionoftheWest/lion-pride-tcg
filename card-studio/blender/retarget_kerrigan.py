@@ -13,7 +13,7 @@ from mathutils import Matrix, Vector
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 SRC, CLIPS, OUT = pathlib.Path(argv[0]), pathlib.Path(argv[1]), pathlib.Path(argv[2])
-ORDER = ["idle", "roar", "strike", "slam", "punch", "hit", "flex", "death"]
+ORDER = ["idle", "roar", "strike", "slam", "punch", "hit", "flex", "death", "taunt"]
 
 # X Bot bone -> her bones (the hips drive both of her hip-level siblings).
 MAP = {
