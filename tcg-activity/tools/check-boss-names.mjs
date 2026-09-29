@@ -1,7 +1,7 @@
 // Every boss name the weekly spawn can pick must map to a rigged model boss, and
 // every model boss must have a bestiary entry. Reads the newest spawn_hunt migration. Run: node tools/check-boss-names.mjs
 import { readFileSync } from 'node:fs';
-import { modelFor, MODEL_BOSSES } from '../src/boss-model.js';
+import { modelFor, MODEL_BOSSES } from '../src/boss-models.js';
 import { BOSS_LIST } from '../src/boss-meta.js';
 
 const sql = readFileSync(new URL('../../tcg-bot/supabase/hunt_kerrigan_boss.sql', import.meta.url), 'utf8');

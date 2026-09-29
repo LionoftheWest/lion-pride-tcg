@@ -13,35 +13,10 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { createAttackFX } from './attack-fx.js';
+import { adaptiveQuality, shadowsOff } from './quality.js';
 
-const MODEL_BASE = '/api/img/storage/v1/object/public/card-art/boss/models';
-
-// key -> the model file, the name pattern of the weekly boss, and the credit.
-export const MODEL_BOSSES = {
-  warrok: { file: 'warrok-z1.glb', names: /rage-?quit warlord|warrok/i, credit: 'Model: Warrok W Kurniawan — Mixamo (Adobe)' },
-  mutant: { file: 'mutant-z1.glb', names: /netcode mutant|\bmutant\b/i, credit: 'Model: Mutant — Mixamo (Adobe)' },
-  maw:    { file: 'maw-z1.glb',    names: /maw of the meta|\bmaw\b/i, credit: 'Model: Maw J Laygo — Mixamo (Adobe)' },
-  parasite:       { file: 'parasite-z1.glb',       names: /lagspike parasite|\bparasite\b/i, credit: 'Model: Parasite L Starkie — Mixamo (Adobe)' },
-  pumpkinhulk:    { file: 'pumpkinhulk-z1.glb',    names: /patch-?day pumpkin|pumpkinhulk/i, credit: 'Model: Pumpkinhulk L Shaw — Mixamo (Adobe)' },
-  nightshade:     { file: 'nightshade-z1.glb',     names: /ranked nightshade|\bnightshade\b/i, credit: 'Model: Nightshade J Friedrich — Mixamo (Adobe)' },
-  vampire:        { file: 'vampire-z1.glb',        names: /grind vampire|\bvampire\b/i, credit: 'Model: Vampire A Lusth — Mixamo (Adobe)' },
-  demon:          { file: 'demon-z1.glb',          names: /ban-?wave demon/i, credit: 'Model: Demon T Wiezzorek — Mixamo (Adobe)' },
-  // Not "brute": that key is the procedural Ogre Brute in boss.js.
-  smurf:          { file: 'smurf-z1.glb',          names: /smurf brute/i, credit: 'Model: Brute — Mixamo (Adobe)' },
-  warzombie:      { file: 'warzombie-z1.glb',      names: /afk warzombie|warzombie/i, credit: 'Model: Warzombie F Pedroso — Mixamo (Adobe)' },
-  skeletonzombie: { file: 'skeletonzombie-z1.glb', names: /hardstuck skeleton|skeletonzombie/i, credit: 'Model: Skeletonzombie T Avelange — Mixamo (Adobe)' },
-  // Her own game rig + the Mixamo clips retargeted (card-studio/blender/retarget_kerrigan.py).
-  kerrigan:       { file: 'kerrigan-z1.glb',       names: /zerg-?rush queen|kerrigan/i, credit: 'Model: Sarah Kerrigan Infested — Vasian-Digital3D (CC-BY 4.0); animations: Mixamo (Adobe)' },
-};
-
-/** The model key for a boss name (or an `arch:<key>` seed), or null. */
-export function modelFor(seedStr) {
-  const s = seedStr || '';
-  const mo = s.match(/^arch:(\w+)/);
-  if (mo) return MODEL_BOSSES[mo[1]] ? mo[1] : null;
-  for (const [key, m] of Object.entries(MODEL_BOSSES)) if (m.names.test(s)) return key;
-  return null;
-}
+import { MODEL_BASE, MODEL_BOSSES, modelFor } from './boss-models.js';
+export { MODEL_BOSSES, modelFor };
 
 // Fight event -> animation clip in the GLB (names from mixamo_to_glb.py).
 const CLIP_FOR = { flinch: 'hit', counter: 'strike', slam: 'slam', strike: 'strike', enrage: 'roar', stun: 'hit', curse: 'flex', defeat: 'death', attack: 'hit',
@@ -105,7 +80,7 @@ export function mountModelBoss(canvas, key, tier) {
     current = idle;
     canvas.dataset.bossDebug = JSON.stringify({ clips: Object.keys(actions), measured: +size.y.toFixed(3), fitted: +(b2.max.y - b2.min.y).toFixed(3) });
     if (idle) { idle.setEffectiveWeight(1); idle.play(); }
-    if (typeof window !== 'undefined' && window.__BOSS_DEBUG) canvas.__boss = { model: m, mixer, act: (ev) => once(ev), pause: () => { running = false; cancelAnimationFrame(raf); }, step: (dt) => { mixer.update(dt); backToIdle(); } }; // tests only
+    if (typeof window !== 'undefined' && window.__BOSS_DEBUG) canvas.__boss = { model: m, mixer, fx, act: (ev) => once(ev), pause: () => { running = false; cancelAnimationFrame(raf); }, step: (dt) => { mixer.update(dt); backToIdle(); } }; // tests only
     if (defeatPending) { dead = false; once('defeat', true); dead = true; } // defeated before the model loaded
   });
 
@@ -151,9 +126,16 @@ export function mountModelBoss(canvas, key, tier) {
   }
   size();
   let ro = null; try { ro = new ResizeObserver(size); ro.observe(canvas); } catch (e) { /* older webviews */ }
+  // A slow machine steps down: shadows off, then 1x, then 0.75x resolution (quality.js).
+  const quality = adaptiveQuality(canvas, [
+    () => shadowsOff(renderer, scene),
+    () => { renderer.setPixelRatio(1); size(); },
+    () => { renderer.setPixelRatio(0.75); size(); },
+  ]);
   function frame() {
     if (!running) return;
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
+    quality(now);
     if (mixer) { mixer.update(dt); backToIdle(); }
     holder.rotation.y = Math.sin((now - t0) / 1000 * 0.4) * 0.12; // a slow sway toward the squad
     fx.update(dt, (now - t0) / 1000);

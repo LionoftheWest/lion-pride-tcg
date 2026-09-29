@@ -202,7 +202,7 @@ app.get(['/', '/index.html'], (req, res) => {
 app.use(express.static(PUBLIC, {
   setHeaders: (res, path) => {
     const base = path.split(/[\\/]/).pop();
-    if (/^main\..*\.js$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    if (/^(main|chunk)\..*\.js$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     else if (/\.woff2$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=2592000');
     else res.setHeader('Cache-Control', 'no-store');
   },
