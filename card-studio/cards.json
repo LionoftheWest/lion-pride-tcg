@@ -28,7 +28,15 @@
       ]
     },
     "updatedAt": 1789700293530,
-    "pushedAt": 1789700758792
+    "pushedAt": 1789700758792,
+    "ability": {
+      "desc": "Heal for 20% of the damage dealt.",
+      "kind": "attack",
+      "name": "Inhale",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self"
+    }
   },
   {
     "id": "mr-mob-s-mr-mime",
@@ -115,7 +123,7 @@
       "cooldown_h": 18
     },
     "ability": {
-      "desc": "Ignores the boss damage reduction.",
+      "desc": "The boss cannot block this attack.",
       "kind": "attack",
       "name": "Hydro Cannon",
       "effect": "pierce"
@@ -261,7 +269,14 @@
       ]
     },
     "updatedAt": 1790284500064,
-    "pushedAt": 1790285354060
+    "pushedAt": 1790285354060,
+    "ability": {
+      "desc": "25% chance to strike twice.",
+      "kind": "attack",
+      "name": "Button Mash",
+      "effect": "rampage",
+      "amount": 0.25
+    }
   },
   {
     "id": "lionofthewest-s-tsareena",
@@ -291,7 +306,15 @@
       ]
     },
     "updatedAt": 1790284890980,
-    "pushedAt": 1790285445446
+    "pushedAt": 1790285445446,
+    "ability": {
+      "desc": "+35% damage when the boss is below 30% HP.",
+      "kind": "attack",
+      "name": "Stack Up",
+      "effect": "execute",
+      "amount": 0.35,
+      "threshold": 0.3
+    }
   },
   {
     "id": "gsnipes-cinderrace",
@@ -321,7 +344,14 @@
       ]
     },
     "updatedAt": 1790303837854,
-    "pushedAt": 1790304341086
+    "pushedAt": 1790304341086,
+    "ability": {
+      "desc": "+12% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Pyro Ball",
+      "effect": "focus",
+      "amount": 0.12
+    }
   },
   {
     "id": "r2vq-s-talonflame",
@@ -351,7 +381,13 @@
       ]
     },
     "updatedAt": 1790304279059,
-    "pushedAt": 1790304729203
+    "pushedAt": 1790304729203,
+    "ability": {
+      "desc": "The boss cannot block this attack.",
+      "kind": "attack",
+      "name": "Original Flame",
+      "effect": "pierce"
+    }
   },
   {
     "id": "brego-s-link",
@@ -382,7 +418,14 @@
         "melee"
       ]
     },
-    "pushedAt": 1789677995071
+    "pushedAt": 1789677995071,
+    "ability": {
+      "desc": "20% chance to strike twice.",
+      "kind": "attack",
+      "name": "Spin Attack",
+      "effect": "rampage",
+      "amount": 0.2
+    }
   },
   {
     "id": "beetle-s-cloud",
@@ -411,7 +454,15 @@
       ]
     },
     "updatedAt": 1789682553162,
-    "pushedAt": 1789682932710
+    "pushedAt": 1789682932710,
+    "ability": {
+      "desc": "+40% damage when the boss is below 30% HP.",
+      "kind": "attack",
+      "name": "Limit Break",
+      "effect": "execute",
+      "amount": 0.4,
+      "threshold": 0.3
+    }
   },
   {
     "id": "wiifu-s-sora",
@@ -441,7 +492,13 @@
       ]
     },
     "updatedAt": 1789768694367,
-    "pushedAt": 1789769067386
+    "pushedAt": 1789769067386,
+    "ability": {
+      "desc": "The boss cannot block this attack.",
+      "kind": "attack",
+      "name": "Kingdom Key",
+      "effect": "pierce"
+    }
   },
   {
     "id": "lionofthewest-s-pichu",
@@ -470,7 +527,14 @@
       ]
     },
     "updatedAt": 1790216656685,
-    "pushedAt": 1790216978248
+    "pushedAt": 1790216978248,
+    "ability": {
+      "desc": "+15% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Glass Cannon",
+      "effect": "focus",
+      "amount": 0.15
+    }
   },
   {
     "id": "kaminari-s-incineroar",
@@ -508,7 +572,24 @@
         "event": ""
       }
     },
-    "pushedAt": 1790216415968
+    "pushedAt": 1790216415968,
+    "ability": {
+      "desc": "Heal for 20% of the damage dealt.",
+      "kind": "attack",
+      "name": "Free Hugs",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self"
+    },
+    "effect": {
+      "primitive": "mend",
+      "name": "Hug It Out",
+      "desc": "The target's next hurt Hunt card heals 20 HP.",
+      "base": {
+        "amount": 20
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "geno-s-megaman",
@@ -538,7 +619,15 @@
       ]
     },
     "updatedAt": 1789677995614,
-    "pushedAt": 1789677995877
+    "pushedAt": 1789677995877,
+    "ability": {
+      "desc": "+40% damage when the boss is below 25% HP.",
+      "kind": "attack",
+      "name": "Doubles Clutch",
+      "effect": "execute",
+      "amount": 0.4,
+      "threshold": 0.25
+    }
   },
   {
     "id": "grim-s-jigglypuff",
@@ -567,7 +656,15 @@
       ]
     },
     "updatedAt": 1789683835092,
-    "pushedAt": 1789684161143
+    "pushedAt": 1789684161143,
+    "ability": {
+      "desc": "+50% damage when the boss is below 25% HP.",
+      "kind": "attack",
+      "name": "Rest Confirm",
+      "effect": "execute",
+      "amount": 0.5,
+      "threshold": 0.25
+    }
   },
   {
     "id": "grim-s-pokemon-trainer",
@@ -595,7 +692,15 @@
       ]
     },
     "updatedAt": 1790304807454,
-    "pushedAt": 1790305219943
+    "pushedAt": 1790305219943,
+    "ability": {
+      "desc": "Heal for 15% of the damage dealt.",
+      "kind": "attack",
+      "name": "Swap Out",
+      "effect": "lifesteal",
+      "amount": 0.15,
+      "target": "self"
+    }
   },
   {
     "id": "piotr-s-little-mac",
@@ -656,7 +761,15 @@
         "event": ""
       }
     },
-    "pushedAt": 1790305946429
+    "pushedAt": 1790305946429,
+    "ability": {
+      "desc": "+50% damage when the boss is below 20% HP.",
+      "kind": "attack",
+      "name": "KO Punch",
+      "effect": "execute",
+      "amount": 0.5,
+      "threshold": 0.2
+    }
   },
   {
     "id": "texafornia-s-richter",
@@ -686,7 +799,14 @@
       ]
     },
     "updatedAt": 1789761570668,
-    "pushedAt": 1789761937601
+    "pushedAt": 1789761937601,
+    "ability": {
+      "desc": "+15% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Taek Dis!",
+      "effect": "focus",
+      "amount": 0.15
+    }
   },
   {
     "id": "maddawg-s-wolf",
@@ -715,7 +835,14 @@
       ]
     },
     "updatedAt": 1790217446349,
-    "pushedAt": 1790217762891
+    "pushedAt": 1790217762891,
+    "ability": {
+      "desc": "+15% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Blaster Ledge",
+      "effect": "focus",
+      "amount": 0.15
+    }
   },
   {
     "id": "keeb-s-mii-gunner",
@@ -741,7 +868,14 @@
       ]
     },
     "updatedAt": 1790305641709,
-    "pushedAt": 1790305649604
+    "pushedAt": 1790305649604,
+    "ability": {
+      "desc": "25% chance to strike twice.",
+      "kind": "attack",
+      "name": "B...B...B...",
+      "effect": "rampage",
+      "amount": 0.25
+    }
   },
   {
     "id": "notjosh-s-random-pick",
@@ -767,7 +901,27 @@
       "traits": []
     },
     "updatedAt": 1789768322175,
-    "pushedAt": 1789768762662
+    "pushedAt": 1789768762662,
+    "ability": {
+      "desc": "Direct boss damage — scales with your Psychic cards",
+      "kind": "support",
+      "name": "King of Randoms",
+      "amount": 200,
+      "effect": "smite",
+      "target": "boss",
+      "affinity": "trait:psychic",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "lucky_pull",
+      "name": "Random Pick",
+      "desc": "The first card of the target's next pack rolls at 2x the rare rates.",
+      "base": {
+        "amount": 2
+      },
+      "cooldown_h": 24
+    }
   },
   {
     "id": "lionofthewest-s-pikachu",
@@ -833,6 +987,12 @@
         "royal",
         "armored"
       ]
+    },
+    "ability": {
+      "desc": "The boss cannot block this attack.",
+      "kind": "attack",
+      "name": "MY SWAMP",
+      "effect": "pierce"
     }
   },
   {
@@ -908,6 +1068,14 @@
         "duration_s": 600
       },
       "cooldown_h": 12
+    },
+    "ability": {
+      "desc": "Heal for 20% of the damage dealt.",
+      "kind": "attack",
+      "name": "Sun Salutation",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self"
     }
   },
   {
@@ -938,7 +1106,14 @@
       ]
     },
     "updatedAt": 1789698863945,
-    "pushedAt": 1789699274006
+    "pushedAt": 1789699274006,
+    "ability": {
+      "desc": "+14% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Tried and True",
+      "effect": "focus",
+      "amount": 0.14
+    }
   },
   {
     "id": "e-mandarkstar-s-ganondorf",
@@ -968,7 +1143,13 @@
       ]
     },
     "updatedAt": 1789677893135,
-    "pushedAt": 1789680905836
+    "pushedAt": 1789680905836,
+    "ability": {
+      "desc": "The boss cannot block this attack.",
+      "kind": "attack",
+      "name": "Warlock Punch",
+      "effect": "pierce"
+    }
   },
   {
     "id": "lazypie-s-zero-suit-samus",
@@ -1035,6 +1216,12 @@
         "strong",
         "melee"
       ]
+    },
+    "ability": {
+      "desc": "The boss cannot block this attack.",
+      "kind": "attack",
+      "name": "Giant Punch",
+      "effect": "pierce"
     }
   },
   {
@@ -1066,7 +1253,14 @@
       ]
     },
     "updatedAt": 1789681749002,
-    "pushedAt": 1789682650570
+    "pushedAt": 1789682650570,
+    "ability": {
+      "desc": "+15% critical chance on this attack.",
+      "kind": "attack",
+      "name": "50/50",
+      "effect": "focus",
+      "amount": 0.15
+    }
   },
   {
     "id": "foxtrot-s-krool",
@@ -1096,7 +1290,14 @@
         "armored"
       ]
     },
-    "pushedAt": 1789683611346
+    "pushedAt": 1789683611346,
+    "ability": {
+      "desc": "20% chance to strike twice.",
+      "kind": "attack",
+      "name": "Crownerang",
+      "effect": "rampage",
+      "amount": 0.2
+    }
   },
   {
     "id": "rad-dad-s-ness",
@@ -1125,7 +1326,15 @@
       ]
     },
     "updatedAt": 1789677994207,
-    "pushedAt": 1789677994612
+    "pushedAt": 1789677994612,
+    "ability": {
+      "desc": "Heal for 20% of the damage dealt.",
+      "kind": "attack",
+      "name": "PSI Magnet",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self"
+    }
   },
   {
     "id": "pringle-s-banjo-kazooie",
@@ -1154,6 +1363,13 @@
         "beast",
         "bird"
       ]
+    },
+    "ability": {
+      "desc": "20% chance to strike twice.",
+      "kind": "attack",
+      "name": "Wonderwing",
+      "effect": "rampage",
+      "amount": 0.2
     }
   },
   {
@@ -1310,7 +1526,13 @@
         "strong"
       ]
     },
-    "pushedAt": 1789681817187
+    "pushedAt": 1789681817187,
+    "ability": {
+      "desc": "The boss cannot block this attack.",
+      "kind": "attack",
+      "name": "Timber!",
+      "effect": "pierce"
+    }
   },
   {
     "id": "fluffy-s-repo",
@@ -1373,7 +1595,15 @@
       ]
     },
     "updatedAt": 1790278333772,
-    "pushedAt": 1790279128515
+    "pushedAt": 1790279128515,
+    "ability": {
+      "desc": "+35% damage when the boss is below 25% HP.",
+      "kind": "attack",
+      "name": "Waited Long Enough",
+      "effect": "execute",
+      "amount": 0.35,
+      "threshold": 0.25
+    }
   },
   {
     "id": "zeoic-the-server-master",
@@ -1401,7 +1631,24 @@
       ]
     },
     "updatedAt": 1790278729337,
-    "pushedAt": 1790279795375
+    "pushedAt": 1790279795375,
+    "ability": {
+      "desc": "Heal for 20% of the damage dealt.",
+      "kind": "attack",
+      "name": "Host Migration",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self"
+    },
+    "effect": {
+      "primitive": "gift_pack",
+      "name": "Server Gift",
+      "desc": "Gives the target a free pack.",
+      "base": {
+        "amount": 1
+      },
+      "cooldown_h": 48
+    }
   },
   {
     "id": "baego",
@@ -1428,7 +1675,14 @@
       ]
     },
     "updatedAt": 1790278954081,
-    "pushedAt": 1790279944054
+    "pushedAt": 1790279944054,
+    "ability": {
+      "desc": "+12% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Better Side",
+      "effect": "focus",
+      "amount": 0.12
+    }
   },
   {
     "id": "ling-ling-s-talonflame",
@@ -1455,7 +1709,13 @@
       ]
     },
     "updatedAt": 1789681991890,
-    "pushedAt": 1789682278339
+    "pushedAt": 1789682278339,
+    "ability": {
+      "desc": "The boss cannot block this attack.",
+      "kind": "attack",
+      "name": "Haunting Dive",
+      "effect": "pierce"
+    }
   },
   {
     "id": "i-m-a-tree",
@@ -1478,7 +1738,27 @@
       "traits": []
     },
     "updatedAt": 1790129726452,
-    "pushedAt": 1790129737983
+    "pushedAt": 1790129737983,
+    "ability": {
+      "desc": "Boss takes more — scales with your Nature cards",
+      "kind": "support",
+      "name": "Throw Everything",
+      "amount": 0.3,
+      "effect": "expose",
+      "target": "boss",
+      "affinity": "trait:nature",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "reflect",
+      "name": "Tree Bark",
+      "desc": "The next prank on the target bounces back to its sender.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
+    }
   },
   {
     "id": "mr-mobs-dirt-house",
@@ -1585,7 +1865,14 @@
       ]
     },
     "updatedAt": 1790130424282,
-    "pushedAt": 1790130431538
+    "pushedAt": 1790130431538,
+    "ability": {
+      "desc": "+12% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Too Many Buttons",
+      "effect": "focus",
+      "amount": 0.12
+    }
   },
   {
     "id": "long-live-the-king",
@@ -1608,7 +1895,27 @@
       "traits": []
     },
     "updatedAt": 1790130708123,
-    "pushedAt": 1790130716249
+    "pushedAt": 1790130716249,
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Royal cards",
+      "kind": "support",
+      "name": "Royal Decree",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "trait:royal",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "spotlight",
+      "name": "Long Live the King",
+      "desc": "The target's name glows gold for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
+    }
   },
   {
     "id": "lionofthewest-s-dodrio",
@@ -1635,7 +1942,14 @@
       ]
     },
     "updatedAt": 1790131469965,
-    "pushedAt": 1790131476889
+    "pushedAt": 1790131476889,
+    "ability": {
+      "desc": "20% chance to strike twice.",
+      "kind": "attack",
+      "name": "Triple Peck",
+      "effect": "rampage",
+      "amount": 0.2
+    }
   },
   {
     "id": "onyen-tutoring",
@@ -1658,7 +1972,27 @@
       "traits": []
     },
     "updatedAt": 1790131570257,
-    "pushedAt": 1790131576103
+    "pushedAt": 1790131576103,
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Caster cards",
+      "kind": "support",
+      "name": "$150 an Hour",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "trait:caster",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "rally",
+      "name": "Master Class",
+      "desc": "The target's next Hunt hit deals +15% damage.",
+      "base": {
+        "amount": 15
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "up-b-oos",
@@ -1681,7 +2015,27 @@
       "traits": []
     },
     "updatedAt": 1790131740955,
-    "pushedAt": 1790131746817
+    "pushedAt": 1790131746817,
+    "ability": {
+      "desc": "Direct boss damage — scales with your Hero cards",
+      "kind": "support",
+      "name": "UP B OOS",
+      "amount": 200,
+      "effect": "smite",
+      "target": "boss",
+      "affinity": "trait:hero",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "upside_down",
+      "name": "UP B OOS",
+      "desc": "Turns the target's collection upside down for 10 minutes.",
+      "base": {
+        "duration_s": 600
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "grudge-match",
@@ -1704,7 +2058,34 @@
       "traits": []
     },
     "updatedAt": 1790132040099,
-    "pushedAt": 1790132045326
+    "pushedAt": 1790132045326,
+    "ability": {
+      "desc": "Direct boss damage — scales with your Melee cards",
+      "kind": "support",
+      "name": "Settle This",
+      "amount": 200,
+      "effect": "smite",
+      "target": "boss",
+      "affinity": "trait:melee",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "title",
+      "name": "Rivalry",
+      "desc": "Gives the target a rival title.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12,
+      "options": {
+        "titles": [
+          "the Grudge Holder",
+          "Sworn Rival",
+          "Runback Requester"
+        ]
+      }
+    }
   },
   {
     "id": "mr-worldwide",
@@ -1729,7 +2110,24 @@
       ]
     },
     "updatedAt": 1790132229059,
-    "pushedAt": 1790132238149
+    "pushedAt": 1790132238149,
+    "ability": {
+      "desc": "+30% damage when the boss is below 30% HP.",
+      "kind": "attack",
+      "name": "Exclusive",
+      "effect": "execute",
+      "amount": 0.3,
+      "threshold": 0.3
+    },
+    "effect": {
+      "primitive": "sticker",
+      "name": "Worldwide",
+      "desc": "Pins this card to the target's name for all to see.",
+      "base": {
+        "duration_s": 43200
+      },
+      "cooldown_h": 6
+    }
   },
   {
     "id": "wiifu-s-bowling-ball",
@@ -1754,7 +2152,18 @@
       ]
     },
     "updatedAt": 1790132523986,
-    "pushedAt": 1790132538380
+    "pushedAt": 1790132538380,
+    "ability": {
+      "desc": "Direct boss damage — scales with your Armored cards",
+      "kind": "support",
+      "name": "Strike",
+      "amount": 200,
+      "effect": "smite",
+      "target": "boss",
+      "affinity": "trait:armored",
+      "cooldown": 4,
+      "duration": 1
+    }
   },
   {
     "id": "gym-rat-lion",
@@ -1781,7 +2190,24 @@
       ]
     },
     "updatedAt": 1790132745356,
-    "pushedAt": 1790132753221
+    "pushedAt": 1790132753221,
+    "ability": {
+      "desc": "Heal for 20% of the damage dealt.",
+      "kind": "attack",
+      "name": "Chocolate Milk",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self"
+    },
+    "effect": {
+      "primitive": "mend",
+      "name": "Recovery Drink",
+      "desc": "The target's next hurt Hunt card heals 20 HP.",
+      "base": {
+        "amount": 20
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "memelord-lion",
@@ -1816,6 +2242,13 @@
         "duration_s": 86400
       },
       "cooldown_h": 12
+    },
+    "ability": {
+      "desc": "+12% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Meme Warfare",
+      "effect": "focus",
+      "amount": 0.12
     }
   },
   {
@@ -1842,6 +2275,13 @@
         "humanoid",
         "community"
       ]
+    },
+    "ability": {
+      "desc": "15% chance to strike twice.",
+      "kind": "attack",
+      "name": "TDG Crew",
+      "effect": "rampage",
+      "amount": 0.15
     }
   },
   {
@@ -1877,7 +2317,15 @@
         "event": ""
       }
     },
-    "pushedAt": 1790133831142
+    "pushedAt": 1790133831142,
+    "ability": {
+      "desc": "Heal for 15% of the damage dealt.",
+      "kind": "attack",
+      "name": "Spin Cycle",
+      "effect": "lifesteal",
+      "amount": 0.15,
+      "target": "self"
+    }
   },
   {
     "id": "mrs-lionofthewest",
@@ -1912,7 +2360,14 @@
         "event": ""
       }
     },
-    "pushedAt": 1790134602403
+    "pushedAt": 1790134602403,
+    "ability": {
+      "desc": "+10% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Blind Spot",
+      "effect": "focus",
+      "amount": 0.1
+    }
   },
   {
     "id": "modded-vs-vanilla",
@@ -1934,7 +2389,24 @@
       "traits": []
     },
     "updatedAt": 1790134601544,
-    "pushedAt": 1790134725154
+    "pushedAt": 1790134725154,
+    "ability": {
+      "desc": "Boss takes more — scales with your Minecraft cards",
+      "kind": "support",
+      "name": "Mod Pack",
+      "amount": 0.3,
+      "effect": "expose",
+      "target": "boss",
+      "affinity": "origin:minecraft",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "cleanse",
+      "name": "Back to Vanilla",
+      "desc": "Removes every prank from the target.",
+      "cooldown_h": 12
+    }
   },
   {
     "id": "create-a-colony",
@@ -1958,7 +2430,24 @@
       ]
     },
     "updatedAt": 1790134654803,
-    "pushedAt": 1790134725377
+    "pushedAt": 1790134725377,
+    "ability": {
+      "desc": "Boss takes more — scales with your Armored cards",
+      "kind": "support",
+      "name": "Potato Cannon",
+      "amount": 0.3,
+      "effect": "expose",
+      "target": "boss",
+      "affinity": "trait:armored",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "cleanse",
+      "name": "Fresh Start",
+      "desc": "Removes every prank from the target.",
+      "cooldown_h": 12
+    }
   },
   {
     "id": "cockroachs-never-die",
@@ -1980,7 +2469,27 @@
       "traits": []
     },
     "updatedAt": 1790134721254,
-    "pushedAt": 1790134726430
+    "pushedAt": 1790134726430,
+    "ability": {
+      "desc": "Heal an ally — extra strong on Beast cards",
+      "kind": "support",
+      "name": "Never Die",
+      "amount": 0.3,
+      "effect": "heal",
+      "target": "ally",
+      "affinity": "trait:beast",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "mend",
+      "name": "Still Alive",
+      "desc": "The target's next hurt Hunt card heals 20 HP.",
+      "base": {
+        "amount": 20
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "super-battle-golf-flash-bang",
@@ -2002,7 +2511,24 @@
       "traits": []
     },
     "updatedAt": 1790134790206,
-    "pushedAt": 1790134801407
+    "pushedAt": 1790134801407,
+    "ability": {
+      "desc": "Skip the boss turn — themed around Light cards",
+      "kind": "support",
+      "name": "Flash Bang",
+      "amount": 0,
+      "effect": "stun",
+      "target": "boss",
+      "affinity": "trait:light",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "confetti",
+      "name": "Flash Bang",
+      "desc": "Confetti bursts over the target the next time they open the app.",
+      "cooldown_h": 3
+    }
   },
   {
     "id": "call-of-dragons",
@@ -2024,7 +2550,27 @@
       "traits": []
     },
     "updatedAt": 1790134910626,
-    "pushedAt": 1790134932443
+    "pushedAt": 1790134932443,
+    "ability": {
+      "desc": "Boss takes more — scales with your Monster cards",
+      "kind": "support",
+      "name": "World Chat War",
+      "amount": 0.3,
+      "effect": "expose",
+      "target": "boss",
+      "affinity": "trait:monster",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "sticker",
+      "name": "World Chat",
+      "desc": "Pins this card to the target's name for all to see.",
+      "base": {
+        "duration_s": 43200
+      },
+      "cooldown_h": 6
+    }
   },
   {
     "id": "australian-connections",
@@ -2046,7 +2592,18 @@
       "traits": []
     },
     "updatedAt": 1790135161180,
-    "pushedAt": 1790135171983
+    "pushedAt": 1790135171983,
+    "ability": {
+      "desc": "Boss hits softer — scales with your Agile cards",
+      "kind": "support",
+      "name": "Lag Spike",
+      "amount": 0.3,
+      "effect": "weaken",
+      "target": "boss",
+      "affinity": "trait:agile",
+      "cooldown": 3,
+      "duration": 2
+    }
   },
   {
     "id": "4-in-the-pink",
@@ -2068,7 +2625,27 @@
       "traits": []
     },
     "updatedAt": 1790135302737,
-    "pushedAt": 1790135310614
+    "pushedAt": 1790135310614,
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Cute cards",
+      "kind": "support",
+      "name": "Pink Power",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "trait:cute",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "lucky_pull",
+      "name": "In the Pink",
+      "desc": "The first card of the target's next pack rolls at 2x the rare rates.",
+      "base": {
+        "amount": 2
+      },
+      "cooldown_h": 24
+    }
   },
   {
     "id": "krool-name-swap",
@@ -2101,6 +2678,15 @@
       "affinity": "origin:party",
       "cooldown": 2,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "reflect",
+      "name": "Wait a Minute",
+      "desc": "The next prank on the target bounces back to its sender.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -2123,7 +2709,27 @@
       "traits": []
     },
     "updatedAt": 1790135450408,
-    "pushedAt": 1790135455868
+    "pushedAt": 1790135455868,
+    "ability": {
+      "desc": "Shield an ally — extra strong on Stealth cards",
+      "kind": "support",
+      "name": "Last One Alive",
+      "amount": 0.4,
+      "effect": "shield",
+      "target": "ally",
+      "affinity": "trait:stealth",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "ward",
+      "name": "Last One Alive",
+      "desc": "Blocks the next prank on the target.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 18
+    }
   },
   {
     "id": "30-dantucker-pings",
@@ -2145,7 +2751,34 @@
       "traits": []
     },
     "updatedAt": 1790135652477,
-    "pushedAt": 1790135660349
+    "pushedAt": 1790135660349,
+    "ability": {
+      "desc": "Skip the boss turn — themed around Ranged cards",
+      "kind": "support",
+      "name": "Ping Storm",
+      "amount": 0,
+      "effect": "stun",
+      "target": "boss",
+      "affinity": "trait:ranged",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "title",
+      "name": "Pinged",
+      "desc": "Gives the target a ping title.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12,
+      "options": {
+        "titles": [
+          "the Pinged",
+          "Notification Magnet",
+          "@TheDanTucker's Echo"
+        ]
+      }
+    }
   },
   {
     "id": "lazy-sd",
@@ -2168,7 +2801,27 @@
       "traits": []
     },
     "updatedAt": 1790136047709,
-    "pushedAt": 1790136140900
+    "pushedAt": 1790136140900,
+    "ability": {
+      "desc": "Boss hits softer — scales with your Light cards",
+      "kind": "support",
+      "name": "Inevitable",
+      "amount": 0.3,
+      "effect": "weaken",
+      "target": "boss",
+      "affinity": "trait:light",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "upside_down",
+      "name": "Self Destruct",
+      "desc": "Turns the target's collection upside down for 10 minutes.",
+      "base": {
+        "duration_s": 600
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "the-server-crashed",
@@ -2190,7 +2843,27 @@
       "traits": []
     },
     "updatedAt": 1790136140546,
-    "pushedAt": 1790136145756
+    "pushedAt": 1790136145756,
+    "ability": {
+      "desc": "Skip the boss turn — themed around Metal cards",
+      "kind": "support",
+      "name": "Crash",
+      "amount": 0,
+      "effect": "stun",
+      "target": "boss",
+      "affinity": "trait:metal",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "fog",
+      "name": "Server Crash",
+      "desc": "The target's cards show ??? for 10 minutes.",
+      "base": {
+        "duration_s": 600
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "failed-wordle",
@@ -2212,7 +2885,27 @@
       "traits": []
     },
     "updatedAt": 1790279006831,
-    "pushedAt": 1790279828132
+    "pushedAt": 1790279828132,
+    "ability": {
+      "desc": "Skip the boss turn — themed around Caster cards",
+      "kind": "support",
+      "name": "Stupid Word",
+      "amount": 0,
+      "effect": "stun",
+      "target": "boss",
+      "affinity": "trait:caster",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "fog",
+      "name": "Stupid Word",
+      "desc": "The target's cards show ??? for 10 minutes.",
+      "base": {
+        "duration_s": 600
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "gerudo-fight-club",
@@ -2234,7 +2927,27 @@
       "traits": []
     },
     "updatedAt": 1790279051232,
-    "pushedAt": 1790279847492
+    "pushedAt": 1790279847492,
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Shadow cards",
+      "kind": "support",
+      "name": "Suavemente",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "trait:shadow",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "googly_eyes",
+      "name": "Suavemente",
+      "desc": "Puts googly eyes on all the target's card art for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "whats-a-c3",
@@ -2289,7 +3002,27 @@
       "traits": []
     },
     "updatedAt": 1790279133494,
-    "pushedAt": 1790279875647
+    "pushedAt": 1790279875647,
+    "ability": {
+      "desc": "Shield an ally — extra strong on Earth cards",
+      "kind": "support",
+      "name": "Two Walls",
+      "amount": 0.4,
+      "effect": "shield",
+      "target": "ally",
+      "affinity": "trait:earth",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "ward",
+      "name": "Two Walls",
+      "desc": "Blocks the next prank on the target.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 18
+    }
   },
   {
     "id": "b-button-spam",
@@ -2312,7 +3045,27 @@
       "traits": []
     },
     "updatedAt": 1790279275168,
-    "pushedAt": 1790279887457
+    "pushedAt": 1790279887457,
+    "ability": {
+      "desc": "Shield an ally — extra strong on Ranged cards",
+      "kind": "support",
+      "name": "Projectile Wall",
+      "amount": 0.4,
+      "effect": "shield",
+      "target": "ally",
+      "affinity": "trait:ranged",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "rubber_chicken",
+      "name": "B...B...B...",
+      "desc": "Every sound in the target's Activity is a squeak.",
+      "base": {
+        "duration_s": 1800
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "panda-express-run",
@@ -2367,7 +3120,27 @@
       "traits": []
     },
     "updatedAt": 1790279372316,
-    "pushedAt": 1790279897400
+    "pushedAt": 1790279897400,
+    "ability": {
+      "desc": "Heal an ally — extra strong on Water cards",
+      "kind": "support",
+      "name": "Vacation Mode",
+      "amount": 0.3,
+      "effect": "heal",
+      "target": "ally",
+      "affinity": "trait:water",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "gift_pack",
+      "name": "Souvenir",
+      "desc": "Brings the target back a free pack.",
+      "base": {
+        "amount": 1
+      },
+      "cooldown_h": 48
+    }
   },
   {
     "id": "smash-server-hamster-wheel",
@@ -2389,7 +3162,27 @@
       "traits": []
     },
     "updatedAt": 1790279520992,
-    "pushedAt": 1790279923965
+    "pushedAt": 1790279923965,
+    "ability": {
+      "desc": "Skip the boss turn — themed around Robot cards",
+      "kind": "support",
+      "name": "Communication Error",
+      "amount": 0,
+      "effect": "stun",
+      "target": "boss",
+      "affinity": "trait:robot",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "fog",
+      "name": "Communication Error",
+      "desc": "The target's cards show ??? for 10 minutes.",
+      "base": {
+        "duration_s": 600
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "ketchup-on-hotdogs",
@@ -2460,7 +3253,34 @@
       "traits": []
     },
     "updatedAt": 1790279709422,
-    "pushedAt": 1790279947954
+    "pushedAt": 1790279947954,
+    "ability": {
+      "desc": "Boss hits softer — scales with your Fire cards",
+      "kind": "support",
+      "name": "Wrong Way",
+      "amount": 0.3,
+      "effect": "weaken",
+      "target": "boss",
+      "affinity": "trait:fire",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "title",
+      "name": "Pizza Crime",
+      "desc": "Gives the target a pizza title.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12,
+      "options": {
+        "titles": [
+          "the Pineapple Pizza Enjoyer",
+          "Fruit Topping Fan",
+          "Pizza Criminal"
+        ]
+      }
+    }
   },
   {
     "id": "xeno-s-unfinished-project",
@@ -2517,7 +3337,27 @@
       "traits": []
     },
     "updatedAt": 1790279858967,
-    "pushedAt": 1790279969494
+    "pushedAt": 1790279969494,
+    "ability": {
+      "desc": "Clear curses — themed around Arcane cards",
+      "kind": "support",
+      "name": "Go Back",
+      "amount": 0,
+      "effect": "cleanse",
+      "target": "team",
+      "affinity": "trait:arcane",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "sticker",
+      "name": "Go Back to Pokemon",
+      "desc": "Pins this card to the target's name for all to see.",
+      "base": {
+        "duration_s": 43200
+      },
+      "cooldown_h": 6
+    }
   },
   {
     "id": "mob-s-hiding-spot-meccha",
@@ -2585,7 +3425,27 @@
       ]
     },
     "updatedAt": 1790280029429,
-    "pushedAt": 1790280284897
+    "pushedAt": 1790280284897,
+    "ability": {
+      "desc": "Shield an ally — extra strong on Ice cards",
+      "kind": "support",
+      "name": "Ice Fortress",
+      "amount": 0.4,
+      "effect": "shield",
+      "target": "ally",
+      "affinity": "trait:ice",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "ward",
+      "name": "Ice Wall",
+      "desc": "Blocks the next prank on the target.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 18
+    }
   },
   {
     "id": "meta-abuser",
@@ -2607,7 +3467,34 @@
       "traits": []
     },
     "updatedAt": 1790283858212,
-    "pushedAt": 1790283927445
+    "pushedAt": 1790283927445,
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Metal cards",
+      "kind": "support",
+      "name": "Carried",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "trait:metal",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "title",
+      "name": "Tier List",
+      "desc": "Gives the target a meta title.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12,
+      "options": {
+        "titles": [
+          "the Meta Abuser",
+          "Tier List Victim",
+          "Carried"
+        ]
+      }
+    }
   },
   {
     "id": "sunny-s-duck-feet",
@@ -2629,7 +3516,27 @@
       "traits": []
     },
     "updatedAt": 1790283883882,
-    "pushedAt": 1790283922394
+    "pushedAt": 1790283922394,
+    "ability": {
+      "desc": "Clear curses — themed around Bird cards",
+      "kind": "support",
+      "name": "Quack",
+      "amount": 0,
+      "effect": "cleanse",
+      "target": "team",
+      "affinity": "trait:bird",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "rubber_chicken",
+      "name": "Quack",
+      "desc": "Every sound in the target's Activity is a squeak.",
+      "base": {
+        "duration_s": 1800
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "xeno-s-stone-shovel",
@@ -2805,7 +3712,27 @@
       ]
     },
     "updatedAt": 1790280261253,
-    "pushedAt": 1790280287729
+    "pushedAt": 1790280287729,
+    "ability": {
+      "desc": "Boss takes more — scales with your Hero cards",
+      "kind": "support",
+      "name": "Tag Check",
+      "amount": 0.3,
+      "effect": "expose",
+      "target": "boss",
+      "affinity": "trait:hero",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "spotlight",
+      "name": "Verified",
+      "desc": "The target's name glows gold for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
+    }
   },
   {
     "id": "the-weekly-poll",
@@ -2827,7 +3754,27 @@
       "traits": []
     },
     "updatedAt": 1790280554096,
-    "pushedAt": 1790281830657
+    "pushedAt": 1790281830657,
+    "ability": {
+      "desc": "Boss hits softer — scales with your Community cards",
+      "kind": "support",
+      "name": "Feud",
+      "amount": 0.3,
+      "effect": "weaken",
+      "target": "boss",
+      "affinity": "trait:community",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "sticker",
+      "name": "Poll Results",
+      "desc": "Pins this card to the target's name for all to see.",
+      "base": {
+        "duration_s": 43200
+      },
+      "cooldown_h": 6
+    }
   },
   {
     "id": "call-hr",
@@ -2919,7 +3866,14 @@
       ]
     },
     "updatedAt": 1790280738130,
-    "pushedAt": 1790281825401
+    "pushedAt": 1790281825401,
+    "ability": {
+      "desc": "+12% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Peaches Beam",
+      "effect": "focus",
+      "amount": 0.12
+    }
   },
   {
     "id": "the-best-sauce-is",
@@ -2941,7 +3895,34 @@
       "traits": []
     },
     "updatedAt": 1790280809490,
-    "pushedAt": 1790281855706
+    "pushedAt": 1790281855706,
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Fire cards",
+      "kind": "support",
+      "name": "Secret Sauce",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "trait:fire",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "title",
+      "name": "Sauce Boss",
+      "desc": "Gives the target a sauce title.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12,
+      "options": {
+        "titles": [
+          "the Sauce Boss",
+          "Sauce Critic",
+          "Ranch Defender"
+        ]
+      }
+    }
   },
   {
     "id": "frick",
@@ -3016,6 +3997,15 @@
       "affinity": "origin:meme",
       "cooldown": 2,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "rally",
+      "name": "Tag Him In",
+      "desc": "The target's next Hunt hit deals +15% damage.",
+      "base": {
+        "amount": 15
+      },
+      "cooldown_h": 12
     }
   },
   {
@@ -3038,7 +4028,18 @@
       "traits": []
     },
     "updatedAt": 1790280922751,
-    "pushedAt": 1790281856035
+    "pushedAt": 1790281856035,
+    "ability": {
+      "desc": "Boss takes more — scales with your Beast cards",
+      "kind": "support",
+      "name": "Look Out",
+      "amount": 0.3,
+      "effect": "expose",
+      "target": "boss",
+      "affinity": "trait:beast",
+      "cooldown": 3,
+      "duration": 2
+    }
   },
   {
     "id": "the-timezone-chart",
@@ -3093,7 +4094,24 @@
       "traits": []
     },
     "updatedAt": 1790281407207,
-    "pushedAt": 1790281865114
+    "pushedAt": 1790281865114,
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Party cards",
+      "kind": "support",
+      "name": "Fever Pitch",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "confetti",
+      "name": "Fever",
+      "desc": "Confetti bursts over the target the next time they open the app.",
+      "cooldown_h": 3
+    }
   },
   {
     "id": "palworld-mountain-base",
@@ -3128,6 +4146,15 @@
       "affinity": "trait:light",
       "cooldown": 2,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "mend",
+      "name": "Base Camp",
+      "desc": "The target's next hurt Hunt card heals 20 HP.",
+      "base": {
+        "amount": 20
+      },
+      "cooldown_h": 12
     }
   },
   {
@@ -3150,7 +4177,27 @@
       "traits": []
     },
     "updatedAt": 1790281768257,
-    "pushedAt": 1790281953082
+    "pushedAt": 1790281953082,
+    "ability": {
+      "desc": "Direct boss damage — scales with your Strong cards",
+      "kind": "support",
+      "name": "Skill Shot",
+      "amount": 200,
+      "effect": "smite",
+      "target": "boss",
+      "affinity": "trait:strong",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "lucky_pull",
+      "name": "Lucky Shot",
+      "desc": "The first card of the target's next pack rolls at 2x the rare rates.",
+      "base": {
+        "amount": 2
+      },
+      "cooldown_h": 24
+    }
   },
   {
     "id": "crew-battle",
@@ -3172,7 +4219,27 @@
       "traits": []
     },
     "updatedAt": 1790282548989,
-    "pushedAt": 1790282641234
+    "pushedAt": 1790282641234,
+    "ability": {
+      "desc": "Boost the next hit — extra strong on Smash cards",
+      "kind": "support",
+      "name": "Team Name",
+      "amount": 0.5,
+      "effect": "empower",
+      "target": "ally",
+      "affinity": "origin:smash",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "rally",
+      "name": "Crew Hype",
+      "desc": "The target's next Hunt hit deals +15% damage.",
+      "base": {
+        "amount": 15
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "cocky-little-freak",
@@ -3194,7 +4261,33 @@
       "traits": []
     },
     "updatedAt": 1790282632067,
-    "pushedAt": 1790282996987
+    "pushedAt": 1790282996987,
+    "ability": {
+      "desc": "Boss hits softer — scales with your Strong cards",
+      "kind": "support",
+      "name": "Taunt",
+      "amount": 0.3,
+      "effect": "weaken",
+      "target": "boss",
+      "affinity": "trait:strong",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "title",
+      "name": "Cocky",
+      "desc": "Gives the target a cocky title.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12,
+      "options": {
+        "titles": [
+          "Cocky Little Freak",
+          "the Cocky One"
+        ]
+      }
+    }
   },
   {
     "id": "shave-your-head",
@@ -3216,7 +4309,27 @@
       "traits": []
     },
     "updatedAt": 1790282984408,
-    "pushedAt": 1790282997051
+    "pushedAt": 1790282997051,
+    "ability": {
+      "desc": "Heal an ally — extra strong on Humanoid cards",
+      "kind": "support",
+      "name": "24 Hour Stream",
+      "amount": 0.3,
+      "effect": "heal",
+      "target": "ally",
+      "affinity": "trait:humanoid",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "spotlight",
+      "name": "24 Hour Legend",
+      "desc": "The target's name glows gold for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
+    }
   },
   {
     "id": "patooie",
@@ -3280,7 +4393,27 @@
       "traits": []
     },
     "updatedAt": 1790283099758,
-    "pushedAt": 1790283109952
+    "pushedAt": 1790283109952,
+    "ability": {
+      "desc": "Skip the boss turn — themed around Royal cards",
+      "kind": "support",
+      "name": "She's Here",
+      "amount": 0,
+      "effect": "stun",
+      "target": "boss",
+      "affinity": "trait:royal",
+      "cooldown": 4,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "googly_eyes",
+      "name": "She's Here",
+      "desc": "Puts googly eyes on all the target's card art for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "blade-s-beans-on-toast",
@@ -3304,7 +4437,33 @@
       ]
     },
     "updatedAt": 1790283137788,
-    "pushedAt": 1790283154158
+    "pushedAt": 1790283154158,
+    "ability": {
+      "desc": "Clear curses — themed around Humanoid cards",
+      "kind": "support",
+      "name": "Why",
+      "amount": 0,
+      "effect": "cleanse",
+      "target": "team",
+      "affinity": "trait:humanoid",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "title",
+      "name": "Why",
+      "desc": "Gives the target a breakfast title.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12,
+      "options": {
+        "titles": [
+          "Beans on Toast Enjoyer",
+          "Breakfast Criminal"
+        ]
+      }
+    }
   },
   {
     "id": "well-well-well",
@@ -3334,7 +4493,27 @@
         "event": ""
       }
     },
-    "pushedAt": 1790283297101
+    "pushedAt": 1790283297101,
+    "ability": {
+      "desc": "Shield an ally — extra strong on Psychic cards",
+      "kind": "support",
+      "name": "VC Greeting",
+      "amount": 0.4,
+      "effect": "shield",
+      "target": "ally",
+      "affinity": "trait:psychic",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "googly_eyes",
+      "name": "Well Well Well",
+      "desc": "Puts googly eyes on all the target's card art for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "i-ll-get-it-back-don-t-worry",
@@ -3366,8 +4545,27 @@
         "event": ""
       }
     },
-    "ability": null,
-    "pushedAt": 1790283297374
+    "ability": {
+      "desc": "Heal an ally — extra strong on Pokemon cards",
+      "kind": "support",
+      "name": "Comeback",
+      "amount": 0.3,
+      "effect": "heal",
+      "target": "ally",
+      "affinity": "origin:pokemon",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "pushedAt": 1790283297374,
+    "effect": {
+      "primitive": "rally",
+      "name": "Comeback",
+      "desc": "The target's next Hunt hit deals +15% damage.",
+      "base": {
+        "amount": 15
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "oh-naur",
@@ -3389,7 +4587,27 @@
       "traits": []
     },
     "updatedAt": 1790283414000,
-    "pushedAt": 1790283485525
+    "pushedAt": 1790283485525,
+    "ability": {
+      "desc": "Clear curses — themed around Water cards",
+      "kind": "support",
+      "name": "Oh Naur",
+      "amount": 0,
+      "effect": "cleanse",
+      "target": "team",
+      "affinity": "trait:water",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "googly_eyes",
+      "name": "Oh Naur",
+      "desc": "Puts googly eyes on all the target's card art for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "soggy-bread",
@@ -3422,7 +4640,27 @@
         "event": ""
       }
     },
-    "pushedAt": 1790283485915
+    "pushedAt": 1790283485915,
+    "ability": {
+      "desc": "Boss hits softer — scales with your Water cards",
+      "kind": "support",
+      "name": "Soup or Water",
+      "amount": 0.3,
+      "effect": "weaken",
+      "target": "boss",
+      "affinity": "trait:water",
+      "cooldown": 3,
+      "duration": 2
+    },
+    "effect": {
+      "primitive": "rubber_chicken",
+      "name": "Soggy",
+      "desc": "Every sound in the target's Activity is a squeak.",
+      "base": {
+        "duration_s": 1800
+      },
+      "cooldown_h": 12
+    }
   },
   {
     "id": "otto-the-electoral-college",
@@ -3457,6 +4695,15 @@
       "affinity": "trait:beast",
       "cooldown": 2,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "gift_pack",
+      "name": "Campaign Promise",
+      "desc": "Gives the target a free pack. A promise kept!",
+      "base": {
+        "amount": 1
+      },
+      "cooldown_h": 48
     }
   },
   {
@@ -3489,7 +4736,27 @@
         "event": ""
       }
     },
-    "pushedAt": 1790283804770
+    "pushedAt": 1790283804770,
+    "ability": {
+      "desc": "Heal an ally — extra strong on Community cards",
+      "kind": "support",
+      "name": "Pizza Party",
+      "amount": 0.3,
+      "effect": "heal",
+      "target": "ally",
+      "affinity": "trait:community",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "effect": {
+      "primitive": "gift_pack",
+      "name": "Pizza's Here",
+      "desc": "Gives the target a free pack.",
+      "base": {
+        "amount": 1
+      },
+      "cooldown_h": 48
+    }
   },
   {
     "id": "thechamp",
@@ -3514,7 +4781,24 @@
       ]
     },
     "updatedAt": 1790283784945,
-    "pushedAt": 1790283805363
+    "pushedAt": 1790283805363,
+    "ability": {
+      "desc": "+40% damage when the boss is below 25% HP.",
+      "kind": "attack",
+      "name": "Next Year",
+      "effect": "execute",
+      "amount": 0.4,
+      "threshold": 0.25
+    },
+    "effect": {
+      "primitive": "spotlight",
+      "name": "The Champ",
+      "desc": "The target's name glows gold for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
+    }
   },
   {
     "id": "highflyingpenguin-s-king-dedede",
@@ -3540,10 +4824,19 @@
       "genre": [],
       "realm": [],
       "traits": [
-        "armored"
+        "royal",
+        "armored",
+        "strong"
       ]
     },
-    "ability": null,
+    "ability": {
+      "desc": "+45% damage when the boss is below 25% HP.",
+      "kind": "attack",
+      "name": "Jet Hammer",
+      "effect": "execute",
+      "amount": 0.45,
+      "threshold": 0.25
+    },
     "tierDetails": {
       "normal": {
         "genre": "",
@@ -3576,7 +4869,8 @@
         "event": ""
       }
     },
-    "pushedAt": 1789698500501
+    "pushedAt": 1789698500501,
+    "type": "Character"
   },
   {
     "id": "gordo-s-min-min",
@@ -3601,9 +4895,19 @@
       ],
       "genre": [],
       "realm": [],
-      "traits": []
+      "traits": [
+        "humanoid",
+        "agile",
+        "ranged"
+      ]
     },
-    "ability": null,
+    "ability": {
+      "desc": "+12% critical chance on this attack.",
+      "kind": "attack",
+      "name": "ARMS Reach",
+      "effect": "focus",
+      "amount": 0.12
+    },
     "tierDetails": {
       "normal": {
         "genre": "Super Smash Bros",
@@ -3636,7 +4940,8 @@
         "event": ""
       }
     },
-    "pushedAt": 1789768603977
+    "pushedAt": 1789768603977,
+    "type": "Character"
   },
   {
     "id": "madbombchu-s-pikachu",
@@ -3655,15 +4960,24 @@
     "updatedAt": 1789770631201,
     "tags": {
       "class": "attacker",
-      "type": "character",
+      "type": "creature",
       "origin": [
         "pokemon"
       ],
       "genre": [],
       "realm": [],
-      "traits": []
+      "traits": [
+        "lightning",
+        "cute"
+      ]
     },
-    "ability": null,
+    "ability": {
+      "desc": "20% chance to strike twice.",
+      "kind": "attack",
+      "name": "Thunder Jolt",
+      "effect": "rampage",
+      "amount": 0.2
+    },
     "tierDetails": {
       "normal": {
         "genre": "",
@@ -3696,7 +5010,8 @@
         "event": ""
       }
     },
-    "pushedAt": 1789770765728
+    "pushedAt": 1789770765728,
+    "type": "Creature"
   },
   {
     "id": "madbombchu-s-pirahna-plant",
@@ -3715,15 +5030,26 @@
     "updatedAt": 1790306767432,
     "tags": {
       "class": "attacker",
-      "type": "character",
-      "origin": [],
+      "type": "creature",
+      "origin": [
+        "smash"
+      ],
       "genre": [],
       "realm": [
         "super smash bros"
       ],
-      "traits": []
+      "traits": [
+        "nature",
+        "toxic",
+        "monster"
+      ]
     },
-    "ability": null,
+    "ability": {
+      "desc": "The boss cannot block this attack.",
+      "kind": "attack",
+      "name": "Poison Breath",
+      "effect": "pierce"
+    },
     "tierDetails": {
       "normal": {
         "genre": "",
@@ -3756,7 +5082,8 @@
         "event": ""
       }
     },
-    "pushedAt": 1790307162071
+    "pushedAt": 1790307162071,
+    "type": "Creature"
   },
   {
     "id": "el-rey-s-pirahna-plant",
@@ -3775,15 +5102,26 @@
     "updatedAt": 1790220185743,
     "tags": {
       "class": "attacker",
-      "type": "character",
+      "type": "creature",
       "origin": [
         "smash"
       ],
       "genre": [],
       "realm": [],
-      "traits": []
+      "traits": [
+        "nature",
+        "toxic",
+        "monster"
+      ]
     },
-    "ability": null,
+    "ability": {
+      "desc": "Heal for 20% of the damage dealt.",
+      "kind": "attack",
+      "name": "Chomp",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self"
+    },
     "tierDetails": {
       "normal": {
         "genre": "",
@@ -3817,7 +5155,8 @@
         "event": ""
       }
     },
-    "pushedAt": 1790220491303
+    "pushedAt": 1790220491303,
+    "type": "Creature"
   },
   {
     "id": "grumpyteadbear-s-last-stand",
@@ -3867,15 +5206,28 @@
       }
     },
     "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [],
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
       "genre": [],
       "realm": [],
       "traits": []
     },
-    "ability": null,
-    "pushedAt": 1790134712485
+    "ability": {
+      "desc": "Shield an ally — extra strong on Beast cards",
+      "kind": "support",
+      "name": "Last Stand",
+      "amount": 0.4,
+      "effect": "shield",
+      "target": "ally",
+      "affinity": "trait:beast",
+      "cooldown": 2,
+      "duration": 1
+    },
+    "pushedAt": 1790134712485,
+    "type": "Moment"
   },
   {
     "id": "ooblah-s-bowser",
@@ -3924,7 +5276,27 @@
         "event": ""
       }
     },
-    "pushedAt": 1790218592889
+    "pushedAt": 1790218592889,
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "traits": [
+        "monster",
+        "royal",
+        "fire"
+      ]
+    },
+    "ability": {
+      "desc": "+12% critical chance on this attack.",
+      "kind": "attack",
+      "name": "Fire Breath",
+      "effect": "focus",
+      "amount": 0.12
+    }
   },
   {
     "id": "pk-austin-s-ganondorf",
@@ -3973,7 +5345,26 @@
         "event": ""
       }
     },
-    "pushedAt": 1790219269746
+    "pushedAt": 1790219269746,
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "traits": [
+        "shadow",
+        "royal",
+        "melee"
+      ]
+    },
+    "ability": {
+      "desc": "The boss cannot block this attack.",
+      "kind": "attack",
+      "name": "Flame Choke",
+      "effect": "pierce"
+    }
   },
   {
     "id": "tantaco-s-mythra-pyra",
@@ -4022,6 +5413,27 @@
         "event": ""
       }
     },
-    "pushedAt": 1790219691763
+    "pushedAt": 1790219691763,
+    "type": "Character",
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "smash"
+      ],
+      "traits": [
+        "fire",
+        "light",
+        "hero",
+        "melee"
+      ]
+    },
+    "ability": {
+      "desc": "20% chance to strike twice.",
+      "kind": "attack",
+      "name": "Blade Swap",
+      "effect": "rampage",
+      "amount": 0.2
+    }
   }
 ]

@@ -37,15 +37,28 @@ const RARITY_ORDER: Rarity[] = [
  * Roll one rarity against the pull-rate table.
  * Pass a seeded rng for a deterministic test. Defaults to Math.random.
  */
-export function rollRarity(rng: () => number = Math.random): Rarity {
+export function rollRarity(rng: () => number = Math.random, rates: Record<Rarity, number> = PULL_RATES): Rarity {
   const roll = rng();
   let cumulative = 0;
   for (const rarity of RARITY_ORDER) {
-    cumulative += PULL_RATES[rarity];
+    cumulative += rates[rarity];
     if (roll < cumulative) return rarity;
   }
   // Floating-point safety: a roll of exactly ~1 lands here.
   return 'normal';
+}
+
+/**
+ * The Lucky Pull boon (effects_cleanup.sql): every rare rate x luck, Normal takes the rest.
+ * luck is clamped to 1..3 (effect_primitives.max_amount for lucky_pull).
+ */
+export function luckyRates(luck: number): Record<Rarity, number> {
+  const k = Math.max(1, Math.min(3, Number(luck) || 1));
+  const out = { ...PULL_RATES };
+  let rare = 0;
+  for (const r of RARITY_ORDER) if (r !== 'normal') { out[r] = PULL_RATES[r] * k; rare += out[r]; }
+  out.normal = 1 - rare;
+  return out;
 }
 
 /** Group a flat list of cards into buckets by rarity. */
@@ -68,8 +81,9 @@ export function groupByRarity<T extends { rarity: Rarity }>(
 function drawOne<T extends { rarity: Rarity }>(
   pool: Record<Rarity, T[]>,
   rng: () => number,
+  rates: Record<Rarity, number> = PULL_RATES,
 ): T {
-  let rarity = rollRarity(rng);
+  let rarity = rollRarity(rng, rates);
   let candidates = pool[rarity];
 
   // If the rolled rarity has no cards yet, fall back to Normal.
@@ -94,10 +108,12 @@ function drawOne<T extends { rarity: Rarity }>(
 export function drawPack<T extends { rarity: Rarity }>(
   pool: Record<Rarity, T[]>,
   rng: () => number = Math.random,
+  luck?: number | null,
 ): T[] {
   const pack: T[] = [];
   for (let slot = 0; slot < PACK_SIZE; slot += 1) {
-    pack.push(drawOne(pool, rng));
+    // A Lucky Pull boon changes the first slot only.
+    pack.push(drawOne(pool, rng, slot === 0 && luck ? luckyRates(luck) : PULL_RATES));
   }
   return pack;
 }
