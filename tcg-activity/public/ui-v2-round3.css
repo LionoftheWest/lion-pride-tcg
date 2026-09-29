@@ -141,5 +141,24 @@ body.ui-v2 .v2-select:focus { border-color: var(--gold); }
 body.ui-v2 .v2-select option:disabled { color: var(--text-muted); }
 body.ui-v2 .se-foot { flex: 0 0 auto; padding-top: 8px; }
 body.ui-v2 .se-side .f-chips { flex: 0 1 auto; min-height: 0; overflow: hidden; }
+/* Stat points in the card panel. */
+body.ui-v2 .pts .pb-h { display: flex; justify-content: space-between; align-items: center; }
+body.ui-v2 .pts .side-h { margin: 0 0 6px; }
+body.ui-v2 .pts.has-free .mono { color: var(--gold); font-weight: 700; }
+body.ui-v2 .pts-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 6px; }
+body.ui-v2 .pts-row { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 5px 5px 5px 8px; border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+body.ui-v2 .pts-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+body.ui-v2 .pts-row b { font-variant-numeric: tabular-nums; }
+body.ui-v2 .pts-row b i { font-style: normal; color: var(--gold); margin-left: 2px; }
+body.ui-v2 .pts-add { flex: none; width: 22px; height: 22px; border-radius: 7px; border: 0; background: var(--gold); color: #221a00; font-weight: 800; cursor: pointer; line-height: 1; }
+body.ui-v2 .pts-add:disabled { opacity: .25; cursor: default; }
+body.ui-v2 .pts-act { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+body.ui-v2 .pts-act .v2-btn { padding: 6px 14px; }
+body.ui-v2 #viewer .asc-spend { position: absolute; left: 50%; top: 8.5%; transform: translateX(-50%); z-index: 20; animation: ascSpendIn .35s ease-out; }
+@keyframes ascSpendIn { from { opacity: 0; transform: translate(-50%, 10px); } }
 /* The ascension tier name: across the middle of the card, not over the card name. */
 body.ui-v2 .asc-label { top: 44%; font-size: 30px; }
+/* The card panel children keep their height, so fitPanel() sees a real overflow and drops
+   the tags / lore (a shrunk row was cut in half instead). */
+body.ui-v2 #colPanel > * { flex-shrink: 0; }
+body.ui-v2 .boss-mode #colPanel > .boss-stage { flex-shrink: 1; }

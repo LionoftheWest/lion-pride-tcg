@@ -2877,7 +2877,7 @@ function fillRaidInfo(c) {
     <div class="vr-stats">
       ${stat(support ? '—' : `⚡ ${c.power ?? 0}`, 'Power')}
       ${stat(max ? `${hp}/${max}` : '—', 'HP', max && hp / max < 0.35 ? 'low' : '')}
-      ${stat(support ? '—' : (c.matches ? '20%' : '10%'), 'Crit')}
+      ${stat(support ? '—' : `${Math.round(Math.min(c.critAdd ? 0.6 : 1, (c.matches ? 0.2 : 0.1) + (c.critAdd || 0)) * 100)}%`, 'Crit')}
       ${stat(look ? `${look.glyph} ${look.name}` : '—', 'Element')}
     </div>
     ${max ? `<i class="vr-hpbar"><i style="width:${Math.max(0, Math.round((100 * hp) / max))}%"></i></i>` : ''}
@@ -2927,7 +2927,7 @@ function fillViewerTags(tags) {
   box.classList.remove('hidden');
 }
 
-function closeViewer() { el('viewer').classList.add('hidden'); }
+function closeViewer() { el('viewer').classList.add('hidden'); el('viewer').querySelector('.asc-spend')?.remove(); }
 
 // Ascension panel in the viewer — only for owned collection cards with the flag on.
 function renderAscension(card) {
@@ -3028,12 +3028,23 @@ function playAscend(tier) {
 
 // v2: the card opens in the viewer as it was, then it ascends there: the celebration plays
 // and the card takes its new tier frame at the flash.
-function celebrateAscend(before, after) {
+// With the stat points on, the new points are offered after the celebration: the button
+// closes the viewer, and the card panel shows the points to spend.
+function celebrateAscend(before, after, points) {
   openViewer(before);
   setTimeout(() => {
     if (el('viewer').classList.contains('hidden')) return;
     renderAscension(withOwned(after));
     playAscend(after.ascension);
+    if (!points) return;
+    setTimeout(() => {
+      if (el('viewer').classList.contains('hidden')) return;
+      const b = document.createElement('button');
+      b.className = 'v2-btn gold asc-spend';
+      b.textContent = 'Spend points';
+      b.addEventListener('click', closeViewer);
+      el('viewer').appendChild(b);
+    }, 1700);
   }, 450);
 }
 
