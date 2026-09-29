@@ -423,8 +423,10 @@ function paintPanel(c) {
   const el0 = elemOf(c);
   const all = mergedCards();
   const maxPow = Math.max(1, ...all.map((x) => x.power || 0));
-  const power = c.power || 0;
-  const hp = cardHp(power);
+  const sp = !c.locked && ctx.cache.collection?.stats?.on ? c.stat : null; // stat points (stat_points.sql)
+  const power = sp ? sp.cp : (c.power || 0);
+  const hp = sp ? sp.hp : cardHp(power);
+  const crit = 10 + Math.round((sp?.crit || 0) * 100);
   const bar = (label, val, max, color, shown) => `<div class="stat"><b>${shown}</b><span>${label}</span><i class="sbar"><i style="width:${Math.min(100, Math.round((100 * val) / max))}%;background:${color}"></i></i></div>`;
   const t = c.tags || {};
   const chips = [];
@@ -461,7 +463,7 @@ function paintPanel(c) {
         <div class="p-stats">
           ${bar('Power', power, maxPow, 'var(--gold)', power)}
           ${bar('HP', hp, cardHp(maxPow), 'var(--danger)', hp)}
-          ${bar('Crit', 10, 25, 'var(--el-lightning)', '10%')}
+          ${bar('Crit', crit, 60, 'var(--el-lightning)', `${crit}%`)}
         </div>
       </div>
     </div>
@@ -470,6 +472,7 @@ function paintPanel(c) {
     <div class="pbox fx hidden" id="colEffect"></div>
     ${chips.length ? `<div class="p-tags" id="pTags">${chips.join('')}</div>` : ''}
     ${ascHTML}
+    ${sp ? pointsHTML(c, sp) : ''}
     ${c.artist ? `<div class="p-credit">🎨 Art by <b>${esc(c.artist)}</b></div>` : ''}
     <div class="p-actions">
       ${canAsc ? `<button class="v2-btn gold" id="pAscend">Ascend to ★${a + 1} · uses ${c.next_cost}</button>` : ''}
@@ -480,6 +483,7 @@ function paintPanel(c) {
   el('pTrade')?.addEventListener('click', () => ctx.show('trading'));
   el('pSpot')?.addEventListener('click', () => toggleSpotlight(c));
   el('pAscend')?.addEventListener('click', () => ascend(c));
+  if (sp) wirePoints(c, sp, box);
   fitPanel(box);
   fillViewerEffect(c, 'colEffect').then(() => fitPanel(box));
 }
@@ -497,6 +501,58 @@ function paintBossPanel() {
   try { galBoss = mountBoss(ctx.el('galBossCanvas'), seedForBoss(b), 'Mythic', { portrait: true, portraitOpts: { at: 0.5 } }); } catch { galBoss = null; }
 }
 
+// ---- Stat points: each star gives 3 points for this copy (docs/card-stats.md) ----------
+const STAT_DEFS = [['attack', 'Attack'], ['vitality', 'Vitality'], ['precision', 'Precision'], ['potency', 'Potency'], ['haste', 'Haste']];
+const pend = { id: null, add: {} }; // points picked but not saved yet (one card at a time)
+// Only the stats that do something for this card: attackers fight, effects and supports cast.
+function statKeys(c) {
+  const keys = [];
+  if (['Character', 'Creature'].includes(c.type)) keys.push('attack', 'vitality', 'precision');
+  if (c.effect || c.ability?.kind === 'support') keys.push('potency');
+  if (c.effect) keys.push('haste');
+  return keys;
+}
+function pointsHTML(c, sp) {
+  const keys = statKeys(c);
+  if (!keys.length) return '';
+  if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; }
+  const picked = Object.values(pend.add).reduce((t, n) => t + n, 0);
+  const left = (sp.free || 0) - picked;
+  const pts = sp.points || {};
+  const spent = Object.values(pts).reduce((t, n) => t + (Number(n) || 0), 0);
+  const rows = STAT_DEFS.filter(([k]) => keys.includes(k)).map(([k, label]) => `<div class="pts-row">
+      <span>${label}</span><b>${Number(pts[k]) || 0}${pend.add[k] ? `<i>+${pend.add[k]}</i>` : ''}</b>
+      <button class="pts-add" data-add="${k}"${left > 0 ? '' : ' disabled'}>+</button></div>`).join('');
+  const canReset = spent > 0 && !picked && !ctx.cache.collection?.stats?.resetUsed;
+  return `<div class="pts${left > 0 ? ' has-free' : ''}" id="pPts">
+    <div class="pb-h"><span class="side-h">Stat points</span><span class="mono">${left} free</span></div>
+    <div class="pts-rows">${rows}</div>
+    ${picked || canReset ? `<div class="pts-act">${picked ? '<button class="v2-btn gold" id="ptsSave">Save</button><button class="v2-btn" id="ptsUndo">Undo</button>' : ''}
+      ${canReset ? '<button class="link-btn" id="ptsReset">Reset</button>' : ''}</div>` : ''}
+  </div>`;
+}
+function wirePoints(c, sp, box) {
+  const repaint = () => paintPanel(c);
+  box.querySelector('#pPts')?.addEventListener('click', async (e) => {
+    const add = e.target.closest('[data-add]');
+    if (add) { const k = add.dataset.add; pend.add[k] = (pend.add[k] || 0) + 1; repaint(); return; }
+    if (e.target.closest('#ptsUndo')) { pend.add = {}; repaint(); return; }
+    const save = e.target.closest('#ptsSave');
+    const reset = e.target.closest('#ptsReset');
+    if (!save && !reset) return;
+    (save || reset).disabled = true;
+    let r = null;
+    try {
+      r = save ? await ctx.apiPost('/api/stats/spend', { cardId: c.id, add: pend.add })
+        : await ctx.apiPost('/api/stats/reset', { cardId: c.id });
+    } catch { r = null; }
+    if (!r?.ok) { (save || reset).disabled = false; (save || reset).textContent = r?.error === 'reset_used' ? 'Next week' : 'Try again'; return; }
+    pend.add = {};
+    await ctx.refreshOwned();
+    renderCollectionV2();
+  });
+}
+
 async function ascend(c) {
   const btn = ctx.el('pAscend');
   if (btn) { btn.disabled = true; btn.textContent = 'Ascending…'; }
@@ -505,7 +561,7 @@ async function ascend(c) {
   if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } return; }
   const after = { ...c, ascension: r.ascension, quantity: r.quantity, power: r.power, next_cost: r.next_cost,
     can_ascend: r.next_cost != null && r.quantity >= 1 + r.next_cost };
-  ctx.celebrateAscend(c, after);
+  ctx.celebrateAscend(c, after, !!ctx.cache.collection?.stats?.on && statKeys(c).length > 0);
   await ctx.refreshOwned();
   renderCollectionV2();
 }
@@ -548,6 +604,11 @@ function fitPanel(box) {
   lore?.classList.remove('clamp');
   if (over() && lore) { lore.classList.add('clamp'); lore.title = lore.textContent; }
   if (over()) lore?.classList.add('hidden');
+  // Still tight (the stat points add rows): the tags go, then the artist line.
+  tags?.classList.remove('hidden');
+  box.querySelector('.p-credit')?.classList.remove('hidden');
+  if (over()) tags?.classList.add('hidden');
+  if (over()) box.querySelector('.p-credit')?.classList.add('hidden');
 }
 
 export function refreshCollectionV2() {

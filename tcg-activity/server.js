@@ -370,11 +370,20 @@ app.get('/api/collection', async (req, res) => {
   // Total CP comes from SQL (authoritative — includes the +25% set-completion
   // bonus). Fall back to the per-card sum if the RPC is unavailable.
   let totalPower = cards.reduce((s, c) => s + c.power, 0);
-  try {
-    const { data: cp } = await supabase.rpc('my_collection_power', { p_player_id: me.id });
-    if (cp != null) totalPower = Number(cp);
-  } catch { /* keep the fallback */ }
-  const payload = { user: { id: me.id, name: me.global_name || me.username }, cards, power: totalPower };
+  // Stat points (stat_points.sql): the combat numbers of each ascended copy. The SQL is the
+  // only formula; while the flag is off (or the function is not live) there is no stats key.
+  const [cpRes, stRes] = await Promise.allSettled([
+    supabase.rpc('my_collection_power', { p_player_id: me.id }),
+    supabase.rpc('card_stats_for', { p_player: me.id }),
+  ]);
+  if (cpRes.status === 'fulfilled' && cpRes.value.data != null) totalPower = Number(cpRes.value.data);
+  const st = stRes.status === 'fulfilled' && !stRes.value.error ? stRes.value.data : null;
+  let stats = null;
+  if (st?.on) {
+    stats = { on: true, week: st.week, resetUsed: st.reset_week === st.week };
+    for (const c of cards) { const x = st.cards?.[String(c.id)]; if (x) c.stat = x; }
+  }
+  const payload = { user: { id: me.id, name: me.global_name || me.username }, cards, power: totalPower, stats };
   collCache.set(me.id, { at: Date.now(), payload });
   res.json(payload);
 });
@@ -392,6 +401,39 @@ app.post('/api/ascend', async (req, res) => {
   const { data, error } = await supabase.rpc('ascend_card', { p_player_id: me.id, p_card_id: cardId });
   if (error) return res.status(500).json({ error: error.message });
   if (data?.ok) { bustUser(me.id); leaderboardCache = null; } // collection + power changed
+  res.json(data);
+});
+
+// Stat points: spend on one copy, or the free weekly reset. The RPCs check the flag, the
+// ownership, the limits and the week; the actor comes from the verified token.
+const STAT_KEYS = ['attack', 'vitality', 'precision', 'potency', 'haste'];
+app.post('/api/stats/spend', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const cardId = Number(req.body?.cardId);
+  const add = {};
+  for (const k of STAT_KEYS) {
+    const n = req.body?.add?.[k];
+    if (n == null) continue;
+    if (!Number.isInteger(n) || n < 0 || n > 15) return res.status(400).json({ error: 'bad amount' });
+    if (n > 0) add[k] = n;
+  }
+  if (!cardId || !Object.keys(add).length) return res.status(400).json({ error: 'bad request' });
+  const { data, error } = await supabase.rpc('spend_stat_points', { p_player: me.id, p_card: cardId, p_add: add });
+  if (error) return res.status(500).json({ error: error.message });
+  if (data?.ok) bustUser(me.id);
+  res.json(data);
+});
+app.post('/api/stats/reset', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const cardId = Number(req.body?.cardId);
+  if (!cardId) return res.status(400).json({ error: 'bad card' });
+  const { data, error } = await supabase.rpc('reset_stat_points', { p_player: me.id, p_card: cardId });
+  if (error) return res.status(500).json({ error: error.message });
+  if (data?.ok) bustUser(me.id);
   res.json(data);
 });
 
@@ -572,10 +614,11 @@ app.get('/api/hunt', async (req, res) => {
   }
   const today = new Date().toISOString().slice(0, 10);
   // One call (hunt_view.sql) instead of 4: 100 players opening the Hunt at once waited ~6 s.
-  let cards, hpRows, myDamage, round;
+  let cards, hpRows, myDamage, round, statCards = null;
   const { data: view, error: viewErr } = await supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today });
   if (!viewErr && view) {
     cards = view.cards; hpRows = view.hp; myDamage = Number(view.damage) || 0; round = view.round || 0;
+    if (view.stats?.on) statCards = view.stats.cards || {};
   } else { // the function is not live yet: the 4 separate calls
     const [{ data: c }, { data: hp }, { data: contrib }, { data: cstate }] = await Promise.all([
       supabase.from('player_cards')
@@ -590,12 +633,13 @@ app.get('/api/hunt', async (req, res) => {
   const hpMap = new Map((hpRows || []).map((h) => [h.card_id, h]));
   const roster = (cards || []).map((row) => {
     const c = row.card; const type = c?.subject?.type;
-    const power = cardPower(c?.rarity, row.ascension, c?.subject?.cp_mod);
+    const sc = statCards?.[String(c?.id)];
+    const power = sc ? sc.cp : cardPower(c?.rarity, row.ascension, c?.subject?.cp_mod);
     const st = hpMap.get(c?.id);
-    const maxHp = st?.max_hp ?? Math.max(30, Math.round(power * 1.8));
+    const maxHp = st?.max_hp ?? (sc ? sc.hp : Math.max(30, Math.round(power * 1.8)));
     return {
       id: c?.id, name: c?.name, rarity: c?.rarity, image_url: toProxyImg(c?.image_url),
-      ascension: row.ascension || 0, power,
+      ascension: row.ascension || 0, power, critAdd: sc?.crit || 0,
       type, matches: matchesWeak(hunt.weak_points, { type, rarity: c?.rarity, season: c?.season }),
       hp: st ? st.hp_remaining : maxHp, max_hp: maxHp, downed: st?.downed || false,
       used: !!st, // this card is committed for today (counts toward the daily cap)
