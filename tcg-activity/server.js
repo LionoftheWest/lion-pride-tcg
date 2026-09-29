@@ -97,23 +97,34 @@ app.disable('x-powered-by');
 // Baseline security headers. These are safe inside Discord's iframe proxy. We do
 // NOT set frame-ancestors or X-Frame-Options — Discord must be able to embed the
 // Activity, and a wrong value there would break the embed.
-const CSP = [
+// Two policies (2026-09-29, from the report-only reports of Nathan's session):
+// - Discord's proxy adds an INLINE script to the page (script-src-elem inline, line 135 of
+//   our 136-line page), so the enforced policy allows inline scripts; scripts from any
+//   other site stay blocked.
+// - The meshopt decoder of the compressed boss models needs WebAssembly (wasm-eval).
+// The strict script rule stays REPORT-ONLY with a sample, to learn what Discord adds.
+const cspWith = (script) => [
   "default-src 'self'",
-  "script-src 'self'",
+  `script-src ${script}`,
   "style-src 'self' 'unsafe-inline'", // the templates set inline style attributes
   "img-src 'self' data: blob:", // blob: = the boss model textures
   "media-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' wss: https://discord.com", // the room WebSocket + the SDK's token exchange
+  "connect-src 'self' wss: https://discord.com blob: data:", // the room WebSocket, the SDK's token exchange, the model textures (GLTFLoader fetches blob: URLs)
   "object-src 'none'",
   "base-uri 'none'",
   "frame-ancestors https://discord.com https://*.discord.com https://*.discordsays.com",
   'report-uri /api/csp-report',
 ].join('; ');
+const CSP_ENFORCED = cspWith("'self' 'unsafe-inline' 'wasm-unsafe-eval'");
+const CSP_STRICT = cspWith("'self' 'wasm-unsafe-eval' 'report-sample'");
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader(process.env.CSP_ENFORCE === '1' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only', CSP);
+  // CSP_ENFORCE=1 enforces CSP_ENFORCED; without it both policies only report.
+  if (process.env.CSP_ENFORCE === '1') res.setHeader('Content-Security-Policy', CSP_ENFORCED);
+  else res.append('Content-Security-Policy-Report-Only', CSP_ENFORCED);
+  res.append('Content-Security-Policy-Report-Only', CSP_STRICT);
   next();
 });
 // CSP violation reports (report-only mode): logged, so the policy can be checked in the real client.
@@ -122,7 +133,7 @@ app.post('/api/csp-report', express.json({ type: ['application/csp-report', 'app
   if (cspReports < 500) {
     cspReports += 1;
     const r = req.body?.['csp-report'] || req.body || {};
-    console.log('csp-report', JSON.stringify({ dir: r['violated-directive'] || r.effectiveDirective, blocked: r['blocked-uri'] || r.blockedURL, src: r['source-file'] || r.sourceFile, line: r['line-number'] || r.lineNumber }).slice(0, 400));
+    console.log('csp-report', JSON.stringify({ dir: r['violated-directive'] || r.effectiveDirective, blocked: r['blocked-uri'] || r.blockedURL, src: r['source-file'] || r.sourceFile, line: r['line-number'] || r.lineNumber, sample: r['script-sample'] || r.sample }).slice(0, 400));
   }
   res.status(204).end();
 });
