@@ -19,7 +19,7 @@ import { MODEL_BASE, MODEL_BOSSES, modelFor } from './boss-models.js';
 export { MODEL_BOSSES, modelFor };
 
 // Fight event -> animation clip in the GLB (names from mixamo_to_glb.py).
-const CLIP_FOR = { flinch: 'hit', counter: 'strike', slam: 'slam', strike: 'strike', enrage: 'roar', stun: 'hit', curse: 'flex', defeat: 'death', attack: 'hit',
+const CLIP_FOR = { taunt: 'taunt', flinch: 'hit', counter: 'strike', slam: 'slam', strike: 'strike', enrage: 'roar', stun: 'hit', curse: 'flex', defeat: 'death', attack: 'hit',
   cataclysm: 'slam', drain: 'punch', stunhit: 'punch', regenerate: 'flex', charging: 'roar' };
 // The boss's own moves (hunt_boss_difficulty.sql) -> the CLIP_FOR key ("stun" = the boss is
 // stunned; "stunhit" = the boss stuns a card).
@@ -113,6 +113,47 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
       m.traverse((o) => { if (o.isBone && /forearm|elbow/i.test(o.name) && !/twist/i.test(o.name)) { o.getWorldPosition(wp); xmin = Math.min(xmin, wp.x); xmax = Math.max(xmax, wp.x); } });
       const span = Number.isFinite(xmin) ? (xmax - xmin) + viewH * 0.45 : viewH * 1.1;
       portraitView = { viewH, cy, z: hp.z, span, mx: Number.isFinite(xmin) ? (xmin + xmax) / 2 : hp.x };
+      // Keep only the showcase clips that stay in the frame (the Demon's roar bends down out of
+      // it): sample each clip on a scratch mixer. In every pose the FACE (the head bone) must
+      // stay inside the shown frame: under the top edge, above the lowest 30%, inside 85% of
+      // the width. The hair / horns may pass the top edge (the card crops them).
+      portraitCamera(); // sets shownFrame (the frame the test below checks against)
+      const report = {};
+      if (head && shownFrame) {
+        const probe = new THREE.AnimationMixer(m), at = new THREE.Vector3();
+        // The idle face at 70% of the frame height for every boss (the head bones differ per
+        // model: the face sat at 48-93% before this step).
+        const sampleFace = (clip, n) => {
+          const a = probe.clipAction(clip); a.play(); const ys = [], xs = [];
+          for (let k = 0; k <= n; k += 1) { probe.setTime((clip.duration * k) / n); m.updateMatrixWorld(true); head.getWorldPosition(at); ys.push(at.y); xs.push(at.x); }
+          a.stop(); probe.uncacheAction(clip); return { ys, xs };
+        };
+        if (idle) {
+          const { ys } = sampleFace(idle.getClip(), 8);
+          portraitView.faceY = ys.reduce((t, y) => t + y, 0) / ys.length;
+        }
+        portraitCamera(SHOW_ZOOM); // the showcase clips play zoomed out
+        const f = shownFrame, frameTop = f.cy + f.vh / 2, frameBottom = f.cy - f.vh / 2;
+        for (const ev of ['idle', 'enrage', 'curse', 'taunt']) {
+          const clip = (ev === 'idle' ? idle : actions[CLIP_FOR[ev]])?.getClip();
+          if (!clip) continue;
+          const a = probe.clipAction(clip); a.play();
+          let ok = true, lo = Infinity, hi = -Infinity;
+          for (let k = 0; k <= 16; k += 1) {
+            probe.setTime((clip.duration * k) / 16); m.updateMatrixWorld(true); head.getWorldPosition(at);
+            lo = Math.min(lo, at.y); hi = Math.max(hi, at.y);
+            if (at.y > frameTop - 0.05 * f.vh || at.y < frameBottom + 0.3 * f.vh || Math.abs(at.x - f.x) > f.vw / 2 * 0.85) ok = false;
+          }
+          a.stop(); probe.uncacheClip(clip);
+          report[ev] = { ok, low: +((lo - frameBottom) / f.vh).toFixed(2), high: +((hi - frameBottom) / f.vh).toFixed(2) }; // face height, 0 = bottom, 1 = top
+          if (ok && ev !== 'idle') showClips.push(ev); // idle = the reference (not a showcase clip)
+        }
+        probe.stopAllAction(); probe.uncacheRoot(m);
+        mixer.update(0); m.updateMatrixWorld(true); // back to the idle pose
+        portraitCamera(1);
+      }
+      canvas.dataset.showcase = showClips.join(',');
+      canvas.dataset.showcaseReport = JSON.stringify(report);
       portraitCamera();
       canvas.dataset.portrait = JSON.stringify({ head: head ? head.name : null, top: top ? top.name : null, y: +hp.y.toFixed(2), topY: +tp.y.toFixed(2), chest: chest ? chest.name : null, viewH: +viewH.toFixed(2) });
     }
@@ -134,6 +175,18 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
     current.crossFadeTo(next, fade, false);
     current = next;
   }
+  // Portrait (the Home card): mostly idle, and every 10-15 s a roar, a flex or a taunt, the
+  // clips that stay in the frame (Nathan, 2026-09-29; the attacks lunge or crouch out of it).
+  // The taunt is Mixamo "Taunting Throwing Arms Back" (the Fox Ninja's clip).
+  let showTimer = 0;
+  const showClips = [];
+  function showcase() {
+    showTimer = setTimeout(() => {
+      if (running && !document.hidden && current === idle && showClips.length) once(showClips[Math.floor(Math.random() * showClips.length)]); // roar / flex / taunt
+      if (running) showcase();
+    }, 10000 + Math.random() * 5000);
+  }
+  if (portrait) showcase();
   function once(event, hold) {
     const name = CLIP_FOR[event];
     if (!actions[name] || !mixer || dead) return;
@@ -157,8 +210,10 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
   let running = true, raf = 0, last = performance.now();
   const t0 = last;
   // Portrait: fit the head + chest by height, and by width when the view is narrow.
-  let portraitView = null;
-  function portraitCamera() {
+  let portraitView = null, shownFrame = null;
+  let zoomNow = 1;
+  const SHOW_ZOOM = 1.35;
+  function portraitCamera(zoom = zoomNow) {
     if (!portraitView) return;
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     // Fit the head + chest by height and the whole bust (both arms) by width (Nathan: the
@@ -168,11 +223,15 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
     const vhFit = portraitView.viewH;
     const distH = (vhFit / 2) / t;
     const distW = (portraitView.span * 1.08) / (2 * t * camera.aspect * Math.min(at, 1 - at) * 2);
-    const dist = Math.max(distH, distW);
-    const vh = 2 * dist * t; // the height actually shown
+    const dist0 = Math.max(distH, distW), dist = dist0 * zoom;
+    const vh0 = 2 * dist0 * t, vh = 2 * dist * t; // the height shown (at zoom 1, and now)
     const x = portraitView.mx + (0.5 - at) * 2 * dist * t * camera.aspect;
-    const cy = portraitView.cy - (vh - portraitView.viewH) / 2; // the head top stays in place
+    // The idle face at 70% of the height at zoom 1 (60% when zoomed out); before the face is
+    // known, the head top stays in place.
+    const p = 0.7 - 0.1 * (zoom - 1) / (SHOW_ZOOM - 1);
+    const cy = portraitView.faceY != null ? portraitView.faceY + (0.5 - p) * vh : portraitView.cy - (vh0 - portraitView.viewH) / 2;
     camera.position.set(x, cy, portraitView.z + dist); camera.lookAt(x, cy, portraitView.z);
+    shownFrame = { x, cy, vh, vw: vh * camera.aspect };
     canvas.dataset.fit = distW > distH ? 'width' : 'height';
   }
   function size() {
@@ -193,6 +252,10 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
     quality(now);
     if (mixer) { mixer.update(dt); backToIdle(); }
+    if (portrait && portraitView && portraitView.faceY != null) {
+      const want = current && current !== idle ? SHOW_ZOOM : 1;
+      if (Math.abs(want - zoomNow) > 0.001) { zoomNow += (want - zoomNow) * Math.min(1, dt * 3); portraitCamera(zoomNow); }
+    }
     holder.rotation.y = Math.sin((now - t0) / 1000 * 0.4) * 0.12; // a slow sway toward the squad
     fx.update(dt, (now - t0) / 1000);
     renderer.render(scene, camera);
@@ -210,7 +273,7 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
     stun() { once('stun'); },
     defeat() { if (!mixer) defeatPending = true; once('defeat', true); dead = true; },
     dispose() {
-      running = false; cancelAnimationFrame(raf);
+      running = false; cancelAnimationFrame(raf); clearTimeout(showTimer);
       try { if (ro) ro.disconnect(); } catch (e) { /* ignore */ }
       scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((mt) => { if (mt.map) mt.map.dispose(); mt.dispose(); }); });
       try { envRT.dispose(); pmrem.dispose(); } catch (e) { /* ignore */ }
