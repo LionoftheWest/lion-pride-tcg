@@ -6,6 +6,7 @@ import {
   PULL_RATES,
   type Rarity,
   drawPack,
+  luckyRates,
   groupByRarity,
   packsToAward,
   rollRarity,
@@ -138,5 +139,34 @@ describe('packsToAward', () => {
       }).bonus,
       false,
     );
+  });
+});
+
+describe('luckyRates / drawPack luck (the Lucky Pull boon)', () => {
+  it('multiplies every rare rate and keeps the total at 1', () => {
+    const r = luckyRates(3);
+    assert.equal(r.illustrated_rare, PULL_RATES.illustrated_rare * 3);
+    assert.equal(r.gold, PULL_RATES.gold * 3);
+    const sum = Object.values(r).reduce((t, x) => t + x, 0);
+    assert.ok(Math.abs(sum - 1) < 1e-9);
+  });
+  it('clamps the luck to 1..3', () => {
+    assert.deepEqual(luckyRates(0.2), PULL_RATES);
+    assert.deepEqual(luckyRates(99), luckyRates(3));
+  });
+  it('changes the first slot only, and no luck = the same pack as before', () => {
+    const pl = pool({ normal: 10, illustrated_rare: 4, secret_rare: 2, full_art: 2, gold: 2 });
+    const plain = drawPack(pl, seededRng(7));
+    assert.deepEqual(drawPack(pl, seededRng(7), null), plain);
+    let rareFirst = 0, rareRest = 0, rareBase = 0;
+    for (let s = 0; s < 4000; s += 1) {
+      const lucky = drawPack(pl, seededRng(s), 3);
+      const base = drawPack(pl, seededRng(s));
+      if (lucky[0]!.rarity !== 'normal') rareFirst += 1;
+      if (base[0]!.rarity !== 'normal') rareBase += 1;
+      if (lucky.slice(1).some((c, i) => c.rarity !== base[i + 1]!.rarity)) rareRest += 1;
+    }
+    assert.equal(rareRest, 0);                    // slots 2-5 are the same draws
+    assert.ok(rareFirst > rareBase * 2.4, `lucky first-slot rares ${rareFirst} vs ${rareBase}`);
   });
 });

@@ -218,6 +218,18 @@ export async function grantPacks(id: string, amount: number, reason: string, by?
  * if the player has no packs. This is the single open path for /open and the
  * Activity, so the balance is the one source of truth.
  */
+/**
+ * A waiting Lucky Pull boon for this member (effects_cleanup.sql take_player_effect): its
+ * amount, used up now, or null. Any error = no luck (the pack still opens).
+ */
+async function takeLuck(id: string): Promise<number | null> {
+  try {
+    const { data, error } = await getSupabase().rpc('take_player_effect', { p_player: id, p_primitive: 'lucky_pull' });
+    if (error || data == null) return null;
+    return Number(data) || null;
+  } catch { return null; }
+}
+
 export async function openOnePack(id: string, username: string): Promise<Card[] | null> {
   await ensurePlayer(id, username);
   const supabase = getSupabase();
@@ -230,7 +242,7 @@ export async function openOnePack(id: string, username: string): Promise<Card[] 
     await grantPacks(id, 1, 'admin', 'refund_empty_pool'); // give the pack back
     throw new Error('The card pool is empty. Add at least one Normal draw card with /seed first.');
   }
-  const pack = drawPack(pool);
+  const pack = drawPack(pool, Math.random, await takeLuck(id));
   await grantCards(id, pack);
   return pack;
 }
@@ -245,7 +257,9 @@ export async function openPacks(id: string, username: string, count: number): Pr
   await ensurePlayer(id, username);
   const pool = await getDrawPool();
   if (pool.normal.length === 0) throw new Error('The card pool is empty. Add at least one Normal draw card with /seed first.');
-  const packs = Array.from({ length: count }, () => drawPack(pool));
+  // A Lucky Pull boon goes on the first pack, and only when at least one pack can open.
+  const luck = count > 0 && (await getPackBalance(id).catch(() => 0)) > 0 ? await takeLuck(id) : null;
+  const packs = Array.from({ length: count }, (_, i) => drawPack(pool, Math.random, i === 0 ? luck : null));
   const { data, error } = await getSupabase().rpc('open_packs', {
     p_player_id: id, p_cards: packs.flat().map((c) => c.id), p_size: PACK_SIZE,
   });

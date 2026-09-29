@@ -2376,6 +2376,10 @@ function resolveHit(node, r, atk) {
     else if (r.outcome === 'blocked') calloutAt(bx, by - 26, 'BLOCK', '#7fb0ff');
     if (r.bonus) calloutAt(bx, by - 52, 'WEAK!', '#ff7a3f');
     else if (r.resisted) calloutAt(bx, by - 52, 'RESIST', '#7fb0ff');
+    // effects_cleanup.sql: a rampage second strike, a Rally boon, a Mend boon.
+    if (r.double) { setTimeout(() => { bossHandle?.flinch(); bossHandle?.attack?.(node.dataset.el || 'physical'); }, 260); calloutAt(bx + 44, by - 26, 'DOUBLE!', '#ffb14a'); }
+    if (r.rally) calloutAt(bx - 44, by - 26, `RALLY +${Math.round(r.rally)}%`, '#5be38a');
+    if (r.mend) calloutAt(bx, by - 104, `MEND +${Math.round(r.mend)}`, '#5be38a');
     bigDamage(bx, by + 18, r.damage, big ? 'crit' : 'hit'); // over the boss, not on the card (Nathan)
     if (r.synergy && r.synergy.element) { // themed-squad element synergy bonus
       const sc = (ELEMENTS[r.synergy.element] || {}).color || '#9fe3ff';
