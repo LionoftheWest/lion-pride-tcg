@@ -1569,6 +1569,19 @@
       "affinity": "trait:nature",
       "cooldown": 2,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "reaction_storm",
+      "name": "Last One Alive",
+      "desc": "The bot reacts 💀 to the target's next 5 messages.",
+      "base": {
+        "amount": 5,
+        "duration_s": 3600
+      },
+      "cooldown_h": 12,
+      "options": {
+        "emoji": "💀"
+      }
     }
   },
   {
@@ -1682,6 +1695,15 @@
       "name": "Better Side",
       "effect": "focus",
       "amount": 0.12
+    },
+    "effect": {
+      "primitive": "crown",
+      "name": "Better Side",
+      "desc": "Puts a 👑 in front of the target's nickname for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -1794,6 +1816,15 @@
       "affinity": "trait:monster",
       "cooldown": 4,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "clown_role",
+      "name": "It Ain't Much",
+      "desc": "Gives the target the 🤡 Clown role for 1 hour.",
+      "base": {
+        "duration_s": 3600
+      },
+      "cooldown_h": 12
     }
   },
   {
@@ -1839,7 +1870,23 @@
       "cooldown": 2,
       "duration": 1
     },
-    "pushedAt": 1789681426137
+    "pushedAt": 1789681426137,
+    "effect": {
+      "primitive": "nickname",
+      "name": "MY SWAMP",
+      "desc": "Changes the target's Discord nickname for 1 hour.",
+      "base": {
+        "duration_s": 3600
+      },
+      "cooldown_h": 12,
+      "options": {
+        "nicknames": [
+          "{name} of the Swamp",
+          "Swamp {name}",
+          "Shrek {name}"
+        ]
+      }
+    }
   },
   {
     "id": "mr-mobs-mew",
@@ -1908,9 +1955,9 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "spotlight",
+      "primitive": "crown",
       "name": "Long Live the King",
-      "desc": "The target's name glows gold for a day.",
+      "desc": "Puts a 👑 in front of the target's nickname for a day.",
       "base": {
         "duration_s": 86400
       },
@@ -2282,6 +2329,12 @@
       "name": "TDG Crew",
       "effect": "rampage",
       "amount": 0.15
+    },
+    "effect": {
+      "primitive": "hype",
+      "name": "TDG Crew",
+      "desc": "The bot posts a hype message for the target.",
+      "cooldown_h": 24
     }
   },
   {
@@ -2603,6 +2656,19 @@
       "affinity": "trait:agile",
       "cooldown": 3,
       "duration": 2
+    },
+    "effect": {
+      "primitive": "reaction_storm",
+      "name": "Lag Spike",
+      "desc": "The bot reacts 📶 to the target's next 5 messages.",
+      "base": {
+        "amount": 5,
+        "duration_s": 3600
+      },
+      "cooldown_h": 12,
+      "options": {
+        "emoji": "📶"
+      }
     }
   },
   {
@@ -2680,13 +2746,20 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "reflect",
-      "name": "Wait a Minute",
-      "desc": "The next prank on the target bounces back to its sender.",
+      "primitive": "nickname",
+      "name": "Name Swap",
+      "desc": "Changes the target's Discord nickname for 1 hour.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 3600
       },
-      "cooldown_h": 24
+      "cooldown_h": 12,
+      "options": {
+        "nicknames": [
+          "King K. {name}",
+          "{name} the Krool",
+          "{name} (Krool Main)"
+        ]
+      }
     }
   },
   {
@@ -2764,20 +2837,14 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "title",
-      "name": "Pinged",
-      "desc": "Gives the target a ping title.",
+      "primitive": "ping_parade",
+      "name": "30 Pings",
+      "desc": "The bot pings the target 3 times over 5 minutes.",
       "base": {
-        "duration_s": 86400
+        "amount": 3,
+        "duration_s": 300
       },
-      "cooldown_h": 12,
-      "options": {
-        "titles": [
-          "the Pinged",
-          "Notification Magnet",
-          "@TheDanTucker's Echo"
-        ]
-      }
+      "cooldown_h": 24
     }
   },
   {
@@ -3098,6 +3165,12 @@
       "affinity": "trait:bird",
       "cooldown": 2,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "hype",
+      "name": "Brisket Run",
+      "desc": "The bot posts a hype message for the target.",
+      "cooldown_h": 24
     }
   },
   {
@@ -3725,9 +3798,9 @@
       "duration": 2
     },
     "effect": {
-      "primitive": "spotlight",
+      "primitive": "spotlight_role",
       "name": "Verified",
-      "desc": "The target's name glows gold for a day.",
+      "desc": "Gives the target the ✨ Spotlight role for a day.",
       "base": {
         "duration_s": 86400
       },
@@ -3807,6 +3880,15 @@
       "affinity": "trait:caster",
       "cooldown": 2,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "timeout",
+      "name": "Call HR!",
+      "desc": "A 60-second Discord timeout for the target.",
+      "base": {
+        "duration_s": 60
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -3840,6 +3922,16 @@
       "affinity": "trait:air",
       "cooldown": 4,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "ping_parade",
+      "name": "Bam Bam Bam",
+      "desc": "The bot pings the target 3 times over 5 minutes.",
+      "base": {
+        "amount": 3,
+        "duration_s": 300
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -3873,6 +3965,15 @@
       "name": "Peaches Beam",
       "effect": "focus",
       "amount": 0.12
+    },
+    "effect": {
+      "primitive": "spotlight_role",
+      "name": "Peaches",
+      "desc": "Gives the target the ✨ Spotlight role for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -4039,6 +4140,19 @@
       "affinity": "trait:beast",
       "cooldown": 3,
       "duration": 2
+    },
+    "effect": {
+      "primitive": "reaction_storm",
+      "name": "Look Out",
+      "desc": "The bot reacts 👀 to the target's next 5 messages.",
+      "base": {
+        "amount": 5,
+        "duration_s": 3600
+      },
+      "cooldown_h": 12,
+      "options": {
+        "emoji": "👀"
+      }
     }
   },
   {
@@ -4072,6 +4186,15 @@
       "affinity": "trait:armored",
       "cooldown": 4,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "clown_role",
+      "name": "Taps the Sign",
+      "desc": "Gives the target the 🤡 Clown role for 1 hour.",
+      "base": {
+        "duration_s": 3600
+      },
+      "cooldown_h": 12
     }
   },
   {

@@ -19,6 +19,7 @@ export interface PlayRow {
   target_id: string;
   aimed_at: string;
   kind: 'boon' | 'prank' | 'neutral' | string;
+  primitive?: string | null;   // the effect type (hype gets its own line)
   outcome: 'applied' | 'blocked' | 'reflected' | string;
   sender?: string | null;       // the sender's username
   card?: string | null;         // the card's name
@@ -41,6 +42,8 @@ export function effectPost(p: PlayRow): MessageCreateOptions {
     content = `🛡️ ${who} played ${card} on <@${p.aimed_at}>... but it was blocked!`;
   } else if (p.outcome === 'reflected') {
     content = `🪞 ${who} played ${card} on <@${p.aimed_at}>... and it bounced back! ${who} got ${name ?? 'it'}.${desc}`;
+  } else if (p.primitive === 'hype') {
+    content = `🔥🔥🔥 ${who} is HYPING <@${p.target_id}> with ${card}${name ? `: ${name}` : ''}! 🔥🔥🔥`;
   } else {
     content = `${KIND_EMOJI[p.kind] ?? '🎴'} ${who} played ${card} on <@${p.target_id}>${name ? `: ${name}.` : '.'}${desc}`;
   }
@@ -55,14 +58,14 @@ async function drain(client: Client): Promise<void> {
     const supabase = getSupabase();
     const { data: rows, error } = await supabase
       .from('card_plays')
-      .select('id, player_id, target_id, aimed_at, kind, outcome, sender:players!card_plays_player_id_fkey(username), card:cards(name), subject:subjects(effect)')
+      .select('id, player_id, target_id, aimed_at, kind, outcome, primitive, sender:players!card_plays_player_id_fkey(username), card:cards(name), subject:subjects(effect)')
       .is('posted_at', null)
       .order('id', { ascending: true })
       .limit(BATCH);
     if (error) throw new Error(error.message);
     for (const r of (rows ?? []) as never[]) {
       const row = r as {
-        id: number; player_id: string; target_id: string; aimed_at: string; kind: string; outcome: string;
+        id: number; player_id: string; target_id: string; aimed_at: string; kind: string; outcome: string; primitive?: string | null;
         sender?: { username?: string } | null; card?: { name?: string } | null;
         subject?: { effect?: { name?: string; desc?: string } | null } | null;
       };
