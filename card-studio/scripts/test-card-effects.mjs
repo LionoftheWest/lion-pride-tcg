@@ -14,7 +14,7 @@ const token = process.env.SUPABASE_ACCESS_TOKEN;
 const ref = ((process.env.SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
 // Every card-effect migration, in apply order (the engine as it is live after the last one).
 const files = process.argv.length > 2 ? process.argv.slice(2)
-  : ['card_effects.sql', 'card_effects_ascension.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
+  : ['card_effects.sql', 'card_effects_ascension.sql', 'stat_points.sql', 'effects_cleanup.sql', 'discord_effects_on.sql', 'effects_batch3.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
 const q = async (sql) => {
   const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -169,13 +169,23 @@ begin
              and (options->>'card_id')::bigint = n[3] and options->>'sender_id' = 'tst_g'
              and options->>'title' in ('the Clown','Sir Whiffs-a-Lot')),'r',r);
 
-  -- C19 ascension: a Normal sticker (1h, cd 1h) at 2 stars = 1h x1.2 = 72m, cd x0.84 = 50.4m.
+  -- C19 ascension without stat points (flag off): a Normal sticker (1h, cd 1h) at 2 stars
+  -- = 1h x1.2 = 72m, cd x0.84 = 50.4m. With stat points on (stat_points.sql), the stars give
+  -- no effect bonus: only this copy's Potency / Haste points do.
   update subjects set effect = '{"primitive":"sticker","base":{"duration_s":3600},"cooldown_h":1}' where id = s[4];
+  update settings set value = value || '{"enabled": false}' where key = 'stat_points';
   insert into player_cards (player_id, card_id, quantity, ascension) values ('tst_d', n[4], 1, 2);
   r := play_card_effect('tst_d', n[4], 'tst_g');  -- g has no sticker (h got one in C17)
   d := (r->>'ready_at')::timestamptz - now();
-  res := res || jsonb_build_object('case','C19 each star: +10% effect, -8% cooldown','ok',
+  res := res || jsonb_build_object('case','C19a stat points off: each star +10% effect, -8% cooldown','ok',
     (r->>'duration_s')::int = 4320 and (r->>'ascension')::int = 2 and d between interval '50 minutes' and interval '51 minutes','r',r);
+  update settings set value = value || '{"enabled": true}' where key = 'stat_points';
+  insert into player_cards (player_id, card_id, quantity, ascension) values ('tst_f', n[4], 1, 2) on conflict (player_id, card_id) do update set ascension = 2;
+  insert into players (id, username) values ('tst_c19', 'tst c19');
+  r := play_card_effect('tst_f', n[4], 'tst_c19');
+  d := (r->>'ready_at')::timestamptz - now();
+  res := res || jsonb_build_object('case','C19b stat points on: the stars alone give no effect bonus','ok',
+    (r->>'duration_s')::int = 3600 and d between interval '59 minutes' and interval '61 minutes','r',r);
   -- C20 the global cooldown knob halves every cooldown.
   update settings set value = '0.5'::jsonb where key = 'card_effect_cooldown_scale';
   insert into player_cards (player_id, card_id, quantity) values ('tst_h', n[4], 1);
@@ -184,6 +194,47 @@ begin
   res := res || jsonb_build_object('case','C20 cooldown_scale 0.5 halves the cooldown','ok',
     d between interval '29 minutes' and interval '31 minutes','r',r);
   update settings set value = '1'::jsonb where key = 'card_effect_cooldown_scale';
+
+  -- C21-C26 (effects_batch3.sql): decoy, redirect, delay, the fixed order, depth 1.
+  insert into players (id, username) select 'tst_' || x, 'tst ' || x
+    from unnest(array['v1','v2','v3','v4','v5','v6','s1','s2','s3','s4','s5','s6','s7']) x;
+  insert into player_cards (player_id, card_id, quantity) select 'tst_' || x, n[2], 1 from unnest(array['s1','s2','s3','s4','s5','s7']) x;
+  insert into player_cards (player_id, card_id, quantity) values ('tst_s6', n[1], 1);
+  insert into player_effects (player_id, primitive, expires_at) values
+    ('tst_v1', 'decoy', now() + interval '1 day'),
+    ('tst_v2', 'ward', now() + interval '1 day'), ('tst_v2', 'reflect', now() + interval '1 day'), ('tst_v2', 'decoy', now() + interval '1 day'),
+    ('tst_v3', 'redirect', now() + interval '1 day'), ('tst_v4', 'delay', now() + interval '1 day'), ('tst_v5', 'delay', now() + interval '1 day'),
+    ('tst_v6', 'reflect', now() + interval '1 day'), ('tst_s7', 'ward', now() + interval '1 day');
+  r := play_card_effect('tst_s1', n[2], 'tst_v1');
+  res := res || jsonb_build_object('case','C21 decoy: a direct hit on a cutout, nothing lands, the decoy is used up','ok',
+    r->>'outcome' = 'decoyed' and not card_effect_active('tst_v1','sticker')
+    and not exists (select 1 from player_effects where player_id = 'tst_v1' and primitive = 'decoy' and consumed_at is null)
+    and exists (select 1 from card_plays where target_id = 'tst_v1' and outcome = 'decoyed'),'r',r);
+  r := play_card_effect('tst_s2', n[2], 'tst_v2');
+  v := (select count(*) from player_effects where player_id = 'tst_v2' and consumed_at is null);
+  res := res || jsonb_build_object('case','C22 the order: decoy before ward before reflect','ok',
+    r->>'outcome' = 'decoyed' and v = 2, 'r', r);
+  r := play_card_effect('tst_s3', n[2], 'tst_v2');
+  res := res || jsonb_build_object('case','C22b then the ward (the reflect still waits)','ok',
+    r->>'outcome' = 'blocked' and exists (select 1 from player_effects where player_id = 'tst_v2' and primitive = 'reflect' and consumed_at is null),'r',r);
+  r := play_card_effect('tst_s7', n[2], 'tst_v6');
+  res := res || jsonb_build_object('case','C26 depth 1: a bounced prank passes the sender''s ward','ok',
+    r->>'outcome' = 'reflected' and r->>'target' = 'tst_s7' and card_effect_active('tst_s7','sticker')
+    and exists (select 1 from player_effects where player_id = 'tst_s7' and primitive = 'ward' and consumed_at is null),'r',r);
+  -- (C26 runs before the random redirect of C23, which can land on the C26 sender)
+  r := play_card_effect('tst_s4', n[2], 'tst_v3');
+  res := res || jsonb_build_object('case','C23 redirect: the prank lands on another member','ok',
+    r->>'outcome' = 'redirected' and r->>'target' not in ('tst_v3','tst_s4') and card_effect_active(r->>'target','sticker')
+    and not card_effect_active('tst_v3','sticker'),'r',r);
+  r := play_card_effect('tst_s5', n[2], 'tst_v4');
+  res := res || jsonb_build_object('case','C24 delay (Activity prank): it starts 1 hour later and lasts its full time','ok',
+    r->>'outcome' = 'delayed' and exists (select 1 from player_effects where player_id = 'tst_v4' and primitive = 'sticker'
+      and starts_at between now() + interval '59 minutes' and now() + interval '61 minutes'
+      and expires_at - starts_at = make_interval(secs => (r->>'duration_s')::int)),'r',r);
+  r := play_card_effect('tst_s6', n[1], 'tst_v5');
+  res := res || jsonb_build_object('case','C25 delay (Discord prank): the bot runs it 1 hour later','ok',
+    r->>'outcome' = 'delayed' and exists (select 1 from discord_effects where target_id = 'tst_v5' and primitive = 'timeout'
+      and execute_after between now() + interval '59 minutes' and now() + interval '61 minutes'),'r',r);
 
   raise exception 'TEST_RESULTS %', res;
 end $test$;`;

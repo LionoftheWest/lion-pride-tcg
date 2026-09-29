@@ -237,6 +237,9 @@ async function doPlay(id, name) {
     SFX.play(r.kind === 'prank' ? 'rare' : 'reveal');
     const out = r.outcome === 'blocked' ? `🛡️ ${esc(name)} blocked it!`
       : r.outcome === 'reflected' ? '🪞 It bounced back to you!'
+      : r.outcome === 'decoyed' ? `🎯 Direct hit on ${esc(name)}!`
+      : r.outcome === 'redirected' ? '🔀 It went to someone else!'
+      : r.outcome === 'delayed' ? `⏳ It lands on ${esc(name)} in 1 hour.`
       : `${KIND_ICON[r.kind] || '🎴'} Played on ${esc(name)}!`;
     if (msg) msg.innerHTML = out;
     await refreshEffects();
@@ -246,6 +249,38 @@ async function doPlay(id, name) {
     if (yes) yes.disabled = false;
   }
 }
+
+// ---- Pranks on my next pack reveal (effects_batch3.sql) ----
+const PACK_FX = ['photobomb', 'fake_gold', 'jinx', 'slow_motion'];
+/** The first waiting pack prank on me ({ primitive, card }), or null. */
+export function packPrank() {
+  const e = (state.active || []).find((x) => PACK_FX.includes(x.primitive));
+  return e ? { primitive: e.primitive, card: e.card || null } : null;
+}
+/** Play a pack prank on the reveal stage, and use it up on the server. */
+export function runPackPrank(p, stage) {
+  if (!p || !stage) return;
+  deps.apiPost('/api/effects/used', { primitive: p.primitive }).catch(() => {});
+  state.active = state.active.filter((x) => x.primitive !== p.primitive);
+  if (p.primitive === 'jinx') { stage.classList.add('fx-jinx'); setTimeout(() => stage.classList.remove('fx-jinx'), 9000); }
+  if (p.primitive === 'slow_motion') {
+    // Every animation on the reveal plays at half speed for 12 seconds.
+    const t0 = Date.now();
+    const slow = () => { document.getAnimations().forEach((a) => { if (a.playbackRate !== 0.5) a.playbackRate = 0.5; }); if (Date.now() - t0 < 12000) requestAnimationFrame(slow); };
+    slow();
+  }
+  if (p.primitive === 'fake_gold' || p.primitive === 'photobomb') {
+    const o = document.createElement('div');
+    o.className = p.primitive === 'fake_gold' ? 'fx-fakegold' : 'fx-photobomb';
+    o.innerHTML = p.primitive === 'fake_gold' ? '<b>GOLD!</b><i>...psych</i>'
+      : `${p.card?.image_url ? `<img src="${p.card.image_url}" alt="">` : ''}<b>📸</b>`;
+    stage.appendChild(o);
+    setTimeout(() => o.remove(), p.primitive === 'fake_gold' ? 2600 : 1900);
+  }
+}
+
+/** A member's name decorations and showcase pranks (the badges list). */
+export function badgeOf(playerId) { return badges[playerId] || null; }
 
 // ---- Name decorations (titles, stickers, spotlight) ----
 export function nameBadge(playerId, username) {
@@ -272,9 +307,11 @@ function showIncoming() {
   const host = el('effectBanners');
   for (const p of fresh.reverse()) {
     shown.add(p.id);
-    const icon = p.outcome === 'blocked' ? '🛡️' : KIND_ICON[p.kind] || '🎴';
+    const icon = p.outcome === 'blocked' ? '🛡️' : p.outcome === 'decoyed' ? '🪧' : p.outcome === 'delayed' ? '⏳' : KIND_ICON[p.kind] || '🎴';
     const text = p.outcome === 'blocked' ? `${esc(p.sender)} tried <b>${esc(p.card?.name || 'a card')}</b> on you, but it was blocked!`
       : p.outcome === 'reflected' ? `Your <b>${esc(p.card?.name || 'card')}</b> bounced back to you!`
+      : p.outcome === 'decoyed' ? `${esc(p.sender)} played <b>${esc(p.card?.name || 'a card')}</b> on you. Your cardboard cutout took it!`
+      : p.outcome === 'delayed' ? `${esc(p.sender)} played <b>${esc(p.card?.name || 'a card')}</b> on you. It lands in 1 hour.`
       : `${esc(p.sender)} played <b>${esc(p.card?.name || 'a card')}</b> on you!`;
     const div = document.createElement('div');
     div.className = `eff-banner ${p.kind}`;
@@ -282,7 +319,7 @@ function showIncoming() {
     div.querySelector('button').addEventListener('click', () => div.remove());
     host.appendChild(div);
     setTimeout(() => div.remove(), 12000);
-    if ((p.primitive === 'confetti' || p.primitive === 'gift_wrap') && p.outcome !== 'blocked') confetti(p.card?.image_url);
+    if ((p.primitive === 'confetti' || p.primitive === 'gift_wrap') && !['blocked', 'decoyed', 'delayed'].includes(p.outcome)) confetti(p.card?.image_url);
   }
   apiPost('/api/effects/seen', { ids: fresh.map((p) => p.id) }).catch(() => {});
 }

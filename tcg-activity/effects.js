@@ -25,7 +25,9 @@ const TEST_MAX_S = 600; // a test effect lasts at most 10 minutes
 // Effects that show once and are then used up when the target sees them.
 const SHOW_ONCE = ['confetti', 'gift_wrap'];
 // Effects that decorate a member's NAME wherever it shows (feed, board, pickers).
-const BADGE = ['title', 'sticker', 'spotlight'];
+const BADGE = ['title', 'sticker', 'spotlight', 'swap_showcase', 'mustache'];
+// Pranks on the target's NEXT pack reveal (effects_batch3.sql): used up when the reveal plays.
+const PACK_ONCE = ['jinx', 'fake_gold', 'photobomb', 'slow_motion'];
 
 export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg }) {
   const cardArt = async (ids) => {
@@ -45,7 +47,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     const [cds, act, inc, tiers, prims, sent, caps] = await Promise.all([
       supabase.from('card_effect_cooldowns').select('subject_id, ready_at').eq('player_id', me.id).gt('ready_at', now),
       supabase.from('player_effects').select('id, primitive, amount, duration_s, options, expires_at')
-        .eq('player_id', me.id).is('consumed_at', null).or(`expires_at.is.null,expires_at.gt.${now}`),
+        .eq('player_id', me.id).is('consumed_at', null).lte('starts_at', now).or(`expires_at.is.null,expires_at.gt.${now}`),
       supabase.from('card_plays').select('id, player_id, card_id, primitive, kind, outcome, rarity, amount, duration_s, created_at, sender:players!card_plays_player_id_fkey(username)')
         .eq('target_id', me.id).is('seen_at', null).order('id', { ascending: false }).limit(10),
       supabase.from('settings').select('key, value').in('key', ['card_effect_tiers', 'card_effect_ascension', 'card_effect_cooldown_scale']),
@@ -85,7 +87,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     if (!/^[\w-]{1,40}$/.test(id)) return res.status(400).json({ error: 'bad id' });
     const now = new Date().toISOString();
     const { data, error } = await supabase.from('player_effects').select('primitive, expires_at, options')
-      .eq('player_id', id).is('consumed_at', null).or(`expires_at.is.null,expires_at.gt.${now}`);
+      .eq('player_id', id).is('consumed_at', null).lte('starts_at', now).or(`expires_at.is.null,expires_at.gt.${now}`);
     if (error) return res.status(500).json({ error: error.message });
     res.json({ active: data || [] });
   });
@@ -119,6 +121,19 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     await supabase.from('player_effects').update({ consumed_at: new Date().toISOString() })
       .eq('player_id', me.id).in('primitive', SHOW_ONCE).is('consumed_at', null);
     res.json({ ok: true });
+  });
+
+  // A pack prank played: the reveal used it up (one row, the oldest).
+  app.post('/api/effects/used', async (req, res) => {
+    const me = await caller(req);
+    if (!me) return res.status(401).json({ error: 'not authenticated' });
+    const primitive = String(req.body?.primitive || '');
+    if (!PACK_ONCE.includes(primitive)) return res.status(400).json({ ok: false, error: 'bad primitive' });
+    const now = new Date().toISOString();
+    const { data } = await supabase.from('player_effects').select('id').eq('player_id', me.id).eq('primitive', primitive)
+      .is('consumed_at', null).lte('starts_at', now).order('id').limit(1).maybeSingle();
+    if (data) await supabase.from('player_effects').update({ consumed_at: now }).eq('id', data.id).is('consumed_at', null);
+    res.json({ ok: !!data });
   });
 
   // Play an owned card's effect on another member. The sender is the verified caller.
@@ -208,7 +223,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     if (!badgeCache || Date.now() - badgeCache.at > 15000) {
       const now = new Date().toISOString();
       const { data, error } = await supabase.from('player_effects').select('player_id, primitive, options')
-        .in('primitive', BADGE).is('consumed_at', null).or(`expires_at.is.null,expires_at.gt.${now}`);
+        .in('primitive', BADGE).is('consumed_at', null).lte('starts_at', now).or(`expires_at.is.null,expires_at.gt.${now}`);
       if (error) return res.status(500).json({ error: error.message });
       const art = await cardArt((data || []).map((e) => e.options?.card_id));
       const badges = {};
@@ -217,6 +232,8 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
         if (e.primitive === 'title') b.title = e.options?.title || null;
         if (e.primitive === 'sticker') b.sticker = art.get(Number(e.options?.card_id))?.image_url || null;
         if (e.primitive === 'spotlight') b.spotlight = true;
+        if (e.primitive === 'swap_showcase') b.swapShowcase = true;
+        if (e.primitive === 'mustache') b.mustache = true;
       }
       badgeCache = { at: Date.now(), badges };
     }

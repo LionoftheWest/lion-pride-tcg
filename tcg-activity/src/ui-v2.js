@@ -5,7 +5,7 @@
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { thumb } from './thumb.js';
 import { flairHTML } from './flair.js';
-import { fillViewerEffect, nameBadge } from './effects-ui.js';
+import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
 import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
@@ -624,8 +624,24 @@ function spotlightOf(cards, ids) {
   if (picked.length) return picked;
   return [...owned].sort((a, b) => (b.power || 0) - (a.power || 0) || ((RARITY_ORDER.indexOf(b.rarity)) - RARITY_ORDER.indexOf(a.rarity))).slice(0, 3);
 }
+// The showcase pranks (effects_batch3.sql) on a member's spotlight: swap_showcase shows a
+// random Normal card instead (the same one all day), mustache draws a mustache on each card.
+const STACHE = '<svg class="fx-stache" viewBox="0 0 100 40" aria-hidden="true"><path d="M50 14c-6-10-20-12-30-4-6 5-12 6-18 3 4 12 18 20 32 13 7-3 12-7 16-12 4 5 9 9 16 12 14 7 28-1 32-13-6 3-12 2-18-3-10-8-24-6-30 4z"/></svg>';
+function spotPrank(c, playerId, i) {
+  const b = playerId ? badgeOf(playerId) : null;
+  let card = c;
+  if (b?.swapShowcase) {
+    const normals = (ctx.cache.catalog?.cards || []).filter((x) => x.rarity === 'normal' && x.image_url);
+    const day = new Date().toISOString().slice(0, 10);
+    const h = [...`${playerId}${day}${i}`].reduce((t, ch) => (t * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    if (normals.length) card = normals[h % normals.length];
+  }
+  return { card, stache: b?.mustache ? STACHE : '' };
+}
 function spotHTML(cards) {
-  return cards.map((c, i) => `<button class="spot-card r-${c.rarity}" data-si="${i}" title="${esc(c.name)}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}"></button>`).join('')
+  const me = ctx.user()?.id;
+  return cards.map((c0, i) => { const { card: c, stache } = spotPrank(c0, me, i);
+    return `<button class="spot-card r-${c.rarity}" data-si="${i}" title="${esc(c.name)}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">${stache}</button>`; }).join('')
     || '<p class="v2-empty">No cards yet.</p>';
 }
 
@@ -962,7 +978,8 @@ function paintMember() {
     <section class="mem-center">
       ${mem.all ? '' : `<div class="mem-col mem-spot">
         <div class="side-h">✨ Spotlight</div>
-        <div class="mem-spot-row" id="memSpot">${spotOrder.map((c) => `<button class="spot-card r-${c.rarity}${c === spot[0] ? ' main' : ''}" data-id="${c.id}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}"></button>`).join('') || '<p class="v2-empty">No cards yet.</p>'}</div>
+        <div class="mem-spot-row" id="memSpot">${spotOrder.map((c0, i) => { const { card: c, stache } = spotPrank(c0, p.id, i);
+          return `<button class="spot-card r-${c.rarity}${c0 === spot[0] ? ' main' : ''}" data-id="${c0.id}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">${stache}</button>`; }).join('') || '<p class="v2-empty">No cards yet.</p>'}</div>
       </div>`}
       <div class="mem-col mem-season${mem.all ? ' full' : ''}">
         <div class="v2-col-head"><h2>${esc(col.season || 'Season 1')} <span class="sub">${ownedN}/${season.length}</span></h2>
