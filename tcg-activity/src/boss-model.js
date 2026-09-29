@@ -107,7 +107,7 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
       const cp = new THREE.Vector3();
       if (chest) chest.getWorldPosition(cp); else cp.set(hp.x, hp.y - bodyH * 0.3, hp.z);
       const viewH = Math.max(0.3, (tp.y - cp.y) * 1.3); // the head and the upper chest
-      const cy = tp.y + viewH * 0.12 - viewH / 2; // room above the head (the idle lifts it)
+      const cy = tp.y + viewH * 0.2 - viewH / 2; // room above the head (the idle lifts it)
       portraitView = { viewH, cy, z: hp.z };
       portraitCamera();
       canvas.dataset.portrait = JSON.stringify({ head: head ? head.name : null, top: top ? top.name : null, y: +hp.y.toFixed(2), topY: +tp.y.toFixed(2), chest: chest ? chest.name : null, viewH: +viewH.toFixed(2) });
@@ -157,8 +157,15 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
   function portraitCamera() {
     if (!portraitView) return;
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const dist = Math.max((portraitView.viewH / 2) / t, (portraitView.viewH * 0.8 / 2) / (t * camera.aspect));
-    camera.position.set(0, portraitView.cy, portraitView.z + dist); camera.lookAt(0, portraitView.cy, portraitView.z);
+    // A narrow card shows 35% more (a smaller head), so the standings do not cover the face.
+    const narrow = camera.aspect < 1.6;
+    const vh = portraitView.viewH * (narrow ? 1.35 : 1);
+    const dist = Math.max((vh / 2) / t, (vh * 0.8 / 2) / (t * camera.aspect));
+    // The boss at 38% of the width (30% in a narrow card), clear of the standings on the right.
+    const at = narrow ? 0.3 : 0.38;
+    const x = (0.5 - at) * 2 * dist * t * camera.aspect;
+    const cy = portraitView.cy - (vh - portraitView.viewH) / 2;
+    camera.position.set(x, cy, portraitView.z + dist); camera.lookAt(x, cy, portraitView.z);
   }
   function size() {
     const w = canvas.clientWidth || 300, h = canvas.clientHeight || 220;
