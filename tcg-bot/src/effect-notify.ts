@@ -79,7 +79,7 @@ async function drain(client: Client): Promise<void> {
         ...row,
         sender: row.sender?.username, card: row.card?.name,
         effect_name: row.subject?.effect?.name, effect_desc: row.subject?.effect?.desc,
-      }));
+      }), 'plays');
       await supabase.from('card_plays').update({ posted_at: new Date().toISOString() }).eq('id', row.id);
       await new Promise((res) => setTimeout(res, 1200)); // stay under the channel rate limit
     }

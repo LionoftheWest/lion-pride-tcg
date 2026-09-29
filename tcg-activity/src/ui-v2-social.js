@@ -25,6 +25,8 @@ const noteKind = (k) => NOTE_KINDS[k] || (String(k).startsWith('hunt') ? { icon:
 let noteTab = 'all';
 let noteItems = [];
 let noteHunt = null;
+let pingPrefs = null; // the Settings tab: which bot posts may ping me (null = not loaded)
+const PING_ROWS = [['plays', 'Card plays on me'], ['trades', 'Trades & gifts'], ['raid', 'Raid boss'], ['packs', 'Pack reminders']];
 
 export async function openNotifsV2() {
   const { el, api } = ctx();
@@ -70,19 +72,20 @@ function paintNotifs() {
   const pct = h && h.hp_max ? Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max)) : 0;
   box.innerHTML = `<div class="nt-head"><h3>Notifications</h3>${unread ? `<span class="nt-count">${unread}</span>` : ''}<span class="grow"></span>
       ${unread ? '<button class="link-btn" id="ntRead">✓ Mark all read</button>' : ''}<button class="v2-icon" id="ntClose" aria-label="Close">✕</button></div>
-    <div class="seg nt-tabs">${[['all', 'All'], ['hunt', 'Hunt'], ['trades', 'Trades']].map(([v, l]) => `<button data-t="${v}" class="${noteTab === v ? 'on' : ''}">${l}</button>`).join('')}</div>
-    ${h && noteTab !== 'trades' ? `<div class="nt-hunt"><div><span class="live-chip sm">● PRIDE HUNT</span><b>${esc(h.name)}</b><i class="nt-hp"><i style="width:${pct}%"></i></i></div><button class="v2-btn gold" data-act="Hunt">⚔ Hunt</button></div>` : ''}
+    <div class="seg nt-tabs">${[['all', 'All'], ['hunt', 'Hunt'], ['trades', 'Trades'], ['settings', 'Settings']].map(([v, l]) => `<button data-t="${v}" class="${noteTab === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ${noteTab === 'settings' ? settingsHTML() : `${h && noteTab !== 'trades' ? `<div class="nt-hunt"><div><span class="live-chip sm">● PRIDE HUNT</span><b>${esc(h.name)}</b><i class="nt-hp"><i style="width:${pct}%"></i></i></div><button class="v2-btn gold" data-act="Hunt">⚔ Hunt</button></div>` : ''}
     <div class="nt-list" id="ntList">
       ${todays.length ? `<div class="side-h">Today</div>${todays.map(row).join('')}` : ''}
       ${earlier.length ? `<div class="side-h">Earlier</div>${earlier.map(row).join('')}` : ''}
       ${list.length ? '' : '<p class="v2-empty">Nothing here yet.</p>'}
-    </div>`;
+    </div>`}`;
   el('ntClose').addEventListener('click', closeNotifsV2);
   el('ntRead')?.addEventListener('click', async () => {
     try { await ctx().apiPost('/api/notifications/read', {}); } catch { /* keep */ }
     noteItems = noteItems.map((x) => ({ ...x, read: true })); ctx().updateNotifBadge(0); paintNotifs();
   });
-  box.querySelectorAll('.nt-tabs button').forEach((b) => b.addEventListener('click', () => { noteTab = b.dataset.t; paintNotifs(); }));
+  box.querySelectorAll('.nt-tabs button').forEach((b) => b.addEventListener('click', () => { noteTab = b.dataset.t; paintNotifs(); if (noteTab === 'settings' && !pingPrefs) loadPingPrefs(); }));
+  box.querySelector('.ps-list')?.addEventListener('change', savePingPref);
   box.onclick = (e) => {
     const a = e.target.closest('[data-act]');
     if (!a) return;
@@ -93,6 +96,31 @@ function paintNotifs() {
     else if (act === 'View') ctx().show('trading');
   };
   requestAnimationFrame(() => fitChildren(el('ntList')));
+}
+
+// ---- Settings: which bot channel posts may ping me (notify_prefs.sql) ----
+function settingsHTML() {
+  if (!pingPrefs) return '<div class="v2-loading">Loading…</div>';
+  const all = pingPrefs.all !== false;
+  const row = (k, label, on, off) => `<label class="ps-row${off ? ' off' : ''}"><span>${label}</span>
+    <input type="checkbox" data-k="${k}"${on ? ' checked' : ''}${off ? ' disabled' : ''}><i class="ps-sw"></i></label>`;
+  return `<div class="ps-list"><div class="side-h">Discord pings</div>
+    ${row('all', 'Pings on', all, false)}
+    ${PING_ROWS.map(([k, l]) => row(k, l, all && pingPrefs[k] !== false, !all)).join('')}</div>`;
+}
+async function loadPingPrefs() {
+  try { pingPrefs = (await ctx().api('/api/notify-prefs')).prefs || {}; } catch { pingPrefs = {}; }
+  if (noteTab === 'settings') paintNotifs();
+}
+async function savePingPref(e) {
+  const k = e.target?.dataset?.k;
+  if (!k) return;
+  const before = { ...pingPrefs };
+  pingPrefs = { ...pingPrefs, [k]: e.target.checked };
+  paintNotifs();
+  let r = null;
+  try { r = await ctx().apiPost('/api/notify-prefs', { prefs: pingPrefs }); } catch { r = null; }
+  if (!r?.ok) { pingPrefs = before; paintNotifs(); }
 }
 
 // ---- Leaderboard (design 12) ------------------------------------------------------

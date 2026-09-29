@@ -69,13 +69,14 @@ async function notify(userId, kind, message) {
 }
 // Post a directed event to the public notifications channel (via the bot). The
 // message should @mention the person who needs to see it: `<@id>`.
-async function announce(message) {
+// `kind` = the ping setting that applies (the bot's ping-prefs.ts): 'trades' for these.
+async function announce(message, kind = 'trades') {
   if (!INTERNAL_TOKEN) return;
   try {
     await fetch(`${BOT_INTERNAL_URL}/announce`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-internal-token': INTERNAL_TOKEN },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, kind }),
     });
   } catch { /* ignore */ }
 }
@@ -1439,6 +1440,30 @@ app.post('/api/trade/accept', async (req, res) => {
     announce(`✅ <@${offer.from_id}> — **${who}** accepted your trade!`);
   }
   res.json({ ok: Boolean(data) });
+});
+
+// Ping settings (notify_prefs.sql): may the bot's channel posts ping me? Mute all, or per
+// kind. The bot reads players.notify_prefs (tcg-bot/src/ping-prefs.ts, a 30 s cache).
+const PING_KEYS = ['all', 'plays', 'trades', 'raid', 'packs'];
+app.get('/api/notify-prefs', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const { data } = await supabase.from('players').select('notify_prefs').eq('id', me.id).maybeSingle();
+  res.json({ prefs: data?.notify_prefs || {} });
+});
+app.post('/api/notify-prefs', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const prefs = {};
+  for (const k of PING_KEYS) if (typeof req.body?.prefs?.[k] === 'boolean') prefs[k] = req.body.prefs[k];
+  const { data: upd, error } = await supabase.from('players').update({ notify_prefs: prefs }).eq('id', String(me.id)).select('id');
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+  if (!upd?.length) { // a member with no player row yet
+    const { error: ie } = await supabase.from('players').insert({ id: String(me.id), username: me.global_name || me.username, notify_prefs: prefs });
+    if (ie) return res.status(500).json({ ok: false, error: ie.message });
+  }
+  res.json({ ok: true, prefs });
 });
 
 // In-app notifications (the bell). Recent items for the caller + unread count.

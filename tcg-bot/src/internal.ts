@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import type { Client, MessageCreateOptions } from 'discord.js';
 import { openPacks, openTestPacks, getPackBalance, giftPacks } from './store.js';
+import { pingableUsers, type PingKind, PING_KINDS } from './ping-prefs.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
 // VM (it binds to 127.0.0.1, and the container runs with --network host). It lets
@@ -14,14 +15,17 @@ const PORT = Number(process.env.INTERNAL_PORT) || 4451;
 const NOTIF_CHANNEL = process.env.NOTIF_CHANNEL_ID ?? '';
 
 // Post a message to the public notifications channel (best-effort).
-// A string posts plain text; an options object can also carry buttons.
-export async function announce(client: Client, message: string | MessageCreateOptions): Promise<boolean> {
+// A string posts plain text; an options object can also carry buttons. `kind` says which
+// ping setting applies (ping-prefs.ts): the members named in the post are pinged only if
+// they did not mute that kind (or Mute all). They are still named in the post.
+export async function announce(client: Client, message: string | MessageCreateOptions, kind?: PingKind): Promise<boolean> {
   if (!NOTIF_CHANNEL) return false;
   try {
     const channel = await client.channels.fetch(NOTIF_CHANNEL);
     if (channel && channel.isTextBased() && 'send' in channel) {
       const body = typeof message === 'string' ? { content: message } : message;
-      await channel.send({ ...body, allowedMentions: { parse: ['users'] } });
+      const users = await pingableUsers(String(body.content ?? ''), kind);
+      await channel.send({ ...body, allowedMentions: { users } });
       return true;
     }
   } catch { /* channel missing or no permission — ignore */ }
@@ -62,11 +66,13 @@ export function startInternalServer(client: Client): void {
           amount?: number;
           message?: string;
           count?: number;
+          kind?: string;
         };
         // Announce: post a directed event to the public notifications channel.
         if (route === '/announce') {
           if (!body.message) return json(400, { error: 'missing message' });
-          const posted = await announce(client, String(body.message));
+          const kind = PING_KINDS.includes(body.kind as PingKind) ? (body.kind as PingKind) : undefined;
+          const posted = await announce(client, String(body.message), kind);
           return json(200, { posted });
         }
         // Gift: move packs from one player's balance to another.
