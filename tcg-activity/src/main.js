@@ -15,6 +15,7 @@ import { thumb, revealThumb, installImgFallback } from './thumb.js';
 installImgFallback();
 import { mountBoss, preloadBoss } from './boss-lazy.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
+import { setFlair } from './flair.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
@@ -2935,6 +2936,8 @@ function renderAscension(card) {
   box.classList.toggle('hidden', !show);
   const c3 = el('card3d');
   c3.className = c3.className.replace(/\b(asc-\d|atier-\d|asc-pop)\b/g, '').replace(/\s+/g, ' ').trim();
+  c3.className = c3.className.replace(/(asc-\d|atier-\d|asc-pop)/g, '').replace(/\s+/g, ' ').trim();
+  setFlair(c3.querySelector('.front'), show ? card.ascension : 0); // the border, the star-gems, the crown
   if (!show) return;
   const a = card.ascension || 0;
   el('v-stars').textContent = '★'.repeat(a) + '☆'.repeat(5 - a);

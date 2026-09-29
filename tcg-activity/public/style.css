@@ -552,16 +552,26 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
 #card3d.atier-3 { filter: drop-shadow(0 0 13px rgba(215,228,244,.75)); }
 #card3d.atier-4 { filter: drop-shadow(0 0 16px rgba(255,205,70,.85)); }
 #card3d.atier-5 { filter: drop-shadow(0 0 18px #ffd23e) drop-shadow(0 0 9px #ff9be3); }
-#card3d.atier-1 .front::after, #card3d.atier-2 .front::after,
-#card3d.atier-3 .front::after, #card3d.atier-4 .front::after {
-  content: ''; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; z-index: 3; }
-#card3d.atier-1 .front::after { border: 3px solid rgba(214,226,244,.92); }
-#card3d.atier-2 .front::after { border: 4px solid #dd8a3c; }
-#card3d.atier-3 .front::after { border: 4px solid #d3dee9; }
-#card3d.atier-4 .front::after { border: 4px solid #ffd44e; }
-#card3d.atier-5 .front::before { content: ''; position: absolute; inset: 0; border-radius: 16px; padding: 4px; pointer-events: none; z-index: 3;
-  background: conic-gradient(from 0deg, #ff5a5a, #ffd23e, #4fd6f0, #b45ad8, #ffca3a, #ff5a5a);
+/* The ascension flair (src/flair.js; the look of card-studio/templates/flair.template.html,
+   sized in container units so it scales from the grid tile to the viewer card). */
+.card3d .front, .v2-card, .p-art { container-type: inline-size; }
+.p-art { position: relative; }
+.flair { position: absolute; inset: 0; pointer-events: none; z-index: 3; border-radius: inherit; }
+.flair .ring { position: absolute; inset: .6cqw; border-radius: inherit; padding: 2.8cqw; opacity: .92;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.flair.f1 .ring { opacity: .82; background: conic-gradient(from 200deg, #9aa7b6, #dfe7f0, #ffffff, #c6d2e0, #eef4fb, #aab6c4, #9aa7b6); filter: drop-shadow(0 0 1.4cqw rgba(225,235,248,.6)); }
+.flair.f2 .ring { background: conic-gradient(from 200deg, #5a2c0c, #b5642a, #ec8a38, #ffbe6e, #ffe6bf, #dd7a2c, #7a3f16); filter: drop-shadow(0 0 2.6cqw rgba(230,140,55,.95)); }
+.flair.f3 .ring { background: conic-gradient(from 200deg, #64707c, #aebccb, #eef4fb, #ffffff, #cdd9e6, #93a1af, #64707c); filter: drop-shadow(0 0 2.8cqw rgba(215,228,244,.95)); }
+.flair.f4 .ring { background: conic-gradient(from 200deg, #7a5606, #d9a016, #ffce34, #fff2a6, #ffdb5a, #c69113, #7a5606); filter: drop-shadow(0 0 3.2cqw rgba(255,205,70,1)); }
+.flair.f5 .ring { background: conic-gradient(from 0deg, #ff5a5a, #ffd23e, #4fd6f0, #b45ad8, #ffca3a, #ff5a5a); filter: drop-shadow(0 0 3.6cqw #ffd23e) drop-shadow(0 0 1.8cqw #fff); }
+.flair .gems { position: absolute; left: 3.6cqw; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 1cqw; }
+.flair .gem { width: 4.8cqw; height: 4.8cqw; border-radius: 50%; display: grid; place-items: center; font-size: 2.8cqw; line-height: 1; color: #3a2a05;
+  background: radial-gradient(circle at 35% 30%, #fff7d6, #ffd76e 55%, #b8892a); box-shadow: 0 0 1.2cqw #ffe08a, inset 0 1px 1px #fff8; border: .2cqw solid #7a5a12; }
+.flair.f5 .gem { background: radial-gradient(circle at 35% 30%, #fff, #ffd76e 45%, #b06ab3 90%); box-shadow: 0 0 1.6cqw #ffd76e; }
+.flair .crown-big { position: absolute; inset: 0; display: grid; place-items: center; }
+.flair .crown-big svg { width: 90%; height: auto; transform: rotate(-8deg); }
+.flair .cbody, .flair .cband { fill: url(#flairHolo); fill-opacity: .28; stroke: rgba(255,255,255,.7); stroke-width: 2.5; stroke-linejoin: round;
+  paint-order: stroke fill; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)) drop-shadow(0 0 9px rgba(255,215,110,.45)); }
 
 .v-asc { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .v-asc-line { display: flex; justify-content: space-between; align-items: center; }

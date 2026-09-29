@@ -4,6 +4,7 @@
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { thumb } from './thumb.js';
+import { flairHTML } from './flair.js';
 import { fillViewerEffect, nameBadge } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
 import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
@@ -71,7 +72,7 @@ export function tileHTML(c, idx, selected) {
   }
   const el = elemOf(c);
   return `<div class="v2-cell${selected ? ' sel' : ''}" data-idx="${idx}">
-    <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
+    <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${flairHTML(c.ascension)}</div>
     <div class="v2-cap">${el ? `<span class="cap-el" title="${esc(el.name)}">${elIcon(el.key)}</span>` : ''}<span class="cap-pow">⚡ ${c.power ?? ''}</span>
       ${c.ascension > 0 ? `<span class="cap-stars">${'★'.repeat(c.ascension)}</span>` : ''}${c.quantity > 1 ? `<span class="cap-qty">×${c.quantity}</span>` : ''}</div>
   </div>`;
@@ -451,7 +452,7 @@ function paintPanel(c) {
   const canAsc = !c.locked && ctx.features().ascension && a < 5 && c.can_ascend;
   const owned = c.locked ? 'Not in your collection yet' : `${c.quantity} ${c.quantity === 1 ? 'copy' : 'copies'}`;
   box.innerHTML = `<div class="p-top">
-      <div class="p-art${c.locked ? ' locked' : ''}" id="pArt">${!c.locked && c.image_url ? `<img src="${c.image_url}" alt="">` : '<span class="lk">🔒</span>'}</div>
+      <div class="p-art${c.locked ? ' locked' : ''}" id="pArt">${!c.locked && c.image_url ? `<img src="${c.image_url}" alt="">${flairHTML(a)}` : '<span class="lk">🔒</span>'}</div>
       <div class="p-id">
         <span class="p-num">${numLabel(c.num)} · ${esc(c.season || 'Season 1').toUpperCase()}</span>
         <h3>${esc(c.name)}</h3>
