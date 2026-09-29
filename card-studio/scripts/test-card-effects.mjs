@@ -14,7 +14,7 @@ const token = process.env.SUPABASE_ACCESS_TOKEN;
 const ref = ((process.env.SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
 // Every card-effect migration, in apply order (the engine as it is live after the last one).
 const files = process.argv.length > 2 ? process.argv.slice(2)
-  : ['card_effects.sql', 'card_effects_ascension.sql', 'stat_points.sql', 'effects_cleanup.sql', 'discord_effects_on.sql', 'effects_batch3.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
+  : ['card_effects.sql', 'card_effects_ascension.sql', 'stat_points.sql', 'effects_cleanup.sql', 'discord_effects_on.sql', 'effects_batch3.sql', 'effects_batch4.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
 const q = async (sql) => {
   const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -235,6 +235,20 @@ begin
   res := res || jsonb_build_object('case','C25 delay (Discord prank): the bot runs it 1 hour later','ok',
     r->>'outcome' = 'delayed' and exists (select 1 from discord_effects where target_id = 'tst_v5' and primitive = 'timeout'
       and execute_after between now() + interval '59 minutes' and now() + interval '61 minutes'),'r',r);
+
+  -- C27 (effects_batch4.sql): a cleanse skips a Discord prank that waits (a voice mute) and
+  -- ends an active one at the next bot tick.
+  update subjects set effect = '{"primitive":"vc_mute","base":{"duration_s":30},"cooldown_h":1}' where id = s[8];
+  insert into players (id, username) values ('tst_w1', 'tst w1'), ('tst_w2', 'tst w2'), ('tst_w3', 'tst w3');
+  insert into player_cards (player_id, card_id, quantity) values ('tst_w2', n[8], 1), ('tst_w3', n[7], 1);
+  r := play_card_effect('tst_w2', n[8], 'tst_w1');
+  insert into discord_effects (play_id, target_id, primitive, status, revert_at)
+    values ((r->>'play_id')::bigint, 'tst_w1', 'nickname', 'active', now() + interval '1 hour');
+  r := play_card_effect('tst_w3', n[7], 'tst_w1');
+  res := res || jsonb_build_object('case','C27 cleanse: a waiting voice prank is skipped, an active one ends','ok',
+    (r->>'ok')::boolean
+    and exists (select 1 from discord_effects where target_id = 'tst_w1' and primitive = 'vc_mute' and status = 'skipped' and error = 'cleansed')
+    and exists (select 1 from discord_effects where target_id = 'tst_w1' and primitive = 'nickname' and status = 'active' and revert_at <= now()),'r',r);
 
   raise exception 'TEST_RESULTS %', res;
 end $test$;`;

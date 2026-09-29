@@ -8,11 +8,26 @@ const GUILD_ID = (): string => process.env.DISCORD_GUILD_ID ?? '';
 // discord_effects row; this loop does the Discord action, and it undoes each effect when
 // its revert_at passes (also after a restart, so nobody stays renamed). Kill switch:
 // FEATURE_DISCORD_EFFECTS=1 (default OFF). Built here: nickname, crown, timeout,
-// clown_role, spotlight_role, hype, ping_parade, reaction_storm.
+// clown_role, spotlight_role, hype, ping_parade, reaction_storm, color_role, vc_mute, vc_deafen.
 export const discordEffectsEnabled = (): boolean => process.env.FEATURE_DISCORD_EFFECTS === '1';
 
 const TICK_MS = 10_000;
-export const BUILT = ['nickname', 'crown', 'timeout', 'clown_role', 'spotlight_role', 'hype', 'ping_parade', 'reaction_storm'] as const;
+export const BUILT = ['nickname', 'crown', 'timeout', 'clown_role', 'spotlight_role', 'hype', 'ping_parade', 'reaction_storm', 'color_role', 'vc_mute', 'vc_deafen'] as const;
+// Rows that WAIT before they act: a voice prank waits (max 1 h) until the target is in voice;
+// a name color waits (max 24 h) for the target to pick it in the Activity (then gold).
+const WAIT_S: Record<string, number> = { vc_mute: 3600, vc_deafen: 3600, color_role: 86400 };
+const VOICE = ['vc_mute', 'vc_deafen'];
+/** The name colors a member can pick (the Activity shows the same list). */
+export const NAME_COLORS: Record<string, string> = {
+  '#F4B73C': 'Gold', '#FF5A5A': 'Red', '#FF9A3C': 'Orange', '#5BE38A': 'Green',
+  '#4FD6F0': 'Teal', '#5B8CFF': 'Blue', '#B45AD8': 'Purple', '#FF7AC8': 'Pink',
+};
+/** The color a row should use: the picked one (if valid), gold after the wait, else null (wait). */
+export function colorFor(options: Record<string, unknown>, ageS: number): string | null {
+  const c = String(options.color ?? '').toUpperCase();
+  if (NAME_COLORS[c]) return c;
+  return ageS >= WAIT_S.color_role! ? '#F4B73C' : null;
+}
 const NICK = ['nickname', 'crown'];
 const ROLES: Record<string, { name: string; color: number; hoist: boolean }> = {
   clown_role: { name: '🤡 Clown', color: 0xff5a5a, hoist: false },
@@ -96,6 +111,18 @@ async function ensureRole(guild: Guild, key: string): Promise<Role> {
   return role;
 }
 
+/** The shared role of one name color, just under the bot's role (so its color shows). */
+async function colorRole(guild: Guild, hex: string): Promise<Role> {
+  const name = `🎨 ${NAME_COLORS[hex]}`;
+  const roles = await guild.roles.fetch();
+  const found = roles.find((r) => r.name === name);
+  if (found) return found;
+  const role = await guild.roles.create({ name, colors: { primaryColor: parseInt(hex.slice(1), 16) }, hoist: false, mentionable: false, reason: 'Lion Pride TCG name color' });
+  const top = guild.members.me?.roles.highest;
+  if (top) await role.setPosition(Math.max(1, top.position - 1)).catch(() => {});
+  return role;
+}
+
 /** The active nick rows of a member (nickname / crown), oldest first. */
 async function nickRows(sb: Store, target: string): Promise<EffectRow[]> {
   const { data } = await sb.from('discord_effects').select('*').eq('target_id', target).in('primitive', NICK).eq('status', 'active').order('created_at');
@@ -124,6 +151,28 @@ async function execute(client: Client, sb: Store, guild: Guild, row: EffectRow):
   // The bot itself is the one safe live-test target (it can rename itself and take roles).
   const self = member.id === guild.members.me?.id;
   if ((NICK.includes(p) || p in ROLES) && !self && !member.manageable) { await patchRow(sb, row.id, { status: 'failed', error: 'not_manageable' }); return; }
+  const ageS = (Date.now() - new Date(row.created_at).getTime()) / 1000;
+  const endsAt = () => new Date(Date.now() + Math.max(5, Number(row.duration_s) || 30) * 1000).toISOString();
+  if (VOICE.includes(p)) {
+    if (member.id === guild.ownerId) { await patchRow(sb, row.id, { status: 'failed', error: 'owner' }); return; }
+    if (!member.voice?.channelId) {
+      // Not in voice now: the prank waits (it runs when they join), at most 1 hour.
+      if (ageS > WAIT_S[p]!) await patchRow(sb, row.id, { status: 'skipped', error: 'never_in_voice' });
+      return;
+    }
+    if (p === 'vc_mute') await member.voice.setMute(true, reason); else await member.voice.setDeaf(true, reason);
+    await patchRow(sb, row.id, { status: 'active', revert_at: new Date(Date.now() + Math.max(5, Math.min(30, row.duration_s || 30)) * 1000).toISOString() });
+    return;
+  }
+  if (p === 'color_role') {
+    if (!self && !member.manageable) { await patchRow(sb, row.id, { status: 'failed', error: 'not_manageable' }); return; }
+    const hex = colorFor(row.options, ageS);
+    if (!hex) return; // the target has not picked yet
+    const role = await colorRole(guild, hex);
+    await member.roles.add(role, reason);
+    await patchRow(sb, row.id, { status: 'active', original_value: role.id, revert_at: endsAt(), options: { ...row.options, color: hex } });
+    return;
+  }
   if (p === 'timeout') {
     if (!member.moderatable) { await patchRow(sb, row.id, { status: 'failed', error: 'not_moderatable' }); return; }
     await member.timeout(Math.max(5, Math.min(60, row.duration_s || 60)) * 1000, reason);
@@ -177,6 +226,18 @@ async function revert(sb: Store, guild: Guild, row: EffectRow): Promise<void> {
     if (!(still.data ?? []).length) await member.roles.remove(row.original_value, 'Lion Pride TCG: effect ended').catch(() => {});
   } else if (p === 'reaction_storm') {
     storms.delete(row.target_id);
+  } else if (VOICE.includes(p)) {
+    // Discord keeps a server mute after the member leaves voice, and it can be lifted only
+    // while they are connected: the row stays active and is retried (every tick, and at
+    // once when they join), so nobody stays muted.
+    if (!member) { await patchRow(sb, row.id, { status: 'reverted', error: 'left_server' }); return; }
+    if (!member.voice?.channelId) { await patchRow(sb, row.id, { error: 'waiting_for_voice' }); return; }
+    if (p === 'vc_mute') await member.voice.setMute(false, 'Lion Pride TCG: effect ended'); else await member.voice.setDeaf(false, 'Lion Pride TCG: effect ended');
+  } else if (p === 'color_role' && row.original_value) {
+    const still = await sb.from('discord_effects').select('id').eq('target_id', row.target_id).eq('primitive', p).eq('status', 'active').eq('original_value', row.original_value).neq('id', row.id);
+    if (member && !(still.data ?? []).length) await member.roles.remove(row.original_value, 'Lion Pride TCG: effect ended').catch(() => {});
+    const role = await guild.roles.fetch(row.original_value).catch(() => null);
+    if (role && role.members.size === 0) await role.delete('Lion Pride TCG: no member has this color').catch(() => {});
   }
   await patchRow(sb, row.id, { status: 'reverted' });
 }
@@ -190,7 +251,7 @@ export async function tick(client: Client): Promise<void> {
     const guild = await client.guilds.fetch(GUILD_ID());
     const now = new Date().toISOString();
     // 1. New plays.
-    const { data: todo } = await sb.from('discord_effects').select('*').eq('status', 'pending').lte('execute_after', now).order('id').limit(10);
+    const { data: todo } = await sb.from('discord_effects').select('*').eq('status', 'pending').lte('execute_after', now).order('id').limit(50); // waiting rows stay pending
     for (const row of (todo ?? []) as EffectRow[]) {
       try { await execute(client, sb, guild, row); } catch (e) { await patchRow(sb, row.id, { status: 'failed', error: String((e as Error).message).slice(0, 200) }); }
     }

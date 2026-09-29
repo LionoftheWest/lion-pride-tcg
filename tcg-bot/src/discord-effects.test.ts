@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { composeNick, nickFromTemplate, pick, pingTimes, discordEffectsEnabled } from './discord-effects.js';
+import { composeNick, nickFromTemplate, pick, pingTimes, discordEffectsEnabled, colorFor, NAME_COLORS } from './discord-effects.js';
 import { effectPost } from './effect-notify.js';
 
 describe('discord effects: the pure rules', () => {
@@ -46,4 +46,16 @@ describe('the play post for the batch 3 counters', () => {
   it('decoyed: a direct hit on a cutout', () => assert.match(String(effectPost({ ...base, outcome: 'decoyed' }).content), /Direct hit! 🪧/));
   it('redirected: names the member it went to', () => assert.match(String(effectPost({ ...base, target_id: '77', outcome: 'redirected' }).content), /on <@42>\.\.\. but it went to <@77>/));
   it('delayed: lands in 1 hour', () => assert.match(String(effectPost({ ...base, outcome: 'delayed' }).content), /lands in 1 hour/));
+});
+
+describe('the name color boon', () => {
+  it('uses the picked color when it is one of the 8', () => {
+    assert.equal(colorFor({ color: '#5b8cff' }, 10), '#5B8CFF');
+    assert.equal(Object.keys(NAME_COLORS).length, 8);
+  });
+  it('waits for the pick, then gives gold after 24 hours', () => {
+    assert.equal(colorFor({}, 60), null);
+    assert.equal(colorFor({ color: '#123456' }, 60), null);   // not in the list: still waiting
+    assert.equal(colorFor({}, 86400), '#F4B73C');
+  });
 });

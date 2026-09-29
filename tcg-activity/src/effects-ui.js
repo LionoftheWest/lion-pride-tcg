@@ -250,6 +250,9 @@ async function doPlay(id, name) {
   }
 }
 
+// The name colors a member can pick (the same list as the bot's NAME_COLORS).
+const NAME_COLORS = ['#F4B73C', '#FF5A5A', '#FF9A3C', '#5BE38A', '#4FD6F0', '#5B8CFF', '#B45AD8', '#FF7AC8'];
+
 // ---- Pranks on my next pack reveal (effects_batch3.sql) ----
 const PACK_FX = ['photobomb', 'fake_gold', 'jinx', 'slow_motion'];
 /** The first waiting pack prank on me ({ primitive, card }), or null. */
@@ -315,10 +318,21 @@ function showIncoming() {
       : `${esc(p.sender)} played <b>${esc(p.card?.name || 'a card')}</b> on you!`;
     const div = document.createElement('div');
     div.className = `eff-banner ${p.kind}`;
-    div.innerHTML = `${p.card?.image_url ? `<img src="${thumb(p.card.image_url)}" data-full="${p.card.image_url || ''}" alt="">` : ''}<span>${icon} ${text}</span><button aria-label="Close">✕</button>`;
-    div.querySelector('button').addEventListener('click', () => div.remove());
+    const pickColor = p.primitive === 'color_role' && p.outcome === 'applied';
+    div.innerHTML = `${p.card?.image_url ? `<img src="${thumb(p.card.image_url)}" data-full="${p.card.image_url || ''}" alt="">` : ''}<span>${icon} ${text}${pickColor
+      ? `<span class="eff-colors">${NAME_COLORS.map((c) => `<button class="eff-color" data-color="${c}" style="--c:${c}" aria-label="${c}"></button>`).join('')}</span>` : ''}</span><button class="eff-x" aria-label="Close">✕</button>`;
+    div.querySelector('.eff-x').addEventListener('click', () => div.remove());
+    if (pickColor) {
+      // The name color boon: the pick goes to the bot (gold after 24 h with no pick).
+      div.querySelector('.eff-colors').addEventListener('click', async (e) => {
+        const b = e.target.closest('.eff-color');
+        if (!b) return;
+        const r = await apiPost('/api/effects/color', { playId: p.id, color: b.dataset.color }).catch(() => null);
+        if (r?.ok) { div.querySelector('.eff-colors').innerHTML = '<b>✓</b>'; setTimeout(() => div.remove(), 1800); }
+      });
+    }
     host.appendChild(div);
-    setTimeout(() => div.remove(), 12000);
+    if (!pickColor) setTimeout(() => div.remove(), 12000);
     if ((p.primitive === 'confetti' || p.primitive === 'gift_wrap') && !['blocked', 'decoyed', 'delayed'].includes(p.outcome)) confetti(p.card?.image_url);
   }
   apiPost('/api/effects/seen', { ids: fresh.map((p) => p.id) }).catch(() => {});

@@ -123,6 +123,25 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     res.json({ ok: true });
   });
 
+  // The name color boon: the target picks 1 of the 8 colors (the bot's NAME_COLORS);
+  // the bot then gives the role (tcg-bot/src/discord-effects.ts). Only a pending row of mine.
+  const NAME_COLORS = ['#F4B73C', '#FF5A5A', '#FF9A3C', '#5BE38A', '#4FD6F0', '#5B8CFF', '#B45AD8', '#FF7AC8'];
+  app.post('/api/effects/color', async (req, res) => {
+    const me = await caller(req);
+    if (!me) return res.status(401).json({ error: 'not authenticated' });
+    if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+    const color = String(req.body?.color || '').toUpperCase();
+    const playId = Number(req.body?.playId);
+    if (!NAME_COLORS.includes(color) || !playId) return res.status(400).json({ ok: false, error: 'bad request' });
+    const { data: row } = await supabase.from('discord_effects').select('id, options').eq('play_id', playId)
+      .eq('target_id', String(me.id)).eq('primitive', 'color_role').eq('status', 'pending').maybeSingle();
+    if (!row) return res.json({ ok: false, error: 'not_waiting' });
+    const { error } = await supabase.from('discord_effects').update({ options: { ...(row.options || {}), color }, updated_at: new Date().toISOString() })
+      .eq('id', row.id).eq('status', 'pending');
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    res.json({ ok: true, color });
+  });
+
   // A pack prank played: the reveal used it up (one row, the oldest).
   app.post('/api/effects/used', async (req, res) => {
     const me = await caller(req);

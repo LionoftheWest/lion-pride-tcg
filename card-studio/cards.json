@@ -673,6 +673,15 @@
       "effect": "execute",
       "amount": 0.5,
       "threshold": 0.25
+    },
+    "effect": {
+      "primitive": "vc_deafen",
+      "name": "Lullaby",
+      "desc": "Deafens the target in voice for 30 seconds.",
+      "base": {
+        "duration_s": 30
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -893,6 +902,15 @@
       "name": "B...B...B...",
       "effect": "rampage",
       "amount": 0.25
+    },
+    "effect": {
+      "primitive": "vc_mute",
+      "name": "Out of Ammo",
+      "desc": "Mutes the target in voice for 30 seconds.",
+      "base": {
+        "duration_s": 30
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -1240,6 +1258,15 @@
       "kind": "attack",
       "name": "Giant Punch",
       "effect": "pierce"
+    },
+    "effect": {
+      "primitive": "vc_mute",
+      "name": "Speechless",
+      "desc": "Mutes the target in voice for 30 seconds.",
+      "base": {
+        "duration_s": 30
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -2285,6 +2312,15 @@
       "affinity": "trait:armored",
       "cooldown": 4,
       "duration": 1
+    },
+    "effect": {
+      "primitive": "vc_mute",
+      "name": "Gutter Ball",
+      "desc": "Mutes the target in voice for 30 seconds.",
+      "base": {
+        "duration_s": 30
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -2495,6 +2531,15 @@
       "name": "Blind Spot",
       "effect": "focus",
       "amount": 0.1
+    },
+    "effect": {
+      "primitive": "color_role",
+      "name": "Her Color",
+      "desc": "The target picks a name color for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -5166,7 +5211,16 @@
       }
     },
     "pushedAt": 1789768603977,
-    "type": "Character"
+    "type": "Character",
+    "effect": {
+      "primitive": "color_role",
+      "name": "ARMS Colors",
+      "desc": "The target picks a name color for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
+    }
   },
   {
     "id": "madbombchu-s-pikachu",
@@ -5668,6 +5722,15 @@
       "name": "Blade Swap",
       "effect": "rampage",
       "amount": 0.2
+    },
+    "effect": {
+      "primitive": "color_role",
+      "name": "Blade Colors",
+      "desc": "The target picks a name color for a day.",
+      "base": {
+        "duration_s": 86400
+      },
+      "cooldown_h": 24
     }
   }
 ]
