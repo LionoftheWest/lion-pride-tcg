@@ -210,6 +210,10 @@ app.get(['/', '/index.html'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.type('html').send(indexHtml);
 });
+// The Terms of Service + Privacy Policy (the Discord app verification asks for both URLs):
+// https://lionpridetcg.duckdns.org/app/terms and /app/privacy (Caddy strips /app).
+app.get('/terms', (req, res) => res.sendFile(join(PUBLIC, 'legal', 'terms.html')));
+app.get('/privacy', (req, res) => res.sendFile(join(PUBLIC, 'legal', 'privacy.html')));
 app.use(express.static(PUBLIC, {
   setHeaders: (res, path) => {
     const base = path.split(/[\\/]/).pop();
