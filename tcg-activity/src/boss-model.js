@@ -29,6 +29,10 @@ const MOVE = { slam: 'slam', strike: 'strike', curse: 'curse', cataclysm: 'catac
 // a transparent background, and the camera framed on the head and the upper chest.
 export function mountModelBoss(canvas, key, tier, opts = {}) {
   const portrait = !!opts.portrait;
+  // Portrait options (defaults = the Home card): at = the boss's x in the frame (0..1), fit =
+  // the frame height x the head+chest height, faceAt = the idle face height, bust = fit both
+  // arms across, showcase = the occasional flex / taunt (the squad box turns it off).
+  const P = { at: null, fit: 1, faceAt: 0.7, bust: true, showcase: true, ...(opts.portraitOpts || {}) };
   const def = MODEL_BOSSES[key];
   if (!def) throw new Error(`no model boss ${key}`);
   const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 620px)').matches);
@@ -186,7 +190,7 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
       if (running) showcase();
     }, 10000 + Math.random() * 5000);
   }
-  if (portrait) showcase();
+  if (portrait && P.showcase) showcase();
   function once(event, hold) {
     const name = CLIP_FOR[event];
     if (!actions[name] || !mixer || dead) return;
@@ -219,16 +223,16 @@ export function mountModelBoss(canvas, key, tier, opts = {}) {
     // Fit the head + chest by height and the whole bust (both arms) by width (Nathan: the
     // right arm was cut in a narrow card). A narrow card centres the boss.
     const narrow = camera.aspect < 1.6;
-    const at = narrow ? 0.5 : 0.38;
-    const vhFit = portraitView.viewH;
+    const at = P.at != null ? P.at : narrow ? 0.5 : 0.38;
+    const vhFit = portraitView.viewH * P.fit;
     const distH = (vhFit / 2) / t;
-    const distW = (portraitView.span * 1.08) / (2 * t * camera.aspect * Math.min(at, 1 - at) * 2);
+    const distW = P.bust ? (portraitView.span * 1.08) / (2 * t * camera.aspect * Math.min(at, 1 - at) * 2) : 0;
     const dist0 = Math.max(distH, distW), dist = dist0 * zoom;
     const vh0 = 2 * dist0 * t, vh = 2 * dist * t; // the height shown (at zoom 1, and now)
     const x = portraitView.mx + (0.5 - at) * 2 * dist * t * camera.aspect;
     // The idle face at 70% of the height at zoom 1 (60% when zoomed out); before the face is
     // known, the head top stays in place.
-    const p = 0.7 - 0.1 * (zoom - 1) / (SHOW_ZOOM - 1);
+    const p = P.faceAt - 0.1 * (zoom - 1) / (SHOW_ZOOM - 1);
     const cy = portraitView.faceY != null ? portraitView.faceY + (0.5 - p) * vh : portraitView.cy - (vh0 - portraitView.viewH) / 2;
     camera.position.set(x, cy, portraitView.z + dist); camera.lookAt(x, cy, portraitView.z);
     shownFrame = { x, cy, vh, vw: vh * camera.aspect };

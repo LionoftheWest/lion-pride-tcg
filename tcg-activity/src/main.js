@@ -14,7 +14,7 @@ import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 installImgFallback();
 import { mountBoss, preloadBoss } from './boss-lazy.js';
-import { BOSS_LIST, seedForBoss, thumbFor, THUMB_BASE } from './boss-meta.js';
+import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
@@ -316,7 +316,7 @@ async function main() {
 function startV2() {
   document.body.classList.add('ui-v2');
   initV2({
-    api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned,
+    api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend,
     playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
@@ -581,7 +581,11 @@ function mountBossFor(hunt) {
   const cv = el('bossCanvas');
   if (!cv || !hunt) return;
   try {
-    bossHandle = mountBoss(cv, hunt.name || 'boss', hunt.tier);
+    // v2 squad select: the live boss head as the squad box background (Nathan 2026-09-29:
+    // live models, not thumbnails). The fight view mounts the full arena boss.
+    const mini = uiV2 && squad.phase !== 'battle' && !!cv.closest('.sq-boss');
+    bossHandle = mountBoss(cv, hunt.name || 'boss', hunt.tier,
+      mini ? { portrait: true, portraitOpts: { at: 0.8, fit: 0.7, faceAt: 0.3, bust: false, showcase: false } } : undefined);
     bossVoice = pickBossVoice(hunt.name || hunt.id);
     if (hunt.status === 'defeated' || hunt.hp_remaining <= 0) {
       bossHandle.defeat();
@@ -1548,7 +1552,7 @@ function selectPhaseV2(d) {
     <aside class="sq-side">
       <div class="sq-h"><b>Squad</b><span class="sq-n"><b id="selCount">${squad.sel.size}</b> / ${cap}</span></div>
       <button class="sq-boss" id="sqBoss" title="Boss details">
-        ${key ? `<img src="${THUMB_BASE}/${key}.png" alt="">` : '<span class="sq-boss-ph">🦁</span>'}
+        ${key ? '<span class="sq-boss-live"><canvas id="bossCanvas"></canvas></span>' : '<span class="sq-boss-ph">🦁</span>'}
         <span class="sq-boss-t"><b>${esc(h.name)}</b>
           <span class="sq-wr">${Number(h.stats?.atk) > 0 ? `<i>ATK</i><b class="sq-atk">${Number(h.stats.atk)}</b>` : ''}${weak ? `<i>WEAK</i>${weak}` : ''}${resist ? `<i>RESISTS</i>${resist}` : ''}</span></span>
       </button>
@@ -2999,7 +3003,7 @@ function playAscend(tier) {
   card.classList.remove('asc-pop'); void card.offsetWidth; card.classList.add('asc-pop');
   const fx = document.createElement('div');
   fx.className = 'asc-fx';
-  fx.innerHTML = '<div class="asc-flash"></div><div class="asc-ring"></div><div class="asc-ring d2"></div>';
+  fx.innerHTML = `<div class="asc-flash"></div><div class="asc-ring"></div><div class="asc-ring d2"></div><div class="asc-label">${'★'.repeat(tier)} ${info.name}</div>`;
   stage.appendChild(fx);
   const r = stage.getBoundingClientRect();
   const cx = r.width / 2, cy = r.height / 2;
@@ -3017,6 +3021,17 @@ function playAscend(tier) {
   }
   SFX?.play?.('rare');
   setTimeout(() => { card.classList.remove('asc-pop'); fx.remove(); }, 1900);
+}
+
+// v2: the card opens in the viewer as it was, then it ascends there: the celebration plays
+// and the card takes its new tier frame at the flash.
+function celebrateAscend(before, after) {
+  openViewer(before);
+  setTimeout(() => {
+    if (el('viewer').classList.contains('hidden')) return;
+    renderAscension(withOwned(after));
+    playAscend(after.ascension);
+  }, 450);
 }
 
 function initViewer() {
