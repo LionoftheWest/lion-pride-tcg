@@ -6,6 +6,7 @@ import { handleComponent } from './ui/router.js';
 import { startInternalServer } from './internal.js';
 import { startHuntNotifier } from './hunt-notify.js';
 import { startEffectNotifier } from './effect-notify.js';
+import { startDiscordEffects, discordEffectsEnabled, onEffectMessage } from './discord-effects.js';
 import type { Command } from './types.js';
 
 // GuildMessages lets the bot count activity. It does NOT read message text, so
@@ -23,9 +24,12 @@ client.once(Events.ClientReady, (ready) => {
   console.log(`Ready. Logged in as ${ready.user.tag}.`);
   startHuntNotifier(ready); // drain the hunt_events outbox to the notifications channel
   startEffectNotifier(ready); // post every card boon/prank/neutral play (flag FEATURE_CARD_EFFECT_POSTS)
+  startDiscordEffects(ready); // real Discord boons/pranks + their undo (flag FEATURE_DISCORD_EFFECTS)
 });
 
 client.on(Events.MessageCreate, onMessageCreate);
+// The reaction storm prank: the bot reacts to the target's next messages.
+client.on(Events.MessageCreate, (m) => { if (discordEffectsEnabled() && !m.author.bot && m.inGuild()) void onEffectMessage(m); });
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isAutocomplete()) {
