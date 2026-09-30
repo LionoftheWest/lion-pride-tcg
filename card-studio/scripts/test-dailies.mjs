@@ -18,6 +18,8 @@ declare res jsonb := '[]'; r jsonb; v jsonb; ok boolean; h bigint; i int; c1 big
   d date := (now() at time zone 'utc')::date;
 begin
   execute $m$${mig}$m$;
+  -- The migration keeps an existing setting: live has the flag ON, so set it OFF first.
+  update settings set value = value || '{"enabled": false}' where key = 'dailies';
   update settings set value = '1'::jsonb where key = 'pack_earn_multiplier';
   insert into players (id, username) values ('tst_d1', 'tst d1'), ('tst_d2', 'tst d2'), ('tst_d3', 'tst d3'), ('tst_d4', 'tst d4');
   select id, subject_id into c1, sub from cards order by id limit 1;

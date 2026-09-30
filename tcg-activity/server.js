@@ -20,6 +20,7 @@ import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { createImgCache, normalizeImgUrl } from './img-cache.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
+import { mtToday } from './src/mt-time.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -686,7 +687,7 @@ app.get('/api/hunt', async (req, res) => {
     }
     return res.json({ hunt: null, nextSpawnAt: nextSpawnAt || null, lastResult: last || null, lastBoard, myLast, lastFeed });
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = mtToday(); // the MT game day (mt_clock.sql)
   // One call (hunt_view.sql) instead of 4: 100 players opening the Hunt at once waited ~6 s.
   let cards, hpRows, myDamage, round, statCards = null;
   const { data: view, error: viewErr } = await supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today });

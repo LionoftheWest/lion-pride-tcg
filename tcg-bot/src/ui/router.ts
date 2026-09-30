@@ -49,7 +49,7 @@ function cardArtEmbed(card: Card): EmbedBuilder {
 function dailyText(status: DailyStatus): string {
   return [
     '**Daily status**',
-    `Messages today: **${status.messageCount}** (UTC day)`,
+    `Messages today: **${status.messageCount}** (today, MT)`,
     `Daily pack: ${
       status.baseAvailable
         ? '🎁 ready — press Open Pack'
@@ -122,7 +122,7 @@ export async function handleComponent(
       await interaction.editReply({
         content:
           'You have no unopened packs right now. Post messages today to earn a ' +
-          'pack, and reach 25 messages for a bonus pack. Packs reset at 00:00 UTC.',
+          'pack, and reach 25 messages for a bonus pack. Packs reset at midnight MT.',
         embeds: [],
         components: [homeRow()],
       });

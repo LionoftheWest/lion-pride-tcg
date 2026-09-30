@@ -2,9 +2,10 @@ import { AttachmentBuilder, escapeMarkdown, type Client } from 'discord.js';
 import { getSupabase } from './supabase.js';
 import { renderPlayingCard, RARITY } from './playing-card.js';
 import { launchActivityRow } from './ui/launch.js';
+import { utcToday as utcDay } from './store.js'; // the MT game day
 
 // The "is playing" post (design 20, option B, Nathan 2026-09-30). The Activity tells the bot
-// when a member starts, does something, and leaves (/playing). ONE post per member per UTC
+// when a member starts, does something, and leaves (/playing). ONE post per member per MT
 // day in #tcg-notifications, edited in place: at most once a minute and only on a change,
 // "was playing" 2 minutes after they leave. It names the member but pings nobody. A member
 // turns it off in the bell > Settings (notify_prefs.playing = false).
@@ -40,7 +41,6 @@ type Job = { name: string; playing: boolean; lastAt: number; lastKey: string; ti
 const jobs = new Map<string, Job>();
 let chain: Promise<void> = Promise.resolve(); // one Discord write at a time
 
-const utcDay = (): string => new Date().toISOString().slice(0, 10);
 
 /** Handle one event from the Activity. Returns false when the flag is off. */
 export function onPlaying(client: Client, id: string, name: string, event: PlayingEvent, activity?: unknown): boolean {
