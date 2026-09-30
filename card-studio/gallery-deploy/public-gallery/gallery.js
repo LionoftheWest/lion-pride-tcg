@@ -49,7 +49,7 @@ function render() {
   const cells = cards.map((c) => {
     const idx = flat.push(c) - 1;
     return `<figure class="card" data-idx="${idx}">
-      <div class="frame"><canvas class="thumb" data-src="${c.image_url}"></canvas></div>
+      <div class="frame"><canvas class="thumb" data-src="${thumb(c.image_url)}" data-full="${c.image_url}"></canvas></div>
       <figcaption>
         <span class="cname">${esc(c.subject)}</span>
         <span class="badge ${c.rarity}">${LABEL[c.rarity] || c.rarity}</span>
@@ -69,18 +69,38 @@ function render() {
   });
 }
 
+// The grid shows the 48 KB still copy (card-studio make-thumbs: grid/), not the full
+// card (up to 2.85 MB). The full image loads only in the viewer. All 345 full cards on
+// each visit were 320 MB of Supabase egress (2026-09-29).
+const PARTS = /\/card-art\/(cards\/[^?]+?)\.(png|webp|jpe?g)(\?|$)/i;
+const thumb = (url) => String(url || '').replace(PARTS, '/card-art/grid/$1.webp$3');
+
 // Draw one frame of each thumbnail to a canvas, so animated foils sit STILL in
 // the grid (the holo look is kept, just frozen). Motion happens in the viewer.
+// A card loads when it comes near the screen. A missing thumbnail uses the full image.
+let thumbObserver = null;
+function drawThumb(cv) {
+  const im = new Image();
+  im.onload = () => {
+    cv.width = im.naturalWidth;
+    cv.height = im.naturalHeight;
+    cv.getContext('2d').drawImage(im, 0, 0);
+  };
+  im.onerror = () => { if (im.src !== cv.dataset.full) im.src = cv.dataset.full; };
+  im.src = cv.dataset.src;
+}
 function freezeThumbs(root) {
-  root.querySelectorAll('canvas.thumb').forEach((cv) => {
-    const im = new Image();
-    im.onload = () => {
-      cv.width = im.naturalWidth;
-      cv.height = im.naturalHeight;
-      cv.getContext('2d').drawImage(im, 0, 0);
-    };
-    im.src = cv.dataset.src;
-  });
+  thumbObserver?.disconnect();
+  const all = root.querySelectorAll('canvas.thumb');
+  if (!('IntersectionObserver' in window)) { all.forEach(drawThumb); return; }
+  thumbObserver = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      thumbObserver.unobserve(e.target);
+      drawThumb(e.target);
+    }
+  }, { rootMargin: '600px 0px' });
+  all.forEach((cv) => thumbObserver.observe(cv));
 }
 
 // --- 3D viewer: DRAG to pivot the card freely, CLICK to flip, and the foil
