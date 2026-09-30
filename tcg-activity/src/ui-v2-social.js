@@ -106,7 +106,9 @@ function settingsHTML() {
     <input type="checkbox" data-k="${k}"${on ? ' checked' : ''}${off ? ' disabled' : ''}><i class="ps-sw"></i></label>`;
   return `<div class="ps-list"><div class="side-h">Discord pings</div>
     ${row('all', 'Pings on', all, false)}
-    ${PING_ROWS.map(([k, l]) => row(k, l, all && pingPrefs[k] !== false, !all)).join('')}</div>`;
+    ${PING_ROWS.map(([k, l]) => row(k, l, all && pingPrefs[k] !== false, !all)).join('')}
+    <div class="side-h">Discord posts</div>
+    ${row('playing', 'Show when I play', pingPrefs.playing !== false, false)}</div>`;
 }
 async function loadPingPrefs() {
   try { pingPrefs = (await ctx().api('/api/notify-prefs')).prefs || {}; } catch { pingPrefs = {}; }
