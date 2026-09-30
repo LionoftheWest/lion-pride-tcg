@@ -28,6 +28,14 @@ for (const ev of EVENTS) {
   });
 }
 
+test('the spawn post names the boss once and shows readable weak points', () => {
+  const post = huntPost({ kind: 'spawn', payload: { name: 'The Ban-Wave Demon', tier: 'Mythic', hp: 20000,
+    weak: [{ kind: 'tag', value: 'trait:ranged' }, { kind: 'tag', value: 'genre:party-games' }], closes_at: closes } });
+  assert.match(post!.content!, /^🦁 \*\*The Ban-Wave Demon has appeared!\*\*/);
+  assert.doesNotMatch(post!.content!, /A wild The|trait:|genre:/);
+  assert.match(post!.content!, /Weak to \*\*Ranged, Party Games\*\*/);
+});
+
 test('an unknown event posts nothing', () => {
   assert.equal(huntPost({ kind: 'nope', payload: {} }), null);
 });

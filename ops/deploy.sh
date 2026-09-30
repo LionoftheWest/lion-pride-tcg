@@ -62,9 +62,14 @@ if ! sudo docker build --no-cache -q -t "$NAME:$SHORT" "$DIR.new" > /tmp/deploy-
   tail -25 /tmp/deploy-build.log; rm -rf "$DIR.new"; echo "BUILD FAILED - nothing changed"; exit 1
 fi
 
+# The Activity's /api/img disk cache (IMG_CACHE=1) lives on the host, so a deploy does
+# not empty it (each refill was 100-300 MB of Supabase egress).
+VOL=""
+if [ "$SVC" = activity ]; then mkdir -p /home/ubuntu/img-cache; VOL="-v /home/ubuntu/img-cache:/tmp/img-cache"; fi
 run() {
   sudo docker rm -f "$NAME" >/dev/null 2>&1 || true
-  sudo docker run -d --name "$NAME" --network host --restart unless-stopped --env-file "/home/ubuntu/$DIR/.env" "$1" >/dev/null
+  # shellcheck disable=SC2086
+  sudo docker run -d --name "$NAME" --network host --restart unless-stopped $VOL --env-file "/home/ubuntu/$DIR/.env" "$1" >/dev/null
 }
 # FORCE=1 fails only the NEW build's check, so the rollback check stays real.
 healthy() { [ "${1:-}" = new ] && [ "$FORCE" = 1 ] && return 1

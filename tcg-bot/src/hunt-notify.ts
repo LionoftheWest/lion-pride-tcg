@@ -11,10 +11,17 @@ const BATCH = 8;          // max posts per tick (rate-limit safety)
 
 const epoch = (iso: string): number => Math.floor(new Date(iso).getTime() / 1000);
 
+// A tag key -> its label, as the app shows it: 'trait:ranged' -> 'Ranged',
+// 'genre:party-games' -> 'Party Games'.
+export function tagText(v: string): string {
+  return String(v).split(':').pop()!.split(/[-_ ]+/).filter(Boolean)
+    .map((w) => w[0]!.toUpperCase() + w.slice(1)).join(' ');
+}
+
 // Weak-point list -> a short readable string.
 function weakText(weak: unknown): string {
   if (!Array.isArray(weak)) return 'nothing';
-  return weak.map((w: { value?: string }) => w?.value).filter(Boolean).join(', ') || 'nothing';
+  return weak.map((w: { value?: string }) => w?.value).filter(Boolean).map((v) => tagText(v!)).join(', ') || 'nothing';
 }
 
 // Top contributors from a settle payload's paid array.
@@ -38,7 +45,7 @@ function format(ev: { kind: string; payload: Record<string, unknown> }): string 
   switch (ev.kind) {
     case 'spawn': {
       const when = p.closes_at ? ` Beat it by <t:${epoch(String(p.closes_at))}:F> (<t:${epoch(String(p.closes_at))}:R>).` : '';
-      return `🦁 **A wild ${p.name} appeared!**  [${p.tier}] — ${Number(p.hp).toLocaleString()} HP.\n`
+      return `🦁 **${p.name} has appeared!**  [${p.tier}] — ${Number(p.hp).toLocaleString()} HP.\n`
         + `Weak to **${weakText(p.weak)}**.${when} Press **Open Lion Pride TCG** to join the hunt!`;
     }
     case 'nudge': {

@@ -78,6 +78,10 @@ export async function recordMessage(id: string, username: string): Promise<numbe
   if (!knownPlayers.has(id)) {
     await ensurePlayer(id, username);
   }
+  // Dial 0 = earning paused (the launch reset, 2026-09-30). Count nothing: a counted
+  // message would mark today's pack claimed with 0 packs, so the first message after
+  // the resume must still be message 1 and earn the daily pack.
+  if ((await earnMultiplier()) <= 0) return 0;
   const supabase = getSupabase();
   const today = utcToday();
   const { data: count, error } = await supabase.rpc('record_activity', {
