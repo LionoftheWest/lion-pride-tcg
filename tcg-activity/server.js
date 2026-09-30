@@ -267,15 +267,33 @@ const FEATURE_HUNT = process.env.FEATURE_HUNT === '1';
 // UI_V2_USERS=id,id for a preview. The client asks after login.
 const UI_V2_ALL = process.env.FEATURE_UI_V2 === '1';
 const UI_V2_USERS = new Set((process.env.UI_V2_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
+// A member who opens the Activity before they ever chat has no players row, so the
+// first login creates it. The welcome_packs trigger (welcome_packs.sql) then gives a
+// NEW member their free packs. ON CONFLICT DO NOTHING: an existing member is untouched.
+// Returns true only when this call created the row. LOADTEST (local previews) skips it,
+// so a fake login never writes a member to the live database.
+const knownPlayerIds = new Set();
+async function ensurePlayerRow(me) {
+  const id = String(me.id);
+  if (knownPlayerIds.has(id) || LOADTEST) return false;
+  const { data, error } = await supabase.from('players')
+    .upsert({ id, username: me.username || me.global_name || 'player' }, { onConflict: 'id', ignoreDuplicates: true })
+    .select('id');
+  if (error) return false;
+  knownPlayerIds.add(id);
+  return (data || []).length > 0;
+}
+
 app.get('/api/flags', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const welcomed = await ensurePlayerRow(me).catch(() => false);
   const hash = me.avatar || null;
   if (hash && avatarHash.get(String(me.id))?.hash !== hash) {
     avatarHash.set(String(me.id), { hash, at: Date.now() });
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
-  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)) });
+  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), welcomed });
 });
 
 app.get('/api/config', (req, res) => res.json({ clientId: CLIENT_ID, backUrl: CARD_BACK, features: { ascension: FEATURE_ASCENSION, hunt: FEATURE_HUNT } }));
