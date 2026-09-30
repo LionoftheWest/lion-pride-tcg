@@ -140,7 +140,7 @@ export async function openDailiesV2() {
   await refreshDailies();
   paint();
   clearInterval(tickTimer);
-  tickTimer = setInterval(paint, 30000); // the reset countdown
+  tickTimer = setInterval(refreshDailies, 10000); // while open: new chat, voice minutes, and the countdown within 10 s
   setTimeout(() => document.addEventListener('pointerdown', outside, { capture: true }), 0);
 }
 function outside(e) {
