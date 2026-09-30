@@ -283,6 +283,12 @@ function slotHTML(c, who, empty) {
 function paintTrade() {
   const { el } = ctx();
   const toName = tr.to?.name || 'a member';
+  // My Live in voice tile (design 19): once I pick a card, who I trade with and the two cards.
+  if (tr.tab === 'trades' && tr.mode === 'offer') {
+    const c = [tr.give?.id, tr.get?.id].map(Number).filter(Boolean);
+    if (c.length) ctx().status?.('trading', { t: tr.to?.name, c, s: 'building' });
+    else if (tr.sent) ctx().status?.('trading', { t: tr.sent.name, c: tr.sent.c, s: 'sent' });
+  }
   const packs = ctx().packs();
   const me = ctx().user();
   const inc = tr.offers?.incoming || [];
@@ -415,6 +421,7 @@ async function send() {
   } catch { r = null; }
   if (r?.ok) {
     tr.msg = tr.mode === 'offer' ? `Offer sent to ${tr.to.name}` : `Gift sent to ${tr.to.name}`;
+    if (tr.mode === 'offer') tr.sent = { name: tr.to.name, c: [tr.give?.id, tr.get?.id].map(Number).filter(Boolean) };
     tr.give = null; tr.get = null; tr.side = 'mine';
     delete tr.theirs[tr.to.id];
     await Promise.all([ctx().refreshOwned(), ctx().refreshPacks?.()]);

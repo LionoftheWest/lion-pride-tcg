@@ -21,8 +21,9 @@ import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
-import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick } from './ui-v2.js';
+import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2 } from './ui-v2-social.js';
+import { initDailies } from './ui-v2-dailies.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -308,7 +309,7 @@ async function main() {
   setInterval(refreshPackStatus, 45000); // packs can be earned while the app is open
   refreshTradeBadge();
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
-  initEffects({ api, apiPost, el, esc, SFX, user: () => meUser, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
+  initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   let flags = null;
   try { flags = await api('/api/flags'); } catch { flags = null; }
   uiV2 = !!flags?.uiV2;
@@ -321,16 +322,19 @@ async function main() {
 function startV2() {
   document.body.classList.add('ui-v2');
   initV2({
-    api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend,
+    api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
     playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
   });
-  el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>`;
+  // Design 19: my picture in the top bar opens my profile (the Home profile tile is gone).
+  el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>${meUser?.id ? `<img src="/api/avatar/${esc(meUser.id)}" alt="" data-err="remove">` : ''}`;
+  el('v2Avatar').addEventListener('click', () => { if (meUser?.id) openMember(meUser.id); });
   const bell = el('bellBtn'); const board = el('boardBtn');
   if (bell) { const b = bell.querySelector('.navbadge'); bell.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'; if (b) bell.appendChild(b); }
   if (board) board.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
   el('v2Avatar').title = meUser?.name || '';
+  initDailies(); // the Dailies window button (hidden while settings.dailies.enabled is off)
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
   // 5+ packs: the chooser (x1 / x5 / x10); fewer: open one, as before.
   el('dockOpen').addEventListener('click', () => {
@@ -353,10 +357,13 @@ function startV2() {
 }
 
 // Tell the room what this member does now (v2 Home "Live in voice").
+// `d` is the tile detail (server.js cleanDetail): a new kind without one clears it.
 let myStatus = 'home';
-function sendStatus(kind) {
+let myDetail = null;
+function sendStatus(kind, d) {
+  if (kind && (kind !== myStatus || d !== undefined)) myDetail = d || null;
   myStatus = kind || myStatus;
-  if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus })); } catch { /* dropped */ } }
+  if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus, d: myDetail })); } catch { /* dropped */ } }
 }
 const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home' };
 
@@ -893,6 +900,8 @@ let suppressOpenUntil = 0; // ignore the room 'open' echo of my own pull
 // sparkles + a fanfare — the surprise lands at the flip, not up front.
 let flippedCount = 0;
 let tearing = false;
+let revealMine = false; // my own reveal (not a room member's): it feeds my Live in voice tile
+let revealFlipped = [];
 // A glossy holographic pack (Pokémon-Pocket style): it floats on screen, you TAP
 // to rip the top off with a light-line, then the cards rise for you to flip.
 function showReveal(msg) {
@@ -902,6 +911,9 @@ function showReveal(msg) {
   revealItems = cards;
   flippedCount = 0;
   tearing = false;
+  revealMine = msg.user === 'You';
+  revealFlipped = [];
+  if (revealMine) sendStatus('opening', { n: 0, of: cards.length });
   const rare = isRarePull(cards);
   const tiles = cards.map((c, i) => {
     const hot = (RARITY_RANK[c.rarity] ?? 0) >= 2 ? ' hot' : '';
@@ -1045,6 +1057,12 @@ function flipCard(fc, card) {
   fc.classList.add('flipped');
   SFX.play('flip');
   flippedCount += 1;
+  if (revealMine) {
+    revealFlipped.push(card);
+    const best = revealFlipped.reduce((b, c) => ((RARITY_RANK[c.rarity] ?? 0) > (RARITY_RANK[b?.rarity] ?? -1) ? c : b), null);
+    sendStatus('opening', { c: revealFlipped.map((c) => Number(c.id)).filter(Boolean).slice(0, 5), n: flippedCount, of: revealItems.length,
+      t: best && (RARITY_RANK[best.rarity] ?? 0) >= 2 ? best.rarity : undefined });
+  }
   const special = (RARITY_RANK[card.rarity] ?? 0) >= 2;
   if (special) {
     setTimeout(() => {
@@ -1315,6 +1333,7 @@ function applyHuntState(d) {
   if (hpText) hpText.textContent = h.status === 'defeated' ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`;
   const slot = el('usedSlot');
   if (slot) slot.innerHTML = `Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}`;
+  if (currentView === 'battling' && myStatus !== 'battle') sendStatus('hunt', { c: [...usedIds].slice(0, 5), n: d.usedToday || 0, of: d.dailyCap || 8, v: Math.round(huntState.myDamage || 0) || undefined });
   if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); }
   if (squad.phase === 'battle') paintTeam(); else paintHuntPage();
 }
@@ -2400,6 +2419,8 @@ function resolveHit(node, r, atk) {
   const hpText = el('hpText');
   if (hpText) hpText.textContent = r.defeated ? 'DEFEATED!' : `${r.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`;
   huntState.myDamage = (huntState.myDamage || 0) + (r.damage || 0);
+  sendStatus('battle', { c: [Number(node.dataset.id)].filter(Boolean), v: Math.max(0, Math.round(r.damage || 0)), x: !!(r.crit || r.bonus),
+    n: huntState.usedToday || 0, of: huntState.dailyCap || 8 }); // my Live in voice tile
   const md = el('myDmg');
   if (md) md.innerHTML = `Your damage: <b>${huntState.myDamage.toLocaleString()}</b>`;
   // The server returns the card HP AFTER the boss's answer. Show it only when the boss's

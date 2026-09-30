@@ -12,7 +12,7 @@ export async function onMessageCreate(message: Message): Promise<void> {
   if (!message.inGuild()) return;
 
   try {
-    const earned = await recordMessage(message.author.id, message.author.username);
+    const earned = await recordMessage(message.author.id, message.author.username, message.author.avatar);
     if (earned > 0) await maybeFirstPackPing(message.client, message.author.id);
   } catch (error) {
     // A failed count must never crash the bot. Log it and move on.

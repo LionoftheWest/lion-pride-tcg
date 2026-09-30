@@ -39,19 +39,23 @@ function utcToday(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// A process-local cache of players we have already inserted this run, so we do
-// not upsert the same player row on every single message.
-const knownPlayers = new Set<string>();
+// A process-local cache of players we have already upserted this run (id -> the avatar
+// hash saved), so we do not upsert the same player row on every single message.
+const knownPlayers = new Map<string, string | null | undefined>();
 
-/** Insert a player row if it is absent, and keep the username fresh. */
-export async function ensurePlayer(id: string, username: string): Promise<void> {
-  if (knownPlayers.has(id)) return; // already upserted this run — skip the round-trip
+/**
+ * Insert a player row if it is absent, and keep the username fresh. `avatar` is the
+ * Discord avatar hash (user.avatar): the Activity shows everyone's picture from it, so it
+ * is saved whenever the bot sees a member and it changed (Nathan, 2026-09-30).
+ */
+export async function ensurePlayer(id: string, username: string, avatar?: string | null): Promise<void> {
+  if (knownPlayers.has(id) && (avatar === undefined || knownPlayers.get(id) === avatar)) return;
   const supabase = getSupabase();
-  const { error } = await supabase
-    .from('players')
-    .upsert({ id, username }, { onConflict: 'id' });
+  const row: { id: string; username: string; avatar?: string } = { id, username };
+  if (avatar) row.avatar = avatar;
+  const { error } = await supabase.from('players').upsert(row, { onConflict: 'id' });
   if (error) throw new Error(`ensurePlayer failed: ${error.message}`);
-  knownPlayers.add(id);
+  knownPlayers.set(id, avatar === undefined ? knownPlayers.get(id) : avatar);
 }
 
 // The earn dial (settings.pack_earn_multiplier), cached briefly so a message
@@ -74,10 +78,8 @@ async function earnMultiplier(): Promise<number> {
  * Count one message toward today, and earn packs the first time a threshold hits.
  * Returns the number of packs this message earned (0 for almost every message).
  */
-export async function recordMessage(id: string, username: string): Promise<number> {
-  if (!knownPlayers.has(id)) {
-    await ensurePlayer(id, username);
-  }
+export async function recordMessage(id: string, username: string, avatar?: string | null): Promise<number> {
+  await ensurePlayer(id, username, avatar);
   // Dial 0 = earning paused (the launch reset, 2026-09-30). Count nothing: a counted
   // message would mark today's pack claimed with 0 packs, so the first message after
   // the resume must still be message 1 and earn the daily pack.

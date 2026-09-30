@@ -1,0 +1,52 @@
+/* Home, design 19 (Nathan, 2026-09-30): the hunt + Live in voice on the left, Live pulls
+   down the right to the same bottom line; rich Live in voice tiles; my avatar in the top bar. */
+body.ui-v2 .v2-home.h19 { grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(200px, .6fr) minmax(0, 1fr); }
+body.ui-v2 .v2-home.h19 > .hero { grid-column: 1; grid-row: 1; }
+body.ui-v2 .v2-home.h19 > .voice { grid-column: 1; grid-row: 2; min-height: 0; }
+body.ui-v2 .v2-home.h19 > .pulls { grid-column: 2; grid-row: 1 / span 2; min-height: 0; }
+body.ui-v2 #v2Avatar { width: 40px; height: 40px; cursor: pointer; }
+body.ui-v2 .hero-faces { display: inline-flex; }
+body.ui-v2 .hero-faces .v2-avatar { width: 30px; height: 30px; box-shadow: 0 0 0 2px var(--bg-raised); }
+body.ui-v2 .hero-faces .v2-avatar + .v2-avatar { margin-left: -8px; }
+
+body.ui-v2 .h19 .vc-grid { flex: 1; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-rows: 0; }
+body.ui-v2 .h19 .vc-tile { --k: var(--text-muted); display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
+body.ui-v2 .vc-tile.k-opening { --k: var(--gold); } body.ui-v2 .vc-tile.k-collection { --k: #7FB2FF; }
+body.ui-v2 .vc-tile.k-hunt, body.ui-v2 .vc-tile.k-trading { --k: #3ECF8E; } body.ui-v2 .vc-tile.k-battle { --k: #FF6B7D; }
+body.ui-v2 .vc-tile.k-playing { --k: #B18CFF; }
+body.ui-v2 .h19 .vc-tile .vc-st { color: var(--k); }
+body.ui-v2 .h19 .vc-head { flex: none; display: flex; align-items: center; gap: 10px; }
+body.ui-v2 .h19 .vc-head > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+body.ui-v2 .h19 .vc-head b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .h19 .vc-st { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .vc-ago { align-self: flex-start; font-size: 11px; color: var(--text-muted); }
+body.ui-v2 .vc-body { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; }
+body.ui-v2 .vc-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-muted); }
+body.ui-v2 .vc-c { flex: none; height: min(100px, 100%); aspect-ratio: 5 / 7; border-radius: 6px; object-fit: cover; box-sizing: border-box;
+  border: 1.5px solid var(--border-strong); background: var(--surface-2); display: grid; place-items: center; color: var(--text-muted); font-size: 13px; }
+body.ui-v2 .vc-c.r-normal { border-color: #9aa3b5; } body.ui-v2 .vc-c.r-illustrated_rare { border-color: var(--r-illustrated_rare, #4DA3FF); }
+body.ui-v2 .vc-c.r-secret_rare { border-color: var(--r-secret_rare, #B18CFF); } body.ui-v2 .vc-c.r-full_art { border-color: var(--r-full_art, #FF5CA8); }
+body.ui-v2 .vc-c.r-gold { border-color: var(--gold); box-shadow: 0 0 10px rgba(244, 183, 60, .35); }
+body.ui-v2 .vc-c.back { color: var(--gold); border-color: rgba(244, 183, 60, .5); }
+body.ui-v2 .vc-c.plus { border-style: dashed; }
+body.ui-v2 .vc-c.hit { height: min(112px, 100%); border-color: var(--k); }
+body.ui-v2 .vc-slots { display: flex; gap: 5px; }
+body.ui-v2 .vc-stack { display: flex; }
+body.ui-v2 .vc-stack .vc-c + .vc-c { margin-left: -18px; }
+body.ui-v2 .vc-slots { height: 100%; align-items: center; } body.ui-v2 .vc-stack { height: 100%; align-items: center; }
+body.ui-v2 .vc-set { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: center; }
+body.ui-v2 .vc-set b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .vc-set .mono { color: var(--k); font-size: 12px; }
+body.ui-v2 .vc-bar { grid-column: 1 / -1; display: block; height: 5px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+body.ui-v2 .vc-bar > i { display: block; height: 100%; background: var(--k); }
+body.ui-v2 .vc-big { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; }
+body.ui-v2 .vc-big b { font: 800 clamp(18px, 2.2vh, 30px) var(--font-num); color: #3ECF8E; white-space: nowrap; }
+body.ui-v2 .vc-big span, body.ui-v2 .vc-crit { font: 700 9.5px var(--font-num); letter-spacing: .12em; color: var(--text-muted); }
+body.ui-v2 .vc-dmg { display: flex; align-items: center; gap: 8px; }
+body.ui-v2 .vc-dmg b { font: 800 clamp(22px, 2.8vh, 36px) var(--font-num); color: var(--gold); }
+body.ui-v2 .vc-crit { padding: 2px 6px; border-radius: 5px; background: rgba(255, 107, 125, .18); color: #FF6B7D; }
+body.ui-v2 .vc-swap { color: #3ECF8E; font-weight: 800; }
+body.ui-v2 .vc-tr { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+body.ui-v2 .vc-tr b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .vc-tr span { font-size: 12px; color: var(--text-muted); }
+body.ui-v2 .vc-hot { font-weight: 800; }

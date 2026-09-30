@@ -168,7 +168,7 @@ async function redeemAll(btn) {
   await loadMyProfile(true);
   if (ctx.currentView() === 'collection') renderCollectionV2();
 }
-function toast(text) {
+export function toast(text) {
   const n = document.createElement('div');
   n.className = 'v2-toast';
   n.textContent = text;
@@ -409,6 +409,11 @@ function paintColGrid() {
   if (!grid) return;
   colItems = colFiltered();
   paintCards(grid, el('colPager'), colItems, colState, (c, t) => pickCard(c, t, grid), col.sel);
+  // My Live in voice tile (design 19): the set I browse, how much of it I own, 3 owned cards.
+  const set = mergedCards().filter((c) => (c.season || 'Season 1') === col.season && (!col.game || [].concat(c.tags?.origin || []).includes(col.game)));
+  const own = set.filter((c) => c.owned);
+  ctx.status?.('collection', { t: col.game ? (GAMES.find(([k]) => k === col.game)?.[1] || col.season) : col.season,
+    n: own.length, of: set.length, c: own.slice(0, 3).map((c) => Number(c.id)).filter(Boolean) });
 }
 
 const TAG_FACETS = ['type', 'class', 'origin', 'genre', 'traits'];
@@ -658,23 +663,23 @@ export function disposeHomeV2() {
 export async function renderHomeV2() {
   const { el } = ctx;
   disposeHomeV2();
-  el('main').innerHTML = `<div class="v2-home">
+  // Design 19 (Nathan, 2026-09-30): the hunt + Live in voice on the left, Live pulls down
+  // the right to the same bottom line. No profile tile: the top-bar avatar opens it.
+  el('main').innerHTML = `<div class="v2-home h19">
     <section class="v2-tile hero" id="homeHero"><div class="v2-loading">Loading…</div></section>
-    <section class="v2-tile prof" id="homeProfile"></section>
     <section class="v2-tile voice" id="homeVoice"></section>
     <section class="v2-tile pulls" id="homePulls"></section>
   </div>`;
   paintVoice();
   paintPulls();
-  paintProfile();
   const [hunt] = await Promise.all([
     ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null),
     loadMyProfile(true),
     ensureCatalog(),
   ]);
   if (ctx.currentView() !== 'home') return;
-  paintProfile();
   paintHero(hunt);
+  paintVoice(); // the catalog is loaded now: the tiles can show card pictures
 }
 
 function paintHero(d) {
@@ -713,10 +718,16 @@ function paintHero(d) {
       <h2>${esc(h.name)}</h2>
       <div class="hero-hp"><span>${pct}% HP</span><span class="mono" data-closes="${esc(h.closes_at)}"></span></div>
       <div class="segbar">${segs}</div>
-      <div class="hero-row"><button class="v2-btn gold" id="heroJoin">⚔ Join the hunt</button><span class="mono dim">${rank}</span></div>
+      <div class="hero-row"><button class="v2-btn gold" id="heroJoin">⚔ Join the hunt</button><span class="hero-faces" id="heroFaces"></span><span class="mono dim">${rank}</span></div>
     </div>
     <div class="hero-stage"><canvas id="heroCanvas"></canvas></div>`;
   el('heroJoin').addEventListener('click', () => ctx.show('battling'));
+  ctx.api('/api/hunt/feed').then((f) => {
+    const seen = new Map();
+    for (const r of f?.feed || []) if (r.player_id && !seen.has(r.player_id)) seen.set(r.player_id, r.player);
+    const faces = el('heroFaces');
+    if (faces) faces.innerHTML = [...seen].slice(0, 4).map(([id, name]) => avatarHTML(id, name, 'xs')).join('');
+  }).catch(() => {});
   tickCloses();
   try { heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier); } catch { heroBoss = null; }
 }
@@ -768,8 +779,54 @@ function paintProfile() {
 
 export const STATUS_TEXT = {
   home: ['🏠', 'On the home screen'], collection: ['📚', 'Browsing collection'], hunt: ['⚔', 'In the hunt'],
-  battle: ['⚔', 'Attacking the boss'], trading: ['⇄', 'Trading'], opening: ['🎴', 'Opening a pack'],
+  battle: ['⚔', 'Attacking the boss'], trading: ['⇄', 'Trading'], opening: ['🎴', 'Opening a pack'], playing: ['✨', 'Playing a card'],
 };
+
+// The Live in voice tiles (design 19): what each member does now, with the detail their
+// app sends (main.js sendStatus -> server.js cleanDetail): c card ids, n/of, v, x, t, s.
+const cardById = (id) => (ctx.cache.catalog?.cards || []).find((c) => Number(c.id) === Number(id));
+const vcAgo = (at) => { const m = Math.floor((Date.now() - (at || Date.now())) / 60000); return m < 1 ? 'now' : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h`; };
+function vcCard(id, cls = '') {
+  const c = cardById(id);
+  return c ? `<img class="vc-c r-${esc(c.rarity)} ${cls}" src="${thumb(c.image_url)}" data-full="${esc(c.image_url || '')}" alt="">` : `<span class="vc-c empty ${cls}"></span>`;
+}
+function vcSlots(ids, total, empty) {
+  const out = [];
+  for (let i = 0; i < Math.min(5, Math.max(total || 0, ids.length)); i += 1) out.push(ids[i] ? vcCard(ids[i]) : `<span class="vc-c ${empty}">${empty === 'back' ? '♛' : '+'}</span>`);
+  return out.join('');
+}
+function vcBody(p) {
+  const d = p.status?.d || {};
+  const ids = d.c || [];
+  switch (p.status?.kind) {
+    case 'opening': {
+      const r = d.t && ctx.RARITY_LABEL[d.t];
+      return { st: `Opening a pack${d.of ? ` · ${d.n || 0}/${d.of}` : ''}`, body: `<div class="vc-slots">${vcSlots(ids, d.of || 5, 'back')}</div>`,
+        foot: r ? `<span class="vc-hot" style="color:var(--r-${esc(d.t)}, var(--gold))">${esc(r)} pulled!</span>` : '' };
+    }
+    case 'collection': {
+      const pct = d.of ? Math.round((100 * (d.n || 0)) / d.of) : 0;
+      return { st: 'Browsing collection', body: `<div class="vc-stack">${ids.slice(0, 3).map((id) => vcCard(id)).join('')}</div>
+        <div class="vc-set"><b>${esc(d.t || 'Season 1')}</b><span class="mono">${pct}%</span><i class="vc-bar"><i style="width:${pct}%"></i></i></div>`,
+        foot: d.of ? `<span></span><span class="mono">${d.n || 0} / ${d.of}</span>` : '' };
+    }
+    case 'hunt':
+      return { st: 'In the hunt', body: `<div class="vc-slots">${vcSlots(ids.slice(0, 3), Math.min(3, ids.length || 1), 'plus')}</div>${d.v ? `<div class="vc-big"><b class="mono">${fmt(d.v)}</b><span>DAMAGE</span></div>` : ''}`,
+        foot: d.of ? `<span class="mono">${d.n || 0}/${d.of} cards</span>` : '' };
+    case 'battle':
+      return { st: 'Attacking the boss', body: `${vcCard(ids[0], 'hit')}<div class="vc-dmg"><b class="mono">-${fmt(d.v || 0)}</b>${d.x ? '<span class="vc-crit">CRIT</span>' : ''}</div>`,
+        foot: d.of ? `<span class="mono">${d.n || 0}/${d.of} cards</span>` : '' };
+    case 'trading':
+      return { st: d.t ? `Trading with ${d.t}` : 'Trading', body: ids.length ? `${vcCard(ids[0])}<span class="vc-swap">⇄</span>${vcCard(ids[1])}<div class="vc-tr"><b>${d.s === 'sent' ? 'Offer sent' : 'Building an offer'}</b>${d.s === 'sent' ? '<span>Pending</span>' : ''}</div>` : '',
+        foot: '' };
+    case 'playing':
+      return { st: d.s ? `Playing on ${d.s}` : 'Playing a card', body: ids.length || d.t ? `${vcCard(ids[0])}<div class="vc-tr"><b>${esc(d.t || 'A card')}</b></div>` : '', foot: '' };
+    default: {
+      const [, txt] = STATUS_TEXT[p.status?.kind] || ['•', 'Here'];
+      return { st: txt, body: '', foot: '' };
+    }
+  }
+}
 
 export function paintVoice() {
   const { el } = ctx;
@@ -781,13 +838,15 @@ export function paintVoice() {
   if (me && !people.some((p) => String(p.id) === String(me.id))) people.unshift({ id: me.id, name: me.name, status: { kind: 'home' } });
   people.sort((a, b) => (String(b.id) === String(me?.id)) - (String(a.id) === String(me?.id)));
   const tile = (p) => {
-    const [ico, txt] = STATUS_TEXT[p.status?.kind] || ['•', 'Here'];
+    const kind = p.status?.kind || 'here';
+    const [ico] = STATUS_TEXT[kind] || ['•'];
     const self = String(p.id) === String(me?.id);
-    return `<button class="vc-tile k-${esc(p.status?.kind || 'here')}${self ? ' self' : ''}" data-member="${esc(p.id)}"><div class="vc-head">${avatarHTML(p.id, p.name, 'sm')}
-      <div><b>${nameBadge(p.id, p.name)}${self ? ' <i class="you">You</i>' : ''}</b><span class="vc-st">${ico} ${esc(txt)}</span></div></div>
-      ${p.status?.card ? `<div class="vc-card">${esc(p.status.card)}</div>` : ''}</button>`;
+    const b = vcBody(p);
+    return `<button class="vc-tile k-${esc(kind)}${self ? ' self' : ''}" data-member="${esc(p.id)}"><div class="vc-head">${avatarHTML(p.id, p.name, 'sm')}
+      <div><b>${nameBadge(p.id, p.name)}${self ? ' <i class="you">You</i>' : ''}</b><span class="vc-st">${ico} ${esc(b.st)}</span></div><span class="vc-ago mono">${vcAgo(p.status?.at)}</span></div>
+      ${b.body ? `<div class="vc-body">${b.body}</div>` : ''}${b.foot ? `<div class="vc-foot">${b.foot}</div>` : ''}</button>`;
   };
-  box.innerHTML = `<div class="tile-h"><b>🎧 Live in voice</b><span class="dim">${people.length}</span>${people.length > 1 ? '<span class="live-chip sm">● LIVE</span>' : ''}</div>
+  box.innerHTML = `<div class="tile-h"><b>🎧 Live in voice</b><span class="dim">${people.length}</span><span class="grow"></span>${people.length > 1 ? '<span class="live-chip sm">● LIVE</span>' : ''}</div>
     <div class="vc-grid">${people.slice(0, 6).map(tile).join('')}</div>`;
   box.onclick = (e) => { const t = e.target.closest('[data-member]'); if (t) openMember(t.dataset.member); };
 }
@@ -797,11 +856,14 @@ export function paintPulls() {
   const box = el('homePulls');
   if (!box) return;
   const all = ctx.live.pulls || [];
-  const pulls = pullsTab.v === 'top' ? all.filter((p) => TOP_RARITY.has(p.rarity)) : all;
+  // Den (design 19): the pulls of the members in my voice channel now.
+  const den = new Set([...(ctx.live.presence || []).map((p) => String(p.id)), String(ctx.user()?.id || '')]);
+  const pulls = pullsTab.v === 'top' ? all.filter((p) => TOP_RARITY.has(p.rarity))
+    : pullsTab.v === 'den' ? all.filter((p) => den.has(String(p.player_id))) : all;
   const [first, ...rest] = pulls;
   const row = (p, i) => `<div class="pl-row" data-pi="${i}"><img src="${thumb(p.image_url)}" data-full="${p.image_url || ''}" alt="" loading="lazy"><div class="pl-t"><b>${nameBadge(p.player_id, p.player)}</b> pulled <span style="color:var(--r-${p.rarity}, var(--text-primary))">${esc(p.name)}</span></div><span class="mono dim">${ctx.ago(p.at)}</span></div>`;
   box.innerHTML = `<div class="tile-h"><b><span class="live-dot"></span> Live pulls</b><span class="grow"></span>
-      <div class="seg"><button data-t="all" class="${pullsTab.v === 'all' ? 'on' : ''}">All</button><button data-t="top" class="${pullsTab.v === 'top' ? 'on' : ''}">Top pulls</button></div></div>
+      <div class="seg">${[['all', 'All'], ['top', 'Top pulls'], ['den', 'Den']].map(([v, l]) => `<button data-t="${v}" class="${pullsTab.v === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
     ${first ? `<div class="pl-top r-${first.rarity}" data-pi="0"><img src="${thumb(first.image_url)}" data-full="${first.image_url || ''}" alt=""><div><span class="pl-k">${esc((ctx.RARITY_LABEL[first.rarity] || first.rarity).toUpperCase())} · ${ctx.ago(first.at)}</span><b>${nameBadge(first.player_id, first.player)} pulled ${esc(first.name)}</b></div></div>` : '<p class="v2-empty">No pulls yet.</p>'}
     <div class="pl-list" id="plList">${rest.slice(0, 8).map((p, i) => row(p, i + 1)).join('')}</div>`;
   box.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => { pullsTab.v = b.dataset.t; paintPulls(); }));
