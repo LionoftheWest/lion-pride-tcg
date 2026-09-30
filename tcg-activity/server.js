@@ -1149,9 +1149,15 @@ app.get('/api/pulls/stream', async (req, res) => {
 });
 
 // The single poller. It only touches the database while someone is watching, and
-// only broadcasts when the newest pull actually changed.
+// only broadcasts when the newest pull actually changed. Each tick reads only the
+// newest timestamp (~100 B). The full feed (18 KB) loads only on a change: re-reading
+// it every 5 s was ~13 MB of Supabase egress per hour while anyone was online.
 setInterval(async () => {
   if (streamClients.size === 0) return;
+  const { data: newest, error } = await supabase.from('player_cards')
+    .select('first_obtained_at').order('first_obtained_at', { ascending: false }).limit(1);
+  if (error || (newest?.[0]?.first_obtained_at || '') === (lastTop || '')) return;
+  pullsCache = null; // the change is new: skip the 3 s cache
   const pulls = await queryPulls();
   if (!pulls) return;
   const top = pulls[0]?.at || '';
