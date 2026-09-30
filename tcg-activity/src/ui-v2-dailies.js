@@ -23,7 +23,9 @@ const UNIT = { chat: 'msgs', hunt: 'cards', voice: 'min' };
 let view = null;
 let tickTimer = null;
 
-const ready = (v) => (v?.enabled && !v.paused ? v.tasks.filter((t) => !t.auto && t.done && !t.claimed) : []);
+// The dailies a member can redeem NOW: the red count on the Dailies button. None while
+// paused or once the daily cap is reached (a claim would pay nothing).
+const ready = (v) => (v?.enabled && !v.paused && (v.earned || 0) < (v.cap || 7) ? v.tasks.filter((t) => !t.auto && t.done && !t.claimed) : []);
 const readyPacks = (v) => Math.min(ready(v).reduce((n, t) => n + (t.reward || 0), 0), Math.max(0, (v?.cap || 0) - (v?.earned || 0)));
 
 function paintBadge() {
@@ -71,7 +73,8 @@ function flames(t) {
 }
 
 function row(t, paused) {
-  const go = !t.auto && t.done && !t.claimed;
+  // Redeemable NOW: the same rule as the red count (not while paused).
+  const go = !paused && !t.auto && t.done && !t.claimed;
   let title = esc(NAME[t.task] || t.task), sub = '', right = '';
   if (t.task === 'checkin') {
     const day = t.claimed ? t.streak : t.streak + 1;
@@ -88,7 +91,7 @@ function row(t, paused) {
     if (t.packs) title += ` ${chip(t.packs, 'ok sm')}`;
     right = `<span class="dl-auto">${t.packs < t.max ? chip(1) : chip(t.packs, 'ok')}<small>AUTO</small></span>`;
   } else if (t.claimed) right = chip(t.reward, 'ok');
-  else if (go) right = claimBtn(t.task, t.reward, paused);
+  else if (go) right = claimBtn(t.task, t.reward, false);
   else right = chip(t.reward);
   return `<div class="dl-row k-${esc(t.task)}${go ? ' go' : ''}${t.claimed ? ' claimed' : ''}"><span class="dl-ico">${ICON[t.task] || ''}</span>
     <div class="dl-t"><b>${title}</b>${sub ? `<span class="dl-sub">${sub}</span>` : ''}</div>${right}</div>`;
