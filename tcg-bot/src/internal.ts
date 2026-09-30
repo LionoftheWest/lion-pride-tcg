@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import type { Client, MessageCreateOptions } from 'discord.js';
 import { openPacks, openTestPacks, getPackBalance, giftPacks } from './store.js';
 import { pingableUsers, type PingKind, PING_KINDS } from './ping-prefs.js';
+import { onPlaying } from './playing-posts.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
 // VM (it binds to 127.0.0.1, and the container runs with --network host). It lets
@@ -48,7 +49,7 @@ export function startInternalServer(client: Client): void {
       res.end(JSON.stringify(body));
     };
     const route = req.method === 'POST' ? req.url : null;
-    if (route !== '/open' && route !== '/status' && route !== '/gift' && route !== '/announce') return json(404, { error: 'not found' });
+    if (route !== '/open' && route !== '/status' && route !== '/gift' && route !== '/announce' && route !== '/playing') return json(404, { error: 'not found' });
     if (req.headers['x-internal-token'] !== TOKEN) return json(401, { error: 'unauthorized' });
 
     let raw = '';
@@ -67,7 +68,14 @@ export function startInternalServer(client: Client): void {
           message?: string;
           count?: number;
           kind?: string;
+          event?: string;
         };
+        // Playing: the Activity reports a member's session (playing-posts.ts).
+        if (route === '/playing') {
+          const ev = body.event === 'start' || body.event === 'update' || body.event === 'end' ? body.event : null;
+          if (!body.userId || !ev) return json(400, { error: 'missing userId or event' });
+          return json(200, { ok: onPlaying(client, String(body.userId), String(body.username ?? ''), ev) });
+        }
         // Announce: post a directed event to the public notifications channel.
         if (route === '/announce') {
           if (!body.message) return json(400, { error: 'missing message' });

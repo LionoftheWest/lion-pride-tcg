@@ -1,0 +1,8 @@
+These font files are from Fontsource (fontsource.org) and are licensed under the
+SIL Open Font License 1.1 (https://openfontlicense.org):
+- Bricolage Grotesque (variable)
+- Inter (variable)
+- JetBrains Mono (variable)
+- Instrument Serif (regular + italic)
+They are served from this app's own origin because Discord's Activity frame blocks
+outside font servers.

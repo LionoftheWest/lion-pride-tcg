@@ -81,6 +81,16 @@ async function announce(message, kind = 'trades') {
     });
   } catch { /* ignore */ }
 }
+// The "is playing" post (tcg-bot playing-posts.ts): start / update / end of a member's
+// session. The bot decides (its flag, the member's setting, the once-a-minute limit).
+function notifyPlaying(me, event) {
+  if (!INTERNAL_TOKEN || !me?.id) return;
+  fetch(`${BOT_INTERNAL_URL}/playing`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-internal-token': INTERNAL_TOKEN },
+    body: JSON.stringify({ userId: String(me.id), username: me.global_name || me.username || '', event }),
+  }).catch(() => {});
+}
 // A bot Card -> the browser shape, with the art routed through the /cdn proxy.
 const cardForClient = (c) => ({
   id: c.id,
@@ -715,6 +725,7 @@ app.post('/api/hunt/attack', async (req, res) => {
   else if (data?.ok && activeHuntCache?.data?.id === hunt.id) activeHuntCache.data = { ...activeHuntCache.data, hp_remaining: data.hp_remaining };
   // The RPC settles the killing blow inline and records the defeat + reward notification
   // in the hunt_events outbox, which the bot posts. No announce here (it would duplicate).
+  if (data?.ok) notifyPlaying(me, 'update');
   res.json(data);
 });
 
@@ -1227,6 +1238,7 @@ setInterval(async () => {
 // that id so they can see each other (presence now; pack-opens + reactions next).
 // The transport is a WebSocket on /ws, carried through the same proxy as the page.
 const rooms = new Map(); // instanceId -> Map(ws -> { id, name })
+const liveSockets = new Map(); // member id -> open room sockets (the "is playing" session)
 
 const STATUS_KINDS = new Set(['home', 'collection', 'hunt', 'trading', 'opening', 'battle', 'playing']);
 // The detail behind a status (design 18/19 "Live in voice" tiles). Allow-listed fields only,
@@ -1334,6 +1346,7 @@ app.post('/api/open', async (req, res) => {
     const name = me.global_name || me.username;
     const instanceId = req.body?.instanceId;
     if (instanceId && cards.length) roomSend(instanceId, { type: 'open', user: name, cards });
+    notifyPlaying(me, 'update');
     res.json({ award: data.award, packs, cards });
   } catch (e) {
     res.status(500).json({ error: String(e) });
@@ -1542,7 +1555,7 @@ app.post('/api/trade/accept', async (req, res) => {
 
 // Ping settings (notify_prefs.sql): may the bot's channel posts ping me? Mute all, or per
 // kind. The bot reads players.notify_prefs (tcg-bot/src/ping-prefs.ts, a 30 s cache).
-const PING_KEYS = ['all', 'plays', 'trades', 'raid', 'packs'];
+const PING_KEYS = ['all', 'plays', 'trades', 'raid', 'packs', 'playing']; // playing = "Show when I play" (the is-playing post)
 app.get('/api/notify-prefs', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
@@ -1614,6 +1627,9 @@ wss.on('connection', async (ws, req) => {
   if (!members) { members = new Map(); rooms.set(instanceId, members); }
   members.set(ws, { id: me.id, name: me.global_name || me.username, status: null });
   roomSend(instanceId, { type: 'presence', users: presenceList(instanceId) });
+  const open = (liveSockets.get(me.id) || 0) + 1;
+  liveSockets.set(me.id, open);
+  if (open === 1) notifyPlaying(me, 'start');
 
   // Reactions: a viewer taps an emoji; everyone in the room sees it.
   ws.on('message', (raw) => {
@@ -1632,6 +1648,8 @@ wss.on('connection', async (ws, req) => {
   });
 
   ws.on('close', () => {
+    const left = (liveSockets.get(me.id) || 1) - 1;
+    if (left > 0) liveSockets.set(me.id, left); else { liveSockets.delete(me.id); notifyPlaying(me, 'end'); }
     members.delete(ws);
     if (members.size === 0) rooms.delete(instanceId);
     else roomSend(instanceId, { type: 'presence', users: presenceList(instanceId) });

@@ -14,4 +14,6 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
+# The "is playing" picture's fonts and icon (playing-card.ts reads ./assets).
+COPY src/assets ./assets
 CMD ["node", "dist/index.js"]
