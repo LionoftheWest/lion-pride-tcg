@@ -80,7 +80,8 @@ async function render(client: Client, id: string): Promise<void> {
   if (t.playing_pref === 'false') return;
   const day = utcDay();
   const { data: row } = await sb.from('playing_posts').select('message_id').eq('player_id', id).eq('day', day).maybeSingle();
-  const key = JSON.stringify([day, j.playing, t.packs, t.damage, t.best?.id ?? null, j.name, t.avatar]);
+  // Only what the picture shows (Nathan: just the card; no tier, name, packs or damage line).
+  const key = JSON.stringify([day, j.playing, t.best?.id ?? null, j.name, t.avatar]);
   if (row && key === j.lastKey) return; // nothing changed since the last post
   const [avatar, cardArt] = await Promise.all([
     buf(t.avatar ? `https://cdn.discordapp.com/avatars/${id}/${t.avatar}.png?size=256` : null),

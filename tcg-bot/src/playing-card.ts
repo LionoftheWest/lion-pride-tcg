@@ -123,15 +123,9 @@ export async function renderPlayingCard(p: PlayingCardInput): Promise<Buffer> {
   ctx.font = '600 30px Inter';
   if (p.playing) { ctx.beginPath(); ctx.arc(73, 458, 8, 0, Math.PI * 2); ctx.fill(); } // the fonts have no ● glyph
   ctx.fillText(p.playing ? 'is playing' : 'was playing', p.playing ? 92 : 64, 468);
-  const bits = [p.packs ? `${p.packs} pack${p.packs === 1 ? '' : 's'} today` : '', p.damage ? `${p.damage.toLocaleString('en-US')} boss damage` : ''].filter(Boolean);
-  if (bits.length) {
-    ctx.fillStyle = '#8b90a8';
-    ctx.font = '500 24px Inter';
-    ctx.fillText(bits.join('  ·  '), 64, 520);
-  }
 
   // The best pull of the day, framed in its rarity color (or the brand when none yet).
-  const cw = 318, ch = Math.round(cw * 7 / 5), cx = W - cw - 88, cy = (H - ch) / 2 - 8;
+  const cw = 318, ch = Math.round(cw * 7 / 5), cx = W - cw - 88, cy = (H - ch) / 2 + 12; // just the card (Nathan: no tier or name line)
   ctx.fillStyle = '#FF7FB6';
   ctx.font = '800 17px Inter';
   ctx.textAlign = 'right';
@@ -153,22 +147,5 @@ export async function renderPlayingCard(p: PlayingCardInput): Promise<Buffer> {
     if (icon) { ctx.save(); rounded(ctx, cx + cw / 2 - 64, cy + ch / 2 - 64, 128, 128, 30); ctx.clip(); ctx.drawImage(icon, cx + cw / 2 - 64, cy + ch / 2 - 64, 128, 128); ctx.restore(); }
   }
   ctx.restore();
-  // Under the frame (the art already prints the card's name on its face): rarity + name.
-  if (p.card) {
-    const label = r.label.toUpperCase();
-    ctx.font = '800 17px Inter';
-    const lw = ctx.measureText(label).width;
-    ctx.font = '600 20px Inter';
-    let name = p.card.name;
-    while (name.length > 4 && lw + 44 + ctx.measureText(name).width > cw + 40) name = `${name.slice(0, -2).trimEnd()}…`;
-    const nw = ctx.measureText(name).width, total = 16 + lw + 16 + nw, x0 = cx + cw / 2 - total / 2, y = cy + ch + 42;
-    ctx.fillStyle = r.color;
-    ctx.save(); ctx.translate(x0 + 6, y - 6); ctx.rotate(Math.PI / 4); ctx.fillRect(-5, -5, 10, 10); ctx.restore(); // the diamond (no ◆ glyph)
-    ctx.font = '800 17px Inter';
-    ctx.fillText(label, x0 + 16, y);
-    ctx.fillStyle = '#e6e8f2';
-    ctx.font = '600 20px Inter';
-    ctx.fillText(name, x0 + 16 + lw + 16, y);
-  }
   return canvas.toBuffer('image/png');
 }
