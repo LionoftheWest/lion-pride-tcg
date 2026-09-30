@@ -309,7 +309,11 @@ async function main() {
   refreshTradeBadge();
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
   initEffects({ api, apiPost, el, esc, SFX, user: () => meUser, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
-  try { uiV2 = !!(await api('/api/flags'))?.uiV2; } catch { uiV2 = false; }
+  let flags = null;
+  try { flags = await api('/api/flags'); } catch { flags = null; }
+  uiV2 = !!flags?.uiV2;
+  // A new member's first login gave them the welcome packs: show them now.
+  if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   if (uiV2) { startV2(); show('home'); } else show('collection');
 }
 
