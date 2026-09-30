@@ -14,7 +14,7 @@ const token = process.env.SUPABASE_ACCESS_TOKEN;
 const ref = ((process.env.SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
 // Every card-effect migration, in apply order (the engine as it is live after the last one).
 const files = process.argv.length > 2 ? process.argv.slice(2)
-  : ['card_effects.sql', 'card_effects_ascension.sql', 'stat_points.sql', 'effects_cleanup.sql', 'discord_effects_on.sql', 'effects_batch3.sql', 'effects_batch4.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
+  : ['card_effects.sql', 'card_effects_ascension.sql', 'stat_points.sql', 'effects_cleanup.sql', 'discord_effects_on.sql', 'effects_batch3.sql', 'effects_batch4.sql', 'mt_clock.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
 const q = async (sql) => {
   const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

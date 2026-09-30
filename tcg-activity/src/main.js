@@ -12,6 +12,7 @@
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
+import { mtToday, nextMtMidnightISO } from './mt-time.js';
 installImgFallback();
 import { mountBoss, preloadBoss } from './boss-lazy.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
@@ -230,8 +231,8 @@ const ATTACKER_TYPES = ['Character', 'Creature']; // only these can attack; othe
 const squad = { page: 0, q: '', rarity: 'all', type: 'all', locked: false, ko: false, sort: 'power', el: null }; // battle picker (gallery-style); sort + el are v2 only
 let usedIds = new Set(); // card ids already sent at the boss today (client mirror of the cap)
 let feedTopId = 0; // newest boss-feed event id shown (so polls only animate in newer ones)
-let huntDay = ''; // UTC date of the current hunt render; a change means the daily reset hit
-const utcToday = () => new Date().toISOString().slice(0, 10);
+let huntDay = ''; // MT date of the current hunt render; a change means the daily reset hit
+const utcToday = () => mtToday(); // the MT game day (the name kept: several callers)
 window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (uiV2 && squad.phase !== 'battle') paintHuntPage(); else sizeSquadGrid(); });
 const cache = {};
 let myCardIds = new Set(); // card ids the caller owns — so feed cards you own show their art
@@ -857,7 +858,7 @@ async function openPacks(count) {
     const data = await apiPost('/api/open', { instanceId, count: n });
     if (data.error) note('Could not open right now.');
     else if (!data.cards || !data.cards.length)
-      note('No unopened packs. Post in the server to earn one — 25 messages gets a bonus pack. Resets 00:00 UTC.');
+      note('No unopened packs. Post in the server to earn one — 25 messages gets a bonus pack. Resets at midnight MT.');
     else {
       // The collection + ownership changed — drop caches so the views refetch.
       cache.collection = null; cache.catalog = null;
@@ -1206,11 +1207,8 @@ function fmtLeft(ms) {
 function cdSpan(iso, prefix, cls) {
   return `<span class="${cls}" data-until="${iso}" data-prefix="${esc(prefix)}">${esc(prefix)} ${fmtLeft(new Date(iso) - Date.now())}</span>`;
 }
-// Next UTC midnight — when the daily squad resets (one squad per day).
-function nextUtcResetISO() {
-  const n = new Date();
-  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1, 0, 0, 0)).toISOString();
-}
+// Next midnight MT — when the daily squad resets (one squad per day).
+function nextUtcResetISO() { return nextMtMidnightISO(); }
 let huntTicker = null;
 let huntTick = 0;
 function stopHuntTicker() { if (huntTicker) { clearInterval(huntTicker); huntTicker = null; } }
@@ -1226,7 +1224,7 @@ function startHuntTicker() {
       if (ms <= 0) expired = true;
     });
     if (huntTick % 3 === 0 && currentView === 'battling') refreshHuntFeed(); // poll the boss feed every 3s
-    // The UTC day rolled over: the daily reset happened. Re-fetch so downed cards reset
+    // The MT day rolled over: the daily reset happened. Re-fetch so downed cards reset
     // and the locked squad expires (back to squad selection).
     if (huntDay && utcToday() !== huntDay) { huntDay = utcToday(); stopHuntTicker(); if (currentView === 'battling') renderHunt(); return; }
     // A deadline passed: the server state changed. Refresh after a short delay so the

@@ -4,6 +4,7 @@
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { thumb } from './thumb.js';
+import { mtToday } from './mt-time.js';
 import { flairHTML } from './flair.js';
 import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
@@ -637,7 +638,7 @@ function spotPrank(c, playerId, i) {
   let card = c;
   if (b?.swapShowcase) {
     const normals = (ctx.cache.catalog?.cards || []).filter((x) => x.rarity === 'normal' && x.image_url);
-    const day = new Date().toISOString().slice(0, 10);
+    const day = mtToday();
     const h = [...`${playerId}${day}${i}`].reduce((t, ch) => (t * 31 + ch.charCodeAt(0)) >>> 0, 7);
     if (normals.length) card = normals[h % normals.length];
   }
@@ -1090,7 +1091,7 @@ function huntBoxHTML(p) {
   if (!h) return '<div class="tile-h"><b>⚔ Pride Hunt</b></div><p class="v2-empty">No boss is live.</p>';
   const days = h.byDay || [];
   const max = Math.max(1, ...days.map((d) => d.damage));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = mtToday();
   const bars = days.map((d) => `<div class="hb"><i style="height:${Math.max(6, Math.round((100 * d.damage) / max))}%" class="${d.date === today ? 'now' : ''}" title="${fmt(d.damage)}"></i><span>${DAY[new Date(`${d.date}T12:00:00Z`).getUTCDay()]}</span></div>`).join('');
   const top = h.topCard && (ctx.cache.catalog?.cards || []).find((c) => Number(c.id) === h.topCard.id);
   return `<div class="tile-h"><b>⚔ ${esc(h.name)}</b><span class="grow"></span>${p.huntRank ? `<span class="mem-rank">#${p.huntRank}</span>` : ''}</div>

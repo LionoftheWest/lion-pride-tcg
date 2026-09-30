@@ -15,7 +15,7 @@ const command: Command = {
     if (!pack) {
       await interaction.editReply(
         'You have no packs to open. Post messages to earn packs — one for posting ' +
-          'today, and a bonus at 25 messages. Packs reset at 00:00 UTC.',
+          'today, and a bonus at 25 messages. Packs reset at midnight MT.',
       );
       return;
     }

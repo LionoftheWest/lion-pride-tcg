@@ -34,9 +34,11 @@ export interface OpenResult {
   packs: Card[][];
 }
 
-/** The current UTC day as an ISO date string, for example "2026-09-08". */
-function utcToday(): string {
-  return new Date().toISOString().slice(0, 10);
+// The game day is Mountain Time (Nathan, 2026-09-30; mt_clock.sql): "YYYY-MM-DD" in
+// America/Denver. The name is kept for the callers; it is NOT the UTC day any more.
+const mtDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' });
+export function utcToday(): string {
+  return mtDay.format(new Date());
 }
 
 // A process-local cache of players we have already upserted this run (id -> the avatar
