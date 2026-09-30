@@ -18,6 +18,7 @@ const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
+import { createImgCache, normalizeImgUrl } from './img-cache.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -150,11 +151,32 @@ app.use('/api', async (req, res, next) => {
 
 // Card-art proxy: stream a Supabase storage object through this server. This replaces
 // Discord's flaky /cdn image proxy. Only the public card-art storage path is allowed.
+// IMG_CACHE=1 keeps each object on disk (img-cache.js), so it leaves Supabase once.
+const imgCache = process.env.IMG_CACHE === '1'
+  ? createImgCache({ dir: process.env.IMG_CACHE_DIR || '/tmp/img-cache' }) : null;
+if (imgCache) {
+  let last = 0;
+  setInterval(() => {
+    const s = imgCache.stats;
+    if (s.hits + s.upstream === last) return;
+    last = s.hits + s.upstream;
+    console.log(`img-cache hits=${s.hits} upstream=${s.upstream} upstreamMB=${(s.upstreamBytes / 1e6).toFixed(1)} diskMB=${(imgCache.used() / 1e6).toFixed(1)}`);
+  }, 3600_000).unref();
+}
 app.get(/^\/api\/img\/(.+)/, async (req, res) => {
   if (!SUPA_HOST) return res.status(404).end();
   const path = decodeURIComponent(req.params[0] || '');
   const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
   if (!path.startsWith('storage/v1/object/public/card-art/') || /\.\.|\\|\/\/|%/.test(path)) return res.status(400).end(); // no traversal, no double-encoding
+  if (imgCache) {
+    try {
+      const r = await imgCache.get(normalizeImgUrl(SUPA_HOST, path, query));
+      if (r.status !== 200) return res.status(r.status).end();
+      res.setHeader('Content-Type', r.type);
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+      return res.end(r.buf);
+    } catch { return res.status(502).end(); }
+  }
   try {
     const r = await fetch(`${SUPA_HOST}/${path}${query}`);
     if (!r.ok || !r.body) return res.status(r.ok ? 502 : r.status).end();
