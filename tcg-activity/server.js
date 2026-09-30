@@ -19,6 +19,7 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { createImgCache, normalizeImgUrl } from './img-cache.js';
+import { modelFor as bossModelFor } from './src/boss-models.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -83,13 +84,31 @@ async function announce(message, kind = 'trades') {
 }
 // The "is playing" post (tcg-bot playing-posts.ts): start / update / end of a member's
 // session. The bot decides (its flag, the member's setting, the once-a-minute limit).
-function notifyPlaying(me, event) {
+function notifyPlaying(me, event, activity) {
   if (!INTERNAL_TOKEN || !me?.id) return;
   fetch(`${BOT_INTERNAL_URL}/playing`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-internal-token': INTERNAL_TOKEN },
-    body: JSON.stringify({ userId: String(me.id), username: me.global_name || me.username || '', event }),
+    body: JSON.stringify({ userId: String(me.id), username: me.global_name || me.username || '', event, activity }),
   }).catch(() => {});
+}
+// What the member does now, for the banner (Nathan, 2026-09-30): from their room status
+// (the Live in voice detail). Sent only when it changes. The bot allow-lists it again.
+const lastActivity = new Map(); // member id -> the last activity sent
+async function forwardActivity(me, st) {
+  const d = st?.d || {};
+  let act = { kind: 'idle' };
+  if (st?.kind === 'opening') act = { kind: 'opening', cards: d.c || [] };
+  else if (st?.kind === 'battle' || st?.kind === 'hunt') {
+    const h = await activeHunt().catch(() => null);
+    const key = h ? bossModelFor(h.name) : null;
+    if (h) act = { kind: 'fighting', label: h.name, ...(key ? { image: `boss/thumbs/${key}.png` } : {}) };
+  } else if (st?.kind === 'playing') act = { kind: 'playing', cards: d.c || [], label: d.s };
+  else if (st?.kind === 'trading' && d.c?.length) act = { kind: 'trading', cards: d.c.slice(0, 1), label: d.t };
+  const k = JSON.stringify(act);
+  if (lastActivity.get(me.id) === k) return;
+  lastActivity.set(me.id, k);
+  notifyPlaying(me, 'update', act);
 }
 // A bot Card -> the browser shape, with the art routed through the /cdn proxy.
 const cardForClient = (c) => ({
@@ -1644,12 +1663,13 @@ wss.on('connection', async (ws, req) => {
       if (!who || !STATUS_KINDS.has(msg.kind)) return;
       who.status = { kind: msg.kind, card: typeof msg.card === 'string' ? msg.card.slice(0, 60) : null, d: cleanDetail(msg.d), at: Date.now() };
       roomSend(instanceId, { type: 'presence', users: presenceList(instanceId) });
+      forwardActivity(me, who.status).catch(() => {});
     }
   });
 
   ws.on('close', () => {
     const left = (liveSockets.get(me.id) || 1) - 1;
-    if (left > 0) liveSockets.set(me.id, left); else { liveSockets.delete(me.id); notifyPlaying(me, 'end'); }
+    if (left > 0) liveSockets.set(me.id, left); else { liveSockets.delete(me.id); lastActivity.delete(me.id); notifyPlaying(me, 'end'); }
     members.delete(ws);
     if (members.size === 0) rooms.delete(instanceId);
     else roomSend(instanceId, { type: 'presence', users: presenceList(instanceId) });

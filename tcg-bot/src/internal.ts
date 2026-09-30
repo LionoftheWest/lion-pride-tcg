@@ -69,12 +69,13 @@ export function startInternalServer(client: Client): void {
           count?: number;
           kind?: string;
           event?: string;
+          activity?: unknown;
         };
         // Playing: the Activity reports a member's session (playing-posts.ts).
         if (route === '/playing') {
           const ev = body.event === 'start' || body.event === 'update' || body.event === 'end' ? body.event : null;
           if (!body.userId || !ev) return json(400, { error: 'missing userId or event' });
-          return json(200, { ok: onPlaying(client, String(body.userId), String(body.username ?? ''), ev) });
+          return json(200, { ok: onPlaying(client, String(body.userId), String(body.username ?? ''), ev, body.activity) });
         }
         // Announce: post a directed event to the public notifications channel.
         if (route === '/announce') {
