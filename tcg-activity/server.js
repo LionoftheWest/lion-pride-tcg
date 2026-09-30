@@ -802,7 +802,7 @@ async function queryHuntFeed(huntId) {
   const cmap = new Map((cards || []).map((c) => [c.id, c]));
   const pmap = new Map((players || []).map((p) => [p.id, p.username]));
   const feed = (rows || []).map((r) => ({
-    id: r.id, at: r.ts, player: pmap.get(r.player_id) || 'Someone',
+    id: r.id, at: r.ts, player: pmap.get(r.player_id) || 'Someone', player_id: r.player_id,
     card: cmap.get(r.card_id)?.name || 'a card', rarity: cmap.get(r.card_id)?.rarity || 'normal',
     damage: r.damage, outcome: r.outcome, crit: r.crit, bonus: r.bonus, downed: r.card_downed,
     countered: r.countered, counterDmg: r.counter_dmg,
@@ -993,6 +993,43 @@ app.post('/api/achievements/claim', async (req, res) => {
   try { out = await claimOne(me.id, key); } catch (e) { return res.status(500).json({ error: e.message }); }
   profileCache.delete(String(me.id)); bustUser(me.id); boardV2Cache = null;
   res.json(out);
+});
+
+// Dailies (dailies.sql): the window's data, and one redeem. The SQL checks the flag, the
+// pause, the task, the one-per-day rule and the daily cap.
+app.get('/api/dailies', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const { data, error } = await supabase.rpc('dailies_view', { p_player: String(me.id) });
+  if (error) return res.json({ enabled: false });
+  res.json(data || { enabled: false });
+});
+app.post('/api/dailies/claim', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const { data, error } = await supabase.rpc('claim_daily', { p_player: String(me.id), p_task: String(req.body?.task || '') });
+  if (error) return res.status(500).json({ error: error.message });
+  if (data?.ok) bustUser(me.id);
+  res.json(data);
+});
+// Claim all: each task that is done and not claimed, in order, until the cap stops it.
+app.post('/api/dailies/claim-all', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const id = String(me.id);
+  const { data: view, error } = await supabase.rpc('dailies_view', { p_player: id });
+  if (error || !view?.enabled) return res.json({ ok: false, error: 'disabled' });
+  let packs = 0; let last = view; let stop = null;
+  for (const t of view.tasks.filter((x) => !x.auto && x.done && !x.claimed)) {
+    const { data: r, error: e } = await supabase.rpc('claim_daily', { p_player: id, p_task: t.task });
+    if (e) { stop = 'error'; break; }
+    if (!r?.ok) { stop = r?.error || 'error'; if (stop === 'capped' || stop === 'paused') break; continue; }
+    packs += r.packs; last = r.view;
+  }
+  if (packs) bustUser(me.id);
+  res.json({ ok: packs > 0, packs, view: last, error: packs ? null : stop });
 });
 
 // Equip an unlocked title and/or frame (null = none). Only rewards the caller claimed.
@@ -1191,7 +1228,22 @@ setInterval(async () => {
 // The transport is a WebSocket on /ws, carried through the same proxy as the page.
 const rooms = new Map(); // instanceId -> Map(ws -> { id, name })
 
-const STATUS_KINDS = new Set(['home', 'collection', 'hunt', 'trading', 'opening', 'battle']);
+const STATUS_KINDS = new Set(['home', 'collection', 'hunt', 'trading', 'opening', 'battle', 'playing']);
+// The detail behind a status (design 18/19 "Live in voice" tiles). Allow-listed fields only,
+// clamped, so a client cannot push anything else to the room:
+//   c card ids (max 5), n / of counts, v damage, x crit, t a title (set, member, effect), s a state.
+function cleanDetail(d) {
+  if (!d || typeof d !== 'object') return null;
+  const int = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : undefined);
+  const str = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined);
+  const out = {
+    c: Array.isArray(d.c) ? d.c.filter((v) => Number.isInteger(v) && v > 0).slice(0, 5) : undefined,
+    n: int(d.n, 1000), of: int(d.of, 1000), v: int(d.v, 10_000_000), x: d.x === true ? true : undefined,
+    t: str(d.t, 40), s: str(d.s, 32),
+  };
+  for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k];
+  return Object.keys(out).length ? out : null;
+}
 function presenceList(instanceId) {
   const members = rooms.get(instanceId);
   if (!members) return [];
@@ -1574,7 +1626,7 @@ wss.on('connection', async (ws, req) => {
       // What this member does now (v2 Home "Live in voice"). Allow-listed values only.
       const who = members.get(ws);
       if (!who || !STATUS_KINDS.has(msg.kind)) return;
-      who.status = { kind: msg.kind, card: typeof msg.card === 'string' ? msg.card.slice(0, 60) : null, at: Date.now() };
+      who.status = { kind: msg.kind, card: typeof msg.card === 'string' ? msg.card.slice(0, 60) : null, d: cleanDetail(msg.d), at: Date.now() };
       roomSend(instanceId, { type: 'presence', users: presenceList(instanceId) });
     }
   });

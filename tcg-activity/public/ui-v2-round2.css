@@ -4,7 +4,7 @@
 
 /* ---- Top bar: no packs pill (the dock OPEN has the count), no sound button, no
    avatar circle, no season chip. ---- */
-body.ui-v2 #v2Packs, body.ui-v2 #mute, body.ui-v2 #v2Avatar, body.ui-v2 #v2Season { display: none !important; }
+body.ui-v2 #v2Packs, body.ui-v2 #mute, body.ui-v2 #v2Season { display: none !important; }
 
 /* ---- Avatars: the Discord picture over the initial ---- */
 body.ui-v2 .v2-avatar { position: relative; overflow: hidden; }

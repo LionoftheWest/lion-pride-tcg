@@ -234,6 +234,7 @@ async function doPlay(id, name) {
   const r = await apiPost('/api/effects/play', { cardId: pickerCard.id, targetId: id }).catch(() => ({ ok: false }));
   const msg = el('effMsg');
   if (r?.ok) {
+    deps.status?.('playing', { c: [Number(pickerCard.id)].filter(Boolean), t: pickerCard.effect?.name || pickerCard.name, s: name }); // my Live in voice tile
     SFX.play(r.kind === 'prank' ? 'rare' : 'reveal');
     const out = r.outcome === 'blocked' ? `🛡️ ${esc(name)} blocked it!`
       : r.outcome === 'reflected' ? '🪞 It bounced back to you!'
@@ -382,7 +383,10 @@ export const effectError = (code) => ERR[code] || 'That did not work. Try again.
 /** Play a card on a member. Returns the server result; refreshes cooldowns + effects. */
 export async function playCard(card, targetId) {
   const r = await deps.apiPost('/api/effects/play', { cardId: card.id, targetId }).catch(() => ({ ok: false }));
-  if (r?.ok) { deps.SFX?.play?.(r.kind === 'prank' ? 'rare' : 'reveal'); await refreshEffects(); }
+  if (r?.ok) {
+    deps.status?.('playing', { c: [Number(card.id)].filter(Boolean), t: card.effect?.name || card.name }); // my Live in voice tile
+    deps.SFX?.play?.(r.kind === 'prank' ? 'rare' : 'reveal'); await refreshEffects();
+  }
   return r || { ok: false };
 }
 export async function reloadEffects() { await refreshEffects(); return state; }
