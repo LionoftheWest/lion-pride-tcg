@@ -26,13 +26,16 @@ function fonts(): void {
   fontsReady = true;
 }
 
+// line: what the member does ("is fighting The Rage-Quit Warlord"); live: the green dot.
+// tag: the label over the frame. frame: the picture on the right (a card or a boss) in its
+// color; null = the brand badge.
 export type PlayingCardInput = {
   name: string;
-  playing: boolean;
+  line: string;
+  live: boolean;
   avatar: Buffer | null;
-  card: { name: string; rarity: string; art: Buffer | null } | null;
-  packs: number;
-  damage: number;
+  tag: string;
+  frame: { art: Buffer | null; color: string } | null;
 };
 
 async function img(buf: Buffer | null): Promise<Image | null> {
@@ -67,8 +70,8 @@ export async function renderPlayingCard(p: PlayingCardInput): Promise<Buffer> {
   fonts();
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
-  const [art, avatar, icon] = await Promise.all([img(p.card?.art ?? null), img(p.avatar), loadImage(join(ASSETS, 'icon-128.png')).catch(() => null)]);
-  const r = RARITY[p.card?.rarity ?? ''] ?? RARITY.normal!;
+  const [art, avatar, icon] = await Promise.all([img(p.frame?.art ?? null), img(p.avatar), loadImage(join(ASSETS, 'icon-128.png')).catch(() => null)]);
+  const color = p.frame?.color ?? '#2a2c3a';
 
   // Background: the card's art, blurred and darkened, fading into the panel on the left.
   ctx.fillStyle = '#0d0f16';
@@ -119,29 +122,29 @@ export async function renderPlayingCard(p: PlayingCardInput): Promise<Buffer> {
   ctx.fillStyle = '#ffffff';
   fitText(ctx, p.name, (px) => `800 ${px}px Bricolage`, 68, 560);
   ctx.fillText(p.name, 64, 420);
-  ctx.fillStyle = p.playing ? '#7CF0B0' : '#b9bdd0';
-  ctx.font = '600 30px Inter';
-  if (p.playing) { ctx.beginPath(); ctx.arc(73, 458, 8, 0, Math.PI * 2); ctx.fill(); } // the fonts have no ● glyph
-  ctx.fillText(p.playing ? 'is playing' : 'was playing', p.playing ? 92 : 64, 468);
+  ctx.fillStyle = p.live ? '#7CF0B0' : '#b9bdd0';
+  if (p.live) { ctx.beginPath(); ctx.arc(73, 458, 8, 0, Math.PI * 2); ctx.fill(); } // the fonts have no ● glyph
+  fitText(ctx, p.line, (px) => `600 ${px}px Inter`, 30, 560);
+  ctx.fillText(p.line, p.live ? 92 : 64, 468);
 
   // The best pull of the day, framed in its rarity color (or the brand when none yet).
   const cw = 318, ch = Math.round(cw * 7 / 5), cx = W - cw - 88, cy = (H - ch) / 2 + 12; // just the card (Nathan: no tier or name line)
   ctx.fillStyle = '#FF7FB6';
   ctx.font = '800 17px Inter';
   ctx.textAlign = 'right';
-  ctx.fillText(p.card ? 'BEST PULL TODAY' : 'NO PULLS YET TODAY', cx + cw, cy - 16);
+  ctx.fillText(p.tag, cx + cw, cy - 16);
   ctx.textAlign = 'left';
   ctx.save();
-  ctx.shadowColor = p.card ? r.color : 'rgba(244, 183, 60, 0.5)';
+  ctx.shadowColor = p.frame ? color : 'rgba(244, 183, 60, 0.5)';
   ctx.shadowBlur = 40;
   rounded(ctx, cx - 5, cy - 5, cw + 10, ch + 10, 22);
-  ctx.fillStyle = p.card ? r.color : '#2a2c3a';
+  ctx.fillStyle = color;
   ctx.fill();
   ctx.restore();
   ctx.save();
   rounded(ctx, cx, cy, cw, ch, 18);
   ctx.clip();
-  if (p.card && art) cover(ctx, art, cx, cy, cw, ch);
+  if (p.frame && art) cover(ctx, art, cx, cy, cw, ch);
   else {
     ctx.fillStyle = '#161826'; ctx.fillRect(cx, cy, cw, ch);
     if (icon) { ctx.save(); rounded(ctx, cx + cw / 2 - 64, cy + ch / 2 - 64, 128, 128, 30); ctx.clip(); ctx.drawImage(icon, cx + cw / 2 - 64, cy + ch / 2 - 64, 128, 128); ctx.restore(); }
