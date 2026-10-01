@@ -10,10 +10,20 @@ export const isLand = () => document.body.classList.contains('m-land');
 export const isPort = () => document.body.classList.contains('m-port');
 export const isPhone = () => isLand() || isPort();
 
+// A text box with the focus: the phone keyboard is open. It makes the window shorter, so a phone
+// held upright can read as landscape, and the repaint closed the keyboard (Nathan, 2026-10-01).
+export const typing = () => { const a = document.activeElement;
+  return !!a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'range'].includes(a.type))); };
+let held = false; // a layout change waits until the keyboard closes
+
+// True when the layout changed (the screen must paint again).
 function apply() {
-  document.body.classList.toggle('m-land', LAND.matches);
-  document.body.classList.toggle('m-port', PORT.matches);
+  const b = document.body, was = b.className;
+  if (typing() && isPhone()) { held = true; fitSize(); return false; }
+  b.classList.toggle('m-land', LAND.matches);
+  b.classList.toggle('m-port', PORT.matches);
   fitSize();
+  return ['m-land', 'm-port'].some((k) => was.split(' ').includes(k) !== b.classList.contains(k));
 }
 
 // The USABLE size (the window minus the safe areas): m-narrow under 760 px wide, m-short
@@ -46,7 +56,13 @@ function watchInsets() {
 export function initMobile(onChange) {
   apply();
   watchInsets();
-  const changed = () => { apply(); onChange?.(); };
+  const changed = () => { if (apply()) onChange?.(); };
+  // body.m-kb while the keyboard is open: the phone CSS keeps the box and its results in view.
+  addEventListener('focusin', () => document.body.classList.toggle('m-kb', isPhone() && typing()));
+  addEventListener('focusout', () => setTimeout(() => {
+    document.body.classList.toggle('m-kb', isPhone() && typing());
+    if (held && !typing()) { held = false; changed(); }
+  }, 300));
   LAND.addEventListener('change', changed);
   PORT.addEventListener('change', changed);
 }

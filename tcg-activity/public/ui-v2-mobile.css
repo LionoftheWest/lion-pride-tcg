@@ -822,7 +822,9 @@ body.ui-v2 #colPanel.m-open .pts-open .pts-add { width: 32px; height: 32px; font
 body.ui-v2 #colPanel.m-open .pts-open .pts-act { margin-top: 0; }
 body.ui-v2 #colPanel.m-open .pts-open .pts-act .v2-btn { height: 40px; }
 body.ui-v2.m-land #colPanel.m-open .pv-side { position: relative; }
-body.ui-v2.m-land #colPanel.m-open .pts-open { position: absolute; inset: 0; }
+/* Landscape: the editor covers both columns right of the card art (one column cut the stat names). */
+body.ui-v2.m-land #colPanel.m-open .pv-side:has(.pts-open), body.ui-v2.m-land #colPanel.m-open .pv-mid:has(.pts-open) { position: static; }
+body.ui-v2.m-land #colPanel.m-open .pts-open { position: absolute; top: 12px; right: 14px; bottom: 12px; left: calc(28px + (100dvh - var(--dock-h) - 44px) * 5 / 7); }
 body.ui-v2.m-port #colPanel.m-open .pts-open { position: absolute; left: 10px; right: 10px; bottom: 10px; }
 /* Portrait: the card art a little smaller (design 25 frame 3), so the effect + Ascension fit. */
 body.ui-v2.m-port #colPanel.m-open .p-art { height: 25dvh; }
@@ -919,5 +921,43 @@ body.ui-v2.m-land #colPanel.m-open .pts-compact { display: flex; align-items: ce
 body.ui-v2.m-land #colPanel.m-open .pts-compact .pb-h { flex: 1; min-width: 0; gap: 8px; justify-content: flex-start; }
 body.ui-v2.m-land #colPanel.m-open .pts-compact .pts-sum { margin: 0; flex: none; }
 body.ui-v2.m-land #colPanel.m-open .pts-compact .pts-sum i { display: none; }
+/* Landscape: the free count moves into the button ("Assign 3"), so the label keeps one line. */
+body.ui-v2.m-land #colPanel.m-open .pts-compact:has(#ptsOpen[data-n]) .pb-h .mono { display: none; }
+body.ui-v2.m-land #colPanel.m-open .pts-compact .pb-h .side-h { white-space: nowrap; }
+body.ui-v2.m-land #colPanel.m-open #ptsOpen[data-n]::after { content: " " attr(data-n); }
+/* The name never runs under the close button; a long copies count goes to its own line. */
+body.ui-v2.m-land #colPanel.m-open .pv-mid h2, body.ui-v2.m-land #colPanel.m-open .pv-mid h3 { padding-right: 44px; }
+body.ui-v2 #colPanel.m-open .asc .pb-h { flex-wrap: wrap; column-gap: 8px; }
+body.ui-v2 #colPanel.m-open .asc .pb-h > * { white-space: nowrap; }
 body.ui-v2.m-land #colPanel.m-open .pbox.fx .v-play { height: 36px; }
 body.ui-v2.m-land.m-xnarrow #colPanel.m-open .v-effect-meta { display: none; }
+/* A small phone in landscape (iPhone SE, 667x375): the right column is tighter, so the stat points line fits. */
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open .pv-side { gap: 6px; }
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open .pbox.fx .v-play { height: 34px; margin-top: 4px; }
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open .pts-compact .pb-h > * { white-space: nowrap; }
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open .pts-compact .pts-sum .v2-btn { height: 30px; padding: 0 10px; }
+/* Too narrow for the label and the button side by side: one full-width button says it all. */
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open .pts-compact:has(#ptsOpen) .pb-h { display: none; }
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open .pts-compact .pts-sum { flex: 1; }
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open .pts-compact #ptsOpen { flex: 1; margin: 0; white-space: nowrap; }
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open #ptsOpen::after { content: " points"; }
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open #ptsOpen[data-n]::after { content: " " attr(data-n) " points"; }
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open .pv-mid h2, body.ui-v2.m-land.m-xnarrow #colPanel.m-open .pv-mid h3 { font-size: 17px; }
+/* The phone keyboard is open (body.m-kb, mobile.js): the window is about half as tall
+   (Nathan, 2026-10-01, IMG_2856/2857: the To + Find row was crushed). The dock and the offer
+   box step aside, so the box being typed in and its results stay in view. */
+body.ui-v2.m-port.m-kb { --dock-h: 0px; }
+body.ui-v2.m-port.m-kb #dock { display: none; }
+body.ui-v2.m-port.m-kb .v2-trade .tr-compose, body.ui-v2.m-port.m-kb .v2-trade > .tr-offers { display: none; }
+body.ui-v2.m-port .v2-trade .tr-members { min-height: 46px; }
+body.ui-v2.m-port .v2-trade .tr-gridhead { min-height: 36px; }
+/* Typing a card search: the tabs and the To row step aside too, so a row of cards shows. */
+body.ui-v2.m-port.m-kb .v2-trade:has(#trQ:focus) .tr-top, body.ui-v2.m-port.m-kb .v2-trade:has(#trQ:focus) .tr-members { display: none; }
+/* Profile hunt tile (a live boss, 2026-10-01): in the narrow landscape column the three labels ran
+   together, so each stat takes its own line. A small upright phone has no room for the tile (its
+   heading was cut under the dock); the hunt rank still shows in the stats. */
+body.ui-v2.m-land .mem-hstats { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+body.ui-v2.m-land .mem-hstats > div { display: flex; align-items: baseline; gap: 6px; }
+body.ui-v2.m-land .mem-hstats b { display: inline; }
+body.ui-v2.m-port.m-short .mem-hunt { display: none; }
+body.ui-v2.m-land .mem-hunt .tile-h { align-items: flex-start; }

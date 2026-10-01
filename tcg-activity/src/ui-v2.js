@@ -588,7 +588,8 @@ function paintPanel(c) {
   el('pAscend')?.addEventListener('click', () => ascend(c));
   if (sp) wirePoints(c, sp, box);
   fitPanel(box);
-  fillViewerEffect(c, 'colEffect').then(() => fitPanel(box));
+  // The effect block fills later and makes the right column taller: balance the columns again.
+  fillViewerEffect(c, 'colEffect').then(() => { if (isPhone()) balanceColumns(box); fitPanel(box); });
 }
 
 // The phone card view: the big card, then two columns that do not share rows (the name,
@@ -603,15 +604,26 @@ function phoneColumns(box) {
   [box.querySelector('#pClose'), id, box.querySelector('.p-lore'), box.querySelector('.p-tags'), box.querySelector('.p-credit'), box.querySelector('.p-actions')].forEach((n) => n && mid.append(n));
   [...box.children].filter((n) => n !== art).forEach((n) => side.append(n));
   box.append(mid, side);
+  balanceColumns(box);
+}
+
+function balanceColumns(box) {
+  const mid = box.querySelector('.pv-mid'), side = box.querySelector('.pv-side');
+  if (!mid || !side) return;
   // Landscape: a right column taller than the view sends Ascension, then the stat points, to the
   // middle column (above the buttons) while the middle has the room.
   if (!isLand()) return;
   // A column grows with its blocks, so test each block against the bottom of the card view.
   const limit = () => box.getBoundingClientRect().bottom - (parseFloat(getComputedStyle(box).paddingBottom) || 0) + 1;
   // Sum the block heights: a stretched column pushes its buttons (margin-top: auto) to its bottom.
+  // Only blocks in the flow count: not the close button (absolute) and not a hidden block (no gap).
+  // The lore, tags and artist line do not count: fitPanel hides them when the room is short, and
+  // the stat points come first (they were cut while the lore took the room).
+  const flow = (ch) => { const cs = getComputedStyle(ch); return cs.display !== 'none' && cs.position !== 'absolute' && cs.position !== 'fixed' && !ch.matches('.p-lore, .p-tags, .p-credit'); };
   const over = (col) => {
     const gap = parseFloat(getComputedStyle(col).rowGap) || 0;
-    const h = [...col.children].reduce((t, ch) => t + ch.getBoundingClientRect().height, 0) + gap * Math.max(0, col.children.length - 1);
+    const kids = [...col.children].filter(flow);
+    const h = kids.reduce((t, ch) => t + ch.getBoundingClientRect().height, 0) + gap * Math.max(0, kids.length - 1);
     return col.getBoundingClientRect().top + h > limit();
   };
   const actions = mid.querySelector('.p-actions');
@@ -665,7 +677,7 @@ function pointsHTML(c, sp) {
   // one line with the free points and what is spent; Assign opens the rows over the card view.
   if (isPhone() && !pend.open) {
     const sum = STAT_DEFS.filter(([k]) => keys.includes(k) && Number(pts[k])).map(([k, label]) => `<i>${label} ${Number(pts[k])}</i>`).join('');
-    const btn = left > 0 ? '<button class="v2-btn gold" id="ptsOpen">Assign</button>' : canReset ? '<button class="v2-btn" id="ptsOpen">Edit</button>' : '';
+    const btn = left > 0 ? `<button class="v2-btn gold" id="ptsOpen" data-n="${left}">Assign</button>` : canReset ? '<button class="v2-btn" id="ptsOpen">Edit</button>' : '';
     return `<div class="pts pts-compact${left > 0 ? ' has-free' : ''}" id="pPts">
     <div class="pb-h"><span class="side-h">Stat points</span><span class="mono">${left} free</span></div>
     ${sum || btn ? `<div class="pts-sum">${sum}${btn}</div>` : ''}</div>`;
