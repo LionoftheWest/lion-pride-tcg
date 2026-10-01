@@ -5,8 +5,9 @@ import { launchActivityRow } from './ui/launch.js';
 import { utcToday as utcDay } from './store.js'; // the MT game day
 
 // The "is playing" post (design 20, option B, Nathan 2026-09-30). The Activity tells the bot
-// when a member starts, does something, and leaves (/playing). ONE post per member per MT
-// day in #tcg-notifications, edited in place: at most once a minute and only on a change,
+// when a member starts, does something, and leaves (/playing). ONE post per member per SESSION
+// in #tcg-notifications (it was one per day: a second session edited a post far up the channel,
+// Nathan 2026-10-01), edited in place: at most once a minute and only on a change,
 // "was playing" 2 minutes after they leave. It names the member but pings nobody. A member
 // turns it off in the bell > Settings (notify_prefs.playing = false).
 // Flag: FEATURE_PLAYING_POSTS=1 (default OFF).
@@ -36,7 +37,7 @@ export function cleanActivity(a: unknown): (Activity & { at: number }) | null {
   return out;
 }
 
-type Job = { name: string; playing: boolean; lastAt: number; lastKey: string; timer: NodeJS.Timeout | null; endTimer: NodeJS.Timeout | null;
+type Job = { name: string; playing: boolean; session: boolean; lastAt: number; lastKey: string; timer: NodeJS.Timeout | null; endTimer: NodeJS.Timeout | null;
   activity: (Activity & { at: number }) | null; id: string };
 const jobs = new Map<string, Job>();
 let chain: Promise<void> = Promise.resolve(); // one Discord write at a time
@@ -46,7 +47,7 @@ let chain: Promise<void> = Promise.resolve(); // one Discord write at a time
 export function onPlaying(client: Client, id: string, name: string, event: PlayingEvent, activity?: unknown): boolean {
   if (!playingPostsEnabled() || !/^\d{17,20}$/.test(id)) return false;
   let j = jobs.get(id);
-  if (!j) { j = { id, name: name || 'A member', playing: false, lastAt: 0, lastKey: '', timer: null, endTimer: null, activity: null }; jobs.set(id, j); }
+  if (!j) { j = { id, name: name || 'A member', playing: false, session: false, lastAt: 0, lastKey: '', timer: null, endTimer: null, activity: null }; jobs.set(id, j); }
   if (name) j.name = name.slice(0, 40);
   const act = cleanActivity(activity);
   if (act) j.activity = act;
@@ -57,6 +58,7 @@ export function onPlaying(client: Client, id: string, name: string, event: Playi
   }
   if (j.endTimer) { clearTimeout(j.endTimer); j.endTimer = null; }
   const fresh = !j.playing;
+  if (fresh) j.session = true; // a new session: a new post (see reusePost)
   j.playing = true;
   schedule(client, id, fresh ? 0 : DEBOUNCE_MS);
   return true;
@@ -131,6 +133,16 @@ async function sceneFor(j: Job, t: Today): Promise<Scene> {
   return c ? { line, tag, color, url: c.image_url, pick: `play:${c.id}:${who}:${kind}` } : { ...best, line };
 }
 
+// A session that starts again within this time keeps its post (a bot restart, a quick return).
+export const SESSION_REUSE_MS = 10 * 60_000;
+/** Edit the member's last post (true) or send a new one (false). */
+export function reusePost(row: { message_id?: string | null; updated_at?: string | null } | null, newSession: boolean, now = Date.now()): boolean {
+  if (!row?.message_id) return false;
+  if (!newSession) return true;
+  const at = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+  return now - at < SESSION_REUSE_MS;
+}
+
 type Today = { name?: string; avatar?: string | null; playing_pref?: string; packs?: number; damage?: number;
   best?: { id: number; name: string; rarity: string; image_url: string | null } | null };
 
@@ -143,11 +155,12 @@ async function render(client: Client, id: string): Promise<void> {
   const t = data as Today;
   if (t.playing_pref === 'false') return;
   const day = utcDay();
-  const { data: row } = await sb.from('playing_posts').select('message_id').eq('player_id', id).eq('day', day).maybeSingle();
+  const { data: row } = await sb.from('playing_posts').select('message_id, updated_at').eq('player_id', id).eq('day', day).maybeSingle();
+  const reuse = reusePost(row, j.session);
   const scene = await sceneFor(j, t);
   // Only what the picture shows: the name, the avatar, the line, the tag and the picture.
   const key = JSON.stringify([day, j.name, t.avatar, scene.line, scene.tag, scene.pick]);
-  if (row && key === j.lastKey) return; // nothing changed since the last post
+  if (reuse && key === j.lastKey) return; // nothing changed since the last post
   const [avatar, frameArt] = await Promise.all([
     buf(t.avatar ? `https://cdn.discordapp.com/avatars/${id}/${t.avatar}.png?size=256` : null),
     scene.url ? art(scene.url) : Promise.resolve(null),
@@ -164,7 +177,7 @@ async function render(client: Client, id: string): Promise<void> {
   };
   const channel = await client.channels.fetch(NOTIF_CHANNEL());
   if (!channel || !channel.isTextBased() || !('send' in channel)) return;
-  let messageId = row?.message_id as string | undefined;
+  let messageId = reuse ? (row?.message_id as string | undefined) : undefined; // a new session: a new post
   if (messageId) {
     try { const m = await channel.messages.fetch(messageId); await m.edit({ ...body, attachments: [] }); }
     catch { messageId = undefined; } // deleted: post a new one
@@ -177,4 +190,5 @@ async function render(client: Client, id: string): Promise<void> {
   }
   j.lastAt = Date.now();
   j.lastKey = key;
+  j.session = false;
 }
