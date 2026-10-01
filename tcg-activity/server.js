@@ -1586,6 +1586,8 @@ app.post('/api/trade/offer', async (req, res) => {
   const requestCardId = Number(req.body?.requestCardId) || null;
   if (!toId || !offerCardId) return res.status(400).json({ error: 'bad request' });
   if (!requestCardId && !(trade2On(me.id) && trade2On(toId))) return res.status(400).json({ error: 'two-step trades are not on for that member yet' });
+  // Two-step on: the old flow (the sender also picks the card they get) is refused from any screen.
+  if (requestCardId && trade2On(me.id)) return res.status(400).json({ error: 'Send your card; they pick the card they give back.' });
   // Nathan, 2026-10-01: the sender offers one card; the receiver picks theirs (trade_two_step.sql).
   const { data, error } = requestCardId
     ? await supabase.rpc('create_trade', { p_from: me.id, p_to: toId, p_offer: offerCardId, p_request: requestCardId })
