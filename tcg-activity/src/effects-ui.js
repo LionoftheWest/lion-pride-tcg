@@ -76,6 +76,7 @@ function scaled(card) {
 export function fmtDur(sec) {
   sec = Math.max(0, Math.round(sec));
   if (sec < 60) return `${sec}s`;
+  if (sec < 600 && sec % 60) return `${Math.floor(sec / 60)}m ${sec % 60}s`; // a short prank: 1m 20s
   const m = Math.round(sec / 60);
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60), mm = m % 60;
@@ -301,9 +302,17 @@ export function nameBadge(playerId, username, soft) {
 }
 
 // ---- What happens on MY screen ----
+// A screen prank lasts 1-3 minutes (screen_pranks_short.sql): it goes at its end time, not
+// at the next 30 s refresh.
+let fxTimer = null;
 function applyBodyFx() {
-  const on = new Set(state.active.map((e) => BODY_FX[e.primitive]).filter(Boolean));
+  const now = Date.now();
+  const live = state.active.filter((e) => BODY_FX[e.primitive] && !(e.expires_at && Date.parse(e.expires_at) <= now));
+  const on = new Set(live.map((e) => BODY_FX[e.primitive]));
   for (const cls of Object.values(BODY_FX)) document.body.classList.toggle(cls, on.has(cls));
+  clearTimeout(fxTimer);
+  const next = Math.min(...live.map((e) => (e.expires_at ? Date.parse(e.expires_at) : Infinity)));
+  if (Number.isFinite(next)) fxTimer = setTimeout(applyBodyFx, Math.max(250, next - now + 250));
 }
 
 let shown = new Set();

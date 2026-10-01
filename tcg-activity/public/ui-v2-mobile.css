@@ -653,3 +653,147 @@ body.ui-v2.m-land .v2-trade, body.ui-v2.m-land.m-narrow .v2-trade { --segw: 206p
 body.ui-v2.m-land.m-xnarrow .v2-trade { --segw: 152px; }
 body.ui-v2.m-land.m-xnarrow #commTabs .ct-more { display: none; }
 body.ui-v2.m-land .v2-trade #trPager, body.ui-v2.m-land.m-narrow .v2-trade #trPager { left: calc((var(--segw) + 100% - 354px) / 2); }
+
+/* ===== Portrait: Community Boons & Pranks (Nathan, 2026-10-01: "still needs to be set up right") =====
+   The same column as the trades: the tabs (+ plays + the trophy), the members, the builder,
+   the filters, one row of effect cards, then On you + Recent plays (the rows that fit). */
+body.ui-v2.m-port .v2-trade.fx-view { grid-template-rows: auto auto auto auto minmax(0, 1fr) minmax(0, .85fr); }
+body.ui-v2.m-port .v2-trade.fx-view > .tr-offers { grid-row: 6; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-today { flex: none; gap: 6px; padding: 0 10px; height: 40px; min-width: 0; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-today > span { display: none; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-today .fx-bar { width: 34px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-today > b::after { content: ' plays'; font-family: var(--font-ui); font-weight: 600; color: var(--text-secondary); }
+/* The builder: one compact block. Empty = one line. Picked = the card + its text, then the buttons. */
+body.ui-v2.m-port .v2-trade.fx-view .tr-compose { flex-direction: column; align-items: stretch; gap: 6px; padding: 8px 10px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-empty { display: flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-height: 0; padding: 4px 2px; border: 0; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-empty b { font-size: 14px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-empty .dim { font-size: 12.5px; }
+body.ui-v2.m-port .v2-trade.fx-view .tr-compose:not(:has(.fx-deal)) .tr-foot { display: none; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-deal { grid-template-columns: minmax(0, 1fr); gap: 0; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-deal > .tr-swap, body.ui-v2.m-port .v2-trade.fx-view .fx-deal > .tr-to { display: none; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-deal .tr-side { gap: 10px; align-items: flex-start; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-deal .tr-side > .tr-info { display: flex; gap: 3px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-deal .tr-slot { width: 52px; flex: 0 0 52px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-deal .tr-info h3 { font-size: 15px; white-space: normal; overflow: visible; text-overflow: clip; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-deal .fx-desc { margin: 0; font-size: 12px; line-height: 1.3; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-deal .tr-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-deal .tr-chips i { padding: 2px 7px; font-size: 11px; }
+body.ui-v2.m-port .v2-trade.fx-view .tr-compose:has(.fx-deal) .tr-foot { display: flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; padding: 0; border: 0; }
+body.ui-v2.m-port .v2-trade.fx-view .tr-foot > .fx-on, body.ui-v2.m-port .v2-trade.fx-view .tr-foot > .f-chip,
+body.ui-v2.m-port .v2-trade.fx-view .tr-foot > .dim, body.ui-v2.m-port .v2-trade.fx-view .tr-foot > .grow { display: none; }
+body.ui-v2.m-port .v2-trade.fx-view .tr-foot .tr-msg:empty { display: none; }
+body.ui-v2.m-port .v2-trade.fx-view .tr-foot .tr-msg { flex: 1 1 100%; order: -1; font-size: 12px; }
+body.ui-v2.m-port .v2-trade.fx-view .tr-foot { flex-wrap: wrap; }
+body.ui-v2.m-port .v2-trade.fx-view .tr-foot .v2-btn { height: 40px; white-space: nowrap; }
+body.ui-v2.m-port .v2-trade.fx-view #fxClear { width: 40px; padding: 0; font-size: 0; flex: none; }
+body.ui-v2.m-port .v2-trade.fx-view #fxClear::before { content: '↺'; font-size: 18px; }
+body.ui-v2.m-port .v2-trade.fx-view #fxPlay { flex: 1; }
+/* The filters + the pager on one line; the label goes (the only list). */
+body.ui-v2.m-port .v2-trade.fx-view .tr-gridhead > .seg:first-child, body.ui-v2.m-port .v2-trade.fx-view .tr-gridhead > .grow { display: none; }
+body.ui-v2.m-port .v2-trade.fx-view .tr-gridhead { flex-wrap: nowrap; gap: 6px; }
+body.ui-v2.m-port .v2-trade.fx-view #fxFilter { flex: 1 1 auto; min-width: 0; }
+body.ui-v2.m-port .v2-trade.fx-view #fxFilter button { height: 32px; padding: 0 8px; }
+body.ui-v2.m-port .v2-trade.fx-view #fxPager { margin-left: auto; flex: none; }
+/* The cards: the kind tag sits on top of the card, inside the cell. */
+body.ui-v2.m-port .v2-trade.fx-view #fxGrid { min-height: 0; gap: 6px; padding-top: 0; }
+body.ui-v2.m-port .v2-trade.fx-view #fxGrid .v2-cell { position: relative; }
+/* On you + Recent plays: compact rows; the rows that do not fit go (fitChildren). */
+body.ui-v2.m-port .v2-trade.fx-view > .tr-offers { padding: 8px 10px; gap: 4px; }
+body.ui-v2.m-port .v2-trade.fx-view .tr-offers .tile-h { margin: 0; flex: none; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-onyou { flex: none; gap: 4px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-onyou > .fx-on-row:nth-child(n+2) { display: none; } /* the count in the head shows the rest */
+body.ui-v2.m-port .v2-trade.fx-view .fx-on-row { padding: 5px 8px; gap: 8px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-on-row .nt-ico { width: 30px; height: 30px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-recent { flex: 1 1 0; min-height: 0; gap: 2px; overflow: hidden; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-rec { padding: 3px 0; gap: 8px; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-rec b { white-space: normal; }
+body.ui-v2.m-port .v2-trade.fx-view .fx-rec .nb-sticker { display: none; }
+/* Readable kind tags; the copies count sits on the card (no caption row under it). */
+body.ui-v2.m-port .v2-trade.fx-view .fx-kind { font-size: 10.5px; }
+body.ui-v2.m-port .v2-trade.fx-view #fxGrid .v2-cap { position: absolute; right: 4px; bottom: 4px; padding: 0; }
+body.ui-v2.m-port .v2-trade.fx-view #fxGrid .v2-cap > :not(.cap-qty) { display: none; }
+body.ui-v2.m-port .v2-trade.fx-view #fxGrid .cap-qty { padding: 1px 6px; border-radius: var(--rad-pill); background: rgba(10, 10, 18, .85); font-size: 11px; }
+/* A narrow portrait phone (an iPhone SE): the plays bar goes, the count stays. A short one:
+   On you gets the room before the cards. */
+@media (max-width: 380px) { body.ui-v2.m-port .v2-trade.fx-view .fx-today .fx-bar { display: none; } }
+body.ui-v2.m-port.m-short .v2-trade.fx-view { grid-template-rows: auto auto auto auto minmax(0, 1fr) minmax(118px, .7fr); }
+body.ui-v2.m-port .v2-trade.fx-view [hidden] { display: none !important; }
+
+/* ===== Landscape: Community Boons & Pranks =====
+   The members on the left, the builder + one row of effect cards in the middle, On you +
+   Recent plays on the right. Play sits beside the dock (like Send in the trades). */
+body.ui-v2.m-land .v2-trade.fx-view .fx-today { gap: 6px; padding: 0 10px; height: 34px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-today > span { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-today .fx-bar { width: 40px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-today > b::after { content: ' plays'; font-family: var(--font-ui); font-weight: 600; color: var(--text-secondary); }
+body.ui-v2.m-land .v2-trade.fx-view .tr-compose { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 8px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-empty { flex: 1; display: flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-height: 0; padding: 4px; border: 0; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-empty b { font-size: 14px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-empty .dim { font-size: 12.5px; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-compose:not(:has(.fx-deal)) .tr-foot { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal { flex: 1; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 0; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal > .tr-swap, body.ui-v2.m-land .v2-trade.fx-view .fx-deal > .tr-to { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal .tr-side { gap: 8px; align-items: flex-start; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal .tr-slot { width: 44px; flex: 0 0 44px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal .tr-info { gap: 2px; min-width: 0; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal .tr-info h3 { font-size: 14px; white-space: normal; overflow: visible; text-overflow: clip; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal .fx-desc { margin: 0; font-size: 12px; line-height: 1.25; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal .tr-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal .tr-chips i { padding: 1px 6px; font-size: 11px; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-compose:has(.fx-deal) .tr-foot { flex: none; display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; border: 0; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-foot > .fx-on, body.ui-v2.m-land .v2-trade.fx-view .tr-foot > .f-chip,
+body.ui-v2.m-land .v2-trade.fx-view .tr-foot > .dim, body.ui-v2.m-land .v2-trade.fx-view .tr-foot > .grow { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-foot .tr-msg:empty { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-foot .tr-msg { max-width: 90px; font-size: 11.5px; }
+body.ui-v2.m-land .v2-trade.fx-view #fxClear, body.ui-v2.m-land .v2-trade.fx-view #fxTest { width: 40px; height: 40px; padding: 0; font-size: 0; }
+body.ui-v2.m-land .v2-trade.fx-view #fxClear::before { content: '↺'; font-size: 18px; }
+body.ui-v2.m-land .v2-trade.fx-view #fxTest::before { content: '🧪'; font-size: 17px; }
+body.ui-v2.m-land .v2-trade.fx-view #fxPlay { position: fixed; z-index: 61; right: calc(10px + var(--sa-r)); bottom: calc(8px + var(--sa-b)); width: 128px; height: 44px; white-space: nowrap; }
+/* The filters + the pager on one line, the label goes. */
+body.ui-v2.m-land .v2-trade.fx-view .tr-gridhead > .seg:first-child, body.ui-v2.m-land .v2-trade.fx-view .tr-gridhead > .grow { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-gridhead { flex-wrap: nowrap; gap: 6px; }
+body.ui-v2.m-land .v2-trade.fx-view #fxFilter { flex: 0 1 auto; min-width: 0; }
+body.ui-v2.m-land .v2-trade.fx-view #fxFilter button { height: 30px; padding: 0 7px; }
+body.ui-v2.m-land .v2-trade.fx-view #fxPager { margin-left: auto; flex: none; height: 34px; }
+/* The cards: a readable kind tag, the copies count on the card. */
+body.ui-v2.m-land .v2-trade.fx-view .fx-kind { font-size: 10.5px; }
+body.ui-v2.m-land .v2-trade.fx-view #fxGrid { min-height: 0; gap: 6px; padding-top: 0; }
+body.ui-v2.m-land .v2-trade.fx-view #fxGrid .v2-cell { position: relative; }
+body.ui-v2.m-land .v2-trade.fx-view #fxGrid .v2-cap { position: absolute; right: 4px; bottom: 4px; padding: 0; }
+body.ui-v2.m-land .v2-trade.fx-view #fxGrid .v2-cap > :not(.cap-qty) { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view #fxGrid .cap-qty { padding: 1px 6px; border-radius: var(--rad-pill); background: rgba(10, 10, 18, .85); font-size: 11px; }
+/* On you + Recent plays: one line per effect (the card name goes), the rows that fit. */
+body.ui-v2.m-land .v2-trade.fx-view > .tr-offers { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 8px 10px; gap: 4px; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-offers .tile-h { margin: 0; flex: none; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-onyou { flex: none; gap: 4px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-onyou > .fx-on-row:nth-child(n+3) { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-on-row { padding: 5px 8px; gap: 8px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-on-row .nt-ico { width: 28px; height: 28px; flex: none; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-on-row > div > .dim { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-recent { flex: 1 1 0; min-height: 0; gap: 2px; overflow: hidden; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-rec { padding: 3px 0; gap: 8px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-rec .nb-sticker { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view [hidden] { display: none !important; }
+body.ui-v2.m-port.m-short .v2-trade.fx-view .fx-on-row .nt-ico { width: 26px; height: 26px; }
+/* Landscape is short: the middle keeps the filters + the cards. The right column shows the hint
+   + On you + Recent plays, or (a card picked) the card's effect with Clear + Test. */
+body.ui-v2.m-land .v2-trade.fx-view { grid-template-rows: auto auto minmax(0, 1fr); }
+body.ui-v2.m-land .v2-trade.fx-view .tr-gridhead { grid-column: 2; grid-row: 2; }
+body.ui-v2.m-land .v2-trade.fx-view #fxGrid { grid-column: 2; grid-row: 3; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-compose { grid-column: 3; grid-row: 1; min-width: 0; }
+body.ui-v2.m-land .v2-trade.fx-view > .tr-offers { grid-column: 3; grid-row: 2 / -1; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-compose:has(.fx-deal) { grid-row: 1 / -1; flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 10px; }
+body.ui-v2.m-land .v2-trade.fx-view:has(.fx-deal) > .tr-offers { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal { flex: none; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-deal .tr-info { gap: 4px; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-compose:has(.fx-deal) .tr-foot { flex-direction: row; margin-top: auto; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-empty { padding: 2px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-empty b { font-size: 13px; }
+body.ui-v2.m-land .v2-trade.fx-view .fx-empty .dim { font-size: 12px; }
+/* The filter words carry the kind color, so a phone drops the dots. */
+body.ui-v2.m-land .v2-trade.fx-view #fxFilter .fx-dot, body.ui-v2.m-port .v2-trade.fx-view #fxFilter .fx-dot { display: none; }
+body.ui-v2 #fxFilter .fx-dot { font-style: normal; }
+body.ui-v2.m-land .v2-trade.fx-view .tr-compose:not(:has(.fx-deal)) { display: none; }
+body.ui-v2.m-land .v2-trade.fx-view > .tr-offers { grid-row: 1 / -1; }
+/* An iPhone SE in landscape: the pager moves up beside the tabs, so the filter words fit. */
+body.ui-v2.m-land.m-xnarrow .v2-trade.fx-view #fxPager { position: absolute; top: 0; left: calc(var(--segw) + 8px); margin: 0; }

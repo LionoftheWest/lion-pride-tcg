@@ -1101,7 +1101,7 @@
       "name": "Salute the Sun",
       "desc": "Flips the target's collection into a yoga pose.",
       "base": {
-        "duration_s": 600
+        "duration_s": 80
       },
       "cooldown_h": 12
     },
@@ -2179,9 +2179,9 @@
     "effect": {
       "primitive": "upside_down",
       "name": "UP B OOS",
-      "desc": "Turns the target's collection upside down for 10 minutes.",
+      "desc": "Turns the target's collection upside down.",
       "base": {
-        "duration_s": 600
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -2397,7 +2397,7 @@
       "name": "Meme Warfare",
       "desc": "Googly eyes on every card the target owns.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 80
       },
       "cooldown_h": 12
     },
@@ -3003,9 +3003,9 @@
     "effect": {
       "primitive": "upside_down",
       "name": "Self Destruct",
-      "desc": "Turns the target's collection upside down for 10 minutes.",
+      "desc": "Turns the target's collection upside down.",
       "base": {
-        "duration_s": 600
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -3045,9 +3045,9 @@
     "effect": {
       "primitive": "fog",
       "name": "Server Crash",
-      "desc": "The target's cards show ??? for 10 minutes.",
+      "desc": "The target's cards show ???.",
       "base": {
-        "duration_s": 600
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -3087,9 +3087,9 @@
     "effect": {
       "primitive": "fog",
       "name": "Stupid Word",
-      "desc": "The target's cards show ??? for 10 minutes.",
+      "desc": "The target's cards show ???.",
       "base": {
-        "duration_s": 600
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -3129,9 +3129,9 @@
     "effect": {
       "primitive": "googly_eyes",
       "name": "Suavemente",
-      "desc": "Puts googly eyes on all the target's card art for a day.",
+      "desc": "Puts googly eyes on all the target's card art.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -3258,7 +3258,7 @@
       "name": "B...B...B...",
       "desc": "Every sound in the target's Activity is a squeak.",
       "base": {
-        "duration_s": 1800
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -3379,9 +3379,9 @@
     "effect": {
       "primitive": "fog",
       "name": "Communication Error",
-      "desc": "The target's cards show ??? for 10 minutes.",
+      "desc": "The target's cards show ???.",
       "base": {
-        "duration_s": 600
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -3744,7 +3744,7 @@
       "name": "Quack",
       "desc": "Every sound in the target's Activity is a squeak.",
       "base": {
-        "duration_s": 1800
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -4198,7 +4198,7 @@
       "name": "Censored",
       "desc": "Every sound in the target's Activity is bleeped into a squeak.",
       "base": {
-        "duration_s": 1800
+        "duration_s": 80
       },
       "cooldown_h": 12
     },
@@ -4678,9 +4678,9 @@
     "effect": {
       "primitive": "googly_eyes",
       "name": "She's Here",
-      "desc": "Puts googly eyes on all the target's card art for a day.",
+      "desc": "Puts googly eyes on all the target's card art.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -4778,9 +4778,9 @@
     "effect": {
       "primitive": "googly_eyes",
       "name": "Well Well Well",
-      "desc": "Puts googly eyes on all the target's card art for a day.",
+      "desc": "Puts googly eyes on all the target's card art.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -4872,9 +4872,9 @@
     "effect": {
       "primitive": "googly_eyes",
       "name": "Oh Naur",
-      "desc": "Puts googly eyes on all the target's card art for a day.",
+      "desc": "Puts googly eyes on all the target's card art.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
@@ -4927,7 +4927,7 @@
       "name": "Soggy",
       "desc": "Every sound in the target's Activity is a squeak.",
       "base": {
-        "duration_s": 1800
+        "duration_s": 80
       },
       "cooldown_h": 12
     }
