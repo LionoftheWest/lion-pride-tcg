@@ -1,0 +1,75 @@
+/* Lion Pride TCG — every v2 screen fits ANY window (Nathan, 2026-10-01: "make sure that the
+   layouts are dynamic to all window sizes on desktop so nothing gets crunched").
+   Loaded last. Each rule names the defect that the preview sweep (fitsweep.py) found. */
+
+/* Leaderboard: the 5 fixed 84 px number columns squeezed the names to 0 px and the header
+   labels overlapped. The number columns shrink first; a narrow table keeps only the column of
+   the chosen board. */
+body.ui-v2 .lb-table { container-type: inline-size; }
+body.ui-v2 .lb-row { grid-template-columns: 34px minmax(110px, 1fr) repeat(5, minmax(58px, 84px)); }
+body.ui-v2 .lb-row.lb-th .lb-c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@container (max-width: 640px) {
+  body.ui-v2 .lb-row { grid-template-columns: 30px minmax(0, 1fr) 96px; }
+  body.ui-v2 .lb-row .lb-c:not(.on) { display: none; }
+}
+body.ui-v2 .lb-tiles { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+
+/* Hunt squad: at 640 px tall the panel pushed Auto-pick and Lock in out of view. The 8 slot
+   rows and the text keep their size (readable, Nathan 2026-10-01); a short window takes the room
+   from the gaps between the sections instead. */
+@media (max-height: 700px) {
+  body.ui-v2 .v2sq .sq-side { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto auto auto minmax(0, 1fr); align-content: stretch; gap: 6px 10px; }
+  body.ui-v2 .v2sq .sq-side > * { grid-column: 1 / -1; }
+  /* Team CP sits beside "Squad 0 / 8", and the synergy chips beside their label. */
+  body.ui-v2 .v2sq .sq-side > .sq-h { grid-column: 1 / 3; grid-row: 1; }
+  body.ui-v2 .v2sq .sq-side > .cp-big { grid-column: 3; grid-row: 1; margin: 0; align-self: center; }
+  body.ui-v2 .v2sq .sq-side > .sq-boss { grid-row: 2; min-height: 44px; padding: 4px 8px; }
+  body.ui-v2 .v2sq .sq-side > .sq-list { grid-row: 3; }
+  body.ui-v2 .v2sq .sq-side > .side-h { grid-column: 1; grid-row: 4; margin: 0; align-self: center; }
+  body.ui-v2 .v2sq .sq-side > .squad-synergy { grid-column: 2 / -1; grid-row: 4; min-height: 22px; }
+  body.ui-v2 .v2sq .sq-side > .sq-foot { grid-row: 5; align-self: end; }
+}
+body.ui-v2 .sq-foot { flex: none; }
+
+/* Home: the hero row could shrink to 200 px, so a 2-line boss name cut the Join the hunt
+   button. The row keeps 224 px (the tight hero content), and the hero is tighter on a short window. */
+body.ui-v2 .v2-home.h19 { grid-template-rows: minmax(224px, .6fr) minmax(0, 1fr); }
+@media (max-height: 760px) {
+  body.ui-v2 .hero-info { padding: 14px 20px; gap: 6px; }
+  body.ui-v2 .hero-info h2 { font-size: 24px; }
+  body.ui-v2 .hero-row { margin-top: 2px; }
+}
+
+/* Collection + Community heads: the title, the tabs and the pager sat in one row that did not
+   wrap, so they ran past the column (the Season title under the card panel, the pager cut). */
+body.ui-v2 .v2-col-head, body.ui-v2 .tr-gridhead { flex-wrap: wrap; row-gap: 6px; min-width: 0; }
+body.ui-v2 .tr-gridhead .seg button, body.ui-v2 .v2-col-head .seg button { white-space: nowrap; }
+
+/* Community trades: on a short window the trade box took most of the height and the card
+   grid shrank to unreadable cards. The box puts its buttons beside the deal instead of
+   under it, so the grid keeps a readable row of cards (same text sizes). */
+@media (max-height: 760px) {
+  body.ui-v2 .tr-compose:not(:has(.fx-deal)) { display: flex; align-items: center; gap: 16px; padding: 10px 14px; }
+  body.ui-v2 .tr-compose .tr-deal { flex: 1; min-width: 0; }
+  body.ui-v2 .tr-compose .tr-slot { width: 72px; flex-basis: 72px; }
+  body.ui-v2 .tr-compose:not(:has(.fx-deal)) .tr-foot { flex: 0 0 auto; flex-direction: column; align-items: stretch; margin: 0; padding: 0 0 0 14px; border-top: 0; border-left: 1px solid var(--border); }
+  body.ui-v2 .tr-compose .tr-foot .grow { display: none; }
+}
+
+/* Collection filters: at 640 px tall the last chip row was cut by 3 px. Less space between
+   the sections, the same chip and text sizes. */
+@media (max-height: 700px) {
+  body.ui-v2 .v2-side.filters .side-h { margin: 8px 0 4px; }
+  body.ui-v2 .v2-side.filters.tight .side-h { margin: 6px 0 3px; }
+}
+
+/* Community trades: the row above the card grid wrapped to 2 lines and took the grid's
+   room. It stays on one line: the search field shrinks first, and a long member name in the
+   card tab ends in an ellipsis after 150 px (the full name is in the TO row). */
+body.ui-v2 .tr-gridhead { flex-wrap: nowrap; }
+body.ui-v2 .tr-gridhead .v2-search { flex: 1 1 120px; width: auto; min-width: 96px; }
+body.ui-v2 .tr-gridhead .seg button { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1150px) {
+  body.ui-v2 .v2-trade { grid-template-columns: minmax(0, 1fr) 280px; }
+  body.ui-v2 .tr-gridhead .seg button { max-width: 120px; }
+}
