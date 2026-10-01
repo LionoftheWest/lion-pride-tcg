@@ -393,3 +393,33 @@ body.ui-v2.m-port #colPanel.m-open > .boss-stage { height: 40dvh; flex: none; }
 body.ui-v2.m-port .v2-cap .cap-el, body.ui-v2.m-land .v2-cap .cap-el { display: none; }
 @media (max-height: 700px) { body.ui-v2.m-port #colPanel.m-open .p-art { height: 24dvh; } }
 body.ui-v2.m-port .v2-side.filters .f-chip i, body.ui-v2.m-land .v2-side.filters .f-chip i { font-size: 10.5px; }
+
+/* ===== Portrait: Hunt squad select (design 25 part 1, frame 4) ===== */
+body.ui-v2.m-port .v2sq { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto; gap: 6px; }
+body.ui-v2.m-port .sq-side, body.ui-v2.m-port .sq-main { display: contents; }
+body.ui-v2.m-port .v2sq .sq-side > *, body.ui-v2.m-port .v2sq .sq-main > * { grid-column: 1; min-width: 0; margin: 0; }
+body.ui-v2.m-port .v2sq .sq-side > .sq-h { grid-row: 1; }
+body.ui-v2.m-port .v2sq .sq-side > .sq-boss { grid-row: 2; min-height: 44px; }
+body.ui-v2.m-port .v2sq .sq-side > .cp-big { grid-row: 3; display: flex; align-items: center; gap: 8px; align-self: auto; }
+body.ui-v2.m-port .v2sq .sq-side > .side-h { display: none; }
+body.ui-v2.m-port .v2sq .sq-side > .squad-synergy { grid-row: 3; justify-self: end; flex: none; min-height: 0; max-width: 62%; flex-wrap: nowrap; overflow: hidden; }
+body.ui-v2.m-port .v2sq .sq-side > .sq-list { grid-row: 4; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+body.ui-v2.m-port .v2sq .sq-main > .sq-top { grid-row: 5; flex-wrap: wrap; gap: 6px; }
+body.ui-v2.m-port .v2sq .sq-main > #huntGrid { grid-row: 6; min-height: 0; }
+body.ui-v2.m-port .v2sq .sq-side > .sq-foot { grid-row: 7; display: flex; gap: 6px; flex-wrap: nowrap; }
+body.ui-v2.m-port .sq-foot .v2-btn { flex: 1 1 0; min-width: 0; height: 42px; white-space: nowrap; }
+body.ui-v2.m-port .sq-top .v2-search { flex: 1 1 120px; width: auto; height: 36px; }
+body.ui-v2.m-port .sq-top .el-row { order: 5; flex: 1 1 100%; display: flex; justify-content: space-between; }
+body.ui-v2.m-port .sq-top .grow { display: none; }
+body.ui-v2.m-port .sq-top .seg button { height: 30px; padding: 0 8px; }
+body.ui-v2.m-port .sq-list .sq-row { position: relative; height: 46px; flex: none; padding: 3px 6px; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 0; overflow: hidden; }
+body.ui-v2.m-port .sq-list .sq-row img, body.ui-v2.m-port .sq-list .sq-row .sq-noimg { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; opacity: .32; }
+body.ui-v2.m-port .sq-list .sq-row > span { position: relative; }
+body.ui-v2.m-port .sq-list .sq-row .sq-i { position: absolute; top: 3px; left: 5px; width: auto; }
+body.ui-v2.m-port .sq-list .sq-row .slot-x { position: absolute; top: 2px; right: 5px; }
+body.ui-v2.m-port .sq-list .sq-row .sq-name { width: 100%; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2.m-port .sq-list .sq-row .sq-pow { min-width: 0; text-align: left; font-size: 11px; }
+body.ui-v2.m-port .sq-list .sq-row .sq-x2, body.ui-v2.m-port .sq-list .sq-row .sq-el { display: none; }
+body.ui-v2.m-port .sq-list .sq-row.empty { align-items: center; justify-content: center; }
+body.ui-v2.m-port .sq-list .sq-row.empty .sq-name { display: none; }
+body.ui-v2.m-port .sq-wr i, body.ui-v2.m-port .squad-grid .c .tpow, body.ui-v2.m-port .squad-grid .c .cability, body.ui-v2.m-port .squad-grid .c .x2 { font-size: 10.5px; }
