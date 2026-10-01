@@ -1030,3 +1030,11 @@ body.fx-googly .c .art::after { content: ''; position: absolute; left: 28%; top:
 /* Desktop: the arrows sit beside the card, not over the side panel. */
 body.ui-v2:not(.m-land):not(.m-port) #viewer.card-only .viewer-nav.prev { left: calc(50% - 250px); }
 body.ui-v2:not(.m-land):not(.m-port) #viewer.card-only .viewer-nav.next { right: calc(50% - 250px); }
+
+/* The lock-in warning for a squad with open slots (main.js confirmShortSquad). */
+.sq-warn { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; background: rgba(5, 7, 12, .72); padding: 16px; }
+.sq-warn-box { width: min(380px, 100%); padding: 20px; border-radius: 16px; background: #141a26; border: 1px solid rgba(244, 183, 60, .45); box-shadow: 0 20px 60px rgba(0, 0, 0, .6); text-align: center; }
+.sq-warn-box h3 { margin: 0 0 8px; font-size: 18px; color: #eef2f8; }
+.sq-warn-box p { margin: 0 0 16px; color: #b9c2d3; font-size: 14px; line-height: 1.4; }
+.sq-warn-btns { display: flex; gap: 10px; justify-content: center; }
+.sq-warn-btns .v2-btn { flex: 1; height: 44px; }

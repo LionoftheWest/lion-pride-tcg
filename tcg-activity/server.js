@@ -22,6 +22,7 @@ import { REPORTS_ON, registerReportRoutes } from './reports.js';
 import { createImgCache, normalizeImgUrl } from './img-cache.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
+import { bestSquad } from './src/squad-pick.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -827,40 +828,25 @@ app.get('/api/hunt/autopick', async (req, res) => {
   const hunt = await activeHunt();
   if (!hunt) return res.json({ ids: [] });
   const cap = 8; // matches settings.hunt_daily_card_cap / the /api/hunt dailyCap
-  const { data } = await supabase
-    .from('player_cards')
-    .select('ascension, card:cards(id, rarity, season, subject:subjects(type, cp_mod, tag_slugs, ability))')
-    .eq('player_id', me.id);
-  const weak = hunt.weak_points || [];
-  const resist = hunt.resist_points || [];
-  const matchCount = (entries, c) => (entries || []).reduce((n, e) => {
-    if (e.kind === 'tag') return n + ((c.tag_slugs || []).includes(e.value) ? 1 : 0);
-    if (e.kind === 'type') return n + (c.type === e.value ? 1 : 0);
-    if (e.kind === 'rarity') return n + (c.rarity === e.value ? 1 : 0);
-    if (e.kind === 'season') return n + (c.season === e.value ? 1 : 0);
-    return n;
-  }, 0);
-  const mult = (wm, rm) => Math.max(0.25, Math.min(2.5, 1 + (1 - 0.5 ** wm) - 0.8 * (1 - 0.5 ** rm)));
-  const ATT = new Set(['Character', 'Creature']);
-  const scored = (data || []).map((row) => {
-    const c = row.card; const sub = c?.subject || {};
-    const info = { id: c?.id, rarity: c?.rarity, season: c?.season, type: sub.type, tag_slugs: sub.tag_slugs || [] };
-    const cp = cardPower(c?.rarity, row.ascension, sub.cp_mod);
-    const isAtt = ATT.has(sub.type);
-    const ab = sub.ability;
-    const score = isAtt
-      ? cp * mult(matchCount(weak, info), matchCount(resist, info)) * (ab?.kind === 'attack' ? 1.1 : 1)
-      : cp * (ab?.kind === 'support' ? 1.2 : 1);
-    return { id: c?.id, isAtt, score };
-  }).filter((x) => x.id);
-  const atts = scored.filter((x) => x.isAtt).sort((a, b) => b.score - a.score);
-  const sups = scored.filter((x) => !x.isAtt).sort((a, b) => b.score - a.score);
-  const desiredSupport = Math.min(2, sups.length);
-  const ids = [];
-  for (const c of atts) { if (ids.length >= cap - desiredSupport) break; ids.push(c.id); }
-  for (const c of sups) { if (ids.length >= cap) break; ids.push(c.id); }
-  for (const c of [...atts, ...sups]) { if (ids.length >= cap) break; if (!ids.includes(c.id)) ids.push(c.id); }
-  res.json({ ids: ids.slice(0, cap) });
+  // The squad with the highest team CP the member can field TODAY (src/squad-pick.js): no card
+  // knocked out today, the daily limit of new cards, the stat points, matchups and synergy.
+  const [{ data }, { data: view }] = await Promise.all([
+    supabase.from('player_cards')
+      .select('ascension, card:cards(id, rarity, season, subject:subjects(type, cp_mod, tag_slugs))')
+      .eq('player_id', me.id),
+    supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: mtToday() }),
+  ]);
+  const hp = new Map((view?.hp || []).map((h) => [h.card_id, h]));
+  const stats = view?.stats?.on ? (view.stats.cards || {}) : null;
+  const cards = (data || []).filter((row) => row.card?.id).map((row) => {
+    const c = row.card; const sub = c.subject || {};
+    const st = hp.get(c.id);
+    return { id: c.id, type: sub.type, rarity: c.rarity, season: c.season, slugs: sub.tag_slugs || [],
+      power: stats?.[String(c.id)]?.cp ?? cardPower(c.rarity, row.ascension, sub.cp_mod),
+      used: !!st, downed: !!st?.downed };
+  });
+  const passives = (hunt.passive?.list || (hunt.passive ? [hunt.passive] : [])).map((p) => p.kind);
+  res.json({ ids: bestSquad(cards, { ...hunt, passives }, { cap }) });
 });
 
 // The live attack feed: every recent attack on the active boss (who, damage, card).
