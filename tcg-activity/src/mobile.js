@@ -19,7 +19,9 @@ let held = false; // a layout change waits until the keyboard closes
 // True when the layout changed (the screen must paint again).
 function apply() {
   const b = document.body, was = b.className;
-  if (typing() && isPhone()) { held = true; fitSize(); return false; }
+  // In ANY layout: a 932 x 704 window (the desktop layout) whose keyboard makes it 932 x 353 read
+  // as a phone, switched layouts, lost the box and closed the keyboard, in a loop (Mr. Mobs, 2026-10-01).
+  if (typing()) { held = true; fitSize(); return false; }
   b.classList.toggle('m-land', LAND.matches);
   b.classList.toggle('m-port', PORT.matches);
   fitSize();
@@ -32,7 +34,8 @@ function fitSize() {
   const b = document.body, cs = getComputedStyle(b);
   const w = innerWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
   const h = innerHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0);
-  const phone = LAND.matches || PORT.matches;
+  // While typing, the size classes follow the layout on screen, not the keyboard-short window.
+  const phone = typing() ? isPhone() : LAND.matches || PORT.matches;
   b.classList.toggle('m-narrow', phone && w < 760);
   b.classList.toggle('m-xnarrow', phone && w < 700); // an iPhone SE in landscape
   b.classList.toggle('m-short', phone && h < (PORT.matches ? 700 : 380)); // portrait: an iPhone SE
