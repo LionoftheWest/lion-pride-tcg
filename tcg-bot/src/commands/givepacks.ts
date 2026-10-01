@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import type { Command } from '../types.js';
 import { isAdmin } from '../config.js';
-import { ensurePlayer, grantPacks, notifyPlayer } from '../store.js';
+import { ensurePlayer } from '../store.js';
+import { getSupabase } from '../supabase.js';
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -20,9 +21,11 @@ const command: Command = {
     const reason = interaction.options.getString('reason') ?? 'gift';
     await interaction.deferReply();
     await ensurePlayer(user.id, user.username);
-    const balance = await grantPacks(user.id, amount, reason, interaction.user.id);
-    await notifyPlayer(user.id, 'admin', `🎁 You received ${amount} pack${amount === 1 ? '' : 's'}!`);
-    await interaction.editReply(`🎁 Gave **${amount}** pack(s) to ${user}. They now have **${balance}**.`);
+    // A promo: it waits in their bell with a Redeem button (gift_claims.sql, Nathan 2026-10-01).
+    const title = reason === 'gift' ? 'Gift from the Lion Pride team' : reason;
+    const { error } = await getSupabase().rpc('give_gift', { p_player: user.id, p_kind: 'promo', p_title: title, p_amount: amount, p_reason: 'admin', p_from: interaction.user.id });
+    if (error) { await interaction.editReply(`The gift failed: ${error.message}`); return; }
+    await interaction.editReply(`🎁 Sent **${amount}** pack(s) to ${user} ("${title}"). They redeem it in the bell.`);
   },
 };
 

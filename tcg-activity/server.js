@@ -329,7 +329,7 @@ app.get('/api/flags', async (req, res) => {
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
 // replay it, or finish it (1 outside pack, once ever).
-const TUTORIAL_STEPS = ['open', 'rarity', 'collection', 'hunt', 'community', 'dailies', 'voice'];
+const TUTORIAL_STEPS = ['gifts', 'open', 'rarity', 'collection', 'hunt', 'community', 'dailies', 'voice']; // the reward needs the 7 after 'gifts'
 app.post('/api/tutorial', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
@@ -1476,7 +1476,7 @@ app.post('/api/gift', async (req, res) => {
     const data = await r.json();
     if (data?.ok) {
       const from = me.global_name || me.username;
-      notify(toId, 'pack_gift', `🎁 ${from} gifted you ${amount} pack${amount === 1 ? '' : 's'}!`);
+      // The gift itself waits in their bell with a Redeem button (gift_claims.sql): no extra note.
       announce(`🎁 <@${toId}> — **${from}** gifted you ${amount} pack${amount === 1 ? '' : 's'}!`);
     }
     res.json({ ok: Boolean(data?.ok) });
@@ -1638,7 +1638,27 @@ app.get('/api/notifications', async (req, res) => {
     .limit(30);
   if (error) return res.status(500).json({ error: error.message });
   const items = data || [];
-  res.json({ items, unread: items.filter((n) => !n.read).length });
+  // Gifts waiting to be redeemed (gift_claims.sql): they count in the red number too.
+  const { data: gifts } = await supabase.from('gift_claims').select('id, kind, title, amount, created_at')
+    .eq('player_id', me.id).is('claimed_at', null).order('created_at', { ascending: true }).limit(20);
+  res.json({ items, gifts: gifts || [], unread: items.filter((n) => !n.read).length + (gifts || []).length });
+});
+
+// Redeem a gift: its packs go to the OPEN balance (claim_gift: once, only the owner).
+app.post('/api/gifts/claim', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const ids = (Array.isArray(req.body?.ids) ? req.body.ids : [req.body?.id]).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 20);
+  if (!ids.length) return res.status(400).json({ error: 'bad gift' });
+  let packs = 0;
+  for (const id of ids) {
+    const { data, error } = await supabase.rpc('claim_gift', { p_player: String(me.id), p_id: id });
+    if (error) return res.status(500).json({ error: error.message });
+    if (data?.ok) packs += data.packs;
+  }
+  if (packs) bustUser(me.id);
+  res.json({ ok: packs > 0, packs });
 });
 
 // Mark all the caller's notifications as read.

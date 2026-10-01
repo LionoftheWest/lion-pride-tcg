@@ -8,6 +8,8 @@ import { v2ctx, toast } from './ui-v2.js';
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
 export const STEPS = [
+  // The start packs wait in the bell (gift_claims.sql, 2026-10-01); a member with none skips it.
+  { key: 'gifts', target: '#bellBtn', title: 'Claim your gifts', text: 'Your New Player Bonus and Launch Day gift wait in the bell. Redeem them to get your packs.' },
   { key: 'open', target: '#dockOpen', title: 'Open your first pack', text: 'Tap OPEN to reveal your cards. Each pack has 5 cards.' },
   // Design 22: on the member's own 5 cards in the reveal; without a pack, on Live pulls.
   { key: 'rarity', target: ['#revealGrid', '#mrGrid', '#homePulls .pl-top', '#homePulls'], title: 'Rarities', text: 'Cards come in 5 rarities: Normal, Illustrated Rare, Secret Rare, Full Art and Gold. Gold is the rarest.' },
@@ -53,17 +55,33 @@ async function start(i, opts = {}) {
   }
   const step = STEPS[idx];
   if (!step) return close();
-  const target = findTarget(step.target);
+  let target = findTarget(step.target);
+  if (step.key === 'gifts') {
+    let n = 0;
+    try { n = ((await ctx().api('/api/notifications')).gifts || []).length; } catch { n = 0; }
+    if (!n) target = null; // nothing to redeem: skip this step
+  }
   if (!target) { // not on screen for this member (for example the Dailies are off): skip it
     await mark(step.key);
     return start(idx + 1);
   }
   paint(step, target);
+  if (step.key === 'gifts') {
+    // The real action: the member opens the bell and redeems; the tour goes on when it closes.
+    target.addEventListener('click', async () => {
+      if (STEPS[idx]?.key !== 'gifts') return;
+      hide();
+      await wait(600);
+      while (visible(document.getElementById('v2Notifs'))) await wait(400);
+      await mark('gifts');
+      start(idx + 1);
+    }, { once: true });
+  }
   if (step.key === 'open') {
     // The real action: tapping OPEN opens a pack. Step 2 waits until the 5 cards are face up
     // and explains the rarities on them (design 22), for up to 3 minutes.
     target.addEventListener('click', async () => {
-      if (idx !== 0) return;
+      if (STEPS[idx]?.key !== 'open') return;
       hide();
       await mark('open');
       const t0 = Date.now();
@@ -75,7 +93,7 @@ async function start(i, opts = {}) {
         if (!revealOpen()) break; // no reveal (no pack): step 2 goes on Live pulls
         await wait(300);
       }
-      start(1, { inReveal: revealOpen() });
+      start(STEPS.findIndex((x) => x.key === 'rarity'), { inReveal: revealOpen() });
     }, { once: true });
   }
 }

@@ -354,3 +354,15 @@ body.ui-v2 .hp-replay { width: 100%; justify-content: center; }
 #tutLayer .tut-card.side-left .tut-arrow { bottom: auto; left: auto; right: -8px; transform: rotate(-45deg); }
 #tutLayer .tut-card.side-right .tut-arrow { bottom: auto; left: -8px; transform: rotate(135deg); }
 body.ui-v2 .v2-drop.hp-drop { max-height: calc(100vh - var(--topbar-h) - 16px); }
+
+/* Gifts to redeem in the bell (gift_claims.sql). */
+body.ui-v2 .gf-list { display: flex; flex-direction: column; gap: 6px; }
+body.ui-v2 .gf-list .side-h { display: flex; align-items: center; justify-content: space-between; }
+body.ui-v2 .gf-all { height: 28px; padding: 0 10px; font-size: 12px; }
+body.ui-v2 .gf-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid rgba(244, 183, 60, .45); background: linear-gradient(90deg, rgba(244, 183, 60, .10), var(--surface)); }
+body.ui-v2 .gf-ico { font-size: 20px; }
+body.ui-v2 .gf-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+body.ui-v2 .gf-t b { font-size: 14px; line-height: 1.25; }
+body.ui-v2 .gf-t span { font-size: 12px; color: var(--gold, #F4B73C); font-weight: 700; }
+body.ui-v2 .gf-redeem { height: 32px; padding: 0 14px; }

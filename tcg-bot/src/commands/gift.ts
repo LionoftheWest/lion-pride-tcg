@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
-import { ensurePlayer, giftPacks, getPackBalance, notifyPlayer } from '../store.js';
+import { ensurePlayer, giftPacks, getPackBalance } from '../store.js';
 import { announce } from '../internal.js';
 
 // Any player can gift packs from their OWN balance to another player.
@@ -29,10 +29,10 @@ const command: Command = {
       return;
     }
     const left = await getPackBalance(interaction.user.id);
-    // In-app bell + a public channel post that @mentions the recipient.
-    await notifyPlayer(user.id, 'pack_gift', `🎁 ${interaction.user.username} gifted you ${amount} pack${amount === 1 ? '' : 's'}!`);
+    // The gift waits in the recipient's bell with a Redeem button (gift_claims.sql), plus a
+    // public channel post that names them (their ping settings decide the ping).
     announce(interaction.client, `🎁 <@${user.id}> — **${interaction.user.username}** gifted you ${amount} pack${amount === 1 ? '' : 's'}!`);
-    await interaction.editReply(`🎁 You gifted **${amount}** pack(s) to ${user}. You have **${left}** left.`);
+    await interaction.editReply(`🎁 You gifted **${amount}** pack(s) to ${user}. They redeem it in the bell. You have **${left}** left.`);
   },
 };
 
