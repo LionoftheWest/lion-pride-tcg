@@ -421,3 +421,7 @@ body.ui-v2 .tr-info.tr-empty { display: none; }
    The wait line + Decline take their own row under the cards; the line wraps. */
 body.ui-v2:not(.m-land):not(.m-port) .of-row:has(.of-wait) .of-acts { grid-column: 1 / -1; flex-direction: row; align-items: center; }
 body.ui-v2 .of-wait { min-width: 0; flex: 1; white-space: normal; overflow-wrap: break-word; font-size: 12px; line-height: 1.3; }
+
+/* A card gift in the bell (launch_event_cards.sql): the card art in place of the gift icon. */
+body.ui-v2 .gf-row .gf-img { width: 30px; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 4px; flex: none; }
+body.ui-v2 .gf-row .gf-card { font-weight: 700; }
