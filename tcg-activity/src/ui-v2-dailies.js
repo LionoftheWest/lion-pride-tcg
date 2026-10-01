@@ -82,7 +82,7 @@ function row(t, paused) {
     sub = `${flames(t)}${t.reward > 1 ? '<span class="dl-bonus">+1 bonus</span>' : ''}`;
   } else if (t.task === 'hunt' && !t.live && !t.have) {
     sub = '<span class="dl-dim">No boss</span>';
-  } else if (t.task === 'social') {
+  } else if (t.task === 'social' || t.task === 'hunt') { // one fight or one trade: no count
     sub = t.claimed || t.done ? '' : `${bar(t)}<span class="mono">${t.have}/${t.need}</span>`;
   } else {
     sub = `${bar(t)}<span class="mono">${t.have}/${t.need} ${UNIT[t.task] || ''}</span>`;

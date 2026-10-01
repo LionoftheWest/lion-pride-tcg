@@ -10,7 +10,7 @@ const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const HELP_ICON = svg('<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>');
 
 export const FAQ = [
-  { icon: '📦', q: 'How do I earn packs?', a: 'Play! Your first message of the day earns 1 pack, and 25 messages earn 1 more. The Dailies add more: check in, use 8 cards on the Raid Boss, spend 30 minutes in voice with someone, and trade or play a boon.', chips: ['Up to 5 a day', 'Gifts and rewards are extra'] },
+  { icon: '📦', q: 'How do I earn packs?', a: 'Play! Your first message of the day earns 1 pack, and 25 messages earn 1 more. The Dailies add more: check in, fight the Raid Boss, spend 30 minutes in voice with someone, and trade or play a boon.', chips: ['Up to 5 a day', 'Gifts and rewards are extra'] },
   { icon: '🕛', q: 'When does the day reset?', a: 'At midnight Mountain Time (MT).' },
   { icon: '💎', q: 'What are the rarities?', a: 'Normal, Illustrated Rare, Secret Rare, Full Art and Gold. Per card: Normal 93.95%, Illustrated Rare 5%, Secret Rare 0.6%, Full Art 0.4%, Gold 0.05%.' },
   { icon: '⭐', q: 'What do duplicates do?', a: 'A duplicate adds a star to your card, up to 5 stars. Each star gives 3 stat points: Attack, Vitality, Precision, Potency and Haste. You can reset your points for free once a week (Monday, MT).' },

@@ -11,6 +11,7 @@
  * shows in the main header and opens reveal in the main pane for everyone.
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
+import { openSlots } from './squad-pick.js';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 import { mtToday, nextMtMidnightISO } from './mt-time.js';
 installImgFallback();
@@ -1932,6 +1933,20 @@ function paintTeam() {
   grid.innerHTML = team.length ? team.map((c) => huntTile(c, 'battle')).join('') : '<p class="empty">No squad chosen.</p>';
   sizeSquadGrid();
 }
+// The lock-in warning: Back keeps picking, Lock in goes on with the short squad.
+function confirmShortSquad(have, cap, open) {
+  return new Promise((done) => {
+    document.getElementById('sqWarn')?.remove();
+    document.body.insertAdjacentHTML('beforeend', `<div class="sq-warn" id="sqWarn" role="dialog" aria-modal="true">
+      <div class="sq-warn-box"><h3>Squad not full</h3>
+        <p>Your squad has <b>${have} of ${cap}</b> cards. You can still add <b>${open}</b> more.</p>
+        <div class="sq-warn-btns"><button class="v2-btn" id="sqWarnBack">Add cards</button><button class="v2-btn gold" id="sqWarnGo">Lock in anyway</button></div></div></div>`);
+    const close = (yes) => { document.getElementById('sqWarn')?.remove(); done(yes); };
+    el('sqWarnBack').addEventListener('click', () => close(false));
+    el('sqWarnGo').addEventListener('click', () => close(true));
+    el('sqWarn').addEventListener('click', (e) => { if (e.target.id === 'sqWarn') close(false); });
+  });
+}
 function updateLockBtn() {
   const btn = el('lockInBtn'); const cnt = el('selCount');
   if (cnt) cnt.textContent = squad.sel.size;
@@ -2065,8 +2080,11 @@ function wireSelectPhase() {
     onSquadChanged();
   });
   // Lock In commits the squad and UNLOCKS "Enter Battle" — it does not enter yet.
-  el('lockInBtn')?.addEventListener('click', () => {
+  el('lockInBtn')?.addEventListener('click', async () => {
     if (squad.sel.size < 1) return;
+    // A squad with open slots asks first (Nathan, 2026-10-01: members fought with short squads).
+    const open = openSlots(huntState?.roster || [], [...squad.sel], { cap });
+    if (open > 0 && !(await confirmShortSquad(squad.sel.size, cap, open))) return;
     saveTeam(huntState.hunt.id, [...squad.sel]);
     squad.locked = true;
     const eb = el('enterBattleBtn'); if (eb) { eb.disabled = false; eb.classList.add('ready'); }
