@@ -492,6 +492,15 @@ function paintTrade() {
   requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); if (isLand()) fitColumn(el('trMembers')); else fitRow(el('trMembers'), el('trFind')); });
 }
 
+// Recent plays: only whole rows. A phone with no room for one row hides the list and its head.
+function fitRecent() {
+  const box = ctx().el('fxRecent'), head = ctx().el('fxRecentH');
+  if (!box || !isPhone()) { if (box) fitChildren(box); return; }
+  const bottom = box.getBoundingClientRect().bottom + 1;
+  while (box.lastElementChild && box.lastElementChild.getBoundingClientRect().bottom > bottom) box.lastElementChild.remove();
+  if (!box.children.length) { box.hidden = true; if (head) head.hidden = true; }
+}
+
 // No cut chips: drop the member chips that do not fully fit left of the search box.
 // A phone: the member list is a column. The members that do not fit go (the picked one stays).
 function fitColumn(col) {
@@ -646,14 +655,14 @@ function paintEffects() {
       <div class="tr-compose">${composer}</div>
       <div class="tr-gridhead"><div class="seg"><button class="on">Your effect cards <b>${(ctx().cache.collection?.cards || []).filter((x) => x.effect?.primitive).length}</b></button></div>
         <span class="grow"></span>
-        <div class="seg" id="fxFilter">${[['all', 'All'], ['boon', '● Boon'], ['prank', '● Prank'], ['neutral', '● Neutral']].map(([v, l]) => `<button data-f="${v}" class="${fx.filter === v ? 'on' : ''} k-${v}">${l}</button>`).join('')}</div>
+        <div class="seg" id="fxFilter">${[['all', 'All'], ['boon', '<i class="fx-dot">● </i>Boon'], ['prank', '<i class="fx-dot">● </i>Prank'], ['neutral', '<i class="fx-dot">● </i>Neutral']].map(([v, l]) => `<button data-f="${v}" class="${fx.filter === v ? 'on' : ''} k-${v}">${l}</button>`).join('')}</div>
         <div class="v2-pager" id="fxPager"></div></div>
       <div class="v2-grid" id="fxGrid"></div>
     </section>
     <aside class="tr-offers v2-tile fx-side">
       <div class="tile-h"><b>On you</b><span class="grow"></span>${st.canTest && (st.active || []).some((e) => e.options?.test) ? '<button class="link-btn" id="fxClearTests">Clear tests</button>' : ''}<span class="n mono">${(st.active || []).length}</span></div>
       <div class="of-list fx-onyou" id="fxOnYou">${onYou || '<p class="v2-empty">Nothing is active on you.</p>'}</div>
-      <div class="tile-h"><b>Recent plays</b><span class="grow"></span><span class="live-chip sm">● LIVE</span></div>
+      <div class="tile-h" id="fxRecentH"><b>Recent plays</b><span class="grow"></span><span class="live-chip sm">● LIVE</span></div>
       <div class="of-list fx-recent" id="fxRecent">${rec || '<p class="v2-empty">No plays yet.</p>'}</div>
     </aside>
   </div>`;
@@ -693,5 +702,6 @@ function paintEffects() {
     await loadFx();
     paintEffects();
   });
-  requestAnimationFrame(() => { fitChildren(el('fxOnYou')); fitChildren(el('fxRecent')); fitRow(el('trMembers'), el('trFind')); });
+  requestAnimationFrame(() => { fitChildren(el('fxOnYou')); fitRecent(); fitRow(el('trMembers'), el('trFind')); });
+  setTimeout(fitRecent, 300); // again after the avatars and fonts load
 }
