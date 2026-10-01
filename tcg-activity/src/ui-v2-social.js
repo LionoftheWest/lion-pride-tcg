@@ -110,9 +110,14 @@ function paintNotifs() {
 // member gifts and promos wait here; Redeem adds the packs to the OPEN balance. ----
 function giftsHTML() {
   if (!noteGifts.length) return '';
-  const total = noteGifts.reduce((n, g) => n + g.amount, 0);
-  return `<div class="gf-list"><div class="side-h">Gifts to redeem${noteGifts.length > 1 ? `<button class="v2-btn gold gf-all">Redeem all +${total}</button>` : ''}</div>
-    ${noteGifts.map((g) => `<div class="gf-row"><span class="gf-ico">🎁</span><div class="gf-t"><b>${esc(g.title)}</b><span>${g.amount} pack${g.amount === 1 ? '' : 's'}</span></div>
+  const total = noteGifts.filter((g) => g.kind !== 'card').reduce((n, g) => n + g.amount, 0);
+  // A card gift (launch_event_cards.sql): its card art and rarity, not a pack count.
+  const what = (g) => (g.kind === 'card' && g.card
+    ? `<span class="gf-card" style="color:var(--r-${esc(g.card.rarity)})">${esc(ctx().RARITY_LABEL[g.card.rarity] || g.card.rarity)} card</span>`
+    : `<span>${g.amount} pack${g.amount === 1 ? '' : 's'}</span>`);
+  const ico = (g) => (g.kind === 'card' && g.card?.image_url ? `<img class="gf-img" src="${esc(g.card.image_url)}" alt="">` : '<span class="gf-ico">🎁</span>');
+  return `<div class="gf-list"><div class="side-h">Gifts to redeem${noteGifts.length > 1 ? `<button class="v2-btn gold gf-all">Redeem all${total ? ` +${total}` : ''}</button>` : ''}</div>
+    ${noteGifts.map((g) => `<div class="gf-row">${ico(g)}<div class="gf-t"><b>${esc(g.title)}</b>${what(g)}</div>
       <button class="v2-btn gold gf-redeem" data-id="${g.id}">Redeem</button></div>`).join('')}</div>`;
 }
 async function redeem(btn, ids) {
@@ -121,8 +126,9 @@ async function redeem(btn, ids) {
   try { r = await ctx().apiPost('/api/gifts/claim', { ids }); } catch { r = null; }
   if (r?.ok) {
     noteGifts = noteGifts.filter((g) => !ids.includes(g.id));
-    toast(`🎁 +${r.packs} pack${r.packs === 1 ? '' : 's'}`);
+    toast([r.packs ? `+${r.packs} pack${r.packs === 1 ? '' : 's'}` : '', r.cards ? `+${r.cards} card${r.cards === 1 ? '' : 's'} in your collection` : ''].filter(Boolean).map((t) => `🎁 ${t}`).join(' · '));
     ctx().refreshPacks?.();
+    if (r.cards) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
   } else {
     try { noteGifts = (await ctx().api('/api/notifications')).gifts || []; } catch { /* keep */ }
   }

@@ -2492,6 +2492,8 @@ function resolveHit(node, r, atk) {
     // effects_cleanup.sql: a rampage second strike, a Rally boon, a Mend boon.
     if (r.double) { setTimeout(() => { bossHandle?.flinch(); bossHandle?.attack?.(node.dataset.el || 'physical'); }, 260); calloutAt(bx + 44, by - 26, 'DOUBLE!', '#ffb14a'); }
     if (r.rally) calloutAt(bx - 44, by - 26, `RALLY +${Math.round(r.rally)}%`, '#5be38a');
+    if (r.party) calloutAt(bx + 44, by - 26, `LAUNCH PARTY +${Math.round(r.party)}%`, '#10b981');
+    if (r.crashed) calloutAt(bx, by - 52, `CRASHED +${r.crashed}`, '#ff5ca8');
     if (r.mend) calloutAt(bx, by - 104, `MEND +${Math.round(r.mend)}`, '#5be38a');
     bigDamage(bx, by + 18, r.damage, big ? 'crit' : 'hit'); // over the boss, not on the card (Nathan)
     if (r.synergy && r.synergy.element) { // themed-squad element synergy bonus

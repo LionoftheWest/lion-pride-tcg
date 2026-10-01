@@ -1677,8 +1677,9 @@ app.get('/api/notifications', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   const items = data || [];
   // Gifts waiting to be redeemed (gift_claims.sql): they count in the red number too.
-  const { data: gifts } = await supabase.from('gift_claims').select('id, kind, title, amount, created_at')
+  const { data: gifts } = await supabase.from('gift_claims').select('id, kind, title, amount, created_at, card:cards(id, name, rarity, image_url)')
     .eq('player_id', me.id).is('claimed_at', null).order('created_at', { ascending: true }).limit(20);
+  for (const g of gifts || []) if (g.card) g.card.image_url = toProxyImg(g.card.image_url); // a card gift (launch_event_cards.sql)
   res.json({ items, gifts: gifts || [], unread: items.filter((n) => !n.read).length + (gifts || []).length });
 });
 
@@ -1689,14 +1690,14 @@ app.post('/api/gifts/claim', async (req, res) => {
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const ids = (Array.isArray(req.body?.ids) ? req.body.ids : [req.body?.id]).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 20);
   if (!ids.length) return res.status(400).json({ error: 'bad gift' });
-  let packs = 0;
+  let packs = 0, cards = 0;
   for (const id of ids) {
     const { data, error } = await supabase.rpc('claim_gift', { p_player: String(me.id), p_id: id });
     if (error) return res.status(500).json({ error: error.message });
-    if (data?.ok) packs += data.packs;
+    if (data?.ok) { packs += data.packs || 0; if (data.card_id) cards += 1; } // a card gift: 0 packs, 1 card
   }
-  if (packs) bustUser(me.id);
-  res.json({ ok: packs > 0, packs });
+  if (packs || cards) bustUser(me.id);
+  res.json({ ok: packs + cards > 0, packs, cards });
 });
 
 // Mark all the caller's notifications as read.
