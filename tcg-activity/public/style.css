@@ -18,6 +18,8 @@ body {
 .ldr-bar { margin: 22px auto 12px; width: 220px; height: 5px; border-radius: 999px; background: #1c2333; overflow: hidden; }
 .ldr-bar span { display: block; height: 100%; width: 40%; border-radius: 999px; background: linear-gradient(90deg, #f5b942, #ffd97a); animation: ldrSlide 1.15s ease-in-out infinite; }
 .ldr-msg { color: #8b94a7; font-size: 14px; }
+.ldr-retry { margin-top: 4px; padding: 10px 22px; border: 0; border-radius: 12px; cursor: pointer; font: 700 14px system-ui, sans-serif;
+  color: #1C1203; background: linear-gradient(180deg, #F4B73C, #E0971C); }
 @keyframes ldrPulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(245,185,66,0)); } 50% { transform: scale(1.12); filter: drop-shadow(0 0 18px rgba(245,185,66,.6)); } }
 @keyframes ldrSlide { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
 
