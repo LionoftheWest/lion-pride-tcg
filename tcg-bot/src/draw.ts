@@ -17,11 +17,12 @@ export const BONUS_THRESHOLD = 25;
 
 /** Per-card pull rates. These must sum to 1. */
 export const PULL_RATES: Record<Rarity, number> = {
-  normal: 0.938,
+  normal: 0.939,
   illustrated_rare: 0.05,
   secret_rare: 0.006,
   full_art: 0.004,
-  gold: 0.002,
+  // Gold 0.1% (Nathan, 2026-10-01: was 0.2%; gold is supposed to be extremely rare).
+  gold: 0.001,
 };
 
 /** A fixed order for the cumulative roll. Rarest last. */
@@ -57,7 +58,7 @@ export function luckyRates(luck: number): Record<Rarity, number> {
   const out = { ...PULL_RATES };
   let rare = 0;
   for (const r of RARITY_ORDER) if (r !== 'normal') { out[r] = PULL_RATES[r] * k; rare += out[r]; }
-  out.normal = 1 - rare;
+  out.normal = Math.round((1 - rare) * 1e9) / 1e9; // no float tail: luck 1 = the base rates exactly
   return out;
 }
 
