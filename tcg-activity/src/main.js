@@ -224,6 +224,7 @@ let cardBack = '';
 let features = {}; // server feature flags (e.g., ascension), from /api/config
 let packsAvailable = 0;
 let uiV2 = false;   // the v2 UI (docs/design.md), from /api/flags after login
+let sdkRef = null; // the Discord SDK (the orientation lock)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
 let meUser = null;  // { id, name } of the signed-in member
 let mainItems = []; // the cards backing the current main-pane grid (for click → viewer)
@@ -270,6 +271,7 @@ async function main() {
 
   const discordSdk = new DiscordSDK(clientId);
   await discordSdk.ready();
+  sdkRef = discordSdk;
   instanceId = discordSdk.instanceId;
 
   loaderMsg('Shuffling the deck…');
@@ -336,7 +338,14 @@ async function main() {
 // The v2 shell: the body class switches the CSS, the dock replaces the tab nav.
 function startV2() {
   document.body.classList.add('ui-v2');
-  if (mobileUi) initMobile(() => show(currentView)); // a phone turned: paint the screen in its new layout
+  // Without the phone layouts, a phone stays in landscape (the old layout breaks in portrait).
+  // Nathan set the Developer Portal to unlocked on 2026-10-01, so the app sets the lock.
+  if (!mobileUi) { try { sdkRef?.commands?.setOrientationLockState?.({ lock_state: 3, picture_in_picture_lock_state: 3, grid_lock_state: 3 })?.catch?.(() => {}); } catch { /* an old Discord client */ } }
+  if (mobileUi) {
+    initMobile(() => show(currentView)); // a phone turned: paint the screen in its new layout
+    // The phone layouts handle both directions: let the member turn the phone (Nathan, 2026-10-01).
+    try { sdkRef?.commands?.setOrientationLockState?.({ lock_state: 1, picture_in_picture_lock_state: 1, grid_lock_state: 1 })?.catch?.(() => {}); } catch { /* an old Discord client */ }
+  }
   initV2({
     api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
     playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),

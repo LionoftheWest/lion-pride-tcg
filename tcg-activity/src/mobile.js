@@ -15,9 +15,24 @@ function apply() {
   document.body.classList.toggle('m-port', PORT.matches);
 }
 
+// Discord can leave its safe-area values empty until the first rotation (embedded-app-sdk
+// issue #304). Until a value shows, body.m-sa-guess keeps room for Discord's edge buttons.
+function insetsKnown() {
+  const cs = getComputedStyle(document.documentElement);
+  return ['top', 'right', 'bottom', 'left'].some((k) => cs.getPropertyValue(`--discord-safe-area-inset-${k}`).trim() !== '');
+}
+function watchInsets() {
+  const check = () => document.body.classList.toggle('m-sa-guess', !insetsKnown());
+  check();
+  let n = 0;
+  const t = setInterval(() => { check(); if (insetsKnown() || ++n > 60) clearInterval(t); }, 1000);
+  addEventListener('resize', check);
+}
+
 // onChange runs when the phone turns (landscape <-> portrait, or phone <-> desktop size).
 export function initMobile(onChange) {
   apply();
+  watchInsets();
   const changed = () => { apply(); onChange?.(); };
   LAND.addEventListener('change', changed);
   PORT.addEventListener('change', changed);
