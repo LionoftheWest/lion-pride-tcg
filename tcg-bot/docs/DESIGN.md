@@ -28,11 +28,11 @@ Each card in a pack rolls independently against this table.
 
 | Rarity | Per-card rate |
 |---|---|
-| Normal | 93.9% |
+| Normal | 93.95% |
 | Illustrated Rare | 5% |
 | Secret Rare | 0.6% |
 | Full Art | 0.4% |
-| Gold | 0.1% |
+| Gold | 0.05% |
 
 The rates total 100%.
 
