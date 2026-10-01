@@ -245,6 +245,20 @@ const page = { collection: 0 };
 const gallery = { q: '', rarity: 'all', owned: 'all', season: null, page: 0, section: 'cards' };
 const GAL_SECTIONS = [['cards', 'Cards'], ['bosses', 'Raid Bosses']];
 
+// Discord mobile sometimes fails the first authorize with "OAuth2 Authorize Error: Unknown
+// Error", and the next try works (Nathan, launch day 2026-10-01). Try 3 times before giving up.
+async function authorizeWithRetry(discordSdk, clientId) {
+  for (let i = 0; ; i++) {
+    try {
+      return await discordSdk.commands.authorize({ client_id: clientId, response_type: 'code', state: '', prompt: 'none', scope: ['identify'] });
+    } catch (e) {
+      if (i >= 2) throw e;
+      console.warn('authorize failed, retrying', e);
+      await new Promise((r) => setTimeout(r, 700 * (i + 1)));
+    }
+  }
+}
+
 async function main() {
   loaderMsg('Connecting to Discord…');
   const { clientId, backUrl, features: feat } = await (await fetch('/api/config')).json();
@@ -256,13 +270,7 @@ async function main() {
   instanceId = discordSdk.instanceId;
 
   loaderMsg('Shuffling the deck…');
-  const { code } = await discordSdk.commands.authorize({
-    client_id: clientId,
-    response_type: 'code',
-    state: '',
-    prompt: 'none',
-    scope: ['identify'],
-  });
+  const { code } = await authorizeWithRetry(discordSdk, clientId);
   const { access_token } = await (await fetch('/api/token', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -3190,5 +3198,11 @@ initViewer();
 main().catch((e) => {
   console.error(e);
   loaderMsg('Something went wrong: ' + (e?.message || e));
+  // A dead end is worse than a retry: the button reloads the Activity (the URL keeps the SDK params).
+  const m = el('loaderMsg');
+  if (m && !el('ldrRetry')) {
+    m.insertAdjacentHTML('afterend', '<button id="ldrRetry" class="ldr-retry">Try again</button>');
+    el('ldrRetry').addEventListener('click', () => location.reload());
+  }
   setStatus('Something went wrong: ' + (e?.message || e));
 });
