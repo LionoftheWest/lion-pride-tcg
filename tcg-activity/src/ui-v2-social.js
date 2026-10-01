@@ -6,7 +6,7 @@ import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, o
 import { thumb } from './thumb.js';
 import { playTradeFx } from './ui-v2-tradefx.js';
 import { isPhone, isPort, isLand } from './mobile.js';
-import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge } from './effects-ui.js';
+import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -283,7 +283,7 @@ function commTabs() {
   const fx = ctx().effectsEnabled?.();
   // Portrait (design 25): the trophy moves from the top bar into Community, the same button.
   const board = isPort() ? '<button class="v2-icon" id="commBoard" title="Leaderboard">🏆</button>' : '';
-  return board + `<div class="seg" id="commTabs"><button data-tab="trades" class="${tr.tab === 'trades' ? 'on' : ''}">⇄ Trades</button>${fx ? `<button data-tab="effects" class="${tr.tab === 'effects' ? 'on' : ''}">✨ Boons & Pranks</button>` : ''}</div>`;
+  return board + `<div class="seg" id="commTabs"><button data-tab="trades" class="${tr.tab === 'trades' ? 'on' : ''}">⇄ Trades</button>${fx ? `<button data-tab="effects" class="${tr.tab === 'effects' ? 'on' : ''}">✨ Boons<span class="ct-more"> & Pranks</span></button>` : ''}</div>`;
 }
 function wireCommTabs() {
   ctx().el('commBoard')?.addEventListener('click', () => ctx().el('boardBtn')?.click());
@@ -323,9 +323,9 @@ function gridItems() {
 }
 
 function slotHTML(c, who, empty) {
-  if (!c) return `<div class="tr-slot empty"><span>${esc(empty)}</span></div>`;
+  if (!c) return `<div class="tr-slot empty"><span>${esc(empty)}</span></div><div class="tr-info tr-empty"><span class="tr-who">${who}</span><h3>${esc(empty)}</h3></div>`;
   return `<div class="tr-slot r-${c.rarity}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""></div>
-    <div class="tr-info"><span class="tr-who">${who}</span><h3>${esc(c.name)}</h3><span class="tr-rar" style="color:var(--r-${c.rarity})">◆ ${esc(ctx().RARITY_LABEL[c.rarity] || c.rarity)}</span>
+    <div class="tr-info"><span class="tr-who">${who}</span><h3>${isPhone() ? breakable(esc(c.name)) : esc(c.name)}</h3><span class="tr-rar" style="color:var(--r-${c.rarity})">◆ ${esc(ctx().RARITY_LABEL[c.rarity] || c.rarity)}</span>
       <span class="tr-chips"><i>⚡ ${fmt(c.power)}</i>${c.quantity ? `<i>×${c.quantity}</i>` : ''}</span></div>`;
 }
 
@@ -350,7 +350,7 @@ function paintTrade() {
     // Step 2: I pick the card I give back for an incoming offer (the same rarity).
     const o = tr.respond;
     composer = `<div class="tr-deal">
-        <div class="tr-side">${slotHTML(o.offer, `${avatarHTML(o.from_id, o.from_name, 'xs')} ${esc(o.from_name || 'They')} gives`, '')}</div>
+        <div class="tr-side">${slotHTML(o.offer, `${avatarHTML(o.from_id, o.from_name, 'xs')} <span class="tr-wn">${esc(o.from_name || 'They')}</span> gives`, '')}</div>
         <span class="tr-swap">⇄</span>
         <div class="tr-side right">${slotHTML(tr.give, `${avatarHTML(me?.id, me?.name, 'xs')} You give`, `Pick ${aRar(o.offer)}`)}</div>
       </div>
@@ -383,17 +383,17 @@ function paintTrade() {
   const mineN = (ctx().cache.collection?.cards || []).length;
   const offerCard = (c, tag) => (c ? `<div class="of-card"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""><span>${tag}</span></div>` : '');
   const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
-  el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}">
+  el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}${tr.respond ? ' responding' : ''}">
     <section class="tr-main">
       <div class="tr-top">${commTabs()}<span class="grow"></span>
         <div class="seg" id="trMode"><button data-m="offer" class="${tr.mode === 'offer' ? 'on' : ''}">⇄ Offer</button><button data-m="gift" class="${tr.mode === 'gift' ? 'on' : ''}">🎁 Gift</button></div></div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
-        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name)}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
-        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="Find a member"></div>
+        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
+        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="${isPhone() ? 'Find' : 'Find a member'}"></div>
       <div class="tr-compose">${composer}</div>
       <div class="tr-gridhead">
         <div class="seg"><button class="on">Your cards <b>${mineN}</b></button></div>
-        <input class="v2-search" id="trQ" placeholder="Search cards, tags…" value="${esc(tr.q)}">
+        <input class="v2-search" id="trQ" placeholder="${isPhone() ? 'Search' : 'Search cards, tags…'}" value="${esc(tr.q)}">
         <span class="grow"></span>
         <div class="seg" id="trFilter">${[['all', 'All'], ['dupes', 'Dupes'], ['rare', 'Rare+']].map(([v, l]) => `<button data-f="${v}" class="${tr.filter === v ? 'on' : ''}">${l}</button>`).join('')}</div>
         <div class="v2-pager" id="trPager"></div>
@@ -407,16 +407,16 @@ function paintTrade() {
         // An offer to answer: pick my card. My pick sent: wait for them. An old offer: accept.
         const decline = `<button class="v2-btn of-decline" data-id="${o.id}" title="Decline">✕<span class="of-t"> Decline</span></button>`;
         const acts = o.status === 'countered'
-          ? `<span class="of-wait dim">Waiting for ${esc(o.from_name || 'them')}</span>${decline}`
+          ? `<span class="of-wait dim">Waiting<span class="of-wn"> for ${esc(o.from_name || 'them')}</span></span>${decline}`
           : o.request
             ? `<button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button>${decline}`
             : `<button class="v2-btn gold of-pick" data-id="${o.id}">Pick your card</button>${decline}`;
-        return `<div class="of-row${tr.respond && Number(tr.respond.id) === Number(o.id) ? ' on' : ''}"><div class="of-who">${avatarHTML(o.from_id, o.from_name, 'xs')}<b>${nameBadge(o.from_id, o.from_name || 'Someone')}</b></div>
+        return `<div class="of-row${tr.respond && Number(tr.respond.id) === Number(o.id) ? ' on' : ''}"><div class="of-who">${avatarHTML(o.from_id, o.from_name, 'xs')}<b>${nameBadge(o.from_id, o.from_name || 'Someone', isPhone())}</b></div>
         <div class="of-cards">${offerCard(o.offer, 'Get')}${o.request ? `<span>⇄</span>${offerCard(o.request, 'Give')}` : ''}</div>
         <div class="of-acts">${acts}</div></div>`;
       }).join('') || '<p class="v2-empty">No incoming offers.</p>'}</div>
       <div class="side-h">Sent <span class="n">${out.length}</span></div>
-      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone')}</b><span class="dim">${o.status === 'countered' ? 'Picked a card' : 'Picking a card'}</span></div>
+      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone', isPhone())}</b><span class="dim">${o.status === 'countered' ? 'Picked a card' : 'Picking a card'}</span></div>
         <div class="of-cards">${offerCard(o.offer, 'Give')}${o.request ? `<span>⇄</span>${offerCard(o.request, 'Get')}` : ''}</div>
         ${o.status === 'countered' ? `<div class="of-acts"><button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button><button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button></div>` : `<button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button>`}</div>`).join('') || '<p class="v2-empty">No sent offers.</p>'}</div>
     </aside>
@@ -616,8 +616,8 @@ function paintEffects() {
       <div class="tr-top">${commTabs()}<span class="grow"></span>
         ${cap ? `<div class="fx-today"><span>Plays today</span><i class="fx-bar"><i style="width:${Math.round((100 * used) / cap)}%"></i></i><b class="mono">${used}/${cap}</b></div>` : ''}</div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
-        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name)}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
-        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="Find a member"></div>
+        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
+        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="${isPhone() ? 'Find' : 'Find a member'}"></div>
       <div class="tr-compose">${composer}</div>
       <div class="tr-gridhead"><div class="seg"><button class="on">Your effect cards <b>${(ctx().cache.collection?.cards || []).filter((x) => x.effect?.primitive).length}</b></button></div>
         <span class="grow"></span>

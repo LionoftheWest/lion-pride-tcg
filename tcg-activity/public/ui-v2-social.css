@@ -415,3 +415,4 @@ body.ui-v2 .rp-done b { font: 800 17px var(--font-display); }
 body.ui-v2 .rp-done span { font-size: 12.5px; color: var(--text-secondary, #c9cbd6); }
 @media (max-height: 460px) { body.ui-v2 .rp-text { height: 72px; } }
 body.ui-v2 .v2-drop.rp-drop { max-height: calc(100vh - var(--topbar-h) - 12px); }
+body.ui-v2 .tr-info.tr-empty { display: none; }

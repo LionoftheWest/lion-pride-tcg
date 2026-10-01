@@ -24,6 +24,7 @@ function fitSize() {
   const h = innerHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0);
   const phone = LAND.matches || PORT.matches;
   b.classList.toggle('m-narrow', phone && w < 760);
+  b.classList.toggle('m-xnarrow', phone && w < 700); // an iPhone SE in landscape
   b.classList.toggle('m-short', phone && h < (PORT.matches ? 700 : 380)); // portrait: an iPhone SE
 }
 

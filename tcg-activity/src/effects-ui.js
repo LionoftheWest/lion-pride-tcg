@@ -287,10 +287,13 @@ export function runPackPrank(p, stage) {
 export function badgeOf(playerId) { return badges[playerId] || null; }
 
 // ---- Name decorations (titles, stickers, spotlight) ----
-export function nameBadge(playerId, username) {
+// A long name may go to a second line only at a natural point: after _ . - or between a small and
+// a capital letter (HighFlying|Penguin). Takes escaped text.
+export const breakable = (html) => String(html).replace(/(?<=[a-z0-9])([_.\-])(?=[a-z0-9])/gi, '$1<wbr>').replace(/([a-z])(?=[A-Z])/g, '$1<wbr>');
+export function nameBadge(playerId, username, soft) {
   const esc = deps?.esc || ((s) => String(s));
   const b = badges[playerId];
-  const base = esc(username || 'Player');
+  const base = soft ? breakable(esc(username || 'Player')) : esc(username || 'Player');
   if (!b) return base;
   const sticker = b.sticker ? `<img class="nb-sticker" src="${b.sticker}" alt="">` : '';
   const title = b.title ? ` <span class="nb-title">${esc(b.title)}</span>` : '';

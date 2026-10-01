@@ -566,3 +566,90 @@ body.ui-v2.m-port .v2-trade .tr-compose .tr-to > .tr-info { display: flex; }
 body.ui-v2.m-port .v2-trade .of-row .of-wait { display: inline; font-size: 11.5px; white-space: nowrap; }
 .v2-trade .of-row.on { border-color: rgba(244, 183, 60, .6); box-shadow: 0 0 0 1px rgba(244, 183, 60, .35) inset; }
 body.ui-v2.m-land .v2-trade .of-row .of-who .dim, body.ui-v2.m-land .v2-trade .of-row .of-wait { display: none; }
+/* ===== No cut names on a phone (Nathan, 2026-10-01) =====
+   Every name shows in full: it goes to a second line, never an ellipsis or a clip. */
+body.ui-v2.m-land .v2-trade .tr-mem, body.ui-v2.m-port .v2-trade .tr-mem { overflow: visible; text-overflow: clip; }
+body.ui-v2.m-land .v2-trade .tr-mem { height: auto; min-height: 36px; padding: 4px 8px 4px 4px; white-space: normal; text-align: left; line-height: 1.15; border-radius: 12px; }
+body.ui-v2.m-land .v2-trade .tr-mem > span { min-width: 0; overflow-wrap: anywhere; }
+body.ui-v2.m-land .v2-trade .tr-mem .v2-avatar { flex: none; }
+/* The builder: the names wrap; the power chip and the swap circle go. */
+body.ui-v2.m-land .v2-trade .tr-compose .tr-chips, body.ui-v2.m-port .v2-trade .tr-compose .tr-chips { display: none; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-swap { width: auto; height: auto; border: 0; background: none; font-size: 16px; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-info { gap: 2px; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-info h3, body.ui-v2.m-port .v2-trade .tr-compose .tr-info h3 { font-size: 13px; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-who, body.ui-v2.m-port .v2-trade .tr-compose .tr-who { white-space: nowrap; letter-spacing: .5px; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-side { flex: 1 1 0; min-width: 0; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-side.tr-to { flex: none; }
+/* The empty slot shows a dashed ? and the words go beside it. */
+body.ui-v2.m-land .v2-trade .tr-slot.empty > span, body.ui-v2.m-port .v2-trade .tr-slot.empty > span { font-size: 0; }
+body.ui-v2.m-land .v2-trade .tr-slot.empty > span::before, body.ui-v2.m-port .v2-trade .tr-slot.empty > span::before { content: '?'; font: 800 20px var(--font-display); color: var(--text-muted); }
+body.ui-v2.m-land .v2-trade .tr-info.tr-empty, body.ui-v2.m-port .v2-trade .tr-info.tr-empty { display: flex; }
+body.ui-v2.m-land .v2-trade .tr-info.tr-empty h3, body.ui-v2.m-port .v2-trade .tr-info.tr-empty h3 { color: var(--text-secondary); }
+/* The offers: the name has its own line above the cards and the buttons. */
+body.ui-v2.m-land .v2-trade .of-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+body.ui-v2.m-land .v2-trade .of-row .of-who { grid-column: 1 / -1; grid-row: 1; min-width: 0; }
+body.ui-v2.m-land .v2-trade .of-row .of-cards { grid-column: 1; grid-row: 2; }
+body.ui-v2.m-land .v2-trade .of-row .of-acts, body.ui-v2.m-land .v2-trade .of-row > .of-cancel { grid-column: 2; grid-row: 2; }
+body.ui-v2.m-land .v2-trade .of-who b, body.ui-v2.m-port .v2-trade .of-row .of-who b { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; min-width: 0; }
+body.ui-v2.m-land .v2-trade .of-row, body.ui-v2.m-port .v2-trade .of-row { overflow: visible; }
+body.ui-v2.m-land .v2-trade .of-card, body.ui-v2.m-port .v2-trade .of-card { overflow: visible; }
+body.ui-v2.m-port .v2-trade .of-row .of-who { flex: 1 1 auto; max-width: none; }
+/* Answering an offer: the member is fixed, so the member list goes and the builder gets the room
+   for the two card names. The sender shows as the avatar (the full name is in the offer row). */
+body.ui-v2.m-land .v2-trade .tr-wn, body.ui-v2.m-port .v2-trade .tr-wn { display: none; }
+body.ui-v2.m-land .v2-trade.responding .tr-members, body.ui-v2.m-port .v2-trade.responding .tr-members { display: none; }
+body.ui-v2.m-land .v2-trade.responding .tr-compose, body.ui-v2.m-land .v2-trade.responding .tr-gridhead, body.ui-v2.m-land .v2-trade.responding #trGrid { grid-column: 1 / 3; }
+body.ui-v2.m-land .v2-trade { grid-template-columns: 150px minmax(0, 1fr) 236px; }
+body.ui-v2.m-land.m-narrow .v2-trade { grid-template-columns: 132px minmax(0, 1fr) 220px; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose { flex-wrap: wrap; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-deal { flex: 1 1 100%; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-side { flex: 1 1 0; min-width: 0; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-side > .tr-info { display: flex; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-foot { flex: 1 1 100%; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-swap { width: auto; height: auto; border: 0; background: none; font-size: 16px; }
+/* Portrait: one line per offer; a long name goes to a second line inside the row (at _ . - or a
+   capital letter), the row does not get taller. */
+body.ui-v2.m-port .v2-trade .of-row .of-who { flex: 1 1 0; }
+/* Portrait answer: smaller card slots so the two card names fit. */
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-slot { width: 38px; flex-basis: 38px; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-deal, body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-side { gap: 6px; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-info h3 { font-size: 12.5px; }
+/* Portrait answer: their card above mine, each with the full width for its name. */
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-deal { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-side, body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-side.right { flex: none; flex-direction: row; justify-content: flex-start; text-align: left; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-side.right .tr-info { align-items: flex-start; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-swap { display: none; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-info h3 { font-size: 13px; }
+body.ui-v2.m-port .v2-trade.responding .tr-compose .tr-side > * { margin: 0; }
+/* Portrait answer: the offers show only the offer I answer (the room goes to my cards). */
+body.ui-v2.m-port .v2-trade.responding #ofIn > .of-row:not(.on), body.ui-v2.m-port .v2-trade.responding #ofOut,
+body.ui-v2.m-port .v2-trade.responding .tr-offers .side-h { display: none; }
+/* A narrow landscape offer: the recipient is the avatar (the name is marked in the member list). */
+body.ui-v2.m-land.m-narrow .v2-trade .tr-compose .tr-to > .tr-info { display: none; }
+/* Landscape builder columns: my card takes the room, the recipient is only as wide as it needs. */
+body.ui-v2.m-land .v2-trade .tr-compose .tr-deal { grid-template-columns: minmax(0, 1fr) auto auto; }
+body.ui-v2.m-land .v2-trade.responding .tr-compose .tr-deal { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+/* The pager stays centered over the middle column (the columns are 150 / 124 px wide now). */
+body.ui-v2.m-land .v2-trade #trPager { left: calc(158px + (100% - 158px - 244px) / 2); }
+body.ui-v2.m-land.m-narrow .v2-trade #trPager { left: calc(140px + (100% - 140px - 228px) / 2); }
+/* The recipient: the name and "Picks a ..." wrap in a narrow box, my card gets the rest. */
+body.ui-v2.m-land .v2-trade .tr-compose .tr-to > .tr-info { display: none; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-to .tr-who { display: none; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-rar { white-space: normal; text-align: inherit; }
+/* "Your cards" is the only tab: its label goes on a phone. */
+body.ui-v2.m-land .v2-trade .tr-gridhead > .seg:first-child { display: none; }
+/* The member column: about 15 letters fit on one line (9 of 10 real names); the width follows the
+   usable width, the pager stays centered over the middle column. */
+body.ui-v2.m-land .v2-trade, body.ui-v2.m-land.m-narrow .v2-trade { --mcol: clamp(120px, calc((100vw - var(--sa-l) - var(--sa-r)) * .2), 150px); grid-template-columns: var(--mcol) minmax(0, 1fr) 220px; }
+body.ui-v2.m-land .v2-trade #trPager, body.ui-v2.m-land.m-narrow .v2-trade #trPager { left: calc(var(--mcol) + 8px + (100% - var(--mcol) - 236px) / 2); }
+body.ui-v2.m-land .v2-trade .tr-members { padding: 6px; }
+body.ui-v2.m-land .v2-trade .tr-mem { gap: 5px; padding: 4px 6px 4px 4px; font-size: 12px; }
+body.ui-v2.m-land .v2-trade .tr-mem .v2-avatar { width: 20px; height: 20px; }
+/* "Waiting for <name>": the name is already in the row, a phone shows only "Waiting". */
+body.ui-v2.m-port .v2-trade .of-wn, body.ui-v2.m-land .v2-trade .of-wn { display: none; }
+/* The pager sits in the gap between the Community tabs and Offer / Gift (the Offer tabs + the
+   offers column are 354 px). Under 700 px usable, the tab says "Boons" so the pager fits. */
+body.ui-v2.m-land .v2-trade, body.ui-v2.m-land.m-narrow .v2-trade { --segw: 206px; }
+body.ui-v2.m-land.m-xnarrow .v2-trade { --segw: 152px; }
+body.ui-v2.m-land.m-xnarrow #commTabs .ct-more { display: none; }
+body.ui-v2.m-land .v2-trade #trPager, body.ui-v2.m-land.m-narrow .v2-trade #trPager { left: calc((var(--segw) + 100% - 354px) / 2); }
