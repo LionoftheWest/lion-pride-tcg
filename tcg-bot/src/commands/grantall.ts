@@ -1,7 +1,6 @@
 import { SlashCommandBuilder, MessageFlags, Routes, type APIGuildMember } from 'discord.js';
 import type { Command } from '../types.js';
 import { isAdmin } from '../config.js';
-import { grantPacksAll, notifyAll } from '../store.js';
 import { getSupabase } from '../supabase.js';
 
 // everyone:true (Nathan, 2026-09-30): EVERY human member of the server gets the packs,
@@ -46,10 +45,11 @@ const command: Command = {
       return;
     }
     const reason = interaction.options.getString('reason') ?? 'event';
-    await interaction.deferReply();
-    const players = await grantPacksAll(amount, reason, interaction.user.id);
-    await notifyAll('admin', `🎉 Event drop! You received ${amount} pack${amount === 1 ? '' : 's'}!`);
-    await interaction.editReply(`🎉 Granted **${amount}** pack(s) to all **${players}** players.`);
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    // An event drop: a gift waits in every player's bell (gift_claims.sql).
+    const { data: players, error } = await getSupabase().rpc('give_gift_all', { p_kind: 'promo', p_title: reason === 'event' ? 'Event drop' : reason, p_amount: amount, p_reason: 'event', p_by: interaction.user.id });
+    if (error) { await interaction.editReply(`The event drop failed: ${error.message}`); return; }
+    await interaction.editReply(`🎉 **${players}** players have **${amount}** pack(s) waiting in their bell.`);
   },
 };
 

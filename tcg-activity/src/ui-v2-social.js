@@ -2,7 +2,7 @@
 // Leaderboard (design 12), and Trading with Gift inside it (designs 14 + 13).
 // Uses the shared helpers of ui-v2.js; the data comes from the existing APIs.
 
-import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember } from './ui-v2.js';
+import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember, toast } from './ui-v2.js';
 import { thumb } from './thumb.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge } from './effects-ui.js';
 
@@ -25,6 +25,7 @@ const noteKind = (k) => NOTE_KINDS[k] || (String(k).startsWith('hunt') ? { icon:
 let noteTab = 'all';
 let noteItems = [];
 let noteHunt = null;
+let noteGifts = []; // gifts waiting to be redeemed (gift_claims.sql)
 let pingPrefs = null; // the Settings tab: which bot posts may ping me (null = not loaded)
 const PING_ROWS = [['plays', 'Card plays on me'], ['trades', 'Trades & gifts'], ['raid', 'Raid boss'], ['packs', 'Pack reminders']];
 
@@ -37,6 +38,7 @@ export async function openNotifsV2() {
   box.innerHTML = '<div class="v2-loading">Loading…</div>';
   const [n, h] = await Promise.all([api('/api/notifications').catch(() => ({ items: [] })), ctx().features().hunt ? api('/api/hunt').catch(() => null) : null]);
   noteItems = n.items || [];
+  noteGifts = n.gifts || [];
   noteHunt = h && h.hunt ? h.hunt : null;
   paintNotifs();
   setTimeout(() => document.addEventListener('pointerdown', outside, { capture: true }), 0);
@@ -51,7 +53,8 @@ export async function closeNotifsV2() {
   if (!box || box.classList.contains('hidden')) return;
   box.classList.add('hidden');
   document.removeEventListener('pointerdown', outside, { capture: true });
-  if (noteItems.some((x) => !x.read)) { try { await apiPost('/api/notifications/read', {}); } catch { /* keep */ } ctx().updateNotifBadge(0); }
+  if (noteItems.some((x) => !x.read)) { try { await apiPost('/api/notifications/read', {}); } catch { /* keep */ } }
+  ctx().updateNotifBadge(noteGifts.length); // a gift not redeemed yet keeps the red number
 }
 function paintNotifs() {
   const { el } = ctx();
@@ -73,11 +76,11 @@ function paintNotifs() {
   box.innerHTML = `<div class="nt-head"><h3>Notifications</h3>${unread ? `<span class="nt-count">${unread}</span>` : ''}<span class="grow"></span>
       ${unread ? '<button class="link-btn" id="ntRead">✓ Mark all read</button>' : ''}<button class="v2-icon" id="ntClose" aria-label="Close">✕</button></div>
     <div class="seg nt-tabs">${[['all', 'All'], ['hunt', 'Hunt'], ['trades', 'Trades'], ['settings', 'Settings']].map(([v, l]) => `<button data-t="${v}" class="${noteTab === v ? 'on' : ''}">${l}</button>`).join('')}</div>
-    ${noteTab === 'settings' ? settingsHTML() : `${h && noteTab !== 'trades' ? `<div class="nt-hunt"><div><span class="live-chip sm">● PRIDE HUNT</span><b>${esc(h.name)}</b><i class="nt-hp"><i style="width:${pct}%"></i></i></div><button class="v2-btn gold" data-act="Hunt">⚔ Hunt</button></div>` : ''}
+    ${noteTab === 'settings' ? settingsHTML() : `${giftsHTML()}${h && noteTab !== 'trades' ? `<div class="nt-hunt"><div><span class="live-chip sm">● PRIDE HUNT</span><b>${esc(h.name)}</b><i class="nt-hp"><i style="width:${pct}%"></i></i></div><button class="v2-btn gold" data-act="Hunt">⚔ Hunt</button></div>` : ''}
     <div class="nt-list" id="ntList">
       ${todays.length ? `<div class="side-h">Today</div>${todays.map(row).join('')}` : ''}
       ${earlier.length ? `<div class="side-h">Earlier</div>${earlier.map(row).join('')}` : ''}
-      ${list.length ? '' : '<p class="v2-empty">Nothing here yet.</p>'}
+      ${list.length || noteGifts.length ? '' : '<p class="v2-empty">Nothing here yet.</p>'}
     </div>`}`;
   el('ntClose').addEventListener('click', closeNotifsV2);
   el('ntRead')?.addEventListener('click', async () => {
@@ -86,6 +89,8 @@ function paintNotifs() {
   });
   box.querySelectorAll('.nt-tabs button').forEach((b) => b.addEventListener('click', () => { noteTab = b.dataset.t; paintNotifs(); if (noteTab === 'settings' && !pingPrefs) loadPingPrefs(); }));
   box.querySelector('.ps-list')?.addEventListener('change', savePingPref);
+  box.querySelectorAll('.gf-redeem').forEach((b) => b.addEventListener('click', () => redeem(b, [Number(b.dataset.id)])));
+  box.querySelector('.gf-all')?.addEventListener('click', (e) => redeem(e.currentTarget, noteGifts.map((g) => g.id)));
   box.onclick = (e) => {
     const a = e.target.closest('[data-act]');
     if (!a) return;
@@ -96,6 +101,30 @@ function paintNotifs() {
     else if (act === 'View') ctx().show('trading');
   };
   requestAnimationFrame(() => fitChildren(el('ntList')));
+}
+
+// ---- Gifts to redeem (Nathan, 2026-10-01): the New Player Bonus, the Launch Day gift,
+// member gifts and promos wait here; Redeem adds the packs to the OPEN balance. ----
+function giftsHTML() {
+  if (!noteGifts.length) return '';
+  const total = noteGifts.reduce((n, g) => n + g.amount, 0);
+  return `<div class="gf-list"><div class="side-h">Gifts to redeem${noteGifts.length > 1 ? `<button class="v2-btn gold gf-all">Redeem all +${total}</button>` : ''}</div>
+    ${noteGifts.map((g) => `<div class="gf-row"><span class="gf-ico">🎁</span><div class="gf-t"><b>${esc(g.title)}</b><span>${g.amount} pack${g.amount === 1 ? '' : 's'}</span></div>
+      <button class="v2-btn gold gf-redeem" data-id="${g.id}">Redeem</button></div>`).join('')}</div>`;
+}
+async function redeem(btn, ids) {
+  btn.disabled = true;
+  let r = null;
+  try { r = await ctx().apiPost('/api/gifts/claim', { ids }); } catch { r = null; }
+  if (r?.ok) {
+    noteGifts = noteGifts.filter((g) => !ids.includes(g.id));
+    toast(`🎁 +${r.packs} pack${r.packs === 1 ? '' : 's'}`);
+    ctx().refreshPacks?.();
+  } else {
+    try { noteGifts = (await ctx().api('/api/notifications')).gifts || []; } catch { /* keep */ }
+  }
+  ctx().updateNotifBadge(noteGifts.length + noteItems.filter((x) => !x.read).length);
+  paintNotifs();
 }
 
 // ---- Settings: which bot channel posts may ping me (notify_prefs.sql) ----
