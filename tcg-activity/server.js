@@ -319,6 +319,17 @@ async function ensurePlayerRow(me) {
   return (data || []).length > 0;
 }
 
+// Phone debug lines (MOBILE_UI_USERS only): the orientation lock result, rotations and the
+// safe areas a real phone reports. Printed to the container log; nothing is stored.
+app.post('/api/mobile-log', async (req, res) => {
+  const me = await caller(req);
+  if (!me || !(MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)))) return res.status(403).json({ error: 'off' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const line = JSON.stringify(req.body || {}).slice(0, 600);
+  console.log('[mobile-log]', String(me.id).slice(-4), line);
+  res.json({ ok: true });
+});
+
 app.get('/api/flags', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
