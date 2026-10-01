@@ -81,19 +81,28 @@ export function tileHTML(c, idx, selected) {
 
 // Fit a grid of cells to its box: the most cards that fit with no scroll.
 function fitGrid(grid, n) {
+  const cs = getComputedStyle(grid);
   const w = grid.clientWidth || 600;
-  const h = grid.clientHeight || 420;
+  // clientHeight includes the padding (4 px on top): without it, a second row ran 4 px past the box.
+  const h = (grid.clientHeight || 420) - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
   let best = { cols: 1, rows: 1, cw: 80 };
   for (let rows = 1; rows <= 4; rows++) {
     const byH = ((h - (rows - 1) * GAP) / rows - CAP_H) * 5 / 7;
     for (let cols = 2; cols <= 9; cols++) {
       const byW = (w - (cols - 1) * GAP) / cols;
       const cw = Math.floor(Math.min(byW, byH));
-      if (cw < 96) continue;
+      if (cw < 112) continue; // the caption (power, stars, copies) needs 112 px to stay readable (2026-10-01)
       // Prefer the largest card that still shows at least 10 slots (or all cards).
       const score = Math.min(cols * rows, Math.max(10, n)) * 1000 + cw;
       if (score > best.score || !best.score) best = { cols, rows, cw, score };
     }
+  }
+  // A box too small for a 112 px card: one row of the biggest cards that fit (the old 80 px
+  // fallback ran out of a short Community grid, 2026-10-01), but never under 72 px: a card
+  // must stay readable, so a small box shows fewer cards and the pager shows the rest.
+  if (!best.score) {
+    const cw = Math.max(72, Math.floor(Math.min(w, ((h - CAP_H) * 5) / 7)));
+    best = { cols: Math.max(1, Math.floor((w + GAP) / (cw + GAP))), rows: 1, cw };
   }
   grid.style.setProperty('--cw', `${best.cw}px`);
   grid.style.setProperty('--cols', best.cols);
@@ -101,7 +110,8 @@ function fitGrid(grid, n) {
 }
 
 // Paint a paged card grid. items: cards; state: { page }; onPick(card).
-export function paintCards(grid, pager, items, state, onPick, selId, dir) {
+export function paintCards(grid, pager, items, state, onPick, selId, dir, refit) {
+  const h0 = grid.clientHeight;
   const per = fitGrid(grid, items.length);
   const pages = Math.max(1, Math.ceil(items.length / per));
   state.page = Math.min(Math.max(0, state.page), pages - 1);
@@ -125,6 +135,9 @@ export function paintCards(grid, pager, items, state, onPick, selId, dir) {
     state.page += Number(b.dataset.p);
     paintCards(grid, pager, items, state, onPick, selId, Number(b.dataset.p) > 0 ? 'next' : 'prev');
   };
+  // The pager is filled AFTER the grid is sized; if it wrapped the head and the grid lost
+  // height, size it once more (a short window cut the second card row, 2026-10-01).
+  if (!refit && grid.clientHeight !== h0) paintCards(grid, pager, items, state, onPick, selId, null, true);
 }
 
 // ---- Achievements ------------------------------------------------------------

@@ -196,8 +196,10 @@ function paintBoard() {
   const line = (r, i) => `<div class="lb-row${r.id === d.me ? ' me' : ''}" data-member="${esc(r.id)}"><span class="lb-i mono">${i + 1}</span>
       <span class="lb-p">${avatarHTML(r.id, r.name, 'sm', r.frame)}<b>${nameBadge(r.id, r.name)}</b>${titleHTML(r.title)}${r.id === d.me ? '<i class="you">You</i>' : ''}</span>
       ${METRICS.map((mm) => `<span class="lb-c mono${mm.key === m.key ? ' on' : ''}">${val(r, mm)}</span>`).join('')}</div>`;
-  const rest = rows.slice(3);
-  const pinMe = meIdx >= 3;
+  // The top 10 at most (Nathan, 2026-10-01: "the most it can show is the top 10"): the podium
+  // is 1-3, the table 4-10. Your own row is pinned only when you are outside the top 10.
+  const rest = rows.slice(3, 10);
+  const pinMe = meIdx >= 10;
 
   // The right column: my ranks + the live hunt.
   const me = rows[meIdx];
