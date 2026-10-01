@@ -603,6 +603,25 @@ function phoneColumns(box) {
   [box.querySelector('#pClose'), id, box.querySelector('.p-lore'), box.querySelector('.p-tags'), box.querySelector('.p-credit'), box.querySelector('.p-actions')].forEach((n) => n && mid.append(n));
   [...box.children].filter((n) => n !== art).forEach((n) => side.append(n));
   box.append(mid, side);
+  // Landscape: a right column taller than the view sends Ascension, then the stat points, to the
+  // middle column (above the buttons) while the middle has the room.
+  if (!isLand()) return;
+  // A column grows with its blocks, so test each block against the bottom of the card view.
+  const limit = () => box.getBoundingClientRect().bottom - (parseFloat(getComputedStyle(box).paddingBottom) || 0) + 1;
+  // Sum the block heights: a stretched column pushes its buttons (margin-top: auto) to its bottom.
+  const over = (col) => {
+    const gap = parseFloat(getComputedStyle(col).rowGap) || 0;
+    const h = [...col.children].reduce((t, ch) => t + ch.getBoundingClientRect().height, 0) + gap * Math.max(0, col.children.length - 1);
+    return col.getBoundingClientRect().top + h > limit();
+  };
+  const actions = mid.querySelector('.p-actions');
+  for (const sel of ['.asc', '#pPts']) {
+    if (!over(side)) break;
+    const n = side.querySelector(sel);
+    if (!n || n.classList.contains('pts-open')) continue;
+    mid.insertBefore(n, actions || null);
+    if (over(mid)) side.append(n); // no room in the middle: it stays on the right
+  }
 }
 
 // The Raid Bosses panel: the selected boss, alive (idle + an occasional flex or taunt),
@@ -620,7 +639,8 @@ function paintBossPanel() {
 
 // ---- Stat points: each star gives 3 points for this copy (docs/card-stats.md) ----------
 const STAT_DEFS = [['attack', 'Attack'], ['vitality', 'Vitality'], ['precision', 'Precision'], ['potency', 'Potency'], ['haste', 'Haste']];
-const pend = { id: null, add: {} }; // points picked but not saved yet (one card at a time)
+// open: the phone stat editor is open (a phone shows one line until Assign, 2026-10-01).
+const pend = { id: null, add: {}, open: false }; // points picked but not saved yet (one card at a time)
 // Only the stats that do something for this card: attackers fight, effects and supports cast.
 function statKeys(c) {
   const keys = [];
@@ -632,7 +652,7 @@ function statKeys(c) {
 function pointsHTML(c, sp) {
   const keys = statKeys(c);
   if (!keys.length) return '';
-  if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; }
+  if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; pend.open = false; }
   const picked = Object.values(pend.add).reduce((t, n) => t + n, 0);
   const left = (sp.free || 0) - picked;
   const pts = sp.points || {};
@@ -641,8 +661,17 @@ function pointsHTML(c, sp) {
       <span>${label}</span><b>${Number(pts[k]) || 0}${pend.add[k] ? `<i>+${pend.add[k]}</i>` : ''}</b>
       <button class="pts-add" data-add="${k}"${left > 0 ? '' : ' disabled'}>+</button></div>`).join('');
   const canReset = spent > 0 && !picked && !ctx.cache.collection?.stats?.resetUsed;
-  return `<div class="pts${left > 0 ? ' has-free' : ''}" id="pPts">
+  // A phone has no room for five rows in the card view (Nathan, 2026-10-01: cut off in landscape):
+  // one line with the free points and what is spent; Assign opens the rows over the card view.
+  if (isPhone() && !pend.open) {
+    const sum = STAT_DEFS.filter(([k]) => keys.includes(k) && Number(pts[k])).map(([k, label]) => `<i>${label} ${Number(pts[k])}</i>`).join('');
+    const btn = left > 0 ? '<button class="v2-btn gold" id="ptsOpen">Assign</button>' : canReset ? '<button class="v2-btn" id="ptsOpen">Edit</button>' : '';
+    return `<div class="pts pts-compact${left > 0 ? ' has-free' : ''}" id="pPts">
     <div class="pb-h"><span class="side-h">Stat points</span><span class="mono">${left} free</span></div>
+    ${sum || btn ? `<div class="pts-sum">${sum}${btn}</div>` : ''}</div>`;
+  }
+  return `<div class="pts${left > 0 ? ' has-free' : ''}${isPhone() ? ' pts-open' : ''}" id="pPts">
+    <div class="pb-h"><span class="side-h">Stat points</span><span class="mono">${left} free</span>${isPhone() ? '<button class="v2-icon" id="ptsDone" title="Close">✕</button>' : ''}</div>
     <div class="pts-rows">${rows}</div>
     ${picked || canReset ? `<div class="pts-act">${picked ? '<button class="v2-btn gold" id="ptsSave">Save</button><button class="v2-btn" id="ptsUndo">Undo</button>' : ''}
       ${canReset ? '<button class="link-btn" id="ptsReset">Reset</button>' : ''}</div>` : ''}
@@ -654,6 +683,8 @@ function wirePoints(c, sp, box) {
     const add = e.target.closest('[data-add]');
     if (add) { const k = add.dataset.add; pend.add[k] = (pend.add[k] || 0) + 1; repaint(); return; }
     if (e.target.closest('#ptsUndo')) { pend.add = {}; repaint(); return; }
+    if (e.target.closest('#ptsOpen')) { pend.open = true; repaint(); return; }
+    if (e.target.closest('#ptsDone')) { pend.open = false; pend.add = {}; repaint(); return; }
     const save = e.target.closest('#ptsSave');
     const reset = e.target.closest('#ptsReset');
     if (!save && !reset) return;
@@ -664,7 +695,7 @@ function wirePoints(c, sp, box) {
         : await ctx.apiPost('/api/stats/reset', { cardId: c.id });
     } catch { r = null; }
     if (!r?.ok) { (save || reset).disabled = false; (save || reset).textContent = r?.error === 'reset_used' ? 'Next week' : 'Try again'; return; }
-    pend.add = {};
+    pend.add = {}; pend.open = false;
     await ctx.refreshOwned();
     renderCollectionV2();
   });
@@ -1099,6 +1130,16 @@ const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const mem = { page: 0, all: false };
 let memData = null;
 
+// The needs / closest achievements list: a phone shows only whole rows; no room for one row hides
+// the box (a cut row showed in portrait, 2026-10-01). A desktop keeps the first row.
+function fitNeed(box) {
+  const list = box.querySelector('.need-list');
+  if (!list) return;
+  if (!isPhone()) { fitChildren(list); return; }
+  const bottom = list.getBoundingClientRect().bottom + 1;
+  while (list.lastElementChild && list.lastElementChild.getBoundingClientRect().bottom > bottom) list.lastElementChild.remove();
+  if (!list.children.length) box.querySelector('.mem-need')?.classList.add('m-none');
+}
 export async function openMember(id) {
   const { el } = ctx;
   let box = el('memberModal');
@@ -1202,7 +1243,8 @@ function paintMember() {
     if (c && c.image_url) ctx.openViewer(c);
   }));
   // Fit after the browser lays the new screen out (measured too early, it emptied the lists).
-  requestAnimationFrame(() => { fitChildren(box.querySelector('.need-list')); fitChildren(el('memAch')); if (!mem.all) fitChildren(el('memGrid')); });
+  requestAnimationFrame(() => { fitNeed(box); fitChildren(el('memAch')); if (!mem.all) fitChildren(el('memGrid')); });
+  setTimeout(() => fitNeed(box), 300); // again after the fonts and images load
 }
 
 // Their damage in the live hunt, per day, and their best card.

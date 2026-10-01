@@ -802,3 +802,122 @@ body.ui-v2.m-land.m-xnarrow .v2-trade.fx-view #fxPager { position: absolute; top
 @keyframes mPanelP { from { opacity: .3; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
 body.ui-v2 #colPanel.m-open.m-slide-next > * { animation: mPanelN .22s ease-out; }
 body.ui-v2 #colPanel.m-open.m-slide-prev > * { animation: mPanelP .22s ease-out; }
+
+/* ===== The phone card view: stat points (Nathan, 2026-10-01: cut off in landscape) =====
+   One line in the card view: the free points, what is spent, Assign. Assign opens the rows
+   over the card view (the right column in landscape, the lower part in portrait). */
+body.ui-v2 #colPanel.m-open .pts-compact .side-h { margin: 0; }
+body.ui-v2 #colPanel.m-open .pts-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; }
+body.ui-v2 #colPanel.m-open .pts-sum i { font-style: normal; font-size: 11.5px; padding: 2px 8px; border-radius: var(--rad-pill); border: 1px solid var(--border); color: var(--text-secondary); }
+body.ui-v2 #colPanel.m-open .pts-sum .v2-btn { margin-left: auto; height: 34px; padding: 0 14px; }
+body.ui-v2 #colPanel.m-open .pts-open { z-index: 5; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px;
+  background: var(--bg-raised); border: 1px solid rgba(244, 183, 60, .45); box-shadow: 0 10px 40px rgba(0, 0, 0, .55); }
+body.ui-v2 #colPanel.m-open .pts-open .pb-h { gap: 8px; }
+body.ui-v2 #colPanel.m-open .pts-open .pb-h .mono { margin-left: auto; }
+body.ui-v2 #colPanel.m-open .pts-open #ptsDone { width: 36px; height: 36px; flex: none; }
+body.ui-v2 #colPanel.m-open .pts-open .pts-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.ui-v2 #colPanel.m-open .pts-open .pts-row { min-height: 40px; font-size: 13px; }
+body.ui-v2 #colPanel.m-open .pts-open .pts-row span { overflow: visible; text-overflow: clip; }
+body.ui-v2 #colPanel.m-open .pts-open .pts-add { width: 32px; height: 32px; font-size: 16px; }
+body.ui-v2 #colPanel.m-open .pts-open .pts-act { margin-top: 0; }
+body.ui-v2 #colPanel.m-open .pts-open .pts-act .v2-btn { height: 40px; }
+body.ui-v2.m-land #colPanel.m-open .pv-side { position: relative; }
+body.ui-v2.m-land #colPanel.m-open .pts-open { position: absolute; inset: 0; }
+body.ui-v2.m-port #colPanel.m-open .pts-open { position: absolute; left: 10px; right: 10px; bottom: 10px; }
+/* Portrait: the card art a little smaller (design 25 frame 3), so the effect + Ascension fit. */
+body.ui-v2.m-port #colPanel.m-open .p-art { height: 25dvh; }
+@media (max-height: 700px) { body.ui-v2.m-port #colPanel.m-open .p-art { height: 21dvh; } }
+/* Portrait card view (2026-10-01): the art on the left with the name, stats and buttons beside it;
+   the ability, effect, Ascension and stat points under them at the full width. */
+body.ui-v2.m-port #colPanel.m-open:has(.pv-mid) { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px 12px; align-content: start; }
+body.ui-v2.m-port #colPanel.m-open:has(.pv-mid) .p-art { grid-column: 1; grid-row: 1; align-self: start; height: auto; width: 38vw; max-width: 170px; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid { grid-column: 2; grid-row: 1; gap: 5px; padding-right: 0; }
+body.ui-v2.m-port #colPanel.m-open .pv-side { grid-column: 1 / -1; grid-row: 2; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid h2, body.ui-v2.m-port #colPanel.m-open .pv-mid h3 { font-size: 17px; line-height: 1.15; margin: 0; padding-right: 44px; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid .p-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid .p-stats .stat { padding: 5px 6px; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid .p-actions { margin-top: auto; }
+@media (max-height: 700px) { body.ui-v2.m-port #colPanel.m-open:has(.pv-mid) .p-art { width: 28vw; } body.ui-v2.m-port #colPanel.m-open .pv-side { gap: 5px; } }
+
+/* ===== The member profile on a phone (Nathan, 2026-10-01: "needs to be fixed for both") =====
+   A compact head (the avatar beside the name, Back in the corner), the stats; the achievement
+   icons go (the count is in the stats); the hunt box shows its numbers (no day bars). */
+body.ui-v2.m-land .v2-screen, body.ui-v2.m-port .v2-screen { left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); bottom: calc(var(--dock-h) + 10px + var(--sa-b)); }
+body.ui-v2.m-land .mem-screen, body.ui-v2.m-port .mem-screen { gap: 6px; }
+body.ui-v2.m-land .mem-col, body.ui-v2.m-port .mem-col { padding: 10px; border-radius: 14px; }
+body.ui-v2.m-land .mem-left, body.ui-v2.m-port .mem-left { position: relative; gap: 7px; }
+body.ui-v2.m-land .mem-top, body.ui-v2.m-port .mem-top { position: absolute; top: 8px; right: 8px; z-index: 2; }
+body.ui-v2.m-land .mem-top .v2-chip-btn, body.ui-v2.m-port .mem-top .v2-chip-btn { height: 34px; padding: 0 10px; font-size: 12.5px; }
+body.ui-v2.m-land .mem-id, body.ui-v2.m-port .mem-id { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; row-gap: 3px; align-items: center; justify-items: start; padding-right: 76px; }
+body.ui-v2.m-land .mem-id > .v2-avatar, body.ui-v2.m-port .mem-id > .v2-avatar { grid-row: 1 / span 3; width: 56px; height: 56px; }
+body.ui-v2.m-land .mem-id > :not(.v2-avatar), body.ui-v2.m-port .mem-id > :not(.v2-avatar) { grid-column: 2; }
+body.ui-v2.m-land .mem-id h2, body.ui-v2.m-port .mem-id h2 { font-size: 18px; line-height: 1.15; overflow-wrap: anywhere; }
+body.ui-v2.m-land .mem-badges, body.ui-v2.m-port .mem-badges { flex-wrap: wrap; }
+body.ui-v2.m-land .mem-badge, body.ui-v2.m-port .mem-badge { width: 22px; height: 22px; font-size: 11px; }
+body.ui-v2.m-land .mem-more, body.ui-v2.m-port .mem-more { font-size: 11px; }
+body.ui-v2.m-land .mem-status, body.ui-v2.m-port .mem-status { padding: 5px 8px; font-size: 12px; }
+body.ui-v2.m-land .mem-left .v2-btn, body.ui-v2.m-port .mem-left .v2-btn { height: 40px; }
+body.ui-v2.m-land .mem-grid-stats, body.ui-v2.m-port .mem-grid-stats { padding: 6px 2px; gap: 4px 2px; }
+body.ui-v2.m-land .mem-grid-stats b, body.ui-v2.m-port .mem-grid-stats b { font-size: 13px; }
+body.ui-v2.m-land .mem-grid-stats span, body.ui-v2.m-port .mem-grid-stats span { font-size: 10.5px; text-align: center; }
+body.ui-v2.m-land .mem-left > .side-h, body.ui-v2.m-land .mem-ach, body.ui-v2.m-port .mem-left > .side-h, body.ui-v2.m-port .mem-ach { display: none; }
+body.ui-v2.m-land .mem-bars, body.ui-v2.m-land .mem-top-card, body.ui-v2.m-port .mem-bars, body.ui-v2.m-port .mem-top-card { display: none; }
+body.ui-v2.m-land .mem-hunt:has(> .v2-empty), body.ui-v2.m-port .mem-hunt:has(> .v2-empty) { display: none; }
+body.ui-v2.m-land .mem-hstats b, body.ui-v2.m-port .mem-hstats b { font-size: 15px; }
+body.ui-v2.m-land .mem-season .mem-mini, body.ui-v2.m-port .mem-season .mem-mini { display: none; }
+body.ui-v2.m-land .mem-season .mem-bar, body.ui-v2.m-port .mem-season .mem-bar { width: 100%; flex: 1 1 60px; }
+body.ui-v2.m-land .mem-season .v2-col-head h2, body.ui-v2.m-port .mem-season .v2-col-head h2 { font-size: 15px; }
+body.ui-v2.m-land .mem-rar span, body.ui-v2.m-port .mem-rar span { font-size: 11px; padding: 2px 7px; }
+body.ui-v2.m-land .need-row > div span, body.ui-v2.m-port .need-row > div span { font-size: 10.5px; }
+body.ui-v2.m-land .need-row > div b, body.ui-v2.m-port .need-row > div b { white-space: normal; overflow: visible; text-overflow: clip; }
+body.ui-v2.m-land .mem-right .tile-h, body.ui-v2.m-port .mem-right .tile-h { font-size: 13px; }
+/* Portrait: one column. */
+body.ui-v2.m-port .mem-screen { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
+body.ui-v2.m-port .mem-center { grid-template-rows: auto auto; gap: 6px; }
+body.ui-v2.m-port .mem-center:has(.mem-season.full) { grid-template-rows: minmax(0, 1fr); grid-row: 2 / -1; }
+body.ui-v2.m-port .mem-screen:has(.mem-season.full) .mem-right { display: none; }
+body.ui-v2.m-port .mem-spot { height: 150px; }
+body.ui-v2.m-port .mem-right { grid-template-rows: auto minmax(0, 1fr); gap: 6px; }
+body.ui-v2.m-port .mem-right:not(:has(.mem-hunt:not(:has(> .v2-empty)))) { grid-template-rows: minmax(0, 1fr); }
+/* Landscape: three columns. */
+body.ui-v2.m-land .mem-screen { grid-template-columns: minmax(230px, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
+body.ui-v2.m-land .mem-center { grid-template-rows: minmax(0, 1fr) auto; gap: 6px; }
+body.ui-v2.m-land .mem-center:has(.mem-season.full) { grid-template-rows: minmax(0, 1fr); grid-column: 2 / -1; }
+body.ui-v2.m-land .mem-screen:has(.mem-season.full) .mem-right { display: none; }
+body.ui-v2.m-land .mem-right { grid-template-rows: auto minmax(0, 1fr); gap: 6px; }
+body.ui-v2.m-land .mem-right:not(:has(.mem-hunt:not(:has(> .v2-empty)))) { grid-template-rows: minmax(0, 1fr); }
+body.ui-v2.m-land .mem-rar { display: none; }
+/* The notifications (and every sheet) on a portrait phone: the full width, not the desktop 400 px. */
+body.ui-v2.m-port .v2-drop { width: auto; top: calc(6px + var(--sa-t)); max-height: none; box-sizing: border-box; }
+/* The profile starts under the top bar (a notch phone adds the top safe area). */
+body.ui-v2.m-land .v2-screen, body.ui-v2.m-port .v2-screen { top: calc(var(--topbar-h) + var(--sa-t)); }
+/* Landscape: Back is the first row, so the name has the full width of the column. */
+body.ui-v2.m-land .mem-screen { grid-template-columns: minmax(250px, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); }
+body.ui-v2.m-land .mem-top { position: static; }
+body.ui-v2.m-land .mem-top .v2-chip-btn { height: 30px; }
+body.ui-v2.m-land .mem-id { padding-right: 0; }
+body.ui-v2.m-land .mem-id > .v2-avatar { width: 48px; height: 48px; }
+body.ui-v2.m-land .mem-id h2 { font-size: 16px; }
+body.ui-v2.m-land .mem-left { gap: 6px; }
+/* The spotlight cards: as wide as the column allows, the main one larger. */
+body.ui-v2.m-land .mem-spot-row, body.ui-v2.m-port .mem-spot-row { gap: 8px; min-width: 0; }
+body.ui-v2.m-land .mem-spot-row .spot-card, body.ui-v2.m-port .mem-spot-row .spot-card { height: auto; max-height: 84%; width: 28%; aspect-ratio: 5 / 7; flex: 0 1 auto; }
+body.ui-v2.m-land .mem-spot-row .spot-card.main, body.ui-v2.m-port .mem-spot-row .spot-card.main { max-height: 100%; width: 34%; }
+body.ui-v2.m-land .mem-need.m-none, body.ui-v2.m-port .mem-need.m-none { display: none; }
+/* A short portrait phone (an iPhone SE): a smaller spotlight row so the needs keep a row. */
+body.ui-v2.m-port.m-short .mem-spot { height: 120px; }
+body.ui-v2.m-port.m-short .mem-rar span { padding: 1px 6px; }
+/* The notifications on a phone: the whole message shows (it wraps, no ellipsis). */
+body.ui-v2.m-land .nt-row .nt-t b, body.ui-v2.m-port .nt-row .nt-t b { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; }
+body.ui-v2.m-land .nt-row .nt-t, body.ui-v2.m-port .nt-row .nt-t { flex: 1 1 auto; min-width: 0; }
+/* The card view labels: 10.5 px at least on a phone. */
+body.ui-v2.m-land #colPanel.m-open .p-stats .stat span, body.ui-v2.m-port #colPanel.m-open .p-stats .stat span,
+body.ui-v2.m-land #colPanel.m-open .pbox .pb-h span, body.ui-v2.m-port #colPanel.m-open .pbox .pb-h span { font-size: 10.5px; }
+/* Landscape card view: the stat points are one line (the head + Assign), the Play button a little
+   shorter; the smallest phones (an iPhone SE) drop the effect's time line (the 3D viewer has it). */
+body.ui-v2.m-land #colPanel.m-open .pts-compact { display: flex; align-items: center; gap: 8px; }
+body.ui-v2.m-land #colPanel.m-open .pts-compact .pb-h { flex: 1; min-width: 0; gap: 8px; justify-content: flex-start; }
+body.ui-v2.m-land #colPanel.m-open .pts-compact .pts-sum { margin: 0; flex: none; }
+body.ui-v2.m-land #colPanel.m-open .pts-compact .pts-sum i { display: none; }
+body.ui-v2.m-land #colPanel.m-open .pbox.fx .v-play { height: 36px; }
+body.ui-v2.m-land.m-xnarrow #colPanel.m-open .v-effect-meta { display: none; }
