@@ -28,6 +28,7 @@ import { initDailies } from './ui-v2-dailies.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
+import { initMobile, isPhone } from './mobile.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -223,6 +224,7 @@ let cardBack = '';
 let features = {}; // server feature flags (e.g., ascension), from /api/config
 let packsAvailable = 0;
 let uiV2 = false;   // the v2 UI (docs/design.md), from /api/flags after login
+let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
 let meUser = null;  // { id, name } of the signed-in member
 let mainItems = []; // the cards backing the current main-pane grid (for click → viewer)
 let revealItems = []; // the cards in the current pack reveal (for click → viewer)
@@ -325,6 +327,7 @@ async function main() {
   let flags = null;
   try { flags = await api('/api/flags'); } catch { flags = null; }
   uiV2 = !!flags?.uiV2;
+  mobileUi = !!flags?.mobile;
   // A new member's first login gave them the welcome packs: show them now.
   if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   if (uiV2) { startV2(); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); } else show('collection');
@@ -333,6 +336,7 @@ async function main() {
 // The v2 shell: the body class switches the CSS, the dock replaces the tab nav.
 function startV2() {
   document.body.classList.add('ui-v2');
+  if (mobileUi) initMobile(() => show(currentView)); // a phone turned: paint the screen in its new layout
   initV2({
     api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
     playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),
@@ -1750,7 +1754,7 @@ function battlePhaseHTML(d) {
       <div class="arena-subrow">
         <span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span>
         <span class="fighters-now" id="fighterCount"></span>
-        <button class="hunt-lb" id="huntLbBtn">🏆 Standings</button>
+        <button class="hunt-lb" id="huntLbBtn">🏆<span class="lb-t"> Standings</span></button>
       </div>
     </div>
     <div class="squad-grid hand" id="huntGrid"></div>
@@ -1840,7 +1844,8 @@ function sizeSquadGrid() {
     const byWidth = (aw - (cols + 1) * gap) / cols;
     // Give the boss + the attack stage most of the pane — the hand is a compact
     // bottom strip (was 0.34 of the height; now ~0.24, capped smaller).
-    const byHeight = (ah * (uiV2 ? 0.31 : 0.24) - capH) * 5 / 7;
+    // A phone held sideways has a short arena: the hand takes more of it (design 24, frame 5).
+    const byHeight = (ah * (isPhone() ? 0.5 : uiV2 ? 0.31 : 0.24) - capH) * 5 / 7;
     const sw = Math.max(52, Math.min(uiV2 ? 150 : 112, Math.floor(Math.min(byWidth, byHeight))));
     grid.style.setProperty('--sw', `${sw}px`);
     return;

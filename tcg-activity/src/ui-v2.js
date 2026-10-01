@@ -3,6 +3,7 @@
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';
 import { mtToday } from './mt-time.js';
 import { flairHTML } from './flair.js';
@@ -252,7 +253,8 @@ export async function renderCollectionV2() {
     const sub = hasFilters()
       ? `${filtered.length} cards · ${filtered.filter((c) => c.owned).length} owned`
       : `${inSeason.filter((c) => c.owned).length}/${inSeason.length} · ${Math.round((100 * inSeason.filter((c) => c.owned).length) / (inSeason.length || 1))}%`;
-    center = `<div class="v2-col-head">${tabs}<h2 class="col-title">${esc(col.season)} <span class="sub">${sub}</span></h2><span class="grow"></span><div class="v2-pager" id="colPager"></div></div>
+    // A phone: the element buttons sit in the head row, beside the set name (design 24).
+    center = `<div class="v2-col-head">${tabs}<h2 class="col-title">${esc(col.season)} <span class="sub">${sub}</span></h2>${isPhone() ? `<div class="el-grid head-el">${elemBtns}</div>` : ''}<span class="grow"></span><div class="v2-pager" id="colPager"></div></div>
       <div class="v2-grid" id="colGrid"></div>`;
   }
 
@@ -264,7 +266,7 @@ export async function renderCollectionV2() {
       ${seasons.length > 1 ? `<div class="side-h">Set</div>${setRows}` : ''}
       <div class="seg f-own">${ownSeg}</div>
       <div class="side-h">Rarity</div><div class="f-chips">${rarityChips}</div>
-      <div class="side-h">Element</div><div class="el-grid">${elemBtns}</div>
+      ${isPhone() ? '' : `<div class="side-h">Element</div><div class="el-grid">${elemBtns}</div>`}
       <div class="side-h">Type</div><div class="f-chips">${typeChips}</div>
       <div class="side-h">Game</div><div class="f-chips">${gameChips}</div>
     </aside>
@@ -301,11 +303,14 @@ export async function renderCollectionV2() {
   el('achAll')?.addEventListener('click', () => redeemAll(el('achAll')));
   // An achievement opens its detail (the cards it needs); Redeem pays it.
   el('colCenter').addEventListener('click', (e) => {
+    const hel = e.target.closest('.head-el .el-btn');
+    if (hel) { col.element = col.element === hel.dataset.el ? null : hel.dataset.el; toCards(); renderCollectionV2(); return; }
     const bc = e.target.closest('[data-bi]');
     if (bc) {
       col.boss = Number(bc.dataset.bi);
       el('bossGrid').querySelectorAll('.boss-cell').forEach((x) => x.classList.toggle('on', x === bc));
       paintBossPanel();
+      if (isPhone()) el('colPanel')?.classList.add('m-open');
       return;
     }
     const r = e.target.closest('[data-redeem]');
@@ -334,6 +339,10 @@ function fitChips(side) {
   const over = () => side.scrollHeight > side.clientHeight + 1;
   if (over()) side.classList.add('tight');
   if (over()) side.classList.add('tighter');
+  // A phone: the last filter groups (Game, then Type) go when they still do not fit. The search
+  // box still finds those tags.
+  const heads = [...side.querySelectorAll('.side-h')];
+  while (over() && heads.length > 1) { const h = heads.pop(); h.classList.add('hidden'); h.nextElementSibling?.classList.add('hidden'); }
 }
 
 function paintHead() {
@@ -412,6 +421,9 @@ function pickCard(c, node, grid) {
   col.sel = c.id;
   grid.querySelectorAll('.v2-cell.sel').forEach((n) => n.classList.remove('sel'));
   node?.classList.add('sel');
+  // A phone has no room for the side panel: the panel opens as the full-screen card view
+  // (designs 24 + 25), and a tap on its big card opens the 3D viewer.
+  if (isPhone()) { ctx.el('colPanel')?.classList.add('m-open'); paintPanel(c); return; }
   paintPanel(c);
   if (!c.locked) ctx.openViewer(c);
 }
@@ -472,7 +484,7 @@ function paintPanel(c) {
   const inSpot = (myProfile?.spotlight || []).map(Number).includes(Number(c.id));
   const canAsc = !c.locked && ctx.features().ascension && a < 5 && c.can_ascend;
   const owned = c.locked ? 'Not in your collection yet' : `${c.quantity} ${c.quantity === 1 ? 'copy' : 'copies'}`;
-  box.innerHTML = `<div class="p-top">
+  box.innerHTML = `${isPhone() ? '<button class="v2-icon p-close" id="pClose" aria-label="Close">✕</button>' : ''}<div class="p-top">
       <div class="p-art${c.locked ? ' locked' : ''}" id="pArt">${!c.locked && c.image_url ? `<img src="${c.image_url}" alt="">${flairHTML(a)}` : '<span class="lk">🔒</span>'}</div>
       <div class="p-id">
         <span class="p-num">${numLabel(c.num)} · ${esc(c.season || 'Season 1').toUpperCase()}</span>
@@ -499,12 +511,28 @@ function paintPanel(c) {
       <button class="v2-icon" id="pTrade" title="Trade">⇄</button>
     </div>`;
   el('pArt')?.addEventListener('click', () => { if (!c.locked) ctx.openViewer(c); });
+  el('pClose')?.addEventListener('click', () => box.classList.remove('m-open'));
+  if (isPhone()) phoneColumns(box);
   el('pTrade')?.addEventListener('click', () => ctx.show('trading'));
   el('pSpot')?.addEventListener('click', () => toggleSpotlight(c));
   el('pAscend')?.addEventListener('click', () => ascend(c));
   if (sp) wirePoints(c, sp, box);
   fitPanel(box);
   fillViewerEffect(c, 'colEffect').then(() => fitPanel(box));
+}
+
+// The phone card view: the big card, then two columns that do not share rows (the name,
+// stats, lore and tags / the ability, effect, ascension and actions).
+function phoneColumns(box) {
+  const mid = document.createElement('div'); mid.className = 'pv-mid';
+  const side = document.createElement('div'); side.className = 'pv-side';
+  const art = box.querySelector('.p-art');
+  const id = box.querySelector('.p-id');
+  if (art) box.prepend(art);
+  box.querySelector('.p-top')?.remove();
+  [box.querySelector('#pClose'), id, box.querySelector('.p-lore'), box.querySelector('.p-tags'), box.querySelector('.p-credit'), box.querySelector('.p-actions')].forEach((n) => n && mid.append(n));
+  [...box.children].filter((n) => n !== art).forEach((n) => side.append(n));
+  box.append(mid, side);
 }
 
 // The Raid Bosses panel: the selected boss, alive (idle + an occasional flex or taunt),
@@ -759,7 +787,8 @@ function tickCloses() {
 export function fitChildren(box) {
   if (!box) return;
   const bottom = box.getBoundingClientRect().bottom;
-  while (box.lastElementChild && box.children.length > 0 && box.lastElementChild.getBoundingClientRect().bottom > bottom + 1) box.lastElementChild.remove();
+  // Keep the first child: a short window showed "Incoming 3" with no offer to accept (2026-10-01).
+  while (box.children.length > 1 && box.lastElementChild.getBoundingClientRect().bottom > bottom + 1) box.lastElementChild.remove();
 }
 
 function profileStats(p, cards) {
@@ -863,8 +892,10 @@ export function paintVoice() {
       <div><b>${nameBadge(p.id, p.name)}${self ? ' <i class="you">You</i>' : ''}</b><span class="vc-st">${ico} ${esc(b.st)}</span></div>${watch ? WATCH_CHIP : `<span class="vc-ago mono">${vcAgo(p.status?.at)}</span>`}</div>
       ${b.body ? `<div class="vc-body">${b.body}</div>` : ''}${b.foot ? `<div class="vc-foot">${b.foot}</div>` : ''}</button>`;
   };
+  // Phones show one row (Nathan: the +N tile for the rest). The desktop shows up to 6.
+  const shown = isLand() ? (innerWidth >= 800 ? 3 : 2) : isPort() ? 2 : 6;
   box.innerHTML = `<div class="tile-h"><b>🎧 Live in voice</b><span class="dim">${people.length}</span><span class="grow"></span>${people.length > 1 ? '<span class="live-chip sm">● LIVE</span>' : ''}</div>
-    <div class="vc-grid">${people.slice(0, 6).map(tile).join('')}</div>`;
+    <div class="vc-grid${people.length > shown ? '' : ' no-more'}" style="--vc-n:${shown}">${people.slice(0, shown).map(tile).join('')}${people.length > shown ? `<span class="vc-more">+${people.length - shown}</span>` : ''}</div>`;
   // A tap on an "Opening" tile watches that pack (the only way to see another member's open).
   box.onclick = (e) => { const t = e.target.closest('[data-member]'); if (!t) return; if (t.classList.contains('watch') && ctx.watchOpen?.(t.dataset.member)) return; openMember(t.dataset.member); };
 }

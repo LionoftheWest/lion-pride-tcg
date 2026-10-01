@@ -298,6 +298,10 @@ const FEATURE_HUNT = process.env.FEATURE_HUNT === '1';
 // UI_V2_USERS=id,id for a preview. The client asks after login.
 const UI_V2_ALL = process.env.FEATURE_UI_V2 === '1';
 const UI_V2_USERS = new Set((process.env.UI_V2_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
+// The phone layouts (designs 24 + 25). Default OFF: FEATURE_MOBILE_UI=1 for everyone, or
+// MOBILE_UI_USERS=id,id to test first (Nathan, 2026-10-01: "only have it on my own to test").
+const MOBILE_UI_ALL = process.env.FEATURE_MOBILE_UI === '1';
+const MOBILE_UI_USERS = new Set((process.env.MOBILE_UI_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
 // A member who opens the Activity before they ever chat has no players row, so the
 // first login creates it. The welcome_packs trigger (welcome_packs.sql) then gives a
 // NEW member their free packs. ON CONFLICT DO NOTHING: an existing member is untouched.
@@ -325,7 +329,7 @@ app.get('/api/flags', async (req, res) => {
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
   const { data: tut } = await supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle();
-  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,

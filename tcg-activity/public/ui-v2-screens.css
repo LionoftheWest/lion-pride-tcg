@@ -247,7 +247,7 @@ body.ui-v2 .arena-subrow .fighters-now { text-transform: none; letter-spacing: 0
 body.ui-v2 .arena-subrow .hunt-lb { margin: 0; height: 36px; border-radius: 10px; }
 /* The card row: smaller cards, the power chip above each card. */
 body.ui-v2 .squad-grid.hand { gap: 12px; padding: 40px 12px 14px; background: linear-gradient(to top, rgba(8, 7, 14, .85), rgba(8, 7, 14, .3) 70%, transparent); }
-body.ui-v2 .squad-grid.hand::before { content: 'Tap a card to attack'; position: absolute; left: 50%; top: 4px; transform: translateX(-50%); padding: 6px 14px; border-radius: var(--rad-pill);
+body.ui-v2 .squad-grid.hand::before { content: 'Play supports, then attack · an attack ends your turn'; position: absolute; left: 50%; top: 4px; transform: translateX(-50%); padding: 6px 14px; border-radius: var(--rad-pill);
   background: rgba(17, 17, 27, .85); border: 1px solid var(--border-strong); font: 600 12px var(--font-ui); color: var(--text-primary); white-space: nowrap; }
 body.ui-v2 .squad-grid.hand.targeting::before { content: 'Pick a card'; }
 body.ui-v2 .squad-grid.hand .c .art { border-radius: 10px; border-width: 2px; }
