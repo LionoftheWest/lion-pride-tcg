@@ -31,6 +31,11 @@ function topPaid(settle: { paid?: Array<{ player_id: string; packs: number }> } 
     .map((p) => `<@${p.player_id}> (${p.packs})`).join(', ');
 }
 
+// The same prizes when the boss falls and when it escapes (settle_hunt, hunt_prizes_fixed.sql).
+function prizeLine(s: { participants?: number; total_packs?: number }): string {
+  return `${s.participants ?? 0} hunters earned **${s.total_packs ?? 0}** packs: 1st 7, 2nd 5, 3rd 4, 4th-10th 3, every other hunter 1.`;
+}
+
 // The top 3 players by total damage dealt to the boss, as ranked lines.
 function topDamage(top: unknown): string {
   if (!Array.isArray(top) || !top.length) return '';
@@ -57,14 +62,14 @@ function format(ev: { kind: string; payload: Record<string, unknown> }): string 
       const s = (p.settle ?? {}) as { participants?: number; total_packs?: number };
       const top = topDamage(p.top);
       return `🏆 **${p.name} has been DESTROYED!**  [${p.tier}]\n`
-        + `${s.participants ?? 0} hunters shared **${s.total_packs ?? 0}** packs by damage dealt.`
+        + prizeLine(s)
         + (top ? `\n**Top 3 damage:**\n${top}` : '');
     }
     case 'expired': {
       const s = (p.settle ?? {}) as { participants?: number; total_packs?: number };
       const top = topDamage(p.top);
       return `💀 **${p.name} escaped.** The pride did not defeat it in time.\n`
-        + `Consolation: **${s.total_packs ?? 0}** packs to ${s.participants ?? 0} hunters. A new boss appears Thursday.`
+        + prizeLine(s) + ' A new boss appears Thursday.'
         + (top ? `\n**Top 3 damage:**\n${top}` : '');
     }
     // No 'attack' case: Nathan's rule (2026-09-27) is one summary when a member
