@@ -225,6 +225,7 @@ let features = {}; // server feature flags (e.g., ascension), from /api/config
 let packsAvailable = 0;
 let uiV2 = false;   // the v2 UI (docs/design.md), from /api/flags after login
 let sdkRef = null; // the Discord SDK (the orientation lock)
+let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
 let meUser = null;  // { id, name } of the signed-in member
 let mainItems = []; // the cards backing the current main-pane grid (for click → viewer)
@@ -330,6 +331,7 @@ async function main() {
   try { flags = await api('/api/flags'); } catch { flags = null; }
   uiV2 = !!flags?.uiV2;
   mobileUi = !!flags?.mobile;
+  trade2 = !!flags?.trade2;
   // A new member's first login gave them the welcome packs: show them now.
   if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   if (uiV2) { startV2(); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); } else show('collection');
@@ -355,7 +357,7 @@ function startV2() {
   }
   initV2({
     api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
-    playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),
+    playOnMember, effectsEnabled, trade2: () => trade2, openTrade: (to) => openTradeBuilder(to),
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
     watchable: (id) => Boolean(watchableOpen(id)), watchOpen, sfx: (n) => SFX.play(n),

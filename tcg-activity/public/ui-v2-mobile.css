@@ -477,7 +477,7 @@ body.ui-v2.m-land .v2-trade .tr-info { min-width: 0; }
 body.ui-v2.m-land .v2-trade .tr-swap { width: 34px; height: 34px; flex: none; }
 /* A narrow phone: the "Your cards" label goes (the only tab now), so the search + filters fit;
    the recipient name shows in the member list. */
-body.ui-v2.m-land.m-narrow .v2-trade .tr-gridhead > .seg:first-child { display: none; }
+body.ui-v2.m-land.m-narrow .v2-trade .tr-gridhead > .seg:first-child:not(#trSide) { display: none; }
 body.ui-v2.m-land.m-narrow .v2-trade .tr-to h3, body.ui-v2.m-land.m-narrow .v2-trade .tr-to .tr-who { display: none; }
 
 /* ===== Portrait: Community trades (design 25 part 2, frame 1) =====
@@ -505,7 +505,7 @@ body.ui-v2.m-port .v2-trade .tr-foot .dim { display: none; }
 body.ui-v2.m-port .v2-trade .tr-foot .v2-btn { height: 40px; white-space: nowrap; }
 body.ui-v2.m-port .v2-trade .tr-foot #trSend { flex: 1; }
 body.ui-v2.m-port .v2-trade .tr-gridhead { grid-row: 4; gap: 6px; flex-wrap: nowrap; }
-body.ui-v2.m-port .v2-trade .tr-gridhead > .seg:first-child { display: none; }
+body.ui-v2.m-port .v2-trade .tr-gridhead > .seg:first-child:not(#trSide) { display: none; }
 body.ui-v2.m-port .v2-trade .tr-gridhead .v2-search { height: 34px; min-width: 80px; flex: 1 1 100px; }
 body.ui-v2.m-port .v2-trade .tr-gridhead .seg button { height: 30px; padding: 0 8px; }
 body.ui-v2.m-port .v2-trade .tr-gridhead .grow { display: none; }
@@ -637,7 +637,7 @@ body.ui-v2.m-land .v2-trade .tr-compose .tr-to > .tr-info { display: none; }
 body.ui-v2.m-land .v2-trade .tr-compose .tr-to .tr-who { display: none; }
 body.ui-v2.m-land .v2-trade .tr-compose .tr-rar { white-space: normal; text-align: inherit; }
 /* "Your cards" is the only tab: its label goes on a phone. */
-body.ui-v2.m-land .v2-trade .tr-gridhead > .seg:first-child { display: none; }
+body.ui-v2.m-land .v2-trade .tr-gridhead > .seg:first-child:not(#trSide) { display: none; }
 /* The member column: about 15 letters fit on one line (9 of 10 real names); the width follows the
    usable width, the pager stays centered over the middle column. */
 body.ui-v2.m-land .v2-trade, body.ui-v2.m-land.m-narrow .v2-trade { --mcol: clamp(120px, calc((100vw - var(--sa-l) - var(--sa-r)) * .2), 150px); grid-template-columns: var(--mcol) minmax(0, 1fr) 220px; }

@@ -302,6 +302,12 @@ const UI_V2_USERS = new Set((process.env.UI_V2_USERS || '').split(',').map((s) =
 // MOBILE_UI_USERS=id,id to test first (Nathan, 2026-10-01: "only have it on my own to test").
 const MOBILE_UI_ALL = process.env.FEATURE_MOBILE_UI === '1';
 const MOBILE_UI_USERS = new Set((process.env.MOBILE_UI_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
+// Two-step trades (trade_two_step.sql). Default OFF: FEATURE_TRADE_TWO_STEP=1 for everyone, or
+// TRADE2_USERS=id,id to test first (Nathan, 2026-10-01: "before we roll it out to everyone").
+// An open offer (no card asked for) goes only between two members who have the flow.
+const TRADE2_ALL = process.env.FEATURE_TRADE_TWO_STEP === '1';
+const TRADE2_USERS = new Set((process.env.TRADE2_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
+const trade2On = (id) => TRADE2_ALL || TRADE2_USERS.has(String(id));
 // A member who opens the Activity before they ever chat has no players row, so the
 // first login creates it. The welcome_packs trigger (welcome_packs.sql) then gives a
 // NEW member their free packs. ON CONFLICT DO NOTHING: an existing member is untouched.
@@ -340,7 +346,7 @@ app.get('/api/flags', async (req, res) => {
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
   const { data: tut } = await supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle();
-  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
@@ -1590,6 +1596,7 @@ app.post('/api/trade/offer', async (req, res) => {
   const offerCardId = Number(req.body?.offerCardId);
   const requestCardId = Number(req.body?.requestCardId) || null;
   if (!toId || !offerCardId) return res.status(400).json({ error: 'bad request' });
+  if (!requestCardId && !(trade2On(me.id) && trade2On(toId))) return res.status(400).json({ error: 'two-step trades are not on for that member yet' });
   // Nathan, 2026-10-01: the sender offers one card; the receiver picks theirs (trade_two_step.sql).
   const { data, error } = requestCardId
     ? await supabase.rpc('create_trade', { p_from: me.id, p_to: toId, p_offer: offerCardId, p_request: requestCardId })
@@ -1597,8 +1604,8 @@ app.post('/api/trade/offer', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   if (data != null) {
     const from = me.global_name || me.username;
-    notify(toId, 'trade_offer', `🔄 ${from} sent you a trade offer! Pick a card to trade back.`);
-    announce(`🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to pick your card or decline.`);
+    notify(toId, 'trade_offer', requestCardId ? `🔄 ${from} sent you a trade offer! Open the Trading tab.` : `🔄 ${from} sent you a trade offer! Pick a card to trade back.`);
+    announce(requestCardId ? `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to accept or decline.` : `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to pick your card or decline.`);
   }
   res.json({ ok: data != null, id: data });
 });

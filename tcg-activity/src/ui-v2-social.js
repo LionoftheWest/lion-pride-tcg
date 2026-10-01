@@ -259,6 +259,7 @@ function paintBoard() {
 // respond: the incoming offer I pick my card for (two-step trades, trade_two_step.sql).
 const tr = { tab: 'trades', mode: 'offer', giftKind: 'card', to: null, give: null, get: null, side: 'mine', filter: 'all', q: '', page: 0, members: [], theirs: {}, offers: null, msg: '', respond: null };
 // The trades that wait for ME: an offer to pick a card for, or a pick to accept.
+const two = () => !!ctx().trade2?.(); // two-step trades (flag); OFF = I pick both cards
 export const tradeActions = (d) => (d?.incoming || []).filter((o) => o.status !== 'countered').length + (d?.outgoing || []).filter((o) => o.status === 'countered').length;
 
 export async function renderTradingV2() {
@@ -310,7 +311,10 @@ function gridItems() {
   const b = base();
   const mine = (ctx().cache.collection?.cards || []).map((c) => withBase({ ...c, owned: true, locked: false }, b));
   // Two-step trades (Nathan, 2026-10-01): a member only ever picks from their OWN cards.
-  let items = mine;
+  // Flag OFF: the sender also picks the card they get, from the other member's cards.
+  const theirs = !two() && tr.side === 'theirs' && tr.mode === 'offer' ? (tr.to ? tr.theirs[tr.to.id] || [] : []).map((c) => withBase(c, b)) : null;
+  let items = theirs || mine;
+  if (theirs && tr.give) items = items.filter((c) => c.rarity === tr.give.rarity); // same rarity lane
   if (tr.mode === 'gift') items = items.filter((c) => c.tradeable !== false && c.rarity !== 'gold'); // gifts: no Gold, no locked cards
   if (tr.mode === 'offer') items = items.filter((c) => c.tradeable !== false);
   // Picking my card for an incoming offer: the same rarity, not the card they offer.
@@ -357,6 +361,16 @@ function paintTrade() {
       <div class="tr-foot"><span class="dim">${esc(o.from_name || 'They')} accepts next.</span>
         <span class="grow"></span><span class="tr-msg" id="trMsg">${esc(tr.msg)}</span>
         <button class="v2-btn" id="trClear">✕ Back</button><button class="v2-btn gold" id="trSend" ${tr.give ? '' : 'disabled'}>➤ Send my card</button></div>`;
+  } else if (tr.mode === 'offer' && !two()) {
+    const diff = tr.give && tr.get ? (tr.get.power || 0) - (tr.give.power || 0) : null;
+    composer = `<div class="tr-deal">
+        <div class="tr-side">${slotHTML(tr.give, `${avatarHTML(me?.id, me?.name, 'xs')} You give`, 'Pick your card')}</div>
+        <span class="tr-swap">⇄</span>
+        <div class="tr-side right">${slotHTML(tr.get, `${avatarHTML(tr.to?.id, toName, 'xs')} You get`, tr.give ? `Pick a ${ctx().RARITY_LABEL[tr.give.rarity] || ''} from ${toName}` : 'Then pick their card')}</div>
+      </div>
+      <div class="tr-foot">${diff != null ? `<span class="tr-diff ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '↗ +' : '↘ '}${diff} power</span>` : '<span class="dim">Swaps are the same rarity.</span>'}
+        <span class="grow"></span><span class="tr-msg" id="trMsg">${esc(tr.msg)}</span>
+        <button class="v2-btn" id="trClear">↺ Clear</button><button class="v2-btn gold" id="trSend" ${tr.give && tr.get && tr.to ? '' : 'disabled'}>➤ Send offer</button></div>`;
   } else if (tr.mode === 'offer') {
     // Step 1: I offer one card; the other member picks theirs (Nathan, 2026-10-01).
     composer = `<div class="tr-deal">
@@ -381,6 +395,7 @@ function paintTrade() {
         <button class="v2-btn" id="trClear">↺ Clear</button><button class="v2-btn gold" id="trSend" ${tr.to && (pack ? packs > 0 : tr.give) ? '' : 'disabled'}>🎁 Send gift</button></div>`;
   }
   const mineN = (ctx().cache.collection?.cards || []).length;
+  const theirsN = tr.to ? (tr.theirs[tr.to.id] || []).length : 0;
   const offerCard = (c, tag) => (c ? `<div class="of-card"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""><span>${tag}</span></div>` : '');
   const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
   el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}${tr.respond ? ' responding' : ''}">
@@ -392,7 +407,7 @@ function paintTrade() {
         <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="${isPhone() ? 'Find' : 'Find a member'}"></div>
       <div class="tr-compose">${composer}</div>
       <div class="tr-gridhead">
-        <div class="seg"><button class="on">Your cards <b>${mineN}</b></button></div>
+        ${tr.mode === 'offer' && !two() ? `<div class="seg" id="trSide"><button data-s="mine" class="${tr.side === 'mine' ? 'on' : ''}">Your cards <b>${mineN}</b></button><button data-s="theirs" class="${tr.side === 'theirs' ? 'on' : ''}">${esc(toName)}'s cards <b>${theirsN}</b></button></div>` : `<div class="seg"><button class="on">Your cards <b>${mineN}</b></button></div>`}
         <input class="v2-search" id="trQ" placeholder="${isPhone() ? 'Search' : 'Search cards, tags…'}" value="${esc(tr.q)}">
         <span class="grow"></span>
         <div class="seg" id="trFilter">${[['all', 'All'], ['dupes', 'Dupes'], ['rare', 'Rare+']].map(([v, l]) => `<button data-f="${v}" class="${tr.filter === v ? 'on' : ''}">${l}</button>`).join('')}</div>
@@ -416,7 +431,7 @@ function paintTrade() {
         <div class="of-acts">${acts}</div></div>`;
       }).join('') || '<p class="v2-empty">No incoming offers.</p>'}</div>
       <div class="side-h">Sent <span class="n">${out.length}</span></div>
-      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone', isPhone())}</b><span class="dim">${o.status === 'countered' ? 'Picked a card' : 'Picking a card'}</span></div>
+      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone', isPhone())}</b><span class="dim">${o.status === 'countered' ? 'Picked a card' : o.request ? 'Waiting' : 'Picking a card'}</span></div>
         <div class="of-cards">${offerCard(o.offer, 'Give')}${o.request ? `<span>⇄</span>${offerCard(o.request, 'Get')}` : ''}</div>
         ${o.status === 'countered' ? `<div class="of-acts"><button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button><button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button></div>` : `<button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button>`}</div>`).join('') || '<p class="v2-empty">No sent offers.</p>'}</div>
     </aside>
@@ -425,13 +440,23 @@ function paintTrade() {
   wireCommTabs();
   // Grid
   const items = gridItems();
-  const pickId = tr.give?.id;
-  const onPick = (c) => { tr.msg = ''; tr.give = c; paintTrade(); };
+  const old = !two() && tr.mode === 'offer';
+  const pickId = old && tr.side === 'theirs' ? tr.get?.id : tr.give?.id;
+  const onPick = (c) => {
+    tr.msg = '';
+    if (old && tr.side === 'theirs') tr.get = c;
+    else {
+      tr.give = c;
+      if (old) { if (tr.get && tr.get.rarity !== c.rarity) tr.get = null; tr.side = 'theirs'; tr.page = 0; }
+    }
+    paintTrade();
+  };
   paintCards(el('trGrid'), el('trPager'), items, tr, onPick, pickId);
 
   // Controls
   const main = el('main');
   el('trMode').onclick = (e) => { const b = e.target.closest('[data-m]'); if (!b) return; tr.mode = b.dataset.m; tr.side = 'mine'; tr.give = null; tr.get = null; tr.respond = null; tr.page = 0; tr.msg = ''; paintTrade(); };
+  el('trSide')?.addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (!b) return; tr.side = b.dataset.s; tr.page = 0; paintTrade(); });
   el('trGiftKind')?.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (!b) return; tr.giftKind = b.dataset.k; tr.msg = ''; paintTrade(); });
   el('trFilter').onclick = (e) => { const b = e.target.closest('[data-f]'); if (!b) return; tr.filter = b.dataset.f; tr.page = 0; paintTrade(); };
   el('trQ').addEventListener('input', (e) => { tr.q = e.target.value; tr.page = 0; paintCards(el('trGrid'), el('trPager'), gridItems(), tr, onPick, pickId); });
@@ -497,7 +522,7 @@ async function send() {
   let r = null;
   try {
     if (tr.respond) r = await apiPost('/api/trade/counter', { offerId: tr.respond.id, cardId: tr.give.id });
-    else if (tr.mode === 'offer') r = await apiPost('/api/trade/offer', { toId: tr.to.id, offerCardId: tr.give.id });
+    else if (tr.mode === 'offer') r = await apiPost('/api/trade/offer', { toId: tr.to.id, offerCardId: tr.give.id, ...(two() ? {} : { requestCardId: tr.get.id }) });
     else if (tr.giftKind === 'pack') r = await apiPost('/api/gift', { toId: tr.to.id, amount: 1 });
     else r = await apiPost('/api/trade/gift', { toId: tr.to.id, cardId: tr.give.id });
   } catch { r = null; }
@@ -505,7 +530,7 @@ async function send() {
   if (r?.ok) {
     tr.msg = responding ? `Card sent. ${responding.from_name || 'They'} accepts next.` : tr.mode === 'offer' ? `Offer sent to ${tr.to.name}` : `Gift sent to ${tr.to.name}`;
     tr.respond = null;
-    if (tr.mode === 'offer' && !responding) tr.sent = { name: tr.to.name, c: [tr.give?.id].map(Number).filter(Boolean) };
+    if (tr.mode === 'offer' && !responding) tr.sent = { name: tr.to.name, c: [tr.give?.id, tr.get?.id].map(Number).filter(Boolean) };
     tr.give = null; tr.get = null; tr.side = 'mine';
     delete tr.theirs[tr.to.id];
     await Promise.all([ctx().refreshOwned(), ctx().refreshPacks?.()]);
