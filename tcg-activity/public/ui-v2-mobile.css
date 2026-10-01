@@ -961,3 +961,7 @@ body.ui-v2.m-land .mem-hstats > div { display: flex; align-items: baseline; gap:
 body.ui-v2.m-land .mem-hstats b { display: inline; }
 body.ui-v2.m-port.m-short .mem-hunt { display: none; }
 body.ui-v2.m-land .mem-hunt .tile-h { align-items: flex-start; }
+/* The landscape trade buttons float (layer 61) over the profile and the bell (layer 55): they
+   showed through the profile (Nathan, 2026-10-01, IMG_2860). They hide while one is open. */
+body.ui-v2.m-land:has(#memberModal:not(.hidden)) .v2-trade :is(#trSend, #trClear, #fxPlay),
+body.ui-v2.m-land:has(#v2Notifs:not(.hidden)) .v2-trade :is(#trSend, #trClear, #fxPlay) { visibility: hidden; }
