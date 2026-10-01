@@ -13,6 +13,18 @@ export const isPhone = () => isLand() || isPort();
 function apply() {
   document.body.classList.toggle('m-land', LAND.matches);
   document.body.classList.toggle('m-port', PORT.matches);
+  fitSize();
+}
+
+// The USABLE size (the window minus the safe areas): m-narrow under 760 px wide, m-short
+// under 380 px tall. A notch + Discord buttons take ~120 px of an 852 px iPhone (2026-10-01).
+function fitSize() {
+  const b = document.body, cs = getComputedStyle(b);
+  const w = innerWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+  const h = innerHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0);
+  const phone = LAND.matches || PORT.matches;
+  b.classList.toggle('m-narrow', phone && w < 760);
+  b.classList.toggle('m-short', phone && h < (PORT.matches ? 700 : 380)); // portrait: an iPhone SE
 }
 
 // Discord can leave its safe-area values empty until the first rotation (embedded-app-sdk
@@ -22,7 +34,7 @@ function insetsKnown() {
   return ['top', 'right', 'bottom', 'left'].some((k) => cs.getPropertyValue(`--discord-safe-area-inset-${k}`).trim() !== '');
 }
 function watchInsets() {
-  const check = () => document.body.classList.toggle('m-sa-guess', !insetsKnown());
+  const check = () => { document.body.classList.toggle('m-sa-guess', !insetsKnown()); fitSize(); };
   check();
   let n = 0;
   const t = setInterval(() => { check(); if (insetsKnown() || ++n > 60) clearInterval(t); }, 1000);

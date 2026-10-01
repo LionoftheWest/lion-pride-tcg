@@ -930,6 +930,8 @@ export function paintPulls() {
   box.onclick = (e) => { const r = e.target.closest('[data-pi]'); if (r && pulls[Number(r.dataset.pi)]) ctx.openViewer(pulls[Number(r.dataset.pi)]); };
   // No scrolling: drop the rows that do not fully fit.
   fitChildren(el('plList'));
+  // Once more after the layout settles (the hunt card can still grow and shrink the list).
+  requestAnimationFrame(() => setTimeout(() => fitChildren(el('plList')), 300));
 }
 
 export function homeTick() { tickCloses(); }

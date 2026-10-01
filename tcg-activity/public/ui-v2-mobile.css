@@ -64,13 +64,12 @@ body.ui-v2.m-land .v2-tile.pulls .tile-h b, body.ui-v2.m-land .v2-tile.pulls .se
 body.ui-v2.m-land { padding: 0; }
 body.ui-v2.m-land #body { margin-top: 0; flex: none; }
 body.ui-v2.m-land #heroJoin { white-space: nowrap; }
-@media (max-width: 720px) {
-  body.ui-v2.m-land .hero-info h2 { font-size: 18px; }
-  body.ui-v2.m-land .hero-info { padding: 8px 12px; gap: 4px; }
-  body.ui-v2.m-land .hero-row { margin-top: 0; }
-  body.ui-v2.m-land .v2-tile.voice { padding-top: 8px; padding-bottom: 8px; }
-  body.ui-v2.m-land #heroFaces, body.ui-v2.m-land .hero-row .mono.dim { display: none; }
-}
+/* m-narrow: the usable width (after the safe areas) under 760 px */
+  body.ui-v2.m-land.m-narrow .hero-info h2 { font-size: 18px; }
+  body.ui-v2.m-land.m-narrow .hero-info { padding: 8px 12px; gap: 4px; }
+  body.ui-v2.m-land.m-narrow .hero-row { margin-top: 0; }
+  body.ui-v2.m-land.m-narrow .v2-tile.voice { padding-top: 8px; padding-bottom: 8px; }
+  body.ui-v2.m-land.m-narrow #heroFaces, body.ui-v2.m-land.m-narrow .hero-row .mono.dim { display: none; }
 
 /* ===== Landscape: Collection (design 24 part 1, frames 2 + 3) ===== */
 body.ui-v2.m-land .v2-collection, body.ui-v2.m-land .v2-collection.boss-mode { grid-template-columns: 184px minmax(0, 1fr); gap: var(--m-gap); }
@@ -173,11 +172,10 @@ body.ui-v2.m-land:has(.arena-mode) #feed .afrow { white-space: nowrap; overflow:
 body.ui-v2.m-land:has(.arena-mode) #feed .afrow:nth-child(n+3) { display: none; }
 body.ui-v2.m-land .arena-subrow .hunt-lb { width: 40px; padding: 0; }
 body.ui-v2.m-land .arena-subrow .hunt-lb .lb-t { display: none; }
-@media (max-width: 720px) {
-  body.ui-v2.m-land .squad-grid.hand::before { left: 8px; transform: none; }
-  body.ui-v2.m-land:has(.arena-mode) #feed .afrow:nth-child(n+2) { display: none; }
-  body.ui-v2.m-land .arena-subrow #myDmg { font-size: 0; }
-}
+/* m-narrow: the usable width (after the safe areas) under 760 px */
+  body.ui-v2.m-land.m-narrow .squad-grid.hand::before { left: 8px; transform: none; }
+  body.ui-v2.m-land.m-narrow:has(.arena-mode) #feed .afrow:nth-child(n+2) { display: none; }
+  body.ui-v2.m-land.m-narrow .arena-subrow #myDmg { font-size: 0; }
 
 /* ===== Landscape: Community trades (design 24 part 2, frame 4) =====
    The members as a column on the left, the trade builder and the cards in the middle, the
@@ -238,11 +236,10 @@ body.ui-v2.m-land .v2-trade .tr-compose { padding: 4px 8px; }
 body.ui-v2.m-land .v2-trade .tr-offers .of-list#ofOut { flex-shrink: 0; }
 body.ui-v2.m-land .v2-trade .of-row .of-who { grid-column: 1; }
 body.ui-v2.m-land .v2-trade .of-row .of-acts, body.ui-v2.m-land .v2-trade .of-row .of-cancel { grid-column: 2; grid-row: 1 / 3; }
-@media (max-width: 720px) {
-  body.ui-v2.m-land .v2-trade { grid-template-columns: 112px minmax(0, 1fr) 220px; }
-  body.ui-v2.m-land .v2-trade #trPager { left: calc(120px + (100% - 120px - 228px) / 2); }
-  body.ui-v2.m-land .v2-trade .tr-gridhead #trQ, body.ui-v2.m-land .v2-trade .tr-gridhead #trFilter { display: none; }
-}
+/* m-narrow: the usable width (after the safe areas) under 760 px */
+  body.ui-v2.m-land.m-narrow .v2-trade { grid-template-columns: 112px minmax(0, 1fr) 220px; }
+  body.ui-v2.m-land.m-narrow .v2-trade #trPager { left: calc(120px + (100% - 120px - 228px) / 2); }
+  /* (the search + filters stay: the other member cards tab is gone with two-step trades) */
 body.ui-v2.m-land .v2-trade .tr-top .seg button { height: 28px; }
 body.ui-v2.m-land .v2-trade #trGrid { padding-top: 0; }
 body.ui-v2.m-land .v2-trade .tr-compose .tr-slot { width: 44px; flex-basis: 44px; }
@@ -274,10 +271,9 @@ body.ui-v2.m-land .hp-item:not(.open) .hp-chev { display: none; }
 body.ui-v2.m-land .dl-drop .dl-row { min-height: 40px; }
 body.ui-v2.m-land .dl-drop .dl-list { gap: 3px; }
 body.ui-v2.m-land .dl-drop .dl-auto small { font-size: 10.5px; }
-@media (max-height: 380px) {
-  body.ui-v2.m-land .dl-drop .dl-sum { padding: 6px 10px; gap: 4px; }
-  body.ui-v2.m-land .dl-drop .dl-row { min-height: 38px; padding-top: 4px; padding-bottom: 4px; }
-}
+/* m-short: the usable height under 380 px */
+  body.ui-v2.m-land.m-short .dl-drop .dl-sum { padding: 6px 10px; gap: 4px; }
+  body.ui-v2.m-land.m-short .dl-drop .dl-row { min-height: 38px; padding-top: 4px; padding-bottom: 4px; }
 
 /* ===== Landscape: the Leaderboard (the desktop parts, fitted: a compact podium, the rows
    that fit, my standing on the right) ===== */
@@ -307,7 +303,7 @@ body.ui-v2.m-land .lb-pod .lb-name { font-size: 13px; white-space: nowrap; overf
 body.ui-v2.m-land .lb-pod { min-width: 0; overflow: hidden; }
 body.ui-v2.m-land .lb-pod .lb-val { white-space: nowrap; }
 body.ui-v2.m-land .lb-pod .lb-name { flex: 1 1 auto; }
-@media (max-width: 720px) { body.ui-v2.m-land .lb-pod .v2-avatar { display: none; } body.ui-v2.m-land .lb-tab { padding: 0 7px; } }
+body.ui-v2.m-land.m-narrow .lb-pod .v2-avatar { display: none; } body.ui-v2.m-land.m-narrow .lb-tab { padding: 0 7px; } /* the usable size */
 body.ui-v2.m-land .mr-newtag, body.ui-v2.m-port .mr-newtag { font-size: 10.5px; }
 
 /* ===== Portrait: the shell (design 25) ===== */
@@ -461,7 +457,112 @@ body.ui-v2.m-land #colCenter > .v2-col-head > .grow { display: none; }
 body.ui-v2.m-land #colCenter > .v2-col-head > #colPager { order: 2; margin-left: auto; }
 body.ui-v2.m-land #colCenter > .v2-col-head > .col-title { order: 3; flex-direction: row; align-items: baseline; gap: 8px; }
 body.ui-v2.m-land #colCenter > .v2-col-head > .head-el { order: 4; margin-left: auto; }
-@media (max-width: 760px) {
-  body.ui-v2.m-land #colCenter > .v2-col-head > .col-title .sub { display: none; }
-  body.ui-v2.m-land .head-el .el-btn { width: 26px; }
-}
+/* m-narrow: the usable width (after the safe areas) under 760 px */
+  body.ui-v2.m-land.m-narrow #colCenter > .v2-col-head > .col-title .sub { display: none; }
+  body.ui-v2.m-land.m-narrow .head-el .el-btn { width: 26px; }
+/* A short usable height (a phone with a bottom safe area) tightens the Home hunt card too. */
+body.ui-v2.m-land.m-short .hero-info h2 { font-size: 18px; }
+body.ui-v2.m-land.m-short .hero-info { padding: 8px 12px; gap: 4px; }
+body.ui-v2.m-land.m-short .hero-row { margin-top: 0; }
+body.ui-v2.m-land.m-short .v2-tile.voice { padding-top: 8px; padding-bottom: 8px; }
+body.ui-v2.m-land.m-short #heroFaces { display: none; }
+/* Two-step trades on a phone: only Send sits beside the dock; Clear stays in the builder. */
+body.ui-v2.m-land .v2-trade #trClear { position: static; width: 40px; height: 40px; }
+body.ui-v2.m-land .v2-trade .tr-compose { display: flex; align-items: center; gap: 8px; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-deal { flex: 1; min-width: 0; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-foot { flex: none; margin: 0; padding: 0; border: 0; }
+body.ui-v2.m-land .v2-trade .tr-to .v2-avatar { width: 44px; height: 44px; flex: none; }
+body.ui-v2.m-land .v2-trade .tr-to h3 { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2.m-land .v2-trade .tr-info { min-width: 0; }
+body.ui-v2.m-land .v2-trade .tr-swap { width: 34px; height: 34px; flex: none; }
+/* A narrow phone: the "Your cards" label goes (the only tab now), so the search + filters fit;
+   the recipient name shows in the member list. */
+body.ui-v2.m-land.m-narrow .v2-trade .tr-gridhead > .seg:first-child { display: none; }
+body.ui-v2.m-land.m-narrow .v2-trade .tr-to h3, body.ui-v2.m-land.m-narrow .v2-trade .tr-to .tr-who { display: none; }
+
+/* ===== Portrait: Community trades (design 25 part 2, frame 1) =====
+   One column: the tabs (+ the trophy), the members row, the builder, my cards, the offers.
+   The offers show the rows that wait for me first, then what fits. */
+body.ui-v2.m-port .v2-trade { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; gap: 6px; }
+body.ui-v2.m-port .v2-trade .tr-main { display: contents; }
+body.ui-v2.m-port .v2-trade .tr-main > *, body.ui-v2.m-port .v2-trade > .tr-offers { grid-column: 1; min-width: 0; }
+body.ui-v2.m-port .v2-trade .tr-top { grid-row: 1; gap: 6px; }
+body.ui-v2.m-port .v2-trade .tr-top #commBoard { width: 40px; height: 40px; flex: none; order: 9; }
+body.ui-v2.m-port .v2-trade .tr-top .seg button { height: 32px; padding: 0 9px; white-space: nowrap; }
+body.ui-v2.m-port .v2-trade .tr-members { grid-row: 2; padding: 5px 8px; }
+body.ui-v2.m-port .v2-trade .tr-members .tr-find { width: 110px; flex: 0 0 110px; height: 34px; }
+body.ui-v2.m-port .v2-trade .tr-mem { height: 36px; }
+body.ui-v2.m-port .v2-trade .tr-compose { grid-row: 3; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+body.ui-v2.m-port .v2-trade .tr-compose .tr-slot { width: 52px; flex-basis: 52px; }
+body.ui-v2.m-port .v2-trade .tr-deal { gap: 8px; }
+body.ui-v2.m-port .v2-trade .tr-side { gap: 8px; min-width: 0; }
+body.ui-v2.m-port .v2-trade .tr-info { min-width: 0; }
+body.ui-v2.m-port .v2-trade .tr-info h3 { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2.m-port .v2-trade .tr-to .v2-avatar { width: 44px; height: 44px; flex: none; }
+body.ui-v2.m-port .v2-trade .tr-swap { width: 32px; height: 32px; flex: none; }
+body.ui-v2.m-port .v2-trade .tr-compose .tr-foot { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; border: 0; }
+body.ui-v2.m-port .v2-trade .tr-foot .dim { display: none; }
+body.ui-v2.m-port .v2-trade .tr-foot .v2-btn { height: 40px; white-space: nowrap; }
+body.ui-v2.m-port .v2-trade .tr-foot #trSend { flex: 1; }
+body.ui-v2.m-port .v2-trade .tr-gridhead { grid-row: 4; gap: 6px; flex-wrap: nowrap; }
+body.ui-v2.m-port .v2-trade .tr-gridhead > .seg:first-child { display: none; }
+body.ui-v2.m-port .v2-trade .tr-gridhead .v2-search { height: 34px; min-width: 80px; flex: 1 1 100px; }
+body.ui-v2.m-port .v2-trade .tr-gridhead .seg button { height: 30px; padding: 0 8px; }
+body.ui-v2.m-port .v2-trade .tr-gridhead .grow { display: none; }
+body.ui-v2.m-port .v2-trade #trGrid { grid-row: 5; min-height: 0; gap: 6px; padding-top: 0; }
+body.ui-v2.m-port .v2-trade #trGrid .v2-cell { position: relative; }
+body.ui-v2.m-port .v2-trade #trGrid .v2-cap { position: absolute; top: 3px; right: 3px; padding: 0; }
+body.ui-v2.m-port .v2-trade #trGrid .v2-cap > :not(.cap-qty) { display: none; }
+body.ui-v2.m-port .v2-trade #trGrid .cap-qty { padding: 1px 6px; border-radius: var(--rad-pill); background: rgba(10, 10, 18, .85); font-size: 11px; }
+body.ui-v2.m-port .v2-trade > .tr-offers { grid-row: 6; padding: 8px 10px; gap: 4px; }
+body.ui-v2.m-port .v2-trade .of-list#ofIn > .of-row:nth-child(n+3), body.ui-v2.m-port .v2-trade .of-list#ofOut > .of-row:nth-child(n+2) { display: none; }
+body.ui-v2.m-port .v2-trade .of-row { grid-template-columns: minmax(0, 1fr) auto; padding: 6px 8px; gap: 4px 8px; }
+body.ui-v2.m-port .v2-trade .of-row .of-who { grid-column: 1; }
+body.ui-v2.m-port .v2-trade .of-row .of-acts, body.ui-v2.m-port .v2-trade .of-row .of-cancel { grid-column: 2; grid-row: 1 / 3; }
+body.ui-v2.m-port .v2-trade .of-cards > span { display: none; }
+body.ui-v2.m-port .v2-trade .of-card img { width: 24px; }
+body.ui-v2.m-port .v2-trade .of-card span { font-size: 10.5px; }
+body.ui-v2.m-port .v2-trade .of-acts { flex-direction: row; align-items: center; }
+body.ui-v2.m-port .v2-trade .of-acts .v2-btn { height: 40px; padding: 0 10px; }
+body.ui-v2.m-port .v2-trade .of-decline { width: 40px; padding: 0; }
+body.ui-v2.m-port .v2-trade .of-decline .of-t { display: none; }
+body.ui-v2.m-port .v2-trade .of-cancel { width: 40px; height: 40px; }
+/* One compact line per offer: who, the cards, the buttons. */
+body.ui-v2.m-port .v2-trade .of-row { display: flex; align-items: center; gap: 8px; }
+body.ui-v2.m-port .v2-trade .of-row .of-who { flex: 0 1 auto; min-width: 0; max-width: 34%; }
+body.ui-v2.m-port .v2-trade .of-row .of-who b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+body.ui-v2.m-port .v2-trade .of-row .of-who .dim { display: none; }
+body.ui-v2.m-port .v2-trade .of-row .of-acts, body.ui-v2.m-port .v2-trade .of-row .of-cancel { margin-left: auto; flex: none; }
+body.ui-v2.m-port .v2-trade .of-row .of-wait { display: none; }
+body.ui-v2.m-port .v2-trade .tr-offers .side-h { margin: 0; }
+body.ui-v2.m-port .v2-trade .tr-offers .tile-h { margin-bottom: 2px; }
+body.ui-v2.m-port .v2-trade .tr-compose:not(:has(.fx-deal)) .tr-foot { flex-direction: row; }
+body.ui-v2.m-port .v2-trade .tr-top { flex-wrap: wrap; row-gap: 6px; }
+/* Portrait budget: the tabs, the builder and each offer take one line. */
+body.ui-v2.m-port .v2-trade .tr-top { flex-wrap: nowrap; }
+body.ui-v2.m-port .v2-trade .tr-top .grow { display: none; }
+body.ui-v2.m-port .v2-trade .tr-top .seg { padding: 2px; }
+body.ui-v2.m-port .v2-trade .tr-top .seg button { padding: 0 7px; font-size: 12px; }
+body.ui-v2.m-port .v2-trade .tr-top #commBoard { order: 0; margin-left: auto; }
+body.ui-v2.m-port .v2-trade .tr-compose { flex-direction: row; align-items: center; padding: 6px 8px; }
+body.ui-v2.m-port .v2-trade .tr-compose .tr-deal { flex: 1; min-width: 0; }
+body.ui-v2.m-port .v2-trade .tr-compose .tr-foot { flex: none; }
+body.ui-v2.m-port .v2-trade #trClear { width: 40px; padding: 0; font-size: 0; }
+body.ui-v2.m-port .v2-trade #trClear::before { content: '↺'; font-size: 18px; }
+body.ui-v2.m-port .v2-trade .tr-compose .tr-slot { width: 46px; flex-basis: 46px; }
+body.ui-v2.m-port .v2-trade .tr-to .tr-who { display: none; }
+body.ui-v2.m-port .v2-trade .of-row { padding: 4px 8px; }
+body.ui-v2.m-port .v2-trade { grid-template-rows: auto auto auto auto minmax(0, 1fr) max-content; }
+body.ui-v2.m-port .v2-trade .tr-top #commBoard { order: 9; margin-left: 0; }
+body.ui-v2.m-port .v2-trade .tr-top .seg button { padding: 0 6px; font-size: 11.5px; }
+body.ui-v2.m-port .v2-trade .tr-to h3 { display: none; }
+body.ui-v2.m-port .v2-trade #ofIn, body.ui-v2.m-port .v2-trade #ofOut { flex: none; gap: 4px; }
+body.ui-v2.m-port.m-short .v2-trade .of-list#ofIn > .of-row:nth-child(n+2) { display: none; }
+body.ui-v2.m-port #dock .dk-open, body.ui-v2.m-land #dock .dk-open { overflow: visible; } /* an old phone rule clipped the pack count */
+body.ui-v2.m-port .pl-row, body.ui-v2.m-land .pl-row { height: 34px; box-sizing: border-box; flex: none; }
+/* Portrait: the builder shows the two card slots only; the offer I answer is marked. */
+body.ui-v2.m-port .v2-trade .tr-compose .tr-side > .tr-info { display: none; }
+body.ui-v2.m-port .v2-trade .tr-compose .tr-to > .tr-info { display: flex; }
+body.ui-v2.m-port .v2-trade .of-row .of-wait { display: inline; font-size: 11.5px; white-space: nowrap; }
+.v2-trade .of-row.on { border-color: rgba(244, 183, 60, .6); box-shadow: 0 0 0 1px rgba(244, 183, 60, .35) inset; }
+body.ui-v2.m-land .v2-trade .of-row .of-who .dim, body.ui-v2.m-land .v2-trade .of-row .of-wait { display: none; }

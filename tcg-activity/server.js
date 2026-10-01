@@ -1543,15 +1543,16 @@ app.get('/api/trades', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const { data, error } = await supabase
     .from('trade_offers')
-    .select('id, from_id, to_id, created_at, offer:cards!trade_offers_offer_card_id_fkey(id,name,rarity,image_url), request:cards!trade_offers_request_card_id_fkey(id,name,rarity,image_url), from_player:players!trade_offers_from_id_fkey(username), to_player:players!trade_offers_to_id_fkey(username)')
+    .select('id, from_id, to_id, status, created_at, offer:cards!trade_offers_offer_card_id_fkey(id,name,rarity,image_url), request:cards!trade_offers_request_card_id_fkey(id,name,rarity,image_url), from_player:players!trade_offers_from_id_fkey(username), to_player:players!trade_offers_to_id_fkey(username)')
     .or(`to_id.eq.${me.id},from_id.eq.${me.id}`)
-    .eq('status', 'pending')
+    .in('status', ['pending', 'countered'])
     .order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   const shape = (o) => ({
     id: o.id,
     from_id: o.from_id,
     to_id: o.to_id,
+    status: o.status, // pending (the receiver picks) | countered (the sender accepts), trade_two_step.sql
     from_name: o.from_player?.username,
     to_name: o.to_player?.username,
     offer: cardShape(o.offer),
@@ -1587,35 +1588,56 @@ app.post('/api/trade/offer', async (req, res) => {
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const toId = String(req.body?.toId || '');
   const offerCardId = Number(req.body?.offerCardId);
-  const requestCardId = Number(req.body?.requestCardId);
-  if (!toId || !offerCardId || !requestCardId) return res.status(400).json({ error: 'bad request' });
-  const { data, error } = await supabase.rpc('create_trade', {
-    p_from: me.id, p_to: toId, p_offer: offerCardId, p_request: requestCardId,
-  });
+  const requestCardId = Number(req.body?.requestCardId) || null;
+  if (!toId || !offerCardId) return res.status(400).json({ error: 'bad request' });
+  // Nathan, 2026-10-01: the sender offers one card; the receiver picks theirs (trade_two_step.sql).
+  const { data, error } = requestCardId
+    ? await supabase.rpc('create_trade', { p_from: me.id, p_to: toId, p_offer: offerCardId, p_request: requestCardId })
+    : await supabase.rpc('create_trade_open', { p_from: me.id, p_to: toId, p_offer: offerCardId });
   if (error) return res.status(500).json({ error: error.message });
   if (data != null) {
     const from = me.global_name || me.username;
-    notify(toId, 'trade_offer', `🔄 ${from} sent you a trade offer! Open the Trading tab.`);
-    announce(`🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to accept or decline.`);
+    notify(toId, 'trade_offer', `🔄 ${from} sent you a trade offer! Pick a card to trade back.`);
+    announce(`🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to pick your card or decline.`);
   }
   res.json({ ok: data != null, id: data });
 });
 
-// Accept an incoming swap (caller must be the recipient).
+// Step 2: the receiver picks the card they give back (the same rarity). The sender then accepts.
+app.post('/api/trade/counter', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const offerId = Number(req.body?.offerId);
+  const cardId = Number(req.body?.cardId);
+  if (!offerId || !cardId) return res.status(400).json({ error: 'bad request' });
+  const { data: offer } = await supabase.from('trade_offers').select('from_id').eq('id', offerId).maybeSingle();
+  const { data, error } = await supabase.rpc('counter_trade', { p_offer_id: offerId, p_actor: me.id, p_card: cardId });
+  if (error) return res.status(500).json({ error: error.message });
+  if (data && offer?.from_id) {
+    const who = me.global_name || me.username;
+    notify(offer.from_id, 'trade_counter', `🔄 ${who} picked a card for your trade! Accept to swap.`);
+    announce(`🔄 <@${offer.from_id}> — **${who}** picked a card for your trade! Open Lion Pride TCG to accept.`);
+  }
+  res.json({ ok: Boolean(data) });
+});
+
+// Accept a swap: the sender after the receiver picked, or the receiver of an old offer.
 app.post('/api/trade/accept', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const offerId = Number(req.body?.offerId);
   if (!offerId) return res.status(400).json({ error: 'bad request' });
-  const { data: offer } = await supabase.from('trade_offers').select('from_id').eq('id', offerId).maybeSingle();
+  const { data: offer } = await supabase.from('trade_offers').select('from_id, to_id').eq('id', offerId).maybeSingle();
   const { data, error } = await supabase.rpc('accept_trade', { p_offer_id: offerId, p_accepter: me.id });
   if (error) return res.status(500).json({ error: error.message });
-  if (data && offer?.from_id) {
-    bustUser(me.id); bustUser(offer.from_id);   // the swap moved cards both ways
+  const other = offer && (String(offer.from_id) === String(me.id) ? offer.to_id : offer.from_id);
+  if (data && other) {
+    bustUser(me.id); bustUser(other);   // the swap moved cards both ways
     const who = me.global_name || me.username;
-    notify(offer.from_id, 'trade_accepted', `✅ ${who} accepted your trade!`);
-    announce(`✅ <@${offer.from_id}> — **${who}** accepted your trade!`);
+    notify(other, 'trade_accepted', `✅ ${who} accepted your trade!`);
+    announce(`✅ <@${other}> — **${who}** accepted your trade!`);
   }
   res.json({ ok: Boolean(data) });
 });

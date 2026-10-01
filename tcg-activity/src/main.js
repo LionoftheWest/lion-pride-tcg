@@ -23,7 +23,7 @@ import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
-import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2 } from './ui-v2-social.js';
+import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { initHelp } from './ui-v2-help.js';
@@ -2866,7 +2866,7 @@ function updateTradeBadge(n) {
   if (n > 0) { if (!b) { b = document.createElement('span'); b.className = 'navbadge'; btn.appendChild(b); } b.textContent = n; }
   else if (b) b.remove();
 }
-async function refreshTradeBadge() { try { const d = await api('/api/trades'); updateTradeBadge((d.incoming || []).length); } catch { /* ignore */ } }
+async function refreshTradeBadge() { try { const d = await api('/api/trades'); updateTradeBadge(tradeActions(d)); } catch { /* ignore */ } }
 
 // ---- 3D card viewer (ported from the public gallery) -----------------------
 // DRAG to pivot, CLICK to flip, and the foil SHINES as you tilt it.
