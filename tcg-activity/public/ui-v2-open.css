@@ -69,6 +69,7 @@ body.ui-v2 .mr-card.up.r-illustrated_rare .mr-front { box-shadow: 0 0 10px rgba(
 body.ui-v2 .mr-card.up.r-secret_rare .mr-front { box-shadow: 0 0 14px rgba(177, 92, 255, .7); }
 body.ui-v2 .mr-card.up.r-full_art .mr-front { box-shadow: 0 0 16px rgba(255, 79, 163, .75); }
 body.ui-v2 .mr-card.up.r-gold .mr-front { box-shadow: 0 0 18px rgba(247, 190, 53, .85); }
+body.ui-v2 .mr-card.up.r-event .mr-front { box-shadow: 0 0 18px rgba(16, 185, 129, .85); }
 /* The celebration for Secret Rare and better. */
 body.ui-v2 .mr-card.mr-burst { z-index: 2; }
 body.ui-v2 .mr-card.mr-burst::after { content: ''; position: absolute; inset: -30%; border-radius: 50%; pointer-events: none;

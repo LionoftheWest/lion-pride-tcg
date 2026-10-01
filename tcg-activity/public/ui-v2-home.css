@@ -27,6 +27,7 @@ body.ui-v2 .vc-c { flex: none; height: min(100px, 100%); aspect-ratio: 5 / 7; bo
 body.ui-v2 .vc-c.r-normal { border-color: #9aa3b5; } body.ui-v2 .vc-c.r-illustrated_rare { border-color: var(--r-illustrated_rare, #4DA3FF); }
 body.ui-v2 .vc-c.r-secret_rare { border-color: var(--r-secret_rare, #B18CFF); } body.ui-v2 .vc-c.r-full_art { border-color: var(--r-full_art, #FF5CA8); }
 body.ui-v2 .vc-c.r-gold { border-color: var(--gold); box-shadow: 0 0 10px rgba(244, 183, 60, .35); }
+body.ui-v2 .vc-c.r-event { border-color: var(--r-event); box-shadow: 0 0 10px rgba(16, 185, 129, .35); }
 body.ui-v2 .vc-c.back { color: var(--gold); border-color: rgba(244, 183, 60, .5); }
 body.ui-v2 .vc-c.plus { border-style: dashed; }
 body.ui-v2 .vc-c.hit { height: min(112px, 100%); border-color: var(--k); }

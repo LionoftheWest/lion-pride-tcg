@@ -61,6 +61,7 @@ body.ui-v2 .spot-card.r-illustrated_rare img { filter: drop-shadow(0 0 8px rgba(
 body.ui-v2 .spot-card.r-secret_rare img { filter: drop-shadow(0 0 8px rgba(177, 92, 255, .45)); }
 body.ui-v2 .spot-card.r-full_art img { filter: drop-shadow(0 0 8px rgba(255, 79, 163, .45)); }
 body.ui-v2 .spot-card.r-gold img { filter: drop-shadow(0 0 8px rgba(247, 190, 53, .5)); }
+body.ui-v2 .spot-card.r-event img { filter: drop-shadow(0 0 8px rgba(16, 185, 129, .5)); }
 body.ui-v2 .prof-head .prof-cp { margin-left: auto; font: 700 14px var(--font-num); color: var(--gold); }
 body.ui-v2 .v2-tile.prof .side-h { margin: 2px 0 0; align-items: center; }
 

@@ -16,7 +16,7 @@ body.ui-v2 {
   --hunt: #7C5CFF; --hunt-soft: #7C5CFF24; --danger: #FF4D63; --danger-soft: #FF4D6324;
   --success: #5BE38A; --success-soft: #5BE38A1F;
   --boon: #3DD9B4; --boon-soft: #3DD9B41F; --prank: #B28CFF; --prank-soft: #B28CFF1F;
-  --r-normal: #A3ACBC; --r-illustrated_rare: #3E8BFF; --r-secret_rare: #B15CFF; --r-full_art: #FF4FA3; --r-gold: #F7BE35;
+  --r-normal: #A3ACBC; --r-illustrated_rare: #3E8BFF; --r-secret_rare: #B15CFF; --r-full_art: #FF4FA3; --r-gold: #F7BE35; --r-event: #10B981;
   --el-fire: #FF6A3D; --el-water: #3CB6FF; --el-lightning: #FFD43B; --el-ice: #9BEBFF; --el-nature: #5BD66B; --el-earth: #C98D55; --el-shadow: #8A6CFF; --el-light: #FFF1B8;
   --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
