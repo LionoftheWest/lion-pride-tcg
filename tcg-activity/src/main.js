@@ -24,7 +24,7 @@ import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
-import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith } from './ui-v2-social.js';
+import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { initHelp } from './ui-v2-help.js';
@@ -327,6 +327,8 @@ async function main() {
   setInterval(refreshPackStatus, 45000); // packs can be earned while the app is open
   refreshTradeBadge();
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
+  // The trade screen open: every 8 s, so an answered offer leaves the list at once.
+  setInterval(() => { if (currentView === 'trading' && !document.hidden) refreshTradeBadge(); }, 8000);
   initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   let flags = null;
   // 3 tries: a failed load fell back to the old design (and its old trade flow) for that session.
@@ -1355,6 +1357,11 @@ function paintHuntView(d) {
     squad.sel = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   } else if (saved && saved.length && (d.usedToday || 0) > 0) {
     squad.phase = 'battle'; squad.ko = false; squad.sel = new Set(saved);
+  } else if (saved && saved.length) {
+    // Locked in today, no attack yet: a repaint (the phone turned) dropped the lock and cleared
+    // the squad (Prophet Warden, 2026-10-01). It stays locked, in the battle if it was there.
+    squad.ko = false; squad.locked = true; squad.sel = new Set(saved);
+    if (squad.phase !== 'battle') squad.phase = 'select';
   } else {
     if (saved) clearTeam(d.hunt.id);
     squad.phase = 'select'; squad.ko = false; squad.locked = false; squad.page = 0;
@@ -2129,7 +2136,12 @@ function wireSelectPhase() {
     paintSquadPanel(cap);
   }
   paintHuntPage();
-  onSquadChanged();
+  // A repaint keeps a locked squad locked (onSquadChanged unlocks: only a real change does that).
+  if (squad.locked) {
+    const eb = el('enterBattleBtn'); if (eb) { eb.disabled = false; eb.classList.add('ready'); }
+    el('lockInBtn')?.classList.add('locked');
+    updateLockBtn(); paintSquadPanel(cap);
+  } else onSquadChanged();
 }
 
 // Phase 2: tap an attacker to attack; tap a support to fire its ability (ally effects then
@@ -2891,7 +2903,7 @@ function updateTradeBadge(n) {
   if (n > 0) { if (!b) { b = document.createElement('span'); b.className = 'navbadge'; btn.appendChild(b); } b.textContent = n; }
   else if (b) b.remove();
 }
-async function refreshTradeBadge() { try { const d = await api('/api/trades'); updateTradeBadge(tradeActions(d)); } catch { /* ignore */ } }
+async function refreshTradeBadge() { try { const d = await api('/api/trades'); updateTradeBadge(tradeActions(d)); if (uiV2) liveTrades(d); } catch { /* ignore */ } }
 
 // ---- 3D card viewer (ported from the public gallery) -----------------------
 // DRAG to pivot, CLICK to flip, and the foil SHINES as you tilt it.
