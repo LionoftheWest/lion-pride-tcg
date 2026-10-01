@@ -1209,6 +1209,7 @@ async function queryPulls() {
   const { data, error } = await supabase
     .from('player_cards')
     .select(PULLS_SELECT)
+    .eq('first_source', 'pull') // a traded or gifted card is not a pull (pull_feed_source.sql)
     .order('first_obtained_at', { ascending: false })
     .limit(40);
   if (error) return pullsCache ? pullsCache.data : null;
@@ -1271,7 +1272,7 @@ app.get('/api/pulls/stream', async (req, res) => {
 setInterval(async () => {
   if (streamClients.size === 0) return;
   const { data: newest, error } = await supabase.from('player_cards')
-    .select('first_obtained_at').order('first_obtained_at', { ascending: false }).limit(1);
+    .select('first_obtained_at').eq('first_source', 'pull').order('first_obtained_at', { ascending: false }).limit(1);
   if (error || (newest?.[0]?.first_obtained_at || '') === (lastTop || '')) return;
   pullsCache = null; // the change is new: skip the 3 s cache
   const pulls = await queryPulls();
