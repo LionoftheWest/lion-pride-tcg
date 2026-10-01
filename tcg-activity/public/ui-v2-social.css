@@ -366,3 +366,29 @@ body.ui-v2 .gf-t { flex: 1; min-width: 0; display: flex; flex-direction: column;
 body.ui-v2 .gf-t b { font-size: 14px; line-height: 1.25; }
 body.ui-v2 .gf-t span { font-size: 12px; color: var(--gold, #F4B73C); font-weight: 700; }
 body.ui-v2 .gf-redeem { height: 32px; padding: 0 14px; }
+
+/* The Dailies in a short window (Nathan, 2026-10-01: at 594 px the rows ran out of the panel).
+   The panel may cover the dock, like Help, and the rows get tighter so all 5 fit. */
+body.ui-v2 .v2-drop.dl-drop { max-height: calc(100vh - var(--topbar-h) - 12px); }
+@media (max-height: 760px) {
+  body.ui-v2 .v2-drop.dl-drop { gap: 6px; padding: 12px 14px; }
+  body.ui-v2 .dl-drop .dl-sum { gap: 6px; padding: 8px 12px; }
+  body.ui-v2 .dl-drop .dl-sum b { font-size: 24px; }
+  body.ui-v2 .dl-drop .dl-list { gap: 4px; }
+  body.ui-v2 .dl-drop .dl-row { padding: 6px 10px; min-height: 0; }
+  body.ui-v2 .dl-drop .dl-ico { width: 30px; height: 30px; }
+  body.ui-v2 .dl-drop .dl-t { gap: 3px; }
+}
+@media (max-height: 760px) {
+  body.ui-v2 .v2-drop.hp-drop { gap: 6px; padding: 12px 14px; max-height: calc(100vh - var(--topbar-h) - 12px); }
+  body.ui-v2 .hp-drop .nt-head .v2-icon { width: 30px; height: 30px; flex-basis: 30px; }
+  body.ui-v2 .hp-list { gap: 2px; }
+  body.ui-v2 .hp-q { padding: 4px 10px; }
+  body.ui-v2 .hp-q b { font-size: 12.5px; }
+  body.ui-v2 .hp-a { padding: 0 12px 7px 42px; }
+  body.ui-v2 .hp-a p { font-size: 12px; line-height: 1.38; }
+  body.ui-v2 .hp-chips { margin-top: 5px; }
+  body.ui-v2 .hp-replay { height: 32px; }
+}
+/* A very short window (a phone in landscape): the list scrolls inside the panel, never clips. */
+body.ui-v2 .hp-list, body.ui-v2 .dl-drop .dl-list { overflow-y: auto; scrollbar-width: thin; }
