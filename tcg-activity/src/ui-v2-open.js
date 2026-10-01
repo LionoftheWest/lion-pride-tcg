@@ -69,7 +69,9 @@ function fit() {
   const grid = d?.el('mrGrid');
   if (!grid) return;
   const w = grid.clientWidth, h = grid.clientHeight, n = items.length, gap = 8;
-  let best = { cw: 40, cols: n };
+  // Start from nothing: the old start (40 px, all cards in ONE row) won on a short phone window,
+  // and 50 cards ran off the screen (Nathan, launch day 2026-10-01).
+  let best = { cw: 0, cols: n };
   for (let cols = 1; cols <= n; cols++) {
     const rows = Math.ceil(n / cols);
     const cw = Math.floor(Math.min((w - (cols - 1) * gap) / cols, ((h - (rows - 1) * gap) / rows) * 5 / 7));
