@@ -112,10 +112,37 @@ function fitGrid(grid, n) {
   return best.cols * best.rows;
 }
 
+// Swipe (Nathan, 2026-10-01): on a touch screen, a sideways swipe turns the page or the card.
+// cb(+1) = next (swipe left), cb(-1) = previous. A vertical move or a slow drag is not a swipe.
+export function onSwipe(node, cb) {
+  if (!node) return;
+  node._swipe = cb;
+  if (node._swipeOn) return;
+  node._swipeOn = true;
+  node.style.touchAction = 'pan-y pinch-zoom'; // the sideways move comes to us, not the webview
+  let x0 = 0, y0 = 0, t0 = 0, on = false;
+  node.addEventListener('touchstart', (e) => {
+    on = e.touches.length === 1;
+    if (on) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); }
+  }, { passive: true });
+  node.addEventListener('touchend', (e) => {
+    if (!on) return;
+    on = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.4 || Date.now() - t0 > 800) return;
+    node._swiped = Date.now();
+    node._swipe?.(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  // A swipe is not a tap on the card under the finger.
+  node.addEventListener('click', (e) => { if (Date.now() - (node._swiped || 0) < 400) { e.stopPropagation(); e.preventDefault(); } }, true);
+}
+
 // Paint a paged card grid. items: cards; state: { page }; onPick(card).
 export function paintCards(grid, pager, items, state, onPick, selId, dir, refit) {
   const h0 = grid.clientHeight;
   const per = fitGrid(grid, items.length);
+  grid._per = per;
   const pages = Math.max(1, Math.ceil(items.length / per));
   state.page = Math.min(Math.max(0, state.page), pages - 1);
   const start = state.page * per;
@@ -128,6 +155,11 @@ export function paintCards(grid, pager, items, state, onPick, selId, dir, refit)
     const c = t && items[Number(t.dataset.idx)];
     if (c) onPick(c, t);
   };
+  onSwipe(grid, (d) => {
+    if (state.page + d < 0 || state.page + d > pages - 1) return;
+    state.page += d;
+    paintCards(grid, pager, items, state, onPick, selId, d > 0 ? 'next' : 'prev');
+  });
   if (!pager) return;
   pager.innerHTML = pages > 1
     ? `<button data-p="-1" ${state.page === 0 ? 'disabled' : ''}>‹</button><span>${state.page + 1} / ${pages}</span><button data-p="1" ${state.page >= pages - 1 ? 'disabled' : ''}>›</button>`
@@ -404,7 +436,7 @@ function paintAchDetail(a) {
   if (!a || !grid) return;
   const items = [...a.set].sort((x, y) => (y.owned - x.owned) || (x.num - y.num));
   const st = { page: col.detailPage };
-  paintCards(grid, el('detPager'), items, st, (c, t) => { col.detailPage = st.page; pickCard(c, t, grid); }, col.sel);
+  paintCards(grid, el('detPager'), items, st, (c, t) => { col.detailPage = st.page; pickCard(c, t, grid, items); }, col.sel);
 }
 
 function colFiltered() {
@@ -428,7 +460,11 @@ function colFiltered() {
 
 // Tap a card: it becomes the panel card, and an owned card opens in the 3D viewer
 // right away (Nathan: no extra "View card" click).
-function pickCard(c, node, grid) {
+// The list the open card came from (the grid order = the card numbers): a swipe in the phone card
+// view and the arrows in the 3D viewer step through it.
+let panelList = [];
+function pickCard(c, node, grid, list) {
+  panelList = list || [];
   col.sel = c.id;
   grid.querySelectorAll('.v2-cell.sel').forEach((n) => n.classList.remove('sel'));
   node?.classList.add('sel');
@@ -436,7 +472,29 @@ function pickCard(c, node, grid) {
   // (designs 24 + 25), and a tap on its big card opens the 3D viewer.
   if (isPhone()) { ctx.el('colPanel')?.classList.add('m-open'); paintPanel(c); return; }
   paintPanel(c);
-  if (!c.locked) ctx.openViewer(c);
+  if (!c.locked) ctx.openViewer(c, viewerNav());
+}
+// The 3D viewer steps through the owned cards of the same list; the panel follows.
+function viewerNav() {
+  return { list: panelList.filter((x) => !x.locked), onStep: (x) => { col.sel = x.id; markSel(); paintPanel(x); } };
+}
+function markSel() {
+  const grid = panelList === colItems ? ctx.el('colGrid') : ctx.el('detGrid');
+  grid?.querySelectorAll('.v2-cell').forEach((n) => n.classList.toggle('sel', String(panelList[Number(n.dataset.idx)]?.id) === String(col.sel)));
+}
+// The phone card view: a swipe shows the next / previous card of the list (all cards, owned or
+// not, like the grid). The grid behind it turns to that card's page.
+function stepPanel(d) {
+  const i = panelList.findIndex((x) => String(x.id) === String(col.sel));
+  const n = i < 0 ? null : panelList[i + d];
+  if (!n) return;
+  col.sel = n.id;
+  if (panelList === colItems && ctx.el('colGrid')?._per) col.page = Math.floor((i + d) / ctx.el('colGrid')._per);
+  paintColGrid();
+  paintPanel(n);
+  const box = ctx.el('colPanel');
+  box?.classList.remove('m-slide-next', 'm-slide-prev'); void box?.offsetWidth;
+  box?.classList.add(d > 0 ? 'm-slide-next' : 'm-slide-prev');
 }
 
 const colState = { get page() { return col.page; }, set page(v) { col.page = v; } };
@@ -445,7 +503,7 @@ function paintColGrid() {
   const grid = el('colGrid');
   if (!grid) return;
   colItems = colFiltered();
-  paintCards(grid, el('colPager'), colItems, colState, (c, t) => pickCard(c, t, grid), col.sel);
+  paintCards(grid, el('colPager'), colItems, colState, (c, t) => pickCard(c, t, grid, colItems), col.sel);
   // My Live in voice tile (design 19): the set I browse, how much of it I own, 3 owned cards.
   const set = mergedCards().filter((c) => (c.season || 'Season 1') === col.season && (!col.game || [].concat(c.tags?.origin || []).includes(col.game)));
   const own = set.filter((c) => c.owned);
@@ -521,7 +579,8 @@ function paintPanel(c) {
       ${c.locked ? '' : `<button class="v2-icon${inSpot ? ' on' : ''}" id="pSpot" title="${inSpot ? 'Remove from Spotlight' : 'Add to Spotlight'}">${inSpot ? '★' : '☆'}</button>`}
       <button class="v2-icon" id="pTrade" title="Trade">⇄</button>
     </div>`;
-  el('pArt')?.addEventListener('click', () => { if (!c.locked) ctx.openViewer(c); });
+  el('pArt')?.addEventListener('click', () => { if (!c.locked) ctx.openViewer(c, viewerNav()); });
+  if (isPhone()) onSwipe(box, stepPanel);
   el('pClose')?.addEventListener('click', () => box.classList.remove('m-open'));
   if (isPhone()) phoneColumns(box);
   el('pTrade')?.addEventListener('click', () => ctx.show('trading'));
@@ -529,7 +588,8 @@ function paintPanel(c) {
   el('pAscend')?.addEventListener('click', () => ascend(c));
   if (sp) wirePoints(c, sp, box);
   fitPanel(box);
-  fillViewerEffect(c, 'colEffect').then(() => fitPanel(box));
+  // The effect block fills later and makes the right column taller: balance the columns again.
+  fillViewerEffect(c, 'colEffect').then(() => { if (isPhone()) balanceColumns(box); fitPanel(box); });
 }
 
 // The phone card view: the big card, then two columns that do not share rows (the name,
@@ -544,6 +604,36 @@ function phoneColumns(box) {
   [box.querySelector('#pClose'), id, box.querySelector('.p-lore'), box.querySelector('.p-tags'), box.querySelector('.p-credit'), box.querySelector('.p-actions')].forEach((n) => n && mid.append(n));
   [...box.children].filter((n) => n !== art).forEach((n) => side.append(n));
   box.append(mid, side);
+  balanceColumns(box);
+}
+
+function balanceColumns(box) {
+  const mid = box.querySelector('.pv-mid'), side = box.querySelector('.pv-side');
+  if (!mid || !side) return;
+  // Landscape: a right column taller than the view sends Ascension, then the stat points, to the
+  // middle column (above the buttons) while the middle has the room.
+  if (!isLand()) return;
+  // A column grows with its blocks, so test each block against the bottom of the card view.
+  const limit = () => box.getBoundingClientRect().bottom - (parseFloat(getComputedStyle(box).paddingBottom) || 0) + 1;
+  // Sum the block heights: a stretched column pushes its buttons (margin-top: auto) to its bottom.
+  // Only blocks in the flow count: not the close button (absolute) and not a hidden block (no gap).
+  // The lore, tags and artist line do not count: fitPanel hides them when the room is short, and
+  // the stat points come first (they were cut while the lore took the room).
+  const flow = (ch) => { const cs = getComputedStyle(ch); return cs.display !== 'none' && cs.position !== 'absolute' && cs.position !== 'fixed' && !ch.matches('.p-lore, .p-tags, .p-credit'); };
+  const over = (col) => {
+    const gap = parseFloat(getComputedStyle(col).rowGap) || 0;
+    const kids = [...col.children].filter(flow);
+    const h = kids.reduce((t, ch) => t + ch.getBoundingClientRect().height, 0) + gap * Math.max(0, kids.length - 1);
+    return col.getBoundingClientRect().top + h > limit();
+  };
+  const actions = mid.querySelector('.p-actions');
+  for (const sel of ['.asc', '#pPts']) {
+    if (!over(side)) break;
+    const n = side.querySelector(sel);
+    if (!n || n.classList.contains('pts-open')) continue;
+    mid.insertBefore(n, actions || null);
+    if (over(mid)) side.append(n); // no room in the middle: it stays on the right
+  }
 }
 
 // The Raid Bosses panel: the selected boss, alive (idle + an occasional flex or taunt),
@@ -561,7 +651,8 @@ function paintBossPanel() {
 
 // ---- Stat points: each star gives 3 points for this copy (docs/card-stats.md) ----------
 const STAT_DEFS = [['attack', 'Attack'], ['vitality', 'Vitality'], ['precision', 'Precision'], ['potency', 'Potency'], ['haste', 'Haste']];
-const pend = { id: null, add: {} }; // points picked but not saved yet (one card at a time)
+// open: the phone stat editor is open (a phone shows one line until Assign, 2026-10-01).
+const pend = { id: null, add: {}, open: false }; // points picked but not saved yet (one card at a time)
 // Only the stats that do something for this card: attackers fight, effects and supports cast.
 function statKeys(c) {
   const keys = [];
@@ -573,7 +664,7 @@ function statKeys(c) {
 function pointsHTML(c, sp) {
   const keys = statKeys(c);
   if (!keys.length) return '';
-  if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; }
+  if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; pend.open = false; }
   const picked = Object.values(pend.add).reduce((t, n) => t + n, 0);
   const left = (sp.free || 0) - picked;
   const pts = sp.points || {};
@@ -582,8 +673,17 @@ function pointsHTML(c, sp) {
       <span>${label}</span><b>${Number(pts[k]) || 0}${pend.add[k] ? `<i>+${pend.add[k]}</i>` : ''}</b>
       <button class="pts-add" data-add="${k}"${left > 0 ? '' : ' disabled'}>+</button></div>`).join('');
   const canReset = spent > 0 && !picked && !ctx.cache.collection?.stats?.resetUsed;
-  return `<div class="pts${left > 0 ? ' has-free' : ''}" id="pPts">
+  // A phone has no room for five rows in the card view (Nathan, 2026-10-01: cut off in landscape):
+  // one line with the free points and what is spent; Assign opens the rows over the card view.
+  if (isPhone() && !pend.open) {
+    const sum = STAT_DEFS.filter(([k]) => keys.includes(k) && Number(pts[k])).map(([k, label]) => `<i>${label} ${Number(pts[k])}</i>`).join('');
+    const btn = left > 0 ? `<button class="v2-btn gold" id="ptsOpen" data-n="${left}">Assign</button>` : canReset ? '<button class="v2-btn" id="ptsOpen">Edit</button>' : '';
+    return `<div class="pts pts-compact${left > 0 ? ' has-free' : ''}" id="pPts">
     <div class="pb-h"><span class="side-h">Stat points</span><span class="mono">${left} free</span></div>
+    ${sum || btn ? `<div class="pts-sum">${sum}${btn}</div>` : ''}</div>`;
+  }
+  return `<div class="pts${left > 0 ? ' has-free' : ''}${isPhone() ? ' pts-open' : ''}" id="pPts">
+    <div class="pb-h"><span class="side-h">Stat points</span><span class="mono">${left} free</span>${isPhone() ? '<button class="v2-icon" id="ptsDone" title="Close">✕</button>' : ''}</div>
     <div class="pts-rows">${rows}</div>
     ${picked || canReset ? `<div class="pts-act">${picked ? '<button class="v2-btn gold" id="ptsSave">Save</button><button class="v2-btn" id="ptsUndo">Undo</button>' : ''}
       ${canReset ? '<button class="link-btn" id="ptsReset">Reset</button>' : ''}</div>` : ''}
@@ -595,6 +695,8 @@ function wirePoints(c, sp, box) {
     const add = e.target.closest('[data-add]');
     if (add) { const k = add.dataset.add; pend.add[k] = (pend.add[k] || 0) + 1; repaint(); return; }
     if (e.target.closest('#ptsUndo')) { pend.add = {}; repaint(); return; }
+    if (e.target.closest('#ptsOpen')) { pend.open = true; repaint(); return; }
+    if (e.target.closest('#ptsDone')) { pend.open = false; pend.add = {}; repaint(); return; }
     const save = e.target.closest('#ptsSave');
     const reset = e.target.closest('#ptsReset');
     if (!save && !reset) return;
@@ -605,7 +707,7 @@ function wirePoints(c, sp, box) {
         : await ctx.apiPost('/api/stats/reset', { cardId: c.id });
     } catch { r = null; }
     if (!r?.ok) { (save || reset).disabled = false; (save || reset).textContent = r?.error === 'reset_used' ? 'Next week' : 'Try again'; return; }
-    pend.add = {};
+    pend.add = {}; pend.open = false;
     await ctx.refreshOwned();
     renderCollectionV2();
   });
@@ -1040,6 +1142,16 @@ const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const mem = { page: 0, all: false };
 let memData = null;
 
+// The needs / closest achievements list: a phone shows only whole rows; no room for one row hides
+// the box (a cut row showed in portrait, 2026-10-01). A desktop keeps the first row.
+function fitNeed(box) {
+  const list = box.querySelector('.need-list');
+  if (!list) return;
+  if (!isPhone()) { fitChildren(list); return; }
+  const bottom = list.getBoundingClientRect().bottom + 1;
+  while (list.lastElementChild && list.lastElementChild.getBoundingClientRect().bottom > bottom) list.lastElementChild.remove();
+  if (!list.children.length) box.querySelector('.mem-need')?.classList.add('m-none');
+}
 export async function openMember(id) {
   const { el } = ctx;
   let box = el('memberModal');
@@ -1124,7 +1236,7 @@ function paintMember() {
   const grid = el('memGrid');
   if (mem.all) {
     const owned = cards.filter((c) => c.owned).sort((a, b) => (b.power || 0) - (a.power || 0));
-    paintCards(grid, el('memPager'), owned, mem, (c) => ctx.openViewer(c));
+    paintCards(grid, el('memPager'), owned, mem, (c) => ctx.openViewer(c, { list: owned }));
   } else {
     grid.innerHTML = season.map((c) => (c.owned
       ? `<button class="mem-mini-card r-${c.rarity}" data-id="${c.id}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""></button>`
@@ -1143,7 +1255,8 @@ function paintMember() {
     if (c && c.image_url) ctx.openViewer(c);
   }));
   // Fit after the browser lays the new screen out (measured too early, it emptied the lists).
-  requestAnimationFrame(() => { fitChildren(box.querySelector('.need-list')); fitChildren(el('memAch')); if (!mem.all) fitChildren(el('memGrid')); });
+  requestAnimationFrame(() => { fitNeed(box); fitChildren(el('memAch')); if (!mem.all) fitChildren(el('memGrid')); });
+  setTimeout(() => fitNeed(box), 300); // again after the fonts and images load
 }
 
 // Their damage in the live hunt, per day, and their best card.

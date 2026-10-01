@@ -333,8 +333,41 @@ function slotHTML(c, who, empty) {
       <span class="tr-chips"><i>⚡ ${fmt(c.power)}</i>${c.quantity ? `<i>×${c.quantity}</i>` : ''}</span></div>`;
 }
 
+// A repaint replaces the search boxes. On a phone that closed the keyboard and lost the text
+// (Nathan, 2026-10-01): take the focused box before the repaint and give it back after.
+function takeFocus() {
+  const a = document.activeElement;
+  return a && (a.id === 'trFind' || a.id === 'trQ') ? { id: a.id, at: a.selectionStart } : null;
+}
+function keepFocus(f) {
+  const n = f && document.getElementById(f.id);
+  if (!n) return;
+  n.focus({ preventScroll: true });
+  try { n.setSelectionRange(f.at ?? n.value.length, f.at ?? n.value.length); } catch { /* not a text box */ }
+}
+
+// Find a member (both Community screens): the first match becomes the member to trade with or
+// to play on, and the matches go to the front of the list. The text stays in tr.find.
+let findTimer = null;
+function wireFind(after) {
+  ctx().el('trFind')?.addEventListener('input', (e) => {
+    tr.find = e.target.value;
+    clearTimeout(findTimer);
+    const q = tr.find.trim();
+    findTimer = setTimeout(async () => {
+      if (!q || q !== (tr.find || '').trim()) return;
+      try {
+        const d = await ctx().api(`/api/players?q=${encodeURIComponent(q)}`);
+        const found = (d.players || []).map((p) => ({ id: String(p.id), name: p.username }));
+        if (found[0]) { tr.members = [...found, ...tr.members.filter((m) => !found.some((f) => f.id === m.id))]; tr.to = found[0]; await after(); }
+      } catch { /* keep */ }
+    }, 350);
+  });
+}
+
 function paintTrade() {
   const { el } = ctx();
+  const focus = takeFocus();
   const toName = tr.to?.name || 'a member';
   // My Live in voice tile (design 19): once I pick a card, who I trade with and the two cards.
   if (tr.tab === 'trades' && tr.mode === 'offer') {
@@ -404,7 +437,7 @@ function paintTrade() {
         <div class="seg" id="trMode"><button data-m="offer" class="${tr.mode === 'offer' ? 'on' : ''}">⇄ Offer</button><button data-m="gift" class="${tr.mode === 'gift' ? 'on' : ''}">🎁 Gift</button></div></div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
         ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
-        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="${isPhone() ? 'Find' : 'Find a member'}"></div>
+        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="${isPhone() ? 'Find' : 'Find a member'}" value="${esc(tr.find || '')}"></div>
       <div class="tr-compose">${composer}</div>
       <div class="tr-gridhead">
         ${tr.mode === 'offer' && !two() ? `<div class="seg" id="trSide"><button data-s="mine" class="${tr.side === 'mine' ? 'on' : ''}">Your cards <b>${mineN}</b></button><button data-s="theirs" class="${tr.side === 'theirs' ? 'on' : ''}">${esc(toName)}'s cards <b>${theirsN}</b></button></div>` : `<div class="seg"><button class="on">Your cards <b>${mineN}</b></button></div>`}
@@ -465,19 +498,7 @@ function paintTrade() {
     tr.to = tr.members.find((p) => p.id === b.dataset.id) || tr.to; tr.get = null; tr.msg = '';
     await loadTheirs(tr.to.id); paintTrade();
   };
-  let t = null;
-  el('trFind').addEventListener('input', (e) => {
-    clearTimeout(t);
-    const q = e.target.value.trim();
-    t = setTimeout(async () => {
-      if (!q) return;
-      try {
-        const d = await ctx().api(`/api/players?q=${encodeURIComponent(q)}`);
-        const found = (d.players || []).map((p) => ({ id: String(p.id), name: p.username }));
-        if (found[0]) { tr.members = [...found, ...tr.members.filter((m) => !found.some((f) => f.id === m.id))]; tr.to = found[0]; await loadTheirs(tr.to.id); paintTrade(); }
-      } catch { /* keep */ }
-    }, 350);
-  });
+  wireFind(async () => { await loadTheirs(tr.to.id); paintTrade(); });
   el('trClear').addEventListener('click', () => { tr.give = null; tr.get = null; tr.side = 'mine'; tr.respond = null; tr.page = 0; tr.msg = ''; paintTrade(); });
   // Pick my card for an incoming offer: the grid shows my cards of that rarity.
   main.querySelectorAll('.of-pick').forEach((b) => b.addEventListener('click', () => {
@@ -489,6 +510,7 @@ function paintTrade() {
   main.querySelectorAll('.of-accept').forEach((b) => b.addEventListener('click', () => { b.disabled = true; resolve('/api/trade/accept', { offerId: Number(b.dataset.id) }); }));
   main.querySelectorAll('.of-decline').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'decline' })));
   main.querySelectorAll('.of-cancel').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'cancel' })));
+  keepFocus(focus);
   requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); if (isLand()) fitColumn(el('trMembers')); else fitRow(el('trMembers'), el('trFind')); });
 }
 
@@ -602,6 +624,7 @@ function fxCards() {
 
 function paintEffects() {
   const { el } = ctx();
+  const focus = takeFocus();
   const st = effectState();
   const toName = tr.to?.name || 'a member';
   const c = fx.pick;
@@ -651,7 +674,7 @@ function paintEffects() {
         ${cap ? `<div class="fx-today"><span>Plays today</span><i class="fx-bar"><i style="width:${Math.round((100 * used) / cap)}%"></i></i><b class="mono">${used}/${cap}</b></div>` : ''}</div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
         ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
-        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="${isPhone() ? 'Find' : 'Find a member'}"></div>
+        <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="${isPhone() ? 'Find' : 'Find a member'}" value="${esc(tr.find || '')}"></div>
       <div class="tr-compose">${composer}</div>
       <div class="tr-gridhead"><div class="seg"><button class="on">Your effect cards <b>${(ctx().cache.collection?.cards || []).filter((x) => x.effect?.primitive).length}</b></button></div>
         <span class="grow"></span>
@@ -702,6 +725,8 @@ function paintEffects() {
     await loadFx();
     paintEffects();
   });
+  wireFind(paintEffects); // Boons & Pranks had no Find handler (2026-10-01)
+  keepFocus(focus);
   requestAnimationFrame(() => { fitChildren(el('fxOnYou')); fitRecent(); fitRow(el('trMembers'), el('trFind')); });
   setTimeout(fitRecent, 300); // again after the avatars and fonts load
 }

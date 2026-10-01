@@ -2911,7 +2911,24 @@ function withOwned(card) {
   return out;
 }
 
+// The viewer arrows (Nathan, 2026-10-01): opts.list = the cards to step through in order,
+// opts.onStep(card) keeps the screen behind in step. No list = no arrows.
+let viewerNav = null;
+function stepViewer(d) {
+  if (!viewerNav) return;
+  const n = viewerNav.list[viewerNav.i + d];
+  if (!n) return;
+  openViewer(n, viewerNav.opts);
+  viewerNav?.opts.onStep?.(n);
+}
 function openViewer(card, opts = {}) {
+  const list = Array.isArray(opts.list) ? opts.list : [];
+  const i = list.findIndex((x) => String(x.id) === String(card.id));
+  viewerNav = list.length > 1 && i >= 0 ? { list, i, opts } : null;
+  el('viewer-prev').classList.toggle('hidden', !viewerNav);
+  el('viewer-next').classList.toggle('hidden', !viewerNav);
+  el('viewer-prev').disabled = !viewerNav || i <= 0;
+  el('viewer-next').disabled = !viewerNav || i >= list.length - 1;
   card = withOwned(card);
   el('viewer').classList.toggle('card-only', uiV2 && !opts.raid);
   el('viewer').classList.toggle('raid-info', uiV2 && !!opts.raid);
@@ -3165,8 +3182,11 @@ function initViewer() {
   stage.addEventListener('pointerleave', () => { hoverX = 0; hoverY = 0; applyView(); });
 
   el('viewer-close').onclick = closeViewer;
+  el('viewer-prev').onclick = () => stepViewer(-1);
+  el('viewer-next').onclick = () => stepViewer(1);
   el('viewer').addEventListener('click', (e) => { if (e.target === el('viewer')) closeViewer(); });
   document.addEventListener('keydown', (e) => {
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !el('viewer').classList.contains('hidden')) { stepViewer(e.key === 'ArrowLeft' ? -1 : 1); return; }
     if (e.key !== 'Escape') return;
     if (!el('bossModal').classList.contains('hidden')) closeBossModal();
     else if (!el('viewer').classList.contains('hidden')) closeViewer();
