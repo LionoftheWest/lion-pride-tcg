@@ -49,11 +49,49 @@ test('the strongest cards win over a weak card that only matches the boss', () =
   assert.ok(!bestSquad(cards, hunt).includes(weakMatch.id));
 });
 
-test('support cards fill the squad when there are too few attackers', () => {
-  const cards = [...Array.from({ length: 5 }, (_, i) => card(60 + i)), ...Array.from({ length: 5 }, (_, i) => card(40 + i, [], { type: 'Item' }))];
+const support = (effect, more = {}) => card(10, [], { type: 'Moment', effect, affinity: null, potency: 1, ...more });
+const typeOf = (cards, ids) => ids.map((id) => cards.find((c) => c.id === id));
+
+test('a squad keeps 2 support slots: 6 attackers + 2 supports', () => {
+  const cards = [...Array.from({ length: 10 }, (_, i) => card(60 + i)), support('heal'), support('empower'), support('expose')];
+  const t = typeOf(cards, bestSquad(cards, hunt));
+  assert.equal(t.length, 8);
+  assert.equal(t.filter((c) => c.effect).length, 2);
+  assert.deepEqual(t.filter((c) => !c.effect).map((c) => c.power), [69, 68, 67, 66, 65, 64]); // the 6 strongest attackers
+});
+
+test('the 2 supports mix a heal/shield/weaken with a damage effect (not two of one kind)', () => {
+  const cards = [...Array.from({ length: 8 }, (_, i) => card(60 + i)), support('empower'), support('empower'), support('expose'), support('heal')];
+  const fx = typeOf(cards, bestSquad(cards, hunt)).filter((c) => c.effect).map((c) => c.effect).sort();
+  assert.equal(fx.length, 2);
+  assert.ok(fx.includes('heal'), 'one sustain support: ' + fx);
+  assert.ok(fx.some((e) => e === 'empower' || e === 'expose'), 'one damage support: ' + fx);
+});
+
+test('a support whose affinity matches the squad wins over the same effect without it', () => {
+  const cards = [...Array.from({ length: 8 }, (_, i) => card(60 + i, ['trait:beast'])), support('empower', { affinity: 'trait:beast' }), support('empower'), support('shield')];
   const ids = bestSquad(cards, hunt);
-  assert.equal(ids.length, 8);
-  assert.equal(ids.filter((id) => cards.find((c) => c.id === id).type === 'Item').length, 3);
+  assert.ok(ids.includes(cards[8].id) && !ids.includes(cards[9].id));
+});
+
+test('Potency points make a support stronger', () => {
+  const cards = [...Array.from({ length: 8 }, (_, i) => card(60 + i)), support('shield'), support('shield', { potency: 1.1 }), support('expose')];
+  const ids = bestSquad(cards, hunt);
+  assert.ok(ids.includes(cards[9].id) && !ids.includes(cards[8].id));
+});
+
+test('support cards fill the squad when there are too few attackers', () => {
+  const cards = [...Array.from({ length: 5 }, (_, i) => card(60 + i)), ...['heal', 'shield', 'empower', 'expose', 'stun'].map((e) => support(e))];
+  const t = typeOf(cards, bestSquad(cards, hunt));
+  assert.equal(t.length, 8);
+  assert.equal(t.filter((c) => c.effect).length, 3);
+});
+
+test('the daily limit keeps room for the supports: 6 attackers used today + 2 new supports', () => {
+  const cards = [...Array.from({ length: 10 }, (_, i) => card(60 + i, [], { used: i < 6 })), support('heal'), support('empower')];
+  const t = typeOf(cards, bestSquad(cards, hunt));
+  assert.equal(t.length, 8);
+  assert.equal(t.filter((c) => c.effect).length, 2);
 });
 
 test('openSlots: how many more cards can go in today', () => {

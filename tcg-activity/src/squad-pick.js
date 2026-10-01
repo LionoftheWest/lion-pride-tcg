@@ -46,54 +46,112 @@ export function teamValue(team, hunt, committed = []) {
   return v;
 }
 
-// cards: [{ id, type, rarity, season, slugs, power, downed, used }] (used = it fought today).
-// Returns the card ids, the strongest first. A downed card never goes in. A card that fought
-// today and still stands is free; a new card needs a free daily slot (cap - cards used today).
+// Supports (Nathan, 2026-10-01: "supports are integral to battles"). A support's strength is
+// its effect amount x its Potency points x the affinity bonus (+15% for each committed card with
+// its affinity tag, up to x2, hunt_support). One support that keeps the squad alive (heal, shield,
+// weaken) and one that adds damage beats two of one kind: a repeat effect counts half.
+export const SUPPORT_SLOTS = 2;
+const SUSTAIN = new Set(['heal', 'shield', 'weaken']);
+const EFFECT_WEIGHT = { cleanse: 0.6 }; // cleanse only helps against a debuff; the rest 1
+export function supportValue(sups, committed) {
+  const one = (x) => {
+    const n = x.affinity ? committed.filter((c) => c.slugs.includes(x.affinity)).length : 0;
+    return (EFFECT_WEIGHT[x.effect] ?? 1) * (x.potency || 1) * Math.min(2, 1 + 0.15 * n);
+  };
+  const seen = [];
+  let v = 0;
+  for (const x of [...sups].sort((a, b) => one(b) - one(a))) {
+    let w = one(x);
+    if (seen.includes(x.effect)) w *= 0.5;
+    else if (seen.some((e) => SUSTAIN.has(e) === SUSTAIN.has(x.effect))) w *= 0.85;
+    seen.push(x.effect); v += w;
+  }
+  return v;
+}
+
+// cards: [{ id, type, rarity, season, slugs, power, downed, used, effect, affinity, potency }]
+// (used = it fought today). Returns the card ids, attackers (strongest first) then supports.
+// A downed card never goes in. A card that fought today and still stands is free; a new card
+// needs a free daily slot (cap - cards used today). The squad: 2 supports (the best pair for
+// this squad) + the attackers with the highest team CP; supports fill more slots only when the
+// attackers run out.
 export function bestSquad(cards, hunt, { cap = 8 } = {}) {
   const usedToday = cards.filter((c) => c.used);
   const newSlots = Math.max(0, cap - usedToday.length);
   const pool = cards.filter((c) => !c.downed);
   const atk = pool.filter((c) => ATTACKERS.has(c.type));
-  const team = [];
-  const fresh = () => team.filter((c) => !c.used).length;
-  const fits = (c, out = null) => !c.used ? fresh() - (out && !out.used ? 1 : 0) < newSlots : true;
-  const val = (t) => teamValue(t, hunt, usedToday);
+  const sup = pool.filter((c) => !ATTACKERS.has(c.type));
+  const room = openSlots(cards, [], { cap });
+  const team = [], sups = [];
+  const all = () => [...team, ...sups];
+  const fresh = () => all().filter((c) => !c.used).length;
+  const fits = (c, out = null) => (!c.used ? fresh() - (out && !out.used ? 1 : 0) < newSlots : true);
+  const val = (t) => teamValue(t, hunt, [...usedToday, ...sups]);
+  const want = Math.min(SUPPORT_SLOTS, sup.length);
+  // New daily slots kept for the supports while they are not picked yet (a support that
+  // already fought today and stands needs none).
+  const keep = () => (sups.length ? 0 : Math.max(0, want - sup.filter((c) => c.used).length));
+  const fitsAtk = (c, out = null) => (!c.used ? fresh() - (out && !out.used ? 1 : 0) + keep() < newSlots : true);
 
-  // 1. Greedy: add the attacker that raises the value most, until the squad is full.
-  while (team.length < cap) {
-    const base = val(team);
-    let best = null, gain = -Infinity;
-    for (const c of atk) {
-      if (team.includes(c) || !fits(c)) continue;
-      const g = val([...team, c]) - base;
-      if (g > gain) { gain = g; best = c; }
-    }
-    if (!best) break;
-    team.push(best);
-  }
-  // 2. Swaps: replace a member with a card outside while the value rises (synergy can make
-  //    two weaker cards of one element beat one strong card).
-  for (let pass = 0; pass < 20; pass++) {
-    let improved = false;
-    for (let i = 0; i < team.length; i++) {
+  const addAttackers = (limit) => {
+    while (team.length < limit && all().length < cap) {
       const base = val(team);
-      let best = null, gain = 1e-9;
+      let best = null, gain = -Infinity;
       for (const c of atk) {
-        if (team.includes(c) || !fits(c, team[i])) continue;
-        const t = team.slice(); t[i] = c;
-        const g = val(t) - base;
+        if (team.includes(c) || !fitsAtk(c)) continue;
+        const g = val([...team, c]) - base;
         if (g > gain) { gain = g; best = c; }
       }
-      if (best) { team[i] = best; improved = true; }
+      if (!best) break;
+      team.push(best);
     }
-    if (!improved) break;
-  }
-  // 3. Too few attackers: the support cards fill the rest (strongest first).
-  const sup = pool.filter((c) => !ATTACKERS.has(c.type)).sort((a, b) => b.power - a.power);
-  for (const c of sup) { if (team.length >= cap) break; if (fits(c)) team.push(c); }
+  };
+  // Swaps: replace an attacker with one outside while the value rises (synergy can make two
+  // weaker cards of one element beat one strong card).
+  const swapAttackers = () => {
+    for (let pass = 0; pass < 20; pass++) {
+      let improved = false;
+      for (let i = 0; i < team.length; i++) {
+        const base = val(team);
+        let best = null, gain = 1e-9;
+        for (const c of atk) {
+          if (team.includes(c) || !fitsAtk(c, team[i])) continue;
+          const t = team.slice(); t[i] = c;
+          const g = val(t) - base;
+          if (g > gain) { gain = g; best = c; }
+        }
+        if (best) { team[i] = best; improved = true; }
+      }
+      if (!improved) break;
+    }
+  };
+  // The supports with the highest support value for this squad (every pair is tried).
+  const pickSupports = (k) => {
+    sups.length = 0;
+    const ok = sup.filter((c) => fits(c));
+    let best = [], bestV = -1;
+    const tryset = (set) => {
+      const freshN = set.filter((c) => !c.used).length + team.filter((c) => !c.used).length;
+      if (freshN > newSlots) return;
+      const v = supportValue(set, [...usedToday, ...team, ...set]);
+      if (v > bestV + 1e-9) { bestV = v; best = set; }
+    };
+    if (k >= 2) { for (let i = 0; i < ok.length; i++) for (let j = i + 1; j < ok.length; j++) tryset([ok[i], ok[j]]); }
+    if (!best.length && k >= 1) ok.forEach((c) => tryset([c]));
+    sups.push(...best);
+  };
 
-  const own = (c) => teamValue([c], hunt, [...usedToday, ...team]);
-  return team.sort((a, b) => own(b) - own(a)).map((c) => c.id);
+  addAttackers(Math.max(0, room - want));      // 1. attackers, leaving the support slots
+  pickSupports(Math.min(want, room - team.length)); // 2. the best supports for these attackers
+  swapAttackers();                             // 3. attackers again, with the support synergy
+  pickSupports(sups.length);                   //    and the supports again for the final squad
+  addAttackers(cap);                           // 4. a slot left (fewer supports): an attacker
+  for (const c of [...sup].sort((a, b) => supportValue([b], all()) - supportValue([a], all()))) { // 5. too few attackers
+    if (all().length >= cap) break;
+    if (!sups.includes(c) && fits(c)) sups.push(c);
+  }
+  const own = (c) => teamValue([c], hunt, [...usedToday, ...all()]);
+  return [...team.sort((a, b) => own(b) - own(a)), ...sups].map((c) => c.id);
 }
 
 // How many more cards the member could still add to `selected` today (the lock-in warning).

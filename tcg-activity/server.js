@@ -832,7 +832,7 @@ app.get('/api/hunt/autopick', async (req, res) => {
   // knocked out today, the daily limit of new cards, the stat points, matchups and synergy.
   const [{ data }, { data: view }] = await Promise.all([
     supabase.from('player_cards')
-      .select('ascension, card:cards(id, rarity, season, subject:subjects(type, cp_mod, tag_slugs))')
+      .select('ascension, card:cards(id, rarity, season, subject:subjects(type, cp_mod, tag_slugs, ability))')
       .eq('player_id', me.id),
     supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: mtToday() }),
   ]);
@@ -843,7 +843,10 @@ app.get('/api/hunt/autopick', async (req, res) => {
     const st = hp.get(c.id);
     return { id: c.id, type: sub.type, rarity: c.rarity, season: c.season, slugs: sub.tag_slugs || [],
       power: stats?.[String(c.id)]?.cp ?? cardPower(c.rarity, row.ascension, sub.cp_mod),
-      used: !!st, downed: !!st?.downed };
+      used: !!st, downed: !!st?.downed,
+      // a support: its effect, affinity tag and Potency (src/squad-pick.js supportValue)
+      effect: sub.ability?.kind === 'support' ? sub.ability.effect : null, affinity: sub.ability?.affinity || null,
+      potency: Number(stats?.[String(c.id)]?.potency) || 1 };
   });
   const passives = (hunt.passive?.list || (hunt.passive ? [hunt.passive] : [])).map((p) => p.kind);
   res.json({ ids: bestSquad(cards, { ...hunt, passives }, { cap }) });
