@@ -392,3 +392,26 @@ body.ui-v2 .v2-drop.dl-drop { max-height: calc(100vh - var(--topbar-h) - 12px); 
 }
 /* A very short window (a phone in landscape): the list scrolls inside the panel, never clips. */
 body.ui-v2 .hp-list, body.ui-v2 .dl-drop .dl-list { overflow-y: auto; scrollbar-width: thin; }
+
+/* The report panel (ui-v2-report.js, design 23). */
+body.ui-v2 #reportBtn svg { width: 18px; height: 18px; }
+body.ui-v2 .rp-kinds { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+body.ui-v2 .rp-kinds button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+body.ui-v2 .rp-kinds svg, body.ui-v2 .rp-chips svg, body.ui-v2 .rp-send svg { width: 14px; height: 14px; }
+body.ui-v2 .rp-text { width: 100%; box-sizing: border-box; height: 112px; resize: none; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text-primary); font: 400 13.5px/1.45 var(--font-ui); }
+body.ui-v2 .rp-text:focus { outline: none; border-color: rgba(244, 183, 60, .55); }
+body.ui-v2 .rp-with { display: flex; flex-direction: column; gap: 6px; }
+body.ui-v2 .rp-with .side-h { margin: 0; }
+body.ui-v2 .rp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+body.ui-v2 .rp-chips span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 99px; font: 600 11.5px var(--font-ui); color: var(--text-secondary, #c9cbd6); background: var(--surface-2); border: 1px solid var(--border); }
+body.ui-v2 .rp-err { margin: 0; font-size: 12.5px; color: var(--danger); }
+body.ui-v2 .rp-send { width: 100%; justify-content: center; gap: 8px; }
+body.ui-v2 .rp-send:disabled { filter: grayscale(.8) brightness(.6); cursor: default; transform: none; }
+body.ui-v2 .rp-done { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 0 8px; }
+body.ui-v2 .rp-check { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 8px; color: var(--success); background: var(--success-soft); border: 1px solid rgba(91, 227, 138, .45); }
+body.ui-v2 .rp-check svg { width: 22px; height: 22px; }
+body.ui-v2 .rp-done b { font: 800 17px var(--font-display); }
+body.ui-v2 .rp-done span { font-size: 12.5px; color: var(--text-secondary, #c9cbd6); }
+@media (max-height: 460px) { body.ui-v2 .rp-text { height: 72px; } }
+body.ui-v2 .v2-drop.rp-drop { max-height: calc(100vh - var(--topbar-h) - 12px); }

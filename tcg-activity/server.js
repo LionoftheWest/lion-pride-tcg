@@ -18,6 +18,7 @@ const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
+import { REPORTS_ON, registerReportRoutes } from './reports.js';
 import { createImgCache, normalizeImgUrl } from './img-cache.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
@@ -324,7 +325,7 @@ app.get('/api/flags', async (req, res) => {
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
   const { data: tut } = await supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle();
-  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), welcomed, tutorial: tut?.tutorial || {} });
+  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
@@ -1490,6 +1491,7 @@ async function caller(req) {
   return whoAmI((req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
 }
 registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg });
+registerReportRoutes(app, { supabase, caller, rateLimit });
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.
