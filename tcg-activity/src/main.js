@@ -344,7 +344,14 @@ function startV2() {
   if (mobileUi) {
     initMobile(() => show(currentView)); // a phone turned: paint the screen in its new layout
     // The phone layouts handle both directions: let the member turn the phone (Nathan, 2026-10-01).
-    try { sdkRef?.commands?.setOrientationLockState?.({ lock_state: 1, picture_in_picture_lock_state: 1, grid_lock_state: 1 })?.catch?.(() => {}); } catch { /* an old Discord client */ }
+    const mlog = (ev, d) => apiPost('/api/mobile-log', { ev, ...d, w: innerWidth, h: innerHeight, body: document.body.className.split(' ').filter((c) => c.startsWith('m-')).join(' '),
+      sa: ['top', 'right', 'bottom', 'left'].map((k) => getComputedStyle(document.documentElement).getPropertyValue(`--discord-safe-area-inset-${k}`).trim() || '-').join(' ') }).catch(() => {});
+    try {
+      const p = sdkRef?.commands?.setOrientationLockState?.({ lock_state: 1, picture_in_picture_lock_state: 1, grid_lock_state: 1 });
+      if (p?.then) p.then((r) => mlog('unlock-ok', { r: r ?? null }), (e) => mlog('unlock-err', { e: String(e?.message || e) })); else mlog('unlock-none', {});
+    } catch (e) { mlog('unlock-throw', { e: String(e?.message || e) }); }
+    try { sdkRef?.subscribe?.('ORIENTATION_UPDATE', (d) => mlog('orientation', { o: d?.screen_orientation })); } catch (e) { mlog('sub-throw', { e: String(e?.message || e) }); }
+    addEventListener('resize', () => mlog('resize', {}));
   }
   initV2({
     api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
