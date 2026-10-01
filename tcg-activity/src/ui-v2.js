@@ -884,7 +884,9 @@ function paintHero(d) {
     if (faces) faces.innerHTML = [...seen].slice(0, 4).map(([id, name]) => avatarHTML(id, name, 'xs')).join('');
   }).catch(() => {});
   tickCloses();
-  try { heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier); } catch { heroBoss = null; }
+  // The live boss: the same close-up as the resting card (head + chest, the flex/taunt showcase).
+  // It showed the full body (Nathan, 2026-10-01: the first live boss after PR #35).
+  try { heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true }); } catch { heroBoss = null; }
 }
 
 function left(iso) {

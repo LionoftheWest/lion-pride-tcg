@@ -268,6 +268,21 @@ export function openTradeWith(to) {
   ctx().show('trading');
 }
 
+// Live offers (Nathan, 2026-10-01: an accepted offer stayed on screen until he left the view).
+// The poll in main.js hands the fresh /api/trades here; a change repaints the trade screen
+// (takeFocus/keepFocus keep a search box), and a finished offer refreshes my cards.
+export async function liveTrades(d) {
+  if (!d || d.error || ctx().currentView() !== 'trading' || tr.tab !== 'trades') return;
+  if (JSON.stringify(d) === JSON.stringify(tr.offers)) return;
+  const ids = (x) => new Set([...(x?.incoming || []), ...(x?.outgoing || [])].map((o) => Number(o.id)));
+  const now = ids(d);
+  const gone = [...ids(tr.offers)].some((id) => !now.has(id)); // accepted, declined or cancelled
+  tr.offers = d;
+  if (tr.respond && !(d.incoming || []).some((o) => Number(o.id) === Number(tr.respond.id) && o.status !== 'countered')) { tr.respond = null; tr.give = null; }
+  if (gone) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
+  if (ctx().currentView() === 'trading' && tr.tab === 'trades') paintTrade();
+}
+
 export async function renderTradingV2() {
   const { el, api } = ctx();
   el('main').innerHTML = '<div class="v2-loading">Loading…</div>';

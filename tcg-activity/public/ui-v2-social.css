@@ -416,3 +416,8 @@ body.ui-v2 .rp-done span { font-size: 12.5px; color: var(--text-secondary, #c9cb
 @media (max-height: 460px) { body.ui-v2 .rp-text { height: 72px; } }
 body.ui-v2 .v2-drop.rp-drop { max-height: calc(100vh - var(--topbar-h) - 12px); }
 body.ui-v2 .tr-info.tr-empty { display: none; }
+/* An incoming offer that waits for the sender (I picked my card): "Waiting for <a long name>"
+   made the right column so wide that it covered the cards and Decline (Nathan, 2026-10-01).
+   The wait line + Decline take their own row under the cards; the line wraps. */
+body.ui-v2:not(.m-land):not(.m-port) .of-row:has(.of-wait) .of-acts { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+body.ui-v2 .of-wait { min-width: 0; flex: 1; white-space: normal; overflow-wrap: break-word; font-size: 12px; line-height: 1.3; }
