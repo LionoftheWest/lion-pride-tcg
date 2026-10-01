@@ -74,7 +74,9 @@ export function groupByRarity<T extends { rarity: Rarity }>(
     gold: [],
   };
   for (const card of cards) {
-    grouped[card.rarity].push(card);
+    // Only the 5 pack rarities: an Event or Promo card in the pool by mistake is skipped (it
+    // broke the draw for everyone before; Nathan, 2026-10-01: they never come from a pack).
+    grouped[card.rarity]?.push(card);
   }
   return grouped;
 }

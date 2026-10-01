@@ -107,6 +107,24 @@ describe('drawPack', () => {
   });
 });
 
+describe('Event and Promo cards never come from a pack', () => {
+  it('an Event or Promo card in the pool is skipped, and the draw still works', () => {
+    const cards = [
+      ...Array.from({ length: 6 }, (_, i) => ({ id: i + 1, rarity: 'normal' as Rarity })),
+      { id: 100, rarity: 'event' as unknown as Rarity },
+      { id: 101, rarity: 'promo' as unknown as Rarity },
+    ];
+    const grouped = groupByRarity(cards);
+    const all = Object.values(grouped).flat();
+    assert.ok(!all.some((c) => c.id === 100 || c.id === 101));
+    for (let seed = 1; seed <= 200; seed++) {
+      const pack = drawPack(grouped, seededRng(seed));
+      assert.equal(pack.length, PACK_SIZE);
+      assert.ok(pack.every((c) => c.id < 100));
+    }
+  });
+});
+
 describe('packsToAward', () => {
   it('grants a base pack for one message, once', () => {
     assert.deepEqual(
