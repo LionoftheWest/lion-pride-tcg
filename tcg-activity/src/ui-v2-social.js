@@ -5,6 +5,7 @@
 import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember, toast } from './ui-v2.js';
 import { thumb } from './thumb.js';
 import { playTradeFx } from './ui-v2-tradefx.js';
+import { isPhone } from './mobile.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge } from './effects-ui.js';
 
 const ctx = () => v2ctx();
@@ -244,7 +245,12 @@ function paintBoard() {
   el('lbBack').addEventListener('click', () => ctx().show(board.back || 'home'));
   el('main').querySelectorAll('.lb-tab').forEach((b) => b.addEventListener('click', () => { board.metric = b.dataset.m; paintBoard(); }));
   el('main').querySelector('.v2-board').addEventListener('click', (e) => { const t = e.target.closest('[data-member]'); if (t) openMember(t.dataset.member); });
-  requestAnimationFrame(() => fitChildren(el('lbRows')));
+  requestAnimationFrame(() => {
+    const rows = el('lbRows');
+    fitChildren(rows);
+    // A phone shows fewer rows: when my row did not fit, it takes the last place (my rank stays on screen).
+    if (isPhone() && rows && me && meIdx >= 3 && !pinMe && !rows.querySelector('.lb-row.me') && rows.lastElementChild) rows.lastElementChild.outerHTML = line(me, meIdx);
+  });
 }
 
 // ---- Trading, with Gift inside (designs 14 + 13) ----------------------------------------
@@ -377,7 +383,7 @@ function paintTrade() {
       <div class="side-h">Incoming <span class="n">${inc.length}</span></div>
       <div class="of-list" id="ofIn">${inc.map((o) => `<div class="of-row"><div class="of-who">${avatarHTML(o.from_id, o.from_name, 'xs')}<b>${nameBadge(o.from_id, o.from_name || 'Someone')}</b></div>
         <div class="of-cards">${offerCard(o.offer, 'Get')}<span>⇄</span>${offerCard(o.request, 'Give')}</div>
-        <div class="of-acts"><button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button><button class="v2-btn of-decline" data-id="${o.id}">✕ Decline</button></div></div>`).join('') || '<p class="v2-empty">No incoming offers.</p>'}</div>
+        <div class="of-acts"><button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button><button class="v2-btn of-decline" data-id="${o.id}" title="Decline">✕<span class="of-t"> Decline</span></button></div></div>`).join('') || '<p class="v2-empty">No incoming offers.</p>'}</div>
       <div class="side-h">Sent <span class="n">${out.length}</span></div>
       <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone')}</b><span class="dim">Waiting</span></div>
         <div class="of-cards">${offerCard(o.offer, 'Give')}<span>⇄</span>${offerCard(o.request, 'Get')}</div><button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button></div>`).join('') || '<p class="v2-empty">No sent offers.</p>'}</div>
@@ -429,10 +435,22 @@ function paintTrade() {
   main.querySelectorAll('.of-accept').forEach((b) => b.addEventListener('click', () => { b.disabled = true; resolve('/api/trade/accept', { offerId: Number(b.dataset.id) }); }));
   main.querySelectorAll('.of-decline').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'decline' })));
   main.querySelectorAll('.of-cancel').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'cancel' })));
-  requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); fitRow(el('trMembers'), el('trFind')); });
+  requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); if (isPhone()) fitColumn(el('trMembers')); else fitRow(el('trMembers'), el('trFind')); });
 }
 
 // No cut chips: drop the member chips that do not fully fit left of the search box.
+// A phone: the member list is a column. The members that do not fit go (the picked one stays).
+function fitColumn(col) {
+  if (!col) return;
+  const bottom = () => col.getBoundingClientRect().bottom - 8;
+  for (;;) {
+    const all = [...col.querySelectorAll('.tr-mem')];
+    if (all.length < 2 || all[all.length - 1].getBoundingClientRect().bottom <= bottom()) break;
+    const last = [...col.querySelectorAll('.tr-mem:not(.on)')].pop();
+    if (!last) break;
+    last.remove();
+  }
+}
 function fitRow(row, stop) {
   if (!row || !stop) return;
   const right = () => row.getBoundingClientRect().right - 10;

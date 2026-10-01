@@ -1,0 +1,425 @@
+/* Phone layouts: designs 24 (landscape, 844 x 390) and 25 (portrait, 390 x 760), approved by
+   Nathan 2026-10-01. body.m-land / body.m-port come from src/mobile.js. Rules: layout only,
+   ZERO scrolling anywhere, readable (body text >= 12 px, labels >= 10.5 px, buttons >= 40 px),
+   and fewer items in place of smaller items. The desktop has neither class. */
+
+/* ===== Landscape: the shell ===== */
+body.ui-v2.m-land { --topbar-h: 46px; --dock-h: 52px; --m-gap: 8px; }
+body.ui-v2.m-land #topbar { padding: 0 12px; gap: 8px; }
+body.ui-v2.m-land #topbar .v2-season, body.ui-v2.m-land #v2Packs { display: none !important; }
+body.ui-v2.m-land #topbar .v2-logo i { display: none; }
+body.ui-v2.m-land #topbar .iconbtn { width: 34px; height: 34px; }
+body.ui-v2.m-land #v2Avatar { width: 34px; height: 34px; }
+body.ui-v2.m-land #topbar .topright { gap: 6px; }
+body.ui-v2.m-land #body { height: calc(100dvh - var(--topbar-h)); padding: 0 12px calc(var(--dock-h) + 10px); }
+body.ui-v2.m-land #dock { bottom: 4px; width: min(470px, 60vw); height: var(--dock-h); padding: 0 8px; border-radius: 18px; }
+body.ui-v2.m-land #dock .dk { height: 44px; font-size: 10.5px; gap: 2px; }
+body.ui-v2.m-land #dock .dk svg { width: 18px; height: 18px; }
+body.ui-v2.m-land #dock .dk-open { flex-basis: 54px; height: 54px; margin-top: -10px; font-size: 9.5px; }
+body.ui-v2.m-land #dock .dk-open svg { width: 19px; height: 19px; }
+body.ui-v2.m-land .v2-tile { padding: 10px 12px; }
+body.ui-v2.m-land .tile-h { margin-bottom: 6px; font-size: 14px; }
+
+/* ===== Landscape: Home (design 24 part 1, frame 1) ===== */
+body.ui-v2.m-land .v2-home.h19 { gap: var(--m-gap); grid-template-columns: minmax(0, 1fr) minmax(250px, 37%); grid-template-rows: minmax(0, 1fr) auto; }
+body.ui-v2.m-land .v2-tile.hero { grid-template-columns: 1fr .9fr; }
+body.ui-v2.m-land .hero-info { padding: 12px 14px; gap: 6px; }
+body.ui-v2.m-land .hero-info h2 { font-size: 22px; }
+body.ui-v2.m-land .hero-info .live-chip { height: 22px; padding: 0 9px; font-size: 10.5px; }
+body.ui-v2.m-land .hero-row { gap: 10px; margin-top: 2px; }
+body.ui-v2.m-land .hero-row .v2-btn { height: 40px; }
+body.ui-v2.m-land .hero-faces .v2-avatar { width: 24px; height: 24px; }
+body.ui-v2.m-land .hero-next b { font-size: 18px; }
+body.ui-v2.m-land .rest-stats, body.ui-v2.m-land .hero-rest-side .rest-top { display: none; }
+body.ui-v2.m-land .h19 .vc-grid { grid-template-columns: repeat(var(--vc-n, 3), minmax(0, 1fr)) 44px; grid-template-rows: auto; grid-auto-rows: 0; gap: 6px; flex: none; }
+body.ui-v2.m-land .h19 .vc-grid.no-more { grid-template-columns: repeat(var(--vc-n, 3), minmax(0, 1fr)); }
+body.ui-v2.m-land .h19 .vc-tile { padding: 7px 9px; gap: 4px; }
+body.ui-v2.m-land .h19 .vc-tile .v2-avatar { width: 26px; height: 26px; }
+body.ui-v2.m-land .h19 .vc-head { gap: 7px; }
+body.ui-v2.m-land .h19 .vc-head b { font-size: 13px; }
+body.ui-v2.m-land .h19 .vc-st { font-size: 12px; }
+body.ui-v2.m-land .h19 .vc-body { display: none; }
+body.ui-v2.m-land .h19 .vc-foot { font-size: 12px; }
+body.ui-v2.m-land .vc-more { display: grid; place-items: center; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border);
+  font: 700 14px var(--font-num); color: var(--text-secondary); }
+body.ui-v2.m-land .v2-tile.voice .tile-h { margin-bottom: 6px; }
+body.ui-v2.m-land .pl-top { padding: 7px 8px; gap: 10px; }
+body.ui-v2.m-land .pl-top img { width: 40px; }
+body.ui-v2.m-land .pl-top b { font-size: 13px; }
+body.ui-v2.m-land .pl-row { padding: 4px; font-size: 12px; }
+body.ui-v2.m-land .pl-row img { width: 24px; }
+body.ui-v2.m-land .v2-tile.pulls .seg button { height: 26px; padding: 0 8px; font-size: 11.5px; }
+.vc-more { display: none; }
+body.ui-v2.m-land .hero-info { padding: 10px 14px; gap: 5px; justify-content: center; }
+body.ui-v2.m-land .hero-info h2 { font-size: 20px; line-height: 1.05; }
+body.ui-v2.m-land .hero-hp { font-size: 12px; }
+body.ui-v2.m-land .h19 .vc-ago, body.ui-v2.m-land .h19 .vc-tile .you { display: none; }
+body.ui-v2.m-land .live-chip.sm { font-size: 10.5px; }
+body.ui-v2.m-land #dock .dk-open { font-size: 10.5px; }
+body.ui-v2.m-land .v2-tile.hero { grid-template-columns: 1.15fr .85fr; }
+body.ui-v2.m-land .hero-info .live-chip { white-space: nowrap; }
+body.ui-v2.m-land .v2-tile.pulls .tile-h { flex-wrap: wrap; row-gap: 6px; }
+body.ui-v2.m-land .v2-tile.pulls .tile-h b, body.ui-v2.m-land .v2-tile.pulls .seg button { white-space: nowrap; }
+/* The old page padding and the #body top margin cost 30 px on a phone. */
+body.ui-v2.m-land { padding: 0; }
+body.ui-v2.m-land #body { margin-top: 0; flex: none; }
+body.ui-v2.m-land #heroJoin { white-space: nowrap; }
+@media (max-width: 720px) {
+  body.ui-v2.m-land .hero-info h2 { font-size: 18px; }
+  body.ui-v2.m-land .hero-info { padding: 8px 12px; gap: 4px; }
+  body.ui-v2.m-land .hero-row { margin-top: 0; }
+  body.ui-v2.m-land .v2-tile.voice { padding-top: 8px; padding-bottom: 8px; }
+  body.ui-v2.m-land #heroFaces, body.ui-v2.m-land .hero-row .mono.dim { display: none; }
+}
+
+/* ===== Landscape: Collection (design 24 part 1, frames 2 + 3) ===== */
+body.ui-v2.m-land .v2-collection, body.ui-v2.m-land .v2-collection.boss-mode { grid-template-columns: 184px minmax(0, 1fr); gap: var(--m-gap); }
+body.ui-v2.m-land .v2-collection.ach-mode { grid-template-columns: 184px minmax(0, 1fr); }
+body.ui-v2.m-land .v2-collection.boss-mode .v2-side { display: flex; }
+body.ui-v2.m-land .v2-side.filters { padding: 10px; }
+body.ui-v2.m-land .v2-side.filters .f-head { display: none; }
+body.ui-v2.m-land .v2-side.filters .v2-search { height: 36px; font-size: 13px; }
+body.ui-v2.m-land .v2-side.filters .side-h { margin: 8px 0 4px; }
+body.ui-v2.m-land .v2-col-head { margin: 0 0 6px; gap: 8px; }
+body.ui-v2.m-land .v2-col-head h2 { font-size: 17px; }
+body.ui-v2.m-land .v2-col-head .seg button { height: 30px; padding: 0 9px; }
+body.ui-v2.m-land .v2-grid { gap: 10px; }
+/* The side panel becomes the full-screen card view (frame 3): the big card on the left, the
+   name, stats and lore in the middle, the ability, effect and actions on the right. */
+body.ui-v2.m-land #colPanel { display: none; }
+body.ui-v2.m-land #colPanel.m-open { display: grid; position: fixed; z-index: 58; inset: 6px 10px calc(var(--dock-h) + 10px);
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 8px 14px; padding: 12px 14px;
+  background: var(--bg-raised); box-shadow: 0 20px 60px rgba(0, 0, 0, .7); }
+body.ui-v2.m-land #colPanel.m-open .p-art { grid-column: 1; height: calc(100dvh - var(--dock-h) - 44px); width: auto; aspect-ratio: 5 / 7; max-width: none; }
+body.ui-v2.m-land #colPanel.m-open .pv-mid, body.ui-v2.m-land #colPanel.m-open .pv-side { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+body.ui-v2.m-land #colPanel.m-open .pv-mid { position: relative; }
+body.ui-v2.m-land #colPanel.m-open .pv-mid > *, body.ui-v2.m-land #colPanel.m-open .pv-side > * { flex-shrink: 0; }
+body.ui-v2.m-land #colPanel.m-open .v-sec-head { font-size: 10.5px; }
+body.ui-v2.m-land #colPanel.m-open > .boss-stage { grid-column: 1 / span 2; grid-row: 1 / span 6; height: calc(100dvh - var(--dock-h) - 44px); }
+body.ui-v2.m-land #colPanel.m-open > .boss-info { grid-column: 3; }
+body.ui-v2.m-land .p-close { position: absolute; top: -4px; right: 0; z-index: 2; width: 40px; height: 40px; }
+body.ui-v2.m-land .v2-side.filters .f-own button { padding: 0 8px; }
+body.ui-v2.m-land .col-tabs .tab-dot { font-size: 10.5px; }
+body.ui-v2.m-land .head-el { flex-wrap: nowrap; gap: 0; }
+body.ui-v2.m-land .head-el .el-btn { width: 30px; height: 30px; }
+body.ui-v2.m-land .v2-cap { gap: 4px; }
+body.ui-v2.m-land #colPanel.m-open .pbox.fx .v-play { grid-column: 1 / -1; grid-row: auto; height: 40px; margin-top: 6px; }
+body.ui-v2.m-land #colPanel.m-open .pv-mid .p-actions { margin-top: auto; }
+body.ui-v2.m-land #colPanel.m-open .pv-mid .v2-icon { width: 40px; height: 40px; }
+
+/* ===== Landscape: Hunt squad select (design 24 part 1, frame 4) =====
+   The squad column and the pick column share one grid (display: contents), so the 8 slots
+   sit in one row under the pick grid and Auto-pick / Lock in line up with them. */
+body.ui-v2.m-land .v2sq { grid-template-columns: 196px minmax(0, 1fr); grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; gap: 6px var(--m-gap); position: relative; }
+body.ui-v2.m-land .v2sq::before { content: ''; grid-column: 1; grid-row: 1 / -1; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 16px; }
+body.ui-v2.m-land .sq-side, body.ui-v2.m-land .sq-main { display: contents; }
+body.ui-v2.m-land .v2sq .sq-side > * { grid-column: 1; margin-left: 10px; margin-right: 10px; min-width: 0; }
+body.ui-v2.m-land .v2sq .sq-side > .sq-h { grid-column: 1; grid-row: 1; margin-top: 8px; }
+body.ui-v2.m-land .v2sq .sq-side > .sq-boss { grid-column: 1; grid-row: 2; min-height: 44px; }
+body.ui-v2.m-land .v2sq .sq-side > .cp-big { grid-column: 1; grid-row: 3; align-self: auto; margin-top: 0; margin-bottom: 0; }
+body.ui-v2.m-land .v2sq .sq-side > .side-h { grid-column: 1; grid-row: 4; margin-top: 0; }
+body.ui-v2.m-land .v2sq .sq-side > .squad-synergy { grid-column: 1; grid-row: 5; align-content: flex-start; min-height: 0; }
+body.ui-v2.m-land .v2sq .sq-side > .sq-foot { grid-column: 1; grid-row: 6; margin-bottom: 8px; display: flex; gap: 6px; align-self: end; }
+body.ui-v2.m-land .sq-foot .v2-btn { flex: 1; height: 40px; padding: 0 8px; }
+body.ui-v2.m-land .sq-top { grid-column: 2; grid-row: 1; flex-wrap: nowrap; gap: 6px; margin: 0; min-width: 0; }
+body.ui-v2.m-land .sq-top .v2-search { width: 150px; flex: 0 1 150px; height: 34px; }
+body.ui-v2.m-land .sq-top .seg button { height: 28px; padding: 0 8px; }
+body.ui-v2.m-land #huntGrid { grid-column: 2; grid-row: 2 / span 4; min-height: 0; }
+body.ui-v2.m-land .v2sq .sq-side > .sq-list { grid-column: 2; grid-row: 6; margin: 0; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; }
+body.ui-v2.m-land .sq-list .sq-row { position: relative; height: 64px; flex: none; padding: 4px 6px; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 1px; overflow: hidden; }
+body.ui-v2.m-land .sq-list .sq-row img, body.ui-v2.m-land .sq-list .sq-row .sq-noimg { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; opacity: .32; }
+body.ui-v2.m-land .sq-list .sq-row > span { position: relative; }
+body.ui-v2.m-land .sq-list .sq-row .sq-i { position: absolute; top: 4px; left: 5px; width: auto; }
+body.ui-v2.m-land .sq-list .sq-row .slot-x { position: absolute; top: 3px; right: 5px; }
+body.ui-v2.m-land .sq-list .sq-row .sq-name { width: 100%; font-size: 11px; line-height: 1.15; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+body.ui-v2.m-land .sq-list .sq-row .sq-pow { min-width: 0; text-align: left; font-size: 11px; }
+body.ui-v2.m-land .sq-list .sq-row .sq-x2, body.ui-v2.m-land .sq-list .sq-row .sq-el { display: none; }
+body.ui-v2.m-land .sq-list .sq-row.empty { align-items: center; justify-content: center; }
+body.ui-v2.m-land .sq-list .sq-row.empty .sq-name { display: none; }
+body.ui-v2.m-land .sq-wr i { font-size: 10.5px; }
+body.ui-v2.m-land .squad-grid .c .tpow, body.ui-v2.m-land .squad-grid .c .cability { font-size: 10.5px; }
+body.ui-v2.m-land .sq-foot .v2-btn { white-space: nowrap; font-size: 12.5px; }
+/* The sort sits beside the dock, on the right (design 24, frame 4). */
+body.ui-v2.m-land #dock { width: min(470px, 56vw); }
+body.ui-v2.m-land .sq-top #sqSort { position: fixed; z-index: 61; right: 10px; bottom: 10px; height: 40px; box-sizing: border-box; align-items: center; }
+body.ui-v2.m-land .sq-top #sqSort button { height: 32px; padding: 0 7px; font-size: 11.5px; }
+body.ui-v2.m-land .v2sq .sq-side > .sq-foot { flex-wrap: nowrap; }
+body.ui-v2.m-land .sq-foot .v2-btn { flex: 1 1 0; min-width: 0; padding: 0 6px; }
+
+/* ===== Landscape: Hunt battle (design 24 part 1, frame 5) ===== */
+body.ui-v2.m-land .arena-mode .arena-top, body.ui-v2.m-land .arena-top { padding: 4px 10px 0; gap: 4px; }
+body.ui-v2.m-land .arena-titlerow .boss-name { font-size: 17px; }
+body.ui-v2.m-land .arena-titlerow .closes { font-size: 12px; }
+body.ui-v2.m-land .arena-traits { font-size: 11px; gap: 6px; }
+body.ui-v2.m-land .hunt-arena .hpbar { height: 14px; }
+body.ui-v2.m-land .hunt-arena .hptext { font-size: 10.5px; }
+/* Your damage + Standings sit beside the dock, on the left. */
+body.ui-v2.m-land .hunt-arena .arena-subrow { position: fixed; z-index: 61; left: 10px; right: auto; top: auto; bottom: 8px; transform: none; width: auto;
+  flex-direction: row; align-items: center; gap: 6px; }
+body.ui-v2.m-land .arena-subrow > span { padding: 4px 10px; font-size: 10.5px; }
+body.ui-v2.m-land .arena-subrow > span b { font-size: 16px; margin-top: 0; }
+body.ui-v2.m-land .arena-subrow .fighters-now { display: none; }
+body.ui-v2.m-land .arena-subrow .hunt-lb { height: 40px; padding: 0 10px; font-size: 12px; }
+/* The live hits: the 3 newest, top right over the boss. */
+body.ui-v2.m-land:has(.arena-mode) #feed { left: auto; right: 10px; top: calc(var(--topbar-h) + 64px); width: 200px; height: auto; min-height: 0; }
+body.ui-v2.m-land:has(.arena-mode) #feed .afrow:nth-child(n+4) { display: none; }
+body.ui-v2.m-land:has(.arena-mode) #feed .feed-head { margin-bottom: 4px; }
+body.ui-v2.m-land .squad-grid.hand { gap: 6px; padding: 30px 8px 4px; }
+body.ui-v2.m-land .squad-grid.hand::before { top: 2px; padding: 4px 12px; font-size: 11.5px; }
+body.ui-v2.m-land .squad-grid.hand .cap { font-size: 10.5px; }
+body.ui-v2.m-land .squad-grid.hand .c .x2 { font-size: 10.5px; }
+body.ui-v2.m-land:has(.arena-mode) #feed { top: calc(var(--topbar-h) + 82px); width: 210px; }
+body.ui-v2.m-land:has(.arena-mode) #feed .afrow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 8px; }
+body.ui-v2.m-land:has(.arena-mode) #feed .afrow:nth-child(n+3) { display: none; }
+body.ui-v2.m-land .arena-subrow .hunt-lb { width: 40px; padding: 0; }
+body.ui-v2.m-land .arena-subrow .hunt-lb .lb-t { display: none; }
+@media (max-width: 720px) {
+  body.ui-v2.m-land .squad-grid.hand::before { left: 8px; transform: none; }
+  body.ui-v2.m-land:has(.arena-mode) #feed .afrow:nth-child(n+2) { display: none; }
+  body.ui-v2.m-land .arena-subrow #myDmg { font-size: 0; }
+}
+
+/* ===== Landscape: Community trades (design 24 part 2, frame 4) =====
+   The members as a column on the left, the trade builder and the cards in the middle, the
+   offers on the right. */
+body.ui-v2.m-land .v2-trade { grid-template-columns: 132px minmax(0, 1fr) 236px; grid-template-rows: auto auto auto minmax(0, 1fr); gap: 6px var(--m-gap); }
+body.ui-v2.m-land .v2-trade .tr-main { display: contents; }
+body.ui-v2.m-land .v2-trade .tr-top { grid-column: 1 / 3; grid-row: 1; min-width: 0; }
+body.ui-v2.m-land .v2-trade .tr-top .seg button { height: 30px; padding: 0 9px; }
+body.ui-v2.m-land .v2-trade .tr-members { grid-column: 1; grid-row: 2 / -1; flex-direction: column; align-items: stretch; gap: 4px; padding: 8px; min-height: 0; }
+body.ui-v2.m-land .v2-trade .tr-members .side-h { margin: 0 0 2px 4px; }
+body.ui-v2.m-land .v2-trade .tr-members .tr-find { order: -1; width: auto; flex: none; height: 34px; margin-bottom: 4px; }
+body.ui-v2.m-land .v2-trade .tr-members .side-h { order: -2; }
+body.ui-v2.m-land .v2-trade .tr-members .grow { display: none; }
+body.ui-v2.m-land .v2-trade .tr-mem { height: 36px; flex: none; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2.m-land .v2-trade .tr-compose { grid-column: 2; grid-row: 2; padding: 8px 10px; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-slot { width: 52px; flex-basis: 52px; }
+body.ui-v2.m-land .v2-trade .tr-deal { gap: 8px; }
+body.ui-v2.m-land .v2-trade .tr-side { gap: 8px; }
+body.ui-v2.m-land .v2-trade .tr-compose:not(:has(.fx-deal)) .tr-foot { padding-left: 10px; gap: 6px; }
+body.ui-v2.m-land .v2-trade .tr-foot .v2-btn { height: 40px; padding: 0 10px; white-space: nowrap; }
+body.ui-v2.m-land .v2-trade .tr-foot .dim, body.ui-v2.m-land .v2-trade .tr-foot .tr-diff { display: none; }
+body.ui-v2.m-land .v2-trade .tr-gridhead { grid-column: 2; grid-row: 3; gap: 6px; }
+body.ui-v2.m-land .v2-trade .tr-gridhead .seg button { height: 30px; padding: 0 8px; }
+body.ui-v2.m-land .v2-trade .tr-gridhead .v2-search { height: 32px; min-width: 80px; }
+body.ui-v2.m-land .v2-trade #trGrid { grid-column: 2; grid-row: 4; gap: 8px; }
+body.ui-v2.m-land .v2-trade .tr-offers { grid-column: 3; grid-row: 1 / -1; padding: 10px; gap: 6px; }
+body.ui-v2.m-land .v2-trade .of-list { gap: 6px; }
+body.ui-v2.m-land .v2-trade .of-row { padding: 7px 8px; gap: 4px 8px; }
+body.ui-v2.m-land .v2-trade .of-card img { width: 30px; }
+body.ui-v2.m-land .v2-trade .of-card span { font-size: 10.5px; }
+body.ui-v2.m-land .v2-trade .of-acts { flex-direction: row; align-items: center; }
+body.ui-v2.m-land .v2-trade .of-acts .v2-btn { height: 40px; padding: 0 10px; }
+body.ui-v2.m-land .v2-trade .of-row { grid-template-columns: minmax(0, 1fr) auto; }
+body.ui-v2.m-land .v2-trade .of-cards { gap: 4px; min-width: 0; }
+body.ui-v2.m-land .v2-trade .of-cards > span { display: none; }
+body.ui-v2.m-land .v2-trade .of-card img { width: 26px; }
+body.ui-v2.m-land .v2-trade .of-decline { width: 40px; padding: 0; }
+body.ui-v2.m-land .v2-trade .of-decline .of-t { display: none; }
+body.ui-v2.m-land .v2-trade .of-row.sent .of-card img { width: 24px; }
+body.ui-v2.m-land .v2-trade .of-cancel { width: 40px; height: 40px; align-self: center; }
+body.ui-v2.m-land .v2-trade .tr-gridhead { flex-wrap: wrap; row-gap: 4px; }
+body.ui-v2.m-land .v2-trade .tr-gridhead .grow { display: none; }
+/* The dock is a little narrower, so actions fit beside it (designs 24 part 2, frame 4). */
+body.ui-v2.m-land #dock { width: min(440px, 52vw); }
+body.ui-v2.m-land .v2-trade { position: relative; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-slot { width: 46px; flex-basis: 46px; }
+body.ui-v2.m-land .v2-trade .tr-compose:not(:has(.fx-deal)) .tr-foot { border-left: 0; padding-left: 0; }
+body.ui-v2.m-land .v2-trade #trSend { position: fixed; z-index: 61; right: 10px; bottom: 8px; width: 128px; height: 44px; }
+body.ui-v2.m-land .v2-trade #trClear { position: fixed; z-index: 61; right: 144px; bottom: 8px; width: 44px; height: 44px; padding: 0; font-size: 0; }
+body.ui-v2.m-land .v2-trade #trClear::before { content: '↺'; font-size: 18px; }
+body.ui-v2.m-land .v2-trade .tr-msg { font-size: 12px; }
+/* The pager sits in the top row, over the middle column. */
+body.ui-v2.m-land .v2-trade #trPager { position: absolute; top: 0; left: calc(140px + (100% - 140px - 244px) / 2); transform: translateX(-50%); height: 34px; }
+body.ui-v2.m-land .v2-trade .tr-gridhead { flex-wrap: nowrap; }
+body.ui-v2.m-land .v2-trade .tr-gridhead .seg button { max-width: 104px; }
+body.ui-v2.m-land .v2-trade { row-gap: 4px; }
+body.ui-v2.m-land .v2-trade .tr-compose { padding: 4px 8px; }
+body.ui-v2.m-land .v2-trade .tr-offers .of-list#ofOut { flex-shrink: 0; }
+body.ui-v2.m-land .v2-trade .of-row .of-who { grid-column: 1; }
+body.ui-v2.m-land .v2-trade .of-row .of-acts, body.ui-v2.m-land .v2-trade .of-row .of-cancel { grid-column: 2; grid-row: 1 / 3; }
+@media (max-width: 720px) {
+  body.ui-v2.m-land .v2-trade { grid-template-columns: 112px minmax(0, 1fr) 220px; }
+  body.ui-v2.m-land .v2-trade #trPager { left: calc(120px + (100% - 120px - 228px) / 2); }
+  body.ui-v2.m-land .v2-trade .tr-gridhead #trQ, body.ui-v2.m-land .v2-trade .tr-gridhead #trFilter { display: none; }
+}
+body.ui-v2.m-land .v2-trade .tr-top .seg button { height: 28px; }
+body.ui-v2.m-land .v2-trade #trGrid { padding-top: 0; }
+body.ui-v2.m-land .v2-trade .tr-compose .tr-slot { width: 44px; flex-basis: 44px; }
+body.ui-v2.m-land .v2-trade .of-card img { width: 24px; }
+/* The trade cards: the copies count sits on the card (design 24 part 2), no caption row. */
+body.ui-v2.m-land .v2-trade #trGrid .v2-cell { position: relative; }
+body.ui-v2.m-land .v2-trade #trGrid .v2-cap { position: absolute; top: 3px; right: 3px; padding: 0; }
+body.ui-v2.m-land .v2-trade #trGrid .v2-cap > :not(.cap-qty) { display: none; }
+body.ui-v2.m-land .v2-trade #trGrid .cap-qty { padding: 1px 6px; border-radius: var(--rad-pill); background: rgba(10, 10, 18, .85); font-size: 11px; }
+body.ui-v2.m-land .v2-trade #ofIn { flex: 0 1 auto; min-height: 84px; }
+body.ui-v2.m-land .v2-trade .tr-gridhead .v2-search { min-width: 70px; }
+
+/* ===== Landscape: the Dailies, bell, Help and report sheets (design 24 part 2, frame 5) =====
+   A right-side sheet the full height of the window. Nothing in it scrolls. */
+body.ui-v2.m-land .v2-drop { top: 6px; bottom: 6px; right: 6px; max-height: none; width: min(440px, 58vw); padding: 12px 14px; gap: 6px; z-index: 75; }
+body.ui-v2.m-land .v2-drop.hp-drop, body.ui-v2.m-land .v2-drop.dl-drop, body.ui-v2.m-land .v2-drop.rp-drop { max-height: none; }
+body.ui-v2.m-land .hp-list, body.ui-v2.m-land .dl-drop .dl-list { overflow: hidden; }
+body.ui-v2.m-land .dl-drop .dl-row { min-height: 44px; box-sizing: border-box; }
+body.ui-v2.m-land .dl-drop .dl-k, body.ui-v2.m-land .dl-drop .dl-day, body.ui-v2.m-land .dl-drop .dl-flames i { font-size: 10.5px; }
+/* Help: the questions in two columns; the open one takes the full width. */
+body.ui-v2.m-land .v2-drop.hp-drop { width: min(600px, 76vw); }
+body.ui-v2.m-land .hp-list { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: row dense; align-content: start; gap: 4px; }
+body.ui-v2.m-land .hp-item.open { grid-column: 1 / -1; }
+body.ui-v2.m-land .hp-q { min-height: 40px; box-sizing: border-box; }
+body.ui-v2.m-land .hp-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.ui-v2.m-land .hp-q { padding: 4px 8px; gap: 6px; }
+body.ui-v2.m-land .hp-q b { font-size: 12.5px; line-height: 1.2; }
+body.ui-v2.m-land .hp-item:not(.open) .hp-chev { display: none; }
+body.ui-v2.m-land .dl-drop .dl-row { min-height: 40px; }
+body.ui-v2.m-land .dl-drop .dl-list { gap: 3px; }
+body.ui-v2.m-land .dl-drop .dl-auto small { font-size: 10.5px; }
+@media (max-height: 380px) {
+  body.ui-v2.m-land .dl-drop .dl-sum { padding: 6px 10px; gap: 4px; }
+  body.ui-v2.m-land .dl-drop .dl-row { min-height: 38px; padding-top: 4px; padding-bottom: 4px; }
+}
+
+/* ===== Landscape: the Leaderboard (the desktop parts, fitted: a compact podium, the rows
+   that fit, my standing on the right) ===== */
+body.ui-v2.m-land .v2-board { grid-template-columns: minmax(0, 1fr) 250px; gap: var(--m-gap); }
+body.ui-v2.m-land .lb-main { gap: 6px; }
+body.ui-v2.m-land .lb-main > .lb-head { gap: 8px; }
+body.ui-v2.m-land .lb-head h2 { font-size: 18px; }
+body.ui-v2.m-land .lb-head .v2-icon { width: 34px; height: 34px; flex-basis: 34px; }
+body.ui-v2.m-land .lb-tabs { flex-wrap: nowrap; gap: 4px; }
+body.ui-v2.m-land .lb-tab { height: 32px; padding: 0 9px; font-size: 12px; white-space: nowrap; }
+body.ui-v2.m-land .lb-podium { gap: 6px; align-items: stretch; }
+body.ui-v2.m-land .lb-pod, body.ui-v2.m-land .lb-pod.p1 { flex-direction: row; justify-content: flex-start; padding: 6px 10px; gap: 8px; }
+body.ui-v2.m-land .lb-pod .v2-avatar { width: 32px; height: 32px; }
+body.ui-v2.m-land .lb-pod .lb-val, body.ui-v2.m-land .lb-pod.p1 .lb-val { font-size: 15px; margin-left: auto; }
+body.ui-v2.m-land .lb-table { padding: 2px 10px 4px; }
+body.ui-v2.m-land .lb-row { height: 32px; }
+body.ui-v2.m-land .lb-row.lb-th { height: 24px; font-size: 10.5px; }
+body.ui-v2.m-land .lb-side { grid-template-rows: auto; align-content: start; }
+body.ui-v2.m-land .lb-side .lb-hunt { display: none; }
+body.ui-v2.m-land .lb-tiles { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+body.ui-v2.m-land .lb-tile .lb-tr, body.ui-v2.m-land .lb-row .you { font-size: 10.5px; }
+body.ui-v2.m-land .v2-board { grid-template-columns: minmax(0, 1fr); }
+body.ui-v2.m-land .v2-board > .lb-side { display: none; }
+body.ui-v2.m-land .lb-pod .lb-sub { display: none; }
+body.ui-v2.m-land .lb-pod .lb-place { margin-top: 0; }
+body.ui-v2.m-land .lb-pod .lb-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+body.ui-v2.m-land .lb-pod { min-width: 0; overflow: hidden; }
+body.ui-v2.m-land .lb-pod .lb-val { white-space: nowrap; }
+body.ui-v2.m-land .lb-pod .lb-name { flex: 1 1 auto; }
+@media (max-width: 720px) { body.ui-v2.m-land .lb-pod .v2-avatar { display: none; } body.ui-v2.m-land .lb-tab { padding: 0 7px; } }
+body.ui-v2.m-land .mr-newtag, body.ui-v2.m-port .mr-newtag { font-size: 10.5px; }
+
+/* ===== Portrait: the shell (design 25) ===== */
+body.ui-v2.m-port { --topbar-h: 50px; --dock-h: 58px; --m-gap: 8px; padding: 0; }
+body.ui-v2.m-port #topbar { padding: 0 10px; gap: 6px; }
+body.ui-v2.m-port #topbar .v2-season, body.ui-v2.m-port #v2Packs, body.ui-v2.m-port #topbar .v2-logo b, body.ui-v2.m-port #topbar .v2-logo i { display: none !important; }
+/* The trophy moves into the Community screen (Nathan: the same button). */
+body.ui-v2.m-port #topbar #boardBtn { display: none !important; }
+body.ui-v2.m-port #topbar .iconbtn { width: 36px; height: 36px; }
+body.ui-v2.m-port #v2Avatar { width: 36px; height: 36px; }
+body.ui-v2.m-port #topbar .topright { gap: 6px; }
+body.ui-v2.m-port #body { margin-top: 0; flex: none; height: calc(100dvh - var(--topbar-h)); padding: 0 8px calc(var(--dock-h) + 8px); }
+body.ui-v2.m-port #dock { left: 6px; right: 6px; bottom: 4px; transform: none; width: auto; height: var(--dock-h); padding: 0 6px; border-radius: 18px; }
+body.ui-v2.m-port #dock .dk { height: 48px; font-size: 10.5px; gap: 2px; }
+body.ui-v2.m-port #dock .dk svg { width: 19px; height: 19px; }
+body.ui-v2.m-port #dock .dk-open { flex-basis: 56px; height: 56px; margin-top: -12px; font-size: 10.5px; }
+body.ui-v2.m-port .v2-tile { padding: 10px 12px; }
+body.ui-v2.m-port .tile-h { margin-bottom: 6px; font-size: 14px; }
+body.ui-v2.m-port .live-chip.sm, body.ui-v2.m-port .vc-tile .you { font-size: 10.5px; }
+
+/* ===== Portrait: Home (design 25 part 1, frame 1) ===== */
+body.ui-v2.m-port .v2-home.h19 { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); gap: var(--m-gap); }
+body.ui-v2.m-port .v2-home.h19 > .hero, body.ui-v2.m-port .v2-home.h19 > .voice, body.ui-v2.m-port .v2-home.h19 > .pulls { grid-column: 1; grid-row: auto; }
+body.ui-v2.m-port .v2-tile.hero { grid-template-columns: 1fr; grid-template-rows: 130px auto; }
+body.ui-v2.m-port .hero-stage, body.ui-v2.m-port .hero-rest-side { grid-row: 1; }
+body.ui-v2.m-port .hero-info { grid-row: 2; padding: 4px 14px 12px; gap: 6px; }
+body.ui-v2.m-port .hero-info h2 { font-size: 22px; }
+body.ui-v2.m-port .hero-info .live-chip { height: 22px; padding: 0 9px; font-size: 10.5px; white-space: nowrap; }
+body.ui-v2.m-port .hero-row .v2-btn, body.ui-v2.m-port #heroJoin { height: 42px; white-space: nowrap; }
+body.ui-v2.m-port .hero-faces .v2-avatar { width: 24px; height: 24px; }
+body.ui-v2.m-port .rest-stats, body.ui-v2.m-port .hero-rest-side .rest-top { display: none; }
+body.ui-v2.m-port .h19 .vc-grid { grid-template-columns: repeat(var(--vc-n, 2), minmax(0, 1fr)) 40px; grid-template-rows: auto; grid-auto-rows: 0; gap: 6px; flex: none; }
+body.ui-v2.m-port .h19 .vc-grid.no-more { grid-template-columns: repeat(var(--vc-n, 2), minmax(0, 1fr)); }
+body.ui-v2.m-port .h19 .vc-tile { padding: 7px 9px; gap: 4px; }
+body.ui-v2.m-port .h19 .vc-tile .v2-avatar { width: 26px; height: 26px; }
+body.ui-v2.m-port .h19 .vc-head { gap: 7px; }
+body.ui-v2.m-port .h19 .vc-head b { font-size: 13px; }
+body.ui-v2.m-port .h19 .vc-st { font-size: 12px; }
+body.ui-v2.m-port .h19 .vc-body { display: none; }
+body.ui-v2.m-port .h19 .vc-ago, body.ui-v2.m-port .h19 .vc-tile .you { display: none; }
+body.ui-v2.m-port .vc-more { display: grid; place-items: center; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border); font: 700 14px var(--font-num); color: var(--text-secondary); }
+body.ui-v2.m-port .pl-top { padding: 7px 8px; gap: 10px; }
+body.ui-v2.m-port .pl-top img { width: 40px; }
+body.ui-v2.m-port .pl-top b { font-size: 13px; }
+body.ui-v2.m-port .pl-row { padding: 4px; font-size: 12px; }
+body.ui-v2.m-port .pl-row img { width: 24px; }
+body.ui-v2.m-port .v2-tile.pulls .seg button { height: 28px; padding: 0 8px; font-size: 11.5px; white-space: nowrap; }
+body.ui-v2.m-port .v2-tile.pulls .tile-h b { white-space: nowrap; }
+
+/* ===== Portrait: Collection (design 25 part 1, frames 2, 2b, 3) ===== */
+body.ui-v2.m-port .v2-collection, body.ui-v2.m-port .v2-collection.ach-mode, body.ui-v2.m-port .v2-collection.boss-mode { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 6px; }
+body.ui-v2.m-port .m-colbar { display: flex; gap: 6px; }
+body.ui-v2.m-port .m-colbar .v2-search { flex: 1; min-width: 0; height: 40px; }
+body.ui-v2.m-port .m-colbar .v2-btn { height: 40px; white-space: nowrap; }
+body.ui-v2.m-port .m-colbar .v2-btn.on { border-color: var(--gold); color: var(--gold); }
+/* The filter panel is a sheet over the screen. */
+body.ui-v2.m-port .v2-collection .v2-side.filters { display: none; }
+body.ui-v2.m-port .v2-collection .v2-side.filters.m-show { display: flex; position: fixed; z-index: 70; left: 6px; right: 6px; top: 6px; bottom: calc(var(--dock-h) + 10px); padding: 12px 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, .7); }
+body.ui-v2.m-port .v2-side.filters .f-head { display: flex; align-items: center; gap: 8px; }
+body.ui-v2.m-port .v2-side.filters .f-head #colFiltersX { margin-left: auto; width: 40px; height: 40px; }
+body.ui-v2.m-port .v2-side.filters .f-chip { height: 34px; padding: 0 12px; font-size: 13px; }
+body.ui-v2.m-port .v2-col-head { margin: 0 0 4px; gap: 6px; }
+body.ui-v2.m-port .v2-col-head h2 { font-size: 17px; }
+body.ui-v2.m-port .v2-col-head .seg button { height: 30px; padding: 0 8px; }
+body.ui-v2.m-port .col-tabs .tab-dot { font-size: 10.5px; }
+body.ui-v2.m-port .head-el { flex-wrap: nowrap; gap: 0; order: 9; width: 100%; justify-content: space-between; }
+body.ui-v2.m-port .head-el .el-btn { width: 30px; height: 30px; }
+body.ui-v2.m-port .v2-grid { gap: 8px; }
+body.ui-v2.m-port .v2-cap { gap: 4px; }
+/* The full-screen card view: the big card on top, the details under it. */
+body.ui-v2.m-port #colPanel { display: none; }
+body.ui-v2.m-port #colPanel.m-open { display: flex; flex-direction: column; position: fixed; z-index: 58; inset: 6px 6px calc(var(--dock-h) + 10px); gap: 6px; padding: 10px 12px;
+  background: var(--bg-raised); box-shadow: 0 20px 60px rgba(0, 0, 0, .7); }
+body.ui-v2.m-port #colPanel.m-open .p-art { align-self: center; height: 30dvh; width: auto; aspect-ratio: 5 / 7; max-width: none; flex: none; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid, body.ui-v2.m-port #colPanel.m-open .pv-side { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid > *, body.ui-v2.m-port #colPanel.m-open .pv-side > * { flex-shrink: 0; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid .p-actions { order: 99; }
+body.ui-v2.m-port #colPanel.m-open .v-sec-head { font-size: 10.5px; }
+body.ui-v2.m-port #colPanel.m-open .pbox.fx .v-play { grid-column: 1 / -1; grid-row: auto; height: 40px; margin-top: 6px; }
+body.ui-v2.m-port #colPanel.m-open .v2-icon { width: 40px; height: 40px; }
+body.ui-v2.m-port .p-close { position: fixed; top: 14px; right: 14px; z-index: 60; width: 40px; height: 40px; }
+body.ui-v2.m-port #colPanel.m-open > .boss-stage { height: 40dvh; flex: none; }
+body.ui-v2.m-port .v2-cap .cap-el, body.ui-v2.m-land .v2-cap .cap-el { display: none; }
+@media (max-height: 700px) { body.ui-v2.m-port #colPanel.m-open .p-art { height: 24dvh; } }
+body.ui-v2.m-port .v2-side.filters .f-chip i, body.ui-v2.m-land .v2-side.filters .f-chip i { font-size: 10.5px; }
+
+/* ===== Portrait: Hunt squad select (design 25 part 1, frame 4) ===== */
+body.ui-v2.m-port .v2sq { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto; gap: 6px; }
+body.ui-v2.m-port .sq-side, body.ui-v2.m-port .sq-main { display: contents; }
+body.ui-v2.m-port .v2sq .sq-side > *, body.ui-v2.m-port .v2sq .sq-main > * { grid-column: 1; min-width: 0; margin: 0; }
+body.ui-v2.m-port .v2sq .sq-side > .sq-h { grid-row: 1; }
+body.ui-v2.m-port .v2sq .sq-side > .sq-boss { grid-row: 2; min-height: 44px; }
+body.ui-v2.m-port .v2sq .sq-side > .cp-big { grid-row: 3; display: flex; align-items: center; gap: 8px; align-self: auto; }
+body.ui-v2.m-port .v2sq .sq-side > .side-h { display: none; }
+body.ui-v2.m-port .v2sq .sq-side > .squad-synergy { grid-row: 3; justify-self: end; flex: none; min-height: 0; max-width: 62%; flex-wrap: nowrap; overflow: hidden; }
+body.ui-v2.m-port .v2sq .sq-side > .sq-list { grid-row: 4; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+body.ui-v2.m-port .v2sq .sq-main > .sq-top { grid-row: 5; flex-wrap: wrap; gap: 6px; }
+body.ui-v2.m-port .v2sq .sq-main > #huntGrid { grid-row: 6; min-height: 0; }
+body.ui-v2.m-port .v2sq .sq-side > .sq-foot { grid-row: 7; display: flex; gap: 6px; flex-wrap: nowrap; }
+body.ui-v2.m-port .sq-foot .v2-btn { flex: 1 1 0; min-width: 0; height: 42px; white-space: nowrap; }
+body.ui-v2.m-port .sq-top .v2-search { flex: 1 1 120px; width: auto; height: 36px; }
+body.ui-v2.m-port .sq-top .el-row { order: 5; flex: 1 1 100%; display: flex; justify-content: space-between; }
+body.ui-v2.m-port .sq-top .grow { display: none; }
+body.ui-v2.m-port .sq-top .seg button { height: 30px; padding: 0 8px; }
+body.ui-v2.m-port .sq-list .sq-row { position: relative; height: 46px; flex: none; padding: 3px 6px; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 0; overflow: hidden; }
+body.ui-v2.m-port .sq-list .sq-row img, body.ui-v2.m-port .sq-list .sq-row .sq-noimg { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; opacity: .32; }
+body.ui-v2.m-port .sq-list .sq-row > span { position: relative; }
+body.ui-v2.m-port .sq-list .sq-row .sq-i { position: absolute; top: 3px; left: 5px; width: auto; }
+body.ui-v2.m-port .sq-list .sq-row .slot-x { position: absolute; top: 2px; right: 5px; }
+body.ui-v2.m-port .sq-list .sq-row .sq-name { width: 100%; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2.m-port .sq-list .sq-row .sq-pow { min-width: 0; text-align: left; font-size: 11px; }
+body.ui-v2.m-port .sq-list .sq-row .sq-x2, body.ui-v2.m-port .sq-list .sq-row .sq-el { display: none; }
+body.ui-v2.m-port .sq-list .sq-row.empty { align-items: center; justify-content: center; }
+body.ui-v2.m-port .sq-list .sq-row.empty .sq-name { display: none; }
+body.ui-v2.m-port .sq-wr i, body.ui-v2.m-port .squad-grid .c .tpow, body.ui-v2.m-port .squad-grid .c .cability, body.ui-v2.m-port .squad-grid .c .x2 { font-size: 10.5px; }
