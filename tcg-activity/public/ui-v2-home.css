@@ -50,3 +50,5 @@ body.ui-v2 .vc-tr { display: flex; flex-direction: column; gap: 2px; min-width: 
 body.ui-v2 .vc-tr b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.ui-v2 .vc-tr span { font-size: 12px; color: var(--text-muted); }
 body.ui-v2 .vc-hot { font-weight: 800; }
+body.ui-v2 .vc-watch { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: var(--rad-pill); font: 800 11px var(--font-ui); color: var(--on-gold); background: var(--gold); }
+body.ui-v2 .vc-watch svg { width: 14px; height: 14px; }

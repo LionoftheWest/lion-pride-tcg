@@ -842,6 +842,8 @@ function vcBody(p) {
   }
 }
 
+// Nathan: a little Watch chip on the tile of a member who opens a pack (a tap watches it).
+const WATCH_CHIP = '<span class="vc-watch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Watch</span>';
 export function paintVoice() {
   const { el } = ctx;
   const box = el('homeVoice');
@@ -858,7 +860,7 @@ export function paintVoice() {
     const b = vcBody(p);
     const watch = !self && kind === 'opening' && ctx.watchable?.(p.id);
     return `<button class="vc-tile k-${esc(kind)}${self ? ' self' : ''}${watch ? ' watch' : ''}" data-member="${esc(p.id)}"><div class="vc-head">${avatarHTML(p.id, p.name, 'sm')}
-      <div><b>${nameBadge(p.id, p.name)}${self ? ' <i class="you">You</i>' : ''}</b><span class="vc-st">${ico} ${esc(b.st)}</span></div><span class="vc-ago mono">${vcAgo(p.status?.at)}</span></div>
+      <div><b>${nameBadge(p.id, p.name)}${self ? ' <i class="you">You</i>' : ''}</b><span class="vc-st">${ico} ${esc(b.st)}</span></div>${watch ? WATCH_CHIP : `<span class="vc-ago mono">${vcAgo(p.status?.at)}</span>`}</div>
       ${b.body ? `<div class="vc-body">${b.body}</div>` : ''}${b.foot ? `<div class="vc-foot">${b.foot}</div>` : ''}</button>`;
   };
   box.innerHTML = `<div class="tile-h"><b>🎧 Live in voice</b><span class="dim">${people.length}</span><span class="grow"></span>${people.length > 1 ? '<span class="live-chip sm">● LIVE</span>' : ''}</div>
