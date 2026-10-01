@@ -25,6 +25,8 @@ import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2 } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
+import { initTutorial } from './ui-v2-tutorial.js';
+import { initHelp } from './ui-v2-help.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -316,7 +318,7 @@ async function main() {
   uiV2 = !!flags?.uiV2;
   // A new member's first login gave them the welcome packs: show them now.
   if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
-  if (uiV2) { startV2(); show('home'); } else show('collection');
+  if (uiV2) { startV2(); show('home'); initHelp(); initTutorial(flags?.tutorial); } else show('collection');
 }
 
 // The v2 shell: the body class switches the CSS, the dock replaces the tab nav.

@@ -314,3 +314,43 @@ body.ui-v2 .dl-chip.ok { background: rgba(62, 207, 142, .16); color: #3ECF8E; }
 body.ui-v2 .dl-chip.sm { height: 20px; padding: 0 6px; font-size: 11px; }
 body.ui-v2 .dl-auto { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 body.ui-v2 .dl-auto small { font: 700 9px var(--font-num); letter-spacing: .12em; color: var(--text-muted); }
+
+/* The first-time walkthrough (ui-v2-tutorial.js, design 21): a dim with a gold-ringed hole
+   over the real button, and the step card beside it. Clicks pass through the dim. */
+#tutLayer { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
+#tutLayer .tut-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(6, 7, 12, .72), 0 0 0 3px #F4B73C, 0 0 28px 6px rgba(244, 183, 60, .55);
+  transition: all .25s ease; }
+#tutLayer .tut-card { position: fixed; width: 300px; padding: 16px 18px 14px; border-radius: 16px; pointer-events: auto; box-sizing: border-box;
+  background: var(--bg-raised, #15161f); border: 1px solid rgba(244, 183, 60, .45); box-shadow: 0 20px 50px rgba(0, 0, 0, .6); animation: v2Rise .2s ease-out; }
+#tutLayer .tut-top { display: flex; align-items: center; justify-content: space-between; }
+#tutLayer .tut-step { font: 800 11px var(--font-num); letter-spacing: .12em; color: #F4B73C; }
+#tutLayer .tut-dots { display: flex; gap: 4px; }
+#tutLayer .tut-dots i { width: 6px; height: 6px; border-radius: 3px; background: #3a3c4d; }
+#tutLayer .tut-dots i.done { background: rgba(244, 183, 60, .5); }
+#tutLayer .tut-dots i.on { width: 16px; background: #F4B73C; }
+#tutLayer h3 { margin: 10px 0 4px; font: 800 19px var(--font-display); color: #fff; }
+#tutLayer p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.45; color: var(--text-secondary, #c9cbd6); }
+#tutLayer .tut-reward { display: inline-flex; padding: 4px 10px; border-radius: 99px; font: 700 12px var(--font-ui, Inter); color: #F4B73C; background: rgba(244, 183, 60, .12); border: 1px solid rgba(244, 183, 60, .35); }
+#tutLayer .tut-act { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+#tutLayer .tut-act .link-btn { color: var(--text-muted, #8b90a8); }
+#tutLayer .tut-arrow { position: absolute; bottom: -8px; width: 16px; height: 16px; background: var(--bg-raised, #15161f); border-right: 1px solid rgba(244, 183, 60, .45); border-bottom: 1px solid rgba(244, 183, 60, .45); transform: rotate(45deg); }
+#tutLayer .tut-card.below .tut-arrow { bottom: auto; top: -8px; transform: rotate(225deg); }
+
+/* The ? Help panel (ui-v2-help.js, design 21). */
+body.ui-v2 #helpBtn svg { width: 18px; height: 18px; }
+body.ui-v2 .hp-list { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow: hidden; }
+body.ui-v2 .hp-item { border-radius: 12px; background: var(--surface); border: 1px solid transparent; }
+body.ui-v2 .hp-item.open { border-color: rgba(244, 183, 60, .45); background: linear-gradient(180deg, rgba(244, 183, 60, .08), var(--surface)); }
+body.ui-v2 .hp-q { width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+body.ui-v2 .hp-q b { flex: 1; font-size: 13px; }
+body.ui-v2 .hp-ico { width: 22px; text-align: center; }
+body.ui-v2 .hp-chev { color: var(--text-muted); transition: transform .15s; }
+body.ui-v2 .hp-item.open .hp-chev { transform: rotate(180deg); }
+body.ui-v2 .hp-a { padding: 0 14px 10px 44px; }
+body.ui-v2 .hp-a p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text-secondary, #c9cbd6); }
+body.ui-v2 .hp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+body.ui-v2 .hp-chips span { padding: 3px 9px; border-radius: 99px; font-size: 11.5px; font-weight: 700; background: var(--surface-3); color: var(--text-secondary, #c9cbd6); }
+body.ui-v2 .hp-replay { width: 100%; justify-content: center; }
+#tutLayer .tut-card.side-left .tut-arrow { bottom: auto; left: auto; right: -8px; transform: rotate(-45deg); }
+#tutLayer .tut-card.side-right .tut-arrow { bottom: auto; left: -8px; transform: rotate(135deg); }
+body.ui-v2 .v2-drop.hp-drop { max-height: calc(100vh - var(--topbar-h) - 16px); }

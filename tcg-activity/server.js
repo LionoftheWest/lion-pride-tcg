@@ -323,7 +323,36 @@ app.get('/api/flags', async (req, res) => {
     avatarHash.set(String(me.id), { hash, at: Date.now() });
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
-  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), welcomed });
+  const { data: tut } = await supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle();
+  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), welcomed, tutorial: tut?.tutorial || {} });
+});
+
+// The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
+// replay it, or finish it (1 outside pack, once ever).
+const TUTORIAL_STEPS = ['open', 'rarity', 'collection', 'hunt', 'community', 'dailies', 'voice'];
+app.post('/api/tutorial', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const id = String(me.id);
+  const action = String(req.body?.action || '');
+  if (action === 'finish') {
+    const { data, error } = await supabase.rpc('claim_tutorial_reward', { p_player: id });
+    if (error) return res.status(500).json({ error: error.message });
+    if (data?.ok) bustUser(me.id);
+    return res.json(data);
+  }
+  const { data: row } = await supabase.from('players').select('tutorial').eq('id', id).maybeSingle();
+  if (!row) return res.status(404).json({ error: 'no player' });
+  const t = row.tutorial || {};
+  let next;
+  if (action === 'step' && TUTORIAL_STEPS.includes(req.body?.step)) next = { ...t, done: [...new Set([...(t.done || []), req.body.step])] };
+  else if (action === 'skip') next = { ...t, skipped: true };
+  else if (action === 'replay') next = { done: [], skipped: false };
+  else return res.status(400).json({ error: 'bad action' });
+  const { error } = await supabase.from('players').update({ tutorial: next }).eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, tutorial: next });
 });
 
 app.get('/api/config', (req, res) => res.json({ clientId: CLIENT_ID, backUrl: CARD_BACK, features: { ascension: FEATURE_ASCENSION, hunt: FEATURE_HUNT } }));
