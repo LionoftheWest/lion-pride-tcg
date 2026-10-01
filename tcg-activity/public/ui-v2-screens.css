@@ -35,6 +35,7 @@ body.ui-v2 .v2-card.r-illustrated_rare { --rc: var(--r-illustrated_rare); }
 body.ui-v2 .v2-card.r-secret_rare { --rc: var(--r-secret_rare); }
 body.ui-v2 .v2-card.r-full_art { --rc: var(--r-full_art); }
 body.ui-v2 .v2-card.r-gold { --rc: var(--r-gold); }
+body.ui-v2 .v2-card.r-event { --rc: var(--r-event); }
 body.ui-v2 .v2-card:not(.r-normal):not(.locked) { box-shadow: 0 0 18px color-mix(in srgb, var(--rc) 35%, transparent); }
 body.ui-v2 .v2-card.sel { box-shadow: 0 0 0 3px var(--bg-base), 0 0 0 5px var(--rc, var(--gold)), 0 10px 30px rgba(0, 0, 0, .5); }
 body.ui-v2 .v2-card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -185,6 +186,7 @@ body.ui-v2 .pl-top.r-illustrated_rare { --rc: var(--r-illustrated_rare); }
 body.ui-v2 .pl-top.r-secret_rare { --rc: var(--r-secret_rare); }
 body.ui-v2 .pl-top.r-full_art { --rc: var(--r-full_art); }
 body.ui-v2 .pl-top.r-gold { --rc: var(--r-gold); }
+body.ui-v2 .pl-top.r-event { --rc: var(--r-event); }
 body.ui-v2 .pl-top img { width: 54px; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 7px; border: 2px solid var(--rc); }
 body.ui-v2 .pl-top .pl-k { display: block; font: 800 10.5px var(--font-ui); letter-spacing: 1px; color: var(--rc); margin-bottom: 3px; }
 body.ui-v2 .pl-top b { font-size: 14px; }

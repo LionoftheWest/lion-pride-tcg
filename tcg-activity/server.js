@@ -286,7 +286,7 @@ const FEATURE_ASCENSION = process.env.FEATURE_ASCENSION === '1';
 // Middle curve. Set-completion bonus (+25%) is applied server-side by the SQL
 // (my_collection_power); this per-card math is base × ascension × per-subject cp_mod.
 // Power tracks scarcity (gold is the rarest pull, so the strongest). Must match card_power in SQL.
-const RARITY_BASE = { normal: 10, illustrated_rare: 20, secret_rare: 40, full_art: 75, gold: 140 };
+const RARITY_BASE = { normal: 10, illustrated_rare: 20, secret_rare: 40, full_art: 75, event: 75, gold: 140 }; // event = Full Art (event_cards.sql)
 const ASC_MULT = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
 const ASC_COST = { normal: [4, 6, 8, 11, 15], illustrated_rare: [3, 4, 6, 8, 11], full_art: [2, 3, 4, 6, 8], gold: [1, 2, 3, 4, 5], secret_rare: [1, 1, 2, 3, 4] };
 const cardPower = (rarity, asc, mod = 1) => Math.round((RARITY_BASE[rarity] || 10) * ASC_MULT[Math.max(0, Math.min(5, asc || 0))] * (mod || 1));
