@@ -338,7 +338,7 @@ function startV2() {
     playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
-    watchable: (id) => Boolean(watchableOpen(id)), watchOpen,
+    watchable: (id) => Boolean(watchableOpen(id)), watchOpen, sfx: (n) => SFX.play(n),
   });
   // Design 19: my picture in the top bar opens my profile (the Home profile tile is gone).
   el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>${meUser?.id ? `<img src="/api/avatar/${esc(meUser.id)}" alt="" data-err="remove">` : ''}`;

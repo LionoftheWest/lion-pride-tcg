@@ -4,6 +4,7 @@
 
 import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember, toast } from './ui-v2.js';
 import { thumb } from './thumb.js';
+import { playTradeFx } from './ui-v2-tradefx.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge } from './effects-ui.js';
 
 const ctx = () => v2ctx();
@@ -425,7 +426,7 @@ function paintTrade() {
   });
   el('trClear').addEventListener('click', () => { tr.give = null; tr.get = null; tr.side = 'mine'; tr.msg = ''; paintTrade(); });
   el('trSend').addEventListener('click', send);
-  main.querySelectorAll('.of-accept').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/accept', { offerId: Number(b.dataset.id) })));
+  main.querySelectorAll('.of-accept').forEach((b) => b.addEventListener('click', () => { b.disabled = true; resolve('/api/trade/accept', { offerId: Number(b.dataset.id) }); }));
   main.querySelectorAll('.of-decline').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'decline' })));
   main.querySelectorAll('.of-cancel').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'cancel' })));
   requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); fitRow(el('trMembers'), el('trFind')); });
@@ -469,13 +470,20 @@ async function refreshOffers() {
   ctx().updateTradeBadge?.((tr.offers?.incoming || []).length);
 }
 async function resolve(path, body) {
+  const accepting = path.endsWith('accept');
+  const offer = accepting ? (tr.offers?.incoming || []).find((o) => Number(o.id) === Number(body.offerId)) : null;
   let r = null;
   try { r = await ctx().apiPost(path, body); } catch { r = null; }
   tr.msg = r?.ok ? '' : 'That did not work. Try again.';
-  if (r?.ok && path.endsWith('accept')) await ctx().refreshOwned();
+  // The swap went through: play the trade while the collection and the offers reload.
+  const fx = r?.ok && offer?.offer && offer?.request
+    ? playTradeFx({ give: offer.request, get: offer.offer, esc, label: (k) => ctx().RARITY_LABEL?.[k] || k, sfx: ctx().sfx })
+    : null;
+  if (r?.ok && accepting) await ctx().refreshOwned();
   tr.theirs = {};
   if (tr.to) await loadTheirs(tr.to.id);
   await refreshOffers();
+  await fx;
   paintTrade();
 }
 
