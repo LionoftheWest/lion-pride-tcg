@@ -20,6 +20,8 @@ declare
   cmb jsonb; amt_a numeric; amt_b numeric;
 begin
   execute $m$${mig}$m$;
+  -- The migration inserts the flag OFF only if the setting is new. Live is ON since launch.
+  update settings set value = value || '{"enabled": false}' where key = 'stat_points';
 
   -- 1. Flag OFF: card_combat = card_power + card_max_hp for every rarity, star and cp_mod.
   ok := true;
