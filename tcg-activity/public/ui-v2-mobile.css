@@ -254,3 +254,142 @@ body.ui-v2.m-land .v2-trade #trGrid .v2-cap > :not(.cap-qty) { display: none; }
 body.ui-v2.m-land .v2-trade #trGrid .cap-qty { padding: 1px 6px; border-radius: var(--rad-pill); background: rgba(10, 10, 18, .85); font-size: 11px; }
 body.ui-v2.m-land .v2-trade #ofIn { flex: 0 1 auto; min-height: 84px; }
 body.ui-v2.m-land .v2-trade .tr-gridhead .v2-search { min-width: 70px; }
+
+/* ===== Landscape: the Dailies, bell, Help and report sheets (design 24 part 2, frame 5) =====
+   A right-side sheet the full height of the window. Nothing in it scrolls. */
+body.ui-v2.m-land .v2-drop { top: 6px; bottom: 6px; right: 6px; max-height: none; width: min(440px, 58vw); padding: 12px 14px; gap: 6px; z-index: 75; }
+body.ui-v2.m-land .v2-drop.hp-drop, body.ui-v2.m-land .v2-drop.dl-drop, body.ui-v2.m-land .v2-drop.rp-drop { max-height: none; }
+body.ui-v2.m-land .hp-list, body.ui-v2.m-land .dl-drop .dl-list { overflow: hidden; }
+body.ui-v2.m-land .dl-drop .dl-row { min-height: 44px; box-sizing: border-box; }
+body.ui-v2.m-land .dl-drop .dl-k, body.ui-v2.m-land .dl-drop .dl-day, body.ui-v2.m-land .dl-drop .dl-flames i { font-size: 10.5px; }
+/* Help: the questions in two columns; the open one takes the full width. */
+body.ui-v2.m-land .v2-drop.hp-drop { width: min(600px, 76vw); }
+body.ui-v2.m-land .hp-list { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: row dense; align-content: start; gap: 4px; }
+body.ui-v2.m-land .hp-item.open { grid-column: 1 / -1; }
+body.ui-v2.m-land .hp-q { min-height: 40px; box-sizing: border-box; }
+body.ui-v2.m-land .hp-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.ui-v2.m-land .hp-q { padding: 4px 8px; gap: 6px; }
+body.ui-v2.m-land .hp-q b { font-size: 12.5px; line-height: 1.2; }
+body.ui-v2.m-land .hp-item:not(.open) .hp-chev { display: none; }
+body.ui-v2.m-land .dl-drop .dl-row { min-height: 40px; }
+body.ui-v2.m-land .dl-drop .dl-list { gap: 3px; }
+body.ui-v2.m-land .dl-drop .dl-auto small { font-size: 10.5px; }
+@media (max-height: 380px) {
+  body.ui-v2.m-land .dl-drop .dl-sum { padding: 6px 10px; gap: 4px; }
+  body.ui-v2.m-land .dl-drop .dl-row { min-height: 38px; padding-top: 4px; padding-bottom: 4px; }
+}
+
+/* ===== Landscape: the Leaderboard (the desktop parts, fitted: a compact podium, the rows
+   that fit, my standing on the right) ===== */
+body.ui-v2.m-land .v2-board { grid-template-columns: minmax(0, 1fr) 250px; gap: var(--m-gap); }
+body.ui-v2.m-land .lb-main { gap: 6px; }
+body.ui-v2.m-land .lb-main > .lb-head { gap: 8px; }
+body.ui-v2.m-land .lb-head h2 { font-size: 18px; }
+body.ui-v2.m-land .lb-head .v2-icon { width: 34px; height: 34px; flex-basis: 34px; }
+body.ui-v2.m-land .lb-tabs { flex-wrap: nowrap; gap: 4px; }
+body.ui-v2.m-land .lb-tab { height: 32px; padding: 0 9px; font-size: 12px; white-space: nowrap; }
+body.ui-v2.m-land .lb-podium { gap: 6px; align-items: stretch; }
+body.ui-v2.m-land .lb-pod, body.ui-v2.m-land .lb-pod.p1 { flex-direction: row; justify-content: flex-start; padding: 6px 10px; gap: 8px; }
+body.ui-v2.m-land .lb-pod .v2-avatar { width: 32px; height: 32px; }
+body.ui-v2.m-land .lb-pod .lb-val, body.ui-v2.m-land .lb-pod.p1 .lb-val { font-size: 15px; margin-left: auto; }
+body.ui-v2.m-land .lb-table { padding: 2px 10px 4px; }
+body.ui-v2.m-land .lb-row { height: 32px; }
+body.ui-v2.m-land .lb-row.lb-th { height: 24px; font-size: 10.5px; }
+body.ui-v2.m-land .lb-side { grid-template-rows: auto; align-content: start; }
+body.ui-v2.m-land .lb-side .lb-hunt { display: none; }
+body.ui-v2.m-land .lb-tiles { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+body.ui-v2.m-land .lb-tile .lb-tr, body.ui-v2.m-land .lb-row .you { font-size: 10.5px; }
+body.ui-v2.m-land .v2-board { grid-template-columns: minmax(0, 1fr); }
+body.ui-v2.m-land .v2-board > .lb-side { display: none; }
+body.ui-v2.m-land .lb-pod .lb-sub { display: none; }
+body.ui-v2.m-land .lb-pod .lb-place { margin-top: 0; }
+body.ui-v2.m-land .lb-pod .lb-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+body.ui-v2.m-land .lb-pod { min-width: 0; overflow: hidden; }
+body.ui-v2.m-land .lb-pod .lb-val { white-space: nowrap; }
+body.ui-v2.m-land .lb-pod .lb-name { flex: 1 1 auto; }
+@media (max-width: 720px) { body.ui-v2.m-land .lb-pod .v2-avatar { display: none; } body.ui-v2.m-land .lb-tab { padding: 0 7px; } }
+body.ui-v2.m-land .mr-newtag, body.ui-v2.m-port .mr-newtag { font-size: 10.5px; }
+
+/* ===== Portrait: the shell (design 25) ===== */
+body.ui-v2.m-port { --topbar-h: 50px; --dock-h: 58px; --m-gap: 8px; padding: 0; }
+body.ui-v2.m-port #topbar { padding: 0 10px; gap: 6px; }
+body.ui-v2.m-port #topbar .v2-season, body.ui-v2.m-port #v2Packs, body.ui-v2.m-port #topbar .v2-logo b, body.ui-v2.m-port #topbar .v2-logo i { display: none !important; }
+/* The trophy moves into the Community screen (Nathan: the same button). */
+body.ui-v2.m-port #topbar #boardBtn { display: none !important; }
+body.ui-v2.m-port #topbar .iconbtn { width: 36px; height: 36px; }
+body.ui-v2.m-port #v2Avatar { width: 36px; height: 36px; }
+body.ui-v2.m-port #topbar .topright { gap: 6px; }
+body.ui-v2.m-port #body { margin-top: 0; flex: none; height: calc(100dvh - var(--topbar-h)); padding: 0 8px calc(var(--dock-h) + 8px); }
+body.ui-v2.m-port #dock { left: 6px; right: 6px; bottom: 4px; transform: none; width: auto; height: var(--dock-h); padding: 0 6px; border-radius: 18px; }
+body.ui-v2.m-port #dock .dk { height: 48px; font-size: 10.5px; gap: 2px; }
+body.ui-v2.m-port #dock .dk svg { width: 19px; height: 19px; }
+body.ui-v2.m-port #dock .dk-open { flex-basis: 56px; height: 56px; margin-top: -12px; font-size: 10.5px; }
+body.ui-v2.m-port .v2-tile { padding: 10px 12px; }
+body.ui-v2.m-port .tile-h { margin-bottom: 6px; font-size: 14px; }
+body.ui-v2.m-port .live-chip.sm, body.ui-v2.m-port .vc-tile .you { font-size: 10.5px; }
+
+/* ===== Portrait: Home (design 25 part 1, frame 1) ===== */
+body.ui-v2.m-port .v2-home.h19 { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); gap: var(--m-gap); }
+body.ui-v2.m-port .v2-home.h19 > .hero, body.ui-v2.m-port .v2-home.h19 > .voice, body.ui-v2.m-port .v2-home.h19 > .pulls { grid-column: 1; grid-row: auto; }
+body.ui-v2.m-port .v2-tile.hero { grid-template-columns: 1fr; grid-template-rows: 130px auto; }
+body.ui-v2.m-port .hero-stage, body.ui-v2.m-port .hero-rest-side { grid-row: 1; }
+body.ui-v2.m-port .hero-info { grid-row: 2; padding: 4px 14px 12px; gap: 6px; }
+body.ui-v2.m-port .hero-info h2 { font-size: 22px; }
+body.ui-v2.m-port .hero-info .live-chip { height: 22px; padding: 0 9px; font-size: 10.5px; white-space: nowrap; }
+body.ui-v2.m-port .hero-row .v2-btn, body.ui-v2.m-port #heroJoin { height: 42px; white-space: nowrap; }
+body.ui-v2.m-port .hero-faces .v2-avatar { width: 24px; height: 24px; }
+body.ui-v2.m-port .rest-stats, body.ui-v2.m-port .hero-rest-side .rest-top { display: none; }
+body.ui-v2.m-port .h19 .vc-grid { grid-template-columns: repeat(var(--vc-n, 2), minmax(0, 1fr)) 40px; grid-template-rows: auto; grid-auto-rows: 0; gap: 6px; flex: none; }
+body.ui-v2.m-port .h19 .vc-grid.no-more { grid-template-columns: repeat(var(--vc-n, 2), minmax(0, 1fr)); }
+body.ui-v2.m-port .h19 .vc-tile { padding: 7px 9px; gap: 4px; }
+body.ui-v2.m-port .h19 .vc-tile .v2-avatar { width: 26px; height: 26px; }
+body.ui-v2.m-port .h19 .vc-head { gap: 7px; }
+body.ui-v2.m-port .h19 .vc-head b { font-size: 13px; }
+body.ui-v2.m-port .h19 .vc-st { font-size: 12px; }
+body.ui-v2.m-port .h19 .vc-body { display: none; }
+body.ui-v2.m-port .h19 .vc-ago, body.ui-v2.m-port .h19 .vc-tile .you { display: none; }
+body.ui-v2.m-port .vc-more { display: grid; place-items: center; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border); font: 700 14px var(--font-num); color: var(--text-secondary); }
+body.ui-v2.m-port .pl-top { padding: 7px 8px; gap: 10px; }
+body.ui-v2.m-port .pl-top img { width: 40px; }
+body.ui-v2.m-port .pl-top b { font-size: 13px; }
+body.ui-v2.m-port .pl-row { padding: 4px; font-size: 12px; }
+body.ui-v2.m-port .pl-row img { width: 24px; }
+body.ui-v2.m-port .v2-tile.pulls .seg button { height: 28px; padding: 0 8px; font-size: 11.5px; white-space: nowrap; }
+body.ui-v2.m-port .v2-tile.pulls .tile-h b { white-space: nowrap; }
+
+/* ===== Portrait: Collection (design 25 part 1, frames 2, 2b, 3) ===== */
+body.ui-v2.m-port .v2-collection, body.ui-v2.m-port .v2-collection.ach-mode, body.ui-v2.m-port .v2-collection.boss-mode { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 6px; }
+body.ui-v2.m-port .m-colbar { display: flex; gap: 6px; }
+body.ui-v2.m-port .m-colbar .v2-search { flex: 1; min-width: 0; height: 40px; }
+body.ui-v2.m-port .m-colbar .v2-btn { height: 40px; white-space: nowrap; }
+body.ui-v2.m-port .m-colbar .v2-btn.on { border-color: var(--gold); color: var(--gold); }
+/* The filter panel is a sheet over the screen. */
+body.ui-v2.m-port .v2-collection .v2-side.filters { display: none; }
+body.ui-v2.m-port .v2-collection .v2-side.filters.m-show { display: flex; position: fixed; z-index: 70; left: 6px; right: 6px; top: 6px; bottom: calc(var(--dock-h) + 10px); padding: 12px 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, .7); }
+body.ui-v2.m-port .v2-side.filters .f-head { display: flex; align-items: center; gap: 8px; }
+body.ui-v2.m-port .v2-side.filters .f-head #colFiltersX { margin-left: auto; width: 40px; height: 40px; }
+body.ui-v2.m-port .v2-side.filters .f-chip { height: 34px; padding: 0 12px; font-size: 13px; }
+body.ui-v2.m-port .v2-col-head { margin: 0 0 4px; gap: 6px; }
+body.ui-v2.m-port .v2-col-head h2 { font-size: 17px; }
+body.ui-v2.m-port .v2-col-head .seg button { height: 30px; padding: 0 8px; }
+body.ui-v2.m-port .col-tabs .tab-dot { font-size: 10.5px; }
+body.ui-v2.m-port .head-el { flex-wrap: nowrap; gap: 0; order: 9; width: 100%; justify-content: space-between; }
+body.ui-v2.m-port .head-el .el-btn { width: 30px; height: 30px; }
+body.ui-v2.m-port .v2-grid { gap: 8px; }
+body.ui-v2.m-port .v2-cap { gap: 4px; }
+/* The full-screen card view: the big card on top, the details under it. */
+body.ui-v2.m-port #colPanel { display: none; }
+body.ui-v2.m-port #colPanel.m-open { display: flex; flex-direction: column; position: fixed; z-index: 58; inset: 6px 6px calc(var(--dock-h) + 10px); gap: 6px; padding: 10px 12px;
+  background: var(--bg-raised); box-shadow: 0 20px 60px rgba(0, 0, 0, .7); }
+body.ui-v2.m-port #colPanel.m-open .p-art { align-self: center; height: 30dvh; width: auto; aspect-ratio: 5 / 7; max-width: none; flex: none; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid, body.ui-v2.m-port #colPanel.m-open .pv-side { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid > *, body.ui-v2.m-port #colPanel.m-open .pv-side > * { flex-shrink: 0; }
+body.ui-v2.m-port #colPanel.m-open .pv-mid .p-actions { order: 99; }
+body.ui-v2.m-port #colPanel.m-open .v-sec-head { font-size: 10.5px; }
+body.ui-v2.m-port #colPanel.m-open .pbox.fx .v-play { grid-column: 1 / -1; grid-row: auto; height: 40px; margin-top: 6px; }
+body.ui-v2.m-port #colPanel.m-open .v2-icon { width: 40px; height: 40px; }
+body.ui-v2.m-port .p-close { position: fixed; top: 14px; right: 14px; z-index: 60; width: 40px; height: 40px; }
+body.ui-v2.m-port #colPanel.m-open > .boss-stage { height: 40dvh; flex: none; }
+body.ui-v2.m-port .v2-cap .cap-el, body.ui-v2.m-land .v2-cap .cap-el { display: none; }
+@media (max-height: 700px) { body.ui-v2.m-port #colPanel.m-open .p-art { height: 24dvh; } }
+body.ui-v2.m-port .v2-side.filters .f-chip i, body.ui-v2.m-land .v2-side.filters .f-chip i { font-size: 10.5px; }

@@ -245,7 +245,12 @@ function paintBoard() {
   el('lbBack').addEventListener('click', () => ctx().show(board.back || 'home'));
   el('main').querySelectorAll('.lb-tab').forEach((b) => b.addEventListener('click', () => { board.metric = b.dataset.m; paintBoard(); }));
   el('main').querySelector('.v2-board').addEventListener('click', (e) => { const t = e.target.closest('[data-member]'); if (t) openMember(t.dataset.member); });
-  requestAnimationFrame(() => fitChildren(el('lbRows')));
+  requestAnimationFrame(() => {
+    const rows = el('lbRows');
+    fitChildren(rows);
+    // A phone shows fewer rows: when my row did not fit, it takes the last place (my rank stays on screen).
+    if (isPhone() && rows && me && meIdx >= 3 && !pinMe && !rows.querySelector('.lb-row.me') && rows.lastElementChild) rows.lastElementChild.outerHTML = line(me, meIdx);
+  });
 }
 
 // ---- Trading, with Gift inside (designs 14 + 13) ----------------------------------------

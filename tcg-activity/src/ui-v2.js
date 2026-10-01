@@ -81,6 +81,8 @@ export function tileHTML(c, idx, selected) {
 }
 
 // Fit a grid of cells to its box: the most cards that fit with no scroll.
+// A phone hides the element icon in the caption (the card shows it), so 88 px stays readable.
+const MIN_CW = () => (isPhone() ? 88 : 112);
 function fitGrid(grid, n) {
   const cs = getComputedStyle(grid);
   const w = grid.clientWidth || 600;
@@ -92,7 +94,7 @@ function fitGrid(grid, n) {
     for (let cols = 2; cols <= 9; cols++) {
       const byW = (w - (cols - 1) * GAP) / cols;
       const cw = Math.floor(Math.min(byW, byH));
-      if (cw < 112) continue; // the caption (power, stars, copies) needs 112 px to stay readable (2026-10-01)
+      if (cw < MIN_CW()) continue; // the caption (power, stars, copies) needs 112 px to stay readable (2026-10-01)
       // Prefer the largest card that still shows at least 10 slots (or all cards).
       const score = Math.min(cols * rows, Math.max(10, n)) * 1000 + cw;
       if (score > best.score || !best.score) best = { cols, rows, cw, score };
@@ -259,10 +261,14 @@ export async function renderCollectionV2() {
   }
 
   // The pure Achievements view shows only achievements (no card panel).
+  // A phone held upright (design 25): the search and a Filters button on top; the filter
+  // panel opens as a sheet over the screen.
+  const search = `<input class="v2-search" id="colSearch" placeholder="Search cards, tags…" value="${esc(col.q)}">`;
   el('main').innerHTML = `<div class="v2-collection${col.view === 'ach' ? ' ach-mode' : ''}${col.view === 'bosses' ? ' boss-mode' : ''}">
+    ${isPort() ? `<div class="m-colbar">${search}<button class="v2-btn${hasFilters() ? ' on' : ''}" id="colFilters">☰ Filters</button></div>` : ''}
     <aside class="v2-side filters">
-      <div class="f-head"><b>Filters</b>${hasFilters() ? '<button class="link-btn" id="colClear">Clear all</button>' : ''}</div>
-      <input class="v2-search" id="colSearch" placeholder="Search cards, tags…" value="${esc(col.q)}">
+      <div class="f-head"><b>Filters</b>${hasFilters() ? '<button class="link-btn" id="colClear">Clear all</button>' : ''}${isPort() ? '<button class="v2-icon" id="colFiltersX" aria-label="Close">✕</button>' : ''}</div>
+      ${isPort() ? '' : search}
       ${seasons.length > 1 ? `<div class="side-h">Set</div>${setRows}` : ''}
       <div class="seg f-own">${ownSeg}</div>
       <div class="side-h">Rarity</div><div class="f-chips">${rarityChips}</div>
@@ -275,6 +281,11 @@ export async function renderCollectionV2() {
   </div>`;
 
   const toCards = () => { col.view = 'cards'; col.page = 0; };
+  // The sheet stays open while the member taps filters (each tap paints the screen again).
+  const sheet = el('main').querySelector('.v2-side.filters');
+  if (isPort() && col.sheet) sheet?.classList.add('m-show');
+  el('colFilters')?.addEventListener('click', () => { col.sheet = true; sheet?.classList.add('m-show'); fitChips(sheet); });
+  el('colFiltersX')?.addEventListener('click', () => { col.sheet = false; sheet?.classList.remove('m-show'); });
   el('colSearch').addEventListener('input', (e) => {
     col.q = e.target.value; col.page = 0;
     if (col.view !== 'cards') { toCards(); renderCollectionV2().then(() => { const s = el('colSearch'); s?.focus(); s?.setSelectionRange(s.value.length, s.value.length); }); return; }
