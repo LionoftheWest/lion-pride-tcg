@@ -74,6 +74,11 @@ describe('rollRarity', () => {
     }
   });
 
+  it('makes Gold 0.1% per card and Normal takes the rest (Nathan, 2026-10-01)', () => {
+    assert.equal(PULL_RATES.gold, 0.001);
+    assert.equal(PULL_RATES.normal, 0.939);
+  });
+
   it('has pull rates that sum to exactly 1', () => {
     const sum = Object.values(PULL_RATES).reduce((a, b) => a + b, 0);
     assert.ok(Math.abs(sum - 1) < 1e-9, `sum was ${sum}`);
