@@ -98,12 +98,12 @@ body.ui-v2 .lb-tile .lb-tr { position: absolute; top: 8px; right: 9px; font: 600
 body.ui-v2 .lb-hunt { display: flex; flex-direction: column; gap: 8px; }
 body.ui-v2 .lb-hunt .tile-h { margin: 0; }
 body.ui-v2 .lb-hunt .side-h { margin: 0; }
-body.ui-v2 .lb-lives { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
-body.ui-v2 .lb-live { display: grid; grid-template-columns: 16px 22px minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; font-size: 12.5px; }
+body.ui-v2 .lb-lives { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; padding: 0 9px; margin: 0 -9px; } /* room for the wider my-row box */
+body.ui-v2 .lb-live { display: grid; grid-template-columns: 16px 32px minmax(0, 1fr) auto; /* 32 px = the sm avatar (22 px ran into the name) */ align-items: center; gap: 4px 8px; font-size: 12.5px; }
 body.ui-v2 .lb-live b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.ui-v2 .lb-lbar { grid-column: 1 / -1; display: block; height: 4px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
 body.ui-v2 .lb-lbar > i { display: block; height: 100%; background: var(--danger); }
-body.ui-v2 .lb-live.me { padding: 6px 8px; border-radius: 10px; background: var(--gold-soft); border: 1px solid rgba(244, 183, 60, .45); }
+body.ui-v2 .lb-live.me { padding: 6px 8px; margin: 0 -9px; /* the box grows outward: its columns line up with the other rows */ border-radius: 10px; background: var(--gold-soft); border: 1px solid rgba(244, 183, 60, .45); }
 body.ui-v2 .lb-live.me .lb-lbar > i { background: var(--gold); }
 
 /* ---- Trading with Gift inside (designs 14 + 13) ---- */
