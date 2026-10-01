@@ -24,7 +24,7 @@ import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
-import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions } from './ui-v2-social.js';
+import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { initHelp } from './ui-v2-help.js';
@@ -329,7 +329,12 @@ async function main() {
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
   initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   let flags = null;
-  try { flags = await api('/api/flags'); } catch { flags = null; }
+  // 3 tries: a failed load fell back to the old design (and its old trade flow) for that session.
+  for (let i = 0; i < 3 && !flags; i++) {
+    try { flags = await api('/api/flags'); } catch { flags = null; }
+    if (!flags?.uiV2 && flags?.error) flags = null; // an error answer is not the flags
+    if (!flags && i < 2) await new Promise((r) => setTimeout(r, 1500));
+  }
   uiV2 = !!flags?.uiV2;
   mobileUi = !!flags?.mobile;
   trade2 = !!flags?.trade2;
@@ -358,7 +363,7 @@ function startV2() {
   }
   initV2({
     api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
-    playOnMember, effectsEnabled, trade2: () => trade2, openTrade: (to) => openTradeBuilder(to),
+    playOnMember, effectsEnabled, trade2: () => trade2, openTrade: (to) => (uiV2 ? openTradeWith(to) : openTradeBuilder(to)),
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
     watchable: (id) => Boolean(watchableOpen(id)), watchOpen, sfx: (n) => SFX.play(n),
