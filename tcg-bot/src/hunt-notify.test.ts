@@ -36,6 +36,14 @@ test('the spawn post names the boss once and shows readable weak points', () => 
   assert.match(post!.content!, /Weak to \*\*Ranged, Party Games\*\*/);
 });
 
+test('the defeat and escape posts show the same fixed prizes', () => {
+  for (const kind of ['defeat', 'expired']) {
+    const post = huntPost({ kind, payload: { name: 'The Salt Kraken', tier: 'Normal', settle: { participants: 12, total_packs: 39 }, top: [] } });
+    assert.ok(post!.content!.includes('12 hunters earned **39** packs: 1st 7, 2nd 5, 3rd 4, 4th-10th 3, every other hunter 1.'), post!.content!);
+    assert.doesNotMatch(post!.content!, /Consolation|by damage dealt/);
+  }
+});
+
 test('an unknown event posts nothing', () => {
   assert.equal(huntPost({ kind: 'nope', payload: {} }), null);
 });
