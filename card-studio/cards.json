@@ -1738,13 +1738,13 @@
       "target": "self"
     },
     "effect": {
-      "primitive": "gift_pack",
+      "primitive": "lucky_pull",
       "name": "Server Gift",
-      "desc": "Gives the target a free pack.",
+      "desc": "The Server Master's blessing: the first card of the target's next pack rolls at 2x the rare rates.",
       "base": {
-        "amount": 1
+        "amount": 2
       },
-      "cooldown_h": 48
+      "cooldown_h": 24
     }
   },
   {
@@ -3335,13 +3335,13 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "gift_pack",
+      "primitive": "lucky_pull",
       "name": "Souvenir",
-      "desc": "Brings the target back a free pack.",
+      "desc": "A lucky souvenir: the first card of the target's next pack rolls at 2x the rare rates.",
       "base": {
-        "amount": 1
+        "amount": 2
       },
-      "cooldown_h": 48
+      "cooldown_h": 24
     }
   },
   {
@@ -4967,13 +4967,13 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "gift_pack",
+      "primitive": "lucky_pull",
       "name": "Campaign Promise",
-      "desc": "Gives the target a free pack. A promise kept!",
+      "desc": "A promise of luck: the first card of the target's next pack rolls at 2x the rare rates.",
       "base": {
-        "amount": 1
+        "amount": 2
       },
-      "cooldown_h": 48
+      "cooldown_h": 24
     }
   },
   {
@@ -5019,13 +5019,13 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "gift_pack",
+      "primitive": "lucky_pull",
       "name": "Pizza's Here",
-      "desc": "Gives the target a free pack.",
+      "desc": "Fresh slice, fresh luck: the first card of the target's next pack rolls at 2x the rare rates.",
       "base": {
-        "amount": 1
+        "amount": 2
       },
-      "cooldown_h": 48
+      "cooldown_h": 24
     }
   },
   {
