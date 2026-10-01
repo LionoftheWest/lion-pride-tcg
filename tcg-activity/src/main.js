@@ -338,6 +338,7 @@ function startV2() {
     playOnMember, effectsEnabled, openTrade: (to) => openTradeBuilder(to),
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
+    watchable: (id) => Boolean(watchableOpen(id)), watchOpen,
   });
   // Design 19: my picture in the top bar opens my profile (the Home profile tile is gone).
   el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>${meUser?.id ? `<img src="/api/avatar/${esc(meUser.id)}" alt="" data-err="remove">` : ''}`;
@@ -466,7 +467,7 @@ function connectStreams() {
       let msg;
       try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.type === 'presence') { live.presence = msg.users; updatePresence(); if (uiV2 && currentView === 'home') paintVoice(); }
-      else if (msg.type === 'open') { if (Date.now() < suppressOpenUntil) return; showReveal(msg); }
+      else if (msg.type === 'open') noteRoomOpen(msg);
       else if (msg.type === 'react') floatReact(msg);
     };
     roomWs.onclose = () => setTimeout(openWs, 4000);
@@ -902,6 +903,26 @@ function note(text) {
 
 let revealTimer = null;
 let suppressOpenUntil = 0; // ignore the room 'open' echo of my own pull
+// Nathan: a member never sees another member's pack open unless they choose to
+// watch it, with a tap on that member's Live in voice tile while it says "Opening".
+const roomOpens = new Map(); // member id -> { msg, at }
+const WATCH_MS = 5 * 60 * 1000;
+function noteRoomOpen(msg) {
+  if (Date.now() < suppressOpenUntil || !msg.id || String(msg.id) === String(meUser?.id)) return;
+  roomOpens.set(String(msg.id), { msg, at: Date.now() });
+  if (uiV2 && currentView === 'home') paintVoice(); // the tile becomes tappable
+}
+function watchableOpen(id) {
+  const o = roomOpens.get(String(id));
+  return o && Date.now() - o.at < WATCH_MS ? o.msg : null;
+}
+function watchOpen(id) {
+  const msg = watchableOpen(id);
+  if (!msg) return false;
+  if (uiV2 && (msg.packs || []).length > 1) showMultiReveal(openDeps(), msg.packs);
+  else showReveal({ user: msg.user, cards: msg.cards });
+  return true;
+}
 
 // Full-screen takeover. Dims the whole Activity, plays the pack burst, then the
 // cards flip out ONE BY ONE (staggered). A Secret-Rare+ pull adds a celebration.

@@ -856,13 +856,15 @@ export function paintVoice() {
     const [ico] = STATUS_TEXT[kind] || ['•'];
     const self = String(p.id) === String(me?.id);
     const b = vcBody(p);
-    return `<button class="vc-tile k-${esc(kind)}${self ? ' self' : ''}" data-member="${esc(p.id)}"><div class="vc-head">${avatarHTML(p.id, p.name, 'sm')}
+    const watch = !self && kind === 'opening' && ctx.watchable?.(p.id);
+    return `<button class="vc-tile k-${esc(kind)}${self ? ' self' : ''}${watch ? ' watch' : ''}" data-member="${esc(p.id)}"><div class="vc-head">${avatarHTML(p.id, p.name, 'sm')}
       <div><b>${nameBadge(p.id, p.name)}${self ? ' <i class="you">You</i>' : ''}</b><span class="vc-st">${ico} ${esc(b.st)}</span></div><span class="vc-ago mono">${vcAgo(p.status?.at)}</span></div>
       ${b.body ? `<div class="vc-body">${b.body}</div>` : ''}${b.foot ? `<div class="vc-foot">${b.foot}</div>` : ''}</button>`;
   };
   box.innerHTML = `<div class="tile-h"><b>🎧 Live in voice</b><span class="dim">${people.length}</span><span class="grow"></span>${people.length > 1 ? '<span class="live-chip sm">● LIVE</span>' : ''}</div>
     <div class="vc-grid">${people.slice(0, 6).map(tile).join('')}</div>`;
-  box.onclick = (e) => { const t = e.target.closest('[data-member]'); if (t) openMember(t.dataset.member); };
+  // A tap on an "Opening" tile watches that pack (the only way to see another member's open).
+  box.onclick = (e) => { const t = e.target.closest('[data-member]'); if (!t) return; if (t.classList.contains('watch') && ctx.watchOpen?.(t.dataset.member)) return; openMember(t.dataset.member); };
 }
 
 export function paintPulls() {

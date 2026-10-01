@@ -1395,7 +1395,7 @@ app.post('/api/open', async (req, res) => {
     pullsCache = null;    // new pull → refresh the community feed now, not in 3s
     const name = me.global_name || me.username;
     const instanceId = req.body?.instanceId;
-    if (instanceId && cards.length) roomSend(instanceId, { type: 'open', user: name, cards });
+    if (instanceId && cards.length) roomSend(instanceId, { type: 'open', id: me.id, user: name, cards, ...(packs.length > 1 ? { packs } : {}) });
     notifyPlaying(me, 'update');
     res.json({ award: data.award, packs, cards });
   } catch (e) {
