@@ -797,3 +797,8 @@ body.ui-v2.m-land .v2-trade.fx-view .tr-compose:not(:has(.fx-deal)) { display: n
 body.ui-v2.m-land .v2-trade.fx-view > .tr-offers { grid-row: 1 / -1; }
 /* An iPhone SE in landscape: the pager moves up beside the tabs, so the filter words fit. */
 body.ui-v2.m-land.m-xnarrow .v2-trade.fx-view #fxPager { position: absolute; top: 0; left: calc(var(--segw) + 8px); margin: 0; }
+/* The phone card view: a swipe slides the next card in. */
+@keyframes mPanelN { from { opacity: .3; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes mPanelP { from { opacity: .3; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+body.ui-v2 #colPanel.m-open.m-slide-next > * { animation: mPanelN .22s ease-out; }
+body.ui-v2 #colPanel.m-open.m-slide-prev > * { animation: mPanelP .22s ease-out; }

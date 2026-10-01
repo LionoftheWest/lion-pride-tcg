@@ -112,10 +112,37 @@ function fitGrid(grid, n) {
   return best.cols * best.rows;
 }
 
+// Swipe (Nathan, 2026-10-01): on a touch screen, a sideways swipe turns the page or the card.
+// cb(+1) = next (swipe left), cb(-1) = previous. A vertical move or a slow drag is not a swipe.
+export function onSwipe(node, cb) {
+  if (!node) return;
+  node._swipe = cb;
+  if (node._swipeOn) return;
+  node._swipeOn = true;
+  node.style.touchAction = 'pan-y pinch-zoom'; // the sideways move comes to us, not the webview
+  let x0 = 0, y0 = 0, t0 = 0, on = false;
+  node.addEventListener('touchstart', (e) => {
+    on = e.touches.length === 1;
+    if (on) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); }
+  }, { passive: true });
+  node.addEventListener('touchend', (e) => {
+    if (!on) return;
+    on = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.4 || Date.now() - t0 > 800) return;
+    node._swiped = Date.now();
+    node._swipe?.(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  // A swipe is not a tap on the card under the finger.
+  node.addEventListener('click', (e) => { if (Date.now() - (node._swiped || 0) < 400) { e.stopPropagation(); e.preventDefault(); } }, true);
+}
+
 // Paint a paged card grid. items: cards; state: { page }; onPick(card).
 export function paintCards(grid, pager, items, state, onPick, selId, dir, refit) {
   const h0 = grid.clientHeight;
   const per = fitGrid(grid, items.length);
+  grid._per = per;
   const pages = Math.max(1, Math.ceil(items.length / per));
   state.page = Math.min(Math.max(0, state.page), pages - 1);
   const start = state.page * per;
@@ -128,6 +155,11 @@ export function paintCards(grid, pager, items, state, onPick, selId, dir, refit)
     const c = t && items[Number(t.dataset.idx)];
     if (c) onPick(c, t);
   };
+  onSwipe(grid, (d) => {
+    if (state.page + d < 0 || state.page + d > pages - 1) return;
+    state.page += d;
+    paintCards(grid, pager, items, state, onPick, selId, d > 0 ? 'next' : 'prev');
+  });
   if (!pager) return;
   pager.innerHTML = pages > 1
     ? `<button data-p="-1" ${state.page === 0 ? 'disabled' : ''}>‹</button><span>${state.page + 1} / ${pages}</span><button data-p="1" ${state.page >= pages - 1 ? 'disabled' : ''}>›</button>`
@@ -404,7 +436,7 @@ function paintAchDetail(a) {
   if (!a || !grid) return;
   const items = [...a.set].sort((x, y) => (y.owned - x.owned) || (x.num - y.num));
   const st = { page: col.detailPage };
-  paintCards(grid, el('detPager'), items, st, (c, t) => { col.detailPage = st.page; pickCard(c, t, grid); }, col.sel);
+  paintCards(grid, el('detPager'), items, st, (c, t) => { col.detailPage = st.page; pickCard(c, t, grid, items); }, col.sel);
 }
 
 function colFiltered() {
@@ -428,7 +460,11 @@ function colFiltered() {
 
 // Tap a card: it becomes the panel card, and an owned card opens in the 3D viewer
 // right away (Nathan: no extra "View card" click).
-function pickCard(c, node, grid) {
+// The list the open card came from (the grid order = the card numbers): a swipe in the phone card
+// view and the arrows in the 3D viewer step through it.
+let panelList = [];
+function pickCard(c, node, grid, list) {
+  panelList = list || [];
   col.sel = c.id;
   grid.querySelectorAll('.v2-cell.sel').forEach((n) => n.classList.remove('sel'));
   node?.classList.add('sel');
@@ -436,7 +472,29 @@ function pickCard(c, node, grid) {
   // (designs 24 + 25), and a tap on its big card opens the 3D viewer.
   if (isPhone()) { ctx.el('colPanel')?.classList.add('m-open'); paintPanel(c); return; }
   paintPanel(c);
-  if (!c.locked) ctx.openViewer(c);
+  if (!c.locked) ctx.openViewer(c, viewerNav());
+}
+// The 3D viewer steps through the owned cards of the same list; the panel follows.
+function viewerNav() {
+  return { list: panelList.filter((x) => !x.locked), onStep: (x) => { col.sel = x.id; markSel(); paintPanel(x); } };
+}
+function markSel() {
+  const grid = panelList === colItems ? ctx.el('colGrid') : ctx.el('detGrid');
+  grid?.querySelectorAll('.v2-cell').forEach((n) => n.classList.toggle('sel', String(panelList[Number(n.dataset.idx)]?.id) === String(col.sel)));
+}
+// The phone card view: a swipe shows the next / previous card of the list (all cards, owned or
+// not, like the grid). The grid behind it turns to that card's page.
+function stepPanel(d) {
+  const i = panelList.findIndex((x) => String(x.id) === String(col.sel));
+  const n = i < 0 ? null : panelList[i + d];
+  if (!n) return;
+  col.sel = n.id;
+  if (panelList === colItems && ctx.el('colGrid')?._per) col.page = Math.floor((i + d) / ctx.el('colGrid')._per);
+  paintColGrid();
+  paintPanel(n);
+  const box = ctx.el('colPanel');
+  box?.classList.remove('m-slide-next', 'm-slide-prev'); void box?.offsetWidth;
+  box?.classList.add(d > 0 ? 'm-slide-next' : 'm-slide-prev');
 }
 
 const colState = { get page() { return col.page; }, set page(v) { col.page = v; } };
@@ -445,7 +503,7 @@ function paintColGrid() {
   const grid = el('colGrid');
   if (!grid) return;
   colItems = colFiltered();
-  paintCards(grid, el('colPager'), colItems, colState, (c, t) => pickCard(c, t, grid), col.sel);
+  paintCards(grid, el('colPager'), colItems, colState, (c, t) => pickCard(c, t, grid, colItems), col.sel);
   // My Live in voice tile (design 19): the set I browse, how much of it I own, 3 owned cards.
   const set = mergedCards().filter((c) => (c.season || 'Season 1') === col.season && (!col.game || [].concat(c.tags?.origin || []).includes(col.game)));
   const own = set.filter((c) => c.owned);
@@ -521,7 +579,8 @@ function paintPanel(c) {
       ${c.locked ? '' : `<button class="v2-icon${inSpot ? ' on' : ''}" id="pSpot" title="${inSpot ? 'Remove from Spotlight' : 'Add to Spotlight'}">${inSpot ? '★' : '☆'}</button>`}
       <button class="v2-icon" id="pTrade" title="Trade">⇄</button>
     </div>`;
-  el('pArt')?.addEventListener('click', () => { if (!c.locked) ctx.openViewer(c); });
+  el('pArt')?.addEventListener('click', () => { if (!c.locked) ctx.openViewer(c, viewerNav()); });
+  if (isPhone()) onSwipe(box, stepPanel);
   el('pClose')?.addEventListener('click', () => box.classList.remove('m-open'));
   if (isPhone()) phoneColumns(box);
   el('pTrade')?.addEventListener('click', () => ctx.show('trading'));
@@ -1124,7 +1183,7 @@ function paintMember() {
   const grid = el('memGrid');
   if (mem.all) {
     const owned = cards.filter((c) => c.owned).sort((a, b) => (b.power || 0) - (a.power || 0));
-    paintCards(grid, el('memPager'), owned, mem, (c) => ctx.openViewer(c));
+    paintCards(grid, el('memPager'), owned, mem, (c) => ctx.openViewer(c, { list: owned }));
   } else {
     grid.innerHTML = season.map((c) => (c.owned
       ? `<button class="mem-mini-card r-${c.rarity}" data-id="${c.id}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""></button>`
