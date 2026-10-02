@@ -5,6 +5,9 @@ import { pingableUsers, type PingKind, PING_KINDS } from './ping-prefs.js';
 import { onPlaying } from './playing-posts.js';
 import { giveLptcgRole, lptcgRoleId } from './lptcg-role.js';
 import { launchActivityRow } from './ui/launch.js';
+import { postRarePulls } from './pull-posts.js';
+import { cleanTradeSpec, tradePicture } from './trade-pictures.js';
+import { AttachmentBuilder } from 'discord.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
 // VM (it binds to 127.0.0.1, and the container runs with --network host). It lets
@@ -81,7 +84,7 @@ export function startInternalServer(client: Client): void {
           activity?: unknown;
           userIds?: string[];
           pingRole?: boolean;
-          button?: boolean;
+          button?: boolean; picture?: unknown;
         };
         // Playing: the Activity reports a member's session (playing-posts.ts).
         if (route === '/playing') {
@@ -102,7 +105,13 @@ export function startInternalServer(client: Client): void {
           if (!body.message) return json(400, { error: 'missing message' });
           const kind = PING_KINDS.includes(body.kind as PingKind) ? (body.kind as PingKind) : undefined;
           // button: the Open Lion Pride TCG button (every bot post carries it).
-          const msg = body.button === true ? { content: String(body.message), components: [launchActivityRow()] } : String(body.message);
+          const msg: MessageCreateOptions = body.button === true ? { content: String(body.message), components: [launchActivityRow()] } : { content: String(body.message) };
+          // picture: a trade / card gift spec (ids only); the bot draws it (trade-pictures.ts).
+          const spec = cleanTradeSpec(body.picture);
+          if (spec) {
+            const png = await tradePicture(spec).catch((e) => { console.error('trade picture:', e); return null; });
+            if (png) msg.files = [new AttachmentBuilder(png, { name: spec.type === 'gift' ? 'card-gift.png' : 'trade.png' })];
+          }
           const posted = await announce(client, msg, kind, body.pingRole === true);
           return json(200, { posted });
         }
@@ -127,11 +136,15 @@ export function startInternalServer(client: Client): void {
         // else spends one pack from their balance for each pack drawn.
         if (isTester) {
           const r = await openTestPacks(String(userId), String(username ?? 'Player'), count);
-          return json(200, { packs: r.packs });
+          json(200, { packs: r.packs });
+          void postRarePulls(client, String(userId), String(username ?? ''), r.packs);
+          return;
         }
         // One database call for all the packs (open_packs); it stops where the balance runs out.
         const packs = await openPacks(String(userId), String(username ?? 'Player'), count);
         json(200, { packs });
+        // A Full Art / Gold pull: a post with a picture (after the reply, so the open is not slower).
+        void postRarePulls(client, String(userId), String(username ?? ''), packs);
       } catch (error) {
         json(500, { error: String((error as Error)?.message ?? error) });
       }
