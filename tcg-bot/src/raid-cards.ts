@@ -9,7 +9,7 @@ const BG = '#0d0f16';
 const GOLD = '#F4B73C';
 const fmt = (n: number): string => Math.round(n).toLocaleString('en-US');
 
-async function brand(ctx: SKRSContext2D, x: number, y: number): Promise<void> {
+export async function brand(ctx: SKRSContext2D, x: number, y: number): Promise<void> {
   const icon = await loadImage(join(ASSETS, 'icon-128.png')).catch(() => null);
   if (icon) { ctx.save(); rounded(ctx, x, y, 40, 40, 10); ctx.clip(); ctx.drawImage(icon, x, y, 40, 40); ctx.restore(); }
   ctx.fillStyle = GOLD;
@@ -17,7 +17,7 @@ async function brand(ctx: SKRSContext2D, x: number, y: number): Promise<void> {
   ctx.fillText('LION PRIDE TCG', x + 54, y + 28);
 }
 
-function glow(ctx: SKRSContext2D, w: number, h: number, color: string, cx: number, cy: number): void {
+export function glow(ctx: SKRSContext2D, w: number, h: number, color: string, cx: number, cy: number): void {
   const g = ctx.createRadialGradient(cx, cy, 20, cx, cy, Math.max(w, h) * 0.7);
   g.addColorStop(0, color);
   g.addColorStop(1, 'rgba(13, 15, 22, 0)');
@@ -31,7 +31,7 @@ function hpBar(ctx: SKRSContext2D, x: number, y: number, w: number, left: number
   if (pct > 0) { rounded(ctx, x, y, Math.max(16, w * pct), 16, 8); ctx.fillStyle = '#FF5A6E'; ctx.fill(); }
 }
 
-function avatarCircle(ctx: SKRSContext2D, im: Image | null, name: string, x: number, y: number, s: number, ring = '#3a3d55'): void {
+export function avatarCircle(ctx: SKRSContext2D, im: Image | null, name: string, x: number, y: number, s: number, ring = '#3a3d55'): void {
   ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2 + 3, 0, Math.PI * 2); ctx.fillStyle = ring; ctx.fill();
   ctx.save();
   ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2, 0, Math.PI * 2); ctx.clip();

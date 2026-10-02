@@ -75,13 +75,14 @@ async function notify(userId, kind, message) {
 // Post a directed event to the public notifications channel (via the bot). The
 // message should @mention the person who needs to see it: `<@id>`.
 // `kind` = the ping setting that applies (the bot's ping-prefs.ts): 'trades' for these.
-async function announce(message, kind = 'trades') {
+// picture: a trade / card gift spec (ids only); the bot draws the picture (tcg-bot trade-pictures.ts).
+async function announce(message, kind = 'trades', picture) {
   if (!INTERNAL_TOKEN) return;
   try {
     await fetch(`${BOT_INTERNAL_URL}/announce`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-internal-token': INTERNAL_TOKEN },
-      body: JSON.stringify({ message, kind }),
+      body: JSON.stringify({ message, kind, ...(picture ? { picture } : {}) }),
     });
   } catch { /* ignore */ }
 }
@@ -1596,7 +1597,7 @@ app.post('/api/trade/gift', async (req, res) => {
   if (data) {
     bustUser(me.id); // the card left me; it waits in their bell (member_card_gifts_redeem.sql)
     const from = me.global_name || me.username;
-    announce(`🎁 <@${toId}> — **${from}** gave you a card! Open Lion Pride TCG to redeem it.`);
+    announce(`🎁 <@${toId}> — **${from}** gave you a card! Open Lion Pride TCG to redeem it.`, 'trades', { type: 'gift', fromId: String(me.id), toId, cardId });
   }
   res.json({ ok: Boolean(data) });
 });
@@ -1621,7 +1622,7 @@ app.post('/api/trade/offer', async (req, res) => {
   if (data != null) {
     const from = me.global_name || me.username;
     notify(toId, 'trade_offer', requestCardId ? `🔄 ${from} sent you a trade offer! Open the Trading tab.` : `🔄 ${from} sent you a trade offer! Pick a card to trade back.`);
-    announce(requestCardId ? `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to accept or decline.` : `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to pick your card or decline.`);
+    announce(requestCardId ? `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to accept or decline.` : `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to pick your card or decline.`, 'trades', { type: 'trade', kind: 'offer', offerId: Number(data) });
   }
   res.json({ ok: data != null, id: data });
 });
@@ -1640,7 +1641,7 @@ app.post('/api/trade/counter', async (req, res) => {
   if (data && offer?.from_id) {
     const who = me.global_name || me.username;
     notify(offer.from_id, 'trade_counter', `🔄 ${who} picked a card for your trade! Accept to swap.`);
-    announce(`🔄 <@${offer.from_id}> — **${who}** picked a card for your trade! Open Lion Pride TCG to accept.`);
+    announce(`🔄 <@${offer.from_id}> — **${who}** picked a card for your trade! Open Lion Pride TCG to accept.`, 'trades', { type: 'trade', kind: 'picked', offerId });
   }
   res.json({ ok: Boolean(data) });
 });
@@ -1660,7 +1661,7 @@ app.post('/api/trade/accept', async (req, res) => {
     bustUser(me.id); bustUser(other);   // the swap moved cards both ways
     const who = me.global_name || me.username;
     notify(other, 'trade_accepted', `✅ ${who} accepted your trade!`);
-    announce(`✅ <@${other}> — **${who}** accepted your trade!`);
+    announce(`✅ <@${other}> — **${who}** accepted your trade!`, 'trades', { type: 'trade', kind: 'accepted', offerId });
   }
   res.json({ ok: Boolean(data) });
 });
