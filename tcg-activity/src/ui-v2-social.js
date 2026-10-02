@@ -201,11 +201,11 @@ function paintBoard() {
   const meIdx = rows.findIndex((r) => r.id === d.me);
   const val = (r, mm = m) => (mm.key === 'cards' ? `${fmt(r.cards)}/${fmt(d.totalCards)}` : mm.key === 'achievements' ? `${r.achievements}/${d.achievementCount}` : mm.short ? short(r[mm.key]) : fmt(r[mm.key]));
   const pod = [rows[1], rows[0], rows[2]].map((r, i) => (r ? `<div class="lb-pod p${[2, 1, 3][i]}${r.id === d.me ? ' me' : ''}" data-member="${esc(r.id)}">
-      ${avatarHTML(r.id, r.name, 'big', r.frame)}<span class="lb-place">${[2, 1, 3][i]}</span><b class="lb-name">${nameBadge(r.id, r.name)}</b>${titleHTML(r.title)}
+      ${avatarHTML(r.id, r.name, 'big', r.frame)}<span class="lb-place">${[2, 1, 3][i]}</span><b class="lb-name">${nameBadge(r.id, r.name, isPhone())}</b>${titleHTML(r.title)}
       <span class="lb-val">${m.icon} ${val(r)}</span>
       <span class="lb-sub">⚔ ${short(r.huntDamage)} · 💀 ${r.bosses} · 📚 ${r.cards}</span></div>` : '<div class="lb-pod empty"></div>')).join('');
   const line = (r, i) => `<div class="lb-row${r.id === d.me ? ' me' : ''}" data-member="${esc(r.id)}"><span class="lb-i mono">${i + 1}</span>
-      <span class="lb-p">${avatarHTML(r.id, r.name, 'sm', r.frame)}<b>${nameBadge(r.id, r.name)}</b>${titleHTML(r.title)}${r.id === d.me ? '<i class="you">You</i>' : ''}</span>
+      <span class="lb-p">${avatarHTML(r.id, r.name, 'sm', r.frame)}<b>${nameBadge(r.id, r.name, isPhone())}</b>${titleHTML(r.title)}${r.id === d.me ? '<i class="you">You</i>' : ''}</span>
       ${METRICS.map((mm) => `<span class="lb-c mono${mm.key === m.key ? ' on' : ''}">${val(r, mm)}</span>`).join('')}</div>`;
   // The top 10 at most (Nathan, 2026-10-01: "the most it can show is the top 10"): the podium
   // is 1-3, the table 4-10. Your own row is pinned only when you are outside the top 10.
@@ -230,7 +230,7 @@ function paintBoard() {
   el('main').innerHTML = `<div class="v2-board">
     <section class="lb-main">
       <div class="lb-head"><button class="v2-icon" id="lbBack" aria-label="Back">←</button><h2>Leaderboard</h2></div>
-      <div class="lb-tabs">${METRICS.map((mm) => `<button class="lb-tab${mm.key === m.key ? ' on' : ''}" data-m="${mm.key}">${mm.icon} ${esc(mm.label)}</button>`).join('')}</div>
+      <div class="lb-tabs">${METRICS.map((mm) => `<button class="lb-tab${mm.key === m.key ? ' on' : ''}" data-m="${mm.key}">${mm.icon} <span class="lt-l">${esc(mm.label)}</span><span class="lt-c">${esc(mm.col)}</span></button>`).join('')}</div>
       <div class="lb-podium">${pod}</div>
       <div class="lb-table">
         <div class="lb-row lb-th"><span class="lb-i">#</span><span class="lb-p">Player</span>${METRICS.map((mm) => `<span class="lb-c${mm.key === m.key ? ' on' : ''}">${mm.key === m.key ? '▾ ' : ''}${esc(mm.col)}</span>`).join('')}</div>
@@ -259,6 +259,13 @@ function paintBoard() {
     fitChildren(rows);
     // A phone shows fewer rows: when my row did not fit, it takes the last place (my rank stays on screen).
     if (isPhone() && rows && me && meIdx >= 3 && !pinMe && !rows.querySelector('.lb-row.me') && rows.lastElementChild) rows.lastElementChild.outerHTML = line(me, meIdx);
+    // The live tile: only the rows that fit (my 4th-place row showed cut in half, 2026-10-02); when my
+    // row does not fit, it takes the last place, like the table.
+    const lives = el('main').querySelector('.lb-lives');
+    if (lives && liveMe >= 0) {
+      fitChildren(lives);
+      if (!lives.querySelector('.lb-live.me') && lives.lastElementChild) lives.lastElementChild.outerHTML = lrow(live.leaders[liveMe], liveMe);
+    } else if (lives) fitChildren(lives);
   });
 }
 

@@ -7,7 +7,8 @@
    the chosen board. */
 body.ui-v2 .lb-table { container-type: inline-size; }
 body.ui-v2 .lb-row { grid-template-columns: 34px minmax(110px, 1fr) repeat(5, minmax(58px, 84px)); }
-body.ui-v2 .lb-row.lb-th .lb-c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The header cells take the 10 px header font (.lb-c set 12.5 px: "▾ HUNT DMG" was 89 px in 84 px). */
+body.ui-v2 .lb-row.lb-th .lb-c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
 @container (max-width: 640px) {
   body.ui-v2 .lb-row { grid-template-columns: 30px minmax(0, 1fr) 96px; }
   body.ui-v2 .lb-row .lb-c:not(.on) { display: none; }

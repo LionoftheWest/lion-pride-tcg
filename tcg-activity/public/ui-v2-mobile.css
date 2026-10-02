@@ -296,7 +296,10 @@ body.ui-v2.m-land .v2-board { grid-template-columns: minmax(0, 1fr); }
 body.ui-v2.m-land .v2-board > .lb-side { display: none; }
 body.ui-v2.m-land .lb-pod .lb-sub { display: none; }
 body.ui-v2.m-land .lb-pod .lb-place { margin-top: 0; }
-body.ui-v2.m-land .lb-pod .lb-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Names wrap, never cut (no cut names on a phone). */
+body.ui-v2.m-land .lb-pod .lb-name { font-size: 13px; white-space: normal; overflow: visible; text-overflow: clip; min-width: 0; line-height: 1.15; }
+body.ui-v2.m-land .lb-row.lb-th { height: auto; min-height: 24px; }
+body.ui-v2.m-land .lb-row.lb-th .lb-c { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.1; }
 body.ui-v2.m-land .lb-pod { min-width: 0; overflow: hidden; }
 body.ui-v2.m-land .lb-pod .lb-val { white-space: nowrap; }
 body.ui-v2.m-land .lb-pod .lb-name { flex: 1 1 auto; }
@@ -1027,3 +1030,32 @@ body.ui-v2.m-land .hunt-arena .squad-grid.hand { left: var(--boss-w, 26%); backg
 body.ui-v2.m-land:has(.arena-mode) #feed { top: calc(var(--arena-top-b, 130px) + 4px); bottom: calc(var(--hand-b, 200px) + 2px); height: auto;
   left: calc(var(--hand-l, 240px) + 8px); right: calc(var(--hand-r, 10px) + 8px); width: auto; }
 body.ui-v2.m-port .squad-grid.hand .downed-x, body.ui-v2.m-land .squad-grid.hand .downed-x { font-size: 10px; letter-spacing: 0; }
+
+/* ===== Portrait: the Leaderboard (Nathan, 2026-10-02, IMG_2866: the desktop columns overlapped).
+   One column: the tabs, my rank, the podium, then the table with the chosen metric only. ===== */
+body.ui-v2.m-port .v2-board { display: flex; flex-direction: column; gap: 6px; height: 100%; min-height: 0; }
+body.ui-v2.m-port .v2-board > .lb-main, body.ui-v2.m-port .v2-board > .lb-side { display: contents; }
+body.ui-v2.m-port .lb-head { order: 1; gap: 8px; }
+body.ui-v2.m-port .lb-head h2 { font-size: 20px; margin: 0; }
+body.ui-v2.m-port .lb-head .v2-icon { width: 36px; height: 36px; flex-basis: 36px; }
+body.ui-v2.m-port .lb-tabs { order: 2; flex-wrap: nowrap; gap: 4px; }
+body.ui-v2.m-port .lb-tab { flex: 1 1 0; min-width: 0; height: 34px; padding: 0 4px; font-size: 11.5px; white-space: nowrap; }
+body.ui-v2.m-port .lb-tab .lt-l { display: none; }
+body.ui-v2.m-port .lb-tab .lt-c { display: inline; }
+body.ui-v2.m-port .lb-mine { order: 3; padding: 8px 12px; gap: 6px; }
+body.ui-v2.m-port .lb-mine .prof-head { gap: 10px; }
+body.ui-v2.m-port .lb-mine .prof-head .v2-avatar { width: 38px; height: 38px; flex: 0 0 38px; }
+body.ui-v2.m-port .lb-mine .prof-head h3 { font-size: 15px; }
+body.ui-v2.m-port .lb-mine .lb-rank { font-size: 24px; }
+body.ui-v2.m-port .lb-mine .lb-tiles, body.ui-v2.m-port .v2-board .lb-hunt { display: none; }
+body.ui-v2.m-port .lb-podium { order: 4; gap: 6px; }
+body.ui-v2.m-port .lb-pod, body.ui-v2.m-port .lb-pod.p1 { min-width: 0; padding: 10px 4px 8px; gap: 3px; }
+body.ui-v2.m-port .lb-pod .v2-avatar { width: 44px; height: 44px; }
+body.ui-v2.m-port .lb-pod .lb-name { font-size: 13px; text-align: center; max-width: 100%; }
+body.ui-v2.m-port .lb-pod .lb-val { font-size: 16px; }
+body.ui-v2.m-port .lb-pod.p1 .lb-val { font-size: 18px; }
+body.ui-v2.m-port .lb-pod .lb-sub { display: none; }
+body.ui-v2.m-port .lb-table { order: 5; flex: 1 1 auto; min-height: 0; padding: 2px 8px 4px; }
+body.ui-v2.m-port .lb-row { grid-template-columns: 26px minmax(0, 1fr) auto; height: auto; min-height: 38px; padding: 3px 6px; }
+body.ui-v2.m-port .lb-row .lb-c:not(.on) { display: none; }
+body.ui-v2.m-port .lb-row .lb-p b { white-space: normal; overflow: visible; text-overflow: clip; }
