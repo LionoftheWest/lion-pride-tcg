@@ -12,7 +12,7 @@ body.ui-v2 .tx-card { --x: 0px; --r: 0deg; --s: 1; position: absolute; top: 50%;
 body.ui-v2 .tx-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; display: block; }
 body.ui-v2 .tx-card.r-normal { --rc: var(--r-normal); } body.ui-v2 .tx-card.r-illustrated_rare { --rc: var(--r-illustrated_rare); }
 body.ui-v2 .tx-card.r-secret_rare { --rc: var(--r-secret_rare); } body.ui-v2 .tx-card.r-full_art { --rc: var(--r-full_art); }
-body.ui-v2 .tx-card.r-gold, body.ui-v2 .tx-card.r-event { --rc: var(--r-gold); }
+body.ui-v2 .tx-card.r-gold { --rc: var(--r-gold); } body.ui-v2 .tx-card.r-event { --rc: var(--r-event); } body.ui-v2 .tx-card.r-promo { --rc: #C9CED8; }
 body.ui-v2 .tx-tag { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); font: 800 11px var(--font-ui); letter-spacing: 1px;
   text-transform: uppercase; color: var(--text-secondary); transition: opacity .3s ease; }
 body.ui-v2 .tx-card.give { --x: -60vw; } body.ui-v2 .tx-card.get { --x: 60vw; }
@@ -40,6 +40,14 @@ body.ui-v2 .tx-layer.land .tx-done { opacity: 1; transform: none; }
 body.ui-v2 .tx-k { font: 800 12px var(--font-ui); letter-spacing: 1.4px; text-transform: uppercase; color: var(--gold); }
 body.ui-v2 .tx-done b { font: 800 20px var(--font-ui); color: var(--text-primary); }
 body.ui-v2 .tx-done b.r-illustrated_rare { color: var(--r-illustrated_rare); } body.ui-v2 .tx-done b.r-secret_rare { color: var(--r-secret_rare); }
-body.ui-v2 .tx-done b.r-full_art { color: var(--r-full_art); } body.ui-v2 .tx-done b.r-gold, body.ui-v2 .tx-done b.r-event { color: var(--r-gold); }
+body.ui-v2 .tx-done b.r-full_art { color: var(--r-full_art); } body.ui-v2 .tx-done b.r-gold { color: var(--r-gold); } body.ui-v2 .tx-done b.r-event { color: var(--r-event); }
 body.ui-v2 .tx-r { font-size: 12px; color: var(--text-muted); }
 @media (prefers-reduced-motion: reduce) { body.ui-v2 .tx-card, body.ui-v2 .tx-burst b { transition-duration: .01s; } body.ui-v2 .tx-layer.swap .tx-burst i { animation: none; } }
+
+/* The gift animation (playGiftFx): the 🎁 shows, bursts, and the card rises out of it to the center. */
+body.ui-v2 .tx-layer.gx .tx-card.get { --x: 0px; --r: -10deg; --s: .25; opacity: 0; }
+body.ui-v2 .tx-layer.gx.in .tx-card.get { --x: 0px; --r: -10deg; opacity: 0; }
+body.ui-v2 .tx-layer.gx.meet .tx-card.get { --x: 0px; --r: -10deg; }
+body.ui-v2 .tx-layer.gx .tx-burst b { width: 64px; height: 64px; font-size: 34px; background: transparent; }
+body.ui-v2 .tx-layer.gx.meet .tx-burst b { transform: translate(-50%, -50%) scale(1.3) rotate(-8deg); }
+body.ui-v2 .tx-layer.gx.swap .tx-card.get { --x: 0px; --r: 0deg; --s: 1.12; opacity: 1; z-index: 2; }

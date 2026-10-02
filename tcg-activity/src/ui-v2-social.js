@@ -4,7 +4,7 @@
 
 import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember, toast } from './ui-v2.js';
 import { thumb } from './thumb.js';
-import { playTradeFx } from './ui-v2-tradefx.js';
+import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
 import { isPhone, isPort, isLand } from './mobile.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
@@ -115,7 +115,7 @@ function giftsHTML() {
   const what = (g) => (g.kind === 'card' && g.card
     ? `<span class="gf-card" style="color:var(--r-${esc(g.card.rarity)})">${esc(ctx().RARITY_LABEL[g.card.rarity] || g.card.rarity)} card</span>`
     : `<span>${g.amount} pack${g.amount === 1 ? '' : 's'}</span>`);
-  const ico = (g) => (g.kind === 'card' && g.card?.image_url ? `<img class="gf-img" src="${esc(g.card.image_url)}" alt="">` : '<span class="gf-ico">🎁</span>');
+  const ico = (g) => (g.kind === 'card' && g.card?.image_url ? `<img class="gf-img" src="${thumb(g.card.image_url)}" data-full="${esc(g.card.image_url)}" alt="">` : '<span class="gf-ico">🎁</span>');
   return `<div class="gf-list"><div class="side-h">Gifts to redeem${noteGifts.length > 1 ? `<button class="v2-btn gold gf-all">Redeem all${total ? ` +${total}` : ''}</button>` : ''}</div>
     ${noteGifts.map((g) => `<div class="gf-row">${ico(g)}<div class="gf-t"><b>${esc(g.title)}</b>${what(g)}</div>
       <button class="v2-btn gold gf-redeem" data-id="${g.id}">Redeem</button></div>`).join('')}</div>`;
@@ -125,10 +125,12 @@ async function redeem(btn, ids) {
   let r = null;
   try { r = await ctx().apiPost('/api/gifts/claim', { ids }); } catch { r = null; }
   if (r?.ok) {
+    const cards = noteGifts.filter((g) => ids.includes(g.id) && g.kind === 'card' && g.card); // played below
     noteGifts = noteGifts.filter((g) => !ids.includes(g.id));
-    toast([r.packs ? `+${r.packs} pack${r.packs === 1 ? '' : 's'}` : '', r.cards ? `+${r.cards} card${r.cards === 1 ? '' : 's'} in your collection` : ''].filter(Boolean).map((t) => `🎁 ${t}`).join(' · '));
+    if (r.packs) toast(`🎁 +${r.packs} pack${r.packs === 1 ? '' : 's'}`); // a card gift has its animation, not a toast
     ctx().refreshPacks?.();
-    if (r.cards) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
+    if (r.cards) ctx().refreshOwned().catch(() => {}); // in the background: the animation starts at once
+    for (const g of cards) await playGiftFx({ card: g.card, from: g.from_name, esc, label: (k) => ctx().RARITY_LABEL?.[k] || k, sfx: ctx().sfx });
   } else {
     try { noteGifts = (await ctx().api('/api/notifications')).gifts || []; } catch { /* keep */ }
   }

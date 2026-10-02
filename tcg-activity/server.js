@@ -1568,10 +1568,9 @@ app.post('/api/trade/gift', async (req, res) => {
   const { data, error } = await supabase.rpc('gift_card', { p_from: me.id, p_to: toId, p_card_id: cardId });
   if (error) return res.status(500).json({ error: error.message });
   if (data) {
-    bustUser(me.id); bustUser(toId);   // both collections changed
+    bustUser(me.id); // the card left me; it waits in their bell (member_card_gifts_redeem.sql)
     const from = me.global_name || me.username;
-    notify(toId, 'card_gift', `🎁 ${from} gave you a card!`);
-    announce(`🎁 <@${toId}> — **${from}** gave you a card!`);
+    announce(`🎁 <@${toId}> — **${from}** gave you a card! Open Lion Pride TCG to redeem it.`);
   }
   res.json({ ok: Boolean(data) });
 });
@@ -1677,9 +1676,15 @@ app.get('/api/notifications', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   const items = data || [];
   // Gifts waiting to be redeemed (gift_claims.sql): they count in the red number too.
-  const { data: gifts } = await supabase.from('gift_claims').select('id, kind, title, amount, created_at, card:cards(id, name, rarity, image_url)')
+  const { data: gifts } = await supabase.from('gift_claims').select('id, kind, title, amount, created_at, from_id, card:cards(id, name, rarity, image_url)')
     .eq('player_id', me.id).is('claimed_at', null).order('created_at', { ascending: true }).limit(20);
   for (const g of gifts || []) if (g.card) g.card.image_url = toProxyImg(g.card.image_url); // a card gift (launch_event_cards.sql)
+  const senders = [...new Set((gifts || []).map((g) => g.from_id).filter(Boolean))];
+  if (senders.length) { // who gave it: the gift animation says "A gift from <name>"
+    const { data: ps } = await supabase.from('players').select('id, username').in('id', senders);
+    const nm = new Map((ps || []).map((p) => [String(p.id), p.username]));
+    for (const g of gifts) if (g.from_id) g.from_name = nm.get(String(g.from_id)) || null;
+  }
   res.json({ items, gifts: gifts || [], unread: items.filter((n) => !n.read).length + (gifts || []).length });
 });
 
