@@ -709,3 +709,12 @@ body.ui-v2 .ex-q:hover { background: var(--gold); color: var(--on-gold); }
   #exLayer h3 { font-size: 20px; }
   #exLayer .ex-body { padding: 14px 16px 16px; }
 }
+
+/* The top want (hall_top_want.sql): the starred wishlist slot is the card the Wanted view shows. */
+body.ui-v2 .wl-topmark { flex: none; color: var(--gold); font-size: 15px; line-height: 1; }
+body.ui-v2 .wl-row .wl-top { color: var(--text-muted); }
+body.ui-v2 .wl-row .wl-top.on { color: var(--on-gold); background: var(--gold); border-color: var(--gold); }
+body.ui-v2 .wl-hint { font-size: 11px; }
+body.ui-v2 .hl-who[data-member] { cursor: pointer; }
+body.ui-v2 .hl-who[data-member]:hover { text-decoration: underline; }
+body.ui-v2.m-port .hall-view #hlWish .bt { display: none; } /* a portrait phone: the ♡ icon only */

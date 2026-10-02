@@ -13,7 +13,7 @@ const img = (f) => `/explain/${f}.webp`;
 export const SETS = {
   hall: { name: 'Trade Hall', slides: [
     { img: 'hall-wanted', title: 'The Trade Hall', text: 'Trade cards with any member. Wanted shows the cards members want. For trade shows the cards members offer.' },
-    { img: 'hall-wanted-cards', title: 'Wanted', text: 'Each card is on a member\'s wishlist. Have one? Tap it and send it. They pick one of your cards to give back.' },
+    { img: 'hall-wanted-cards', title: 'Wanted', text: 'Each card is one member\'s top want. Have one? Tap it and send it. They pick one of your cards to give back. Tap a name to see their full wishlist.' },
     { img: 'hall-for-trade', title: 'For trade', text: 'Members list these cards for anyone. Tap a card to make an offer for it.' },
     { img: 'hall-offer', title: 'Make an offer', text: 'Pick one of your cards of the same rarity. ♡ marks a card on their wishlist. Tap Send offer. The swap happens when they accept.' },
     { img: 'hall-offers-panel', title: 'Your offers', text: 'Offers to you and from you show here. The card you offer is held until they answer. Tap ✕ to cancel.' },
