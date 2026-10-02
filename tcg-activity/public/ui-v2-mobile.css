@@ -965,3 +965,23 @@ body.ui-v2.m-land .mem-hunt .tile-h { align-items: flex-start; }
    showed through the profile (Nathan, 2026-10-01, IMG_2860). They hide while one is open. */
 body.ui-v2.m-land:has(#memberModal:not(.hidden)) .v2-trade :is(#trSend, #trClear, #fxPlay),
 body.ui-v2.m-land:has(#v2Notifs:not(.hidden)) .v2-trade :is(#trSend, #trClear, #fxPlay) { visibility: hidden; }
+/* The Spotlight + title + frame editor on phones (Nathan, 2026-10-01: titles/frames were out of
+   reach; the editor never had a phone layout). It fills the window inside the safe areas. */
+body.ui-v2.m-land #spotEditor, body.ui-v2.m-port #spotEditor { padding: calc(6px + var(--sa-t)) calc(6px + var(--sa-r)) calc(6px + var(--sa-b)) calc(6px + var(--sa-l)); place-items: stretch; }
+body.ui-v2.m-land .se-card, body.ui-v2.m-port .se-card { width: 100%; height: 100%; padding: 10px 12px; gap: 6px 12px; }
+body.ui-v2.m-land .se-side, body.ui-v2.m-port .se-side { gap: 5px; }
+body.ui-v2.m-land .se-side .side-h, body.ui-v2.m-port .se-side .side-h { margin: 2px 0 0; }
+body.ui-v2.m-land .se-side .prof-head, body.ui-v2.m-port .se-side .prof-head { gap: 8px; }
+body.ui-v2.m-land .se-side .prof-head .v2-avatar, body.ui-v2.m-port .se-side .prof-head .v2-avatar { width: 40px; height: 40px; flex: 0 0 40px; }
+body.ui-v2.m-land .se-side .prof-head h3, body.ui-v2.m-port .se-side .prof-head h3 { font-size: 15px; margin: 0; }
+body.ui-v2.m-land .se-slots, body.ui-v2.m-port .se-slots { grid-template-columns: repeat(3, 52px); gap: 8px; }
+body.ui-v2.m-land .se-side .v2-select, body.ui-v2.m-port .se-side .v2-select { height: 36px; }
+body.ui-v2.m-land .se-side .f-chips .f-chip, body.ui-v2.m-port .se-side .f-chips .f-chip { height: 30px; }
+body.ui-v2.m-land .se-foot .v2-btn, body.ui-v2.m-port .se-foot .v2-btn { height: 40px; }
+body.ui-v2.m-land .se-main, body.ui-v2.m-port .se-main { padding-right: 0; }
+body.ui-v2.m-land .se-main .v2-col-head .sub, body.ui-v2.m-port .se-main .v2-col-head .sub { display: none; }
+body.ui-v2.m-land .se-main .v2-col-head, body.ui-v2.m-port .se-main .v2-col-head { gap: 6px; flex-wrap: nowrap; padding-right: 44px; }
+body.ui-v2.m-land .se-main .v2-search, body.ui-v2.m-port .se-main .v2-search { width: auto; flex: 1 1 80px; min-width: 0; }
+body.ui-v2.m-land .se-card { grid-template-columns: 210px minmax(0, 1fr); }
+body.ui-v2.m-port .se-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+body.ui-v2.m-port .se-side .se-foot { margin-top: 2px; }

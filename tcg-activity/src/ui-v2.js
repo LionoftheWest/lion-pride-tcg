@@ -1131,6 +1131,7 @@ function paintSpotEditor() {
     myProfile = { ...(myProfile || {}), spotlight: a.spotlight, title: sp.title, frame: sp.frame };
     box.classList.add('hidden');
     if (ctx.currentView() === 'home') paintProfile();
+    if (memData?.self && !ctx.el('memberModal')?.classList.contains('hidden')) openMember(ctx.user()?.id); // show the new title + frame
     toast('Profile saved');
   });
 }
@@ -1215,7 +1216,7 @@ function paintMember() {
 
     <section class="mem-center">
       ${mem.all ? '' : `<div class="mem-col mem-spot">
-        <div class="side-h">✨ Spotlight</div>
+        <div class="side-h">✨ Spotlight${memData.self ? ' <button class="link-btn" id="memStyle">Edit</button>' : ''}</div>
         <div class="mem-spot-row" id="memSpot">${spotOrder.map((c0, i) => { const { card: c, stache } = spotPrank(c0, p.id, i);
           return `<button class="spot-card r-${c.rarity}${c0 === spot[0] ? ' main' : ''}" data-id="${c0.id}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">${stache}</button>`; }).join('') || '<p class="v2-empty">No cards yet.</p>'}</div>
       </div>`}
@@ -1245,6 +1246,9 @@ function paintMember() {
       : '<span class="mem-mini-card lock">🔒</span>')).join('');
     grid.onclick = (e) => { const b = e.target.closest('[data-id]'); const c = b && cards.find((x) => String(x.id) === b.dataset.id); if (c) ctx.openViewer(c); };
   }
+  // My own profile: the Spotlight, title and frame editor (its only door was the Home Spotlight,
+  // which design 19 removed: Nathan, 2026-10-01 "titles/frames aren't accessible").
+  el('memStyle')?.addEventListener('click', () => openSpotEditor());
   el('memSpot')?.addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); const c = b && cards.find((x) => String(x.id) === b.dataset.id); if (c) ctx.openViewer(c); });
   el('memAll').addEventListener('click', () => { mem.all = !mem.all; mem.page = 0; paintMember(); });
   el('memBoon')?.addEventListener('click', () => ctx.playOnMember('boon', { id: p.id, name: p.name }));
