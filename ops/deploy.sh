@@ -92,6 +92,8 @@ sudo docker tag "$NAME:$SHORT" "$NAME:latest"
 if [ "$SVC" = bot ]; then echo "-- register slash commands"; sudo docker exec tcg-bot node dist/deploy-commands.js | tail -2; fi
 # Keep only latest, prev, and this build.
 sudo docker images "$NAME" --format '{{.Tag}}' | grep -vxE "latest|prev|$SHORT" | xargs -r -I{} sudo docker rmi -f "$NAME:{}" >/dev/null || true
+# The untagged images those leave behind (2026-10-01: 268 images, 38 GB, the disk was 98% full).
+sudo docker image prune -f >/dev/null || true
 lock
 echo "DEPLOYED $NAME @ $SHORT (healthy)"
 REMOTE
