@@ -4,6 +4,7 @@ import { openPacks, openTestPacks, getPackBalance, giftPacks } from './store.js'
 import { pingableUsers, type PingKind, PING_KINDS } from './ping-prefs.js';
 import { onPlaying } from './playing-posts.js';
 import { giveLptcgRole, lptcgRoleId } from './lptcg-role.js';
+import { launchActivityRow } from './ui/launch.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
 // VM (it binds to 127.0.0.1, and the container runs with --network host). It lets
@@ -80,6 +81,7 @@ export function startInternalServer(client: Client): void {
           activity?: unknown;
           userIds?: string[];
           pingRole?: boolean;
+          button?: boolean;
         };
         // Playing: the Activity reports a member's session (playing-posts.ts).
         if (route === '/playing') {
@@ -99,7 +101,9 @@ export function startInternalServer(client: Client): void {
         if (route === '/announce') {
           if (!body.message) return json(400, { error: 'missing message' });
           const kind = PING_KINDS.includes(body.kind as PingKind) ? (body.kind as PingKind) : undefined;
-          const posted = await announce(client, String(body.message), kind, body.pingRole === true);
+          // button: the Open Lion Pride TCG button (every bot post carries it).
+          const msg = body.button === true ? { content: String(body.message), components: [launchActivityRow()] } : String(body.message);
+          const posted = await announce(client, msg, kind, body.pingRole === true);
           return json(200, { posted });
         }
         // Gift: move packs from one player's balance to another.

@@ -1955,18 +1955,21 @@ function paintTeam() {
   grid.innerHTML = team.length ? team.map((c) => huntTile(c, 'battle')).join('') : '<p class="empty">No squad chosen.</p>';
   sizeSquadGrid();
 }
-// The lock-in warning: Back keeps picking, Lock in goes on with the short squad.
-function confirmShortSquad(have, cap, open) {
+// The lock-in warning (Nathan, 2026-10-02): Continue locks the short squad; Auto-Fill my Squad keeps
+// the member's picks and fills the rest with Auto-pick, then locks. ✕ (or a tap outside) keeps picking.
+// Resolves 'go', 'fill' or null.
+function confirmShortSquad(have, cap) {
   return new Promise((done) => {
     document.getElementById('sqWarn')?.remove();
     document.body.insertAdjacentHTML('beforeend', `<div class="sq-warn" id="sqWarn" role="dialog" aria-modal="true">
-      <div class="sq-warn-box"><h3>Squad not full</h3>
-        <p>Your squad has <b>${have} of ${cap}</b> cards. You can still add <b>${open}</b> more.</p>
-        <div class="sq-warn-btns"><button class="v2-btn" id="sqWarnBack">Add cards</button><button class="v2-btn gold" id="sqWarnGo">Lock in anyway</button></div></div></div>`);
-    const close = (yes) => { document.getElementById('sqWarn')?.remove(); done(yes); };
-    el('sqWarnBack').addEventListener('click', () => close(false));
-    el('sqWarnGo').addEventListener('click', () => close(true));
-    el('sqWarn').addEventListener('click', (e) => { if (e.target.id === 'sqWarn') close(false); });
+      <div class="sq-warn-box"><button class="v2-icon sq-warn-x" id="sqWarnX" aria-label="Close">✕</button><h3>Your squad is not fully filled</h3>
+        <p><b>${have} of ${cap}</b> cards. Do you want to continue or fill the rest in?</p>
+        <div class="sq-warn-btns"><button class="v2-btn" id="sqWarnGo">Continue</button><button class="v2-btn gold" id="sqWarnFill">Auto-Fill my Squad</button></div></div></div>`);
+    const close = (v) => { document.getElementById('sqWarn')?.remove(); done(v); };
+    el('sqWarnX').addEventListener('click', () => close(null));
+    el('sqWarnGo').addEventListener('click', () => close('go'));
+    el('sqWarnFill').addEventListener('click', () => close('fill'));
+    el('sqWarn').addEventListener('click', (e) => { if (e.target.id === 'sqWarn') close(null); });
   });
 }
 function updateLockBtn() {
@@ -2108,7 +2111,17 @@ function wireSelectPhase() {
     if (squad.sel.size < 1) return;
     // A squad with open slots asks first (Nathan, 2026-10-01: members fought with short squads).
     const open = openSlots(huntState?.roster || [], [...squad.sel], { cap });
-    if (open > 0 && !(await confirmShortSquad(squad.sel.size, cap, open))) return;
+    if (open > 0) {
+      const pick = await confirmShortSquad(squad.sel.size, cap);
+      if (!pick) return;
+      if (pick === 'fill') {
+        // Keep my picks; Auto-pick's best cards fill the empty slots (in its order).
+        let ids = [];
+        try { ids = (await api('/api/hunt/autopick')).ids || []; } catch { ids = []; }
+        for (const x of ids) { if (squad.sel.size >= cap) break; squad.sel.add(Number(x)); }
+        paintHuntPage(); onSquadChanged();
+      }
+    }
     // The server keeps the squad (hunt_squads.sql): one squad per day, fixed after the first fight.
     const lr = await apiPost('/api/hunt/squad', { cards: [...squad.sel] }).catch(() => null);
     if (!lr?.ok) {
