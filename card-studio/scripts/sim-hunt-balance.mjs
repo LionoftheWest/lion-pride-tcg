@@ -28,7 +28,7 @@ begin
     packs := case prof[k] when 'light' then 5 when 'regular' then 15 else 40 end;
     for n in 1..packs * 5 loop
       roll := random();
-      rar := case when roll < 0.939 then 'normal' when roll < 0.989 then 'illustrated_rare' when roll < 0.995 then 'secret_rare' when roll < 0.999 then 'full_art' else 'gold' end;
+      rar := case when roll < 0.9398 then 'normal' when roll < 0.9898 then 'illustrated_rare' when roll < 0.9958 then 'secret_rare' when roll < 0.9998 then 'full_art' else 'gold' end;
       select id into cid from cards where in_draw_pool and rarity::text = rar order by random() limit 1;
       if cid is null then select id into cid from cards where in_draw_pool and rarity::text = 'normal' order by random() limit 1; end if;
       insert into player_cards (player_id, card_id, quantity) values ('tst_bal_' || k, cid, 1)

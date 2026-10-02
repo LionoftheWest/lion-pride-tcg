@@ -12,7 +12,7 @@ const HELP_ICON = svg('<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1
 export const FAQ = [
   { icon: '📦', q: 'How do I earn packs?', a: 'Play! Your first message of the day earns 1 pack, and 25 messages earn 1 more. The Dailies add more: check in, fight the Raid Boss, spend 30 minutes in voice with someone, and trade or play a boon.', chips: ['Up to 5 a day', 'Gifts and rewards are extra'] },
   { icon: '🕛', q: 'When does the day reset?', a: 'At midnight Mountain Time (MT).' },
-  { icon: '💎', q: 'What are the rarities?', a: 'Normal, Illustrated Rare, Secret Rare, Full Art and Gold. Per card: Normal 93.95%, Illustrated Rare 5%, Secret Rare 0.6%, Full Art 0.4%, Gold 0.05%.' },
+  { icon: '💎', q: 'What are the rarities?', a: 'Normal, Illustrated Rare, Secret Rare, Full Art and Gold. Per card: Normal 93.98%, Illustrated Rare 5%, Secret Rare 0.6%, Full Art 0.4%, Gold 0.02%.' },
   { icon: '⭐', q: 'What do duplicates do?', a: 'A duplicate adds a star to your card, up to 5 stars. Each star gives 3 stat points: Attack, Vitality, Precision, Potency and Haste. You can reset your points for free once a week (Monday, MT).' },
   { icon: '⚔', q: 'When is the Raid Boss?', a: 'A new boss appears every Thursday at 3 PM MT and stays until Monday at 5 PM MT. You can attack with up to 8 cards a day. Everyone who fights earns packs, if the boss falls or escapes. The top 10 by damage earn more: 1st 7 packs, 2nd 5, 3rd 4, 4th to 10th 3. Every other hunter earns 1.' },
   { icon: '📅', q: 'How do Dailies work?', a: 'Open the calendar button. Each daily you finish shows a Claim button, and the red number shows how many you can claim. Check in every day to build a streak: day 3 and day 7 give a bonus pack.' },
