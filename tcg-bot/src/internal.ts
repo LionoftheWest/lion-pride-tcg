@@ -3,6 +3,7 @@ import type { Client, MessageCreateOptions } from 'discord.js';
 import { openPacks, openTestPacks, getPackBalance, giftPacks } from './store.js';
 import { pingableUsers, type PingKind, PING_KINDS } from './ping-prefs.js';
 import { onPlaying } from './playing-posts.js';
+import { giveLptcgRole, lptcgRoleId } from './lptcg-role.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
 // VM (it binds to 127.0.0.1, and the container runs with --network host). It lets
@@ -19,12 +20,19 @@ const NOTIF_CHANNEL = process.env.NOTIF_CHANNEL_ID ?? '';
 // A string posts plain text; an options object can also carry buttons. `kind` says which
 // ping setting applies (ping-prefs.ts): the members named in the post are pinged only if
 // they did not mute that kind (or Mute all). They are still named in the post.
-export async function announce(client: Client, message: string | MessageCreateOptions, kind?: PingKind): Promise<boolean> {
+// pingRole: the post pings the LPTCG role (every Lion Pride TCG player) instead of members.
+export async function announce(client: Client, message: string | MessageCreateOptions, kind?: PingKind, pingRole = false): Promise<boolean> {
   if (!NOTIF_CHANNEL) return false;
   try {
     const channel = await client.channels.fetch(NOTIF_CHANNEL);
     if (channel && channel.isTextBased() && 'send' in channel) {
       const body = typeof message === 'string' ? { content: message } : message;
+      if (pingRole) {
+        const rid = await lptcgRoleId(client);
+        if (!rid) return false;
+        await channel.send({ ...body, content: `<@&${rid}> ${body.content ?? ''}`, allowedMentions: { roles: [rid] } });
+        return true;
+      }
       const users = await pingableUsers(String(body.content ?? ''), kind);
       await channel.send({ ...body, allowedMentions: { users } });
       return true;
@@ -49,7 +57,7 @@ export function startInternalServer(client: Client): void {
       res.end(JSON.stringify(body));
     };
     const route = req.method === 'POST' ? req.url : null;
-    if (route !== '/open' && route !== '/status' && route !== '/gift' && route !== '/announce' && route !== '/playing') return json(404, { error: 'not found' });
+    if (route !== '/open' && route !== '/status' && route !== '/gift' && route !== '/announce' && route !== '/playing' && route !== '/member-role') return json(404, { error: 'not found' });
     if (req.headers['x-internal-token'] !== TOKEN) return json(401, { error: 'unauthorized' });
 
     let raw = '';
@@ -70,6 +78,8 @@ export function startInternalServer(client: Client): void {
           kind?: string;
           event?: string;
           activity?: unknown;
+          userIds?: string[];
+          pingRole?: boolean;
         };
         // Playing: the Activity reports a member's session (playing-posts.ts).
         if (route === '/playing') {
@@ -77,11 +87,19 @@ export function startInternalServer(client: Client): void {
           if (!body.userId || !ev) return json(400, { error: 'missing userId or event' });
           return json(200, { ok: onPlaying(client, String(body.userId), String(body.username ?? ''), ev, body.activity) });
         }
+        // The LPTCG role for a member who logged in (the Activity sends it), or a list (a backfill).
+        if (route === '/member-role') {
+          const ids = [...(body.userId ? [String(body.userId)] : []), ...(Array.isArray(body.userIds) ? body.userIds.map(String) : [])].slice(0, 300);
+          if (!ids.length) return json(400, { error: 'missing userId' });
+          let ok = 0;
+          for (const id of ids) { if (await giveLptcgRole(client, id).catch(() => false)) ok += 1; }
+          return json(200, { ok, of: ids.length });
+        }
         // Announce: post a directed event to the public notifications channel.
         if (route === '/announce') {
           if (!body.message) return json(400, { error: 'missing message' });
           const kind = PING_KINDS.includes(body.kind as PingKind) ? (body.kind as PingKind) : undefined;
-          const posted = await announce(client, String(body.message), kind);
+          const posted = await announce(client, String(body.message), kind, body.pingRole === true);
           return json(200, { posted });
         }
         // Gift: move packs from one player's balance to another.
