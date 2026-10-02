@@ -25,6 +25,7 @@ import { mtToday } from './src/mt-time.js';
 import { bestSquad } from './src/squad-pick.js';
 import { selectAll } from './src/select-all.js';
 import { rankByName } from './src/name-rank.js';
+import { registerHallRoutes } from './src/hall-routes.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -313,6 +314,13 @@ const MOBILE_UI_USERS = new Set((process.env.MOBILE_UI_USERS || '').split(',').m
 const TRADE2_ALL = process.env.FEATURE_TRADE_TWO_STEP === '1';
 const TRADE2_USERS = new Set((process.env.TRADE2_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
 const trade2On = (id) => TRADE2_ALL || TRADE2_USERS.has(String(id));
+// Wishlists + the Trading Hall + Auctions (hall_auctions.sql). Default OFF: HALL_USERS=id,id first
+// (Nathan, 2026-10-02: "have it flagged just for me at first"), FEATURE_HALL=1 for everyone.
+// FEATURE_HALL_POSTS=1: the Discord posts (a new listing, an accepted bid); OFF while it is a test.
+const HALL_ALL = process.env.FEATURE_HALL === '1';
+const HALL_USERS = new Set((process.env.HALL_USERS || '').split(',').map((x) => x.trim()).filter(Boolean));
+const hallOn = (id) => HALL_ALL || HALL_USERS.has(String(id));
+const hallPostsOn = () => process.env.FEATURE_HALL_POSTS === '1';
 // A member who opens the Activity before they ever chat has no players row, so the
 // first login creates it. The welcome_packs trigger (welcome_packs.sql) then gives a
 // NEW member their free packs. ON CONFLICT DO NOTHING: an existing member is untouched.
@@ -362,7 +370,7 @@ app.get('/api/flags', async (req, res) => {
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
   const { data: tut } = await supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle();
-  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  res.json({ uiV2: UI_V2_ALL || UI_V2_USERS.has(String(me.id)), mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), hall: hallOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
@@ -1536,6 +1544,7 @@ async function caller(req) {
 }
 registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg });
 registerReportRoutes(app, { supabase, caller, rateLimit });
+registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn: hallPostsOn });
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.
