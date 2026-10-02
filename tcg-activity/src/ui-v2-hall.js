@@ -18,7 +18,7 @@ const nm = (id, name) => nameBadge(id, name, isPhone());
 const title = (s) => (isPhone() ? breakable(esc(s)) : esc(s));
 
 export const hall = { sub: 'hall', view: 'wanted', aview: 'open', page: 0, data: null, held: {}, sel: null, wish: null, give: null, msg: '',
-  listing: false, auctions: null, auction: null, bid: [], start: null, sellerWish: [], q: '' };
+  listing: false, auctions: null, auctionsBy: {}, auction: null, bid: [], start: null, sellerWish: [], q: '' };
 
 // ---- Data -------------------------------------------------------------------------------------
 async function loadHall() {
@@ -28,22 +28,35 @@ async function loadHall() {
   hall.held = h.held || {};
   if (!tr.offers) await refreshOffers();
 }
-async function loadAuctions() {
-  const d = await ctx().api(`/api/auctions?view=${hall.aview}`).catch(() => null);
-  hall.auctions = d?.auctions || [];
-  const h = await ctx().api('/api/hall/held').catch(() => ({ held: {} }));
+async function loadAuctions(view = hall.aview) {
+  const [d, h] = await Promise.all([ctx().api(`/api/auctions?view=${view}`).catch(() => null), ctx().api('/api/hall/held').catch(() => ({ held: {} }))]);
+  hall.auctionsBy[view] = d?.auctions || [];
+  if (view === hall.aview) hall.auctions = hall.auctionsBy[view];
   hall.held = h.held || {};
+}
+// Community opened: load the Hall in the background, so the first switch to it is instant.
+export function prefetchHall() {
+  if (!hall.data) loadHall().catch(() => {});
+  if (!hall.auctionsBy.open) loadAuctions('open').catch(() => {});
 }
 const mine = () => ctx().cache.collection?.cards || [];
 const free = (c) => Math.max(0, (mine().find((x) => Number(x.id) === Number(c?.id))?.quantity || 0) - (hall.held[c?.id] || 0));
 
+// No "Loading" screen on a switch (Nathan, 2026-10-02): the last data paints at once, a quiet refresh
+// repaints only when the data changed. With no data yet, the current screen stays until it arrives.
 export async function renderHall() {
-  const { el } = ctx();
-  el('main').innerHTML = '<div class="v2-loading">Loading…</div>';
+  const here = () => ctx().currentView() === 'trading' && tr.tab === 'hall';
+  const key = () => (hall.sub === 'auctions' ? `a:${hall.aview}` : 'h');
+  const snap = () => JSON.stringify(hall.sub === 'auctions' ? hall.auctionsBy[hall.aview] : hall.data) + JSON.stringify(hall.held);
+  const k = key();
+  if (hall.sub === 'auctions') hall.auctions = hall.auctionsBy[hall.aview] || null;
+  const cached = hall.sub === 'auctions' ? !!hall.auctions : !!hall.data;
+  if (cached && ctx().cache.collection) paintHall();
+  const before = cached ? snap() : null;
   if (!ctx().cache.collection) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
   if (hall.sub === 'auctions') await loadAuctions(); else await loadHall();
-  if (ctx().currentView() !== 'trading' || tr.tab !== 'hall') return;
-  paintHall();
+  if (!here() || key() !== k) return; // the member moved on meanwhile
+  if (!cached || snap() !== before || !ctx().cache.collection) paintHall();
 }
 // The live trade poll: an offer arrived or closed while I look at the Hall.
 export function repaintHall() { if (hall.sub === 'hall') paintHall(); }
