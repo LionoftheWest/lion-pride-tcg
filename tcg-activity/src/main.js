@@ -21,7 +21,7 @@ import { setFlair } from './flair.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank } from './effects-ui.js';
+import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
@@ -1832,7 +1832,7 @@ function huntTile(c, mode) {
   return `<div class="${cls}${elem ? ` el-${elem}` : ''}" data-id="${c.id}" data-el="${elem || ''}" data-type="${esc(c.type || '')}" data-used="${usedIds.has(c.id) ? 1 : 0}" data-max="${max}"${elStyle} title="${ab ? esc(ab.name + ' — ' + (ab.desc || '')) : ''}">
     <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×2</span>' : ''}${shield}${overlay}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">🔍</button></div>
     ${hpbar}
-    <div class="cap">${esc(c.name)}${abLine}</div>
+    <div class="cap">${isPhone() ? breakable(esc(c.name)) : esc(c.name)}${abLine}</div>
   </div>`;
 }
 
@@ -1877,6 +1877,7 @@ function sizeSquadGrid() {
   const grid = el('huntGrid');
   if (!grid) return;
   const gap = 8, capH = 30;
+  if (squad.phase === 'battle' && uiV2 && isPhone()) { sizePhoneHand(grid); return; }
   if (squad.phase === 'battle') {
     const arena = grid.closest('.hunt-arena') || grid;
     const aw = arena.clientWidth || 600, ah = arena.clientHeight || 400;
@@ -1898,6 +1899,59 @@ function sizeSquadGrid() {
   const byHeight = ((h - (rows - 1) * gap) / rows - cap) * 5 / 7;
   const sw = Math.max(72, Math.min(210, Math.floor(Math.min(byWidth, byHeight))));
   grid.style.setProperty('--sw', `${sw}px`);
+}
+// The fight on a phone (Nathan, 2026-10-02, IMG_2862/2863). Every squad card is on screen (the
+// portrait row was wider than the screen and cut the first and last card off), and the boss gets
+// its own space: under the top panel in portrait (2 rows of 4 cards), a column on the left in
+// landscape (1 row of cards on the right).
+function sizePhoneHand(grid) {
+  const port = document.body.classList.contains('m-port');
+  const arena = grid.closest('.hunt-arena') || grid;
+  const n = Math.max(1, (huntState?.roster || []).filter((c) => squad.sel.has(c.id)).length);
+  const rows = port && n > 4 ? 2 : 1, cols = Math.ceil(n / rows);
+  // capH: the name (2 lines in a portrait column, up to 3 under a landscape card) + the card HP bar.
+  const gap = 6, capH = port ? 34 : 40, hintH = 30, FEED = 56;
+  const cs = getComputedStyle(grid), padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  let gw = grid.clientWidth - padX;
+  if (!port) {
+    // The boss column gives way first, so 8 cards of the floor size always fit beside it.
+    const aw = arena.clientWidth || 600, need = cols * 56 + (cols - 1) * gap + padX;
+    const bossW = Math.round(Math.max(110, Math.min(aw * 0.26, 260, aw - need)));
+    arena.style.setProperty('--boss-w', `${bossW}px`);
+    gw = aw - bossW - padX;
+  }
+  // The hand leaves room for the boss (portrait) or for the live feed above it (landscape).
+  const ah = arena.clientHeight || 400, topH = arena.querySelector('.arena-top')?.getBoundingClientRect().height || 0;
+  const budget = port ? Math.min(ah * 0.44, ah - topH - 180 - FEED) : Math.min(ah * 0.62, ah - topH - 40);
+  const byWidth = (gw - (cols - 1) * gap) / cols;
+  const byHeight = ((budget - hintH - (rows - 1) * gap) / rows - capH) * 5 / 7;
+  // The floor keeps the power chip readable; in landscape the feed gives way first (fitFeedRows).
+  const sw = Math.floor(port ? Math.max(52, Math.min(byWidth - 4, byHeight, 120)) : Math.min(byWidth, Math.max(56, Math.min(byHeight, 120))));
+  grid.style.setProperty('--sw', `${sw}px`);
+  grid.style.setProperty('--hcols', cols);
+  grid.classList.toggle('pgrid', port);
+  requestAnimationFrame(fitPhoneArena);
+}
+// The boss stage and the live feed fill the space between the top panel and the hand (both
+// change height: a boss name can wrap, the card names wrap).
+function fitPhoneArena() {
+  const arena = document.querySelector('.hunt-arena'), top = arena?.querySelector('.arena-top'), grid = el('huntGrid');
+  if (!arena || !top || !grid || !isPhone()) return;
+  // Measure again whenever the top panel or the hand changes size (the first measure can come
+  // before the phone layout applies).
+  if (window.ResizeObserver && !arena._fitObs) { arena._fitObs = new ResizeObserver(() => requestAnimationFrame(() => { if (squad.phase === 'battle') sizeSquadGrid(); })); arena._fitObs.observe(top); arena._fitObs.observe(grid); }
+  const a = arena.getBoundingClientRect(), t = top.getBoundingClientRect(), g = grid.getBoundingClientRect();
+  const key = [a.top, a.bottom, t.bottom, g.top, g.left, g.right, innerHeight, innerWidth].map(Math.round).join();
+  if (arena._fitKey === key) return;
+  arena._fitKey = key;
+  arena.style.setProperty('--top-h', `${Math.round(t.bottom - a.top)}px`);
+  arena.style.setProperty('--hand-h', `${Math.round(a.bottom - g.top)}px`);
+  // #feed is position: fixed, so it takes screen positions.
+  document.body.style.setProperty('--arena-top-b', `${Math.round(t.bottom)}px`);
+  document.body.style.setProperty('--hand-b', `${Math.round(innerHeight - g.top)}px`);
+  document.body.style.setProperty('--hand-l', `${Math.round(g.left)}px`);
+  document.body.style.setProperty('--hand-r', `${Math.round(innerWidth - g.right)}px`);
+  if (currentView === 'battling') renderFeedSidebar(); // drop the feed rows that no longer fit
 }
 function paintHuntPage(dir) {
   const grid = el('huntGrid');
@@ -2004,9 +2058,11 @@ async function refreshHuntFeed() {
 // shows cut in half (Nathan, 2026-09-27). live.attacks keeps them; a resize re-renders.
 function fitFeedRows(list) {
   const box = list.getBoundingClientRect();
-  if (!box.height) return;
+  // A phone drops even the last row when it does not fit (no cut text on a phone).
+  const keep = uiV2 && isPhone() ? 0 : 1;
+  if (!box.height) { if (!keep && currentView === 'battling') list.innerHTML = ''; return; }
   let last = list.lastElementChild;
-  while (last && list.children.length > 1 && last.getBoundingClientRect().bottom > box.bottom + 1) {
+  while (last && list.children.length > keep && last.getBoundingClientRect().bottom > box.bottom + 1) {
     last.remove();
     last = list.lastElementChild;
   }

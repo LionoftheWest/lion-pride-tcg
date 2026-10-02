@@ -161,7 +161,6 @@ body.ui-v2.m-land .arena-subrow .fighters-now { display: none; }
 body.ui-v2.m-land .arena-subrow .hunt-lb { height: 40px; padding: 0 10px; font-size: 12px; }
 /* The live hits: the 3 newest, top right over the boss. */
 body.ui-v2.m-land:has(.arena-mode) #feed { left: auto; right: 10px; top: calc(var(--topbar-h) + 64px); width: 200px; height: auto; min-height: 0; }
-body.ui-v2.m-land:has(.arena-mode) #feed .afrow:nth-child(n+4) { display: none; }
 body.ui-v2.m-land:has(.arena-mode) #feed .feed-head { margin-bottom: 4px; }
 body.ui-v2.m-land .squad-grid.hand { gap: 6px; padding: 30px 8px 4px; }
 body.ui-v2.m-land .squad-grid.hand::before { top: 2px; padding: 4px 12px; font-size: 11.5px; }
@@ -169,12 +168,10 @@ body.ui-v2.m-land .squad-grid.hand .cap { font-size: 10.5px; }
 body.ui-v2.m-land .squad-grid.hand .c .x2 { font-size: 10.5px; }
 body.ui-v2.m-land:has(.arena-mode) #feed { top: calc(var(--topbar-h) + 82px); width: 210px; }
 body.ui-v2.m-land:has(.arena-mode) #feed .afrow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 8px; }
-body.ui-v2.m-land:has(.arena-mode) #feed .afrow:nth-child(n+3) { display: none; }
 body.ui-v2.m-land .arena-subrow .hunt-lb { width: 40px; padding: 0; }
 body.ui-v2.m-land .arena-subrow .hunt-lb .lb-t { display: none; }
 /* m-narrow: the usable width (after the safe areas) under 760 px */
   body.ui-v2.m-land.m-narrow .squad-grid.hand::before { left: 8px; transform: none; }
-  body.ui-v2.m-land.m-narrow:has(.arena-mode) #feed .afrow:nth-child(n+2) { display: none; }
   body.ui-v2.m-land.m-narrow .arena-subrow #myDmg { font-size: 0; }
 
 /* ===== Landscape: Community trades (design 24 part 2, frame 4) =====
@@ -985,3 +982,48 @@ body.ui-v2.m-land .se-main .v2-search, body.ui-v2.m-port .se-main .v2-search { w
 body.ui-v2.m-land .se-card { grid-template-columns: 210px minmax(0, 1fr); }
 body.ui-v2.m-port .se-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
 body.ui-v2.m-port .se-side .se-foot { margin-top: 2px; }
+
+/* ===== The fight on a phone (Nathan, 2026-10-02, IMG_2862/2863) =====
+   The boss, the live feed and the cards do not cover each other. sizePhoneHand + fitPhoneArena
+   (main.js) set --top-h / --hand-h on the arena and --arena-top-b / --hand-b on the body. */
+/* The live hits: a column list (the old narrow-screen rule made it a sideways strip, so one row
+   grew into a big blurred box). Rows wrap; the rows that do not fit are dropped (fitFeedRows). */
+body.ui-v2.m-port:has(.arena-mode) #feed .feed-list, body.ui-v2.m-land:has(.arena-mode) #feed .feed-list { flex-direction: column; overflow: hidden; gap: 4px; }
+body.ui-v2.m-port:has(.arena-mode) #feed .afrow, body.ui-v2.m-land:has(.arena-mode) #feed .afrow { flex: none; display: block; white-space: normal; overflow: visible; text-overflow: clip; padding: 4px 8px; font-size: 11px; line-height: 1.3; }
+body.ui-v2.m-port .squad-grid.hand .cap, body.ui-v2.m-land .squad-grid.hand .cap { display: block; -webkit-line-clamp: unset; white-space: normal; overflow: visible; text-overflow: clip; font-size: 10.5px; line-height: 1.15; }
+
+/* Portrait: the top panel in 4 rows (tier + name, traits, HP, your damage + time + standings),
+   the boss under it, the feed over the boss's feet, then 2 rows of 4 cards. */
+body.ui-v2.m-port .hunt-arena .arena-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px 8px;
+  left: 0; right: 0; width: auto; transform: none; padding: 8px 10px 0; }
+body.ui-v2.m-port .hunt-arena .arena-titlerow, body.ui-v2.m-port .hunt-arena .arena-subrow { display: contents; }
+body.ui-v2.m-port .hunt-arena .arena-titlerow .boss-tier { grid-row: 1; grid-column: 1; justify-self: start; }
+body.ui-v2.m-port .hunt-arena .arena-titlerow .boss-name { grid-row: 1; grid-column: 2 / 4; text-align: left; white-space: normal; overflow: visible; text-overflow: clip; font-size: 18px; line-height: 1.15; }
+body.ui-v2.m-port .hunt-arena .arena-titlerow .spacer, body.ui-v2.m-port .hunt-arena .arena-subrow .fighters-now { display: none; }
+body.ui-v2.m-port .hunt-arena .arena-traits { grid-row: 2; grid-column: 1 / 4; flex-wrap: wrap; gap: 6px; font-size: 11px; }
+body.ui-v2.m-port .hunt-arena .hpbar { grid-row: 3; grid-column: 1 / 4; height: 16px; }
+body.ui-v2.m-port .hunt-arena .hptext { font-size: 11px; }
+body.ui-v2.m-port .hunt-arena .arena-subrow #myDmg { grid-row: 4; grid-column: 1; display: flex; align-items: baseline; gap: 6px; padding: 6px 10px; font-size: 10.5px; white-space: nowrap; }
+body.ui-v2.m-port .hunt-arena .arena-subrow #myDmg b { display: inline; margin: 0; font-size: 16px; }
+body.ui-v2.m-port .hunt-arena .arena-titlerow .closes { grid-row: 4; grid-column: 2; justify-self: center; font-size: 12px; white-space: nowrap; }
+body.ui-v2.m-port .hunt-arena .arena-subrow .hunt-lb { grid-row: 4; grid-column: 3; height: 34px; padding: 0 12px; font-size: 12px; }
+body.ui-v2.m-port .hunt-arena .arena-stage { inset: var(--top-h, 0px) 0 calc(var(--hand-h, 0px) + 56px) 0; }
+@media (max-width: 419px) { body.ui-v2.m-port .hunt-arena .arena-subrow .hunt-lb { width: 40px; padding: 0; } body.ui-v2.m-port .hunt-arena .arena-subrow .hunt-lb .lb-t { display: none; } }
+body.ui-v2.m-port:has(.arena-mode) #feed { left: calc(16px + var(--sa-l)); right: calc(16px + var(--sa-r)); width: auto; top: auto; bottom: calc(var(--hand-b, 300px) + 2px); height: 52px; min-height: 0; justify-content: flex-end; }
+/* The label gives its room to the hits on a phone. */
+body.ui-v2.m-port:has(.arena-mode) #feed .feed-head, body.ui-v2.m-land:has(.arena-mode) #feed .feed-head { display: none; }
+/* Full-width columns: the card art is --sw wide, the name gets the whole column. */
+body.ui-v2.m-port .squad-grid.hand.pgrid { display: grid; grid-template-columns: repeat(var(--hcols, 4), minmax(0, 1fr)); align-content: end; align-items: start; gap: 6px; padding: 4px 8px 6px; }
+body.ui-v2.m-port .squad-grid.hand.pgrid .c { width: auto; min-width: 0; }
+body.ui-v2.m-port .squad-grid.hand.pgrid .c .art, body.ui-v2.m-port .squad-grid.hand.pgrid .c .thp { width: var(--sw); margin-inline: auto; box-sizing: border-box; }
+/* The hint takes its own grid row, so it cannot cover a card. */
+body.ui-v2.m-port .squad-grid.hand.pgrid::before { position: static; grid-column: 1 / -1; justify-self: center; transform: none; max-width: 100%; white-space: normal; text-align: center; font-size: 11.5px; padding: 4px 12px; }
+
+/* Landscape: the boss in a column on the left (the cards covered all but its head), one row of
+   cards on the right, the feed above the cards. */
+body.ui-v2.m-land .hunt-arena .arena-stage { inset: var(--top-h, 0px) auto 0 0; width: var(--boss-w, 26%); }
+body.ui-v2.m-land .hunt-arena .squad-grid.hand { left: var(--boss-w, 26%); background: none; align-items: flex-start; }
+/* The feed spans the width above the cards: one line per hit. */
+body.ui-v2.m-land:has(.arena-mode) #feed { top: calc(var(--arena-top-b, 130px) + 4px); bottom: calc(var(--hand-b, 200px) + 2px); height: auto;
+  left: calc(var(--hand-l, 240px) + 8px); right: calc(var(--hand-r, 10px) + 8px); width: auto; }
+body.ui-v2.m-port .squad-grid.hand .downed-x, body.ui-v2.m-land .squad-grid.hand .downed-x { font-size: 10px; letter-spacing: 0; }
