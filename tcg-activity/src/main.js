@@ -1351,11 +1351,18 @@ function paintHuntView(d) {
   // A saved squad only holds while the server still shows committed cards. If the day's
   // squad was reset server-side (usedToday === 0), the device lock is stale — drop it and
   // return to squad selection so the player re-picks.
-  // The day's run is over only when EVERY attacker of the squad (the locked cards + the cards that
-  // fought) is down and no fresh card can join (squad-pick.js). It looked only at the cards that
-  // had fought: one card downed first ended a squad of 8 (Nathan + xeno, 2026-10-02).
-  const koForDay = squadDown(d.roster || [], saved || []);
-  if (koForDay) {
+  // The day's run is over only when EVERY card of the squad is down (squad-pick.js). The old check
+  // looked only at the cards that had fought: one card downed first ended a squad of 8 (2026-10-02).
+  // A member it stopped early (no squad on the server, fewer than 8 cards used, no squad still up on
+  // this device) FINISHES the squad: the used cards stay in it, fresh cards fill it to 8.
+  const usedIds = (d.roster || []).filter((c) => c.used).map((c) => Number(c.id));
+  const finish = !d.squad?.length && usedIds.length > 0 && usedIds.length < (d.dailyCap || 8)
+    && (!saved?.length || squadDown(d.roster || [], saved));
+  const koForDay = !finish && squadDown(d.roster || [], saved || []);
+  if (finish) {
+    if (saved) clearTeam(d.hunt.id);
+    squad.phase = 'select'; squad.ko = false; squad.locked = false; squad.page = 0; squad.sel = new Set(usedIds);
+  } else if (koForDay) {
     squad.phase = 'select'; squad.ko = true; squad.locked = false; squad.page = 0;
     squad.sel = new Set(saved?.length ? saved : (d.roster || []).filter((c) => c.used).map((c) => c.id));
   } else if (saved && saved.length && (d.usedToday || 0) > 0) {
@@ -2071,6 +2078,7 @@ function wireSelectPhase() {
     const id = Number(node.dataset.id);
     if (e.target.closest?.('.card-info')) { const cc = (huntState?.roster || []).find((x) => x.id === id); if (cc) openViewer(cc, { raid: true }); return; } // inspect, don't select
     if (squad.ko) return; // squad down for the day — inspect only, no re-pick
+    if (squad.sel.has(id) && (huntState?.roster || []).find((x) => x.id === id)?.used) { const b = node.getBoundingClientRect(); calloutAt(b.left + b.width / 2, b.top + 18, 'ALREADY FOUGHT', '#ff8f5c'); return; }
     if (squad.sel.has(id)) { squad.sel.delete(id); node.classList.remove('selected'); }
     else {
       if (squad.sel.size >= cap) { const b = node.getBoundingClientRect(); calloutAt(b.left + b.width / 2, b.top + 18, `MAX ${cap}`, '#ff8f5c'); return; }
@@ -2088,6 +2096,7 @@ function wireSelectPhase() {
     if (squad.ko) return; // squad locked for the day
     const slot = e.target.closest?.('.slot.filled'); if (!slot) return;
     const id = Number(slot.dataset.id);
+    if ((huntState?.roster || []).find((x) => x.id === id)?.used) return; // it already fought today: it stays
     squad.sel.delete(id);
     const node = el('huntGrid')?.querySelector(`.c[data-id="${id}"]`);
     if (node) { node.classList.remove('selected'); node.querySelector('.sel-check')?.remove(); }
@@ -2133,7 +2142,9 @@ function wireSelectPhase() {
     try { ids = (await api('/api/hunt/autopick')).ids || []; } catch { ids = []; }
     btn.disabled = false; btn.classList.remove('busy');
     if (!ids.length) { calloutAt(window.innerWidth / 2, 120, 'NO PICKS', '#ff8f5c'); return; }
-    squad.sel = new Set(ids.slice(0, cap));
+    // The cards that already fought today stay; Auto-pick fills the rest (it skips downed cards).
+    const keep = (huntState?.roster || []).filter((c) => c.used).map((c) => Number(c.id));
+    squad.sel = new Set([...keep, ...ids.filter((x) => !keep.includes(Number(x)))].slice(0, cap));
     squad.page = 0;
     SFX?.play?.('page');
     paintHuntPage();
