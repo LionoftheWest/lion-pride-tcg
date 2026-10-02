@@ -165,7 +165,8 @@ async function openComposer() {
   hall.wish = (w.slots || []).filter((x) => x.card);
   // Wanted: I give the card they want. For trade: I give a card from their wishlist (the same rarity).
   if (s.kind === 'wanted') hall.give = s.mine > 0 ? s.card : null;
-  else hall.give = hall.wish.find((x) => x.mine > 0 && x.card.rarity === s.card.rarity)?.card || null;
+  // Any card of that rarity (Nathan, 2026-10-02); a wishlist card I own is picked first (the one they want).
+  else { const w = hall.wish.find((x) => x.mine > 0 && x.card.rarity === s.card.rarity); hall.give = w ? (mine().find((c) => Number(c.id) === Number(w.card.id)) || w.card) : null; }
   paintHall();
 }
 function paintComposer() {
@@ -182,8 +183,8 @@ function paintComposer() {
     : `<div class="hl-side right"><div class="tr-info"><span class="tr-who">${avatarHTML(s.player_id, s.name, 'xs')} Their offer</span><h3>${title(s.card.name)}</h3>${rarityTag(s.card)}</div>${cardImg(s.card)}</div>`;
   const yours = g
     ? `<div class="hl-side">${cardImg(g)}<div class="tr-info"><span class="tr-who">${avatarHTML(me?.id, me?.name, 'xs')} Your offer</span><h3>${title(g.name)}</h3>${rarityTag(g)}
-        <span class="tr-chips"><i class="hl-wish">♡ Wishlist</i><i>⧉ ×${free(g)}</i></span></div></div>`
-    : `<div class="hl-side">${cardImg(null)}<div class="tr-info tr-empty"><span class="tr-who">${avatarHTML(me?.id, me?.name, 'xs')} Your offer</span><h3>${wanted ? 'You have no free copy' : `Pick a ${esc(RL(s.card.rarity))} from their wishlist`}</h3></div></div>`;
+        <span class="tr-chips">${(hall.wish || []).some((x) => Number(x.card.id) === Number(g.id)) ? '<i class="hl-wish">♡ Wishlist</i>' : ''}<i>⧉ ×${free(g)}</i></span></div></div>`
+    : `<div class="hl-side">${cardImg(null)}<div class="tr-info tr-empty"><span class="tr-who">${avatarHTML(me?.id, me?.name, 'xs')} Your offer</span><h3>${wanted ? 'You have no free copy' : `Pick a ${esc(RL(s.card.rarity))} card below`}</h3></div></div>`;
   const strip = (hall.wish || []).map((x) => {
     const ok = x.mine > 0 && (wanted || x.card.rarity === s.card.rarity);
     return `<div class="hl-wcell${g && Number(g.id) === Number(x.card.id) ? ' on' : ''}${ok ? '' : ' off'}" data-id="${x.card.id}">${cardImg(x.card)}<span class="hl-n${x.mine ? ' have' : ''}">⧉ ×${x.mine}</span></div>`;
@@ -195,9 +196,20 @@ function paintComposer() {
         <span class="grow"></span><span class="tr-msg" id="hlMsg">${esc(hall.msg)}</span>
         <button class="v2-btn" id="hlClear">↺ Clear</button><button class="v2-btn gold" id="hlSend" ${g ? '' : 'disabled'}>➤ Send offer</button></div>
     </div>
-    <div class="side-h hl-wh">♡ ${nm(s.player_id, s.name)}'s wishlist <span class="n">${(hall.wish || []).length}</span></div>
-    <div class="hl-strip" id="hlStrip">${strip || '<p class="v2-empty">No wishlist yet.</p>'}</div>`, { aside: offersAsideHTML(), back: 'Trade Hall', full: false });
-  el('hlStrip').onclick = (e) => {
+    ${wanted ? `<div class="side-h hl-wh">♡ ${nm(s.player_id, s.name)}'s wishlist <span class="n">${(hall.wish || []).length}</span></div>
+    <div class="hl-strip" id="hlStrip">${strip || '<p class="v2-empty">No wishlist yet.</p>'}</div>`
+      : `<div class="tr-gridhead hl-head"><div class="seg"><button class="on">Your ${esc(RL(s.card.rarity))} cards</button></div><span class="hl-note dim">♡ = on ${esc(s.name)}'s wishlist</span><span class="grow"></span><div class="v2-pager" id="hlPager"></div></div>
+    <div class="v2-grid" id="hlGrid"></div>`}`, { aside: offersAsideHTML(), back: 'Trade Hall', full: false });
+  if (!wanted) {
+    const wishIds = new Set((hall.wish || []).map((x) => Number(x.card.id)));
+    const items = mine().filter((c) => c.rarity === s.card.rarity && c.tradeable !== false && free(c) > 0)
+      .sort((x, y) => (wishIds.has(Number(y.id)) - wishIds.has(Number(x.id))) || (y.quantity || 0) - (x.quantity || 0));
+    hall.tile = (c, idx, sel) => `<div class="v2-cell${sel ? ' sel' : ''}" data-idx="${idx}"><div class="v2-card r-${c.rarity}"><img src="${thumb(c.image_url)}" data-full="${c.image_url}" alt="${esc(c.name)}" loading="lazy"></div>
+      <div class="v2-cap">${wishIds.has(Number(c.id)) ? '<span class="hl-tagc wish">♡ Wishlist</span>' : `<span class="cap-pow">⚡ ${c.power ?? ''}</span>`}<span class="cap-qty">×${free(c)}</span></div></div>`;
+    paintCards(el('hlGrid'), el('hlPager'), items, hall, (c) => { hall.give = c; hall.msg = ''; paintHall(); }, g?.id);
+    if (!items.length) el('hlGrid').innerHTML = `<p class="v2-empty">You have no free ${esc(RL(s.card.rarity))} card to offer.</p>`;
+  }
+  if (el('hlStrip')) el('hlStrip').onclick = (e) => {
     const t = e.target.closest('.hl-wcell'); if (!t || t.classList.contains('off')) return;
     const x = hall.wish.find((w) => Number(w.card.id) === Number(t.dataset.id));
     if (!wanted) { hall.give = x.card; hall.msg = ''; paintHall(); return; }
@@ -229,10 +241,10 @@ function paintListSheet() {
   const listed = new Set(d.mine.map((x) => Number(x.card?.id)));
   const items = mine().filter((c) => c.tradeable !== false && c.rarity !== 'gold' && free(c) > 0 && !listed.has(Number(c.id)))
     .sort((a, b) => (RANK[b.rarity] ?? 0) - (RANK[a.rarity] ?? 0) || (b.quantity || 0) - (a.quantity || 0));
-  shell(`<div class="tr-gridhead hl-head"><div class="seg"><button class="on">Your cards <b>${items.length}</b></button></div>
-      <span class="hl-note dim">Pick a card to list. Members offer a card from your wishlist.</span><span class="grow"></span><span class="tr-msg" id="hlMsg">${esc(hall.msg)}</span><div class="v2-pager" id="hlPager"></div></div>
-    <div class="hl-mylist"><span class="side-h">Your listings <span class="n">${d.mine.length}/5</span></span>
-      ${d.mine.map((x) => `<span class="hl-li">${cardImg(x.card, 'xs')}<b>${title(x.card?.name || '')}</b><button class="v2-icon hl-unlist" data-id="${x.id}" title="Take it off the Hall">✕</button></span>`).join('') || '<span class="dim">None yet.</span>'}</div>
+  shell(`<div class="hl-mylist"><span class="side-h">Your listings <span class="n">${d.mine.length}/5</span></span>
+      <div class="hl-lslots">${[0, 1, 2, 3, 4].map((i) => { const x = d.mine[i]; return x ? `<span class="hl-li" title="${esc(x.card?.name || '')}">${cardImg(x.card)}<b>${title(x.card?.name || '')}</b><button class="v2-icon hl-unlist" data-id="${x.id}" title="Take it off the Hall">✕</button></span>` : '<span class="hl-li empty"><i>＋</i></span>'; }).join('')}</div>
+      <span class="tr-msg" id="hlMsg">${esc(hall.msg)}</span></div>
+    <div class="tr-gridhead hl-head"><div class="seg"><button class="on">Your cards <b>${items.length}</b></button></div><span class="hl-note dim">Tap a card to list it.</span><span class="grow"></span><div class="v2-pager" id="hlPager"></div></div>
     <div class="v2-grid" id="hlGrid"></div>`, { back: 'Trade Hall' });
   hall.tile = null;
   paintCards(el('hlGrid'), el('hlPager'), items, hall, async (c) => {
@@ -302,13 +314,13 @@ function paintStart() {
   const panel = `<aside class="v2-tile hl-panel"><div class="tile-h"><b>🔨 Start auction</b></div>
     ${c ? `<div class="hl-pc">${cardImg(c)}<div><h3>${title(c.name)}</h3>${rarityTag(c)}<div class="side-h">Bids</div><div class="hl-allowed">${(gold ? BID_GOLD.map((r) => `<i style="color:var(--r-${r})">◆ ${esc(RL(r))}</i>`) : ['<i>Any card but Gold</i>']).join('')}</div></div></div>` : '<p class="v2-empty">Pick the card to auction.</p>'}
     <div class="side-h">Minimum</div>
-    <div class="hl-minrow"><b class="mono">${st.minCount}×</b><select id="hsRarity" ${st.minCount ? '' : 'disabled'}>${allowed.map((r) => `<option value="${r}" ${st.minRarity === r ? 'selected' : ''}>◆ ${esc(RL(r))}</option>`).join('')}</select>
+    <div class="hl-minrow"><b class="mono" id="hsCount">${st.minCount}×</b><select id="hsRarity" ${st.minCount ? '' : 'disabled'}>${allowed.map((r) => `<option value="${r}" ${st.minRarity === r ? 'selected' : ''}>◆ ${esc(RL(r))}</option>`).join('')}</select>
       <span class="grow"></span><button class="v2-icon" id="hsMinus">−</button><button class="v2-icon" id="hsPlus">＋</button></div>
     <div class="hl-qrow"><div class="seg hl-mode" id="hsMode"><button data-m="and" class="${st.mode === 'and' ? 'on' : ''}">AND</button><button data-m="or" class="${st.mode === 'or' ? 'on' : ''}">OR</button></div>
-    <input class="v2-search" id="hsQ" placeholder="Ask for a card (up to 3)" value="${esc(st.q)}" ${st.minCards.length >= 3 ? 'disabled' : ''}></div>
-    <div class="hl-hits">${hits.map((x) => `<button class="hl-hit" data-id="${x.id}">${cardImg(x, 'xs')}<span>${esc(x.name)}<br><i style="color:var(--r-${x.rarity})">◆ ${esc(RL(x.rarity))}</i></span><b>＋</b></button>`).join('')}</div>
+    <input class="v2-search" id="hsQ" placeholder="Ask for a card (up to 3)" value="${esc(st.q)}" ${st.minCards.length >= 3 ? 'disabled' : ''}>
+    <div class="hl-hits">${hits.map((x) => `<button class="hl-hit" data-id="${x.id}">${cardImg(x, 'xs')}<span>${esc(x.name)}<br><i style="color:var(--r-${x.rarity})">◆ ${esc(RL(x.rarity))}</i></span><b>＋</b></button>`).join('')}</div></div>
     <div class="hl-chips">${st.minCards.map((x) => `<span class="hl-chip">${cardImg(x, 'xs')}${esc(x.name)}<button data-id="${x.id}" title="Remove">✕</button></span>`).join('')}</div>
-    <div class="hl-minrow"><span class="side-h">Length</span><b class="mono">⧗ ${st.days} day${st.days === 1 ? '' : 's'}</b><span class="dim hl-ends">ends ${ends.toLocaleDateString(undefined, { weekday: 'short' })} ${ends.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span><span class="grow"></span><button class="v2-icon" id="hsDMinus">−</button><button class="v2-icon" id="hsDPlus">＋</button></div>
+    <div class="hl-minrow"><span class="side-h">Length</span><b class="mono" id="hsDays">⧗ ${st.days} day${st.days === 1 ? '' : 's'}</b><span class="dim hl-ends">ends ${ends.toLocaleDateString(undefined, { weekday: 'short' })} ${ends.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span><span class="grow"></span><button class="v2-icon" id="hsDMinus">−</button><button class="v2-icon" id="hsDPlus">＋</button></div>
     <span class="tr-msg" id="hlMsg">${esc(st.msg)}</span>
     <button class="v2-btn gold wide" id="hsGo" ${c ? '' : 'disabled'}>🔨 Start auction</button></aside>`;
   shell(`<div class="tr-gridhead hl-head"><div class="seg"><button class="on">My cards <b>${items.length}</b></button></div>
@@ -317,12 +329,34 @@ function paintStart() {
   hall.tile = null;
   paintCards(el('hlGrid'), el('hlPager'), items, hall, (x) => { st.card = x; st.msg = ''; if (st.minRarity == null) st.minRarity = (x.rarity === 'gold' ? 'full_art' : 'secret_rare'); paintHall(); }, c?.id);
   el('hsFilter').onclick = (e) => { const b = e.target.closest('[data-f]'); if (!b) return; st.filter = b.dataset.f; hall.page = 0; paintHall(); };
-  el('hsRarity').onchange = (e) => { st.minRarity = e.target.value; paintHall(); };
-  el('hsMinus').onclick = () => { st.minCount = Math.max(0, st.minCount - 1); paintHall(); };
-  el('hsPlus').onclick = () => { st.minCount = Math.min(5, st.minCount + 1); if (!st.minRarity) st.minRarity = allowed[0]; paintHall(); };
-  el('hsDMinus').onclick = () => { st.days = Math.max(1, st.days - 1); paintHall(); };
-  el('hsDPlus').onclick = () => { st.days = Math.min(14, st.days + 1); paintHall(); };
-  el('hsMode').onclick = (e) => { const b = e.target.closest('[data-m]'); if (!b) return; st.mode = b.dataset.m; paintHall(); };
+  const setCount = (n) => { st.minCount = n; if (n && !st.minRarity) st.minRarity = allowed[0]; el('hsCount').textContent = `${n}×`; el('hsRarity').disabled = !n; if (n) el('hsRarity').value = st.minRarity; };
+  const setDays = (n) => {
+    st.days = n; el('hsDays').textContent = `⧗ ${n} day${n === 1 ? '' : 's'}`;
+    const e2 = new Date(Date.now() + n * 86400e3), x = el('main').querySelector('.hl-ends');
+    if (x) x.textContent = `ends ${e2.toLocaleDateString(undefined, { weekday: 'short' })} ${e2.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+  };
+  el('hsRarity').onchange = (e) => { st.minRarity = e.target.value; };
+  el('hsMinus').onclick = () => setCount(Math.max(0, st.minCount - 1));
+  el('hsPlus').onclick = () => setCount(Math.min(5, st.minCount + 1));
+  el('hsDMinus').onclick = () => setDays(Math.max(1, st.days - 1));
+  el('hsDPlus').onclick = () => setDays(Math.min(14, st.days + 1));
+  el('hsMode').onclick = (e) => { const b = e.target.closest('[data-m]'); if (!b) return; st.mode = b.dataset.m; el('hsMode').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); };
+  // 1. Typing on a phone: the sheet fits the space above the keyboard (the visual viewport), and
+  // the card picture steps aside, so the list under the box shows (IMG_2875).
+  const vv = window.visualViewport;
+  const fitKb = () => {
+    const sh = el('main').querySelector('.hall-view > aside.hl-panel');
+    const on = !!sh && !!vv && document.activeElement?.id === 'hsQ';
+    document.body.classList.toggle('hl-searching', on);
+    if (!on) { if (sh) { sh.style.top = ''; sh.style.height = ''; sh.style.bottom = ''; } return; }
+    sh.style.top = `${Math.round(vv.offsetTop + 6)}px`; sh.style.bottom = 'auto'; sh.style.height = `${Math.round(vv.height - 12)}px`;
+    el('hsQ').scrollIntoView({ block: 'start' });
+  };
+  if (vv && isPhone()) {
+    el('hsQ').addEventListener('focus', () => { setTimeout(fitKb, 50); setTimeout(fitKb, 350); });
+    el('hsQ').addEventListener('blur', () => setTimeout(fitKb, 50));
+    if (!window.__hlVv) { window.__hlVv = true; vv.addEventListener('resize', () => fitKb()); }
+  }
   const hitsHTML = () => {
     const qq = st.q.trim().toLowerCase();
     const hh = qq ? cat.filter((x) => allowed.includes(x.rarity) && x.name.toLowerCase().includes(qq) && !st.minCards.some((m) => m.id === x.id)).slice(0, 4) : [];
