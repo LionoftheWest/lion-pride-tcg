@@ -140,6 +140,7 @@ end $$;
 create or replace function public.shop_today(p_player text)
 returns jsonb language plpgsql set search_path = public as $$
 declare cfg jsonb := shard_cfg(); v_day date := shop_day();
+  v_week text := to_char(now() at time zone 'America/Denver', 'IYYY-IW');
 begin
   if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
   perform shop_pick_stock(v_day);
@@ -149,6 +150,9 @@ begin
     'balance', coalesce((select shard_balance from players where id = p_player), 0),
     'pack_price', (cfg->>'pack_price')::int,
     'stat_reset_price', (cfg->>'stat_reset_price')::int,
+    -- The free weekly reset (stat_points.sql): a Shop reset uses it first, at 0 Shards.
+    'free_reset', (select stat_reset_week from players where id = p_player) is distinct from v_week,
+    'free_reset_next', ((date_trunc('week', now() at time zone 'America/Denver') + interval '7 days') at time zone 'America/Denver'),
     'max_packs_per_buy', coalesce((cfg->>'max_packs_per_buy')::int, 10),
     'stock', coalesce((select jsonb_agg(jsonb_build_object('slot', s.slot, 'card_id', s.card_id, 'rarity', s.rarity, 'price', s.price,
                  'bought', exists (select 1 from shop_purchases p where p.player_id = p_player and p.day = v_day and p.kind = 'card' and p.slot = s.slot))
@@ -156,16 +160,18 @@ begin
 end $$;
 
 -- Buy one Shop item. p_kind: 'pack' (p_qty packs), 'card' (the stock slot p_slot), or
--- 'stat_reset' (clear the stat points of the member's copy of p_card; the free weekly reset
--- stays unused). One transaction: lock the member, check, take the Shards, give the item.
+-- 'stat_reset' (clear the stat points of the member's copy of p_card). A stat reset uses the
+-- member's free weekly reset first, at 0 Shards (Nathan, 2026-10-02); only when the free reset
+-- is used this week does it cost stat_reset_price. One transaction: lock the member, check, take the Shards, give the item.
 create or replace function public.buy_shop_item(p_player text, p_kind text, p_slot integer default null,
                                                 p_card bigint default null, p_qty integer default 1)
 returns jsonb language plpgsql set search_path = public as $$
 declare cfg jsonb := shard_cfg(); v_day date := shop_day(); v_bal int; v_price int; s shop_stock;
-  v_pts jsonb; v_asc int; v_rar text; v_mod numeric; v_new int;
+  v_pts jsonb; v_asc int; v_rar text; v_mod numeric; v_new int; v_used text;
+  v_week text := to_char(now() at time zone 'America/Denver', 'IYYY-IW');
 begin
   if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
-  select shard_balance into v_bal from players where id = p_player for update;
+  select shard_balance, stat_reset_week into v_bal, v_used from players where id = p_player for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'no_player'); end if;
 
   if p_kind = 'pack' then
@@ -199,12 +205,18 @@ begin
      where pc.player_id = p_player and pc.card_id = p_card and pc.quantity > 0 for update of pc;
     if not found then return jsonb_build_object('ok', false, 'error', 'not_owned'); end if;
     if coalesce(v_pts, '{}'::jsonb) = '{}'::jsonb then return jsonb_build_object('ok', false, 'error', 'nothing_spent'); end if;
-    v_price := (cfg->>'stat_reset_price')::int;
-    if v_bal < v_price then return jsonb_build_object('ok', false, 'error', 'not_enough', 'balance', v_bal, 'price', v_price); end if;
-    v_new := grant_shards(p_player, -v_price, 'shop', 'stat_reset', p_card::text);
+    if v_used is distinct from v_week then
+      -- The free weekly reset: no Shards, the week is marked used (the same rule as reset_stat_points).
+      update players set stat_reset_week = v_week where id = p_player;
+      v_price := 0; v_new := v_bal;
+    else
+      v_price := (cfg->>'stat_reset_price')::int;
+      if v_bal < v_price then return jsonb_build_object('ok', false, 'error', 'not_enough', 'balance', v_bal, 'price', v_price); end if;
+      v_new := grant_shards(p_player, -v_price, 'shop', 'stat_reset', p_card::text);
+    end if;
     update player_cards set stat_points = '{}'::jsonb where player_id = p_player and card_id = p_card;
     insert into shop_purchases (player_id, day, kind, card_id, price) values (p_player, v_day, 'stat_reset', p_card, v_price);
-    return jsonb_build_object('ok', true, 'kind', 'stat_reset', 'balance', v_new, 'points', '{}'::jsonb,
+    return jsonb_build_object('ok', true, 'kind', 'stat_reset', 'free', v_price = 0, 'price', v_price, 'balance', v_new, 'points', '{}'::jsonb,
       'stats', card_combat(v_rar, v_asc, v_mod, '{}'::jsonb));
   end if;
   return jsonb_build_object('ok', false, 'error', 'bad_kind');

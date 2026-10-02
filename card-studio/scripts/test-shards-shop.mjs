@@ -4,6 +4,8 @@
  *   MUTATE=cooldown node scripts/test-shards-shop.mjs   must FAIL (the 7-day cooldown removed)
  *   MUTATE=held     node scripts/test-shards-shop.mjs   must FAIL (convert ignores held copies)
  *   MUTATE=balance  node scripts/test-shards-shop.mjs   must FAIL (a card buy skips the balance check)
+ *   MUTATE=free     node scripts/test-shards-shop.mjs   must FAIL (a reset never uses the free weekly reset)
+ *   MUTATE=freeleak node scripts/test-shards-shop.mjs   must FAIL (the free reset is never marked used)
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -18,6 +20,8 @@ const MUT = {
   cooldown: ['and not exists (select 1 from shop_stock s where s.card_id = c.id\n                                and s.day > p_day - v_cool and s.day < p_day)', ''],
   held: ['greatest(0, free_copies(p_player, p_card) - 1', 'greatest(0, (select quantity from player_cards where player_id = p_player and card_id = p_card) - 1'],
   balance: ["if v_bal < s.price then return jsonb_build_object('ok', false, 'error', 'not_enough', 'balance', v_bal, 'price', s.price); end if;", ''],
+  free: ['if v_used is distinct from v_week then', 'if false then'],
+  freeleak: ['      update players set stat_reset_week = v_week where id = p_player;\n', ''],
 };
 if (process.env.MUTATE) {
   const m = MUT[process.env.MUTATE];
@@ -100,17 +104,24 @@ begin
   if (select sum(amount) from shard_ledger where player_id = 'tst_sh_a') <> (select shard_balance from players where id = 'tst_sh_a') then
     bad := bad || 'ledger <> balance; '; end if;
 
-  -- 6. The stat reset: clears the points, keeps the free weekly reset, costs 150.
+  -- 6. The stat reset uses the free weekly reset first (0 Shards, the week marked used); the
+  --    next reset in the same week costs 150 (Nathan, 2026-10-02).
   select id into nm from cards where rarity = 'normal' and tradeable and in_draw_pool order by id limit 1;
   select id into nm2 from cards where rarity = 'normal' and tradeable and in_draw_pool order by id offset 1 limit 1;
   v_week := to_char(now() at time zone 'America/Denver', 'IYYY-IW');
   insert into player_cards (player_id, card_id, quantity, ascension, stat_points) values ('tst_sh_c', nm, 1, 1, '{"attack": 3}');
-  update players set stat_reset_week = v_week where id = 'tst_sh_c';
+  update players set stat_reset_week = null where id = 'tst_sh_c';
   perform grant_shards('tst_sh_c', 200, 'admin');
+  if not (shop_today('tst_sh_c')->>'free_reset')::boolean then bad := bad || 'free reset not offered; '; end if;
   r := buy_shop_item('tst_sh_c', 'stat_reset', null, nm);
-  if not (r->>'ok')::boolean or (r->>'balance')::int <> 50 then bad := bad || 'stat reset ' || r::text || '; '; end if;
-  if (select stat_points from player_cards where player_id = 'tst_sh_c' and card_id = nm) <> '{}'::jsonb then bad := bad || 'points not cleared; '; end if;
-  if (select stat_reset_week from players where id = 'tst_sh_c') is distinct from v_week then bad := bad || 'free reset changed; '; end if;
+  if not (r->>'ok')::boolean or not (r->>'free')::boolean or (r->>'balance')::int <> 200 then bad := bad || 'free reset ' || r::text || '; '; end if;
+  if (select stat_points from player_cards where player_id = 'tst_sh_c' and card_id = nm) <> '{}'::jsonb then bad := bad || 'points not cleared (free); '; end if;
+  if (select stat_reset_week from players where id = 'tst_sh_c') is distinct from v_week then bad := bad || 'free reset not marked used; '; end if;
+  if (shop_today('tst_sh_c')->>'free_reset')::boolean then bad := bad || 'free reset offered twice; '; end if;
+  update player_cards set stat_points = '{"vitality": 3}' where player_id = 'tst_sh_c' and card_id = nm;
+  r := buy_shop_item('tst_sh_c', 'stat_reset', null, nm);
+  if not (r->>'ok')::boolean or (r->>'free')::boolean or (r->>'balance')::int <> 50 then bad := bad || 'paid reset ' || r::text || '; '; end if;
+  if (select stat_points from player_cards where player_id = 'tst_sh_c' and card_id = nm) <> '{}'::jsonb then bad := bad || 'points not cleared (paid); '; end if;
   if (buy_shop_item('tst_sh_c', 'stat_reset', null, nm)->>'error') <> 'nothing_spent' then bad := bad || 'reset with no points; '; end if;
 
   -- 7. Convert extras: keep 1 copy and the copies that ascension still needs; held copies never convert.
