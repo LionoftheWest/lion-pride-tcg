@@ -103,6 +103,23 @@ begin
   insert into trade_offers (from_id, to_id, offer_card_id, request_card_id) values ('tst_ha_s', 'tst_ha_a', fa2, fa1) returning id into o2;
   if accept_trade(o2, 'tst_ha_a') then bad := bad || 'trade took an auctioned card; '; end if;
 
+  -- 8. Ascension spends only free copies: an auction + a trade offer hold 2 of 1 + cost copies.
+  i := ascend_cost('secret_rare', 0);
+  insert into players (id, username) values ('tst_ha_c', 'ascender');
+  insert into player_cards (player_id, card_id, quantity) values ('tst_ha_c', sr1, 1 + i);
+  r := start_auction('tst_ha_c', sr1, null, 0, '{}', 'and', 2);
+  if not (r->>'ok')::boolean then bad := bad || 'asc auction ' || r::text || '; '; end if;
+  o2 := create_trade_open('tst_ha_c', 'tst_ha_b', sr1);
+  if i >= 1 and o2 is null then bad := bad || 'asc offer; '; end if;
+  r := ascend_card('tst_ha_c', sr1);
+  if (r->>'ok')::boolean or r->>'error' <> 'held' then bad := bad || 'ascend spent a held copy ' || r::text || '; '; end if;
+  update trade_offers set status = 'declined' where id = o2;
+  r := ascend_card('tst_ha_c', sr1);
+  if not (r->>'ok')::boolean then bad := bad || 'ascend with free copies ' || r::text || '; '; end if;
+  if free_copies('tst_ha_c', sr1) <> 0 or (select quantity from player_cards where player_id = 'tst_ha_c' and card_id = sr1) <> 1 then
+    bad := bad || 'the auction copy after ascend; ';
+  end if;
+
   raise exception 'RESULTS [%]', bad;
 exception when others then
   if sqlerrm like 'RESULTS%' then raise; end if;

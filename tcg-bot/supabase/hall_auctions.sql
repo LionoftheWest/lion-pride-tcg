@@ -378,3 +378,42 @@ begin
   update trade_offers set status = 'accepted', resolved_at = now() where id = p_offer_id;
   return true;
 end; $function$;
+
+-- Ascension spends duplicate copies: it must leave the copies held by a trade offer, an auction or
+-- a bid (before, a member could auction a card and then ascend the held copy away).
+CREATE OR REPLACE FUNCTION public.ascend_card(p_player_id text, p_card_id bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_qty int; v_asc int; v_rarity text; v_cost int; v_mod numeric;
+begin
+  select pc.quantity, pc.ascension, c.rarity, s.cp_mod
+    into v_qty, v_asc, v_rarity, v_mod
+  from player_cards pc
+  join cards c    on c.id = pc.card_id
+  join subjects s on s.id = c.subject_id
+  where pc.player_id = p_player_id and pc.card_id = p_card_id
+  for update of pc;
+
+  if not found then return jsonb_build_object('ok', false, 'error', 'not owned'); end if;
+  if v_asc >= 5 then return jsonb_build_object('ok', false, 'error', 'maxed'); end if;
+
+  v_cost := ascend_cost(v_rarity, v_asc);
+  if v_qty < 1 + v_cost then
+    return jsonb_build_object('ok', false, 'error', 'need_more', 'have', v_qty, 'need', 1 + v_cost);
+  end if;
+  -- A copy held by a trade offer, an auction or a bid is not free to spend (hall_auctions.sql).
+  if free_copies(p_player_id, p_card_id) < v_cost then
+    return jsonb_build_object('ok', false, 'error', 'held', 'free', free_copies(p_player_id, p_card_id), 'need', v_cost);
+  end if;
+
+  update player_cards set quantity = quantity - v_cost, ascension = ascension + 1
+   where player_id = p_player_id and card_id = p_card_id;
+
+  return jsonb_build_object('ok', true, 'ascension', v_asc + 1,
+    'quantity', v_qty - v_cost, 'power', card_power(v_rarity, v_asc + 1, v_mod),
+    'next_cost', ascend_cost(v_rarity, v_asc + 1));
+end;
+$function$;
