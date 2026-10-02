@@ -26,6 +26,7 @@ import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
+import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
@@ -227,6 +228,7 @@ let features = {}; // server feature flags (e.g., ascension), from /api/config
 let packsAvailable = 0;
 let uiV2 = false;   // the v2 UI (docs/design.md), from /api/flags after login
 let sdkRef = null; // the Discord SDK (the orientation lock)
+let shards = false;  // Shards + the Shop (shards_shop.sql), from /api/flags (SHARDS_USERS first)
 let hall = false;    // wishlists + the Trading Hall + auctions, from /api/flags (HALL_USERS first)
 let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
@@ -343,6 +345,7 @@ async function main() {
   mobileUi = !!flags?.mobile;
   trade2 = !!flags?.trade2;
   hall = !!flags?.hall;
+  shards = !!flags?.shards;
   // A new member's first login gave them the welcome packs: show them now.
   if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   if (uiV2) { startV2(); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); initExplain(flags?.tutorial); } else show('collection');
@@ -381,6 +384,7 @@ function startV2() {
   if (board) board.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
   el('v2Avatar').title = meUser?.name || '';
   initDailies(); // the Dailies window button (hidden while settings.dailies.enabled is off)
+  initShop(shards); // the Shards balance + the Shop button (design 29; hidden while the flag is off)
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
   // 5+ packs: the chooser (x1 / x5 / x10); fewer: open one, as before.
   el('dockOpen').addEventListener('click', () => {
@@ -411,7 +415,7 @@ function sendStatus(kind, d) {
   myStatus = kind || myStatus;
   if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus, d: myDetail })); } catch { /* dropped */ } }
 }
-const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home' };
+const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home', shop: 'home' };
 
 // Load which cards the caller owns (for feed-card ownership). Also warms the
 // collection cache. Refreshed whenever the collection can have changed.
@@ -659,10 +663,12 @@ function mountBossFor(hunt) {
 function renderMain(view) {
   disposeBoss(); // any view change tears the boss down; renderHunt re-mounts it
   disposeHomeV2();
+  disposeShop();
   if (uiV2 && view === 'home') { stopHuntTicker(); renderHomeV2(); return; }
   if (uiV2 && view === 'collection') { stopHuntTicker(); renderCollectionV2(); return; }
   if (uiV2 && view === 'leaderboard') { stopHuntTicker(); renderLeaderboardV2(); return; }
   if (uiV2 && view === 'trading') { stopHuntTicker(); renderTradingV2(); return; }
+  if (uiV2 && view === 'shop') { stopHuntTicker(); renderShopV2(); return; }
   { const bm = el('bossMini'); if (bm) bm.innerHTML = ''; } // clear the sidebar boss square
   stopHuntTicker(); // stop the boss/cooldown countdown; renderHunt restarts it
   if (view === 'gallery') { renderGallery(); return; }
@@ -2267,6 +2273,7 @@ function wireBattlePhase() {
     }
     if (support) {
       if (pendingSupport) { clearTargeting(); return; } // tapping a support cancels targeting
+      if (node.classList.contains('downed')) { calloutAt(cx, b.top + 18, 'DOWNED', '#8b94a7'); return; } // a downed support does nothing (hunt_loop_caps.sql)
       if (node.classList.contains('cooldown')) { calloutAt(cx, b.top + 18, 'COOLDOWN', '#8b94a7'); return; }
       const tgt = card.ability && card.ability.target;
       if (tgt === 'ally' || tgt === 'self') { // needs a target ally
@@ -2290,7 +2297,10 @@ async function fireSupport(cardId, targetId) {
   const b = node ? node.getBoundingClientRect() : null;
   const at = (txt, col) => calloutAt(b ? b.left + b.width / 2 : window.innerWidth / 2, b ? b.top : 120, txt, col);
   if (!r || !r.ok) {
-    at(r && r.error === 'cooldown' ? 'COOLDOWN' : (r && r.error === 'day_limit' ? `LIMIT` : 'X'), '#ff8f5c');
+    // hunt_loop_caps.sql: a downed support, stun immunity, the round limit.
+    const why = { cooldown: 'COOLDOWN', day_limit: 'LIMIT', support_downed: 'DOWNED', boss_stun_immune: 'IMMUNE', round_cap: 'ROUND LIMIT' };
+    at((r && why[r.error]) || 'X', '#ff8f5c');
+    if (r?.error === 'support_downed' && node) node.classList.add('downed');
     return;
   }
   const label = { empower: 'EMPOWER!', shield: 'SHIELD!', heal: 'HEAL!', weaken: 'WEAKEN!', expose: 'EXPOSE!', smite: 'SMITE!', stun: 'STUN!', cleanse: 'CLEANSE!' }[r.effect] || r.effect;
@@ -2559,6 +2569,7 @@ async function huntAttack(cardId, node) {
     if (r?.error === 'downed') markDowned(node);
     else if (r?.error === 'hunt_over') renderHunt();
     else if (r?.error === 'day_limit') { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, `LIMIT ${r.cap || 8}`, '#ff8f5c'); }
+    else if (r?.error === 'round_cap') { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, `ROUND LIMIT ${r.cap || 40}`, '#ff8f5c'); } // hunt_loop_caps.sql
     else if (r?.error === 'stunned') { const b = node.getBoundingClientRect(); node.classList.add('stunned'); calloutAt(b.left + 30, b.top, 'STUNNED', '#ffe23e'); }
     return;
   }
