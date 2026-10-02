@@ -44,6 +44,11 @@ begin
                and (c.rarity::text <> s.rarity or c.rarity::text in ('gold', 'full_art', 'event', 'promo') or not c.in_draw_pool)) then
     bad := bad || 'stock has a forbidden card; '; end if;
   if shop_pick_stock(d) <> 10 or (select count(*) from shop_stock where day = d) <> 10 then bad := bad || 'stock not idempotent; '; end if;
+  -- Nathan's prices (2026-10-02): Normal 100, Illustrated Rare 450, Secret Rare 1,500, a pack 250, a stat reset 150.
+  if exists (select 1 from shop_stock where day = d and price <> case rarity when 'normal' then 100 when 'illustrated_rare' then 450 when 'secret_rare' then 1500 end) then
+    bad := bad || 'stock prices; '; end if;
+  if (shop_today('tst_nobody')->>'pack_price')::int <> 250 or (shop_today('tst_nobody')->>'stat_reset_price')::int <> 150 then
+    bad := bad || 'pack / reset price; '; end if;
 
   -- 2. The 7-day cooldown: days d .. d+6 never share a card. On d+7, with a stock of "every
   --    eligible Secret Rare", the Secret Rare of day d is back and the ones of d+1 .. d+6 are not.
@@ -66,10 +71,10 @@ begin
   r := buy_shop_item('tst_sh_a', 'card', j);
   if (r->>'ok')::boolean or r->>'error' <> 'not_enough' then bad := bad || 'buy with 0 shards ' || r::text || '; '; end if;
   if exists (select 1 from player_cards where player_id = 'tst_sh_a') then bad := bad || 'card given with 0 shards; '; end if;
-  if grant_shards('tst_sh_a', 2000, 'admin') <> 2000 then bad := bad || 'grant; '; end if;
+  if grant_shards('tst_sh_a', 2500, 'admin') <> 2500 then bad := bad || 'grant; '; end if;
   if grant_shards('tst_nobody', 5, 'admin') is not null then bad := bad || 'grant to nobody; '; end if;
   r := buy_shop_item('tst_sh_a', 'card', j);
-  if not (r->>'ok')::boolean or (r->>'balance')::int <> 500 then bad := bad || 'buy sr ' || r::text || '; '; end if;
+  if not (r->>'ok')::boolean or (r->>'balance')::int <> 1000 then bad := bad || 'buy sr ' || r::text || '; '; end if;
   if (select first_source from player_cards where player_id = 'tst_sh_a' and card_id = c_sr) is distinct from 'shop' then
     bad := bad || 'shop card shows as a pull; '; end if;
   r := buy_shop_item('tst_sh_a', 'card', j);
@@ -81,7 +86,7 @@ begin
   -- 4. Packs: no limit on Shop packs, and they do not count toward the 5-pack earn limit.
   i := (select pack_balance from players where id = 'tst_sh_a');
   r := buy_shop_item('tst_sh_a', 'pack', null, null, 3);
-  if not (r->>'ok')::boolean or (r->>'balance')::int <> 200 or (r->>'packs')::int <> i + 3 then bad := bad || 'buy packs ' || r::text || '; '; end if;
+  if not (r->>'ok')::boolean or (r->>'balance')::int <> 250 or (r->>'packs')::int <> i + 3 then bad := bad || 'buy packs ' || r::text || '; '; end if;
   if earned_today('tst_sh_a') <> 0 then bad := bad || 'shop packs count as earned; '; end if;
   if (select sum(amount) from pack_ledger where player_id = 'tst_sh_a' and reason = 'shop') <> 3 then bad := bad || 'pack ledger; '; end if;
   if (buy_shop_item('tst_sh_a', 'pack', null, null, 11)->>'error') <> 'bad_qty' or (buy_shop_item('tst_sh_a', 'pack', null, null, 0)->>'error') <> 'bad_qty' then

@@ -6,6 +6,8 @@
 -- - The Shop sells packs (no limit: a bought pack is a purchase, not an earning, so it does
 --   not count toward the 5-pack daily earn limit - earned_today() counts only 'earned_%'),
 --   a random card stock that changes each day at 00:00 MT, and a stat reset.
+-- - Prices (Nathan, 2026-10-02): a pack 250, Normal 100, Illustrated Rare 450, Secret Rare 1,500,
+--   a stat reset 150 (settings.shards; change a number without a deploy).
 -- - The daily stock: 6 Normal, 3 Illustrated Rare, 1 Secret Rare (settings.shards.stock),
 --   the same for all members. A card that shows on day D cannot show again before day D+7.
 --   Never Gold, never Full Art (the season event sells Full Art later), never Event/Promo,
@@ -65,10 +67,10 @@ alter table public.shop_purchases enable row level security;
 
 insert into public.settings (key, value) values ('shards', jsonb_build_object(
   'enabled', false,
-  'pack_price', 100,
+  'pack_price', 250,
   'stat_reset_price', 150,
   'stock', jsonb_build_object('normal', 6, 'illustrated_rare', 3, 'secret_rare', 1),
-  'prices', jsonb_build_object('normal', 150, 'illustrated_rare', 450, 'secret_rare', 1500),
+  'prices', jsonb_build_object('normal', 100, 'illustrated_rare', 450, 'secret_rare', 1500),
   'cooldown_days', 7,
   'max_packs_per_buy', 10,
   'dupe_values', jsonb_build_object('normal', 5, 'illustrated_rare', 15, 'secret_rare', 40, 'full_art', 100, 'gold', 250)))
