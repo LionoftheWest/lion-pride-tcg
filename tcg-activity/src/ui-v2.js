@@ -1290,13 +1290,9 @@ function paintWish() {
       ${wl.self && wl.edit ? (x.card ? `<button class="v2-icon wl-top${x.top ? ' on' : ''}" data-slot="${x.slot}" title="Top want: the card the Wanted view shows">★</button><button class="v2-icon wl-x" data-slot="${x.slot}" title="Clear">✕</button>` : '') + `<button class="v2-icon wl-set" data-slot="${x.slot}" title="Pick a card">✎</button>` : ''}</div>`).join('')}</div>
     ${wl.self && wl.edit ? '<span class="dim wl-hint">★ = your top want. The Trade Hall shows it under Wanted.</span>' : ''}
     ${wl.msg ? `<span class="tr-msg">${esc(wl.msg)}</span>` : ''}`;
-  // A portrait phone: the right column is a bottom sheet (design 27 frames 01 + 02); the Wishlist title opens it.
-  ctx.el('memberModal')?.querySelector('.mem-screen')?.classList.toggle('wl-open', isPort() && (wl.sheet || wl.edit));
-  box.querySelector('.tile-h')?.addEventListener('click', (e) => {
-    if (!isPort() || e.target.closest('button')) return;
-    wl.sheet = !wl.sheet; paintWish();
-  });
-  ctx.el('wlEdit')?.addEventListener('click', () => { wl.edit = !wl.edit; wl.pick = null; if (!wl.edit) wl.sheet = false; closeWishPicker(); paintWish(); });
+  // A portrait phone: the Wishlist sits beside the hunt tile; in Edit it takes the full width (ui-v2-mobile.css).
+  ctx.el('memberModal')?.querySelector('.mem-screen')?.classList.toggle('wl-open', isPort() && wl.edit);
+  ctx.el('wlEdit')?.addEventListener('click', () => { wl.edit = !wl.edit; wl.pick = null; closeWishPicker(); paintWish(); });
   box.querySelectorAll('.wl-x').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveWish(Number(b.dataset.slot), null); }));
   box.querySelectorAll('.wl-top').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveTop(Number(b.dataset.slot)); }));
   box.querySelectorAll('.wl-set').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openWishPicker(Number(b.dataset.slot)); }));
