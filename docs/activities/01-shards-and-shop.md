@@ -12,7 +12,12 @@ Shards are a currency that members earn in the new modes and spend in the Shop.
 3. **Gold is never in the Shop.**
 4. **Full Art is not in the normal Shop.** One time each season, a special event sells
    specific Full Art cards at a high Shard price.
-5. Shards buy a **stat reset**, not stat points. (Stat points buy power, and the power
+5. **Shards can buy packs with no limit.** Shards may go around the 5-pack daily earn
+   limit (`daily_cap_5.sql`). The member chooses: spend all the Shards on packs, or save
+   them for cards and season items.
+6. The anchor is 100 Shards for 1 pack **for now**. It changes as the earn rates of the
+   modes become clear.
+7. Shards buy a **stat reset**, not stat points. (Stat points buy power, and the power
    would go into the Arena. `docs/card-stats.md` requires that the points give the same
    total strength as the old fixed star bonus.)
 
@@ -49,7 +54,7 @@ action, and the member must press it.
 
 | Item | Proposed price | Limit |
 |---|---|---|
-| 1 pack | 100 | **at most 3 each week for each member** (Section 4.1) |
+| 1 pack | 100 | none (Section 4.1) |
 | A Normal card of the member's choice | 150 | none |
 | An Illustrated Rare of the member's choice | 450 | 2 each week |
 | A Secret Rare from the **featured stock** | 1,500 | 1 each week |
@@ -59,11 +64,15 @@ action, and the member must press it.
 | **Season event:** specific Full Art cards | 6,000 | 1 for each member, each season |
 | Gold | never sold | — |
 
-### 4.1 Why the pack limit is weekly
+### 4.1 Packs and the 5-pack limit
 
-Nathan set a limit of 5 earned packs each day (`daily_cap_5.sql`). If the Shop sells
-packs with no limit, Shards go around that limit. A weekly Shop limit keeps the 5-pack
-rule true and still lets a member turn saved Shards into packs.
+The 5-pack limit (`daily_cap_5.sql`) applies to EARNED packs only. A pack that a member
+buys with Shards is a purchase, not an earning, so it does not count toward the limit
+(Nathan, 2026-10-02). The ledger records it with the reason `shop`, so the pack economy
+reports can still separate earned packs and bought packs.
+
+The price of a pack is the main control. If members turn too many Shards into packs, the
+fix is the anchor price, not a limit.
 
 ### 4.2 The featured stock
 
@@ -94,7 +103,7 @@ member comes back each week to check it, and the members talk about it in chat.
     limits, takes the Shards, gives the item, and writes the ledger and the purchase, in
     one transaction.
   - `convert_dupes(p_player, p_card, p_count)`. It checks `free_copies` and keeps 1 copy.
-- `settings.shards`: `{ enabled, pack_price, pack_weekly_limit, dupe_values, ... }`.
+- `settings.shards`: `{ enabled, pack_price, dupe_values, ... }`.
   Nathan can change a number without a deploy.
 
 ## 6. The surface
@@ -109,11 +118,13 @@ member comes back each week to check it, and the members talk about it in chat.
 ## 7. The balance test
 
 A new `card-studio/scripts/shard-sim.mjs` plays a month for three members: a casual
-member, an active member, and a member who does every activity at its limit. It fails if:
+member, an active member, and a member who does every activity at its limit.
 
-- the active member can buy a Secret Rare of their choice in less than about 2 weeks,
-- the member who does everything gets more than about 2 pack-values of Shards each day,
-- any path in the Shop gives a Gold or a Full Art card outside the season event.
+It reports, for each member: the Shards earned each day, the packs that the Shards can
+buy, and the days to buy a Secret Rare of their choice. Nathan uses the report to set the
+anchor price.
+
+It fails if any path in the Shop gives a Gold or a Full Art card outside the season event.
 
 ## 8. Flags and build phases
 
@@ -127,7 +138,5 @@ member, an active member, and a member who does every activity at its limit. It 
 
 ## 9. Open questions for Nathan
 
-1. Is 100 Shards = 1 pack a good anchor?
-2. Is 3 Shop packs each week correct?
-3. Must a member own a card before they can buy it, or can the Shop sell a card that the
+1. Must a member own a card before they can buy it, or can the Shop sell a card that the
    member does not own yet?

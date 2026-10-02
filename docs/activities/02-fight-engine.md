@@ -72,8 +72,10 @@ Rules:
 - Each search has a hard time budget. A search never runs without a limit.
 - A fight row stores the seed and the actions, not the frames.
 
-These numbers are estimates. The first build measures them (a benchmark script) before
-the Arena ships.
+These numbers are estimates. Nathan (2026-10-02): the project must stay free, but we can
+test the limits. So the first build measures them with a benchmark script on the VM
+before the Arena ships. The benchmark also runs a load test: many fights at the same
+time, to find the point where the server slows down.
 
 ## 6. The monsters
 
@@ -90,14 +92,14 @@ domain: any use, no credit required). Each license must be read on its page befo
 | [KayKit: Skeletons](https://kaylousberg.itch.io/kaykit-skeletons) | 4 rigged skeletons, 90+ animations, weapons | FBX, OBJ, DAE, glTF |
 | [KayKit: Dungeon](https://kaylousberg.itch.io/kaykit-dungeon) | 200+ dungeon pieces and characters, for the rooms | FBX, OBJ, DAE, glTF |
 
-**The recommendation:** Quaternius Ultimate Monsters as the main set. One artist made all
-50, so the style is the same. The animations already include attack and death, which a
-fight needs. glTF loads in the existing three.js boss code (`boss-model.js`). KayKit
-Dungeon gives the room backgrounds.
+**The decision (Nathan, 2026-10-02):** Quaternius is the main monster set. KayKit
+Skeletons and KayKit Dungeon are approved for skeleton enemies and the room pieces.
 
-**A style test first:** The Hunt bosses (Warrok, Mutant, Maw) are realistic models. These
-packs are low-poly. Put three pack monsters next to a Hunt boss and a card, and Nathan
-decides if the styles fit together. The other option is the Gemini sheet pipeline.
+- One artist made all 50 Quaternius monsters, so the style is the same.
+- The animations already include attack and death, which a fight needs.
+- glTF loads in the existing three.js boss code (`boss-model.js`).
+- These packs are low-poly, and the Hunt bosses are realistic. Nathan accepts the
+  difference ("it's fine if they are a little less graphically nice").
 
 ### 6.2 Many monsters from a few models
 
@@ -126,5 +128,5 @@ resistances of the Hunt work on monsters too.
 
 1. The engine core: the seeded random generator, the turn loop, the primitives, the
    snapshot, and the parity table. Tests only, no screen.
-2. The style test and the first 10 monsters.
-3. The benchmark script, before the Arena.
+2. The first 10 monsters from Quaternius, and the room pieces from KayKit Dungeon.
+3. The benchmark and the load test, before the Arena.

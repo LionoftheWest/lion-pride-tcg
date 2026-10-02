@@ -14,13 +14,13 @@ The attacker plays live. A smart AI plays the defense. Wins and losses move a ra
    few points. A low-CP member who beats a high-CP member gets many points.
 5. **A daily limit on fights**, so members pick their fights.
 6. Matchmaking by rating, and each opponent shows its squad CP (Section 3).
-7. Smaller squads than the Hunt.
+7. **5 cards** in each squad, the same as the Dungeon (Nathan, 2026-10-02).
 8. No boons or pranks in the Arena (the first version).
 9. The stack stays free (`02-fight-engine.md`, Section 5).
 
 ## 2. The squads
 
-- **4 cards** in each squad (a proposal).
+- **5 cards** in each squad.
 - No budget. The CP difference in the points (Section 5) balances the rarity.
 - The defense squad has a **stance**, which the defender picks:
   - **Balanced** (the default),
@@ -91,8 +91,11 @@ watch the replay later.
 
 ## 7. Leagues and seasons
 
+The Arena season is the game season: it runs from one card set release to the next
+(`09-crews-and-seasons.md`).
+
+
 - Leagues by rating: Bronze, Silver, Gold, Platinum, Champion (the names are a proposal).
-  Note: "Gold" is also a rarity name. A different name can avoid confusion.
 - At the end of each season, each rating moves halfway back to 1000.
 - The season reward by league: Shards, a title, and a profile frame.
 
@@ -134,6 +137,5 @@ watch the replay later.
 
 ## 12. Open questions for Nathan
 
-1. 4 cards in each squad?
-2. 5 tickets each day, 60 points of defense loss each day, a 2-hour shield: correct?
-3. The league names: avoid "Gold"?
+1. 5 tickets each day, 60 points of defense loss each day, a 2-hour shield: correct?
+2. The league names: Bronze, Silver, Gold, Platinum, Champion. Keep them?

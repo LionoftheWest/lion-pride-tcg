@@ -13,18 +13,15 @@ of a season, the best Crew wins.
    the Crews are even.
 4. **The Crews name themselves.**
 
-## 2. A naming conflict: "season"
+## 2. One season for everything (Nathan, 2026-10-02)
 
 The game already uses "season" for the card sets (the Season Releases in the Collection).
-Two options:
+**A season covers everything.** A season runs from one card set release to the next. The
+Crews, the Arena, the Dungeon season-best, the server season milestones, and the Shop's
+Full Art event all use the same season, and they all reset at the next card set release.
 
-- **A. One season for everything.** A competitive season runs from one card set release
-  to the next. The Crews, the Arena, and the Dungeon season-best all reset then.
-- **B. Two names.** For example "Season 1" for the cards, and "Crew Season" or "Split"
-  for the competition.
-
-The recommendation is **A** if the card sets come out at a steady rate (about every 6 to
-10 weeks). If not, use B with a fixed length of 6 weeks.
+The `seasons` table (Section 7) is the one source for the season dates. Every mode reads
+it.
 
 ## 3. Crews
 
@@ -87,6 +84,5 @@ who do not play do not hurt their Crew.
 
 ## 9. Open questions for Nathan
 
-1. Option A (one season for everything) or option B (two names)?
-2. 3 or 4 Crews?
-3. Can a member change Crews in the middle of a season?
+1. 3 or 4 Crews?
+2. Can a member change Crews in the middle of a season?

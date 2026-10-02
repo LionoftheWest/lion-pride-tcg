@@ -37,7 +37,7 @@ Members draft squads from a shared pool, and then the squads fight in a bracket.
 1. **Sign up** until 19:00 MT on Friday.
 2. At 19:00, the game shows **one shared pool** of cards from the seed. The cards are
    borrowed for the night (base stats, no stat points).
-3. **The live snake draft:** each member picks 4 cards, with a 45-second pick timer.
+3. **The live snake draft:** each member picks 5 cards (the Arena squad size), with a 45-second pick timer.
 4. **The bracket:** the engine fights the squads in a single-elimination bracket. A fight
    is automatic (both sides use the AI from `04-pvp-arena.md`).
 5. **The show:** the members watch each fight as a replay in the Activity, one round of

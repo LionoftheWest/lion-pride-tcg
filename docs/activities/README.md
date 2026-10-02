@@ -27,7 +27,8 @@ rules that all of them share, the weekly calendar, and the build order.
 ## 2. The weekly calendar
 
 Nathan (2026-10-02): something happens EVERY day. The core modes run every day. The
-mini games and the events each own a day of the week.
+mini games and the events each own a day of the week. Nathan approved this calendar
+(2026-10-02).
 
 | Day | Every day | The special of the day |
 |---|---|---|
@@ -61,18 +62,15 @@ These rules come from earlier decisions. A new system must not break them.
 - **The game day is the MT clock** (`mt_clock.sql`).
 - **The tech stack stays free** (Nathan, 2026-10-02). See Section 5.
 
-## 4. The pack limit and Shards (a conflict, resolved)
-
-Two decisions meet here:
+## 4. The pack limit and Shards (decided)
 
 - Nathan, 2026-09-30: a member can EARN at most 5 packs each day ("5 is tops",
   `daily_cap_5.sql`).
-- Nathan, 2026-10-02: no daily limit on Shards, and the Shop sells packs.
+- Nathan, 2026-10-02: no daily limit on Shards, and the Shop sells packs with no limit.
+  Shards may go around the 5-pack limit. The member chooses how to spend them.
 
-Without a rule, Shards would go around the 5-pack limit. The resolution keeps both
-intents: Shards have no daily limit, but the Shop sells at most a fixed number of packs
-to each member each week (`01-shards-and-shop.md`, Section 4). The new modes give Shards,
-not packs, so the 5-pack limit stays true.
+So the 5-pack limit applies to earned packs only. A bought pack is a purchase. The new
+modes give Shards, not packs. The anchor price is the control (`01-shards-and-shop.md`).
 
 ## 5. The free stack (measured 2026-10-02)
 

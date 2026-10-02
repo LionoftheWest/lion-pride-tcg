@@ -37,7 +37,7 @@ floors and rooms that get harder, and the member sees how deep they can go.
 
 ## 3. The squad
 
-- **5 cards** (a proposal).
+- **5 cards** (Nathan, 2026-10-02).
 - **The budget:** each card costs points by its rarity: Normal 1, Illustrated Rare 2,
   Secret Rare 3, Full Art 4, Gold 5. The daily budget is **12 points** (a proposal). So a
   member can bring one Gold card, but then the other cards must be cheap.
@@ -149,7 +149,7 @@ The choices make each run a set of decisions, not only a check of the collection
 
 ## 12. Open questions for Nathan
 
-1. 5 cards and a budget of 12: is that a good start?
+1. A budget of 12 points for the 5 cards: is that a good start?
 2. Can the member stop a run ("Retreat") and keep the depth, or does a run only end when
    the squad falls?
 3. Do the season-best runs give a reward at the end of the season?

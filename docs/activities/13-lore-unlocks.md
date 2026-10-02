@@ -14,8 +14,7 @@ Each card has more story. A member unlocks it by ascending the card.
 The ascension tiers are Normal (1 star), Bronze (2), Silver (3), Gold (4), and
 Prestige (5) (`ASC_TIERS` in `tcg-activity/src/main.js`, about line 3218).
 
-**A naming risk:** "Gold" is also a rarity. "A Gold card" and "a card at Gold ascension"
-are two different things. Nathan can rename the ascension tier, or keep it.
+"Gold" is also a rarity. Nathan (2026-10-02): keep the names.
 
 ## 3. The chapters
 
@@ -56,4 +55,3 @@ are two different things. Nathan can rename the ascension tier, or keep it.
 ## 7. Open questions for Nathan
 
 1. Two chapters (Silver and Prestige), or one at Silver only?
-2. Rename the "Gold" ascension tier?
