@@ -55,9 +55,9 @@ action, and the member must press it.
 | Item | Proposed price | Limit |
 |---|---|---|
 | 1 pack | 100 | none (Section 4.1) |
-| A Normal card of the member's choice | 150 | none |
-| An Illustrated Rare of the member's choice | 450 | 2 each week |
-| A Secret Rare from the **featured stock** | 1,500 | 1 each week |
+| A Normal card from the **daily stock** | 150 | each stock card 1 time each day |
+| An Illustrated Rare from the daily stock | 450 | each stock card 1 time each day |
+| A Secret Rare from the daily stock | 1,500 | 1 time each day |
 | A stat reset (one card) | 150 | none (the free reset each week stays) |
 | Den decorations | 50 to 2,000 | none |
 | Card flair and profile frames | 300 to 1,500 | none |
@@ -74,11 +74,19 @@ reports can still separate earned packs and bought packs.
 The price of a pack is the main control. If members turn too many Shards into packs, the
 fix is the anchor price, not a limit.
 
-### 4.2 The featured stock
+### 4.2 The daily stock (Nathan, 2026-10-02)
 
-Each Monday at 00:00 MT, the Shop picks a new featured stock from a seed: 6 Normal cards,
-3 Illustrated Rare cards, and 1 Secret Rare. The stock is the same for all members. A
-member comes back each week to check it, and the members talk about it in chat.
+- The Shop never lets a member pick any card. It sells a **random stock that changes
+  every day**.
+- Each day at 00:00 MT, a seed picks the stock: 6 Normal cards, 3 Illustrated Rare cards,
+  and 1 Secret Rare (a proposal).
+- The stock is the same for all members. A member comes back each day to check it, and
+  the members talk about it in chat ("the SR today is Meowscarada!").
+- A member can buy a card that they do not own yet, or a card that they own already (a
+  copy for ascension).
+- Each stock card can be bought 1 time each day by each member.
+- The seed avoids a card that was in the stock in the last 7 days, so the stock stays
+  fresh.
 
 ### 4.3 What is never in the Shop
 
@@ -109,7 +117,7 @@ member comes back each week to check it, and the members talk about it in chat.
 ## 6. The surface
 
 - The top bar shows the Shard balance next to the pack count.
-- A **Shop** view: the featured stock, the packs, the cards to choose, the decorations,
+- A **Shop** view: the daily stock with a countdown to the next stock, the packs, the decorations,
   and the season event when it is open. Each item shows its limit ("2 of 3 left this
   week").
 - A confirm step before each purchase.
@@ -121,7 +129,7 @@ A new `card-studio/scripts/shard-sim.mjs` plays a month for three members: a cas
 member, an active member, and a member who does every activity at its limit.
 
 It reports, for each member: the Shards earned each day, the packs that the Shards can
-buy, and the days to buy a Secret Rare of their choice. Nathan uses the report to set the
+buy, and the days to save for one daily-stock Secret Rare. Nathan uses the report to set the
 anchor price.
 
 It fails if any path in the Shop gives a Gold or a Full Art card outside the season event.
@@ -131,12 +139,11 @@ It fails if any path in the Shop gives a Gold or a Full Art card outside the sea
 - Flag `settings.shards.enabled`, default false. `SHARDS_USERS` lets Nathan test first.
 
 1. The balance, the ledger, `grant_shards`, and `buy_item`, with the database test.
-2. The Shop with packs, chosen cards, and the stat reset.
-3. The featured stock and `convert_dupes`.
+2. The Shop with packs and the stat reset.
+3. The daily stock and `convert_dupes`.
 4. The decorations and the flair (with the Den).
 5. The season event for Full Art.
 
 ## 9. Open questions for Nathan
 
-1. Must a member own a card before they can buy it, or can the Shop sell a card that the
-   member does not own yet?
+1. Is the daily stock size correct (6 Normal, 3 Illustrated Rare, 1 Secret Rare)?

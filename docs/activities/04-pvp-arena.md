@@ -89,6 +89,36 @@ watch the replay later.
 - **Revenge:** when a member beats your defense, a **Revenge** button attacks that member
   back. It still uses a ticket.
 
+## 6A. A small member pool (Nathan, 2026-10-02)
+
+Nathan's concern: members have more chances to attack than to defend. With a small
+member pool, every member gets attacked, and then the Arena goes quiet.
+
+**The math (an estimate):** with 10 active members and 5 tickets each, the server has 50
+attacks each day, or about 5 for each defender. A defense squad is not used up, and the
+2-hour shield removes a defender for only a short time. So the targets do not run out.
+The real risk is **stale matchups**: the same few opponents every day.
+
+The fixes:
+
+1. **Echoes.** The game keeps a snapshot of each member's defense squad each time the
+   member changes it, for the last 4 weeks. An echo is an extra target: "Echo of @B
+   (last week)". A win against an echo gives the attacker points, but it does not change
+   B's rating. Each member then gives several targets, not one.
+2. **Bots are always in the list.** The 3 opponents always include at least one Arena
+   Guard, so an attacker always has a fresh target.
+3. **One attack for each pair each day.** An attacker can attack the same member (or the
+   same echo) at most once each day. Revenge is the one exception.
+4. **The daily Arena rule.** The seed sets a rule each day, the same as the Dungeon: "Fire
+   cards +25%", "Supports cool down 1 round faster", "No healing". The same matchup plays
+   differently each day.
+5. **The defense report.** Each day, the defender gets a report in the bell: "You were
+   attacked 4 times today and won 3. Watch the replays." The report brings the defender
+   back to change the squad, so the targets change too.
+
+Revenge, the echoes, and the daily rule all use the shared engine, so they add no new
+fight code.
+
 ## 7. Leagues and seasons
 
 The Arena season is the game season: it runs from one card set release to the next
@@ -111,6 +141,9 @@ The Arena season is the game season: it runs from one card set release to the ne
 - `arena_ratings(player_id, season, rating, wins, losses, def_wins, def_losses,
   def_lost_today, shield_until, tickets_used, tickets_day)`.
 - `arena_bots(id, name, rating, cards jsonb, depth int)`.
+- `arena_echoes(id, player_id, cards jsonb, stance, cp, rating, created_at)`. Pruned after
+  4 weeks.
+- `arena_days(day, seed, rule jsonb)`. The daily Arena rule.
 - `arena_fights(id, attacker_id, defender_id, bot_id, seed, actions jsonb, result,
   att_delta, def_delta, created_at)`. Pruned after each season.
 - `arena_finish(p_fight)` writes the result, the ratings, and the Shards in one
@@ -137,5 +170,7 @@ The Arena season is the game season: it runs from one card set release to the ne
 
 ## 12. Open questions for Nathan
 
-1. 5 tickets each day, 60 points of defense loss each day, a 2-hour shield: correct?
-2. The league names: Bronze, Silver, Gold, Platinum, Champion. Keep them?
+1. The defense loss limit: 60 points each day. Correct? (5 tickets and the 2-hour shield
+   are approved, 2026-10-02.)
+2. Echoes: 4 weeks of snapshots. Correct?
+3. The league names: Bronze, Silver, Gold, Platinum, Champion. Keep them?

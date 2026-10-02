@@ -39,7 +39,8 @@ floors and rooms that get harder, and the member sees how deep they can go.
 
 - **5 cards** (Nathan, 2026-10-02).
 - **The budget:** each card costs points by its rarity: Normal 1, Illustrated Rare 2,
-  Secret Rare 3, Full Art 4, Gold 5. The daily budget is **12 points** (a proposal). So a
+  Secret Rare 3, Full Art 4, Gold 5. The daily budget is **12 points** (Nathan, 2026-10-02:
+  try it and test it). So a
   member can bring one Gold card, but then the other cards must be cheap.
 - **The daily rule** (from the seed). Examples: "Creatures and Items only", "Fire cards
   deal +25%", "No Gold today", "A budget of 8".
@@ -76,6 +77,14 @@ The choices make each run a set of decisions, not only a check of the collection
 
 - Full Art and Gold never drop. Event, promo, and achievement cards never drop.
 - The member keeps all loot when the squad falls. A run never loses its loot.
+
+## 5A. Retreat (Nathan, 2026-10-02)
+
+- Between rooms, the member can press **Retreat**. The run ends. The member keeps the
+  depth that they reached and all the loot.
+- A retreat and a fall give the same result. Retreat only lets a member stop when the
+  squad cannot go farther, so they do not have to play out a lost fight.
+- Retreat is not possible in the middle of a fight.
 
 ## 6. The daily seed
 
@@ -149,7 +158,4 @@ The choices make each run a set of decisions, not only a check of the collection
 
 ## 12. Open questions for Nathan
 
-1. A budget of 12 points for the 5 cards: is that a good start?
-2. Can the member stop a run ("Retreat") and keep the depth, or does a run only end when
-   the squad falls?
-3. Do the season-best runs give a reward at the end of the season?
+1. Do the season-best runs give a reward at the end of the season?
