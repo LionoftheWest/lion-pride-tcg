@@ -178,7 +178,8 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
     const best = [...bids].sort((x, y) => (y.meets - x.meets) || (y.score - x.score))[0] || null;
     const seller = String(a.seller_id) === myId;
     res.json({ id: a.id, seller_id: String(a.seller_id), seller: nm.get(String(a.seller_id)) || 'A member', card: card(cat, a.card_id), min: minOf(a, cat),
-      status: a.status, ends_at: a.ends_at, accepted_bid_id: a.accepted_bid_id, isSeller: seller, bidsCount: bids.length,
+      status: a.status, ends_at: a.ends_at, accepted_bid_id: a.accepted_bid_id,
+      confirm_by: a.accepted_at ? new Date(new Date(a.accepted_at).getTime() + 24 * 3600e3).toISOString() : null, isSeller: seller, bidsCount: bids.length,
       bids: seller ? bids : undefined, myBid: bids.find((b) => b.bidder_id === myId) || null,
       best: best && { cards: best.cards, meets: best.meets, mine: best.bidder_id === myId } });
   });
@@ -216,8 +217,8 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
     const d = await rpc(res, 'accept_bid', { p_seller: String(me.id), p_bid: Number(req.body?.bidId) });
     if (!d) return;
     const who = me.global_name || me.username;
-    notify(d.bidder, 'auction_accepted', `🔨 ${who} accepted your auction bid! Open the auction to confirm the trade.`);
-    if (postsOn()) announce(`🔨 <@${d.bidder}> — **${who}** accepted your auction bid! Open Lion Pride TCG to confirm the trade.`, 'trades');
+    notify(d.bidder, 'auction_accepted', `🔨 ${who} accepted your auction bid! Confirm the trade within 24 hours.`);
+    if (postsOn()) announce(`🔨 <@${d.bidder}> — **${who}** accepted your auction bid! Open Lion Pride TCG to confirm the trade within 24 hours.`, 'trades');
     res.json(d);
   });
   app.post('/api/auction/close', async (req, res) => {

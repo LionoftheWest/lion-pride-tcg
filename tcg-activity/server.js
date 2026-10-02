@@ -380,8 +380,10 @@ app.get('/api/flags', async (req, res) => {
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
-// replay it, or finish it (1 outside pack, once ever).
+// replay it, or finish it (1 outside pack, once ever). 'seen' records a view explainer the member
+// has seen (ui-v2-explain.js), so it opens by itself only the first time.
 const TUTORIAL_STEPS = ['gifts', 'open', 'rarity', 'collection', 'hunt', 'community', 'dailies', 'voice']; // the reward needs the 7 after 'gifts'
+const EXPLAIN_SETS = ['hall', 'auctions'];
 app.post('/api/tutorial', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
@@ -399,8 +401,9 @@ app.post('/api/tutorial', async (req, res) => {
   const t = row.tutorial || {};
   let next;
   if (action === 'step' && TUTORIAL_STEPS.includes(req.body?.step)) next = { ...t, done: [...new Set([...(t.done || []), req.body.step])] };
+  else if (action === 'seen' && EXPLAIN_SETS.includes(req.body?.set)) next = { ...t, seen: [...new Set([...(t.seen || []), req.body.set])] };
   else if (action === 'skip') next = { ...t, skipped: true };
-  else if (action === 'replay') next = { done: [], skipped: false };
+  else if (action === 'replay') next = { ...t, done: [], skipped: false };
   else return res.status(400).json({ error: 'bad action' });
   const { error } = await supabase.from('players').update({ tutorial: next }).eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
