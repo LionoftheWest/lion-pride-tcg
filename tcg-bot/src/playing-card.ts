@@ -13,16 +13,23 @@ export const RARITY: Record<string, { label: string; color: string; rank: number
   illustrated_rare: { label: 'Illustrated Rare', color: '#4DA3FF', rank: 1 },
   secret_rare: { label: 'Secret Rare', color: '#B18CFF', rank: 2 },
   full_art: { label: 'Full Art', color: '#FF5CA8', rank: 3 },
+  event: { label: 'Event', color: '#10B981', rank: 3 },
+  promo: { label: 'Promo', color: '#C9CED8', rank: 2 },
   gold: { label: 'Gold', color: '#F4B73C', rank: 4 },
 };
 
 // dist/ (the image) keeps the assets beside it; src/ runs under tsx in the tests.
-const ASSETS = [join(process.cwd(), 'assets'), join(process.cwd(), 'src', 'assets')].find((p) => existsSync(p)) ?? 'assets';
+export const ASSETS = [join(process.cwd(), 'assets'), join(process.cwd(), 'src', 'assets')].find((p) => existsSync(p)) ?? 'assets';
 let fontsReady = false;
-function fonts(): void {
+export function fonts(): void {
   if (fontsReady) return;
   GlobalFonts.registerFromPath(join(ASSETS, 'fonts', 'bricolage-grotesque-latin-wght-normal.woff2'), 'Bricolage');
   GlobalFonts.registerFromPath(join(ASSETS, 'fonts', 'inter-latin-wght-normal.woff2'), 'Inter');
+  // Fallbacks for names the two fonts cannot draw (Cyrillic, Greek, accents, emoji): "ЯΛIDΣП" and
+  // "Pringles 🐊" showed as boxes (2026-10-02). Noto Sans + Noto Emoji, OFL (fonts/LICENSE.txt).
+  // One family per subset file: the canvas uses one file per family name.
+  for (const s of ['latin-ext', 'cyrillic', 'cyrillic-ext', 'greek', 'greek-ext']) GlobalFonts.registerFromPath(join(ASSETS, 'fonts', `noto-sans-${s}-wght-normal.woff2`), `NS-${s}`);
+  for (let i = 0; i <= 10; i++) GlobalFonts.registerFromPath(join(ASSETS, 'fonts', `noto-emoji-${i}-wght-normal.woff2`), `NE-${i}`);
   fontsReady = true;
 }
 
@@ -38,12 +45,12 @@ export type PlayingCardInput = {
   frame: { art: Buffer | null; color: string } | null;
 };
 
-async function img(buf: Buffer | null): Promise<Image | null> {
+export async function img(buf: Buffer | null): Promise<Image | null> {
   if (!buf) return null;
   try { return await loadImage(buf); } catch { return null; }
 }
 
-function rounded(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: number): void {
+export function rounded(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: number): void {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -54,13 +61,13 @@ function rounded(ctx: SKRSContext2D, x: number, y: number, w: number, h: number,
 }
 
 // Draw an image to cover the box (like CSS object-fit: cover).
-function cover(ctx: SKRSContext2D, im: Image, x: number, y: number, w: number, h: number): void {
+export function cover(ctx: SKRSContext2D, im: Image, x: number, y: number, w: number, h: number): void {
   const s = Math.max(w / im.width, h / im.height);
   const iw = im.width * s, ih = im.height * s;
   ctx.drawImage(im, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
 }
 
-function fitText(ctx: SKRSContext2D, text: string, font: (px: number) => string, start: number, maxW: number): void {
+export function fitText(ctx: SKRSContext2D, text: string, font: (px: number) => string, start: number, maxW: number): void {
   let px = start;
   ctx.font = font(px);
   while (px > 28 && ctx.measureText(text).width > maxW) { px -= 2; ctx.font = font(px); }
@@ -98,7 +105,7 @@ export async function renderPlayingCard(p: PlayingCardInput): Promise<Buffer> {
   // The brand chip.
   if (icon) { ctx.save(); rounded(ctx, 64, 56, 44, 44, 11); ctx.clip(); ctx.drawImage(icon, 64, 56, 44, 44); ctx.restore(); }
   ctx.fillStyle = '#F4B73C';
-  ctx.font = '800 22px Inter';
+  ctx.font = '800 22px Inter, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10';
   ctx.fillText('LION PRIDE TCG', 122, 87);
 
   // The avatar with a gold ring (the initial when there is no picture).
@@ -112,7 +119,7 @@ export async function renderPlayingCard(p: PlayingCardInput): Promise<Buffer> {
   if (avatar) cover(ctx, avatar, ax, ay, as, as);
   else {
     ctx.fillStyle = '#6b4dff'; ctx.fillRect(ax, ay, as, as);
-    ctx.fillStyle = '#fff'; ctx.font = '800 72px Bricolage'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff'; ctx.font = '800 72px Bricolage, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10'; ctx.textAlign = 'center';
     ctx.fillText((p.name[0] ?? '?').toUpperCase(), ax + as / 2, ay + as / 2 + 26);
     ctx.textAlign = 'left';
   }
@@ -120,17 +127,17 @@ export async function renderPlayingCard(p: PlayingCardInput): Promise<Buffer> {
 
   // Name, "is playing", and today's numbers.
   ctx.fillStyle = '#ffffff';
-  fitText(ctx, p.name, (px) => `800 ${px}px Bricolage`, 68, 560);
+  fitText(ctx, p.name, (px) => `800 ${px}px Bricolage, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10`, 68, 560);
   ctx.fillText(p.name, 64, 420);
   ctx.fillStyle = p.live ? '#7CF0B0' : '#b9bdd0';
   if (p.live) { ctx.beginPath(); ctx.arc(73, 458, 8, 0, Math.PI * 2); ctx.fill(); } // the fonts have no ● glyph
-  fitText(ctx, p.line, (px) => `600 ${px}px Inter`, 30, 560);
+  fitText(ctx, p.line, (px) => `600 ${px}px Inter, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10`, 30, 560);
   ctx.fillText(p.line, p.live ? 92 : 64, 468);
 
   // The best pull of the day, framed in its rarity color (or the brand when none yet).
   const cw = 318, ch = Math.round(cw * 7 / 5), cx = W - cw - 88, cy = (H - ch) / 2 + 12; // just the card (Nathan: no tier or name line)
   ctx.fillStyle = '#FF7FB6';
-  ctx.font = '800 17px Inter';
+  ctx.font = '800 17px Inter, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10';
   ctx.textAlign = 'right';
   ctx.fillText(p.tag, cx + cw, cy - 16);
   ctx.textAlign = 'left';

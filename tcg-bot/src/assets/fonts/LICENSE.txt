@@ -6,3 +6,5 @@ SIL Open Font License 1.1 (https://openfontlicense.org):
 - Instrument Serif (regular + italic)
 They are served from this app's own origin because Discord's Activity frame blocks
 outside font servers.
+
+Noto Sans and Noto Emoji (fallback fonts for the bot pictures): SIL Open Font License 1.1, Copyright Google LLC. Fetched from @fontsource-variable/noto-sans and @fontsource-variable/noto-emoji (2026-10-02).
