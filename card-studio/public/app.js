@@ -1,3 +1,6 @@
+// The grid copy of a card image (card-studio/src/thumbs.js; the same rule as tcg-activity/src/thumb.js).
+const GRID_PARTS = /\/card-art\/(cards\/[^?]+?)\.(png|webp|jpe?g)(\?|$)/i;
+const gridThumb = (url) => (url ? url.replace(GRID_PARTS, '/card-art/grid/$1.webp$3') : url);
 const el = (id) => document.getElementById(id);
 let cards = [];
 let current = null;
@@ -78,11 +81,13 @@ function renderGallery() {
       // pushed finishes use the live Supabase file (specials animate);
       // everything else renders on demand from /face.
       const liveUrl = c.pushed && c.live && c.live[f];
-      const src = liveUrl || `/face/${c.id}/${f}`;
+      // The grid copy, not the full image: one studio open downloaded the whole catalog at full
+      // size (~250 MB of Supabase egress, 2026-10-01). The full image is the fallback.
+      const src = liveUrl ? gridThumb(liveUrl) : `/face/${c.id}/${f}`;
       const g = document.createElement('div');
       g.className = 'gcard';
       g.innerHTML =
-        `<div class="gframe"><canvas class="thumb" data-src="${src}"></canvas></div>` +
+        `<div class="gframe"><canvas class="thumb" data-src="${src}"${liveUrl ? ` data-full="${liveUrl}"` : ''}></canvas></div>` +
         `<div class="gcap">${c.name}<br><span class="gfin ${f}">${f.replace(/_/g, ' ')}</span></div>`;
       g.onclick = () => openCard(c);
       box.appendChild(g);
@@ -96,6 +101,8 @@ function renderGallery() {
       cv.height = im.naturalHeight;
       cv.getContext('2d').drawImage(im, 0, 0);
     };
+    // A missing grid copy: the full image.
+    im.onerror = () => { const full = cv.dataset.full; if (full && im.src !== full) im.src = full; };
     im.src = cv.dataset.src;
   });
 }

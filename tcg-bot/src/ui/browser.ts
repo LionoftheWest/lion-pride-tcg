@@ -6,6 +6,7 @@ import {
   StringSelectMenuBuilder,
   type MessageActionRowComponentBuilder,
 } from 'discord.js';
+import { publicImg } from '../img-url.js';
 import type { Card } from '../store.js';
 import type { Rarity } from '../draw.js';
 import {
@@ -113,7 +114,7 @@ export function buildBrowser(opts: {
     embed.addFields({ name: 'Owned', value: `×${item.quantity}`, inline: true });
   }
   if (card.lore) embed.setDescription(card.lore);
-  if (card.image_url) embed.setImage(card.image_url);
+  if (card.image_url) embed.setImage(publicImg(card.image_url)!); // the VM cache (img-url.ts)
   const footer = `Card ${page + 1} of ${sorted.length}${
     card.artist_credit ? ` • Art by ${card.artist_credit}` : ''
   }`;
