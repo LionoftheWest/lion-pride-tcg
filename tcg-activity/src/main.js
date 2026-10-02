@@ -2245,7 +2245,7 @@ async function refreshHuntState() {
   const slot = el('usedSlot'); if (slot) slot.innerHTML = `Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}`;
   if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); }
   paintTeam();
-  // The squad is down only when EVERY card of it is down, the supports too (a card that has not fought is alive).
+  // The squad is down when every ATTACKER of it is down (a card that has not fought is alive).
   if (squad.phase === 'battle' && h.status !== 'defeated' && squadDown(huntState.roster || [], [...squad.sel])) squadDownSequence();
 }
 

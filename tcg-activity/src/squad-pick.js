@@ -170,12 +170,13 @@ export function openSlots(cards, selectedIds, { cap = 8 } = {}) {
 // Is the squad down? (Nathan, 2026-10-02: "halfway through my squad, when one of my cards got
 // knocked out, it said my squad was wiped out completely". The old check looked only at the
 // cards that had FOUGHT: the first card downed before the others attacked was 1 of 1 down.)
-// Nathan's rules (2026-10-02): one squad of 8 a day (attackers + supports), locked in (hunt_squads on
-// the server); it fights until the ENTIRE squad is wiped, the supports too. A card of the squad that
-// has not fought yet is alive. Without a locked squad (a member who fought before hunt_squads.sql),
-// the cards that fought are the squad.
+// One squad of 8 a day (attackers + supports), locked in (hunt_squads on the server). The squad is
+// down when every ATTACKER of it is down: the boss acts only after an attack, so once the attackers
+// are down nothing can hit the supports or move the rounds their cooldowns wait on (2026-10-02: an
+// every-card rule could never end a squad). A card of the squad that has not fought yet is alive.
+// Without a locked squad (a member who fought before hunt_squads.sql), the cards that fought count.
 export function squadDown(cards, selIds) {
   const sel = new Set((selIds || []).map(Number));
-  const squad = cards.filter((c) => sel.has(Number(c.id)) || c.used);
+  const squad = cards.filter((c) => ATTACKERS.has(c.type) && (sel.has(Number(c.id)) || c.used));
   return squad.length > 0 && squad.every((c) => c.downed);
 }
