@@ -56,7 +56,8 @@ export async function renderHall() {
   if (!ctx().cache.collection) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
   if (hall.sub === 'auctions') await loadAuctions(); else await loadHall();
   if (!here() || key() !== k) return; // the member moved on meanwhile
-  if (!cached || snap() !== before || !ctx().cache.collection) paintHall();
+  if (!cached || snap() !== before || !ctx().cache.collection || hall.openAccepted) paintHall();
+  hall.openAccepted = false; // the fresh list was searched
 }
 // The live trade poll: an offer arrived or closed while I look at the Hall.
 export function repaintHall() { if (hall.sub === 'hall') paintHall(); }
@@ -110,6 +111,7 @@ const left = (iso) => {
   const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
   return { text: d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`, soon: s < 86400 };
 };
+const closedText = (a) => (a.status === 'accepted' ? 'The seller accepted a bid. Bids are closed.' : a.status === 'sold' ? 'This auction is sold.' : 'This auction ended.');
 const minText = (min) => {
   const parts = [];
   if (min?.count > 0 && min.rarity) parts.push(`<span class="hl-min"><b>${min.count}×</b> <i style="color:var(--r-${min.rarity})">◆ ${esc(RL(min.rarity))}</i></span>`);
@@ -153,7 +155,7 @@ function paintHallGrid() {
   if (!items.length) el('hlGrid').innerHTML = `<p class="v2-empty">${hall.view === 'wanted' ? 'No member has a wishlist yet. Set yours on your profile.' : 'No cards are listed yet. List one with Manage My Listings.'}</p>`;
   el('hlView').onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b) return; hall.view = b.dataset.v; hall.page = 0; paintHall(); };
   el('hlQ').addEventListener('input', (e) => { hall.q = e.target.value; hall.page = 0; const pos = e.target.selectionStart; paintHall(); const n = el('hlQ'); n.focus(); try { n.setSelectionRange(pos, pos); } catch { /* */ } });
-  el('hlList').onclick = () => { hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); };
+  el('hlList').onclick = async () => { try { await ctx().refreshOwned(); } catch { /* keep */ } hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); };
 }
 
 // ---- The offer composer (an offer on a Wanted or a For trade card) -----------------------------
@@ -172,6 +174,9 @@ function paintComposer() {
   const wanted = s.kind === 'wanted';
   const g = hall.give;
   const steps = wanted ? ['You offer', `${s.name} picks`, 'You accept'] : ['You offer', `${s.name} accepts`];
+  const explain = !g ? '' : wanted
+    ? `You send ${g.name}. ${s.name} picks one of their ${RL(g.rarity)} cards to give back, then you accept the swap.`
+    : `You send ${g.name} for their ${s.card.name}. The swap happens when ${s.name} accepts.`;
   const theirs = wanted
     ? `<div class="hl-side right"><div class="tr-info"><span class="tr-who">${avatarHTML(s.player_id, s.name, 'xs')} Their offer</span><h3>${title(s.name)} picks</h3>${g ? rarityTag(g) : ''}</div>${cardImg(null)}</div>`
     : `<div class="hl-side right"><div class="tr-info"><span class="tr-who">${avatarHTML(s.player_id, s.name, 'xs')} Their offer</span><h3>${title(s.card.name)}</h3>${rarityTag(s.card)}</div>${cardImg(s.card)}</div>`;
@@ -185,6 +190,7 @@ function paintComposer() {
   }).join('');
   shell(`<div class="tr-compose hl-compose">
       <div class="tr-deal">${yours}<span class="tr-swap">⇄</span>${theirs}</div>
+      ${explain ? `<p class="hl-explain">${esc(explain)}</p>` : ''}
       <div class="tr-foot"><ol class="hl-steps">${steps.map((t, i) => `<li class="${i === 0 ? 'on' : ''}"><b>${i + 1}</b> ${esc(t)}</li>`).join('')}</ol>
         <span class="grow"></span><span class="tr-msg" id="hlMsg">${esc(hall.msg)}</span>
         <button class="v2-btn" id="hlClear">↺ Clear</button><button class="v2-btn gold" id="hlSend" ${g ? '' : 'disabled'}>➤ Send offer</button></div>
@@ -249,11 +255,12 @@ function paintAuctionGrid() {
   const items = list.map((a, i) => ({ ...a.card, _a: a, _k: i }));
   shell(`<div class="tr-gridhead hl-head">
       <div class="seg" id="hlAView"><button data-v="open" class="${hall.aview === 'open' ? 'on' : ''}">🔨 Open auctions</button><button data-v="mine" class="${hall.aview === 'mine' ? 'on' : ''}">👤 My auctions</button></div>
-      <span class="grow"></span><button class="v2-btn gold" id="hlStart">🔨 Start auction</button><div class="v2-pager" id="hlPager"></div></div>
+      <span class="grow"></span><button class="v2-btn gold" id="hlStart">⚙ Manage My Listings</button><div class="v2-pager" id="hlPager"></div></div>
     <div class="v2-grid hl-agrid" id="hlGrid" data-cap="${isPhone() ? 54 : 46}"></div>`);
   hall.tile = (c, idx, sel) => {
     const a = c._a, t = left(a.ends_at);
-    const status = a.status === 'live' ? `<span class="hl-left${t.soon ? ' soon' : ''}">⧗ ${t.text}</span>` : `<span class="hl-left done">${a.status === 'accepted' ? 'Accepted' : a.status === 'sold' ? 'Sold' : 'Ended'}</span>`;
+    const waitMe = a.status === 'accepted' && a.myBid && !a.mine;
+    const status = a.status === 'live' ? `<span class="hl-left${t.soon ? ' soon' : ''}">⧗ ${t.text}</span>` : waitMe ? '<span class="hl-left confirm">Confirm</span>' : `<span class="hl-left done">${a.status === 'accepted' ? 'Accepted' : a.status === 'sold' ? 'Sold' : 'Ended'}</span>`;
     return `<div class="v2-cell${sel ? ' sel' : ''}" data-idx="${idx}"><div class="v2-card r-${c.rarity}">${a.myBid ? '<span class="hl-yb">🔨 Your bid</span>' : ''}${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
       ${isPhone() ? `<div class="v2-cap hl-cap two ph"><span class="hl-who">${nm(a.seller_id, a.seller)}</span><span class="hl-r2">${status}<span class="hl-bids">🔨 ${a.bids}</span></span></div></div>` : ''}
       ${isPhone() ? '' : `<div class="v2-cap hl-cap two"><span class="hl-r1">${avatarHTML(a.seller_id, a.seller, 'xs')}<span class="hl-who">${nm(a.seller_id, a.seller)}</span>${status}</span>
@@ -262,7 +269,19 @@ function paintAuctionGrid() {
   paintCards(el('hlGrid'), el('hlPager'), items, hall, async (c) => { await openAuction(c._a.id); });
   if (!items.length) el('hlGrid').innerHTML = `<p class="v2-empty">${hall.aview === 'open' ? 'No auctions are open. Start one!' : 'You have no auctions or bids.'}</p>`;
   el('hlAView').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (!b || b.dataset.v === hall.aview) return; hall.aview = b.dataset.v; hall.page = 0; await renderHall(); };
-  el('hlStart').onclick = () => { hall.start = { card: null, filter: 'all', minRarity: null, minCount: 0, minCards: [], mode: 'and', days: 3, q: '', msg: '' }; hall.page = 0; paintHall(); };
+  // From the bell's Confirm: open the auction that waits for me (the cached list may not have it yet).
+  if (hall.openAccepted) {
+    const w = list.find((a) => a.status === 'accepted' && a.myBid && !a.mine);
+    if (w) { hall.openAccepted = false; openAuction(w.id); return; }
+  }
+  el('hlStart').onclick = async () => {
+    // One live auction per member: Manage opens it; with none, it opens Start an auction.
+    let my = [...(hall.auctionsBy.open || []), ...(hall.auctionsBy.mine || [])].find((a) => a.mine);
+    if (!my) { const d = await ctx().api('/api/auctions?view=mine').catch(() => null); my = (d?.auctions || []).find((a) => a.mine); }
+    if (my) { await openAuction(my.id); return; }
+    try { await ctx().refreshOwned(); } catch { /* keep */ } // a card sold a moment ago is not offered
+    hall.start = { card: null, filter: 'all', minRarity: null, minCount: 0, minCards: [], mode: 'and', days: 3, q: '', msg: '' }; hall.page = 0; hall.sheet = false; paintHall();
+  };
 }
 
 // ---- Start an auction ---------------------------------------------------------------------------
@@ -304,9 +323,27 @@ function paintStart() {
   el('hsDMinus').onclick = () => { st.days = Math.max(1, st.days - 1); paintHall(); };
   el('hsDPlus').onclick = () => { st.days = Math.min(14, st.days + 1); paintHall(); };
   el('hsMode').onclick = (e) => { const b = e.target.closest('[data-m]'); if (!b) return; st.mode = b.dataset.m; paintHall(); };
-  el('hsQ').addEventListener('input', (e) => { st.q = e.target.value; const pos = e.target.selectionStart; paintHall(); const n = el('hsQ'); n.focus(); try { n.setSelectionRange(pos, pos); } catch { /* */ } });
-  el('main').querySelectorAll('.hl-hit').forEach((b) => b.addEventListener('click', () => { const x = cat.find((k) => Number(k.id) === Number(b.dataset.id)); if (x && st.minCards.length < 3) st.minCards.push(x); st.q = ''; paintHall(); }));
-  el('main').querySelectorAll('.hl-chip button').forEach((b) => b.addEventListener('click', () => { st.minCards = st.minCards.filter((x) => Number(x.id) !== Number(b.dataset.id)); paintHall(); }));
+  const hitsHTML = () => {
+    const qq = st.q.trim().toLowerCase();
+    const hh = qq ? cat.filter((x) => allowed.includes(x.rarity) && x.name.toLowerCase().includes(qq) && !st.minCards.some((m) => m.id === x.id)).slice(0, 4) : [];
+    return hh.map((x) => `<button class="hl-hit" data-id="${x.id}">${cardImg(x, 'xs')}<span>${esc(x.name)}<br><i style="color:var(--r-${x.rarity})">◆ ${esc(RL(x.rarity))}</i></span><b>＋</b></button>`).join('');
+  };
+  const chipsHTML = () => st.minCards.map((x) => `<span class="hl-chip">${cardImg(x, 'xs')}${esc(x.name)}<button data-id="${x.id}" title="Remove">✕</button></span>`).join('');
+  const panelEl = el('main').querySelector('.hl-panel');
+  const refreshPicks = () => {
+    panelEl.querySelector('.hl-hits').innerHTML = hitsHTML();
+    panelEl.querySelector('.hl-chips').innerHTML = chipsHTML();
+    el('hsQ').disabled = st.minCards.length >= 3;
+  };
+  el('hsQ').addEventListener('input', (e) => { st.q = e.target.value; panelEl.querySelector('.hl-hits').innerHTML = hitsHTML(); });
+  // pointerdown keeps the box focused (the keyboard stays, nothing jumps); the pick is on click.
+  panelEl.addEventListener('pointerdown', (e) => { if (e.target.closest('.hl-hit, .hl-chip button')) e.preventDefault(); });
+  panelEl.addEventListener('click', (e) => {
+    const hit = e.target.closest('.hl-hit');
+    if (hit) { const x = cat.find((k) => Number(k.id) === Number(hit.dataset.id)); if (x && st.minCards.length < 3) st.minCards.push(x); st.q = ''; el('hsQ').value = ''; refreshPicks(); return; }
+    const rm = e.target.closest('.hl-chip button');
+    if (rm) { st.minCards = st.minCards.filter((x) => Number(x.id) !== Number(rm.dataset.id)); refreshPicks(); }
+  });
   el('hsGo').onclick = async () => {
     el('hsGo').disabled = true;
     let r = null;
@@ -321,6 +358,7 @@ function paintStart() {
 
 // ---- One auction: the seller view or the bidder view ----------------------------------------------
 async function openAuction(id) {
+  try { await ctx().refreshOwned(); } catch { /* keep */ }
   const d = await ctx().api(`/api/auction?id=${id}`).catch(() => null);
   if (!d || d.error) { hall.auction = null; await renderHall(); return; }
   hall.auction = d; hall.bid = (d.myBid?.cards || []).map((c) => Number(c.id)); // ids (the slots look the cards up) hall.page = 0; hall.msg = '';
@@ -334,8 +372,9 @@ async function openAuction(id) {
 }
 function auctionPanel(a, extra) {
   const t = left(a.ends_at);
-  return `<aside class="v2-tile hl-panel"><div class="tile-h">${a.isSeller ? '<b>🔨 Your auction</b>' : `${avatarHTML(a.seller_id, a.seller, 'xs')}<b>${nm(a.seller_id, a.seller)}</b>`}<span class="grow"></span><span class="hl-tag" style="color:var(--r-${a.card.rarity})">◆ ${esc(RL(a.card.rarity))}</span></div>
-    <div class="hl-big">${cardImg(a.card, 'big')}<h3>${title(a.card.name)}</h3></div>
+  const who = a.isSeller ? '<b>🔨 Your auction</b>' : `${avatarHTML(a.seller_id, a.seller, 'xs')}<b>${nm(a.seller_id, a.seller)}</b>`;
+  return `<aside class="v2-tile hl-panel"><div class="tile-h">${isPort() ? '<b>🔨 Auction Information</b>' : who}<span class="grow"></span><span class="hl-tag" style="color:var(--r-${a.card.rarity})">◆ ${esc(RL(a.card.rarity))}</span></div>
+    ${isPort() ? `<div class="hl-seller">${who}</div>` : ''}<div class="hl-big">${cardImg(a.card, 'big')}<h3>${title(a.card.name)}</h3></div>
     <div class="hl-stats"><div><span class="side-h">Minimum</span><div class="hl-mins-l">${minText(a.min)}</div></div><div><span class="side-h">Bids</span><b class="mono">${a.bidsCount}</b></div></div>
     <div class="hl-time${t.soon ? ' soon' : ''}">${a.status === 'live' || a.status === 'accepted' ? `⧗ <b class="mono">${t.text}</b><span class="dim">Ends ${new Date(a.ends_at).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</span>` : `<b>${a.status === 'sold' ? 'Sold' : 'Ended'}</b>`}</div>
     ${extra}</aside>`;
@@ -361,9 +400,9 @@ function paintAuction() {
   const best = a.best ? `<div class="hl-best"><div class="side-h">Best bid ${a.best.meets ? '<span class="hl-ok">✓ Meets minimum</span>' : ''}${a.best.mine ? ' <span class="hl-ok">You</span>' : ''}</div>
       <div class="hl-bestrow"><span class="hl-thumbs">${a.best.cards.map((x) => cardImg(x, 'xs')).join('')}</span><span class="hl-sum">${bidSummary(a.best.cards)}</span></div></div>` : '<p class="dim">No bids yet.</p>';
   shell(`<div class="hl-bid">
-      <div class="hl-bidhead"><span class="side-h hl-yourbid">Your bid <span class="n">${hall.bid.length} / 5</span></span>${bidCards.length ? `<span class="${meets ? 'hl-ok' : 'hl-below'}">${meets ? '✓ Meets minimum' : 'Below minimum'}</span>` : ''}
+      <div class="hl-bidhead"><span class="side-h hl-yourbid">Your bid <span class="n">${hall.bid.length} / 5</span></span>${a.status !== 'live' && !confirm ? `<span class="hl-closed">${esc(closedText(a))}</span>` : bidCards.length ? `<span class="${meets ? 'hl-ok' : 'hl-below'}">${meets ? '✓ Meets minimum' : 'Below minimum'}</span>` : ''}
         <span class="grow"></span><span class="tr-msg" id="hlMsg">${esc(hall.msg)}</span>${my && !confirm ? '<button class="v2-btn" id="hbWithdraw">↩<span class="bt"> Withdraw</span></button>' : ''}<button class="v2-btn gold" id="hbPlace" ${bidCards.length && a.status === 'live' ? '' : 'disabled'}>🔨 <span class="bt">${my ? 'Update' : 'Place'} </span>bid</button></div>
-      <div class="hl-slots">${[0, 1, 2, 3, 4].map((i) => (bidCards[i] ? `<button class="hl-slot" data-i="${i}">${cardImg(bidCards[i])}<span>${title(bidCards[i].name)}</span></button>` : '<div class="hl-slot empty"><span>＋</span><i>Add card</i></div>')).join('')}</div>
+      <div class="hl-slots">${[0, 1, 2, 3, 4].map((i) => (bidCards[i] ? `<button class="hl-slot" data-i="${i}">${cardImg(bidCards[i])}<span>${title(bidCards[i].name)}</span></button>` : '<button class="hl-slot empty"><span>＋</span><i>Add card</i></button>')).join('')}</div>
     </div>
     <div class="tr-gridhead hl-head"><div class="seg"><button class="on">My cards <b>${items.length}</b></button></div><span class="hl-note dim">${gold ? 'A Gold auction takes Full Art, Promo and Event cards.' : 'Any card but Gold.'}</span><span class="grow"></span><div class="v2-pager" id="hlPager"></div></div>
     <div class="v2-grid" id="hlGrid"></div>
@@ -375,13 +414,20 @@ function paintAuction() {
   hall.tile = (c, idx, sel) => `<div class="v2-cell${sel ? ' sel' : ''}${inBid(c) ? ' in-bid' : ''}" data-idx="${idx}"><div class="v2-card r-${c.rarity}">${inBid(c) ? '<span class="hl-check">✓</span>' : ''}<img src="${thumb(c.image_url)}" data-full="${c.image_url}" alt="${esc(c.name)}" loading="lazy"></div>
     <div class="v2-cap">${c._tag ? `<span class="hl-tagc ${c._tag === 'Minimum' ? 'min' : 'wish'}">${c._tag === 'Minimum' ? '☰ Minimum' : '♡ Wishlist'}</span>` : `<span class="cap-pow">⚡ ${c.power ?? ''}</span>`}${c.quantity > 1 ? `<span class="cap-qty">×${free(c)}</span>` : ''}</div></div>`;
   paintCards(el('hlGrid'), el('hlPager'), items, hall, (c) => {
-    if (a.status !== 'live') return;
+    if (a.status !== 'live') { hall.msg = closedText(a); paintHall(); return; }
     const have = free(c) + (my?.cards || []).filter((x) => Number(x.id) === Number(c.id)).length;
-    if (inBid(c) >= have) hall.bid.splice(hall.bid.findIndex((x) => Number(x) === Number(c.id)), 1); // tap again = out
-    else if (hall.bid.length < 5) hall.bid.push(Number(c.id));
+    const at = hall.bid.findIndex((x) => Number(x) === Number(c.id));
+    if (at >= 0 && inBid(c) >= have) hall.bid.splice(at, 1); // tap again = out
+    else if (hall.bid.length < 5 && inBid(c) < have) hall.bid.push(Number(c.id));
+    else if (hall.bid.length >= 5) { hall.msg = 'A bid holds 5 cards.'; paintHall(); return; }
     hall.msg = ''; paintHall();
   });
   el('main').querySelectorAll('.hl-slot[data-i]').forEach((b) => b.addEventListener('click', () => { hall.bid.splice(Number(b.dataset.i), 1); paintHall(); }));
+  // An empty slot: the cards below fill it (a tap there did nothing, Nathan 2026-10-02).
+  el('main').querySelectorAll('.hl-slot.empty').forEach((b) => b.addEventListener('click', () => {
+    if (a.status !== 'live') { hall.msg = closedText(a); paintHall(); return; }
+    const g = el('hlGrid'); g?.scrollIntoView({ block: 'nearest' }); g?.classList.remove('hl-flash'); void g?.offsetWidth; g?.classList.add('hl-flash');
+  }));
   el('hbPlace').onclick = async () => {
     el('hbPlace').disabled = true;
     let r = null;

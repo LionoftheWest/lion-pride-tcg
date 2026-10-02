@@ -18,6 +18,10 @@ const ERR = {
 };
 const fail = (res, code) => res.status(400).json({ ok: false, error: code, message: ERR[code] || code });
 
+// A real member (a Discord id) never sees the automated test members (ids tst_*).
+const realCaller = (id) => /^\d{17,20}$/.test(String(id));
+const testId = (id) => String(id).startsWith('tst_');
+
 export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn }) {
   const gate = async (req, res, write = false) => {
     const me = await caller(req);
@@ -84,6 +88,7 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
       catalog(), owned(myId), held(myId)]);
     if (wish.error || listings.error) return res.status(500).json({ error: (wish.error || listings.error).message });
     const free = freeOf(own, hold);
+    if (realCaller(myId)) { wish.data = (wish.data || []).filter((w) => !testId(w.player_id)); listings.data = (listings.data || []).filter((l) => !testId(l.player_id)); }
     const others = listings.data || []; // every listing, mine included (tagged mine)
     // The listers still own the card (a listing does not hold a copy).
     const listerIds = [...new Set(others.map((l) => String(l.player_id)))];
@@ -148,7 +153,7 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
     const live = await selectAll(() => supabase.from('auctions').select('id, seller_id, card_id, min_rarity, min_count, min_cards, min_mode, status, ends_at, created_at')
       .in('status', ['live', 'accepted']), ['id']); // only live auctions show (Nathan, 2026-10-02)
     if (live.error) return res.status(500).json({ error: live.error.message });
-    let rows = live.data || [];
+    let rows = (live.data || []).filter((a) => !realCaller(myId) || !testId(a.seller_id));
     const ids = rows.map((a) => a.id);
     const bids = ids.length ? await selectAll(() => supabase.from('auction_bids').select('auction_id, bidder_id, status').in('auction_id', ids).in('status', ['open', 'accepted', 'won']), ['id']) : { data: [] };
     const myBid = new Set((bids.data || []).filter((b) => String(b.bidder_id) === myId).map((b) => b.auction_id));

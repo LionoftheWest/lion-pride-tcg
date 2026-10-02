@@ -639,3 +639,13 @@ body.ui-v2 .hall-view .v2-grid > .v2-empty { grid-column: 1 / -1; justify-self: 
 body.ui-v2 .hl-n.yours { color: var(--on-gold); background: var(--gold); border-color: var(--gold); }
 /* Left-aligned at the normal gap (stretching the columns spread two cards across the screen). */
 body.ui-v2 .hall-view .v2-grid { justify-content: start; }
+
+body.ui-v2 .hl-left.confirm { color: var(--on-gold); background: var(--gold); padding: 1px 6px; border-radius: 6px; font-weight: 800; }
+
+/* Review 2 (Nathan, 2026-10-02). */
+body.ui-v2 .hl-explain { margin: 8px 0 0; font-size: 12.5px; line-height: 1.35; color: var(--text-secondary); }
+body.ui-v2 .hl-closed { font: 700 11.5px var(--font-ui); color: var(--danger); }
+body.ui-v2 button.hl-slot.empty { cursor: pointer; }
+body.ui-v2 .hl-seller { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+@keyframes hlFlash { 0%, 100% { box-shadow: none; } 40% { box-shadow: 0 0 0 2px var(--gold) inset; } }
+body.ui-v2 .v2-grid.hl-flash { animation: hlFlash .9s ease 2; border-radius: 12px; }
