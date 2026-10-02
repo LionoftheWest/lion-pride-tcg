@@ -6,6 +6,7 @@ import { handleComponent } from './ui/router.js';
 import { startInternalServer } from './internal.js';
 import { startHuntNotifier } from './hunt-notify.js';
 import { startEffectNotifier } from './effect-notify.js';
+import { startAuctionPosts } from './auction-posts.js';
 import { startVoiceDailies } from './voice-dailies.js';
 import { startDiscordEffects, discordEffectsEnabled, onEffectMessage, tick as effectsTick } from './discord-effects.js';
 import type { Command } from './types.js';
@@ -25,6 +26,7 @@ client.once(Events.ClientReady, (ready) => {
   console.log(`Ready. Logged in as ${ready.user.tag}.`);
   startHuntNotifier(ready); // drain the hunt_events outbox to the notifications channel
   startEffectNotifier(ready); // post every card boon/prank/neutral play (flag FEATURE_CARD_EFFECT_POSTS)
+  startAuctionPosts(ready); // an auction start / end picture (flag FEATURE_AUCTION_POSTS)
   startDiscordEffects(ready); // real Discord boons/pranks + their undo (flag FEATURE_DISCORD_EFFECTS)
   startVoiceDailies(ready); // the Dailies voice minutes (flag settings.dailies.enabled, in SQL)
 });
