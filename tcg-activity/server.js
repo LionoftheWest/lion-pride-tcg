@@ -778,7 +778,9 @@ app.get('/api/hunt', async (req, res) => {
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
   // Daily distinct-card cap (must match hunt_daily_card_cap in the SQL, default 8).
   const dailyCap = 8;
-  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round });
+  // The squad locked today (hunt_squads.sql): one squad per day, per member.
+  const { data: sqRow } = await supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle();
+  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null });
 });
 
 // Send a card at the boss (once per card per day). Atomic + row-locked in the RPC.
@@ -821,6 +823,19 @@ app.post('/api/hunt/support', async (req, res) => {
 // attacker by expected damage (CP x the same weakness/resistance multiplier the
 // battle uses), tops the squad up with your best support, and returns the card
 // ids. The client fills the picker; the player can still edit before Lock In.
+// Lock In: the member's squad for today (lock_hunt_squad: owned, 1..8, fixed after the first fight).
+app.post('/api/hunt/squad', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const hunt = await activeHunt();
+  if (!hunt) return res.status(400).json({ error: 'no_hunt' });
+  const cards = (Array.isArray(req.body?.cards) ? req.body.cards : []).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 8);
+  const { data, error } = await supabase.rpc('lock_hunt_squad', { p_player: String(me.id), p_hunt: hunt.id, p_cards: cards });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || { ok: false });
+});
+
 app.get('/api/hunt/autopick', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });

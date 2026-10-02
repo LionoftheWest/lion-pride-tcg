@@ -166,3 +166,16 @@ export function openSlots(cards, selectedIds, { cap = 8 } = {}) {
   const freshAvail = cards.filter((c) => !c.used && !c.downed && !sel.has(c.id)).length;
   return Math.min(room, freeOld + Math.min(freshLeft, freshAvail));
 }
+
+// Is the squad down? (Nathan, 2026-10-02: "halfway through my squad, when one of my cards got
+// knocked out, it said my squad was wiped out completely". The old check looked only at the
+// cards that had FOUGHT: the first card downed before the others attacked was 1 of 1 down.)
+// Nathan's rules (2026-10-02): one squad of 8 a day (attackers + supports), locked in (hunt_squads on
+// the server); it fights until the ENTIRE squad is wiped, the supports too. A card of the squad that
+// has not fought yet is alive. Without a locked squad (a member who fought before hunt_squads.sql),
+// the cards that fought are the squad.
+export function squadDown(cards, selIds) {
+  const sel = new Set((selIds || []).map(Number));
+  const squad = cards.filter((c) => sel.has(Number(c.id)) || c.used);
+  return squad.length > 0 && squad.every((c) => c.downed);
+}
