@@ -2262,6 +2262,7 @@ function wireBattlePhase() {
     }
     if (support) {
       if (pendingSupport) { clearTargeting(); return; } // tapping a support cancels targeting
+      if (node.classList.contains('downed')) { calloutAt(cx, b.top + 18, 'DOWNED', '#8b94a7'); return; } // a downed support does nothing (hunt_loop_caps.sql)
       if (node.classList.contains('cooldown')) { calloutAt(cx, b.top + 18, 'COOLDOWN', '#8b94a7'); return; }
       const tgt = card.ability && card.ability.target;
       if (tgt === 'ally' || tgt === 'self') { // needs a target ally
@@ -2285,7 +2286,10 @@ async function fireSupport(cardId, targetId) {
   const b = node ? node.getBoundingClientRect() : null;
   const at = (txt, col) => calloutAt(b ? b.left + b.width / 2 : window.innerWidth / 2, b ? b.top : 120, txt, col);
   if (!r || !r.ok) {
-    at(r && r.error === 'cooldown' ? 'COOLDOWN' : (r && r.error === 'day_limit' ? `LIMIT` : 'X'), '#ff8f5c');
+    // hunt_loop_caps.sql: a downed support, the target's daily heal + shield limit, stun immunity, the round limit.
+    const why = { cooldown: 'COOLDOWN', day_limit: 'LIMIT', support_downed: 'DOWNED', restore_cap: 'HEAL LIMIT', boss_stun_immune: 'IMMUNE', round_cap: 'ROUND LIMIT' };
+    at((r && why[r.error]) || 'X', '#ff8f5c');
+    if (r?.error === 'support_downed' && node) node.classList.add('downed');
     return;
   }
   const label = { empower: 'EMPOWER!', shield: 'SHIELD!', heal: 'HEAL!', weaken: 'WEAKEN!', expose: 'EXPOSE!', smite: 'SMITE!', stun: 'STUN!', cleanse: 'CLEANSE!' }[r.effect] || r.effect;
@@ -2554,6 +2558,7 @@ async function huntAttack(cardId, node) {
     if (r?.error === 'downed') markDowned(node);
     else if (r?.error === 'hunt_over') renderHunt();
     else if (r?.error === 'day_limit') { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, `LIMIT ${r.cap || 8}`, '#ff8f5c'); }
+    else if (r?.error === 'round_cap') { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, `ROUND LIMIT ${r.cap || 40}`, '#ff8f5c'); } // hunt_loop_caps.sql
     else if (r?.error === 'stunned') { const b = node.getBoundingClientRect(); node.classList.add('stunned'); calloutAt(b.left + 30, b.top, 'STUNNED', '#ffe23e'); }
     return;
   }
