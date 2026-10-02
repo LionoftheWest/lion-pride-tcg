@@ -24,6 +24,7 @@ import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
 import { bestSquad } from './src/squad-pick.js';
 import { selectAll } from './src/select-all.js';
+import { rankByName } from './src/name-rank.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -1492,9 +1493,11 @@ app.get('/api/players', async (req, res) => {
   // Escape LIKE metacharacters so a caller cannot widen the match (a bare % would
   // match every player). PostgreSQL LIKE uses backslash as the default escape.
   const safeQ = q.replace(/[\\%_]/g, '\\$&');
-  const { data, error } = await supabase.from('players').select('id, username, pack_balance').order('username').limit(12).ilike('username', `%${safeQ}%`);
+  const { data, error } = await supabase.from('players').select('id, username, pack_balance').order('username').limit(200).ilike('username', `%${safeQ}%`);
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ players: (data || []).filter((p) => p.id !== me.id) });
+  // The best matches first (Nathan, 2026-10-02: suggest names as people type): A-Z put
+  // "Bananas" before "Anna" for "an".
+  res.json({ players: rankByName((data || []).filter((p) => p.id !== me.id), q).slice(0, 12) });
 });
 
 // Gift packs from the caller's balance to another player (relayed to the bot,
