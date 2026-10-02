@@ -1260,3 +1260,14 @@ body.ui-v2.m-port .hall-view .hl-wcell .hl-card, body.ui-v2.m-land .hall-view .h
 body.ui-v2.m-port .hall-view #commBoard { display: none; }
 body.ui-v2.m-land .hall-view .hl-slots { grid-template-columns: repeat(5, 42px); }
 body.ui-v2.m-land.m-short .hall-view .hl-slots { grid-template-columns: repeat(5, 36px); }
+/* The view switches show on phones (the Trades rule hides the first switch of that row). */
+body.ui-v2.m-port .v2-trade.hall-view .tr-gridhead > #hlView#hlView, body.ui-v2.m-port .v2-trade.hall-view .tr-gridhead > #hlAView#hlAView,
+body.ui-v2.m-land .v2-trade.hall-view .tr-gridhead > #hlView#hlView, body.ui-v2.m-land .v2-trade.hall-view .tr-gridhead > #hlAView#hlAView { display: inline-flex; }
+
+/* Phone Hall captions: the name wraps at natural points on line 1 (no cut names), line 2 the chips. */
+body.ui-v2 .hall-view .v2-cap.hl-cap.two.ph { gap: 2px; }
+body.ui-v2 .hall-view .hl-cap.ph .hl-who { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.15; font-size: 11px; }
+body.ui-v2 .hall-view .hl-cap.ph .hl-r2 { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+/* The view switches keep their full labels (they were cut to "Open auc..."). */
+body.ui-v2 .hall-view #hlView, body.ui-v2 .hall-view #hlAView { flex: none; }
+body.ui-v2 .hall-view #hlView button, body.ui-v2 .hall-view #hlAView button { white-space: nowrap; overflow: visible; text-overflow: clip; }

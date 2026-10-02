@@ -129,25 +129,28 @@ function paintHallGrid() {
   const q = hall.q.trim().toLowerCase();
   const items = list.filter((x) => !q || `${x.card.name} ${x.name}`.toLowerCase().includes(q)).map((x, i) => ({ ...x.card, _it: x, _k: i }));
   shell(`<div class="tr-gridhead hl-head">
-      <div class="seg" id="hlView"><button data-v="wanted" class="${hall.view === 'wanted' ? 'on' : ''}">♡ Wanted <b>${d.wanted.length}</b></button><button data-v="fortrade" class="${hall.view === 'fortrade' ? 'on' : ''}">🏷 For trade <b>${d.forTrade.length}</b></button></div>
+      <div class="seg" id="hlView"><button data-v="wanted" class="${hall.view === 'wanted' ? 'on' : ''}">♡ Wanted</button><button data-v="fortrade" class="${hall.view === 'fortrade' ? 'on' : ''}">🏷 For trade</button></div>
       <input class="v2-search" id="hlQ" placeholder="Search" value="${esc(hall.q)}">
       <span class="grow"></span>
-      <button class="v2-btn gold" id="hlList">＋ List a card${d.mine.length ? ` <b>${d.mine.length}/5</b>` : ''}</button>
+      <button class="v2-btn gold" id="hlList">⚙ Manage My Listings <b>${d.mine.length}/5</b></button>
       <div class="v2-pager" id="hlPager"></div>
     </div>
     <p class="hl-note dim">${hall.view === 'wanted' ? 'Cards members want. Send one you have; they pick a card back.' : 'Cards members list for trade. Offer a card from their wishlist.'}</p>
-    <div class="v2-grid" id="hlGrid"></div>`);
+    <div class="v2-grid" id="hlGrid" data-cap="${isPhone() ? 54 : 24}"></div>`);
   hall.tile = (c, idx, sel) => {
     const it = c._it;
-    const chip = hall.view === 'wanted' ? `<span class="hl-n${it.mine ? ' have' : ''}" title="Your free copies">⧉ ×${it.mine}</span>` : `<span class="hl-n${it.match ? ' have' : ''}" title="Their wishlist cards you have">♡ ${it.match}</span>`;
+    const chip = hall.view === 'wanted' ? `<span class="hl-n${it.mine ? ' have' : ''}" title="Your free copies">⧉ ×${it.mine}</span>`
+      : it.mine === true ? '<span class="hl-n yours">Yours</span>' : `<span class="hl-n${it.match ? ' have' : ''}" title="Their wishlist cards you have">♡ ${it.match}</span>`;
     return `<div class="v2-cell${sel ? ' sel' : ''}" data-idx="${idx}"><div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
-      <div class="v2-cap hl-cap">${avatarHTML(it.player_id, it.name, 'xs')}<span class="hl-who">${nm(it.player_id, it.name)}</span>${chip}</div></div>`;
+      ${isPhone() ? `<div class="v2-cap hl-cap two ph"><span class="hl-who">${nm(it.player_id, it.name)}</span><span class="hl-r2">${chip}</span></div>`
+        : `<div class="v2-cap hl-cap">${avatarHTML(it.player_id, it.name, 'xs')}<span class="hl-who">${nm(it.player_id, it.name)}</span>${chip}</div>`}</div>`;
   };
   paintCards(el('hlGrid'), el('hlPager'), items, hall, async (c) => {
+    if (hall.view === 'fortrade' && c._it.mine === true) { hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); return; }
     hall.sel = { kind: hall.view, ...c._it }; hall.give = null; hall.msg = '';
     await openComposer();
   });
-  if (!items.length) el('hlGrid').innerHTML = `<p class="v2-empty">${hall.view === 'wanted' ? 'No member has a wishlist yet. Set yours on your profile.' : 'No cards are listed yet. List one with ＋ List a card.'}</p>`;
+  if (!items.length) el('hlGrid').innerHTML = `<p class="v2-empty">${hall.view === 'wanted' ? 'No member has a wishlist yet. Set yours on your profile.' : 'No cards are listed yet. List one with Manage My Listings.'}</p>`;
   el('hlView').onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b) return; hall.view = b.dataset.v; hall.page = 0; paintHall(); };
   el('hlQ').addEventListener('input', (e) => { hall.q = e.target.value; hall.page = 0; const pos = e.target.selectionStart; paintHall(); const n = el('hlQ'); n.focus(); try { n.setSelectionRange(pos, pos); } catch { /* */ } });
   el('hlList').onclick = () => { hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); };
@@ -245,15 +248,16 @@ function paintAuctionGrid() {
   const list = hall.auctions || [];
   const items = list.map((a, i) => ({ ...a.card, _a: a, _k: i }));
   shell(`<div class="tr-gridhead hl-head">
-      <div class="seg" id="hlAView"><button data-v="open" class="${hall.aview === 'open' ? 'on' : ''}">🔨 Open auctions${hall.aview === 'open' ? ` <b>${list.length}</b>` : ''}</button><button data-v="mine" class="${hall.aview === 'mine' ? 'on' : ''}">👤 My auctions${hall.aview === 'mine' ? ` <b>${list.length}</b>` : ''}</button></div>
+      <div class="seg" id="hlAView"><button data-v="open" class="${hall.aview === 'open' ? 'on' : ''}">🔨 Open auctions</button><button data-v="mine" class="${hall.aview === 'mine' ? 'on' : ''}">👤 My auctions</button></div>
       <span class="grow"></span><button class="v2-btn gold" id="hlStart">🔨 Start auction</button><div class="v2-pager" id="hlPager"></div></div>
-    <div class="v2-grid hl-agrid" id="hlGrid" data-cap="46"></div>`);
+    <div class="v2-grid hl-agrid" id="hlGrid" data-cap="${isPhone() ? 54 : 46}"></div>`);
   hall.tile = (c, idx, sel) => {
     const a = c._a, t = left(a.ends_at);
     const status = a.status === 'live' ? `<span class="hl-left${t.soon ? ' soon' : ''}">⧗ ${t.text}</span>` : `<span class="hl-left done">${a.status === 'accepted' ? 'Accepted' : a.status === 'sold' ? 'Sold' : 'Ended'}</span>`;
     return `<div class="v2-cell${sel ? ' sel' : ''}" data-idx="${idx}"><div class="v2-card r-${c.rarity}">${a.myBid ? '<span class="hl-yb">🔨 Your bid</span>' : ''}${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
-      <div class="v2-cap hl-cap two"><span class="hl-r1">${avatarHTML(a.seller_id, a.seller, 'xs')}<span class="hl-who">${nm(a.seller_id, a.seller)}</span>${status}</span>
-        <span class="hl-r2"><span class="hl-bids">🔨 ${a.bids}</span><span class="hl-mins">${a.min.count > 0 && a.min.rarity ? `<b>${a.min.count}×</b><i style="color:var(--r-${a.min.rarity})">◆</i>` : ''}${a.min.cards.length ? `<i class="hl-plus">+</i><img src="${thumb(a.min.cards[0].image_url)}" alt="">` : ''}</span></span></div></div>`;
+      ${isPhone() ? `<div class="v2-cap hl-cap two ph"><span class="hl-who">${nm(a.seller_id, a.seller)}</span><span class="hl-r2">${status}<span class="hl-bids">🔨 ${a.bids}</span></span></div></div>` : ''}
+      ${isPhone() ? '' : `<div class="v2-cap hl-cap two"><span class="hl-r1">${avatarHTML(a.seller_id, a.seller, 'xs')}<span class="hl-who">${nm(a.seller_id, a.seller)}</span>${status}</span>
+        <span class="hl-r2"><span class="hl-bids">🔨 ${a.bids}</span><span class="hl-mins">${a.min.count > 0 && a.min.rarity ? `<b>${a.min.count}×</b><i style="color:var(--r-${a.min.rarity})">◆</i>` : ''}${a.min.cards.length ? `<i class="hl-plus">+</i><img src="${thumb(a.min.cards[0].image_url)}" alt="">` : ''}</span></span></div></div>`}`;
   };
   paintCards(el('hlGrid'), el('hlPager'), items, hall, async (c) => { await openAuction(c._a.id); });
   if (!items.length) el('hlGrid').innerHTML = `<p class="v2-empty">${hall.aview === 'open' ? 'No auctions are open. Start one!' : 'You have no auctions or bids.'}</p>`;

@@ -84,7 +84,7 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
       catalog(), owned(myId), held(myId)]);
     if (wish.error || listings.error) return res.status(500).json({ error: (wish.error || listings.error).message });
     const free = freeOf(own, hold);
-    const others = (listings.data || []).filter((l) => String(l.player_id) !== myId);
+    const others = listings.data || []; // every listing, mine included (tagged mine)
     // The listers still own the card (a listing does not hold a copy).
     const listerIds = [...new Set(others.map((l) => String(l.player_id)))];
     const { data: lc } = listerIds.length ? await supabase.from('player_cards').select('player_id, card_id').in('player_id', listerIds).gte('quantity', 1)
@@ -97,9 +97,9 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
       .map((w) => ({ player_id: String(w.player_id), name: nm.get(String(w.player_id)) || 'A member', card: card(cat, w.card_id), mine: free(w.card_id) }))
       .sort((a, b) => (b.mine > 0) - (a.mine > 0) || (RANK[b.card.rarity] ?? 0) - (RANK[a.card.rarity] ?? 0));
     const forTrade = others.filter((l) => has.has(`${l.player_id}:${l.card_id}`) && cat.has(Number(l.card_id)))
-      .map((l) => ({ id: l.id, player_id: String(l.player_id), name: nm.get(String(l.player_id)) || 'A member', card: card(cat, l.card_id),
-        match: (wishBy.get(String(l.player_id)) || []).filter((c) => free(c) > 0).length, at: l.created_at }))
-      .sort((a, b) => (b.match > 0) - (a.match > 0) || String(b.at).localeCompare(String(a.at)));
+      .map((l) => ({ id: l.id, player_id: String(l.player_id), name: nm.get(String(l.player_id)) || 'A member', card: card(cat, l.card_id), mine: String(l.player_id) === myId,
+        match: String(l.player_id) === myId ? 0 : (wishBy.get(String(l.player_id)) || []).filter((c) => free(c) > 0).length, at: l.created_at }))
+      .sort((a, b) => (b.mine - a.mine) || (b.match > 0) - (a.match > 0) || String(b.at).localeCompare(String(a.at)));
     const mine = (listings.data || []).filter((l) => String(l.player_id) === myId).map((l) => ({ id: l.id, card: card(cat, l.card_id), at: l.created_at }));
     res.json({ wanted, forTrade, mine });
   });
@@ -146,13 +146,13 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
     const me = await gate(req, res); if (!me) return;
     const myId = String(me.id), view = req.query.view === 'mine' ? 'mine' : 'open';
     const live = await selectAll(() => supabase.from('auctions').select('id, seller_id, card_id, min_rarity, min_count, min_cards, min_mode, status, ends_at, created_at')
-      .in('status', view === 'mine' ? ['live', 'accepted', 'sold', 'closed', 'expired'] : ['live', 'accepted']), ['id']);
+      .in('status', ['live', 'accepted']), ['id']); // only live auctions show (Nathan, 2026-10-02)
     if (live.error) return res.status(500).json({ error: live.error.message });
     let rows = live.data || [];
     const ids = rows.map((a) => a.id);
     const bids = ids.length ? await selectAll(() => supabase.from('auction_bids').select('auction_id, bidder_id, status').in('auction_id', ids).in('status', ['open', 'accepted', 'won']), ['id']) : { data: [] };
     const myBid = new Set((bids.data || []).filter((b) => String(b.bidder_id) === myId).map((b) => b.auction_id));
-    if (view === 'mine') rows = rows.filter((a) => String(a.seller_id) === myId || myBid.has(a.id)).slice(-50);
+    if (view === 'mine') rows = rows.filter((a) => String(a.seller_id) === myId || myBid.has(a.id));
     const cat = await catalog(); const nm = await names(rows.map((a) => a.seller_id));
     const count = (id) => (bids.data || []).filter((b) => b.auction_id === id && b.status !== 'won').length;
     res.json({ view, auctions: rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).map((a) => ({

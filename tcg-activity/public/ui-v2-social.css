@@ -632,3 +632,10 @@ body.ui-v2 .hl-minrow .grow { flex: 0 1 auto; }
 body.ui-v2 .hl-minrow .side-h { display: none; }
 body.ui-v2 .hl-ends { font-size: 10.5px; }
 body.ui-v2 .hl-slot.empty { width: 100%; box-sizing: border-box; }
+
+/* The Hall grids fill the width from the left (Nathan, 2026-10-02: a few cards sat in the middle). */
+body.ui-v2 .hall-view .v2-grid { justify-content: space-between; }
+body.ui-v2 .hall-view .v2-grid > .v2-empty { grid-column: 1 / -1; justify-self: start; }
+body.ui-v2 .hl-n.yours { color: var(--on-gold); background: var(--gold); border-color: var(--gold); }
+/* Left-aligned at the normal gap (stretching the columns spread two cards across the screen). */
+body.ui-v2 .hall-view .v2-grid { justify-content: start; }
