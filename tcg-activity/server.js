@@ -377,7 +377,7 @@ app.get('/api/flags', async (req, res) => {
 // replay it, or finish it (1 outside pack, once ever). 'seen' records a view explainer the member
 // has seen (ui-v2-explain.js), so it opens by itself only the first time.
 const TUTORIAL_STEPS = ['gifts', 'open', 'rarity', 'collection', 'hunt', 'community', 'dailies', 'voice']; // the reward needs the 7 after 'gifts'
-const EXPLAIN_SETS = ['hall', 'auctions'];
+const EXPLAIN_SETS = ['hall', 'auctions', 'trades', 'pranks', 'hunt', 'collection'];
 app.post('/api/tutorial', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });

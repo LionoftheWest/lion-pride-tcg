@@ -8,6 +8,7 @@
 // Either one also makes the collection/catalog queries read subjects.effect, so the
 // card_effects.sql migration MUST be applied before either flag is set.
 
+import { mtDayStartISO } from './src/mt-time.js';
 const ALL = process.env.FEATURE_CARD_EFFECTS === '1';
 const PREVIEW = new Set((process.env.CARD_EFFECTS_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
 
@@ -43,7 +44,9 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     if (!me) return res.status(401).json({ error: 'not authenticated' });
     if (!effectsEnabledFor(me.id)) return res.json({ enabled: false });
     const now = new Date().toISOString();
-    const dayStart = `${now.slice(0, 10)}T00:00:00Z`;
+    // The MT day play_card_effect() counts the daily limit in (launch_event_cards.sql). Midnight UTC
+    // made Plays today drop to 0 at 6 PM MT (2026-10-02).
+    const dayStart = mtDayStartISO();
     const [cds, act, inc, tiers, prims, sent, caps] = await Promise.all([
       supabase.from('card_effect_cooldowns').select('subject_id, ready_at').eq('player_id', me.id).gt('ready_at', now),
       supabase.from('player_effects').select('id, primitive, amount, duration_s, options, expires_at')

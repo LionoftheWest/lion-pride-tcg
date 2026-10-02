@@ -1348,3 +1348,7 @@ body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-info { display: none; }
 body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-foot .v2-btn { font-size: 0; padding: 0 12px; }
 body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-foot .v2-btn::first-letter { font-size: 15px; }
 body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-deal { flex: 0 1 auto; }
+
+/* The raid on a portrait phone: the ? circle sits in the boss traits line at the chip height, so the
+   line does not grow (a taller line pushed the boss over the cards). */
+body.ui-v2.m-port .arena-traits .ex-q { width: 22px; height: 22px; margin-block: -4px; font-size: 12px; border-width: 1.5px; box-shadow: 0 0 10px #F4B73C40; }

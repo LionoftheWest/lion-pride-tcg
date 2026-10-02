@@ -6,6 +6,7 @@ import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';
 import { mtToday } from './mt-time.js';
+import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { flairHTML } from './flair.js';
 import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
@@ -271,7 +272,7 @@ export async function renderCollectionV2() {
 
   const tabs = `<div class="seg col-tabs"><button data-tab="cards" class="${col.view === 'cards' ? 'on' : ''}">Cards</button>
     <button data-tab="ach" class="${col.view === 'ach' || col.view === 'achDetail' ? 'on' : ''}">Achievements <i>${achDone}/${achs.length}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button>
-    <button data-tab="bosses" class="${col.view === 'bosses' ? 'on' : ''}">Raid Bosses <i>${RAID_BOSSES.length}</i></button></div>`;
+    <button data-tab="bosses" class="${col.view === 'bosses' ? 'on' : ''}">Raid Bosses <i>${RAID_BOSSES.length}</i></button></div>${explainBtn('collection')}`;
   let center;
   if (col.view === 'bosses') {
     center = `<div class="v2-col-head">${tabs}<span class="grow"></span></div>
@@ -366,6 +367,7 @@ export async function renderCollectionV2() {
   });
 
   requestAnimationFrame(() => { fitChips(side); });
+  maybeExplain('collection');
   // Ready to redeem first, then the ones in progress, then the ones already claimed.
   const order = (a) => (a.done ? (claimedSet().has(a.key) ? 2 : 0) : 1);
   if (col.view === 'ach') paintAch([...achs].sort((a, b) => order(a) - order(b)));
