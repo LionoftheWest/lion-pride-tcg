@@ -1,0 +1,274 @@
+/* The Shop (design 29, approved 2026-10-02): the top bar Shards + Shop button, the Shop view
+   (desktop, body.m-port, body.m-land), the confirm windows and the stat reset picker. */
+body.ui-v2 { --shard: #B8F02A; --shard-soft: rgba(184, 240, 42, .12); }
+body.ui-v2 .sh-coin { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; }
+
+/* ---- The top bar ---- */
+body.ui-v2 #v2Shards { cursor: pointer; }
+body.ui-v2 #v2Shards.hidden, body.ui-v2 #shopBtn.hidden { display: none !important; }
+body.ui-v2 #v2Shards .sh-coin { width: 20px; height: 20px; }
+body.ui-v2 #v2Shards .lbl { color: var(--text-muted); font-size: 13px; }
+body.ui-v2 #topbar #shopBtn { width: auto; padding: 0 14px; gap: 7px; display: inline-flex; align-items: center; color: var(--gold); border-color: rgba(244, 183, 60, .45); background: var(--gold-soft); font: 700 14px var(--font-ui); }
+body.ui-v2 #topbar #shopBtn svg { width: 18px; height: 18px; }
+body.ui-v2 #topbar #shopBtn.on { background: rgba(244, 183, 60, .22); box-shadow: inset 0 0 0 1px var(--gold); }
+body.ui-v2.m-port #v2Shards .lbl, body.ui-v2.m-port #topbar #shopBtn .lbl, body.ui-v2.m-land.m-narrow #topbar #shopBtn .lbl, body.ui-v2.m-land.m-narrow #v2Shards .lbl { display: none; }
+body.ui-v2.m-port #topbar #shopBtn, body.ui-v2.m-land.m-narrow #topbar #shopBtn { padding: 0; width: 38px; justify-content: center; }
+body.ui-v2.m-port #v2Shards { padding: 0 10px; }
+
+/* ---- Shared parts ---- */
+body.ui-v2 .v2-shop { height: 100%; min-height: 0; box-sizing: border-box; color: var(--text-primary); }
+body.ui-v2 .v2-shop .grow { flex: 1; }
+body.ui-v2 .v2-shop .dim, body.ui-v2 .sh-modal .dim { color: var(--text-muted); font-style: normal; }
+body.ui-v2 .sh-closed { height: 100%; display: grid; place-items: center; color: var(--text-secondary); font-size: 16px; }
+body.ui-v2 .sh-price { display: inline-flex; align-items: center; gap: 6px; font: 700 15px var(--font-num); color: var(--text-primary); white-space: nowrap; }
+body.ui-v2 .sh-price.sm { font-size: 13px; gap: 5px; }
+body.ui-v2 .sh-price.lg { font-size: 22px; gap: 8px; }
+body.ui-v2 .sh-price.lg b { color: var(--shard); }
+body.ui-v2 .sh-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--rad-sm); background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); font: 600 11.5px var(--font-ui); white-space: nowrap; }
+body.ui-v2 .sh-chip.new, body.ui-v2 .sh-chip.ok { color: var(--success); background: var(--success-soft); border-color: rgba(91, 227, 138, .35); }
+body.ui-v2 .sh-chip.gold { color: var(--gold); background: var(--gold-soft); border-color: rgba(244, 183, 60, .4); }
+body.ui-v2 .sh-chip.on-card { position: absolute; top: 6%; right: 6%; background: rgba(10, 10, 18, .85); }
+body.ui-v2 .sh-chip.new.on-card { background: rgba(10, 30, 18, .9); }
+body.ui-v2 .sh-rar { font: 700 12px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; }
+body.ui-v2 .sh-kick { display: inline-flex; align-items: center; gap: 6px; font: 700 12px var(--font-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--r-secret_rare); }
+body.ui-v2 .sh-kick svg { width: 14px; height: 14px; }
+body.ui-v2 .sh-kick.pack { color: var(--gold); }
+body.ui-v2 .sh-kick.reset { color: var(--gold); }
+body.ui-v2 .sh-card { position: relative; aspect-ratio: 5 / 7; border-radius: var(--rad-card); overflow: hidden; background: var(--surface-2); box-shadow: 0 0 0 2px var(--rc, var(--border)); }
+body.ui-v2 .sh-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.ui-v2 .sh-card.r-normal { --rc: var(--r-normal); }
+body.ui-v2 .sh-card.r-illustrated_rare { --rc: var(--r-illustrated_rare); }
+body.ui-v2 .sh-card.r-secret_rare { --rc: var(--r-secret_rare); }
+body.ui-v2 .sh-card.big { box-shadow: 0 0 0 3px var(--rc), 0 0 28px color-mix(in srgb, var(--rc) 35%, transparent); }
+body.ui-v2 .sh-done { position: absolute; top: 40%; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: var(--rad-pill); background: rgba(10, 30, 18, .9); border: 1px solid rgba(91, 227, 138, .5); color: var(--success); font: 700 12px var(--font-ui); white-space: nowrap; }
+body.ui-v2 .sh-done svg { width: 13px; height: 13px; }
+body.ui-v2 .bought .sh-card img { filter: grayscale(.85) brightness(.45); }
+body.ui-v2 .sh-timer { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: var(--rad-pill); background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; white-space: nowrap; }
+body.ui-v2 .sh-timer svg { width: 16px; height: 16px; color: var(--gold); }
+body.ui-v2 .sh-timer b, body.ui-v2 .sh-cd b { font: 700 15px var(--font-num); color: var(--text-primary); }
+
+/* ---- Desktop ---- */
+body.ui-v2 .v2-shop.desk { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
+body.ui-v2 .sh-stock, body.ui-v2 .sh-panel { background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--rad-lg); min-height: 0; box-sizing: border-box; }
+body.ui-v2 .sh-stock { display: flex; flex-direction: column; padding: 18px 20px; gap: 14px; }
+body.ui-v2 .sh-head { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+body.ui-v2 .sh-head > div { flex: 1; min-width: 0; }
+body.ui-v2 .sh-head h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 3px; font: 700 21px var(--font-display); }
+body.ui-v2 .sh-head h2 svg { width: 22px; height: 22px; color: var(--gold); }
+body.ui-v2 .sh-head span { color: var(--text-secondary); font-size: 13px; }
+body.ui-v2 .sh-body { flex: 1; min-height: 0; display: grid; grid-template-columns: clamp(150px, 19%, 216px) minmax(0, 1fr); gap: 22px; }
+body.ui-v2 .sh-feat { display: flex; flex-direction: column; gap: 10px; min-height: 0; cursor: pointer; container-type: inline-size; }
+body.ui-v2 .sh-buy .short { display: none; }
+@container (max-width: 195px) { body.ui-v2 .sh-buy .long { display: none; } body.ui-v2 .sh-buy .short { display: inline; } }
+@container (max-width: 150px) { body.ui-v2 .sh-ir-side .sh-chip { display: none; } body.ui-v2 .sh-ir-side .sh-price { font-size: 12.5px; } }
+body.ui-v2 .sh-feat .sh-kick { flex: none; }
+body.ui-v2 .sh-feat .sh-card { flex: 0 1 auto; min-height: 0; width: 100%; max-height: 100%; }
+body.ui-v2 .sh-feat-info { display: none; }
+body.ui-v2 .sh-feat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+body.ui-v2 .sh-feat .sh-buy { width: 100%; gap: 8px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+body.ui-v2 .sh-buy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.ui-v2 .sh-buy svg, body.ui-v2 .sh-buypacks svg, body.ui-v2 .sh-go svg { width: 18px; height: 18px; }
+body.ui-v2 .sh-rows { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1.25fr) auto; gap: 8px; }
+body.ui-v2 .sh-rowh { display: flex; align-items: center; gap: 10px; font: 700 12.5px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--rc); }
+body.ui-v2 .sh-rowh span { display: inline-flex; align-items: center; gap: 5px; letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--text-muted); }
+body.ui-v2 .sh-irs { min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+body.ui-v2 .sh-ir { position: relative; min-height: 0; display: flex; gap: 12px; padding: 10px; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border); cursor: pointer; }
+body.ui-v2 .sh-ir .sh-card { height: 100%; width: auto; flex: none; }
+body.ui-v2 .sh-ir .sh-done { left: calc(10px + (100% - 20px) * .0); transform: none; top: 44%; }
+body.ui-v2 .sh-ir-side { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+body.ui-v2 .sh-ir-side .sh-chip { align-self: flex-end; }
+body.ui-v2 .sh-mini { height: 36px; width: 100%; padding: 0 10px; color: var(--gold); background: var(--gold-soft); border-color: rgba(244, 183, 60, .45); font-weight: 700; }
+body.ui-v2 .sh-nms { min-height: 0; display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 12px; }
+body.ui-v2 .sh-nm { min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; font: inherit; }
+body.ui-v2 .sh-nm:disabled { cursor: default; }
+/* The card keeps its 5:7 shape: the box is a size container, the card takes the smaller fit. */
+body.ui-v2 .sh-nm-card { position: relative; flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-end; container-type: size; }
+body.ui-v2 .sh-nm-card .sh-card { height: min(100cqh, 140cqw); width: auto; }
+body.ui-v2 .sh-ir { container-type: size; }
+body.ui-v2 .sh-ir .sh-card { height: min(100cqh, 58cqw); width: auto; }
+body.ui-v2 .sh-nm:not(:disabled):hover .sh-card, body.ui-v2 .sh-ir:not(.bought):hover .sh-card { transform: translateY(-3px); }
+body.ui-v2 .sh-card { transition: transform var(--dur-fast) var(--ease-out); }
+body.ui-v2 .sh-nm-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 3px 4px; }
+body.ui-v2 .sh-nm { container-type: inline-size; }
+body.ui-v2 .sh-nm-foot > * { flex-shrink: 0; }
+@container (max-width: 112px) { body.ui-v2 .sh-nm-foot { justify-content: center; } }
+body.ui-v2 .sh-nm-foot .sh-chip { padding: 0 6px; font-size: 11px; }
+body.ui-v2 .sh-pager { justify-self: center; }
+body.ui-v2 .sh-right { min-height: 0; display: flex; flex-direction: column; gap: 16px; }
+body.ui-v2 .sh-panel { display: flex; flex-direction: column; gap: 11px; padding: 16px; overflow: hidden; }
+body.ui-v2 .sh-reset { flex: 1; }
+body.ui-v2 .sh-ph { display: flex; align-items: center; gap: 10px; font: 700 18px var(--font-display); }
+body.ui-v2 .sh-ph .dim { font: 500 13px var(--font-ui); }
+body.ui-v2 .sh-ico { width: 36px; height: 36px; border-radius: var(--rad-md); display: grid; place-items: center; background: var(--surface-2); color: var(--gold); }
+body.ui-v2 .sh-ico.prank { color: var(--prank); }
+body.ui-v2 .sh-ico svg { width: 19px; height: 19px; }
+body.ui-v2 .sh-packrow { display: flex; gap: 14px; align-items: center; }
+body.ui-v2 .sh-packrow b { display: block; font-size: 15px; margin-bottom: 3px; }
+body.ui-v2 .sh-packrow div span { color: var(--text-secondary); font-size: 13px; line-height: 1.35; }
+body.ui-v2 .sh-packart { flex: none; width: 54px; height: 72px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: linear-gradient(180deg, #FFD567, #F0A52A); color: #2A1A02; box-shadow: 0 8px 22px rgba(244, 183, 60, .25); }
+body.ui-v2 .sh-packart svg { width: 26px; height: 26px; }
+body.ui-v2 .sh-packart i { font: 800 8px var(--font-ui); letter-spacing: .08em; font-style: normal; }
+body.ui-v2 .sh-qty { display: flex; align-items: center; gap: 8px; }
+body.ui-v2 .sh-qty > div b { display: block; font-size: 14px; color: var(--text-secondary); font-weight: 600; }
+body.ui-v2 .sh-qty > div span { color: var(--text-muted); font-size: 12px; }
+body.ui-v2 .sh-step { width: 38px; height: 38px; border-radius: var(--rad-md); border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary); font-size: 20px; cursor: pointer; }
+body.ui-v2 .sh-step:disabled { opacity: .4; cursor: default; }
+body.ui-v2 .sh-qn { min-width: 48px; height: 38px; border-radius: var(--rad-md); display: grid; place-items: center; background: var(--bg-base); border: 1px solid var(--border); font: 700 20px var(--font-num) !important; color: var(--text-primary) !important; }
+body.ui-v2 .sh-total { display: flex; align-items: center; justify-content: space-between; color: var(--text-secondary); font-size: 14px; }
+body.ui-v2 .sh-buypacks { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+body.ui-v2 .sh-note { margin: 0; color: var(--text-secondary); font-size: 13.5px; line-height: 1.45; }
+body.ui-v2 .sh-free { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border); font-size: 13.5px; color: var(--text-muted); }
+body.ui-v2 .sh-free b { color: var(--text-primary); font-weight: 600; }
+body.ui-v2 .sh-free svg { width: 17px; height: 17px; color: var(--success); flex: none; }
+body.ui-v2 .sh-free.ok { background: var(--success-soft); border-color: rgba(91, 227, 138, .35); }
+body.ui-v2 .sh-free.ok > span:not(.sh-price) { color: var(--success); }
+body.ui-v2 .sh-choose { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: var(--gold); background: rgba(244, 183, 60, .06); border-color: rgba(244, 183, 60, .45); font-weight: 700; }
+body.ui-v2 .sh-choose svg { width: 17px; height: 17px; }
+
+/* ---- Landscape phone (design 29, 13) ---- */
+body.ui-v2.m-land .v2-shop.land { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; }
+body.ui-v2.m-land .sh-side { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+body.ui-v2.m-land .sh-nav { display: flex; flex-direction: column; gap: 2px; padding: 5px; border-radius: var(--rad-md); background: var(--bg-raised); border: 1px solid var(--border); }
+body.ui-v2.m-land .sh-nav button { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 8px; border: 0; border-radius: 8px; background: none; color: var(--text-secondary); font: 600 12.5px var(--font-ui); cursor: pointer; text-align: left; }
+body.ui-v2.m-land .sh-nav button.on { background: var(--surface-2); color: var(--text-primary); }
+body.ui-v2.m-land .sh-nav svg { width: 16px; height: 16px; flex: none; }
+body.ui-v2.m-land .sh-nav b { flex: 1; font-weight: inherit; white-space: nowrap; }
+body.ui-v2.m-land .sh-nav i { color: var(--text-muted); font-style: normal; }
+body.ui-v2.m-land .sh-nav button.on > svg:first-child { color: var(--gold); }
+body.ui-v2.m-land .sh-cd { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: var(--rad-md); background: var(--bg-raised); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; overflow: hidden; }
+body.ui-v2.m-land .sh-cd span { display: flex; align-items: center; gap: 6px; }
+body.ui-v2.m-land .sh-cd span svg { width: 14px; height: 14px; color: var(--gold); }
+body.ui-v2.m-land .sh-cd b { font-size: 22px; }
+body.ui-v2.m-land .sh-cd i { font-style: normal; color: var(--text-muted); line-height: 1.35; }
+body.ui-v2.m-land .sh-stock { padding: 0; gap: 0; background: none; border: 0; }
+body.ui-v2.m-land .sh-body { grid-template-columns: clamp(110px, 21%, 150px) minmax(0, 1fr); gap: 12px; }
+body.ui-v2.m-land .sh-feat { gap: 6px; }
+body.ui-v2.m-land .sh-feat .sh-buy { height: 36px; font-size: 12.5px; padding: 0 8px; }
+body.ui-v2.m-land .sh-price.lg { font-size: 17px; }
+body.ui-v2.m-land .sh-rows { gap: 5px; }
+body.ui-v2.m-land .sh-rowh { font-size: 11px; }
+body.ui-v2.m-land .sh-irs { gap: 8px; }
+body.ui-v2.m-land .sh-ir { padding: 6px; gap: 8px; }
+body.ui-v2.m-land .sh-ir-side { gap: 4px; }
+body.ui-v2.m-land .sh-mini { height: 30px; font-size: 12.5px; }
+body.ui-v2.m-land .sh-nms { gap: 8px; }
+body.ui-v2.m-land .sh-chip { height: 19px; font-size: 10.5px; padding: 0 6px; }
+body.ui-v2.m-land .v2-shop.land > .sh-panel { max-width: 460px; width: 100%; justify-self: center; overflow: hidden; padding: 14px; gap: 10px; }
+body.ui-v2.m-land .sh-panel .v2-btn { height: 40px; }
+
+/* ---- Portrait phone (design 29, 07) ---- */
+body.ui-v2.m-port .v2-shop.port { display: flex; flex-direction: column; gap: 10px; }
+body.ui-v2.m-port .sh-tabs { flex: none; }
+body.ui-v2.m-port .sh-tabs button { flex: 1; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; white-space: nowrap; }
+body.ui-v2.m-port .sh-tabs svg { width: 15px; height: 15px; }
+body.ui-v2.m-port .sh-stock { flex: 1; padding: 0; gap: 8px; background: none; border: 0; }
+body.ui-v2.m-port .sh-sub { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11.5px; line-height: 1.35; }
+body.ui-v2.m-port .sh-sub > span:first-child { flex: 1; min-width: 0; }
+body.ui-v2.m-port .sh-sub .sh-timer { height: 32px; padding: 0 10px; font-size: 11.5px; gap: 5px; }
+body.ui-v2.m-port .sh-sub .sh-timer b { font-size: 13px; }
+body.ui-v2.m-port .sh-body { display: flex; flex-direction: column; gap: 8px; }
+body.ui-v2.m-port .sh-feat { flex: none; display: grid; grid-template-columns: 92px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 14px; row-gap: 4px; padding: 10px; border-radius: var(--rad-lg); background: linear-gradient(120deg, rgba(177, 92, 255, .14), transparent 70%), var(--bg-raised); border: 1px solid rgba(177, 92, 255, .35); }
+body.ui-v2.m-port .sh-feat .sh-card { grid-row: 1 / span 3; grid-column: 1; }
+body.ui-v2.m-port .sh-feat .sh-kick { grid-column: 2; }
+body.ui-v2.m-port .sh-feat-info { display: flex; flex-direction: column; grid-column: 2; }
+body.ui-v2.m-port .sh-feat-name { font: 700 19px var(--font-display); }
+body.ui-v2.m-port .sh-feat-row { grid-column: 2; align-self: end; }
+body.ui-v2.m-port .sh-feat .sh-buy { display: none; }
+body.ui-v2.m-port .sh-rows { flex: 1; grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr) auto; gap: 5px; }
+body.ui-v2.m-port .sh-rowh { font-size: 11px; }
+body.ui-v2.m-port .sh-irs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+body.ui-v2.m-port .sh-nms { gap: 8px; }
+body.ui-v2.m-port .sh-nm-foot { flex-direction: column; align-items: center; gap: 2px; }
+body.ui-v2.m-port .sh-nm-foot .sh-chip { font-size: 10px; padding: 0 5px; height: 19px; }
+body.ui-v2.m-port .sh-price.sm { font-size: 12px; }
+body.ui-v2.m-port .sh-done { font-size: 10.5px; padding: 3px 7px; }
+body.ui-v2.m-port .v2-shop.port > .sh-panel { flex: none; }
+
+/* ---- The windows ---- */
+body.ui-v2 .sh-modal { z-index: 95; grid-template-columns: minmax(0, 1fr); }
+body.ui-v2 .sh-confirm, body.ui-v2 .sh-picker { min-width: 0; justify-self: center; }
+/* A short desktop window: the pack description and the reset note make room. */
+@media (max-height: 700px) { body.ui-v2:not(.m-land):not(.m-port) .sh-packrow, body.ui-v2:not(.m-land):not(.m-port) .sh-note { display: none; } }
+body.ui-v2 .sh-confirm { position: relative; width: min(900px, 100%); max-height: 100%; display: grid; grid-template-columns: minmax(180px, 300px) minmax(0, 1fr); gap: 32px; padding: 32px; box-sizing: border-box; border-radius: 22px;
+  background: linear-gradient(180deg, rgba(124, 92, 255, .08), transparent 40%), var(--bg-raised); border: 1px solid var(--border-strong); box-shadow: 0 30px 80px rgba(0, 0, 0, .55); animation: v2Rise var(--dur-base) var(--ease-out); overflow: hidden; }
+body.ui-v2 .sh-cart { min-height: 0; display: flex; align-items: center; justify-content: center; }
+body.ui-v2 .sh-cart .sh-card { width: 100%; }
+body.ui-v2 .sh-cbody { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+body.ui-v2 .sh-cbody h3 { margin: 0; font: 700 26px var(--font-display); padding-right: 44px; }
+body.ui-v2 .sh-x { position: absolute; top: 0; right: 0; width: 40px; height: 40px; border-radius: var(--rad-md); border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; display: grid; place-items: center; z-index: 2; }
+body.ui-v2 .sh-x svg { width: 18px; height: 18px; }
+body.ui-v2 .sh-csub { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+body.ui-v2 .sh-bal { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-radius: var(--rad-lg); background: var(--surface); border: 1px solid var(--border); }
+body.ui-v2 .sh-bal > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-secondary); font-size: 14.5px; }
+body.ui-v2 .sh-bal .sh-after { padding-top: 12px; border-top: 1px solid var(--border); color: var(--text-primary); font-weight: 700; }
+body.ui-v2 .sh-freep { display: inline-flex; align-items: center; gap: 6px; color: var(--success); }
+body.ui-v2 .sh-freep svg { width: 16px; height: 16px; }
+body.ui-v2 .sh-cnote { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--rad-md); background: rgba(244, 183, 60, .06); border: 1px solid rgba(244, 183, 60, .3); color: var(--text-secondary); font-size: 13.5px; }
+body.ui-v2 .sh-cnote svg { width: 18px; height: 18px; color: var(--gold); flex: none; }
+body.ui-v2 .sh-err { color: var(--danger); font-size: 13.5px; font-weight: 600; }
+body.ui-v2 .sh-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: auto; }
+body.ui-v2 .sh-acts .v2-btn { height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 700; }
+body.ui-v2 .sh-go b { font-family: var(--font-num); }
+body.ui-v2 .sh-go:disabled { opacity: .5; cursor: default; transform: none; }
+body.ui-v2 .sh-packstack { position: relative; width: 82%; aspect-ratio: 5 / 7; }
+body.ui-v2 .sh-packstack::before, body.ui-v2 .sh-packstack::after { content: ''; position: absolute; inset: 0; border-radius: 16px; background: linear-gradient(180deg, #A5822F, #6B521C); }
+body.ui-v2 .sh-packstack::before { transform: translate(12%, -6%); opacity: .55; }
+body.ui-v2 .sh-packstack::after { transform: translate(6%, -3%); opacity: .8; }
+body.ui-v2 .sh-packart.big { position: absolute; inset: 0; z-index: 1; width: auto; height: auto; border-radius: 16px; gap: 10px; }
+body.ui-v2 .sh-packart.big svg { width: 34%; height: auto; }
+body.ui-v2 .sh-packart.big i { font-size: 15px; letter-spacing: .1em; }
+body.ui-v2 .sh-packstack em { position: absolute; z-index: 2; top: -8%; right: -10%; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: #15131F; border: 3px solid var(--gold); color: var(--gold); font: 700 22px var(--font-num); font-style: normal; }
+body.ui-v2 .sh-pts { display: flex; flex-direction: column; gap: 6px; padding: 14px 18px; border-radius: var(--rad-lg); background: var(--surface); border: 1px solid var(--border); }
+body.ui-v2 .sh-pts > div { display: grid; grid-template-columns: 1fr 50px 50px; align-items: center; font-size: 14.5px; }
+body.ui-v2 .sh-pts > div b { text-align: center; font: 700 16px var(--font-num); }
+body.ui-v2 .sh-pts > div b.z { color: var(--shard); }
+body.ui-v2 .sh-pts .sh-pts-h { color: var(--text-muted); font: 700 11px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; }
+body.ui-v2 .sh-pts .sh-pts-h span:not(:first-child) { text-align: center; }
+body.ui-v2 .sh-pts p { margin: 4px 0 0; padding-top: 8px; border-top: 1px solid var(--border); color: var(--shard); font-size: 13.5px; }
+body.ui-v2 .sh-picker { width: min(1180px, 100%); height: min(640px, 100%); display: flex; flex-direction: column; gap: 14px; padding: 26px 30px; box-sizing: border-box; border-radius: 22px; background: var(--bg-raised); border: 1px solid var(--border-strong); box-shadow: 0 30px 80px rgba(0, 0, 0, .55); animation: v2Rise var(--dur-base) var(--ease-out); }
+body.ui-v2 .sh-pk-head { position: relative; display: flex; gap: 12px; }
+body.ui-v2 .sh-pk-head > div { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+body.ui-v2 .sh-pk-head h3 { margin: 0; font: 700 26px var(--font-display); }
+body.ui-v2 .sh-pk-head .sh-x { position: static; }
+body.ui-v2 .sh-pk-grid { flex: 1; min-height: 0; }
+body.ui-v2 .sh-pts-cap { justify-content: center; text-align: center; white-space: normal; height: auto; line-height: 1.25; font: 700 11px var(--font-num); color: var(--text-secondary); overflow-wrap: anywhere; }
+body.ui-v2 .sh-pk-pager { align-self: center; }
+
+/* The windows on a phone */
+body.ui-v2.m-land .sh-modal { padding: 10px; }
+body.ui-v2.m-land .sh-confirm { grid-template-columns: auto minmax(0, 1fr); gap: 18px; padding: 16px 18px; border-radius: 18px; width: min(820px, 100%); }
+body.ui-v2.m-land .sh-cart { height: 100%; min-height: 0; }
+body.ui-v2.m-land .sh-cart .sh-card { height: 100%; width: auto; max-width: 200px; }
+body.ui-v2.m-land .sh-cart .sh-packstack { height: 100%; width: auto; max-width: 170px; }
+body.ui-v2.m-land .sh-confirm.reset .sh-cbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: start; }
+body.ui-v2.m-land .sh-confirm.reset .sh-cbody > :not(.sh-pts):not(.sh-bal) { grid-column: 1 / -1; }
+body.ui-v2.m-land .sh-confirm.reset .sh-pts p { display: none; }
+body.ui-v2.m-land .sh-cbody { gap: 8px; }
+body.ui-v2.m-land .sh-cbody h3, body.ui-v2.m-land .sh-pk-head h3 { font-size: 20px; }
+body.ui-v2.m-land .sh-bal { padding: 10px 14px; gap: 6px; }
+body.ui-v2.m-land .sh-bal > div { font-size: 13px; }
+body.ui-v2.m-land .sh-bal .sh-after { padding-top: 6px; }
+body.ui-v2.m-land .sh-acts .v2-btn { height: 42px; font-size: 14px; }
+body.ui-v2.m-land .sh-cnote { padding: 6px 10px; font-size: 12px; }
+body.ui-v2.m-land .sh-pts { padding: 8px 12px; gap: 3px; }
+body.ui-v2.m-land .sh-pts > div { font-size: 13px; }
+body.ui-v2.m-land .sh-picker { padding: 14px 18px; gap: 8px; border-radius: 18px; }
+body.ui-v2.m-land .sh-picker .sh-free { padding: 6px 10px; font-size: 12px; }
+body.ui-v2.m-port .sh-modal { padding: 0; place-items: end stretch; }
+body.ui-v2.m-port .sh-confirm { width: 100%; max-height: 92%; grid-template-columns: 112px minmax(0, 1fr); gap: 10px 14px; padding: 22px 18px calc(18px + var(--discord-safe-area-inset-bottom, 0px)); border-radius: 22px 22px 0 0; align-content: start; }
+body.ui-v2.m-port .sh-grab { position: absolute; top: 8px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--border-strong); }
+body.ui-v2.m-port .sh-cbody { display: contents; }
+body.ui-v2.m-port .sh-cart { grid-column: 1; grid-row: 1 / span 4; align-items: flex-start; }
+body.ui-v2.m-port .sh-cbody > .sh-kick { grid-column: 2; grid-row: 1; padding-right: 46px; line-height: 1.35; }
+body.ui-v2.m-port .sh-cbody > h3 { grid-column: 2; grid-row: 2; font-size: 22px; padding-right: 40px; }
+body.ui-v2.m-port .sh-cbody > .sh-csub { grid-column: 2; grid-row: 3; }
+body.ui-v2.m-port .sh-cbody > .sh-x { top: 22px; right: 18px; }
+body.ui-v2.m-port .sh-cbody > .sh-pts, body.ui-v2.m-port .sh-cbody > .sh-bal, body.ui-v2.m-port .sh-cbody > .sh-cnote, body.ui-v2.m-port .sh-cbody > .sh-err, body.ui-v2.m-port .sh-cbody > .sh-acts { grid-column: 1 / -1; }
+body.ui-v2.m-port .sh-cbody > .sh-pts { margin-top: 6px; }
+body.ui-v2.m-port .sh-acts .v2-btn { height: 48px; font-size: 15px; }
+body.ui-v2.m-port .sh-packstack em { width: 40px; height: 40px; font-size: 15px; border-width: 2px; }
+body.ui-v2.m-port .sh-packart.big i { font-size: 10px; }
+body.ui-v2.m-port .sh-picker { width: 100%; height: 100%; padding: calc(16px + var(--discord-safe-area-inset-top, 0px)) 14px calc(14px + var(--discord-safe-area-inset-bottom, 0px)); border-radius: 0; gap: 10px; }
+body.ui-v2.m-port .sh-pk-head h3 { font-size: 22px; }
+body.ui-v2.m-port .sh-picker .sh-free { flex-wrap: wrap; font-size: 12px; padding: 8px 10px; }
+@media (prefers-reduced-motion: reduce) { body.ui-v2 .sh-confirm, body.ui-v2 .sh-picker { animation: none; } body.ui-v2 .sh-card { transition: none; } }

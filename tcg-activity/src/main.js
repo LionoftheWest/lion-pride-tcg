@@ -26,6 +26,7 @@ import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
+import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { initExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
@@ -227,6 +228,7 @@ let features = {}; // server feature flags (e.g., ascension), from /api/config
 let packsAvailable = 0;
 let uiV2 = false;   // the v2 UI (docs/design.md), from /api/flags after login
 let sdkRef = null; // the Discord SDK (the orientation lock)
+let shards = false;  // Shards + the Shop (shards_shop.sql), from /api/flags (SHARDS_USERS first)
 let hall = false;    // wishlists + the Trading Hall + auctions, from /api/flags (HALL_USERS first)
 let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
@@ -343,6 +345,7 @@ async function main() {
   mobileUi = !!flags?.mobile;
   trade2 = !!flags?.trade2;
   hall = !!flags?.hall;
+  shards = !!flags?.shards;
   // A new member's first login gave them the welcome packs: show them now.
   if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   if (uiV2) { startV2(); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); initExplain(flags?.tutorial); } else show('collection');
@@ -381,6 +384,7 @@ function startV2() {
   if (board) board.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
   el('v2Avatar').title = meUser?.name || '';
   initDailies(); // the Dailies window button (hidden while settings.dailies.enabled is off)
+  initShop(shards); // the Shards balance + the Shop button (design 29; hidden while the flag is off)
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
   // 5+ packs: the chooser (x1 / x5 / x10); fewer: open one, as before.
   el('dockOpen').addEventListener('click', () => {
@@ -411,7 +415,7 @@ function sendStatus(kind, d) {
   myStatus = kind || myStatus;
   if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus, d: myDetail })); } catch { /* dropped */ } }
 }
-const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home' };
+const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home', shop: 'home' };
 
 // Load which cards the caller owns (for feed-card ownership). Also warms the
 // collection cache. Refreshed whenever the collection can have changed.
@@ -659,10 +663,12 @@ function mountBossFor(hunt) {
 function renderMain(view) {
   disposeBoss(); // any view change tears the boss down; renderHunt re-mounts it
   disposeHomeV2();
+  disposeShop();
   if (uiV2 && view === 'home') { stopHuntTicker(); renderHomeV2(); return; }
   if (uiV2 && view === 'collection') { stopHuntTicker(); renderCollectionV2(); return; }
   if (uiV2 && view === 'leaderboard') { stopHuntTicker(); renderLeaderboardV2(); return; }
   if (uiV2 && view === 'trading') { stopHuntTicker(); renderTradingV2(); return; }
+  if (uiV2 && view === 'shop') { stopHuntTicker(); renderShopV2(); return; }
   { const bm = el('bossMini'); if (bm) bm.innerHTML = ''; } // clear the sidebar boss square
   stopHuntTicker(); // stop the boss/cooldown countdown; renderHunt restarts it
   if (view === 'gallery') { renderGallery(); return; }
