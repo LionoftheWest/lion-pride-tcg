@@ -631,3 +631,4 @@ body.ui-v2 .hl-minrow .grow { flex: 0 1 auto; }
 @media (max-width: 1200px) { body.ui-v2 .hl-minrow .side-h, body.ui-v2 .hl-minrow .hl-ends { display: none; } }
 body.ui-v2 .hl-minrow .side-h { display: none; }
 body.ui-v2 .hl-ends { font-size: 10.5px; }
+body.ui-v2 .hl-slot.empty { width: 100%; box-sizing: border-box; }

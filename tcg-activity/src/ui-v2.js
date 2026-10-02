@@ -1288,7 +1288,13 @@ function paintWish() {
       <span class="grow"></span>${!wl.self && x.card ? `<span class="hl-n${x.mine ? ' have' : ''}" title="Your free copies">⧉ ×${x.mine}</span>` : ''}
       ${wl.self && wl.edit ? (x.card ? `<button class="v2-icon wl-x" data-slot="${x.slot}" title="Clear">✕</button>` : '') + `<button class="v2-icon wl-set" data-slot="${x.slot}" title="Pick a card">✎</button>` : ''}</div>`).join('')}</div>
     ${wl.msg ? `<span class="tr-msg">${esc(wl.msg)}</span>` : ''}`;
-  ctx.el('wlEdit')?.addEventListener('click', () => { wl.edit = !wl.edit; wl.pick = null; closeWishPicker(); paintWish(); });
+  // A portrait phone: the right column is a bottom sheet (design 27 frames 01 + 02); the Wishlist title opens it.
+  ctx.el('memberModal')?.querySelector('.mem-screen')?.classList.toggle('wl-open', isPort() && (wl.sheet || wl.edit));
+  box.querySelector('.tile-h')?.addEventListener('click', (e) => {
+    if (!isPort() || e.target.closest('button')) return;
+    wl.sheet = !wl.sheet; paintWish();
+  });
+  ctx.el('wlEdit')?.addEventListener('click', () => { wl.edit = !wl.edit; wl.pick = null; if (!wl.edit) wl.sheet = false; closeWishPicker(); paintWish(); });
   box.querySelectorAll('.wl-x').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveWish(Number(b.dataset.slot), null); }));
   box.querySelectorAll('.wl-set').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openWishPicker(Number(b.dataset.slot)); }));
   box.querySelectorAll('.wl-row').forEach((r) => r.addEventListener('click', () => {

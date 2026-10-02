@@ -323,8 +323,8 @@ export function commTabs() {
   const fx = ctx().effectsEnabled?.();
   // Portrait (design 25): the trophy moves from the top bar into Community, the same button.
   const board = isPort() ? '<button class="v2-icon" id="commBoard" title="Leaderboard">🏆</button>' : '';
-  const hall = ctx().hallOn?.() ? `<button data-tab="hall" class="${tr.tab === 'hall' ? 'on' : ''}">♡ Hall</button>` : '';
-  return board + `<div class="seg" id="commTabs"><button data-tab="trades" class="${tr.tab === 'trades' ? 'on' : ''}">⇄ Trades</button>${hall}${fx ? `<button data-tab="effects" class="${tr.tab === 'effects' ? 'on' : ''}">✨ Boons<span class="ct-more"> & Pranks</span></button>` : ''}</div>`;
+  const hall = ctx().hallOn?.() ? `<button data-tab="hall" class="${tr.tab === 'hall' ? 'on' : ''}">♡<span class="bt"> Hall</span></button>` : '';
+  return board + `<div class="seg" id="commTabs"><button data-tab="trades" class="${tr.tab === 'trades' ? 'on' : ''}">⇄<span class="bt"> Trades</span></button>${hall}${fx ? `<button data-tab="effects" class="${tr.tab === 'effects' ? 'on' : ''}">✨<span class="bt"> Boons</span><span class="ct-more"> & Pranks</span></button>` : ''}</div>`;
 }
 export function wireCommTabs() {
   ctx().el('commBoard')?.addEventListener('click', () => ctx().el('boardBtn')?.click());

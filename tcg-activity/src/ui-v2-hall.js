@@ -4,7 +4,7 @@
 // Privacy: another member's wishlist and listed cards show here, never their collection.
 import { v2ctx, avatarHTML, paintCards, fitChildren, toast } from './ui-v2.js';
 import { thumb } from './thumb.js';
-import { isPhone } from './mobile.js';
+import { isPhone, isPort } from './mobile.js';
 import { nameBadge, breakable } from './effects-ui.js';
 import { tr, commTabs, wireCommTabs, offersAsideHTML, wireOffers, refreshOffers } from './ui-v2-social.js';
 
@@ -62,21 +62,31 @@ function paintHall() {
 // ---- The shell --------------------------------------------------------------------------------
 function shell(body, { aside = '', back = null, full = true } = {}) {
   const { el } = ctx();
-  const sub = `<div class="seg" id="hlSub"><button data-s="hall" class="${hall.sub === 'hall' ? 'on' : ''}">▦ Trade Hall</button><button data-s="auctions" class="${hall.sub === 'auctions' ? 'on' : ''}">🔨 Auctions</button></div>`;
-  el('main').innerHTML = `<div class="v2-trade hall-view${full ? ' hall-full' : ''}">
+  const sub = `<div class="seg" id="hlSub"><button data-s="hall" class="${hall.sub === 'hall' ? 'on' : ''}">▦<span class="bt"> Trade Hall</span></button><button data-s="auctions" class="${hall.sub === 'auctions' ? 'on' : ''}">🔨<span class="bt"> Auctions</span></button></div>`;
+  // A portrait phone: the right panel is a bottom sheet (design 27): its title row is the handle.
+  const sheet = isPort() && aside;
+  el('main').innerHTML = `<div class="v2-trade hall-view${full ? ' hall-full' : ''}${sheet ? ` has-sheet${hall.sheet ? ' sheet-open' : ''}` : ''}">
     <section class="tr-main hl-main">
-      <div class="tr-top">${commTabs()}${sub}<span class="grow"></span>${back ? `<button class="v2-btn" id="hlBack">← ${esc(back)}</button>` : ''}</div>
+      <div class="tr-top">${commTabs()}${sub}<span class="grow"></span>${back ? `<button class="v2-btn" id="hlBack">←<span class="bt"> ${esc(back)}</span></button>` : ''}</div>
       ${body}
     </section>${aside}
   </div>`;
   wireCommTabs();
+  if (sheet) {
+    const side = el('main').querySelector('.hall-view > aside');
+    side?.classList.add('hl-sheet');
+    side?.insertAdjacentHTML('afterbegin', '<button class="hl-grab" aria-label="Open or close"></button>');
+    const toggle = (e) => { if (e.target.closest('button:not(.hl-grab), input, select, .of-row')) return; hall.sheet = !hall.sheet; el('main').querySelector('.hall-view')?.classList.toggle('sheet-open', hall.sheet); };
+    side?.querySelector('.hl-grab')?.addEventListener('click', toggle);
+    side?.querySelector('.tile-h')?.addEventListener('click', toggle);
+  }
   el('hlSub').onclick = async (e) => {
     const b = e.target.closest('[data-s]'); if (!b || b.dataset.s === hall.sub) return;
     Object.assign(hall, { sub: b.dataset.s, sel: null, listing: false, auction: null, start: null, page: 0, msg: '' });
     await renderHall();
   };
   el('hlBack')?.addEventListener('click', async () => {
-    Object.assign(hall, { sel: null, listing: false, auction: null, start: null, give: null, bid: [], page: 0, msg: '' });
+    Object.assign(hall, { sel: null, listing: false, auction: null, start: null, give: null, bid: [], page: 0, msg: '', sheet: false });
     await renderHall();
   });
 }
@@ -187,7 +197,7 @@ function paintComposer() {
     paintHall();
   };
   wireOffers(el('main'), paintHall);
-  requestAnimationFrame(() => fitChildren(el('ofIn')));
+  requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); });
 }
 
 // ---- List a card -------------------------------------------------------------------------------
@@ -335,7 +345,7 @@ function paintAuction() {
       <div class="hl-bestrow"><span class="hl-thumbs">${a.best.cards.map((x) => cardImg(x, 'xs')).join('')}</span><span class="hl-sum">${bidSummary(a.best.cards)}</span></div></div>` : '<p class="dim">No bids yet.</p>';
   shell(`<div class="hl-bid">
       <div class="hl-bidhead"><span class="side-h hl-yourbid">Your bid <span class="n">${hall.bid.length} / 5</span></span>${bidCards.length ? `<span class="${meets ? 'hl-ok' : 'hl-below'}">${meets ? '✓ Meets minimum' : 'Below minimum'}</span>` : ''}
-        <span class="grow"></span><span class="tr-msg" id="hlMsg">${esc(hall.msg)}</span>${my && !confirm ? '<button class="v2-btn" id="hbWithdraw">↩ Withdraw</button>' : ''}<button class="v2-btn gold" id="hbPlace" ${bidCards.length && a.status === 'live' ? '' : 'disabled'}>🔨 ${my ? 'Update bid' : 'Place bid'}</button></div>
+        <span class="grow"></span><span class="tr-msg" id="hlMsg">${esc(hall.msg)}</span>${my && !confirm ? '<button class="v2-btn" id="hbWithdraw">↩<span class="bt"> Withdraw</span></button>' : ''}<button class="v2-btn gold" id="hbPlace" ${bidCards.length && a.status === 'live' ? '' : 'disabled'}>🔨 <span class="bt">${my ? 'Update' : 'Place'} </span>bid</button></div>
       <div class="hl-slots">${[0, 1, 2, 3, 4].map((i) => (bidCards[i] ? `<button class="hl-slot" data-i="${i}">${cardImg(bidCards[i])}<span>${title(bidCards[i].name)}</span></button>` : '<div class="hl-slot empty"><span>＋</span><i>Add card</i></div>')).join('')}</div>
     </div>
     <div class="tr-gridhead hl-head"><div class="seg"><button class="on">My cards <b>${items.length}</b></button></div><span class="hl-note dim">${gold ? 'A Gold auction takes Full Art, Promo and Event cards.' : 'Any card but Gold.'}</span><span class="grow"></span><div class="v2-pager" id="hlPager"></div></div>
@@ -388,7 +398,7 @@ function paintSeller(a) {
   const { el } = ctx();
   const accepted = a.status === 'accepted';
   const waitFor = accepted ? (a.bids || []).find((b) => b.id === a.accepted_bid_id) : null;
-  const rows = [...(a.bids || [])].sort((x, y) => (y.meets - x.meets) || (y.score - x.score));
+  const rows = [...(a.bids || [])].sort((x, y) => ((y.id === a.accepted_bid_id) - (x.id === a.accepted_bid_id)) || (y.meets - x.meets) || (y.score - x.score));
   const bestId = rows.find((b) => b.meets)?.id;
   const ago = (iso) => ctx().ago?.(iso) || '';
   const steps = `<ol class="hl-steps">${accepted ? `<li class="done"><b>✓</b> You accept</li><li class="on"><b>2</b> ${esc(waitFor?.bidder || 'The bidder')} confirms</li>` : '<li class="on"><b>1</b> You accept</li><li><b>2</b> Bidder confirms</li>'}</ol>`;
