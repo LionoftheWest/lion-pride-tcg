@@ -1059,3 +1059,204 @@ body.ui-v2.m-port .lb-table { order: 5; flex: 1 1 auto; min-height: 0; padding: 
 body.ui-v2.m-port .lb-row { grid-template-columns: 26px minmax(0, 1fr) auto; height: auto; min-height: 38px; padding: 3px 6px; }
 body.ui-v2.m-port .lb-row .lb-c:not(.on) { display: none; }
 body.ui-v2.m-port .lb-row .lb-p b { white-space: normal; overflow: visible; text-overflow: clip; }
+/* Portrait with the Hall tab: "Boons & Pranks" shortens to "Boons" so the three tabs, the trophy and
+   Offer / Gift keep one row (measured: the row needed 388 px of 359-377 px). */
+body.ui-v2.m-port #commTabs:has([data-tab=hall]) .ct-more { display: none; }
+
+/* ===== Phones: the Trading Hall + Auctions (design 27, approved 2026-10-02) =====
+   The Hall does not use the Trades grid placement: its main column is one flex column. */
+body.ui-v2.m-port .v2-trade.hall-view, body.ui-v2.m-land .v2-trade.hall-view { display: grid; grid-template-rows: minmax(0, 1fr); gap: 6px; }
+body.ui-v2.m-port .v2-trade.hall-view { grid-template-columns: minmax(0, 1fr); }
+body.ui-v2.m-land .v2-trade.hall-view { grid-template-columns: minmax(0, 1fr) 236px; }
+body.ui-v2.m-land .v2-trade.hall-view.hall-full { grid-template-columns: minmax(0, 1fr); }
+body.ui-v2.m-port .hall-view .tr-main, body.ui-v2.m-land .hall-view .tr-main { display: flex; flex-direction: column; gap: 6px; min-height: 0; grid-column: 1; grid-row: 1; }
+body.ui-v2.m-land .hall-view > aside { grid-column: 2; grid-row: 1; min-height: 0; padding: 8px 10px; gap: 6px; }
+body.ui-v2.m-port .hall-view .tr-top, body.ui-v2.m-land .hall-view .tr-top { grid-row: auto; flex-wrap: wrap; gap: 6px; row-gap: 6px; }
+body.ui-v2.m-port .hall-view .tr-top .seg button, body.ui-v2.m-land .hall-view .tr-top .seg button { height: 34px; padding: 0 9px; }
+body.ui-v2.m-port .hall-view #hlBack, body.ui-v2.m-land .hall-view #hlBack { height: 34px; padding: 0 10px; white-space: nowrap; }
+body.ui-v2.m-port .hall-view .tr-gridhead, body.ui-v2.m-land .hall-view .tr-gridhead { grid-row: auto; flex-wrap: wrap; gap: 6px; }
+body.ui-v2.m-port .hall-view .tr-gridhead .seg button, body.ui-v2.m-land .hall-view .tr-gridhead .seg button { height: 32px; padding: 0 8px; }
+body.ui-v2.m-port .hall-view .hl-head .v2-search, body.ui-v2.m-land .hall-view .hl-head .v2-search { flex: 1 1 90px; width: auto; min-width: 80px; }
+body.ui-v2.m-port .hall-view .hl-note, body.ui-v2.m-land .hall-view .hl-note { display: none; }
+body.ui-v2.m-port .hall-view .v2-grid, body.ui-v2.m-land .hall-view .v2-grid { min-height: 0; gap: 6px; }
+body.ui-v2.m-port .hall-view .hl-cap .hl-who, body.ui-v2.m-land .hall-view .hl-cap .hl-who { font-size: 11px; }
+/* The composer */
+body.ui-v2.m-port .hall-view .tr-compose.hl-compose, body.ui-v2.m-land .hall-view .tr-compose.hl-compose { grid-row: auto; padding: 8px 10px; display: block; }
+body.ui-v2.m-port .hall-view .hl-card, body.ui-v2.m-land .hall-view .hl-card { width: 58px; flex-basis: 58px; }
+body.ui-v2.m-port .hall-view .hl-card.xs, body.ui-v2.m-land .hall-view .hl-card.xs { width: 24px; flex-basis: 24px; }
+body.ui-v2.m-port .hall-view .hl-side, body.ui-v2.m-land .hall-view .hl-side { gap: 8px; }
+body.ui-v2.m-port .hall-view .tr-info h3, body.ui-v2.m-land .hall-view .tr-info h3 { font-size: 14px; }
+body.ui-v2.m-port .hall-view .tr-chips i, body.ui-v2.m-land .hall-view .tr-chips i { padding: 2px 6px; font-size: 11px; }
+body.ui-v2.m-port .hall-view .tr-swap, body.ui-v2.m-land .hall-view .tr-swap { width: 32px; height: 32px; }
+body.ui-v2.m-port .hall-view .tr-compose.hl-compose .tr-foot, body.ui-v2.m-land .hall-view .tr-compose.hl-compose .tr-foot { flex-wrap: wrap; gap: 6px; margin-top: 6px; padding-top: 6px; }
+body.ui-v2.m-port .hall-view .hl-steps, body.ui-v2.m-land .hall-view .hl-steps { gap: 8px; font-size: 11px; flex: 1 1 100%; }
+body.ui-v2.m-port .hall-view .tr-foot .grow, body.ui-v2.m-land .hall-view .tr-foot .grow { display: none; }
+body.ui-v2.m-port .hall-view .tr-foot .v2-btn, body.ui-v2.m-land .hall-view .tr-foot .v2-btn { height: 40px; flex: 1 1 0; justify-content: center; }
+body.ui-v2.m-port .hall-view .tr-foot .tr-msg, body.ui-v2.m-land .hall-view .tr-foot .tr-msg { flex: 1 1 100%; }
+body.ui-v2.m-port .hall-view .tr-foot .tr-msg:empty, body.ui-v2.m-land .hall-view .tr-foot .tr-msg:empty { display: none; }
+body.ui-v2.m-port .hall-view .hl-strip, body.ui-v2.m-land .hall-view .hl-strip { gap: 6px; }
+body.ui-v2.m-port .hall-view .hl-wcell { width: calc((100% - 24px) / 5); padding: 2px; }
+body.ui-v2.m-land .hall-view .hl-wcell { width: 72px; padding: 2px; }
+body.ui-v2.m-port .hall-view .hl-wcell .hl-card, body.ui-v2.m-land .hall-view .hl-wcell .hl-card { width: 100%; }
+/* The panel (the right column in landscape, the sheet in portrait) */
+body.ui-v2.m-port .hall-view .hl-panel, body.ui-v2.m-land .hall-view .hl-panel { gap: 6px; }
+body.ui-v2.m-port .hall-view .hl-panel h3, body.ui-v2.m-land .hall-view .hl-panel h3 { font-size: 15px; }
+body.ui-v2.m-port .hall-view .hl-card.big, body.ui-v2.m-land .hall-view .hl-card.big { width: 64px; flex-basis: 64px; }
+body.ui-v2.m-land .hall-view .hl-big { flex-direction: row; gap: 8px; align-items: center; }
+body.ui-v2.m-land .hall-view .hl-big h3 { margin: 0; }
+body.ui-v2.m-port .hall-view .hl-stats > div, body.ui-v2.m-land .hall-view .hl-stats > div { padding: 5px 8px; }
+body.ui-v2.m-port .hall-view .hl-time, body.ui-v2.m-land .hall-view .hl-time { padding: 5px 8px; flex-wrap: wrap; }
+body.ui-v2.m-port .hall-view .hl-time b, body.ui-v2.m-land .hall-view .hl-time b, body.ui-v2.m-port .hall-view .hl-stats b.mono, body.ui-v2.m-land .hall-view .hl-stats b.mono { font-size: 15px; }
+body.ui-v2.m-port .hall-view .hl-time .dim, body.ui-v2.m-land .hall-view .hl-time .dim { font-size: 10.5px; }
+body.ui-v2.m-port .hall-view .hl-steps li, body.ui-v2.m-land .hall-view .hl-steps li { white-space: nowrap; }
+body.ui-v2.m-port .hall-view .hl-panel .v2-btn.wide, body.ui-v2.m-land .hall-view .hl-panel .v2-btn.wide { height: 40px; margin-top: 0; }
+body.ui-v2.m-land .hall-view .hl-pc .hl-card { width: 44px; flex-basis: 44px; }
+body.ui-v2.m-land .hall-view .hl-panel .hl-allowed { font-size: 9.5px; }
+body.ui-v2.m-port .hall-view .hl-minrow, body.ui-v2.m-land .hall-view .hl-minrow { padding: 3px 6px; gap: 6px; }
+body.ui-v2.m-port .hall-view .hl-minrow .v2-icon, body.ui-v2.m-land .hall-view .hl-minrow .v2-icon { width: 34px; height: 34px; flex: none; }
+body.ui-v2.m-land .hall-view .hl-qrow { flex-wrap: wrap; }
+body.ui-v2.m-land .hall-view .hl-ends { display: none; }
+/* The seller's bid rows: two lines on a phone (who + buttons, the cards + the summary). */
+body.ui-v2.m-port .hall-view .hl-brow, body.ui-v2.m-land .hall-view .hl-brow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'who act' 'cards meets'; gap: 4px 8px; padding: 6px 8px; }
+body.ui-v2.m-port .hall-view .hl-brow .hl-bwho, body.ui-v2.m-land .hall-view .hl-brow .hl-bwho { grid-area: who; }
+body.ui-v2.m-port .hall-view .hl-brow .hl-thumbs, body.ui-v2.m-land .hall-view .hl-brow .hl-thumbs { grid-area: cards; }
+body.ui-v2.m-port .hall-view .hl-brow .hl-sum, body.ui-v2.m-land .hall-view .hl-brow .hl-sum, body.ui-v2.m-port .hall-view .hl-brow .hl-bestc, body.ui-v2.m-land .hall-view .hl-brow .hl-bestc { display: none; }
+body.ui-v2.m-port .hall-view .hl-brow .hl-ok, body.ui-v2.m-land .hall-view .hl-brow .hl-ok, body.ui-v2.m-port .hall-view .hl-brow .hl-below, body.ui-v2.m-land .hall-view .hl-brow .hl-below { grid-area: meets; justify-self: end; }
+body.ui-v2.m-port .hall-view .hl-brow .hl-accept, body.ui-v2.m-land .hall-view .hl-brow .hl-accept, body.ui-v2.m-port .hall-view .hl-brow .hl-wait, body.ui-v2.m-land .hall-view .hl-brow .hl-wait { grid-area: act; height: 36px; padding: 0 12px; }
+body.ui-v2.m-port .hall-view .hl-tinfo .hl-card.xs, body.ui-v2.m-land .hall-view .hl-tinfo .hl-card.xs { width: 26px; flex-basis: 26px; }
+/* The bidder: my bid */
+body.ui-v2.m-port .hall-view .hl-bid, body.ui-v2.m-land .hall-view .hl-bid { padding: 6px 8px; gap: 6px; }
+body.ui-v2.m-port .hall-view .hl-bidhead, body.ui-v2.m-land .hall-view .hl-bidhead { flex-wrap: wrap; gap: 6px; }
+body.ui-v2.m-port .hall-view .hl-bidhead .grow, body.ui-v2.m-land .hall-view .hl-bidhead .grow { display: none; }
+body.ui-v2.m-port .hall-view .hl-bidhead .v2-btn, body.ui-v2.m-land .hall-view .hl-bidhead .v2-btn { height: 36px; padding: 0 10px; margin-left: auto; }
+body.ui-v2.m-port .hall-view .hl-bidhead .tr-msg:empty, body.ui-v2.m-land .hall-view .hl-bidhead .tr-msg:empty { display: none; }
+body.ui-v2.m-port .hall-view .hl-slots, body.ui-v2.m-land .hall-view .hl-slots { gap: 6px; max-width: none; }
+body.ui-v2.m-land .hall-view .hl-slots { grid-template-columns: repeat(5, 52px); }
+body.ui-v2.m-port .hall-view .hl-slot span, body.ui-v2.m-land .hall-view .hl-slot > span:not(:only-child) { display: none; }
+body.ui-v2.m-port .hall-view .hl-slot.empty span, body.ui-v2.m-land .hall-view .hl-slot.empty span { display: block; }
+body.ui-v2.m-port .hall-view .hl-slot.empty i, body.ui-v2.m-land .hall-view .hl-slot.empty i { display: none; }
+body.ui-v2.m-land .hall-view .hl-best .hl-sum { display: none; }
+/* Portrait: the right panel is a bottom sheet over the dock. Closed: its title row only. */
+body.ui-v2.m-port .hall-view.has-sheet { padding-bottom: 56px; }
+body.ui-v2.m-port .hall-view > aside.hl-sheet { position: fixed; z-index: 70; left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); bottom: calc(var(--dock-h) + 10px + var(--sa-b));
+  max-height: 46px; overflow: hidden; padding: 0 12px 10px; gap: 6px; border-radius: 16px 16px 14px 14px; box-shadow: 0 -10px 30px rgba(0, 0, 0, .45); transition: max-height var(--dur-base) var(--ease-out, ease); }
+body.ui-v2.m-port .hall-view.sheet-open > aside.hl-sheet { max-height: calc(100dvh - var(--dock-h) - 90px - var(--sa-t) - var(--sa-b)); }
+body.ui-v2.m-port .hall-view.sheet-open::after { content: ''; position: fixed; inset: 0; z-index: 69; background: rgba(5, 5, 10, .55); }
+body.ui-v2.m-port .hl-grab { display: block; width: 44px; height: 14px; margin: 0 auto -2px; border: 0; background: none; cursor: pointer; position: relative; }
+body.ui-v2.m-port .hl-grab::before { content: ''; position: absolute; left: 6px; right: 6px; top: 5px; height: 4px; border-radius: 3px; background: var(--border-strong); }
+body.ui-v2.m-port .hall-view > aside.hl-sheet > .tile-h { min-height: 28px; cursor: pointer; flex: none; }
+body.ui-v2.m-port .hall-view > aside.hl-sheet.tr-offers .of-list#ofIn > .of-row:nth-child(n+3), body.ui-v2.m-port .hall-view > aside.hl-sheet.tr-offers .of-list#ofOut > .of-row:nth-child(n+2) { display: grid; }
+body.ui-v2:not(.m-port) .hl-grab { display: none; }
+/* Landscape: the panel fits about 320 px (a phone held sideways). */
+body.ui-v2.m-land .hall-view .hl-panel { gap: 5px; padding: 8px 10px; }
+body.ui-v2.m-land .hall-view .hl-panel .tile-h { margin: 0; }
+body.ui-v2.m-land .hall-view .hl-card.big, body.ui-v2.m-land .hall-view .hl-pc .hl-card { width: 36px; flex-basis: 36px; border-radius: 5px; }
+body.ui-v2.m-land .hall-view .hl-pc { gap: 8px; align-items: center; }
+body.ui-v2.m-land .hall-view .hl-pc .side-h, body.ui-v2.m-land .hall-view .hl-pc .hl-allowed, body.ui-v2.m-land .hall-view .hl-panel > .side-h { display: none; }
+body.ui-v2.m-land .hall-view .hl-panel h3 { font-size: 13.5px; }
+body.ui-v2.m-land .hall-view .hl-stats .side-h { font-size: 9.5px; margin: 0; }
+body.ui-v2.m-land .hall-view .hl-stats > div { padding: 4px 7px; gap: 2px; }
+body.ui-v2.m-land .hall-view .hl-mins-l { font-size: 11px; }
+body.ui-v2.m-land .hall-view .hl-time { padding: 4px 7px; }
+body.ui-v2.m-land .hall-view .hl-steps { font-size: 10.5px; gap: 6px; }
+body.ui-v2.m-land .hall-view .hl-steps b { width: 18px; height: 18px; }
+body.ui-v2.m-land .hall-view .hl-panel .v2-btn.wide { height: 36px; }
+body.ui-v2.m-land .hall-view .hl-minrow { padding: 2px 6px; }
+body.ui-v2.m-land .hall-view .hl-minrow .v2-icon { width: 30px; height: 30px; }
+body.ui-v2.m-land .hall-view .hl-minrow select { height: 30px; }
+body.ui-v2.m-land .hall-view .hl-qrow .v2-search { height: 30px; }
+body.ui-v2.m-land .hall-view .hl-qrow .seg button { height: 30px; padding: 0 8px; }
+body.ui-v2.m-land .hall-view .hl-best { padding: 4px 7px; }
+body.ui-v2.m-land .hall-view .hl-best .side-h { font-size: 9.5px; margin: 0 0 2px; }
+body.ui-v2.m-land .hall-view .hl-best .hl-card.xs { width: 20px; flex-basis: 20px; }
+body.ui-v2.m-land .hall-view .hl-qrow { flex-wrap: nowrap; }
+body.ui-v2.m-land .hall-view .hl-qrow .v2-search { min-width: 0; }
+
+/* The profile Wishlist on phones (design 27 frames 01-04). */
+body:has(#memberModal:not(.hidden)) .hall-view > aside.hl-sheet, body:has(#memberModal:not(.hidden)) .hall-view.sheet-open::after { display: none; }
+body.ui-v2.m-port .wl-row b, body.ui-v2.m-land .wl-row b { font-size: 12.5px; line-height: 1.15; }
+/* Portrait: the right column (the Wishlist + the hunt) is a bottom sheet; closed, its title row shows. */
+body.ui-v2.m-port .mem-screen:has(.mem-wish) { padding-bottom: 58px; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-right { position: fixed; z-index: 70; left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); bottom: calc(var(--dock-h) + 10px + var(--sa-b));
+  display: flex; flex-direction: column; gap: 6px; max-height: 52px; overflow: hidden; border-radius: 16px; background: var(--bg-raised); box-shadow: 0 -10px 30px rgba(0, 0, 0, .45); transition: max-height var(--dur-base) ease; }
+body.ui-v2.m-port .mem-screen.wl-open .mem-right { max-height: calc(100dvh - var(--dock-h) - 90px - var(--sa-t) - var(--sa-b)); }
+body.ui-v2.m-port .mem-screen.wl-open::after { content: ''; position: fixed; inset: 0; z-index: 69; background: rgba(5, 5, 10, .55); }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-wish > .tile-h { min-height: 32px; cursor: pointer; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hunt { flex: none; }
+/* Portrait: the slot picker covers the screen above the sheet. */
+body.ui-v2.m-port .wl-picker { position: fixed; z-index: 71; left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); top: calc(var(--topbar-h) + 6px + var(--sa-t)); bottom: calc(var(--dock-h) + 10px + var(--sa-b)); padding: 10px; }
+body.ui-v2.m-port .mem-screen.wl-open:has(.wl-picker) .mem-right { display: none; }
+/* Landscape: the right column is the Wishlist (the hunt shows on desktop); the picker covers the left
+   and the center columns. */
+body.ui-v2.m-land .mem-right:has(.mem-wish) { grid-template-rows: minmax(0, 1fr); }
+body.ui-v2.m-land .mem-right:has(.mem-wish) .mem-hunt { display: none; }
+body.ui-v2.m-land .mem-wish { overflow: hidden; }
+body.ui-v2.m-land .wl-row { min-height: 34px; }
+body.ui-v2.m-land .wl-picker { position: fixed; z-index: 71; left: calc(6px + var(--sa-l)); right: calc(33% + 2px); top: calc(var(--topbar-h) + 4px + var(--sa-t)); bottom: calc(var(--dock-h) + 8px + var(--sa-b)); padding: 8px 10px; gap: 6px; }
+body.ui-v2.m-port .wl-picker .wl-rar button, body.ui-v2.m-land .wl-picker .wl-rar button { height: 30px; padding: 0 8px; font-size: 11.5px; }
+body.ui-v2.m-port .wl-picker .wl-foot .v2-btn, body.ui-v2.m-land .wl-picker .wl-foot .v2-btn { height: 38px; }
+body.ui-v2.m-land .wl-picker > .side-h { display: none; }
+body.ui-v2.m-land .wl-picker .v2-col-head .v2-search { flex: 1 1 auto; min-width: 0; }
+/* Landscape picker (design 27 landscape 02): the cards with the rarities in a column beside them,
+   the full height to the window bottom (one card row needs ~147 px). */
+body.ui-v2.m-land .wl-picker { display: grid; grid-template-columns: minmax(0, 1fr) 132px; grid-template-rows: auto auto minmax(0, 1fr) auto; bottom: calc(6px + var(--sa-b)); z-index: 75; }
+body.ui-v2.m-land .wl-picker > .tile-h, body.ui-v2.m-land .wl-picker > .v2-col-head, body.ui-v2.m-land .wl-picker > .wl-foot { grid-column: 1 / -1; }
+body.ui-v2.m-land .wl-picker > #wlGrid { grid-column: 1; grid-row: 3; }
+body.ui-v2.m-land .wl-picker > #wlRar { grid-column: 2; grid-row: 3; flex-direction: column; align-items: stretch; align-self: start; gap: 4px; }
+body.ui-v2.m-land .wl-picker .wl-rar button { justify-content: flex-start; text-align: left; }
+body.ui-v2.m-land .wl-picker > .tile-h { margin: 0; }
+body.ui-v2.m-land .wl-picker > .tile-h .v2-icon { width: 32px; height: 32px; }
+body.ui-v2.m-land .wl-picker { grid-template-columns: minmax(0, 1fr) 154px; grid-template-rows: auto auto minmax(0, 1fr); }
+body.ui-v2.m-land .wl-picker > .tile-h { grid-column: 1; grid-row: 1; }
+body.ui-v2.m-land .wl-picker > .wl-foot { grid-column: 2; grid-row: 1; align-items: center; gap: 4px; }
+body.ui-v2.m-land .wl-picker > .wl-foot .grow { display: none; }
+body.ui-v2.m-land .wl-picker > .wl-foot .v2-btn { flex: 1 1 0; height: 34px; padding: 0 6px; font-size: 12px; justify-content: center; }
+body.ui-v2.m-land .wl-picker > .v2-col-head { grid-row: 2; }
+body.ui-v2.m-land .mem-wish .wl-x { display: none; }
+body.ui-v2.m-land .wl-list { gap: 3px; }
+body.ui-v2.m-land .wl-row { min-height: 32px; padding: 2px 6px; gap: 6px; }
+body.ui-v2.m-land .wl-row img, body.ui-v2.m-land .wl-empty { width: 20px; height: 28px; }
+body.ui-v2.m-land .wl-row b { font-size: 12px; line-height: 1.1; }
+body.ui-v2.m-land .wl-row span[style] { font-size: 9.5px; }
+body.ui-v2.m-land .mem-wish { gap: 4px; }
+body.ui-v2.m-land .mem-wish .tile-h { margin: 0; }
+/* The Hall columns beat the narrow-phone Trades columns (m-narrow / m-xnarrow rules). */
+body.ui-v2.m-land .v2-trade.hall-view.hall-view { grid-template-columns: minmax(0, 1fr) 236px; }
+body.ui-v2.m-land .v2-trade.hall-view.hall-view.hall-full { grid-template-columns: minmax(0, 1fr); }
+body.ui-v2.m-land.m-xnarrow .v2-trade.hall-view.hall-view:not(.hall-full) { grid-template-columns: minmax(0, 1fr) 214px; }
+/* The smallest landscape phones (an iPhone SE): icon tabs and buttons, one tab row, smaller bid slots. */
+body.ui-v2.m-land.m-xnarrow .hall-view .bt { display: none; }
+body.ui-v2.m-land.m-xnarrow .hall-view .tr-top { flex-wrap: nowrap; }
+body.ui-v2.m-land.m-xnarrow .hall-view .tr-top .seg button, body.ui-v2.m-land.m-xnarrow .hall-view #hlBack { padding: 0 10px; min-width: 38px; }
+body.ui-v2.m-land.m-short .hall-view .hl-slots { grid-template-columns: repeat(5, 38px); }
+body.ui-v2.m-land.m-short .hall-view .hl-bidhead .v2-btn { height: 32px; }
+body.ui-v2.m-land.m-short .hall-view .hl-steps { display: none; }
+/* The Hall panel is column 2 (the Trades rule .v2-trade .tr-offers puts the Offers panel in column 3). */
+body.ui-v2.m-land .v2-trade.hall-view > aside { grid-column: 2; grid-row: 1; }
+/* The profile on the smallest landscape phones: a wider right column for the Wishlist, an icon Edit. */
+body.ui-v2.m-land.m-xnarrow .mem-screen:has(.mem-wish) { grid-template-columns: minmax(214px, 1fr) minmax(0, .75fr) minmax(0, 1.15fr); }
+body.ui-v2.m-land .mem-wish .tile-h { flex-wrap: nowrap; white-space: nowrap; gap: 6px; }
+body.ui-v2.m-land.m-xnarrow .mem-wish #wlEdit { font-size: 0; padding: 0 9px; }
+body.ui-v2.m-land.m-xnarrow .mem-wish #wlEdit::first-letter { font-size: 13px; }
+body.ui-v2.m-land .hall-view .tr-offers .of-list > .v2-empty { margin: 0; padding: 2px 4px; font-size: 12px; }
+body.ui-v2.m-land .hall-view .tr-offers .of-list { flex: 0 1 auto; min-height: 0; }
+body.ui-v2.m-land .hall-view .tr-offers { display: flex; flex-direction: column; overflow: hidden; }
+body.ui-v2.m-land .v2-trade.hall-view .tr-offers .of-list:has(> .v2-empty) { flex: 0 0 auto; height: auto; min-height: 0; }
+body.ui-v2.m-land .v2-trade.hall-view .tr-offers .of-list > .v2-empty { padding: 2px 4px; }
+body.ui-v2.m-land.m-short .v2-trade.hall-view .of-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; }
+body.ui-v2.m-land.m-short .v2-trade.hall-view .of-row .of-who { flex: 0 1 auto; min-width: 0; }
+body.ui-v2.m-land.m-short .v2-trade.hall-view .of-row .of-who b { font-size: 12px; }
+body.ui-v2.m-land.m-short .v2-trade.hall-view .of-row .of-card img { width: 20px; }
+body.ui-v2.m-land.m-short .v2-trade.hall-view .of-row .of-card span, body.ui-v2.m-land.m-short .v2-trade.hall-view .of-cards > span { display: none; }
+body.ui-v2.m-land.m-short .v2-trade.hall-view .of-row .of-acts, body.ui-v2.m-land.m-short .v2-trade.hall-view .of-row .of-cancel { margin-left: auto; flex: none; }
+body.ui-v2.m-land.m-short .v2-trade.hall-view .of-row .v2-icon, body.ui-v2.m-land.m-short .v2-trade.hall-view .of-row .v2-btn { height: 34px; }
+body.ui-v2.m-land .v2-trade.hall-view #ofIn:has(> .v2-empty) { flex: 0 0 auto; min-height: 0; }
+body.ui-v2.m-land .v2-trade.hall-view .tr-offers .of-list#ofOut { flex: 0 1 auto; min-height: 0; }
+/* The auction caption has two lines (the grid plans 46 px: data-cap). */
+body.ui-v2 .hall-view .v2-cap.hl-cap.two { height: auto; min-height: 0; }
+/* Cards that fill their cell (the wishlist strip, the bid slots) beat the 58 px phone card size. */
+body.ui-v2.m-port .hall-view .hl-wcell .hl-card, body.ui-v2.m-land .hall-view .hl-wcell .hl-card, body.ui-v2.m-port .hall-view .hl-slot .hl-card, body.ui-v2.m-land .hall-view .hl-slot .hl-card { width: 100%; flex-basis: auto; }
+/* Portrait: the trophy stays in Trades and the top bar (it took a row of its own here). */
+body.ui-v2.m-port .hall-view #commBoard { display: none; }
+body.ui-v2.m-land .hall-view .hl-slots { grid-template-columns: repeat(5, 42px); }
+body.ui-v2.m-land.m-short .hall-view .hl-slots { grid-template-columns: repeat(5, 36px); }

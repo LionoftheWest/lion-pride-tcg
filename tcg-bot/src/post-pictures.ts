@@ -308,3 +308,104 @@ export async function renderTrade(p: TradeInput): Promise<Buffer> {
   ctx.textAlign = 'left';
   return canvas.toBuffer('image/png');
 }
+
+export type ListingInput = { name: string; avatar: Buffer | null; card: { name: string; rarity: string; art: Buffer | null }; wants: { name: string; rarity: string; art: Buffer | null }[] };
+
+/** A new Trading Hall listing (Nathan, 2026-10-02): the member, the card, and their wishlist. 1200 x 630. */
+export async function renderListing(p: ListingInput): Promise<Buffer> {
+  fonts();
+  const W = 1200, H = 630;
+  const canvas = createCanvas(W, H);
+  const ctx = canvas.getContext('2d');
+  const color = rarityColor(p.card.rarity);
+  const [avatar, art, ...wants] = await Promise.all([img(p.avatar), img(p.card.art), ...p.wants.slice(0, 5).map((w) => img(w.art))]);
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+  if (art) { ctx.save(); ctx.filter = 'blur(34px) brightness(0.42) saturate(1.2)'; cover(ctx, art, 520, -80, W - 460, H + 160); ctx.restore(); }
+  const fade = ctx.createLinearGradient(0, 0, 760, 0);
+  fade.addColorStop(0, 'rgba(13, 15, 22, 1)'); fade.addColorStop(0.62, 'rgba(13, 15, 22, 0.9)'); fade.addColorStop(1, 'rgba(13, 15, 22, 0)');
+  ctx.fillStyle = fade; ctx.fillRect(0, 0, W, H);
+  glow(ctx, W, H, 'rgba(77, 163, 255, 0.18)', 900, 300);
+  card(ctx, art, 900, 318, 330, color, -4);
+  await brand(ctx, 64, 52);
+  chip(ctx, 'UP FOR TRADE', 64, 122, '#4DA3FF');
+  avatarCircle(ctx, avatar, p.name, 64, 196, 96, color);
+  ctx.fillStyle = '#ffffff'; fit(ctx, p.name, 800, 44, 26, 400, 'Bricolage'); ctx.fillText(p.name, 180, 244);
+  ctx.fillStyle = '#b9bdd0'; ctx.font = font(600, 24); ctx.fillText('listed a card in the Trading Hall', 180, 280);
+  ctx.fillStyle = '#ffffff'; fit(ctx, p.card.name, 800, 48, 24, 520, 'Bricolage'); ctx.fillText(p.card.name, 64, 372);
+  ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(71, 390); ctx.lineTo(78, 397); ctx.lineTo(71, 404); ctx.lineTo(64, 397); ctx.closePath(); ctx.fill();
+  ctx.font = font(800, 20); ctx.fillText(rarityLabel(p.card.rarity).toUpperCase(), 88, 404);
+  if (p.wants.length) {
+    ctx.fillStyle = '#b9bdd0'; ctx.font = font(800, 16); ctx.fillText('THEIR WISHLIST: OFFER ONE OF THESE', 64, 462);
+    p.wants.slice(0, 5).forEach((w, i) => {
+      const x = 64 + i * 92;
+      ctx.save(); rounded(ctx, x, 480, 78, 109, 8); ctx.clip();
+      if (wants[i]) cover(ctx, wants[i]!, x, 480, 78, 109); else { ctx.fillStyle = '#1b1e2c'; ctx.fillRect(x, 480, 78, 109); }
+      ctx.restore();
+      rounded(ctx, x, 480, 78, 109, 8); ctx.lineWidth = 3; ctx.strokeStyle = rarityColor(w.rarity); ctx.stroke();
+    });
+  }
+  return canvas.toBuffer('image/png');
+}
+
+export type AuctionInput = {
+  phase: 'start' | 'end';
+  seller: string; sellerAvatar: Buffer | null;
+  card: { name: string; rarity: string; art: Buffer | null };
+  min: string; endsIn: string; bids: number;
+  result?: { kind: 'sold' | 'closed' | 'expired'; winner?: string; winnerAvatar?: Buffer | null; cards?: { name: string; rarity: string; art: Buffer | null }[] };
+};
+
+/** An auction starts or ends (Nathan, 2026-10-02): the card, the seller, the minimum, the result. 1200 x 630. */
+export async function renderAuction(p: AuctionInput): Promise<Buffer> {
+  fonts();
+  const W = 1200, H = 630;
+  const canvas = createCanvas(W, H);
+  const ctx = canvas.getContext('2d');
+  const color = rarityColor(p.card.rarity);
+  const gold = p.card.rarity === 'gold';
+  const sold = p.phase === 'end' && p.result?.kind === 'sold';
+  const bidCards = (p.result?.cards || []).slice(0, 5);
+  const [sa, art, wa, ...bids] = await Promise.all([img(p.sellerAvatar), img(p.card.art), img(p.result?.winnerAvatar ?? null), ...bidCards.map((c) => img(c.art))]);
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+  if (art) { ctx.save(); ctx.filter = 'blur(34px) brightness(0.42) saturate(1.2)'; cover(ctx, art, 0, -80, 620, H + 160); ctx.restore(); }
+  const fade = ctx.createLinearGradient(380, 0, 1200, 0);
+  fade.addColorStop(0, 'rgba(13, 15, 22, 0)'); fade.addColorStop(0.35, 'rgba(13, 15, 22, 0.92)'); fade.addColorStop(1, 'rgba(13, 15, 22, 1)');
+  ctx.fillStyle = fade; ctx.fillRect(0, 0, W, H);
+  glow(ctx, W, H, gold ? 'rgba(244, 183, 60, 0.3)' : 'rgba(199, 125, 255, 0.2)', 260, 315);
+  if (gold) rays(ctx, 260, 315, 420, 'rgba(255, 214, 107, 0.45)');
+  card(ctx, art, 260, 318, 330, color, -3, p.phase === 'end' && !sold ? 0.55 : 1);
+  if (p.phase === 'end') stamp(ctx, sold ? 'SOLD' : 'ENDED', 260, 470, sold ? '#7CF0B0' : '#b9bdd0');
+  const x0 = 520;
+  await brand(ctx, x0, 52);
+  chip(ctx, p.phase === 'start' ? (gold ? 'GOLD AUCTION' : 'NEW AUCTION') : sold ? 'AUCTION SOLD' : 'AUCTION ENDED', x0, 122, p.phase === 'start' ? (gold ? '#F4B73C' : '#C77DFF') : sold ? '#7CF0B0' : '#8a8fa8');
+  ctx.fillStyle = '#ffffff'; fit(ctx, p.card.name, 800, 50, 26, 620, 'Bricolage'); ctx.fillText(p.card.name, x0, 222);
+  ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x0 + 7, 240); ctx.lineTo(x0 + 14, 247); ctx.lineTo(x0 + 7, 254); ctx.lineTo(x0, 247); ctx.closePath(); ctx.fill();
+  ctx.font = font(800, 20); ctx.fillText(rarityLabel(p.card.rarity).toUpperCase(), x0 + 24, 254);
+  avatarCircle(ctx, sa, p.seller, x0, 280, 48, '#3a3d55');
+  ctx.fillStyle = '#b9bdd0'; ctx.font = font(600, 22); ctx.fillText(p.phase === 'start' ? 'up for auction by' : 'auctioned by', x0 + 64, 300);
+  ctx.fillStyle = '#ffffff'; fit(ctx, p.seller, 800, 26, 18, 460); ctx.fillText(p.seller, x0 + 64, 330);
+  if (p.phase === 'start') {
+    const box = (x: number, label: string, value: string, w: number) => {
+      rounded(ctx, x, 370, w, 92, 14); ctx.fillStyle = '#151826'; ctx.fill();
+      ctx.fillStyle = '#8a8fa8'; ctx.font = font(800, 15); ctx.fillText(label, x + 18, 400);
+      ctx.fillStyle = '#ffffff'; fit(ctx, value, 800, 30, 16, w - 36); ctx.fillText(value, x + 18, 440);
+    };
+    box(x0, 'MINIMUM', p.min, 330); box(x0 + 346, 'ENDS IN', p.endsIn, 270);
+    ctx.fillStyle = '#b9bdd0'; ctx.font = font(600, 22); ctx.fillText('Bid with up to 5 cards in the Trading Hall.', x0, 520);
+  } else if (sold) {
+    ctx.fillStyle = '#7CF0B0'; ctx.font = font(800, 16); ctx.fillText('WON BY', x0, 396);
+    avatarCircle(ctx, wa, p.result?.winner || 'A member', x0, 410, 56, '#7CF0B0');
+    ctx.fillStyle = '#ffffff'; fit(ctx, p.result?.winner || 'A member', 800, 30, 18, 300, 'Bricolage'); ctx.fillText(p.result?.winner || 'A member', x0 + 72, 448);
+    ctx.fillStyle = '#8a8fa8'; ctx.font = font(800, 15); ctx.fillText('FOR', x0, 512);
+    bidCards.forEach((c, i) => {
+      const x = x0 + 46 + i * 70;
+      ctx.save(); rounded(ctx, x, 488, 58, 81, 7); ctx.clip();
+      if (bids[i]) cover(ctx, bids[i]!, x, 488, 58, 81); else { ctx.fillStyle = '#1b1e2c'; ctx.fillRect(x, 488, 58, 81); }
+      ctx.restore(); rounded(ctx, x, 488, 58, 81, 7); ctx.lineWidth = 3; ctx.strokeStyle = rarityColor(c.rarity); ctx.stroke();
+    });
+  } else {
+    ctx.fillStyle = '#b9bdd0'; ctx.font = font(600, 24);
+    ctx.fillText(p.result?.kind === 'closed' ? 'The seller closed it early. Every bid returned.' : `It ended with no sale (${p.bids} bid${p.bids === 1 ? '' : 's'}). Every bid returned.`, x0, 420);
+  }
+  return canvas.toBuffer('image/png');
+}
