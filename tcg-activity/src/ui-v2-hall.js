@@ -3,7 +3,7 @@
 // My auctions). The rules live in SQL (hall_auctions.sql), the data in src/hall-routes.js.
 // Privacy: another member's wishlist and listed cards show here, never their collection.
 import { explainBtn, maybeExplain } from './ui-v2-explain.js';
-import { v2ctx, avatarHTML, paintCards, fitChildren, toast } from './ui-v2.js';
+import { v2ctx, avatarHTML, paintCards, fitChildren, toast, openMember } from './ui-v2.js';
 import { thumb } from './thumb.js';
 import { isPhone, isPort } from './mobile.js';
 import { nameBadge, breakable } from './effects-ui.js';
@@ -62,6 +62,12 @@ export async function renderHall() {
 }
 // The live trade poll: an offer arrived or closed while I look at the Hall.
 export function repaintHall() { if (hall.sub === 'hall') paintHall(); }
+// My wishlist changed (a card or the top want): reload the Hall data; repaint the Trade Hall grid when it shows.
+export async function refreshHall() {
+  if (!hall.data) return;
+  await loadHall();
+  if (ctx().currentView() === 'trading' && tr.tab === 'hall' && hall.sub === 'hall' && !hall.sel && !hall.listing) paintHall();
+}
 
 function paintHall() {
   if (hall.sub === 'auctions') {
@@ -139,25 +145,30 @@ function paintHallGrid() {
       <div class="seg" id="hlView"><button data-v="wanted" class="${hall.view === 'wanted' ? 'on' : ''}">♡ Wanted</button><button data-v="fortrade" class="${hall.view === 'fortrade' ? 'on' : ''}">🏷 For trade</button></div>
       <input class="v2-search" id="hlQ" placeholder="Search" value="${esc(hall.q)}">
       <span class="grow"></span>
+      ${hall.view === 'wanted' ? '<button class="v2-btn" id="hlWish" title="My Wishlist">♡<span class="bt"> My Wishlist</span></button>' : ''}
       <button class="v2-btn gold" id="hlList">⚙ Manage My Listings <b>${d.mine.length}/5</b></button>
       <div class="v2-pager" id="hlPager"></div>
     </div>
-    <p class="hl-note dim">${hall.view === 'wanted' ? 'Cards members want. Send one you have; they pick a card back.' : 'Cards members list for trade. Offer a card from their wishlist.'}</p>
+    <p class="hl-note dim">${hall.view === 'wanted' ? 'Each member\'s top want. Have one? Send it; they pick a card back. Tap a name for the full wishlist.' : 'Cards members list for trade. Offer a card from their wishlist.'}</p>
     <div class="v2-grid" id="hlGrid" data-cap="${isPhone() ? 54 : 24}"></div>`);
   hall.tile = (c, idx, sel) => {
     const it = c._it;
-    const chip = hall.view === 'wanted' ? `<span class="hl-n${it.mine ? ' have' : ''}" title="Your free copies">⧉ ×${it.mine}</span>`
+    const chip = hall.view === 'wanted' ? (it.yours ? '<span class="hl-n yours">Yours</span>' : `<span class="hl-n${it.mine ? ' have' : ''}" title="Your free copies">⧉ ×${it.mine}</span>`)
       : it.mine === true ? '<span class="hl-n yours">Yours</span>' : `<span class="hl-n${it.match ? ' have' : ''}" title="Their wishlist cards you have">♡ ${it.match}</span>`;
     return `<div class="v2-cell${sel ? ' sel' : ''}" data-idx="${idx}"><div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
-      ${isPhone() ? `<div class="v2-cap hl-cap two ph"><span class="hl-who">${nm(it.player_id, it.name)}</span><span class="hl-r2">${chip}</span></div>`
-        : `<div class="v2-cap hl-cap">${avatarHTML(it.player_id, it.name, 'xs')}<span class="hl-who">${nm(it.player_id, it.name)}</span>${chip}</div>`}</div>`;
+      ${isPhone() ? `<div class="v2-cap hl-cap two ph"><span class="hl-who" data-member="${esc(it.player_id)}">${nm(it.player_id, it.name)}</span><span class="hl-r2">${chip}</span></div>`
+        : `<div class="v2-cap hl-cap">${avatarHTML(it.player_id, it.name, 'xs')}<span class="hl-who" data-member="${esc(it.player_id)}">${nm(it.player_id, it.name)}</span>${chip}</div>`}</div>`;
   };
   paintCards(el('hlGrid'), el('hlPager'), items, hall, async (c) => {
     if (hall.view === 'fortrade' && c._it.mine === true) { hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); return; }
+    if (hall.view === 'wanted' && c._it.yours) { openMember(c._it.player_id); return; } // my top want: my profile Wishlist
     hall.sel = { kind: hall.view, ...c._it }; hall.give = null; hall.msg = '';
     await openComposer();
   });
-  if (!items.length) el('hlGrid').innerHTML = `<p class="v2-empty">${hall.view === 'wanted' ? 'No member has a wishlist yet. Set yours on your profile.' : 'No cards are listed yet. List one with Manage My Listings.'}</p>`;
+  if (!items.length) el('hlGrid').innerHTML = `<p class="v2-empty">${hall.view === 'wanted' ? 'No member has a wishlist yet. Set yours with ♡ My Wishlist.' : 'No cards are listed yet. List one with Manage My Listings.'}</p>`;
+  // A member name opens their profile (the full wishlist). Capture: before the card tap opens an offer.
+  el('hlGrid').addEventListener('click', (e) => { const t = e.target.closest('.hl-who[data-member]'); if (!t) return; e.stopPropagation(); openMember(t.dataset.member); }, true);
+  el('hlWish')?.addEventListener('click', () => { const me = ctx().user?.(); if (me?.id) openMember(me.id); });
   el('hlView').onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b) return; hall.view = b.dataset.v; hall.page = 0; paintHall(); };
   el('hlQ').addEventListener('input', (e) => { hall.q = e.target.value; hall.page = 0; const pos = e.target.selectionStart; paintHall(); const n = el('hlQ'); n.focus(); try { n.setSelectionRange(pos, pos); } catch { /* */ } });
   el('hlList').onclick = async () => { try { await ctx().refreshOwned(); } catch { /* keep */ } hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); };
