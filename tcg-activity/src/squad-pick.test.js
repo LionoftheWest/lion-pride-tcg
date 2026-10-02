@@ -102,3 +102,34 @@ test('openSlots: how many more cards can go in today', () => {
   assert.equal(openSlots(cards, [cards[1].id]), 6); // 4 standing used + 2 new slots
   assert.equal(openSlots(cards.slice(0, 3), [cards[1].id]), 1);                  // only 1 card left to add
 });
+
+// The squad-down check (Nathan + xeno, 2026-10-02: one downed card "wiped" a squad of 8).
+import { squadDown } from './squad-pick.js';
+const sq = () => Array.from({ length: 10 }, (_, i) => card(50 + i));
+test('xeno: 8 locked, the first attacker fought and is down, 7 not fought yet: NOT down', () => {
+  const cards = sq(); const sel = cards.slice(0, 8).map((c) => c.id);
+  cards[0].used = true; cards[0].downed = true;
+  assert.equal(squadDown(cards, sel), false);
+});
+test('all 8 locked attackers down: the squad is down', () => {
+  const cards = sq(); const sel = cards.slice(0, 8).map((c) => c.id);
+  for (const c of cards.slice(0, 8)) { c.used = true; c.downed = true; }
+  assert.equal(squadDown(cards, sel), true);
+});
+test('a squad of 5, all down: down (no fresh cards join later)', () => {
+  const cards = sq(); const sel = cards.slice(0, 5).map((c) => c.id);
+  for (const c of cards.slice(0, 5)) { c.used = true; c.downed = true; }
+  assert.equal(squadDown(cards, sel), true);
+});
+test('the supports count: 6 attackers down, 2 supports still up: NOT down', () => {
+  const cards = [...sq().slice(0, 6), card(10, [], { type: 'Moment' }), card(10, [], { type: 'Item' })];
+  for (const c of cards.slice(0, 6)) { c.used = true; c.downed = true; }
+  assert.equal(squadDown(cards, cards.map((c) => c.id)), false);
+  for (const c of cards.slice(6)) { c.used = true; c.downed = true; }
+  assert.equal(squadDown(cards, cards.map((c) => c.id)), true);
+});
+test('no locked squad (fought before the server squads): the cards that fought are the squad', () => {
+  const cards = sq();
+  cards[0].used = true; cards[0].downed = true; cards[1].used = true;
+  assert.equal(squadDown(cards, []), false);
+});

@@ -11,7 +11,7 @@
  * shows in the main header and opens reveal in the main pane for everyone.
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
-import { openSlots } from './squad-pick.js';
+import { openSlots, squadDown } from './squad-pick.js';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 import { mtToday, nextMtMidnightISO } from './mt-time.js';
 installImgFallback();
@@ -1345,16 +1345,19 @@ function paintHuntView(d) {
   }
   huntState = d;
   huntDay = utcToday(); // remember the day so the ticker can detect the daily reset
-  const saved = loadTeam(d.hunt.id);
+  // The squad locked on the server (hunt_squads.sql) is the truth; this device's copy is the fallback.
+  const saved = d.squad?.length ? d.squad.map(Number) : loadTeam(d.hunt.id);
+  if (d.squad?.length) saveTeam(d.hunt.id, saved);
   // A saved squad only holds while the server still shows committed cards. If the day's
   // squad was reset server-side (usedToday === 0), the device lock is stale — drop it and
   // return to squad selection so the player re-picks.
-  // One squad per day: if every committed attacker is downed, the day's run is over.
-  const committedAtk = (d.roster || []).filter((c) => c.used && ATTACKER_TYPES.includes(c.type));
-  const koForDay = committedAtk.length > 0 && committedAtk.every((c) => c.downed);
+  // The day's run is over only when EVERY attacker of the squad (the locked cards + the cards that
+  // fought) is down and no fresh card can join (squad-pick.js). It looked only at the cards that
+  // had fought: one card downed first ended a squad of 8 (Nathan + xeno, 2026-10-02).
+  const koForDay = squadDown(d.roster || [], saved || []);
   if (koForDay) {
     squad.phase = 'select'; squad.ko = true; squad.locked = false; squad.page = 0;
-    squad.sel = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
+    squad.sel = new Set(saved?.length ? saved : (d.roster || []).filter((c) => c.used).map((c) => c.id));
   } else if (saved && saved.length && (d.usedToday || 0) > 0) {
     squad.phase = 'battle'; squad.ko = false; squad.sel = new Set(saved);
   } else if (saved && saved.length) {
@@ -2097,6 +2100,14 @@ function wireSelectPhase() {
     // A squad with open slots asks first (Nathan, 2026-10-01: members fought with short squads).
     const open = openSlots(huntState?.roster || [], [...squad.sel], { cap });
     if (open > 0 && !(await confirmShortSquad(squad.sel.size, cap, open))) return;
+    // The server keeps the squad (hunt_squads.sql): one squad per day, fixed after the first fight.
+    const lr = await apiPost('/api/hunt/squad', { cards: [...squad.sel] }).catch(() => null);
+    if (!lr?.ok) {
+      if (lr?.error === 'squad_fixed' && Array.isArray(lr.squad)) { squad.sel = new Set(lr.squad.map(Number)); paintHuntPage(); onSquadChanged(); }
+      const b = el('lockInBtn')?.getBoundingClientRect();
+      calloutAt(b ? b.left + b.width / 2 : innerWidth / 2, b ? b.top - 10 : 120, lr?.error === 'squad_fixed' ? 'SQUAD LOCKED FOR TODAY' : 'TRY AGAIN', '#ff8f5c');
+      return;
+    }
     saveTeam(huntState.hunt.id, [...squad.sel]);
     squad.locked = true;
     const eb = el('enterBattleBtn'); if (eb) { eb.disabled = false; eb.classList.add('ready'); }
@@ -2223,9 +2234,8 @@ async function refreshHuntState() {
   const slot = el('usedSlot'); if (slot) slot.innerHTML = `Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}`;
   if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); }
   paintTeam();
-  // One squad per day: if every committed attacker is down, end the run with a wipe.
-  const committedAtk = (huntState.roster || []).filter((c) => c.used && ATTACKER_TYPES.includes(c.type));
-  if (squad.phase === 'battle' && h.status !== 'defeated' && committedAtk.length > 0 && committedAtk.every((c) => c.downed)) squadDownSequence();
+  // The squad is down only when EVERY card of it is down, the supports too (a card that has not fought is alive).
+  if (squad.phase === 'battle' && h.status !== 'defeated' && squadDown(huntState.roster || [], [...squad.sel])) squadDownSequence();
 }
 
 // The whole squad is down. Show a wipe overlay, then swing back to the picker view
