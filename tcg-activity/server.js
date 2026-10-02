@@ -337,10 +337,21 @@ app.post('/api/mobile-log', async (req, res) => {
   res.json({ ok: true });
 });
 
+// The LPTCG role (Nathan, 2026-10-02): every member with an account, so posts can ping the players.
+// Asked once per member while this server runs; the bot skips a member who has it.
+const lptcgAsked = new Set();
+function lptcgRole(id) {
+  if (!INTERNAL_TOKEN || !id || lptcgAsked.has(String(id))) return;
+  lptcgAsked.add(String(id));
+  fetch(`${BOT_INTERNAL_URL}/member-role`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-token': INTERNAL_TOKEN },
+    body: JSON.stringify({ userId: String(id) }), signal: AbortSignal.timeout(8000) }).catch(() => lptcgAsked.delete(String(id)));
+}
+
 app.get('/api/flags', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const welcomed = await ensurePlayerRow(me).catch(() => false);
+  lptcgRole(me.id); // the LPTCG role at login (the bot gives it once)
   const hash = me.avatar || null;
   if (hash && avatarHash.get(String(me.id))?.hash !== hash) {
     avatarHash.set(String(me.id), { hash, at: Date.now() });
