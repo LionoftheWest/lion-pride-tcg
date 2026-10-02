@@ -1306,3 +1306,45 @@ body.ui-v2.m-land .hall-view .hl-bidhead .bt { display: none; }
 body.ui-v2.m-land .hall-view .hl-bid { min-width: 0; }
 body.ui-v2.m-land .hall-view .hl-slots { flex: 0 1 auto; min-width: 0; grid-template-columns: repeat(5, minmax(26px, 34px)); }
 body.ui-v2.m-land .hall-view .hl-bidhead .v2-btn { padding: 0 9px; }
+
+/* Review 3 (Nathan, 2026-10-02). Typing in the Start sheet: the card picture steps aside. */
+body.ui-v2.m-port.m-kb .hall-view > aside.hl-sheet .hl-pc, body.ui-v2.m-port.m-kb .hall-view > aside.hl-sheet > .side-h { display: none; }
+body.ui-v2.m-port .hall-view > aside.hl-sheet .hl-hits { flex: none; }
+body.ui-v2.m-port .hall-view .hl-qrow { flex-wrap: wrap; }
+body.ui-v2.m-port .hall-view .hl-qrow > .hl-hits { position: static; flex: 1 1 100%; max-height: none; box-shadow: none; padding: 0; background: none; }
+
+/* Phones: the listing slots show the card only (no names), the row stays one line. */
+body.ui-v2.m-port .hl-mylist, body.ui-v2.m-land .hl-mylist { padding: 6px 8px; gap: 8px; }
+body.ui-v2.m-port .hl-li b, body.ui-v2.m-land .hl-li b { display: none; }
+body.ui-v2.m-port .hl-li, body.ui-v2.m-land .hl-li { height: 50px; justify-content: center; padding: 3px; }
+body.ui-v2.m-port .hl-li .hl-card, body.ui-v2.m-land .hl-li .hl-card { width: 31px; flex-basis: 31px; }
+body.ui-v2.m-port .hl-li .hl-unlist, body.ui-v2.m-land .hl-li .hl-unlist { top: -6px; right: -6px; transform: none; width: 22px; height: 22px; font-size: 11px; }
+body.ui-v2.m-port .hl-mylist .side-h, body.ui-v2.m-land .hl-mylist .side-h { flex: none; margin: 0; }
+body.ui-v2.m-port .hl-mylist .tr-msg:empty, body.ui-v2.m-land .hl-mylist .tr-msg:empty { display: none; }
+body.ui-v2.m-land .hall-view .hl-head .hl-note { display: inline; font-size: 11px; }
+/* The Wanted wishlist strip: the cards fit the height left (they were cut at the bottom). */
+body.ui-v2.m-port .hall-view .hl-strip, body.ui-v2.m-land .hall-view .hl-strip { align-items: stretch; }
+body.ui-v2.m-land .hall-view .hl-wcell { width: auto; height: 100%; min-height: 0; }
+body.ui-v2.m-land .hall-view .hl-wcell .hl-card { flex: 1 1 auto; min-height: 0; width: auto; aspect-ratio: 5 / 7; }
+/* Search mode on a phone held sideways (IMG_2882): the Start panel covers the space above the
+   keyboard with the box, the hits and the picked cards only. */
+body.ui-v2.m-land.hl-searching .hall-view > aside.hl-panel { position: fixed; z-index: 90; left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); overflow-y: auto; }
+body.ui-v2.m-land.hl-searching .hall-view > aside.hl-panel > :not(.tile-h):not(.hl-qrow):not(.hl-chips) { display: none; }
+body.ui-v2.m-land.hl-searching .hall-view .hl-qrow > .hl-hits { position: static; flex: 1 1 100%; max-height: none; box-shadow: none; }
+body.ui-v2.m-land.hl-searching .hall-view .hl-qrow { flex-wrap: wrap; }
+body.ui-v2.hl-searching .hall-view::after { content: ''; position: fixed; inset: 0; z-index: 89; background: rgba(5, 5, 10, .6); }
+/* Landscape offer (For trade): one compact line, so the card grid below gets the height. */
+body.ui-v2.m-land .hall-view .tr-compose.hl-compose { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-deal { flex: 1 1 auto; min-width: 0; gap: 6px; }
+body.ui-v2.m-land .hall-view .hl-compose .hl-explain, body.ui-v2.m-land .hall-view .hl-compose .hl-steps, body.ui-v2.m-land .hall-view .hl-compose .tr-chips { display: none; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-foot { flex: none; flex-wrap: nowrap; margin: 0; padding: 0; border: 0; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-foot .v2-btn { flex: none; height: 36px; padding: 0 10px; }
+body.ui-v2.m-land .hall-view .hl-compose .hl-card { width: 40px; flex-basis: 40px; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-info h3 { font-size: 12.5px; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-swap { width: 28px; height: 28px; }
+body.ui-v2.m-land .hall-view .hl-compose .hl-rar { display: none; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-who { font-size: 9.5px; }
+body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-info { display: none; }
+body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-foot .v2-btn { font-size: 0; padding: 0 12px; }
+body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-foot .v2-btn::first-letter { font-size: 15px; }
+body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-deal { flex: 0 1 auto; }

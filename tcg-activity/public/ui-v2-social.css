@@ -649,3 +649,18 @@ body.ui-v2 button.hl-slot.empty { cursor: pointer; }
 body.ui-v2 .hl-seller { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 @keyframes hlFlash { 0%, 100% { box-shadow: none; } 40% { box-shadow: 0 0 0 2px var(--gold) inset; } }
 body.ui-v2 .v2-grid.hl-flash { animation: hlFlash .9s ease 2; border-radius: 12px; }
+/* The card search hits: a dropdown under the box (landscape + desktop), in place below it on a portrait phone. */
+body.ui-v2 .hall-view .hl-qrow { position: relative; }
+body.ui-v2 .hall-view .hl-qrow > .hl-hits { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); max-height: 46vh; overflow-y: auto; padding: 4px; border-radius: 12px; background: var(--bg-raised); box-shadow: 0 12px 30px rgba(0,0,0,.55); }
+body.ui-v2 .hall-view .hl-qrow > .hl-hits:empty { display: none; }
+
+/* Your listings: 5 fixed slots (the box no longer grows with each listing). */
+body.ui-v2 .hl-mylist { flex: none; flex-wrap: nowrap; align-items: center; }
+body.ui-v2 .hl-lslots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; flex: 1 1 auto; min-width: 0; }
+body.ui-v2 .hl-li { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; height: 56px; padding: 4px 30px 4px 4px; box-sizing: border-box; }
+body.ui-v2 .hl-li .hl-card { width: 34px; flex: 0 0 34px; }
+body.ui-v2 .hl-li b { font-size: 12px; line-height: 1.15; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+body.ui-v2 .hl-li .hl-unlist { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 24px; height: 24px; }
+body.ui-v2 .hl-li.empty { justify-content: center; padding: 4px; border: 1.5px dashed var(--border-strong); background: none; color: var(--text-muted); font-style: normal; }
+body.ui-v2 .hl-li.empty i { font-style: normal; }
+body.ui-v2 .hl-mylist .side-h .n { margin-left: 6px; }
