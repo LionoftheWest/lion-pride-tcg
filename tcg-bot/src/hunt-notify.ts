@@ -2,6 +2,9 @@ import type { Client, MessageCreateOptions } from 'discord.js';
 import { getSupabase } from './supabase.js';
 import { announce } from './internal.js';
 import { launchActivityRow } from './ui/launch.js';
+import { AttachmentBuilder } from 'discord.js';
+import { renderRaidBoard, renderSquadSummary } from './raid-cards.js';
+import { buf, art } from './playing-posts.js';
 
 // Poll the hunt_events outbox and post each event to the notifications channel. The game
 // logic (SQL) writes events; the bot is the only process that can post to Discord, so it
@@ -84,9 +87,55 @@ function format(ev: { kind: string; payload: Record<string, unknown> }): string 
       return `🦁 <@${p.player_id}> finished the hunt for today!\n`
         + `Daily damage: **${Number(p.total).toLocaleString()}** across ${p.cards_used} card${Number(p.cards_used) === 1 ? '' : 's'}.${top}${bossHp}`;
     }
+    case 'leaderboard': {
+      const rows = Array.isArray(p.top) ? (p.top as Array<{ username?: string; damage?: number }>) : [];
+      const medals = ['🥇', '🥈', '🥉'];
+      const top = rows.slice(0, 3).map((r, i) => `${medals[i]} ${escapeMd(String(r.username ?? 'A hunter'))} (${Number(r.damage ?? 0).toLocaleString()})`).join('  ');
+      return `📊 **Daily raid leaderboard** · ${p.name}\n${top || 'No hunters yet. Be the first!'}`;
+    }
     default:
       return null;
   }
+}
+
+// Markdown out of a member name (the leaderboard names members without pinging them).
+const escapeMd = (s: string): string => s.replace(/([*_~`|>\\])/g, '\\$1');
+
+const epochLeft = (iso: string): string => {
+  const s = Math.max(0, (new Date(iso).getTime() - Date.now()) / 1000);
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  return d ? `${d}d ${h}h` : `${h}h ${m}m`;
+};
+const avatarUrl = (id: string, hash: string | null | undefined): string | null => (hash ? `https://cdn.discordapp.com/avatars/${id}/${hash}.png?size=128` : null);
+
+/** The picture for a raid post (Nathan, 2026-10-02): the daily leaderboard and the squad summary. */
+export async function huntPicture(ev: { kind: string; hunt_id?: number; created_at?: string; payload: Record<string, unknown> }): Promise<Buffer | null> {
+  const p = ev.payload ?? {};
+  const sb = getSupabase();
+  if (ev.kind === 'leaderboard') {
+    const rows = Array.isArray(p.top) ? (p.top as Array<{ player_id: string; username?: string; damage?: number; avatar?: string | null }>) : [];
+    const avatars = await Promise.all(rows.map((r) => buf(avatarUrl(r.player_id, r.avatar))));
+    return renderRaidBoard({ boss: String(p.name ?? 'The boss'), tier: String(p.tier ?? ''), hpLeft: Number(p.hp_remaining ?? 0), hpMax: Number(p.hp_max ?? 0),
+      closesIn: p.closes_at ? epochLeft(String(p.closes_at)) : '-', rows: rows.map((r, i) => ({ name: String(r.username ?? 'A hunter'), damage: Number(r.damage ?? 0), avatar: avatars[i] ?? null })) });
+  }
+  if (ev.kind === 'player_done') {
+    const id = String(p.player_id ?? '');
+    const day = new Date(ev.created_at ?? Date.now()).toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
+    const [{ data: pl }, { data: hunt }, { data: hits }] = await Promise.all([
+      sb.from('players').select('username, avatar').eq('id', id).maybeSingle(),
+      sb.from('hunts').select('name').eq('id', ev.hunt_id ?? 0).maybeSingle(),
+      sb.from('hunt_hits').select('damage, card_id').eq('hunt_id', ev.hunt_id ?? 0).eq('player_id', id).eq('hit_date', day).order('damage', { ascending: false }).limit(1),
+    ]);
+    // hunt_hits has no link to cards: the card in a second lookup.
+    const hit = (hits?.[0] as { damage?: number; card_id?: number } | undefined) ?? null;
+    const { data: card } = hit?.card_id ? await sb.from('cards').select('name, rarity, image_url').eq('id', hit.card_id).maybeSingle() : { data: null };
+    const top = hit ? { damage: hit.damage, card: (card ?? undefined) as { name?: string; rarity?: string; image_url?: string } | undefined } : null;
+    const [avatar, topArt] = await Promise.all([buf(avatarUrl(id, (pl as { avatar?: string } | null)?.avatar)), art(top?.card?.image_url ?? null)]);
+    return renderSquadSummary({ name: String((pl as { username?: string } | null)?.username ?? 'A hunter'), avatar, total: Number(p.total ?? 0), cards: Number(p.cards_used ?? 0),
+      topCard: top?.card?.name ?? (p.top_card ? String(p.top_card) : null), topDamage: Number(top?.damage ?? p.top_damage ?? 0), topArt, topRarity: top?.card?.rarity ?? null,
+      boss: String((hunt as { name?: string } | null)?.name ?? 'The boss'), hpLeft: Number(p.boss_hp ?? 0), hpMax: Number(p.boss_hp_max ?? 0) });
+  }
+  return null;
 }
 
 /** A raid post: the event text plus the button that opens the Activity (every kind). */
@@ -103,13 +152,18 @@ async function drain(client: Client): Promise<void> {
     const supabase = getSupabase();
     const { data: events } = await supabase
       .from('hunt_events')
-      .select('id, kind, payload')
+      .select('id, kind, payload, hunt_id, created_at')
       .is('posted_at', null)
       .order('id', { ascending: true })
       .limit(BATCH);
     for (const ev of events ?? []) {
       const post = huntPost(ev as never);
-      if (post) await announce(client, post, 'raid');
+      if (post) {
+        // The leaderboard and the squad summary carry a picture (a failed picture still posts the text).
+        const png = await huntPicture(ev as never).catch((e) => { console.error('hunt picture:', e); return null; });
+        if (png) post.files = [new AttachmentBuilder(png, { name: ev.kind === 'leaderboard' ? 'raid-leaderboard.png' : 'squad-summary.png' })];
+        await announce(client, post, ev.kind === 'leaderboard' ? undefined : 'raid');
+      }
       await supabase.from('hunt_events').update({ posted_at: new Date().toISOString() }).eq('id', ev.id);
       await new Promise((r) => setTimeout(r, 1200)); // pace posts under the channel rate limit
     }

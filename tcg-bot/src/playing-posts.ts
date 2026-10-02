@@ -74,7 +74,7 @@ function schedule(client: Client, id: string, delay: number): void {
   }, wait);
 }
 
-async function buf(url: string | null): Promise<Buffer | null> {
+export async function buf(url: string | null): Promise<Buffer | null> {
   if (!url) return null;
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -82,7 +82,7 @@ async function buf(url: string | null): Promise<Buffer | null> {
   } catch { return null; }
 }
 // Card art through the Activity's image cache (no new Supabase egress), else direct.
-async function art(imageUrl: string | null): Promise<Buffer | null> {
+export async function art(imageUrl: string | null): Promise<Buffer | null> {
   if (!imageUrl) return null;
   const supa = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
   const cached = supa && imageUrl.startsWith(supa) ? `${ACTIVITY()}/api/img/${imageUrl.slice(supa.length + 1)}` : null;
