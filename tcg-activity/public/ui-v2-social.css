@@ -426,3 +426,13 @@ body.ui-v2 .of-wait { min-width: 0; flex: 1; white-space: normal; overflow-wrap:
 /* A card gift in the bell (launch_event_cards.sql): the card art in place of the gift icon. */
 body.ui-v2 .gf-row .gf-img { width: 30px; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 4px; flex: none; }
 body.ui-v2 .gf-row .gf-card { font-weight: 700; }
+
+/* The member suggestions under Find (Nathan, 2026-10-02). On the body, over every panel. */
+body.ui-v2 .sg-list { position: fixed; z-index: 90; display: flex; flex-direction: column; gap: 2px; padding: 6px; max-height: 60vh; overflow: hidden;
+  border-radius: 14px; background: var(--bg-raised); border: 1px solid var(--border-strong); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
+body.ui-v2 .sg-row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 10px; border: 0; border-radius: 10px; background: none; color: var(--text-secondary);
+  font: 500 14px var(--font-ui); text-align: left; cursor: pointer; }
+body.ui-v2 .sg-row:hover, body.ui-v2 .sg-row:first-child { background: var(--surface); }
+body.ui-v2 .sg-row span { min-width: 0; overflow-wrap: anywhere; line-height: 1.2; }
+body.ui-v2 .sg-row b { color: var(--gold); font-weight: 800; }
+body.ui-v2 .sg-none { margin: 0; padding: 10px; font-size: 13px; color: var(--text-muted); }

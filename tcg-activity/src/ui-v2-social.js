@@ -381,23 +381,61 @@ function keepFocus(f) {
   try { n.setSelectionRange(f.at ?? n.value.length, f.at ?? n.value.length); } catch { /* not a text box */ }
 }
 
-// Find a member (both Community screens): the first match becomes the member to trade with or
-// to play on, and the matches go to the front of the list. The text stays in tr.find.
-let findTimer = null;
+// Find a member (both Community screens; Nathan, 2026-10-02: "as people type it should auto
+// suggest people whose names match"): the matching members show in a list under the box, the
+// best match first; a tap (or Enter = the first) picks the member to trade with or play on.
+// The list is on the body (no panel clips it); a repaint shows it again (tr.sugg).
+let findTimer = null, findSeq = 0;
+function closeSuggest() { tr.sugg = null; document.getElementById('trSuggest')?.remove(); }
+function showSuggest(box, list, q, pick) {
+  document.getElementById('trSuggest')?.remove();
+  if (!box.isConnected || !list) return;
+  const r = box.getBoundingClientRect();
+  const w = Math.min(innerWidth - 12, Math.max(r.width, 240));
+  const left = Math.max(6, Math.min(r.left, innerWidth - w - 6));
+  const lo = q.toLowerCase();
+  const mark = (n) => { const i = n.toLowerCase().indexOf(lo); return i < 0 ? esc(n) : `${esc(n.slice(0, i))}<b>${esc(n.slice(i, i + q.length))}</b>${esc(n.slice(i + q.length))}`; };
+  const rows = list.length ? list.map((m, i) => `<button class="sg-row" data-i="${i}">${avatarHTML(m.id, m.name, 'xs')}<span>${mark(m.name)}</span></button>`).join('')
+    : '<p class="sg-none">No member with that name</p>';
+  document.body.insertAdjacentHTML('beforeend', `<div class="sg-list" id="trSuggest" role="listbox" style="left:${left}px;top:${Math.round(r.bottom + 4)}px;width:${Math.round(w)}px">${rows}</div>`);
+  // pointerdown keeps the box focused; the pick waits for the click. (A pick on pointerdown removed
+  // the list, and the tap's click then landed on the member button under it: a wrong member.)
+  const el = document.getElementById('trSuggest');
+  el.addEventListener('pointerdown', (e) => e.preventDefault());
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('.sg-row');
+    if (b) pick(list[Number(b.dataset.i)]);
+  });
+}
 function wireFind(after) {
-  ctx().el('trFind')?.addEventListener('input', (e) => {
+  const box = ctx().el('trFind');
+  if (!box) return;
+  const pick = async (m) => {
+    closeSuggest(); tr.find = '';
+    tr.members = [m, ...tr.members.filter((x) => x.id !== m.id)]; tr.to = m;
+    await after();
+  };
+  if (tr.sugg && (tr.find || '').trim()) requestAnimationFrame(() => showSuggest(box, tr.sugg, tr.find.trim(), pick));
+  box.addEventListener('input', (e) => {
     tr.find = e.target.value;
     clearTimeout(findTimer);
     const q = tr.find.trim();
+    if (!q) { closeSuggest(); return; }
+    const seq = ++findSeq;
     findTimer = setTimeout(async () => {
-      if (!q || q !== (tr.find || '').trim()) return;
       try {
         const d = await ctx().api(`/api/players?q=${encodeURIComponent(q)}`);
-        const found = (d.players || []).map((p) => ({ id: String(p.id), name: p.username }));
-        if (found[0]) { tr.members = [...found, ...tr.members.filter((m) => !found.some((f) => f.id === m.id))]; tr.to = found[0]; await after(); }
+        if (seq !== findSeq) return; // a newer letter is on its way
+        tr.sugg = (d.players || []).slice(0, 6).map((p) => ({ id: String(p.id), name: p.username }));
+        showSuggest(ctx().el('trFind') || box, tr.sugg, q, pick);
       } catch { /* keep */ }
-    }, 350);
+    }, 150);
   });
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSuggest();
+    if (e.key === 'Enter' && tr.sugg?.[0]) { e.preventDefault(); pick(tr.sugg[0]); }
+  });
+  box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement?.id !== 'trFind') closeSuggest(); }, 250));
 }
 
 function paintTrade() {
