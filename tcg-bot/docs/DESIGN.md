@@ -28,11 +28,11 @@ Each card in a pack rolls independently against this table.
 
 | Rarity | Per-card rate |
 |---|---|
-| Normal | 93.95% |
+| Normal | 93.98% |
 | Illustrated Rare | 5% |
 | Secret Rare | 0.6% |
 | Full Art | 0.4% |
-| Gold | 0.05% |
+| Gold | 0.02% |
 
 The rates total 100%.
 
@@ -42,7 +42,7 @@ The rates total 100%.
 |---|---|---|
 | Secret Rare | ~1 per month | ~2 per month |
 | Full Art | ~1 per 7 weeks | ~1–2 per month |
-| Gold | ~1 per 3+ months | ~1 per 7 weeks |
+| Gold | ~1 per 2.7 years | ~1 per 16 months |
 
 ## The daily draw
 

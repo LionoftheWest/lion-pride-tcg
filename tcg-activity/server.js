@@ -23,6 +23,7 @@ import { createImgCache, normalizeImgUrl } from './img-cache.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
 import { bestSquad } from './src/squad-pick.js';
+import { selectAll } from './src/select-all.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -290,7 +291,8 @@ const FEATURE_ASCENSION = process.env.FEATURE_ASCENSION === '1';
 const RARITY_BASE = { normal: 10, illustrated_rare: 20, secret_rare: 40, full_art: 75, event: 75, gold: 140 }; // event = Full Art (event_cards.sql)
 const ASC_MULT = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
 const ASC_COST = { normal: [4, 6, 8, 11, 15], illustrated_rare: [3, 4, 6, 8, 11], full_art: [2, 3, 4, 6, 8], gold: [1, 2, 3, 4, 5], secret_rare: [1, 1, 2, 3, 4] };
-const cardPower = (rarity, asc, mod = 1) => Math.round((RARITY_BASE[rarity] || 10) * ASC_MULT[Math.max(0, Math.min(5, asc || 0))] * (mod || 1));
+// toFixed first: SQL numeric rounds 57.5 up, but 20 x 2.5 x 1.15 is 57.49999... in a float (Math.round gave 57).
+const cardPower = (rarity, asc, mod = 1) => Math.round(+((RARITY_BASE[rarity] || 10) * ASC_MULT[Math.max(0, Math.min(5, asc || 0))] * (mod || 1)).toFixed(6));
 const ascendCost = (rarity, asc) => ((asc || 0) >= 5 ? null : (ASC_COST[rarity] || ASC_COST.normal)[asc || 0]);
 
 // Phase 2: The Pride Hunt (weekly co-op raid). Flag-gated.
@@ -636,14 +638,15 @@ app.get('/api/leaderboard/v2', async (req, res) => {
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
   const rebuildBoard = () => singleFlight('boardV2', async () => {
       const [players, owned, hits, hunts, opened, gifted, plays, trades, catalog] = await Promise.all([
-        supabase.from('players').select('id, username, avatar, title, frame'),
-        supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1).limit(100000),
-        supabase.from('hunt_hits').select('player_id, hunt_id, damage').limit(100000),
-        supabase.from('hunts').select('id, status'),
-        supabase.from('pack_ledger').select('player_id').eq('reason', 'opened').limit(100000),
-        supabase.from('pack_ledger').select('granted_by').eq('reason', 'gift').limit(100000),
-        supabase.from('card_plays').select('player_id, kind').limit(100000),
-        supabase.from('trade_offers').select('from_id, to_id').eq('status', 'accepted').limit(100000),
+        // Whole tables, every row (selectAll: a plain read stopped at 1,000 rows, 2026-10-02).
+        selectAll(() => supabase.from('players').select('id, username, avatar, title, frame'), ['id']),
+        selectAll(() => supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1), ['player_id', 'card_id']),
+        selectAll(() => supabase.from('hunt_hits').select('player_id, hunt_id, damage'), ['id']),
+        selectAll(() => supabase.from('hunts').select('id, status'), ['id']),
+        selectAll(() => supabase.from('pack_ledger').select('player_id').eq('reason', 'opened'), ['id']),
+        selectAll(() => supabase.from('pack_ledger').select('granted_by').eq('reason', 'gift'), ['id']),
+        selectAll(() => supabase.from('card_plays').select('player_id, kind'), ['id']),
+        selectAll(() => supabase.from('trade_offers').select('from_id, to_id').eq('status', 'accepted'), ['id']),
         getCatalogBase(),
       ]);
       const defeated = new Set((hunts.data || []).filter((h) => h.status === 'defeated').map((h) => h.id));
@@ -962,8 +965,8 @@ async function loadProfile(id) {
     supabase.from('players').select('id, username, avatar, spotlight, title, frame').eq('id', id).maybeSingle(),
     supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', 'opened'),
     supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('granted_by', id).eq('reason', 'gift'),
-    supabase.from('hunt_hits').select('hunt_id, damage').eq('player_id', id).limit(20000),
-    supabase.from('card_plays').select('kind').eq('player_id', id).limit(20000),
+    selectAll(() => supabase.from('hunt_hits').select('hunt_id, damage').eq('player_id', id), ['id']),
+    selectAll(() => supabase.from('card_plays').select('kind').eq('player_id', id), ['id']),
     supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('target_id', id).eq('kind', 'prank').neq('player_id', id),
     supabase.from('trade_offers').select('id', { count: 'exact', head: true }).eq('status', 'accepted').or(`from_id.eq.${id},to_id.eq.${id}`),
     hunt ? supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 }) : Promise.resolve({ data: [] }),
@@ -1176,10 +1179,10 @@ async function getCatalogBase() {
   if (catalogCache && now - catalogCache.at < CATALOG_TTL) return catalogCache.cards;
   if (catalogInflight) return catalogInflight; // a refresh is already running — join it
   catalogInflight = (async () => {
-    const { data, error } = await supabase
+    // Every card (selectAll: a plain read stops at 1,000 rows).
+    const { data, error } = await selectAll(() => supabase
       .from('cards')
-      .select(`id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS})`)
-      .order('id');
+      .select(`id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS})`), ['id']);
     if (error) { if (catalogCache) return catalogCache.cards; throw new Error(error.message); }
     const cards = (data || []).map((c) => ({
       id: c.id,
