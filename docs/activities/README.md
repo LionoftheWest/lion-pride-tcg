@@ -43,6 +43,64 @@ mini games and the events each own a day of the week. Nathan approved this calen
 The calendar is data (`settings.calendar`), not code. Nathan can move a game to another
 day without a deploy.
 
+## 2A. Where each system lives (Nathan, 2026-10-02)
+
+The dock today (`tcg-activity/public/index.html`): Home, Collection, **OPEN**, Hunt,
+Community.
+
+| Place | What it holds |
+|---|---|
+| **Home** | the profile, the live feed, the **Home carousel** (below), and the milestone bars. The Den opens from the profile. |
+| **Collection** | Cards, Achievements, the bestiary (Raid Bosses and Dungeon monsters), the lore chapters |
+| **OPEN** | no change |
+| **Adventure** (the Hunt tab, renamed) | sub-tabs: **Hunt**, **Dungeon**, **Arena**, **Expeditions** |
+| **Community** | the Trading Hall, Boons & Pranks, Crews, the weekly events, Create-a-Card |
+| **Shop** (the top bar) | a button next to the Shard balance opens the Shop view. The dock stays 2 + OPEN + 2. |
+
+- "The Hunt" stays the name of the raid mode. Only the tab name changes. The internal
+  view name (`battling`) does not change.
+- The mini games have no tab. The Home carousel starts the game of the day.
+- **The Adventure tab needs a new design.** It holds four modes, not one.
+
+### The Home carousel
+
+The Raid Boss panel on Home (`paintHero` in `ui-v2.js`) becomes a carousel. It cycles
+through the places of the game.
+
+| Slide | It shows | The button |
+|---|---|---|
+| The Hunt | the boss, live or resting (the current panel) | Join the hunt |
+| The Dungeon | today's rule, and the member's depth today | Start the run |
+| The game or event of the day | from the calendar ("Trivia Tuesday") | Play |
+| The Shop | today's Secret Rare in the stock, and the time to the next stock | Open the Shop |
+| The Arena | the member's rating, and the defense report | Fight |
+| Expeditions | the missions that come back soon | Collect |
+| A Wandering Monster | the monster and the countdown, only while one is live | Fight |
+
+The rules:
+
+1. **A live, time-limited slide comes first:** a Wandering Monster, the last hours of a
+   Hunt, or an event signup that closes soon.
+2. **The carousel moves every 8 seconds.** It stops while the pointer is on it or after a
+   touch. Dots show the slides, and arrows (or a swipe on a phone) move it.
+3. **Reduce motion:** with the operating system's "reduce motion" setting, the carousel
+   does not move by itself.
+4. **Only the visible slide runs 3D.** The other slides stop their three.js models (the
+   `boss-lazy.js` pattern), so a phone renders one model at a time.
+5. **A slide shows only when its flag is on.** The carousel starts with the Hunt slide
+   only, and it grows as each mode ships.
+6. It obeys the no-scroll rule. A carousel pages, and it does not scroll.
+
+### The screens for the design session
+
+The design session designs each screen in pen.dev, and Nathan approves it before the
+build (`docs/design.md`):
+
+1. The top bar with the Shard balance and the Shop button.
+2. The Shop view.
+3. The Adventure tab: the four sub-tabs and their entry screens.
+4. The Home carousel.
+
 ## 3. Rules that every system obeys
 
 These rules come from earlier decisions. A new system must not break them.
