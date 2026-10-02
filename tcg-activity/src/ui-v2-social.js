@@ -6,7 +6,7 @@ import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, o
 import { thumb } from './thumb.js';
 import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
 import { isPhone, isPort, isLand } from './mobile.js';
-import { renderHall, repaintHall } from './ui-v2-hall.js';
+import { renderHall, repaintHall, prefetchHall } from './ui-v2-hall.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
 const ctx = () => v2ctx();
@@ -315,6 +315,7 @@ export async function renderTradingV2() {
   if (tr.to && !tr.members.some((m) => m.id === tr.to.id)) tr.members.unshift(tr.to); // opened from a profile
   if (!tr.to && tr.members[0]) tr.to = tr.members[0];
   if (tr.to) await loadTheirs(tr.to.id);
+  if (ctx().hallOn?.() && tr.tab !== 'hall') prefetchHall();
   if (tr.tab === 'effects' && ctx().effectsEnabled?.()) { await loadFx(); paintEffects(); } else if (tr.tab === 'hall' && ctx().hallOn?.()) await renderHall(); else { tr.tab = 'trades'; paintTrade(); }
 }
 
