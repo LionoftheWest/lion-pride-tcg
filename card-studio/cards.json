@@ -5732,5 +5732,116 @@
       },
       "cooldown_h": 24
     }
+  },
+  {
+    "id": "deez-nutz",
+    "name": "DEEZ NUTZ",
+    "genre": "",
+    "lore": "",
+    "season": "Season 1",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare",
+      "full_art",
+      "gold"
+    ],
+    "updatedAt": 1790871876933,
+    "tierDetails": {
+      "normal": {
+        "genre": "",
+        "lore": "Who's Deez?",
+        "season": "Season 1",
+        "event": ""
+      },
+      "illustrated_rare": {
+        "genre": "",
+        "lore": "Ligma",
+        "season": "Season 1",
+        "event": ""
+      },
+      "secret_rare": {
+        "genre": "",
+        "lore": "Slugma",
+        "season": "Season 1",
+        "event": ""
+      },
+      "full_art": {
+        "genre": "",
+        "lore": "Yankees",
+        "season": "Season 1",
+        "event": ""
+      },
+      "gold": {
+        "genre": "",
+        "lore": "Yankees",
+        "season": "Season 1",
+        "event": ""
+      }
+    },
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "ability": null,
+    "pushedAt": 1790872263690
+  },
+  {
+    "id": "launch-day-raider",
+    "name": "Launch Day Raider",
+    "genre": "",
+    "lore": "",
+    "season": "Season 1",
+    "event": "",
+    "finishes": [
+      "event"
+    ],
+    "updatedAt": 1790896486649,
+    "tierDetails": {
+      "event": {
+        "genre": "Party Games",
+        "lore": "So it begins....",
+        "season": "Season 1",
+        "event": ""
+      }
+    },
+    "tags": {
+      "class": "attacker",
+      "type": "moment",
+      "origin": [
+        "lion pride tcg"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "ability": null,
+    "pushedAt": 1790896604557
+  },
+  {
+    "id": "launch-day-player",
+    "name": "Launch Day Player",
+    "genre": "",
+    "lore": "",
+    "season": "Season 1",
+    "event": "",
+    "finishes": [
+      "event"
+    ],
+    "updatedAt": 1790896956853,
+    "tierDetails": {
+      "event": {
+        "genre": "Party Games",
+        "lore": "You were here through the bumps & hiccups of Launch Day!",
+        "season": "Season 1",
+        "event": ""
+      }
+    },
+    "pushedAt": 1790897106538
   }
 ]
