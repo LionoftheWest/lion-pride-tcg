@@ -8,6 +8,8 @@ import {
   type MessageActionRowComponentBuilder,
   type MessageComponentInteraction,
 } from 'discord.js';
+import { publicImg } from '../img-url.js';
+import { art } from '../playing-posts.js';
 import type { Card, OpenResult } from '../store.js';
 import { RARITY_COLOR, RARITY_EMOJI, RARITY_LABEL } from '../display.js';
 import type { Rarity } from '../draw.js';
@@ -34,15 +36,9 @@ interface Session {
 const sessions = new Map<string, Session>();
 
 /** Fetch a card image up front so we can attach it to the reveal message. */
+// Through the Activity image cache (art(): the VM disk cache, else Supabase).
 async function fetchImage(url: string | null): Promise<Buffer | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    return Buffer.from(await res.arrayBuffer());
-  } catch {
-    return null;
-  }
+  return art(url);
 }
 
 /** A stable per-card attachment name; the extension matches the stored asset. */
@@ -148,7 +144,7 @@ export async function revealNext(
   const files = buffer ? [new AttachmentBuilder(buffer, { name })] : [];
   const setImage = (embed: EmbedBuilder): EmbedBuilder => {
     if (buffer) return embed.setImage(`attachment://${name}`);
-    if (card.image_url) return embed.setImage(card.image_url);
+    if (card.image_url) return embed.setImage(publicImg(card.image_url)!); // the VM cache (img-url.ts)
     return embed;
   };
 

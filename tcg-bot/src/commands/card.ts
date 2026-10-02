@@ -1,4 +1,5 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { publicImg } from '../img-url.js';
 import type { Command } from '../types.js';
 import { findCardByName, getCardById } from '../store.js';
 import { getSupabase } from '../supabase.js';
@@ -38,7 +39,7 @@ const command: Command = {
       );
 
     if (card.lore) embed.setDescription(card.lore);
-    if (card.image_url) embed.setImage(card.image_url);
+    if (card.image_url) embed.setImage(publicImg(card.image_url)!); // the VM cache (img-url.ts)
     if (card.artist_credit) {
       embed.setFooter({ text: `Art by ${card.artist_credit}` });
     }
