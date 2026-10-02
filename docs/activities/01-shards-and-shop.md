@@ -85,8 +85,9 @@ fix is the anchor price, not a limit.
 - A member can buy a card that they do not own yet, or a card that they own already (a
   copy for ascension).
 - Each stock card can be bought 1 time each day by each member.
-- The seed avoids a card that was in the stock in the last 7 days, so the stock stays
-  fresh.
+- **A 7-day cooldown** (Nathan, 2026-10-02): after a card shows in the stock, it cannot
+  show again for 7 days. On day 8 it can come back. The stock stays fresh, and every card
+  returns over time.
 
 ### 4.3 What is never in the Shop
 
@@ -146,4 +147,4 @@ It fails if any path in the Shop gives a Gold or a Full Art card outside the sea
 
 ## 9. Open questions for Nathan
 
-1. Is the daily stock size correct (6 Normal, 3 Illustrated Rare, 1 Secret Rare)?
+None. The daily stock size is approved (2026-10-02).

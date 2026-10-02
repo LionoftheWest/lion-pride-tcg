@@ -170,7 +170,7 @@ The Arena season is the game season: it runs from one card set release to the ne
 
 ## 12. Open questions for Nathan
 
-1. The defense loss limit: 60 points each day. Correct? (5 tickets and the 2-hour shield
-   are approved, 2026-10-02.)
-2. Echoes: 4 weeks of snapshots. Correct?
-3. The league names: Bronze, Silver, Gold, Platinum, Champion. Keep them?
+Approved (2026-10-02): 5 tickets, the 2-hour shield, a defense loss limit of 60 points
+each day, and 4 weeks of echoes.
+
+1. The league names: Bronze, Silver, Gold, Platinum, Champion. Keep them?
