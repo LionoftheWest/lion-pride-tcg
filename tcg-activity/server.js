@@ -1501,7 +1501,7 @@ app.get('/api/players', async (req, res) => {
   // Escape LIKE metacharacters so a caller cannot widen the match (a bare % would
   // match every player). PostgreSQL LIKE uses backslash as the default escape.
   const safeQ = q.replace(/[\\%_]/g, '\\$&');
-  const { data, error } = await supabase.from('players').select('id, username, pack_balance').order('username').limit(200).ilike('username', `%${safeQ}%`);
+  const { data, error } = await supabase.from('players').select('id, username, pack_balance').order('username').limit(200).ilike('username', `%${safeQ}%`).not('id', 'like', 'tst\\_%');
   if (error) return res.status(500).json({ error: error.message });
   // The best matches first (Nathan, 2026-10-02: suggest names as people type): A-Z put
   // "Bananas" before "Anna" for "an".

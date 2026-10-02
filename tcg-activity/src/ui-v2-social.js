@@ -6,7 +6,7 @@ import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, o
 import { thumb } from './thumb.js';
 import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
 import { isPhone, isPort, isLand } from './mobile.js';
-import { renderHall, repaintHall, prefetchHall } from './ui-v2-hall.js';
+import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v2-hall.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
 const ctx = () => v2ctx();
@@ -24,6 +24,13 @@ const NOTE_KINDS = {
   trade_offer: { icon: '⇄', tab: 'trades', label: 'Trade offer', act: 'View' },
   trade_counter: { icon: '⇄', tab: 'trades', label: 'Trade', act: 'View' },
   trade_accepted: { icon: '✅', tab: 'trades', label: 'Trade', act: 'View' },
+  // The Hall + Auctions (2026-10-02: these showed as a plain bell with no way to the auction).
+  auction_bid: { icon: '🔨', tab: 'trades', label: 'Auction', act: 'Auction' },
+  auction_accepted: { icon: '🔨', tab: 'trades', label: 'Auction', act: 'Confirm' },
+  auction_declined: { icon: '🔨', tab: 'trades', label: 'Auction', act: 'Auction' },
+  auction_sold: { icon: '🔨', tab: 'trades', label: 'Auction', act: 'Auction' },
+  auction_closed: { icon: '🔨', tab: 'trades', label: 'Auction', act: 'Auction' },
+  auction_ended: { icon: '🔨', tab: 'trades', label: 'Auction', act: 'Auction' },
 };
 const noteKind = (k) => NOTE_KINDS[k] || (String(k).startsWith('hunt') ? { icon: '⚔', tab: 'hunt', label: 'Hunt', act: 'Hunt' } : { icon: '🔔', tab: 'all', label: '' });
 let noteTab = 'all';
@@ -102,7 +109,12 @@ function paintNotifs() {
     const act = a.dataset.act;
     if (act === 'Hunt') ctx().show('battling');
     else if (act === 'Open') ctx().openPacks();
-    else if (act === 'View') ctx().show('trading');
+    else if (act === 'View') { tr.tab = 'trades'; ctx().show('trading'); }
+    // An auction note: My auctions; "Confirm" opens the auction that waits for my confirm.
+    else if (act === 'Auction' || act === 'Confirm') {
+      Object.assign(hallState, { sub: 'auctions', aview: 'mine', auction: null, start: null, sel: null, listing: false, page: 0, openAccepted: act === 'Confirm' });
+      tr.tab = 'hall'; ctx().show('trading');
+    }
   };
   requestAnimationFrame(() => fitChildren(el('ntList')));
 }

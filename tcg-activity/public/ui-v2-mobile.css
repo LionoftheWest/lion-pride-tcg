@@ -1229,7 +1229,7 @@ body.ui-v2.m-land.m-xnarrow .hall-view .bt { display: none; }
 body.ui-v2.m-land.m-xnarrow .hall-view .tr-top { flex-wrap: nowrap; }
 body.ui-v2.m-land.m-xnarrow .hall-view .tr-top .seg button, body.ui-v2.m-land.m-xnarrow .hall-view #hlBack { padding: 0 10px; min-width: 38px; }
 body.ui-v2.m-land.m-short .hall-view .hl-slots { grid-template-columns: repeat(5, 38px); }
-body.ui-v2.m-land.m-short .hall-view .hl-bidhead .v2-btn { height: 32px; }
+body.ui-v2.m-land .hall-view .hl-bidhead .v2-btn { height: 32px; }
 body.ui-v2.m-land.m-short .hall-view .hl-steps { display: none; }
 /* The Hall panel is column 2 (the Trades rule .v2-trade .tr-offers puts the Offers panel in column 3). */
 body.ui-v2.m-land .v2-trade.hall-view > aside { grid-column: 2; grid-row: 1; }
@@ -1271,3 +1271,38 @@ body.ui-v2 .hall-view .hl-cap.ph .hl-r2 { display: flex; align-items: center; ju
 /* The view switches keep their full labels (they were cut to "Open auc..."). */
 body.ui-v2 .hall-view #hlView, body.ui-v2 .hall-view #hlAView { flex: none; }
 body.ui-v2 .hall-view #hlView button, body.ui-v2 .hall-view #hlAView button { white-space: nowrap; overflow: visible; text-overflow: clip; }
+
+/* Review 2 on phones (Nathan, 2026-10-02). */
+/* The closed sheet: its title row only, in full (the content showed cut through the edge). */
+body.ui-v2.m-port .hall-view.has-sheet:not(.sheet-open) > aside.hl-sheet { max-height: none; padding-bottom: 8px; }
+body.ui-v2.m-port .hall-view.has-sheet:not(.sheet-open) > aside.hl-sheet > :not(.hl-grab):not(.tile-h) { display: none; }
+body.ui-v2.m-port .hall-view > aside.hl-sheet > .tile-h::after { content: '▴'; margin-left: 8px; color: var(--text-muted); font-size: 13px; }
+body.ui-v2.m-port .hall-view.sheet-open > aside.hl-sheet > .tile-h::after { content: '▾'; }
+/* The open sheet keeps one height (no jump while the content changes). */
+body.ui-v2.m-port .hall-view.sheet-open > aside.hl-sheet { height: calc(100dvh - var(--dock-h) - 90px - var(--sa-t) - var(--sa-b)); overflow-y: auto; overscroll-behavior: contain; }
+/* The keyboard is up: the sheet runs from the top of the screen, so the list under the box shows. */
+body.ui-v2.m-port.m-kb .hall-view.sheet-open > aside.hl-sheet { top: calc(6px + var(--sa-t)); bottom: 6px; height: auto; z-index: 90; }
+body.ui-v2.m-port.m-kb .hall-view.sheet-open::after { z-index: 89; }
+/* Landscape: the switches never overlap (IMG_2872). */
+body.ui-v2.m-land .hall-view #hlView button, body.ui-v2.m-land .hall-view #hlAView button, body.ui-v2.m-port .hall-view #hlView button, body.ui-v2.m-port .hall-view #hlAView button { flex: 0 0 auto; min-width: max-content; }
+/* Landscape bidder (IMG_2874): the bid is one row (the slots beside the title), the cards get the room. */
+body.ui-v2.m-land .hall-view .hl-bid { flex-direction: row; align-items: center; gap: 8px; padding: 4px 8px; }
+body.ui-v2.m-land .hall-view .hl-bidhead { flex-direction: column; align-items: flex-start; gap: 4px; flex: 0 0 auto; order: 2; }
+body.ui-v2.m-land .hall-view .hl-bidhead .v2-btn { margin-left: 0; }
+body.ui-v2.m-land .hall-view .hl-slots { flex: 1 1 auto; grid-template-columns: repeat(5, 40px); }
+body.ui-v2.m-land .hall-view .hl-explain { font-size: 11px; margin-top: 4px; }
+/* Short landscape phones: the bid box is one line (slots, the status, the button). */
+body.ui-v2.m-land .hall-view .hl-bidhead { flex-direction: row; align-items: center; gap: 6px; }
+body.ui-v2.m-land .hall-view .hl-bidhead .hl-yourbid { display: none; }
+body.ui-v2.m-land .hall-view .hl-bidhead .hl-ok, body.ui-v2.m-land .hall-view .hl-bidhead .hl-below, body.ui-v2.m-land .hall-view .hl-bidhead .hl-closed { font-size: 10.5px; max-width: 90px; line-height: 1.15; }
+body.ui-v2.m-land .hall-view .hl-slots { grid-template-columns: repeat(5, 34px); }
+/* Landscape: the top row stays one line (Back is an arrow), the bid slot cards show no names. */
+body.ui-v2.m-land .hall-view #hlBack .bt { display: none; }
+body.ui-v2.m-land .hall-view #hlBack { padding: 0 12px; }
+body.ui-v2.m-land .hall-view .tr-top { flex-wrap: nowrap; }
+body.ui-v2.m-land .hall-view .hl-slot > span { display: none; }
+body.ui-v2.m-land .hall-view .hl-slot.empty > span { display: block; }
+body.ui-v2.m-land .hall-view .hl-bidhead .bt { display: none; }
+body.ui-v2.m-land .hall-view .hl-bid { min-width: 0; }
+body.ui-v2.m-land .hall-view .hl-slots { flex: 0 1 auto; min-width: 0; grid-template-columns: repeat(5, minmax(26px, 34px)); }
+body.ui-v2.m-land .hall-view .hl-bidhead .v2-btn { padding: 0 9px; }
