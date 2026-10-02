@@ -41,3 +41,10 @@ __pycache__/
 # Keep only our own driver scripts.
 card-studio/ml/*
 !card-studio/ml/*.py
+
+# --- Local scratch (2026-10-02): backed up to the PRIVATE repo lion-pride-tcg-tools, never here ---
+# (they hold member ids, local paths and Management API calls)
+.live-review/
+card-studio/q-*.mjs
+card-studio/_sim-*.mjs
+tcg-activity/preview/
