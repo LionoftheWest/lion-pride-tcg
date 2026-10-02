@@ -17,12 +17,12 @@ export const BONUS_THRESHOLD = 25;
 
 /** Per-card pull rates. These must sum to 1. */
 export const PULL_RATES: Record<Rarity, number> = {
-  normal: 0.9395,
+  normal: 0.9398,
   illustrated_rare: 0.05,
   secret_rare: 0.006,
   full_art: 0.004,
-  // Gold 0.05% (Nathan, 2026-10-01: was 0.1%, before that 0.2%; 6 golds pulled on launch day).
-  gold: 0.0005,
+  // Gold 0.02% (Nathan, 2026-10-02: was 0.05%, before that 0.1% and 0.2%; 6 golds pulled on launch day).
+  gold: 0.0002,
 };
 
 /** A fixed order for the cumulative roll. Rarest last. */

@@ -61,7 +61,7 @@ describe('rollRarity', () => {
       illustrated_rare: 0.01,
       secret_rare: 0.002,
       full_art: 0.002,
-      gold: 0.0003, // tight enough that the old 0.1% fails
+      gold: 0.0002, // tight enough that the old 0.05% fails
     };
 
     for (const rarity of Object.keys(counts) as Rarity[]) {
@@ -74,9 +74,9 @@ describe('rollRarity', () => {
     }
   });
 
-  it('makes Gold 0.05% per card and Normal takes the rest (Nathan, 2026-10-01)', () => {
-    assert.equal(PULL_RATES.gold, 0.0005);
-    assert.equal(PULL_RATES.normal, 0.9395);
+  it('makes Gold 0.02% per card and Normal takes the rest (Nathan, 2026-10-02)', () => {
+    assert.equal(PULL_RATES.gold, 0.0002);
+    assert.equal(PULL_RATES.normal, 0.9398);
   });
 
   it('has pull rates that sum to exactly 1', () => {
