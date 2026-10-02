@@ -121,12 +121,15 @@ test('a squad of 5, all down: down (no fresh cards join later)', () => {
   for (const c of cards.slice(0, 5)) { c.used = true; c.downed = true; }
   assert.equal(squadDown(cards, sel), true);
 });
-test('the supports count: 6 attackers down, 2 supports still up: NOT down', () => {
+test('6 attackers down, 2 supports up: down (supports cannot fight alone, nothing hits them)', () => {
   const cards = [...sq().slice(0, 6), card(10, [], { type: 'Moment' }), card(10, [], { type: 'Item' })];
   for (const c of cards.slice(0, 6)) { c.used = true; c.downed = true; }
-  assert.equal(squadDown(cards, cards.map((c) => c.id)), false);
-  for (const c of cards.slice(6)) { c.used = true; c.downed = true; }
   assert.equal(squadDown(cards, cards.map((c) => c.id)), true);
+});
+test('5 attackers down, 1 attacker of the squad not fought yet: NOT down', () => {
+  const cards = sq(); const sel = cards.slice(0, 6).map((c) => c.id);
+  for (const c of cards.slice(0, 5)) { c.used = true; c.downed = true; }
+  assert.equal(squadDown(cards, sel), false);
 });
 test('no locked squad (fought before the server squads): the cards that fought are the squad', () => {
   const cards = sq();
