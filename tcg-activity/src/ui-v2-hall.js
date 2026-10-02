@@ -442,6 +442,7 @@ function paintAuction() {
     <div class="v2-grid" id="hlGrid"></div>
     ${confirm ? `<div class="hl-modal" id="hbModal"><div class="hl-mbox"><h3>🔨 ${nm(a.seller_id, a.seller)} accepted your bid</h3>
       <ol class="hl-steps"><li class="done"><b>✓</b> ${esc(a.seller)} accepts</li><li class="on"><b>2</b> You confirm</li></ol>
+      ${a.confirm_by ? `<p class="hl-deadline">⧗ Confirm within ${esc(left(a.confirm_by).text)}. After that the bid is declined and your cards are free again.</p>` : ''}
       <div class="hl-mdeal"><div><span class="side-h">Your offer</span><span class="hl-thumbs">${(my.cards || []).map((x) => cardImg(x)).join('')}</span></div><span class="tr-swap">⇄</span><div><span class="side-h">Their offer</span>${cardImg(a.card)}</div></div>
       <div class="hl-mfoot"><span class="tr-msg" id="hbMsg">${esc(hall.msg)}</span><button class="v2-btn" id="hbDecline">✕ Decline</button><button class="v2-btn gold" id="hbConfirm">✓ Confirm trade</button></div></div></div>` : ''}`,
   { aside: auctionPanel(a, best), back: 'Auctions', full: false });
@@ -505,7 +506,7 @@ function paintSeller(a) {
         <span class="hl-thumbs">${b.cards.map((x) => `<button class="hl-tinfo" data-id="${x.id}" title="${esc(x.name)}">${cardImg(x, 'xs')}</button>`).join('')}</span>
         <span class="hl-sum">${bidSummary(b.cards)}</span>
         ${b.id === bestId ? '<span class="hl-bestc">♛ Best</span>' : ''}<span class="${b.meets ? 'hl-ok' : 'hl-below'}">${b.meets ? '✓ Meets minimum' : '— Below minimum'}</span>
-        ${b.id === a.accepted_bid_id ? `<span class="hl-wait">⧗ Waiting for ${esc(b.bidder)}</span>` : `<button class="v2-btn ${b.meets ? 'gold' : ''} hl-accept" data-id="${b.id}" ${accepted || a.status !== 'live' ? 'disabled' : ''}>✓ Accept</button>`}
+        ${b.id === a.accepted_bid_id ? `<span class="hl-wait">⧗ Waiting for ${esc(b.bidder)}${a.confirm_by ? ` · ${esc(left(a.confirm_by).text)} left` : ''}</span>` : `<button class="v2-btn ${b.meets ? 'gold' : ''} hl-accept" data-id="${b.id}" ${accepted || a.status !== 'live' ? 'disabled' : ''}>✓ Accept</button>`}
       </div>`).join('') || '<p class="v2-empty">No bids yet. Members see your auction in Open auctions.</p>'}</div>`,
   { aside: auctionPanel(a, `${steps}<span class="tr-msg">${esc(hall.msg)}</span><button class="v2-btn danger wide" id="hsClose" ${a.status === 'live' || accepted ? '' : 'disabled'}>✕ Close early</button>`), back: 'Auctions', full: false });
   requestAnimationFrame(() => fitChildren(el('hlBids')));
