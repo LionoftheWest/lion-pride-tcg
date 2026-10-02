@@ -1285,8 +1285,10 @@ function paintWish() {
     <div class="wl-list">${wl.slots.map((x) => `<div class="wl-row${wl.pick === x.slot ? ' on' : ''}" data-slot="${x.slot}"><span class="wl-i mono">${x.slot}</span>
       ${x.card ? `<img src="${thumb(x.card.image_url)}" data-full="${x.card.image_url || ''}" alt=""><div><b>${esc(x.card.name)}</b><span style="color:var(--r-${x.card.rarity})">◆ ${esc(ctx.RARITY_LABEL[x.card.rarity] || x.card.rarity)}</span></div>`
         : '<span class="wl-empty">＋</span><div><b class="dim">Empty</b></div>'}
-      <span class="grow"></span>${!wl.self && x.card ? `<span class="hl-n${x.mine ? ' have' : ''}" title="Your free copies">⧉ ×${x.mine}</span>` : ''}
-      ${wl.self && wl.edit ? (x.card ? `<button class="v2-icon wl-x" data-slot="${x.slot}" title="Clear">✕</button>` : '') + `<button class="v2-icon wl-set" data-slot="${x.slot}" title="Pick a card">✎</button>` : ''}</div>`).join('')}</div>
+      <span class="grow"></span>${x.top && !(wl.self && wl.edit) ? '<span class="wl-topmark" title="Top want: the card the Wanted view shows">★</span>' : ''}
+      ${!wl.self && x.card ? `<span class="hl-n${x.mine ? ' have' : ''}" title="Your free copies">⧉ ×${x.mine}</span>` : ''}
+      ${wl.self && wl.edit ? (x.card ? `<button class="v2-icon wl-top${x.top ? ' on' : ''}" data-slot="${x.slot}" title="Top want: the card the Wanted view shows">★</button><button class="v2-icon wl-x" data-slot="${x.slot}" title="Clear">✕</button>` : '') + `<button class="v2-icon wl-set" data-slot="${x.slot}" title="Pick a card">✎</button>` : ''}</div>`).join('')}</div>
+    ${wl.self && wl.edit ? '<span class="dim wl-hint">★ = your top want. The Trade Hall shows it under Wanted.</span>' : ''}
     ${wl.msg ? `<span class="tr-msg">${esc(wl.msg)}</span>` : ''}`;
   // A portrait phone: the right column is a bottom sheet (design 27 frames 01 + 02); the Wishlist title opens it.
   ctx.el('memberModal')?.querySelector('.mem-screen')?.classList.toggle('wl-open', isPort() && (wl.sheet || wl.edit));
@@ -1296,6 +1298,7 @@ function paintWish() {
   });
   ctx.el('wlEdit')?.addEventListener('click', () => { wl.edit = !wl.edit; wl.pick = null; if (!wl.edit) wl.sheet = false; closeWishPicker(); paintWish(); });
   box.querySelectorAll('.wl-x').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveWish(Number(b.dataset.slot), null); }));
+  box.querySelectorAll('.wl-top').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveTop(Number(b.dataset.slot)); }));
   box.querySelectorAll('.wl-set').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openWishPicker(Number(b.dataset.slot)); }));
   box.querySelectorAll('.wl-row').forEach((r) => r.addEventListener('click', () => {
     const x = wl.slots.find((k) => k.slot === Number(r.dataset.slot));
@@ -1311,6 +1314,18 @@ async function saveWish(slot, cardId) {
   closeWishPicker();
   await loadWish(wl.id, wl.self);
   wl.edit = true; paintWish();
+  if (r?.ok) hallChanged();
+}
+// The Trade Hall's Wanted view shows my top want: reload it (a dynamic import: ui-v2-hall imports this file).
+const hallChanged = () => import('./ui-v2-hall.js').then((m) => m.refreshHall()).catch(() => {});
+// Star a slot as the top want (hall_top_want.sql).
+async function saveTop(slot) {
+  let r = null;
+  try { r = await ctx.apiPost('/api/wishlist/top', { slot }); } catch { r = null; }
+  wl.msg = r?.ok ? '' : (r?.message || 'Could not save that.');
+  await loadWish(wl.id, wl.self);
+  wl.edit = true; paintWish();
+  if (r?.ok) hallChanged();
 }
 // The card picker over the center column: search, a rarity row, Clear + Save (frame 02).
 function openWishPicker(slot) {

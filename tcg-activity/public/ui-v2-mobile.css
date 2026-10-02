@@ -1267,6 +1267,8 @@ body.ui-v2.m-land .v2-trade.hall-view .tr-gridhead > #hlView#hlView, body.ui-v2.
 /* Phone Hall captions: the name wraps at natural points on line 1 (no cut names), line 2 the chips. */
 body.ui-v2 .hall-view .v2-cap.hl-cap.two.ph { gap: 2px; }
 body.ui-v2 .hall-view .hl-cap.ph .hl-who { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.15; font-size: 11px; }
+/* A name with no natural break point ("agrumpytedybeardimshoo") breaks inside its own card, never over the next one. */
+body.ui-v2 .hall-view .hl-cap.ph .hl-who { max-width: 100%; overflow-wrap: anywhere; }
 body.ui-v2 .hall-view .hl-cap.ph .hl-r2 { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
 /* The view switches keep their full labels (they were cut to "Open auc..."). */
 body.ui-v2 .hall-view #hlView, body.ui-v2 .hall-view #hlAView { flex: none; }
