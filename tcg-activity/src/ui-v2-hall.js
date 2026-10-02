@@ -2,6 +2,7 @@
 // as one list, no Gold switch). Community > Hall: Trade Hall (Wanted | For trade) and Auctions (Open |
 // My auctions). The rules live in SQL (hall_auctions.sql), the data in src/hall-routes.js.
 // Privacy: another member's wishlist and listed cards show here, never their collection.
+import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { v2ctx, avatarHTML, paintCards, fitChildren, toast } from './ui-v2.js';
 import { thumb } from './thumb.js';
 import { isPhone, isPort } from './mobile.js';
@@ -81,11 +82,15 @@ function shell(body, { aside = '', back = null, full = true } = {}) {
   const sheet = isPort() && aside;
   el('main').innerHTML = `<div class="v2-trade hall-view${full ? ' hall-full' : ''}${sheet ? ` has-sheet${hall.sheet ? ' sheet-open' : ''}` : ''}">
     <section class="tr-main hl-main">
-      <div class="tr-top">${commTabs()}${sub}<span class="grow"></span>${back ? `<button class="v2-btn" id="hlBack">←<span class="bt"> ${esc(back)}</span></button>` : ''}</div>
+      <div class="tr-top">${commTabs()}${sub}${explainBtn(hall.sub)}<span class="grow"></span>${back ? `<button class="v2-btn" id="hlBack">←<span class="bt"> ${esc(back)}</span></button>` : ''}</div>
       ${body}
     </section>${aside}
   </div>`;
   wireCommTabs();
+  // A portrait phone: the top row is full, so the ? circle goes to the end of the view's toolbar.
+  const head = isPort() && el('main').querySelector('.hl-main .tr-gridhead');
+  if (head) head.appendChild(el('main').querySelector('.ex-q'));
+  maybeExplain(hall.sub);
   if (sheet) {
     const side = el('main').querySelector('.hall-view > aside');
     side?.classList.add('hl-sheet');
