@@ -6,7 +6,7 @@
       "id": "CdrpB",
       "x": 0,
       "y": 0,
-      "name": "Shop",
+      "name": "Shop · 1 · Today's stock",
       "clip": true,
       "width": 1280,
       "height": 720,
@@ -940,7 +940,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "ref-hall.png",
+                        "url": "images/29-shop-card-art.png",
                         "mode": "cover",
                         "transform": [
                           14.49090909090909,
@@ -1241,7 +1241,7 @@
                               "fill": {
                                 "type": "image",
                                 "enabled": true,
-                                "url": "ref-hall.png",
+                                "url": "images/29-shop-card-art.png",
                                 "mode": "cover",
                                 "transform": [
                                   14.49090909090909,
@@ -1416,7 +1416,7 @@
                               "fill": {
                                 "type": "image",
                                 "enabled": true,
-                                "url": "ref-hall.png",
+                                "url": "images/29-shop-card-art.png",
                                 "mode": "cover",
                                 "transform": [
                                   14.49090909090909,
@@ -1591,7 +1591,7 @@
                               "fill": {
                                 "type": "image",
                                 "enabled": true,
-                                "url": "ref-hall.png",
+                                "url": "images/29-shop-card-art.png",
                                 "mode": "cover",
                                 "transform": [
                                   14.49090909090909,
@@ -1834,7 +1834,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -1972,7 +1972,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -2150,7 +2150,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -2285,7 +2285,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -2423,7 +2423,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -2561,7 +2561,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -3344,7 +3344,7 @@
       "id": "RCR98",
       "x": 0,
       "y": -220,
-      "name": "Card Tile",
+      "name": "Shop/Card Tile",
       "reusable": true,
       "clip": true,
       "width": 100,
@@ -3352,7 +3352,7 @@
       "fill": {
         "type": "image",
         "enabled": true,
-        "url": "ref-hall.png",
+        "url": "images/29-shop-card-art.png",
         "mode": "stretch",
         "transform": [
           14.49090909090909,
@@ -3504,7 +3504,7 @@
       "id": "WP0Mw",
       "x": 1360,
       "y": 0,
-      "name": "Shop - Confirm Secret Rare",
+      "name": "Shop · 2 · Confirm the featured Secret Rare",
       "clip": true,
       "width": 1280,
       "height": 720,
@@ -4438,7 +4438,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "ref-hall.png",
+                        "url": "images/29-shop-card-art.png",
                         "mode": "cover",
                         "transform": [
                           14.49090909090909,
@@ -4739,7 +4739,7 @@
                               "fill": {
                                 "type": "image",
                                 "enabled": true,
-                                "url": "ref-hall.png",
+                                "url": "images/29-shop-card-art.png",
                                 "mode": "cover",
                                 "transform": [
                                   14.49090909090909,
@@ -4914,7 +4914,7 @@
                               "fill": {
                                 "type": "image",
                                 "enabled": true,
-                                "url": "ref-hall.png",
+                                "url": "images/29-shop-card-art.png",
                                 "mode": "cover",
                                 "transform": [
                                   14.49090909090909,
@@ -5089,7 +5089,7 @@
                               "fill": {
                                 "type": "image",
                                 "enabled": true,
-                                "url": "ref-hall.png",
+                                "url": "images/29-shop-card-art.png",
                                 "mode": "cover",
                                 "transform": [
                                   14.49090909090909,
@@ -5332,7 +5332,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -5470,7 +5470,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -5648,7 +5648,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -5783,7 +5783,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -5921,7 +5921,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -6059,7 +6059,7 @@
                                   "fill": {
                                     "type": "image",
                                     "enabled": true,
-                                    "url": "ref-hall.png",
+                                    "url": "images/29-shop-card-art.png",
                                     "mode": "cover",
                                     "transform": [
                                       14.49090909090909,
@@ -6884,7 +6884,7 @@
                   "fill": {
                     "type": "image",
                     "enabled": true,
-                    "url": "ref-hall.png",
+                    "url": "images/29-shop-card-art.png",
                     "mode": "cover",
                     "transform": [
                       14.49090909090909,
