@@ -103,24 +103,30 @@ fix is the anchor price, not a limit.
   change to a balance writes one row. The `reason` values are fixed: `dungeon`,
   `expedition`, `arena`, `wandering`, `minigame`, `event`, `milestone`, `dupes`, `shop`,
   `admin`.
-- `shop_items(id, kind, card_id, price, weekly_limit, season_limit, starts_at, ends_at)`.
-- `shop_purchases(id, player_id, item_id, price, created_at)`.
-- RPCs:
-  - `grant_shards(p_player, p_amount, p_reason, p_ref_kind, p_ref_id)`. Only other RPCs
-    call it. It never runs from a client request.
-  - `buy_item(p_player, p_item)`. It locks the player row, checks the balance and the
-    limits, takes the Shards, gives the item, and writes the ledger and the purchase, in
-    one transaction.
-  - `convert_dupes(p_player, p_card, p_count)`. It checks `free_copies` and keeps 1 copy.
-- `settings.shards`: `{ enabled, pack_price, dupe_values, ... }`.
-  Nathan can change a number without a deploy.
+- `shop_stock(day, slot, card_id, rarity, price)`: the daily stock.
+- `shop_purchases(id, player_id, day, kind pack|card|stat_reset, slot, card_id, qty, price,
+  created_at)`. A unique index allows each stock slot 1 time each day for each member.
+- RPCs (built in PR #118, `tcg-bot/supabase/shards_shop.sql`):
+  - `grant_shards(p_player, p_amount, p_reason, p_ref_kind, p_ref_id)`. The only writer of
+    the balance. Only other RPCs call it. It never runs from a client request.
+  - `shop_pick_stock(p_day)`: picks the stock for a day, one time (an advisory lock).
+  - `shop_today(p_player)`: the balance, today's stock, and the prices.
+  - `buy_shop_item(p_player, p_kind, p_slot, p_card, p_qty)`. It locks the player row,
+    checks the balance and the limits, takes the Shards, gives the item, and writes the
+    ledger and the purchase, in one transaction.
+  - `convertible_copies(p_player, p_card)` and `convert_dupes(p_player, p_card, p_count)`.
+    They keep 1 copy and the copies that ascension still needs, and they never convert a
+    held copy.
+- `settings.shards`: `{ enabled, pack_price, stat_reset_price, stock, prices,
+  cooldown_days, max_packs_per_buy, dupe_values }`. Nathan can change a number without a
+  deploy.
+- The Season Full Art event and the decorations come later (Section 8).
 
 ## 6. The surface
 
 - The top bar shows the Shard balance next to the pack count.
 - A **Shop** view: the daily stock with a countdown to the next stock, the packs, the decorations,
-  and the season event when it is open. Each item shows its limit ("2 of 3 left this
-  week").
+  and the season event when it is open. A bought stock card shows "Bought today".
 - A confirm step before each purchase.
 - The Card Information view gets a **Convert extras** button on a Prestige card.
 
