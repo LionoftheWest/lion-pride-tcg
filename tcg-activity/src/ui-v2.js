@@ -21,7 +21,7 @@ export const v2ctx = () => ctx;
 const RARITY_ORDER = ['normal', 'illustrated_rare', 'secret_rare', 'full_art', 'gold'];
 const TOP_RARITY = new Set(['secret_rare', 'full_art', 'gold', 'event', 'promo']);
 const GAP = 14;
-const CAP_H = 24; // the caption row under each card (element, power, stars, copies)
+const CAP_H_ROW = 24; // the caption row under each card (element, power, stars, copies)
 
 const initial = (name) => esc(String(name || '?').trim().charAt(0).toUpperCase() || '?');
 function esc(s) { return ctx.esc(s ?? ''); }
@@ -85,6 +85,7 @@ export function tileHTML(c, idx, selected) {
 const MIN_CW = () => (isPhone() ? 88 : 112);
 function fitGrid(grid, n) {
   const cs = getComputedStyle(grid);
+  const CAP_H = Number(grid.dataset.cap) || CAP_H_ROW; // a grid with a taller caption says so (data-cap)
   const w = grid.clientWidth || 600;
   // clientHeight includes the padding (4 px on top): without it, a second row ran 4 px past the box.
   const h = (grid.clientHeight || 420) - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
@@ -147,7 +148,7 @@ export function paintCards(grid, pager, items, state, onPick, selId, dir, refit)
   state.page = Math.min(Math.max(0, state.page), pages - 1);
   const start = state.page * per;
   grid.innerHTML = items.length
-    ? items.slice(start, start + per).map((c, i) => tileHTML(c, start + i, c.id === selId)).join('')
+    ? items.slice(start, start + per).map((c, i) => (state.tile || tileHTML)(c, start + i, c.id === selId)).join('')
     : '<p class="v2-empty">No cards match.</p>';
   if (dir) { grid.classList.remove('slide-next', 'slide-prev'); void grid.offsetWidth; grid.classList.add(dir === 'next' ? 'slide-next' : 'slide-prev'); }
   grid.onclick = (e) => {
@@ -1230,8 +1231,9 @@ function paintMember() {
     </section>
 
     <aside class="mem-right">
+      ${ctx.hallOn?.() ? '<div class="mem-col mem-wish" id="memWish"><div class="tile-h"><b>♡ Wishlist</b></div><p class="v2-empty">Loading…</p></div>' : ''}
       <div class="mem-col mem-hunt">${huntBoxHTML(p)}</div>
-      <div class="mem-col mem-need">${self ? selfNeedHTML(achs) : needHTML(cards)}</div>
+      ${ctx.hallOn?.() ? '' : `<div class="mem-col mem-need">${self ? selfNeedHTML(achs) : needHTML(cards)}</div>`}
     </aside>
   </div>`;
 
@@ -1262,8 +1264,74 @@ function paintMember() {
   }));
   // Fit after the browser lays the new screen out (measured too early, it emptied the lists).
   requestAnimationFrame(() => { fitNeed(box); fitChildren(el('memAch')); if (!mem.all) fitChildren(el('memGrid')); });
+  if (ctx.hallOn?.()) loadWish(p.id, self);
   setTimeout(() => fitNeed(box), 300); // again after the fonts and images load
 }
+
+// ---- The Wishlist (5 slots, one card each; everyone can see it) ------------------------------
+const wl = { id: null, self: false, slots: [], edit: false, pick: null, rarity: 'normal', q: '', page: 0, sel: null, msg: '' };
+async function loadWish(id, self) {
+  let d = null;
+  try { d = await ctx.api(`/api/wishlist?id=${encodeURIComponent(id)}`); } catch { d = null; }
+  Object.assign(wl, { id: String(id), self, slots: d?.slots || [], pick: null, msg: '' });
+  paintWish();
+}
+function paintWish() {
+  const box = ctx.el('memWish');
+  if (!box) return;
+  const n = wl.slots.filter((x) => x.card).length;
+  box.innerHTML = `<div class="tile-h"><b>♡ Wishlist</b><span class="grow"></span><span class="mono dim">${n}/5</span>
+      ${wl.self ? `<button class="v2-chip-btn${wl.edit ? ' gold' : ''}" id="wlEdit">${wl.edit ? '✓ Done' : '✎ Edit'}</button>` : ''}</div>
+    <div class="wl-list">${wl.slots.map((x) => `<div class="wl-row${wl.pick === x.slot ? ' on' : ''}" data-slot="${x.slot}"><span class="wl-i mono">${x.slot}</span>
+      ${x.card ? `<img src="${thumb(x.card.image_url)}" data-full="${x.card.image_url || ''}" alt=""><div><b>${esc(x.card.name)}</b><span style="color:var(--r-${x.card.rarity})">◆ ${esc(ctx.RARITY_LABEL[x.card.rarity] || x.card.rarity)}</span></div>`
+        : '<span class="wl-empty">＋</span><div><b class="dim">Empty</b></div>'}
+      <span class="grow"></span>${!wl.self && x.card ? `<span class="hl-n${x.mine ? ' have' : ''}" title="Your free copies">⧉ ×${x.mine}</span>` : ''}
+      ${wl.self && wl.edit ? (x.card ? `<button class="v2-icon wl-x" data-slot="${x.slot}" title="Clear">✕</button>` : '') + `<button class="v2-icon wl-set" data-slot="${x.slot}" title="Pick a card">✎</button>` : ''}</div>`).join('')}</div>
+    ${wl.msg ? `<span class="tr-msg">${esc(wl.msg)}</span>` : ''}`;
+  ctx.el('wlEdit')?.addEventListener('click', () => { wl.edit = !wl.edit; wl.pick = null; closeWishPicker(); paintWish(); });
+  box.querySelectorAll('.wl-x').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveWish(Number(b.dataset.slot), null); }));
+  box.querySelectorAll('.wl-set').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openWishPicker(Number(b.dataset.slot)); }));
+  box.querySelectorAll('.wl-row').forEach((r) => r.addEventListener('click', () => {
+    const x = wl.slots.find((k) => k.slot === Number(r.dataset.slot));
+    if (wl.self && wl.edit) { openWishPicker(x.slot); return; }
+    const c = x?.card && (ctx.cache.catalog?.cards || []).find((k) => Number(k.id) === Number(x.card.id));
+    if (c) ctx.openViewer(c);
+  }));
+}
+async function saveWish(slot, cardId) {
+  let r = null;
+  try { r = await ctx.apiPost('/api/wishlist', { slot, cardId }); } catch { r = null; }
+  wl.msg = r?.ok ? '' : (r?.message || 'Could not save that.');
+  closeWishPicker();
+  await loadWish(wl.id, wl.self);
+  wl.edit = true; paintWish();
+}
+// The card picker over the center column: search, a rarity row, Clear + Save (frame 02).
+function openWishPicker(slot) {
+  const center = ctx.el('memberModal')?.querySelector('.mem-center');
+  if (!center) return;
+  const cur = wl.slots.find((x) => x.slot === slot)?.card;
+  Object.assign(wl, { pick: slot, sel: cur ? Number(cur.id) : null, rarity: cur?.rarity || wl.rarity, page: 0 });
+  center.querySelector('.wl-picker')?.remove();
+  center.insertAdjacentHTML('beforeend', `<div class="wl-picker mem-col"><div class="tile-h"><b>♡ Slot ${slot}</b><span class="grow"></span><button class="v2-icon" id="wlClose" title="Close">✕</button></div>
+    <div class="v2-col-head"><input class="v2-search" id="wlQ" placeholder="Search cards" value="${esc(wl.q)}"><span class="grow"></span><div class="v2-pager" id="wlPager"></div></div>
+    <div class="v2-grid" id="wlGrid"></div>
+    <div class="side-h">Rarity</div><div class="seg wl-rar" id="wlRar">${RARITY_ORDER.map((r) => `<button data-r="${r}" class="${wl.rarity === r ? 'on' : ''}" style="--rc:var(--r-${r})"><i>◆</i> ${esc(ctx.RARITY_LABEL[r] || r)}</button>`).join('')}</div>
+    <div class="wl-foot"><span class="grow"></span><button class="v2-btn" id="wlClear">↺ Clear</button><button class="v2-btn gold" id="wlSave">✓ Save</button></div></div>`);
+  const paint = () => {
+    const q = wl.q.trim().toLowerCase();
+    const items = (ctx.cache.catalog?.cards || []).filter((c) => c.rarity === wl.rarity && (!q || c.name.toLowerCase().includes(q))).map((c) => ({ ...c, owned: true, locked: false }));
+    paintCards(ctx.el('wlGrid'), ctx.el('wlPager'), items, wl, (c) => { wl.sel = Number(c.id); paint(); }, wl.sel);
+  };
+  paint();
+  ctx.el('wlQ').addEventListener('input', (e) => { wl.q = e.target.value; wl.page = 0; paint(); });
+  ctx.el('wlRar').onclick = (e) => { const b = e.target.closest('[data-r]'); if (!b) return; wl.rarity = b.dataset.r; wl.page = 0; wl.sel = null; center.querySelectorAll('#wlRar button').forEach((x) => x.classList.toggle('on', x === b)); paint(); };
+  ctx.el('wlClose').onclick = () => { closeWishPicker(); wl.pick = null; paintWish(); };
+  ctx.el('wlClear').onclick = () => saveWish(slot, null);
+  ctx.el('wlSave').onclick = () => { if (wl.sel) saveWish(slot, wl.sel); };
+  paintWish();
+}
+function closeWishPicker() { ctx.el('memberModal')?.querySelector('.wl-picker')?.remove(); }
 
 // Their damage in the live hunt, per day, and their best card.
 function huntBoxHTML(p) {

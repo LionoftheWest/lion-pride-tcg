@@ -6,6 +6,7 @@ import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, o
 import { thumb } from './thumb.js';
 import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
 import { isPhone, isPort, isLand } from './mobile.js';
+import { renderHall, repaintHall } from './ui-v2-hall.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
 const ctx = () => v2ctx();
@@ -272,7 +273,7 @@ function paintBoard() {
 // ---- Trading, with Gift inside (designs 14 + 13) ----------------------------------------
 
 // respond: the incoming offer I pick my card for (two-step trades, trade_two_step.sql).
-const tr = { tab: 'trades', mode: 'offer', giftKind: 'card', to: null, give: null, get: null, side: 'mine', filter: 'all', q: '', page: 0, members: [], theirs: {}, offers: null, msg: '', respond: null };
+export const tr = { tab: 'trades', mode: 'offer', giftKind: 'card', to: null, give: null, get: null, side: 'mine', filter: 'all', q: '', page: 0, members: [], theirs: {}, offers: null, msg: '', respond: null };
 // The trades that wait for ME: an offer to pick a card for, or a pick to accept.
 export const tradeActions = (d) => (d?.incoming || []).filter((o) => o.status !== 'countered').length + (d?.outgoing || []).filter((o) => o.status === 'countered').length;
 
@@ -287,7 +288,7 @@ export function openTradeWith(to) {
 // The poll in main.js hands the fresh /api/trades here; a change repaints the trade screen
 // (takeFocus/keepFocus keep a search box), and a finished offer refreshes my cards.
 export async function liveTrades(d) {
-  if (!d || d.error || ctx().currentView() !== 'trading' || tr.tab !== 'trades') return;
+  if (!d || d.error || ctx().currentView() !== 'trading' || (tr.tab !== 'trades' && tr.tab !== 'hall')) return;
   if (JSON.stringify(d) === JSON.stringify(tr.offers)) return;
   const ids = (x) => new Set([...(x?.incoming || []), ...(x?.outgoing || [])].map((o) => Number(o.id)));
   const now = ids(d);
@@ -296,6 +297,7 @@ export async function liveTrades(d) {
   if (tr.respond && !(d.incoming || []).some((o) => Number(o.id) === Number(tr.respond.id) && o.status !== 'countered')) { tr.respond = null; tr.give = null; }
   if (gone) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
   if (ctx().currentView() === 'trading' && tr.tab === 'trades') paintTrade();
+  else if (ctx().currentView() === 'trading' && tr.tab === 'hall') repaintHall();
 }
 
 export async function renderTradingV2() {
@@ -313,23 +315,24 @@ export async function renderTradingV2() {
   if (tr.to && !tr.members.some((m) => m.id === tr.to.id)) tr.members.unshift(tr.to); // opened from a profile
   if (!tr.to && tr.members[0]) tr.to = tr.members[0];
   if (tr.to) await loadTheirs(tr.to.id);
-  if (tr.tab === 'effects' && ctx().effectsEnabled?.()) { await loadFx(); paintEffects(); } else { tr.tab = 'trades'; paintTrade(); }
+  if (tr.tab === 'effects' && ctx().effectsEnabled?.()) { await loadFx(); paintEffects(); } else if (tr.tab === 'hall' && ctx().hallOn?.()) await renderHall(); else { tr.tab = 'trades'; paintTrade(); }
 }
 
 // The Community sub-tabs (design 16): Trades, Boons & Pranks (only while effects are on).
-function commTabs() {
+export function commTabs() {
   const fx = ctx().effectsEnabled?.();
   // Portrait (design 25): the trophy moves from the top bar into Community, the same button.
   const board = isPort() ? '<button class="v2-icon" id="commBoard" title="Leaderboard">🏆</button>' : '';
-  return board + `<div class="seg" id="commTabs"><button data-tab="trades" class="${tr.tab === 'trades' ? 'on' : ''}">⇄ Trades</button>${fx ? `<button data-tab="effects" class="${tr.tab === 'effects' ? 'on' : ''}">✨ Boons<span class="ct-more"> & Pranks</span></button>` : ''}</div>`;
+  const hall = ctx().hallOn?.() ? `<button data-tab="hall" class="${tr.tab === 'hall' ? 'on' : ''}">♡ Hall</button>` : '';
+  return board + `<div class="seg" id="commTabs"><button data-tab="trades" class="${tr.tab === 'trades' ? 'on' : ''}">⇄ Trades</button>${hall}${fx ? `<button data-tab="effects" class="${tr.tab === 'effects' ? 'on' : ''}">✨ Boons<span class="ct-more"> & Pranks</span></button>` : ''}</div>`;
 }
-function wireCommTabs() {
+export function wireCommTabs() {
   ctx().el('commBoard')?.addEventListener('click', () => ctx().el('boardBtn')?.click());
   ctx().el('commTabs')?.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-tab]');
     if (!b || b.dataset.tab === tr.tab) return;
     tr.tab = b.dataset.tab; tr.page = 0; tr.msg = '';
-    if (tr.tab === 'effects') { await loadFx(); paintEffects(); } else paintTrade();
+    if (tr.tab === 'effects') { await loadFx(); paintEffects(); } else if (tr.tab === 'hall') await renderHall(); else paintTrade();
   });
 }
 
@@ -366,6 +369,44 @@ function slotHTML(c, who, empty) {
   return `<div class="tr-slot r-${c.rarity}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""></div>
     <div class="tr-info"><span class="tr-who">${who}</span><h3>${isPhone() ? breakable(esc(c.name)) : esc(c.name)}</h3><span class="tr-rar" style="color:var(--r-${c.rarity})">◆ ${esc(ctx().RARITY_LABEL[c.rarity] || c.rarity)}</span>
       <span class="tr-chips"><i>⚡ ${fmt(c.power)}</i>${c.quantity ? `<i>×${c.quantity}</i>` : ''}</span></div>`;
+}
+
+// The Offers panel (Trades and the Trading Hall show the same one): the rows that wait for ME first.
+export function offersAsideHTML() {
+  const inc = [...(tr.offers?.incoming || [])].sort((x, y) => (x.status === 'countered') - (y.status === 'countered'));
+  const out = [...(tr.offers?.outgoing || [])].sort((x, y) => (y.status === 'countered') - (x.status === 'countered'));
+  const offerCard = (c, tag) => (c ? `<div class="of-card"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""><span>${tag}</span></div>` : '');
+  return `    <aside class="tr-offers v2-tile">
+      <div class="tile-h"><b>Offers</b>${tradeActions(tr.offers) ? `<span class="nt-count">${tradeActions(tr.offers)}</span>` : ''}</div>
+      <div class="side-h">Incoming <span class="n">${inc.length}</span></div>
+      <div class="of-list" id="ofIn">${inc.map((o) => {
+        // An offer to answer: pick my card. My pick sent: wait for them. An old offer: accept.
+        const decline = `<button class="v2-btn of-decline" data-id="${o.id}" title="Decline">✕<span class="of-t"> Decline</span></button>`;
+        const acts = o.status === 'countered'
+          ? `<span class="of-wait dim">Waiting<span class="of-wn"> for ${esc(o.from_name || 'them')}</span></span>${decline}`
+          : o.request
+            ? `<button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button>${decline}`
+            : `<button class="v2-btn gold of-pick" data-id="${o.id}">Pick your card</button>${decline}`;
+        return `<div class="of-row${tr.respond && Number(tr.respond.id) === Number(o.id) ? ' on' : ''}"><div class="of-who">${avatarHTML(o.from_id, o.from_name, 'xs')}<b>${nameBadge(o.from_id, o.from_name || 'Someone', isPhone())}</b></div>
+        <div class="of-cards">${offerCard(o.offer, 'Get')}${o.request ? `<span>⇄</span>${offerCard(o.request, 'Give')}` : ''}</div>
+        <div class="of-acts">${acts}</div></div>`;
+      }).join('') || '<p class="v2-empty">No incoming offers.</p>'}</div>
+      <div class="side-h">Sent <span class="n">${out.length}</span></div>
+      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone', isPhone())}</b><span class="dim">${o.status === 'countered' ? 'Picked a card' : o.request ? 'Waiting' : 'Picking a card'}</span></div>
+        <div class="of-cards">${offerCard(o.offer, 'Give')}${o.request ? `<span>⇄</span>${offerCard(o.request, 'Get')}` : ''}</div>
+        ${o.status === 'countered' ? `<div class="of-acts"><button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button><button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button></div>` : `<button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button>`}</div>`).join('') || '<p class="v2-empty">No sent offers.</p>'}</div>
+    </aside>`;
+}
+// Its buttons. "Pick your card" opens Trades (the pick happens there); the rest repaint this screen.
+export function wireOffers(main, repaint) {
+  main.querySelectorAll('.of-pick').forEach((b) => b.addEventListener('click', () => {
+    tr.respond = (tr.offers?.incoming || []).find((o) => Number(o.id) === Number(b.dataset.id)) || null;
+    tr.tab = 'trades'; tr.mode = 'offer'; tr.give = null; tr.page = 0; tr.msg = '';
+    paintTrade();
+  }));
+  main.querySelectorAll('.of-accept').forEach((b) => b.addEventListener('click', () => { b.disabled = true; resolve('/api/trade/accept', { offerId: Number(b.dataset.id) }, repaint); }));
+  main.querySelectorAll('.of-decline').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'decline' }, repaint)));
+  main.querySelectorAll('.of-cancel').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'cancel' }, repaint)));
 }
 
 // A repaint replaces the search boxes. On a phone that closed the keyboard and lost the text
@@ -450,9 +491,6 @@ function paintTrade() {
   }
   const packs = ctx().packs();
   const me = ctx().user();
-  // The rows that wait for ME come first (the lists show only the rows that fit).
-  const inc = [...(tr.offers?.incoming || [])].sort((x, y) => (x.status === 'countered') - (y.status === 'countered'));
-  const out = [...(tr.offers?.outgoing || [])].sort((x, y) => (y.status === 'countered') - (x.status === 'countered'));
   let composer;
   const rar = (c) => esc(ctx().RARITY_LABEL[c?.rarity] || c?.rarity || '');
   const aRar = (c) => `${/^[aeiou]/i.test(ctx().RARITY_LABEL[c?.rarity] || '') ? 'an' : 'a'} ${rar(c)}`;
@@ -491,7 +529,6 @@ function paintTrade() {
         <button class="v2-btn" id="trClear">↺ Clear</button><button class="v2-btn gold" id="trSend" ${tr.to && (pack ? packs > 0 : tr.give) ? '' : 'disabled'}>🎁 Send gift</button></div>`;
   }
   const mineN = (ctx().cache.collection?.cards || []).length;
-  const offerCard = (c, tag) => (c ? `<div class="of-card"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt=""><span>${tag}</span></div>` : '');
   const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
   el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}${tr.respond ? ' responding' : ''}">
     <section class="tr-main">
@@ -510,26 +547,7 @@ function paintTrade() {
       </div>
       <div class="v2-grid" id="trGrid"></div>
     </section>
-    <aside class="tr-offers v2-tile">
-      <div class="tile-h"><b>Offers</b>${tradeActions(tr.offers) ? `<span class="nt-count">${tradeActions(tr.offers)}</span>` : ''}</div>
-      <div class="side-h">Incoming <span class="n">${inc.length}</span></div>
-      <div class="of-list" id="ofIn">${inc.map((o) => {
-        // An offer to answer: pick my card. My pick sent: wait for them. An old offer: accept.
-        const decline = `<button class="v2-btn of-decline" data-id="${o.id}" title="Decline">✕<span class="of-t"> Decline</span></button>`;
-        const acts = o.status === 'countered'
-          ? `<span class="of-wait dim">Waiting<span class="of-wn"> for ${esc(o.from_name || 'them')}</span></span>${decline}`
-          : o.request
-            ? `<button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button>${decline}`
-            : `<button class="v2-btn gold of-pick" data-id="${o.id}">Pick your card</button>${decline}`;
-        return `<div class="of-row${tr.respond && Number(tr.respond.id) === Number(o.id) ? ' on' : ''}"><div class="of-who">${avatarHTML(o.from_id, o.from_name, 'xs')}<b>${nameBadge(o.from_id, o.from_name || 'Someone', isPhone())}</b></div>
-        <div class="of-cards">${offerCard(o.offer, 'Get')}${o.request ? `<span>⇄</span>${offerCard(o.request, 'Give')}` : ''}</div>
-        <div class="of-acts">${acts}</div></div>`;
-      }).join('') || '<p class="v2-empty">No incoming offers.</p>'}</div>
-      <div class="side-h">Sent <span class="n">${out.length}</span></div>
-      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone', isPhone())}</b><span class="dim">${o.status === 'countered' ? 'Picked a card' : o.request ? 'Waiting' : 'Picking a card'}</span></div>
-        <div class="of-cards">${offerCard(o.offer, 'Give')}${o.request ? `<span>⇄</span>${offerCard(o.request, 'Get')}` : ''}</div>
-        ${o.status === 'countered' ? `<div class="of-acts"><button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button><button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button></div>` : `<button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button>`}</div>`).join('') || '<p class="v2-empty">No sent offers.</p>'}</div>
-    </aside>
+    ${offersAsideHTML()}
   </div>`;
 
   wireCommTabs();
@@ -559,15 +577,8 @@ function paintTrade() {
   wireFind(async () => { await loadTheirs(tr.to.id); paintTrade(); });
   el('trClear').addEventListener('click', () => { tr.give = null; tr.get = null; tr.side = 'mine'; tr.respond = null; tr.page = 0; tr.msg = ''; paintTrade(); });
   // Pick my card for an incoming offer: the grid shows my cards of that rarity.
-  main.querySelectorAll('.of-pick').forEach((b) => b.addEventListener('click', () => {
-    tr.respond = (tr.offers?.incoming || []).find((o) => Number(o.id) === Number(b.dataset.id)) || null;
-    tr.mode = 'offer'; tr.give = null; tr.page = 0; tr.msg = '';
-    paintTrade();
-  }));
   el('trSend').addEventListener('click', send);
-  main.querySelectorAll('.of-accept').forEach((b) => b.addEventListener('click', () => { b.disabled = true; resolve('/api/trade/accept', { offerId: Number(b.dataset.id) }); }));
-  main.querySelectorAll('.of-decline').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'decline' })));
-  main.querySelectorAll('.of-cancel').forEach((b) => b.addEventListener('click', () => resolve('/api/trade/resolve', { offerId: Number(b.dataset.id), action: 'cancel' })));
+  wireOffers(main, paintTrade);
   keepFocus(focus);
   requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); if (isLand()) fitColumn(el('trMembers')); else fitRow(el('trMembers'), el('trFind')); });
 }
@@ -629,11 +640,11 @@ async function send() {
   }
   paintTrade();
 }
-async function refreshOffers() {
+export async function refreshOffers() {
   try { tr.offers = await ctx().api('/api/trades'); } catch { /* keep */ }
   ctx().updateTradeBadge?.(tradeActions(tr.offers));
 }
-async function resolve(path, body) {
+async function resolve(path, body, repaint = paintTrade) {
   const accepting = path.endsWith('accept');
   // I can be either side: an old offer to me, or my offer that the other member answered.
   const all = [...(tr.offers?.incoming || []).map((o) => ({ o, mine: false })), ...(tr.offers?.outgoing || []).map((o) => ({ o, mine: true }))];
@@ -651,7 +662,7 @@ async function resolve(path, body) {
   if (tr.to) await loadTheirs(tr.to.id);
   await refreshOffers();
   await fx;
-  paintTrade();
+  repaint();
 }
 
 

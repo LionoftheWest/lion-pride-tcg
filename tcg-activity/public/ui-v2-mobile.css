@@ -1059,3 +1059,6 @@ body.ui-v2.m-port .lb-table { order: 5; flex: 1 1 auto; min-height: 0; padding: 
 body.ui-v2.m-port .lb-row { grid-template-columns: 26px minmax(0, 1fr) auto; height: auto; min-height: 38px; padding: 3px 6px; }
 body.ui-v2.m-port .lb-row .lb-c:not(.on) { display: none; }
 body.ui-v2.m-port .lb-row .lb-p b { white-space: normal; overflow: visible; text-overflow: clip; }
+/* Portrait with the Hall tab: "Boons & Pranks" shortens to "Boons" so the three tabs, the trophy and
+   Offer / Gift keep one row (measured: the row needed 388 px of 359-377 px). */
+body.ui-v2.m-port #commTabs:has([data-tab=hall]) .ct-more { display: none; }
