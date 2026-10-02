@@ -1,20 +1,20 @@
 -- Raid loop caps (Nathan, 2026-10-02). Blastninja's Blastoise attacked 97 times in one squad
 -- (12,774 damage): "I'll get it back, don't worry" healed it 54% of its max HP (30% x 1.8 for a
--- Pokemon) every 2 rounds, more than the boss hits, and the heal card kept casting while it was down.
+-- Pokemon) every 2 rounds, and the heal card kept casting after the boss had downed it.
 --
--- 1. A support card that is down does nothing (error support_downed).
--- 2. The daily restore budget: heals + shields + lifesteal give one card at most
---    settings.hunt_restore_cap x its max HP a day (default 1.0). An empty budget refuses the cast.
---    Mend (a boon another member sends) is outside the budget.
--- 3. Stun immunity: after a stun the boss cannot be stunned for 2 rounds (4 stun cards locked it).
--- 4. The round limit: a squad fights at most settings.hunt_round_cap rounds a day (default 40;
---    the longest real squad before this was 35). The last round posts the squad summary.
+-- 1. A support card that is down does nothing (error support_downed). The percentage heals stay:
+--    with this rule the heal card dies to the boss's hits on the whole squad, and the loop ends
+--    (card-studio/scripts/sim-hunt-loops.mjs: median 16 rounds, was endless).
+-- 2. Stun immunity: after a stun the boss cannot be stunned for 2 rounds (4 stun cards locked it).
+-- 3. The round limit: a squad fights at most settings.hunt_round_cap rounds a day (default 40;
+--    the longest real squad before this was 35). It bounds the shield squads (heal + shields that
+--    protect each other: median 51-100 rounds in the simulation) and any loop not found yet.
+--    The last round posts the squad summary.
 --
--- Built from the LIVE definitions (hunt_attack = hunt_squad_done.sql, hunt_support = hunt_squads.sql). Test: node scripts/test-hunt-loop-caps.mjs
+-- Built from the LIVE definitions (hunt_attack = hunt_squad_done.sql, hunt_support = hunt_squads.sql).
+-- Test: node scripts/test-hunt-loop-caps.mjs
 
-alter table public.hunt_card_hp add column if not exists restored int not null default 0;
-
-insert into settings (key, value) values ('hunt_round_cap', '40'::jsonb), ('hunt_restore_cap', '1.0'::jsonb)
+insert into settings (key, value) values ('hunt_round_cap', '40'::jsonb)
   on conflict (key) do nothing;
 
 create or replace function public.hunt_round_cap() returns int
@@ -22,15 +22,10 @@ language sql stable set search_path = public as $$
   select coalesce((select (value #>> '{}')::int from settings where key = 'hunt_round_cap'), 40);
 $$;
 
-create or replace function public.hunt_restore_cap() returns numeric
-language sql stable set search_path = public as $$
-  select coalesce((select (value #>> '{}')::numeric from settings where key = 'hunt_restore_cap'), 1.0);
-$$;
-
 create or replace function public.hunt_attack(p_player text, p_hunt bigint, p_card bigint)
 returns jsonb language plpgsql set search_path = public as $function$
 declare
-  v_rcap int; v_rfrac numeric; v_restored int;
+  v_rcap int;
   v_status text; v_closes timestamptz; v_weak jsonb; v_tier text;
   v_qty int; v_asc int; v_rarity text; v_season text; v_type text; v_mod numeric; v_cardname text;
   v_cp int; v_bonus boolean; v_day date; v_hp bigint; v_hpmax bigint;
@@ -89,11 +84,11 @@ begin
   v_cp := (v_cmb->>'cp')::int;
   v_maxhp := (v_cmb->>'hp')::int;
 
-  select hp_remaining, downed, coalesce(dmg_buff, 1), coalesce(dmg_debuff, 1), coalesce(shield, 0), restored
-    into v_cardhp, v_downed, v_buff, v_debuff, v_shield, v_restored
+  select hp_remaining, downed, coalesce(dmg_buff, 1), coalesce(dmg_debuff, 1), coalesce(shield, 0)
+    into v_cardhp, v_downed, v_buff, v_debuff, v_shield
     from hunt_card_hp where hunt_id = p_hunt and player_id = p_player and card_id = p_card and hit_date = v_day;
   if not found then
-    v_cardhp := v_maxhp; v_downed := false; v_buff := 1; v_debuff := 1; v_shield := 0; v_restored := 0;
+    v_cardhp := v_maxhp; v_downed := false; v_buff := 1; v_debuff := 1; v_shield := 0;
     select coalesce((select (value #>> '{}')::int from settings where key = 'hunt_daily_card_cap'), 8) into v_cap;
     if (select count(*) from hunt_card_hp where hunt_id = p_hunt and player_id = p_player and hit_date = v_day) >= v_cap then
       return jsonb_build_object('ok', false, 'error', 'day_limit', 'cap', v_cap);
@@ -253,10 +248,7 @@ begin
   v_heal := 0;
   if v_aeff = 'lifesteal' and v_dmg > 0 then
     v_heal := greatest(1, least(round(v_dmg * v_aamt), round(v_maxhp * 0.06)));  -- cap: lifesteal cannot out-heal the boss
-    -- The daily restore budget (hunt_loop_caps.sql): heals + shields + lifesteal on one card.
-    v_rfrac := hunt_restore_cap();
-    v_heal := greatest(0, least(v_heal, v_maxhp - v_cardhp, round(v_maxhp * v_rfrac)::int - v_restored));
-    v_cardhp := v_cardhp + v_heal; v_restored := v_restored + v_heal;
+    v_cardhp := least(v_maxhp, v_cardhp + v_heal);
   end if;
   v_buff := 1;
 
@@ -391,11 +383,11 @@ begin
   v_downed := v_cardhp <= 0;
   v_counter := v_bossact is not null and v_bossact not in ('stunned', 'enrage', 'curse', 'regenerate', 'charging');
 
-  insert into hunt_card_hp (hunt_id, player_id, card_id, hit_date, hp_remaining, max_hp, downed, dmg_buff, dmg_debuff, shield, cd_until_round, restored)
+  insert into hunt_card_hp (hunt_id, player_id, card_id, hit_date, hp_remaining, max_hp, downed, dmg_buff, dmg_debuff, shield, cd_until_round)
     values (p_hunt, p_player, p_card, v_day, v_cardhp, v_maxhp, v_downed, v_buff, v_debuff, v_shield,
-            case when v_bossact = 'stun' then v_round + 1 else 0 end, v_restored)
+            case when v_bossact = 'stun' then v_round + 1 else 0 end)
     on conflict (hunt_id, player_id, card_id, hit_date)
-    do update set hp_remaining = excluded.hp_remaining, downed = excluded.downed, restored = excluded.restored,
+    do update set hp_remaining = excluded.hp_remaining, downed = excluded.downed,
       dmg_buff = excluded.dmg_buff, dmg_debuff = excluded.dmg_debuff, shield = excluded.shield,
       cd_until_round = greatest(excluded.cd_until_round, hunt_card_hp.cd_until_round), updated_at = now();
 
@@ -457,7 +449,7 @@ end $function$;
 create or replace function public.hunt_support(p_player text, p_hunt bigint, p_card bigint, p_target bigint default null::bigint)
 returns jsonb language plpgsql set search_path = public as $function$
 declare
-  v_rcap int; v_sdown boolean; v_stun_until int; v_room int; v_add int; v_thp int; v_tmax int; v_trest int; v_tdown boolean;
+  v_rcap int; v_sdown boolean; v_stun_until int;
   v_status text; v_closes timestamptz; v_tier text; v_hp bigint;
   v_qty int; v_type text; v_ability jsonb; v_eff text; v_amt numeric; v_dur int; v_cd int; v_tgt text;
   v_day date; v_round int; v_cd_until int; v_cap int; v_maxhp int;
@@ -529,24 +521,13 @@ begin
     -- matched ally gets the stronger effect
     v_matched := v_aff is not null and v_ttags is not null and v_aff = any(v_ttags);
     if v_matched then v_amt := v_amt * 1.8; end if;
-    -- The daily restore budget of the target (hunt_loop_caps.sql): heals + shields + lifesteal
-    -- together give at most hunt_restore_cap x its max HP a day. An empty budget refuses the cast
-    -- (the support keeps its cooldown).
-    select hp_remaining, max_hp, restored, downed into v_thp, v_tmax, v_trest, v_tdown from hunt_card_hp
-      where hunt_id = p_hunt and player_id = p_player and card_id = p_target and hit_date = v_day for update;
-    if not found then return jsonb_build_object('ok', false, 'error', 'bad_target'); end if;
-    v_room := greatest(0, round(v_tmax * hunt_restore_cap())::int - coalesce(v_trest, 0));
-    if v_eff in ('heal', 'shield') and v_room <= 0 then
-      return jsonb_build_object('ok', false, 'error', 'restore_cap');
-    end if;
 
     if v_eff = 'empower' then
       update hunt_card_hp set dmg_buff = 1 + v_amt, updated_at = now()
         where hunt_id = p_hunt and player_id = p_player and card_id = p_target and hit_date = v_day;
     elsif v_eff = 'shield' then
       -- amount = a fraction of the TARGET's max HP (was flat 60 on 30-HP cards).
-      v_add := least(greatest(1, round(v_tmax * least(v_amt, 1.0)))::int, v_room);
-      update hunt_card_hp set shield = shield + v_add, restored = restored + v_add, updated_at = now()
+      update hunt_card_hp set shield = shield + greatest(1, round(max_hp * least(v_amt, 1.0)))::int, updated_at = now()
         where hunt_id = p_hunt and player_id = p_player and card_id = p_target and hit_date = v_day;
     elsif v_eff = 'heal' then
       -- amount = a fraction of the TARGET's max HP (was flat 60, a full heal on the
@@ -555,8 +536,8 @@ begin
                   and card_id = p_target and hit_date = v_day and downed) then
         return jsonb_build_object('ok', false, 'error', 'target_downed');
       end if;
-      v_add := greatest(0, least(greatest(1, round(v_tmax * least(v_amt, 1.0)))::int, v_tmax - v_thp, v_room));
-      update hunt_card_hp set hp_remaining = hp_remaining + v_add, restored = restored + v_add, updated_at = now()
+      update hunt_card_hp set hp_remaining = least(max_hp, hp_remaining + greatest(1, round(max_hp * least(v_amt, 1.0)))::int),
+        updated_at = now()
         where hunt_id = p_hunt and player_id = p_player and card_id = p_target and hit_date = v_day;
     else
       return jsonb_build_object('ok', false, 'error', 'bad_ally_effect');
@@ -598,7 +579,7 @@ begin
   update hunt_card_hp set cd_until_round = v_round + v_cd, updated_at = now()
     where hunt_id = p_hunt and player_id = p_player and card_id = p_card and hit_date = v_day;
 
-  return jsonb_build_object('ok', true, 'effect', v_eff, 'amount', v_amt, 'target', p_target, 'added', v_add,
+  return jsonb_build_object('ok', true, 'effect', v_eff, 'amount', v_amt, 'target', p_target,
     'affinity', v_aff, 'aff_count', v_affcount, 'matched', v_matched,
     'ready_round', v_round + v_cd, 'round', v_round,
     'boss_hp', (select hp_remaining from hunts where id = p_hunt),
@@ -606,6 +587,5 @@ begin
 end $function$;
 
 revoke all on function public.hunt_round_cap() from public, anon, authenticated;
-revoke all on function public.hunt_restore_cap() from public, anon, authenticated;
 revoke all on function public.hunt_attack(text, bigint, bigint) from public, anon, authenticated;
 revoke all on function public.hunt_support(text, bigint, bigint, bigint) from public, anon, authenticated;

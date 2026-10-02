@@ -2286,8 +2286,8 @@ async function fireSupport(cardId, targetId) {
   const b = node ? node.getBoundingClientRect() : null;
   const at = (txt, col) => calloutAt(b ? b.left + b.width / 2 : window.innerWidth / 2, b ? b.top : 120, txt, col);
   if (!r || !r.ok) {
-    // hunt_loop_caps.sql: a downed support, the target's daily heal + shield limit, stun immunity, the round limit.
-    const why = { cooldown: 'COOLDOWN', day_limit: 'LIMIT', support_downed: 'DOWNED', restore_cap: 'HEAL LIMIT', boss_stun_immune: 'IMMUNE', round_cap: 'ROUND LIMIT' };
+    // hunt_loop_caps.sql: a downed support, stun immunity, the round limit.
+    const why = { cooldown: 'COOLDOWN', day_limit: 'LIMIT', support_downed: 'DOWNED', boss_stun_immune: 'IMMUNE', round_cap: 'ROUND LIMIT' };
     at((r && why[r.error]) || 'X', '#ff8f5c');
     if (r?.error === 'support_downed' && node) node.classList.add('downed');
     return;
