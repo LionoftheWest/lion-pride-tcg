@@ -15,7 +15,8 @@ Shards are a currency that members earn in the new modes and spend in the Shop.
 5. **Shards can buy packs with no limit.** Shards may go around the 5-pack daily earn
    limit (`daily_cap_5.sql`). The member chooses: spend all the Shards on packs, or save
    them for cards and season items.
-6. The anchor is 100 Shards for 1 pack **for now**. It changes as the earn rates of the
+6. The anchor was 100 Shards for 1 pack. Nathan raised it (2026-10-02): **a pack is 250
+   Shards, a Normal card is 100**. It changes again as the earn rates of the
    modes become clear.
 7. Shards buy a **stat reset**, not stat points. (Stat points buy power, and the power
    would go into the Arena. `docs/card-stats.md` requires that the points give the same
@@ -26,10 +27,14 @@ This replaces the rule "Rewards are packs. No new currency" in
 
 ## 2. The anchor price
 
-Every price comes from one anchor: **100 Shards = 1 pack.** All the numbers below are a
+Every price comes from one anchor: **250 Shards = 1 pack** (Nathan, 2026-10-02). All the numbers below are a
 proposal. The simulation (Section 7) tunes them.
 
 ## 3. Sources (where members earn Shards)
+
+Note: these earn numbers were written for the old anchor (100 = 1 pack). With a pack at
+250, they buy fewer packs. The simulation (Section 7) retunes them before the first mode
+that earns Shards ships.
 
 Each source has a fixed number of plays, so the total stays finite without a daily limit.
 
@@ -54,8 +59,8 @@ action, and the member must press it.
 
 | Item | Proposed price | Limit |
 |---|---|---|
-| 1 pack | 100 | none (Section 4.1) |
-| A Normal card from the **daily stock** | 150 | each stock card 1 time each day |
+| 1 pack | 250 | none (Section 4.1) |
+| A Normal card from the **daily stock** | 100 | each stock card 1 time each day |
 | An Illustrated Rare from the daily stock | 450 | each stock card 1 time each day |
 | A Secret Rare from the daily stock | 1,500 | 1 time each day |
 | A stat reset (one card) | 150 | none (the free reset each week stays) |
