@@ -367,8 +367,8 @@ async function openPicker() {
 }
 
 // ---- Convert extras (the Collection card panel): extra copies become Shards. The server keeps
-// 1 copy and the copies the next ascension stars still need, and never converts a held copy
-// (convertible_copies / convert_dupes, shards_shop.sql). ----
+// 1 copy (Nathan, 2026-10-02, option B: the member chooses between ascension and Shards) and never
+// converts a held copy (convertible_copies, shards_convert_keep_one.sql). ----
 export async function fillConvertButton(card, onDone) {
   const btn = ctx().el('pConvert');
   if (!btn || !shop.on || card?.locked || (card?.quantity || 0) < 2) return;
@@ -401,7 +401,7 @@ function paintConvert() {
           <div><span>You get · ${m.n} × ${fmt(m.each)}</span><span class="sh-price">${COIN}<b>+ ${fmt(get)}</b></span></div>
           <div class="sh-after"><span>Balance after</span>${price(bal + get, 'lg')}</div>
         </div>
-        <div class="sh-cnote">${ICON.check}You keep 1 copy and the copies your next stars need.</div>
+        <div class="sh-cnote">${ICON.check}You keep 1 copy.${(m.card.ascension || 0) < 5 ? ' These copies can also ascend this card.' : ''}</div>
         ${shop.msg ? `<div class="sh-err">${esc(shop.msg)}</div>` : ''}
         <div class="sh-acts"><button class="v2-btn sh-cancel">Cancel</button><button class="v2-btn gold sh-go"${shop.busy ? ' disabled' : ''}>${shop.busy ? 'Converting…' : `Convert ${COIN}<b>+${fmt(get)}</b>`}</button></div>
       </div>
