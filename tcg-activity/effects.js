@@ -75,10 +75,14 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     const me = await caller(req);
     if (!me) return res.status(401).json({ error: 'not authenticated' });
     if (!effectsEnabledFor(me.id)) return res.json({ enabled: false });
-    const now = new Date().toISOString();
     // The MT day play_card_effect() counts the daily limit in (launch_event_cards.sql). Midnight UTC
     // made Plays today drop to 0 at 6 PM MT (2026-10-02).
     const dayStart = mtDayStartISO();
+    // Arm on open (effects_outside.sql): a screen prank that waits for me (googly eyes, upside down,
+    // rubber chicken, fog) starts now that I have the game open, so it is in the read below. An error
+    // (for example, the function not there yet) must not break my state: the read still runs.
+    await supabase.rpc('arm_player_effects', { p_player: String(me.id) }).then(() => {}, () => {});
+    const now = new Date().toISOString(); // after the arm: a prank that starts now is in the read
     const [cds, act, inc, [tiers, prims, caps, immune], sent, mine, pranks] = await Promise.all([
       supabase.from('card_effect_cooldowns').select('subject_id, ready_at').eq('player_id', me.id).gt('ready_at', now),
       supabase.from('player_effects').select('id, primitive, amount, duration_s, options, expires_at')
