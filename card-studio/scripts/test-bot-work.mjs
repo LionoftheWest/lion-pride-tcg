@@ -47,6 +47,15 @@ const C = [
   ['an unposted hunt event', `select id into v_hunt from hunts order by id desc limit 1; insert into hunt_events (hunt_id, kind) values (v_hunt, 'spawn');`, 'events', true],
   ['a new auction (no start post yet)', `insert into auctions (seller_id, card_id, ends_at) values ('tst_bw_a', v_card, now() + interval '1 day');`, 'auctions', true],
   ['a sold auction with a changed end', `insert into auctions (seller_id, card_id, ends_at, status, notice_message_id, notice_dirty) values ('tst_bw_a', v_card, now(), 'sold', 'm1', true);`, 'auctions', true],
+  // Rows that only wait for the member (bot_work_waits.sql, 2026-10-03).
+  ['a name color waiting for the pick (1 h old)', `insert into discord_effects (play_id, target_id, primitive, created_at) values (v_play, 'tst_bw_b', 'color_role', now() - interval '1 hour');`, 'fx', false],
+  ['a name color with a wrong color (1 h old)', `insert into discord_effects (play_id, target_id, primitive, created_at, options) values (v_play, 'tst_bw_b', 'color_role', now() - interval '1 hour', '{"color":"#123456"}');`, 'fx', false],
+  ['a name color the member picked', `insert into discord_effects (play_id, target_id, primitive, options) values (v_play, 'tst_bw_b', 'color_role', '{"color":"#5b8cff"}');`, 'fx', true],
+  ['a name color with no pick after 24 h (gold)', `insert into discord_effects (play_id, target_id, primitive, created_at) values (v_play, 'tst_bw_b', 'color_role', now() - interval '25 hours');`, 'fx', true],
+  ['a voice mute waiting for voice (10 min old)', `insert into discord_effects (play_id, target_id, primitive, created_at) values (v_play, 'tst_bw_b', 'vc_mute', now() - interval '10 minutes');`, 'fx', false],
+  ['a voice mute never in voice after 1 h (skip)', `insert into discord_effects (play_id, target_id, primitive, created_at) values (v_play, 'tst_bw_b', 'vc_mute', now() - interval '2 hours');`, 'fx', true],
+  ['a voice mute undo waiting for voice', `insert into discord_effects (play_id, target_id, primitive, status, revert_at, error) values (v_play, 'tst_bw_b', 'vc_mute', 'active', now() - interval '1 minute', 'waiting_for_voice');`, 'fx', false],
+  ['a voice mute undo due (first try)', `insert into discord_effects (play_id, target_id, primitive, status, revert_at) values (v_play, 'tst_bw_b', 'vc_mute', 'active', now() - interval '1 minute');`, 'fx', true],
   ['a live auction already posted', `insert into auctions (seller_id, card_id, ends_at, notice_message_id, notice_dirty) values ('tst_bw_a', v_card, now() + interval '1 day', 'm1', true);`, 'auctions', false],
 ];
 for (const [name, body, key, want] of C) {

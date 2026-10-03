@@ -244,11 +244,13 @@ async function revert(sb: Store, guild: Guild, row: EffectRow): Promise<void> {
 }
 
 let running = false;
-export async function tick(client: Client): Promise<void> {
+/** force: a member joined voice - run the full tick without the bot_work() check (bot_work_waits.sql
+ *  does not count the rows that wait for a voice join, so the join must run them itself). */
+export async function tick(client: Client, force = false): Promise<void> {
   if (running) return;
   running = true;
   try {
-    if (!(await botWork()).fx) return; // nothing due (bot_work.sql: one question, not four)
+    if (!force && !(await botWork()).fx) return; // nothing due (bot_work.sql: one question, not four)
     const sb = getSupabase();
     const guild = await client.guilds.fetch(GUILD_ID());
     const now = new Date().toISOString();
