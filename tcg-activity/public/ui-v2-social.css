@@ -718,3 +718,16 @@ body.ui-v2 .wl-hint { font-size: 11px; }
 body.ui-v2 .hl-who[data-member] { cursor: pointer; }
 body.ui-v2 .hl-who[data-member]:hover { text-decoration: underline; }
 body.ui-v2.m-port .hall-view #hlWish .bt { display: none; } /* a portrait phone: the ♡ icon only */
+
+/* The Collection dock number + the ascend dot on a card (Nathan, 2026-10-03). */
+body.ui-v2 #dock .dk .cnt { position: absolute; top: 4px; left: calc(50% + 4px); min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; border-radius: 9px;
+  background: var(--danger); color: #fff; font: 800 10.5px/17px var(--font-ui); text-align: center; display: none; box-shadow: 0 0 0 2px var(--bg-raised); }
+body.ui-v2 #dock .dk .cnt.on { display: block; }
+body.ui-v2 .v2-card { position: relative; }
+body.ui-v2 .v2-card .asc-dot { position: absolute; top: 5px; right: 5px; z-index: 3; width: 12px; height: 12px; border-radius: 50%; background: var(--danger);
+  box-shadow: 0 0 0 2px rgba(10, 10, 18, .85), 0 0 8px rgba(255, 77, 99, .8); pointer-events: none; }
+/* A toast with an action (Equip now). */
+body.ui-v2 .v2-toast.act { display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+body.ui-v2 .v2-toast.act .v2-btn { height: 32px; padding: 0 14px; font-size: 13px; }
+/* The profile: the title and frame button. */
+body.ui-v2 .prof-cos { align-self: flex-start; height: 32px; padding: 0 12px; font-size: 13px; margin: 2px 0 6px; }

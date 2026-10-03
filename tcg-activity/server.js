@@ -25,7 +25,7 @@ import { mtToday } from './src/mt-time.js';
 import { bestSquad } from './src/squad-pick.js';
 import { selectAll } from './src/select-all.js';
 import { rankByName } from './src/name-rank.js';
-import { registerHallRoutes } from './src/hall-routes.js';
+import { registerHallRoutes, heldCopies } from './src/hall-routes.js';
 import { registerShopRoutes } from './src/shop-routes.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -499,10 +499,16 @@ app.get('/api/collection', async (req, res) => {
     .select(`quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS}))`)
     .eq('player_id', me.id);
   if (error) return res.status(500).json({ error: error.message });
+  // Can ascend = the FREE copies (a copy in a trade offer, an auction or a bid is held) cover the cost
+  // and still leave one, and never an Event card - the same rules as ascend_card (ascend_guard.sql).
+  // The held copies load only when some card has the copies at all.
+  const NO_ASCEND = new Set(['event', 'promo']);
+  const enough = (r) => { const c = ascendCost(r.card?.rarity, r.ascension || 0); return c != null && !NO_ASCEND.has(r.card?.rarity) && r.quantity >= 1 + c; };
+  const held = (data || []).some(enough) ? await heldCopies(supabase, String(me.id)).catch(() => new Map()) : new Map();
   const cards = (data || []).map((row) => {
     const rarity = row.card?.rarity;
     const ascension = row.ascension || 0;
-    const nextCost = ascendCost(rarity, ascension);
+    const nextCost = NO_ASCEND.has(rarity) ? null : ascendCost(rarity, ascension);
     return {
       quantity: row.quantity,
       id: row.card?.id,
@@ -511,7 +517,7 @@ app.get('/api/collection', async (req, res) => {
       ascension,
       power: cardPower(rarity, ascension, row.card?.subject?.cp_mod),
       next_cost: nextCost,
-      can_ascend: nextCost != null && row.quantity >= 1 + nextCost,
+      can_ascend: nextCost != null && row.quantity - (held.get(Number(row.card?.id)) || 0) >= 1 + nextCost,
       image_url: toProxyImg(row.card?.image_url),
       artist: row.card?.artist_credit,
       lore: row.card?.lore,

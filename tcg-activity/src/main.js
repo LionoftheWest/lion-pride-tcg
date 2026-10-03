@@ -23,7 +23,7 @@ import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
-import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
+import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
@@ -350,7 +350,7 @@ async function main() {
   shards = !!flags?.shards;
   // A new member's first login gave them the welcome packs: show them now.
   if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
-  if (uiV2) { startV2(); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); initExplain(flags?.tutorial); } else show('collection');
+  if (uiV2) { startV2(); refreshCollectionBadge({ profile: true }).catch(() => {}); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); initExplain(flags?.tutorial); } else show('collection');
 }
 
 // The v2 shell: the body class switches the CSS, the dock replaces the tab nav.
@@ -427,6 +427,7 @@ async function refreshOwned() {
     cache.collection = d;
     myCardIds = new Set((d.cards || []).map((c) => c.id));
   } catch { /* keep the previous set */ }
+  if (uiV2) refreshCollectionBadge({ profile: true }).catch(() => {}); // the Collection dock number
 }
 
 // Show the Open Pack button only when the player actually has a pack waiting.
@@ -3207,12 +3208,14 @@ function renderAscension(card) {
     note.textContent = 'Max ascension ★5';
     return;
   }
+  if (card.next_cost == null) { btn.classList.add('hidden'); note.textContent = 'Event cards do not ascend.'; return; }
   btn.classList.remove('hidden');
   btn.textContent = `Ascend to ★${a + 1} · uses ${card.next_cost}`;
   btn.disabled = !card.can_ascend;
   const spare = Math.max(0, (card.quantity || 0) - 1);
   note.textContent = card.can_ascend
     ? `${spare} spare duplicate${spare === 1 ? '' : 's'} — ${spare - card.next_cost} left after`
+    : spare >= card.next_cost ? 'A copy is in a trade, an auction or a bid. Ascending keeps 1 free copy.'
     : `Need ${card.next_cost} spare duplicate${card.next_cost === 1 ? '' : 's'} (you have ${spare})`;
   btn.onclick = () => ascendCard(card);
 }
@@ -3224,7 +3227,7 @@ async function ascendCard(card) {
   try {
     const r = await apiPost('/api/ascend', { cardId: card.id });
     if (!r || !r.ok) {
-      note.textContent = r?.error === 'need_more' ? `Need ${r.need - r.have} more duplicate(s)` : (r?.error || 'Could not ascend');
+      note.textContent = r?.error === 'need_more' ? `Need ${r.need - r.have} more duplicate(s)` : r?.error === 'held' ? 'A copy is in a trade, an auction or a bid. Ascending keeps 1 free copy.' : r?.error === 'no_ascend' ? 'Event cards do not ascend.' : (r?.error || 'Could not ascend');
       btn.disabled = false;
       return;
     }
