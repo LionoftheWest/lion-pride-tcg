@@ -1010,9 +1010,9 @@ body.ui-v2.m-port .hunt-arena .arena-subrow #myDmg { grid-row: 4; grid-column: 1
 body.ui-v2.m-port .hunt-arena .arena-subrow #myDmg b { display: inline; margin: 0; font-size: 16px; }
 body.ui-v2.m-port .hunt-arena .arena-titlerow .closes { grid-row: 4; grid-column: 2; justify-self: center; font-size: 12px; white-space: nowrap; }
 body.ui-v2.m-port .hunt-arena .arena-subrow .hunt-lb { grid-row: 4; grid-column: 3; height: 34px; padding: 0 12px; font-size: 12px; }
-body.ui-v2.m-port .hunt-arena .arena-stage { inset: var(--top-h, 0px) 0 calc(var(--hand-h, 0px) + 56px) 0; }
+body.ui-v2.m-port .hunt-arena .arena-stage { inset: var(--top-h, 0px) 0 calc(var(--hand-h, 0px) + var(--feed-h, 52px) + 4px) 0; }
 @media (max-width: 419px) { body.ui-v2.m-port .hunt-arena .arena-subrow .hunt-lb { width: 40px; padding: 0; } body.ui-v2.m-port .hunt-arena .arena-subrow .hunt-lb .lb-t { display: none; } }
-body.ui-v2.m-port:has(.arena-mode) #feed { left: calc(16px + var(--sa-l)); right: calc(16px + var(--sa-r)); width: auto; top: auto; bottom: calc(var(--hand-b, 300px) + 2px); height: 52px; min-height: 0; justify-content: flex-end; }
+body.ui-v2.m-port:has(.arena-mode) #feed { left: calc(16px + var(--sa-l)); right: calc(16px + var(--sa-r)); width: auto; top: auto; bottom: calc(var(--hand-b, 300px) + 2px); height: var(--feed-h, 52px); min-height: 0; justify-content: flex-end; }
 /* The label gives its room to the hits on a phone. */
 body.ui-v2.m-port:has(.arena-mode) #feed .feed-head, body.ui-v2.m-land:has(.arena-mode) #feed .feed-head { display: none; }
 /* Full-width columns: the card art is --sw wide, the name gets the whole column. */
@@ -1175,14 +1175,47 @@ body.ui-v2.m-land .hall-view .hl-qrow .v2-search { min-width: 0; }
 /* The profile Wishlist on phones (design 27 frames 01-04). */
 body:has(#memberModal:not(.hidden)) .hall-view > aside.hl-sheet, body:has(#memberModal:not(.hidden)) .hall-view.sheet-open::after { display: none; }
 body.ui-v2.m-port .wl-row b, body.ui-v2.m-land .wl-row b { font-size: 12.5px; line-height: 1.15; }
-/* Portrait: the right column (the Wishlist + the hunt) is a bottom sheet; closed, its title row shows. */
-body.ui-v2.m-port .mem-screen:has(.mem-wish) { padding-bottom: 58px; }
-body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-right { position: fixed; z-index: 70; left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); bottom: calc(var(--dock-h) + 10px + var(--sa-b));
-  display: flex; flex-direction: column; gap: 6px; max-height: 52px; overflow: hidden; border-radius: 16px; background: var(--bg-raised); box-shadow: 0 -10px 30px rgba(0, 0, 0, .45); transition: max-height var(--dur-base) ease; }
-body.ui-v2.m-port .mem-screen.wl-open .mem-right { max-height: calc(100dvh - var(--dock-h) - 90px - var(--sa-t) - var(--sa-b)); }
-body.ui-v2.m-port .mem-screen.wl-open::after { content: ''; position: fixed; inset: 0; z-index: 69; background: rgba(5, 5, 10, .55); }
-body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-wish > .tile-h { min-height: 32px; cursor: pointer; }
-body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hunt { flex: none; }
+/* Portrait (Nathan, 2026-10-02, IMG_2885: the closed bottom sheet was cut under the dock): the Wishlist
+   and the hunt tile sit side by side under Season 1, in the space above the dock, so the whole profile
+   fits one screen. Edit (wl-open): the Wishlist takes the full width for its buttons. */
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-right { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 6px; min-height: 0; }
+/* One column in Edit, or with no live boss. (Separate rules: a :has() inside a :has() is invalid CSS and
+   drops every selector of its rule.) */
+body.ui-v2.m-port .mem-screen.wl-open .mem-right { grid-template-columns: minmax(0, 1fr); }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-right:has(> .mem-hunt > .v2-empty) { grid-template-columns: minmax(0, 1fr); }
+/* A short phone hid the hunt tile (line 962); beside the Wishlist it has room. */
+body.ui-v2.m-port.m-short .mem-screen:not(.wl-open):has(.mem-wish) .mem-hunt:not(:has(> .v2-empty)) { display: flex; }
+body.ui-v2.m-port .mem-screen.wl-open .mem-hunt { display: none; }
+body.ui-v2.m-port .mem-wish { padding: 7px 8px; gap: 4px; overflow: hidden; }
+body.ui-v2.m-port .mem-wish > .tile-h { min-height: 0; }
+body.ui-v2.m-port .mem-wish .wl-list { flex: 1 1 0; min-height: 0; display: grid; grid-template-rows: repeat(5, minmax(0, 1fr)); gap: 3px; }
+body.ui-v2.m-port .mem-wish .wl-row { min-height: 0; padding: 1px 6px; gap: 6px; border-radius: 8px; }
+body.ui-v2.m-port .mem-wish .wl-row img, body.ui-v2.m-port .mem-wish .wl-empty { height: 100%; max-height: 34px; width: auto; aspect-ratio: 5 / 7; flex: none; }
+body.ui-v2.m-port .mem-wish .wl-row b { font-size: 11.5px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2.m-port .mem-wish .wl-row span[style] { font-size: 8.5px; letter-spacing: .3px; }
+body.ui-v2.m-port .mem-wish .wl-i { display: none; }
+body.ui-v2.m-port .mem-wish .wl-row .v2-icon { height: 100%; max-height: 26px; width: auto; aspect-ratio: 1; flex: none; } /* never taller than its row */
+/* The screen behind the profile showed through the gap above the dock. */
+body.ui-v2.m-port:has(#memberModal:not(.hidden)) #body { visibility: hidden; }
+body.ui-v2.m-port .mem-wish .wl-row .hl-n { padding: 1px 5px; font-size: 10px; }
+body.ui-v2.m-port .mem-wish .wl-hint { font-size: 10px; line-height: 1.2; }
+/* The hunt tile beside it: the name may wrap, the three numbers stack. */
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hunt { padding: 7px 8px; gap: 4px; min-height: 0; overflow: hidden; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hunt .tile-h { font-size: 12px; line-height: 1.15; align-items: flex-start; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hunt .tile-h b { white-space: normal; overflow-wrap: anywhere; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hstats { grid-template-columns: minmax(0, 1fr); flex: 1 1 0; min-height: 0; align-content: space-evenly; gap: 2px; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hstats > div { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hstats b { font-size: 14px; }
+/* A short phone: a smaller Spotlight and no rarity chips (the count is in the stats), so the row has room. */
+@media (max-height: 760px) {
+  body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-spot { height: 118px; }
+  body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-rar { display: none; }
+}
+@media (max-height: 680px) {
+  body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-spot { height: 96px; }
+  body.ui-v2.m-port .mem-wish .wl-hint { display: none; } /* the star's title says it */
+  body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-status { display: none; }
+}
 /* Portrait: the slot picker covers the screen above the sheet. */
 body.ui-v2.m-port .wl-picker { position: fixed; z-index: 71; left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); top: calc(var(--topbar-h) + 6px + var(--sa-t)); bottom: calc(var(--dock-h) + 10px + var(--sa-b)); padding: 10px; }
 body.ui-v2.m-port .mem-screen.wl-open:has(.wl-picker) .mem-right { display: none; }
@@ -1267,6 +1300,8 @@ body.ui-v2.m-land .v2-trade.hall-view .tr-gridhead > #hlView#hlView, body.ui-v2.
 /* Phone Hall captions: the name wraps at natural points on line 1 (no cut names), line 2 the chips. */
 body.ui-v2 .hall-view .v2-cap.hl-cap.two.ph { gap: 2px; }
 body.ui-v2 .hall-view .hl-cap.ph .hl-who { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.15; font-size: 11px; }
+/* A name with no natural break point ("agrumpytedybeardimshoo") breaks inside its own card, never over the next one. */
+body.ui-v2 .hall-view .hl-cap.ph .hl-who { max-width: 100%; overflow-wrap: anywhere; }
 body.ui-v2 .hall-view .hl-cap.ph .hl-r2 { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
 /* The view switches keep their full labels (they were cut to "Open auc..."). */
 body.ui-v2 .hall-view #hlView, body.ui-v2 .hall-view #hlAView { flex: none; }
@@ -1306,3 +1341,49 @@ body.ui-v2.m-land .hall-view .hl-bidhead .bt { display: none; }
 body.ui-v2.m-land .hall-view .hl-bid { min-width: 0; }
 body.ui-v2.m-land .hall-view .hl-slots { flex: 0 1 auto; min-width: 0; grid-template-columns: repeat(5, minmax(26px, 34px)); }
 body.ui-v2.m-land .hall-view .hl-bidhead .v2-btn { padding: 0 9px; }
+
+/* Review 3 (Nathan, 2026-10-02). Typing in the Start sheet: the card picture steps aside. */
+body.ui-v2.m-port.m-kb .hall-view > aside.hl-sheet .hl-pc, body.ui-v2.m-port.m-kb .hall-view > aside.hl-sheet > .side-h { display: none; }
+body.ui-v2.m-port .hall-view > aside.hl-sheet .hl-hits { flex: none; }
+body.ui-v2.m-port .hall-view .hl-qrow { flex-wrap: wrap; }
+body.ui-v2.m-port .hall-view .hl-qrow > .hl-hits { position: static; flex: 1 1 100%; max-height: none; box-shadow: none; padding: 0; background: none; }
+
+/* Phones: the listing slots show the card only (no names), the row stays one line. */
+body.ui-v2.m-port .hl-mylist, body.ui-v2.m-land .hl-mylist { padding: 6px 8px; gap: 8px; }
+body.ui-v2.m-port .hl-li b, body.ui-v2.m-land .hl-li b { display: none; }
+body.ui-v2.m-port .hl-li, body.ui-v2.m-land .hl-li { height: 50px; justify-content: center; padding: 3px; }
+body.ui-v2.m-port .hl-li .hl-card, body.ui-v2.m-land .hl-li .hl-card { width: 31px; flex-basis: 31px; }
+body.ui-v2.m-port .hl-li .hl-unlist, body.ui-v2.m-land .hl-li .hl-unlist { top: -6px; right: -6px; transform: none; width: 22px; height: 22px; font-size: 11px; }
+body.ui-v2.m-port .hl-mylist .side-h, body.ui-v2.m-land .hl-mylist .side-h { flex: none; margin: 0; }
+body.ui-v2.m-port .hl-mylist .tr-msg:empty, body.ui-v2.m-land .hl-mylist .tr-msg:empty { display: none; }
+body.ui-v2.m-land .hall-view .hl-head .hl-note { display: inline; font-size: 11px; }
+/* The Wanted wishlist strip: the cards fit the height left (they were cut at the bottom). */
+body.ui-v2.m-port .hall-view .hl-strip, body.ui-v2.m-land .hall-view .hl-strip { align-items: stretch; }
+body.ui-v2.m-land .hall-view .hl-wcell { width: auto; height: 100%; min-height: 0; }
+body.ui-v2.m-land .hall-view .hl-wcell .hl-card { flex: 1 1 auto; min-height: 0; width: auto; aspect-ratio: 5 / 7; }
+/* Search mode on a phone held sideways (IMG_2882): the Start panel covers the space above the
+   keyboard with the box, the hits and the picked cards only. */
+body.ui-v2.m-land.hl-searching .hall-view > aside.hl-panel { position: fixed; z-index: 90; left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); overflow-y: auto; }
+body.ui-v2.m-land.hl-searching .hall-view > aside.hl-panel > :not(.tile-h):not(.hl-qrow):not(.hl-chips) { display: none; }
+body.ui-v2.m-land.hl-searching .hall-view .hl-qrow > .hl-hits { position: static; flex: 1 1 100%; max-height: none; box-shadow: none; }
+body.ui-v2.m-land.hl-searching .hall-view .hl-qrow { flex-wrap: wrap; }
+body.ui-v2.hl-searching .hall-view::after { content: ''; position: fixed; inset: 0; z-index: 89; background: rgba(5, 5, 10, .6); }
+/* Landscape offer (For trade): one compact line, so the card grid below gets the height. */
+body.ui-v2.m-land .hall-view .tr-compose.hl-compose { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-deal { flex: 1 1 auto; min-width: 0; gap: 6px; }
+body.ui-v2.m-land .hall-view .hl-compose .hl-explain, body.ui-v2.m-land .hall-view .hl-compose .hl-steps, body.ui-v2.m-land .hall-view .hl-compose .tr-chips { display: none; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-foot { flex: none; flex-wrap: nowrap; margin: 0; padding: 0; border: 0; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-foot .v2-btn { flex: none; height: 36px; padding: 0 10px; }
+body.ui-v2.m-land .hall-view .hl-compose .hl-card { width: 40px; flex-basis: 40px; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-info h3 { font-size: 12.5px; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-swap { width: 28px; height: 28px; }
+body.ui-v2.m-land .hall-view .hl-compose .hl-rar { display: none; }
+body.ui-v2.m-land .hall-view .hl-compose .tr-who { font-size: 9.5px; }
+body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-info { display: none; }
+body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-foot .v2-btn { font-size: 0; padding: 0 12px; }
+body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-foot .v2-btn::first-letter { font-size: 15px; }
+body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-deal { flex: 0 1 auto; }
+
+/* The raid on a portrait phone: the ? circle sits in the boss traits line at the chip height, so the
+   line does not grow (a taller line pushed the boss over the cards). */
+body.ui-v2.m-port .arena-traits .ex-q { width: 22px; height: 22px; margin-block: -4px; font-size: 12px; border-width: 1.5px; box-shadow: 0 0 10px #F4B73C40; }

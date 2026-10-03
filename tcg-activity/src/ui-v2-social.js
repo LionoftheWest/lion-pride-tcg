@@ -4,7 +4,9 @@
 
 import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember, toast } from './ui-v2.js';
 import { thumb } from './thumb.js';
+import { explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
+import { COIN, refreshShards } from './ui-v2-shop.js';
 import { isPhone, isPort, isLand } from './mobile.js';
 import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v2-hall.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
@@ -127,8 +129,8 @@ function giftsHTML() {
   // A card gift (launch_event_cards.sql): its card art and rarity, not a pack count.
   const what = (g) => (g.kind === 'card' && g.card
     ? `<span class="gf-card" style="color:var(--r-${esc(g.card.rarity)})">${esc(ctx().RARITY_LABEL[g.card.rarity] || g.card.rarity)} card</span>`
-    : `<span>${g.amount} pack${g.amount === 1 ? '' : 's'}</span>`);
-  const ico = (g) => (g.kind === 'card' && g.card?.image_url ? `<img class="gf-img" src="${thumb(g.card.image_url)}" data-full="${esc(g.card.image_url)}" alt="">` : '<span class="gf-ico">🎁</span>');
+    : `<span>${[g.amount ? `${g.amount} pack${g.amount === 1 ? '' : 's'}` : '', g.shards ? `<b class="gf-shards">${COIN}${Number(g.shards).toLocaleString()} Shards</b>` : ''].filter(Boolean).join(' + ')}</span>`);
+  const ico = (g) => (g.kind === 'card' && g.card?.image_url ? `<img class="gf-img" src="${thumb(g.card.image_url)}" data-full="${esc(g.card.image_url)}" alt="">` : g.shards && !g.amount ? `<span class="gf-ico gf-coin">${COIN}</span>` : '<span class="gf-ico">🎁</span>');
   return `<div class="gf-list"><div class="side-h">Gifts to redeem${noteGifts.length > 1 ? `<button class="v2-btn gold gf-all">Redeem all${total ? ` +${total}` : ''}</button>` : ''}</div>
     ${noteGifts.map((g) => `<div class="gf-row">${ico(g)}<div class="gf-t"><b>${esc(g.title)}</b>${what(g)}</div>
       <button class="v2-btn gold gf-redeem" data-id="${g.id}">Redeem</button></div>`).join('')}</div>`;
@@ -140,7 +142,9 @@ async function redeem(btn, ids) {
   if (r?.ok) {
     const cards = noteGifts.filter((g) => ids.includes(g.id) && g.kind === 'card' && g.card); // played below
     noteGifts = noteGifts.filter((g) => !ids.includes(g.id));
-    if (r.packs) toast(`🎁 +${r.packs} pack${r.packs === 1 ? '' : 's'}`); // a card gift has its animation, not a toast
+    const parts = [r.packs ? `+${r.packs} pack${r.packs === 1 ? '' : 's'}` : '', r.shards ? `+${Number(r.shards).toLocaleString()} Shards` : ''].filter(Boolean);
+    if (parts.length) toast(`🎁 ${parts.join(' · ')}`); // a card gift has its animation, not a toast
+    if (r.shards) refreshShards();
     ctx().refreshPacks?.();
     if (r.cards) ctx().refreshOwned().catch(() => {}); // in the background: the animation starts at once
     for (const g of cards) await playGiftFx({ card: g.card, from: g.from_name, esc, label: (k) => ctx().RARITY_LABEL?.[k] || k, sfx: ctx().sfx });
@@ -545,7 +549,7 @@ function paintTrade() {
   const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
   el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}${tr.respond ? ' responding' : ''}">
     <section class="tr-main">
-      <div class="tr-top">${commTabs()}<span class="grow"></span>
+      <div class="tr-top">${commTabs()}${explainBtn('trades')}<span class="grow"></span>
         <div class="seg" id="trMode"><button data-m="offer" class="${tr.mode === 'offer' ? 'on' : ''}">⇄ Offer</button><button data-m="gift" class="${tr.mode === 'gift' ? 'on' : ''}">🎁 Gift</button></div></div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
         ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
@@ -594,6 +598,9 @@ function paintTrade() {
   wireOffers(main, paintTrade);
   keepFocus(focus);
   requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); if (isLand()) fitColumn(el('trMembers')); else fitRow(el('trMembers'), el('trFind')); });
+  // A phone held sideways: the page arrows sit in the middle of the top row, over the ? circle.
+  placeExplain(main, '.tr-gridhead', 'm-land');
+  maybeExplain('trades');
 }
 
 // Recent plays: only whole rows. A phone with no room for one row hides the list and its head.
@@ -752,7 +759,7 @@ function paintEffects() {
 
   el('main').innerHTML = `<div class="v2-trade community fx-view">
     <section class="tr-main">
-      <div class="tr-top">${commTabs()}<span class="grow"></span>
+      <div class="tr-top">${commTabs()}${explainBtn('pranks')}<span class="grow"></span>
         ${cap ? `<div class="fx-today"><span>Plays today</span><i class="fx-bar"><i style="width:${Math.round((100 * used) / cap)}%"></i></i><b class="mono">${used}/${cap}</b></div>` : ''}</div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
         ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
@@ -811,4 +818,5 @@ function paintEffects() {
   keepFocus(focus);
   requestAnimationFrame(() => { fitChildren(el('fxOnYou')); fitRecent(); fitRow(el('trMembers'), el('trFind')); });
   setTimeout(fitRecent, 300); // again after the avatars and fonts load
+  maybeExplain('pranks');
 }

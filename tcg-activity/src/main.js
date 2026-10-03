@@ -26,7 +26,10 @@ import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
+import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
 import { initTutorial } from './ui-v2-tutorial.js';
+import { every, isIdle } from './poll.js';
+import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
 import { initMobile, isPhone } from './mobile.js';
@@ -226,6 +229,7 @@ let features = {}; // server feature flags (e.g., ascension), from /api/config
 let packsAvailable = 0;
 let uiV2 = false;   // the v2 UI (docs/design.md), from /api/flags after login
 let sdkRef = null; // the Discord SDK (the orientation lock)
+let shards = false;  // Shards + the Shop (shards_shop.sql), from /api/flags (SHARDS_USERS first)
 let hall = false;    // wishlists + the Trading Hall + auctions, from /api/flags (HALL_USERS first)
 let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
@@ -318,19 +322,20 @@ async function main() {
     boardBtn.addEventListener('click', openBoard);
   }
   refreshNotifBadge();
-  setInterval(refreshNotifBadge, 45000);
+  // The background refreshes pause while the window is hidden and slow down when the member is idle (poll.js).
+  every(45000, refreshNotifBadge);
   setTimeout(() => preloadBoss().catch(() => {}), 3000); // the 3D code, in the background (boss-lazy.js)
 
   connectStreams();
   renderFeedSidebar();
   refreshOwned();
   refreshPackStatus();
-  setInterval(refreshPackStatus, 45000); // packs can be earned while the app is open
+  every(45000, refreshPackStatus); // packs can be earned while the app is open
   refreshTradeBadge();
-  setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
+  every(45000, refreshTradeBadge); // show a badge when a trade offer arrives
   // The trade screen open: every 8 s, so an answered offer leaves the list at once.
-  setInterval(() => { if (currentView === 'trading' && !document.hidden) refreshTradeBadge(); }, 8000);
-  initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
+  every(8000, () => { if (currentView === 'trading') refreshTradeBadge(); });
+  initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], statsOn: () => !!cache.collection?.stats?.on, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   let flags = null;
   // 3 tries: a failed load fell back to the old design (and its old trade flow) for that session.
   for (let i = 0; i < 3 && !flags; i++) {
@@ -342,9 +347,10 @@ async function main() {
   mobileUi = !!flags?.mobile;
   trade2 = !!flags?.trade2;
   hall = !!flags?.hall;
+  shards = !!flags?.shards;
   // A new member's first login gave them the welcome packs: show them now.
   if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
-  if (uiV2) { startV2(); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); } else show('collection');
+  if (uiV2) { startV2(); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); initExplain(flags?.tutorial); } else show('collection');
 }
 
 // The v2 shell: the body class switches the CSS, the dock replaces the tab nav.
@@ -380,6 +386,7 @@ function startV2() {
   if (board) board.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
   el('v2Avatar').title = meUser?.name || '';
   initDailies(); // the Dailies window button (hidden while settings.dailies.enabled is off)
+  initShop(shards); // the Shards balance + the Shop button (design 29; hidden while the flag is off)
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
   // 5+ packs: the chooser (x1 / x5 / x10); fewer: open one, as before.
   el('dockOpen').addEventListener('click', () => {
@@ -391,13 +398,13 @@ function startV2() {
     const seasons = [...new Set((d.cards || []).map((c) => c.season || 'Season 1'))];
     el('v2Season').textContent = seasons[seasons.length - 1] || 'Season 1';
   }).catch(() => {});
-  setInterval(() => { if (currentView === 'home') homeTick(); }, 30000);
+  every(30000, () => { if (currentView === 'home') homeTick(); });
   // The red dot on the Hunt button while a boss is live.
   const huntDot = () => { if (!features.hunt) return; api('/api/hunt').then((d) => {
     document.querySelector('#dock .dk[data-view="battling"]')?.classList.toggle('live', !!(d?.hunt && d.hunt.status !== 'defeated'));
   }).catch(() => {}); };
   huntDot();
-  setInterval(huntDot, 300000);
+  every(300000, huntDot);
   updateOpenButton();
 }
 
@@ -410,7 +417,7 @@ function sendStatus(kind, d) {
   myStatus = kind || myStatus;
   if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus, d: myDetail })); } catch { /* dropped */ } }
 }
-const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home' };
+const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home', shop: 'home' };
 
 // Load which cards the caller owns (for feed-card ownership). Also warms the
 // collection cache. Refreshed whenever the collection can have changed.
@@ -545,7 +552,7 @@ function bossFeedRow(e) {
   if (e.outcome === 'miss') {
     playerRow = `<div class="afrow ${esc(e.rarity)}">${who} <span class="amiss">missed</span>.</div>`;
   } else {
-    const tags = `${e.bonus ? ' <span class="ax2">×2 weak</span>' : ''}${e.crit ? ' <span class="atag">💥 CRIT</span>' : ''}`;
+    const tags = `${e.bonus ? ' <span class="ax2">×1.5 weak</span>' : ''}${e.crit ? ' <span class="atag">💥 CRIT</span>' : ''}`;
     playerRow = `<div class="afrow ${esc(e.rarity)}">${who} hit for <b>${Number(e.damage).toLocaleString()}</b>${tags}</div>`;
   }
   const bossRow = e.countered
@@ -658,10 +665,12 @@ function mountBossFor(hunt) {
 function renderMain(view) {
   disposeBoss(); // any view change tears the boss down; renderHunt re-mounts it
   disposeHomeV2();
+  disposeShop();
   if (uiV2 && view === 'home') { stopHuntTicker(); renderHomeV2(); return; }
   if (uiV2 && view === 'collection') { stopHuntTicker(); renderCollectionV2(); return; }
   if (uiV2 && view === 'leaderboard') { stopHuntTicker(); renderLeaderboardV2(); return; }
   if (uiV2 && view === 'trading') { stopHuntTicker(); renderTradingV2(); return; }
+  if (uiV2 && view === 'shop') { stopHuntTicker(); renderShopV2(); return; }
   { const bm = el('bossMini'); if (bm) bm.innerHTML = ''; } // clear the sidebar boss square
   stopHuntTicker(); // stop the boss/cooldown countdown; renderHunt restarts it
   if (view === 'gallery') { renderGallery(); return; }
@@ -1287,7 +1296,8 @@ function startHuntTicker() {
       n.textContent = `${n.dataset.prefix} ${fmtLeft(ms)}`;
       if (ms <= 0) expired = true;
     });
-    if (huntTick % 3 === 0 && currentView === 'battling') refreshHuntFeed(); // poll the boss feed every 3s
+    // Poll the boss feed every 3 s; not while hidden, every 30 s when the member is idle (poll.js).
+    if (huntTick % 3 === 0 && currentView === 'battling' && !document.hidden && (!isIdle() || huntTick % 30 === 0)) refreshHuntFeed();
     // The MT day rolled over: the daily reset happened. Re-fetch so downed cards reset
     // and the locked squad expires (back to squad selection).
     if (huntDay && utcToday() !== huntDay) { huntDay = utcToday(); stopHuntTicker(); if (currentView === 'battling') renderHunt(); return; }
@@ -1337,6 +1347,7 @@ function paintHuntView(d) {
     live.attacks = (d && d.lastFeed) || [];
     renderFeedSidebar();
     startHuntTicker();
+    maybeExplain('hunt');
     return;
   }
   if (!d || !d.hunt) {
@@ -1385,6 +1396,7 @@ function paintHuntView(d) {
   mountBossFor(d.hunt); // spawn the live creature into the boss canvas (sidebar or arena)
   refreshHuntFeed();    // load the live attack feed
   startHuntTicker(); // count down to the Monday deadline + poll the feed
+  maybeExplain('hunt');
 }
 
 // Background refresh after an instant open: full repaint only if the boss/cooldown state
@@ -1454,7 +1466,7 @@ function restingHTML(d) {
         <span class="boss-name">${esc(h.name)}</span>
         <span class="boss-tier tier-${esc(String(h.tier || '').toLowerCase())}">${esc(h.tier || '')}</span>
         ${uiV2 ? '' : weakResistHTML(h)}
-        <span class="spacer"></span>
+        <span class="spacer"></span>${explainBtn('hunt')}
         <span class="closes rest-result">${won ? '🏆 Defeated' : '💀 Escaped'}</span>
       </div>
       ${uiV2 ? `<div class="arena-traits">${weakResistHTML(h)}</div>` : ''}
@@ -1672,7 +1684,7 @@ function selectPhaseV2(d) {
         <span class="grow"></span>
         <div class="seg" id="sqSort">${sorts}</div>
         <div class="v2-pager" id="huntPager"></div>
-        <button class="v2-icon" id="huntLbBtn" title="Standings">🏆</button>
+        <button class="v2-icon" id="huntLbBtn" title="Standings">🏆</button>${explainBtn('hunt')}
       </div>
       <div class="squad-grid" id="huntGrid"></div>
     </section>
@@ -1733,7 +1745,7 @@ function paintSquadPanel(cap) {
       const on = s.n >= SYN_MIN;
       return `<span class="syn-chip syn-${s.key}${on ? ' on' : ''}">${s.label} <b>${Math.min(s.n, SYN_MAX)}/${SYN_MAX}</b></span>`;
     }).join('');
-    const weak = st.weakHits ? `<span class="syn-chip weakhit">×2 weakness · ${st.weakHits}</span>` : '';
+    const weak = st.weakHits ? `<span class="syn-chip weakhit">×1.5 weakness · ${st.weakHits}</span>` : '';
     synEl.innerHTML = `${chips || '<span class="syn-none">Group cards by element, game, or trait for a synergy</span>'}${weak}`;
   }
   const tray = el('squadTray');
@@ -1747,7 +1759,7 @@ function paintSquadPanel(cap) {
         const look = eln ? ELEMENTS[eln] : null;
         html += `<div class="slot filled sq-row r-${c.rarity}" data-id="${c.id}"><span class="sq-i">${i + 1}</span>
           ${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="">` : '<i class="sq-noimg"></i>'}<span class="sq-name">${esc(c.name)}</span>
-          ${c.matches && !supp ? '<span class="sq-x2">×2</span>' : ''}${look ? `<span class="sq-el">${look.glyph}</span>` : ''}
+          ${c.matches && !supp ? '<span class="sq-x2">×1.5</span>' : ''}${look ? `<span class="sq-el">${look.glyph}</span>` : ''}
           <span class="sq-pow">${supp ? '🛡' : `⚡ ${c.power}`}</span><span class="slot-x">✕</span></div>`;
       } else {
         html += `<div class="slot empty sq-row${i === st.sel.length ? ' next' : ''}"><span class="sq-i">${i + 1}</span><span class="sq-plus">+</span><span class="sq-name">Empty</span></div>`;
@@ -1797,7 +1809,7 @@ function battlePhaseHTML(d) {
       <div class="arena-subrow">
         <span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span>
         <span class="fighters-now" id="fighterCount"></span>
-        <button class="hunt-lb" id="huntLbBtn">🏆<span class="lb-t"> Standings</span></button>
+        <button class="hunt-lb" id="huntLbBtn">🏆<span class="lb-t"> Standings</span></button>${explainBtn('hunt')}
       </div>
     </div>
     <div class="squad-grid hand" id="huntGrid"></div>
@@ -1832,7 +1844,7 @@ function huntTile(c, mode) {
   const elBadge = look ? `<span class="celem" title="${look.name}">${look.glyph}</span>` : '';
   const elStyle = look ? ` style="--el:${look.color};--el2:${look.color2}"` : '';
   return `<div class="${cls}${elem ? ` el-${elem}` : ''}" data-id="${c.id}" data-el="${elem || ''}" data-type="${esc(c.type || '')}" data-used="${usedIds.has(c.id) ? 1 : 0}" data-max="${max}"${elStyle} title="${ab ? esc(ab.name + ' — ' + (ab.desc || '')) : ''}">
-    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×2</span>' : ''}${shield}${overlay}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">🔍</button></div>
+    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×1.5</span>' : ''}${shield}${overlay}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">🔍</button></div>
     ${hpbar}
     <div class="cap">${isPhone() ? breakable(esc(c.name)) : esc(c.name)}${abLine}</div>
   </div>`;
@@ -1951,6 +1963,13 @@ function fitPhoneArena() {
   // #feed is position: fixed, so it takes screen positions.
   document.body.style.setProperty('--arena-top-b', `${Math.round(t.bottom)}px`);
   document.body.style.setProperty('--hand-b', `${Math.round(innerHeight - g.top)}px`);
+  // Portrait: the boss keeps at least 100 px; on a short phone the live feed gives way (52 px = 2
+  // rows, down to 26 px = the newest hit). At 393x700 the cards are at their floor size and the
+  // boss had 90 px (2026-10-02).
+  if (document.body.classList.contains('m-port')) {
+    const room = Math.round(g.top - t.bottom - 4);
+    document.body.style.setProperty('--feed-h', `${Math.max(26, Math.min(52, room - 100))}px`);
+  }
   document.body.style.setProperty('--hand-l', `${Math.round(g.left)}px`);
   document.body.style.setProperty('--hand-r', `${Math.round(innerWidth - g.right)}px`);
   if (currentView === 'battling') renderFeedSidebar(); // drop the feed rows that no longer fit
@@ -2108,6 +2127,9 @@ function markCardEngaged(node) {
 }
 
 function wireHunt() {
+  // A portrait phone: the ? circle would wrap to its own row and push the boss down; the second
+  // line of the boss traits has room (every hunt paint calls wireHunt).
+  placeExplain(el('main'), '.hunt-arena .arena-traits');
   el('huntLbBtn')?.addEventListener('click', openHuntBoard);
   if (squad.phase === 'battle') { wireBattlePhase(); return; }
   wireSelectPhase();
@@ -2261,6 +2283,7 @@ function wireBattlePhase() {
     }
     if (support) {
       if (pendingSupport) { clearTargeting(); return; } // tapping a support cancels targeting
+      if (node.classList.contains('downed')) { calloutAt(cx, b.top + 18, 'DOWNED', '#8b94a7'); return; } // a downed support does nothing (hunt_loop_caps.sql)
       if (node.classList.contains('cooldown')) { calloutAt(cx, b.top + 18, 'COOLDOWN', '#8b94a7'); return; }
       const tgt = card.ability && card.ability.target;
       if (tgt === 'ally' || tgt === 'self') { // needs a target ally
@@ -2284,7 +2307,10 @@ async function fireSupport(cardId, targetId) {
   const b = node ? node.getBoundingClientRect() : null;
   const at = (txt, col) => calloutAt(b ? b.left + b.width / 2 : window.innerWidth / 2, b ? b.top : 120, txt, col);
   if (!r || !r.ok) {
-    at(r && r.error === 'cooldown' ? 'COOLDOWN' : (r && r.error === 'day_limit' ? `LIMIT` : 'X'), '#ff8f5c');
+    // hunt_loop_caps.sql: a downed support, stun immunity, the round limit.
+    const why = { cooldown: 'COOLDOWN', day_limit: 'LIMIT', support_downed: 'DOWNED', boss_stun_immune: 'IMMUNE', round_cap: 'ROUND LIMIT' };
+    at((r && why[r.error]) || 'X', '#ff8f5c');
+    if (r?.error === 'support_downed' && node) node.classList.add('downed');
     return;
   }
   const label = { empower: 'EMPOWER!', shield: 'SHIELD!', heal: 'HEAL!', weaken: 'WEAKEN!', expose: 'EXPOSE!', smite: 'SMITE!', stun: 'STUN!', cleanse: 'CLEANSE!' }[r.effect] || r.effect;
@@ -2553,6 +2579,7 @@ async function huntAttack(cardId, node) {
     if (r?.error === 'downed') markDowned(node);
     else if (r?.error === 'hunt_over') renderHunt();
     else if (r?.error === 'day_limit') { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, `LIMIT ${r.cap || 8}`, '#ff8f5c'); }
+    else if (r?.error === 'round_cap') { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, `ROUND LIMIT ${r.cap || 40}`, '#ff8f5c'); } // hunt_loop_caps.sql
     else if (r?.error === 'stunned') { const b = node.getBoundingClientRect(); node.classList.add('stunned'); calloutAt(b.left + 30, b.top, 'STUNNED', '#ffe23e'); }
     return;
   }
@@ -3103,7 +3130,7 @@ function fillRaidInfo(c) {
   const cd = support && (c.cdReady || 0) > round ? c.cdReady - round : 0;
   const stat = (v, k, cls = '') => `<div class="vr-stat ${cls}"><b>${v}</b><span>${k}</span></div>`;
   box.innerHTML = `<div class="vr-head"><span class="vr-role ${support ? 'sup' : 'atk'}">${support ? '🛡 Support' : '⚔ Attacker'}</span>
-      ${c.matches && !support ? '<span class="vr-weak">×2 WEAKNESS</span>' : ''}${c.downed ? '<span class="vr-down">DOWNED</span>' : ''}</div>
+      ${c.matches && !support ? '<span class="vr-weak">×1.5 WEAKNESS</span>' : ''}${c.downed ? '<span class="vr-down">DOWNED</span>' : ''}</div>
     <div class="vr-stats">
       ${stat(support ? '—' : `⚡ ${c.power ?? 0}`, 'Power')}
       ${stat(max ? `${hp}/${max}` : '—', 'HP', max && hp / max < 0.35 ? 'low' : '')}

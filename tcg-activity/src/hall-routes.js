@@ -14,13 +14,23 @@ const ERR = {
   bad_rarity: 'Unknown rarity.', gold_min: 'A Gold auction takes only Full Art, Promo or Event bids.', no_gold_bids: 'Gold cards cannot be bid.',
   bad_min_card: 'A minimum card must be a card a bid can hold.', no_auction: 'Unknown auction.', not_live: 'That auction is not open.', own_auction: 'That is your own auction.',
   bad_count: 'A bid holds 1 to 5 cards.', gold_bid_rarity: 'A Gold auction takes only Full Art, Promo or Event cards.', no_bid: 'No bid.', not_seller: 'Only the seller can do that.',
-  not_accepted: 'No accepted bid.', not_your_bid: 'That is not your bid.', cards_gone: 'A card in the trade is gone; nothing moved.', bad_slot: 'Pick a slot 1 to 5.',
+  not_accepted: 'No accepted bid.', empty_slot: 'Put a card in that slot first.', not_your_bid: 'That is not your bid.', cards_gone: 'A card in the trade is gone; nothing moved.', bad_slot: 'Pick a slot 1 to 5.',
 };
 const fail = (res, code) => res.status(400).json({ ok: false, error: code, message: ERR[code] || code });
 
 // A real member (a Discord id) never sees the automated test members (ids tst_*).
 const realCaller = (id) => /^\d{17,20}$/.test(String(id));
 const testId = (id) => String(id).startsWith('tst_');
+
+// The top want of each member (hall_top_want.sql): the starred slot, else the first filled slot.
+export function topWants(rows) {
+  const best = new Map();
+  for (const w of rows || []) {
+    const k = String(w.player_id), b = best.get(k);
+    if (!b || (w.top && !b.top) || (!!w.top === !!b.top && w.slot < b.slot)) best.set(k, w);
+  }
+  return [...best.values()];
+}
 
 export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn }) {
   const gate = async (req, res, write = false) => {
@@ -61,10 +71,11 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
   app.get('/api/wishlist', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
     const id = String(req.query.id || me.id);
-    const [{ data }, cat, own, hold] = await Promise.all([supabase.from('wishlists').select('slot, card_id').eq('player_id', id).order('slot'),
+    const [{ data }, cat, own, hold] = await Promise.all([supabase.from('wishlists').select('slot, card_id, top').eq('player_id', id).order('slot'),
       catalog(), owned(String(me.id)), held(String(me.id))]);
     const free = freeOf(own, hold);
-    res.json({ id, slots: [1, 2, 3, 4, 5].map((s) => { const r = (data || []).find((x) => x.slot === s); return { slot: s, card: r ? card(cat, r.card_id) : null, mine: r ? free(r.card_id) : 0 }; }) });
+    const top = topWants(data)[0]?.slot ?? null; // the starred slot, else the first filled slot
+    res.json({ id, top, slots: [1, 2, 3, 4, 5].map((s) => { const r = (data || []).find((x) => x.slot === s); return { slot: s, card: r ? card(cat, r.card_id) : null, mine: r ? free(r.card_id) : 0, top: s === top }; }) });
   });
   app.post('/api/wishlist', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;
@@ -74,16 +85,25 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
     if (error) return res.status(500).json({ error: error.message });
     return data?.ok ? res.json(data) : fail(res, data?.error);
   });
+  // Star one wishlist slot as the top want (the card the Wanted view shows).
+  app.post('/api/wishlist/top', async (req, res) => {
+    const me = await gate(req, res, true); if (!me) return;
+    const slot = Number(req.body?.slot);
+    if (!Number.isInteger(slot)) return fail(res, 'bad_slot');
+    const { data, error } = await supabase.rpc('set_wish_top', { p_player: String(me.id), p_slot: slot });
+    if (error) return res.status(500).json({ error: error.message });
+    return data?.ok ? res.json(data) : fail(res, data?.error);
+  });
 
   // ---- The Trading Hall -------------------------------------------------------------------
-  // Wanted = the other members' wishlist cards; For trade = their open listings (a listing whose
+  // Wanted = one card for each member, their top want (mine included, tagged yours); For trade = their open listings (a listing whose
   // card the lister no longer owns does not show). mine = my free copies; match = how many of the
   // lister's wishlist cards I can offer.
   app.get('/api/hall', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
     const myId = String(me.id);
     const [wish, listings, cat, own, hold] = await Promise.all([
-      selectAll(() => supabase.from('wishlists').select('player_id, slot, card_id'), ['player_id', 'slot']),
+      selectAll(() => supabase.from('wishlists').select('player_id, slot, card_id, top'), ['player_id', 'slot']),
       selectAll(() => supabase.from('trade_listings').select('id, player_id, card_id, created_at').eq('status', 'open'), ['id']),
       catalog(), owned(myId), held(myId)]);
     if (wish.error || listings.error) return res.status(500).json({ error: (wish.error || listings.error).message });
@@ -98,9 +118,10 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
     const wishBy = new Map();
     for (const w of wish.data || []) { const k = String(w.player_id); if (!wishBy.has(k)) wishBy.set(k, []); wishBy.get(k).push(Number(w.card_id)); }
     const nm = await names([...(wish.data || []).map((w) => w.player_id), ...others.map((l) => l.player_id)]);
-    const wanted = (wish.data || []).filter((w) => String(w.player_id) !== myId && cat.has(Number(w.card_id)))
-      .map((w) => ({ player_id: String(w.player_id), name: nm.get(String(w.player_id)) || 'A member', card: card(cat, w.card_id), mine: free(w.card_id) }))
-      .sort((a, b) => (b.mine > 0) - (a.mine > 0) || (RANK[b.card.rarity] ?? 0) - (RANK[a.card.rarity] ?? 0));
+    const wanted = topWants(wish.data).filter((w) => cat.has(Number(w.card_id)))
+      .map((w) => ({ player_id: String(w.player_id), name: nm.get(String(w.player_id)) || 'A member', card: card(cat, w.card_id),
+        yours: String(w.player_id) === myId, mine: String(w.player_id) === myId ? 0 : free(w.card_id) }))
+      .sort((a, b) => (b.yours - a.yours) || (b.mine > 0) - (a.mine > 0) || (RANK[b.card.rarity] ?? 0) - (RANK[a.card.rarity] ?? 0));
     const forTrade = others.filter((l) => has.has(`${l.player_id}:${l.card_id}`) && cat.has(Number(l.card_id)))
       .map((l) => ({ id: l.id, player_id: String(l.player_id), name: nm.get(String(l.player_id)) || 'A member', card: card(cat, l.card_id), mine: String(l.player_id) === myId,
         match: String(l.player_id) === myId ? 0 : (wishBy.get(String(l.player_id)) || []).filter((c) => free(c) > 0).length, at: l.created_at }))
@@ -178,7 +199,8 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
     const best = [...bids].sort((x, y) => (y.meets - x.meets) || (y.score - x.score))[0] || null;
     const seller = String(a.seller_id) === myId;
     res.json({ id: a.id, seller_id: String(a.seller_id), seller: nm.get(String(a.seller_id)) || 'A member', card: card(cat, a.card_id), min: minOf(a, cat),
-      status: a.status, ends_at: a.ends_at, accepted_bid_id: a.accepted_bid_id, isSeller: seller, bidsCount: bids.length,
+      status: a.status, ends_at: a.ends_at, accepted_bid_id: a.accepted_bid_id,
+      confirm_by: a.accepted_at ? new Date(new Date(a.accepted_at).getTime() + 24 * 3600e3).toISOString() : null, isSeller: seller, bidsCount: bids.length,
       bids: seller ? bids : undefined, myBid: bids.find((b) => b.bidder_id === myId) || null,
       best: best && { cards: best.cards, meets: best.meets, mine: best.bidder_id === myId } });
   });
@@ -216,8 +238,8 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
     const d = await rpc(res, 'accept_bid', { p_seller: String(me.id), p_bid: Number(req.body?.bidId) });
     if (!d) return;
     const who = me.global_name || me.username;
-    notify(d.bidder, 'auction_accepted', `🔨 ${who} accepted your auction bid! Open the auction to confirm the trade.`);
-    if (postsOn()) announce(`🔨 <@${d.bidder}> — **${who}** accepted your auction bid! Open Lion Pride TCG to confirm the trade.`, 'trades');
+    notify(d.bidder, 'auction_accepted', `🔨 ${who} accepted your auction bid! Confirm the trade within 24 hours.`);
+    if (postsOn()) announce(`🔨 <@${d.bidder}> — **${who}** accepted your auction bid! Open Lion Pride TCG to confirm the trade within 24 hours.`, 'trades');
     res.json(d);
   });
   app.post('/api/auction/close', async (req, res) => {

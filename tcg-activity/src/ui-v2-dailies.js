@@ -4,6 +4,8 @@
 // while the Dailies flag is off.
 
 import { v2ctx, toast } from './ui-v2.js';
+import { COIN, refreshShards } from './ui-v2-shop.js';
+import { every } from './poll.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -24,8 +26,12 @@ let view = null;
 let tickTimer = null;
 
 // The dailies a member can redeem NOW: the red count on the Dailies button. None while
-// paused or once the daily cap is reached (a claim would pay nothing).
-const ready = (v) => (v?.enabled && !v.paused && (v.earned || 0) < (v.cap || 7) ? v.tasks.filter((t) => !t.auto && t.done && !t.claimed) : []);
+// paused or once the daily cap is reached (a claim would pay nothing). With Shards on
+// (shards_dailies_gifts.sql), a daily at the cap still pays its Shards, so it stays redeemable.
+const ready = (v) => (v?.enabled && !v.paused && ((v.earned || 0) < (v.cap || 7) || (v.shards || 0) > 0) ? v.tasks.filter((t) => !t.auto && t.done && !t.claimed) : []);
+const capped = () => (view?.earned || 0) >= (view?.cap || 7);
+// The Shards of a daily: a lime chip next to the pack chip.
+const shc = (cls = '') => (view?.shards ? `<span class="dl-sh ${cls}">${COIN}+${view.shards}</span>` : '');
 const readyPacks = (v) => Math.min(ready(v).reduce((n, t) => n + (t.reward || 0), 0), Math.max(0, (v?.cap || 0) - (v?.earned || 0)));
 
 function paintBadge() {
@@ -52,7 +58,7 @@ export function initDailies() {
   btn.innerHTML = ICON.checkin;
   btn.addEventListener('click', openDailiesV2);
   refreshDailies();
-  setInterval(refreshDailies, 60000);
+  every(60000, refreshDailies); // paused while hidden, slower when idle (poll.js)
 }
 
 function left(iso) {
@@ -62,7 +68,7 @@ function left(iso) {
 }
 
 const bar = (t) => `<i class="dl-bar"><i style="width:${Math.min(100, (100 * (t.have || 0)) / (t.need || 1))}%"></i></i>`;
-const claimBtn = (task, n, paused) => `<button class="v2-btn gold dl-claim" data-task="${esc(task)}"${paused ? ' disabled' : ''}>${ICON.pack}Claim +${n}</button>`;
+const claimBtn = (task, n, paused) => `<button class="v2-btn gold dl-claim" data-task="${esc(task)}"${paused ? ' disabled' : ''}>${capped() ? 'Claim' : `${ICON.pack}Claim +${n}`}${view?.shards ? `<span class="dl-sh in">${COIN}+${view.shards}</span>` : ''}</button>`;
 const chip = (n, cls = '') => `<span class="dl-chip ${cls}">${cls === 'ok' ? ICON.check : ICON.pack}+${n}</span>`;
 
 // The 7 flames of this week of the streak: done, today, and to come.
@@ -89,10 +95,10 @@ function row(t, paused) {
   }
   if (t.task === 'chat') {
     if (t.packs) title += ` ${chip(t.packs, 'ok sm')}`;
-    right = `<span class="dl-auto">${t.packs < t.max ? chip(1) : chip(t.packs, 'ok')}<small>AUTO</small></span>`;
-  } else if (t.claimed) right = chip(t.reward, 'ok');
+    right = `<span class="dl-auto">${t.packs < t.max ? chip(1) : chip(t.packs, 'ok')}${shc()}<small>AUTO</small></span>`;
+  } else if (t.claimed) right = `<span class="dl-r">${chip(t.reward, 'ok')}${shc('ok')}</span>`;
   else if (go) right = claimBtn(t.task, t.reward, false);
-  else right = chip(t.reward);
+  else right = `<span class="dl-r">${chip(t.reward)}${shc()}</span>`;
   return `<div class="dl-row k-${esc(t.task)}${go ? ' go' : ''}${t.claimed ? ' claimed' : ''}"><span class="dl-ico">${ICON[t.task] || ''}</span>
     <div class="dl-t"><b>${title}</b>${sub ? `<span class="dl-sub">${sub}</span>` : ''}</div>${right}</div>`;
 }
@@ -106,8 +112,8 @@ function paint() {
   box.innerHTML = `<div class="nt-head"><h3>Dailies</h3>${n ? `<span class="nt-count">${n}</span>` : ''}<span class="grow"></span>
       <span class="dl-reset">${ICON.reset}${view.paused ? 'Paused' : `Resets ${left(view.resets_at)}`}</span>
       <button class="v2-icon" id="dlClose" aria-label="Close">✕</button></div>
-    <div class="dl-sum"><div class="dl-sum-top"><div><span class="dl-k">TODAY</span><b class="mono">${earned}</b><span class="mono">/ ${cap} packs</span></div>
-      ${rp > 0 && n > 1 ? `<button class="v2-btn gold dl-all"${view.paused ? ' disabled' : ''}>${ICON.pack}Claim all +${rp}</button>` : ''}</div>
+    <div class="dl-sum"><div class="dl-sum-top"><div><span class="dl-k">TODAY</span><b class="mono">${earned}</b><span class="mono">/ ${cap} packs</span>${view.shards ? `<span class="dl-shtoday">${COIN}<b class="mono">${Number(view.shards_today || 0).toLocaleString()}</b> Shards</span>` : ''}</div>
+      ${(rp > 0 || view.shards) && n > 1 ? `<button class="v2-btn gold dl-all"${view.paused ? ' disabled' : ''}>${rp ? `${ICON.pack}Claim all +${rp}` : 'Claim all'}${view.shards ? `<span class="dl-sh in">${COIN}+${n * view.shards}</span>` : ''}</button>` : ''}</div>
       <div class="dl-seg">${seg}</div>
       <div class="dl-legend"><span><i class="on"></i>${earned} earned</span><span><i class="ready"></i>${rp} ready</span><span><i></i>${Math.max(0, cap - earned - rp)} to go</span></div></div>
     <div class="dl-list">${view.tasks.map((t) => row(t, view.paused)).join('')}</div>`;
@@ -121,9 +127,11 @@ async function claim(b, path, body) {
   let r = null;
   try { r = await ctx().apiPost(path, body); } catch { r = null; }
   if (r?.ok) {
-    toast(`🎁 +${r.packs} pack${r.packs === 1 ? '' : 's'}`);
+    const parts = [r.packs ? `+${r.packs} pack${r.packs === 1 ? '' : 's'}` : '', r.shards ? `+${r.shards} Shards` : ''].filter(Boolean);
+    toast(`🎁 ${parts.join(' · ') || 'Claimed'}`);
     view = r.view || view;
     ctx().refreshPacks?.();
+    if (r.shards) refreshShards();
   } else {
     toast(r?.error === 'capped' ? `Daily limit: ${view?.cap} packs` : r?.error === 'paused' ? 'Paused' : 'Try again');
     await refreshDailies();

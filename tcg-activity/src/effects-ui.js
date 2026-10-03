@@ -1,4 +1,5 @@
 import { thumb } from './thumb.js';
+import { every } from './poll.js';
 // Card effects (boons, pranks, neutral) in the Activity. Design: docs/boons-and-pranks.md.
 // Everything here is driven by /api/effects/*; the server returns {enabled:false} when
 // the flag is off, and then this module shows nothing and changes nothing.
@@ -37,8 +38,8 @@ export async function initEffects(d) {
   if (!state.enabled) return;
   wrapChicken();
   refreshBadges();
-  setInterval(refreshEffects, 30000);
-  setInterval(refreshBadges, 30000);
+  every(30000, refreshEffects); // paused while hidden, slower when idle (poll.js)
+  every(30000, refreshBadges);
 }
 
 async function refreshEffects() {
@@ -60,17 +61,31 @@ function scaled(card) {
   const e = card.effect || {};
   const t = state.tiers?.[card.rarity] || { power: 1, cd: 1 };
   const p = state.primitives?.[e.primitive] || {};
-  // The same math as play_card_effect(): tier x ascension stars x the global knob.
+  // The same math as play_card_effect(): tier x this copy's bonus x the global knob. The bonus: with
+  // stat points on, the Potency and Haste points of this copy (card_combat(): the stars add nothing
+  // to effects); with them off, the per-star bonus. Before 2026-10-02 the card always showed the
+  // star bonus, so a starred card showed a stronger effect and a shorter cooldown than it had.
   const stars = Number(card.ascension) || 0;
   const a = state.ascension || {};
-  const power = t.power * (1 + (Number(a.power_per_star) || 0) * stars);
-  const cd = t.cd * Math.max(0.2, 1 - (Number(a.cd_per_star) || 0) * stars) * (Number(state.cooldownScale) || 1);
+  let mPow, mCd, bonus = null;
+  if (deps.statsOn?.()) {
+    const st = card.stat || deps.lookup?.(card.id)?.stat || {};
+    mPow = Number(st.potency) || 1;
+    mCd = Number(st.haste) || 1;
+    if (mPow !== 1 || mCd !== 1) bonus = { points: true, power: Math.round((mPow - 1) * 100), cd: Math.round((1 - mCd) * 100) };
+  } else {
+    mPow = 1 + (Number(a.power_per_star) || 0) * stars;
+    mCd = Math.max(0.2, 1 - (Number(a.cd_per_star) || 0) * stars);
+    if (stars) bonus = { points: false, power: Math.round((mPow - 1) * 100), cd: Math.round((1 - mCd) * 100) };
+  }
+  const power = t.power * mPow;
+  const cd = t.cd * mCd * (Number(state.cooldownScale) || 1);
   let amount = e.base?.amount != null ? Math.round(e.base.amount * power * 100) / 100 : null;
   let dur = e.base?.duration_s != null ? Math.round(e.base.duration_s * power) : null;
   if (amount != null && p.max_amount != null) amount = Math.min(amount, Number(p.max_amount));
   if (dur != null && p.max_duration_s != null) dur = Math.min(dur, p.max_duration_s);
   return { amount, dur, cooldownH: (Number(e.cooldown_h) || 24) * cd, kind: p.kind, enabled: !!p.enabled, stars,
-    starBonus: stars ? { power: Math.round((Number(a.power_per_star) || 0) * stars * 100), cd: Math.round((1 - Math.max(0.2, 1 - (Number(a.cd_per_star) || 0) * stars)) * 100) } : null };
+    starBonus: bonus };
 }
 
 export function fmtDur(sec) {
@@ -132,7 +147,8 @@ function paintViewerEffect(card, boxId) {
   if (s.amount != null) meta.push(`Power ${s.amount}`);
   if (s.dur) meta.push(`Lasts ${fmtDur(s.dur)}`);
   meta.push(`Cooldown ${fmtDur(s.cooldownH * 3600)}`);
-  if (s.starBonus) meta.push(`★${s.stars}: +${s.starBonus.power}% effect, −${s.starBonus.cd}% cooldown`);
+  if (s.starBonus?.points) meta.push([s.starBonus.power ? `Potency +${s.starBonus.power}% effect` : '', s.starBonus.cd ? `Haste −${s.starBonus.cd}% cooldown` : ''].filter(Boolean).join(', '));
+  else if (s.starBonus) meta.push(`★${s.stars}: +${s.starBonus.power}% effect, −${s.starBonus.cd}% cooldown`);
   const wait = readyIn(card);
   let btn = '';
   if (!card.locked) {
