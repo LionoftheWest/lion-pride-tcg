@@ -711,6 +711,21 @@ function fxCards() {
     .sort((a, b) => (effectReadyIn(a) > 0) - (effectReadyIn(b) > 0) || (b.power || 0) - (a.power || 0));
 }
 
+// What happened to a play, in plain words for the sender (Nathan, 2026-10-03: "make the results
+// clearer"). The outcomes of play_card_effect: applied, blocked, reflected, decoyed, redirected, delayed.
+const OUTCOME_LABEL = { blocked: 'Blocked', reflected: 'Reflected', decoyed: 'Decoyed', redirected: 'Redirected', delayed: 'Delayed 1 h' };
+function resultText(r, to, voice) {
+  const other = r.target && String(r.target) !== String(to.id) ? (tr.members.find((m) => String(m.id) === String(r.target))?.name || 'another member') : null;
+  switch (r.outcome) {
+    case 'blocked': return `${to.name}'s ward blocked it.`;
+    case 'reflected': return 'It bounced back to you!';
+    case 'decoyed': return `${to.name}'s decoy took the hit.`;
+    case 'redirected': return `It was redirected to ${other || 'another member'}.`;
+    case 'delayed': return `It lands on ${to.name} in 1 hour.`;
+    default: return voice ? `Played on ${to.name}. It waits until they join voice (1 hour max).` : `Played on ${to.name}.`;
+  }
+}
+
 function paintEffects() {
   const { el } = ctx();
   const focus = takeFocus();
@@ -720,6 +735,21 @@ function paintEffects() {
   const cap = st.sendCap || 0;
   const used = st.playsToday || 0;
   const left = cap ? Math.max(0, cap - used) : null;
+  // The limits made visible (Nathan, 2026-10-03): why a member, or the Play button, is blocked now.
+  // The same counts play_card_effect uses (pair_per_day by aimed_at, prank_recv_per_day by target).
+  const caps = st.caps || {};
+  const pickKind = c ? kindOf(c) : null;
+  const discordPick = !!c && ['discord', 'voice'].includes(st.primitives?.[c.effect?.primitive]?.channel);
+  const blockOf = (p) => {
+    if (!p) return '';
+    if (caps.pair_per_day && (st.pairs?.[String(p.id)] || 0) >= caps.pair_per_day) return `You played ${caps.pair_per_day} cards on ${p.name} today.`;
+    if (pickKind === 'prank' && caps.prank_recv_per_day && (st.pranked?.[String(p.id)] || 0) >= caps.prank_recv_per_day) return `${p.name} got ${caps.prank_recv_per_day} pranks today.`;
+    if (discordPick && (st.immune || []).includes(String(p.id))) return `Discord cannot change the server owner: pick an in-game card for ${p.name}.`;
+    return '';
+  };
+  const resetIn = st.dayEnds ? Math.max(0, (new Date(st.dayEnds) - Date.now()) / 1000) : 0;
+  const capMsg = left === 0 ? `You played your ${cap} cards today. New plays in ${fmtDur(resetIn)}.` : '';
+  const toBlock = blockOf(tr.to);
   let composer;
   if (c) {
     const sc = effectScaled(c);
@@ -737,13 +767,13 @@ function paintEffects() {
         <div class="tr-side right tr-to"><div class="tr-info"><span class="tr-who">To</span><h3>${esc(toName)}</h3></div>${avatarHTML(tr.to?.id, toName, 'huge')}</div>
       </div>
       <div class="tr-foot"><span class="side-h fx-on">On ${esc(toName)}</span>${fx.onTarget.length ? fx.onTarget.map((e) => `<span class="f-chip">${esc(pretty(e.primitive))}</span>`).join('') : '<span class="dim">Nothing active</span>'}
-        <span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg)}</span>
+        <span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg || capMsg || toBlock)}</span>
         <button class="v2-btn" id="fxClear">↺ Clear</button>
         ${st.canTest ? `<button class="v2-btn fx-test" id="fxTest" title="Try it on yourself: no post, no cooldown">🧪 Test on me</button>` : ''}
-        <button class="v2-btn fx-play k-${k}" id="fxPlay" ${ready && tr.to && (left == null || left > 0) ? '' : 'disabled'}>✨ Play ${esc((EFFECT_KIND.label[k] || '').toLowerCase())}</button></div>`;
+        <button class="v2-btn fx-play k-${k}" id="fxPlay" ${ready && tr.to && (left == null || left > 0) && !toBlock ? '' : 'disabled'}>✨ Play ${esc((EFFECT_KIND.label[k] || '').toLowerCase())}</button></div>`;
   } else {
     composer = `<div class="fx-empty"><b>Pick an effect card</b><span class="dim">Then play it on ${esc(toName)}.</span></div>
-      <div class="tr-foot"><span class="side-h fx-on">On ${esc(toName)}</span>${fx.onTarget.length ? fx.onTarget.map((e) => `<span class="f-chip">${esc(pretty(e.primitive))}</span>`).join('') : '<span class="dim">Nothing active</span>'}<span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg)}</span></div>`;
+      <div class="tr-foot"><span class="side-h fx-on">On ${esc(toName)}</span>${fx.onTarget.length ? fx.onTarget.map((e) => `<span class="f-chip">${esc(pretty(e.primitive))}</span>`).join('') : '<span class="dim">Nothing active</span>'}<span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg || capMsg)}</span></div>`;
   }
   const cards = fxCards();
   const onYou = (st.active || []).map((e) => {
@@ -754,7 +784,7 @@ function paintEffects() {
       <span class="mono fx-left">${leftMs != null ? fmtDur(leftMs / 1000) : ''}</span></div>`;
   }).join('');
   const rec = fx.recent.map((r) => `<div class="fx-rec k-${esc(r.kind)}"><span class="fx-pair">${avatarHTML(r.from_id, r.from, 'xs')}${avatarHTML(r.to_id, r.to, 'xs')}</span>
-      <div><b>${nameBadge(r.from_id, r.from)} → ${nameBadge(r.to_id, r.to)}</b><span>${EFFECT_KIND.icon[r.kind] || ''} ${esc(r.outcome === 'reflected' ? 'Reflected' : r.outcome === 'blocked' ? 'Blocked' : pretty(r.primitive))}</span></div>
+      <div><b>${nameBadge(r.from_id, r.from)} → ${nameBadge(r.to_id, r.to)}</b><span>${EFFECT_KIND.icon[r.kind] || ''} ${esc(OUTCOME_LABEL[r.outcome] || pretty(r.primitive))}</span></div>
       <span class="mono dim">${ctx().ago(r.at)}</span></div>`).join('');
 
   el('main').innerHTML = `<div class="v2-trade community fx-view">
@@ -762,7 +792,7 @@ function paintEffects() {
       <div class="tr-top">${commTabs()}${explainBtn('pranks')}<span class="grow"></span>
         ${cap ? `<div class="fx-today"><span>Plays today</span><i class="fx-bar"><i style="width:${Math.round((100 * used) / cap)}%"></i></i><b class="mono">${used}/${cap}</b></div>` : ''}</div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
-        ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
+        ${tr.members.map((p) => { const why = blockOf(p); return `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}${why ? ' capped' : ''}" data-id="${esc(p.id)}"${why ? ` title="${esc(why)}"` : ''}>${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`; }).join('')}
         <span class="grow"></span><input class="v2-search tr-find" id="trFind" placeholder="${isPhone() ? 'Find' : 'Find a member'}" value="${esc(tr.find || '')}"></div>
       <div class="tr-compose">${composer}</div>
       <div class="tr-gridhead"><div class="seg"><button class="on">Your effect cards <b>${(ctx().cache.collection?.cards || []).filter((x) => x.effect?.primitive).length}</b></button></div>
@@ -806,10 +836,9 @@ function paintEffects() {
   el('fxClearTests')?.addEventListener('click', async () => { await clearTests(); fx.msg = 'Tests cleared'; await loadFx(); paintEffects(); });
   el('fxPlay')?.addEventListener('click', async () => {
     const btn = el('fxPlay'); btn.disabled = true;
+    const voice = effectState().primitives?.[fx.pick?.effect?.primitive]?.channel === 'voice';
     const r = await playCard(fx.pick, tr.to.id);
-    fx.msg = r?.ok
-      ? (r.outcome === 'blocked' ? `${tr.to.name} blocked it` : r.outcome === 'reflected' ? 'It bounced back to you' : `Played on ${tr.to.name}`)
-      : effectError(r?.error);
+    fx.msg = r?.ok ? resultText(r, tr.to, voice) : effectError(r?.error);
     if (r?.ok) fx.pick = null;
     await loadFx();
     paintEffects();
