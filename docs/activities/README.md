@@ -150,7 +150,7 @@ The rules that keep the stack free:
 
 ## 6. The build order
 
-1. Shards and the Shop. Every later mode needs a reward to give.
+1. ~~Shards and the Shop.~~ **LIVE 2026-10-02** (the Shop, daily Shards, Convert extras).
 2. The fight engine, then the Dungeon Run. Draft Dungeon, Wandering Monsters, and Fantasy
    Draft Night use the same engine.
 3. Expeditions.

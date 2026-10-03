@@ -1,6 +1,7 @@
 # Shards and the Shop — Design
 
-Status: DRAFT for Nathan's review (2026-10-02). Not built.
+Status: **LIVE for everyone** (2026-10-02). PRs #118 (Shop), #125 (phone review), #127 (daily
+Shards + the stimulus), #128 (Convert extras).
 
 Shards are a currency that members earn in the new modes and spend in the Shop.
 
@@ -18,7 +19,13 @@ Shards are a currency that members earn in the new modes and spend in the Shop.
 6. The anchor was 100 Shards for 1 pack. Nathan raised it (2026-10-02): **a pack is 250
    Shards, a Normal card is 100**. It changes again as the earn rates of the
    modes become clear.
-7. Shards buy a **stat reset**, not stat points. (Stat points buy power, and the power
+7. **Every daily pays 40 Shards** (`settings.dailies.shards`), also after the 5-pack earn limit
+   (a capped daily pays 0 packs and its Shards). All 40 dailies of a week = 1,600 Shards = one
+   Secret Rare a week.
+8. **The stimulus:** a one-time bell gift of 1,000 Shards for every player (2026-10-02).
+9. **Convert extras keeps 1 copy** (option B): every free copy above 1 converts; the member
+   chooses between ascension and Shards. Held copies never convert.
+10. Shards buy a **stat reset**, not stat points. (Stat points buy power, and the power
    would go into the Arena. `docs/card-stats.md` requires that the points give the same
    total strength as the old fixed star bonus.)
 
@@ -32,14 +39,16 @@ proposal. The simulation (Section 7) tunes them.
 
 ## 3. Sources (where members earn Shards)
 
-Note: these earn numbers were written for the old anchor (100 = 1 pack). With a pack at
-250, they buy fewer packs. The simulation (Section 7) retunes them before the first mode
-that earns Shards ships.
+The live sources are the dailies (40 each), Convert extras, and one-time gifts. The numbers
+for the modes that are not built yet were written for the old anchor (100 = 1 pack); the
+simulation (Section 7) retunes each one before its mode ships.
 
 Each source has a fixed number of plays, so the total stays finite without a daily limit.
 
-| Source | The limit on plays | Proposed Shards |
+| Source | The limit on plays | Shards |
 |---|---|---|
+| **Dailies (live)** | 6 rewards a day (the Hunt on boss days) | **40 each** |
+| **Gifts (live)** | one-time bell gifts | the stimulus: 1,000 |
 | Dungeon Run | 1 run each day | 5 for each room cleared, plus monster loot |
 | Draft Dungeon (Monday) | 1 run | the same as the Dungeon |
 | Expeditions | 3 slots at a time | 20 (1 h), 60 (4 h), 110 (8 h) |
@@ -48,12 +57,11 @@ Each source has a fixed number of plays, so the total stays finite without a dai
 | Mini games | 1 scored play on their day | 20 to 60, by the score |
 | Weekly events | 1 each week | 50 to 200, by the place |
 | Server milestones | daily, weekly, and season goals | 10 / 50 / 300 |
-| Extra duplicates | each copy above the copies that ascension needs | Normal 5, IR 15, SR 40, FA 100, Gold 250 |
+| **Extra duplicates (live)** | every free copy above 1 | Normal 5, IR 15, SR 40, FA 100, Gold 250 |
 
-**Extra duplicates:** A card at Prestige (5 stars) gets no value from a new copy today.
-The member can convert those copies to Shards in the Card Information view. The game
-always keeps 1 copy, so a member cannot lose the card. The conversion is a confirmed
-action, and the member must press it.
+**Extra duplicates:** the Collection card panel shows **Convert N extras**. The member picks
+how many copies to convert in a confirm window. The game always keeps 1 copy and never
+converts a copy held by a trade, an auction, or a bid (`shards_convert_keep_one.sql`).
 
 ## 4. The Shop
 
