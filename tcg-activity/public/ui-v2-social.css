@@ -238,6 +238,12 @@ body.ui-v2.fx-fog :is(.v2-cap, .mr-newtag) { visibility: hidden; }
 /* Batch 3 pranks (effects_batch3.sql). */
 .spot-card { position: relative; }
 .fx-stache { position: absolute; left: 22%; right: 22%; top: 38%; width: 56%; fill: #1b120c; filter: drop-shadow(0 1px 1px rgba(255,255,255,.35)); pointer-events: none; }
+/* The mustache prank on an avatar (effects_spread.sql): big (88% of the picture), a white outline so it
+   shows on a dark picture, and a slow twirl so other members notice it at once. */
+body.ui-v2 .v2-avatar > .av-stache { position: absolute; left: 6%; top: 49%; width: 88%; height: auto; z-index: 2; fill: #2a1709; stroke: #fff; stroke-width: 3; paint-order: stroke; filter: drop-shadow(0 1px 2px rgba(0,0,0,.65)); pointer-events: none; transform-origin: 50% 40%; animation: avStache 2.6s ease-in-out infinite; }
+body.ui-v2 .v2-avatar.xs > .av-stache { stroke-width: 5; }
+@keyframes avStache { 0%, 100% { transform: rotate(0) scale(1); } 50% { transform: rotate(-5deg) scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { body.ui-v2 .v2-avatar > .av-stache { animation: none; } }
 #stage.fx-jinx { filter: hue-rotate(250deg) saturate(.6) brightness(.8) contrast(1.2); transform: rotate(180deg); transition: transform .8s ease; }
 .fx-fakegold, .fx-photobomb { position: absolute; inset: 0; z-index: 60; display: grid; place-items: center; pointer-events: none; }
 .fx-fakegold { background: radial-gradient(circle, rgba(255, 215, 110, .95), rgba(255, 170, 40, .35) 45%, transparent 70%); animation: fxFake 2.6s ease forwards; }

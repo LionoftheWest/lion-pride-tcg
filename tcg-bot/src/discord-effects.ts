@@ -1,4 +1,4 @@
-import { AttachmentBuilder, escapeMarkdown, type Client, type Guild, type GuildMember, type Message, type MessageCreateOptions, type Role } from 'discord.js';
+import { AttachmentBuilder, escapeMarkdown, PermissionFlagsBits, type Client, type Guild, type GuildMember, type Message, type MessageCreateOptions, type Role } from 'discord.js';
 import { getSupabase } from './supabase.js';
 import { announce } from './internal.js';
 import { botWork } from './bot-work.js';
@@ -12,18 +12,21 @@ const GUILD_ID = (): string => process.env.DISCORD_GUILD_ID ?? '';
 // its revert_at passes (also after a restart, so nobody stays renamed). Kill switch:
 // FEATURE_DISCORD_EFFECTS=1 (default OFF). Built here: nickname, crown, title, sticker, timeout,
 // clown_role, spotlight_role, hype, ping_parade, reaction_storm, color_role, vc_mute, vc_deafen,
-// heckle, fanfare, squeaky.
+// heckle, fanfare, squeaky; effects_spread.sql: slowmode, hot_take_poll, body_swap, parrot, spongebob.
 export const discordEffectsEnabled = (): boolean => process.env.FEATURE_DISCORD_EFFECTS === '1';
 
 const TICK_MS = 10_000;
-export const BUILT = ['nickname', 'crown', 'title', 'sticker', 'timeout', 'clown_role', 'spotlight_role', 'hype', 'ping_parade', 'reaction_storm', 'color_role', 'vc_mute', 'vc_deafen', 'heckle', 'fanfare', 'squeaky'] as const;
+export const BUILT = ['nickname', 'crown', 'title', 'sticker', 'timeout', 'clown_role', 'spotlight_role', 'hype', 'ping_parade', 'reaction_storm', 'color_role', 'vc_mute', 'vc_deafen', 'heckle', 'fanfare', 'squeaky', 'slowmode', 'hot_take_poll', 'body_swap', 'parrot', 'spongebob'] as const;
 // Rows that WAIT before they act: a voice prank waits (max 48 h) until the target is in voice;
 // a name color waits (max 24 h) for the target to pick it in the Activity (then gold).
 export const WAIT_S: Record<string, number> = { vc_mute: 172800, vc_deafen: 172800, color_role: 86400 };
 // Rows the bot ARMS and then fires on the target's next move (SPEC-outside-effects.md, 2026-10-03):
 // heckle = one reply to their next message, fanfare / squeaky = one post when they next join voice.
+// parrot / spongebob (effects_spread.sql) = one reply that repeats their next message with text.
 // At revert_at (created_at + 48 h) an unused one is skipped ('expired').
-const ARMED = ['heckle', 'fanfare', 'squeaky'];
+const ARMED = ['heckle', 'fanfare', 'squeaky', 'parrot', 'spongebob'];
+/** The armed rows that answer the next chat message (one reply per message: a heckle first). */
+const ECHO = ['parrot', 'spongebob'];
 const ARM_S = 172800;
 const VOICE = ['vc_mute', 'vc_deafen'];
 /** The name colors a member can pick (the Activity shows the same list). */
@@ -38,7 +41,8 @@ export function colorFor(options: Record<string, unknown>, ageS: number): string
   return ageS >= WAIT_S.color_role! ? '#F4B73C' : null;
 }
 // The nickname layers: a nickname replaces the name, crown + sticker go before it, a title after it.
-const NICK = ['nickname', 'crown', 'title', 'sticker'];
+// body_swap (effects_spread.sql) is a nickname layer too: the other member's own name.
+const NICK = ['nickname', 'crown', 'title', 'sticker', 'body_swap'];
 const ROLES: Record<string, { name: string; color: number; hoist: boolean }> = {
   clown_role: { name: '🤡 Clown', color: 0xff5a5a, hoist: false },
   spotlight_role: { name: '✨ Spotlight', color: 0xf4b73c, hoist: true },
@@ -121,6 +125,47 @@ export function pingTimes(amount: number, durationS: number): number[] {
   return Array.from({ length: n }, (_, i) => (n === 1 ? 0 : Math.round((d * i) / (n - 1))));
 }
 
+/** The first max whole characters (an emoji is never split). */
+export function cutText(s: string, max: number): string {
+  let out = '';
+  for (const { segment } of new Intl.Segmenter().segment(s)) {
+    if (out.length + segment.length > max) break;
+    out += segment;
+  }
+  return out;
+}
+
+// Discord tokens that must stay exactly as they are (a custom emoji, a user / role / channel mention).
+const TOKEN = /(<a?:\w+:\d+>|<[@#][!&]?\d+>)/;
+/** SpongeBob text: the letters in aLtErNaTiNg case (lower first); Discord tokens stay the same. */
+export function spongeCase(text: string): string {
+  let up = false;
+  return text.split(TOKEN).map((part, i) => (i % 2 === 1 ? part : [...part].map((ch) => {
+    if (ch.toLowerCase() === ch.toUpperCase()) return ch; // not a letter
+    const out = up ? ch.toUpperCase() : ch.toLowerCase();
+    up = !up;
+    return out;
+  }).join(''))).join('');
+}
+
+/** The reply of a parrot / spongebob to a message text: the prefix + the text, at most 300 characters. */
+export function echoLine(primitive: string, text: string): string {
+  const line = primitive === 'parrot' ? `🦜 ${text}` : `🧽 ${spongeCase(text)}`;
+  return cutText(line, 300);
+}
+
+/** A hot take poll from the card options: the question and the fixed answers, "{name}" = the target. */
+export function pollFor(options: Record<string, unknown>, name: string, hours = 1) {
+  const fill = (s: string) => s.split('{name}').join(name);
+  const q = cutText(fill(String(options.question ?? 'Hot take: is {name} right?')), 300);
+  const raw = Array.isArray(options.answers) ? options.answers.map(String).filter(Boolean) : [];
+  const answers = (raw.length >= 2 ? raw : ['Yes', 'No']).slice(0, 10).map((a) => ({ text: cutText(fill(a), 55) }));
+  return { question: { text: q }, answers, duration: Math.max(1, Math.min(24, Math.round(hours))), allowMultiselect: false };
+}
+
+/** The slowmode gap in seconds (amount; 30 when unset), 5 to 60. */
+export const slowGapS = (amount: number | null): number => Math.max(5, Math.min(60, Math.round(Number(amount) || 30)));
+
 /** One random item from a list option, or the fallback. */
 export function pick(list: unknown, fallback: string, rnd: () => number = Math.random): string {
   return Array.isArray(list) && list.length ? String(list[Math.floor(rnd() * list.length)]) : fallback;
@@ -132,6 +177,17 @@ type Store = ReturnType<typeof getSupabase>;
 /** The outside world of the loop (the tests swap in fakes: no live Supabase, no Discord). */
 export const fxDeps = { store: (): Store => getSupabase(), work: botWork, announce };
 const storms = new Map<string, { id: number; left: number; emoji: string }>();
+/** Slowmode (effects_spread.sql): the target's last kept message time in each channel, until revert_at. */
+type Slow = { id: number; until: number; gapMs: number; card: string; last: Map<string, number>; noticed: boolean };
+const slow = new Map<string, Slow>();
+function setSlow(r: Pick<EffectRow, 'id' | 'target_id' | 'amount' | 'options' | 'revert_at'>): void {
+  const until = r.revert_at ? new Date(r.revert_at).getTime() : 0;
+  if (until <= Date.now()) { slow.delete(r.target_id); return; }
+  const was = slow.get(r.target_id);
+  const keep = was && was.id === r.id;
+  slow.set(r.target_id, { id: r.id, until, gapMs: slowGapS(r.amount) * 1000, card: String(r.options?.card ?? 'a card'),
+    last: keep ? was.last : new Map(), noticed: keep ? was.noticed : Boolean(r.options?.noticed) });
+}
 /** The armed heckle / fanfare / squeaky rows by target, oldest first (rebuilt on every full tick). */
 type Armed = { id: number; primitive: string; target: string; options: Record<string, unknown>; until: number };
 const armed = new Map<string, Armed[]>();
@@ -210,7 +266,8 @@ async function applyNick(sb: Store, member: GuildMember, rows: EffectRow[], reas
   const original = rows.length ? parseOrig(rows[0]!.original_value) : member.nickname;
   // The newest row of each layer wins (two titles: the last one shows until it ends).
   const last = (prim: string) => [...rows].reverse().find((r) => r.primitive === prim);
-  const nickRow = last('nickname'), titleRow = last('title'), stickerRow = last('sticker');
+  const nickRow = [...rows].reverse().find((r) => r.primitive === 'nickname' || r.primitive === 'body_swap');
+  const titleRow = last('title'), stickerRow = last('sticker');
   const want = composeNick(original, member.user.globalName ?? member.user.username, {
     nickname: nickRow ? String(nickRow.options.applied_nick ?? '') || null : null,
     crown: rows.some((r) => r.primitive === 'crown'),
@@ -263,8 +320,25 @@ async function execute(client: Client, sb: Store, guild: Guild, row: EffectRow):
     // The template uses the member's own name (not a name another effect gave them).
     const ownName = parseOrig(original) ?? member.user.globalName ?? member.user.username;
     if (p === 'nickname') opts.applied_nick = nickFromTemplate(pick(row.options.nicknames, '{name} the Pranked'), ownName);
+    if (p === 'body_swap' && row.options.swap_side !== 'partner') {
+      // Name Swap: the target takes the other member's own name; a second row gives the other member
+      // the target's name (the same end). The other member = the sender (a reflected swap: the reflector).
+      const otherId = String(row.target_id === String(row.options.sender_id ?? '') ? (row.options.credit_to ?? '') : (row.options.sender_id ?? ''));
+      const other = otherId && otherId !== row.target_id ? await guild.members.fetch(otherId).catch(() => null) : null;
+      if (!other) { await patchRow(sb, row.id, { status: 'failed', error: 'no_partner' }); return; }
+      opts.applied_nick = cutText(await ownNameOf(sb, other), NICK_MAX);
+      opts.pair_id = row.id;
+      const end = row.revert_at ?? new Date(Date.now() + Math.min(3600, Number(row.duration_s) || 3600) * 1000).toISOString();
+      if (other.id === guild.members.me?.id || other.manageable) {
+        await sb.from('discord_effects').insert({ play_id: row.play_id, target_id: other.id, primitive: 'body_swap', amount: row.amount,
+          duration_s: row.duration_s, status: 'pending', execute_after: new Date().toISOString(), revert_at: end,
+          options: { ...row.options, swap_side: 'partner', pair_id: row.id, applied_nick: cutText(ownName, NICK_MAX) } });
+      } else {
+        opts.partner_error = 'not_manageable'; // the owner (or a member above the bot): only the target is renamed
+      }
+    }
     // play_card_effect sets revert_at (1 h); a row without one must still end (nobody stays renamed).
-    const revertAt = row.revert_at ?? (p === 'title' || p === 'sticker' ? new Date(Date.now() + Math.min(3600, Number(row.duration_s) || 3600) * 1000).toISOString() : null);
+    const revertAt = row.revert_at ?? (p === 'title' || p === 'sticker' || p === 'body_swap' ? new Date(Date.now() + Math.min(3600, Number(row.duration_s) || 3600) * 1000).toISOString() : null);
     await patchRow(sb, row.id, { status: 'active', original_value: original, options: opts, ...(revertAt !== row.revert_at ? { revert_at: revertAt } : {}) });
     await applyNick(sb, member, [...before, { ...row, status: 'active', original_value: original, options: opts, revert_at: revertAt }], reason);
   } else if (p in ROLES) {
@@ -282,6 +356,22 @@ async function execute(client: Client, sb: Store, guild: Guild, row: EffectRow):
     const emoji = String(row.options.emoji ?? '🤡');
     await patchRow(sb, row.id, { status: 'active', options: { ...row.options, left, emoji } });
     storms.set(row.target_id, { id: row.id, left, emoji });
+  } else if (p === 'slowmode') {
+    // Slowmode: until revert_at (5 min), the bot deletes the target's messages that come less than
+    // the gap after their last kept message in the same channel. Needs Manage Messages: fail closed.
+    const perms = (guild.members.me as { permissions?: { has?: (p: bigint) => boolean } } | null)?.permissions;
+    if (!perms?.has?.(PermissionFlagsBits.ManageMessages)) { await patchRow(sb, row.id, { status: 'failed', error: 'no_manage_messages' }); return; }
+    const revertAt = row.revert_at ?? new Date(Date.now() + Math.min(300, Number(row.duration_s) || 300) * 1000).toISOString();
+    const options = { ...row.options, card, gap_s: slowGapS(row.amount) };
+    await patchRow(sb, row.id, { status: 'active', revert_at: revertAt, options });
+    setSlow({ ...row, revert_at: revertAt, options });
+  } else if (p === 'hot_take_poll') {
+    // One Discord poll about the target (fixed question + answers from the card), in the plays channel.
+    const name = member.nickname ?? member.user.globalName ?? member.user.username;
+    const poll = pollFor(row.options, name, (Number(row.duration_s) || 3600) / 3600);
+    const ok = await fxDeps.announce(client, { content: `📊 ${escapeMarkdown(sender)} played **${card}** on <@${row.target_id}>`, poll } as MessageCreateOptions, 'plays');
+    // Active until the poll ends (no second poll on the same member before then); nothing to undo.
+    await patchRow(sb, row.id, ok ? { status: 'active', revert_at: row.revert_at ?? new Date(Date.now() + poll.duration * 3600_000).toISOString() } : { status: 'failed', error: 'post_failed' });
   } else if (ARMED.includes(p)) {
     // Arm: wait (48 h from the play) for the target's next message / voice join.
     const revertAt = new Date(new Date(row.created_at).getTime() + ARM_S * 1000).toISOString();
@@ -291,7 +381,13 @@ async function execute(client: Client, sb: Store, guild: Guild, row: EffectRow):
   } else {
     await patchRow(sb, row.id, { status: 'skipped', error: 'not_built' });
   }
-  void client;
+}
+
+/** A member's own name: the nickname before any effect (kept in the first nick row), else the nickname, else the Discord name. */
+async function ownNameOf(sb: Store, m: GuildMember): Promise<string> {
+  const rows = await nickRows(sb, m.id);
+  const orig = rows.length ? parseOrig(rows[0]!.original_value) : m.nickname;
+  return orig ?? m.user.globalName ?? m.user.username;
 }
 
 async function revert(sb: Store, guild: Guild, row: EffectRow): Promise<void> {
@@ -301,6 +397,20 @@ async function revert(sb: Store, guild: Guild, row: EffectRow): Promise<void> {
     dropArmed(row.target_id, row.id);
     await patchRow(sb, row.id, { status: 'skipped', error: 'expired' });
     return;
+  }
+  if (p === 'slowmode') {
+    slow.delete(row.target_id);
+    await patchRow(sb, row.id, { status: 'reverted' });
+    return;
+  }
+  if (p === 'body_swap' && row.options.pair_id != null) {
+    // A swap ends for both members together (a cleanse or Undo all on one side ends the other side too).
+    const pair = String(row.options.pair_id);
+    const now = new Date().toISOString();
+    await sb.from('discord_effects').update({ revert_at: now, updated_at: now })
+      .eq('primitive', 'body_swap').eq('status', 'active').eq('options->>pair_id', pair).neq('id', row.id).gt('revert_at', now);
+    await sb.from('discord_effects').update({ status: 'skipped', error: 'pair_ended', updated_at: now })
+      .eq('primitive', 'body_swap').eq('status', 'pending').eq('options->>pair_id', pair).neq('id', row.id);
   }
   const member = await guild.members.fetch(row.target_id).catch(() => null);
   if (member && NICK.includes(p)) {
@@ -372,7 +482,7 @@ async function runTick(client: Client, force: boolean): Promise<void> {
       let sent = Number(row.options.sent ?? 0);
       const start = new Date(row.created_at).getTime();
       while (sent < times.length && Date.now() >= start + times[sent]! * 1000) {
-        await fxDeps.announce(client, `🔔 <@${row.target_id}> — **${row.options.card ?? 'a card'}** (${sent + 1}/${times.length})`, 'plays'); // muted = no ping
+        await fxDeps.announce(client, `<@${row.target_id}>`, 'plays'); // only the mention (Nathan, 2026-10-03); muted = no ping
         sent += 1;
       }
       await patchRow(sb, row.id, sent >= times.length ? { status: 'done', options: { ...row.options, sent } } : { options: { ...row.options, sent } });
@@ -381,6 +491,11 @@ async function runTick(client: Client, force: boolean): Promise<void> {
     const { data: st } = await sb.from('discord_effects').select('id, target_id, options').eq('status', 'active').eq('primitive', 'reaction_storm');
     storms.clear();
     for (const r of (st ?? []) as EffectRow[]) storms.set(r.target_id, { id: r.id, left: Number(r.options.left ?? 5), emoji: String(r.options.emoji ?? '🤡') });
+    // 3a. Slowmode: the same.
+    const { data: sl } = await sb.from('discord_effects').select('id, target_id, amount, options, revert_at').eq('status', 'active').eq('primitive', 'slowmode');
+    const slowIds = new Set(((sl ?? []) as EffectRow[]).map((r) => r.target_id));
+    for (const t of [...slow.keys()]) if (!slowIds.has(t)) slow.delete(t);
+    for (const r of (sl ?? []) as EffectRow[]) setSlow(r);
     // 3b. Armed heckles / fanfares / squeakies: the same (the startup tick is forced for this).
     const { data: ar } = await sb.from('discord_effects').select('id, target_id, primitive, options, revert_at').eq('status', 'active').in('primitive', ARMED).order('created_at');
     armed.clear();
@@ -395,10 +510,40 @@ async function runTick(client: Client, force: boolean): Promise<void> {
   }
 }
 
-/** The reaction storm: react to the target's next messages. A heckle: reply once to the next one. */
+/** Slowmode: true when the message came too soon and the bot deleted it (one notice, the first time). */
+async function slowed(message: Message): Promise<boolean> {
+  const sl = slow.get(message.author.id);
+  if (!sl) return false;
+  if (sl.until <= Date.now()) { slow.delete(message.author.id); return false; }
+  const at = message.createdTimestamp ?? Date.now();
+  const prev = sl.last.get(message.channelId);
+  if (prev == null || at - prev >= sl.gapMs) { sl.last.set(message.channelId, at); return false; }
+  const gone = await message.delete().then(() => true, () => false);
+  if (gone && !sl.noticed) {
+    sl.noticed = true;
+    const ch = message.channel as unknown as { send?: (o: MessageCreateOptions) => Promise<unknown> };
+    const content = `🐌 <@${message.author.id}> is in slowmode (**${sl.card}**): one message every ${Math.round(sl.gapMs / 1000)} seconds, until <t:${Math.ceil(sl.until / 1000)}:t>.`;
+    if (typeof ch.send === 'function') await ch.send({ content, allowedMentions: { parse: [] } }).catch(() => {});
+    const sb = fxDeps.store();
+    const { data } = await sb.from('discord_effects').select('options').eq('id', sl.id).maybeSingle();
+    await patchRow(sb, sl.id, { options: { ...(data?.options ?? {}), noticed: true } });
+  }
+  return gone;
+}
+
+/** The reaction storm: react to the target's next messages. A heckle: reply once to the next one.
+ *  A parrot / spongebob: repeat the next message that has text, once. Slowmode first: a deleted
+ *  message gets nothing else. */
 export async function onEffectMessage(message: Message): Promise<void> {
+  if (message.author.bot) return;
+  if (await slowed(message)) return;
   const [h] = takeArmed(message.author.id, ['heckle'], false);
   if (h) await heckle(message, h);
+  const text = String(message.content ?? '').trim();
+  if (!h && text) {
+    const [e] = takeArmed(message.author.id, ECHO, false);
+    if (e) await echo(message, e, text);
+  }
   const s = storms.get(message.author.id);
   if (!s || s.left <= 0) return;
   s.left -= 1;
@@ -439,6 +584,14 @@ export function startDiscordEffects(client: Client): ReturnType<typeof setInterv
   return timer;
 }
 
+async function echo(message: Message, a: Armed, text: string): Promise<void> {
+  const sb = fxDeps.store();
+  if (!(await claimArmed(sb, a.id))) return;
+  // parse: [] = no @everyone / @here / role / user ping, even when the text has one.
+  await message.reply({ content: echoLine(a.primitive, text), allowedMentions: { parse: [], repliedUser: false } })
+    .catch((e: Error) => patchRow(sb, a.id, { error: `reply: ${String(e.message).slice(0, 180)}` }));
+}
+
 async function heckle(message: Message, h: Armed): Promise<void> {
   const sb = fxDeps.store();
   if (!(await claimArmed(sb, h.id))) return;
@@ -467,7 +620,10 @@ export async function onEffectVoice(client: Client, before: VoiceSide, after: Vo
   for (const a of due) {
     try {
       if (!(await claimArmed(sb, a.id))) continue;
-      const content = ENTRANCE[a.primitive]!(a.target, escapeMarkdown(String(a.options.sender_name ?? 'Someone')));
+      const from = escapeMarkdown(String(a.options.sender_name ?? 'Someone'));
+      // A card can bring its own line (Discord Pizza Party): "{target}" = the mention, "{sender}" = the sender.
+      const own = typeof a.options.line === 'string' && a.options.line.trim() ? cutText(a.options.line.trim(), 300) : null;
+      const content = own ? own.split('{target}').join(`<@${a.target}>`).split('{sender}').join(from) : ENTRANCE[a.primitive]!(a.target, from);
       const { data: c } = await sb.from('cards').select('image_url').eq('id', Number(a.options.card_id ?? 0)).maybeSingle();
       const png = await art((c as { image_url?: string | null } | null)?.image_url ?? null);
       const body: MessageCreateOptions = { content, components: [launchActivityRow()] };

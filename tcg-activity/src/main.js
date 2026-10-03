@@ -370,6 +370,7 @@ function startV2() {
   });
   // Design 19: my picture in the top bar opens my profile (the Home profile tile is gone).
   el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>${meUser?.id ? `<img src="/api/avatar/${esc(meUser.id)}" alt="" data-err="remove">` : ''}`;
+  if (meUser?.id) el('v2Avatar').dataset.pid = meUser.id; // the mustache prank shows here too (effects-ui.js paintStaches)
   el('v2Avatar').addEventListener('click', () => { if (meUser?.id) openMember(meUser.id); });
   const bell = el('bellBtn'); const board = el('boardBtn');
   if (bell) { const b = bell.querySelector('.navbadge'); bell.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'; if (b) bell.appendChild(b); }
@@ -2209,7 +2210,8 @@ function resolveHit(node, r, atk) {
     if (r.double) { setTimeout(() => { bossHandle?.flinch(); bossHandle?.attack?.(node.dataset.el || 'physical'); }, 260); calloutAt(bx + 44, by - 26, 'DOUBLE!', '#ffb14a'); }
     if (r.rally) calloutAt(bx - 44, by - 26, `RALLY +${Math.round(r.rally)}%`, '#5be38a');
     if (r.party) calloutAt(bx + 44, by - 26, `LAUNCH PARTY +${Math.round(r.party)}%`, '#10b981');
-    if (r.crashed) calloutAt(bx, by - 52, `CRASHED +${r.crashed}`, '#ff5ca8');
+    // Raid Crasher: the extra damage hits the boss but counts for the PRANKSTER's score, not this member's.
+    if (r.crashed) calloutAt(bx, by - 52, `+${r.crashed} FOR THE PRANKSTER`, '#ff5ca8');
     if (r.mend) calloutAt(bx, by - 104, `MEND +${Math.round(r.mend)}`, '#5be38a');
     bigDamage(bx, by + 18, r.damage, big ? 'crit' : 'hit'); // over the boss, not on the card (Nathan)
     if (r.synergy && r.synergy.element) { // themed-squad element synergy bonus
