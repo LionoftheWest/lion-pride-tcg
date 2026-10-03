@@ -1747,6 +1747,19 @@ app.get('/api/notifications', async (req, res) => {
   res.json({ items, gifts: gifts || [], unread: items.filter((n) => !n.read).length + (gifts || []).length });
 });
 
+// Only the red number of the bell, for the 45 s poll: the same count as /api/notifications
+// (the unread among the newest 30, plus the unredeemed gifts up to 20) with no joins and no text.
+app.get('/api/notifications/count', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const [n, g] = await Promise.all([
+    supabase.from('notifications').select('read').eq('player_id', me.id).order('created_at', { ascending: false }).limit(30),
+    supabase.from('gift_claims').select('id', { count: 'exact', head: true }).eq('player_id', me.id).is('claimed_at', null),
+  ]);
+  if (n.error) return res.status(500).json({ error: n.error.message });
+  res.json({ unread: (n.data || []).filter((x) => !x.read).length + Math.min(g.count || 0, 20) });
+});
+
 // Redeem a gift: its packs go to the OPEN balance (claim_gift: once, only the owner).
 app.post('/api/gifts/claim', async (req, res) => {
   const me = await caller(req);

@@ -65,7 +65,8 @@ async function loadMyProfile(force) {
 }
 export async function ensureCatalog() {
   if (ctx.cache.catalog) return;
-  try { ctx.cache.catalog = await ctx.api('/api/catalog'); } catch { ctx.cache.catalog = { cards: [] }; }
+  // A failed load stays null (every reader uses catalog?.cards || []), so the next screen asks again.
+  try { ctx.cache.catalog = await ctx.apiData('/api/catalog'); } catch { /* not cached */ }
 }
 
 // One card cell: the card image exactly as it is printed (500x700, its own frame),
@@ -291,6 +292,11 @@ export async function renderCollectionV2() {
   if (!ctx.cache.catalog) el('main').innerHTML = '<div class="v2-loading">Loading…</div>';
   await Promise.all([ensureCatalog(), loadMyProfile()]);
   if (ctx.currentView() !== 'collection') return;
+  if (!ctx.cache.catalog) { // the catalog did not load: a Retry, not a page of empty slots
+    el('main').innerHTML = '<div class="v2-loading">Could not load the cards. <button class="v2-btn" id="colRetry">Retry</button></div>';
+    el('colRetry')?.addEventListener('click', () => renderCollectionV2());
+    return;
+  }
   const cards = mergedCards();
   const seasons = [...new Set(cards.map((c) => c.season || 'Season 1'))];
   if (!seasons.includes(col.season)) col.season = seasons[0] || 'Season 1';
