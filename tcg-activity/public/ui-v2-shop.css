@@ -301,3 +301,17 @@ body.ui-v2.m-port .sh-picker { width: 100%; height: 100%; padding: calc(16px + v
 body.ui-v2.m-port .sh-pk-head h3 { font-size: 22px; }
 body.ui-v2.m-port .sh-picker .sh-free { flex-wrap: wrap; font-size: 12px; padding: 8px 10px; }
 @media (prefers-reduced-motion: reduce) { body.ui-v2 .sh-confirm, body.ui-v2 .sh-picker { animation: none; } body.ui-v2 .sh-card { transition: none; } }
+
+/* ---- Shards in the Dailies window and the bell (shards_dailies_gifts.sql) ---- */
+body.ui-v2 .dl-r { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+body.ui-v2 .dl-sh { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 7px; border-radius: var(--rad-pill); background: var(--shard-soft); border: 1px solid rgba(184, 240, 42, .35); color: var(--shard); font: 700 11.5px var(--font-num); white-space: nowrap; }
+body.ui-v2 .dl-sh .sh-coin { width: 13px; height: 13px; }
+body.ui-v2 .dl-sh.ok { opacity: .75; }
+body.ui-v2 .dl-sh.in { height: 20px; margin-left: 6px; background: rgba(28, 18, 3, .18); border-color: rgba(28, 18, 3, .25); color: var(--on-gold); }
+body.ui-v2 .dl-auto .dl-sh { margin-left: 4px; }
+body.ui-v2 .dl-shtoday { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; color: var(--text-secondary); font-size: 12px; }
+body.ui-v2 .dl-shtoday .sh-coin { width: 15px; height: 15px; }
+body.ui-v2 .dl-shtoday b { color: var(--shard); }
+body.ui-v2 .gf-shards { display: inline-flex; align-items: center; gap: 4px; color: var(--shard); font-weight: 700; }
+body.ui-v2 .gf-shards .sh-coin { width: 15px; height: 15px; }
+body.ui-v2 .gf-ico.gf-coin .sh-coin { width: 26px; height: 26px; }

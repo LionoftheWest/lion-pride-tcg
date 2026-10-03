@@ -54,6 +54,9 @@ async function load() {
   return shop.data;
 }
 
+// The balance changed elsewhere (a gift, a daily): repaint the top bar pill.
+export const refreshShards = () => (shop.on ? load() : Promise.resolve(null));
+
 export function initShop(on) {
   shop.on = !!on;
   const { el } = ctx();

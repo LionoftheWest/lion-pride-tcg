@@ -1140,15 +1140,16 @@ app.post('/api/dailies/claim-all', async (req, res) => {
   const id = String(me.id);
   const { data: view, error } = await supabase.rpc('dailies_view', { p_player: id });
   if (error || !view?.enabled) return res.json({ ok: false, error: 'disabled' });
-  let packs = 0; let last = view; let stop = null;
+  let packs = 0, shards = 0, claimed = 0; let last = view; let stop = null;
   for (const t of view.tasks.filter((x) => !x.auto && x.done && !x.claimed)) {
     const { data: r, error: e } = await supabase.rpc('claim_daily', { p_player: id, p_task: t.task });
     if (e) { stop = 'error'; break; }
     if (!r?.ok) { stop = r?.error || 'error'; if (stop === 'capped' || stop === 'paused') break; continue; }
-    packs += r.packs; last = r.view;
+    packs += r.packs; shards += r.shards || 0; claimed += 1; last = r.view;
   }
   if (packs) bustUser(me.id);
-  res.json({ ok: packs > 0, packs, view: last, error: packs ? null : stop });
+  // A daily at the pack limit still pays its Shards (shards_dailies_gifts.sql): any claim is a success.
+  res.json({ ok: claimed > 0, packs, shards, view: last, error: claimed ? null : stop });
 });
 
 // Equip an unlocked title and/or frame (null = none). Only rewards the caller claimed.
@@ -1728,7 +1729,7 @@ app.get('/api/notifications', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   const items = data || [];
   // Gifts waiting to be redeemed (gift_claims.sql): they count in the red number too.
-  const { data: gifts } = await supabase.from('gift_claims').select('id, kind, title, amount, created_at, from_id, card:cards(id, name, rarity, image_url)')
+  const { data: gifts } = await supabase.from('gift_claims').select('id, kind, title, amount, shards, created_at, from_id, card:cards(id, name, rarity, image_url)')
     .eq('player_id', me.id).is('claimed_at', null).order('created_at', { ascending: true }).limit(20);
   for (const g of gifts || []) if (g.card) g.card.image_url = toProxyImg(g.card.image_url); // a card gift (launch_event_cards.sql)
   const senders = [...new Set((gifts || []).map((g) => g.from_id).filter(Boolean))];
@@ -1747,14 +1748,14 @@ app.post('/api/gifts/claim', async (req, res) => {
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const ids = (Array.isArray(req.body?.ids) ? req.body.ids : [req.body?.id]).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 20);
   if (!ids.length) return res.status(400).json({ error: 'bad gift' });
-  let packs = 0, cards = 0;
+  let packs = 0, cards = 0, shards = 0;
   for (const id of ids) {
     const { data, error } = await supabase.rpc('claim_gift', { p_player: String(me.id), p_id: id });
     if (error) return res.status(500).json({ error: error.message });
-    if (data?.ok) { packs += data.packs || 0; if (data.card_id) cards += 1; } // a card gift: 0 packs, 1 card
+    if (data?.ok) { packs += data.packs || 0; shards += data.shards || 0; if (data.card_id) cards += 1; } // a card gift: 0 packs, 1 card
   }
   if (packs || cards) bustUser(me.id);
-  res.json({ ok: packs + cards > 0, packs, cards });
+  res.json({ ok: packs + cards + shards > 0, packs, cards, shards });
 });
 
 // Mark all the caller's notifications as read.
