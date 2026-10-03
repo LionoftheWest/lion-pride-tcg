@@ -13,7 +13,7 @@
  *              SUPABASE_SERVICE_ROLE_KEY, PORT (default 4441)
  */
 import 'dotenv/config';
-import { measure as measureAchievements, ACHIEVEMENTS, rewardOf, LEDGER } from './src/achievements.js';
+import { measure as measureAchievements, ACHIEVEMENTS, REWARDS, FRAMES, RETIRED, rewardOf, LEDGER } from './src/achievements.js';
 const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
@@ -400,7 +400,7 @@ app.get('/api/flags', async (req, res) => {
 // replay it, or finish it (1 outside pack, once ever). 'seen' records a view explainer the member
 // has seen (ui-v2-explain.js), so it opens by itself only the first time.
 const TUTORIAL_STEPS = ['gifts', 'open', 'rarity', 'collection', 'hunt', 'community', 'dailies', 'voice']; // the reward needs the 7 after 'gifts'
-const EXPLAIN_SETS = ['hall', 'auctions', 'trades', 'pranks', 'hunt', 'collection'];
+const EXPLAIN_SETS = ['hall', 'auctions', 'trades', 'pranks', 'hunt', 'collection', 'achievements'];
 app.post('/api/tutorial', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
@@ -481,7 +481,10 @@ const ownedCache = new Map(); // userId -> { at, owned:Set<cardId> }  (drives /a
 const OWNED_TTL = 8000;
 const packStatusCache = new Map(); // userId -> { at, packs }
 const PACK_STATUS_TTL = 8000;
-function bustUser(userId) { collCache.delete(userId); ownedCache.delete(userId); packStatusCache.delete(userId); }
+// The tiered achievements of a member (achievement_view, achievement_tracks.sql), 15 s. A pack, a
+// trade or an ascend changes a track, so bustUser clears it too.
+const achViewCache = new Map(); // userId -> { at, view }
+function bustUser(userId) { collCache.delete(userId); ownedCache.delete(userId); packStatusCache.delete(userId); achViewCache.delete(String(userId)); }
 
 // The card-effect columns exist only after card_effects.sql (see effects.js flags).
 const EFFECT_COLS = EFFECTS_SCHEMA ? ', id, effect' : '';
@@ -1001,7 +1004,7 @@ async function loadProfile(id) {
     hunt ? supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 }) : Promise.resolve({ data: [] }),
     supabase.rpc('my_collection_power', { p_player_id: id }),
     supabase.from('player_cards').select('card_id, quantity, ascension').eq('player_id', id),
-    supabase.from('achievement_claims').select('key').eq('player_id', id),
+    supabase.from('achievement_claims').select('key, title, frame').eq('player_id', id),
   ]);
   if (!player.data) return null;
   const hitRows = hits.data || [];
@@ -1019,6 +1022,9 @@ async function loadProfile(id) {
     spotlight: player.data.spotlight || [],
     title: player.data.title || null, frame: player.data.frame || null,
     claimed: (claims.data || []).map((c) => c.key),
+    // The titles and frames the member redeemed (the old achievements and the tiers): the editor's list.
+    titles: [...new Set((claims.data || []).map((c) => c.title).filter(Boolean))],
+    frames: [...new Set((claims.data || []).map((c) => c.frame).filter(Boolean))],
     power: cp.data != null ? Number(cp.data) : null,
     huntRank: idx >= 0 ? idx + 1 : null, huntPlayers: leaders.length,
     stats: {
@@ -1082,16 +1088,64 @@ async function claimOne(id, key) {
   return { ...data, key, reward: r };
 }
 
+// The tiered tracks + tag badges of the caller (achievement_view): { enabled:false } while the flag
+// settings.achievement_tracks is off for this member (then the old 50 achievements show).
+async function achView(id) {
+  const c = achViewCache.get(id);
+  if (c && Date.now() - c.at < 15000) return c.view;
+  const { data, error } = await supabase.rpc('achievement_view', { p_player: id });
+  const view = error ? { enabled: false } : (data || { enabled: false }); // no function yet = the old system
+  achViewCache.set(id, { at: Date.now(), view });
+  return view;
+}
+app.get('/api/achievements', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  res.json(await achView(String(me.id)));
+});
+// Tiers + tag badges: the SQL measures and pays (claim_achievement_tiers); null key = all of them.
+async function claimTiers(id, key) {
+  const { data, error } = await supabase.rpc('claim_achievement_tiers', { p_player: id, p_key: key });
+  if (error) throw new Error(error.message);
+  return data || { ok: false };
+}
+const isTierKey = (k) => /^(track|tag):/.test(k);
+
+// Every title and frame in the game (Nathan, 2026-10-03: never hidden): how to get each one, how many
+// members own it, and which ones the caller owns. The tiers and tag badges come from the SQL; the old
+// achievement rewards from src/achievements.js (a retired one shows as no longer available).
+app.get('/api/achievements/gallery', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const { data, error } = await supabase.rpc('achievement_gallery', { p_player: String(me.id) });
+  if (error) return res.status(500).json({ error: error.message });
+  const items = data?.items || [];
+  const owned = data?.owned || { titles: {}, frames: {} };
+  const seen = new Set(items.map((i) => `${i.kind}:${i.value}`));
+  for (const a of ACHIEVEMENTS) {
+    const r = REWARDS[a.key] || {};
+    for (const [kind, value] of [['title', r.title], ['frame', r.frame]]) {
+      if (!value || seen.has(`${kind}:${value}`)) continue;
+      seen.add(`${kind}:${value}`);
+      const o = owned[kind === 'title' ? 'titles' : 'frames'][value] || {};
+      items.push({ kind, value, badge: a.key, how: a.desc, name: a.name, retired: RETIRED.has(a.key), owners: o.owners || 0, mine: !!o.mine });
+    }
+  }
+  res.json({ members: data?.members || 0, items });
+});
+
 // Redeem ALL finished, unclaimed achievements at once (Nathan: "a lot to go one by
 // one"). Each one goes through claim_achievement, so each still pays only once.
+// With the tracks on: the 13 one-time badges, then every reached tier and tag badge.
 app.post('/api/achievements/claim-all', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const m = await measureFor(String(me.id));
   if (!m) return res.status(404).json({ error: 'no such player' });
-  const todo = m.achs.filter((a) => a.done && !m.p.claimed.includes(a.key));
-  const claimed = []; let packs = 0; const titles = []; const frames = [];
+  const view = await achView(String(me.id));
+  const todo = m.achs.filter((a) => a.done && !m.p.claimed.includes(a.key) && !(view.enabled && RETIRED.has(a.key)));
+  const claimed = []; let packs = 0; let shards = 0; const titles = []; const frames = [];
   try {
     for (const a of todo) {
       const r = await claimOne(me.id, a.key);
@@ -1100,9 +1154,13 @@ app.post('/api/achievements/claim-all', async (req, res) => {
       if (r.reward.title) titles.push(r.reward.title);
       if (r.reward.frame) frames.push(r.reward.frame);
     }
+    if (view.enabled) {
+      const t = await claimTiers(String(me.id), null);
+      if (t.ok) { claimed.push(...t.claimed); packs += t.packs; shards += t.shards; titles.push(...t.titles); frames.push(...t.frames); }
+    }
   } catch (e) { return res.status(500).json({ error: e.message, claimed }); }
   finally { profileCache.delete(String(me.id)); bustUser(me.id); boardV2Cache = null; }
-  res.json({ ok: true, claimed, packs, titles, frames: [...new Set(frames)] });
+  res.json({ ok: claimed.length > 0 || !view.enabled, claimed, packs, shards, titles, frames: [...new Set(frames)] });
 });
 
 // Redeem a finished achievement. The server measures it with the same rules the player
@@ -1112,6 +1170,13 @@ app.post('/api/achievements/claim', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const key = String(req.body?.key || '');
+  // A track (all its reached tiers) or a tag badge: the SQL measures it and pays it once.
+  if (isTierKey(key)) {
+    let out;
+    try { out = await claimTiers(String(me.id), key); } catch (e) { return res.status(500).json({ error: e.message }); }
+    profileCache.delete(String(me.id)); bustUser(me.id); boardV2Cache = null;
+    return res.json({ ...out, key });
+  }
   const def = ACHIEVEMENTS.find((a) => a.key === key);
   if (!def) return res.status(400).json({ error: 'unknown achievement' });
   const m = await measureFor(String(me.id));

@@ -55,6 +55,14 @@ export const SETS = {
     { img: 'hunt-hp', title: 'One boss for all', text: 'All members hit the same boss. It heals a little, so attack every day.' },
     { img: 'hunt-prizes', title: 'Prizes', text: 'Deal damage to earn packs, if it falls or escapes. 1st 7, 2nd 5, 3rd 4, 4th to 10th 3, all others 1.' },
   ] },
+  achievements: { name: 'Achievements', slides: [
+    { img: 'ach-tracks', title: 'Tracks', text: 'Each track counts one thing you do, for example cards owned or raids joined. Each track has 5 tiers: Bronze, Silver, Gold, Diamond and Mythic.' },
+    { img: 'ach-track', title: 'The tiers', text: 'Tap a track to see each tier, what it needs and what it gives. Some tracks go on after Mythic in +1 steps.' },
+    { img: 'ach-rewards', title: 'Rewards', text: 'Every tier gives packs and Shards. Gold, Diamond and Mythic also give a title. Diamond and Mythic give a frame for your picture.' },
+    { img: 'ach-redeem', title: 'Redeem', text: 'A gold border means a tier is ready. Tap Redeem, or Redeem All to take every reward at once. The red number on Collection counts them.' },
+    { img: 'ach-badges', title: 'Badges', text: 'Badges pay one time. Set badges ask for every card of one game or type in a season. Any version of a card counts.' },
+    { img: 'ach-gallery', title: 'Titles & Frames', text: 'See every title and frame in the game, how to get it, and how many members have it. Tap Equip to wear one.' },
+  ] },
   collection: { name: 'Collection', slides: [
     { img: 'col-grid', title: 'Your cards', text: 'Every card in the set. A lock means you do not have it yet.' },
     { img: 'col-filters', title: 'Filters', text: 'Show cards by owned, rarity, element, type or game.' },

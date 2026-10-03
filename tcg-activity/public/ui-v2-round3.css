@@ -162,3 +162,65 @@ body.ui-v2 .asc-label { top: 44%; font-size: 30px; }
    the tags / lore (a shrunk row was cut in half instead). */
 body.ui-v2 #colPanel > * { flex-shrink: 0; }
 body.ui-v2 .boss-mode #colPanel > .boss-stage { flex-shrink: 1; }
+/* ---- The tiered achievement tracks (achievement_tracks.sql; Nathan, 2026-10-03) ---- */
+body.ui-v2 { --t-bronze: #D08A4E; --t-silver: #C9D1DC; --t-gold: #F4B73C; --t-diamond: #6FE3FF; --t-mythic: #FF4FD8; }
+body.ui-v2 .tier-pips { display: inline-flex; align-items: center; gap: 3px; margin-left: 2px; }
+body.ui-v2 .tier-pips i { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-3); }
+body.ui-v2 .tier-pips em { font: 800 10.5px var(--font-num); font-style: normal; color: var(--t-mythic); margin-left: 2px; }
+body.ui-v2 .tier-pips i.t-bronze, body.ui-v2 .tl-row.t-bronze .tl-tier i { background: var(--t-bronze); }
+body.ui-v2 .tier-pips i.t-silver, body.ui-v2 .tl-row.t-silver .tl-tier i { background: var(--t-silver); }
+body.ui-v2 .tier-pips i.t-gold, body.ui-v2 .tl-row.t-gold .tl-tier i { background: var(--t-gold); }
+body.ui-v2 .tier-pips i.t-diamond, body.ui-v2 .tl-row.t-diamond .tl-tier i { background: var(--t-diamond); box-shadow: 0 0 6px rgba(111, 227, 255, .7); }
+body.ui-v2 .tier-pips i.t-mythic, body.ui-v2 .tl-row.t-mythic .tl-tier i { background: conic-gradient(var(--t-mythic), var(--t-gold), #7B5CFF, var(--t-mythic)); box-shadow: 0 0 6px rgba(255, 79, 216, .7); }
+body.ui-v2 .v2-ach.trk .ah-top b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+body.ui-v2 .v2-ach.trk.t-diamond { border-color: rgba(111, 227, 255, .35); }
+body.ui-v2 .v2-ach.trk.t-mythic { border-color: rgba(255, 79, 216, .4); }
+body.ui-v2 .v2-ach.trk.ready, body.ui-v2 .v2-ach.trk.ready.t-mythic { border-color: rgba(244, 183, 60, .65); }
+body.ui-v2 .ach-sub button, body.ui-v2 .gal-kind button { height: 32px; padding: 0 12px; }
+body.ui-v2 .ach-all i { font-style: normal; font: 800 11px var(--font-num); background: rgba(10, 10, 18, .25); border-radius: 9px; padding: 1px 6px; margin-left: 4px; }
+/* One track opened: the tier ladder. */
+body.ui-v2 .tier-ladder { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
+body.ui-v2 .tl-row { display: grid; grid-template-columns: 130px 90px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 11px 14px;
+  border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border); font-size: 13px; }
+body.ui-v2 .tl-row.got { background: linear-gradient(180deg, rgba(244, 183, 60, .1), rgba(244, 183, 60, .03)); border-color: rgba(244, 183, 60, .35); }
+body.ui-v2 .tl-tier { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+body.ui-v2 .tl-tier i { width: 12px; height: 12px; border-radius: 50%; background: var(--surface-3); flex: none; }
+body.ui-v2 .tl-need { font: 700 13px var(--font-num); color: var(--text-secondary); }
+body.ui-v2 .tl-rw { color: var(--text-secondary); min-width: 0; }
+body.ui-v2 .tl-ready { font: 800 12px var(--font-ui); color: var(--gold); }
+body.ui-v2 .tl-prog { font: 600 12px var(--font-num); color: var(--text-muted); }
+/* The Titles & Frames gallery. */
+body.ui-v2 .v2-ach.gal .ah-top { min-height: 32px; }
+body.ui-v2 .v2-ach.gal .ah-top b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+body.ui-v2 .v2-ach.gal .v2-title { font-size: 12px; }
+body.ui-v2 .v2-ach.gal:not(.mine) { opacity: .82; }
+body.ui-v2 .v2-ach.gal.mine { border-color: rgba(244, 183, 60, .4); }
+body.ui-v2 .v2-avatar.gal-av { width: 30px; height: 30px; flex: none; }
+body.ui-v2 .gal-lock { flex: 0 0 auto; font-size: 13px; opacity: .7; }
+/* The track frames: Diamond, and the animated Mythic, each with the track icon. */
+body.ui-v2 .v2-avatar.frame-diamond, body.ui-v2 .v2-avatar.frame-mythic { position: relative; }
+body.ui-v2 .v2-avatar.frame-diamond { background: linear-gradient(135deg, #F2FDFF, #6FE3FF 45%, #2B7FD0 75%, #CFF6FF); box-shadow: 0 0 12px rgba(111, 227, 255, .55); }
+body.ui-v2 .v2-avatar.frame-mythic { background: none; box-shadow: 0 0 16px rgba(255, 79, 216, .6); animation: frMythGlow 2.4s ease-in-out infinite alternate; }
+body.ui-v2 .v2-avatar.frame-mythic::before { content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--t-mythic), var(--t-gold), #7B5CFF, var(--t-diamond), var(--t-mythic)); animation: frMythSpin 4s linear infinite; }
+body.ui-v2 .v2-avatar.frame-mythic > img, body.ui-v2 .v2-avatar.frame-mythic > span { position: relative; }
+body.ui-v2 .v2-avatar .fr-ico { position: absolute; right: -3px; bottom: -3px; width: 44%; height: 44%; min-width: 14px; min-height: 14px; border-radius: 50%;
+  display: grid; place-items: center; font-size: max(8px, calc(var(--fr-s, 38px) * .26)); font-style: normal; line-height: 1; background: #0A0A12; z-index: 2; }
+body.ui-v2 .v2-avatar.frame-diamond .fr-ico { box-shadow: 0 0 0 2px var(--t-diamond); }
+body.ui-v2 .v2-avatar.frame-mythic .fr-ico { box-shadow: 0 0 0 2px var(--t-mythic); }
+body.ui-v2 .v2-avatar.big .fr-ico, body.ui-v2 .v2-avatar.huge .fr-ico { --fr-s: 64px; }
+@keyframes frMythSpin { to { transform: rotate(360deg); } }
+@keyframes frMythGlow { from { box-shadow: 0 0 10px rgba(255, 79, 216, .45); } to { box-shadow: 0 0 20px rgba(244, 183, 60, .65); } }
+body.ui-v2 .se-ring.frame-diamond { background: linear-gradient(135deg, #F2FDFF, #6FE3FF 50%, #2B7FD0); }
+body.ui-v2 .se-ring.frame-mythic { background: conic-gradient(var(--t-mythic), var(--t-gold), #7B5CFF, var(--t-diamond), var(--t-mythic)); }
+body.ui-v2 .se-ring { font-size: 8px; font-style: normal; line-height: 12px; text-align: center; overflow: hidden; }
+body.ui-v2 .v2-ach.trk .ah-top b { white-space: normal; overflow: visible; }
+body.ui-v2 .trk-bar { display: flex; align-items: center; gap: 8px; }
+body.ui-v2 .trk-bar .tier-pips { margin: 0; flex: none; }
+body.ui-v2 .trk-bar .ah-bar { flex: 1; }
+body.ui-v2 .tier-ladder.tight { gap: 5px; }
+body.ui-v2 .tier-ladder.tight .tl-row { padding: 6px 12px; font-size: 12px; }
+body.ui-v2 .tier-ladder.tighter .tl-rw { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2 .tier-ladder.tighter .tl-row { padding: 4px 10px; }
+body.ui-v2 .v2-ach.gal .ah-top b { white-space: normal; overflow: visible; }
+body.ui-v2 .v2-ach.gal .ah-n { white-space: nowrap; }

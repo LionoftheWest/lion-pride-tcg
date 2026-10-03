@@ -150,3 +150,82 @@ export const rewardOf = (key) => REWARDS[key] || { packs: 1 };
 export function rewardLabel(r) {
   return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.title ? `"${r.title}" title` : null, r.frame ? FRAMES[r.frame] : null].filter(Boolean).join(' + ');
 }
+// ---- The tiered tracks (tcg-bot/supabase/achievement_tracks.sql; Nathan, 2026-10-03) ----
+// The SQL holds the rules (the tiers, the titles) and measures each track (achievement_view), so the
+// server never pays a tier that is not reached. This module holds the look of each track and the
+// reward table for the labels. src/achievements.test.js checks both against the SQL file.
+export const TRACK_LOOK = {
+  collector: { icon: '🎴', desc: 'Own different cards' },
+  shine: { icon: '💎', desc: 'Own different rare cards (IR, SR, Full Art, Gold)' },
+  elementalist: { icon: '🌈', desc: 'Own different cards with an element' },
+  fullsets: { icon: '🧩', desc: 'Own every version of a character' },
+  ascension: { icon: '⭐', desc: 'Earn ascension stars on your cards' },
+  trainer: { icon: '🏋', desc: 'Assign stat points' },
+  packs: { icon: '🎁', desc: 'Open packs' },
+  generous: { icon: '💝', desc: 'Gift packs and cards to members' },
+  trader: { icon: '🤝', desc: 'Complete trades' },
+  market: { icon: '🏛', desc: 'Close a Trade Hall deal or an auction' },
+  wish: { icon: '🌠', desc: 'Give a card that is on the receiver\'s wishlist' },
+  shards: { icon: '🔷', desc: 'Earn Shards' },
+  shopper: { icon: '🛒', desc: 'Buy in the Shop' },
+  recycler: { icon: '♻', desc: 'Convert duplicate copies to Shards' },
+  grind: { icon: '📅', desc: 'Redeem daily tasks' },
+  streak: { icon: '🔥', desc: 'Check in on days in a row (best streak)' },
+  raider: { icon: '⚔', desc: 'Join raids' },
+  heavy: { icon: '💥', desc: 'Deal raid damage in total' },
+  bighit: { icon: '🎯', desc: 'Land one big raid hit' },
+  slayer: { icon: '🐉', desc: 'Defeat a boss in a raid you joined' },
+  podium: { icon: '🏆', desc: 'Finish a raid in the top 3' },
+  prankster: { icon: '😈', desc: 'Play pranks' },
+  vibes: { icon: '🌞', desc: 'Play boons' },
+  voice: { icon: '🎙', desc: 'Days with the voice daily or the 25-message chat daily' },
+};
+export const TIERS = ['Bronze', 'Silver', 'Gold', 'Diamond', 'Mythic'];
+/** Tier n (1 Bronze .. 5 Mythic, 6 = Mythic +1). */
+export const tierName = (n) => (n <= 5 ? TIERS[n - 1] : `Mythic +${n - 5}`);
+export const tierClass = (n) => (n >= 1 ? `t-${TIERS[Math.min(n, 5) - 1].toLowerCase()}` : 't-none');
+/** The reward of tier n (the same for every track; = ach_tier_reward in the SQL). */
+export function tierReward(n, titles = []) {
+  if (n === 1) return { packs: 1, shards: 50 };
+  if (n === 2) return { packs: 1, shards: 150 };
+  if (n === 3) return { packs: 2, shards: 200, title: titles[0] };
+  if (n === 4) return { packs: 3, shards: 400, title: titles[1], frame: 'diamond' };
+  if (n === 5) return { packs: 5, shards: 800, title: titles[2], frame: 'mythic' };
+  return { packs: 5, shards: 200, title: titles[2] ? `${titles[2]} +${n - 5}` : undefined };
+}
+/** The need of tier n for a track from achievement_view (null = no such tier). */
+export function tierNeed(t, n) {
+  if (n >= 1 && n <= 5) return t.tiers[n - 1];
+  return n > 5 && t.step ? t.tiers[4] + (n - 5) * t.step : null;
+}
+export function tierRewardLabel(r) {
+  return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.shards ? `${r.shards} Shards` : null,
+    r.title ? `"${r.title}"` : null, r.frame ? `${r.frame === 'diamond' ? 'Diamond' : 'Mythic'} frame` : null].filter(Boolean).join(' + ');
+}
+// The old keys that the tracks replace (= achievement_switch_map). While the tracks are on, they do
+// not show and the SQL refuses them ('retired'). The other 13 stay as one-time badges.
+export const RETIRED = new Set(['first', 'own10', 'own25', 'own50', 'own100', 'ir1', 'sr1', 'fa1', 'g1', 'ir10', 'sr5', 'fa5', 'g5',
+  'fire5', 'light5', 'lightning5', 'nature5', 'shadow5', 'psychic5', 'water5', 'rainbow', 'fullset', 'double5', 'asc1', 'asc3', 'asc5',
+  'packs10', 'gift1', 'trade1', 'hunt1', 'hunt4', 'dmg1k', 'hit500', 'slay1', 'slay3', 'boon1', 'prank5']);
+// The tag set badges (ach_tag_badges): one per season and origin or type tag, made from the cards.
+const TAG_ICON = { 'origin:smash': '🥊', 'origin:pokemon': '⚪', 'origin:party': '🎉', 'origin:minecraft': '⛏', 'origin:meme': '😂',
+  'origin:community': '🦁', 'type:character': '🧑', 'type:creature': '🐾', 'type:moment': '⏳', 'type:item': '🎒', 'type:place': '🗺' };
+export const tagIcon = (slug) => TAG_ICON[slug] || '🏷';
+/** A tag badge from achievement_view as an achievement row (the cards it needs come from the catalog). */
+export function tagBadge(b, cards) {
+  const [facet, value] = b.tag.split(':');
+  const has = (c) => (facet === 'origin' ? [].concat(c.tags?.origin || []).includes(value) : c.tags?.type === value);
+  const pool = cards.filter((c) => (c.season || 'Season 1') === b.season && c.rarity !== 'event' && c.in_draw_pool !== false && has(c));
+  return { key: b.key, group: 'Sets', icon: tagIcon(b.tag), name: b.title, desc: `Own every ${b.label} card in ${b.season} (any version)`,
+    have: Math.min(b.have, b.need), need: b.need, done: b.have >= b.need, claimed: !!b.claimed, set: pool, tag: true, reward: { packs: b.packs, title: b.title } };
+}
+/** A frame value -> its look: the old 'silver' / 'gold' / 'holo', or 'diamond:<track>' / 'mythic:<track>'. */
+export function frameInfo(f) {
+  if (!f) return null;
+  if (FRAMES[f]) return { cls: `frame-${f}`, icon: '', label: FRAMES[f] };
+  const [kind, track] = String(f).split(':');
+  if ((kind === 'diamond' || kind === 'mythic') && TRACK_LOOK[track]) {
+    return { cls: `frame-${kind}`, icon: TRACK_LOOK[track].icon, label: `${kind === 'diamond' ? 'Diamond' : 'Mythic'} frame` };
+  }
+  return null;
+}
