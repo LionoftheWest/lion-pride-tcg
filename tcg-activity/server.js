@@ -1831,3 +1831,20 @@ const PORT = Number(process.env.PORT) || 4441;
 // firewall layers were ever misconfigured (defense in depth).
 const HOST = process.env.BIND_HOST || '127.0.0.1';
 server.listen(PORT, HOST, () => console.log(`TCG Activity -> http://${HOST}:${PORT}`));
+
+// A deploy stops the container with SIGTERM (ops/deploy.sh, docker stop). Stop taking new
+// connections and let the requests in flight finish: a SIGKILL cut a pack open mid-request
+// (a 502, 2026-10-02). Caddy retries the refused connections until the new container is up
+// (lb_try_duration). The live streams never end alone, so they are closed now; EventSource
+// and the room socket reconnect by themselves.
+let draining = false;
+process.on('SIGTERM', () => {
+  if (draining) return;
+  draining = true;
+  console.log('SIGTERM: draining');
+  server.close(() => process.exit(0));
+  for (const res of streamClients) res.end();
+  for (const ws of wss.clients) ws.close(1012, 'restart');
+  server.closeIdleConnections();
+  setTimeout(() => process.exit(0), 8000).unref(); // a request that hangs must not hold the deploy
+});

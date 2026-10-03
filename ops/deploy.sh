@@ -66,10 +66,23 @@ fi
 # not empty it (each refill was 100-300 MB of Supabase egress).
 VOL=""
 if [ "$SVC" = activity ]; then mkdir -p /home/ubuntu/img-cache; VOL="-v /home/ubuntu/img-cache:/tmp/img-cache"; fi
+# Swap the container:
+# - docker stop sends SIGTERM, so the Activity finishes the requests in flight (server.js);
+#   rm -f was a SIGKILL that cut a pack open. --init forwards the signal (node is not PID 1).
+# - The old container's log is kept before rm deletes it (gzip, 600, the newest 20 per service):
+#   each deploy erased the only record of the errors before it.
+# - The json log is capped (3 x 20 MB), so a noisy container cannot fill the disk.
 run() {
+  if sudo docker inspect "$NAME" >/dev/null 2>&1; then
+    sudo docker stop -t 10 "$NAME" >/dev/null 2>&1 || true
+    LOGS="/home/ubuntu/logs/$NAME"; mkdir -p "$LOGS"; chmod 700 /home/ubuntu/logs "$LOGS"
+    ( umask 077; sudo docker logs --timestamps "$NAME" 2>&1 | gzip > "$LOGS/$(date -u +%Y%m%dT%H%M%SZ).log.gz" ) || true
+    ls -1t "$LOGS"/*.log.gz 2>/dev/null | tail -n +21 | xargs -r rm -f
+  fi
   sudo docker rm -f "$NAME" >/dev/null 2>&1 || true
   # shellcheck disable=SC2086
-  sudo docker run -d --name "$NAME" --network host --restart unless-stopped $VOL --env-file "/home/ubuntu/$DIR/.env" "$1" >/dev/null
+  sudo docker run -d --init --name "$NAME" --network host --restart unless-stopped \
+    --log-opt max-size=20m --log-opt max-file=3 $VOL --env-file "/home/ubuntu/$DIR/.env" "$1" >/dev/null
 }
 # FORCE=1 fails only the NEW build's check, so the rollback check stays real.
 healthy() { [ "${1:-}" = new ] && [ "$FORCE" = 1 ] && return 1
