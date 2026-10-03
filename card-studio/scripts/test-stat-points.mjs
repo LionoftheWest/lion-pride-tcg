@@ -106,11 +106,11 @@ begin
   ok := ok and r->>'error' = 'reset_used';
   res := res || jsonb_build_object('case', 'reset: nothing spent refused, first reset ok (6 free again), second in the week refused', 'ok', ok, 'r', r);
 
-  -- 7. Effects: Potency and Haste replace the per-star bonus. The same Sticker card at star 2:
+  -- 7. Effects: Potency and Haste replace the per-star bonus. The same Mustache card at star 2 (a sticker acts in Discord for 1 h since effects_outside.sql):
   --    0 points, Potency 6 (duration x1.30), Haste 5 (cooldown x0.80). now() is fixed in the
   --    transaction, so the ready_at times compare exactly.
   select c.id into fx from cards c join subjects s on s.id = c.subject_id
-    where s.effect->>'primitive' = 'sticker' order by c.id limit 1;
+    where s.effect->>'primitive' = 'mustache' order by c.id limit 1;
   insert into players (id, username) values ('tst_sp3', 'tst sp3'), ('tst_tg3', 'tst tg3');
   insert into player_cards (player_id, card_id, quantity, ascension) values ('tst_sp', fx, 1, 2), ('tst_sp2', fx, 1, 2), ('tst_sp3', fx, 1, 2);
   perform spend_stat_points('tst_sp2', fx, '{"potency":6}');

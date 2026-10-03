@@ -14,7 +14,7 @@ const token = process.env.SUPABASE_ACCESS_TOKEN;
 const ref = ((process.env.SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
 // Every card-effect migration, in apply order (the engine as it is live after the last one).
 const files = process.argv.length > 2 ? process.argv.slice(2)
-  : ['card_effects.sql', 'card_effects_ascension.sql', 'stat_points.sql', 'effects_cleanup.sql', 'discord_effects_on.sql', 'effects_batch3.sql', 'effects_batch4.sql', 'mt_clock.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
+  : ['card_effects.sql', 'card_effects_ascension.sql', 'stat_points.sql', 'effects_cleanup.sql', 'discord_effects_on.sql', 'effects_batch3.sql', 'effects_batch4.sql', 'mt_clock.sql', 'effects_outside.sql'].map((f) => fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)));
 const q = async (sql) => {
   const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -51,10 +51,10 @@ begin
   select id into ir from cards where subject_id = s[1] and rarity::text = 'illustrated_rare' order by id limit 1;
 
   insert into players (id, username) select 'tst_' || x, 'tst ' || x from unnest(array['a','b','c','d','e','f','g','h']) x;
-  -- s1 timeout 50s cd 48h | s2 sticker 1h cd 1h | s3 title | s4 lucky_pull | s5 gift_pack | s6 gift_pack | s7 cleanse | s8 rally (disabled below)
+  -- s1 timeout 50s cd 48h | s2 mustache 1h cd 1h | s3 swap_showcase (title, sticker: Discord since effects_outside.sql) | s4 lucky_pull | s5 gift_pack | s6 gift_pack | s7 cleanse | s8 rally (disabled below)
   update subjects set effect = '{"primitive":"timeout","base":{"duration_s":50},"cooldown_h":48}' where id = s[1];
-  update subjects set effect = '{"primitive":"sticker","base":{"duration_s":3600},"cooldown_h":1}' where id = s[2];
-  update subjects set effect = '{"primitive":"title","base":{"duration_s":3600},"cooldown_h":1}' where id = s[3];
+  update subjects set effect = '{"primitive":"mustache","base":{"duration_s":3600},"cooldown_h":1}' where id = s[2];
+  update subjects set effect = '{"primitive":"swap_showcase","base":{"duration_s":3600},"cooldown_h":1}' where id = s[3];
   update subjects set effect = '{"primitive":"lucky_pull","base":{"amount":2},"cooldown_h":24}' where id = s[4];
   update subjects set effect = '{"primitive":"gift_pack","base":{"amount":1},"cooldown_h":24}' where id = s[5];
   update subjects set effect = '{"primitive":"gift_pack","base":{"amount":1},"cooldown_h":24}' where id = s[6];
@@ -101,22 +101,22 @@ begin
   insert into player_effects (player_id, primitive) values ('tst_d', 'ward');
   r := play_card_effect('tst_a', n[2], 'tst_d');
   res := res || jsonb_build_object('case','C9 ward blocks the prank and is consumed','ok',
-    r->>'outcome' = 'blocked' and not card_effect_active('tst_d','sticker') and not card_effect_active('tst_d','ward'),'r',r);
+    r->>'outcome' = 'blocked' and not card_effect_active('tst_d','mustache') and not card_effect_active('tst_d','ward'),'r',r);
   -- C10 reflect bounces the prank to the sender.
   insert into player_effects (player_id, primitive) values ('tst_b', 'reflect');
   r := play_card_effect('tst_c', n[2], 'tst_b');
   res := res || jsonb_build_object('case','C10 reflect bounces to sender','ok',
-    r->>'outcome' = 'reflected' and r->>'target' = 'tst_c' and card_effect_active('tst_c','sticker')
-    and not card_effect_active('tst_b','sticker') and not card_effect_active('tst_b','reflect'),'r',r);
+    r->>'outcome' = 'reflected' and r->>'target' = 'tst_c' and card_effect_active('tst_c','mustache')
+    and not card_effect_active('tst_b','mustache') and not card_effect_active('tst_b','reflect'),'r',r);
   -- C11 depth 1: a reflected prank ignores the SENDER's reflect.
   insert into player_effects (player_id, primitive) values ('tst_b', 'reflect'), ('tst_a', 'reflect');
   r := play_card_effect('tst_a', n[3], 'tst_b');
   res := res || jsonb_build_object('case','C11 a reflected prank cannot bounce again','ok',
-    r->>'outcome' = 'reflected' and r->>'target' = 'tst_a' and card_effect_active('tst_a','title')
+    r->>'outcome' = 'reflected' and r->>'target' = 'tst_a' and card_effect_active('tst_a','swap_showcase')
     and card_effect_active('tst_a','reflect'),'r',r);
   -- C12 a refused play (no stacking) does NOT use up the target's reflect.
   insert into player_effects (player_id, primitive) values ('tst_d', 'reflect');
-  insert into player_effects (player_id, primitive, expires_at) values ('tst_e', 'sticker', now() + interval '1 hour');
+  insert into player_effects (player_id, primitive, expires_at) values ('tst_e', 'mustache', now() + interval '1 hour');
   r := play_card_effect('tst_e', n[2], 'tst_d');
   res := res || jsonb_build_object('case','C12 refused play keeps the target reflect','ok',
     r->>'error' = 'already_active' and card_effect_active('tst_d','reflect')
@@ -131,7 +131,7 @@ begin
   -- C14 target prank cap.
   select count(*) into v from card_plays where target_id = 'tst_c' and kind = 'prank' and created_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc';
   update settings set value = jsonb_set(value, '{prank_recv_per_day}', to_jsonb(v)) where key = 'card_effect_caps';
-  r := play_card_effect('tst_e', n[2], 'tst_c');  -- e's sticker card is ready (C12 was refused)
+  r := play_card_effect('tst_e', n[2], 'tst_c');  -- e's mustache card is ready (C12 was refused)
   res := res || jsonb_build_object('case','C14 target daily prank cap','ok', r->>'error' = 'target_prank_cap','r',r);
   update settings set value = jsonb_set(value, '{prank_recv_per_day}', '0') where key = 'card_effect_caps';
   -- C15 gift_pack weekly cap (1): the first mints one pack, the second is refused.
@@ -152,30 +152,30 @@ begin
   select count(*) into v from card_plays where target_id = 'tst_h' and kind = 'prank' and created_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc';
   update settings set value = jsonb_set(value, '{prank_recv_per_day}', to_jsonb(v + 1)) where key = 'card_effect_caps';
   insert into player_cards (player_id, card_id, quantity) values ('tst_h', n[3], 1);
-  insert into player_effects (player_id, primitive, expires_at) values ('tst_h', 'sticker', now() + interval '1 hour');  -- not counted: not a play
+  insert into player_effects (player_id, primitive, expires_at) values ('tst_h', 'mustache', now() + interval '1 hour');  -- not counted: not a play
   update card_plays set target_id = 'tst_h' where id = (select max(id) from card_plays where kind = 'prank');     -- h is now AT the cap
   insert into player_effects (player_id, primitive) values ('tst_f', 'reflect');
   r := play_card_effect('tst_h', n[3], 'tst_f');
   res := res || jsonb_build_object('case','C17 a bounce onto a capped sender fizzles','ok',
-    r->>'outcome' = 'blocked' and r->>'target' = 'tst_h' and not card_effect_active('tst_h','title'),'r',r);
+    r->>'outcome' = 'blocked' and r->>'target' = 'tst_h' and not card_effect_active('tst_h','swap_showcase'),'r',r);
   update settings set value = jsonb_set(value, '{prank_recv_per_day}', '0') where key = 'card_effect_caps';
 
   -- C18 the effect records the card + the sender, and picks ONE title from the card's list.
-  update subjects set effect = '{"primitive":"title","base":{"duration_s":3600},"cooldown_h":1,"options":{"titles":["the Clown","Sir Whiffs-a-Lot"]}}' where id = s[3];
+  update subjects set effect = '{"primitive":"swap_showcase","base":{"duration_s":3600},"cooldown_h":1,"options":{"titles":["the Clown","Sir Whiffs-a-Lot"]}}' where id = s[3];
   insert into player_cards (player_id, card_id, quantity) values ('tst_g', n[3], 1);
   r := play_card_effect('tst_g', n[3], 'tst_e');
   res := res || jsonb_build_object('case','C18 options carry card, sender, one title','ok',
-    exists (select 1 from player_effects where player_id = 'tst_e' and primitive = 'title'
+    exists (select 1 from player_effects where player_id = 'tst_e' and primitive = 'swap_showcase'
              and (options->>'card_id')::bigint = n[3] and options->>'sender_id' = 'tst_g'
              and options->>'title' in ('the Clown','Sir Whiffs-a-Lot')),'r',r);
 
-  -- C19 ascension without stat points (flag off): a Normal sticker (1h, cd 1h) at 2 stars
+  -- C19 ascension without stat points (flag off): a Normal mustache (1h, cd 1h) at 2 stars
   -- = 1h x1.2 = 72m, cd x0.84 = 50.4m. With stat points on (stat_points.sql), the stars give
   -- no effect bonus: only this copy's Potency / Haste points do.
-  update subjects set effect = '{"primitive":"sticker","base":{"duration_s":3600},"cooldown_h":1}' where id = s[4];
+  update subjects set effect = '{"primitive":"mustache","base":{"duration_s":3600},"cooldown_h":1}' where id = s[4];
   update settings set value = value || '{"enabled": false}' where key = 'stat_points';
   insert into player_cards (player_id, card_id, quantity, ascension) values ('tst_d', n[4], 1, 2);
-  r := play_card_effect('tst_d', n[4], 'tst_g');  -- g has no sticker (h got one in C17)
+  r := play_card_effect('tst_d', n[4], 'tst_g');  -- g has no mustache (h got one in C17)
   d := (r->>'ready_at')::timestamptz - now();
   res := res || jsonb_build_object('case','C19a stat points off: each star +10% effect, -8% cooldown','ok',
     (r->>'duration_s')::int = 4320 and (r->>'ascension')::int = 2 and d between interval '50 minutes' and interval '51 minutes','r',r);
@@ -207,7 +207,7 @@ begin
     ('tst_v6', 'reflect', now() + interval '1 day'), ('tst_s7', 'ward', now() + interval '1 day');
   r := play_card_effect('tst_s1', n[2], 'tst_v1');
   res := res || jsonb_build_object('case','C21 decoy: a direct hit on a cutout, nothing lands, the decoy is used up','ok',
-    r->>'outcome' = 'decoyed' and not card_effect_active('tst_v1','sticker')
+    r->>'outcome' = 'decoyed' and not card_effect_active('tst_v1','mustache')
     and not exists (select 1 from player_effects where player_id = 'tst_v1' and primitive = 'decoy' and consumed_at is null)
     and exists (select 1 from card_plays where target_id = 'tst_v1' and outcome = 'decoyed'),'r',r);
   r := play_card_effect('tst_s2', n[2], 'tst_v2');
@@ -219,16 +219,16 @@ begin
     r->>'outcome' = 'blocked' and exists (select 1 from player_effects where player_id = 'tst_v2' and primitive = 'reflect' and consumed_at is null),'r',r);
   r := play_card_effect('tst_s7', n[2], 'tst_v6');
   res := res || jsonb_build_object('case','C26 depth 1: a bounced prank passes the sender''s ward','ok',
-    r->>'outcome' = 'reflected' and r->>'target' = 'tst_s7' and card_effect_active('tst_s7','sticker')
+    r->>'outcome' = 'reflected' and r->>'target' = 'tst_s7' and card_effect_active('tst_s7','mustache')
     and exists (select 1 from player_effects where player_id = 'tst_s7' and primitive = 'ward' and consumed_at is null),'r',r);
   -- (C26 runs before the random redirect of C23, which can land on the C26 sender)
   r := play_card_effect('tst_s4', n[2], 'tst_v3');
   res := res || jsonb_build_object('case','C23 redirect: the prank lands on another member','ok',
-    r->>'outcome' = 'redirected' and r->>'target' not in ('tst_v3','tst_s4') and card_effect_active(r->>'target','sticker')
-    and not card_effect_active('tst_v3','sticker'),'r',r);
+    r->>'outcome' = 'redirected' and r->>'target' not in ('tst_v3','tst_s4') and card_effect_active(r->>'target','mustache')
+    and not card_effect_active('tst_v3','mustache'),'r',r);
   r := play_card_effect('tst_s5', n[2], 'tst_v4');
   res := res || jsonb_build_object('case','C24 delay (Activity prank): it starts 1 hour later and lasts its full time','ok',
-    r->>'outcome' = 'delayed' and exists (select 1 from player_effects where player_id = 'tst_v4' and primitive = 'sticker'
+    r->>'outcome' = 'delayed' and exists (select 1 from player_effects where player_id = 'tst_v4' and primitive = 'mustache'
       and starts_at between now() + interval '59 minutes' and now() + interval '61 minutes'
       and expires_at - starts_at = make_interval(secs => (r->>'duration_s')::int)),'r',r);
   r := play_card_effect('tst_s6', n[1], 'tst_v5');
