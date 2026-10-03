@@ -100,6 +100,7 @@ begin
 
 
   -- 2. The generator: the same day gives the same dungeon; the shape is valid (v2 room types).
+  delete from dungeon_days where day in (v_day, v_day + 1);   -- a live day may hold a v1 run (v2 keeps it); rolled back
   d1 := dungeon_generate(v_day);
   delete from dungeon_days where day = v_day;
   d2 := dungeon_generate(v_day);
