@@ -121,28 +121,7 @@ export function drawPack<T extends { rarity: Rarity }>(
   return pack;
 }
 
-export interface DailyActivity {
-  messageCount: number;
-  baseClaimed: boolean;
-  bonusClaimed: boolean;
-}
-
 export interface PackAward {
   base: boolean;
   bonus: boolean;
-}
-
-/**
- * Decide which packs a member has earned but not yet claimed today.
- * - base: at least one message, not yet claimed.
- * - bonus: at least BONUS_THRESHOLD messages, not yet claimed.
- */
-export function packsToAward(
-  activity: DailyActivity,
-  threshold = BONUS_THRESHOLD,
-): PackAward {
-  return {
-    base: activity.messageCount >= 1 && !activity.baseClaimed,
-    bonus: activity.messageCount >= threshold && !activity.bonusClaimed,
-  };
 }

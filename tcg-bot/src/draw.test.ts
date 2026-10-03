@@ -1,14 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-  BONUS_THRESHOLD,
   PACK_SIZE,
   PULL_RATES,
   type Rarity,
   drawPack,
   luckyRates,
   groupByRarity,
-  packsToAward,
   rollRarity,
 } from './draw.js';
 
@@ -122,46 +120,6 @@ describe('Event and Promo cards never come from a pack', () => {
       assert.equal(pack.length, PACK_SIZE);
       assert.ok(pack.every((c) => c.id < 100));
     }
-  });
-});
-
-describe('packsToAward', () => {
-  it('grants a base pack for one message, once', () => {
-    assert.deepEqual(
-      packsToAward({ messageCount: 1, baseClaimed: false, bonusClaimed: false }),
-      { base: true, bonus: false },
-    );
-    assert.deepEqual(
-      packsToAward({ messageCount: 5, baseClaimed: true, bonusClaimed: false }),
-      { base: false, bonus: false },
-    );
-  });
-
-  it('grants the bonus only at the threshold, once', () => {
-    assert.equal(
-      packsToAward({
-        messageCount: BONUS_THRESHOLD - 1,
-        baseClaimed: true,
-        bonusClaimed: false,
-      }).bonus,
-      false,
-    );
-    assert.equal(
-      packsToAward({
-        messageCount: BONUS_THRESHOLD,
-        baseClaimed: true,
-        bonusClaimed: false,
-      }).bonus,
-      true,
-    );
-    assert.equal(
-      packsToAward({
-        messageCount: BONUS_THRESHOLD + 50,
-        baseClaimed: true,
-        bonusClaimed: true,
-      }).bonus,
-      false,
-    );
   });
 });
 

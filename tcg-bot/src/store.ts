@@ -1,13 +1,11 @@
 import { getSupabase } from './supabase.js';
 import {
-  type DailyActivity,
   type PackAward,
   type Rarity,
   BONUS_THRESHOLD,
   PACK_SIZE,
   drawPack,
   groupByRarity,
-  packsToAward,
 } from './draw.js';
 
 /** A card as stored in the database. */
@@ -138,18 +136,6 @@ export async function getPackBalance(id: string): Promise<number> {
   return data?.pack_balance ?? 0;
 }
 
-/** Grant packs to EVERY player (a server-wide event drop). Returns how many players. */
-export async function grantPacksAll(amount: number, reason: string, by?: string): Promise<number> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase.rpc('grant_packs_all', {
-    p_amount: amount,
-    p_reason: reason,
-    p_by: by ?? null,
-  });
-  if (error) throw new Error(`grantPacksAll failed: ${error.message}`);
-  return (data as number) ?? 0;
-}
-
 /** A player's recent notifications (newest first). */
 export async function getNotifications(playerId: string, limit = 15): Promise<
   { id: number; kind: string; message: string; read: boolean; created_at: string }[]
@@ -176,12 +162,6 @@ export async function notifyPlayer(playerId: string, kind: string, message: stri
   const supabase = getSupabase();
   const { error } = await supabase.rpc('notify_player', { p_player: playerId, p_kind: kind, p_message: message });
   if (error) throw new Error(`notifyPlayer failed: ${error.message}`);
-}
-/** Notify EVERY player (server-wide event). */
-export async function notifyAll(kind: string, message: string): Promise<void> {
-  const supabase = getSupabase();
-  const { error } = await supabase.rpc('notify_all', { p_kind: kind, p_message: message });
-  if (error) throw new Error(`notifyAll failed: ${error.message}`);
 }
 
 /** Read / set the pack-earn multiplier dial. */
@@ -234,7 +214,7 @@ async function takeLuck(id: string): Promise<number | null> {
 }
 
 /**
- * Spend ONE pack from the balance and draw it (/open and the hub Open Pack). Returns the
+ * Spend ONE pack from the balance and draw it (/open). Returns the
  * drawn cards, or null if the player has no packs. Through open_packs: spend_pack and a
  * separate grant lost the pack when the grant failed (bot audit, 2026-10-03).
  */
@@ -261,24 +241,6 @@ export async function openPacks(id: string, username: string, count: number): Pr
   });
   if (error) throw new Error(`open_packs failed: ${error.message}`);
   return packs.slice(0, Number(data) || 0);
-}
-
-/** Read a member's activity row for today. Absent means no messages yet. */
-async function getTodayActivity(id: string): Promise<DailyActivity> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('daily_activity')
-    .select('message_count, base_claimed, bonus_claimed')
-    .eq('player_id', id)
-    .eq('activity_date', utcToday())
-    .maybeSingle();
-  if (error) throw new Error(`getTodayActivity failed: ${error.message}`);
-
-  return {
-    messageCount: data?.message_count ?? 0,
-    baseClaimed: data?.base_claimed ?? false,
-    bonusClaimed: data?.bonus_claimed ?? false,
-  };
 }
 
 /** Load every draw-pool card, grouped by rarity, ready for a pack draw. Cached
@@ -436,103 +398,4 @@ export async function getCardById(id: number): Promise<Card | null> {
   if (error) throw new Error(`getCardById failed: ${error.message}`);
   if (!data) return null;
   return mapCard(data as unknown as RawOwned['card']);
-}
-
-/** Load the whole catalog, for the Browse Cards view. */
-export async function getAllCards(): Promise<Card[]> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('cards')
-    .select(
-      'id, name, rarity, source, image_url, artist_credit, lore, subject:subjects(name)',
-    );
-  if (error) throw new Error(`getAllCards failed: ${error.message}`);
-  return ((data ?? []) as unknown as RawOwned['card'][]).map(mapCard);
-}
-
-export interface DailyStatus extends DailyActivity {
-  baseAvailable: boolean;
-  bonusAvailable: boolean;
-}
-
-/** Read a member's daily status: message count and which packs are still open. */
-export async function getDailyStatus(id: string): Promise<DailyStatus> {
-  const activity = await getTodayActivity(id);
-  const award = packsToAward(activity);
-  return { ...activity, baseAvailable: award.base, bonusAvailable: award.bonus };
-}
-
-export interface PlayerSummary {
-  totalUnique: number;
-  totalCopies: number;
-  rarest: Card | null;
-}
-
-const RARITY_RANK: Record<string, number> = {
-  normal: 0,
-  illustrated_rare: 1,
-  secret_rare: 2,
-  full_art: 3,
-  gold: 4,
-};
-
-/** A per-member summary for the panel dashboard. */
-export async function getPlayerSummary(id: string): Promise<PlayerSummary> {
-  const owned = await getCollection(id);
-  let totalCopies = 0;
-  let rarest: Card | null = null;
-  for (const row of owned) {
-    totalCopies += row.quantity;
-    if (!rarest || RARITY_RANK[row.card.rarity]! > RARITY_RANK[rarest.rarity]!) {
-      rarest = row.card;
-    }
-  }
-  return { totalUnique: owned.length, totalCopies, rarest };
-}
-
-/** Turn a subject name into a stable slug key, for example "Ember Fox" -> "ember-fox". */
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-export interface NewCard {
-  subjectName: string;
-  name: string;
-  rarity: Rarity;
-  imageUrl?: string;
-  artistCredit?: string;
-  lore?: string;
-}
-
-/** Create a card, and its subject if that subject is new. For seeding and testing. */
-export async function addCard(input: NewCard): Promise<Card> {
-  const supabase = getSupabase();
-  const key = slugify(input.subjectName);
-
-  const { data: subject, error: subjectError } = await supabase
-    .from('subjects')
-    .upsert({ key, name: input.subjectName }, { onConflict: 'key' })
-    .select('id')
-    .single();
-  if (subjectError) throw new Error(`addCard subject failed: ${subjectError.message}`);
-
-  const { data: card, error: cardError } = await supabase
-    .from('cards')
-    .insert({
-      subject_id: subject.id,
-      name: input.name,
-      rarity: input.rarity,
-      image_url: input.imageUrl ?? null,
-      artist_credit: input.artistCredit ?? null,
-      lore: input.lore ?? null,
-    })
-    .select('id, name, rarity, source, image_url, artist_credit, lore')
-    .single();
-  if (cardError) throw new Error(`addCard failed: ${cardError.message}`);
-
-  return card as Card;
 }
