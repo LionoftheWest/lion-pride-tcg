@@ -1,5 +1,5 @@
 /**
- * Acceptance test for tcg-bot/supabase/dungeon.sql (with combat_core.sql) on the LIVE database, NO lasting
+ * Acceptance test for tcg-bot/supabase/dungeon.sql (with combat_core.sql and adventure_gate.sql) on the LIVE database, NO lasting
  * change: one DO block installs both migrations, plays the Dungeon with test members, and the final RAISE
  * rolls it all back.
  *   node scripts/test-dungeon.mjs                 must PASS
@@ -8,6 +8,8 @@
  *   MUTATE=every node scripts/test-dungeon.mjs    must FAIL (only the first monster acts)
  *   MUTATE=area  node scripts/test-dungeon.mjs    must FAIL (Slam / Cataclysm skip the other cards)
  *   MUTATE=gen   node scripts/test-dungeon.mjs    must FAIL (the generator uses the session random)
+ *   MUTATE=huntlock / allows                       must FAIL (the Hunt squad lock / a fight with no squad skips the gate)
+ * Env: CORE, GATE, MIG = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -16,22 +18,30 @@ if (ref !== 'kgvdqqehefezbypozvrh') throw new Error(`wrong Supabase project: ${r
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const strip = (s) => s.replace(/notify pgrst[^\n]*\n/g, '');
 const core = strip(readFileSync(process.env.CORE || new URL('../../tcg-bot/supabase/combat_core.sql', import.meta.url), 'utf8'));
+let gate = strip(readFileSync(process.env.GATE || new URL('../../tcg-bot/supabase/adventure_gate.sql', import.meta.url), 'utf8'));
 let mig = strip(readFileSync(process.env.MIG || new URL('../../tcg-bot/supabase/dungeon.sql', import.meta.url), 'utf8'));
 const MUT = {
-  gate: ["'ok', g.open = 0 and a.n >= g.need", "'ok', a.n >= g.need"],
   core: ["  v_dmg := (hit->>'dmg')::int;\n", "  v_dmg := (hit->>'dmg')::int + 1;\n"],
   every: ["    continue when (f->>'hp')::int <= 0;\n", "    continue when (f->>'hp')::int <= 0 or i > 0;\n"],
   area: ["    if (act->>'area')::numeric > 0 then", "    if false then"],
   gen: ["  select (('x' || substr(md5(p_key), 1, 8))", "  select random() * 0 + (('x' || substr(md5(p_key || random()::text), 1, 8))"],
 };
-if (process.env.MUTATE) { const m = MUT[process.env.MUTATE]; if (!m || !mig.includes(m[0])) throw new Error('bad mutation'); mig = mig.replace(m[0], m[1]); }
-for (const s of [core, mig]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
+const GMUT = {
+  gate: ["'ok', g.open = 0 and a.n >= g.need", "'ok', a.n >= g.need"],
+  huntlock: ["  if not (v_gate->>'ok')::boolean then return", "  if false then return"],
+  allows: ["(adventure_gate(p_player)->>'ok')::boolean);", "true);"],
+};
+const M = process.env.MUTATE;
+if (M && GMUT[M]) { if (!gate.includes(GMUT[M][0])) throw new Error('bad mutation'); gate = gate.replace(GMUT[M][0], GMUT[M][1]); }
+else if (M) { const m = MUT[M]; if (!m || !mig.includes(m[0])) throw new Error('bad mutation'); mig = mig.replace(m[0], m[1]); }
+for (const s of [core, gate, mig]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
 
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; g jsonb; d1 jsonb; d2 jsonb; fl jsonb; rm jsonb; i int; j int; n int; st jsonb; run record;
-  atk bigint[]; gold bigint[]; foe jsonb; info jsonb; sq jsonb; wk jsonb; crit numeric; ex jsonb; seed float; bal int; v_day date;
+  atk bigint[]; gold bigint[]; hid bigint; foe jsonb; info jsonb; sq jsonb; wk jsonb; crit numeric; ex jsonb; seed float; bal int; v_day date;
 begin
   execute $m$${core}$m$;
+  execute $m$${gate}$m$;
   execute $m$${mig}$m$;
   v_day := dungeon_day();
   select array_agg(id order by id) into atk from (select c.id from cards c join subjects s on s.id = c.subject_id
@@ -55,8 +65,17 @@ begin
   if (g->>'ok')::boolean or (g->>'gifts_open')::int <> 1 or (g->>'attackers')::int <> 8 then bad := bad || 'gate open gift: ' || g::text || '; '; end if;
   r := dungeon_start('tst_dg_g', array[24, 29, 34, 44, 49]);
   if r->>'error' is distinct from 'locked' then bad := bad || 'start not locked: ' || r::text || '; '; end if;
+  -- The Hunt: no squad lock, and no fight without a locked squad.
+  select id into hid from hunts where status = 'active' order by id desc limit 1;
+  if hid is null then insert into hunts (name, tier, weak_points, hp_max, hp_remaining, closes_at) values ('test', 'Normal', '[]', 1000, 1000, now() + interval '1 day') returning id into hid; end if;
+  r := lock_hunt_squad('tst_dg_g', hid, array[24, 29, 34, 44, 49]);
+  if r->>'error' is distinct from 'locked' then bad := bad || 'hunt lock not locked: ' || r::text || '; '; end if;
+  if hunt_squad_allows(hid, 'tst_dg_g', v_day, 24) then bad := bad || 'hunt fight allowed while locked; '; end if;
   update gift_claims set claimed_at = now() where player_id = 'tst_dg_g';
   if not (adventure_gate('tst_dg_g')->>'ok')::boolean then bad := bad || 'gate closed after claim; '; end if;
+  if not hunt_squad_allows(hid, 'tst_dg_g', v_day, 24) then bad := bad || 'hunt fight refused after claim; '; end if;
+  r := lock_hunt_squad('tst_dg_g', hid, array[24, 29, 34, 44, 49]);
+  if not coalesce((r->>'ok')::boolean, false) then bad := bad || 'hunt lock after claim: ' || r::text || '; '; end if;
   delete from player_cards where player_id = 'tst_dg_g' and card_id = atk[3];
   if (adventure_gate('tst_dg_g')->>'ok')::boolean then bad := bad || 'gate open with 7 attackers; '; end if;
 

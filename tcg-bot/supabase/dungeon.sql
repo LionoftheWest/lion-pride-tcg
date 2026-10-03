@@ -11,7 +11,7 @@
 insert into public.settings (key, value) values ('dungeon', jsonb_build_object(
   'enabled', false,
   'salt', md5(random()::text || clock_timestamp()::text),   -- a member cannot compute a future dungeon
-  'squad', 5, 'budget', 12, 'gate_attackers', 8,
+  'squad', 5, 'budget', 12,
   'cost', jsonb_build_object('normal', 1, 'illustrated_rare', 2, 'secret_rare', 3, 'full_art', 4, 'gold', 5, 'event', 4, 'promo', 3),
   'floors', 30, 'round_cap', 40,
   'hp_floor', 0.30, 'hp_room', 0.05, 'atk_floor', 0.15,
@@ -92,19 +92,7 @@ alter table public.dungeon_log enable row level security;
 -- The game day (mt_clock.sql).
 create or replace function public.dungeon_day() returns date language sql stable as $$ select (now() at time zone 'America/Denver')::date; $$;
 
--- The unlock gate: the starter gifts redeemed + at least gate_attackers attackers (Character / Creature).
-create or replace function public.adventure_gate(p_player text) returns jsonb
-language sql stable set search_path = public as $$
-  select jsonb_build_object(
-    'ok', g.open = 0 and a.n >= g.need,
-    'gifts_open', g.open, 'gifts_total', g.total,
-    'attackers', a.n, 'need', g.need)
-  from (select count(*) filter (where claimed_at is null)::int open, count(*)::int total,
-               coalesce((dungeon_cfg()->>'gate_attackers')::int, 8) need
-          from gift_claims where player_id = p_player and kind in ('new_player', 'launch_day')) g,
-       (select count(*)::int n from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
-          where pc.player_id = p_player and pc.quantity > 0 and s.type in ('Character', 'Creature')) a;
-$$;
+-- The unlock gate is adventure_gate() (adventure_gate.sql, applied first).
 
 -- The daily rules (one is drawn each day). types = allowed card types (always with an attacker type).
 create or replace function public.dungeon_rules() returns jsonb language sql immutable as $$
