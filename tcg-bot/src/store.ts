@@ -20,12 +20,6 @@ export interface Card {
   subject_name?: string | null;
 }
 
-/** One owned line in a member's collection. */
-export interface OwnedCard {
-  quantity: number;
-  card: Card;
-}
-
 /** The result of opening earned packs. */
 export interface OpenResult {
   award: PackAward;
@@ -136,26 +130,6 @@ export async function getPackBalance(id: string): Promise<number> {
   return data?.pack_balance ?? 0;
 }
 
-/** A player's recent notifications (newest first). */
-export async function getNotifications(playerId: string, limit = 15): Promise<
-  { id: number; kind: string; message: string; read: boolean; created_at: string }[]
-> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('id, kind, message, read, created_at')
-    .eq('player_id', playerId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw new Error(`getNotifications failed: ${error.message}`);
-  return (data ?? []) as { id: number; kind: string; message: string; read: boolean; created_at: string }[];
-}
-
-/** Mark all of a player's notifications read. */
-export async function markNotificationsRead(playerId: string): Promise<void> {
-  const supabase = getSupabase();
-  await supabase.from('notifications').update({ read: true }).eq('player_id', playerId).eq('read', false);
-}
 
 /** Add an in-app notification for a player (shown in the Activity, never a DM). */
 export async function notifyPlayer(playerId: string, kind: string, message: string): Promise<void> {
@@ -213,15 +187,6 @@ async function takeLuck(id: string): Promise<number | null> {
   } catch { return null; }
 }
 
-/**
- * Spend ONE pack from the balance and draw it (/open). Returns the
- * drawn cards, or null if the player has no packs. Through open_packs: spend_pack and a
- * separate grant lost the pack when the grant failed (bot audit, 2026-10-03).
- */
-export async function openOnePack(id: string, username: string): Promise<Card[] | null> {
-  const [pack] = await openPacks(id, username, 1);
-  return pack ?? null;
-}
 
 /**
  * Open up to `count` packs (the Activity's 1x/5x/10x) in ONE database call (open_packs,
@@ -303,99 +268,3 @@ export async function openTestPacks(
   return { award: { base: true, bonus: count > 1 }, packs };
 }
 
-/** Load a member's full collection, highest rarity value first is left to the caller. */
-export async function getCollection(id: string): Promise<OwnedCard[]> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('player_cards')
-    .select(
-      'quantity, card:cards(id, name, rarity, source, image_url, artist_credit, lore, subject:subjects(name))',
-    )
-    .eq('player_id', id);
-  if (error) throw new Error(`getCollection failed: ${error.message}`);
-
-  // Supabase types the nested join loosely, so shape it here.
-  return ((data ?? []) as unknown as RawOwned[]).map((row) => ({
-    quantity: row.quantity,
-    card: {
-      id: row.card.id,
-      name: row.card.name,
-      rarity: row.card.rarity,
-      source: row.card.source,
-      image_url: row.card.image_url,
-      artist_credit: row.card.artist_credit,
-      lore: row.card.lore,
-      subject_name: row.card.subject?.name ?? null,
-    },
-  }));
-}
-
-interface RawOwned {
-  quantity: number;
-  card: {
-    id: number;
-    name: string;
-    rarity: Rarity;
-    source: string;
-    image_url: string | null;
-    artist_credit: string | null;
-    lore: string | null;
-    subject: { name: string } | null;
-  };
-}
-
-/** Find one card by an exact (case-insensitive) name. */
-export async function findCardByName(name: string): Promise<Card | null> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('cards')
-    .select(
-      'id, name, rarity, source, image_url, artist_credit, lore, subject:subjects(name)',
-    )
-    .ilike('name', name)
-    .limit(1)
-    .maybeSingle();
-  if (error) throw new Error(`findCardByName failed: ${error.message}`);
-  if (!data) return null;
-
-  const raw = data as unknown as RawOwned['card'];
-  return {
-    id: raw.id,
-    name: raw.name,
-    rarity: raw.rarity,
-    source: raw.source,
-    image_url: raw.image_url,
-    artist_credit: raw.artist_credit,
-    lore: raw.lore,
-    subject_name: raw.subject?.name ?? null,
-  };
-}
-
-/** Shape a raw joined card row into a Card. */
-function mapCard(raw: RawOwned['card']): Card {
-  return {
-    id: raw.id,
-    name: raw.name,
-    rarity: raw.rarity,
-    source: raw.source,
-    image_url: raw.image_url,
-    artist_credit: raw.artist_credit,
-    lore: raw.lore,
-    subject_name: raw.subject?.name ?? null,
-  };
-}
-
-/** Load one card by its id. */
-export async function getCardById(id: number): Promise<Card | null> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('cards')
-    .select(
-      'id, name, rarity, source, image_url, artist_credit, lore, subject:subjects(name)',
-    )
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw new Error(`getCardById failed: ${error.message}`);
-  if (!data) return null;
-  return mapCard(data as unknown as RawOwned['card']);
-}
