@@ -29,6 +29,7 @@ import { selectAll } from './src/select-all.js';
 import { rankByName } from './src/name-rank.js';
 import { registerHallRoutes, heldCopies } from './src/hall-routes.js';
 import { registerShopRoutes } from './src/shop-routes.js';
+import { makePingLimiter } from './src/trade-ping-limit.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -725,6 +726,20 @@ async function activeHunt() {
     return data || null;
   });
 }
+// The daily distinct-card limit of the Hunt: settings.hunt_daily_card_cap (the SQL default is 8).
+// Read once a minute. A failed read keeps the last good value.
+let huntCapCache = { at: 0, cap: 8 };
+async function huntDailyCap() {
+  if (Date.now() - huntCapCache.at < 60000) return huntCapCache.cap;
+  return singleFlight('huntDailyCap', async () => {
+    try {
+      const { data, error } = await supabase.from('settings').select('value').eq('key', 'hunt_daily_card_cap').maybeSingle();
+      const n = Number(data?.value);
+      if (!error) huntCapCache = { at: Date.now(), cap: Number.isInteger(n) && n > 0 ? n : 8 };
+    } catch { /* keep the last value */ }
+    return huntCapCache.cap;
+  });
+}
 const matchesWeak = (weak, { type, rarity, season }) => (weak || []).some((w) =>
   (w.kind === 'type' && w.value === type)
   || (w.kind === 'rarity' && w.value === rarity)
@@ -793,8 +808,8 @@ app.get('/api/hunt', async (req, res) => {
       got: row.first_obtained_at || null, // the squad picker's "New" sort
     };
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
-  // Daily distinct-card cap (must match hunt_daily_card_cap in the SQL, default 8).
-  const dailyCap = 8;
+  // Daily distinct-card cap (settings.hunt_daily_card_cap, the same value the SQL reads).
+  const dailyCap = await huntDailyCap();
   // The squad locked today (hunt_squads.sql): one squad per day, per member.
   const { data: sqRow } = await supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle();
   res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null });
@@ -840,14 +855,15 @@ app.post('/api/hunt/support', async (req, res) => {
 // attacker by expected damage (CP x the same weakness/resistance multiplier the
 // battle uses), tops the squad up with your best support, and returns the card
 // ids. The client fills the picker; the player can still edit before Lock In.
-// Lock In: the member's squad for today (lock_hunt_squad: owned, 1..8, fixed after the first fight).
+// Lock In: the member's squad for today (lock_hunt_squad: owned, 1..hunt_daily_card_cap, fixed after the first fight).
 app.post('/api/hunt/squad', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const hunt = await activeHunt();
   if (!hunt) return res.status(400).json({ error: 'no_hunt' });
-  const cards = (Array.isArray(req.body?.cards) ? req.body.cards : []).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 8);
+  const cap = await huntDailyCap(); // lock_hunt_squad checks the same setting
+  const cards = (Array.isArray(req.body?.cards) ? req.body.cards : []).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, cap);
   const { data, error } = await supabase.rpc('lock_hunt_squad', { p_player: String(me.id), p_hunt: hunt.id, p_cards: cards });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || { ok: false });
@@ -859,7 +875,7 @@ app.get('/api/hunt/autopick', async (req, res) => {
   if (!FEATURE_HUNT) return res.json({ ids: [] });
   const hunt = await activeHunt();
   if (!hunt) return res.json({ ids: [] });
-  const cap = 8; // matches settings.hunt_daily_card_cap / the /api/hunt dailyCap
+  const cap = await huntDailyCap(); // settings.hunt_daily_card_cap, the same as the /api/hunt dailyCap
   // The squad with the highest team CP the member can field TODAY (src/squad-pick.js): no card
   // knocked out today, the daily limit of new cards, the stat points, matchups and synergy.
   const [{ data }, { data: view }] = await Promise.all([
@@ -1617,6 +1633,10 @@ app.post('/api/trade/gift', async (req, res) => {
   res.json({ ok: Boolean(data) });
 });
 
+// One public trade ping per sender -> target pair in 10 minutes (src/trade-ping-limit.js): an
+// offer/cancel loop cannot spam a member. The trade and the in-app notification still happen.
+const tradePings = makePingLimiter();
+
 // Propose a swap. RPC enforces: same rarity, both tradeable, proposer owns offer.
 app.post('/api/trade/offer', async (req, res) => {
   const me = await caller(req);
@@ -1637,7 +1657,7 @@ app.post('/api/trade/offer', async (req, res) => {
   if (data != null) {
     const from = me.global_name || me.username;
     notify(toId, 'trade_offer', requestCardId ? `🔄 ${from} sent you a trade offer! Open the Trading tab.` : `🔄 ${from} sent you a trade offer! Pick a card to trade back.`);
-    announce(requestCardId ? `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to accept or decline.` : `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to pick your card or decline.`, 'trades', { type: 'trade', kind: 'offer', offerId: Number(data) });
+    if (tradePings.allow(me.id, toId)) announce(requestCardId ? `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to accept or decline.` : `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to pick your card or decline.`, 'trades', { type: 'trade', kind: 'offer', offerId: Number(data) });
   }
   res.json({ ok: data != null, id: data });
 });
@@ -1656,7 +1676,7 @@ app.post('/api/trade/counter', async (req, res) => {
   if (data && offer?.from_id) {
     const who = me.global_name || me.username;
     notify(offer.from_id, 'trade_counter', `🔄 ${who} picked a card for your trade! Accept to swap.`);
-    announce(`🔄 <@${offer.from_id}> — **${who}** picked a card for your trade! Open Lion Pride TCG to accept.`, 'trades', { type: 'trade', kind: 'picked', offerId });
+    if (tradePings.allow(me.id, offer.from_id)) announce(`🔄 <@${offer.from_id}> — **${who}** picked a card for your trade! Open Lion Pride TCG to accept.`, 'trades', { type: 'trade', kind: 'picked', offerId });
   }
   res.json({ ok: Boolean(data) });
 });

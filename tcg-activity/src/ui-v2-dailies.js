@@ -29,12 +29,12 @@ let tickTimer = null;
 // The dailies a member can redeem NOW: the red count on the Dailies button. None while
 // paused or once the daily cap is reached (a claim would pay nothing). With Shards on
 // (shards_dailies_gifts.sql), a daily at the cap still pays its Shards, so it stays redeemable.
-const ready = (v) => (v?.enabled && !v.paused && ((v.earned || 0) < (v.cap || 7) || (v.shards || 0) > 0) ? v.tasks.filter((t) => !t.auto && t.done && !t.claimed) : []);
-const capped = () => (view?.earned || 0) >= (view?.cap || 7);
+const ready = (v) => (v?.enabled && !v.paused && ((v.earned || 0) < (v.cap || 5) || (v.shards || 0) > 0) ? v.tasks.filter((t) => !t.auto && t.done && !t.claimed) : []);
+const capped = () => (view?.earned || 0) >= (view?.cap || 5);
 // The Shards of a daily: a lime chip next to the pack chip.
 const shc = (cls = '') => (view?.shards ? `<span class="dl-sh ${cls}">${COIN}+${view.shards}</span>` : '');
 // The packs a daily pays now: never past the cap (a streak day with 1 left pays +1, not +2).
-const pay = (t) => payNow(t.reward, view?.cap || 7, view?.earned || 0);
+const pay = (t) => payNow(t.reward, view?.cap || 5, view?.earned || 0);
 const readyPacks = (v) => Math.min(ready(v).reduce((n, t) => n + (t.reward || 0), 0), Math.max(0, (v?.cap || 0) - (v?.earned || 0)));
 
 function paintBadge() {
@@ -110,7 +110,7 @@ function paint() {
   const box = ctx().el('v2Dailies');
   if (!box || !view) return;
   if (!view.enabled) { box.innerHTML = '<p class="v2-empty">Nothing here yet.</p>'; return; }
-  const n = ready(view).length, rp = readyPacks(view), cap = view.cap || 7, earned = Math.min(view.earned, cap);
+  const n = ready(view).length, rp = readyPacks(view), cap = view.cap || 5, earned = Math.min(view.earned, cap);
   const seg = Array.from({ length: cap }, (_, i) => `<i class="${i < earned ? 'on' : i < earned + rp ? 'ready' : ''}"></i>`).join('');
   box.innerHTML = `<div class="nt-head"><h3>Dailies</h3>${n ? `<span class="nt-count">${n}</span>` : ''}<span class="grow"></span>
       <span class="dl-reset">${ICON.reset}${view.paused ? 'Paused' : `Resets ${left(view.resets_at)}`}</span>

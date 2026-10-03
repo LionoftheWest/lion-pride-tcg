@@ -7,16 +7,26 @@
 
 const ERR = {
   disabled: 'The Shop is closed.', no_player: 'Unknown member.', not_enough: 'You do not have enough Shards.',
-  bad_qty: 'Buy 1 to 10 packs at a time.', no_slot: 'That card is not in today\'s stock.', bought: 'You bought that card today already.',
+  no_slot: 'That card is not in today\'s stock.', bought: 'You bought that card today already.',
   stats_disabled: 'Stat points are off.', not_owned: 'You do not own that card.', nothing_spent: 'That card has no points to reset.',
   bad_kind: 'Unknown item.', bad_count: 'Pick how many copies to convert.', no_value: 'That card cannot convert to Shards.',
   too_many: 'You can convert only the extra copies.',
 };
-const fail = (res, data) => res.status(400).json({ ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' });
+// bad_qty: the limit is settings.shards.max_packs_per_buy (buy_shop_item reads it, default 10).
+const qtyText = (max) => `Buy 1 to ${max} packs at a time.`;
+const fail = (res, data, msg) => res.status(400).json({ ...data, ok: false, message: msg || ERR[data?.error] || data?.error || 'failed' });
 const KINDS = new Set(['pack', 'card', 'stat_reset']);
 const int = (v) => (Number.isInteger(v) ? v : null);
 
 export function registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn }) {
+  // settings.shards, read once a minute (the dupe values and the pack limit).
+  let cfg = null;
+  const shardsCfg = async () => {
+    if (cfg && Date.now() - cfg.at < 60000) return cfg.v;
+    const { data } = await supabase.from('settings').select('value').eq('key', 'shards').maybeSingle();
+    cfg = { at: Date.now(), v: data?.value || {} };
+    return cfg.v;
+  };
   const gate = async (req, res, write = false) => {
     const me = await caller(req);
     if (!me) { res.status(401).json({ error: 'not authenticated' }); return null; }
@@ -51,12 +61,13 @@ export function registerShopRoutes(app, { supabase, caller, rateLimit, bustUser,
     const kind = String(req.body?.kind || '');
     if (!KINDS.has(kind)) return fail(res, { error: 'bad_kind' });
     const args = { p_player: String(me.id), p_kind: kind, p_slot: null, p_card: null, p_qty: 1 };
-    if (kind === 'pack') { args.p_qty = int(req.body?.qty ?? 1); if (args.p_qty === null) return fail(res, { error: 'bad_qty' }); }
+    const badQty = async (d) => fail(res, d, qtyText(Number((await shardsCfg()).max_packs_per_buy) || 10));
+    if (kind === 'pack') { args.p_qty = int(req.body?.qty ?? 1); if (args.p_qty === null) return badQty({ error: 'bad_qty' }); }
     if (kind === 'card') { args.p_slot = int(req.body?.slot); if (args.p_slot === null) return fail(res, { error: 'no_slot' }); }
     if (kind === 'stat_reset') { args.p_card = int(req.body?.cardId); if (args.p_card === null) return fail(res, { error: 'not_owned' }); }
     const { data, error } = await supabase.rpc('buy_shop_item', args);
     if (error) return res.status(500).json({ error: error.message });
-    if (!data?.ok) return fail(res, data);
+    if (!data?.ok) return data?.error === 'bad_qty' ? badQty(data) : fail(res, data);
     bustUser(me.id); // the collection, the pack count or the stats changed
     res.json(data);
   });
@@ -75,13 +86,7 @@ export function registerShopRoutes(app, { supabase, caller, rateLimit, bustUser,
 
   // How many copies of a card can convert, and the Shards for each copy (settings.shards.dupe_values;
   // the Collection panel shows the Convert extras button when count > 0).
-  let values = null;
-  const dupeValues = async () => {
-    if (values && Date.now() - values.at < 60000) return values.v;
-    const { data } = await supabase.from('settings').select('value').eq('key', 'shards').maybeSingle();
-    values = { at: Date.now(), v: data?.value?.dupe_values || {} };
-    return values.v;
-  };
+  const dupeValues = async () => (await shardsCfg()).dupe_values || {};
   app.get('/api/shards/convertible', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
     const cardId = Number(req.query.cardId);

@@ -16,8 +16,9 @@ const BODY_FX = { googly_eyes: 'fx-googly', upside_down: 'fx-upside', rubber_chi
 
 const ERR = {
   cooldown: 'This card is on cooldown.',
-  send_cap: 'You played your 10 cards for today.',
-  pair_cap: 'You already played 3 cards on this member today.',
+  // The numbers come from settings.card_effect_caps (/api/effects/me returns them as caps).
+  send_cap: (c) => (c.send_per_day ? `You played your ${c.send_per_day} cards for today.` : 'You played all your cards for today.'),
+  pair_cap: (c) => (c.pair_per_day ? `You already played ${c.pair_per_day} cards on this member today.` : 'You already played enough cards on this member today.'),
   target_prank_cap: 'This member has been pranked enough for today.',
   target_timeout_cap: 'This member has had enough timeouts for today.',
   already_active: 'This member already has that effect.',
@@ -29,6 +30,10 @@ const ERR = {
   no_target: 'That member has not played yet.',
   no_effect: 'This card has no effect yet.',
   slow_down: 'Slow down a little.',
+};
+const errText = (code, caps) => {
+  const e = ERR[code];
+  return typeof e === 'function' ? e(caps || {}) : e;
 };
 
 export const effectsEnabled = () => state.enabled;
@@ -264,7 +269,7 @@ async function doPlay(id, name) {
     await refreshEffects();
     setTimeout(closePicker, 1400);
   } else {
-    if (msg) { msg.textContent = ERR[r?.error] || 'That did not work.'; msg.classList.add('err'); }
+    if (msg) { msg.textContent = errText(r?.error, state.caps) || 'That did not work.'; msg.classList.add('err'); }
     if (yes) yes.disabled = false;
   }
 }
@@ -408,7 +413,7 @@ export const effectState = () => state;
 export const effectScaled = (card) => scaled(card);
 export const effectReadyIn = (card) => readyIn(card);
 export const EFFECT_KIND = { label: KIND_LABEL, icon: KIND_ICON };
-export const effectError = (code) => ERR[code] || 'That did not work. Try again.';
+export const effectError = (code) => errText(code, state.caps) || 'That did not work. Try again.';
 /** Play a card on a member. Returns the server result; refreshes cooldowns + effects. */
 export async function playCard(card, targetId) {
   const r = await deps.apiPost('/api/effects/play', { cardId: card.id, targetId }).catch(() => ({ ok: false }));
