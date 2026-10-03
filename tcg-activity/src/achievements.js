@@ -22,6 +22,12 @@ function versions(cards) {
   return [...by.values()];
 }
 
+// The pack_ledger reasons that the pack stats count (one row each, on the player's own row).
+// gift_packs writes 'gift_sent' on the sender when the gift is sent (gift_claims.sql). Until
+// 2026-10-03 the server counted reason 'gift', which no code writes: nobody could finish gift1.
+// card-studio/scripts/test-gift-packs.mjs checks gift_packs against this table.
+export const LEDGER = { opened: 'opened', giftSent: 'gift_sent' };
+
 export const ACHIEVEMENTS = [
   // Collection size
   { key: 'first', group: 'Collection', icon: '🎴', name: 'First Pull', desc: 'Own your first card', rule: ownN(() => true, 1) },

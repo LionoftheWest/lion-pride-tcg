@@ -13,7 +13,7 @@
  *              SUPABASE_SERVICE_ROLE_KEY, PORT (default 4441)
  */
 import 'dotenv/config';
-import { measure as measureAchievements, ACHIEVEMENTS, rewardOf } from './src/achievements.js';
+import { measure as measureAchievements, ACHIEVEMENTS, rewardOf, LEDGER } from './src/achievements.js';
 const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
@@ -661,8 +661,8 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         selectAll(() => supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1), ['player_id', 'card_id']),
         selectAll(() => supabase.from('hunt_hits').select('player_id, hunt_id, damage'), ['id']),
         selectAll(() => supabase.from('hunts').select('id, status'), ['id']),
-        selectAll(() => supabase.from('pack_ledger').select('player_id').eq('reason', 'opened'), ['id']),
-        selectAll(() => supabase.from('pack_ledger').select('granted_by').eq('reason', 'gift'), ['id']),
+        selectAll(() => supabase.from('pack_ledger').select('player_id').eq('reason', LEDGER.opened), ['id']),
+        selectAll(() => supabase.from('pack_ledger').select('player_id').eq('reason', LEDGER.giftSent), ['id']),
         selectAll(() => supabase.from('card_plays').select('player_id, kind'), ['id']),
         selectAll(() => supabase.from('trade_offers').select('from_id, to_id').eq('status', 'accepted'), ['id']),
         getCatalogBase(),
@@ -676,7 +676,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
       for (const r of owned.data || []) row(r.player_id).cards.push(r);
       for (const r of hits.data || []) row(r.player_id).hits.push(r);
       for (const r of opened.data || []) row(r.player_id).opened += 1;
-      for (const r of gifted.data || []) if (r.granted_by) row(r.granted_by).gifted += 1;
+      for (const r of gifted.data || []) row(r.player_id).gifted += 1;
       for (const r of plays.data || []) { const x = row(r.player_id); if (r.kind === 'boon') x.boons += 1; if (r.kind === 'prank') x.pranks += 1; }
       for (const r of trades.data || []) { row(r.from_id).trades += 1; row(r.to_id).trades += 1; }
       const names = new Map((players.data || []).map((p) => [String(p.id), p]));
@@ -981,8 +981,8 @@ async function loadProfile(id) {
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
   const [player, opened, gifted, hits, plays, pranked, trades, lb, cp, owned, claims] = await Promise.all([
     supabase.from('players').select('id, username, avatar, spotlight, title, frame').eq('id', id).maybeSingle(),
-    supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', 'opened'),
-    supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('granted_by', id).eq('reason', 'gift'),
+    supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', LEDGER.opened),
+    supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', LEDGER.giftSent),
     selectAll(() => supabase.from('hunt_hits').select('hunt_id, damage').eq('player_id', id), ['id']),
     selectAll(() => supabase.from('card_plays').select('kind').eq('player_id', id), ['id']),
     supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('target_id', id).eq('kind', 'prank').neq('player_id', id),
