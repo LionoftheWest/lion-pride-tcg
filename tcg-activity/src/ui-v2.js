@@ -2,7 +2,8 @@
 // member profiles. main.js owns the data, the streams, and the Hunt; this module only
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
-import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { fillConvertButton } from './ui-v2-shop.js';
 import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';
 import { mtToday } from './mt-time.js';
@@ -579,6 +580,7 @@ function paintPanel(c) {
     ${c.artist ? `<div class="p-credit">🎨 Art by <b>${esc(c.artist)}</b></div>` : ''}
     <div class="p-actions">
       ${canAsc ? `<button class="v2-btn gold" id="pAscend">Ascend to ★${a + 1} · uses ${c.next_cost}</button>` : ''}
+      ${c.locked ? '' : '<button class="v2-btn sh-convert hidden" id="pConvert"></button>'}
       ${c.locked ? '' : `<button class="v2-icon${inSpot ? ' on' : ''}" id="pSpot" title="${inSpot ? 'Remove from Spotlight' : 'Add to Spotlight'}">${inSpot ? '★' : '☆'}</button>`}
       <button class="v2-icon" id="pTrade" title="Trade">⇄</button>
     </div>`;
@@ -589,6 +591,8 @@ function paintPanel(c) {
   el('pTrade')?.addEventListener('click', () => ctx.show('trading'));
   el('pSpot')?.addEventListener('click', () => toggleSpotlight(c));
   el('pAscend')?.addEventListener('click', () => ascend(c));
+  // Extra copies -> Shards (the button shows only when copies can convert; ui-v2-shop.js).
+  fillConvertButton(c, async () => { await ctx.refreshOwned(); renderCollectionV2(); });
   if (sp) wirePoints(c, sp, box);
   fitPanel(box);
   // The effect block fills later and makes the right column taller: balance the columns again.

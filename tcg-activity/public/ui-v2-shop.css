@@ -315,3 +315,23 @@ body.ui-v2 .dl-shtoday b { color: var(--shard); }
 body.ui-v2 .gf-shards { display: inline-flex; align-items: center; gap: 4px; color: var(--shard); font-weight: 700; }
 body.ui-v2 .gf-shards .sh-coin { width: 15px; height: 15px; }
 body.ui-v2 .gf-ico.gf-coin .sh-coin { width: 26px; height: 26px; }
+
+/* ---- Convert extras (the Collection card panel) ---- */
+body.ui-v2 .sh-convert { display: inline-flex; align-items: center; gap: 7px; color: var(--shard); background: var(--shard-soft); border-color: rgba(184, 240, 42, .4); font-weight: 700; white-space: nowrap; }
+body.ui-v2 .sh-convert.hidden { display: none; }
+body.ui-v2 .sh-convert .sh-coin { width: 18px; height: 18px; }
+body.ui-v2 .sh-cqty { padding: 10px 14px; border-radius: var(--rad-lg); background: var(--surface); border: 1px solid var(--border); }
+body.ui-v2.m-land .sh-cqty { padding: 6px 10px; }
+body.ui-v2.m-land .sh-cqty .sh-step, body.ui-v2.m-land .sh-cqty .sh-qn { height: 32px; }
+body.ui-v2.m-land .sh-confirm.convert .sh-cnote { display: none; }
+/* A phone: the action row is a narrow column, so Convert takes its own row above the icons. */
+body.ui-v2 .sh-convert .cv-short { display: none; }
+body.ui-v2.m-port .p-actions:has(.sh-convert:not(.hidden)) { flex-wrap: wrap; }
+body.ui-v2.m-port .p-actions .sh-convert { flex: 1 0 100%; justify-content: center; order: -1; }
+/* A landscape phone: the panel is short, so Convert stays in the icon row with a short label. */
+body.ui-v2.m-land .sh-convert .cv-long { display: none; }
+body.ui-v2.m-land .sh-convert .cv-short { display: inline; }
+body.ui-v2.m-land .p-actions .sh-convert { padding: 0 12px; }
+/* The narrowest landscape phone (under 700 px): a coin-only square like the other icons. */
+body.ui-v2.m-land.m-xnarrow .sh-convert .cv-short { display: none; }
+body.ui-v2.m-land.m-xnarrow .p-actions .sh-convert { width: 38px; padding: 0; justify-content: center; }

@@ -16,7 +16,7 @@ function setup({ on = true, me = { id: '111111111111111111' } } = {}) {
       if (name === 'convertible_copies') return { data: 2 };
       return { data: { ok: true, balance: 150 } };
     },
-    from: () => ({ select: () => ({ eq: () => ({ in: async () => ({ data: [{ card_id: 7, quantity: 2 }] }) }) }) }),
+    from: (t) => ({ select: () => ({ eq: () => (t === 'settings' ? { maybeSingle: async () => ({ data: { value: { dupe_values: { normal: 5, secret_rare: 40 } } } }) } : { in: async () => ({ data: [{ card_id: 7, quantity: 2 }] }) }) }) }),
   };
   const busted = [];
   registerShopRoutes(app, {
@@ -83,4 +83,11 @@ test('an RPC refusal becomes a 400 with a readable message', async () => {
   assert.equal(status, 400);
   assert.equal(json.message, 'You do not have enough Shards.');
   assert.equal(json.price, 150);
+});
+
+test('convertible: the count from SQL and the Shards for each copy from settings.shards.dupe_values', async () => {
+  const { run, calls } = setup();
+  const r = await run('GET /api/shards/convertible', { query: { cardId: '7' } });
+  assert.deepEqual(r.json, { cardId: 7, count: 2, each: 5 });
+  assert.deepEqual(calls[0], { name: 'convertible_copies', args: { p_player: '111111111111111111', p_card: 7 } });
 });
