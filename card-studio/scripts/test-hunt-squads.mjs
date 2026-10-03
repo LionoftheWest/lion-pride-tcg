@@ -13,8 +13,8 @@ const body = String.raw`do $t$
 declare bad text := ''; h bigint; ids bigint[]; r jsonb; extra bigint;
 begin
   ${mig ? 'execute $m$' + mig + '$m$;' : ''}
-  select id into h from hunts where status = 'active' order by id desc limit 1;
-  if h is null then raise exception 'RESULTS [no active hunt]'; end if;
+  -- Its own boss (rolled back): the live boss can be defeated or closed.
+  insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at) values ('Test Boss', 'Normal', '[]', '[]', 500000, 500000, now() + interval '1 day') returning id into h;
   select array_agg(id) into ids from (select c.id from cards c join subjects s on s.id = c.subject_id
     where s.type in ('Character', 'Creature') and c.rarity = 'normal' order by c.id limit 9) x;
   insert into players (id, username) values ('tst_sq_a', 'a'), ('tst_sq_b', 'b');

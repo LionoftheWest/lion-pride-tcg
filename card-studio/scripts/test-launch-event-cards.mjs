@@ -10,7 +10,7 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 const mig = process.argv.includes('--old') ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/launch_event_cards.sql', import.meta.url)), 'utf8');
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 const body = String.raw`do $t$
-declare bad text := ''; h bigint := 101698; att bigint; sid bigint; pc bigint; r jsonb; g bigint; n int;
+declare bad text := ''; h bigint := 101698; hb bigint; att bigint; sid bigint; pc bigint; r jsonb; g bigint; n int;
   d date := (now() at time zone 'America/Denver')::date; crash int; credit bigint; i int;
 begin
   ${mig ? 'execute $m$' + mig + '$m$;' : ''}
@@ -46,17 +46,19 @@ begin
   if not coalesce((r->>'ok')::boolean, false) or r->>'outcome' is distinct from 'applied' then bad := bad || 'crasher play ' || coalesce(r::text, 'none') || '; '; end if;
   if (r->>'ready_at')::timestamptz < now() + interval '167 hours' then bad := bad || 'crasher cooldown ' || (r->>'ready_at') || '; '; end if;
   insert into player_cards (player_id, card_id, quantity) values ('tst_lc_a', att, 1) on conflict do nothing;
+  -- The fights need a live boss: its own (rolled back), because the launch boss is defeated.
+  insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at) values ('Test Boss', 'Normal', '[]', '[]', 500000, 500000, now() + interval '1 day') returning id into hb;
   crash := 0;
   for i in 1..4 loop
     -- The boss hits back and can down the test card after 1-2 hits (a flaky run, 2026-10-02): heal it.
-    update hunt_card_hp set hp_remaining = max_hp, downed = false where hunt_id = h and player_id = 'tst_lc_a';
-    r := hunt_attack('tst_lc_a', h, att);
+    update hunt_card_hp set hp_remaining = max_hp, downed = false where hunt_id = hb and player_id = 'tst_lc_a';
+    r := hunt_attack('tst_lc_a', hb, att);
     exit when not coalesce((r->>'ok')::boolean, false);
     if i <= 3 and (r->>'damage')::int > 0 and r->>'crashed' is null then bad := bad || 'hit ' || i || ' not crashed; '; end if;
     if i = 4 and r->>'crashed' is not null then bad := bad || 'hit 4 crashed; '; end if;
     crash := crash + coalesce((r->>'crashed')::int, 0);
   end loop;
-  select coalesce(sum(damage), 0) into credit from hunt_hits where hunt_id = h and player_id = 'tst_lc_b';
+  select coalesce(sum(damage), 0) into credit from hunt_hits where hunt_id = hb and player_id = 'tst_lc_b';
   if credit <> crash or crash = 0 then bad := bad || 'credit ' || credit || ' vs crashed ' || crash || '; '; end if;
   -- 6. Launch Party: C plays the Player card on A: 8 charges, then it is used up.
   insert into player_cards (player_id, card_id, quantity) values ('tst_lc_c', pc, 1) on conflict do nothing;
