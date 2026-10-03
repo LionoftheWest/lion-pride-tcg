@@ -2,14 +2,14 @@
 // member profiles. main.js owns the data, the streams, and the Hunt; this module only
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
-import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { fillConvertButton } from './ui-v2-shop.js';
 import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';
 import { mtToday } from './mt-time.js';
 import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { flairHTML } from './flair.js';
-import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
+import { fillViewerEffect, nameBadge, badgeOf, avatarStache } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
 import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
@@ -33,7 +33,9 @@ const fmt = (n) => Number(n || 0).toLocaleString();
 export function avatarHTML(id, name, cls = '', frame = null) {
   const img = id ? `<img src="/api/avatar/${esc(id)}" alt="" data-err="remove">` : '';
   const f = frame && FRAMES[frame] ? ` frame-${frame}` : '';
-  return `<span class="v2-avatar ${cls}${f}"><span>${initial(name)}</span>${img}</span>`;
+  // The mustache prank: a big mustache over the avatar (effects-ui.js paintStaches keeps it current).
+  const stache = avatarStache(id);
+  return `<span class="v2-avatar ${cls}${f}${stache ? ' stached' : ''}"${id ? ` data-pid="${esc(id)}"` : ''}><span>${initial(name)}</span>${img}${stache}</span>`;
 }
 /** A title tag (an achievement reward) for a name. */
 export const titleHTML = (t) => (t ? `<span class="v2-title">${esc(t)}</span>` : '');

@@ -11,10 +11,11 @@ import { startVoiceDailies } from './voice-dailies.js';
 import { startDiscordEffects, discordEffectsEnabled, onEffectMessage, onEffectVoice, isVoiceJoin, tick as effectsTick } from './discord-effects.js';
 import type { Command } from './types.js';
 
-// GuildMessages lets the bot count activity. It does NOT read message text, so
-// the privileged Message Content intent is not needed.
+// GuildMessages lets the bot count activity. MessageContent (a privileged intent, on in the Developer
+// Portal; effects_spread.sql) gives the text of a message: only the Parrot and SpongeBob pranks read it,
+// and only the next message of their target.
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.MessageContent],
 });
 
 const commands = new Collection<string, Command>();
@@ -36,7 +37,8 @@ client.on(Events.Error, (error) => console.error('Discord client error:', error)
 process.on('unhandledRejection', (reason) => console.error('Unhandled rejection:', reason));
 
 client.on(Events.MessageCreate, onMessageCreate);
-// The reaction storm prank: the bot reacts to the target's next messages. A heckle: one reply.
+// The reaction storm prank: the bot reacts to the target's next messages. A heckle / parrot / spongebob: one reply.
+// Slowmode: the bot deletes a message that comes too soon.
 client.on(Events.MessageCreate, (m) => { if (discordEffectsEnabled() && !m.author.bot && m.inGuild()) void onEffectMessage(m); });
 // A member joins voice: a fanfare / squeaky posts, a waiting voice prank runs, an overdue unmute is lifted (at once).
 client.on(Events.VoiceStateUpdate, (before, after) => {
