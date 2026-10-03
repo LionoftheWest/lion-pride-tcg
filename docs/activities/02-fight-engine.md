@@ -1,66 +1,81 @@
 # The Fight Engine and the Monsters — Design
 
-Status: DRAFT for Nathan's review (2026-10-02). Not built.
+Status: **the combat core is built** (branch `feat/combat-core`, 2026-10-03, not applied yet).
+Decisions by Nathan, 2026-10-03.
 
-The Dungeon Run, Draft Dungeon, the PvP Arena, Wandering Monsters, and Fantasy Draft Night
-all need fights. This doc describes one engine that all of them share, and the monsters
-that they fight.
+The Hunt, the Dungeon Run, Draft Dungeon, the PvP Arena, Wandering Monsters, and Fantasy Draft
+Night all need fights. This doc describes the one combat system that all of them share, and the
+monsters that they fight.
 
-## 1. The facts today (observed 2026-10-02)
+## 1. Nathan's decisions (2026-10-03)
 
-- The Hunt fight lives in SQL. `hunt_attack` is defined again in 17 migrations in
-  `tcg-bot/supabase/`.
-- `card-studio/scripts/combat-sim.mjs` is a separate Monte-Carlo model for balance. It is
-  not the same rules as `hunt_attack`.
-- The card stats come from SQL functions: `card_power`, `card_max_hp`, and `card_combat`
-  (`stat_points.sql`). The stat points live on `player_cards.stat_points`.
+1. **One combat system for the Hunt, the Dungeon, and the Arena**: "the same systems running
+   underneath ... really lock down across the whole underlying system".
+2. **Supports use cooldowns** (in rounds), the same as the Hunt. No energy.
+3. **The enemy's next move is a surprise**, the same as the Hunt (only the Cataclysm charge shows
+   one round ahead).
 
-## 2. The decision: a new engine in JavaScript
+## 2. The design: one SQL combat core
 
-The new modes need a fight engine that runs thousands of times quickly (the Arena AI and
-the seed check). SQL cannot do that. So:
+The first plan was a new JavaScript engine next to the Hunt's SQL engine, with a parity test.
+That is two engines that can drift apart. Nathan's decision replaces it:
 
-- A new pure module, `tcg-activity/engine/`, runs every new fight. "Pure" means no
-  database, no network, and no clock. The same input always gives the same result.
-- It uses a seeded random generator. The seed and the list of actions replay a fight
-  exactly.
-- The Activity server (Node, on the VM) runs it. The client only shows the result.
-- **The Hunt does not change.** It stays in SQL. A later project can move it to the
-  engine, but this design does not need that.
+- **Every combat rule lives in one set of SQL functions** (`tcg-bot/supabase/combat_core.sql`):
+  `combat_weak` (weakness / resistance), `combat_squad` (the weak-tag stack and the element,
+  origin and trait synergies), `combat_crit_chance`, `combat_hit` (miss, crit, block, damage,
+  Execute, Rampage), `combat_lifesteal`, `combat_enemy_mult`, `combat_enemy_act` (the enemy
+  action), `combat_area_roll` (Slam / Cataclysm on each other card), `combat_absorb` (shields),
+  `combat_burn`, `combat_thorns`, `combat_regen`, `combat_aff_scale`, `combat_support_value`,
+  `combat_stun_immune`.
+- **A mode keeps only its storage.** The Hunt keeps its tables (`hunt_card_hp`,
+  `hunt_combat_state`); the Dungeon keeps its run state; the Arena keeps its fights. Each mode
+  calls the same core functions, so a rule change applies to all of them at once.
+- **The Hunt is rebuilt on the core with no change in behavior**: the live `hunt_attack` and
+  `hunt_support` (2026-10-03) by exact text replacement, with the same formulas, numeric types,
+  and order of every random roll.
+- **The Arena AI** must test thousands of moves quickly, which SQL cannot do. It gets a
+  JavaScript copy of the core that only CHOOSES moves; the SQL core decides every real result. A
+  parity test plays the same random fights through both and fails on any difference.
 
-## 3. One source for the card stats
+## 3. The lockdown test
 
-The engine never computes a card's base stats itself. At the start of a fight, the
-server reads each card's stats from SQL (`card_combat`, the ability, the tags, the
-element) and puts a **snapshot** into the fight state. So the stat rules stay in one
-place, and a stat change in SQL reaches every mode.
+`card-studio/scripts/combat-golden.mjs` plays **84 seeded fights** on the live database (every
+boss action and passive, all 8 support effects, crit / miss / block, burn, double strike, the 50%
+rage, phase 2, defeat, cooldowns, the stun immunity) through the live code and through a
+candidate, records every result and every database change (1,580 lines), rolls everything back,
+and fails on the first difference. It runs on one frozen snapshot (repeatable read), so a change
+that another process commits during the run cannot reach it.
 
-A test proves it: for each rarity and each star, the snapshot equals `card_combat()`.
+Measured 2026-10-03: live vs live 5 / 5 PASS; live vs `combat_core.sql` 5 / 5 PASS (identical);
+a +1 damage mutation FAILS at the first hit (21 vs 22). Run it before any change to the core.
 
-## 4. The fight rules (the same feel as the Hunt)
+**A known fact of the live Hunt (kept as it is):** a Slam or Cataclysm rolls each other card's
+damage in the order that the database reads the rows; the code gives no fixed order. It is fair,
+only unordered. Changing it would change the Hunt.
 
-The engine uses the Hunt turn model (`docs/battle-turn-based.md`):
+## 4. One source for the card stats
 
-1. The player turn: support cards act at once. An attack ends the turn.
-2. The enemy turn: the enemy picks one action from its pool.
-3. The round repeats until one side has no attacker left.
+The core never computes a card's base stats itself. Each mode reads them from SQL
+(`card_combat`: power, HP, crit, potency, haste with the stat points; the ability; the tags),
+so a stat change reaches every mode.
 
-The engine implements the same effect primitives as the Hunt abilities (`empower`,
-`shield`, `heal`, `weaken`, `expose`, `smite`, `stun`, `cleanse`, `lifesteal`, `execute`,
-`rampage`, `pierce`, `focus`). Each mode adds its own rules on top (the dungeon modifiers,
-the Arena rating), but the core stays the same.
+## 5. The fight rules (the Hunt turn model)
 
-**A parity risk:** the Hunt (SQL) and the engine (JavaScript) both implement the
-primitives. They can drift apart. A shared test table lists each primitive with a fixed
-input and its expected result, and both the SQL test and the engine test read it.
+1. The player turn: support cards act at once and go on cooldown. An attack ends the turn.
+2. The enemy turn: the enemy draws one action (a surprise).
+3. The round repeats until one side has no attacker left (or the round limit).
 
-## 5. The compute budget (it must stay free)
+The primitives: `empower`, `shield`, `heal`, `weaken`, `expose`, `smite`, `stun`, `cleanse`
+(supports); `lifesteal`, `execute`, `rampage`, `pierce`, `focus` (attack abilities). Each mode
+adds its own rules on top (the dungeon rule and loot, the Arena rating), never inside the core.
+
+## 6. The compute budget (it must stay free)
 
 The VM has 4 cores and 23 GB of memory, and it uses about 1 GB now (observed 2026-10-02).
 
 | Work | Estimate |
 |---|---|
-| One Dungeon or Wandering Monster turn | under 1 ms |
+| One Dungeon or Wandering Monster turn (SQL core) | a few ms (one RPC) |
 | One Arena AI decision (look-ahead search) | a budget of 50 ms, then the AI stops and picks the best action so far |
 | One full Arena fight | about 20 decisions, so about 1 second of CPU |
 | A busy day: 200 members x 5 Arena fights | about 17 minutes of CPU in the whole day |
@@ -77,9 +92,9 @@ test the limits. So the first build measures them with a benchmark script on the
 before the Arena ships. The benchmark also runs a load test: many fights at the same
 time, to find the point where the server slows down.
 
-## 6. The monsters
+## 7. The monsters
 
-### 6.1 The art: free 3D packs (CC0)
+### 7.1 The art: free 3D packs (CC0)
 
 Nathan asked for free 3D monster packs. These packs report the CC0 license (public
 domain: any use, no credit required). Each license must be read on its page before use.
@@ -101,7 +116,7 @@ Skeletons and KayKit Dungeon are approved for skeleton enemies and the room piec
 - These packs are low-poly, and the Hunt bosses are realistic. Nathan accepts the
   difference ("it's fine if they are a little less graphically nice").
 
-### 6.2 Many monsters from a few models
+### 7.2 Many monsters from a few models
 
 One model makes many monsters with these parts:
 
@@ -115,7 +130,7 @@ One model makes many monsters with these parts:
 The element and the traits use the existing tag vocabulary, so the weaknesses and the
 resistances of the Hunt work on monsters too.
 
-### 6.3 Storage and loading
+### 7.3 Storage and loading
 
 - CC0 permits redistribution, but the model files are large. They go in Supabase storage,
   not in git. The credits go in `docs/activities/monster-credits.md`.
@@ -124,9 +139,12 @@ resistances of the Hunt work on monsters too.
 - Each model loads only when a fight needs it (the `boss-lazy.js` pattern). A phone loads
   only the models of the current room.
 
-## 7. Build phases
+## 8. Build phases
 
-1. The engine core: the seeded random generator, the turn loop, the primitives, the
-   snapshot, and the parity table. Tests only, no screen.
-2. The first 10 monsters from Quaternius, and the room pieces from KayKit Dungeon.
-3. The benchmark and the load test, before the Arena.
+1. ~~The combat core and the lockdown test~~ **done** (2026-10-03, `feat/combat-core`).
+2. The Dungeon on the core (`03-dungeon-run.md`). The rebuilt Hunt goes live with it; the
+   lockdown test runs right before the migration is applied.
+3. The first 10 monsters from Quaternius (bigger on screen, Nathan 2026-10-03), and the room
+   pieces from KayKit Dungeon.
+4. The JavaScript copy of the core for the Arena AI, its parity test, and the benchmark and
+   the load test, before the Arena.
