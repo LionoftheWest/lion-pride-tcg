@@ -37,6 +37,17 @@ the VM `.env` files to `600`. Do not deploy with `scp` or a manual `docker build
 `lockdown_grants.sql` again, and runs `check-grants.mjs`. If the check fails, stop and
 fix the grants before you deploy.
 
+## Database design
+
+Nathan's decision (2026-10-03): one source of truth for each number and each calculation.
+
+- Put each number that changes card power (CP) or rewards in the `balance` table. Never put it in code.
+- Calculate CP in one SQL function. The Activity and the bot read the result. They do not calculate it again.
+- Keep card facts (for example `subjects.cp_mod`) with the card. Put the rules that use them in `balance`.
+- Give each balance key a note, a fixed shape, and limits. The `balance_log` records each change.
+- Record each grant of packs, Shards, or cards in a ledger, so that each total can be traced.
+- Measure a balance change on the local copy before it goes live.
+
 ## Traps
 
 - The VM `.env` is the source of truth. Never copy a local `.env` to the VM.
