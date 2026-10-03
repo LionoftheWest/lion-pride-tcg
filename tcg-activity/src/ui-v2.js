@@ -3,7 +3,7 @@
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { fillConvertButton } from './ui-v2-shop.js';
+import { fillConvertButton, refreshShards } from './ui-v2-shop.js';
 import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';
 import { mtToday } from './mt-time.js';
@@ -11,7 +11,7 @@ import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { flairHTML } from './flair.js';
 import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
-import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
+import { measure, rewardOf, rewardLabel, FRAMES, RETIRED, TRACK_LOOK, tierName, tierClass, tierNeed, tierReward, tierRewardLabel, tagBadge, frameInfo } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
@@ -32,8 +32,8 @@ const fmt = (n) => Number(n || 0).toLocaleString();
 /** A round Discord avatar: the picture from /api/avatar, the initial when there is none. */
 export function avatarHTML(id, name, cls = '', frame = null) {
   const img = id ? `<img src="/api/avatar/${esc(id)}" alt="" data-err="remove">` : '';
-  const f = frame && FRAMES[frame] ? ` frame-${frame}` : '';
-  return `<span class="v2-avatar ${cls}${f}"><span>${initial(name)}</span>${img}</span>`;
+  const fi = frameInfo(frame); // the old Silver/Gold/Holo, or a track's Diamond/Mythic frame with its icon
+  return `<span class="v2-avatar ${cls}${fi ? ` ${fi.cls}` : ''}"><span>${initial(name)}</span>${img}${fi?.icon ? `<i class="fr-ico">${fi.icon}</i>` : ''}</span>`;
 }
 /** A title tag (an achievement reward) for a name. */
 export const titleHTML = (t) => (t ? `<span class="v2-title">${esc(t)}</span>` : '');
@@ -60,9 +60,21 @@ function elemOf(c) { const e = cardElement(c.tags); return e ? { key: e, ...ELEM
 let myProfile = null;
 async function loadMyProfile(force) {
   if (myProfile && !force) return myProfile;
-  try { myProfile = await ctx.api('/api/profile'); } catch { /* keep */ }
+  const [p] = await Promise.all([ctx.api('/api/profile').catch(() => null), loadAchView(force)]);
+  if (p) myProfile = p;
   return myProfile;
 }
+// The tiered tracks + tag badges (achievement_view; Nathan, 2026-10-03). { enabled:false } while the
+// flag is off: then the old 50 achievements show exactly as before.
+let achV = null;
+async function loadAchView(force) {
+  if (achV && !force) return achV;
+  try { achV = await ctx.api('/api/achievements'); } catch { /* keep */ }
+  return achV;
+}
+const tracksOn = () => !!achV?.enabled;
+/** The one-time achievements that show: all 50, or with the tracks on the 13 badges that stay. */
+const achList = (cards, stats) => { const a = measure(cards, stats); return tracksOn() ? a.filter((x) => !RETIRED.has(x.key)) : a; };
 export async function ensureCatalog() {
   if (ctx.cache.catalog) return;
   // A failed load stays null (every reader uses catalog?.cards || []), so the next screen asks again.
@@ -182,10 +194,11 @@ export function paintCards(grid, pager, items, state, onPick, selId, dir, refit)
 // ---- Achievements ------------------------------------------------------------
 
 const claimedSet = () => new Set(myProfile?.claimed || []);
+const isClaimed = (a) => a.claimed ?? claimedSet().has(a.key);
 function achHTML(a, big, mini) {
   const pct = Math.round((100 * a.have) / a.need);
-  const claimed = claimedSet().has(a.key);
-  const r = rewardOf(a.key);
+  const claimed = isClaimed(a);
+  const r = a.reward || rewardOf(a.key);
   const foot = big
     ? `<div class="ah-foot"><span class="ah-reward">🎁 ${esc(rewardLabel(r))}</span>${a.done ? (claimed ? '<span class="ah-claimed">Claimed ✓</span>' : `<span class="ah-redeem" data-redeem="${esc(a.key)}">Redeem</span>`) : ''}</div>`
     : '';
@@ -203,7 +216,13 @@ export const ASCEND_ERROR = {
   maxed: 'This card is at ★5.',
 };
 
-// Redeem: the server checks the achievement and pays it once.
+// Redeem: the server checks the achievement and pays it once. A track key ('track:<key>') redeems
+// every reached tier of the track; a tag badge ('tag:...') pays its packs + title (the SQL measures both).
+const plural = (n, w) => `${fmt(n)} ${w}${n === 1 ? '' : 's'}`;
+function paidLabel(r) {
+  return [r.packs ? plural(r.packs, 'pack') : null, r.shards ? `${fmt(r.shards)} Shards` : null,
+    r.titles?.length ? plural(r.titles.length, 'title') : null, r.frames?.length ? plural(r.frames.length, 'frame') : null].filter(Boolean).join(' + ');
+}
 async function redeem(key, btn) {
   if (btn) { btn.textContent = 'Redeeming…'; btn.classList.add('busy'); }
   let r = null;
@@ -212,11 +231,18 @@ async function redeem(key, btn) {
     if (btn) { btn.textContent = r?.error === 'claimed' ? 'Claimed ✓' : 'Try again'; btn.classList.remove('busy'); }
     return;
   }
-  myProfile = { ...(myProfile || {}), claimed: [...(myProfile?.claimed || []), key] };
+  myProfile = { ...(myProfile || {}), claimed: [...(myProfile?.claimed || []), ...(r.claimed || [key])] };
   ctx.refreshPacks?.();
-  const rw = r.reward || rewardOf(key);
-  if (rw?.title || rw?.frame) toastAction(`🎁 ${rewardLabel(rw)}`, 'Equip now', () => equipTitle(rw.title || null, rw.frame || null));
-  else toast(`🎁 ${rewardLabel(rw)}`);
+  if (r.shards) refreshShards(); // the top bar Shards count
+  if (/^(track|tag):/.test(key)) {
+    const title = r.titles?.[r.titles.length - 1]; const frame = r.frames?.[r.frames.length - 1];
+    if (title || frame) toastAction(`🎁 ${paidLabel(r)}`, 'Equip now', () => equipTitle(title || null, frame || null));
+    else toast(`🎁 ${paidLabel(r)}`);
+  } else {
+    const rw = r.reward || rewardOf(key);
+    if (rw?.title || rw?.frame) toastAction(`🎁 ${rewardLabel(rw)}`, 'Equip now', () => equipTitle(rw.title || null, rw.frame || null));
+    else toast(`🎁 ${rewardLabel(rw)}`);
+  }
   loadMyProfile(true).then(() => { refreshCollectionBadge(); if (ctx.currentView() === 'collection') renderCollectionV2(); });
 }
 async function redeemAll(btn) {
@@ -225,8 +251,9 @@ async function redeemAll(btn) {
   try { r = await ctx.apiPost('/api/achievements/claim-all', {}); } catch { r = null; }
   if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Try again'; } return; }
   ctx.refreshPacks?.();
-  const parts = [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.titles?.length ? `${r.titles.length} title${r.titles.length === 1 ? '' : 's'}` : null, r.frames?.length ? `${r.frames.length} frame${r.frames.length === 1 ? '' : 's'}` : null].filter(Boolean);
-  const msg = `🎁 ${r.claimed.length} redeemed${parts.length ? ` · ${parts.join(' + ')}` : ''}`;
+  if (r.shards) refreshShards();
+  const parts = paidLabel(r);
+  const msg = `🎁 ${r.claimed.length} redeemed${parts ? ` · ${parts}` : ''}`;
   if (r.titles?.length || r.frames?.length) toastAction(msg, 'Choose title', () => openSpotEditor()); else toast(msg);
   await loadMyProfile(true);
   refreshCollectionBadge();
@@ -239,7 +266,8 @@ export async function refreshCollectionBadge({ profile = false } = {}) {
   if (!ctx) return;
   await Promise.all([ensureCatalog(), loadMyProfile(profile)]);
   const asc = (ctx.cache.collection?.cards || []).filter((c) => c.can_ascend).length;
-  const ach = measure(mergedCards(), myProfile?.stats).filter((a) => a.done && !claimedSet().has(a.key)).length;
+  // The one-time achievements ready + (tracks on) every reached tier and tag badge not yet redeemed.
+  const ach = achList(mergedCards(), myProfile?.stats).filter((a) => a.done && !claimedSet().has(a.key)).length + (tracksOn() ? Number(achV.ready) || 0 : 0);
   const btn = document.querySelector('#dock .dk[data-view="collection"]');
   if (!btn) return;
   let b = btn.querySelector('.cnt');
@@ -276,7 +304,7 @@ export function toast(text) {
 
 // ---- Collection ------------------------------------------------------------
 
-const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0, boss: 0 };
+const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0, boss: 0, achSub: 'tracks', galKind: 'title' };
 // The Raid Bosses tab: the rigged model bosses (the ones the weekly hunt spawns).
 const RAID_BOSSES = BOSS_LIST.filter((b) => modelKey(`arch:${b.arch}`));
 let galBoss = null; // the live boss in the Raid Bosses panel
@@ -301,9 +329,13 @@ export async function renderCollectionV2() {
   const seasons = [...new Set(cards.map((c) => c.season || 'Season 1'))];
   if (!seasons.includes(col.season)) col.season = seasons[0] || 'Season 1';
   const inSeason = cards.filter((c) => (c.season || 'Season 1') === col.season);
-  const achs = measure(cards, myProfile?.stats);
-  const achDone = achs.filter((a) => a.done).length;
-  const ready = achs.filter((a) => a.done && !claimedSet().has(a.key)).length;
+  const achs = achList(cards, myProfile?.stats);
+  // With the tracks on: the one-time badges (the 13 + the tag sets) and the tiers (5 per track).
+  const tracks = tracksOn() ? achV.tracks || [] : [];
+  const badges = tracksOn() ? [...achs, ...(achV.badges || []).map((b) => tagBadge(b, cards))] : achs;
+  const achDone = badges.filter((a) => a.done).length + tracks.reduce((t, x) => t + Math.min(x.reached, 5), 0);
+  const achTotal = badges.length + tracks.length * 5;
+  const ready = achs.filter((a) => a.done && !claimedSet().has(a.key)).length + (tracksOn() ? Number(achV.ready) || 0 : 0);
   const cnt = (f) => inSeason.filter(f).length;
 
   // One panel, filters only (Nathan: "ONE thing, which is just a filtered panel").
@@ -322,19 +354,26 @@ export async function renderCollectionV2() {
   const ownSeg = [['all', 'All'], ['owned', 'Owned'], ['missing', 'Missing']].map(([v, l]) => `<button data-own="${v}" class="${col.own === v ? 'on' : ''}">${l}</button>`).join('');
 
   const tabs = `<div class="seg col-tabs"><button data-tab="cards" class="${col.view === 'cards' ? 'on' : ''}">Cards</button>
-    <button data-tab="ach" class="${col.view === 'ach' || col.view === 'achDetail' ? 'on' : ''}">Achievements <i>${achDone}/${achs.length}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button>
-    <button data-tab="bosses" class="${col.view === 'bosses' ? 'on' : ''}">Raid Bosses <i>${RAID_BOSSES.length}</i></button></div>${explainBtn('collection')}`;
+    <button data-tab="ach" class="${col.view === 'ach' || col.view === 'achDetail' ? 'on' : ''}">Achievements <i>${achDone}/${achTotal}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button>
+    <button data-tab="bosses" class="${col.view === 'bosses' ? 'on' : ''}">Raid Bosses <i>${RAID_BOSSES.length}</i></button></div>${explainBtn(achMode() ? 'achievements' : 'collection')}`;
   let center;
   if (col.view === 'bosses') {
     center = `<div class="v2-col-head">${tabs}<span class="grow"></span></div>
       <div class="v2-boss-grid" id="bossGrid">${RAID_BOSSES.map((b, i) => `<button class="boss-cell${i === col.boss ? ' on' : ''}" data-bi="${i}">
         <img src="${thumbFor(b)}" alt="" loading="lazy"><span>${esc(b.title)}</span></button>`).join('')}</div>`;
+  } else if (col.view === 'ach' && tracksOn()) {
+    // Tracks | Badges | Titles & Frames (the gallery: every title and frame, never hidden).
+    const subs = [['tracks', 'Tracks'], ['badges', 'Badges'], ['gallery', 'Titles &amp; Frames']];
+    const kinds = col.achSub === 'gallery' ? `<div class="seg gal-kind" id="galKind">${[['title', 'Titles'], ['frame', 'Frames']].map(([k, l]) => `<button data-k="${k}" class="${col.galKind === k ? 'on' : ''}">${l}</button>`).join('')}</div>` : '';
+    center = `<div class="v2-col-head ach-head2">${tabs}<div class="seg ach-sub" id="achSub">${subs.map(([k, l]) => `<button data-s="${k}" class="${col.achSub === k ? 'on' : ''}">${l}</button>`).join('')}</div>${kinds}<span class="grow"></span>${ready && col.achSub !== 'gallery' ? `<button class="v2-btn gold ach-all" id="achAll">🎁 Redeem All <i>${ready}</i></button>` : ''}<div class="v2-pager" id="achPager"></div></div>
+      <div class="v2-ach-grid${col.achSub === 'gallery' ? ' gal-grid' : ''}" id="achGrid"></div>`;
   } else if (col.view === 'ach') {
     center = `<div class="v2-col-head">${tabs}<span class="grow"></span>${ready ? `<span class="ach-ready">🎁 ${ready} to redeem</span><button class="v2-btn gold ach-all" id="achAll">Redeem All</button>` : ''}<div class="v2-pager" id="achPager"></div></div>
       <div class="v2-ach-grid" id="achGrid"></div>`;
   } else if (col.view === 'achDetail') {
-    const a = achs.find((x) => x.key === col.achKey);
-    center = a ? achDetailHead(a) : '';
+    const t = tracks.find((x) => `track:${x.key}` === col.achKey);
+    const a = badges.find((x) => x.key === col.achKey);
+    center = t ? trackDetailHead(t) : a ? achDetailHead(a) : '';
   } else {
     const filtered = colFiltered();
     const sub = hasFilters()
@@ -349,7 +388,8 @@ export async function renderCollectionV2() {
   // A phone held upright (design 25): the search and a Filters button on top; the filter
   // panel opens as a sheet over the screen.
   const search = `<input class="v2-search" id="colSearch" placeholder="Search cards, tags…" value="${esc(col.q)}">`;
-  el('main').innerHTML = `<div class="v2-collection${col.view === 'ach' ? ' ach-mode' : ''}${col.view === 'bosses' ? ' boss-mode' : ''}">
+  const noPanel = col.view === 'ach' || (col.view === 'achDetail' && String(col.achKey).startsWith('track:')); // a track has no card panel
+  el('main').innerHTML = `<div class="v2-collection${noPanel ? ' ach-mode' : ''}${col.view === 'bosses' ? ' boss-mode' : ''}">
     ${isPort() ? `<div class="m-colbar">${search}<button class="v2-btn${hasFilters() ? ' on' : ''}" id="colFilters">☰ Filters</button></div>` : ''}
     <aside class="v2-side filters">
       <div class="f-head"><b>Filters</b>${hasFilters() ? '<button class="link-btn" id="colClear">Clear all</button>' : ''}${isPort() ? '<button class="v2-icon" id="colFiltersX" aria-label="Close">✕</button>' : ''}</div>
@@ -362,7 +402,7 @@ export async function renderCollectionV2() {
       <div class="side-h">Game</div><div class="f-chips">${gameChips}</div>
     </aside>
     <section class="v2-center" id="colCenter">${center}</section>
-    ${col.view === 'ach' ? '' : '<aside class="v2-panel" id="colPanel"></aside>'}
+    ${noPanel ? '' : '<aside class="v2-panel" id="colPanel"></aside>'}
   </div>`;
 
   const toCards = () => { col.view = 'cards'; col.page = 0; };
@@ -411,6 +451,16 @@ export async function renderCollectionV2() {
     }
     const r = e.target.closest('[data-redeem]');
     if (r) { e.stopPropagation(); redeem(r.dataset.redeem, r); return; }
+    const sub = e.target.closest('#achSub [data-s]');
+    if (sub) { col.achSub = sub.dataset.s; col.achPage = 0; renderCollectionV2(); return; }
+    const gk = e.target.closest('#galKind [data-k]');
+    if (gk) { col.galKind = gk.dataset.k; col.achPage = 0; renderCollectionV2(); return; }
+    const eq = e.target.closest('[data-equip-kind]');
+    if (eq) {
+      const v = eq.dataset.equipValue;
+      equipTitle(eq.dataset.equipKind === 'title' ? v : null, eq.dataset.equipKind === 'frame' ? v : null).then(() => { if (ctx.currentView() === 'collection') paintGallery(); });
+      return;
+    }
     const b = e.target.closest('[data-ach]');
     if (!b) return;
     col.view = 'achDetail'; col.achKey = b.dataset.ach; col.detailPage = 0;
@@ -418,15 +468,24 @@ export async function renderCollectionV2() {
   });
 
   requestAnimationFrame(() => { fitChips(side); });
-  maybeExplain('collection');
+  maybeExplain(achMode() ? 'achievements' : 'collection');
   // Ready to redeem first, then the ones in progress, then the ones already claimed.
-  const order = (a) => (a.done ? (claimedSet().has(a.key) ? 2 : 0) : 1);
-  if (col.view === 'ach') paintAch([...achs].sort((a, b) => order(a) - order(b)));
-  else if (col.view === 'achDetail') paintAchDetail(achs.find((x) => x.key === col.achKey));
-  else if (col.view === 'bosses') { paintBossPanel(); return; }
+  const order = (a) => (a.done ? (isClaimed(a) ? 2 : 0) : 1);
+  if (col.view === 'ach' && tracksOn()) {
+    if (col.achSub === 'gallery') paintGallery();
+    else if (col.achSub === 'badges') paintAch([...badges].sort((a, b) => order(a) - order(b)));
+    else {
+      const tOrder = (t) => (t.reached > t.claimed ? 0 : (!t.step && t.reached >= 5) ? 2 : 1);
+      paintAch([...tracks].sort((a, b) => tOrder(a) - tOrder(b)), null, trackHTML);
+    }
+  } else if (col.view === 'ach') paintAch([...achs].sort((a, b) => order(a) - order(b)));
+  else if (col.view === 'achDetail') {
+    const t = tracks.find((x) => `track:${x.key}` === col.achKey);
+    if (t) paintTrackDetail(); else paintAchDetail(badges.find((x) => x.key === col.achKey));
+  } else if (col.view === 'bosses') { paintBossPanel(); return; }
   else paintColGrid();
   const selCard = cards.find((c) => c.id === col.sel) || inSeason.find((c) => c.owned) || inSeason[0];
-  if (col.view !== 'ach') paintPanel(selCard);
+  if (!noPanel) paintPanel(selCard);
 }
 
 // The filter panel never scrolls: when it is too tall, the chip counts go, then the
@@ -452,23 +511,122 @@ function paintHead() {
 }
 
 // The achievements grid, paged: a page holds the cards that fully fit (no scrolling).
-function paintAch(achs, dir) {
+// render = the card of one item (an achievement, a track, a gallery entry).
+function paintAch(achs, dir, render = (a) => achHTML(a, true), refit = false) {
   const { el } = ctx;
   const grid = el('achGrid');
   if (!grid) return;
-  grid.innerHTML = achs.map((a) => achHTML(a, true)).join('');
+  const h0 = grid.clientHeight;
+  grid.innerHTML = achs.map(render).join('');
   const bottom = grid.getBoundingClientRect().bottom;
   const per = Math.max(1, [...grid.children].filter((n) => n.getBoundingClientRect().bottom <= bottom + 1).length);
   const pages = Math.max(1, Math.ceil(achs.length / per));
   col.achPage = Math.min(Math.max(0, col.achPage), pages - 1);
-  grid.innerHTML = achs.slice(col.achPage * per, col.achPage * per + per).map((a) => achHTML(a, true)).join('');
+  grid.innerHTML = achs.slice(col.achPage * per, col.achPage * per + per).map(render).join('');
   if (dir) { grid.classList.remove('slide-next', 'slide-prev'); void grid.offsetWidth; grid.classList.add(dir === 'next' ? 'slide-next' : 'slide-prev'); }
   const pager = el('achPager');
   pager.innerHTML = pages > 1
     ? `<button id="aPrev" ${col.achPage === 0 ? 'disabled' : ''}>‹</button><span>${col.achPage + 1} / ${pages}</span><button id="aNext" ${col.achPage >= pages - 1 ? 'disabled' : ''}>›</button>`
     : '';
-  el('aPrev')?.addEventListener('click', () => { col.achPage -= 1; paintAch(achs, 'prev'); });
-  el('aNext')?.addEventListener('click', () => { col.achPage += 1; paintAch(achs, 'next'); });
+  el('aPrev')?.addEventListener('click', () => { col.achPage -= 1; paintAch(achs, 'prev', render); });
+  el('aNext')?.addEventListener('click', () => { col.achPage += 1; paintAch(achs, 'next', render); });
+  // The pager is filled AFTER the grid is sized: on a phone it can wrap the head to a new row, and
+  // the grid loses height (a cut card under the dock, 2026-10-03). Size it once more.
+  if (!refit && grid.clientHeight !== h0) paintAch(achs, null, render, true);
+}
+
+// ---- The tiered tracks (achievement_tracks.sql) --------------------------------
+const achMode = () => tracksOn() && (col.view === 'ach' || col.view === 'achDetail');
+const pips = (t) => `<span class="tier-pips">${[1, 2, 3, 4, 5].map((n) => `<i class="${n <= t.reached ? tierClass(n) : ''}"></i>`).join('')}${t.reached > 5 ? `<em>+${t.reached - 5}</em>` : ''}</span>`;
+const trackMaxed = (t) => !t.step && t.reached >= 5;
+/** One track card: the tier pips, the progress to the next tier, its reward, and Redeem. */
+function trackHTML(t) {
+  const L = TRACK_LOOK[t.key] || { icon: '🏅', desc: '' };
+  const ready = Math.max(0, t.reached - t.claimed);
+  const nextN = t.reached + 1;
+  const need = tierNeed(t, nextN);
+  const pct = need ? Math.min(100, Math.round((100 * t.value) / need)) : 100;
+  const foot = trackMaxed(t) ? `<span class="ah-reward">${esc(tierName(5))} ✓</span>` : `<span class="ah-reward">🎁 ${esc(tierName(nextN))}: ${esc(tierRewardLabel({ ...tierReward(nextN, t.titles), title: undefined, frame: undefined }))}${tierReward(nextN, t.titles).title ? ' + 🎖' : ''}</span>`;
+  return `<button class="v2-ach big trk ${tierClass(t.reached)}${ready ? ' ready' : ''}${trackMaxed(t) ? ' done' : ''}" data-ach="track:${esc(t.key)}" title="${esc(L.desc)}">
+    <div class="ah-top"><span class="ah-ico">${L.icon}</span><b>${esc(t.name)}</b><span class="ah-n">${trackMaxed(t) ? '✓' : `${fmt(t.value)}/${fmt(need)}`}</span></div>
+    <div class="ah-desc">${esc(L.desc)}</div>
+    <div class="trk-bar">${pips(t)}<div class="ah-bar"><i style="width:${pct}%"></i></div></div>
+    <div class="ah-foot">${foot}${ready ? `<span class="ah-redeem" data-redeem="track:${esc(t.key)}">Redeem${ready > 1 ? ` ${ready}` : ''}</span>` : ''}</div>
+  </button>`;
+}
+/** One track opened: every tier with its need, its reward and its state (Redeemed, Ready, or the progress). */
+function trackDetailHead(t) {
+  const L = TRACK_LOOK[t.key] || { icon: '🏅', desc: '' };
+  const ready = Math.max(0, t.reached - t.claimed);
+  const rows = [1, 2, 3, 4, 5];
+  if (t.step) { if (t.reached > 5) rows.push(t.reached); rows.push(Math.max(t.reached, 5) + 1); }
+  const row = (n) => {
+    const need = tierNeed(t, n);
+    const st = n <= t.claimed ? '<span class="ah-claimed">Redeemed ✓</span>'
+      : n <= t.reached ? '<span class="tl-ready">Ready</span>'
+      : `<span class="tl-prog">${fmt(Math.min(t.value, need))} / ${fmt(need)}</span>`;
+    return `<div class="tl-row ${tierClass(n)}${n <= t.reached ? ' got' : ''}"><span class="tl-tier"><i></i>${esc(tierName(n))}</span><span class="tl-need">${fmt(need)}</span>
+      <span class="tl-rw">${esc(tierRewardLabel(tierReward(n, t.titles)))}</span>${st}</div>`;
+  };
+  return `<div class="v2-col-head ach-head">
+      <button class="v2-icon" id="achBack" aria-label="Back">‹</button>
+      <span class="ah-ico big">${L.icon}</span>
+      <h2>${esc(t.name)} <span class="sub">${esc(L.desc)} · ${fmt(t.value)}</span></h2>
+      <span class="grow"></span>${ready ? `<button class="v2-btn gold" data-redeem="track:${esc(t.key)}">🎁 Redeem${ready > 1 ? ` ${ready}` : ''}</button>` : ''}</div>
+    <div class="tier-ladder">${rows.map(row).join('')}</div>`;
+}
+function paintTrackDetail() {
+  ctx.el('achBack')?.addEventListener('click', () => { col.view = 'ach'; renderCollectionV2(); });
+  // A short window (a phone held sideways): compact rows, then one-line rewards, so every tier shows.
+  const lad = document.querySelector('.tier-ladder');
+  if (!lad) return;
+  const over = () => lad.scrollHeight > lad.clientHeight + 1;
+  if (over()) lad.classList.add('tight');
+  if (over()) lad.classList.add('tighter');
+}
+
+// The gallery: every title and frame that exists, how to get it, how many members own it, and
+// Equip for the ones the caller owns (the same /api/cosmetics as the profile editor).
+let galData = null;
+async function paintGallery() {
+  const { el } = ctx;
+  if (!el('achGrid')) return;
+  if (!galData || galData.at < Date.now() - 20000) {
+    try { galData = { at: Date.now(), ...(await ctx.api('/api/achievements/gallery')) }; } catch { el('achGrid').innerHTML = '<div class="v2-loading">Could not load. <button class="v2-btn" id="galRetry">Retry</button></div>'; el('galRetry')?.addEventListener('click', () => { galData = null; paintGallery(); }); return; }
+    if (ctx.currentView() !== 'collection' || col.achSub !== 'gallery') return;
+  }
+  const kind = col.galKind;
+  const items = (galData.items || []).filter((i) => i.kind === kind);
+  // Mine first, then the order of the tracks.
+  paintAch([...items].sort((a, b) => b.mine - a.mine), null, galHTML);
+}
+function galHow(i) {
+  if (i.track) {
+    const t = (achV?.tracks || []).find((x) => x.key === i.track);
+    const L = TRACK_LOOK[i.track] || {};
+    return `${tierName(i.tier)} ${t?.name || i.track}: ${L.desc || ''} (${fmt(i.need)})`;
+  }
+  if (i.badge && i.badge.startsWith('tag:')) {
+    const b = (achV?.badges || []).find((x) => x.key === i.badge);
+    return b ? `Own every ${b.label} card in ${b.season} (${fmt(b.need)})` : '';
+  }
+  return `${i.name || ''}: ${i.how || ''}${i.retired ? ' (no longer available)' : ''}`;
+}
+function galHTML(i) {
+  const me = ctx.user();
+  const value = i.kind === 'title' && i.plus ? `${i.value} +${i.plus}` : i.value;
+  const on = i.kind === 'title' ? myProfile?.title === value : myProfile?.frame === value;
+  const fi = i.kind === 'frame' ? frameInfo(i.value) : null;
+  // The frame name only (the track is in the line under it): a name is never cut.
+  const name = i.kind === 'title' ? `<span class="v2-title">${esc(value)}</span>` : `${avatarHTML(me?.id, me?.name, 'gal-av', i.value)}<b>${esc(fi?.label || i.value)}</b>`;
+  const act = !i.mine ? '<span class="gal-lock">🔒</span>'
+    : on ? '<span class="ah-claimed">Equipped ✓</span>'
+    : `<span class="ah-redeem" data-equip-kind="${i.kind}" data-equip-value="${esc(value)}">Equip</span>`;
+  return `<div class="v2-ach big gal${i.mine ? ' mine' : ''}${i.tier ? ` ${tierClass(i.tier)}` : ''}">
+    <div class="ah-top">${name}<span class="ah-n" title="${fmt(i.owners)} of ${fmt(galData?.members)} members">👥 ${fmt(i.owners)}</span></div>
+    <div class="ah-desc">${esc(galHow(i))}</div>
+    <div class="ah-foot"><span class="ah-reward">${i.track ? esc(tierName(i.tier)) : i.badge?.startsWith('tag:') ? 'Set badge' : 'Badge'}</span>${act}</div>
+  </div>`;
 }
 
 // One achievement opened: its progress, and the cards it needs (owned ones in full
@@ -478,8 +636,8 @@ function achDetailHead(a) {
   return `<div class="v2-col-head ach-head">
       <button class="v2-icon" id="achBack" aria-label="Back">‹</button>
       <span class="ah-ico big">${a.icon}</span>
-      <h2>${esc(a.name)} <span class="sub">${esc(a.desc)} · ${a.done ? 'Complete' : `${fmt(a.have)} / ${fmt(a.need)}`} · 🎁 ${esc(rewardLabel(rewardOf(a.key)))}</span></h2>
-      <span class="grow"></span>${a.done ? (claimedSet().has(a.key) ? '<span class="ah-claimed">Claimed ✓</span>' : `<button class="v2-btn gold" data-redeem="${esc(a.key)}">🎁 Redeem</button>`) : ''}<div class="v2-pager" id="detPager"></div></div>
+      <h2>${esc(a.name)} <span class="sub">${esc(a.desc)} · ${a.done ? 'Complete' : `${fmt(a.have)} / ${fmt(a.need)}`} · 🎁 ${esc(rewardLabel(a.reward || rewardOf(a.key)))}</span></h2>
+      <span class="grow"></span>${a.done ? (isClaimed(a) ? '<span class="ah-claimed">Claimed ✓</span>' : `<button class="v2-btn gold" data-redeem="${esc(a.key)}">🎁 Redeem</button>`) : ''}<div class="v2-pager" id="detPager"></div></div>
     <div class="ah-bar wide"><i style="width:${pct}%"></i></div>
     ${a.set ? '<div class="v2-grid" id="detGrid"></div>' : `<div class="ach-stat"><b>${fmt(a.have)}</b><span>of ${fmt(a.need)}</span></div>`}`;
 }
@@ -968,7 +1126,7 @@ export function fitChildren(box) {
 function profileStats(p, cards) {
   const total = ctx.cache.catalog?.cards?.length || 0;
   const ownedN = cards.filter((c) => c.owned).length;
-  const achs = total ? measure(cards, p?.stats) : [];
+  const achs = total ? achList(cards, p?.stats) : [];
   const stat = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
   return `<div class="prof-stats">
       ${stat(total ? `${ownedN}/${total}` : ownedN, 'Cards')}
@@ -1125,15 +1283,20 @@ function paintSpotEditor() {
   const byId = new Map(owned.map((c) => [Number(c.id), c]));
   const achs = measure(cards, myProfile?.stats);
   const claimed = achs.filter((a) => claimedSet().has(a.key));
-  const titles = [...new Set(claimed.map((a) => rewardOf(a.key).title).filter(Boolean))];
-  const frames = [...new Set(claimed.map((a) => rewardOf(a.key).frame).filter(Boolean))];
+  // The redeemed titles and frames: from the server (the old rewards and the tiers), else from the keys.
+  // A Mythic +N title shows only its highest step.
+  const plusBest = (list) => { const best = new Map(); for (const t of list) { const m = t.match(/^(.*) \+(\d+)$/); const k = m ? m[1] : t; const n = m ? Number(m[2]) : 0; if (!best.has(k) || best.get(k).n < n) best.set(k, { t, n }); } return [...best.values()].map((x) => x.t); };
+  const titles = plusBest(myProfile?.titles || [...new Set(claimed.map((a) => rewardOf(a.key).title).filter(Boolean))]);
+  const frames = myProfile?.frames || [...new Set(claimed.map((a) => rewardOf(a.key).frame).filter(Boolean))];
   // Every title and frame in the game, so the locked ones show what exists and which
   // achievement unlocks them (Nathan: "there aren't any frames/titles in the game").
+  // With the tracks on, the full list (with how to get each one) is the Titles & Frames gallery.
   const unlockBy = (kind, v) => achs.filter((a) => rewardOf(a.key)[kind] === v).map((a) => a.name);
-  const allTitles = [...new Set(achs.map((a) => rewardOf(a.key).title).filter(Boolean))];
-  const allFrames = [...new Set(achs.map((a) => rewardOf(a.key).frame).filter(Boolean))];
+  const allTitles = tracksOn() ? [] : [...new Set(achs.map((a) => rewardOf(a.key).title).filter(Boolean))];
+  const allFrames = tracksOn() ? [] : [...new Set(achs.map((a) => rewardOf(a.key).frame).filter(Boolean))];
   const lockedTitles = allTitles.filter((t) => !titles.includes(t));
   const lockedFrames = allFrames.filter((f) => !frames.includes(f));
+  const ring = (f) => { const fi = frameInfo(f); return `<i class="se-ring ${fi?.cls || ''}">${fi?.icon || ''}</i>${esc(fi?.label || f)}`; };
   const locked = (label, by) => `<span class="f-chip locked" title="Unlock: ${esc(by.join(' or '))}">🔒 ${label}</span>`;
   const slots = [0, 1, 2].map((i) => {
     const c = byId.get(sp.ids[i]);
@@ -1157,8 +1320,8 @@ function paintSpotEditor() {
         ${titles.map((t) => `<option value="${esc(t)}"${sp.title === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}
         ${lockedTitles.length ? `<optgroup label="Locked">${lockedTitles.map((t) => `<option disabled>🔒 ${esc(t)} · ${esc(unlockBy('title', t).join(' or '))}</option>`).join('')}</optgroup>` : ''}
       </select>
-      <div class="side-h">Frame</div>
-      <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, `<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, sp.frame === f)).join('')}${lockedFrames.map((f) => locked(`<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, unlockBy('frame', f))).join('')}</div>
+      <div class="side-h">Frame${tracksOn() ? ' <button class="link-btn" id="seGallery">All titles &amp; frames</button>' : ''}</div>
+      <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, ring(f), sp.frame === f)).join('')}${lockedFrames.map((f) => locked(ring(f), unlockBy('frame', f))).join('')}</div>
       <div class="se-foot"><span class="tr-msg" id="seMsg"></span><button class="v2-btn gold" id="seSave">Save</button></div>
     </aside>
     <section class="se-main">
@@ -1182,6 +1345,11 @@ function paintSpotEditor() {
   box.querySelectorAll('[data-frame]').forEach((b) => b.addEventListener('click', () => { sp.frame = b.dataset.frame || null; paintSpotEditor(); }));
   el('seQ').addEventListener('input', (e) => { sp.q = e.target.value; sp.page = 0; paintSpotEditor(); const i = el('seQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
   el('seClose').addEventListener('click', () => box.classList.add('hidden'));
+  el('seGallery')?.addEventListener('click', () => {
+    box.classList.add('hidden'); ctx.el('memberModal')?.classList.add('hidden');
+    col.view = 'ach'; col.achSub = 'gallery'; col.achPage = 0;
+    if (ctx.currentView() === 'collection') renderCollectionV2(); else ctx.show('collection');
+  });
   el('seSave').addEventListener('click', async () => {
     const btn = el('seSave'); btn.disabled = true; btn.textContent = 'Saving…';
     const [a, b] = await Promise.all([
@@ -1240,7 +1408,7 @@ function paintMember() {
   const box = el('memberModal');
   const { p, self, cards } = memData;
   const s = p.stats || {};
-  const achs = measure(cards, s);
+  const achs = achList(cards, s);
   const done = achs.filter((a) => a.done);
   const pres = (ctx.live.presence || []).find((x) => String(x.id) === String(p.id));
   const [sIco, sTxt] = STATUS_TEXT[pres?.status?.kind] || [];
