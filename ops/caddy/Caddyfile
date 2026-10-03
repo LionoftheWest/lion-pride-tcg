@@ -1,3 +1,15 @@
+# Logs: delete the session token from logged URLs (the pulls stream and the WebSocket send
+# ?token=; every aborted stream wrote it to the log). Audit, 2026-10-03.
+{
+    log default {
+        format filter {
+            request>uri query {
+                delete token
+            }
+        }
+    }
+}
+
 lionpridetcg.duckdns.org {
     encode zstd gzip
     route {
