@@ -74,7 +74,7 @@ export function initDungeon(on) {
 export function advTabsHTML(active) {
   if (!dg.on) return '';
   const t = (k, icon, label, soon) => `<button class="dg-tab${active === k ? ' on' : ''}"${soon ? ' disabled' : ` data-adv="${k}"`}>${icon}<span>${label}</span>${soon ? '<i>SOON</i>' : ''}</button>`;
-  return `<div class="dg-tabs" role="tablist">${t('hunt', I.sword, 'Hunt')}${t('dungeon', I.castle, 'Dungeon')}${t('arena', I.shield, 'Arena', true)}${t('exp', I.compass, 'Expeditions', true)}</div>`;
+  return `<div class="dg-tabs v2-subtabs" role="tablist">${t('hunt', I.sword, 'Hunt')}${t('dungeon', I.castle, 'Dungeon')}${t('arena', I.shield, 'Arena', true)}${t('exp', I.compass, 'Expeditions', true)}</div>`;
 }
 export function wireAdvTabs(root) {
   root.querySelectorAll('[data-adv]').forEach((b) => b.addEventListener('click', () => {
@@ -88,7 +88,7 @@ export function wireAdvTabs(root) {
 export function advTabs(active = 'hunt') {
   const main = document.getElementById('main');
   if (!dg.on || !main) return;
-  main.querySelector(':scope > .dg-tabs')?.remove();
+  main.querySelector(':scope > .v2-subtabs')?.remove();
   main.insertAdjacentHTML('afterbegin', advTabsHTML(active));
   main.classList.add('has-adv');
   wireAdvTabs(main);

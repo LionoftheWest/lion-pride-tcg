@@ -1,0 +1,29 @@
+/* Every sub-tab bar: one place, one look (Nathan, 2026-10-03). The host is #main > .v2-subtabs (src/subtabs.js):
+   in the top bar after the logo on desktop and landscape, a strip under the top bar in portrait.
+   The Adventure tabs (.dg-tab) and the lifted Collection / Community bars (.seg buttons) look the same. */
+
+/* The host: the place. */
+body.ui-v2 #main > .v2-subtabs { position: fixed; z-index: 60; top: 16px; left: 270px; display: inline-flex; align-items: center; gap: 4px; padding: 3px; border-radius: var(--rad-lg); background: var(--bg-raised); border: 1px solid var(--border); box-sizing: border-box; max-width: calc(100vw - 270px - 560px); overflow: hidden; }
+body.ui-v2.m-land #main > .v2-subtabs { top: 9px; left: 64px; padding: 2px; border-radius: 9px; max-width: calc(100vw - 64px - 504px); }
+body.ui-v2.m-land:has(#main > .v2-subtabs) #topbar .v2-logo > b, body.ui-v2.m-land:has(#main > .v2-subtabs) #topbar .v2-logo > i { display: none; }
+body.ui-v2.m-port #main:has(> .v2-subtabs) { position: relative; padding-top: 42px; box-sizing: border-box; }
+body.ui-v2.m-port #main > .v2-subtabs { position: absolute; top: 2px; left: 10px; right: 10px; display: flex; max-width: none; }
+
+/* The buttons: the look (the Adventure .dg-tab and the lifted .seg buttons alike). */
+body.ui-v2 .v2-subtabs.lifted > .seg { display: contents; }
+body.ui-v2 .v2-subtabs .dg-tab, body.ui-v2 .v2-subtabs .seg > button { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 12px; border: 1px solid transparent; background: none; color: var(--text-secondary); font: 600 14px var(--font-ui); cursor: pointer; white-space: nowrap; position: relative; box-shadow: none; }
+body.ui-v2 .v2-subtabs .dg-tab svg { width: 17px; height: 17px; }
+body.ui-v2 .v2-subtabs .dg-tab.on, body.ui-v2 .v2-subtabs .seg > button.on { color: var(--text-primary); background: var(--gold-soft); border-color: rgba(244, 183, 60, .55); font-weight: 700; }
+body.ui-v2 .v2-subtabs .dg-tab.on svg { color: var(--gold); }
+body.ui-v2 .v2-subtabs .dg-tab:disabled { display: none; }
+body.ui-v2 .v2-subtabs .seg > button i, body.ui-v2 .v2-subtabs .dg-tab i { font: 700 10px var(--font-num); font-style: normal; padding: 2px 6px; border-radius: 5px; background: var(--surface-2); color: var(--text-muted); }
+body.ui-v2 .v2-subtabs .seg > button .bt { display: inline !important; }
+body.ui-v2 .v2-subtabs .tab-dot { position: absolute; top: -4px; right: -4px; }
+
+/* Phones: smaller, and the extra words go. */
+body.ui-v2.m-land .v2-subtabs .dg-tab, body.ui-v2.m-land .v2-subtabs .seg > button { height: 26px; padding: 0 8px; font-size: 11.5px; gap: 4px; border-radius: 7px; }
+body.ui-v2.m-land .v2-subtabs .dg-tab svg { display: none; }
+body.ui-v2.m-port .v2-subtabs .dg-tab, body.ui-v2.m-port .v2-subtabs .seg > button { flex: 1; justify-content: center; height: 30px; padding: 0 6px; font-size: 13px; gap: 5px; }
+body.ui-v2.m-port .v2-subtabs .ct-more, body.ui-v2.m-land .v2-subtabs .ct-more { display: none; }
+body.ui-v2.m-port .v2-subtabs .seg > button i { font-size: 9px; padding: 1px 4px; }
+body.ui-v2.m-land .v2-subtabs .seg > button i { display: none; }
