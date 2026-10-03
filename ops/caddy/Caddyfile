@@ -15,10 +15,18 @@ lionpridetcg.duckdns.org {
     route {
         redir /app /app/
         handle /cimg/* {
-            reverse_proxy localhost:4441
+            reverse_proxy localhost:4441 {
+                # A deploy restarts the Activity: retry the refused connection, do not answer 502.
+                lb_try_duration 20s
+                lb_try_interval 250ms
+            }
         }
         handle_path /app/* {
-            reverse_proxy localhost:4441
+            reverse_proxy localhost:4441 {
+                # A deploy restarts the Activity: retry the refused connection, do not answer 502.
+                lb_try_duration 20s
+                lb_try_interval 250ms
+            }
         }
         reverse_proxy localhost:4331
     }
