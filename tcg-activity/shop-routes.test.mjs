@@ -85,6 +85,26 @@ test('an RPC refusal becomes a 400 with a readable message', async () => {
   assert.equal(json.price, 150);
 });
 
+test('bad_qty: the message names settings.shards.max_packs_per_buy, not a copied 10', async () => {
+  const routes = {};
+  const settings = { maybeSingle: async () => ({ data: { value: { max_packs_per_buy: 25 } } }) };
+  registerShopRoutes({ get: (p, h) => { routes[p] = h; }, post: (p, h) => { routes[p] = h; } }, {
+    supabase: { rpc: async () => ({ data: { ok: false, error: 'bad_qty' } }), from: () => ({ select: () => ({ eq: () => settings }) }) },
+    caller: async () => ({ id: '1' }), rateLimit: () => true, bustUser: () => {}, getCatalogBase: async () => [], shardsOn: () => true,
+  });
+  const call = async (body) => {
+    let status = 0, json = null;
+    await routes['/api/shop/buy']({ body }, { status(s) { status = s; return this; }, json(j) { json = j; return this; } });
+    return { status, json };
+  };
+  for (const body of [{ kind: 'pack', qty: 30 }, { kind: 'pack', qty: 2.5 }]) { // the RPC refusal and the route check
+    const r = await call(body);
+    assert.equal(r.status, 400);
+    assert.equal(r.json.error, 'bad_qty');
+    assert.equal(r.json.message, 'Buy 1 to 25 packs at a time.');
+  }
+});
+
 test('convertible: the count from SQL and the Shards for each copy from settings.shards.dupe_values', async () => {
   const { run, calls } = setup();
   const r = await run('GET /api/shards/convertible', { query: { cardId: '7' } });
