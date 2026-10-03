@@ -13,6 +13,7 @@ and light player-to-player social "prank & boon" cards.
 - **Varying difficulty → varying rewards.** Some weeks are easy, some brutal.
 - **Duplicates are valuable.** Dupes upgrade cards (power + flair), not clutter.
 - **Everything feeds the pack economy.** Rewards are packs. No new currency.
+  (Replaced 2026-10-02: the new modes give Shards. See [activities/01-shards-and-shop.md](./activities/01-shards-and-shop.md).)
 
 ## 2. Core loop
 
