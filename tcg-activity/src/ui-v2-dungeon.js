@@ -109,7 +109,7 @@ export async function renderDungeonV2() {
   const { el } = ctx();
   localStorage.setItem(LAST, 'dungeon');
   markDock();
-  dg.per = 0; // measure the card grid again (the size may have changed)
+  dg.per = 0; dg.pcols = 0; // measure the card grid again (the size may have changed)
   if (!dg.on) { el('main').innerHTML = '<div class="dg-closed"><b>The Dungeon is closed.</b></div>'; return; }
   if (dg.data && !dg.data.closed) paint(); else el('main').innerHTML = '<div class="loading">Opening the dungeon…</div>';
   // The star gems come from the collection (ascension per copy): load it when it is not cached yet.
@@ -186,8 +186,11 @@ const cardTile = (c, opts = {}) => {
 // The member's star level of a card (the collection cache) and the full card for the viewer.
 const ascOf = (id) => (ctx().cache.collection?.cards || []).find((x) => Number(x.id) === Number(id))?.ascension || 0;
 function openInfo(id) {
-  const full = mergedCards().find((x) => Number(x.id) === Number(id)) || (dg.data?.mine || []).find((x) => Number(x.id) === Number(id));
-  if (full) ctx().openViewer(full);
+  // The viewer with the ability, the effect, the tags, and the squad numbers (power, HP, points).
+  const row = (dg.data?.mine || []).find((x) => Number(x.id) === Number(id));
+  const base = mergedCards().find((x) => Number(x.id) === Number(id));
+  const full = base || row ? { ...(base || {}), ...(row || {}), image_url: base?.image_url || row?.image_url } : null;
+  if (full) ctx().openViewer(full, { squad: true });
 }
 
 // ---- Today's dungeon (the squad picker) --------------------------------------------------------
@@ -247,7 +250,7 @@ function lobbyHTML() {
   const pager = `<div class="dg-pager"><button data-page="-1" ${dg.page ? '' : 'disabled'}>${I.left}</button><b>${dg.page + 1} / ${pages}</b><button data-page="1" ${dg.page < pages - 1 ? '' : 'disabled'}>${I.right}</button></div>`;
   const chips = `<div class="dg-chips">${chip('allowed', `${I.check}Allowed today`)}${chip('atk', 'Attackers', all.filter((c) => ATTACKER.has(c.type) && !ruleBlock(c)).length)}${chip('sup', 'Supports', all.filter((c) => !ATTACKER.has(c.type) && !ruleBlock(c)).length)}${blocked.length ? chip('blocked', `${I.ban}Blocked`, blocked.length) : ''}</div>`;
   const title = `<h3>Your cards <small>${all.length}</small></h3>`;
-  const yours = (head) => `<div class="dg-yours"><div class="dg-yhead">${head}</div><div class="dg-grid">${grid || '<p class="dg-none">No cards here.</p>'}</div></div>`;
+  const yours = (head) => `<div class="dg-yours"><div class="dg-yhead">${head}</div><div class="dg-grid"${isPort() && dg.pcols ? ` style="grid-template-columns:repeat(${dg.pcols},minmax(0,1fr))"` : ""}>${grid || '<p class="dg-none">No cards here.</p>'}</div></div>`;
   const types = ['Character', 'Creature', 'Item', 'Moment', 'Place'];
   const ruleChips = rule.types ? `<div class="dg-rcs">${types.map((t) => `<span class="dg-rc ${rule.types.includes(t) ? 'yes' : 'no'}">${rule.types.includes(t) ? I.check : I.ban}${t}</span>`).join('')}</div>` : '';
   const ruleIn = `<span class="k">${I.cards}Today's rule</span><h2>${esc(rule.name || 'Everything goes')}</h2><p>${esc(rule.note || '')}</p>${ruleChips}`;
@@ -331,7 +334,9 @@ function wireLobby(main) {
     const cols = flex ? Math.max(1, Math.floor((grid.clientWidth + gapX) / (one.getBoundingClientRect().width + gapX))) : getComputedStyle(grid).gridTemplateColumns.split(' ').length;
     const gap = parseFloat(getComputedStyle(grid).rowGap) || 0;
     const rows = Math.max(1, Math.floor((grid.clientHeight + gap) / (one.getBoundingClientRect().height + gap)));
-    const per = isPort() ? cols * 2 : flex ? cols : cols * rows;
+    // A short portrait screen: smaller cards (more columns) until one full row fits.
+    if (isPort() && !flex && grid.clientHeight + 1 < one.getBoundingClientRect().height && (dg.pcols || 5) < 6) { dg.pcols = (dg.pcols || 5) + 1; paint(); return; }
+    const per = flex ? cols : cols * rows;   // the portrait lobby is one view too (no scroll)
     if (per !== dg.per) { dg.per = per; paint(); return; }
   }
   main.querySelector('.dg-start')?.addEventListener('click', async () => {
@@ -390,8 +395,11 @@ function fightHTML() {
       <span class="bar"><i></i></span>
       <span class="wk">${(f.weak || []).length ? `<span class="wk-l" title="Weak to">${I.up}${f.weak.map((w) => `<i title="Weak to ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}${(f.resist || []).length ? `<span class="rs-l" title="Resists">${I.shield}${f.resist.map((w) => `<i title="Resists ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}</span>
       ${(f.passives || []).length ? `<span class="ps">${f.passives.map((p) => `<i>${esc(p)}</i>`).join('')}</span>` : ''}</div>`;
-  const unit = (c) => `<div class="dg-unit" data-card="${c.id}"><span class="dg-tag weak"></span>
-      ${cardTile(c, { top: `<span class="dg-pw">${I.bolt}${fmt(c.cp)}</span><span class="dg-buffs"></span>`, over: '<span class="dg-state"></span><span class="dg-tap">Tap to attack</span>' })}
+  // The card art keeps only the power; the weakness tag and the buffs sit in their own row under the
+  // card, so nothing overlaps (Nathan, 2026-10-03).
+  const unit = (c) => `<div class="dg-unit" data-card="${c.id}">
+      ${cardTile(c, { top: `<span class="dg-pw">${I.bolt}${fmt(c.cp)}</span>`, over: '<span class="dg-state"></span><span class="dg-tap">Tap to attack</span>' })}
+      <span class="dg-fx"><span class="dg-tag weak"></span><span class="dg-buffs"></span></span>
       <span class="dg-hp"><i></i></span><small class="dg-hpn"></small></div>`;
   const supB = (c) => `<button class="dg-sup" data-sup="${c.id}">
       ${c.image_url ? `<img src="${thumb(c.image_url)}" alt="">` : '<span></span>'}
@@ -495,12 +503,17 @@ function placeArena(main) {
   const L = dg.stage.labels();
   const canvas = main.querySelector('.dg-canvas');
   const off = canvas ? canvas.offsetTop : 0;
+  // Each plate is narrower than the space to its neighbours and stays inside the arena.
+  const W = main.querySelector('.dg-arena')?.clientWidth || 0;
+  const phone = document.body.classList.contains('m-port') || document.body.classList.contains('m-land');
+  const xs = L.filter(Boolean).map((l) => l.x);
   main.querySelectorAll('.dg-plate').forEach((p) => {
     const l = L[Number(p.dataset.foe)];
     if (!l) return;
-    p.style.left = `${l.x}px`;
-    const phone = document.body.classList.contains('m-port') || document.body.classList.contains('m-land');
-    p.style.width = `${Math.max(phone ? 54 : 90, Math.min(250, l.w * (phone ? 0.84 : 0.92)))}px`;
+    const room = Math.min(9999, ...xs.filter((x) => x !== l.x).map((x) => Math.abs(x - l.x))) - 6;
+    const w = Math.max(48, Math.min(250, l.w * (phone ? 0.84 : 0.92), room, W ? W - 8 : 9999));
+    p.style.width = `${w}px`;
+    p.style.left = `${W ? Math.min(Math.max(l.x, w / 2 + 4), W - w / 2 - 4) : l.x}px`;
   });
   const r = main.querySelector('.dg-reticle');
   const l = L[dg.target];
