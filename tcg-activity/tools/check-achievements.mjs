@@ -24,6 +24,13 @@ for (const a of full) {
   if (!a.done) fail(`${a.key} (${a.name}) is not attainable: ${a.have}/${a.need}`);
   if (a.set && a.set.length < a.need) fail(`${a.key} set has ${a.set.length} cards, needs ${a.need}`);
 }
+// Season 1 Complete = every Season 1 base (normal) card, and no other rarity (Nathan, 2026-10-03).
+const s1Base = catalog.filter((c) => (c.season || 'Season 1') === 'Season 1' && c.rarity === 'normal');
+const onlyBase = measure(catalog.map((c) => ({ ...c, owned: s1Base.includes(c), quantity: s1Base.includes(c) ? 1 : 0, ascension: 0 })), {}).find((a) => a.key === 's1');
+const allButOne = measure(catalog.map((c) => ({ ...c, owned: c !== s1Base[0], quantity: c !== s1Base[0] ? 1 : 0, ascension: 0 })), {}).find((a) => a.key === 's1');
+if (!s1Base.length) fail('the catalog has no Season 1 base cards');
+if (!onlyBase.done || onlyBase.need !== s1Base.length) fail(`s1 with only the ${s1Base.length} base cards: ${onlyBase.have}/${onlyBase.need}, not done`);
+if (allButOne.done) fail('s1 is done with one base card missing');
 console.log(full.map((a) => `${a.done ? 'ok ' : 'NO '} ${a.group.padEnd(11)} ${a.name.padEnd(18)} ${a.desc}`).join('\n'));
 console.log(bad ? `${bad} FAILED` : `PASS ${ACHIEVEMENTS.length} achievements, all attainable`);
 if (bad) process.exit(1);

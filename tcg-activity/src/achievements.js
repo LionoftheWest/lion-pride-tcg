@@ -35,8 +35,9 @@ export const ACHIEVEMENTS = [
   { key: 'own25', group: 'Collection', icon: '📚', name: 'Growing Pride', desc: 'Own 25 different cards', rule: ownN(() => true, 25) },
   { key: 'own50', group: 'Collection', icon: '🗃', name: 'Collector', desc: 'Own 50 different cards', rule: ownN(() => true, 50) },
   { key: 'own100', group: 'Collection', icon: '🏛', name: 'Archivist', desc: 'Own 100 different cards', rule: ownN(() => true, 100) },
-  { key: 's1', group: 'Collection', icon: '🏆', name: 'Season 1 Complete', desc: 'Own every Season 1 card',
-    rule: (cards) => { const set = cards.filter((c) => (c.season || 'Season 1') === 'Season 1'); return { have: owned(set), need: set.length, set }; } },
+  { key: 's1', group: 'Collection', icon: '🏆', name: 'Season 1 Complete', desc: 'Own every Season 1 base card',
+    // Base (normal) cards only (Nathan, 2026-10-03): no IR, SR, Full Art, Gold or Event card.
+    rule: (cards) => { const set = cards.filter((c) => (c.season || 'Season 1') === 'Season 1' && c.rarity === 'normal'); return { have: owned(set), need: set.length, set }; } },
 
   // Rarity
   { key: 'ir1', group: 'Rarity', icon: '🔷', name: 'First Shine', desc: 'Own an Illustrated Rare', rule: ownN((c) => c.rarity === 'illustrated_rare', 1) },
