@@ -1,6 +1,7 @@
 import type { Client, Guild, GuildMember, Message, Role } from 'discord.js';
 import { getSupabase } from './supabase.js';
 import { announce } from './internal.js';
+import { botWork } from './bot-work.js';
 // The server (DISCORD_GUILD_ID), read here so the pure helpers test without the bot token.
 const GUILD_ID = (): string => process.env.DISCORD_GUILD_ID ?? '';
 
@@ -247,6 +248,7 @@ export async function tick(client: Client): Promise<void> {
   if (running) return;
   running = true;
   try {
+    if (!(await botWork()).fx) return; // nothing due (bot_work.sql: one question, not four)
     const sb = getSupabase();
     const guild = await client.guilds.fetch(GUILD_ID());
     const now = new Date().toISOString();
