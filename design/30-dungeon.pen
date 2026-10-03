@@ -5288,35 +5288,6 @@
                       "height": 6
                     }
                   ]
-                },
-                {
-                  "type": "frame",
-                  "id": "btlPV",
-                  "name": "Intent",
-                  "gap": 5,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "mzAgn",
-                      "name": "Icon",
-                      "width": 11,
-                      "height": 11,
-                      "icon": "sword",
-                      "library": "lucide",
-                      "fill": "#FF8A95"
-                    },
-                    {
-                      "type": "text",
-                      "id": "QRtOU",
-                      "name": "Label",
-                      "fill": "$text-2",
-                      "content": "Next: attacks for 18",
-                      "fontFamily": "$font",
-                      "fontSize": 10,
-                      "fontWeight": "600"
-                    }
-                  ]
                 }
               ]
             },
@@ -5446,35 +5417,6 @@
                       },
                       "width": 144,
                       "height": 6
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "YgBx8",
-                  "name": "Intent",
-                  "gap": 5,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "HApgc",
-                      "name": "Icon",
-                      "width": 11,
-                      "height": 11,
-                      "icon": "sword",
-                      "library": "lucide",
-                      "fill": "#FF8A95"
-                    },
-                    {
-                      "type": "text",
-                      "id": "qp1A2",
-                      "name": "Label",
-                      "fill": "$text-2",
-                      "content": "Next: splits in 2 turns",
-                      "fontFamily": "$font",
-                      "fontSize": 10,
-                      "fontWeight": "600"
                     }
                   ]
                 }
@@ -7018,52 +6960,6 @@
                       "fontSize": 10,
                       "fontWeight": "800",
                       "letterSpacing": 0.8
-                    },
-                    {
-                      "type": "frame",
-                      "id": "neV7L",
-                      "name": "Energy",
-                      "gap": 3,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "rectangle",
-                          "cornerRadius": 2,
-                          "id": "Ca4Y3",
-                          "name": "Pip",
-                          "fill": "$gold",
-                          "width": 10,
-                          "height": 6
-                        },
-                        {
-                          "type": "rectangle",
-                          "cornerRadius": 2,
-                          "id": "Q0G1KU",
-                          "name": "Pip",
-                          "fill": "$gold",
-                          "width": 10,
-                          "height": 6
-                        },
-                        {
-                          "type": "rectangle",
-                          "cornerRadius": 2,
-                          "id": "zVx8B",
-                          "name": "Pip",
-                          "fill": "#FFFFFF1F",
-                          "width": 10,
-                          "height": 6
-                        },
-                        {
-                          "type": "text",
-                          "id": "d0hvz",
-                          "name": "Label",
-                          "fill": "$gold",
-                          "content": "2 energy",
-                          "fontFamily": "$font",
-                          "fontSize": 9.5,
-                          "fontWeight": "700"
-                        }
-                      ]
                     }
                   ]
                 },
@@ -7116,14 +7012,53 @@
                       "gap": 1,
                       "children": [
                         {
-                          "type": "text",
-                          "id": "I4LhAE",
-                          "name": "Name",
-                          "fill": "$text",
-                          "content": "Mend",
-                          "fontFamily": "$font",
-                          "fontSize": 12,
-                          "fontWeight": "700"
+                          "type": "frame",
+                          "id": "Bu6uH",
+                          "name": "Name Row",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "I4LhAE",
+                              "name": "Name",
+                              "fill": "$text",
+                              "content": "Mend",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qB7ME",
+                              "name": "Cost",
+                              "gap": 3,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "SFyMd",
+                                  "name": "Icon",
+                                  "width": 10,
+                                  "height": 10,
+                                  "icon": "circle-check",
+                                  "library": "lucide",
+                                  "fill": "$green"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "o24AT",
+                                  "name": "Value",
+                                  "fill": "$green",
+                                  "content": "Ready",
+                                  "fontFamily": "$font",
+                                  "fontSize": 9.5,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "text",
@@ -7134,35 +7069,6 @@
                           "fontFamily": "$font",
                           "fontSize": 9.5,
                           "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "qB7ME",
-                      "name": "Cost",
-                      "gap": 2,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "SFyMd",
-                          "name": "Icon",
-                          "width": 10,
-                          "height": 10,
-                          "icon": "zap",
-                          "library": "lucide",
-                          "fill": "$gold"
-                        },
-                        {
-                          "type": "text",
-                          "id": "o24AT",
-                          "name": "Value",
-                          "fill": "$gold",
-                          "content": "1",
-                          "fontFamily": "$mono",
-                          "fontSize": 10,
-                          "fontWeight": "700"
                         }
                       ]
                     }
@@ -7217,14 +7123,53 @@
                       "gap": 1,
                       "children": [
                         {
-                          "type": "text",
-                          "id": "qVOia",
-                          "name": "Name",
-                          "fill": "$text",
-                          "content": "Shield wall",
-                          "fontFamily": "$font",
-                          "fontSize": 12,
-                          "fontWeight": "700"
+                          "type": "frame",
+                          "id": "a4l7s",
+                          "name": "Name Row",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "qVOia",
+                              "name": "Name",
+                              "fill": "$text",
+                              "content": "Shield wall",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "FTOVq",
+                              "name": "Cost",
+                              "gap": 3,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "B9CwDA",
+                                  "name": "Icon",
+                                  "width": 10,
+                                  "height": 10,
+                                  "icon": "circle-check",
+                                  "library": "lucide",
+                                  "fill": "$green"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "tAGQi",
+                                  "name": "Value",
+                                  "fill": "$green",
+                                  "content": "Ready",
+                                  "fontFamily": "$font",
+                                  "fontSize": 9.5,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "text",
@@ -7235,35 +7180,6 @@
                           "fontFamily": "$font",
                           "fontSize": 9.5,
                           "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "FTOVq",
-                      "name": "Cost",
-                      "gap": 2,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "B9CwDA",
-                          "name": "Icon",
-                          "width": 10,
-                          "height": 10,
-                          "icon": "zap",
-                          "library": "lucide",
-                          "fill": "$gold"
-                        },
-                        {
-                          "type": "text",
-                          "id": "tAGQi",
-                          "name": "Value",
-                          "fill": "$gold",
-                          "content": "1",
-                          "fontFamily": "$mono",
-                          "fontSize": 10,
-                          "fontWeight": "700"
                         }
                       ]
                     }
@@ -7319,14 +7235,53 @@
                       "gap": 1,
                       "children": [
                         {
-                          "type": "text",
-                          "id": "NMOiK",
-                          "name": "Name",
-                          "fill": "$text",
-                          "content": "Rally",
-                          "fontFamily": "$font",
-                          "fontSize": 12,
-                          "fontWeight": "700"
+                          "type": "frame",
+                          "id": "qIdQn",
+                          "name": "Name Row",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "NMOiK",
+                              "name": "Name",
+                              "fill": "$text",
+                              "content": "Rally",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qeN1Q",
+                              "name": "Cost",
+                              "gap": 3,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "xyrVF",
+                                  "name": "Icon",
+                                  "width": 10,
+                                  "height": 10,
+                                  "icon": "hourglass",
+                                  "library": "lucide",
+                                  "fill": "$text-3"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Vqmhi",
+                                  "name": "Value",
+                                  "fill": "$text-3",
+                                  "content": "Ready in 2 rounds",
+                                  "fontFamily": "$font",
+                                  "fontSize": 9.5,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "text",
@@ -7337,35 +7292,6 @@
                           "fontFamily": "$font",
                           "fontSize": 9.5,
                           "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "qeN1Q",
-                      "name": "Cost",
-                      "gap": 2,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "xyrVF",
-                          "name": "Icon",
-                          "width": 10,
-                          "height": 10,
-                          "icon": "hourglass",
-                          "library": "lucide",
-                          "fill": "$text-3"
-                        },
-                        {
-                          "type": "text",
-                          "id": "Vqmhi",
-                          "name": "Value",
-                          "fill": "$text-3",
-                          "content": "2 turns",
-                          "fontFamily": "$mono",
-                          "fontSize": 10,
-                          "fontWeight": "700"
                         }
                       ]
                     }
