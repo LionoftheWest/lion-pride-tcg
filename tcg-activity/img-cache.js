@@ -3,7 +3,10 @@
 // alone is 19 MB per member. With it each object leaves Supabase once per deploy (the
 // cache dir is inside the container, so a deploy starts it empty).
 // - The key is the upstream URL, and only the ?v= version is kept (a changed file gets a
-//   new ?v or a new file name, the same rule as the browser's week-long cache).
+//   new ?v or a new file name, the same rule as the browser's week-long cache). A v that is
+//   not short and plain is refused (null): each new v is a new Supabase fetch and disk copy.
+// - get(url, { allowMiss }): a miss that would fetch upstream first asks allowMiss() (the
+//   per-IP miss limit in server.js); no = { status: 429 }. A hit never asks.
 // - Only 200 responses are stored. Many requests for one missing object share one fetch.
 // - Past maxBytes it still serves, but stops writing (the whole bucket is ~0.6 GB).
 import { createHash } from 'node:crypto';
@@ -12,6 +15,7 @@ import { join } from 'node:path';
 
 export function normalizeImgUrl(base, path, query) {
   const v = new URLSearchParams(query.replace(/^\?/, '')).get('v');
+  if (v && !/^[\w.-]{1,32}$/.test(v)) return null;
   return `${base}/${path}${v ? `?v=${encodeURIComponent(v)}` : ''}`;
 }
 
@@ -24,7 +28,7 @@ export function createImgCache({ dir, maxBytes = 1.5e9, fetchFn = fetch }) {
 
   const save = (file, data) => { const tmp = `${file}.${process.pid}.tmp`; writeFileSync(tmp, data); renameSync(tmp, file); };
 
-  async function get(url) {
+  async function get(url, { allowMiss } = {}) {
     const key = createHash('sha256').update(url).digest('hex');
     const body = join(dir, key);
     try {
@@ -33,6 +37,7 @@ export function createImgCache({ dir, maxBytes = 1.5e9, fetchFn = fetch }) {
       return { status: 200, type: readFileSync(`${body}.type`, 'utf8'), buf };
     } catch { /* a miss */ }
     if (inflight.has(key)) return inflight.get(key);
+    if (allowMiss && !allowMiss()) return { status: 429 };
     const p = (async () => {
       stats.upstream += 1;
       const r = await fetchFn(url);
