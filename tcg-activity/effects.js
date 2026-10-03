@@ -8,7 +8,8 @@
 // Either one also makes the collection/catalog queries read subjects.effect, so the
 // card_effects.sql migration MUST be applied before either flag is set.
 
-import { mtDayStartISO } from './src/mt-time.js';
+import { mtDayStartISO, nextMtMidnightISO } from './src/mt-time.js';
+import { selectAll } from './src/select-all.js';
 const ALL = process.env.FEATURE_CARD_EFFECTS === '1';
 const PREVIEW = new Set((process.env.CARD_EFFECTS_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
 
@@ -38,6 +39,21 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     return new Map((data || []).map((c) => [c.id, { name: c.name, image_url: toProxyImg(c.image_url) }]));
   };
 
+  const countBy = (rows, key) => { const m = {}; for (const r of rows || []) { const k = String(r[key]); m[k] = (m[k] || 0) + 1; } return m; };
+  // Discord cannot change the server owner (nickname, roles, timeout, voice): settings.discord_immune,
+  // written by the bot at start. True when the card's effect acts in Discord or voice.
+  async function immuneTarget(cardId, targetId) {
+    const [{ data: im }, { data: card }] = await Promise.all([
+      supabase.from('settings').select('value').eq('key', 'discord_immune').maybeSingle(),
+      supabase.from('cards').select('subject:subjects(effect)').eq('id', cardId).maybeSingle(),
+    ]);
+    if (!Array.isArray(im?.value) || !im.value.map(String).includes(String(targetId))) return false;
+    const prim = card?.subject?.effect?.primitive;
+    if (!prim) return false;
+    const { data: p } = await supabase.from('effect_primitives').select('channel').eq('primitive', prim).maybeSingle();
+    return p?.channel === 'discord' || p?.channel === 'voice';
+  }
+
   // My state: cooldowns, active effects, unseen plays on me, and the tier table.
   app.get('/api/effects/me', async (req, res) => {
     const me = await caller(req);
@@ -47,7 +63,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     // The MT day play_card_effect() counts the daily limit in (launch_event_cards.sql). Midnight UTC
     // made Plays today drop to 0 at 6 PM MT (2026-10-02).
     const dayStart = mtDayStartISO();
-    const [cds, act, inc, tiers, prims, sent, caps] = await Promise.all([
+    const [cds, act, inc, tiers, prims, sent, caps, mine, pranks, immune] = await Promise.all([
       supabase.from('card_effect_cooldowns').select('subject_id, ready_at').eq('player_id', me.id).gt('ready_at', now),
       supabase.from('player_effects').select('id, primitive, amount, duration_s, options, expires_at')
         .eq('player_id', me.id).is('consumed_at', null).lte('starts_at', now).or(`expires_at.is.null,expires_at.gt.${now}`),
@@ -57,6 +73,11 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
       supabase.from('effect_primitives').select('primitive, kind, channel, max_amount, max_duration_s, enabled'),
       supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('player_id', me.id).gte('created_at', dayStart),
       supabase.from('settings').select('value').eq('key', 'card_effect_caps').maybeSingle(),
+      // The limits made visible (Nathan, 2026-10-03): my plays on each member today (pair_per_day
+      // counts aimed_at), the pranks each member got today (prank_recv_per_day), the immune members.
+      selectAll(() => supabase.from('card_plays').select('id, aimed_at').eq('player_id', me.id).gte('created_at', dayStart), ['id']),
+      selectAll(() => supabase.from('card_plays').select('id, target_id').eq('kind', 'prank').gte('created_at', dayStart), ['id']),
+      supabase.from('settings').select('value').eq('key', 'discord_immune').maybeSingle(),
     ]);
     const err = cds.error || act.error || inc.error || prims.error;
     if (err) return res.status(500).json({ error: err.message });
@@ -78,6 +99,11 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
       playsToday: sent.count || 0,
       canTest: canTest(me.id),
       sendCap: Number(caps.data?.value?.send_per_day) || null,
+      caps: caps.data?.value || {},
+      pairs: countBy(mine.data, 'aimed_at'),
+      pranked: countBy(pranks.data, 'target_id'),
+      immune: Array.isArray(immune.data?.value) ? immune.data.value.map(String) : [],
+      dayEnds: nextMtMidnightISO(),
     });
   });
 
@@ -167,6 +193,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     const cardId = Math.floor(Number(req.body?.cardId));
     const targetId = String(req.body?.targetId || '');
     if (!Number.isFinite(cardId) || !targetId) return res.status(400).json({ ok: false, error: 'bad_request' });
+    if (await immuneTarget(cardId, targetId)) return res.json({ ok: false, error: 'immune' });
     const { data, error } = await supabase.rpc('play_card_effect', { p_player: me.id, p_card: cardId, p_target: targetId });
     if (error) return res.status(500).json({ ok: false, error: error.message });
     res.json(data);

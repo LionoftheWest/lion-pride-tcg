@@ -308,8 +308,19 @@ export async function undoAll(client: Client): Promise<number> {
   return (data ?? []).length;
 }
 
+/** The members no bot can change (Discord: the server owner). The Activity reads settings
+ *  discord_immune and refuses a Discord or voice prank on them before the play (2026-10-03: 5 of 7
+ *  failed Discord pranks were on the owner; the sender lost the play and the cooldown). */
+export async function storeImmune(client: Client): Promise<void> {
+  try {
+    const guild = await client.guilds.fetch(GUILD_ID());
+    await getSupabase().from('settings').upsert({ key: 'discord_immune', value: [guild.ownerId], updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  } catch (e) { console.error('discord_immune:', e); }
+}
+
 export function startDiscordEffects(client: Client): void {
   if (!discordEffectsEnabled()) return;
+  void storeImmune(client);
   void tick(client); // at start: undo whatever ended while the bot was down
   setInterval(() => { void tick(client); }, TICK_MS);
   console.log('Discord effects started (poll every 10s).');
