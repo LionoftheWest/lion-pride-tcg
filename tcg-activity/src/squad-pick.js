@@ -154,6 +154,13 @@ export function bestSquad(cards, hunt, { cap = 8 } = {}) {
   return [...team.sort((a, b) => own(b) - own(a)), ...sups].map((c) => c.id);
 }
 
+// A squad needs at least 1 attacker (Nathan, 2026-10-03): supports alone deal no damage, so the
+// member would get no raid prize. lock_hunt_squad refuses it too ('no_attacker').
+export function hasAttacker(cards, selectedIds) {
+  const sel = new Set(selectedIds);
+  return cards.some((c) => sel.has(c.id) && ATTACKERS.has(c.type));
+}
+
 // How many more cards the member could still add to `selected` today (the lock-in warning).
 export function openSlots(cards, selectedIds, { cap = 8 } = {}) {
   const sel = new Set(selectedIds);

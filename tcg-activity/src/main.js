@@ -11,7 +11,7 @@
  * shows in the main header and opens reveal in the main pane for everyone.
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
-import { openSlots, squadDown } from './squad-pick.js';
+import { openSlots, squadDown, hasAttacker } from './squad-pick.js';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 import { mtToday, nextMtMidnightISO } from './mt-time.js';
 installImgFallback();
@@ -2079,6 +2079,18 @@ function confirmShortSquad(have, cap) {
     el('sqWarn').addEventListener('click', (e) => { if (e.target.id === 'sqWarn') close(null); });
   });
 }
+// Supports alone deal no damage (Nathan, 2026-10-03): Lock In needs at least 1 attacker.
+function noAttackerNotice() {
+  document.getElementById('sqWarn')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div class="sq-warn" id="sqWarn" role="dialog" aria-modal="true">
+    <div class="sq-warn-box"><button class="v2-icon sq-warn-x" id="sqWarnX" aria-label="Close">✕</button><h3>You have no attackers</h3>
+      <p>You will not be able to do any damage. Please have at least 1 attacker (a Character or a Creature) in your squad.</p>
+      <div class="sq-warn-btns"><button class="v2-btn gold" id="sqWarnGo">OK</button></div></div></div>`);
+  const close = () => document.getElementById('sqWarn')?.remove();
+  el('sqWarnX').addEventListener('click', close);
+  el('sqWarnGo').addEventListener('click', close);
+  el('sqWarn').addEventListener('click', (e) => { if (e.target.id === 'sqWarn') close(); });
+}
 function updateLockBtn() {
   const btn = el('lockInBtn'); const cnt = el('selCount');
   if (cnt) cnt.textContent = squad.sel.size;
@@ -2221,6 +2233,7 @@ function wireSelectPhase() {
   // Lock In commits the squad and UNLOCKS "Enter Battle" — it does not enter yet.
   el('lockInBtn')?.addEventListener('click', async () => {
     if (squad.sel.size < 1) return;
+    if (!hasAttacker(huntState?.roster || [], [...squad.sel])) { noAttackerNotice(); return; }
     // A squad with open slots asks first (Nathan, 2026-10-01: members fought with short squads).
     const open = openSlots(huntState?.roster || [], [...squad.sel], { cap });
     if (open > 0) {
@@ -2237,6 +2250,7 @@ function wireSelectPhase() {
     // The server keeps the squad (hunt_squads.sql): one squad per day, fixed after the first fight.
     const lr = await apiPost('/api/hunt/squad', { cards: [...squad.sel] }).catch(() => null);
     if (!lr?.ok) {
+      if (lr?.error === 'no_attacker') { noAttackerNotice(); return; }
       if (lr?.error === 'squad_fixed' && Array.isArray(lr.squad)) { squad.sel = new Set(lr.squad.map(Number)); paintHuntPage(); onSquadChanged(); }
       const b = el('lockInBtn')?.getBoundingClientRect();
       calloutAt(b ? b.left + b.width / 2 : innerWidth / 2, b ? b.top - 10 : 120, lr?.error === 'squad_fixed' ? 'SQUAD LOCKED FOR TODAY' : 'TRY AGAIN', '#ff8f5c');
