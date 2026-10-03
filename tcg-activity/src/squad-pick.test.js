@@ -1,7 +1,7 @@
 // node --test src/squad-pick.test.js — the auto-pick and the lock-in warning (Nathan, 2026-10-01).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bestSquad, teamValue, openSlots } from './squad-pick.js';
+import { bestSquad, teamValue, openSlots, hasAttacker } from './squad-pick.js';
 
 const hunt = { weak_points: [{ kind: 'tag', value: 'trait:strong' }], resist_points: [{ kind: 'tag', value: 'trait:ice' }], passives: [] };
 let n = 0;
@@ -135,4 +135,12 @@ test('no locked squad (fought before the server squads): the cards that fought a
   const cards = sq();
   cards[0].used = true; cards[0].downed = true; cards[1].used = true;
   assert.equal(squadDown(cards, []), false);
+});
+test('a squad of supports only has no attacker; one Character or Creature is enough', () => {
+  const sups = [card(10, [], { type: 'Moment' }), card(10, [], { type: 'Item' }), card(10, [], { type: 'Place' }), card(10, [], { type: null })];
+  const ids = sups.map((c) => c.id);
+  assert.equal(hasAttacker(sups, ids), false);
+  const beast = card(20, [], { type: 'Creature' });
+  assert.equal(hasAttacker([...sups, beast], [...ids, beast.id]), true);
+  assert.equal(hasAttacker([...sups, beast], ids), false); // owned but not picked
 });

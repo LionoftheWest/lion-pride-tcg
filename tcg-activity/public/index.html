@@ -31,7 +31,6 @@
   </div>
   <header id="topbar">
     <div class="title"><span class="logo">🦁</span> <span class="v2-name">Lion Pride TCG</span><span class="v2-logo v2-only"><span class="v2-emblem"><img src="/logo-lion.svg" alt=""></span><b>LION</b><b class="gold">PRIDE</b><i>TCG</i></span><span class="v2-season v2-only" id="v2Season"></span></div>
-    <button id="openTop" class="open-top hidden">🎴 Open Pack</button>
     <div class="topright">
       <span class="v2-pill v2-only" id="v2Packs" title="Packs to open"></span>
       <span class="v2-pill v2-only hidden" id="v2Shards" title="Shards"></span>
@@ -41,29 +40,21 @@
       <button id="reportBtn" class="iconbtn hidden" title="Report a problem">🔧</button>
       <button id="bellBtn" class="iconbtn hidden" title="Notifications">🔔</button>
       <button id="boardBtn" class="iconbtn hidden" title="Leaderboard">🏆</button>
-      <button id="giftBtn" class="iconbtn hidden" title="Gift a pack">🎁</button>
       <button id="mute" class="iconbtn hidden" title="Sound on/off">🔊</button>
       <span class="v2-avatar v2-only" id="v2Avatar"></span>
-      <nav id="nav" class="hidden">
-        <button data-view="gallery">Gallery</button>
-        <button data-view="trading">Trading</button>
-        <button data-view="collection" class="active">Collection</button>
-        <button data-view="battling">Battling</button>
-      </nav>
     </div>
   </header>
   <div id="status">Loading…</div>
   <div id="body" class="hidden">
     <main id="main"></main>
     <aside id="feed">
-      <div id="bossMini"></div>
-      <div class="feed-head">Community Live Feed</div>
+      <div class="feed-head">Raid Boss Live Feed</div>
       <div class="feed-list" id="feedList"></div>
     </aside>
   </div>
 
 
-  <!-- UI v2 dock (hidden unless body.ui-v2). -->
+  <!-- The dock (the main navigation). -->
   <nav id="dock" aria-label="Main">
     <button class="dk" data-view="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
     <button class="dk" data-view="collection"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg><span>Collection</span></button>
@@ -75,16 +66,7 @@
   <!-- Full-screen pack-opening takeover: dims everything, plays the reveal. -->
   <div id="stage" class="hidden"></div>
 
-  <!-- Gift a pack: find a player (in the VC or not) and send from your balance. -->
-  <div id="gift" class="hidden"></div>
-
-  <!-- Trade builder: pick a player, pick your card, gift it or request one back. -->
-  <div id="trade" class="hidden"></div>
-
-  <!-- In-app notifications (the bell). -->
-  <div id="notif" class="hidden"></div>
-
-  <!-- Leaderboard: top players by Total Collection Power (the trophy). -->
+  <!-- The Hunt standings (the trophy on the Hunt screen). -->
   <div id="board" class="hidden"></div>
   <div id="effectPick" class="hidden"></div>
   <div id="effectBanners"></div>

@@ -10,7 +10,6 @@ body.ui-v2 .v2-emblem img { width: 27px; height: 27px; }
 body.ui-v2 .v2-logo b { color: var(--text-primary); }
 body.ui-v2 .v2-logo b.gold { color: var(--gold); margin-left: -2px; }
 body.ui-v2 .v2-logo i { font: 800 11px var(--font-display); font-style: normal; letter-spacing: .6px; color: var(--on-gold); background: var(--gold); border-radius: 5px; padding: 3px 6px; }
-body.ui-v2 #giftBtn { display: none !important; }
 body.ui-v2 #topbar .iconbtn { display: grid; place-items: center; position: relative; }
 body.ui-v2 #topbar .iconbtn svg { width: 18px; height: 18px; }
 body.ui-v2 #topbar .iconbtn .navbadge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: var(--rad-pill);

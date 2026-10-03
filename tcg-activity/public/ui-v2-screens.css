@@ -267,11 +267,7 @@ body.ui-v2:has(.arena-mode) #feed .afrow b { color: var(--text-primary); font-fa
 body.ui-v2:has(.arena-mode) #feed .empty { color: var(--text-muted); font-size: 12px; }
 
 /* ---- Hunt (squad select): the picker left, the boss + feed on the right ---- */
-body.ui-v2 .select-mode .ginput, body.ui-v2 .select-mode .gselect { height: 40px; border-radius: var(--rad-md); border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); font: 500 13px var(--font-ui); }
-body.ui-v2 .select-mode .squad-panel { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 18px; }
 body.ui-v2 .select-mode .lockin-btn, body.ui-v2 .select-mode .enter-btn:not(:disabled) { background: linear-gradient(180deg, #FFCB5C, var(--gold-strong)); color: var(--on-gold); border: 0; border-radius: var(--rad-md); }
-body.ui-v2 .soon.cooldown { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-family: var(--font-ui); }
-body.ui-v2 .soon.cooldown b { font: 800 26px var(--font-display); }
 body.ui-v2 .select-mode .squad-grid { grid-template-columns: repeat(var(--scols, 4), var(--sw, 120px)); gap: 10px; align-content: start; }
 /* Grid items default to min-width:auto, so one wide row (the tags) widened the whole
    panel past its column and cut the right edge. Every column may shrink. */

@@ -2,14 +2,16 @@
 
 A Discord bot for a community Trading Card Game. TypeScript + [discord.js](https://discord.js.org) v14.
 
-## What is here now (Phase 1 — the daily-draw spine)
+## What is here now
 
-- A command loader that picks up every file in `src/commands/`.
-- `/ping` — a health check.
-- `/open` — opens the pack or packs you earned today. A pack is 5 cards.
-- `/collection [member]` — a member's collection summary by rarity.
-- `/card <name>` — shows a card from the catalog, with name autocomplete.
-- `/seed …` — admin only. Adds a card, so a draw has cards to pull.
+Members play in the Discord Activity (`tcg-activity/`): packs, the collection, gifts, trades,
+the raid and the bell are all there. The member slash commands and the `/hub` panel were
+removed on 2026-10-03. The bot keeps:
+
+- The admin commands: `/givepacks`, `/grantall`, `/packrate`, `/testpack`, `/undoeffects`.
+  A command loader picks up every file in `src/commands/`.
+- The internal API for the Activity (`src/internal.ts`, 127.0.0.1 only): pack opens, gifts, posts.
+- The posts and the Discord effects: pulls, raid and play posts, voice and role pranks.
 - Passive activity tracking. The bot counts each member's messages per day.
 
 The design and the economy live in `docs/DESIGN.md`. The build plan and the

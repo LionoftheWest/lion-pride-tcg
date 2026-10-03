@@ -39,7 +39,6 @@ body.ui-v2 #topbar .title .logo { width: 36px; height: 36px; border-radius: var(
 body.ui-v2 .v2-season { font: 600 11px var(--font-ui); letter-spacing: .8px; text-transform: uppercase; color: var(--text-secondary);
   background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--rad-pill); padding: 5px 10px; }
 body.ui-v2 #topbar .topright { margin-left: auto; display: flex; align-items: center; gap: var(--sp-2); }
-body.ui-v2 #nav, body.ui-v2 #openTop { display: none !important; }
 body.ui-v2 .v2-pill { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: var(--rad-pill);
   background: var(--surface); border: 1px solid var(--border); font: 600 13px var(--font-ui); color: var(--text-secondary); }
 body.ui-v2 .v2-pill b { font: 700 14px var(--font-num); color: var(--text-primary); }
