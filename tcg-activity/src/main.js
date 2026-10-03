@@ -28,6 +28,7 @@ import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, 
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
 import { initTutorial } from './ui-v2-tutorial.js';
+import { every, isIdle } from './poll.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
@@ -321,18 +322,19 @@ async function main() {
     boardBtn.addEventListener('click', openBoard);
   }
   refreshNotifBadge();
-  setInterval(refreshNotifBadge, 45000);
+  // The background refreshes pause while the window is hidden and slow down when the member is idle (poll.js).
+  every(45000, refreshNotifBadge);
   setTimeout(() => preloadBoss().catch(() => {}), 3000); // the 3D code, in the background (boss-lazy.js)
 
   connectStreams();
   renderFeedSidebar();
   refreshOwned();
   refreshPackStatus();
-  setInterval(refreshPackStatus, 45000); // packs can be earned while the app is open
+  every(45000, refreshPackStatus); // packs can be earned while the app is open
   refreshTradeBadge();
-  setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
+  every(45000, refreshTradeBadge); // show a badge when a trade offer arrives
   // The trade screen open: every 8 s, so an answered offer leaves the list at once.
-  setInterval(() => { if (currentView === 'trading' && !document.hidden) refreshTradeBadge(); }, 8000);
+  every(8000, () => { if (currentView === 'trading') refreshTradeBadge(); });
   initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], statsOn: () => !!cache.collection?.stats?.on, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   let flags = null;
   // 3 tries: a failed load fell back to the old design (and its old trade flow) for that session.
@@ -396,13 +398,13 @@ function startV2() {
     const seasons = [...new Set((d.cards || []).map((c) => c.season || 'Season 1'))];
     el('v2Season').textContent = seasons[seasons.length - 1] || 'Season 1';
   }).catch(() => {});
-  setInterval(() => { if (currentView === 'home') homeTick(); }, 30000);
+  every(30000, () => { if (currentView === 'home') homeTick(); });
   // The red dot on the Hunt button while a boss is live.
   const huntDot = () => { if (!features.hunt) return; api('/api/hunt').then((d) => {
     document.querySelector('#dock .dk[data-view="battling"]')?.classList.toggle('live', !!(d?.hunt && d.hunt.status !== 'defeated'));
   }).catch(() => {}); };
   huntDot();
-  setInterval(huntDot, 300000);
+  every(300000, huntDot);
   updateOpenButton();
 }
 
@@ -1294,7 +1296,8 @@ function startHuntTicker() {
       n.textContent = `${n.dataset.prefix} ${fmtLeft(ms)}`;
       if (ms <= 0) expired = true;
     });
-    if (huntTick % 3 === 0 && currentView === 'battling') refreshHuntFeed(); // poll the boss feed every 3s
+    // Poll the boss feed every 3 s; not while hidden, every 30 s when the member is idle (poll.js).
+    if (huntTick % 3 === 0 && currentView === 'battling' && !document.hidden && (!isIdle() || huntTick % 30 === 0)) refreshHuntFeed();
     // The MT day rolled over: the daily reset happened. Re-fetch so downed cards reset
     // and the locked squad expires (back to squad selection).
     if (huntDay && utcToday() !== huntDay) { huntDay = utcToday(); stopHuntTicker(); if (currentView === 'battling') renderHunt(); return; }

@@ -5,6 +5,7 @@ import { art, buf } from './playing-posts.js';
 import { renderAuction, type AuctionInput } from './post-pictures.js';
 import { launchActivityRow } from './ui/launch.js';
 import { RARITY } from './playing-card.js';
+import { botWork } from './bot-work.js';
 
 // Auction posts (Nathan, 2026-10-02): a picture when an auction starts and when it ends, in
 // #tcg-notifications. The bot reads the auctions table every minute (an auction ends in the SQL
@@ -81,6 +82,7 @@ async function tick(client: Client): Promise<void> {
   if (running || !auctionPostsEnabled()) return;
   running = true;
   try {
+    if (!(await botWork()).auctions) return; // no auction post due (bot_work.sql)
     const sb = getSupabase();
     const { data, error } = await sb.from('auctions')
       .select('id, seller_id, card_id, min_rarity, min_count, min_cards, min_mode, status, accepted_bid_id, created_at, ends_at, settled_at, notice_message_id, notice_dirty')

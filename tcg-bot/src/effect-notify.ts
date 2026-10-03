@@ -4,6 +4,7 @@ import { announce } from './internal.js';
 import { launchActivityRow } from './ui/launch.js';
 import { art, buf } from './playing-posts.js';
 import { renderPlay } from './post-pictures.js';
+import { botWork } from './bot-work.js';
 
 // The play picture (Nathan, 2026-10-02): the sender, the card flying to the target, the effect and
 // the outcome. Flag: FEATURE_PLAY_PICTURES=1 (default OFF; a failed picture still posts the text).
@@ -81,6 +82,7 @@ async function drain(client: Client): Promise<void> {
   if (running) return;
   running = true;
   try {
+    if (!(await botWork()).plays) return; // no unposted play (bot_work.sql)
     const supabase = getSupabase();
     const { data: rows, error } = await supabase
       .from('card_plays')
