@@ -20,7 +20,9 @@ begin
     g is false and (select pack_balance from players where id = '${B}') = 0 and (select pack_balance from players where id = '${A}') = 3
     and not exists (select 1 from pack_ledger where player_id in ('${A}', '${B}')));
   g := gift_packs('${A}', '${B}', 3);
-  res := res || jsonb_build_object('case', 'a gift the sender can pay (3) moves 3', 'ok',
+  -- The gift waits in B's bell until Redeem (gift_claims.sql, 2026-10-01).
+  perform claim_gift('${B}', (select id from gift_claims where player_id = '${B}' and claimed_at is null order by id desc limit 1));
+  res := res || jsonb_build_object('case', 'a gift the sender can pay (3) moves 3 (redeemed in the bell)', 'ok',
     g is true and (select pack_balance from players where id = '${A}') = 0 and (select pack_balance from players where id = '${B}') = 3);
   g := gift_packs('${B}', '${B}', 1); g0 := gift_packs('${B}', '${A}', 0); gm := gift_packs('${B}', '${A}', -5); gn := gift_packs('${B}', '${A}', null);
   res := res || jsonb_build_object('case', 'self-gift, 0, negative and NULL amounts are refused', 'ok',

@@ -16,7 +16,8 @@ begin
   ${mig ? 'execute $m$' + mig + '$m$;' : ''}
   insert into players (id, username) values ('tst_lc_a', 'tst a'), ('tst_lc_b', 'tst b'), ('tst_lc_c', 'tst c');
   -- 1. Raider: a first fight in the launch boss gives ONE gift; a later fight gives none.
-  select c.id into att from cards c join subjects s on s.id = c.subject_id where s.type = 'Character' and c.rarity = 'normal' limit 1;
+  -- order by: the same card on every database (2026-10-02: without it a restored copy picked another card).
+  select c.id into att from cards c join subjects s on s.id = c.subject_id where s.type = 'Character' and c.rarity = 'normal' order by c.id limit 1;
   insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values (h, 'tst_lc_a', att, d - 1, 0);
   insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values (h, 'tst_lc_a', att, d - 2, 0);
   select count(*) into n from gift_claims where player_id = 'tst_lc_a' and reason = 'event:launch_raider';
@@ -47,6 +48,8 @@ begin
   insert into player_cards (player_id, card_id, quantity) values ('tst_lc_a', att, 1) on conflict do nothing;
   crash := 0;
   for i in 1..4 loop
+    -- The boss hits back and can down the test card after 1-2 hits (a flaky run, 2026-10-02): heal it.
+    update hunt_card_hp set hp_remaining = max_hp, downed = false where hunt_id = h and player_id = 'tst_lc_a';
     r := hunt_attack('tst_lc_a', h, att);
     exit when not coalesce((r->>'ok')::boolean, false);
     if i <= 3 and (r->>'damage')::int > 0 and r->>'crashed' is null then bad := bad || 'hit ' || i || ' not crashed; '; end if;

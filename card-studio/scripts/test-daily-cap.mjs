@@ -16,7 +16,7 @@ const A = '999999999999999941', B = '999999999999999942', X = '99999999999999994
 const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; g int; d date; c1 bigint; c2 bigint; h bigint;
 begin
-  execute $m$${mig}$m$;
+  ${process.argv.includes('--apply-migrations') ? 'execute $m$' + mig + '$m$;' : '-- the CURRENT functions (daily_cap_5.sql was replaced by the Shards dailies)'}
   update settings set value = '1'::jsonb where key = 'pack_earn_multiplier';
   update settings set value = value || '{"enabled": true}' where key = 'dailies';
   perform set_config('tcg.skip_welcome', 'on', true);
@@ -37,8 +37,10 @@ begin
   h := spawn_hunt(3);
   insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) select h, '${A}', id, d, 5 from cards order by id limit 8;
   r := claim_daily('${A}', 'hunt');
-  res := res || jsonb_build_object('case', 'chat first: 2 chat + 3 dailies = 5, the 6th (hunt) is refused', 'ok',
-    g = 2 and earned_today('${A}') = 5 and r->>'error' = 'capped' and (select pack_balance from players where id = '${A}') = 5, 'g', g, 'r', r, 'earned', earned_today('${A}'));
+  -- At the limit a daily pays 0 packs and still its Shards (shards_dailies_gifts.sql, 2026-10-02).
+  res := res || jsonb_build_object('case', 'chat first: 2 chat + 3 dailies = 5, the 6th (hunt) pays 0 packs + its Shards', 'ok',
+    g = 2 and earned_today('${A}') = 5 and (r->>'ok')::boolean and (r->>'packs')::int = 0 and (r->>'shards')::int > 0
+    and (select pack_balance from players where id = '${A}') = 5, 'g', g, 'r', r, 'earned', earned_today('${A}'));
 
   -- B: 4 dailies first, then chat: only 1 chat pack fits; the chat row shows 1, not 2.
   perform claim_daily('${B}', 'checkin');
