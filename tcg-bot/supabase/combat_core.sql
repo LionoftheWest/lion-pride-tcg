@@ -11,6 +11,19 @@
 --   code and through this file, and fails on the first difference.
 -- A rule change here changes the Hunt, the Dungeon and the Arena together. Idempotent.
 
+-- GUARD: this file replaces live functions. It runs only on the exact live version it was built from
+-- (or on its own result, so it can run again). Another change to the live function stops it here, so
+-- that change is never reverted: rebuild this file from the live text first (.live/rebuild.mjs).
+do $g$ begin
+  if md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), '')) not in ('5a0e831491016265f7accc313f8f8071', 'f84e5768628b1c4afddb89ecfe96a5ec') then
+    raise exception 'combat_core.sql: the live hunt_attack changed since this file was built. Rebuild from the live text.';
+  end if;
+  if md5(replace(pg_get_functiondef('public.hunt_support'::regproc), chr(13), '')) not in ('83f9607a755aa552c0740c0015860fbc', '882eee37eca4a71dbdab385b21bd061a') then
+    raise exception 'combat_core.sql: the live hunt_support changed since this file was built. Rebuild from the live text.';
+  end if;
+end $g$;
+-- GUARD-END
+
 -- ---- The attack ---------------------------------------------------------------------------------------
 
 -- Weakness and resistance: matches by type, rarity, season or tag; p_stack = the squad cards that share a
@@ -269,7 +282,7 @@ declare
   v_passive jsonb; v_pk text; v_elem text; v_syn int; v_synmult numeric; v_burn int; v_burned boolean;
   v_origin text; v_osyn int; v_omult numeric; v_ksyn int; v_kmult numeric;
   v_stats jsonb; v_atk numeric; v_pts jsonb; v_cmb jsonb;
-  v_double boolean := false; v_rally numeric; v_mend numeric;
+  v_double boolean := false; v_rally numeric; v_mend numeric; v_bf numeric;
   v_party jsonb; v_crash jsonb; v_crash_dmg int := 0; v_crash_to text; v_crash_card bigint;
   v_sq jsonb; v_wk jsonb; v_hit jsonb; v_act jsonb; v_ab jsonb; v_area numeric;
 begin
@@ -373,6 +386,9 @@ begin
     -- Rally (a boon): the next hit deals +amount % (the boon is used up by this hit).
     v_rally := take_player_effect(p_player, 'rally');
     if v_rally is not null then v_dmg := greatest(1, round(v_dmg * (1 + least(v_rally, 100) / 100.0))); end if;
+    -- Butterfingers (a prank, effects_outside.sql): the next hit deals -amount % (used up by this hit).
+    v_bf := take_player_effect(p_player, 'butterfingers');
+    if v_bf is not null and v_dmg > 0 then v_dmg := greatest(1, round(v_dmg * (1 - least(v_bf, 100) / 100.0))); end if;
     -- Launch Party (the Launch Day Player boon, launch_event_cards.sql): +amount % on each of the
     -- next N hits (options.uses), one charge per hit.
     v_party := use_effect_charge(p_player, 'launch_party');
@@ -557,7 +573,7 @@ begin
     'countered', v_counter, 'counter_dmg', v_cdmg,
     'round', v_round, 'round_cap', v_rcap,
     'card_hp', v_cardhp, 'card_max_hp', v_maxhp, 'card_downed', v_downed, 'shield', v_shield,
-    'burned', v_burned, 'double', v_double, 'rally', v_rally, 'mend', v_mend, 'party', v_party->'amount', 'crashed', nullif(v_crash_dmg, 0), 'atk', round(v_atk), 'boss_heal', coalesce(v_bheal, 0), 'phase', v_phase, 'passives', to_jsonb(v_plist),
+    'burned', v_burned, 'double', v_double, 'rally', v_rally, 'butterfingers', v_bf, 'mend', v_mend, 'party', v_party->'amount', 'crashed', nullif(v_crash_dmg, 0), 'atk', round(v_atk), 'boss_heal', coalesce(v_bheal, 0), 'phase', v_phase, 'passives', to_jsonb(v_plist),
     'synergy', case when v_syn >= 3 then jsonb_build_object('element', v_elem, 'count', v_syn) else null end,
     'boss_action', case when v_bossact is null then null
       else jsonb_build_object('kind', v_bossact, 'round', v_round, 'targets', v_targets) end);
@@ -576,6 +592,7 @@ declare
   v_tqty int; v_trar text; v_tasc int; v_tmod numeric; v_tmaxhp int; v_tcp int;
   v_tpts jsonb; v_srar text; v_sasc int; v_smod numeric; v_spts jsonb;
   v_aff text; v_ttags text[]; v_affcount int := 0; v_scale numeric := 1; v_matched boolean := false; v_sdmg int;
+  v_settle jsonb;
 begin
   select status, closes_at, tier into v_status, v_closes, v_tier from hunts where id = p_hunt for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'no_hunt'); end if;
@@ -691,7 +708,16 @@ begin
     insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values (p_hunt, p_player, p_card, v_day, v_sdmg)
       on conflict (hunt_id, player_id, card_id, hit_date) do update set damage = hunt_hits.damage + excluded.damage;
     select hp_remaining, status into v_hp, v_status from hunts where id = p_hunt;
-    if v_status = 'defeated' then perform settle_hunt(p_hunt); end if;
+    -- The killing Smite: settle once + the same 'defeat' notification as hunt_attack (2026-10-03).
+    if v_status = 'defeated' then
+      v_settle := settle_hunt(p_hunt);
+      insert into hunt_events (hunt_id, kind, payload)
+        values (p_hunt, 'defeat', jsonb_build_object(
+          'name', (select name from hunts where id = p_hunt), 'tier', v_tier, 'settle', v_settle,
+          'top', (select jsonb_agg(jsonb_build_object('player_id', player_id, 'damage', damage))
+                  from (select player_id, sum(damage) as damage from hunt_hits where hunt_id = p_hunt
+                        group by player_id order by sum(damage) desc limit 3) t)));
+    end if;
   else
     return jsonb_build_object('ok', false, 'error', 'unknown_effect', 'effect', v_eff);
   end if;

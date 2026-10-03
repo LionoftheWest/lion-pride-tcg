@@ -51,7 +51,11 @@ const runs = scen.map((x, i) => `pg_temp.golden_run(${x.seed}, array[${[...ATK, 
 
 // One frozen snapshot: a change that another process commits during the run cannot reach the test
 // (READ COMMITTED gave two answers when the bot or another session committed in the middle of a run).
-const body = String.raw`${process.env.NO_RR ? '' : 'set transaction isolation level repeatable read;'}
+// One read plan: a Slam / Cataclysm reads the card rows with no ORDER BY, so a sequential scan returned them
+// in physical order, which moved between runs (2026-10-03: the live code gave two answers). The primary-key
+// index scan reads them by card id every time. The same setting for the live code and the candidate.
+const PLAN = process.env.NO_PLAN ? '' : 'set local enable_seqscan = off; set local enable_bitmapscan = off;';
+const body = String.raw`${process.env.NO_RR ? '' : 'set transaction isolation level repeatable read;'}${PLAN}
 do $t$
 declare base text[] := '{}'; again text[] := '{}'; cand text[] := '{}'; i int; j int; l1 text[]; l2 text[]; bad text := ''; n int := ${runs.length};
 begin

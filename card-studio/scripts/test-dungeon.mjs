@@ -9,6 +9,7 @@
  *   MUTATE=area  node scripts/test-dungeon.mjs    must FAIL (Slam / Cataclysm skip the other cards)
  *   MUTATE=gen   node scripts/test-dungeon.mjs    must FAIL (the generator uses the session random)
  *   MUTATE=huntlock / allows                       must FAIL (the Hunt squad lock / a fight with no squad skips the gate)
+ *   MUTATE=guard                                   must FAIL (the live-version guard accepts any version)
  * Env: CORE, GATE, MIG = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
@@ -29,6 +30,7 @@ const MUT = {
 const GMUT = {
   gate: ["'ok', g.open = 0 and a.n >= g.need", "'ok', a.n >= g.need"],
   huntlock: ["  if not (v_gate->>'ok')::boolean then return", "  if false then return"],
+  guard: ["not in ('f0db1bb166d0eccb33522bd373f4ee4e', '4a80c769286b2b6022ab79b4cb01f7c6')", "is null"],
   allows: ["(adventure_gate(p_player)->>'ok')::boolean);", "true);"],
 };
 const M = process.env.MUTATE;
@@ -236,6 +238,12 @@ begin
 
   if (select (e->>'cp')::int from jsonb_array_elements(r->'mine') e where (e->>'id')::bigint = 34) is distinct from (dungeon_card('tst_dg_b', 34)->'cmb'->>'cp')::int
      or (select (e->>'cost')::int from jsonb_array_elements(r->'mine') e where (e->>'id')::bigint = 34) <> 1 then bad := bad || 'view mine; '; end if;
+  -- 13. The live-version guard: the migrations run again on their own result; a changed live function stops them.
+  begin execute $m$${core}$m$; execute $m$${gate}$m$;
+  exception when others then bad := bad || 'second run: ' || sqlerrm || '; '; end;
+  execute replace(pg_get_functiondef('public.lock_hunt_squad'::regproc), 'begin', 'begin -- changed by someone else');
+  begin execute $m$${gate}$m$; bad := bad || 'the guard let a changed lock_hunt_squad through; ';
+  exception when others then if sqlerrm not like '%changed since this file was built%' then bad := bad || 'guard: ' || sqlerrm || '; '; end if; end;
   raise exception 'RESULT:%', case when bad = '' then 'PASS' else 'FAIL ' || bad end;
 end $t$;`;
 
