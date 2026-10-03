@@ -20,8 +20,12 @@ migrate for him, and the code must be in GitHub. So when Nathan says "deploy" or
 
 1. Commit the change on a branch in a worktree. Push it. Open a PR, or update the open PR.
 2. Merge the PR to `main` when the checks pass and Nathan approved the change.
-3. Apply each new migration with `cd card-studio && node scripts/apply-sql.mjs <file.sql>`.
+3. Rehearse each new migration on the LOCAL copy first:
+   `cd card-studio && node scripts/rehearse-sql.mjs <file.sql>` (it applies the file locally and
+   runs every SQL test there). Then apply it with `node scripts/apply-sql.mjs <file.sql>`.
    Apply it BEFORE the code that needs it goes live.
+   The local copy is the Supabase CLI native stack in WSL (tools repo `localdb/up.sh`; Windows
+   has no native runtime). Run SQL tests locally: `node scripts/test-all-local.mjs [filter]`.
 4. Deploy from a worktree at `origin/main` with `ops/deploy.sh <activity|bot|gallery>`.
 5. Report the commit, the result, and the live check to Nathan.
 

@@ -43,10 +43,13 @@ begin
       ok and ${has(X, 'a')} = 1 and (select ascension from player_cards where player_id = '${X}' and card_id = a) = 2
       and ${has(Y, 'a')} = 1 and ${has(X, 'b')} = 1);`)}
   delete from player_cards where player_id in ('${X}', '${Y}');
-  ${kase('a card gift of a LAST copy moves the card', String.raw`
+  ${kase('a card gift of a LAST copy leaves the sender at once and arrives on Redeem', String.raw`
     insert into player_cards (player_id, card_id, quantity) values ('${X}', c, 1);
     ok := gift_card('${X}', '${Y}', c);
-    res := res || jsonb_build_object('case', 'a card gift of a LAST copy moves the card', 'ok', ok and ${has(X, 'c')} = 0 and ${has(Y, 'c')} = 1);`)}
+    -- The card waits in the receiver's bell (member_card_gifts_redeem.sql) until Redeem.
+    ok := ok and ${has(X, 'c')} = 0 and ${has(Y, 'c')} = 0;
+    ok := ok and coalesce((claim_gift('${Y}', (select id from gift_claims where player_id = '${Y}' and kind = 'card' and card_id = c and claimed_at is null order by id desc limit 1))->>'ok')::boolean, false);
+    res := res || jsonb_build_object('case', 'a card gift of a LAST copy leaves the sender at once and arrives on Redeem', 'ok', ok and ${has(X, 'c')} = 0 and ${has(Y, 'c')} = 1);`)}
   delete from player_cards where player_id in ('${X}', '${Y}');
   ${kase('the sender no longer has the card: refused, nothing moves', String.raw`
     insert into player_cards (player_id, card_id, quantity) values ('${Y}', b, 1);

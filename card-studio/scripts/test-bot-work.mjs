@@ -12,8 +12,14 @@ const q = async (query) => {
 let bad = 0;
 const ok = (c, m) => { bad += !c; console.log((c ? '  ok   ' : '  FAIL ') + m); };
 
-// The setup every case shares: two test members and one play between them.
+// The setup every case shares: the real queues set aside (inside the rolled-back block: a live prank
+// or an unposted play must not decide a case), two test members and one play between them.
 const SETUP = `
+  update discord_effects set status = 'done' where status in ('pending', 'active');
+  update card_plays set posted_at = now() where posted_at is null;
+  update hunt_events set posted_at = now() where posted_at is null;
+  update auctions set notice_message_id = coalesce(notice_message_id, 'test'), notice_dirty = false
+    where notice_message_id is null or (status in ('sold', 'closed', 'expired') and notice_dirty);
   insert into players (id, username) values ('tst_bw_a', 'tst a'), ('tst_bw_b', 'tst b');
   select c.id, c.subject_id into v_card, v_subject from cards c limit 1;
   insert into card_plays (player_id, target_id, aimed_at, card_id, subject_id, primitive, kind, rarity, outcome, posted_at)

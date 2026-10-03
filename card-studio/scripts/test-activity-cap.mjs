@@ -16,6 +16,8 @@ begin
   insert into players (id, username, pack_balance) values ('${A}', 'tst act', 0), ('${F}', 'tst friend', 50);
   -- Outside packs FIRST (a big amount): they must not use up the activity room.
   perform gift_packs('${F}', '${A}', 20);
+  -- A pack gift waits in the bell until Redeem (gift_claims.sql, 2026-10-01): redeem it.
+  perform claim_gift('${A}', (select id from gift_claims where player_id = '${A}' and claimed_at is null order by id desc limit 1));
   perform grant_packs('${A}', 3, 'hunt_reward', null);
   perform grant_packs('${A}', 2, 'boon', null);
   r := claim_achievement('${A}', 'tst_ach', 4, null, null);
@@ -34,6 +36,7 @@ begin
     g = 2 and earned_today('${A}') = 5 and (select pack_balance from players where id = '${A}') = 34, 'earned', earned_today('${A}'));
   -- After the activity limit: outside packs still arrive in full.
   perform gift_packs('${F}', '${A}', 5);
+  perform claim_gift('${A}', (select id from gift_claims where player_id = '${A}' and claimed_at is null order by id desc limit 1));
   perform grant_packs('${A}', 6, 'hunt_reward', null);
   select pack_balance into bal from players where id = '${A}';
   res := res || jsonb_build_object('case', 'at the activity limit, a gift (5) and a raid reward (6) still arrive in full', 'ok', bal = 45 and earned_today('${A}') = 5, 'balance', bal);

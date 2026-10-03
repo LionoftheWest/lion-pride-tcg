@@ -10,16 +10,20 @@ import { fileURLToPath } from 'node:url';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 // The combat migration + the fixed HP + the flat boss ATK (each later file replaces functions).
-const mig = ['hunt_boss_difficulty.sql', 'hunt_boss_hp_fixed.sql', 'hunt_boss_attack.sql', 'hunt_attack_execute_fix.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')).join(String.fromCharCode(10));
+// By default the test checks the CURRENT functions (2026-10-02: later files - mt_clock, the loop caps -
+// replaced these, so applying them again tested old versions). --apply-migrations = the original
+// acceptance run of these files.
+const APPLY = process.argv.includes('--apply-migrations');
+const mig = !APPLY ? '' : ['hunt_boss_difficulty.sql', 'hunt_boss_hp_fixed.sql', 'hunt_boss_attack.sql', 'hunt_attack_execute_fix.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')).join(String.fromCharCode(10));
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 
 const body = String.raw`do $t$
 declare
-  h bigint; r jsonb; res jsonb := '[]'; v int; k text; ids bigint[]; c bigint; i int; d date := (now() at time zone 'utc')::date;
+  h bigint; r jsonb; res jsonb := '[]'; v int; k text; ids bigint[]; c bigint; i int; d date := (now() at time zone 'America/Denver')::date;
   hp bigint; mx int; kinds text[] := '{}'; bad_cycle int := 0; strikes numeric[] := '{}'; heals jsonb := '[]'; hunters int; dp bigint;
   rec record; ok boolean; n int; ph text; prev bigint;
 begin
-  execute $m$${mig}$m$;
+  ${mig ? 'execute $m$' + mig + '$m$;' : ''}
 
   -- 1. Spawns: passives 1/2/3 (all different), the fixed HP per tier, heals sized to HP / crew.
   select array_agg(id) into ids from (select c.id from cards c join subjects s on s.id = c.subject_id
@@ -32,11 +36,11 @@ begin
     kinds := array_append(kinds, rec.tier);
     if jsonb_array_length(rec.passive->'list') <> (case rec.tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end)
        or (select count(distinct x->>'kind') from jsonb_array_elements(rec.passive->'list') x) <> jsonb_array_length(rec.passive->'list')
-       or rec.hp_max <> (case rec.tier when 'Normal' then 60000 else 80000 end)
+       or rec.hp_max <> (select (value->>rec.tier)::int from settings where key = 'hunt_hp') -- Nathan's dial (30k/40k/40k now)
        or rec.hp_remaining <> rec.hp_max or rec.hp_share <> rec.hp_max / 10
        or (rec.stats->>'atk')::int <> (case rec.tier when 'Normal' then 58 when 'Heroic' then 73 else 93 end) then ok := false; end if;
   end loop;
-  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP 60k/80k/80k, share = HP / 10, ATK 58/73/93', 'ok', ok,
+  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP = settings.hunt_hp, share = HP / 10, ATK 58/73/93', 'ok', ok,
     'tiers', (select count(distinct t) from unnest(kinds) t));
   -- The HP does not follow the players: 30 more card holders, the same HP.
   insert into players (id, username) select 'tst_x' || g, 'tst x' from generate_series(1, 30) g;
@@ -44,7 +48,7 @@ begin
   ok := true;
   for i in 1..6 loop
     h := spawn_hunt(3); select * into rec from hunts where id = h;
-    if rec.hp_max <> (case rec.tier when 'Normal' then 60000 else 80000 end) then ok := false; end if;
+    if rec.hp_max <> (select (value->>rec.tier)::int from settings where key = 'hunt_hp') then ok := false; end if;
   end loop;
   res := res || jsonb_build_object('case', 'the HP does not change with the player count', 'ok', ok);
   -- The dial: a changed setting changes the next spawn.

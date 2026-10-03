@@ -20,7 +20,7 @@ begin
   insert into players (id, username) values ('tst_heal','tst heal');
   insert into player_cards (player_id, card_id, quantity) values ('tst_heal',heal,1),('tst_heal',shl,1),('tst_heal',tgt,1),('tst_heal',pk,1);
   -- heal a 30-HP card at 5 HP: 30% of 30 = 9 -> 14
-  perform hunt_commit_card(h, 'tst_heal', tgt, (now() at time zone 'utc')::date, 30);
+  perform hunt_commit_card(h, 'tst_heal', tgt, (now() at time zone 'America/Denver')::date, 30); -- the MT game day (mt_clock.sql)
   update hunt_card_hp set hp_remaining = 5 where player_id='tst_heal' and card_id=tgt;
   r := hunt_support('tst_heal', h, heal, tgt);
   select hp_remaining into v from hunt_card_hp where player_id='tst_heal' and card_id=tgt;
@@ -30,7 +30,7 @@ begin
   select shield into v from hunt_card_hp where player_id='tst_heal' and card_id=tgt;
   res := res || jsonb_build_object('case','shield = 40% of max HP (+12)','ok', v = 12, 'shield', v, 'r', r);
   -- affinity match (a Pokemon card): 54% of 30 = 16
-  perform hunt_commit_card(h, 'tst_heal', pk, (now() at time zone 'utc')::date, 30);
+  perform hunt_commit_card(h, 'tst_heal', pk, (now() at time zone 'America/Denver')::date, 30); -- the MT game day (mt_clock.sql)
   update hunt_card_hp set hp_remaining = 2 where player_id='tst_heal' and card_id=pk;
   update hunt_combat_state set round = round + 5 where player_id='tst_heal'; -- past the heal cooldown
   r := hunt_support('tst_heal', h, heal, pk);
