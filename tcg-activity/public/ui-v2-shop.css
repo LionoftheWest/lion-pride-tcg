@@ -59,6 +59,7 @@ body.ui-v2 .sh-head span { color: var(--text-secondary); font-size: 13px; }
 body.ui-v2 .sh-body { flex: 1; min-height: 0; display: grid; grid-template-columns: clamp(150px, 19%, 216px) minmax(0, 1fr); gap: 22px; }
 body.ui-v2 .sh-feat { display: flex; flex-direction: column; gap: 10px; min-height: 0; cursor: pointer; container-type: inline-size; }
 body.ui-v2 .sh-buy .short { display: none; }
+@container (max-width: 172px) { body.ui-v2 .sh-feat-row .sh-chip { display: none; } }
 @container (max-width: 195px) { body.ui-v2 .sh-buy .long { display: none; } body.ui-v2 .sh-buy .short { display: inline; } }
 @container (max-width: 150px) { body.ui-v2 .sh-ir-side .sh-chip { display: none; } body.ui-v2 .sh-ir-side .sh-price { font-size: 12.5px; } }
 body.ui-v2 .sh-feat .sh-kick { flex: none; }
@@ -72,6 +73,7 @@ body.ui-v2 .sh-rows { min-height: 0; display: grid; grid-template-rows: auto min
 body.ui-v2 .sh-rowh { display: flex; align-items: center; gap: 10px; font: 700 12.5px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--rc); }
 body.ui-v2 .sh-rowh span { display: inline-flex; align-items: center; gap: 5px; letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--text-muted); }
 body.ui-v2 .sh-irs { min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+body.ui-v2 .sh-irs.as-nm { grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 8px; }
 body.ui-v2 .sh-ir { position: relative; min-height: 0; display: flex; gap: 12px; padding: 10px; border-radius: var(--rad-md); background: var(--surface); border: 1px solid var(--border); cursor: pointer; }
 body.ui-v2 .sh-ir .sh-card { height: 100%; width: auto; flex: none; }
 body.ui-v2 .sh-ir .sh-done { left: calc(10px + (100% - 20px) * .0); transform: none; top: 44%; }
@@ -80,17 +82,24 @@ body.ui-v2 .sh-ir-side .sh-chip { align-self: flex-end; }
 body.ui-v2 .sh-mini { height: 36px; width: 100%; padding: 0 10px; color: var(--gold); background: var(--gold-soft); border-color: rgba(244, 183, 60, .45); font-weight: 700; }
 body.ui-v2 .sh-nms { min-height: 0; display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 12px; }
 body.ui-v2 .sh-nm { min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; font: inherit; }
-body.ui-v2 .sh-nm:disabled { cursor: default; }
+
 /* The card keeps its 5:7 shape: the box is a size container, the card takes the smaller fit. */
 body.ui-v2 .sh-nm-card { position: relative; flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-end; container-type: size; }
 body.ui-v2 .sh-nm-card .sh-card { height: min(100cqh, 140cqw); width: auto; }
 body.ui-v2 .sh-ir { container-type: size; }
 body.ui-v2 .sh-ir .sh-card { height: min(100cqh, 58cqw); width: auto; }
-body.ui-v2 .sh-nm:not(:disabled):hover .sh-card, body.ui-v2 .sh-ir:not(.bought):hover .sh-card { transform: translateY(-3px); }
+body.ui-v2 .sh-card[data-view]:hover { transform: translateY(-3px); }
 body.ui-v2 .sh-card { transition: transform var(--dur-fast) var(--ease-out); }
 body.ui-v2 .sh-nm-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 3px 4px; }
 body.ui-v2 .sh-nm { container-type: inline-size; }
+@container (max-width: 58px) { body.ui-v2 .sh-nm .sh-pbuy .sh-coin { display: none !important; } }
+@container (max-width: 80px) { body.ui-v2 .sh-nm .sh-pbuy { height: 22px; padding: 0 5px; gap: 2px; font-size: 11px; } body.ui-v2 .sh-nm .sh-pbuy .sh-coin { width: 11px; height: 11px; } }
 body.ui-v2 .sh-nm-foot > * { flex-shrink: 0; }
+/* The price is the buy button (the card art opens the card information window). */
+body.ui-v2 .sh-pbuy { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: var(--rad-pill); border: 1px solid rgba(244, 183, 60, .45); background: var(--gold-soft); color: var(--text-primary); font: 700 13px var(--font-num); cursor: pointer; white-space: nowrap; }
+body.ui-v2 .sh-pbuy:hover:not(:disabled) { background: rgba(244, 183, 60, .24); }
+body.ui-v2 .sh-pbuy:disabled { opacity: .45; cursor: default; }
+body.ui-v2 .sh-card[data-view] { cursor: zoom-in; }
 @container (max-width: 112px) { body.ui-v2 .sh-nm-foot { justify-content: center; } }
 body.ui-v2 .sh-nm-foot .sh-chip { padding: 0 6px; font-size: 11px; }
 body.ui-v2 .sh-pager { justify-self: center; }
@@ -126,13 +135,15 @@ body.ui-v2 .sh-choose { width: 100%; display: inline-flex; align-items: center; 
 body.ui-v2 .sh-choose svg { width: 17px; height: 17px; }
 
 /* ---- Landscape phone (design 29, 13) ---- */
-body.ui-v2.m-land .v2-shop.land { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; }
+body.ui-v2.m-land .v2-shop.land { display: grid; grid-template-columns: 176px minmax(0, 1fr); gap: 10px; }
 body.ui-v2.m-land .sh-side { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
 body.ui-v2.m-land .sh-nav { display: flex; flex-direction: column; gap: 2px; padding: 5px; border-radius: var(--rad-md); background: var(--bg-raised); border: 1px solid var(--border); }
-body.ui-v2.m-land .sh-nav button { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 8px; border: 0; border-radius: 8px; background: none; color: var(--text-secondary); font: 600 12.5px var(--font-ui); cursor: pointer; text-align: left; }
+body.ui-v2.m-land .sh-nav button { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 8px; min-width: 0; border: 0; border-radius: 8px; background: none; color: var(--text-secondary); font: 600 12.5px var(--font-ui); cursor: pointer; text-align: left; }
 body.ui-v2.m-land .sh-nav button.on { background: var(--surface-2); color: var(--text-primary); }
 body.ui-v2.m-land .sh-nav svg { width: 16px; height: 16px; flex: none; }
-body.ui-v2.m-land .sh-nav b { flex: 1; font-weight: inherit; white-space: nowrap; }
+body.ui-v2.m-land .sh-nav b { flex: 1; min-width: 0; font-weight: inherit; white-space: nowrap; }
+body.ui-v2.m-land .sh-nav .sh-price { font-size: 11.5px; gap: 3px; }
+body.ui-v2.m-land .sh-nav .sh-coin { width: 13px; height: 13px; }
 body.ui-v2.m-land .sh-nav i { color: var(--text-muted); font-style: normal; }
 body.ui-v2.m-land .sh-nav button.on > svg:first-child { color: var(--gold); }
 body.ui-v2.m-land .sh-cd { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: var(--rad-md); background: var(--bg-raised); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; overflow: hidden; }
@@ -147,7 +158,11 @@ body.ui-v2.m-land .sh-feat .sh-buy { height: 36px; font-size: 12.5px; padding: 0
 body.ui-v2.m-land .sh-price.lg { font-size: 17px; }
 body.ui-v2.m-land .sh-rows { gap: 5px; }
 body.ui-v2.m-land .sh-rowh { font-size: 11px; }
-body.ui-v2.m-land .sh-irs { gap: 8px; }
+body.ui-v2.m-land .sh-irs:not(.as-nm) { display: flex; justify-content: space-between; gap: 8px; container-type: size; }
+body.ui-v2.m-land .sh-ir { container-type: normal; flex: none; height: 100%; box-sizing: border-box; }
+body.ui-v2.m-land .sh-ir .sh-card { height: min(calc(100cqh - 14px), calc(((100cqw - 16px) / 3 - 12px - 2px - 8px - 64px - 2px) * 1.4)); width: auto; }
+body.ui-v2.m-land .sh-ir-side { flex: none; width: 64px; justify-content: flex-end; }
+body.ui-v2.m-land .sh-ir-side .sh-chip { align-self: flex-start; }
 body.ui-v2.m-land .sh-ir { padding: 6px; gap: 8px; }
 body.ui-v2.m-land .sh-ir-side { gap: 4px; }
 body.ui-v2.m-land .sh-mini { height: 30px; font-size: 12.5px; }
@@ -173,11 +188,25 @@ body.ui-v2.m-port .sh-feat .sh-kick { grid-column: 2; }
 body.ui-v2.m-port .sh-feat-info { display: flex; flex-direction: column; grid-column: 2; }
 body.ui-v2.m-port .sh-feat-name { font: 700 19px var(--font-display); }
 body.ui-v2.m-port .sh-feat-row { grid-column: 2; align-self: end; }
-body.ui-v2.m-port .sh-feat .sh-buy { display: none; }
-body.ui-v2.m-port .sh-rows { flex: 1; grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr) auto; gap: 5px; }
+body.ui-v2.m-port .sh-feat { grid-template-rows: auto auto 1fr auto; }
+body.ui-v2.m-port .sh-feat .sh-card { grid-row: 1 / span 4; }
+body.ui-v2.m-port .sh-feat .sh-buy { grid-column: 2; height: 38px; font-size: 13.5px; }
+/* Portrait: every card row is as tall as its cards (sized by the column width, never squeezed). */
+body.ui-v2.m-port .sh-rows { flex: 1; grid-template-rows: auto auto auto auto; align-content: start; gap: 5px; }
+body.ui-v2.m-port .sh-rows .sh-nm-card { container-type: inline-size; flex: none; }
+body.ui-v2.m-port .sh-rows .sh-card { width: 100%; height: auto; }
+/* A short portrait phone (under 700 px tall): a smaller Featured card, only the countdown, IRs at the Normal size. */
+body.ui-v2.m-port.m-short .sh-sub > span:first-child { display: none; }
+body.ui-v2.m-port.m-short .sh-sub { justify-content: flex-end; }
+body.ui-v2.m-port.m-short .sh-feat { grid-template-columns: 64px minmax(0, 1fr); padding: 8px 10px; }
+body.ui-v2.m-port.m-short .sh-feat-name { font-size: 16px; }
+body.ui-v2.m-port.m-short .sh-feat .sh-buy { height: 32px; }
 body.ui-v2.m-port .sh-rowh { font-size: 11px; }
-body.ui-v2.m-port .sh-irs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-body.ui-v2.m-port .sh-nms { gap: 8px; }
+body.ui-v2.m-port .sh-irs { grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 6px; }
+body.ui-v2.m-port .sh-nms { gap: 6px; }
+body.ui-v2.m-port .sh-nm-foot .sh-pbuy { height: 24px; padding: 0 7px; font-size: 11.5px; gap: 3px; }
+body.ui-v2.m-port .sh-nm-foot .sh-coin { width: 12px; height: 12px; }
+body.ui-v2.m-port .sh-chip.on-card { height: 17px; font-size: 9.5px; padding: 0 4px; top: 4%; right: 5%; }
 body.ui-v2.m-port .sh-nm-foot { flex-direction: column; align-items: center; gap: 2px; }
 body.ui-v2.m-port .sh-nm-foot .sh-chip { font-size: 10px; padding: 0 5px; height: 19px; }
 body.ui-v2.m-port .sh-price.sm { font-size: 12px; }
