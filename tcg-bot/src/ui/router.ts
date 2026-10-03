@@ -9,7 +9,7 @@ import {
   getCollection,
   getDailyStatus,
   getPlayerSummary,
-  openEarnedPacks,
+  openOnePack,
   type Card,
   type DailyStatus,
 } from '../store.js';
@@ -19,6 +19,7 @@ import { buildBrowser, type BrowseMode, type BrowserItem } from './browser.js';
 import { REVEAL_NEXT, revealNext, startManualReveal } from './reveal.js';
 import { buildPanelHome, homeRow, PANEL_ID } from './panel.js';
 import { LAUNCH_ACTIVITY_ID } from './launch.js';
+import { publicImg } from '../img-url.js';
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
@@ -41,7 +42,7 @@ function cardArtEmbed(card: Card): EmbedBuilder {
       { name: 'Rarity', value: RARITY_LABEL[card.rarity], inline: true },
     );
   if (card.lore) embed.setDescription(card.lore);
-  if (card.image_url) embed.setImage(card.image_url);
+  if (card.image_url) embed.setImage(publicImg(card.image_url)!); // the VM cache (img-url.ts)
   if (card.artist_credit) embed.setFooter({ text: `Art by ${card.artist_credit}` });
   return embed;
 }
@@ -117,8 +118,9 @@ export async function handleComponent(
 
   if (id === PANEL_ID.open) {
     await interaction.deferUpdate();
-    const result = await openEarnedPacks(userId, username);
-    if (result.packs.length === 0) {
+    // One pack from the balance, the same atomic open as /open and the Activity (open_packs).
+    const pack = await openOnePack(userId, username);
+    if (!pack) {
       await interaction.editReply({
         content:
           'You have no unopened packs right now. Post messages today to earn a ' +
@@ -128,7 +130,7 @@ export async function handleComponent(
       });
       return;
     }
-    await startManualReveal(interaction, result, userId, [homeRow()]);
+    await startManualReveal(interaction, { award: { base: true, bonus: false }, packs: [pack] }, userId, [homeRow()]);
     return;
   }
 

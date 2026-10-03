@@ -6,6 +6,7 @@ import { AttachmentBuilder } from 'discord.js';
 import { renderRaidBoard, renderSquadSummary } from './raid-cards.js';
 import { buf, art } from './playing-posts.js';
 import { botWork } from './bot-work.js';
+import { outboxDone } from './outbox.js';
 
 // Poll the hunt_events outbox and post each event to the notifications channel. The game
 // logic (SQL) writes events; the bot is the only process that can post to Discord, so it
@@ -160,13 +161,14 @@ async function drain(client: Client): Promise<void> {
       .limit(BATCH);
     for (const ev of events ?? []) {
       const post = huntPost(ev as never);
+      let sent = true; // an event with no post has nothing to send: mark it done
       if (post) {
         // The leaderboard and the squad summary carry a picture (a failed picture still posts the text).
         const png = await huntPicture(ev as never).catch((e) => { console.error('hunt picture:', e); return null; });
         if (png) post.files = [new AttachmentBuilder(png, { name: ev.kind === 'leaderboard' ? 'raid-leaderboard.png' : 'squad-summary.png' })];
-        await announce(client, post, ev.kind === 'leaderboard' ? undefined : 'raid');
+        sent = await announce(client, post, ev.kind === 'leaderboard' ? undefined : 'raid');
       }
-      await supabase.from('hunt_events').update({ posted_at: new Date().toISOString() }).eq('id', ev.id);
+      if (outboxDone(sent, ev.created_at)) await supabase.from('hunt_events').update({ posted_at: new Date().toISOString() }).eq('id', ev.id);
       await new Promise((r) => setTimeout(r, 1200)); // pace posts under the channel rate limit
     }
   } catch (error) {

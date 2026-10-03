@@ -243,12 +243,26 @@ async function revert(sb: Store, guild: Guild, row: EffectRow): Promise<void> {
   await patchRow(sb, row.id, { status: 'reverted' });
 }
 
-let running = false;
+/** One run at a time. A forced request during a run is not dropped: it runs once when the run
+ *  ends (a voice join during a tick waited up to 1 h for its unmute; bot audit, 2026-10-03). */
+export function serialRunner<A>(run: (arg: A, force: boolean) => Promise<void>): (arg: A, force?: boolean) => Promise<void> {
+  let running = false;
+  let queued: { arg: A } | null = null;
+  const go = async (arg: A, force = false): Promise<void> => {
+    if (running) { if (force) queued = { arg }; return; }
+    running = true;
+    try { await run(arg, force); } finally { running = false; }
+    const next = queued as { arg: A } | null;
+    queued = null;
+    if (next) await go(next.arg, true);
+  };
+  return go;
+}
+
 /** force: a member joined voice - run the full tick without the bot_work() check (bot_work_waits.sql
  *  does not count the rows that wait for a voice join, so the join must run them itself). */
-export async function tick(client: Client, force = false): Promise<void> {
-  if (running) return;
-  running = true;
+export const tick = serialRunner(runTick);
+async function runTick(client: Client, force: boolean): Promise<void> {
   try {
     if (!force && !(await botWork()).fx) return; // nothing due (bot_work.sql: one question, not four)
     const sb = getSupabase();
@@ -282,8 +296,6 @@ export async function tick(client: Client, force = false): Promise<void> {
     }
   } catch (error) {
     console.error('discord-effects tick error:', error);
-  } finally {
-    running = false;
   }
 }
 

@@ -222,11 +222,6 @@ export async function grantPacks(id: string, amount: number, reason: string, by?
 }
 
 /**
- * Spend ONE pack from the balance and draw it. Returns the drawn cards, or null
- * if the player has no packs. This is the single open path for /open and the
- * Activity, so the balance is the one source of truth.
- */
-/**
  * A waiting Lucky Pull boon for this member (effects_cleanup.sql take_player_effect): its
  * amount, used up now, or null. Any error = no luck (the pack still opens).
  */
@@ -238,28 +233,21 @@ async function takeLuck(id: string): Promise<number | null> {
   } catch { return null; }
 }
 
+/**
+ * Spend ONE pack from the balance and draw it (/open and the hub Open Pack). Returns the
+ * drawn cards, or null if the player has no packs. Through open_packs: spend_pack and a
+ * separate grant lost the pack when the grant failed (bot audit, 2026-10-03).
+ */
 export async function openOnePack(id: string, username: string): Promise<Card[] | null> {
-  await ensurePlayer(id, username);
-  const supabase = getSupabase();
-  const { data: ok, error } = await supabase.rpc('spend_pack', { p_player_id: id });
-  if (error) throw new Error(`spend_pack failed: ${error.message}`);
-  if (!ok) return null;
-
-  const pool = await getDrawPool();
-  if (pool.normal.length === 0) {
-    await grantPacks(id, 1, 'admin', 'refund_empty_pool'); // give the pack back
-    throw new Error('The card pool is empty. Add at least one Normal draw card with /seed first.');
-  }
-  const pack = drawPack(pool, Math.random, await takeLuck(id));
-  await grantCards(id, pack);
-  return pack;
+  const [pack] = await openPacks(id, username, 1);
+  return pack ?? null;
 }
 
 /**
  * Open up to `count` packs (the Activity's 1x/5x/10x) in ONE database call (open_packs,
  * tcg-bot/supabase/open_packs_batch.sql). The per-pack loop was 2 REST calls per pack:
  * 100 players opening 10 at once waited 38 s (pressure test, 2026-09-28). Stops where the
- * balance runs out, like the loop. Falls back to the loop if the function is not live yet.
+ * balance runs out. The spend and the cards are one transaction, so a failure loses no pack.
  */
 export async function openPacks(id: string, username: string, count: number): Promise<Card[][]> {
   await ensurePlayer(id, username);
@@ -271,11 +259,6 @@ export async function openPacks(id: string, username: string, count: number): Pr
   const { data, error } = await getSupabase().rpc('open_packs', {
     p_player_id: id, p_cards: packs.flat().map((c) => c.id), p_size: PACK_SIZE,
   });
-  if (error?.code === 'PGRST202') {
-    const out: Card[][] = []; // the migration is not applied yet: the old per-pack path
-    for (let i = 0; i < count; i += 1) { const p = await openOnePack(id, username); if (!p) break; out.push(p); }
-    return out;
-  }
   if (error) throw new Error(`open_packs failed: ${error.message}`);
   return packs.slice(0, Number(data) || 0);
 }
@@ -329,56 +312,6 @@ async function grantCards(playerId: string, cards: Card[]): Promise<void> {
     p_card_ids: cards.map((c) => c.id),
   });
   if (error) throw new Error(`grantCards failed: ${error.message}`);
-}
-
-/**
- * Open every pack the member has earned today but not yet claimed.
- * Returns the opened packs. An empty result means nothing was earned.
- */
-export async function openEarnedPacks(
-  id: string,
-  username: string,
-): Promise<OpenResult> {
-  await ensurePlayer(id, username);
-
-  const activity = await getTodayActivity(id);
-  const award = packsToAward(activity);
-  if (!award.base && !award.bonus) {
-    return { award, packs: [] };
-  }
-
-  const pool = await getDrawPool();
-  if (pool.normal.length === 0) {
-    throw new Error(
-      'The card pool is empty. Add at least one Normal draw card with /seed first.',
-    );
-  }
-
-  const packs: Card[][] = [];
-  const claimed: Record<string, boolean> = {};
-
-  if (award.base) {
-    const pack = drawPack(pool);
-    await grantCards(id, pack);
-    packs.push(pack);
-    claimed.base_claimed = true;
-  }
-  if (award.bonus) {
-    const pack = drawPack(pool);
-    await grantCards(id, pack);
-    packs.push(pack);
-    claimed.bonus_claimed = true;
-  }
-
-  const supabase = getSupabase();
-  const { error } = await supabase
-    .from('daily_activity')
-    .update(claimed)
-    .eq('player_id', id)
-    .eq('activity_date', utcToday());
-  if (error) throw new Error(`marking packs claimed failed: ${error.message}`);
-
-  return { award, packs };
 }
 
 /**
