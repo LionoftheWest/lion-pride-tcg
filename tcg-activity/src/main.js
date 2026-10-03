@@ -25,6 +25,7 @@ import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
 import { initDungeon, renderDungeonV2, disposeDungeon, advTabs } from './ui-v2-dungeon.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
+import { initSubtabs } from './subtabs.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { every, isIdle } from './poll.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
@@ -376,6 +377,7 @@ function startV2() {
   if (board) board.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
   el('v2Avatar').title = meUser?.name || '';
   initDailies(); // the Dailies window button (hidden while settings.dailies.enabled is off)
+  initSubtabs(); // every sub-tab bar in one place (src/subtabs.js)
   initDungeon(dungeon); // the Adventure tabs (Hunt | Dungeon) and the Dungeon view (design 30)
   initShop(shards); // the Shards balance + the Shop button (design 29; hidden while the flag is off)
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
