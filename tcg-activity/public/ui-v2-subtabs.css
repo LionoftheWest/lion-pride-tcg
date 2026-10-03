@@ -4,7 +4,7 @@
 
 /* The host: the place. */
 body.ui-v2 #main > .v2-subtabs { position: fixed; z-index: 60; top: 16px; left: 270px; display: inline-flex; align-items: center; gap: 4px; padding: 3px; border-radius: var(--rad-lg); background: var(--bg-raised); border: 1px solid var(--border); box-sizing: border-box; max-width: calc(100vw - 270px - 560px); overflow: hidden; }
-body.ui-v2.m-land #main > .v2-subtabs { top: 9px; left: 64px; padding: 2px; border-radius: 9px; max-width: calc(100vw - 64px - 504px); }
+body.ui-v2.m-land #main > .v2-subtabs { top: calc(9px + var(--sa-t, 0px)); left: calc(64px + var(--sa-l, 0px)); padding: 2px; border-radius: 9px; max-width: calc(100vw - 64px - 504px - var(--sa-l, 0px) - var(--sa-r, 0px)); }
 body.ui-v2.m-land:has(#main > .v2-subtabs) #topbar .v2-logo > b, body.ui-v2.m-land:has(#main > .v2-subtabs) #topbar .v2-logo > i { display: none; }
 body.ui-v2.m-port #main:has(> .v2-subtabs) { position: relative; padding-top: 42px; box-sizing: border-box; }
 body.ui-v2.m-port #main > .v2-subtabs { position: absolute; top: 2px; left: 10px; right: 10px; display: flex; max-width: none; }
