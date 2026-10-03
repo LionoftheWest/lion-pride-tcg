@@ -59,7 +59,7 @@ async function refreshBadges() {
 }
 
 // The mustache prank (effects_spread.sql, Nathan 2026-10-03): a BIG mustache over the member's avatar
-// everywhere the Activity shows it (profile, Live, voice tiles, leaderboards, raid board, trades), plus
+// everywhere the Activity shows it (profile, Live, voice tiles, leaderboards, Hunt board, trades), plus
 // the showcase cards (ui-v2.js spotPrank). avatarHTML() draws it at render; paintStaches() adds or
 // removes it on the avatars already on the screen when the badges change (every avatar has data-pid).
 export const AVATAR_STACHE = '<svg class="av-stache" viewBox="0 0 100 40" aria-hidden="true"><path d="M50 14c-6-10-20-12-30-4-6 5-12 6-18 3 4 12 18 20 32 13 7-3 12-7 16-12 4 5 9 9 16 12 14 7 28-1 32-13-6 3-12 2-18-3-10-8-24-6-30 4z"/></svg>';

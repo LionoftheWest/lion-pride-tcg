@@ -2,7 +2,7 @@
 // member profiles. main.js owns the data, the streams, and the Hunt; this module only
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
-import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { fillConvertButton } from './ui-v2-shop.js';
 import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';

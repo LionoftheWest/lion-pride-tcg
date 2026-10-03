@@ -69,6 +69,11 @@ ${C('Raid Crasher text: the extra damage counts for the prankster, not the targe
       (select effect->>'desc' ~* 'prankster' and effect->>'desc' ~* 'not for the target' from subjects where name = 'Launch Day Raider'),
       'desc', (select effect->>'desc' from subjects where name = 'Launch Day Raider'));`)}
 
+${C('the word is Hunt: no effect text says raid (Nathan, 2026-10-03)', `
+    select coalesce(jsonb_agg(name), '[]') into r from subjects where effect->>'desc' ~* '\\mraid\\M';
+    res := res || jsonb_build_object('case', 'the word is Hunt: no effect text says raid (Nathan, 2026-10-03)', 'ok',
+      jsonb_array_length(r) = 0 and (select effect->>'desc' ~ 'next 3 Hunt attacks' from subjects where name = 'Launch Day Raider'), 'raid', r);`)}
+
 ${C('every effect uses a known type; abilities and tags did not change', `
     select count(*) into n from subjects s where s.effect is not null and not exists (select 1 from effect_primitives p where p.primitive = s.effect->>'primitive');
     ok := n = 0 and not exists (select 1 from subjects where jsonb_build_object('ability', ability, 'tags', tags) is distinct from before->key);

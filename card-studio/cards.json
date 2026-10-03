@@ -593,7 +593,7 @@
     "effect": {
       "primitive": "mend",
       "name": "Hug It Out",
-      "desc": "Heals 20 HP on the target's next hurt raid card.",
+      "desc": "Heals 20 HP on the target's next hurt Hunt card.",
       "base": {
         "amount": 20
       },
@@ -2145,7 +2145,7 @@
     "effect": {
       "primitive": "rally",
       "name": "Master Class",
-      "desc": "The target's next raid attack deals 15% more damage.",
+      "desc": "The target's next Hunt attack deals 15% more damage.",
       "base": {
         "amount": 15
       },
@@ -2376,7 +2376,7 @@
     "effect": {
       "primitive": "mend",
       "name": "Recovery Drink",
-      "desc": "Heals 20 HP on the target's next hurt raid card.",
+      "desc": "Heals 20 HP on the target's next hurt Hunt card.",
       "base": {
         "amount": 20
       },
@@ -2673,7 +2673,7 @@
     "effect": {
       "primitive": "mend",
       "name": "Still Alive",
-      "desc": "Heals 20 HP on the target's next hurt raid card.",
+      "desc": "Heals 20 HP on the target's next hurt Hunt card.",
       "base": {
         "amount": 20
       },
@@ -3790,7 +3790,7 @@
     "effect": {
       "primitive": "butterfingers",
       "name": "Butterfingers",
-      "desc": "The target's next raid attack deals 15% less damage.",
+      "desc": "The target's next Hunt attack deals 15% less damage.",
       "base": {
         "amount": 15,
         "duration_s": 172800
@@ -4264,7 +4264,7 @@
     "effect": {
       "primitive": "rally",
       "name": "Tag Him In",
-      "desc": "The target's next raid attack deals 15% more damage.",
+      "desc": "The target's next Hunt attack deals 15% more damage.",
       "base": {
         "amount": 15
       },
@@ -4435,7 +4435,7 @@
     "effect": {
       "primitive": "mend",
       "name": "Base Camp",
-      "desc": "Heals 20 HP on the target's next hurt raid card.",
+      "desc": "Heals 20 HP on the target's next hurt Hunt card.",
       "base": {
         "amount": 20
       },
@@ -4519,7 +4519,7 @@
     "effect": {
       "primitive": "rally",
       "name": "Crew Hype",
-      "desc": "The target's next raid attack deals 15% more damage.",
+      "desc": "The target's next Hunt attack deals 15% more damage.",
       "base": {
         "amount": 15
       },
@@ -4831,7 +4831,7 @@
     "effect": {
       "primitive": "rally",
       "name": "Comeback",
-      "desc": "The target's next raid attack deals 15% more damage.",
+      "desc": "The target's next Hunt attack deals 15% more damage.",
       "base": {
         "amount": 15
       },
@@ -5846,7 +5846,7 @@
         "amount": 25
       },
       "cooldown_h": 168,
-      "desc": "The target's next 3 raid attacks hit the boss 25% harder. That extra damage counts for your score (the prankster), not for the target's."
+      "desc": "The target's next 3 Hunt attacks hit the boss 25% harder. That extra damage counts for your score (the prankster), not for the target's."
     }
   },
   {
@@ -5872,7 +5872,7 @@
     "effect": {
       "primitive": "launch_party",
       "name": "Launch Party",
-      "desc": "The target's next 8 raid attacks each deal 20% more damage.",
+      "desc": "The target's next 8 Hunt attacks each deal 20% more damage.",
       "base": {
         "uses": 8,
         "amount": 20
