@@ -5,10 +5,11 @@ import { fileURLToPath } from 'node:url';
 const ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const mig = process.argv[2] === 'old' ? '' : fs.readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/hunt_squad_done.sql', import.meta.url)), 'utf8');
 const body = `do $t$
-declare bad text := ''; h bigint := 101698; atk bigint[]; sup bigint; r jsonb; n int; c bigint; ev int; i int;
+declare bad text := ''; h bigint; atk bigint[]; sup bigint; r jsonb; n int; c bigint; ev int; i int;
 begin
   ${mig ? 'execute $m$' + mig + '$m$;' : ''}
-  update hunts set hp_remaining = hp_max where id = h;
+  -- Its own boss (rolled back): the live boss can be defeated or closed.
+  insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at) values ('Test Boss', 'Normal', '[]', '[]', 500000, 500000, now() + interval '1 day') returning id into h;
   select array_agg(id) into atk from (select c.id from cards c join subjects s on s.id = c.subject_id where s.type in ('Character','Creature') and c.rarity = 'normal' order by c.id limit 3) x;
   select c.id into sup from cards c join subjects s on s.id = c.subject_id where s.type not in ('Character','Creature') and s.ability->>'kind' = 'support' limit 1;
   insert into players (id, username) values ('tst_dn_a', 'a');

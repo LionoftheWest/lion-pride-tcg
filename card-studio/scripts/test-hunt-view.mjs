@@ -5,8 +5,9 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { createClient } from '@supabase/supabase-js';
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-const { data: hunt } = await sb.from('hunts').select('id').eq('status', 'active').order('id', { ascending: false }).limit(1).maybeSingle();
-if (!hunt) { console.log('no active hunt'); process.exit(1); }
+const { data: hunt } = await sb.from('hunts').select('id').order('id', { ascending: false }).limit(1).maybeSingle();
+// The newest boss, active or not: the view must match either way.
+if (!hunt) { console.log('no hunt'); process.exitCode = 1; }
 const { data: hitters } = await sb.from('hunt_hits').select('player_id, hit_date').eq('hunt_id', hunt.id).limit(50);
 const cases = (process.argv.slice(2).length ? process.argv.slice(2).map((p) => ({ player_id: p, hit_date: new Date().toISOString().slice(0, 10) })) : hitters) || [];
 const norm = (x) => JSON.stringify(x, Object.keys(x || {}).sort());
