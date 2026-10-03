@@ -79,3 +79,29 @@ test('the key keeps only ?v, so a changed file (new ?v) is fetched again', () =>
   assert.equal(normalizeImgUrl(B, p, ''), `${B}/${p}`);
   assert.notEqual(normalizeImgUrl(B, p, '?v=17'), normalizeImgUrl(B, p, '?v=18'));
 });
+
+test('only a short plain v is accepted (the live v is a ms timestamp)', () => {
+  const B = 'https://x.supabase.co';
+  const p = 'storage/v1/object/public/card-art/cards/a.png';
+  assert.equal(normalizeImgUrl(B, p, '?v=1789423786787'), `${B}/${p}?v=1789423786787`);
+  assert.equal(normalizeImgUrl(B, p, '?v=2.b-c_d'), `${B}/${p}?v=2.b-c_d`);
+  assert.equal(normalizeImgUrl(B, p, '?v='), `${B}/${p}`);
+  assert.equal(normalizeImgUrl(B, p, `?v=${'1'.repeat(33)}`), null);
+  assert.equal(normalizeImgUrl(B, p, '?v=%3Cscript%3E'), null);
+  assert.equal(normalizeImgUrl(B, p, '?v=a%20b'), null);
+});
+
+test('allowMiss gates only an upstream fetch: a refused miss is 429, a hit never asks', async () => {
+  const dir = tmp();
+  const B = 'https://x.supabase.co/storage/v1/object/public/card-art/cards/k.png';
+  const up = fakeUpstream({ [`${B}?v=1`]: { body: Buffer.from('K'), type: 'image/png' }, [`${B}?v=2`]: { body: Buffer.from('K'), type: 'image/png' } });
+  const c = createImgCache({ dir, fetchFn: up.fetchFn });
+  let budget = 1, asked = 0;
+  const allowMiss = () => { asked += 1; return budget-- > 0; };
+  assert.equal((await c.get(`${B}?v=1`, { allowMiss })).status, 200);
+  assert.equal((await c.get(`${B}?v=1`, { allowMiss })).status, 200); // a hit
+  assert.equal(asked, 1);
+  assert.equal((await c.get(`${B}?v=2`, { allowMiss })).status, 429); // a new v, no budget
+  assert.equal(up.calls.length, 1);
+  rmSync(dir, { recursive: true });
+});
