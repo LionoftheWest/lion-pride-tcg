@@ -274,6 +274,7 @@ function paintModal() {
   const box = modalBox();
   const m = shop.modal;
   if (!m) { box.classList.add('hidden'); return; }
+  if (m.kind === 'convert') { paintConvert(); return; }
   const d = shop.data;
   let art, kick, title, sub, cost, freeText = '', note = '', go;
   if (m.kind === 'card') {
@@ -363,4 +364,64 @@ async function openPicker() {
   const state = { page: 0, tile: (c, idx) => `<div class="v2-cell" data-idx="${idx}"><div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
       <div class="v2-cap sh-pts-cap">${Object.entries(c.stat.points).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${STAT_SHORT[k] || k} ${v}`).join(' · ')}</div></div>` };
   requestAnimationFrame(() => paintCards(grid, box.querySelector('.sh-pk-pager'), list, state, (c) => openConfirm({ kind: 'reset', card: c })));
+}
+
+// ---- Convert extras (the Collection card panel): extra copies become Shards. The server keeps
+// 1 copy and the copies the next ascension stars still need, and never converts a held copy
+// (convertible_copies / convert_dupes, shards_shop.sql). ----
+export async function fillConvertButton(card, onDone) {
+  const btn = ctx().el('pConvert');
+  if (!btn || !shop.on || card?.locked || (card?.quantity || 0) < 2) return;
+  let r = null;
+  try { r = await ctx().api(`/api/shards/convertible?cardId=${encodeURIComponent(card.id)}`); } catch { r = null; }
+  if (ctx().el('pConvert') !== btn || !r?.count || !r?.each) return; // another card is open now, or nothing to convert
+  btn.innerHTML = `${COIN}<span class="cv-long">Convert ${r.count} extra${r.count === 1 ? '' : 's'}</span><span class="cv-short">×${r.count}</span>`;
+  btn.title = `${r.count} extra cop${r.count === 1 ? 'y' : 'ies'} = ${fmt(r.count * r.each)} Shards`;
+  btn.classList.remove('hidden');
+  btn.onclick = () => { shop.modal = { kind: 'convert', card, max: r.count, each: r.each, n: r.count, onDone }; shop.msg = ''; paintModal(); };
+}
+
+function paintConvert() {
+  const box = modalBox();
+  const m = shop.modal;
+  const bal = shop.data?.balance || 0;
+  const get = m.n * m.each;
+  box.innerHTML = `<div class="sh-confirm convert" role="dialog" aria-modal="true">
+      ${isPort() ? '<i class="sh-grab"></i>' : ''}
+      <div class="sh-cart">${cardImg(m.card, 'big')}</div>
+      <div class="sh-cbody">
+        <button class="sh-x" aria-label="Close">${ICON.close}</button>
+        <span class="sh-kick reset">Convert extras</span>
+        <h3>Convert extra copies of ${esc(m.card.name)}?</h3>
+        <div class="sh-csub"><span class="sh-rar" style="color:var(--r-${m.card.rarity})">◆ ${esc(RL(m.card.rarity))}</span><span class="sh-chip">Owned ${m.card.quantity}</span></div>
+        <div class="sh-qty sh-cqty"><div><b>Copies to convert</b><span>${fmt(m.each)} Shards each · 1 to ${m.max}</span></div><span class="grow"></span>
+          <button class="sh-step" data-cq="-1"${m.n <= 1 ? ' disabled' : ''}>−</button><b class="sh-qn">${m.n}</b><button class="sh-step" data-cq="1"${m.n >= m.max ? ' disabled' : ''}>+</button></div>
+        <div class="sh-bal">
+          <div><span>Balance now</span>${price(bal)}</div>
+          <div><span>You get · ${m.n} × ${fmt(m.each)}</span><span class="sh-price">${COIN}<b>+ ${fmt(get)}</b></span></div>
+          <div class="sh-after"><span>Balance after</span>${price(bal + get, 'lg')}</div>
+        </div>
+        <div class="sh-cnote">${ICON.check}You keep 1 copy and the copies your next stars need.</div>
+        ${shop.msg ? `<div class="sh-err">${esc(shop.msg)}</div>` : ''}
+        <div class="sh-acts"><button class="v2-btn sh-cancel">Cancel</button><button class="v2-btn gold sh-go"${shop.busy ? ' disabled' : ''}>${shop.busy ? 'Converting…' : `Convert ${COIN}<b>+${fmt(get)}</b>`}</button></div>
+      </div>
+    </div>`;
+  box.classList.remove('hidden');
+  box.querySelector('.sh-x').onclick = () => { if (!shop.busy) closeModal(); };
+  box.querySelector('.sh-cancel').onclick = () => { if (!shop.busy) closeModal(); };
+  box.querySelectorAll('[data-cq]').forEach((b) => { b.onclick = () => { m.n = Math.min(m.max, Math.max(1, m.n + Number(b.dataset.cq))); paintConvert(); }; });
+  box.querySelector('.sh-go').onclick = async () => {
+    if (shop.busy) return;
+    shop.busy = true; shop.msg = ''; paintConvert();
+    let r = null;
+    try { r = await ctx().apiPost('/api/shards/convert', { cardId: m.card.id, count: m.n }); } catch { r = null; }
+    shop.busy = false;
+    if (!r?.ok) { shop.msg = r?.message || 'That did not work. Try again.'; paintConvert(); return; }
+    ctx().sfx?.('page');
+    if (shop.data) shop.data.balance = r.balance;
+    closeModal();
+    toast(`+${fmt(r.shards)} Shards`);
+    refreshShards();
+    m.onDone?.(r);
+  };
 }

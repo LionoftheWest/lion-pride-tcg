@@ -73,13 +73,23 @@ export function registerShopRoutes(app, { supabase, caller, rateLimit, bustUser,
     res.json(data);
   });
 
-  // How many copies of a card can convert (the Card Information view shows it).
+  // How many copies of a card can convert, and the Shards for each copy (settings.shards.dupe_values;
+  // the Collection panel shows the Convert extras button when count > 0).
+  let values = null;
+  const dupeValues = async () => {
+    if (values && Date.now() - values.at < 60000) return values.v;
+    const { data } = await supabase.from('settings').select('value').eq('key', 'shards').maybeSingle();
+    values = { at: Date.now(), v: data?.value?.dupe_values || {} };
+    return values.v;
+  };
   app.get('/api/shards/convertible', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
     const cardId = Number(req.query.cardId);
     if (!Number.isInteger(cardId)) return fail(res, { error: 'bad_count' });
-    const { data, error } = await supabase.rpc('convertible_copies', { p_player: String(me.id), p_card: cardId });
+    const [{ data, error }, base, v] = await Promise.all([
+      supabase.rpc('convertible_copies', { p_player: String(me.id), p_card: cardId }), getCatalogBase(), dupeValues()]);
     if (error) return res.status(500).json({ error: error.message });
-    res.json({ cardId, count: data ?? 0 });
+    const card = base.find((c) => Number(c.id) === cardId);
+    res.json({ cardId, count: data ?? 0, each: Number(v?.[card?.rarity]) || 0 });
   });
 }
