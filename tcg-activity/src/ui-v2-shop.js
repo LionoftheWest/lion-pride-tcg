@@ -103,7 +103,7 @@ function startTick() {
 const price = (n, cls = '') => `<span class="sh-price ${cls}">${COIN}<b>${fmt(n)}</b></span>`;
 // compact: the short form on a card (landscape): "×3" / "New".
 const ownChip = (s, compact) => (s.bought ? '' : s.owned ? `<span class="sh-chip">${compact ? `×${s.owned}` : `Owned ${s.owned}`}</span>` : `<span class="sh-chip new">${compact ? 'New' : '✦ New'}</span>`);
-const cardImg = (c, cls = '') => `<div class="sh-card ${cls} r-${c?.rarity || 'normal'}">${c?.image_url ? `<img src="${thumb(c.image_url)}" data-full="${esc(c.image_url)}" alt="${esc(c.name)}">` : ''}</div>`;
+const cardImg = (c, cls = '', slot = null, extra = '') => `<div class="sh-card ${cls} r-${c?.rarity || 'normal'}"${slot != null ? ` data-view="${slot}" title="See the card"` : ''}>${c?.image_url ? `<img src="${thumb(c.image_url)}" data-full="${esc(c.image_url)}" alt="${esc(c.name)}">` : ''}${extra}</div>`;
 const by = (r) => (shop.data?.stock || []).filter((s) => s.rarity === r && s.card);
 const nextDay = (iso) => new Date(iso).toLocaleDateString(undefined, { weekday: 'short' });
 
@@ -112,23 +112,26 @@ function stockHTML() {
   const sr = by('secret_rare')[0];
   const ir = by('illustrated_rare');
   const nm = by('normal');
-  const featured = sr ? `<div class="sh-feat${sr.bought ? ' bought' : ''}" data-slot="${sr.slot}">
+  const featured = sr ? `<div class="sh-feat${sr.bought ? ' bought' : ''}">
       <span class="sh-kick">${ICON.star}Featured</span>
-      ${cardImg(sr.card, 'big')}
+      ${cardImg(sr.card, 'big', sr.slot)}
       <div class="sh-feat-info"><b class="sh-feat-name">${esc(sr.card.name)}</b><span class="sh-rar" style="color:var(--r-secret_rare)">◆ ${esc(RL('secret_rare'))}</span></div>
       <div class="sh-feat-row">${price(sr.price, 'lg')}${ownChip(sr)}</div>
-      <button class="v2-btn gold sh-buy" data-slot="${sr.slot}"${sr.bought ? ' disabled' : ''}>${sr.bought ? `${ICON.check}Bought today` : `${ICON.store}<span class="long">${sr.card.name.length <= 16 ? `Buy ${esc(sr.card.name)}` : 'Buy this card'}</span><span class="short">Buy</span>`}</button>
+      <button class="v2-btn gold sh-buy" data-buy="${sr.slot}"${sr.bought ? ' disabled' : ''}>${sr.bought ? `${ICON.check}Bought today` : `${ICON.store}<span class="long">${sr.card.name.length <= 16 ? `Buy ${esc(sr.card.name)}` : 'Buy this card'}</span><span class="short">Buy</span>`}</button>
     </div>` : '';
-  const irRow = ir.map((s) => `<div class="sh-ir${s.bought ? ' bought' : ''}" data-slot="${s.slot}">
-      ${cardImg(s.card)}${s.bought ? `<span class="sh-done">${ICON.check}Bought today</span>` : ''}
-      <div class="sh-ir-side">${ownChip(s)}<span class="grow"></span>${price(s.price)}<button class="v2-btn sh-mini" data-slot="${s.slot}"${s.bought ? ' disabled' : ''}>${s.bought ? 'Bought' : 'Buy'}</button></div>
+  const irRow = ir.map((s) => `<div class="sh-ir${s.bought ? ' bought' : ''}">
+      ${cardImg(s.card, '', s.slot, isLand() ? ownChip(s, true).replace('sh-chip', 'sh-chip on-card') : '')}${s.bought ? `<span class="sh-done">${ICON.check}Bought today</span>` : ''}
+      <div class="sh-ir-side">${isLand() ? '' : ownChip(s)}<span class="grow"></span>${price(s.price)}<button class="v2-btn sh-mini" data-buy="${s.slot}"${s.bought ? ' disabled' : ''}>${s.bought ? 'Bought' : 'Buy'}</button></div>
     </div>`).join('');
-  const nmRow = (list) => list.map((s) => `<button class="sh-nm${s.bought ? ' bought' : ''}" data-slot="${s.slot}"${s.bought ? ' disabled' : ''}>
-      <span class="sh-nm-card">${cardImg(s.card)}${s.bought ? `<span class="sh-done">${ICON.check}Bought today</span>` : ''}${isLand() ? ownChip(s, true).replace('sh-chip', 'sh-chip on-card') : ''}</span>
-      <span class="sh-nm-foot">${price(s.price, 'sm')}${isLand() ? '' : ownChip(s)}</span>
-    </button>`).join('');
-  // A portrait phone: 4 Normal cards per page (design 29, 07).
-  const per = isPort() ? 4 : 6;
+  const phone = isLand() || isPort();
+  // The IR side tiles (desktop, a wide landscape phone); else the Normal layout (card + buy pill).
+  const irTiles = !isPort() && !(isLand() && document.body.classList.contains('m-narrow'));
+  const nmRow = (list) => list.map((s) => `<div class="sh-nm${s.bought ? ' bought' : ''}">
+      <span class="sh-nm-card">${cardImg(s.card, '', s.slot, (s.bought ? `<span class="sh-done">${ICON.check}${phone ? 'Bought' : 'Bought today'}</span>` : '') + (phone ? ownChip(s, true).replace('sh-chip', 'sh-chip on-card') : ''))}</span>
+      <span class="sh-nm-foot"><button class="sh-pbuy" data-buy="${s.slot}"${s.bought ? ' disabled' : ''} title="Buy">${COIN}<b>${fmt(s.price)}</b></button>${phone ? '' : ownChip(s)}</span>
+    </div>`).join('');
+  // All the Normals in one row, no pages (Nathan, 2026-10-02: "all the normals ... in one view").
+  const per = 6;
   const pages = Math.max(1, Math.ceil(nm.length / per));
   shop.nmPage = Math.min(shop.nmPage || 0, pages - 1);
   const nmShown = nm.slice(shop.nmPage * per, shop.nmPage * per + per);
@@ -139,7 +142,7 @@ function stockHTML() {
         ${featured}
         <div class="sh-rows">
           <div class="sh-rowh" style="--rc:var(--r-illustrated_rare)">◆ ${esc(RL('illustrated_rare'))} <span>${COIN}${fmt(d.stock.find((s) => s.rarity === 'illustrated_rare')?.price)} each</span></div>
-          <div class="sh-irs">${isPort() ? nmRow(ir) : irRow}</div>
+          <div class="sh-irs${irTiles ? '' : ' as-nm'}" style="--n:${isPort() ? (document.body.classList.contains('m-short') ? 6 : 4) : 3}">${irTiles ? irRow : nmRow(ir)}</div>
           <div class="sh-rowh" style="--rc:var(--r-normal)">◆ ${esc(RL('normal'))} <span>${COIN}${fmt(d.stock.find((s) => s.rarity === 'normal')?.price)} each</span></div>
           <div class="sh-nms" style="--n:${per}">${nmRow(nmShown)}</div>
           ${pages > 1 ? `<div class="v2-pager sh-pager"><button data-np="-1"${shop.nmPage ? '' : ' disabled'}>‹</button><span>${shop.nmPage + 1} / ${pages}</span><button data-np="1"${shop.nmPage >= pages - 1 ? ' disabled' : ''}>›</button></div>` : ''}
@@ -213,12 +216,27 @@ function wire() {
     if (q && !q.disabled) { shop.qty += Number(q.dataset.q); paint(); return; }
     if (t.closest('.sh-buypacks')) { openConfirm({ kind: 'pack', qty: shop.qty }); return; }
     if (t.closest('.sh-choose')) { openPicker(); return; }
-    const slot = t.closest('[data-slot]');
-    if (slot) {
-      const s = shop.data.stock.find((x) => String(x.slot) === slot.dataset.slot);
+    const buyBtn = t.closest('[data-buy]');
+    if (buyBtn) {
+      const s = shop.data.stock.find((x) => String(x.slot) === buyBtn.dataset.buy);
       if (s && !s.bought) openConfirm({ kind: 'card', slot: s.slot });
+      return;
     }
+    const art = t.closest('[data-view]');
+    if (art) openCard(Number(art.dataset.view));
   };
+}
+
+// Tap the card art: the card information window (Nathan, 2026-10-02), with the full catalog card
+// (lore, ability, tags). Shown unlocked: a member sees the card before buying it. The arrows step
+// through today's stock in the order on screen.
+function openCard(slot) {
+  const cat = ctx().cache.catalog?.cards || [];
+  const order = { secret_rare: 0, illustrated_rare: 1, normal: 2 };
+  const stock = [...(shop.data?.stock || [])].filter((s) => s.card).sort((a, b) => order[a.rarity] - order[b.rarity] || a.slot - b.slot);
+  const full = (s) => ({ ...s.card, ...(cat.find((c) => Number(c.id) === Number(s.card_id)) || {}), locked: false });
+  const s = stock.find((x) => x.slot === slot);
+  if (s) ctx().openViewer(full(s), { list: stock.map(full) });
 }
 
 // ---- The windows (confirm, card picker) -------------------------------------------------------
