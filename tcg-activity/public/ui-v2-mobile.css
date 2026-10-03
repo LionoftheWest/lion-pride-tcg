@@ -1175,14 +1175,47 @@ body.ui-v2.m-land .hall-view .hl-qrow .v2-search { min-width: 0; }
 /* The profile Wishlist on phones (design 27 frames 01-04). */
 body:has(#memberModal:not(.hidden)) .hall-view > aside.hl-sheet, body:has(#memberModal:not(.hidden)) .hall-view.sheet-open::after { display: none; }
 body.ui-v2.m-port .wl-row b, body.ui-v2.m-land .wl-row b { font-size: 12.5px; line-height: 1.15; }
-/* Portrait: the right column (the Wishlist + the hunt) is a bottom sheet; closed, its title row shows. */
-body.ui-v2.m-port .mem-screen:has(.mem-wish) { padding-bottom: 58px; }
-body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-right { position: fixed; z-index: 70; left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); bottom: calc(var(--dock-h) + 10px + var(--sa-b));
-  display: flex; flex-direction: column; gap: 6px; max-height: 52px; overflow: hidden; border-radius: 16px; background: var(--bg-raised); box-shadow: 0 -10px 30px rgba(0, 0, 0, .45); transition: max-height var(--dur-base) ease; }
-body.ui-v2.m-port .mem-screen.wl-open .mem-right { max-height: calc(100dvh - var(--dock-h) - 90px - var(--sa-t) - var(--sa-b)); }
-body.ui-v2.m-port .mem-screen.wl-open::after { content: ''; position: fixed; inset: 0; z-index: 69; background: rgba(5, 5, 10, .55); }
-body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-wish > .tile-h { min-height: 32px; cursor: pointer; }
-body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hunt { flex: none; }
+/* Portrait (Nathan, 2026-10-02, IMG_2885: the closed bottom sheet was cut under the dock): the Wishlist
+   and the hunt tile sit side by side under Season 1, in the space above the dock, so the whole profile
+   fits one screen. Edit (wl-open): the Wishlist takes the full width for its buttons. */
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-right { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 6px; min-height: 0; }
+/* One column in Edit, or with no live boss. (Separate rules: a :has() inside a :has() is invalid CSS and
+   drops every selector of its rule.) */
+body.ui-v2.m-port .mem-screen.wl-open .mem-right { grid-template-columns: minmax(0, 1fr); }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-right:has(> .mem-hunt > .v2-empty) { grid-template-columns: minmax(0, 1fr); }
+/* A short phone hid the hunt tile (line 962); beside the Wishlist it has room. */
+body.ui-v2.m-port.m-short .mem-screen:not(.wl-open):has(.mem-wish) .mem-hunt:not(:has(> .v2-empty)) { display: flex; }
+body.ui-v2.m-port .mem-screen.wl-open .mem-hunt { display: none; }
+body.ui-v2.m-port .mem-wish { padding: 7px 8px; gap: 4px; overflow: hidden; }
+body.ui-v2.m-port .mem-wish > .tile-h { min-height: 0; }
+body.ui-v2.m-port .mem-wish .wl-list { flex: 1 1 0; min-height: 0; display: grid; grid-template-rows: repeat(5, minmax(0, 1fr)); gap: 3px; }
+body.ui-v2.m-port .mem-wish .wl-row { min-height: 0; padding: 1px 6px; gap: 6px; border-radius: 8px; }
+body.ui-v2.m-port .mem-wish .wl-row img, body.ui-v2.m-port .mem-wish .wl-empty { height: 100%; max-height: 34px; width: auto; aspect-ratio: 5 / 7; flex: none; }
+body.ui-v2.m-port .mem-wish .wl-row b { font-size: 11.5px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.ui-v2.m-port .mem-wish .wl-row span[style] { font-size: 8.5px; letter-spacing: .3px; }
+body.ui-v2.m-port .mem-wish .wl-i { display: none; }
+body.ui-v2.m-port .mem-wish .wl-row .v2-icon { height: 100%; max-height: 26px; width: auto; aspect-ratio: 1; flex: none; } /* never taller than its row */
+/* The screen behind the profile showed through the gap above the dock. */
+body.ui-v2.m-port:has(#memberModal:not(.hidden)) #body { visibility: hidden; }
+body.ui-v2.m-port .mem-wish .wl-row .hl-n { padding: 1px 5px; font-size: 10px; }
+body.ui-v2.m-port .mem-wish .wl-hint { font-size: 10px; line-height: 1.2; }
+/* The hunt tile beside it: the name may wrap, the three numbers stack. */
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hunt { padding: 7px 8px; gap: 4px; min-height: 0; overflow: hidden; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hunt .tile-h { font-size: 12px; line-height: 1.15; align-items: flex-start; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hunt .tile-h b { white-space: normal; overflow-wrap: anywhere; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hstats { grid-template-columns: minmax(0, 1fr); flex: 1 1 0; min-height: 0; align-content: space-evenly; gap: 2px; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hstats > div { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-hstats b { font-size: 14px; }
+/* A short phone: a smaller Spotlight and no rarity chips (the count is in the stats), so the row has room. */
+@media (max-height: 760px) {
+  body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-spot { height: 118px; }
+  body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-rar { display: none; }
+}
+@media (max-height: 680px) {
+  body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-spot { height: 96px; }
+  body.ui-v2.m-port .mem-wish .wl-hint { display: none; } /* the star's title says it */
+  body.ui-v2.m-port .mem-screen:has(.mem-wish) .mem-status { display: none; }
+}
 /* Portrait: the slot picker covers the screen above the sheet. */
 body.ui-v2.m-port .wl-picker { position: fixed; z-index: 71; left: calc(6px + var(--sa-l)); right: calc(6px + var(--sa-r)); top: calc(var(--topbar-h) + 6px + var(--sa-t)); bottom: calc(var(--dock-h) + 10px + var(--sa-b)); padding: 10px; }
 body.ui-v2.m-port .mem-screen.wl-open:has(.wl-picker) .mem-right { display: none; }
@@ -1267,6 +1300,8 @@ body.ui-v2.m-land .v2-trade.hall-view .tr-gridhead > #hlView#hlView, body.ui-v2.
 /* Phone Hall captions: the name wraps at natural points on line 1 (no cut names), line 2 the chips. */
 body.ui-v2 .hall-view .v2-cap.hl-cap.two.ph { gap: 2px; }
 body.ui-v2 .hall-view .hl-cap.ph .hl-who { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.15; font-size: 11px; }
+/* A name with no natural break point ("agrumpytedybeardimshoo") breaks inside its own card, never over the next one. */
+body.ui-v2 .hall-view .hl-cap.ph .hl-who { max-width: 100%; overflow-wrap: anywhere; }
 body.ui-v2 .hall-view .hl-cap.ph .hl-r2 { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
 /* The view switches keep their full labels (they were cut to "Open auc..."). */
 body.ui-v2 .hall-view #hlView, body.ui-v2 .hall-view #hlAView { flex: none; }
@@ -1348,3 +1383,7 @@ body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-info { display: none; }
 body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-foot .v2-btn { font-size: 0; padding: 0 12px; }
 body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-foot .v2-btn::first-letter { font-size: 15px; }
 body.ui-v2.m-land.m-xnarrow .hall-view .hl-compose .tr-deal { flex: 0 1 auto; }
+
+/* The raid on a portrait phone: the ? circle sits in the boss traits line at the chip height, so the
+   line does not grow (a taller line pushed the boss over the cards). */
+body.ui-v2.m-port .arena-traits .ex-q { width: 22px; height: 22px; margin-block: -4px; font-size: 12px; border-width: 1.5px; box-shadow: 0 0 10px #F4B73C40; }

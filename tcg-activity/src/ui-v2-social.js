@@ -4,6 +4,7 @@
 
 import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, openMember, toast } from './ui-v2.js';
 import { thumb } from './thumb.js';
+import { explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
 import { isPhone, isPort, isLand } from './mobile.js';
 import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v2-hall.js';
@@ -545,7 +546,7 @@ function paintTrade() {
   const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
   el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}${tr.respond ? ' responding' : ''}">
     <section class="tr-main">
-      <div class="tr-top">${commTabs()}<span class="grow"></span>
+      <div class="tr-top">${commTabs()}${explainBtn('trades')}<span class="grow"></span>
         <div class="seg" id="trMode"><button data-m="offer" class="${tr.mode === 'offer' ? 'on' : ''}">⇄ Offer</button><button data-m="gift" class="${tr.mode === 'gift' ? 'on' : ''}">🎁 Gift</button></div></div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
         ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
@@ -594,6 +595,9 @@ function paintTrade() {
   wireOffers(main, paintTrade);
   keepFocus(focus);
   requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); if (isLand()) fitColumn(el('trMembers')); else fitRow(el('trMembers'), el('trFind')); });
+  // A phone held sideways: the page arrows sit in the middle of the top row, over the ? circle.
+  placeExplain(main, '.tr-gridhead', 'm-land');
+  maybeExplain('trades');
 }
 
 // Recent plays: only whole rows. A phone with no room for one row hides the list and its head.
@@ -752,7 +756,7 @@ function paintEffects() {
 
   el('main').innerHTML = `<div class="v2-trade community fx-view">
     <section class="tr-main">
-      <div class="tr-top">${commTabs()}<span class="grow"></span>
+      <div class="tr-top">${commTabs()}${explainBtn('pranks')}<span class="grow"></span>
         ${cap ? `<div class="fx-today"><span>Plays today</span><i class="fx-bar"><i style="width:${Math.round((100 * used) / cap)}%"></i></i><b class="mono">${used}/${cap}</b></div>` : ''}</div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
         ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
@@ -811,4 +815,5 @@ function paintEffects() {
   keepFocus(focus);
   requestAnimationFrame(() => { fitChildren(el('fxOnYou')); fitRecent(); fitRow(el('trMembers'), el('trFind')); });
   setTimeout(fitRecent, 300); // again after the avatars and fonts load
+  maybeExplain('pranks');
 }

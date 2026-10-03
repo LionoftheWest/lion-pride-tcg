@@ -17,6 +17,14 @@ function mtOffsetMin(at) {
   return m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] || 0)) : -420;
 }
 
+/** The midnight MT that started today, as an ISO timestamp (date_trunc('day', now() at time zone
+ *  'America/Denver') at time zone 'America/Denver' in the database). */
+export function mtDayStartISO(at = new Date()) {
+  const [y, mo, d] = mtToday(at).split('-').map(Number);
+  const guess = new Date(Date.UTC(y, mo - 1, d, 0, 0, 0)); // that midnight, as if it were UTC
+  return new Date(guess.getTime() - mtOffsetMin(guess) * 60000).toISOString();
+}
+
 /** The next midnight MT as an ISO timestamp (when the daily limits reset). */
 export function nextMtMidnightISO(at = new Date()) {
   const [y, mo, d] = mtToday(at).split('-').map(Number);
