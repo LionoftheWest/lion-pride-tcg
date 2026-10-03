@@ -731,3 +731,7 @@ body.ui-v2 .v2-toast.act { display: flex; align-items: center; gap: 12px; pointe
 body.ui-v2 .v2-toast.act .v2-btn { height: 32px; padding: 0 14px; font-size: 13px; }
 /* The profile: the title and frame button. */
 body.ui-v2 .prof-cos { align-self: flex-start; height: 32px; padding: 0 12px; font-size: 13px; margin: 2px 0 6px; }
+
+/* A member at a play limit (Nathan, 2026-10-03): grayed, the reason in the title and the message line. */
+body.ui-v2 .tr-mem.capped { opacity: .45; }
+body.ui-v2 .tr-mem.capped.on { opacity: .75; }

@@ -25,6 +25,7 @@ const ERR = {
   effect_disabled: 'This effect unlocks soon.',
   not_owned: 'You do not own this card.',
   self_target: 'Pick another member.',
+  immune: 'Discord cannot change the server owner: pick an in-game card for them.',
   no_target: 'That member has not played yet.',
   no_effect: 'This card has no effect yet.',
   slow_down: 'Slow down a little.',
