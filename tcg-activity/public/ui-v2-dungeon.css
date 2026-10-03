@@ -738,3 +738,14 @@ body.ui-v2.m-port .dg-lobby.port .dg-yhead { gap: 6px; }
   body.ui-v2.m-port .dg-lobby.port .dg-sort button { padding: 0 7px; }
   body.ui-v2.m-port .dg-lobby.port .dg-pager { gap: 2px; } body.ui-v2.m-port .dg-lobby.port .dg-pager b { font-size: 12px; }
 }
+body.ui-v2.m-port .dg-card > .card-info, body.ui-v2.m-land .dg-card > .card-info { width: 22px; height: 22px; font-size: 11px; }
+
+/* The status row under each fight card: weakness / resist tag and buffs, never on the art (Nathan, 2026-10-03). */
+body.ui-v2 .dg-fx { display: flex; justify-content: center; align-items: center; gap: 3px; min-height: 16px; max-width: 100%; overflow: hidden; }
+body.ui-v2 .dg-fx .dg-tag, body.ui-v2.m-port .dg-fx .dg-tag, body.ui-v2.m-land .dg-fx .dg-tag { position: static; transform: none; top: auto; left: auto; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 9px; padding: 1px 5px; line-height: 14px; }
+body.ui-v2 .dg-fx .dg-tag svg { width: 10px; height: 10px; flex: none; }
+body.ui-v2 .dg-fx .dg-buffs { display: contents; }
+body.ui-v2 .dg-fx .dg-buff, body.ui-v2 .dg-fx .dg-buff.bad { position: static; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8.5px; padding: 1px 5px; line-height: 14px; border-radius: 999px; }
+body.ui-v2.m-land .dg-fx { min-height: 13px; } body.ui-v2.m-land .dg-fx .dg-tag, body.ui-v2.m-land .dg-fx .dg-buff { font-size: 7.5px; line-height: 11px; padding: 1px 4px; }
+body.ui-v2 .dg-fx { flex-wrap: wrap; row-gap: 2px; }
+body.ui-v2 .dg-fx .dg-tag, body.ui-v2 .dg-fx .dg-buff { max-width: 100%; }

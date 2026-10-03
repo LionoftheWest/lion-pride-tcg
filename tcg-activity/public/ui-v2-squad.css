@@ -160,3 +160,12 @@ body.ui-v2 .hunt-arena .arena-subrow { left: auto; right: 20px; top: 128px; tran
 /* The live hits line up with the arena's left edge, under the HP bar. */
 body.ui-v2:has(.arena-mode) #feed { left: calc(var(--sp-5) + 20px); top: calc(var(--topbar-h) + 138px); width: 250px; height: calc(100% - var(--topbar-h) - 138px - var(--dock-h) - 40px - 32vh); min-height: 120px; }
 body.ui-v2 .squad-grid.hand { padding: 44px 16px 16px; }
+
+/* Every squad picker: the details button is easy to tap on a phone (a 40px touch area around the icon). */
+body.ui-v2.m-port .card-info::after, body.ui-v2.m-land .card-info::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; }
+/* The squad info viewer on a portrait phone: a smaller card so the ability and the tags fit in one view. */
+body.ui-v2.m-port #viewer.raid-info { gap: 10px; justify-content: flex-start; padding-top: 12px; }
+body.ui-v2.m-port #viewer.raid-info .viewer-stage { width: min(170px, 40vw); flex: none; }
+body.ui-v2.m-port #viewer.raid-info .viewer-info { width: calc(100vw - 24px); max-width: 420px; max-height: none; padding: 12px; }
+body.ui-v2.m-port #viewer.raid-info .viewer-info h3 { font-size: 18px; margin: 0 0 6px; }
+body.ui-v2.m-port #viewer.raid-info { align-items: center; }
