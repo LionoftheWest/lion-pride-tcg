@@ -27,6 +27,8 @@ import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, pa
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
+import { initDungeon, renderDungeonV2, disposeDungeon, advTabs } from './ui-v2-dungeon.js';
+import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { every, isIdle } from './poll.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
@@ -229,6 +231,7 @@ let features = {}; // server feature flags (e.g., ascension), from /api/config
 let packsAvailable = 0;
 let uiV2 = false;   // the v2 UI (docs/design.md), from /api/flags after login
 let sdkRef = null; // the Discord SDK (the orientation lock)
+let dungeon = false; // the Dungeon Run (dungeon.sql), from /api/flags (DUNGEON_USERS first)
 let shards = false;  // Shards + the Shop (shards_shop.sql), from /api/flags (SHARDS_USERS first)
 let hall = false;    // wishlists + the Trading Hall + auctions, from /api/flags (HALL_USERS first)
 let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
@@ -348,6 +351,7 @@ async function main() {
   trade2 = !!flags?.trade2;
   hall = !!flags?.hall;
   shards = !!flags?.shards;
+  dungeon = !!flags?.dungeon;
   // A new member's first login gave them the welcome packs: show them now.
   if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   if (uiV2) { startV2(); refreshCollectionBadge({ profile: true }).catch(() => {}); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); initExplain(flags?.tutorial); } else show('collection');
@@ -386,6 +390,7 @@ function startV2() {
   if (board) board.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
   el('v2Avatar').title = meUser?.name || '';
   initDailies(); // the Dailies window button (hidden while settings.dailies.enabled is off)
+  initDungeon(dungeon); // the Adventure tabs (Hunt | Dungeon) and the Dungeon view (design 30)
   initShop(shards); // the Shards balance + the Shop button (design 29; hidden while the flag is off)
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
   // 5+ packs: the chooser (x1 / x5 / x10); fewer: open one, as before.
@@ -417,7 +422,7 @@ function sendStatus(kind, d) {
   myStatus = kind || myStatus;
   if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus, d: myDetail })); } catch { /* dropped */ } }
 }
-const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home', shop: 'home' };
+const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home', shop: 'home', dungeon: 'hunt' };
 
 // Load which cards the caller owns (for feed-card ownership). Also warms the
 // collection cache. Refreshed whenever the collection can have changed.
@@ -584,6 +589,7 @@ function ago(iso) {
 
 async function show(view) {
   currentView = view;
+  if (view !== 'dungeon') disposeDungeon(); // the 3D room stage
   document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.querySelectorAll('#dock .dk').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.body.dataset.view = view;
@@ -672,6 +678,7 @@ function renderMain(view) {
   if (uiV2 && view === 'leaderboard') { stopHuntTicker(); renderLeaderboardV2(); return; }
   if (uiV2 && view === 'trading') { stopHuntTicker(); renderTradingV2(); return; }
   if (uiV2 && view === 'shop') { stopHuntTicker(); renderShopV2(); return; }
+  if (uiV2 && view === 'dungeon') { stopHuntTicker(); renderDungeonV2(); return; }
   { const bm = el('bossMini'); if (bm) bm.innerHTML = ''; } // clear the sidebar boss square
   stopHuntTicker(); // stop the boss/cooldown countdown; renderHunt restarts it
   if (view === 'gallery') { renderGallery(); return; }
@@ -1349,12 +1356,21 @@ function paintHuntView(d) {
     renderFeedSidebar();
     startHuntTicker();
     maybeExplain('hunt');
+    advTabs(); // the Adventure tabs (ui-v2-dungeon.js; only with the Dungeon flag)
     return;
   }
   if (!d || !d.hunt) {
     el('main').innerHTML = `<div class="main-body">${cooldownHTML(d)}</div>`;
     renderBossMini(); // no active boss -> clears the sidebar square
     startHuntTicker(); // count down to the next spawn
+    advTabs();
+    return;
+  }
+  // The unlock gate (adventure_gate.sql): the starter gifts + 8 attackers. The server refuses too.
+  if (d.gate && !d.gate.ok) {
+    el('main').innerHTML = `<div class="main-body">${gateHTML(d.gate, 'the Hunt')}</div>`;
+    wireGate(el('main'));
+    advTabs();
     return;
   }
   huntState = d;
@@ -1398,6 +1414,7 @@ function paintHuntView(d) {
   refreshHuntFeed();    // load the live attack feed
   startHuntTicker(); // count down to the Monday deadline + poll the feed
   maybeExplain('hunt');
+  advTabs();
 }
 
 // Background refresh after an instant open: full repaint only if the boss/cooldown state
@@ -1406,7 +1423,7 @@ async function backgroundRefreshHunt() {
   let d; try { d = await api('/api/hunt'); } catch { return; }
   if (currentView !== 'battling') return;
   const prev = huntCache; huntCache = d;
-  const bossChanged = !d || !d.hunt || !prev || !prev.hunt || d.hunt.id !== prev.hunt.id;
+  const bossChanged = !d || !d.hunt || !prev || !prev.hunt || d.hunt.id !== prev.hunt.id || (d.gate?.ok !== prev.gate?.ok);
   if (bossChanged) { disposeBoss(); paintHuntView(d); return; }
   applyHuntState(d);
 }

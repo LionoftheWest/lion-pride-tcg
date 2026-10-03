@@ -29,22 +29,23 @@ create or replace function public.dungeon_cfg() returns jsonb language sql stabl
   select coalesce((select value from settings where key = 'dungeon'), '{}'::jsonb);
 $$;
 
--- ---- The monsters (the models are Quaternius CC0, docs/activities/02-fight-engine.md 7.1) -------------
+-- ---- The monsters (Quaternius CC0 models from poly.pizza, docs/activities/02-fight-engine.md 7.1) --------
+-- model = the file tcg-activity/public/dungeon/monsters/<model>.glb (Idle, Attack/Punch/Bite, HitReact, Death).
 create table if not exists public.dungeon_monsters (
   key text primary key, name text not null, model text not null,
   hp int not null, atk int not null, tags text[] not null default '{}'
 );
 insert into public.dungeon_monsters (key, name, model, hp, atk, tags) values
-  ('slime',    'Slime',    'slime',    40, 10, '{trait:monster}'),
-  ('goblin',   'Goblin',   'goblin',   55, 12, '{trait:humanoid,trait:melee}'),
-  ('skeleton', 'Skeleton', 'skeleton', 50, 13, '{trait:monster,trait:melee}'),
-  ('bat',      'Bat',      'bat',      35, 11, '{trait:beast,trait:air}'),
-  ('mushroom', 'Mushroom', 'mushroom', 60, 9,  '{trait:nature,trait:toxic}'),
-  ('wolf',     'Wolf',     'wolf',     50, 14, '{trait:beast,trait:agile}'),
-  ('golem',    'Golem',    'golem',    85, 12, '{trait:earth,trait:armored}'),
-  ('spider',   'Spider',   'spider',   45, 13, '{trait:beast,trait:toxic}'),
-  ('ghost',    'Ghost',    'ghost',    45, 12, '{trait:spirit,trait:shadow}'),
-  ('orc',      'Orc',      'orc',      70, 15, '{trait:humanoid,trait:strong}')
+  ('slime',    'Slime',    'green_blob', 40, 10, '{trait:monster}'),
+  ('ooze',     'Ooze',     'pink_slime', 45, 10, '{trait:monster,trait:toxic}'),
+  ('skeleton', 'Skeleton', 'skeleton',   50, 13, '{trait:monster,trait:melee}'),
+  ('zombie',   'Zombie',   'zombie',     60, 11, '{trait:monster,trait:melee}'),
+  ('giant',    'Giant',    'giant',      75, 15, '{trait:humanoid,trait:strong}'),
+  ('yeti',     'Yeti',     'yeti',       70, 13, '{trait:beast,trait:strong}'),
+  ('demon',    'Demon',    'blue_demon', 55, 14, '{trait:spirit,trait:shadow}'),
+  ('golem',    'Golem',    'goleling',   85, 12, '{trait:earth,trait:armored}'),
+  ('squid',    'Squid',    'squidle',    45, 12, '{trait:beast,trait:air}'),
+  ('raptor',   'Raptor',   'dino',       50, 14, '{trait:beast,trait:agile}')
 on conflict (key) do nothing;
 alter table public.dungeon_monsters enable row level security;
 
@@ -611,7 +612,18 @@ begin
     'run', case when r.id is null then null else jsonb_build_object('id', r.id, 'status', r.status, 'ended_by', r.ended_by,
       'floor', r.floor, 'room', r.room, 'turns', r.turns, 'shards', r.shards, 'cards', to_jsonb(r.cards), 'squad', to_jsonb(r.squad),
       'state', r.state, 'rank', v_rank) end,
+    -- The rooms of the member's floor (the progress bar): the type and the guardian's name.
+    'rooms', (select jsonb_agg(jsonb_build_object('type', rm->>'type', 'name', rm->'foes'->0->>'name')) from jsonb_array_elements(d->'floors'->(coalesce(r.floor, 1) - 1)) rm),
+    'floors', jsonb_array_length(d->'floors'),
     'runs_today', (select count(*) from dungeon_runs where day = v_day),
+    -- The member's cards with the stats of each copy (card_combat: the one stat source).
+    'mine', (select coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'type', s.type, 'rarity', c.rarity::text,
+               'cost', coalesce((cfg->'cost'->>c.rarity::text)::int, 1), 'cp', (x.cmb->>'cp')::int,
+               'hp', case when s.type in ('Character', 'Creature') then (x.cmb->>'hp')::int else card_max_hp(0) end,
+               'slugs', coalesce(to_jsonb(s.tag_slugs), '[]'::jsonb)) order by (x.cmb->>'cp')::int desc), '[]'::jsonb)
+             from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
+             cross join lateral (select card_combat(c.rarity::text, pc.ascension, s.cp_mod, pc.stat_points) cmb) x
+             where pc.player_id = p_player and pc.quantity > 0),
     'top', dungeon_board(v_day, 3),
     'season_best', (select jsonb_build_object('floor', floor, 'room', room, 'day', day) from dungeon_runs where player_id = p_player
                     order by floor desc, room desc, turns limit 1));

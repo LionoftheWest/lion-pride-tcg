@@ -234,6 +234,8 @@ begin
   r := dungeon_view('tst_dg_b');
   if not (r->>'ok')::boolean or r->'run'->>'ended_by' <> 'retreat' or (r->'run'->>'rank')::int < 1 or not (r->'gate'->>'ok')::boolean then bad := bad || 'view: ' || r::text || '; '; end if;
 
+  if (select (e->>'cp')::int from jsonb_array_elements(r->'mine') e where (e->>'id')::bigint = 34) is distinct from (dungeon_card('tst_dg_b', 34)->'cmb'->>'cp')::int
+     or (select (e->>'cost')::int from jsonb_array_elements(r->'mine') e where (e->>'id')::bigint = 34) <> 1 then bad := bad || 'view mine; '; end if;
   raise exception 'RESULT:%', case when bad = '' then 'PASS' else 'FAIL ' || bad end;
 end $t$;`;
 

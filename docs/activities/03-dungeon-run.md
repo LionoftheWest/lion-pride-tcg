@@ -176,6 +176,19 @@ The choices make each run a set of decisions, not only a check of the collection
 ## 11. Flags and build phases
 
 - Flag `FEATURE_DUNGEON` and `DUNGEON_USERS`.
+- The database switch `settings.dungeon.enabled` (default false): while it is false, every RPC refuses.
+
+### The build (2026-10-03, branch `feat/combat-core`)
+
+- SQL: `combat_core.sql` (the shared rules), `adventure_gate.sql` (the gate on the Hunt), `dungeon.sql`
+  (the generator, the run, attack, support, choose, retreat, the leaderboard, the view). Apply in that order.
+- Test: `card-studio/scripts/test-dungeon.mjs` (rolled back; 8 mutations must fail).
+- Activity: `src/dungeon-routes.js`, `src/ui-v2-dungeon.js`, `src/ui-v2-gate.js`, `src/dungeon-stage.js`,
+  `public/ui-v2-dungeon.css`. The dock button becomes **Adventure** (Hunt | Dungeon tabs) when the flag is on.
+- The monsters: 10 Quaternius CC0 models from poly.pizza (`public/dungeon/monsters/`, `CREDITS.md`): Slime,
+  Ooze, Skeleton, Zombie, Giant, Yeti, Demon, Golem, Squid, Raptor. The element tints each model. The
+  Quaternius Google Drive refused the download (quota), so the files come from poly.pizza.
+- The room log lives on the device for the session (the server keeps `dungeon_log`).
 
 1. The generator and the seed check, as a script only.
 2. The run, the fights, and the loot. Nathan tests.
