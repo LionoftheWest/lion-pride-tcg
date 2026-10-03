@@ -657,26 +657,29 @@ app.get('/api/leaderboard/v2', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
   const rebuildBoard = () => singleFlight('boardV2', async () => {
-      const [players, owned, hits, hunts, opened, gifted, plays, trades, catalog] = await Promise.all([
+      const [players, owned, hits, fought, hunts, opened, gifted, plays, trades, catalog] = await Promise.all([
         // Whole tables, every row (selectAll: a plain read stopped at 1,000 rows, 2026-10-02).
         selectAll(() => supabase.from('players').select('id, username, avatar, title, frame'), ['id']),
         selectAll(() => supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1), ['player_id', 'card_id']),
         selectAll(() => supabase.from('hunt_hits').select('player_id, hunt_id, damage'), ['id']),
+        // The hunts a member fought in: own committed cards (a Raid Crasher credit is raid damage only, 2026-10-03).
+        selectAll(() => supabase.from('hunt_card_hp').select('player_id, hunt_id'), ['hunt_id', 'player_id', 'card_id', 'hit_date']),
         selectAll(() => supabase.from('hunts').select('id, status'), ['id']),
         selectAll(() => supabase.from('pack_ledger').select('player_id').eq('reason', LEDGER.opened), ['id']),
         selectAll(() => supabase.from('pack_ledger').select('player_id').eq('reason', LEDGER.giftSent), ['id']),
         selectAll(() => supabase.from('card_plays').select('player_id, kind'), ['id']),
-        selectAll(() => supabase.from('trade_offers').select('from_id, to_id').eq('status', 'accepted'), ['id']),
+        selectAll(() => supabase.from('card_trades').select('from_id, to_id'), ['id']), // the trade ledger: offers + auctions
         getCatalogBase(),
       ]);
       const defeated = new Set((hunts.data || []).filter((h) => h.status === 'defeated').map((h) => h.id));
       const byPlayer = new Map();
       const row = (id) => {
-        if (!byPlayer.has(id)) byPlayer.set(id, { cards: [], hits: [], opened: 0, gifted: 0, boons: 0, pranks: 0, trades: 0 });
+        if (!byPlayer.has(id)) byPlayer.set(id, { cards: [], hits: [], fought: new Set(), opened: 0, gifted: 0, boons: 0, pranks: 0, trades: 0 });
         return byPlayer.get(id);
       };
       for (const r of owned.data || []) row(r.player_id).cards.push(r);
       for (const r of hits.data || []) row(r.player_id).hits.push(r);
+      for (const r of fought.data || []) row(r.player_id).fought.add(r.hunt_id);
       for (const r of opened.data || []) row(r.player_id).opened += 1;
       for (const r of gifted.data || []) row(r.player_id).gifted += 1;
       for (const r of plays.data || []) { const x = row(r.player_id); if (r.kind === 'boon') x.boons += 1; if (r.kind === 'prank') x.pranks += 1; }
@@ -689,7 +692,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         if (!x.cards.length && !x.hits.length) continue;
         const mine = new Map(x.cards.map((r) => [r.card_id, r]));
         const merged = catalog.map((c) => { const m = mine.get(c.id); return m ? { ...c, owned: true, quantity: m.quantity, ascension: m.ascension || 0 } : { ...c, owned: false, quantity: 0, ascension: 0 }; });
-        const joined = new Set(x.hits.map((h) => h.hunt_id));
+        const joined = x.fought; // own committed cards, not hunt_hits (a crash credit is raid damage only)
         const stats = {
           packsOpened: x.opened, packsGifted: x.gifted, huntsJoined: joined.size,
           bossesDefeated: [...joined].filter((h) => defeated.has(h)).length,
@@ -977,14 +980,16 @@ const PROFILE_TTL = 20000;
 // that profile within 20s saw an empty collection.)
 async function loadProfile(id) {
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
-  const [player, opened, gifted, hits, plays, pranked, trades, lb, cp, owned, claims] = await Promise.all([
+  const [player, opened, gifted, hits, fought, plays, pranked, trades, lb, cp, owned, claims] = await Promise.all([
     supabase.from('players').select('id, username, avatar, spotlight, title, frame').eq('id', id).maybeSingle(),
     supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', LEDGER.opened),
     supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', LEDGER.giftSent),
     selectAll(() => supabase.from('hunt_hits').select('hunt_id, damage').eq('player_id', id), ['id']),
+    // The hunts this member fought in: own committed cards (a Raid Crasher credit is raid damage only, 2026-10-03).
+    selectAll(() => supabase.from('hunt_card_hp').select('hunt_id').eq('player_id', id), ['hunt_id', 'card_id', 'hit_date']),
     selectAll(() => supabase.from('card_plays').select('kind').eq('player_id', id), ['id']),
     supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('target_id', id).eq('kind', 'prank').neq('player_id', id),
-    supabase.from('trade_offers').select('id', { count: 'exact', head: true }).eq('status', 'accepted').or(`from_id.eq.${id},to_id.eq.${id}`),
+    supabase.from('card_trades').select('id', { count: 'exact', head: true }).or(`from_id.eq.${id},to_id.eq.${id}`),
     hunt ? supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 }) : Promise.resolve({ data: [] }),
     supabase.rpc('my_collection_power', { p_player_id: id }),
     supabase.from('player_cards').select('card_id, quantity, ascension').eq('player_id', id),
@@ -992,7 +997,7 @@ async function loadProfile(id) {
   ]);
   if (!player.data) return null;
   const hitRows = hits.data || [];
-  const joined = [...new Set(hitRows.map((h) => h.hunt_id))];
+  const joined = [...new Set((fought.data || []).map((h) => h.hunt_id))];
   let defeated = 0;
   if (joined.length) {
     const { count } = await supabase.from('hunts').select('id', { count: 'exact', head: true }).in('id', joined).eq('status', 'defeated');
