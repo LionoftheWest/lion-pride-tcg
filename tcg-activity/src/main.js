@@ -333,7 +333,7 @@ async function main() {
   setInterval(refreshTradeBadge, 45000); // show a badge when a trade offer arrives
   // The trade screen open: every 8 s, so an answered offer leaves the list at once.
   setInterval(() => { if (currentView === 'trading' && !document.hidden) refreshTradeBadge(); }, 8000);
-  initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
+  initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], statsOn: () => !!cache.collection?.stats?.on, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   let flags = null;
   // 3 tries: a failed load fell back to the old design (and its old trade flow) for that session.
   for (let i = 0; i < 3 && !flags; i++) {
@@ -1960,6 +1960,13 @@ function fitPhoneArena() {
   // #feed is position: fixed, so it takes screen positions.
   document.body.style.setProperty('--arena-top-b', `${Math.round(t.bottom)}px`);
   document.body.style.setProperty('--hand-b', `${Math.round(innerHeight - g.top)}px`);
+  // Portrait: the boss keeps at least 100 px; on a short phone the live feed gives way (52 px = 2
+  // rows, down to 26 px = the newest hit). At 393x700 the cards are at their floor size and the
+  // boss had 90 px (2026-10-02).
+  if (document.body.classList.contains('m-port')) {
+    const room = Math.round(g.top - t.bottom - 4);
+    document.body.style.setProperty('--feed-h', `${Math.max(26, Math.min(52, room - 100))}px`);
+  }
   document.body.style.setProperty('--hand-l', `${Math.round(g.left)}px`);
   document.body.style.setProperty('--hand-r', `${Math.round(innerWidth - g.right)}px`);
   if (currentView === 'battling') renderFeedSidebar(); // drop the feed rows that no longer fit

@@ -1010,9 +1010,9 @@ body.ui-v2.m-port .hunt-arena .arena-subrow #myDmg { grid-row: 4; grid-column: 1
 body.ui-v2.m-port .hunt-arena .arena-subrow #myDmg b { display: inline; margin: 0; font-size: 16px; }
 body.ui-v2.m-port .hunt-arena .arena-titlerow .closes { grid-row: 4; grid-column: 2; justify-self: center; font-size: 12px; white-space: nowrap; }
 body.ui-v2.m-port .hunt-arena .arena-subrow .hunt-lb { grid-row: 4; grid-column: 3; height: 34px; padding: 0 12px; font-size: 12px; }
-body.ui-v2.m-port .hunt-arena .arena-stage { inset: var(--top-h, 0px) 0 calc(var(--hand-h, 0px) + 56px) 0; }
+body.ui-v2.m-port .hunt-arena .arena-stage { inset: var(--top-h, 0px) 0 calc(var(--hand-h, 0px) + var(--feed-h, 52px) + 4px) 0; }
 @media (max-width: 419px) { body.ui-v2.m-port .hunt-arena .arena-subrow .hunt-lb { width: 40px; padding: 0; } body.ui-v2.m-port .hunt-arena .arena-subrow .hunt-lb .lb-t { display: none; } }
-body.ui-v2.m-port:has(.arena-mode) #feed { left: calc(16px + var(--sa-l)); right: calc(16px + var(--sa-r)); width: auto; top: auto; bottom: calc(var(--hand-b, 300px) + 2px); height: 52px; min-height: 0; justify-content: flex-end; }
+body.ui-v2.m-port:has(.arena-mode) #feed { left: calc(16px + var(--sa-l)); right: calc(16px + var(--sa-r)); width: auto; top: auto; bottom: calc(var(--hand-b, 300px) + 2px); height: var(--feed-h, 52px); min-height: 0; justify-content: flex-end; }
 /* The label gives its room to the hits on a phone. */
 body.ui-v2.m-port:has(.arena-mode) #feed .feed-head, body.ui-v2.m-land:has(.arena-mode) #feed .feed-head { display: none; }
 /* Full-width columns: the card art is --sw wide, the name gets the whole column. */
