@@ -1,6 +1,6 @@
 # Dungeon Run — Design
 
-Status: DRAFT for Nathan's review (2026-10-02). Not built.
+Status: **designs approved** (design 30, desktop + portrait + landscape, 2026-10-03). Being built.
 
 Each day, every member takes one squad into a new dungeon. The squad fights through
 floors and rooms that get harder, and the member sees how deep they can go.
@@ -18,6 +18,17 @@ floors and rooms that get harder, and the member sees how deep they can go.
 6. **One leaderboard**, its own board: the deepest point, for example "4F Room 3".
 7. Simple monsters (`02-fight-engine.md`, Section 6).
 8. **Draft Dungeon** is a second mode, where members learn the cards.
+
+### Nathan's decisions (2026-10-03)
+
+9. **The screens of design 30 are approved** (15 screens). Make the monsters **bigger** on screen.
+10. **The same combat system as the Hunt** (`02-fight-engine.md`): supports use **cooldowns**, and the
+    enemy's next move is a **surprise**.
+11. **The budget stays by rarity** (Normal 1 ... Gold 5, budget 12): simple to explain. After launch,
+    measure the leaderboard; if the same few Gold owners hold the top every day, change the costs (a
+    setting).
+12. **No loaner cards. A gate instead** (Section 3A): a member who has not redeemed the starter gifts
+    or owns fewer than 8 attackers cannot start a Dungeon run or a Hunt squad.
 
 ## 2. The shape of a dungeon
 
@@ -47,6 +58,23 @@ floors and rooms that get harder, and the member sees how deep they can go.
 - The squad locks at the start of the run. Card HP stays through the whole run. A downed
   card stays down until a Rest room heals it.
 - A copy on an Expedition cannot join the squad (`05-expeditions.md`).
+
+## 3A. The unlock gate (the Hunt and the Dungeon, Nathan 2026-10-03)
+
+Nathan: "what I don't want is a new player drawing some cards, go into the hunt / dungeon run and
+not have redeemed all their cards or try to do it with a small squad."
+
+- The Hunt and the Dungeon open when **both** are true:
+  1. **The starter gifts are redeemed** (`gift_claims` kinds `new_player` and `launch_day`: none of
+     the member's is still open; a member without a Launch Day gift needs only the first).
+  2. **The member owns at least 8 attackers** (Character or Creature cards): a full Hunt squad of 8 and
+     a Dungeon squad of 5.
+- Unopened packs do NOT block the gate: on 2026-10-03, 6 veteran members had 1 unopened pack each.
+- A locked tab shows a checklist with progress and a button for each step: "Redeem your starter gifts
+  (0 / 2)" -> the bell; "Own 8 attackers (3 / 8)" -> OPEN.
+- The server enforces it (the squad lock and the run start refuse with `locked`), not only the screen.
+- Measured 2026-10-03: all 23 members who hit the boss in the last 7 days pass it (the smallest owns 39
+  attackers); 13 of 43 members with cards own 0 to 3 attackers (new or never started).
 
 ## 4. Between rooms: the choice
 
@@ -131,11 +159,10 @@ The choices make each run a set of decisions, not only a check of the collection
   (a unique index).
 - `dungeon_actions(run_id, n, action jsonb)`. The replay data.
 - `dungeon_loot(run_id, kind, card_id, shards, created_at)`.
-- The RPCs only write. The engine runs in the Activity server. Each action:
-  1. The server reads the run state.
-  2. The engine resolves the action.
-  3. One RPC writes the new state, the action, and any loot, and it grants the cards and
-     the Shards in the same transaction.
+- Each action is one SQL RPC (`dungeon_attack`, `dungeon_support`, `dungeon_choose`,
+  `dungeon_retreat`) that reads the run state, resolves it with the **shared combat core**
+  (`combat_core.sql`, the same functions as the Hunt), and writes the new state, the action, and any
+  loot, and grants the cards and the Shards, in one transaction. The client never sends a result.
 
 ## 10. The surface
 
