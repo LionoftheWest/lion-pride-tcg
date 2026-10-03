@@ -13,7 +13,7 @@ const filter = process.argv[2] || '';
 const tests = readdirSync(join(root, 'scripts')).filter((f) => /^test-.*\.mjs$/.test(f) && f !== 'test-all-local.mjs' && f.includes(filter)).sort();
 // Tests that need the migration file they check: the NEWEST file that defines the function.
 const ARGS = {
-  'test-hunt-support.mjs': ['../tcg-bot/supabase/hunt_loop_caps.sql'],
+  'test-hunt-support.mjs': ['../tcg-bot/supabase/audit_fixes_2026_10_03.sql'],
   'test-hunt-schedule-mt.mjs': ['../tcg-bot/supabase/hunt_schedule_mt.sql'],
 };
 // One-time acceptance tests of a data conversion: they expect the state BEFORE it ran, so they fail
