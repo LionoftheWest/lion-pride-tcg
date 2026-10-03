@@ -32,6 +32,21 @@ export function topWants(rows) {
   return [...best.values()];
 }
 
+// A member's held copies per card (free_copies in SQL): trade offers, their auction, their open /
+// accepted bids. Also used by the collection's "can ascend" (server.js).
+export async function heldCopies(supabase, id) {
+  const [o1, o2, au, bids] = await Promise.all([
+    supabase.from('trade_offers').select('offer_card_id').eq('from_id', id).in('status', ['pending', 'countered']),
+    supabase.from('trade_offers').select('request_card_id').eq('to_id', id).eq('status', 'countered'),
+    supabase.from('auctions').select('card_id').eq('seller_id', id).in('status', ['live', 'accepted']),
+    supabase.from('auction_bids').select('cards').eq('bidder_id', id).in('status', ['open', 'accepted']),
+  ]);
+  const m = new Map(); const add = (c) => m.set(Number(c), (m.get(Number(c)) || 0) + 1);
+  (o1.data || []).forEach((r) => add(r.offer_card_id)); (o2.data || []).forEach((r) => add(r.request_card_id));
+  (au.data || []).forEach((r) => add(r.card_id)); (bids.data || []).forEach((r) => (r.cards || []).forEach(add));
+  return m;
+}
+
 export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn }) {
   const gate = async (req, res, write = false) => {
     const me = await caller(req);
@@ -48,19 +63,7 @@ export function registerHallRoutes(app, { supabase, caller, rateLimit, notify, a
     const { data } = await supabase.from('players').select('id, username').in('id', u);
     return new Map((data || []).map((p) => [String(p.id), p.username]));
   };
-  // My held copies (free_copies in SQL): trade offers, my auction, my open / accepted bids.
-  const held = async (id) => {
-    const [o1, o2, au, bids] = await Promise.all([
-      supabase.from('trade_offers').select('offer_card_id').eq('from_id', id).in('status', ['pending', 'countered']),
-      supabase.from('trade_offers').select('request_card_id').eq('to_id', id).eq('status', 'countered'),
-      supabase.from('auctions').select('card_id').eq('seller_id', id).in('status', ['live', 'accepted']),
-      supabase.from('auction_bids').select('cards').eq('bidder_id', id).in('status', ['open', 'accepted']),
-    ]);
-    const m = new Map(); const add = (c) => m.set(Number(c), (m.get(Number(c)) || 0) + 1);
-    (o1.data || []).forEach((r) => add(r.offer_card_id)); (o2.data || []).forEach((r) => add(r.request_card_id));
-    (au.data || []).forEach((r) => add(r.card_id)); (bids.data || []).forEach((r) => (r.cards || []).forEach(add));
-    return m;
-  };
+  const held = (id) => heldCopies(supabase, id);
   const owned = async (id) => {
     const { data } = await supabase.from('player_cards').select('card_id, quantity').eq('player_id', id).gte('quantity', 1);
     return new Map((data || []).map((r) => [Number(r.card_id), r.quantity]));

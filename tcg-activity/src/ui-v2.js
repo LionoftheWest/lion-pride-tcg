@@ -76,7 +76,7 @@ export function tileHTML(c, idx, selected) {
   }
   const el = elemOf(c);
   return `<div class="v2-cell${selected ? ' sel' : ''}" data-idx="${idx}">
-    <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${flairHTML(c.ascension)}</div>
+    <div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${flairHTML(c.ascension)}${c.can_ascend ? '<span class="asc-dot" title="Can ascend"></span>' : ''}</div>
     <div class="v2-cap">${el ? `<span class="cap-el" title="${esc(el.name)}">${elIcon(el.key)}</span>` : ''}<span class="cap-pow">⚡ ${c.power ?? ''}</span>
       ${c.ascension > 0 ? `<span class="cap-stars">${'★'.repeat(c.ascension)}</span>` : ''}${c.quantity > 1 ? `<span class="cap-qty">×${c.quantity}</span>` : ''}</div>
   </div>`;
@@ -195,6 +195,13 @@ function achHTML(a, big, mini) {
   </button>`;
 }
 
+// Why an ascend was refused (ascend_card errors, ascend_guard.sql).
+export const ASCEND_ERROR = {
+  held: 'A copy is in a trade, an auction or a bid. Ascending keeps 1 free copy.',
+  no_ascend: 'Event cards do not ascend.',
+  maxed: 'This card is at ★5.',
+};
+
 // Redeem: the server checks the achievement and pays it once.
 async function redeem(key, btn) {
   if (btn) { btn.textContent = 'Redeeming…'; btn.classList.add('busy'); }
@@ -206,8 +213,10 @@ async function redeem(key, btn) {
   }
   myProfile = { ...(myProfile || {}), claimed: [...(myProfile?.claimed || []), key] };
   ctx.refreshPacks?.();
-  toast(`🎁 ${rewardLabel(r.reward || rewardOf(key))}`);
-  loadMyProfile(true).then(() => { if (ctx.currentView() === 'collection') renderCollectionV2(); });
+  const rw = r.reward || rewardOf(key);
+  if (rw?.title || rw?.frame) toastAction(`🎁 ${rewardLabel(rw)}`, 'Equip now', () => equipTitle(rw.title || null, rw.frame || null));
+  else toast(`🎁 ${rewardLabel(rw)}`);
+  loadMyProfile(true).then(() => { refreshCollectionBadge(); if (ctx.currentView() === 'collection') renderCollectionV2(); });
 }
 async function redeemAll(btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Redeeming…'; }
@@ -216,9 +225,44 @@ async function redeemAll(btn) {
   if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Try again'; } return; }
   ctx.refreshPacks?.();
   const parts = [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.titles?.length ? `${r.titles.length} title${r.titles.length === 1 ? '' : 's'}` : null, r.frames?.length ? `${r.frames.length} frame${r.frames.length === 1 ? '' : 's'}` : null].filter(Boolean);
-  toast(`🎁 ${r.claimed.length} redeemed${parts.length ? ` · ${parts.join(' + ')}` : ''}`);
+  const msg = `🎁 ${r.claimed.length} redeemed${parts.length ? ` · ${parts.join(' + ')}` : ''}`;
+  if (r.titles?.length || r.frames?.length) toastAction(msg, 'Choose title', () => openSpotEditor()); else toast(msg);
   await loadMyProfile(true);
+  refreshCollectionBadge();
   if (ctx.currentView() === 'collection') renderCollectionV2();
+}
+// The Collection dock number (Nathan, 2026-10-03): the cards that can ascend now + the achievements
+// ready to redeem, one red number like the Hunt dot. Refreshed when the collection or the profile
+// changes (after a pack, a trade, an ascend, a redeem) - no timer.
+export async function refreshCollectionBadge({ profile = false } = {}) {
+  if (!ctx) return;
+  await Promise.all([ensureCatalog(), loadMyProfile(profile)]);
+  const asc = (ctx.cache.collection?.cards || []).filter((c) => c.can_ascend).length;
+  const ach = measure(mergedCards(), myProfile?.stats).filter((a) => a.done && !claimedSet().has(a.key)).length;
+  const btn = document.querySelector('#dock .dk[data-view="collection"]');
+  if (!btn) return;
+  let b = btn.querySelector('.cnt');
+  if (!b) { btn.insertAdjacentHTML('beforeend', '<b class="cnt"></b>'); b = btn.querySelector('.cnt'); }
+  const n = asc + ach;
+  b.textContent = n > 99 ? '99+' : String(n);
+  b.classList.toggle('on', n > 0);
+  btn.title = n ? [asc ? `${asc} can ascend` : '', ach ? `${ach} to redeem` : ''].filter(Boolean).join(' · ') : '';
+}
+// A toast with one action button (for example Equip after a title).
+export function toastAction(text, label, fn) {
+  const n = document.createElement('div');
+  n.className = 'v2-toast act';
+  n.innerHTML = `<span>${esc(text)}</span><button class="v2-btn gold">${esc(label)}</button>`;
+  n.querySelector('button').addEventListener('click', () => { n.remove(); fn(); });
+  document.body.appendChild(n);
+  setTimeout(() => n.classList.add('out'), 7000);
+  setTimeout(() => n.remove(), 7600);
+}
+async function equipTitle(title, frame) {
+  const next = { title: title ?? myProfile?.title ?? null, frame: frame ?? myProfile?.frame ?? null };
+  const r = await ctx.apiPost('/api/cosmetics', next).catch(() => null);
+  if (r && r.ok !== false) { myProfile = { ...(myProfile || {}), ...next }; toast(title ? `🎖 Title equipped: ${title}` : '🖼 Frame equipped'); paintProfile(); }
+  else toast('Could not equip it');
 }
 export function toast(text) {
   const n = document.createElement('div');
@@ -550,7 +594,9 @@ function paintPanel(c) {
   if (!c.locked && ctx.features().ascension) {
     const spare = Math.max(0, (c.quantity || 0) - 1);
     const need = c.next_cost;
-    ascHTML = a >= 5
+    ascHTML = need == null && a < 5
+      ? `<div class="asc"><div class="pb-h"><span class="side-h">Ascension</span><span>${ASCEND_ERROR.no_ascend}</span></div></div>`
+      : a >= 5
       ? '<div class="asc"><div class="pb-h"><span class="side-h">Ascension</span><span>★5 max</span></div></div>'
       : `<div class="asc"><div class="pb-h"><span class="side-h">Ascension</span><span class="mono">${Math.min(spare, need || 0)} / ${need} copies</span></div><i class="sbar"><i style="width:${need ? Math.min(100, Math.round((100 * spare) / need)) : 0}%;background:var(--gold)"></i></i></div>`;
   }
@@ -725,7 +771,7 @@ async function ascend(c) {
   if (btn) { btn.disabled = true; btn.textContent = 'Ascending…'; }
   let r = null;
   try { r = await ctx.apiPost('/api/ascend', { cardId: c.id }); } catch { r = null; }
-  if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } return; }
+  if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } if (r?.error && ASCEND_ERROR[r.error]) toast(ASCEND_ERROR[r.error]); return; }
   const after = { ...c, ascension: r.ascension, quantity: r.quantity, power: r.power, next_cost: r.next_cost,
     can_ascend: r.next_cost != null && r.quantity >= 1 + r.next_cost };
   ctx.celebrateAscend(c, after, !!ctx.cache.collection?.stats?.on && statKeys(c).length > 0);
@@ -935,11 +981,13 @@ function paintProfile() {
   const spot = spotlightOf(cards, myProfile?.spotlight);
   box.innerHTML = `<div class="prof-head">${avatarHTML(me?.id, me?.name, 'big', myProfile?.frame)}<div class="prof-name"><h3>${nameBadge(me?.id, me?.name || '')}</h3>${titleHTML(myProfile?.title)}</div>
       ${myProfile?.power != null ? `<span class="prof-cp">⚡ ${fmt(myProfile.power)}</span>` : ''}</div>
+    <button class="v2-btn prof-cos" id="profCos">🎖 Title &amp; frame</button>
     ${profileStats(myProfile, cards)}
     <div class="side-h">Spotlight <button class="link-btn" id="spotEdit">Edit</button></div>
     <div class="spot-row" id="spotRow">${spotHTML(spot)}</div>`;
   el('spotRow').onclick = (e) => { const b = e.target.closest('[data-si]'); if (b) ctx.openViewer(spot[Number(b.dataset.si)]); };
   el('spotEdit').addEventListener('click', () => openSpotEditor());
+  el('profCos')?.addEventListener('click', () => openSpotEditor());
 }
 
 export const STATUS_TEXT = {
@@ -1204,6 +1252,7 @@ function paintMember() {
       <div class="mem-id">
         ${avatarHTML(p.id, p.name, `huge${pres ? ' live' : ''}`, p.frame)}
         <h2>${nameBadge(p.id, p.name)}</h2>${titleHTML(p.title)}
+        ${memData.self ? '<button class="v2-btn prof-cos" id="memCos">🎖 Title &amp; frame</button>' : ''}
         <div class="mem-badges">${done.slice(0, 5).map((a) => `<span class="mem-badge" title="${esc(a.name)}">${a.icon}</span>`).join('')}${done.length > 5 ? `<span class="mem-more">+${done.length - 5}</span>` : ''}</div>
       </div>
       ${pres ? `<div class="mem-status">🎧 In voice · ${sIco || ''} ${esc(sTxt || 'Here')}</div>` : ''}
@@ -1257,6 +1306,7 @@ function paintMember() {
   // My own profile: the Spotlight, title and frame editor (its only door was the Home Spotlight,
   // which design 19 removed: Nathan, 2026-10-01 "titles/frames aren't accessible").
   el('memStyle')?.addEventListener('click', () => openSpotEditor());
+  el('memCos')?.addEventListener('click', () => openSpotEditor());
   el('memSpot')?.addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); const c = b && cards.find((x) => String(x.id) === b.dataset.id); if (c) ctx.openViewer(c); });
   el('memAll').addEventListener('click', () => { mem.all = !mem.all; mem.page = 0; paintMember(); });
   el('memBoon')?.addEventListener('click', () => ctx.playOnMember('boon', { id: p.id, name: p.name }));
