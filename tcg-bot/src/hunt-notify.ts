@@ -5,6 +5,7 @@ import { launchActivityRow } from './ui/launch.js';
 import { AttachmentBuilder } from 'discord.js';
 import { renderRaidBoard, renderSquadSummary } from './raid-cards.js';
 import { buf, art } from './playing-posts.js';
+import { botWork } from './bot-work.js';
 
 // Poll the hunt_events outbox and post each event to the notifications channel. The game
 // logic (SQL) writes events; the bot is the only process that can post to Discord, so it
@@ -149,6 +150,7 @@ async function drain(client: Client): Promise<void> {
   if (running) return;
   running = true;
   try {
+    if (!(await botWork()).events) return; // no unposted event (bot_work.sql)
     const supabase = getSupabase();
     const { data: events } = await supabase
       .from('hunt_events')

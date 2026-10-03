@@ -5,6 +5,7 @@
 
 import { v2ctx, toast } from './ui-v2.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
+import { every } from './poll.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -57,7 +58,7 @@ export function initDailies() {
   btn.innerHTML = ICON.checkin;
   btn.addEventListener('click', openDailiesV2);
   refreshDailies();
-  setInterval(refreshDailies, 60000);
+  every(60000, refreshDailies); // paused while hidden, slower when idle (poll.js)
 }
 
 function left(iso) {

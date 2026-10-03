@@ -1,4 +1,5 @@
 import { thumb } from './thumb.js';
+import { every } from './poll.js';
 // Card effects (boons, pranks, neutral) in the Activity. Design: docs/boons-and-pranks.md.
 // Everything here is driven by /api/effects/*; the server returns {enabled:false} when
 // the flag is off, and then this module shows nothing and changes nothing.
@@ -37,8 +38,8 @@ export async function initEffects(d) {
   if (!state.enabled) return;
   wrapChicken();
   refreshBadges();
-  setInterval(refreshEffects, 30000);
-  setInterval(refreshBadges, 30000);
+  every(30000, refreshEffects); // paused while hidden, slower when idle (poll.js)
+  every(30000, refreshBadges);
 }
 
 async function refreshEffects() {
