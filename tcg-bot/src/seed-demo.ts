@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { getSupabase } from './supabase.js';
 import type { Rarity } from './draw.js';
 
-// Inserts a placeholder card set so the draw, the collection, and the hub views
+// Inserts a placeholder card set so the draw, the collection, and the card views
 // all work before real art exists. Safe to run more than once — it skips cards
 // that already exist. Replace these with real cards later.
 //   npm run seed:demo

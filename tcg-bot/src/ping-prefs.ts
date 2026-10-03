@@ -22,7 +22,6 @@ export function allowPing(prefs: Prefs | null | undefined, kind: PingKind | unde
 // A short cache: a busy channel posts many times a minute.
 const cache = new Map<string, { at: number; prefs: Prefs }>();
 const TTL_MS = 30_000;
-export function forgetPrefs(id: string): void { cache.delete(id); }
 
 async function loadPrefs(ids: string[]): Promise<Map<string, Prefs>> {
   const out = new Map<string, Prefs>();

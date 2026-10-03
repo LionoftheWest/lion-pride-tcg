@@ -1,14 +1,11 @@
 /**
  * Lion Pride TCG — Discord Activity front-end.
  *
- * Layout (never scrolls — see the UI ground rules):
- *   ┌ title ································· [Seasons][Trading][My Coll.][Battling] ┐
- *   │ MAIN PANE (Collection / Seasons / Trading / Battling / a pull reveal)  │ FEED │
- *   └───────────────────────────────────────────────────────────────────────┴──────┘
- * The Community Live Feed is a persistent right sidebar (not a tab), fed live by
- * SSE. The room socket (presence, shared pack-opens, reactions) also stays open
- * the whole session; when you are in a voice channel with others, their presence
- * shows in the main header and opens reveal in the main pane for everyone.
+ * The v2 UI (docs/design.md): the top bar, the main pane (Home / Collection / Hunt /
+ * Community / Shop / Leaderboard), and the dock. ui-v2*.js paint the screens; this file
+ * keeps the session, the pack reveal, the Hunt and the card viewer. The pulls stream
+ * (SSE) and the room socket (presence, shared pack-opens, reactions) stay open the
+ * whole session. The old v1 screens were removed on 2026-10-03.
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { openSlots, squadDown } from './squad-pick.js';
@@ -16,7 +13,6 @@ import { thumb, revealThumb, installImgFallback } from './thumb.js';
 import { mtToday, nextMtMidnightISO } from './mt-time.js';
 installImgFallback();
 import { mountBoss, preloadBoss } from './boss-lazy.js';
-import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import { setFlair } from './flair.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
@@ -40,11 +36,10 @@ const loaderMsg = (t) => { const m = el('loaderMsg'); if (m) m.textContent = t; 
 // Escape for HTML. Includes the double and single quote so a value placed inside
 // a quoted attribute (for example data-name="${esc(...)}") cannot break out of the
 // attribute and inject a handler. A display name is player-controlled, so this
-// matters for the gift/trade player rows.
+// matters for every name on screen.
 const esc = (s) => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-const dot = '<span class="dot"></span>';
 
 const RARITY_LABEL = {
   normal: 'Normal',
@@ -60,10 +55,8 @@ const REACTIONS = ['🔥', '😮', '👏', '🎉', '❤️'];
 // celebration. Event/Promo count as special too.
 const RARITY_RANK = { normal: 0, illustrated_rare: 1, secret_rare: 2, full_art: 3, gold: 4, event: 3, promo: 2 };
 const isRarePull = (cards) => cards.some((c) => (RARITY_RANK[c.rarity] ?? 0) >= 2);
-const TITLES = { collection: 'My Collection', gallery: 'Gallery', trading: 'Trading', battling: 'Battling' };
 // view -> cached dataset (key + endpoint) for the card views
-const DATA = { collection: { key: 'collection', ep: '/api/collection' }, gallery: { key: 'catalog', ep: '/api/catalog' } };
-const GAP = 14;
+const DATA = { collection: { key: 'collection', ep: '/api/collection' } };
 
 // ---- Sound effects — synthesized in-browser (Web Audio), no asset files ------
 // Each entry is a named "slot" so a real recording can replace it later. Sounds
@@ -227,34 +220,25 @@ let currentView = 'collection';
 let cardBack = '';
 let features = {}; // server feature flags (e.g., ascension), from /api/config
 let packsAvailable = 0;
-let uiV2 = false;   // the v2 UI (docs/design.md), from /api/flags after login
 let sdkRef = null; // the Discord SDK (the orientation lock)
 let shards = false;  // Shards + the Shop (shards_shop.sql), from /api/flags (SHARDS_USERS first)
 let hall = false;    // wishlists + the Trading Hall + auctions, from /api/flags (HALL_USERS first)
 let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
 let meUser = null;  // { id, name } of the signed-in member
-let mainItems = []; // the cards backing the current main-pane grid (for click → viewer)
 let revealItems = []; // the cards in the current pack reveal (for click → viewer)
 let huntState = null; // the active hunt + roster (Phase 2), for live attack updates
 let bossHandle = null; // the live WebGL boss creature on the battle screen (Phase 2)
 
 const live = { pulls: [], presence: [], attacks: [] };
 const ATTACKER_TYPES = ['Character', 'Creature']; // only these can attack; others are support
-const squad = { page: 0, q: '', rarity: 'all', type: 'all', locked: false, ko: false, sort: 'power', el: null }; // battle picker (gallery-style); sort + el are v2 only
+const squad = { page: 0, q: '', locked: false, ko: false, sort: 'power', el: null }; // the battle picker
 let usedIds = new Set(); // card ids already sent at the boss today (client mirror of the cap)
 let feedTopId = 0; // newest boss-feed event id shown (so polls only animate in newer ones)
 let huntDay = ''; // MT date of the current hunt render; a change means the daily reset hit
 const utcToday = () => mtToday(); // the MT game day (the name kept: several callers)
-window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (uiV2 && squad.phase !== 'battle') paintHuntPage(); else sizeSquadGrid(); });
+window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (squad.phase !== 'battle') paintHuntPage(); else sizeSquadGrid(); });
 const cache = {};
-let myCardIds = new Set(); // card ids the caller owns — so feed cards you own show their art
-const page = { collection: 0 };
-// Gallery view controls (search / filter / which season is expanded).
-// `section` is the Gallery sub-tab: 'cards' (the collection catalog) or 'bosses'
-// (the raid-boss bestiary). Add more entries to GAL_SECTIONS to grow it.
-const gallery = { q: '', rarity: 'all', owned: 'all', season: null, page: 0, section: 'cards' };
-const GAL_SECTIONS = [['cards', 'Cards'], ['bosses', 'Raid Bosses']];
 
 // Discord mobile sometimes fails the first authorize with "OAuth2 Authorize Error: Unknown
 // Error", and the next try works (Nathan, launch day 2026-10-01). Try 3 times before giving up.
@@ -293,9 +277,7 @@ async function main() {
   if (auth?.user) meUser = { id: auth.user.id, name: auth.user.global_name || auth.user.username };
 
   setStatus('');
-  el('nav').classList.remove('hidden');
-  el('openTop')?.addEventListener('click', openPacks); // Open Pack button by the brand title
-  el('bossMini')?.addEventListener('click', (e) => { if (e.target.closest('.mb-stage')) openBossModal(); }); // click the boss -> detail
+  document.body.classList.add('ui-v2'); // the body class switches the CSS (before the body shows: no old layout flash)
   el('bossModalClose')?.addEventListener('click', closeBossModal);
   el('bossModal')?.addEventListener('click', (e) => { if (e.target === el('bossModal')) closeBossModal(); });
   el('body').classList.remove('hidden');
@@ -308,18 +290,14 @@ async function main() {
   mute.textContent = SFX.muted() ? '🔇' : '🔊';
   mute.addEventListener('click', () => { mute.textContent = SFX.toggle() ? '🔇' : '🔊'; });
 
-  const giftBtn = el('giftBtn');
-  giftBtn.classList.remove('hidden');
-  giftBtn.addEventListener('click', openGiftPanel);
-
   const bell = el('bellBtn');
   bell.classList.remove('hidden');
-  bell.addEventListener('click', openNotifs);
+  bell.addEventListener('click', openNotifsV2);
 
   if (features.ascension) {
     const boardBtn = el('boardBtn');
     boardBtn.classList.remove('hidden');
-    boardBtn.addEventListener('click', openBoard);
+    boardBtn.addEventListener('click', openLeaderboardV2);
   }
   refreshNotifBadge();
   // The background refreshes pause while the window is hidden and slow down when the member is idle (poll.js).
@@ -337,25 +315,30 @@ async function main() {
   every(8000, () => { if (currentView === 'trading') refreshTradeBadge(); });
   initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], statsOn: () => !!cache.collection?.stats?.on, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   let flags = null;
-  // 3 tries: a failed load fell back to the old design (and its old trade flow) for that session.
+  // 3 tries. If all 3 fail, the session still gets the v2 UI, with every other flag off.
   for (let i = 0; i < 3 && !flags; i++) {
     try { flags = await api('/api/flags'); } catch { flags = null; }
-    if (!flags?.uiV2 && flags?.error) flags = null; // an error answer is not the flags
+    if (flags?.error) flags = null; // an error answer is not the flags
     if (!flags && i < 2) await new Promise((r) => setTimeout(r, 1500));
   }
-  uiV2 = !!flags?.uiV2;
+  flags = flags || {};
   mobileUi = !!flags?.mobile;
   trade2 = !!flags?.trade2;
   hall = !!flags?.hall;
   shards = !!flags?.shards;
   // A new member's first login gave them the welcome packs: show them now.
-  if (flags?.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
-  if (uiV2) { startV2(); refreshCollectionBadge({ profile: true }).catch(() => {}); show('home'); initHelp(); if (flags?.reports) initReport(); initTutorial(flags?.tutorial); initExplain(flags?.tutorial); } else show('collection');
+  if (flags.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
+  startV2();
+  refreshCollectionBadge({ profile: true }).catch(() => {});
+  show('home');
+  initHelp();
+  if (flags.reports) initReport();
+  if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
+  initExplain(flags.tutorial);
 }
 
-// The v2 shell: the body class switches the CSS, the dock replaces the tab nav.
+// The v2 shell: the dock, the top bar pills, the phone layouts.
 function startV2() {
-  document.body.classList.add('ui-v2');
   // Without the phone layouts, a phone stays in landscape (the old layout breaks in portrait).
   // Nathan set the Developer Portal to unlocked on 2026-10-01, so the app sets the lock.
   if (!mobileUi) { try { sdkRef?.commands?.setOrientationLockState?.({ lock_state: 3, picture_in_picture_lock_state: 3, grid_lock_state: 3 })?.catch?.(() => {}); } catch { /* an old Discord client */ } }
@@ -376,7 +359,7 @@ function startV2() {
   }
   initV2({
     api, apiPost, apiData, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
-    playOnMember, effectsEnabled, trade2: () => trade2, hallOn: () => hall, openTrade: (to) => (uiV2 ? openTradeWith(to) : openTradeBuilder(to)),
+    playOnMember, effectsEnabled, trade2: () => trade2, hallOn: () => hall, openTrade: openTradeWith,
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
     watchable: (id) => Boolean(watchableOpen(id)), watchOpen, sfx: (n) => SFX.play(n),
@@ -420,20 +403,17 @@ function sendStatus(kind, d) {
   myStatus = kind || myStatus;
   if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus, d: myDetail })); } catch { /* dropped */ } }
 }
-const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home', shop: 'home' };
+const VIEW_STATUS = { home: 'home', collection: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home', shop: 'home' };
 
-// Load which cards the caller owns (for feed-card ownership). Also warms the
-// collection cache. Refreshed whenever the collection can have changed.
+// Warm the collection cache. Refreshed whenever the collection can have changed.
 async function refreshOwned() {
   try {
-    const d = await apiData('/api/collection');
-    cache.collection = d;
-    myCardIds = new Set((d.cards || []).map((c) => c.id));
-  } catch { /* keep the previous set */ }
-  if (uiV2) refreshCollectionBadge({ profile: true }).catch(() => {}); // the Collection dock number
+    cache.collection = await apiData('/api/collection');
+  } catch { /* keep the previous data */ }
+  refreshCollectionBadge({ profile: true }).catch(() => {}); // the Collection dock number
 }
 
-// Show the Open Pack button only when the player actually has a pack waiting.
+// The dock OPEN button and the packs pill show how many packs wait.
 async function refreshPackStatus() {
   try {
     const d = await api('/api/pack-status');
@@ -443,22 +423,12 @@ async function refreshPackStatus() {
 }
 
 function updateOpenButton() {
-  if (uiV2) {
-    const badge = el('dockBadge');
-    if (badge) badge.textContent = packsAvailable > 0 ? String(packsAvailable) : '';
-    const open = el('dockOpen');
-    if (open) open.disabled = packsAvailable <= 0;
-    const pill = el('v2Packs');
-    if (pill) pill.innerHTML = `🎴 <b>${packsAvailable}</b> pack${packsAvailable === 1 ? '' : 's'}`;
-  }
-  const btn = el('openTop'); // the Open Pack button lives up by the brand title now
-  if (!btn) return;
-  if (packsAvailable > 0) {
-    btn.textContent = `🎴 Open Pack${packsAvailable > 1 ? ` ×${packsAvailable}` : ''}`;
-    btn.classList.remove('hidden');
-  } else {
-    btn.classList.add('hidden');
-  }
+  const badge = el('dockBadge');
+  if (badge) badge.textContent = packsAvailable > 0 ? String(packsAvailable) : '';
+  const open = el('dockOpen');
+  if (open) open.disabled = packsAvailable <= 0;
+  const pill = el('v2Packs');
+  if (pill) pill.innerHTML = `🎴 <b>${packsAvailable}</b> pack${packsAvailable === 1 ? '' : 's'}`;
 }
 
 const api = (path) => fetch(path, { headers: { authorization: `Bearer ${token}` } }).then((r) => r.json());
@@ -531,7 +501,7 @@ function connectStreams() {
     roomWs.onmessage = (ev) => {
       let msg;
       try { msg = JSON.parse(ev.data); } catch { return; }
-      if (msg.type === 'presence') { live.presence = msg.users; updatePresence(); if (uiV2 && currentView === 'home') paintVoice(); }
+      if (msg.type === 'presence') { live.presence = msg.users; if (currentView === 'home') paintVoice(); }
       else if (msg.type === 'open') noteRoomOpen(msg);
       else if (msg.type === 'react') floatReact(msg);
     };
@@ -540,31 +510,23 @@ function connectStreams() {
   openWs();
 }
 
-// ---- Community Live Feed (persistent right sidebar) ------------------------
+// ---- Live feeds ------------------------------------------------------------
+// Home paints the community pulls (ui-v2.js). #feed shows only on the Hunt arena
+// (the CSS hides it elsewhere): there it is the Raid Boss feed.
 
 function renderFeedSidebar() {
-  if (uiV2 && currentView === 'home') paintPulls();
+  if (currentView === 'home') paintPulls();
   const list = el('feedList');
-  if (!list) return;
+  if (!list || currentView !== 'battling') return;
   const head = document.querySelector('.feed-head');
-  if (currentView === 'battling') {
-    // On the battle page the sidebar is the Raid Boss feed, not the community pulls.
-    if (head) head.textContent = 'Raid Boss Live Feed';
-    list.classList.add('attacks');
-    const atk = live.attacks || [];
-    list.innerHTML = atk.length
-      ? atk.map(bossFeedRow).join('')
-      : '<p class="empty small">No attacks yet — be the first to strike.</p>';
-    feedTopId = (atk[0] && atk[0].id) || 0; // remember the newest so polls only add newer
-    fitFeedRows(list);
-    return;
-  }
-  if (head) head.textContent = 'Community Live Feed';
-  list.classList.remove('attacks');
-  const pulls = live.pulls || [];
-  list.innerHTML = pulls.length
-    ? pulls.map((p, i) => feedRow(p, i, i === 0)).join('')
-    : '<p class="empty small">No pulls yet.</p>';
+  if (head) head.textContent = 'Raid Boss Live Feed';
+  list.classList.add('attacks');
+  const atk = live.attacks || [];
+  list.innerHTML = atk.length
+    ? atk.map(bossFeedRow).join('')
+    : '<p class="empty small">No attacks yet — be the first to strike.</p>';
+  feedTopId = (atk[0] && atk[0].id) || 0; // remember the newest so polls only add newer
+  fitFeedRows(list);
 }
 
 // One boss-attack row (text only — no card art, so many fit without scrolling).
@@ -587,16 +549,6 @@ function bossFeedRow(e) {
   return bossRow + playerRow;
 }
 
-function feedRow(p, idx, top) {
-  return `<div class="frow${top ? ' top' : ''}" data-idx="${idx}">
-    <div class="fthumb">${p.image_url ? `<img src="${thumb(p.image_url)}" data-full="${p.image_url || ''}" alt="" loading="lazy">` : ''}</div>
-    <div class="ftext"><b>${esc(p.player)}</b> pulled
-      <span class="fcard">${esc(p.name)}</span>
-      <span class="ftier">${RARITY_LABEL[p.rarity] || p.rarity} · ${ago(p.at)}</span>
-    </div>
-  </div>`;
-}
-
 function ago(iso) {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
   if (s < 60) return 'just now';
@@ -609,7 +561,6 @@ function ago(iso) {
 
 async function show(view) {
   currentView = view;
-  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.querySelectorAll('#dock .dk').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.body.dataset.view = view;
   sendStatus(VIEW_STATUS[view]);
@@ -626,29 +577,7 @@ async function show(view) {
     cache[DATA[view].key] = d;
   }
   renderMain(view);
-  renderFeedSidebar(); // the sidebar switches between the community feed and the boss feed
-}
-
-function mainHead(title) {
-  return `<div class="main-head">
-    <div class="mh-title">${title}<span id="presSlot">${presenceHTML()}</span><span id="powerSlot" class="power-slot"></span></div>
-  </div>`;
-}
-
-// Total Collection Power pill — shown in the collection header when Ascension is on.
-function updatePower() {
-  const s = el('powerSlot');
-  if (!s) return;
-  const show = features.ascension && currentView === 'collection' && cache.collection;
-  s.innerHTML = show ? `⚡ ${cache.collection.power || 0} CP` : '';
-}
-
-function presenceHTML() {
-  return live.presence.length > 1 ? `<span class="pres">${dot}${live.presence.length} in room</span>` : '';
-}
-function updatePresence() {
-  const slot = el('presSlot');
-  if (slot) slot.innerHTML = presenceHTML();
+  renderFeedSidebar(); // the Home pulls, or the boss feed on the Hunt
 }
 
 // Tear down the live boss when we leave the battle screen (frees the WebGL context).
@@ -679,7 +608,7 @@ function mountBossFor(hunt) {
   try {
     // v2 squad select: the live boss head as the squad box background (Nathan 2026-09-29:
     // live models, not thumbnails). The fight view mounts the full arena boss.
-    const mini = uiV2 && squad.phase !== 'battle' && !!cv.closest('.sq-boss');
+    const mini = squad.phase !== 'battle' && !!cv.closest('.sq-boss');
     bossHandle = mountBoss(cv, hunt.name || 'boss', hunt.tier,
       mini ? { portrait: true, portraitOpts: { at: 0.8, fit: 0.7, faceAt: 0.3, bust: false, showcase: false } } : undefined);
     bossVoice = pickBossVoice(hunt.name || hunt.id);
@@ -698,232 +627,14 @@ function renderMain(view) {
   disposeBoss(); // any view change tears the boss down; renderHunt re-mounts it
   disposeHomeV2();
   disposeShop();
-  if (uiV2 && view === 'home') { stopHuntTicker(); renderHomeV2(); return; }
-  if (uiV2 && view === 'collection') { stopHuntTicker(); renderCollectionV2(); return; }
-  if (uiV2 && view === 'leaderboard') { stopHuntTicker(); renderLeaderboardV2(); return; }
-  if (uiV2 && view === 'trading') { stopHuntTicker(); renderTradingV2(); return; }
-  if (uiV2 && view === 'shop') { stopHuntTicker(); renderShopV2(); return; }
-  { const bm = el('bossMini'); if (bm) bm.innerHTML = ''; } // clear the sidebar boss square
   stopHuntTicker(); // stop the boss/cooldown countdown; renderHunt restarts it
-  if (view === 'gallery') { renderGallery(); return; }
-  if (view === 'trading') { renderTrading(); return; }
+  if (view === 'home') { renderHomeV2(); return; }
+  if (view === 'collection') { renderCollectionV2(); return; }
+  if (view === 'leaderboard') { renderLeaderboardV2(); return; }
+  if (view === 'trading') { renderTradingV2(); return; }
+  if (view === 'shop') { renderShopV2(); return; }
   if (view === 'battling' && features.hunt) { renderHunt(); return; }
-  let body;
-  if (view === 'collection') {
-    body = `<div class="main-body"><div class="page-grid" id="pageGrid"></div><div class="pager" id="pager"></div></div>`;
-  } else {
-    body = `<div class="main-body"><div class="soon">⚔️<b>Battling is coming soon.</b><span>Put your cards head to head with the server.</span></div></div>`;
-  }
-  el('main').innerHTML = mainHead(TITLES[view]) + body;
-  updateOpenButton();
-  if (view === 'collection') paintPage('collection');
-}
-
-// ---- Collection grid -------------------------------------------------------
-
-function paintPage(view, dir) {
-  const grid = el('pageGrid');
-  if (!grid) return;
-  const items = (cache.collection?.cards || []).map((c) => ({ ...c, locked: false }));
-  const perPage = computeLayout(grid);
-  const pages = Math.max(1, Math.ceil(items.length / perPage));
-  page[view] = Math.min(Math.max(0, page[view]), pages - 1);
-  const start = page[view] * perPage;
-  const slice = items.slice(start, start + perPage);
-  mainItems = items;
-  grid.innerHTML = slice.length ? slice.map((c, i) => cardTile(c, start + i)).join('') : '<p class="empty">No cards yet — open a pack to start your collection.</p>';
-  gridAnim(grid, dir);
-  renderPager(view, pages);
-  updatePower();
-}
-
-// A quick slide when paging so the change reads as motion.
-function gridAnim(grid, dir) {
-  if (!grid || !dir) return;
-  grid.classList.remove('anim-next', 'anim-prev');
-  void grid.offsetWidth; // restart the animation
-  grid.classList.add(dir === 'next' ? 'anim-next' : 'anim-prev');
-  SFX.play('page');
-}
-
-// The tier name is intentionally omitted here to give the art more room; the
-// rarity still shows in the 3D viewer. Quantity (×N) stays.
-function cardTile(c, idx) {
-  const dim = c.locked ? ' locked' : '';
-  const qty = c.quantity > 1 ? ` <span class="q">×${c.quantity}</span>` : '';
-  const showAsc = features.ascension && !c.locked && c.ascension > 0;
-  const asc = showAsc ? ` asc-${c.ascension}` : '';
-  const stars = showAsc ? `<div class="tile-stars">${'★'.repeat(c.ascension)}</div>` : '';
-  return `<div class="c ${c.rarity}${dim}${asc}" data-idx="${idx}">
-    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${stars}</div>
-    <div class="cap">${esc(c.name)}${qty}</div>
-  </div>`;
-}
-
-// Target 5 columns x 2 rows (10 per page). Size the card so a full 2x5 page fits
-// with no scroll — bounded by width OR the height for 2 rows, whichever is
-// tighter. If a taller window leaves room for more rows at that size, show them.
-function computeLayout(grid) {
-  const CAP = 50; // caption height under each card (a name may wrap two lines + the pager)
-  const TARGET_ROWS = 2;
-  const w = grid.clientWidth || 600;
-  const h = grid.clientHeight || 420;
-  let cols = 5;
-  while (cols > 2 && (w - (cols - 1) * GAP) / cols < 130) cols -= 1; // fewer columns on a narrow window
-  const byWidth = (w - (cols - 1) * GAP) / cols;
-  const byHeight = ((h - (TARGET_ROWS - 1) * GAP) / TARGET_ROWS - CAP) * 5 / 7;
-  const cw = Math.max(110, Math.floor(Math.min(byWidth, byHeight)));
-  const cellH = cw * 7 / 5 + CAP;
-  const rows = Math.max(1, Math.floor((h + GAP) / (cellH + GAP)));
-  grid.style.setProperty('--cw', cw + 'px');
-  grid.style.setProperty('--cols', cols);
-  return cols * rows;
-}
-
-// ---- Gallery: search, tier/owned filter, season accordion ------------------
-
-const galleryCards = () => (cache.catalog?.cards || []).map((c) => ({ ...c, locked: !c.owned }));
-
-function seasonGroups(cards) {
-  const map = new Map();
-  for (const c of cards) {
-    const s = c.season || 'Season 1';
-    if (!map.has(s)) map.set(s, []);
-    map.get(s).push(c);
-  }
-  return [...map.entries()];
-}
-
-function applyFilters(cards) {
-  const q = gallery.q.trim().toLowerCase();
-  return cards.filter((c) => {
-    if (gallery.rarity !== 'all' && c.rarity !== gallery.rarity) return false;
-    if (gallery.owned === 'owned' && !c.owned) return false;
-    if (gallery.owned === 'missing' && c.owned) return false;
-    if (q && !((c.name || '').toLowerCase().includes(q) || (c.subject || '').toLowerCase().includes(q))) return false;
-    return true;
-  });
-}
-
-// The gallery now uses the EXACT same container as the collection — a flex-fill
-// `.main-body > .page-grid` — so `computeLayout` reads a real grid height and the
-// page reads as a clean 2xN grid, identical to the collection. The old season
-// accordion collapsed the grid height and broke the layout.
-function renderGallery() {
-  const cards = galleryCards();
-  const rarities = [...new Set(cards.map((c) => c.rarity))];
-  const rarityOpts = ['all', ...rarities]
-    .map((r) => `<option value="${r}"${gallery.rarity === r ? ' selected' : ''}>${r === 'all' ? 'All tiers' : (RARITY_LABEL[r] || r)}</option>`).join('');
-  const ownedOpts = [['all', 'Owned + missing'], ['owned', 'Owned only'], ['missing', 'Missing only']]
-    .map(([v, l]) => `<option value="${v}"${gallery.owned === v ? ' selected' : ''}>${l}</option>`).join('');
-  const seasons = seasonGroups(cards).map(([s]) => s);
-  if (!seasons.includes(gallery.season)) gallery.season = seasons[0] || 'Season 1';
-  const seasonSel = seasons.length > 1
-    ? `<select id="gseason" class="gselect">${seasons.map((s) => `<option value="${esc(s)}"${gallery.season === s ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select>`
-    : '';
-  const sectionTabs = `<div class="gal-sections">${GAL_SECTIONS
-    .map(([v, l]) => `<button class="gsec${gallery.section === v ? ' active' : ''}" data-section="${v}">${l}</button>`).join('')}</div>`;
-  // The card filters only make sense in the Cards section; the Raid Bosses
-  // section is a fixed bestiary, so it shows just the section tabs.
-  const cardControls = gallery.section === 'cards'
-    ? `<input id="gsearch" class="ginput" placeholder="Search cards…" value="${esc(gallery.q)}">
-       <select id="gfilter" class="gselect">${rarityOpts}</select>
-       <select id="gowned" class="gselect">${ownedOpts}</select>
-       ${seasonSel}`
-    : '';
-  el('main').innerHTML =
-    mainHead('Gallery') +
-    `<div class="gal-controls">${sectionTabs}${cardControls}</div>
-     <div class="main-body">
-       <div class="gal-bar" id="galBar"></div>
-       <div class="page-grid" id="pageGrid"></div>
-       <div class="pager" id="pager"></div>
-     </div>`;
-  updateOpenButton();
-  el('main').querySelectorAll('.gsec').forEach((btn) => btn.addEventListener('click', () => {
-    if (gallery.section === btn.dataset.section) return;
-    gallery.section = btn.dataset.section; gallery.page = 0; renderGallery();
-  }));
-  if (gallery.section === 'cards') {
-    el('gsearch').addEventListener('input', (e) => { gallery.q = e.target.value; gallery.page = 0; paintGalleryPage(); });
-    el('gfilter').addEventListener('change', (e) => { gallery.rarity = e.target.value; gallery.page = 0; paintGalleryPage(); });
-    el('gowned').addEventListener('change', (e) => { gallery.owned = e.target.value; gallery.page = 0; paintGalleryPage(); });
-    const gs = el('gseason');
-    if (gs) gs.addEventListener('change', (e) => { gallery.season = e.target.value; gallery.page = 0; paintGalleryPage(); });
-  }
-  paintGalleryPage();
-}
-
-function paintGalleryPage(dir) {
-  const grid = el('pageGrid');
-  if (!grid) return;
-  if (gallery.section === 'bosses') { paintBossGrid(dir); return; }
-  const inSeason = galleryCards().filter((c) => (c.season || 'Season 1') === gallery.season);
-  const items = applyFilters(inSeason);
-  const bar = el('galBar');
-  if (bar) bar.innerHTML = `<span class="gs-name">${esc(gallery.season)}</span><span class="gs-count">${inSeason.filter((c) => c.owned).length}/${inSeason.length}</span>`;
-  // Same layout function as the collection — a real flex-fill grid height.
-  const perPage = computeLayout(grid);
-  const pages = Math.max(1, Math.ceil(items.length / perPage));
-  gallery.page = Math.min(Math.max(0, gallery.page), pages - 1);
-  const start = gallery.page * perPage;
-  const slice = items.slice(start, start + perPage);
-  mainItems = items;
-  grid.innerHTML = slice.length ? slice.map((c, i) => cardTile(c, start + i)).join('') : '<p class="empty">No cards match.</p>';
-  gridAnim(grid, dir);
-  galleryPager(pages);
-}
-
-// ---- Raid Boss bestiary (a Gallery section) --------------------------------
-// A no-scroll paged grid of boss thumbnails, reusing the card grid machinery.
-// Clicking a boss opens the shared boss viewer (#bossModal) with the live model.
-function bossTile(b, idx) {
-  return `<div class="c boss-tile" data-boss="${idx}">
-    <div class="art"><img src="${thumbFor(b)}" alt="${esc(b.title)}" loading="lazy"></div>
-    <div class="cap">${esc(b.title)}</div>
-  </div>`;
-}
-function paintBossGrid(dir) {
-  const grid = el('pageGrid');
-  if (!grid) return;
-  const items = BOSS_LIST;
-  const bar = el('galBar');
-  if (bar) bar.innerHTML = `<span class="gs-name">Raid Bosses</span><span class="gs-count">${items.length}</span>`;
-  const perPage = computeLayout(grid);
-  const pages = Math.max(1, Math.ceil(items.length / perPage));
-  gallery.page = Math.min(Math.max(0, gallery.page), pages - 1);
-  const start = gallery.page * perPage;
-  const slice = items.slice(start, start + perPage);
-  mainItems = []; // boss tiles use data-boss, not the card-viewer data-idx path
-  grid.innerHTML = slice.map((b, i) => bossTile(b, start + i)).join('');
-  gridAnim(grid, dir);
-  galleryPager(pages);
-}
-
-function galleryPager(pages) {
-  const pager = el('pager');
-  if (!pager) return;
-  if (pages <= 1) { pager.innerHTML = ''; return; }
-  const p = gallery.page;
-  pager.innerHTML =
-    `<button class="parrow" id="prev" ${p === 0 ? 'disabled' : ''}>‹</button>
-     <span class="pcount">${p + 1} of ${pages}</span>
-     <button class="parrow" id="next" ${p >= pages - 1 ? 'disabled' : ''}>›</button>`;
-  el('prev').addEventListener('click', () => { gallery.page -= 1; paintGalleryPage('prev'); });
-  el('next').addEventListener('click', () => { gallery.page += 1; paintGalleryPage('next'); });
-}
-
-function renderPager(view, pages) {
-  const pager = el('pager');
-  if (!pager) return;
-  if (pages <= 1) { pager.innerHTML = ''; return; }
-  const p = page[view];
-  pager.innerHTML =
-    `<button class="parrow" id="prev" ${p === 0 ? 'disabled' : ''}>‹</button>
-     <span class="pcount">${p + 1} of ${pages}</span>
-     <button class="parrow" id="next" ${p >= pages - 1 ? 'disabled' : ''}>›</button>`;
-  el('prev').addEventListener('click', () => { page[view] -= 1; paintPage(view, 'prev'); });
-  el('next').addEventListener('click', () => { page[view] += 1; paintPage(view, 'next'); });
+  el('main').innerHTML = '<div class="main-body"><div class="soon">⚔️<b>Battling is coming soon.</b><span>Put your cards head to head with the server.</span></div></div>';
 }
 
 // ---- Opening + reveal ------------------------------------------------------
@@ -936,8 +647,6 @@ async function openPacks(count) {
   const n = [1, 5, 10].includes(count) ? count : 1; // a click handler passes an event
   holdFeed();
   let revealed = false;
-  const btn = el('openBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
   try {
     sendStatus('opening');
     const data = await apiPost('/api/open', { instanceId, count: n });
@@ -952,7 +661,7 @@ async function openPacks(count) {
       suppressOpenUntil = Date.now() + 3000;
       revealed = true;
       const prank = effectsEnabled() ? packPrank() : null; // a jinx / fake gold / photobomb / slow motion on me
-      if (uiV2 && (data.packs || []).length > 1) showMultiReveal(openDeps(), data.packs);
+      if ((data.packs || []).length > 1) showMultiReveal(openDeps(), data.packs);
       else showReveal({ user: 'You', cards: data.cards });
       if (prank) runPackPrank(prank, el('stage'));
     }
@@ -965,7 +674,7 @@ async function openPacks(count) {
 }
 
 function note(text) {
-  const head = uiV2 ? el('topbar') : document.querySelector('.main-head');
+  const head = el('topbar');
   if (!head) return;
   const n = document.createElement('div');
   n.className = 'open-note';
@@ -983,7 +692,7 @@ const WATCH_MS = 5 * 60 * 1000;
 function noteRoomOpen(msg) {
   if (Date.now() < suppressOpenUntil || !msg.id || String(msg.id) === String(meUser?.id)) return;
   roomOpens.set(String(msg.id), { msg, at: Date.now() });
-  if (uiV2 && currentView === 'home') paintVoice(); // the tile becomes tappable
+  if (currentView === 'home') paintVoice(); // the tile becomes tappable
 }
 function watchableOpen(id) {
   const o = roomOpens.get(String(id));
@@ -992,7 +701,7 @@ function watchableOpen(id) {
 function watchOpen(id) {
   const msg = watchableOpen(id);
   if (!msg) return false;
-  if (uiV2 && (msg.packs || []).length > 1) showMultiReveal(openDeps(), msg.packs);
+  if ((msg.packs || []).length > 1) showMultiReveal(openDeps(), msg.packs);
   else showReveal({ user: msg.user, cards: msg.cards });
   return true;
 }
@@ -1008,6 +717,24 @@ let flippedCount = 0;
 let tearing = false;
 let revealMine = false; // my own reveal (not a room member's): it feeds my Live in voice tile
 let revealFlipped = [];
+// The rip animation (tear_open.webp, about 1 MB) is fetched ONCE into a Blob. Each open gets a
+// fresh object URL of that Blob: a new URL starts the animation from its first frame, with no
+// network fetch (the old ?t= cache-bust downloaded the file again on every open).
+let tearBlob = null;
+let tearUrl = null;
+function tearSource() {
+  if (!tearBlob) {
+    tearBlob = fetch('/tear_open.webp')
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .catch((e) => { tearBlob = null; throw e; }); // the next open tries again
+  }
+  return tearBlob.then((b) => {
+    if (tearUrl) URL.revokeObjectURL(tearUrl); // the last reveal is gone (the stage is repainted)
+    tearUrl = URL.createObjectURL(b);
+    return tearUrl;
+  });
+}
+
 // A glossy holographic pack (Pokémon-Pocket style): it floats on screen, you TAP
 // to rip the top off with a light-line, then the cards rise for you to flip.
 function showReveal(msg) {
@@ -1057,9 +784,12 @@ function showReveal(msg) {
   // Preload the tear animation NOW (while the player reads "tap the pack") so the
   // swap on tap is instant. Without this the webp fetches on tap and the pack
   // blanks out for a beat on mobile — the "weird" flash.
-  const tearSrc = `/tear_open.webp?t=${Date.now()}`;
-  el('packOpen').dataset.tear = tearSrc;
-  const pre = new Image(); pre.src = tearSrc;
+  const pack = el('packOpen');
+  tearSource().then((url) => {
+    if (!pack.isConnected) return;
+    pack.dataset.tear = url;
+    const pre = new Image(); pre.src = url;
+  }).catch(() => {});
   SFX.play('page');
   revealTimer = setTimeout(endReveal, 120000); // safety only; no auto-dismiss
 }
@@ -1091,9 +821,9 @@ function tearPack(rare) {
   if (tp) tp.remove();
   SFX.play('tear');
   pack.classList.add('tearing');
-  // play the rip once (cache-bust so it restarts on every open)
+  // play the rip once (a fresh object URL, so it restarts on every open: tearSource)
   const shell = el('packShell'); if (shell) shell.style.transform = '';
-  if (img) { img.src = pack.dataset.tear || `/tear_open.webp?t=${Date.now()}`; }
+  if (img) { img.src = pack.dataset.tear || '/tear_open.webp'; }
   const stage = el('stage');
   if (rare) setTimeout(() => { sunRays(stage); packSparkles(); }, 900); // rare sound waits for the actual rare flip
   // Once the rip has played, the cards EJECT from inside the pack and the pack
@@ -1235,66 +965,6 @@ function floatReact(msg) {
   setTimeout(() => node.remove(), 2200);
 }
 
-// ---- Gift a pack -----------------------------------------------------------
-// Find any player (from the game's player directory, not just the VC) and send
-// a pack from your balance. The transfer runs in the bot; the sender is always
-// the verified caller.
-let giftSearchTimer = null;
-async function openGiftPanel() {
-  await refreshPackStatus();
-  const g = el('gift');
-  g.className = 'open';
-  g.innerHTML =
-    `<div class="gift-card">
-      <div class="gift-head"><span>🎁 Gift a pack</span><button class="gift-close" id="giftClose">✕</button></div>
-      <div class="gift-bal" id="giftBal">You have <b>${packsAvailable}</b> pack${packsAvailable === 1 ? '' : 's'} to give</div>
-      <input id="giftSearch" class="ginput" placeholder="Search players…" autocomplete="off">
-      <div class="gift-results" id="giftResults"></div>
-      <div class="gift-msg" id="giftMsg"></div>
-    </div>`;
-  el('giftClose').addEventListener('click', closeGiftPanel);
-  g.addEventListener('click', (e) => { if (e.target === g) closeGiftPanel(); });
-  el('giftSearch').addEventListener('input', (e) => {
-    clearTimeout(giftSearchTimer);
-    const q = e.target.value;
-    giftSearchTimer = setTimeout(() => loadPlayers(q), 250);
-  });
-  el('giftResults').addEventListener('click', (e) => {
-    const btn = e.target.closest?.('.gift-send');
-    if (!btn) return;
-    const row = btn.closest('.gift-row');
-    sendGift(row.dataset.id, row.dataset.name, btn);
-  });
-  loadPlayers('');
-  el('giftSearch').focus();
-}
-
-function closeGiftPanel() { el('gift').className = 'hidden'; el('gift').innerHTML = ''; }
-
-// Leaderboard: top players by Total Collection Power (the trophy button).
-async function openBoard() {
-  if (uiV2) return openLeaderboardV2();
-  const b = el('board');
-  b.className = 'open';
-  b.innerHTML =
-    `<div class="board-card">
-      <div class="board-head"><span>🏆 Top Collection Power</span><button class="board-close" id="boardClose">✕</button></div>
-      <div class="board-list" id="boardList"><div class="loading">Loading…</div></div>
-    </div>`;
-  el('boardClose').addEventListener('click', closeBoard);
-  b.onclick = (e) => { if (e.target === b) closeBoard(); }; // #board stays in the page: one handler, not one more per open
-  try {
-    const d = await api('/api/leaderboard');
-    const rows = (d.leaders || []).map((p, i) => {
-      const meCls = p.player_id === d.me ? ' me' : '';
-      const rank = ['🥇', '🥈', '🥉'][i] || `${i + 1}`;
-      return `<div class="board-row${meCls}"><span class="board-rank">${rank}</span><span class="board-name">${nameBadge(p.player_id, p.username)}</span><span class="board-cp">⚡ ${p.power}</span></div>`;
-    }).join('');
-    el('boardList').innerHTML = rows || '<p class="empty">No players yet.</p>';
-  } catch {
-    el('boardList').innerHTML = '<p class="empty">Could not load the leaderboard.</p>';
-  }
-}
 function closeBoard() { el('board').className = 'hidden'; el('board').innerHTML = ''; }
 
 // ---- The Pride Hunt (Phase 2) ----------------------------------------------
@@ -1353,10 +1023,10 @@ async function renderHunt() {
 }
 
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
-let huntResting = false; // v2: the resting scene shows the last hunt's feed; do not poll it away
+let huntResting = false; // the resting scene shows the last hunt's feed; do not poll it away
 let layoutSent = false;
 function sendLayoutDiag() {
-  if (layoutSent || !uiV2) return;
+  if (layoutSent) return;
   layoutSent = true;
   setTimeout(() => {
     const r = (id) => { const n = typeof id === 'string' ? el(id) : id; if (!n) return null; const b = n.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; };
@@ -1373,19 +1043,13 @@ function sendLayoutDiag() {
 }
 function paintHuntView(d) {
   sendLayoutDiag();
-  huntResting = !!(uiV2 && (!d || !d.hunt));
+  huntResting = !d || !d.hunt;
   if (huntResting) {
     el('main').innerHTML = `<div class="main-body hunt arena-mode resting">${restingHTML(d)}</div>`;
     live.attacks = (d && d.lastFeed) || [];
     renderFeedSidebar();
-    startHuntTicker();
-    maybeExplain('hunt');
-    return;
-  }
-  if (!d || !d.hunt) {
-    el('main').innerHTML = `<div class="main-body">${cooldownHTML(d)}</div>`;
-    renderBossMini(); // no active boss -> clears the sidebar square
     startHuntTicker(); // count down to the next spawn
+    maybeExplain('hunt');
     return;
   }
   huntState = d;
@@ -1423,9 +1087,8 @@ function paintHuntView(d) {
     squad.sel = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   }
   el('main').innerHTML = huntHTML(d); // no "Battling" head — more room for the picker/arena
-  renderBossMini();     // sidebar boss square (holds #huntLbBtn + #bossCanvas in select/ko)
-  wireHunt();           // wire after the square exists so the standings button binds
-  mountBossFor(d.hunt); // spawn the live creature into the boss canvas (sidebar or arena)
+  wireHunt();
+  mountBossFor(d.hunt); // spawn the live creature into the boss canvas (squad box or arena)
   refreshHuntFeed();    // load the live attack feed
   startHuntTicker(); // count down to the Monday deadline + poll the feed
   maybeExplain('hunt');
@@ -1459,22 +1122,6 @@ function applyHuntState(d) {
   if (squad.phase === 'battle') paintTeam(); else paintHuntPage();
 }
 
-// The cooldown screen: no active boss. Show the last outcome + a countdown to the next
-// Thursday spawn. nextSpawnAt comes from next_hunt_spawn() (the same time the cron fires).
-function cooldownHTML(d) {
-  const next = d && d.nextSpawnAt;
-  const last = d && d.lastResult;
-  const outcome = last
-    ? (last.status === 'defeated'
-        ? `<span class="cd-win">🏆 The pride defeated ${esc(last.name)}.</span>`
-        : `<span class="cd-loss">💀 ${esc(last.name)} escaped. The pride did not win in time.</span>`)
-    : '';
-  const timer = next
-    ? `<div class="cd-timer">${cdSpan(next, 'Next boss in', 'countdown big')}</div>`
-    : '<span>A new boss appears each week.</span>';
-  return `<div class="soon cooldown">🦁<b>The hunt is resting.</b>${outcome}${timer}</div>`;
-}
-
 // v2 resting scene: the last boss's title, final HP and result, the countdown where the
 // boss stands, your damage + standings on the right, the top hunters along the bottom.
 function restingHTML(d) {
@@ -1497,11 +1144,10 @@ function restingHTML(d) {
       ${h ? `<div class="arena-titlerow">
         <span class="boss-name">${esc(h.name)}</span>
         <span class="boss-tier tier-${esc(String(h.tier || '').toLowerCase())}">${esc(h.tier || '')}</span>
-        ${uiV2 ? '' : weakResistHTML(h)}
         <span class="spacer"></span>${explainBtn('hunt')}
         <span class="closes rest-result">${won ? '🏆 Defeated' : '💀 Escaped'}</span>
       </div>
-      ${uiV2 ? `<div class="arena-traits">${weakResistHTML(h)}</div>` : ''}
+      <div class="arena-traits">${weakResistHTML(h)}</div>
       <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext">${won ? 'DEFEATED' : `${Number(h.hp_remaining).toLocaleString()} / ${Number(h.hp_max).toLocaleString()} HP left`}</span></div>
       <div class="arena-subrow">
         <span>Your damage <b>${Number((d && d.myLast) || 0).toLocaleString()}</b></span>
@@ -1539,34 +1185,10 @@ function huntHTML(d) {
   usedIds = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   // Battle phase = a full-bleed arena (boss fills the pane, squad overlays the bottom).
   if (squad.phase === 'battle') return `<div class="main-body hunt arena-mode">${battlePhaseHTML(d)}</div>`;
-  // The boss now lives as a compact square atop the Raid Boss feed (right sidebar),
-  // so the whole main pane is the squad picker.
+  // Squad select: the squad column (with the live boss) and the card picker.
   return `<div class="main-body hunt select-mode${squad.ko ? ' ko' : ''}">${selectPhaseHTML(d)}</div>`;
 }
 
-// Compact "raid boss live" square — rendered into the right sidebar during squad select.
-function bossMiniHTML(d) {
-  const h = d && d.hunt;
-  if (!h) return '';
-  const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
-  const defeated = h.status === 'defeated' || h.hp_remaining <= 0;
-  return `<div class="miniboss${defeated ? ' down' : ''}">
-      <div class="mb-stage mb-open" id="mbStage" title="View boss details"><canvas id="bossCanvas"></canvas><span class="mb-expand">⤢</span></div>
-      <div class="mb-info">
-        <div class="mb-live"><span class="live-dot"></span>RAID BOSS LIVE</div>
-        <div class="mb-name"><span class="boss-name">${esc(h.name)}</span><span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span></div>
-        <div class="hpbar mini"><div class="hpfill" style="width:${pct}%"></div><span class="hptext" id="hpText">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
-        <div class="mb-meta">${defeated ? '<span class="closes">DEFEATED</span>' : cdSpan(h.closes_at, 'Beat in', 'closes countdown')}<button class="hunt-lb" id="huntLbBtn">🏆 Standings</button></div>
-      </div>
-    </div>`;
-}
-// Fill (or clear) the sidebar boss square. Called on view/phase change only — NOT on
-// feed polls — so the WebGL canvas is never torn out from under a live mount.
-function renderBossMini() {
-  const bm = el('bossMini');
-  if (!bm) return;
-  bm.innerHTML = (!uiV2 && currentView === 'battling' && huntState && huntState.hunt && squad.phase !== 'battle') ? bossMiniHTML(huntState) : '';
-}
 
 // Boss detail popup: a big 3D view + full stats + move pool (generic for now).
 let bossModalHandle = null;
@@ -1608,52 +1230,6 @@ function closeBossModal() {
   if (bossModalHandle) { try { bossModalHandle.dispose(); } catch (e) { /* ignore */ } bossModalHandle = null; }
   el('bossModal').classList.add('hidden');
 }
-// Gallery bestiary viewer: the same #bossModal, but showing a canonical model +
-// its lore instead of a live hunt's stats. Reuses bossModalHandle + closeBossModal.
-function openBossGallery(b) {
-  if (!b) return;
-  el('bossModalInfo').innerHTML =
-    `<div class="mb-live gal-boss-tag">RAID BOSS</div>
-     <h2 class="bm-name"><span class="boss-name">${esc(b.title)}</span></h2>
-     <p class="v-lore">${esc(b.blurb || '')}</p>${b.credit ? `<p class="v-artist bm-credit">${esc(b.credit)}</p>` : ''}`;
-  el('bossModal').classList.remove('hidden');
-  try { bossModalHandle = mountBoss(el('bossModalCanvas'), seedForBoss(b), 'Mythic'); } catch (e) { bossModalHandle = null; }
-}
-
-// --- Phase 1: pick the squad from the whole collection (paginated, gallery-style) ---
-function selectPhaseHTML(d) {
-  if (uiV2) return selectPhaseV2(d);
-  const cap = d.dailyCap || 8;
-  const rarities = [...new Set((d.roster || []).map((c) => c.rarity))];
-  const rarityOpts = ['all', ...rarities]
-    .map((r) => `<option value="${r}"${squad.rarity === r ? ' selected' : ''}>${r === 'all' ? 'All tiers' : (RARITY_LABEL[r] || r)}</option>`).join('');
-  const typeOpts = [['all', 'All types'], ['attackers', 'Attackers'], ['support', 'Support']]
-    .map(([v, l]) => `<option value="${v}"${squad.type === v ? ' selected' : ''}>${l}</option>`).join('');
-  return `<div class="squad-controls">
-      <input id="hsearch" class="ginput" placeholder="Search cards…" value="${esc(squad.q)}">
-      <select id="hrarity" class="gselect">${rarityOpts}</select>
-      <select id="htype" class="gselect">${typeOpts}</select>
-    </div>
-    <div class="pager" id="huntPager"></div>
-    <div class="squad-grid" id="huntGrid"></div>
-    <div class="squad-panel">
-      <div class="squad-toprow">
-        <div class="squad-left">
-          <div class="cp-big" id="cpBig"></div>
-          <div class="squad-synergy" id="squadSynergy"></div>
-        </div>
-        <div class="squad-tray" id="squadTray"></div>
-      </div>
-      ${squad.ko ? `<div class="squad-foot ko">
-        <div class="ko-note">💀 Your squad is down — one squad per day. Regroup at the reset.</div>
-        <span class="enter-btn ko-cd">🔒 ${cdSpan(nextUtcResetISO(), 'Next battle in', 'countdown kores')}</span>
-      </div>` : `<div class="squad-foot">
-        <button class="autopick-btn" id="autoPickBtn">✨ Auto-pick</button>
-        <button class="lockin-btn" id="lockInBtn" disabled>🔒 Lock In <b id="selCount">${squad.sel.size}</b>/${cap}</button>
-        <button class="enter-btn" id="enterBattleBtn" disabled>Enter Battle ▶</button>
-      </div>`}
-    </div>`;
-}
 
 // No scrolling: chips that do not fit fold into one "+N" chip (the names are in its tooltip).
 function foldChips(box) {
@@ -1674,9 +1250,9 @@ function foldChips(box) {
   }
 }
 
-// v2 squad select (design/09-hunt-select-screen.png): the squad column on the left,
-// the card grid fills the rest. The ids match v1, so wireSelectPhase drives both.
-function selectPhaseV2(d) {
+// Phase 1, squad select (design/09-hunt-select-screen.png): the squad column on the left,
+// the card grid fills the rest.
+function selectPhaseHTML(d) {
   const h = d.hunt;
   const cap = d.dailyCap || 8;
   const key = modelFor(h.name || '');
@@ -1772,7 +1348,7 @@ function paintSquadPanel(cap) {
   const synEl = el('squadSynergy');
   if (synEl) {
     const shown = st.syn.filter((s) => s.n >= 2);
-    if (uiV2) shown.sort((a, b) => ((b.n >= SYN_MIN) - (a.n >= SYN_MIN)) || (b.n - a.n)); // active first: the first row is the one that fits
+    shown.sort((a, b) => ((b.n >= SYN_MIN) - (a.n >= SYN_MIN)) || (b.n - a.n)); // active first: the first row is the one that fits
     const chips = shown.map((s) => {
       const on = s.n >= SYN_MIN;
       return `<span class="syn-chip syn-${s.key}${on ? ' on' : ''}">${s.label} <b>${Math.min(s.n, SYN_MAX)}/${SYN_MAX}</b></span>`;
@@ -1781,7 +1357,7 @@ function paintSquadPanel(cap) {
     synEl.innerHTML = `${chips || '<span class="syn-none">Group cards by element, game, or trait for a synergy</span>'}${weak}`;
   }
   const tray = el('squadTray');
-  if (tray && uiV2) {
+  if (tray) {
     let html = '';
     for (let i = 0; i < cap; i++) {
       const c = st.sel[i];
@@ -1798,23 +1374,8 @@ function paintSquadPanel(cap) {
       }
     }
     tray.innerHTML = html;
-  } else if (tray) {
-    let html = '';
-    for (let i = 0; i < cap; i++) {
-      const c = st.sel[i];
-      if (c) {
-        const supp = !ATTACKER_TYPES.includes(c.type);
-        const eln = supp ? null : cardElement(c.tags);
-        const look = eln ? ELEMENTS[eln] : null;
-        html += `<div class="slot filled${eln ? ` el-${eln}` : ''}" data-id="${c.id}"${look ? ` style="--el:${look.color};--el2:${look.color2}"` : ''}>
-          ${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="">` : ''}<span class="slot-pow">${supp ? '🛡' : `⚡${c.power}`}</span><span class="slot-x">✕</span></div>`;
-      } else {
-        html += `<div class="slot empty">${i + 1}</div>`;
-      }
-    }
-    tray.innerHTML = html;
   }
-  if (uiV2 && synEl) foldChips(synEl); // after the tray: the tray height sets the room left
+  if (synEl) foldChips(synEl); // after the tray: the tray height sets the room left
   // The synergy chips + tray change the panel height as you pick, which changes how much
   // room the gallery has — re-size the grid so both card rows always fit (no clipping).
   sizeSquadGrid();
@@ -1832,11 +1393,10 @@ function battlePhaseHTML(d) {
       <div class="arena-titlerow">
         <span class="boss-name">${esc(h.name)}</span>
         <span class="boss-tier tier-${esc(h.tier.toLowerCase())}">${esc(h.tier)}</span>
-        ${uiV2 ? '' : weakResistHTML(h)}
         <span class="spacer"></span>
         ${defeated ? '<span class="closes">DEFEATED</span>' : cdSpan(h.closes_at, 'Beat in', 'closes countdown')}
       </div>
-      ${uiV2 ? `<div class="arena-traits">${weakResistHTML(h)}</div>` : ''}
+      <div class="arena-traits">${weakResistHTML(h)}</div>
       <div class="hpbar"><div class="hpfill" style="width:${pct}%"></div><span class="hptext" id="hpText">${defeated ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`}</span></div>
       <div class="arena-subrow">
         <span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span>
@@ -1862,7 +1422,7 @@ function huntTile(c, mode) {
   const cls = `c ${c.rarity}${c.matches && !support ? ' match' : ''}${support ? ' support' : ''}`
     + `${mode === 'select' && selected ? ' selected' : ''}${mode === 'battle' && downed ? ' downed' : ''}${mode === 'battle' && cdLeft ? ' cooldown' : ''}${mode === 'battle' && stunned && !downed ? ' stunned' : ''}`;
   const overlay = mode === 'select'
-    ? (selected ? (uiV2 ? `<span class="sel-num">${[...squad.sel].indexOf(c.id) + 1}</span>` : '<span class="sel-check">✓</span>') : '')
+    ? (selected ? `<span class="sel-num">${[...squad.sel].indexOf(c.id) + 1}</span>` : '')
     : (downed ? '<span class="downed-x">DOWNED</span>' : (cdLeft ? `<span class="cd-x">${cdLeft}</span>` : ''));
   const hpbar = (mode === 'battle' && !support) ? `<div class="thp"><i style="width:${hppct}%"></i></div>` : '';
   const shield = (mode === 'battle' && c.shield > 0) ? `<span class="shield-b">🛡${c.shield}</span>` : '';
@@ -1899,51 +1459,35 @@ function clearTeam(huntId) { try { localStorage.removeItem(teamKey(huntId)); } c
 function huntFiltered() {
   const q = squad.q.trim().toLowerCase();
   return (huntState?.roster || []).filter((c) => {
-    const support = !ATTACKER_TYPES.includes(c.type);
-    if (squad.rarity !== 'all' && c.rarity !== squad.rarity) return false;
-    if (squad.type === 'attackers' && support) return false;
-    if (squad.type === 'support' && !support) return false;
     if (squad.el && cardElement(c.tags) !== squad.el) return false;
     if (q) {
       const t = c.tags || {};
-      const hay = uiV2 ? [c.name, t.type, t.class, t.origin, ...(t.traits || []), ...(t.genre || [])].flat().filter(Boolean).join(' ').toLowerCase() : (c.name || '').toLowerCase();
+      const hay = [c.name, t.type, t.class, t.origin, ...(t.traits || []), ...(t.genre || [])].flat().filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
-  }).sort(uiV2 ? SQUAD_SORT[squad.sort] || SQUAD_SORT.power : () => 0);
+  }).sort(SQUAD_SORT[squad.sort] || SQUAD_SORT.power);
 }
 const SQUAD_SORT = {
   power: (a, b) => (a.downed - b.downed) || (b.power - a.power),
   rarity: (a, b) => (a.downed - b.downed) || ((RARITY_RANK[b.rarity] ?? 0) - (RARITY_RANK[a.rarity] ?? 0)) || (b.power - a.power),
   new: (a, b) => String(b.got || '').localeCompare(String(a.got || '')) || (b.power - a.power),
 };
-// Size the picker cards. Select phase: 4x2 page fits the grid height. Battle phase: a
-// single row (the hand) fits across the arena width, capped to ~34% of arena height.
+// Size the fight hand: a single row across the arena width, capped to ~31% of the arena
+// height (a phone: sizePhoneHand). The select phase is sized by fitSquadGrid.
 function sizeSquadGrid() {
   const grid = el('huntGrid');
-  if (!grid) return;
+  if (!grid || squad.phase !== 'battle') return;
+  if (isPhone()) { sizePhoneHand(grid); return; }
   const gap = 8, capH = 30;
-  if (squad.phase === 'battle' && uiV2 && isPhone()) { sizePhoneHand(grid); return; }
-  if (squad.phase === 'battle') {
-    const arena = grid.closest('.hunt-arena') || grid;
-    const aw = arena.clientWidth || 600, ah = arena.clientHeight || 400;
-    const n = Math.max(1, (huntState?.roster || []).filter((c) => squad.sel.has(c.id)).length);
-    const cols = Math.min(8, n);
-    const byWidth = (aw - (cols + 1) * gap) / cols;
-    // Give the boss + the attack stage most of the pane — the hand is a compact
-    // bottom strip (was 0.34 of the height; now ~0.24, capped smaller).
-    // A phone held sideways has a short arena: the hand takes more of it (design 24, frame 5).
-    const byHeight = (ah * (isPhone() ? 0.5 : uiV2 ? 0.31 : 0.24) - capH) * 5 / 7;
-    const sw = Math.max(52, Math.min(uiV2 ? 150 : 112, Math.floor(Math.min(byWidth, byHeight))));
-    grid.style.setProperty('--sw', `${sw}px`);
-    return;
-  }
-  if (uiV2) return; // fitSquadGrid sized it
-  const w = grid.clientWidth || 600, h = grid.clientHeight || 360;
-  const cols = 4, rows = 2, cap = 34;
-  const byWidth = (w - (cols - 1) * gap) / cols;
-  const byHeight = ((h - (rows - 1) * gap) / rows - cap) * 5 / 7;
-  const sw = Math.max(72, Math.min(210, Math.floor(Math.min(byWidth, byHeight))));
+  const arena = grid.closest('.hunt-arena') || grid;
+  const aw = arena.clientWidth || 600, ah = arena.clientHeight || 400;
+  const n = Math.max(1, (huntState?.roster || []).filter((c) => squad.sel.has(c.id)).length);
+  const cols = Math.min(8, n);
+  const byWidth = (aw - (cols + 1) * gap) / cols;
+  // Give the boss + the attack stage most of the pane — the hand is a compact bottom strip.
+  const byHeight = (ah * 0.31 - capH) * 5 / 7;
+  const sw = Math.max(52, Math.min(150, Math.floor(Math.min(byWidth, byHeight))));
   grid.style.setProperty('--sw', `${sw}px`);
 }
 // The fight on a phone (Nathan, 2026-10-02, IMG_2862/2863). Every squad card is on screen (the
@@ -2010,7 +1554,7 @@ function paintHuntPage(dir) {
   const grid = el('huntGrid');
   if (!grid) return;
   const items = huntFiltered();
-  const perPage = uiV2 ? fitSquadGrid(grid) : 8;
+  const perPage = fitSquadGrid(grid);
   const pages = Math.max(1, Math.ceil(items.length / perPage));
   squad.page = Math.min(Math.max(0, squad.page), pages - 1);
   const slice = items.slice(squad.page * perPage, squad.page * perPage + perPage);
@@ -2112,7 +1656,7 @@ async function refreshHuntFeed() {
 function fitFeedRows(list) {
   const box = list.getBoundingClientRect();
   // A phone drops even the last row when it does not fit (no cut text on a phone).
-  const keep = uiV2 && isPhone() ? 0 : 1;
+  const keep = isPhone() ? 0 : 1;
   if (!box.height) { if (!keep && currentView === 'battling') list.innerHTML = ''; return; }
   let last = list.lastElementChild;
   while (last && list.children.length > keep && last.getBoundingClientRect().bottom > box.bottom + 1) {
@@ -2170,23 +1714,19 @@ function wireHunt() {
 // Phase 1: pick up to the daily cap; Lock In switches to the battle view.
 function wireSelectPhase() {
   const cap = huntState?.dailyCap || 8;
-  if (uiV2) {
-    el('sqSort')?.addEventListener('click', (e) => {
-      const b = e.target.closest('button[data-sort]'); if (!b) return;
-      squad.sort = b.dataset.sort; squad.page = 0;
-      el('sqSort').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-      paintHuntPage();
-    });
-    document.querySelectorAll('.sq-top .el-btn').forEach((b) => b.addEventListener('click', () => {
-      squad.el = squad.el === b.dataset.el ? null : b.dataset.el; squad.page = 0;
-      document.querySelectorAll('.sq-top .el-btn').forEach((x) => x.classList.toggle('on', x.dataset.el === squad.el));
-      paintHuntPage();
-    }));
-    el('sqBoss')?.addEventListener('click', openBossModal);
-  }
+  el('sqSort')?.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-sort]'); if (!b) return;
+    squad.sort = b.dataset.sort; squad.page = 0;
+    el('sqSort').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    paintHuntPage();
+  });
+  document.querySelectorAll('.sq-top .el-btn').forEach((b) => b.addEventListener('click', () => {
+    squad.el = squad.el === b.dataset.el ? null : b.dataset.el; squad.page = 0;
+    document.querySelectorAll('.sq-top .el-btn').forEach((x) => x.classList.toggle('on', x.dataset.el === squad.el));
+    paintHuntPage();
+  }));
+  el('sqBoss')?.addEventListener('click', openBossModal);
   el('hsearch')?.addEventListener('input', (e) => { squad.q = e.target.value; squad.page = 0; paintHuntPage(); });
-  el('hrarity')?.addEventListener('change', (e) => { squad.rarity = e.target.value; squad.page = 0; paintHuntPage(); });
-  el('htype')?.addEventListener('change', (e) => { squad.type = e.target.value; squad.page = 0; paintHuntPage(); });
   el('huntGrid')?.addEventListener('click', (e) => {
     const node = e.target.closest?.('.c');
     if (!node) return;
@@ -2199,11 +1739,7 @@ function wireSelectPhase() {
       if (squad.sel.size >= cap) { const b = node.getBoundingClientRect(); calloutAt(b.left + b.width / 2, b.top + 18, `MAX ${cap}`, '#ff8f5c'); return; }
       squad.sel.add(id); node.classList.add('selected');
     }
-    if (uiV2) { paintHuntPage(); onSquadChanged(); return; } // the slot numbers shift: repaint
-    // refresh the check overlay on this tile
-    const art = node.querySelector('.art');
-    art.querySelector('.sel-check')?.remove();
-    if (squad.sel.has(id)) { const s = document.createElement('span'); s.className = 'sel-check'; s.textContent = '✓'; art.appendChild(s); }
+    paintHuntPage(); // the slot numbers shift: repaint
     onSquadChanged();
   });
   // Remove a card by tapping its slot in the squad tray.
@@ -2213,9 +1749,7 @@ function wireSelectPhase() {
     const id = Number(slot.dataset.id);
     if ((huntState?.roster || []).find((x) => x.id === id)?.used) return; // it already fought today: it stays
     squad.sel.delete(id);
-    const node = el('huntGrid')?.querySelector(`.c[data-id="${id}"]`);
-    if (node) { node.classList.remove('selected'); node.querySelector('.sel-check')?.remove(); }
-    if (uiV2) paintHuntPage();
+    paintHuntPage();
     onSquadChanged();
   });
   // Lock In commits the squad and UNLOCKS "Enter Battle" — it does not enter yet.
@@ -2256,7 +1790,7 @@ function wireSelectPhase() {
     squad.phase = 'battle';
     SFX?.play?.('reveal');
     el('main').innerHTML = huntHTML(huntState);
-    renderBossMini(); wireHunt(); mountBossFor(huntState.hunt); paintTeam(); startHuntTicker();
+    wireHunt(); mountBossFor(huntState.hunt); paintTeam(); startHuntTicker();
   });
   // Auto-pick: the server scores the player's cards against today's boss and
   // returns the best squad. It replaces the current selection; the player can edit.
@@ -2707,7 +2241,7 @@ function onBossDefeated() {
     const d = await pending;
     huntCache = d;
     disposeBoss();
-    paintHuntView(d); // d.hunt is null -> cooldownHTML: "Next boss in …"
+    paintHuntView(d); // d.hunt is null -> the resting scene: "Next boss in …"
   }, 2600);
 }
 
@@ -2813,68 +2347,7 @@ async function openHuntBoard() {
   }
 }
 
-async function loadPlayers(q) {
-  const box = el('giftResults');
-  if (!box) return;
-  try {
-    const data = await api(`/api/players?q=${encodeURIComponent(q)}`);
-    const players = data.players || [];
-    box.innerHTML = players.length
-      ? players.map((p) => `<div class="gift-row" data-id="${p.id}" data-name="${esc(p.username)}">
-          <span class="gift-name">${nameBadge(p.id, p.username)}</span>
-          <button class="gift-send">Gift 1</button>
-        </div>`).join('')
-      : '<p class="empty small">No players found.</p>';
-  } catch { box.innerHTML = '<p class="empty small">Could not load players.</p>'; }
-}
-
-async function sendGift(toId, name, btn) {
-  btn.disabled = true;
-  btn.textContent = '…';
-  const msg = el('giftMsg');
-  try {
-    const data = await apiPost('/api/gift', { toId, amount: 1 });
-    if (data.ok) {
-      if (msg) msg.textContent = `🎁 Sent a pack to ${name}!`;
-      SFX.play('page');
-      await refreshPackStatus();
-      const bal = el('giftBal');
-      if (bal) bal.innerHTML = `You have <b>${packsAvailable}</b> pack${packsAvailable === 1 ? '' : 's'} to give`;
-      btn.textContent = 'Sent ✓';
-    } else {
-      if (msg) msg.textContent = 'You have no packs to give right now.';
-      btn.disabled = false;
-      btn.textContent = 'Gift 1';
-    }
-  } catch {
-    if (msg) msg.textContent = 'Could not send right now.';
-    btn.disabled = false;
-    btn.textContent = 'Gift 1';
-  }
-}
-
 // ---- In-app notifications (the bell) ---------------------------------------
-async function openNotifs() {
-  if (uiV2) return openNotifsV2();
-  const g = el('notif');
-  g.className = 'open';
-  g.innerHTML =
-    `<div class="gift-card">
-      <div class="gift-head"><span>🔔 Notifications</span><button class="gift-close" id="notifClose">✕</button></div>
-      <div class="notif-list" id="notifList"><div class="loading">Loading…</div></div>
-    </div>`;
-  el('notifClose').addEventListener('click', closeNotifs);
-  g.addEventListener('click', (e) => { if (e.target === g) closeNotifs(); });
-  let data;
-  try { data = await api('/api/notifications'); } catch { data = { items: [] }; }
-  const items = data.items || [];
-  el('notifList').innerHTML = items.length
-    ? items.map((n) => `<div class="notif-row${n.read ? '' : ' unread'}"><div class="notif-msg">${esc(n.message)}</div><div class="notif-time">${ago(n.created_at)}</div></div>`).join('')
-    : '<p class="empty small">No notifications yet.</p>';
-  try { await apiPost('/api/notifications/read', {}); } catch { /* ignore */ }
-  updateNotifBadge(0);
-}
-function closeNotifs() { el('notif').className = 'hidden'; el('notif').innerHTML = ''; }
 function updateNotifBadge(n) {
   const btn = el('bellBtn');
   if (!btn) return;
@@ -2886,180 +2359,10 @@ function updateNotifBadge(n) {
 // An error answer keeps the badge as it is (it reset the badge to 0).
 async function refreshNotifBadge() { try { const d = await api('/api/notifications/count'); if (Number.isFinite(d?.unread)) updateNotifBadge(d.unread); } catch { /* ignore */ } }
 
-// ---- Trading ---------------------------------------------------------------
-async function renderTrading() {
-  el('main').innerHTML = mainHead('Trading') + '<div class="main-body"><div class="loading">Loading trades…</div></div>';
-  updateOpenButton();
-  let data;
-  try { data = await api('/api/trades'); } catch { data = {}; }
-  const inc = data.incoming || [];
-  const out = data.outgoing || [];
-  updateTradeBadge(inc.length);
-  const mini = (c) => (c ? `<div class="tmini ${c.rarity}"><div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">` : ''}</div><span>${esc(c.name)}</span></div>` : '');
-  const incHtml = inc.length ? inc.map((o) => `
-    <div class="trade-row">
-      <div class="tr-who"><b>${esc(o.from_name || 'Someone')}</b> offers you</div>
-      <div class="tr-cards">${mini(o.offer)}<span class="tr-swap">⇄</span>${mini(o.request)}</div>
-      <div class="tr-actions"><button class="btn-accept" data-id="${o.id}">Accept</button><button class="btn-decline" data-id="${o.id}">Decline</button></div>
-    </div>`).join('') : '<p class="empty small">No incoming offers.</p>';
-  const outHtml = out.length ? out.map((o) => `
-    <div class="trade-row">
-      <div class="tr-who">To <b>${esc(o.to_name || 'Someone')}</b></div>
-      <div class="tr-cards">${mini(o.offer)}<span class="tr-swap">⇄</span>${mini(o.request)}</div>
-      <div class="tr-actions"><span class="tr-pending">pending</span><button class="btn-cancel" data-id="${o.id}">Cancel</button></div>
-    </div>`).join('') : '<p class="empty small">No sent offers.</p>';
-  const noticeHtml = tradeNotice ? `<div class="trade-notice">${esc(tradeNotice)}</div>` : '';
-  tradeNotice = '';
-  el('main').innerHTML = mainHead('Trading') +
-    `<div class="main-body trade-body">
-       ${noticeHtml}
-       <div class="trade-top"><button class="open-btn" id="newTradeBtn">＋ New Trade</button></div>
-       <div class="trade-cols">
-         <div class="trade-col"><div class="tcol-head">Incoming${inc.length ? ` (${inc.length})` : ''}</div><div id="tIncoming">${incHtml}</div></div>
-         <div class="trade-col"><div class="tcol-head">Sent</div><div id="tOutgoing">${outHtml}</div></div>
-       </div>
-     </div>`;
-  updateOpenButton();
-  el('newTradeBtn').addEventListener('click', openTradeBuilder);
-  el('tIncoming').addEventListener('click', onTradeAction);
-  el('tOutgoing').addEventListener('click', onTradeAction);
-}
-
-let tradeNotice = '';
-async function onTradeAction(e) {
-  const btn = e.target.closest?.('.btn-accept, .btn-decline, .btn-cancel');
-  if (!btn) return;
-  btn.disabled = true;
-  const id = Number(btn.dataset.id);
-  try {
-    if (btn.classList.contains('btn-accept')) {
-      const r = await apiPost('/api/trade/accept', { offerId: id });
-      if (r.ok) { SFX.play('rare'); cache.collection = null; cache.catalog = null; tradeNotice = '✅ Trade complete!'; }
-      else tradeNotice = 'Could not complete — a card is no longer available.';
-    } else if (btn.classList.contains('btn-decline')) {
-      await apiPost('/api/trade/resolve', { offerId: id, action: 'decline' });
-    } else {
-      await apiPost('/api/trade/resolve', { offerId: id, action: 'cancel' });
-    }
-  } catch { tradeNotice = 'Something went wrong.'; }
-  renderTrading();
-}
-
-// The trade builder: recipient -> your card -> gift it, or request one back.
-const trade = { step: 1, toId: null, toName: null, myCard: null, mine: [], theirs: [] };
-function openTradeBuilder(to) {
-  Object.assign(trade, { step: to ? 2 : 1, toId: to?.id || null, toName: to?.name || null, myCard: null });
-  el('trade').className = 'open';
-  el('trade').onclick = (e) => { if (e.target === el('trade')) closeTrade(); };
-  renderTradeStep();
-}
-function closeTrade() { el('trade').className = 'hidden'; el('trade').innerHTML = ''; }
-const tradeShell = (title, inner) => `<div class="trade-card">
-  <div class="gift-head"><span>${trade.step > 1 ? '<button class="tback" id="tBack">‹</button>' : ''}${title}</span><button class="gift-close" id="tClose">✕</button></div>${inner}</div>`;
-// Wire the close + back buttons every step (back = the previous step).
-function wireTradeNav() {
-  el('tClose').onclick = closeTrade;
-  const bk = el('tBack');
-  if (bk) bk.onclick = () => { trade.step -= 1; renderTradeStep(); };
-}
-function tradeTile(c, i, big) {
-  const locked = c.tradeable === false ? ' locked' : '';
-  return `<div class="ttile ${c.rarity}${big ? ' big' : ''}${locked}" data-i="${i}">
-    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">` : ''}</div>
-    <div class="cap">${esc(c.name)}${c.quantity > 1 ? ` <span class="q">×${c.quantity}</span>` : ''}</div>
-  </div>`;
-}
-
-async function renderTradeStep() {
-  const t = el('trade');
-  if (trade.step === 1) {
-    t.innerHTML = tradeShell('New Trade · pick a player',
-      '<input id="tSearch" class="ginput" placeholder="Search players…" autocomplete="off"><div class="gift-results" id="tPlayers"></div>');
-    wireTradeNav();
-    el('tSearch').addEventListener('input', (e) => { clearTimeout(giftSearchTimer); const q = e.target.value; giftSearchTimer = setTimeout(() => tradeLoadPlayers(q), 250); });
-    el('tPlayers').addEventListener('click', (e) => {
-      const row = e.target.closest?.('.gift-row');
-      if (row) { trade.toId = row.dataset.id; trade.toName = row.dataset.name; trade.step = 2; renderTradeStep(); }
-    });
-    tradeLoadPlayers('');
-    el('tSearch').focus();
-  } else if (trade.step === 2) {
-    t.innerHTML = tradeShell(`Trade with ${esc(trade.toName)} · your card`, '<div class="tgrid" id="tMine"><div class="loading">Loading…</div></div>');
-    wireTradeNav();
-    const data = await api('/api/collection');
-    trade.mine = data.cards || [];
-    el('tMine').innerHTML = trade.mine.length ? trade.mine.map((c, i) => tradeTile(c, i)).join('') : '<p class="empty small">You have no cards to trade.</p>';
-    el('tMine').addEventListener('click', (e) => {
-      const tile = e.target.closest?.('.ttile');
-      if (tile) { trade.myCard = trade.mine[Number(tile.dataset.i)]; trade.step = 3; renderTradeStep(); }
-    });
-  } else if (trade.step === 3) {
-    const c = trade.myCard;
-    const giftable = c.tradeable && c.rarity !== 'gold';
-    t.innerHTML = tradeShell(`Give ${esc(c.name)}?`,
-      `<div class="tchosen">${tradeTile(c, 'x', true)}</div>
-       ${!c.tradeable ? '<p class="empty small">This card is locked — it cannot be traded or gifted.</p>' : `
-       <div class="tactions">
-         ${giftable ? '<button class="open-btn" id="tGift">Gift it (no return)</button>' : '<p class="empty small">Gold cards can only be swapped, not gifted.</p>'}
-         <button class="open-btn alt" id="tReq">Request a card back</button>
-       </div>`}
-       <div class="gift-msg" id="tMsg"></div>`);
-    wireTradeNav();
-    if (el('tGift')) el('tGift').onclick = doGift;
-    if (el('tReq')) el('tReq').onclick = () => { trade.step = 4; renderTradeStep(); };
-  } else if (trade.step === 4) {
-    const c = trade.myCard;
-    const label = RARITY_LABEL[c.rarity] || c.rarity;
-    t.innerHTML = tradeShell(`Request a ${label} from ${esc(trade.toName)}`, '<div class="tgrid" id="tTheirs"><div class="loading">Loading…</div></div><div class="gift-msg" id="tMsg"></div>');
-    wireTradeNav();
-    const data = await api(`/api/player-cards?id=${encodeURIComponent(trade.toId)}`);
-    trade.theirs = (data.cards || []).filter((x) => x.rarity === c.rarity && x.tradeable);
-    el('tTheirs').innerHTML = trade.theirs.length ? trade.theirs.map((x, i) => tradeTile(x, i)).join('') : `<p class="empty small">${esc(trade.toName)} has no tradeable ${label} cards.</p>`;
-    el('tTheirs').addEventListener('click', (e) => { const tile = e.target.closest?.('.ttile'); if (tile) doOffer(trade.theirs[Number(tile.dataset.i)]); });
-  }
-}
-
-async function tradeLoadPlayers(q) {
-  const box = el('tPlayers');
-  if (!box) return;
-  try {
-    const d = await api(`/api/players?q=${encodeURIComponent(q)}`);
-    const ps = d.players || [];
-    box.innerHTML = ps.length
-      ? ps.map((p) => `<div class="gift-row" data-id="${p.id}" data-name="${esc(p.username)}"><span class="gift-name">${nameBadge(p.id, p.username)}</span><button class="gift-send">Pick</button></div>`).join('')
-      : '<p class="empty small">No players found.</p>';
-  } catch { box.innerHTML = '<p class="empty small">Could not load players.</p>'; }
-}
-
-async function doGift() {
-  const msg = el('tMsg');
-  const btn = el('tGift');
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
-  try {
-    const r = await apiPost('/api/trade/gift', { toId: trade.toId, cardId: trade.myCard.id });
-    if (r.ok) { SFX.play('page'); if (msg) msg.textContent = `🎁 Gave ${trade.myCard.name} to ${trade.toName}!`; cache.collection = null; cache.catalog = null; setTimeout(closeTrade, 1100); }
-    else { if (msg) msg.textContent = 'Could not gift — this copy may be reserved in a pending trade.'; if (btn) { btn.disabled = false; btn.textContent = 'Gift it (no return)'; } }
-  } catch { if (msg) msg.textContent = 'Could not gift right now.'; if (btn) { btn.disabled = false; btn.textContent = 'Gift it (no return)'; } }
-}
-
-async function doOffer(theirCard) {
-  const msg = el('tMsg');
-  try {
-    const r = await apiPost('/api/trade/offer', { toId: trade.toId, offerCardId: trade.myCard.id, requestCardId: theirCard.id });
-    if (r.ok) { SFX.play('page'); if (msg) msg.textContent = `Offer sent to ${trade.toName}!`; refreshTradeBadge(); setTimeout(() => { closeTrade(); if (currentView === 'trading') renderTrading(); }, 1100); }
-    else if (msg) msg.textContent = 'Could not send — this copy may already be reserved in another trade.';
-  } catch { if (msg) msg.textContent = 'Could not send right now.'; }
-}
-
 function updateTradeBadge(n) {
   document.querySelector('#dock .dk[data-view="trading"]')?.classList.toggle('live', n > 0);
-  const btn = document.querySelector('#nav button[data-view="trading"]');
-  if (!btn) return;
-  let b = btn.querySelector('.navbadge');
-  if (n > 0) { if (!b) { b = document.createElement('span'); b.className = 'navbadge'; btn.appendChild(b); } b.textContent = n; }
-  else if (b) b.remove();
 }
-async function refreshTradeBadge() { try { const d = await api('/api/trades'); updateTradeBadge(tradeActions(d)); if (uiV2) liveTrades(d); } catch { /* ignore */ } }
+async function refreshTradeBadge() { try { const d = await api('/api/trades'); updateTradeBadge(tradeActions(d)); if (currentView === 'trading') liveTrades(d); } catch { /* ignore */ } } // the first call runs before the v2 shell exists
 
 // ---- 3D card viewer (ported from the public gallery) -----------------------
 // DRAG to pivot, CLICK to flip, and the foil SHINES as you tilt it.
@@ -3121,8 +2424,8 @@ function openViewer(card, opts = {}) {
   el('viewer-prev').disabled = !viewerNav || i <= 0;
   el('viewer-next').disabled = !viewerNav || i >= list.length - 1;
   card = withOwned(card);
-  el('viewer').classList.toggle('card-only', uiV2 && !opts.raid);
-  el('viewer').classList.toggle('raid-info', uiV2 && !!opts.raid);
+  el('viewer').classList.toggle('card-only', !opts.raid);
+  el('viewer').classList.toggle('raid-info', !!opts.raid);
   fillRaidInfo(opts.raid ? card : null);
   SFX.play('click'); // opening a card
   const locked = !!card.locked;
@@ -3268,8 +2571,6 @@ async function ascendCard(card) {
     card.ascension = r.ascension; card.quantity = r.quantity; card.power = r.power; card.next_cost = r.next_cost;
     card.can_ascend = r.next_cost != null && r.quantity >= 1 + r.next_cost;
     await refreshOwned();
-    if (currentView === 'collection') paintPage('collection');
-    updatePower();
     renderAscension(card);
     playAscend(r.ascension); // celebrate reaching the new tier on the card viewer
   } catch {
@@ -3384,26 +2685,9 @@ function initViewer() {
     if (!el('bossModal').classList.contains('hidden')) closeBossModal();
     else if (!el('viewer').classList.contains('hidden')) closeViewer();
     else if (!el('stage').classList.contains('hidden')) { if (revealItems.length && flippedCount >= revealItems.length) endReveal(); } // locked until all revealed
-    else if (!el('trade').classList.contains('hidden')) closeTrade();
-    else if (!el('gift').classList.contains('hidden')) closeGiftPanel();
-    else if (!el('notif').classList.contains('hidden')) closeNotifs();
     else if (!el('board').classList.contains('hidden')) closeBoard();
   });
 
-  // Click a card anywhere → open it in the viewer. A boss tile (Raid Bosses
-  // gallery) opens the boss viewer instead.
-  el('main').addEventListener('click', (e) => {
-    const bt = e.target.closest?.('.c[data-boss]');
-    if (bt) { openBossGallery(BOSS_LIST[Number(bt.dataset.boss)]); return; }
-    const c = e.target.closest?.('.c[data-idx]');
-    if (c) { const it = mainItems[Number(c.dataset.idx)]; if (it) openViewer(it); }
-  });
-  // Feed cards: you see full art of cards you OWN; unowned ones open blurred.
-  // The small sidebar thumbnail stays visible as-is either way.
-  el('feed').addEventListener('click', (e) => {
-    const r = e.target.closest?.('.frow[data-idx]');
-    if (r) { const it = live.pulls[Number(r.dataset.idx)]; if (it) openViewer({ ...it, locked: !myCardIds.has(it.id) }); }
-  });
   // Reveal cards: a face-down card flips on tap; a revealed card opens the viewer.
   // NOTE: the reveal is LOCKED until every card is flipped — no backdrop close, no
   // Back button; the Done button (and Escape) only work once all are revealed.
@@ -3436,21 +2720,6 @@ function enableGyro() {
     window.addEventListener('deviceorientation', onOrient); gyroOn = true;
   }
 }
-
-// Re-fit the paginated grid when the Discord window resizes.
-let resizeTimer = null;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    if (currentView === 'collection') paintPage('collection');
-    else if (currentView === 'gallery') paintGalleryPage();
-  }, 150);
-});
-
-el('nav').addEventListener('click', (e) => {
-  const v = e.target?.dataset?.view;
-  if (v) show(v);
-});
 
 initViewer();
 main().catch((e) => {

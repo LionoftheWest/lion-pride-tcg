@@ -65,15 +65,16 @@ export const SETS = {
     { img: 'col-bosses', title: 'Raid Bosses', text: 'See every boss that the Raid can bring. Tap one to see it move.' },
   ] },
 };
-// Only in UI v2 (the old UI has no v2ctx).
+// Only after the v2 shell is up (v2ctx exists).
 const v2 = () => document.body.classList.contains('ui-v2');
 
 let seen = new Set();
 let cur = null; // { key, i }
 let swiped = 0; // the time of the last swipe: the click that ends it is not a tap outside
 
-/** Called once after login with the saved progress (players.tutorial). */
-export function initExplain(saved) { seen = new Set(saved?.seen || []); }
+/** Called once after login with the saved progress (players.tutorial). Without it (the flags
+ * request failed) the carousels never open by themselves: the member may have seen them. */
+export function initExplain(saved) { seen = saved ? new Set(saved.seen || []) : new Set(Object.keys(SETS)); }
 
 /** The "?" circle for a view's top row. */
 export const explainBtn = (key) => (SETS[key] && v2() ? `<button class="ex-q" data-explain="${key}" aria-label="How ${esc(SETS[key].name)} works" title="How it works">?</button>` : '');
