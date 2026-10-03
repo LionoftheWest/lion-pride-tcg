@@ -2456,9 +2456,12 @@ function openViewer(card, opts = {}) {
   el('viewer-prev').disabled = !viewerNav || i <= 0;
   el('viewer-next').disabled = !viewerNav || i >= list.length - 1;
   card = withOwned(card);
-  el('viewer').classList.toggle('card-only', !opts.raid);
-  el('viewer').classList.toggle('raid-info', !!opts.raid);
-  fillRaidInfo(opts.raid ? card : null);
+  // opts.raid = the Hunt numbers; opts.squad = any other squad picker (the Dungeon, later the Arena).
+  // Both show the ability, the effect, and the tags next to the card (Nathan, 2026-10-03).
+  const info = !!(opts.raid || opts.squad);
+  el('viewer').classList.toggle('card-only', !info);
+  el('viewer').classList.toggle('raid-info', info);
+  if (opts.raid) fillRaidInfo(card); else fillSquadInfo(opts.squad ? card : null);
   SFX.play('click'); // opening a card
   const locked = !!card.locked;
   el('v-front').src = card.image_url || '';
@@ -2483,6 +2486,25 @@ function openViewer(card, opts = {}) {
   rx = 0; ry = 0; hoverX = 0; hoverY = 0; applyView();
   el('viewer').classList.remove('hidden');
   enableGyro();
+}
+
+// The squad numbers of a card outside the Hunt: role, power, HP, squad points, element.
+function fillSquadInfo(c) {
+  const box = el('v-raid');
+  if (!box) return;
+  if (!c) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const support = !ATTACKER_TYPES.includes(c.type);
+  const elem = cardElement(c.tags);
+  const look = elem ? ELEMENTS[elem] : null;
+  const stat = (v, k) => `<div class="vr-stat"><b>${v}</b><span>${k}</span></div>`;
+  box.innerHTML = `<div class="vr-head"><span class="vr-role ${support ? 'sup' : 'atk'}">${support ? '🛡 Support' : '⚔ Attacker'}</span></div>
+    <div class="vr-stats">
+      ${stat(support || c.cp == null ? '—' : `⚡ ${c.cp}`, 'Power')}
+      ${stat(c.hp ?? '—', 'HP')}
+      ${stat(c.cost != null ? `${c.cost} pt${c.cost === 1 ? '' : 's'}` : '—', 'Squad cost')}
+      ${stat(look ? `${look.glyph} ${look.name}` : '—', 'Element')}
+    </div>`;
+  box.classList.remove('hidden');
 }
 
 // The raid numbers of a squad card: the same values the fight uses (hunt_synergy_passives

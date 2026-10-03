@@ -186,8 +186,11 @@ const cardTile = (c, opts = {}) => {
 // The member's star level of a card (the collection cache) and the full card for the viewer.
 const ascOf = (id) => (ctx().cache.collection?.cards || []).find((x) => Number(x.id) === Number(id))?.ascension || 0;
 function openInfo(id) {
-  const full = mergedCards().find((x) => Number(x.id) === Number(id)) || (dg.data?.mine || []).find((x) => Number(x.id) === Number(id));
-  if (full) ctx().openViewer(full);
+  // The viewer with the ability, the effect, the tags, and the squad numbers (power, HP, points).
+  const row = (dg.data?.mine || []).find((x) => Number(x.id) === Number(id));
+  const base = mergedCards().find((x) => Number(x.id) === Number(id));
+  const full = base || row ? { ...(base || {}), ...(row || {}), image_url: base?.image_url || row?.image_url } : null;
+  if (full) ctx().openViewer(full, { squad: true });
 }
 
 // ---- Today's dungeon (the squad picker) --------------------------------------------------------
@@ -392,8 +395,11 @@ function fightHTML() {
       <span class="bar"><i></i></span>
       <span class="wk">${(f.weak || []).length ? `<span class="wk-l" title="Weak to">${I.up}${f.weak.map((w) => `<i title="Weak to ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}${(f.resist || []).length ? `<span class="rs-l" title="Resists">${I.shield}${f.resist.map((w) => `<i title="Resists ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}</span>
       ${(f.passives || []).length ? `<span class="ps">${f.passives.map((p) => `<i>${esc(p)}</i>`).join('')}</span>` : ''}</div>`;
-  const unit = (c) => `<div class="dg-unit" data-card="${c.id}"><span class="dg-tag weak"></span>
-      ${cardTile(c, { top: `<span class="dg-pw">${I.bolt}${fmt(c.cp)}</span><span class="dg-buffs"></span>`, over: '<span class="dg-state"></span><span class="dg-tap">Tap to attack</span>' })}
+  // The card art keeps only the power; the weakness tag and the buffs sit in their own row under the
+  // card, so nothing overlaps (Nathan, 2026-10-03).
+  const unit = (c) => `<div class="dg-unit" data-card="${c.id}">
+      ${cardTile(c, { top: `<span class="dg-pw">${I.bolt}${fmt(c.cp)}</span>`, over: '<span class="dg-state"></span><span class="dg-tap">Tap to attack</span>' })}
+      <span class="dg-fx"><span class="dg-tag weak"></span><span class="dg-buffs"></span></span>
       <span class="dg-hp"><i></i></span><small class="dg-hpn"></small></div>`;
   const supB = (c) => `<button class="dg-sup" data-sup="${c.id}">
       ${c.image_url ? `<img src="${thumb(c.image_url)}" alt="">` : '<span></span>'}
