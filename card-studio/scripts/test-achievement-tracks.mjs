@@ -125,8 +125,10 @@ ${kase('Wish Granter: a gift (x) and a trade (x back, y) on the wishlists count 
     update trade_offers set status = 'accepted', resolved_at = now() where id = h;
     res := res || jsonb_build_object('case', 'Wish Granter: a gift (x) and a trade (x back, y) on the wishlists count for each giver; the gift of y (not wished by h) does not', 'ok',
       (ach_track_values('${P}_g')->>'wish')::int = 2 and (ach_track_values('${P}_h')->>'wish')::int = 1
-      and (select count(*) from wish_grants where giver_id like '${P}%') = 3, 'r', jsonb_build_object('g', ach_track_values('${P}_g')->'wish', 'h', ach_track_values('${P}_h')->'wish'));`)}
-${kase('On a Roll = the best check-in run (3, not the last 1); Podium = top 3 of a settled raid', `
+      and (select count(*) from wish_grants where giver_id like '${P}%') = 3
+      and (ach_track_values('${P}_g')->>'trader')::int = 1 and (ach_track_values('${P}_h')->>'trader')::int = 1,
+      'r', jsonb_build_object('g', ach_track_values('${P}_g')->'wish', 'h', ach_track_values('${P}_h')->'wish', 'trader', ach_track_values('${P}_g')->'trader'));`)}
+${kase('On a Roll = the best check-in run; Podium = top 3 of a settled raid; joined = own committed cards (a credit row alone is not a raid joined)', `
     insert into daily_claims (player_id, day, task, amount) values ('${P}_g', d, 'checkin', 1), ('${P}_g', d + 1, 'checkin', 1), ('${P}_g', d + 2, 'checkin', 1), ('${P}_g', d + 5, 'checkin', 1);
     insert into hunts (name, tier, weak_points, hp_max, hp_remaining, closes_at, status, settled_at)
       values ('tst hunt', 'Normal', '[]', 1000, 0, now() - interval '1 day', 'defeated', now()) returning id into h;
@@ -134,7 +136,10 @@ ${kase('On a Roll = the best check-in run (3, not the last 1); Podium = top 3 of
     select id into y from cards where in_draw_pool order by id offset 1 limit 1;
     insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values
       (h, '${P}_a', x, d, 500), (h, '${P}_b', x, d, 400), (h, '${P}_c', x, d, 300), (h, '${P}_g', x, d, 200), (h, '${P}_g', y, d, 50);
-    res := res || jsonb_build_object('case', 'On a Roll = the best check-in run (3, not the last 1); Podium = top 3 of a settled raid', 'ok',
+    -- g fought (committed cards); c has only a hunt_hits row (like a Raid Crasher credit)
+    insert into hunt_card_hp (hunt_id, player_id, card_id, hit_date, hp_remaining, max_hp) values (h, '${P}_g', x, d, 10, 60), (h, '${P}_g', y, d, 10, 60);
+    res := res || jsonb_build_object('case', 'On a Roll = the best check-in run; Podium = top 3 of a settled raid; joined = own committed cards (a credit row alone is not a raid joined)', 'ok',
+      (ach_track_values('${P}_g')->>'raider')::int = 1 and (ach_track_values('${P}_c')->>'raider')::int = 0 and (ach_track_values('${P}_c')->>'slayer')::int = 0 and
       (ach_track_values('${P}_g')->>'streak')::int = 3 and (ach_track_values('${P}_c')->>'podium')::int = 1 and (ach_track_values('${P}_g')->>'podium')::int = 0
       and (ach_track_values('${P}_g')->>'slayer')::int = 1 and (ach_track_values('${P}_g')->>'bighit')::int = 200 and (ach_track_values('${P}_g')->>'heavy')::int = 250,
       'r', ach_track_values('${P}_g'));`)}

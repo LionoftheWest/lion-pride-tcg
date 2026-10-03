@@ -23,13 +23,20 @@
 -- parallel call safe. Packs: grant_packs(.., 'achievement', key). Shards: grant_shards(.., 'milestone').
 --
 -- Data that did not exist (draft section 7): Wish Granter is captured from now on (wish_grants,
--- written by triggers on a trade, a sold auction and a card gift). On a Roll (best check-in streak),
+-- written by triggers on card_trades and on a card gift). On a Roll (best check-in streak),
 -- Podium (top 3 of a settled raid), Trainer (stat points assigned) and Voice + Chat come from rows
 -- that already exist (daily_claims, hunt_hits, player_cards.stat_points, daily_activity).
 --
 -- Flag: settings.achievement_tracks = {"enabled": false, "users": []} (default OFF, fails closed).
 -- OFF: the old 50 achievements work as before; every tier RPC refuses. "users" turns it on for
 -- named members first. Test: card-studio/scripts/test-achievement-tracks.mjs. Idempotent.
+
+-- Needs the trade ledger (trade_ledger_raid_credit.sql): Trader and Wish Granter read card_trades.
+do $guard$ begin
+  if to_regclass('public.card_trades') is null then
+    raise exception 'apply trade_ledger_raid_credit.sql first (public.card_trades is missing)';
+  end if;
+end $guard$;
 
 alter table public.achievement_claims add column if not exists shards integer not null default 0;
 
@@ -131,37 +138,19 @@ returns void language sql set search_path = public as $$
   on conflict do nothing;
 $$;
 
+-- A trade or a sold auction: one card_trades row (trade_ledger_raid_credit.sql). from_id gave
+-- from_cards to to_id; to_id gave to_cards to from_id.
 create or replace function public.ach_wish_trade() returns trigger
 language plpgsql set search_path = public as $$
+declare x bigint; src text := case when new.kind = 'auction' then 'auction' else 'trade' end;
 begin
-  if new.status = 'accepted' and old.status is distinct from 'accepted' then
-    perform ach_wish_grant(new.from_id, new.to_id, new.offer_card_id, 'trade', new.id);
-    if new.request_card_id is not null and new.request_card_id <> new.offer_card_id then
-      perform ach_wish_grant(new.to_id, new.from_id, new.request_card_id, 'trade', new.id);
-    end if;
-  end if;
-  return new;
+  foreach x in array new.from_cards loop perform ach_wish_grant(new.from_id, new.to_id, x, src, new.id); end loop;
+  foreach x in array new.to_cards loop perform ach_wish_grant(new.to_id, new.from_id, x, src, new.id); end loop;
+  return null;
 end $$;
-drop trigger if exists ach_wish_trade on public.trade_offers;
-create trigger ach_wish_trade after update of status on public.trade_offers
+drop trigger if exists ach_wish_trade on public.card_trades;
+create trigger ach_wish_trade after insert on public.card_trades
   for each row execute function public.ach_wish_trade();
-
-create or replace function public.ach_wish_auction() returns trigger
-language plpgsql set search_path = public as $$
-declare b auction_bids; x bigint;
-begin
-  if new.status = 'sold' and old.status is distinct from 'sold' and new.accepted_bid_id is not null then
-    select * into b from auction_bids where id = new.accepted_bid_id;
-    if found then
-      perform ach_wish_grant(new.seller_id, b.bidder_id, new.card_id, 'auction', new.id);
-      foreach x in array b.cards loop perform ach_wish_grant(b.bidder_id, new.seller_id, x, 'auction', new.id); end loop;
-    end if;
-  end if;
-  return new;
-end $$;
-drop trigger if exists ach_wish_auction on public.auctions;
-create trigger ach_wish_auction after update of status on public.auctions
-  for each row execute function public.ach_wish_auction();
 
 create or replace function public.ach_wish_gift() returns trigger
 language plpgsql set search_path = public as $$
@@ -221,7 +210,8 @@ begin
       (select coalesce(sum(-amount), 0) from pack_ledger where player_id = p_player and reason = 'gift_sent')
     + (select count(*) from gift_claims where from_id = p_player and kind = 'card' and reason = 'member_gift'));
   -- Market
-  v := v || jsonb_build_object('trader', (select count(*) from trade_offers where status = 'accepted' and (from_id = p_player or to_id = p_player)));
+  -- The trade ledger (offers + auctions), as tradesDone in server.js.
+  v := v || jsonb_build_object('trader', (select count(*) from card_trades where from_id = p_player or to_id = p_player));
   v := v || jsonb_build_object('market',
       (select count(*) from trade_offers where status = 'accepted' and listing_id is not null and (from_id = p_player or to_id = p_player))
     + (select count(*) from auctions where status = 'sold' and seller_id = p_player)
@@ -247,10 +237,13 @@ begin
       select day from daily_claims where player_id = p_player and task = 'voice'
       union select activity_date from daily_activity where player_id = p_player and bonus_claimed) d));
   -- Raid
-  v := v || (select jsonb_build_object('raider', count(distinct hunt_id), 'heavy', coalesce(sum(damage), 0), 'bighit', coalesce(max(damage), 0))
+  -- Joined = own committed cards (hunt_card_hp), as huntsJoined in server.js: a Raid Crasher credit
+  -- row in hunt_hits is raid damage only (trade_ledger_raid_credit.sql). Damage stays on hunt_hits.
+  v := v || (select jsonb_build_object('heavy', coalesce(sum(damage), 0), 'bighit', coalesce(max(damage), 0))
                from hunt_hits where player_id = p_player);
+  v := v || jsonb_build_object('raider', (select count(distinct hunt_id) from hunt_card_hp where player_id = p_player));
   v := v || jsonb_build_object('slayer', (select count(*) from hunts h where h.status = 'defeated'
-      and exists (select 1 from hunt_hits x where x.hunt_id = h.id and x.player_id = p_player)));
+      and exists (select 1 from hunt_card_hp x where x.hunt_id = h.id and x.player_id = p_player)));
   -- The prize order of settle_hunt: total damage, then the first hit.
   v := v || jsonb_build_object('podium', (select count(*) from (
       select x.player_id, sum(x.damage) dmg, row_number() over (partition by x.hunt_id order by sum(x.damage) desc, min(x.id)) rk
