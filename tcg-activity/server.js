@@ -29,6 +29,7 @@ import { selectAll } from './src/select-all.js';
 import { rankByName } from './src/name-rank.js';
 import { registerHallRoutes, heldCopies } from './src/hall-routes.js';
 import { registerShopRoutes } from './src/shop-routes.js';
+import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -339,6 +340,10 @@ const hallPostsOn = () => process.env.FEATURE_HALL_POSTS === '1';
 const SHARDS_ALL = process.env.FEATURE_SHARDS === '1';
 const SHARDS_USERS = new Set((process.env.SHARDS_USERS || '').split(',').map((x) => x.trim()).filter(Boolean));
 const shardsOn = (id) => SHARDS_ALL || SHARDS_USERS.has(String(id));
+// The Dungeon Run (dungeon.sql). Default OFF: DUNGEON_USERS=id,id first, FEATURE_DUNGEON=1 = everyone.
+const DUNGEON_ALL = process.env.FEATURE_DUNGEON === '1';
+const DUNGEON_USERS = new Set((process.env.DUNGEON_USERS || '').split(',').map((x) => x.trim()).filter(Boolean));
+const dungeonOn = (id) => DUNGEON_ALL || DUNGEON_USERS.has(String(id));
 // A member who opens the Activity before they ever chat has no players row, so the
 // first login creates it. The welcome_packs trigger (welcome_packs.sql) then gives a
 // NEW member their free packs. ON CONFLICT DO NOTHING: an existing member is untouched.
@@ -388,7 +393,7 @@ app.get('/api/flags', async (req, res) => {
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
   const { data: tut } = await supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle();
-  res.json({ uiV2: true, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), hall: hallOn(me.id), shards: shardsOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  res.json({ uiV2: true, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
@@ -811,8 +816,12 @@ app.get('/api/hunt', async (req, res) => {
   // Daily distinct-card cap (settings.hunt_daily_card_cap, the same value the SQL reads).
   const dailyCap = await huntDailyCap();
   // The squad locked today (hunt_squads.sql): one squad per day, per member.
-  const { data: sqRow } = await supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle();
-  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null });
+  // The unlock gate (adventure_gate.sql): null while the function is not live, so nothing locks.
+  const [{ data: sqRow }, { data: gate }] = await Promise.all([
+    supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
+    supabase.rpc('adventure_gate', { p_player: String(me.id) }),
+  ]);
+  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null });
 });
 
 // Send a card at the boss (once per card per day). Atomic + row-locked in the RPC.
@@ -1561,6 +1570,7 @@ registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg });
 registerReportRoutes(app, { supabase, caller, rateLimit });
 registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn: hallPostsOn });
 registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn });
+registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn });
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.
