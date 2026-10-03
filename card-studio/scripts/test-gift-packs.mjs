@@ -1,10 +1,12 @@
 /**
- * gift_packs must refuse a gift the sender cannot pay (the 2026-10-01 NULL bug).
+ * gift_packs must refuse a gift the sender cannot pay (the 2026-10-01 NULL bug), and a sent
+ * gift must write the ledger row that the "Generous" achievement counts (LEDGER.giftSent).
  * Rolled back:  node scripts/test-gift-packs.mjs [path/to/sql]
  * Without an argument it tests the LIVE function (the baseline).
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
+import { LEDGER } from '../../tcg-activity/src/achievements.js';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = process.argv[2] ? readFileSync(process.argv[2], 'utf8').replace(/notify pgrst[^\n]*\n/g, '') : '';
@@ -20,6 +22,8 @@ begin
     g is false and (select pack_balance from players where id = '${B}') = 0 and (select pack_balance from players where id = '${A}') = 3
     and not exists (select 1 from pack_ledger where player_id in ('${A}', '${B}')));
   g := gift_packs('${A}', '${B}', 3);
+  res := res || jsonb_build_object('case', 'a sent gift writes one ''${LEDGER.giftSent}'' row on the sender (the gift1 achievement counts it)', 'ok',
+    (select count(*) from pack_ledger where player_id = '${A}' and reason = '${LEDGER.giftSent}') = 1);
   -- The gift waits in B's bell until Redeem (gift_claims.sql, 2026-10-01).
   perform claim_gift('${B}', (select id from gift_claims where player_id = '${B}' and claimed_at is null order by id desc limit 1));
   res := res || jsonb_build_object('case', 'a gift the sender can pay (3) moves 3 (redeemed in the bell)', 'ok',
