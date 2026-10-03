@@ -28,7 +28,7 @@ import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, 
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
 import { initTutorial } from './ui-v2-tutorial.js';
-import { initExplain } from './ui-v2-explain.js';
+import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
 import { initMobile, isPhone } from './mobile.js';
@@ -550,7 +550,7 @@ function bossFeedRow(e) {
   if (e.outcome === 'miss') {
     playerRow = `<div class="afrow ${esc(e.rarity)}">${who} <span class="amiss">missed</span>.</div>`;
   } else {
-    const tags = `${e.bonus ? ' <span class="ax2">×2 weak</span>' : ''}${e.crit ? ' <span class="atag">💥 CRIT</span>' : ''}`;
+    const tags = `${e.bonus ? ' <span class="ax2">×1.5 weak</span>' : ''}${e.crit ? ' <span class="atag">💥 CRIT</span>' : ''}`;
     playerRow = `<div class="afrow ${esc(e.rarity)}">${who} hit for <b>${Number(e.damage).toLocaleString()}</b>${tags}</div>`;
   }
   const bossRow = e.countered
@@ -1344,6 +1344,7 @@ function paintHuntView(d) {
     live.attacks = (d && d.lastFeed) || [];
     renderFeedSidebar();
     startHuntTicker();
+    maybeExplain('hunt');
     return;
   }
   if (!d || !d.hunt) {
@@ -1392,6 +1393,7 @@ function paintHuntView(d) {
   mountBossFor(d.hunt); // spawn the live creature into the boss canvas (sidebar or arena)
   refreshHuntFeed();    // load the live attack feed
   startHuntTicker(); // count down to the Monday deadline + poll the feed
+  maybeExplain('hunt');
 }
 
 // Background refresh after an instant open: full repaint only if the boss/cooldown state
@@ -1461,7 +1463,7 @@ function restingHTML(d) {
         <span class="boss-name">${esc(h.name)}</span>
         <span class="boss-tier tier-${esc(String(h.tier || '').toLowerCase())}">${esc(h.tier || '')}</span>
         ${uiV2 ? '' : weakResistHTML(h)}
-        <span class="spacer"></span>
+        <span class="spacer"></span>${explainBtn('hunt')}
         <span class="closes rest-result">${won ? '🏆 Defeated' : '💀 Escaped'}</span>
       </div>
       ${uiV2 ? `<div class="arena-traits">${weakResistHTML(h)}</div>` : ''}
@@ -1679,7 +1681,7 @@ function selectPhaseV2(d) {
         <span class="grow"></span>
         <div class="seg" id="sqSort">${sorts}</div>
         <div class="v2-pager" id="huntPager"></div>
-        <button class="v2-icon" id="huntLbBtn" title="Standings">🏆</button>
+        <button class="v2-icon" id="huntLbBtn" title="Standings">🏆</button>${explainBtn('hunt')}
       </div>
       <div class="squad-grid" id="huntGrid"></div>
     </section>
@@ -1740,7 +1742,7 @@ function paintSquadPanel(cap) {
       const on = s.n >= SYN_MIN;
       return `<span class="syn-chip syn-${s.key}${on ? ' on' : ''}">${s.label} <b>${Math.min(s.n, SYN_MAX)}/${SYN_MAX}</b></span>`;
     }).join('');
-    const weak = st.weakHits ? `<span class="syn-chip weakhit">×2 weakness · ${st.weakHits}</span>` : '';
+    const weak = st.weakHits ? `<span class="syn-chip weakhit">×1.5 weakness · ${st.weakHits}</span>` : '';
     synEl.innerHTML = `${chips || '<span class="syn-none">Group cards by element, game, or trait for a synergy</span>'}${weak}`;
   }
   const tray = el('squadTray');
@@ -1754,7 +1756,7 @@ function paintSquadPanel(cap) {
         const look = eln ? ELEMENTS[eln] : null;
         html += `<div class="slot filled sq-row r-${c.rarity}" data-id="${c.id}"><span class="sq-i">${i + 1}</span>
           ${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="">` : '<i class="sq-noimg"></i>'}<span class="sq-name">${esc(c.name)}</span>
-          ${c.matches && !supp ? '<span class="sq-x2">×2</span>' : ''}${look ? `<span class="sq-el">${look.glyph}</span>` : ''}
+          ${c.matches && !supp ? '<span class="sq-x2">×1.5</span>' : ''}${look ? `<span class="sq-el">${look.glyph}</span>` : ''}
           <span class="sq-pow">${supp ? '🛡' : `⚡ ${c.power}`}</span><span class="slot-x">✕</span></div>`;
       } else {
         html += `<div class="slot empty sq-row${i === st.sel.length ? ' next' : ''}"><span class="sq-i">${i + 1}</span><span class="sq-plus">+</span><span class="sq-name">Empty</span></div>`;
@@ -1804,7 +1806,7 @@ function battlePhaseHTML(d) {
       <div class="arena-subrow">
         <span id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></span>
         <span class="fighters-now" id="fighterCount"></span>
-        <button class="hunt-lb" id="huntLbBtn">🏆<span class="lb-t"> Standings</span></button>
+        <button class="hunt-lb" id="huntLbBtn">🏆<span class="lb-t"> Standings</span></button>${explainBtn('hunt')}
       </div>
     </div>
     <div class="squad-grid hand" id="huntGrid"></div>
@@ -1839,7 +1841,7 @@ function huntTile(c, mode) {
   const elBadge = look ? `<span class="celem" title="${look.name}">${look.glyph}</span>` : '';
   const elStyle = look ? ` style="--el:${look.color};--el2:${look.color2}"` : '';
   return `<div class="${cls}${elem ? ` el-${elem}` : ''}" data-id="${c.id}" data-el="${elem || ''}" data-type="${esc(c.type || '')}" data-used="${usedIds.has(c.id) ? 1 : 0}" data-max="${max}"${elStyle} title="${ab ? esc(ab.name + ' — ' + (ab.desc || '')) : ''}">
-    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×2</span>' : ''}${shield}${overlay}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">🔍</button></div>
+    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×1.5</span>' : ''}${shield}${overlay}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">🔍</button></div>
     ${hpbar}
     <div class="cap">${isPhone() ? breakable(esc(c.name)) : esc(c.name)}${abLine}</div>
   </div>`;
@@ -2115,6 +2117,9 @@ function markCardEngaged(node) {
 }
 
 function wireHunt() {
+  // A portrait phone: the ? circle would wrap to its own row and push the boss down; the second
+  // line of the boss traits has room (every hunt paint calls wireHunt).
+  placeExplain(el('main'), '.hunt-arena .arena-traits');
   el('huntLbBtn')?.addEventListener('click', openHuntBoard);
   if (squad.phase === 'battle') { wireBattlePhase(); return; }
   wireSelectPhase();
@@ -3115,7 +3120,7 @@ function fillRaidInfo(c) {
   const cd = support && (c.cdReady || 0) > round ? c.cdReady - round : 0;
   const stat = (v, k, cls = '') => `<div class="vr-stat ${cls}"><b>${v}</b><span>${k}</span></div>`;
   box.innerHTML = `<div class="vr-head"><span class="vr-role ${support ? 'sup' : 'atk'}">${support ? '🛡 Support' : '⚔ Attacker'}</span>
-      ${c.matches && !support ? '<span class="vr-weak">×2 WEAKNESS</span>' : ''}${c.downed ? '<span class="vr-down">DOWNED</span>' : ''}</div>
+      ${c.matches && !support ? '<span class="vr-weak">×1.5 WEAKNESS</span>' : ''}${c.downed ? '<span class="vr-down">DOWNED</span>' : ''}</div>
     <div class="vr-stats">
       ${stat(support ? '—' : `⚡ ${c.power ?? 0}`, 'Power')}
       ${stat(max ? `${hp}/${max}` : '—', 'HP', max && hp / max < 0.35 ? 'low' : '')}

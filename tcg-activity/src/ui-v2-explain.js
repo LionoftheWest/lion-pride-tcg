@@ -26,9 +26,47 @@ export const SETS = {
     { img: 'auctions-minimum', title: 'The minimum', text: 'The seller asks for a number of cards of one rarity, named cards, or both. Rarer cards count too.' },
     { img: 'auctions-bid', title: 'Place a bid', text: 'Add 1 to 5 of your cards and tap Place bid. A Gold auction takes Full Art, Promo and Event cards. Your bid cards are held.' },
     { img: 'auctions-seller-bids', title: 'The seller picks', text: 'The seller can accept any bid at any time. Best marks the top bid.' },
-    { img: 'auctions-confirm', title: 'Confirm the trade', text: 'If the seller accepts your bid, you have 24 hours to confirm. If you decline, the auction goes on. All other bids come back.' },
+      { img: 'auctions-confirm', title: 'Confirm the trade', text: 'If the seller accepts your bid, you have 24 hours to confirm. If you decline, the auction goes on. All other bids come back.' },
+  ] },
+  trades: { name: 'Trades', slides: [
+    { img: 'trades-overview', title: 'Trades', text: 'Swap one of your cards for one of theirs. You can also gift a card or a pack.' },
+    { img: 'trades-pick-member', title: 'Pick a member', text: 'Tap a member, or type a name in Find. Members in voice show first.' },
+    { img: 'trades-pick-card', title: 'Pick your card', text: 'Tap the card you want to give. Cards that cannot be traded do not show here.' },
+    { img: 'trades-send-offer', title: 'Send the offer', text: 'They pick one of their cards of the same rarity. Your card is held until the trade ends.' },
+    { img: 'trades-pick-back', title: 'Answer an offer', text: 'When a member sends you an offer, tap Pick your card. Pick one of the same rarity and send it.' },
+    { img: 'trades-accept', title: 'Accept the swap', text: 'When they pick a card, tap Accept and the cards swap. Tap ✕ to stop a trade before then.' },
+    { img: 'trades-gift', title: 'Gift a card or pack', text: 'Tap Gift, then pick a card or 1 pack. Gold cards cannot be gifted. The gift waits in their bell.' },
+  ] },
+  pranks: { name: 'Boons & Pranks', slides: [
+    { img: 'pranks-overview', title: 'Boons & Pranks', text: 'Some cards have an effect that you play on a member. Boons help, pranks tease, and neutral cards protect.' },
+    { img: 'pranks-pick-member', title: 'Pick a member', text: 'Tap a member or find a name. You cannot play a card on yourself.' },
+    { img: 'pranks-pick-card', title: 'Pick a card', text: 'The card shows what it does and how long it lasts. ⏳ means it is not ready yet.' },
+    { img: 'pranks-play', title: 'Play it', text: 'Tap Play. You can play 10 cards a day, and 3 on the same member.' },
+    { img: 'pranks-on-target', title: 'Already on them', text: 'This row shows the effects on that member now. The same effect cannot be on them twice.' },
+    { img: 'pranks-shields', title: 'Protect a friend', text: 'Play a neutral card on a friend to block, bounce or delay their next prank. Cleanse removes all their pranks.' },
+    { img: 'pranks-on-you', title: 'On you', text: 'The effects on you show here with the time left. You get 5 pranks a day at most.' },
+  ] },
+  hunt: { name: 'Raid Boss', slides: [
+    { img: 'hunt-squad', title: 'Pick your squad', text: 'Pick up to 8 cards for today. Tap a card again to take it out.' },
+    { img: 'hunt-boss', title: 'Meet the boss', text: 'A new boss comes Thursday at 3 PM MT and leaves Monday at 5 PM MT. Tap it to see its weakness and moves.' },
+    { img: 'hunt-weakness', title: 'Hit its weakness', text: 'Cards that match its weakness hit 1.5 times harder and crit more often. 3 cards of one element hit 12% harder.' },
+    { img: 'hunt-lock', title: 'Lock in', text: 'Auto-pick finds strong cards. Lock in, then Enter battle. After your first attack, the squad stays for the day.' },
+    { img: 'hunt-attack', title: 'Attack', text: 'Tap a card to attack. The boss hits back. A card at 0 HP is down until midnight MT.' },
+    { img: 'hunt-hp', title: 'One boss for all', text: 'All members hit the same boss. It heals a little, so attack every day.' },
+    { img: 'hunt-prizes', title: 'Prizes', text: 'Deal damage to earn packs, if it falls or escapes. 1st 7, 2nd 5, 3rd 4, 4th to 10th 3, all others 1.' },
+  ] },
+  collection: { name: 'Collection', slides: [
+    { img: 'col-grid', title: 'Your cards', text: 'Every card in the set. A lock means you do not have it yet.' },
+    { img: 'col-filters', title: 'Filters', text: 'Show cards by owned, rarity, element, type or game.' },
+    { img: 'col-viewer', title: 'See it up close', text: 'Tap a card to open it. Drag the card to turn it in 3D.' },
+    { img: 'col-stats', title: 'Card stats', text: 'Power is the damage it deals in the Raid. HP is the damage it takes before it is down.' },
+    { img: 'col-ascend', title: 'Ascend', text: 'Spend spare copies to add a star, up to 5. You always keep 1 copy.' },
+    { img: 'col-points', title: 'Stat points', text: 'Each star gives 3 points to this card. Attack adds 5% power, Vitality 6% HP, Precision 3% crit.' },
+    { img: 'col-bosses', title: 'Raid Bosses', text: 'See every boss that the Raid can bring. Tap one to see it move.' },
   ] },
 };
+// Only in UI v2 (the old UI has no v2ctx).
+const v2 = () => document.body.classList.contains('ui-v2');
 
 let seen = new Set();
 let cur = null; // { key, i }
@@ -38,15 +76,23 @@ let swiped = 0; // the time of the last swipe: the click that ends it is not a t
 export function initExplain(saved) { seen = new Set(saved?.seen || []); }
 
 /** The "?" circle for a view's top row. */
-export const explainBtn = (key) => (SETS[key] ? `<button class="ex-q" data-explain="${key}" aria-label="How ${esc(SETS[key].name)} works" title="How it works">?</button>` : '');
+export const explainBtn = (key) => (SETS[key] && v2() ? `<button class="ex-q" data-explain="${key}" aria-label="How ${esc(SETS[key].name)} works" title="How it works">?</button>` : '');
 document.addEventListener('click', (e) => { const b = e.target.closest?.('[data-explain]'); if (b) openExplain(b.dataset.explain); });
 
 /** The first visit to a view opens its carousel once (never on top of the first-time walkthrough). */
 export function maybeExplain(key) {
-  if (!SETS[key] || seen.has(key) || cur || document.getElementById('tutLayer')) return;
+  if (!SETS[key] || !v2() || seen.has(key) || cur || document.getElementById('tutLayer')) return;
   seen.add(key);
   ctx().apiPost('/api/tutorial', { action: 'seen', set: key }).catch(() => {});
   openExplain(key);
+}
+
+/** A phone layout (body class `when`) with a full top row: the ? circle moves to the end of the
+ *  view's toolbar. */
+export function placeExplain(root, toolbar, when = 'm-port') {
+  if (!document.body.classList.contains(when)) return;
+  const q = root?.querySelector('.ex-q'); const bar = toolbar && root?.querySelector(toolbar);
+  if (q && bar) bar.appendChild(q);
 }
 
 export function openExplain(key, i = 0) {
