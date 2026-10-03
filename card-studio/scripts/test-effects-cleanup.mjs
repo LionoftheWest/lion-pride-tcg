@@ -42,7 +42,8 @@ begin
     if (r->>'double')::boolean then dbl := dbl + 100; end if;
   end loop;
   update subjects set ability = jsonb_set(ability, '{amount}', '1') where id = (select subject_id from cards where id = c);
-  for i in 1..14 loop
+  -- 30 tries (was 14): a miss, a crit or a block gives no double, so 10 of 14 failed 1 run in ~40 (2026-10-03).
+  for i in 1..30 loop
     insert into players (id, username) values ('tst_r1_' || i, 'tst'); insert into player_cards (player_id, card_id, quantity) values ('tst_r1_' || i, c, 1);
     r := hunt_attack('tst_r1_' || i, h, c); if (r->>'outcome') in ('hit') then d1 := d1 || (r->>'damage')::int; end if;
     if (r->>'double')::boolean then dbl := dbl + 1; end if;
@@ -58,6 +59,8 @@ begin
   update subjects set ability = jsonb_set(ability, '{amount}', '0') where id = (select subject_id from cards where id = c);
   ok := false;
   for i in 1..6 loop
+    -- A miss, then the boss hit back can down or stun the card (flaky runs, 2026-10-03): reset it each try.
+    update hunt_card_hp set hp_remaining = max_hp, downed = false, cd_until_round = 0 where hunt_id = h and player_id = 'tst_ra';
     r := hunt_attack('tst_ra', h, c);
     if (r->>'outcome') <> 'miss' or (r->>'error') is not null then exit; end if;
   end loop;

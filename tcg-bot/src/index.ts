@@ -35,7 +35,7 @@ client.on(Events.MessageCreate, onMessageCreate);
 // The reaction storm prank: the bot reacts to the target's next messages.
 client.on(Events.MessageCreate, (m) => { if (discordEffectsEnabled() && !m.author.bot && m.inGuild()) void onEffectMessage(m); });
 // A member joins voice: a waiting voice prank runs, an overdue unmute is lifted (at once).
-client.on(Events.VoiceStateUpdate, (before, after) => { if (discordEffectsEnabled() && !before.channelId && after.channelId) void effectsTick(client); });
+client.on(Events.VoiceStateUpdate, (before, after) => { if (discordEffectsEnabled() && !before.channelId && after.channelId) void effectsTick(client, true); });
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isAutocomplete()) {

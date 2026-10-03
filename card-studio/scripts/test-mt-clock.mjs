@@ -53,7 +53,12 @@ begin
   -- The hunt: a hit is stored on the MT date (the 8-cards-a-day limit uses it).
   insert into player_cards (player_id, card_id, quantity) values ('${P}', c1, 1);
   h := spawn_hunt(3);
-  r := hunt_attack('${P}', h, c1);
+  -- A miss stores no hit (8%): try until one lands, the card healed each time (flaky run, 2026-10-03).
+  for i in 1..6 loop
+    update hunt_card_hp set hp_remaining = max_hp, downed = false, cd_until_round = 0 where hunt_id = h and player_id = '${P}';
+    r := hunt_attack('${P}', h, c1);
+    exit when exists (select 1 from hunt_hits where player_id = '${P}');
+  end loop;
   res := res || jsonb_build_object('case', 'a hunt hit is stored on the MT date', 'ok',
     (select hit_date from hunt_hits where player_id = '${P}' limit 1) = mt, 'r', r - 'feed');
 
