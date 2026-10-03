@@ -8,7 +8,7 @@ import { startHuntNotifier } from './hunt-notify.js';
 import { startEffectNotifier } from './effect-notify.js';
 import { startAuctionPosts } from './auction-posts.js';
 import { startVoiceDailies } from './voice-dailies.js';
-import { startDiscordEffects, discordEffectsEnabled, onEffectMessage, tick as effectsTick } from './discord-effects.js';
+import { startDiscordEffects, discordEffectsEnabled, onEffectMessage, onEffectVoice, isVoiceJoin, tick as effectsTick } from './discord-effects.js';
 import type { Command } from './types.js';
 
 // GuildMessages lets the bot count activity. It does NOT read message text, so
@@ -31,11 +31,19 @@ client.once(Events.ClientReady, (ready) => {
   startVoiceDailies(ready); // the Dailies voice minutes (flag settings.dailies.enabled, in SQL)
 });
 
+// Log, do not crash: one failed Discord call must not stop the bot for everyone.
+client.on(Events.Error, (error) => console.error('Discord client error:', error));
+process.on('unhandledRejection', (reason) => console.error('Unhandled rejection:', reason));
+
 client.on(Events.MessageCreate, onMessageCreate);
-// The reaction storm prank: the bot reacts to the target's next messages.
+// The reaction storm prank: the bot reacts to the target's next messages. A heckle: one reply.
 client.on(Events.MessageCreate, (m) => { if (discordEffectsEnabled() && !m.author.bot && m.inGuild()) void onEffectMessage(m); });
-// A member joins voice: a waiting voice prank runs, an overdue unmute is lifted (at once).
-client.on(Events.VoiceStateUpdate, (before, after) => { if (discordEffectsEnabled() && !before.channelId && after.channelId) void effectsTick(client, true); });
+// A member joins voice: a fanfare / squeaky posts, a waiting voice prank runs, an overdue unmute is lifted (at once).
+client.on(Events.VoiceStateUpdate, (before, after) => {
+  if (!discordEffectsEnabled() || !isVoiceJoin(before, after)) return;
+  void onEffectVoice(client, before, after);
+  void effectsTick(client, true);
+});
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isAutocomplete()) {
@@ -81,10 +89,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       content: 'Something went wrong running that command.',
       flags: MessageFlags.Ephemeral,
     } as const;
+    // A second failure (expired token, deleted channel) must not become an unhandled rejection.
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(body);
+      await interaction.followUp(body).catch(() => {});
     } else {
-      await interaction.reply(body);
+      await interaction.reply(body).catch(() => {});
     }
   }
 });

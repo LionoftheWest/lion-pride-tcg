@@ -7,6 +7,7 @@
 import { v2ctx, toast, paintCards } from './ui-v2.js';
 import { thumb } from './thumb.js';
 import { isPort, isLand } from './mobile.js';
+import { every } from './poll.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -69,7 +70,7 @@ export function initShop(on) {
   paintTop();
   if (!shop.on) return;
   load();
-  setInterval(() => { if (!document.hidden) load(); }, 60000);
+  every(60000, load); // paused while hidden, slower when idle (poll.js)
 }
 
 // ---- The view ---------------------------------------------------------------------------------

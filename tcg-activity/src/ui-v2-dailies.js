@@ -5,7 +5,8 @@
 
 import { v2ctx, toast } from './ui-v2.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
-import { every } from './poll.js';
+import { every, isIdle } from './poll.js';
+import { payNow } from './dailies-pay.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -32,6 +33,8 @@ const ready = (v) => (v?.enabled && !v.paused && ((v.earned || 0) < (v.cap || 7)
 const capped = () => (view?.earned || 0) >= (view?.cap || 7);
 // The Shards of a daily: a lime chip next to the pack chip.
 const shc = (cls = '') => (view?.shards ? `<span class="dl-sh ${cls}">${COIN}+${view.shards}</span>` : '');
+// The packs a daily pays now: never past the cap (a streak day with 1 left pays +1, not +2).
+const pay = (t) => payNow(t.reward, view?.cap || 7, view?.earned || 0);
 const readyPacks = (v) => Math.min(ready(v).reduce((n, t) => n + (t.reward || 0), 0), Math.max(0, (v?.cap || 0) - (v?.earned || 0)));
 
 function paintBadge() {
@@ -85,7 +88,7 @@ function row(t, paused) {
   if (t.task === 'checkin') {
     const day = t.claimed ? t.streak : t.streak + 1;
     title += ` <span class="dl-day">DAY ${day}</span>`;
-    sub = `${flames(t)}${t.reward > 1 ? '<span class="dl-bonus">+1 bonus</span>' : ''}`;
+    sub = `${flames(t)}${(t.claimed ? t.reward : pay(t)) > 1 ? '<span class="dl-bonus">+1 bonus</span>' : ''}`;
   } else if (t.task === 'hunt' && !t.live && !t.have) {
     sub = '<span class="dl-dim">No boss</span>';
   } else if (t.task === 'social' || t.task === 'hunt') { // one fight or one trade: no count
@@ -97,8 +100,8 @@ function row(t, paused) {
     if (t.packs) title += ` ${chip(t.packs, 'ok sm')}`;
     right = `<span class="dl-auto">${t.packs < t.max ? chip(1) : chip(t.packs, 'ok')}${shc()}<small>AUTO</small></span>`;
   } else if (t.claimed) right = `<span class="dl-r">${chip(t.reward, 'ok')}${shc('ok')}</span>`;
-  else if (go) right = claimBtn(t.task, t.reward, false);
-  else right = `<span class="dl-r">${chip(t.reward)}${shc()}</span>`;
+  else if (go) right = claimBtn(t.task, pay(t), false);
+  else right = `<span class="dl-r">${chip(pay(t))}${shc()}</span>`;
   return `<div class="dl-row k-${esc(t.task)}${go ? ' go' : ''}${t.claimed ? ' claimed' : ''}"><span class="dl-ico">${ICON[t.task] || ''}</span>
     <div class="dl-t"><b>${title}</b>${sub ? `<span class="dl-sub">${sub}</span>` : ''}</div>${right}</div>`;
 }
@@ -151,7 +154,7 @@ export async function openDailiesV2() {
   await refreshDailies();
   paint();
   clearInterval(tickTimer);
-  tickTimer = setInterval(refreshDailies, 10000); // while open: new chat, voice minutes, and the countdown within 10 s
+  tickTimer = setInterval(() => { if (!document.hidden && !isIdle()) refreshDailies(); }, 10000); // while open and in use: new chat, voice minutes, and the countdown within 10 s
   setTimeout(() => document.addEventListener('pointerdown', outside, { capture: true }), 0);
 }
 function outside(e) {

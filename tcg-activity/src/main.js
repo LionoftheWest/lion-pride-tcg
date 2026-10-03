@@ -373,10 +373,13 @@ function startV2() {
       if (p?.then) p.then((r) => mlog('unlock-ok', { r: r ?? null }), (e) => mlog('unlock-err', { e: String(e?.message || e) })); else mlog('unlock-none', {});
     } catch (e) { mlog('unlock-throw', { e: String(e?.message || e) }); }
     try { sdkRef?.subscribe?.('ORIENTATION_UPDATE', (d) => mlog('orientation', { o: d?.screen_orientation })); } catch (e) { mlog('sub-throw', { e: String(e?.message || e) }); }
-    addEventListener('resize', () => mlog('resize', {}));
+    // One log per 2 s at most (the last size): /api/mobile-log shares the rate limit with the game
+    // actions, so dragging a window made the next pack open or attack answer 429.
+    let resizeT = null;
+    addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => mlog('resize', {}), 2000); });
   }
   initV2({
-    api, apiPost, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
+    api, apiPost, apiData, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
     playOnMember, effectsEnabled, trade2: () => trade2, hallOn: () => hall, openTrade: (to) => (uiV2 ? openTradeWith(to) : openTradeBuilder(to)),
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
@@ -398,7 +401,7 @@ function startV2() {
     if (packsAvailable >= 5) openChooser(openDeps(), packsAvailable, (n) => openPacks(n));
     else openPacks(1);
   });
-  api('/api/catalog').then((d) => {
+  apiData('/api/catalog').then((d) => {
     cache.catalog = d;
     const seasons = [...new Set((d.cards || []).map((c) => c.season || 'Season 1'))];
     el('v2Season').textContent = seasons[seasons.length - 1] || 'Season 1';
@@ -428,7 +431,7 @@ const VIEW_STATUS = { home: 'home', collection: 'collection', gallery: 'collecti
 // collection cache. Refreshed whenever the collection can have changed.
 async function refreshOwned() {
   try {
-    const d = await api('/api/collection');
+    const d = await apiData('/api/collection');
     cache.collection = d;
     myCardIds = new Set((d.cards || []).map((c) => c.id));
   } catch { /* keep the previous set */ }
@@ -464,6 +467,14 @@ function updateOpenButton() {
 }
 
 const api = (path) => fetch(path, { headers: { authorization: `Bearer ${token}` } }).then((r) => r.json());
+// For the data the app keeps in `cache`: an error answer (a 401, a 429, a 500) throws, so it is never
+// kept as the data (a cached {error} showed every card locked for the session). api() still returns
+// an error body as data, because many callers read r.error.
+const apiData = (path) => fetch(path, { headers: { authorization: `Bearer ${token}` } }).then(async (r) => {
+  const d = await r.json().catch(() => null);
+  if (!r.ok || !d || d.error) throw new Error(d?.error || `HTTP ${r.status}`);
+  return d;
+});
 const apiPost = (path, body) =>
   fetch(path, {
     method: 'POST',
@@ -493,12 +504,26 @@ let pullsStream = null;
 let roomWs = null;
 
 function connectStreams() {
-  try {
-    pullsStream = new EventSource(`/api/pulls/stream?token=${encodeURIComponent(token)}`);
-    pullsStream.onmessage = (ev) => {
-      try { const d = JSON.parse(ev.data); if (d.pulls) setPulls(d.pulls); } catch { /* bad frame */ }
-    };
-  } catch { /* no EventSource; poll below */ }
+  // A closed stream (a 401, the server restarted with a non-200) never reconnects by itself:
+  // drop it so the 15 s poll below runs, and open a new stream after a backoff (30 s, doubling to 5 min).
+  let sseBackoff = 30000;
+  const openPulls = () => {
+    try {
+      const es = new EventSource(`/api/pulls/stream?token=${encodeURIComponent(token)}`);
+      pullsStream = es;
+      es.onopen = () => { sseBackoff = 30000; };
+      es.onmessage = (ev) => {
+        try { const d = JSON.parse(ev.data); if (d.pulls) setPulls(d.pulls); } catch { /* bad frame */ }
+      };
+      es.onerror = () => {
+        if (es.readyState !== EventSource.CLOSED || pullsStream !== es) return; // CONNECTING: the browser retries
+        pullsStream = null;
+        setTimeout(openPulls, sseBackoff);
+        sseBackoff = Math.min(sseBackoff * 2, 300000);
+      };
+    } catch { pullsStream = null; /* no EventSource; poll below */ }
+  };
+  openPulls();
   setInterval(async () => {
     if (document.hidden || pullsStream) return;
     try { const d = await api('/api/pulls'); if (d.pulls) setPulls(d.pulls); } catch { /* retry */ }
@@ -596,8 +621,15 @@ async function show(view) {
   sendStatus(VIEW_STATUS[view]);
   if (DATA[view] && !cache[DATA[view].key]) {
     el('main').innerHTML = '<div class="loading">Loading…</div>';
-    cache[DATA[view].key] = await api(DATA[view].ep);
+    let d;
+    try { d = await apiData(DATA[view].ep); } catch { d = null; }
     if (currentView !== view) return;
+    if (!d) { // not cached: the Retry (or the next visit) asks again
+      el('main').innerHTML = '<div class="loading">Could not load this. <button class="v2-btn" id="viewRetry">Retry</button></div>';
+      el('viewRetry')?.addEventListener('click', () => show(view));
+      return;
+    }
+    cache[DATA[view].key] = d;
   }
   renderMain(view);
   renderFeedSidebar(); // the sidebar switches between the community feed and the boss feed
@@ -648,7 +680,6 @@ function stopMonsterIdle() { if (monsterIdle) { clearInterval(monsterIdle); mons
 // Build the seeded creature into the battle-screen canvas (WebGL). Fails silently
 // if the webview has no WebGL — the rest of the screen still works.
 function mountBossFor(hunt) {
-  if (window.__NO_BOSS__) return; // TEMP: skip the WebGL boss to test the card-render bug
   const cv = el('bossCanvas');
   if (!cv || !hunt) return;
   try {
@@ -1258,7 +1289,7 @@ async function openBoard() {
       <div class="board-list" id="boardList"><div class="loading">Loading…</div></div>
     </div>`;
   el('boardClose').addEventListener('click', closeBoard);
-  b.addEventListener('click', (e) => { if (e.target === b) closeBoard(); });
+  b.onclick = (e) => { if (e.target === b) closeBoard(); }; // #board stays in the page: one handler, not one more per open
   try {
     const d = await api('/api/leaderboard');
     const rows = (d.leaders || []).map((p, i) => {
@@ -2595,10 +2626,11 @@ async function huntAttack(cardId, node) {
   if (!r || !r.ok) {
     atk.cancel();
     if (r?.error === 'downed') markDowned(node);
-    else if (r?.error === 'hunt_over') renderHunt();
+    else if (r?.error === 'hunt_over' || r?.error === 'no active hunt') renderHunt(); // the RPC says hunt_over, server.js says 'no active hunt'
     else if (r?.error === 'day_limit') { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, `LIMIT ${r.cap || 8}`, '#ff8f5c'); }
     else if (r?.error === 'round_cap') { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, `ROUND LIMIT ${r.cap || 40}`, '#ff8f5c'); } // hunt_loop_caps.sql
     else if (r?.error === 'stunned') { const b = node.getBoundingClientRect(); node.classList.add('stunned'); calloutAt(b.left + 30, b.top, 'STUNNED', '#ffe23e'); }
+    else { const b = node.getBoundingClientRect(); calloutAt(b.left + 30, b.top, r?.error === 'slow down' ? 'SLOW DOWN' : 'TRY AGAIN', '#ff8f5c'); } // a network error, a 429, a 500: never a silent tap
     return;
   }
   if (wasNew) markCardEngaged(node); // first engage counts toward the daily squad tally
@@ -2784,7 +2816,7 @@ async function openHuntBoard() {
       <div class="board-list" id="boardList"><div class="loading">Loading…</div></div>
     </div>`;
   el('boardClose').addEventListener('click', closeBoard);
-  b.addEventListener('click', (e) => { if (e.target === b) closeBoard(); });
+  b.onclick = (e) => { if (e.target === b) closeBoard(); }; // #board stays in the page: one handler, not one more per open
   try {
     const d = await api('/api/hunt/leaderboard');
     const rows = (d.leaders || []).map((p, i) => {
@@ -2867,7 +2899,9 @@ function updateNotifBadge(n) {
   if (n > 0) { if (!b) { b = document.createElement('span'); b.className = 'navbadge'; btn.appendChild(b); } b.textContent = n; }
   else if (b) b.remove();
 }
-async function refreshNotifBadge() { try { const d = await api('/api/notifications'); updateNotifBadge(d.unread || 0); } catch { /* ignore */ } }
+// The poll asks only for the number (/api/notifications/count); the bell loads the full list when it opens.
+// An error answer keeps the badge as it is (it reset the badge to 0).
+async function refreshNotifBadge() { try { const d = await api('/api/notifications/count'); if (Number.isFinite(d?.unread)) updateNotifBadge(d.unread); } catch { /* ignore */ } }
 
 // ---- Trading ---------------------------------------------------------------
 async function renderTrading() {

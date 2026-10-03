@@ -5,6 +5,7 @@ import { launchActivityRow } from './ui/launch.js';
 import { art, buf } from './playing-posts.js';
 import { renderPlay } from './post-pictures.js';
 import { botWork } from './bot-work.js';
+import { outboxDone } from './outbox.js';
 
 // The play picture (Nathan, 2026-10-02): the sender, the card flying to the target, the effect and
 // the outcome. Flag: FEATURE_PLAY_PICTURES=1 (default OFF; a failed picture still posts the text).
@@ -86,14 +87,14 @@ async function drain(client: Client): Promise<void> {
     const supabase = getSupabase();
     const { data: rows, error } = await supabase
       .from('card_plays')
-      .select('id, player_id, target_id, aimed_at, kind, outcome, primitive, sender:players!card_plays_player_id_fkey(username), card:cards(name, rarity, image_url), subject:subjects(effect)')
+      .select('id, player_id, target_id, aimed_at, kind, outcome, primitive, created_at, sender:players!card_plays_player_id_fkey(username), card:cards(name, rarity, image_url), subject:subjects(effect)')
       .is('posted_at', null)
       .order('id', { ascending: true })
       .limit(BATCH);
     if (error) throw new Error(error.message);
     for (const r of (rows ?? []) as never[]) {
       const row = r as {
-        id: number; player_id: string; target_id: string; aimed_at: string; kind: string; outcome: string; primitive?: string | null;
+        id: number; player_id: string; target_id: string; aimed_at: string; kind: string; outcome: string; primitive?: string | null; created_at?: string | null;
         sender?: { username?: string } | null; card?: { name?: string; rarity?: string; image_url?: string | null } | null;
         subject?: { effect?: { name?: string; desc?: string } | null } | null;
       };
@@ -106,8 +107,8 @@ async function drain(client: Client): Promise<void> {
         const png = await playPicture(row, row.subject?.effect).catch((e) => { console.error('play picture:', e); return null; });
         if (png) post.files = [new AttachmentBuilder(png, { name: 'card-play.png' })];
       }
-      await announce(client, post, 'plays');
-      await supabase.from('card_plays').update({ posted_at: new Date().toISOString() }).eq('id', row.id);
+      const sent = await announce(client, post, 'plays');
+      if (outboxDone(sent, row.created_at)) await supabase.from('card_plays').update({ posted_at: new Date().toISOString() }).eq('id', row.id);
       await new Promise((res) => setTimeout(res, 1200)); // stay under the channel rate limit
     }
   } catch (error) {

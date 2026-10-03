@@ -720,11 +720,20 @@
       "target": "self"
     },
     "effect": {
-      "primitive": "swap_showcase",
-      "name": "PC Box Swap",
-      "desc": "The target's spotlight shows a random Normal card for a day.",
+      "primitive": "heckle",
+      "name": "Heckle",
+      "desc": "The bot replies once to their next chat message with a heckle.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 172800
+      },
+      "options": {
+        "lines": [
+          "🎤 A wild heckler appeared!",
+          "🎤 That message used Splash. Nothing happened.",
+          "🎤 It's not very effective...",
+          "🎤 Professor Oak says: there is a time and place for everything. Not now!",
+          "🎤 Your rival already said that, but better."
+        ]
       },
       "cooldown_h": 12
     }
@@ -3607,9 +3616,12 @@
       "duration": 2
     },
     "effect": {
-      "primitive": "cleanse",
-      "name": "Hide and Seek",
-      "desc": "Removes every prank from the target.",
+      "primitive": "squeaky",
+      "name": "Squeaky Entrance",
+      "desc": "When they next join voice, the bot announces they squeaked in.",
+      "base": {
+        "duration_s": 172800
+      },
       "cooldown_h": 12
     }
   },
@@ -3784,13 +3796,14 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "delay",
-      "name": "Still Digging",
-      "desc": "The next prank on the target lands 1 hour later.",
+      "primitive": "butterfingers",
+      "name": "Butterfingers",
+      "desc": "Their next raid attack slips and does 15% less damage.",
       "base": {
-        "duration_s": 86400
+        "amount": 15,
+        "duration_s": 172800
       },
-      "cooldown_h": 18
+      "cooldown_h": 12
     }
   },
   {
@@ -4114,11 +4127,11 @@
       "amount": 0.12
     },
     "effect": {
-      "primitive": "spotlight_role",
-      "name": "Peaches",
-      "desc": "Gives the target the ✨ Spotlight role for a day.",
+      "primitive": "fanfare",
+      "name": "Peaches Fanfare",
+      "desc": "When they next join voice, the bot plays their fanfare in the voice chat.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 172800
       },
       "cooldown_h": 24
     }
@@ -4592,13 +4605,14 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "spotlight",
-      "name": "24 Hour Legend",
-      "desc": "The target's name glows gold for a day.",
+      "primitive": "streak_shield",
+      "name": "Stream Saver",
+      "desc": "Keeps their check-in streak alive if they miss one day (within 14 days).",
       "base": {
-        "duration_s": 86400
+        "duration_s": 1209600,
+        "amount": 1
       },
-      "cooldown_h": 24
+      "cooldown_h": 72
     }
   },
   {

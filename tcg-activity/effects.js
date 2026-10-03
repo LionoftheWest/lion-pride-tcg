@@ -53,31 +53,48 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     const { data: p } = await supabase.from('effect_primitives').select('channel').eq('primitive', prim).maybeSingle();
     return p?.channel === 'discord' || p?.channel === 'voice';
   }
+  // The tier table, the caps, the immune list and the primitives are the same for every member:
+  // read once a minute, not 4 queries in every member's 30 s poll. A failed read is not kept.
+  let staticCache = null; // { at, p }
+  const staticReads = () => {
+    if (staticCache && Date.now() - staticCache.at < 60000) return staticCache.p;
+    const entry = { at: Date.now(), p: null };
+    entry.p = Promise.all([
+      supabase.from('settings').select('key, value').in('key', ['card_effect_tiers', 'card_effect_ascension', 'card_effect_cooldown_scale']),
+      supabase.from('effect_primitives').select('primitive, kind, channel, max_amount, max_duration_s, enabled'),
+      supabase.from('settings').select('value').eq('key', 'card_effect_caps').maybeSingle(),
+      supabase.from('settings').select('value').eq('key', 'discord_immune').maybeSingle(),
+    ]).then((r) => { if (r.some((x) => x.error) && staticCache === entry) staticCache = null; return r; },
+      (e) => { if (staticCache === entry) staticCache = null; throw e; });
+    staticCache = entry;
+    return entry.p;
+  };
 
   // My state: cooldowns, active effects, unseen plays on me, and the tier table.
   app.get('/api/effects/me', async (req, res) => {
     const me = await caller(req);
     if (!me) return res.status(401).json({ error: 'not authenticated' });
     if (!effectsEnabledFor(me.id)) return res.json({ enabled: false });
-    const now = new Date().toISOString();
     // The MT day play_card_effect() counts the daily limit in (launch_event_cards.sql). Midnight UTC
     // made Plays today drop to 0 at 6 PM MT (2026-10-02).
     const dayStart = mtDayStartISO();
-    const [cds, act, inc, tiers, prims, sent, caps, mine, pranks, immune] = await Promise.all([
+    // Arm on open (effects_outside.sql): a screen prank that waits for me (googly eyes, upside down,
+    // rubber chicken, fog) starts now that I have the game open, so it is in the read below. An error
+    // (for example, the function not there yet) must not break my state: the read still runs.
+    await supabase.rpc('arm_player_effects', { p_player: String(me.id) }).then(() => {}, () => {});
+    const now = new Date().toISOString(); // after the arm: a prank that starts now is in the read
+    const [cds, act, inc, [tiers, prims, caps, immune], sent, mine, pranks] = await Promise.all([
       supabase.from('card_effect_cooldowns').select('subject_id, ready_at').eq('player_id', me.id).gt('ready_at', now),
       supabase.from('player_effects').select('id, primitive, amount, duration_s, options, expires_at')
         .eq('player_id', me.id).is('consumed_at', null).lte('starts_at', now).or(`expires_at.is.null,expires_at.gt.${now}`),
       supabase.from('card_plays').select('id, player_id, card_id, primitive, kind, outcome, rarity, amount, duration_s, created_at, sender:players!card_plays_player_id_fkey(username)')
         .eq('target_id', me.id).is('seen_at', null).order('id', { ascending: false }).limit(10),
-      supabase.from('settings').select('key, value').in('key', ['card_effect_tiers', 'card_effect_ascension', 'card_effect_cooldown_scale']),
-      supabase.from('effect_primitives').select('primitive, kind, channel, max_amount, max_duration_s, enabled'),
+      staticReads(),
       supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('player_id', me.id).gte('created_at', dayStart),
-      supabase.from('settings').select('value').eq('key', 'card_effect_caps').maybeSingle(),
       // The limits made visible (Nathan, 2026-10-03): my plays on each member today (pair_per_day
       // counts aimed_at), the pranks each member got today (prank_recv_per_day), the immune members.
       selectAll(() => supabase.from('card_plays').select('id, aimed_at').eq('player_id', me.id).gte('created_at', dayStart), ['id']),
       selectAll(() => supabase.from('card_plays').select('id, target_id').eq('kind', 'prank').gte('created_at', dayStart), ['id']),
-      supabase.from('settings').select('value').eq('key', 'discord_immune').maybeSingle(),
     ]);
     const err = cds.error || act.error || inc.error || prims.error;
     if (err) return res.status(500).json({ error: err.message });

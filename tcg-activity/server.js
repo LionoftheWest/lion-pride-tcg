@@ -20,6 +20,8 @@ import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { REPORTS_ON, registerReportRoutes } from './reports.js';
 import { createImgCache, normalizeImgUrl } from './img-cache.js';
+import { clientIp, createLimiter, createWhoAmI } from './guards.js';
+import { collectionPower, setTotals } from './collection-power.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
 import { bestSquad } from './src/squad-pick.js';
@@ -192,6 +194,9 @@ app.use('/api', async (req, res, next) => {
 // IMG_CACHE=1 keeps each object on disk (img-cache.js), so it leaves Supabase once.
 const imgCache = process.env.IMG_CACHE === '1'
   ? createImgCache({ dir: process.env.IMG_CACHE_DIR || '/tmp/img-cache' }) : null;
+// Members inside Discord share its proxy IPs, and a new member's first gallery view is a few
+// hundred misses: so a large burst (above the ~350 cards), then 2 a second.
+const imgMissLimit = createLimiter({ burst: 600, perSec: 2 });
 if (imgCache) {
   let last = 0;
   setInterval(() => {
@@ -206,9 +211,14 @@ app.get(/^\/api\/img\/(.+)/, async (req, res) => {
   const path = decodeURIComponent(req.params[0] || '');
   const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
   if (!path.startsWith('storage/v1/object/public/card-art/') || /\.\.|\\|\/\/|%/.test(path)) return res.status(400).end(); // no traversal, no double-encoding
+  // Only a short plain ?v (img-cache.js): every new v is a new Supabase fetch and disk copy.
+  const url = normalizeImgUrl(SUPA_HOST, path, query);
+  if (!url) return res.status(400).end();
   if (imgCache) {
     try {
-      const r = await imgCache.get(normalizeImgUrl(SUPA_HOST, path, query));
+      // A miss costs Supabase egress, so misses are limited per IP (v=1,2,3... each miss).
+      const r = await imgCache.get(url, { allowMiss: () => imgMissLimit.take(clientIp(req)) });
+      if (r.status === 429) res.setHeader('Retry-After', '5');
       if (r.status !== 200) return res.status(r.status).end();
       res.setHeader('Content-Type', r.type);
       res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
@@ -216,7 +226,7 @@ app.get(/^\/api\/img\/(.+)/, async (req, res) => {
     } catch { return res.status(502).end(); }
   }
   try {
-    const r = await fetch(`${SUPA_HOST}/${path}${query}`);
+    const r = await fetch(url);
     if (!r.ok || !r.body) return res.status(r.ok ? 502 : r.status).end();
     res.setHeader('Content-Type', r.headers.get('content-type') || 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
@@ -280,6 +290,10 @@ app.use(express.static(PUBLIC, {
     const base = path.split(/[\\/]/).pop();
     if (/^(main|chunk)\..*\.js$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     else if (/\.woff2$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=2592000');
+    // Sounds and pictures: 1 day, not a week. Their names are not hashed and a file can change
+    // in place (the explain/ captures), so a change shows within a day. no-store reloaded each
+    // one on every use.
+    else if (/\.(mp3|png|webp|jpe?g|svg)$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=86400');
     else res.setHeader('Cache-Control', 'no-store');
   },
 }));
@@ -447,31 +461,13 @@ app.post('/api/token', async (req, res) => {
 // added Discord latency to every call AND, at scale, would 429 the shared app
 // token (the hard breakpoint). The token is still the credential Discord minted,
 // so caching its resolution is safe; a revoked token simply lingers <= 5 min.
-const USER_TTL_MS = 5 * 60 * 1000;
-const userCache = new Map(); // token -> { user, exp }
+// A token Discord rejects is cached as bad for 60 s, and the failed calls are limited per
+// IP and in total (guards.js): a flood of bad tokens could get the VM IP, which the bot
+// shares, banned by Discord.
 // Load-test only: a flag-gated synthetic identity so a harness can drive hundreds
 // of virtual users WITHOUT calling Discord. OFF in prod (LOADTEST unset).
 const LOADTEST = process.env.LOADTEST === '1';
-
-async function whoAmI(token) {
-  if (!token) return null;
-  const now = Date.now();
-  const hit = userCache.get(token);
-  if (hit && hit.exp > now) return hit.user;
-  if (LOADTEST && token.startsWith('lt:')) {
-    const id = token.slice(3);
-    const user = { id, username: `lt_${id}`, global_name: null };
-    userCache.set(token, { user, exp: now + USER_TTL_MS });
-    return user;
-  }
-  const r = await fetch('https://discord.com/api/users/@me', { headers: { authorization: `Bearer ${token}` } });
-  const user = r.ok ? await r.json() : null;
-  if (user) {
-    userCache.set(token, { user, exp: now + USER_TTL_MS });
-    if (userCache.size > 5000) for (const [k, v] of userCache) if (v.exp <= now) userCache.delete(k);
-  }
-  return user;
-}
+const whoAmI = createWhoAmI({ loadtest: LOADTEST }); // whoAmI(token, ip)
 
 // Per-user collection cache. A user's collection changes only when they open,
 // receive, or trade a card — all of which bust their entry (see bustUser). So a
@@ -495,7 +491,7 @@ const EFFECT_COLS = EFFECTS_SCHEMA ? ', id, effect' : '';
 // Step 2: the caller's own collection.
 app.get('/api/collection', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const me = await whoAmI(token);
+  const me = await whoAmI(token, clientIp(req));
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const cached = collCache.get(me.id);
   if (cached && Date.now() - cached.at < COLL_TTL) return res.json(cached.payload);
@@ -692,7 +688,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
       for (const r of trades.data || []) { row(r.from_id).trades += 1; row(r.to_id).trades += 1; }
       const names = new Map((players.data || []).map((p) => [String(p.id), p]));
       const byId = new Map(catalog.map((c) => [c.id, c]));
-      const cp = new Map(catalog.map((c) => [c.id, c]));
+      const totals = setTotals(catalog);
       const rows = [];
       for (const [id, x] of byPlayer) {
         if (!x.cards.length && !x.hits.length) continue;
@@ -706,7 +702,8 @@ app.get('/api/leaderboard/v2', async (req, res) => {
           bestHit: x.hits.reduce((m, h) => Math.max(m, h.damage || 0), 0),
           boonsPlayed: x.boons, pranksPlayed: x.pranks, tradesDone: x.trades,
         };
-        const power = x.cards.reduce((t, r) => t + cardPower(cp.get(r.card_id)?.rarity, r.ascension, byId.get(r.card_id)?.cp_mod), 0);
+        // The same number as my_collection_power (the profile), from the rows already loaded.
+        const power = collectionPower(x.cards, byId, totals, cardPower);
         rows.push({
           id, name: names.get(String(id))?.username || 'Someone', hasAvatar: !!names.get(String(id))?.avatar,
           title: names.get(String(id))?.title || null, frame: names.get(String(id))?.frame || null,
@@ -714,11 +711,6 @@ app.get('/api/leaderboard/v2', async (req, res) => {
           achievements: measureAchievements(merged, stats).filter((a) => a.done).length,
         });
       }
-      // The authoritative power (with the set-completion bonus), the same number as the profile.
-      await Promise.all(rows.map(async (r) => {
-        const { data } = await supabase.rpc('my_collection_power', { p_player_id: r.id });
-        if (data != null) r.power = Number(data);
-      }));
       boardV2Cache = { at: Date.now(), rows, totalCards: catalog.length };
   });
   if (!boardV2Cache) {
@@ -1216,7 +1208,7 @@ async function getCatalogBase() {
     // Every card (selectAll: a plain read stops at 1,000 rows).
     const { data, error } = await selectAll(() => supabase
       .from('cards')
-      .select(`id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS})`), ['id']);
+      .select(`id, sid:subject_id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS})`), ['id']);
     if (error) { if (catalogCache) return catalogCache.cards; throw new Error(error.message); }
     const cards = (data || []).map((c) => ({
       id: c.id,
@@ -1229,6 +1221,7 @@ async function getCatalogBase() {
       lore: c.lore,
       power: cardPower(c.rarity, 0, c.subject?.cp_mod), // the base (unascended) power
       cp_mod: c.subject?.cp_mod ?? 1,
+      sid: c.sid ?? null, // the set, for the board's set-completion bonus (subject_id below is effects-only)
       subject: c.subject?.name,
       type: c.subject?.type || null,
       tags: c.subject?.tags || null,
@@ -1246,7 +1239,7 @@ async function getCatalogBase() {
 // already owns (owned vs still-needed).
 app.get('/api/catalog', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const me = await whoAmI(token);
+  const me = await whoAmI(token, clientIp(req));
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   let base;
   try { base = await getCatalogBase(); } catch (e) { return res.status(500).json({ error: e.message }); }
@@ -1308,7 +1301,7 @@ async function queryPulls() {
 
 app.get('/api/pulls', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const me = await whoAmI(token);
+  const me = await whoAmI(token, clientIp(req));
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const pulls = await queryPulls();
   if (!pulls) return res.status(500).json({ error: 'pulls query failed' });
@@ -1323,7 +1316,7 @@ const streamClients = new Set();
 let lastTop = null; // newest pull timestamp last broadcast
 
 app.get('/api/pulls/stream', async (req, res) => {
-  const me = await whoAmI(String(req.query.token || ''));
+  const me = await whoAmI(String(req.query.token || ''), clientIp(req));
   if (!me) return res.status(401).end();
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -1441,7 +1434,7 @@ setInterval(() => {
 // If the caller passes an instanceId, we also broadcast the reveal to their room.
 app.post('/api/open', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const me = await whoAmI(token);
+  const me = await whoAmI(token, clientIp(req));
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   if (!INTERNAL_TOKEN) return res.status(503).json({ error: 'opening is not configured' });
@@ -1482,7 +1475,7 @@ app.post('/api/open', async (req, res) => {
 // there is something to open. Read-only relay to the bot.
 app.get('/api/pack-status', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const me = await whoAmI(token);
+  const me = await whoAmI(token, clientIp(req));
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!INTERNAL_TOKEN) return res.json({ packs: 0 });
   // Cache the balance 8s (busted on open/gift/trade). A pack earned in Discord
@@ -1510,14 +1503,15 @@ app.get('/api/pack-status', async (req, res) => {
 let playersCache = null; // { at, data } — unfiltered directory only
 app.get('/api/players', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const me = await whoAmI(token);
+  const me = await whoAmI(token, clientIp(req));
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const q = String(req.query.q || '').trim();
   // The unfiltered directory is the same for everyone (minus self) — cache it 30s.
   if (!q) {
     const now = Date.now();
     if (!playersCache || now - playersCache.at >= 30000) {
-      const { data, error } = await supabase.from('players').select('id, username, pack_balance').order('username').limit(12);
+      // No pack_balance: the client never reads it, and it told every member everyone's balance.
+      const { data, error } = await supabase.from('players').select('id, username').order('username').limit(12);
       if (error) return res.status(500).json({ error: error.message });
       playersCache = { at: now, data: data || [] };
     }
@@ -1526,7 +1520,7 @@ app.get('/api/players', async (req, res) => {
   // Escape LIKE metacharacters so a caller cannot widen the match (a bare % would
   // match every player). PostgreSQL LIKE uses backslash as the default escape.
   const safeQ = q.replace(/[\\%_]/g, '\\$&');
-  const { data, error } = await supabase.from('players').select('id, username, pack_balance').order('username').limit(200).ilike('username', `%${safeQ}%`).not('id', 'like', 'tst\\_%');
+  const { data, error } = await supabase.from('players').select('id, username').order('username').limit(200).ilike('username', `%${safeQ}%`).not('id', 'like', 'tst\\_%');
   if (error) return res.status(500).json({ error: error.message });
   // The best matches first (Nathan, 2026-10-02: suggest names as people type): A-Z put
   // "Bananas" before "Anna" for "an".
@@ -1537,7 +1531,7 @@ app.get('/api/players', async (req, res) => {
 // which owns the economy). The sender is always the verified caller.
 app.post('/api/gift', async (req, res) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const me = await whoAmI(token);
+  const me = await whoAmI(token, clientIp(req));
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   if (!INTERNAL_TOKEN) return res.status(503).json({ error: 'gifting is not configured' });
@@ -1553,6 +1547,7 @@ app.post('/api/gift', async (req, res) => {
     });
     const data = await r.json();
     if (data?.ok) {
+      bustUser(me.id); // the sender's cached pack balance (pack-status) is now lower
       const from = me.global_name || me.username;
       // The gift itself waits in their bell with a Redeem button (gift_claims.sql): no extra note.
       announce(`🎁 <@${toId}> — **${from}** gifted you ${amount} pack${amount === 1 ? '' : 's'}!`);
@@ -1565,7 +1560,7 @@ app.post('/api/gift', async (req, res) => {
 
 // Verify the caller from the Bearer token; returns the Discord user or null.
 async function caller(req) {
-  return whoAmI((req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
+  return whoAmI((req.headers.authorization || '').replace(/^Bearer\s+/i, ''), clientIp(req));
 }
 registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg });
 registerReportRoutes(app, { supabase, caller, rateLimit });
@@ -1757,6 +1752,19 @@ app.get('/api/notifications', async (req, res) => {
   res.json({ items, gifts: gifts || [], unread: items.filter((n) => !n.read).length + (gifts || []).length });
 });
 
+// Only the red number of the bell, for the 45 s poll: the same count as /api/notifications
+// (the unread among the newest 30, plus the unredeemed gifts up to 20) with no joins and no text.
+app.get('/api/notifications/count', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const [n, g] = await Promise.all([
+    supabase.from('notifications').select('read').eq('player_id', me.id).order('created_at', { ascending: false }).limit(30),
+    supabase.from('gift_claims').select('id', { count: 'exact', head: true }).eq('player_id', me.id).is('claimed_at', null),
+  ]);
+  if (n.error) return res.status(500).json({ error: n.error.message });
+  res.json({ unread: (n.data || []).filter((x) => !x.read).length + Math.min(g.count || 0, 20) });
+});
+
 // Redeem a gift: its packs go to the OPEN balance (claim_gift: once, only the owner).
 app.post('/api/gifts/claim', async (req, res) => {
   const me = await caller(req);
@@ -1801,7 +1809,7 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 wss.on('connection', async (ws, req) => {
   const params = new URL(req.url, 'http://localhost').searchParams;
-  const me = await whoAmI(params.get('token') || '');
+  const me = await whoAmI(params.get('token') || '', clientIp(req));
   const instanceId = params.get('instanceId') || '';
   if (!me || !instanceId) { ws.close(); return; }
 
