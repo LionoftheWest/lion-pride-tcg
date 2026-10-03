@@ -39,6 +39,14 @@ const I = {
   chest: svg('<rect x="3" y="9" width="18" height="11" rx="2"/><path d="M3 13h18M5 9a7 4 0 0 1 14 0M11 13v3h2v-3"/>'),
   fire: svg('<path d="M12 22a7 7 0 0 0 7-7c0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8a7 7 0 0 0 7 7z"/>'),
   left: svg('<path d="m15 18-6-6 6-6"/>'), right: svg('<path d="m9 18 6-6-6-6"/>'),
+  q: svg('<path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>', 2.6),
+  horde: svg('<circle cx="7" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><circle cx="12" cy="15" r="3"/>'),
+  crown: svg('<path d="m3 8 4 4 5-7 5 7 4-4-2 11H5z"/>'),
+  split: svg('<path d="M12 21v-7M12 14 6 8M12 14l6-6M4 4h4v4M16 4h4v4"/>'),
+  lock: svg('<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
+  ward: svg('<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>'),
+  reset: svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'),
+  drop: svg('<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/>'),
 };
 const ATTACKER = new Set(['Character', 'Creature']);
 const RCOL = { normal: '#9AA3B5', illustrated_rare: '#4DA3FF', secret_rare: '#B07CFF', full_art: '#FF5FA2', gold: '#F4B73C', event: '#3DD68C', promo: '#FF8A3D' };
@@ -48,7 +56,10 @@ const EFFECT = {
   expose: (a) => `Monster takes +${Math.round((a.amount || 0) * 100)}%`, smite: (a) => `${fmt(a.amount)} damage`, stun: () => 'The monster skips a turn',
   cleanse: () => 'Remove the curses',
 };
-const ACT = { strike: 'Strike', slam: 'Slam', drain: 'Drain', stun: 'Stun', enrage: 'Enrage', curse: 'Curse', regenerate: 'Regenerate', charging: 'Charging', cataclysm: 'Cataclysm', stunned: 'Stunned' };
+const ACT = { strike: 'Strike', heavy: 'Heavy hit', flurry: 'Flurry', slam: 'Slam', drain: 'Drain', stun: 'Stun', poison: 'Poison', guard: 'Guard', enrage: 'Enrage', curse: 'Curse', regenerate: 'Regenerate', charging: 'Charging', cataclysm: 'Cataclysm', stunned: 'Stunned' };
+// v2 (Nathan items 7, 12, 14, 15): the reward tiers, the room types, the loot at risk.
+const TIER = [null, ['Common', '#9AA3B5'], ['Uncommon', '#3DD68C'], ['Rare', '#4DA3FF'], ['Ultra', '#B07CFF'], ['Legend', '#F4B73C']];
+const ROOM = { fight: 'Fight', horde: 'Horde', elite: 'Elite', miniboss: 'Mini-Boss', guardian: 'Guardian', treasure: 'Treasure', rest: 'Rest', choice: 'Choice', unknown: 'Unknown room' };
 
 export const dg = { on: false, data: null, pane: '', sel: [], filter: 'allowed', sort: 'power', page: 0, view: 'main', target: 0, support: null, busy: false, log: [], stage: null, roomKey: '' };
 let tick = null;
@@ -158,6 +169,7 @@ function paint() {
   else if (!d.gate?.ok) body = gateHTML(d.gate || {}, 'the Dungeon');
   else if (dg.view === 'board') body = boardHTML();
   else if (fight) body = fightHTML();
+  else if (active() && d.run.state?.phase === 'floor_done') body = floorDoneHTML();
   else if (active()) body = chooseHTML();
   else if (run()) body = overHTML();
   else body = lobbyHTML();
@@ -167,6 +179,7 @@ function paint() {
   wireGate(main);
   if (dg.view === 'board') wireBoard(main);
   else if (fight) wireFight(main, keep);
+  else if (active() && d.run.state?.phase === 'floor_done') wireFloorDone(main);
   else if (active()) wireChoose(main);
   else if (run()) wireOver(main);
   else if (!d.closed && d.gate?.ok) wireLobby(main);
@@ -360,19 +373,25 @@ const foesOf = (st) => (st?.foes || []).map((f) => ({ ...f, boss: st.room_type =
 function progressHTML() {
   const R = run();
   const rooms = dg.data.rooms || [];
-  const ic = { fight: I.sword, elite: I.fire, treasure: I.chest, rest: I.heart, guardian: I.skull };
+  // A room ahead is "?" (the server hides it, item 15); only the guardian shows.
+  const ic = { fight: I.sword, horde: I.horde, elite: I.fire, miniboss: I.crown, treasure: I.chest, rest: I.heart, choice: I.split, guardian: I.skull, unknown: I.q };
   const dots = rooms.map((rm, i) => {
     const n = i + 1;
     const st = n < R.room ? 'done' : n === R.room ? 'now' : 'next';
-    return `${i ? `<i class="dg-link ${n <= R.room ? 'done' : ''}"></i>` : ''}<span class="dg-dot ${st} t-${rm.type}" title="${esc(rm.type)}">${st === 'done' ? I.check : ic[rm.type] || ''}</span>`;
+    const type = n === R.room && R.state?.room_type ? R.state.room_type : rm.type;
+    return `${i ? `<i class="dg-link ${n <= R.room ? 'done' : ''}"></i>` : ''}<span class="dg-dot ${st} t-${type}" title="${esc(ROOM[type] || type)}">${st === 'done' ? I.check : ic[type] || I.q}</span>`;
   }).join('');
   const g = rooms[4];
   return `<div class="dg-prog"><div class="dg-fl"><span>Floor ${R.floor}</span><b>Room ${R.room} of 5</b></div><div class="dg-dots">${dots}</div>${g?.name ? `<span class="dg-guard">Guardian: ${esc(g.name)}</span>` : ''}</div>`;
 }
 function statsHTML() {
   const R = run();
-  const buff = Math.round(((R.state?.buff || 1) - 1) * 100);
-  return `<div class="dg-stats"><span title="Shards this run">${COIN}<b>+${fmt(R.shards)}</b><i>Shards</i></span><span title="Cards found">${I.cards}<b>${(R.cards || []).length}</b><i>cards found</i></span><span title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;
+  const st = R.state || {};
+  const buff = Math.round(((st.buff || 1) - 1) * 100);
+  // Item 12: the floor's loot is at risk (a fall loses it); the guardian banks it (safe).
+  const pend = st.pend || {}, bank = st.bank || {};
+  const pc = (pend.cards || []).length, bc = (bank.cards || []).length;
+  return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmt(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmt(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span><span title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;
 }
 // A weakness / resistance as an icon: an element icon, or a short word (melee, beast ...).
 const traitIcon = (v) => {
@@ -391,7 +410,7 @@ function fightHTML() {
   const atk = squad.filter((c) => ATTACKER.has(c.type));
   const sup = squad.filter((c) => !ATTACKER.has(c.type));
   const plate = (f, i) => `<div class="dg-plate${f.boss ? ' boss' : f.elite ? ' elite' : ''}" data-foe="${i}">
-      <span class="n"><b>${esc(f.name)}</b><small>LV ${f.level}</small><em class="hpn"></em></span>
+      <span class="n">${f.element && elIcon(f.element) ? `<span class="el" title="${esc(f.element)}">${elIcon(f.element)}</span>` : ""}<b>${esc(f.name)}</b><small>LV ${f.level}</small><em class="hpn"></em></span>
       <span class="bar"><i></i></span>
       <span class="wk">${(f.weak || []).length ? `<span class="wk-l" title="Weak to">${I.up}${f.weak.map((w) => `<i title="Weak to ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}${(f.resist || []).length ? `<span class="rs-l" title="Resists">${I.shield}${f.resist.map((w) => `<i title="Resists ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}</span>
       ${(f.passives || []).length ? `<span class="ps">${f.passives.map((p) => `<i>${esc(p)}</i>`).join('')}</span>` : ''}</div>`;
@@ -399,13 +418,13 @@ function fightHTML() {
   // card, so nothing overlaps (Nathan, 2026-10-03).
   const unit = (c) => `<div class="dg-unit" data-card="${c.id}">
       ${cardTile(c, { top: `<span class="dg-pw">${I.bolt}${fmt(c.cp)}</span>`, over: '<span class="dg-state"></span><span class="dg-tap">Tap to attack</span>' })}
-      <span class="dg-fx"><span class="dg-tag weak"></span><span class="dg-buffs"></span></span>
+      <span class="dg-fx"></span>
       <span class="dg-hp"><i></i></span><small class="dg-hpn"></small></div>`;
   const supB = (c) => `<button class="dg-sup" data-sup="${c.id}">
       ${c.image_url ? `<img src="${thumb(c.image_url)}" alt="">` : '<span></span>'}
       <span class="t"><b>${esc(c.name)}</b><small>${esc(supDesc(c))}</small></span><em></em></button>`;
   return `<div class="dg-fight" data-room="${roomKey()}">
-    <div class="dg-ftop">${progressHTML()}${statsHTML()}<button class="v2-btn dg-retreat">${I.door}Retreat</button></div>
+    <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
     <div class="dg-meter"></div>
     <div class="dg-arena">
       <div class="dg-plates">${foes.map(plate).join('')}</div>
@@ -450,7 +469,8 @@ function fightUpdate(main, st) {
     if (!p) return;
     p.classList.toggle('on', i === dg.target && f.hp > 0);
     p.classList.toggle('dead', f.hp <= 0);
-    p.querySelector('.hpn').textContent = `${fmt(Math.max(0, f.hp))} / ${fmt(f.max)}`;
+    p.querySelector('.hpn').textContent = `${fmt(Math.max(0, f.hp))} / ${fmt(f.max)}${f.sh > 0 ? ` +${fmt(f.sh)} guard` : ''}`;
+    p.classList.toggle('guarded', f.sh > 0);
     p.querySelector('.bar i').style.width = `${Math.max(0, (f.hp / f.max) * 100)}%`;
   });
   dg.stage?.setTarget?.(tf && tf.hp > 0 ? dg.target : -1);
@@ -468,20 +488,31 @@ function fightUpdate(main, st) {
       u.querySelector('.dg-hpn').innerHTML = `${fmt(c.s.hp)}/${fmt(c.s.max)}${c.s.shield ? ` <em>+${fmt(c.s.shield)}</em>` : ''}`;
       u.querySelector('.dg-hpn').classList.toggle('low', pct < 30);
       u.querySelector('.dg-state').innerHTML = down ? `${I.skull}Down` : stun ? `${I.timer}Stunned` : '';
-      u.querySelector('.dg-buffs').innerHTML = `${(c.s.buff || 1) > 1 ? '<span class="dg-buff">EMPOWERED</span>' : ''}${(c.s.debuff || 1) < 1 ? '<span class="dg-buff bad">CURSED</span>' : ''}`;
-      const w = tf && hitsWeak(c, tf);
-      const tag = u.querySelector('.dg-tag');
-      tag.className = `dg-tag ${w ? 'weak' : isResist(c, tf) ? 'res' : 'none'}`;
-      tag.innerHTML = w ? `${traitIcon(w.value)}Bonus` : isResist(c, tf) ? `${I.shield}Resisted` : '';
-      tag.title = w ? 'This card hits the monster\'s weakness' : 'The monster resists this card';
+      // The status row: small icons in ONE fixed-height row (never wraps, the cards never move; Nathan).
+      // More than fit: +N. The names are in the tooltip.
+      const w = tf && hitsWeak(c, tf), res = !w && tf && isResist(c, tf);
+      const fx = [];
+      if (w) fx.push(['weak', traitIcon(w.value), 'Weakness: this card does extra damage to the target']);
+      if (res) fx.push(['res', I.shield, 'Resisted: the target takes less damage from this card']);
+      if ((c.s.buff || 1) > 1) fx.push(['buff', I.up, 'Empowered: the next hit is stronger']);
+      if ((c.s.debuff || 1) < 1) fx.push(['bad', I.skull, 'Cursed: this card deals less damage']);
+      if ((c.s.psnu ?? -1) >= round + 1 && c.s.psn > 0) fx.push(['psn', I.drop, `Poisoned: -${fmt(c.s.psn)} HP each round`]);
+      if (c.s.shield > 0) fx.push(['shd', I.ward, `Shield: blocks ${fmt(c.s.shield)} damage`]);
+      if (stun) fx.push(['stn', I.timer, 'Stunned: skips this turn']);
+      const box = u.querySelector('.dg-fx'); const room = Math.max(1, Math.floor((box.clientWidth + 3) / 21));
+      const shown = fx.length > room ? fx.slice(0, room - 1) : fx;
+      box.innerHTML = shown.map(([k, ic, t]) => `<i class="s-${k}" title="${esc(t)}">${ic}</i>`).join('') + (fx.length > shown.length ? `<i class="s-more">+${fx.length - shown.length}</i>` : '');
+      box.title = fx.map((x) => x[2]).join(' · ');
     }
     const b = F.querySelector(`.dg-sup[data-sup="${c.id}"]`);
     if (b) {
+      // Item 17: one support per turn. After one, the others wait for the next turn (an attack ends it).
+      const used = Number(st.sup_round ?? -1) === round;
       const ready = round >= (c.s.cd || 0) && !c.s.down;
-      b.disabled = !ready || dg.busy;
-      b.classList.toggle('wait', !ready);
+      b.disabled = !ready || used || dg.busy;
+      b.classList.toggle('wait', !ready || used);
       b.classList.toggle('on', dg.support === Number(c.id));
-      b.querySelector('em').innerHTML = c.s.down ? 'Down' : ready ? `${I.check}Ready` : `${I.timer}In ${c.s.cd - round} round${c.s.cd - round === 1 ? '' : 's'}`;
+      b.querySelector('em').innerHTML = c.s.down ? 'Down' : !ready ? `${I.timer}In ${c.s.cd - round} round${c.s.cd - round === 1 ? '' : 's'}` : used ? `${I.lock}Next turn` : `${I.check}Ready`;
     }
   }
   F.querySelector('.dg-shp .v').innerHTML = `${fmt(hp)}<small> / ${fmt(max)}</small>`;
@@ -490,7 +521,7 @@ function fightUpdate(main, st) {
   F.querySelector('.dg-log').innerHTML = dg.log.slice(-6).reverse().map((l) => `<li class="${l.kind}"><b>${esc(l.who)}</b><span>→ ${esc(l.to)}</span><em>${l.txt}</em></li>`).join('') || '<li class="none">The fight starts. Tap a card.</li>';
   const sc = dg.support ? mine().get(dg.support) : null;
   F.querySelector('.dg-hint').innerHTML = sc ? `${I.hand}Choose a card for <b>${esc(sc.name)}</b><button class="dg-cancel">Cancel</button>`
-    : dg.busy ? `${I.timer}The monsters are acting…` : `${I.hand}${foes.filter((f) => f.hp > 0).length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
+    : dg.busy ? `${I.timer}The monsters are acting…` : Number(st.sup_round ?? -1) === round ? `${I.hand}Support used · tap a card to attack` : `${I.hand}${foes.filter((f) => f.hp > 0).length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
   F.classList.toggle('picking', !!sc);
   F.classList.toggle('busy', !!dg.busy);
   const sb = F.querySelector('.dg-stats'); if (sb) sb.outerHTML = statsHTML();
@@ -607,7 +638,8 @@ async function act(kind, body) {
     const f = foes[t];
     ctx().sfx?.(r.damage > 0 ? 'hit' : 'click');
     dg.stage?.play(t, r.kill ? 'death' : 'hit');
-    pop(main, t, r.damage > 0 ? `-${fmt(r.damage)}${r.crit ? '<small>CRITICAL</small>' : r.double ? '<small>DOUBLE</small>' : r.bonus ? '<small>WEAKNESS</small>' : r.resisted ? '<small>RESISTED</small>' : ''}` : 'MISS', r.crit ? 'crit' : r.damage > 0 ? '' : 'miss');
+    pop(main, t, r.damage > 0 ? `-${fmt(r.damage)}${r.crit ? '<small>CRITICAL</small>' : r.double ? '<small>DOUBLE</small>' : r.bonus ? '<small>WEAKNESS</small>' : r.resisted ? '<small>RESISTED</small>' : ''}` : r.guarded > 0 ? 'BLOCKED' : 'MISS', r.crit ? 'crit' : r.damage > 0 ? '' : 'miss');
+    if (r.guarded > 0) { pop(main, t, `${I.shield}-${fmt(r.guarded)} guard`, 'act', -34); step.foes[t].sh = Math.max(0, (step.foes[t].sh || 0) - r.guarded); }
     // The monster's HP moves now (the final value from the server).
     step.foes[t].hp = r.state.foes[t].hp;
     if (r.heal) { const k = String(body.cardId); step.cards[k].hp = Math.min(step.cards[k].max, step.cards[k].hp + r.heal); popCard(main, body.cardId, `+${fmt(r.heal)}`, 'heal'); }
@@ -615,18 +647,30 @@ async function act(kind, body) {
     if (r.kill) { dg.log.push({ kind: 'kill', who: f?.name || 'Monster', to: 'defeated', txt: `${COIN}+${fmt(r.loot?.shards)}` }); lootDrop(main, t, r.loot); }
     fightUpdate(main, step);
     await sleep(r.kill ? 1100 : 750);
-    // The monsters' turn, one by one.
+    const hurt = (id, d, label = '') => { const k = String(id); if (!step.cards[k] || !d) return; step.cards[k].hp = Math.max(0, step.cards[k].hp - d); popCard(main, id, `-${fmt(d)}${label}`, 'hurt'); };
+    // Poison ticks first (item 20: Acid Spit, Infect).
+    if ((r.poison || []).length) {
+      for (const p of r.poison) hurt(p.card, p.dmg, ' poison');
+      dg.log.push({ kind: 'foe', who: 'Poison', to: r.poison.map((p) => nm(p.card)).join(', '), txt: `-${fmt(r.poison.reduce((a, p) => a + (p.dmg || 0), 0))}` });
+      fightUpdate(main, step); await sleep(550);
+    }
+    // The monsters' turn, one by one: each uses a named move from its pool (item 20).
     for (const e of r.enemy || []) {
       dg.acting = e.foe; fightUpdate(main, step);
+      const move = e.move || ACT[e.action] || e.action;
+      pop(main, e.foe, esc(move), 'act move', -30);
       await sleep(450);
-      if (e.action !== 'stunned' && e.action !== 'charging') { dg.stage?.play(e.foe, 'attack'); await sleep(380); }
-      const hurt = (id, d) => { const k = String(id); if (!step.cards[k] || !d) return; step.cards[k].hp = Math.max(0, step.cards[k].hp - d); popCard(main, id, `-${fmt(d)}`, 'hurt'); };
-      hurt(e.card, e.dmg);
+      if (e.action !== 'stunned' && e.action !== 'charging' && (e.dmg || (e.area || []).length)) { dg.stage?.play(e.foe, 'attack'); await sleep(380); }
+      hurt(e.card, e.dmg, e.hits > 1 ? ` ×${e.hits}` : '');
       for (const a of e.area || []) hurt(a.card, a.dmg);
+      if (e.dot > 0 && e.dmg > 0) popCard(main, e.card, `${I.drop}Poisoned`, 'debuff');
+      if (e.action === 'stun' && e.dmg > 0) popCard(main, e.card, `${I.timer}Stunned`, 'debuff');
+      if (e.action === 'curse') popCard(main, e.card, 'CURSED', 'debuff');
+      if (e.guard > 0) { step.foes[e.foe].sh = (step.foes[e.foe].sh || 0) + e.guard; pop(main, e.foe, `${I.shield}+${fmt(e.guard)} guard`, 'heal', 10); }
       if (e.heal > 0) { step.foes[e.foe].hp = Math.min(step.foes[e.foe].max, step.foes[e.foe].hp + e.heal); pop(main, e.foe, `+${fmt(e.heal)}`, 'heal'); }
-      if (!e.dmg) pop(main, e.foe, esc(ACT[e.action] || e.action), 'act', -30);
       if (e.dmg) ctx().sfx?.('hit');
-      dg.log.push({ kind: 'foe', who: ef(foes, e.foe), to: e.dmg ? nm(e.card) : (ACT[e.action] || e.action), txt: e.dmg ? `-${fmt(e.dmg)}` : '' });
+      const area = (e.area || []).reduce((a, x) => a + (x.dmg || 0), 0);
+      dg.log.push({ kind: 'foe', who: `${ef(foes, e.foe)} · ${move}`, to: e.dmg ? nm(e.card) : area ? 'the squad' : (ACT[e.action] || e.action), txt: e.dmg || area ? `-${fmt((e.dmg || 0) + area)}${area ? ' all' : ''}` : '' });
       fightUpdate(main, step);
       await sleep(650);
     }
@@ -681,50 +725,131 @@ function confirmBox(title, text, ok) {
   });
 }
 async function retreat() {
-  if (!(await confirmBox('Retreat now?', 'The run ends here. You keep your depth and the loot.', 'Retreat'))) return;
+  if (!(await confirmBox('Retreat with the loot?', 'The run ends here. You keep your depth and every banked Shard and card.', 'Retreat'))) return;
   let r = null;
   try { r = await ctx().apiPost('/api/dungeon/retreat', {}); } catch (e) { r = e?.body || null; }
   if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
   await load(); paint();
 }
 
-// ---- Choose a reward / rest --------------------------------------------------------------------
+// ---- Between fights: a reward, a rest, a chest, a choice of doors ----------------------------------
+// Item 7: 3 random offers, each with a tier (Common .. Legend, the colour); the last pick never comes
+// back next, Heal once per floor. Item 14: the chest opens (its tier), the loot is at risk until the
+// floor guardian. Item 15: a choice room offers doors. No Retreat here (item 12: only between floors).
+const tierTag = (t) => (TIER[t] ? `<span class="dg-tier" style="--tc:${TIER[t][1]}">${TIER[t][0]}</span>` : '');
+const pct = (x) => `${Math.round((x || 0) * 100)}%`;
+function offerInfo(o) {
+  return {
+    heal: [I.heart, `Heal ${pct(o.amount)}`, 'Every standing card heals. Once per floor.'],
+    buff: [I.up, `+${pct(o.amount)} damage`, 'For the rest of the run.'],
+    shards: [COIN, `${fmt(o.amount)} Shards`, 'At risk until the floor guardian falls.'],
+    card: [I.cards, `A ${RL(o.rarity || 'normal')} card`, 'At risk until the floor guardian falls.'],
+    ward: [I.ward, `Ward ${pct(o.amount)}`, 'Every card starts the next fight with a shield.'],
+    reset: [I.reset, 'Cooldown reset', 'Every support is ready again.'],
+    revive: [I.heart, `Revive at ${pct(o.amount)}`, 'The downed cards stand up again. Once per floor.'],
+    continue: [I.arrow, 'Continue', 'To the next room.'],
+    door: {
+      elite: [I.fire, 'The Elite door', 'A strong monster. Better loot.'],
+      rest: [I.heart, 'The quiet door', 'A rest: heal and revive.'],
+      treasure: [I.chest, 'The treasure door', 'A chest.'],
+      horde: [I.horde, 'The loud door', 'A horde of weaker monsters.'],
+      gamble: [I.q, 'The dark door', 'A rare chest, or an ambush. 50 / 50.'],
+    }[o.to] || [I.door, 'A door', ''],
+  }[o.kind] || [I.check, o.kind, ''];
+}
 function chooseHTML() {
   const R = run(); const st = R.state;
-  const rest = st.phase === 'rest';
-  const treasure = st.room_type === 'treasure';
+  const ph = st.phase;
   const offer = (o, i) => {
-    const t = {
-      heal: [I.heart, 'Heal', `Heal the squad ${Math.round((o.amount || 0) * 100)}% of max HP`],
-      buff: [I.up, 'Power up', `+${Math.round((o.amount || 0) * 100)}% damage for the rest of the run`],
-      shards: [COIN, `${fmt(o.amount)} Shards`, 'Shards for the Shop, yours now'],
-      card: [I.cards, 'A card', 'A random card for your collection (better on deeper floors)'],
-      continue: [I.arrow, 'Continue', 'Rested: the squad healed and the downed cards are back'],
-    }[o.kind] || [I.check, o.kind, ''];
-    return `<button class="dg-offer k-${o.kind}" data-choose="${i}"><span class="ic">${t[0]}</span><b>${t[1]}</b><small>${t[2]}</small></button>`;
+    const t = offerInfo(o);
+    return `<button class="dg-offer k-${o.kind}${o.to ? ` to-${o.to}` : ''}" data-choose="${i}" style="${TIER[o.tier] ? `--tc:${TIER[o.tier][1]}` : ''}">${tierTag(o.tier)}<span class="ic">${t[0]}</span><b>${t[1]}</b><small>${t[2]}</small></button>`;
   };
+  const head = {
+    choose: ['Room cleared', 'Choose a reward', 'Pick one. Each reward has a tier: Common, Uncommon, Rare, Ultra, Legend.'],
+    rest: ['Rest room', 'Take a breath', 'The squad healed 40%, and each downed card came back with 25% HP.'],
+    path: ['A choice', 'Pick a door', 'Each door leads to a different room.'],
+    chest: ['Treasure room', 'You found a chest', 'Tap the chest to open it.'],
+  }[ph] || ['', '', ''];
+  const body = ph === 'chest' ? chestHTML(st) : `<div class="dg-offers n${(st.offers || []).length}">${(st.offers || []).map(offer).join('')}</div>`;
   return `<div class="dg-choose">
-    <div class="dg-ftop">${progressHTML()}${statsHTML()}<button class="v2-btn dg-retreat">${I.door}Retreat</button></div>
-    <section class="dg-panel dg-cbox"><span class="k">${rest ? 'Rest room' : treasure ? 'Treasure room' : 'Room cleared'}</span>
-      <h2>${rest ? 'Take a breath' : treasure ? 'You found a chest' : 'Choose a reward'}</h2>
-      <p>${rest ? 'The squad healed 40%, and each downed card came back with 25% HP.' : 'Pick one. The next room opens after you choose.'}</p>
-      <div class="dg-offers">${(st.offers || []).map(offer).join('')}</div></section>
+    <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
+    <section class="dg-panel dg-cbox ph-${ph}"><span class="k">${head[0]}</span><h2>${head[1]}</h2><p>${head[2]}</p>${body}</section>
   </div>`;
 }
+// The chest (item 14): closed until tapped; then the lid opens, its tier glows, the loot shows.
+function chestHTML(st) {
+  const c = st.chest || {};
+  const t = TIER[c.tier] || TIER[1];
+  const card = c.card ? dg.data.lootCards?.[c.card] : null;
+  return `<div class="dg-chest" style="--tc:${t[1]}">
+      <button class="dg-chestbox" aria-label="Open the chest"><span class="glow"></span><span class="lid"></span><span class="base"><i></i></span></button>
+      <div class="dg-chestloot"><span class="dg-tier big" style="--tc:${t[1]}">${t[0]} chest</span>
+        <div class="dg-chestrow"><span class="dg-chsh">${COIN}<b>+${fmt(c.shards)}</b><small>Shards</small></span>
+        ${card ? flipHTML([card], 'chest') : ''}</div>
+        <small class="dg-risk">${I.lock}At risk until the floor guardian falls.</small>
+        <button class="v2-btn gold dg-cont" data-choose="0">${I.arrow}Continue</button></div>
+    </div>`;
+}
+// Cards face down; a tap flips one (the same as a pack). Used by the chest, the floor screen, the end.
+function flipHTML(list, key) {
+  return list.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}" data-flip="${key}:${i}" data-id="${c.id}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
+      <span class="face back">${cardBack ? `<img src="${esc(cardBack)}" alt="">` : '<i></i>'}</span>
+      <span class="face front">${cardTile({ ...c, cost: null }, { top: '', info: false })}</span></button>`).join('');
+}
+function wireFlips(main) {
+  const flip = (b) => { if (b.classList.contains('up')) { const id = Number(b.dataset.id); if (id) openInfo(id); return; } b.classList.add('up'); ctx().sfx?.('flip'); };
+  main.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); flip(b); }));
+  main.querySelector('.dg-reveal')?.addEventListener('click', (e) => {
+    e.currentTarget.disabled = true;
+    [...main.querySelectorAll('[data-flip]:not(.up)')].forEach((b, i) => setTimeout(() => flip(b), i * 220));
+  });
+  if (cardBack == null) getBack().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('[data-flip]') && cardBack) main.querySelectorAll('.dg-flip .face.back').forEach((f) => { f.innerHTML = `<img src="${esc(cardBack)}" alt="">`; }); });
+}
+async function choose(pick) {
+  if (dg.busy) return;
+  dg.busy = true;
+  let r = null;
+  try { r = await ctx().apiPost('/api/dungeon/choose', { pick }); } catch (e) { r = e?.body || null; }
+  dg.busy = false;
+  if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
+  ctx().sfx?.('click');
+  if (r.door === 'elite') toast('An ambush!');
+  dg.log = []; dg.target = 0;
+  await load(); paint();
+}
 function wireChoose(main) {
-  main.querySelector('.dg-retreat')?.addEventListener('click', () => retreat());
-  main.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', async () => {
-    if (dg.busy) return;
-    dg.busy = true;
-    let r = null;
-    try { r = await ctx().apiPost('/api/dungeon/choose', { pick: Number(b.dataset.choose) }); } catch (e) { r = e?.body || null; }
-    dg.busy = false;
-    if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
-    ctx().sfx?.('click');
-    if (r.card) toast('A card dropped! It is in your collection.');
-    dg.log = []; dg.target = 0;
-    await load(); paint();
-  }));
+  main.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', () => choose(Number(b.dataset.choose))));
+  const box = main.querySelector('.dg-chestbox');
+  box?.addEventListener('click', () => {
+    if (box.closest('.dg-chest').classList.contains('open')) return;
+    box.closest('.dg-chest').classList.add('open');
+    ctx().sfx?.('flip');
+  });
+  wireFlips(main);
+}
+
+// ---- The floor is done: the loot gained (item 12) ---------------------------------------------------
+// The guardian fell: this floor's loot is banked (safe). Descend (the next floor's loot is at risk
+// again) or Retreat and keep everything banked. Retreat lives only here.
+function floorDoneHTML() {
+  const R = run(); const st = R.state;
+  const fl = st.floor_loot || {}; const bank = st.bank || {};
+  const cards = (fl.cards || []).map((id) => dg.data.lootCards?.[id] || { id });
+  const capLeft = Math.max(0, (dg.data.cap || 300) - (bank.shards || 0));
+  return `<div class="dg-over dg-floordone">
+    <section class="dg-panel dg-obox dg-fdbox">
+      <div class="dg-ohead"><div class="dg-fdhead"><span class="k">${I.castle}${esc(dg.data.name)} · Floor ${R.floor}</span><h1>Floor ${R.floor} cleared!</h1><p>The guardian fell. This floor's loot is banked: it is safe now.</p></div>
+      <div class="dg-depth dg-fdstats"><span>Loot gained<b>${COIN}+${fmt(fl.shards)}</b></span><span>Banked in total<b>${I.lock}${fmt(bank.shards)}${(bank.cards || []).length ? ` +${(bank.cards || []).length}${I.cards}` : ''}</b></span><span>Shards cap left<b>${fmt(capLeft)}</b></span></div></div>
+      <div class="dg-lootrow">${cards.length ? `<div class="dg-lhead"><h3>Cards found <small>${cards.length}</small></h3><button class="v2-btn gold dg-reveal">${I.cards}Reveal all</button></div><div class="dg-flips" style="--n:${cards.length}">${flipHTML(cards, 'floor')}</div>` : '<p class="muted dg-nocards">No cards on this floor.</p>'}</div>
+      <div class="dg-obtn dg-fdbtn"><button class="v2-btn dg-leave">${I.door}Retreat with the loot</button><button class="v2-btn gold dg-next" data-choose="0">${I.arrow}Descend to Floor ${R.floor + 1}</button></div>
+      <small class="dg-risk">${I.lock}On the next floor, the new loot is at risk until its guardian falls. Banked loot is always safe.</small>
+    </section>
+  </div>`;
+}
+function wireFloorDone(main) {
+  main.querySelector('.dg-next')?.addEventListener('click', () => choose(0));
+  main.querySelector('.dg-leave')?.addEventListener('click', () => retreat());
+  wireFlips(main);
 }
 
 // ---- The run is over: the loot screen ----------------------------------------------------------

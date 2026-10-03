@@ -199,3 +199,15 @@ The choices make each run a set of decisions, not only a check of the collection
 ## 12. Open questions for Nathan
 
 1. Do the season-best runs give a reward at the end of the season?
+
+## 13. v2 (Nathan's test, 2026-10-03)
+
+`tcg-bot/supabase/dungeon_v2.sql` on `combat_core.sql` (`combat_pool_act`). Test: `card-studio/scripts/test-dungeon.mjs`.
+
+- Scaling (item 22): x1.42 HP and x1.22 ATK per floor. Guardian x4 HP, x1.7 ATK.
+- Loot at risk (item 12): kill Shards, drops, chests, and rewards go to `state.pend`. The floor guardian moves pend to `state.bank` and adds 10 x floor Shards. A fall loses pend. Retreat works only on the `floor_done` screen. All loot is granted once, at the end (`dungeon_settle`). Cap: 300 Shards per run.
+- Rewards (item 7): 3 offers with a tier (Common 60, Uncommon 25, Rare 10, Ultra 4, Legend 1). Kinds: heal, buff, shards, card, ward, reset, revive. The last kind picked cannot come back next. Heal and revive work once per floor.
+- Rooms (items 14, 15): fight, horde, elite, miniboss, treasure (a chest of a tier), rest, choice (doors). The view shows "?" for the rooms ahead, except the guardian.
+- Combat (items 9, 17, 20): support cooldowns carry over between rooms. One support per turn (`one_support`). Each monster type has a named move pool.
+- UI: the room map with "?", the at-risk and banked counters, the reward tiers, the chest, the doors, the "Floor cleared" screen (Descend or Retreat), the move names, the element icon on each plate, and one fixed row of status icons under each card.
+- Not done yet: item 13 (the Raid attack animations), item 16 (auto mode), item 19 (music).

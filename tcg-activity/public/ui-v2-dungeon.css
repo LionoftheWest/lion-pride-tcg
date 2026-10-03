@@ -749,3 +749,110 @@ body.ui-v2 .dg-fx .dg-buff, body.ui-v2 .dg-fx .dg-buff.bad { position: static; f
 body.ui-v2.m-land .dg-fx { min-height: 13px; } body.ui-v2.m-land .dg-fx .dg-tag, body.ui-v2.m-land .dg-fx .dg-buff { font-size: 7.5px; line-height: 11px; padding: 1px 4px; }
 body.ui-v2 .dg-fx { flex-wrap: wrap; row-gap: 2px; }
 body.ui-v2 .dg-fx .dg-tag, body.ui-v2 .dg-fx .dg-buff { max-width: 100%; }
+
+/* ==== Dungeon v2 (Nathan items 7, 12, 14, 15, 17, 20, 24) ==== */
+/* 12: the loot bar: at risk (lost on a fall) and banked (safe). */
+body.ui-v2 .dg-stats span.risk b { color: #FFB25C; }
+body.ui-v2 .dg-stats span.bank b { color: var(--success); }
+body.ui-v2 .dg-stats span b svg { width: 12px; height: 12px; vertical-align: -1px; }
+/* 15: the room map: "?" ahead; the room types have their own colours. */
+body.ui-v2 .dg-dot.t-unknown:not(.done):not(.now) { border-style: dashed; color: var(--text-muted); }
+body.ui-v2 .dg-dot.t-elite:not(.done), body.ui-v2 .dg-dot.t-miniboss:not(.done) { border-color: rgba(178,140,255,.65); color: #B28CFF; }
+body.ui-v2 .dg-dot.now.t-elite, body.ui-v2 .dg-dot.now.t-miniboss { background: #8E63F0; color: #fff; }
+body.ui-v2 .dg-dot.t-treasure:not(.done) { border-color: rgba(244,183,60,.7); }
+body.ui-v2 .dg-dot.t-horde:not(.done) { border-color: rgba(255,138,61,.7); color: #FF8A3D; }
+body.ui-v2 .dg-dot.now.t-horde { background: #FF8A3D; color: #1a0d03; }
+/* 24: the monster's element on its plate; its guard. */
+body.ui-v2 .dg-plate .n .el { display: inline-flex; flex: none; align-self: center; }
+body.ui-v2 .dg-plate .n .el svg { width: 15px; height: 15px; }
+body.ui-v2.m-port .dg-plate .n .el svg, body.ui-v2.m-land .dg-plate .n .el svg { width: 12px; height: 12px; }
+body.ui-v2 .dg-plate.guarded { box-shadow: 0 0 0 1px rgba(77,163,255,.7), 0 0 14px rgba(77,163,255,.35); }
+/* 20: the move name above the monster; the debuffs on a card. */
+body.ui-v2 .dg-pop.move { font: 800 18px var(--font-display); color: #FFD27A; letter-spacing: .5px; background: rgba(10,10,18,.75); padding: 3px 10px; border-radius: 999px; }
+body.ui-v2 .dg-pop.debuff { color: #C79BFF; font-size: 15px !important; display: inline-flex; align-items: center; gap: 4px; top: 62%; }
+body.ui-v2 .dg-pop svg { width: 1em; height: 1em; }
+/* 17: a support waits for the next turn after one support. */
+body.ui-v2 .dg-sup.wait em { color: var(--text-muted); }
+/* 7: the reward tiers. */
+body.ui-v2 .dg-tier { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font: 800 10px var(--font-ui); letter-spacing: 1px; text-transform: uppercase; color: var(--tc); border: 1px solid var(--tc); background: color-mix(in srgb, var(--tc) 14%, transparent); }
+body.ui-v2 .dg-tier.big { font-size: 13px; padding: 4px 12px; }
+body.ui-v2 .dg-offer[style*="--tc"] { border-color: color-mix(in srgb, var(--tc) 60%, transparent); box-shadow: inset 0 0 26px color-mix(in srgb, var(--tc) 12%, transparent); }
+body.ui-v2 .dg-offer[style*="--tc"] .ic { background: color-mix(in srgb, var(--tc) 18%, transparent); color: var(--tc); }
+body.ui-v2 .dg-offer[style*="--tc"]:hover { border-color: var(--tc); box-shadow: 0 0 22px color-mix(in srgb, var(--tc) 35%, transparent); }
+body.ui-v2.m-port .dg-offer .dg-tier { grid-column: 2; justify-self: start; }
+body.ui-v2.m-port .dg-offer[style*="--tc"] { grid-template-rows: auto auto auto; }
+body.ui-v2.m-port .dg-offer[style*="--tc"] .ic { grid-row: 1 / 4; }
+/* 14: the chest opens. */
+body.ui-v2 .dg-chest { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+body.ui-v2 .dg-chestbox { position: relative; width: 150px; height: 120px; border: 0; background: none; cursor: pointer; padding: 0; animation: dgWiggle 1.6s ease-in-out infinite; }
+body.ui-v2 .dg-chestbox .base { position: absolute; left: 10px; right: 10px; bottom: 0; height: 64px; border-radius: 6px 6px 12px 12px; background: linear-gradient(180deg, #9a5b2a, #6b3a17); border: 3px solid #3b1f0b; box-shadow: inset 0 -8px 0 rgba(0,0,0,.25); }
+body.ui-v2 .dg-chestbox .base i { position: absolute; left: 50%; top: 6px; width: 18px; height: 22px; transform: translateX(-50%); border-radius: 4px; background: var(--tc); box-shadow: 0 0 10px var(--tc); }
+body.ui-v2 .dg-chestbox .lid { position: absolute; left: 6px; right: 6px; bottom: 58px; height: 46px; border-radius: 40px 40px 6px 6px; background: linear-gradient(180deg, #b06a33, #7d4419); border: 3px solid #3b1f0b; transform-origin: 50% 100%; transition: transform .5s var(--ease-out); z-index: 2; }
+body.ui-v2 .dg-chestbox .glow { position: absolute; left: 50%; bottom: 50px; width: 10px; height: 10px; border-radius: 50%; transform: translateX(-50%); background: var(--tc); box-shadow: 0 0 40px 20px var(--tc); opacity: 0; transition: opacity .4s, box-shadow .6s; }
+body.ui-v2 .dg-chestloot { display: none; flex-direction: column; align-items: center; gap: 10px; }
+body.ui-v2 .dg-chest.open .dg-chestbox { animation: none; cursor: default; }
+body.ui-v2 .dg-chest.open .lid { transform: translateY(-20px) rotateX(70deg) rotate(-14deg); }
+body.ui-v2 .dg-chest.open .glow { opacity: 1; box-shadow: 0 0 70px 40px var(--tc); }
+body.ui-v2 .dg-chest.open .dg-chestloot { display: flex; animation: dgRise .5s var(--ease-out) .25s both; }
+body.ui-v2 .dg-chestrow { display: flex; align-items: center; gap: 18px; }
+body.ui-v2 .dg-chsh { display: flex; flex-direction: column; align-items: center; gap: 2px; font: 800 26px var(--font-num); }
+body.ui-v2 .dg-chsh .sh-coin, body.ui-v2 .dg-chsh > svg { width: 30px; height: 30px; }
+body.ui-v2 .dg-chsh small { font: 600 12px var(--font-ui); color: var(--text-muted); }
+body.ui-v2 .dg-chestrow .dg-flip { height: 150px; }
+body.ui-v2 .dg-risk { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
+body.ui-v2 .dg-risk svg { width: 13px; height: 13px; }
+@keyframes dgWiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-4deg); } 90% { transform: rotate(4deg); } 95% { transform: rotate(-2deg); } }
+@keyframes dgRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+body.ui-v2.m-land .dg-chestbox { width: 110px; height: 88px; transform: scale(.75); transform-origin: 50% 100%; }
+body.ui-v2.m-land .dg-chestrow .dg-flip { height: 96px; }
+/* 12: the floor done screen (the end screen layout). */
+body.ui-v2 .dg-fdstats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.ui-v2 .dg-fdbtn { justify-content: flex-end; }
+body.ui-v2 .dg-fdbtn .dg-leave { border-color: rgba(255,77,99,.45); color: #FF8A99; }
+body.ui-v2.m-port .dg-fdstats { grid-template-columns: repeat(3, minmax(0, 1fr)); } body.ui-v2.m-port .dg-fdstats b { font-size: 15px; }
+body.ui-v2.m-port .dg-fdbtn { flex-direction: column-reverse; align-items: stretch; } body.ui-v2.m-port .dg-fdbtn .v2-btn { justify-content: center; }
+body.ui-v2.m-port .dg-floordone .dg-obox { overflow: hidden; }
+/* No Retreat in a room any more: the room map takes the full top row on phones. */
+body.ui-v2.m-port .dg-fight .dg-prog, body.ui-v2.m-port .dg-choose .dg-prog { margin-right: 0; }
+body.ui-v2.m-land .dg-fight { grid-template-areas: 'stats top top' 'logc turn right' 'logc arena right' 'logc units right'; }
+body.ui-v2.m-land .dg-choose { grid-template-areas: 'stats top top' 'box box box'; }
+/* The status row v2: one fixed-height row of icons (it never wraps, so the cards never move). */
+body.ui-v2 .dg-fx, body.ui-v2.m-land .dg-fx { display: flex; flex-wrap: nowrap; justify-content: center; align-items: center; gap: 3px; height: 18px; min-height: 18px; overflow: hidden; }
+body.ui-v2 .dg-fx i { flex: none; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-style: normal; border: 1px solid currentColor; background: rgba(10,10,18,.85); }
+body.ui-v2 .dg-fx i svg { width: 11px; height: 11px; }
+body.ui-v2 .dg-fx i b { font: 800 6.5px var(--font-ui); letter-spacing: 0; }
+body.ui-v2 .dg-fx .s-weak { color: var(--gold); background: rgba(244,183,60,.18); }
+body.ui-v2 .dg-fx .s-res { color: #FF8A99; }
+body.ui-v2 .dg-fx .s-buff { color: var(--gold); }
+body.ui-v2 .dg-fx .s-bad { color: #C79BFF; }
+body.ui-v2 .dg-fx .s-psn { color: #5BE38A; }
+body.ui-v2 .dg-fx .s-shd { color: #4DA3FF; }
+body.ui-v2 .dg-fx .s-stn { color: #FFD27A; }
+body.ui-v2 .dg-fx .s-more { width: auto; padding: 0 4px; border-radius: 9px; color: var(--text-secondary); font: 800 9px var(--font-ui); }
+body.ui-v2.m-land .dg-fx { height: 15px; min-height: 15px; } body.ui-v2.m-land .dg-fx i { width: 15px; height: 15px; } body.ui-v2.m-land .dg-fx i svg { width: 9px; height: 9px; }
+body.ui-v2 .dg-fdstats b svg, body.ui-v2 .dg-fdstats b .sh-coin { width: 18px; height: 18px; flex: none; }
+body.ui-v2 .dg-fdstats span { justify-content: center; }
+body.ui-v2 .dg-cont, body.ui-v2 .dg-fdbtn .v2-btn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; }
+body.ui-v2 .dg-cont svg, body.ui-v2 .dg-fdbtn .v2-btn svg { width: 18px; height: 18px; flex: none; }
+/* Landscape phone: the between-room screens fit under the top bar (no overflow). */
+body.ui-v2.m-land .dg-cbox { align-self: stretch; overflow: hidden; display: flex; flex-direction: column; justify-content: center; padding: 8px 14px; }
+body.ui-v2.m-land .dg-cbox > .k, body.ui-v2.m-land .dg-cbox > p { display: none; }
+body.ui-v2.m-land .dg-cbox h2 { font-size: 18px; margin: 0 0 6px; }
+body.ui-v2.m-land .dg-offer { padding: 8px 10px; gap: 3px; } body.ui-v2.m-land .dg-offer .ic { width: 32px; height: 32px; } body.ui-v2.m-land .dg-offer .ic svg { width: 17px; height: 17px; }
+body.ui-v2.m-land .dg-offer b { font-size: 15px; } body.ui-v2.m-land .dg-offer small { font-size: 11px; }
+body.ui-v2.m-land .dg-chest { flex-direction: row; justify-content: center; gap: 18px; }
+body.ui-v2.m-land .dg-chestbox { zoom: .6; transform: none; }
+body.ui-v2.m-land .dg-chest.open .dg-chestloot { display: grid; grid-template-columns: auto auto; grid-template-areas: 'tier tier' 'row cont' 'risk risk'; align-items: center; gap: 6px 14px; }
+body.ui-v2.m-land .dg-chestloot .dg-tier { grid-area: tier; justify-self: start; } body.ui-v2.m-land .dg-chestrow { grid-area: row; }
+body.ui-v2.m-land .dg-chestloot .dg-cont { grid-area: cont; } body.ui-v2.m-land .dg-chestloot .dg-risk { grid-area: risk; }
+body.ui-v2.m-land .dg-chestrow .dg-flip { height: 84px; } body.ui-v2.m-land .dg-chsh { font-size: 20px; }
+body.ui-v2.m-land .dg-floordone .dg-ohead p { display: none; }
+body.ui-v2.m-land .dg-floordone .dg-obox h1 { font-size: 20px; }
+body.ui-v2.m-land .dg-floordone .dg-lootrow { flex-direction: row; align-items: center; gap: 12px; }
+body.ui-v2.m-land .dg-floordone .dg-lhead { flex-direction: column; align-items: flex-start; gap: 6px; flex: none; }
+body.ui-v2.m-land .dg-floordone .dg-flips { justify-content: flex-start; }
+body.ui-v2.m-land .dg-floordone .dg-flip { height: 86px; }
+body.ui-v2.m-land .dg-floordone .dg-depth span { padding: 6px 10px; } body.ui-v2.m-land .dg-floordone .dg-depth b { font-size: 14px; }
+body.ui-v2.m-land .dg-floordone .dg-obtn .v2-btn { height: 38px; }
+body.ui-v2.m-land .dg-stats span:nth-child(2) { display: flex; }
+body.ui-v2.m-land .dg-stats span { padding: 0 6px; }

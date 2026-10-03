@@ -14,6 +14,7 @@ const ERR = {
   support_downed: 'That card is down.', cooldown: 'That support is not ready yet.', need_target: 'Pick a card to help.',
   bad_target: 'Pick a card in your squad.', target_downed: 'A heal cannot revive a downed card.', boss_stun_immune: 'That monster cannot be stunned again yet.',
   not_choosing: 'There is nothing to choose.', bad_pick: 'Pick one of the rewards.',
+  one_support: 'One support per turn. Attack to end the turn.', not_between_floors: 'You can leave only between floors, after the guardian.',
 };
 const fail = (res, data) => res.status(400).json({ ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' });
 const id = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
@@ -37,6 +38,12 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
     if (Array.isArray(data.mine)) data.mine = data.mine.map((m) => card(m.id, m));
     const loot = data.run?.cards || data.cards;
     if (Array.isArray(loot)) data.loot = loot.map((x) => card(x));
+    // The loot in the run state (banked, at risk, this floor, the chest): the card details by id.
+    const st = data.run?.state || data.state;
+    if (st) {
+      const ids = [...(st.bank?.cards || []), ...(st.pend?.cards || []), ...(st.floor_loot?.cards || []), ...(st.lost?.cards || []), st.chest?.card].filter(Boolean).map(Number);
+      data.lootCards = Object.fromEntries([...new Set(ids)].map((x) => [x, card(x)]));
+    }
     return data;
   };
   const rpc = async (res, fn, args, after) => {

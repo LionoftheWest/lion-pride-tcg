@@ -254,6 +254,46 @@ create or replace function public.combat_stun_immune(p_stun_until int, p_round i
   select coalesce(p_stun_until, 0) > 0 and p_round < p_stun_until + 2;
 $$;
 
+-- ---- An enemy action drawn from a move pool (the Dungeon; any mode can use it) --------------------------
+-- p_pool = [{name, kind, w}]. p_charge = this monster charges a Cataclysm (guardian, mini-boss). Returns
+-- {action (the primitive), move (the name), dmg (to the target, before shields), area, heal, hits, dot, guard}.
+create or replace function public.combat_pool_act(p_atk numeric, p_bmult numeric, p_round int, p_stun_until int,
+  p_lost numeric, p_max int, p_pool jsonb, p_charge boolean)
+returns jsonb language plpgsql volatile set search_path = public as $$
+declare v_total numeric; v_r numeric; m jsonb; v_kind text := 'strike'; v_name text := 'Strike'; v_dmg int := 0; v_area numeric := 0;
+  v_heal int := 0; v_hits int := 1; v_dot int := 0; v_guard int := 0;
+  roll numeric := 0.85 + random() * 0.30;
+begin
+  if p_stun_until >= p_round then return jsonb_build_object('action', 'stunned', 'move', 'Stunned', 'dmg', 0, 'area', 0, 'heal', 0, 'hits', 0, 'dot', 0, 'guard', 0); end if;
+  if p_charge and p_round % 6 = 5 then return jsonb_build_object('action', 'charging', 'move', 'Charging', 'dmg', 0, 'area', 0, 'heal', 0, 'hits', 0, 'dot', 0, 'guard', 0); end if;
+  if p_charge and p_round % 6 = 0 then
+    return jsonb_build_object('action', 'cataclysm', 'move', 'Cataclysm', 'dmg', greatest(1, round(p_atk * 0.9 * roll * p_bmult)), 'area', 0.75, 'heal', 0, 'hits', 1, 'dot', 0, 'guard', 0);
+  end if;
+  select sum(coalesce((e->>'w')::numeric, 1)) into v_total from jsonb_array_elements(coalesce(p_pool, '[]')) e;
+  if coalesce(v_total, 0) > 0 then
+    v_r := random() * v_total;
+    for m in select e from jsonb_array_elements(p_pool) e loop
+      v_r := v_r - coalesce((m->>'w')::numeric, 1);
+      if v_r <= 0 then v_kind := m->>'kind'; v_name := m->>'name'; exit; end if;
+    end loop;
+  end if;
+  case v_kind
+    when 'heavy' then v_dmg := greatest(1, round(p_atk * 1.5 * roll * p_bmult));
+    when 'flurry' then v_dmg := 2 * greatest(1, round(p_atk * 0.55 * roll * p_bmult)); v_hits := 2;
+    when 'slam' then v_dmg := greatest(1, round(p_atk * 0.35 * roll * p_bmult)); v_area := 0.35;
+    when 'drain' then v_dmg := greatest(1, round(p_atk * 0.8 * roll * p_bmult)); v_heal := greatest(1, round(p_max * 0.08));
+    when 'stun' then v_dmg := greatest(1, round(p_atk * 0.45 * roll * p_bmult));
+    when 'poison' then v_dmg := greatest(1, round(p_atk * 0.35 * roll * p_bmult)); v_dot := greatest(1, round(p_atk * 0.25 * p_bmult));
+    when 'regenerate' then v_heal := greatest(1, round(p_max * (case when p_lost >= 0.5 then 0.14 else 0.10 end))); v_hits := 0;
+    when 'guard' then v_guard := greatest(1, round(p_max * 0.20)); v_hits := 0;
+    when 'enrage' then v_hits := 0;
+    when 'curse' then v_hits := 0;
+    else v_kind := 'strike'; v_dmg := greatest(1, round(p_atk * roll * p_bmult));
+  end case;
+  return jsonb_build_object('action', v_kind, 'move', v_name, 'dmg', v_dmg, 'area', v_area, 'heal', v_heal, 'hits', v_hits, 'dot', v_dot, 'guard', v_guard);
+end $$;
+
+
 -- ---- The Hunt on the core (the live definitions of 2026-10-03, rebuilt; the same behavior) ----------
 
 CREATE OR REPLACE FUNCTION public.hunt_attack(p_player text, p_hunt bigint, p_card bigint)
