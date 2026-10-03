@@ -62,7 +62,7 @@ function coverEmbed(total: number): EmbedBuilder {
   return new EmbedBuilder()
     .setTitle('🎁 You earned a pack!')
     .setColor(0xf59e0b)
-    .setImage(BACK_IMAGE_URL)
+    .setImage(publicImg(BACK_IMAGE_URL)!) // the VM cache (img-url.ts), read at call time after the env loads
     .setFooter({ text: `${total} cards • press Reveal to flip each one` });
 }
 

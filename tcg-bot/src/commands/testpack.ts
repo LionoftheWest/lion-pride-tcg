@@ -1,5 +1,6 @@
-import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
+import { isAdmin } from '../config.js';
 import { openTestPacks } from '../store.js';
 import { startManualReveal } from '../ui/reveal.js';
 
@@ -19,6 +20,11 @@ const command: Command = {
         .setRequired(false),
     ),
   async execute(interaction) {
+    // ManageGuild is only a default: a server can grant the command to anyone, and it mints cards.
+    if (!isAdmin(interaction.user.id)) {
+      await interaction.reply({ content: 'That command is admin-only.', flags: MessageFlags.Ephemeral });
+      return;
+    }
     await interaction.deferReply();
     const count = interaction.options.getInteger('count') ?? 1;
     const result = await openTestPacks(

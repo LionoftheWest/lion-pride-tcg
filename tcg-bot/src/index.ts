@@ -31,6 +31,10 @@ client.once(Events.ClientReady, (ready) => {
   startVoiceDailies(ready); // the Dailies voice minutes (flag settings.dailies.enabled, in SQL)
 });
 
+// Log, do not crash: one failed Discord call must not stop the bot for everyone.
+client.on(Events.Error, (error) => console.error('Discord client error:', error));
+process.on('unhandledRejection', (reason) => console.error('Unhandled rejection:', reason));
+
 client.on(Events.MessageCreate, onMessageCreate);
 // The reaction storm prank: the bot reacts to the target's next messages.
 client.on(Events.MessageCreate, (m) => { if (discordEffectsEnabled() && !m.author.bot && m.inGuild()) void onEffectMessage(m); });
@@ -81,10 +85,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       content: 'Something went wrong running that command.',
       flags: MessageFlags.Ephemeral,
     } as const;
+    // A second failure (expired token, deleted channel) must not become an unhandled rejection.
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(body);
+      await interaction.followUp(body).catch(() => {});
     } else {
-      await interaction.reply(body);
+      await interaction.reply(body).catch(() => {});
     }
   }
 });

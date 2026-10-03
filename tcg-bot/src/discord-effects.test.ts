@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { composeNick, nickFromTemplate, pick, pingTimes, discordEffectsEnabled, colorFor, NAME_COLORS } from './discord-effects.js';
+import { composeNick, nickFromTemplate, pick, pingTimes, discordEffectsEnabled, colorFor, NAME_COLORS, serialRunner } from './discord-effects.js';
 import { effectPost } from './effect-notify.js';
 
 describe('discord effects: the pure rules', () => {
@@ -57,5 +57,34 @@ describe('the name color boon', () => {
     assert.equal(colorFor({}, 60), null);
     assert.equal(colorFor({ color: '#123456' }, 60), null);   // not in the list: still waiting
     assert.equal(colorFor({}, 86400), '#F4B73C');
+  });
+});
+
+describe('discord effects: the tick queue', () => {
+  // A run that waits until the test releases it, so a second request lands mid-run.
+  const gated = () => {
+    const calls: boolean[] = [];
+    let release: () => void = () => {};
+    const run = (_: string, force: boolean) => { calls.push(force); return new Promise<void>((r) => { release = r; }); };
+    return { calls, run, release: () => release() };
+  };
+  it('runs a forced request that arrives during a run once the run ends (a voice join is not dropped)', async () => {
+    const g = gated();
+    const tick = serialRunner(g.run);
+    const first = tick('c');            // the 10 s poll
+    void tick('c', true);               // a member joins voice mid-tick
+    void tick('c', true);               // a second join: still one extra run
+    g.release(); await new Promise((r) => setImmediate(r));
+    assert.deepEqual(g.calls, [false, true]);
+    g.release(); await first;
+    assert.deepEqual(g.calls, [false, true]);
+  });
+  it('drops a plain poll that arrives during a run (the next poll comes in 10 s)', async () => {
+    const g = gated();
+    const tick = serialRunner(g.run);
+    const first = tick('c');
+    void tick('c');
+    g.release(); await first;
+    assert.deepEqual(g.calls, [false]);
   });
 });
