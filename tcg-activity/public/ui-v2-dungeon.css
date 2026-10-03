@@ -14,11 +14,11 @@ body.ui-v2 .dg-tab i { font: 700 9.5px var(--font-ui); letter-spacing: .8px; fon
 body.ui-v2 #main > .dg-tabs { position: fixed; z-index: 60; top: 16px; left: 270px; padding: 3px; }
 body.ui-v2 #main > .dg-tabs .dg-tab:disabled { display: none; }
 body.ui-v2 #main > .dg-tabs .dg-tab { height: 34px; font-size: 14px; }
-body.ui-v2:not([data-view="battling"]) #main > .dg-tabs { display: none; }
+body.ui-v2:not([data-view="battling"]):not([data-view="dungeon"]) #main > .dg-tabs { display: none; }
 body.ui-v2.m-land #main > .dg-tabs { top: 9px; left: 186px; padding: 2px; border-radius: 9px; }
 body.ui-v2.m-land #main > .dg-tabs .dg-tab { height: 26px; padding: 0 8px; font-size: 11.5px; gap: 4px; border-radius: 7px; }
 body.ui-v2.m-land #main > .dg-tabs .dg-tab svg { display: none; }
-body.ui-v2.m-port.adv-on[data-view="battling"] #main { padding-top: 42px; box-sizing: border-box; }
+body.ui-v2.m-port.adv-on[data-view="battling"] #main, body.ui-v2.m-port.adv-on[data-view="dungeon"] #main { padding-top: 42px; box-sizing: border-box; }
 body.ui-v2.m-port #main > .dg-tabs { position: absolute; top: 2px; left: 10px; right: 10px; display: flex; }
 body.ui-v2.m-port #main > .dg-tabs .dg-tab { flex: 1; justify-content: center; height: 30px; font-size: 13px; }
 body.ui-v2.m-port #main.has-adv { position: relative; }
@@ -523,7 +523,7 @@ body.ui-v2.m-land .dg-fight .dg-ftop, body.ui-v2.m-land .dg-choose .dg-ftop { di
 body.ui-v2.m-land .dg-fight .dg-prog { grid-area: top; justify-self: center; }
 body.ui-v2.m-land .dg-fight .dg-stats { grid-area: stats; }
 body.ui-v2.m-land .dg-fight .dg-retreat { grid-area: retreat; }
-body.ui-v2.m-land .dg-turn, body.ui-v2.m-land .dg-hint { display: none; }
+body.ui-v2.m-land .dg-turn, body.ui-v2.m-land .dg-meter, body.ui-v2.m-land .dg-hint { display: none; }
 body.ui-v2.m-land .dg-prog { padding: 4px 10px; gap: 8px; }
 body.ui-v2.m-land .dg-fl { padding-right: 8px; } body.ui-v2.m-land .dg-fl b { font-size: 11.5px; } body.ui-v2.m-land .dg-fl span { font-size: 9px; }
 body.ui-v2.m-land .dg-dot { width: 20px; height: 20px; } body.ui-v2.m-land .dg-dot.now { width: 26px; height: 26px; } body.ui-v2.m-land .dg-dot svg { width: 10px; height: 10px; }
@@ -565,3 +565,148 @@ body.ui-v2.m-land .dg-cbox { padding: 14px 18px; } body.ui-v2.m-land .dg-cbox h2
 body.ui-v2.m-land .dg-offer { padding: 12px; gap: 5px; } body.ui-v2.m-land .dg-offer .ic { width: 40px; height: 40px; }
 body.ui-v2.m-land .dg-obox { padding: 12px 16px; gap: 6px; } body.ui-v2.m-land .dg-obox h1 { font-size: 24px; }
 body.ui-v2.m-land .dg-depth b { font-size: 15px; }
+
+/* ==== Polish, Nathan's desktop test 2026-10-03 (items 1, 3-6, 8, 10, 11, 18, 21, 23-26) ==== */
+/* 3: the star gems (flair.js uses container units) and the details button on every card tile. */
+body.ui-v2 .dg-card { container-type: inline-size; }
+body.ui-v2 .dg-card .card-info { position: absolute; z-index: 5; right: 5px; bottom: 34px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); background: rgba(10,10,18,.8); font-size: 11px; line-height: 1; cursor: pointer; padding: 0; display: grid; place-items: center; opacity: .85; }
+body.ui-v2 .dg-card .card-info:hover { opacity: 1; border-color: var(--gold); }
+/* 4: Start run looks off until every requirement is met. */
+body.ui-v2 .dg-start:disabled { background: var(--surface-3); color: var(--text-muted); box-shadow: none; border-color: var(--border-strong); cursor: not-allowed; filter: none; }
+/* 1: the desktop lobby never scrolls: one row of full-height cards that fills what is left. */
+body.ui-v2:not(.m-port):not(.m-land) .dg-main { overflow: hidden; }
+body.ui-v2:not(.m-port):not(.m-land) .dg-lobby .dg-slots { max-width: calc(clamp(96px, 16vh, 168px) * 5 / 7 * 5 + 48px); }
+body.ui-v2:not(.m-port):not(.m-land) .dg-yours { min-height: 0; }
+body.ui-v2:not(.m-port):not(.m-land) .dg-grid { display: flex; gap: 10px; min-height: 0; flex: 1; align-items: flex-start; overflow: hidden; }
+body.ui-v2:not(.m-port):not(.m-land) .dg-grid .dg-card { height: min(100%, 300px); width: auto; flex: none; }
+body.ui-v2:not(.m-port):not(.m-land) .dg-legend { display: none; }
+body.ui-v2:not(.m-port):not(.m-land) .dg-check { padding: 8px 12px; gap: 5px; }
+body.ui-v2:not(.m-port):not(.m-land) .dg-check em { display: none; }
+
+/* 8, 11: the turn meter (who acts, in order; a stunned monster skips). */
+body.ui-v2 .dg-meter { grid-area: turn; justify-self: center; display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: var(--rad-pill); background: rgba(17,17,27,.9); border: 1px solid var(--border); max-width: 100%; overflow: hidden; }
+body.ui-v2 .dg-round { font: 700 11px var(--font-ui); letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); padding: 0 6px 0 4px; white-space: nowrap; }
+body.ui-v2 .dg-mt { display: flex; flex-direction: column; align-items: center; min-width: 64px; padding: 4px 12px; border-radius: var(--rad-pill); background: var(--surface); border: 1px solid var(--border); transition: all var(--dur-base) var(--ease-out); }
+body.ui-v2 .dg-mt b { font: 700 13px var(--font-ui); white-space: nowrap; }
+body.ui-v2 .dg-mt small { font: 600 10px var(--font-ui); color: var(--text-muted); white-space: nowrap; }
+body.ui-v2 .dg-mt.you.on { background: linear-gradient(180deg, #FFCB5C, var(--gold)); border-color: var(--gold); color: var(--on-gold); box-shadow: 0 0 18px rgba(244,183,60,.45); }
+body.ui-v2 .dg-mt.you.on small { color: var(--on-gold); }
+body.ui-v2 .dg-mt.foe.on { background: rgba(255,77,99,.22); border-color: var(--danger); box-shadow: 0 0 16px rgba(255,77,99,.45); transform: scale(1.06); }
+body.ui-v2 .dg-mt.skip { opacity: .5; text-decoration: line-through; }
+body.ui-v2 .dg-arrow { color: var(--text-muted); display: inline-flex; }
+body.ui-v2 .dg-arrow svg { width: 12px; height: 12px; }
+
+/* 5: the arena: the name plates in their own band, the monsters below (big), the target reticle. */
+body.ui-v2 .dg-plates { position: absolute; left: 0; right: 0; top: 0; bottom: auto; height: 74px; pointer-events: none; z-index: 3; }
+body.ui-v2 .dg-plate { top: 4px !important; transform: translateX(-50%); }
+body.ui-v2 .dg-canvas { inset: 78px 0 0 0; height: calc(100% - 78px); }
+body.ui-v2 .dg-plate .wk { display: flex; gap: 8px; align-items: center; }
+body.ui-v2 .dg-plate .wk:empty { display: none; }
+body.ui-v2 .dg-plate .wk-l, body.ui-v2 .dg-plate .rs-l { display: inline-flex; align-items: center; gap: 3px; font: 700 9px var(--font-ui); }
+body.ui-v2 .dg-plate .wk-l { color: var(--gold); }
+body.ui-v2 .dg-plate .rs-l { color: #FF8A99; }
+body.ui-v2 .dg-plate .wk-l > svg, body.ui-v2 .dg-plate .rs-l > svg { width: 11px; height: 11px; }
+body.ui-v2 .dg-plate .wk i { display: inline-flex; font-style: normal; }
+body.ui-v2 .dg-plate .wk i b { font: 700 8.5px var(--font-ui); }
+body.ui-v2 .dg-plate .wk i svg { width: 14px; height: 14px; }
+body.ui-v2 .dg-plate.elite { border-color: rgba(178,140,255,.6); }
+body.ui-v2 .dg-plate.boss { border-color: rgba(255,77,99,.6); }
+body.ui-v2 .dg-reticle { position: absolute; z-index: 2; pointer-events: none; transform: translate(-50%, -50%); opacity: 0; transition: opacity var(--dur-base), left var(--dur-base) var(--ease-out), top var(--dur-base) var(--ease-out); }
+body.ui-v2 .dg-reticle.on { opacity: 1; }
+body.ui-v2 .dg-reticle i { position: absolute; inset: 0; border-radius: 50%; border: 3px dashed rgba(255,59,85,.9); box-shadow: 0 0 24px rgba(255,59,85,.5); animation: dgSpin 6s linear infinite; }
+body.ui-v2 .dg-reticle::before { content: ""; position: absolute; left: 50%; top: -26px; transform: translateX(-50%); border: 11px solid transparent; border-top: 15px solid #FF3B55; filter: drop-shadow(0 0 6px rgba(255,59,85,.8)); animation: dgBob .9s ease-in-out infinite; }
+@keyframes dgSpin { to { transform: rotate(360deg); } }
+@keyframes dgBob { 50% { transform: translate(-50%, 6px); } }
+/* 24: the card shows when it hits the monster's weakness (the icon), not a confusing "WEAK". */
+body.ui-v2 .dg-tag { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+body.ui-v2 .dg-tag svg { width: 12px; height: 12px; }
+body.ui-v2 .dg-tag.none { display: none; }
+
+/* 6: a support asks for a card: the screen dims and the cards light up. */
+body.ui-v2 .dg-shade { position: absolute; inset: 0; z-index: 20; background: rgba(5,5,12,.62); opacity: 0; pointer-events: none; transition: opacity var(--dur-base); }
+body.ui-v2 .dg-fight.picking .dg-shade { opacity: 1; pointer-events: auto; }
+body.ui-v2 .dg-fight.picking .dg-units, body.ui-v2 .dg-fight.picking .dg-hint { position: relative; z-index: 21; }
+body.ui-v2 .dg-fight.picking .dg-unit:not(.down) .dg-card { box-shadow: 0 0 0 3px var(--success), 0 0 26px rgba(91,227,138,.6); animation: dgGlow 1s ease-in-out infinite; }
+body.ui-v2 .dg-fight.picking .dg-unit.down { opacity: .4; }
+body.ui-v2 .dg-fight.picking .dg-tap, body.ui-v2 .dg-fight.busy .dg-tap { display: none; }
+body.ui-v2 .dg-fight.picking .dg-hint { border-color: var(--success); background: rgba(17,27,20,.95); }
+@keyframes dgGlow { 50% { transform: translateY(-4px); } }
+
+/* 10: the bars slide; a hit card shakes. */
+body.ui-v2 .dg-hp i, body.ui-v2 .dg-plate .bar i { transition: width 600ms var(--ease-out); }
+body.ui-v2 .dg-unit.hurt .dg-card { animation: dgShake 380ms ease-out; }
+@keyframes dgShake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+/* 18: Shards fly up from a defeated monster. */
+body.ui-v2 .dg-drop { position: absolute; width: 22px; height: 22px; transform: translate(-50%, -50%); animation: dgDrop 1.2s var(--ease-out) forwards; }
+body.ui-v2 .dg-drop .sh-coin, body.ui-v2 .dg-drop svg { width: 22px; height: 22px; }
+body.ui-v2 .dg-drop.card { color: var(--prank); width: 34px; height: 34px; }
+body.ui-v2 .dg-drop.card svg { width: 34px; height: 34px; }
+@keyframes dgDrop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); } 25% { opacity: 1; transform: translate(calc(-50% + var(--dx, 0px) * .5), calc(-50% + var(--dy, -80px))) scale(1.2); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, -80px) - 60px)) scale(.8); } }
+
+/* 23: the in-app confirm window. */
+body.ui-v2 .dg-modal { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(5,5,12,.7); }
+body.ui-v2 .dg-mbox { width: min(420px, calc(100vw - 32px)); padding: 22px; border-radius: var(--rad-lg); background: var(--bg-raised); border: 1px solid var(--border-strong); color: var(--text-primary); box-sizing: border-box; }
+body.ui-v2 .dg-mbox h3 { margin: 0 0 6px; font: 700 20px var(--font-display); }
+body.ui-v2 .dg-mbox p { margin: 0 0 18px; color: var(--text-secondary); }
+body.ui-v2 .dg-mbtn { display: flex; gap: 10px; justify-content: flex-end; }
+body.ui-v2 .dg-mbtn .v2-btn { height: 42px; min-width: 110px; justify-content: center; }
+
+/* 25, 26: the loot screen: one view, the cards face down, flipped like a pack. */
+body.ui-v2 .dg-over { display: flex; }
+body.ui-v2 .dg-over .dg-obox { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 14px; }
+body.ui-v2 .dg-ohead { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+body.ui-v2 .dg-ohead > div:first-child { flex: 1; min-width: 260px; }
+body.ui-v2 .dg-ohead .dg-depth { flex: 1.4; min-width: 420px; margin: 0; }
+body.ui-v2 .dg-count { font-style: normal; }
+body.ui-v2 .dg-lootrow { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+body.ui-v2 .dg-lhead { display: flex; align-items: center; gap: 12px; }
+body.ui-v2 .dg-lhead h3 { margin: 0; }
+body.ui-v2 .dg-lhead small { color: var(--text-muted); font-family: var(--font-num); }
+body.ui-v2 .dg-reveal { margin-left: auto; height: 40px; gap: 8px; }
+body.ui-v2 .dg-reveal svg { width: 16px; height: 16px; }
+body.ui-v2 .dg-flips { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 12px; container-type: size; }
+body.ui-v2 .dg-flip { height: min(100cqh, 280px); aspect-ratio: 5 / 7; position: relative; border: 0; padding: 0; background: none; cursor: pointer; perspective: 900px; animation: dgDeal .5s var(--ease-out) both; animation-delay: var(--d); }
+body.ui-v2 .dg-flips.two .dg-flip { height: min(calc((100cqh - 12px) / 2), 220px); }
+body.ui-v2 .dg-flip .face { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; backface-visibility: hidden; transition: transform .6s var(--ease-out); }
+body.ui-v2 .dg-flip .back { background: linear-gradient(160deg, #2a2140, #151020); box-shadow: 0 0 0 2px var(--border-strong); }
+body.ui-v2 .dg-flip .back img { width: 100%; height: 100%; object-fit: cover; }
+body.ui-v2 .dg-flip .front { transform: rotateY(180deg); }
+body.ui-v2 .dg-flip .front .dg-card { height: 100%; }
+body.ui-v2 .dg-flip.up .back { transform: rotateY(-180deg); }
+body.ui-v2 .dg-flip.up .front { transform: rotateY(0); box-shadow: 0 0 22px color-mix(in srgb, var(--rc) 55%, transparent); }
+body.ui-v2 .dg-flip:not(.up):hover .back { transform: translateY(-4px); }
+@keyframes dgDeal { from { opacity: 0; transform: translateY(30px) scale(.9); } }
+body.ui-v2 .dg-obtn { display: flex; align-items: center; gap: 14px; }
+body.ui-v2 .dg-nocards { margin: auto; }
+
+/* 3 (all squad pickers): the star gems on the Hunt picker cards too (flair.js uses container units). */
+body.ui-v2 .art { container-type: inline-size; }
+
+/* Fixes after the first check: the details button sits bottom right (the Hunt .card-info rule put it on the cost badge). */
+body.ui-v2 .dg-card > .card-info { top: auto !important; left: auto !important; right: 5px !important; bottom: 36px !important; }
+/* A taller arena: smaller squad cards on desktop, the hint inside the arena, a thinner plate band. */
+body.ui-v2:not(.m-port):not(.m-land) .dg-fight { grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "top top top" "logc turn right" "logc arena right" "units units units"; }
+body.ui-v2:not(.m-port):not(.m-land) .dg-unit { width: clamp(84px, 6.6vw, 124px); }
+body.ui-v2:not(.m-port):not(.m-land) .dg-hint { grid-area: arena; align-self: end; justify-self: center; z-index: 4; margin-bottom: 4px; }
+body.ui-v2:not(.m-port):not(.m-land) .dg-fight.picking .dg-hint { z-index: 21; }
+body.ui-v2 .dg-plates { height: 62px; }
+body.ui-v2 .dg-canvas { inset: 64px 0 0 0; height: calc(100% - 64px); }
+body.ui-v2 .dg-plate { min-width: 0; box-sizing: border-box; overflow: hidden; padding: 7px 10px; gap: 4px; }
+body.ui-v2 .dg-plate .n { min-width: 0; }
+
+/* Phones (no regression from the desktop polish): the loot cards, the plates, the meter, the details button. */
+body.ui-v2.m-port .dg-ohead .dg-depth, body.ui-v2.m-land .dg-ohead .dg-depth { min-width: 0; }
+body.ui-v2.m-port .dg-flips, body.ui-v2.m-land .dg-flips { container-type: normal; }
+body.ui-v2.m-port .dg-flip { height: 150px; } body.ui-v2.m-port .dg-flips.two .dg-flip { height: 120px; }
+body.ui-v2.m-land .dg-flip { height: 120px; } body.ui-v2.m-land .dg-flips.two .dg-flip { height: 96px; }
+body.ui-v2.m-port .dg-over .dg-obox { overflow: auto; }
+body.ui-v2.m-port .dg-plate, body.ui-v2.m-land .dg-plate { padding: 4px 6px; }
+body.ui-v2.m-port .dg-plate .n em, body.ui-v2.m-port .dg-plate .wk, body.ui-v2.m-land .dg-plate .wk { display: none; }
+body.ui-v2.m-port .dg-plates, body.ui-v2.m-land .dg-plates { height: 34px; }
+body.ui-v2.m-port .dg-canvas, body.ui-v2.m-land .dg-canvas { inset: 36px 0 0 0; height: calc(100% - 36px); }
+body.ui-v2.m-port .dg-meter { padding: 3px 5px; gap: 3px; justify-self: stretch; }
+body.ui-v2.m-port .dg-mt { min-width: 0; padding: 3px 8px; } body.ui-v2.m-port .dg-mt small, body.ui-v2.m-port .dg-round { display: none; }
+body.ui-v2.m-port .dg-mt b { font-size: 11px; }
+body.ui-v2.m-port .dg-card > .card-info, body.ui-v2.m-land .dg-card > .card-info { width: 18px; height: 18px; font-size: 9px; right: 3px !important; bottom: 24px !important; }
+body.ui-v2.m-port .dg-ohead { flex-direction: column; align-items: stretch; gap: 10px; }
+body.ui-v2.m-port .dg-ohead > div:first-child { min-width: 0; }

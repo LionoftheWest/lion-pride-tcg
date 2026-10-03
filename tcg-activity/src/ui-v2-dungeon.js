@@ -4,7 +4,9 @@
 // Every rule and roll lives in SQL (dungeon.sql on the shared combat core); the data comes from
 // src/dungeon-routes.js. The monsters are 3D (src/dungeon-stage.js, loaded on demand), bigger on
 // screen (Nathan). The flag: /api/flags -> dungeon (DUNGEON_USERS / FEATURE_DUNGEON).
-import { v2ctx, toast } from './ui-v2.js';
+import { v2ctx, toast, mergedCards } from './ui-v2.js';
+import { flairHTML } from './flair.js';
+import { elIcon } from './element-icons.js';
 import { thumb } from './thumb.js';
 import { isPort } from './mobile.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
@@ -83,10 +85,11 @@ export function wireAdvTabs(root) {
   }));
 }
 // main.js calls this after each Hunt paint: the strip on top of the Hunt view.
-export function advTabs() {
+export function advTabs(active = 'hunt') {
   const main = document.getElementById('main');
-  if (!dg.on || !main || main.querySelector(':scope > .dg-tabs')) return;
-  main.insertAdjacentHTML('afterbegin', advTabsHTML('hunt'));
+  if (!dg.on || !main) return;
+  main.querySelector(':scope > .dg-tabs')?.remove();
+  main.insertAdjacentHTML('afterbegin', advTabsHTML(active));
   main.classList.add('has-adv');
   wireAdvTabs(main);
 }
@@ -109,7 +112,9 @@ export async function renderDungeonV2() {
   dg.per = 0; // measure the card grid again (the size may have changed)
   if (!dg.on) { el('main').innerHTML = '<div class="dg-closed"><b>The Dungeon is closed.</b></div>'; return; }
   if (dg.data && !dg.data.closed) paint(); else el('main').innerHTML = '<div class="loading">Opening the dungeon…</div>';
-  await load();
+  // The star gems come from the collection (ascension per copy): load it when it is not cached yet.
+  const needCol = !ctx().cache.collection;
+  await Promise.all([load(), needCol ? Promise.resolve(ctx().refreshOwned?.()).catch(() => {}) : null]);
   if (ctx().currentView() !== 'dungeon') return;
   paint();
 }
@@ -143,6 +148,8 @@ function paint() {
   const main = el('main');
   const d = dg.data;
   const fight = active() && d.run.state?.phase === 'fight';
+  // The same room: change the parts in place (no rebuild, no flicker).
+  if (fight && dg.view !== 'board' && main.querySelector(`.dg-fight[data-room="${roomKey()}"]`)) { fightUpdate(main, d.run.state); return; }
   // Keep the 3D canvas across repaints of the same room (no model reload, no flash).
   const keep = fight && dg.stage ? dg.stage.canvas : null;
   if (!fight && dg.stage) { dg.stage.dispose(); dg.stage = null; dg.roomKey = ''; }
@@ -154,8 +161,9 @@ function paint() {
   else if (active()) body = chooseHTML();
   else if (run()) body = overHTML();
   else body = lobbyHTML();
-  main.innerHTML = `<div class="v2-dungeon${fight ? ' dg-fighting' : ''}${d.run?.state?.phase ? ` ph-${d.run.state.phase}` : ''}">${fight ? '' : advTabsHTML('dungeon')}${body}</div>`;
-  wireAdvTabs(main);
+  main.innerHTML = `<div class="v2-dungeon${fight ? ' dg-fighting' : ''}${d.run?.state?.phase ? ` ph-${d.run.state.phase}` : ''}">${body}</div>`;
+  advTabs('dungeon'); // the Adventure tabs: the same place as on the Hunt view (Nathan item 2)
+  main.querySelectorAll('.card-info').forEach((b) => b.addEventListener('click', (e) => { if (fight) return; e.stopPropagation(); const id = Number(b.closest('.dg-card')?.dataset.id); if (id) openInfo(id); }));
   wireGate(main);
   if (dg.view === 'board') wireBoard(main);
   else if (fight) wireFight(main, keep);
@@ -167,13 +175,20 @@ function paint() {
 
 const cardTile = (c, opts = {}) => {
   const r = c?.rarity || 'normal';
-  return `<div class="dg-card r-${r}${opts.cls ? ' ' + opts.cls : ''}"${opts.attr || ''} style="--rc:${RCOL[r] || '#9AA3B5'}">
+  return `<div class="dg-card r-${r}${opts.cls ? ' ' + opts.cls : ''}" data-id="${c?.id}"${opts.attr || ''} style="--rc:${RCOL[r] || '#9AA3B5'}">
     ${c?.image_url ? `<img src="${thumb(c.image_url)}" alt="" loading="lazy">` : ''}
     ${opts.top ?? `<span class="dg-pt">${c.cost ?? 1}<small>PT</small></span><span class="dg-pw">${I.bolt}${fmt(c.cp)}</span>`}
     <span class="dg-nm"><b>${esc(c?.name || '?')}</b><small>◆ ${esc(RL(r))}</small></span>
+    ${flairHTML(ascOf(c?.id))}${opts.info === false ? '' : '<button class="card-info" data-info="1" aria-label="Details">🔍</button>'}
     ${opts.over || ''}
   </div>`;
 };
+// The member's star level of a card (the collection cache) and the full card for the viewer.
+const ascOf = (id) => (ctx().cache.collection?.cards || []).find((x) => Number(x.id) === Number(id))?.ascension || 0;
+function openInfo(id) {
+  const full = mergedCards().find((x) => Number(x.id) === Number(id)) || (dg.data?.mine || []).find((x) => Number(x.id) === Number(id));
+  if (full) ctx().openViewer(full);
+}
 
 // ---- Today's dungeon (the squad picker) --------------------------------------------------------
 function ruleBlock(c) {
@@ -333,6 +348,8 @@ function wireLobby(main) {
 }
 
 // ---- The fight ---------------------------------------------------------------------------------
+// The room is built ONCE (fightBuild); every action after that changes the parts in place (fightUpdate),
+// so the screen never flickers and the HP bars slide (Nathan, 2026-10-03, items 5 and 10).
 const roomKey = () => `${run().floor}-${run().room}`;
 const foesOf = (st) => (st?.foes || []).map((f) => ({ ...f, boss: st.room_type === 'guardian', elite: st.room_type === 'elite' }));
 function progressHTML() {
@@ -352,71 +369,152 @@ function statsHTML() {
   const buff = Math.round(((R.state?.buff || 1) - 1) * 100);
   return `<div class="dg-stats"><span title="Shards this run">${COIN}<b>+${fmt(R.shards)}</b><i>Shards</i></span><span title="Cards found">${I.cards}<b>${(R.cards || []).length}</b><i>cards found</i></span><span title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;
 }
-const isWeak = (c, f) => (f?.weak || []).some((w) => (c.slugs || []).includes(w.value));
+// A weakness / resistance as an icon: an element icon, or a short word (melee, beast ...).
+const traitIcon = (v) => {
+  const k = String(v || '').replace(/^trait:/, '');
+  return elIcon(k) || `<b>${esc(k.slice(0, 6).toUpperCase())}</b>`;
+};
+const hitsWeak = (c, f) => (f?.weak || []).find((w) => (c.slugs || []).includes(w.value));
 const isResist = (c, f) => (f?.resist || []).some((w) => (c.slugs || []).includes(w.value));
+const squadOf = (R) => { const M = mine(); return (R.squad || []).map((id) => ({ ...(M.get(Number(id)) || { id }), s: R.state.cards?.[String(id)] || {} })); };
+const supDesc = (c) => { const a = c.ability || {}; return (EFFECT[a.effect] || (() => a.effect || ''))(a); };
+
 function fightHTML() {
-  const R = run(); const st = R.state; const M = mine();
+  const R = run(); const st = R.state;
+  const foes = foesOf(st);
+  const squad = squadOf(R);
+  const atk = squad.filter((c) => ATTACKER.has(c.type));
+  const sup = squad.filter((c) => !ATTACKER.has(c.type));
+  const plate = (f, i) => `<div class="dg-plate${f.boss ? ' boss' : f.elite ? ' elite' : ''}" data-foe="${i}">
+      <span class="n"><b>${esc(f.name)}</b><small>LV ${f.level}</small><em class="hpn"></em></span>
+      <span class="bar"><i></i></span>
+      <span class="wk">${(f.weak || []).length ? `<span class="wk-l" title="Weak to">${I.up}${f.weak.map((w) => `<i title="Weak to ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}${(f.resist || []).length ? `<span class="rs-l" title="Resists">${I.shield}${f.resist.map((w) => `<i title="Resists ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}</span>
+      ${(f.passives || []).length ? `<span class="ps">${f.passives.map((p) => `<i>${esc(p)}</i>`).join('')}</span>` : ''}</div>`;
+  const unit = (c) => `<div class="dg-unit" data-card="${c.id}"><span class="dg-tag weak"></span>
+      ${cardTile(c, { top: `<span class="dg-pw">${I.bolt}${fmt(c.cp)}</span><span class="dg-buffs"></span>`, over: '<span class="dg-state"></span><span class="dg-tap">Tap to attack</span>' })}
+      <span class="dg-hp"><i></i></span><small class="dg-hpn"></small></div>`;
+  const supB = (c) => `<button class="dg-sup" data-sup="${c.id}">
+      ${c.image_url ? `<img src="${thumb(c.image_url)}" alt="">` : '<span></span>'}
+      <span class="t"><b>${esc(c.name)}</b><small>${esc(supDesc(c))}</small></span><em></em></button>`;
+  return `<div class="dg-fight" data-room="${roomKey()}">
+    <div class="dg-ftop">${progressHTML()}${statsHTML()}<button class="v2-btn dg-retreat">${I.door}Retreat</button></div>
+    <div class="dg-meter"></div>
+    <div class="dg-arena">
+      <div class="dg-plates">${foes.map(plate).join('')}</div>
+      <canvas class="dg-canvas"></canvas>
+      <div class="dg-reticle"><i></i></div>
+      <div class="dg-pops"></div>
+    </div>
+    <div class="dg-hint"></div>
+    <div class="dg-units">${atk.map(unit).join('')}</div>
+    <aside class="dg-right"><section class="dg-panel dg-shp"><span class="k">Squad HP</span><b class="v"></b><span class="dg-hp big"><i></i></span></section>
+      <section class="dg-panel dg-sups"><span class="k">Support</span>${sup.map(supB).join('') || '<p class="dg-none">No support cards in this squad.</p>'}</section></aside>
+    <aside class="dg-left-col"><span class="k">Room log</span><ol class="dg-log"></ol></aside>
+    <div class="dg-shade"></div>
+  </div>`;
+}
+
+// The turn meter: you, then every monster standing, in the order they act. A stunned monster shows
+// "skips". During the monsters' turn the one acting lights up (dg.acting = its index).
+function meterHTML(st) {
+  const round = st.round || 0;
+  const foes = foesOf(st);
+  const mine = dg.acting == null;
+  const chips = foes.map((f, i) => {
+    if (f.hp <= 0) return '';
+    const stun = (f.st || 0) >= round + 1;
+    return `<i class="dg-arrow">${I.right}</i><span class="dg-mt foe${dg.acting === i ? ' on' : ''}${stun ? ' skip' : ''}"><b>${esc(f.name.split(' ').slice(-1)[0])}</b><small>${stun ? 'Stunned' : f.boss ? 'Boss' : 'Monster'}</small></span>`;
+  }).join('');
+  return `<span class="dg-round">Round ${round + 1}</span><span class="dg-mt you${mine ? ' on' : ''}"><b>You</b><small>${mine ? 'Your turn' : 'Done'}</small></span>${chips}`;
+}
+
+// Change the parts in place from a state (the server's, or the animation's step).
+function fightUpdate(main, st) {
+  const F = main.querySelector('.dg-fight');
+  if (!F) return;
+  const R = run();
   const foes = foesOf(st);
   if (!foes[dg.target] || foes[dg.target].hp <= 0) dg.target = Math.max(0, foes.findIndex((f) => f.hp > 0));
   const tf = foes[dg.target];
-  const squad = (R.squad || []).map((id) => ({ ...(M.get(Number(id)) || { id }), s: st.cards?.[String(id)] || {} }));
-  const atk = squad.filter((c) => ATTACKER.has(c.type));
-  const sup = squad.filter((c) => !ATTACKER.has(c.type));
   const round = st.round || 0;
-  const hp = squad.reduce((t, c) => t + (c.s.hp || 0), 0), max = squad.reduce((t, c) => t + (c.s.max || 0), 0);
-  const cards = atk.map((c) => {
-    const down = c.s.down, stun = (c.s.cd || 0) >= round + 1;
-    const pct = Math.max(0, Math.min(100, (c.s.hp / Math.max(1, c.s.max)) * 100));
-    const tag = tf ? (isWeak(c, tf) ? '<span class="dg-tag weak">WEAK</span>' : isResist(c, tf) ? '<span class="dg-tag res">RESIST</span>' : '') : '';
-    const over = down ? `<span class="dg-state">${I.skull}Down</span>` : stun ? `<span class="dg-state">${I.timer}Stunned</span>` : dg.support ? '' : '<span class="dg-tap">Tap to attack</span>';
-    return `<div class="dg-unit${down ? ' down' : ''}${stun ? ' stun' : ''}${dg.support ? ' help' : ''}" data-card="${c.id}">${tag}
-      ${cardTile(c, { top: `<span class="dg-pw">${I.bolt}${fmt(c.cp)}</span>${(c.s.buff || 1) > 1 ? '<span class="dg-buff">EMPOWERED</span>' : ''}${(c.s.debuff || 1) < 1 ? '<span class="dg-buff bad">CURSED</span>' : ''}`, over })}
-      <span class="dg-hp"><i style="width:${pct}%" class="${pct < 30 ? 'low' : ''}"></i></span><small class="dg-hpn${pct < 30 ? ' low' : ''}">${fmt(c.s.hp)}/${fmt(c.s.max)}${c.s.shield ? ` <em>+${fmt(c.s.shield)}</em>` : ''}</small></div>`;
-  }).join('');
-  const sups = sup.map((c) => {
-    const ready = round >= (c.s.cd || 0) && !c.s.down;
-    const a = c.ability || {};
-    const desc = (EFFECT[a.effect] || (() => a.effect || ''))(a);
-    return `<button class="dg-sup${ready ? '' : ' wait'}${dg.support === Number(c.id) ? ' on' : ''}" data-sup="${c.id}" ${ready ? '' : 'disabled'}>
-      ${c.image_url ? `<img src="${thumb(c.image_url)}" alt="">` : '<span></span>'}
-      <span class="t"><b>${esc(c.name)}</b><small>${esc(desc)}</small></span>
-      <em>${c.s.down ? 'Down' : ready ? `${I.check}Ready` : `${I.timer}In ${c.s.cd - round} round${c.s.cd - round === 1 ? '' : 's'}`}</em></button>`;
-  }).join('') || '<p class="dg-none">No support cards in this squad.</p>';
-  const log = dg.log.slice(-6).reverse().map((l) => `<li class="${l.kind}"><b>${esc(l.who)}</b><span>→ ${esc(l.to)}</span><em>${l.txt}</em></li>`).join('') || '<li class="none">The fight starts. Tap a card.</li>';
-  const hint = dg.support ? 'Tap a card in your squad to help it' : foes.filter((f) => f.hp > 0).length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack';
-  return `<div class="dg-fight">
-    <div class="dg-ftop">${progressHTML()}${statsHTML()}<button class="v2-btn dg-retreat">${I.door}Retreat</button></div>
-    <div class="dg-turn"><b>Your turn</b><span>Round ${round + 1}</span></div>
-    <div class="dg-arena">
-      <canvas class="dg-canvas"></canvas>
-      <div class="dg-plates">${foes.map((f, i) => `<div class="dg-plate${i === dg.target ? ' on' : ''}${f.hp <= 0 ? ' dead' : ''}${f.boss ? ' boss' : ''}" data-foe="${i}">
-        <span class="n"><b>${esc(f.name)}</b><small>LV ${f.level}</small><em>${fmt(Math.max(0, f.hp))} / ${fmt(f.max)}</em></span>
-        <span class="bar"><i style="width:${Math.max(0, (f.hp / f.max) * 100)}%"></i></span>
-        ${(f.passives || []).length ? `<span class="ps">${f.passives.map((p) => `<i>${esc(p)}</i>`).join('')}</span>` : ''}</div>`).join('')}</div>
-      <div class="dg-pops"></div>
-    </div>
-    <div class="dg-hint">${I.hand}${hint}${dg.support ? '<button class="dg-cancel">Cancel</button>' : ''}</div>
-    <div class="dg-units">${cards}</div>
-    <aside class="dg-right"><section class="dg-panel dg-shp"><span class="k">Squad HP</span><b>${fmt(hp)}<small> / ${fmt(max)}</small></b><span class="dg-hp big"><i style="width:${(hp / Math.max(1, max)) * 100}%"></i></span></section>
-      <section class="dg-panel dg-sups"><span class="k">Support</span>${sups}</section></aside>
-    <aside class="dg-left-col"><span class="k">Room log</span><ol class="dg-log">${log}</ol></aside>
-  </div>`;
+  foes.forEach((f, i) => {
+    const p = F.querySelector(`.dg-plate[data-foe="${i}"]`);
+    if (!p) return;
+    p.classList.toggle('on', i === dg.target && f.hp > 0);
+    p.classList.toggle('dead', f.hp <= 0);
+    p.querySelector('.hpn').textContent = `${fmt(Math.max(0, f.hp))} / ${fmt(f.max)}`;
+    p.querySelector('.bar i').style.width = `${Math.max(0, (f.hp / f.max) * 100)}%`;
+  });
+  dg.stage?.setTarget?.(tf && tf.hp > 0 ? dg.target : -1);
+  const squad = (R.squad || []).map((id) => ({ ...(mine().get(Number(id)) || { id }), s: st.cards?.[String(id)] || {} }));
+  let hp = 0, max = 0;
+  for (const c of squad) {
+    hp += c.s.hp || 0; max += c.s.max || 0;
+    const u = F.querySelector(`.dg-unit[data-card="${c.id}"]`);
+    if (u) {
+      const down = !!c.s.down, stun = !down && (c.s.cd || 0) >= round + 1;
+      const pct = Math.max(0, Math.min(100, ((c.s.hp || 0) / Math.max(1, c.s.max || 1)) * 100));
+      u.classList.toggle('down', down); u.classList.toggle('stun', stun);
+      u.querySelector('.dg-hp i').style.width = `${pct}%`;
+      u.querySelector('.dg-hp i').classList.toggle('low', pct < 30);
+      u.querySelector('.dg-hpn').innerHTML = `${fmt(c.s.hp)}/${fmt(c.s.max)}${c.s.shield ? ` <em>+${fmt(c.s.shield)}</em>` : ''}`;
+      u.querySelector('.dg-hpn').classList.toggle('low', pct < 30);
+      u.querySelector('.dg-state').innerHTML = down ? `${I.skull}Down` : stun ? `${I.timer}Stunned` : '';
+      u.querySelector('.dg-buffs').innerHTML = `${(c.s.buff || 1) > 1 ? '<span class="dg-buff">EMPOWERED</span>' : ''}${(c.s.debuff || 1) < 1 ? '<span class="dg-buff bad">CURSED</span>' : ''}`;
+      const w = tf && hitsWeak(c, tf);
+      const tag = u.querySelector('.dg-tag');
+      tag.className = `dg-tag ${w ? 'weak' : isResist(c, tf) ? 'res' : 'none'}`;
+      tag.innerHTML = w ? `${traitIcon(w.value)}Bonus` : isResist(c, tf) ? `${I.shield}Resisted` : '';
+      tag.title = w ? 'This card hits the monster\'s weakness' : 'The monster resists this card';
+    }
+    const b = F.querySelector(`.dg-sup[data-sup="${c.id}"]`);
+    if (b) {
+      const ready = round >= (c.s.cd || 0) && !c.s.down;
+      b.disabled = !ready || dg.busy;
+      b.classList.toggle('wait', !ready);
+      b.classList.toggle('on', dg.support === Number(c.id));
+      b.querySelector('em').innerHTML = c.s.down ? 'Down' : ready ? `${I.check}Ready` : `${I.timer}In ${c.s.cd - round} round${c.s.cd - round === 1 ? '' : 's'}`;
+    }
+  }
+  F.querySelector('.dg-shp .v').innerHTML = `${fmt(hp)}<small> / ${fmt(max)}</small>`;
+  F.querySelector('.dg-shp .dg-hp i').style.width = `${(hp / Math.max(1, max)) * 100}%`;
+  F.querySelector('.dg-meter').innerHTML = meterHTML(st);
+  F.querySelector('.dg-log').innerHTML = dg.log.slice(-6).reverse().map((l) => `<li class="${l.kind}"><b>${esc(l.who)}</b><span>→ ${esc(l.to)}</span><em>${l.txt}</em></li>`).join('') || '<li class="none">The fight starts. Tap a card.</li>';
+  const sc = dg.support ? mine().get(dg.support) : null;
+  F.querySelector('.dg-hint').innerHTML = sc ? `${I.hand}Choose a card for <b>${esc(sc.name)}</b><button class="dg-cancel">Cancel</button>`
+    : dg.busy ? `${I.timer}The monsters are acting…` : `${I.hand}${foes.filter((f) => f.hp > 0).length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
+  F.classList.toggle('picking', !!sc);
+  F.classList.toggle('busy', !!dg.busy);
+  const sb = F.querySelector('.dg-stats'); if (sb) sb.outerHTML = statsHTML();
+  placeArena(main);
 }
-function placePlates(main) {
+// The name plates sit in a band above the monsters (never on the turn meter, never on each other);
+// the reticle marks the target on the monster itself.
+function placeArena(main) {
   if (!dg.stage) return;
   const L = dg.stage.labels();
+  const canvas = main.querySelector('.dg-canvas');
+  const off = canvas ? canvas.offsetTop : 0;
   main.querySelectorAll('.dg-plate').forEach((p) => {
     const l = L[Number(p.dataset.foe)];
     if (!l) return;
-    p.style.left = `${l.x}px`; p.style.top = `${l.y}px`; const phone = document.body.classList.contains('m-port') || document.body.classList.contains('m-land');
-    p.style.width = `${Math.min(260, Math.max(phone ? 70 : 140, l.w * (phone ? 0.96 : 0.92)))}px`;
+    p.style.left = `${l.x}px`;
+    const phone = document.body.classList.contains('m-port') || document.body.classList.contains('m-land');
+    p.style.width = `${Math.max(phone ? 54 : 90, Math.min(250, l.w * (phone ? 0.84 : 0.92)))}px`;
   });
+  const r = main.querySelector('.dg-reticle');
+  const l = L[dg.target];
+  const alive = (run()?.state?.foes || [])[dg.target]?.hp > 0;
+  if (r) {
+    r.classList.toggle('on', !!l && alive && !dg.support);
+    if (l) { r.style.left = `${l.x}px`; r.style.top = `${off + (l.y + l.foot) / 2}px`; r.style.width = r.style.height = `${Math.max(70, Math.min(170, (l.foot - l.y) * 0.8))}px`; }
+  }
 }
-function pop(main, x, y, txt, cls = '') {
-  const box = main.querySelector('.dg-pops');
-  if (!box) return;
+function pop(main, i, txt, cls = '', dy = 0) {
+  const box = main.querySelector('.dg-pops'); const l = dg.stage?.labels()[i]; const canvas = main.querySelector('.dg-canvas');
+  if (!box || !l) return;
   const n = document.createElement('span');
-  n.className = `dg-pop ${cls}`; n.innerHTML = txt; n.style.left = `${x}px`; n.style.top = `${y}px`;
+  n.className = `dg-pop ${cls}`; n.innerHTML = txt; n.style.left = `${l.x}px`; n.style.top = `${(canvas?.offsetTop || 0) + l.y + 40 + dy}px`;
   box.appendChild(n); setTimeout(() => n.remove(), 1500);
 }
 function popCard(main, id, txt, cls = '') {
@@ -425,97 +523,152 @@ function popCard(main, id, txt, cls = '') {
   const n = document.createElement('span');
   n.className = `dg-pop on-card ${cls}`; n.innerHTML = txt;
   u.appendChild(n); setTimeout(() => n.remove(), 1500);
+  u.classList.remove('hurt'); void u.offsetWidth; if (cls === 'hurt') u.classList.add('hurt');
 }
-async function wireFight(main, keep) {
+async function wireFight(main, keepCanvas) {
   const R = run();
-  const arena = main.querySelector('.dg-arena');
-  const old = main.querySelector('.dg-canvas');
-  if (keep && dg.roomKey === roomKey()) { old.replaceWith(keep); }
+  const F = main.querySelector('.dg-fight');
+  const canvas = main.querySelector('.dg-canvas');
+  fightUpdate(main, R.state);
+  if (keepCanvas) canvas.replaceWith(keepCanvas);
   else {
     dg.stage?.dispose(); dg.stage = null;
-    const canvas = old;
     try {
       const { mountStage } = await import('./dungeon-stage.js');
       if (!main.contains(canvas)) return;
-      dg.stage = mountStage(canvas, { onPick: (i) => { dg.target = i; paint(); }, onLayout: () => placePlates(main) });
+      dg.stage = mountStage(canvas, { onPick: (i) => target(main, i), onLayout: () => placeArena(main) });
       dg.stage.canvas = canvas;
       dg.roomKey = roomKey();
       await dg.stage.setFoes(foesOf(R.state));
+      fightUpdate(main, run().state);
     } catch (e) { console.warn('dungeon stage', e); }
   }
-  requestAnimationFrame(() => placePlates(main));
-  setTimeout(() => placePlates(main), 300);
-  main.querySelectorAll('[data-foe]').forEach((p) => p.addEventListener('click', () => { if (Number(p.dataset.foe) !== dg.target) { dg.target = Number(p.dataset.foe); paint(); } }));
-  main.querySelector('.dg-cancel')?.addEventListener('click', () => { dg.support = null; paint(); });
-  main.querySelector('.dg-retreat')?.addEventListener('click', () => retreat());
-  main.querySelectorAll('[data-sup]').forEach((b) => b.addEventListener('click', () => {
-    const id = Number(b.dataset.sup);
-    const c = mine().get(id);
-    const tgt = c?.ability?.target || 'boss';
-    if (tgt === 'ally' || tgt === 'self') { dg.support = dg.support === id ? null : id; paint(); return; }
-    act('support', { cardId: id, targetFoe: dg.target });
-  }));
-  main.querySelectorAll('.dg-unit').forEach((u) => u.addEventListener('click', () => {
-    const id = Number(u.dataset.card);
-    if (dg.support) { const s = dg.support; dg.support = null; act('support', { cardId: s, targetCard: id }); return; }
-    if (u.classList.contains('down')) { toast('That card is down.'); return; }
-    act('attack', { cardId: id, target: dg.target });
-  }));
-  void arena;
+  requestAnimationFrame(() => placeArena(main));
+  F.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.closest('.dg-cancel') || t.closest('.dg-shade')) { dg.support = null; fightUpdate(main, run().state); return; }
+    if (t.closest('.card-info')) { const id = Number(t.closest('.dg-card')?.dataset.id); if (id) openInfo(id); return; }
+    const p = t.closest('[data-foe]'); if (p) { target(main, Number(p.dataset.foe)); return; }
+    if (t.closest('.dg-retreat')) { retreat(); return; }
+    const s = t.closest('[data-sup]');
+    if (s && !s.disabled) {
+      const id = Number(s.dataset.sup);
+      const tgt = mine().get(id)?.ability?.target || 'boss';
+      if (tgt === 'ally' || tgt === 'self') { dg.support = dg.support === id ? null : id; fightUpdate(main, run().state); return; }
+      act('support', { cardId: id, targetFoe: dg.target });
+      return;
+    }
+    const u = t.closest('.dg-unit');
+    if (u) {
+      const id = Number(u.dataset.card);
+      if (dg.support) { const sid = dg.support; dg.support = null; act('support', { cardId: sid, targetCard: id }); return; }
+      if (u.classList.contains('down')) { toast('That card is down.'); return; }
+      act('attack', { cardId: id, target: dg.target });
+    }
+  });
+}
+function target(main, i) {
+  const f = (run()?.state?.foes || [])[i];
+  if (!f || f.hp <= 0 || i === dg.target) return;
+  dg.target = i; ctx().sfx?.('click'); fightUpdate(main, run().state);
 }
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+const clone = (o) => JSON.parse(JSON.stringify(o));
+// One action: the hit lands at once, then each monster takes its turn in order with a clear pause,
+// the meter lights the one acting, and every HP bar moves step by step. The server's state is the
+// truth at the end (fightUpdate with r.state).
 async function act(kind, body) {
   if (dg.busy) return;
-  dg.busy = true;
   const main = document.getElementById('main');
-  main.querySelector('.dg-fight')?.classList.add('busy');
+  dg.busy = true; fightUpdate(main, run().state);
   let r = null;
   try { r = await ctx().apiPost(`/api/dungeon/${kind}`, body); } catch (e) { r = e?.body || null; }
-  if (!r?.ok) { dg.busy = false; main.querySelector('.dg-fight')?.classList.remove('busy'); toast(r?.message || 'That did not work.'); return; }
+  if (!r?.ok) { dg.busy = false; fightUpdate(main, run().state); toast(r?.message || 'That did not work.'); return; }
   const M = mine();
-  const foes = foesOf(run().state);
-  const L = dg.stage?.labels() || [];
+  const before = clone(run().state);
+  const foes = foesOf(before);
   const nm = (id) => M.get(Number(id))?.name || 'Card';
+  const step = clone(before);
   if (kind === 'attack') {
     const t = r.target ?? body.target;
     const f = foes[t];
-    const l = L[t];
     ctx().sfx?.(r.damage > 0 ? 'hit' : 'click');
     dg.stage?.play(t, r.kill ? 'death' : 'hit');
-    if (l) pop(main, l.x, l.y + 70, r.damage > 0 ? `-${fmt(r.damage)}${r.crit ? '<small>CRITICAL</small>' : r.double ? '<small>DOUBLE</small>' : r.bonus ? '<small>WEAK</small>' : r.resisted ? '<small>RESIST</small>' : ''}` : 'MISS', r.crit ? 'crit' : r.damage > 0 ? '' : 'miss');
+    pop(main, t, r.damage > 0 ? `-${fmt(r.damage)}${r.crit ? '<small>CRITICAL</small>' : r.double ? '<small>DOUBLE</small>' : r.bonus ? '<small>WEAKNESS</small>' : r.resisted ? '<small>RESISTED</small>' : ''}` : 'MISS', r.crit ? 'crit' : r.damage > 0 ? '' : 'miss');
+    // The monster's HP moves now (the final value from the server).
+    step.foes[t].hp = r.state.foes[t].hp;
+    if (r.heal) { const k = String(body.cardId); step.cards[k].hp = Math.min(step.cards[k].max, step.cards[k].hp + r.heal); popCard(main, body.cardId, `+${fmt(r.heal)}`, 'heal'); }
     dg.log.push({ kind: 'me', who: nm(body.cardId), to: f?.name || 'Monster', txt: r.damage > 0 ? `-${fmt(r.damage)}${r.crit ? ' <i>CRIT</i>' : ''}` : 'miss' });
-    if (r.heal) popCard(main, body.cardId, `+${fmt(r.heal)}`, 'heal');
-    if (r.kill) dg.log.push({ kind: 'kill', who: f?.name || 'Monster', to: 'defeated', txt: `${COIN}+${fmt(r.loot?.shards)}` });
-    // The monsters' turn: each one acts in order (the surprise).
+    if (r.kill) { dg.log.push({ kind: 'kill', who: f?.name || 'Monster', to: 'defeated', txt: `${COIN}+${fmt(r.loot?.shards)}` }); lootDrop(main, t, r.loot); }
+    fightUpdate(main, step);
+    await sleep(r.kill ? 1100 : 750);
+    // The monsters' turn, one by one.
     for (const e of r.enemy || []) {
-      await sleep(520);
-      const ef = foes[e.foe];
-      if (e.action !== 'stunned' && e.action !== 'charging') dg.stage?.play(e.foe, 'attack');
-      await sleep(260);
-      if (e.dmg > 0) popCard(main, e.card, `-${fmt(e.dmg)}`, 'hurt');
-      for (const a of e.area || []) if (a.dmg > 0) popCard(main, a.card, `-${fmt(a.dmg)}`, 'hurt');
-      if (e.heal > 0 && L[e.foe]) pop(main, L[e.foe].x, L[e.foe].y + 70, `+${fmt(e.heal)}`, 'heal');
-      if (L[e.foe] && !e.dmg) pop(main, L[e.foe].x, L[e.foe].y + 40, esc(ACT[e.action] || e.action), 'act');
-      dg.log.push({ kind: 'foe', who: ef?.name || 'Monster', to: e.dmg ? nm(e.card) : (ACT[e.action] || e.action), txt: e.dmg ? `-${fmt(e.dmg)}` : '' });
+      dg.acting = e.foe; fightUpdate(main, step);
+      await sleep(450);
+      if (e.action !== 'stunned' && e.action !== 'charging') { dg.stage?.play(e.foe, 'attack'); await sleep(380); }
+      const hurt = (id, d) => { const k = String(id); if (!step.cards[k] || !d) return; step.cards[k].hp = Math.max(0, step.cards[k].hp - d); popCard(main, id, `-${fmt(d)}`, 'hurt'); };
+      hurt(e.card, e.dmg);
+      for (const a of e.area || []) hurt(a.card, a.dmg);
+      if (e.heal > 0) { step.foes[e.foe].hp = Math.min(step.foes[e.foe].max, step.foes[e.foe].hp + e.heal); pop(main, e.foe, `+${fmt(e.heal)}`, 'heal'); }
+      if (!e.dmg) pop(main, e.foe, esc(ACT[e.action] || e.action), 'act', -30);
+      if (e.dmg) ctx().sfx?.('hit');
+      dg.log.push({ kind: 'foe', who: ef(foes, e.foe), to: e.dmg ? nm(e.card) : (ACT[e.action] || e.action), txt: e.dmg ? `-${fmt(e.dmg)}` : '' });
+      fightUpdate(main, step);
+      await sleep(650);
     }
+    dg.acting = null;
     if (r.burned > 0) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
-    await sleep(r.kill ? 900 : 450);
   } else {
     ctx().sfx?.('click');
     const tx = body.targetCard ? nm(body.targetCard) : foes[body.targetFoe]?.name || 'Monster';
     dg.log.push({ kind: 'sup', who: nm(body.cardId), to: tx, txt: esc(r.effect || '') });
     if (body.targetCard) popCard(main, body.targetCard, esc((r.effect || '').toUpperCase()), 'heal');
-    else if (L[body.targetFoe]) pop(main, L[body.targetFoe].x, L[body.targetFoe].y + 70, esc((r.effect || '').toUpperCase()), 'act');
-    if (r.kill) dg.stage?.play(body.targetFoe, 'death');
+    else pop(main, body.targetFoe, esc((r.effect || '').toUpperCase()), 'act');
+    if (r.kill) { dg.stage?.play(body.targetFoe, 'death'); lootDrop(main, body.targetFoe, null); }
     await sleep(r.kill ? 900 : 350);
   }
-  if (r.loot?.card) toast('A card dropped! It is in your collection.');
-  await load();
+  if (r.loot?.card) toast('A card dropped!');
+  // The truth from the server, then the run totals (Shards, cards) in the background.
+  dg.data.run.state = r.state;
   dg.busy = false;
-  if (ctx().currentView() === 'dungeon') paint();
+  const phase = r.state?.phase;
+  if (r.status === 'over' || phase !== 'fight') { await load(); if (ctx().currentView() === 'dungeon') paint(); return; }
+  fightUpdate(main, r.state);
+  load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
+}
+const ef = (foes, i) => foes[i]?.name || 'Monster';
+// A loot drop: Shards fly up from the monster (and a card when one dropped).
+function lootDrop(main, i, loot) {
+  const box = main.querySelector('.dg-pops'); const l = dg.stage?.labels()[i]; const canvas = main.querySelector('.dg-canvas');
+  if (!box || !l) return;
+  const y = (canvas?.offsetTop || 0) + (l.y + l.foot) / 2;
+  for (let k = 0; k < 6; k++) {
+    const n = document.createElement('span');
+    n.className = 'dg-drop'; n.innerHTML = COIN;
+    n.style.left = `${l.x}px`; n.style.top = `${y}px`;
+    n.style.setProperty('--dx', `${(Math.random() - 0.5) * 160}px`); n.style.setProperty('--dy', `${-60 - Math.random() * 90}px`);
+    n.style.animationDelay = `${k * 40}ms`;
+    box.appendChild(n); setTimeout(() => n.remove(), 1400);
+  }
+  if (loot?.card) {
+    const n = document.createElement('span');
+    n.className = 'dg-drop card'; n.innerHTML = I.cards; n.style.left = `${l.x}px`; n.style.top = `${y}px`;
+    box.appendChild(n); setTimeout(() => n.remove(), 1600);
+  }
+}
+// An in-app confirm window (window.confirm does not open inside the Discord Activity: Retreat did nothing).
+function confirmBox(title, text, ok) {
+  return new Promise((done) => {
+    const w = document.createElement('div');
+    w.className = 'dg-modal';
+    w.innerHTML = `<div class="dg-mbox"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="dg-mbtn"><button class="v2-btn" data-m="0">Cancel</button><button class="v2-btn gold" data-m="1">${esc(ok)}</button></div></div>`;
+    document.body.appendChild(w);
+    w.addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b && e.target !== w) return; w.remove(); done(b?.dataset.m === '1'); });
+  });
 }
 async function retreat() {
-  if (!confirm('Retreat now? The run ends here. You keep your depth and all the loot.')) return;
+  if (!(await confirmBox('Retreat now?', 'The run ends here. You keep your depth and the loot.', 'Retreat'))) return;
   let r = null;
   try { r = await ctx().apiPost('/api/dungeon/retreat', {}); } catch (e) { r = e?.body || null; }
   if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
@@ -561,21 +714,40 @@ function wireChoose(main) {
   }));
 }
 
-// ---- The run is over ---------------------------------------------------------------------------
+// ---- The run is over: the loot screen ----------------------------------------------------------
+// One screen, no scroll (Nathan items 25, 26): the result, the totals, and the cards found FACE DOWN;
+// tap a card (or Reveal all) to flip it, the same as a pack.
+let cardBack = null;
+const getBack = async () => { if (cardBack == null) { try { cardBack = (await (await fetch('/api/config')).json()).backUrl || ''; } catch { cardBack = ''; } } return cardBack; };
 function overHTML() {
   const R = run();
-  const t = { cleared: ['Dungeon cleared!', 'You beat every floor of today\'s dungeon.'], retreat: ['You retreated', 'A safe exit. You keep your depth and all the loot.'], fell: ['Your squad fell', 'The run ends here. You keep your depth and all the loot.'] }[R.ended_by] || ['Run over', ''];
-  const loot = (dg.data.loot || []).map((c) => cardTile({ ...c, cost: null }, { top: '' })).join('');
+  const t = { cleared: ['Dungeon cleared!', 'You beat every floor of today\'s dungeon.'], retreat: ['You retreated', 'A safe exit with your loot.'], fell: ['Your squad fell', 'The run ends here. Here is what you found.'] }[R.ended_by] || ['Run over', ''];
+  const loot = dg.data.loot || [];
+  const cards = loot.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}" data-flip="${i}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
+      <span class="face back">${cardBack ? `<img src="${esc(cardBack)}" alt="">` : '<i></i>'}</span>
+      <span class="face front">${cardTile({ ...c, cost: null }, { top: '', info: false })}</span></button>`).join('');
   return `<div class="dg-over">
-    <section class="dg-panel dg-obox"><span class="k">${I.castle}${esc(dg.data.name)}</span><h1>${t[0]}</h1><p>${t[1]}</p>
-      <div class="dg-depth"><span>Depth<b>${R.floor}F Room ${R.room}</b></span><span>Rank today<b>#${R.rank || '—'}</b></span><span>Shards<b>${COIN}${fmt(R.shards)}</b></span><span>Turns<b>${fmt(R.turns)}</b></span></div>
-      ${loot ? `<h3>Cards found</h3><div class="dg-loot">${loot}</div>` : '<p class="muted">No cards dropped this run.</p>'}
-      <div class="dg-obtn"><button class="v2-btn gold" data-board>${I.trophy}See the leaderboard</button></div>
-      <small class="dg-note">${I.timer}A new dungeon in <b class="dg-left">${left(dg.data.next_at)}</b></small></section>
-    <aside class="dg-side">${topHTML()}</aside>
+    <section class="dg-panel dg-obox">
+      <div class="dg-ohead"><div><span class="k">${I.castle}${esc(dg.data.name)}</span><h1>${t[0]}</h1><p>${t[1]}</p></div>
+        <div class="dg-depth"><span>Depth<b>${R.floor}F Room ${R.room}</b></span><span>Rank today<b>#${R.rank || '—'}</b></span><span>Shards<b>${COIN}<em class="dg-count" data-to="${R.shards}">0</em></b></span><span>Turns<b>${fmt(R.turns)}</b></span></div></div>
+      <div class="dg-lootrow">${cards ? `<div class="dg-lhead"><h3>Cards found <small>${loot.length}</small></h3><button class="v2-btn gold dg-reveal">${I.cards}Reveal all</button></div><div class="dg-flips${loot.length > 6 ? ' two' : ''}" style="--n:${loot.length}">${cards}</div>` : '<p class="muted dg-nocards">No cards dropped this run.</p>'}</div>
+      <div class="dg-obtn"><button class="v2-btn" data-board>${I.trophy}See the leaderboard</button><small class="dg-note">${I.timer}A new dungeon in <b class="dg-left">${left(dg.data.next_at)}</b></small></div>
+    </section>
   </div>`;
 }
-function wireOver(main) { main.querySelectorAll('[data-board]').forEach((b) => b.addEventListener('click', () => openBoard())); }
+function wireOver(main) {
+  main.querySelectorAll('[data-board]').forEach((b) => b.addEventListener('click', () => openBoard()));
+  // The Shards count up.
+  const c = main.querySelector('.dg-count');
+  if (c) { const to = Number(c.dataset.to) || 0; const t0 = performance.now(); const f = (t) => { const k = Math.min(1, (t - t0) / 1200); c.textContent = fmt(Math.round(to * k * (2 - k))); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }
+  const flip = (b) => { if (b.classList.contains('up')) { const it = (dg.data.loot || [])[Number(b.dataset.flip)]; if (it) openInfo(Number(it.id)); return; } b.classList.add('up'); ctx().sfx?.('flip'); };
+  main.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', () => flip(b)));
+  main.querySelector('.dg-reveal')?.addEventListener('click', (e) => {
+    e.currentTarget.disabled = true;
+    [...main.querySelectorAll('[data-flip]:not(.up)')].forEach((b, i) => setTimeout(() => flip(b), i * 220));
+  });
+  if (cardBack == null) getBack().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-over') && cardBack) paint(); });
+}
 
 // ---- The leaderboard ---------------------------------------------------------------------------
 let board = null;
