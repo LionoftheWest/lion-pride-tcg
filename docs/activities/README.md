@@ -107,8 +107,8 @@ These rules come from earlier decisions. A new system must not break them.
 
 - **Everything happens in the Activity** (Nathan, 2026-09-27). The bot only posts, and
   each post has the **Open Lion Pride TCG** button.
-- **No scrolling.** Every screen fits one window. Lists page. The design session designs
-  each screen in pen.dev, and Nathan approves it before the build.
+- **UI rules** (no scrolling, size classes, pen.dev design and Nathan's approval before the
+  build) are in the UI standard, [`docs/design.md`](../design.md).
 - **The server decides every result.** The client sends an action, the server resolves
   it, and the server writes the result. The client never sends a damage number, a score,
   or a reward.

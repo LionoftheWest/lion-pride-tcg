@@ -68,5 +68,5 @@ Nathan's decision (2026-10-03): one source of truth for each number and each cal
 - All containers run with `--network host`. The Activity calls the bot at `127.0.0.1:4451`.
 - The weekly hunt runs in pg_cron. Never add a host cron for `hunt-rollover.sh` again.
 - Do not commit `card-studio/ml/` (except `*.py`) or anything in `out/`.
-- Activity screens never scroll, never bleed, and never move when a status changes. Read the screen rules in `tcg-bot/docs/DESIGN.md` before a UI change.
+- Activity screens never scroll, never bleed, and never move when a status changes. Read the UI standard in `docs/design.md` before a UI change.
 - `ops/caddy/Caddyfile` is a copy of the live file. After you change the live file, update this copy.
