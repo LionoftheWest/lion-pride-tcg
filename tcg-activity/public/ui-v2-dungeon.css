@@ -930,3 +930,41 @@ body.ui-v2 .dg-chestbox .dg-chest3d { position: absolute; inset: -30px -40px -10
 body.ui-v2 .dg-chestbox.has3d .lid, body.ui-v2 .dg-chestbox.has3d .base { visibility: hidden; }
 body.ui-v2 .dg-chestbox.has3d { animation: none; }
 body.ui-v2 .dg-cbox:has(.dg-chest.open) > p { visibility: hidden; }
+
+/* ---- The Gauntlet (gauntlet.sql): the week's squad, the prizes ------------------------------------------- */
+body.ui-v2 .dg-gbot { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 12px; align-content: start; }
+body.ui-v2 .dg-gbot > .dg-panel { min-height: 0; overflow: hidden; }
+body.ui-v2 .dg-prizes li { flex-wrap: wrap; row-gap: 2px; }
+body.ui-v2 .dg-prizes li b { white-space: normal; }
+body.ui-v2 .dg-prizes li em { width: 100%; padding-left: 36px; font: 600 12px var(--font-ui); color: var(--text-muted); }
+body.ui-v2 .dg-prizes .rk.sm { width: auto; min-width: 26px; padding: 0 6px; border-radius: 13px; font-size: 10px; }
+body.ui-v2 .dg-garow { display: flex; align-items: flex-start; justify-content: center; }
+body.ui-v2 .dg-garow .dg-top { width: min(560px, 100%); }
+body.ui-v2.m-port .dg-lobby.port.ga .dg-rule { padding: 12px 14px; }
+body.ui-v2.m-port .dg-lobby.port.ga .dg-rule h2 { font-size: 18px; margin: 4px 0 2px; }
+body.ui-v2.m-land .dg-pane-in .dg-prizes li em { padding-left: 26px; font-size: 10px; }
+body.ui-v2.m-land .dg-garow .dg-top li { padding: 4px 8px; font-size: 12px; }
+/* The phone: the week's squad fills the free space, 3 attackers over 2 supports (the cards as big as fit). */
+body.ui-v2.m-port .dg-lobby.port.ga > .dg-sq { flex: 1 1 auto; min-height: 120px; }
+body.ui-v2.m-port .dg-lobby.port.ga .dg-slots { flex: 1; min-height: 0; max-width: none; container-type: size;
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 8px 6px; }
+body.ui-v2.m-port .dg-lobby.port.ga .dg-slot { grid-column: span 2; min-height: 0; align-items: center; justify-content: center; gap: 3px; }
+body.ui-v2.m-port .dg-lobby.port.ga .dg-slot:nth-child(4) { grid-column: 2 / span 2; }
+body.ui-v2.m-port .dg-lobby.port.ga .dg-slot:nth-child(5) { grid-column: 4 / span 2; }
+body.ui-v2.m-port .dg-lobby.port.ga .dg-slot .dg-card { height: min(calc(50cqh - 22px), calc((33.3cqw - 6px) * 7 / 5)); width: auto; flex: none; }
+body.ui-v2.m-port .dg-lobby.port.ga .dg-slot-ft .l { display: inline; }
+/* The landscape phone: the prizes in one row of 4 under the squad; the Top 3 pane fits its button. */
+body.ui-v2.m-land .dg-lobby.land.ga .dg-col { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+body.ui-v2.m-land .dg-lobby.land.ga .dg-col > .dg-top { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 6px 10px; gap: 5px; }
+body.ui-v2.m-land .dg-lobby.land.ga .dg-col > .dg-top h3 { font-size: 13px; } body.ui-v2.m-land .dg-lobby.land.ga .dg-col > .dg-top h3 svg { width: 15px; height: 15px; }
+body.ui-v2.m-land .dg-lobby.land.ga .dg-col .dg-prizes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+body.ui-v2.m-land .dg-lobby.land.ga .dg-col .dg-prizes li { flex-direction: column; align-items: flex-start; gap: 3px; padding: 6px 8px; font-size: 11px; }
+body.ui-v2.m-land .dg-lobby.land.ga .dg-col .dg-prizes li em { padding-left: 0; font-size: 9.5px; }
+body.ui-v2.m-land .dg-lobby.land.ga .dg-col .dg-prizes .rk { width: 20px; height: 20px; font-size: 10px; }
+body.ui-v2.m-land .dg-pane-in .dg-top .dg-seeboard { height: 24px; min-height: 0; padding: 0 8px; font-size: 11px; gap: 4px; }
+body.ui-v2.m-land .dg-pane-in .dg-top .dg-seeboard svg { width: 12px; height: 12px; }
+body.ui-v2.m-land .dg-pane-in .dg-top .k-row small { display: none; }
+/* A narrow phone: the board subtitle wraps under the title. */
+body.ui-v2.m-port .dg-board .k-row { flex-wrap: wrap; row-gap: 2px; }
+body.ui-v2.m-port .dg-board .k-row small { flex-basis: 100%; }
+body.ui-v2 .dg-prizes .rk.sm { white-space: nowrap; }

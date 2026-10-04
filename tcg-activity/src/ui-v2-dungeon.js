@@ -4,6 +4,8 @@
 // Every rule and roll lives in SQL (dungeon.sql on the shared combat core); the data comes from
 // src/dungeon-routes.js. The monsters are 3D (src/dungeon-stage.js, loaded on demand), bigger on
 // screen (Nathan). The flag: /api/flags -> dungeon (DUNGEON_USERS / FEATURE_DUNGEON).
+// The Gauntlet (gauntlet.sql, Nathan 2026-10-03) is the same screens with dg.mode = 'gauntlet': the week's
+// squad for everyone (no picker), one run a day, no loot, the weekly board and prizes.
 import { v2ctx, toast, mergedCards } from './ui-v2.js';
 import { flairHTML } from './flair.js';
 import { elIcon } from './element-icons.js';
@@ -67,6 +69,15 @@ const AUTO = 'lp.dungeon.auto';
 export const dg = { auto: localStorage.getItem(AUTO) === '1', autoSkip: new Set(), on: false, data: null, pane: '', sel: [], filter: 'allowed', sort: 'power', page: 0, view: 'main', target: 0, support: null, busy: false, log: [], stage: null, roomKey: '' };
 let tick = null;
 const LAST = 'lp.adventure.tab';
+dg.mode = localStorage.getItem(LAST) === 'gauntlet' ? 'gauntlet' : 'daily';
+const GA = () => dg.mode === 'gauntlet';
+const API = () => (GA() ? '/api/gauntlet' : '/api/dungeon');
+// Switch the mode (the Dungeon tab or the Gauntlet tab): a new mode loads its own data.
+function setMode(m) {
+  if (dg.mode === m) return;
+  dg.mode = m; dg.data = null; dg.view = 'main'; dg.pane = ''; dg.log = []; dg.target = 0; dg.sel = [];
+  dg.stage?.dispose(); dg.stage = null; dg.roomKey = '';
+}
 
 // ---- Init: the dock button becomes "Adventure" and opens the last tab ---------------------------
 export function initDungeon(on) {
@@ -78,7 +89,9 @@ export function initDungeon(on) {
   if (lbl) lbl.textContent = 'Adventure';
   // The Adventure button opens the last tab (the Dungeon by default: it is open every day).
   btn?.addEventListener('click', (e) => {
-    if ((localStorage.getItem(LAST) || 'dungeon') !== 'dungeon') return;
+    const last = localStorage.getItem(LAST) || 'dungeon';
+    if (last !== 'dungeon' && last !== 'gauntlet') return;
+    setMode(last === 'gauntlet' ? 'gauntlet' : 'daily');
     e.stopImmediatePropagation();
     ctx().sfx?.('click'); ctx().show('dungeon');
   }, true);
@@ -88,13 +101,14 @@ export function initDungeon(on) {
 export function advTabsHTML(active) {
   if (!dg.on) return '';
   const t = (k, icon, label, soon) => `<button class="dg-tab${active === k ? ' on' : ''}"${soon ? ' disabled' : ` data-adv="${k}"`}>${icon}<span>${label}</span>${soon ? '<i>SOON</i>' : ''}</button>`;
-  return `<div class="dg-tabs v2-subtabs" role="tablist">${t('hunt', I.sword, 'Hunt')}${t('dungeon', I.castle, 'Dungeon')}${t('arena', I.shield, 'Arena', true)}${t('exp', I.compass, 'Expeditions', true)}</div>`;
+  return `<div class="dg-tabs v2-subtabs" role="tablist">${t('hunt', I.sword, 'Hunt')}${t('dungeon', I.castle, 'Dungeon')}${t('gauntlet', I.crown, 'Gauntlet')}${t('arena', I.shield, 'Arena', true)}${t('exp', I.compass, 'Expeditions', true)}</div>`;
 }
 export function wireAdvTabs(root) {
   root.querySelectorAll('[data-adv]').forEach((b) => b.addEventListener('click', () => {
     const k = b.dataset.adv;
     localStorage.setItem(LAST, k);
     ctx().sfx?.('click');
+    if (k !== 'hunt') setMode(k === 'gauntlet' ? 'gauntlet' : 'daily');
     ctx().show(k === 'hunt' ? 'battling' : 'dungeon');
   }));
 }
@@ -111,25 +125,30 @@ export function advTabs(active = 'hunt') {
 // ---- Data --------------------------------------------------------------------------------------
 async function load() {
   let d = null;
-  try { d = await ctx().api('/api/dungeon'); } catch { d = null; }
-  dg.data = d && d.ok ? d : { closed: true, message: d?.message || 'The Dungeon is closed.' };
+  const m = dg.mode;
+  try { d = await ctx().api(API()); } catch { d = null; }
+  if (m !== dg.mode) return dg.data;   // the member switched tabs while it loaded
+  dg.data = d && d.ok ? d : { closed: true, message: GA() && d?.error === 'disabled' ? 'The Gauntlet is closed.' : d?.message || (GA() ? 'The Gauntlet is closed.' : 'The Dungeon is closed.') };
   return dg.data;
 }
-const mine = () => new Map((dg.data?.mine || []).map((c) => [Number(c.id), c]));
+// The member's cards (the Dungeon), or the week's squad (the Gauntlet: the same base cards for everyone).
+const cardsOf = () => dg.data?.mine || (Array.isArray(dg.data?.squad) ? dg.data.squad : []);
+const mine = () => new Map(cardsOf().map((c) => [Number(c.id), c]));
 const run = () => dg.data?.run || null;
 const active = () => run()?.status === 'active';
 
 export async function renderDungeonV2() {
   const { el } = ctx();
-  localStorage.setItem(LAST, 'dungeon');
+  localStorage.setItem(LAST, GA() ? 'gauntlet' : 'dungeon');
   markDock();
   dg.per = 0; dg.pcols = 0; // measure the card grid again (the size may have changed)
   if (!dg.on) { el('main').innerHTML = '<div class="dg-closed"><b>The Dungeon is closed.</b></div>'; return; }
-  if (dg.data && !dg.data.closed) paint(); else el('main').innerHTML = '<div class="loading">Opening the dungeon…</div>';
+  if (dg.data && !dg.data.closed) paint(); else el('main').innerHTML = `<div class="loading">${GA() ? 'Opening the Gauntlet…' : 'Opening the dungeon…'}</div>`;
   // The star gems come from the collection (ascension per copy): load it when it is not cached yet.
   const needCol = !ctx().cache.collection;
+  const m = dg.mode;
   await Promise.all([load(), needCol ? Promise.resolve(ctx().refreshOwned?.()).catch(() => {}) : null]);
-  if (ctx().currentView() !== 'dungeon') return;
+  if (ctx().currentView() !== 'dungeon' || m !== dg.mode) return;
   paint();
 }
 function markDock() {
@@ -146,6 +165,11 @@ function left(iso) {
   const p = (n) => String(n).padStart(2, '0');
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
 }
+// A long wait (the week): days and hours.
+function leftLong(iso) {
+  const s = Math.max(0, Math.floor((new Date(iso).getTime() - Date.now()) / 1000));
+  return s >= 86400 ? `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}m` : left(iso);
+}
 function startTick() {
   clearInterval(tick);
   tick = setInterval(() => {
@@ -154,6 +178,7 @@ function startTick() {
     if (!at) return;
     if (new Date(at).getTime() <= Date.now()) { dg.sel = []; load().then(() => { if (ctx().currentView() === 'dungeon') paint(); }); return; }
     document.querySelectorAll('.dg-left').forEach((n) => { n.textContent = left(at); });
+    if (dg.data?.ends_at) document.querySelectorAll('.dg-wleft').forEach((n) => { n.textContent = leftLong(dg.data.ends_at); });
   }, 1000);
 }
 
@@ -171,18 +196,18 @@ function paint() {
   dg.chest?.dispose(); dg.chest = null;   // the chest canvas is rebuilt with the screen
   let body;
   if (d.closed) body = `<div class="dg-closed"><b>${esc(d.message)}</b></div>`;
-  else if (!d.gate?.ok) body = gateHTML(d.gate || {}, 'the Dungeon');
+  else if (!d.gate?.ok) body = gateHTML(d.gate || {}, GA() ? 'the Gauntlet' : 'the Dungeon');
   else if (dg.view === 'board') body = boardHTML();
   else if (fight) body = fightHTML();
   else if (active() && d.run.state?.phase === 'floor_done') body = floorDoneHTML();
   else if (active()) body = chooseHTML();
   else if (run()) body = overHTML();
-  else body = lobbyHTML();
-  main.innerHTML = `<div class="v2-dungeon${fight ? ' dg-fighting' : ''}${d.run?.state?.phase ? ` ph-${d.run.state.phase}` : ''}">${body}</div>`;
+  else body = GA() ? gaLobbyHTML() : lobbyHTML();
+  main.innerHTML = `<div class="v2-dungeon${GA() ? ' ga' : ''}${fight ? ' dg-fighting' : ''}${d.run?.state?.phase ? ` ph-${d.run.state.phase}` : ''}">${body}</div>`;
   // Item 19: the music follows the room (silent until Nathan picks the tracks: dungeon-music.js).
   setMood(fight ? (['guardian', 'miniboss'].includes(d.run.state.room_type) ? 'boss' : 'fight') : active() ? 'explore' : null);
   main.querySelectorAll('[data-music]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); paintMusicBtn(b); }));
-  advTabs('dungeon'); // the Adventure tabs: the same place as on the Hunt view (Nathan item 2)
+  advTabs(GA() ? 'gauntlet' : 'dungeon'); // the Adventure tabs: the same place as on the Hunt view (Nathan item 2)
   main.querySelectorAll('.card-info').forEach((b) => b.addEventListener('click', (e) => { if (fight) return; e.stopPropagation(); const id = Number(b.closest('.dg-card')?.dataset.id); if (id) openInfo(id); }));
   wireGate(main);
   if (dg.view === 'board') wireBoard(main);
@@ -190,7 +215,7 @@ function paint() {
   else if (active() && d.run.state?.phase === 'floor_done') wireFloorDone(main);
   else if (active()) wireChoose(main);
   else if (run()) wireOver(main);
-  else if (!d.closed && d.gate?.ok) wireLobby(main);
+  else if (!d.closed && d.gate?.ok) (GA() ? wireGaLobby : wireLobby)(main);
   startTick();
 }
 
@@ -200,7 +225,7 @@ const cardTile = (c, opts = {}) => {
     ${c?.image_url ? `<img src="${thumb(c.image_url)}" alt="" loading="lazy">` : ''}
     ${opts.top ?? `<span class="dg-pt">${c.cost ?? 1}<small>PT</small></span><span class="dg-pw">${I.bolt}${fmt(c.cp)}</span>`}
     <span class="dg-nm"><b>${esc(c?.name || '?')}</b><small>◆ ${esc(RL(r))}</small></span>
-    ${flairHTML(ascOf(c?.id))}${opts.info === false ? '' : '<button class="card-info" data-info="1" aria-label="Details">🔍</button>'}
+    ${flairHTML(GA() ? 0 : ascOf(c?.id))}${opts.info === false ? '' : '<button class="card-info" data-info="1" aria-label="Details">🔍</button>'}
     ${opts.over || ''}
   </div>`;
 };
@@ -208,7 +233,7 @@ const cardTile = (c, opts = {}) => {
 const ascOf = (id) => (ctx().cache.collection?.cards || []).find((x) => Number(x.id) === Number(id))?.ascension || 0;
 function openInfo(id) {
   // The viewer with the ability, the effect, the tags, and the squad numbers (power, HP, points).
-  const row = (dg.data?.mine || []).find((x) => Number(x.id) === Number(id));
+  const row = cardsOf().find((x) => Number(x.id) === Number(id));
   const base = mergedCards().find((x) => Number(x.id) === Number(id));
   const full = base || row ? { ...(base || {}), ...(row || {}), image_url: base?.image_url || row?.image_url } : null;
   if (full) ctx().openViewer(full, { squad: true });
@@ -397,6 +422,10 @@ function statsHTML() {
   const st = R.state || {};
   const buff = Math.round(((st.buff || 1) - 1) * 100);
   // Item 12: the floor's loot is at risk (a fall loses it); the guardian banks it (safe).
+  if (GA()) {   // the Gauntlet: no loot; the week's best and the run bonus
+    const b = dg.data.best;
+    return `<div class="dg-stats"><span title="Your best run this week">${I.trophy}<b>${b ? `${b.floor}F R${b.room}` : '—'}</b><i>week best</i></span><span title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;
+  }
   const pend = st.pend || {}, bank = st.bank || {};
   const pc = (pend.cards || []).length, bc = (bank.cards || []).length;
   return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmt(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmt(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span><span title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;
@@ -640,7 +669,7 @@ async function act(kind, body) {
   const main = document.getElementById('main');
   dg.busy = true; fightUpdate(main, run().state);
   let r = null;
-  try { r = await ctx().apiPost(`/api/dungeon/${kind}`, body); } catch (e) { r = e?.body || null; }
+  try { r = await ctx().apiPost(`/api/dungeon/${kind}`, { ...body, mode: dg.mode }); } catch (e) { r = e?.body || null; }
   if (!r?.ok) { dg.busy = false; fightUpdate(main, run().state); toast(r?.message || 'That did not work.'); return false; }
   const M = mine();
   const before = clone(run().state);
@@ -661,7 +690,7 @@ async function act(kind, body) {
     step.foes[t].hp = r.state.foes[t].hp;
     if (r.heal) { const k = String(body.cardId); step.cards[k].hp = Math.min(step.cards[k].max, step.cards[k].hp + r.heal); popCard(main, body.cardId, `+${fmt(r.heal)}`, 'heal'); }
     dg.log.push({ kind: 'me', who: nm(body.cardId), to: f?.name || 'Monster', txt: r.damage > 0 ? `-${fmt(r.damage)}${r.crit ? ' <i>CRIT</i>' : ''}` : 'miss' });
-    if (r.kill) { dg.log.push({ kind: 'kill', who: f?.name || 'Monster', to: 'defeated', txt: `${COIN}+${fmt(r.loot?.shards)}` }); lootDrop(main, t, r.loot); }
+    if (r.kill) { dg.log.push({ kind: 'kill', who: f?.name || 'Monster', to: 'defeated', txt: GA() ? '' : `${COIN}+${fmt(r.loot?.shards)}` }); if (!GA()) lootDrop(main, t, r.loot); }
     fightUpdate(main, step);
     await sleep(r.kill ? 1100 : 750);
     const hurt = (id, d, label = '') => { const k = String(id); if (!step.cards[k] || !d) return; step.cards[k].hp = Math.max(0, step.cards[k].hp - d); popCard(main, id, `-${fmt(d)}${label}`, 'hurt'); };
@@ -819,9 +848,10 @@ function confirmBox(title, text, ok) {
   });
 }
 async function retreat() {
-  if (!(await confirmBox('Retreat with the loot?', 'The run ends here. You keep your depth and every banked Shard and card.', 'Retreat'))) return;
+  if (!(await (GA() ? confirmBox('End the run here?', 'Your depth counts for this week. Your next Gauntlet run is tomorrow.', 'End the run')
+    : confirmBox('Retreat with the loot?', 'The run ends here. You keep your depth and every banked Shard and card.', 'Retreat')))) return;
   let r = null;
-  try { r = await ctx().apiPost('/api/dungeon/retreat', {}); } catch (e) { r = e?.body || null; }
+  try { r = await ctx().apiPost('/api/dungeon/retreat', { mode: dg.mode }); } catch (e) { r = e?.body || null; }
   if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
   await load(); paint();
 }
@@ -928,7 +958,7 @@ async function choose(pick) {
   if (dg.busy) return;
   dg.busy = true;
   let r = null;
-  try { r = await ctx().apiPost('/api/dungeon/choose', { pick }); } catch (e) { r = e?.body || null; }
+  try { r = await ctx().apiPost('/api/dungeon/choose', { pick, mode: dg.mode }); } catch (e) { r = e?.body || null; }
   dg.busy = false;
   if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
   ctx().sfx?.('click');
@@ -959,6 +989,17 @@ function wireChoose(main) {
 // again) or Retreat and keep everything banked. Retreat lives only here.
 function floorDoneHTML() {
   const R = run(); const st = R.state;
+  if (GA()) {
+    const b = dg.data.best;
+    return `<div class="dg-over dg-floordone">
+    <section class="dg-panel dg-obox dg-fdbox">${musicBtnHTML()}
+      <div class="dg-ohead"><div class="dg-fdhead"><span class="k">${I.crown}${esc(dg.data.name)} · Floor ${R.floor}</span><h1>Floor ${R.floor} cleared!</h1><p>The guardian fell. Go deeper, or end the run here: your depth counts for the week.</p></div>
+      <div class="dg-depth dg-fdstats"><span>Depth<b>${R.floor}F Room ${R.room}</b></span><span>Week best<b>${b ? `${b.floor}F R${b.room}` : '—'}</b></span><span>Rank<b>#${b?.rank || '—'}</b></span></div></div>
+      <div class="dg-lootrow"><p class="muted dg-nocards">The Gauntlet has no loot. Only the depth counts.</p></div>
+      <div class="dg-obtn dg-fdbtn"><button class="v2-btn dg-leave">${I.door}End the run</button><button class="v2-btn gold dg-next" data-choose="0">${I.arrow}Descend to Floor ${R.floor + 1}</button></div>
+    </section>
+  </div>`;
+  }
   const fl = st.floor_loot || {}; const bank = st.bank || {};
   const cards = (fl.cards || []).map((id) => dg.data.lootCards?.[id] || { id });
   const capLeft = Math.max(0, (dg.data.cap || 300) - (bank.shards || 0));
@@ -985,6 +1026,7 @@ let cardBack = null;
 const getBack = async () => { if (cardBack == null) { try { cardBack = (await (await fetch('/api/config')).json()).backUrl || ''; } catch { cardBack = ''; } } return cardBack; };
 function overHTML() {
   const R = run();
+  if (GA()) return gaOverHTML(R);
   const t = { cleared: ['Dungeon cleared!', 'You beat every floor of today\'s dungeon.'], retreat: ['You retreated', 'A safe exit with your loot.'], fell: ['Your squad fell', 'The run ends here. Here is what you found.'] }[R.ended_by] || ['Run over', ''];
   const loot = dg.data.loot || [];
   const cards = loot.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}" data-flip="${i}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
@@ -1014,19 +1056,132 @@ function wireOver(main) {
   if (cardBack == null) getBack().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-over') && cardBack) paint(); });
 }
 
+// ---- The Gauntlet: the week's squad (gauntlet.sql) ------------------------------------------------------
+// The same squad and the same dungeon for everyone, Sunday to Saturday; one run a day; the best run of the
+// week counts; no loot; the weekly prizes (settings.dungeon_prizes.weekly). No picker: the squad is shown.
+const SHORT = { normal: 'Normal', illustrated_rare: 'IR', secret_rare: 'SR', full_art: 'Full Art', gold: 'Gold' };
+const tagName = (t) => String(t || '').replace(/^(trait|origin):/, '').replace(/\b\w/g, (x) => x.toUpperCase());
+function prizeText(p) {
+  if (!p) return '';
+  const n = (v, one, many) => `${fmt(v)} ${Number(v) === 1 ? one : many}`;
+  return [p.shards ? `${fmt(p.shards)} Shards` : '', p.packs ? n(p.packs, 'pack', 'packs') : '', p.cards ? n(p.cards, 'card', 'cards') : ''].filter(Boolean).join(' · ');
+}
+function gaPrizesHTML(bare) {
+  const pz = dg.data.prizes || [];
+  const odds = (o) => Object.keys(SHORT).filter((k) => (o || {})[k]).map((k) => `${o[k]}% ${SHORT[k]}`).join(' · ');   // the rarity order
+  const rows = pz.slice(0, 3).map((p, i) => `<li><span class="rk">${i + 1}</span><b>${esc(prizeText(p))}</b>${p.cards ? `<em>${esc(odds(p.odds))}</em>` : ''}</li>`).join('')
+    + (pz[3] ? `<li><span class="rk sm">4-10</span><b>${esc(prizeText(pz[3]))}</b></li>` : '');
+  const inner = `<div class="k-row"><h3>${I.crown}Weekly prizes</h3><small>Paid at the week's end</small></div><ol class="dg-prizes">${rows}</ol>`;
+  return bare ? `<div class="dg-top">${inner}</div>` : `<section class="dg-panel dg-top">${inner}</section>`;
+}
+function gaTopHTML(bare) {
+  const d = dg.data;
+  const top = d.top || [];
+  const rows = top.length ? top.map((t) => `<li><span class="rk">${t.rank}</span><b>${esc(t.username || 'Member')}</b><em>${t.floor}F Room ${t.room}</em></li>`).join('') : '<li class="none">No runs yet this week. Be the first.</li>';
+  const inner = `<div class="k-row"><h3>${I.trophy}Top 3 this week</h3><small>${fmt(d.players_week)} player${Number(d.players_week) === 1 ? '' : 's'}</small></div><ol>${rows}</ol>
+    <button class="v2-btn dg-seeboard" data-board>See the leaderboard ${I.arrow}</button>`;
+  return bare ? `<div class="dg-top">${inner}</div>` : `<section class="dg-panel dg-top">${inner}</section>`;
+}
+function gaLobbyHTML() {
+  const d = dg.data;
+  const sq = Array.isArray(d.squad) ? d.squad : [];
+  const cost = sq.reduce((t, c) => t + (c.cost || 1), 0);
+  const budget = d.budget || 12;
+  const theme = d.theme ? tagName(d.theme) : '';
+  const segs = []; sq.forEach((c) => { for (let i = 0; i < (c.cost || 1); i++) segs.push(RCOL[c.rarity] || '#9AA3B5'); });
+  const bar = `<div class="dg-bar">${Array.from({ length: Math.max(budget, segs.length) }, (_, i) => `<i style="${segs[i] ? `background:${segs[i]}` : ''}"></i>`).join('')}</div>`;
+  const pts = `<b class="dg-pts">${cost}<small> / ${budget} pts</small></b>`;
+  const slots = `<div class="dg-slots">${sq.map((c) => `<div class="dg-slot">${cardTile(c)}
+      <span class="dg-slot-ft"><span class="l">${ATTACKER.has(c.type) ? 'Attacker' : 'Support'}</span></span></div>`).join('')}</div>`;
+  const li = (a, b) => `<li class="ok"><span>${I.check}</span><b>${a}</b><em>${b}</em></li>`;
+  const facts = `<ul class="dg-check">${li('The same squad for everyone', 'Base level: no stars')}${li(`${cost} / ${budget} points`, theme ? `Theme: ${esc(theme)}` : 'A mixed squad')}${li('1 run a day', 'Your best run of the week counts')}</ul>`;
+  const start = `<button class="v2-btn gold dg-start" ${dg.busy ? 'disabled' : ''}>${I.sword}Start run</button>`;
+  const note = '<small class="dg-note">No loot in the Gauntlet · the room rewards still work</small>';
+  const wk = new Date(d.week + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase();
+  const date = `<span class="dg-date">WEEK OF ${wk}</span>`;
+  const desc = '<p class="dg-desc">The same squad and the same dungeon for everyone, all week · the deepest run wins</p>';
+  const timer = `<div class="dg-timer">${I.timer}<span class="l">Week ends in</span><b class="dg-wleft">${leftLong(d.ends_at)}</b></div>`;
+  const b = d.best;
+  const bestIn = `<div class="k-row"><span class="k">Your best this week</span><span class="dg-pill">1 run today</span></div><h2${b ? '' : ' class="muted"'}>${b ? `${b.floor}F Room ${b.room}` : 'No run yet'}</h2>
+      <div class="dg-mini"><span>Rank<b>${b ? `#${b.rank}` : '—'}</b></span><span>Your runs<b>${fmt(b?.runs || 0)}</b></span></div>`;
+  const themeIn = `<span class="k">${I.cards}This week's theme</span><h2>${esc(theme || 'Mixed')}</h2><p>${theme ? `The squad shares the ${esc(theme)} tag: the supports help those cards most.` : 'The supports help the squad where they can.'}</p>`;
+  const seg = (keys) => `<div class="dg-seg">${keys.map(([k, icon, label]) => `<button class="${dg.pane === k ? 'on' : ''}" data-pane="${k}">${icon}${label}</button>`).join('')}</div>`;
+  const head = `<header class="dg-head"><img class="dg-thumb" src="/dungeon/room.webp" alt=""><div class="dg-title"><h1>${I.crown}${esc(d.name)} ${date}</h1>${desc}</div></header>`;
+
+  if (isPort()) {
+    if (!['squad', 'prizes', 'top'].includes(dg.pane)) dg.pane = 'squad';
+    let body;
+    if (dg.pane === 'prizes') body = gaPrizesHTML();
+    else if (dg.pane === 'top') body = `<section class="dg-panel dg-best">${bestIn}</section>${gaTopHTML()}`;
+    else body = `${head}<section class="dg-panel dg-sq"><div class="k-row"><span class="k">This week's squad</span>${pts}</div>${bar}${slots}</section>
+        <div class="dg-gorow">${facts}${start}</div>${note}<section class="dg-panel dg-rule">${themeIn}</section>`;
+    return `<div class="dg-lobby port ga"><div class="dg-prow">${seg([['squad', I.crown, 'Squad'], ['prizes', I.trophy, 'Prizes'], ['top', I.trophy, 'Top 3']])}${timer}</div>${body}</div>`;
+  }
+  if (document.body.classList.contains('m-land')) {
+    if (!['theme', 'best', 'top'].includes(dg.pane)) dg.pane = 'theme';
+    const paneIn = dg.pane === 'best' ? bestIn : dg.pane === 'top' ? gaTopHTML(true) : themeIn;
+    return `<div class="dg-lobby land ga">
+      <aside class="dg-side">
+        <section class="dg-panel dg-info">${date}<h1>${I.crown}${esc(d.name)}</h1>${desc}${timer}</section>
+        <section class="dg-panel dg-pane">${seg([['theme', '', 'Theme'], ['best', '', 'Best'], ['top', '', 'Top 3']])}<div class="dg-pane-in">${paneIn}</div></section>
+      </aside>
+      <div class="dg-col">
+        <section class="dg-panel dg-main"><div class="dg-brow"><span class="k">This week's squad</span>${bar}${pts}</div>
+          <div class="dg-squad">${slots}<div class="dg-go">${facts}${start}</div></div></section>
+        ${gaPrizesHTML()}
+      </div></div>`;
+  }
+  return `<div class="dg-lobby ga">
+    <section class="dg-panel dg-main">
+      ${head.replace('</header>', `<div class="dg-budget"><span class="k">This week's squad</span>${pts}${bar}</div></header>`)}
+      <div class="dg-squad">${slots}<div class="dg-go">${facts}${start}${note}</div></div>
+      <div class="dg-gbot"><section class="dg-panel dg-rule">${themeIn}</section>${gaPrizesHTML()}</div>
+    </section>
+    <aside class="dg-side">${timer}<section class="dg-panel dg-best">${bestIn}</section>${gaTopHTML()}</aside>
+  </div>`;
+}
+function wireGaLobby(main) {
+  main.querySelectorAll('[data-pane]').forEach((b) => b.addEventListener('click', () => { dg.pane = b.dataset.pane; paint(); }));
+  main.querySelectorAll('[data-board]').forEach((b) => b.addEventListener('click', () => openBoard()));
+  main.querySelector('.dg-start')?.addEventListener('click', async () => {
+    if (dg.busy) return;
+    dg.busy = true; paint();
+    let r = null;
+    try { r = await ctx().apiPost('/api/gauntlet/start', {}); } catch (e) { r = e?.body || null; }
+    dg.busy = false;
+    if (!r?.ok) { toast(r?.message || 'The run did not start.'); paint(); return; }
+    ctx().sfx?.('click');
+    dg.log = []; dg.target = 0;
+    await load(); paint();
+  });
+}
+// The run is over: the depth, the week's rank and best (no loot in the Gauntlet).
+function gaOverHTML(R) {
+  const t = { cleared: ['Gauntlet cleared!', 'You beat every floor of this week\'s Gauntlet.'], retreat: ['Run ended', 'Your depth counts for this week.'], fell: ['Your squad fell', 'Your depth counts for this week.'] }[R.ended_by] || ['Run over', ''];
+  const b = dg.data.best;
+  return `<div class="dg-over">
+    <section class="dg-panel dg-obox">
+      <div class="dg-ohead"><div><span class="k">${I.crown}${esc(dg.data.name)}</span><h1>${t[0]}</h1><p>${t[1]}</p></div>
+        <div class="dg-depth"><span>Depth<b>${R.floor}F Room ${R.room}</b></span><span>Week best<b>${b ? `${b.floor}F R${b.room}` : '—'}</b></span><span>Rank this week<b>#${b?.rank || '—'}</b></span><span>Turns<b>${fmt(R.turns)}</b></span></div></div>
+      <div class="dg-lootrow dg-garow">${gaPrizesHTML(true)}</div>
+      <div class="dg-obtn"><button class="v2-btn" data-board>${I.trophy}See the leaderboard</button><small class="dg-note">${I.timer}Your next run in <b class="dg-left">${left(dg.data.next_at)}</b></small></div>
+    </section>
+  </div>`;
+}
+
 // ---- The leaderboard ---------------------------------------------------------------------------
 let board = null;
 async function openBoard() {
   dg.view = 'board'; board = null; paint();
-  try { board = await ctx().api('/api/dungeon/board'); } catch { board = { board: [] }; }
+  try { board = await ctx().api(`${API()}/board`); } catch { board = { board: [] }; }
   if (ctx().currentView() === 'dungeon' && dg.view === 'board') paint();
 }
 function boardHTML() {
   const me = ctx().user()?.id;
   const rows = board ? (board.board || []).map((b) => `<li class="${String(b.player_id) === String(me) ? 'me' : ''}${b.rank <= 3 ? ` top${b.rank}` : ''}">
-      <span class="rk">${b.rank}</span><b>${esc(b.username || 'Member')}</b><em>${b.floor}F Room ${b.room}</em><small>${fmt(b.turns)} turns${b.status === 'active' ? ' · in the dungeon' : ''}</small></li>`).join('') || '<li class="none">No runs yet today.</li>' : '<li class="none">Loading…</li>';
+      <span class="rk">${b.rank}</span><b>${esc(b.username || 'Member')}</b><em>${b.floor}F Room ${b.room}</em><small>${fmt(b.turns)} turns${GA() ? ` · ${b.runs} run${b.runs === 1 ? '' : 's'}` : ''}${b.status === 'active' ? ' · in the dungeon' : ''}</small></li>`).join('') || `<li class="none">${GA() ? 'No runs yet this week.' : 'No runs yet today.'}</li>` : '<li class="none">Loading…</li>';
   return `<div class="dg-board"><section class="dg-panel">
-    <div class="k-row"><button class="v2-btn dg-back">${I.back}Back</button><h2>${I.trophy}Today's leaderboard</h2><small>The deepest first · then fewer turns</small></div>
+    <div class="k-row"><button class="v2-btn dg-back">${I.back}Back</button><h2>${I.trophy}${GA() ? 'This week\'s leaderboard' : 'Today\'s leaderboard'}</h2><small>${GA() ? 'Best run each · deepest first' : 'The deepest first · then fewer turns'}</small></div>
     <ol class="dg-rows">${rows}</ol></section></div>`;
 }
 function wireBoard(main) { main.querySelector('.dg-back')?.addEventListener('click', () => { dg.view = 'main'; paint(); }); }

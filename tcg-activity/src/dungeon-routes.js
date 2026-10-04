@@ -15,9 +15,12 @@ const ERR = {
   bad_target: 'Pick a card in your squad.', target_downed: 'A heal cannot revive a downed card.', boss_stun_immune: 'That monster cannot be stunned again yet.',
   not_choosing: 'There is nothing to choose.', bad_pick: 'Pick one of the rewards.',
   one_support: 'One support per turn. Attack to end the turn.', not_between_floors: 'You can leave only between floors, after the guardian.',
+  already_gauntlet: 'You used today\'s Gauntlet run. Come back tomorrow.',
 };
 const fail = (res, data) => res.status(400).json({ ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' });
 const id = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
+// The run mode: the daily Dungeon or the weekly Gauntlet (gauntlet.sql). Each action finds the run of its mode.
+const mode = (v) => (v === 'gauntlet' ? 'gauntlet' : 'daily');
 const idx = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n < 10 ? n : null; };
 
 export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn }) {
@@ -36,6 +39,7 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
       return c ? { id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, type: c.type, tags: c.tags, ability: c.ability, ...extra } : { id: cid, ...extra };
     };
     if (Array.isArray(data.mine)) data.mine = data.mine.map((m) => card(m.id, m));
+    if (Array.isArray(data.squad)) data.squad = data.squad.map((m) => card(m.id, m));   // the Gauntlet's squad of the week
     const loot = data.run?.cards || data.cards;
     if (Array.isArray(loot)) data.loot = loot.map((x) => card(x));
     // The loot in the run state (banked, at risk, this floor, the chest): the card details by id.
@@ -71,19 +75,36 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
   app.post('/api/dungeon/attack', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;
     const card = id(req.body?.cardId); if (!card) return fail(res, { error: 'not_in_squad' });
-    await rpc(res, 'dungeon_attack', { p_player: String(me.id), p_card: card, p_target: idx(req.body?.target) }, withCards);
+    await rpc(res, 'dungeon_attack', { p_player: String(me.id), p_card: card, p_target: idx(req.body?.target), p_mode: mode(req.body?.mode) }, withCards);
   });
   app.post('/api/dungeon/support', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;
     const card = id(req.body?.cardId); if (!card) return fail(res, { error: 'not_in_squad' });
-    await rpc(res, 'dungeon_support', { p_player: String(me.id), p_card: card, p_target_card: id(req.body?.targetCard), p_target_foe: idx(req.body?.targetFoe) }, withCards);
+    await rpc(res, 'dungeon_support', { p_player: String(me.id), p_card: card, p_target_card: id(req.body?.targetCard), p_target_foe: idx(req.body?.targetFoe), p_mode: mode(req.body?.mode) }, withCards);
   });
   app.post('/api/dungeon/choose', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;
-    await rpc(res, 'dungeon_choose', { p_player: String(me.id), p_pick: idx(req.body?.pick) ?? 0 }, withCards);
+    await rpc(res, 'dungeon_choose', { p_player: String(me.id), p_pick: idx(req.body?.pick) ?? 0, p_mode: mode(req.body?.mode) }, withCards);
   });
   app.post('/api/dungeon/retreat', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;
-    await rpc(res, 'dungeon_retreat', { p_player: String(me.id) }, withCards);
+    await rpc(res, 'dungeon_retreat', { p_player: String(me.id), p_mode: mode(req.body?.mode) }, withCards);
+  });
+
+  // The Gauntlet (gauntlet.sql): the week's squad for everyone; the fight, rewards and retreat use the routes
+  // above with mode 'gauntlet'. The database flag settings.gauntlet.enabled is the second switch.
+  app.get('/api/gauntlet', async (req, res) => {
+    const me = await gate(req, res); if (!me) return;
+    await rpc(res, 'gauntlet_view', { p_player: String(me.id) }, withCards);
+  });
+  app.get('/api/gauntlet/board', async (req, res) => {
+    const me = await gate(req, res); if (!me) return;
+    const { data, error } = await supabase.rpc('gauntlet_board', { p_week: null, p_limit: 50 });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ ok: true, board: data || [], me: String(me.id) });
+  });
+  app.post('/api/gauntlet/start', async (req, res) => {
+    const me = await gate(req, res, true); if (!me) return;
+    await rpc(res, 'gauntlet_start', { p_player: String(me.id) });
   });
 }

@@ -217,3 +217,33 @@ The choices make each run a set of decisions, not only a check of the collection
 - Landscape: no room log column, a thin plate band, the monsters spread over the width.
 - Chest card odds (dungeon_chest_odds.sql, settings.dungeon.chest_rarity, weights Normal / IR / SR): Uncommon 80/18/2, Rare 55/38/7, Ultra 35/50/15, Legend 15/50/35. The card chance stays 0 / 35 / 60 / 100 / 100%. The dark door chest uses the Ultra odds.
 - Reward card odds (dungeon_reward_odds.sql): a card reward after a room uses the same odds by its tier. The rarity rolls when the card is picked; the offer shows the odds ("15% Normal · 50% IR · 35% SR").
+
+## Gauntlet (Nathan, 2026-10-03)
+
+The weekly skill mode on the same Dungeon engine (`tcg-bot/supabase/gauntlet.sql`).
+
+- **The week:** Sunday to Saturday, America/Denver (`gauntlet_week(day)` = the Sunday). One squad and one dungeon for the whole week, the same for everyone (`gauntlet_weeks`).
+- **The squad** (`gauntlet_squad(week)`, seeded by the salt and the week):
+  - 3 attackers (Character / Creature) and 2 supports (another type with a support move).
+  - 5 different characters ("A's Link" and "B's Link" never pair).
+  - No Event or Promo card (`gauntlet_pool()`). Every other rarity can appear, Gold too.
+  - The cost stays within the budget (12), as close to it as possible. A Gold card (5) leaves 7 points for the other 4.
+  - The theme: a support affinity tag that at least 3 attackers carry. All 3 attackers carry it, and the supports match it (the x1.8 ally boost and the team scale). With no theme, any attackers, and supports that match them where possible.
+  - All cards play at base level (no ascension, no stat points). Nobody needs to own them.
+- **The runs:** one Gauntlet run a day (`dungeon_runs.mode = 'gauntlet'`). The best run of the week counts. A member can also play the daily Dungeon on the same day.
+- **No loot:** no Shards or cards from kills, rooms, or the guardian. No treasure rooms, no chest doors. The room rewards (heal, damage, ward, reset, revive) still work.
+- **The boards:** `dungeon_board(day)` (the daily Dungeon only) and `gauntlet_board(week)` (each member's best run of the week).
+- **The prizes** (`settings.dungeon_prizes`, all tunable; paid once per period by the hourly pg_cron job `dungeon-prizes`):
+
+| Place | Daily Dungeon | Weekly Gauntlet |
+|---|---|---|
+| 1st | 300 Shards + 2 packs | 500 Shards + 5 packs + 3 cards (70% IR / 30% SR) |
+| 2nd | 200 Shards + 1 pack | 300 Shards + 3 packs + 2 cards (60% Normal / 32% IR / 8% SR) |
+| 3rd | 150 Shards + 1 pack | 200 Shards + 2 packs + 1 card (75% Normal / 25% IR) |
+| 4th-10th | 50 Shards | 1 pack |
+
+Each prize card rolls its own rarity on the place's odds. Every winner gets a notification.
+
+- **Flags:** `settings.gauntlet.enabled` (the mode) and `settings.dungeon_prizes.enabled` (the payouts, with `from` = the first day to pay). Both default to false.
+- **Test:** `card-studio/scripts/test-dungeon.mjs` sections 16 and 17 (mutations g*).
+- **Preview:** `discord-ui-preview/dgga.py` (every Gauntlet screen at a size: no scroll, no bleed).

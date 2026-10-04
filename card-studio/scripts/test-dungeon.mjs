@@ -13,8 +13,11 @@
  *     retreat   Retreat in the middle of a floor               lastatk   the run goes on with only support cards standing
  *     odds      every chest tier uses the Legend odds          chestodds the treasure room ignores the chest odds
  *     rewardodds  a reward card keeps one fixed rarity per tier    noodds  a card offer does not show its odds
- * Env: CORE, GATE, MIG, MIG2, MIG3, MIG4, MIG5 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql,
- *      dungeon_v2.sql, dungeon_v2_fix.sql, dungeon_chest_odds.sql, dungeon_reward_odds.sql.
+ *   The Gauntlet (gauntlet.sql): gcost gpool gtheme gchar gseed (the weekly squad), gtreasure gdoors goffers gloot
+ *     gsettle (no loot), gbase gmode (base cards, each action finds its own run), gdaily gbest (the boards),
+ *     godds gonce gtick gflag (the prizes and the flags), gguard (the live-version guard).
+ * Env: CORE, GATE, MIG, MIG2, MIG3, MIG4, MIG5, MIG6 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql,
+ *      dungeon_v2.sql, dungeon_v2_fix.sql, dungeon_chest_odds.sql, dungeon_reward_odds.sql, gauntlet.sql.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -30,6 +33,9 @@ let mig2 = strip(readFileSync(process.env.MIG2 || new URL('../../tcg-bot/supabas
 let mig3 = strip(readFileSync(process.env.MIG3 || new URL('../../tcg-bot/supabase/dungeon_v2_fix.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 let mig4 = strip(readFileSync(process.env.MIG4 || new URL('../../tcg-bot/supabase/dungeon_chest_odds.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 let mig5 = strip(readFileSync(process.env.MIG5 || new URL('../../tcg-bot/supabase/dungeon_reward_odds.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
+// The Gauntlet: its guard is skipped in the main run (the mutations change the text); section 17 runs the file as shipped.
+let mig6full = strip(readFileSync(process.env.MIG6 || new URL('../../tcg-bot/supabase/gauntlet.sql', import.meta.url), 'utf8'));
+let mig6 = mig6full.replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 const MUT1 = {   // dungeon.sql
   gen: ["  select (('x' || substr(md5(p_key), 1, 8))", "  select random() * 0 + (('x' || substr(md5(p_key || random()::text), 1, 8))"],
 };
@@ -61,21 +67,46 @@ const GMUT = {
   guard: ["not in ('f0db1bb166d0eccb33522bd373f4ee4e', '4a80c769286b2b6022ab79b4cb01f7c6')", "is null"],
   allows: ["(adventure_gate(p_player)->>'ok')::boolean);", "true);"],
 };
+const RUNM = "and status = 'active' and mode = coalesce(p_mode, 'daily') for update;";
+const MUT6 = {   // gauntlet.sql
+  gcost: ["c := a_cost[i] + a_cost[j] + a_cost[l] + s_cost[m] + s_cost[n];", "c := a_cost[i] + a_cost[j] + a_cost[l] + s_cost[m];"],
+  gpool: ["  where c.source::text not in ('event', 'promo') and c.rarity::text not in ('event', 'promo')\n    and (s.type in", "  where true\n    and (s.type in"],
+  gtheme: ["where p.role = 'attacker' and (th is null or th = any(p.tags))", "where p.role = 'attacker' and true"],
+  gchar: ["continue when a_key[i] = a_key[j] or a_key[i] = a_key[l] or a_key[j] = a_key[l];", "continue when a_id[i] = a_id[j] or a_id[i] = a_id[l] or a_id[j] = a_id[l];"],
+  gseed: ["dungeon_rand(k || '|a|' || p.id) o", "random() o"],
+  gtreasure: ["wts jsonb := coalesce(gc->'room_weights',", "wts jsonb := coalesce(dungeon_cfg()->'room_weights',"],
+  gdoors: ["then array['elite','rest','horde'] else", "then array['elite','rest','treasure','horde','gamble'] else"],
+  goffers: ["then array['heal','buff','ward','reset','revive']", "then array['heal','buff','shards','card','ward','reset','revive']"],
+  gloot: ["v_loot boolean := coalesce(p_state->>'mode', 'daily') <> 'gauntlet';", "v_loot boolean := true;"],
+  gsettle: ["if r.mode = 'gauntlet' then r.state := r.state - 'bank' - 'pend'; end if;", ""],
+  gbase: ["then case when p_card = any(p_run.squad) then dungeon_card_base(p_card) end", "then dungeon_card(p_run.player_id, p_card)"],
+  gmode: [RUNM, "and status = 'active' for update;"],
+  gdaily: ["where r.day = coalesce(p_day, dungeon_day()) and r.mode = 'daily'", "where r.day = coalesce(p_day, dungeon_day())"],
+  gbest: ["order by r.player_id, r.floor desc, r.room desc", "order by r.player_id, r.day desc, r.floor desc, r.room desc"],
+  godds: ["v_rar := dungeon_pick(p->'odds', random()::numeric);", "v_rar := 'secret_rare';"],
+  gonce: ["if not found then return jsonb_build_object('ok', false, 'error', 'already_paid'); end if;", ""],
+  gtick: ["if not coalesce((pz->>'enabled')::boolean, false) then return", "if false then return"],
+  gflag: ["or not coalesce((gauntlet_cfg()->>'enabled')::boolean, false) then", "then"],
+};
+const MUT6G = { gguard: ["if m not in (x[2], x[3]) then raise", "if false then raise"] };   // the guard (section 17, the file as shipped)
 const M = process.env.MUTATE;
 const apply = (src, m) => { if (!src.includes(m[0])) throw new Error(`bad mutation ${M}`); return src.replace(m[0], m[1]); };
 if (M) {
+  // A mutation applies to its own file (it must match), and to every later file that rebuilds the same function.
+  const files = [['mig', MUT1], ['mig2', MUT2], ['mig3', MUT3], ['mig4', MUT4], ['mig5', MUT5], ['mig6', MUT6]];
+  const V = { mig, mig2, mig3, mig4, mig5, mig6 };
+  const at = files.findIndex(([, T]) => T[M]);
   if (GMUT[M]) gate = apply(gate, GMUT[M]);
-  else if (MUT1[M]) mig = apply(mig, MUT1[M]);
-  else if (MUT2[M]) {   // a later file that rebuilds the same function gets the same mutation
-    mig2 = apply(mig2, MUT2[M]);
-    mig3 = mig3.replace(MUT2[M][0], MUT2[M][1]); mig4 = mig4.replace(MUT2[M][0], MUT2[M][1]); mig5 = mig5.replace(MUT2[M][0], MUT2[M][1]);
-  }
-  else if (MUT3[M]) mig3 = apply(mig3, MUT3[M]);
-  else if (MUT4[M]) { mig4 = apply(mig4, MUT4[M]); mig5 = mig5.replace(MUT4[M][0], MUT4[M][1]); }
-  else if (MUT5[M]) mig5 = apply(mig5, MUT5[M]);
-  else throw new Error(`unknown mutation ${M}`);
+  else if (MUT6G[M]) mig6full = apply(mig6full, MUT6G[M]);
+  else if (at >= 0) {
+    const mm = files[at][1][M];
+    V[files[at][0]] = apply(V[files[at][0]], mm);
+    for (const [k] of files.slice(at + 1)) V[k] = V[k].replace(mm[0], mm[1]);
+    if (files.slice(at).some(([k]) => k === 'mig6')) mig6full = mig6full.replace(mm[0], mm[1]);
+    ({ mig, mig2, mig3, mig4, mig5, mig6 } = V);
+  } else throw new Error(`unknown mutation ${M}`);
 }
-for (const s of [core, gate, mig, mig2, mig3, mig4, mig5]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
+for (const s of [core, gate, mig, mig2, mig3, mig4, mig5, mig6full]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
 
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; g jsonb; d1 jsonb; d2 jsonb; fl jsonb; rm jsonb; i int; j int; n int; st jsonb; run record;
@@ -88,6 +119,7 @@ begin
   execute $m$${mig3}$m$;
   execute $m$${mig4}$m$;
   execute $m$${mig5}$m$;
+  execute $m$${mig6}$m$;
   v_day := dungeon_day();
   select array_agg(id order by id) into atk from (select c.id from cards c join subjects s on s.id = c.subject_id
     where c.rarity = 'normal' and s.type in ('Character', 'Creature') and c.id not in (24, 29, 34, 44, 49) order by c.id limit 4) x;
@@ -417,6 +449,158 @@ begin
   st := dungeon_loot('{"bank":{"shards":290,"cards":[]},"pend":{"shards":5,"cards":[]}}', 100, null);
   if (st->'pend'->>'shards')::int <> 10 then bad := bad || 'cap ' || st::text || '; '; end if;
 
+  -- 16. The Gauntlet (Nathan 2026-10-03): the weekly squad, the runs (one a day, base cards, no loot), the
+  -- board (the best run of the week), the prizes (paid once).
+  declare w date := gauntlet_week(dungeon_day()); gq jsonb; ids bigint[]; k int; nsq int := 0; prev text := ''; wk2 record;
+    gr dungeon_runs; dr dungeon_runs; tmp jsonb; b0 int; p0 int; q29 int; foe0 jsonb; heal jsonb;
+  begin
+    update settings set value = value || '{"enabled": true}' where key = 'gauntlet';
+    -- 16a. The pool: every card but Event and Promo (attackers, and the other types with a support move).
+    if exists (select 1 from gauntlet_pool() p join cards c on c.id = p.id where c.rarity::text in ('event', 'promo') or c.source::text in ('event', 'promo'))
+       or (select count(*) from gauntlet_pool()) <> (select count(*) from cards c join subjects s on s.id = c.subject_id
+            where c.rarity::text not in ('event', 'promo') and c.source::text not in ('event', 'promo')
+              and (s.type in ('Character', 'Creature') or s.ability->>'kind' = 'support')) then bad := bad || 'gauntlet pool; '; end if;
+    -- 16b. The squad, 12 weeks: 3 attackers then 2 supports (with a support move), 5 different characters, no
+    -- Event or Promo card, within the budget of 12, the theme on every attacker and on a support; seeded.
+    for k in 0..11 loop
+      gq := gauntlet_squad(w + 7 * k);
+      if gq is null then bad := bad || 'no gauntlet squad, week ' || k || '; '; continue; end if;
+      ids := array(select (e #>> '{}')::bigint from jsonb_array_elements(gq->'squad') e);
+      if array_length(ids, 1) <> 5
+         or (select count(*) from unnest(ids[1:3]) x join cards c on c.id = x join subjects s on s.id = c.subject_id where s.type in ('Character', 'Creature')) <> 3
+         or (select count(*) from unnest(ids[4:5]) x join cards c on c.id = x join subjects s on s.id = c.subject_id
+             where s.type not in ('Character', 'Creature') and s.ability->>'kind' = 'support') <> 2
+         or (select count(distinct lower(regexp_replace(c.name, '^[^'']*''s[[:space:]]+', ''))) from cards c where c.id = any(ids)) <> 5
+         or exists (select 1 from cards c where c.id = any(ids) and (c.rarity::text in ('event', 'promo') or c.source::text in ('event', 'promo')))
+         or (select sum(coalesce((dungeon_cfg()->'cost'->>c.rarity::text)::int, 1)) from cards c where c.id = any(ids)) > 12
+         or (gq->>'theme' is not null and (
+              (select count(*) from unnest(ids[1:3]) x join cards c on c.id = x join subjects s on s.id = c.subject_id where (gq->>'theme') = any(s.tag_slugs)) <> 3
+              or not exists (select 1 from unnest(ids[4:5]) x join cards c on c.id = x join subjects s on s.id = c.subject_id where s.ability->>'affinity' = gq->>'theme')))
+      then bad := bad || 'gauntlet squad, week ' || k || ': ' || gq::text || '; '; end if;
+      if gauntlet_squad(w + 7 * k) is distinct from gq then bad := bad || 'gauntlet squad not seeded; '; end if;
+      if gq->>'squad' <> prev then nsq := nsq + 1; end if; prev := gq->>'squad';
+    end loop;
+    if nsq < 6 then bad := bad || 'the weekly squads repeat: ' || nsq || ' different of 12; '; end if;
+    -- 16c. The week: the squad, 30 floors, no treasure room, kept once made.
+    delete from gauntlet_weeks where week = w;
+    wk2 := gauntlet_generate(w);
+    if wk2.squad <> array(select (e #>> '{}')::bigint from jsonb_array_elements(gauntlet_squad(w)->'squad') e)
+       or jsonb_array_length(wk2.floors) <> coalesce((dungeon_cfg()->>'floors')::int, 30)
+       or exists (select 1 from jsonb_array_elements(wk2.floors) fx, jsonb_array_elements(fx) rx where rx->>'type' = 'treasure')
+       or (gauntlet_generate(w)).floors <> wk2.floors then bad := bad || 'gauntlet week; '; end if;
+    -- 16d. Start (tst_dg_c has an active Dungeon run too): once a day, the week's squad at base level.
+    r := gauntlet_start('tst_dg_c');
+    if not coalesce((r->>'ok')::boolean, false) then bad := bad || 'gauntlet start: ' || r::text || '; ';
+    else
+      if (gauntlet_start('tst_dg_c')->>'error') is distinct from 'already_gauntlet' then bad := bad || 'two Gauntlet runs a day; '; end if;
+      select * into gr from dungeon_runs where player_id = 'tst_dg_c' and day = v_day and mode = 'gauntlet';
+      select * into dr from dungeon_runs where player_id = 'tst_dg_c' and day = v_day and mode = 'daily';
+      if gr.squad <> wk2.squad or gr.state->>'mode' <> 'gauntlet' or dr.status <> 'active'
+         or (gr.state->'cards'->(gr.squad[1]::text)->>'max')::int <> (card_combat((select rarity::text from cards where id = gr.squad[1]), 0,
+              (select s.cp_mod from cards c join subjects s on s.id = c.subject_id where c.id = gr.squad[1]), '{}'::jsonb)->>'hp')::int
+      then bad := bad || 'gauntlet run: ' || left(gr.state::text, 200) || '; '; end if;
+      -- Nobody needs to own the cards.
+      delete from player_cards where player_id = 'tst_dg_c' and card_id = any(gr.squad);
+      -- Both runs in a fight with a weak monster, every card up: each action finds its own run (p_mode).
+      foe0 := '{"key":"slime","model":"green_blob","name":"T","element":"fire","level":1,"kind":"fight","hp":99999,"max":99999,"atk":1,"charge":false,
+                "moves":[{"name":"Hit","kind":"strike","w":1}],"tags":[],"weak":[],"resist":[],"passives":[],"enr":0,"enru":0,"wk":0,"wku":0,"ex":0,"exu":0,"st":0,"sh":0}';
+      update dungeon_runs set state = state || jsonb_build_object('phase', 'fight', 'round', 0, 'sup_round', -1, 'foes', jsonb_build_array(foe0),
+          'cards', (select jsonb_object_agg(e.k, e.v || jsonb_build_object('down', false, 'hp', (e.v->>'max')::int, 'cd', 0)) from jsonb_each(state->'cards') e(k, v)))
+        where id in (gr.id, dr.id);
+      select * into gr from dungeon_runs where id = gr.id; select * into dr from dungeon_runs where id = dr.id;
+      r := dungeon_attack('tst_dg_c', gr.squad[1], 0, 'gauntlet');
+      if not coalesce((r->>'ok')::boolean, false) or (select turns from dungeon_runs where id = gr.id) <> gr.turns + 1
+         or (select turns from dungeon_runs where id = dr.id) <> dr.turns then bad := bad || 'gauntlet attack: ' || left(r::text, 200) || '; '; end if;
+      r := dungeon_attack('tst_dg_c', 34, 0);
+      if (select turns from dungeon_runs where id = dr.id) <> dr.turns + 1 or (select turns from dungeon_runs where id = gr.id) <> gr.turns + 1 then
+        bad := bad || 'the Dungeon attack found the wrong run: ' || left(r::text, 200) || '; '; end if;
+      r := dungeon_support('tst_dg_c', gr.squad[4], gr.squad[1], 0, 'gauntlet');
+      if not coalesce((r->>'ok')::boolean, false) and r->>'error' not in ('boss_stun_immune') then bad := bad || 'gauntlet support: ' || left(r::text, 200) || '; '; end if;
+      -- 16e. No loot: a kill adds no Shards and no card; the rewards offer no Shards or card; no chest door.
+      for k in 1..10 loop
+        update dungeon_runs set state = state || jsonb_build_object('foes', jsonb_build_array(foe0 || '{"hp":1,"max":1}')) where id = gr.id and state->>'phase' = 'fight';
+        r := dungeon_attack('tst_dg_c', gr.squad[1], 0, 'gauntlet');
+        exit when (select state->>'phase' from dungeon_runs where id = gr.id) <> 'fight';
+      end loop;
+      select * into gr from dungeon_runs where id = gr.id;
+      if gr.state->>'phase' <> 'choose' or coalesce((gr.state->'pend'->>'shards')::int, 0) <> 0 or jsonb_array_length(coalesce(gr.state->'pend'->'cards', '[]')) <> 0 then
+        bad := bad || 'gauntlet kill loot: ' || left(gr.state::text, 200) || '; '; end if;
+      for k in 1..40 loop
+        if exists (select 1 from jsonb_array_elements(dungeon_offers(jsonb_build_object('mode', 'gauntlet', 'cards', '{}'::jsonb), 3)) o where o->>'kind' in ('shards', 'card')) then
+          bad := bad || 'a Gauntlet reward offers loot; '; exit; end if;
+        if exists (select 1 from jsonb_array_elements(dungeon_enter(jsonb_build_object('mode', 'gauntlet', 'cards', '{}'::jsonb),
+             '[[{"type":"choice","foes":[]}]]', 1, 1)->'offers') o where o->>'to' in ('treasure', 'gamble')) then bad := bad || 'a Gauntlet door to a chest; '; exit; end if;
+      end loop;
+      -- The end of a run grants nothing, even with Shards and a card in the state.
+      bal := (select shard_balance from players where id = 'tst_dg_c');
+      q29 := coalesce((select quantity from player_cards where player_id = 'tst_dg_c' and card_id = 29), 0);
+      update dungeon_runs set state = state || '{"bank":{"shards":50,"cards":[29]},"pend":{"shards":20,"cards":[]}}' where id = gr.id;
+      perform dungeon_settle(gr.id, 'fell', true);
+      if (select shard_balance from players where id = 'tst_dg_c') <> bal or (select shards from dungeon_runs where id = gr.id) <> 0
+         or coalesce((select quantity from player_cards where player_id = 'tst_dg_c' and card_id = 29), 0) <> q29 then bad := bad || 'the Gauntlet granted loot; '; end if;
+    end if;
+    -- 16f. The board: each member's best run of the week; the Dungeon board has no Gauntlet run.
+    insert into dungeon_runs (player_id, day, squad, state, mode, floor, room, turns, status) values
+      ('tst_dg_b', w, wk2.squad, '{}', 'gauntlet', 9, 2, 50, 'over'),
+      ('tst_dg_g', w, wk2.squad, '{}', 'gauntlet', 4, 1, 30, 'over'),
+      ('tst_dg_g', w + 1, wk2.squad, '{}', 'gauntlet', 2, 3, 10, 'over');
+    r := gauntlet_board(w, 100);
+    if r->0->>'player_id' <> 'tst_dg_b' or (select (e->>'floor')::int from jsonb_array_elements(r) e where e->>'player_id' = 'tst_dg_g') is distinct from 4
+       or (select (e->>'runs')::int from jsonb_array_elements(r) e where e->>'player_id' = 'tst_dg_g') is distinct from 2
+       or not exists (select 1 from jsonb_array_elements(r) e where e->>'player_id' = 'tst_dg_c') then bad := bad || 'gauntlet board: ' || left(r::text, 300) || '; '; end if;
+    r := dungeon_board(v_day, 1000);
+    if (select count(*) from jsonb_array_elements(r) e where e->>'player_id' = 'tst_dg_c') <> 1
+       or exists (select 1 from jsonb_array_elements(r) e where e->>'player_id' in ('tst_dg_g')) then bad := bad || 'the Dungeon board shows Gauntlet runs; '; end if;
+    r := gauntlet_view('tst_dg_c');
+    if not coalesce((r->>'ok')::boolean, false) or jsonb_array_length(r->'squad') <> 5 or (r->'run'->>'id')::bigint is distinct from gr.id
+       or (r->'best'->>'player_id') <> 'tst_dg_c' or jsonb_array_length(r->'rooms') <> 5 then bad := bad || 'gauntlet view: ' || left(r::text, 300) || '; '; end if;
+    if (dungeon_view('tst_dg_c')->'run'->>'id')::bigint is distinct from dr.id then bad := bad || 'the Dungeon view shows the Gauntlet run; '; end if;
+    -- 16g. The prizes: off by the flag; the week pays the podium (Shards, packs, cards on the place's odds) and 4-10;
+    -- a period pays once; the day pays the Dungeon board.
+    update settings set value = value || '{"enabled": false}' where key = 'dungeon_prizes';
+    if (dungeon_prize_tick()->>'error') is distinct from 'disabled' then bad := bad || 'prize tick while off; '; end if;
+    select shard_balance, pack_balance into b0, p0 from players where id = 'tst_dg_b';
+    delete from dungeon_payouts where mode = 'gauntlet' and period = w;
+    r := dungeon_pay('gauntlet', w);
+    tmp := (select e from jsonb_array_elements(r->'winners') e where (e->>'rank')::int = 1);
+    if tmp->>'player_id' is distinct from 'tst_dg_b' or (select shard_balance from players where id = 'tst_dg_b') - b0 <> 500
+       or (select pack_balance from players where id = 'tst_dg_b') - p0 <> 5 or jsonb_array_length(tmp->'cards') <> 3
+       or exists (select 1 from jsonb_array_elements(tmp->'cards') x where x->>'rarity' not in ('illustrated_rare', 'secret_rare'))
+       or exists (select 1 from jsonb_array_elements(tmp->'cards') x where not exists (select 1 from player_cards where player_id = 'tst_dg_b' and card_id = (x->>'id')::bigint))
+       or not exists (select 1 from notifications where player_id = 'tst_dg_b' and kind = 'dungeon_prize') then bad := bad || 'gauntlet 1st prize: ' || left(r::text, 300) || '; '; end if;
+    tmp := (select e from jsonb_array_elements(r->'winners') e where (e->>'rank')::int = 2);
+    if tmp->>'player_id' is distinct from 'tst_dg_g' or (tmp->>'shards')::int <> 300 or (tmp->>'packs')::int <> 3 or jsonb_array_length(tmp->'cards') <> 2 then
+      bad := bad || 'gauntlet 2nd prize: ' || coalesce(tmp::text, 'none') || '; '; end if;
+    tmp := (select e from jsonb_array_elements(r->'winners') e where (e->>'rank')::int = 3);
+    if tmp is null or (tmp->>'shards')::int <> 200 or (tmp->>'packs')::int <> 2 or jsonb_array_length(tmp->'cards') <> 1
+       or exists (select 1 from jsonb_array_elements(tmp->'cards') x where x->>'rarity' not in ('normal', 'illustrated_rare')) then
+      bad := bad || 'gauntlet 3rd prize: ' || coalesce(tmp::text, 'none') || '; '; end if;
+    r := dungeon_pay('gauntlet', w);
+    if r->>'error' is distinct from 'already_paid' or (select shard_balance from players where id = 'tst_dg_b') - b0 <> 500 then bad := bad || 'a week paid twice; '; end if;
+    select shard_balance, pack_balance into b0, p0 from players where id = 'tst_dg_a';
+    delete from dungeon_payouts where mode = 'daily' and period = v_day;
+    r := dungeon_pay('daily', v_day);
+    if (select shard_balance from players where id = 'tst_dg_a') - b0 <> 300 or (select pack_balance from players where id = 'tst_dg_a') - p0 <> 2 then
+      bad := bad || 'daily 1st prize: ' || left(r::text, 300) || '; '; end if;
+    update settings set value = value || jsonb_build_object('enabled', true, 'from', (v_day - 1)::text) where key = 'dungeon_prizes';
+    delete from dungeon_payouts where mode = 'daily' and period = v_day - 1;
+    r := dungeon_prize_tick();
+    if not exists (select 1 from dungeon_payouts where mode = 'daily' and period = v_day - 1) then bad := bad || 'prize tick: ' || left(r::text, 200) || '; '; end if;
+    r := dungeon_prize_tick();
+    if jsonb_array_length(r->'paid') <> 0 then bad := bad || 'the prize tick paid twice: ' || left(r::text, 200) || '; '; end if;
+    -- 16h. The flag OFF: no Gauntlet.
+    update settings set value = value || '{"enabled": false}' where key = 'gauntlet';
+    if (gauntlet_start('tst_dg_a')->>'error') is distinct from 'disabled' or (gauntlet_view('tst_dg_a')->>'error') is distinct from 'disabled' then
+      bad := bad || 'the Gauntlet with its flag off; '; end if;
+  end;
+${!M || M === 'gguard' ? `
+  -- 17. The Gauntlet guard: the file runs again on its own result; a changed live function stops it.
+  begin execute $m$${mig6full}$m$;
+  exception when others then bad := bad || 'gauntlet second run: ' || sqlerrm || '; '; end;
+  execute replace(pg_get_functiondef('public.dungeon_board'::regproc), 'select coalesce', 'select /* changed */ coalesce');
+  begin execute $m$${mig6full}$m$; bad := bad || 'the guard let a changed dungeon_board through; ';
+  exception when others then if sqlerrm not like '%changed since this file was built%' then bad := bad || 'gauntlet guard: ' || sqlerrm || '; '; end if; end;
+` : ''}
   -- 15. The live-version guard: the migrations run again on their own result; a changed live function stops them.
   begin execute $m$${core}$m$; execute $m$${gate}$m$;
   exception when others then bad := bad || 'second run: ' || sqlerrm || '; '; end;
