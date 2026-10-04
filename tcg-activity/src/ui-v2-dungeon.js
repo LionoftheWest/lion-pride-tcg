@@ -138,7 +138,7 @@ function markDock() {
 export function disposeDungeon() {
   clearInterval(tick); tick = null;
   dg.stage?.dispose(); dg.stage = null; dg.roomKey = '';
-  clearTimeout(autoT); stopMusic();
+  clearTimeout(autoT); stopMusic(); dg.chest?.dispose(); dg.chest = null;
 }
 
 function left(iso) {
@@ -168,6 +168,7 @@ function paint() {
   // Keep the 3D canvas across repaints of the same room (no model reload, no flash).
   const keep = fight && dg.stage ? dg.stage.canvas : null;
   if (!fight && dg.stage) { dg.stage.dispose(); dg.stage = null; dg.roomKey = ''; }
+  dg.chest?.dispose(); dg.chest = null;   // the chest canvas is rebuilt with the screen
   let body;
   if (d.closed) body = `<div class="dg-closed"><b>${esc(d.message)}</b></div>`;
   else if (!d.gate?.ok) body = gateHTML(d.gate || {}, 'the Dungeon');
@@ -594,6 +595,7 @@ async function wireFight(main, keepCanvas) {
       dg.stage.canvas = canvas;
       dg.roomKey = roomKey();
       await dg.stage.setFoes(foesOf(R.state));
+      { const fs0 = foesOf(R.state).filter((x) => x.hp > 0); loadVoices(fs0); if (fs0.length && (R.state.round || 0) === 0) snd(voiceOf(fs0[0].key).roar, fs0[0].boss ? 0.75 : 0.45); }
       fightUpdate(main, run().state);
     } catch (e) { console.warn('dungeon stage', e); }
   }
@@ -649,9 +651,10 @@ async function act(kind, body) {
     const t = r.target ?? body.target;
     const f = foes[t];
     // Item 13: the card's element effect from the Raid flies to the monster, then the hit lands.
-    if (dg.stage?.cast) { dg.stage.cast(t, cardElement(M.get(Number(body.cardId))?.tags) || 'physical'); await sleep(dg.auto ? 300 : 480); }
+    if (dg.stage?.cast) { const elx = cardElement(M.get(Number(body.cardId))?.tags) || 'physical'; snd(elx, 0.6); dg.stage.cast(t, elx); await sleep(dg.auto ? 300 : 480); }
     ctx().sfx?.(r.damage > 0 ? 'hit' : 'click');
     dg.stage?.play(t, r.kill ? 'death' : 'hit');
+    if (r.kill) { mvoice(f, 'die', 0.6); if (f?.boss) snd('boss:defeat', 0.6); } else if (r.damage > 0) mvoice(f, 'hurt', 0.45);
     pop(main, t, r.damage > 0 ? `-${fmt(r.damage)}${r.crit ? '<small>CRITICAL</small>' : r.double ? '<small>DOUBLE</small>' : r.bonus ? '<small>WEAKNESS</small>' : r.resisted ? '<small>RESISTED</small>' : ''}` : r.guarded > 0 ? 'BLOCKED' : 'MISS', r.crit ? 'crit' : r.damage > 0 ? '' : 'miss');
     if (r.guarded > 0) { pop(main, t, `${I.shield}-${fmt(r.guarded)} guard`, 'act', -34); step.foes[t].sh = Math.max(0, (step.foes[t].sh || 0) - r.guarded); }
     // The monster's HP moves now (the final value from the server).
@@ -675,6 +678,8 @@ async function act(kind, body) {
       pop(main, e.foe, esc(move), 'act move', -30);
       await sleep(450);
       dg.stage?.foeFx?.(e.foe, e.action);   // item 13: the Raid boss effect of the move
+      if (e.action !== 'stunned') mvoice(foes[e.foe], 'atk', 0.55);
+      if (['slam', 'cataclysm', 'curse', 'poison', 'enrage', 'charging', 'stunned'].includes(e.action)) snd(MOVE_SND[e.action], 0.4);
       if (e.action !== 'stunned' && e.action !== 'charging' && (e.dmg || (e.area || []).length)) { dg.stage?.play(e.foe, 'attack'); await sleep(380); }
       hurt(e.card, e.dmg, e.hits > 1 ? ` ×${e.hits}` : '');
       for (const a of e.area || []) hurt(a.card, a.dmg);
@@ -763,6 +768,27 @@ async function autoStep() {
   if (!(await act('attack', { cardId: best.id, target: tf.i }))) { dg.auto = false; localStorage.setItem(AUTO, ''); document.querySelector('.dg-auto')?.classList.remove('on'); }
 }
 const ef = (foes, i) => foes[i]?.name || 'Monster';
+// Sounds (Nathan: like the Raid boss): the Raid samples through main.js SFX. Each monster type has its
+// own voice (a roar and a growl from the pool, by its key); each move its boss sound; each card its element.
+const snd = (k, peak) => { try { ctx().sfxSample?.(k, peak); } catch { /* sound is optional */ } };
+const MOVE_SND = { strike: 'boss:strike', heavy: 'boss:strike', flurry: 'boss:strike', drain: 'boss:strike', stun: 'boss:strike', slam: 'boss:slam', cataclysm: 'boss:slam', curse: 'boss:curse', poison: 'boss:curse', enrage: 'boss:enrage', charging: 'boss:enrage', stunned: 'boss:stunned' };
+// Each monster type's own voice (CC0, public/sfx/dungeon/CREDITS.md): its attack, hurt and death sounds.
+const DSND = {
+  slime: { atk: ['slime_01', 'slime_03'], hurt: ['slime_05'], die: ['slime_08'] },
+  ooze: { atk: ['spit_01', 'slime_02'], hurt: ['slime_06'], die: ['slime_07'] },
+  skeleton: { atk: ['attack_01', 'attack_02'], hurt: ['hurt_01'], die: ['die_01'] },
+  zombie: { atk: ['grunt_03', 'burp_01'], hurt: ['cough_01'], die: ['die_02'] },
+  giant: { atk: ['troll_01', 'troll_02', 'stomp_01'], hurt: ['grunt_05'], die: ['troll_03'] },
+  yeti: { atk: ['roar_02', 'howl'], hurt: ['grunt_07'], die: ['roar_05'] },
+  demon: { atk: ['monster_04', 'monster_09'], hurt: ['monster_12'], die: ['monster_17'] },
+  golem: { atk: ['stomp_01', 'grunt_01'], hurt: ['grunt_09'], die: ['die_03'] },
+  squid: { atk: ['burble_01', 'bug_05'], hurt: ['bug_09'], die: ['burble_02'] },
+  raptor: { atk: ['scream_01', 'attack_04'], hurt: ['hurt_03'], die: ['scream_02'] },
+};
+const loadVoices = (foes) => { for (const f of foes) for (const list of Object.values(DSND[f.key] || {})) for (const n of list) ctx().sfxLoad?.(`dg:${n}`, `sfx/dungeon/${n}.mp3`); };
+// Play a monster sound: its own voice when it has one, else the shared Raid pool.
+const mvoice = (f, kind, peak) => { const l = DSND[f?.key]?.[kind]; if (l?.length) snd(`dg:${l[Math.floor(Math.random() * l.length)]}`, peak); else if (kind !== 'hurt') snd(kind === 'die' ? voiceOf(f?.key).growl : voiceOf(f?.key).roar, peak); };
+const voiceOf = (key) => { let h = 0; for (const ch of String(key || 'm')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return { roar: `mon:roar${1 + (h % 4)}`, growl: `mon:growl${1 + ((h >> 3) % 3)}` }; };
 // A loot drop: Shards fly up from the monster (and a card when one dropped).
 function lootDrop(main, i, loot) {
   const box = main.querySelector('.dg-pops'); const l = dg.stage?.labels()[i]; const canvas = main.querySelector('.dg-canvas');
@@ -850,7 +876,7 @@ function chestHTML(st) {
   const t = TIER[c.tier] || TIER[1];
   const card = c.card ? dg.data.lootCards?.[c.card] : null;
   return `<div class="dg-chest" style="--tc:${t[1]}">
-      <button class="dg-chestbox" aria-label="Open the chest"><span class="glow"></span><span class="lid"></span><span class="base"><i></i></span></button>
+      <button class="dg-chestbox" aria-label="Open the chest"><span class="glow"></span><canvas class="dg-chest3d"></canvas><span class="lid"></span><span class="base"><i></i></span></button>
       <div class="dg-chestloot"><span class="dg-tier big" style="--tc:${t[1]}">${t[0]} chest</span>
         <div class="dg-chestrow"><span class="dg-chsh">${COIN}<b>+${fmt(c.shards)}</b><small>Shards</small></span>
         ${card ? flipHTML([card], 'chest') : ''}</div>
@@ -864,7 +890,26 @@ function flipHTML(list, key) {
       <span class="face back">${cardBack ? `<img src="${esc(cardBack)}" alt="">` : '<i></i>'}</span>
       <span class="face front">${cardTile({ ...c, cost: null }, { top: '', info: false })}</span></button>`).join('');
 }
+// The face-down cards take the largest size that fits the free space, in as many rows as that needs
+// (the screen never scrolls: tcg-bot/docs/DESIGN.md, screen rules).
+function fitFlips(main) {
+  main.querySelectorAll('.dg-flips').forEach((box) => {
+    const n = box.children.length; if (!n) return;
+    const gap = parseFloat(getComputedStyle(box).columnGap) || 10;
+    const w = box.clientWidth, h = box.clientHeight;
+    if (!w || !h) return;
+    let best = 0;
+    for (let r = 1; r <= n; r++) {
+      const per = Math.ceil(n / r);
+      const byW = ((w - gap * (per - 1)) / per) * 7 / 5, byH = (h - gap * (r - 1)) / r;
+      best = Math.max(best, Math.min(byW, byH));
+    }
+    box.style.setProperty('--fh', `${Math.floor(Math.min(best, 280))}px`);
+  });
+}
+window.addEventListener('resize', () => { const m = document.getElementById('main'); if (m?.querySelector('.dg-flips')) fitFlips(m); });
 function wireFlips(main) {
+  fitFlips(main);
   const flip = (b) => { if (b.classList.contains('up')) { const id = Number(b.dataset.id); if (id) openInfo(id); return; } b.classList.add('up'); ctx().sfx?.('flip'); };
   main.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); flip(b); }));
   main.querySelector('.dg-reveal')?.addEventListener('click', (e) => {
@@ -888,10 +933,17 @@ async function choose(pick) {
 function wireChoose(main) {
   main.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', () => choose(Number(b.dataset.choose))));
   const box = main.querySelector('.dg-chestbox');
+  // The 3D chest (a real model with its open animation); the drawn chest stays as the fallback.
+  const cv = box?.querySelector('.dg-chest3d');
+  if (cv) {
+    cv.addEventListener('chest-ready', () => box.classList.add('has3d'), { once: true });
+    import('./dungeon-chest.js').then(({ mountChest }) => { if (main.contains(cv)) { dg.chest?.dispose(); dg.chest = mountChest(cv, getComputedStyle(box.closest('.dg-chest')).getPropertyValue('--tc').trim() || '#9AA3B5'); } }).catch(() => {});
+  }
   box?.addEventListener('click', () => {
     if (box.closest('.dg-chest').classList.contains('open')) return;
-    box.closest('.dg-chest').classList.add('open');
-    ctx().sfx?.('flip');
+    dg.chest?.open();
+    snd('boss:enrage', 0.25);
+    setTimeout(() => { box.closest('.dg-chest').classList.add('open'); ctx().sfx?.('rare'); }, dg.chest ? 650 : 0);
   });
   wireFlips(main);
 }
@@ -907,7 +959,7 @@ function floorDoneHTML() {
   return `<div class="dg-over dg-floordone">
     <section class="dg-panel dg-obox dg-fdbox">${musicBtnHTML()}
       <div class="dg-ohead"><div class="dg-fdhead"><span class="k">${I.castle}${esc(dg.data.name)} · Floor ${R.floor}</span><h1>Floor ${R.floor} cleared!</h1><p>The guardian fell. This floor's loot is banked: it is safe now.</p></div>
-      <div class="dg-depth dg-fdstats"><span>Loot gained<b>${COIN}+${fmt(fl.shards)}</b></span><span>Banked in total<b>${I.lock}${fmt(bank.shards)}${(bank.cards || []).length ? ` +${(bank.cards || []).length}${I.cards}` : ''}</b></span><span>Shards cap left<b>${fmt(capLeft)}</b></span></div></div>
+      <div class="dg-depth dg-fdstats"><span>Loot gained<b>${COIN}+${fmt(fl.shards)}</b></span><span>Banked<b>${I.lock}${fmt(bank.shards)}${(bank.cards || []).length ? ` +${(bank.cards || []).length}${I.cards}` : ''}</b></span><span>Cap left<b>${fmt(capLeft)}</b></span></div></div>
       <div class="dg-lootrow">${cards.length ? `<div class="dg-lhead"><h3>Cards found <small>${cards.length}</small></h3><button class="v2-btn gold dg-reveal">${I.cards}Reveal all</button></div><div class="dg-flips" style="--n:${cards.length}">${flipHTML(cards, 'floor')}</div>` : '<p class="muted dg-nocards">No cards on this floor.</p>'}</div>
       <div class="dg-obtn dg-fdbtn"><button class="v2-btn dg-leave">${I.door}Retreat with the loot</button><button class="v2-btn gold dg-next" data-choose="0">${I.arrow}Descend to Floor ${R.floor + 1}</button></div>
       <small class="dg-risk">${I.lock}On the next floor, the new loot is at risk until its guardian falls. Banked loot is always safe.</small>
@@ -942,6 +994,7 @@ function overHTML() {
   </div>`;
 }
 function wireOver(main) {
+  fitFlips(main);
   main.querySelectorAll('[data-board]').forEach((b) => b.addEventListener('click', () => openBoard()));
   // The Shards count up.
   const c = main.querySelector('.dg-count');

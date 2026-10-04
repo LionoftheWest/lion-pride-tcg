@@ -1,45 +1,54 @@
 // The Dungeon music (Nathan item 19): free CC0 tracks, one per mood, looped, with a mute button that is
-// remembered. Nathan picks the tracks first (2026-10-03): until a mood has a file, the button stays
-// hidden and nothing plays. A track file goes in public/dungeon/music/ and its name in TRACKS.
+// remembered. Nathan picked all six tracks (2026-10-03, public/dungeon/music/CREDITS.md). Each mood
+// rotates its tracks: a new mood picks one at random and keeps it while the mood lasts.
 //   setMood('explore' | 'fight' | 'boss' | null)   musicBtnHTML()   toggleMute()   stopMusic()
 const TRACKS = {
-  explore: '',   // the lobby is silent; the rooms between fights
-  fight: '',
-  boss: '',      // the guardian and the mini-boss
+  explore: ['explore1.mp3', 'explore2.mp3', 'explore3.mp3'],   // the rooms between fights (the lobby is silent)
+  fight: ['fight1.mp3', 'fight2.mp3'],
+  boss: ['boss1.mp3'],                                          // the guardian and the mini-boss
 };
+const pick = (list) => list[Math.floor(Math.random() * list.length)] || '';
+const chosen = {};
 const BASE = '/dungeon/music/';
 const KEY = 'lp.dungeon.music.off';
 const VOL = 0.32;
-let el = null; let mood = null; let fadeT = null;
+let el = null; let mood = null; let ac = null; let gain = null;
 
-export const hasMusic = () => Object.values(TRACKS).some(Boolean);
+export const hasMusic = () => Object.values(TRACKS).some((l) => l.length);
 export const isMuted = () => localStorage.getItem(KEY) === '1';
 
+// The volume goes through a Web Audio gain: iOS ignores <audio>.volume (the music played at full volume).
+function wire(a) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume().catch(() => {});
+    gain = ac.createGain(); gain.gain.value = 0;
+    ac.createMediaElementSource(a).connect(gain).connect(ac.destination);
+  } catch { gain = null; a.volume = VOL; }
+}
 function fadeTo(target, ms, done) {
-  clearInterval(fadeT);
   if (!el) return done?.();
-  const from = el.volume; const t0 = performance.now();
-  fadeT = setInterval(() => {
-    const k = Math.min(1, (performance.now() - t0) / ms);
-    el.volume = from + (target - from) * k;
-    if (k >= 1) { clearInterval(fadeT); done?.(); }
-  }, 40);
+  if (gain && ac) { const t = ac.currentTime; gain.gain.cancelScheduledValues(t); gain.gain.setValueAtTime(gain.gain.value, t); gain.gain.linearRampToValueAtTime(target, t + ms / 1000); }
+  else el.volume = target;
+  if (done) setTimeout(done, ms + 30);
 }
 
-// Play the mood's track (a short fade between moods). The same track keeps playing across moods.
+// Play the mood's track (a short fade between moods). The same track keeps playing while the mood lasts.
 export function setMood(next) {
+  if (next !== mood && next) chosen[next] = pick(TRACKS[next] || []);   // a new mood: a new track
   mood = next;
-  const src = next ? TRACKS[next] || TRACKS.fight || '' : '';
-  if (!src || isMuted()) { if (el) fadeTo(0, 400, () => el?.pause()); return; }
+  const src = next ? chosen[next] || '' : '';
+  if (!src || isMuted()) { if (el) { const old = el; fadeTo(0, 400, () => old.pause()); } return; }
   const url = BASE + src;
   if (el && el.dataset.src === url) { if (el.paused) el.play().catch(() => {}); fadeTo(VOL, 500); return; }
   const start = () => {
-    el = new Audio(url); el.dataset.src = url; el.loop = true; el.volume = 0;
+    el = new Audio(url); el.dataset.src = url; el.loop = true; el.preload = 'auto';
+    wire(el);
     el.play().then(() => fadeTo(VOL, 700)).catch(() => {});   // a browser may wait for a tap first
   };
-  if (el) fadeTo(0, 400, () => { el.pause(); start(); }); else start();
+  if (el) { const old = el; fadeTo(0, 400, () => { old.pause(); start(); }); } else start();
 }
-export function stopMusic() { mood = null; if (el) fadeTo(0, 300, () => { el?.pause(); el = null; }); }
+export function stopMusic() { mood = null; if (el) { const old = el; fadeTo(0, 300, () => { old.pause(); if (el === old) el = null; }); } }
 export function toggleMute() {
   localStorage.setItem(KEY, isMuted() ? '' : '1');
   setMood(mood);
