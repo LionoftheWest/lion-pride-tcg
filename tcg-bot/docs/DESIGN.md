@@ -94,3 +94,7 @@ Nathan set these rules on 2026-10-03. They apply to every screen on desktop, pho
    Give the status a fixed-size place (for example, one fixed-height row of icons).
 4. **Check the three sizes before you ship:** desktop (about 1990x830 inside Discord), portrait (430x790 and
    375x640), and landscape (932x400 with the notch inset). A check script must report no scroll and no bleed.
+5. **No explainer subtitles** (Nathan, 2026-10-03). Do not add a small helper sentence that explains how
+   something works (for example "The Gauntlet has no loot. Only the depth counts." or "Tap a card to list it.").
+   Show only titles, labels, numbers, and the facts a member needs to decide (odds, prices, limits such as
+   "Once per floor"). The help belongs in the ? help screens (ui-v2-explain.js, ui-v2-help.js).

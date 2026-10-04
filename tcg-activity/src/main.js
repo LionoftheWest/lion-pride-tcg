@@ -1958,7 +1958,7 @@ function squadDownSequence() {
   const host = el('main') || document.body;
   const ov = document.createElement('div');
   ov.className = 'squad-down-ov';
-  ov.innerHTML = '<div class="sd-text">SQUAD DOWN</div><div class="sd-sub">One squad per day — regroup at the reset</div>';
+  ov.innerHTML = '<div class="sd-text">SQUAD DOWN</div>';
   host.appendChild(ov);
   SFX?.play?.('page');
   setTimeout(async () => {

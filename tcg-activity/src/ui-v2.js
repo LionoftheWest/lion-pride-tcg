@@ -2,7 +2,7 @@
 // member profiles. main.js owns the data, the streams, and the Hunt; this module only
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
-import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { fillConvertButton } from './ui-v2-shop.js';
 import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';
@@ -1162,7 +1162,7 @@ function paintSpotEditor() {
       <div class="se-foot"><span class="tr-msg" id="seMsg"></span><button class="v2-btn gold" id="seSave">Save</button></div>
     </aside>
     <section class="se-main">
-      <div class="v2-col-head"><h2>Your cards <span class="sub">Tap a card to add or remove it</span></h2><span class="grow"></span>
+      <div class="v2-col-head"><h2>Your cards</h2><span class="grow"></span>
         <input class="v2-search" id="seQ" placeholder="Search cards…" value="${esc(sp.q)}"><div class="v2-pager" id="sePager"></div></div>
       <div class="v2-grid" id="seGrid"></div>
     </section>
@@ -1350,7 +1350,6 @@ function paintWish() {
       <span class="grow"></span>${x.top && !(wl.self && wl.edit) ? '<span class="wl-topmark" title="Top want: the card the Wanted view shows">★</span>' : ''}
       ${!wl.self && x.card ? `<span class="hl-n${x.mine ? ' have' : ''}" title="Your free copies">⧉ ×${x.mine}</span>` : ''}
       ${wl.self && wl.edit ? (x.card ? `<button class="v2-icon wl-top${x.top ? ' on' : ''}" data-slot="${x.slot}" title="Top want: the card the Wanted view shows">★</button><button class="v2-icon wl-x" data-slot="${x.slot}" title="Clear">✕</button>` : '') + `<button class="v2-icon wl-set" data-slot="${x.slot}" title="Pick a card">✎</button>` : ''}</div>`).join('')}</div>
-    ${wl.self && wl.edit ? '<span class="dim wl-hint">★ = your top want. The Trade Hall shows it under Wanted.</span>' : ''}
     ${wl.msg ? `<span class="tr-msg">${esc(wl.msg)}</span>` : ''}`;
   // A portrait phone: the Wishlist sits beside the hunt tile; in Edit it takes the full width (ui-v2-mobile.css).
   ctx.el('memberModal')?.querySelector('.mem-screen')?.classList.toggle('wl-open', isPort() && wl.edit);
