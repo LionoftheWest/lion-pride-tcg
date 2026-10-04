@@ -237,12 +237,12 @@ The weekly skill mode on the same Dungeon engine (`tcg-bot/supabase/gauntlet.sql
 
 | Place | Daily Dungeon | Weekly Gauntlet |
 |---|---|---|
-| 1st | 300 Shards + 2 packs | 500 Shards + 5 packs + 3 cards (70% IR / 30% SR) |
-| 2nd | 200 Shards + 1 pack | 300 Shards + 3 packs + 2 cards (60% Normal / 32% IR / 8% SR) |
-| 3rd | 150 Shards + 1 pack | 200 Shards + 2 packs + 1 card (75% Normal / 25% IR) |
+| 1st | 300 Shards | 500 Shards + 5 packs + 3 cards (70% IR / 30% SR) |
+| 2nd | 200 Shards | 300 Shards + 3 packs + 2 cards (60% Normal / 32% IR / 8% SR) |
+| 3rd | 150 Shards | 200 Shards + 2 packs + 1 card (75% Normal / 25% IR) |
 | 4th-10th | 50 Shards | 1 pack |
 
-Each prize card rolls its own rarity on the place's odds. Every winner gets a notification.
+The daily Dungeon prizes are Shards only: packs are for the weekly Gauntlet only (Nathan, 2026-10-03, `dungeon_prizes_daily.sql`). Each prize card rolls its own rarity on the place's odds. Every winner gets a notification.
 
 - **Flags:** `settings.gauntlet.enabled` (the mode) and `settings.dungeon_prizes.enabled` (the payouts, with `from` = the first day to pay). Both default to false.
 - **Test:** `card-studio/scripts/test-dungeon.mjs` sections 16 and 17 (mutations g*).
