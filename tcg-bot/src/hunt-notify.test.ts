@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { huntPost } from './hunt-notify.js';
+import { huntPost, pingsRole } from './hunt-notify.js';
 import { LAUNCH_ACTIVITY_ID } from './ui/launch.js';
 
 const closes = '2026-10-05T23:00:00Z';
@@ -42,6 +42,11 @@ test('the defeat and escape posts show the same fixed prizes', () => {
     assert.ok(post!.content!.includes('12 hunters earned **39** packs: 1st 7, 2nd 5, 3rd 4, 4th-10th 3, every other hunter 1.'), post!.content!);
     assert.doesNotMatch(post!.content!, /Consolation|by damage dealt/);
   }
+});
+
+test('only the spawn post pings the LPTCG role', () => {
+  assert.equal(pingsRole('spawn'), true);
+  for (const kind of ['nudge', 'defeat', 'expired', 'player_done', 'leaderboard']) assert.equal(pingsRole(kind), false, kind);
 });
 
 test('an unknown event posts nothing', () => {
