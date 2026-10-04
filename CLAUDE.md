@@ -12,6 +12,19 @@ These rules apply to every session in this repository. The global rules in
 - The VM is `lionpridetcg.duckdns.org`. Resolve the name. Do not trust an IP in a note.
 - This repository is PUBLIC. Never commit a secret. The `.env` files stay local and on the VM.
 
+## UI freeze (Nathan, 2026-10-04)
+
+All new UI work in `tcg-activity/` is stopped until Nathan approves the UI standard
+(`docs/design.md`, in progress). The reason: each screen was built three times (desktop,
+portrait, landscape) with fixed pixels and ad-hoc values, so new screen sizes kept breaking
+(a tablet cut the sub-tabs to 87 px; the sub-tab bar covered the phone card sheet).
+
+- Do not add a screen, a component, a restyle, or a layout change.
+- A fix for a defect that a member reported is allowed only when Nathan asks for it. Keep it
+  to the smallest change. Do not add new `m-land` / `m-port` selectors, raw `z-index`
+  numbers, or new color, size, or font literals.
+- Server, SQL, and bot work that does not change the UI is not frozen.
+
 ## Deploy and migrate automatically
 
 Nathan gave a standing instruction (2026-09-21 and 2026-09-25): sessions deploy and
