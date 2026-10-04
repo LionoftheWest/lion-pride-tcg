@@ -12,8 +12,9 @@
  *     onesup    two supports in one turn                     repeat    the last reward comes back
  *     retreat   Retreat in the middle of a floor               lastatk   the run goes on with only support cards standing
  *     odds      every chest tier uses the Legend odds          chestodds the treasure room ignores the chest odds
- * Env: CORE, GATE, MIG, MIG2, MIG3, MIG4 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql,
- *      dungeon_v2.sql, dungeon_v2_fix.sql, dungeon_chest_odds.sql.
+ *     rewardodds  a reward card keeps one fixed rarity per tier    noodds  a card offer does not show its odds
+ * Env: CORE, GATE, MIG, MIG2, MIG3, MIG4, MIG5 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql,
+ *      dungeon_v2.sql, dungeon_v2_fix.sql, dungeon_chest_odds.sql, dungeon_reward_odds.sql.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -28,6 +29,7 @@ let mig2 = strip(readFileSync(process.env.MIG2 || new URL('../../tcg-bot/supabas
 // The fix replaces dungeon_attack whole: its live-version guard is skipped here (the mutations change the text).
 let mig3 = strip(readFileSync(process.env.MIG3 || new URL('../../tcg-bot/supabase/dungeon_v2_fix.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 let mig4 = strip(readFileSync(process.env.MIG4 || new URL('../../tcg-bot/supabase/dungeon_chest_odds.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
+let mig5 = strip(readFileSync(process.env.MIG5 || new URL('../../tcg-bot/supabase/dungeon_reward_odds.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 const MUT1 = {   // dungeon.sql
   gen: ["  select (('x' || substr(md5(p_key), 1, 8))", "  select random() * 0 + (('x' || substr(md5(p_key || random()::text), 1, 8))"],
 };
@@ -49,6 +51,10 @@ const MUT4 = {   // dungeon_chest_odds.sql
   odds: ["(least(5, greatest(1, p_tier)))::text", "'5'"],
   chestodds: ["dungeon_card_of(dungeon_chest_rarity(t))", "dungeon_card_of((array['normal', 'normal', 'illustrated_rare', 'illustrated_rare', 'secret_rare'])[t])"],
 };
+const MUT5 = {   // dungeon_reward_odds.sql
+  noodds: ["'odds', case when k = 'card'", "'odds_x', case when k = 'card'"],
+  rewardodds: ["dungeon_card_of(dungeon_chest_rarity(coalesce((o->>'tier')::int, 1)))", "dungeon_card_of((array['normal', 'normal', 'illustrated_rare', 'illustrated_rare', 'secret_rare'])[coalesce((o->>'tier')::int, 1)])"],
+};
 const GMUT = {
   gate: ["'ok', g.open = 0 and a.n >= g.need", "'ok', a.n >= g.need"],
   huntlock: ["  if not (v_gate->>'ok')::boolean then return", "  if false then return"],
@@ -60,12 +66,16 @@ const apply = (src, m) => { if (!src.includes(m[0])) throw new Error(`bad mutati
 if (M) {
   if (GMUT[M]) gate = apply(gate, GMUT[M]);
   else if (MUT1[M]) mig = apply(mig, MUT1[M]);
-  else if (MUT2[M]) { mig2 = apply(mig2, MUT2[M]); for (const k of ['mig3', 'mig4']) { const v = k === 'mig3' ? mig3 : mig4; if (v.includes(MUT2[M][0])) { if (k === 'mig3') mig3 = v.replace(MUT2[M][0], MUT2[M][1]); else mig4 = v.replace(MUT2[M][0], MUT2[M][1]); } } }
+  else if (MUT2[M]) {   // a later file that rebuilds the same function gets the same mutation
+    mig2 = apply(mig2, MUT2[M]);
+    mig3 = mig3.replace(MUT2[M][0], MUT2[M][1]); mig4 = mig4.replace(MUT2[M][0], MUT2[M][1]); mig5 = mig5.replace(MUT2[M][0], MUT2[M][1]);
+  }
   else if (MUT3[M]) mig3 = apply(mig3, MUT3[M]);
-  else if (MUT4[M]) mig4 = apply(mig4, MUT4[M]);
+  else if (MUT4[M]) { mig4 = apply(mig4, MUT4[M]); mig5 = mig5.replace(MUT4[M][0], MUT4[M][1]); }
+  else if (MUT5[M]) mig5 = apply(mig5, MUT5[M]);
   else throw new Error(`unknown mutation ${M}`);
 }
-for (const s of [core, gate, mig, mig2, mig3, mig4]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
+for (const s of [core, gate, mig, mig2, mig3, mig4, mig5]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
 
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; g jsonb; d1 jsonb; d2 jsonb; fl jsonb; rm jsonb; i int; j int; n int; st jsonb; run record;
@@ -77,6 +87,7 @@ begin
   execute $m$${mig2}$m$;
   execute $m$${mig3}$m$;
   execute $m$${mig4}$m$;
+  execute $m$${mig5}$m$;
   v_day := dungeon_day();
   select array_agg(id order by id) into atk from (select c.id from cards c join subjects s on s.id = c.subject_id
     where c.rarity = 'normal' and s.type in ('Character', 'Creature') and c.id not in (24, 29, 34, 44, 49) order by c.id limit 4) x;
@@ -333,6 +344,28 @@ begin
       if (st3->'chest'->>'tier')::int >= 4 and (select rarity::text from cards where id = (st3->'chest'->>'card')::bigint) = 'normal' then lowhi := lowhi + 1; end if;
     end loop;
     if lowhi = 0 then bad := bad || 'no Normal card from an Ultra / Legend chest in 1500 chests; '; end if;
+  end;
+
+  -- 12d. Reward card odds (Nathan): a reward card rolls its rarity on the tier odds when it is picked.
+  -- A Legend card (tier 5 = [15, 50, 35]) picked 300 times gives Normal and SR cards; the offer carries no rarity.
+  declare k int; nn int := 0; ss int := 0; rr text; b0 dungeon_runs; begin
+    select * into b0 from dungeon_runs where player_id = 'tst_dg_b' and day = v_day;   -- put back after (the board and the view use it)
+    delete from dungeon_runs where player_id = 'tst_dg_b';
+    r := dungeon_start('tst_dg_b', array[34, 44, 64, 93, 97]);
+    for k in 1..300 loop
+      update dungeon_runs set room = 1, state = state || jsonb_build_object('phase', 'choose', 'offers', '[{"kind":"card","tier":5,"amount":0}]'::jsonb,
+        'pend', '{"shards":0,"cards":[]}'::jsonb) where player_id = 'tst_dg_b' and day = v_day;
+      r := dungeon_choose('tst_dg_b', 0);
+      rr := (select rarity::text from cards where id = (r->>'card')::bigint);
+      if rr is null then bad := bad || 'reward card: ' || left(r::text, 160) || '; '; exit; end if;
+      if rr = 'normal' then nn := nn + 1; elsif rr = 'secret_rare' then ss := ss + 1; end if;
+    end loop;
+    if not (nn between 20 and 80 and ss between 70 and 140) then bad := bad || format('reward odds: Legend normal %s SR %s of 300; ', nn, ss); end if;
+    delete from dungeon_runs where player_id = 'tst_dg_b';
+    insert into dungeon_runs overriding system value select b0.*;
+    for k in 1..30 loop
+      if exists (select 1 from jsonb_array_elements(dungeon_offers(jsonb_build_object('cards', '{}'::jsonb), 3)) o where o ? 'rarity' or (o->>'kind' = 'card' and coalesce(jsonb_array_length(o->'odds'), 0) <> 3)) then bad := bad || 'an offer carries a rarity or no odds; '; exit; end if;
+    end loop;
   end;
 
   -- 13. The board, the view (the rooms ahead hidden, item 15), the old runs settled with the bank.
