@@ -856,3 +856,40 @@ body.ui-v2.m-land .dg-floordone .dg-depth span { padding: 6px 10px; } body.ui-v2
 body.ui-v2.m-land .dg-floordone .dg-obtn .v2-btn { height: 38px; }
 body.ui-v2.m-land .dg-stats span:nth-child(2) { display: flex; }
 body.ui-v2.m-land .dg-stats span { padding: 0 6px; }
+/* 16: the Auto toggle (bottom right of the arena). */
+body.ui-v2 .dg-auto { position: absolute; right: 10px; bottom: 8px; z-index: 4; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px 0 8px; border-radius: 999px; background: rgba(17,17,27,.88); border: 1px solid var(--border-strong); color: var(--text-secondary); font: 800 12px var(--font-ui); letter-spacing: .6px; text-transform: uppercase; cursor: pointer; }
+body.ui-v2 .dg-auto i { position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--surface-3); flex: none; }
+body.ui-v2 .dg-auto i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #8a8fa3; transition: left var(--dur-fast), background var(--dur-fast); }
+body.ui-v2 .dg-auto.on { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 14px rgba(244,183,60,.3); }
+body.ui-v2 .dg-auto.on i { background: rgba(244,183,60,.35); } body.ui-v2 .dg-auto.on i::after { left: 14px; background: var(--gold); }
+body.ui-v2.m-port .dg-auto, body.ui-v2.m-land .dg-auto { height: 26px; padding: 0 9px 0 6px; font-size: 10px; right: 6px; bottom: 4px; gap: 5px; }
+body.ui-v2.m-port .dg-auto i, body.ui-v2.m-land .dg-auto i { width: 22px; height: 13px; } body.ui-v2.m-port .dg-auto i::after, body.ui-v2.m-land .dg-auto i::after { width: 9px; height: 9px; }
+body.ui-v2.m-port .dg-auto.on i::after, body.ui-v2.m-land .dg-auto.on i::after { left: 11px; }
+/* 19: the music button (hidden until the tracks are picked). */
+body.ui-v2 .dg-music { position: absolute; z-index: 4; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer; background: rgba(17,17,27,.88); border: 1px solid var(--border-strong); color: var(--gold); }
+body.ui-v2 .dg-music svg { width: 16px; height: 16px; } body.ui-v2 .dg-music.off { color: var(--text-muted); }
+body.ui-v2 .dg-arena .dg-music { left: 10px; bottom: 8px; } body.ui-v2 .dg-cbox .dg-music, body.ui-v2 .dg-fdbox .dg-music { right: 12px; top: 12px; }
+body.ui-v2 .dg-cbox, body.ui-v2 .dg-fdbox { position: relative; }
+body.ui-v2.m-port .dg-music, body.ui-v2.m-land .dg-music { width: 26px; height: 26px; } body.ui-v2.m-port .dg-arena .dg-music, body.ui-v2.m-land .dg-arena .dg-music { left: 6px; bottom: 4px; }
+/* Landscape fight (Nathan: the monsters were tiny, the names cut): no room log column, a thin plate band,
+   the element word dropped from the plate (the icon shows it). */
+body.ui-v2 .dg-plate .n b i.pre { font-style: normal; }
+body.ui-v2.m-land .dg-fight { grid-template-columns: minmax(0, 1fr) 178px; grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: 'top stats' 'turn right' 'arena right' 'units right'; gap: 3px 10px; }
+body.ui-v2.m-land .dg-fight .dg-left-col { display: none; }
+body.ui-v2.m-land .dg-fight .dg-stats { align-self: center; }
+body.ui-v2.m-land .dg-fight .dg-prog { justify-self: start; }
+body.ui-v2.m-land .dg-plates { height: 30px; }
+body.ui-v2.m-land .dg-canvas { inset: 32px 0 0 0; height: calc(100% - 32px); }
+body.ui-v2.m-land .dg-plate { top: 2px !important; padding: 3px 6px; }
+body.ui-v2.m-land .dg-plate .n b i.pre, body.ui-v2.m-land .dg-plate .rs-l { display: none; }
+body.ui-v2.m-land .dg-plate { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 4px; }
+body.ui-v2.m-land .dg-plate .n { grid-column: 1; grid-row: 1; min-width: 0; }
+body.ui-v2.m-land .dg-plate .wk { grid-column: 2; grid-row: 1; gap: 2px; } body.ui-v2.m-land .dg-plate .wk-l > svg { display: none; }
+body.ui-v2.m-land .dg-plate .wk i svg { width: 11px; height: 11px; } body.ui-v2.m-land .dg-plate .wk i b { font-size: 6.5px; }
+body.ui-v2.m-land .dg-plate .bar { grid-column: 1 / -1; }
+body.ui-v2.m-land .dg-plate .n b { font-size: 11px; }
+body.ui-v2.m-land .dg-unit { width: clamp(52px, 7.2vw, 72px); }
+body.ui-v2.m-land .dg-right { grid-row: 2 / 5; }
+body.ui-v2.m-land .dg-unit { width: clamp(46px, 5.6vw, 58px); }
+body.ui-v2.m-land .dg-fight .dg-units { gap: 8px; }

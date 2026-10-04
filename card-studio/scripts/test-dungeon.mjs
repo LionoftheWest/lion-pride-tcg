@@ -10,7 +10,7 @@
  *     area      Slam / Cataclysm skip the other cards        bank      a fall also grants the floor's loot at risk
  *     cap       the run passes 300 Shards                    carry     support cooldowns reset between rooms
  *     onesup    two supports in one turn                     repeat    the last reward comes back
- *     retreat   Retreat in the middle of a floor
+ *     retreat   Retreat in the middle of a floor               lastatk   the run goes on with only support cards standing
  * Env: CORE, GATE, MIG, MIG2 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql, dungeon_v2.sql.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
@@ -23,6 +23,8 @@ const core = strip(readFileSync(process.env.CORE || new URL('../../tcg-bot/supab
 let gate = strip(readFileSync(process.env.GATE || new URL('../../tcg-bot/supabase/adventure_gate.sql', import.meta.url), 'utf8'));
 let mig = strip(readFileSync(process.env.MIG || new URL('../../tcg-bot/supabase/dungeon.sql', import.meta.url), 'utf8'));
 let mig2 = strip(readFileSync(process.env.MIG2 || new URL('../../tcg-bot/supabase/dungeon_v2.sql', import.meta.url), 'utf8'));
+// The fix replaces dungeon_attack whole: its live-version guard is skipped here (the mutations change the text).
+let mig3 = strip(readFileSync(process.env.MIG3 || new URL('../../tcg-bot/supabase/dungeon_v2_fix.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 const MUT1 = {   // dungeon.sql
   gen: ["  select (('x' || substr(md5(p_key), 1, 8))", "  select random() * 0 + (('x' || substr(md5(p_key || random()::text), 1, 8))"],
 };
@@ -37,6 +39,9 @@ const MUT2 = {   // dungeon_v2.sql
   repeat: ["    continue when k = p_state->>'last_pick';\n", "    continue when false;\n"],
   retreat: ["if r.state->>'phase' <> 'floor_done' then return", "if false then return"],
 };
+const MUT3 = {   // dungeon_v2_fix.sql
+  lastatk: ["where not (value->>'down')::boolean and not coalesce((value->>'sup')::boolean, false)) then st := st || '{\"phase\": \"fell\"}'", "where not (value->>'down')::boolean) then st := st || '{\"phase\": \"fell\"}'"],
+};
 const GMUT = {
   gate: ["'ok', g.open = 0 and a.n >= g.need", "'ok', a.n >= g.need"],
   huntlock: ["  if not (v_gate->>'ok')::boolean then return", "  if false then return"],
@@ -48,10 +53,11 @@ const apply = (src, m) => { if (!src.includes(m[0])) throw new Error(`bad mutati
 if (M) {
   if (GMUT[M]) gate = apply(gate, GMUT[M]);
   else if (MUT1[M]) mig = apply(mig, MUT1[M]);
-  else if (MUT2[M]) mig2 = apply(mig2, MUT2[M]);
+  else if (MUT2[M]) { mig2 = apply(mig2, MUT2[M]); if (mig3.includes(MUT2[M][0])) mig3 = mig3.replace(MUT2[M][0], MUT2[M][1]); }
+  else if (MUT3[M]) mig3 = apply(mig3, MUT3[M]);
   else throw new Error(`unknown mutation ${M}`);
 }
-for (const s of [core, gate, mig, mig2]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
+for (const s of [core, gate, mig, mig2, mig3]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
 
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; g jsonb; d1 jsonb; d2 jsonb; fl jsonb; rm jsonb; i int; j int; n int; st jsonb; run record;
@@ -61,6 +67,7 @@ begin
   execute $m$${gate}$m$;
   execute $m$${mig}$m$;
   execute $m$${mig2}$m$;
+  execute $m$${mig3}$m$;
   v_day := dungeon_day();
   select array_agg(id order by id) into atk from (select c.id from cards c join subjects s on s.id = c.subject_id
     where c.rarity = 'normal' and s.type in ('Character', 'Creature') and c.id not in (24, 29, 34, 44, 49) order by c.id limit 4) x;
@@ -279,6 +286,18 @@ begin
   if (select shard_balance from players where id = 'tst_dg_b') - bal <> 20 or run.shards <> 20 or (run.state->'lost'->>'shards')::int <> 50
      or (select quantity from player_cards where player_id = 'tst_dg_b' and card_id = 24) <> n then
     bad := bad || 'fall grant ' || ((select shard_balance from players where id = 'tst_dg_b') - bal) || '; '; end if;
+  delete from dungeon_runs where player_id = 'tst_dg_b';
+  -- 12b. The last ATTACKER down is a fall, even while support cards stand (else no attack is possible and
+  -- the run never ends: found in the preview, 2026-10-03). A plain strike only: the supports stay up.
+  r := dungeon_start('tst_dg_b', array[34, 44, 64, 93, 97]);
+  select * into run from dungeon_runs where player_id = 'tst_dg_b' and day = v_day;
+  update dungeon_runs set state = jsonb_set(state, '{foes}', jsonb_build_array(foe || '{"hp":99999,"max":99999,"atk":5000,"charge":false,"sh":0,"passives":[],"moves":[{"name":"Hit","kind":"strike","w":1}]}'))
+    || jsonb_build_object('cards', (select jsonb_object_agg(e.k, case when e.k <> '34' and not coalesce((e.v->>'sup')::boolean, false) then e.v || '{"down":true,"hp":0}' else e.v end) from jsonb_each(state->'cards') e(k, v)))
+  where id = run.id;
+  r := dungeon_attack('tst_dg_b', 34, 0);
+  select * into run from dungeon_runs where id = run.id;
+  if not exists (select 1 from jsonb_each(run.state->'cards') e where not (e.value->>'down')::boolean) then bad := bad || 'last attacker: the supports fell too (the case is not tested); '; end if;
+  if run.status <> 'over' or run.ended_by is distinct from 'fell' then bad := bad || 'last attacker down, run goes on: ' || run.status || ' ' || left(r::text, 160) || '; '; end if;
   delete from dungeon_runs where player_id = 'tst_dg_b';
   bal := (select shard_balance from players where id = 'tst_dg_b');
   n := (select quantity from player_cards where player_id = 'tst_dg_b' and card_id = 29);
