@@ -11,7 +11,9 @@
  *     cap       the run passes 300 Shards                    carry     support cooldowns reset between rooms
  *     onesup    two supports in one turn                     repeat    the last reward comes back
  *     retreat   Retreat in the middle of a floor               lastatk   the run goes on with only support cards standing
- * Env: CORE, GATE, MIG, MIG2 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql, dungeon_v2.sql.
+ *     odds      every chest tier uses the Legend odds          chestodds the treasure room ignores the chest odds
+ * Env: CORE, GATE, MIG, MIG2, MIG3, MIG4 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql,
+ *      dungeon_v2.sql, dungeon_v2_fix.sql, dungeon_chest_odds.sql.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -25,6 +27,7 @@ let mig = strip(readFileSync(process.env.MIG || new URL('../../tcg-bot/supabase/
 let mig2 = strip(readFileSync(process.env.MIG2 || new URL('../../tcg-bot/supabase/dungeon_v2.sql', import.meta.url), 'utf8'));
 // The fix replaces dungeon_attack whole: its live-version guard is skipped here (the mutations change the text).
 let mig3 = strip(readFileSync(process.env.MIG3 || new URL('../../tcg-bot/supabase/dungeon_v2_fix.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
+let mig4 = strip(readFileSync(process.env.MIG4 || new URL('../../tcg-bot/supabase/dungeon_chest_odds.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 const MUT1 = {   // dungeon.sql
   gen: ["  select (('x' || substr(md5(p_key), 1, 8))", "  select random() * 0 + (('x' || substr(md5(p_key || random()::text), 1, 8))"],
 };
@@ -42,6 +45,10 @@ const MUT2 = {   // dungeon_v2.sql
 const MUT3 = {   // dungeon_v2_fix.sql
   lastatk: ["where not (value->>'down')::boolean and not coalesce((value->>'sup')::boolean, false)) then st := st || '{\"phase\": \"fell\"}'", "where not (value->>'down')::boolean) then st := st || '{\"phase\": \"fell\"}'"],
 };
+const MUT4 = {   // dungeon_chest_odds.sql
+  odds: ["(least(5, greatest(1, p_tier)))::text", "'5'"],
+  chestodds: ["dungeon_card_of(dungeon_chest_rarity(t))", "dungeon_card_of((array['normal', 'normal', 'illustrated_rare', 'illustrated_rare', 'secret_rare'])[t])"],
+};
 const GMUT = {
   gate: ["'ok', g.open = 0 and a.n >= g.need", "'ok', a.n >= g.need"],
   huntlock: ["  if not (v_gate->>'ok')::boolean then return", "  if false then return"],
@@ -53,11 +60,12 @@ const apply = (src, m) => { if (!src.includes(m[0])) throw new Error(`bad mutati
 if (M) {
   if (GMUT[M]) gate = apply(gate, GMUT[M]);
   else if (MUT1[M]) mig = apply(mig, MUT1[M]);
-  else if (MUT2[M]) { mig2 = apply(mig2, MUT2[M]); if (mig3.includes(MUT2[M][0])) mig3 = mig3.replace(MUT2[M][0], MUT2[M][1]); }
+  else if (MUT2[M]) { mig2 = apply(mig2, MUT2[M]); for (const k of ['mig3', 'mig4']) { const v = k === 'mig3' ? mig3 : mig4; if (v.includes(MUT2[M][0])) { if (k === 'mig3') mig3 = v.replace(MUT2[M][0], MUT2[M][1]); else mig4 = v.replace(MUT2[M][0], MUT2[M][1]); } } }
   else if (MUT3[M]) mig3 = apply(mig3, MUT3[M]);
+  else if (MUT4[M]) mig4 = apply(mig4, MUT4[M]);
   else throw new Error(`unknown mutation ${M}`);
 }
-for (const s of [core, gate, mig, mig2, mig3]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
+for (const s of [core, gate, mig, mig2, mig3, mig4]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
 
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; g jsonb; d1 jsonb; d2 jsonb; fl jsonb; rm jsonb; i int; j int; n int; st jsonb; run record;
@@ -68,6 +76,7 @@ begin
   execute $m$${mig}$m$;
   execute $m$${mig2}$m$;
   execute $m$${mig3}$m$;
+  execute $m$${mig4}$m$;
   v_day := dungeon_day();
   select array_agg(id order by id) into atk from (select c.id from cards c join subjects s on s.id = c.subject_id
     where c.rarity = 'normal' and s.type in ('Character', 'Creature') and c.id not in (24, 29, 34, 44, 49) order by c.id limit 4) x;
@@ -307,6 +316,24 @@ begin
   select * into run from dungeon_runs where player_id = 'tst_dg_b' and day = v_day;
   if not (r->>'ok')::boolean or run.ended_by is distinct from 'retreat' or run.shards <> 12 or (select shard_balance from players where id = 'tst_dg_b') - bal <> 12
      or (select quantity from player_cards where player_id = 'tst_dg_b' and card_id = 29) <> n + 1 then bad := bad || 'retreat: ' || r::text || '; '; end if;
+
+  -- 12c. Chest card odds (Nathan): each tier rolls the rarity; a higher tier has better odds, every tier can
+  -- still give the lower cards. Tier 2 = [80, 18, 2], tier 5 = [15, 50, 35] (2000 rolls each).
+  declare k int; rr text; n2 int := 0; s2 int := 0; n5 int := 0; s5 int := 0; lowhi int := 0; st3 jsonb; fl3 jsonb; begin
+    for k in 1..2000 loop
+      rr := dungeon_chest_rarity(2); if rr = 'normal' then n2 := n2 + 1; elsif rr = 'secret_rare' then s2 := s2 + 1; end if;
+      rr := dungeon_chest_rarity(5); if rr = 'normal' then n5 := n5 + 1; elsif rr = 'secret_rare' then s5 := s5 + 1; end if;
+    end loop;
+    if not (n2 between 1450 and 1750 and s2 between 10 and 90 and n5 between 180 and 420 and s5 between 580 and 820) then
+      bad := bad || format('chest odds: tier 2 normal %s SR %s, tier 5 normal %s SR %s; ', n2, s2, n5, s5); end if;
+    -- The treasure room uses them: an Ultra or Legend chest can still give a Normal card.
+    fl3 := jsonb_build_array(jsonb_build_array(jsonb_build_object('type', 'treasure', 'foes', '[]'::jsonb)));
+    for k in 1..1500 loop
+      st3 := dungeon_enter(jsonb_build_object('cards', '{}'::jsonb, 'bank', '{"shards":0,"cards":[]}'::jsonb, 'pend', '{"shards":0,"cards":[]}'::jsonb), fl3, 1, 1);
+      if (st3->'chest'->>'tier')::int >= 4 and (select rarity::text from cards where id = (st3->'chest'->>'card')::bigint) = 'normal' then lowhi := lowhi + 1; end if;
+    end loop;
+    if lowhi = 0 then bad := bad || 'no Normal card from an Ultra / Legend chest in 1500 chests; '; end if;
+  end;
 
   -- 13. The board, the view (the rooms ahead hidden, item 15), the old runs settled with the bank.
   r := dungeon_board(v_day, 50);

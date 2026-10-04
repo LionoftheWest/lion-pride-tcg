@@ -215,3 +215,4 @@ The choices make each run a set of decisions, not only a check of the collection
 - Item 19: src/dungeon-music.js plays one CC0 track per mood (explore, fight, boss) with a mute button. TRACKS stays empty (no button, no sound) until Nathan picks the tracks.
 - Fix (dungeon_v2_fix.sql): the squad falls when no attacker stands (support cards alone left the run stuck).
 - Landscape: no room log column, a thin plate band, the monsters spread over the width.
+- Chest card odds (dungeon_chest_odds.sql, settings.dungeon.chest_rarity, weights Normal / IR / SR): Uncommon 80/18/2, Rare 55/38/7, Ultra 35/50/15, Legend 15/50/35. The card chance stays 0 / 35 / 60 / 100 / 100%. The dark door chest uses the Ultra odds.
