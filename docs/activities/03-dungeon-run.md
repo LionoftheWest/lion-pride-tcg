@@ -210,4 +210,8 @@ The choices make each run a set of decisions, not only a check of the collection
 - Rooms (items 14, 15): fight, horde, elite, miniboss, treasure (a chest of a tier), rest, choice (doors). The view shows "?" for the rooms ahead, except the guardian.
 - Combat (items 9, 17, 20): support cooldowns carry over between rooms. One support per turn (`one_support`). Each monster type has a named move pool.
 - UI: the room map with "?", the at-risk and banked counters, the reward tiers, the chest, the doors, the "Floor cleared" screen (Descend or Retreat), the move names, the element icon on each plate, and one fixed row of status icons under each card.
-- Not done yet: item 13 (the Raid attack animations), item 16 (auto mode), item 19 (music).
+- Item 13: each card attack plays the Raid effect of its element (attack-fx.js) on the target; each monster move plays a Raid boss effect.
+- Item 16: Auto (a toggle in the arena, remembered). One useful support per turn, then the best attack (a weakness hit first). It stops at every choice. Auto runs count on the board.
+- Item 19: src/dungeon-music.js plays one CC0 track per mood (explore, fight, boss) with a mute button. TRACKS stays empty (no button, no sound) until Nathan picks the tracks.
+- Fix (dungeon_v2_fix.sql): the squad falls when no attacker stands (support cards alone left the run stuck).
+- Landscape: no room log column, a thin plate band, the monsters spread over the width.

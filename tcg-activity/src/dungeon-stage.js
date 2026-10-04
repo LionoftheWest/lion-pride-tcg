@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { createAttackFX } from './attack-fx.js';
 
 const BASE = '/dungeon/monsters/';
 const CLIPS = {
@@ -30,7 +31,7 @@ const clipOf = (clips, kind) => {
 // The height of a monster in world units: bigger for an elite, the guardian, and passives.
 const heightOf = (f) => (f.boss ? 1.45 : f.elite ? 1.2 : 1.0) * ((f.passives || []).length ? 1.12 : 1);
 
-// mountStage(canvas, { onPick(i), onLayout() }) -> { setFoes, play(i, kind), setTarget(i), labels(), dispose() }
+// mountStage(canvas, { onPick(i), onLayout() }) -> { setFoes, play(i, kind), cast(i, element), foeFx(i, move), setTarget(i), labels(), dispose() }
 export function mountStage(canvas, opts = {}) {
   const phone = !!(window.matchMedia && window.matchMedia('(max-width: 620px), (max-height: 500px)').matches);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !phone, alpha: true, powerPreference: 'low-power' });
@@ -42,7 +43,13 @@ export function mountStage(canvas, opts = {}) {
   const key = new THREE.DirectionalLight(0xffe2b8, 2.3); key.position.set(2, 4, 5); scene.add(key);
   const rim = new THREE.DirectionalLight(0x9a7bff, 1.4); rim.position.set(-3, 2, -3); scene.add(rim);
   const clock = new THREE.Clock();
-  let slots = []; let token = 0; let raf = 0; let disposed = false; let spread = 1.8; let tallest = 1; let target = -1;
+  // Item 13: the Raid's attack effects (attack-fx.js, the lab's own space: the target at (0, 1.4, 1.6), the
+  // boss origin at (0, 1.15, 0.7)). Before each effect the group moves and scales onto the monster.
+  const fxRoot = new THREE.Group(); scene.add(fxRoot);
+  const fx = createAttackFX(fxRoot, camera);
+  const aim = (slot, ox, oy, oz) => { const k = slot.tall / 2.6; fxRoot.scale.setScalar(k); fxRoot.position.set(slot.x0 - ox * k, slot.tall * 0.55 - oy * k, -oz * k); };
+  const MOVE_FX = { strike: 'strike', heavy: 'strike', flurry: 'strike', drain: 'drain', stun: 'stun', slam: 'slam', cataclysm: 'cataclysm', enrage: 'enrage', charging: 'charging', curse: 'curse', poison: 'curse', regenerate: 'regenerate', guard: 'regenerate', stunned: 'stunned' };
+  let slots = []; let token = 0; let raf = 0; let disposed = false; let spread = 1.8; let cur = 1.8; let tallest = 1; let target = -1;
 
   function fit() {
     const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
@@ -52,6 +59,13 @@ export function mountStage(canvas, opts = {}) {
     const n = Math.max(1, slots.length);
     const rowW = (n - 1) * spread + tallest * 1.3;
     const vh = Math.max(tallest * 1.12, rowW / camera.aspect);
+    // A wide, short arena (a landscape phone): spread the monsters over the width (they bunched in the middle).
+    if (n > 1) {
+      const wide = Math.min(tallest * 3.2, (vh * camera.aspect * 0.84) / n);
+      const sp = Math.max(spread, wide);
+      slots.forEach((sl, i) => { sl.x0 = (i - (n - 1) / 2) * sp; sl.root.position.x = sl.x0; });
+      cur = sp;
+    } else cur = spread;
     const dist = (vh / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     camera.position.set(0, tallest * 0.5, dist + 0.4);
     camera.lookAt(0, tallest * 0.5, 0);
@@ -188,7 +202,7 @@ export function mountStage(canvas, opts = {}) {
     return slots.map((s) => {
       const top = new THREE.Vector3(s.x0, s.tall, 0).project(camera);
       const foot = new THREE.Vector3(s.x0, 0, 0).project(camera);
-      const edge = new THREE.Vector3(s.x0 + spread / 2, 0, 0).project(camera);
+      const edge = new THREE.Vector3(s.x0 + cur / 2, 0, 0).project(camera);
       return { x: (top.x + 1) / 2 * w, y: (1 - top.y) / 2 * h, foot: (1 - foot.y) / 2 * h, w: Math.abs(edge.x - foot.x) * w * 2 };
     });
   }
@@ -216,12 +230,17 @@ export function mountStage(canvas, opts = {}) {
       if (s.aura) s.aura.material.opacity = 0.18 + 0.08 * Math.sin(now / 400);
       s.fx = s.fx.filter((x) => { const t = Math.min(1, (now - x.t0) / x.ms); x.f(t); return t < 1; });
     }
+    fx.update(dt, now / 1000);
     renderer.render(scene, camera);
   }
   loop();
 
   return {
     setFoes, play, setTarget, labels,
+    // A card's attack: the element's Raid effect flies to monster i.
+    cast(i, element) { const slot = slots[i]; if (!slot) return; aim(slot, 0, 1.4, 1.6); try { fx.fire(element || 'physical'); } catch { /* the effect is cosmetic */ } },
+    // A monster's move: the Raid boss effect from monster i.
+    foeFx(i, move) { const slot = slots[i]; const k = MOVE_FX[move]; if (!slot || slot.dead || !k) return; aim(slot, 0, 1.15, 0.7); try { fx.bossFire(k); } catch { /* cosmetic */ } },
     dispose() { disposed = true; cancelAnimationFrame(raf); ro.disconnect(); clear(); renderer.dispose(); },
   };
 }

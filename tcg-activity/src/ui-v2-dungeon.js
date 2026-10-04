@@ -11,6 +11,8 @@ import { thumb } from './thumb.js';
 import { isPort } from './mobile.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { COIN } from './ui-v2-shop.js';
+import { cardElement } from './elements.js';
+import { setMood, stopMusic, toggleMute, musicBtnHTML, paintMusicBtn } from './dungeon-music.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -61,7 +63,8 @@ const ACT = { strike: 'Strike', heavy: 'Heavy hit', flurry: 'Flurry', slam: 'Sla
 const TIER = [null, ['Common', '#9AA3B5'], ['Uncommon', '#3DD68C'], ['Rare', '#4DA3FF'], ['Ultra', '#B07CFF'], ['Legend', '#F4B73C']];
 const ROOM = { fight: 'Fight', horde: 'Horde', elite: 'Elite', miniboss: 'Mini-Boss', guardian: 'Guardian', treasure: 'Treasure', rest: 'Rest', choice: 'Choice', unknown: 'Unknown room' };
 
-export const dg = { on: false, data: null, pane: '', sel: [], filter: 'allowed', sort: 'power', page: 0, view: 'main', target: 0, support: null, busy: false, log: [], stage: null, roomKey: '' };
+const AUTO = 'lp.dungeon.auto';
+export const dg = { auto: localStorage.getItem(AUTO) === '1', autoSkip: new Set(), on: false, data: null, pane: '', sel: [], filter: 'allowed', sort: 'power', page: 0, view: 'main', target: 0, support: null, busy: false, log: [], stage: null, roomKey: '' };
 let tick = null;
 const LAST = 'lp.adventure.tab';
 
@@ -135,6 +138,7 @@ function markDock() {
 export function disposeDungeon() {
   clearInterval(tick); tick = null;
   dg.stage?.dispose(); dg.stage = null; dg.roomKey = '';
+  clearTimeout(autoT); stopMusic();
 }
 
 function left(iso) {
@@ -174,6 +178,9 @@ function paint() {
   else if (run()) body = overHTML();
   else body = lobbyHTML();
   main.innerHTML = `<div class="v2-dungeon${fight ? ' dg-fighting' : ''}${d.run?.state?.phase ? ` ph-${d.run.state.phase}` : ''}">${body}</div>`;
+  // Item 19: the music follows the room (silent until Nathan picks the tracks: dungeon-music.js).
+  setMood(fight ? (['guardian', 'miniboss'].includes(d.run.state.room_type) ? 'boss' : 'fight') : active() ? 'explore' : null);
+  main.querySelectorAll('[data-music]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); paintMusicBtn(b); }));
   advTabs('dungeon'); // the Adventure tabs: the same place as on the Hunt view (Nathan item 2)
   main.querySelectorAll('.card-info').forEach((b) => b.addEventListener('click', (e) => { if (fight) return; e.stopPropagation(); const id = Number(b.closest('.dg-card')?.dataset.id); if (id) openInfo(id); }));
   wireGate(main);
@@ -403,6 +410,8 @@ const isResist = (c, f) => (f?.resist || []).some((w) => (c.slugs || []).include
 const squadOf = (R) => { const M = mine(); return (R.squad || []).map((id) => ({ ...(M.get(Number(id)) || { id }), s: R.state.cards?.[String(id)] || {} })); };
 const supDesc = (c) => { const a = c.ability || {}; return (EFFECT[a.effect] || (() => a.effect || ''))(a); };
 
+// The plate name: the element word is its own span (landscape hides it: the icon shows the element).
+const plateName = (f) => { const n = String(f.name || ''); const w = n.split(' ')[0]; return f.element && w.toLowerCase() === String(f.element).toLowerCase() ? `<i class="pre">${esc(w)} </i>${esc(n.slice(w.length + 1))}` : esc(n); };
 function fightHTML() {
   const R = run(); const st = R.state;
   const foes = foesOf(st);
@@ -410,7 +419,7 @@ function fightHTML() {
   const atk = squad.filter((c) => ATTACKER.has(c.type));
   const sup = squad.filter((c) => !ATTACKER.has(c.type));
   const plate = (f, i) => `<div class="dg-plate${f.boss ? ' boss' : f.elite ? ' elite' : ''}" data-foe="${i}">
-      <span class="n">${f.element && elIcon(f.element) ? `<span class="el" title="${esc(f.element)}">${elIcon(f.element)}</span>` : ""}<b>${esc(f.name)}</b><small>LV ${f.level}</small><em class="hpn"></em></span>
+      <span class="n">${f.element && elIcon(f.element) ? `<span class="el" title="${esc(f.element)}">${elIcon(f.element)}</span>` : ""}<b>${plateName(f)}</b><small>LV ${f.level}</small><em class="hpn"></em></span>
       <span class="bar"><i></i></span>
       <span class="wk">${(f.weak || []).length ? `<span class="wk-l" title="Weak to">${I.up}${f.weak.map((w) => `<i title="Weak to ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}${(f.resist || []).length ? `<span class="rs-l" title="Resists">${I.shield}${f.resist.map((w) => `<i title="Resists ${esc(String(w.value).replace(/^trait:/, ''))}">${traitIcon(w.value)}</i>`).join('')}</span>` : ''}</span>
       ${(f.passives || []).length ? `<span class="ps">${f.passives.map((p) => `<i>${esc(p)}</i>`).join('')}</span>` : ''}</div>`;
@@ -431,6 +440,7 @@ function fightHTML() {
       <canvas class="dg-canvas"></canvas>
       <div class="dg-reticle"><i></i></div>
       <div class="dg-pops"></div>
+      ${musicBtnHTML()}<button class="dg-auto${dg.auto ? " on" : ""}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button>
     </div>
     <div class="dg-hint"></div>
     <div class="dg-units">${atk.map(unit).join('')}</div>
@@ -588,6 +598,8 @@ async function wireFight(main, keepCanvas) {
     } catch (e) { console.warn('dungeon stage', e); }
   }
   requestAnimationFrame(() => placeArena(main));
+  F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); dg.auto = !dg.auto; localStorage.setItem(AUTO, dg.auto ? '1' : ''); e.currentTarget.classList.toggle('on', dg.auto); ctx().sfx?.('click'); autoNext(); });
+  autoNext();
   F.addEventListener('click', (e) => {
     const t = e.target;
     if (t.closest('.dg-cancel') || t.closest('.dg-shade')) { dg.support = null; fightUpdate(main, run().state); return; }
@@ -622,12 +634,12 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 // the meter lights the one acting, and every HP bar moves step by step. The server's state is the
 // truth at the end (fightUpdate with r.state).
 async function act(kind, body) {
-  if (dg.busy) return;
+  if (dg.busy) return false;
   const main = document.getElementById('main');
   dg.busy = true; fightUpdate(main, run().state);
   let r = null;
   try { r = await ctx().apiPost(`/api/dungeon/${kind}`, body); } catch (e) { r = e?.body || null; }
-  if (!r?.ok) { dg.busy = false; fightUpdate(main, run().state); toast(r?.message || 'That did not work.'); return; }
+  if (!r?.ok) { dg.busy = false; fightUpdate(main, run().state); toast(r?.message || 'That did not work.'); return false; }
   const M = mine();
   const before = clone(run().state);
   const foes = foesOf(before);
@@ -636,6 +648,8 @@ async function act(kind, body) {
   if (kind === 'attack') {
     const t = r.target ?? body.target;
     const f = foes[t];
+    // Item 13: the card's element effect from the Raid flies to the monster, then the hit lands.
+    if (dg.stage?.cast) { dg.stage.cast(t, cardElement(M.get(Number(body.cardId))?.tags) || 'physical'); await sleep(dg.auto ? 300 : 480); }
     ctx().sfx?.(r.damage > 0 ? 'hit' : 'click');
     dg.stage?.play(t, r.kill ? 'death' : 'hit');
     pop(main, t, r.damage > 0 ? `-${fmt(r.damage)}${r.crit ? '<small>CRITICAL</small>' : r.double ? '<small>DOUBLE</small>' : r.bonus ? '<small>WEAKNESS</small>' : r.resisted ? '<small>RESISTED</small>' : ''}` : r.guarded > 0 ? 'BLOCKED' : 'MISS', r.crit ? 'crit' : r.damage > 0 ? '' : 'miss');
@@ -660,6 +674,7 @@ async function act(kind, body) {
       const move = e.move || ACT[e.action] || e.action;
       pop(main, e.foe, esc(move), 'act move', -30);
       await sleep(450);
+      dg.stage?.foeFx?.(e.foe, e.action);   // item 13: the Raid boss effect of the move
       if (e.action !== 'stunned' && e.action !== 'charging' && (e.dmg || (e.area || []).length)) { dg.stage?.play(e.foe, 'attack'); await sleep(380); }
       hurt(e.card, e.dmg, e.hits > 1 ? ` ×${e.hits}` : '');
       for (const a of e.area || []) hurt(a.card, a.dmg);
@@ -690,9 +705,62 @@ async function act(kind, body) {
   dg.data.run.state = r.state;
   dg.busy = false;
   const phase = r.state?.phase;
-  if (r.status === 'over' || phase !== 'fight') { await load(); if (ctx().currentView() === 'dungeon') paint(); return; }
+  if (r.status === 'over' || phase !== 'fight') { await load(); if (ctx().currentView() === 'dungeon') paint(); return true; }
   fightUpdate(main, r.state);
   load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
+  autoNext();
+  return true;
+}
+// ---- Auto (item 16) ------------------------------------------------------------------------------
+// The squad plays by itself in a fight: at most one useful support, then the best attack. It stops at
+// every choice (rewards, chests, doors, the floor screen): those stay the member's. Auto counts on the
+// leaderboard (Nathan). Every rule still runs in SQL; Auto only picks the same actions a tap would.
+let autoT = null;
+function autoNext() {
+  clearTimeout(autoT);
+  if (!dg.auto) return;
+  autoT = setTimeout(autoStep, 550);
+}
+async function autoStep() {
+  const R = run(); const st = R?.state;
+  if (!dg.auto || dg.busy || dg.support || !st || st.phase !== 'fight' || ctx().currentView() !== 'dungeon' || !document.querySelector('.dg-fight')) return;
+  const M = mine(); const round = st.round || 0;
+  const foes = foesOf(st);
+  const alive = foes.map((f, i) => ({ ...f, i })).filter((f) => f.hp > 0);
+  if (!alive.length) return;
+  // The target: the monster closest to falling (fewer monsters acting sooner).
+  const tf = alive.reduce((a, b) => (b.hp < a.hp ? b : a));
+  dg.target = tf.i;
+  const squad = squadOf(R);
+  const atk = squad.filter((c) => ATTACKER.has(c.type) && !c.s.down);
+  const ready = atk.filter((c) => (c.s.cd || 0) < round + 1);
+  const pool = ready.length ? ready : atk;
+  if (!pool.length) return;
+  // The attacker: a weakness hit first, then the most power.
+  const best = pool.reduce((a, b) => ((hitsWeak(b, tf) ? 1 : 0) - (hitsWeak(a, tf) ? 1 : 0) || b.cp - a.cp) > 0 ? b : a);
+  // One support per turn, only when it helps.
+  if (Number(st.sup_round ?? -1) !== round) {
+    const low = (p) => atk.filter((c) => c.s.hp / Math.max(1, c.s.max) < p).sort((a, b) => a.s.hp / a.s.max - b.s.hp / b.s.max)[0];
+    for (const c of squad.filter((x) => !ATTACKER.has(x.type) && !x.s.down && round >= (x.s.cd || 0))) {
+      const key = `${c.id}:${R.floor}:${R.room}:${round}`;
+      if (dg.autoSkip.has(key)) continue;
+      const a = c.ability || {}; const tg = a.target || 'boss';
+      let body = null;
+      if (tg === 'ally' || tg === 'self') {
+        const who = a.effect === 'heal' ? low(0.5) : a.effect === 'shield' ? low(0.6) : a.effect === 'empower' ? best : null;
+        if (who) body = { cardId: c.id, targetCard: who.id };
+      } else if (a.effect === 'cleanse') {
+        if (squad.some((x) => (x.s.debuff || 1) < 1 || (x.s.psnu ?? -1) >= round + 1)) body = { cardId: c.id };
+      } else if (a.effect === 'stun') {
+        if ((tf.st || 0) < round) body = { cardId: c.id, targetFoe: tf.i };
+      } else body = { cardId: c.id, targetFoe: tf.i };
+      if (!body) continue;
+      dg.autoSkip.add(key);   // tried once this round (a refusal never loops)
+      if (await act('support', body)) return;   // act() schedules the next step
+      autoNext(); return;
+    }
+  }
+  if (!(await act('attack', { cardId: best.id, target: tf.i }))) { dg.auto = false; localStorage.setItem(AUTO, ''); document.querySelector('.dg-auto')?.classList.remove('on'); }
 }
 const ef = (foes, i) => foes[i]?.name || 'Monster';
 // A loot drop: Shards fly up from the monster (and a card when one dropped).
@@ -773,7 +841,7 @@ function chooseHTML() {
   const body = ph === 'chest' ? chestHTML(st) : `<div class="dg-offers n${(st.offers || []).length}">${(st.offers || []).map(offer).join('')}</div>`;
   return `<div class="dg-choose">
     <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
-    <section class="dg-panel dg-cbox ph-${ph}"><span class="k">${head[0]}</span><h2>${head[1]}</h2><p>${head[2]}</p>${body}</section>
+    <section class="dg-panel dg-cbox ph-${ph}">${musicBtnHTML()}<span class="k">${head[0]}</span><h2>${head[1]}</h2><p>${head[2]}</p>${body}</section>
   </div>`;
 }
 // The chest (item 14): closed until tapped; then the lid opens, its tier glows, the loot shows.
@@ -837,7 +905,7 @@ function floorDoneHTML() {
   const cards = (fl.cards || []).map((id) => dg.data.lootCards?.[id] || { id });
   const capLeft = Math.max(0, (dg.data.cap || 300) - (bank.shards || 0));
   return `<div class="dg-over dg-floordone">
-    <section class="dg-panel dg-obox dg-fdbox">
+    <section class="dg-panel dg-obox dg-fdbox">${musicBtnHTML()}
       <div class="dg-ohead"><div class="dg-fdhead"><span class="k">${I.castle}${esc(dg.data.name)} · Floor ${R.floor}</span><h1>Floor ${R.floor} cleared!</h1><p>The guardian fell. This floor's loot is banked: it is safe now.</p></div>
       <div class="dg-depth dg-fdstats"><span>Loot gained<b>${COIN}+${fmt(fl.shards)}</b></span><span>Banked in total<b>${I.lock}${fmt(bank.shards)}${(bank.cards || []).length ? ` +${(bank.cards || []).length}${I.cards}` : ''}</b></span><span>Shards cap left<b>${fmt(capLeft)}</b></span></div></div>
       <div class="dg-lootrow">${cards.length ? `<div class="dg-lhead"><h3>Cards found <small>${cards.length}</small></h3><button class="v2-btn gold dg-reveal">${I.cards}Reveal all</button></div><div class="dg-flips" style="--n:${cards.length}">${flipHTML(cards, 'floor')}</div>` : '<p class="muted dg-nocards">No cards on this floor.</p>'}</div>
