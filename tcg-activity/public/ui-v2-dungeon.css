@@ -893,3 +893,40 @@ body.ui-v2.m-land .dg-unit { width: clamp(52px, 7.2vw, 72px); }
 body.ui-v2.m-land .dg-right { grid-row: 2 / 5; }
 body.ui-v2.m-land .dg-unit { width: clamp(46px, 5.6vw, 58px); }
 body.ui-v2.m-land .dg-fight .dg-units { gap: 8px; }
+/* ==== Nathan 2026-10-03 (IMG_2913, IMG_2914): the floor and end screens fit in one view, no bleed ==== */
+/* The face-down cards: the size that fits (fitFlips sets --fh). iOS painted the button text blue. */
+body.ui-v2 .dg-flips[style*="--fh"] .dg-flip { height: var(--fh) !important; }
+body.ui-v2 .dg-flips { container-type: normal !important; align-content: center; }
+body.ui-v2 .dg-flip, body.ui-v2 .dg-flip .dg-card { color: var(--text-primary); }
+body.ui-v2 .dg-lootrow { flex: 1; min-height: 0; overflow: hidden; }
+body.ui-v2 .dg-over .dg-obox, body.ui-v2.m-port .dg-over .dg-obox { overflow: hidden; }
+body.ui-v2 .dg-depth b { flex-wrap: wrap; white-space: nowrap; min-width: 0; }
+/* Portrait: compact heads and stats; the cards get the rest of the height. */
+body.ui-v2.m-port .dg-over .dg-obox { padding: 14px 12px; gap: 10px; }
+body.ui-v2.m-port .dg-over .dg-ohead p { display: none; }
+body.ui-v2.m-port .dg-over .dg-obox h1 { font-size: 24px; }
+body.ui-v2.m-port .dg-over .dg-depth { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+body.ui-v2.m-port .dg-floordone .dg-depth { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.ui-v2.m-port .dg-over .dg-depth span { padding: 8px; font-size: 11px; gap: 2px; min-width: 0; }
+body.ui-v2.m-port .dg-over .dg-depth b { font-size: 14px; gap: 4px; }
+body.ui-v2.m-port .dg-over .dg-depth b svg, body.ui-v2.m-port .dg-over .dg-depth b .sh-coin { width: 14px; height: 14px; }
+body.ui-v2.m-port .dg-over .dg-lhead h3 { font-size: 15px; } body.ui-v2.m-port .dg-over .dg-reveal { height: 36px; padding: 0 12px; font-size: 13px; }
+body.ui-v2.m-port .dg-over .dg-flips { gap: 8px; }
+body.ui-v2.m-port .dg-over .dg-obtn { flex-wrap: nowrap; gap: 8px; }
+body.ui-v2.m-port .dg-over .dg-obtn .v2-btn { height: 40px; font-size: 13px; padding: 0 12px; white-space: nowrap; }
+body.ui-v2.m-port .dg-over .dg-obtn .dg-note { font-size: 11px; margin-left: auto; text-align: right; }
+body.ui-v2.m-port .dg-floordone .dg-fdbtn { flex-direction: column-reverse; align-items: stretch; }
+body.ui-v2.m-port .dg-floordone .dg-fdbtn .v2-btn { height: 42px; }
+body.ui-v2.m-port .dg-floordone .dg-risk { font-size: 11px; }
+/* Portrait: the Dungeon never scrolls (DESIGN.md screen rules); each screen fills the space and fits. */
+body.ui-v2.m-port .v2-dungeon { overflow: hidden; }
+body.ui-v2.m-port .v2-dungeon > .dg-over, body.ui-v2.m-port .v2-dungeon > .dg-choose, body.ui-v2.m-port .v2-dungeon > .dg-board { flex: 1 1 auto; min-height: 0; }
+body.ui-v2.m-port .dg-over .dg-obox { flex: 1; min-height: 0; }
+body.ui-v2.m-port .dg-choose { overflow: hidden; }
+@media (max-height: 700px) { body.ui-v2.m-port .dg-over .dg-obox h1 { font-size: 20px; } body.ui-v2.m-port .dg-over .dg-depth span { padding: 6px; } body.ui-v2.m-port .dg-floordone .dg-risk { display: none; } }
+@media (max-width: 400px) { body.ui-v2.m-port .dg-over .dg-depth b { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; display: block; } }
+/* 14: the 3D chest (a canvas over the drawn chest; the drawn one is the fallback). */
+body.ui-v2 .dg-chestbox .dg-chest3d { position: absolute; inset: -30px -40px -10px; width: calc(100% + 80px); height: calc(100% + 40px); z-index: 3; pointer-events: none; }
+body.ui-v2 .dg-chestbox.has3d .lid, body.ui-v2 .dg-chestbox.has3d .base { visibility: hidden; }
+body.ui-v2 .dg-chestbox.has3d { animation: none; }
+body.ui-v2 .dg-cbox:has(.dg-chest.open) > p { visibility: hidden; }

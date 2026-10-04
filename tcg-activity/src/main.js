@@ -187,6 +187,8 @@ const SFX = (() => {
   };
   const api = {
     play(name) { if (muted || !ensure()) return; if (ctx.state === 'suspended') ctx.resume(); try { if (playSample(name)) return; slots[name] && slots[name](); } catch {} },
+    // Load one more sample on demand (the Dungeon monster voices): sample(key) plays it once decoded.
+    load(key, url) { if (!ensure() || samples[key]) return; decodeInto(url, key); },
     sample(key, peak) { if (muted || !ensure()) return false; if (ctx.state === 'suspended') ctx.resume(); try { return playSample(key, peak); } catch { return false; } },
     playBoss(kind) { return api.sample(`boss:${kind}`, 0.85); },
     stopAll() { stopAllSamples(); },
@@ -368,6 +370,8 @@ function startV2() {
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
     watchable: (id) => Boolean(watchableOpen(id)), watchOpen, sfx: (n) => SFX.play(n),
+    sfxSample: (k, peak) => SFX.sample(k, peak),
+    sfxLoad: (k, url) => SFX.load(k, url),   // the Raid samples (element, boss move, monster voice) for the Dungeon
   });
   // Design 19: my picture in the top bar opens my profile (the Home profile tile is gone).
   el('v2Avatar').innerHTML = `<span>${esc((meUser?.name || '?').charAt(0).toUpperCase())}</span>${meUser?.id ? `<img src="/api/avatar/${esc(meUser.id)}" alt="" data-err="remove">` : ''}`;

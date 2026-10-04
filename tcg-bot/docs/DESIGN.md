@@ -81,3 +81,16 @@ An admin grants them by hand (a later feature).
 - **Phase 2:** artist submissions and an admin grant command for event promos.
 - **Phase 3 (blocked):** achievement promo cards, after achievements exist.
 - **Phase 4:** the web showcase that reads the same Supabase data.
+
+## Screen rules (the Activity)
+
+Nathan set these rules on 2026-10-03. They apply to every screen on desktop, phone portrait, and phone landscape.
+
+1. **A screen never scrolls.** Each screen fits in one view. Do not use `overflow: auto` or `overflow: scroll`
+   to hide content that does not fit. Instead, make the parts smaller, use fewer words, put content in panes
+   or tabs, or page a list (for example, the card grid pages by the rows that fit).
+2. **Nothing bleeds.** Text and icons stay inside their boxes. A long name gets an ellipsis.
+3. **Nothing moves when a state changes.** A status, a buff, or a tag never pushes cards or rows up or down.
+   Give the status a fixed-size place (for example, one fixed-height row of icons).
+4. **Check the three sizes before you ship:** desktop (about 1990x830 inside Discord), portrait (430x790 and
+   375x640), and landscape (932x400 with the notch inset). A check script must report no scroll and no bleed.
