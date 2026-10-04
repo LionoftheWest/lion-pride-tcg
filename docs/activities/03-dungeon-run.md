@@ -216,3 +216,4 @@ The choices make each run a set of decisions, not only a check of the collection
 - Fix (dungeon_v2_fix.sql): the squad falls when no attacker stands (support cards alone left the run stuck).
 - Landscape: no room log column, a thin plate band, the monsters spread over the width.
 - Chest card odds (dungeon_chest_odds.sql, settings.dungeon.chest_rarity, weights Normal / IR / SR): Uncommon 80/18/2, Rare 55/38/7, Ultra 35/50/15, Legend 15/50/35. The card chance stays 0 / 35 / 60 / 100 / 100%. The dark door chest uses the Ultra odds.
+- Reward card odds (dungeon_reward_odds.sql): a card reward after a room uses the same odds by its tier. The rarity rolls when the card is picked; the offer shows the odds ("15% Normal · 50% IR · 35% SR").

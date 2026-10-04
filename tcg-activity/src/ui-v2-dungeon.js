@@ -832,12 +832,18 @@ async function retreat() {
 // floor guardian. Item 15: a choice room offers doors. No Retreat here (item 12: only between floors).
 const tierTag = (t) => (TIER[t] ? `<span class="dg-tier" style="--tc:${TIER[t][1]}">${TIER[t][0]}</span>` : '');
 const pct = (x) => `${Math.round((x || 0) * 100)}%`;
+// The card odds of a tier (settings.dungeon.chest_rarity weights: Normal, IR, SR), rolled when the card is picked.
+function oddsLine(w) {
+  if (!Array.isArray(w)) return 'At risk until the floor guardian falls.';
+  const sum = w.reduce((a, x) => a + (+x || 0), 0) || 1;
+  return ['Normal', 'IR', 'SR'].map((l, i) => [Math.round(((+w[i] || 0) * 100) / sum), l]).filter(([p]) => p > 0).map(([p, l]) => `${p}% ${l}`).join(' · ') + ' · at risk';
+}
 function offerInfo(o) {
   return {
     heal: [I.heart, `Heal ${pct(o.amount)}`, 'Every standing card heals. Once per floor.'],
     buff: [I.up, `+${pct(o.amount)} damage`, 'For the rest of the run.'],
     shards: [COIN, `${fmt(o.amount)} Shards`, 'At risk until the floor guardian falls.'],
-    card: [I.cards, `A ${RL(o.rarity || 'normal')} card`, 'At risk until the floor guardian falls.'],
+    card: [I.cards, 'A random card', oddsLine(o.odds)],
     ward: [I.ward, `Ward ${pct(o.amount)}`, 'Every card starts the next fight with a shield.'],
     reset: [I.reset, 'Cooldown reset', 'Every support is ready again.'],
     revive: [I.heart, `Revive at ${pct(o.amount)}`, 'The downed cards stand up again. Once per floor.'],
