@@ -1,5 +1,5 @@
 # Lion Pride TCG — UI standard
-Status: **DRAFT for Nathan's review (2026-10-04).** Nothing in this file is in force until Nathan approves it.
+Status: **Approved** (Nathan, 2026-10-04, words: "Approved", in chat after reading `ui-audit/APPROVE.md`; PR #169). The UI freeze in `CLAUDE.md` stays until the exit criteria in section 12.9 are met.
 Owner: Nathan. Screen register: [`docs/ui-register.md`](ui-register.md).
 Evidence: the 2026-10-04 audit (197 gaps G-001 to G-197, decisions D-01 to D-22). The audit is not in this repository.
 

@@ -1,6 +1,6 @@
 # Lion Pride TCG — UI screen register
 
-Status: **DRAFT for Nathan's review (2026-10-04).** It goes into force with [`docs/design.md`](design.md).
+Status: **In force** (approved with [`docs/design.md`](design.md), Nathan, 2026-10-04).
 This file has one row for each screen, window and view. The rules are in `docs/design.md` section 12.
 
 ## How to read and change this register
