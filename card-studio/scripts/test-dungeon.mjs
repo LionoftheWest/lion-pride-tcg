@@ -16,8 +16,9 @@
  *   The Gauntlet (gauntlet.sql): gcost gpool gtheme gchar gseed (the weekly squad), gtreasure gdoors goffers gloot
  *     gsettle (no loot), gbase gmode (base cards, each action finds its own run), gdaily gbest (the boards),
  *     godds gonce gtick gflag (the prizes and the flags), gguard (the live-version guard).
- * Env: CORE, GATE, MIG, MIG2, MIG3, MIG4, MIG5, MIG6 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql,
- *      dungeon_v2.sql, dungeon_v2_fix.sql, dungeon_chest_odds.sql, dungeon_reward_odds.sql, gauntlet.sql.
+ *   dailypacks (dungeon_prizes_daily.sql): the daily Dungeon prizes give packs again.
+ * Env: CORE, GATE, MIG, MIG2, MIG3, MIG4, MIG5, MIG6, MIG7 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql,
+ *      dungeon_v2.sql, dungeon_v2_fix.sql, dungeon_chest_odds.sql, dungeon_reward_odds.sql, gauntlet.sql, dungeon_prizes_daily.sql.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -35,6 +36,7 @@ let mig4 = strip(readFileSync(process.env.MIG4 || new URL('../../tcg-bot/supabas
 let mig5 = strip(readFileSync(process.env.MIG5 || new URL('../../tcg-bot/supabase/dungeon_reward_odds.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 // The Gauntlet: its guard is skipped in the main run (the mutations change the text); section 17 runs the file as shipped.
 let mig6full = strip(readFileSync(process.env.MIG6 || new URL('../../tcg-bot/supabase/gauntlet.sql', import.meta.url), 'utf8'));
+let mig7 = strip(readFileSync(process.env.MIG7 || new URL('../../tcg-bot/supabase/dungeon_prizes_daily.sql', import.meta.url), 'utf8'));
 let mig6 = mig6full.replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 const MUT1 = {   // dungeon.sql
   gen: ["  select (('x' || substr(md5(p_key), 1, 8))", "  select random() * 0 + (('x' || substr(md5(p_key || random()::text), 1, 8))"],
@@ -88,13 +90,16 @@ const MUT6 = {   // gauntlet.sql
   gtick: ["if not coalesce((pz->>'enabled')::boolean, false) then return", "if false then return"],
   gflag: ["or not coalesce((gauntlet_cfg()->>'enabled')::boolean, false) then", "then"],
 };
+const MUT7 = {   // dungeon_prizes_daily.sql
+  dailypacks: ['[{"shards":300},{"shards":200}', '[{"shards":300,"packs":2},{"shards":200}'],
+};
 const MUT6G = { gguard: ["if m not in (x[2], x[3]) then raise", "if false then raise"] };   // the guard (section 17, the file as shipped)
 const M = process.env.MUTATE;
 const apply = (src, m) => { if (!src.includes(m[0])) throw new Error(`bad mutation ${M}`); return src.replace(m[0], m[1]); };
 if (M) {
   // A mutation applies to its own file (it must match), and to every later file that rebuilds the same function.
-  const files = [['mig', MUT1], ['mig2', MUT2], ['mig3', MUT3], ['mig4', MUT4], ['mig5', MUT5], ['mig6', MUT6]];
-  const V = { mig, mig2, mig3, mig4, mig5, mig6 };
+  const files = [['mig', MUT1], ['mig2', MUT2], ['mig3', MUT3], ['mig4', MUT4], ['mig5', MUT5], ['mig6', MUT6], ['mig7', MUT7]];
+  const V = { mig, mig2, mig3, mig4, mig5, mig6, mig7 };
   const at = files.findIndex(([, T]) => T[M]);
   if (GMUT[M]) gate = apply(gate, GMUT[M]);
   else if (MUT6G[M]) mig6full = apply(mig6full, MUT6G[M]);
@@ -103,10 +108,10 @@ if (M) {
     V[files[at][0]] = apply(V[files[at][0]], mm);
     for (const [k] of files.slice(at + 1)) V[k] = V[k].replace(mm[0], mm[1]);
     if (files.slice(at).some(([k]) => k === 'mig6')) mig6full = mig6full.replace(mm[0], mm[1]);
-    ({ mig, mig2, mig3, mig4, mig5, mig6 } = V);
+    ({ mig, mig2, mig3, mig4, mig5, mig6, mig7 } = V);
   } else throw new Error(`unknown mutation ${M}`);
 }
-for (const s of [core, gate, mig, mig2, mig3, mig4, mig5, mig6full]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
+for (const s of [core, gate, mig, mig2, mig3, mig4, mig5, mig6full, mig7]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
 
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; g jsonb; d1 jsonb; d2 jsonb; fl jsonb; rm jsonb; i int; j int; n int; st jsonb; run record;
@@ -120,6 +125,7 @@ begin
   execute $m$${mig4}$m$;
   execute $m$${mig5}$m$;
   execute $m$${mig6}$m$;
+  execute $m$${mig7}$m$;
   v_day := dungeon_day();
   select array_agg(id order by id) into atk from (select c.id from cards c join subjects s on s.id = c.subject_id
     where c.rarity = 'normal' and s.type in ('Character', 'Creature') and c.id not in (24, 29, 34, 44, 49) order by c.id limit 4) x;
@@ -580,7 +586,7 @@ begin
     select shard_balance, pack_balance into b0, p0 from players where id = 'tst_dg_a';
     delete from dungeon_payouts where mode = 'daily' and period = v_day;
     r := dungeon_pay('daily', v_day);
-    if (select shard_balance from players where id = 'tst_dg_a') - b0 <> 300 or (select pack_balance from players where id = 'tst_dg_a') - p0 <> 2 then
+    if (select shard_balance from players where id = 'tst_dg_a') - b0 <> 300 or (select pack_balance from players where id = 'tst_dg_a') - p0 <> 0 then   -- the daily prizes are Shards only (Nathan)
       bad := bad || 'daily 1st prize: ' || left(r::text, 300) || '; '; end if;
     update settings set value = value || jsonb_build_object('enabled', true, 'from', (v_day - 1)::text) where key = 'dungeon_prizes';
     delete from dungeon_payouts where mode = 'daily' and period = v_day - 1;
