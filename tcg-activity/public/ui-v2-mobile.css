@@ -1395,3 +1395,11 @@ body.ui-v2.m-land .rest-k { font-size: 10px; }
 body.ui-v2.m-land .rest-stage { -webkit-mask-image: none; mask-image: none; }
 body.ui-v2.m-land .rest-hunter { padding: 5px 8px; font-size: 11px; gap: 5px; }
 body.ui-v2.m-land .rest-hunter .rh-d { font-size: 11px; }
+/* The landscape Dailies window: 7 dailies (the Dungeon and the Gauntlet runs, 2026-10-03) in two columns; Check in
+   keeps the full width (its streak). The window gets wider so each row keeps its chips. */
+body.ui-v2.m-land .v2-drop.dl-drop { width: min(700px, calc(100vw - 24px)); }
+body.ui-v2.m-land .dl-drop .dl-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 6px; }
+body.ui-v2.m-land .dl-drop .dl-row.k-checkin { grid-column: 1 / -1; }
+body.ui-v2.m-land .dl-drop .dl-row { gap: 8px; }
+/* The landscape Chat row: its chips side by side (stacked they were taller than the row). */
+body.ui-v2.m-land .dl-drop .dl-auto { flex-direction: row; align-items: center; gap: 4px; }

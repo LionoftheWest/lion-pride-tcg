@@ -247,3 +247,7 @@ The daily Dungeon prizes are Shards only: packs are for the weekly Gauntlet only
 - **Flags:** `settings.gauntlet.enabled` (the mode) and `settings.dungeon_prizes.enabled` (the payouts, with `from` = the first day to pay). Both default to false.
 - **Test:** `card-studio/scripts/test-dungeon.mjs` sections 16 and 17 (mutations g*).
 - **Preview:** `discord-ui-preview/dgga.py` (every Gauntlet screen at a size: no scroll, no bleed).
+
+## Dailies (Nathan, 2026-10-03)
+
+Two more dailies (`tcg-bot/supabase/dailies_adventure.sql`): **Dungeon run** and **Gauntlet run**. A run started today does the daily of its mode. Each pays like the other dailies: 1 pack inside the daily earn limit (5) and the daily Shards. Each daily shows only while its mode is on, and only to a member who has the Dungeon (`server.js` `advDailies`). Test: `card-studio/scripts/test-adventure-dailies.mjs`.
