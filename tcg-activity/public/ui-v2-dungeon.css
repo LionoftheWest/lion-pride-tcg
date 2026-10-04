@@ -968,3 +968,18 @@ body.ui-v2.m-land .dg-pane-in .dg-top .k-row small { display: none; }
 body.ui-v2.m-port .dg-board .k-row { flex-wrap: wrap; row-gap: 2px; }
 body.ui-v2.m-port .dg-board .k-row small { flex-basis: 100%; }
 body.ui-v2 .dg-prizes .rk.sm { white-space: nowrap; }
+/* The landscape phone, the end screen: the result on the left, the cards on the right at the full height
+   (Nathan, IMG_2919: the cards were 68px tall under the stacked title, stats and buttons). */
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-obox { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr); grid-template-rows: minmax(0, 1fr) auto; gap: 8px 16px; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-ohead { grid-column: 1; grid-row: 1; min-height: 0; flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 8px; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-ohead > div:first-child { flex: none; min-width: 0; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-ohead .dg-depth { flex: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-depth span { padding: 6px 10px; gap: 2px; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-lootrow { grid-column: 2; grid-row: 1 / span 2; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-obtn { grid-column: 1; grid-row: 2; flex-wrap: wrap; gap: 6px 10px; margin: 0; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-obtn .v2-btn { height: 36px; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-ohead p { display: none; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-obox h1 { font-size: 22px; line-height: 1.1; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-depth span { padding: 5px 9px; font-size: 10.5px; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-depth b { font-size: 14px; }
+body.ui-v2.m-land .dg-over:not(.dg-floordone) .dg-obtn .dg-note { font-size: 11px; }
