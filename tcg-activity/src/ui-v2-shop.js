@@ -140,8 +140,8 @@ function stockHTML() {
   shop.nmPage = Math.min(shop.nmPage || 0, pages - 1);
   const nmShown = nm.slice(shop.nmPage * per, shop.nmPage * per + per);
   return `<section class="sh-stock">
-      ${isPort() ? `<div class="sh-sub"><span>${ir.length + nm.length + (sr ? 1 : 0)} cards · the same for every member<br>new cards every day at midnight</span><span class="sh-timer">${ICON.timer}New stock in <b class="sh-left">${left(d.next_at)}</b></span></div>`
-    : isLand() ? '' : `<div class="sh-head"><div><h2>${ICON.store}Today's stock</h2><span>${ir.length + nm.length + (sr ? 1 : 0)} cards · the same for every member · new cards every day at midnight</span></div><span class="sh-timer">${ICON.timer}New stock in <b class="sh-left">${left(d.next_at)}</b></span></div>`}
+      ${isPort() ? `<div class="sh-sub"><span>${ir.length + nm.length + (sr ? 1 : 0)} cards</span><span class="sh-timer">${ICON.timer}New stock in <b class="sh-left">${left(d.next_at)}</b></span></div>`
+    : isLand() ? '' : `<div class="sh-head"><div><h2>${ICON.store}Today's stock</h2><span>${ir.length + nm.length + (sr ? 1 : 0)} cards</span></div><span class="sh-timer">${ICON.timer}New stock in <b class="sh-left">${left(d.next_at)}</b></span></div>`}
       <div class="sh-body">
         ${featured}
         <div class="sh-rows">
@@ -161,7 +161,7 @@ function packsHTML() {
   shop.qty = Math.min(Math.max(1, shop.qty), max);
   return `<section class="sh-panel sh-packs">
       <div class="sh-ph"><span class="sh-ico">${ICON.pack}</span><b>Packs</b><span class="grow"></span>${price(d.pack_price, 'sm')}<i class="dim">each</i></div>
-      <div class="sh-packrow"><span class="sh-packart">${ICON.crown}<i>LION PRIDE</i></span><div><b>Lion Pride pack</b><span>Bought packs go to OPEN with your other packs.</span></div></div>
+      <div class="sh-packrow"><span class="sh-packart">${ICON.crown}<i>LION PRIDE</i></span><div><b>Lion Pride pack</b></div></div>
       <div class="sh-qty"><div><b>Quantity</b><span>1 to ${max}</span></div><span class="grow"></span>
         <button class="sh-step" data-q="-1"${shop.qty <= 1 ? ' disabled' : ''}>−</button><b class="sh-qn">${shop.qty}</b><button class="sh-step" data-q="1"${shop.qty >= max ? ' disabled' : ''}>+</button></div>
       <div class="sh-total"><span>Total</span>${price(d.pack_price * shop.qty, 'lg')}</div>
@@ -173,7 +173,6 @@ function resetHTML() {
   const d = shop.data;
   return `<section class="sh-panel sh-reset">
       <div class="sh-ph"><span class="sh-ico prank">${ICON.reset}</span><b>Stat reset</b><span class="grow"></span>${price(d.stat_reset_price, 'sm')}</div>
-      <p class="sh-note">Reset the stat points of one card and place them again.</p>
       <div class="sh-free${d.free_reset ? ' ok' : ''}">${ICON.cal}<b>Free weekly reset</b><span class="grow"></span><span>${d.free_reset ? 'Available' : `Used · back ${esc(nextDay(d.free_reset_next))}`}</span></div>
       <span class="grow"></span>
       <button class="v2-btn sh-choose">Choose a card ${ICON.arrow}</button>
@@ -197,7 +196,7 @@ function paint() {
         <button data-tab="stock" class="${shop.tab === 'stock' ? 'on' : ''}">${ICON.store}<b>Today's stock</b><i>${n}</i></button>
         <button data-tab="packs" class="${shop.tab === 'packs' ? 'on' : ''}">${ICON.pack}<b>Packs</b>${price(d.pack_price, 'sm')}</button>
         <button data-tab="reset" class="${shop.tab === 'reset' ? 'on' : ''}">${ICON.reset}<b>Stat reset</b>${price(d.stat_reset_price, 'sm')}</button></nav>
-      <div class="sh-cd"><span>${ICON.timer}New stock in</span><b class="sh-left">${left(d.next_at)}</b><i>${n} cards · the same for every member · new cards every day at midnight</i></div></aside>`;
+      <div class="sh-cd"><span>${ICON.timer}New stock in</span><b class="sh-left">${left(d.next_at)}</b><i>${n} cards</i></div></aside>`;
     html = `<div class="v2-shop land">${side}${shop.tab === 'packs' ? packsHTML() : shop.tab === 'reset' ? resetHTML() : stockHTML()}</div>`;
   } else {
     html = `<div class="v2-shop desk">${stockHTML()}<div class="sh-right">${packsHTML()}${resetHTML()}</div></div>`;
@@ -354,7 +353,7 @@ async function openPicker() {
   const list = (ctx().cache.collection?.cards || []).filter((c) => c.stat?.points && Object.values(c.stat.points).some((v) => Number(v) > 0));
   const free = !!d.free_reset;
   box.innerHTML = `<div class="sh-picker" role="dialog" aria-modal="true">
-      <div class="sh-pk-head"><div><span class="sh-kick reset">Stat reset</span><h3>Choose a card</h3><span class="dim">Only your cards with stat points spent are shown · ${list.length} card${list.length === 1 ? '' : 's'}</span></div><button class="sh-x" aria-label="Close">${ICON.close}</button></div>
+      <div class="sh-pk-head"><div><span class="sh-kick reset">Stat reset</span><h3>Choose a card</h3><span class="dim">${list.length} card${list.length === 1 ? '' : 's'}</span></div><button class="sh-x" aria-label="Close">${ICON.close}</button></div>
       <div class="sh-free${free ? ' ok' : ''}">${ICON.cal}<b>${free ? 'Your free weekly reset is available' : `Free reset used · back ${esc(nextDay(d.free_reset_next))}`}</b><span class="grow"></span><span>This reset costs</span>${price(free ? 0 : d.stat_reset_price, 'sm')}</div>
       ${list.length ? '<div class="sh-pk-grid v2-grid" data-cap="40"></div><div class="v2-pager sh-pk-pager"></div>' : '<p class="v2-empty">None of your cards has stat points to reset.</p>'}
     </div>`;

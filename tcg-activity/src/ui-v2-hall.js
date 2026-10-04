@@ -149,7 +149,6 @@ function paintHallGrid() {
       <button class="v2-btn gold" id="hlList">⚙ Manage My Listings <b>${d.mine.length}/5</b></button>
       <div class="v2-pager" id="hlPager"></div>
     </div>
-    <p class="hl-note dim">${hall.view === 'wanted' ? 'Each member\'s top want. Have one? Send it; they pick a card back. Tap a name for the full wishlist.' : 'Cards members list for trade. Offer a card from their wishlist.'}</p>
     <div class="v2-grid" id="hlGrid" data-cap="${isPhone() ? 54 : 24}"></div>`);
   hall.tile = (c, idx, sel) => {
     const it = c._it;
@@ -191,9 +190,6 @@ function paintComposer() {
   const wanted = s.kind === 'wanted';
   const g = hall.give;
   const steps = wanted ? ['You offer', `${s.name} picks`, 'You accept'] : ['You offer', `${s.name} accepts`];
-  const explain = !g ? '' : wanted
-    ? `You send ${g.name}. ${s.name} picks one of their ${RL(g.rarity)} cards to give back, then you accept the swap.`
-    : `You send ${g.name} for their ${s.card.name}. The swap happens when ${s.name} accepts.`;
   const theirs = wanted
     ? `<div class="hl-side right"><div class="tr-info"><span class="tr-who">${avatarHTML(s.player_id, s.name, 'xs')} Their offer</span><h3>${title(s.name)} picks</h3>${g ? rarityTag(g) : ''}</div>${cardImg(null)}</div>`
     : `<div class="hl-side right"><div class="tr-info"><span class="tr-who">${avatarHTML(s.player_id, s.name, 'xs')} Their offer</span><h3>${title(s.card.name)}</h3>${rarityTag(s.card)}</div>${cardImg(s.card)}</div>`;
@@ -207,7 +203,6 @@ function paintComposer() {
   }).join('');
   shell(`<div class="tr-compose hl-compose">
       <div class="tr-deal">${yours}<span class="tr-swap">⇄</span>${theirs}</div>
-      ${explain ? `<p class="hl-explain">${esc(explain)}</p>` : ''}
       <div class="tr-foot"><ol class="hl-steps">${steps.map((t, i) => `<li class="${i === 0 ? 'on' : ''}"><b>${i + 1}</b> ${esc(t)}</li>`).join('')}</ol>
         <span class="grow"></span><span class="tr-msg" id="hlMsg">${esc(hall.msg)}</span>
         <button class="v2-btn" id="hlClear">↺ Clear</button><button class="v2-btn gold" id="hlSend" ${g ? '' : 'disabled'}>➤ Send offer</button></div>
@@ -260,7 +255,7 @@ function paintListSheet() {
   shell(`<div class="hl-mylist"><span class="side-h">Your listings <span class="n">${d.mine.length}/5</span></span>
       <div class="hl-lslots">${[0, 1, 2, 3, 4].map((i) => { const x = d.mine[i]; return x ? `<span class="hl-li" title="${esc(x.card?.name || '')}">${cardImg(x.card)}<b>${title(x.card?.name || '')}</b><button class="v2-icon hl-unlist" data-id="${x.id}" title="Take it off the Hall">✕</button></span>` : '<span class="hl-li empty"><i>＋</i></span>'; }).join('')}</div>
       <span class="tr-msg" id="hlMsg">${esc(hall.msg)}</span></div>
-    <div class="tr-gridhead hl-head"><div class="seg"><button class="on">Your cards <b>${items.length}</b></button></div><span class="hl-note dim">Tap a card to list it.</span><span class="grow"></span><div class="v2-pager" id="hlPager"></div></div>
+    <div class="tr-gridhead hl-head"><div class="seg"><button class="on">Your cards <b>${items.length}</b></button></div><span class="grow"></span><div class="v2-pager" id="hlPager"></div></div>
     <div class="v2-grid" id="hlGrid"></div>`, { back: 'Trade Hall' });
   hall.tile = null;
   paintCards(el('hlGrid'), el('hlPager'), items, hall, async (c) => {

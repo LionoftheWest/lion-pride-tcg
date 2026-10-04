@@ -21,7 +21,6 @@ export function gateHTML(g, what) {
   return `<div class="gt-wrap"><div class="gt-card">
     <span class="gt-lock">${LOCK}</span>
     <h2>Unlock ${what}</h2>
-    <p>Two steps first, so your squad is ready for a real fight.</p>
     ${step(giftsDone, 'Redeem your starter gifts', `${claimed} / ${g.gifts_total || 0} redeemed`, 'Open the bell', 'bell')}
     ${step(atkDone, `Own ${g.need || 8} attackers`, `${Math.min(g.attackers || 0, g.need || 8)} / ${g.need || 8} Characters or Creatures`, 'Open a pack', 'open')}
   </div></div>`;

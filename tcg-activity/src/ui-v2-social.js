@@ -519,7 +519,7 @@ function paintTrade() {
         <span class="tr-swap">⇄</span>
         <div class="tr-side right">${slotHTML(tr.give, `${avatarHTML(me?.id, me?.name, 'xs')} You give`, `Pick ${aRar(o.offer)}`)}</div>
       </div>
-      <div class="tr-foot"><span class="dim">${esc(o.from_name || 'They')} accepts next.</span>
+      <div class="tr-foot">
         <span class="grow"></span><span class="tr-msg" id="trMsg">${esc(tr.msg)}</span>
         <button class="v2-btn" id="trClear">✕ Back</button><button class="v2-btn gold" id="trSend" ${tr.give ? '' : 'disabled'}>➤ Send my card</button></div>`;
   } else if (tr.mode === 'offer') {
@@ -529,7 +529,7 @@ function paintTrade() {
         <span class="tr-swap">⇄</span>
         <div class="tr-side right tr-to"><div class="tr-info"><span class="tr-who">To</span><h3>${esc(toName)}</h3>${tr.give ? `<span class="tr-rar" style="color:var(--r-${tr.give.rarity})">Picks ${aRar(tr.give)}</span>` : ''}</div>${avatarHTML(tr.to?.id, toName, 'huge')}</div>
       </div>
-      <div class="tr-foot"><span class="dim">They pick a card of the same rarity.</span>
+      <div class="tr-foot">
         <span class="grow"></span><span class="tr-msg" id="trMsg">${esc(tr.msg)}</span>
         <button class="v2-btn" id="trClear">↺ Clear</button><button class="v2-btn gold" id="trSend" ${tr.give && tr.to ? '' : 'disabled'}>➤ Send offer</button></div>`;
   } else {
@@ -772,7 +772,7 @@ function paintEffects() {
         ${st.canTest ? `<button class="v2-btn fx-test" id="fxTest" title="Try it on yourself: no post, no cooldown">🧪 Test on me</button>` : ''}
         <button class="v2-btn fx-play k-${k}" id="fxPlay" ${ready && tr.to && (left == null || left > 0) && !toBlock ? '' : 'disabled'}>✨ Play ${esc((EFFECT_KIND.label[k] || '').toLowerCase())}</button></div>`;
   } else {
-    composer = `<div class="fx-empty"><b>Pick an effect card</b><span class="dim">Then play it on ${esc(toName)}.</span></div>
+    composer = `<div class="fx-empty"><b>Pick an effect card</b></div>
       <div class="tr-foot"><span class="side-h fx-on">On ${esc(toName)}</span>${fx.onTarget.length ? fx.onTarget.map((e) => `<span class="f-chip">${esc(pretty(e.primitive))}</span>`).join('') : '<span class="dim">Nothing active</span>'}<span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg || capMsg)}</span></div>`;
   }
   const cards = fxCards();

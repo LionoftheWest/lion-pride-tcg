@@ -273,9 +273,7 @@ function lobbyHTML() {
       ${chk(atk, 'An attacker', atk ? 'Ready to fight' : 'Add a Character or a Creature')}
       ${rule.types || rule.no_rarity ? chk(picks.length > 0 && ruleOk, esc(rule.name), ruleOk ? 'Today\'s rule met' : 'A card breaks the rule') : ''}</ul>`;
   const start = `<button class="v2-btn gold dg-start" ${ok && !dg.busy ? '' : 'disabled'}>${I.sword}Start run</button>`;
-  const note = '<small class="dg-note">1 run a day · the squad locks at the start</small>';
   const date = `<span class="dg-date">${new Date(d.day + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}</span>`;
-  const desc = '<p class="dg-desc">The same dungeon for every member · floors of 5 rooms · room 5 is the floor guardian</p>';
   const timer = `<div class="dg-timer">${I.timer}<span class="l">New dungeon in</span><b class="dg-left">${left(d.next_at)}</b></div>`;
   // Your cards: the filter and the sort.
   const all = d.mine || [];
@@ -312,9 +310,9 @@ function lobbyHTML() {
     if (dg.pane === 'rule') body = `<section class="dg-panel dg-rule">${ruleIn}</section><section class="dg-panel dg-best">${bestIn}</section>`;
     else if (dg.pane === 'top') body = topHTML();
     else {
-      body = `<header class="dg-head"><img class="dg-thumb" src="/dungeon/room.webp" alt=""><div class="dg-title"><h1>${I.castle}${esc(d.name)} ${date}</h1>${desc}</div></header>
+      body = `<header class="dg-head"><img class="dg-thumb" src="/dungeon/room.webp" alt=""><div class="dg-title"><h1>${I.castle}${esc(d.name)} ${date}</h1></div></header>
         <section class="dg-panel dg-sq"><div class="k-row"><span class="k">Your squad</span>${pts}</div>${bar}${legend}${slots}</section>
-        <div class="dg-gorow">${check}${start}</div>${note}
+        <div class="dg-gorow">${check}${start}</div>
         ${yours(`${title}${sortB}${pager}${chips}`)}`;
     }
     const tabs = seg([['squad', PEOPLE, 'Squad'], ['rule', I.cards, 'Rule'], ['top', I.trophy, 'Top 3']]);
@@ -325,7 +323,7 @@ function lobbyHTML() {
     const paneIn = dg.pane === 'best' ? bestIn : dg.pane === 'top' ? topHTML(true) : ruleIn;
     return `<div class="dg-lobby land">
       <aside class="dg-side">
-        <section class="dg-panel dg-info">${date}<h1>${I.castle}${esc(d.name)}</h1>${desc}${timer}</section>
+        <section class="dg-panel dg-info">${date}<h1>${I.castle}${esc(d.name)}</h1>${timer}</section>
         <section class="dg-panel dg-pane">${seg([['rule', '', 'Rule'], ['best', '', 'Best'], ['top', '', 'Top 3']])}<div class="dg-pane-in">${paneIn}</div></section>
       </aside>
       <div class="dg-col">
@@ -338,10 +336,10 @@ function lobbyHTML() {
     <section class="dg-panel dg-main">
       <header class="dg-head">
         <img class="dg-thumb" src="/dungeon/room.webp" alt="">
-        <div class="dg-title"><h1>${I.castle}${esc(d.name)} ${date}</h1>${desc}</div>
+        <div class="dg-title"><h1>${I.castle}${esc(d.name)} ${date}</h1></div>
         <div class="dg-budget"><span class="k">Squad budget</span>${pts}${bar}${legend}</div>
       </header>
-      <div class="dg-squad">${slots}<div class="dg-go">${check}${start}${note}</div></div>
+      <div class="dg-squad">${slots}<div class="dg-go">${check}${start}</div></div>
       ${yours(`${title}${chips}${sortB}${pager}`)}
     </section>
     <aside class="dg-side">${timer}<section class="dg-panel dg-rule">${ruleIn}</section><section class="dg-panel dg-best">${bestIn}</section>${topHTML()}</aside>
@@ -864,20 +862,20 @@ const tierTag = (t) => (TIER[t] ? `<span class="dg-tier" style="--tc:${TIER[t][1
 const pct = (x) => `${Math.round((x || 0) * 100)}%`;
 // The card odds of a tier (settings.dungeon.chest_rarity weights: Normal, IR, SR), rolled when the card is picked.
 function oddsLine(w) {
-  if (!Array.isArray(w)) return 'At risk until the floor guardian falls.';
+  if (!Array.isArray(w)) return '';
   const sum = w.reduce((a, x) => a + (+x || 0), 0) || 1;
-  return ['Normal', 'IR', 'SR'].map((l, i) => [Math.round(((+w[i] || 0) * 100) / sum), l]).filter(([p]) => p > 0).map(([p, l]) => `${p}% ${l}`).join(' · ') + ' · at risk';
+  return ['Normal', 'IR', 'SR'].map((l, i) => [Math.round(((+w[i] || 0) * 100) / sum), l]).filter(([p]) => p > 0).map(([p, l]) => `${p}% ${l}`).join(' · ');
 }
 function offerInfo(o) {
   return {
-    heal: [I.heart, `Heal ${pct(o.amount)}`, 'Every standing card heals. Once per floor.'],
-    buff: [I.up, `+${pct(o.amount)} damage`, 'For the rest of the run.'],
-    shards: [COIN, `${fmt(o.amount)} Shards`, 'At risk until the floor guardian falls.'],
+    heal: [I.heart, `Heal ${pct(o.amount)}`, 'Once per floor'],
+    buff: [I.up, `+${pct(o.amount)} damage`, ''],
+    shards: [COIN, `${fmt(o.amount)} Shards`, ''],
     card: [I.cards, 'A random card', oddsLine(o.odds)],
-    ward: [I.ward, `Ward ${pct(o.amount)}`, 'Every card starts the next fight with a shield.'],
-    reset: [I.reset, 'Cooldown reset', 'Every support is ready again.'],
-    revive: [I.heart, `Revive at ${pct(o.amount)}`, 'The downed cards stand up again. Once per floor.'],
-    continue: [I.arrow, 'Continue', 'To the next room.'],
+    ward: [I.ward, `Ward ${pct(o.amount)}`, ''],
+    reset: [I.reset, 'Cooldown reset', ''],
+    revive: [I.heart, `Revive at ${pct(o.amount)}`, 'Once per floor'],
+    continue: [I.arrow, 'Continue', ''],
     door: {
       elite: [I.fire, 'The Elite door', 'A strong monster. Better loot.'],
       rest: [I.heart, 'The quiet door', 'A rest: heal and revive.'],
@@ -892,18 +890,18 @@ function chooseHTML() {
   const ph = st.phase;
   const offer = (o, i) => {
     const t = offerInfo(o);
-    return `<button class="dg-offer k-${o.kind}${o.to ? ` to-${o.to}` : ''}" data-choose="${i}" style="${TIER[o.tier] ? `--tc:${TIER[o.tier][1]}` : ''}">${tierTag(o.tier)}<span class="ic">${t[0]}</span><b>${t[1]}</b><small>${t[2]}</small></button>`;
+    return `<button class="dg-offer k-${o.kind}${o.to ? ` to-${o.to}` : ''}" data-choose="${i}" style="${TIER[o.tier] ? `--tc:${TIER[o.tier][1]}` : ''}">${tierTag(o.tier)}<span class="ic">${t[0]}</span><b>${t[1]}</b>${t[2] ? `<small>${t[2]}</small>` : ''}</button>`;
   };
   const head = {
-    choose: ['Room cleared', 'Choose a reward', 'Pick one. Each reward has a tier: Common, Uncommon, Rare, Ultra, Legend.'],
+    choose: ['Room cleared', 'Choose a reward', ''],
     rest: ['Rest room', 'Take a breath', 'The squad healed 40%, and each downed card came back with 25% HP.'],
-    path: ['A choice', 'Pick a door', 'Each door leads to a different room.'],
+    path: ['A choice', 'Pick a door', ''],
     chest: ['Treasure room', 'You found a chest', 'Tap the chest to open it.'],
   }[ph] || ['', '', ''];
   const body = ph === 'chest' ? chestHTML(st) : `<div class="dg-offers n${(st.offers || []).length}">${(st.offers || []).map(offer).join('')}</div>`;
   return `<div class="dg-choose">
     <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
-    <section class="dg-panel dg-cbox ph-${ph}">${musicBtnHTML()}<span class="k">${head[0]}</span><h2>${head[1]}</h2><p>${head[2]}</p>${body}</section>
+    <section class="dg-panel dg-cbox ph-${ph}">${musicBtnHTML()}<span class="k">${head[0]}</span><h2>${head[1]}</h2>${head[2] ? `<p>${head[2]}</p>` : ''}${body}</section>
   </div>`;
 }
 // The chest (item 14): closed until tapped; then the lid opens, its tier glows, the loot shows.
@@ -916,7 +914,6 @@ function chestHTML(st) {
       <div class="dg-chestloot"><span class="dg-tier big" style="--tc:${t[1]}">${t[0]} chest</span>
         <div class="dg-chestrow"><span class="dg-chsh">${COIN}<b>+${fmt(c.shards)}</b><small>Shards</small></span>
         ${card ? flipHTML([card], 'chest') : ''}</div>
-        <small class="dg-risk">${I.lock}At risk until the floor guardian falls.</small>
         <button class="v2-btn gold dg-cont" data-choose="0">${I.arrow}Continue</button></div>
     </div>`;
 }
@@ -993,9 +990,9 @@ function floorDoneHTML() {
     const b = dg.data.best;
     return `<div class="dg-over dg-floordone">
     <section class="dg-panel dg-obox dg-fdbox">${musicBtnHTML()}
-      <div class="dg-ohead"><div class="dg-fdhead"><span class="k">${I.crown}${esc(dg.data.name)} · Floor ${R.floor}</span><h1>Floor ${R.floor} cleared!</h1><p>The guardian fell. Go deeper, or end the run here: your depth counts for the week.</p></div>
+      <div class="dg-ohead"><div class="dg-fdhead"><span class="k">${I.crown}${esc(dg.data.name)} · Floor ${R.floor}</span><h1>Floor ${R.floor} cleared!</h1></div>
       <div class="dg-depth dg-fdstats"><span>Depth<b>${R.floor}F Room ${R.room}</b></span><span>Week best<b>${b ? `${b.floor}F R${b.room}` : '—'}</b></span><span>Rank<b>#${b?.rank || '—'}</b></span></div></div>
-      <div class="dg-lootrow"><p class="muted dg-nocards">The Gauntlet has no loot. Only the depth counts.</p></div>
+      <div class="dg-lootrow"></div>
       <div class="dg-obtn dg-fdbtn"><button class="v2-btn dg-leave">${I.door}End the run</button><button class="v2-btn gold dg-next" data-choose="0">${I.arrow}Descend to Floor ${R.floor + 1}</button></div>
     </section>
   </div>`;
@@ -1005,11 +1002,10 @@ function floorDoneHTML() {
   const capLeft = Math.max(0, (dg.data.cap || 300) - (bank.shards || 0));
   return `<div class="dg-over dg-floordone">
     <section class="dg-panel dg-obox dg-fdbox">${musicBtnHTML()}
-      <div class="dg-ohead"><div class="dg-fdhead"><span class="k">${I.castle}${esc(dg.data.name)} · Floor ${R.floor}</span><h1>Floor ${R.floor} cleared!</h1><p>The guardian fell. This floor's loot is banked: it is safe now.</p></div>
+      <div class="dg-ohead"><div class="dg-fdhead"><span class="k">${I.castle}${esc(dg.data.name)} · Floor ${R.floor}</span><h1>Floor ${R.floor} cleared!</h1></div>
       <div class="dg-depth dg-fdstats"><span>Loot gained<b>${COIN}+${fmt(fl.shards)}</b></span><span>Banked<b>${I.lock}${fmt(bank.shards)}${(bank.cards || []).length ? ` +${(bank.cards || []).length}${I.cards}` : ''}</b></span><span>Cap left<b>${fmt(capLeft)}</b></span></div></div>
       <div class="dg-lootrow">${cards.length ? `<div class="dg-lhead"><h3>Cards found <small>${cards.length}</small></h3><button class="v2-btn gold dg-reveal">${I.cards}Reveal all</button></div><div class="dg-flips" style="--n:${cards.length}">${flipHTML(cards, 'floor')}</div>` : '<p class="muted dg-nocards">No cards on this floor.</p>'}</div>
       <div class="dg-obtn dg-fdbtn"><button class="v2-btn dg-leave">${I.door}Retreat with the loot</button><button class="v2-btn gold dg-next" data-choose="0">${I.arrow}Descend to Floor ${R.floor + 1}</button></div>
-      <small class="dg-risk">${I.lock}On the next floor, the new loot is at risk until its guardian falls. Banked loot is always safe.</small>
     </section>
   </div>`;
 }
@@ -1031,14 +1027,14 @@ const getBack = async () => { if (cardBack == null) { try { cardBack = (await (a
 function overHTML() {
   const R = run();
   if (GA()) return gaOverHTML(R);
-  const t = { cleared: ['Dungeon cleared!', 'You beat every floor of today\'s dungeon.'], retreat: ['You retreated', 'A safe exit with your loot.'], fell: ['Your squad fell', 'The run ends here. Here is what you found.'] }[R.ended_by] || ['Run over', ''];
+  const t = { cleared: ['Dungeon cleared!'], retreat: ['You retreated'], fell: ['Your squad fell'] }[R.ended_by] || ['Run over'];
   const loot = dg.data.loot || [];
   const cards = loot.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}${upCls(String(i))}" data-flip="${i}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
       <span class="face back">${cardBack ? `<img src="${esc(cardBack)}" alt="">` : '<i></i>'}</span>
       <span class="face front">${cardTile({ ...c, cost: null }, { top: '', info: false })}</span></button>`).join('');
   return `<div class="dg-over">
     <section class="dg-panel dg-obox">
-      <div class="dg-ohead"><div><span class="k">${I.castle}${esc(dg.data.name)}</span><h1>${t[0]}</h1><p>${t[1]}</p></div>
+      <div class="dg-ohead"><div><span class="k">${I.castle}${esc(dg.data.name)}</span><h1>${t[0]}</h1></div>
         <div class="dg-depth"><span>Depth<b>${R.floor}F Room ${R.room}</b></span><span>Rank today<b>#${R.rank || '—'}</b></span><span>Shards<b>${COIN}<em class="dg-count" data-to="${R.shards}">0</em></b></span><span>Turns<b>${fmt(R.turns)}</b></span></div></div>
       <div class="dg-lootrow">${cards ? `<div class="dg-lhead"><h3>Cards found <small>${loot.length}</small></h3><button class="v2-btn gold dg-reveal">${I.cards}Reveal all</button></div><div class="dg-flips${loot.length > 6 ? ' two' : ''}" style="--n:${loot.length}">${cards}</div>` : '<p class="muted dg-nocards">No cards dropped this run.</p>'}</div>
       <div class="dg-obtn"><button class="v2-btn" data-board>${I.trophy}See the leaderboard</button><small class="dg-note">${I.timer}A new dungeon in <b class="dg-left">${left(dg.data.next_at)}</b></small></div>
@@ -1097,20 +1093,16 @@ function gaLobbyHTML() {
   const pts = `<b class="dg-pts">${cost}<small> / ${budget} pts</small></b>`;
   const slots = `<div class="dg-slots">${sq.map((c) => `<div class="dg-slot">${cardTile(c)}
       <span class="dg-slot-ft"><span class="l">${ATTACKER.has(c.type) ? 'Attacker' : 'Support'}</span></span></div>`).join('')}</div>`;
-  const li = (a, b) => `<li class="ok"><span>${I.check}</span><b>${a}</b><em>${b}</em></li>`;
-  const facts = `<ul class="dg-check">${li('The same squad for everyone', 'Base level: no stars')}${li(`${cost} / ${budget} points`, theme ? `Theme: ${esc(theme)}` : 'A mixed squad')}${li('1 run a day', 'Your best run of the week counts')}</ul>`;
   const start = `<button class="v2-btn gold dg-start" ${dg.busy ? 'disabled' : ''}>${I.sword}Start run</button>`;
-  const note = '<small class="dg-note">No loot in the Gauntlet · the room rewards still work</small>';
   const wk = new Date(d.week + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase();
   const date = `<span class="dg-date">WEEK OF ${wk}</span>`;
-  const desc = '<p class="dg-desc">The same squad and the same dungeon for everyone, all week · the deepest run wins</p>';
   const timer = `<div class="dg-timer">${I.timer}<span class="l">Week ends in</span><b class="dg-wleft">${leftLong(d.ends_at)}</b></div>`;
   const b = d.best;
   const bestIn = `<div class="k-row"><span class="k">Your best this week</span><span class="dg-pill">1 run today</span></div><h2${b ? '' : ' class="muted"'}>${b ? `${b.floor}F Room ${b.room}` : 'No run yet'}</h2>
       <div class="dg-mini"><span>Rank<b>${b ? `#${b.rank}` : '—'}</b></span><span>Your runs<b>${fmt(b?.runs || 0)}</b></span></div>`;
-  const themeIn = `<span class="k">${I.cards}This week's theme</span><h2>${esc(theme || 'Mixed')}</h2><p>${theme ? `The squad shares the ${esc(theme)} tag: the supports help those cards most.` : 'The supports help the squad where they can.'}</p>`;
+  const themeIn = `<span class="k">${I.cards}This week's theme</span><h2>${esc(theme || 'Mixed')}</h2>`;
   const seg = (keys) => `<div class="dg-seg">${keys.map(([k, icon, label]) => `<button class="${dg.pane === k ? 'on' : ''}" data-pane="${k}">${icon}${label}</button>`).join('')}</div>`;
-  const head = `<header class="dg-head"><img class="dg-thumb" src="/dungeon/room.webp" alt=""><div class="dg-title"><h1>${I.crown}${esc(d.name)} ${date}</h1>${desc}</div></header>`;
+  const head = `<header class="dg-head"><img class="dg-thumb" src="/dungeon/room.webp" alt=""><div class="dg-title"><h1>${I.crown}${esc(d.name)} ${date}</h1></div></header>`;
 
   if (isPort()) {
     if (!['squad', 'prizes', 'top'].includes(dg.pane)) dg.pane = 'squad';
@@ -1118,7 +1110,7 @@ function gaLobbyHTML() {
     if (dg.pane === 'prizes') body = gaPrizesHTML();
     else if (dg.pane === 'top') body = `<section class="dg-panel dg-best">${bestIn}</section>${gaTopHTML()}`;
     else body = `${head}<section class="dg-panel dg-sq"><div class="k-row"><span class="k">This week's squad</span>${pts}</div>${bar}${slots}</section>
-        <div class="dg-gorow">${facts}${start}</div>${note}<section class="dg-panel dg-rule">${themeIn}</section>`;
+        <div class="dg-gorow">${start}</div><section class="dg-panel dg-rule">${themeIn}</section>`;
     return `<div class="dg-lobby port ga"><div class="dg-prow">${seg([['squad', I.crown, 'Squad'], ['prizes', I.trophy, 'Prizes'], ['top', I.trophy, 'Top 3']])}${timer}</div>${body}</div>`;
   }
   if (document.body.classList.contains('m-land')) {
@@ -1126,19 +1118,19 @@ function gaLobbyHTML() {
     const paneIn = dg.pane === 'best' ? bestIn : dg.pane === 'top' ? gaTopHTML(true) : themeIn;
     return `<div class="dg-lobby land ga">
       <aside class="dg-side">
-        <section class="dg-panel dg-info">${date}<h1>${I.crown}${esc(d.name)}</h1>${desc}${timer}</section>
+        <section class="dg-panel dg-info">${date}<h1>${I.crown}${esc(d.name)}</h1>${timer}</section>
         <section class="dg-panel dg-pane">${seg([['theme', '', 'Theme'], ['best', '', 'Best'], ['top', '', 'Top 3']])}<div class="dg-pane-in">${paneIn}</div></section>
       </aside>
       <div class="dg-col">
         <section class="dg-panel dg-main"><div class="dg-brow"><span class="k">This week's squad</span>${bar}${pts}</div>
-          <div class="dg-squad">${slots}<div class="dg-go">${facts}${start}</div></div></section>
+          <div class="dg-squad">${slots}<div class="dg-go">${start}</div></div></section>
         ${gaPrizesHTML()}
       </div></div>`;
   }
   return `<div class="dg-lobby ga">
     <section class="dg-panel dg-main">
       ${head.replace('</header>', `<div class="dg-budget"><span class="k">This week's squad</span>${pts}${bar}</div></header>`)}
-      <div class="dg-squad">${slots}<div class="dg-go">${facts}${start}${note}</div></div>
+      <div class="dg-squad">${slots}<div class="dg-go">${start}</div></div>
       <div class="dg-gbot"><section class="dg-panel dg-rule">${themeIn}</section>${gaPrizesHTML()}</div>
     </section>
     <aside class="dg-side">${timer}<section class="dg-panel dg-best">${bestIn}</section>${gaTopHTML()}</aside>
@@ -1161,11 +1153,11 @@ function wireGaLobby(main) {
 }
 // The run is over: the depth, the week's rank and best (no loot in the Gauntlet).
 function gaOverHTML(R) {
-  const t = { cleared: ['Gauntlet cleared!', 'You beat every floor of this week\'s Gauntlet.'], retreat: ['Run ended', 'Your depth counts for this week.'], fell: ['Your squad fell', 'Your depth counts for this week.'] }[R.ended_by] || ['Run over', ''];
+  const t = { cleared: ['Gauntlet cleared!'], retreat: ['Run ended'], fell: ['Your squad fell'] }[R.ended_by] || ['Run over'];
   const b = dg.data.best;
   return `<div class="dg-over">
     <section class="dg-panel dg-obox">
-      <div class="dg-ohead"><div><span class="k">${I.crown}${esc(dg.data.name)}</span><h1>${t[0]}</h1><p>${t[1]}</p></div>
+      <div class="dg-ohead"><div><span class="k">${I.crown}${esc(dg.data.name)}</span><h1>${t[0]}</h1></div>
         <div class="dg-depth"><span>Depth<b>${R.floor}F Room ${R.room}</b></span><span>Week best<b>${b ? `${b.floor}F R${b.room}` : '—'}</b></span><span>Rank this week<b>#${b?.rank || '—'}</b></span><span>Turns<b>${fmt(R.turns)}</b></span></div></div>
       <div class="dg-lootrow dg-garow">${gaPrizesHTML(true)}</div>
       <div class="dg-obtn"><button class="v2-btn" data-board>${I.trophy}See the leaderboard</button><small class="dg-note">${I.timer}Your next run in <b class="dg-left">${left(dg.data.next_at)}</b></small></div>
@@ -1185,7 +1177,7 @@ function boardHTML() {
   const rows = board ? (board.board || []).map((b) => `<li class="${String(b.player_id) === String(me) ? 'me' : ''}${b.rank <= 3 ? ` top${b.rank}` : ''}">
       <span class="rk">${b.rank}</span><b>${esc(b.username || 'Member')}</b><em>${b.floor}F Room ${b.room}</em><small>${fmt(b.turns)} turns${GA() ? ` · ${b.runs} run${b.runs === 1 ? '' : 's'}` : ''}${b.status === 'active' ? ' · in the dungeon' : ''}</small></li>`).join('') || `<li class="none">${GA() ? 'No runs yet this week.' : 'No runs yet today.'}</li>` : '<li class="none">Loading…</li>';
   return `<div class="dg-board"><section class="dg-panel">
-    <div class="k-row"><button class="v2-btn dg-back">${I.back}Back</button><h2>${I.trophy}${GA() ? 'This week\'s leaderboard' : 'Today\'s leaderboard'}</h2><small>${GA() ? 'Best run each · deepest first' : 'The deepest first · then fewer turns'}</small></div>
+    <div class="k-row"><button class="v2-btn dg-back">${I.back}Back</button><h2>${I.trophy}${GA() ? 'This week\'s leaderboard' : 'Today\'s leaderboard'}</h2></div>
     <ol class="dg-rows">${rows}</ol></section></div>`;
 }
 function wireBoard(main) { main.querySelector('.dg-back')?.addEventListener('click', () => { dg.view = 'main'; paint(); }); }
