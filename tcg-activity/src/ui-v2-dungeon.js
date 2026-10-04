@@ -922,7 +922,7 @@ function chestHTML(st) {
 }
 // Cards face down; a tap flips one (the same as a pack). Used by the chest, the floor screen, the end.
 function flipHTML(list, key) {
-  return list.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}" data-flip="${key}:${i}" data-id="${c.id}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
+  return list.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}${upCls(`${key}:${i}`)}" data-flip="${key}:${i}" data-id="${c.id}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
       <span class="face back">${cardBack ? `<img src="${esc(cardBack)}" alt="">` : '<i></i>'}</span>
       <span class="face front">${cardTile({ ...c, cost: null }, { top: '', info: false })}</span></button>`).join('');
 }
@@ -946,7 +946,7 @@ function fitFlips(main) {
 window.addEventListener('resize', () => { const m = document.getElementById('main'); if (m?.querySelector('.dg-flips')) fitFlips(m); });
 function wireFlips(main) {
   fitFlips(main);
-  const flip = (b) => { if (b.classList.contains('up')) { const id = Number(b.dataset.id); if (id) openInfo(id); return; } b.classList.add('up'); ctx().sfx?.('flip'); };
+  const flip = (b) => { if (b.classList.contains('up')) { const id = Number(b.dataset.id); if (id) openInfo(id); return; } b.classList.add('up'); ups.add(upTag(b.dataset.flip)); ctx().sfx?.('flip'); };
   main.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); flip(b); }));
   main.querySelector('.dg-reveal')?.addEventListener('click', (e) => {
     e.currentTarget.disabled = true;
@@ -1023,13 +1023,17 @@ function wireFloorDone(main) {
 // One screen, no scroll (Nathan items 25, 26): the result, the totals, and the cards found FACE DOWN;
 // tap a card (or Reveal all) to flip it, the same as a pack.
 let cardBack = null;
+// The cards already turned face up (by run, screen and card): a repaint (a rotation) keeps them up (Nathan, 2026-10-03).
+const ups = new Set();
+const upTag = (f) => `${run()?.id}|${run()?.status}|${run()?.floor}|${run()?.state?.phase}|${f}`;
+const upCls = (f) => (ups.has(upTag(f)) ? ' up' : '');
 const getBack = async () => { if (cardBack == null) { try { cardBack = (await (await fetch('/api/config')).json()).backUrl || ''; } catch { cardBack = ''; } } return cardBack; };
 function overHTML() {
   const R = run();
   if (GA()) return gaOverHTML(R);
   const t = { cleared: ['Dungeon cleared!', 'You beat every floor of today\'s dungeon.'], retreat: ['You retreated', 'A safe exit with your loot.'], fell: ['Your squad fell', 'The run ends here. Here is what you found.'] }[R.ended_by] || ['Run over', ''];
   const loot = dg.data.loot || [];
-  const cards = loot.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}" data-flip="${i}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
+  const cards = loot.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}${upCls(String(i))}" data-flip="${i}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
       <span class="face back">${cardBack ? `<img src="${esc(cardBack)}" alt="">` : '<i></i>'}</span>
       <span class="face front">${cardTile({ ...c, cost: null }, { top: '', info: false })}</span></button>`).join('');
   return `<div class="dg-over">
@@ -1047,7 +1051,7 @@ function wireOver(main) {
   // The Shards count up.
   const c = main.querySelector('.dg-count');
   if (c) { const to = Number(c.dataset.to) || 0; const t0 = performance.now(); const f = (t) => { const k = Math.min(1, (t - t0) / 1200); c.textContent = fmt(Math.round(to * k * (2 - k))); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }
-  const flip = (b) => { if (b.classList.contains('up')) { const it = (dg.data.loot || [])[Number(b.dataset.flip)]; if (it) openInfo(Number(it.id)); return; } b.classList.add('up'); ctx().sfx?.('flip'); };
+  const flip = (b) => { if (b.classList.contains('up')) { const it = (dg.data.loot || [])[Number(b.dataset.flip)]; if (it) openInfo(Number(it.id)); return; } b.classList.add('up'); ups.add(upTag(b.dataset.flip)); ctx().sfx?.('flip'); };
   main.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', () => flip(b)));
   main.querySelector('.dg-reveal')?.addEventListener('click', (e) => {
     e.currentTarget.disabled = true;
