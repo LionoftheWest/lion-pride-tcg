@@ -17,11 +17,13 @@ const ICON = {
   hunt: svg('<path d="m14.5 17.5 5-5"/><path d="m3 3 11 11"/><path d="m21 3-11 11"/><path d="m9.5 17.5-5-5"/><path d="M3 21l3-3"/><path d="m21 21-3-3"/>'),
   voice: svg('<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>'),
   social: svg('<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>'),
+  dungeon: svg('<path d="M3 21V8l3 2V6l3 2V4h6v4l3-2v4l3-2v13z"/><path d="M10 21v-5h4v5"/>'),
+  gauntlet: svg('<path d="m3 8 4 4 5-7 5 7 4-4-2 11H5z"/>'),
   pack: svg('<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>'),
   reset: svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'),
   check: svg('<path d="M20 6 9 17l-5-5"/>'),
 };
-const NAME = { checkin: 'Check in', chat: 'Chat', hunt: 'Hunt the boss', voice: 'Voice with someone', social: 'Trade or boon' };
+const NAME = { checkin: 'Check in', chat: 'Chat', hunt: 'Hunt the boss', voice: 'Voice with someone', social: 'Trade or boon', dungeon: 'Dungeon run', gauntlet: 'Gauntlet run' };
 const UNIT = { chat: 'msgs', hunt: 'cards', voice: 'min' };
 let view = null;
 let tickTimer = null;
@@ -84,14 +86,14 @@ function flames(t) {
 function row(t, paused) {
   // Redeemable NOW: the same rule as the red count (not while paused).
   const go = !paused && !t.auto && t.done && !t.claimed;
+  const wide = t.task === 'checkin';   // the streak gets its own line under the title and the button (it ran under the button)
   let title = esc(NAME[t.task] || t.task), sub = '', right = '';
   if (t.task === 'checkin') {
     const day = t.claimed ? t.streak : t.streak + 1;
-    title += ` <span class="dl-day">DAY ${day}</span>`;
-    sub = `${flames(t)}${(t.claimed ? t.reward : pay(t)) > 1 ? '<span class="dl-bonus">+1 bonus</span>' : ''}`;
+    sub = `<span class="dl-day">DAY ${day}</span>${flames(t)}${(t.claimed ? t.reward : pay(t)) > 1 ? '<span class="dl-bonus">+1 bonus</span>' : ''}`;
   } else if (t.task === 'hunt' && !t.live && !t.have) {
     sub = '<span class="dl-dim">No boss</span>';
-  } else if (t.task === 'social' || t.task === 'hunt') { // one fight or one trade: no count
+  } else if (['social', 'hunt', 'dungeon', 'gauntlet'].includes(t.task)) { // one fight, one trade or one run: no count
     sub = t.claimed || t.done ? '' : `${bar(t)}<span class="mono">${t.have}/${t.need}</span>`;
   } else {
     sub = `${bar(t)}<span class="mono">${t.have}/${t.need} ${UNIT[t.task] || ''}</span>`;
@@ -103,7 +105,7 @@ function row(t, paused) {
   else if (go) right = claimBtn(t.task, pay(t), false);
   else right = `<span class="dl-r">${chip(pay(t))}${shc()}</span>`;
   return `<div class="dl-row k-${esc(t.task)}${go ? ' go' : ''}${t.claimed ? ' claimed' : ''}"><span class="dl-ico">${ICON[t.task] || ''}</span>
-    <div class="dl-t"><b>${title}</b>${sub ? `<span class="dl-sub">${sub}</span>` : ''}</div>${right}</div>`;
+    <div class="dl-t"><b>${title}</b>${sub && !wide ? `<span class="dl-sub">${sub}</span>` : ''}</div>${right}${wide ? `<span class="dl-sub dl-wide">${sub}</span>` : ''}</div>`;
 }
 
 function paint() {

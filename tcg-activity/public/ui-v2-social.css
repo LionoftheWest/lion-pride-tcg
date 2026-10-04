@@ -734,3 +734,12 @@ body.ui-v2 .prof-cos { align-self: flex-start; height: 32px; padding: 0 12px; fo
 /* A member at a play limit (Nathan, 2026-10-03): grayed, the reason in the title and the message line. */
 body.ui-v2 .tr-mem.capped { opacity: .45; }
 body.ui-v2 .tr-mem.capped.on { opacity: .75; }
+/* Check in: the streak and "+1 bonus" on their own line under the title and the Claim button (they ran under it). */
+body.ui-v2 .dl-row.k-checkin { flex-wrap: wrap; row-gap: 4px; }
+body.ui-v2 .dl-row.k-checkin .dl-t b { white-space: nowrap; }
+body.ui-v2 .dl-sub.dl-wide { flex-basis: 100%; min-width: 0; flex-wrap: wrap; row-gap: 2px; }
+/* The landscape window is wide: the streak stays on the Check in line, between the title and the button. */
+body.ui-v2.m-land .dl-row.k-checkin { flex-wrap: nowrap; }
+body.ui-v2.m-land .dl-row.k-checkin .dl-t { flex: none; order: 1; }
+body.ui-v2.m-land .dl-sub.dl-wide { flex: 1 1 auto; flex-basis: auto; order: 2; flex-wrap: nowrap; }
+body.ui-v2.m-land .dl-row.k-checkin > :last-child:not(.dl-wide), body.ui-v2.m-land .dl-row.k-checkin .dl-claim, body.ui-v2.m-land .dl-row.k-checkin .dl-r { order: 3; }

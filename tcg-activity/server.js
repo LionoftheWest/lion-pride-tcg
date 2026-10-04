@@ -1127,12 +1127,14 @@ app.post('/api/achievements/claim', async (req, res) => {
 
 // Dailies (dailies.sql): the window's data, and one redeem. The SQL checks the flag, the
 // pause, the task, the one-per-day rule and the daily cap.
+// The Dungeon and Gauntlet dailies (dailies_adventure.sql) show only to a member who has the Dungeon (dungeonOn).
+const advDailies = (v, id) => (v?.tasks && !dungeonOn(id) ? { ...v, tasks: v.tasks.filter((t) => t.task !== 'dungeon' && t.task !== 'gauntlet') } : v);
 app.get('/api/dailies', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const { data, error } = await supabase.rpc('dailies_view', { p_player: String(me.id) });
   if (error) return res.json({ enabled: false });
-  res.json(data || { enabled: false });
+  res.json(advDailies(data, me.id) || { enabled: false });
 });
 app.post('/api/dailies/claim', async (req, res) => {
   const me = await caller(req);
@@ -1141,7 +1143,7 @@ app.post('/api/dailies/claim', async (req, res) => {
   const { data, error } = await supabase.rpc('claim_daily', { p_player: String(me.id), p_task: String(req.body?.task || '') });
   if (error) return res.status(500).json({ error: error.message });
   if (data?.ok) bustUser(me.id);
-  res.json(data);
+  res.json(data?.view ? { ...data, view: advDailies(data.view, me.id) } : data);
 });
 // Claim all: each task that is done and not claimed, in order, until the cap stops it.
 app.post('/api/dailies/claim-all', async (req, res) => {
@@ -1149,8 +1151,9 @@ app.post('/api/dailies/claim-all', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const id = String(me.id);
-  const { data: view, error } = await supabase.rpc('dailies_view', { p_player: id });
-  if (error || !view?.enabled) return res.json({ ok: false, error: 'disabled' });
+  const { data: raw, error } = await supabase.rpc('dailies_view', { p_player: id });
+  if (error || !raw?.enabled) return res.json({ ok: false, error: 'disabled' });
+  const view = advDailies(raw, me.id);
   let packs = 0, shards = 0, claimed = 0; let last = view; let stop = null;
   for (const t of view.tasks.filter((x) => !x.auto && x.done && !x.claimed)) {
     const { data: r, error: e } = await supabase.rpc('claim_daily', { p_player: id, p_task: t.task });
@@ -1160,7 +1163,7 @@ app.post('/api/dailies/claim-all', async (req, res) => {
   }
   if (packs) bustUser(me.id);
   // A daily at the pack limit still pays its Shards (shards_dailies_gifts.sql): any claim is a success.
-  res.json({ ok: claimed > 0, packs, shards, view: last, error: claimed ? null : stop });
+  res.json({ ok: claimed > 0, packs, shards, view: advDailies(last, me.id), error: claimed ? null : stop });
 });
 
 // Equip an unlocked title and/or frame (null = none). Only rewards the caller claimed.
