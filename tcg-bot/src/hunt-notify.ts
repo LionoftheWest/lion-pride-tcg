@@ -140,6 +140,9 @@ export async function huntPicture(ev: { kind: string; hunt_id?: number; created_
   return null;
 }
 
+/** A new boss pings the LPTCG role, so every player hears of it (Nathan, 2026-10-04). Other kinds do not. */
+export const pingsRole = (kind: string): boolean => kind === 'spawn';
+
 /** A raid post: the event text plus the button that opens the Activity (every kind). */
 export function huntPost(ev: { kind: string; payload: Record<string, unknown> }): MessageCreateOptions | null {
   const content = format(ev);
@@ -166,7 +169,7 @@ async function drain(client: Client): Promise<void> {
         // The leaderboard and the squad summary carry a picture (a failed picture still posts the text).
         const png = await huntPicture(ev as never).catch((e) => { console.error('hunt picture:', e); return null; });
         if (png) post.files = [new AttachmentBuilder(png, { name: ev.kind === 'leaderboard' ? 'raid-leaderboard.png' : 'squad-summary.png' })];
-        sent = await announce(client, post, ev.kind === 'leaderboard' ? undefined : 'raid');
+        sent = await announce(client, post, ev.kind === 'leaderboard' ? undefined : 'raid', pingsRole(ev.kind));
       }
       if (outboxDone(sent, ev.created_at)) await supabase.from('hunt_events').update({ posted_at: new Date().toISOString() }).eq('id', ev.id);
       await new Promise((r) => setTimeout(r, 1200)); // pace posts under the channel rate limit
