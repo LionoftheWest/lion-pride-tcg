@@ -54,7 +54,7 @@ Test the rules in this order. The first match sets the class. Every size matches
 | Order | Class | Rule (usable px) | Examples | Layout |
 |---|---|---|---|---|
 | 1 | `tiny` | height < 300 OR width < 360 | Discord PiP, voice grid tile | Small live view only (D-06) |
-| 2 | `compact-land` | height < 500 AND width > height | Phones in landscape, desktop windows below 500 px tall | Two columns, slim side rail |
+| 2 | `compact-land` | height < 500 AND width > height | Phones in landscape, desktop windows below 500 px tall | Today's landscape layout: slim top bar, bottom dock (P0) |
 | 3 | `compact-port` | width < 600 | Phones in portrait | One column, bottom dock |
 | 4 | `medium` | width < 1200 | Tablets in both orientations, desktop at 1024 px | Two columns, sub-tabs on their own row |
 | 5 | `expanded` | all other sizes (width ≥ 1200, height ≥ 500) | Discord desktop 1280x720 to 1990x830 | Three columns |
@@ -117,7 +117,7 @@ The shell is one CSS grid of named areas. No element uses the px size of another
 | `sub-tabs` | Own row under the top bar | In the top bar, minimum width | Own row | In the top bar, minimum width |
 | `content` | 1 column | 2 columns | 2 columns | 3 columns |
 | `action rail` | Above the dock | Right edge | Bottom of the content | In the content |
-| `dock` | Full width, bottom | Slim, bottom or left | Bottom, centered | Bottom, centered |
+| `dock` | Full width, bottom | Slim, bottom (as today, P0) | Bottom, centered | Bottom, centered |
 - The sub-tab area has a minimum width equal to its content. Below that width, it takes its own row. Never cut a tab label. **[CI]** (G-018, G-065)
 - Build each screen one time. It adapts by class through a short, named list of per-class changes. (G-019)
 - Do not add a new `m-land` or `m-port` selector. **[CI]** (G-019, G-182)
