@@ -1,17 +1,27 @@
 /**
  * Test a hunt_support definition against the live DB with NO lasting change:
- *   node scripts/test-hunt-support.mjs <file-with-CREATE-hunt_support.sql>
+ *   node scripts/test-hunt-support.mjs [file-with-CREATE-hunt_support.sql]
+ *   Without a file it tests the CURRENT hunt_support (test-all-local.mjs runs this mode).
+ *   MUTATE=revive|fullheal|shield node scripts/test-hunt-support.mjs   must FAIL.
  * One DO block: apply it, make a test boss + member, check heal/shield sizes and that a
  * heal never revives a downed card, then RAISE the results (everything rolls back).
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
+import { GATE, mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
-const mig = readFileSync(process.argv[2], 'utf8');
+const mig = process.argv[2] ? readFileSync(process.argv[2], 'utf8') : '';
+const SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
+const MUT = mutation({
+  revive: [SUP, 'and card_id = p_target and hit_date = v_day and downed) then', 'and false) then'],
+  fullheal: [SUP, "least(max_hp, hp_remaining + combat_support_value('heal', v_amt, 1, max_hp)::int)", 'max_hp'],
+  shield: [SUP, "shield + combat_support_value('shield', v_amt, 1, max_hp)::int", 'shield + 60'],
+});
 const body = String.raw`do $t$ declare h bigint; heal bigint; shl bigint; tgt bigint; pk bigint; r jsonb; res jsonb := '[]'; v int;
 begin
-  execute $m$${mig}$m$;
+  ${mig ? `execute $m$${mig}$m$;` : '-- the current hunt_support'}
+  ${MUT}
   insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at) values ('Test Boss', 'Normal', '[]', '[]', 5000, 5000, now() + interval '1 day') returning id into h;
   select c.id into heal from cards c join subjects s on s.id=c.subject_id where s.key='zeoic-s-redstone-machine' and c.rarity::text='normal' limit 1;
   select c.id into shl from cards c join subjects s on s.id=c.subject_id where s.ability->>'effect'='shield' and c.rarity::text='normal' limit 1;
@@ -19,6 +29,7 @@ begin
   select c.id into pk from cards c join subjects s on s.id=c.subject_id where s.tags->>'class'='attacker' and 'origin:pokemon' = any(s.tag_slugs) and c.rarity::text='normal' and card_max_hp(card_power('normal',0,s.cp_mod))=card_max_hp(0) limit 1;
   insert into players (id, username) values ('tst_heal','tst heal');
   insert into player_cards (player_id, card_id, quantity) values ('tst_heal',heal,1),('tst_heal',shl,1),('tst_heal',tgt,1),('tst_heal',pk,1);
+  ${GATE('tst_heal')}
   -- heal a 30-HP card at 5 HP: 30% of 30 = 9 -> 14
   perform hunt_commit_card(h, 'tst_heal', tgt, (now() at time zone 'America/Denver')::date, 30); -- the MT game day (mt_clock.sql)
   update hunt_card_hp set hp_remaining = 5 where player_id='tst_heal' and card_id=tgt;

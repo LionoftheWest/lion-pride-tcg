@@ -28,7 +28,13 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 const strip = (s) => s.replace(/notify pgrst[^\n]*\n/g, '').replace(/\r\n/g, '\n');
 const core = strip(readFileSync(process.env.CORE || new URL('../../tcg-bot/supabase/combat_core.sql', import.meta.url), 'utf8'));
 let gate = strip(readFileSync(process.env.GATE || new URL('../../tcg-bot/supabase/adventure_gate.sql', import.meta.url), 'utf8'));
+// The old one-run-a-day index: gauntlet.sql (below, in the same block) drops it for dungeon_runs_one_a_day_mode
+// (player, day, mode). On a database that holds a daily AND a Gauntlet run of one member on one day, creating it
+// again fails (23505), so it is left out here. The end state is the same as the files in order.
+const OLD_INDEX = 'create unique index if not exists dungeon_runs_one_a_day on public.dungeon_runs (player_id, day);\n';
 let mig = strip(readFileSync(process.env.MIG || new URL('../../tcg-bot/supabase/dungeon.sql', import.meta.url), 'utf8'));
+if (!mig.includes(OLD_INDEX)) throw new Error('dungeon.sql changed: the old one-run-a-day index line is not there');
+mig = mig.replace(OLD_INDEX, '-- (the old one-run-a-day index: gauntlet.sql replaces it)\n');
 let mig2 = strip(readFileSync(process.env.MIG2 || new URL('../../tcg-bot/supabase/dungeon_v2.sql', import.meta.url), 'utf8'));
 // The fix replaces dungeon_attack whole: its live-version guard is skipped here (the mutations change the text).
 let mig3 = strip(readFileSync(process.env.MIG3 || new URL('../../tcg-bot/supabase/dungeon_v2_fix.sql', import.meta.url), 'utf8')).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');

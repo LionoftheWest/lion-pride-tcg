@@ -8,10 +8,22 @@
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
+import { GATE, mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
+//   node scripts/test-hunt-loop-caps.mjs --live         (the CURRENT functions, no migration: every case must
+//                                                        PASS; test-all-local.mjs runs this mode)
+//   MUTATE=downheal|stunimm|roundcap|supcap node scripts/test-hunt-loop-caps.mjs --live   must FAIL.
 const baseline = process.argv[2] === '--baseline';
-const mig = baseline ? 'select 1' : readFileSync(process.argv[2] || new URL('../../tcg-bot/supabase/hunt_loop_caps.sql', import.meta.url), 'utf8');
+const live = process.argv[2] === '--live';
+const mig = baseline || live ? 'select 1' : readFileSync(process.argv[2] || new URL('../../tcg-bot/supabase/hunt_loop_caps.sql', import.meta.url), 'utf8');
+const ATK = 'public.hunt_attack(text,bigint,bigint)', SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
+const MUT = mutation({
+  downheal: [SUP, "  if coalesce(v_sdown, false) then return", '  if false then return'],
+  stunimm: [SUP, '    if combat_stun_immune(v_stun_until, v_round) then', '    if false then'],
+  roundcap: [ATK, 'and hit_date = v_day), 0) >= v_rcap then', 'and hit_date = v_day), 0) >= v_rcap + 100 then'],
+  supcap: [SUP, '  if v_round >= v_rcap then return', '  if false then return'],
+});
 const P = 'tst_loop';
 const body = String.raw`do $t$ declare
   h bigint; d date := (now() at time zone 'America/Denver')::date;
@@ -19,6 +31,7 @@ const body = String.raw`do $t$ declare
   r jsonb; res jsonb := '[]'; v int; mx int; n int; i int; ok boolean; cap int;
 begin
   execute $m$${mig}$m$;
+  ${MUT}
   insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at)
     values ('Test Boss', 'Normal', '[]', '[]', 9000000, 9000000, now() + interval '1 day') returning id into h;
   select c.id into shl from cards c join subjects s on s.id = c.subject_id where s.ability->>'effect' = 'shield' limit 1;
@@ -26,6 +39,7 @@ begin
   select c.id into stun2 from cards c join subjects s on s.id = c.subject_id where s.ability->>'effect' = 'stun' and c.id <> stun1 order by c.id limit 1;
   insert into players (id, username) values ('${P}', 'tst loop');
   insert into player_cards (player_id, card_id, quantity) values ('${P}', blast, 1), ('${P}', heal, 1), ('${P}', shl, 1), ('${P}', stun1, 1), ('${P}', stun2, 1);
+  ${GATE(P)}
   perform hunt_state_round(h, '${P}', d);
 
   -- 1. A support card that is down does nothing.
@@ -84,7 +98,7 @@ const out = JSON.stringify(await q(body)); const m = out.match(/RES (\[.*\])/);
 if (!m) { console.log(out.slice(0, 1500)); process.exitCode = 1; }
 else {
   const rs = JSON.parse(m[1].replace(/\\"/g, '"').replace(/\n.*$/, '')); let bad = 0;
-  console.log(baseline ? '--- BASELINE (live functions, no migration): guard cases FAIL, the keep case PASSES' : '--- WITH hunt_loop_caps.sql');
+  console.log(baseline ? '--- BASELINE (live functions, no migration): guard cases FAIL, the keep case PASSES' : live ? '--- LIVE (the current functions, no migration): every case PASSES' : '--- WITH hunt_loop_caps.sql');
   for (const x of rs) {
     const want = baseline ? !x.guard : true;
     if (x.ok !== want) bad++;
