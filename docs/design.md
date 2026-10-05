@@ -150,6 +150,7 @@ Each screen spec names its model.
 - Tag each element of a screen spec P (primary), S (secondary) or T (tertiary). (G-023)
 - A class can move S and T content into a tab, a sheet or a page. It never removes P content. (G-003, G-023)
 - When fit code must remove content, it removes T first and never removes P. (G-023)
+- When the content area is taller than it is wide, side columns stack below the main content as full-width rows, in priority order. When it is wider than tall, side columns sit beside the main content. Decide this from the shape of the content area (`@container`), never from the device. (D-46)
 - Example (D-41): the Shop shows Today's stock (P), Packs and Stat reset (S). On `expanded`, Packs and Stat reset are a right column beside the stock. On `medium`, `compact-port` and `compact-land`, the three are sub-tabs (D-37). The "New stock in" timer is a chip in the Today's stock header line on every class.
 - The pack count (on the OPEN button, D-23), the Leaderboard entry and the profile achievements are P content on every class. (G-003)
 - Every list that can overflow pages ("1 / N") or shows "+N more". Never delete a row that does not fit. **[CI]** (G-022)
@@ -924,6 +925,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-43 | One Member picker; Boons & pranks flow | Trades, Gift, Boons & pranks and profiles start with the Member picker. Boons & pranks: member first, then the Card picker with effect cards (Nathan, 2026-10-04: "The boon/Prank view honestly should get the same treatment as the trading view … search for the person first, THEN … pick the boon/prank") |
 | D-44 | One Leaderboard window | Tabs Main, Hunt, Dungeon, Gauntlet; every board link opens its tab (Nathan, 2026-10-04: "Agreed") |
 | D-45 | Home carousel | Slides Hunt, Dungeon, Gauntlet, Events; the most urgent first; no automatic sliding; dots, swipe and 44 px arrows; a Dot on a slide with news (Nathan, 2026-10-04: "the window where it shows the Pride Hunt, that will also be a carousel with the events/dungeons/etc"; slides "Yes those 4 slides are right"; auto-slide "None"; Dot "Yes") |
+| D-46 | Stack when tall | A content area taller than wide stacks its side columns below the main content as full-width rows; a wide area keeps columns. One rule for every screen (Nathan, 2026-10-04: "I wonder if we stack these as rows instead of columns in this view?"; as a general rule "Yes that is a good rule") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
