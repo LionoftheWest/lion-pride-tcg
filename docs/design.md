@@ -387,7 +387,7 @@ Exactly 6 named layers. (G-049)
 | State views | Empty, Loading, Error | Same | `.v2-empty`, `.v2-loading` | `.empty`, `.dg-none`, `.dg-closed`, `.sh-closed`, `.loading` | G-083, G-084, G-085 |
 | Combat Text | damage, crit, miss, status words | Never on card art | Hunt `calloutAt` | `bigDamage`, `.dg-pop` | G-102 |
 | Dock | 5 fixed places, one badge rule | Section 3.1 | `#dock` | Runtime label changes | G-072 |
-| Top Bar | Fixed slots, one control type, sound control | Section 6.4 | `#topbar` (design 29) | `#mute`, `.dg-music` | G-082, G-118 |
+| Top Bar | Fixed slots, one control type, no sound control (D-26) | Section 6.4 | `#topbar` (design 29) | `#mute` | G-082, G-118 |
 | Help | One entry, explainer carousel, FAQ, tutorial step | Same | `ui-v2-explain.js` carousel | Second "?" control | G-152, G-153 |
 | Small live view | boss HP, pack count, Open full | `tiny` only | New | n/a | G-012 |
 
@@ -431,7 +431,7 @@ Three window types, with one rule for each. (G-060, G-073)
 - The Android Back gesture and the browser back action close the top window or sub-view. (G-076)
 
 ### 6.4 Top bar
-- The top bar keeps today's icons in fixed slots: Shards, Shop, Dailies, help, Report, bell, Leaderboard and the avatar, where each shows today. Each control is a `<button>` with an `aria-label`. (G-082)
+- The top bar has these controls, in this order, on every class except `tiny`: Shards, Shop, Dailies, help, Report, bell, Leaderboard, and the avatar at the right end (D-25). Each control is a `<button>` with an `aria-label`. (G-082)
 - The pack count shows only on the OPEN button. The top bar has no packs slot. (D-23)
 - Top-bar icons have no visible text label. Each icon keeps one meaning on every class. Its name is in `aria-label`. (D-24, G-082)
 - Every top-bar icon stays visible on every class except `tiny`. There is no overflow menu. (D-25)
@@ -569,8 +569,8 @@ CI checks every token pair against these thresholds. **[CI]** (G-029, G-030, G-0
 ### 9.5 Flashing, effects and sound
 - No content flashes more than 3 times in any 1 s. Do not use a full-screen flash. Measure each new effect. (G-116)
 - A "Reduce effects" setting changes a screen prank to a banner. Reduced motion enables it by default (D-11). (G-117)
-- Show one visible sound control with two levels: music and effects. (G-118)
-- The sound control rules all audio, including the Dungeon music, and persists across sessions. (G-118)
+- The shell has no sound control. Members set the volume with the device or Discord. (D-26, G-118)
+- Keep audio quiet by default: no autoplay music outside a fight or a run, and no sound while the tab is hidden. (G-118, G-160)
 
 ## 10. Words
 ### 10.1 Glossary (D-05)
@@ -690,7 +690,7 @@ CI fails a PR that passes a budget. **[CI]**
 | Requests on one screen | 10 per minute or fewer | G-162 |
 
 ### 11.2 Audio, live data and polling
-- Load no audio while the sound is off. Stream music. Pause all audio when the tab is hidden. (G-160)
+- Load each sound only when it first plays. Stream music. Pause all audio when the tab is hidden. (G-160)
 - Live data uses SSE or WebSocket. A poll runs every 15 s or slower, and stops while the window is hidden. (G-162)
 
 ### 11.3 Timeouts, sessions and reconnect
@@ -849,6 +849,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-23 | Pack count | Only on the OPEN button. No packs slot in the top bar (Nathan, 2026-10-04: "the only place it shows up with the number of packs they have is on the open button") |
 | D-24 | Top-bar labels | No visible labels under the top-bar icons (Nathan, 2026-10-04: "No labels") |
 | D-25 | Top-bar menu | No overflow menu. Every top-bar icon stays visible (Nathan, 2026-10-04: "No menu, we keep the icons across the top bar") |
+| D-26 | Sound control | None (Nathan, 2026-10-04: "Sound is not an option"). The top bar list is Shards, Shop, Dailies, help, Report, bell, Leaderboard, avatar ("I would like the wrench icon as well up there") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
@@ -895,7 +896,7 @@ All 24 S1 gaps of the 2026-10-04 audit have at least one rule.
 | G-092 | Flags fail closed with no message | 7.2 |
 | G-105 | Information only in `title` or on hover | 9.2 |
 | G-117 | Pranks control the screen of another member, with no opt-out | 9.5 |
-| G-118 | No visible sound control | 9.5 |
+| G-118 | No visible sound control | 9.5 (closed by decision D-26: no sound control) |
 | G-163 | No request timeout | 11.3 |
 | G-164 | No offline detection and no loader timeout | 7.2, 11.3 |
 | G-165 | A 401 has no handler | 7.2, 11.3 |
