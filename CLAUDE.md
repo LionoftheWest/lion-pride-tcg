@@ -16,8 +16,12 @@ These rules apply to every session in this repository. The global rules in
 
 All new UI BUILD work in `tcg-activity/` is stopped until the freeze exit criteria in
 `docs/design.md` section 12.9 are met. The UI standard `docs/design.md` is APPROVED (2026-10-04).
-Done: the standard, the register, the private design repo, the shell design (UI-00 approved).
-Open: the token source file on `main` (foundation build) and CI gates G1, G3, G4 required on `main`.
+Done: the standard, the register, the private design repo, the shell design (UI-00 approved), and
+CI gates G1, G3, G4 (PR #195, required on `main` since 2026-10-05; how they work: `ci/README.md`).
+Open: the token source file on `main` (foundation build).
+
+`main` is protected: every change goes through a PR, and admins cannot push directly. A PR that
+changes a UI file needs its register ID in the title (`UI-07 ...`) and a recorded design approval.
 The reason: each screen was built three times (desktop, portrait, landscape) with fixed pixels and
 ad-hoc values, so new screen sizes kept breaking.
 
