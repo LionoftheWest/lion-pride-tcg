@@ -228,6 +228,7 @@ A ladder of 7 named steps. The bot pictures and the gallery use `--bg-base` too.
 | promo | Promo | PR | special | `#C9CED8` (new token) | base |
 - Each rarity has a `-soft` (14%) and a `-glow` variant. "Special" means Event and Promo, from this table only. (G-094, G-096)
 - Every rarity mark has a label or a short label. Color is never the only cue. (G-097, D-02)
+- A rarity chip shows only the full rarity name, for example "Normal". It has no letter or short form in front (D-28).
 - The design PNG names Rare, Epic, Legendary and Mythic are superseded. (G-002, G-095)
 
 **Elements.** 14 tokens (13 elements and physical) and one icon set. They are the only source for CSS, canvas and three.js. (G-098)
@@ -852,6 +853,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-25 | Top-bar menu | No overflow menu. Every top-bar icon stays visible (Nathan, 2026-10-04: "No menu, we keep the icons across the top bar") |
 | D-26 | Sound control | None (Nathan, 2026-10-04: "Sound is not an option"). The top bar list is Shards, Shop, Dailies, help, Report, bell, Leaderboard, avatar ("I would like the wrench icon as well up there") |
 | D-27 | Sub-tab counts | No counts on sub-tabs. The Achievements tab shows a Dot, in the place of the count, when an achievement can be claimed (Nathan, 2026-10-04: "remove the number of Achievements and the bosses … where the number is for the Achievement that is where the little notification can be for when an achievement can be redeemed") |
+| D-28 | Rarity chip text | The full name only, no letter in front (Nathan, 2026-10-04: "lets not have the Acronyms, just the name. So for Normal, it wouldn't be N Normal, it would just read Normal") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
