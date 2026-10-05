@@ -381,7 +381,7 @@ Exactly 6 named layers. (G-049)
 | Search Field | icon, clear, 150 ms debounce | 16 px text on touch | `.v2-search` | `.ginput`, 8 placeholders | G-062, G-107 |
 | Member Picker | chip row, Find, suggestions | Same | `#trMembers` with `.sg-list` | `#effectPick` list | G-062 |
 | Select, Stepper, Switch, Textarea, Selected mark | one each. The Stepper shows its limits | Same | `.v2-select`, `.sh-step`, `.ps-sw`, `.rp-text`, squad `.picked` | Hall `−/＋`, `.pts-add`, plain `select`, `.sel`, `.hl-check`, `.in-spot` | G-063, G-064 |
-| Pager | "1 / 3" label, labelled arrows, 40 px swipe, arrow keys | Same | Collection pager | 5 pagers | G-067, G-106 |
+| Pager | "1 / 3" label, labelled arrows, 40 px swipe, arrow keys. Always centered under its grid (D-36) | Same | Collection pager | 5 pagers | G-067, G-106 |
 | Progress | linear, segmented, HP (card, boss, squad) | Heights 4, 8, 12 px | Hunt boss HP bar | About 22 bars | G-068 |
 | Countdown | live, static | Same | `cdSpan` | `.sh-left`, `.dg-left`, `.hl-left`, `.dl-reset` | G-146 |
 | Avatar | xs 20, sm 28, md 38, lg 56, xl 96. Frame, live ring | Same | `avatarHTML` | About 14 overrides | G-070 |
@@ -446,6 +446,20 @@ Three window types, with one rule for each. (G-060, G-073)
 - One tap target has one action. One result has one outcome text. (G-080, G-077)
 - An offer row (Trades, Trade Hall, bell) shows the member, the status, the GIVE and GET cards as Card/thumb (64 px minimum) and its action. A tap on the row opens the Offer view: both cards as Card/full side by side, the member, the status, the time and the actions. A tap on a card there opens its Card Detail. (D-30, G-099)
 - The list of open trades is named Pending, with Incoming and Sent sections. On `compact-port` and `compact-land`, a Pending button sits next to the Offer / Gift switch and opens Pending as a full-height sheet. The button shows the Dot when an incoming offer waits. On `medium` and `expanded`, Pending is the side panel. (D-32, 3.4)
+
+### 6.5b Trades (D-35)
+A trade is always 1 card for 1 card. Auctions in the Trade Hall have their own flow.
+- The Trades tab opens the member picker: search, recent and frequent trade partners, and the Pending button (D-32).
+- A tap on a member opens the Trade window. Its header shows you and the member, with avatars and names.
+- The Trade window has two views, each a small Collection with a larger grid, search, filters and the pager:
+  - **Your cards** (offering). A selected card has two actions: **Offer** and **Gift**.
+  - **Their cards** (requesting). A selected card has one action: **Request**.
+- Pick one card in one view, or one in each view. The result:
+  - Your card only = an **offer**. The member picks one of their cards in return. You accept or reject it.
+  - Their card only = a **request**. The member picks one of your cards in return. You accept or reject it.
+  - One card in each view = a **full proposal**. The member accepts or declines it.
+- Gift sends your card with nothing in return, as today. It replaces the Offer / Gift switch.
+- The request is new game logic. It needs a server and database change with tests before the build (outside the UI freeze).
 
 ### 6.6 Deep links from bot posts and notifications
 - Every bot post and every notification carries a target: view, tab and object id. (G-071, G-079)
@@ -864,6 +878,8 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-30 | Offer rows on phones | Card/thumb (64 px minimum) in the row, and a tap opens the Offer view with both cards at full size (Nathan, 2026-10-04: the row is "really tiny to see things on it when you're on a phone"; chose the recommendation) |
 | D-31 | Top bar and menu (replaces D-25) | Top bar: logo, Shards count, Shop, bell, Menu, avatar. Menu grid: Dailies, Leaderboard, FAQ, Feedback, Settings, Events. New pages: Settings (ping settings, Reduce effects) and Events / Game Log (patch notes, upcoming events) (Nathan, 2026-10-04: "this is a LOT of icons on the top bar … a little hamburger menu icon … a grid of all the places"; "Yes shard count stays on top bar"; "we keep the shop icon separate"; "Yep I was wrong" about D-25) |
 | D-32 | Open trades list | Named "Pending" (Incoming, Sent). On phones a Pending button with the Dot opens it as a full sheet; on larger classes it is the side panel. The trophy in Community goes (Leaderboard lives in Menu) (Nathan, 2026-10-04: "Option A … its repeating Offer with another Offers … Yes I agree with Pending"; "get rid of the trophy in the community view") |
+| D-35 | Trade flow | Member picker, then the Trade window with Your cards (Offer, Gift) and Their cards (Request). Offer, request or full proposal, 1 for 1. The other party picks the return card for an offer or a request, then the first party accepts or rejects (Nathan, 2026-10-04: "the first page of this is to search for the individual … a new dedicated screen … two views … an Offering system … and then a Request system"; answers 1-5: "you request, they request, and then you accept their offer or reject it", "1 card for 1 card", full proposal "I do like that", Gift as an action "Agreed", Trade Hall separate "Yes") |
+| D-36 | Pager place | Always centered under its grid, on every screen (Nathan, 2026-10-04: "pager positions should be underneath the grid of cards always, wherever it is") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)

@@ -100,3 +100,4 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 | UI-60 | Menu grid (sheet on phones, panel on larger classes) | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Holds Dailies, Leaderboard, FAQ, Feedback, Settings, Events |
 | UI-61 | Settings page | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Ping settings (from the bell) and Reduce effects (D-11) |
 | UI-62 | Events / Game Log page | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Patch notes and upcoming events. Content source to decide |
+| UI-63 | Trade window (Your cards / Their cards) | None | Spec approved (D-35, 2026-10-04) | Not built | Not migrated | New. Replaces the trade builder. UI-25 becomes the member picker + Pending. The request needs a server change first |
