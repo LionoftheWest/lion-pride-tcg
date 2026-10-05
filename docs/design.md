@@ -113,7 +113,7 @@ The shell is one CSS grid of named areas. No element uses the px size of another
 | Area | compact-port | compact-land | medium | expanded |
 |---|---|---|---|---|
 | `safe` frame | Insets, top guess | Insets, both sides guess | Insets | Insets (0 on desktop) |
-| `top bar` | Logo, packs, Shards, bell, avatar | Slim | Full | Full |
+| `top bar` | Logo and every top-bar icon (D-25) | Slim | Full | Full |
 | `sub-tabs` | Own row under the top bar | In the top bar, minimum width | Own row | In the top bar, minimum width |
 | `content` | 1 column | 2 columns | 2 columns | 3 columns |
 | `action rail` | Above the dock | Right edge | Bottom of the content | In the content |
@@ -143,7 +143,7 @@ Each screen spec names its model.
 - Tag each element of a screen spec P (primary), S (secondary) or T (tertiary). (G-023)
 - A class can move S and T content into a tab, a sheet or a page. It never removes P content. (G-003, G-023)
 - When fit code must remove content, it removes T first and never removes P. (G-023)
-- The pack count, the Leaderboard entry and the profile achievements are P content on every class. (G-003)
+- The pack count (on the OPEN button, D-23), the Leaderboard entry and the profile achievements are P content on every class. (G-003)
 - Every list that can overflow pages ("1 / N") or shows "+N more". Never delete a row that does not fit. **[CI]** (G-022)
 - The page size is the number of items that fit. A grid adds a row before it adds a page. (G-197)
 - Content fills the content area, or it is centered in it. Empty space above 25% is a defect. **[CI]** (G-197)
@@ -431,9 +431,11 @@ Three window types, with one rule for each. (G-060, G-073)
 - The Android Back gesture and the browser back action close the top window or sub-view. (G-076)
 
 ### 6.4 Top bar
-- The top bar has fixed slots for packs, Shards, bell, help and the avatar. Each control is a `<button>`. (G-082)
-- On touch, every top-bar control has a visible name, or it sits in a labelled menu. (G-082)
-- The shell design (UI-01) sets the slots for Shop, Dailies, Leaderboard, Report and sound. (G-082)
+- The top bar keeps today's icons in fixed slots: Shards, Shop, Dailies, help, Report, bell, Leaderboard and the avatar, where each shows today. Each control is a `<button>` with an `aria-label`. (G-082)
+- The pack count shows only on the OPEN button. The top bar has no packs slot. (D-23)
+- Top-bar icons have no visible text label. Each icon keeps one meaning on every class. Its name is in `aria-label`. (D-24, G-082)
+- Every top-bar icon stays visible on every class except `tiny`. There is no overflow menu. (D-25)
+- Size and space the icons for 44 px touch targets. Record each class where they do not fit, with the size used. (G-104, D-25)
 
 ### 6.5 One home for each action
 - Each action has one home and one flow. Other doors open that home with the object chosen. (G-077)
@@ -844,6 +846,9 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-20 | Damage numbers on cards | Never on the cards |
 | D-21 | Where the standard and the register live | On `main`. Corrected: the design files go to the private `lion-pride-tcg-design` repository |
 | D-22 | Adventure dock target | The last tab. The badge shows on the tab with news, and the dock badge names that tab |
+| D-23 | Pack count | Only on the OPEN button. No packs slot in the top bar (Nathan, 2026-10-04: "the only place it shows up with the number of packs they have is on the open button") |
+| D-24 | Top-bar labels | No visible labels under the top-bar icons (Nathan, 2026-10-04: "No labels") |
+| D-25 | Top-bar menu | No overflow menu. Every top-bar icon stays visible (Nathan, 2026-10-04: "No menu, we keep the icons across the top bar") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
