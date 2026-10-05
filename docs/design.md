@@ -46,6 +46,12 @@ The brand gold `#F4B73C` is the same in the Activity, the bot pictures, the embe
 
 **P4. Check on every size.** No UI change ships before the UI check passes at every test size (section 2.2). (G-006, G-185)
 
+**P5. Screens show state; windows do the work.** A screen shows where things stand. Choosing, editing, filtering and reading details happen in a window that opens on a tap: the Card Detail, Filters, the Card picker, the Member picker, Pending, the Offer view, the Leaderboard and Menu. (D-30 to D-44)
+
+**P6. Information is one tap away.** A surface shows only what a member needs at a glance. Counts, captions, letters, labels and owned badges are not on the surface. They are in the window that a tap opens. A Dot points to the exact place where an action waits. (D-23, D-24, D-27 to D-29, D-33)
+
+**P7. General rules, no exceptions.** When a case does not fit a rule, change the rule for every case, or show that the case follows a more general rule. Do not add a special case. (D-29, D-41)
+
 ## 2. Size classes, test devices and Discord limits
 ### 2.1 Size classes
 The shell computes the class from the **usable** frame in CSS px: the Activity frame minus the safe areas. (G-007, G-009)
@@ -448,6 +454,13 @@ Three window types, with one rule for each. (G-060, G-073)
 - One tap target has one action. One result has one outcome text. (G-080, G-077)
 - An offer row (Trades, Trade Hall, bell) shows the member, the status, the GIVE and GET cards as Card/thumb (64 px minimum) and its action. A tap on the row opens the Offer view: both cards as Card/full side by side, the member, the status, the time and the actions. A tap on a card there opens its Card Detail. (D-30, G-099)
 - The list of open trades is named Pending, with Incoming and Sent sections. On `compact-port` and `compact-land`, a Pending button sits next to the Offer / Gift switch and opens Pending as a full-height sheet. The button shows the Dot when an incoming offer waits. On `medium` and `expanded`, Pending is the side panel. (D-32, 3.4)
+
+### 6.5 pickers: one Card picker, one Member picker (D-42, D-43)
+- Every "choose a card" task uses the Card picker window: a small Collection with the toolbar (search, Filters), the pager under the grid, the magnifier for the Card Detail and Confirm. It has two modes: **pick one**, and **pick several**, numbered, with the slot row (6.5a). (D-42)
+- The Card picker serves: squads (Hunt, Dungeon, Gauntlet), both views of the Trade window, listing a card and bidding in the Trade Hall, the wishlist, the profile Spotlight, and choosing a boon or prank card. Each task opens it with its own filter and its own rule checks. (D-42)
+- Every "choose a member" task uses the Member picker: search, and recent and frequent members. Trades, Gift, Boons & pranks and opening a profile start with it. (D-43)
+- Boons & pranks: pick the member, then the Card picker opens with only effect cards, in pick-one mode, then the member confirms the play. (D-43)
+- One Leaderboard window with tabs: Main, Hunt, Dungeon and Gauntlet. "Today's top 3", "Top hunters" and "See the leaderboard" open it on their tab. Menu → Leaderboard opens it on Main. (D-44, D-12)
 
 ### 6.5a Squads (D-40)
 The Hunt, the Dungeon, the Gauntlet and later modes pick a squad the same way.
@@ -903,6 +916,9 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-39 | Filters panel | Search box always visible beside a Filters button with the active count; the button opens a panel on top of the view with every other filter, Confirm and Clear all; the same on every card grid (Nathan, 2026-10-04: "a collapseable window … a tab you click/tap and then it expands on TOP of the view … a Confirm button"; "the search box should always be next to the filter box regardless"; Clear all, count, every grid: "Yes") |
 | D-40 | Squad picker | Main view = slots + Select your squad / Start / Edit, read-only. The picker window = full grid, toolbar, Auto-pick, slot row with ×, numbered selection, tap again to remove, magnifier for Card Detail, live checks, Confirm; Hunt lock as today (Nathan, 2026-10-04: "that area become the 5 slots and a button under saying Select your Squad … opens up a pop up window with the same full grid … Confirm … Start Raid or Start Run … an Edit button"; "if they want to edit their squad it should be in the pop up … we do need a way for them to easily unselect cards"; 2-5 "Agreed") |
 | D-41 | Shop layout | Desktop (`expanded`) keeps Packs and Stat reset as a right column; smaller classes use the three sub-tabs. "New stock in" is a chip in the stock header on every class. Every stock card uses ShopItem (card, price, Buy) (Nathan, 2026-10-04: "a good example of moving the New Stock to a different location"; "Lets keep it the same on desktop") |
+| D-42 | One Card picker | The Squad picker becomes the Card picker, a small Collection with pick-one and pick-several modes, used by squads, trading, the Trade Hall (list, bid), wishlist, Spotlight and boons/pranks (Nathan, 2026-10-04: "a mini version of the collection that can be applied to each of the respective areas … is a smart way to go about it") |
+| D-43 | One Member picker; Boons & pranks flow | Trades, Gift, Boons & pranks and profiles start with the Member picker. Boons & pranks: member first, then the Card picker with effect cards (Nathan, 2026-10-04: "The boon/Prank view honestly should get the same treatment as the trading view … search for the person first, THEN … pick the boon/prank") |
+| D-44 | One Leaderboard window | Tabs Main, Hunt, Dungeon, Gauntlet; every board link opens its tab (Nathan, 2026-10-04: "Agreed") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
