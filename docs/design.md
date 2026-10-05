@@ -227,7 +227,7 @@ A ladder of 7 named steps. The bot pictures and the gallery use `--bg-base` too.
 | event | Event | EV | special | `#10B981` | base |
 | promo | Promo | PR | special | `#C9CED8` (new token) | base |
 - Each rarity has a `-soft` (14%) and a `-glow` variant. "Special" means Event and Promo, from this table only. (G-094, G-096)
-- Every rarity mark has a label or a short label. Color is never the only cue. (G-097, D-02)
+- On a card face, the frame shows the rarity. The rarity name shows in the Card Detail, the rarity filter chips and the pack reveal. (G-097, D-02, D-29)
 - A rarity chip shows only the full rarity name, for example "Normal". It has no letter or short form in front (D-28).
 - The design PNG names Rare, Epic, Legendary and Mythic are superseded. (G-002, G-095)
 
@@ -506,14 +506,15 @@ Use a fixed set of card sizes. Each size has one minimum width. (G-099)
 | Size | Use | Minimum width † | Shows |
 |---|---|---|---|
 | full | Card viewer, reveal | 240 px | Art, name, rarity |
-| tile | Card grids (no caption, D-29) | 88 px | The card face only |
-| squad | Hunt and Dungeon squads | 80 px | Art, Power, HP, status row |
-| thumb | Pickers, offers (no caption, D-29) | 64 px | The card face only |
+| tile | Card grids | 88 px | The card face only (D-29) |
+| squad | Hunt and Dungeon squads | 80 px | The card face only (D-29). In a fight, also its live state |
+| thumb | Pickers, offers | 64 px | The card face only (D-29) |
 | mini | Lists, feed rows | 44 px | Art |
 | slot | An empty place for a card | Same as its context | Outline, label |
 - The card ratio is 5:7 and the radius is `--rad-card` on every surface. (G-099, G-045)
 - The card face does not show tags. Tags, ability, effect and stats show in the Card Detail.
-- Tiles and thumbs have no caption row under the card: no rarity letter, element, power or copies. The card frame shows the rarity. The Card Detail shows the rest. This is the one exception to "color is never the only cue" (D-29). Squad cards keep their Power, HP and status row.
+- Every card view (grids, squads, trades, pickers, profile, shop) shows only the card face. There is no caption: no name line, rarity letter, element, power, ability or copies. A tap on a card opens the Card Detail, which shows all of it. (D-29)
+- A card shows its live state on the face, because it changes while the member plays: HP, Down and status effects in a fight, Not owned, Locked, and selected. (D-29)
 - Use one Card Detail with fixed sections. Each context shows a named subset. (G-100)
 - Use one Flip Card. Every reveal offers Reveal all and uses the same close rule. (G-101)
 
@@ -855,7 +856,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-26 | Sound control | None (Nathan, 2026-10-04: "Sound is not an option"). The top bar list is Shards, Shop, Dailies, help, Report, bell, Leaderboard, avatar ("I would like the wrench icon as well up there") |
 | D-27 | Sub-tab counts | No counts on sub-tabs. The Achievements tab shows a Dot, in the place of the count, when an achievement can be claimed (Nathan, 2026-10-04: "remove the number of Achievements and the bosses … where the number is for the Achievement that is where the little notification can be for when an achievement can be redeemed") |
 | D-28 | Rarity chip text | The full name only, no letter in front (Nathan, 2026-10-04: "lets not have the Acronyms, just the name. So for Normal, it wouldn't be N Normal, it would just read Normal") |
-| D-29 | Card tile caption | None on tiles and thumbs, so a grid is not cluttered. Squad cards keep their stats (Nathan, 2026-10-04: "lets get rid of the symbols underneath them in the tiles so it doesn't clutter up things when the card is tiled in a view") |
+| D-29 | Card info under cards | None in any card view (grids, squads, trades, pickers). The card face only; a tap opens the Card Detail. Live state (fight HP, Down, status, Not owned, Locked, selected) stays on the card. The rarity shows by the frame, and its name in the Card Detail, the filter chips and the reveal (Nathan, 2026-10-04: "get rid of the symbols underneath them in the tiles"; option 1 "for all these views … card grids, squads, trading"; "The ability to click into a card for the information is what I want people to do") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
