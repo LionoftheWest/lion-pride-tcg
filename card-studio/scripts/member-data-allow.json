@@ -1,0 +1,7 @@
+{
+  "about": "sha256 of lowercase words that match a member username but are reviewed as not member data at their place (common words, code identifiers). Never store the word itself.",
+  "sha256": {
+    "13ffbb2f9bbad7fa824816d9875b1c85cf0fb44fb7de46729cb35c8e3aacfae1": "common English word (attack-fx code, a card text example in docs)",
+    "e3d1277adcd760abb052fc40694d9f3d20adc4cc5912590daf95ca4aa4b54416": "common English word (comments)"
+  }
+}
