@@ -2,7 +2,7 @@
 --
 -- A. Raid Crasher credit counts ONLY for the raid. hunt_attack writes a hunt_hits row for the
 --    prankster (options.credit_to) with the Raider card, so the hunt daily (count of hunt_hits
---    cards today) was done with no fight: player 147400772320100352 claimed it at 15:16 UTC with
+--    cards today) was done with no fight: a member claimed it at 15:16 UTC with
 --    only a credit row (their own first fight was at 15:28). The hunt daily now counts the cards
 --    the player committed today (hunt_card_hp: hunt_commit_card, by an attack or a support play).
 --    The crash credit makes no hunt_card_hp row. Raid damage, prizes and the leaderboard stay on

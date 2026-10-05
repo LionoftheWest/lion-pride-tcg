@@ -61,9 +61,9 @@ test('the play picture shows the member it was aimed at, or the new target of a 
 });
 
 test('each renderer draws a PNG with no avatars or art', async () => {
-  assert.ok(PNG(await renderRarePull({ name: 'ЯΛIDΣП', avatar: null, cards: [{ name: 'A', rarity: 'gold', art: null }, { name: 'B', rarity: 'full_art', art: null }] })));
+  assert.ok(PNG(await renderRarePull({ name: 'ΜΙΣΤΥ Я', avatar: null, cards: [{ name: 'A', rarity: 'gold', art: null }, { name: 'B', rarity: 'full_art', art: null }] })));
   for (const outcome of ['applied', 'blocked', 'reflected', 'decoyed', 'redirected', 'delayed']) {
-    assert.ok(PNG(await renderPlay({ kind: 'prank', outcome, sender: 'Pringles 🐊', senderAvatar: null, target: 'B', targetAvatar: null, card: 'C', art: null, rarity: 'normal', effectName: 'E', effectDesc: 'A long effect text '.repeat(12) })), outcome);
+    assert.ok(PNG(await renderPlay({ kind: 'prank', outcome, sender: 'Misty 🐊', senderAvatar: null, target: 'B', targetAvatar: null, card: 'C', art: null, rarity: 'normal', effectName: 'E', effectDesc: 'A long effect text '.repeat(12) })), outcome);
   }
   for (const kind of ['offer', 'picked', 'accepted', 'gift'] as const) {
     assert.ok(PNG(await renderTrade({ kind, from: 'A', fromAvatar: null, to: 'B', toAvatar: null, offer: { name: 'X', rarity: 'secret_rare', art: null }, request: kind === 'offer' ? null : { name: 'Y', rarity: 'secret_rare', art: null } })), kind);

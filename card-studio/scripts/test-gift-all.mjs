@@ -13,6 +13,7 @@ const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/gift_all_
   .replace(/notify pgrst[^\n]*\n/g, '');
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 
+const BY = '999999999999999910'; // a sample admin id (p_by is only recorded)
 const OLD = '999999999999999911', NEW = '999999999999999912', EARLY = '999999999999999913', LATER = '999999999999999914';
 const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; r2 jsonb; members jsonb; other_before bigint;
@@ -30,7 +31,7 @@ begin
     jsonb_build_object('id', '${NEW}', 'username', 'tst new'),
     jsonb_build_object('id', '${EARLY}', 'username', 'tst early'),
     jsonb_build_object('id', 'not-a-discord-id', 'username', 'bad'));
-  r := gift_all_members(members, 10, '527933470882660373');
+  r := gift_all_members(members, 10, '${BY}');
   res := res || jsonb_build_object('case', 'the counts: 3 members, 1 created, 2 gifted, 1 skipped (a duplicate and a bad id ignored)', 'ok',
     (r->>'members')::int = 3 and (r->>'created')::int = 1 and (r->>'gifted')::int = 2 and (r->>'skipped')::int = 1, 'r', r);
   res := res || jsonb_build_object('case', 'a member who already played gets 10 (launch_gift) and 1 bell note', 'ok',
@@ -44,7 +45,7 @@ begin
     and (select count(*) from notifications where player_id = '${NEW}') = 1);
   res := res || jsonb_build_object('case', 'a member who already got the welcome packs is skipped (10, not 20)', 'ok',
     (select pack_balance from players where id = '${EARLY}') = 10 and (select count(*) from pack_ledger where player_id = '${EARLY}') = 1);
-  r2 := gift_all_members(members, 10, '527933470882660373');
+  r2 := gift_all_members(members, 10, '${BY}');
   res := res || jsonb_build_object('case', 'a second run gives nothing', 'ok',
     (r2->>'gifted')::int = 0 and (r2->>'skipped')::int = 3 and (select pack_balance from players where id = '${OLD}') = 10, 'r', r2);
   insert into players (id, username) values ('${LATER}', 'tst later');

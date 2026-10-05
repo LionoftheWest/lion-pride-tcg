@@ -2,9 +2,9 @@
  * Boss balance, measured with the REAL engine (hunt_attack) and NO lasting change:
  *   node scripts/sim-hunt-balance.mjs [Normal|Heroic|Mythic] [spawns]
  * One DO block spawns bosses of the tier (their HP raised so nothing dies), builds test
- * members whose cards are drawn at the real pull rates (5 / 15 / 40 packs), adds Nathan's
- * real collection, and lets each member fight one day: the 8 strongest attackers (by
- * card_combat), each attacking until it is downed. It RAISEs the damage per member-day;
+ * members whose cards are drawn at the real pull rates (5 / 15 / 40 packs), adds the real
+ * collection of SIM_REAL_PLAYER_ID (optional, from .env: no member id in
+ * the repo), and lets each member fight one day: the 8 strongest attackers (by card_combat), each attacking until it is downed. It RAISEs the damage per member-day;
  * the exception rolls back everything. Supports are not played (a floor, not a ceiling).
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
@@ -12,7 +12,8 @@ const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.matc
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const TIER = process.argv[2] || 'Normal';
 const SPAWNS = Number(process.argv[3] || 2);
-const NATHAN = '527933470882660373';
+const REAL = process.env.SIM_REAL_PLAYER_ID || ''; // optional: one real collection to compare
+if (REAL && !/^\d{17,20}$/.test(REAL)) throw new Error('SIM_REAL_PLAYER_ID must be a Discord id');
 const FLOOR = Number(process.argv[4] || 0); // a test card HP floor (0 = the live card_max_hp)
 
 const body = String.raw`do $t$
@@ -39,7 +40,7 @@ begin
   for sp in 1..${SPAWNS} loop
     loop h := spawn_hunt(3); select hh.tier, hh.name into v_tier, boss from hunts hh where hh.id = h; exit when v_tier = '${TIER}'; delete from hunts where id = h; end loop;
     update hunts set hp_max = 100000000, hp_remaining = 100000000, hp_share = 10000000 where id = h;
-    for pl in select id, username from players where id like 'tst_bal_%' or id = '${NATHAN}' loop
+    for pl in select id, username from players where id like 'tst_bal_%' or id = '${REAL || 'none'}' loop
       dmg := 0; atks := 0; downed := 0; crits := 0; misses := 0;
       for c in select pc.card_id from player_cards pc join cards cc on cc.id = pc.card_id join subjects s on s.id = cc.subject_id
                 where pc.player_id = pl.id and s.type in ('Character', 'Creature')
@@ -53,7 +54,7 @@ begin
           if (r->>'card_downed')::boolean then downed := downed + 1; exit; end if;
         end loop;
       end loop;
-      res := res || jsonb_build_object('spawn', sp, 'boss', boss, 'player', case when pl.id = '${NATHAN}' then 'nathan' else pl.username end,
+      res := res || jsonb_build_object('spawn', sp, 'boss', boss, 'player', case when pl.id = '${REAL || 'none'}' then 'real' else pl.username end,
         'damage', dmg, 'attacks', atks, 'downed', downed, 'crits', crits, 'misses', misses);
     end loop;
   end loop;

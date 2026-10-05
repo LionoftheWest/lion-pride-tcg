@@ -10,10 +10,16 @@ import { readFileSync } from 'node:fs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/gift_claims.sql', import.meta.url)), 'utf8').replace(/notify pgrst[^\n]*\n/g, '');
-const N = '527933470882660373', X = '999999999999999971';
+// N (n_id in SQL): one real launch-day member, because this test checks the launch-day state. It
+// comes from GIFT_TEST_PLAYER_ID or from the database, never from the repo (no member data in it).
+const N_ENV = process.env.GIFT_TEST_PLAYER_ID || '';
+if (N_ENV && !/^\d{17,20}$/.test(N_ENV)) throw new Error('GIFT_TEST_PLAYER_ID must be a Discord id');
+const X = '999999999999999971';
 const body = String.raw`do $t$
 declare res jsonb := '[]'; g bigint; r jsonb; r2 jsonb; a jsonb;
+  n_id text := coalesce(nullif('${N_ENV}', ''), (select player_id from pack_ledger where reason = 'launch_gift' union select player_id from gift_claims where kind = 'launch_day' order by 1 limit 1));
 begin
+  if n_id is null then raise exception 'no launch-day member found: set GIFT_TEST_PLAYER_ID'; end if;
   execute $m$${mig}$m$;
   res := res || jsonb_build_object('case', 'converted: 422 gifts waiting (211 x 2), every balance 0, no welcome/launch ledger rows, the old notes gone', 'ok',
     (select count(*) from gift_claims where claimed_at is null) = 422 and (select coalesce(sum(pack_balance), 0) from players) = 0
@@ -21,39 +27,39 @@ begin
     and not exists (select 1 from notifications where kind = 'pack_gift'),
     'gifts', (select count(*) from gift_claims), 'packs', (select sum(pack_balance) from players));
   res := res || jsonb_build_object('case', 'the two titles', 'ok',
-    (select array_agg(title order by kind) from gift_claims where player_id = '${N}') = array['Launch Day commemoration gift', 'New Player Bonus']);
-  select id into g from gift_claims where player_id = '${N}' and kind = 'new_player';
-  r := claim_gift('${N}', g); r2 := claim_gift('${N}', g);
+    (select array_agg(title order by kind) from gift_claims where player_id = n_id) = array['Launch Day commemoration gift', 'New Player Bonus']);
+  select id into g from gift_claims where player_id = n_id and kind = 'new_player';
+  r := claim_gift(n_id, g); r2 := claim_gift(n_id, g);
   res := res || jsonb_build_object('case', 'redeem: +10 (reason welcome); a second redeem is refused', 'ok',
-    (r->>'ok')::boolean and (select pack_balance from players where id = '${N}') = 10 and r2->>'error' = 'claimed'
-    and (select count(*) from pack_ledger where player_id = '${N}' and reason = 'welcome') = 1, 'r', r);
+    (r->>'ok')::boolean and (select pack_balance from players where id = n_id) = 10 and r2->>'error' = 'claimed'
+    and (select count(*) from pack_ledger where player_id = n_id and reason = 'welcome') = 1, 'r', r);
   res := res || jsonb_build_object('case', 'nobody can redeem someone else''s gift', 'ok',
-    claim_gift('${X}', (select id from gift_claims where player_id = '${N}' and kind = 'launch_day'))->>'error' = 'not_found');
+    claim_gift('${X}', (select id from gift_claims where player_id = n_id and kind = 'launch_day'))->>'error' = 'not_found');
   insert into players (id, username) values ('${X}', 'tst new');
   res := res || jsonb_build_object('case', 'a new member gets a New Player Bonus waiting (0 packs until redeemed)', 'ok',
     (select pack_balance from players where id = '${X}') = 0 and exists (select 1 from gift_claims where player_id = '${X}' and kind = 'new_player' and amount = 10 and claimed_at is null));
-  a := gift_all_members(jsonb_build_array(jsonb_build_object('id', '${X}', 'username', 'tst new'), jsonb_build_object('id', '${N}')), 10, '${N}');
+  a := gift_all_members(jsonb_build_array(jsonb_build_object('id', '${X}', 'username', 'tst new'), jsonb_build_object('id', n_id)), 10, n_id);
   res := res || jsonb_build_object('case', 'the admin gift adds a Launch Day gift only where none exists', 'ok',
     (a->>'gifted')::int = 1 and (a->>'skipped')::int = 1 and exists (select 1 from gift_claims where player_id = '${X}' and kind = 'launch_day'), 'a', a);
-  res := res || jsonb_build_object('case', 'a redeemed gift is an outside pack (not counted toward the 5)', 'ok', earned_today('${N}') = 0);
+  res := res || jsonb_build_object('case', 'a redeemed gift is an outside pack (not counted toward the 5)', 'ok', earned_today(n_id) = 0);
   -- A member gift: taken from the sender now, waits for the recipient.
-  r := to_jsonb(gift_packs('${N}', '${X}', 3));
+  r := to_jsonb(gift_packs(n_id, '${X}', 3));
   res := res || jsonb_build_object('case', 'a member gift: the sender pays 3 now, the recipient has a Gift from <name> waiting (0 until redeemed)', 'ok',
-    r = 'true'::jsonb and (select pack_balance from players where id = '${N}') = 7 and (select pack_balance from players where id = '${X}') = 0
+    r = 'true'::jsonb and (select pack_balance from players where id = n_id) = 7 and (select pack_balance from players where id = '${X}') = 0
     and exists (select 1 from gift_claims where player_id = '${X}' and kind = 'member_gift' and amount = 3 and title like 'Gift from %' and claimed_at is null),
     'title', (select title from gift_claims where player_id = '${X}' and kind = 'member_gift'));
   r := claim_gift('${X}', (select id from gift_claims where player_id = '${X}' and kind = 'member_gift'));
   res := res || jsonb_build_object('case', 'redeeming the member gift adds 3 (reason gift_received)', 'ok',
     (select pack_balance from players where id = '${X}') = 3 and exists (select 1 from pack_ledger where player_id = '${X}' and reason = 'gift_received' and amount = 3));
   res := res || jsonb_build_object('case', 'a member gift with too few packs is refused and nothing waits', 'ok',
-    gift_packs('${X}', '${N}', 50) = false and not exists (select 1 from gift_claims where player_id = '${N}' and kind = 'member_gift'));
+    gift_packs('${X}', n_id, 50) = false and not exists (select 1 from gift_claims where player_id = n_id and kind = 'member_gift'));
   -- An admin promo, an event drop to all, and the boon card's gift.
-  perform give_gift('${X}', 'promo', 'Promo: Halloween', 5, 'admin', '${N}');
-  perform give_gift('${X}', 'promo', 'Promo: Halloween', 5, 'admin', '${N}');
+  perform give_gift('${X}', 'promo', 'Promo: Halloween', 5, 'admin', n_id);
+  perform give_gift('${X}', 'promo', 'Promo: Halloween', 5, 'admin', n_id);
   res := res || jsonb_build_object('case', 'promos can repeat (2 waiting), each one redeemable', 'ok',
     (select count(*) from gift_claims where player_id = '${X}' and kind = 'promo' and claimed_at is null) = 2);
   res := res || jsonb_build_object('case', 'an event drop puts one gift in every member''s bell', 'ok',
-    give_gift_all('promo', 'Event drop', 2, 'event', '${N}') = (select count(*) from players));
+    give_gift_all('promo', 'Event drop', 2, 'event', n_id) = (select count(*) from players));
   res := res || jsonb_build_object('case', 'the gift-pack boon type is off', 'ok', (select enabled from effect_primitives where primitive = 'gift_pack') = false);
   raise exception 'RESULTS %', res;
 end $t$;`;

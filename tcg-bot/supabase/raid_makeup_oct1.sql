@@ -17,33 +17,12 @@ create table if not exists public.hunt_adjustments (
 );
 alter table public.hunt_adjustments enable row level security;
 
-with adj(player_id, extra) as (values
-  ('147400772320100352', 1137),
-  ('1160770137432014859', 1100),
-  ('868542417069035521', 137),
-  ('1329249685852000310', 217),
-  ('734433699734487051', 147),
-  ('710159202676637808', 723),
-  ('214892341478031362', 589),
-  ('703985439903711282', 555),
-  ('114532814619148292', 722),
-  ('460204119047667715', 270),
-  ('1323693820952444928', 378),
-  ('361708775700168706', 517),
-  ('97253325451304960', 116),
-  ('996966387291525221', 115),
-  ('1310008684906025111', 14)
-), ins as (
-  insert into hunt_adjustments (hunt_id, player_id, hit_date, damage, reason)
-  select 101698, a.player_id, '2026-10-01', a.extra, 'oct1_squad_bug' from adj a
-  on conflict do nothing returning player_id, damage
-), top as (
-  select distinct on (h.player_id) h.player_id, h.card_id from hunt_hits h join ins on ins.player_id = h.player_id
-  where h.hunt_id = 101698 and h.hit_date = '2026-10-01' order by h.player_id, h.damage desc
-)
-update hunt_hits h set damage = h.damage + ins.damage
-  from ins join top on top.player_id = ins.player_id
- where h.hunt_id = 101698 and h.hit_date = '2026-10-01' and h.player_id = ins.player_id and h.card_id = top.card_id;
+-- APPLIED ONCE on 2026-10-02. Do not run this file again.
+-- The per-member make-up (15 fighters, hunt 101698, hit_date 2026-10-01) is stored in Supabase:
+--   public.hunt_adjustments, reason = 'oct1_squad_bug' (player_id, damage = the extra credit).
+-- The same transaction added each extra to that member's best Oct 1 hunt_hits row (the highest
+-- damage card). The member rows are not in this public repository (Nathan,
+-- 2026-10-03: no member data in a public repo).
 
 select give_gift(p.id, 'promo', 'Raid bug make-up', 5, 'raid_makeup_oct1')
   from players p

@@ -25,8 +25,8 @@ export function fonts(): void {
   if (fontsReady) return;
   GlobalFonts.registerFromPath(join(ASSETS, 'fonts', 'bricolage-grotesque-latin-wght-normal.woff2'), 'Bricolage');
   GlobalFonts.registerFromPath(join(ASSETS, 'fonts', 'inter-latin-wght-normal.woff2'), 'Inter');
-  // Fallbacks for names the two fonts cannot draw (Cyrillic, Greek, accents, emoji): "ЯΛIDΣП" and
-  // "Pringles 🐊" showed as boxes (2026-10-02). Noto Sans + Noto Emoji, OFL (fonts/LICENSE.txt).
+  // Fallbacks for names the two fonts cannot draw (Cyrillic, Greek, accents, emoji): member names in
+  // these scripts showed as boxes (2026-10-02). Noto Sans + Noto Emoji, OFL (fonts/LICENSE.txt).
   // One family per subset file: the canvas uses one file per family name.
   for (const s of ['latin-ext', 'cyrillic', 'cyrillic-ext', 'greek', 'greek-ext']) GlobalFonts.registerFromPath(join(ASSETS, 'fonts', `noto-sans-${s}-wght-normal.woff2`), `NS-${s}`);
   for (let i = 0; i <= 10; i++) GlobalFonts.registerFromPath(join(ASSETS, 'fonts', `noto-emoji-${i}-wght-normal.woff2`), `NE-${i}`);

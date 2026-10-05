@@ -59,8 +59,8 @@ test('a single hit never posts: only the end-of-day summary does', () => {
 
 test('the daily leaderboard post names the top 3 without pinging, with the button', () => {
   const post = huntPost({ kind: 'leaderboard', payload: { name: 'The Ranked Nightshade', top: [
-    { player_id: '1', username: 'xenowhiff', damage: 1654 }, { player_id: '2', username: 'Pringles 🐊', damage: 1511 }, { player_id: '3', username: 'ЯΛIDΣП', damage: 1301 }] } });
-  assert.ok(post?.content?.includes('🥇 xenowhiff (1,654)'), post?.content ?? '');
+    { player_id: '1', username: 'ashketchum', damage: 1654 }, { player_id: '2', username: 'Misty 🐊', damage: 1511 }, { player_id: '3', username: 'ΜΙΣΤΥ Я', damage: 1301 }] } });
+  assert.ok(post?.content?.includes('🥇 ashketchum (1,654)'), post?.content ?? '');
   assert.doesNotMatch(post!.content!, /<@/);
   const rows = (post!.components ?? []).map((r) => ('toJSON' in r ? r.toJSON() : r)) as { components: { label?: string }[] }[];
   assert.equal(rows[0]?.components[0]?.label, 'Open Lion Pride TCG');

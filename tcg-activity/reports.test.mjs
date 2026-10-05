@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { issueFor, cleanContext } from './reports.js';
 
-const row = { id: 12, kind: 'bug', body: 'The pack froze @everyone <img src=x>\nsecond line', context: { screen: 'home', version: 'abc1234', window: '1288x594', error: 'TypeError: x | y' }, created_at: '2026-10-01T15:14:00Z', player_id: '527933470882660373' };
+const row = { id: 12, kind: 'bug', body: 'The pack froze @everyone <img src=x>\nsecond line', context: { screen: 'home', version: 'abc1234', window: '1288x594', error: 'TypeError: x | y' }, created_at: '2026-10-01T15:14:00Z', player_id: '999999999999999999' };
 
 test('the title is [Kind] + the first line, the labels are player-report + the kind', () => {
   const i = issueFor(row);
@@ -22,7 +22,7 @@ test('no "@" can ping anyone (title and body), and "<" cannot carry HTML', () =>
 
 test('the member is never named: no id, no name, only "a member (report #12)"', () => {
   const i = issueFor(row);
-  assert.doesNotMatch(i.title + i.body, /527933470882660373/);
+  assert.doesNotMatch(i.title + i.body, /999999999999999999/);
   assert.match(i.body, /by a member \(report #12\)\./);
 });
 

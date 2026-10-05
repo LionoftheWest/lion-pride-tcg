@@ -45,9 +45,9 @@ test('the listing picture spec is allow-listed', () => {
 test('the listing and auction renderers draw a PNG with no art', async () => {
   const PNG = (b: Buffer) => b.subarray(0, 4).toString('hex') === '89504e47';
   const c = { name: 'Glacier Wolf', rarity: 'gold', art: null };
-  assert.ok(PNG(await renderListing({ name: 'ЯΛIDΣП', avatar: null, card: c, wants: [c, c] })));
+  assert.ok(PNG(await renderListing({ name: 'ΜΙΣΤΥ Я', avatar: null, card: c, wants: [c, c] })));
   for (const phase of ['start', 'end'] as const) for (const kind of ['sold', 'closed', 'expired'] as const) {
-    assert.ok(PNG(await renderAuction({ phase, seller: 'Pringles 🐊', sellerAvatar: null, card: c, min: '2× Full Art', endsIn: '2d 3h', bids: 4,
+    assert.ok(PNG(await renderAuction({ phase, seller: 'Misty 🐊', sellerAvatar: null, card: c, min: '2× Full Art', endsIn: '2d 3h', bids: 4,
       result: phase === 'end' ? { kind, winner: 'Kira', winnerAvatar: null, cards: [c, c] } : undefined })), `${phase} ${kind}`);
   }
 });
