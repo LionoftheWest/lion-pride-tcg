@@ -47,8 +47,20 @@ A PR that changes no file in scope passes G1, and G3 does not run.
   (`ui-check/fixtures/api.json`). There is no database, no secret and no real member data. Every write answers 403.
 - `ui-check/run.mjs` opens each screen and window of the audit walkthrough (`ui-check/screens.mjs`: 26 entries, from
   `discord-ui-audit/common.py`) at each test size of design.md 2.2 (15 sizes), in a new browser context for each cell.
-- The browser clock is set to the recording time, so countdowns and the Hunt state stay the same.
-- One CI job for each browser (Chromium, WebKit) and size: 30 jobs.
+- The browser clock is set to the recording time (time zone America/Denver), so countdowns and the Hunt state stay the same.
+- One CI job for each browser (Chromium, WebKit). Each job runs 4 cells at a time (`--workers 4`), each cell in its own
+  browser context.
+- Each step waits until the screen is ready (fonts loaded, no loading placeholder, no running animation, the page
+  unchanged for 0.75 s), not a fixed time. `UI_CHECK_WAIT=fixed` gives the fixed waits of the audit walkthrough back.
+  `compare.mjs <dirA> <dirB>` compares two runs cell by cell.
+
+**Which screens a run checks** (`ui-check/plan.mjs`):
+- A PR checks the screens of its enforced IDs (below), at every size and in both browsers.
+- A PR that names the shell (`UI-01` top bar and dock, `UI-02` sub-tabs) checks every screen, because the shell is on every screen.
+- A PR that changes the check itself (`ci/ui-check/`, the two workflows) checks every screen.
+- A UI PR with no enforced ID checks no screen. G1 fails it anyway (no ID in the title).
+- The nightly report (`.github/workflows/ui-report.yml`, 03:17 MT and on demand) checks every screen. Its artifact
+  `g3-report` (`defects.json`) is the list for all screens. It fails when a Migrated screen has a defect.
 
 **The checks** (one item for each row of design.md 12.6):
 
@@ -77,6 +89,8 @@ Today every screen fails the full list (the 2026-10-04 audit found 1,599 detecto
 screen would block every PR. `evaluate.mjs --strict` enforces every ID.
 - A defect in the top bar or the dock belongs to `UI-01`. A defect in the sub-tab bar belongs to `UI-02` (`ownerOf()` in `screens.mjs`).
 - A cell with no result, a step that finds no control, or a call with no fixture is "not checked". On an enforced ID, it fails.
+- An enforced ID that no screen of `screens.mjs` opens (for example `UI-49` today) fails as "not checked". Add its screen
+  to `screens.mjs` in the PR that builds it.
 
 **Record the fixtures again** when the API changes (the summary shows "no fixture" on a screen):
 1. Start the preview server on the LOCAL database copy, with `LOADTEST=1` and every `FEATURE_*` flag on (port 4471).
@@ -88,11 +102,12 @@ screen would block every PR. `evaluate.mjs --strict` enforces every ID.
 ```
 npm ci --prefix ci/ui-check && (cd ci/ui-check && npx playwright install chromium webkit)
 node ci/ui-check/build.mjs
-node ci/ui-check/run.mjs --browser chromium --sizes 430x932 --screens home,dungeon
-node ci/ui-check/evaluate.mjs --browsers chromium
+node ci/ui-check/run.mjs --browser chromium --sizes 430x932 --screens home,dungeon --workers 4
+node ci/ui-check/evaluate.mjs --browsers chromium --sizes 430x932 --screens home,dungeon
 ```
 
 ## Making the gates required
 
-GitHub branch protection on `main` must require the jobs `G1 Register`, `G3 UI check` and `G4 Literal counter`
-(design.md 12.5 G7, 12.9 item 4). A repository admin sets this in Settings > Branches. The workflow cannot set it.
+Done on 2026-10-05: `main` requires `G1 Register`, `G3 UI check` and `G4 Literal counter`, for admins too (design.md
+12.5 G7, 12.9 item 4). The job names must not change: branch protection matches them by name.
+

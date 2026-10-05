@@ -1,6 +1,6 @@
 # The UI gates G1, G3 and G4 of the UI standard (docs/design.md 12.5). Scripts and scope: ci/README.md.
-# G1 and G4 run on every PR. G3 runs its matrix only when the PR changes a file in the UI scope
-# (ci/gates/scope.json) or the check itself; the job "G3 UI check" always reports the verdict.
+# G1 and G4 run on every PR. G3 runs only when the PR changes a file in the UI scope
+# (ci/gates/scope.json) or the check itself, on the screens of ci/ui-check/plan.mjs; "G3 UI check" always reports.
 name: UI gates
 
 on:
@@ -50,11 +50,13 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node ci/gates/g4-literals.mjs
 
-  scope:
-    name: G3 scope
+  plan:
+    name: G3 plan
     runs-on: ubuntu-latest
     outputs:
-      run: ${{ steps.scope.outputs.run }}
+      ui: ${{ steps.plan.outputs.ui }}
+      run: ${{ steps.plan.outputs.run }}
+      screens: ${{ steps.plan.outputs.screens }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,23 +64,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - id: scope
+      - id: plan
         env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node ci/ui-check/scope.mjs >> "$GITHUB_OUTPUT"
+        run: node ci/ui-check/plan.mjs >> "$GITHUB_OUTPUT"
 
+  # One job for each browser; 4 cells at a time in each job (a runner has 4 cores). The plan names the screens:
+  # the screens of the enforced IDs, or every screen for the shell IDs and for a change to the check itself.
   g3-run:
-    name: G3 run (${{ matrix.browser }} ${{ matrix.size }})
-    needs: scope
-    if: needs.scope.outputs.run == 'true'
+    name: G3 run (${{ matrix.browser }})
+    needs: plan
+    if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         browser: [chromium, webkit]
-        size: [375x667, 667x375, 430x932, 932x430, 430x822, 412x915, 915x412, 820x1180, 1180x820, 692x917, 917x692, 1280x720, 1990x830, 1280x480, 400x225]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -88,6 +92,10 @@ jobs:
           cache-dependency-path: |
             tcg-activity/package-lock.json
             ci/ui-check/package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('ci/ui-check/package-lock.json') }}
       - name: Install
         run: |
           npm ci --prefix tcg-activity --no-audit --no-fund
@@ -96,18 +104,20 @@ jobs:
       - name: Build the client (SDK stub, fixtures)
         run: node ci/ui-check/build.mjs
       - name: Run the screens
-        run: node ci/ui-check/run.mjs --browser ${{ matrix.browser }} --sizes ${{ matrix.size }} --out ci/ui-check/.out/results
+        env:
+          SCREENS: ${{ needs.plan.outputs.screens }}
+        run: node ci/ui-check/run.mjs --browser ${{ matrix.browser }} --screens "$SCREENS" --workers 4 --out ci/ui-check/.out/results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: g3-${{ matrix.browser }}-${{ matrix.size }}
+          name: g3-${{ matrix.browser }}
           path: ci/ui-check/.out/results
           retention-days: 14
           if-no-files-found: warn
 
   g3:
     name: G3 UI check
-    needs: [scope, g3-run]
+    needs: [plan, g3-run]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -116,22 +126,25 @@ jobs:
         with:
           node-version: 24
       - name: Not a UI PR
-        if: needs.scope.outputs.run != 'true'
+        if: needs.plan.outputs.ui != 'true'
         run: |
           echo "### G3 UI check: PASS (not run: no file in the UI scope changed)" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/download-artifact@v4
-        if: needs.scope.outputs.run == 'true'
+        if: needs.plan.outputs.run == 'true'
         with:
           pattern: g3-*
           path: ci/ui-check/.out/results
           merge-multiple: true
       - name: G3 verdict
-        if: needs.scope.outputs.run == 'true'
+        if: needs.plan.outputs.ui == 'true'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: node ci/ui-check/evaluate.mjs --results ci/ui-check/.out/results
+          SCREENS: ${{ needs.plan.outputs.screens }}
+        run: |
+          mkdir -p ci/ui-check/.out/results
+          node ci/ui-check/evaluate.mjs --results ci/ui-check/.out/results --screens "$SCREENS"
       - uses: actions/upload-artifact@v4
-        if: always() && needs.scope.outputs.run == 'true'
+        if: always() && needs.plan.outputs.ui == 'true'
         with:
           name: g3-results
           path: ci/ui-check/.out/results/defects.json

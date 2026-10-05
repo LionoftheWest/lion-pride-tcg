@@ -50,21 +50,41 @@ export function ownerOf(screen, where) {
 
 // ---- Steps (common.py: boot, settle, dock, jsclick, run_steps) ----------------------------------------------
 const sleep = (s) => new Promise((ok) => setTimeout(ok, s * 1000));
+// Waiting (part C of the speed-up): by default each step waits until the screen is ready, not a fixed time.
+// UI_CHECK_WAIT=fixed restores the fixed waits of the audit walkthrough (compare.mjs proves both give the same defects).
+const FIXED = process.env.UI_CHECK_WAIT === 'fixed';
+// Ready: the fonts are loaded, no loading placeholder shows, no finite animation runs, and the page did not change
+// for 3 samples in a row (0.75 s). A countdown text changes its digits, not the page size, so it does not block.
+export async function ready(pg, maxS = 15) {
+  const t0 = Date.now(); let last = ''; let stable = 0;
+  while (Date.now() - t0 < maxS * 1000) {
+    const sig = await pg.evaluate(() => {
+      const busy = document.fonts?.status !== 'loaded' || !!document.querySelector('#main > .loading, #main .v2-loading')
+        || document.getAnimations().some((a) => a.playState === 'running' && Number.isFinite(a.effect?.getComputedTiming?.().endTime));
+      return `${busy ? 1 : 0}:${document.body.getElementsByTagName('*').length}:${document.getElementById('main')?.innerHTML.length || 0}`;
+    }).catch(() => 'nav');
+    if (sig === last && sig.startsWith('0:')) { if (++stable >= 3) return; } else stable = 0;
+    last = sig; await sleep(0.25);
+  }
+}
 export async function settle(pg, t = 30) {
+  if (!FIXED) return ready(pg, t);
   for (let i = 0; i < t / 0.5; i++) { if (!(await pg.evaluate("!!document.querySelector('#main > .loading, #main .v2-loading')"))) break; await sleep(0.5); }
   await sleep(1);
 }
 export async function boot(pg, url) {
   await pg.goto(url);
   for (let i = 0; i < 60; i++) { if (await pg.evaluate('document.body.classList.contains("ui-v2")')) break; await sleep(0.5); }
-  await sleep(4);
+  if (FIXED) await sleep(4); else await ready(pg);
   await pg.evaluate("document.getElementById('tutLayer')?.remove()");
 }
 async function dock(pg, view, wait = 2.5) {
+  const active = () => pg.evaluate((v) => !!document.querySelector(`#dock .dk[data-view="${v}"]`)?.classList.contains('active'), view);
   for (let i = 0; i < 4; i++) {
     await pg.evaluate((v) => document.querySelector(`#dock .dk[data-view="${v}"]`)?.click(), view);
-    await sleep(wait);
-    if (await pg.evaluate((v) => !!document.querySelector(`#dock .dk[data-view="${v}"]`)?.classList.contains('active'), view)) break;
+    if (FIXED) await sleep(wait);
+    else for (let t = 0; t < wait * 4 && !(await active()); t++) await sleep(0.25);
+    if (await active()) break;
   }
   await settle(pg);
 }
@@ -74,13 +94,14 @@ async function jsclick(pg, sel, wait = 1.5) {
     ok = await pg.evaluate((s) => { const e = [...document.querySelectorAll(s)].find((x) => x.getClientRects().length); if (!e) return false; e.click(); return true; }, sel);
     if (ok) break; await sleep(0.5);
   }
-  await sleep(wait); await settle(pg); return ok;
+  if (FIXED) await sleep(wait);
+  await settle(pg); return ok;
 }
 export async function runSteps(pg, steps) {
   const miss = [];
   for (const st of steps) {
     if (st[0] === 'dock') await dock(pg, st[1], st[2] ?? 2.5);
-    else if (st[0] === 'wait') await sleep(st[1]);
+    else if (st[0] === 'wait') { if (FIXED) await sleep(st[1]); else await ready(pg, st[1] + 10); }
     else if (st[0] === 'js') {
       if (st[2] && !(await pg.evaluate((s) => [...document.querySelectorAll(s)].some((x) => x.getClientRects().length), st[1]))) {
         miss.push(`${st[1]} (fallback used)`); miss.push(...(await runSteps(pg, st[2]))); continue;

@@ -1,0 +1,80 @@
+# The full G3 report: every screen and window, at the 15 test sizes, in Chromium and WebKit (docs/design.md 12.6).
+# A PR checks only the screens it can fail on (ui-gates.yml, ci/ui-check/plan.mjs). This report keeps the list for
+# every screen current: each night, and on demand (Actions > UI report > Run workflow). It fails when a Migrated
+# screen has a defect. The list of all defects is the artifact "g3-report" (defects.json).
+name: UI report
+
+on:
+  schedule:
+    - cron: '17 9 * * *'   # 09:17 UTC = 03:17 MT (MDT)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-report
+  cancel-in-progress: true
+
+jobs:
+  run:
+    name: G3 report run (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            tcg-activity/package-lock.json
+            ci/ui-check/package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('ci/ui-check/package-lock.json') }}
+      - name: Install
+        run: |
+          npm ci --prefix tcg-activity --no-audit --no-fund
+          npm ci --prefix ci/ui-check --no-audit --no-fund
+          (cd ci/ui-check && npx playwright install --with-deps ${{ matrix.browser }})
+      - name: Build the client (SDK stub, fixtures)
+        run: node ci/ui-check/build.mjs
+      - name: Run every screen
+        run: node ci/ui-check/run.mjs --browser ${{ matrix.browser }} --workers 4 --out ci/ui-check/.out/results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g3-report-${{ matrix.browser }}
+          path: ci/ui-check/.out/results
+          retention-days: 14
+          if-no-files-found: warn
+
+  report:
+    name: G3 report
+    needs: run
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: g3-report-*
+          path: ci/ui-check/.out/results
+          merge-multiple: true
+      - name: Report (fails on a defect of a Migrated screen)
+        run: node ci/ui-check/evaluate.mjs --results ci/ui-check/.out/results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g3-report
+          path: ci/ui-check/.out/results/defects.json
+          retention-days: 30

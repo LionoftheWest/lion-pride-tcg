@@ -1,6 +1,7 @@
 // Gate G3, the run (docs/design.md 12.5, 12.6): open every screen and window at the given sizes in one browser,
 // run the checks, and write one result file and one screenshot for each cell. evaluate.mjs gives the verdict.
-//   node run.mjs --browser chromium|webkit [--sizes 375x667,...] [--screens home,...] [--variants base,long,safe,keyboard] [--out DIR]
+//   node run.mjs --browser chromium|webkit [--sizes 375x667,...] [--screens home,...] [--variants base,long,safe,keyboard] [--workers 4] [--out DIR]
+// --workers: the cells that run at the same time (each in its own browser context, as before). A GitHub runner has 4 cores.
 // It starts serve.mjs on a free port (the fixtures). Every cell uses a new browser context (the audit method).
 // Variants (12.6): base; long = a 32-character name and a 9-digit number; safe = the safe-area presets (touch
 // sizes); keyboard = a text box focused with the keyboard height taken off the view (touch sizes, screens with a text box).
@@ -18,6 +19,7 @@ const sizes = (arg('sizes') ? arg('sizes').split(',') : SIZES.map(sizeKey)).map(
 const screens = arg('screens') ? arg('screens').split(',') : Object.keys(SCREENS);
 const variants = (arg('variants') || 'base,long,safe,keyboard').split(',');
 const OUT = arg('out', join(here, '.out', 'results'));
+const WORKERS = Math.max(1, Number(arg('workers', 4)));
 mkdirSync(join(OUT, 'shots'), { recursive: true });
 const FIX = JSON.parse(readFileSync(join(here, 'fixtures', 'api.json'), 'utf8'));
 const read = (f) => readFileSync(join(here, 'checks', f), 'utf8');
@@ -43,17 +45,21 @@ await new Promise((ok) => server.stdout.once('data', ok));
 const BASE = `http://127.0.0.1:${port}`;
 const browser = await (BROWSER === 'webkit' ? webkit : chromium).launch(BROWSER === 'chromium' ? { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } : {});
 
+// The cells: every size, screen and variant that applies (the same rules as the serial loop before).
+const todo = [];
+for (const s of sizes) for (const screen of screens) for (const variant of variants) {
+  const [, , cls, touch] = s; const spec = SCREENS[screen];
+  if ((variant === 'safe' || variant === 'keyboard') && !touch) continue;
+  if (variant === 'keyboard' && !spec.input) continue;
+  if (variant === 'safe' && (!/^compact/.test(cls) || !SAFE_SCREENS.has(screen))) continue;
+  if (variant === 'long' && !LONG_SCREENS.has(screen)) continue;
+  todo.push([s, screen, variant]);
+}
+
 let cells = 0, failures = 0;
-try {
-  for (const s of sizes) {
-    const [W, H, cls, touch] = s; const size = sizeKey(s); const land = W > H;
-    for (const screen of screens) {
-      const spec = SCREENS[screen];
-      for (const variant of variants) {
-        if ((variant === 'safe' || variant === 'keyboard') && !touch) continue;
-        if (variant === 'keyboard' && !spec.input) continue;
-        if (variant === 'safe' && (!/^compact/.test(cls) || !SAFE_SCREENS.has(screen))) continue;
-        if (variant === 'long' && !LONG_SCREENS.has(screen)) continue;
+async function runCell([s, screen, variant]) {
+        const [W, H, cls, touch] = s; const size = sizeKey(s); const land = W > H;
+        const spec = SCREENS[screen];
         const t0 = Date.now();
         const ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: touch, isMobile: touch && BROWSER === 'chromium', deviceScaleFactor: 1, timezoneId: 'America/Denver', locale: 'en-US' });
         await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
@@ -97,10 +103,12 @@ try {
         cells++;
         console.log(`${BROWSER} ${size} ${screen.padEnd(20)} ${variant.padEnd(8)} ${String(res.seconds).padStart(3)}s miss=${(res.miss || []).length} fit=${(res.fit || []).length} cut=${(res.cut || []).length}${res.error ? ' ERROR ' + res.error.slice(0, 80) : ''}`);
         await ctx.close();
-      }
-    }
-  }
+}
+const t00 = Date.now();
+try {
+  await Promise.all(Array.from({ length: Math.min(WORKERS, todo.length) }, async () => { for (let c; (c = todo.shift());) await runCell(c); }));
 } finally {
   await browser.close(); server.kill();
 }
+console.log(`${WORKERS} workers, ${Math.round((Date.now() - t00) / 1000)} s`);
 console.log(`${cells} cells, ${failures} runner errors`);
