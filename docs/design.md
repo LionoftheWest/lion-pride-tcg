@@ -168,10 +168,13 @@ Each screen spec names its model.
 ### 3.6 Home hero carousel (D-14, D-45)
 - The Home hero is a carousel with 4 slides: Hunt, Dungeon, Gauntlet and Events. A slide shows only when its mode is on. The Events slide stays hidden until the events and daily content exists (UI-62). (D-45, D-51)
 - The first slide is the one that needs the member most: a live boss first. When the Hunt rests, the next active mode is first. (D-14, D-45, G-024)
-- The carousel never moves by itself. The member changes the slide with the dots, a swipe or the arrow buttons (44 px). A tap on a slide opens its mode. (D-45)
-- A slide with news shows the Dot, for example a Dungeon run not used today. The Dot sits on that slide's dot in the dots row, so it shows from any slide. (D-45, D-55)
+- The carousel never moves by itself. The member changes the slide with the slide control, a swipe or the arrow buttons (44 px). A tap on a slide opens its mode. (D-45)
+- The slide control: on `expanded` and `medium`, a small labelled control "Hunt · Dungeon · Gauntlet" (the active slide in gold). On compact classes, dots. (D-57)
+- A slide with news shows the Dot, for example a Dungeon run not used today. On the labelled control, the Dot follows the slide name. On dots, it sits on that slide's dot. So it shows from any slide. (D-45, D-55, D-57)
 - Every slide follows the Home notes: the boss fully visible, no overlap, no cut text, everything above the dock.
-- The Hunt slide shows no Top Hunters list. One line under the hero shows the top hunter, for example "Top hunter: Blade · 6,075". A tap on it opens the Leaderboard window on its Hunt tab. The line shows while the boss rests and during a live fight, as a button with a frame on every class. (D-48, D-44, D-52)
+- Each slide shows its mode's Top 3 in the slide's text column, never over the slide art: rank, avatar, name, score. A tap opens the Leaderboard window on that mode's tab. A board with fewer entries shows only the real entries. Where 3 rows do not fit without a smaller boss (`compact-land`), the slide keeps one line, for example "Top hunter: Blade · 6,075", as a button with a frame. (D-58, D-44, D-52; replaces the "no list" part of D-48)
+- Live pulls rows have one 8 px gap, left-aligned two-line text ("member pulled", then the card name) and the pager 12 px under the last row. (D-56)
+- The "+N" cell of Live in voice opens the Live in voice window: every member in voice, others first and you last, paged with "1 / N". It is a side panel on `expanded`, a side sheet on `medium` and `compact-land`, and a bottom sheet on `compact-port`. (D-59)
 - The 3D boss keeps today's camera and framing. (D-54)
 - Phones show the boss stats row (Your damage, Boss HP, Tier) as the larger classes do. Live in voice lists the other members first, then you. (D-55)
 
@@ -941,6 +944,10 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-53 | Pager arrows | 44 px on touch classes (Nathan, 2026-10-05: "yes") |
 | D-54 | Boss camera | Keep the current 3D camera and framing (Nathan, 2026-10-05: "No keep it the way it is, I Wanted it to be the the way it is") |
 | D-55 | Home details | The news Dot on the dots row; the stats row on phones; other members first in Live in voice (Nathan, 2026-10-05: "Agreed") |
+| D-56 | Live pulls spacing | One 8 px row gap, left-aligned two-line rows, the pager 12 px under the list (Nathan, 2026-10-05, Home review-3: "Need to fix the Live Pulls weird spacing"; "Those all look good!") |
+| D-57 | Carousel slide control | Labels "Hunt · Dungeon · Gauntlet" on `expanded` and `medium`, dots on compact classes, the news Dot after the slide name (Nathan, 2026-10-05: "maybe on the bigger screens it has the whole label and then as it gets smaller/minimized it becomes dots?"; "Those all look good!") |
+| D-58 | Top 3 on every slide | Each carousel slide shows its mode's Top 3 in the text column, never over the art; one line on `compact-land`. Replaces the "no list" part of D-48 (Nathan, 2026-10-05: "show me what a leaderboard would look like over the event window, this would apply to dungeons/arenas/bosses as well"; "Those all look good!") |
+| D-59 | Live in voice window | A tap on "+N" opens a window with every member in voice (Nathan, 2026-10-05: "is it possible for us to click the '+4' and have it expand a window to show all the people?"; "Those all look good!") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
