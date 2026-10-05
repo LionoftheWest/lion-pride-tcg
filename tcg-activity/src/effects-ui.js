@@ -57,11 +57,39 @@ async function refreshEffects() {
     state = s;
     applyBodyFx();
     showIncoming();
+    showRefunds();
   } catch { /* keep the previous state */ }
 }
 
 async function refreshBadges() {
   try { badges = (await deps.api('/api/effects/badges')).badges || {}; } catch { /* keep */ }
+  paintAvatarFx();
+}
+
+// THE AVATAR STANDARD (Nathan, 2026-10-03): every effect that changes a member's picture in the game
+// shows it LARGE on EVERY avatar of that member in every view (profile, Home, Live, voice tiles,
+// leaderboards, Hunt board, Community, trades, top bar). One shared overlay for all of them:
+// AVATAR_FX maps a badge key (from /api/effects/badges) to its overlay. avatarFx() draws the overlays at
+// render (avatarHTML in ui-v2.js); paintAvatarFx() adds / removes them on the avatars already on the
+// screen when the badges change (every avatar has data-pid). Today: the mustache (Grown-Up Stache,
+// Gerudo Stache). A new avatar effect = one line here + its CSS (.v2-avatar > .av-fx.<cls>).
+export const AVATAR_FX = {
+  mustache: '<svg class="av-fx av-stache" viewBox="0 0 100 40" aria-hidden="true"><path d="M50 14c-6-10-20-12-30-4-6 5-12 6-18 3 4 12 18 20 32 13 7-3 12-7 16-12 4 5 9 9 16 12 14 7 28-1 32-13-6 3-12 2-18-3-10-8-24-6-30 4z"/></svg>',
+};
+/** Tests only (avatar-fx.test.js): set the badges list without the server. */
+export const setBadgesForTest = (b) => { badges = b || {}; };
+const fxKeys = (playerId) => (playerId ? Object.keys(AVATAR_FX).filter((k) => badges[playerId]?.[k]) : []);
+/** The overlay markup for a member's avatar ('' when none). */
+export const avatarFx = (playerId) => fxKeys(playerId).map((k) => AVATAR_FX[k]).join('');
+export function paintAvatarFx(root = document) {
+  for (const a of root.querySelectorAll('.v2-avatar[data-pid]')) {
+    const keys = fxKeys(a.dataset.pid).join(',');
+    if ((a.dataset.fx || '') === keys) continue;
+    for (const o of a.querySelectorAll(':scope > .av-fx')) o.remove();
+    if (keys) a.insertAdjacentHTML('beforeend', avatarFx(a.dataset.pid));
+    a.dataset.fx = keys;
+    a.classList.toggle('has-fx', !!keys);
+  }
 }
 
 // ---- Numbers: the card's Normal values scaled by the tier, clamped by the hard limit ----
@@ -375,6 +403,39 @@ function showIncoming() {
   apiPost('/api/effects/seen', { ids: fresh.map((p) => p.id) }).catch(() => {});
 }
 
+// What Discord forbids on the server owner (effects_spread, 2026-10-03): the play is refused before it
+// is spent, with this text (it does not name the owner, Nathan).
+export const OWNER_FORBIDDEN = { nickname: 'rename', title: 'rename', sticker: 'rename', crown: 'rename', body_swap: 'rename', timeout: 'time out' };
+export const ownerBlockText = (primitive) => (OWNER_FORBIDDEN[primitive] ? `Discord does not let anyone ${OWNER_FORBIDDEN[primitive]} the server owner, so this card cannot be played.` : '');
+
+/** A clear popup in the middle of the screen with an OK button (one at a time). */
+export function fxPopup(text, title = 'This card cannot be played') {
+  document.querySelector('.fx-popup')?.remove();
+  const box = document.createElement('div');
+  box.className = 'fx-popup';
+  box.setAttribute('role', 'alertdialog');
+  const esc = deps?.esc || ((s) => String(s));
+  box.innerHTML = `<div class="fx-popup-card"><b>${esc(title)}</b><p>${esc(text)}</p><button class="v2-btn gold">OK</button></div>`;
+  box.querySelector('button').addEventListener('click', () => box.remove());
+  box.addEventListener('click', (e) => { if (e.target === box) box.remove(); });
+  document.body.appendChild(box);
+  return box;
+}
+
+/** A play the bot could not do in Discord was refunded (effects_spread.sql): tell the sender once. */
+const refundShown = new Set();
+export function refundText(r) {
+  const why = r.reason === 'not_moderatable' ? 'Discord did not let the bot time out' : 'Discord did not let the bot rename';
+  return `${why} ${r.target}, so your ${r.card?.name || 'card'} did nothing. The play is refunded: the card is ready again, and it does not count today.`;
+}
+function showRefunds() {
+  const fresh = (state.refunds || []).filter((r) => !refundShown.has(r.id));
+  if (!fresh.length) return;
+  for (const r of fresh) refundShown.add(r.id);
+  fxPopup(fresh.map(refundText).join(' '), 'Play refunded');
+  deps.apiPost('/api/effects/refunds/seen', { ids: fresh.map((r) => r.id) }).catch(() => {});
+}
+
 // Card art bursts over the screen (confetti + gift wrap).
 function confetti(img) {
   const layer = document.createElement('div');
@@ -417,8 +478,9 @@ export const effectReadyIn = (card) => readyIn(card);
 export const EFFECT_KIND = { label: KIND_LABEL, icon: KIND_ICON };
 export const effectError = (code) => errText(code, state.caps) || 'That did not work. Try again.';
 /** Play a card on a member. Returns the server result; refreshes cooldowns + effects. */
-export async function playCard(card, targetId) {
-  const r = await deps.apiPost('/api/effects/play', { cardId: card.id, targetId }).catch(() => ({ ok: false }));
+export async function playCard(card, targetId, choice = null) {
+  const body = choice == null ? { cardId: card.id, targetId } : { cardId: card.id, targetId, choice };
+  const r = await deps.apiPost('/api/effects/play', body).catch(() => ({ ok: false }));
   if (r?.ok) {
     deps.status?.('playing', { c: [Number(card.id)].filter(Boolean), t: card.effect?.name || card.name }); // my Live in voice tile
     deps.SFX?.play?.(r.kind === 'prank' ? 'rare' : 'reveal'); await refreshEffects();

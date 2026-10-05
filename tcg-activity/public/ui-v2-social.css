@@ -238,6 +238,24 @@ body.ui-v2.fx-fog :is(.v2-cap, .mr-newtag) { visibility: hidden; }
 /* Batch 3 pranks (effects_batch3.sql). */
 .spot-card { position: relative; }
 .fx-stache { position: absolute; left: 22%; right: 22%; top: 38%; width: 56%; fill: #1b120c; filter: drop-shadow(0 1px 1px rgba(255,255,255,.35)); pointer-events: none; }
+/* THE AVATAR STANDARD (effects_spread): every avatar effect is large and on every avatar (effects-ui.js AVATAR_FX).
+   Shared: on top, no clicks, a slow wobble so other members notice it at once. The mustache: 88% wide, a white
+   outline so it shows on a dark picture. */
+body.ui-v2 .v2-avatar > .av-fx { position: absolute; z-index: 2; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.65)); transform-origin: 50% 40%; animation: avFx 2.6s ease-in-out infinite; }
+body.ui-v2 .v2-avatar > .av-stache { left: 6%; top: 49%; width: 88%; height: auto; fill: #2a1709; stroke: #fff; stroke-width: 3; paint-order: stroke; }
+body.ui-v2 .v2-avatar.xs > .av-stache { stroke-width: 5; }
+@keyframes avFx { 0%, 100% { transform: rotate(0) scale(1); } 50% { transform: rotate(-5deg) scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { body.ui-v2 .v2-avatar > .av-fx { animation: none; } }
+/* The owner popup and the refund popup (effects_spread): a clear box in the middle, one OK button. */
+.fx-popup { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; background: rgba(5, 7, 14, .62); }
+.fx-popup-card { max-width: min(420px, 90vw); padding: 18px 20px; border-radius: 14px; background: var(--bg-raised, #171a26); border: 1px solid var(--gold, #f4b73c); box-shadow: 0 10px 40px rgba(0,0,0,.6); display: grid; gap: 10px; text-align: center; }
+.fx-popup-card b { font-size: 1.05em; color: var(--gold, #f4b73c); }
+.fx-popup-card p { margin: 0; line-height: 1.4; }
+.fx-popup-card .v2-btn { justify-self: center; min-width: 96px; }
+/* The poll pick (effects_spread): the sender picks one preset question. */
+body.ui-v2 .fx-polls { display: grid; gap: 4px; margin-top: 6px; }
+body.ui-v2 .fx-poll { text-align: left; padding: 5px 9px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: inherit; font: inherit; font-size: .86em; cursor: pointer; }
+body.ui-v2 .fx-poll.on { border-color: var(--gold, #f4b73c); background: rgba(244, 183, 60, .14); }
 #stage.fx-jinx { filter: hue-rotate(250deg) saturate(.6) brightness(.8) contrast(1.2); transform: rotate(180deg); transition: transform .8s ease; }
 .fx-fakegold, .fx-photobomb { position: absolute; inset: 0; z-index: 60; display: grid; place-items: center; pointer-events: none; }
 .fx-fakegold { background: radial-gradient(circle, rgba(255, 215, 110, .95), rgba(255, 170, 40, .35) 45%, transparent 70%); animation: fxFake 2.6s ease forwards; }

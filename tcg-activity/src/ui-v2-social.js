@@ -9,7 +9,7 @@ import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
 import { isPhone, isPort, isLand } from './mobile.js';
 import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v2-hall.js';
-import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
+import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable, ownerBlockText, fxPopup } from './effects-ui.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -687,7 +687,22 @@ async function resolve(path, body, repaint = paintTrade) {
 
 
 // ---- Boons & Pranks (design 16) -------------------------------------------------------------
-const fx = { pick: null, filter: 'all', page: 0, onTarget: [], recent: [], msg: '' };
+const fx = { pick: null, filter: 'all', page: 0, onTarget: [], recent: [], msg: '', choice: null };
+// A poll card's preset questions (effects_spread, Nathan 2026-10-03): the sender picks one, no free text.
+export const polls = (c) => (Array.isArray(c?.effect?.options?.polls) ? c.effect.options.polls : []);
+export function pollPickHTML(c, toName) {
+  const list = polls(c);
+  if (!list.length) return '';
+  const esc = ctx().esc;
+  return `<div class="fx-polls" id="fxPolls"><span class="side-h">Pick a question</span>${list.map((p, i) => `<button class="fx-poll${fx.choice === i ? ' on' : ''}" data-q="${i}">${esc(String(p.question || '').split('{name}').join(toName))}</button>`).join('')}</div>`;
+}
+// The sender picked a card Discord cannot do on the owner, with the owner as the target: say it at once.
+function ownerCheck() {
+  const st = effectState();
+  if (!fx.pick || !tr.to || !(st.immune || []).includes(String(tr.to.id))) return;
+  const t = ownerBlockText(fx.pick.effect?.primitive);
+  if (t) fxPopup(t);
+}
 const pretty = (p) => String(p || '').split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 const kindOf = (c) => effectScaled(c).kind || 'neutral';
 
@@ -713,7 +728,7 @@ function fxCards() {
 
 // What happened to a play, in plain words for the sender (Nathan, 2026-10-03: "make the results
 // clearer"). The outcomes of play_card_effect: applied, blocked, reflected, decoyed, redirected, delayed.
-const OUTCOME_LABEL = { blocked: 'Blocked', reflected: 'Reflected', decoyed: 'Decoyed', redirected: 'Redirected', delayed: 'Delayed 1 h' };
+const OUTCOME_LABEL = { blocked: 'Blocked', reflected: 'Reflected', decoyed: 'Decoyed', redirected: 'Redirected', delayed: 'Delayed 1 h', refunded: 'Refunded' };
 function resultText(r, to, voice) {
   const other = r.target && String(r.target) !== String(to.id) ? (tr.members.find((m) => String(m.id) === String(r.target))?.name || 'another member') : null;
   switch (r.outcome) {
@@ -739,12 +754,12 @@ function paintEffects() {
   // The same counts play_card_effect uses (pair_per_day by aimed_at, prank_recv_per_day by target).
   const caps = st.caps || {};
   const pickKind = c ? kindOf(c) : null;
-  const discordPick = !!c && ['discord', 'voice'].includes(st.primitives?.[c.effect?.primitive]?.channel);
   const blockOf = (p) => {
     if (!p) return '';
     if (caps.pair_per_day && (st.pairs?.[String(p.id)] || 0) >= caps.pair_per_day) return `You played ${caps.pair_per_day} cards on ${p.name} today.`;
     if (pickKind === 'prank' && caps.prank_recv_per_day && (st.pranked?.[String(p.id)] || 0) >= caps.prank_recv_per_day) return `${p.name} got ${caps.prank_recv_per_day} pranks today.`;
-    if (discordPick && (st.immune || []).includes(String(p.id))) return `Discord cannot change the server owner: pick an in-game card for ${p.name}.`;
+    // The owner is a target like anyone; only what Discord forbids on them is blocked (no name in the text).
+    if (c && (st.immune || []).includes(String(p.id)) && ownerBlockText(c.effect?.primitive)) return ownerBlockText(c.effect.primitive);
     return '';
   };
   const resetIn = st.dayEnds ? Math.max(0, (new Date(st.dayEnds) - Date.now()) / 1000) : 0;
@@ -761,7 +776,7 @@ function paintEffects() {
           <div class="tr-info"><span class="fx-tags"><span class="fx-kind k-${k}">${EFFECT_KIND.icon[k] || ''} ${esc((EFFECT_KIND.label[k] || k).toUpperCase())}</span>
             <span class="fx-state ${ready ? 'ok' : ''}">${!sc.enabled ? 'Unlocks soon' : wait > 0 ? `Ready in ${fmtDur(wait)}` : '● Ready'}</span></span>
             <h3>${esc(c.effect.name || pretty(c.effect.primitive))}</h3>
-            <p class="fx-desc">${esc(c.effect.desc || '')}</p>
+            <p class="fx-desc">${esc(c.effect.desc || '')}</p>${pollPickHTML(c, toName)}
             <span class="tr-chips">${sc.dur ? `<i>⏱ ${fmtDur(sc.dur)}</i>` : ''}<i>↻ ${fmtDur(sc.cooldownH * 3600)} cooldown</i>${sc.amount != null ? `<i>✦ ${sc.amount}</i>` : ''}</span></div></div>
         <span class="tr-swap">→</span>
         <div class="tr-side right tr-to"><div class="tr-info"><span class="tr-who">To</span><h3>${esc(toName)}</h3></div>${avatarHTML(tr.to?.id, toName, 'huge')}</div>
@@ -770,7 +785,7 @@ function paintEffects() {
         <span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg || capMsg || toBlock)}</span>
         <button class="v2-btn" id="fxClear">↺ Clear</button>
         ${st.canTest ? `<button class="v2-btn fx-test" id="fxTest" title="Try it on yourself: no post, no cooldown">🧪 Test on me</button>` : ''}
-        <button class="v2-btn fx-play k-${k}" id="fxPlay" ${ready && tr.to && (left == null || left > 0) && !toBlock ? '' : 'disabled'}>✨ Play ${esc((EFFECT_KIND.label[k] || '').toLowerCase())}</button></div>`;
+        <button class="v2-btn fx-play k-${k}" id="fxPlay" ${ready && tr.to && (left == null || left > 0) && !toBlock && !(polls(c).length && fx.choice == null) ? '' : 'disabled'}>✨ Play ${esc((EFFECT_KIND.label[k] || '').toLowerCase())}</button></div>`;
   } else {
     composer = `<div class="fx-empty"><b>Pick an effect card</b></div>
       <div class="tr-foot"><span class="side-h fx-on">On ${esc(toName)}</span>${fx.onTarget.length ? fx.onTarget.map((e) => `<span class="f-chip">${esc(pretty(e.primitive))}</span>`).join('') : '<span class="dim">Nothing active</span>'}<span class="grow"></span><span class="tr-msg" id="fxMsg">${esc(fx.msg || capMsg)}</span></div>`;
@@ -809,7 +824,7 @@ function paintEffects() {
     </aside>
   </div>`;
 
-  paintCards(el('fxGrid'), el('fxPager'), cards, fx, (card) => { fx.pick = card; fx.msg = ''; paintEffects(); }, fx.pick?.id);
+  paintCards(el('fxGrid'), el('fxPager'), cards, fx, (card) => { fx.pick = card; fx.msg = ''; fx.choice = null; paintEffects(); ownerCheck(); }, fx.pick?.id);
   // Each effect card shows its kind above it and its cooldown on it.
   el('fxGrid').querySelectorAll('.v2-cell').forEach((n) => {
     const card = cards[Number(n.dataset.idx)];
@@ -824,10 +839,12 @@ function paintEffects() {
   el('trMembers').onclick = async (e) => {
     const b = e.target.closest('.tr-mem'); if (!b) return;
     tr.to = tr.members.find((p) => p.id === b.dataset.id) || tr.to; fx.msg = '';
+    ownerCheck();
     try { fx.onTarget = (await ctx().api(`/api/effects/on?id=${encodeURIComponent(tr.to.id)}`)).active || []; } catch { fx.onTarget = []; }
     paintEffects();
   };
-  el('fxClear')?.addEventListener('click', () => { fx.pick = null; fx.msg = ''; paintEffects(); });
+  el('fxClear')?.addEventListener('click', () => { fx.pick = null; fx.msg = ''; fx.choice = null; paintEffects(); });
+  el('fxPolls')?.addEventListener('click', (e) => { const q = e.target.closest('[data-q]'); if (!q) return; fx.choice = Number(q.dataset.q); paintEffects(); });
   el('fxTest')?.addEventListener('click', async () => {
     const r = await testCard(fx.pick);
     fx.msg = r?.ok ? (r.primitive === 'cleanse' ? `Test: removed ${r.removed || 0} prank${r.removed === 1 ? '' : 's'} from you` : `Test: ${pretty(r.primitive)} is on you${r.duration_s ? ` for ${fmtDur(r.duration_s)}` : ''}`) : (r?.error === 'not_testable' ? 'This effect cannot be tested on yourself.' : effectError(r?.error));
@@ -837,9 +854,10 @@ function paintEffects() {
   el('fxPlay')?.addEventListener('click', async () => {
     const btn = el('fxPlay'); btn.disabled = true;
     const voice = effectState().primitives?.[fx.pick?.effect?.primitive]?.channel === 'voice';
-    const r = await playCard(fx.pick, tr.to.id);
+    const r = await playCard(fx.pick, tr.to.id, polls(fx.pick).length ? fx.choice : null);
+    if (r?.error === 'owner_forbidden') fxPopup(ownerBlockText(r.primitive) || effectError(r.error));
     fx.msg = r?.ok ? resultText(r, tr.to, voice) : effectError(r?.error);
-    if (r?.ok) fx.pick = null;
+    if (r?.ok) { fx.pick = null; fx.choice = null; }
     await loadFx();
     paintEffects();
   });
