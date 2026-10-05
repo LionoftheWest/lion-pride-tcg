@@ -166,12 +166,14 @@ Each screen spec names its model.
 - JavaScript never sets the position or the size of an element from another element. It never removes a node to fit. (G-020, G-022)
 
 ### 3.6 Home hero carousel (D-14, D-45)
-- The Home hero is a carousel with 4 slides: Hunt, Dungeon, Gauntlet and Events. A slide shows only when its mode is on. (D-45)
+- The Home hero is a carousel with 4 slides: Hunt, Dungeon, Gauntlet and Events. A slide shows only when its mode is on. The Events slide stays hidden until the events and daily content exists (UI-62). (D-45, D-51)
 - The first slide is the one that needs the member most: a live boss first. When the Hunt rests, the next active mode is first. (D-14, D-45, G-024)
 - The carousel never moves by itself. The member changes the slide with the dots, a swipe or the arrow buttons (44 px). A tap on a slide opens its mode. (D-45)
-- A slide with news shows the Dot, for example a Dungeon run not used today. (D-45)
+- A slide with news shows the Dot, for example a Dungeon run not used today. The Dot sits on that slide's dot in the dots row, so it shows from any slide. (D-45, D-55)
 - Every slide follows the Home notes: the boss fully visible, no overlap, no cut text, everything above the dock.
-- The Hunt slide shows no Top Hunters list. One line under the hero shows the top hunter, for example "Top hunter: Blade · 6,075". A tap on it opens the Leaderboard window on its Hunt tab. (D-48, D-44)
+- The Hunt slide shows no Top Hunters list. One line under the hero shows the top hunter, for example "Top hunter: Blade · 6,075". A tap on it opens the Leaderboard window on its Hunt tab. The line shows while the boss rests and during a live fight, as a button with a frame on every class. (D-48, D-44, D-52)
+- The 3D boss keeps today's camera and framing. (D-54)
+- Phones show the boss stats row (Your damage, Boss HP, Tier) as the larger classes do. Live in voice lists the other members first, then you. (D-55)
 
 ## 4. Tokens
 ### 4.1 Token rules
@@ -398,7 +400,7 @@ Exactly 6 named layers. (G-049)
 | Search Field | icon, clear, 150 ms debounce | 16 px text on touch | `.v2-search` | `.ginput`, 8 placeholders | G-062, G-107 |
 | Member Picker | chip row, Find, suggestions | Same | `#trMembers` with `.sg-list` | `#effectPick` list | G-062 |
 | Select, Stepper, Switch, Textarea, Selected mark | one each. The Stepper shows its limits | Same | `.v2-select`, `.sh-step`, `.ps-sw`, `.rp-text`, squad `.picked` | Hall `−/＋`, `.pts-add`, plain `select`, `.sel`, `.hl-check`, `.in-spot` | G-063, G-064 |
-| Pager | "1 / 3" label, labelled arrows, 40 px swipe, arrow keys. Always centered under its grid (D-36) | Same | Collection pager | 5 pagers | G-067, G-106 |
+| Pager | "1 / 3" label, labelled arrows (44 px on touch classes, D-53), 40 px swipe, arrow keys. Always centered under its grid (D-36) | Same | Collection pager | 5 pagers | G-067, G-106 |
 | Progress | linear, segmented, HP (card, boss, squad) | Heights 4, 8, 12 px | Hunt boss HP bar | About 22 bars | G-068 |
 | Countdown | live, static | Same | `cdSpan` | `.sh-left`, `.dg-left`, `.hl-left`, `.dl-reset` | G-146 |
 | Avatar | xs 20, sm 28, md 38, lg 56, xl 96. Frame, live ring | Same | `avatarHTML` | About 14 overrides | G-070 |
@@ -934,6 +936,11 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-48 | Top Hunters on Home | One line under the hero ("Top hunter: name · damage") that opens the Leaderboard window on the Hunt tab; no list over the boss (Nathan, review-3: "Agreed") |
 | D-49 | Sub-tabs fit every phone | Each tab is as wide as its content and the row fills the width; it fits on every phone width; a name stays on one line and only shrinks, never wraps (Nathan, 2026-10-05, UI-02 review-4: "Yes, we want the tabs to fit regardless of phone screen"; "it should never wrap to two lines, always stays one line") |
 | D-50 | One icon, one meaning | Achievements = `award` ("Yes Medal is fine"); Trade Hall = `landmark`, because `house` is the Home dock icon ("Agreed"); Boons & pranks gets its own icon, `party-popper`, because `sparkles` is the Arcane element ("Different icon") (Nathan, 2026-10-05, UI-02 review-4) |
+| D-51 | Events slide hidden | The Events slide stays hidden until the events and daily content exists (Nathan, 2026-10-05, Home review-1: "Hide it for now until we get more of the events/daily things going on") |
+| D-52 | Top hunter line | Shows during a live fight too; a button with a frame on every class (Nathan, 2026-10-05: "Yes show it during live fight"; "Button with Frame") |
+| D-53 | Pager arrows | 44 px on touch classes (Nathan, 2026-10-05: "yes") |
+| D-54 | Boss camera | Keep the current 3D camera and framing (Nathan, 2026-10-05: "No keep it the way it is, I Wanted it to be the the way it is") |
+| D-55 | Home details | The news Dot on the dots row; the stats row on phones; other members first in Live in voice (Nathan, 2026-10-05: "Agreed") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
