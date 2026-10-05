@@ -101,4 +101,6 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 | UI-61 | Settings page | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Ping settings (from the bell) and Reduce effects (D-11) |
 | UI-62 | Events / Game Log page | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Patch notes and upcoming events. Content source to decide |
 | UI-63 | Trade window (Your cards / Their cards) | None | Spec approved (D-35, 2026-10-04) | Not built | Not migrated | New. Replaces the trade builder. UI-25 becomes the member picker + Pending. The request needs a server change first |
-| UI-64 | Squad picker window (Hunt, Dungeon, Gauntlet) | None | Spec approved (D-40, 2026-10-04) | Not built | Not migrated | New. Replaces the grids in UI-17, UI-46 and the Gauntlet lobby |
+| UI-64 | Card picker window (squads, trades, Trade Hall, wishlist, Spotlight, boons/pranks; D-42) | None | Spec approved (D-40, 2026-10-04) | Not built | Not migrated | New. Replaces the grids in UI-17, UI-46 and the Gauntlet lobby |
+| UI-65 | Member picker (Trades, Gift, Boons & pranks, profiles) | None | Spec approved (D-43, 2026-10-04) | Not built | Not migrated | New. UI-25 and UI-27 start with it |
+| UI-66 | Leaderboard window (Main, Hunt, Dungeon, Gauntlet tabs) | None | Spec approved (D-44, 2026-10-04) | Not built | Not migrated | New. Merges UI-21, UI-22, UI-51 and the Gauntlet board |
