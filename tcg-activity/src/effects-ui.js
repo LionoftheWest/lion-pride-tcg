@@ -30,7 +30,7 @@ const ERR = {
   no_target: 'That member has not played yet.',
   no_effect: 'This card has no effect yet.',
   slow_down: 'Slow down a little.',
-  owner_forbidden: 'Discord does not let anyone change the name of the server owner or time them out. Pick another card.',
+  owner_forbidden: 'Discord does not let anyone rename or time out the server owner, so this card cannot be played.',
   bad_choice: 'This poll question is not on the card. Pick another question.',
 };
 const errText = (code, caps) => {
