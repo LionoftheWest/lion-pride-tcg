@@ -48,3 +48,6 @@ card-studio/ml/*
 card-studio/q-*.mjs
 card-studio/_sim-*.mjs
 tcg-activity/preview/
+
+# --- The G3 UI check: build and run output (ci/ui-check) ---
+ci/ui-check/.out/
