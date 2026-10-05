@@ -448,6 +448,16 @@ Three window types, with one rule for each. (G-060, G-073)
 - An offer row (Trades, Trade Hall, bell) shows the member, the status, the GIVE and GET cards as Card/thumb (64 px minimum) and its action. A tap on the row opens the Offer view: both cards as Card/full side by side, the member, the status, the time and the actions. A tap on a card there opens its Card Detail. (D-30, G-099)
 - The list of open trades is named Pending, with Incoming and Sent sections. On `compact-port` and `compact-land`, a Pending button sits next to the Offer / Gift switch and opens Pending as a full-height sheet. The button shows the Dot when an incoming offer waits. On `medium` and `expanded`, Pending is the side panel. (D-32, 3.4)
 
+### 6.5a Squads (D-40)
+The Hunt, the Dungeon, the Gauntlet and later modes pick a squad the same way.
+- The mode's main view shows the squad slots (5 for the Dungeon, 8 for the Hunt) and no card grid. With no squad, it shows **Select your squad**. With a squad, it shows the cards in their slots, the Start action (**Start run**, **Start raid**) and **Edit**. The main view is read-only.
+- **Select your squad** and **Edit** open the Squad picker window: the full card grid with the toolbar (search, Filters, D-39), **Auto-pick**, and the pager under the grid (D-36).
+- A slot row at the top of the picker shows the chosen cards in pick order, each with an × to remove it.
+- A tap on a card in the grid selects it and shows its number (1, 2, 3 …). A tap on a numbered card removes it. When a card is removed, the cards after it move up one number.
+- The magnifier on each card opens its Card Detail. A tap anywhere else on the card selects it.
+- A status bar shows the live checks, for example "3 / 5 cards · 9 / 12 points · an attacker · today's rule". Cards that break a rule are greyed out. **Confirm** works when the squad is valid. A short Hunt squad shows the short-squad warning at Confirm, as today.
+- After the first Hunt fight of the day, **Edit** shows locked, with the reason "Squad locked until tomorrow".
+
 ### 6.5b Trades (D-35)
 A trade is always 1 card for 1 card. Auctions in the Trade Hall have their own flow.
 - The Trades tab opens the member picker: search, recent and frequent trade partners, and the Pending button (D-32).
@@ -890,6 +900,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-38 | Card Detail | Opens only on a tap, as a window (dialog on larger classes, full sheet on phones). No card panel beside the grid on any screen; the grid uses the full width (Nathan, 2026-10-04: "I want the card information to pull up when they click a card, not have it be open automatically … on all views, we can have as much grid dedicated to cards") |
 | D-33 | Can ascend | A "Can ascend" filter with its count, the Dot on the Cards tab, and the tab opens Collection with the filter on while the Dot shows (Nathan, 2026-10-04: "a filter … 'Can be ascended' … so that people don't have to scroll around … and can clear that notification better"; placement "Yes") |
 | D-39 | Filters panel | Search box always visible beside a Filters button with the active count; the button opens a panel on top of the view with every other filter, Confirm and Clear all; the same on every card grid (Nathan, 2026-10-04: "a collapseable window … a tab you click/tap and then it expands on TOP of the view … a Confirm button"; "the search box should always be next to the filter box regardless"; Clear all, count, every grid: "Yes") |
+| D-40 | Squad picker | Main view = slots + Select your squad / Start / Edit, read-only. The picker window = full grid, toolbar, Auto-pick, slot row with ×, numbered selection, tap again to remove, magnifier for Card Detail, live checks, Confirm; Hunt lock as today (Nathan, 2026-10-04: "that area become the 5 slots and a button under saying Select your Squad … opens up a pop up window with the same full grid … Confirm … Start Raid or Start Run … an Edit button"; "if they want to edit their squad it should be in the pop up … we do need a way for them to easily unselect cards"; 2-5 "Agreed") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
