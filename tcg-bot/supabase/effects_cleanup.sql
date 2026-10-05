@@ -1,5 +1,5 @@
 -- Effects + abilities cleanup, batch 1 (2026-09-29).
--- 1. rampage ("x% chance to strike twice", on Heero's Meowscarada + Lazypie's Samus) was
+-- 1. rampage ("x% chance to strike twice", on Heero's Meowscarada + Lazypie's Zero Suit Samus) was
 --    shown on the cards but hunt_attack never read it. Now: a second strike without the
 --    crit / block of the first.
 -- 2. Three boons that were stored but never used now work:
