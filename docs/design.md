@@ -479,6 +479,7 @@ Three window types, with one rule for each. (G-060, G-073)
 ### 6.5a Squads (D-40)
 The Hunt, the Dungeon, the Gauntlet and later modes pick a squad the same way.
 - The mode's main view shows the squad slots (5 for the Dungeon, 8 for the Hunt) and no card grid. With no squad, it shows **Select your squad**. With a squad, it shows the cards in their slots, the Start action (**Start run**, **Start raid**) and **Edit**. The main view is read-only.
+- In the Hunt, the boss stage fills the content area like the Home Hunt slide (UI-04): the whole boss, name, Tier chip, HP bar, countdown and the Top 3 board (D-58). The squad (8 slots, Squad Power, the main button) is one strip at the bottom of the content area, above the dock. (D-61)
 - **Select your squad** and **Edit** open the Squad picker window: the full card grid with the toolbar (search, Filters, D-39), **Auto-pick**, and the pager under the grid (D-36).
 - A slot row at the top of the picker shows the chosen cards in pick order, each with an × to remove it.
 - A tap on a card in the grid selects it and shows its number (1, 2, 3 …). A tap on a numbered card removes it. When a card is removed, the cards after it move up one number.
@@ -562,7 +563,7 @@ Use a fixed set of card sizes. Each size has one minimum width. (G-099)
 | Size | Use | Minimum width † | Shows |
 |---|---|---|---|
 | full | Card viewer, reveal | 240 px | Art, name, rarity |
-| tile | Card grids | 88 px | The card face only (D-29) |
+| tile | Card grids | 88 px | The card face only (D-29). Exception: `compact-land` Collection uses 55 x 77 px tiles so that 2 rows fit (D-60) |
 | squad | Hunt and Dungeon squads | 80 px | The card face only (D-29). In a fight, also its live state |
 | thumb | Pickers, offers | 64 px | The card face only (D-29) |
 | mini | Lists, feed rows | 44 px | Art |
@@ -948,6 +949,8 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-57 | Carousel slide control | Labels "Hunt · Dungeon · Gauntlet" on `expanded` and `medium`, dots on compact classes, the news Dot after the slide name (Nathan, 2026-10-05: "maybe on the bigger screens it has the whole label and then as it gets smaller/minimized it becomes dots?"; "Those all look good!") |
 | D-58 | Top 3 on every slide | Each carousel slide shows its mode's Top 3 in the text column, never over the art; one line on `compact-land`. Replaces the "no list" part of D-48 (Nathan, 2026-10-05: "show me what a leaderboard would look like over the event window, this would apply to dungeons/arenas/bosses as well"; "Those all look good!") |
 | D-59 | Live in voice window | A tap on "+N" opens a window with every member in voice (Nathan, 2026-10-05: "is it possible for us to click the '+4' and have it expand a window to show all the people?"; "Those all look good!") |
+| D-60 | Small tiles on compact-land | Collection on `compact-land` uses 55 x 77 px tiles (below the 88 px minimum) to keep 2 rows and 24 cards per page, with 12 px under the toolbar, 8 px between rows and 12 px above the pager (Nathan, 2026-10-05, UI-07 review-1 option a: "Approved"; review-2: "approved with the spacing now") |
+| D-61 | Hunt boss stage | The boss fills the Hunt view with its information; the squad is one strip at the bottom above the dock (Nathan, 2026-10-05, UI-17 review-1: "I want a bigger view of the boss, it should fill the whole screen with the boss information (health/leaderboard), almost like the home view looks like. And then the squad goes to the bottom towards the dock") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
