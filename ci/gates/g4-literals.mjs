@@ -7,9 +7,12 @@
 //          z      every z-index / zIndex value that is not a var(--z-*) token
 //          mland  every "m-land" selector or class name      mport  every "m-port"
 //   CSS block comments are not counted. Moving a literal from one file to another does not change a total.
+//   The skipped token files must be generated: G4 also fails when `node shared/build-tokens.mjs --check` fails
+//   (a token is missing or invalid, or a generated file is stale or changed by hand). Otherwise a literal could hide there.
 //   node ci/gates/g4-literals.mjs          env: BASE_SHA, HEAD_SHA (defaults: origin/main, HEAD)
 import { pathToFileURL } from 'node:url';
 import { isLiteralFile, git, range, summary } from './lib.mjs';
+import { stale } from '../../shared/build-tokens.mjs';
 
 export const UNITS = ['color', 'px', 'z', 'mland', 'mport'];
 const RE = {
@@ -62,9 +65,15 @@ export function g4(baseCounts, headCounts) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { base, head } = range();
   const r = g4(countAt(base), countAt(head));
-  let md = `### G4 Literal counter: ${r.ok ? 'PASS' : 'FAIL'}\n\nBase \`${base.slice(0, 7)}\` (merge base with main), head \`${git('rev-parse', '--short', head).trim()}\`. Scope: ci/gates/scope.json.\n\n| Unit | Base | Head | Change |\n|---|---|---|---|\n`;
+  let tokens;   // the token files (design.md 4.1): [] when every generated file is current
+  try { tokens = stale().map((x) => `\`${x.path}\`: ${x.reason}`); } catch (e) { tokens = [e.message]; }
+  const ok = r.ok && !tokens.length;
+  let md = `### G4 Literal counter: ${ok ? 'PASS' : 'FAIL'}\n\nBase \`${base.slice(0, 7)}\` (merge base with main), head \`${git('rev-parse', '--short', head).trim()}\`. Scope: ci/gates/scope.json.\n\n| Unit | Base | Head | Change |\n|---|---|---|---|\n`;
   md += r.rows.map((x) => `| ${x.unit} | ${x.base} | ${x.head} | ${x.delta > 0 ? `**+${x.delta}**` : x.delta} |`).join('\n') + '\n';
   for (const x of r.rises) md += `\nFAIL: \`${x.unit}\` rose. Files with more:\n${x.files.map((f) => `- \`${f.p}\` +${f.d}`).join('\n')}\nUse a token (design.md section 4) instead of a new literal.\n`;
+  md += tokens.length
+    ? `\nFAIL: the token files. Change shared/tokens.json, run \`node shared/build-tokens.mjs\`, and commit the result:\n${tokens.map((t) => `- ${t}`).join('\n')}\n`
+    : '\nToken files: PASS (`node shared/build-tokens.mjs --check`: every generated file is current).\n';
   summary(md);
-  process.exit(r.ok ? 0 : 1);
+  process.exit(ok ? 0 : 1);
 }

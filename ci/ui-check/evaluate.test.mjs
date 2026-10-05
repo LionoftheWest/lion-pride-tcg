@@ -81,6 +81,7 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
   assert.deepEqual(plan(new Set(['UI-12'])).screens, ['achievements', 'achievements-detail']);
   assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
+  assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');
   assert.deepEqual(plan(new Set(['UI-49'])), { screens: [], uncovered: ['UI-49'] });
   assert.deepEqual(plan(new Set()).screens, []);
   assert.equal(plan(new Set(), { full: true }).screens.length, Object.keys(SCREENS).length);

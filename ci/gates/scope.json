@@ -1,5 +1,5 @@
 {
-  "_note": "The UI scope of gates G1 and G4 (docs/design.md 12.5). A file is in scope when it matches 'ui' and no 'notUi' pattern. G4 also skips 'tokenSource' (the one token source file and the files generated from it, design.md 4.1).",
+  "_note": "The UI scope of gates G1 and G4 (docs/design.md 12.5). A file is in scope when it matches 'ui' and no 'notUi' pattern. G4 also skips 'tokenSource' (the one token source file and the files generated from it, design.md 4.1). G4 also runs 'node shared/build-tokens.mjs --check', so a generated file cannot be changed by hand.",
   "ui": [
     "tcg-activity/public/**",
     "tcg-activity/src/**",
@@ -18,6 +18,9 @@
   "tokenSource": [
     "shared/tokens.json",
     "shared/tokens/**",
-    "tcg-activity/public/tokens.css"
+    "tcg-activity/public/tokens.css",
+    "tcg-activity/src/tokens.js",
+    "tcg-bot/src/tokens.ts",
+    "card-studio/gallery-deploy/public-gallery/tokens.css"
   ]
 }

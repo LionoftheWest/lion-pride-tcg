@@ -79,3 +79,64 @@ test('G4: a rise fails, an equal count or a drop passes, a move between files pa
   const r = g4(base, c({ 'a.css': { px: 10, color: 2, mland: 1 } }));
   assert.equal(r.ok, false); assert.equal(r.rises[0].unit, 'mland'); assert.equal(r.rises[0].files[0].p, 'a.css');
 });
+
+// ---- The token source (design.md 4.1): G4 runs `node shared/build-tokens.mjs --check` ----------------------------
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { load, validate, render, stale, flatten, REQUIRED, OUTPUTS, ROOT } from '../../shared/build-tokens.mjs';
+
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const tempRoot = (src) => {
+  const root = mkdtempSync(join(tmpdir(), 'tokens-'));
+  mkdirSync(join(root, 'shared'));
+  writeFileSync(join(root, 'shared', 'tokens.json'), JSON.stringify(src));
+  for (const [p, text] of Object.entries(render(src))) { mkdirSync(dirname(join(root, p)), { recursive: true }); writeFileSync(join(root, p), text); }
+  return root;
+};
+
+test('tokens: the source is valid and every generated file in the repository is current', () => {
+  validate(load());
+  assert.deepEqual(stale(), []);
+});
+
+test('tokens: a missing token, a missing table row, or a bad color fails', () => {
+  const src = load();
+  const a = clone(src); delete a.gold['gold-hi'];
+  assert.throws(() => validate(a), /missing token: gold-hi/);
+  const b = clone(src); delete b.rarity.promo;
+  assert.throws(() => validate(b), /missing rarity row: promo/);
+  const c = clone(src); c.surface['bg-base'].value = '#0a0a12';
+  assert.throws(() => validate(c), /bg-base.*uppercase hex/);
+  const d = clone(src); d.rarity.gold.color = '{no-such-token}';
+  assert.throws(() => validate(d), /unknown color reference/);
+});
+
+test('tokens: a generated file changed by hand, or missing, fails the check; CRLF does not', () => {
+  const src = load(); const root = tempRoot(src);
+  try {
+    assert.deepEqual(stale(root, src), []);
+    const css = join(root, OUTPUTS.activityCss);
+    writeFileSync(css, readFileSync(css, 'utf8').replace(/\n/g, '\r\n'));
+    assert.deepEqual(stale(root, src), [], 'core.autocrlf line endings are not a change');
+    writeFileSync(css, readFileSync(css, 'utf8').replace('--gold: #F4B73C;', '--gold: #F4B73D;'));
+    assert.deepEqual(stale(root, src).map((x) => x.path), [OUTPUTS.activityCss]);
+    rmSync(join(root, OUTPUTS.botTs));
+    assert.deepEqual(stale(root, src).map((x) => x.path).sort(), [OUTPUTS.activityCss, OUTPUTS.botTs].sort());
+    const changed = clone(src); changed.gold.gold.value = '#F4B73E';
+    assert.equal(stale(root, changed).length, 4, 'a source change makes every output stale');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('tokens: every required token is in the CSS, the JS and the TS output; the outputs are not counted by G4', () => {
+  const files = render(load());
+  const names = new Set(flatten(load()).map((t) => t.name));
+  for (const n of REQUIRED) {
+    assert.ok(names.has(n), n);
+    assert.match(files[OUTPUTS.activityCss], new RegExp(`\n  --${n}: `), `CSS --${n}`);
+    for (const m of [OUTPUTS.activityJs, OUTPUTS.botTs]) assert.ok(files[m].includes(`"${n}": `), `${m} ${n}`);
+  }
+  assert.match(files[OUTPUTS.activityCss], /--rarity-gold: var\(--gold\);/, 'Gold rarity = the brand gold (D-02)');
+  for (const p of Object.values(OUTPUTS)) assert.ok(!isLiteralFile(p), `${p} is in tokenSource`);
+  assert.ok(ROOT);
+});
