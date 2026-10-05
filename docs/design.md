@@ -536,6 +536,9 @@ Use a fixed set of card sizes. Each size has one minimum width. (G-099)
 - Use one Card Detail with fixed sections. Each context shows a named subset. (G-100)
 - The Card Detail is never open by default. It opens only when the member taps a card, as a window: a centered dialog on `medium` and `expanded`, a full sheet on `compact-port` and `compact-land`. No screen keeps a card panel beside the grid, so the grid uses the full width. (D-38)
 - The content area ends above the dock on every class. Nothing in a screen sits under the dock. **[CI]** (G-020, G-196)
+- Every card grid (Collection, both views of the Trade window, the Trade Hall) has one toolbar above the grid: the search box, always visible, and a **Filters** button beside it, in the same place on every class. Typing in the search box filters at once. (D-39)
+- The Filters button shows the number of active filters, for example "Filters (2)". A tap opens the Filters panel on top of the view. It holds every other filter: the All / Owned / Missing / Can ascend switch, rarity, type, element, game and sort. **Confirm** applies the choices and closes the panel. **Clear all** resets them. (D-39)
+- "Can ascend" shows only the cards that can ascend now, with their count. The Cards tab shows the Dot when any card can ascend. A tap on that tab, while the Dot shows, opens Collection with "Can ascend" already on. (D-33)
 - Use one Flip Card. Every reveal offers Reveal all and uses the same close rule. (G-101)
 
 ### 8.2 Images
@@ -885,6 +888,8 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-36 | Pager place | Always centered under its grid, on every screen (Nathan, 2026-10-04: "pager positions should be underneath the grid of cards always, wherever it is") |
 | D-37 | Sub-tab place | Always one row directly under the top bar on every class, the same place everywhere (Nathan, 2026-10-04: "I don't like the upright phones having their own bar … what can we do to have the same sub tab location regardless always in the same place?"; chose option A). The next design wave shows this layout on its own sheet at every class |
 | D-38 | Card Detail | Opens only on a tap, as a window (dialog on larger classes, full sheet on phones). No card panel beside the grid on any screen; the grid uses the full width (Nathan, 2026-10-04: "I want the card information to pull up when they click a card, not have it be open automatically … on all views, we can have as much grid dedicated to cards") |
+| D-33 | Can ascend | A "Can ascend" filter with its count, the Dot on the Cards tab, and the tab opens Collection with the filter on while the Dot shows (Nathan, 2026-10-04: "a filter … 'Can be ascended' … so that people don't have to scroll around … and can clear that notification better"; placement "Yes") |
+| D-39 | Filters panel | Search box always visible beside a Filters button with the active count; the button opens a panel on top of the view with every other filter, Confirm and Clear all; the same on every card grid (Nathan, 2026-10-04: "a collapseable window … a tab you click/tap and then it expands on TOP of the view … a Confirm button"; "the search box should always be next to the filter box regardless"; Clear all, count, every grid: "Yes") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
