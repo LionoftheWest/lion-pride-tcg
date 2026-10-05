@@ -9,6 +9,8 @@
  *     it shows no member name, avatar or member-specific data. The reviewed content hash is in
  *     scripts/member-data-images.json. A new or changed image fails until it is reviewed.
  *     (There is no OCR here: an unreviewed image always fails, so a screenshot cannot slip in.)
+ *     An image embedded in a text file (a base64 data:image URI, for example in a .pen design) is
+ *     a hit too: it cannot get this review. Save it as an image file instead.
  *
  * Run (from card-studio/):
  *   Local copy (preferred, no live cost):
@@ -146,6 +148,8 @@ async function main() {
     scanned++;
     buf.toString('utf8').split(/\r?\n/).forEach((line, i) => {
       for (const m of line.matchAll(/\d{15,21}/g)) if (ids.has(m[0])) hits.push({ f, line: i + 1, kind: 'id', word: m[0] });
+      // An image inside a text file (for example a .pen design or an HTML page) cannot get the image review.
+      if (/data:image\/(png|jpe?g|webp|gif|avif);base64,[A-Za-z0-9+/]{200}/.test(line)) hits.push({ f, line: i + 1, kind: 'embedded-image', word: 'data:image' });
       for (const m of line.toLowerCase().matchAll(/[0-9a-f]{32}/g)) if (avatars.has(m[0])) hits.push({ f, line: i + 1, kind: 'avatar', word: m[0] });
       const low = line.toLowerCase();
       let masked = null;
