@@ -8,7 +8,7 @@ const size = (png: Buffer): [number, number] => [png.readUInt32BE(16), png.readU
 const isPng = (png: Buffer): boolean => png.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
 
 test('a member with no picture and no pull today still renders a 1200x630 PNG', async () => {
-  const png = await renderPlayingCard({ name: 'blastninja718', line: 'was playing', live: false, avatar: null, tag: 'NO PULLS YET TODAY', frame: null });
+  const png = await renderPlayingCard({ name: 'brock718', line: 'was playing', live: false, avatar: null, tag: 'NO PULLS YET TODAY', frame: null });
   assert.ok(isPng(png));
   assert.deepEqual(size(png), [W, H]);
 });
