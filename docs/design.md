@@ -434,7 +434,7 @@ Three window types, with one rule for each. (G-060, G-073)
 
 ### 6.4 Top bar and the menu
 - The top bar has these controls, in this order, on every class except `tiny`: the logo, the Shards count, Shop, then the bell, Menu and the avatar at the right end. Each control is a `<button>` with an `aria-label`. (D-31, G-082)
-- The pack count shows only on the OPEN button. The top bar has no packs slot. (D-23)
+- The pack count shows only on the OPEN button. The top bar has no packs slot. With 0 packs, OPEN is greyed out and shows no badge, as today. (D-23)
 - Top-bar icons have no visible text label. Each icon keeps one meaning on every class. Its name is in `aria-label`. (D-24, G-082)
 - Menu opens a grid of places, each an icon with its name: Dailies, Leaderboard, FAQ, Feedback, Settings and Events. A new place gets a tile. It never gets a top-bar icon. (D-31)
 - The grid is a bottom sheet on `compact-port` and `compact-land`, and a panel under the Menu button on `medium` and `expanded`. The items and their order are the same on every class. (D-31, P1)
