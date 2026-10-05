@@ -7,16 +7,23 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/daily_cap_5.sql', import.meta.url)), 'utf8').replace(/notify pgrst[^\n]*\n/g, '');
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 
+// MUTATE=nocap|chatnocap node scripts/test-daily-cap.mjs   must FAIL.
+const MUT = mutation({
+  nocap: ['public.claim_daily(text,text)', 'greatest(cap - earned_today(p_player), 0)', '999'],
+  chatnocap: ['public.claim_daily_earn(text,date,integer,integer,integer)', 'amt := least(p_bonus, greatest(cap - earned_today(p_player_id), 0));', 'amt := p_bonus;'],
+});
 const A = '999999999999999941', B = '999999999999999942', X = '999999999999999943';
 const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; g int; d date; c1 bigint; c2 bigint; h bigint;
 begin
   ${process.argv.includes('--apply-migrations') ? 'execute $m$' + mig + '$m$;' : '-- the CURRENT functions (daily_cap_5.sql was replaced by the Shards dailies)'}
+  ${MUT}
   update settings set value = '1'::jsonb where key = 'pack_earn_multiplier';
   update settings set value = value || '{"enabled": true}' where key = 'dailies';
   perform set_config('tcg.skip_welcome', 'on', true);
@@ -34,8 +41,11 @@ begin
   perform claim_daily('${A}', 'voice');
   insert into trade_offers (from_id, to_id, offer_card_id, request_card_id, status, resolved_at) values ('${A}', '${X}', c1, c2, 'accepted', now());
   perform claim_daily('${A}', 'social');
-  h := spawn_hunt(3);
-  insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) select h, '${A}', id, d, 5 from cards order by id limit 8;
+  -- A private boss (spawn_hunt expires the live boss). The hunt daily counts the member's own committed
+  -- cards (hunt_card_hp), not hunt_hits (trade_ledger_raid_credit.sql): one fought card does it.
+  insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at)
+    values ('Test Boss', 'Normal', '[]', '[]', 5000, 5000, now() + interval '1 day') returning id into h;
+  insert into hunt_card_hp (hunt_id, player_id, card_id, hit_date, hp_remaining, max_hp, downed) values (h, '${A}', c1, d, 60, 60, false);
   r := claim_daily('${A}', 'hunt');
   -- At the limit a daily pays 0 packs and still its Shards (shards_dailies_gifts.sql, 2026-10-02).
   res := res || jsonb_build_object('case', 'chat first: 2 chat + 3 dailies = 5, the 6th (hunt) pays 0 packs + its Shards', 'ok',
@@ -48,7 +58,7 @@ begin
   perform claim_daily('${B}', 'voice');
   insert into trade_offers (from_id, to_id, offer_card_id, request_card_id, status, resolved_at) values ('${B}', '${X}', c1, c2, 'accepted', now());
   perform claim_daily('${B}', 'social');
-  insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) select h, '${B}', id, d, 5 from cards order by id limit 8;
+  insert into hunt_card_hp (hunt_id, player_id, card_id, hit_date, hp_remaining, max_hp, downed) values (h, '${B}', c1, d, 60, 60, false);
   perform claim_daily('${B}', 'hunt');
   insert into daily_activity (player_id, activity_date, message_count) values ('${B}', d, 25);
   g := claim_daily_earn('${B}', d, 1, 1, 25);

@@ -12,9 +12,14 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const filter = process.argv[2] || '';
 const tests = readdirSync(join(root, 'scripts')).filter((f) => /^test-.*\.mjs$/.test(f) && f !== 'test-all-local.mjs' && f.includes(filter)).sort();
 // Tests that need the migration file they check: the NEWEST file that defines the function.
+// The Hunt tests run on the CURRENT functions (combat_core.sql replaced hunt_attack / hunt_support; the older
+// files would put the pre-core versions back inside the test). prune_old_rows.sql is applied because the local
+// copy has no pg_cron jobs and no API-role revokes (the dump does not carry them); its function is the live one.
 const ARGS = {
-  'test-hunt-support.mjs': ['../tcg-bot/supabase/audit_fixes_2026_10_03.sql'],
+  'test-hunt-loop-caps.mjs': ['--live'],
+  'test-hunt-squad-done.mjs': ['live'],
   'test-hunt-schedule-mt.mjs': ['../tcg-bot/supabase/hunt_schedule_mt.sql'],
+  'test-prune-old-rows.mjs': ['../tcg-bot/supabase/prune_old_rows.sql'],
 };
 // One-time acceptance tests of a data conversion: they expect the state BEFORE it ran, so they fail
 // afterwards by design (on live too). Skipped, with the reason.

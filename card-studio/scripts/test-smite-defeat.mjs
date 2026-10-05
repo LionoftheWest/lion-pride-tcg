@@ -8,19 +8,28 @@
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
+import { GATE, mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = process.argv[2] ? readFileSync(process.argv[2], 'utf8').replace(/notify pgrst[^\n]*\n/g, '') : '';
 const P = '999999999999999971';
+// MUTATE=nodefeat|noguard node scripts/test-smite-defeat.mjs   must FAIL.
+const SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
+const MUT = mutation({
+  nodefeat: [SUP, "    if v_status = 'defeated' then\n      v_settle := settle_hunt(p_hunt);", '    if false then\n      v_settle := settle_hunt(p_hunt);'],
+  noguard: [SUP, "  if v_status <> 'active' or now() >= v_closes then return", '  if false then return'],
+});
 const body = String.raw`do $t$
 declare res jsonb := '[]'; h bigint; h2 bigint; sm bigint; r jsonb; r2 jsonb; r3 jsonb; ev jsonb; n int;
 begin
   ${mig ? `execute $m$${mig}$m$;` : '-- the live function'}
+  ${MUT}
   perform set_config('tcg.skip_welcome', 'on', true);
   select c.id into sm from cards c join subjects s on s.id = c.subject_id
     where s.ability->>'kind' = 'support' and s.ability->>'effect' = 'smite' order by c.id limit 1;
   insert into players (id, username) values ('${P}', 'tst smite');
   insert into player_cards (player_id, card_id, quantity) values ('${P}', sm, 1);
+  ${GATE(P)}
 
   -- A Smite that does NOT kill (a 1,000,000-HP boss): no 'defeat' row.
   insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at)
