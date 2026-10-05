@@ -14,16 +14,36 @@ These rules apply to every session in this repository. The global rules in
 
 ## UI freeze (Nathan, 2026-10-04)
 
-All new UI work in `tcg-activity/` is stopped until Nathan approves the UI standard
-(`docs/design.md`, in progress). The reason: each screen was built three times (desktop,
-portrait, landscape) with fixed pixels and ad-hoc values, so new screen sizes kept breaking
-(a tablet cut the sub-tabs to 87 px; the sub-tab bar covered the phone card sheet).
+All new UI BUILD work in `tcg-activity/` is stopped until the freeze exit criteria in
+`docs/design.md` section 12.9 are met. The UI standard `docs/design.md` is APPROVED (2026-10-04).
+Done: the standard, the register, the private design repo, the shell design (UI-00 approved).
+Open: the token source file on `main` (foundation build) and CI gates G1, G3, G4 required on `main`.
+The reason: each screen was built three times (desktop, portrait, landscape) with fixed pixels and
+ad-hoc values, so new screen sizes kept breaking.
 
-- Do not add a screen, a component, a restyle, or a layout change.
+- Do not add a screen, a component, a restyle, or a layout change in the code.
 - A fix for a defect that a member reported is allowed only when Nathan asks for it. Keep it
   to the smallest change. Do not add new `m-land` / `m-port` selectors, raw `z-index`
   numbers, or new color, size, or font literals.
 - Server, SQL, and bot work that does not change the UI is not frozen.
+
+## Design v2 work (read before any design or UI task)
+
+Every session on any account uses these files. Read them in this order:
+1. `docs/design.md`: the approved standard. Principles P0-P7. Nathan's decisions with his words are
+   in Appendix A (D-01 to D-48). `docs/ui-register.md`: every screen with its status.
+2. The private design repo `LionoftheWest/lion-pride-tcg-design` (local clone
+   `C:\Users\vaugh\lion-pride-tcg-design`). Never copy its files into this public repo.
+   - `DESIGN-V2-BRIEF.md`: the method for every design (base = the real capture, no redesign,
+     nothing new without Nathan, every change cites a rule, Opus), the checklist and the outputs.
+   - `FEEDBACK.md`: Nathan's notes for each screen. Apply every item for your screen ID.
+   - `CLAIMS.md`: claim a screen ID before you start. One session per ID. Pull first.
+   - `<ID>/current/`: the real captures (all states, 8 sizes) with exact strings (`.json`).
+   - `<ID>/approved/` and `approval.md`: approved designs. `<ID>/review-<k>/`: work in review.
+3. The 2026-10-04 audit: `C:\Users\vaugh\discord-ui-audit\` (`00-gap-register.md`, reports 01-07).
+
+Nathan reads on his phone in T3. Copy review folders to `ui-audit/designs/<ID>/` in this repo
+folder. Never commit `ui-audit/`: the repo is public, and a local pre-commit hook blocks it.
 
 ## Deploy and migrate automatically
 
