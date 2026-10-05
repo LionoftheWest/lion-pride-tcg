@@ -406,6 +406,7 @@ Exactly 6 named layers. (G-049)
 - The dock has 5 fixed places: Home, Collection, OPEN, Adventure, Community. (G-072)
 - Set the dock labels in one place. They never change at runtime. A dock button always opens the same place. (G-072)
 - Adventure opens its last tab. The badge shows on the tab with news, and the dock badge names that tab (D-22). (G-072)
+- Sub-tabs show no counts (for example no "37/50" on Achievements, no "12" on Bosses). A tab shows the Dot only when an action waits there, for example an achievement to claim. The Dot takes the place where the count was (D-27). (G-066)
 - The Leaderboard and the Shop are views that open from the top bar, each with a back control (D-12). (G-073)
 - One Leaderboard has one tab for each board. A mode screen shows a Top 3 that links to it (D-12). (G-075)
 - Hide a future mode until it exists. Do not show a "SOON" tab (D-13). (G-081)
@@ -850,6 +851,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-24 | Top-bar labels | No visible labels under the top-bar icons (Nathan, 2026-10-04: "No labels") |
 | D-25 | Top-bar menu | No overflow menu. Every top-bar icon stays visible (Nathan, 2026-10-04: "No menu, we keep the icons across the top bar") |
 | D-26 | Sound control | None (Nathan, 2026-10-04: "Sound is not an option"). The top bar list is Shards, Shop, Dailies, help, Report, bell, Leaderboard, avatar ("I would like the wrench icon as well up there") |
+| D-27 | Sub-tab counts | No counts on sub-tabs. The Achievements tab shows a Dot, in the place of the count, when an achievement can be claimed (Nathan, 2026-10-04: "remove the number of Achievements and the bosses … where the number is for the Achievement that is where the little notification can be for when an achievement can be redeemed") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
