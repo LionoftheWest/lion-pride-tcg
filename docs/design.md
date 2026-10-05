@@ -114,11 +114,12 @@ The shell is one CSS grid of named areas. No element uses the px size of another
 |---|---|---|---|---|
 | `safe` frame | Insets, top guess | Insets, both sides guess | Insets | Insets (0 on desktop) |
 | `top bar` | Logo, Shards, Shop, bell, Menu, avatar (D-31) | Slim | Full | Full |
-| `sub-tabs` | Own row under the top bar | In the top bar, minimum width | Own row | In the top bar, minimum width |
+| `sub-tabs` | Own row under the top bar (D-37) | Own row under the top bar, slim (D-37) | Own row under the top bar (D-37) | Own row under the top bar (D-37) |
 | `content` | 1 column | 2 columns | 2 columns | 3 columns |
 | `action rail` | Above the dock | Right edge | Bottom of the content | In the content |
 | `dock` | Full width, bottom | Slim, bottom (as today, P0) | Bottom, centered | Bottom, centered |
-- The sub-tab area has a minimum width equal to its content. Below that width, it takes its own row. Never cut a tab label. **[CI]** (G-018, G-065)
+- Sub-tabs are always one row directly under the top bar, left-aligned, on every class except `tiny`. The place never changes. On `compact-land` the row is slim (about 30 px). (D-37, G-018)
+- A view has at most 4 visible sub-tabs, so every label fits at 375 px. Never cut a tab label. **[CI]** (G-065)
 - Build each screen one time. It adapts by class through a short, named list of per-class changes. (G-019)
 - Do not add a new `m-land` or `m-port` selector. **[CI]** (G-019, G-182)
 - Size each component from its container with `@container`. Take type and space from the scales in section 4. (G-021)
@@ -361,7 +362,7 @@ Exactly 6 named layers. (G-049)
 | Button | primary, secondary, ghost, danger, boon, prank | md 44 px, sm 32 px. Hit area 44 px on touch | `.v2-btn` | `.link-btn`, `.lockin-btn`, `.enter-btn`, `.sh-go`, `.dg-start`, about 60 feature buttons | G-055, G-056, G-057, G-058 |
 | IconButton | sm 32, md 40 | Hit area 44 px on touch. Label required | `#topbar .iconbtn` | `.v2-icon`, `#viewer-close`, `#bossModalClose`, `.sh-x` | G-056, G-109 |
 | Icon | One SVG set: UI and 14 elements | 16, 20, 24 px, stroke 2 | `element-icons.js`, dock SVGs | 8 `svg()` helpers, emoji as icons | G-053 |
-| Tabs | Level 1 sub-tab strip, level 2 segmented | Strip takes its own row when it does not fit | `subtabs.js`, `.seg` | `.dg-tabs`, `.dg-seg`, `.lb-tab`, `.sh-nav`, `.sh-tabs` | G-065, G-018 |
+| Tabs | Level 1 sub-tab strip, level 2 segmented | Strip is always its own row under the top bar (D-37) | `subtabs.js`, `.seg` | `.dg-tabs`, `.dg-seg`, `.lb-tab`, `.sh-nav`, `.sh-tabs` | G-065, G-018 |
 | Chip | filter, status, rarity, element, effect kind, count | sm 22, md 28. Hit area 44 on touch | `.f-chip` | About 40 chip classes | G-066 |
 | Counter and Dot | count badge (99+ cap), dot | Same | `.dk-badge` | `.cnt`, `.navbadge`, `.nt-dot`, `.tab-dot` | G-066, G-093 |
 | Card | full, tile, squad, thumb, mini, slot, back, locked | Section 8.1 | `.v2-cell` | About 28 card renderers | G-099 |
@@ -880,6 +881,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-32 | Open trades list | Named "Pending" (Incoming, Sent). On phones a Pending button with the Dot opens it as a full sheet; on larger classes it is the side panel. The trophy in Community goes (Leaderboard lives in Menu) (Nathan, 2026-10-04: "Option A … its repeating Offer with another Offers … Yes I agree with Pending"; "get rid of the trophy in the community view") |
 | D-35 | Trade flow | Member picker, then the Trade window with Your cards (Offer, Gift) and Their cards (Request). Offer, request or full proposal, 1 for 1. The other party picks the return card for an offer or a request, then the first party accepts or rejects (Nathan, 2026-10-04: "the first page of this is to search for the individual … a new dedicated screen … two views … an Offering system … and then a Request system"; answers 1-5: "you request, they request, and then you accept their offer or reject it", "1 card for 1 card", full proposal "I do like that", Gift as an action "Agreed", Trade Hall separate "Yes") |
 | D-36 | Pager place | Always centered under its grid, on every screen (Nathan, 2026-10-04: "pager positions should be underneath the grid of cards always, wherever it is") |
+| D-37 | Sub-tab place | Always one row directly under the top bar on every class, the same place everywhere (Nathan, 2026-10-04: "I don't like the upright phones having their own bar … what can we do to have the same sub tab location regardless always in the same place?"; chose option A). The next design wave shows this layout on its own sheet at every class |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
