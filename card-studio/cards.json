@@ -69,7 +69,7 @@
     "effect": {
       "primitive": "reflect",
       "name": "Barrier",
-      "desc": "The next prank on the target bounces back to its sender.",
+      "desc": "The next prank sent to the target bounces back to its sender. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -116,7 +116,7 @@
     "effect": {
       "primitive": "ward",
       "name": "Shell Shield",
-      "desc": "The next prank on the target does nothing.",
+      "desc": "Blocks the next prank sent to the target. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -466,7 +466,7 @@
     "effect": {
       "primitive": "mustache",
       "name": "Grown-Up Stache",
-      "desc": "Draws a mustache on the target's spotlight cards for a day.",
+      "desc": "Draws a big mustache on the target's profile picture everywhere in the game, and on their showcase cards, for 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -593,7 +593,7 @@
     "effect": {
       "primitive": "mend",
       "name": "Hug It Out",
-      "desc": "The target's next hurt Hunt card heals 20 HP.",
+      "desc": "Heals 20 HP on the target's next hurt Hunt card.",
       "base": {
         "amount": 20
       },
@@ -677,7 +677,7 @@
     "effect": {
       "primitive": "vc_deafen",
       "name": "Lullaby",
-      "desc": "Deafens the target in voice for 30 seconds.",
+      "desc": "Deafens the target in voice for 30 seconds. If they are not in voice, it waits up to 48 hours.",
       "base": {
         "duration_s": 30
       },
@@ -722,7 +722,7 @@
     "effect": {
       "primitive": "heckle",
       "name": "Heckle",
-      "desc": "The bot replies once to their next chat message with a heckle.",
+      "desc": "The bot replies once to the target's next Discord message with a heckle from this card. Works within 48 hours.",
       "base": {
         "duration_s": 172800
       },
@@ -915,7 +915,7 @@
     "effect": {
       "primitive": "vc_mute",
       "name": "Out of Ammo",
-      "desc": "Mutes the target in voice for 30 seconds.",
+      "desc": "Mutes the target in voice for 30 seconds. If they are not in voice, it waits up to 48 hours.",
       "base": {
         "duration_s": 30
       },
@@ -961,7 +961,7 @@
     "effect": {
       "primitive": "lucky_pull",
       "name": "Random Pick",
-      "desc": "The first card of the target's next pack rolls at 2x the rare rates.",
+      "desc": "The first card of the target's next pack is twice as likely to be rare.",
       "base": {
         "amount": 2
       },
@@ -1108,7 +1108,7 @@
     "effect": {
       "primitive": "upside_down",
       "name": "Salute the Sun",
-      "desc": "Flips the target's collection into a yoga pose.",
+      "desc": "The target's game screen flips into a yoga pose for 80 seconds, from their next visit.",
       "base": {
         "duration_s": 80
       },
@@ -1269,11 +1269,11 @@
       "effect": "pierce"
     },
     "effect": {
-      "primitive": "vc_mute",
+      "primitive": "timeout",
       "name": "Speechless",
-      "desc": "Mutes the target in voice for 30 seconds.",
+      "desc": "Times the target out in Discord for 1 minute: no typing and no talking.",
       "base": {
-        "duration_s": 30
+        "duration_s": 60
       },
       "cooldown_h": 24
     }
@@ -1392,7 +1392,7 @@
     "effect": {
       "primitive": "photobomb",
       "name": "Twinning",
-      "desc": "This card photobombs the target's next pack.",
+      "desc": "This card photobombs the target's next pack opening. If that pack has a rare pull, its Discord post says \"photobombed by <you>\".",
       "cooldown_h": 12
     }
   },
@@ -1473,7 +1473,7 @@
     "effect": {
       "primitive": "decoy",
       "name": "Scale Model",
-      "desc": "The next prank on the target hits a cardboard cutout instead.",
+      "desc": "The next prank sent to the target hits a cardboard cutout instead. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -1530,7 +1530,7 @@
     "effect": {
       "primitive": "decoy",
       "name": "Dummy Bot",
-      "desc": "The next prank on the target hits a cardboard cutout instead.",
+      "desc": "The next prank sent to the target hits a robot dummy instead. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -1578,7 +1578,7 @@
     "effect": {
       "primitive": "redirect",
       "name": "Wrong Order",
-      "desc": "The next prank on the target goes to a random member instead.",
+      "desc": "The next prank sent to the target goes to a random member instead. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -1660,7 +1660,7 @@
     "effect": {
       "primitive": "reaction_storm",
       "name": "Last One Alive",
-      "desc": "The bot reacts 💀 to the target's next 5 messages.",
+      "desc": "The bot reacts 💀 to the target's next 5 Discord messages, within 1 hour.",
       "base": {
         "amount": 5,
         "duration_s": 3600
@@ -1707,7 +1707,7 @@
     "effect": {
       "primitive": "fake_gold",
       "name": "Maybe in Smash 6",
-      "desc": "The target's next pack flashes gold... then it doesn't.",
+      "desc": "The target's next pack flashes gold like a Gold pull, then shows the real cards.",
       "cooldown_h": 12
     }
   },
@@ -1747,11 +1747,11 @@
       "target": "self"
     },
     "effect": {
-      "primitive": "lucky_pull",
-      "name": "Server Gift",
-      "desc": "The Server Master's blessing: the first card of the target's next pack rolls at 2x the rare rates.",
+      "primitive": "spotlight_role",
+      "name": "Server Host",
+      "desc": "Gives the target the ✨ Spotlight role in Discord for 1 day: their name shows at the top of the member list.",
       "base": {
-        "amount": 2
+        "duration_s": 86400
       },
       "cooldown_h": 24
     }
@@ -1790,9 +1790,9 @@
       "amount": 0.12
     },
     "effect": {
-      "primitive": "crown",
+      "primitive": "spotlight_role",
       "name": "Better Side",
-      "desc": "Puts a 👑 in front of the target's nickname for a day.",
+      "desc": "Gives the target the ✨ Spotlight role in Discord for 1 day: their name shows at the top of the member list.",
       "base": {
         "duration_s": 86400
       },
@@ -1834,7 +1834,7 @@
     "effect": {
       "primitive": "jinx",
       "name": "Haunted Pack",
-      "desc": "The target's next pack opens cursed.",
+      "desc": "Talonflame haunts the target's next pack: a spooky look and sound. The cards do not change.",
       "cooldown_h": 12
     }
   },
@@ -1874,7 +1874,7 @@
     "effect": {
       "primitive": "reflect",
       "name": "Tree Bark",
-      "desc": "The next prank on the target bounces back to its sender.",
+      "desc": "The next prank sent to the target bounces back to its sender. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -1919,7 +1919,7 @@
     "effect": {
       "primitive": "clown_role",
       "name": "It Ain't Much",
-      "desc": "Gives the target the 🤡 Clown role for 1 hour.",
+      "desc": "Gives the target the 🤡 Clown role in Discord for 1 hour.",
       "base": {
         "duration_s": 3600
       },
@@ -1973,7 +1973,7 @@
     "effect": {
       "primitive": "nickname",
       "name": "MY SWAMP",
-      "desc": "Changes the target's Discord nickname for 1 hour.",
+      "desc": "Renames the target in Discord (for example \"Swamp <name>\") for 1 hour.",
       "base": {
         "duration_s": 3600
       },
@@ -2022,7 +2022,7 @@
     "effect": {
       "primitive": "slow_motion",
       "name": "Too Many Buttons",
-      "desc": "The target's next pack opens in slow motion.",
+      "desc": "The target's next pack opens in slow motion. The cards do not change.",
       "cooldown_h": 12
     }
   },
@@ -2062,9 +2062,9 @@
     "effect": {
       "primitive": "crown",
       "name": "Long Live the King",
-      "desc": "Puts a 👑 in front of the target's nickname for a day.",
+      "desc": "Puts a 👑 in front of the target's Discord nickname for 1 hour.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 3600
       },
       "cooldown_h": 24
     }
@@ -2105,7 +2105,7 @@
     "effect": {
       "primitive": "slow_motion",
       "name": "Still Loading",
-      "desc": "The target's next pack opens in slow motion.",
+      "desc": "The target's next pack opens in slow motion. The cards do not change.",
       "cooldown_h": 12
     }
   },
@@ -2145,7 +2145,7 @@
     "effect": {
       "primitive": "rally",
       "name": "Master Class",
-      "desc": "The target's next Hunt hit deals +15% damage.",
+      "desc": "The target's next Hunt attack deals 15% more damage.",
       "base": {
         "amount": 15
       },
@@ -2188,7 +2188,7 @@
     "effect": {
       "primitive": "upside_down",
       "name": "UP B OOS",
-      "desc": "Turns the target's collection upside down.",
+      "desc": "The target's game screen flips upside down for 80 seconds. It starts the next time they open the game.",
       "base": {
         "duration_s": 80
       },
@@ -2231,9 +2231,9 @@
     "effect": {
       "primitive": "title",
       "name": "Rivalry",
-      "desc": "Gives the target a rival title.",
+      "desc": "Adds a title to the target's Discord nickname (for example \"<name> · Sworn Rival\") for 1 hour.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 3600
       },
       "cooldown_h": 12,
       "options": {
@@ -2278,13 +2278,20 @@
       "threshold": 0.3
     },
     "effect": {
-      "primitive": "sticker",
+      "primitive": "nickname",
       "name": "Worldwide",
-      "desc": "Pins this card to the target's name for all to see.",
+      "desc": "Renames the target in Discord (for example \"Worldwide <name>\") for 1 hour.",
       "base": {
-        "duration_s": 43200
+        "duration_s": 3600
       },
-      "cooldown_h": 6
+      "options": {
+        "nicknames": [
+          "Worldwide {name}",
+          "Mr. Worldwide {name}",
+          "{name} (Dale!)"
+        ]
+      },
+      "cooldown_h": 12
     }
   },
   {
@@ -2325,7 +2332,7 @@
     "effect": {
       "primitive": "vc_mute",
       "name": "Gutter Ball",
-      "desc": "Mutes the target in voice for 30 seconds.",
+      "desc": "Mutes the target in voice for 30 seconds. If they are not in voice, it waits up to 48 hours.",
       "base": {
         "duration_s": 30
       },
@@ -2369,7 +2376,7 @@
     "effect": {
       "primitive": "mend",
       "name": "Recovery Drink",
-      "desc": "The target's next hurt Hunt card heals 20 HP.",
+      "desc": "Heals 20 HP on the target's next hurt Hunt card.",
       "base": {
         "amount": 20
       },
@@ -2404,7 +2411,7 @@
     "effect": {
       "primitive": "googly_eyes",
       "name": "Meme Warfare",
-      "desc": "Googly eyes on every card the target owns.",
+      "desc": "Googly eyes cover all the target's card art for 80 seconds. It starts the next time they open the game.",
       "base": {
         "duration_s": 80
       },
@@ -2453,7 +2460,7 @@
     "effect": {
       "primitive": "hype",
       "name": "TDG Crew",
-      "desc": "The bot posts a hype message for the target.",
+      "desc": "The bot posts a hype message about the target in Discord, with this card's art.",
       "cooldown_h": 24
     }
   },
@@ -2544,7 +2551,7 @@
     "effect": {
       "primitive": "color_role",
       "name": "Her Color",
-      "desc": "The target picks a name color for a day.",
+      "desc": "The target picks a name color in the game. Their Discord name shows it for 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -2586,7 +2593,7 @@
     "effect": {
       "primitive": "cleanse",
       "name": "Back to Vanilla",
-      "desc": "Removes every prank from the target.",
+      "desc": "Ends every prank on the target right now, in the game and in Discord.",
       "cooldown_h": 12
     }
   },
@@ -2627,7 +2634,7 @@
     "effect": {
       "primitive": "cleanse",
       "name": "Fresh Start",
-      "desc": "Removes every prank from the target.",
+      "desc": "Ends every prank on the target right now, in the game and in Discord.",
       "cooldown_h": 12
     }
   },
@@ -2666,7 +2673,7 @@
     "effect": {
       "primitive": "mend",
       "name": "Still Alive",
-      "desc": "The target's next hurt Hunt card heals 20 HP.",
+      "desc": "Heals 20 HP on the target's next hurt Hunt card.",
       "base": {
         "amount": 20
       },
@@ -2708,7 +2715,7 @@
     "effect": {
       "primitive": "confetti",
       "name": "Flash Bang",
-      "desc": "Confetti bursts over the target the next time they open the app.",
+      "desc": "A flash of this card's confetti covers the target's screen the next time they open the game.",
       "cooldown_h": 3
     }
   },
@@ -2745,13 +2752,13 @@
       "duration": 2
     },
     "effect": {
-      "primitive": "sticker",
+      "primitive": "parrot",
       "name": "World Chat",
-      "desc": "Pins this card to the target's name for all to see.",
+      "desc": "The bot repeats the target's next Discord message as a reply, with a 🦜. Works once, within 48 hours.",
       "base": {
-        "duration_s": 43200
+        "duration_s": 172800
       },
-      "cooldown_h": 6
+      "cooldown_h": 12
     }
   },
   {
@@ -2787,17 +2794,14 @@
       "duration": 2
     },
     "effect": {
-      "primitive": "reaction_storm",
+      "primitive": "slowmode",
       "name": "Lag Spike",
-      "desc": "The bot reacts 📶 to the target's next 5 messages.",
+      "desc": "Puts the target in slowmode in Discord for 5 minutes: the bot deletes any message sent less than 30 seconds after their last one.",
       "base": {
-        "amount": 5,
-        "duration_s": 3600
+        "amount": 30,
+        "duration_s": 300
       },
-      "cooldown_h": 12,
-      "options": {
-        "emoji": "📶"
-      }
+      "cooldown_h": 12
     }
   },
   {
@@ -2835,7 +2839,7 @@
     "effect": {
       "primitive": "lucky_pull",
       "name": "In the Pink",
-      "desc": "The first card of the target's next pack rolls at 2x the rare rates.",
+      "desc": "The first card of the target's next pack is twice as likely to be rare.",
       "base": {
         "amount": 2
       },
@@ -2875,20 +2879,13 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "nickname",
+      "primitive": "body_swap",
       "name": "Name Swap",
-      "desc": "Changes the target's Discord nickname for 1 hour.",
+      "desc": "You and the target swap Discord names for 1 hour.",
       "base": {
         "duration_s": 3600
       },
-      "cooldown_h": 12,
-      "options": {
-        "nicknames": [
-          "King K. {name}",
-          "{name} the Krool",
-          "{name} (Krool Main)"
-        ]
-      }
+      "cooldown_h": 12
     }
   },
   {
@@ -2924,13 +2921,10 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "ward",
-      "name": "Last One Alive",
-      "desc": "Blocks the next prank on the target.",
-      "base": {
-        "duration_s": 86400
-      },
-      "cooldown_h": 18
+      "primitive": "cleanse",
+      "name": "Clutch Save",
+      "desc": "Ends every prank on the target right now, in the game and in Discord.",
+      "cooldown_h": 12
     }
   },
   {
@@ -2968,7 +2962,7 @@
     "effect": {
       "primitive": "ping_parade",
       "name": "30 Pings",
-      "desc": "The bot pings the target 3 times over 5 minutes.",
+      "desc": "The bot @mentions the target 3 times in Discord over 5 minutes. The post is only the mention.",
       "base": {
         "amount": 3,
         "duration_s": 300
@@ -3012,7 +3006,7 @@
     "effect": {
       "primitive": "upside_down",
       "name": "Self Destruct",
-      "desc": "Turns the target's collection upside down.",
+      "desc": "The target's game screen turns upside down for 80 seconds. It starts the next time they open the game.",
       "base": {
         "duration_s": 80
       },
@@ -3054,7 +3048,7 @@
     "effect": {
       "primitive": "fog",
       "name": "Server Crash",
-      "desc": "The target's cards show ???.",
+      "desc": "The target's cards show ??? for 80 seconds. It starts the next time they open the game.",
       "base": {
         "duration_s": 80
       },
@@ -3096,7 +3090,7 @@
     "effect": {
       "primitive": "fog",
       "name": "Stupid Word",
-      "desc": "The target's cards show ???.",
+      "desc": "The target's cards show ??? for 80 seconds. It starts the next time they open the game.",
       "base": {
         "duration_s": 80
       },
@@ -3138,7 +3132,7 @@
     "effect": {
       "primitive": "googly_eyes",
       "name": "Suavemente",
-      "desc": "Puts googly eyes on all the target's card art.",
+      "desc": "Googly eyes cover the target's card art for 80 seconds. It starts the next time they open the game.",
       "base": {
         "duration_s": 80
       },
@@ -3180,7 +3174,7 @@
     "effect": {
       "primitive": "redirect",
       "name": "Pass the Blame",
-      "desc": "The next prank on the target goes to a random member instead.",
+      "desc": "The next prank sent to the target goes to a random member instead. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -3222,7 +3216,7 @@
     "effect": {
       "primitive": "ward",
       "name": "Two Walls",
-      "desc": "Blocks the next prank on the target.",
+      "desc": "Blocks the next prank sent to the target. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -3263,13 +3257,14 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "rubber_chicken",
+      "primitive": "ping_parade",
       "name": "B...B...B...",
-      "desc": "Every sound in the target's Activity is a squeak.",
+      "desc": "The bot @mentions the target 3 times in Discord over 5 minutes. The post is only the mention.",
       "base": {
-        "duration_s": 80
+        "amount": 3,
+        "duration_s": 300
       },
-      "cooldown_h": 12
+      "cooldown_h": 24
     }
   },
   {
@@ -3307,7 +3302,7 @@
     "effect": {
       "primitive": "hype",
       "name": "Brisket Run",
-      "desc": "The bot posts a hype message for the target.",
+      "desc": "The bot posts a hype message about the target in Discord, with this card's art.",
       "cooldown_h": 24
     }
   },
@@ -3344,13 +3339,13 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "lucky_pull",
-      "name": "Souvenir",
-      "desc": "A lucky souvenir: the first card of the target's next pack rolls at 2x the rare rates.",
+      "primitive": "delay",
+      "name": "Out of Office",
+      "desc": "The next prank sent to the target arrives 1 hour late. Works once, within 1 day.",
       "base": {
-        "amount": 2
+        "duration_s": 86400
       },
-      "cooldown_h": 24
+      "cooldown_h": 18
     }
   },
   {
@@ -3388,7 +3383,7 @@
     "effect": {
       "primitive": "fog",
       "name": "Communication Error",
-      "desc": "The target's cards show ???.",
+      "desc": "The target's cards show ??? for 80 seconds. It starts the next time they open the game.",
       "base": {
         "duration_s": 80
       },
@@ -3419,9 +3414,9 @@
     "effect": {
       "primitive": "title",
       "name": "Condiment Crime",
-      "desc": "Gives the target a ketchup title.",
+      "desc": "Adds a title to the target's Discord nickname (for example \"<name> · Hot Dog Heretic\") for 1 hour.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 3600
       },
       "cooldown_h": 12,
       "options": {
@@ -3477,20 +3472,17 @@
       "duration": 2
     },
     "effect": {
-      "primitive": "title",
+      "primitive": "reaction_storm",
       "name": "Pizza Crime",
-      "desc": "Gives the target a pizza title.",
+      "desc": "The bot reacts 🍍 to the target's next 5 Discord messages, within 1 hour.",
       "base": {
-        "duration_s": 86400
+        "amount": 5,
+        "duration_s": 3600
       },
-      "cooldown_h": 12,
       "options": {
-        "titles": [
-          "the Pineapple Pizza Enjoyer",
-          "Fruit Topping Fan",
-          "Pizza Criminal"
-        ]
-      }
+        "emoji": "🍍"
+      },
+      "cooldown_h": 12
     }
   },
   {
@@ -3530,7 +3522,7 @@
     "effect": {
       "primitive": "delay",
       "name": "Coming Soon",
-      "desc": "The next prank on the target lands 1 hour later.",
+      "desc": "The next prank sent to the target arrives 1 hour late. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -3570,13 +3562,13 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "sticker",
+      "primitive": "spongebob",
       "name": "Go Back to Pokemon",
-      "desc": "Pins this card to the target's name for all to see.",
+      "desc": "The bot repeats the target's next Discord message in mocking SpongeBob case (lIkE tHiS). Works once, within 48 hours.",
       "base": {
-        "duration_s": 43200
+        "duration_s": 172800
       },
-      "cooldown_h": 6
+      "cooldown_h": 12
     }
   },
   {
@@ -3618,7 +3610,7 @@
     "effect": {
       "primitive": "squeaky",
       "name": "Squeaky Entrance",
-      "desc": "When they next join voice, the bot announces they squeaked in.",
+      "desc": "The next time the target joins voice (within 48 hours), the bot posts \"<name> squeaked in\" in that voice chat.",
       "base": {
         "duration_s": 172800
       },
@@ -3663,7 +3655,7 @@
     "effect": {
       "primitive": "ward",
       "name": "Ice Wall",
-      "desc": "Blocks the next prank on the target.",
+      "desc": "Blocks the next prank sent to the target. Works once, within 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -3705,9 +3697,9 @@
     "effect": {
       "primitive": "title",
       "name": "Tier List",
-      "desc": "Gives the target a meta title.",
+      "desc": "Adds a title to the target's Discord nickname (for example \"<name> · Tier List Victim\") for 1 hour.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 3600
       },
       "cooldown_h": 12,
       "options": {
@@ -3754,7 +3746,7 @@
     "effect": {
       "primitive": "rubber_chicken",
       "name": "Quack",
-      "desc": "Every sound in the target's Activity is a squeak.",
+      "desc": "Every sound in the target's game is a quack for 80 seconds. It starts the next time they open it.",
       "base": {
         "duration_s": 80
       },
@@ -3798,7 +3790,7 @@
     "effect": {
       "primitive": "butterfingers",
       "name": "Butterfingers",
-      "desc": "Their next raid attack slips and does 15% less damage.",
+      "desc": "The target's next Hunt attack deals 15% less damage.",
       "base": {
         "amount": 15,
         "duration_s": 172800
@@ -3862,13 +3854,13 @@
       "traits": []
     },
     "effect": {
-      "primitive": "sticker",
+      "primitive": "swap_showcase",
       "name": "Price of Fame",
-      "desc": "Pins this card to the target's name for all to see.",
+      "desc": "The target's showcase shows a random Normal card for 1 day.",
       "base": {
-        "duration_s": 43200
+        "duration_s": 86400
       },
-      "cooldown_h": 6
+      "cooldown_h": 12
     },
     "ability": {
       "desc": "Clear curses — themed around Arcane cards",
@@ -3908,7 +3900,7 @@
     "effect": {
       "primitive": "confetti",
       "name": "Game Night",
-      "desc": "Confetti bursts over the target the next time they open the app.",
+      "desc": "This card's art bursts as confetti on the target's screen the next time they open the game.",
       "cooldown_h": 3
     },
     "ability": {
@@ -3960,7 +3952,7 @@
     "effect": {
       "primitive": "spotlight_role",
       "name": "Verified",
-      "desc": "Gives the target the ✨ Spotlight role for a day.",
+      "desc": "Gives the target the ✨ Spotlight role in Discord for 1 day, at the top of the member list.",
       "base": {
         "duration_s": 86400
       },
@@ -4000,13 +3992,52 @@
       "duration": 2
     },
     "effect": {
-      "primitive": "sticker",
+      "primitive": "hot_take_poll",
       "name": "Poll Results",
-      "desc": "Pins this card to the target's name for all to see.",
+      "desc": "The bot posts a 1-hour Discord poll about the target. The question and its answers come from this card.",
       "base": {
-        "duration_s": 43200
+        "duration_s": 3600
       },
-      "cooldown_h": 6
+      "options": {
+        "polls": [
+          {
+            "question": "This week's poll: what is {name}'s vibe?",
+            "answers": [
+              "Main character",
+              "Side quest",
+              "NPC",
+              "Final boss"
+            ]
+          },
+          {
+            "question": "What is {name}'s game night role?",
+            "answers": [
+              "The carry",
+              "The support",
+              "The hype crew",
+              "The snack runner"
+            ]
+          },
+          {
+            "question": "What will {name} pull next?",
+            "answers": [
+              "A Gold!",
+              "A Full Art",
+              "Another extra copy"
+            ]
+          },
+          {
+            "question": "Which Pokemon type fits {name} best?",
+            "answers": [
+              "Fire",
+              "Water",
+              "Grass",
+              "Psychic"
+            ]
+          }
+        ]
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -4044,7 +4075,7 @@
     "effect": {
       "primitive": "timeout",
       "name": "Call HR!",
-      "desc": "A 60-second Discord timeout for the target.",
+      "desc": "Times the target out in Discord for 1 minute: no typing and no talking.",
       "base": {
         "duration_s": 60
       },
@@ -4086,7 +4117,7 @@
     "effect": {
       "primitive": "ping_parade",
       "name": "Bam Bam Bam",
-      "desc": "The bot pings the target 3 times over 5 minutes.",
+      "desc": "The bot @mentions the target 3 times in Discord over 5 minutes.",
       "base": {
         "amount": 3,
         "duration_s": 300
@@ -4129,7 +4160,7 @@
     "effect": {
       "primitive": "fanfare",
       "name": "Peaches Fanfare",
-      "desc": "When they next join voice, the bot plays their fanfare in the voice chat.",
+      "desc": "The next time the target joins voice (within 48 hours), the bot posts a fanfare for them in that voice chat.",
       "base": {
         "duration_s": 172800
       },
@@ -4169,20 +4200,50 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "title",
+      "primitive": "hot_take_poll",
       "name": "Sauce Boss",
-      "desc": "Gives the target a sauce title.",
+      "desc": "The bot posts a 1-hour Discord poll about the target. The question and its answers come from this card.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 3600
       },
-      "cooldown_h": 12,
       "options": {
-        "titles": [
-          "the Sauce Boss",
-          "Sauce Critic",
-          "Ranch Defender"
+        "polls": [
+          {
+            "question": "Is {name} the Sauce Boss?",
+            "answers": [
+              "Sauce Boss 👑",
+              "Sauce Apprentice",
+              "Ranch Defender"
+            ]
+          },
+          {
+            "question": "What is {name}'s signature sauce?",
+            "answers": [
+              "Ranch",
+              "BBQ",
+              "Hot sauce",
+              "Ketchup"
+            ]
+          },
+          {
+            "question": "Can {name} handle the spicy sauce?",
+            "answers": [
+              "Born for it 🔥",
+              "Mild at best",
+              "Needs a glass of milk"
+            ]
+          },
+          {
+            "question": "Fries or nuggets: what does {name} dip first?",
+            "answers": [
+              "Fries",
+              "Nuggets",
+              "Both at once"
+            ]
+          }
         ]
-      }
+      },
+      "cooldown_h": 24
     }
   },
   {
@@ -4209,7 +4270,7 @@
     "effect": {
       "primitive": "rubber_chicken",
       "name": "Censored",
-      "desc": "Every sound in the target's Activity is bleeped into a squeak.",
+      "desc": "Every sound in the target's game is bleeped with a squeak for 80 seconds, from their next visit.",
       "base": {
         "duration_s": 80
       },
@@ -4262,7 +4323,7 @@
     "effect": {
       "primitive": "rally",
       "name": "Tag Him In",
-      "desc": "The target's next Hunt hit deals +15% damage.",
+      "desc": "The target's next Hunt attack deals 15% more damage.",
       "base": {
         "amount": 15
       },
@@ -4304,7 +4365,7 @@
     "effect": {
       "primitive": "reaction_storm",
       "name": "Look Out",
-      "desc": "The bot reacts 👀 to the target's next 5 messages.",
+      "desc": "The bot reacts 👀 to the target's next 5 Discord messages, within 1 hour.",
       "base": {
         "amount": 5,
         "duration_s": 3600
@@ -4350,7 +4411,7 @@
     "effect": {
       "primitive": "clown_role",
       "name": "Taps the Sign",
-      "desc": "Gives the target the 🤡 Clown role for 1 hour.",
+      "desc": "Gives the target the 🤡 Clown role in Discord for 1 hour.",
       "base": {
         "duration_s": 3600
       },
@@ -4392,7 +4453,7 @@
     "effect": {
       "primitive": "confetti",
       "name": "Fever",
-      "desc": "Confetti bursts over the target the next time they open the app.",
+      "desc": "This card's art bursts as confetti on the target's screen the next time they open the game.",
       "cooldown_h": 3
     }
   },
@@ -4433,7 +4494,7 @@
     "effect": {
       "primitive": "mend",
       "name": "Base Camp",
-      "desc": "The target's next hurt Hunt card heals 20 HP.",
+      "desc": "Heals 20 HP on the target's next hurt Hunt card.",
       "base": {
         "amount": 20
       },
@@ -4475,7 +4536,7 @@
     "effect": {
       "primitive": "lucky_pull",
       "name": "Lucky Shot",
-      "desc": "The first card of the target's next pack rolls at 2x the rare rates.",
+      "desc": "The first card of the target's next pack is twice as likely to be rare.",
       "base": {
         "amount": 2
       },
@@ -4517,7 +4578,7 @@
     "effect": {
       "primitive": "rally",
       "name": "Crew Hype",
-      "desc": "The target's next Hunt hit deals +15% damage.",
+      "desc": "The target's next Hunt attack deals 15% more damage.",
       "base": {
         "amount": 15
       },
@@ -4559,9 +4620,9 @@
     "effect": {
       "primitive": "title",
       "name": "Cocky",
-      "desc": "Gives the target a cocky title.",
+      "desc": "Adds a title to the target's Discord nickname (for example \"<name> · the Cocky One\") for 1 hour.",
       "base": {
-        "duration_s": 86400
+        "duration_s": 3600
       },
       "cooldown_h": 12,
       "options": {
@@ -4606,8 +4667,8 @@
     },
     "effect": {
       "primitive": "streak_shield",
-      "name": "Stream Saver",
-      "desc": "Keeps their check-in streak alive if they miss one day (within 14 days).",
+      "name": "Streak Shield",
+      "desc": "If the target misses one daily check-in, their streak stays. Works once, within 14 days.",
       "base": {
         "duration_s": 1209600,
         "amount": 1
@@ -4637,13 +4698,13 @@
       "traits": []
     },
     "effect": {
-      "primitive": "sticker",
+      "primitive": "redirect",
       "name": "Patooie!",
-      "desc": "Spits this card onto the target's name. It sticks.",
+      "desc": "The next prank sent to the target gets spat at a random member instead. Works once, within 1 day.",
       "base": {
-        "duration_s": 43200
+        "duration_s": 86400
       },
-      "cooldown_h": 6
+      "cooldown_h": 18
     },
     "ability": {
       "desc": "Boost the next hit — extra strong on Humanoid cards",
@@ -4690,12 +4751,9 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "googly_eyes",
+      "primitive": "jinx",
       "name": "She's Here",
-      "desc": "Puts googly eyes on all the target's card art.",
-      "base": {
-        "duration_s": 80
-      },
+      "desc": "The target's next pack opens haunted, with a spooky look and sound. The cards do not change.",
       "cooldown_h": 12
     }
   },
@@ -4734,19 +4792,10 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "title",
-      "name": "Why",
-      "desc": "Gives the target a breakfast title.",
-      "base": {
-        "duration_s": 86400
-      },
-      "cooldown_h": 12,
-      "options": {
-        "titles": [
-          "Beans on Toast Enjoyer",
-          "Breakfast Criminal"
-        ]
-      }
+      "primitive": "hype",
+      "name": "Breakfast of Champions",
+      "desc": "The bot posts a hype message about the target in Discord, with this card's art.",
+      "cooldown_h": 24
     }
   },
   {
@@ -4790,12 +4839,9 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "googly_eyes",
+      "primitive": "photobomb",
       "name": "Well Well Well",
-      "desc": "Puts googly eyes on all the target's card art.",
-      "base": {
-        "duration_s": 80
-      },
+      "desc": "This card photobombs the target's next pack opening. If that pack has a rare pull, its Discord post says \"photobombed by <you>\".",
       "cooldown_h": 12
     }
   },
@@ -4844,7 +4890,7 @@
     "effect": {
       "primitive": "rally",
       "name": "Comeback",
-      "desc": "The target's next Hunt hit deals +15% damage.",
+      "desc": "The target's next Hunt attack deals 15% more damage.",
       "base": {
         "amount": 15
       },
@@ -4886,7 +4932,7 @@
     "effect": {
       "primitive": "googly_eyes",
       "name": "Oh Naur",
-      "desc": "Puts googly eyes on all the target's card art.",
+      "desc": "Googly eyes cover the target's card art for 80 seconds. It starts the next time they open the game.",
       "base": {
         "duration_s": 80
       },
@@ -4937,11 +4983,15 @@
       "duration": 2
     },
     "effect": {
-      "primitive": "rubber_chicken",
+      "primitive": "reaction_storm",
       "name": "Soggy",
-      "desc": "Every sound in the target's Activity is a squeak.",
+      "desc": "The bot reacts 💧 to the target's next 5 Discord messages, within 1 hour.",
       "base": {
-        "duration_s": 80
+        "amount": 5,
+        "duration_s": 3600
+      },
+      "options": {
+        "emoji": "💧"
       },
       "cooldown_h": 12
     }
@@ -4981,11 +5031,49 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "lucky_pull",
-      "name": "Campaign Promise",
-      "desc": "A promise of luck: the first card of the target's next pack rolls at 2x the rare rates.",
+      "primitive": "hot_take_poll",
+      "name": "Recount",
+      "desc": "The bot posts a 1-hour Discord poll about the target. The question and its answers come from this card.",
       "base": {
-        "amount": 2
+        "duration_s": 3600
+      },
+      "options": {
+        "polls": [
+          {
+            "question": "Should we recount {name}'s votes?",
+            "answers": [
+              "Recount!",
+              "Certify it",
+              "Schrödinger's ballot"
+            ]
+          },
+          {
+            "question": "What is {name}'s campaign promise?",
+            "answers": [
+              "Gold pulls for all",
+              "Shorter cooldowns",
+              "More Hunts",
+              "Pizza Fridays"
+            ]
+          },
+          {
+            "question": "Who should {name} campaign for next?",
+            "answers": [
+              "Lion for President",
+              "The free packs party",
+              "Snacks for all",
+              "Still undecided"
+            ]
+          },
+          {
+            "question": "Is {name} the most trusted voter in the server?",
+            "answers": [
+              "Absolutely",
+              "Needs an audit",
+              "Ask the cat"
+            ]
+          }
+        ]
       },
       "cooldown_h": 24
     }
@@ -5033,11 +5121,14 @@
       "duration": 1
     },
     "effect": {
-      "primitive": "lucky_pull",
-      "name": "Pizza's Here",
-      "desc": "Fresh slice, fresh luck: the first card of the target's next pack rolls at 2x the rare rates.",
+      "primitive": "fanfare",
+      "name": "Pizza Party",
+      "desc": "The next time the target joins voice (within 48 hours), the bot throws them a pizza party in that voice chat.",
       "base": {
-        "amount": 2
+        "duration_s": 172800
+      },
+      "options": {
+        "line": "🍕 {target} is here, and so is the pizza! (Pizza Party from {sender})"
       },
       "cooldown_h": 24
     }
@@ -5077,7 +5168,7 @@
     "effect": {
       "primitive": "spotlight",
       "name": "The Champ",
-      "desc": "The target's name glows gold for a day.",
+      "desc": "The target's name glows gold in the game for 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -5229,7 +5320,7 @@
     "effect": {
       "primitive": "color_role",
       "name": "ARMS Colors",
-      "desc": "The target picks a name color for a day.",
+      "desc": "The target picks a name color in the game. Their Discord name shows it for 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -5661,7 +5752,7 @@
     "effect": {
       "primitive": "mustache",
       "name": "Gerudo Stache",
-      "desc": "Draws a mustache on the target's spotlight cards for a day.",
+      "desc": "Draws a big mustache on the target's profile picture everywhere in the game, and on their showcase cards, for 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -5740,7 +5831,7 @@
     "effect": {
       "primitive": "color_role",
       "name": "Blade Colors",
-      "desc": "The target picks a name color for a day.",
+      "desc": "The target picks a name color in the game. Their Discord name shows it for 1 day.",
       "base": {
         "duration_s": 86400
       },
@@ -5835,7 +5926,17 @@
       "traits": []
     },
     "ability": null,
-    "pushedAt": 1790896604557
+    "pushedAt": 1790896604557,
+    "effect": {
+      "primitive": "raid_crasher",
+      "name": "Raid Crasher",
+      "base": {
+        "uses": 3,
+        "amount": 25
+      },
+      "cooldown_h": 168,
+      "desc": "The target's next 3 Hunt attacks hit the boss 25% harder. That extra damage counts for your score (the prankster), not for the target's."
+    }
   },
   {
     "id": "launch-day-player",
@@ -5856,6 +5957,16 @@
         "event": ""
       }
     },
-    "pushedAt": 1790897106538
+    "pushedAt": 1790897106538,
+    "effect": {
+      "primitive": "launch_party",
+      "name": "Launch Party",
+      "desc": "The target's next 8 Hunt attacks each deal 20% more damage.",
+      "base": {
+        "uses": 8,
+        "amount": 20
+      },
+      "cooldown_h": 168
+    }
   }
 ]
