@@ -113,7 +113,7 @@ The shell is one CSS grid of named areas. No element uses the px size of another
 | Area | compact-port | compact-land | medium | expanded |
 |---|---|---|---|---|
 | `safe` frame | Insets, top guess | Insets, both sides guess | Insets | Insets (0 on desktop) |
-| `top bar` | Logo and every top-bar icon (D-25) | Slim | Full | Full |
+| `top bar` | Logo, Shards, Shop, bell, Menu, avatar (D-31) | Slim | Full | Full |
 | `sub-tabs` | Own row under the top bar | In the top bar, minimum width | Own row | In the top bar, minimum width |
 | `content` | 1 column | 2 columns | 2 columns | 3 columns |
 | `action rail` | Above the dock | Right edge | Bottom of the content | In the content |
@@ -432,13 +432,14 @@ Three window types, with one rule for each. (G-060, G-073)
 - Each window and each sub-view adds one history entry. A view change replaces the entry. (G-076)
 - The Android Back gesture and the browser back action close the top window or sub-view. (G-076)
 
-### 6.4 Top bar
-- The top bar has these controls, in this order, on every class except `tiny`: Shards, Shop, Dailies, help, Report, bell, Leaderboard, and the avatar at the right end (D-25). Each control is a `<button>` with an `aria-label`. (G-082)
+### 6.4 Top bar and the menu
+- The top bar has these controls, in this order, on every class except `tiny`: the logo, the Shards count, Shop, then the bell, Menu and the avatar at the right end. Each control is a `<button>` with an `aria-label`. (D-31, G-082)
 - The pack count shows only on the OPEN button. The top bar has no packs slot. (D-23)
 - Top-bar icons have no visible text label. Each icon keeps one meaning on every class. Its name is in `aria-label`. (D-24, G-082)
-- Every top-bar icon stays visible on every class except `tiny`. There is no overflow menu. (D-25)
-- Size and space the icons for 44 px touch targets. Record each class where they do not fit, with the size used. (G-104, D-25)
-
+- Menu opens a grid of places, each an icon with its name: Dailies, Leaderboard, FAQ, Feedback, Settings and Events. A new place gets a tile. It never gets a top-bar icon. (D-31)
+- The grid is a bottom sheet on `compact-port` and `compact-land`, and a panel under the Menu button on `medium` and `expanded`. The items and their order are the same on every class. (D-31, P1)
+- A tile that has news (for example a daily to claim) shows the Dot. Then the Menu button also shows the Dot. (D-31, G-066)
+- Every top-bar control has a 44 px touch target on touch classes. (G-104)
 ### 6.5 One home for each action
 - Each action has one home and one flow. Other doors open that home with the object chosen. (G-077)
 - A contextual action always carries its object to the target screen. (G-078)
@@ -853,12 +854,13 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-22 | Adventure dock target | The last tab. The badge shows on the tab with news, and the dock badge names that tab |
 | D-23 | Pack count | Only on the OPEN button. No packs slot in the top bar (Nathan, 2026-10-04: "the only place it shows up with the number of packs they have is on the open button") |
 | D-24 | Top-bar labels | No visible labels under the top-bar icons (Nathan, 2026-10-04: "No labels") |
-| D-25 | Top-bar menu | No overflow menu. Every top-bar icon stays visible (Nathan, 2026-10-04: "No menu, we keep the icons across the top bar") |
+| D-25 | Top-bar menu (REPLACED by D-31) | No overflow menu. Every top-bar icon stays visible (Nathan, 2026-10-04: "No menu, we keep the icons across the top bar") |
 | D-26 | Sound control | None (Nathan, 2026-10-04: "Sound is not an option"). The top bar list is Shards, Shop, Dailies, help, Report, bell, Leaderboard, avatar ("I would like the wrench icon as well up there") |
 | D-27 | Sub-tab counts | No counts on sub-tabs. The Achievements tab shows a Dot, in the place of the count, when an achievement can be claimed (Nathan, 2026-10-04: "remove the number of Achievements and the bosses … where the number is for the Achievement that is where the little notification can be for when an achievement can be redeemed") |
 | D-28 | Rarity chip text | The full name only, no letter in front (Nathan, 2026-10-04: "lets not have the Acronyms, just the name. So for Normal, it wouldn't be N Normal, it would just read Normal") |
 | D-29 | Card info under cards | None in any card view (grids, squads, trades, pickers). The card face only; a tap opens the Card Detail. Live state (fight HP, Down, status, Not owned, Locked, selected) stays on the card. The rarity shows by the frame, and its name in the Card Detail, the filter chips and the reveal (Nathan, 2026-10-04: "get rid of the symbols underneath them in the tiles"; option 1 "for all these views … card grids, squads, trading"; "The ability to click into a card for the information is what I want people to do") |
 | D-30 | Offer rows on phones | Card/thumb (64 px minimum) in the row, and a tap opens the Offer view with both cards at full size (Nathan, 2026-10-04: the row is "really tiny to see things on it when you're on a phone"; chose the recommendation) |
+| D-31 | Top bar and menu (replaces D-25) | Top bar: logo, Shards count, Shop, bell, Menu, avatar. Menu grid: Dailies, Leaderboard, FAQ, Feedback, Settings, Events. New pages: Settings (ping settings, Reduce effects) and Events / Game Log (patch notes, upcoming events) (Nathan, 2026-10-04: "this is a LOT of icons on the top bar … a little hamburger menu icon … a grid of all the places"; "Yes shard count stays on top bar"; "we keep the shop icon separate"; "Yep I was wrong" about D-25) |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
