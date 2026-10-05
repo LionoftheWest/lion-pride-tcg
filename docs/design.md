@@ -368,7 +368,7 @@ Exactly 6 named layers. (G-049)
 | Card | full, tile, squad, thumb, mini, slot, back, locked | Section 8.1 | `.v2-cell` | About 28 card renderers | G-099 |
 | Card Grid | One fitter with a minimum per card size, pager, swipe | At least 2 rows | Collection `fitGrid` | 7 grid fitters | G-099, G-022 |
 | Flip Card and Reveal | single, multi, chest | Same | Multi reveal `.mr-card` | `.fc`, `.dg-flip` | G-101 |
-| Card Detail | Fixed sections, one Ascend control. Each context shows a named subset | Panel on expanded, sheet on compact | Collection card panel | 4 viewer modes, `phoneColumns`, `fillRaidInfo`, `fillSquadInfo`, the second Ascend control | G-100 |
+| Card Detail | Fixed sections, one Ascend control. Each context shows a named subset. Opens only on a tap (D-38) | A window: centered dialog on medium and expanded, full sheet on compact | Collection card panel | 4 viewer modes, `phoneColumns`, `fillRaidInfo`, `fillSquadInfo`, the second Ascend control | G-100 |
 | Panel and Tile | panel, tile, stat box. One header, one section label | Same | `.v2-panel`, `.v2-tile` | `.dg-panel`, `.sh-panel`, `.pbox`, 10 headers | G-052 |
 | Dialog | confirm, alert, info | Centered. Full width minus 16 px on compact-port | Shop confirm `.sh-modal` | `.sq-warn`, `.dg-modal`, `.hl-modal`, `.eff-confirm`, `#bossModal`, two-tap arm | G-059, G-112 |
 | Sheet | bottom, side | Bottom on compact-port. Side on compact-land and medium. Right panel on expanded | `.hl-sheet` | `.v2-drop` x4, `.wl-picker`, `.v2-chooser`, `#colPanel.m-open` | G-061 |
@@ -534,6 +534,8 @@ Use a fixed set of card sizes. Each size has one minimum width. (G-099)
 - Every card view (grids, squads, trades, pickers, profile, shop) shows only the card face. There is no caption: no name line, rarity letter, element, power, ability or copies. A tap on a card opens the Card Detail, which shows all of it. (D-29)
 - A card shows its live state on the face, because it changes while the member plays: HP, Down and status effects in a fight, Not owned, Locked, selected, and the number that limits the current choice (for example the point cost while a member builds a Dungeon squad). (D-29)
 - Use one Card Detail with fixed sections. Each context shows a named subset. (G-100)
+- The Card Detail is never open by default. It opens only when the member taps a card, as a window: a centered dialog on `medium` and `expanded`, a full sheet on `compact-port` and `compact-land`. No screen keeps a card panel beside the grid, so the grid uses the full width. (D-38)
+- The content area ends above the dock on every class. Nothing in a screen sits under the dock. **[CI]** (G-020, G-196)
 - Use one Flip Card. Every reveal offers Reveal all and uses the same close rule. (G-101)
 
 ### 8.2 Images
@@ -541,7 +543,7 @@ Use a fixed set of card sizes. Each size has one minimum width. (G-099)
 |---|---|---|---|
 | grid | 480 px | 48 KB or less | Grids, feeds |
 | reveal | 480 px or more | 150 KB or less | Pack reveal |
-| panel | 640 px | 150 KB or less | Card Detail panel |
+| panel | 640 px | 150 KB or less | Card Detail window |
 | still | as needed | 200 KB or less | Pack still, backgrounds |
 | full | original | n/a | The zoom viewer only |
 - Use the tier that matches the display size. (G-103)
@@ -882,6 +884,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-35 | Trade flow | Member picker, then the Trade window with Your cards (Offer, Gift) and Their cards (Request). Offer, request or full proposal, 1 for 1. The other party picks the return card for an offer or a request, then the first party accepts or rejects (Nathan, 2026-10-04: "the first page of this is to search for the individual … a new dedicated screen … two views … an Offering system … and then a Request system"; answers 1-5: "you request, they request, and then you accept their offer or reject it", "1 card for 1 card", full proposal "I do like that", Gift as an action "Agreed", Trade Hall separate "Yes") |
 | D-36 | Pager place | Always centered under its grid, on every screen (Nathan, 2026-10-04: "pager positions should be underneath the grid of cards always, wherever it is") |
 | D-37 | Sub-tab place | Always one row directly under the top bar on every class, the same place everywhere (Nathan, 2026-10-04: "I don't like the upright phones having their own bar … what can we do to have the same sub tab location regardless always in the same place?"; chose option A). The next design wave shows this layout on its own sheet at every class |
+| D-38 | Card Detail | Opens only on a tap, as a window (dialog on larger classes, full sheet on phones). No card panel beside the grid on any screen; the grid uses the full width (Nathan, 2026-10-04: "I want the card information to pull up when they click a card, not have it be open automatically … on all views, we can have as much grid dedicated to cards") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
