@@ -171,11 +171,11 @@ export const TRACK_LOOK = {
   recycler: { icon: '♻', desc: 'Convert duplicate copies to Shards' },
   grind: { icon: '📅', desc: 'Redeem daily tasks' },
   streak: { icon: '🔥', desc: 'Check in on days in a row (best streak)' },
-  raider: { icon: '⚔', desc: 'Join raids' },
-  heavy: { icon: '💥', desc: 'Deal raid damage in total' },
-  bighit: { icon: '🎯', desc: 'Land one big raid hit' },
-  slayer: { icon: '🐉', desc: 'Defeat a boss in a raid you joined' },
-  podium: { icon: '🏆', desc: 'Finish a raid in the top 3' },
+  raider: { icon: '⚔', desc: 'Join Hunts' },
+  heavy: { icon: '💥', desc: 'Deal Hunt damage in total' },
+  bighit: { icon: '🎯', desc: 'Land one big Hunt hit' },
+  slayer: { icon: '🐉', desc: 'Defeat a boss in a Hunt you joined' },
+  podium: { icon: '🏆', desc: 'Finish a Hunt in the top 3' },
   prankster: { icon: '😈', desc: 'Play pranks' },
   vibes: { icon: '🌞', desc: 'Play boons' },
   voice: { icon: '🎙', desc: 'Days with the voice daily or the 25-message chat daily' },
@@ -197,6 +197,11 @@ export function tierReward(n, titles = []) {
 export function tierNeed(t, n) {
   if (n >= 1 && n <= 5) return t.tiers[n - 1];
   return n > 5 && t.step ? t.tiers[4] + (n - 5) * t.step : null;
+}
+/** The reward in full, no title name (a track card): "Gold · 2 packs · 200 Shards · title". */
+export function tierRewardShort(n, titles = []) {
+  const r = tierReward(n, titles);
+  return [tierName(n), `${r.packs} pack${r.packs === 1 ? '' : 's'}`, `${r.shards} Shards`, r.title ? 'title' : null, r.frame ? 'frame' : null].filter(Boolean).join(' · ');
 }
 export function tierRewardLabel(r) {
   return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.shards ? `${r.shards} Shards` : null,

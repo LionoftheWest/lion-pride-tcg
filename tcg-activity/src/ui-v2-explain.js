@@ -56,7 +56,7 @@ export const SETS = {
     { img: 'hunt-prizes', title: 'Prizes', text: 'Deal damage to earn packs, if it falls or escapes. 1st 7, 2nd 5, 3rd 4, 4th to 10th 3, all others 1.' },
   ] },
   achievements: { name: 'Achievements', slides: [
-    { img: 'ach-tracks', title: 'Tracks', text: 'Each track counts one thing you do, for example cards owned or raids joined. Each track has 5 tiers: Bronze, Silver, Gold, Diamond and Mythic.' },
+    { img: 'ach-tracks', title: 'Tracks', text: 'Each track counts one thing you do, for example cards owned or Hunts joined. Each track has 5 tiers: Bronze, Silver, Gold, Diamond and Mythic.' },
     { img: 'ach-track', title: 'The tiers', text: 'Tap a track to see each tier, what it needs and what it gives. Some tracks go on after Mythic in +1 steps.' },
     { img: 'ach-rewards', title: 'Rewards', text: 'Every tier gives packs and Shards. Gold, Diamond and Mythic also give a title. Diamond and Mythic give a frame for your picture.' },
     { img: 'ach-redeem', title: 'Redeem', text: 'A gold border means a tier is ready. Tap Redeem, or Redeem All to take every reward at once. The red number on Collection counts them.' },

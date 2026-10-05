@@ -11,7 +11,7 @@ import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { flairHTML } from './flair.js';
 import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
-import { measure, rewardOf, rewardLabel, FRAMES, RETIRED, TRACK_LOOK, tierName, tierClass, tierNeed, tierReward, tierRewardLabel, tagBadge, frameInfo } from './achievements.js';
+import { measure, rewardOf, rewardLabel, FRAMES, RETIRED, TRACK_LOOK, tierName, tierClass, tierNeed, tierReward, tierRewardLabel, tierRewardShort, tagBadge, frameInfo } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
@@ -366,7 +366,7 @@ export async function renderCollectionV2() {
     const subs = [['tracks', 'Tracks'], ['badges', 'Badges'], ['gallery', 'Titles &amp; Frames']];
     const kinds = col.achSub === 'gallery' ? `<div class="seg gal-kind" id="galKind">${[['title', 'Titles'], ['frame', 'Frames']].map(([k, l]) => `<button data-k="${k}" class="${col.galKind === k ? 'on' : ''}">${l}</button>`).join('')}</div>` : '';
     center = `<div class="v2-col-head ach-head2">${tabs}<div class="seg ach-sub" id="achSub">${subs.map(([k, l]) => `<button data-s="${k}" class="${col.achSub === k ? 'on' : ''}">${l}</button>`).join('')}</div>${kinds}<span class="grow"></span>${ready && col.achSub !== 'gallery' ? `<button class="v2-btn gold ach-all" id="achAll">🎁 Redeem All <i>${ready}</i></button>` : ''}<div class="v2-pager" id="achPager"></div></div>
-      <div class="v2-ach-grid${col.achSub === 'gallery' ? ' gal-grid' : ''}" id="achGrid"></div>`;
+      <div class="v2-ach-grid trk-mode${col.achSub === 'gallery' ? ' gal-grid' : ''}" id="achGrid"></div>`;
   } else if (col.view === 'ach') {
     center = `<div class="v2-col-head">${tabs}<span class="grow"></span>${ready ? `<span class="ach-ready">🎁 ${ready} to redeem</span><button class="v2-btn gold ach-all" id="achAll">Redeem All</button>` : ''}<div class="v2-pager" id="achPager"></div></div>
       <div class="v2-ach-grid" id="achGrid"></div>`;
@@ -546,7 +546,7 @@ function trackHTML(t) {
   const nextN = t.reached + 1;
   const need = tierNeed(t, nextN);
   const pct = need ? Math.min(100, Math.round((100 * t.value) / need)) : 100;
-  const foot = trackMaxed(t) ? `<span class="ah-reward">${esc(tierName(5))} ✓</span>` : `<span class="ah-reward">🎁 ${esc(tierName(nextN))}: ${esc(tierRewardLabel({ ...tierReward(nextN, t.titles), title: undefined, frame: undefined }))}${tierReward(nextN, t.titles).title ? ' + 🎖' : ''}</span>`;
+  const foot = trackMaxed(t) ? `<span class="ah-reward">${esc(tierName(5))} ✓</span>` : `<span class="ah-reward">🎁 ${esc(tierRewardShort(nextN, t.titles))}</span>`;
   return `<button class="v2-ach big trk ${tierClass(t.reached)}${ready ? ' ready' : ''}${trackMaxed(t) ? ' done' : ''}" data-ach="track:${esc(t.key)}" title="${esc(L.desc)}">
     <div class="ah-top"><span class="ah-ico">${L.icon}</span><b>${esc(t.name)}</b><span class="ah-n">${trackMaxed(t) ? '✓' : `${fmt(t.value)}/${fmt(need)}`}</span></div>
     <div class="ah-desc">${esc(L.desc)}</div>

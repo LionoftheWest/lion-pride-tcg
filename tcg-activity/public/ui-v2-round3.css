@@ -204,7 +204,7 @@ body.ui-v2 .v2-avatar.frame-mythic { background: none; box-shadow: 0 0 16px rgba
 body.ui-v2 .v2-avatar.frame-mythic::before { content: ''; position: absolute; inset: 0; border-radius: 50%;
   background: conic-gradient(var(--t-mythic), var(--t-gold), #7B5CFF, var(--t-diamond), var(--t-mythic)); animation: frMythSpin 4s linear infinite; }
 body.ui-v2 .v2-avatar.frame-mythic > img, body.ui-v2 .v2-avatar.frame-mythic > span { position: relative; }
-body.ui-v2 .v2-avatar .fr-ico { position: absolute; right: -3px; bottom: -3px; width: 44%; height: 44%; min-width: 14px; min-height: 14px; border-radius: 50%;
+body.ui-v2 .v2-avatar .fr-ico { position: absolute; right: 0; bottom: 0; /* inside: .v2-avatar clips (overflow hidden) */ width: 44%; height: 44%; min-width: 14px; min-height: 14px; border-radius: 50%;
   display: grid; place-items: center; font-size: max(8px, calc(var(--fr-s, 38px) * .26)); font-style: normal; line-height: 1; background: #0A0A12; z-index: 2; }
 body.ui-v2 .v2-avatar.frame-diamond .fr-ico { box-shadow: 0 0 0 2px var(--t-diamond); }
 body.ui-v2 .v2-avatar.frame-mythic .fr-ico { box-shadow: 0 0 0 2px var(--t-mythic); }
@@ -224,3 +224,4 @@ body.ui-v2 .tier-ladder.tighter .tl-rw { white-space: nowrap; overflow: hidden; 
 body.ui-v2 .tier-ladder.tighter .tl-row { padding: 4px 10px; }
 body.ui-v2 .v2-ach.gal .ah-top b { white-space: normal; overflow: visible; }
 body.ui-v2 .v2-ach.gal .ah-n { white-space: nowrap; }
+body.ui-v2 .v2-ach-grid.trk-mode .ah-reward { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; }
