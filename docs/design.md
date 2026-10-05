@@ -443,6 +443,7 @@ Three window types, with one rule for each. (G-060, G-073)
 - Each action has one home and one flow. Other doors open that home with the object chosen. (G-077)
 - A contextual action always carries its object to the target screen. (G-078)
 - One tap target has one action. One result has one outcome text. (G-080, G-077)
+- An offer row (Trades, Trade Hall, bell) shows the member, the status, the GIVE and GET cards as Card/thumb (64 px minimum) and its action. A tap on the row opens the Offer view: both cards as Card/full side by side, the member, the status, the time and the actions. A tap on a card there opens its Card Detail. (D-30, G-099)
 
 ### 6.6 Deep links from bot posts and notifications
 - Every bot post and every notification carries a target: view, tab and object id. (G-071, G-079)
@@ -857,6 +858,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-27 | Sub-tab counts | No counts on sub-tabs. The Achievements tab shows a Dot, in the place of the count, when an achievement can be claimed (Nathan, 2026-10-04: "remove the number of Achievements and the bosses … where the number is for the Achievement that is where the little notification can be for when an achievement can be redeemed") |
 | D-28 | Rarity chip text | The full name only, no letter in front (Nathan, 2026-10-04: "lets not have the Acronyms, just the name. So for Normal, it wouldn't be N Normal, it would just read Normal") |
 | D-29 | Card info under cards | None in any card view (grids, squads, trades, pickers). The card face only; a tap opens the Card Detail. Live state (fight HP, Down, status, Not owned, Locked, selected) stays on the card. The rarity shows by the frame, and its name in the Card Detail, the filter chips and the reveal (Nathan, 2026-10-04: "get rid of the symbols underneath them in the tiles"; option 1 "for all these views … card grids, squads, trading"; "The ability to click into a card for the information is what I want people to do") |
+| D-30 | Offer rows on phones | Card/thumb (64 px minimum) in the row, and a tap opens the Offer view with both cards at full size (Nathan, 2026-10-04: the row is "really tiny to see things on it when you're on a phone"; chose the recommendation) |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
