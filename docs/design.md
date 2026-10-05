@@ -144,6 +144,7 @@ Each screen spec names its model.
 - Tag each element of a screen spec P (primary), S (secondary) or T (tertiary). (G-023)
 - A class can move S and T content into a tab, a sheet or a page. It never removes P content. (G-003, G-023)
 - When fit code must remove content, it removes T first and never removes P. (G-023)
+- Example (D-41): the Shop shows Today's stock (P), Packs and Stat reset (S). On `expanded`, Packs and Stat reset are a right column beside the stock. On `medium`, `compact-port` and `compact-land`, the three are sub-tabs (D-37). The "New stock in" timer is a chip in the Today's stock header line on every class.
 - The pack count (on the OPEN button, D-23), the Leaderboard entry and the profile achievements are P content on every class. (G-003)
 - Every list that can overflow pages ("1 / N") or shows "+N more". Never delete a row that does not fit. **[CI]** (G-022)
 - The page size is the number of items that fit. A grid adds a row before it adds a page. (G-197)
@@ -901,6 +902,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-33 | Can ascend | A "Can ascend" filter with its count, the Dot on the Cards tab, and the tab opens Collection with the filter on while the Dot shows (Nathan, 2026-10-04: "a filter … 'Can be ascended' … so that people don't have to scroll around … and can clear that notification better"; placement "Yes") |
 | D-39 | Filters panel | Search box always visible beside a Filters button with the active count; the button opens a panel on top of the view with every other filter, Confirm and Clear all; the same on every card grid (Nathan, 2026-10-04: "a collapseable window … a tab you click/tap and then it expands on TOP of the view … a Confirm button"; "the search box should always be next to the filter box regardless"; Clear all, count, every grid: "Yes") |
 | D-40 | Squad picker | Main view = slots + Select your squad / Start / Edit, read-only. The picker window = full grid, toolbar, Auto-pick, slot row with ×, numbered selection, tap again to remove, magnifier for Card Detail, live checks, Confirm; Hunt lock as today (Nathan, 2026-10-04: "that area become the 5 slots and a button under saying Select your Squad … opens up a pop up window with the same full grid … Confirm … Start Raid or Start Run … an Edit button"; "if they want to edit their squad it should be in the pop up … we do need a way for them to easily unselect cards"; 2-5 "Agreed") |
+| D-41 | Shop layout | Desktop (`expanded`) keeps Packs and Stat reset as a right column; smaller classes use the three sub-tabs. "New stock in" is a chip in the stock header on every class. Every stock card uses ShopItem (card, price, Buy) (Nathan, 2026-10-04: "a good example of moving the New Stock to a different location"; "Lets keep it the same on desktop") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
