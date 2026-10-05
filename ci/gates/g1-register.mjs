@@ -23,7 +23,7 @@ export function g1({ title, changed, register }) {
   return { ok, ui, lines };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { base, head } = range();
   const changed = git('diff', '--name-only', `${base}...${head}`).split('\n').filter(Boolean);
   const register = parseRegister(readFileSync('docs/ui-register.md', 'utf8'));

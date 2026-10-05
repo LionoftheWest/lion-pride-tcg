@@ -11,7 +11,8 @@ import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { SIZES, SCREENS, EXPANDED, sizeKey, ownerOf } from './screens.mjs';
-import { parseRegister, titleIds, summary } from '../gates/lib.mjs';
+import { parseRegister, summary } from '../gates/lib.mjs';
+import { enforcedIds, plan } from './plan.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -64,8 +65,9 @@ export function defectsOf(r, expanded) {
 }
 
 /** The verdict: { enforced, isEnforced, defects, fails }. */
-export function verdict(results, register, { title = '', strict = false, browsers = ['chromium', 'webkit'], sizes = SIZES.map(sizeKey) } = {}) {
-  const enforced = new Set([...titleIds(title), ...Object.values(register).filter((r) => /^(migrated|in migration)/i.test(r.standard)).map((r) => r.id)]);
+// screens = the screens that the run planned (plan.mjs): each of them must have a result in each browser and size.
+export function verdict(results, register, { title = '', strict = false, browsers = ['chromium', 'webkit'], sizes = SIZES.map(sizeKey), screens = Object.keys(SCREENS) } = {}) {
+  const enforced = enforcedIds(title, register);
   const isEnforced = (id) => strict || enforced.has(id);
   const key = (r) => [r.browser, r.size, r.screen, r.variant].join('|');
   const byKey = new Map(results.map((r) => [key(r), r]));
@@ -75,7 +77,9 @@ export function verdict(results, register, { title = '', strict = false, browser
     for (const x of defectsOf(r, exp)) all.push({ ...x, browser: r.browser, size: r.size, class: r.class, screen: r.screen, variant: r.variant, owner: x.rule === 'not-checked' ? SCREENS[r.screen].id : ownerOf(r.screen, x.where) });
   }
   // Every base cell must have a result.
-  for (const b of browsers) for (const s of SIZES.filter((x) => sizes.includes(sizeKey(x)))) for (const screen of Object.keys(SCREENS)) {
+  // An enforced ID that no screen of the check opens cannot be checked (plan.mjs uncovered).
+  for (const id of plan(enforced).uncovered) all.push({ rule: 'not-checked', where: 'no screen in the check', value: 'add the screen to ci/ui-check/screens.mjs', browser: '-', size: '-', class: '-', screen: '-', variant: '-', owner: id });
+  for (const b of browsers) for (const s of SIZES.filter((x) => sizes.includes(sizeKey(x)))) for (const screen of screens) {
     if (!byKey.has([b, sizeKey(s), screen, 'base'].join('|'))) all.push({ rule: 'not-checked', where: 'no result', value: 'the run did not produce this cell', browser: b, size: sizeKey(s), class: s[2], screen, variant: 'base', owner: SCREENS[screen].id });
   }
   // One defect per (rule, owner, where) for each browser, size and screen; keep the first variant.
@@ -91,15 +95,16 @@ function load(dir) {
   walk(dir); return out;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
   const DIR = arg('results', join(here, '.out', 'results'));
   const STRICT = process.argv.includes('--strict');
   const BROWSERS = (arg('browsers') || 'chromium,webkit').split(',');
   const SIZE_LIST = arg('sizes') ? arg('sizes').split(',') : SIZES.map(sizeKey);   // a local run of some sizes
+  const SCREEN_LIST = arg('screens') !== undefined ? arg('screens').split(',').filter(Boolean) : Object.keys(SCREENS);   // plan.mjs
   const results = load(DIR);
   const register = parseRegister(readFileSync(join(here, '..', '..', 'docs', 'ui-register.md'), 'utf8'));
-  const { enforced, isEnforced, defects, fails } = verdict(results, register, { title: process.env.PR_TITLE || '', strict: STRICT, browsers: BROWSERS, sizes: SIZE_LIST });
+  const { enforced, isEnforced, defects, fails } = verdict(results, register, { title: process.env.PR_TITLE || '', strict: STRICT, browsers: BROWSERS, sizes: SIZE_LIST, screens: SCREEN_LIST });
   writeFileSync(join(DIR, 'defects.json'), JSON.stringify({ enforced: STRICT ? 'all' : [...enforced], cells: results.length, defects }, null, 1));
 
   const ids = [...new Set(defects.map((x) => x.owner))].sort();

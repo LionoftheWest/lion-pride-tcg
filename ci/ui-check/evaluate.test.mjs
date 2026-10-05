@@ -72,3 +72,24 @@ test('a missing cell always fails; a runner error fails on an enforced ID', () =
   assert.equal(verdict(rs2, REG, { browsers: ['chromium'] }).fails[0].rule, 'not-checked');
   assert.equal(verdict(full(), REG, { browsers: ['chromium', 'webkit'] }).fails.length, SIZES.length * Object.keys(SCREENS).length, 'no WebKit results: every WebKit cell fails');
 });
+
+// ---- The plan (plan.mjs): a PR checks only the screens it can fail on --------------------------------------
+import { plan, enforcedIds } from './plan.mjs';
+test('plan: the title IDs and the Migrated rows; the shell checks every screen; an unknown screen is uncovered', () => {
+  assert.deepEqual([...enforcedIds('UI-46 Dungeon lobby', REG)].sort(), ['UI-07', 'UI-46'], 'UI-07 is Migrated in REG');
+  assert.deepEqual(plan(new Set(['UI-46'])).screens, ['dungeon']);
+  assert.deepEqual(plan(new Set(['UI-12'])).screens, ['achievements', 'achievements-detail']);
+  assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
+  assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
+  assert.deepEqual(plan(new Set(['UI-49'])), { screens: [], uncovered: ['UI-49'] });
+  assert.deepEqual(plan(new Set()).screens, []);
+  assert.equal(plan(new Set(), { full: true }).screens.length, Object.keys(SCREENS).length);
+});
+test('verdict with a plan: only the planned screens must have results; an uncovered enforced ID fails', () => {
+  const only = full().filter((r) => r.screen === 'dungeon');
+  assert.equal(verdict(only, REG, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon', 'collection'] }).fails.length, SIZES.length, 'collection was planned and has no result');
+  const reg = { ...REG, 'UI-07': { ...REG['UI-07'], standard: 'Not migrated' } };
+  assert.equal(verdict(only, reg, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon'] }).fails.length, 0);
+  const v = verdict(only, reg, { title: 'UI-46 + UI-49', browsers: ['chromium'], screens: ['dungeon'] });
+  assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-49', 'no screen in the check']]);
+});

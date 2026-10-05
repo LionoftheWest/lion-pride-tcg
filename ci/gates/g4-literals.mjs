@@ -59,7 +59,7 @@ export function g4(baseCounts, headCounts) {
   return { ok: rows.every((r) => r.delta <= 0), rows, rises };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { base, head } = range();
   const r = g4(countAt(base), countAt(head));
   let md = `### G4 Literal counter: ${r.ok ? 'PASS' : 'FAIL'}\n\nBase \`${base.slice(0, 7)}\` (merge base with main), head \`${git('rev-parse', '--short', head).trim()}\`. Scope: ci/gates/scope.json.\n\n| Unit | Base | Head | Change |\n|---|---|---|---|\n`;
