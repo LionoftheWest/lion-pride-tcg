@@ -127,7 +127,7 @@ The shell is one CSS grid of named areas. No element uses the px size of another
 - Sub-tabs are always one row directly under the top bar, on every class except `tiny`. The place never changes. On `compact-port` the tabs share the full width equally. On the other classes they are compact and left-aligned. On `compact-land` the row is slim (about 30 px). (D-37, G-018)
 - A view has at most 4 visible sub-tabs, so every label fits at 375 px. Never cut a tab label. **[CI]** (G-065)
 - Every sub-tab has an icon and its name, on every class. All tab icons come from the one line-icon set of the UI-00 library: the same stroke, size and color rules. Cards, Achievements and Bosses get icons from that set. (D-47)
-- Each tab is as wide as its icon and name, and the row fills its width. The row fits on every phone width (320 px and up): a name shrinks to the minimum type size, then wraps (D-08). It never scrolls and never cuts a name. (D-49)
+- Each tab is as wide as its icon and name, and the row fills its width. The row fits on every phone width (320 px and up). A tab name always stays on one line: it may shrink to the minimum type size, but it never wraps. This is an exception to D-08 for sub-tabs. The row never scrolls and never cuts a name. (D-49)
 - One icon has one meaning in the whole app. Tab icons: Trades `arrow-left-right`, Trade Hall `landmark`, Boons & pranks `party-popper`, Cards `layers`, Achievements `award` (the medal; `trophy` is the Leaderboard), Bosses `skull`, Hunt `swords`, Dungeon `castle`, Gauntlet `crown`. (D-50)
 - Build each screen one time. It adapts by class through a short, named list of per-class changes. (G-019)
 - Do not add a new `m-land` or `m-port` selector. **[CI]** (G-019, G-182)
@@ -932,7 +932,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-46 | Stack when tall | A content area taller than wide stacks its side columns below the main content as full-width rows; a wide area keeps columns. One rule for every screen (Nathan, 2026-10-04: "I wonder if we stack these as rows instead of columns in this view?"; as a general rule "Yes that is a good rule") |
 | D-47 | Sub-tab icons | Every sub-tab has an icon, all from the one line-icon set (Nathan, review-3: "Yes tab icons but making sure that they are universalized to be the same kind of icon") |
 | D-48 | Top Hunters on Home | One line under the hero ("Top hunter: name · damage") that opens the Leaderboard window on the Hunt tab; no list over the boss (Nathan, review-3: "Agreed") |
-| D-49 | Sub-tabs fit every phone | Each tab is as wide as its content and the row fills the width; it fits on every phone width, shrink then wrap (Nathan, 2026-10-05, UI-02 review-4: "Yes, we want the tabs to fit regardless of phone screen") |
+| D-49 | Sub-tabs fit every phone | Each tab is as wide as its content and the row fills the width; it fits on every phone width; a name stays on one line and only shrinks, never wraps (Nathan, 2026-10-05, UI-02 review-4: "Yes, we want the tabs to fit regardless of phone screen"; "it should never wrap to two lines, always stays one line") |
 | D-50 | One icon, one meaning | Achievements = `award` ("Yes Medal is fine"); Trade Hall = `landmark`, because `house` is the Home dock icon ("Agreed"); Boons & pranks gets its own icon, `party-popper`, because `sparkles` is the Arcane element ("Different icon") (Nathan, 2026-10-05, UI-02 review-4) |
 
 ## Appendix B. Rules that this file replaces
