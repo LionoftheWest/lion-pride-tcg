@@ -30,6 +30,8 @@ const SHOW_ONCE = ['confetti', 'gift_wrap'];
 const BADGE = ['title', 'sticker', 'spotlight', 'swap_showcase', 'mustache'];
 // Pranks on the target's NEXT pack reveal (effects_batch3.sql): used up when the reveal plays.
 const PACK_ONCE = ['jinx', 'fake_gold', 'photobomb', 'slow_motion'];
+// What Discord forbids on the server owner (effects_spread, 2026-10-03): refused on the owner before the play.
+export const OWNER_FORBIDDEN = ['nickname', 'title', 'sticker', 'crown', 'body_swap', 'timeout'];
 
 export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg }) {
   const cardArt = async (ids) => {
@@ -40,18 +42,18 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
   };
 
   const countBy = (rows, key) => { const m = {}; for (const r of rows || []) { const k = String(r[key]); m[k] = (m[k] || 0) + 1; } return m; };
-  // Discord cannot change the server owner (nickname, roles, timeout, voice): settings.discord_immune,
-  // written by the bot at start. True when the card's effect acts in Discord or voice.
-  async function immuneTarget(cardId, targetId) {
+  // The server owner (settings.discord_immune, written by the bot at start) is a target like anyone
+  // (Nathan, 2026-10-03). Only what Discord forbids on the owner is refused, BEFORE the play (nothing is
+  // spent): a nickname layer, a Name Swap, a timeout. Returns { forbidden: that effect type or null,
+  // polls: true when the card is a poll card (it needs a question pick) }.
+  async function playCheck(cardId, targetId) {
     const [{ data: im }, { data: card }] = await Promise.all([
       supabase.from('settings').select('value').eq('key', 'discord_immune').maybeSingle(),
       supabase.from('cards').select('subject:subjects(effect)').eq('id', cardId).maybeSingle(),
     ]);
-    if (!Array.isArray(im?.value) || !im.value.map(String).includes(String(targetId))) return false;
-    const prim = card?.subject?.effect?.primitive;
-    if (!prim) return false;
-    const { data: p } = await supabase.from('effect_primitives').select('channel').eq('primitive', prim).maybeSingle();
-    return p?.channel === 'discord' || p?.channel === 'voice';
+    const eff = card?.subject?.effect;
+    const owner = Array.isArray(im?.value) && im.value.map(String).includes(String(targetId));
+    return { forbidden: owner && OWNER_FORBIDDEN.includes(eff?.primitive) ? eff.primitive : null, polls: Array.isArray(eff?.options?.polls) };
   }
   // The tier table, the caps, the immune list and the primitives are the same for every member:
   // read once a minute, not 4 queries in every member's 30 s poll. A failed read is not kept.
@@ -83,22 +85,25 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     // (for example, the function not there yet) must not break my state: the read still runs.
     await supabase.rpc('arm_player_effects', { p_player: String(me.id) }).then(() => {}, () => {});
     const now = new Date().toISOString(); // after the arm: a prank that starts now is in the read
-    const [cds, act, inc, [tiers, prims, caps, immune], sent, mine, pranks] = await Promise.all([
+    const [cds, act, inc, [tiers, prims, caps, immune], sent, mine, pranks, refunds] = await Promise.all([
       supabase.from('card_effect_cooldowns').select('subject_id, ready_at').eq('player_id', me.id).gt('ready_at', now),
       supabase.from('player_effects').select('id, primitive, amount, duration_s, options, expires_at')
         .eq('player_id', me.id).is('consumed_at', null).lte('starts_at', now).or(`expires_at.is.null,expires_at.gt.${now}`),
       supabase.from('card_plays').select('id, player_id, card_id, primitive, kind, outcome, rarity, amount, duration_s, created_at, sender:players!card_plays_player_id_fkey(username)')
-        .eq('target_id', me.id).is('seen_at', null).order('id', { ascending: false }).limit(10),
+        .eq('target_id', me.id).is('seen_at', null).neq('outcome', 'refunded').order('id', { ascending: false }).limit(10),
       staticReads(),
-      supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('player_id', me.id).gte('created_at', dayStart),
+      supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('player_id', me.id).gte('created_at', dayStart).neq('outcome', 'refunded'),
       // The limits made visible (Nathan, 2026-10-03): my plays on each member today (pair_per_day
       // counts aimed_at), the pranks each member got today (prank_recv_per_day), the immune members.
-      selectAll(() => supabase.from('card_plays').select('id, aimed_at').eq('player_id', me.id).gte('created_at', dayStart), ['id']),
-      selectAll(() => supabase.from('card_plays').select('id, target_id').eq('kind', 'prank').gte('created_at', dayStart), ['id']),
+      selectAll(() => supabase.from('card_plays').select('id, aimed_at').eq('player_id', me.id).gte('created_at', dayStart).neq('outcome', 'refunded'), ['id']),
+      selectAll(() => supabase.from('card_plays').select('id, target_id').eq('kind', 'prank').gte('created_at', dayStart).neq('outcome', 'refunded'), ['id']),
+      // My refunded plays I have not seen yet (effects_spread.sql): a popup says why, and that the card is ready.
+      supabase.from('card_plays').select('id, card_id, primitive, refund_reason, target:players!card_plays_target_id_fkey(username)')
+        .eq('player_id', me.id).eq('outcome', 'refunded').is('refund_seen_at', null).order('id').limit(10),
     ]);
     const err = cds.error || act.error || inc.error || prims.error;
     if (err) return res.status(500).json({ error: err.message });
-    const art = await cardArt([...(act.data || []).map((e) => e.options?.card_id), ...(inc.data || []).map((p) => p.card_id)]);
+    const art = await cardArt([...(act.data || []).map((e) => e.options?.card_id), ...(inc.data || []).map((p) => p.card_id), ...(refunds?.data || []).map((p) => p.card_id)]);
     res.json({
       enabled: true,
       cooldowns: Object.fromEntries((cds.data || []).map((c) => [c.subject_id, c.ready_at])),
@@ -120,6 +125,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
       pairs: countBy(mine.data, 'aimed_at'),
       pranked: countBy(pranks.data, 'target_id'),
       immune: Array.isArray(immune.data?.value) ? immune.data.value.map(String) : [],
+      refunds: (refunds?.data || []).map((p) => ({ id: p.id, primitive: p.primitive, reason: p.refund_reason, target: p.target?.username || 'that member', card: art.get(Number(p.card_id)) || null })),
       dayEnds: nextMtMidnightISO(),
     });
   });
@@ -155,6 +161,15 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
       })) };
     }
     res.json({ plays: recentCache.plays });
+  });
+
+  // The sender saw the popup of these refunded plays.
+  app.post('/api/effects/refunds/seen', async (req, res) => {
+    const me = await caller(req);
+    if (!me) return res.status(401).json({ error: 'not authenticated' });
+    const ids = (Array.isArray(req.body?.ids) ? req.body.ids : []).map(Number).filter(Number.isFinite).slice(0, 50);
+    if (ids.length) await supabase.from('card_plays').update({ refund_seen_at: new Date().toISOString() }).eq('player_id', me.id).eq('outcome', 'refunded').in('id', ids);
+    res.json({ ok: true });
   });
 
   // The target saw these plays: mark them, and use up the show-once effects.
@@ -210,8 +225,17 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     const cardId = Math.floor(Number(req.body?.cardId));
     const targetId = String(req.body?.targetId || '');
     if (!Number.isFinite(cardId) || !targetId) return res.status(400).json({ ok: false, error: 'bad_request' });
-    if (await immuneTarget(cardId, targetId)) return res.json({ ok: false, error: 'immune' });
-    const { data, error } = await supabase.rpc('play_card_effect', { p_player: me.id, p_card: cardId, p_target: targetId });
+    // A poll card: the index of the preset question the sender picked (play_card_effect checks it against
+    // the card's list too). No index from the client (the current Play screen has no picker): question 0.
+    const rawChoice = req.body?.choice;
+    let choice = rawChoice == null ? null : Number(rawChoice);
+    if (choice != null && !(Number.isInteger(choice) && choice >= 0 && choice < 10)) return res.status(400).json({ ok: false, error: 'bad_choice' });
+    const { forbidden, polls } = await playCheck(cardId, targetId);
+    if (forbidden) return res.json({ ok: false, error: 'owner_forbidden', primitive: forbidden });
+    if (!polls) choice = null; else if (choice == null) choice = 0;
+    const { data, error } = choice == null
+      ? await supabase.rpc('play_card_effect', { p_player: me.id, p_card: cardId, p_target: targetId })
+      : await supabase.rpc('play_card_effect_choice', { p_player: me.id, p_card: cardId, p_target: targetId, p_choice: choice });
     if (error) return res.status(500).json({ ok: false, error: error.message });
     res.json(data);
   });
