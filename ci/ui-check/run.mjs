@@ -1,0 +1,106 @@
+// Gate G3, the run (docs/design.md 12.5, 12.6): open every screen and window at the given sizes in one browser,
+// run the checks, and write one result file and one screenshot for each cell. evaluate.mjs gives the verdict.
+//   node run.mjs --browser chromium|webkit [--sizes 375x667,...] [--screens home,...] [--variants base,long,safe,keyboard] [--out DIR]
+// It starts serve.mjs on a free port (the fixtures). Every cell uses a new browser context (the audit method).
+// Variants (12.6): base; long = a 32-character name and a 9-digit number; safe = the safe-area presets (touch
+// sizes); keyboard = a text box focused with the keyboard height taken off the view (touch sizes, screens with a text box).
+import { chromium, webkit } from 'playwright';
+import { spawn } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { SIZES, SCREENS, sizeKey, boot, runSteps } from './screens.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
+const BROWSER = arg('browser', 'chromium');
+const sizes = (arg('sizes') ? arg('sizes').split(',') : SIZES.map(sizeKey)).map((k) => SIZES.find((s) => sizeKey(s) === k) || (() => { throw new Error(`unknown size ${k}`); })());
+const screens = arg('screens') ? arg('screens').split(',') : Object.keys(SCREENS);
+const variants = (arg('variants') || 'base,long,safe,keyboard').split(',');
+const OUT = arg('out', join(here, '.out', 'results'));
+mkdirSync(join(OUT, 'shots'), { recursive: true });
+const FIX = JSON.parse(readFileSync(join(here, 'fixtures', 'api.json'), 'utf8'));
+const read = (f) => readFileSync(join(here, 'checks', f), 'utf8');
+const CHECKS = read('walk-checks.js'), FIT = read('fitdetect.js'), CUT = read('cutdetect.js'), EXTRA = read('extra.js');
+// The game day (MT) of the recording: main.js keeps the locked squad for that day only.
+const MT_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(FIX.recordedAt));
+const sleep = (s) => new Promise((ok) => setTimeout(ok, s * 1000));
+// Call a check file (a function expression) in the page. Node Playwright evaluates a string as an expression and
+// does not call a function in it (the audit's Python runner did), so the call is part of the expression.
+const call = (pg, src, arg) => pg.evaluate(`(${src})(${arg === undefined ? '' : JSON.stringify(arg)})`);
+
+// The safe-area presets (design.md 2.3): a phone notch and home bar in portrait, both sides in landscape.
+const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;--discord-safe-area-inset-bottom:${land ? 21 : 34}px;--discord-safe-area-inset-left:${land ? 59 : 0}px;--discord-safe-area-inset-right:${land ? 59 : 0}px}`;
+// The variants run where they can change the result: long data where member names and counts show, the safe-area
+// presets on the overlays, the windows and the stages (the screens that touch the frame edges).
+const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell']);
+const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'dungeon', 'hunt-battle', 'trades']);
+const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
+
+const port = 4480 + Math.floor(Math.random() * 400);
+const server = spawn(process.execPath, [join(here, 'serve.mjs'), String(port)], { stdio: ['ignore', 'pipe', 'inherit'] });
+await new Promise((ok) => server.stdout.once('data', ok));
+const BASE = `http://127.0.0.1:${port}`;
+const browser = await (BROWSER === 'webkit' ? webkit : chromium).launch(BROWSER === 'chromium' ? { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } : {});
+
+let cells = 0, failures = 0;
+try {
+  for (const s of sizes) {
+    const [W, H, cls, touch] = s; const size = sizeKey(s); const land = W > H;
+    for (const screen of screens) {
+      const spec = SCREENS[screen];
+      for (const variant of variants) {
+        if ((variant === 'safe' || variant === 'keyboard') && !touch) continue;
+        if (variant === 'keyboard' && !spec.input) continue;
+        if (variant === 'safe' && (!/^compact/.test(cls) || !SAFE_SCREENS.has(screen))) continue;
+        if (variant === 'long' && !LONG_SCREENS.has(screen)) continue;
+        const t0 = Date.now();
+        const ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: touch, isMobile: touch && BROWSER === 'chromium', deviceScaleFactor: 1, timezoneId: 'America/Denver', locale: 'en-US' });
+        await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
+        const cookies = [];
+        if (spec.battle) cookies.push({ name: 'ci_hunt', value: 'battle', url: BASE });
+        if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
+        if (cookies.length) await ctx.addCookies(cookies);
+        if (spec.battle && FIX.meta?.teamKey) await ctx.addInitScript(([k, v]) => localStorage.setItem(k, v), [FIX.meta.teamKey, JSON.stringify({ date: MT_DAY, ids: FIX.meta.teamIds })]);   // the date of the game day (MT), as main.js loadTeam() checks
+        if (variant === 'safe') await ctx.addInitScript((css) => { document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); }); }, SAFE(land));
+        const pg = await ctx.newPage(); const errs = []; const blocked = [];
+        pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
+        pg.on('response', (r) => { if (r.status() === 403 && r.request().method() !== 'GET') blocked.push(r.request().method() + ' ' + new URL(r.url()).pathname); });
+        const noFixture = new Set();   // a GET /api call with no recorded answer (the screen may show an error state)
+        pg.on('response', (r) => { const u = new URL(r.url()); if (r.status() === 404 && u.pathname.startsWith('/api/')) noFixture.add(u.pathname); });
+        const res = { browser: BROWSER, size, class: cls, touch, screen, id: spec.id, variant };
+        try {
+          await boot(pg, BASE + '/');
+          res.miss = await runSteps(pg, spec.steps);
+          for (let i = 0; i < 20; i++) { if (await pg.evaluate(IMGWAIT)) break; await sleep(0.5); }
+          await pg.evaluate(() => document.fonts?.ready); await sleep(1);
+          if (variant === 'keyboard') {
+            const focused = await pg.evaluate((sel) => { const e = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length); if (!e) return false; e.focus(); return true; }, spec.input);
+            res.keyboard = { focused, height: Math.round(H * (land ? 0.55 : 0.4)) };
+            if (focused) { await pg.setViewportSize({ width: W, height: H - res.keyboard.height }); await sleep(1);
+              res.keyboard.inputInView = await pg.evaluate(() => { const r = document.activeElement?.getBoundingClientRect(); return !!r && r.top >= 0 && r.bottom <= innerHeight + 1; }); }
+          }
+          await pg.evaluate(() => { const b = document.getElementById('effectBanners'); if (b) b.style.display = 'none'; });
+          res.checks = await call(pg, CHECKS, { touch, phone: /^compact|tiny/.test(cls) });
+          res.fit = await call(pg, FIT);
+          res.cut = await call(pg, CUT, 'body');
+          res.cutWin = await call(pg, CUT, '[data-audit-win]');
+          res.extra = await call(pg, EXTRA);
+          if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
+          await pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70 });
+        } catch (e) {
+          res.error = String(e).slice(0, 300); failures++;
+          try { await pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70 }); } catch { /* ignore */ }
+        }
+        res.blocked = [...new Set(blocked)]; res.noFixture = [...noFixture]; res.pageErrors = errs.slice(0, 5); res.seconds = Math.round((Date.now() - t0) / 1000);
+        writeFileSync(join(OUT, `${BROWSER}-${size}-${screen}-${variant}.json`), JSON.stringify(res));
+        cells++;
+        console.log(`${BROWSER} ${size} ${screen.padEnd(20)} ${variant.padEnd(8)} ${String(res.seconds).padStart(3)}s miss=${(res.miss || []).length} fit=${(res.fit || []).length} cut=${(res.cut || []).length}${res.error ? ' ERROR ' + res.error.slice(0, 80) : ''}`);
+        await ctx.close();
+      }
+    }
+  }
+} finally {
+  await browser.close(); server.kill();
+}
+console.log(`${cells} cells, ${failures} runner errors`);

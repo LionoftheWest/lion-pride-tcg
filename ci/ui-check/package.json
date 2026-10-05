@@ -1,0 +1,15 @@
+{
+  "name": "lion-pride-ui-check",
+  "private": true,
+  "type": "module",
+  "description": "Gate G3 UI check (docs/design.md 12.5, 12.6): every screen and window at the 15 test sizes, Chromium and WebKit, on recorded fixtures.",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "node serve.mjs",
+    "check": "node run.mjs",
+    "evaluate": "node evaluate.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}
