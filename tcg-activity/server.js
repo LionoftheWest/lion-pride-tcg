@@ -656,7 +656,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         selectAll(() => supabase.from('hunts').select('id, status'), ['id']),
         selectAll(() => supabase.from('pack_ledger').select('player_id').eq('reason', LEDGER.opened), ['id']),
         selectAll(() => supabase.from('pack_ledger').select('player_id').eq('reason', LEDGER.giftSent), ['id']),
-        selectAll(() => supabase.from('card_plays').select('player_id, kind'), ['id']),
+        selectAll(() => supabase.from('card_plays').select('player_id, kind').neq('outcome', 'refunded'), ['id']), // a refund counts nowhere
         selectAll(() => supabase.from('card_trades').select('from_id, to_id'), ['id']), // the trade ledger: offers + auctions
         getCatalogBase(),
       ]);
@@ -995,8 +995,8 @@ async function loadProfile(id) {
     selectAll(() => supabase.from('hunt_hits').select('hunt_id, damage').eq('player_id', id), ['id']),
     // The hunts this member fought in: own committed cards (a Raid Crasher credit is raid damage only, 2026-10-03).
     selectAll(() => supabase.from('hunt_card_hp').select('hunt_id').eq('player_id', id), ['hunt_id', 'card_id', 'hit_date']),
-    selectAll(() => supabase.from('card_plays').select('kind').eq('player_id', id), ['id']),
-    supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('target_id', id).eq('kind', 'prank').neq('player_id', id),
+    selectAll(() => supabase.from('card_plays').select('kind').eq('player_id', id).neq('outcome', 'refunded'), ['id']),
+    supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('target_id', id).eq('kind', 'prank').neq('outcome', 'refunded').neq('player_id', id),
     supabase.from('card_trades').select('id', { count: 'exact', head: true }).or(`from_id.eq.${id},to_id.eq.${id}`),
     hunt ? supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 }) : Promise.resolve({ data: [] }),
     supabase.rpc('my_collection_power', { p_player_id: id }),
