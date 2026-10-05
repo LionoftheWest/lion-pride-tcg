@@ -97,3 +97,6 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 | UI-57 | Legal pages (Terms, Privacy) | None | No | #43 | Not migrated | Outside the Activity frame. Named scroll area |
 | UI-58 | Bot pictures (is-playing, raid, rare pulls, auctions) | `20-playing-post.pen` | Design 20: yes, #54. #104: spec only, no file | #54, #102, #104, #112 | Not migrated | Bot output. Uses the brand gold and the token source |
 | UI-59 | Small live view (`tiny` class) | None | No | Not built | Not migrated | New row. D-06. D-16 step 2 |
+| UI-60 | Menu grid (sheet on phones, panel on larger classes) | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Holds Dailies, Leaderboard, FAQ, Feedback, Settings, Events |
+| UI-61 | Settings page | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Ping settings (from the bell) and Reduce effects (D-11) |
+| UI-62 | Events / Game Log page | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Patch notes and upcoming events. Content source to decide |
