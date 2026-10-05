@@ -128,7 +128,7 @@ The shell is one CSS grid of named areas. No element uses the px size of another
 - A view has at most 4 visible sub-tabs, so every label fits at 375 px. Never cut a tab label. **[CI]** (G-065)
 - Every sub-tab has an icon and its name, on every class. All tab icons come from the one line-icon set of the UI-00 library: the same stroke, size and color rules. Cards, Achievements and Bosses get icons from that set. (D-47)
 - Each tab is as wide as its icon and name, and the row fills its width. The row fits on every phone width (320 px and up). A tab name always stays on one line: it may shrink to the minimum type size, but it never wraps. This is an exception to D-08 for sub-tabs. The row never scrolls and never cuts a name. (D-49)
-- One icon has one meaning in the whole app. Tab icons: Trades `arrow-left-right`, Trade Hall `landmark`, Boons & pranks `party-popper`, Cards `layers`, Achievements `award` (the medal; `trophy` is the Leaderboard), Bosses `skull`, Hunt `swords`, Dungeon `castle`, Gauntlet `crown`. (D-50)
+- One icon has one meaning in the whole app. Tab icons: Trades `arrow-left-right`, Trade Hall `landmark`, Boons `party-popper` (the tab label is "Boons", D-62), Cards `layers`, Achievements `award` (the medal; `trophy` is the Leaderboard), Bosses `skull`, Hunt `swords`, Dungeon `castle`, Gauntlet `crown`. (D-50)
 - Build each screen one time. It adapts by class through a short, named list of per-class changes. (G-019)
 - Do not add a new `m-land` or `m-port` selector. **[CI]** (G-019, G-182)
 - Size each component from its container with `@container`. Take type and space from the scales in section 4. (G-021)
@@ -951,6 +951,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-59 | Live in voice window | A tap on "+N" opens a window with every member in voice (Nathan, 2026-10-05: "is it possible for us to click the '+4' and have it expand a window to show all the people?"; "Those all look good!") |
 | D-60 | Small tiles on compact-land | Collection on `compact-land` uses 55 x 77 px tiles (below the 88 px minimum) to keep 2 rows and 24 cards per page, with 12 px under the toolbar, 8 px between rows and 12 px above the pager (Nathan, 2026-10-05, UI-07 review-1 option a: "Approved"; review-2: "approved with the spacing now") |
 | D-61 | Hunt boss stage | The boss fills the Hunt view with its information; the squad is one strip at the bottom above the dock (Nathan, 2026-10-05, UI-17 review-1: "I want a bigger view of the boss, it should fill the whole screen with the boss information (health/leaderboard), almost like the home view looks like. And then the squad goes to the bottom towards the dock") |
+| D-62 | Boons tab label | The Community tab is labelled "Boons", as the live app; it fits the 320 px row on one line (Nathan, 2026-10-05, UI-02 review-5: "Yeah just keep 'Boons'") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
