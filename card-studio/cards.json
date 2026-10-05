@@ -5929,7 +5929,7 @@
     "pushedAt": 1790896604557,
     "effect": {
       "primitive": "raid_crasher",
-      "name": "Raid Crasher",
+      "name": "Hunt Crasher",
       "base": {
         "uses": 3,
         "amount": 25

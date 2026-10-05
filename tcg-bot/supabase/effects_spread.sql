@@ -129,7 +129,7 @@ begin
     ('gordo-s-min-min', '{"primitive":"color_role","name":"ARMS Colors","desc":"The target picks a name color in the game. Their Discord name shows it for 1 day.","base":{"duration_s":86400},"cooldown_h":24}'::jsonb),
     ('pk-austin-s-ganondorf', '{"primitive":"mustache","name":"Gerudo Stache","desc":"Draws a big mustache on the target''s profile picture everywhere in the game, and on their showcase cards, for 1 day.","base":{"duration_s":86400},"cooldown_h":12}'::jsonb),
     ('tantaco-s-mythra-pyra', '{"primitive":"color_role","name":"Blade Colors","desc":"The target picks a name color in the game. Their Discord name shows it for 1 day.","base":{"duration_s":86400},"cooldown_h":24}'::jsonb),
-    ('launch-day-raider', '{"primitive":"raid_crasher","name":"Raid Crasher","base":{"uses":3,"amount":25},"cooldown_h":168,"desc":"The target''s next 3 Hunt attacks hit the boss 25% harder. That extra damage counts for your score (the prankster), not for the target''s."}'::jsonb),
+    ('launch-day-raider', '{"primitive":"raid_crasher","name":"Hunt Crasher","base":{"uses":3,"amount":25},"cooldown_h":168,"desc":"The target''s next 3 Hunt attacks hit the boss 25% harder. That extra damage counts for your score (the prankster), not for the target''s."}'::jsonb),
     ('launch-day-player', '{"primitive":"launch_party","name":"Launch Party","desc":"The target''s next 8 Hunt attacks each deal 20% more damage.","base":{"uses":8,"amount":20},"cooldown_h":168}'::jsonb)
   ) v(key, effect) loop
     select count(*) into n from subjects where key = r.key;
