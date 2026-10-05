@@ -1906,15 +1906,15 @@
     "updatedAt": 1789679953602,
     "pushedAt": 1789682251389,
     "ability": {
-      "desc": "Skip the boss turn — themed around Monster cards",
+      "desc": "Boss hits softer — scales with your Monster cards",
       "kind": "support",
-      "name": "Monster Stun",
-      "amount": 0,
-      "effect": "stun",
+      "name": "Monster Weaken",
+      "amount": 0.3,
+      "effect": "weaken",
       "target": "boss",
       "affinity": "trait:monster",
-      "cooldown": 4,
-      "duration": 1
+      "cooldown": 3,
+      "duration": 2
     },
     "effect": {
       "primitive": "clown_role",
@@ -2709,7 +2709,7 @@
       "effect": "stun",
       "target": "boss",
       "affinity": "trait:light",
-      "cooldown": 4,
+      "cooldown": 5,
       "duration": 1
     },
     "effect": {
@@ -2956,7 +2956,7 @@
       "effect": "stun",
       "target": "boss",
       "affinity": "trait:ranged",
-      "cooldown": 4,
+      "cooldown": 5,
       "duration": 1
     },
     "effect": {
@@ -3042,7 +3042,7 @@
       "effect": "stun",
       "target": "boss",
       "affinity": "trait:metal",
-      "cooldown": 4,
+      "cooldown": 5,
       "duration": 1
     },
     "effect": {
@@ -3077,15 +3077,15 @@
     "updatedAt": 1790279006831,
     "pushedAt": 1790279828132,
     "ability": {
-      "desc": "Skip the boss turn — themed around Caster cards",
+      "desc": "Boss hits softer — scales with your Caster cards",
       "kind": "support",
       "name": "Stupid Word",
-      "amount": 0,
-      "effect": "stun",
+      "amount": 0.3,
+      "effect": "weaken",
       "target": "boss",
       "affinity": "trait:caster",
-      "cooldown": 4,
-      "duration": 1
+      "cooldown": 3,
+      "duration": 2
     },
     "effect": {
       "primitive": "fog",
@@ -3370,15 +3370,15 @@
     "updatedAt": 1790279520992,
     "pushedAt": 1790279923965,
     "ability": {
-      "desc": "Skip the boss turn — themed around Robot cards",
+      "desc": "Boss hits softer — scales with your Robot cards",
       "kind": "support",
       "name": "Communication Error",
-      "amount": 0,
-      "effect": "stun",
+      "amount": 0.3,
+      "effect": "weaken",
       "target": "boss",
       "affinity": "trait:robot",
-      "cooldown": 4,
-      "duration": 1
+      "cooldown": 3,
+      "duration": 2
     },
     "effect": {
       "primitive": "fog",
@@ -3428,15 +3428,15 @@
       }
     },
     "ability": {
-      "desc": "Skip the boss turn — themed around Earth cards",
+      "desc": "Boss hits softer — scales with your Earth cards",
       "kind": "support",
-      "name": "Earth Stun",
-      "amount": 0,
-      "effect": "stun",
+      "name": "Earth Weaken",
+      "amount": 0.3,
+      "effect": "weaken",
       "target": "boss",
       "affinity": "trait:earth",
-      "cooldown": 4,
-      "duration": 1
+      "cooldown": 3,
+      "duration": 2
     }
   },
   {
@@ -4104,15 +4104,15 @@
       "traits": []
     },
     "ability": {
-      "desc": "Skip the boss turn — themed around Air cards",
+      "desc": "Boss hits softer — scales with your Air cards",
       "kind": "support",
-      "name": "Air Stun",
-      "amount": 0,
-      "effect": "stun",
+      "name": "Air Weaken",
+      "amount": 0.3,
+      "effect": "weaken",
       "target": "boss",
       "affinity": "trait:air",
-      "cooldown": 4,
-      "duration": 1
+      "cooldown": 3,
+      "duration": 2
     },
     "effect": {
       "primitive": "ping_parade",
@@ -4740,15 +4740,15 @@
     "updatedAt": 1790283099758,
     "pushedAt": 1790283109952,
     "ability": {
-      "desc": "Skip the boss turn — themed around Royal cards",
+      "desc": "Boss hits softer — scales with your Royal cards",
       "kind": "support",
       "name": "She's Here",
-      "amount": 0,
-      "effect": "stun",
+      "amount": 0.3,
+      "effect": "weaken",
       "target": "boss",
       "affinity": "trait:royal",
-      "cooldown": 4,
-      "duration": 1
+      "cooldown": 3,
+      "duration": 2
     },
     "effect": {
       "primitive": "jinx",
@@ -5936,7 +5936,8 @@
       },
       "cooldown_h": 168,
       "desc": "The target's next 3 Hunt attacks hit the boss 25% harder. That extra damage counts for your score (the prankster), not for the target's."
-    }
+    },
+    "type": "Character"
   },
   {
     "id": "launch-day-player",
@@ -5967,6 +5968,7 @@
         "amount": 20
       },
       "cooldown_h": 168
-    }
+    },
+    "type": "Character"
   }
 ]
