@@ -506,13 +506,14 @@ Use a fixed set of card sizes. Each size has one minimum width. (G-099)
 | Size | Use | Minimum width † | Shows |
 |---|---|---|---|
 | full | Card viewer, reveal | 240 px | Art, name, rarity |
-| tile | Card grids, with a caption | 88 px | Art, name, rarity mark |
+| tile | Card grids (no caption, D-29) | 88 px | The card face only |
 | squad | Hunt and Dungeon squads | 80 px | Art, Power, HP, status row |
-| thumb | Pickers, offers | 64 px | Art, rarity mark |
+| thumb | Pickers, offers (no caption, D-29) | 64 px | The card face only |
 | mini | Lists, feed rows | 44 px | Art |
 | slot | An empty place for a card | Same as its context | Outline, label |
 - The card ratio is 5:7 and the radius is `--rad-card` on every surface. (G-099, G-045)
 - The card face does not show tags. Tags, ability, effect and stats show in the Card Detail.
+- Tiles and thumbs have no caption row under the card: no rarity letter, element, power or copies. The card frame shows the rarity. The Card Detail shows the rest. This is the one exception to "color is never the only cue" (D-29). Squad cards keep their Power, HP and status row.
 - Use one Card Detail with fixed sections. Each context shows a named subset. (G-100)
 - Use one Flip Card. Every reveal offers Reveal all and uses the same close rule. (G-101)
 
@@ -854,6 +855,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-26 | Sound control | None (Nathan, 2026-10-04: "Sound is not an option"). The top bar list is Shards, Shop, Dailies, help, Report, bell, Leaderboard, avatar ("I would like the wrench icon as well up there") |
 | D-27 | Sub-tab counts | No counts on sub-tabs. The Achievements tab shows a Dot, in the place of the count, when an achievement can be claimed (Nathan, 2026-10-04: "remove the number of Achievements and the bosses … where the number is for the Achievement that is where the little notification can be for when an achievement can be redeemed") |
 | D-28 | Rarity chip text | The full name only, no letter in front (Nathan, 2026-10-04: "lets not have the Acronyms, just the name. So for Normal, it wouldn't be N Normal, it would just read Normal") |
+| D-29 | Card tile caption | None on tiles and thumbs, so a grid is not cluttered. Squad cards keep their stats (Nathan, 2026-10-04: "lets get rid of the symbols underneath them in the tiles so it doesn't clutter up things when the card is tiled in a view") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
