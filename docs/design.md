@@ -161,8 +161,12 @@ Each screen spec names its model.
 - JavaScript computes one number for each paged surface, the page size, through the one grid fitter. (G-020, G-099)
 - JavaScript never sets the position or the size of an element from another element. It never removes a node to fit. (G-020, G-022)
 
-### 3.6 Home hero (D-14)
-When the Hunt is live, the Home hero is the Hunt tile. When the Hunt rests, the hero shows the next active mode. A rotating carousel comes later. (G-024)
+### 3.6 Home hero carousel (D-14, D-45)
+- The Home hero is a carousel with 4 slides: Hunt, Dungeon, Gauntlet and Events. A slide shows only when its mode is on. (D-45)
+- The first slide is the one that needs the member most: a live boss first. When the Hunt rests, the next active mode is first. (D-14, D-45, G-024)
+- The carousel never moves by itself. The member changes the slide with the dots, a swipe or the arrow buttons (44 px). A tap on a slide opens its mode. (D-45)
+- A slide with news shows the Dot, for example a Dungeon run not used today. (D-45)
+- Every slide follows the Home notes: the boss fully visible, no overlap, no cut text, everything above the dock.
 
 ## 4. Tokens
 ### 4.1 Token rules
@@ -919,6 +923,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-42 | One Card picker | The Squad picker becomes the Card picker, a small Collection with pick-one and pick-several modes, used by squads, trading, the Trade Hall (list, bid), wishlist, Spotlight and boons/pranks (Nathan, 2026-10-04: "a mini version of the collection that can be applied to each of the respective areas … is a smart way to go about it") |
 | D-43 | One Member picker; Boons & pranks flow | Trades, Gift, Boons & pranks and profiles start with the Member picker. Boons & pranks: member first, then the Card picker with effect cards (Nathan, 2026-10-04: "The boon/Prank view honestly should get the same treatment as the trading view … search for the person first, THEN … pick the boon/prank") |
 | D-44 | One Leaderboard window | Tabs Main, Hunt, Dungeon, Gauntlet; every board link opens its tab (Nathan, 2026-10-04: "Agreed") |
+| D-45 | Home carousel | Slides Hunt, Dungeon, Gauntlet, Events; the most urgent first; no automatic sliding; dots, swipe and 44 px arrows; a Dot on a slide with news (Nathan, 2026-10-04: "the window where it shows the Pride Hunt, that will also be a carousel with the events/dungeons/etc"; slides "Yes those 4 slides are right"; auto-slide "None"; Dot "Yes") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)

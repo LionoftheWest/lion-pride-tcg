@@ -42,7 +42,7 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 | UI-02 | Sub-tab bar (all views) | None | No | #155 | Not migrated | One shared component, built with no design. Gap G-018 |
 | UI-03 | Home | `19-home.pen`, earlier `08-v3-home` | Yes, date not recorded, design, memory only | #51 | Not migrated | Matches the design at a glance. Season tag removed by Nathan |
 | UI-04 | Home boss: live portrait, resting boss | None | No | #35, #88 | Not migrated | |
-| UI-05 | Home carousel | None | No | Not built | Not migrated | `docs/activities/README.md` section 2A asks for a design. D-14: later |
+| UI-05 | Home carousel (Hunt, Dungeon, Gauntlet, Events) | None | Spec approved (D-45, 2026-10-04) | Not built | Not migrated | Designed with UI-03 Home in wave 2. Built from the current Hunt tile and the mode lobbies |
 | UI-06 | Live in voice tile and Watch chip | `19-home` (Watch shown) | No. The Watch chip is an open question | #71, #72 | Not migrated | One tile has two actions (G-080) |
 | UI-07 | Collection: card grid and filter panel | `08-v3-collection.png` | 2026-09-27, design, old `design.md` section 11 | #10, #13, #14 | Not migrated | Round 2 and 3 changes with no design update |
 | UI-08 | Collection: card panel (side) | `08-v3-collection.png` | 2026-09-27, design, old `design.md` section 11 | #10 | Not migrated | |
