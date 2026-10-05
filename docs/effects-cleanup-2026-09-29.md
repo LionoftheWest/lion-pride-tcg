@@ -39,7 +39,7 @@ A card's rarity scales its effect (normal 1x … gold 1.5x) and shortens its coo
 | Mr. Worldwide | prank | **Worldwide** | Pins this card to the target's name for all to see. | 6 h |
 | Super Battle Golf Flash Bang | prank | **Flash Bang** | Confetti bursts over the target the next time they open the app. | 3 h |
 | Call of Dragons | prank | **World Chat** | Pins this card to the target's name for all to see. | 6 h |
-| 30 DanTucker Pings | prank | **Pinged** | Gives the target a ping title. (the Pinged / Notification Magnet / @TheDanTucker's Echo) | 12 h |
+| 30 DanTucker Pings | prank | **Pinged** | Gives the target a ping title. (the Pinged / Notification Magnet / an echo title) | 12 h |
 | Lazy SD | prank | **Self Destruct** | Turns the target's collection upside down for 10 minutes. | 12 h |
 | The Server Crashed! | prank | **Server Crash** | The target's cards show ??? for 10 minutes. | 12 h |
 | Failed Wordle | prank | **Stupid Word** | The target's cards show ??? for 10 minutes. | 12 h |
