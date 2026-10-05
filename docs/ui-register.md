@@ -37,9 +37,9 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 
 | ID | Screen | Design file | Approved | Built | Standard | Notes |
 |---|---|---|---|---|---|---|
-| UI-00 | Design system: tokens and components | `00-design-system.pen` | No | Not built (tokens in `ui-v2.css`) | Not migrated | New row. design.md section 12.8 step 1. Must be approved before any screen work |
-| UI-01 | Shell: top bar and dock | `08-v3-home.png` | 2026-09-27, design, old `design.md` section 11 | #10 | Not migrated | Top bar later changed by design 29 (Shards and Shop). Sub-tabs moved into the top bar by #155 with no design |
-| UI-02 | Sub-tab bar (all views) | None | No | #155 | Not migrated | One shared component, built with no design. Gap G-018 |
+| UI-00 | Design system: tokens and components | lion-pride-tcg-design `UI-00/approved/` (review-3) | Design approved 2026-10-04 (Nathan: "Yes approve the shell"; `UI-00/approval.md`) | Not built (tokens in `ui-v2.css`) | Approved design, not built | New row. design.md section 12.8 step 1. Must be approved before any screen work |
+| UI-01 | Shell: top bar and dock | lion-pride-tcg-design `UI-01/approved/` (review-3) | Design approved 2026-10-04 (Nathan: "Yes approve the shell"; `UI-01/approval.md`) | #10 | Approved design, not built | Top bar later changed by design 29 (Shards and Shop). Sub-tabs moved into the top bar by #155 with no design |
+| UI-02 | Sub-tab bar (all views) | lion-pride-tcg-design `UI-02/approved/` (review-3) | Design approved 2026-10-04 (Nathan: "Yes approve the shell"; `UI-02/approval.md`) | #155 | Approved design, not built | One shared component, built with no design. Gap G-018 |
 | UI-03 | Home | `19-home.pen`, earlier `08-v3-home` | Yes, date not recorded, design, memory only | #51 | Not migrated | Matches the design at a glance. Season tag removed by Nathan |
 | UI-04 | Home boss: live portrait, resting boss | None | No | #35, #88 | Not migrated | |
 | UI-05 | Home carousel (Hunt, Dungeon, Gauntlet, Events) | None | Spec approved (D-45, 2026-10-04) | Not built | Not migrated | Designed with UI-03 Home in wave 2. Built from the current Hunt tile and the mode lobbies |
@@ -79,7 +79,7 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 | UI-39 | Explainer carousels (Hall, Auctions, Trades, Pranks, Hunt, Collection) | `29-explainer/` | No. #120 asked to wait for approval and merged 9 minutes later | #120, #123 | Not migrated | |
 | UI-40 | Report (wrench) | `23-report.pen` | Conflict: #70 says approved, a memory note says not approved | #70 | Not migrated | Nathan rules on the record |
 | UI-41 | Phone layouts (landscape and portrait, all views) | `24-*`, `25-*`, `27-*` | 2026-10-01, design, #75 | #75, #76, #78, #79 and about 15 later fixes | Not migrated | The standard replaces the three layouts with one layout for each screen |
-| UI-42 | Top bar Shards and Shop button | `29-shop.png` | 2026-10-02, design, #118 | #118 | Not migrated | Matches at a glance |
+| UI-42 | Top bar Shards and Shop button | lion-pride-tcg-design `UI-42/approved/` (review-3) | Design approved 2026-10-04 (Nathan: "Yes approve the shell"; `UI-42/approval.md`) | #118 | Approved design, not built | Matches at a glance |
 | UI-43 | Shop: stock, packs, stat reset, confirms, picker | `29-review-3/` (18 screens) | 2026-10-02, design, #118 | #118, #125 | Not migrated | Featured button label differs. Phone fixes (#125) have no design |
 | UI-44 | Convert extra copies | None | Date not recorded, spec only, #128 (option B) | #128 | Not migrated | |
 | UI-45 | Adventure tabs (Hunt, Dungeon) | `30-review-2` | 2026-10-03, design, process doc 03 | #147, #155 | Not migrated | The design shows "SOON" tabs. D-13: hide them |
@@ -97,7 +97,7 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 | UI-57 | Legal pages (Terms, Privacy) | None | No | #43 | Not migrated | Outside the Activity frame. Named scroll area |
 | UI-58 | Bot pictures (is-playing, raid, rare pulls, auctions) | `20-playing-post.pen` | Design 20: yes, #54. #104: spec only, no file | #54, #102, #104, #112 | Not migrated | Bot output. Uses the brand gold and the token source |
 | UI-59 | Small live view (`tiny` class) | None | No | Not built | Not migrated | New row. D-06. D-16 step 2 |
-| UI-60 | Menu grid (sheet on phones, panel on larger classes) | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Holds Dailies, Leaderboard, FAQ, Feedback, Settings, Events |
+| UI-60 | Menu grid (sheet on phones, panel on larger classes) | lion-pride-tcg-design `UI-60/approved/` (review-3) | Design approved 2026-10-04 (Nathan: "Yes approve the shell"; `UI-60/approval.md`) | Not built | Approved design, not built | New. Holds Dailies, Leaderboard, FAQ, Feedback, Settings, Events |
 | UI-61 | Settings page | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Ping settings (from the bell) and Reduce effects (D-11) |
 | UI-62 | Events / Game Log page | None | Spec approved (D-31, 2026-10-04) | Not built | Not migrated | New. Patch notes and upcoming events. Content source to decide |
 | UI-63 | Trade window (Your cards / Their cards) | None | Spec approved (D-35, 2026-10-04) | Not built | Not migrated | New. Replaces the trade builder. UI-25 becomes the member picker + Pending. The request needs a server change first |
