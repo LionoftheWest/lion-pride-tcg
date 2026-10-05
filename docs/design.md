@@ -126,6 +126,7 @@ The shell is one CSS grid of named areas. No element uses the px size of another
 | `dock` | Full width, bottom | Slim, bottom (as today, P0) | Bottom, centered | Bottom, centered |
 - Sub-tabs are always one row directly under the top bar, on every class except `tiny`. The place never changes. On `compact-port` the tabs share the full width equally. On the other classes they are compact and left-aligned. On `compact-land` the row is slim (about 30 px). (D-37, G-018)
 - A view has at most 4 visible sub-tabs, so every label fits at 375 px. Never cut a tab label. **[CI]** (G-065)
+- Every sub-tab has an icon and its name, on every class. All tab icons come from the one line-icon set of the UI-00 library: the same stroke, size and color rules. Cards, Achievements and Bosses get icons from that set. (D-47)
 - Build each screen one time. It adapts by class through a short, named list of per-class changes. (G-019)
 - Do not add a new `m-land` or `m-port` selector. **[CI]** (G-019, G-182)
 - Size each component from its container with `@container`. Take type and space from the scales in section 4. (G-021)
@@ -168,6 +169,7 @@ Each screen spec names its model.
 - The carousel never moves by itself. The member changes the slide with the dots, a swipe or the arrow buttons (44 px). A tap on a slide opens its mode. (D-45)
 - A slide with news shows the Dot, for example a Dungeon run not used today. (D-45)
 - Every slide follows the Home notes: the boss fully visible, no overlap, no cut text, everything above the dock.
+- The Hunt slide shows no Top Hunters list. One line under the hero shows the top hunter, for example "Top hunter: Blade · 6,075". A tap on it opens the Leaderboard window on its Hunt tab. (D-48, D-44)
 
 ## 4. Tokens
 ### 4.1 Token rules
@@ -926,6 +928,8 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-44 | One Leaderboard window | Tabs Main, Hunt, Dungeon, Gauntlet; every board link opens its tab (Nathan, 2026-10-04: "Agreed") |
 | D-45 | Home carousel | Slides Hunt, Dungeon, Gauntlet, Events; the most urgent first; no automatic sliding; dots, swipe and 44 px arrows; a Dot on a slide with news (Nathan, 2026-10-04: "the window where it shows the Pride Hunt, that will also be a carousel with the events/dungeons/etc"; slides "Yes those 4 slides are right"; auto-slide "None"; Dot "Yes") |
 | D-46 | Stack when tall | A content area taller than wide stacks its side columns below the main content as full-width rows; a wide area keeps columns. One rule for every screen (Nathan, 2026-10-04: "I wonder if we stack these as rows instead of columns in this view?"; as a general rule "Yes that is a good rule") |
+| D-47 | Sub-tab icons | Every sub-tab has an icon, all from the one line-icon set (Nathan, review-3: "Yes tab icons but making sure that they are universalized to be the same kind of icon") |
+| D-48 | Top Hunters on Home | One line under the hero ("Top hunter: name · damage") that opens the Leaderboard window on the Hunt tab; no list over the boss (Nathan, review-3: "Agreed") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
