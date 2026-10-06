@@ -736,7 +736,8 @@ Test: "Does the member need this fact to decide now?" If yes, show it. If no, mo
 | Unknown | "Something went wrong. Try again." |
 
 ### 10.7 Help (D-09)
-- Use one help entry: the "?" in the top bar. It opens the help for the current view first. (G-153)
+- Each view has one help entry: its "?" button. It opens the help for the current view first. General help is FAQ in the Menu (D-31). (G-153)
+- On `compact-land`, `medium` and `expanded`, the "?" sits at the right end of the sub-tab row, in the same row as the tabs. On `compact-port` the row has no room for it (Nathan, D-63); its place there is open. (D-63)
 - Every view has help in this one model. Each rule has one help text. (G-152)
 - Help numbers come from the server settings, or a check fails when they differ. **[CI]** (G-155)
 - Tutorial steps use glossary names, and point at controls that do what the step says. (G-154)
@@ -952,6 +953,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-60 | Small tiles on compact-land | Collection on `compact-land` uses 55 x 77 px tiles (below the 88 px minimum) to keep 2 rows and 24 cards per page, with 12 px under the toolbar, 8 px between rows and 12 px above the pager (Nathan, 2026-10-05, UI-07 review-1 option a: "Approved"; review-2: "approved with the spacing now") |
 | D-61 | Hunt boss stage | The boss fills the Hunt view with its information; the squad is one strip at the bottom above the dock (Nathan, 2026-10-05, UI-17 review-1: "I want a bigger view of the boss, it should fill the whole screen with the boss information (health/leaderboard), almost like the home view looks like. And then the squad goes to the bottom towards the dock") |
 | D-62 | Boons tab label | The Community tab is labelled "Boons", as the live app; it fits the 320 px row on one line (Nathan, 2026-10-05, UI-02 review-5: "Yeah just keep 'Boons'") |
+| D-63 | Help button place | On the wide classes the view's "?" sits at the right end of the sub-tab row, not in its own row under it. Portrait phones: not decided (Nathan, 2026-10-05, UI-11 review-1 at 932x430: "The question mark should be on the same line as the tab in this view"; at 430x932: "the question mark doesn't fit in the sub tab bar row") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
