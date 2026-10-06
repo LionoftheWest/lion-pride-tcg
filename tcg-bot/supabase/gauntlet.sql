@@ -12,13 +12,17 @@
 do $g$
 declare x text[]; m text;
 begin
+  -- balance_table.sql (2026-10-03): the functions below read public.balance, so it must exist first.
+  if to_regclass('public.balance') is null then
+    raise exception '%: apply balance_table.sql first (these functions read the balance table)', 'gauntlet.sql';
+  end if;
   foreach x slice 1 in array array[['dungeon_offers', 'f683173e2aea7385570805f9f4c118e5', '96c341db587398eb879b07c969500409'],
     ['dungeon_enter', '8feecf401e00ed762e33125448a2dfff', '591317f3b1b3ef398d22ff0a4518b788'],
     ['dungeon_after_kill', '3a1f54b7341b4982fd63e8ac7d94658b', '7089cf3176ce3e6593fc48208b4cdee6'],
     ['dungeon_settle', '3ae0933a2aefdb6c53c21c0bc88163d9', '5d493824f4f6080d9a08c3491d9dc595'],
     ['dungeon_start', 'bb04624da5692c5d634e988e91e89c9f', 'e952ba662c6903abdbd766629f25a9b4'],
-    ['dungeon_attack', 'c9858340b49c8040414bbe7a9cc976a1', '90585187581590dd5cbf03d936c92f33'],
-    ['dungeon_support', '2a585109eb24719dbd354e50061967f9', '07722fee6e10161a268b477402eb66f4'],
+    ['dungeon_attack', 'c9858340b49c8040414bbe7a9cc976a1', '4c30628c23a9cc1b1fe19619ad63b61f'],
+    ['dungeon_support', '2a585109eb24719dbd354e50061967f9', '48559abccd521a049306926bd7044de8'],
     ['dungeon_choose', '4d00387fadf3af14c85e3662f94573a6', 'd4fae931e80f8ee8879efe0344a06ceb'],
     ['dungeon_retreat', '0e0ceb456382ba4bbd1a47e51df5b183', '370d82a58009283e749f5a8d3e89b99a'],
     ['dungeon_view', 'a63a0710d6f89738a69def51c811b097', 'f6dd1098039c4c09a693f1e39b80250b'],
@@ -413,7 +417,7 @@ begin
   wk := combat_weak(f->'weak', f->'resist', info->>'type', info->>'rarity', info->>'season', v_tags, (sq->>'stack')::int);
   v_crit := combat_crit_chance((wk->>'wm')::int > 0, v_aeff, v_aamt, v_cmb);
   hit := combat_hit((v_cmb->>'cp')::int, (wk->>'mult')::numeric, (c->>'buff')::numeric, (c->>'debuff')::numeric, (sq->>'synmult')::numeric,
-    v_crit, 0.08 + case when 'shrouded' = any(v_pl) then 0.10 else 0 end, v_aeff, v_aamt, v_athresh,
+    v_crit, combat_miss('shrouded' = any(v_pl)), v_aeff, v_aamt, v_athresh,
     'armored' = any(v_pl) and 'trait:melee' = any(v_tags),
     case when (f->>'exu')::int >= v_round and (f->>'ex')::numeric > 0 then (f->>'ex')::numeric else 0 end,
     (f->>'hp')::bigint, (f->>'max')::bigint);
@@ -485,7 +489,7 @@ begin
     if tc is null then return jsonb_build_object('ok', false, 'error', 'bad_target'); end if;
     tinfo := dungeon_run_card(r, p_target_card);
     v_matched := v_aff is not null and v_aff = any(dungeon_txt(tinfo->'tags'));
-    if v_matched then v_amt := v_amt * 1.8; end if;
+    if v_matched then v_amt := v_amt * balance_num('support', 'matched_x'); end if;
     if v_eff = 'empower' then tc := tc || jsonb_build_object('buff', combat_support_value('empower', v_amt, 1, null));
     elsif v_eff = 'shield' then tc := tc || jsonb_build_object('shield', (tc->>'shield')::int + combat_support_value('shield', v_amt, 1, (tc->>'max')::int)::int);
     elsif v_eff = 'heal' then
