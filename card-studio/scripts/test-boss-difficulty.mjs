@@ -37,7 +37,7 @@ begin
     if jsonb_array_length(rec.passive->'list') <> (case rec.tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end)
        or (select count(distinct x->>'kind') from jsonb_array_elements(rec.passive->'list') x) <> jsonb_array_length(rec.passive->'list')
        or rec.hp_max <> (select (value->>rec.tier)::int from settings where key = 'hunt_hp') -- Nathan's dial (30k/40k/40k now)
-       or rec.hp_remaining <> rec.hp_max or rec.hp_share <> rec.hp_max / 10
+       or rec.hp_remaining <> rec.hp_max or rec.hp_share <> coalesce((select (value->>'heal_share')::bigint from settings where key = 'hunt_hp'), rec.hp_max / 10)   -- boss_hp_heal_share.sql
        or (rec.stats->>'atk')::int <> (case rec.tier when 'Normal' then 58 when 'Heroic' then 73 else 93 end) then ok := false; end if;
   end loop;
   res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP = settings.hunt_hp, share = HP / 10, ATK 58/73/93', 'ok', ok,
