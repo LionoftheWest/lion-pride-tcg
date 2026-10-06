@@ -480,6 +480,7 @@ Three window types, with one rule for each. (G-060, G-073)
 The Hunt, the Dungeon, the Gauntlet and later modes pick a squad the same way.
 - The mode's main view shows the squad slots (5 for the Dungeon, 8 for the Hunt) and no card grid. With no squad, it shows **Select your squad**. With a squad, it shows the cards in their slots, the Start action (**Start run**, **Start raid**) and **Edit**. The main view is read-only.
 - In the Hunt, the boss stage fills the content area like the Home Hunt slide (UI-04): the whole boss, name, Tier chip, HP bar, countdown and the Top 3 board (D-58). The squad (8 slots, Squad Power, the main button) is one strip at the bottom of the content area, above the dock. (D-61)
+- The Hunt fight screen shows no Top hunter line, no Top 3 board and no countdown; the freed space goes to the boss stage. Squad select and resting keep them. (D-65)
 - **Select your squad** and **Edit** open the Squad picker window: the full card grid with the toolbar (search, Filters, D-39), **Auto-pick**, and the pager under the grid (D-36).
 - A slot row at the top of the picker shows the chosen cards in pick order, each with an × to remove it.
 - A tap on a card in the grid selects it and shows its number (1, 2, 3 …). A tap on a numbered card removes it. When a card is removed, the cards after it move up one number.
@@ -954,6 +955,8 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-61 | Hunt boss stage | The boss fills the Hunt view with its information; the squad is one strip at the bottom above the dock (Nathan, 2026-10-05, UI-17 review-1: "I want a bigger view of the boss, it should fill the whole screen with the boss information (health/leaderboard), almost like the home view looks like. And then the squad goes to the bottom towards the dock") |
 | D-62 | Boons tab label | The Community tab is labelled "Boons", as the live app; it fits the 320 px row on one line (Nathan, 2026-10-05, UI-02 review-5: "Yeah just keep 'Boons'") |
 | D-63 | Help button place | On the wide classes the view's "?" sits at the right end of the sub-tab row, not in its own row under it. Portrait phones: not decided (Nathan, 2026-10-05, UI-11 review-1 at 932x430: "The question mark should be on the same line as the tab in this view"; at 430x932: "the question mark doesn't fit in the sub tab bar row") |
+| D-64 | Trades answers | Gift a pack in the Trade window; "Offer"; extra copies first; a magnifier on member tiles opens the profile; In voice first, then all members A-Z; undo toast; 6 cards per page at 375x667; partner rules; Accept is a secondary button (Nathan, 2026-10-05, Trades review-1; full list in the design repo FEEDBACK.md "Trades group") |
+| D-65 | Hunt fight without boards | The fight screen has no Top hunter, no Top 3 and no countdown (Nathan, 2026-10-05, UI-18 review-2: "I would say we don't actualy need the leaderboard/top hunter on the fight screen and the 'beat in 1d 3h' timer as well on this view") |
 
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
