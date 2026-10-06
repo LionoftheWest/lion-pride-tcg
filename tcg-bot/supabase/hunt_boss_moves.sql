@@ -8,10 +8,10 @@
 -- hunt_attack, hunt_support and spawn_hunt are rebuilt from their LIVE text; the guard refuses a changed live version.
 -- Tests: card-studio/scripts/test-boss-moves.mjs, combat-golden.mjs (CANDIDATE=this file).
 do $g$ begin
-  if md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), '')) not in ('f84e5768628b1c4afddb89ecfe96a5ec', '9011a384a4a4a9e4210896e70eadf09b') then
+  if md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), '')) not in ('f84e5768628b1c4afddb89ecfe96a5ec', '352f81ffb45b028c1eab6e3dfcc2e707') then
     raise exception 'hunt_boss_moves.sql: the live hunt_attack changed since this file was built. Rebuild from the live text.';
   end if;
-  if md5(replace(pg_get_functiondef('public.hunt_support'::regproc), chr(13), '')) not in ('beb6c2738ef2b0966054234c13fa1085', 'be3cb55e8972c6a6702e799d3af38b41') then
+  if md5(replace(pg_get_functiondef('public.hunt_support'::regproc), chr(13), '')) not in ('beb6c2738ef2b0966054234c13fa1085', '6ffdd26daed7008346262413497b2a24') then
     raise exception 'hunt_boss_moves.sql: the live hunt_support changed since this file was built. Rebuild from the live text.';
   end if;
   if md5(replace(pg_get_functiondef('public.spawn_hunt'::regproc), chr(13), '')) not in ('c754ef43fcbf05328e8e1a90f8445007', '4b9c670ee18c6ece32d5a3a886b9df1d') then
@@ -26,62 +26,62 @@ alter table public.hunt_combat_state add column if not exists marks jsonb not nu
 insert into public.settings (key, value) values ('hunt_boss_moves', $j${
   "_share": 0.4,
   "The Grind Vampire": {"counters": "heal", "moves": [
-    {"key": "bloodrot", "name": "Bloodrot", "w": 1, "text": "Heals on the hit card work at 10% for 2 rounds."},
+    {"key": "bloodrot", "name": "Bloodrot", "w": 1, "text": "Heals on the hit card work at 10% for the rest of the day."},
     {"key": "siphon", "name": "Siphon", "w": 1, "text": "The boss heals the HP that your squad healed this round."},
     {"key": "feast", "name": "Feast", "w": 1, "text": "Hits the card with the lowest HP."},
     {"key": "anemia", "name": "Anemia", "w": 1, "text": "Hits every card, twice as hard on heal cards."}]},
   "The AFK Warzombie": {"counters": "heal", "moves": [
-    {"key": "decay", "name": "Decay", "w": 1, "text": "The hit card loses the HP that heals gave it this round."},
-    {"key": "infect", "name": "Infect", "w": 1, "text": "Damage on the hit card for 3 rounds."},
-    {"key": "groan", "name": "Groan", "w": 1, "text": "Heal cards wait 2 more rounds."},
-    {"key": "undying", "name": "Undying", "w": 1, "text": "For 3 rounds, each heal you play also heals the boss."}]},
+    {"key": "decay", "name": "Decay", "w": 1, "text": "The hit card loses the HP that heals gave it this round. Heals work at 50% for the rest of the day."},
+    {"key": "infect", "name": "Infect", "w": 1, "text": "Damage on the hit card for 3 rounds. It cannot be healed for the rest of the day."},
+    {"key": "groan", "name": "Groan", "w": 1, "text": "Heal cards wait 4 more rounds."},
+    {"key": "undying", "name": "Undying", "w": 1, "text": "For the rest of the day, each heal you play also heals the boss."}]},
   "The Smurf Brute": {"counters": "shield", "moves": [
-    {"key": "shatter", "name": "Shatter", "w": 1, "text": "Breaks every shield in your squad."},
+    {"key": "shatter", "name": "Shatter", "w": 1, "text": "Breaks every shield in your squad. Shields work at 10% for the rest of the day."},
     {"key": "crush", "name": "Crush", "w": 1, "text": "Each card takes half of the shield it lost to Shatter."},
     {"key": "bully", "name": "Bully", "w": 1, "text": "Hits the card with the biggest shield. The hit ignores the shield."},
     {"key": "fakerank", "name": "Fake Rank", "w": 1, "text": "Double damage to a shielded card."}]},
   "The Hardstuck Skeleton": {"counters": "shield", "moves": [
     {"key": "bonepierce", "name": "Bone Pierce", "w": 1, "text": "This hit ignores shields."},
-    {"key": "rattle", "name": "Rattle", "w": 1, "text": "Cuts every shield in half."},
-    {"key": "calcify", "name": "Calcify", "w": 1, "text": "New shields work at 10% for 2 rounds."},
-    {"key": "stuck", "name": "Stuck", "w": 1, "text": "Shield cards wait 2 more rounds."}]},
+    {"key": "rattle", "name": "Rattle", "w": 1, "text": "Cuts every shield in half. Shields work at 25% for the rest of the day."},
+    {"key": "calcify", "name": "Calcify", "w": 1, "text": "New shields work at 10% for the rest of the day."},
+    {"key": "stuck", "name": "Stuck", "w": 1, "text": "Shield cards wait 6 more rounds."}]},
   "Maw of the Meta": {"counters": "empower", "moves": [
-    {"key": "nerf", "name": "Nerf", "w": 1, "text": "Removes empower from every card."},
-    {"key": "patchnotes", "name": "Patch Notes", "w": 1, "text": "Empower works at 10% for 2 rounds."},
-    {"key": "tierlist", "name": "Tier List", "w": 1, "text": "Hits the empowered card for double damage."},
-    {"key": "counterpick", "name": "Counter-pick", "w": 1, "text": "For 3 rounds, an empowered attack also hurts the attacker."}]},
+    {"key": "nerf", "name": "Nerf", "w": 1, "text": "Removes empower from every card. Empower works at 25% for the rest of the day."},
+    {"key": "patchnotes", "name": "Patch Notes", "w": 1, "text": "Empower works at 10% for the rest of the day."},
+    {"key": "tierlist", "name": "Tier List", "w": 1, "text": "Double damage on a card that uses empower."},
+    {"key": "counterpick", "name": "Counter-pick", "w": 1, "text": "For the rest of the day, an empowered attack hurts the attacker by twice the bonus."}]},
   "The Rage-Quit Warlord": {"counters": "weaken", "moves": [
     {"key": "tilt", "name": "Tilt", "w": 1, "text": "Ends weaken. The boss enrages for 2 rounds."},
-    {"key": "altf4", "name": "Alt-F4", "w": 1, "text": "Weaken has no effect for 3 rounds."},
-    {"key": "spiral", "name": "Rage Spiral", "w": 1, "text": "For 3 rounds, each weaken you play makes the boss hit 20% harder."},
+    {"key": "altf4", "name": "Alt-F4", "w": 1, "text": "Weaken has no effect for the rest of the day."},
+    {"key": "spiral", "name": "Rage Spiral", "w": 1, "text": "For the rest of the day, each weaken you play makes the boss hit 20% harder."},
     {"key": "flame", "name": "Flame", "w": 1, "text": "Hits every card, twice as hard on weaken cards."}]},
   "The Ranked Nightshade": {"counters": "expose", "moves": [
-    {"key": "fade", "name": "Fade", "w": 1, "text": "Ends expose."},
-    {"key": "veil", "name": "Veil", "w": 1, "text": "Expose has no effect for 3 rounds."},
-    {"key": "demotion", "name": "Demotion", "w": 1, "text": "For 3 rounds, an attack on an exposed boss sends 20% back."},
+    {"key": "fade", "name": "Fade", "w": 1, "text": "Ends expose. Expose works at 50% for the rest of the day."},
+    {"key": "veil", "name": "Veil", "w": 1, "text": "Expose has no effect for the rest of the day."},
+    {"key": "demotion", "name": "Demotion", "w": 1, "text": "For the rest of the day, an attack on an exposed boss sends 20% back."},
     {"key": "nightshade", "name": "Nightshade", "w": 1, "text": "Damage on expose cards for 3 rounds."}]},
   "The Lagspike Parasite": {"counters": "stun", "moves": [
     {"key": "desync", "name": "Desync", "w": 1, "text": "Your next stun fails."},
     {"key": "rubberband", "name": "Rubberband", "w": 1, "text": "After your next stun, the boss hits twice."},
-    {"key": "lagspike", "name": "Lag Spike", "w": 1, "text": "Stun cards wait 3 more rounds."},
+    {"key": "lagspike", "name": "Lag Spike", "w": 1, "text": "Stun cards wait 4 more rounds."},
     {"key": "packetloss", "name": "Packet Loss", "w": 1, "text": "Your next support play does nothing."}]},
   "The Netcode Mutant": {"counters": "smite", "moves": [
-    {"key": "rollback", "name": "Rollback", "w": 1, "text": "The boss heals the damage of your last smite."},
-    {"key": "hitbox", "name": "Hitbox Desync", "w": 1, "text": "Smite does 10% damage for 2 rounds."},
+    {"key": "rollback", "name": "Rollback", "w": 1, "text": "The boss heals the damage of your last smite. Smite works at 50% for the rest of the day."},
+    {"key": "hitbox", "name": "Hitbox Desync", "w": 1, "text": "Smite does 10% damage for the rest of the day."},
     {"key": "mirror", "name": "Mirror", "w": 1, "text": "Your next smite hits the smite card."},
-    {"key": "pingspike", "name": "Ping Spike", "w": 1, "text": "Smite cards wait 2 more rounds."}]},
+    {"key": "pingspike", "name": "Ping Spike", "w": 1, "text": "Smite cards wait 4 more rounds."}]},
   "The Patch-Day Pumpkin": {"counters": "cleanse", "moves": [
-    {"key": "hotfix", "name": "Hotfix", "w": 1, "text": "Curses the hit card. Cleanse cannot remove a curse for 3 rounds."},
+    {"key": "hotfix", "name": "Hotfix", "w": 1, "text": "Curses the hit card. Cleanse cannot remove a curse for the rest of the day."},
     {"key": "rollout", "name": "Rollout", "w": 1, "text": "Curses every card in your squad."},
-    {"key": "rot", "name": "Rot", "w": 1, "text": "For 2 rounds, a cleanse also removes empower and shields."},
-    {"key": "patch", "name": "Patch", "w": 1, "text": "Cleanse cards wait 2 more rounds."}]},
+    {"key": "rot", "name": "Rot", "w": 1, "text": "For the rest of the day, a cleanse also removes empower and shields."},
+    {"key": "patch", "name": "Patch", "w": 1, "text": "Cleanse cards wait 4 more rounds."}]},
   "The Ban-Wave Demon": {"counters": "support", "moves": [
-    {"key": "ban", "name": "Ban", "w": 1, "text": "One support card cannot play for 3 rounds."},
-    {"key": "wave", "name": "Wave", "w": 1, "text": "Every support card waits 1 more round."},
+    {"key": "ban", "name": "Ban", "w": 1, "text": "Two support cards cannot play for the rest of the day."},
+    {"key": "wave", "name": "Wave", "w": 1, "text": "Every support card waits 5 more rounds."},
     {"key": "appeal", "name": "Appeal Denied", "w": 1, "text": "Hits the last support card that played for double damage."},
-    {"key": "shadowban", "name": "Shadow Ban", "w": 1, "text": "Your next support play does nothing."}]},
+    {"key": "shadowban", "name": "Shadow Ban", "w": 1, "text": "Your next 3 support plays do nothing."}]},
   "The Zerg-Rush Queen": {"counters": "support", "moves": [
-    {"key": "swarm", "name": "Swarm", "w": 1, "text": "Hits every card, twice as hard on support cards."},
+    {"key": "swarm", "name": "Swarm", "w": 1, "text": "Hits every card, 3 times as hard on support cards."},
     {"key": "brood", "name": "Brood", "w": 1, "text": "Hits every support card."},
     {"key": "rush", "name": "Rush", "w": 1, "text": "Two hits on the support card with the lowest HP."},
     {"key": "overrun", "name": "Overrun", "w": 1, "text": "Hits the weakest support card. If it goes down, the boss enrages."}]}
@@ -157,14 +157,15 @@ begin
   return jsonb_build_object('attacker', v_att, 'targets', v_tg);
 end $$;
 
--- One counter move (docs/hunt-boss-moves.md section 4). It changes the OTHER cards and the marks itself; the
+-- One counter move (docs/hunt-boss-moves.md section 4). until 999 = for the rest of the squad day (Nathan, 2026-10-06:
+-- a counter must cut the countered support's own effect by at least 50%). It changes the OTHER cards and the marks itself; the
 -- attacking card's changes come back for hunt_attack to apply: dmg (its shield absorbs it unless pierce), loss
 -- (HP lost, no shield), shield (the new shield value), debuff. heal = the boss heal. anim = the boss animation
--- (an existing one). base = true: an effect move (or a hit with nothing to hit). Then the usual boss turn ALSO happens
--- (hunt_attack), so a squad without the countered support meets exactly the usual boss. base = false: a hit move; it
--- replaces the usual turn.
+-- (an existing one). base = true: the usual boss turn ALSO happens (hunt_attack): every effect move, every hit on OTHER
+-- cards (they are done here), and a hit with nothing to hit. base = false: a hit on the attacker; it replaces the usual
+-- turn. (A hit on other cards that replaced the turn spared the attacker: the Smurf Brute made shield squads stronger.)
 create or replace function public.hunt_counter_act(p_hunt bigint, p_player text, p_day date, p_card bigint, p_round int,
-  p_atk numeric, p_bmult numeric, p_key text, p_name text, p_cardhp int, p_maxhp int, p_shield int)
+  p_atk numeric, p_bmult numeric, p_key text, p_name text, p_cardhp int, p_maxhp int, p_shield int, p_ubuff numeric)
 returns jsonb language plpgsql volatile set search_path = public as $$
 declare
   v_dmg int := 0; v_loss int := 0; v_pierce boolean := false; v_shield int; v_debuff numeric; v_heal int := 0;
@@ -177,7 +178,7 @@ begin
   when 'bloodrot' then
     v_anim := 'curse';
     perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('heal_block_card',
-      coalesce(v_marks->'heal_block_card', '{}'::jsonb) || jsonb_build_object(p_card::text, jsonb_build_object('until', p_round + 2))));
+      coalesce(v_marks->'heal_block_card', '{}'::jsonb) || jsonb_build_object(p_card::text, jsonb_build_object('until', 999))));
   when 'siphon' then
     v_anim := 'drain';
     select coalesce(sum(coalesce((a.result->>'gained')::int, (a.result->>'value')::int)), 0) into v_heal from combat_actions a
@@ -189,11 +190,10 @@ begin
       v_hit := hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 1.0, p_bmult), false);
       v_tg := v_tg || jsonb_build_array(v_hit);
     else
-      v_dmg := combat_area_roll(p_atk, 1.0, p_bmult);
+      v_dmg := combat_area_roll(p_atk, 1.0, p_bmult); v_base := false;
     end if;
-    v_base := false;
   when 'anemia' then
-    v_anim := 'slam'; v_base := false; v_dmg := combat_area_roll(p_atk, 0.35, p_bmult);
+    v_anim := 'slam';
     for r in select * from hunt_squad_cards(p_hunt, p_player, p_day, p_card) loop
       v_hit := hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 0.35, p_bmult) * case when r.eff = 'heal' then 2 else 1 end, false);
       if v_hit is not null then v_tg := v_tg || jsonb_build_array(v_hit); end if;
@@ -204,14 +204,16 @@ begin
     select coalesce(sum(coalesce((a.result->>'gained')::int, (a.result->>'value')::int)), 0) into v_loss from combat_actions a
       where a.mode = 'hunt' and a.ref_id = p_hunt and a.player_id = p_player and a.game_day = p_day and a.effect = 'heal'
         and a.target_card = p_card and a.round >= p_round - 1;
+    perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('half_heal', jsonb_build_object('until', 999)));   -- and heal works at 50% for the rest of the day
   when 'infect' then
     v_anim := 'curse'; v_base := false; v_dmg := combat_area_roll(p_atk, 0.35, p_bmult);
     perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('dot', coalesce(v_marks->'dot', '{}'::jsonb)
-      || jsonb_build_object(p_card::text, jsonb_build_object('amt', combat_area_roll(p_atk, 0.25, p_bmult), 'until', p_round + 3))));
+      || jsonb_build_object(p_card::text, jsonb_build_object('amt', combat_area_roll(p_atk, 0.25, p_bmult), 'until', p_round + 3)),
+      'heal_block_card', coalesce(v_marks->'heal_block_card', '{}'::jsonb) || jsonb_build_object(p_card::text, jsonb_build_object('until', 999, 'mult', 0))));   -- and no heals on it
   when 'groan' then
-    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'heal', 2, p_round);
+    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'heal', 4, p_round);
   when 'undying' then
-    v_anim := 'regenerate'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('undying', jsonb_build_object('until', p_round + 3)));
+    v_anim := 'regenerate'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('undying', jsonb_build_object('until', 999)));
   -- The Smurf Brute (shield)
   when 'shatter' then
     v_anim := 'slam'; v_map := '{}'::jsonb;
@@ -221,21 +223,17 @@ begin
     end loop;
     if p_shield > 0 then v_map := v_map || jsonb_build_object(p_card::text, p_shield); v_shield := 0; end if;
     perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('shattered', v_map));
+    perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('half_shield', jsonb_build_object('until', 999, 'mult', 0.1)));   -- and shields work at 10% for the rest of the day
   when 'crush' then
-    v_anim := 'slam'; v_base := false; v_map := coalesce(v_marks->'shattered', '{}'::jsonb);
+    v_anim := 'slam'; v_map := coalesce(v_marks->'shattered', '{}'::jsonb);
     if v_map = '{}'::jsonb then
-      v_dmg := combat_area_roll(p_atk, 0.35, p_bmult);
-      for r in select * from hunt_squad_cards(p_hunt, p_player, p_day, p_card) loop
-        v_hit := hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 0.35, p_bmult), false);
-        if v_hit is not null then v_tg := v_tg || jsonb_build_array(v_hit); end if;
-      end loop;
+      null;   -- no Shatter today: only the usual turn
     else
-      if v_map ? p_card::text then v_dmg := greatest(1, (v_map->>p_card::text)::int / 2); end if;
+      if v_map ? p_card::text then v_loss := greatest(1, (v_map->>p_card::text)::int / 2); end if;
       for r in select * from hunt_squad_cards(p_hunt, p_player, p_day, p_card) where v_map ? card_id::text loop
         v_hit := hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, greatest(1, (v_map->>r.card_id::text)::int / 2), false);
         if v_hit is not null then v_tg := v_tg || jsonb_build_array(v_hit); end if;
       end loop;
-      if v_dmg = 0 and v_tg = '[]'::jsonb then v_base := true; end if;   -- the shattered cards are down
       perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('shattered', '{}'::jsonb));
     end if;
   when 'bully' then
@@ -243,47 +241,53 @@ begin
     if p_shield > 0 and (r.card_id is null or p_shield >= r.shield) then
       v_dmg := combat_area_roll(p_atk, 1.0, p_bmult); v_pierce := true; v_base := false;
     elsif r.card_id is not null then
-      v_tg := v_tg || jsonb_build_array(hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 1.0, p_bmult), true)); v_base := false;
+      v_tg := v_tg || jsonb_build_array(hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 1.0, p_bmult), true));
     end if;
   when 'fakerank' then
-    v_base := false; v_dmg := combat_area_roll(p_atk, 1.0, p_bmult) * case when p_shield > 0 then 2 else 1 end;
+    if p_shield > 0 then v_base := false; v_dmg := 2 * combat_area_roll(p_atk, 1.0, p_bmult); end if;   -- no shield: the usual turn
   -- The Hardstuck Skeleton (shield)
   when 'bonepierce' then
-    v_base := false; v_pierce := true; v_dmg := combat_area_roll(p_atk, 1.0, p_bmult);
+    if p_shield > 0 then v_base := false; v_pierce := true; v_dmg := combat_area_roll(p_atk, 1.0, p_bmult); end if;   -- no shield: the usual turn
   when 'rattle' then
     v_anim := 'slam';
     update hunt_card_hp set shield = coalesce(shield, 0) / 2, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = p_day and card_id <> p_card and not downed and coalesce(shield, 0) > 0;
     if p_shield > 0 then v_shield := p_shield / 2; end if;
+    perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('half_shield', jsonb_build_object('until', 999, 'mult', 0.25)));   -- and shields work at 25% for the rest of the day
   when 'calcify' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_shield', jsonb_build_object('until', p_round + 2, 'mult', 0.1)));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_shield', jsonb_build_object('until', 999, 'mult', 0.1)));
   when 'stuck' then
-    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'shield', 2, p_round);
+    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'shield', 6, p_round);
   -- Maw of the Meta (empower)
   when 'nerf' then
     v_anim := 'curse';
     update hunt_card_hp set dmg_buff = 1, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = p_day and card_id <> p_card and coalesce(dmg_buff, 1) > 1;
+    perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('half_empower', jsonb_build_object('until', 999, 'mult', 0.25)));   -- and empower works at 25% for the rest of the day
   when 'patchnotes' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_empower', jsonb_build_object('until', p_round + 2, 'mult', 0.1)));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_empower', jsonb_build_object('until', 999, 'mult', 0.1)));
   when 'tierlist' then
-    select h.card_id into v_cid from hunt_squad_cards(p_hunt, p_player, p_day, p_card) h where h.buff > 1 order by h.buff desc, h.card_id limit 1;
-    if v_cid is not null then
-      v_tg := v_tg || jsonb_build_array(hunt_counter_hit(p_hunt, p_player, p_day, v_cid, combat_area_roll(p_atk, 2.0, p_bmult), false)); v_base := false;
+    if p_ubuff > 1 then   -- this attack used empower
+      v_dmg := combat_area_roll(p_atk, 2.0, p_bmult); v_base := false;
+    else
+      select h.card_id into v_cid from hunt_squad_cards(p_hunt, p_player, p_day, p_card) h where h.buff > 1 order by h.buff desc, h.card_id limit 1;
+      if v_cid is not null then
+        v_tg := v_tg || jsonb_build_array(hunt_counter_hit(p_hunt, p_player, p_day, v_cid, combat_area_roll(p_atk, 2.0, p_bmult), false));
+      end if;
     end if;
   when 'counterpick' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('counterpick', jsonb_build_object('until', p_round + 3)));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('counterpick', jsonb_build_object('until', 999)));
   -- The Rage-Quit Warlord (weaken)
   when 'tilt' then
     v_anim := 'enrage';
     update hunt_combat_state set boss_weaken = 0, weaken_until = 0, boss_enrage = 1.4, enrage_until = p_round + 2, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = p_day;
   when 'altf4' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_weaken', jsonb_build_object('until', p_round + 3, 'mult', 0)));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_weaken', jsonb_build_object('until', 999, 'mult', 0)));
   when 'spiral' then
-    v_anim := 'enrage'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('spiral', jsonb_build_object('until', p_round + 3, 'bonus', 0)));
+    v_anim := 'enrage'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('spiral', jsonb_build_object('until', 999, 'bonus', 0)));
   when 'flame' then
-    v_anim := 'slam'; v_base := false; v_dmg := combat_area_roll(p_atk, 0.35, p_bmult);
+    v_anim := 'slam';
     for r in select * from hunt_squad_cards(p_hunt, p_player, p_day, p_card) loop
       v_hit := hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 0.35, p_bmult) * case when r.eff = 'weaken' then 2 else 1 end, false);
       if v_hit is not null then v_tg := v_tg || jsonb_build_array(v_hit); end if;
@@ -292,10 +296,11 @@ begin
   when 'fade' then
     v_anim := 'curse';
     update hunt_combat_state set boss_expose = 0, expose_until = 0, updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = p_day;
+    perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('half_expose', jsonb_build_object('until', 999)));   -- and expose works at 50% for the rest of the day
   when 'veil' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_expose', jsonb_build_object('until', p_round + 3, 'mult', 0)));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_expose', jsonb_build_object('until', 999, 'mult', 0)));
   when 'demotion' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('demotion', jsonb_build_object('until', p_round + 3)));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('demotion', jsonb_build_object('until', 999)));
   when 'nightshade' then
     v_anim := 'curse'; v_map := coalesce(v_marks->'dot', '{}'::jsonb);
     for r in select * from hunt_squad_cards(p_hunt, p_player, p_day, p_card) where eff = 'expose' loop
@@ -311,9 +316,9 @@ begin
     v_base := false; v_dmg := combat_area_roll(p_atk, 1.0, p_bmult) + combat_area_roll(p_atk, 1.0, p_bmult);
     update hunt_combat_state set marks = marks - 'double_next', updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = p_day;
   when 'lagspike' then
-    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'stun', 3, p_round);
+    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'stun', 4, p_round);
   when 'packetloss' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('null_next', true));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('null_next', 1));
   -- The Netcode Mutant (smite)
   when 'rollback' then
     v_anim := 'drain';
@@ -322,62 +327,62 @@ begin
         and not coalesce((a.result->>'mirrored')::boolean, false)
       order by a.id desc limit 1;
     v_heal := coalesce(v_heal, 0);
+    perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('half_smite', jsonb_build_object('until', 999)));   -- and smite works at 50% for the rest of the day
   when 'hitbox' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_smite', jsonb_build_object('until', p_round + 2, 'mult', 0.1)));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('block_smite', jsonb_build_object('until', 999, 'mult', 0.1)));
   when 'mirror' then
     v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('mirror', true));
   when 'pingspike' then
-    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'smite', 2, p_round);
+    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'smite', 4, p_round);
   -- The Patch-Day Pumpkin (cleanse)
   when 'hotfix' then
     v_anim := 'curse'; v_debuff := 0.7;
-    perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('lock_cleanse', jsonb_build_object('until', p_round + 3)));
+    perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('lock_cleanse', jsonb_build_object('until', 999)));
   when 'rollout' then
     v_anim := 'curse'; v_debuff := 0.7;
     update hunt_card_hp set dmg_debuff = 0.7, updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = p_day and card_id <> p_card and not downed;
   when 'rot' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('rot', jsonb_build_object('until', p_round + 2)));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('rot', jsonb_build_object('until', 999)));
   when 'patch' then
-    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'cleanse', 2, p_round);
+    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, 'cleanse', 4, p_round);
   -- The Ban-Wave Demon (all supports)
   when 'ban' then
     v_anim := 'stun';
-    select h.card_id into v_cid from hunt_squad_cards(p_hunt, p_player, p_day, p_card) h where h.kind = 'support' order by random() limit 1;
-    if v_cid is not null then
-      update hunt_card_hp set cd_until_round = greatest(coalesce(cd_until_round, 0), p_round) + 3, updated_at = now()
+    for v_cid in select h.card_id from hunt_squad_cards(p_hunt, p_player, p_day, p_card) h where h.kind = 'support' and coalesce((select x.cd_until_round from hunt_card_hp x
+        where x.hunt_id = p_hunt and x.player_id = p_player and x.hit_date = p_day and x.card_id = h.card_id), 0) < 999 order by random() limit 2 loop
+      update hunt_card_hp set cd_until_round = greatest(coalesce(cd_until_round, 0), p_round) + 999, updated_at = now()   -- the rest of the day
         where hunt_id = p_hunt and player_id = p_player and hit_date = p_day and card_id = v_cid;
-    end if;
+    end loop;
   when 'wave' then
-    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, null, 1, p_round);
+    v_anim := 'stun'; perform hunt_counter_cd(p_hunt, p_player, p_day, null, 5, p_round);
   when 'appeal' then
     select a.card_id into v_cid from combat_actions a
       where a.mode = 'hunt' and a.ref_id = p_hunt and a.player_id = p_player and a.game_day = p_day and a.kind = 'support'
       order by a.id desc limit 1;
     if v_cid is not null then
       v_hit := hunt_counter_hit(p_hunt, p_player, p_day, v_cid, combat_area_roll(p_atk, 2.0, p_bmult), false);
-      if v_hit is not null then v_tg := v_tg || jsonb_build_array(v_hit); v_base := false; end if;
+      if v_hit is not null then v_tg := v_tg || jsonb_build_array(v_hit); end if;
     end if;
   when 'shadowban' then
-    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('null_next', true));
+    v_anim := 'curse'; perform hunt_marks_patch(p_hunt, p_player, p_day, jsonb_build_object('null_next', 3));   -- the next 3 support plays
   -- The Zerg-Rush Queen (all supports)
   when 'swarm' then
-    v_anim := 'slam'; v_base := false; v_dmg := combat_area_roll(p_atk, 0.35, p_bmult);
+    v_anim := 'slam';
     for r in select * from hunt_squad_cards(p_hunt, p_player, p_day, p_card) loop
-      v_hit := hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 0.35, p_bmult) * case when r.kind = 'support' then 2 else 1 end, false);
+      v_hit := hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 0.35, p_bmult) * case when r.kind = 'support' then 3 else 1 end, false);
       if v_hit is not null then v_tg := v_tg || jsonb_build_array(v_hit); end if;
     end loop;
   when 'brood' then
     v_anim := 'slam';
     for r in select * from hunt_squad_cards(p_hunt, p_player, p_day, p_card) where kind = 'support' loop
-      v_hit := hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 0.5, p_bmult), false);
-      if v_hit is not null then v_tg := v_tg || jsonb_build_array(v_hit); v_base := false; end if;
+      v_hit := hunt_counter_hit(p_hunt, p_player, p_day, r.card_id, combat_area_roll(p_atk, 0.8, p_bmult), false);
+      if v_hit is not null then v_tg := v_tg || jsonb_build_array(v_hit); end if;
     end loop;
   when 'rush', 'overrun' then
     select h.card_id into v_cid from hunt_squad_cards(p_hunt, p_player, p_day, p_card) h where h.kind = 'support'
       order by h.hp::numeric / greatest(1, h.max_hp), h.card_id limit 1;
     if v_cid is not null then
-      v_base := false;
-      v_amt := case when p_key = 'rush' then combat_area_roll(p_atk, 0.6, p_bmult) + combat_area_roll(p_atk, 0.6, p_bmult) else combat_area_roll(p_atk, 1.0, p_bmult) end;
+      v_amt := case when p_key = 'rush' then combat_area_roll(p_atk, 0.8, p_bmult) + combat_area_roll(p_atk, 0.8, p_bmult) else combat_area_roll(p_atk, 1.0, p_bmult) end;
       v_hit := hunt_counter_hit(p_hunt, p_player, p_day, v_cid, v_amt, false);
       v_tg := v_tg || jsonb_build_array(v_hit);
       if p_key = 'overrun' and coalesce((v_hit->>'downed')::boolean, false) then
@@ -396,7 +401,7 @@ end $$;
 -- replaces only a normal turn (never Stunned, Charging or the Cataclysm). Rubberband: a stunned turn arms a double hit.
 create or replace function public.hunt_counter_pick(p_hunt bigint, p_player text, p_day date, p_boss text, p_act text)
 returns jsonb language plpgsql volatile set search_path = public as $$
-declare v_cfg jsonb; v_pool jsonb; v_marks jsonb; v_total numeric; v_r numeric; m jsonb;
+declare v_cfg jsonb; v_pool jsonb; v_marks jsonb; v_total numeric; v_r numeric; m jsonb; v_ctrs text;
 begin
   select value into v_cfg from settings where key = 'hunt_boss_moves';
   v_pool := v_cfg->p_boss->'moves';
@@ -413,6 +418,11 @@ begin
   if coalesce((v_marks->>'double_next')::boolean, false) then
     return jsonb_build_object('key', 'rubberband_hit', 'name', 'Rubberband');
   end if;
+  -- A squad with none of the countered support meets the usual boss (Nathan, 2026-10-06: cut the support, not the squad).
+  v_ctrs := v_cfg->p_boss->>'counters';
+  if v_ctrs is not null and not exists (select 1 from hunt_card_hp h join cards c on c.id = h.card_id join subjects s on s.id = c.subject_id
+      where h.hunt_id = p_hunt and h.player_id = p_player and h.hit_date = p_day and s.ability->>'kind' = 'support'
+        and (v_ctrs = 'support' or s.ability->>'effect' = v_ctrs)) then return null; end if;
   if random() >= coalesce((v_cfg->>'_share')::numeric, 0.4) then return null; end if;
   select sum(coalesce((e->>'w')::numeric, 1)) into v_total from jsonb_array_elements(v_pool) e;
   v_r := random() * v_total;
@@ -452,7 +462,7 @@ declare
   v_double boolean := false; v_rally numeric; v_mend numeric; v_bf numeric;
   v_party jsonb; v_crash jsonb; v_crash_dmg int := 0; v_crash_to text; v_crash_card bigint;
   v_sq jsonb; v_wk jsonb; v_hit jsonb; v_act jsonb; v_ab jsonb; v_area numeric;
-  v_bname text; v_marks jsonb; v_pick jsonb; v_ctr jsonb; v_tick jsonb;
+  v_bname text; v_marks jsonb; v_pick jsonb; v_ctr jsonb; v_tick jsonb; v_ubuff numeric := 1;
 begin
   select status, closes_at, weak_points, resist_points, tier, hp_max, passive, coalesce(hp_share, hp_max), stats, hp_remaining, name
     into v_status, v_closes, v_weak, v_resist, v_tier, v_hpmax, v_passive, v_share, v_stats, v_hp, v_bname
@@ -599,12 +609,13 @@ begin
   -- Counter marks on this attack (hunt_boss_moves.sql): Counter-pick (an empowered attack hurts the attacker by the
   -- bonus) and Demotion (an attack on an exposed boss sends 20% back).
   if v_dmg > 0 and v_buff > 1 and hunt_mark_on(v_marks, 'counterpick', v_round) then
-    v_cardhp := greatest(0, v_cardhp - greatest(1, round(v_dmg * (v_buff - 1) / v_buff))::int);
+    v_cardhp := greatest(0, v_cardhp - greatest(1, round(2 * v_dmg * (v_buff - 1) / v_buff))::int);   -- twice the bonus
   end if;
   if v_dmg > 0 and v_exp_until >= v_round and v_expose > 0 and hunt_mark_on(v_marks, 'demotion', v_round)
      and not hunt_mark_on(v_marks, 'block_expose', v_round) then
     v_cardhp := greatest(0, v_cardhp - greatest(1, round(v_dmg * 0.2))::int);
   end if;
+  v_ubuff := v_buff;   -- the empower this attack used (Tier List)
   v_buff := 1;
 
   -- The boss ATK (Nathan, 2026-09-28: flat stats, so tougher cards survive more hits).
@@ -642,7 +653,7 @@ begin
     v_pick := hunt_counter_pick(p_hunt, p_player, v_day, v_bname, v_bossact);
     if v_pick is not null then
       v_ctr := hunt_counter_act(p_hunt, p_player, v_day, p_card, v_round, v_atk, v_bmult, v_pick->>'key', v_pick->>'name',
-        v_cardhp, v_maxhp, v_shield);
+        v_cardhp, v_maxhp, v_shield, v_ubuff);
       if v_ctr->>'shield' is not null then v_shield := (v_ctr->>'shield')::int; end if;
       if v_ctr->>'debuff' is not null then v_debuff := (v_ctr->>'debuff')::numeric; end if;
       v_cardhp := greatest(0, v_cardhp - (v_ctr->>'loss')::int);
@@ -857,8 +868,9 @@ begin
   -- Counters (hunt_boss_moves.sql): the counter passives and the boss marks make this support weaker.
   select marks into v_marks from hunt_combat_state where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
   v_marks := coalesce(v_marks, '{}'::jsonb);
-  if coalesce((v_marks->>'null_next')::boolean, false) then   -- Packet Loss / Shadow Ban: this play does nothing
-    update hunt_combat_state set marks = marks - 'null_next', updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+  if coalesce((v_marks->>'null_next')::int, 0) > 0 then   -- Packet Loss (1) / Shadow Ban (2): this play does nothing
+    update hunt_combat_state set marks = case when (marks->>'null_next')::int > 1 then jsonb_set(marks, '{null_next}', to_jsonb((marks->>'null_next')::int - 1))
+      else marks - 'null_next' end, updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
     update hunt_card_hp set cd_until_round = v_round + v_cd, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and card_id = p_card and hit_date = v_day;
     insert into combat_actions (mode, ref_id, player_id, card_id, kind, game_day, round, effect, amount, target_card, result)
@@ -872,10 +884,13 @@ begin
   if v_eff in ('empower', 'expose') and 'dispeller' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'dispeller'::text; end if;
   if v_eff = 'weaken' and 'juggernaut' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'juggernaut'::text; end if;
   if v_eff = 'heal' and p_target is not null and hunt_mark_on(v_marks->'heal_block_card', p_target::text, v_round) then
-    v_f := v_f * 0.1; v_ctr := v_ctr || 'bloodrot'::text;
+    v_f := v_f * coalesce((v_marks->'heal_block_card'->p_target::text->>'mult')::numeric, 0.1); v_ctr := v_ctr || 'bloodrot'::text;
   end if;
   if v_eff in ('shield', 'empower', 'weaken', 'expose', 'smite') and hunt_mark_on(v_marks, 'block_' || v_eff, v_round) then
     v_f := v_f * coalesce((v_marks->('block_' || v_eff)->>'mult')::numeric, 0.1); v_ctr := v_ctr || ('block_' || v_eff);
+  end if;
+  if hunt_mark_on(v_marks, 'half_' || v_eff, v_round) then   -- Shatter, Rattle, Nerf (25%), Fade, Rollback, Decay (50%) for the day
+    v_f := v_f * coalesce((v_marks->('half_' || v_eff)->>'mult')::numeric, 0.5); v_ctr := v_ctr || ('half_' || v_eff);
   end if;
   if v_f <> 1 then v_amt := v_amt * v_f; end if;
 

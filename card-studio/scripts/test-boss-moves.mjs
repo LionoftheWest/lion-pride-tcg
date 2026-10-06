@@ -21,7 +21,7 @@ const M = process.env.MUTATE;
 const SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
 const MUT = M === 'guard' ? '' : mutation({
   nopick: ['public.hunt_counter_pick(bigint,text,date,text,text)', "if random() >= coalesce((v_cfg->>'_share')::numeric, 0.4) then return null; end if;", 'return null;'],
-  shatter: ['public.hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer)',
+  shatter: ['public.hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)',
     "update hunt_card_hp set shield = 0, updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = p_day and card_id = r.card_id;", 'null;'],
   plague: [SUP, "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 0.1;", "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 1;"],
   d70: [SUP, "if v_tkind = 'support' then v_tmaxhp := card_max_hp(0); end if;", 'null;'],
@@ -41,63 +41,65 @@ const CASES = [
      r2 := hunt_support(P, h, kh, a1); ok := r2->'countered' ? 'bloodrot';`],
   ['siphon', `update hunt_card_hp set hp_remaining = 100 where hunt_id = h and card_id = a2; r2 := hunt_support(P, h, kh, a2);`,
    `ok := (r->>'boss_heal')::int >= (select (result->>'gained')::int from combat_actions where ref_id = h and effect = 'heal') and (r->>'boss_heal')::int > 60;`],   // + a drain of the usual turn (45 max)
-  ['feast', `update hunt_card_hp set hp_remaining = 50 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).hp_remaining < 50 and (r->>'card_hp')::int = 300;`],
+  ['feast', `update hunt_card_hp set hp_remaining = 50 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).hp_remaining < 50 - 30;`],   // Feast (34 min) on A2, not the usual slam alone (16 max)
   ['anemia', '', `ok := 60 - (pg_temp.c(kh)).hp_remaining > 60 - (pg_temp.c(ks)).hp_remaining and (pg_temp.c(ks)).hp_remaining < 60;`],
   ['decay', `update hunt_card_hp set hp_remaining = 100 where hunt_id = h and card_id = a1; r2 := hunt_support(P, h, kh, a1);`,
    `ok := (r->>'card_hp')::int <= 100;`],   // without Decay: 100 + the heal (90+) - one usual hit (46 max) > 140
   ['infect', '', `ok := st.marks->'dot' ? a1::text;`],
-  ['groan', '', `ok := (pg_temp.c(kh)).cd_until_round >= rnd + 2 and coalesce((pg_temp.c(ks)).cd_until_round, 0) < rnd;`],
+  ['groan', '', `ok := (pg_temp.c(kh)).cd_until_round >= rnd + 4 and coalesce((pg_temp.c(ks)).cd_until_round, 0) < rnd;`],
   ['undying', `update hunts set hp_remaining = 8000000 where id = h;`,
    `update hunt_card_hp set hp_remaining = 100 where hunt_id = h and card_id = a2; v := (select hp_remaining from hunts where id = h);
     r2 := hunt_support(P, h, kh, a2);
     ok := r2->'countered' ? 'undying' and (select hp_remaining from hunts where id = h) = v + (select (result->>'gained')::int from combat_actions where ref_id = h and effect = 'heal');`],
   ['shatter', `update hunt_card_hp set shield = 50 where hunt_id = h and card_id = a2; update hunt_card_hp set shield = 30 where hunt_id = h and card_id = a1;`,
-   `ok := (pg_temp.c(a2)).shield = 0 and (r->>'shield')::int = 0 and st.marks->'shattered'->>a2::text = '50' and st.marks->'shattered'->>a1::text = '30';`],
+   `ok := (pg_temp.c(a2)).shield = 0 and (r->>'shield')::int = 0 and st.marks->'shattered'->>a2::text = '50' and st.marks->'shattered'->>a1::text = '30' and hunt_mark_on(st.marks, 'half_shield', 40);`],
   ['crush', `update hunt_combat_state set marks = jsonb_build_object('shattered', jsonb_build_object(a2::text, 100)) where hunt_id = h;`,
-   `ok := (pg_temp.c(a2)).hp_remaining = 250 and (r->>'card_hp')::int = 300 and st.marks->'shattered' = '{}'::jsonb;`],
-  ['bully', `update hunt_card_hp set shield = 80 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).shield = 80 and (pg_temp.c(a2)).hp_remaining < 300 and (r->>'card_hp')::int = 300;`],
+   `ok := (pg_temp.c(a2)).hp_remaining between 250 - 16 and 250 and st.marks->'shattered' = '{}'::jsonb;`],   // 100 / 2, plus a usual slam at most
+  ['bully', `update hunt_card_hp set shield = 80 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).hp_remaining <= 300 - 34;`],   // Bully ignores the 80 shield (a usual slam alone would hit the shield)
   ['fakerank', `update hunt_card_hp set shield = 1000 where hunt_id = h and card_id = a1;`, `ok := (r->>'shield')::int <= 1000 - 68 and (r->>'card_hp')::int = 300;`],
   ['bonepierce', `update hunt_card_hp set shield = 1000 where hunt_id = h and card_id = a1;`, `ok := (r->>'shield')::int = 1000 and (r->>'card_hp')::int < 300;`],
   ['rattle', `update hunt_card_hp set shield = 100 where hunt_id = h and card_id in (a1, a2);`, `ok := (pg_temp.c(a2)).shield between 30 and 50 and (r->>'shield')::int <= 50;   -- 100 / 2, less a usual slam (16 max)`],
-  ['calcify', '', `r2 := hunt_support(P, h, ks, a2); ok := r2->'countered' ? 'block_shield' and (pg_temp.c(a2)).shield < 30;`],
-  ['stuck', '', `ok := (pg_temp.c(ks)).cd_until_round >= rnd + 2 and coalesce((pg_temp.c(kh)).cd_until_round, 0) < rnd;`],
+  ['calcify', '', `r2 := hunt_support(P, h, ks, a2); ok := hunt_mark_on(st.marks, 'block_shield', 40) and r2->'countered' ? 'block_shield' and (pg_temp.c(a2)).shield < 30;`],
+  ['stuck', '', `ok := (pg_temp.c(ks)).cd_until_round >= rnd + 4 and coalesce((pg_temp.c(kh)).cd_until_round, 0) < rnd;`],
   ['nerf', `update hunt_card_hp set dmg_buff = 1.5 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).dmg_buff = 1;`],
   ['patchnotes', '', `r2 := hunt_support(P, h, ke, a2); ok := r2->'countered' ? 'block_empower' and (pg_temp.c(a2)).dmg_buff < 1.2;`],
-  ['tierlist', `update hunt_card_hp set dmg_buff = 1.5 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).hp_remaining <= 300 - 68 and (r->>'card_hp')::int = 300;`],
-  ['counterpick', '', `ok := hunt_mark_on(st.marks, 'counterpick', rnd + 3) and not hunt_mark_on(st.marks, 'counterpick', rnd + 4);`],
+  ['tierlist', `update hunt_card_hp set dmg_buff = 1.5 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).hp_remaining <= 300 - 68;`],
+  // Tier List on the attack that used empower: a double hit on the attacker (it replaces the usual turn)
+  ['tierlist', `update hunt_card_hp set dmg_buff = 1.5 where hunt_id = h and card_id = a1;`, `ok := (r->>'card_hp')::int <= 300 - 68 and (pg_temp.c(a2)).hp_remaining = 300;`],
+  ['counterpick', '', `ok := hunt_mark_on(st.marks, 'counterpick', 40);   -- the rest of the day (the round cap is 40)`],
   ['tilt', `update hunt_combat_state set boss_weaken = 0.3, weaken_until = 10 where hunt_id = h;`, `ok := st.weaken_until = 0 and st.enrage_until >= rnd + 2 and st.boss_enrage = 1.4;`],
   ['altf4', '', `r2 := hunt_support(P, h, kw, null); ok := r2->'countered' ? 'block_weaken' and (select boss_weaken from hunt_combat_state where hunt_id = h) = 0;`],
   ['spiral', '', `r2 := hunt_support(P, h, kw, null); ok := (select (marks->'spiral'->>'bonus')::numeric from hunt_combat_state where hunt_id = h) = 0.2;`],
   ['flame', '', `ok := 60 - (pg_temp.c(kw)).hp_remaining > 60 - (pg_temp.c(ks)).hp_remaining and (pg_temp.c(ks)).hp_remaining < 60;`],
   ['fade', `update hunt_combat_state set boss_expose = 0.3, expose_until = 10 where hunt_id = h;`, `ok := st.expose_until = 0 and st.boss_expose = 0;`],
   ['veil', '', `r2 := hunt_support(P, h, kx, null); ok := r2->'countered' ? 'block_expose' and (select boss_expose from hunt_combat_state where hunt_id = h) = 0;`],
-  ['demotion', '', `ok := hunt_mark_on(st.marks, 'demotion', rnd + 3);`],
+  ['demotion', '', `ok := hunt_mark_on(st.marks, 'demotion', 40);`],
   ['nightshade', '', `ok := st.marks->'dot' ? kx::text and not (st.marks->'dot' ? a1::text);`],
   ['desync', '', `r2 := hunt_support(P, h, kt, null); ok := r2->'countered' ? 'desync' and coalesce((select stunned_until from hunt_combat_state where hunt_id = h), 0) < rnd;`],
   ['rubberband', '', `r2 := hunt_support(P, h, kt, null);           -- the stun works
      r3 := hunt_attack(P, h, a2);                                   -- the boss is stunned: Rubberband arms
      r4 := hunt_attack(P, h, a2);                                   -- the turn after: two hits
      ok := r3->'boss_action'->>'kind' = 'stunned' and r4->'boss_action'->>'counter' = 'rubberband_hit';`],
-  ['lagspike', '', `ok := (pg_temp.c(kt)).cd_until_round >= rnd + 3;`],
+  ['lagspike', '', `ok := (pg_temp.c(kt)).cd_until_round >= rnd + 4;`],
   ['packetloss', '',
    `update hunt_card_hp set hp_remaining = 10, downed = false where hunt_id = h and card_id = a2; r2 := hunt_support(P, h, kh, a2); ok := (r2->>'nullified')::boolean and (pg_temp.c(a2)).hp_remaining = 10 and (pg_temp.c(kh)).cd_until_round > rnd;`],
   ['rollback', `r2 := hunt_support(P, h, km, null);`, `ok := (r->>'boss_heal')::int >= (select (result->>'value')::int from combat_actions where ref_id = h and effect = 'smite') and (r->>'boss_heal')::int > 100;`],   // + a drain of the usual turn
   ['hitbox', '', `r2 := hunt_support(P, h, km, null); ok := r2->'countered' ? 'block_smite';`],
   ['mirror', '', `v := (select hp_remaining from hunts where id = h); r2 := hunt_support(P, h, km, null);
      ok := r2->'countered' ? 'mirror' and (select hp_remaining from hunts where id = h) = v and (pg_temp.c(km)).hp_remaining < 60;`],
-  ['pingspike', '', `ok := (pg_temp.c(km)).cd_until_round >= rnd + 2;`],
+  ['pingspike', '', `ok := (pg_temp.c(km)).cd_until_round >= rnd + 4;`],
   ['hotfix', '', `r2 := hunt_support(P, h, kc, null); ok := r2->'countered' ? 'hotfix' and (pg_temp.c(a1)).dmg_debuff = 0.7;`],
   ['rollout', '', `ok := (pg_temp.c(a2)).dmg_debuff = 0.7 and (pg_temp.c(a1)).dmg_debuff = 0.7 and (pg_temp.c(kh)).dmg_debuff = 0.7;`],
   ['rot', `update hunt_card_hp set shield = 50, dmg_buff = 1.5 where hunt_id = h and card_id = a2;`,
    `r2 := hunt_support(P, h, kc, null); ok := r2->'countered' ? 'rot' and (pg_temp.c(a2)).shield = 0 and (pg_temp.c(a2)).dmg_buff = 1;`],
-  ['patch', '', `ok := (pg_temp.c(kc)).cd_until_round >= rnd + 2;`],
-  ['ban', '', `ok := (select count(*) from hunt_card_hp x where x.hunt_id = h and x.card_id = any(sups) and x.cd_until_round >= rnd + 3) = 1;`],
-  ['wave', '', `ok := (select count(*) from hunt_card_hp x where x.hunt_id = h and x.card_id = any(sups) and x.cd_until_round >= rnd + 1) = 8;`],
-  ['appeal', `update hunt_card_hp set hp_remaining = 10 where hunt_id = h and card_id = a2; r2 := hunt_support(P, h, kh, a2);`, `ok := (pg_temp.c(kh)).downed and (r->>'card_hp')::int = 300;`],
+  ['patch', '', `ok := (pg_temp.c(kc)).cd_until_round >= rnd + 4;`],
+  ['ban', '', `ok := (select count(*) from hunt_card_hp x where x.hunt_id = h and x.card_id = any(sups) and x.cd_until_round >= rnd + 6) = 2;`],
+  ['wave', '', `ok := (select count(*) from hunt_card_hp x where x.hunt_id = h and x.card_id = any(sups) and x.cd_until_round >= rnd + 5) = 8;`],
+  ['appeal', `update hunt_card_hp set hp_remaining = 10 where hunt_id = h and card_id = a2; r2 := hunt_support(P, h, kh, a2);`, `ok := (pg_temp.c(kh)).downed;`],
   ['shadowban', '', `r2 := hunt_support(P, h, kw, null); ok := (r2->>'nullified')::boolean and coalesce((select boss_weaken from hunt_combat_state where hunt_id = h), 0) = 0;`],
   ['swarm', '', `ok := 60 - (pg_temp.c(kh)).hp_remaining > 300 - (pg_temp.c(a2)).hp_remaining and (pg_temp.c(a2)).hp_remaining < 300;`],
-  ['brood', '', `ok := (select count(*) from hunt_card_hp x where x.hunt_id = h and x.card_id = any(sups) and x.hp_remaining < 60) = 8 and (pg_temp.c(a2)).hp_remaining = 300;`],
-  ['rush', `update hunt_card_hp set hp_remaining = 59 where hunt_id = h and card_id = kh;`, `ok := (pg_temp.c(kh)).hp_remaining <= 19 and (pg_temp.c(ks)).hp_remaining = 60;`],
+  ['brood', '', `ok := (select count(*) from hunt_card_hp x where x.hunt_id = h and x.card_id = any(sups) and x.hp_remaining <= 33) = 8;`],   // 0.8 x 40 x 0.85 = 27 at least
+  ['rush', `update hunt_card_hp set hp_remaining = 59 where hunt_id = h and card_id = kh;`, `ok := (pg_temp.c(kh)).hp_remaining <= 5;`],   // 2 x 27 from 59
   ['overrun', `update hunt_card_hp set hp_remaining = 10 where hunt_id = h and card_id = kh;`, `ok := (pg_temp.c(kh)).downed and st.enrage_until >= rnd + 2;`],
 ];
 const caseSQL = CASES.map(([key, setup, check]) => `
@@ -180,6 +182,31 @@ ${caseSQL}
     r := hunt_attack(P, h, a1);
     if r->'boss_action' ? 'counter' or r->'boss_action' ? 'move' then bad := bad || 'no pool: a counter move; '; exit; end if;
   end loop;
+
+  -- 3b. A squad with none of the countered support meets the usual boss (the pool says "counters": "shield").
+  h := pg_temp.mk('shatter', '[]');
+  update settings set value = jsonb_set(value, '{Test Moves Boss,counters}', '"shield"') where key = 'hunt_boss_moves';
+  delete from hunt_card_hp where hunt_id = h and card_id = ks;
+  update hunt_card_hp set hp_remaining = 1000000, max_hp = 1000000 where hunt_id = h and card_id in (a1, a2);
+  for rnd in 1..20 loop
+    r := hunt_attack(P, h, a1);
+    if r->>'error' = 'stunned' then r := hunt_attack(P, h, a2); end if;
+    if r->'boss_action' ? 'counter' then bad := bad || 'no shield card, yet a counter move; '; exit; end if;
+  end loop;
+  -- ... and with the shield card in the squad, the counter moves come back.
+  perform hunt_commit_card(h, P, ks, d, 60); n := 0;
+  for rnd in 1..10 loop
+    r := hunt_attack(P, h, a1);
+    if r->>'error' = 'stunned' then r := hunt_attack(P, h, a2); end if;
+    if r->'boss_action' ? 'counter' then n := n + 1; end if;
+  end loop;
+  if n = 0 then bad := bad || 'a shield card, yet no counter move in 10 turns; '; end if;
+
+  -- 3c. Shadow Ban stops the next 3 support plays, not 4.
+  h := pg_temp.mk('shadowban', '[]'); r := hunt_attack(P, h, a1);
+  r2 := hunt_support(P, h, kw, null); r3 := hunt_support(P, h, kx, null); r4 := hunt_support(P, h, kt, null); r := hunt_support(P, h, km, null);
+  if not coalesce((r2->>'nullified')::boolean, false) or not coalesce((r4->>'nullified')::boolean, false) or coalesce((r->>'nullified')::boolean, false) then
+    bad := bad || 'shadowban 2 plays: ' || coalesce(r2::text, '') || ' / ' || coalesce(r3::text, '') || ' / ' || coalesce(r4::text, '') || '; '; end if;
 
   -- 4. The counter passives (no pool): the countered supports work at 10%.
   h := pg_temp.mk('', '["plague"]');

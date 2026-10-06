@@ -15,6 +15,11 @@ The open interpretations are marked **(spec)**: they make an approved line exact
   themes". A countered support works at 10%. At most one of these four on a boss. ("Yes")
 - The boss details list the boss moves before the squad locks. ("Yes") This is UI work: lane A (UI-20).
 - The move list in section 4: "Agreed".
+- The strength (after the first measurements showed a cut of 0% to 12%): "I want the effects to take of at least 50%
+  of the damage", then "we need to cut the support cards ability itself and its viable part, not the whole squad".
+  The goal: each boss cuts the value of its countered support by at least 50% (value = the squad damage with the support
+  minus the damage without it; heal: the HP that heals restore). Measured by card-studio/scripts/sim-support-value.mjs.
+  So the counter effects last for the rest of the squad day, and the "waits more rounds" moves add 4 rounds.
 
 The reason: support stacking (for example 3 attackers + 5 supports) is a good strategy, and Nathan does not want to
 cap attacks. Each boss now punishes a different support type, so no one squad is the best for every boss.
@@ -25,12 +30,17 @@ cap attacks. Each boss now punishes a different support type, so no one squad is
 2. Else the boss draws: with chance `counter_share` (0.40) it uses one of its 4 counter moves (equal weights).
    Else it uses the usual table (strike, slam, drain, stun, enrage, curse, regenerate) as today.
 3. A boss with no move pool (a boss name not in `settings.hunt_boss_moves`) uses only the usual table.
+4. A squad with none of the countered support (`counters` in the setting; "support" = any support card) meets the
+   usual boss: no counter move. (Nathan: "cut the support cards ability itself and its viable part, not the whole squad".)
 
 **(spec, from the measurement)** There are two kinds of counter move:
-- An **effect move** (for example Shatter, Nerf, Groan, Desync) comes ON TOP of the usual turn: the effect happens
-  first, then the usual draw. A hit move with nothing to hit (for example Bully when no card has a shield) is the same.
-- A **hit move** (Feast, Anemia, Infect, Crush, Bully, Fake Rank, Bone Pierce, Tier List, Flame, Appeal Denied,
-  Swarm, Brood, Rush, Overrun) REPLACES the usual turn, with its own numbers below.
+- ON TOP of the usual turn (the counter happens first, then the usual draw): every effect move (for example Shatter,
+  Nerf, Groan, Desync), every hit on OTHER cards than the attacker (Anemia, Crush, Flame, Appeal Denied, Swarm, Brood,
+  Rush, Overrun, and Feast, Bully or Tier List when they hit another card), and a hit with nothing to hit.
+- REPLACES the usual turn: a hit on the attacking card (Fake Rank, Bone Pierce, Infect, Rubberband, and Feast, Bully or
+  Tier List when they hit the attacker).
+- The reason (measurement round 3): a hit on another card that replaced the usual turn spared the attacker that turn,
+  and the Smurf Brute made shield squads do MORE damage.
 
 So a squad that brings no countered support meets the usual boss, and a squad that brings it is punished.
 The first two measurements replaced the usual turn with a fixed hit (ATK x 0.5, then x 0.6). Then a counter turn was
@@ -52,75 +62,75 @@ A "round" is the squad round (`hunt_combat_state.round`). "For N rounds" = until
 The numbers are the first values. They live in `settings.hunt_boss_moves`.
 
 ### The Grind Vampire: counters heal
-- **Bloodrot:** heals on the hit card work at 10% for 2 rounds.
+- **Bloodrot:** heals on the hit card work at 10% for the rest of the day.
 - **Siphon:** the boss heals the total HP that the squad healed this round.
 - **Feast:** hits the card with the lowest HP for ATK x 1.0.
 - **Anemia:** an area hit (ATK x 0.35 on each card), x 2 on heal cards.
 
 ### The AFK Warzombie: counters heal
-- **Decay:** the hit card loses the HP that heals gave it this round.
-- **Infect:** ATK x 0.35 now, then ATK x 0.25 on each boss turn for 3 rounds, on the hit card.
-- **Groan:** each heal card waits 2 more rounds.
-- **Undying:** for 3 rounds, each heal that the squad plays also heals the boss by the same amount.
+- **Decay:** the hit card loses the HP that heals gave it this round. Heals work at 50% for the rest of the day.
+- **Infect:** ATK x 0.35 now, then ATK x 0.25 on each boss turn for 3 rounds, on the hit card. The hit card cannot be healed for the rest of the day.
+- **Groan:** each heal card waits 4 more rounds.
+- **Undying:** for the rest of the day, each heal that the squad plays also heals the boss by the same amount.
 
 ### The Smurf Brute: counters shield
-- **Shatter:** breaks every shield in the squad.
-- **Crush:** an area hit. Each card takes half of the shield that it lost to Shatter today. **(spec)** With no Shatter today: ATK x 0.35 on each card.
+- **Shatter:** breaks every shield in the squad. Shields work at 10% for the rest of the day.
+- **Crush:** an area hit. Each card takes half of the shield that it lost to Shatter today. **(spec)** With no Shatter today: the usual turn.
 - **Bully:** hits the card with the biggest shield for ATK x 1.0. The hit ignores the shield.
-- **Fake Rank:** hits the attacking card for ATK x 1.0, x 2 if it has a shield.
+- **Fake Rank:** hits the attacking card for ATK x 2.0 if it has a shield. **(spec)** With no shield: the usual turn.
 
 ### The Hardstuck Skeleton: counters shield
-- **Bone Pierce:** hits the attacking card for ATK x 1.0. The hit ignores the shield.
-- **Rattle:** cuts every shield in half.
-- **Calcify:** new shields work at 10% for 2 rounds.
-- **Stuck:** each shield card waits 2 more rounds.
+- **Bone Pierce:** hits the attacking card for ATK x 1.0. The hit ignores the shield. **(spec)** With no shield: the usual turn.
+- **Rattle:** cuts every shield in half. Shields work at 25% for the rest of the day.
+- **Calcify:** new shields work at 10% for the rest of the day.
+- **Stuck:** each shield card waits 6 more rounds.
 
 ### Maw of the Meta: counters empower
-- **Nerf:** removes empower from every card.
-- **Patch Notes:** empower works at 10% for 2 rounds.
-- **Tier List:** hits the empowered card for ATK x 2.0. **(spec)** With no empowered card: the usual turn.
-- **Counter-pick:** for 3 rounds **(spec)**, an empowered attack also hurts the attacker by the bonus damage.
+- **Nerf:** removes empower from every card. Empower works at 25% for the rest of the day.
+- **Patch Notes:** empower works at 10% for the rest of the day.
+- **Tier List:** ATK x 2.0 on the attacker when its attack used empower; else on another empowered card. **(spec)** With no empowered card: the usual turn. (Empower is used up by the attack, so an "empowered card" was rare.)
+- **Counter-pick:** for the rest of the day **(spec)**, an empowered attack also hurts the attacker by twice the bonus damage.
 
 ### The Rage-Quit Warlord: counters weaken
 - **Tilt:** ends weaken. The boss enrages (x 1.4) for 2 rounds.
-- **Alt-F4:** weaken has no effect for 3 rounds.
-- **Rage Spiral:** for 3 rounds, each weaken played adds x 0.2 to the boss damage (until the spiral ends).
+- **Alt-F4:** weaken has no effect for the rest of the day.
+- **Rage Spiral:** for the rest of the day, each weaken played adds x 0.2 to the boss damage.
 - **Flame:** an area hit (ATK x 0.35 on each card), x 2 on weaken cards.
 
 ### The Ranked Nightshade: counters expose
-- **Fade:** ends expose.
-- **Veil:** expose has no effect for 3 rounds.
-- **Demotion:** for 3 rounds **(spec)**, an attack on an exposed boss sends 20% of its damage back to the attacker.
+- **Fade:** ends expose. Expose works at 50% for the rest of the day.
+- **Veil:** expose has no effect for the rest of the day.
+- **Demotion:** for the rest of the day **(spec)**, an attack on an exposed boss sends 20% of its damage back to the attacker.
 - **Nightshade:** ATK x 0.25 on each boss turn for 3 rounds, on each expose card.
 
 ### The Lagspike Parasite: counters stun
 - **Desync:** the next stun fails.
 - **Rubberband:** **(spec)** the next boss turn after a stun hits twice (two hits of ATK x 1.0).
-- **Lag Spike:** each stun card waits 3 more rounds.
+- **Lag Spike:** each stun card waits 4 more rounds.
 - **Packet Loss:** the next support play does nothing (the card still goes on cooldown).
 
 ### The Netcode Mutant: counters smite
-- **Rollback:** the boss heals the damage of the last smite today.
-- **Hitbox Desync:** smite does 10% damage for 2 rounds.
+- **Rollback:** the boss heals the damage of the last smite today. Smite works at 50% for the rest of the day.
+- **Hitbox Desync:** smite does 10% damage for the rest of the day.
 - **Mirror:** the next smite hits the smite card instead of the boss.
-- **Ping Spike:** each smite card waits 2 more rounds.
+- **Ping Spike:** each smite card waits 4 more rounds.
 
 ### The Patch-Day Pumpkin: counters cleanse
-- **Hotfix:** curses the hit card (x 0.7). Cleanse cannot remove a curse for 3 rounds.
+- **Hotfix:** curses the hit card (x 0.7). Cleanse cannot remove a curse for the rest of the day.
 - **Rollout:** curses every card in the squad.
-- **Rot:** for 2 rounds, a cleanse also removes empower and shields.
-- **Patch:** each cleanse card waits 2 more rounds.
+- **Rot:** for the rest of the day, a cleanse also removes empower and shields.
+- **Patch:** each cleanse card waits 4 more rounds.
 
 ### The Ban-Wave Demon: counters all support cards
-- **Ban:** one support card (random, not down) cannot play for 3 rounds.
-- **Wave:** every support card waits 1 more round.
+- **Ban:** two support cards (random, not down) cannot play for the rest of the day.
+- **Wave:** every support card waits 5 more rounds.
 - **Appeal Denied:** hits the last support card that played for ATK x 2.0.
-- **Shadow Ban:** the next support play does nothing (the card still goes on cooldown).
+- **Shadow Ban:** the next 3 support plays do nothing (the cards still go on cooldown).
 
 ### The Zerg-Rush Queen: counters all support cards
-- **Swarm:** an area hit (ATK x 0.35 on each card), x 2 on support cards.
-- **Brood:** hits every support card for ATK x 0.5.
-- **Rush:** two hits of ATK x 0.6 on the support card with the lowest HP.
+- **Swarm:** an area hit (ATK x 0.35 on each card), x 3 on support cards.
+- **Brood:** hits every support card for ATK x 0.8.
+- **Rush:** two hits of ATK x 0.8 on the support card with the lowest HP.
 - **Overrun:** **(spec)** hits the support card with the lowest HP for ATK x 1.0. If it goes down, the boss enrages for 2 rounds.
 
 "Heal card", "shield card" and so on = a support card in the squad with that effect.

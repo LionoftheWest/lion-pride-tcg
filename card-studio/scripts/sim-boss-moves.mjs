@@ -14,10 +14,12 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 const DAYS = Number(process.argv[2] || 6);
 const mig = readFileSync(process.argv[3] || new URL('../../tcg-bot/supabase/hunt_boss_moves.sql', import.meta.url), 'utf8')
   .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
-const BOSSES = ['The Grind Vampire', 'The AFK Warzombie', 'The Smurf Brute', 'The Hardstuck Skeleton', 'Maw of the Meta', 'The Rage-Quit Warlord',
+const ALL_BOSSES = ['The Grind Vampire', 'The AFK Warzombie', 'The Smurf Brute', 'The Hardstuck Skeleton', 'Maw of the Meta', 'The Rage-Quit Warlord',
   'The Ranked Nightshade', 'The Lagspike Parasite', 'The Netcode Mutant', 'The Patch-Day Pumpkin', 'The Ban-Wave Demon', 'The Zerg-Rush Queen'];
+// SIM_BOSSES / SIM_SQUADS (JSON) pick a subset, for a quick check.
+const BOSSES = process.env.SIM_BOSSES ? JSON.parse(process.env.SIM_BOSSES) : ALL_BOSSES;
 // Squads of 8: attackers (full_art) + supports by effect.
-const SQUADS = {
+const SQUADS = process.env.SIM_SQUADS ? JSON.parse(process.env.SIM_SQUADS) : {
   'support-heavy (3 atk + heal, shield, empower, weaken, expose)': [3, ['heal', 'shield', 'empower', 'weaken', 'expose']],
   'mixed (5 atk + heal, shield, weaken)': [5, ['heal', 'shield', 'weaken']],
   'attackers only (8 atk)': [8, []],
