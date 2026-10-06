@@ -958,6 +958,9 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-64 | Trades answers | Gift a pack in the Trade window; "Offer"; extra copies first; a magnifier on member tiles opens the profile; In voice first, then all members A-Z; undo toast; 6 cards per page at 375x667; partner rules; Accept is a secondary button (Nathan, 2026-10-05, Trades review-1; full list in the design repo FEEDBACK.md "Trades group") |
 | D-65 | Hunt fight without boards | The fight screen has no Top hunter, no Top 3 and no countdown (Nathan, 2026-10-05, UI-18 review-2: "I would say we don't actualy need the leaderboard/top hunter on the fight screen and the 'beat in 1d 3h' timer as well on this view") |
 
+| D-68 | Role glow in fights | In the Hunt, Dungeon, Gauntlet and Arena fights, the plate behind each card spot glows orange for an attack card (`--role-attack` `#F2611D`) and cyan for a support card (`--role-support` `#3FE3F5`). The card itself does not change; its edge keeps the rarity glow. Orange and cyan, not red and green, so that color-blind players see the difference (Nathan, 2026-10-06: "its strictly just in hunt/dungeon/arena that the spot where the card is at, it glows red/green, its only that, we're not changing anything on the card itself"; then "Yeah lets do the orange and cyan colors.") |
+| D-69 | Support HP in fights | Support cards show an HP bar in the fight, as attackers do (Nathan, 2026-10-06: "the supports need to show health as well since they don't currently do that") |
+| D-70 | Supports on supports | An ally support (heal, shield, empower) can target any squad card, supports too (Nathan, 2026-10-06: "they also need to be able to work on each other vs just attackers") |
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 
