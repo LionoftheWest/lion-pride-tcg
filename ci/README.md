@@ -7,7 +7,7 @@ The UI standard (`docs/design.md` 12.5) names the gates. This folder builds G1, 
 |---|---|---|---|
 | G1 Register | `G1 Register` | `gates/g1-register.mjs` | A UI PR has no register ID in its title, or a title ID has no recorded design approval in `docs/ui-register.md` |
 | G3 UI check | `G3 UI check` | `ui-check/run.mjs`, `ui-check/evaluate.mjs` | An enforced screen has a defect from the list in design.md 12.6, or a screen was not checked |
-| G4 Literal counter | `G4 Literal counter` | `gates/g4-literals.mjs` | A literal count in the UI scope rises against the base of the PR |
+| G4 Literal counter | `G4 Literal counter` | `gates/g4-literals.mjs` | A literal count in the UI scope rises against the base of the PR, or a generated token file is not current |
 
 ## The UI scope (G1, G3, G4)
 
@@ -30,6 +30,11 @@ A PR that changes no file in scope passes G1, and G3 does not run.
 
 - Files: every git-tracked file in scope that ends in `.css`, `.html`, `.js`, `.mjs` or `.ts`, minus the token source and
   the files generated from it (`tokenSource` in `gates/scope.json`).
+- The token files (design.md 4.1): G4 also runs `node shared/build-tokens.mjs --check`. It fails when a token is missing
+  or invalid, or when a generated file is stale or was changed by hand. So no literal can hide in a skipped file.
+  To change a token: edit `shared/tokens.json`, run `node shared/build-tokens.mjs`, and commit the source and the 4
+  generated files (`tcg-activity/public/tokens.css`, `tcg-activity/src/tokens.js`, `tcg-bot/src/tokens.ts`,
+  `card-studio/gallery-deploy/public-gallery/tokens.css`).
 - Units:
   - `color`: hex colors (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`), JS hex (`0xRRGGBB`), and `rgb()`, `rgba()`, `hsl()`, `hsla()`.
   - `px`: every number literal with the unit `px`.
@@ -57,6 +62,7 @@ A PR that changes no file in scope passes G1, and G3 does not run.
 **Which screens a run checks** (`ui-check/plan.mjs`):
 - A PR checks the screens of its enforced IDs (below), at every size and in both browsers.
 - A PR that names the shell (`UI-01` top bar and dock, `UI-02` sub-tabs) checks every screen, because the shell is on every screen.
+  The same applies to `UI-00`, the design system (tokens and components): it is on every screen and has no screen of its own.
 - A PR that changes the check itself (`ci/ui-check/`, the two workflows) checks every screen.
 - A UI PR with no enforced ID checks no screen. G1 fails it anyway (no ID in the title).
 - The nightly report (`.github/workflows/ui-report.yml`, 03:17 MT and on demand) checks every screen. Its artifact

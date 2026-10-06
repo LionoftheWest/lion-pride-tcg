@@ -1,6 +1,6 @@
 /* The Shop (design 29, approved 2026-10-02): the top bar Shards + Shop button, the Shop view
    (desktop, body.m-port, body.m-land), the confirm windows and the stat reset picker. */
-body.ui-v2 { --shard: #B8F02A; --shard-soft: rgba(184, 240, 42, .12); }
+body.ui-v2 { --shard: var(--cur-shards); --shard-soft: rgba(184, 240, 42, .12); }
 body.ui-v2 .sh-coin { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; }
 
 /* ---- The top bar ---- */

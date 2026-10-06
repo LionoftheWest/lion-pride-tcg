@@ -9,23 +9,22 @@
 @font-face { font-family: 'Instrument Serif'; src: url('/fonts/instrument-serif-latin-400-italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
 
 body.ui-v2 {
-  --bg-base: #0A0A12; --bg-raised: #11111B; --surface: #181824; --surface-2: #20202F; --surface-3: #2A2A3D;
-  --border: #2A2A3E; --border-strong: #3B3B57;
-  --text-primary: #F5F2EC; --text-secondary: #AEABC0; --text-muted: #6F6C86;
-  --gold: #F4B73C; --gold-strong: #E0971C; --gold-soft: #F4B73C1F; --on-gold: #1C1203;
-  --hunt: #7C5CFF; --hunt-soft: #7C5CFF24; --danger: #FF4D63; --danger-soft: #FF4D6324;
-  --success: #5BE38A; --success-soft: #5BE38A1F;
-  --boon: #3DD9B4; --boon-soft: #3DD9B41F; --prank: #B28CFF; --prank-soft: #B28CFF1F;
-  --r-normal: #A3ACBC; --r-illustrated_rare: #3E8BFF; --r-secret_rare: #B15CFF; --r-full_art: #FF4FA3; --r-gold: #F7BE35; --r-event: #10B981;
-  --el-fire: #FF6A3D; --el-water: #3CB6FF; --el-lightning: #FFD43B; --el-ice: #9BEBFF; --el-nature: #5BD66B; --el-earth: #C98D55; --el-shadow: #8A6CFF; --el-light: #FFF1B8;
-  --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
-  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-num: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
-  --font-flavor: 'Instrument Serif', Georgia, serif;
-  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
-  --rad-sm: 6px; --rad-md: 10px; --rad-lg: 16px; --rad-card: 14px; --rad-pill: 999px;
-  --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 360ms; --dur-reveal: 700ms;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* The global tokens (--gold, --bg-base, --surface-2, --text-primary, --sp-*, --rad-*, --dur-*, --ease-*, --font-* ...)
+     come from tokens.css, which shared/build-tokens.mjs generates from shared/tokens.json (design.md 4.1).
+     Below: the old names that point at a token, and the old values that the standard collapses in the screen PRs
+     (P0: no visible change in the token PR). */
+  --surface: var(--surface-1);
+  --border-strong: #3B3B57; /* collapses to the token #76769C (4.4) in a screen PR */
+  --text-muted: #6F6C86; /* collapses to the token #9592AB (4.4) in a screen PR */
+  --gold-soft: #F4B73C1F; /* gold at 12%: collapses to --gold-a10 or --gold-a20 (4.2) in a screen PR */
+  --hunt-soft: #7C5CFF24;
+  --boon: var(--effect-boon); --boon-soft: #3DD9B41F; /* 12%: collapses to --effect-boon-soft (14%) */
+  --prank: var(--effect-prank); --prank-soft: #B28CFF1F; /* 12%: collapses to --effect-prank-soft (14%) */
+  --r-normal: var(--rarity-normal); --r-illustrated_rare: var(--rarity-illustrated_rare); --r-secret_rare: var(--rarity-secret_rare);
+  --r-full_art: var(--rarity-full_art); --r-gold: #F7BE35; /* collapses to --rarity-gold = --gold (D-02) */ --r-event: var(--rarity-event);
+  --el-fire: var(--element-fire); --el-water: var(--element-water); --el-lightning: var(--element-lightning); --el-ice: var(--element-ice);
+  --el-nature: var(--element-nature); --el-earth: var(--element-earth); --el-shadow: var(--element-shadow); --el-light: var(--element-light);
+  --rad-card: 14px; /* collapses to 5% of the card width (--rad-card-ratio, 4.9) */
   --topbar-h: 64px; --dock-h: 72px;
   background: var(--bg-base); color: var(--text-primary); font-family: var(--font-ui);
 }
