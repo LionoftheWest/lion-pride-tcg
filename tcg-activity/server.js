@@ -21,7 +21,7 @@ import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { REPORTS_ON, registerReportRoutes } from './reports.js';
 import { createImgCache, normalizeImgUrl } from './img-cache.js';
 import { clientIp, createLimiter, createWhoAmI } from './guards.js';
-import { collectionPower, setTotals } from './collection-power.js';
+import { createBalance, ascendCost as costOf, dailyCardCap, publicBalance } from './balance.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
 import { bestSquad } from './src/squad-pick.js';
@@ -183,6 +183,12 @@ app.post('/api/csp-report', express.json({ type: ['application/csp-report', 'app
 app.use(express.json());
 // The member read limit (readLimit): every signed-in GET /api/* call. Images, avatars and
 // the config are public and browser-cached, so they are not counted.
+// The balance numbers (public.balance, balance_table.sql): one cached read (60 s) before every API
+// call, so ascendCost and the caps below use the table's current values.
+app.use('/api', async (req, res, next) => {
+  try { BAL = await getBalance(); } catch (e) { console.error('balance:', e.message); }
+  next();
+});
 app.use('/api', async (req, res, next) => {
   if (req.method !== 'GET' || !req.headers.authorization || /^\/(img|avatar)\/|^\/config$/.test(req.path)) return next();
   const me = await caller(req).catch(() => null);
@@ -301,18 +307,18 @@ app.use(express.static(PUBLIC, {
 
 // The public values the front-end needs before it can talk to Discord.
 // Ascension (Phase 1): duplicates raise a card's star level → power + flair.
-// Flag-gated so it can be turned off instantly. These tables MIRROR ascension.sql
-// (card_power / ascend_cost) — keep them in sync if either changes.
 const FEATURE_ASCENSION = process.env.FEATURE_ASCENSION === '1';
-// Middle curve. Set-completion bonus (+25%) is applied server-side by the SQL
-// (my_collection_power); this per-card math is base × ascension × per-subject cp_mod.
-// Power tracks scarcity (gold is the rarest pull, so the strongest). Must match card_power in SQL.
-const RARITY_BASE = { normal: 10, illustrated_rare: 20, secret_rare: 40, full_art: 75, event: 75, gold: 140 }; // event = Full Art (event_cards.sql)
-const ASC_MULT = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
-const ASC_COST = { normal: [4, 6, 8, 11, 15], illustrated_rare: [3, 4, 6, 8, 11], full_art: [2, 3, 4, 6, 8], gold: [1, 2, 3, 4, 5], secret_rare: [1, 1, 2, 3, 4] };
-// toFixed first: SQL numeric rounds 57.5 up, but 20 x 2.5 x 1.15 is 57.49999... in a float (Math.round gave 57).
-const cardPower = (rarity, asc, mod = 1) => Math.round(+((RARITY_BASE[rarity] || 10) * ASC_MULT[Math.max(0, Math.min(5, asc || 0))] * (mod || 1)).toFixed(6));
-const ascendCost = (rarity, asc) => ((asc || 0) >= 5 ? null : (ASC_COST[rarity] || ASC_COST.normal)[asc || 0]);
+// Card power, combat power and HP come ONLY from SQL (card_powers: card_power / card_combat, balance_table.sql);
+// the Activity never computes them. The ascend costs and the caps are read from the balance table through
+// ONE cache (balance.js, 60 s). No number lives here.
+const getBalance = createBalance(async () => {
+  const { data, error } = await supabase.from('balance').select('key, value');
+  if (error) throw new Error(error.message);
+  return Object.fromEntries((data || []).map((r) => [r.key, r.value]));
+});
+let BAL = null; // set before every API call (the middleware above)
+const bal = () => { if (!BAL) throw new Error('balance: not loaded'); return BAL; };
+const ascendCost = (rarity, asc) => costOf(bal(), rarity, asc);
 
 // Phase 2: The Pride Hunt (weekly co-op raid). Flag-gated.
 const FEATURE_HUNT = process.env.FEATURE_HUNT === '1';
@@ -393,7 +399,7 @@ app.get('/api/flags', async (req, res) => {
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
   const { data: tut } = await supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle();
-  res.json({ uiV2: true, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
@@ -493,11 +499,13 @@ app.get('/api/collection', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const cached = collCache.get(me.id);
   if (cached && Date.now() - cached.at < COLL_TTL) return res.json(cached.payload);
-  const { data, error } = await supabase
+  const [{ data, error }, pw] = await Promise.all([supabase
     .from('player_cards')
     .select(`quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS}))`)
-    .eq('player_id', me.id);
-  if (error) return res.status(500).json({ error: error.message });
+    .eq('player_id', me.id),
+  supabase.rpc('card_powers', { p_player: String(me.id) })]); // power + HP of each copy (SQL: the one CP source)
+  if (error || pw.error) return res.status(500).json({ error: (error || pw.error).message });
+  const powers = pw.data || {};
   // Can ascend = the FREE copies (a copy in a trade offer, an auction or a bid is held) cover the cost
   // and still leave one, and never an Event card - the same rules as ascend_card (ascend_guard.sql).
   // The held copies load only when some card has the copies at all.
@@ -514,7 +522,8 @@ app.get('/api/collection', async (req, res) => {
       name: row.card?.name,
       rarity,
       ascension,
-      power: cardPower(rarity, ascension, row.card?.subject?.cp_mod),
+      power: powers[String(row.card?.id)]?.power ?? 0,
+      hp: powers[String(row.card?.id)]?.hp ?? 0,
       next_cost: nextCost,
       can_ascend: nextCost != null && row.quantity - (held.get(Number(row.card?.id)) || 0) >= 1 + nextCost,
       image_url: toProxyImg(row.card?.image_url),
@@ -579,7 +588,7 @@ app.post('/api/stats/spend', async (req, res) => {
   for (const k of STAT_KEYS) {
     const n = req.body?.add?.[k];
     if (n == null) continue;
-    if (!Number.isInteger(n) || n < 0 || n > 15) return res.status(400).json({ error: 'bad amount' });
+    if (!Number.isInteger(n) || n < 0 || n > Number(bal().stat_points.max_per_stat)) return res.status(400).json({ error: 'bad amount' });
     if (n > 0) add[k] = n;
   }
   if (!cardId || !Object.keys(add).length) return res.status(400).json({ error: 'bad request' });
@@ -646,7 +655,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
   const rebuildBoard = () => singleFlight('boardV2', async () => {
-      const [players, owned, hits, fought, hunts, opened, gifted, plays, trades, catalog] = await Promise.all([
+      const [players, owned, hits, fought, hunts, opened, gifted, plays, trades, catalog, collPow] = await Promise.all([
         // Whole tables, every row (selectAll: a plain read stopped at 1,000 rows, 2026-10-02).
         selectAll(() => supabase.from('players').select('id, username, avatar, title, frame'), ['id']),
         selectAll(() => supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1), ['player_id', 'card_id']),
@@ -659,7 +668,10 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         selectAll(() => supabase.from('card_plays').select('player_id, kind').neq('outcome', 'refunded'), ['id']), // a refund counts nowhere
         selectAll(() => supabase.from('card_trades').select('from_id, to_id'), ['id']), // the trade ledger: offers + auctions
         getCatalogBase(),
+        supabase.rpc('collection_power_all'), // each member's collection power (SQL: the same as my_collection_power)
       ]);
+      if (collPow.error) throw new Error(collPow.error.message);
+      const powerOf = new Map((collPow.data || []).map((r) => [String(r.player_id), Number(r.power)]));
       const defeated = new Set((hunts.data || []).filter((h) => h.status === 'defeated').map((h) => h.id));
       const byPlayer = new Map();
       const row = (id) => {
@@ -674,8 +686,6 @@ app.get('/api/leaderboard/v2', async (req, res) => {
       for (const r of plays.data || []) { const x = row(r.player_id); if (r.kind === 'boon') x.boons += 1; if (r.kind === 'prank') x.pranks += 1; }
       for (const r of trades.data || []) { row(r.from_id).trades += 1; row(r.to_id).trades += 1; }
       const names = new Map((players.data || []).map((p) => [String(p.id), p]));
-      const byId = new Map(catalog.map((c) => [c.id, c]));
-      const totals = setTotals(catalog);
       const rows = [];
       for (const [id, x] of byPlayer) {
         if (!x.cards.length && !x.hits.length) continue;
@@ -689,8 +699,8 @@ app.get('/api/leaderboard/v2', async (req, res) => {
           bestHit: x.hits.reduce((m, h) => Math.max(m, h.damage || 0), 0),
           boonsPlayed: x.boons, pranksPlayed: x.pranks, tradesDone: x.trades,
         };
-        // The same number as my_collection_power (the profile), from the rows already loaded.
-        const power = collectionPower(x.cards, byId, totals, cardPower);
+        // The same number as my_collection_power (the profile): computed in SQL, never here.
+        const power = powerOf.get(String(id)) || 0;
         rows.push({
           id, name: names.get(String(id))?.username || 'Someone', hasAvatar: !!names.get(String(id))?.avatar,
           title: names.get(String(id))?.title || null, frame: names.get(String(id))?.frame || null,
@@ -731,20 +741,6 @@ async function activeHunt() {
     return data || null;
   });
 }
-// The daily distinct-card limit of the Hunt: settings.hunt_daily_card_cap (the SQL default is 8).
-// Read once a minute. A failed read keeps the last good value.
-let huntCapCache = { at: 0, cap: 8 };
-async function huntDailyCap() {
-  if (Date.now() - huntCapCache.at < 60000) return huntCapCache.cap;
-  return singleFlight('huntDailyCap', async () => {
-    try {
-      const { data, error } = await supabase.from('settings').select('value').eq('key', 'hunt_daily_card_cap').maybeSingle();
-      const n = Number(data?.value);
-      if (!error) huntCapCache = { at: Date.now(), cap: Number.isInteger(n) && n > 0 ? n : 8 };
-    } catch { /* keep the last value */ }
-    return huntCapCache.cap;
-  });
-}
 const matchesWeak = (weak, { type, rarity, season }) => (weak || []).some((w) =>
   (w.kind === 'type' && w.value === type)
   || (w.kind === 'rarity' && w.value === rarity)
@@ -779,7 +775,12 @@ app.get('/api/hunt', async (req, res) => {
   const today = mtToday(); // the MT game day (mt_clock.sql)
   // One call (hunt_view.sql) instead of 4: 100 players opening the Hunt at once waited ~6 s.
   let cards, hpRows, myDamage, round, statCards = null;
-  const { data: view, error: viewErr } = await supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today });
+  const [{ data: view, error: viewErr }, pw] = await Promise.all([
+    supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today }),
+    supabase.rpc('card_powers', { p_player: String(me.id) }), // combat power + HP of each copy (SQL card_combat)
+  ]);
+  if (pw.error) return res.status(500).json({ error: pw.error.message });
+  const powers = pw.data || {};
   if (!viewErr && view) {
     cards = view.cards; hpRows = view.hp; myDamage = Number(view.damage) || 0; round = view.round || 0;
     if (view.stats?.on) statCards = view.stats.cards || {};
@@ -798,9 +799,10 @@ app.get('/api/hunt', async (req, res) => {
   const roster = (cards || []).map((row) => {
     const c = row.card; const type = c?.subject?.type;
     const sc = statCards?.[String(c?.id)];
-    const power = sc ? sc.cp : cardPower(c?.rarity, row.ascension, c?.subject?.cp_mod);
+    const pc = powers[String(c?.id)] || {};
+    const power = pc.cp ?? 0; // card_combat (SQL)
     const st = hpMap.get(c?.id);
-    const maxHp = st?.max_hp ?? (sc ? sc.hp : Math.max(60, Math.round(power * 1.8))); // = card_max_hp (floor 60)
+    const maxHp = st?.max_hp ?? pc.hp ?? 0; // card_combat hp (SQL), the fight's own row once it fought
     return {
       id: c?.id, name: c?.name, rarity: c?.rarity, image_url: toProxyImg(c?.image_url),
       ascension: row.ascension || 0, power, critAdd: sc?.crit || 0,
@@ -813,8 +815,8 @@ app.get('/api/hunt', async (req, res) => {
       got: row.first_obtained_at || null, // the squad picker's "New" sort
     };
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
-  // Daily distinct-card cap (settings.hunt_daily_card_cap, the same value the SQL reads).
-  const dailyCap = await huntDailyCap();
+  // The daily card cap (balance daily_card_cap, the same value hunt_attack reads).
+  const dailyCap = dailyCardCap(bal());
   // The squad locked today (hunt_squads.sql): one squad per day, per member.
   // The unlock gate (adventure_gate.sql): null while the function is not live, so nothing locks.
   const [{ data: sqRow }, { data: gate }] = await Promise.all([
@@ -871,8 +873,7 @@ app.post('/api/hunt/squad', async (req, res) => {
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const hunt = await activeHunt();
   if (!hunt) return res.status(400).json({ error: 'no_hunt' });
-  const cap = await huntDailyCap(); // lock_hunt_squad checks the same setting
-  const cards = (Array.isArray(req.body?.cards) ? req.body.cards : []).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, cap);
+  const cards = (Array.isArray(req.body?.cards) ? req.body.cards : []).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, dailyCardCap(bal()));
   const { data, error } = await supabase.rpc('lock_hunt_squad', { p_player: String(me.id), p_hunt: hunt.id, p_cards: cards });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || { ok: false });
@@ -884,26 +885,29 @@ app.get('/api/hunt/autopick', async (req, res) => {
   if (!FEATURE_HUNT) return res.json({ ids: [] });
   const hunt = await activeHunt();
   if (!hunt) return res.json({ ids: [] });
-  const cap = await huntDailyCap(); // settings.hunt_daily_card_cap, the same as the /api/hunt dailyCap
+  const cap = dailyCardCap(bal()); // balance daily_card_cap (= hunt_attack, /api/hunt dailyCap)
   // The squad with the highest team CP the member can field TODAY (src/squad-pick.js): no card
   // knocked out today, the daily limit of new cards, the stat points, matchups and synergy.
-  const [{ data }, { data: view }] = await Promise.all([
+  const [{ data }, { data: view }, pw] = await Promise.all([
     supabase.from('player_cards')
       .select('ascension, card:cards(id, rarity, season, subject:subjects(type, cp_mod, tag_slugs, ability))')
       .eq('player_id', me.id),
     supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: mtToday() }),
+    supabase.rpc('card_powers', { p_player: String(me.id) }),
   ]);
+  if (pw.error) return res.status(500).json({ error: pw.error.message });
+  const powers = pw.data || {};
   const hp = new Map((view?.hp || []).map((h) => [h.card_id, h]));
   const stats = view?.stats?.on ? (view.stats.cards || {}) : null;
   const cards = (data || []).filter((row) => row.card?.id).map((row) => {
     const c = row.card; const sub = c.subject || {};
     const st = hp.get(c.id);
     return { id: c.id, type: sub.type, rarity: c.rarity, season: c.season, slugs: sub.tag_slugs || [],
-      power: stats?.[String(c.id)]?.cp ?? cardPower(c.rarity, row.ascension, sub.cp_mod),
+      power: powers[String(c.id)]?.cp ?? 0, // card_combat (SQL)
       used: !!st, downed: !!st?.downed,
       // a support: its effect, affinity tag and Potency (src/squad-pick.js supportValue)
       effect: sub.ability?.kind === 'support' ? sub.ability.effect : null, affinity: sub.ability?.affinity || null,
-      potency: Number(stats?.[String(c.id)]?.potency) || 1 };
+      potency: Number(powers[String(c.id)]?.potency) || 1 };
   });
   const passives = (hunt.passive?.list || (hunt.passive ? [hunt.passive] : [])).map((p) => p.kind);
   res.json({ ids: bestSquad(cards, { ...hunt, passives }, { cap }) });
@@ -1216,7 +1220,9 @@ async function getCatalogBase() {
     const { data, error } = await selectAll(() => supabase
       .from('cards')
       .select(`id, sid:subject_id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS})`), ['id']);
-    if (error) { if (catalogCache) return catalogCache.cards; throw new Error(error.message); }
+    const pw = error ? null : await supabase.rpc('card_powers', { p_player: null }); // 0-star power + HP (SQL)
+    if (error || pw.error) { if (catalogCache) return catalogCache.cards; throw new Error((error || pw.error).message); }
+    const base = pw.data || {};
     const cards = (data || []).map((c) => ({
       id: c.id,
       name: c.name,
@@ -1226,7 +1232,8 @@ async function getCatalogBase() {
       event: c.event || null,
       artist: c.artist_credit,
       lore: c.lore,
-      power: cardPower(c.rarity, 0, c.subject?.cp_mod), // the base (unascended) power
+      power: base[String(c.id)]?.power ?? 0, // the base (0-star) power, SQL card_power
+      hp: base[String(c.id)]?.hp ?? 0,
       cp_mod: c.subject?.cp_mod ?? 1,
       sid: c.sid ?? null, // the set, for the board's set-completion bonus (subject_id below is effects-only)
       subject: c.subject?.name,
@@ -1569,7 +1576,7 @@ app.post('/api/gift', async (req, res) => {
 async function caller(req) {
   return whoAmI((req.headers.authorization || '').replace(/^Bearer\s+/i, ''), clientIp(req));
 }
-registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg });
+registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg, getBalance });
 registerReportRoutes(app, { supabase, caller, rateLimit });
 registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn: hallPostsOn });
 registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn });

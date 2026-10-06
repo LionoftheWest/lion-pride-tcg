@@ -33,7 +33,7 @@ const PACK_ONCE = ['jinx', 'fake_gold', 'photobomb', 'slow_motion'];
 // What Discord forbids on the server owner (effects_spread, 2026-10-03): refused on the owner before the play.
 export const OWNER_FORBIDDEN = ['nickname', 'title', 'sticker', 'crown', 'body_swap', 'timeout'];
 
-export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg }) {
+export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg, getBalance }) {
   const cardArt = async (ids) => {
     const uniq = [...new Set(ids.filter(Boolean).map(Number))];
     if (!uniq.length) return new Map();
@@ -55,14 +55,15 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     const owner = Array.isArray(im?.value) && im.value.map(String).includes(String(targetId));
     return { forbidden: owner && OWNER_FORBIDDEN.includes(eff?.primitive) ? eff.primitive : null, polls: Array.isArray(eff?.options?.polls) };
   }
-  // The tier table, the caps, the immune list and the primitives are the same for every member:
-  // read once a minute, not 4 queries in every member's 30 s poll. A failed read is not kept.
+  // The caps, the immune list and the primitives are the same for every member: read once a minute,
+  // not 3 queries in every member's 30 s poll. A failed read is not kept. The tier table, the per-star
+  // values and the cooldown knob are balance numbers (balance_table.sql): the server's one balance cache.
   let staticCache = null; // { at, p }
   const staticReads = () => {
     if (staticCache && Date.now() - staticCache.at < 60000) return staticCache.p;
     const entry = { at: Date.now(), p: null };
     entry.p = Promise.all([
-      supabase.from('settings').select('key, value').in('key', ['card_effect_tiers', 'card_effect_ascension', 'card_effect_cooldown_scale']),
+      getBalance(),
       supabase.from('effect_primitives').select('primitive, kind, channel, max_amount, max_duration_s, enabled'),
       supabase.from('settings').select('value').eq('key', 'card_effect_caps').maybeSingle(),
       supabase.from('settings').select('value').eq('key', 'discord_immune').maybeSingle(),
@@ -85,7 +86,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     // (for example, the function not there yet) must not break my state: the read still runs.
     await supabase.rpc('arm_player_effects', { p_player: String(me.id) }).then(() => {}, () => {});
     const now = new Date().toISOString(); // after the arm: a prank that starts now is in the read
-    const [cds, act, inc, [tiers, prims, caps, immune], sent, mine, pranks, refunds] = await Promise.all([
+    const [cds, act, inc, [bal, prims, caps, immune], sent, mine, pranks, refunds] = await Promise.all([
       supabase.from('card_effect_cooldowns').select('subject_id, ready_at').eq('player_id', me.id).gt('ready_at', now),
       supabase.from('player_effects').select('id, primitive, amount, duration_s, options, expires_at')
         .eq('player_id', me.id).is('consumed_at', null).lte('starts_at', now).or(`expires_at.is.null,expires_at.gt.${now}`),
@@ -113,9 +114,9 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
         amount: p.amount, duration_s: p.duration_s, created_at: p.created_at,
         sender: p.sender?.username || 'Someone', card: art.get(Number(p.card_id)) || null,
       })),
-      tiers: (tiers.data || []).find((x) => x.key === 'card_effect_tiers')?.value || null,
-      ascension: (tiers.data || []).find((x) => x.key === 'card_effect_ascension')?.value || null,
-      cooldownScale: Number((tiers.data || []).find((x) => x.key === 'card_effect_cooldown_scale')?.value ?? 1) || 1,
+      tiers: bal.effect_tiers,
+      ascension: bal.effect_ascension,
+      cooldownScale: Number(bal.effect_cooldown_scale),
       primitives: Object.fromEntries((prims.data || []).map((p) => [p.primitive, p])),
       // The Community tab's "Plays today" (the same daily limit play_card_effect uses).
       playsToday: sent.count || 0,

@@ -33,7 +33,8 @@ function fakeSupabase({ rpcFails = false } = {}) {
 async function callMe(supabase) {
   const routes = {};
   const app = { get: (p, fn) => { routes[p] = fn; }, post: (p, fn) => { routes[p] = fn; } };
-  registerEffectRoutes(app, { supabase, caller: async () => ({ id: '123' }), rateLimit: () => true, toProxyImg: (u) => u });
+  registerEffectRoutes(app, { supabase, caller: async () => ({ id: '123' }), rateLimit: () => true, toProxyImg: (u) => u,
+    getBalance: async () => ({ effect_tiers: {}, effect_ascension: {}, effect_cooldown_scale: 1 }) });
   let body = null, status = 200;
   const res = { status(s) { status = s; return res; }, json(b) { body = b; return res; } };
   await routes['/api/effects/me']({ query: {}, body: {} }, res);
