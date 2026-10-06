@@ -33,7 +33,7 @@ function bossSQL(boss, type, day0, days) {
   return String.raw`do $t$ declare
   P text := 'tst_simsv'; d date := (now() at time zone 'America/Denver')::date; out jsonb := '[]';
   atks bigint[]; sq jsonb; share numeric; day int; h bigint; ids bigint[]; sup bigint[]; a bigint; s bigint; r jsonb; tg bigint;
-  rounds int; total bigint; healed bigint; applied numeric; eff text;
+  rounds int; total bigint; healed bigint; applied numeric; eff text; orig jsonb;
 begin
   execute $m$${mig}$m$;
   select array_agg(id order by id) into atks from (select c.id from cards c join subjects s on s.id = c.subject_id
@@ -44,6 +44,7 @@ begin
     select P, min(c.id), 1 from cards c join subjects s on s.id = c.subject_id
     where s.ability->>'kind' = 'support' and c.rarity = 'normal' group by s.ability->>'effect';
   insert into settings (key, value) values ('hunt_daily_card_cap', '8') on conflict (key) do update set value = excluded.value;
+  select value into orig from settings where key = 'hunt_boss_moves';
   for sq in select * from jsonb_array_elements(jsonb_build_array(${squads})) loop
     -- the attackers from the strongest to the weakest (the support targets and the attacks go in this order)
     select array_agg(x order by (card_combat('full_art', 0, s2.cp_mod, '{}'::jsonb)->>'cp')::int desc, x) into ids
@@ -51,7 +52,8 @@ begin
     select coalesce(array_agg(pc.card_id), '{}') into sup from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
       where pc.player_id = P and s.ability->>'kind' = 'support' and s.ability->>'effect' in (select jsonb_array_elements_text(sq->'effs'));
     foreach share in array array[0, 0.4]::numeric[] loop
-      update settings set value = jsonb_set(value, '{_share}', to_jsonb(share)) where key = 'hunt_boss_moves';
+      -- off: no counter move at all; on: the setting as built (the boss's own share, else _share)
+      update settings set value = case when share = 0 then jsonb_set(jsonb_set(orig, '{_share}', '0'), '{${boss},share}', '0') else orig end where key = 'hunt_boss_moves';
       total := 0; healed := 0; applied := 0;
       for day in ${day0 + 1}..${day0 + days} loop
         insert into hunts (name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, closes_at, hp_share, stats)

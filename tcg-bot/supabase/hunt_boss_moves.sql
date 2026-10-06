@@ -23,9 +23,11 @@ end $g$;
 alter table public.hunt_combat_state add column if not exists marks jsonb not null default '{}'::jsonb;
 
 -- The movesets. key = the rule in hunt_counter_act; name and text = what the boss details show; w = the weight.
+-- share = the share of the normal turns for this boss (else "_share"): measured so that each boss cuts its countered
+-- support by at least 50% (card-studio/scripts/sim-support-value.mjs).
 insert into public.settings (key, value) values ('hunt_boss_moves', $j${
   "_share": 0.4,
-  "The Grind Vampire": {"counters": "heal", "moves": [
+  "The Grind Vampire": {"counters": "heal", "share": 0.5, "moves": [
     {"key": "bloodrot", "name": "Bloodrot", "w": 1, "text": "Heals on the hit card work at 10% for the rest of the day."},
     {"key": "siphon", "name": "Siphon", "w": 1, "text": "The boss heals the HP that your squad healed this round."},
     {"key": "feast", "name": "Feast", "w": 1, "text": "Hits the card with the lowest HP."},
@@ -35,12 +37,12 @@ insert into public.settings (key, value) values ('hunt_boss_moves', $j${
     {"key": "infect", "name": "Infect", "w": 1, "text": "Damage on the hit card for 3 rounds. It cannot be healed for the rest of the day."},
     {"key": "groan", "name": "Groan", "w": 1, "text": "Heal cards wait 4 more rounds."},
     {"key": "undying", "name": "Undying", "w": 1, "text": "For the rest of the day, each heal you play also heals the boss."}]},
-  "The Smurf Brute": {"counters": "shield", "moves": [
+  "The Smurf Brute": {"counters": "shield", "share": 0.6, "moves": [
     {"key": "shatter", "name": "Shatter", "w": 1, "text": "Breaks every shield in your squad. Shields work at 10% for the rest of the day."},
     {"key": "crush", "name": "Crush", "w": 1, "text": "Each card takes half of the shield it lost to Shatter."},
     {"key": "bully", "name": "Bully", "w": 1, "text": "Hits the card with the biggest shield. The hit ignores the shield."},
     {"key": "fakerank", "name": "Fake Rank", "w": 1, "text": "Double damage to a shielded card."}]},
-  "The Hardstuck Skeleton": {"counters": "shield", "moves": [
+  "The Hardstuck Skeleton": {"counters": "shield", "share": 0.6, "moves": [
     {"key": "bonepierce", "name": "Bone Pierce", "w": 1, "text": "This hit ignores shields."},
     {"key": "rattle", "name": "Rattle", "w": 1, "text": "Cuts every shield in half. Shields work at 25% for the rest of the day."},
     {"key": "calcify", "name": "Calcify", "w": 1, "text": "New shields work at 10% for the rest of the day."},
@@ -80,7 +82,7 @@ insert into public.settings (key, value) values ('hunt_boss_moves', $j${
     {"key": "wave", "name": "Wave", "w": 1, "text": "Every support card waits 5 more rounds."},
     {"key": "appeal", "name": "Appeal Denied", "w": 1, "text": "Hits the last support card that played for double damage."},
     {"key": "shadowban", "name": "Shadow Ban", "w": 1, "text": "Your next 3 support plays do nothing."}]},
-  "The Zerg-Rush Queen": {"counters": "support", "moves": [
+  "The Zerg-Rush Queen": {"counters": "support", "share": 0.5, "moves": [
     {"key": "swarm", "name": "Swarm", "w": 1, "text": "Hits every card, 3 times as hard on support cards."},
     {"key": "brood", "name": "Brood", "w": 1, "text": "Hits every support card."},
     {"key": "rush", "name": "Rush", "w": 1, "text": "Two hits on the support card with the lowest HP."},
@@ -423,7 +425,8 @@ begin
   if v_ctrs is not null and not exists (select 1 from hunt_card_hp h join cards c on c.id = h.card_id join subjects s on s.id = c.subject_id
       where h.hunt_id = p_hunt and h.player_id = p_player and h.hit_date = p_day and s.ability->>'kind' = 'support'
         and (v_ctrs = 'support' or s.ability->>'effect' = v_ctrs)) then return null; end if;
-  if random() >= coalesce((v_cfg->>'_share')::numeric, 0.4) then return null; end if;
+  -- The share of the normal turns: the boss's own "share" (the shield bosses 0.6), else "_share" (0.4).
+  if random() >= coalesce((v_cfg->p_boss->>'share')::numeric, (v_cfg->>'_share')::numeric, 0.4) then return null; end if;
   select sum(coalesce((e->>'w')::numeric, 1)) into v_total from jsonb_array_elements(v_pool) e;
   v_r := random() * v_total;
   for m in select e from jsonb_array_elements(v_pool) e loop

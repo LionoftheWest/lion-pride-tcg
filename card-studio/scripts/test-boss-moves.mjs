@@ -117,10 +117,11 @@ const caseSQL = CASES.map(([key, setup, check]) => `
 const body = String.raw`do $t$ declare
   bad text := ''; h bigint; r jsonb; r2 jsonb; r3 jsonb; r4 jsonb; rnd int; k int; st record; ok boolean; v bigint; n int; i int; rec record;
   P text := '${P}'; d date := (now() at time zone 'America/Denver')::date;
-  a1 bigint; a2 bigint; kh bigint; ks bigint; ke bigint; kw bigint; kx bigint; kt bigint; km bigint; kc bigint; kg bigint; sups bigint[];
+  cfg0 jsonb; a1 bigint; a2 bigint; kh bigint; ks bigint; ke bigint; kw bigint; kx bigint; kt bigint; km bigint; kc bigint; kg bigint; sups bigint[];
 begin
   execute $m$${mig}$m$;
   ${MUT}
+  select value into cfg0 from settings where key = 'hunt_boss_moves';   -- as the file sets it (the cases overwrite it)
   select min(c.id) into a1 from cards c join subjects s on s.id = c.subject_id where s.type in ('Character', 'Creature') and c.rarity = 'gold';
   select min(c.id) into a2 from cards c join subjects s on s.id = c.subject_id where s.type in ('Character', 'Creature') and c.rarity = 'gold' and c.id > a1;
   select min(c.id) into kh from cards c join subjects s on s.id = c.subject_id where s.ability->>'effect' = 'heal' and s.ability->>'target' = 'ally';
@@ -251,9 +252,15 @@ ${caseSQL}
   end loop;
   if n = 0 then bad := bad || 'spawn: no counter passive in 150 spawns; '; end if;
 
+  -- 6b. The share for each boss (measured, Nathan 2026-10-06): the shield bosses 0.6, the Vampire and the Queen 0.5.
+  if (cfg0->'The Smurf Brute'->>'share')::numeric + (cfg0->'The Hardstuck Skeleton'->>'share')::numeric
+     + (cfg0->'The Grind Vampire'->>'share')::numeric + (cfg0->'The Zerg-Rush Queen'->>'share')::numeric is distinct from 2.2
+     or (cfg0->>'_share')::numeric is distinct from 0.4 then bad := bad || 'the shares: ' || cfg0::text || '; '; end if;
+
   -- 7. Every move in the setting has a rule (an unknown key would raise in the fight).
-  if exists (select 1 from settings s, jsonb_each(s.value) b, jsonb_array_elements(b.value->'moves') m
-             where s.key = 'hunt_boss_moves' and b.key <> '_share'
+  if (select count(*) from jsonb_each(cfg0) b where b.key <> '_share') <> 12 then bad := bad || 'not 12 bosses in the setting; '; end if;
+  if exists (select 1 from jsonb_each(cfg0) b, jsonb_array_elements(b.value->'moves') m
+             where b.key <> '_share'
                and m->>'key' not in (${CASES.map((c) => `'${c[0]}'`).join(', ')})) then bad := bad || 'a move key with no test; '; end if;
 
 ${!M || M === 'guard' ? `

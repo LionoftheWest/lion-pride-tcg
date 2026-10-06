@@ -27,7 +27,10 @@ cap attacks. Each boss now punishes a different support type, so no one squad is
 ## 2. The boss turn
 
 1. Stunned, Charging and Cataclysm come first, as today (`combat_enemy_act`).
-2. Else the boss draws: with chance `counter_share` (0.40) it uses one of its 4 counter moves (equal weights).
+2. Else the boss draws: with chance `share` it uses one of its 4 counter moves (equal weights). `share` = the
+   boss's own value, else `_share` (0.40). The Smurf Brute and the Hardstuck Skeleton use 0.60, the Grind Vampire and the
+   Zerg-Rush Queen 0.50 (Nathan, 2026-10-06: "Agreed", after the measurement showed that the squad's heals cover the
+   lost shield, and the Vampire and the Queen were just under 50%).
    Else it uses the usual table (strike, slam, drain, stun, enrage, curse, regenerate) as today.
 3. A boss with no move pool (a boss name not in `settings.hunt_boss_moves`) uses only the usual table.
 4. A squad with none of the countered support (`counters` in the setting; "support" = any support card) meets the
