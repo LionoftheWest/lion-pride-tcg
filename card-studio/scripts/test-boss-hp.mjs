@@ -19,8 +19,8 @@ const MUT = M === 'guard' || M === 'settings' ? '' : mutation({
   share: ['public.spawn_hunt(integer,text)', "coalesce((v_cfg->>'heal_share')::bigint, greatest(1, round(v_hp::numeric / v_hunters)))", 'greatest(1, round(v_hp::numeric / v_hunters))'],
 });
 const TEXT_MUT = {
-  settings: ["update public.settings set value = value ||", '-- update public.settings set value = value ||'],
-  guard: ["not in ('eec42fa92d6696a5ad8af4dfa1d6b078',", "is null and 'x' not in ('eec42fa92d6696a5ad8af4dfa1d6b078',"],
+  settings: ["update public.balance set value = value ||", '-- update public.balance set value = value ||'],
+  guard: ["not in ('c754ef43fcbf05328e8e1a90f8445007',", "is null and 'x' not in ('c754ef43fcbf05328e8e1a90f8445007',"],
 }[M];
 if (TEXT_MUT) { if (!mig.includes(TEXT_MUT[0])) throw new Error(`bad ${M} mutation`); mig = mig.replace(TEXT_MUT[0], TEXT_MUT[1]); console.log(`MUTATE=${M}: the migration text`); }
 if (mig.includes('$m$') || mig.includes('$t$')) throw new Error('the migration must not contain $m$ or $t$');
@@ -31,11 +31,15 @@ begin
   -- The boss that is live now (if any), before the file runs.
   select jsonb_build_object('id', id, 'hp_max', hp_max, 'hp_remaining', hp_remaining, 'hp_share', hp_share) into before
     from hunts where status = 'active' order by id desc limit 1;
+  -- The numbers before the file (balance_table.sql seeded boss_hp from the live settings, so the file's own
+  -- update must set them): the old HP and a wrong heal share.
+  execute 'update balance set value = value || ''{"Normal": 30000, "Heroic": 40000, "Mythic": 40000, "heal_share": 1}'' where key = ''boss_hp''';
   execute $m$${mig}$m$;
   ${MUT}
 
-  -- 1. The settings: the new HP per tier and the heal share. The other keys (crew) stay.
-  select value into cfg from settings where key = 'hunt_hp';
+  -- 1. The numbers: the new HP per tier and the heal share. The other keys (crew) stay. Since balance_table.sql
+  --    they are in balance boss_hp (the settings row hunt_hp is gone).
+  execute 'select value from balance where key = ''boss_hp''' into cfg;
   if (cfg->>'Normal')::int is distinct from 70000 or (cfg->>'Heroic')::int is distinct from 80000 or (cfg->>'Mythic')::int is distinct from 80000
      or (cfg->>'heal_share')::int is distinct from 3000 or cfg->>'crew' is null then bad := bad || 'settings: ' || cfg::text || '; '; end if;
 
@@ -52,10 +56,12 @@ begin
       bad := bad || tier || ': hp ' || rec.hp_max || '/' || rec.hp_remaining || ' share ' || rec.hp_share || '; '; end if;
   end loop;
 
-  -- 4. With no heal_share in the settings, the share is HP / crew (the old rule, a safe fallback).
-  update settings set value = value - 'heal_share' where key = 'hunt_hp';
-  h := spawn_hunt(3, 'Normal'); select * into rec from hunts where id = h;
-  if rec.hp_share <> 7000 then bad := bad || 'fallback share ' || rec.hp_share || ' (want 70000 / 10); '; end if;
+  -- 4. The heal share cannot be removed: balance_check refuses a lost key (balance_table.sql), so the
+  --    HP / crew fallback of spawn_hunt is not reachable any more.
+  begin
+    update balance set value = value - 'heal_share' where key = 'boss_hp';
+    bad := bad || 'heal_share could be removed; ';
+  exception when others then null; end;
 
 ${!M || M === 'guard' ? `
   -- 5. The guard: the file runs again on its own result; a changed live function stops it.

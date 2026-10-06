@@ -36,11 +36,11 @@ begin
     kinds := array_append(kinds, rec.tier);
     if jsonb_array_length(rec.passive->'list') <> (case rec.tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end)
        or (select count(distinct x->>'kind') from jsonb_array_elements(rec.passive->'list') x) <> jsonb_array_length(rec.passive->'list')
-       or rec.hp_max <> (select (value->>rec.tier)::int from settings where key = 'hunt_hp') -- Nathan's dial (30k/40k/40k now)
-       or rec.hp_remaining <> rec.hp_max or rec.hp_share <> coalesce((select (value->>'heal_share')::bigint from settings where key = 'hunt_hp'), rec.hp_max / 10)   -- boss_hp_heal_share.sql
+       or rec.hp_max <> (select (value->>rec.tier)::int from balance where key = 'boss_hp') -- Nathan's dial (30k/40k/40k now)
+       or rec.hp_remaining <> rec.hp_max or rec.hp_share <> coalesce((select (value->>'heal_share')::bigint from balance where key = 'boss_hp'), rec.hp_max / 10)   -- boss_hp_heal_share.sql
        or (rec.stats->>'atk')::int <> (case rec.tier when 'Normal' then 58 when 'Heroic' then 73 else 93 end) then ok := false; end if;
   end loop;
-  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP = settings.hunt_hp, share = HP / 10, ATK 58/73/93', 'ok', ok,
+  res := res || jsonb_build_object('case', 'spawn: passives 1/2/3 distinct, HP = balance boss_hp, share = boss_hp.heal_share (else HP / 10), ATK 58/73/93', 'ok', ok,
     'tiers', (select count(distinct t) from unnest(kinds) t));
   -- The HP does not follow the players: 30 more card holders, the same HP.
   insert into players (id, username) select 'tst_x' || g, 'tst x' from generate_series(1, 30) g;
@@ -48,23 +48,23 @@ begin
   ok := true;
   for i in 1..6 loop
     h := spawn_hunt(3); select * into rec from hunts where id = h;
-    if rec.hp_max <> (select (value->>rec.tier)::int from settings where key = 'hunt_hp') then ok := false; end if;
+    if rec.hp_max <> (select (value->>rec.tier)::int from balance where key = 'boss_hp') then ok := false; end if;
   end loop;
   res := res || jsonb_build_object('case', 'the HP does not change with the player count', 'ok', ok);
   -- The dial: a changed setting changes the next spawn.
-  update settings set value = '{"Normal":1234,"Heroic":1234,"Mythic":1234,"crew":2}' where key = 'hunt_hp';
+  update balance set value = value || '{"Normal":1234,"Heroic":1234,"Mythic":1234,"crew":2,"heal_share":617}' where key = 'boss_hp';
   h := spawn_hunt(3); select * into rec from hunts where id = h;
-  res := res || jsonb_build_object('case', 'the settings dial hunt_hp sets the HP and the share', 'ok', rec.hp_max = 1234 and rec.hp_share = 617);
+  res := res || jsonb_build_object('case', 'the balance boss_hp sets the HP and the share', 'ok', rec.hp_max = 1234 and rec.hp_share = 617);
   -- Per-boss stats: hunt_boss_stats[name].atk_mult scales that boss only.
-  update settings set value = '{"Normal":100,"Heroic":100,"Mythic":100}' where key = 'hunt_atk';
-  update settings set value = jsonb_build_object(rec.name, jsonb_build_object('atk_mult', 1.5)) where key = 'hunt_boss_stats';
+  update balance set value = value || '{"Normal":100,"Heroic":100,"Mythic":100}' where key = 'boss_atk';
+  update balance set value = jsonb_build_object(rec.name, jsonb_build_object('atk_mult', 1.5)) where key = 'boss_stats';
   k := rec.name; ok := true; n := 0;
   for i in 1..80 loop
     h := spawn_hunt(3); select * into rec from hunts where id = h;
     if rec.name = k then n := n + 1; if (rec.stats->>'atk')::int <> 150 then ok := false; end if;
     elsif (rec.stats->>'atk')::int <> 100 then ok := false; end if;
   end loop;
-  res := res || jsonb_build_object('case', 'hunt_atk sets the tier ATK, hunt_boss_stats atk_mult scales one boss', 'ok', ok and n > 0, 'hits', n);
+  res := res || jsonb_build_object('case', 'balance boss_atk sets the tier ATK, boss_stats atk_mult scales one boss', 'ok', ok and n > 0, 'hits', n);
   kinds := '{}';
 
   -- 2. A long fight on a quiet test boss (no passives, big HP) to sample the boss turn.

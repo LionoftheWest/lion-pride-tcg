@@ -27,6 +27,9 @@ declare res jsonb := '[]'; r jsonb; ok boolean; n int; e record; before jsonb; c
 begin
   -- Every subject's ability and tags before the migration (they must not change).
   select jsonb_object_agg(key, jsonb_build_object('ability', ability, 'tags', tags)) into before from subjects;
+  -- The first-apply state: live enabled some of the 5 pranks after the deploy (2026-10-05), and a row that
+  -- exists keeps its "enabled", so the migration's fail-closed start is checked from a disabled row.
+  update effect_primitives set enabled = false where primitive = any(${NEW});
   ${mig ? 'execute $m$' + mig + '$m$;' : ''}
   perform set_config('tcg.skip_welcome', 'on', true);
   insert into players (id, username) select '${P}_' || x, 'tst es ' || x from unnest(array['a', 'b', 'c', 'd', 'e', 'f']) x;

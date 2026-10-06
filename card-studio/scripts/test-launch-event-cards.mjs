@@ -49,6 +49,8 @@ begin
   -- The fights need a live boss: its own (rolled back), because the launch boss is defeated.
   insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at) values ('Test Boss', 'Normal', '[]', '[]', 500000, 500000, now() + interval '1 day') returning id into hb;
   crash := 0;
+  -- A fixed seed: a miss (8 %) in hits 1-3 left a charge for hit 4 (a flaky run, 2026-10-06).
+  perform setseed(0.42);
   for i in 1..4 loop
     -- The boss hits back and can down the test card after 1-2 hits (a flaky run, 2026-10-02): heal it.
     update hunt_card_hp set hp_remaining = max_hp, downed = false where hunt_id = hb and player_id = 'tst_lc_a';

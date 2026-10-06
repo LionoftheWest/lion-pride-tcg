@@ -1,8 +1,10 @@
 /**
  * Acceptance test for tcg-bot/supabase/stat_points.sql against the LIVE database with NO
  * lasting change:  node scripts/test-stat-points.mjs
- * One DO block applies the migration, checks the flag-OFF parity, turns the flag on, spends
- * and resets points, fights with them and plays an effect, then RAISEs the results. The
+ * One DO block applies balance_table.sql (the newest definitions; stat_points.sql is live since 2026-09-29
+ * and later files replaced its functions: the stat values and the Option C star table live in public.balance
+ * since 2026-10-03), checks the flag-OFF parity, turns the
+ * flag on, spends and resets points, fights with them and plays an effect, then RAISEs the results. The
  * exception rolls back everything.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
@@ -10,8 +12,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
-const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/stat_points.sql', import.meta.url)), 'utf8')
-  .replace(/notify pgrst[^\n]*\n/g, '');
+const mig = ['balance_table.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')
+  .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '')).join('\n');
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 
 const body = String.raw`do $t$
@@ -20,8 +22,8 @@ declare
   cmb jsonb; amt_a numeric; amt_b numeric;
 begin
   execute $m$${mig}$m$;
-  -- The migration inserts the flag OFF only if the setting is new. Live is ON since launch.
-  update settings set value = value || '{"enabled": false}' where key = 'stat_points';
+  -- The flag is balance stat_points.enabled (balance_table.sql). Live is ON since launch.
+  update balance set value = value || '{"enabled": false}' where key = 'stat_points';
 
   -- 1. Flag OFF: card_combat = card_power + card_max_hp for every rarity, star and cp_mod.
   ok := true;
@@ -49,20 +51,22 @@ begin
   r := spend_stat_points('tst_sp', att, '{"attack":1}');
   res := res || jsonb_build_object('case', 'flag off: spend refused', 'ok', r->>'error' = 'disabled', 'r', r);
   h := spawn_hunt(3);
+  -- the locked squad of the day (adventure_gate.sql: a member fights only with a locked squad or 8+ attackers)
+  insert into hunt_squads (hunt_id, player_id, hit_date, card_ids) values (h, 'tst_sp', (now() at time zone 'America/Denver')::date, array[att, g]);
   r := hunt_attack('tst_sp', h, att);
-  res := res || jsonb_build_object('case', 'flag off: hunt_attack cp = card_power (star 2 gold = 210)', 'ok',
+  res := res || jsonb_build_object('case', 'flag off: hunt_attack cp = card_power (star 2 gold = 140 x 1.27 = 178)', 'ok',
     (r->>'cp')::int = card_power('gold', 2, 1.0) and (r->>'card_max_hp')::int = card_max_hp(card_power('gold', 2, 1.0)), 'cp', r->'cp', 'hp', r->'card_max_hp');
 
   -- 3. Flag ON: the formulas.
-  update settings set value = value || '{"enabled": true}' where key = 'stat_points';
+  update balance set value = value || '{"enabled": true}' where key = 'stat_points';
   cmb := card_combat('gold', 5, 1.0, '{"attack":15}');
-  res := res || jsonb_build_object('case', 'on: star 5 all-Attack = 140 x 1.40 x 1.75 = 343 (old 350), HP follows', 'ok',
-    (cmb->>'cp')::int = 343 and (cmb->>'hp')::int = card_max_hp(343) and (cmb->>'free')::int = 0, 'cmb', cmb);
+  res := res || jsonb_build_object('case', 'on: star 5 all-Attack = 140 x 1.6 (Option C gold 5 stars) x 1.75 = 392, HP follows', 'ok',
+    (cmb->>'cp')::int = 392 and (cmb->>'hp')::int = card_max_hp(392) and (cmb->>'free')::int = 0, 'cmb', cmb);
   cmb := card_combat('gold', 5, 1.0, '{}');
-  res := res || jsonb_build_object('case', 'on: star 5, no points = 196, 15 free', 'ok', (cmb->>'cp')::int = 196 and (cmb->>'free')::int = 15, 'cmb', cmb);
+  res := res || jsonb_build_object('case', 'on: star 5, no points = 140 x 1.6 = 224, 15 free', 'ok', (cmb->>'cp')::int = 224 and (cmb->>'free')::int = 15, 'cmb', cmb);
   cmb := card_combat('gold', 5, 1.0, '{"vitality":10,"precision":5}');
   res := res || jsonb_build_object('case', 'on: Vitality +6% HP, Precision +3% crit', 'ok',
-    (cmb->>'hp')::int = round(card_max_hp(196) * 1.6) and (cmb->>'crit')::numeric = 0.15, 'cmb', cmb);
+    (cmb->>'hp')::int = round(card_max_hp(224) * 1.6) and (cmb->>'crit')::numeric = 0.15, 'cmb', cmb);
   cmb := card_combat('normal', 3, 1.0, '{"potency":4,"haste":5}');
   res := res || jsonb_build_object('case', 'on: Potency +5%, Haste -4%', 'ok',
     (cmb->>'potency')::numeric = 1.20 and (cmb->>'haste')::numeric = 0.80 and (cmb->>'free')::int = 0, 'cmb', cmb);
@@ -84,12 +88,14 @@ begin
     and (select stat_points from player_cards where player_id = 'tst_sp' and card_id = g) = '{}'::jsonb;
   res := res || jsonb_build_object('case', 'spend: bad stat / negative / fraction / string / empty / not owned refused, nothing written', 'ok', ok);
 
-  -- 5. The fight reads the points: Attack 4 -> cp = 140 x 1.16 x 1.20, Vitality 2 -> HP x 1.12.
+  -- 5. The fight reads the points: Attack 4 -> cp = 140 x 1.27 (gold 2 stars) x 1.20, Vitality 2 -> HP x 1.12.
   h := spawn_hunt(3);
+  -- the locked squad of the day (adventure_gate.sql: a member fights only with a locked squad or 8+ attackers)
+  insert into hunt_squads (hunt_id, player_id, hit_date, card_ids) values (h, 'tst_sp', (now() at time zone 'America/Denver')::date, array[att, g]);
   r := hunt_attack('tst_sp', h, att);
   cmb := card_combat('gold', 2, 1.0, '{"attack":4,"vitality":2}');
   res := res || jsonb_build_object('case', 'on: hunt_attack cp + max HP = the points of this copy', 'ok',
-    (r->>'cp')::int = (cmb->>'cp')::int and (cmb->>'cp')::int = round(140 * 1.16 * 1.20)
+    (r->>'cp')::int = (cmb->>'cp')::int and (cmb->>'cp')::int = round(140 * 1.27 * 1.20)
     and (r->>'card_max_hp')::int = (cmb->>'hp')::int, 'cp', r->'cp', 'hp', r->'card_max_hp', 'want', cmb);
   r := hunt_view('tst_sp', h, (now() at time zone 'utc')::date);
   res := res || jsonb_build_object('case', 'hunt_view carries the points', 'ok',
@@ -125,7 +131,7 @@ begin
   amt_b := extract(epoch from ((cmb->>'ready_at')::timestamptz - now()));
   res := res || jsonb_build_object('case', 'effects: Haste 5 = cooldown x0.80 of the 0-point copy', 'ok',
     (cmb->>'ok')::boolean and abs(amt_b - amt_a * 0.80) <= 1, 'cd0', amt_a, 'cd_haste', amt_b, 'b', cmb);
-  update settings set value = value || '{"enabled": false}' where key = 'stat_points';
+  update balance set value = value || '{"enabled": false}' where key = 'stat_points';
   insert into players (id, username) values ('tst_sp4', 'tst sp4'), ('tst_tg4', 'tst tg4');
   insert into player_cards (player_id, card_id, quantity, ascension, stat_points) values ('tst_sp4', fx, 1, 2, '{"potency":6}');
   cmb := play_card_effect('tst_sp4', fx, 'tst_tg4');
@@ -148,5 +154,5 @@ for (const r of results) {
 }
 console.log(fail ? `${fail} of ${results.length} FAILED` : `PASS all ${results.length}`);
 // Nothing may stay: no test players, no new column, no setting.
-console.log('after:', JSON.stringify(await q("select (select count(*) from players where id like 'tst_sp%' or id like 'tst_tg%') test_players, (select count(*) from information_schema.columns where table_name='player_cards' and column_name='stat_points') stat_col, (select count(*) from settings where key='stat_points') setting")));
+console.log('after:', JSON.stringify(await q("select (select count(*) from players where id like 'tst_sp%' or id like 'tst_tg%') test_players, (select count(*) from information_schema.columns where table_name='player_cards' and column_name='stat_points') stat_col, (select count(*) from settings where key='stat_points') old_setting")));
 process.exitCode = fail ? 1 : 0;
