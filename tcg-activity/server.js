@@ -745,6 +745,21 @@ async function huntDailyCap() {
     return huntCapCache.cap;
   });
 }
+// The boss movesets (hunt_boss_moves.sql, settings.hunt_boss_moves): the counter moves of one boss, for the boss
+// details (listed before the squad locks). Read once a minute. A failed read keeps the last good value.
+let huntMovesCache = { at: 0, cfg: {} };
+async function huntBossMoves(name) {
+  if (Date.now() - huntMovesCache.at >= 60000) {
+    await singleFlight('huntBossMoves', async () => {
+      try {
+        const { data, error } = await supabase.from('settings').select('value').eq('key', 'hunt_boss_moves').maybeSingle();
+        if (!error) huntMovesCache = { at: Date.now(), cfg: data?.value || {} };
+      } catch { /* keep the last value */ }
+    });
+  }
+  const moves = huntMovesCache.cfg?.[name]?.moves;
+  return Array.isArray(moves) ? moves.map((m) => ({ name: m.name, text: m.text })) : [];
+}
 const matchesWeak = (weak, { type, rarity, season }) => (weak || []).some((w) =>
   (w.kind === 'type' && w.value === type)
   || (w.kind === 'rarity' && w.value === rarity)
@@ -814,14 +829,14 @@ app.get('/api/hunt', async (req, res) => {
     };
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
   // Daily distinct-card cap (settings.hunt_daily_card_cap, the same value the SQL reads).
-  const dailyCap = await huntDailyCap();
+  const [dailyCap, bossMoves] = await Promise.all([huntDailyCap(), huntBossMoves(hunt.name)]);
   // The squad locked today (hunt_squads.sql): one squad per day, per member.
   // The unlock gate (adventure_gate.sql): null while the function is not live, so nothing locks.
   const [{ data: sqRow }, { data: gate }] = await Promise.all([
     supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
     supabase.rpc('adventure_gate', { p_player: String(me.id) }),
   ]);
-  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null });
+  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null, bossMoves });
 });
 
 // Send a card at the boss (once per card per day). Atomic + row-locked in the RPC.

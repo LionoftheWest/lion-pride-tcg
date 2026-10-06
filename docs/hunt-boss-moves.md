@@ -26,9 +26,16 @@ cap attacks. Each boss now punishes a different support type, so no one squad is
    Else it uses the usual table (strike, slam, drain, stun, enrage, curse, regenerate) as today.
 3. A boss with no move pool (a boss name not in `settings.hunt_boss_moves`) uses only the usual table.
 
-**(spec)** Each counter move also hits the attacking card for ATK x 0.5, unless the move is a hit itself (its own
-numbers below). **(spec)** A counter move that finds nothing to counter (for example Shatter when no card has a shield)
-only does that ATK x 0.5 hit. So a squad that adapts to the boss takes less damage.
+**(spec, from the measurement)** There are two kinds of counter move:
+- An **effect move** (for example Shatter, Nerf, Groan, Desync) comes ON TOP of the usual turn: the effect happens
+  first, then the usual draw. A hit move with nothing to hit (for example Bully when no card has a shield) is the same.
+- A **hit move** (Feast, Anemia, Infect, Crush, Bully, Fake Rank, Bone Pierce, Tier List, Flame, Appeal Denied,
+  Swarm, Brood, Rush, Overrun) REPLACES the usual turn, with its own numbers below.
+
+So a squad that brings no countered support meets the usual boss, and a squad that brings it is punished.
+The first two measurements replaced the usual turn with a fixed hit (ATK x 0.5, then x 0.6). Then a counter turn was
+softer than a usual turn (it had no slam area hit, no enrage, no curse), and every squad did 5% to 7% MORE damage,
+also squads with no countered support.
 
 All hits use the usual roll (x 0.85 to 1.15) and the boss damage multiplier (enrage, weaken, rage, passives).
 A "round" is the squad round (`hunt_combat_state.round`). "For N rounds" = until the round counter passes round + N.
@@ -71,7 +78,7 @@ The numbers are the first values. They live in `settings.hunt_boss_moves`.
 ### Maw of the Meta: counters empower
 - **Nerf:** removes empower from every card.
 - **Patch Notes:** empower works at 10% for 2 rounds.
-- **Tier List:** hits the empowered card for ATK x 2.0. **(spec)** With no empowered card: the attacking card, ATK x 0.5.
+- **Tier List:** hits the empowered card for ATK x 2.0. **(spec)** With no empowered card: the usual turn.
 - **Counter-pick:** for 3 rounds **(spec)**, an empowered attack also hurts the attacker by the bonus damage.
 
 ### The Rage-Quit Warlord: counters weaken

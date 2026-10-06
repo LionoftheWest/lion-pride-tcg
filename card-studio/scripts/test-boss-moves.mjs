@@ -40,11 +40,11 @@ const CASES = [
   ['bloodrot', '', `update hunt_card_hp set hp_remaining = 10 where hunt_id = h and card_id = a1;
      r2 := hunt_support(P, h, kh, a1); ok := r2->'countered' ? 'bloodrot';`],
   ['siphon', `update hunt_card_hp set hp_remaining = 100 where hunt_id = h and card_id = a2; r2 := hunt_support(P, h, kh, a2);`,
-   `ok := (r->>'boss_heal')::int = (select (result->>'gained')::int from combat_actions where ref_id = h and effect = 'heal') and (r->>'boss_heal')::int > 0;`],
+   `ok := (r->>'boss_heal')::int >= (select (result->>'gained')::int from combat_actions where ref_id = h and effect = 'heal') and (r->>'boss_heal')::int > 60;`],   // + a drain of the usual turn (45 max)
   ['feast', `update hunt_card_hp set hp_remaining = 50 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).hp_remaining < 50 and (r->>'card_hp')::int = 300;`],
   ['anemia', '', `ok := 60 - (pg_temp.c(kh)).hp_remaining > 60 - (pg_temp.c(ks)).hp_remaining and (pg_temp.c(ks)).hp_remaining < 60;`],
   ['decay', `update hunt_card_hp set hp_remaining = 100 where hunt_id = h and card_id = a1; r2 := hunt_support(P, h, kh, a1);`,
-   `ok := (r->>'card_hp')::int < 100;`],
+   `ok := (r->>'card_hp')::int <= 100;`],   // without Decay: 100 + the heal (90+) - one usual hit (46 max) > 140
   ['infect', '', `ok := st.marks->'dot' ? a1::text;`],
   ['groan', '', `ok := (pg_temp.c(kh)).cd_until_round >= rnd + 2 and coalesce((pg_temp.c(ks)).cd_until_round, 0) < rnd;`],
   ['undying', `update hunts set hp_remaining = 8000000 where id = h;`,
@@ -58,7 +58,7 @@ const CASES = [
   ['bully', `update hunt_card_hp set shield = 80 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).shield = 80 and (pg_temp.c(a2)).hp_remaining < 300 and (r->>'card_hp')::int = 300;`],
   ['fakerank', `update hunt_card_hp set shield = 1000 where hunt_id = h and card_id = a1;`, `ok := (r->>'shield')::int <= 1000 - 68 and (r->>'card_hp')::int = 300;`],
   ['bonepierce', `update hunt_card_hp set shield = 1000 where hunt_id = h and card_id = a1;`, `ok := (r->>'shield')::int = 1000 and (r->>'card_hp')::int < 300;`],
-  ['rattle', `update hunt_card_hp set shield = 100 where hunt_id = h and card_id in (a1, a2);`, `ok := (pg_temp.c(a2)).shield = 50 and (r->>'shield')::int < 50;`],
+  ['rattle', `update hunt_card_hp set shield = 100 where hunt_id = h and card_id in (a1, a2);`, `ok := (pg_temp.c(a2)).shield between 30 and 50 and (r->>'shield')::int <= 50;   -- 100 / 2, less a usual slam (16 max)`],
   ['calcify', '', `r2 := hunt_support(P, h, ks, a2); ok := r2->'countered' ? 'block_shield' and (pg_temp.c(a2)).shield < 30;`],
   ['stuck', '', `ok := (pg_temp.c(ks)).cd_until_round >= rnd + 2 and coalesce((pg_temp.c(kh)).cd_until_round, 0) < rnd;`],
   ['nerf', `update hunt_card_hp set dmg_buff = 1.5 where hunt_id = h and card_id = a2;`, `ok := (pg_temp.c(a2)).dmg_buff = 1;`],
@@ -79,9 +79,9 @@ const CASES = [
      r4 := hunt_attack(P, h, a2);                                   -- the turn after: two hits
      ok := r3->'boss_action'->>'kind' = 'stunned' and r4->'boss_action'->>'counter' = 'rubberband_hit';`],
   ['lagspike', '', `ok := (pg_temp.c(kt)).cd_until_round >= rnd + 3;`],
-  ['packetloss', `update hunt_card_hp set hp_remaining = 10 where hunt_id = h and card_id = a2;`,
-   `r2 := hunt_support(P, h, kh, a2); ok := (r2->>'nullified')::boolean and (pg_temp.c(a2)).hp_remaining = 10 and (pg_temp.c(kh)).cd_until_round > rnd;`],
-  ['rollback', `r2 := hunt_support(P, h, km, null);`, `ok := (r->>'boss_heal')::int = (r2->>'amount')::numeric::int or (r->>'boss_heal')::int = (select (result->>'value')::int from combat_actions where ref_id = h and effect = 'smite');`],
+  ['packetloss', '',
+   `update hunt_card_hp set hp_remaining = 10, downed = false where hunt_id = h and card_id = a2; r2 := hunt_support(P, h, kh, a2); ok := (r2->>'nullified')::boolean and (pg_temp.c(a2)).hp_remaining = 10 and (pg_temp.c(kh)).cd_until_round > rnd;`],
+  ['rollback', `r2 := hunt_support(P, h, km, null);`, `ok := (r->>'boss_heal')::int >= (select (result->>'value')::int from combat_actions where ref_id = h and effect = 'smite') and (r->>'boss_heal')::int > 100;`],   // + a drain of the usual turn
   ['hitbox', '', `r2 := hunt_support(P, h, km, null); ok := r2->'countered' ? 'block_smite';`],
   ['mirror', '', `v := (select hp_remaining from hunts where id = h); r2 := hunt_support(P, h, km, null);
      ok := r2->'countered' ? 'mirror' and (select hp_remaining from hunts where id = h) = v and (pg_temp.c(km)).hp_remaining < 60;`],
@@ -165,9 +165,10 @@ ${caseSQL}
   for k in 1..12 loop
     h := pg_temp.mk('', '[]');
     update settings set value = jsonb_build_object('_share', 0.4, 'Test Moves Boss', jsonb_build_object('moves', '[{"key":"nerf","name":"Nerf"},{"key":"wave","name":"Wave"},{"key":"fade","name":"Fade"},{"key":"desync","name":"Desync"}]'::jsonb)) where key = 'hunt_boss_moves';
-    update hunt_card_hp set hp_remaining = 1000000, max_hp = 1000000 where hunt_id = h and card_id = a1;
+    update hunt_card_hp set hp_remaining = 1000000, max_hp = 1000000 where hunt_id = h and card_id in (a1, a2);
     for rnd in 1..35 loop
       r := hunt_attack(P, h, a1);
+      if r->>'error' = 'stunned' then r := hunt_attack(P, h, a2); end if;   -- a stunned card waits: the other attacks
       if r->'boss_action'->>'kind' not in ('stunned', 'charging', 'cataclysm') then i := i + 1; if r->'boss_action' ? 'counter' then n := n + 1; end if; end if;
     end loop;
   end loop;

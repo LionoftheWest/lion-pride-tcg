@@ -8,7 +8,7 @@
 -- hunt_attack, hunt_support and spawn_hunt are rebuilt from their LIVE text; the guard refuses a changed live version.
 -- Tests: card-studio/scripts/test-boss-moves.mjs, combat-golden.mjs (CANDIDATE=this file).
 do $g$ begin
-  if md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), '')) not in ('f84e5768628b1c4afddb89ecfe96a5ec', '8a9ec80889e815964dab7da774c74677') then
+  if md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), '')) not in ('f84e5768628b1c4afddb89ecfe96a5ec', '9011a384a4a4a9e4210896e70eadf09b') then
     raise exception 'hunt_boss_moves.sql: the live hunt_attack changed since this file was built. Rebuild from the live text.';
   end if;
   if md5(replace(pg_get_functiondef('public.hunt_support'::regproc), chr(13), '')) not in ('beb6c2738ef2b0966054234c13fa1085', 'be3cb55e8972c6a6702e799d3af38b41') then
@@ -160,8 +160,9 @@ end $$;
 -- One counter move (docs/hunt-boss-moves.md section 4). It changes the OTHER cards and the marks itself; the
 -- attacking card's changes come back for hunt_attack to apply: dmg (its shield absorbs it unless pierce), loss
 -- (HP lost, no shield), shield (the new shield value), debuff. heal = the boss heal. anim = the boss animation
--- (an existing one). Every move that is not a hit itself also hits the attacker for ATK x 0.5; a hit with nothing
--- to hit does only that.
+-- (an existing one). base = true: an effect move (or a hit with nothing to hit). Then the usual boss turn ALSO happens
+-- (hunt_attack), so a squad without the countered support meets exactly the usual boss. base = false: a hit move; it
+-- replaces the usual turn.
 create or replace function public.hunt_counter_act(p_hunt bigint, p_player text, p_day date, p_card bigint, p_round int,
   p_atk numeric, p_bmult numeric, p_key text, p_name text, p_cardhp int, p_maxhp int, p_shield int)
 returns jsonb language plpgsql volatile set search_path = public as $$
@@ -387,8 +388,7 @@ begin
   else
     raise exception 'hunt_counter_act: unknown move %', p_key;
   end case;
-  if v_base then v_dmg := v_dmg + combat_area_roll(p_atk, 0.5, p_bmult); end if;
-  return jsonb_build_object('action', 'counter', 'key', p_key, 'move', p_name, 'anim', v_anim, 'dmg', v_dmg, 'loss', v_loss,
+  return jsonb_build_object('action', 'counter', 'key', p_key, 'move', p_name, 'anim', v_anim, 'base', v_base, 'dmg', v_dmg, 'loss', v_loss,
     'pierce', v_pierce, 'shield', v_shield, 'debuff', v_debuff, 'heal', v_heal, 'targets', v_tg);
 end $$;
 
@@ -637,21 +637,24 @@ begin
     v_act := combat_enemy_act(v_atk, v_bmult, v_round, v_stun_until, v_lost, v_share);
     v_bossact := v_act->>'action'; v_cdmg := (v_act->>'dmg')::int; v_area := (v_act->>'area')::numeric;
     v_bheal := v_bheal + (v_act->>'heal')::int;
-    -- A counter move (hunt_boss_moves.sql): 40% of the normal turns of a boss with a move pool replace the usual draw.
+    -- A counter move (hunt_boss_moves.sql): 40% of the normal turns of a boss with a move pool. An effect move comes on
+    -- top of the usual turn (base); a hit move replaces it.
     v_pick := hunt_counter_pick(p_hunt, p_player, v_day, v_bname, v_bossact);
     if v_pick is not null then
-      v_bheal := v_bheal - (v_act->>'heal')::int;
       v_ctr := hunt_counter_act(p_hunt, p_player, v_day, p_card, v_round, v_atk, v_bmult, v_pick->>'key', v_pick->>'name',
         v_cardhp, v_maxhp, v_shield);
-      v_bossact := 'counter'; v_area := 0; v_cdmg := (v_ctr->>'dmg')::int;
-      v_bheal := v_bheal + (v_ctr->>'heal')::int;
       if v_ctr->>'shield' is not null then v_shield := (v_ctr->>'shield')::int; end if;
       if v_ctr->>'debuff' is not null then v_debuff := (v_ctr->>'debuff')::numeric; end if;
-      if not (v_ctr->>'pierce')::boolean then
-        v_ab := combat_absorb(v_shield, v_cdmg); v_shield := (v_ab->>'shield')::int; v_cdmg := (v_ab->>'dmg')::int;
+      v_cardhp := greatest(0, v_cardhp - (v_ctr->>'loss')::int);
+      v_bheal := v_bheal + (v_ctr->>'heal')::int;
+      if not (v_ctr->>'base')::boolean then   -- a hit move: no usual turn
+        v_bheal := v_bheal - (v_act->>'heal')::int;
+        v_bossact := 'counter'; v_area := 0; v_cdmg := (v_ctr->>'dmg')::int;
+        if not (v_ctr->>'pierce')::boolean then
+          v_ab := combat_absorb(v_shield, v_cdmg); v_shield := (v_ab->>'shield')::int; v_cdmg := (v_ab->>'dmg')::int;
+        end if;
+        v_cardhp := greatest(0, v_cardhp - v_cdmg);
       end if;
-      v_cardhp := greatest(0, v_cardhp - v_cdmg - (v_ctr->>'loss')::int);
-      v_slam := coalesce(v_ctr->'targets', '[]'::jsonb);
     end if;
     if v_bossact in ('cataclysm', 'strike', 'slam', 'drain', 'stun') then
       v_ab := combat_absorb(v_shield, v_cdmg); v_shield := (v_ab->>'shield')::int; v_cdmg := (v_ab->>'dmg')::int;
@@ -768,7 +771,8 @@ begin
   end if;
 
   v_targets := jsonb_build_array(jsonb_build_object('card_id', p_card, 'dmg', v_cdmg,
-      'hp', v_cardhp, 'max_hp', v_maxhp, 'downed', v_downed)) || coalesce(v_slam, '[]'::jsonb) || coalesce(v_tick->'targets', '[]'::jsonb);
+      'hp', v_cardhp, 'max_hp', v_maxhp, 'downed', v_downed)) || coalesce(v_slam, '[]'::jsonb) || coalesce(v_tick->'targets', '[]'::jsonb)
+      || coalesce(v_ctr->'targets', '[]'::jsonb);
 
   return jsonb_build_object('ok', true, 'damage', v_dmg, 'outcome', v_outcome,
     'bonus', v_bonus, 'resisted', v_rm > 0, 'crit', v_crit, 'cp', v_cp, 'heal', v_heal, 'ability', v_aeff,
@@ -779,7 +783,7 @@ begin
     'burned', v_burned, 'double', v_double, 'rally', v_rally, 'butterfingers', v_bf, 'mend', v_mend, 'party', v_party->'amount', 'crashed', nullif(v_crash_dmg, 0), 'atk', round(v_atk), 'boss_heal', coalesce(v_bheal, 0), 'phase', v_phase, 'passives', to_jsonb(v_plist),
     'synergy', case when v_syn >= 3 then jsonb_build_object('element', v_elem, 'count', v_syn) else null end,
     'boss_action', case when v_bossact is null then null
-      else jsonb_build_object('kind', coalesce(v_ctr->>'anim', v_bossact), 'round', v_round, 'targets', v_targets)
+      else jsonb_build_object('kind', case when v_bossact = 'counter' then v_ctr->>'anim' else v_bossact end, 'round', v_round, 'targets', v_targets)
         || case when v_ctr is null then '{}'::jsonb else jsonb_build_object('move', v_ctr->>'move', 'counter', v_ctr->>'key') end end);
 end $function$
 ;
