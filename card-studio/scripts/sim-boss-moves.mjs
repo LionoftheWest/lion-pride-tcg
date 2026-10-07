@@ -40,7 +40,7 @@ begin
   insert into player_cards (player_id, card_id, quantity)
     select P, min(c.id), 1 from cards c join subjects s on s.id = c.subject_id
     where s.ability->>'kind' = 'support' and c.rarity = 'normal' group by s.ability->>'effect';
-  insert into settings (key, value) values ('hunt_daily_card_cap', '8') on conflict (key) do update set value = excluded.value;
+  update balance set value = '8' where key = 'daily_card_cap';   -- the daily card cap (balance_table.sql)
   for sq in select * from jsonb_array_elements(jsonb_build_array(${squads})) loop
     select array_agg(x) into ids from (select unnest(atks[1:(sq->>'na')::int]) x) y;
     select coalesce(array_agg(pc.card_id), '{}') into sup from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id

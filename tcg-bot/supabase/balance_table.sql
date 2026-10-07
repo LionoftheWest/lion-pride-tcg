@@ -35,7 +35,9 @@
 -- GUARD (the combat_core.sql rule): this file replaces the live functions below. It runs only on the exact
 -- live text it was built from (the first md5) or on its own result (the second md5, so it can run again). Any
 -- other change to one of them stops it here, so that change is never reverted: rebuild this file from the live
--- text (the generator: tools repo, balance/gen2.mjs). combat_core.sql, adventure_gate.sql, gauntlet.sql,
+-- text (the generator: tools repo, balance/gen2.mjs). 2026-10-07: hunt_attack, hunt_support and spawn_hunt were
+-- rebuilt after hunt_boss_moves.sql (#218) by a three-way merge (base = the text this file was built from, ours = the
+-- live text after #218, theirs = this file's version); one conflict (the spawn passive pool) kept both. combat_core.sql, adventure_gate.sql, gauntlet.sql,
 -- dungeon_v2.sql and hunt_early_boss.sql are rebuilt in the same PR with the same numbers read from the table.
 do $g$
 declare x text[]; m text;
@@ -54,12 +56,12 @@ begin
     ['combat_aff_scale', 'e5be70b040755944dcec10487f274197', '7a4054dd69923c816ea97d8bab829ab8'],
     ['combat_support_value', '3a355036a33ec2a2c3719a1ebe569b23', 'f559395d686aae07f5411b3b391c2c20'],
     ['combat_stun_immune', 'a90cde7342cf656740ca6d5a1570f0ff', 'b26ab5f7ae16903480af205f114b237f'],
-    ['hunt_attack', 'f84e5768628b1c4afddb89ecfe96a5ec', '36bbe09bf42809b80e7c7d69218bb52a'],
-    ['hunt_support', 'beb6c2738ef2b0966054234c13fa1085', 'ef5d2c1a5eb74bf430cd2ddce1c7af84'],
+    ['hunt_attack', '352f81ffb45b028c1eab6e3dfcc2e707', '835daea41237378340cc28a88c3b0921'],
+    ['hunt_support', '6ffdd26daed7008346262413497b2a24', 'a9addaf61d3a15508001be519589694b'],
     ['lock_hunt_squad', '4a80c769286b2b6022ab79b4cb01f7c6', '22bf3511259d728791ee370775beb5f2'],
     ['hunt_commit_card', '6ef31cb9924f10f32680369ef3057b16', '165a2c131945eb341f8e4864413f6884'],
     ['deployable_power', '10723321c2ee972b3200918687b0d8b0', 'a744b17aff2b54b776663492ac0c4ce1'],
-    ['spawn_hunt', 'c754ef43fcbf05328e8e1a90f8445007', '2ebcc17b77256bc9cede8ef0fb2f3f3b'],
+    ['spawn_hunt', '4b9c670ee18c6ece32d5a3a886b9df1d', 'f9d7209d29cd2d9fb788141a57bc2323'],
     ['play_card_effect', 'e62c11f53b2a82ebff6869214f63d3e9', '2fc1d7c6fa08f03c87cac5c9caaa9c6a'],
     ['my_collection_power', '8f687924f72babcc2b241f0135d810b3', 'a25e996ebcfc49edfeac7d149a5ab4da'],
     ['top_collection_power', 'ea9eb37e441bf3beb8902ebd54b5ebbd', '529a2cacae1407a63e5e304960e81f8c'],
@@ -618,9 +620,10 @@ declare
   v_double boolean := false; v_rally numeric; v_mend numeric; v_bf numeric;
   v_party jsonb; v_crash jsonb; v_crash_dmg int := 0; v_crash_to text; v_crash_card bigint;
   v_sq jsonb; v_wk jsonb; v_hit jsonb; v_act jsonb; v_ab jsonb; v_area numeric;
+  v_bname text; v_marks jsonb; v_pick jsonb; v_ctr jsonb; v_tick jsonb; v_ubuff numeric := 1;
 begin
-  select status, closes_at, weak_points, resist_points, tier, hp_max, passive, coalesce(hp_share, hp_max), stats, hp_remaining
-    into v_status, v_closes, v_weak, v_resist, v_tier, v_hpmax, v_passive, v_share, v_stats, v_hp
+  select status, closes_at, weak_points, resist_points, tier, hp_max, passive, coalesce(hp_share, hp_max), stats, hp_remaining, name
+    into v_status, v_closes, v_weak, v_resist, v_tier, v_hpmax, v_passive, v_share, v_stats, v_hp, v_bname
     from hunts where id = p_hunt for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'no_hunt'); end if;
   if v_status <> 'active' or now() >= v_closes then
@@ -687,8 +690,8 @@ begin
     v_mend := take_player_effect(p_player, 'mend');
     if v_mend is not null then v_cardhp := least(v_maxhp, v_cardhp + greatest(1, round(v_mend))::int); end if;
   end if;
-  select boss_enrage, enrage_until, boss_weaken, weaken_until, boss_expose, expose_until, stunned_until
-    into v_enrage, v_enr_until, v_weaken, v_wk_until, v_expose, v_exp_until, v_stun_until
+  select boss_enrage, enrage_until, boss_weaken, weaken_until, boss_expose, expose_until, stunned_until, marks
+    into v_enrage, v_enr_until, v_weaken, v_wk_until, v_expose, v_exp_until, v_stun_until, v_marks
     from hunt_combat_state where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
 
   v_aeff := case when v_ability->>'kind' = 'attack' then v_ability->>'effect' else null end;
@@ -712,7 +715,7 @@ begin
   v_hit := combat_hit(v_cp, v_wmult, v_buff, v_debuff, v_synmult, v_critchance,
     combat_miss('shrouded' = any(v_plist)),                                          -- shrouded: more misses
     v_aeff, v_aamt, v_athresh, 'armored' = any(v_plist) and 'trait:melee' = any(v_tags),
-    case when v_exp_until >= v_round and v_expose > 0 then v_expose else 0 end, v_hp, v_hpmax);
+    case when v_exp_until >= v_round and v_expose > 0 and not hunt_mark_on(v_marks, 'block_expose', v_round) then v_expose else 0 end, v_hp, v_hpmax);   -- Veil (hunt_boss_moves.sql)
   v_miss := (v_hit->>'miss')::boolean; v_crit := (v_hit->>'crit')::boolean; v_block := (v_hit->>'block')::boolean;
   v_dmg := (v_hit->>'dmg')::int; v_outcome := v_hit->>'outcome'; v_double := (v_hit->>'double')::boolean;
   if not v_miss then
@@ -761,6 +764,16 @@ begin
     v_heal := combat_lifesteal(v_dmg, v_aamt, v_maxhp);  -- cap: lifesteal cannot out-heal the boss
     v_cardhp := least(v_maxhp, v_cardhp + v_heal);
   end if;
+  -- Counter marks on this attack (hunt_boss_moves.sql): Counter-pick (an empowered attack hurts the attacker by the
+  -- bonus) and Demotion (an attack on an exposed boss sends 20% back).
+  if v_dmg > 0 and v_buff > 1 and hunt_mark_on(v_marks, 'counterpick', v_round) then
+    v_cardhp := greatest(0, v_cardhp - greatest(1, round(2 * v_dmg * (v_buff - 1) / v_buff))::int);   -- twice the bonus
+  end if;
+  if v_dmg > 0 and v_exp_until >= v_round and v_expose > 0 and hunt_mark_on(v_marks, 'demotion', v_round)
+     and not hunt_mark_on(v_marks, 'block_expose', v_round) then
+    v_cardhp := greatest(0, v_cardhp - greatest(1, round(v_dmg * 0.2))::int);
+  end if;
+  v_ubuff := v_buff;   -- the empower this attack used (Tier List)
   v_buff := 1;
 
   -- The boss ATK (Nathan, 2026-09-28: flat stats, so tougher cards survive more hits).
@@ -773,14 +786,43 @@ begin
       returning round into v_round;
     -- Phase 1 below 50% HP: permanent rage. Frenzied: +5% per 10% of HP lost (combat_enemy_mult).
     v_lost := 1 - v_hp::numeric / greatest(1, v_hpmax);
-    v_bmult := combat_enemy_mult(v_enrage, v_enr_until, v_weaken, v_wk_until, v_round,
-      'volatile' = any(v_plist), v_lost, 'frenzied' = any(v_plist));
+    v_bmult := combat_enemy_mult(v_enrage, v_enr_until,
+      case when hunt_mark_on(v_marks, 'block_weaken', v_round) then 0 else v_weaken end,   -- Alt-F4 (hunt_boss_moves.sql)
+      v_wk_until, v_round, 'volatile' = any(v_plist), v_lost, 'frenzied' = any(v_plist));
+    if hunt_mark_on(v_marks, 'spiral', v_round) then   -- Rage Spiral: +20% for each weaken played
+      v_bmult := v_bmult * (1 + coalesce((v_marks->'spiral'->>'bonus')::numeric, 0));
+    end if;
     v_bheal := 0;
 
     -- The enemy turn (combat_core.sql: combat_enemy_act): a surprise draw.
+    -- The damage-over-time marks tick first (hunt_boss_moves.sql: Infect, Nightshade).
+    v_tick := hunt_counter_tick(p_hunt, p_player, v_day, p_card, v_round);
+    if (v_tick->>'attacker')::int > 0 then
+      v_ab := combat_absorb(v_shield, (v_tick->>'attacker')::int); v_shield := (v_ab->>'shield')::int;
+      v_cardhp := greatest(0, v_cardhp - (v_ab->>'dmg')::int);
+    end if;
     v_act := combat_enemy_act(v_atk, v_bmult, v_round, v_stun_until, v_lost, v_share);
     v_bossact := v_act->>'action'; v_cdmg := (v_act->>'dmg')::int; v_area := (v_act->>'area')::numeric;
     v_bheal := v_bheal + (v_act->>'heal')::int;
+    -- A counter move (hunt_boss_moves.sql): 40% of the normal turns of a boss with a move pool. An effect move comes on
+    -- top of the usual turn (base); a hit move replaces it.
+    v_pick := hunt_counter_pick(p_hunt, p_player, v_day, v_bname, v_bossact);
+    if v_pick is not null then
+      v_ctr := hunt_counter_act(p_hunt, p_player, v_day, p_card, v_round, v_atk, v_bmult, v_pick->>'key', v_pick->>'name',
+        v_cardhp, v_maxhp, v_shield, v_ubuff);
+      if v_ctr->>'shield' is not null then v_shield := (v_ctr->>'shield')::int; end if;
+      if v_ctr->>'debuff' is not null then v_debuff := (v_ctr->>'debuff')::numeric; end if;
+      v_cardhp := greatest(0, v_cardhp - (v_ctr->>'loss')::int);
+      v_bheal := v_bheal + (v_ctr->>'heal')::int;
+      if not (v_ctr->>'base')::boolean then   -- a hit move: no usual turn
+        v_bheal := v_bheal - (v_act->>'heal')::int;
+        v_bossact := 'counter'; v_area := 0; v_cdmg := (v_ctr->>'dmg')::int;
+        if not (v_ctr->>'pierce')::boolean then
+          v_ab := combat_absorb(v_shield, v_cdmg); v_shield := (v_ab->>'shield')::int; v_cdmg := (v_ab->>'dmg')::int;
+        end if;
+        v_cardhp := greatest(0, v_cardhp - v_cdmg);
+      end if;
+    end if;
     if v_bossact in ('cataclysm', 'strike', 'slam', 'drain', 'stun') then
       v_ab := combat_absorb(v_shield, v_cdmg); v_shield := (v_ab->>'shield')::int; v_cdmg := (v_ab->>'dmg')::int;
       v_cardhp := greatest(0, v_cardhp - v_cdmg);
@@ -896,7 +938,8 @@ begin
   end if;
 
   v_targets := jsonb_build_array(jsonb_build_object('card_id', p_card, 'dmg', v_cdmg,
-      'hp', v_cardhp, 'max_hp', v_maxhp, 'downed', v_downed)) || coalesce(v_slam, '[]'::jsonb);
+      'hp', v_cardhp, 'max_hp', v_maxhp, 'downed', v_downed)) || coalesce(v_slam, '[]'::jsonb) || coalesce(v_tick->'targets', '[]'::jsonb)
+      || coalesce(v_ctr->'targets', '[]'::jsonb);
 
   return jsonb_build_object('ok', true, 'damage', v_dmg, 'outcome', v_outcome,
     'bonus', v_bonus, 'resisted', v_rm > 0, 'crit', v_crit, 'cp', v_cp, 'heal', v_heal, 'ability', v_aeff,
@@ -907,7 +950,8 @@ begin
     'burned', v_burned, 'double', v_double, 'rally', v_rally, 'butterfingers', v_bf, 'mend', v_mend, 'party', v_party->'amount', 'crashed', nullif(v_crash_dmg, 0), 'atk', round(v_atk), 'boss_heal', coalesce(v_bheal, 0), 'phase', v_phase, 'passives', to_jsonb(v_plist),
     'synergy', case when v_syn >= balance_num('combat', 'syn_small_at') then jsonb_build_object('element', v_elem, 'count', v_syn) else null end,
     'boss_action', case when v_bossact is null then null
-      else jsonb_build_object('kind', v_bossact, 'round', v_round, 'targets', v_targets) end);
+      else jsonb_build_object('kind', case when v_bossact = 'counter' then v_ctr->>'anim' else v_bossact end, 'round', v_round, 'targets', v_targets)
+        || case when v_ctr is null then '{}'::jsonb else jsonb_build_object('move', v_ctr->>'move', 'counter', v_ctr->>'key') end end);
 end $$;
 
 -- hunt_support (live): support.matched_x, support.stun_immune_rounds.
@@ -924,10 +968,12 @@ declare
   v_tpts jsonb; v_srar text; v_sasc int; v_smod numeric; v_spts jsonb;
   v_aff text; v_ttags text[]; v_affcount int := 0; v_scale numeric := 1; v_matched boolean := false; v_sdmg int;
   v_settle jsonb;
+  v_marks jsonb; v_plist text[]; v_f numeric := 1; v_ctr text[] := '{}'; v_gain int; v_tkind text; v_fail boolean := false;
 begin
   select status, closes_at, tier into v_status, v_closes, v_tier from hunts where id = p_hunt for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'no_hunt'); end if;
   if v_status <> 'active' or now() >= v_closes then return jsonb_build_object('ok', false, 'error', 'hunt_over'); end if;
+  select coalesce(array_agg(x->>'kind'), '{}') into v_plist from hunts h, jsonb_array_elements(coalesce(h.passive->'list', '[]'::jsonb)) x where h.id = p_hunt;
 
   select pc.quantity, s.type, s.ability, c.rarity::text, pc.ascension, s.cp_mod, pc.stat_points
     into v_qty, v_type, v_ability, v_srar, v_sasc, v_smod, v_spts
@@ -974,16 +1020,46 @@ begin
   end if;
   v_scale := combat_aff_scale(v_affcount);
 
+  -- Counters (hunt_boss_moves.sql): the counter passives and the boss marks make this support weaker.
+  select marks into v_marks from hunt_combat_state where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+  v_marks := coalesce(v_marks, '{}'::jsonb);
+  if coalesce((v_marks->>'null_next')::int, 0) > 0 then   -- Packet Loss (1) / Shadow Ban (2): this play does nothing
+    update hunt_combat_state set marks = case when (marks->>'null_next')::int > 1 then jsonb_set(marks, '{null_next}', to_jsonb((marks->>'null_next')::int - 1))
+      else marks - 'null_next' end, updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+    update hunt_card_hp set cd_until_round = v_round + v_cd, updated_at = now()
+      where hunt_id = p_hunt and player_id = p_player and card_id = p_card and hit_date = v_day;
+    insert into combat_actions (mode, ref_id, player_id, card_id, kind, game_day, round, effect, amount, target_card, result)
+      values ('hunt', p_hunt, p_player, p_card, 'support', v_day, v_round, v_eff, 0, case when v_tgt in ('ally', 'self') then p_target end,
+              jsonb_build_object('nullified', true, 'countered', jsonb_build_array('null_next')));
+    return jsonb_build_object('ok', true, 'effect', v_eff, 'nullified', true, 'countered', jsonb_build_array('null_next'),
+      'ready_round', v_round + v_cd, 'round', v_round, 'boss_hp', (select hp_remaining from hunts where id = p_hunt), 'defeated', false);
+  end if;
+  if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'plague'::text; end if;
+  if v_eff in ('shield', 'smite') and 'shatterer' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'shatterer'::text; end if;
+  if v_eff in ('empower', 'expose') and 'dispeller' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'dispeller'::text; end if;
+  if v_eff = 'weaken' and 'juggernaut' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'juggernaut'::text; end if;
+  if v_eff = 'heal' and p_target is not null and hunt_mark_on(v_marks->'heal_block_card', p_target::text, v_round) then
+    v_f := v_f * coalesce((v_marks->'heal_block_card'->p_target::text->>'mult')::numeric, 0.1); v_ctr := v_ctr || 'bloodrot'::text;
+  end if;
+  if v_eff in ('shield', 'empower', 'weaken', 'expose', 'smite') and hunt_mark_on(v_marks, 'block_' || v_eff, v_round) then
+    v_f := v_f * coalesce((v_marks->('block_' || v_eff)->>'mult')::numeric, 0.1); v_ctr := v_ctr || ('block_' || v_eff);
+  end if;
+  if hunt_mark_on(v_marks, 'half_' || v_eff, v_round) then   -- Shatter, Rattle, Nerf (25%), Fade, Rollback, Decay (50%) for the day
+    v_f := v_f * coalesce((v_marks->('half_' || v_eff)->>'mult')::numeric, 0.5); v_ctr := v_ctr || ('half_' || v_eff);
+  end if;
+  if v_f <> 1 then v_amt := v_amt * v_f; end if;
+
   -- resolve ally-targeted effects (need a committed target row)
   if v_tgt in ('ally', 'self') then
     if p_target is null then return jsonb_build_object('ok', false, 'error', 'need_target'); end if;
-    select pc.quantity, c.rarity::text, pc.ascension, s.cp_mod, s.tag_slugs, pc.stat_points
-      into v_tqty, v_trar, v_tasc, v_tmod, v_ttags, v_tpts
+    select pc.quantity, c.rarity::text, pc.ascension, s.cp_mod, s.tag_slugs, pc.stat_points, s.ability->>'kind'
+      into v_tqty, v_trar, v_tasc, v_tmod, v_ttags, v_tpts, v_tkind
     from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
     where pc.player_id = p_player and pc.card_id = p_target;
     if not found or v_tqty < 1 then return jsonb_build_object('ok', false, 'error', 'bad_target'); end if;
     v_tcp := (card_combat(v_trar, v_tasc, v_tmod, v_tpts)->>'cp')::int;
     v_tmaxhp := (card_combat(v_trar, v_tasc, v_tmod, v_tpts)->>'hp')::int;
+    if v_tkind = 'support' then v_tmaxhp := card_max_hp(0); end if;   -- D-70: a support target has the support HP
     perform hunt_commit_card(p_hunt, p_player, p_target, v_day, v_tmaxhp);
 
     -- matched ally gets the stronger effect
@@ -1004,9 +1080,15 @@ begin
                   and card_id = p_target and hit_date = v_day and downed) then
         return jsonb_build_object('ok', false, 'error', 'target_downed');
       end if;
+      select hp_remaining into v_gain from hunt_card_hp where hunt_id = p_hunt and player_id = p_player and card_id = p_target and hit_date = v_day;
       update hunt_card_hp set hp_remaining = least(max_hp, hp_remaining + combat_support_value('heal', v_amt, 1, max_hp)::int),
         updated_at = now()
-        where hunt_id = p_hunt and player_id = p_player and card_id = p_target and hit_date = v_day;
+        where hunt_id = p_hunt and player_id = p_player and card_id = p_target and hit_date = v_day
+        returning hp_remaining - v_gain into v_gain;
+      if v_gain > 0 and hunt_mark_on(v_marks, 'undying', v_round) then   -- Undying: the boss heals the same
+        update hunts set hp_remaining = least(hp_max, hp_remaining + v_gain) where id = p_hunt and status = 'active';
+        v_ctr := v_ctr || 'undying'::text;
+      end if;
     else
       return jsonb_build_object('ok', false, 'error', 'bad_ally_effect');
     end if;
@@ -1015,6 +1097,11 @@ begin
   elsif v_eff = 'weaken' then
     update hunt_combat_state set boss_weaken = combat_support_value('weaken', v_amt, v_scale, null), weaken_until = v_round + v_dur, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+    if hunt_mark_on(v_marks, 'spiral', v_round) then   -- Rage Spiral: each weaken adds 20% to the boss damage
+      perform hunt_marks_patch(p_hunt, p_player, v_day, jsonb_build_object('spiral', (v_marks->'spiral')
+        || jsonb_build_object('bonus', coalesce((v_marks->'spiral'->>'bonus')::numeric, 0) + 0.2)));
+      v_ctr := v_ctr || 'spiral'::text;
+    end if;
   elsif v_eff = 'expose' then
     update hunt_combat_state set boss_expose = combat_support_value('expose', v_amt, v_scale, null), expose_until = v_round + v_dur, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
@@ -1025,13 +1112,40 @@ begin
     if combat_stun_immune(v_stun_until, v_round) then
       return jsonb_build_object('ok', false, 'error', 'boss_stun_immune', 'ready_round', v_stun_until + balance_num('support', 'stun_immune_rounds')::int);
     end if;
+    -- Desync / Juggernaut (hunt_boss_moves.sql): the stun fails; the card still goes on cooldown.
+    if coalesce((v_marks->>'stun_fail')::boolean, false) then
+      v_fail := true; v_ctr := v_ctr || 'desync'::text;
+      update hunt_combat_state set marks = marks - 'stun_fail', updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+    elsif 'juggernaut' = any(v_plist) then
+      if random() < 0.9 then v_fail := true; v_ctr := v_ctr || 'juggernaut'::text; end if;
+    end if;
+    if not v_fail then
     update hunt_combat_state set stunned_until = v_round + 1, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+    end if;
   elsif v_eff = 'cleanse' then
+    if hunt_mark_on(v_marks, 'lock_cleanse', v_round) then   -- Hotfix (hunt_boss_moves.sql): the curse stays
+      v_ctr := v_ctr || 'hotfix'::text;
+    elsif 'plague' = any(v_plist) then                         -- Plague: removes only 10% of a curse
+      v_ctr := v_ctr || 'plague'::text;
+      update hunt_card_hp set dmg_debuff = dmg_debuff + (1 - dmg_debuff) * 0.1, updated_at = now()
+        where hunt_id = p_hunt and player_id = p_player and hit_date = v_day and dmg_debuff <> 1;
+    else
     update hunt_card_hp set dmg_debuff = 1, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = v_day and dmg_debuff <> 1;
+    end if;
+    if hunt_mark_on(v_marks, 'rot', v_round) then              -- Rot: the cleanse also removes empower and shields
+      update hunt_card_hp set dmg_buff = 1, shield = 0, updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+      v_ctr := v_ctr || 'rot'::text;
+    end if;
   elsif v_eff = 'smite' then
     v_sdmg := combat_support_value('smite', v_amt, v_scale, null)::int;
+    if coalesce((v_marks->>'mirror')::boolean, false) then   -- Mirror (hunt_boss_moves.sql): the smite hits the smite card
+      update hunt_combat_state set marks = marks - 'mirror', updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+      update hunt_card_hp set hp_remaining = greatest(0, hp_remaining - v_sdmg), downed = hp_remaining - v_sdmg <= 0, updated_at = now()
+        where hunt_id = p_hunt and player_id = p_player and card_id = p_card and hit_date = v_day;
+      v_ctr := v_ctr || 'mirror'::text;
+    else
     update hunts set hp_remaining = greatest(0, hp_remaining - v_sdmg),
       status = case when hp_remaining - v_sdmg <= 0 then 'defeated' else status end,
       defeated_at = case when hp_remaining - v_sdmg <= 0 then now() else defeated_at end
@@ -1049,6 +1163,7 @@ begin
                   from (select player_id, sum(damage) as damage from hunt_hits where hunt_id = p_hunt
                         group by player_id order by sum(damage) desc limit 3) t)));
     end if;
+    end if;
   else
     return jsonb_build_object('ok', false, 'error', 'unknown_effect', 'effect', v_eff);
   end if;
@@ -1057,7 +1172,8 @@ begin
   insert into combat_actions (mode, ref_id, player_id, card_id, kind, game_day, round, effect, amount, target_card, result)
   values ('hunt', p_hunt, p_player, p_card, 'support', v_day, v_round, v_eff, v_amt,
     case when v_tgt in ('ally', 'self') then p_target end,
-    jsonb_build_object('scale', v_scale, 'matched', v_matched, 'aff_count', v_affcount, 'affinity', v_aff, 'cooldown', v_cd,
+    jsonb_build_object('gained', case when v_eff = 'heal' then v_gain end, 'mirrored', 'mirror' = any(v_ctr), 'countered', to_jsonb(v_ctr),
+      'scale', v_scale, 'matched', v_matched, 'aff_count', v_affcount, 'affinity', v_aff, 'cooldown', v_cd,
       'value', case
         when v_eff = 'smite' then v_sdmg
         when v_eff in ('weaken', 'expose') then combat_support_value(v_eff, v_amt, v_scale, null)
@@ -1075,7 +1191,8 @@ begin
     'affinity', v_aff, 'aff_count', v_affcount, 'matched', v_matched,
     'ready_round', v_round + v_cd, 'round', v_round,
     'boss_hp', (select hp_remaining from hunts where id = p_hunt),
-    'defeated', (select status from hunts where id = p_hunt) = 'defeated');
+    'defeated', (select status from hunts where id = p_hunt) = 'defeated')
+    || case when cardinality(v_ctr) > 0 then jsonb_build_object('countered', to_jsonb(v_ctr)) else '{}'::jsonb end;
 end $$;
 
 -- lock_hunt_squad (live, adventure_gate.sql): daily_card_cap.
@@ -1170,7 +1287,12 @@ declare
     'volatile',     'Volatile: counterattacks hit harder',
     'regenerating', 'Regenerating: heals a little every turn',
     'thorns',       'Thorns: part of your damage comes back to your card',
-    'frenzied',     'Frenzied: hits harder as it loses HP');
+    'frenzied',     'Frenzied: hits harder as it loses HP',
+    -- The counter passives (hunt_boss_moves.sql): at most one on a boss.
+    'plague',       'Plague: heals and cleanse barely work',
+    'shatterer',    'Shatterer: shields and smite barely work',
+    'dispeller',    'Dispeller: empower and expose barely work',
+    'juggernaut',   'Juggernaut: weaken and stun barely work');
   -- Only the rigged model bosses (tcg-activity/src/boss-model.js MODEL_BOSSES).
   c_names text[] := array['The Rage-Quit Warlord','The Netcode Mutant','Maw of the Meta',
                           'The Lagspike Parasite','The Patch-Day Pumpkin','The Ranked Nightshade',
@@ -1228,7 +1350,8 @@ begin
   -- Stacking passives (Nathan, 2026-09-28): Normal 1, Heroic 2, Mythic 3, all different.
   -- passive.kind/label = the first (older readers); passive.list = all of them.
   select coalesce(jsonb_agg(jsonb_build_object('kind', k, 'label', v_plabels->>k)), '[]'::jsonb) into v_plist
-    from (select k from unnest(array['armored','shrouded','flaming','volatile','regenerating','thorns','frenzied']) k
+    from (select k from unnest(array['armored','shrouded','flaming','volatile','regenerating','thorns','frenzied',
+                               (array['plague','shatterer','dispeller','juggernaut'])[1 + floor(random() * 4)::int]]) k
           order by random() limit balance_num('boss_tiers', v_tier, 'passives')::int) x;
   v_passive := jsonb_build_object('kind', v_plist->0->>'kind', 'label', v_plist->0->>'label', 'list', v_plist);
 

@@ -140,7 +140,7 @@ begin
   insert into players (id, username) values (P, 'tst boss moves');
   insert into player_cards (player_id, card_id, quantity) select P, x, 1 from unnest(array[a1, a2] || sups) x;
   ${GATE(P)}
-  insert into settings (key, value) values ('hunt_daily_card_cap', '20') on conflict (key) do update set value = excluded.value;
+  update balance set value = '20' where key = 'daily_card_cap';   -- the daily card cap (balance_table.sql)
 
   -- A fresh boss: its pool = [p_key] at _share 1 ('' = no pool), passives p_pass, the squad committed (attackers 300 HP).
   create function pg_temp.mk(p_key text, p_pass jsonb) returns bigint language plpgsql as $f$
