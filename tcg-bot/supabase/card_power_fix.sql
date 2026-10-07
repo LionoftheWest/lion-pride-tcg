@@ -3,7 +3,7 @@
 -- The old bases gave secret_rare 140 and gold 75, so a gold card hit weaker than a secret
 -- rare. Reorder so gold is the strongest: secret_rare 40, full_art 75, gold 140.
 create or replace function card_power(p_rarity text, p_ascension int, p_mod numeric default 1.0)
-returns int language sql immutable as $$
+returns int language sql immutable set search_path = public as $$
   select round(
     (case p_rarity
        when 'normal'           then 10

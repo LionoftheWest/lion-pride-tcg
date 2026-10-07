@@ -7,7 +7,7 @@ alter table player_cards add column if not exists ascension int not null default
 
 -- Power a single card contributes: rarity base x ascension multiplier.
 create or replace function card_power(p_rarity text, p_ascension int)
-returns int language sql immutable as $$
+returns int language sql immutable set search_path = public as $$
   select round(
     (case p_rarity
        when 'normal'           then 10
@@ -27,7 +27,7 @@ $$;
 -- Commons need more copies; rares need fewer (matches how often they are pulled).
 -- Returns null at 5 (maxed).
 create or replace function ascend_cost(p_rarity text, p_ascension int)
-returns int language sql immutable as $$
+returns int language sql immutable set search_path = public as $$
   select case when coalesce(p_ascension,0) >= 5 then null else (
     case p_rarity
       when 'normal'           then (array[2,3,4,6,8])[p_ascension+1]

@@ -41,6 +41,8 @@
 -- dungeon_v2.sql and hunt_early_boss.sql are rebuilt in the same PR with the same numbers read from the table.
 do $g$
 declare x text[]; m text;
+  -- fix_search_path.sql (2026-10-07): the same 8 helpers with the line SET search_path TO 'public' (this file now writes it too).
+  sp jsonb := '{"combat_lifesteal": "4525ac448e0d34848a5cb792ad2cfd9d", "combat_area_roll": "3bc160e59acb12ee213d174c96b7dcbb", "combat_burn": "6ff4ba80af69a1490911ee69c8964972", "combat_thorns": "8772b4f3c97adecc1b715bb33f9421e1", "combat_regen": "057593d348484bbd0a095029db9c6f1b", "combat_aff_scale": "b44dd83e7cf5acbb98f7d3406a050eb9", "combat_support_value": "f8b766f0d269be74fa0add3f84078533", "combat_stun_immune": "2c10e3f67447be059e542c2b89dac206"}';
 begin
   foreach x slice 1 in array array[['combat_weak', '9ce429e3987062709ad58f2da22ad6ec', '98c1aad65e30464beb60d98c4aa6e538'],
     ['combat_squad', 'e258afd794372831f5bef1e3dead7912', '8395926de7607dd8f187c45a3555f1c9'],
@@ -70,12 +72,13 @@ begin
     ['dungeon_enemy_turn', 'd1d340aa97bb9ecda19b12d136ea52f4', '37fdecdbac2988fef67bef10a12ea825'],
     ['combat_pool_act', '740c827714bd36d9e85b87ebe0d76892', 'ea274af685c81c435bb3c5f715d5c6b6']] loop
     select md5(replace(pg_get_functiondef(p.oid), chr(13), '')) into strict m from pg_proc p where p.proname = x[1] and p.pronamespace = 'public'::regnamespace;
-    if m not in (x[2], x[3]) then raise exception 'balance_table.sql: the live % changed since this file was built. Rebuild it from the live text.', x[1]; end if;
+    if m not in (x[2], x[3]) and m is distinct from sp->>x[1] then raise exception 'balance_table.sql: the live % changed since this file was built. Rebuild it from the live text.', x[1]; end if;
   end loop;
 end $g$;
 -- 2026-10-07 (damage_log.sql): hunt_attack is the live text + the Hunt Crasher log row (md5 5cfa1a47...); the guard accepts that result.
 -- 2026-10-07 (effect_start_spawn_settle.sql): spawn_hunt closes an active Hunt with close_hunt (md5 87d7ae86...); the guard accepts that result.
 -- 2026-10-07 (card_decisions.sql): combat_squad reads the element list from card_element / element_aliases (robot = metal) (md5 8395926d...); the guard accepts that result.
+-- 2026-10-07 (fix_search_path.sql): the 8 combat helpers above with a fixed search_path (the sp list); the guard accepts that result.
 -- GUARD-END
 
 -- 1. The table + its history ------------------------------------------------------------------
@@ -477,6 +480,7 @@ end $$;
 -- combat_lifesteal: combat.lifesteal_cap.
 CREATE OR REPLACE FUNCTION "public"."combat_lifesteal"("p_dmg" integer, "p_aamt" numeric, "p_maxhp" integer) RETURNS integer
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   select greatest(1, least(round(p_dmg * p_aamt), round(p_maxhp * public.balance_num('combat', 'lifesteal_cap'))))::int;
 $$;
@@ -544,6 +548,7 @@ end $$;
 -- combat_area_roll: the damage roll.
 CREATE OR REPLACE FUNCTION "public"."combat_area_roll"("p_atk" numeric, "p_area" numeric, "p_bmult" numeric) RETURNS integer
     LANGUAGE "sql"
+    SET "search_path" TO 'public'
     AS $$
   select greatest(1, round(p_atk * p_area * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span')) * p_bmult))::int;
 $$;
@@ -551,6 +556,7 @@ $$;
 -- combat_burn: boss_passives.flaming_chance / flaming_x.
 CREATE OR REPLACE FUNCTION "public"."combat_burn"("p_atk" numeric) RETURNS integer
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 begin
   if random() < public.balance_num('boss_passives', 'flaming_chance') then return greatest(1, round(p_atk * public.balance_num('boss_passives', 'flaming_x') * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span'))))::int; end if;
@@ -560,21 +566,25 @@ end $$;
 -- combat_thorns: boss_passives.thorns.
 CREATE OR REPLACE FUNCTION "public"."combat_thorns"("p_dmg" integer) RETURNS integer
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$ select greatest(1, round(p_dmg * public.balance_num('boss_passives', 'thorns')))::int; $$;
 
 -- combat_regen: boss_passives.regenerating_heal.
 CREATE OR REPLACE FUNCTION "public"."combat_regen"("p_share" bigint) RETURNS integer
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$ select greatest(1, round(p_share * public.balance_num('boss_passives', 'regenerating_heal')))::int; $$;
 
 -- combat_aff_scale: support.affinity_cap / affinity_step.
 CREATE OR REPLACE FUNCTION "public"."combat_aff_scale"("p_count" integer) RETURNS numeric
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$ select least(public.balance_num('support', 'affinity_cap'), 1 + public.balance_num('support', 'affinity_step') * coalesce(p_count, 0)); $$;
 
 -- combat_support_value: support.heal_cap / weaken_cap / expose_cap.
 CREATE OR REPLACE FUNCTION "public"."combat_support_value"("p_eff" "text", "p_amt" numeric, "p_scale" numeric, "p_target_maxhp" integer) RETURNS numeric
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   select case p_eff
     when 'empower' then 1 + p_amt
@@ -589,6 +599,7 @@ $$;
 -- combat_stun_immune: support.stun_immune_rounds.
 CREATE OR REPLACE FUNCTION "public"."combat_stun_immune"("p_stun_until" integer, "p_round" integer) RETURNS boolean
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   select coalesce(p_stun_until, 0) > 0 and p_round < p_stun_until + public.balance_num('support', 'stun_immune_rounds');
 $$;

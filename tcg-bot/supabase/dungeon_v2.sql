@@ -44,7 +44,7 @@ update public.dungeon_monsters m set moves = v.moves::jsonb from (values
 
 -- ---- The dungeon: rooms and monsters ------------------------------------------------------------------
 -- A seeded weighted pick from a {key: weight} object.
-create or replace function public.dungeon_pick(p_weights jsonb, p_x numeric) returns text language plpgsql immutable as $$
+create or replace function public.dungeon_pick(p_weights jsonb, p_x numeric) returns text language plpgsql immutable set search_path = public as $$
 declare v_total numeric; v_r numeric; k text; w numeric;
 begin
   select sum(value::numeric) into v_total from jsonb_each_text(p_weights);

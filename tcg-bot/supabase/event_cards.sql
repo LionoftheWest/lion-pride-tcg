@@ -4,7 +4,7 @@
 -- Event card untradeable and out of the pack draw, whatever tool saves it.
 
 create or replace function public.card_power(p_rarity text, p_ascension integer, p_mod numeric default 1.0)
-returns integer language sql immutable as $$
+returns integer language sql immutable set search_path = public as $$
   select round(
     (case p_rarity
        when 'normal'           then 10

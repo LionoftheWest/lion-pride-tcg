@@ -93,7 +93,7 @@ on conflict (key) do update set value = excluded.value;
 
 -- A mark that lasts until a round: {"until": n, ...}.
 create or replace function public.hunt_mark_on(p_marks jsonb, p_key text, p_round int) returns boolean
-language sql immutable as $$ select coalesce((p_marks->p_key->>'until')::int, -1) >= p_round; $$;
+language sql immutable set search_path = public as $$ select coalesce((p_marks->p_key->>'until')::int, -1) >= p_round; $$;
 
 -- Add keys to the marks of one squad (the caller builds nested maps itself).
 create or replace function public.hunt_marks_patch(p_hunt bigint, p_player text, p_day date, p_patch jsonb) returns void

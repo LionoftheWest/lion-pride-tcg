@@ -29,7 +29,7 @@ $$;
 
 -- One stat of a points object, as a whole number from 0 to 15.
 create or replace function public.stat_pt(p_pts jsonb, p_key text) returns int
-language sql immutable as $$
+language sql immutable set search_path = public as $$
   select greatest(0, least(15, coalesce(case when jsonb_typeof(p_pts->p_key) = 'number'
     then floor((p_pts->>p_key)::numeric)::int end, 0)));
 $$;
