@@ -6,6 +6,10 @@ create sequence public.admin_actions_id_seq as bigint start 1 increment 1 minval
 grant select on sequence public.admin_actions_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.admin_actions_id_seq to postgres;
 grant select, update, usage on sequence public.admin_actions_id_seq to service_role;
+create sequence public.app_sessions_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.app_sessions.id;
+grant select on sequence public.app_sessions_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.app_sessions_id_seq to postgres;
+grant select, update, usage on sequence public.app_sessions_id_seq to service_role;
 create sequence public.artist_submissions_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.artist_submissions.id;
 grant select on sequence public.artist_submissions_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.artist_submissions_id_seq to postgres;
@@ -82,6 +86,10 @@ create sequence public.pack_ledger_id_seq as bigint start 1 increment 1 minvalue
 grant select on sequence public.pack_ledger_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.pack_ledger_id_seq to postgres;
 grant select, update, usage on sequence public.pack_ledger_id_seq to service_role;
+create sequence public.page_views_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.page_views.id;
+grant select on sequence public.page_views_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.page_views_id_seq to postgres;
+grant select, update, usage on sequence public.page_views_id_seq to service_role;
 create sequence public.player_effects_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.player_effects.id;
 grant select on sequence public.player_effects_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.player_effects_id_seq to postgres;
