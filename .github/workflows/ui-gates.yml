@@ -108,9 +108,12 @@ jobs:
           npm ci --prefix ci/ui-check --no-audit --no-fund
           cd ci/ui-check
           for t in 1 2; do
-            timeout 480 npx playwright install --with-deps ${{ matrix.browser }} && break
+            timeout -k 30 480 npx playwright install --with-deps ${{ matrix.browser }} && break
             [ "$t" = 2 ] && exit 1
             echo "playwright install: try $t failed or timed out; one more try"
+            # a killed try can leave apt-get holding the dpkg lock (exit 100 on the next try, 2026-10-07): free it first
+            sudo pkill -9 -f "apt-get|dpkg" || true
+            sudo dpkg --configure -a || true
           done
       - name: Build the client (SDK stub, fixtures)
         run: node ci/ui-check/build.mjs
