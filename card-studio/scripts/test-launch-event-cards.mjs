@@ -30,8 +30,8 @@ begin
     bad := bad || 'redeem ' || coalesce(r::text, 'none') || '; '; end if;
   if g is not null and coalesce((claim_gift('tst_lc_a', g)->>'ok')::boolean, false) then bad := bad || 'redeemed twice; '; end if;
   -- 3. A pack gift still works.
-  perform give_gift('tst_lc_b', 'promo', 'tst', 2, 'tst_reason');
-  select id into g from gift_claims where player_id = 'tst_lc_b' and reason = 'tst_reason';
+  perform give_gift('tst_lc_b', 'promo', 'tst', 2, 'admin');
+  select id into g from gift_claims where player_id = 'tst_lc_b' and reason = 'admin';
   if (claim_gift('tst_lc_b', g)->>'packs')::int is distinct from 2 then bad := bad || 'pack gift; '; end if;
   -- 4. Player card (a test card): a tutorial finished in the window gets the gift + the card its boon.
   insert into subjects (key, name) values ('tst-launch-player', 'tst launch player') returning id into sid;

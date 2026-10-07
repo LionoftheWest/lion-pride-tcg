@@ -20,6 +20,8 @@ const ARGS = {
   'test-hunt-squad-done.mjs': ['live'],
   'test-hunt-schedule-mt.mjs': ['../tcg-bot/supabase/hunt_schedule_mt.sql'],
   'test-prune-old-rows.mjs': ['../tcg-bot/supabase/prune_old_rows.sql'],
+  'test-achievement-tracks.mjs': ['--live'],
+  'test-adventure-dailies.mjs': ['--live'],
 };
 // One-time acceptance tests of a data conversion: they expect the state BEFORE it ran, so they fail
 // afterwards by design (on live too). Skipped, with the reason.
