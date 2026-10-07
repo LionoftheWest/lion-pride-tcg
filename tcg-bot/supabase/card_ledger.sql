@@ -48,11 +48,12 @@ begin
   -- The callers that this file does NOT replace (other files guard them): the helpers depend on what they
   -- write before the call. A change to one of them must be checked against the helpers here.
   foreach x slice 1 in array array[
+    -- buy_shop_item, dungeon_pay, dungeon_settle: the result of shard_ledger_strict.sql (2026-10-07).
     ['open_packs(text,bigint[],integer)', '78cb45be91d898fa0b3dcbde7c8dcd10'],
     ['claim_gift(text,bigint)', '3492a584dd9a8a56a934ce91b8374c4d'],
-    ['buy_shop_item(text,text,integer,bigint,integer)', 'c84f7625fb66024c8d15bfec410e01ff'],
-    ['dungeon_pay(text,date)', '95c577bb1b5334fe7b30b5d6e4458791'],
-    ['dungeon_settle(bigint,text,boolean)', '5d493824f4f6080d9a08c3491d9dc595']] loop
+    ['buy_shop_item(text,text,integer,bigint,integer)', '024201884993cc4fd231dae26319661e'],
+    ['dungeon_pay(text,date)', 'c39c6a3b51b2206c2416412a1f49e6cb'],
+    ['dungeon_settle(bigint,text,boolean)', '6c71965b6ec5f325566aeb9d65053a9e']] loop
     select md5(replace(pg_get_functiondef(('public.' || x[1])::regprocedure), chr(13), '')) into strict m;
     if m <> x[2] then raise exception 'card_ledger.sql: the live % changed since this file was built. Check the card helpers against it and rebuild.', x[1]; end if;
   end loop;
@@ -437,7 +438,7 @@ comment on column public.player_cards.quantity is 'Copies held, always > 0 (play
 
 comment on function public.card_move(text, bigint, integer, text, text, text, text) is 'The one function that changes a member''s copies: adds (amount > 0) or removes (amount < 0) copies and writes the card_ledger row with its reason and ref in the same transaction. Returns the new quantity, or null (nothing changes) when the member has too few copies. p_source = player_cards.first_source for a new row.';
 comment on function public.add_cards_to_player(text, bigint[]) is 'Adds the cards of a pack open: reason pack with ref (''open'', the open id of the pack_ledger rows written in this transaction), or test_pack (ref (''test_open'', a new id)) when no pack was spent (the bot openTestPacks).';
-comment on function public.add_card_to_player(text, bigint, text) is 'Adds one copy for a caller that passes only a source (claim_gift, buy_shop_item, dungeon_settle, dungeon_pay): the ref is the source row that the caller wrote in this transaction. With no known source row: reason admin, ref (''tx'', the transaction id).';
+comment on function public.add_card_to_player(text, bigint, text) is 'Adds one copy for a caller that passes only a source (claim_gift, buy_shop_item, dungeon_pay): the ref is the source row that the caller wrote in this transaction. The dungeon source is not used since shard_ledger_strict.sql (dungeon_settle calls card_move with its own run). With no known source row: reason admin, ref (''tx'', the transaction id).';
 comment on function public.remove_card_from_player(text, bigint) is 'Removes one copy as an admin move (ref (''tx'', the transaction id)). No game path calls it since card_ledger.sql.';
 comment on function public.gift_card(text, text, bigint) is 'A member gives a card to another member: the copy leaves now (gift_sent, ref (''gift'', gift_claims.id)) and waits in the receiver''s bell (claim_gift writes gift_received with the same ref).';
 comment on function public.accept_trade(bigint, text) is 'Accepts a trade offer: the four moves (ref (''trade_offer'', id)) are one unit; when a copy is gone nothing moves.';

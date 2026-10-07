@@ -16,10 +16,11 @@ begin
   if to_regclass('public.balance') is null then
     raise exception '%: apply balance_table.sql first (these functions read the balance table)', 'gauntlet.sql';
   end if;
+  -- shard_ledger_strict.sql (2026-10-07) rebuilt the Shard refs: the second md5 of dungeon_settle is its result; dungeon_pay below = the live text.
   foreach x slice 1 in array array[['dungeon_offers', 'f683173e2aea7385570805f9f4c118e5', '96c341db587398eb879b07c969500409'],
     ['dungeon_enter', '8feecf401e00ed762e33125448a2dfff', '591317f3b1b3ef398d22ff0a4518b788'],
     ['dungeon_after_kill', '3a1f54b7341b4982fd63e8ac7d94658b', '7089cf3176ce3e6593fc48208b4cdee6'],
-    ['dungeon_settle', '3ae0933a2aefdb6c53c21c0bc88163d9', '5d493824f4f6080d9a08c3491d9dc595'],
+    ['dungeon_settle', '3ae0933a2aefdb6c53c21c0bc88163d9', '6c71965b6ec5f325566aeb9d65053a9e'],
     ['dungeon_start', 'bb04624da5692c5d634e988e91e89c9f', 'e952ba662c6903abdbd766629f25a9b4'],
     ['dungeon_attack', 'c9858340b49c8040414bbe7a9cc976a1', '4c30628c23a9cc1b1fe19619ad63b61f'],
     ['dungeon_support', '2a585109eb24719dbd354e50061967f9', '48559abccd521a049306926bd7044de8'],
@@ -336,7 +337,11 @@ begin
   v_sh := coalesce((r.state->'bank'->>'shards')::int, 0) + case when p_with_pend then coalesce((r.state->'pend'->>'shards')::int, 0) else 0 end;
   v_cards := coalesce(r.state->'bank'->'cards', '[]') || case when p_with_pend then coalesce(r.state->'pend'->'cards', '[]') else '[]'::jsonb end;
   if v_sh > 0 then perform grant_shards(r.player_id, v_sh, 'dungeon', 'run', r.id::text); end if;
-  for x in select e from jsonb_array_elements(v_cards) e loop perform add_card_to_player(r.player_id, (x #>> '{}')::bigint, 'dungeon'); end loop;
+  -- Each card with the ref of THIS run (shard_ledger_strict.sql): add_card_to_player found 'the newest active run that
+  -- holds the card', the wrong run when a member has two active runs (a daily and a Gauntlet run, or a stale one).
+  for x in select e from jsonb_array_elements(v_cards) e loop
+    perform card_move(r.player_id, (x #>> '{}')::bigint, 1, 'dungeon_loot', 'dungeon_run', r.id::text, 'dungeon');
+  end loop;
   update dungeon_runs set status = 'over', ended_by = p_how, ended_at = now(), shards = v_sh,
     cards = coalesce(array(select (e #>> '{}')::bigint from jsonb_array_elements(v_cards) e), '{}'),
     state = jsonb_set(state, '{phase}', '"over"') || jsonb_build_object('lost', case when p_with_pend then null else state->'pend' end)
@@ -744,9 +749,9 @@ begin
     p := pz->(case when p_mode = 'daily' then 'daily' else 'weekly' end)->((e->>'rank')::int - 1);
     continue when p is null;
     if coalesce((p->>'shards')::int, 0) > 0 then
-      perform grant_shards(e->>'player_id', (p->>'shards')::int, 'dungeon', 'prize_' || p_mode, p_period::text); end if;
+      perform grant_shards(e->>'player_id', (p->>'shards')::int, 'dungeon', 'dungeon_payout', p_mode || ':' || p_period::text); end if;
     if coalesce((p->>'packs')::int, 0) > 0 then
-      perform grant_packs(e->>'player_id', (p->>'packs')::int, 'dungeon_prize', null); end if;
+      perform grant_packs(e->>'player_id', (p->>'packs')::int, 'dungeon_prize', null, 'dungeon_payout', p_mode || ':' || p_period::text); end if;
     v_cards := '[]';
     for i in 1..coalesce((p->>'cards')::int, 0) loop
       v_rar := dungeon_pick(p->'odds', random()::numeric);
