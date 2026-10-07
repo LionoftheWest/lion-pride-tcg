@@ -46,7 +46,6 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `effects_cleanup.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`); reverts `public.take_player_effect(text, text)` (live = `effect_start_spawn_settle.sql`) |  |
 | `effects_outside.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`) |  |
 | `event_cards.sql` | SUPERSEDED: reverts `public.card_power(text, integer, numeric)` (live = `balance_table.sql`); reverts `public.cards_event_rules()` (live = `special_cards_never_in_packs.sql`) |  |
-| `events.sql` | SUPERSEDED: schedules cron job `event-tick`, which live does not have |  |
 | `fix_last_copy_remove.sql` | SUPERSEDED: reverts `public.remove_card_from_player(text, bigint)` (live = `card_ledger.sql`) |  |
 | `gift_all_members.sql` | SUPERSEDED: reverts `public.gift_all_members(jsonb, integer, text)` (live = `gift_claims.sql`); reverts `public.welcome_packs()` (live = `balance_economy.sql`) |  |
 | `gift_claims.sql` | SUPERSEDED: reverts `public.claim_gift(text, bigint)` (live = `pack_ledger_strict.sql`); reverts `public.gift_packs(text, text, integer)` (live = `pack_ledger_strict.sql`); reverts `public.welcome_packs()` (live = `balance_economy.sql`) |  |
@@ -114,13 +113,11 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 
 These files have a statement that cannot run in a rolled-back transaction. Read them before a re-run.
 
-## A re-run fails today, with no structure change (1)
+## A re-run fails today, with no structure change (0)
 
 A file runs as one transaction, so an error rolls the whole file back.
 
-- `db_comments.sql`: a re-run stops at an error today: syntax error at or near "begin"
-
-## No structure change, but a re-run writes rows (29)
+## No structure change, but a re-run writes rows (31)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -138,9 +135,11 @@ a one-time grant or a settings value would run again.
 - `card_ledger.sql`: card_ledger (DO block)
 - `daily_raid_board.sql`: cron.job
 - `damage_log.sql`: combat_actions (DO block)
+- `db_comments.sql`: a DO block
 - `discord_effects_on.sql`: effect_primitives
 - `dungeon_prizes_daily.sql`: settings
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
+- `events.sql`: cards, events, gift_claims (DO block), cron.job
 - `gauntlet.sql`: cron.job, settings
 - `gift_pack_off.sql`: effect_primitives
 - `hunt_abilities.sql`: subjects

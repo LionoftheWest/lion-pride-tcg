@@ -4,6 +4,7 @@
 -- @cron
 select cron.schedule('dungeon-prizes', '5 * * * *', $cron$select public.dungeon_prize_tick()$cron$);
 select cron.schedule('dungeon-settle-stale', '20 6 * * *', $cron$select public.dungeon_settle_stale()$cron$);
+select cron.schedule('event-tick', '*/10 * * * *', $cron$select public.event_tick();$cron$);
 select cron.schedule('expire-auctions', '*/10 * * * *', $cron$select expire_auctions();$cron$);
 select cron.schedule('hunt-close-due', '*/10 * * * *', $cron$select close_due_hunts();$cron$);
 select cron.schedule('hunt-close-mt-mdt', '0 23 * * 1', $cron$select weekly_boss_tick('close');$cron$);
