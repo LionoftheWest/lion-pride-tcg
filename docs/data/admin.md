@@ -9,7 +9,7 @@ The read only functions of the Admin view in the card studio (admin_read.sql, /a
 
 Tables (1): [admin_actions](#table-admin-actions)
 
-Functions (21): [admin_active_days(date,date)](#fn-admin-active-days-date-date), [admin_card(bigint)](#fn-admin-card-bigint), [admin_cards(date,date,text,integer,integer,text)](#fn-admin-cards-date-date-text-integer-integer-text), [admin_dungeon(date,date)](#fn-admin-dungeon-date-date), [admin_economy(date,date,text)](#fn-admin-economy-date-date-text), [admin_feed(text[],timestamp with time zone,integer,text)](#fn-admin-feed-text-timestamp-with-time-zone-integer-text), [admin_feed_kinds()](#fn-admin-feed-kinds), [admin_growth(date,date)](#fn-admin-growth-date-date), [admin_health()](#fn-admin-health), [admin_hunt(bigint)](#fn-admin-hunt-bigint), [admin_hunts(integer,integer)](#fn-admin-hunts-integer-integer), [admin_log_action(text,text,text,text,jsonb,jsonb,text,text,bigint)](#fn-admin-log-action-text-text-text-text-jsonb-jsonb-text-text-bigint), [admin_member(text)](#fn-admin-member-text), [admin_member_timeline(text,timestamp with time zone,integer,text,text[])](#fn-admin-member-timeline-text-timestamp-with-time-zone-integer-text-text), [admin_members(text,text,integer,integer)](#fn-admin-members-text-text-integer-integer), [admin_overview(date,date)](#fn-admin-overview-date-date), [admin_period(date,date,integer)](#fn-admin-period-date-date-integer), [admin_report(text,jsonb)](#fn-admin-report-text-jsonb), [admin_report_catalog()](#fn-admin-report-catalog), [admin_timeline_kinds()](#fn-admin-timeline-kinds), [gift_admin_log()](#fn-gift-admin-log)
+Functions (32): [admin_active_days(date,date)](#fn-admin-active-days-date-date), [admin_balance_set(text,text,text[],jsonb,jsonb,text,bigint)](#fn-admin-balance-set-text-text-text-jsonb-jsonb-text-bigint), [admin_card(bigint)](#fn-admin-card-bigint), [admin_cards(date,date,text,integer,integer,text)](#fn-admin-cards-date-date-text-integer-integer-text), [admin_check_pulls(jsonb)](#fn-admin-check-pulls-jsonb), [admin_dungeon(date,date)](#fn-admin-dungeon-date-date), [admin_economy(date,date,text)](#fn-admin-economy-date-date-text), [admin_feed(text[],timestamp with time zone,integer,text)](#fn-admin-feed-text-timestamp-with-time-zone-integer-text), [admin_feed_kinds()](#fn-admin-feed-kinds), [admin_growth(date,date)](#fn-admin-growth-date-date), [admin_health()](#fn-admin-health), [admin_hunt(bigint)](#fn-admin-hunt-bigint), [admin_hunts(integer,integer)](#fn-admin-hunts-integer-integer), [admin_is_member_list(text,text[],jsonb)](#fn-admin-is-member-list-text-text-jsonb), [admin_log_action(text,text,text,text,jsonb,jsonb,text,text,bigint)](#fn-admin-log-action-text-text-text-text-jsonb-jsonb-text-text-bigint), [admin_member(text)](#fn-admin-member-text), [admin_member_card(text,text,bigint,integer,integer,text,bigint)](#fn-admin-member-card-text-text-bigint-integer-integer-text-bigint), [admin_member_packs(text,text,integer,integer,text,bigint)](#fn-admin-member-packs-text-text-integer-integer-text-bigint), [admin_member_shards(text,text,integer,integer,text,bigint)](#fn-admin-member-shards-text-text-integer-integer-text-bigint), [admin_member_timeline(text,timestamp with time zone,integer,text,text[])](#fn-admin-member-timeline-text-timestamp-with-time-zone-integer-text-text), [admin_members(text,text,integer,integer)](#fn-admin-members-text-text-integer-integer), [admin_overview(date,date)](#fn-admin-overview-date-date), [admin_period(date,date,integer)](#fn-admin-period-date-date-integer), [admin_report(text,jsonb)](#fn-admin-report-text-jsonb), [admin_report_catalog()](#fn-admin-report-catalog), [admin_setting_member(text,text,text[],text,boolean,text,bigint)](#fn-admin-setting-member-text-text-text-text-boolean-text-bigint), [admin_setting_set(text,text,text[],jsonb,jsonb,text,bigint)](#fn-admin-setting-set-text-text-text-jsonb-jsonb-text-bigint), [admin_stale(text,jsonb,jsonb)](#fn-admin-stale-text-jsonb-jsonb), [admin_timeline_kinds()](#fn-admin-timeline-kinds), [admin_undo(text,bigint,text)](#fn-admin-undo-text-bigint-text), [admin_write_begin(text,text)](#fn-admin-write-begin-text-text), [gift_admin_log()](#fn-gift-admin-log)
 
 ## Tables
 
@@ -54,6 +54,16 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 
 [admin] The one "active member" rule of the Admin view: one row per (member, game day, source) in the period. game = true for a game action that a ledger or a log records with its time: pack_open and gift_send (pack_ledger opened / gift_sent; card_ledger gift_sent), ascend and convert (card_ledger), gift_claim (gift_claims.claimed_at), hunt (hunt_combat_log, combat_actions mode hunt, kind support, hunt_squads), dungeon and gauntlet (dungeon_runs.started_at), effect (card_plays), trade (trade_offers made, countered or answered; trade_listings), auction (auctions, auction_bids), shop (shop_purchases), achievement (achievement_claims), report (player_reports), daily (daily_claims, not chat and chat_bonus). game = false: chat (daily_activity.message_count > 0) and voice (voice_minutes). A member is active on a day with a game row. Service role only.
 
+<a id="fn-admin-balance-set-text-text-text-jsonb-jsonb-text-bigint"></a>
+
+### admin_balance_set(text,text,text[],jsonb,jsonb,text,bigint)
+
+- Function: `admin_balance_set(p_actor text, p_key text, p_path text[], p_before jsonb, p_after jsonb, p_reason text, p_undo_of bigint DEFAULT NULL::bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] The Admin view balance editor: sets public.balance[p_key] at p_path (empty = the whole value) to p_after. Refuses (LP409) when the live value at the path is not p_before, (LP400) a missing key or path, a type change, no change, and bad pull rates (admin_check_pulls); the triggers balance_check and balance_check_settings check the shape. Writes the admin_actions row balance_set (before and after: path and value) in the same transaction; balance_log records the change with the admin as changed_by. Returns the action id, before and after. Service role only.
+
 <a id="fn-admin-card-bigint"></a>
 
 ### admin_card(bigint)
@@ -73,6 +83,16 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 - Security definer: no
 
 [admin] Each card (one page, default 50, max 200; sort copies, owners, pulls, trades, attacks, damage, plays or id, descending, then id; p_search: a part of the card name, case does not matter, or the card id; total = the matching cards): copies, owners and stars now (player_cards); in the period (default 30 days): pulls (card_ledger reason pack), trades (card_trades, each side that holds the card), attacks (hunt_combat_log), damage and damage_won (hunt_hits, damage_won in Hunts with status defeated), damage_share (of all hunt_hits damage in the period), supports (combat_actions mode hunt, kind support), plays (card_plays). Service role only.
+
+<a id="fn-admin-check-pulls-jsonb"></a>
+
+### admin_check_pulls(jsonb)
+
+- Function: `admin_check_pulls(p_value jsonb)`
+- Returns: `void`
+- Security definer: no
+
+[admin] Refuses (LP400) a pulls balance value that the bot draw (tcg-bot/src/draw.ts pullTable) would refuse: a rate for normal, illustrated_rare, secret_rare, full_art and gold, each a number of at least 0, together 1 (within 1e-9), and pack_size a whole number from 1 to 20. admin_balance_set calls it for the key pulls. Service role only.
 
 <a id="fn-admin-dungeon-date-date"></a>
 
@@ -154,6 +174,16 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 
 [admin] The Hunts, newest first (default 20, max 100): the hunts row (name, tier, status, HP, times), fighters and damage (hunt_hits), attacks (hunt_combat_log), prize_packs (pack_ledger hunt_reward, ref hunt). Service role only.
 
+<a id="fn-admin-is-member-list-text-text-jsonb"></a>
+
+### admin_is_member_list(text,text[],jsonb)
+
+- Function: `admin_is_member_list(p_key text, p_path text[], p_value jsonb)`
+- Returns: `boolean`
+- Security definer: no
+
+[admin] True when a settings value is a member id list: the whole value of discord_immune, an array named users (ui_v3.users, achievement_tracks.users), or a non-empty array of Discord ids. Such a list changes only one member at a time (admin_setting_member). Service role only.
+
 <a id="fn-admin-log-action-text-text-text-text-jsonb-jsonb-text-text-bigint"></a>
 
 ### admin_log_action(text,text,text,text,jsonb,jsonb,text,text,bigint)
@@ -173,6 +203,36 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 - Security definer: no
 
 [admin] One member on one page: profile (players; avatar_url = the Discord CDN picture of players.avatar, the URL the Activity uses; guild_joined_at, left_guild_at, in_guild), app (app_sessions visits and the last one, page_views by screen, tutorial_steps, notifications and unread, profile_log and wishlist_log changes, admin_actions on the member), activity (admin_active_days: first and last active, active days, chat and voice days, days by source), balances with the ledger sums as a check (players, pack_ledger, shard_ledger, gift_claims waiting), collection (my_collection_power, power_rank = 1 + the members with more power in collection_power_all and power_rank_of = the members with power, player_cards by rarity and by season of cards, stars, pulls from card_ledger reason pack), stat_points (player_cards.stat_points), achievements (achievement_claims), effects_now (player_effects not used up, discord_effects pending or active), effect_plays (card_plays, card_effect_cooldowns), hunt (hunt_hits, hunt_combat_log, combat_actions, pack_ledger hunt_reward), dungeon (dungeon_runs), trading (card_trades, open trade_offers, trade_listings, auctions, auction_bids, wishlists), reports by the member and against the member (player_reports.player_id and target_id, the newest 20 each, text cut to 200 characters). {found: false} for an unknown id. Service role only.
+
+<a id="fn-admin-member-card-text-text-bigint-integer-integer-text-bigint"></a>
+
+### admin_member_card(text,text,bigint,integer,integer,text,bigint)
+
+- Function: `admin_member_card(p_actor text, p_player text, p_card bigint, p_amount integer, p_before integer, p_reason text, p_undo_of bigint DEFAULT NULL::bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Gives (p_amount > 0) or removes copies of one card of one member through card_move with reason admin, the ref ('admin_action', admin_actions.id) and first_source admin. Refuses (LP409) when the member's copies are not p_before, (LP400) an amount of 0 or beyond 100 either way, an unknown member or card, more copies than the member has, copies held by a trade offer, an auction or a bid (free_copies), and the last copy of a card with stars. Writes the admin_actions row member_card first, in the same transaction. Service role only.
+
+<a id="fn-admin-member-packs-text-text-integer-integer-text-bigint"></a>
+
+### admin_member_packs(text,text,integer,integer,text,bigint)
+
+- Function: `admin_member_packs(p_actor text, p_player text, p_amount integer, p_before integer, p_reason text, p_undo_of bigint DEFAULT NULL::bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Grants (p_amount > 0) or takes back packs of one member through grant_packs with reason admin and the ref ('admin_action', admin_actions.id). Refuses (LP409) when the pack balance is not p_before, (LP400) an amount of 0 or beyond 1000 either way, an unknown member, a balance below 0. Writes the admin_actions row member_packs first (its id is the ledger ref), in the same transaction. Service role only.
+
+<a id="fn-admin-member-shards-text-text-integer-integer-text-bigint"></a>
+
+### admin_member_shards(text,text,integer,integer,text,bigint)
+
+- Function: `admin_member_shards(p_actor text, p_player text, p_amount integer, p_before integer, p_reason text, p_undo_of bigint DEFAULT NULL::bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Grants (p_amount > 0) or takes back Shards of one member through grant_shards with reason admin and the ref ('admin_action', admin_actions.id). Refuses (LP409) when the Shards balance is not p_before, (LP400) an amount of 0 or beyond 1000000 either way, an unknown member, a balance below 0. Writes the admin_actions row member_shards first, in the same transaction. Service role only.
 
 <a id="fn-admin-member-timeline-text-timestamp-with-time-zone-integer-text-text"></a>
 
@@ -234,6 +294,36 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 
 [admin] The ready-made Admin reports (the one list): key, title, params with their defaults, the columns in CSV order and the sources. admin_report runs them. Service role only.
 
+<a id="fn-admin-setting-member-text-text-text-text-boolean-text-bigint"></a>
+
+### admin_setting_member(text,text,text[],text,boolean,text,bigint)
+
+- Function: `admin_setting_member(p_actor text, p_key text, p_path text[], p_member text, p_add boolean, p_reason text, p_undo_of bigint DEFAULT NULL::bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Adds (p_add true) or removes one member in a settings member list (admin_is_member_list). Refuses (LP409) an add of a member who is in the list and a remove of a member who is not (the list changed since the preview), (LP400) an add of an unknown member. Writes the admin_actions row setting_member (before and after: path, member, in_list, count) in the same transaction. Service role only.
+
+<a id="fn-admin-setting-set-text-text-text-jsonb-jsonb-text-bigint"></a>
+
+### admin_setting_set(text,text,text[],jsonb,jsonb,text,bigint)
+
+- Function: `admin_setting_set(p_actor text, p_key text, p_path text[], p_before jsonb, p_after jsonb, p_reason text, p_undo_of bigint DEFAULT NULL::bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] The Admin view settings editor: sets one value of public.settings[p_key] at p_path (a flag, a number, a text, a date or a time) to p_after. Refuses (LP409) when the live value is not p_before, (LP400) a missing key or path, a type change, a member list (use admin_setting_member), a whole group of values (an object), no change, and a date or a time that does not parse in the same format. Writes the admin_actions row setting_set in the same transaction; settings_log records the change. Service role only.
+
+<a id="fn-admin-stale-text-jsonb-jsonb"></a>
+
+### admin_stale(text,jsonb,jsonb)
+
+- Function: `admin_stale(p_what text, p_now jsonb, p_expected jsonb)`
+- Returns: `void`
+- Security definer: no
+
+[admin] Raises SQLSTATE LP409 "admin: <what> changed (now ..., expected ...)": the optimistic check of the Admin view writes found a live value that differs from the preview. Service role only.
+
 <a id="fn-admin-timeline-kinds"></a>
 
 ### admin_timeline_kinds()
@@ -243,6 +333,26 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 - Security definer: no
 
 [admin] The kinds of admin_member_timeline, one list: joined, guild, visit, tutorial, profile, pack, card, shard, daily, gift, gift_claim, hunt, combat, squad, hunt_adjustment, dungeon, dungeon_over, dungeon_combat, effect_sent, effect_received, trade, wishlist, auction, shop, stat_points, achievement, report, report_about, note, note_read, admin, chat, voice. Service role only.
+
+<a id="fn-admin-undo-text-bigint-text"></a>
+
+### admin_undo(text,bigint,text)
+
+- Function: `admin_undo(p_actor text, p_action bigint, p_reason text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Undoes one Admin view action (balance_set, setting_set, setting_member, member_packs, member_shards, member_card from the studio): calls the same write function with the stored after value as the before value and the stored before value as the new value, undo_of = the action. Refuses (LP409) a second undo and a value that changed again since the action, (LP400) an unknown action and an action of another kind or source (for example a bot gift). Service role only.
+
+<a id="fn-admin-write-begin-text-text"></a>
+
+### admin_write_begin(text,text)
+
+- Function: `admin_write_begin(p_actor text, p_reason text)`
+- Returns: `void`
+- Security definer: no
+
+[admin] The start of every Admin view write: refuses an empty actor (LP400) or a reason that is not 3 to 500 characters, and sets balance.by to the actor, so balance_who (balance_log, settings_log, balance.updated_by) names the admin. Service role only.
 
 <a id="fn-gift-admin-log"></a>
 

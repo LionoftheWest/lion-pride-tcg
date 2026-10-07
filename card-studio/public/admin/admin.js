@@ -1,6 +1,7 @@
 // Lion Pride TCG - Admin view (Phase 1, read only). Plain JS, no framework, like the card studio.
 // Every number comes from /api/admin/* (the admin_ SQL functions). Dates and times are Mountain Time (the game day).
 import { lineChart, barChart, compact } from './charts.js';
+import { editors } from './editors.js';
 
 /* ---------- icons (Lucide shapes, ISC license) ---------- */
 const ICONS = {
@@ -257,13 +258,19 @@ const TABS = ['overview', 'members', 'economy', 'hunt'];
 const navActive = (n, path) => (n.match ? n.match.test(path) : path === `/${n.id}`);
 let session = { login: false };
 
+// Phase 2 (the editors, src/admin-write.js): its nav items open when the server has ADMIN_EDIT=1.
+const ED = editors({ h, icon, api, panel, table, fill, pageHead, statusTag, N, P, when, label, RARITY, rarityDot, qs, mtDay, addDays, pager, render: () => render() });
+const navLocked = () => (ED.state.on ? LOCKED.filter(([t]) => !ED.nav.some((n) => n.label === t)) : LOCKED);
 function navItems(path, { onPick } = {}) {
   return [
     h('div', { class: 'nav-head' }, 'Phase 1 - Live'),
     NAV.map((n) => h('a', { class: `nav-item${navActive(n, path) ? ' active' : ''}`, href: `#/${n.id}`, 'aria-current': navActive(n, path) ? 'page' : null, onclick: onPick }, icon(n.icon), n.label)),
     h('div', { class: 'nav-sep' }),
-    h('div', { class: 'nav-head' }, 'Phase 2 / 3 - Coming'),
-    LOCKED.map(([t, ic, ph]) => h('span', { class: 'nav-item locked', 'aria-disabled': 'true' }, icon(ic), t, h('span', { class: 'tag' }, icon('lock'), ph))),
+    ...(ED.state.on ? [h('div', { class: 'nav-head' }, 'Phase 2 - Edit'),
+      ...ED.nav.map((n) => h('a', { class: `nav-item${navActive(n, path) ? ' active' : ''}`, href: `#/${n.id}`, 'aria-current': navActive(n, path) ? 'page' : null, onclick: onPick }, icon(n.icon), n.label)),
+      h('div', { class: 'nav-sep' })] : []),
+    h('div', { class: 'nav-head' }, ED.state.on ? 'Coming' : 'Phase 2 / 3 - Coming'),
+    navLocked().map(([t, ic, ph]) => h('span', { class: 'nav-item locked', 'aria-disabled': 'true' }, icon(ic), t, h('span', { class: 'tag' }, icon('lock'), ph))),
     h('div', { class: 'nav-tools' },
       h('div', { class: 'nav-head' }, 'Tools'),
       h('a', { class: 'nav-item', href: '/index.html', target: '_blank', rel: 'noopener' }, icon('palette'), 'Card Studio', h('span', { class: 'tag', style: 'border:0' }, icon('external'))),
@@ -561,8 +568,9 @@ async function pageMember(main, [id]) {
         tile('zap', 'Power', N(c.power), powerRank(c))));
     const coll = panel('Collection by rarity', { sub: `${N(c.copies)} cards, ${N(c.unique_cards)} unique` });
     coll.body.append(hbars((c.by_rarity || []).map((x) => ({ label: RARITY[x.rarity] || x.rarity, value: x.copies, dot: rarityDot(x.rarity), color: `var(--r-${x.rarity})`, max: c.copies, share: c.copies ? x.copies / c.copies : 0 }))));
-    const act = panel('Actions', { right: h('span', { class: 'tag' }, icon('lock'), 'Phase 2') });
-    act.body.append(...[['Grant packs', 'package'], ['Give a card', 'gift'], ['Fix a balance', 'scale']].map(([t, ic]) => h('button', { class: 'action-btn', type: 'button', disabled: true }, icon(ic), t, h('span', { class: 'lock' }, icon('lock')))));
+    const act = panel('Actions', { right: ED.state.on ? null : h('span', { class: 'tag' }, icon('lock'), 'Phase 2') });
+    if (ED.state.on) act.body.append(...ED.memberActions(d, () => setTimeout(render, 600)));
+    else act.body.append(...[['Grant packs', 'package'], ['Give a card', 'gift'], ['Fix a balance', 'scale']].map(([t, ic]) => h('button', { class: 'action-btn', type: 'button', disabled: true }, icon(ic), t, h('span', { class: 'lock' }, icon('lock')))));
     const det = panel('Details');
     const kv = (title, pairs) => h('div', { class: 'rec' }, h('div', { class: 'lbl', style: 'margin-bottom:6px' }, title), h('dl', null, pairs.map(([k, v]) => h('div', null, h('dt', null, k), h('dd', null, v)))));
     det.body.append(
@@ -1217,7 +1225,7 @@ function render() {
     if (m) {
       main.replaceChildren();
       window.scrollTo(0, 0);
-      const navItem = NAV.find((n) => navActive(n, path));
+      const navItem = [...NAV, ...(ED.state.on ? ED.nav : [])].find((n) => navActive(n, path));
       document.title = `${navItem ? navItem.label : 'Admin'} - Lion Pride TCG Admin`;
       fn(main, m.slice(1).map(decodeURIComponent), new URLSearchParams(query || ''));
       return;
@@ -1237,6 +1245,7 @@ async function start() {
   } catch (e) {
     session.error = e.message;
   }
+  if (await ED.init()) ROUTES.push(...ED.routes);
   const badge = document.getElementById('source');
   document.getElementById('source-text').textContent = session.source || '?';
   badge.classList.toggle('local', session.source === 'LOCAL');

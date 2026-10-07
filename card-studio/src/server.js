@@ -8,6 +8,7 @@ import { pushCard } from './push.js';
 import { removeTiers } from './tier-delete.js';
 import { supabase } from './supabase.js';
 import { adminRouter } from './admin-routes.js';
+import { adminWriteRouter } from './admin-write.js';
 import { studioAuth, loadSecret } from './studio-auth.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic } from './rarity.js';
 import { getFrame, setFrame } from './frames.js';
@@ -62,6 +63,8 @@ export const app = express();
 app.use(studioAuth({ secret: loadSecret(join(ROOT, '.studio-secret')) }));
 app.use(express.json({ limit: '30mb' }));
 // The Admin view data (read only): flag ADMIN_VIEW=1 (src/admin-routes.js). The pages: public/admin/ (/admin/).
+// The Admin view editors (Phase 2: preview, test on the LOCAL copy, apply, undo): flag ADMIN_EDIT=1 (src/admin-write.js).
+app.use('/api/admin/edit', adminWriteRouter({ live: supabase }));
 app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
 // The start page is the Admin view when it is on (ADMIN_VIEW=1); the card editor is /index.html.
 app.get('/', (req, res, next) => (process.env.ADMIN_VIEW === '1' ? res.redirect(302, '/admin/') : next()));
