@@ -77,8 +77,8 @@ begin
         end loop;
         total := total + coalesce((select sum(damage) from hunt_hits where hunt_id = h and player_id = P), 0);
         -- a heal that also healed the boss (Undying) has no value
-        healed := healed + coalesce((select sum(case when result->'countered' ? 'undying' then 0 else (result->>'gained')::int end) from combat_actions where ref_id = h and effect = 'heal'), 0);
-        applied := applied + coalesce((select sum((result->>'value')::numeric) from combat_actions where ref_id = h and effect = '${type}'), 0);   -- the effect the countered support applied
+        healed := healed + coalesce((select sum(case when result->'countered' ? 'undying' then 0 else (result->>'gained')::int end) from combat_actions where mode = 'hunt' and ref_id = h and effect = 'heal'), 0);
+        applied := applied + coalesce((select sum((result->>'value')::numeric) from combat_actions where mode = 'hunt' and ref_id = h and effect = '${type}'), 0);   -- the effect the countered support applied
         update hunts set status = 'expired' where id = h;
       end loop;
       out := out || jsonb_build_object('squad', sq->>'name', 'share', share, 'dmg', total, 'healed', healed, 'applied', applied);   -- sums: the caller averages over every chunk
