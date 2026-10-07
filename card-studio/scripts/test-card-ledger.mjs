@@ -35,7 +35,7 @@ const FN_MUT = {
   ascendnoledger: ['public.ascend_card(text,bigint)', "perform card_move(p_player_id, p_card_id, -v_cost, 'ascend', 'ascension', p_card_id::text || ':' || (v_asc + 1));", "update player_cards set quantity = quantity - v_cost where player_id = p_player_id and card_id = p_card_id;"],
 };
 const SQL_MUT = {
-  noreasoncheck: 'alter table card_ledger drop constraint card_ledger_reason_check;',
+  noreasoncheck: 'alter table card_ledger drop constraint card_ledger_reason_check; drop trigger if exists card_ledger_reason_guard on card_ledger;',
 };
 const MUT = process.env.MUTATE && SQL_MUT[process.env.MUTATE] ? (console.log(`MUTATE=${process.env.MUTATE}`), SQL_MUT[process.env.MUTATE]) : mutation(FN_MUT);
 
