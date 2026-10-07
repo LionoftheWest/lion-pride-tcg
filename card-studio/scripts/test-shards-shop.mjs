@@ -78,8 +78,8 @@ begin
   r := buy_shop_item('tst_sh_a', 'card', j);
   if (r->>'ok')::boolean or r->>'error' <> 'not_enough' then bad := bad || 'buy with 0 shards ' || r::text || '; '; end if;
   if exists (select 1 from player_cards where player_id = 'tst_sh_a') then bad := bad || 'card given with 0 shards; '; end if;
-  if grant_shards('tst_sh_a', 2500, 'admin') <> 2500 then bad := bad || 'grant; '; end if;
-  if grant_shards('tst_nobody', 5, 'admin') is not null then bad := bad || 'grant to nobody; '; end if;
+  if grant_shards('tst_sh_a', 2500, 'admin', 'test', 'shards shop test') <> 2500 then bad := bad || 'grant; '; end if;
+  if grant_shards('tst_nobody', 5, 'admin', 'test', 'shards shop test') is not null then bad := bad || 'grant to nobody; '; end if;
   r := buy_shop_item('tst_sh_a', 'card', j);
   if not (r->>'ok')::boolean or (r->>'balance')::int <> 1000 then bad := bad || 'buy sr ' || r::text || '; '; end if;
   if (select first_source from player_cards where player_id = 'tst_sh_a' and card_id = c_sr) is distinct from 'shop' then
@@ -102,7 +102,7 @@ begin
 
   -- 5. The balance never goes below 0, and the ledger always sums to the balance.
   ok := false;
-  begin perform grant_shards('tst_sh_a', -100000, 'admin'); exception when check_violation then ok := true; end;
+  begin perform grant_shards('tst_sh_a', -100000, 'admin', 'test', 'shards shop test'); exception when check_violation then ok := true; end;
   if not ok then bad := bad || 'negative balance allowed; '; end if;
   if (select sum(amount) from shard_ledger where player_id = 'tst_sh_a') <> (select shard_balance from players where id = 'tst_sh_a') then
     bad := bad || 'ledger <> balance; '; end if;
@@ -114,7 +114,7 @@ begin
   v_week := to_char(now() at time zone 'America/Denver', 'IYYY-IW');
   insert into player_cards (player_id, card_id, quantity, ascension, stat_points) values ('tst_sh_c', nm, 1, 1, '{"attack": 3}');
   update players set stat_reset_week = null where id = 'tst_sh_c';
-  perform grant_shards('tst_sh_c', 200, 'admin');
+  perform grant_shards('tst_sh_c', 200, 'admin', 'test', 'shards shop test');
   if not (shop_today('tst_sh_c')->>'free_reset')::boolean then bad := bad || 'free reset not offered; '; end if;
   r := buy_shop_item('tst_sh_c', 'stat_reset', null, nm);
   if not (r->>'ok')::boolean or not (r->>'free')::boolean or (r->>'balance')::int <> 200 then bad := bad || 'free reset ' || r::text || '; '; end if;
