@@ -24,7 +24,7 @@ create table public.combat_actions (
 
 -- @constraints
 alter table public.combat_actions add constraint combat_actions_card_id_fkey FOREIGN KEY (card_id) REFERENCES cards(id);
-alter table public.combat_actions add constraint combat_actions_kind_check CHECK ((kind = ANY (ARRAY['attack'::text, 'support'::text, 'effect'::text])));
+alter table public.combat_actions add constraint combat_actions_kind_check CHECK ((kind = ANY (ARRAY['attack'::text, 'support'::text, 'effect'::text, 'enemy'::text])));
 alter table public.combat_actions add constraint combat_actions_mode_check CHECK ((mode = ANY (ARRAY['hunt'::text, 'dungeon'::text, 'gauntlet'::text])));
 alter table public.combat_actions add constraint combat_actions_pkey PRIMARY KEY (id);
 alter table public.combat_actions add constraint combat_actions_player_id_fkey FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE;

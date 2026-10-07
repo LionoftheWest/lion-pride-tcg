@@ -23,6 +23,7 @@
 -- file. adventure_gate.sql writes the balance row instead of the settings row. Idempotent.
 
 -- GUARD (the combat_core.sql rule): each function must be the live text this file was built from, or its result.
+-- dungeon_combat_log.sql (2026-10-07) added the combat_actions log rows to dungeon_attack: its fourth md5 is that result (the same text below).
 -- dungeon_rules: the live text has no search_path; the third md5 is that text with "set search_path to 'public'"
 -- (a search_path fix may run first).
 do $g$
@@ -45,7 +46,7 @@ begin
     ['dungeon_view(text)', 'f6dd1098039c4c09a693f1e39b80250b', '678207cdfd8f26716f653cea9cd3d23e', '678207cdfd8f26716f653cea9cd3d23e'],
     ['gauntlet_view(text)', '1c1729a6db87ade14a4b28ee716f82d6', '0b729835b6ce3b124f0c947b1098a8de', '0b729835b6ce3b124f0c947b1098a8de'],
     ['dungeon_enter(jsonb,jsonb,integer,integer)', 'a1c94c659efc65e139ddd42b6a41920b', '69bf76b64a86b3cd1326ca3ebd81925e', '69bf76b64a86b3cd1326ca3ebd81925e'],
-    ['dungeon_attack(text,bigint,integer,text)', '4c30628c23a9cc1b1fe19619ad63b61f', '0d16a49744abd8af83320d0bd70f8105', '0d16a49744abd8af83320d0bd70f8105'],
+    ['dungeon_attack(text,bigint,integer,text)', '4c30628c23a9cc1b1fe19619ad63b61f', '0d16a49744abd8af83320d0bd70f8105', 'b43992e3df16993c30d52790e2597784'],
     ['dungeon_after_kill(dungeon_runs,jsonb)', '7089cf3176ce3e6593fc48208b4cdee6', 'e095ff553b4897bb1856f6060499103a', 'e095ff553b4897bb1856f6060499103a'],
     ['dungeon_loot(jsonb,integer,bigint)', 'c38e5fa135740a51c895687b11e9f83c', '2279893199082c16bec8b83413bca688', '2279893199082c16bec8b83413bca688'],
     ['dungeon_chest_rarity(integer)', 'ed9273ac7392b63094c7bc3fbeeefb90', '6b29cd3c886ffa956a0007556bb2375b', '6b29cd3c886ffa956a0007556bb2375b']] loop
@@ -596,6 +597,7 @@ AS $function$
 declare cfg jsonb := dungeon_cfg(); r dungeon_runs; st jsonb; c jsonb; info jsonb; f jsonb; v_t int; v_tags text[];
   v_ab jsonb; v_aeff text; v_aamt numeric; v_athresh numeric; sq jsonb; wk jsonb; v_crit numeric; hit jsonb; v_dmg int := 0; v_heal int := 0;
   v_round int; v_pl text[]; ek text; kill jsonb := null; v_cmb jsonb; v_boost numeric := 0; et jsonb := null; v_maxhp int; v_guard int := 0; v_end jsonb := null;
+  v_fh0 int; v_log jsonb := '[]';   -- dungeon_combat_log.sql: the foe HP before the hit; the HP events of this action
 begin
   if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
   select * into r from dungeon_runs where player_id = p_player and day = dungeon_day() and status = 'active' and mode = coalesce(p_mode, 'daily') for update;
@@ -642,20 +644,30 @@ begin
     f := f || jsonb_build_object('sh', coalesce((f->>'sh')::int, 0) - v_guard);
     v_dmg := v_dmg - v_guard;
   end if;
+  v_fh0 := (f->>'hp')::int;
   f := f || jsonb_build_object('hp', greatest(0, (f->>'hp')::int - v_dmg));
   st := jsonb_set(st, array['foes', v_t::text], f);
+  -- The attack row (dungeon_combat_log.sql): value = the HP the foe lost (dmg = the hit after the guard, before the HP floor).
+  v_log := jsonb_build_array(dungeon_hp_event('attack', v_aeff, p_card, null, v_t, v_round, 'foe', 'dmg', v_fh0 - (f->>'hp')::int, f,
+    jsonb_build_object('dmg', v_dmg, 'guarded', v_guard, 'outcome', hit->>'outcome', 'crit', hit->'crit', 'double', hit->'double',
+      'bonus', (wk->>'wm')::int > 0, 'resisted', (wk->>'rm')::int > 0, 'cp', (v_cmb->>'cp')::int))
+    || jsonb_build_object('amount', case when v_aeff is not null then v_aamt end));
   if v_aeff = 'lifesteal' and v_dmg > 0 then
     v_heal := combat_lifesteal(v_dmg, v_aamt, v_maxhp);
     st := jsonb_set(st, array['cards', p_card::text, 'hp'], to_jsonb(least(v_maxhp, (c->>'hp')::int + v_heal)));
+    v_log := v_log || dungeon_hp_event('effect', 'lifesteal', p_card, p_card, v_t, v_round, 'card', 'heal',
+      least(v_maxhp, (c->>'hp')::int + v_heal) - (c->>'hp')::int, st->'cards'->p_card::text, jsonb_build_object('raw', v_heal));
   end if;
   st := jsonb_set(st, array['cards', p_card::text, 'buff'], '1');
   if (f->>'hp')::int <= 0 then kill := dungeon_after_kill(r, st); st := kill->'state'; end if;
   if st->>'phase' = 'fight' then
     et := dungeon_enemy_turn(st, p_card, v_t, v_dmg); st := et->'state';
+    v_log := v_log || coalesce(et->'hp_log', '[]'::jsonb);
     -- The squad falls when no ATTACKER stands (support cards alone cannot attack: the run was stuck).
     if not exists (select 1 from jsonb_each(st->'cards') where not (value->>'down')::boolean and not coalesce((value->>'sup')::boolean, false)) then st := st || '{"phase": "fell"}'; end if;
   end if;
   update dungeon_runs set state = st, turns = turns + 1 where id = r.id;
+  perform dungeon_combat_log(r, v_log);   -- dungeon_combat_log.sql: the attack, lifesteal and every enemy HP change
   if st->>'phase' = 'fell' then v_end := dungeon_settle(r.id, 'fell', false);
   elsif st->>'phase' = 'cleared' then v_end := dungeon_settle(r.id, 'cleared', true); end if;
   perform dungeon_log_add(r.id, jsonb_build_object('kind', 'attack', 'card', p_card, 'target', v_t),
@@ -743,7 +755,7 @@ comment on function public.dungeon_start(text, bigint[]) is $c$POST /api/dungeon
 comment on function public.dungeon_view(text) is $c$GET /api/dungeon: the member's Dungeon screen. Ends the member's active runs of earlier days, builds today's dungeon, and returns the rule, the budget, the squad size, the costs, the Shard cap (balance dungeon and dungeon_rewards), the run, the member's cards, the rooms of the floor and the top 3.$c$;
 comment on function public.gauntlet_view(text) is $c$GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad (costs: balance dungeon.cost), the budget (balance gauntlet.budget), today's run, the member's best rank, the rooms, the top 3 and the prizes.$c$;
 comment on function public.dungeon_enter(jsonb, jsonb, integer, integer) is $c$Internal helper: moves a run state into a room. A fight room loads its foes, a rest room heals (balance dungeon rest_heal, rest_revive), a choice room offers doors, a treasure room opens a chest (Shards and card chance from balance dungeon_rewards.chest). Returns the new state.$c$;
-comment on function public.dungeon_attack(text, bigint, integer, text) is $c$POST /api/dungeon/attack: one squad card attacks a foe on the shared combat core, then the foes act. Settles the run when the squad falls, the round cap is reached (balance dungeon.round_cap) or the dungeon is cleared. Returns the hit, the enemy actions and the state.$c$;
+comment on function public.dungeon_attack(text, bigint, integer, text) is $c$POST /api/dungeon/attack: one squad card attacks a foe on the shared combat core, then the foes act. Settles the run when the squad falls, the round cap is reached (balance dungeon.round_cap) or the dungeon is cleared. Writes dungeon_runs, dungeon_log and combat_actions (the attack, a lifesteal and every enemy HP change: dungeon_combat_log). Returns the hit, the enemy actions and the state.$c$;
 comment on function public.dungeon_after_kill(public.dungeon_runs, jsonb) is $c$Internal helper: after a foe falls, adds the kill loot (daily only; balance dungeon_rewards loot_chance, shards_kill). When the room is cleared it offers rewards, or after the guardian banks the floor loot (+ floor_shards x floor). Returns the state, Shards, card, cleared.$c$;
 comment on function public.dungeon_loot(jsonb, integer, bigint) is $c$Internal helper: adds Shards and a card to the at-risk loot (state pend). The Shards stop at the run cap (balance key dungeon_rewards, run_shards_cap). Returns the new state.$c$;
 comment on function public.dungeon_chest_rarity(integer) is $c$Internal helper: rolls the rarity of a chest or reward card of a tier 1-5 (balance key dungeon_rewards, chest_rarity; a missing tier raises). Returns normal, illustrated_rare or secret_rare.$c$;

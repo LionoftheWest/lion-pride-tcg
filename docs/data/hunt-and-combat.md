@@ -76,23 +76,23 @@ Table. [effects] One row per card effect play (a boon, prank or neutral effect s
 
 ### combat_actions
 
-Table. [combat] The shared action log of every fight mode: one row per support play (hunt_support), per Hunt Crasher hit (hunt_attack) and, later, per attack. With hunt_combat_log and hunt_adjustments it traces every point of hunt_hits (hunt_damage_reconcile). Server only (RLS on, no API grants).
+Table. [combat] The shared action log of every fight mode. Hunt: one row per support play (hunt_support) and per Hunt Crasher hit (hunt_attack); with hunt_combat_log and hunt_adjustments it traces every point of hunt_hits (hunt_damage_reconcile). Dungeon and Gauntlet (dungeon_combat_log.sql): one row per HP change of a run (attack, lifesteal, support play, enemy action, room reward, rest); dungeon_damage_reconcile traces the run HP. Server only (RLS on, no API grants).
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
-| `id` | bigint | not null |  | Row id (also the order of the plays). |
-| `mode` | text | not null |  | The fight mode: hunt (later dungeon, gauntlet). |
-| `ref_id` | bigint | not null |  | The fight: hunts.id for mode hunt. |
-| `player_id` | text | not null |  | The member who played it. For a Hunt Crasher row: the member who gets the credit (the prankster), not the attacker (result.attacker). |
-| `card_id` | bigint | null |  | The card that played it. For a Hunt Crasher row: the Raider card that gets the credit in hunt_hits. |
-| `kind` | text | not null |  | attack, support (a support card play) or effect (a prank or boon that acts in a fight: raid_crasher). |
-| `game_day` | date | not null |  | The fight day (the Mountain Time day, hunt_hits.hit_date). |
-| `round` | integer | null |  | The squad round of the play. Null on a backfilled row. |
-| `effect` | text | null |  | The effect: the support effect (empower, expose, heal, shield, stun, weaken, smite) or the prank (raid_crasher). |
-| `amount` | numeric | null |  | The ability amount after potency and the affinity match (support), or the charge amount in % (raid_crasher). Not the damage: the damage is result.value. Null on a backfilled row. |
-| `target_card` | bigint | null |  | The ally card the support targets (heal, shield, empower), else null. |
-| `target_foe` | integer | null |  | The enemy slot the action targets (later modes), else null. |
-| `result` | jsonb | not null | `'{}'::jsonb` | The applied result. value = the applied value (smite and raid_crasher: the damage in hunt_hits). Support: gained, mirrored (true = no boss damage), countered, scale, matched, aff_count, affinity, cooldown, target_after. raid_crasher: attacker, attack_card, combat_log_id, fallback (true = no owner, the attacker got the credit). backfilled = true: written by damage_log.sql from hunt_hits for damage before the log existed. |
+| `id` | bigint | not null |  | Row id (also the order of the actions). |
+| `mode` | text | not null |  | The fight mode: hunt, dungeon (a daily Dungeon run) or gauntlet (a Gauntlet run). A reader that means one mode must filter it: ref_id values of different modes can be equal. |
+| `ref_id` | bigint | not null |  | The fight: hunts.id for mode hunt, dungeon_runs.id for mode dungeon and gauntlet. |
+| `player_id` | text | not null |  | The member who played it (Dungeon and Gauntlet: the run's member, also on enemy rows). For a Hunt Crasher row: the member who gets the credit (the prankster), not the attacker (result.attacker). |
+| `card_id` | bigint | null |  | The card that acted (the attacker, the support card, the lifesteal card). Null on an enemy row and on a Dungeon reward or rest row. For a Hunt Crasher row: the Raider card that gets the credit in hunt_hits. |
+| `kind` | text | not null |  | attack (a Dungeon or Gauntlet attack), support (a support card play), effect (a prank, boon or other effect: raid_crasher, lifesteal, reward_heal, reward_revive, rest) or enemy (a Dungeon or Gauntlet foe acts: the card it hit, or its own heal). |
+| `game_day` | date | not null |  | The fight day: the Mountain Time day (hunt_hits.hit_date) for the Hunt, dungeon_runs.day for the Dungeon and the Gauntlet. |
+| `round` | integer | null |  | The squad round of the action (Dungeon: the round of the attack or play; an enemy row has the next round, the one the foes act in). Null on a backfilled row and on a Dungeon reward or rest row. |
+| `effect` | text | null |  | The effect: the support effect (empower, expose, heal, shield, stun, weaken, smite, cleanse), the attack ability (Dungeon attack rows, null without one), the prank (raid_crasher), lifesteal, reward_heal, reward_revive, rest, or the enemy action (strike, slam, cataclysm, drain, stun, counter and the other pool moves; area = a Slam or Cataclysm hit on another card; poison, thorns, burn; heal = the foe heals). |
+| `amount` | numeric | null |  | The ability amount after potency and the affinity match (support), the attack ability amount (Dungeon attack), or the charge amount in % (raid_crasher). Not the damage: the HP change is result.value. Null on a backfilled row and on an enemy, reward or rest row. |
+| `target_card` | bigint | null |  | The card the action targets: the ally of a support (heal, shield, empower), the card a foe hit (enemy rows), the card a lifesteal, reward or rest healed. Else null. |
+| `target_foe` | integer | null |  | The foe slot (0 = the first foe of the room): the foe an attack or a support hit, or the foe that acted (enemy rows). Else null. |
+| `result` | jsonb | not null | `'{}'::jsonb` | The applied result. Hunt: value = the applied value (smite and raid_crasher: the damage in hunt_hits); support: gained, mirrored (true = no boss damage), countered, scale, matched, aff_count, affinity, cooldown, target_after; raid_crasher: attacker, attack_card, combat_log_id, fallback (true = no owner, the attacker got the credit); backfilled = true: written by damage_log.sql from hunt_hits. Dungeon and Gauntlet: side (card or foe: whose HP changed), dir (dmg, heal or null), value (the HP change after the shield and the HP floor, 0 or more), hp_after, max, floor, room; attack: dmg (the hit before the HP floor), guarded, outcome, crit, double, bonus, resisted, cp; support: applied, until, matched, scale, aff_count, affinity, cooldown, kill; enemy: raw (before the shield), absorbed, move, hits, dot, action; reward and rest: hp_before, revived. |
 | `created_at` | timestamp with time zone | not null | `now()` | When the row was written. |
 
 - Primary key: `PRIMARY KEY (id)`
@@ -101,7 +101,7 @@ Table. [combat] The shared action log of every fight mode: one row per support p
   - `combat_actions_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
   - `combat_actions_target_card_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (target_card) REFERENCES cards(id)`
 - Check constraints: 
-  - `combat_actions_kind_check`: `CHECK ((kind = ANY (ARRAY['attack'::text, 'support'::text, 'effect'::text])))`
+  - `combat_actions_kind_check`: `CHECK ((kind = ANY (ARRAY['attack'::text, 'support'::text, 'effect'::text, 'enemy'::text])))`
   - `combat_actions_mode_check`: `CHECK ((mode = ANY (ARRAY['hunt'::text, 'dungeon'::text, 'gauntlet'::text])))`
 - Row level security: on. Policies: none
 
