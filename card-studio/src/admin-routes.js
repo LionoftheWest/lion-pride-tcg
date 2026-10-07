@@ -47,6 +47,15 @@ const word = (v, name) => {
   if (s != null && !/^[a-z0-9_]+$/.test(s)) throw new BadRequest(`${name} has a character that is not allowed`);
   return s;
 };
+// A comma list of kind words (the timeline and feed filters): null when empty; at most 40 kinds.
+const kinds = (v, name) => {
+  const s = text(v, name, 800);
+  if (s == null) return null;
+  const list = [...new Set(s.split(',').map((x) => x.trim()).filter(Boolean))];
+  if (list.length > 40) throw new BadRequest(`${name} has more than 40 kinds`);
+  for (const k of list) word(k, name);
+  return list.length ? list : null;
+};
 const stamp = (v, name) => {
   if (v == null || v === '') return null;
   if (Number.isNaN(Date.parse(String(v)))) throw new BadRequest(`${name} must be a time`);
@@ -119,8 +128,9 @@ export function adminRouter({ rpc, db = null, env = process.env, docsDir = DOCS_
 
   r.get('/', (req, res) => res.json({ read_only: true, routes: [
     'GET /api/admin/overview?from&to', 'GET /api/admin/economy?from&to&bucket=day|week', 'GET /api/admin/growth?from&to',
-    'GET /api/admin/members?search&sort&limit&offset', 'GET /api/admin/member/:id', 'GET /api/admin/member/:id/timeline?before&before_key&limit',
-    'GET /api/admin/cards?from&to&sort&limit&offset', 'GET /api/admin/hunts?limit&offset', 'GET /api/admin/hunt/:id', 'GET /api/admin/health',
+    'GET /api/admin/members?search&sort&limit&offset', 'GET /api/admin/member/:id', 'GET /api/admin/member/:id/timeline?before&before_key&limit&kinds',
+    'GET /api/admin/cards?from&to&sort&limit&offset&search', 'GET /api/admin/card/:id', 'GET /api/admin/dungeon?from&to',
+    'GET /api/admin/feed?kinds&before&before_key&limit', 'GET /api/admin/hunts?limit&offset', 'GET /api/admin/hunt/:id', 'GET /api/admin/health',
     'GET /api/admin/reports', 'GET /api/admin/report/:key?<params>', 'GET /api/admin/report/:key.csv?<params>',
     'GET /api/admin/source', 'GET /api/admin/search?q', 'GET /api/admin/tables', 'GET /api/admin/table/:name?offset&key'] }));
 
@@ -184,10 +194,14 @@ export function adminRouter({ rpc, db = null, env = process.env, docsDir = DOCS_
   route('/members', 'admin_members', (q) => ({ p_search: text(q.query.search, 'search', 60), p_sort: word(q.query.sort, 'sort') || 'last_active',
     p_limit: int(q.query.limit, 'limit', 1, 200) ?? 50, p_offset: int(q.query.offset, 'offset', 0, 1e6) ?? 0 }));
   route('/member/:id/timeline', 'admin_member_timeline', (q) => ({ p_player: text(q.params.id, 'id', 40), p_before: stamp(q.query.before, 'before'),
-    p_limit: int(q.query.limit, 'limit', 1, 200) ?? 50, p_before_key: text(q.query.before_key, 'before_key', 120) }));
+    p_limit: int(q.query.limit, 'limit', 1, 200) ?? 50, p_before_key: text(q.query.before_key, 'before_key', 120), p_kinds: kinds(q.query.kinds, 'kinds') }));
   route('/member/:id', 'admin_member', (q) => ({ p_player: text(q.params.id, 'id', 40) }));
   route('/cards', 'admin_cards', (q) => ({ ...period(q.query), p_sort: word(q.query.sort, 'sort') || 'copies',
-    p_limit: int(q.query.limit, 'limit', 1, 200) ?? 50, p_offset: int(q.query.offset, 'offset', 0, 1e6) ?? 0 }));
+    p_limit: int(q.query.limit, 'limit', 1, 200) ?? 50, p_offset: int(q.query.offset, 'offset', 0, 1e6) ?? 0, p_search: text(q.query.search, 'search', 60) }));
+  route('/card/:id', 'admin_card', (q) => ({ p_card: int(q.params.id, 'id', 1, Number.MAX_SAFE_INTEGER) }));
+  route('/dungeon', 'admin_dungeon', (q) => period(q.query));
+  route('/feed', 'admin_feed', (q) => ({ p_kinds: kinds(q.query.kinds, 'kinds'), p_before: stamp(q.query.before, 'before'),
+    p_limit: int(q.query.limit, 'limit', 1, 200) ?? 50, p_before_key: text(q.query.before_key, 'before_key', 120) }));
   route('/hunts', 'admin_hunts', (q) => ({ p_limit: int(q.query.limit, 'limit', 1, 100) ?? 20, p_offset: int(q.query.offset, 'offset', 0, 1e6) ?? 0 }));
   route('/hunt/:id', 'admin_hunt', (q) => ({ p_hunt: int(q.params.id, 'id', 1, Number.MAX_SAFE_INTEGER) }));
   route('/health', 'admin_health', () => ({}));

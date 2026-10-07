@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (90)
+## Superseded files (91)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -29,6 +29,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `card_effects.sql` | SUPERSEDED: reverts `public.card_effect_active(text, text)` (live = `effects_outside.sql`); reverts `public.play_card_effect(text, bigint, text)` (live = `balance_economy.sql`) |  |
 | `card_effects_ascension.sql` | SUPERSEDED: reverts `public.play_card_effect(text, bigint, text)` (live = `balance_economy.sql`) |  |
 | `card_power_fix.sql` | SUPERSEDED: reverts `public.card_power(text, integer, numeric)` (live = `balance_table.sql`) |  |
+| `card_sets.sql` | SUPERSEDED: brings back `public.cards_set_rules()`, which live does not have; brings back `public.open_packs(text, bigint[], integer, text)`, which live does not have; brings back `public.season_number(text)`, which live does not have; reverts `public.shop_pick_stock(date)` (live = `shards_shop.sql`) | a re-run stops at an error today: card_sets.sql: the season(s) Season 1 must have exactly one card_sets row for the backfill; alone, `create or replace function public.dungeon_card_of(...` fails: relation "draw_pool" does not exist; alone, `create or replace function public.pullable_sets(p_...` fails: relation "card_sets" does not exist |
 | `combat_actions.sql` | SUPERSEDED: reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `balance_table.sql`) | a re-run stops at an error today: combat_actions.sql: the live hunt_support changed since this file was built. Rebuild from the live text. |
 | `dailies.sql` | SUPERSEDED: reverts `public.add_voice_minutes(text[])` (live = `balance_economy.sql`); reverts `public.checkin_streak(text, date)` (live = `effects_outside.sql`); reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`); reverts `public.dailies_view(text)` (live = `balance_economy.sql`); reverts `public.earned_today(text)` (live = `pack_ledger_strict.sql`) |  |
 | `dailies_adventure.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`) | a re-run stops at an error today: dailies_adventure.sql: the live dailies_tasks changed since this file was built. Rebuild from the live text. |
@@ -88,7 +89,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `member_card_gifts_redeem.sql` | SUPERSEDED: reverts `public.claim_gift(text, bigint)` (live = `pack_ledger_strict.sql`); reverts `public.gift_card(text, text, bigint)` (live = `card_ledger.sql`) |  |
 | `mt_clock.sql` | SUPERSEDED: reverts `public.add_voice_minutes(text[])` (live = `balance_economy.sql`); reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`); reverts `public.dailies_view(text)` (live = `balance_economy.sql`); reverts `public.earned_today(text)` (live = `pack_ledger_strict.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`); reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `balance_table.sql`); reverts `public.play_card_effect(text, bigint, text)` (live = `balance_economy.sql`); reverts `public.playing_today(text)` (live = `card_decisions.sql`) |  |
 | `notifications.sql` | SUPERSEDED: brings back `public.notify_all(text, text)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
-| `open_packs_batch.sql` | SUPERSEDED: reverts `public.open_packs(text, bigint[], integer)` (live = `pack_ledger_strict.sql`) |  |
+| `open_packs_batch.sql` | SUPERSEDED: reverts `public.open_packs(text, bigint[], integer)` (live = `card_sets.sql`) |  |
 | `pack_economy.sql` | SUPERSEDED: reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `shard_ledger_strict.sql`); brings back `public.grant_packs(text, integer, text, text)`, which live does not have; brings back `public.grant_packs_all(integer, text, text)`, which live does not have; reverts `public.spend_pack(text)` (live = `pack_ledger_strict.sql`) | changes function grants that lockdown_grants.sql does not put back |
 | `pack_open_batch.sql` | SUPERSEDED: reverts `public.add_cards_to_player(text, bigint[])` (live = `card_ledger.sql`) |  |
 | `playing_posts.sql` | SUPERSEDED: reverts `public.playing_today(text)` (live = `card_decisions.sql`) |  |

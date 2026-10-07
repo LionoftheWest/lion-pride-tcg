@@ -55,6 +55,7 @@ const ICONS = {
   zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
   star: '<path d="M11.52 2.3a.53.53 0 0 1 .95 0l2.31 4.68a2.12 2.12 0 0 0 1.6 1.16l5.16.76a.53.53 0 0 1 .3.9l-3.74 3.64a2.12 2.12 0 0 0-.61 1.88l.88 5.14a.53.53 0 0 1-.77.56l-4.62-2.43a2.12 2.12 0 0 0-1.97 0L6.4 21.01a.53.53 0 0 1-.77-.56l.88-5.14a2.12 2.12 0 0 0-.61-1.88L2.16 9.8a.53.53 0 0 1 .3-.9l5.16-.76a2.12 2.12 0 0 0 1.6-1.16z"/>',
   back: '<path d="m12 19-7-7 7-7M19 12H5"/>',
+  eye: '<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>',
 };
 function icon(name, cls = 'ico') {
   const span = document.createElement('span');
@@ -244,9 +245,10 @@ const NAV = [
   { id: 'members', label: 'Members', icon: 'users', match: /^\/members?(\/|$)/ },
   { id: 'economy', label: 'Economy', icon: 'coins' },
   { id: 'growth', label: 'Growth', icon: 'trend' },
-  { id: 'cards', label: 'Cards', icon: 'layers' },
+  { id: 'cards', label: 'Cards', icon: 'layers', match: /^\/cards?(\/|$)/ },
   { id: 'hunt', label: 'Hunt', icon: 'swords', match: /^\/hunts?(\/|$)/ },
   { id: 'dungeon', label: 'Dungeon', icon: 'castle' },
+  { id: 'activity', label: 'Activity', icon: 'zap' },
   { id: 'reports', label: 'Reports', icon: 'file', match: /^\/reports?(\/|$)/ },
   { id: 'data', label: 'Data', icon: 'table', match: /^\/data(\/|$)/ },
   { id: 'health', label: 'Health', icon: 'activity' },
@@ -271,7 +273,7 @@ function navItems(path, { onPick } = {}) {
     navLocked().map(([t, ic, ph]) => h('span', { class: 'nav-item locked', 'aria-disabled': 'true' }, icon(ic), t, h('span', { class: 'tag' }, icon('lock'), ph))),
     h('div', { class: 'nav-tools' },
       h('div', { class: 'nav-head' }, 'Tools'),
-      h('a', { class: 'nav-item', href: '/', target: '_blank', rel: 'noopener' }, icon('palette'), 'Card Studio', h('span', { class: 'tag', style: 'border:0' }, icon('external'))),
+      h('a', { class: 'nav-item', href: '/index.html', target: '_blank', rel: 'noopener' }, icon('palette'), 'Card Studio', h('span', { class: 'tag', style: 'border:0' }, icon('external'))),
       session.login ? h('form', { method: 'post', action: '/logout', style: 'margin:0' },
         h('button', { class: 'nav-item', type: 'submit', style: 'width:100%;border:0;background:none;cursor:pointer;font:inherit' }, icon('logout'), 'Log out')) : null),
   ];
@@ -308,7 +310,7 @@ function setupSearch() {
       if (my !== seq) return;
       const groups = [
         ['Members', r.members.map((m) => [m.username || m.id, m.last_active ? `active ${dayShort(m.last_active)}` : '', `#/member/${encodeURIComponent(m.id)}`])],
-        ['Cards', r.cards.map((c) => [c.name, RARITY[c.rarity] || c.rarity, `#/data/cards?key=${c.id}`])],
+        ['Cards', r.cards.map((c) => [c.name, RARITY[c.rarity] || c.rarity, `#/card/${c.id}`])],
         ['Tables', r.tables.map((t) => [t, '', `#/data/${t}`])],
       ].filter(([, items]) => items.length);
       out.replaceChildren(...(groups.length ? groups.map(([g, items]) => [h('div', { class: 'gs-group' }, g),
@@ -514,15 +516,20 @@ const KINDS = {
   hunt_adjustment: ['Hunt fix', 'swords'], dungeon: ['Dungeon run', 'castle'], dungeon_over: ['Dungeon end', 'castle'], effect_sent: ['Effect played', 'sparkles'],
   effect_received: ['Effect received', 'sparkles'], trade: ['Trade', 'swap'], auction: ['Auction', 'gavel'], shop: ['Shop', 'cart'], achievement: ['Achievement', 'trophy'],
   report: ['Report', 'flag'], note: ['Bell note', 'bell'], chat: ['Chat', 'message'], voice: ['Voice', 'mic'],
+  // the logs of 2026-10-07 (admin_member_timeline)
+  guild: ['Discord server', 'users'], visit: ['Visit', 'eye'], tutorial: ['Walkthrough', 'info'], profile: ['Profile', 'cog'],
+  dungeon_combat: ['Dungeon fight', 'castle'], wishlist: ['Wishlist', 'star'], stat_points: ['Stat points', 'zap'],
+  report_about: ['Named in a report', 'flag'], note_read: ['Notes read', 'bell'], admin: ['Admin', 'scroll'],
 };
 const UNIT = { pack: ['pack', 'packs'], card: ['card', 'cards'], shard: ['Shard', 'Shards'], shop: ['Shard', 'Shards'], hunt: ['damage', 'damage'], hunt_adjustment: ['damage', 'damage'],
-  chat: ['message', 'messages'], voice: ['minute', 'minutes'], achievement: ['pack', 'packs'] };
+  chat: ['message', 'messages'], voice: ['minute', 'minutes'], achievement: ['pack', 'packs'],
+  visit: ['minute', 'minutes'], dungeon_combat: ['damage', 'damage'], stat_points: ['point', 'points'], note_read: ['note', 'notes'] };
 const kindClass = (k) => (k === 'hunt' || k === 'combat' || k === 'squad' || k === 'hunt_adjustment' ? 'hunt' : k === 'shard' || k === 'shop' ? 'shard' : '');
-const kindTag = (k) => { const [t, ic] = KINDS[k] || [label(k), 'info']; return h('span', { class: `kind ${kindClass(k)}` }, icon(ic), t); };
+const kindTag = (k, map = KINDS) => { const [t, ic] = map[k] || [label(k), 'info']; return h('span', { class: `kind ${kindClass(k)}` }, icon(ic), t); };
 const amountText = (r) => {
   if (!isNum(r.amount)) return '';
   const a = Number(r.amount), u = UNIT[r.kind];
-  const sign = a > 0 && !['hunt', 'chat', 'voice'].includes(r.kind) ? '+' : '';
+  const sign = a > 0 && !['hunt', 'chat', 'voice', 'visit', 'dungeon_combat', 'note_read'].includes(r.kind) ? '+' : '';
   return `${sign}${N(a)}${u ? ` ${Math.abs(a) === 1 ? u[0] : u[1]}` : ''}`;
 };
 
@@ -543,20 +550,22 @@ async function pageMember(main, [id]) {
     const ledgerOk = b.pack_ledger_sum === b.packs && b.shard_ledger_sum === b.shards;
     const tile = (ic, lbl, val, sub) => h('div', { class: 'mtile' }, h('div', { class: 'lbl' }, icon(ic), lbl), h('div', { class: 'val' }, val), h('div', { class: 'sub' }, sub));
     const profile = h('section', { class: 'panel profile' },
-      h('div', { style: 'display:flex;gap:16px;align-items:center;min-width:0;flex:1 1 360px' }, h('div', { class: 'avatar' }),
+      h('div', { style: 'display:flex;gap:16px;align-items:center;min-width:0;flex:1 1 360px' }, memberAvatar(pr),
         h('div', { style: 'min-width:0' },
           h('div', { class: 'pname' }, pr.username || pr.id, pr.title ? h('span', { class: 'badge info' }, icon('star'), pr.title) : null,
-            pr.muted ? h('span', { class: 'badge' }, 'Muted') : null, pr.discord_immune ? h('span', { class: 'badge' }, 'Immune') : null),
+            pr.muted ? h('span', { class: 'badge' }, 'Muted') : null, pr.discord_immune ? h('span', { class: 'badge' }, 'Immune') : null,
+            pr.in_guild === false ? h('span', { class: 'badge' }, 'Left the server') : null),
           h('div', { class: 'facts' },
             h('div', null, h('div', { class: 'lbl' }, 'Joined'), h('span', { class: 'num' }, day(joined))),
             h('div', null, h('div', { class: 'lbl' }, 'Last active'), h('span', { class: 'num' }, day(a.last_active))),
             h('div', null, h('div', { class: 'lbl' }, 'Member for'), h('span', { class: 'num' }, `${N(daysBetween(joined, mtDay()))} days`)),
-            h('div', null, h('div', { class: 'lbl' }, 'Active days'), h('span', { class: 'num' }, `${N(a.active_days_30)} in 30d`))))),
+            h('div', null, h('div', { class: 'lbl' }, 'Active days'), h('span', { class: 'num' }, `${N(a.active_days_30)} in 30d`)),
+            h('div', null, h('div', { class: 'lbl' }, 'Ledgers'), ledgerOk ? statusTag('pass', 'Match') : statusTag('fail', 'Differ'))))),
       h('div', { class: 'mtiles' },
         tile('package', 'Packs', N(b.packs), `${N(b.packs_earned)} earned, ${N(b.packs_opened)} opened`),
         tile('gem', 'Shards', N(b.shards), `${N(b.shards_earned)} earned, ${N(b.shards_spent)} spent`),
         tile('layers', 'Cards owned', N(c.copies), `${N(c.unique_cards)} unique`),
-        tile('zap', 'Power', N(c.power), ledgerOk ? statusTag('pass', 'Ledgers match') : statusTag('fail', 'Ledger differs'))));
+        tile('zap', 'Power', N(c.power), powerRank(c))));
     const coll = panel('Collection by rarity', { sub: `${N(c.copies)} cards, ${N(c.unique_cards)} unique` });
     coll.body.append(hbars((c.by_rarity || []).map((x) => ({ label: RARITY[x.rarity] || x.rarity, value: x.copies, dot: rarityDot(x.rarity), color: `var(--r-${x.rarity})`, max: c.copies, share: c.copies ? x.copies / c.copies : 0 }))));
     const act = panel('Actions', { right: ED.state.on ? null : h('span', { class: 'tag' }, icon('lock'), 'Phase 2') });
@@ -570,6 +579,7 @@ async function pageMember(main, [id]) {
       kv('Effects', [['Sent', N(d.effect_plays.sent)], ['Received', N(d.effect_plays.received)], ['Cooldowns now', N(d.effect_plays.cooldowns_now)], ['Active now', N((d.effects_now?.length || 0) + (d.discord_effects_now?.length || 0))]]),
       kv('Achievements', [['Claims', N(d.achievements.claims)], ['Packs', N(d.achievements.packs)], ['Titles', N(d.achievements.titles?.length)], ['Frames', N(d.achievements.frames?.length)]]),
       kv('Collection', [['Stars', N(c.stars)], ['Pulls', N(c.pulls)], ['Rare+ pulls', N(c.pulls_rare_plus)], ['Dungeon runs', N(d.dungeon?.length)], ['Gifts waiting', N(b.gifts_waiting)], ['Reports sent', N(d.reports?.by_count)]]),
+      ...memberAppDetails(d, kv),
       h('div', { class: 'rec' }, h('div', { class: 'lbl', style: 'margin-bottom:8px' }, 'Active days by source'),
         hbars(Object.entries(a.by_source || {}).sort((x, y) => y[1] - x[1]).map(([k, v]) => ({ label: label(k), value: v, max: a.active_days })), { pct: false })));
     const tl = timelinePanel(id);
@@ -578,11 +588,34 @@ async function pageMember(main, [id]) {
       tl)];
   });
 }
+/* The member page parts of the 2026-10-07 update (admin_member: avatar_url, power_rank, app, reports against). */
+function memberAvatar(pr, cls = 'avatar') {
+  const el = h('div', { class: cls });
+  if (pr?.avatar_url) {
+    const img = h('img', { src: pr.avatar_url, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
+    img.addEventListener('error', () => img.remove());
+    el.append(img);
+  }
+  return el;
+}
+const powerRank = (c) => (isNum(c.power_rank) ? `Rank ${N(c.power_rank)} of ${N(c.power_rank_of)}` : 'No rank');
+function memberAppDetails(d, kv) {
+  const ap = d.app || {}, pr = d.profile || {}, rp = d.reports || {};
+  const screens = Object.entries(ap.views_by_screen || {}).sort((x, y) => y[1] - x[1]).slice(0, 3).map(([k, v]) => `${label(k)} ${N(v)}`).join(', ');
+  return [
+    kv('App', [['Visits', N(ap.visits)], ['Last visit', when(ap.last_visit, true)], ['Screens viewed', N(ap.views)], ['Top screens', screens || '-'],
+      ['Walkthrough steps', N(ap.tutorial_steps)], ['Bell notes unread', `${N(ap.notes_unread)} of ${N(ap.notes)}`]]),
+    kv('Discord and logs', [['Server joined', when(pr.guild_joined_at, true)], ['Server left', when(pr.left_guild_at, true)],
+      ['Profile changes', N(ap.profile_changes)], ['Wishlist changes', N(ap.wishlist_changes)], ['Admin actions', N(ap.admin_actions)],
+      ['Reports against', N(rp.against_count)]]),
+  ];
+}
+// The timeline filter runs on the server (admin_member_timeline p_kinds): a chip loads its kind from the newest event.
 function timelinePanel(id) {
   const p = panel('Activity timeline', { sub: 'Every event for this member, newest first', cls: 'tl-panel' });
   const count = h('span', { class: 'num', style: 'font-size:12px;color:var(--text-2)' });
   p.el.querySelector('.phead').append(count);
-  const state = { rows: [], next: null, kind: 'all', busy: false };
+  const state = { rows: [], next: null, kind: 'all', busy: false, totals: null, total: 0, matching: 0, seq: 0 };
   const chips = h('div', { class: 'chips', role: 'group', 'aria-label': 'Kinds' });
   const tbody = h('tbody');
   const list = h('div', { class: 'tl-list' });
@@ -591,37 +624,42 @@ function timelinePanel(id) {
   const more = h('button', { class: 'btn', type: 'button' }, icon('older'), 'Load older');
   const status = h('div');
   const draw = () => {
-    const counts = {};
-    for (const r of state.rows) counts[r.kind] = (counts[r.kind] || 0) + 1;
-    const kinds = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-    if (state.kind !== 'all' && !counts[state.kind]) state.kind = 'all';
-    const chip = (k, t, n, ic) => h('button', { class: `chip${state.kind === k ? ' on' : ''}`, type: 'button', 'aria-pressed': String(state.kind === k), onclick: () => { state.kind = k; draw(); } },
-      state.kind === k ? icon('check') : ic ? icon(ic) : null, t, h('span', { class: 'n' }, N(n)));
-    chips.replaceChildren(chip('all', 'All', state.rows.length), ...kinds.map((k) => chip(k, (KINDS[k] || [label(k)])[0], counts[k], (KINDS[k] || [])[1])));
-    const shown = state.rows.filter((r) => state.kind === 'all' || r.kind === state.kind);
-    count.textContent = `${N(shown.length)} of ${N(state.rows.length)} loaded`;
-    tbody.replaceChildren(...shown.map((r) => h('tr', null, h('td', { class: 'num' }, when(r.at)), h('td', null, kindTag(r.kind)), h('td', null, r.text), h('td', { class: 'r' }, h('span', { class: 'amount' }, amountText(r))))));
-    list.replaceChildren(...shown.map((r) => h('div', { class: 'tl-item' }, h('div', { class: 'row1' }, kindTag(r.kind), h('span', { class: 'amount' }, amountText(r))), h('div', { class: 'desc' }, r.text), h('div', { class: 'when' }, when(r.at, true)))));
-    if (!shown.length) list.replaceChildren(h('div', { class: 'empty' }, 'No events'));
+    const totals = state.totals || {};
+    const kinds = Object.keys(totals).sort((a, b) => totals[b] - totals[a] || a.localeCompare(b));
+    const chip = (k, t, n, ic) => h('button', { class: `chip${state.kind === k ? ' on' : ''}`, type: 'button', 'aria-pressed': String(state.kind === k), onclick: () => {
+      if (state.kind === k) return;
+      state.kind = k; load(true);
+    } }, state.kind === k ? icon('check') : ic ? icon(ic) : null, t, h('span', { class: 'n' }, N(n)));
+    chips.replaceChildren(chip('all', 'All', state.total), ...kinds.map((k) => chip(k, (KINDS[k] || [label(k)])[0], totals[k], (KINDS[k] || [])[1])));
+    count.textContent = `${N(state.rows.length)} of ${N(state.matching)} events`;
+    tbody.replaceChildren(...state.rows.map((r) => h('tr', null, h('td', { class: 'num' }, when(r.at)), h('td', null, kindTag(r.kind)), h('td', null, r.text), h('td', { class: 'r' }, h('span', { class: 'amount' }, amountText(r))))));
+    list.replaceChildren(...state.rows.map((r) => h('div', { class: 'tl-item' }, h('div', { class: 'row1' }, kindTag(r.kind), h('span', { class: 'amount' }, amountText(r))), h('div', { class: 'desc' }, r.text), h('div', { class: 'when' }, when(r.at, true)))));
+    if (!state.rows.length && !state.busy) list.replaceChildren(h('div', { class: 'empty' }, 'No events'));
     oldest.textContent = state.rows.length ? `Oldest shown: ${when(state.rows.at(-1).at, true)}` : '';
     more.disabled = !state.next || state.busy;
     more.hidden = !state.next;
   };
-  const load = async () => {
+  const load = async (reset = false) => {
+    const my = ++state.seq;
+    if (reset) { state.rows = []; state.next = null; }
     state.busy = true; more.disabled = true;
+    if (reset) draw();
     status.replaceChildren(loadingState());
     try {
-      const d = await api(`/member/${encodeURIComponent(id)}/timeline?${qs({ limit: 20, before: state.next?.before, before_key: state.next?.before_key })}`);
+      const d = await api(`/member/${encodeURIComponent(id)}/timeline?${qs({ limit: 20, before: state.next?.before, before_key: state.next?.before_key, kinds: state.kind === 'all' ? null : state.kind })}`);
+      if (my !== state.seq) return;
       state.rows.push(...(d.rows || []));
       state.next = d.next || null;
+      state.totals = d.totals || {}; state.total = d.total ?? 0; state.matching = d.matching ?? state.rows.length;
       status.replaceChildren();
-    } catch (e) { status.replaceChildren(errorState(e, load)); }
+    } catch (e) { if (my === state.seq) status.replaceChildren(errorState(e, () => load(reset))); }
+    if (my !== state.seq) return;
     state.busy = false;
     draw();
   };
-  more.addEventListener('click', load);
+  more.addEventListener('click', () => load(false));
   p.body.append(chips, tableEl, list, status, h('div', { class: 'tl-foot' }, oldest, more));
-  load();
+  load(true);
   return p.el;
 }
 
@@ -723,14 +761,20 @@ async function pageGrowth(main) {
 const CARD_SORTS = ['copies', 'owners', 'pulls', 'trades', 'attacks', 'damage', 'plays', 'id'];
 async function pageCards(main, _, q) {
   const r = rangeDates(), sort = CARD_SORTS.includes(q.get('sort')) ? q.get('sort') : 'copies', page = Math.max(0, Number(q.get('page')) || 0);
-  const sel = h('select', { class: 'field', 'aria-label': 'Sort', onchange: (e) => { location.hash = `#/cards?sort=${e.target.value}`; } }, CARD_SORTS.map((k) => h('option', { value: k, selected: k === sort }, `Sort: ${label(k)}`)));
-  main.append(pageHead('Cards', `Each card: copies and owners now; pulls, trades and Hunt use in ${dayShort(r.from)} - ${day(r.to)}`, h('div', { class: 'range' }, sel, rangeControl())));
+  const search = q.get('q') || '';
+  const setQ = (o) => { location.hash = `#/cards?${qs({ q: search, sort, page: 0, ...o })}`; };
+  const input = h('input', { class: 'field', type: 'search', value: search, placeholder: 'Card name or id', 'aria-label': 'Search cards', style: 'min-width:200px' });
+  let t = 0;
+  input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => setQ({ q: input.value.trim() }), 400); });
+  const sel = h('select', { class: 'field', 'aria-label': 'Sort', onchange: (e) => setQ({ sort: e.target.value }) }, CARD_SORTS.map((k) => h('option', { value: k, selected: k === sort }, `Sort: ${label(k)}`)));
+  main.append(pageHead('Cards', `Each card: copies and owners now; pulls, trades and Hunt use in ${dayShort(r.from)} - ${day(r.to)}`, h('div', { class: 'range' }, input, sel, rangeControl())));
   const p = panel(null);
   main.append(p.el);
   fill(p.body, async () => {
-    const d = await api(`/cards?${qs({ ...r, sort, limit: 50, offset: page * 50 })}`);
+    const d = await api(`/cards?${qs({ ...r, sort, limit: 50, offset: page * 50, search })}`);
+    if (!d.rows.length) return h('div', { class: 'empty' }, 'No card');
     return [
-      table({ rows: d.rows, title: 'name', onRow: (c) => { location.hash = `#/data/cards?key=${c.id}`; }, cols: [
+      table({ rows: d.rows, title: 'name', onRow: (c) => { location.hash = `#/card/${c.id}`; }, cols: [
         { key: 'name', label: 'Card', fmt: (c) => [rarityDot(c.rarity), c.name] },
         { key: 'rarity', label: 'Rarity', fmt: (c) => RARITY[c.rarity] || c.rarity },
         { key: 'type', label: 'Type' },
@@ -746,7 +790,67 @@ async function pageCards(main, _, q) {
         { key: 'plays', label: 'Plays', r: true, fmt: (c) => N(c.plays) },
         { key: 'in_draw_pool', label: 'In packs', fmt: (c) => (c.in_draw_pool ? 'yes' : 'no') },
       ] }),
-      pager(d.offset, d.rows.length, d.total, (pg) => { location.hash = `#/cards?sort=${sort}&page=${pg}`; }, 50),
+      pager(d.offset, d.rows.length, d.total, (pg) => { location.hash = `#/cards?${qs({ q: search, sort, page: pg })}`; }, 50),
+    ];
+  });
+}
+
+/* ----- One card (admin_card) ----- */
+async function pageCard(main, [id]) {
+  const head = pageHead('Card', h('span', { class: 'crumb' }, h('a', { href: '#/cards' }, 'Cards'), ' / ', h('span', { id: 'crumb-card' }, id)));
+  main.append(head);
+  const box = h('div');
+  main.append(box);
+  fill(box, async () => {
+    const d = await api(`/card/${encodeURIComponent(id)}`);
+    if (!d.found) return h('div', { class: 'panel' }, h('div', { class: 'empty' }, 'No card with this id'));
+    const k = d.card, tr = d.trading || {}, hu = d.hunt || {}, pl = d.plays || {};
+    head.querySelector('.title').textContent = k.name;
+    head.querySelector('#crumb-card').textContent = k.name;
+    const kvRec = (title, pairs) => h('div', { class: 'rec' }, h('div', { class: 'lbl', style: 'margin-bottom:6px' }, title), h('dl', null, pairs.map(([a, v]) => h('div', null, h('dt', null, a), h('dd', null, v)))));
+    const info = panel('Card', { sub: `${RARITY[k.rarity] || k.rarity}, ${label(k.type || '-')}` });
+    info.body.append(h('div', { class: 'card-info' },
+      k.image_url ? h('img', { class: 'card-img', src: k.image_url, alt: '', loading: 'lazy', onerror: (e) => e.target.remove() }) : null,
+      kvRec('Facts', [['Id', h('span', { class: 'num' }, k.id)], ['Rarity', [rarityDot(k.rarity), RARITY[k.rarity] || k.rarity]], ['Subject', k.subject || '-'],
+        ['Season', k.season || '-'], ['Event', k.event || '-'], ['Source', label(k.source)], ['In packs', k.in_draw_pool ? 'yes' : 'no'],
+        ['Tradeable', k.tradeable ? 'yes' : 'no'], ['Added', when(k.created_at, true)]])));
+    const st = panel('Copies by star level', { sub: `${N(d.copies)} copies, ${N(d.owners)} owners, ${N(d.with_stat_points)} with stat points` });
+    st.body.append((d.by_star || []).length ? hbars(d.by_star.map((x) => ({ label: `${N(x.stars)} stars`, value: x.copies, max: d.copies || 1, share: d.copies ? x.copies / d.copies : 0 })), { color: 'var(--gold)' })
+      : h('div', { class: 'empty' }, 'Nobody owns this card'));
+    const pu = panel('Pulls per week', { sub: `${N(d.pulls?.total)} pulls from packs, first ${when(d.pulls?.first, true)}` });
+    pu.body.append((d.pulls?.by_week || []).length ? barChart({ name: 'Pulls', color: 'var(--s-spent)', bars: d.pulls.by_week.map((x) => ({ label: day(x.week), short: dayShort(x.week), value: x.pulls })), height: 160 })
+      : h('div', { class: 'empty' }, 'No pull'));
+    const io = panel('In and out', { sub: 'card_ledger, all time' });
+    const reasons = {};
+    for (const x of d.in_by_reason || []) (reasons[x.reason] ||= { reason: x.reason, in: 0, out: 0 }).in += Number(x.copies) || 0;
+    for (const x of d.out_by_reason || []) (reasons[x.reason] ||= { reason: x.reason, in: 0, out: 0 }).out += Number(x.copies) || 0;
+    const rl = Object.values(reasons).sort((a, b) => (b.in + b.out) - (a.in + a.out));
+    io.body.append(...[rl.length ? table({ phone: 'table', rows: rl, cols: [{ key: 'reason', label: 'Reason', fmt: (x) => label(x.reason) },
+      { key: 'in', label: 'In', r: true, fmt: (x) => N(x.in) }, { key: 'out', label: 'Out', r: true, fmt: (x) => N(x.out) }] }) : h('div', { class: 'empty' }, 'No rows')].flat());
+    const use = panel('Use');
+    const offers = Object.entries(tr.offers_by_status || {}).map(([s2, n]) => `${label(s2)} ${N(n)}`).join(', ');
+    use.body.append(
+      kvRec('Trading', [['Swaps', N(tr.swaps)], ['Offers', offers || '-'], ['Listings', `${N(tr.listings)} (${N(tr.listings_open)} open)`],
+        ['Auctions', `${N(tr.auctions)} (${N(tr.auctions_sold)} sold)`], ['Wishlists now', `${N(tr.wishlisted_now)} (${N(tr.top_want_now)} top)`], ['Wishlist adds', N(tr.wishlist_adds)]]),
+      kvRec('Hunt', [['Hunts', N(hu.hunts)], ['Attacks', N(hu.attacks)], ['Damage', N(hu.damage)], ['Supports', N(hu.supports)], ['Squads', N(hu.squads)]]),
+      ...(d.dungeon || []).map((m) => kvRec(m.mode === 'dungeon' ? 'Dungeon' : 'Gauntlet', [['Runs', N(m.runs)], ['Attacks', N(m.attacks)], ['Damage', N(m.damage)],
+        ['Supports', N(m.supports)], ['Healed', N(m.healed)], ['Taken', N(m.taken)], ['Downs', N(m.downs)]])));
+    const ef = panel('Effect plays', { sub: `${N(pl.total)} plays` });
+    ef.body.append(...[(pl.by_primitive || []).length ? table({ phone: 'table', rows: pl.by_primitive, cols: [
+      { key: 'primitive', label: 'Effect', fmt: (x) => label(x.primitive) }, { key: 'kind', label: 'Kind', fmt: (x) => label(x.kind) },
+      { key: 'plays', label: 'Plays', r: true, fmt: (x) => N(x.plays) }, { key: 'applied', label: 'Applied', r: true, fmt: (x) => N(x.applied) },
+      { key: 'blocked', label: 'Blocked', r: true, fmt: (x) => N(x.blocked) }] }) : h('div', { class: 'empty' }, 'No play')].flat());
+    const ow = panel('Top owners', { sub: 'Most stars, then copies' });
+    ow.body.append(...[(d.top_owners || []).length ? table({ rows: d.top_owners, title: 'username', onRow: (x) => { location.hash = `#/member/${encodeURIComponent(x.player_id)}`; }, cols: [
+      { key: 'username', label: 'Member', fmt: (x) => x.username || x.player_id }, { key: 'stars', label: 'Stars', r: true, fmt: (x) => N(x.stars) },
+      { key: 'copies', label: 'Copies', r: true, fmt: (x) => N(x.copies) }] }) : h('div', { class: 'empty' }, 'Nobody owns this card')].flat());
+    const dmg = (d.dungeon || []).reduce((a, m) => a + (Number(m.damage) || 0), 0);
+    return [
+      h('div', { class: 'kpis' }, kpi('Owners', N(d.owners)), kpi('Copies', N(d.copies)), kpi('Stars', N(d.stars)), kpi('Pulls', N(d.pulls?.total)),
+        kpi('Hunt damage', N(hu.damage)), kpi('Dungeon damage', N(dmg))),
+      h('div', { class: 'cols-ov' }, info.el, st.el),
+      h('div', { class: 'cols-ov' }, pu.el, io.el),
+      h('div', { class: 'cols-ov' }, use.el, h('div', { class: 'stack' }, ef.el, ow.el)),
     ];
   });
 }
@@ -818,43 +922,142 @@ async function pageHunt(main, [id]) {
   });
 }
 
-/* ----- Dungeon (from the functions that exist: admin_overview, admin_economy, admin_growth, admin_health) ----- */
+/* ----- Dungeon and Gauntlet (admin_dungeon) ----- */
+const MODE = { daily: 'Dungeon', gauntlet: 'Gauntlet', no_run: 'No run' };
 async function pageDungeon(main) {
   const r = rangeDates();
   main.append(pageHead('Dungeon', `Daily Dungeon and Gauntlet, ${dayShort(r.from)} - ${day(r.to)}`, rangeControl()));
   const box = h('div');
   main.append(box);
   fill(box, async () => {
-    const [o, e, g, hl] = await Promise.all([api(`/overview?${qs(r)}`), api(`/economy?${qs({ ...r, bucket: 'day' })}`), api(`/growth?${qs(r)}`), api('/health')]);
-    const modes = o.dungeon?.by_mode || [];
+    const [d, hl] = await Promise.all([api(`/dungeon?${qs(r)}`), api('/health')]);
+    const modes = d.by_mode || [];
     const tot = (k) => modes.reduce((a, m) => a + (Number(m[k]) || 0), 0);
     const mp = panel('Runs by mode');
     mp.body.append(...[modes.length ? table({ phone: 'recs', rows: modes, title: 'mode', cols: [
-      { key: 'mode', label: 'Mode', fmt: (m) => label(m.mode) }, { key: 'runs', label: 'Runs', r: true, fmt: (m) => N(m.runs) },
-      { key: 'players', label: 'Members', r: true, fmt: (m) => N(m.players) }, { key: 'cleared', label: 'Cleared', r: true, fmt: (m) => N(m.cleared) },
-      { key: 'fell', label: 'Fell', r: true, fmt: (m) => N(m.fell) }, { key: 'retreat', label: 'Retreat', r: true, fmt: (m) => N(m.retreat) },
-      { key: 'shards', label: 'Shards', r: true, fmt: (m) => N(m.shards) }] }) : h('div', { class: 'empty' }, 'No run in the range')].flat());
-    const byDay = {};
-    for (const x of e.series?.shard || []) if (x.reason === 'dungeon') byDay[x.t] = (byDay[x.t] || 0) + (Number(x.in) || 0) - (Number(x.out) || 0);
-    const sp = panel('Shards from the Dungeon per day', { sub: 'shard_ledger reason dungeon' });
-    sp.body.append(barChart({ name: 'Shards', color: 'var(--s-earned)', bars: (e.ratios || []).map((x) => ({ label: day(x.t), short: dayShort(x.t), value: byDay[x.t] || 0 })), height: 180 }));
-    const reach = (g.feature_reach?.features || []).filter((x) => ['dungeon', 'gauntlet'].includes(x.feature));
-    const rp = panel('Reach', { sub: `Share of the ${N(g.feature_reach?.active)} active members` });
-    rp.body.append(hbars(reach.map((x) => ({ label: label(x.feature), value: x.members, max: g.feature_reach?.active || 1, share: x.share })), { color: 'var(--s-spent)' }));
-    const s = hl.reconcile?.shard || {};
-    const cp = panel('Run checks');
+      { key: 'mode', label: 'Mode', fmt: (m) => MODE[m.mode] || label(m.mode) }, { key: 'runs', label: 'Runs', r: true, fmt: (m) => N(m.runs) },
+      { key: 'members', label: 'Members', r: true, fmt: (m) => N(m.members) }, { key: 'cleared', label: 'Cleared', r: true, fmt: (m) => N(m.cleared) },
+      { key: 'fell', label: 'Fell', r: true, fmt: (m) => N(m.fell) }, { key: 'best_floor', label: 'Best floor', r: true, fmt: (m) => N(m.best_floor) },
+      { key: 'avg_rooms', label: 'Avg rooms', r: true, fmt: (m) => N(m.avg_rooms, 1) }, { key: 'shards', label: 'Shards', r: true, fmt: (m) => N(m.shards) }] }) : h('div', { class: 'empty' }, 'No run in the range')].flat());
+    const perDay = {};
+    for (const x of d.by_day || []) perDay[x.day] = (perDay[x.day] || 0) + (Number(x.runs) || 0);
+    const days = [];
+    for (let t = r.from; t <= r.to; t = addDays(t, 1)) days.push(t);
+    const dp = panel('Runs per day');
+    dp.body.append(barChart({ name: 'Runs', color: 'var(--s-spent)', bars: days.map((x) => ({ label: day(x), short: dayShort(x), value: perDay[x] || 0 })), height: 180 }));
+    const kp = panel('Kills by monster', { sub: `${N(d.kills_total)} foes killed by a squad attack or support` });
+    kp.body.append((d.kills || []).length ? hbars(d.kills.map((x) => ({ label: x.name || x.key, value: x.kills })), { color: 'var(--hunt)' }) : h('div', { class: 'empty' }, 'No kill'));
+    const rp = panel('Rooms reached', { sub: 'Where each run stands or ended' });
+    rp.body.append(...[(d.reached || []).length ? table({ phone: 'table', rows: d.reached, cols: [
+      { key: 'mode', label: 'Mode', fmt: (x) => MODE[x.mode] || label(x.mode) }, { key: 'floor', label: 'Floor', r: true, fmt: (x) => N(x.floor) },
+      { key: 'room', label: 'Room', r: true, fmt: (x) => N(x.room) }, { key: 'runs', label: 'Runs', r: true, fmt: (x) => N(x.runs) },
+      { key: 'fell', label: 'Fell', r: true, fmt: (x) => N(x.fell) }] }) : h('div', { class: 'empty' }, 'No run')].flat());
+    const pd = d.paid || {};
+    const pp = panel('Paid', { sub: `${N(pd.shards)} Shards, ${N(pd.cards)} cards, ${N(pd.packs)} packs` });
+    pp.body.append(...[
+      (pd.shards_by_source || []).length ? table({ phone: 'table', rows: pd.shards_by_source, cols: [
+        { key: 'mode', label: 'Mode', fmt: (x) => MODE[x.mode] || label(x.mode) }, { key: 'source', label: 'Source', fmt: (x) => label(x.source) },
+        { key: 'rows', label: 'Rows', r: true, fmt: (x) => N(x.rows) }, { key: 'shards', label: 'Shards', r: true, fmt: (x) => N(x.shards) }] }) : h('div', { class: 'empty' }, 'No Shards paid'),
+      (pd.cards_by_rarity || []).length ? h('div', { class: 'mt' }, hbars(pd.cards_by_rarity.map((x) => ({ label: `${label(x.reason)}: ${RARITY[x.rarity] || x.rarity}`, value: x.copies,
+        dot: rarityDot(x.rarity), color: `var(--r-${x.rarity})` })), { pct: false })) : null,
+      (pd.boards || []).length ? h('div', { class: 'mt' }, table({ phone: 'recs', title: 'period', rows: pd.boards, cols: [
+        { key: 'period', label: 'Board', fmt: (x) => `${MODE[x.mode] || x.mode} ${day(x.period)}` }, { key: 'winners', label: 'Winners', r: true, fmt: (x) => N(x.winners) },
+        { key: 'shards', label: 'Shards', r: true, fmt: (x) => N(x.shards) }, { key: 'packs', label: 'Packs', r: true, fmt: (x) => N(x.packs) },
+        { key: 'cards', label: 'Cards', r: true, fmt: (x) => N(x.cards) }] })) : null].flat().filter(Boolean));
+    const gw = panel('Gauntlet weeks');
+    gw.body.append(...[(d.gauntlet_weeks || []).length ? table({ phone: 'recs', title: 'name', rows: d.gauntlet_weeks, cols: [
+      { key: 'name', label: 'Gauntlet', fmt: (x) => [x.name, h('div', { class: 'num', style: 'color:var(--text-2);font-size:12px' }, day(x.week)),
+        h('div', { style: 'color:var(--text-2);font-size:12px;max-width:260px' }, (x.squad || []).map((c) => c.name).join(', '))] },
+      { key: 'runs', label: 'Runs', r: true, fmt: (x) => N(x.runs) }, { key: 'members', label: 'Members', r: true, fmt: (x) => N(x.members) },
+      { key: 'cleared', label: 'Cleared', r: true, fmt: (x) => N(x.cleared) },
+      { key: 'best', label: 'Best', fmt: (x) => (x.best ? `F${N(x.best.floor)} R${N(x.best.room)}` : '-') },
+      { key: 'paid', label: 'Paid', fmt: (x) => (x.paid ? 'yes' : 'no') }] }) : h('div', { class: 'empty' }, 'No Gauntlet week in the range')].flat());
+    const cd = panel('Damage per card', { sub: `combat_actions, ${N(d.combat_rows)} rows in the range` });
+    cd.body.append(...[(d.card_damage || []).length ? table({ rows: d.card_damage, title: 'name', onRow: (x) => { location.hash = `#/card/${x.card_id}`; }, cols: [
+      { key: 'name', label: 'Card', fmt: (x) => [rarityDot(x.rarity), x.name || x.card_id] },
+      { key: 'attacks', label: 'Attacks', r: true, fmt: (x) => N(x.attacks) }, { key: 'damage', label: 'Damage', r: true, fmt: (x) => N(x.damage) },
+      { key: 'damage_dungeon', label: 'Dungeon', r: true, fmt: (x) => N(x.damage_dungeon) }, { key: 'damage_gauntlet', label: 'Gauntlet', r: true, fmt: (x) => N(x.damage_gauntlet) },
+      { key: 'foes_down', label: 'Kills', r: true, fmt: (x) => N(x.foes_down) }, { key: 'crits', label: 'Crits', r: true, fmt: (x) => N(x.crits) },
+      { key: 'supports', label: 'Supports', r: true, fmt: (x) => N(x.supports) }, { key: 'healed', label: 'Healed', r: true, fmt: (x) => N(x.healed) },
+      { key: 'taken', label: 'Taken', r: true, fmt: (x) => N(x.taken) }, { key: 'downs', label: 'Downs', r: true, fmt: (x) => N(x.downs) }] })
+      : h('div', { class: 'empty' }, 'No fight row in the range')].flat());
+    const rc = d.reconcile || {}, s = hl.reconcile?.shard || {};
+    const cp = panel('Run checks', { sub: rc.log_from ? `Fight log since ${when(rc.log_from, true)}` : 'No fight log' });
     cp.body.append(checkRows([
+      { name: 'Run HP = fight log', st: !rc.runs_checked ? 'idle' : rc.ok ? 'pass' : 'fail', detail: `${N(rc.runs_ok)} of ${N(rc.runs_checked)} runs, ${N(rc.hp_unexplained)} HP unexplained` },
+      { name: 'Runs before the log', st: 'idle', detail: `${N(rc.runs_before_log)} runs` },
       { name: 'Run Shards = ledger', st: s.runs_shards_mismatched ? 'fail' : 'pass', detail: `${N(s.runs_shards_mismatched)} runs differ of ${N(s.runs)}` },
       { name: 'Run cards = ledger', st: s.runs_cards_mismatched ? 'fail' : 'pass', detail: `${N(s.runs_cards_mismatched)} differ, ${N(s.runs_cards_checked)} checked` },
       { name: 'Ledger rows with no run', st: s.run_rows_without_run ? 'warn' : 'pass', detail: `${N(s.run_rows_without_run)} rows` },
-      { name: 'Dungeon refs', st: (hl.refs_missing?.shard_run || 0) + (hl.refs_missing?.card_run || 0) ? 'fail' : 'pass', detail: `${N((hl.refs_missing?.shard_run || 0) + (hl.refs_missing?.card_run || 0))} missing` }]));
+      { name: 'Dungeon refs', st: (hl.refs_missing?.shard_run || 0) + (hl.refs_missing?.card_run || 0) ? 'fail' : 'pass', detail: `${N((hl.refs_missing?.shard_run || 0) + (hl.refs_missing?.card_run || 0))} missing` }]),
+      ...(rc.bad_runs || []).length ? [h('div', { class: 'mt' }, table({ phone: 'table', rows: rc.bad_runs, cols: [
+        { key: 'run', label: 'Run', fmt: (x) => h('span', { class: 'num' }, x.run) }, { key: 'mode', label: 'Mode', fmt: (x) => MODE[x.mode] || x.mode },
+        { key: 'rows', label: 'Rows', r: true, fmt: (x) => N(x.rows) }, { key: 'hp', label: 'HP', r: true, fmt: (x) => N(x.hp) }] }))].flat() : []);
+    const dt = d.deaths || {};
+    const downs = Object.values(dt.cards_down_at_end || {}).reduce((a, v) => a + (Number(v) || 0), 0);
     return [
-      h('div', { class: 'kpis' }, kpi('Runs', N(tot('runs'))), kpi('Cleared', N(tot('cleared'))), kpi('Fell', N(tot('fell'))), kpi('Retreat', N(tot('retreat'))),
-        kpi('Shards paid', N(tot('shards'))), kpi('Shards from Dungeon', N(o.shards?.earned_by_reason?.find((x) => x.reason === 'dungeon')?.shards ?? 0))),
-      h('div', { class: 'cols-ov' }, mp.el, sp.el),
-      h('div', { class: 'cols-ov' }, rp.el, cp.el),
+      h('div', { class: 'kpis' }, kpi('Runs', N(tot('runs')), `${N(tot('members'))} members`), kpi('Cleared', N(tot('cleared'))), kpi('Fell', N(dt.runs_fell), `${N(downs)} cards down`),
+        kpi('Kills', N(d.kills_total)), kpi('Shards paid', N(pd.shards)), kpi('Cards paid', N(pd.cards), `${N(pd.packs)} packs`)),
+      h('div', { class: 'cols-ov' }, mp.el, dp.el),
+      h('div', { class: 'cols-ov' }, kp.el, rp.el),
+      h('div', { class: 'cols-ov' }, pp.el, gw.el),
+      h('div', { class: 'cols-ov' }, cd.el, cp.el),
     ];
   });
+}
+
+/* ----- Activity: the game feed (admin_feed) ----- */
+const FEED_KINDS = {
+  admin: ['Admin', 'scroll'], settings: ['Settings', 'cog'], balance: ['Balance', 'scale'], member: ['Member', 'userplus'], pull: ['Big pull', 'sparkles'],
+  trade: ['Trade', 'swap'], auction: ['Auction', 'gavel'], hunt: ['Hunt', 'swords'], dungeon: ['Dungeon', 'castle'], effect: ['Effect', 'zap'], report: ['Report', 'flag'],
+};
+async function pageActivity(main, _, q) {
+  const kind = q.get('kind') || 'all';
+  main.append(pageHead('Activity', 'The newest events of the whole game'));
+  const p = panel(null, { cls: 'tl-panel' });
+  main.append(p.el);
+  const state = { rows: [], next: null, busy: false };
+  const who = (id, name) => (id ? h('a', { href: `#/member/${encodeURIComponent(id)}` }, name || id) : null);
+  const chips = h('div', { class: 'chips', role: 'group', 'aria-label': 'Kinds' },
+    [['all', 'All', null], ...Object.entries(FEED_KINDS).map(([k, [t, ic]]) => [k, t, ic])].map(([k, t, ic]) =>
+      h('button', { class: `chip${kind === k ? ' on' : ''}`, type: 'button', 'aria-pressed': String(kind === k), onclick: () => { location.hash = k === 'all' ? '#/activity' : `#/activity?kind=${k}`; } },
+        kind === k ? icon('check') : ic ? icon(ic) : null, t)));
+  const tbody = h('tbody');
+  const list = h('div', { class: 'tl-list' });
+  const tableEl = h('div', { class: 'tbl-wrap tl-table' }, h('table', { class: 'tbl' }, h('thead', null, h('tr', null,
+    ['Time', 'Kind', 'Description', 'Member', 'Other'].map((t) => h('th', { scope: 'col' }, t)), h('th', { class: 'r', scope: 'col' }, 'Amount'))), tbody));
+  const oldest = h('span', { class: 'num' });
+  const more = h('button', { class: 'btn', type: 'button' }, icon('older'), 'Load older');
+  const status = h('div');
+  const draw = () => {
+    tbody.replaceChildren(...state.rows.map((r) => h('tr', null, h('td', { class: 'num' }, when(r.at)), h('td', null, kindTag(r.kind, FEED_KINDS)),
+      h('td', null, r.text, r.actor ? h('span', { style: 'color:var(--text-2)' }, ` - ${r.actor}`) : null),
+      h('td', null, who(r.player_id, r.username) || '-'), h('td', null, who(r.other_id, r.other_name) || '-'),
+      h('td', { class: 'r num' }, isNum(r.amount) ? N(r.amount) : ''))));
+    list.replaceChildren(...state.rows.map((r) => h('div', { class: 'tl-item' }, h('div', { class: 'row1' }, kindTag(r.kind, FEED_KINDS), h('span', { class: 'amount' }, isNum(r.amount) ? N(r.amount) : '')),
+      h('div', { class: 'desc' }, r.text, r.actor ? ` - ${r.actor}` : ''),
+      r.player_id || r.other_id ? h('div', { class: 'desc' }, who(r.player_id, r.username), r.player_id && r.other_id ? ' / ' : null, who(r.other_id, r.other_name)) : null,
+      h('div', { class: 'when' }, when(r.at, true)))));
+    if (!state.rows.length && !state.busy) list.replaceChildren(h('div', { class: 'empty' }, 'No events'));
+    oldest.textContent = state.rows.length ? `Oldest shown: ${when(state.rows.at(-1).at, true)}` : '';
+    more.disabled = !state.next || state.busy;
+    more.hidden = !state.next;
+  };
+  const load = async () => {
+    state.busy = true; more.disabled = true;
+    status.replaceChildren(loadingState());
+    try {
+      const d = await api(`/feed?${qs({ limit: 50, before: state.next?.before, before_key: state.next?.before_key, kinds: kind === 'all' ? null : kind })}`);
+      state.rows.push(...(d.rows || []));
+      state.next = d.next || null;
+      status.replaceChildren();
+    } catch (e) { status.replaceChildren(errorState(e, load)); }
+    state.busy = false;
+    draw();
+  };
+  more.addEventListener('click', load);
+  p.body.append(chips, tableEl, list, status, h('div', { class: 'tl-foot' }, oldest, more));
+  load();
 }
 
 /* ----- Reports ----- */
@@ -1006,7 +1209,8 @@ async function pageHealth(main) {
 /* ---------- router ---------- */
 const ROUTES = [
   [/^\/overview$/, pageOverview], [/^\/members$/, pageMembers], [/^\/member\/([^/]+)$/, pageMember], [/^\/economy$/, pageEconomy], [/^\/growth$/, pageGrowth],
-  [/^\/cards$/, pageCards], [/^\/hunt$/, pageHunts], [/^\/hunt\/(\d+)$/, pageHunt], [/^\/dungeon$/, pageDungeon], [/^\/reports$/, pageReports],
+  [/^\/cards$/, pageCards], [/^\/card\/(\d+)$/, pageCard], [/^\/hunt$/, pageHunts], [/^\/hunt\/(\d+)$/, pageHunt], [/^\/dungeon$/, pageDungeon],
+  [/^\/activity$/, pageActivity], [/^\/reports$/, pageReports],
   [/^\/report\/([a-z0-9_]+)$/, pageReports], [/^\/data$/, pageData], [/^\/data\/([a-z0-9_]+)$/, pageData], [/^\/health$/, pageHealth],
 ];
 function render() {

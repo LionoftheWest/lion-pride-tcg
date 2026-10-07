@@ -66,6 +66,8 @@ app.use(express.json({ limit: '30mb' }));
 // The Admin view editors (Phase 2: preview, test on the LOCAL copy, apply, undo): flag ADMIN_EDIT=1 (src/admin-write.js).
 app.use('/api/admin/edit', adminWriteRouter({ live: supabase }));
 app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
+// The start page is the Admin view when it is on (ADMIN_VIEW=1); the card editor is /index.html.
+app.get('/', (req, res, next) => (process.env.ADMIN_VIEW === '1' ? res.redirect(302, '/admin/') : next()));
 // Never cache the studio UI, so a browser always loads the latest code.
 app.use(express.static(join(ROOT, 'public'), {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-store'),
