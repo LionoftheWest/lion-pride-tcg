@@ -36,6 +36,7 @@ CREATE INDEX trade_offers_to_idx ON public.trade_offers USING btree (to_id, stat
 alter table public.trade_offers enable row level security;
 
 -- @grants
+grant select on table public.trade_offers to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.trade_offers to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.trade_offers to service_role;
 

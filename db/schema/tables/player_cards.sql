@@ -31,5 +31,6 @@ CREATE INDEX player_cards_pull_feed ON public.player_cards USING btree (first_ob
 alter table public.player_cards enable row level security;
 
 -- @grants
+grant select on table public.player_cards to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.player_cards to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.player_cards to service_role;

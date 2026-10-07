@@ -32,5 +32,6 @@ CREATE UNIQUE INDEX hunt_adjustments_pkey ON public.hunt_adjustments USING btree
 alter table public.hunt_adjustments enable row level security;
 
 -- @grants
+grant select on table public.hunt_adjustments to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_adjustments to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_adjustments to service_role;

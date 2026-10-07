@@ -37,5 +37,6 @@ CREATE INDEX discord_effects_todo ON public.discord_effects USING btree (status,
 alter table public.discord_effects enable row level security;
 
 -- @grants
+grant select on table public.discord_effects to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.discord_effects to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.discord_effects to service_role;

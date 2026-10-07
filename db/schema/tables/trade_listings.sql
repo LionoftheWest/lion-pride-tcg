@@ -28,5 +28,6 @@ CREATE UNIQUE INDEX trade_listings_pkey ON public.trade_listings USING btree (id
 alter table public.trade_listings enable row level security;
 
 -- @grants
+grant select on table public.trade_listings to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.trade_listings to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.trade_listings to service_role;

@@ -22,5 +22,6 @@ CREATE UNIQUE INDEX schema_migrations_pkey ON public.schema_migrations USING btr
 alter table public.schema_migrations enable row level security;
 
 -- @grants
+grant select on table public.schema_migrations to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.schema_migrations to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.schema_migrations to service_role;

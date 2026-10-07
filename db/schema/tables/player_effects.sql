@@ -33,6 +33,7 @@ CREATE UNIQUE INDEX player_effects_pkey ON public.player_effects USING btree (id
 alter table public.player_effects enable row level security;
 
 -- @grants
+grant select on table public.player_effects to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.player_effects to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.player_effects to service_role;
 

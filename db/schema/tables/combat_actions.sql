@@ -39,5 +39,6 @@ CREATE INDEX combat_actions_ref ON public.combat_actions USING btree (mode, ref_
 alter table public.combat_actions enable row level security;
 
 -- @grants
+grant select on table public.combat_actions to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.combat_actions to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.combat_actions to service_role;

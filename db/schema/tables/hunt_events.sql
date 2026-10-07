@@ -28,5 +28,6 @@ CREATE INDEX hunt_events_unposted ON public.hunt_events USING btree (id) WHERE (
 alter table public.hunt_events enable row level security;
 
 -- @grants
+grant select on table public.hunt_events to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_events to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_events to service_role;

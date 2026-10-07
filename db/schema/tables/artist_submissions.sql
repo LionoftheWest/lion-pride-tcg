@@ -28,5 +28,6 @@ CREATE UNIQUE INDEX artist_submissions_pkey ON public.artist_submissions USING b
 alter table public.artist_submissions enable row level security;
 
 -- @grants
+grant select on table public.artist_submissions to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.artist_submissions to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.artist_submissions to service_role;

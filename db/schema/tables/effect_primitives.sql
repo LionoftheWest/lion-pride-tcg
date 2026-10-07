@@ -28,5 +28,6 @@ CREATE UNIQUE INDEX effect_primitives_pkey ON public.effect_primitives USING btr
 alter table public.effect_primitives enable row level security;
 
 -- @grants
+grant select on table public.effect_primitives to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.effect_primitives to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.effect_primitives to service_role;

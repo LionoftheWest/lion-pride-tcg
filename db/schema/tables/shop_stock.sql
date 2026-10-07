@@ -27,5 +27,6 @@ CREATE UNIQUE INDEX shop_stock_pkey ON public.shop_stock USING btree (day, slot)
 alter table public.shop_stock enable row level security;
 
 -- @grants
+grant select on table public.shop_stock to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.shop_stock to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.shop_stock to service_role;

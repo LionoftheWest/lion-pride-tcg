@@ -23,5 +23,6 @@ CREATE UNIQUE INDEX dungeon_days_pkey ON public.dungeon_days USING btree (day);
 alter table public.dungeon_days enable row level security;
 
 -- @grants
+grant select on table public.dungeon_days to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.dungeon_days to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.dungeon_days to service_role;

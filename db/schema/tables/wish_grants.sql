@@ -32,5 +32,6 @@ CREATE UNIQUE INDEX wish_grants_source_ref_id_giver_id_card_id_key ON public.wis
 alter table public.wish_grants enable row level security;
 
 -- @grants
+grant select on table public.wish_grants to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.wish_grants to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.wish_grants to service_role;

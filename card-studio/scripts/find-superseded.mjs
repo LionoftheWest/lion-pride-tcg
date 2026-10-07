@@ -84,7 +84,8 @@ function classify(stmt) {
   if (TX_STRIP.test(h)) return 'strip';
   if (TX_BAD.test(h)) return 'txbad';
   if (NON_TX.test(h)) return 'nontx';
-  if (/^do\b/.test(h)) return DO_WRITES.test(stmt.replace(/raise\s+exception\s+'(?:[^']|'')*'/gi, '')) ? 'data' : 'run';
+  // A DO block: the comments and the error texts are not code ("-- no TRUNCATE" is not a write).
+  if (/^do\b/.test(h)) return DO_WRITES.test(stmt.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/raise\s+exception\s+'(?:[^']|'')*'/gi, '')) ? 'data' : 'run';
   if (/^(notify|listen|unlisten)\b/.test(h)) return 'skip'; // notify pgrst: no structure, no row
   if (DATA.test(h)) return 'data';
   return 'run';

@@ -26,5 +26,6 @@ CREATE UNIQUE INDEX daily_claims_pkey ON public.daily_claims USING btree (player
 alter table public.daily_claims enable row level security;
 
 -- @grants
+grant select on table public.daily_claims to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.daily_claims to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.daily_claims to service_role;

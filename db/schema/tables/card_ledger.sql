@@ -33,6 +33,7 @@ CREATE INDEX card_ledger_player_idx ON public.card_ledger USING btree (player_id
 alter table public.card_ledger enable row level security;
 
 -- @grants
+grant select on table public.card_ledger to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.card_ledger to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.card_ledger to service_role;
 

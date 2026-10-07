@@ -34,5 +34,6 @@ CREATE INDEX shop_purchases_player ON public.shop_purchases USING btree (player_
 alter table public.shop_purchases enable row level security;
 
 -- @grants
+grant select on table public.shop_purchases to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.shop_purchases to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.shop_purchases to service_role;

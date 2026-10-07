@@ -47,5 +47,6 @@ CREATE INDEX card_plays_unposted ON public.card_plays USING btree (id) WHERE (po
 alter table public.card_plays enable row level security;
 
 -- @grants
+grant select on table public.card_plays to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.card_plays to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.card_plays to service_role;

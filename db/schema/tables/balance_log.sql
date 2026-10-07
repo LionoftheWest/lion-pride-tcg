@@ -27,5 +27,6 @@ CREATE UNIQUE INDEX balance_log_pkey ON public.balance_log USING btree (id);
 alter table public.balance_log enable row level security;
 
 -- @grants
+grant select on table public.balance_log to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.balance_log to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.balance_log to service_role;

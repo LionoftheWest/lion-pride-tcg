@@ -27,5 +27,6 @@ CREATE UNIQUE INDEX roster_power_history_pkey ON public.roster_power_history USI
 alter table public.roster_power_history enable row level security;
 
 -- @grants
+grant select on table public.roster_power_history to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.roster_power_history to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.roster_power_history to service_role;

@@ -32,6 +32,7 @@ CREATE INDEX pack_ledger_player_idx ON public.pack_ledger USING btree (player_id
 alter table public.pack_ledger enable row level security;
 
 -- @grants
+grant select on table public.pack_ledger to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.pack_ledger to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.pack_ledger to service_role;
 

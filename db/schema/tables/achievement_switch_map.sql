@@ -24,5 +24,6 @@ CREATE UNIQUE INDEX achievement_switch_map_pkey ON public.achievement_switch_map
 alter table public.achievement_switch_map enable row level security;
 
 -- @grants
+grant select on table public.achievement_switch_map to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.achievement_switch_map to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.achievement_switch_map to service_role;

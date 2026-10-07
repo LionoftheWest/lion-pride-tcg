@@ -26,5 +26,6 @@ CREATE INDEX notifications_player_idx ON public.notifications USING btree (playe
 alter table public.notifications enable row level security;
 
 -- @grants
+grant select on table public.notifications to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.notifications to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.notifications to service_role;

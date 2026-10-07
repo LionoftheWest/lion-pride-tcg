@@ -32,6 +32,7 @@ CREATE INDEX hunt_hits_player_day ON public.hunt_hits USING btree (player_id, hi
 alter table public.hunt_hits enable row level security;
 
 -- @grants
+grant select on table public.hunt_hits to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_hits to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_hits to service_role;
 

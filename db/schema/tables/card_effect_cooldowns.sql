@@ -23,5 +23,6 @@ CREATE UNIQUE INDEX card_effect_cooldowns_pkey ON public.card_effect_cooldowns U
 alter table public.card_effect_cooldowns enable row level security;
 
 -- @grants
+grant select on table public.card_effect_cooldowns to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.card_effect_cooldowns to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.card_effect_cooldowns to service_role;

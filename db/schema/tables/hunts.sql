@@ -37,5 +37,6 @@ CREATE UNIQUE INDEX hunts_pkey ON public.hunts USING btree (id);
 alter table public.hunts enable row level security;
 
 -- @grants
+grant select on table public.hunts to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunts to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunts to service_role;

@@ -25,5 +25,6 @@ CREATE UNIQUE INDEX dungeon_monsters_pkey ON public.dungeon_monsters USING btree
 alter table public.dungeon_monsters enable row level security;
 
 -- @grants
+grant select on table public.dungeon_monsters to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.dungeon_monsters to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.dungeon_monsters to service_role;

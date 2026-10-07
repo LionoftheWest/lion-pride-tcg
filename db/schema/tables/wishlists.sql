@@ -27,5 +27,6 @@ CREATE UNIQUE INDEX wishlists_pkey ON public.wishlists USING btree (player_id, s
 alter table public.wishlists enable row level security;
 
 -- @grants
+grant select on table public.wishlists to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.wishlists to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.wishlists to service_role;

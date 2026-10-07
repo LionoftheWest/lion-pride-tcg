@@ -31,6 +31,7 @@ CREATE INDEX shard_ledger_player ON public.shard_ledger USING btree (player_id, 
 alter table public.shard_ledger enable row level security;
 
 -- @grants
+grant select on table public.shard_ledger to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.shard_ledger to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.shard_ledger to service_role;
 

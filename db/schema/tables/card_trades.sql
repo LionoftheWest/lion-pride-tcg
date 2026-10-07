@@ -38,6 +38,7 @@ CREATE INDEX card_trades_to ON public.card_trades USING btree (to_id, created_at
 alter table public.card_trades enable row level security;
 
 -- @grants
+grant select on table public.card_trades to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.card_trades to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.card_trades to service_role;
 

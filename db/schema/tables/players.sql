@@ -34,6 +34,7 @@ CREATE UNIQUE INDEX players_pkey ON public.players USING btree (id);
 alter table public.players enable row level security;
 
 -- @grants
+grant select on table public.players to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.players to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.players to service_role;
 

@@ -39,6 +39,7 @@ create policy "public read cards" on public.cards as permissive for select to pu
 -- @grants
 grant select on table public.cards to anon;
 grant select on table public.cards to authenticated;
+grant select on table public.cards to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.cards to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.cards to service_role;
 

@@ -33,5 +33,6 @@ CREATE UNIQUE INDEX hunt_combat_state_pkey ON public.hunt_combat_state USING btr
 alter table public.hunt_combat_state enable row level security;
 
 -- @grants
+grant select on table public.hunt_combat_state to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_combat_state to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_combat_state to service_role;

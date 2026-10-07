@@ -39,6 +39,7 @@ create policy "public read subjects" on public.subjects as permissive for select
 -- @grants
 grant select on table public.subjects to anon;
 grant select on table public.subjects to authenticated;
+grant select on table public.subjects to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.subjects to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.subjects to service_role;
 

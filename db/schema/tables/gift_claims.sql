@@ -41,6 +41,7 @@ CREATE UNIQUE INDEX gift_claims_pkey ON public.gift_claims USING btree (id);
 alter table public.gift_claims enable row level security;
 
 -- @grants
+grant select on table public.gift_claims to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.gift_claims to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.gift_claims to service_role;
 

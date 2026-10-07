@@ -23,5 +23,6 @@ CREATE UNIQUE INDEX playing_posts_pkey ON public.playing_posts USING btree (play
 alter table public.playing_posts enable row level security;
 
 -- @grants
+grant select on table public.playing_posts to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.playing_posts to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.playing_posts to service_role;

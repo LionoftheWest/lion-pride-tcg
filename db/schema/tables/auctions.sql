@@ -43,6 +43,7 @@ CREATE INDEX auctions_status ON public.auctions USING btree (status, ends_at);
 alter table public.auctions enable row level security;
 
 -- @grants
+grant select on table public.auctions to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.auctions to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.auctions to service_role;
 

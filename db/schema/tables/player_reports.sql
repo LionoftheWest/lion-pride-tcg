@@ -34,5 +34,6 @@ CREATE INDEX player_reports_unsynced ON public.player_reports USING btree (id) W
 alter table public.player_reports enable row level security;
 
 -- @grants
+grant select on table public.player_reports to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.player_reports to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.player_reports to service_role;

@@ -24,5 +24,6 @@ CREATE UNIQUE INDEX gauntlet_weeks_pkey ON public.gauntlet_weeks USING btree (we
 alter table public.gauntlet_weeks enable row level security;
 
 -- @grants
+grant select on table public.gauntlet_weeks to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.gauntlet_weeks to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.gauntlet_weeks to service_role;

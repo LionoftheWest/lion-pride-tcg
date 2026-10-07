@@ -121,15 +121,15 @@ Not refused (a data statement can be safe to run again, for example "on conflict
 a one-time grant or a settings value would run again.
 
 - `achievement_titles_d77.sql`: achievement_tracks, balance
-- `achievement_titles_d79.sql`: a DO block, achievement_tracks
+- `achievement_titles_d79.sql`: achievement_tracks
 - `adventure_gate.sql`: settings
 - `auction_confirm_24h.sql`: auctions
 - `balance_dungeon_numbers.sql`: balance, settings
 - `balance_economy.sql`: balance, settings
-- `balance_table.sql`: balance, balance (DO block), settings
-- `card_decisions.sql`: a DO block, subjects
+- `balance_table.sql`: balance, settings
+- `card_decisions.sql`: subjects
 - `card_effects_enable_a1.sql`: effect_primitives
-- `card_ledger.sql`: a DO block, card_ledger (DO block)
+- `card_ledger.sql`: card_ledger (DO block)
 - `daily_raid_board.sql`: cron.job
 - `damage_log.sql`: combat_actions (DO block)
 - `discord_effects_on.sql`: effect_primitives
@@ -140,7 +140,7 @@ a one-time grant or a settings value would run again.
 - `hunt_abilities.sql`: subjects
 - `hunt_damage_trace.sql`: hunt_adjustments (DO block)
 - `ledger_reasons.sql`: ledger_reasons
-- `pack_ledger_strict.sql`: a DO block, daily_claims, pack_ledger
+- `pack_ledger_strict.sql`: daily_claims, pack_ledger
 - `player_reports.sql`: settings
 - `prune_old_rows.sql`: cron.job
 - `raid_makeup_oct1.sql`: give_gift(), hunt_adjustments
@@ -149,9 +149,9 @@ a one-time grant or a settings value would run again.
 - `special_cards_never_in_packs.sql`: cards
 - `ui_v3_flag.sql`: settings
 
-## No change (17)
+## No change (18)
 
-`achievement_rewards.sql`, `card_tags.sql`, `combat_core.sql`, `db_comments.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `lockdown_grants.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`
+`achievement_rewards.sql`, `backup_role.sql`, `card_tags.sql`, `combat_core.sql`, `db_comments.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `lockdown_grants.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`
 
 ## Live functions that no file gives (1)
 

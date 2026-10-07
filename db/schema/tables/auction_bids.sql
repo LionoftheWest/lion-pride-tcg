@@ -31,5 +31,6 @@ CREATE UNIQUE INDEX auction_bids_pkey ON public.auction_bids USING btree (id);
 alter table public.auction_bids enable row level security;
 
 -- @grants
+grant select on table public.auction_bids to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.auction_bids to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.auction_bids to service_role;

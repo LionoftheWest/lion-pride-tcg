@@ -23,5 +23,6 @@ CREATE UNIQUE INDEX voice_minutes_pkey ON public.voice_minutes USING btree (play
 alter table public.voice_minutes enable row level security;
 
 -- @grants
+grant select on table public.voice_minutes to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.voice_minutes to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.voice_minutes to service_role;

@@ -23,6 +23,7 @@ CREATE UNIQUE INDEX balance_pkey ON public.balance USING btree (key);
 alter table public.balance enable row level security;
 
 -- @grants
+grant select on table public.balance to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.balance to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.balance to service_role;
 

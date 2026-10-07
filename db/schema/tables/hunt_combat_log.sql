@@ -40,5 +40,6 @@ CREATE UNIQUE INDEX hunt_combat_log_pkey ON public.hunt_combat_log USING btree (
 alter table public.hunt_combat_log enable row level security;
 
 -- @grants
+grant select on table public.hunt_combat_log to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_combat_log to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.hunt_combat_log to service_role;

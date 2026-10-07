@@ -25,5 +25,6 @@ CREATE UNIQUE INDEX daily_activity_pkey ON public.daily_activity USING btree (pl
 alter table public.daily_activity enable row level security;
 
 -- @grants
+grant select on table public.daily_activity to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.daily_activity to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.daily_activity to service_role;

@@ -27,5 +27,6 @@ CREATE UNIQUE INDEX ledger_reasons_pkey ON public.ledger_reasons USING btree (le
 alter table public.ledger_reasons enable row level security;
 
 -- @grants
+grant select on table public.ledger_reasons to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.ledger_reasons to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.ledger_reasons to service_role;

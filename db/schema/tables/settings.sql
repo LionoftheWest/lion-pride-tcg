@@ -21,5 +21,6 @@ CREATE UNIQUE INDEX settings_pkey ON public.settings USING btree (key);
 alter table public.settings enable row level security;
 
 -- @grants
+grant select on table public.settings to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.settings to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.settings to service_role;

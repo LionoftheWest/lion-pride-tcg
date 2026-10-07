@@ -27,5 +27,6 @@ CREATE UNIQUE INDEX achievement_claims_pkey ON public.achievement_claims USING b
 alter table public.achievement_claims enable row level security;
 
 -- @grants
+grant select on table public.achievement_claims to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.achievement_claims to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.achievement_claims to service_role;

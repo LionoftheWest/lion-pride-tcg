@@ -28,5 +28,6 @@ CREATE UNIQUE INDEX achievement_tracks_pkey ON public.achievement_tracks USING b
 alter table public.achievement_tracks enable row level security;
 
 -- @grants
+grant select on table public.achievement_tracks to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.achievement_tracks to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.achievement_tracks to service_role;
