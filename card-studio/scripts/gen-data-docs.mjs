@@ -34,7 +34,7 @@ const DOMAINS = [
       'accept_bid', 'accept_trade', 'add_card_to_player', 'add_cards_to_player', 'ascend_card', 'ascend_cost', 'claim_gift', 'close_auction', 'confirm_bid', 'convert_dupes', 'convertible_copies', 'counter_trade', 'create_trade', 'create_trade_open',
       'decline_accepted_bid', 'expire_auctions', 'free_copies', 'give_card_gift', 'launch_player_gift', 'launch_raider_gift', 'list_for_trade', 'my_collection_power', 'offer_on_listing', 'open_packs', 'pack_ledger_reconcile', 'place_bid', 'rarity_rank',
       'remove_card_from_player', 'reset_stat_points', 'return_bids', 'set_launch_player_card', 'set_trade_status', 'set_wish_top', 'set_wishlist', 'spend_pack', 'spend_stat_points', 'start_auction', 'subjects_flatten_tags', 'top_collection_power',
-      'unlist_for_trade', 'welcome_packs', 'withdraw_bid'],
+      'unlist_for_trade', 'welcome_packs', 'withdraw_bid', 'draw_pool', 'pullable_sets', 'season_number'],
     prefixes: ['card_', 'cards_', 'trade_', 'auction_', 'wish', 'gift_card', 'gift_packs', 'grant_packs', 'stat_', 'roster_', 'collection_power'] },
   { slug: 'hunt-and-combat', title: 'Hunt and combat', about: 'The weekly Hunt (raid boss), squads, the combat rules, the logs of each fight, pranks, boons and the Discord effects.',
     names: ['hunts', 'combat_actions', 'card_plays', 'card_effect_cooldowns', 'player_effects', 'discord_effects', 'effect_primitives',

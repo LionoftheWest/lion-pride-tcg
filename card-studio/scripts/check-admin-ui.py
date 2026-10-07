@@ -27,12 +27,21 @@ def api(path):
 
 member = api('/members?limit=1')['rows'][0]['id']
 hunts = api('/hunts?limit=1')['rows']
+card = api('/cards?limit=1&sort=copies')['rows'][0]['id']
 PAGES = [
     ('01', 'Overview', '/overview'), ('02', 'Members', '/members'), ('03', 'Member', f'/member/{member}'), ('04', 'Economy', '/economy'),
     ('05', 'Growth', '/growth'), ('06', 'Cards', '/cards'), ('07', 'Hunt list', '/hunt'),
     ('08', 'Hunt', f'/hunt/{hunts[0]["id"]}' if hunts else '/hunt'), ('09', 'Dungeon', '/dungeon'), ('10', 'Reports', '/reports'),
     ('11', 'Report - top power', '/report/top_power'), ('12', 'Data', '/data'), ('13', 'Data - settings', '/data/settings'), ('14', 'Health', '/health'),
+    ('16', 'Card', f'/card/{card}'), ('17', 'Cards - search', '/cards?q=a'), ('18', 'Activity', '/activity'), ('19', 'Activity - pulls', '/activity?kind=pull'),
 ]
+# Phase 2 (ADMIN_EDIT=1): the editors and the change dialog.
+try:
+    EDIT = api('/edit/status').get('edit') is True
+except Exception:
+    EDIT = False
+if EDIT:
+    PAGES += [('16', 'Balance', '/balance'), ('17', 'Pull rates', '/balance/pulls'), ('18', 'Settings', '/settings'), ('19', 'Rewards', '/rewards'), ('20', 'Admin log', '/log')]
 VIEWS = [('desktop', 1440, 900), ('phone', 390, 844)]
 
 CUT_JS = r"""() => {
@@ -93,6 +102,49 @@ with sync_playwright() as p:
             status = 'PASS' if not problems else 'FAIL'
             if problems: fails += 1
             print(f'{status} {vname} {name}' + ('' if not problems else '\n    ' + '\n    '.join(problems[:12])))
+        if EDIT:
+            # The change dialog: Rewards > Hunt prizes, change the first rank, Review, Test on the local copy (rolled back).
+            errors.clear()
+            pg.goto(a.base + '/admin/#/rewards'); pg.wait_for_load_state('networkidle')
+            pg.wait_for_function("() => !document.querySelector('main .state .spin')", timeout=30000)
+            first = pg.locator('main details.keypanel[open] input.field.num').first
+            first.fill(str(int(first.input_value()) + 1))
+            pg.locator('main details.keypanel[open] button.btn.primary').first.click()
+            pg.wait_for_selector('.modal .diff-row', timeout=15000)
+            pg.fill('.modal textarea.reason', 'ui check (rolled back)')
+            pg.click('.modal button:has-text("Test on local copy")')
+            pg.wait_for_selector('.modal .test-head', timeout=60000)
+            problems = list(errors) + ['error state: ' + t for t in pg.locator('.modal .state.error').all_inner_texts()]
+            if not pg.locator('.modal .status.pass:has-text("Test passed")').count(): problems.append('the test did not pass')
+            if pg.locator('.modal button:has-text("Apply live")').is_disabled(): problems.append('Apply stays disabled after a passed test')
+            if vname == 'phone':
+                sw = pg.evaluate('document.scrollingElement.scrollWidth'); iw = pg.evaluate('window.innerWidth')
+                if sw > iw: problems.append(f'horizontal scroll: {sw} > {iw}')
+            pg.screenshot(path=os.path.join(a.out, f'21 Change dialog - {vname}.png'))
+            if problems: fails += 1
+            print(('PASS' if not problems else 'FAIL') + f' {vname} Change dialog' + ('' if not problems else '\n    ' + '\n    '.join(problems[:12])))
+            pg.keyboard.press('Escape')
+            # The member actions: open Grant packs on the member page.
+            pg.goto(a.base + '/admin/#/member/' + member); pg.wait_for_load_state('networkidle')
+            pg.wait_for_function("() => !document.querySelector('main .state .spin')", timeout=30000)
+            pg.click('main button.action-btn.on:has-text("Grant packs")')
+            pg.wait_for_selector('main .act-row', timeout=5000)
+            pg.locator('main .act-row').scroll_into_view_if_needed()
+            pg.screenshot(path=os.path.join(a.out, f'22 Member actions - {vname}.png'))
+        if vname == 'desktop':
+            # The timeline chips filter on the server: a chip asks /timeline?kinds=<kind> and every row shown is that kind.
+            pg.goto(a.base + f'/admin/#/member/{member}'); pg.wait_for_load_state('networkidle')
+            pg.wait_for_function("() => document.querySelectorAll('.tl-panel .chips .chip').length > 1 && !document.querySelector('main .state .spin')", timeout=30000)
+            chip = pg.locator('.tl-panel .chips .chip').nth(1)
+            want = chip.evaluate("c => [...c.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim()")
+            with pg.expect_response(lambda r: '/timeline?' in r.url and 'kinds=' in r.url) as resp:
+                chip.click()
+            pg.wait_for_function("() => !document.querySelector('main .state .spin')", timeout=30000)
+            kinds = pg.locator('.tl-table tbody tr td:nth-child(2)').all_inner_texts()
+            n_total = pg.locator('.tl-panel .phead .num').inner_text()
+            ok = resp.value.ok and kinds and all(k.strip() == want for k in kinds)
+            print(f"{'PASS' if ok else 'FAIL'} desktop timeline chip '{want}': {len(kinds)} rows, {n_total}")
+            if not ok: fails += 1
         if vname == 'phone':
             pg.goto(a.base + '/admin/#/overview'); pg.wait_for_load_state('networkidle')
             pg.click('.tabbar button.tab')
