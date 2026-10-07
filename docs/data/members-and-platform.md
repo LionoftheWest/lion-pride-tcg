@@ -238,9 +238,11 @@ Table. [players-economy] One row per member (the Discord user id) with their bal
 | `shard_balance` | integer | not null | `0` | Shards to spend in the Shop. Never negative (players_shard_balance_nonneg). Changed only by grant_shards() with a shard_ledger row: sum(shard_ledger.amount) = shard_balance. |
 | `guild_joined_at` | timestamp with time zone | null |  | Time the member last joined the Discord server (Discord joinedAt). The bot sets it on GuildMemberAdd and fills empty rows at start and once a day (guild_joined). Null = not known yet. |
 | `left_guild_at` | timestamp with time zone | null |  | Time the member last left the Discord server (GuildMemberRemove, the bot: guild_left). In the server now = null or older than guild_joined_at. |
+| `last_open_set` | text | null |  | D-85: the set of the member's last open with a set (open_packs with p_set). The Open window preselects it. |
 
 - Primary key: `PRIMARY KEY (id)`
-- Foreign keys: none
+- Foreign keys: 
+  - `players_last_open_set_fkey` to [card_sets](cards-and-trading.md#table-card-sets): `FOREIGN KEY (last_open_set) REFERENCES card_sets(id) ON DELETE SET NULL`
 - Check constraints: 
   - `players_pack_balance_nonneg`: `CHECK ((pack_balance >= 0))`
   - `players_shard_balance_nonneg`: `CHECK ((shard_balance >= 0))`

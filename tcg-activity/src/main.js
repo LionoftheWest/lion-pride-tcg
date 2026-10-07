@@ -22,13 +22,14 @@ import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
-import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
+import { initShop, renderShopV2, disposeShop, repaintShards } from './ui-v2-shop.js';
 import { initDungeon, renderDungeonV2, disposeDungeon, advTabs } from './ui-v2-dungeon.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { initSubtabs } from './subtabs.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { every, isIdle } from './poll.js';
 import { watchSizeClass } from './ui3/size-class.js';
+import { startShell } from './ui3/shell.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
@@ -344,6 +345,7 @@ async function main() {
   if (flags.reports) initReport();
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
+  if (flags?.uiV3) startShell(); // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps
 }
 
 // The v3 foundation (UI-00): only for the members in settings.ui_v3 (flags.uiV3). It loads the component CSS and writes
@@ -353,7 +355,7 @@ function startV3() {
   if (!document.querySelector('link[data-ui3]')) {
     const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/ui3.css'; l.dataset.ui3 = '1'; document.head.appendChild(l);
   }
-  watchSizeClass(window);
+  watchSizeClass(window, () => repaintShards());
 }
 
 // The v2 shell: the dock, the top bar pills, the phone layouts.
