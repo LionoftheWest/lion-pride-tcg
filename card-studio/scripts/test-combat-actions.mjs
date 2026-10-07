@@ -12,10 +12,14 @@ import { GATE, mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 
-let mig = readFileSync(process.argv[2] || new URL('../../tcg-bot/supabase/combat_actions.sql', import.meta.url), 'utf8')
+// No file: test the CURRENT functions (combat_actions.sql is live, and a later migration replaced its functions, so its own guard
+// refuses a second run). With a file: the acceptance run (apply it, the guard, every mutation).
+const FILE = process.argv[2];
+let mig = !FILE ? '' : readFileSync(FILE, 'utf8')
   .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 const SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
 const M = process.env.MUTATE;
+if (!FILE && ['guard', 'settings'].includes(M)) throw new Error(`MUTATE=${M} changes the migration text: pass the file`);
 const MUT = M === 'guard' ? '' : mutation({
   noinsert: [SUP, 'insert into combat_actions (mode, ref_id', 'insert into pg_temp.ca_sink (mode, ref_id'],   // the rows go to a temp table
   bosstarget: [SUP, "    case when v_tgt in ('ally', 'self') then p_target end,", '    p_target,'],
@@ -30,7 +34,7 @@ const body = String.raw`do $t$ declare
   h bigint; d date := (now() at time zone 'America/Denver')::date; bad text := '';
   atk bigint; heal bigint; wk bigint; r jsonb; n int; row record;
 begin
-  execute $m$${mig}$m$;
+  ${mig ? 'execute $m$' + mig + '$m$;' : '-- the current functions'}
   create temp table ca_sink (like public.combat_actions including all);   -- for MUTATE=noinsert only
   ${MUT}
   insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at)
@@ -72,7 +76,7 @@ begin
   if not (select relrowsecurity from pg_class where oid = 'public.combat_actions'::regclass) then bad := bad || 'RLS is off; '; end if;
   if has_table_privilege('anon', 'public.combat_actions', 'select') then bad := bad || 'anon can read; '; end if;
 
-${!M || M === 'guard' ? `
+${mig && (!M || M === 'guard') ? `
   -- 5. The guard: the file runs again on its own result; a changed live function stops it.
   begin execute $m$${mig}$m$; exception when others then bad := bad || 'second run: ' || sqlerrm || '; '; end;
   execute replace(pg_get_functiondef('public.hunt_support'::regproc), 'declare', 'declare -- changed by someone else');

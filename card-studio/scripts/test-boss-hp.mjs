@@ -12,9 +12,13 @@ import { mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 
-let mig = readFileSync(process.argv[2] || new URL('../../tcg-bot/supabase/boss_hp_heal_share.sql', import.meta.url), 'utf8')
+// No file: test the CURRENT functions (boss_hp_heal_share.sql is live, and a later migration replaced its functions, so its own guard
+// refuses a second run). With a file: the acceptance run (apply it, the guard, every mutation).
+const FILE = process.argv[2];
+let mig = !FILE ? '' : readFileSync(FILE, 'utf8')
   .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 const M = process.env.MUTATE;
+if (!FILE && ['guard', 'settings'].includes(M)) throw new Error(`MUTATE=${M} changes the migration text: pass the file`);
 const MUT = M === 'guard' || M === 'settings' ? '' : mutation({
   share: ['public.spawn_hunt(integer,text)', "coalesce((v_cfg->>'heal_share')::bigint, greatest(1, round(v_hp::numeric / v_hunters)))", 'greatest(1, round(v_hp::numeric / v_hunters))'],
 });
@@ -31,10 +35,10 @@ begin
   -- The boss that is live now (if any), before the file runs.
   select jsonb_build_object('id', id, 'hp_max', hp_max, 'hp_remaining', hp_remaining, 'hp_share', hp_share) into before
     from hunts where status = 'active' order by id desc limit 1;
-  -- The numbers before the file (balance_table.sql seeded boss_hp from the live settings, so the file's own
+  ${mig ? `-- The numbers before the file (balance_table.sql seeded boss_hp from the live settings, so the file's own
   -- update must set them): the old HP and a wrong heal share.
   execute 'update balance set value = value || ''{"Normal": 30000, "Heroic": 40000, "Mythic": 40000, "heal_share": 1}'' where key = ''boss_hp''';
-  execute $m$${mig}$m$;
+  execute $m$` + mig + '$m$;' : '-- the current functions'}
   ${MUT}
 
   -- 1. The numbers: the new HP per tier and the heal share. The other keys (crew) stay. Since balance_table.sql
@@ -63,7 +67,7 @@ begin
     bad := bad || 'heal_share could be removed; ';
   exception when others then null; end;
 
-${!M || M === 'guard' ? `
+${mig && (!M || M === 'guard') ? `
   -- 5. The guard: the file runs again on its own result; a changed live function stops it.
   begin execute $m$${mig}$m$; exception when others then bad := bad || 'second run: ' || sqlerrm || '; '; end;
   execute replace(pg_get_functiondef('public.spawn_hunt'::regproc), 'declare', 'declare -- changed by someone else');

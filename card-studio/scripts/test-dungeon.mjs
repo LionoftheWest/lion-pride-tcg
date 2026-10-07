@@ -28,7 +28,13 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 const strip = (s) => s.replace(/notify pgrst[^\n]*\n/g, '').replace(/\r\n/g, '\n');
 // balance_table.sql first: combat_core.sql and the Dungeon read the combat numbers from public.balance.
 const bal = strip(readFileSync(process.env.BAL || new URL('../../tcg-bot/supabase/balance_table.sql', import.meta.url), 'utf8'));
-const core = strip(readFileSync(process.env.CORE || new URL('../../tcg-bot/supabase/combat_core.sql', import.meta.url), 'utf8'));
+// combat_core.sql: only the shared combat rules (the Dungeon uses them). Its guard and its Hunt section (the 2026-10-03
+// rebuild of hunt_attack / hunt_support) are left out: hunt_boss_moves.sql replaced both live, so the guard refuses the
+// file (as designed), and this test does not use the Hunt functions.
+const coreFile = strip(readFileSync(process.env.CORE || new URL('../../tcg-bot/supabase/combat_core.sql', import.meta.url), 'utf8'));
+const HUNT_PART = '-- ---- The Hunt on the core';
+if (!coreFile.includes(HUNT_PART) || !/do \$g\$[\s\S]*?end \$g\$;/.test(coreFile)) throw new Error('combat_core.sql changed: no guard or no Hunt section');
+const core = coreFile.slice(0, coreFile.indexOf(HUNT_PART)).replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 let gate = strip(readFileSync(process.env.GATE || new URL('../../tcg-bot/supabase/adventure_gate.sql', import.meta.url), 'utf8'));
 // The old one-run-a-day index: gauntlet.sql (below, in the same block) drops it for dungeon_runs_one_a_day_mode
 // (player, day, mode). On a database that holds a daily AND a Gauntlet run of one member on one day, creating it
@@ -123,7 +129,7 @@ for (const s of [bal, core, gate, mig, mig2, mig3, mig4, mig5, mig6full, mig7]) 
 
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; g jsonb; d1 jsonb; d2 jsonb; fl jsonb; rm jsonb; i int; j int; n int; st jsonb; run record;
-  atk bigint[]; gold bigint[]; hid bigint; foe jsonb; info jsonb; sq jsonb; wk jsonb; crit numeric; ex jsonb; seed float; bal int; v_day date; ofr jsonb;
+  atk bigint[]; gold bigint[]; stn bigint; hid bigint; foe jsonb; info jsonb; sq jsonb; wk jsonb; crit numeric; ex jsonb; seed float; bal int; v_day date; ofr jsonb;
 begin
   if to_regclass('public.balance') is null then execute $m$${bal}$m$; end if;
   execute $m$${core}$m$;
@@ -136,21 +142,19 @@ begin
   execute $m$${mig6}$m$;
   execute $m$${mig7}$m$;
   v_day := dungeon_day();
+  -- The stun card (it was card 93; card abilities change, so it is looked up).
+  select min(c.id) into stn from cards c join subjects s on s.id = c.subject_id where c.rarity = 'normal' and s.ability->>'effect' = 'stun';
   select array_agg(id order by id) into atk from (select c.id from cards c join subjects s on s.id = c.subject_id
     where c.rarity = 'normal' and s.type in ('Character', 'Creature') and c.id not in (24, 29, 34, 44, 49) order by c.id limit 4) x;
   select array_agg(id order by id) into gold from (select c.id from cards c join subjects s on s.id = c.subject_id
     where c.rarity::text in ('gold', 'full_art', 'secret_rare') and s.type in ('Character', 'Creature') order by c.rarity desc, c.id limit 5) x;
   insert into players (id, username) values ('tst_dg_a', 'dungeon a'), ('tst_dg_b', 'dungeon b'), ('tst_dg_c', 'dungeon c'), ('tst_dg_g', 'dungeon gate');
   insert into player_cards (player_id, card_id, quantity)
-    select p, x, 1 from unnest(array['tst_dg_a', 'tst_dg_b', 'tst_dg_c']) p, unnest(array[24, 29, 34, 44, 49, 64, 93, 97]::bigint[] || atk || gold) x;
-  -- Card 93 is the Stun support of this test; its subject became a Weaken card in the card data (2026-10-05),
-  -- so it gets a Stun ability for this rolled-back run.
-  update subjects set ability = (select s2.ability from subjects s2 where s2.ability->>'effect' = 'stun' order by s2.id limit 1)
-    where id = (select subject_id from cards where id = 93) and ability->>'effect' is distinct from 'stun';
+    select p, x, 1 from unnest(array['tst_dg_a', 'tst_dg_b', 'tst_dg_c']) p, unnest(array[24, 29, 34, 44, 49, 64, stn, 97]::bigint[] || atk || gold) x;
 
   -- 0. The flag OFF: nothing starts.
   update settings set value = value || '{"enabled": false}' where key = 'dungeon';
-  r := dungeon_start('tst_dg_a', array[34, 44, 64, 93, 97]);
+  r := dungeon_start('tst_dg_a', array[34, 44, 64, stn, 97]);
   if r->>'error' is distinct from 'disabled' then bad := bad || 'flag off: ' || r::text || '; '; end if;
   if (dungeon_view('tst_dg_a')->>'error') is distinct from 'disabled' then bad := bad || 'view flag off; '; end if;
   update settings set value = value || '{"enabled": true}' where key = 'dungeon';
@@ -206,19 +210,19 @@ begin
   update dungeon_days set rule = dungeon_rules()->8 where day = v_day;   -- Everything goes
 
   -- 3. Starting: the squad size, ownership, the budget, an attacker, today's rule, once a day.
-  r := dungeon_start('tst_dg_a', array[34, 44, 64, 93]);
+  r := dungeon_start('tst_dg_a', array[34, 44, 64, stn]);
   if r->>'error' is distinct from 'squad_size' then bad := bad || 'size: ' || r::text || '; '; end if;
-  r := dungeon_start('tst_dg_a', array[34, 44, 64, 93, 999999]);
+  r := dungeon_start('tst_dg_a', array[34, 44, 64, stn, 999999]);
   if r->>'error' is distinct from 'not_owned' then bad := bad || 'owned: ' || r::text || '; '; end if;
   r := dungeon_start('tst_dg_a', gold);
   if r->>'error' is distinct from 'budget' then bad := bad || 'budget: ' || r::text || '; '; end if;
   update dungeon_days set rule = dungeon_rules()->0 where day = v_day;   -- Creatures and Items only
-  r := dungeon_start('tst_dg_a', array[24, 29, 34, 64, 93]);
+  r := dungeon_start('tst_dg_a', array[24, 29, 34, 64, stn]);
   if r->>'error' is distinct from 'rule' then bad := bad || 'rule: ' || r::text || '; '; end if;
   update dungeon_days set rule = dungeon_rules()->8 where day = v_day;
-  r := dungeon_start('tst_dg_a', array[34, 44, 64, 93, 97]);
+  r := dungeon_start('tst_dg_a', array[34, 44, 64, stn, 97]);
   if not (r->>'ok')::boolean then bad := bad || 'start: ' || r::text || '; '; end if;
-  if (dungeon_start('tst_dg_a', array[34, 44, 64, 93, 97])->>'error') is distinct from 'already' then bad := bad || 'two runs a day; '; end if;
+  if (dungeon_start('tst_dg_a', array[34, 44, 64, stn, 97])->>'error') is distinct from 'already' then bad := bad || 'two runs a day; '; end if;
   select * into run from dungeon_runs where player_id = 'tst_dg_a' and day = v_day;
   if run.state->>'phase' <> 'fight' or jsonb_array_length(run.state->'foes') < 1 then bad := bad || 'room 1 not a fight; '; end if;
   if (run.state->'cards'->'64'->>'max')::int <> card_max_hp(0) then bad := bad || 'support hp; '; end if;
@@ -227,7 +231,7 @@ begin
   -- 4. THE COMBAT CORE: the attack damage = combat_hit with the same seed (x the run buff).
   foe := '{"key":"slime","name":"T","element":"fire","level":1,"hp":100000,"max":100000,"atk":1,"weak":[],"resist":[],"passives":[],"tags":[],"enr":0,"enru":0,"wk":0,"wku":0,"ex":0,"exu":0,"st":0}';
   info := dungeon_card('tst_dg_a', 34);
-  sq := combat_squad(dungeon_txt(info->'tags'), true, (select jsonb_agg(coalesce(to_jsonb(s.tag_slugs), '[]'::jsonb)) from unnest(array[44, 64, 93, 97]::bigint[]) x
+  sq := combat_squad(dungeon_txt(info->'tags'), true, (select jsonb_agg(coalesce(to_jsonb(s.tag_slugs), '[]'::jsonb)) from unnest(array[44, 64, stn, 97]::bigint[]) x
           join cards c on c.id = x join subjects s on s.id = c.subject_id), '[]');
   wk := combat_weak('[]', '[]', info->>'type', info->>'rarity', info->>'season', dungeon_txt(info->'tags'), (sq->>'stack')::int);
   crit := combat_crit_chance(false, info->'ability'->>'effect', coalesce((info->'ability'->>'amount')::numeric, 0), info->'cmb');
@@ -266,11 +270,11 @@ begin
   r := dungeon_support('tst_dg_a', 64, 34, null);
   if not (r->>'ok')::boolean or (r->'state'->'cards'->'34'->>'buff')::numeric <> combat_support_value('empower', (r->>'amount')::numeric, 1, null) then
     bad := bad || 'empower: ' || r::text || '; '; end if;
-  if (dungeon_support('tst_dg_a', 93, null, 0)->>'error') is distinct from 'one_support' then bad := bad || 'two supports in one turn; '; end if;
+  if (dungeon_support('tst_dg_a', stn, null, 0)->>'error') is distinct from 'one_support' then bad := bad || 'two supports in one turn; '; end if;
   r := dungeon_attack('tst_dg_a', 34, 0);
   if (r->'state'->'cards'->'34'->>'buff')::numeric <> 1 then bad := bad || 'empower not used by the attack; '; end if;
   if (dungeon_support('tst_dg_a', 64, 34, null)->>'error') is distinct from 'cooldown' then bad := bad || 'no cooldown; '; end if;
-  r := dungeon_support('tst_dg_a', 93, null, 0);
+  r := dungeon_support('tst_dg_a', stn, null, 0);
   if not (r->>'ok')::boolean or (r->'state'->'foes'->0->>'st')::int <> 2 then bad := bad || 'stun: ' || r::text || '; '; end if;
   r := dungeon_attack('tst_dg_a', 34, 0);
   if r->'enemy'->0->>'action' <> 'stunned' then bad := bad || 'stunned foe acted: ' || coalesce(r->>'enemy', r::text) || '; '; end if;
@@ -346,7 +350,7 @@ begin
 
   -- 12. A fall loses the floor's loot at risk and keeps the bank; Retreat (between floors) keeps the bank.
   bal := (select shard_balance from players where id = 'tst_dg_b');
-  r := dungeon_start('tst_dg_b', array[34, 44, 64, 93, 97]);
+  r := dungeon_start('tst_dg_b', array[34, 44, 64, stn, 97]);
   select * into run from dungeon_runs where player_id = 'tst_dg_b' and day = v_day;
   n := (select quantity from player_cards where player_id = 'tst_dg_b' and card_id = 24);
   update dungeon_runs set state = jsonb_set(state, '{foes}', jsonb_build_array(foe || '{"atk":5000,"charge":true}')) || '{"round": 5}'::jsonb
@@ -360,7 +364,7 @@ begin
   delete from dungeon_runs where player_id = 'tst_dg_b';
   -- 12b. The last ATTACKER down is a fall, even while support cards stand (else no attack is possible and
   -- the run never ends: found in the preview, 2026-10-03). A plain strike only: the supports stay up.
-  r := dungeon_start('tst_dg_b', array[34, 44, 64, 93, 97]);
+  r := dungeon_start('tst_dg_b', array[34, 44, 64, stn, 97]);
   select * into run from dungeon_runs where player_id = 'tst_dg_b' and day = v_day;
   update dungeon_runs set state = jsonb_set(state, '{foes}', jsonb_build_array(foe || '{"hp":99999,"max":99999,"atk":5000,"charge":false,"sh":0,"passives":[],"moves":[{"name":"Hit","kind":"strike","w":1}]}'))
     || jsonb_build_object('cards', (select jsonb_object_agg(e.k, case when e.k <> '34' and not coalesce((e.v->>'sup')::boolean, false) then e.v || '{"down":true,"hp":0}' else e.v end) from jsonb_each(state->'cards') e(k, v)))
@@ -372,7 +376,7 @@ begin
   delete from dungeon_runs where player_id = 'tst_dg_b';
   bal := (select shard_balance from players where id = 'tst_dg_b');
   n := (select quantity from player_cards where player_id = 'tst_dg_b' and card_id = 29);
-  r := dungeon_start('tst_dg_b', array[34, 44, 64, 93, 97]);
+  r := dungeon_start('tst_dg_b', array[34, 44, 64, stn, 97]);
   update dungeon_runs set floor = 4, room = 5, state = state || jsonb_build_object('phase', 'floor_done', 'bank', '{"shards":12,"cards":[29]}'::jsonb) where player_id = 'tst_dg_b';
   r := dungeon_retreat('tst_dg_b');
   select * into run from dungeon_runs where player_id = 'tst_dg_b' and day = v_day;
@@ -402,7 +406,7 @@ begin
   declare k int; nn int := 0; ss int := 0; rr text; b0 dungeon_runs; begin
     select * into b0 from dungeon_runs where player_id = 'tst_dg_b' and day = v_day;   -- put back after (the board and the view use it)
     delete from dungeon_runs where player_id = 'tst_dg_b';
-    r := dungeon_start('tst_dg_b', array[34, 44, 64, 93, 97]);
+    r := dungeon_start('tst_dg_b', array[34, 44, 64, stn, 97]);
     for k in 1..300 loop
       update dungeon_runs set room = 1, state = state || jsonb_build_object('phase', 'choose', 'offers', '[{"kind":"card","tier":5,"amount":0}]'::jsonb,
         'pend', '{"shards":0,"cards":[]}'::jsonb) where player_id = 'tst_dg_b' and day = v_day;
@@ -457,7 +461,7 @@ begin
   if r->>'action' <> 'poison' or (r->>'dot')::int < 1 or (r->>'dmg')::int < 1 then bad := bad || 'poison move ' || r::text || '; '; end if;
   if combat_pool_act(50, 1, 5, 0, 0, 1000, '[]', true)->>'action' <> 'charging' then bad := bad || 'no charge; '; end if;
   -- 14d. A monster's guard absorbs the hit first.
-  r := dungeon_start('tst_dg_c', array[34, 44, 64, 93, 97]);
+  r := dungeon_start('tst_dg_c', array[34, 44, 64, stn, 97]);
   if not coalesce((r->>'ok')::boolean, false) then bad := bad || 'start c: ' || r::text || '; ';
   else
     update dungeon_runs set state = state || jsonb_build_object('round', 0, 'foes', jsonb_build_array(foe || '{"sh":100000}')) where player_id = 'tst_dg_c' and day = v_day;
