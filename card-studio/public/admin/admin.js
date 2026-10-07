@@ -264,7 +264,7 @@ function navItems(path, { onPick } = {}) {
     LOCKED.map(([t, ic, ph]) => h('span', { class: 'nav-item locked', 'aria-disabled': 'true' }, icon(ic), t, h('span', { class: 'tag' }, icon('lock'), ph))),
     h('div', { class: 'nav-tools' },
       h('div', { class: 'nav-head' }, 'Tools'),
-      h('a', { class: 'nav-item', href: '/', target: '_blank', rel: 'noopener' }, icon('palette'), 'Card Studio', h('span', { class: 'tag', style: 'border:0' }, icon('external'))),
+      h('a', { class: 'nav-item', href: '/index.html', target: '_blank', rel: 'noopener' }, icon('palette'), 'Card Studio', h('span', { class: 'tag', style: 'border:0' }, icon('external'))),
       session.login ? h('form', { method: 'post', action: '/logout', style: 'margin:0' },
         h('button', { class: 'nav-item', type: 'submit', style: 'width:100%;border:0;background:none;cursor:pointer;font:inherit' }, icon('logout'), 'Log out')) : null),
   ];
