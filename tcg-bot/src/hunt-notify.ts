@@ -8,6 +8,7 @@ import { buf, art } from './playing-posts.js';
 import { botWork } from './bot-work.js';
 import { outboxDone } from './outbox.js';
 import { getBalance } from './balance.js';
+import { utcToday } from './store.js';
 
 // Poll the hunt_events outbox and post each event to the notifications channel. The game
 // logic (SQL) writes events; the bot is the only process that can post to Discord, so it
@@ -148,7 +149,7 @@ export async function huntPicture(ev: { kind: string; hunt_id?: number; created_
   }
   if (ev.kind === 'player_done') {
     const id = String(p.player_id ?? '');
-    const day = new Date(ev.created_at ?? Date.now()).toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
+    const day = utcToday(new Date(ev.created_at ?? Date.now())); // the game day of the event (store.ts, = SQL game_day)
     const [{ data: pl }, { data: hunt }, { data: hits }] = await Promise.all([
       sb.from('players').select('username, avatar').eq('id', id).maybeSingle(),
       sb.from('hunts').select('name').eq('id', ev.hunt_id ?? 0).maybeSingle(),
