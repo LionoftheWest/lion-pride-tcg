@@ -75,10 +75,15 @@ function setTile(s, selected) {
     + `<span class="u3-set__meta"><span class="u3-set__code">${esc(s.code)}</span><span class="u3-set__owned">${fmtFull(s.owned)}/${fmtFull(s.cards)}</span></span>${isNew}</span></button>`;
 }
 
+// The pack fan of a count tile (1, 2 or 3 packs, as today's chooser): one SVG, so the packs behind the front pack
+// need no stacking order and no extra box.
+const FAN = { 1: [], 5: [[-14, -18]], 10: [[-14, -18], [14, 18]] };
 function countTile(n, best, packImg) {
-  const fan = `<img src="${esc(packImg)}" alt="" draggable="false">`;
+  const img = (t = '') => `<image href="${esc(packImg)}" width="100" height="140"${t ? ` transform="${t}"` : ''}/>`;
+  const fan = `<svg class="u3-count__fan" viewBox="0 0 100 140" aria-hidden="true" focusable="false">`
+    + `${FAN[n].map(([deg, dx]) => img(`translate(${dx} 0) rotate(${deg} 50 126)`)).join('')}${img()}</svg>`;
   return `<button type="button" class="u3-count${best ? ' is-best' : ''}" data-count="${n}" aria-label="Open ${n} pack${n === 1 ? '' : 's'}">`
-    + `<span class="u3-count__fan" data-n="${n}" style="--u3-pack:url('${esc(packImg)}')">${fan}</span><span class="u3-count__n"><i aria-hidden="true">×</i>${n}</span></button>`;
+    + `${fan}<span class="u3-count__n"><i aria-hidden="true">×</i>${n}</span></button>`;
 }
 
 // The pack picture of the count tiles: the selected set's pack (D-90). Season 1 keeps today's pack (pack_still.png);

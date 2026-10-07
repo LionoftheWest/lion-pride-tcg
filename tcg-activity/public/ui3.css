@@ -483,12 +483,7 @@ body:not([data-last-input="pointer"]) .u3-set:focus-visible, body:not([data-last
   border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); transition: transform var(--dur-instant) var(--ease-out); }
 .u3-count:active { transform: scale(.97); }
 .u3-count.is-best { background: var(--gold-a10); border-color: var(--gold); }
-.u3-count__fan { position: relative; isolation: isolate; display: block; height: var(--sp-7); aspect-ratio: 5 / 7; }
-.u3-count__fan img { position: relative; z-index: 2; display: block; height: 100%; width: 100%; object-fit: contain; }
-/* the packs behind the front pack (5 and 10): the same picture, turned (no extra node, so no box overlaps) */
-.u3-count__fan[data-n="5"]::before, .u3-count__fan[data-n="10"]::before, .u3-count__fan[data-n="10"]::after { content: ""; position: absolute; inset: 0; z-index: 1;
-  background: var(--u3-pack) center / contain no-repeat; transform-origin: 50% 90%; transform: translateX(-18%) rotate(-14deg); }
-.u3-count__fan[data-n="10"]::after { transform: translateX(18%) rotate(14deg); }
+.u3-count__fan { display: block; height: var(--sp-7); aspect-ratio: 5 / 7; overflow: visible; }
 .u3-count__n { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); font-variant-numeric: tabular-nums; }
 .u3-count__n i { font-style: normal; font-size: var(--fs-caption); color: var(--text-secondary); margin-right: var(--sp-half); }
 .u3-count.is-best .u3-count__n { color: var(--gold); }
