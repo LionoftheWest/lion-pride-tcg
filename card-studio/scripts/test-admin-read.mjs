@@ -30,6 +30,12 @@
  *   A15 admin_dungeon: runs, rooms reached, deaths, kills by monster type, Shards / cards / packs paid, the boards, the Gauntlet
  *       week, the damage of each card, the reconcile (and a broken run HP shows)
  *   A16 admin_feed: the whole game, newest first, the kinds, the keyset pages, the kind filter, an unknown kind is refused
+ * The pull source update (1 more FAKE member tst_adpull_6 around the REAL card ledger start, schema_migrations card_ledger.sql;
+ * the numbers of that period are measured against the same period before the seed, because real pulls are there too):
+ *   A17 card_ledger reason pack is the only source of each pull: admin_pulls_since() = the card ledger start; the overview
+ *       gives since only when the start cuts the period, and packs_opened counts only the opens from since (an open before
+ *       the ledger has no cards); admin_cards pulls_since, admin_member pulls_since, admin_card pulls.since and the pull_luck
+ *       report since name the same time
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -65,6 +71,13 @@ const MUTATIONS = {
   'A16 the feed misses a big pull': ['rarity_rank(k.rarity::text) >= 2', 'rarity_rank(k.rarity::text) >= 5'],
   'A16 the feed keyset repeats a row': ['ev.key < p_before_key))', 'ev.key <= p_before_key))'],
   'A16 the feed kind filter lets pulls in': ["where 'pull' = any (v_k) and", 'where true and'],
+  'A17 the pull start reads another migration': ["where file = 'card_ledger.sql';\n", "where file = 'pack_ledger_strict.sql';\n"],
+  'A17 packs_opened counts the opens before the ledger': ['l.created_at >= greatest(t0, v_since) and', 'l.created_at >= t0 and'],
+  'A17 since shows when the ledger covers the whole period': ["'since', case when v_since > t0 then v_since end,", "'since', v_since,"],
+  'A17 the cards page has no pull start': ["'pulls_since', case when admin_pulls_since() > t0 then admin_pulls_since() end,", "'pulls_since', null::timestamptz,"],
+  'A17 the member page has no pull start': ["        'pulls_since', admin_pulls_since(),\n", ''],
+  'A17 the card page has no pull start': ["        'since', admin_pulls_since(),\n        'total'", "        'total'"],
+  'A17 pull luck has no since': ["jsonb_build_object('since', admin_pulls_since()) else", "'{}'::jsonb else"],
   'A7 reconcile is always ok': ["'unexplained', (select coalesce(sum(unexplained), 0) from rec), 'ok', not exists (select 1 from rec where unexplained <> 0)", "'unexplained', (select coalesce(sum(unexplained), 0) from rec), 'ok', true"],
   'A10 D1 looks one day late': ['ad.day = j.jd + x.nd)) kept', 'ad.day = j.jd + x.nd + 1)) kept'],
   'A11 anon can execute': ["execute format('revoke execute on function %s from public, anon, authenticated', f);", "execute format('grant execute on function %s to anon', f);"],
@@ -73,6 +86,8 @@ const MUTATIONS = {
 const A = 'tst_admin_1', B = 'tst_admin_2', C = 'tst_admin_3';
 // The 2026-10-07 update: two more fake members in May 2026 (another id prefix: the tst_admin search cases stay the same).
 const D = 'tst_adread_4', E = 'tst_adread_5';
+// The pull source update: one more fake member around the real card ledger start (another id prefix: no search case changes).
+const F = 'tst_adpull_6';
 const HASH = 'a_0123456789abcdef0123456789abcdef';
 // What the seed adds to a number of admin_card (o = after, b = before the seed): a jsonb path, or the field of one array item.
 const dl = (o, b, path) => `((${o} #>> '{${path}}')::numeric - coalesce((${b} #>> '{${path}}')::numeric, 0))`;
@@ -87,6 +102,7 @@ declare res jsonb := '[]'; o jsonb; o2 jsonb; e jsonb; h bigint; nrm bigint[]; i
   prim text; ok boolean; n int; i int; full_list jsonb; paged jsonb; cur jsonb; rate_n numeric; rate_ir numeric; fns text[];
   k text; v_before int;
   bx jsonb; by_ jsonb; bz jsonb; run_d bigint; fa bigint; want jsonb; n_more int; pw_d bigint; t_all int; t_pct int;
+  v_since timestamptz; d_s date; ob jsonb; nrm_f bigint[];
 begin
   ${mig ? `execute $m$${mig}$m$;` : '-- the database as it is'}
   perform set_config('tcg.skip_welcome', 'on', true);
@@ -98,6 +114,13 @@ begin
   bx := admin_card(x); by_ := admin_card(y); bz := admin_card(z);
   select primitive into prim from effect_primitives where kind = 'prank' order by primitive limit 1;
   rate_n := (balance_get('pulls')->'rates'->>'normal')::numeric; rate_ir := (balance_get('pulls')->'rates'->>'illustrated_rare')::numeric;
+  -- A17: the real card ledger start and the overview of its two game days before the seed
+  v_since := (select min(applied_at) from schema_migrations where file = 'card_ledger.sql');
+  if v_since is null then raise exception 'RESULTS %', jsonb_build_array(jsonb_build_object('case', 'A17 card_ledger.sql is in schema_migrations', 'ok', false)); end if;
+  d_s := game_day(v_since);
+  -- F pulls 9 other normal cards (not X, Y or Z: the A14 cases count what the seed adds to those)
+  select array_agg(id order by id) into nrm_f from (select id from cards where rarity = 'normal' order by id offset 9 limit 9) c;
+  ob := admin_overview(d_s, d_s + 1);
 
   -- ---------------------------------------------------------------- the seed (all times Mountain Time, March 2026)
   insert into players (id, username, created_at) values
@@ -217,6 +240,20 @@ begin
   insert into player_cards (player_id, card_id, quantity, first_obtained_at) values ('${D}', x, 2, ${mt('2026-05-05 10:06')});
   update players p set pack_balance = (select coalesce(sum(amount), 0) from pack_ledger l where l.player_id = p.id),
                        shard_balance = (select coalesce(sum(amount), 0) from shard_ledger l where l.player_id = p.id) where p.id like 'tst_adread_%';
+
+  -- ---------------------------------------------------------------- the pull source seed (A17): F around the card ledger start
+  -- F earns 3 packs, opens 1 an hour BEFORE the ledger (no card row, like every open before card_ledger.sql), then 2 an hour
+  -- after it: 10 cards with reason pack (9 normal, 1 illustrated rare).
+  insert into players (id, username, created_at) values ('${F}', 'tst pull six', v_since - interval '3 hours');
+  insert into daily_claims (player_id, day, task, amount, created_at) values ('${F}', d_s, 'checkin', 3, v_since - interval '2 hours');
+  insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id, created_at) values
+    ('${F}', 3, 'earned_checkin', 'daily_claim', d_s || ':checkin', v_since - interval '2 hours'),
+    ('${F}', -1, 'opened', 'open', 'tst-open-f0', v_since - interval '1 hour'),
+    ('${F}', -1, 'opened', 'open', 'tst-open-f1', v_since + interval '1 hour'), ('${F}', -1, 'opened', 'open', 'tst-open-f1', v_since + interval '1 hour');
+  insert into card_ledger (player_id, card_id, amount, reason, ref_kind, ref_id, created_at)
+    select '${F}', c, 1, 'pack', 'open', 'tst-open-f1', v_since + interval '1 hour' from unnest(nrm_f || ir[1:1]) c;
+  insert into player_cards (player_id, card_id, quantity, first_obtained_at) select '${F}', c, 1, v_since + interval '1 hour' from unnest(nrm_f || ir[1:1]) c;
+  update players p set pack_balance = (select coalesce(sum(amount), 0) from pack_ledger l where l.player_id = p.id) where p.id = '${F}';
 
   -- ---------------------------------------------------------------- A1 + A2: the overview of week 1
   o := admin_overview('2026-03-02', '2026-03-08');
@@ -555,11 +592,42 @@ begin
   begin perform admin_feed(array['bogus'], null, 5); ok := false; exception when others then ok := sqlerrm like '%unknown kind bogus%'; end;
   res := res || jsonb_build_object('case', 'A16 an unknown feed kind is refused', 'ok', ok);
 
+  -- ---------------------------------------------------------------- A17 the pull source and its start (since)
+  o := admin_overview(d_s, d_s + 1);
+  res := res || jsonb_build_object('case', 'A17 admin_pulls_since() = the first schema_migrations row of card_ledger.sql', 'ok',
+    admin_pulls_since() = v_since, 'got', jsonb_build_object('fn', admin_pulls_since(), 'want', v_since));
+  res := res || jsonb_build_object('case', 'A17 overview of the ledger start days: since = the start; the seed adds 10 pulls (9 normal, 1 illustrated rare) from 2 packs; 3 packs opened in the period', 'ok',
+    (o->'pulls'->>'since')::timestamptz = v_since
+    and (o->'pulls'->>'cards_pulled')::int - (ob->'pulls'->>'cards_pulled')::int = 10
+    and (o->'pulls'->>'packs_opened')::int - coalesce((ob->'pulls'->>'packs_opened')::int, 0) = 2
+    and (o->'packs'->>'opened')::int - (ob->'packs'->>'opened')::int = 3
+    and (select coalesce(sum((e->>'actual')::int), 0) from jsonb_array_elements(o->'pulls'->'by_rarity') e where e->>'rarity' = 'normal')
+      - (select coalesce(sum((e->>'actual')::int), 0) from jsonb_array_elements(ob->'pulls'->'by_rarity') e where e->>'rarity' = 'normal') = 9
+    and (select coalesce(sum((e->>'actual')::int), 0) from jsonb_array_elements(o->'pulls'->'by_rarity') e where e->>'rarity' = 'illustrated_rare')
+      - (select coalesce(sum((e->>'actual')::int), 0) from jsonb_array_elements(ob->'pulls'->'by_rarity') e where e->>'rarity' = 'illustrated_rare') = 1,
+    'got', jsonb_build_object('after', (o->'pulls') - 'by_rarity', 'before', (ob->'pulls') - 'by_rarity', 'opened', jsonb_build_array(ob->'packs'->'opened', o->'packs'->'opened')));
+  o := admin_overview(d_s + 1, d_s + 1);
+  o2 := admin_overview('2026-03-02', '2026-03-08');
+  res := res || jsonb_build_object('case', 'A17 since is null when the ledger covers the period; a period before the ledger names the start', 'ok',
+    o->'pulls'->'since' = 'null' and (o2->'pulls'->>'since')::timestamptz = v_since,
+    'got', jsonb_build_array(o->'pulls'->'since', o2->'pulls'->'since'));
+  o := admin_member('${F}');
+  res := res || jsonb_build_object('case', 'A17 member F: 10 pulls, 1 rare+, pulls_since = the start', 'ok',
+    o->'collection'->'pulls' = '10' and o->'collection'->'pulls_rare_plus' = '1' and (o->'collection'->>'pulls_since')::timestamptz = v_since,
+    'got', (o->'collection') - 'by_season');
+  res := res || jsonb_build_object('case', 'A17 admin_cards pulls_since (only when the start cuts the period), admin_card pulls.since, pull_luck since', 'ok',
+    (admin_cards(d_s, d_s + 1, 'pulls', 1, 0)->>'pulls_since')::timestamptz = v_since and admin_cards(d_s + 1, d_s + 1, 'pulls', 1, 0)->'pulls_since' = 'null'
+    and (admin_card(ir[1])->'pulls'->>'since')::timestamptz = v_since
+    and (admin_report('pull_luck', '{"min_pulls": 10, "limit": 1000}')->>'since')::timestamptz = v_since
+    and not (admin_report('hunt_board', '{}') ? 'since'),
+    'got', jsonb_build_object('cards', admin_cards(d_s, d_s + 1, 'pulls', 1, 0)->'pulls_since', 'card', admin_card(ir[1])->'pulls'->'since',
+      'luck', admin_report('pull_luck', '{"min_pulls": 10, "limit": 1000}')->'since'));
+
   -- ---------------------------------------------------------------- A11 security
   -- The read functions of admin_read.sql (its grant list; other files add admin_ functions of their own, for example the writers).
   fns := array[${READ_FNS}];
   res := res || jsonb_build_object('case', 'A11 the ' || cardinality(fns) || ' admin read functions exist; the old timeline and cards signatures are gone', 'ok',
-    cardinality(fns) = 19 and (select bool_and(to_regprocedure(f) is not null) from unnest(fns) f)
+    cardinality(fns) = 20 and (select bool_and(to_regprocedure(f) is not null) from unnest(fns) f)
     and to_regprocedure('public.admin_member_timeline(text,timestamp with time zone,integer,text)') is null
     and to_regprocedure('public.admin_cards(date,date,text,integer,integer)') is null,
     'got', (select jsonb_agg(f) from unnest(fns) f where to_regprocedure(f) is null));

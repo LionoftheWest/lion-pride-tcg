@@ -381,7 +381,7 @@ async function pageOverview(main) {
   fill(ch.body, async () => shardsChart(await ecoP));
   fill(pu.body, async () => {
     const o = await ovP;
-    pu.setSub(`${N(o.pulls.cards_pulled)} pulls from ${N(o.packs.opened)} packs. Range = 99% band around expected.`);
+    pu.setSub(`${N(o.pulls.cards_pulled)} pulls from ${N(o.pulls.packs_opened ?? o.packs.opened)} packs${o.pulls.since ? ` since ${when(o.pulls.since)}` : ''}. Range = 99% band around expected.`);
     return pullsTable(o.pulls);
   });
   const hu = panel('Hunt participation'), he = panel('Data health');

@@ -95,6 +95,20 @@ end $$;
 comment on function public.admin_period(date, date, integer) is
 $c$[admin] The period rule of the Admin view functions: null p_to = today (game_day()), null p_from = p_default_days days that end on p_to. Refuses p_from after p_to and a period longer than 2 years. Returns from, to, days and the time bounds t0 (game_day_start(from)) and t1 (game_day_start(to + 1)). Service role only.$c$;
 
+-- THE PULL SOURCE (one place: admin_pulls_since). Each pulled card with its rarity and time is only in card_ledger reason
+-- 'pack' (open_packs -> add_cards_to_player -> card_move). The card ledger started with card_ledger.sql (2026-10-07 03:40 UTC);
+-- before it, open_packs did not store the card ids: pack_ledger 'opened' rows give the packs and the time but no card, the
+-- card_ledger opening_balance rows give the copies held per member (pulls, trades, gifts and prizes together), and
+-- player_cards.first_obtained_at (the Activity pull feed) gives only the first copy of each card. So no source gives each pull
+-- before the ledger, and the pull numbers say the time they start from (since).
+create or replace function public.admin_pulls_since()
+returns timestamptz language sql stable security invoker set search_path = public as $$
+  select min(applied_at) from schema_migrations where file = 'card_ledger.sql';
+$$;
+
+comment on function public.admin_pulls_since() is
+$c$[admin] The time from which card_ledger reason pack holds every pulled card: the first schema_migrations row of card_ledger.sql (null when that file is not applied). Before it no table holds each pulled card (open_packs did not store the card ids). Service role only.$c$;
+
 -- ============================================================ 1. overview
 create or replace function public.admin_overview(p_from date default null, p_to date default null)
 returns jsonb language plpgsql stable security invoker set search_path = public as $$
@@ -105,6 +119,7 @@ declare
   rates jsonb := coalesce(balance_get('pulls')->'rates', '{}'::jsonb);
   v_members jsonb; v_packs jsonb; v_shards jsonb; v_cards jsonb; v_pulls jsonb; v_trade jsonb; v_auction jsonb; v_gifts jsonb;
   v_hunt jsonb; v_dungeon jsonb; v_effects jsonb; v_reports jsonb; n_pulled bigint;
+  v_since timestamptz := admin_pulls_since();
 begin
   -- members (players, admin_active_days)
   with act as (select * from admin_active_days(d0, d1)),
@@ -164,13 +179,17 @@ begin
     'copies_held_at_end', (select coalesce(sum(c.amount), 0) from card_ledger c where c.created_at < t1))
   into v_cards;
 
-  -- pulls by rarity vs the set rates (card_ledger reason pack, balance pulls.rates)
+  -- pulls by rarity vs the set rates (card_ledger reason pack, balance pulls.rates); since = the ledger start when it cuts the period,
+  -- packs_opened = the pack_ledger opens from that time (the same window as the pulls: packs_opened x pack_size = cards_pulled)
   select coalesce(sum(c.amount), 0) into n_pulled from card_ledger c where c.reason = 'pack' and c.amount > 0 and c.created_at >= t0 and c.created_at < t1;
   with r as (select key as rarity, value::numeric as rate from jsonb_each_text(rates)),
   a as (select k.rarity::text as rarity, sum(c.amount) n from card_ledger c join cards k on k.id = c.card_id
          where c.reason = 'pack' and c.amount > 0 and c.created_at >= t0 and c.created_at < t1 group by 1),
   m as (select coalesce(r.rarity, a.rarity) rarity, coalesce(a.n, 0) actual, r.rate from r full join a on a.rarity = r.rarity)
   select jsonb_build_object('cards_pulled', n_pulled, 'pack_size', balance_get('pulls')->'pack_size',
+    'since', case when v_since > t0 then v_since end,
+    'packs_opened', (select coalesce(-sum(l.amount), 0) from pack_ledger l
+                      where l.reason = 'opened' and l.created_at >= greatest(t0, v_since) and l.created_at < t1),
     'by_rarity', coalesce(jsonb_agg(jsonb_build_object('rarity', m.rarity, 'rate', m.rate, 'actual', m.actual,
         'expected', round(n_pulled * coalesce(m.rate, 0), 2),
         'ratio', case when n_pulled * coalesce(m.rate, 0) > 0 then round(m.actual / (n_pulled * m.rate), 3) end,
@@ -244,7 +263,7 @@ begin
 end $$;
 
 comment on function public.admin_overview(date, date) is
-$c$[admin] The Admin view home: the numbers of one period (default the last 7 game days). members: total and new (players.created_at), active and by_day / by_week (admin_active_days, game rows), discord_only (chat or voice with no game action). packs: by_reason, earned (+ rows, not gift_received), opened, gifted_between_members, held_at_end (pack_ledger), held_now (players.pack_balance), waiting_in_bell_now (gift_claims unclaimed). shards: earned and spent by reason, held (shard_ledger, players.shard_balance), waiting_in_bell_now (gift_claims.shards). cards: copies in and out by reason (card_ledger). pulls: cards pulled from packs by rarity (card_ledger reason pack) against balance pulls.rates: expected, ratio and z (a small sample shows in cards_pulled). trades (trade_offers, card_trades, trade_listings), auctions (auctions, auction_bids), gifts (gift_claims), hunt (hunts, hunt_combat_log, combat_actions, hunt_hits, pack_ledger hunt_reward), dungeon (dungeon_runs), effects (card_plays), reports (player_reports). Service role only.$c$;
+$c$[admin] The Admin view home: the numbers of one period (default the last 7 game days). members: total and new (players.created_at), active and by_day / by_week (admin_active_days, game rows), discord_only (chat or voice with no game action). packs: by_reason, earned (+ rows, not gift_received), opened, gifted_between_members, held_at_end (pack_ledger), held_now (players.pack_balance), waiting_in_bell_now (gift_claims unclaimed). shards: earned and spent by reason, held (shard_ledger, players.shard_balance), waiting_in_bell_now (gift_claims.shards). cards: copies in and out by reason (card_ledger). pulls: cards pulled from packs by rarity (card_ledger reason pack, the only source of each pull) against balance pulls.rates: expected, ratio and z (a small sample shows in cards_pulled); since = admin_pulls_since() when it is after the period start (the pulls before it are not in any table), else null; packs_opened = pack_ledger opened from since (or the period start) to the period end. trades (trade_offers, card_trades, trade_listings), auctions (auctions, auction_bids), gifts (gift_claims), hunt (hunts, hunt_combat_log, combat_actions, hunt_hits, pack_ledger hunt_reward), dungeon (dungeon_runs), effects (card_plays), reports (player_reports). Service role only.$c$;
 
 -- ============================================================ 2. economy time series
 create or replace function public.admin_economy(p_from date default null, p_to date default null, p_bucket text default 'day')
@@ -420,6 +439,7 @@ begin
                         from (select coalesce(k.season, '(none)') s, count(pc.card_id) u, count(*) t from cards k
                                 left join player_cards pc on pc.card_id = k.id and pc.player_id = p_player group by 1) x),
         'pulls', (select coalesce(sum(amount), 0) from card_ledger where player_id = p_player and reason = 'pack' and amount > 0),
+        'pulls_since', admin_pulls_since(),
         'pulls_rare_plus', (select coalesce(sum(c.amount), 0) from card_ledger c join cards k on k.id = c.card_id
                               where c.player_id = p_player and c.reason = 'pack' and c.amount > 0 and k.rarity::text <> 'normal')),
     'stat_points', jsonb_build_object(
@@ -478,7 +498,7 @@ begin
 end $$;
 
 comment on function public.admin_member(text) is
-$c$[admin] One member on one page: profile (players; avatar_url = the Discord CDN picture of players.avatar, the URL the Activity uses; guild_joined_at, left_guild_at, in_guild), app (app_sessions visits and the last one, page_views by screen, tutorial_steps, notifications and unread, profile_log and wishlist_log changes, admin_actions on the member), activity (admin_active_days: first and last active, active days, chat and voice days, days by source), balances with the ledger sums as a check (players, pack_ledger, shard_ledger, gift_claims waiting), collection (my_collection_power, power_rank = 1 + the members with more power in collection_power_all and power_rank_of = the members with power, player_cards by rarity and by season of cards, stars, pulls from card_ledger reason pack), stat_points (player_cards.stat_points), achievements (achievement_claims), effects_now (player_effects not used up, discord_effects pending or active), effect_plays (card_plays, card_effect_cooldowns), hunt (hunt_hits, hunt_combat_log, combat_actions, pack_ledger hunt_reward), dungeon (dungeon_runs), trading (card_trades, open trade_offers, trade_listings, auctions, auction_bids, wishlists), reports by the member and against the member (player_reports.player_id and target_id, the newest 20 each, text cut to 200 characters). {found: false} for an unknown id. Service role only.$c$;
+$c$[admin] One member on one page: profile (players; avatar_url = the Discord CDN picture of players.avatar, the URL the Activity uses; guild_joined_at, left_guild_at, in_guild), app (app_sessions visits and the last one, page_views by screen, tutorial_steps, notifications and unread, profile_log and wishlist_log changes, admin_actions on the member), activity (admin_active_days: first and last active, active days, chat and voice days, days by source), balances with the ledger sums as a check (players, pack_ledger, shard_ledger, gift_claims waiting), collection (my_collection_power, power_rank = 1 + the members with more power in collection_power_all and power_rank_of = the members with power, player_cards by rarity and by season of cards, stars, pulls and pulls_rare_plus from card_ledger reason pack since pulls_since = admin_pulls_since()), stat_points (player_cards.stat_points), achievements (achievement_claims), effects_now (player_effects not used up, discord_effects pending or active), effect_plays (card_plays, card_effect_cooldowns), hunt (hunt_hits, hunt_combat_log, combat_actions, pack_ledger hunt_reward), dungeon (dungeon_runs), trading (card_trades, open trade_offers, trade_listings, auctions, auction_bids, wishlists), reports by the member and against the member (player_reports.player_id and target_id, the newest 20 each, text cut to 200 characters). {found: false} for an unknown id. Service role only.$c$;
 
 -- ============================================================ 5. one member's timeline
 -- The signature changed (p_kinds, 2026-10-07): the old 4-argument version goes, so a call by name is not ambiguous.
@@ -740,14 +760,14 @@ begin
   o as (select r.*, row_number() over (order by case v_sort when 'copies' then copies when 'owners' then owners when 'pulls' then pulls when 'trades' then trades
                        when 'attacks' then attacks when 'damage' then damage when 'plays' then plays + supports else 0 end desc, id) rn from r)
   select jsonb_build_object('period', pr - 't0' - 't1', 'total', (select count(*) from o), 'limit', v_lim, 'offset', v_off, 'sort', v_sort, 'search', v_q,
-    'hunt_damage_total', (select d from tot),
+    'hunt_damage_total', (select d from tot), 'pulls_since', case when admin_pulls_since() > t0 then admin_pulls_since() end,
     'rows', coalesce((select jsonb_agg(to_jsonb(o) - 'rn' order by o.rn) from o where o.rn > v_off and o.rn <= v_off + v_lim), '[]'))
   into v;
   return v;
 end $$;
 
 comment on function public.admin_cards(date, date, text, integer, integer, text) is
-$c$[admin] Each card (one page, default 50, max 200; sort copies, owners, pulls, trades, attacks, damage, plays or id, descending, then id; p_search: a part of the card name, case does not matter, or the card id; total = the matching cards): copies, owners and stars now (player_cards); in the period (default 30 days): pulls (card_ledger reason pack), trades (card_trades, each side that holds the card), attacks (hunt_combat_log), damage and damage_won (hunt_hits, damage_won in Hunts with status defeated), damage_share (of all hunt_hits damage in the period), supports (combat_actions mode hunt, kind support), plays (card_plays). Service role only.$c$;
+$c$[admin] Each card (one page, default 50, max 200; sort copies, owners, pulls, trades, attacks, damage, plays or id, descending, then id; p_search: a part of the card name, case does not matter, or the card id; total = the matching cards): copies, owners and stars now (player_cards); in the period (default 30 days): pulls (card_ledger reason pack; pulls_since = admin_pulls_since() when it is after the period start, else null), trades (card_trades, each side that holds the card), attacks (hunt_combat_log), damage and damage_won (hunt_hits, damage_won in Hunts with status defeated), damage_share (of all hunt_hits damage in the period), supports (combat_actions mode hunt, kind support), plays (card_plays). Service role only.$c$;
 
 -- ============================================================ 7. Hunts
 create or replace function public.admin_hunts(p_limit integer default 20, p_offset integer default 0)
@@ -897,7 +917,7 @@ returns jsonb language sql immutable security invoker set search_path = public a
      "about": "players.pack_balance, gift_claims not claimed, pack_ledger opened, admin_active_days."},
     {"key": "pull_luck", "title": "Pull luck by member against the set rates", "params": {"min_pulls": 25, "limit": 100},
      "columns": ["player_id", "username", "pulls", "rare_plus", "expected_rare_plus", "ratio", "z"],
-     "about": "card_ledger reason pack (all time) and balance pulls.rates. rare_plus = every rarity but normal. z = (actual - expected) / sqrt(n p (1 - p))."},
+     "about": "card_ledger reason pack (from since = admin_pulls_since(), the card ledger start) and balance pulls.rates. rare_plus = every rarity but normal. z = (actual - expected) / sqrt(n p (1 - p))."},
     {"key": "shard_sinks", "title": "Where Shards go and come from", "params": {"days": 30},
      "columns": ["direction", "reason", "detail", "shards", "rows", "members"],
      "about": "shard_ledger by reason, and the Shop spend by shop_purchases.kind."},
@@ -1004,11 +1024,12 @@ begin
   end if;
 
   return jsonb_build_object('key', p_key, 'title', cat->>'title', 'params', prm, 'columns', cat->'columns', 'rows', rows,
-    'row_count', jsonb_array_length(rows), 'limit', lim);
+    'row_count', jsonb_array_length(rows), 'limit', lim)
+    || case when p_key = 'pull_luck' then jsonb_build_object('since', admin_pulls_since()) else '{}'::jsonb end;
 end $$;
 
 comment on function public.admin_report(text, jsonb) is
-$c$[admin] Runs one report of admin_report_catalog: p_params over the catalog defaults (limit default 100, max 1000). Returns key, title, params, columns (the CSV order), rows (objects) and row_count. An unknown key is refused. Service role only.$c$;
+$c$[admin] Runs one report of admin_report_catalog: p_params over the catalog defaults (limit default 100, max 1000). Returns key, title, params, columns (the CSV order), rows (objects) and row_count; pull_luck also since (admin_pulls_since()). An unknown key is refused. Service role only.$c$;
 
 -- ============================================================ 10. growth
 create or replace function public.admin_growth(p_from date default null, p_to date default null)
@@ -1120,6 +1141,7 @@ begin
                      from (select pc.player_id, p.username, pc.quantity, pc.ascension from player_cards pc join players p on p.id = pc.player_id
                             where pc.card_id = p_card order by pc.ascension desc, pc.quantity desc, pc.player_id limit 10) x),
     'pulls', jsonb_build_object(
+        'since', admin_pulls_since(),
         'total', (select coalesce(sum(amount), 0) from card_ledger where card_id = p_card and reason = 'pack' and amount > 0),
         'first', (select min(created_at) from card_ledger where card_id = p_card and reason = 'pack' and amount > 0),
         'last', (select max(created_at) from card_ledger where card_id = p_card and reason = 'pack' and amount > 0),
@@ -1171,7 +1193,7 @@ begin
 end $$;
 
 comment on function public.admin_card(bigint) is
-$c$[admin] One card on one page: the card (cards, subjects name and type), owners, copies and stars now and by star level (player_cards), with_stat_points, top_owners (the 10 owners with the most stars, then copies), pulls (card_ledger reason pack: total, first, last, by week), in_by_reason and out_by_reason (card_ledger, all time), trading (card_trades swaps that hold the card, trade_offers by status, trade_listings, auctions, wishlists now, wishlist_log adds), hunt (hunt_hits hunts and damage, hunt_combat_log attacks, combat_actions supports, hunt_squads), dungeon per mode (dungeon_runs with the card in the squad; combat_actions mode dungeon / gauntlet: attacks, damage to foes, supports, HP healed, damage taken, downs), plays (card_plays by primitive). {found: false} for an unknown id. Service role only.$c$;
+$c$[admin] One card on one page: the card (cards, subjects name and type), owners, copies and stars now and by star level (player_cards), with_stat_points, top_owners (the 10 owners with the most stars, then copies), pulls (card_ledger reason pack: since = admin_pulls_since(), total, first, last, by week), in_by_reason and out_by_reason (card_ledger, all time), trading (card_trades swaps that hold the card, trade_offers by status, trade_listings, auctions, wishlists now, wishlist_log adds), hunt (hunt_hits hunts and damage, hunt_combat_log attacks, combat_actions supports, hunt_squads), dungeon per mode (dungeon_runs with the card in the squad; combat_actions mode dungeon / gauntlet: attacks, damage to foes, supports, HP healed, damage taken, downs), plays (card_plays by primitive). {found: false} for an unknown id. Service role only.$c$;
 
 -- ============================================================ 12. the Dungeon and the Gauntlet
 create or replace function public.admin_dungeon(p_from date default null, p_to date default null)
@@ -1404,7 +1426,8 @@ begin
     'public.admin_member_timeline(text,timestamp with time zone,integer,text,text[])', 'public.admin_cards(date,date,text,integer,integer,text)',
     'public.admin_hunts(integer,integer)', 'public.admin_hunt(bigint)', 'public.admin_health()', 'public.admin_report_catalog()',
     'public.admin_report(text,jsonb)', 'public.admin_growth(date,date)', 'public.admin_timeline_kinds()', 'public.admin_card(bigint)',
-    'public.admin_dungeon(date,date)', 'public.admin_feed_kinds()', 'public.admin_feed(text[],timestamp with time zone,integer,text)'] loop
+    'public.admin_dungeon(date,date)', 'public.admin_feed_kinds()', 'public.admin_feed(text[],timestamp with time zone,integer,text)',
+    'public.admin_pulls_since()'] loop
     execute format('revoke execute on function %s from public, anon, authenticated', f);
     execute format('grant execute on function %s to service_role', f);
   end loop;
