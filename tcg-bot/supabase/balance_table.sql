@@ -39,6 +39,7 @@
 -- rebuilt after hunt_boss_moves.sql (#218) by a three-way merge (base = the text this file was built from, ours = the
 -- live text after #218, theirs = this file's version); one conflict (the spawn passive pool) kept both. combat_core.sql, adventure_gate.sql, gauntlet.sql,
 -- dungeon_v2.sql and hunt_early_boss.sql are rebuilt in the same PR with the same numbers read from the table.
+-- balance_settings_numbers.sql (2026-10-07) read the Dungeon round cap from balance: the second md5 of dungeon_attack is its result (the same text below).
 do $g$
 declare x text[]; m text;
   -- fix_search_path.sql (2026-10-07): the same 8 helpers with the line SET search_path TO 'public' (this file now writes it too).
@@ -67,7 +68,7 @@ begin
     ['play_card_effect', 'e62c11f53b2a82ebff6869214f63d3e9', 'ab436a5ddf42c3ac95f196f2c9b1ba0d'],
     ['my_collection_power', '8f687924f72babcc2b241f0135d810b3', 'a25e996ebcfc49edfeac7d149a5ab4da'],
     ['top_collection_power', 'ea9eb37e441bf3beb8902ebd54b5ebbd', '529a2cacae1407a63e5e304960e81f8c'],
-    ['dungeon_attack', '90585187581590dd5cbf03d936c92f33', '4c30628c23a9cc1b1fe19619ad63b61f'],
+    ['dungeon_attack', '90585187581590dd5cbf03d936c92f33', '0d16a49744abd8af83320d0bd70f8105'],
     ['dungeon_support', '07722fee6e10161a268b477402eb66f4', '48559abccd521a049306926bd7044de8'],
     ['dungeon_enemy_turn', 'd1d340aa97bb9ecda19b12d136ea52f4', '37fdecdbac2988fef67bef10a12ea825'],
     ['combat_pool_act', '740c827714bd36d9e85b87ebe0d76892', 'ea274af685c81c435bb3c5f715d5c6b6']] loop
@@ -1688,7 +1689,7 @@ begin
   if info->>'type' not in ('Character', 'Creature') then return jsonb_build_object('ok', false, 'error', 'not_attacker'); end if;
   if (c->>'down')::boolean then return jsonb_build_object('ok', false, 'error', 'downed'); end if;
   v_round := (st->>'round')::int;
-  if v_round >= coalesce((cfg->>'round_cap')::int, 40) then
+  if v_round >= balance_num('dungeon', 'round_cap')::int then   -- balance dungeon.round_cap
     perform dungeon_settle(r.id, 'fell', false); return jsonb_build_object('ok', false, 'error', 'round_cap'); end if;
   if (c->>'cd')::int >= v_round + 1 and exists (
       select 1 from jsonb_each(st->'cards') e join cards cc on cc.id = e.key::bigint join subjects s on s.id = cc.subject_id

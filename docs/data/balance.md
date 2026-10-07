@@ -14,13 +14,14 @@ The triggers on `balance` check each change:
 - `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
 - `balance_check_dungeon` (`balance_check_dungeon()`): Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.shards, chest.card_chance and offers heal / buff / shards / ward / revive must be 5 numbers (tier 1 to 5), tier_weights must add up to more than 0, the Shards whole numbers, chest.card_chance and door.gamble_rare at most 1, door.rare_tier and offers.min_tier whole numbers from 1 to 5. (balance_check keeps every leaf and its type, so boss_hp_estimate keeps its 4 numbers.)
 - `balance_check_economy` (`balance_check_economy()`): Trigger (before insert, update on balance): the pulls rates must add up to 1, pulls pack_size must be a whole number from 1 to 20, daily streak_cycle must be at least 1.
+- `balance_check_settings` (`balance_check_settings()`): Trigger (before insert, update on balance): the shapes of the keys dungeon, gauntlet and adventure_gate (balance_settings_numbers.sql) and dungeon_rewards.chest_rarity. dungeon: squad, budget, floors, round_cap and rules.budget whole numbers of at least 1; a cost (a whole number of at least 1) for every card rarity; hp_growth, atk_growth, foe_mult hp / atk above 0 for fight, horde, elite, miniboss, guardian; rest_heal and rest_revive shares from 0 to 1 (rest_revive above 0); rules.boost a number; room_weights numbers for the room types that add up to more than 0. gauntlet: budget a whole number of at least 1; room_weights the same, without treasure (no loot). adventure_gate: attackers a whole number. dungeon_rewards.chest_rarity: tiers 1 to 5, each 3 numbers that add up to more than 0.
 - `balance_log_write` (`balance_log_write()`): Trigger (after insert, update on balance): writes a balance_log row with the old value, the new value and balance_who. Writes nothing when the value and the note did not change.
 
 - The shape of a value stays the same: an update cannot remove a leaf or change its type (see `balance_check`).
 
 ## Keys
 
-[achievement_rewards](#key-achievement-rewards), [ascend_cost](#key-ascend-cost), [boss_atk](#key-boss-atk), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
+[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [boss_atk](#key-boss-atk), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
 
 <a id="key-achievement-rewards"></a>
 
@@ -254,6 +255,20 @@ Shape: `object { badges: object { asc1: object { packs: number }, asc3: object {
     "extra_packs": 1,
     "cards_per_pack": 10
   }
+}
+```
+
+<a id="key-adventure-gate"></a>
+
+### adventure_gate
+
+The unlock gate of the Hunt, the Dungeon and the Gauntlet (adventure_gate): attackers = the least number of owned attacker cards (Character or Creature, one per card) a member needs, with every starter gift redeemed.
+
+Shape: `object { attackers: number }`
+
+```json
+{
+  "attackers": 8
 }
 ```
 
@@ -586,6 +601,72 @@ Shape: `number`
 8
 ```
 
+<a id="key-dungeon"></a>
+
+### dungeon
+
+The Dungeon fight and run rules (settings.dungeon keeps only the flag and the seed salt). squad = the cards in a run (dungeon_start), budget = the squad points (a day's rule can set a smaller one), cost = the points of a card by rarity (every rarity; dungeon_start, dungeon_view, gauntlet_pool). floors = the floors of a dungeon and of a Gauntlet week (5 rooms each). round_cap = the most rounds of one fight (dungeon_attack; the run falls). A foe (dungeon_make_foe): base HP x hp_growth ^ (floor - 1) x (1 + room_growth x (room - 1)), base attack x atk_growth ^ (floor - 1), then x foe_mult of its kind (fight, horde, elite, miniboss, guardian: hp and atk). rest_heal / rest_revive = the share of max HP a rest room heals / gives back to a downed card (dungeon_enter). room_weights = the odds of each room type in rooms 2 to 4 (dungeon_generate). rules = the daily rule numbers (dungeon_rules): boost = the extra damage of the tag rules (0.25 = +25%), budget = the small-budget rule. A day keeps the rule it drew. Shapes: balance_check_settings.
+
+Shape: `object { atk_growth: number, budget: number, cost: object { event: number, full_art: number, gold: number, illustrated_rare: number, normal: number, promo: number, secret_rare: number }, floors: number, foe_mult: object { elite: object { atk: number, hp: number }, fight: object { atk: number, hp: number }, guardian: object { atk: number, hp: number }, horde: object { atk: number, hp: number }, miniboss: object { atk: number, hp: number } }, hp_growth: number, rest_heal: number, rest_revive: number, room_growth: number, room_weights: object { choice: number, elite: number, fight: number, horde: number, miniboss: number, rest: number, treasure: number }, round_cap: number, rules: object { boost: number, budget: number }, squad: number }`
+
+```json
+{
+  "cost": {
+    "gold": 5,
+    "event": 4,
+    "promo": 3,
+    "normal": 1,
+    "full_art": 4,
+    "secret_rare": 3,
+    "illustrated_rare": 2
+  },
+  "rules": {
+    "boost": 0.25,
+    "budget": 9
+  },
+  "squad": 5,
+  "budget": 12,
+  "floors": 30,
+  "foe_mult": {
+    "elite": {
+      "hp": 1.9,
+      "atk": 1.3
+    },
+    "fight": {
+      "hp": 1,
+      "atk": 1
+    },
+    "horde": {
+      "hp": 0.6,
+      "atk": 0.75
+    },
+    "guardian": {
+      "hp": 4,
+      "atk": 1.7
+    },
+    "miniboss": {
+      "hp": 2.6,
+      "atk": 1.45
+    }
+  },
+  "hp_growth": 1.42,
+  "rest_heal": 0.4,
+  "round_cap": 40,
+  "atk_growth": 1.22,
+  "rest_revive": 0.25,
+  "room_growth": 0.06,
+  "room_weights": {
+    "rest": 8,
+    "elite": 10,
+    "fight": 38,
+    "horde": 12,
+    "choice": 14,
+    "miniboss": 7,
+    "treasure": 11
+  }
+}
+```
+
 <a id="key-dungeon-prizes"></a>
 
 ### dungeon_prizes
@@ -686,9 +767,9 @@ Shape: `object { daily: array(10) of object { shards: number }, weekly: array(10
 
 ### dungeon_rewards
 
-Dungeon run rewards (dungeon_cfg merges this key into settings.dungeon): shards_kill per kill, floor_shards per floor, shards_room per room, at most run_shards_cap Shards in one run; loot_chance = the card drop chance, loot = the drop rarity odds up to floor "to"; chest_rarity = the chest rarity odds by chest tier. tier_weights = the odds of tier 1 to 5 (dungeon_tier: the chest tier and each room reward tier). chest = a treasure room (dungeon_enter): shards[tier - 1] + shards_per_floor x floor Shards, a card with the chance card_chance[tier - 1]. door = the dark door (dungeon_choose): gamble_rare = the chance of a rare chest (else an ambush), a chest of tier rare_tier. offers = the room rewards by tier (dungeon_offers): heal, buff, ward, revive (shares of max HP or damage), shards[tier - 1] + shards_per_floor x floor; min_tier = the least tier of a reset and a revive. Every tier array has 5 values (tier 1 to 5; balance_check_dungeon). The fight numbers and the flag stay in settings.dungeon.
+Dungeon run rewards (dungeon_cfg merges this key into settings.dungeon): shards_kill per kill, floor_shards per floor, at most run_shards_cap Shards in one run; loot_chance = the card drop chance, loot = the drop rarity odds up to floor "to"; chest_rarity = the chest rarity odds by chest tier. tier_weights = the odds of tier 1 to 5 (dungeon_tier: the chest tier and each room reward tier). chest = a treasure room (dungeon_enter): shards[tier - 1] + shards_per_floor x floor Shards, a card with the chance card_chance[tier - 1]. door = the dark door (dungeon_choose): gamble_rare = the chance of a rare chest (else an ambush), a chest of tier rare_tier. offers = the room rewards by tier (dungeon_offers): heal, buff, ward, revive (shares of max HP or damage), shards[tier - 1] + shards_per_floor x floor; min_tier = the least tier of a reset and a revive. Every tier array has 5 values (tier 1 to 5; balance_check_dungeon). The fight and run numbers are balance dungeon; the flag and the seed salt stay in settings.dungeon.
 
-Shape: `object { chest: object { card_chance: array(5) of number, shards: array(5) of number, shards_per_floor: number }, chest_rarity: object { 1: array(3) of number, 2: array(3) of number, 3: array(3) of number, 4: array(3) of number, 5: array(3) of number }, door: object { gamble_rare: number, rare_tier: number }, floor_shards: number, loot: array(4) of object { illustrated_rare: number, normal: number, secret_rare: number, to: number }, loot_chance: number, offers: object { buff: array(5) of number, heal: array(5) of number, min_tier: object { reset: number, revive: number }, revive: array(5) of number, shards: array(5) of number, shards_per_floor: number, ward: array(5) of number }, run_shards_cap: number, shards_kill: number, shards_room: number, tier_weights: array(5) of number }`
+Shape: `object { chest: object { card_chance: array(5) of number, shards: array(5) of number, shards_per_floor: number }, chest_rarity: object { 1: array(3) of number, 2: array(3) of number, 3: array(3) of number, 4: array(3) of number, 5: array(3) of number }, door: object { gamble_rare: number, rare_tier: number }, floor_shards: number, loot: array(4) of object { illustrated_rare: number, normal: number, secret_rare: number, to: number }, loot_chance: number, offers: object { buff: array(5) of number, heal: array(5) of number, min_tier: object { reset: number, revive: number }, revive: array(5) of number, shards: array(5) of number, shards_per_floor: number, ward: array(5) of number }, run_shards_cap: number, shards_kill: number, tier_weights: array(5) of number }`
 
 ```json
 {
@@ -783,7 +864,6 @@ Shape: `object { chest: object { card_chance: array(5) of number, shards: array(
   },
   "loot_chance": 0.06,
   "shards_kill": 1,
-  "shards_room": 5,
   "chest_rarity": {
     "1": [
       100,
@@ -880,6 +960,28 @@ Shape: `object { full_art: object { cd: number, power: number }, gold: object { 
   "illustrated_rare": {
     "cd": 0.9,
     "power": 1.15
+  }
+}
+```
+
+<a id="key-gauntlet"></a>
+
+### gauntlet
+
+The Gauntlet numbers (settings.gauntlet keeps only the flag). budget = the squad points of the week's seeded squad (gauntlet_squad; the card costs are balance dungeon.cost; the squad is always 3 attackers + 2 supports). room_weights = the odds of each room type in rooms 2 to 4 (gauntlet_generate); no treasure, because the Gauntlet has no loot (balance_check_settings refuses it). The floors and the foes are the Dungeon's (balance dungeon).
+
+Shape: `object { budget: number, room_weights: object { choice: number, elite: number, fight: number, horde: number, miniboss: number, rest: number } }`
+
+```json
+{
+  "budget": 12,
+  "room_weights": {
+    "rest": 10,
+    "elite": 12,
+    "fight": 40,
+    "horde": 14,
+    "choice": 16,
+    "miniboss": 8
   }
 }
 ```

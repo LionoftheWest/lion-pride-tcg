@@ -2,7 +2,8 @@
 -- "what I don't want is a new player drawing some cards, go into the hunt / dungeon run and not have
 -- redeemed all their cards or try to do it with a small squad").
 -- Open when BOTH are true: no starter gift (new_player, launch_day) is still open, and the member owns
--- at least settings.adventure_gate.attackers (8) attackers (Character / Creature).
+-- at least balance adventure_gate.attackers (8) attackers (Character / Creature; balance_settings_numbers.sql moved it
+-- from settings).
 -- The server enforces it: lock_hunt_squad refuses 'locked'; a member with no locked squad cannot fight
 -- (hunt_squad_allows); dungeon_start refuses 'locked' (dungeon.sql). Test: card-studio/scripts/test-dungeon.mjs.
 -- Idempotent. Apply BEFORE dungeon.sql.
@@ -21,7 +22,9 @@ do $g$ begin
 end $g$;
 -- GUARD-END
 
-insert into public.settings (key, value) values ('adventure_gate', jsonb_build_object('attackers', 8))
+-- The number is in balance (balance_settings_numbers.sql has the same row and note; the first file to run writes it).
+insert into public.balance (key, value, note) values ('adventure_gate', '{"attackers":8}',
+  $n$The unlock gate of the Hunt, the Dungeon and the Gauntlet (adventure_gate): attackers = the least number of owned attacker cards (Character or Creature, one per card) a member needs, with every starter gift redeemed.$n$)
 on conflict (key) do nothing;
 
 create or replace function public.adventure_gate(p_player text) returns jsonb
@@ -31,7 +34,7 @@ language sql stable set search_path = public as $$
     'gifts_open', g.open, 'gifts_total', g.total,
     'attackers', a.n, 'need', g.need)
   from (select count(*) filter (where claimed_at is null)::int open, count(*)::int total,
-               coalesce((select (value->>'attackers')::int from settings where key = 'adventure_gate'), 8) need
+               balance_num('adventure_gate', 'attackers')::int need   -- balance adventure_gate.attackers
           from gift_claims where player_id = p_player and kind in ('new_player', 'launch_day')) g,
        (select count(*)::int n from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
           where pc.player_id = p_player and pc.quantity > 0 and s.type in ('Character', 'Creature')) a;

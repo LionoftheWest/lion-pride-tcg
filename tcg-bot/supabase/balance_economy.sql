@@ -31,6 +31,7 @@ begin
   if to_regclass('public.balance') is null then raise exception 'balance_economy.sql: apply balance_table.sql first'; end if;
   foreach x slice 1 in array array[
   -- shard_ledger_strict.sql (2026-10-07) rebuilt the Shard refs: the second md5 of claim_daily, claim_daily_earn and dungeon_pay is its result.
+  -- balance_settings_numbers.sql (2026-10-07) moved the Dungeon and Gauntlet numbers to balance: the second md5 of dungeon_cfg and gauntlet_view is its result (the same text below).
     ['claim_daily(text,text)', 'f3e6465d7321c8dcc1e577ae2183a71f', '06541bd131cdb91d3af34abdcf87b675'],
     ['claim_daily_earn(text,date,integer,integer,integer)', '6b1d1f2e7195418176f8523a89c0aefa', '11c7903f3652523f35e4860e43e0710e'],
     ['dailies_view(text)', '5b1085b985cb8d92754636700eac4210', 'a6fd7a1215aa849a5ffcf5f100ebfc4e'],
@@ -41,10 +42,10 @@ begin
     ['play_card_effect(text,bigint,text)', '2fc1d7c6fa08f03c87cac5c9caaa9c6a', 'ab436a5ddf42c3ac95f196f2c9b1ba0d'],
     ['dungeon_pay(text,date)', '4f2bec1174f40079ffbaccd62d47bb5a', 'c39c6a3b51b2206c2416412a1f49e6cb'],
     ['dungeon_prize_tick()', '7a98852db2bd22c66ee443a1e053fd44', '5300f541d81b66010ff65074027e89fa'],
-    ['gauntlet_view(text)', 'fea70762286ef3a464fa186fd63ade5c', '1c1729a6db87ade14a4b28ee716f82d6'],
+    ['gauntlet_view(text)', 'fea70762286ef3a464fa186fd63ade5c', '0b729835b6ce3b124f0c947b1098a8de'],
     ['welcome_packs()', '409d04f25d7b784e51fd0128b0cbceaa', 'ccdd29c234f840f3905073c8c45885fc'],
     ['shard_cfg()', '2b6bc0083ea1357a1b1b5eb0810937fd', '471e2913d9da4f9f4b38140cecb98da4'],
-    ['dungeon_cfg()', 'd868897b5cfc542894e5f5893005cb43', '74a6ff97f605266fd6c453b14a8ae302']] loop
+    ['dungeon_cfg()', 'd868897b5cfc542894e5f5893005cb43', '7bcbe6253212fddee36af721f2252508']] loop
     select md5(replace(pg_get_functiondef(('public.' || x[1])::regprocedure), chr(13), '')) into strict m;
     if m not in (x[2], x[3]) then raise exception 'balance_economy.sql: the live % changed since this file was built. Rebuild it from the live text.', x[1]; end if;
   end loop;
@@ -667,9 +668,9 @@ begin
   return jsonb_build_object('ok', true, 'mode', 'gauntlet', 'day', v_day, 'week', v_week,
     'next_at', (v_day + 1)::timestamp at time zone 'America/Denver', 'ends_at', (v_week + 7)::timestamp at time zone 'America/Denver',
     'name', w.name, 'theme', w.theme, 'gate', adventure_gate(p_player), 'cost', cfg->'cost',
-    'budget', coalesce((gauntlet_cfg()->>'budget')::int, (cfg->>'budget')::int, 12),
+    'budget', balance_num('gauntlet', 'budget')::int,
     'squad', (select jsonb_agg(jsonb_build_object('id', x.id, 'type', x.c->>'type', 'rarity', x.c->>'rarity',
-               'cost', coalesce((cfg->'cost'->>(x.c->>'rarity'))::int, 1), 'cp', (x.c->'cmb'->>'cp')::int,
+               'cost', balance_num('dungeon', 'cost', x.c->>'rarity')::int, 'cp', (x.c->'cmb'->>'cp')::int,
                'hp', case when x.c->>'type' in ('Character', 'Creature') then (x.c->'cmb'->>'hp')::int else card_max_hp(0) end,
                'slugs', x.c->'tags') order by x.o)
              from unnest(w.squad) with ordinality x0(id, o) cross join lateral (select x0.id, x0.o, dungeon_card_base(x0.id) c) x),
@@ -722,8 +723,9 @@ CREATE OR REPLACE FUNCTION public.dungeon_cfg()
  STABLE
  SET search_path TO 'public'
 AS $function$
-  -- The run rewards (Shards, loot, chest odds) are in balance dungeon_rewards (balance_economy.sql), the rest in settings.dungeon.
-  select coalesce((select value from settings where key = 'dungeon'), '{}'::jsonb) || balance_get('dungeon_rewards');
+  -- settings.dungeon holds the flag and the seed salt only. Every number is in balance: dungeon (the fight and run rules,
+  -- balance_settings_numbers.sql) and dungeon_rewards (Shards, loot, chest odds, room rewards).
+  select coalesce((select value from settings where key = 'dungeon'), '{}'::jsonb) || balance_get('dungeon') || balance_get('dungeon_rewards');
 $function$;
 
 -- 5. The old settings rows and parts: moved above, so remove them (one number, one source). The flags stay.

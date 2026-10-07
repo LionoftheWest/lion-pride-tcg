@@ -90,7 +90,7 @@ const MUT6 = {   // gauntlet.sql
   gtheme: ["where p.role = 'attacker' and (th is null or th = any(p.tags))", "where p.role = 'attacker' and true"],
   gchar: ["continue when a_key[i] = a_key[j] or a_key[i] = a_key[l] or a_key[j] = a_key[l];", "continue when a_id[i] = a_id[j] or a_id[i] = a_id[l] or a_id[j] = a_id[l];"],
   gseed: ["dungeon_rand(k || '|a|' || p.id) o", "random() o"],
-  gtreasure: ["wts jsonb := coalesce(gc->'room_weights',", "wts jsonb := coalesce(dungeon_cfg()->'room_weights',"],
+  gtreasure: ["wts jsonb := balance_get('gauntlet')->'room_weights';", "wts jsonb := balance_get('dungeon')->'room_weights';"],
   gdoors: ["then array['elite','rest','horde'] else", "then array['elite','rest','treasure','horde','gamble'] else"],
   goffers: ["then array['heal','buff','ward','reset','revive']", "then array['heal','buff','shards','card','ward','reset','revive']"],
   gloot: ["v_loot boolean := coalesce(p_state->>'mode', 'daily') <> 'gauntlet';", "v_loot boolean := true;"],
@@ -495,7 +495,7 @@ begin
              where s.type not in ('Character', 'Creature') and s.ability->>'kind' = 'support') <> 2
          or (select count(distinct lower(regexp_replace(c.name, '^[^'']*''s[[:space:]]+', ''))) from cards c where c.id = any(ids)) <> 5
          or exists (select 1 from cards c where c.id = any(ids) and (c.rarity::text in ('event', 'promo') or c.source::text in ('event', 'promo')))
-         or (select sum(coalesce((dungeon_cfg()->'cost'->>c.rarity::text)::int, 1)) from cards c where c.id = any(ids)) > 12
+         or (select sum(balance_num('dungeon', 'cost', c.rarity::text)) from cards c where c.id = any(ids)) > balance_num('gauntlet', 'budget')
          or (gq->>'theme' is not null and (
               (select count(*) from unnest(ids[1:3]) x join cards c on c.id = x join subjects s on s.id = c.subject_id where (gq->>'theme') = any(s.tag_slugs)) <> 3
               or not exists (select 1 from unnest(ids[4:5]) x join cards c on c.id = x join subjects s on s.id = c.subject_id where s.ability->>'affinity' = gq->>'theme')))
@@ -508,7 +508,7 @@ begin
     delete from gauntlet_weeks where week = w;
     wk2 := gauntlet_generate(w);
     if wk2.squad <> array(select (e #>> '{}')::bigint from jsonb_array_elements(gauntlet_squad(w)->'squad') e)
-       or jsonb_array_length(wk2.floors) <> coalesce((dungeon_cfg()->>'floors')::int, 30)
+       or jsonb_array_length(wk2.floors) <> balance_num('dungeon', 'floors')
        or exists (select 1 from jsonb_array_elements(wk2.floors) fx, jsonb_array_elements(fx) rx where rx->>'type' = 'treasure')
        or (gauntlet_generate(w)).floors <> wk2.floors then bad := bad || 'gauntlet week; '; end if;
     -- 16d. Start (tst_dg_c has an active Dungeon run too): once a day, the week's squad at base level.
