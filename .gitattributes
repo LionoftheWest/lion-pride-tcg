@@ -1,3 +1,6 @@
 # Shell scripts run on the Linux VM (ops/deploy.sh pipes a heredoc to remote bash): LF only.
 *.sh text eol=lf
 ops/caddy/Caddyfile text eol=lf
+
+# The structure snapshot is compared byte for byte (check-schema-drift.mjs): LF only.
+db/schema/** text eol=lf

@@ -1,6 +1,7 @@
 /**
  * Apply a .sql file to the PERSONAL Supabase project via the Management API.
- *   node scripts/apply-sql.mjs <path-to.sql>
+ *   node scripts/apply-sql.mjs <path-to.sql> [--force-superseded]
+ * It REFUSES a file that tcg-bot/supabase/SUPERSEDED.md lists (a re-run would put an old version back).
  * Uses SUPABASE_ACCESS_TOKEN + SUPABASE_URL from this project's .env (override:true
  * so the personal token wins over any ambient work-account token).
  *
@@ -12,7 +13,7 @@
  */
 import dotenv from 'dotenv';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -22,11 +23,26 @@ dotenv.config({ override: true });
 const token = process.env.SUPABASE_ACCESS_TOKEN;
 const url = process.env.SUPABASE_URL || '';
 const ref = (url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
-const file = process.argv[2];
+const file = process.argv.slice(2).find((a) => !a.startsWith('--'));
 
 if (!token) { console.error('Missing SUPABASE_ACCESS_TOKEN in .env'); process.exit(1); }
 if (!ref) { console.error('Could not read the project ref from SUPABASE_URL'); process.exit(1); }
-if (!file) { console.error('Usage: node scripts/apply-sql.mjs <path-to.sql>'); process.exit(1); }
+if (!file) { console.error('Usage: node scripts/apply-sql.mjs <path-to.sql> [--force-superseded]'); process.exit(1); }
+
+// A superseded file would put an old version back (tcg-bot/supabase/SUPERSEDED.md, made by find-superseded.mjs).
+const SUPERSEDED = fileURLToPath(new URL('../../tcg-bot/supabase/SUPERSEDED.md', import.meta.url));
+if (existsSync(SUPERSEDED)) {
+  const row = readFileSync(SUPERSEDED, 'utf8').split(/\r?\n/).find((l) => l.startsWith(`| \`${basename(file)}\` | SUPERSEDED`));
+  if (row) {
+    const reason = row.split(' | ')[1].replace(/^SUPERSEDED:\s*/, '');
+    if (!process.argv.includes('--force-superseded')) {
+      console.error(`REFUSED: ${basename(file)} is superseded (tcg-bot/supabase/SUPERSEDED.md). A re-run today:\n  ${reason.split('; ').join('\n  ')}`);
+      console.error('Write a new migration from the live text (db/schema/functions/). Only if you know why: --force-superseded.');
+      process.exit(1);
+    }
+    console.error(`WARNING: --force-superseded: applying ${basename(file)} although: ${reason}`);
+  }
+}
 
 const LOCKDOWN = fileURLToPath(new URL('../../tcg-bot/supabase/lockdown_grants.sql', import.meta.url));
 const CHECK = fileURLToPath(new URL('./check-grants.mjs', import.meta.url));
