@@ -49,8 +49,10 @@ echo "== deploy $SVC @ $SHORT -> $IP:/home/ubuntu/$DIR"
 
 # The backup scripts: ship the committed tree and run its installer (ops/backup/install.sh).
 if [ "$SVC" = backup ]; then
+  # autocrlf=false: an archive of a sub-tree does not see the root .gitattributes (*.sh eol=lf),
+  # so on Windows the scripts came out with CRLF, and bash on the VM refused them (tested).
   # shellcheck disable=SC2086
-  git archive --format=tar "$SHA:$SRC" $PATHS | $SSH "rm -rf /tmp/lptcg-backup.new && mkdir -m 700 /tmp/lptcg-backup.new && tar -x -C /tmp/lptcg-backup.new && echo $SHA > /tmp/lptcg-backup.new/.deployed-commit && bash /tmp/lptcg-backup.new/install.sh; s=\$?; rm -rf /tmp/lptcg-backup.new; exit \$s"
+  git -c core.autocrlf=false archive --format=tar "$SHA:$SRC" $PATHS | $SSH "rm -rf /tmp/lptcg-backup.new && mkdir -m 700 /tmp/lptcg-backup.new && tar -x -C /tmp/lptcg-backup.new && echo $SHA > /tmp/lptcg-backup.new/.deployed-commit && bash /tmp/lptcg-backup.new/install.sh; s=\$?; rm -rf /tmp/lptcg-backup.new; exit \$s"
   echo "DEPLOYED backup scripts @ $SHORT"; exit 0
 fi
 
