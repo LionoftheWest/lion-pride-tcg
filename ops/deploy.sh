@@ -4,12 +4,12 @@
 #   refuse uncommitted / unpushed code -> ship from git -> build -> swap ->
 #   health check (auto rollback) -> register slash commands (bot) -> chmod 600 secrets.
 #
-# Usage:  ops/deploy.sh <activity|bot|gallery>
+# Usage:  ops/deploy.sh <activity|bot|gallery|backup>   (backup: the nightly DB backup scripts, ops/backup)
 # Env:    ALLOW_BRANCH=1     deploy a pushed commit that is not on origin/main yet
 #         FORCE_UNHEALTHY=1  fail the health check on purpose (tests the rollback)
 set -euo pipefail
 
-SVC="${1:?usage: ops/deploy.sh <activity|bot|gallery>}"
+SVC="${1:?usage: ops/deploy.sh <activity|bot|gallery|backup>}"
 KEY="${KEY:-$HOME/Downloads/ssh-key-2026-09-08.key}"
 VM_HOST="${VM_HOST:-lionpridetcg.duckdns.org}"
 
@@ -22,7 +22,8 @@ case "$SVC" in
             HEALTH='sudo docker logs tcg-bot 2>&1 | grep -q "Ready. Logged in"' ;;
   gallery)  SRC=card-studio/gallery-deploy; DIR=gallery;  NAME=card-gallery; PATHS=".";
             HEALTH='curl -fsS -o /dev/null http://127.0.0.1:4331/' ;;
-  *) echo "unknown service: $SVC (use activity, bot, or gallery)"; exit 2 ;;
+  backup)   SRC=ops/backup;                 DIR=backups/bin; NAME=; PATHS="." ;;  # scripts + crontab, no container
+  *) echo "unknown service: $SVC (use activity, bot, gallery, or backup)"; exit 2 ;;
 esac
 
 cd "$(git rev-parse --show-toplevel)"
@@ -45,6 +46,15 @@ IP=$(nslookup "$VM_HOST" 2>/dev/null | awk '/^Address/ {a=$2} END {print a}')
 [ -n "$IP" ] || { echo "STOP: cannot resolve $VM_HOST"; exit 1; }
 SSH="ssh -i $KEY -o BatchMode=yes -o ConnectTimeout=20 ubuntu@$IP"
 echo "== deploy $SVC @ $SHORT -> $IP:/home/ubuntu/$DIR"
+
+# The backup scripts: ship the committed tree and run its installer (ops/backup/install.sh).
+if [ "$SVC" = backup ]; then
+  # autocrlf=false: an archive of a sub-tree does not see the root .gitattributes (*.sh eol=lf),
+  # so on Windows the scripts came out with CRLF, and bash on the VM refused them (tested).
+  # shellcheck disable=SC2086
+  git -c core.autocrlf=false archive --format=tar "$SHA:$SRC" $PATHS | $SSH "rm -rf /tmp/lptcg-backup.new && mkdir -m 700 /tmp/lptcg-backup.new && tar -x -C /tmp/lptcg-backup.new && echo $SHA > /tmp/lptcg-backup.new/.deployed-commit && bash /tmp/lptcg-backup.new/install.sh; s=\$?; rm -rf /tmp/lptcg-backup.new; exit \$s"
+  echo "DEPLOYED backup scripts @ $SHORT"; exit 0
+fi
 
 # 2. Ship the committed tree (never the working tree) into a staging dir.
 # shellcheck disable=SC2086
@@ -108,5 +118,7 @@ sudo docker images "$NAME" --format '{{.Tag}}' | grep -vxE "latest|prev|$SHORT" 
 # The untagged images those leave behind (2026-10-01: 268 images, 38 GB, the disk was 98% full).
 sudo docker image prune -f >/dev/null || true
 lock
+# A failed nightly backup also DMs the admins; this line shows a backup that stopped running.
+echo "-- last database backup: $(cat /home/ubuntu/backups/last-success 2>/dev/null || echo 'NONE (ops/backup/README.md)')"
 echo "DEPLOYED $NAME @ $SHORT (healthy)"
 REMOTE
