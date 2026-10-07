@@ -2,7 +2,7 @@
 
 -- @function public.balance_check_settings()
 -- md5: a167aede9a85ab36702b7887c4568e9b   (md5(replace(pg_get_functiondef('public.balance_check_settings()'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.balance_check_settings()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -78,4 +78,3 @@ end $function$;
 -- @grants public.balance_check_settings()
 grant execute on function public.balance_check_settings() to postgres;
 grant execute on function public.balance_check_settings() to service_role;
-grant execute on function public.balance_check_settings() to supabase_admin;
