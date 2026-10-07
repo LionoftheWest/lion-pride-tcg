@@ -38,7 +38,7 @@ const DOMAINS = [
     prefixes: ['card_', 'cards_', 'trade_', 'auction_', 'wish', 'gift_card', 'gift_packs', 'grant_packs', 'stat_', 'roster_', 'collection_power'] },
   { slug: 'hunt-and-combat', title: 'Hunt and combat', about: 'The weekly Hunt (raid boss), squads, the combat rules, the logs of each fight, pranks, boons and the Discord effects.',
     names: ['hunts', 'combat_actions', 'card_plays', 'card_effect_cooldowns', 'player_effects', 'discord_effects', 'effect_primitives',
-      'adventure_gate', 'arm_on_open', 'arm_player_effects', 'card_combat', 'card_effect_active', 'card_max_hp', 'close_due_hunts', 'close_hunt', 'close_weekly_boss', 'daily_raid_board', 'deployable_power', 'lock_hunt_squad',
+      'adventure_gate', 'arm_on_open', 'arm_player_effects', 'card_combat', 'card_effect_active', 'card_max_hp', 'close_due_hunts', 'close_hunt', 'close_weekly_boss', 'daily_raid_board', 'deployable_power', 'effect_preview', 'effect_preview_card', 'lock_hunt_squad',
       'next_hunt_close', 'next_hunt_spawn', 'nudge_hunt', 'play_card_effect', 'play_card_effect_choice', 'refund_card_play', 'settle_hunt', 'spawn_hunt', 'spawn_weekly_boss', 'take_player_effect', 'use_effect_charge',
       'weekly_boss_tick'],
     prefixes: ['hunt_', 'combat_'] },
@@ -47,7 +47,7 @@ const DOMAINS = [
     prefixes: ['dungeon_', 'gauntlet_', 'shard_', 'shop_', 'ach_', 'achievement_'] },
   { slug: 'members-and-platform', title: 'Members and platform', about: 'Members, the Dailies, the bell notes, reports, the balance numbers, the flags and the platform jobs.',
     names: ['players', 'daily_activity', 'daily_claims', 'voice_minutes', 'notifications', 'playing_posts', 'player_reports', 'settings', 'balance', 'balance_log', 'schema_migrations',
-      'add_voice_minutes', 'bot_work', 'checkin_streak', 'claim_daily', 'claim_daily_earn', 'claim_first_pack_ping', 'claim_tutorial_reward', 'dailies_tasks', 'dailies_view', 'earned_today', 'gift_all_members', 'give_gift', 'give_gift_all',
+      'add_voice_minutes', 'bot_work', 'checkin_streak', 'claim_daily', 'claim_daily_earn', 'claim_first_pack_ping', 'claim_tutorial_reward', 'dailies_tasks', 'dailies_view', 'earned_today', 'game_day', 'game_day_start', 'gift_all_members', 'give_gift', 'give_gift_all',
       'notify_player', 'playing_today', 'prune_old_rows', 'record_activity', 'rls_auto_enable', 'streak_shield_waiting', 'submit_report'],
     prefixes: ['balance_', 'ledger_'] },
 ];

@@ -145,6 +145,19 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     res.json({ active: data || [] });
   });
 
+  // What each of my effect cards will do when played (one_source_rules.sql effect_preview: the same math as
+  // play_card_effect). Card id -> { primitive, kind, enabled, amount, duration_s, cooldown_h, stats_on, potency,
+  // haste }. The viewer and the play picker read these numbers instead of computing them again in the client.
+  // On demand (not in the 30 s /api/effects/me poll). An error (the function not live yet) answers 503.
+  app.get('/api/effects/preview', async (req, res) => {
+    const me = await caller(req);
+    if (!me) return res.status(401).json({ error: 'not authenticated' });
+    if (!effectsEnabledFor(me.id)) return res.json({ enabled: false, cards: {} });
+    const { data, error } = await supabase.rpc('effect_preview', { p_player: String(me.id) });
+    if (error) return res.status(503).json({ error: error.message });
+    res.json({ enabled: true, cards: data || {} });
+  });
+
   // The recent plays across the server (a live feed on the Community tab).
   let recentCache = null;
   app.get('/api/effects/recent', async (req, res) => {
