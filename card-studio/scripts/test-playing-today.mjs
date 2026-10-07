@@ -23,7 +23,7 @@ begin
   insert into player_cards (player_id, card_id, quantity, first_obtained_at) values
     ('999999999999999921', n1, 1, now()), ('999999999999999921', g, 1, now() - interval '1 minute'),
     ('999999999999999921', old, 1, now() - interval '3 days');
-  insert into pack_ledger (player_id, amount, reason) values ('999999999999999921', -1, 'opened'), ('999999999999999921', -1, 'opened'), ('999999999999999921', 10, 'welcome');
+  insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id) values ('999999999999999921', -1, 'opened', 'open', 'tst-1'), ('999999999999999921', -1, 'opened', 'open', 'tst-2'), ('999999999999999921', 10, 'welcome', 'test', 'playing-today');
   h := spawn_hunt(3);
   insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values (h, '999999999999999921', g, (now() at time zone 'utc')::date, 1200), (h, '999999999999999921', n1, (now() at time zone 'utc')::date, 80);
   v := playing_today('999999999999999921');

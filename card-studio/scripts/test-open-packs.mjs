@@ -7,6 +7,7 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { KEEP_LIVE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/open_packs_batch.sql', import.meta.url)), 'utf8');
@@ -15,7 +16,7 @@ if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 const body = String.raw`do $t$
 declare ids bigint[]; n int; res jsonb := '[]';
 begin
-  execute $m$${mig}$m$;
+  ${KEEP_LIVE(['open_packs'], mig)}
   -- 10 packs of 5; the second half repeats the first, so duplicates must be grouped.
   select array_agg(id) into ids from (select id from cards where in_draw_pool order by id limit 25) x;
   ids := ids || ids;

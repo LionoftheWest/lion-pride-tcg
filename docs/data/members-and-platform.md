@@ -532,7 +532,7 @@ Writes one note in the bell of a member (notifications). The Activity, the bot, 
 - Returns: `jsonb`
 - Security definer: no
 
-Returns the data of the is-playing post for a member today: name, avatar, the playing ping setting, packs opened, Hunt damage and the best new card. The bot (playing-posts.ts) calls it.
+Returns the data of the is-playing post for a member today: name, avatar, the playing ping setting, packs opened, Hunt damage and the best new card (highest rarity_rank, then the newest). The bot (playing-posts.ts) calls it.
 
 <a id="fn-prune-old-rows"></a>
 

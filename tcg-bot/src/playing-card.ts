@@ -8,6 +8,8 @@ import { join } from 'node:path';
 export const W = 1200;
 export const H = 630;
 
+// rank = the one rarity order: the SQL function rarity_rank() gives the same numbers. Both are pinned to
+// shared/rarity-rank.json (playing-card.test.ts here, card-studio/scripts/test-card-decisions.mjs for the SQL).
 export const RARITY: Record<string, { label: string; color: string; rank: number }> = {
   normal: { label: 'Normal', color: '#9aa3b5', rank: 0 },
   illustrated_rare: { label: 'Illustrated Rare', color: '#4DA3FF', rank: 1 },

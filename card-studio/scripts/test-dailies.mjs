@@ -7,6 +7,7 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { PRE_REF_FILE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/dailies.sql', import.meta.url)), 'utf8')
@@ -17,7 +18,7 @@ const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; v jsonb; ok boolean; h bigint; i int; c1 bigint; c2 bigint; sub bigint;
   d date := (now() at time zone 'utc')::date;
 begin
-  execute $m$${mig}$m$;
+  ${PRE_REF_FILE(mig)}
   -- This file's functions read the settings rows dailies (cap, shards, voice_minutes) and pack_earn_multiplier;
   -- balance_economy.sql moved those numbers to balance (the live functions read balance). The test restores the old
   -- rows inside its rolled-back block.
@@ -96,7 +97,7 @@ begin
 
   -- The cap counts chat earnings too.
   update settings set value = value || '{"cap": 3}' where key = 'dailies';
-  perform grant_packs('tst_d1', 1, 'earned_daily', null);   -- chat: tst_d1 has 1 + 1 + 1 = 3 earned
+  perform grant_packs('tst_d1', 1, 'earned_daily', null, 'test', 'dailies');   -- chat: tst_d1 has 1 + 1 + 1 = 3 earned
   insert into card_plays (player_id, target_id, aimed_at, card_id, subject_id, primitive, kind, rarity, outcome)
     values ('tst_d1', 'tst_d2', 'tst_d2', c1, sub, 'spotlight', 'boon', 'normal', 'applied');
   r := claim_daily('tst_d1', 'social');
@@ -107,7 +108,7 @@ begin
 
   -- The dial scales rewards; gifts do not count toward the cap.
   update settings set value = '2'::jsonb where key = 'pack_earn_multiplier';
-  perform grant_packs('tst_d4', 5, 'gift_received', null);
+  perform grant_packs('tst_d4', 5, 'gift_received', null, 'test', 'dailies');
   r := claim_daily('tst_d4', 'checkin');
   res := res || jsonb_build_object('case', 'dial 2 doubles a reward; a gift is not an earning', 'ok',
     (r->>'packs')::int = 2 and earned_today('tst_d4') = 3, 'r', r);

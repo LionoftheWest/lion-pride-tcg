@@ -299,7 +299,7 @@ Table. [shop] One row per card slot of the Shop of a day. shop_pick_stock writes
 - Returns: `boolean`
 - Security definer: no
 
-Internal helper: true when a subject's tags hold an element trait (fire, water, shadow ...). ach_track_values uses it for the Elementalist track.
+Internal helper: true when a subject's tags hold an element trait or an alias of one (card_element / element_aliases). ach_track_values uses it for the Elementalist track.
 
 <a id="fn-ach-tag-badges-text"></a>
 

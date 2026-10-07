@@ -8,6 +8,7 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { PRE_REF_FILE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 if (ref !== 'kgvdqqehefezbypozvrh') throw new Error(`wrong Supabase project: ${ref}`);
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
@@ -29,7 +30,7 @@ if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; d date := (now() at time zone 'America/Denver')::date; n int; n2 int; g bigint; sb int; pb int;
 begin
-  execute $m$${mig}$m$;
+  ${PRE_REF_FILE(mig)}
   update settings set value = value || '{"enabled": true, "cap": 5, "shards": 40}' where key = 'dailies';
   insert into settings (key, value) values ('pack_earn_multiplier', '1') on conflict (key) do update set value = '1';
   insert into players (id, username) values ('tst_sd_a', 'daily a');
@@ -46,7 +47,7 @@ begin
   if (claim_daily('tst_sd_a', 'voice')->>'error') <> 'not_done' then bad := bad || 'voice not done; '; end if;
 
   -- 3. At the 5-pack earn limit: the voice daily still pays 40 Shards and 0 packs (Nathan's rule).
-  insert into pack_ledger (player_id, amount, reason) values ('tst_sd_a', 5, 'earned_daily');
+  insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id) values ('tst_sd_a', 5, 'earned_daily', 'test', 'shards-dailies');
   insert into voice_minutes (player_id, day, minutes) values ('tst_sd_a', d, 45);
   pb := (select pack_balance from players where id = 'tst_sd_a');
   r := claim_daily('tst_sd_a', 'voice');

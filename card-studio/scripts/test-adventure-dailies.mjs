@@ -64,7 +64,7 @@ begin
   -- 4. A Dungeon run today does the Dungeon daily; it counts toward the 5-pack earn limit (packs earned_*).
   insert into dungeon_runs (player_id, day, squad, state, mode, status) values ('tst_ad_a', d, '{1,2,3,4,5}', '{}', 'daily', 'over');
   if not (${task('dungeon')}->>'done')::boolean then bad := bad || 'dungeon run not done; '; end if;
-  insert into pack_ledger (player_id, amount, reason) values ('tst_ad_a', 4, 'earned_daily');
+  insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id) values ('tst_ad_a', 4, 'earned_daily', 'test', 'adventure-dailies');
   r := claim_daily('tst_ad_a', 'dungeon');
   if not coalesce((r->>'ok')::boolean, false) or (r->>'packs')::int <> 0 or (r->>'shards')::int <> 40 then bad := bad || 'dungeon claim at the limit: ' || r::text || '; '; end if;
 

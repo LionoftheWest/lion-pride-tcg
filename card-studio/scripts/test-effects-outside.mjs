@@ -7,6 +7,7 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { KEEP_LIVE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const OLD = process.argv.includes('--old');
@@ -29,7 +30,7 @@ begin
   -- The 5 cards before the migration: their ability and tags must not change.
   select jsonb_object_agg(name, jsonb_build_object('ability', ability, 'tags', tags)) into before from subjects
    where name in ('Kroc Bot', 'Shave your Head', 'Xeno''s Stone Shovel', 'Mob''s "Hiding" Spot', 'Grim''s Pokemon Trainer');
-  ${mig ? 'execute $m$' + mig + '$m$;' : ''}
+  ${mig ? KEEP_LIVE(['claim_daily'], mig) : ''}
   perform set_config('tcg.skip_welcome', 'on', true);
   update settings set value = value || '{"enabled": true}' where key = 'dailies';
   update settings set value = '1'::jsonb where key = 'pack_earn_multiplier';

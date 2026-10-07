@@ -10,7 +10,7 @@ import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPubl
 import { getFrame, setFrame } from './frames.js';
 import { getArtist, setArtist } from './artists.js';
 import { getSource, setSource } from './artsources.js';
-import { getCards, getCard, addCard, updateCard, deleteCard, slotDetails, setSlotDetails } from './cardstore.js';
+import { getCards, getCard, addCard, updateCard, deleteCard, slotDetails, setSlotDetails, subjectType } from './cardstore.js';
 
 // Injected into a card render when ?edit=1: drag to pan, scroll to zoom, and
 // report the framing back to the studio window.
@@ -353,11 +353,13 @@ app.post('/api/tags/:id', async (req, res) => {
     realm: arr(b.realm),
     traits: arr(b.traits),
   };
-  updateCard(c.id, { tags });
+  // The Card Info type is the card type too (subjects.type), so a new card can be pushed.
+  const type = subjectType({ tags }) || subjectType(c);
+  updateCard(c.id, type ? { tags, type } : { tags });
   touch(c.id);
   try {
     const { data: subject } = await supabase.from('subjects').select('id').eq('key', c.id).maybeSingle();
-    if (subject) await supabase.from('subjects').update({ tags }).eq('id', subject.id);
+    if (subject) await supabase.from('subjects').update(type ? { tags, type } : { tags }).eq('id', subject.id);
   } catch { /* live sync is best-effort */ }
   res.json({ ok: true, tags });
 });
