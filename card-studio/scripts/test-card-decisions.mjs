@@ -78,6 +78,7 @@ begin
   res := res || jsonb_build_object('case', 'T1 a DEEZ NUTZ card (Item) cannot attack', 'ok', r->>'error' is not distinct from 'not_attacker', 'r', r);
 
   -- T3 subject 104 in combat ----------------------------------------------------------------------------
+  perform setseed(0.42);   -- a fixed fight: the boss turn could knock Megaman out, and the heal then failed (target_downed)
   r1 := hunt_attack('${P}', h, mega);                 -- Megaman fights (it is in the fight now)
   r2 := hunt_support('${P}', h, red, mega);           -- the Redstone Machine heals Megaman (it is in the fight now)
   r3 := hunt_attack('${P}', h, rob);                  -- Rob: the other cards of the fight are Megaman + the Machine
