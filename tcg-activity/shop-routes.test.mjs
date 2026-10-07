@@ -4,6 +4,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { registerShopRoutes } from './src/shop-routes.js';
 
+// The routes read the Shop numbers like the SQL does: rpc('shard_cfg') = the flag settings.shards.enabled
+// merged with balance key 'shards' (balance_economy.sql). The fake database answers shard_cfg with this
+// object, and every expected number below comes from it. The values differ from the route fallbacks
+// (max 10, each 0), so a route that stops reading shard_cfg fails.
+const SHARD_CFG = { enabled: true, max_packs_per_buy: 25, dupe_values: { normal: 7, secret_rare: 40 }, pack_price: 250 };
+const WRITE_RPCS = new Set(['buy_shop_item', 'convert_dupes']);
+
 // A fake express app and a fake Supabase that records every RPC call.
 function setup({ on = true, me = { id: '111111111111111111' } } = {}) {
   const routes = {};
@@ -14,9 +21,10 @@ function setup({ on = true, me = { id: '111111111111111111' } } = {}) {
       calls.push({ name, args });
       if (name === 'shop_today') return { data: { ok: true, balance: 300, stock: [{ slot: 1, card_id: 7, rarity: 'normal', price: 150, bought: false }] } };
       if (name === 'convertible_copies') return { data: 2 };
+      if (name === 'shard_cfg') return { data: structuredClone(SHARD_CFG) };
       return { data: { ok: true, balance: 150 } };
     },
-    from: (t) => ({ select: () => ({ eq: () => (t === 'settings' ? { maybeSingle: async () => ({ data: { value: { dupe_values: { normal: 5, secret_rare: 40 } } } }) } : { in: async () => ({ data: [{ card_id: 7, quantity: 2 }] }) }) }) }),
+    from: () => ({ select: () => ({ eq: () => ({ in: async () => ({ data: [{ card_id: 7, quantity: 2 }] }) }) }) }),
   };
   const busted = [];
   registerShopRoutes(app, {
@@ -61,7 +69,9 @@ test('a bad kind or a non-integer amount is refused before any RPC', async () =>
   assert.equal((await run('POST /api/shop/buy', { body: { kind: 'pack', qty: 2.5 } })).json.error, 'bad_qty');
   assert.equal((await run('POST /api/shop/buy', { body: { kind: 'card', slot: '1' } })).json.error, 'no_slot');
   assert.equal((await run('POST /api/shards/convert', { body: { cardId: 7, count: '3' } })).json.error, 'bad_count');
-  assert.equal(calls.length, 0);
+  // The bad_qty message reads the limit (shard_cfg, read-only). No write RPC runs.
+  assert.deepEqual(calls.map((c) => c.name), ['shard_cfg']);
+  assert.equal(calls.filter((c) => WRITE_RPCS.has(c.name)).length, 0);
 });
 
 test('the Shop view adds the card details and my owned count to the stock', async () => {
@@ -85,11 +95,10 @@ test('an RPC refusal becomes a 400 with a readable message', async () => {
   assert.equal(json.price, 150);
 });
 
-test('bad_qty: the message names settings.shards.max_packs_per_buy, not a copied 10', async () => {
+test('bad_qty: the message names balance shards.max_packs_per_buy (shard_cfg), not a copied 10', async () => {
   const routes = {};
-  const settings = { maybeSingle: async () => ({ data: { value: { max_packs_per_buy: 25 } } }) };
   registerShopRoutes({ get: (p, h) => { routes[p] = h; }, post: (p, h) => { routes[p] = h; } }, {
-    supabase: { rpc: async () => ({ data: { ok: false, error: 'bad_qty' } }), from: () => ({ select: () => ({ eq: () => settings }) }) },
+    supabase: { rpc: async (name) => (name === 'shard_cfg' ? { data: structuredClone(SHARD_CFG) } : { data: { ok: false, error: 'bad_qty' } }) },
     caller: async () => ({ id: '1' }), rateLimit: () => true, bustUser: () => {}, getCatalogBase: async () => [], shardsOn: () => true,
   });
   const call = async (body) => {
@@ -97,17 +106,17 @@ test('bad_qty: the message names settings.shards.max_packs_per_buy, not a copied
     await routes['/api/shop/buy']({ body }, { status(s) { status = s; return this; }, json(j) { json = j; return this; } });
     return { status, json };
   };
-  for (const body of [{ kind: 'pack', qty: 30 }, { kind: 'pack', qty: 2.5 }]) { // the RPC refusal and the route check
+  for (const body of [{ kind: 'pack', qty: SHARD_CFG.max_packs_per_buy + 5 }, { kind: 'pack', qty: 2.5 }]) { // the RPC refusal and the route check
     const r = await call(body);
     assert.equal(r.status, 400);
     assert.equal(r.json.error, 'bad_qty');
-    assert.equal(r.json.message, 'Buy 1 to 25 packs at a time.');
+    assert.equal(r.json.message, `Buy 1 to ${SHARD_CFG.max_packs_per_buy} packs at a time.`);
   }
 });
 
-test('convertible: the count from SQL and the Shards for each copy from settings.shards.dupe_values', async () => {
+test('convertible: the count from SQL and the Shards for each copy from balance shards.dupe_values (shard_cfg)', async () => {
   const { run, calls } = setup();
   const r = await run('GET /api/shards/convertible', { query: { cardId: '7' } });
-  assert.deepEqual(r.json, { cardId: 7, count: 2, each: 5 });
-  assert.deepEqual(calls[0], { name: 'convertible_copies', args: { p_player: '111111111111111111', p_card: 7 } });
+  assert.deepEqual(r.json, { cardId: 7, count: 2, each: SHARD_CFG.dupe_values.normal });
+  assert.deepEqual(calls.find((c) => c.name === 'convertible_copies'), { name: 'convertible_copies', args: { p_player: '111111111111111111', p_card: 7 } });
 });
