@@ -231,7 +231,7 @@ begin
   end if;
 
   -- Caps (0 or missing = off).
-  select value into v_caps from settings where key = 'card_effect_caps';
+  v_caps := balance_get('card_effect_caps');
   v_caps := coalesce(v_caps, '{}'::jsonb);
   if coalesce((v_caps->>'send_per_day')::int, 0) > 0
      and (select count(*) from card_plays where player_id = p_player and created_at >= v_day and outcome <> 'refunded')   -- effects_spread.sql

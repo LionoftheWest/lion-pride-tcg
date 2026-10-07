@@ -13,7 +13,7 @@
  *              SUPABASE_SERVICE_ROLE_KEY, PORT (default 4441)
  */
 import 'dotenv/config';
-import { measure as measureAchievements, ACHIEVEMENTS, REWARDS, rewardOf, LEDGER } from './src/achievements.js';
+import { measure as measureAchievements, ACHIEVEMENTS, LEDGER } from './src/achievements.js';
 const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
@@ -1101,11 +1101,15 @@ async function measureFor(id) {
   const merged = catalog.map((c) => { const m = mine.get(c.id); return m ? { ...c, owned: true, quantity: m.quantity, ascension: m.ascension } : { ...c, owned: false, quantity: 0, ascension: 0 }; });
   return { p, achs: measureAchievements(merged, p.stats) };
 }
+// The reward of a one-time achievement is balance achievement_rewards.badges (balance_economy.sql). The SQL
+// decides and pays it: the server sends only the key. The answer names what was paid (or, when nothing was
+// paid, the reward from the same table through the balance cache).
+const badgeReward = (key) => bal().achievement_rewards?.badges?.[key] || {};
+const paidReward = (d) => ({ packs: Number(d.packs) || 0, ...(d.title ? { title: d.title } : {}), ...(d.frame ? { frame: d.frame } : {}) });
 async function claimOne(id, key) {
-  const r = rewardOf(key);
-  const { data, error } = await supabase.rpc('claim_achievement', { p_player: id, p_key: key, p_packs: r.packs || 0, p_title: r.title || null, p_frame: r.frame || null });
+  const { data, error } = await supabase.rpc('claim_achievement', { p_player: id, p_key: key });
   if (error) throw new Error(error.message);
-  return { ...data, key, reward: r };
+  return { ...data, key, reward: data?.ok ? paidReward(data) : badgeReward(key) };
 }
 
 // The tiered tracks + tag badges of the caller (achievement_view): { enabled:false } while the flag
@@ -1146,7 +1150,7 @@ const isTierKey = (k) => /^(track|tag):/.test(k);
 
 // Every title and frame in the game (Nathan, 2026-10-03: never hidden): how to get each one, how many
 // members own it, and which ones the caller owns. The tiers and tag badges come from the SQL; the old
-// achievement rewards from src/achievements.js (a retired one shows as no longer available).
+// achievement rewards from balance achievement_rewards.badges (a retired one shows as no longer available).
 app.get('/api/achievements/gallery', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
@@ -1157,7 +1161,7 @@ app.get('/api/achievements/gallery', async (req, res) => {
   const seen = new Set(items.map((i) => `${i.kind}:${i.value}`));
   const retired = await retiredKeys();
   for (const a of ACHIEVEMENTS) {
-    const r = REWARDS[a.key] || {};
+    const r = badgeReward(a.key);
     for (const [kind, value] of [['title', r.title], ['frame', r.frame]]) {
       if (!value || seen.has(`${kind}:${value}`)) continue;
       seen.add(`${kind}:${value}`);
@@ -1199,7 +1203,7 @@ app.post('/api/achievements/claim-all', async (req, res) => {
 });
 
 // Redeem a finished achievement. The server measures it with the same rules the player
-// sees (src/achievements.js); claim_achievement records it once and pays its packs.
+// sees (src/achievements.js); claim_achievement records it once and pays its reward (balance, in SQL).
 app.post('/api/achievements/claim', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });

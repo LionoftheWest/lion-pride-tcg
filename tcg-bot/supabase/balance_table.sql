@@ -62,7 +62,7 @@ begin
     ['hunt_commit_card', '6ef31cb9924f10f32680369ef3057b16', '165a2c131945eb341f8e4864413f6884'],
     ['deployable_power', '10723321c2ee972b3200918687b0d8b0', 'a744b17aff2b54b776663492ac0c4ce1'],
     ['spawn_hunt', '4b9c670ee18c6ece32d5a3a886b9df1d', 'f9d7209d29cd2d9fb788141a57bc2323'],
-    ['play_card_effect', 'e62c11f53b2a82ebff6869214f63d3e9', '2fc1d7c6fa08f03c87cac5c9caaa9c6a'],
+    ['play_card_effect', 'e62c11f53b2a82ebff6869214f63d3e9', 'ab436a5ddf42c3ac95f196f2c9b1ba0d'],
     ['my_collection_power', '8f687924f72babcc2b241f0135d810b3', 'a25e996ebcfc49edfeac7d149a5ab4da'],
     ['top_collection_power', 'ea9eb37e441bf3beb8902ebd54b5ebbd', '529a2cacae1407a63e5e304960e81f8c'],
     ['dungeon_attack', '90585187581590dd5cbf03d936c92f33', '4c30628c23a9cc1b1fe19619ad63b61f'],
@@ -1374,7 +1374,7 @@ begin
   return v_id;
 end $$;
 
--- play_card_effect: the effect tiers, the per-star values and the cooldown knob (the caps stay in settings: phase 2).
+-- play_card_effect: the effect tiers, the per-star values and the cooldown knob (the caps: balance card_effect_caps since balance_economy.sql).
 CREATE OR REPLACE FUNCTION "public"."play_card_effect"("p_player" "text", "p_card" bigint, "p_target" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
@@ -1428,7 +1428,7 @@ begin
   end if;
 
   -- Caps (0 or missing = off).
-  select value into v_caps from settings where key = 'card_effect_caps';
+  v_caps := balance_get('card_effect_caps');
   v_caps := coalesce(v_caps, '{}'::jsonb);
   if coalesce((v_caps->>'send_per_day')::int, 0) > 0
      and (select count(*) from card_plays where player_id = p_player and created_at >= v_day and outcome <> 'refunded')   -- effects_spread.sql

@@ -7,6 +7,7 @@ import { renderRaidBoard, renderSquadSummary } from './raid-cards.js';
 import { buf, art } from './playing-posts.js';
 import { botWork } from './bot-work.js';
 import { outboxDone } from './outbox.js';
+import { getBalance } from './balance.js';
 
 // Poll the hunt_events outbox and post each event to the notifications channel. The game
 // logic (SQL) writes events; the bot is the only process that can post to Discord, so it
@@ -36,9 +37,34 @@ function topPaid(settle: { paid?: Array<{ player_id: string; packs: number }> } 
     .map((p) => `<@${p.player_id}> (${p.packs})`).join(', ');
 }
 
-// The same prizes when the boss falls and when it escapes (settle_hunt, hunt_prizes_fixed.sql).
-function prizeLine(s: { participants?: number; total_packs?: number }): string {
-  return `${s.participants ?? 0} hunters earned **${s.total_packs ?? 0}** packs: 1st 7, 2nd 5, 3rd 4, 4th-10th 3, every other hunter 1.`;
+// The Raid prizes: balance hunt_prizes (balance_economy.sql), the same key settle_hunt pays from. The same prizes
+// when the boss falls and when it escapes.
+export interface HuntPrizes { base: number; ranks: number[] }
+export function huntPrizes(v: unknown): HuntPrizes {
+  const p = v as { base?: unknown; ranks?: unknown } | null;
+  const base = Number(p?.base);
+  const ranks = Array.isArray(p?.ranks) ? p!.ranks.map(Number) : null;
+  if (!Number.isFinite(base) || !ranks || ranks.some((r) => !Number.isFinite(r))) throw new Error('balance: hunt_prizes has no base or ranks');
+  return { base, ranks };
+}
+const ordinal = (n: number): string => {
+  const t = n % 100, u = n % 10;
+  return `${n}${t >= 11 && t <= 13 ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th'}`;
+};
+/** "1st 7, 2nd 5, 3rd 4, 4th-10th 3, every other hunter 1": places with the same prize are joined. */
+export function prizeText(p: HuntPrizes): string {
+  const parts: string[] = [];
+  for (let i = 0; i < p.ranks.length;) {
+    let j = i;
+    while (j + 1 < p.ranks.length && p.ranks[j + 1] === p.ranks[i]) j += 1;
+    parts.push(`${i === j ? ordinal(i + 1) : `${ordinal(i + 1)}-${ordinal(j + 1)}`} ${p.ranks[i]}`);
+    i = j + 1;
+  }
+  return [...parts, `every other hunter ${p.base}`].join(', ');
+}
+function prizeLine(s: { participants?: number; total_packs?: number }, prizes?: HuntPrizes): string {
+  if (!prizes) throw new Error('hunt-notify: the prizes (balance hunt_prizes) are needed for this post');
+  return `${s.participants ?? 0} hunters earned **${s.total_packs ?? 0}** packs: ${prizeText(prizes)}.`;
 }
 
 // The top 3 players by total damage dealt to the boss, as ranked lines.
@@ -50,7 +76,7 @@ function topDamage(top: unknown): string {
     .join('\n');
 }
 
-function format(ev: { kind: string; payload: Record<string, unknown> }): string | null {
+function format(ev: { kind: string; payload: Record<string, unknown> }, prizes?: HuntPrizes): string | null {
   const p = ev.payload || {};
   switch (ev.kind) {
     case 'spawn': {
@@ -67,14 +93,14 @@ function format(ev: { kind: string; payload: Record<string, unknown> }): string 
       const s = (p.settle ?? {}) as { participants?: number; total_packs?: number };
       const top = topDamage(p.top);
       return `🏆 **${p.name} has been DESTROYED!**  [${p.tier}]\n`
-        + prizeLine(s)
+        + prizeLine(s, prizes)
         + (top ? `\n**Top 3 damage:**\n${top}` : '');
     }
     case 'expired': {
       const s = (p.settle ?? {}) as { participants?: number; total_packs?: number };
       const top = topDamage(p.top);
       return `💀 **${p.name} escaped.** The pride did not defeat it in time.\n`
-        + prizeLine(s) + ' A new boss appears Thursday.'
+        + prizeLine(s, prizes) + ' A new boss appears Thursday.'
         + (top ? `\n**Top 3 damage:**\n${top}` : '');
     }
     // No 'attack' case: Nathan's rule (2026-09-27) is one summary when a member
@@ -144,8 +170,8 @@ export async function huntPicture(ev: { kind: string; hunt_id?: number; created_
 export const pingsRole = (kind: string): boolean => kind === 'spawn';
 
 /** A raid post: the event text plus the button that opens the Activity (every kind). */
-export function huntPost(ev: { kind: string; payload: Record<string, unknown> }): MessageCreateOptions | null {
-  const content = format(ev);
+export function huntPost(ev: { kind: string; payload: Record<string, unknown> }, prizes?: HuntPrizes): MessageCreateOptions | null {
+  const content = format(ev, prizes);
   return content ? { content, components: [launchActivityRow()] } : null;
 }
 
@@ -163,7 +189,9 @@ async function drain(client: Client): Promise<void> {
       .order('id', { ascending: true })
       .limit(BATCH);
     for (const ev of events ?? []) {
-      const post = huntPost(ev as never);
+      // The result posts list the prizes (balance hunt_prizes); a balance error stops here and the event waits.
+      const prizes = ev.kind === 'defeat' || ev.kind === 'expired' ? huntPrizes((await getBalance()).hunt_prizes) : undefined;
+      const post = huntPost(ev as never, prizes);
       let sent = true; // an event with no post has nothing to send: mark it done
       if (post) {
         // The leaderboard and the squad summary carry a picture (a failed picture still posts the text).

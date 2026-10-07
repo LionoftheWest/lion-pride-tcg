@@ -4,11 +4,14 @@ import { firstPackMessage, firstPackPingEnabled } from './first-pack.js';
 import { LAUNCH_ACTIVITY_ID } from './ui/launch.js';
 
 test('the first-pack post @mentions the member and opens the Activity, not a command', () => {
-  const m = firstPackMessage('123', 3);
+  const m = firstPackMessage('123', 3, 25);
   assert.match(m.content ?? '', /<@123>/);
   assert.match(m.content ?? '', /\*\*3 packs\*\*/);
   assert.doesNotMatch(m.content ?? '', /\/[a-z]+/, 'must not tell the member to type a slash command');
-  assert.match(firstPackMessage('9', 1).content ?? '', /\*\*1 pack\*\*/); // singular
+  assert.match(firstPackMessage('9', 1, 25).content ?? '', /\*\*1 pack\*\*/); // singular
+  // The bonus count is balance daily.chat_bonus_at (25 today): the text is the same as before, and follows the value.
+  assert.ok((m.content ?? '').endsWith('You earn a pack each day you post, and a bonus pack at 25 messages.'), m.content);
+  assert.match(firstPackMessage('9', 1, 30).content ?? '', /a bonus pack at 30 messages\./);
 
   const rows = (m.components ?? []).map((r) => ('toJSON' in r ? r.toJSON() : r)) as {
     components: { custom_id?: string; label?: string }[];

@@ -51,7 +51,7 @@ begin
     ['open_packs(text,bigint[],integer)', '78cb45be91d898fa0b3dcbde7c8dcd10'],
     ['claim_gift(text,bigint)', '3492a584dd9a8a56a934ce91b8374c4d'],
     ['buy_shop_item(text,text,integer,bigint,integer)', 'c84f7625fb66024c8d15bfec410e01ff'],
-    ['dungeon_pay(text,date)', '4f2bec1174f40079ffbaccd62d47bb5a'],
+    ['dungeon_pay(text,date)', '95c577bb1b5334fe7b30b5d6e4458791'],
     ['dungeon_settle(bigint,text,boolean)', '5d493824f4f6080d9a08c3491d9dc595']] loop
     select md5(replace(pg_get_functiondef(('public.' || x[1])::regprocedure), chr(13), '')) into strict m;
     if m <> x[2] then raise exception 'card_ledger.sql: the live % changed since this file was built. Check the card helpers against it and rebuild.', x[1]; end if;

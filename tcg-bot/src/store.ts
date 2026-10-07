@@ -1,11 +1,12 @@
 import { getSupabase } from './supabase.js';
+import { balanceInt, getBalance } from './balance.js';
 import {
   type PackAward,
+  type PullTable,
   type Rarity,
-  BONUS_THRESHOLD,
-  PACK_SIZE,
   drawPack,
   groupByRarity,
+  pullTable,
 } from './draw.js';
 
 /** A card as stored in the database. */
@@ -52,20 +53,21 @@ export async function ensurePlayer(id: string, username: string, avatar?: string
   knownPlayers.set(id, avatar === undefined ? knownPlayers.get(id) : avatar);
 }
 
-// The earn dial (settings.pack_earn_multiplier), cached briefly so a message
-// burst does not hammer the settings table. An event week just changes this value.
-let multiplierCache = { value: 1, at: 0 };
+// The earn dial (balance pack_earn_multiplier, balance_economy.sql), through the balance cache (60 s) so a
+// message burst does not hammer the table. An event week just changes this value (/packrate).
 async function earnMultiplier(): Promise<number> {
-  if (Date.now() - multiplierCache.at < 60_000) return multiplierCache.value;
-  const supabase = getSupabase();
-  const { data } = await supabase
-    .from('settings')
-    .select('value')
-    .eq('key', 'pack_earn_multiplier')
-    .maybeSingle();
-  const v = Number(data?.value);
-  multiplierCache = { value: Number.isFinite(v) && v >= 0 ? v : 1, at: Date.now() };
-  return multiplierCache.value;
+  const v = Number((await getBalance()).pack_earn_multiplier);
+  if (!Number.isFinite(v) || v < 0) throw new Error('balance: pack_earn_multiplier is not a number');
+  return v;
+}
+// The message count of the chat bonus pack (balance daily.chat_bonus_at; claim_daily_earn reads the same key).
+export async function chatBonusAt(): Promise<number> {
+  const d = (await getBalance()).daily as { chat_bonus_at?: unknown } | null;
+  return balanceInt(d?.chat_bonus_at, 'daily.chat_bonus_at');
+}
+// The pull rates and the pack size (balance pulls), checked (draw.ts pullTable).
+async function pulls(): Promise<PullTable> {
+  return pullTable((await getBalance()).pulls);
 }
 
 /**
@@ -87,15 +89,18 @@ export async function recordMessage(id: string, username: string, avatar?: strin
   if (error) throw new Error(`recordMessage failed: ${error.message}`);
 
   // Only run the earn check on the message that actually crosses a threshold.
-  if (count === 1 || count === BONUS_THRESHOLD) {
+  const bonusAt = await chatBonusAt();
+  if (count === 1 || count === bonusAt) {
     const mult = await earnMultiplier();
-    const perPack = Math.max(0, Math.round(mult)); // base = 1 pack, bonus = 1 pack, scaled by the dial
+    // claim_daily_earn decides the packs from balance (daily.chat / chat_bonus x the dial, balance_economy.sql)
+    // and no longer reads these three numbers; they are still sent so an older function matches the call.
+    const perPack = Math.max(0, Math.round(mult));
     const { data: granted, error: earnErr } = await supabase.rpc('claim_daily_earn', {
       p_player_id: id,
       p_date: today,
       p_base: perPack,
       p_bonus: perPack,
-      p_bonus_threshold: BONUS_THRESHOLD,
+      p_bonus_threshold: bonusAt,
     });
     if (earnErr) throw new Error(`claim_daily_earn failed: ${earnErr.message}`);
     if (granted && granted > 0) {
@@ -138,20 +143,22 @@ export async function notifyPlayer(playerId: string, kind: string, message: stri
   if (error) throw new Error(`notifyPlayer failed: ${error.message}`);
 }
 
-/** Read / set the pack-earn multiplier dial. */
+/** Read / set the pack-earn multiplier dial (balance pack_earn_multiplier; balance_log records each change). */
 export async function getMultiplierValue(): Promise<number> {
   const supabase = getSupabase();
-  const { data } = await supabase.from('settings').select('value').eq('key', 'pack_earn_multiplier').maybeSingle();
-  const v = Number(data?.value);
-  return Number.isFinite(v) ? v : 1;
+  const { data, error } = await supabase.from('balance').select('value').eq('key', 'pack_earn_multiplier').maybeSingle();
+  if (error) throw new Error(`getMultiplierValue failed: ${error.message}`);
+  return Number(data?.value);
 }
 export async function setMultiplier(value: number): Promise<void> {
   const supabase = getSupabase();
-  const { error } = await supabase
-    .from('settings')
-    .update({ value, updated_at: new Date().toISOString() })
-    .eq('key', 'pack_earn_multiplier');
+  const { data, error } = await supabase
+    .from('balance')
+    .update({ value })
+    .eq('key', 'pack_earn_multiplier')
+    .select('key');
   if (error) throw new Error(`setMultiplier failed: ${error.message}`);
+  if (!data?.length) throw new Error('setMultiplier failed: no balance key pack_earn_multiplier');
 }
 
 /** Move packs from one player's balance to another (player-to-player gift). */
@@ -199,10 +206,11 @@ export async function openPacks(id: string, username: string, count: number): Pr
   const pool = await getDrawPool();
   if (pool.normal.length === 0) throw new Error('The card pool is empty. Add at least one Normal draw card with /seed first.');
   // A Lucky Pull boon goes on the first pack, and only when at least one pack can open.
+  const table = await pulls(); // before the luck is used up: a balance error must not spend the boon
   const luck = count > 0 && (await getPackBalance(id).catch(() => 0)) > 0 ? await takeLuck(id) : null;
-  const packs = Array.from({ length: count }, (_, i) => drawPack(pool, Math.random, i === 0 ? luck : null));
+  const packs = Array.from({ length: count }, (_, i) => drawPack(pool, table, Math.random, i === 0 ? luck : null));
   const { data, error } = await getSupabase().rpc('open_packs', {
-    p_player_id: id, p_cards: packs.flat().map((c) => c.id), p_size: PACK_SIZE,
+    p_player_id: id, p_cards: packs.flat().map((c) => c.id), p_size: table.pack_size,
   });
   if (error) throw new Error(`open_packs failed: ${error.message}`);
   return packs.slice(0, Number(data) || 0);
@@ -259,9 +267,10 @@ export async function openTestPacks(
     );
   }
 
+  const table = await pulls();
   const packs: Card[][] = [];
   for (let i = 0; i < count; i += 1) {
-    const pack = drawPack(pool);
+    const pack = drawPack(pool, table);
     await grantCards(id, pack);
     packs.push(pack);
   }

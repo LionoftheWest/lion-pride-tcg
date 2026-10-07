@@ -1,0 +1,39 @@
+{
+ "packs_luck_0": {
+  "sha256": "1f8d4c9cf408e836a9df815225532771159bb7e8129346dec311065e47a1345b",
+  "counts": {
+   "normal": 94072,
+   "illustrated_rare": 4906,
+   "secret_rare": 610,
+   "gold": 16,
+   "full_art": 396
+  }
+ },
+ "packs_luck_2": {
+  "sha256": "fd9c516d6a0d34060e743f5fc5b6a0f3be21cea5fcd417f2ee05313bebd97e76",
+  "counts": {
+   "normal": 92863,
+   "illustrated_rare": 5921,
+   "secret_rare": 719,
+   "gold": 22,
+   "full_art": 475
+  }
+ },
+ "packs_luck_3": {
+  "sha256": "636382decc7de635376f04f3835cc05a74e983d85689a29305bef23ef620d99c",
+  "counts": {
+   "normal": 91645,
+   "illustrated_rare": 6942,
+   "secret_rare": 835,
+   "gold": 26,
+   "full_art": 552
+  }
+ },
+ "rolls_2m_seed_12345": {
+  "illustrated_rare": 100633,
+  "normal": 1878795,
+  "full_art": 8029,
+  "secret_rare": 12141,
+  "gold": 402
+ }
+}
