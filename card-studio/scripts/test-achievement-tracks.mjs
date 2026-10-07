@@ -3,6 +3,8 @@
  * Wish Granter capture and the retired old keys. Rolled back (the result comes back in the exception):
  *   node scripts/test-achievement-tracks.mjs [--old]
  * --old: the same cases WITHOUT the migration (the baseline must fail).
+ * --live: the same cases on the CURRENT functions (test-all-local.mjs: pack_ledger_strict.sql replaced
+ *   claim_achievement after this file, so its md5 guard refuses to run this file again).
  * Each case runs in its own sub-block, so a missing function is a FAIL line, not a crash.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
@@ -11,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const OLD = process.argv.includes('--old');
-const mig = OLD ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/achievement_tracks.sql', import.meta.url)), 'utf8');
+const LIVE = process.argv.includes('--live');
+const mig = OLD || LIVE ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/achievement_tracks.sql', import.meta.url)), 'utf8');
 if (mig.includes('$m$') || mig.includes('$c$')) throw new Error('the migration must not contain $m$ or $c$');
 const P = 'tst_at';
 // One case: its body runs in a sub-block; an error is a failed case with the error text.

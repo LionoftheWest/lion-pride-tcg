@@ -6,6 +6,8 @@
  *     mode     the Dungeon daily counts a Gauntlet run      always   the Dungeon daily is done with no run
  *     today    a run of yesterday counts                    flag     the Gauntlet daily shows with its mode off
  *     guard    the live-version guard accepts any version   names    claim_daily refuses the two new tasks
+ *   node scripts/test-adventure-dailies.mjs --live      the same cases on the CURRENT functions (test-all-local.mjs:
+ *     pack_ledger_strict.sql replaced claim_daily after this file, so its md5 guard refuses to run this file again)
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -35,7 +37,7 @@ const task = (k) => `(select x from jsonb_array_elements(dailies_tasks('tst_ad_a
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; d date := (now() at time zone 'America/Denver')::date; sb int; pb int;
 begin
-  execute $m$${mig}$m$;
+  ${process.argv.includes('--live') ? '-- the current functions' : 'execute $m$' + mig + '$m$;'}
   update settings set value = value || '{"enabled": true, "cap": 5, "shards": 40}' where key = 'dailies';
   update settings set value = value || '{"enabled": true}' where key in ('dungeon', 'gauntlet');
   insert into settings (key, value) values ('pack_earn_multiplier', '1') on conflict (key) do update set value = '1';
@@ -74,7 +76,7 @@ begin
   -- The five older dailies are unchanged.
   if (select string_agg(x->>'task', ',') from jsonb_array_elements(dailies_tasks('tst_ad_a')) x) <> 'checkin,chat,hunt,voice,social' then bad := bad || 'the older dailies changed; '; end if;
 
-${!process.env.MUTATE || process.env.MUTATE === 'guard' ? `
+${!process.argv.includes('--live') && (!process.env.MUTATE || process.env.MUTATE === 'guard') ? `
   -- 6. The guard: the file runs again on its own result; a changed live function stops it.
   begin execute $m$${mig}$m$; exception when others then bad := bad || 'second run: ' || sqlerrm || '; '; end;
   execute replace(pg_get_functiondef('public.dailies_tasks'::regproc), 'declare', 'declare -- changed by someone else');
