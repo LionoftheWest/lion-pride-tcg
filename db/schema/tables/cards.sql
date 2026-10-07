@@ -18,25 +18,16 @@ create table public.cards (
   created_at timestamp with time zone default now() not null,
   season text,
   event text,
-  tradeable boolean default true not null,
-  set_id text not null,
-  set_number integer not null
+  tradeable boolean default true not null
 );
 
 -- @constraints
-alter table public.cards add constraint cards_id_set_key UNIQUE (id, set_id);
 alter table public.cards add constraint cards_pkey PRIMARY KEY (id);
-alter table public.cards add constraint cards_set_id_fkey FOREIGN KEY (set_id) REFERENCES card_sets(id);
-alter table public.cards add constraint cards_set_number_key UNIQUE (set_id, set_number);
-alter table public.cards add constraint cards_set_number_positive CHECK ((set_number > 0));
 alter table public.cards add constraint cards_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE;
 
 -- @indexes
-CREATE UNIQUE INDEX cards_id_set_key ON public.cards USING btree (id, set_id);
 CREATE UNIQUE INDEX cards_pkey ON public.cards USING btree (id);
 CREATE INDEX cards_pool_rarity_idx ON public.cards USING btree (rarity) WHERE in_draw_pool;
-CREATE INDEX cards_set_id_idx ON public.cards USING btree (set_id);
-CREATE UNIQUE INDEX cards_set_number_key ON public.cards USING btree (set_id, set_number);
 
 -- @rls
 alter table public.cards enable row level security;
@@ -54,4 +45,3 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 
 -- @triggers
 CREATE TRIGGER cards_event_rules BEFORE INSERT OR UPDATE OF rarity, tradeable, in_draw_pool ON public.cards FOR EACH ROW EXECUTE FUNCTION cards_event_rules();
-CREATE TRIGGER cards_set_rules BEFORE INSERT OR UPDATE OF set_id, set_number, season ON public.cards FOR EACH ROW EXECUTE FUNCTION cards_set_rules();
