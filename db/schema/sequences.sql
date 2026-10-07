@@ -54,6 +54,14 @@ create sequence public.dungeon_runs_id_seq as bigint start 1 increment 1 minvalu
 grant select on sequence public.dungeon_runs_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.dungeon_runs_id_seq to postgres;
 grant select, update, usage on sequence public.dungeon_runs_id_seq to service_role;
+create sequence public.event_log_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.event_log.id;
+grant select on sequence public.event_log_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.event_log_id_seq to postgres;
+grant select, update, usage on sequence public.event_log_id_seq to service_role;
+create sequence public.events_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.events.id;
+grant select on sequence public.events_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.events_id_seq to postgres;
+grant select, update, usage on sequence public.events_id_seq to service_role;
 create sequence public.gift_claims_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.gift_claims.id;
 grant select on sequence public.gift_claims_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.gift_claims_id_seq to postgres;

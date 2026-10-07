@@ -9,7 +9,7 @@ The read only functions of the Admin view in the card studio (admin_read.sql, /a
 
 Tables (1): [admin_actions](#table-admin-actions)
 
-Functions (16): [admin_active_days(date,date)](#fn-admin-active-days-date-date), [admin_cards(date,date,text,integer,integer)](#fn-admin-cards-date-date-text-integer-integer), [admin_economy(date,date,text)](#fn-admin-economy-date-date-text), [admin_growth(date,date)](#fn-admin-growth-date-date), [admin_health()](#fn-admin-health), [admin_hunt(bigint)](#fn-admin-hunt-bigint), [admin_hunts(integer,integer)](#fn-admin-hunts-integer-integer), [admin_log_action(text,text,text,text,jsonb,jsonb,text,text,bigint)](#fn-admin-log-action-text-text-text-text-jsonb-jsonb-text-text-bigint), [admin_member(text)](#fn-admin-member-text), [admin_member_timeline(text,timestamp with time zone,integer,text)](#fn-admin-member-timeline-text-timestamp-with-time-zone-integer-text), [admin_members(text,text,integer,integer)](#fn-admin-members-text-text-integer-integer), [admin_overview(date,date)](#fn-admin-overview-date-date), [admin_period(date,date,integer)](#fn-admin-period-date-date-integer), [admin_report(text,jsonb)](#fn-admin-report-text-jsonb), [admin_report_catalog()](#fn-admin-report-catalog), [gift_admin_log()](#fn-gift-admin-log)
+Functions (25): [admin_active_days(date,date)](#fn-admin-active-days-date-date), [admin_cards(date,date,text,integer,integer)](#fn-admin-cards-date-date-text-integer-integer), [admin_economy(date,date,text)](#fn-admin-economy-date-date-text), [admin_event(bigint)](#fn-admin-event-bigint), [admin_event_cancel(bigint,timestamp with time zone,text,text)](#fn-admin-event-cancel-bigint-timestamp-with-time-zone-text-text), [admin_event_end_now(bigint,timestamp with time zone,text,text)](#fn-admin-event-end-now-bigint-timestamp-with-time-zone-text-text), [admin_event_preview(bigint)](#fn-admin-event-preview-bigint), [admin_event_preview_draft(jsonb)](#fn-admin-event-preview-draft-jsonb), [admin_event_save(jsonb,timestamp with time zone,text,text)](#fn-admin-event-save-jsonb-timestamp-with-time-zone-text-text), [admin_event_schedule(bigint,timestamp with time zone,text,boolean)](#fn-admin-event-schedule-bigint-timestamp-with-time-zone-text-boolean), [admin_event_status(bigint,timestamp with time zone,text,text,text)](#fn-admin-event-status-bigint-timestamp-with-time-zone-text-text-text), [admin_events()](#fn-admin-events), [admin_growth(date,date)](#fn-admin-growth-date-date), [admin_health()](#fn-admin-health), [admin_hunt(bigint)](#fn-admin-hunt-bigint), [admin_hunts(integer,integer)](#fn-admin-hunts-integer-integer), [admin_log_action(text,text,text,text,jsonb,jsonb,text,text,bigint)](#fn-admin-log-action-text-text-text-text-jsonb-jsonb-text-text-bigint), [admin_member(text)](#fn-admin-member-text), [admin_member_timeline(text,timestamp with time zone,integer,text)](#fn-admin-member-timeline-text-timestamp-with-time-zone-integer-text), [admin_members(text,text,integer,integer)](#fn-admin-members-text-text-integer-integer), [admin_overview(date,date)](#fn-admin-overview-date-date), [admin_period(date,date,integer)](#fn-admin-period-date-date-integer), [admin_report(text,jsonb)](#fn-admin-report-text-jsonb), [admin_report_catalog()](#fn-admin-report-catalog), [gift_admin_log()](#fn-gift-admin-log)
 
 ## Tables
 
@@ -73,6 +73,96 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 - Security definer: no
 
 [admin] The economy over time (default the last 30 game days), in day or week buckets (a week starts on Monday). series: for each ledger (pack_ledger, card_ledger, shard_ledger), each bucket and reason: rows, in (the + amounts) and out (the - amounts). supply: the packs, copies and Shards that all members hold at the end of each bucket (the ledger sum up to then; the ledgers are complete: *_ledger_reconcile). ratios per bucket: packs opened / packs earned (+ rows, not gift_received; - rows, not gift_sent) and Shards spent / Shards earned. Service role only.
+
+<a id="fn-admin-event-bigint"></a>
+
+### admin_event(bigint)
+
+- Function: `admin_event(p_id bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] One event: the row, what can be edited, the payouts (event_payouts), the claims (gift_claims: gifts, claimed, packs, Shards, cards), the cards and the last 100 event_log rows. Service role only.
+
+<a id="fn-admin-event-cancel-bigint-timestamp-with-time-zone-text-text"></a>
+
+### admin_event_cancel(bigint,timestamp with time zone,text,text)
+
+- Function: `admin_event_cancel(p_id bigint, p_expected_updated_at timestamp with time zone, p_actor text, p_reason text DEFAULT NULL::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Cancels a draft, scheduled or live event: the tick pays it no more. The gifts already given stay. Service role only.
+
+<a id="fn-admin-event-end-now-bigint-timestamp-with-time-zone-text-text"></a>
+
+### admin_event_end_now(bigint,timestamp with time zone,text,text)
+
+- Function: `admin_event_end_now(p_id bigint, p_expected_updated_at timestamp with time zone, p_actor text, p_reason text DEFAULT NULL::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Ends a live event now: the end becomes now and event_step pays the end once. Writes admin_actions and event_log. Service role only.
+
+<a id="fn-admin-event-preview-bigint"></a>
+
+### admin_event_preview(bigint)
+
+- Function: `admin_event_preview(p_id bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Who would get what if the tick ran now (event_preview): counts, totals, ranks, the first 25 members. No side effects. Service role only.
+
+<a id="fn-admin-event-preview-draft-jsonb"></a>
+
+### admin_event_preview_draft(jsonb)
+
+- Function: `admin_event_preview_draft(p_event jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] The preview of an event that is not saved (the editor Test): the fields of admin_event_save, checked by event_row_errors. No side effects. Service role only.
+
+<a id="fn-admin-event-save-jsonb-timestamp-with-time-zone-text-text"></a>
+
+### admin_event_save(jsonb,timestamp with time zone,text,text)
+
+- Function: `admin_event_save(p_event jsonb, p_expected_updated_at timestamp with time zone, p_actor text, p_reason text DEFAULT NULL::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Saves a new draft (no id) or an edit with an optimistic check (p_expected_updated_at must be the row's updated_at, else stale). Draft and scheduled: all fields (key and kind in a draft only); live: title, description and a later end. Returns the errors of event_row_errors. Writes admin_actions and event_log. Service role only.
+
+<a id="fn-admin-event-schedule-bigint-timestamp-with-time-zone-text-boolean"></a>
+
+### admin_event_schedule(bigint,timestamp with time zone,text,boolean)
+
+- Function: `admin_event_schedule(p_id bigint, p_expected_updated_at timestamp with time zone, p_actor text, p_on boolean DEFAULT true)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Schedules a draft (p_on true; the tick starts it at starts_at) or moves a scheduled event back to a draft (p_on false). Service role only.
+
+<a id="fn-admin-event-status-bigint-timestamp-with-time-zone-text-text-text"></a>
+
+### admin_event_status(bigint,timestamp with time zone,text,text,text)
+
+- Function: `admin_event_status(p_id bigint, p_expected_updated_at timestamp with time zone, p_actor text, p_to text, p_reason text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] The status change of admin_event_schedule and admin_event_cancel: draft to scheduled (a valid row with a future end), scheduled to draft, draft, scheduled or live to cancelled. Optimistic check; writes admin_actions and event_log. Service role only.
+
+<a id="fn-admin-events"></a>
+
+### admin_events()
+
+- Function: `admin_events()`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] The event list for the Admin view: live, scheduled, draft, then the others (newest first), with the gift counts (gift_claims.event_id). Service role only.
 
 <a id="fn-admin-growth-date-date"></a>
 

@@ -889,4 +889,66 @@ do $logs$ begin
   end if;
 end $logs$;
 
+-- ===== events (events.sql, 2026-10-07) =====
+-- The Events system: the same notes as in events.sql. Only when events.sql is applied.
+do $ev$ begin
+  if to_regclass('public.events') is not null then
+    comment on table public.events is $c$[events] One row per event (events.sql): key, kind (drop, trigger, rank, launch_cards), title, description, status (draft, scheduled, live, ended, cancelled), the window starts_at .. ends_at, audience, rewards and rules (jsonb; the shapes are in events.sql and checked by event_shape_errors). The Admin view writes it (admin_event_save, admin_event_schedule, admin_event_cancel, admin_event_end_now); event_tick moves the status by time and pays. Every change writes event_log. Server only.$c$;
+    comment on column public.events.id is $c$The event id. gift_claims.event_id, cards.event_id, event_log and event_payouts point at it.$c$;
+    comment on column public.events.key is $c$The unique short name (3 to 48 characters a-z, 0-9, _), for example launch_2026. Payout gifts write the actor event:<key> in admin_actions.$c$;
+    comment on column public.events.kind is $c$drop (paid at the start to the audience), trigger (paid once to each audience member who does rules.trigger in the window), rank (paid once at the end by rank of rules.metric), launch_cards (the migrated launch event: its own functions pay it, never the tick).$c$;
+    comment on column public.events.title is $c$The event name (1 to 80 characters). The bell shows it on a packs or Shards gift unless rewards.title is set.$c$;
+    comment on column public.events.description is $c$A note for the admin (at most 1000 characters). Members do not see it.$c$;
+    comment on column public.events.status is $c$draft (being edited), scheduled (event_tick starts it at starts_at), live, ended (at ends_at, or End now), cancelled (no more payouts; the gifts already given stay).$c$;
+    comment on column public.events.starts_at is $c$The start of the window. A trigger or rank event counts actions from this time.$c$;
+    comment on column public.events.ends_at is $c$The end of the window (after starts_at). The tick ends the event at this time and pays the end once.$c$;
+    comment on column public.events.audience is $c$Who can get the rewards: {"all": true}, or filters that must all match: active_since, joined_after, joined_before (ISO times with a zone), tutorial_done (true), members (a list of ids). A member who left the server never counts (event_audience).$c$;
+    comment on column public.events.rewards is $c$What a member gets: title (optional bell text), per_member {packs, shards, card_id} for drop and trigger, ranks [{from, to, packs, shards, card_id}] for rank. Empty for launch_cards.$c$;
+    comment on column public.events.rules is $c$The rule of the kind: drop {late_joiners}, trigger {trigger: hunt_hit, tutorial_done, pack_opened, dungeon_run}, rank {metric: hunt_damage, packs_opened}, launch_cards {settings_key, gift_reasons}.$c$;
+    comment on column public.events.created_by is $c$Who made the event (the studio actor, or events.sql for the migrated launch event).$c$;
+    comment on column public.events.created_at is $c$When the row was made.$c$;
+    comment on column public.events.updated_at is $c$The time of the last change (the events_touch trigger, clock time). The Admin view sends it back: an edit of a changed row is refused as stale.$c$;
+    comment on column public.events.ended_at is $c$When the event ended or was cancelled; null while draft, scheduled or live (check events_ended_at).$c$;
+    comment on table public.event_log is $c$[events] One row per change of an event (the event_log_write trigger) and per payout run (event_pay): who (events.actor, else balance_who), the action (create, migrate, edit, schedule, unschedule, start, end, cancel, pay), the old and new values of the changed fields. Never pruned. Server only.$c$;
+    comment on column public.event_log.id is $c$Row id.$c$;
+    comment on column public.event_log.event_id is $c$The event (events.id).$c$;
+    comment on column public.event_log.at is $c$When the change was made.$c$;
+    comment on column public.event_log.actor is $c$Who made it: the studio actor, event_tick, events.sql, or balance_who for a change in SQL.$c$;
+    comment on column public.event_log.action is $c$create, migrate, edit, schedule, unschedule, start, end, cancel or pay.$c$;
+    comment on column public.event_log.old is $c$The changed fields before the change (null for create and pay).$c$;
+    comment on column public.event_log.new is $c$The changed fields after the change; the whole row for create; for pay: period, members, packs, shards, cards.$c$;
+    comment on table public.event_payouts is $c$[events] One row per payout run of an event (event_pay): start (a drop) and end (trigger, rank, a drop with late_joiners) once each (the primary key makes a second run a no-op), tick:<time> for each catch-up that paid. members, packs, shards and cards are what the run gave. Server only.$c$;
+    comment on column public.event_payouts.event_id is $c$The event (events.id).$c$;
+    comment on column public.event_payouts.period is $c$start, end, or tick:<UTC time> (a catch-up run).$c$;
+    comment on column public.event_payouts.paid_at is $c$When the run paid.$c$;
+    comment on column public.event_payouts.members is $c$The members who got a new gift in this run.$c$;
+    comment on column public.event_payouts.packs is $c$The packs given in this run (gift_claims.amount).$c$;
+    comment on column public.event_payouts.shards is $c$The Shards given in this run (gift_claims.shards).$c$;
+    comment on column public.event_payouts.cards is $c$The card gifts given in this run.$c$;
+    comment on column public.gift_claims.event_id is $c$The event of the gift (events.id), else null. event_pay sets it; the gift_claims_event_link trigger sets it for a reason in an event's rules.gift_reasons (the launch cards). One gift per event, member, kind and card (gift_claims_event_once).$c$;
+    comment on column public.cards.event_id is $c$The event that gives this card (events.id), else null. Set for the two launch cards by events.sql.$c$;
+    comment on function public.event_reward_errors(jsonb, text, boolean) is $c$[events] The errors of one reward item (per_member or a rank tier): packs 0-100, shards 0-100000, card_id, from and to 1-1000 for a tier, at least one reward. Empty = valid.$c$;
+    comment on function public.event_shape_errors(text, jsonb, jsonb, jsonb) is $c$[events] The errors of an event's kind, audience, rewards and rules (the shapes in events.sql). Empty = valid. The CHECK events_shape uses it, and the Admin save shows the list.$c$;
+    comment on function public.events_touch() is $c$[events] Trigger (before update on events): sets updated_at to the clock time.$c$;
+    comment on function public.event_log_write() is $c$[events] Trigger (after insert or update on events): writes event_log with the changed fields and the action (from the status change, else edit). The actor is the setting events.actor, else balance_who.$c$;
+    comment on function public.gift_claims_event_link() is $c$[events] Trigger (before insert on gift_claims, reason event:*): sets event_id to the event whose rules.gift_reasons lists the reason (the launch cards).$c$;
+    comment on function public.event_audience(jsonb, timestamp with time zone) is $c$[events] The member ids of an audience at a time: everyone, or all filters (active_since through admin_active_days game rows, joined_after/joined_before on players.created_at, tutorial_done through pack_ledger reason tutorial, members). Members who left the server are left out.$c$;
+    comment on function public.event_recipients(public.events, timestamp with time zone) is $c$[events] Who gets what if the event paid at the time: member, rank, score, packs, shards, card. drop: the audience; trigger: the audience members with the trigger in the window (hunt_hits or hunt_combat_log, pack_ledger tutorial or opened, dungeon_runs); rank: rank() of the metric in the window (hunt_combat_log damage, pack_ledger opened) matched to the tiers. Read only.$c$;
+    comment on function public.event_preview(public.events, timestamp with time zone) is $c$[events] The preview of an event row: audience size, members, packs, shards, cards, the part not paid yet (new_*), missing cards, by_rank and the first 25 members. Read only.$c$;
+    comment on function public.event_pay(bigint, text, timestamp with time zone) is $c$[events] Pays an event at a time through gift_claims (kind promo for packs and Shards, kind card, reason event, event_id set). start and end run once (event_payouts primary key); tick pays the members not paid yet. Writes event_payouts and event_log. Never pays launch_cards.$c$;
+    comment on function public.event_step(bigint, timestamp with time zone) is $c$[events] One step of one event: scheduled to live (a drop pays its start), live to ended at ends_at (trigger and rank pay the end), and the catch-up of a live trigger event or a drop with late_joiners. launch_cards: status only.$c$;
+    comment on function public.event_tick(timestamp with time zone) is $c$[events] The pg_cron job event-tick (every 10 minutes): event_step for each scheduled or live event that started. One tick at a time (advisory lock). Returns the steps.$c$;
+    comment on function public.event_row_errors(public.events) is $c$[events] The errors of a candidate event row: key (format, unique), title, description, the times, the shapes and that each reward card exists. Empty = valid.$c$;
+    comment on function public.admin_events() is $c$[admin] The event list for the Admin view: live, scheduled, draft, then the others (newest first), with the gift counts (gift_claims.event_id). Service role only.$c$;
+    comment on function public.admin_event(bigint) is $c$[admin] One event: the row, what can be edited, the payouts (event_payouts), the claims (gift_claims: gifts, claimed, packs, Shards, cards), the cards and the last 100 event_log rows. Service role only.$c$;
+    comment on function public.admin_event_save(jsonb, timestamp with time zone, text, text) is $c$[admin] Saves a new draft (no id) or an edit with an optimistic check (p_expected_updated_at must be the row's updated_at, else stale). Draft and scheduled: all fields (key and kind in a draft only); live: title, description and a later end. Returns the errors of event_row_errors. Writes admin_actions and event_log. Service role only.$c$;
+    comment on function public.admin_event_status(bigint, timestamp with time zone, text, text, text) is $c$[admin] The status change of admin_event_schedule and admin_event_cancel: draft to scheduled (a valid row with a future end), scheduled to draft, draft, scheduled or live to cancelled. Optimistic check; writes admin_actions and event_log. Service role only.$c$;
+    comment on function public.admin_event_schedule(bigint, timestamp with time zone, text, boolean) is $c$[admin] Schedules a draft (p_on true; the tick starts it at starts_at) or moves a scheduled event back to a draft (p_on false). Service role only.$c$;
+    comment on function public.admin_event_cancel(bigint, timestamp with time zone, text, text) is $c$[admin] Cancels a draft, scheduled or live event: the tick pays it no more. The gifts already given stay. Service role only.$c$;
+    comment on function public.admin_event_end_now(bigint, timestamp with time zone, text, text) is $c$[admin] Ends a live event now: the end becomes now and event_step pays the end once. Writes admin_actions and event_log. Service role only.$c$;
+    comment on function public.admin_event_preview(bigint) is $c$[admin] Who would get what if the tick ran now (event_preview): counts, totals, ranks, the first 25 members. No side effects. Service role only.$c$;
+    comment on function public.admin_event_preview_draft(jsonb) is $c$[admin] The preview of an event that is not saved (the editor Test): the fields of admin_event_save, checked by event_row_errors. No side effects. Service role only.$c$;
+  end if;
+end $ev$;
+
 notify pgrst, 'reload schema';

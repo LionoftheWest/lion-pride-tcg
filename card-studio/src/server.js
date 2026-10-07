@@ -8,6 +8,7 @@ import { pushCard } from './push.js';
 import { removeTiers } from './tier-delete.js';
 import { supabase } from './supabase.js';
 import { adminRouter } from './admin-routes.js';
+import { eventsRouter } from './admin-events-routes.js';
 import { studioAuth, loadSecret } from './studio-auth.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic } from './rarity.js';
 import { getFrame, setFrame } from './frames.js';
@@ -61,6 +62,8 @@ export const app = express();
 // STUDIO_PASS set = a session cookie (the /login page) or Basic Auth; STUDIO_PASS empty = this PC only.
 app.use(studioAuth({ secret: loadSecret(join(ROOT, '.studio-secret')) }));
 app.use(express.json({ limit: '30mb' }));
+// The Events editor (writes; src/admin-events-routes.js): mounted before the read-only router, which refuses POST.
+app.use('/api/admin/events', eventsRouter({ rpc: (fn, args) => supabase.rpc(fn, args) }));
 // The Admin view data (read only): flag ADMIN_VIEW=1 (src/admin-routes.js). The pages: public/admin/ (/admin/).
 app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
 // Never cache the studio UI, so a browser always loads the latest code.
