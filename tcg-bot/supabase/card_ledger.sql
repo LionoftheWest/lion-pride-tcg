@@ -76,11 +76,17 @@ create index if not exists card_ledger_player_card_idx on public.card_ledger (pl
 alter table public.card_ledger enable row level security;
 
 -- 2. Only known reasons ------------------------------------------------------------------------------
--- Add a new reason HERE and in the column comment before code writes it.
-alter table public.card_ledger drop constraint if exists card_ledger_reason_check;
-alter table public.card_ledger add constraint card_ledger_reason_check check (reason in (
-  'opening_balance', 'pack', 'test_pack', 'gift_sent', 'gift_received', 'event', 'trade', 'auction', 'shop',
-  'convert', 'ascend', 'dungeon_loot', 'dungeon_prize', 'admin'));
+-- Since ledger_reasons.sql (2026-10-07) the reasons are rows of public.ledger_reasons: add a new reason there.
+-- The check below is the state before that file. Once public.ledger_reasons exists, its foreign key (the same
+-- name) replaces the check and this step is skipped, so a re-run of this file keeps the new state.
+do $r$
+begin
+  if to_regclass('public.ledger_reasons') is not null then return; end if;
+  alter table public.card_ledger drop constraint if exists card_ledger_reason_check;
+  alter table public.card_ledger add constraint card_ledger_reason_check check (reason in (
+    'opening_balance', 'pack', 'test_pack', 'gift_sent', 'gift_received', 'event', 'trade', 'auction', 'shop',
+    'convert', 'ascend', 'dungeon_loot', 'dungeon_prize', 'admin'));
+end $r$;
 
 -- 3. card_move: the one function that changes the copies ---------------------------------------------
 create or replace function public.card_move(p_player text, p_card bigint, p_amount integer, p_reason text,
@@ -426,8 +432,13 @@ comment on column public.card_ledger.id is 'Row id.';
 comment on column public.card_ledger.player_id is 'The member (players.id) whose copies changed.';
 comment on column public.card_ledger.card_id is 'The card (cards.id).';
 comment on column public.card_ledger.amount is 'The change in copies: positive = copies added, negative = copies removed. Never 0.';
-comment on column public.card_ledger.reason is
-  'Why (card_ledger_reason_check lists the allowed values): opening_balance (the seed: copies received before the ledger); pack (open_packs); test_pack (a tester open with no pack spent, the bot openTestPacks); gift_sent / gift_received (member card gifts); event (an event or launch card gift claimed in the bell); trade (accept_trade, both sides); auction (confirm_bid, both sides); shop (a card of the day); convert (copies turned into Shards); ascend (copies spent on a star); dungeon_loot (cards from a Dungeon run); dungeon_prize (Dungeon / Gauntlet board prizes); admin (a move with no known source).';
+-- The comment before ledger_reasons.sql (2026-10-07); once that table exists, its own comment stays.
+do $r$
+begin
+  if to_regclass('public.ledger_reasons') is not null then return; end if;
+  comment on column public.card_ledger.reason is
+    'Why (card_ledger_reason_check lists the allowed values): opening_balance (the seed: copies received before the ledger); pack (open_packs); test_pack (a tester open with no pack spent, the bot openTestPacks); gift_sent / gift_received (member card gifts); event (an event or launch card gift claimed in the bell); trade (accept_trade, both sides); auction (confirm_bid, both sides); shop (a card of the day); convert (copies turned into Shards); ascend (copies spent on a star); dungeon_loot (cards from a Dungeon run); dungeon_prize (Dungeon / Gauntlet board prizes); admin (a move with no known source).';
+end $r$;
 comment on column public.card_ledger.ref_kind is
   'The kind of source row: opening (ref_id = ''card_ledger.sql''), open (pack_ledger.ref_id of the open), test_open (one tester open), gift (gift_claims.id), trade_offer (trade_offers.id), auction (auctions.id), shop_card (shop_purchases of the member, ref_id = ''<day>:<slot>''), shard_ledger (shard_ledger.id of the convert), ascension (ref_id = ''<card>:<star reached>''), dungeon_run (dungeon_runs.id), dungeon_payout (dungeon_payouts, ref_id = ''<mode>:<period>''), tx (an admin move: ref_id = the transaction id).';
 comment on column public.card_ledger.ref_id is 'The id of the source row (see ref_kind), as text.';

@@ -75,11 +75,17 @@ update public.shard_ledger
  where reason = 'dungeon' and ref_kind in ('prize_daily', 'prize_gauntlet');
 
 -- 2. Only known reasons -----------------------------------------------------------------------------------------
--- Add a new reason HERE and in the column comment before code writes it.
-alter table public.shard_ledger drop constraint if exists shard_ledger_reason_check;
-alter table public.shard_ledger add constraint shard_ledger_reason_check check (reason in (
-  'daily', 'dungeon', 'dupes', 'event', 'milestone', 'shop', 'admin',
-  'expedition', 'arena', 'wandering', 'minigame'));   -- reserved: planned features, no writer yet
+-- Since ledger_reasons.sql (2026-10-07) the reasons are rows of public.ledger_reasons: add a new reason there.
+-- The check below is the state before that file. Once public.ledger_reasons exists, its foreign key (the same
+-- name) replaces the check and this step is skipped, so a re-run of this file keeps the new state.
+do $r$
+begin
+  if to_regclass('public.ledger_reasons') is not null then return; end if;
+  alter table public.shard_ledger drop constraint if exists shard_ledger_reason_check;
+  alter table public.shard_ledger add constraint shard_ledger_reason_check check (reason in (
+    'daily', 'dungeon', 'dupes', 'event', 'milestone', 'shop', 'admin',
+    'expedition', 'arena', 'wandering', 'minigame'));   -- reserved: planned features, no writer yet
+end $r$;
 
 -- 3. Every row has a ref ----------------------------------------------------------------------------------------
 alter table public.shard_ledger drop constraint if exists shard_ledger_ref_check;
@@ -361,8 +367,13 @@ comment on table public.shard_ledger is
 comment on column public.shard_ledger.id is 'Row id. A card_ledger convert row points at it (ref_kind shard_ledger).';
 comment on column public.shard_ledger.player_id is 'The member (players.id) whose Shard balance changed.';
 comment on column public.shard_ledger.amount is 'The change in Shards: positive = earned or given, negative = spent (shop) or taken back (admin).';
-comment on column public.shard_ledger.reason is
-  'Why (shard_ledger_reason_check lists the allowed values): daily (a daily task, claim_daily / claim_daily_earn); dungeon (Dungeon run loot, dungeon_settle; a Dungeon or Gauntlet board prize, dungeon_pay); dupes (copies turned into Shards, convert_dupes); event (Shards in a bell gift, claim_gift); milestone (an achievement tier, claim_achievement_tiers); shop (a Shop purchase, buy_shop_item); admin (a manual grant or reversal); expedition, arena, wandering, minigame (reserved for planned features; no writer yet).';
+-- The comment before ledger_reasons.sql (2026-10-07); once that table exists, its own comment stays.
+do $r$
+begin
+  if to_regclass('public.ledger_reasons') is not null then return; end if;
+  comment on column public.shard_ledger.reason is
+    'Why (shard_ledger_reason_check lists the allowed values): daily (a daily task, claim_daily / claim_daily_earn); dungeon (Dungeon run loot, dungeon_settle; a Dungeon or Gauntlet board prize, dungeon_pay); dupes (copies turned into Shards, convert_dupes); event (Shards in a bell gift, claim_gift); milestone (an achievement tier, claim_achievement_tiers); shop (a Shop purchase, buy_shop_item); admin (a manual grant or reversal); expedition, arena, wandering, minigame (reserved for planned features; no writer yet).';
+end $r$;
 comment on column public.shard_ledger.ref_kind is
   'The kind of source row (required, shard_ledger_ref_check): daily_claim (daily_claims, ref_id = ''<day>:<task>''); run (dungeon_runs.id; Dungeon v1 rows also kill / room / reward with the run id); dungeon_payout (dungeon_payouts, ref_id = ''<mode>:<period>''); card (convert_dupes: the card id); gift (gift_claims.id); achievement (the achievement key); shop_purchase (shop_purchases.id); for admin rows a short label of the manual action. Old rows that matched no source row keep their old kind (daily, pack, card, stat_reset).';
 comment on column public.shard_ledger.ref_id is 'The id of the source row (see ref_kind), as text. Required.';
