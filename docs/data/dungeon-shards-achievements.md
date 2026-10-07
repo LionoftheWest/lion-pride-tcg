@@ -522,7 +522,7 @@ Internal helper: rolls the rarity of a chest or reward card of a tier 1-5 (balan
 - Returns: `jsonb`
 - Security definer: no
 
-POST /api/dungeon/choose: takes a room reward, a door or continue, then enters the next room (or the next floor after floor_done). Writes dungeon_runs and dungeon_log. Returns the pick and the state.
+POST /api/dungeon/choose: takes a room reward, a door or continue, then enters the next room (or the next floor after floor_done). The dark door odds and its rare chest are in balance dungeon_rewards.door. Writes dungeon_runs and dungeon_log. Returns the pick and the state.
 
 <a id="fn-dungeon-day"></a>
 
@@ -572,7 +572,7 @@ Internal helper: the foes' turn after an attack: poison ticks, each living foe a
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: moves a run state into a room. A fight room loads its foes, a rest room heals, a choice room offers doors, a treasure room opens a chest. Returns the new state.
+Internal helper: moves a run state into a room. A fight room loads its foes, a rest room heals, a choice room offers doors, a treasure room opens a chest (Shards and card chance from balance dungeon_rewards.chest). Returns the new state.
 
 <a id="fn-dungeon-generate-date"></a>
 
@@ -622,7 +622,7 @@ Internal helper: builds one foe from a seeded dungeon_monsters row: element, HP 
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: draws 3 room rewards to choose from (heal, buff, Shards, card, ward, reset, revive) with tiers. The Gauntlet offers no Shards or cards. Returns a jsonb array.
+Internal helper: draws 3 room rewards to choose from (heal, buff, Shards, card, ward, reset, revive) with tiers. The amounts by tier and the least tiers are in balance dungeon_rewards.offers. The Gauntlet offers no Shards or cards. Returns a jsonb array.
 
 <a id="fn-dungeon-pay-text-date"></a>
 
@@ -772,7 +772,7 @@ POST /api/dungeon/support: a support card uses its ability on an ally or a foe (
 - Returns: `integer`
 - Security definer: no
 
-Internal helper: turns a number from 0 to 1 into a tier 1 to 5 with the weights settings.dungeon tier_weights. Used for chest and room-reward tiers.
+Internal helper: turns a number from 0 to 1 into a tier 1 to 5 with the weights balance dungeon_rewards.tier_weights. Used for chest and room-reward tiers.
 
 <a id="fn-dungeon-txt-jsonb"></a>
 

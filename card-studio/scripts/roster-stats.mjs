@@ -31,7 +31,7 @@ console.log(`  card owners:        ${s.owners}`);
 console.log(`  owned cards:        ${s.owned_cards}`);
 console.log(`  TOTAL ROSTER POWER: ${Number(s.total_power).toLocaleString()}`);
 console.log(`  avg power / owner:  ${s.avg_power_owner}`);
-console.log('\n== Projected boss HP (next spawn, per tier) ==');
+console.log('\n== Boss HP estimate (balance boss_hp_estimate; the real spawn HP is balance boss_hp) ==');
 console.log(`  Normal: ${Number(s.boss_hp.Normal).toLocaleString()}`);
 console.log(`  Heroic: ${Number(s.boss_hp.Heroic).toLocaleString()}`);
 console.log(`  Mythic: ${Number(s.boss_hp.Mythic).toLocaleString()}`);
