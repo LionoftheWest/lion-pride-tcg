@@ -34,3 +34,8 @@ alter table public.player_cards enable row level security;
 grant select on table public.player_cards to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.player_cards to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.player_cards to service_role;
+
+-- @triggers
+CREATE TRIGGER stat_point_log_del AFTER DELETE ON public.player_cards FOR EACH ROW WHEN ((old.stat_points <> '{}'::jsonb)) EXECUTE FUNCTION stat_point_log_write();
+CREATE TRIGGER stat_point_log_ins AFTER INSERT ON public.player_cards FOR EACH ROW WHEN ((new.stat_points <> '{}'::jsonb)) EXECUTE FUNCTION stat_point_log_write();
+CREATE TRIGGER stat_point_log_upd AFTER UPDATE OF stat_points ON public.player_cards FOR EACH ROW WHEN ((old.stat_points IS DISTINCT FROM new.stat_points)) EXECUTE FUNCTION stat_point_log_write();

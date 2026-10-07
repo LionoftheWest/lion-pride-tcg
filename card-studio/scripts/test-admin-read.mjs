@@ -282,7 +282,9 @@ begin
   res := res || jsonb_build_object('case', 'A10 p_from after p_to is refused', 'ok', ok);
 
   -- ---------------------------------------------------------------- A11 security
-  select array_agg(p.oid::regprocedure::text order by 1) into fns from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname like 'admin\_%';
+  -- The read functions: every admin_* function except the one writer of the audit log (admin_log_action, logs_sql.sql).
+  select array_agg(p.oid::regprocedure::text order by 1) into fns from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname like 'admin\_%'
+     and p.proname <> 'admin_log_action';
   res := res || jsonb_build_object('case', 'A11 the 14 admin functions exist', 'ok', cardinality(fns) = 14, 'got', to_jsonb(fns));
   res := res || jsonb_build_object('case', 'A11 anon, authenticated and public cannot execute; service_role can', 'ok',
     coalesce((select bool_and(not has_function_privilege('anon', f, 'execute') and not has_function_privilege('authenticated', f, 'execute')

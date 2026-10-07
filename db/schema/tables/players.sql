@@ -18,7 +18,9 @@ create table public.players (
   stat_reset_week text,
   notify_prefs jsonb default '{}'::jsonb not null,
   tutorial jsonb default '{}'::jsonb not null,
-  shard_balance integer default 0 not null
+  shard_balance integer default 0 not null,
+  guild_joined_at timestamp with time zone,
+  left_guild_at timestamp with time zone
 );
 
 -- @constraints
@@ -40,3 +42,4 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 
 -- @triggers
 CREATE TRIGGER players_welcome_packs AFTER INSERT ON public.players FOR EACH ROW EXECUTE FUNCTION welcome_packs();
+CREATE TRIGGER profile_log_write AFTER UPDATE OF username, avatar, title, frame, spotlight, notify_prefs, tutorial ON public.players FOR EACH ROW WHEN (((old.username IS DISTINCT FROM new.username) OR (old.avatar IS DISTINCT FROM new.avatar) OR (old.title IS DISTINCT FROM new.title) OR (old.frame IS DISTINCT FROM new.frame) OR (old.spotlight IS DISTINCT FROM new.spotlight) OR (old.notify_prefs IS DISTINCT FROM new.notify_prefs) OR (old.tutorial IS DISTINCT FROM new.tutorial))) EXECUTE FUNCTION profile_log_write();

@@ -797,4 +797,96 @@ do $adm$ begin
   end if;
 end $adm$;
 
+
+-- ===== logs =====
+-- The app logs (logs_app.sql): the same notes as in that file. Only when logs_app.sql is applied.
+do $logs$ begin
+  if to_regprocedure('public.app_session_touch(text,jsonb)') is not null then
+    comment on column public.notifications.read_at is $c$Time the member read the note: the bell sets it with read = true (POST /api/notifications/read, the Activity, flag FEATURE_APP_LOGS). Null = not read, or read before this column existed.$c$;
+    comment on column public.player_reports.target_id is $c$The member that the report is about (players.id), or null. The report form sends it (optional); the Activity checks that the member exists. The GitHub Issue never shows it.$c$;
+    comment on column public.players.guild_joined_at is $c$Time the member last joined the Discord server (Discord joinedAt). The bot sets it on GuildMemberAdd and fills empty rows at start and once a day (guild_joined). Null = not known yet.$c$;
+    comment on column public.players.left_guild_at is $c$Time the member last left the Discord server (GuildMemberRemove, the bot: guild_left). In the server now = null or older than guild_joined_at.$c$;
+    comment on table public.app_sessions is $c$[logs] One row per Activity visit of a member (a gap of 30 minutes starts a new visit). The Activity server writes it through app_session_touch at most every 5 minutes for each member (any API call; flag FEATURE_APP_LOGS). Answers "who opens the Activity and only looks". Service role only.$c$;
+    comment on column public.app_sessions.id is $c$Row id.$c$;
+    comment on column public.app_sessions.player_id is $c$The member (players.id).$c$;
+    comment on column public.app_sessions.started_at is $c$Time of the first API call of the visit.$c$;
+    comment on column public.app_sessions.last_seen_at is $c$Time of the last recorded call (5-minute steps: the server calls app_session_touch at most every 5 minutes; the client polls nothing while the window is hidden).$c$;
+    comment on column public.app_sessions.ended_at is $c$Set to last_seen_at when the next visit of the member starts. Null = open, or ended with no later visit: last_seen_at older than 30 minutes means it ended then.$c$;
+    comment on column public.app_sessions.client is $c$What the server knows of the client: platform (desktop, mobile or web, from the user agent; sdk_platform when the client sends the Discord SDK value), ua (the user agent, cut to 200 characters), w and h (the window size when the client sends it).$c$;
+    comment on function public.app_session_touch(text, jsonb) is $c$[logs] Records an Activity visit: continues the open app_sessions row of the member when its last_seen_at is less than 30 minutes old, else ends the open rows (ended_at = last_seen_at) and starts a new row. p_client is merged into client. Returns the session id, or null for an unknown member. Called by the Activity server (logs.js) at most every 5 minutes per member. Service role only.$c$;
+    comment on table public.tutorial_steps is $c$[logs] One row per walkthrough step a member did, with the time (the first time only: a replay does not move it). The Activity server writes it on POST /api/tutorial (flag FEATURE_APP_LOGS): the steps of players.tutorial done, seen:<set> for a view explainer, skipped, replay and finished. Service role only.$c$;
+    comment on column public.tutorial_steps.player_id is $c$The member (players.id).$c$;
+    comment on column public.tutorial_steps.step is $c$The step: a tutorial step name (gifts, open, rarity, collection, hunt, community, dailies, voice), seen:<explainer set>, skipped, replay or finished.$c$;
+    comment on column public.tutorial_steps.done_at is $c$Time the member first did the step.$c$;
+    comment on table public.page_views is $c$[logs] Which screens a member opens: one row per member, view and ref per 10 minutes at most (the Activity server throttles it; flag FEATURE_APP_LOGS). Written when the screen data route answers (shop, hall, auctions, auction, dungeon, gauntlet, leaderboard, member_profile) and by POST /api/view for the screens that have no own route. Compare with shop_purchases, trade_listings, auctions and dungeon_runs for conversion. Service role only.$c$;
+    comment on column public.page_views.id is $c$Row id.$c$;
+    comment on column public.page_views.player_id is $c$The member who opened the screen (players.id).$c$;
+    comment on column public.page_views.view is $c$The screen: shop, hall, auctions, auction, dungeon, gauntlet, leaderboard, member_profile, or a screen name that the client sends to POST /api/view (allow-listed in tcg-activity/logs.js).$c$;
+    comment on column public.page_views.ref is $c$What on the screen, or null: the auction id (auction), the list (auctions: open or mine), the member id (member_profile).$c$;
+    comment on column public.page_views.at is $c$Time of the view.$c$;
+    comment on function public.guild_joined(jsonb) is $c$[logs] Sets players.guild_joined_at from a list [{id, at}] (Discord joinedAt): only existing rows, only a newer time. The bot calls it on GuildMemberAdd and for the rows with no time at start and once a day (guild-log.ts, flag FEATURE_GUILD_LOG). Returns the rows changed. Service role only.$c$;
+    comment on function public.guild_left(text, timestamp with time zone) is $c$[logs] Sets players.left_guild_at for one member (only an existing row). The bot calls it on GuildMemberRemove (guild-log.ts; needs the Server Members intent). Returns true when a row changed. Service role only.$c$;
+-- ===== logs (logs_sql.sql, 2026-10-07) =====
+-- The same notes as in logs_sql.sql. Only when logs_sql.sql is applied (a re-run of this file on a database without it skips them).
+do $logs$ begin
+  if to_regclass('public.settings_log') is not null then
+    comment on table public.settings_log is $c$One row per insert, change or delete of a settings row (the settings_log_write trigger). A changed value is required: an equal value writes no row. Some values hold member id lists (discord_immune, ui_v3.users): server only.$c$;
+    comment on column public.settings_log.id is $c$The log row id.$c$;
+    comment on column public.settings_log.key is $c$The settings key that changed (settings.key).$c$;
+    comment on column public.settings_log.op is $c$insert, update (a changed value) or delete.$c$;
+    comment on column public.settings_log.old_value is $c$The value before the change. Null for an insert.$c$;
+    comment on column public.settings_log.new_value is $c$The value after the change. Null for a delete.$c$;
+    comment on column public.settings_log.changed_at is $c$When the change was made.$c$;
+    comment on column public.settings_log.changed_by is $c$Who made the change: balance_who (the setting balance.by, else the session user).$c$;
+    comment on function public.settings_log_write() is $c$Trigger (after insert, update, delete on settings): writes a settings_log row with the old value, the new value and balance_who. Writes nothing when the value did not change.$c$;
+    comment on table public.profile_log is $c$One row per changed profile field of a member (the profile_log_write trigger on players): username, avatar, title, frame, spotlight, and each top-level key of notify_prefs and tutorial (notify_prefs.<key>, tutorial.<key>). Not the pack or Shard balance (the ledgers). Server only.$c$;
+    comment on column public.profile_log.id is $c$The log row id.$c$;
+    comment on column public.profile_log.player_id is $c$The member (players.id). No foreign key: the history stays.$c$;
+    comment on column public.profile_log.field is $c$The field: username, avatar, title, frame, spotlight, notify_prefs.<key> or tutorial.<key> (the whole column notify_prefs or tutorial when it is not a jsonb object).$c$;
+    comment on column public.profile_log.old_value is $c$The value before the change as jsonb (null = no value).$c$;
+    comment on column public.profile_log.new_value is $c$The value after the change as jsonb (null = no value).$c$;
+    comment on column public.profile_log.changed_at is $c$When the change was made.$c$;
+    comment on column public.profile_log.changed_by is $c$Who made the change: balance_who (the setting balance.by, else the session user; the Activity and the bot show as authenticator).$c$;
+    comment on function public.profile_log_write() is $c$Trigger (after a players row change with a new username, avatar, title, frame, spotlight, notify_prefs or tutorial): writes one profile_log row per changed field and per changed top-level key of notify_prefs and tutorial.$c$;
+    comment on table public.wishlist_log is $c$One row per wishlist change (the wishlist_log_write trigger on wishlists): add, remove, replace (another card in the slot), set_top, unset_top. Server only.$c$;
+    comment on column public.wishlist_log.id is $c$The log row id.$c$;
+    comment on column public.wishlist_log.player_id is $c$The member (players.id). No foreign key: the history stays.$c$;
+    comment on column public.wishlist_log.slot is $c$The wishlist slot (1 to 5).$c$;
+    comment on column public.wishlist_log.op is $c$add, remove, replace, set_top or unset_top.$c$;
+    comment on column public.wishlist_log.card_id is $c$The card in the slot after the change (for remove: the card that left).$c$;
+    comment on column public.wishlist_log.old_card_id is $c$For replace: the card that was in the slot before. Else null.$c$;
+    comment on column public.wishlist_log.changed_at is $c$When the change was made.$c$;
+    comment on column public.wishlist_log.changed_by is $c$Who made the change: balance_who (the setting balance.by, else the session user).$c$;
+    comment on function public.wishlist_log_write() is $c$Trigger (after insert, update, delete on wishlists): writes wishlist_log rows (add, remove, replace, set_top, unset_top).$c$;
+    comment on table public.stat_point_log is $c$One row per stat that changed on an owned card (player_cards.stat_points, the stat_point_log_* triggers): spend (spend_stat_points), reset (reset_stat_points, buy_shop_item stat_reset), other (any other change, for example the player_cards row deleted). Server only.$c$;
+    comment on column public.stat_point_log.id is $c$The log row id.$c$;
+    comment on column public.stat_point_log.player_id is $c$The member (players.id). No foreign key: the history stays.$c$;
+    comment on column public.stat_point_log.card_id is $c$The card (cards.id).$c$;
+    comment on column public.stat_point_log.stat is $c$The stat key in stat_points: attack, vitality, precision, potency or haste.$c$;
+    comment on column public.stat_point_log.delta is $c$The change of the points of this stat (positive = spent, negative = reset or removed).$c$;
+    comment on column public.stat_point_log.points is $c$The points of this stat after the change.$c$;
+    comment on column public.stat_point_log.reason is $c$spend (all stats up or the same), reset (all points to {}), other (any other change, a new row with points, a deleted row).$c$;
+    comment on column public.stat_point_log.changed_at is $c$When the change was made.$c$;
+    comment on column public.stat_point_log.changed_by is $c$Who made the change: balance_who (the setting balance.by, else the session user).$c$;
+    comment on function public.stat_point_log_write() is $c$Trigger (on player_cards: after a change of stat_points, a new row or a deleted row with stat_points not empty): writes one stat_point_log row per changed stat with the reason spend, reset or other.$c$;
+    comment on table public.admin_actions is $c$[admin] The admin audit log: one row per admin action (who, what, the target, before and after, why, where from, which action it undoes). admin_log_action writes it for the Admin view; the gift_admin_log trigger writes the admin gifts (reasons admin, event, launch_gift). Server only.$c$;
+    comment on column public.admin_actions.id is $c$The action id. undo_of points at it.$c$;
+    comment on column public.admin_actions.at is $c$When the action was made.$c$;
+    comment on column public.admin_actions.actor is $c$Who made it: the admin (the Discord id from the bot or the studio), else balance_who for SQL.$c$;
+    comment on column public.admin_actions.action is $c$What was done, for example gift (gift_admin_log) or the Admin view action name.$c$;
+    comment on column public.admin_actions.target_kind is $c$The kind of target, for example player (one member), players (many members), card, balance, settings. Null = none.$c$;
+    comment on column public.admin_actions.target_id is $c$The target id as text (for player: players.id). Null for many targets (after.count and after.gift_ids list them).$c$;
+    comment on column public.admin_actions.before is $c$The state before the action as jsonb (for an undo). Null = not recorded.$c$;
+    comment on column public.admin_actions.after is $c$The state after the action as jsonb. For a gift: kind, title, amount, shards, count, gift_ids.$c$;
+    comment on column public.admin_actions.reason is $c$Why: the text of the admin, or the gift reason (admin, event, launch_gift).$c$;
+    comment on column public.admin_actions.source is $c$Where it came from: studio (the Admin view), bot (an admin slash command), sql (the SQL editor or a script).$c$;
+    comment on column public.admin_actions.undo_of is $c$The action that this action undoes (admin_actions.id), else null. An action is undone at most once (admin_actions_one_undo).$c$;
+    comment on function public.admin_log_action(text, text, text, text, jsonb, jsonb, text, text, bigint) is $c$[admin] Writes one admin_actions row and returns its id: actor, action, target kind and id, before, after, reason, source (studio, bot or sql; default studio), undo_of. Refuses an empty actor or action, a bad source and a second undo of one action. Service role only.$c$;
+    comment on function public.gift_admin_log() is $c$[admin] Trigger (after insert on gift_claims, once per statement): writes one admin_actions row per admin gift group of the statement (reasons admin, event, launch_gift), with the gift ids. The actor is from_id (the admin, source bot), else balance_who (source sql).$c$;
+    comment on column public.notifications.read_at is $c$When the member read the note. Null = unread, or read before the write path existed (the column came 2026-10-07; the Activity write path is a separate change).$c$;
+    comment on column public.player_reports.target_id is $c$The member that the report is about (players.id), else null. Null when that member row is deleted.$c$;
+    comment on function public.prune_old_rows() is $c$Deletes old rows: bell notes after 365 days, posted hunt_events after 365, ended discord_effects after 365, cron run details after 90 (logs_sql.sql, 2026-10-07; was 30 / 90 / 30 / 30 / 14). The logs (settings_log, profile_log, wishlist_log, stat_point_log, admin_actions) are never pruned. The pg_cron job prune-old-rows runs it each day. Returns the counts.$c$;
+  end if;
+end $logs$;
+
 notify pgrst, 'reload schema';
