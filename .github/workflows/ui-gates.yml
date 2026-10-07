@@ -71,10 +71,12 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node ci/ui-check/plan.mjs >> "$GITHUB_OUTPUT"
 
-  # One job for each browser; 4 cells at a time in each job (a runner has 4 cores). The plan names the screens:
+  # 6 jobs for each browser (--shard k/6: every 6th cell), 4 cells at a time in each job (a runner has 4 cores). All
+  # shards together run every cell; the verdict job merges the g3-* artifacts. One job ran 764 cells in 76 min (2026-10-07).
+  # The plan names the screens:
   # the screens of the enforced IDs, or every screen for the shell IDs and for a change to the check itself.
   g3-run:
-    name: G3 run (${{ matrix.browser }})
+    name: G3 run (${{ matrix.browser }} ${{ matrix.shard }}/6)
     needs: plan
     if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
@@ -83,6 +85,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, webkit]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -106,11 +109,11 @@ jobs:
       - name: Run the screens
         env:
           SCREENS: ${{ needs.plan.outputs.screens }}
-        run: node ci/ui-check/run.mjs --browser ${{ matrix.browser }} --screens "$SCREENS" --workers 4 --out ci/ui-check/.out/results
+        run: node ci/ui-check/run.mjs --browser ${{ matrix.browser }} --screens "$SCREENS" --workers 4 --shard ${{ matrix.shard }}/6 --out ci/ui-check/.out/results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: g3-${{ matrix.browser }}
+          name: g3-${{ matrix.browser }}-${{ matrix.shard }}
           path: ci/ui-check/.out/results
           retention-days: 14
           if-no-files-found: warn
