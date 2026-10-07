@@ -25,7 +25,12 @@ if (process.env.LOCALDB === '1') {
   globalThis.fetch = async (input, init = {}) => {
     const url = new URL(typeof input === 'string' || input instanceof URL ? String(input) : input.url);
     if (SQL.test(url.origin + url.pathname)) {
-      const r = await realFetch(`${META}/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: init.body });
+      // Run as postgres, like the live Management API: postgres-meta connects as supabase_admin, so a function made
+      // locally had another owner than live, and the schema snapshot drifted (#252 balance_check_settings).
+      let body = init.body;
+      try { const j = JSON.parse(body); if (typeof j.query === 'string') body = JSON.stringify({ ...j, query: `set role postgres;
+${j.query}` }); } catch { /* not JSON: as it is */ }
+      const r = await realFetch(`${META}/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
       const text = await r.text();
       if (r.ok) return new Response(text, { status: 201, headers: { 'Content-Type': 'application/json' } });
       let msg = text; try { msg = JSON.parse(text).error || text; } catch { /* the raw text */ }
