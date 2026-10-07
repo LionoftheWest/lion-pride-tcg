@@ -91,7 +91,7 @@ Table. [dungeon] One row per game day: the daily dungeon, the same for every mem
 | `day` | date | not null |  | The game day (dungeon_day(), America/Denver). |
 | `name` | text | not null |  | The dungeon name, a seeded draw from a fixed list in dungeon_generate. |
 | `rule` | jsonb | not null |  | The daily rule: one object of dungeon_rules() (name, note and one of types, no_rarity, boost_tag + boost, budget). dungeon_start enforces it. |
-| `floors` | jsonb | not null |  | The dungeon: an array of floors, each an array of 5 rooms {type, foes}. Room 1 is a fight, room 5 the floor guardian. The floor count is settings.dungeon floors. |
+| `floors` | jsonb | not null |  | The dungeon: an array of floors, each an array of 5 rooms {type, foes}. Room 1 is a fight, room 5 the floor guardian. The floor count is balance dungeon.floors. |
 | `created_at` | timestamp with time zone | not null | `now()` | When dungeon_generate made the row. |
 
 - Primary key: `PRIMARY KEY (day)`
@@ -130,8 +130,8 @@ Table. [dungeon] The monster catalog: one row per monster type. dungeon.sql and 
 | `key` | text | not null |  | The monster id, for example slime. A foe keeps it as key. |
 | `name` | text | not null |  | The base name. dungeon_make_foe adds the element and the kind (for example Fire Slime (Elite)). |
 | `model` | text | not null |  | The 3D model file tcg-activity/public/dungeon/monsters/<model>.glb. |
-| `hp` | integer | not null |  | The HP on floor 1. dungeon_make_foe scales it by floor, room and kind (settings.dungeon hp_growth, room_growth and the kind multipliers). |
-| `atk` | integer | not null |  | The attack on floor 1. dungeon_make_foe scales it by floor and kind (settings.dungeon atk_growth and the kind multipliers). |
+| `hp` | integer | not null |  | The HP on floor 1. dungeon_make_foe scales it by floor, room and kind (balance dungeon hp_growth, room_growth and foe_mult). |
+| `atk` | integer | not null |  | The attack on floor 1. dungeon_make_foe scales it by floor and kind (balance dungeon atk_growth and foe_mult). |
 | `tags` | text[] | not null | `'{}'::text[]` | The tag slugs of the monster (trait:...). dungeon_make_foe adds the element tag. Card weakness and bonus rules match them. |
 | `moves` | jsonb | not null | `'[]'::jsonb` | The named moves as a jsonb array of {name, kind, w}: kind is a move of the shared combat core (combat_pool_act), w its draw weight. |
 
@@ -205,7 +205,7 @@ Table. [dungeon] One row per Gauntlet week: one squad and one dungeon for every 
 | `name` | text | not null |  | The Gauntlet name, a seeded draw from a fixed list in gauntlet_generate. |
 | `squad` | bigint[] | not null |  | The 5 card ids every member plays this week: 3 attackers and 2 supports at base level, chosen by gauntlet_squad within the budget. |
 | `theme` | text | null |  | The support affinity tag that the squad is built around, or null when no theme fits. |
-| `floors` | jsonb | not null |  | The dungeon of the week, the same shape as dungeon_days.floors (room weights in settings.gauntlet room_weights). |
+| `floors` | jsonb | not null |  | The dungeon of the week, the same shape as dungeon_days.floors (room weights in balance gauntlet.room_weights). |
 | `created_at` | timestamp with time zone | not null | `now()` | When gauntlet_generate made the row. |
 
 - Primary key: `PRIMARY KEY (week)`
@@ -449,7 +449,7 @@ A member claims the reached track tiers and tag badges: achievement_claims rows,
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: after a foe falls, adds the kill loot (daily only). When the room is cleared it offers rewards, or after the guardian banks the floor loot. Returns the state, Shards, card, cleared.
+Internal helper: after a foe falls, adds the kill loot (daily only; balance dungeon_rewards loot_chance, shards_kill). When the room is cleared it offers rewards, or after the guardian banks the floor loot (+ floor_shards x floor). Returns the state, Shards, card, cleared.
 
 <a id="fn-dungeon-attack-text-bigint-integer-text"></a>
 
@@ -459,7 +459,7 @@ Internal helper: after a foe falls, adds the kill loot (daily only). When the ro
 - Returns: `jsonb`
 - Security definer: no
 
-POST /api/dungeon/attack: one squad card attacks a foe on the shared combat core, then the foes act. Settles the run when the squad falls or the dungeon is cleared. Returns the hit, the enemy actions and the state.
+POST /api/dungeon/attack: one squad card attacks a foe on the shared combat core, then the foes act. Settles the run when the squad falls, the round cap is reached (balance dungeon.round_cap) or the dungeon is cleared. Returns the hit, the enemy actions and the state.
 
 <a id="fn-dungeon-board-date-integer"></a>
 
@@ -509,7 +509,7 @@ Internal helper: a random draw-pool card of a rarity, for loot and prizes. Retur
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: the Dungeon settings (settings.dungeon) merged with the run rewards (balance key dungeon_rewards). Returns jsonb.
+Internal helper: the whole Dungeon config as one jsonb: settings.dungeon (the flag and the seed salt) merged with the balance keys dungeon (the fight and run rules) and dungeon_rewards (Shards, loot, chest odds, room rewards). The functions read each number with balance_num; this view is for the Activity payload and the tests.
 
 <a id="fn-dungeon-chest-rarity-integer"></a>
 
@@ -519,7 +519,7 @@ Internal helper: the Dungeon settings (settings.dungeon) merged with the run rew
 - Returns: `text`
 - Security definer: no
 
-Internal helper: rolls the rarity of a chest or reward card of a tier 1-5 (balance key dungeon_rewards, chest_rarity). Returns normal, illustrated_rare or secret_rare.
+Internal helper: rolls the rarity of a chest or reward card of a tier 1-5 (balance key dungeon_rewards, chest_rarity; a missing tier raises). Returns normal, illustrated_rare or secret_rare.
 
 <a id="fn-dungeon-choose-text-integer-text"></a>
 
@@ -569,7 +569,7 @@ Internal helper: the foes' turn after an attack: poison ticks, each living foe a
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: moves a run state into a room. A fight room loads its foes, a rest room heals, a choice room offers doors, a treasure room opens a chest (Shards and card chance from balance dungeon_rewards.chest). Returns the new state.
+Internal helper: moves a run state into a room. A fight room loads its foes, a rest room heals (balance dungeon rest_heal, rest_revive), a choice room offers doors, a treasure room opens a chest (Shards and card chance from balance dungeon_rewards.chest). Returns the new state.
 
 <a id="fn-dungeon-generate-date"></a>
 
@@ -579,7 +579,7 @@ Internal helper: moves a run state into a room. A fight room loads its foes, a r
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: builds the dungeon of a day once (seeded by settings.dungeon salt) and writes dungeon_days. Called by dungeon_start and dungeon_view. Returns the day row as jsonb.
+Internal helper: builds the dungeon of a day once (seeded by settings.dungeon salt; balance dungeon floors and room_weights) and writes dungeon_days. Called by dungeon_start and dungeon_view. Returns the day row as jsonb.
 
 <a id="fn-dungeon-log-add-bigint-jsonb-jsonb"></a>
 
@@ -609,7 +609,7 @@ Internal helper: adds Shards and a card to the at-risk loot (state pend). The Sh
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: builds one foe from a seeded dungeon_monsters row: element, HP and attack scaled by floor, room and kind, weakness, resistance, passives. Returns the foe as jsonb.
+Internal helper: builds one foe from a seeded dungeon_monsters row: element, HP and attack scaled by floor and room (balance dungeon hp_growth, atk_growth, room_growth) and by kind (balance dungeon.foe_mult), weakness, resistance, passives. Returns the foe as jsonb.
 
 <a id="fn-dungeon-offers-jsonb-integer"></a>
 
@@ -699,7 +699,7 @@ Internal helper: the foes of one room (1-3 for a fight, 4-5 for a horde, else 1)
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: the list of daily rules that dungeon_generate draws from (allowed types, banned rarity, a tag boost or a smaller budget). Returns a jsonb array.
+Internal helper: the list of daily rules that dungeon_generate draws from (allowed types, banned rarity, a tag boost or a smaller budget). The boost and the small budget are balance dungeon.rules (the names show them). A day keeps the rule it drew (dungeon_days.rule). Returns a jsonb array.
 
 <a id="fn-dungeon-run-card-dungeon-runs-bigint"></a>
 
@@ -749,7 +749,7 @@ Ends every active run of an earlier day as abandoned (dungeon_settle, banked loo
 - Returns: `jsonb`
 - Security definer: no
 
-POST /api/dungeon/start: starts today's daily run with 5 owned cards. Checks the flag, adventure_gate, one run a day, the daily rule and the budget. Writes dungeon_runs and dungeon_log. Returns ok, run and state.
+POST /api/dungeon/start: starts today's daily run with the squad (balance dungeon.squad cards). Checks the flag, adventure_gate, one run a day, the daily rule and the budget (the rule's budget, else balance dungeon.budget; the costs are balance dungeon.cost). Writes dungeon_runs and dungeon_log. Returns ok, run and state.
 
 <a id="fn-dungeon-support-text-bigint-bigint-integer-text"></a>
 
@@ -789,7 +789,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/dungeon: the member's Dungeon screen. Ends the member's active runs of earlier days, builds today's dungeon, and returns the rule, the budget, the run, the member's cards, the rooms of the floor and the top 3.
+GET /api/dungeon: the member's Dungeon screen. Ends the member's active runs of earlier days, builds today's dungeon, and returns the rule, the budget, the squad size, the costs, the Shard cap (balance dungeon and dungeon_rewards), the run, the member's cards, the rooms of the floor and the top 3.
 
 <a id="fn-gauntlet-board-date-integer"></a>
 
@@ -809,7 +809,7 @@ GET /api/gauntlet/board, gauntlet_view and dungeon_pay: the Gauntlet board of a 
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: the Gauntlet settings (settings.gauntlet: the flag, the budget, the room weights). Returns jsonb.
+Internal helper: the Gauntlet config as one jsonb: settings.gauntlet (the flag) merged with the balance key gauntlet (the budget, the room weights).
 
 <a id="fn-gauntlet-generate-date"></a>
 
@@ -819,7 +819,7 @@ Internal helper: the Gauntlet settings (settings.gauntlet: the flag, the budget,
 - Returns: `gauntlet_weeks`
 - Security definer: no
 
-Internal helper: builds the Gauntlet of a week once (squad and seeded floors) and writes gauntlet_weeks. Called by gauntlet_start and gauntlet_view. Returns the week row.
+Internal helper: builds the Gauntlet of a week once (squad and seeded floors: balance dungeon.floors, balance gauntlet.room_weights) and writes gauntlet_weeks. Called by gauntlet_start and gauntlet_view. Returns the week row.
 
 <a id="fn-gauntlet-pool"></a>
 
@@ -829,7 +829,7 @@ Internal helper: builds the Gauntlet of a week once (squad and seeded floors) an
 - Returns: `TABLE(id bigint, ckey bigint, role text, cost integer, tags text[], aff text)`
 - Security definer: no
 
-Internal helper: the cards that the Gauntlet squad can use (attackers and support cards, no Event or Promo), with cost, tags and affinity. Called by gauntlet_squad.
+Internal helper: the cards that the Gauntlet squad can use (attackers and support cards, no Event or Promo), with cost (balance dungeon.cost), tags and affinity. Called by gauntlet_squad.
 
 <a id="fn-gauntlet-squad-date"></a>
 
@@ -839,7 +839,7 @@ Internal helper: the cards that the Gauntlet squad can use (attackers and suppor
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: picks the seeded squad of a week (3 attackers and 2 supports, different characters, within the budget, a theme when one fits). Returns {squad, theme, cost} or null.
+Internal helper: picks the seeded squad of a week (3 attackers and 2 supports, different characters, within balance gauntlet.budget, a theme when one fits). Returns {squad, theme, cost} or null.
 
 <a id="fn-gauntlet-start-text"></a>
 
@@ -859,7 +859,7 @@ POST /api/gauntlet/start: starts today's Gauntlet run with the week's squad. Che
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad, today's run, the member's best rank, the rooms, the top 3 and the prizes.
+GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad (costs: balance dungeon.cost), the budget (balance gauntlet.budget), today's run, the member's best rank, the rooms, the top 3 and the prizes.
 
 <a id="fn-gauntlet-week-date"></a>
 

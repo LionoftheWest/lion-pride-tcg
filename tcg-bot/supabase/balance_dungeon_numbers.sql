@@ -16,6 +16,7 @@
 -- new md5, so a re-run of it does not revert this file. Idempotent.
 
 -- GUARD (the combat_core.sql rule): each function must be the live text this file was built from, or its result.
+-- balance_settings_numbers.sql (2026-10-07) read the rest room numbers from balance: the second md5 of dungeon_enter is its result (the same text below).
 do $g$
 declare x text[]; m text;
 begin
@@ -25,7 +26,7 @@ begin
   foreach x slice 1 in array array[
     ['dungeon_tier(double precision)', 'd1a32a310b377f27622c31cc1c81a209', 'b62e10111584d651cb4718f9d0488eef'],
     ['dungeon_offers(jsonb,integer)', '96c341db587398eb879b07c969500409', 'd3cf95a36e58db2081ac6a57e63e55a5'],
-    ['dungeon_enter(jsonb,jsonb,integer,integer)', '591317f3b1b3ef398d22ff0a4518b788', 'a1c94c659efc65e139ddd42b6a41920b'],
+    ['dungeon_enter(jsonb,jsonb,integer,integer)', '591317f3b1b3ef398d22ff0a4518b788', '69bf76b64a86b3cd1326ca3ebd81925e'],
     ['dungeon_choose(text,integer,text)', 'd4fae931e80f8ee8879efe0344a06ceb', '44c889d2b1f0aa70c30e4b7531eb9861'],
     ['roster_stats()', '8b71ebb5d6f90d0beb5fa8383bfa33a4', '79b65ad0a29dcd326061c1b2ef623633'],
     ['roster_snapshot()', '5e356ace0bf874af23716664fe1d6250', '9ebbc5b0d0dae19321f488750dd06d0c']] loop
@@ -98,7 +99,7 @@ update public.balance
          'door', '{"gamble_rare":0.5,"rare_tier":4}'::jsonb,
          'offers', '{"heal":[0.25,0.35,0.5,0.75,1.0],"buff":[0.05,0.08,0.12,0.18,0.25],"shards":[8,15,25,40,70],"shards_per_floor":2,"ward":[0.1,0.15,0.2,0.3,0.4],"revive":[0.3,0.3,0.4,0.6,1.0],"min_tier":{"reset":3,"revive":2}}'::jsonb)
        || value,
-       note = $n$Dungeon run rewards (dungeon_cfg merges this key into settings.dungeon): shards_kill per kill, floor_shards per floor, shards_room per room, at most run_shards_cap Shards in one run; loot_chance = the card drop chance, loot = the drop rarity odds up to floor "to"; chest_rarity = the chest rarity odds by chest tier. tier_weights = the odds of tier 1 to 5 (dungeon_tier: the chest tier and each room reward tier). chest = a treasure room (dungeon_enter): shards[tier - 1] + shards_per_floor x floor Shards, a card with the chance card_chance[tier - 1]. door = the dark door (dungeon_choose): gamble_rare = the chance of a rare chest (else an ambush), a chest of tier rare_tier. offers = the room rewards by tier (dungeon_offers): heal, buff, ward, revive (shares of max HP or damage), shards[tier - 1] + shards_per_floor x floor; min_tier = the least tier of a reset and a revive. Every tier array has 5 values (tier 1 to 5; balance_check_dungeon). The fight numbers and the flag stay in settings.dungeon.$n$
+       note = $n$Dungeon run rewards (dungeon_cfg merges this key into settings.dungeon): shards_kill per kill, floor_shards per floor, at most run_shards_cap Shards in one run; loot_chance = the card drop chance, loot = the drop rarity odds up to floor "to"; chest_rarity = the chest rarity odds by chest tier. tier_weights = the odds of tier 1 to 5 (dungeon_tier: the chest tier and each room reward tier). chest = a treasure room (dungeon_enter): shards[tier - 1] + shards_per_floor x floor Shards, a card with the chance card_chance[tier - 1]. door = the dark door (dungeon_choose): gamble_rare = the chance of a rare chest (else an ambush), a chest of tier rare_tier. offers = the room rewards by tier (dungeon_offers): heal, buff, ward, revive (shares of max HP or damage), shards[tier - 1] + shards_per_floor x floor; min_tier = the least tier of a reset and a revive. Every tier array has 5 values (tier 1 to 5; balance_check_dungeon). The fight and run numbers are balance dungeon; the flag and the seed salt stay in settings.dungeon.$n$
  where key = 'dungeon_rewards';
 
 insert into public.balance (key, value, note) values
@@ -174,7 +175,7 @@ CREATE OR REPLACE FUNCTION public.dungeon_enter(p_state jsonb, p_floors jsonb, p
  LANGUAGE plpgsql
  SET search_path TO 'public'
 AS $function$
-declare cfg jsonb := dungeon_cfg(); v_room jsonb := p_floors -> (p_floor - 1) -> (p_room - 1); st jsonb := p_state; k text; c jsonb;
+declare v_room jsonb := p_floors -> (p_floor - 1) -> (p_room - 1); st jsonb := p_state; k text; c jsonb;
   v_old int := coalesce((p_state->>'round')::int, 0); v_left int; t int; v_sh int; v_card bigint; doors text[] := case when p_state->>'mode' = 'gauntlet' then array['elite','rest','horde'] else array['elite','rest','treasure','horde','gamble'] end; d jsonb := '[]'; x text;
 begin
   st := st || jsonb_build_object('round', 0, 'room_type', v_room->>'type', 'sup_round', -1) - 'chest' - 'offers';
@@ -196,9 +197,9 @@ begin
     for k in select jsonb_object_keys(st->'cards') loop
       c := st->'cards'->k;
       if (c->>'down')::boolean then
-        c := c || jsonb_build_object('down', false, 'hp', greatest(1, round((c->>'max')::int * coalesce((cfg->>'rest_revive')::numeric, 0.25)))::int);
+        c := c || jsonb_build_object('down', false, 'hp', greatest(1, round((c->>'max')::int * balance_num('dungeon', 'rest_revive')))::int);
       else
-        c := c || jsonb_build_object('hp', least((c->>'max')::int, (c->>'hp')::int + round((c->>'max')::int * coalesce((cfg->>'rest_heal')::numeric, 0.4))::int));
+        c := c || jsonb_build_object('hp', least((c->>'max')::int, (c->>'hp')::int + round((c->>'max')::int * balance_num('dungeon', 'rest_heal'))::int));
       end if;
       st := jsonb_set(st, array['cards', k], c);
     end loop;
