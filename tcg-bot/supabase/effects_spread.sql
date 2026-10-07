@@ -1,3 +1,9 @@
+do $g$ begin
+  -- balance_table.sql (2026-10-03): the functions below read public.balance, so it must exist first.
+  if to_regclass('public.balance') is null then
+    raise exception '%: apply balance_table.sql first (these functions read the balance table)', 'effects_spread.sql';
+  end if;
+end $g$;
 -- effects_spread.sql (2026-10-03, Nathan's decisions on the fxdraft 1-duplicates.md + 2-wording.md).
 -- STACKS ON effects_outside.sql (PR #144): apply that file first.
 -- The bot side is tcg-bot/src/discord-effects.ts; the Activity side is the avatar mustache (effects-ui.js).
@@ -304,12 +310,12 @@ begin
   v_start := now() + case when v_outcome = 'delayed' then interval '1 hour' else interval '0' end;
 
   -- Tier scaling, then the hard ceilings.
-  select value into v_tiers from settings where key = 'card_effect_tiers';
+  v_tiers := balance_get('effect_tiers');   -- balance_table.sql
   v_power := coalesce((v_tiers->v_rarity->>'power')::numeric, 1);
   v_cd    := coalesce((v_tiers->v_rarity->>'cd')::numeric, 1);
   -- Ascension (Nathan, 2026-09-27): each star of THIS copy makes the effect stronger
   -- and the cooldown shorter, on top of the tier. The hard limits below still clamp.
-  select value into v_ascset from settings where key = 'card_effect_ascension';
+  v_ascset := balance_get('effect_ascension');
   v_cmb := card_combat(v_rarity, v_asc, 1, v_pts);
   if (v_cmb->>'on')::boolean then
     -- Stat points on: the Potency and Haste points of THIS copy replace the per-star bonus.
@@ -317,10 +323,10 @@ begin
     v_cd    := v_cd * (v_cmb->>'haste')::numeric;
   else
     v_power := v_power * (1 + coalesce((v_ascset->>'power_per_star')::numeric, 0) * v_asc);
-    v_cd    := v_cd * greatest(0.2, 1 - coalesce((v_ascset->>'cd_per_star')::numeric, 0) * v_asc);
+    v_cd    := v_cd * greatest((v_ascset->>'cd_floor')::numeric, 1 - coalesce((v_ascset->>'cd_per_star')::numeric, 0) * v_asc);
   end if;
   -- One global knob for how often every card can be played (1 = as written).
-  select coalesce((value #>> '{}')::numeric, 1) into v_scale from settings where key = 'card_effect_cooldown_scale';
+  v_scale := (balance_get('effect_cooldown_scale') #>> '{}')::numeric;
   v_cd    := v_cd * coalesce(v_scale, 1);
   v_amount := round((v_eff->'base'->>'amount')::numeric * v_power, 2);
   v_dur    := round((v_eff->'base'->>'duration_s')::numeric * v_power)::int;

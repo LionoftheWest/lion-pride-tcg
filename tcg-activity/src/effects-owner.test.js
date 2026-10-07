@@ -35,7 +35,8 @@ function fakeSupabase({ owner = 'OWNER', prim = 'title', polls = prim === 'hot_t
 function routes(sb) {
   const r = {};
   const app = { get: (p, fn) => { r[p] = fn; }, post: (p, fn) => { r[p] = fn; } };
-  registerEffectRoutes(app, { supabase: sb, caller: async () => ({ id: 'S1' }), rateLimit: () => true, toProxyImg: (u) => u });
+  registerEffectRoutes(app, { supabase: sb, caller: async () => ({ id: 'S1' }), rateLimit: () => true, toProxyImg: (u) => u,
+    getBalance: async () => ({ effect_tiers: {}, effect_ascension: {}, effect_cooldown_scale: 1 }) });
   return r;
 }
 async function call(fn, body) {

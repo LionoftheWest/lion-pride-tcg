@@ -10,15 +10,21 @@
 --   crit / miss / block, burn, double strike, phases, defeat, cooldowns, stun immunity) through the live
 --   code and through this file, and fails on the first difference.
 -- A rule change here changes the Hunt, the Dungeon and the Arena together. Idempotent.
+-- Since balance_table.sql (2026-10-03) every number of these rules is read from public.balance; the text
+-- below is the live text after balance_table.sql (the guard accepts the text before it and its result).
 
 -- GUARD: this file replaces live functions. It runs only on the exact live version it was built from
 -- (or on its own result, so it can run again). Another change to the live function stops it here, so
 -- that change is never reverted: rebuild this file from the live text first (.live/rebuild.mjs).
 do $g$ begin
-  if md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), '')) not in ('5a0e831491016265f7accc313f8f8071', 'f84e5768628b1c4afddb89ecfe96a5ec') then
+  -- balance_table.sql (2026-10-03): the functions below read public.balance, so it must exist first.
+  if to_regclass('public.balance') is null then
+    raise exception '%: apply balance_table.sql first (these functions read the balance table)', 'combat_core.sql';
+  end if;
+  if md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), '')) not in ('f84e5768628b1c4afddb89ecfe96a5ec', '36bbe09bf42809b80e7c7d69218bb52a') then
     raise exception 'combat_core.sql: the live hunt_attack changed since this file was built. Rebuild from the live text.';
   end if;
-  if md5(replace(pg_get_functiondef('public.hunt_support'::regproc), chr(13), '')) not in ('83f9607a755aa552c0740c0015860fbc', '882eee37eca4a71dbdab385b21bd061a') then
+  if md5(replace(pg_get_functiondef('public.hunt_support'::regproc), chr(13), '')) not in ('beb6c2738ef2b0966054234c13fa1085', 'ef5d2c1a5eb74bf430cd2ddce1c7af84') then
     raise exception 'combat_core.sql: the live hunt_support changed since this file was built. Rebuild from the live text.';
   end if;
 end $g$;
@@ -30,7 +36,7 @@ end $g$;
 -- weak tag (the soft cap: the bonus halves for each card after 3). The multiplier stays in 0.25 .. 2.5.
 create or replace function public.combat_weak(p_weak jsonb, p_resist jsonb, p_type text, p_rarity text, p_season text,
                                               p_tags text[], p_stack int)
-returns jsonb language plpgsql immutable set search_path = public as $$
+returns jsonb language plpgsql stable set search_path = public as $$
 declare v_wm int; v_rm int; v_wmult numeric;
 begin
   select count(*) into v_wm from jsonb_array_elements(coalesce(p_weak, '[]'::jsonb)) w
@@ -44,9 +50,9 @@ begin
        or (w->>'kind' = 'season' and w->>'value' = p_season)
        or (w->>'kind' = 'tag'    and w->>'value' = any(p_tags));
   v_wmult := 1
-    + (1 - power(0.5, v_wm)) * (case when p_stack <= 3 then 1 else power(0.5, p_stack - 3) end)
-    - 0.8 * (1 - power(0.5, v_rm));
-  v_wmult := greatest(0.25, least(2.5, v_wmult));
+    + (1 - power(public.balance_num('combat', 'weak_step'), v_wm)) * (case when p_stack <= public.balance_num('combat', 'weak_stack_free') then 1 else power(public.balance_num('combat', 'weak_step'), p_stack - public.balance_num('combat', 'weak_stack_free')) end)
+    - public.balance_num('combat', 'resist_step') * (1 - power(public.balance_num('combat', 'resist_decay'), v_rm));
+  v_wmult := greatest(public.balance_num('combat', 'weak_min'), least(public.balance_num('combat', 'weak_max'), v_wmult));
   return jsonb_build_object('wm', v_wm, 'rm', v_rm, 'mult', v_wmult);
 end $$;
 
@@ -54,7 +60,7 @@ end $$;
 -- entry per card); p_self_in = the attacker is already in the fight. Returns the weak-tag stack, the
 -- element / origin / trait synergies and their multiplier (capped at 1.6).
 create or replace function public.combat_squad(p_tags text[], p_self_in boolean, p_others jsonb, p_weak jsonb)
-returns jsonb language plpgsql immutable set search_path = public as $$
+returns jsonb language plpgsql stable set search_path = public as $$
 declare v_wtags text[]; v_stack int := 0; v_elem text; v_syn int; v_synmult numeric := 1;
   v_origin text; v_osyn int; v_omult numeric := 1; v_ksyn int; v_kmult numeric := 1;
   v_o jsonb := coalesce(p_others, '[]'::jsonb);
@@ -73,7 +79,7 @@ begin
   if v_elem is not null then
     select count(*) into v_syn from jsonb_array_elements(v_o) o where o ? ('trait:' || v_elem);
     v_syn := coalesce(v_syn, 0) + 1;   -- include this card
-    if v_syn >= 5 then v_synmult := 1.20; elsif v_syn >= 3 then v_synmult := 1.12; end if;
+    if v_syn >= public.balance_num('combat', 'syn_big_at') then v_synmult := public.balance_num('combat', 'element_big'); elsif v_syn >= public.balance_num('combat', 'syn_small_at') then v_synmult := public.balance_num('combat', 'element_small'); end if;
   else
     v_syn := 0;
   end if;
@@ -82,7 +88,7 @@ begin
   if v_origin is not null then
     select count(*) into v_osyn from jsonb_array_elements(v_o) o where o ? v_origin;
     v_osyn := coalesce(v_osyn, 0) + 1;
-    if v_osyn >= 5 then v_omult := 1.18; elsif v_osyn >= 3 then v_omult := 1.10; end if;
+    if v_osyn >= public.balance_num('combat', 'syn_big_at') then v_omult := public.balance_num('combat', 'origin_big'); elsif v_osyn >= public.balance_num('combat', 'syn_small_at') then v_omult := public.balance_num('combat', 'origin_small'); end if;
   end if;
   -- Trait (kind) synergy: the best-shared non-element trait.
   select coalesce(max(cnt), 0) into v_ksyn from (
@@ -90,8 +96,8 @@ begin
       where tg like 'trait:%' and tg not in ('trait:fire','trait:water','trait:lightning','trait:ice','trait:nature','trait:earth','trait:air','trait:shadow','trait:light','trait:arcane','trait:psychic','trait:toxic','trait:metal')
         and o ? tg
       group by tg) k;
-  if v_ksyn > 0 then v_ksyn := v_ksyn + 1; if v_ksyn >= 5 then v_kmult := 1.14; elsif v_ksyn >= 3 then v_kmult := 1.08; end if; end if;
-  v_synmult := least(1.6, v_synmult * v_omult * v_kmult);
+  if v_ksyn > 0 then v_ksyn := v_ksyn + 1; if v_ksyn >= public.balance_num('combat', 'syn_big_at') then v_kmult := public.balance_num('combat', 'trait_big'); elsif v_ksyn >= public.balance_num('combat', 'syn_small_at') then v_kmult := public.balance_num('combat', 'trait_small'); end if; end if;
+  v_synmult := least(public.balance_num('combat', 'syn_cap'), v_synmult * v_omult * v_kmult);
   return jsonb_build_object('stack', v_stack, 'elem', v_elem, 'syn', v_syn, 'synmult', v_synmult);
 end $$;
 
@@ -100,9 +106,9 @@ create or replace function public.combat_crit_chance(p_bonus boolean, p_aeff tex
 returns numeric language plpgsql stable set search_path = public as $$
 declare v_critchance numeric;
 begin
-  v_critchance := (case when p_bonus then 0.20 else 0.10 end) + (case when p_aeff = 'focus' then p_aamt else 0 end);
+  v_critchance := (case when p_bonus then public.balance_num('combat', 'crit_weak') else public.balance_num('combat', 'crit') end) + (case when p_aeff = 'focus' then p_aamt else 0 end);
   if (p_cmb->>'on')::boolean then   -- Precision points, under the crit cap
-    v_critchance := least(coalesce((stat_cfg()->>'crit_cap')::numeric, 0.6), v_critchance + (p_cmb->>'crit')::numeric);
+    v_critchance := least(public.balance_num('stat_points', 'crit_cap'), v_critchance + (p_cmb->>'crit')::numeric);
   end if;
   return v_critchance;
 end $$;
@@ -117,23 +123,23 @@ declare v_miss boolean; v_crit boolean; v_block boolean; v_base numeric; v_dmg i
 begin
   v_miss  := random() < p_miss;
   v_crit  := (not v_miss) and random() < p_critchance;
-  v_block := (not v_miss) and (not v_crit) and (p_aeff <> 'pierce' or p_aeff is null) and random() < 0.12;
+  v_block := (not v_miss) and (not v_crit) and (p_aeff <> 'pierce' or p_aeff is null) and random() < public.balance_num('combat', 'block');
   if v_miss then
     v_dmg := 0; v_outcome := 'miss';
   else
-    v_base := p_cp * p_wmult * (0.85 + random() * 0.30);
+    v_base := p_cp * p_wmult * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span'));
     v_base := v_base * p_buff * p_debuff;
     v_base := v_base * p_synmult;                                                     -- squad synergy
-    if p_armored_melee then v_base := v_base * 0.72; end if;                          -- an armored enemy
+    if p_armored_melee then v_base := v_base * public.balance_num('boss_passives', 'armored_x'); end if;                          -- an armored enemy
     if p_expose > 0 then v_base := v_base * (1 + p_expose); end if;
     if p_aeff = 'execute' and p_hp < p_athresh * p_hpmax then v_base := v_base * (1 + p_aamt); end if;
-    if v_crit  then v_base := v_base * 2;   end if;
-    if v_block then v_base := v_base * 0.5; end if;
+    if v_crit  then v_base := v_base * public.balance_num('combat', 'crit_x');   end if;
+    if v_block then v_base := v_base * public.balance_num('combat', 'block_x'); end if;
     v_dmg := greatest(1, round(v_base));
     v_outcome := case when v_crit then 'crit' when v_block then 'blocked' else 'hit' end;
     -- Rampage (an attack ability): amount = the chance of a second strike (no crit / block).
     if p_aeff = 'rampage' and random() < p_aamt then
-      v_dmg := v_dmg + greatest(1, round(v_base / (case when v_crit then 2 else 1 end) / (case when v_block then 0.5 else 1 end)));
+      v_dmg := v_dmg + greatest(1, round(v_base / (case when v_crit then public.balance_num('combat', 'crit_x') else 1 end) / (case when v_block then public.balance_num('combat', 'block_x') else 1 end)));
       v_double := true;
     end if;
   end if;
@@ -142,8 +148,8 @@ end $$;
 
 -- Lifesteal: a share of the damage, capped at 6% of the card's max HP.
 create or replace function public.combat_lifesteal(p_dmg int, p_aamt numeric, p_maxhp int)
-returns int language sql immutable as $$
-  select greatest(1, least(round(p_dmg * p_aamt), round(p_maxhp * 0.06)))::int;
+returns int language sql stable as $$
+  select greatest(1, least(round(p_dmg * p_aamt), round(p_maxhp * public.balance_num('combat', 'lifesteal_cap'))))::int;
 $$;
 
 -- ---- The enemy turn -----------------------------------------------------------------------------------
@@ -151,14 +157,14 @@ $$;
 -- The enemy damage multiplier: Enrage, Weaken (both while active), Volatile, the 50% rage, Frenzied.
 create or replace function public.combat_enemy_mult(p_enrage numeric, p_enr_until int, p_weaken numeric, p_wk_until int,
   p_round int, p_volatile boolean, p_lost numeric, p_frenzied boolean)
-returns numeric language plpgsql immutable set search_path = public as $$
+returns numeric language plpgsql stable set search_path = public as $$
 declare v_bmult numeric := 1;
 begin
   if p_enr_until >= p_round and p_enrage > 0 then v_bmult := v_bmult * p_enrage; end if;
   if p_wk_until  >= p_round and p_weaken > 0 then v_bmult := v_bmult * (1 - p_weaken); end if;
-  if p_volatile then v_bmult := v_bmult * 1.25; end if;                       -- volatile
-  if p_lost >= 0.5 then v_bmult := v_bmult * 1.3; end if;                     -- below 50% HP: rage
-  if p_frenzied then v_bmult := v_bmult * (1 + 0.05 * floor(p_lost * 10)); end if;
+  if p_volatile then v_bmult := v_bmult * public.balance_num('boss_passives', 'volatile_x'); end if;                       -- volatile
+  if p_lost >= public.balance_num('boss_moves', 'rage_at') then v_bmult := v_bmult * public.balance_num('boss_moves', 'rage_x'); end if;                     -- below 50% HP: rage
+  if p_frenzied then v_bmult := v_bmult * (1 + public.balance_num('boss_passives', 'frenzied_per_10pct') * floor(p_lost * 10)); end if;
   return v_bmult;
 end $$;
 
@@ -169,36 +175,40 @@ create or replace function public.combat_enemy_act(p_atk numeric, p_bmult numeri
   p_lost numeric, p_share bigint)
 returns jsonb language plpgsql volatile set search_path = public as $$
 declare v_act text; v_cdmg int := 0; v_area numeric := 0; v_bheal int := 0; v_r numeric;
+  m jsonb := public.balance_get('boss_moves'); v_cyc int := (m->>'cycle')::int;   -- balance_table.sql
+  v_t1 numeric; v_t2 numeric; v_t3 numeric; v_t4 numeric; v_t5 numeric; v_t6 numeric;
 begin
   if p_stun_until >= p_round then
     v_act := 'stunned';
-  elsif p_round % 8 = 7 then
+  elsif p_round % v_cyc = v_cyc - 1 then
     v_act := 'charging';                      -- the Cataclysm is shown one round ahead
-  elsif p_round % 8 = 0 then
-    v_act := 'cataclysm';                     -- ATK x 0.75 to every card still standing
-    v_cdmg := greatest(1, round(p_atk * 0.75 * (0.85 + random() * 0.30) * p_bmult)); v_area := 0.75;
+  elsif p_round % v_cyc = 0 then
+    v_act := 'cataclysm';                     -- ATK x cataclysm_x to every card still standing
+    v_cdmg := greatest(1, round(p_atk * (m->>'cataclysm_x')::numeric * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span')) * p_bmult)); v_area := (m->>'cataclysm_x')::numeric;
   else
+    v_t1 := (m->>'strike')::numeric; v_t2 := v_t1 + (m->>'slam')::numeric; v_t3 := v_t2 + (m->>'drain')::numeric;
+    v_t4 := v_t3 + (m->>'stun')::numeric; v_t5 := v_t4 + (m->>'enrage')::numeric; v_t6 := v_t5 + (m->>'curse')::numeric;
     v_r := random();
-    if v_r < 0.40 then
-      v_act := 'strike';                      -- ATK x 1.0
-      v_cdmg := greatest(1, round(p_atk * 1.00 * (0.85 + random() * 0.30) * p_bmult));
-    elsif v_r < 0.62 then
-      v_act := 'slam';                        -- ATK x 0.35 to every card
-      v_cdmg := greatest(1, round(p_atk * 0.35 * (0.85 + random() * 0.30) * p_bmult)); v_area := 0.35;
-    elsif v_r < 0.72 then
-      v_act := 'drain';                       -- ATK x 0.8, heals 1.5% of a player's share
-      v_cdmg := greatest(1, round(p_atk * 0.80 * (0.85 + random() * 0.30) * p_bmult));
-      v_bheal := v_bheal + greatest(1, round(p_share * 0.015));
-    elsif v_r < 0.80 then
-      v_act := 'stun';                        -- ATK x 0.45 and the card waits one round
-      v_cdmg := greatest(1, round(p_atk * 0.45 * (0.85 + random() * 0.30) * p_bmult));
-    elsif v_r < 0.87 then
-      v_act := 'enrage';                      -- x1.4 for 2 rounds (the caller stores it)
-    elsif v_r < 0.93 then
-      v_act := 'curse';                       -- the attacking card deals x0.7 (the caller stores it)
+    if v_r < v_t1 then
+      v_act := 'strike';                      -- ATK x strike_x
+      v_cdmg := greatest(1, round(p_atk * (m->>'strike_x')::numeric * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span')) * p_bmult));
+    elsif v_r < v_t2 then
+      v_act := 'slam';                        -- ATK x slam_x to every card
+      v_cdmg := greatest(1, round(p_atk * (m->>'slam_x')::numeric * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span')) * p_bmult)); v_area := (m->>'slam_x')::numeric;
+    elsif v_r < v_t3 then
+      v_act := 'drain';                       -- ATK x drain_x, heals drain_heal of a player's share
+      v_cdmg := greatest(1, round(p_atk * (m->>'drain_x')::numeric * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span')) * p_bmult));
+      v_bheal := v_bheal + greatest(1, round(p_share * (m->>'drain_heal')::numeric));
+    elsif v_r < v_t4 then
+      v_act := 'stun';                        -- ATK x stun_x and the card waits one round
+      v_cdmg := greatest(1, round(p_atk * (m->>'stun_x')::numeric * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span')) * p_bmult));
+    elsif v_r < v_t5 then
+      v_act := 'enrage';                      -- x enrage_x for enrage_rounds (the caller stores it)
+    elsif v_r < v_t6 then
+      v_act := 'curse';                       -- the attacking card deals x curse_x (the caller stores it)
     else
-      v_act := 'regenerate';                  -- 3% of a player's share, 5% below 50% HP
-      v_bheal := v_bheal + greatest(1, round(p_share * case when p_lost >= 0.5 then 0.05 else 0.03 end));
+      v_act := 'regenerate';                  -- regenerate_heal of a player's share, regenerate_heal_rage below rage_at HP
+      v_bheal := v_bheal + greatest(1, round(p_share * case when p_lost >= (m->>'rage_at')::numeric then (m->>'regenerate_heal_rage')::numeric else (m->>'regenerate_heal')::numeric end));
     end if;
   end if;
   return jsonb_build_object('action', v_act, 'dmg', v_cdmg, 'area', v_area, 'heal', v_bheal);
@@ -207,7 +217,7 @@ end $$;
 -- One card's share of an area hit (Slam, Cataclysm): its own damage roll.
 create or replace function public.combat_area_roll(p_atk numeric, p_area numeric, p_bmult numeric)
 returns int language sql volatile as $$
-  select greatest(1, round(p_atk * p_area * (0.85 + random() * 0.30) * p_bmult))::int;
+  select greatest(1, round(p_atk * p_area * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span')) * p_bmult))::int;
 $$;
 
 -- A shield absorbs damage first.
@@ -222,36 +232,36 @@ end $$;
 create or replace function public.combat_burn(p_atk numeric)
 returns int language plpgsql volatile as $$
 begin
-  if random() < 0.30 then return greatest(1, round(p_atk * 0.40 * (0.85 + random() * 0.30)))::int; end if;
+  if random() < public.balance_num('boss_passives', 'flaming_chance') then return greatest(1, round(p_atk * public.balance_num('boss_passives', 'flaming_x') * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span'))))::int; end if;
   return 0;
 end $$;
 
 -- Thorns: 10% of the damage comes back to the attacking card. Regenerating: 0.5% of a share each turn.
-create or replace function public.combat_thorns(p_dmg int) returns int language sql immutable as $$ select greatest(1, round(p_dmg * 0.10))::int; $$;
-create or replace function public.combat_regen(p_share bigint) returns int language sql immutable as $$ select greatest(1, round(p_share * 0.005))::int; $$;
+create or replace function public.combat_thorns(p_dmg int) returns int language sql stable as $$ select greatest(1, round(p_dmg * public.balance_num('boss_passives', 'thorns')))::int; $$;
+create or replace function public.combat_regen(p_share bigint) returns int language sql stable as $$ select greatest(1, round(p_share * public.balance_num('boss_passives', 'regenerating_heal')))::int; $$;
 
 -- ---- Supports -----------------------------------------------------------------------------------------
 
 -- The affinity scale (team / enemy effects): +15% for each squad card that shares the affinity, max x2.
-create or replace function public.combat_aff_scale(p_count int) returns numeric language sql immutable as $$ select least(2.0, 1 + 0.15 * coalesce(p_count, 0)); $$;
+create or replace function public.combat_aff_scale(p_count int) returns numeric language sql stable as $$ select least(public.balance_num('support', 'affinity_cap'), 1 + public.balance_num('support', 'affinity_step') * coalesce(p_count, 0)); $$;
 
 -- The value of a support effect. Ally effects: shield / heal = a share of the TARGET's max HP (max 100%),
 -- empower = the damage multiplier. Enemy effects: weaken (max 60%), expose (max 100%), smite (damage).
 create or replace function public.combat_support_value(p_eff text, p_amt numeric, p_scale numeric, p_target_maxhp int)
-returns numeric language sql immutable as $$
+returns numeric language sql stable as $$
   select case p_eff
     when 'empower' then 1 + p_amt
-    when 'shield'  then greatest(1, round(p_target_maxhp * least(p_amt, 1.0)))
-    when 'heal'    then greatest(1, round(p_target_maxhp * least(p_amt, 1.0)))
-    when 'weaken'  then least(0.6, p_amt * p_scale)
-    when 'expose'  then least(1.0, p_amt * p_scale)
+    when 'shield'  then greatest(1, round(p_target_maxhp * least(p_amt, public.balance_num('support', 'heal_cap'))))
+    when 'heal'    then greatest(1, round(p_target_maxhp * least(p_amt, public.balance_num('support', 'heal_cap'))))
+    when 'weaken'  then least(public.balance_num('support', 'weaken_cap'), p_amt * p_scale)
+    when 'expose'  then least(public.balance_num('support', 'expose_cap'), p_amt * p_scale)
     when 'smite'   then greatest(1, round(p_amt * p_scale))
   end;
 $$;
 
 -- Stun immunity: after a stun the enemy cannot be stunned again for 2 rounds (at most 1 round in 3).
-create or replace function public.combat_stun_immune(p_stun_until int, p_round int) returns boolean language sql immutable as $$
-  select coalesce(p_stun_until, 0) > 0 and p_round < p_stun_until + 2;
+create or replace function public.combat_stun_immune(p_stun_until int, p_round int) returns boolean language sql stable as $$
+  select coalesce(p_stun_until, 0) > 0 and p_round < p_stun_until + public.balance_num('support', 'stun_immune_rounds');
 $$;
 
 -- ---- An enemy action drawn from a move pool (the Dungeon; any mode can use it) --------------------------
@@ -262,12 +272,13 @@ create or replace function public.combat_pool_act(p_atk numeric, p_bmult numeric
 returns jsonb language plpgsql volatile set search_path = public as $$
 declare v_total numeric; v_r numeric; m jsonb; v_kind text := 'strike'; v_name text := 'Strike'; v_dmg int := 0; v_area numeric := 0;
   v_heal int := 0; v_hits int := 1; v_dot int := 0; v_guard int := 0;
-  roll numeric := 0.85 + random() * 0.30;
+  roll numeric := (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span'));
+  m2 jsonb := public.balance_get('pool_moves'); v_cyc int := (m2->>'cycle')::int;   -- balance_table.sql
 begin
   if p_stun_until >= p_round then return jsonb_build_object('action', 'stunned', 'move', 'Stunned', 'dmg', 0, 'area', 0, 'heal', 0, 'hits', 0, 'dot', 0, 'guard', 0); end if;
-  if p_charge and p_round % 6 = 5 then return jsonb_build_object('action', 'charging', 'move', 'Charging', 'dmg', 0, 'area', 0, 'heal', 0, 'hits', 0, 'dot', 0, 'guard', 0); end if;
-  if p_charge and p_round % 6 = 0 then
-    return jsonb_build_object('action', 'cataclysm', 'move', 'Cataclysm', 'dmg', greatest(1, round(p_atk * 0.9 * roll * p_bmult)), 'area', 0.75, 'heal', 0, 'hits', 1, 'dot', 0, 'guard', 0);
+  if p_charge and p_round % v_cyc = v_cyc - 1 then return jsonb_build_object('action', 'charging', 'move', 'Charging', 'dmg', 0, 'area', 0, 'heal', 0, 'hits', 0, 'dot', 0, 'guard', 0); end if;
+  if p_charge and p_round % v_cyc = 0 then
+    return jsonb_build_object('action', 'cataclysm', 'move', 'Cataclysm', 'dmg', greatest(1, round(p_atk * (m2->>'cataclysm_x')::numeric * roll * p_bmult)), 'area', (m2->>'cataclysm_area')::numeric, 'heal', 0, 'hits', 1, 'dot', 0, 'guard', 0);
   end if;
   select sum(coalesce((e->>'w')::numeric, 1)) into v_total from jsonb_array_elements(coalesce(p_pool, '[]')) e;
   if coalesce(v_total, 0) > 0 then
@@ -278,14 +289,14 @@ begin
     end loop;
   end if;
   case v_kind
-    when 'heavy' then v_dmg := greatest(1, round(p_atk * 1.5 * roll * p_bmult));
-    when 'flurry' then v_dmg := 2 * greatest(1, round(p_atk * 0.55 * roll * p_bmult)); v_hits := 2;
-    when 'slam' then v_dmg := greatest(1, round(p_atk * 0.35 * roll * p_bmult)); v_area := 0.35;
-    when 'drain' then v_dmg := greatest(1, round(p_atk * 0.8 * roll * p_bmult)); v_heal := greatest(1, round(p_max * 0.08));
-    when 'stun' then v_dmg := greatest(1, round(p_atk * 0.45 * roll * p_bmult));
-    when 'poison' then v_dmg := greatest(1, round(p_atk * 0.35 * roll * p_bmult)); v_dot := greatest(1, round(p_atk * 0.25 * p_bmult));
-    when 'regenerate' then v_heal := greatest(1, round(p_max * (case when p_lost >= 0.5 then 0.14 else 0.10 end))); v_hits := 0;
-    when 'guard' then v_guard := greatest(1, round(p_max * 0.20)); v_hits := 0;
+    when 'heavy' then v_dmg := greatest(1, round(p_atk * (m2->>'heavy_x')::numeric * roll * p_bmult));
+    when 'flurry' then v_dmg := 2 * greatest(1, round(p_atk * (m2->>'flurry_x')::numeric * roll * p_bmult)); v_hits := 2;
+    when 'slam' then v_dmg := greatest(1, round(p_atk * (m2->>'slam_x')::numeric * roll * p_bmult)); v_area := (m2->>'slam_x')::numeric;
+    when 'drain' then v_dmg := greatest(1, round(p_atk * (m2->>'drain_x')::numeric * roll * p_bmult)); v_heal := greatest(1, round(p_max * (m2->>'drain_heal')::numeric));
+    when 'stun' then v_dmg := greatest(1, round(p_atk * (m2->>'stun_x')::numeric * roll * p_bmult));
+    when 'poison' then v_dmg := greatest(1, round(p_atk * (m2->>'poison_x')::numeric * roll * p_bmult)); v_dot := greatest(1, round(p_atk * (m2->>'poison_dot')::numeric * p_bmult));
+    when 'regenerate' then v_heal := greatest(1, round(p_max * (case when p_lost >= public.balance_num('boss_moves', 'rage_at') then (m2->>'regenerate_heal_rage')::numeric else (m2->>'regenerate_heal')::numeric end))); v_hits := 0;
+    when 'guard' then v_guard := greatest(1, round(p_max * (m2->>'guard')::numeric)); v_hits := 0;
     when 'enrage' then v_hits := 0;
     when 'curse' then v_hits := 0;
     else v_kind := 'strike'; v_dmg := greatest(1, round(p_atk * roll * p_bmult));
@@ -367,12 +378,12 @@ begin
     from hunt_card_hp where hunt_id = p_hunt and player_id = p_player and card_id = p_card and hit_date = v_day;
   if not found then
     v_cardhp := v_maxhp; v_downed := false; v_buff := 1; v_debuff := 1; v_shield := 0;
-    select coalesce((select (value #>> '{}')::int from settings where key = 'hunt_daily_card_cap'), 8) into v_cap;
+    v_cap := hunt_card_cap();
     if (select count(*) from hunt_card_hp where hunt_id = p_hunt and player_id = p_player and hit_date = v_day) >= v_cap then
       return jsonb_build_object('ok', false, 'error', 'day_limit', 'cap', v_cap);
     end if;
   else
-    select coalesce((select (value #>> '{}')::int from settings where key = 'hunt_daily_card_cap'), 8) into v_cap;
+    v_cap := hunt_card_cap();
   end if;
   if v_downed or v_cardhp <= 0 then
     return jsonb_build_object('ok', false, 'error', 'downed', 'card_hp', 0, 'card_max_hp', v_maxhp);
@@ -417,7 +428,7 @@ begin
 
   v_critchance := combat_crit_chance(v_bonus, v_aeff, v_aamt, v_cmb);
   v_hit := combat_hit(v_cp, v_wmult, v_buff, v_debuff, v_synmult, v_critchance,
-    0.08 + case when 'shrouded' = any(v_plist) then 0.10 else 0 end,                  -- shrouded: more misses
+    combat_miss('shrouded' = any(v_plist)),                                          -- shrouded: more misses
     v_aeff, v_aamt, v_athresh, 'armored' = any(v_plist) and 'trait:melee' = any(v_tags),
     case when v_exp_until >= v_round and v_expose > 0 then v_expose else 0 end, v_hp, v_hpmax);
   v_miss := (v_hit->>'miss')::boolean; v_crit := (v_hit->>'crit')::boolean; v_block := (v_hit->>'block')::boolean;
@@ -425,19 +436,19 @@ begin
   if not v_miss then
     -- Rally (a boon): the next hit deals +amount % (the boon is used up by this hit).
     v_rally := take_player_effect(p_player, 'rally');
-    if v_rally is not null then v_dmg := greatest(1, round(v_dmg * (1 + least(v_rally, 100) / 100.0))); end if;
+    if v_rally is not null then v_dmg := greatest(1, round(v_dmg * (1 + least(v_rally, balance_num('combat', 'effect_cap_pct')) / 100.0))); end if;
     -- Butterfingers (a prank, effects_outside.sql): the next hit deals -amount % (used up by this hit).
     v_bf := take_player_effect(p_player, 'butterfingers');
-    if v_bf is not null and v_dmg > 0 then v_dmg := greatest(1, round(v_dmg * (1 - least(v_bf, 100) / 100.0))); end if;
+    if v_bf is not null and v_dmg > 0 then v_dmg := greatest(1, round(v_dmg * (1 - least(v_bf, balance_num('combat', 'effect_cap_pct')) / 100.0))); end if;
     -- Launch Party (the Launch Day Player boon, launch_event_cards.sql): +amount % on each of the
     -- next N hits (options.uses), one charge per hit.
     v_party := use_effect_charge(p_player, 'launch_party');
-    if v_party is not null then v_dmg := greatest(1, round(v_dmg * (1 + least((v_party->>'amount')::numeric, 100) / 100.0))); end if;
+    if v_party is not null then v_dmg := greatest(1, round(v_dmg * (1 + least((v_party->>'amount')::numeric, balance_num('combat', 'effect_cap_pct')) / 100.0))); end if;
     -- Raid Crasher (the Launch Day Raider prank): the boss takes +amount % more on each of the next N
     -- hits, and that extra damage counts for the prankster (options.credit_to) on the leaderboard.
     v_crash := use_effect_charge(p_player, 'raid_crasher');
     if v_crash is not null then
-      v_crash_dmg := greatest(1, round(v_dmg * least((v_crash->>'amount')::numeric, 100) / 100.0))::int;
+      v_crash_dmg := greatest(1, round(v_dmg * least((v_crash->>'amount')::numeric, balance_num('combat', 'effect_cap_pct')) / 100.0))::int;
       v_crash_to := coalesce(v_crash->'options'->>'credit_to', v_crash->'options'->>'sender_id');
       v_crash_card := (v_crash->'options'->>'card_id')::bigint;
     end if;
@@ -472,9 +483,7 @@ begin
 
   -- The boss ATK (Nathan, 2026-09-28: flat stats, so tougher cards survive more hits).
   -- hunts.stats.atk is set at spawn; an older hunt uses the tier default.
-  v_atk := coalesce((v_stats->>'atk')::numeric,
-    (select (value->>v_tier)::numeric from settings where key = 'hunt_atk'),
-    case v_tier when 'Heroic' then 73 when 'Mythic' then 93 else 58 end);
+  v_atk := coalesce((v_stats->>'atk')::numeric, balance_num('boss_atk', v_tier));
   v_bossact := null; v_cdmg := 0; v_slam := '[]'::jsonb;
   if v_status <> 'defeated' then
     update hunt_combat_state set round = round + 1, updated_at = now()
@@ -511,10 +520,10 @@ begin
         into v_slam from upd;
     end if;
     if v_bossact = 'enrage' then
-      update hunt_combat_state set boss_enrage = 1.4, enrage_until = v_round + 2, updated_at = now()
+      update hunt_combat_state set boss_enrage = balance_num('boss_moves', 'enrage_x'), enrage_until = v_round + balance_num('boss_moves', 'enrage_rounds')::int, updated_at = now()
         where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
     elsif v_bossact = 'curse' then
-      v_debuff := 0.7;
+      v_debuff := balance_num('boss_moves', 'curse_x');
     end if;
     if 'regenerating' = any(v_plist) and v_bossact <> 'stunned' then v_bheal := v_bheal + combat_regen(v_share); end if;
     if 'thorns' = any(v_plist) and v_dmg > 0 then
@@ -524,9 +533,9 @@ begin
       update hunts set hp_remaining = least(hp_max, hp_remaining + v_bheal) where id = p_hunt and status = 'active'
         returning hp_remaining into v_hp;
     end if;
-    -- Phase 2 below 25% HP: the boss gains one more passive (once per hunt).
+    -- Phase 2 below boss_moves.phase2_at HP: the boss gains one more passive (once per hunt).
     v_phase := null;
-    if v_hp::numeric / greatest(1, v_hpmax) < 0.25 and not coalesce((v_passive->>'phase2')::boolean, false) then
+    if v_hp::numeric / greatest(1, v_hpmax) < balance_num('boss_moves', 'phase2_at') and not coalesce((v_passive->>'phase2')::boolean, false) then
       select k into v_extra from unnest(array['armored','shrouded','flaming','volatile','regenerating','thorns','frenzied']) k
         where k <> all(v_plist) order by random() limit 1;
       update hunts set passive = coalesce(passive, '{}'::jsonb) || jsonb_build_object('phase2', true,
@@ -538,8 +547,8 @@ begin
               else 'Frenzied: hits harder as it loses HP' end)) end)
         where id = p_hunt;
       v_phase := coalesce(v_extra, 'phase2');
-    elsif (v_hp + v_dmg)::numeric / greatest(1, v_hpmax) >= 0.5 and v_hp::numeric / greatest(1, v_hpmax) < 0.5 then
-      v_phase := 'rage';                            -- this hit took the boss below 50%
+    elsif (v_hp + v_dmg)::numeric / greatest(1, v_hpmax) >= balance_num('boss_moves', 'rage_at') and v_hp::numeric / greatest(1, v_hpmax) < balance_num('boss_moves', 'rage_at') then
+      v_phase := 'rage';                            -- this hit took the boss below rage_at
     end if;
   end if;
 
@@ -614,7 +623,7 @@ begin
     'round', v_round, 'round_cap', v_rcap,
     'card_hp', v_cardhp, 'card_max_hp', v_maxhp, 'card_downed', v_downed, 'shield', v_shield,
     'burned', v_burned, 'double', v_double, 'rally', v_rally, 'butterfingers', v_bf, 'mend', v_mend, 'party', v_party->'amount', 'crashed', nullif(v_crash_dmg, 0), 'atk', round(v_atk), 'boss_heal', coalesce(v_bheal, 0), 'phase', v_phase, 'passives', to_jsonb(v_plist),
-    'synergy', case when v_syn >= 3 then jsonb_build_object('element', v_elem, 'count', v_syn) else null end,
+    'synergy', case when v_syn >= balance_num('combat', 'syn_small_at') then jsonb_build_object('element', v_elem, 'count', v_syn) else null end,
     'boss_action', case when v_bossact is null then null
       else jsonb_build_object('kind', v_bossact, 'round', v_round, 'targets', v_targets) end);
 end $function$;
@@ -697,7 +706,7 @@ begin
 
     -- matched ally gets the stronger effect
     v_matched := v_aff is not null and v_ttags is not null and v_aff = any(v_ttags);
-    if v_matched then v_amt := v_amt * 1.8; end if;
+    if v_matched then v_amt := v_amt * balance_num('support', 'matched_x'); end if;
 
     if v_eff = 'empower' then
       update hunt_card_hp set dmg_buff = combat_support_value('empower', v_amt, 1, null), updated_at = now()
@@ -732,7 +741,7 @@ begin
     -- 4 stun cards cannot lock it (at most 1 stunned round in 3).
     select stunned_until into v_stun_until from hunt_combat_state where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
     if combat_stun_immune(v_stun_until, v_round) then
-      return jsonb_build_object('ok', false, 'error', 'boss_stun_immune', 'ready_round', v_stun_until + 2);
+      return jsonb_build_object('ok', false, 'error', 'boss_stun_immune', 'ready_round', v_stun_until + balance_num('support', 'stun_immune_rounds')::int);
     end if;
     update hunt_combat_state set stunned_until = v_round + 1, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
@@ -762,6 +771,21 @@ begin
     return jsonb_build_object('ok', false, 'error', 'unknown_effect', 'effect', v_eff);
   end if;
 
+  -- The action log (combat_actions.sql, Nathan 2026-10-06): every support play that worked, for the balance data.
+  insert into combat_actions (mode, ref_id, player_id, card_id, kind, game_day, round, effect, amount, target_card, result)
+  values ('hunt', p_hunt, p_player, p_card, 'support', v_day, v_round, v_eff, v_amt,
+    case when v_tgt in ('ally', 'self') then p_target end,
+    jsonb_build_object('scale', v_scale, 'matched', v_matched, 'aff_count', v_affcount, 'affinity', v_aff, 'cooldown', v_cd,
+      'value', case
+        when v_eff = 'smite' then v_sdmg
+        when v_eff in ('weaken', 'expose') then combat_support_value(v_eff, v_amt, v_scale, null)
+        when v_eff = 'empower' then combat_support_value('empower', v_amt, 1, null)
+        when v_eff in ('heal', 'shield') then (select combat_support_value(v_eff, v_amt, 1, h.max_hp) from hunt_card_hp h
+          where h.hunt_id = p_hunt and h.player_id = p_player and h.card_id = p_target and h.hit_date = v_day)
+      end,
+      'target_after', (select jsonb_build_object('hp', h.hp_remaining, 'max_hp', h.max_hp, 'shield', h.shield, 'dmg_buff', h.dmg_buff, 'downed', h.downed)
+        from hunt_card_hp h where h.hunt_id = p_hunt and h.player_id = p_player and h.card_id = p_target and h.hit_date = v_day)));
+
   update hunt_card_hp set cd_until_round = v_round + v_cd, updated_at = now()
     where hunt_id = p_hunt and player_id = p_player and card_id = p_card and hit_date = v_day;
 
@@ -770,6 +794,7 @@ begin
     'ready_round', v_round + v_cd, 'round', v_round,
     'boss_hp', (select hp_remaining from hunts where id = p_hunt),
     'defeated', (select status from hunts where id = p_hunt) = 'defeated');
-end $function$;
+end $function$
+
 
 notify pgrst, 'reload schema';

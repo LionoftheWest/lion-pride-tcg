@@ -9,12 +9,17 @@
 -- spawn_hunt is rebuilt from its LIVE text with the share line only; the guard refuses if it changed.
 -- Test: card-studio/scripts/test-boss-hp.mjs.
 do $g$ begin
-  if md5(replace(pg_get_functiondef('public.spawn_hunt'::regproc), chr(13), '')) not in ('eec42fa92d6696a5ad8af4dfa1d6b078', 'c754ef43fcbf05328e8e1a90f8445007') then
+  -- balance_table.sql (2026-10-03): the functions below read public.balance, so it must exist first.
+  if to_regclass('public.balance') is null then
+    raise exception '%: apply balance_table.sql first (these functions read the balance table)', 'boss_hp_heal_share.sql';
+  end if;
+  if md5(replace(pg_get_functiondef('public.spawn_hunt'::regproc), chr(13), '')) not in ('c754ef43fcbf05328e8e1a90f8445007', '2ebcc17b77256bc9cede8ef0fb2f3f3b') then
     raise exception 'boss_hp_heal_share.sql: the live spawn_hunt changed since this file was built. Rebuild from the live text.';
   end if;
 end $g$;
 
-update public.settings set value = value || '{"Normal": 70000, "Heroic": 80000, "Mythic": 80000, "heal_share": 3000}'::jsonb where key = 'hunt_hp';
+-- balance_table.sql moved settings.hunt_hp into balance boss_hp (2026-10-06): the numbers are set there.
+update public.balance set value = value || '{"Normal": 70000, "Heroic": 80000, "Mythic": 80000, "heal_share": 3000}'::jsonb where key = 'boss_hp';
 
 CREATE OR REPLACE FUNCTION public.spawn_hunt(p_days integer DEFAULT 3, p_tier text DEFAULT NULL::text)
  RETURNS bigint
@@ -45,8 +50,8 @@ begin
   -- p_tier picks the tier (an early boss, Nathan 2026-10-04); NULL = random, as the weekly spawn does.
   if p_tier is not null and p_tier not in ('Normal', 'Heroic', 'Mythic') then raise exception 'bad tier %', p_tier; end if;
   v_tier := coalesce(p_tier, (array['Normal','Heroic','Mythic'])[1 + floor(random() * 3)]);
-  v_nweak   := case v_tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end;
-  v_nresist := case v_tier when 'Normal' then 0 when 'Heroic' then 1 else 2 end;
+  v_nweak   := balance_num('boss_tiers', v_tier, 'weak')::int;      -- balance_table.sql
+  v_nresist := balance_num('boss_tiers', v_tier, 'resist')::int;
 
   -- Weak/resist tags come only from slugs that a FAIR SHARE of the draw-pool
   -- attackers carry: at least 4 cards (and 7%), at most 35%. A tag with 1 card is a
@@ -63,7 +68,8 @@ begin
   select array_agg(slug), (select array_agg(slug) from cov where n >= 2)
     into v_pool, v_fresh
   from cov, tot
-  where n >= greatest(4, ceil(tot.total * 0.07)) and n <= floor(tot.total * 0.35);
+  where n >= greatest(balance_num('boss_tags', 'min_cards'), ceil(tot.total * balance_num('boss_tags', 'min_share')))
+    and n <= floor(tot.total * balance_num('boss_tags', 'max_share'));
   if coalesce(array_length(v_pool, 1), 0) < v_nweak + v_nresist then v_pool := v_fresh; end if;
 
   select coalesce(array_agg(distinct e->>'value'), '{}') into v_recent
@@ -92,20 +98,18 @@ begin
   -- passive.kind/label = the first (older readers); passive.list = all of them.
   select coalesce(jsonb_agg(jsonb_build_object('kind', k, 'label', v_plabels->>k)), '[]'::jsonb) into v_plist
     from (select k from unnest(array['armored','shrouded','flaming','volatile','regenerating','thorns','frenzied']) k
-          order by random() limit case v_tier when 'Normal' then 1 when 'Heroic' then 2 else 3 end) x;
+          order by random() limit balance_num('boss_tiers', v_tier, 'passives')::int) x;
   v_passive := jsonb_build_object('kind', v_plist->0->>'kind', 'label', v_plist->0->>'label', 'list', v_plist);
 
-  -- Fixed HP per tier (the settings dial 'hunt_hp', see the header).
-  select value into v_cfg from settings where key = 'hunt_hp';
-  v_cfg := coalesce(v_cfg, '{"Normal":60000,"Heroic":80000,"Mythic":80000,"crew":10}'::jsonb);
-  v_hp := greatest(500, coalesce((v_cfg->>v_tier)::bigint, 80000));
-  v_hunters := greatest(1, coalesce((v_cfg->>'crew')::int, 10));
+  -- Fixed HP per tier (balance boss_hp).
+  v_cfg := balance_get('boss_hp');
+  v_hp := greatest((v_cfg->>'floor')::bigint, balance_num('boss_hp', v_tier)::bigint);
+  v_hunters := greatest(1, (v_cfg->>'crew')::int);
   v_name := c_names[1 + floor(random() * array_length(c_names, 1))];
-  -- Boss stats: the tier ATK (settings hunt_atk) x this boss's own multiplier
-  -- (settings hunt_boss_stats, by name, for example {"The Smurf Brute": {"atk_mult": 1.2}}).
-  v_atk := round(coalesce((select (value->>v_tier)::numeric from settings where key = 'hunt_atk'),
-                          case v_tier when 'Heroic' then 73 when 'Mythic' then 93 else 58 end)
-                 * coalesce((select (value->v_name->>'atk_mult')::numeric from settings where key = 'hunt_boss_stats'), 1));
+  -- Boss stats: the tier ATK (balance boss_atk) x this boss's own multiplier
+  -- (balance boss_stats, by name, for example {"The Smurf Brute": {"atk_mult": 1.2}}).
+  v_atk := round(balance_num('boss_atk', v_tier)
+                 * coalesce((balance_get('boss_stats')->v_name->>'atk_mult')::numeric, 1));
   -- The boss heals are sized to HP / crew (boss-sim.mjs: heals sized to the FULL HP make
   -- every heal worth several squad battles).
   insert into hunts (name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, closes_at, hp_share, stats)

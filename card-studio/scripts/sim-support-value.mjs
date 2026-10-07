@@ -43,7 +43,7 @@ begin
   insert into player_cards (player_id, card_id, quantity)
     select P, min(c.id), 1 from cards c join subjects s on s.id = c.subject_id
     where s.ability->>'kind' = 'support' and c.rarity = 'normal' group by s.ability->>'effect';
-  insert into settings (key, value) values ('hunt_daily_card_cap', '8') on conflict (key) do update set value = excluded.value;
+  update balance set value = '8' where key = 'daily_card_cap';   -- the daily card cap (balance_table.sql)
   select value into orig from settings where key = 'hunt_boss_moves';
   for sq in select * from jsonb_array_elements(jsonb_build_array(${squads})) loop
     -- the attackers from the strongest to the weakest (the support targets and the attacks go in this order)

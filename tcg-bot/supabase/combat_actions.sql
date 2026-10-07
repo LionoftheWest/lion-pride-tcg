@@ -10,7 +10,11 @@
 -- hunt_support is rebuilt from its LIVE text with the insert only; the guard refuses if the live function changed.
 -- Test: card-studio/scripts/test-combat-actions.mjs.
 do $g$ begin
-  if md5(replace(pg_get_functiondef('public.hunt_support'::regproc), chr(13), '')) not in ('882eee37eca4a71dbdab385b21bd061a', 'beb6c2738ef2b0966054234c13fa1085') then
+  -- balance_table.sql (2026-10-03): the functions below read public.balance, so it must exist first.
+  if to_regclass('public.balance') is null then
+    raise exception '%: apply balance_table.sql first (these functions read the balance table)', 'combat_actions.sql';
+  end if;
+  if md5(replace(pg_get_functiondef('public.hunt_support'::regproc), chr(13), '')) not in ('beb6c2738ef2b0966054234c13fa1085', 'ef5d2c1a5eb74bf430cd2ddce1c7af84') then
     raise exception 'combat_actions.sql: the live hunt_support changed since this file was built. Rebuild from the live text.';
   end if;
 end $g$;
@@ -114,7 +118,7 @@ begin
 
     -- matched ally gets the stronger effect
     v_matched := v_aff is not null and v_ttags is not null and v_aff = any(v_ttags);
-    if v_matched then v_amt := v_amt * 1.8; end if;
+    if v_matched then v_amt := v_amt * balance_num('support', 'matched_x'); end if;
 
     if v_eff = 'empower' then
       update hunt_card_hp set dmg_buff = combat_support_value('empower', v_amt, 1, null), updated_at = now()
@@ -149,7 +153,7 @@ begin
     -- 4 stun cards cannot lock it (at most 1 stunned round in 3).
     select stunned_until into v_stun_until from hunt_combat_state where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
     if combat_stun_immune(v_stun_until, v_round) then
-      return jsonb_build_object('ok', false, 'error', 'boss_stun_immune', 'ready_round', v_stun_until + 2);
+      return jsonb_build_object('ok', false, 'error', 'boss_stun_immune', 'ready_round', v_stun_until + balance_num('support', 'stun_immune_rounds')::int);
     end if;
     update hunt_combat_state set stunned_until = v_round + 1, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;

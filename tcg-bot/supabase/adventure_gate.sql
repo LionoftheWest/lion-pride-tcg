@@ -11,7 +11,11 @@
 -- (or on its own result, so it can run again). Another change to the live function stops it here, so
 -- that change is never reverted: rebuild this file from the live text first (.live/rebuild.mjs).
 do $g$ begin
-  if md5(replace(pg_get_functiondef('public.lock_hunt_squad'::regproc), chr(13), '')) not in ('f0db1bb166d0eccb33522bd373f4ee4e', '4a80c769286b2b6022ab79b4cb01f7c6') then
+  -- balance_table.sql (2026-10-03): the functions below read public.balance, so it must exist first.
+  if to_regclass('public.balance') is null then
+    raise exception '%: apply balance_table.sql first (these functions read the balance table)', 'adventure_gate.sql';
+  end if;
+  if md5(replace(pg_get_functiondef('public.lock_hunt_squad'::regproc), chr(13), '')) not in ('4a80c769286b2b6022ab79b4cb01f7c6', '22bf3511259d728791ee370775beb5f2') then
     raise exception 'adventure_gate.sql: the live lock_hunt_squad changed since this file was built. Rebuild from the live text.';
   end if;
 end $g$;
@@ -46,7 +50,7 @@ begin
   -- The unlock gate (adventure_gate): the starter gifts redeemed + 8 attackers.
   v_gate := adventure_gate(p_player);
   if not (v_gate->>'ok')::boolean then return jsonb_build_object('ok', false, 'error', 'locked', 'gate', v_gate); end if;
-  select coalesce((select (value #>> '{}')::int from settings where key = 'hunt_daily_card_cap'), 8) into v_cap;
+  v_cap := hunt_card_cap();
   select count(distinct x) into v_n from unnest(coalesce(p_cards, '{}')) x;
   if v_n < 1 or v_n > v_cap or v_n <> cardinality(p_cards) then return jsonb_build_object('ok', false, 'error', 'bad_squad'); end if;
   if exists (select 1 from unnest(p_cards) x where not exists (select 1 from player_cards where player_id = p_player and card_id = x and quantity > 0)) then

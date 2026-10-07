@@ -363,12 +363,12 @@ begin
         v_area := v_area || jsonb_build_object('card', k::bigint, 'dmg', (ab->>'dmg')::int);
       end loop;
     end if;
-    if act->>'action' = 'enrage' then f := f || jsonb_build_object('enr', 1.4, 'enru', v_round + 2);
-    elsif act->>'action' = 'curse' then st := jsonb_set(st, array['cards', v_tgt, 'debuff'], '0.7');
+    if act->>'action' = 'enrage' then f := f || jsonb_build_object('enr', balance_num('boss_moves', 'enrage_x'), 'enru', v_round + balance_num('boss_moves', 'enrage_rounds')::int);
+    elsif act->>'action' = 'curse' then st := jsonb_set(st, array['cards', v_tgt, 'debuff'], to_jsonb(balance_num('boss_moves', 'curse_x')));
     elsif act->>'action' = 'guard' then f := f || jsonb_build_object('sh', coalesce((f->>'sh')::int, 0) + (act->>'guard')::int);
     end if;
     v_heal := (act->>'heal')::int;
-    if 'regenerating' = any(v_pl) and act->>'action' <> 'stunned' then v_heal := v_heal + greatest(1, round((f->>'max')::int * 0.03))::int; end if;
+    if 'regenerating' = any(v_pl) and act->>'action' <> 'stunned' then v_heal := v_heal + greatest(1, round((f->>'max')::int * balance_num('boss_passives', 'regenerating_heal_foe')))::int; end if;
     if v_heal > 0 then f := f || jsonb_build_object('hp', least((f->>'max')::int, (f->>'hp')::int + v_heal)); end if;
     st := jsonb_set(st, array['foes', i::text], f);
     v_out := v_out || jsonb_build_object('foe', i, 'action', act->>'action', 'move', act->>'move', 'card', v_tgt::bigint, 'dmg', coalesce(v_d, 0),

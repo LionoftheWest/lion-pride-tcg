@@ -26,6 +26,8 @@ const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.matc
 if (ref !== 'kgvdqqehefezbypozvrh') throw new Error(`wrong Supabase project: ${ref}`);
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const strip = (s) => s.replace(/notify pgrst[^\n]*\n/g, '').replace(/\r\n/g, '\n');
+// balance_table.sql first: combat_core.sql and the Dungeon read the combat numbers from public.balance.
+const bal = strip(readFileSync(process.env.BAL || new URL('../../tcg-bot/supabase/balance_table.sql', import.meta.url), 'utf8'));
 // combat_core.sql: only the shared combat rules (the Dungeon uses them). Its guard and its Hunt section (the 2026-10-03
 // rebuild of hunt_attack / hunt_support) are left out: hunt_boss_moves.sql replaced both live, so the guard refuses the
 // file (as designed), and this test does not use the Hunt functions.
@@ -78,7 +80,7 @@ const MUT5 = {   // dungeon_reward_odds.sql
 const GMUT = {
   gate: ["'ok', g.open = 0 and a.n >= g.need", "'ok', a.n >= g.need"],
   huntlock: ["  if not (v_gate->>'ok')::boolean then return", "  if false then return"],
-  guard: ["not in ('f0db1bb166d0eccb33522bd373f4ee4e', '4a80c769286b2b6022ab79b4cb01f7c6')", "is null"],
+  guard: ["not in ('4a80c769286b2b6022ab79b4cb01f7c6', '22bf3511259d728791ee370775beb5f2')", "is null"],
   allows: ["(adventure_gate(p_player)->>'ok')::boolean);", "true);"],
 };
 const RUNM = "and status = 'active' and mode = coalesce(p_mode, 'daily') for update;";
@@ -123,12 +125,13 @@ if (M) {
     ({ mig, mig2, mig3, mig4, mig5, mig6, mig7 } = V);
   } else throw new Error(`unknown mutation ${M}`);
 }
-for (const s of [core, gate, mig, mig2, mig3, mig4, mig5, mig6full, mig7]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
+for (const s of [bal, core, gate, mig, mig2, mig3, mig4, mig5, mig6full, mig7]) if (s.includes('$m$') || s.includes('$t$')) throw new Error('a migration contains $m$ or $t$');
 
 const body = String.raw`do $t$
 declare bad text := ''; r jsonb; g jsonb; d1 jsonb; d2 jsonb; fl jsonb; rm jsonb; i int; j int; n int; st jsonb; run record;
   atk bigint[]; gold bigint[]; stn bigint; hid bigint; foe jsonb; info jsonb; sq jsonb; wk jsonb; crit numeric; ex jsonb; seed float; bal int; v_day date; ofr jsonb;
 begin
+  if to_regclass('public.balance') is null then execute $m$${bal}$m$; end if;
   execute $m$${core}$m$;
   execute $m$${gate}$m$;
   execute $m$${mig}$m$;

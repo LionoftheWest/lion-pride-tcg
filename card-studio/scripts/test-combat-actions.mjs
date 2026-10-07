@@ -25,7 +25,7 @@ const MUT = M === 'guard' ? '' : mutation({
   bosstarget: [SUP, "    case when v_tgt in ('ally', 'self') then p_target end,", '    p_target,'],
   novalue: [SUP, "      'value', case", "      'value_x', case"],
 });
-const GUARD_MUT = M === 'guard' ? ["not in ('882eee37eca4a71dbdab385b21bd061a',", "is null and 'x' not in ('882eee37eca4a71dbdab385b21bd061a',"] : null;
+const GUARD_MUT = M === 'guard' ? ["not in ('beb6c2738ef2b0966054234c13fa1085',", "is null and 'x' not in ('beb6c2738ef2b0966054234c13fa1085',"] : null;
 if (GUARD_MUT) { if (!mig.includes(GUARD_MUT[0])) throw new Error('bad guard mutation'); mig = mig.replace(GUARD_MUT[0], GUARD_MUT[1]); }
 if (mig.includes('$m$') || mig.includes('$t$')) throw new Error('the migration must not contain $m$ or $t$');
 const P = 'tst_cact';
