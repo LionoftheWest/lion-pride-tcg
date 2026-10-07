@@ -55,7 +55,7 @@ create extension if not exists pgcrypto with schema extensions;
 create extension if not exists "uuid-ossp" with schema extensions;
 SQL
 # The restore client shares the container's loopback (--network container:), so no port is needed.
-ERRS=$($DOCKER run --rm --user "$(id -u):$(id -g)" --network "container:$C" -v "$DUMP:/run/lptcg.dump:ro" "$PG_IMAGE" \
+ERRS=$($DOCKER run --rm --user "$(id -u):$(id -g)" -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro -e HOME=/tmp --network "container:$C" -v "$DUMP:/run/lptcg.dump:ro" "$PG_IMAGE" \
   pg_restore -h 127.0.0.1 -U postgres -d postgres --no-owner --no-privileges /run/lptcg.dump 2>&1 || true)
 if [ -n "$ERRS" ]; then printf '%s\n' "$ERRS" | sed 's/^/  pg_restore: /' >> "$LOG"; fi
 NERR=$(printf '%s\n' "$ERRS" | grep -c '^pg_restore: error' || true)
