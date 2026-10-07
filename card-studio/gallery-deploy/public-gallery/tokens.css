@@ -95,6 +95,42 @@
   --name-color-6: #5B8CFF;
   --name-color-7: #B45AD8;
   --name-color-8: #FF7AC8;
+  --tier-bronze: #D08A4E; /* Bronze (the PR #153 value) */
+  --tier-silver: #C9D1DC; /* Silver (the PR #153 value) */
+  --tier-platinum: #9FE8D8; /* Platinum (new, D-74: proposal, shown in the UI-00 gallery for Nathan) */
+  --tier-diamond: #6FE3FF; /* Diamond (the PR #153 value) */
+  --tier-obsidian: #8C7BD8; /* Obsidian (new, D-74: proposal; not the Full Art pink of the old Mythic) */
+  --hit: 44px; /* The touch hit area (9.1); Button md, input, Stepper button, Pager/touch, IconButton/touch */
+  --ctl-md: 44px; /* Button md, SearchField, Select, Switch row, Countdown/live */
+  --ctl-icon: 40px; /* IconButton md (pointer), top bar pills */
+  --ctl-sm: 32px; /* Button sm, IconButton sm, Pager (pointer) */
+  --tab-h: 34px; /* Tabs/tab (the sub-tab) */
+  --chip-md: 28px; /* Chip md, Tabs/segment */
+  --chip-sm: 22px; /* Chip sm, the reward pill in a button */
+  --counter: 20px; /* Counter (count badge) */
+  --check-badge: 24px; /* SelectedMark check badge */
+  --dot: 8px; /* Dot, the rarity mark in a filter chip */
+  --icon-xs: 12px; /* Spinner in a chip or a switch knob */
+  --icon-sm: 14px; /* Check in a badge, the Shards coin */
+  --icon-md: 16px; /* Icon in a button, tab, chip, toast, pager */
+  --icon-lg: 18px; /* Icon in an IconButton or a Stepper button */
+  --icon-xl: 20px; /* Icon size 20 (5.2 Icon) */
+  --icon-2xl: 24px; /* Icon size 24 (5.2 Icon) */
+  --switch-w: 38px; /* Switch track width */
+  --switch-h: 22px; /* Switch track height */
+  --switch-knob: 18px; /* Switch knob */
+  --bar-sm: 4px; /* Progress/linear */
+  --bar-md: 8px; /* Progress/segmented */
+  --bar-lg: 12px; /* Progress/hp */
+  --dialog-w: 414px; /* Dialog/compact width (the most a confirm dialog grows) */
+  --sheet-side-w: 380px; /* Sheet/side width */
+  --sheet-bottom-w: 430px; /* Sheet/bottom: the most it grows on a wide phone */
+  --textarea-h: 120px; /* Textarea height */
+  --avatar-xs: 20px; /* Avatar xs */
+  --avatar-sm: 28px; /* Avatar sm */
+  --avatar-md: 38px; /* Avatar md */
+  --avatar-lg: 56px; /* Avatar lg */
+  --avatar-xl: 96px; /* Avatar xl */
   --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-num: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
