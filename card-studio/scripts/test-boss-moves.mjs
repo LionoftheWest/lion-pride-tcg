@@ -1,6 +1,7 @@
 /**
  * Test hunt_boss_moves.sql (the boss counter moves, the counter passives, D-70) with NO lasting change:
- *   node scripts/test-boss-moves.mjs [file.sql]     (default: ../tcg-bot/supabase/hunt_boss_moves.sql; "current" = the live functions)
+ *   node scripts/test-boss-moves.mjs [file.sql]     no file: the CURRENT functions (test-all-local.mjs); a file: the
+ *                                                  acceptance run (apply it, the guard, every mutation)
  *   MUTATE=<name> node scripts/test-boss-moves.mjs  must FAIL, for every name:
  *     nopick    the boss never uses a counter move      shatter   Shatter leaves the shields
  *     plague    Plague does not weaken heals             d70       a support target gets the attacker HP
@@ -14,8 +15,8 @@ import { GATE, mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 
-const arg = process.argv[2];
-let mig = arg === 'current' ? '' : readFileSync(arg || new URL('../../tcg-bot/supabase/hunt_boss_moves.sql', import.meta.url), 'utf8')
+const FILE = process.argv[2];
+let mig = !FILE ? '' : readFileSync(FILE, 'utf8')
   .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 const M = process.env.MUTATE;
 const SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
@@ -26,6 +27,7 @@ const MUT = M === 'guard' ? '' : mutation({
   plague: [SUP, "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 0.1;", "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 1;"],
   d70: [SUP, "if v_tkind = 'support' then v_tmaxhp := card_max_hp(0); end if;", 'null;'],
 });
+if (M === 'guard' && !FILE) throw new Error('MUTATE=guard changes the migration text: pass the file');
 if (M === 'guard') {
   const a = "not in ('f84e5768628b1c4afddb89ecfe96a5ec',";
   if (!mig.includes(a)) throw new Error('bad guard mutation');
@@ -119,7 +121,7 @@ const body = String.raw`do $t$ declare
   P text := '${P}'; d date := (now() at time zone 'America/Denver')::date;
   cfg0 jsonb; a1 bigint; a2 bigint; kh bigint; ks bigint; ke bigint; kw bigint; kx bigint; kt bigint; km bigint; kc bigint; kg bigint; sups bigint[];
 begin
-  execute $m$${mig}$m$;
+  ${mig ? 'execute $m$' + mig + '$m$;' : '-- the current functions'}
   ${MUT}
   select value into cfg0 from settings where key = 'hunt_boss_moves';   -- as the file sets it (the cases overwrite it)
   select min(c.id) into a1 from cards c join subjects s on s.id = c.subject_id where s.type in ('Character', 'Creature') and c.rarity = 'gold';
@@ -263,7 +265,7 @@ ${caseSQL}
              where b.key <> '_share'
                and m->>'key' not in (${CASES.map((c) => `'${c[0]}'`).join(', ')})) then bad := bad || 'a move key with no test; '; end if;
 
-${!M || M === 'guard' ? `
+${mig && (!M || M === 'guard') ? `
   -- 8. The guard: the file runs again on its own result; a changed live function stops it.
   begin execute $m$${mig}$m$; exception when others then bad := bad || 'second run: ' || sqlerrm || '; '; end;
   execute replace(pg_get_functiondef('public.hunt_attack'::regproc), 'declare', 'declare -- changed by someone else');
