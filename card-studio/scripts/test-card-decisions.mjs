@@ -34,15 +34,20 @@ const { cardElement, ELEMENT_ORDER } = await import(pathToFileURL(elementsPath).
 const aliasBlock = readFileSync(elementsPath, 'utf8').match(/const ELEMENT_ALIAS = \{([\s\S]*?)\};/)[1];
 const CLIENT_ALIAS = Object.fromEntries([...aliasBlock.matchAll(/([a-z]+): '([a-z]+)'/g)].map((m) => [m[1], m[2]]));
 
-// One mutation per mechanism: a text of the file and its broken form.
+// One mutation per mechanism: a text of the file, its broken form, and (optional) a statement that runs first in the
+// same rolled-back block. A constraint that is already live survives a file that only omits its statement, so the
+// constraint mutations DROP the live constraint first: then the mutated file must put it back, or a case fails.
+// A control run (the drop + the unchanged file) must pass, so each drop is undone only by the file.
 const MUTATIONS = {
   'T3 no robot alias': ["('metal', 'metal', 13), ('robot', 'metal', 13),", "('metal', 'metal', 13),"],
   'T3 others matched by exact name': ['where exists (select 1 from jsonb_array_elements_text(o) t where public.element_of(t) = v_elem);', "where o ? ('trait:' || v_elem);"],
   'T3 the highest ord wins': ['   order by a.ord limit 1;', '   order by a.ord desc limit 1;'],
   'T3 the trait synergy skips the aliases too': ["tg not in (select 'trait:' || a.element from public.element_aliases() a)", "tg not in (select 'trait:' || a.alias from public.element_aliases() a)"],
   'T2 playing_today keeps its own order': ['order by public.rarity_rank(c.rarity::text) desc, pc.first_obtained_at desc', "order by case c.rarity::text when 'gold' then 4 when 'full_art' then 3 when 'secret_rare' then 2 when 'illustrated_rare' then 1 else 0 end desc, pc.first_obtained_at desc"],
-  'T1 no NOT NULL': ['alter table public.subjects alter column type set not null;', ''],
-  'T4 no ref check': ['alter table public.pack_ledger add constraint pack_ledger_ref_check check (ref_kind is not null and ref_id is not null);', 'null;'],
+  'T1 no NOT NULL': ['alter table public.subjects alter column type set not null;', '',
+    'alter table public.subjects alter column type drop not null;'],
+  'T4 no ref check': ['alter table public.pack_ledger add constraint pack_ledger_ref_check check (ref_kind is not null and ref_id is not null);', 'null;',
+    'alter table public.pack_ledger drop constraint if exists pack_ledger_ref_check;'],
 };
 
 const P = 'tst_cd_a', B = 'tst_cd_b', C = 'tst_cd_c';
@@ -195,9 +200,14 @@ const print = (results) => {
 
 if (process.argv.includes('--mutations')) {
   let caught = 0;
-  for (const [name, [a, b]] of Object.entries(MUTATIONS)) {
+  for (const [name, [a, b, pre]] of Object.entries(MUTATIONS)) {
     if (src.split(a).length !== 2) { console.log(`FAIL mutation "${name}": its text is not in the file once`); process.exitCode = 1; continue; }
-    const r = await run(src.replace(a, () => b), false);
+    if (pre) {   // the control: the drop + the unchanged file must pass
+      const c = await run(`${pre}\n${src}`, false);
+      const cf = c.error ? ['(the block failed: ' + c.error.slice(0, 160) + ')'] : c.results.filter((x) => !x.ok).map((x) => x.case);
+      if (cf.length) { console.log(`FAIL control of "${name}" (the drop + the unchanged file): ${cf.slice(0, 3).join(' | ')}`); process.exitCode = 1; continue; }
+    }
+    const r = await run(`${pre ? `${pre}\n` : ''}${src.replace(a, () => b)}`, false);
     const failed = r.error ? ['(the block failed: ' + r.error.slice(0, 160) + ')'] : r.results.filter((x) => !x.ok).map((x) => x.case);
     if (failed.length) caught++;
     console.log(`${failed.length ? 'caught' : 'MISSED'}  ${name}: ${failed.slice(0, 3).join(' | ')}`);
