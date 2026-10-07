@@ -152,22 +152,33 @@ update public.pack_ledger
  where ref_kind is null and reason = 'opened';
 
 -- 3. Only known reasons ------------------------------------------------------------------------------
--- Add a new reason HERE, in gift_claims_pack_reason_check below, in the column comment, and (if it
--- counts to the daily cap) in earned_today(), before code writes it.
-alter table public.pack_ledger drop constraint if exists pack_ledger_reason_check;
-alter table public.pack_ledger add constraint pack_ledger_reason_check check (reason in (
-  'opened', 'gift_sent', 'gift_received', 'welcome', 'launch_gift', 'raid_makeup_oct1', 'bug_reward', 'admin', 'event',
-  'tutorial', 'achievement', 'shop', 'hunt_reward', 'dungeon_prize', 'boon',
-  'earned_checkin', 'earned_streak', 'earned_hunt', 'earned_voice', 'earned_social', 'earned_dungeon', 'earned_gauntlet',
-  'earned_daily', 'earned_bonus'));
+-- Since ledger_reasons.sql (2026-10-07) the reasons are rows of public.ledger_reasons: add a new reason
+-- there (and, if it counts to the daily cap, in earned_today()).
+-- The check below is the state before that file. Once public.ledger_reasons exists, its foreign key (the same
+-- name) replaces the check and this step is skipped, so a re-run of this file keeps the new state.
+do $r$
+begin
+  if to_regclass('public.ledger_reasons') is not null then return; end if;
+  alter table public.pack_ledger drop constraint if exists pack_ledger_reason_check;
+  alter table public.pack_ledger add constraint pack_ledger_reason_check check (reason in (
+    'opened', 'gift_sent', 'gift_received', 'welcome', 'launch_gift', 'raid_makeup_oct1', 'bug_reward', 'admin', 'event',
+    'tutorial', 'achievement', 'shop', 'hunt_reward', 'dungeon_prize', 'boon',
+    'earned_checkin', 'earned_streak', 'earned_hunt', 'earned_voice', 'earned_social', 'earned_dungeon', 'earned_gauntlet',
+    'earned_daily', 'earned_bonus'));
+end $r$;
 -- A pack gift waits in gift_claims until the member claims it; its reason goes into pack_ledger then.
 -- The same list here, so a gift with a bad reason is refused when it is made, not when it is claimed.
-alter table public.gift_claims drop constraint if exists gift_claims_pack_reason_check;
-alter table public.gift_claims add constraint gift_claims_pack_reason_check check (kind = 'card' or amount = 0 or reason in (
-  'opened', 'gift_sent', 'gift_received', 'welcome', 'launch_gift', 'raid_makeup_oct1', 'bug_reward', 'admin', 'event',
-  'tutorial', 'achievement', 'shop', 'hunt_reward', 'dungeon_prize', 'boon',
-  'earned_checkin', 'earned_streak', 'earned_hunt', 'earned_voice', 'earned_social', 'earned_dungeon', 'earned_gauntlet',
-  'earned_daily', 'earned_bonus'));
+-- The same rule for the gift check (ledger_reasons.sql replaces it with a foreign key of the same name).
+do $r$
+begin
+  if to_regclass('public.ledger_reasons') is not null then return; end if;
+  alter table public.gift_claims drop constraint if exists gift_claims_pack_reason_check;
+  alter table public.gift_claims add constraint gift_claims_pack_reason_check check (kind = 'card' or amount = 0 or reason in (
+    'opened', 'gift_sent', 'gift_received', 'welcome', 'launch_gift', 'raid_makeup_oct1', 'bug_reward', 'admin', 'event',
+    'tutorial', 'achievement', 'shop', 'hunt_reward', 'dungeon_prize', 'boon',
+    'earned_checkin', 'earned_streak', 'earned_hunt', 'earned_voice', 'earned_social', 'earned_dungeon', 'earned_gauntlet',
+    'earned_daily', 'earned_bonus'));
+end $r$;
 
 -- 4. No negative pack balance ------------------------------------------------------------------------
 alter table public.players drop constraint if exists players_pack_balance_nonneg;
@@ -725,8 +736,13 @@ comment on table public.pack_ledger is
 comment on column public.pack_ledger.id is 'Row id.';
 comment on column public.pack_ledger.player_id is 'The member (players.id) whose balance changed.';
 comment on column public.pack_ledger.amount is 'The change in packs: positive = packs added, negative = packs used (opened) or given away (gift_sent).';
-comment on column public.pack_ledger.reason is
-  'Why (pack_ledger_reason_check lists the allowed values): opened; gift_sent / gift_received (member gifts); welcome, launch_gift, raid_makeup_oct1, bug_reward, admin, event (gifts claimed in the bell); tutorial; achievement; shop; hunt_reward; dungeon_prize; boon (a pack boon card); earned_checkin, earned_streak, earned_hunt, earned_voice, earned_social, earned_dungeon, earned_gauntlet (claim_daily), earned_daily, earned_bonus (the chat dailies). The earned_ reasons count to the daily cap (earned_today()).';
+-- The comment before ledger_reasons.sql (2026-10-07); once that table exists, its own comment stays.
+do $r$
+begin
+  if to_regclass('public.ledger_reasons') is not null then return; end if;
+  comment on column public.pack_ledger.reason is
+    'Why (pack_ledger_reason_check lists the allowed values): opened; gift_sent / gift_received (member gifts); welcome, launch_gift, raid_makeup_oct1, bug_reward, admin, event (gifts claimed in the bell); tutorial; achievement; shop; hunt_reward; dungeon_prize; boon (a pack boon card); earned_checkin, earned_streak, earned_hunt, earned_voice, earned_social, earned_dungeon, earned_gauntlet (claim_daily), earned_daily, earned_bonus (the chat dailies). The earned_ reasons count to the daily cap (earned_today()).';
+end $r$;
 comment on column public.pack_ledger.granted_by is
   'The other member in the move, or null: the gift sender (gift_received), the gift receiver (gift_sent), the boon caster (boon), the admin who gave a promo or launch gift. Before pack_ledger_strict.sql it also held achievement keys; those are now in ref_id.';
 comment on column public.pack_ledger.ref_kind is
@@ -738,7 +754,12 @@ comment on table public.players is '[players-economy] One row per member (the Di
 comment on column public.players.pack_balance is 'Unopened packs. Never negative (players_pack_balance_nonneg). Changed only with a pack_ledger row: sum(pack_ledger.amount) = pack_balance.';
 
 comment on table public.gift_claims is '[players-economy] Gifts that wait in a member''s bell until they claim them (packs, Shards or a card). claim_gift() pays them; a pack gift writes a pack_ledger row with ref (''gift'', id).';
-comment on column public.gift_claims.reason is 'The pack_ledger reason used when the gift is claimed. A pack gift must use a reason that pack_ledger accepts (gift_claims_pack_reason_check, the same list as pack_ledger_reason_check).';
+-- The comment before ledger_reasons.sql (2026-10-07); once that table exists, its own comment stays.
+do $r$
+begin
+  if to_regclass('public.ledger_reasons') is not null then return; end if;
+  comment on column public.gift_claims.reason is 'The pack_ledger reason used when the gift is claimed. A pack gift must use a reason that pack_ledger accepts (gift_claims_pack_reason_check, the same list as pack_ledger_reason_check).';
+end $r$;
 
 comment on table public.daily_claims is '[players-economy] One row per daily task claimed by a member on a game day (America/Denver). amount = the packs paid (0 = the daily cap applied). Since pack_ledger_strict.sql the chat dailies are here too.';
 comment on column public.daily_claims.player_id is 'The member (players.id).';

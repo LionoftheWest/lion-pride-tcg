@@ -222,16 +222,17 @@ Table. [players-economy] One row per change of a member's Shard balance (players
 | `id` | bigint | not null |  | Row id. A card_ledger convert row points at it (ref_kind shard_ledger). |
 | `player_id` | text | not null |  | The member (players.id) whose Shard balance changed. |
 | `amount` | integer | not null |  | The change in Shards: positive = earned or given, negative = spent (shop) or taken back (admin). |
-| `reason` | text | not null |  | Why (shard_ledger_reason_check lists the allowed values): daily (a daily task, claim_daily / claim_daily_earn); dungeon (Dungeon run loot, dungeon_settle; a Dungeon or Gauntlet board prize, dungeon_pay); dupes (copies turned into Shards, convert_dupes); event (Shards in a bell gift, claim_gift); milestone (an achievement tier, claim_achievement_tiers); shop (a Shop purchase, buy_shop_item); admin (a manual grant or reversal); expedition, arena, wandering, minigame (reserved for planned features; no writer yet). |
+| `reason` | text | not null |  | Why: a shard reason in ledger_reasons (its note gives the meaning). Foreign key shard_ledger_reason_check; a new row needs an active or reserved reason (ledger_reason_guard). |
 | `ref_kind` | text | null |  | The kind of source row (required, shard_ledger_ref_check): daily_claim (daily_claims, ref_id = '<day>:<task>'); run (dungeon_runs.id; Dungeon v1 rows also kill / room / reward with the run id); dungeon_payout (dungeon_payouts, ref_id = '<mode>:<period>'); card (convert_dupes: the card id); gift (gift_claims.id); achievement (the achievement key); shop_purchase (shop_purchases.id); for admin rows a short label of the manual action. Old rows that matched no source row keep their old kind (daily, pack, card, stat_reset). |
 | `ref_id` | text | null |  | The id of the source row (see ref_kind), as text. Required. |
 | `created_at` | timestamp with time zone | not null | `now()` | When the row was written (the transaction time, the same as the source row). |
+| `ledger` | text | null | `'shard'::text` | Always 'shard' (a stored generated constant): the first column of the foreign key (ledger, reason) -> ledger_reasons. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
   - `shard_ledger_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
+  - `shard_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
 - Check constraints: 
-  - `shard_ledger_reason_check`: `CHECK ((reason = ANY (ARRAY['daily'::text, 'dungeon'::text, 'dupes'::text, 'event'::text, 'milestone'::text, 'shop'::text, 'admin'::text, 'expedition'::text, 'arena'::text, 'wandering'::text, 'minigame'::text])))`
   - `shard_ledger_ref_check`: `CHECK (((ref_kind IS NOT NULL) AND (ref_id IS NOT NULL)))`
 - Row level security: on. Policies: none
 

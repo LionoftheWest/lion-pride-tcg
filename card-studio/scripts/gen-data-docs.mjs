@@ -49,7 +49,7 @@ const DOMAINS = [
     names: ['players', 'daily_activity', 'daily_claims', 'voice_minutes', 'notifications', 'playing_posts', 'player_reports', 'settings', 'balance', 'balance_log', 'schema_migrations',
       'add_voice_minutes', 'bot_work', 'checkin_streak', 'claim_daily', 'claim_daily_earn', 'claim_first_pack_ping', 'claim_tutorial_reward', 'dailies_tasks', 'dailies_view', 'earned_today', 'gift_all_members', 'give_gift', 'give_gift_all',
       'notify_all', 'notify_player', 'playing_today', 'prune_old_rows', 'record_activity', 'rls_auto_enable', 'streak_shield_waiting', 'submit_report'],
-    prefixes: ['balance_'] },
+    prefixes: ['balance_', 'ledger_'] },
 ];
 const OTHER = { slug: 'other', title: 'Other', about: 'Tables and functions that the domain map in gen-data-docs.mjs does not place yet. Add each one to a domain.', names: [], prefixes: [] };
 const domainOf = (name) => DOMAINS.find((d) => d.names.includes(name)) || DOMAINS.find((d) => d.prefixes.some((p) => name.startsWith(p))) || OTHER;
