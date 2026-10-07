@@ -194,7 +194,9 @@ app.put('/api/cards/:id', async (req, res) => {
           .from('cards').select('id').eq('subject_id', subject.id).in('rarity', removed);
         const rowIds = (rows || []).map((r) => r.id);
         if (rowIds.length) {
-          await supabase.from('player_cards').delete().in('card_id', rowIds);
+          // One statement: the foreign keys remove the members' copies (player_cards) and their card_ledger
+          // rows with the card, so the card ledger still reconciles. A separate player_cards delete took the
+          // copies even when the card delete then failed.
           await supabase.from('cards').delete().in('id', rowIds);
         }
         await supabase.storage.from(BUCKET).remove(removed.flatMap((r) => [`cards/${id}-${r}.webp`, `cards/${id}-${r}.png`]));
