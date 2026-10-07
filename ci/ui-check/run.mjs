@@ -1,6 +1,7 @@
 // Gate G3, the run (docs/design.md 12.5, 12.6): open every screen and window at the given sizes in one browser,
 // run the checks, and write one result file and one screenshot for each cell. evaluate.mjs gives the verdict.
-//   node run.mjs --browser chromium|webkit [--sizes 375x667,...] [--screens home,...] [--variants base,long,safe,keyboard] [--workers 4] [--out DIR]
+//   node run.mjs --browser chromium|webkit [--sizes 375x667,...] [--screens home,...] [--variants base,long,safe,keyboard] [--workers 4] [--shard k/n] [--out DIR]
+// --shard k/n: CI splits the cells over n runners; this runner takes every n-th cell from cell k. All shards = all cells.
 // --workers: the cells that run at the same time (each in its own browser context, as before). A GitHub runner has 4 cores.
 // It starts serve.mjs on a free port (the fixtures). Every cell uses a new browser context (the audit method).
 // Variants (12.6): base; long = a 32-character name and a 9-digit number; safe = the safe-area presets (touch
@@ -56,6 +57,11 @@ for (const s of sizes) for (const screen of screens) for (const variant of varia
   if (variant === 'long' && !LONG_SCREENS.has(screen)) continue;
   todo.push([s, screen, variant]);
 }
+const [SHARD_K, SHARD_N] = (arg('shard') || '1/1').split('/').map(Number);
+if (!(SHARD_N >= 1 && SHARD_K >= 1 && SHARD_K <= SHARD_N)) throw new Error(`bad --shard ${arg('shard')}`);
+const all = todo.length;
+todo.splice(0, todo.length, ...todo.filter((_, i) => i % SHARD_N === SHARD_K - 1));
+console.log(`shard ${SHARD_K}/${SHARD_N}: ${todo.length} of ${all} cells`);
 
 let cells = 0, failures = 0;
 async function runCell([s, screen, variant]) {
