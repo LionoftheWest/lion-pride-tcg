@@ -30,3 +30,6 @@ alter table public.wishlists enable row level security;
 grant select on table public.wishlists to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.wishlists to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.wishlists to service_role;
+
+-- @triggers
+CREATE TRIGGER wishlist_log_write AFTER INSERT OR DELETE OR UPDATE ON public.wishlists FOR EACH ROW EXECUTE FUNCTION wishlist_log_write();

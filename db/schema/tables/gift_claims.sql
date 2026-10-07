@@ -47,4 +47,5 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 
 -- @triggers
 CREATE TRIGGER ach_wish_gift AFTER INSERT ON public.gift_claims FOR EACH ROW EXECUTE FUNCTION ach_wish_gift();
+CREATE TRIGGER gift_admin_log AFTER INSERT ON public.gift_claims REFERENCING NEW TABLE AS admin_gift_new FOR EACH STATEMENT EXECUTE FUNCTION gift_admin_log();
 CREATE TRIGGER gift_claims_reason_guard BEFORE INSERT OR UPDATE OF reason, kind, amount ON public.gift_claims FOR EACH ROW WHEN (((new.kind <> 'card'::text) AND (new.amount <> 0))) EXECUTE FUNCTION ledger_reason_guard('pack', 'gift_claims_pack_reason_check');
