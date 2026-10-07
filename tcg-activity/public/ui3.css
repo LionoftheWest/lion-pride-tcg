@@ -361,7 +361,7 @@ body.ui-v2.ui-v3[data-size] #topbar .u3-topbtn .navbadge { position: absolute; t
 /* Avatar (38, 44 on touch) */
 body.ui-v2.ui-v3[data-size] #topbar #v2Avatar { width: var(--avatar-md); height: var(--avatar-md); flex: none; cursor: pointer; }
 body.ui-v2.ui-v3[data-input="coarse"] #topbar #v2Avatar { width: var(--hit); height: var(--hit); }
-body.ui-v2.ui-v3[data-size] #topbar #v2Avatar:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+body.ui-v2.ui-v3[data-size]:not([data-last-input="pointer"]) #topbar #v2Avatar:focus-visible { outline: none; box-shadow: var(--glow-focus); }
 
 /* ---- Menu grid (UI-60): a panel under the Menu button; a bottom sheet on compact-port ---- */
 .u3-menuhost { position: fixed; inset: 0; z-index: var(--z-sheet); }
@@ -374,7 +374,7 @@ body.ui-v2.ui-v3[data-size] #topbar #v2Avatar:focus-visible { outline: none; box
   border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); color: var(--text-secondary); cursor: pointer; font: inherit;
   transition: transform var(--dur-instant) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
 .u3-mtile:active { transform: scale(.97); }
-.u3-mtile:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+body:not([data-last-input="pointer"]) .u3-mtile:focus-visible { outline: none; box-shadow: var(--glow-focus); }
 @media (hover: hover) { .u3-mtile:hover { background: var(--surface-2); color: var(--text-primary); } }
 .u3-mtile__name { font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-primary); white-space: nowrap; }
 .u3-mtile__dot { position: absolute; top: var(--sp-3); right: var(--sp-3); display: none; }
@@ -410,7 +410,10 @@ body.ui-v2.ui-v3[data-size] #dock .dk-open svg { width: var(--icon-xl); height: 
 body.ui-v2.ui-v3[data-size] #dock .dk-badge { top: calc(var(--sp-1) * -1); right: calc(var(--sp-1-5) * -1); min-width: var(--chip-sm); height: var(--chip-sm); padding: 0 var(--sp-1-5);
   border-radius: var(--rad-pill); background: var(--danger-strong); color: var(--text-on-color); font-size: var(--fs-label); font-weight: var(--fw-heading); line-height: var(--chip-sm);
   border: var(--bw-2) solid var(--bg-raised); }
-body.ui-v2.ui-v3[data-size] #dock .dk:focus-visible, body.ui-v2.ui-v3[data-size] #dock .dk-open:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+/* 9.3: the ring is for the keyboard. The Discord desktop app marks a mouse click as :focus-visible (2026-10-07), so the
+   shell notes the last input on body[data-last-input] (shell.js) and the shell controls show the ring after a key only. */
+body.ui-v2.ui-v3[data-size]:not([data-last-input="pointer"]) #dock .dk:focus-visible, body.ui-v2.ui-v3[data-size]:not([data-last-input="pointer"]) #dock .dk-open:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+body.ui-v2.ui-v3[data-size][data-last-input="pointer"] #topbar .u3-ibtn:focus-visible { box-shadow: none; }
 
 /* ---- Sub-tab row (UI-02): one row directly under the top bar on every class (D-37), content-width tabs with an icon
    (D-47, D-50), no counts (D-27), the "?" at its end on compact-land, medium and expanded (D-63). The v2 bar markup

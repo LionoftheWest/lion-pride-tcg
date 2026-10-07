@@ -352,9 +352,11 @@ async function main() {
 // the size class on <body> (design.md 2.1). No v3 screen exists yet, so nothing else changes.
 function startV3() {
   document.body.classList.add('ui-v3');
-  if (!document.querySelector('link[data-ui3]')) {
-    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/ui3.css'; l.dataset.ui3 = '1'; document.head.appendChild(l);
-  }
+  // index.html has the link with its content version (?v=, server.js): a plain /ui3.css was a stale copy in Discord's
+  // proxy after the shell deploy (2026-10-07), as ui-v2-open.css was on 2026-09-27.
+  const link = document.querySelector('link[data-ui3]');
+  if (link) link.media = 'all';
+  else { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/ui3.css'; l.dataset.ui3 = '1'; document.head.appendChild(l); }
   watchSizeClass(window, () => repaintShards());
 }
 

@@ -14,7 +14,8 @@ create table public.pack_ledger (
   created_at timestamp with time zone default now() not null,
   ref_kind text,
   ref_id text,
-  ledger text generated always as ('pack'::text) stored
+  ledger text generated always as ('pack'::text) stored,
+  set_id text
 );
 
 -- @constraints
@@ -23,6 +24,7 @@ alter table public.pack_ledger add constraint pack_ledger_pkey PRIMARY KEY (id);
 alter table public.pack_ledger add constraint pack_ledger_player_id_fkey FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE;
 alter table public.pack_ledger add constraint pack_ledger_reason_check FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason);
 alter table public.pack_ledger add constraint pack_ledger_ref_check CHECK (((ref_kind IS NOT NULL) AND (ref_id IS NOT NULL)));
+alter table public.pack_ledger add constraint pack_ledger_set_id_fkey FOREIGN KEY (set_id) REFERENCES card_sets(id);
 
 -- @indexes
 CREATE UNIQUE INDEX pack_ledger_pkey ON public.pack_ledger USING btree (id);

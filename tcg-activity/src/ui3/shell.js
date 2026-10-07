@@ -156,4 +156,8 @@ export function startShell() {
   const d = $('dailyBtn');
   if (d) new MutationObserver(syncDots).observe(d, { attributes: true, childList: true, subtree: true });
   syncDots();
+  // 9.3: the last input (pointer or key) on <body>: the shell focus ring shows after a key only (ui3.css)
+  const mark = (v) => () => { document.body.dataset.lastInput = v; };
+  document.addEventListener('pointerdown', mark('pointer'), true);
+  document.addEventListener('keydown', mark('key'), true);
 }
