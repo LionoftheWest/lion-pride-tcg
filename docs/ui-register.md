@@ -84,7 +84,7 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 | UI-44 | Convert extra copies | lion-pride-tcg-design `UI-44/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-44/approval.md` | #128 | Not migrated | |
 | UI-45 | Adventure tabs (Hunt, Dungeon) | None (no design needed) | 2026-10-06, design, lion-pride-tcg-design `UI-45/approval.md` | #147, #155 | Not migrated | The design shows "SOON" tabs. D-13: hide them |
 | UI-46 | Dungeon lobby | lion-pride-tcg-design `UI-46/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-46/approval.md` | #147, #154 | Not migrated | Filters changed after approval |
-| UI-47 | Dungeon fight | `30-review-2/02, 07, 12` | 2026-10-03, design, #147 | #147, #154, #158, #159 | Not migrated | |
+| UI-47 | Dungeon fight | lion-pride-tcg-design `UI-47/approved/` (review-2, all frames) | 2026-10-06, design, lion-pride-tcg-design `UI-47/approval.md` | #147, #154, #158, #159 | Not migrated | |
 | UI-48 | Dungeon: choose a reward | lion-pride-tcg-design `UI-48/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-48/approval.md` | #147, #158 | Not migrated | |
 | UI-49 | Dungeon v2: room map, ? rooms, chest (3D), doors, rest, floor cleared, retreat | lion-pride-tcg-design `UI-49/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-49/approval.md` | #158, #159, #160 | Not migrated | D-16 step 4 |
 | UI-50 | Dungeon run over | lion-pride-tcg-design `UI-50/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-50/approval.md` | #147, #160, #165 | Not migrated | |
