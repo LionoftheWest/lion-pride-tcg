@@ -9,7 +9,7 @@ The card catalog, the copies that members hold, packs, the ledgers, trades, the 
 
 Tables (15): [artist_submissions](#table-artist-submissions), [auction_bids](#table-auction-bids), [auctions](#table-auctions), [card_ledger](#table-card-ledger), [card_trades](#table-card-trades), [cards](#table-cards), [gift_claims](#table-gift-claims), [pack_ledger](#table-pack-ledger), [player_cards](#table-player-cards), [roster_power_history](#table-roster-power-history), [subjects](#table-subjects), [trade_listings](#table-trade-listings), [trade_offers](#table-trade-offers), [wish_grants](#table-wish-grants), [wishlists](#table-wishlists)
 
-Functions (64): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_powers(text)](#fn-card-powers-text), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [grant_packs_all(integer,text,text)](#fn-grant-packs-all-integer-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_boss_hp(bigint)](#fn-roster-boss-hp-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
+Functions (62): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_powers(text)](#fn-card-powers-text), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
 
 ## Tables
 
@@ -89,11 +89,13 @@ Table. [trading] One row per Trading Hall auction: one card for bid cards. start
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
+  - `auctions_accepted_bid_id_fkey` to [auction_bids](cards-and-trading.md#table-auction-bids): `FOREIGN KEY (accepted_bid_id) REFERENCES auction_bids(id)`
   - `auctions_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `auctions_seller_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (seller_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
   - `auctions_min_count_check`: `CHECK (((min_count >= 0) AND (min_count <= 5)))`
   - `auctions_min_mode_check`: `CHECK ((min_mode = ANY (ARRAY['and'::text, 'or'::text])))`
+  - `auctions_min_rarity_check`: `CHECK ((min_rarity = ANY (ARRAY['normal'::text, 'illustrated_rare'::text, 'secret_rare'::text, 'full_art'::text, 'gold'::text, 'promo'::text, 'event'::text])))`
   - `auctions_status_check`: `CHECK ((status = ANY (ARRAY['live'::text, 'accepted'::text, 'sold'::text, 'closed'::text, 'expired'::text])))`
 - Row level security: on. Policies: none
 
@@ -146,7 +148,9 @@ Table. [trading] One row per completed card swap: an accepted trade offer or a s
 - Unique: `card_trades_auction_id_key` `UNIQUE (auction_id)`, `card_trades_offer_id_key` `UNIQUE (offer_id)`
 - Foreign keys: 
   - `card_trades_auction_id_fkey` to [auctions](cards-and-trading.md#table-auctions): `FOREIGN KEY (auction_id) REFERENCES auctions(id) ON DELETE SET NULL`
+  - `card_trades_from_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (from_id) REFERENCES players(id)`
   - `card_trades_offer_id_fkey` to [trade_offers](cards-and-trading.md#table-trade-offers): `FOREIGN KEY (offer_id) REFERENCES trade_offers(id) ON DELETE SET NULL`
+  - `card_trades_to_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (to_id) REFERENCES players(id)`
 - Check constraints: 
   - `card_trades_kind_check`: `CHECK ((kind = ANY (ARRAY['offer'::text, 'auction'::text])))`
 - Row level security: on. Policies: none
@@ -192,7 +196,7 @@ Table. [players-economy] Gifts that wait in a member's bell until they claim the
 | `kind` | text | not null |  | The gift type: card (a card gift) or a pack/Shards label such as member_gift, new_player, launch_day, promo, once_<name>. new_player, launch_day and once_ kinds are once per member (unique indexes). |
 | `title` | text | not null |  | The text that the bell shows for the gift. A card gift uses the card name. |
 | `amount` | integer | not null |  | The packs paid on claim (0 to 999). A card gift holds 1 (one card). |
-| `reason` | text | not null | `'gift_received'::text` | The pack_ledger reason used when the gift is claimed. A pack gift needs an active or reserved pack reason in ledger_reasons (foreign key gift_claims_pack_reason_check, ledger_reason_guard). |
+| `reason` | text | not null | `'gift_received'::text` | A pack gift: the pack_ledger reason that claim_gift writes (gift_claims_pack_reason_check). A card gift: member_gift (claimed as gift_received) or an event key such as event:launch_player (claimed as event, once per member). |
 | `from_id` | text | null |  | The member who sent the gift (players.id), or null for a game gift. |
 | `created_at` | timestamp with time zone | not null | `now()` | Time the gift was made. |
 | `claimed_at` | timestamp with time zone | null |  | Time the member claimed the gift in the bell, or null while it waits. claim_gift sets it. |
@@ -231,7 +235,8 @@ Table. [players-economy] One row per change of a member's pack balance (players.
 - Foreign keys: 
   - `pack_ledger_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
   - `pack_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
-- Check constraints: none
+- Check constraints: 
+  - `pack_ledger_amount_check`: `CHECK ((amount <> 0))`
 - Row level security: on. Policies: none
 
 <a id="table-player-cards"></a>
@@ -255,6 +260,7 @@ Table. [cards] The copies of each card that a member holds (one row per member a
   - `player_cards_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE`
   - `player_cards_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
+  - `player_cards_ascension_check`: `CHECK ((ascension >= 0))`
   - `player_cards_quantity_check`: `CHECK ((quantity > 0))`
 - Row level security: on. Policies: none
 
@@ -271,9 +277,9 @@ Table. [cards] One row per snapshot of the community card power. roster_snapshot
 | `players` | integer | not null |  | The count of members (players rows). |
 | `owned_cards` | integer | not null |  | The count of player_cards rows with at least one copy. |
 | `total_power` | bigint | not null |  | The sum of card_power over all owned cards (one per member and card, with stars). |
-| `boss_hp_normal` | bigint | not null |  | An estimate: roster_boss_hp(deployable_power), balance key boss_hp_estimate (min floor). Not the HP of a real boss. |
-| `boss_hp_heroic` | bigint | not null |  | An estimate: roster_boss_hp(deployable_power), balance key boss_hp_estimate (min floor). Not the HP of a real boss. |
-| `boss_hp_mythic` | bigint | not null |  | An estimate: roster_boss_hp(deployable_power), balance key boss_hp_estimate (min floor). Not the HP of a real boss. |
+| `boss_hp_normal` | bigint | not null |  | An estimate: deployable_power times a fixed factor in roster_snapshot (min 500). Not the HP of a real boss. |
+| `boss_hp_heroic` | bigint | not null |  | An estimate: deployable_power times a fixed factor in roster_snapshot (min 500). Not the HP of a real boss. |
+| `boss_hp_mythic` | bigint | not null |  | An estimate: deployable_power times a fixed factor in roster_snapshot (min 500). Not the HP of a real boss. |
 | `deployable_power` | bigint | not null | `0` | The result of deployable_power(): the power that members can send into a Hunt. |
 
 - Primary key: `PRIMARY KEY (id)`
@@ -304,7 +310,8 @@ Table. [cards] One row per card subject (the character or thing on the card), sh
 - Primary key: `PRIMARY KEY (id)`
 - Unique: `subjects_key_key` `UNIQUE (key)`
 - Foreign keys: none
-- Check constraints: none
+- Check constraints: 
+  - `subjects_type_check`: `CHECK ((type = ANY (ARRAY['Character'::text, 'Creature'::text, 'Item'::text, 'Place'::text, 'Moment'::text])))`
 - Row level security: on. Policies: `public read subjects`
 
 <a id="table-trade-listings"></a>
@@ -356,7 +363,8 @@ Table. [trading] One row per one-for-one trade offer between two members. create
   - `trade_offers_offer_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (offer_card_id) REFERENCES cards(id) ON DELETE CASCADE`
   - `trade_offers_request_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (request_card_id) REFERENCES cards(id) ON DELETE CASCADE`
   - `trade_offers_to_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (to_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `trade_offers_status_check`: `CHECK ((status = ANY (ARRAY['pending'::text, 'countered'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-wish-grants"></a>
@@ -378,6 +386,7 @@ Table. [trading] One row each time a member gives a card that is on the receiver
 - Primary key: `PRIMARY KEY (id)`
 - Unique: `wish_grants_source_ref_id_giver_id_card_id_key` `UNIQUE (source, ref_id, giver_id, card_id)`
 - Foreign keys: 
+  - `wish_grants_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `wish_grants_giver_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (giver_id) REFERENCES players(id) ON DELETE CASCADE`
   - `wish_grants_receiver_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (receiver_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
@@ -728,16 +737,6 @@ Puts a card gift in a member's bell (gift_claims, kind card), once per member an
 
 Adds p_amount packs (negative: removes) to a member and writes the pack_ledger row with its reason and ref. Returns the new balance, or null for an unknown member. With no ref but p_by, the ref is ('player', p_by).
 
-<a id="fn-grant-packs-all-integer-text-text"></a>
-
-### grant_packs_all(integer,text,text)
-
-- Function: `grant_packs_all(p_amount integer, p_reason text, p_by text DEFAULT NULL::text)`
-- Returns: `integer`
-- Security definer: no
-
-Adds packs to every member and writes pack_ledger rows with no ref. Not called by any code or job.
-
 <a id="fn-launch-player-gift-text"></a>
 
 ### launch_player_gift(text)
@@ -858,16 +857,6 @@ Clears the stat points of one card, once per game week (players.stat_reset_week,
 
 Sets the open and accepted bids of an auction to returned, except p_keep. Internal helper of close_auction, confirm_bid, decline_accepted_bid and expire_auctions.
 
-<a id="fn-roster-boss-hp-bigint"></a>
-
-### roster_boss_hp(bigint)
-
-- Function: `roster_boss_hp(p_dep bigint)`
-- Returns: `jsonb`
-- Security definer: no
-
-A boss HP ESTIMATE from a deployable power: {Normal, Heroic, Mythic} = max(floor, power x the tier factor) of balance key boss_hp_estimate. Not the real boss HP (balance boss_hp). Called by roster_stats and roster_snapshot.
-
 <a id="fn-roster-snapshot"></a>
 
 ### roster_snapshot()
@@ -876,7 +865,7 @@ A boss HP ESTIMATE from a deployable power: {Normal, Heroic, Mythic} = max(floor
 - Returns: `bigint`
 - Security definer: no
 
-Writes one roster_power_history row (members, owned cards, total and deployable power, the boss HP estimates of roster_boss_hp). Called by spawn_weekly_boss (pg_cron hunt-spawn-mt through weekly_boss_tick), weekly_hunt_rollover and roster-stats.mjs. Returns the row id.
+Writes one roster_power_history row (members, owned cards, total and deployable power, boss HP estimates). Called by spawn_weekly_boss (pg_cron hunt-spawn-mt through weekly_boss_tick) and roster-stats.mjs. Returns the row id.
 
 <a id="fn-roster-stats"></a>
 
@@ -886,7 +875,7 @@ Writes one roster_power_history row (members, owned cards, total and deployable 
 - Returns: `jsonb`
 - Security definer: no
 
-The community card power as JSON: counts, total and deployable power, the boss HP estimates (roster_boss_hp), cards by rarity and by stars. Only card-studio/scripts/roster-stats.mjs calls it. Writes nothing.
+The community card power as JSON: counts, total and deployable power, boss HP estimates, cards by rarity and by stars. Only card-studio/scripts/roster-stats.mjs calls it. Writes nothing.
 
 <a id="fn-roster-top-players-integer"></a>
 

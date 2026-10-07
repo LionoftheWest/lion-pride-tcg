@@ -146,7 +146,7 @@ begin
   -- 7. The backfill: an ended Hunt with old Smite and Crasher damage and no log rows. Running the file adds one proven
   --    row each, the reconcile is 0, and a second run adds nothing. hunt_attack stays identical (md5).
   insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at, status)
-    values ('Test Damage Log Old Boss', 'Normal', '[]', '[]', 500000, 499000, now() - interval '1 day', 'escaped') returning id into h2;
+    values ('Test Damage Log Old Boss', 'Normal', '[]', '[]', 500000, 499000, now() - interval '1 day', 'expired') returning id into h2;
   insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values (h2, '${P}', sm, v_day - 3, 250), (h2, '${S}', cr, v_day - 3, 70);
   ${mig ? `v_md5 := md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), ''));
   execute $m$${mig}$m$;

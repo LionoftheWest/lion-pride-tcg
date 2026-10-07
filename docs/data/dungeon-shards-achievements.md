@@ -9,7 +9,7 @@ The daily Dungeon, the weekly Gauntlet, the Shards and the Shop, the achievement
 
 Tables (12): [achievement_claims](#table-achievement-claims), [achievement_switch_map](#table-achievement-switch-map), [achievement_tracks](#table-achievement-tracks), [dungeon_days](#table-dungeon-days), [dungeon_log](#table-dungeon-log), [dungeon_monsters](#table-dungeon-monsters), [dungeon_payouts](#table-dungeon-payouts), [dungeon_runs](#table-dungeon-runs), [gauntlet_weeks](#table-gauntlet-weeks), [shard_ledger](#table-shard-ledger), [shop_purchases](#table-shop-purchases), [shop_stock](#table-shop-stock)
 
-Functions (66): [ach_has_element(jsonb)](#fn-ach-has-element-jsonb), [ach_tag_badges(text)](#fn-ach-tag-badges-text), [ach_tier_need(text,integer)](#fn-ach-tier-need-text-integer), [ach_tier_paid_before(text,text,integer)](#fn-ach-tier-paid-before-text-text-integer), [ach_tier_reward(text,integer)](#fn-ach-tier-reward-text-integer), [ach_track_values(text)](#fn-ach-track-values-text), [ach_tracks_on(text)](#fn-ach-tracks-on-text), [ach_wish_gift()](#fn-ach-wish-gift), [ach_wish_grant(text,text,bigint,text,bigint)](#fn-ach-wish-grant-text-text-bigint-text-bigint), [ach_wish_trade()](#fn-ach-wish-trade), [achievement_gallery(text)](#fn-achievement-gallery-text), [achievement_view(text)](#fn-achievement-view-text), [buy_shop_item(text,text,integer,bigint,integer)](#fn-buy-shop-item-text-text-integer-bigint-integer), [claim_achievement(text,text,integer,text,text)](#fn-claim-achievement-text-text-integer-text-text), [claim_achievement_tiers(text,text)](#fn-claim-achievement-tiers-text-text), [dungeon_after_kill(dungeon_runs,jsonb)](#fn-dungeon-after-kill-dungeon-runs-jsonb), [dungeon_attack(text,bigint,integer,text)](#fn-dungeon-attack-text-bigint-integer-text), [dungeon_board(date,integer)](#fn-dungeon-board-date-integer), [dungeon_card(text,bigint)](#fn-dungeon-card-text-bigint), [dungeon_card_base(bigint)](#fn-dungeon-card-base-bigint), [dungeon_card_of(text)](#fn-dungeon-card-of-text), [dungeon_cfg()](#fn-dungeon-cfg), [dungeon_chest_rarity(integer)](#fn-dungeon-chest-rarity-integer), [dungeon_choose(text,integer,text)](#fn-dungeon-choose-text-integer-text), [dungeon_day()](#fn-dungeon-day), [dungeon_drop_rarity(integer)](#fn-dungeon-drop-rarity-integer), [dungeon_end(bigint,text)](#fn-dungeon-end-bigint-text), [dungeon_enemy_turn(jsonb,bigint,integer,integer)](#fn-dungeon-enemy-turn-jsonb-bigint-integer-integer), [dungeon_enter(jsonb,jsonb,integer,integer)](#fn-dungeon-enter-jsonb-jsonb-integer-integer), [dungeon_generate(date)](#fn-dungeon-generate-date), [dungeon_log_add(bigint,jsonb,jsonb)](#fn-dungeon-log-add-bigint-jsonb-jsonb), [dungeon_loot(jsonb,integer,bigint)](#fn-dungeon-loot-jsonb-integer-bigint), [dungeon_make_foe(text,integer,integer,text)](#fn-dungeon-make-foe-text-integer-integer-text), [dungeon_offers(jsonb,integer)](#fn-dungeon-offers-jsonb-integer), [dungeon_pay(text,date)](#fn-dungeon-pay-text-date), [dungeon_pick(jsonb,numeric)](#fn-dungeon-pick-jsonb-numeric), [dungeon_prize_tick()](#fn-dungeon-prize-tick), [dungeon_prizes_cfg()](#fn-dungeon-prizes-cfg), [dungeon_rand(text)](#fn-dungeon-rand-text), [dungeon_retreat(text,text)](#fn-dungeon-retreat-text-text), [dungeon_room_foes(text,integer,integer,text)](#fn-dungeon-room-foes-text-integer-integer-text), [dungeon_rules()](#fn-dungeon-rules), [dungeon_run_card(dungeon_runs,bigint)](#fn-dungeon-run-card-dungeon-runs-bigint), [dungeon_run_floors(dungeon_runs)](#fn-dungeon-run-floors-dungeon-runs), [dungeon_settle(bigint,text,boolean)](#fn-dungeon-settle-bigint-text-boolean), [dungeon_settle_stale()](#fn-dungeon-settle-stale), [dungeon_start(text,bigint[])](#fn-dungeon-start-text-bigint), [dungeon_support(text,bigint,bigint,integer,text)](#fn-dungeon-support-text-bigint-bigint-integer-text), [dungeon_tier(double precision)](#fn-dungeon-tier-double-precision), [dungeon_txt(jsonb)](#fn-dungeon-txt-jsonb), [dungeon_view(text)](#fn-dungeon-view-text), [gauntlet_board(date,integer)](#fn-gauntlet-board-date-integer), [gauntlet_cfg()](#fn-gauntlet-cfg), [gauntlet_generate(date)](#fn-gauntlet-generate-date), [gauntlet_pool()](#fn-gauntlet-pool), [gauntlet_squad(date)](#fn-gauntlet-squad-date), [gauntlet_start(text)](#fn-gauntlet-start-text), [gauntlet_view(text)](#fn-gauntlet-view-text), [gauntlet_week(date)](#fn-gauntlet-week-date), [give_shards_gift_all(text,text,integer,text)](#fn-give-shards-gift-all-text-text-integer-text), [grant_shards(text,integer,text,text,text)](#fn-grant-shards-text-integer-text-text-text), [shard_cfg()](#fn-shard-cfg), [shard_ledger_reconcile()](#fn-shard-ledger-reconcile), [shop_day()](#fn-shop-day), [shop_pick_stock(date)](#fn-shop-pick-stock-date), [shop_today(text)](#fn-shop-today-text)
+Functions (65): [ach_has_element(jsonb)](#fn-ach-has-element-jsonb), [ach_tag_badges(text)](#fn-ach-tag-badges-text), [ach_tier_need(text,integer)](#fn-ach-tier-need-text-integer), [ach_tier_paid_before(text,text,integer)](#fn-ach-tier-paid-before-text-text-integer), [ach_tier_reward(text,integer)](#fn-ach-tier-reward-text-integer), [ach_track_values(text)](#fn-ach-track-values-text), [ach_tracks_on(text)](#fn-ach-tracks-on-text), [ach_wish_gift()](#fn-ach-wish-gift), [ach_wish_grant(text,text,bigint,text,bigint)](#fn-ach-wish-grant-text-text-bigint-text-bigint), [ach_wish_trade()](#fn-ach-wish-trade), [achievement_gallery(text)](#fn-achievement-gallery-text), [achievement_view(text)](#fn-achievement-view-text), [buy_shop_item(text,text,integer,bigint,integer)](#fn-buy-shop-item-text-text-integer-bigint-integer), [claim_achievement(text,text,integer,text,text)](#fn-claim-achievement-text-text-integer-text-text), [claim_achievement_tiers(text,text)](#fn-claim-achievement-tiers-text-text), [dungeon_after_kill(dungeon_runs,jsonb)](#fn-dungeon-after-kill-dungeon-runs-jsonb), [dungeon_attack(text,bigint,integer,text)](#fn-dungeon-attack-text-bigint-integer-text), [dungeon_board(date,integer)](#fn-dungeon-board-date-integer), [dungeon_card(text,bigint)](#fn-dungeon-card-text-bigint), [dungeon_card_base(bigint)](#fn-dungeon-card-base-bigint), [dungeon_card_of(text)](#fn-dungeon-card-of-text), [dungeon_cfg()](#fn-dungeon-cfg), [dungeon_chest_rarity(integer)](#fn-dungeon-chest-rarity-integer), [dungeon_choose(text,integer,text)](#fn-dungeon-choose-text-integer-text), [dungeon_day()](#fn-dungeon-day), [dungeon_drop_rarity(integer)](#fn-dungeon-drop-rarity-integer), [dungeon_enemy_turn(jsonb,bigint,integer,integer)](#fn-dungeon-enemy-turn-jsonb-bigint-integer-integer), [dungeon_enter(jsonb,jsonb,integer,integer)](#fn-dungeon-enter-jsonb-jsonb-integer-integer), [dungeon_generate(date)](#fn-dungeon-generate-date), [dungeon_log_add(bigint,jsonb,jsonb)](#fn-dungeon-log-add-bigint-jsonb-jsonb), [dungeon_loot(jsonb,integer,bigint)](#fn-dungeon-loot-jsonb-integer-bigint), [dungeon_make_foe(text,integer,integer,text)](#fn-dungeon-make-foe-text-integer-integer-text), [dungeon_offers(jsonb,integer)](#fn-dungeon-offers-jsonb-integer), [dungeon_pay(text,date)](#fn-dungeon-pay-text-date), [dungeon_pick(jsonb,numeric)](#fn-dungeon-pick-jsonb-numeric), [dungeon_prize_tick()](#fn-dungeon-prize-tick), [dungeon_prizes_cfg()](#fn-dungeon-prizes-cfg), [dungeon_rand(text)](#fn-dungeon-rand-text), [dungeon_retreat(text,text)](#fn-dungeon-retreat-text-text), [dungeon_room_foes(text,integer,integer,text)](#fn-dungeon-room-foes-text-integer-integer-text), [dungeon_rules()](#fn-dungeon-rules), [dungeon_run_card(dungeon_runs,bigint)](#fn-dungeon-run-card-dungeon-runs-bigint), [dungeon_run_floors(dungeon_runs)](#fn-dungeon-run-floors-dungeon-runs), [dungeon_settle(bigint,text,boolean)](#fn-dungeon-settle-bigint-text-boolean), [dungeon_settle_stale()](#fn-dungeon-settle-stale), [dungeon_start(text,bigint[])](#fn-dungeon-start-text-bigint), [dungeon_support(text,bigint,bigint,integer,text)](#fn-dungeon-support-text-bigint-bigint-integer-text), [dungeon_tier(double precision)](#fn-dungeon-tier-double-precision), [dungeon_txt(jsonb)](#fn-dungeon-txt-jsonb), [dungeon_view(text)](#fn-dungeon-view-text), [gauntlet_board(date,integer)](#fn-gauntlet-board-date-integer), [gauntlet_cfg()](#fn-gauntlet-cfg), [gauntlet_generate(date)](#fn-gauntlet-generate-date), [gauntlet_pool()](#fn-gauntlet-pool), [gauntlet_squad(date)](#fn-gauntlet-squad-date), [gauntlet_start(text)](#fn-gauntlet-start-text), [gauntlet_view(text)](#fn-gauntlet-view-text), [gauntlet_week(date)](#fn-gauntlet-week-date), [give_shards_gift_all(text,text,integer,text)](#fn-give-shards-gift-all-text-text-integer-text), [grant_shards(text,integer,text,text,text)](#fn-grant-shards-text-integer-text-text-text), [shard_cfg()](#fn-shard-cfg), [shard_ledger_reconcile()](#fn-shard-ledger-reconcile), [shop_day()](#fn-shop-day), [shop_pick_stock(date)](#fn-shop-pick-stock-date), [shop_today(text)](#fn-shop-today-text)
 
 ## Tables
 
@@ -32,7 +32,8 @@ Table. [achievements] One row per achievement that a member claimed: an old one-
 - Primary key: `PRIMARY KEY (player_id, key)`
 - Foreign keys: 
   - `achievement_claims_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `achievement_claims_amount_check`: `CHECK (((packs >= 0) AND (shards >= 0)))`
 - Row level security: on. Policies: none
 
 <a id="table-achievement-switch-map"></a>
@@ -91,7 +92,6 @@ Table. [dungeon] One row per game day: the daily dungeon, the same for every mem
 | `name` | text | not null |  | The dungeon name, a seeded draw from a fixed list in dungeon_generate. |
 | `rule` | jsonb | not null |  | The daily rule: one object of dungeon_rules() (name, note and one of types, no_rarity, boost_tag + boost, budget). dungeon_start enforces it. |
 | `floors` | jsonb | not null |  | The dungeon: an array of floors, each an array of 5 rooms {type, foes}. Room 1 is a fight, room 5 the floor guardian. The floor count is settings.dungeon floors. |
-| `checked` | jsonb | null |  | Not written by any code or job (null in every row). An unused column from dungeon.sql. |
 | `created_at` | timestamp with time zone | not null | `now()` | When dungeon_generate made the row. |
 
 - Primary key: `PRIMARY KEY (day)`
@@ -187,7 +187,9 @@ Table. [dungeon] One row per run: a member, a game day and a mode (unique). dung
 - Foreign keys: 
   - `dungeon_runs_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
+  - `dungeon_runs_ended_by_check`: `CHECK ((ended_by = ANY (ARRAY['cleared'::text, 'fell'::text, 'retreat'::text, 'abandoned'::text])))`
   - `dungeon_runs_mode_check`: `CHECK ((mode = ANY (ARRAY['daily'::text, 'gauntlet'::text])))`
+  - `dungeon_runs_shards_check`: `CHECK ((shards >= 0))`
   - `dungeon_runs_status_check`: `CHECK ((status = ANY (ARRAY['active'::text, 'over'::text])))`
 - Row level security: on. Policies: none
 
@@ -233,6 +235,7 @@ Table. [players-economy] One row per change of a member's Shard balance (players
   - `shard_ledger_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
   - `shard_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
 - Check constraints: 
+  - `shard_ledger_amount_check`: `CHECK ((amount <> 0))`
   - `shard_ledger_ref_check`: `CHECK (((ref_kind IS NOT NULL) AND (ref_id IS NOT NULL)))`
 - Row level security: on. Policies: none
 
@@ -256,9 +259,12 @@ Table. [shop] One row per Shop purchase: packs, a card of the day or a stat rese
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
+  - `shop_purchases_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `shop_purchases_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
   - `shop_purchases_kind_check`: `CHECK ((kind = ANY (ARRAY['pack'::text, 'card'::text, 'stat_reset'::text])))`
+  - `shop_purchases_price_check`: `CHECK ((price >= 0))`
+  - `shop_purchases_qty_check`: `CHECK ((qty > 0))`
 - Row level security: on. Policies: none
 
 <a id="table-shop-stock"></a>
@@ -280,6 +286,7 @@ Table. [shop] One row per card slot of the Shop of a day. shop_pick_stock writes
   - `shop_stock_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE`
 - Check constraints: 
   - `shop_stock_price_check`: `CHECK ((price > 0))`
+  - `shop_stock_rarity_check`: `CHECK ((rarity = ANY (ARRAY['normal'::text, 'illustrated_rare'::text, 'secret_rare'::text, 'full_art'::text, 'gold'::text, 'promo'::text, 'event'::text])))`
 - Row level security: on. Policies: none
 
 ## Functions
@@ -543,16 +550,6 @@ The game day: today's date in America/Denver. Dungeon days, Gauntlet weeks and d
 - Security definer: no
 
 Internal helper: rolls the rarity of a kill drop by floor (balance key dungeon_rewards, loot). Returns normal, illustrated_rare or secret_rare.
-
-<a id="fn-dungeon-end-bigint-text"></a>
-
-### dungeon_end(bigint,text)
-
-- Function: `dungeon_end(p_run_id bigint, p_how text)`
-- Returns: `void`
-- Security definer: no
-
-Not called by any code or job. The old end of a run (status over, no payment). dungeon_settle replaced it.
 
 <a id="fn-dungeon-enemy-turn-jsonb-bigint-integer-integer"></a>
 
