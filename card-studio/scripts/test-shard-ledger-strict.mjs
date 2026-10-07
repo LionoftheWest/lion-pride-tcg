@@ -33,7 +33,7 @@ const FN_MUT = {
   reconblind: ['public.shard_ledger_reconcile()', 'and x.runs_shards_mismatched = 0 and x.runs_cards_mismatched = 0', ''],
 };
 const SQL_MUT = {
-  noreasoncheck: 'alter table shard_ledger drop constraint shard_ledger_reason_check;',
+  noreasoncheck: 'alter table shard_ledger drop constraint shard_ledger_reason_check; drop trigger if exists shard_ledger_reason_guard on shard_ledger;',
   norefcheck: 'alter table shard_ledger drop constraint shard_ledger_ref_check;',
   nobalancecheck: 'alter table players drop constraint players_shard_balance_nonneg;',
   // The list loses a used reason (daily): the daily paths must fail.

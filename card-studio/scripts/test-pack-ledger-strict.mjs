@@ -29,8 +29,8 @@ const FN_MUT = {
   ledgerdrift: ['public.grant_packs(text,integer,text,text,text,text)', 'values (p_player_id, p_amount, p_reason, p_by,', 'values (p_player_id, p_amount + 1, p_reason, p_by,'],
 };
 const SQL_MUT = {
-  noreasoncheck: 'alter table pack_ledger drop constraint pack_ledger_reason_check;',
-  nogiftcheck: 'alter table gift_claims drop constraint gift_claims_pack_reason_check;',
+  noreasoncheck: 'alter table pack_ledger drop constraint pack_ledger_reason_check; drop trigger if exists pack_ledger_reason_guard on pack_ledger;',
+  nogiftcheck: 'alter table gift_claims drop constraint gift_claims_pack_reason_check; drop trigger if exists gift_claims_reason_guard on gift_claims;',
   nobalancecheck: 'alter table players drop constraint players_pack_balance_nonneg;',
 };
 const MUT = process.env.MUTATE && SQL_MUT[process.env.MUTATE] ? (console.log(`MUTATE=${process.env.MUTATE}`), SQL_MUT[process.env.MUTATE]) : mutation(FN_MUT);
