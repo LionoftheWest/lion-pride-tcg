@@ -47,8 +47,14 @@ test('touch targets count on touch sizes only', () => {
   assert.equal(defectsOf(r, null).length, 0);
 });
 test('owners: the shell and the sub-tabs have their own IDs', () => {
-  assert.equal(ownerOf('dungeon', '#topbar > #shopBtn'), 'UI-01');
+  assert.equal(ownerOf('dungeon', '#topbar > #shopBtn'), 'UI-42');
+  assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Shards'), 'UI-42');
+  assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Avatar.v2-avatar'), 'UI-01');
+  assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #menuBtn.u3-ibtn'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
+  assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
+  assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
 });
@@ -70,7 +76,8 @@ test('a missing cell always fails; a runner error fails on an enforced ID', () =
   assert.equal(verdict(rs, REG, { browsers: ['chromium'] }).fails[0].where, 'no result');
   const rs2 = full(); rs2.find((r) => r.screen === 'collection' && r.size === '375x667').error = 'Timeout';
   assert.equal(verdict(rs2, REG, { browsers: ['chromium'] }).fails[0].rule, 'not-checked');
-  assert.equal(verdict(full(), REG, { browsers: ['chromium', 'webkit'] }).fails.length, SIZES.length * Object.keys(SCREENS).length, 'no WebKit results: every WebKit cell fails');
+  const cells = SIZES.reduce((n, s) => n + Object.values(SCREENS).filter((sc) => !sc.notOn?.includes(s[2])).length, 0);   // the menu has no tiny cell
+  assert.equal(verdict(full(), REG, { browsers: ['chromium', 'webkit'] }).fails.length, cells, 'no WebKit results: every WebKit cell fails');
 });
 
 // ---- The plan (plan.mjs): a PR checks only the screens it can fail on --------------------------------------
