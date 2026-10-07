@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, unlinkSync, statSync } from 'node:fs';
 import { fillHtml, renderPng } from './render.js';
@@ -8,6 +8,7 @@ import { pushCard } from './push.js';
 import { removeTiers } from './tier-delete.js';
 import { supabase } from './supabase.js';
 import { adminRouter } from './admin-routes.js';
+import { studioAuth, loadSecret } from './studio-auth.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic } from './rarity.js';
 import { getFrame, setFrame } from './frames.js';
 import { getArtist, setArtist } from './artists.js';
@@ -55,10 +56,13 @@ const BUCKET = 'card-art';
 mkdirSync(ART, { recursive: true });
 mkdirSync(OUT, { recursive: true });
 
-const app = express();
+export const app = express();
+// The login of the WHOLE studio (src/studio-auth.js): first, before every route and the static files.
+// STUDIO_PASS set = a session cookie (the /login page) or Basic Auth; STUDIO_PASS empty = this PC only.
+app.use(studioAuth({ secret: loadSecret(join(ROOT, '.studio-secret')) }));
 app.use(express.json({ limit: '30mb' }));
-// The Admin view data (read only): flag ADMIN_VIEW=1 and STUDIO_USER / STUDIO_PASS (src/admin-routes.js).
-app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args) }));
+// The Admin view data (read only): flag ADMIN_VIEW=1 (src/admin-routes.js). The pages: public/admin/ (/admin/).
+app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
 // Never cache the studio UI, so a browser always loads the latest code.
 app.use(express.static(join(ROOT, 'public'), {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-store'),
@@ -512,5 +516,8 @@ app.get('/api/push-status', (req, res) => {
   });
 });
 
-const PORT = Number(process.env.PORT) || 4321;
-app.listen(PORT, () => console.log(`Card Studio -> http://localhost:${PORT}`));
+// Listen only when run as the program (node src/server.js); a test imports the app.
+if (process.argv[1] && fileURLToPath(import.meta.url).toLowerCase() === resolve(process.argv[1]).toLowerCase()) {
+  const PORT = Number(process.env.PORT) || 4321;
+  app.listen(PORT, () => console.log(`Card Studio -> http://localhost:${PORT}  (Admin view: http://localhost:${PORT}/admin/)`));
+}

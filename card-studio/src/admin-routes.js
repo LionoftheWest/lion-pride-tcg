@@ -4,14 +4,22 @@
  *
  * Protection (member data):
  *   - Flag ADMIN_VIEW=1 in card-studio/.env. Off (the default) = every /api/admin route answers 404.
- *   - HTTP Basic Auth with STUDIO_USER / STUDIO_PASS on every request, also from the home network and Tailscale
- *     (the studio itself has no login: port 4321 is open to the private Wi-Fi and to Tailscale devices).
- *     With no STUDIO_PASS set, only a request from this PC (loopback) is served.
+ *   - The studio login (src/studio-auth.js) runs first in server.js and marks a request it let in (req.studioAuthed).
+ *     Without it (this router alone, for example in a test): HTTP Basic Auth with STUDIO_USER / STUDIO_PASS on every
+ *     request; with no STUDIO_PASS set, only a request from this PC (loopback) is served.
  *   - GET only, no-store, small JSON. The SQL functions page every list.
- * Usage in server.js: app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args) }));
+ * Also: GET /source (LIVE or LOCAL), /search (members, cards, tables), /tables and /table/:name (the Data page: only the
+ * tables in docs/data, 50 rows a page, secrets hidden and member-id lists cut to a count: src/admin-tables.js).
+ * Usage in server.js: app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
  */
 import express from 'express';
 import { timingSafeEqual } from 'node:crypto';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { loadTableCatalog, redactRow } from './admin-tables.js';
+
+const DOCS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'data');
+export const TABLE_PAGE = 50;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
@@ -74,6 +82,7 @@ export function adminGate(env = process.env) {
   return (req, res, next) => {
     if (env.ADMIN_VIEW !== '1') return res.status(404).json({ error: 'not found' });
     res.set('Cache-Control', 'no-store');
+    if (req.studioAuthed === true) return next();
     const pass = env.STUDIO_PASS || '';
     if (!pass) {
       if (LOOPBACK.has(req.socket.remoteAddress) && !req.headers['x-forwarded-for']) return next();
@@ -88,8 +97,10 @@ export function adminGate(env = process.env) {
   };
 }
 
-export function adminRouter({ rpc, env = process.env }) {
+export function adminRouter({ rpc, db = null, env = process.env, docsDir = DOCS_DIR }) {
   if (typeof rpc !== 'function') throw new Error('adminRouter needs rpc(fn, args)');
+  let catalog = null;
+  const tables = () => (catalog ||= loadTableCatalog(docsDir));
   const r = express.Router();
   r.use(adminGate(env));
   r.use((req, res, next) => (req.method === 'GET' || req.method === 'HEAD' ? next() : res.status(405).json({ error: 'read only' })));
@@ -110,7 +121,61 @@ export function adminRouter({ rpc, env = process.env }) {
     'GET /api/admin/overview?from&to', 'GET /api/admin/economy?from&to&bucket=day|week', 'GET /api/admin/growth?from&to',
     'GET /api/admin/members?search&sort&limit&offset', 'GET /api/admin/member/:id', 'GET /api/admin/member/:id/timeline?before&before_key&limit',
     'GET /api/admin/cards?from&to&sort&limit&offset', 'GET /api/admin/hunts?limit&offset', 'GET /api/admin/hunt/:id', 'GET /api/admin/health',
-    'GET /api/admin/reports', 'GET /api/admin/report/:key?<params>', 'GET /api/admin/report/:key.csv?<params>'] }));
+    'GET /api/admin/reports', 'GET /api/admin/report/:key?<params>', 'GET /api/admin/report/:key.csv?<params>',
+    'GET /api/admin/source', 'GET /api/admin/search?q', 'GET /api/admin/tables', 'GET /api/admin/table/:name?offset&key'] }));
+
+  r.get('/source', (req, res) => res.json({ source: env.LOCALDB === '1' ? 'LOCAL' : 'LIVE', login: Boolean(env.STUDIO_PASS) }));
+
+  r.get('/tables', (req, res) => {
+    try { return res.json({ tables: tables() }); } catch { return res.status(500).json({ error: 'the table docs could not be read' }); }
+  });
+
+  r.get('/table/:name', async (req, res) => {
+    try {
+      const t = tables().find((x) => x.name === req.params.name);
+      if (!t) return res.status(404).json({ error: 'not a documented table' });
+      if (!db) return res.status(500).json({ error: 'no database client' });
+      const offset = int(req.query.offset, 'offset', 0, 1e7) ?? 0;
+      const key = text(req.query.key, 'key', 80);
+      let q = db.from(t.name).select('*', { count: 'estimated' });
+      if (key != null) {
+        if (t.pk.length !== 1) throw new BadRequest('key works only on a table with a one-column primary key');
+        q = q.eq(t.pk[0], key);
+      }
+      for (const c of t.pk) q = q.order(c, { ascending: false });
+      const { data, error, count } = await q.range(offset, offset + TABLE_PAGE - 1);
+      if (error) return res.status(400).json({ error: error.message || String(error) });
+      return res.json({ table: t.name, pk: t.pk, columns: t.columns.map((c) => c.name), offset, limit: TABLE_PAGE,
+        total_estimate: count ?? null, rows: (data || []).map((row) => redactRow(t.name, row)) });
+    } catch (e) {
+      if (e instanceof BadRequest) return res.status(400).json({ error: e.message });
+      return res.status(500).json({ error: 'admin route failed' });
+    }
+  });
+
+  r.get('/search', async (req, res) => {
+    try {
+      const q = text(req.query.q, 'q', 60);
+      if (!q || q.trim().length < 2) return res.json({ q: q || '', members: [], cards: [], tables: [] });
+      const needle = q.trim();
+      const m = await rpc('admin_members', { p_search: needle, p_sort: 'last_active', p_limit: 8, p_offset: 0 });
+      if (m.error) return res.status(400).json({ error: m.error.message || String(m.error) });
+      let cards = [];
+      if (db) {
+        const like = needle.replace(/[\\%_]/g, (c) => `\\${c}`);
+        const c = await db.from('cards').select('id,name,rarity').ilike('name', `%${like}%`).order('id').limit(8);
+        if (c.error) return res.status(400).json({ error: c.error.message || String(c.error) });
+        cards = c.data || [];
+      }
+      const lower = needle.toLowerCase();
+      return res.json({ q: needle,
+        members: (m.data?.rows || []).map((x) => ({ id: x.id, username: x.username, last_active: x.last_active })),
+        cards, tables: tables().filter((t) => t.name.includes(lower)).slice(0, 8).map((t) => t.name) });
+    } catch (e) {
+      if (e instanceof BadRequest) return res.status(400).json({ error: e.message });
+      return res.status(500).json({ error: 'admin route failed' });
+    }
+  });
 
   const period = (q) => ({ p_from: date(q.from, 'from'), p_to: date(q.to, 'to') });
   route('/overview', 'admin_overview', (q) => period(q.query));

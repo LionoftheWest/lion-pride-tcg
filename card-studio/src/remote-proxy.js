@@ -2,6 +2,8 @@
  * A tiny password gate in front of the Card Studio, so it can be exposed over a
  * public tunnel safely. Streams every request through to the local studio on
  * 4321 after checking HTTP Basic Auth. Does NOT touch the studio process.
+ * The studio checks the same Basic Auth again (src/studio-auth.js). This gate adds X-Forwarded-For, so the studio
+ * never takes a tunnel request for a request from this PC (with no STUDIO_PASS, the studio serves only this PC).
  *
  *   STUDIO_USER=… STUDIO_PASS=… node src/remote-proxy.js
  */
@@ -21,7 +23,8 @@ const server = http.createServer((req, res) => {
     return;
   }
   const proxyReq = http.request(
-    { host: TARGET.host, port: TARGET.port, method: req.method, path: req.url, headers: req.headers },
+    { host: TARGET.host, port: TARGET.port, method: req.method, path: req.url,
+      headers: { ...req.headers, 'x-forwarded-for': [req.headers['x-forwarded-for'], req.socket.remoteAddress].filter(Boolean).join(', ') } },
     (proxyRes) => {
       res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
       proxyRes.pipe(res);
