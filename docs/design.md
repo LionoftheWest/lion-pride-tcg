@@ -968,6 +968,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-76 | Achievement track titles | Each track keeps its own 3 titles, an exception to 10.1 "the title is the achievement name" (Nathan, 2026-10-06, UI-13: "Agreed") |
 | D-77 | The Hunter title | The Hunter track's first title is "Hunter", not "Raider" (Nathan, 2026-10-06, UI-13: "Agreed") |
 | D-78 | Same-name titles | An old achievement title and a tier title with the same name stay two entries in the gallery (keyed by source) (Nathan, 2026-10-06, UI-13: "agreed") |
+| D-79 | Title words | Track titles use no forbidden glossary word: Dupe Smelter -> Copy Smelter, Titan Breaker -> Boss Wrecker (Boss Breaker is an old title), Titan Slayer -> Giant Slayer (Nathan, 2026-10-07: "Yes as suggested", then "A") |
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 
