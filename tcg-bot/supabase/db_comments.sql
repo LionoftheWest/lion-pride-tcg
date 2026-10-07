@@ -793,6 +793,35 @@ do $adm$ begin
   end if;
 end $adm$;
 
+
+-- ===== logs =====
+-- The app logs (logs_app.sql): the same notes as in that file. Only when logs_app.sql is applied.
+do $logs$ begin
+  if to_regprocedure('public.app_session_touch(text,jsonb)') is not null then
+    comment on column public.notifications.read_at is $c$Time the member read the note: the bell sets it with read = true (POST /api/notifications/read, the Activity, flag FEATURE_APP_LOGS). Null = not read, or read before this column existed.$c$;
+    comment on column public.player_reports.target_id is $c$The member that the report is about (players.id), or null. The report form sends it (optional); the Activity checks that the member exists. The GitHub Issue never shows it.$c$;
+    comment on column public.players.guild_joined_at is $c$Time the member last joined the Discord server (Discord joinedAt). The bot sets it on GuildMemberAdd and fills empty rows at start and once a day (guild_joined). Null = not known yet.$c$;
+    comment on column public.players.left_guild_at is $c$Time the member last left the Discord server (GuildMemberRemove, the bot: guild_left). In the server now = null or older than guild_joined_at.$c$;
+    comment on table public.app_sessions is $c$[logs] One row per Activity visit of a member (a gap of 30 minutes starts a new visit). The Activity server writes it through app_session_touch at most every 5 minutes for each member (any API call; flag FEATURE_APP_LOGS). Answers "who opens the Activity and only looks". Service role only.$c$;
+    comment on column public.app_sessions.id is $c$Row id.$c$;
+    comment on column public.app_sessions.player_id is $c$The member (players.id).$c$;
+    comment on column public.app_sessions.started_at is $c$Time of the first API call of the visit.$c$;
+    comment on column public.app_sessions.last_seen_at is $c$Time of the last recorded call (5-minute steps: the server calls app_session_touch at most every 5 minutes; the client polls nothing while the window is hidden).$c$;
+    comment on column public.app_sessions.ended_at is $c$Set to last_seen_at when the next visit of the member starts. Null = open, or ended with no later visit: last_seen_at older than 30 minutes means it ended then.$c$;
+    comment on column public.app_sessions.client is $c$What the server knows of the client: platform (desktop, mobile or web, from the user agent; sdk_platform when the client sends the Discord SDK value), ua (the user agent, cut to 200 characters), w and h (the window size when the client sends it).$c$;
+    comment on function public.app_session_touch(text, jsonb) is $c$[logs] Records an Activity visit: continues the open app_sessions row of the member when its last_seen_at is less than 30 minutes old, else ends the open rows (ended_at = last_seen_at) and starts a new row. p_client is merged into client. Returns the session id, or null for an unknown member. Called by the Activity server (logs.js) at most every 5 minutes per member. Service role only.$c$;
+    comment on table public.tutorial_steps is $c$[logs] One row per walkthrough step a member did, with the time (the first time only: a replay does not move it). The Activity server writes it on POST /api/tutorial (flag FEATURE_APP_LOGS): the steps of players.tutorial done, seen:<set> for a view explainer, skipped, replay and finished. Service role only.$c$;
+    comment on column public.tutorial_steps.player_id is $c$The member (players.id).$c$;
+    comment on column public.tutorial_steps.step is $c$The step: a tutorial step name (gifts, open, rarity, collection, hunt, community, dailies, voice), seen:<explainer set>, skipped, replay or finished.$c$;
+    comment on column public.tutorial_steps.done_at is $c$Time the member first did the step.$c$;
+    comment on table public.page_views is $c$[logs] Which screens a member opens: one row per member, view and ref per 10 minutes at most (the Activity server throttles it; flag FEATURE_APP_LOGS). Written when the screen data route answers (shop, hall, auctions, auction, dungeon, gauntlet, leaderboard, member_profile) and by POST /api/view for the screens that have no own route. Compare with shop_purchases, trade_listings, auctions and dungeon_runs for conversion. Service role only.$c$;
+    comment on column public.page_views.id is $c$Row id.$c$;
+    comment on column public.page_views.player_id is $c$The member who opened the screen (players.id).$c$;
+    comment on column public.page_views.view is $c$The screen: shop, hall, auctions, auction, dungeon, gauntlet, leaderboard, member_profile, or a screen name that the client sends to POST /api/view (allow-listed in tcg-activity/logs.js).$c$;
+    comment on column public.page_views.ref is $c$What on the screen, or null: the auction id (auction), the list (auctions: open or mine), the member id (member_profile).$c$;
+    comment on column public.page_views.at is $c$Time of the view.$c$;
+    comment on function public.guild_joined(jsonb) is $c$[logs] Sets players.guild_joined_at from a list [{id, at}] (Discord joinedAt): only existing rows, only a newer time. The bot calls it on GuildMemberAdd and for the rows with no time at start and once a day (guild-log.ts, flag FEATURE_GUILD_LOG). Returns the rows changed. Service role only.$c$;
+    comment on function public.guild_left(text, timestamp with time zone) is $c$[logs] Sets players.left_guild_at for one member (only an existing row). The bot calls it on GuildMemberRemove (guild-log.ts; needs the Server Members intent). Returns true when a row changed. Service role only.$c$;
 -- ===== logs (logs_sql.sql, 2026-10-07) =====
 -- The same notes as in logs_sql.sql. Only when logs_sql.sql is applied (a re-run of this file on a database without it skips them).
 do $logs$ begin

@@ -80,7 +80,14 @@ export async function syncOnce(supabase, { token = TOKEN, repo = REPO, fetchImpl
   return done;
 }
 
-export function registerReportRoutes(app, { supabase, caller, rateLimit }) {
+// The member a report is about (optional, player_reports.target_id): a Discord id, not the reporter. Else null.
+export function reportTarget(raw, reporterId) {
+  const id = raw == null ? '' : String(raw).trim();
+  return /^\d{17,20}$/.test(id) && id !== String(reporterId) ? id : null;
+}
+
+// targets: store the optional target member (logs_app.sql adds the column; the Activity passes FEATURE_APP_LOGS).
+export function registerReportRoutes(app, { supabase, caller, rateLimit, targets = false }) {
   app.post('/api/feedback', async (req, res) => {
     if (!REPORTS_ON) return res.status(403).json({ error: 'reports are off' });
     const me = await caller(req);
@@ -88,9 +95,17 @@ export function registerReportRoutes(app, { supabase, caller, rateLimit }) {
     if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
     const kind = String(req.body?.kind || '');
     const text = String(req.body?.body || '').slice(0, 2000);
+    // The target must be an existing member (checked before the report is stored). It never goes into the Issue.
+    const target = targets ? reportTarget(req.body?.target, me.id) : null;
+    if (targets && req.body?.target != null && req.body.target !== '' && !target) return res.status(400).json({ ok: false, error: 'target' });
+    if (target) {
+      const { data: tp } = await supabase.from('players').select('id').eq('id', target).maybeSingle();
+      if (!tp) return res.status(400).json({ ok: false, error: 'target' });
+    }
     // The member is the verified caller; SQL checks the kind, the length and the daily limit.
     const { data, error } = await supabase.rpc('submit_report', { p_player: String(me.id), p_kind: kind, p_body: text, p_context: cleanContext(req.body?.context) });
     if (error) return res.status(500).json({ error: error.message });
+    if (data?.ok && target && data.id) await supabase.from('player_reports').update({ target_id: target }).eq('id', data.id).eq('player_id', String(me.id));
     if (data?.ok) syncOnce(supabase).catch(() => {});
     res.json(data);
   });
