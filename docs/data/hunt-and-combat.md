@@ -67,7 +67,9 @@ Table. [effects] One row per card effect play (a boon, prank or neutral effect s
   - `card_plays_subject_id_fkey` to [subjects](cards-and-trading.md#table-subjects): `FOREIGN KEY (subject_id) REFERENCES subjects(id)`
   - `card_plays_target_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (target_id) REFERENCES players(id)`
 - Check constraints: 
+  - `card_plays_kind_check`: `CHECK ((kind = ANY (ARRAY['boon'::text, 'prank'::text, 'neutral'::text])))`
   - `card_plays_outcome_check`: `CHECK ((outcome = ANY (ARRAY['applied'::text, 'blocked'::text, 'reflected'::text, 'decoyed'::text, 'redirected'::text, 'delayed'::text, 'refunded'::text])))`
+  - `card_plays_rarity_check`: `CHECK ((rarity = ANY (ARRAY['normal'::text, 'illustrated_rare'::text, 'secret_rare'::text, 'full_art'::text, 'gold'::text, 'promo'::text, 'event'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-combat-actions"></a>
@@ -97,6 +99,7 @@ Table. [combat] The shared action log of every fight mode: one row per support p
 - Foreign keys: 
   - `combat_actions_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `combat_actions_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
+  - `combat_actions_target_card_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (target_card) REFERENCES cards(id)`
 - Check constraints: 
   - `combat_actions_kind_check`: `CHECK ((kind = ANY (ARRAY['attack'::text, 'support'::text, 'effect'::text])))`
   - `combat_actions_mode_check`: `CHECK ((mode = ANY (ARRAY['hunt'::text, 'dungeon'::text, 'gauntlet'::text])))`
@@ -208,8 +211,11 @@ Table. [hunt] The fight state of one card of one member on one Hunt day: HP, shi
 
 - Primary key: `PRIMARY KEY (hunt_id, player_id, card_id, hit_date)`
 - Foreign keys: 
+  - `hunt_card_hp_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `hunt_card_hp_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
-- Check constraints: none
+  - `hunt_card_hp_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id)`
+- Check constraints: 
+  - `hunt_card_hp_hp_check`: `CHECK (((max_hp > 0) AND (hp_remaining >= 0) AND (shield >= 0)))`
 - Row level security: on. Policies: none
 
 <a id="table-hunt-combat-log"></a>
@@ -238,8 +244,13 @@ Table. [hunt] One row per attack of a card on the Hunt boss, with the rolls and 
 | `boss_hp_after` | bigint | null |  | The boss HP after this attack and the boss heals of this turn. |
 
 - Primary key: `PRIMARY KEY (id)`
-- Foreign keys: none
-- Check constraints: none
+- Foreign keys: 
+  - `hunt_combat_log_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
+  - `hunt_combat_log_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
+  - `hunt_combat_log_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id)`
+- Check constraints: 
+  - `hunt_combat_log_damage_check`: `CHECK (((damage >= 0) AND (counter_dmg >= 0)))`
+  - `hunt_combat_log_outcome_check`: `CHECK ((outcome = ANY (ARRAY['hit'::text, 'crit'::text, 'blocked'::text, 'miss'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-hunt-combat-state"></a>
@@ -265,7 +276,9 @@ Table. [hunt] The boss fight state of one member on one Hunt day: the round, the
 | `marks` | jsonb | not null | `'{}'::jsonb` | The counter-move marks as jsonb, mostly {key: {until: round, mult}}: for example heal_block_card, dot, half_<effect>, block_<effect>, null_next, stun_fail, mirror, spiral, undying. Written by hunt_counter_act, read by hunt_attack and hunt_support. |
 
 - Primary key: `PRIMARY KEY (hunt_id, player_id, hit_date)`
-- Foreign keys: none
+- Foreign keys: 
+  - `hunt_combat_state_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
+  - `hunt_combat_state_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id)`
 - Check constraints: none
 - Row level security: on. Policies: none
 
@@ -285,8 +298,10 @@ Table. [hunt] The outbox of Hunt posts for Discord. The Hunt functions write a r
 | `posted_at` | timestamp with time zone | null |  | When the bot posted the row. Null = not posted yet. |
 
 - Primary key: `PRIMARY KEY (id)`
-- Foreign keys: none
-- Check constraints: none
+- Foreign keys: 
+  - `hunt_events_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
+- Check constraints: 
+  - `hunt_events_kind_check`: `CHECK ((kind = ANY (ARRAY['spawn'::text, 'attack'::text, 'player_done'::text, 'defeat'::text, 'expired'::text, 'nudge'::text, 'leaderboard'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-hunt-hits"></a>
@@ -307,8 +322,11 @@ Table. [hunt] The damage of one card of one member on one Hunt day: one row per 
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
+  - `hunt_hits_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `hunt_hits_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
-- Check constraints: none
+  - `hunt_hits_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id)`
+- Check constraints: 
+  - `hunt_hits_damage_check`: `CHECK ((damage >= 0))`
 - Row level security: on. Policies: none
 
 <a id="table-hunt-squads"></a>
@@ -360,7 +378,10 @@ Table. [hunt] One row per Hunt boss. spawn_hunt writes it. hunt_attack and hunt_
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: none
-- Check constraints: none
+- Check constraints: 
+  - `hunts_hp_check`: `CHECK (((hp_max > 0) AND (hp_remaining >= 0)))`
+  - `hunts_status_check`: `CHECK ((status = ANY (ARRAY['active'::text, 'defeated'::text, 'expired'::text])))`
+  - `hunts_tier_check`: `CHECK ((tier = ANY (ARRAY['Normal'::text, 'Heroic'::text, 'Mythic'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-player-effects"></a>

@@ -50,7 +50,8 @@ Table. One row per insert or update of a balance row (the balance_log_write trig
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: none
-- Check constraints: none
+- Check constraints: 
+  - `balance_log_op_check`: `CHECK ((op = ANY (ARRAY['insert'::text, 'update'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-daily-activity"></a>
@@ -70,7 +71,8 @@ Table. [players-economy] The chat message count of a member per game day (record
 - Primary key: `PRIMARY KEY (player_id, activity_date)`
 - Foreign keys: 
   - `daily_activity_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `daily_activity_message_count_check`: `CHECK ((message_count >= 0))`
 - Row level security: on. Policies: none
 
 <a id="table-daily-claims"></a>
@@ -90,7 +92,9 @@ Table. [players-economy] One row per daily task claimed by a member on a game da
 - Primary key: `PRIMARY KEY (player_id, day, task)`
 - Foreign keys: 
   - `daily_claims_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `daily_claims_amount_check`: `CHECK ((amount >= 0))`
+  - `daily_claims_task_check`: `CHECK ((task = ANY (ARRAY['checkin'::text, 'hunt'::text, 'voice'::text, 'social'::text, 'dungeon'::text, 'gauntlet'::text, 'chat'::text, 'chat_bonus'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-ledger-reasons"></a>
@@ -264,7 +268,8 @@ Table. One row per member per game day (America/Denver): the voice minutes for t
 - Primary key: `PRIMARY KEY (player_id, day)`
 - Foreign keys: 
   - `voice_minutes_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `voice_minutes_minutes_check`: `CHECK ((minutes >= 0))`
 - Row level security: on. Policies: none
 
 ## Functions
