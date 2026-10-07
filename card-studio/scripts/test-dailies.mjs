@@ -18,6 +18,11 @@ declare res jsonb := '[]'; r jsonb; v jsonb; ok boolean; h bigint; i int; c1 big
   d date := (now() at time zone 'utc')::date;
 begin
   execute $m$${mig}$m$;
+  -- This file's functions read the settings rows dailies (cap, shards, voice_minutes) and pack_earn_multiplier;
+  -- balance_economy.sql moved those numbers to balance (the live functions read balance). The test restores the old
+  -- rows inside its rolled-back block.
+  insert into settings (key, value) values ('pack_earn_multiplier', '1') on conflict (key) do nothing;
+  update settings set value = balance_get('daily') - 'tasks' - 'streak_days' || value where key = 'dailies';
   -- The migration keeps an existing setting: live has the flag ON, so set it OFF first.
   update settings set value = value || '{"enabled": false}' where key = 'dailies';
   update settings set value = '1'::jsonb where key = 'pack_earn_multiplier';

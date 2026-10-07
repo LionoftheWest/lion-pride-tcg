@@ -36,6 +36,9 @@ declare bad text := ''; r jsonb; d date := date '2099-01-05'; i int; j int; n in
   ok boolean;
 begin
   execute $m$${mig}$m$;
+  -- This file's shard_cfg() reads every Shards number from settings.shards; balance_economy.sql moved them to balance
+  -- shards (the live shard_cfg merges them). The test restores the old row inside its rolled-back block.
+  update settings set value = value || balance_get('shards') where key = 'shards';
   update settings set value = value || '{"enabled": true}' where key = 'shards';
 
   -- 1. The daily stock: 10 cards (6 / 3 / 1), the right tiers, only draw-pool cards, idempotent.

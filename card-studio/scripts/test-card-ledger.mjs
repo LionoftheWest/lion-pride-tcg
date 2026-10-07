@@ -180,7 +180,8 @@ ${kase('Dungeon loot (dungeon_settle): dungeon_loot, ref (dungeon_run, id)', `
 ${kase('a Gauntlet prize card (dungeon_pay): dungeon_prize, ref (dungeon_payout, <mode>:<period>)', `
     -- A fixed board (rolled back): only the pay path is under test here (test-dungeon.mjs tests the boards).
     execute 'create or replace function public.gauntlet_board(p_week date default null, p_limit integer default 20) returns jsonb language sql as $b$ select ''[{"rank": 1, "player_id": "${P}_h"}]''::jsonb $b$';
-    update settings set value = jsonb_set(value, '{weekly}', '[{"packs": 0, "shards": 0, "cards": 2, "odds": {"normal": 1}}]') where key = 'dungeon_prizes';
+    -- The prizes are balance dungeon_prizes (balance_economy.sql); the shape is fixed, so only place 1 changes.
+    update balance set value = jsonb_set(value, '{weekly,0}', '{"packs": 0, "shards": 0, "cards": 2, "odds": {"normal": 1, "secret_rare": 0, "illustrated_rare": 0}}') where key = 'dungeon_prizes';
     r := dungeon_pay('gauntlet', '2099-01-04');
     res := res || jsonb_build_object('case', 'a Gauntlet prize card (dungeon_pay): dungeon_prize, ref (dungeon_payout, <mode>:<period>)', 'ok',
       (r->>'ok')::boolean and (select coalesce(sum(amount), 0) from card_ledger where player_id = '${P}_h' and reason = 'dungeon_prize'

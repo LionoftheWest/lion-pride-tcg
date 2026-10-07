@@ -1,6 +1,11 @@
 // The pure game economy. No Discord and no Supabase live here, so every
 // function in this file is easy to test in isolation. See docs/DESIGN.md for
-// the numbers and the reasoning.
+// the reasoning.
+//
+// The NUMBERS are not here: the pull rates and the pack size are the balance key `pulls`
+// (tcg-bot/supabase/balance_economy.sql), read by the bot through the balance cache
+// (balance.ts) and passed in. One source: Gold 0.02% per card (Nathan, 2026-10-02: was
+// 0.05%, before that 0.1% and 0.2%) lives only in the table. Never change a rate without Nathan.
 
 export type Rarity =
   | 'normal'
@@ -9,21 +14,11 @@ export type Rarity =
   | 'full_art'
   | 'gold';
 
-/** The number of cards in one pack. */
-export const PACK_SIZE = 5;
-
-/** The message count in a day that earns the second (bonus) pack. */
-export const BONUS_THRESHOLD = 25;
-
-/** Per-card pull rates. These must sum to 1. */
-export const PULL_RATES: Record<Rarity, number> = {
-  normal: 0.9398,
-  illustrated_rare: 0.05,
-  secret_rare: 0.006,
-  full_art: 0.004,
-  // Gold 0.02% (Nathan, 2026-10-02: was 0.05%, before that 0.1% and 0.2%; 6 golds pulled on launch day).
-  gold: 0.0002,
-};
+/** The balance key `pulls`: the cards in one pack, and the per-card pull rates (they sum to 1). */
+export interface PullTable {
+  pack_size: number;
+  rates: Record<Rarity, number>;
+}
 
 /** A fixed order for the cumulative roll. Rarest last. */
 const RARITY_ORDER: Rarity[] = [
@@ -35,10 +30,32 @@ const RARITY_ORDER: Rarity[] = [
 ];
 
 /**
- * Roll one rarity against the pull-rate table.
- * Pass a seeded rng for a deterministic test. Defaults to Math.random.
+ * Check the `pulls` value read from the database and return it typed. Throws on a wrong shape
+ * (a missing rarity, a rate that is not a number, a total that is not 1, a bad pack size), so a
+ * wrong table stops the open instead of drawing with invented numbers. The database refuses the
+ * same mistakes (balance_check_economy); this is the second check.
  */
-export function rollRarity(rng: () => number = Math.random, rates: Record<Rarity, number> = PULL_RATES): Rarity {
+export function pullTable(v: unknown): PullTable {
+  const t = v as { pack_size?: unknown; rates?: Record<string, unknown> } | null;
+  const size = Number(t?.pack_size);
+  if (!Number.isInteger(size) || size < 1 || size > 20) throw new Error('balance pulls: pack_size must be 1 to 20');
+  const rates = {} as Record<Rarity, number>;
+  let sum = 0;
+  for (const r of RARITY_ORDER) {
+    const x = t?.rates?.[r];
+    if (typeof x !== 'number' || !Number.isFinite(x) || x < 0) throw new Error(`balance pulls: no rate for ${r}`);
+    rates[r] = x;
+    sum += x;
+  }
+  if (Math.abs(sum - 1) > 1e-9) throw new Error(`balance pulls: the rates add up to ${sum}, not 1`);
+  return { pack_size: size, rates };
+}
+
+/**
+ * Roll one rarity against a pull-rate table.
+ * Pass a seeded rng for a deterministic test.
+ */
+export function rollRarity(rates: Record<Rarity, number>, rng: () => number = Math.random): Rarity {
   const roll = rng();
   let cumulative = 0;
   for (const rarity of RARITY_ORDER) {
@@ -53,11 +70,11 @@ export function rollRarity(rng: () => number = Math.random, rates: Record<Rarity
  * The Lucky Pull boon (effects_cleanup.sql): every rare rate x luck, Normal takes the rest.
  * luck is clamped to 1..3 (effect_primitives.max_amount for lucky_pull).
  */
-export function luckyRates(luck: number): Record<Rarity, number> {
+export function luckyRates(base: Record<Rarity, number>, luck: number): Record<Rarity, number> {
   const k = Math.max(1, Math.min(3, Number(luck) || 1));
-  const out = { ...PULL_RATES };
+  const out = { ...base };
   let rare = 0;
-  for (const r of RARITY_ORDER) if (r !== 'normal') { out[r] = PULL_RATES[r] * k; rare += out[r]; }
+  for (const r of RARITY_ORDER) if (r !== 'normal') { out[r] = base[r] * k; rare += out[r]; }
   out.normal = Math.round((1 - rare) * 1e9) / 1e9; // no float tail: luck 1 = the base rates exactly
   return out;
 }
@@ -84,9 +101,9 @@ export function groupByRarity<T extends { rarity: Rarity }>(
 function drawOne<T extends { rarity: Rarity }>(
   pool: Record<Rarity, T[]>,
   rng: () => number,
-  rates: Record<Rarity, number> = PULL_RATES,
+  rates: Record<Rarity, number>,
 ): T {
-  let rarity = rollRarity(rng, rates);
+  let rarity = rollRarity(rates, rng);
   let candidates = pool[rarity];
 
   // If the rolled rarity has no cards yet, fall back to Normal.
@@ -105,18 +122,19 @@ function drawOne<T extends { rarity: Rarity }>(
 }
 
 /**
- * Draw a full pack of PACK_SIZE cards from a pool grouped by rarity.
+ * Draw a full pack of table.pack_size cards from a pool grouped by rarity.
  * Each card rolls its rarity independently.
  */
 export function drawPack<T extends { rarity: Rarity }>(
   pool: Record<Rarity, T[]>,
+  table: PullTable,
   rng: () => number = Math.random,
   luck?: number | null,
 ): T[] {
   const pack: T[] = [];
-  for (let slot = 0; slot < PACK_SIZE; slot += 1) {
+  for (let slot = 0; slot < table.pack_size; slot += 1) {
     // A Lucky Pull boon changes the first slot only.
-    pack.push(drawOne(pool, rng, slot === 0 && luck ? luckyRates(luck) : PULL_RATES));
+    pack.push(drawOne(pool, rng, slot === 0 && luck ? luckyRates(table.rates, luck) : table.rates));
   }
   return pack;
 }

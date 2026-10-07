@@ -25,18 +25,23 @@
 do $g$
 declare x text[]; m text;
 begin
+  -- balance_economy.sql (2026-10-06): the daily, achievement, Raid and Dungeon prize numbers below are read from
+  -- public.balance, so its keys must exist first.
+  if to_regclass('public.balance') is null or not exists (select 1 from public.balance where key = 'daily') then
+    raise exception 'pack_ledger_strict.sql: apply balance_economy.sql first (these functions read its balance keys)';
+  end if;
   foreach x slice 1 in array array[
     ['spend_pack(text)', '14090957d61b2cf32dcdd89fa0dcf5e3', '9f1f0ea5cc914f9ddd1bd66fdb2f0e03'],
     ['open_packs(text,bigint[],integer)', '4ad361ee52c0e9c5c32f51c226cfb51a', '78cb45be91d898fa0b3dcbde7c8dcd10'],
     ['gift_packs(text,text,integer)', '2eee04ca8a531b64508211cff497bb17', '79ef0b450bc2e9c462daf48283d21cf7'],
     ['claim_gift(text,bigint)', '05851263957dcad0a3d133e9369118d2', '3492a584dd9a8a56a934ce91b8374c4d'],
-    ['claim_daily(text,text)', '795445a3e1d7086d0a6e92cccb8635bc', 'f3e6465d7321c8dcc1e577ae2183a71f'],
-    ['claim_daily_earn(text,date,integer,integer,integer)', 'de096113f5594a1ccd29cfebafb9eddb', '6b1d1f2e7195418176f8523a89c0aefa'],
-    ['claim_achievement(text,text,integer,text,text)', 'd0bb69a4c07462ca5db3b9c97ab457b3', '4f9185d535810a84c48ccef18e7d1c79'],
+    ['claim_daily(text,text)', '795445a3e1d7086d0a6e92cccb8635bc', '56cfe6262392048820acff539666b318'],
+    ['claim_daily_earn(text,date,integer,integer,integer)', 'de096113f5594a1ccd29cfebafb9eddb', 'c18f34c4d6b7a18dce0edae2d0bcb1a2'],
+    ['claim_achievement(text,text,integer,text,text)', 'd0bb69a4c07462ca5db3b9c97ab457b3', '34f4be6488a0d45577e2745381e41f11'],
     ['claim_achievement_tiers(text,text)', '584b13e1e47fd81e339ccab16c5a86db', '3c0b94a5e0c95bea4922a1ba615f389c'],
     ['buy_shop_item(text,text,integer,bigint,integer)', '0ef076d1806e22d835b25e128e156a9f', 'c84f7625fb66024c8d15bfec410e01ff'],
-    ['settle_hunt(bigint)', '273e0b4c036dfb06217414c3f54d7cbf', '4235a21d9b5c8978c96c69eb18068de0'],
-    ['dungeon_pay(text,date)', '5ee9ef4a43b9bc99b235d5ca86af8f02', '4f2bec1174f40079ffbaccd62d47bb5a'],
+    ['settle_hunt(bigint)', '273e0b4c036dfb06217414c3f54d7cbf', 'bb5cc060c1966f554db98be41bee7c44'],
+    ['dungeon_pay(text,date)', '5ee9ef4a43b9bc99b235d5ca86af8f02', '95c577bb1b5334fe7b30b5d6e4458791'],
     ['claim_tutorial_reward(text)', '943aed1c01973dbe24171adfbe579492', 'eec8f640fdc2ea7e70177e68532b43be'],
     ['earned_today(text)', 'e91cf80c468952921856183df5a35ab5', 'ecfaa5439465eecb93af46d51598ce38'],
     ['ach_track_values(text)', '2b337b52301f7c9536bf989031f49cd4', 'a4816a46ab5d8db754a8d37e222f5e07']] loop
@@ -280,8 +285,8 @@ CREATE OR REPLACE FUNCTION public.claim_daily(p_player text, p_task text)
  SET search_path TO 'public'
 AS $function$
 declare cfg jsonb := coalesce((select value from settings where key = 'dailies'), '{}'::jsonb);
-  mult numeric := coalesce((select (value #>> '{}')::numeric from settings where key = 'pack_earn_multiplier'), 1);
-  per int; t jsonb; cap int; amt int; bal int; sh int := greatest(coalesce((cfg->>'shards')::int, 0), 0); sbal int;
+  mult numeric := (balance_get('pack_earn_multiplier') #>> '{}')::numeric;
+  per int; ck int; t jsonb; cap int; amt int; bal int; sh int := balance_num('daily', 'shards')::int; sbal int;
   d date := (now() at time zone 'America/Denver')::date;
 begin
   if coalesce((cfg->>'enabled')::boolean, false) is not true then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
@@ -293,7 +298,8 @@ begin
   if coalesce((t->>'claimed')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'claimed'); end if;
   if not coalesce((t->>'done')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'not_done'); end if;
   per := greatest(round(mult), 0)::int;
-  cap := coalesce((cfg->>'cap')::int, 5);
+  ck := balance_num('daily', 'checkin')::int * per; -- the check-in packs; the rest of a check-in claim is the streak bonus
+  cap := balance_num('daily', 'cap')::int;
   amt := greatest(least((t->>'reward')::int * per, greatest(cap - earned_today(p_player), 0)), 0);
   -- At the earn limit a daily still pays its Shards (0 packs); with no Shards set, it is capped.
   if amt <= 0 and sh <= 0 then return jsonb_build_object('ok', false, 'error', 'capped'); end if;
@@ -308,9 +314,9 @@ begin
   end if;
   insert into daily_claims (player_id, day, task, amount) values (p_player, d, p_task, amt);
   if amt > 0 then
-    if p_task = 'checkin' and amt > per then
-      perform grant_packs(p_player, per, 'earned_checkin', null, 'daily_claim', d::text || ':checkin');
-      bal := grant_packs(p_player, amt - per, 'earned_streak', null, 'daily_claim', d::text || ':checkin');
+    if p_task = 'checkin' and amt > ck then
+      perform grant_packs(p_player, ck, 'earned_checkin', null, 'daily_claim', d::text || ':checkin');
+      bal := grant_packs(p_player, amt - ck, 'earned_streak', null, 'daily_claim', d::text || ':checkin');
     else
       bal := grant_packs(p_player, amt, 'earned_' || p_task, null, 'daily_claim', d::text || ':' || p_task);
     end if;
@@ -329,24 +335,26 @@ CREATE OR REPLACE FUNCTION public.claim_daily_earn(p_player_id text, p_date date
 AS $function$
 declare a record; granted int := 0; amt int;
   cfg jsonb := coalesce((select value from settings where key = 'dailies'), '{}'::jsonb);
-  cap int := coalesce((cfg->>'cap')::int, 5);
-  mult numeric := coalesce((select (value #>> '{}')::numeric from settings where key = 'pack_earn_multiplier'), 1);
-  sh int := case when coalesce((cfg->>'enabled')::boolean, false) and mult > 0 then greatest(coalesce((cfg->>'shards')::int, 0), 0) else 0 end;
+  cap int := balance_num('daily', 'cap')::int;
+  mult numeric := (balance_get('pack_earn_multiplier') #>> '{}')::numeric;
+  sh int := case when coalesce((cfg->>'enabled')::boolean, false) and mult > 0 then balance_num('daily', 'shards')::int else 0 end;
 begin
+  -- p_base, p_bonus and p_bonus_threshold are no longer read (balance_economy.sql): the packs are balance daily.chat /
+  -- daily.chat_bonus x pack_earn_multiplier, the bonus at daily.chat_bonus_at messages. The bot still sends them.
   select message_count, base_claimed, bonus_claimed into a
     from daily_activity where player_id = p_player_id and activity_date = p_date for update;
   if not found then return 0; end if;
   if a.message_count >= 1 and not a.base_claimed then
     update daily_activity set base_claimed = true where player_id = p_player_id and activity_date = p_date;
-    amt := least(p_base, greatest(cap - earned_today(p_player_id), 0));
+    amt := least(balance_num('daily', 'chat')::int * greatest(round(mult), 0)::int, greatest(cap - earned_today(p_player_id), 0));
     -- One daily_claims row per chat claim, also at the cap (amount 0), as claim_daily does: each claim is traceable.
     insert into daily_claims (player_id, day, task, amount) values (p_player_id, p_date, 'chat', greatest(amt, 0));
     if amt > 0 then perform grant_packs(p_player_id, amt, 'earned_daily', null, 'daily_claim', p_date::text || ':chat'); granted := granted + amt; end if;
     if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily', 'chat'); end if;
   end if;
-  if a.message_count >= p_bonus_threshold and not a.bonus_claimed then
+  if a.message_count >= balance_num('daily', 'chat_bonus_at') and not a.bonus_claimed then
     update daily_activity set bonus_claimed = true where player_id = p_player_id and activity_date = p_date;
-    amt := least(p_bonus, greatest(cap - earned_today(p_player_id), 0));
+    amt := least(balance_num('daily', 'chat_bonus')::int * greatest(round(mult), 0)::int, greatest(cap - earned_today(p_player_id), 0));
     insert into daily_claims (player_id, day, task, amount) values (p_player_id, p_date, 'chat_bonus', greatest(amt, 0));
     if amt > 0 then perform grant_packs(p_player_id, amt, 'earned_bonus', null, 'daily_claim', p_date::text || ':chat_bonus'); granted := granted + amt; end if;
     if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily', 'chat_bonus'); end if;
@@ -354,27 +362,31 @@ begin
   return granted;
 end $function$;
 
-CREATE OR REPLACE FUNCTION public.claim_achievement(p_player text, p_key text, p_packs integer, p_title text, p_frame text)
+CREATE OR REPLACE FUNCTION public.claim_achievement(p_player text, p_key text, p_packs integer DEFAULT NULL::integer, p_title text DEFAULT NULL::text, p_frame text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
  SET search_path TO 'public'
 AS $function$
-declare inserted int; bal int;
+declare inserted int; bal int; r jsonb; v_packs int;
 begin
-  if p_packs < 0 or p_packs > 10 then return jsonb_build_object('ok', false, 'error', 'bad_reward'); end if;
+  -- The reward is balance achievement_rewards.badges (balance_economy.sql). p_packs, p_title and p_frame are no
+  -- longer read: an older Activity still sends them.
+  r := balance_get('achievement_rewards')->'badges'->p_key;
+  if r is null then return jsonb_build_object('ok', false, 'error', 'unknown'); end if;
+  v_packs := coalesce((r->>'packs')::int, 0);
   -- The tracks replace these keys (achievement_tracks.sql): never paid again once they are on.
   if ach_tracks_on(p_player) and exists (select 1 from achievement_switch_map where old_key = p_key) then
     return jsonb_build_object('ok', false, 'error', 'retired'); end if;
   insert into achievement_claims (player_id, key, packs, title, frame)
-    values (p_player, p_key, p_packs, p_title, p_frame)
+    values (p_player, p_key, v_packs, r->>'title', r->>'frame')
     on conflict (player_id, key) do nothing;
   get diagnostics inserted = row_count;
   if inserted = 0 then return jsonb_build_object('ok', false, 'error', 'claimed'); end if;
-  if p_packs > 0 then
-    bal := grant_packs(p_player, p_packs, 'achievement', null, 'achievement', p_key);
+  if v_packs > 0 then
+    bal := grant_packs(p_player, v_packs, 'achievement', null, 'achievement', p_key);
     if bal is null then raise exception 'unknown player %', p_player; end if; -- rolls the claim back
   end if;
-  return jsonb_build_object('ok', true, 'balance', bal);
+  return jsonb_build_object('ok', true, 'balance', bal, 'packs', v_packs, 'title', r->>'title', 'frame', r->>'frame');
 end; $function$;
 
 CREATE OR REPLACE FUNCTION public.claim_achievement_tiers(p_player text, p_key text DEFAULT NULL::text)
@@ -506,9 +518,8 @@ begin
   if v_settled is not null then return jsonb_build_object('ok', false, 'error', 'already_settled'); end if;
   if v_status not in ('defeated', 'expired') then return jsonb_build_object('ok', false, 'error', 'not_ended'); end if;
 
-  select value into v_cfg from settings where key = 'hunt_prizes';
-  v_cfg := coalesce(v_cfg, '{"base": 1, "ranks": [7, 5, 4, 3, 3, 3, 3, 3, 3, 3]}'::jsonb);
-  v_base := greatest(0, coalesce((v_cfg->>'base')::int, 1));
+  v_cfg := balance_get('hunt_prizes');
+  v_base := balance_num('hunt_prizes', 'base')::int;
   v_ranks := coalesce(v_cfg->'ranks', '[]'::jsonb);
 
   for r in
@@ -536,7 +547,7 @@ CREATE OR REPLACE FUNCTION public.dungeon_pay(p_mode text, p_period date)
  LANGUAGE plpgsql
  SET search_path TO 'public'
 AS $function$
-declare pz jsonb := coalesce((select value from settings where key = 'dungeon_prizes'), '{}'::jsonb); board jsonb; e jsonb; p jsonb;
+declare pz jsonb := dungeon_prizes_cfg(); board jsonb; e jsonb; p jsonb;
   i int; v_cards jsonb; v_card bigint; v_out jsonb := '[]'; v_rar text; v_msg text;
 begin
   if p_mode not in ('daily', 'gauntlet') then raise exception 'dungeon_pay: bad mode %', p_mode; end if;
