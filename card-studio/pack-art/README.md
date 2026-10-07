@@ -162,11 +162,12 @@ and one fill to `title/themes.py`. Then run `title/check.py`.
   permits. Do not publish a modified font under a Reserved Font Name (Russo, Lilita, Titan,
   Pirata, Passion).
 - The pack model (`cardpack2.fbx` and `optional_NORMAL.png`) is not in git. Nathan cleared it
-  on 2026-10-07: "that is a free model from online so we're good to go". Its source site and
-  its license text are not recorded. Record both in `FEEDBACK.md` and here before a release.
+  on 2026-10-07: "that is a free model from online so we're good to go". Source: Sketchfab
+  (Nathan, 2026-10-07: "Sketchfab is it I believe, so just record it"). The model page and its
+  license text are not recorded. When the page is found, add its URL and license here.
   Known facts: the download is `trading-card-pack.zip` (2024-04-29). It holds
   `source/packmodel.zip` and `textures/` (DIFFUSE.png, optional_NORMAL.png). This is the
-  layout of a Sketchfab download (inferred, not confirmed). It has no license file.
+  layout of a Sketchfab download, as Nathan confirmed. It has no license file.
 - Put the two model files in `card-studio/pack-art/model/`. Until the license is recorded,
   do not commit them.
 - Never use third-party scanned pack art. The model's own `DIFFUSE.png` is a scan of a real
@@ -187,7 +188,6 @@ and one fill to `title/themes.py`. Then run `title/check.py`.
 - The encoder prints the idle loop check: the frame after the loop against frame 1.
   The approved Origins loop measures 0.571. One idle frame step measures 2 to 7.
 - `make_set_art.py` stops if the frame counts are not 25, 39 and 39.
-- Open point (inferred, not measured on the model): the cover is cut at 1000 x 1889 and
-  then scaled to 1000 x 1529 (the band proportions). This squeezes the cover art to about
-  81% of its height. The approved Origins front has this squeeze. Ask Nathan before you
-  change it.
+- The cover is cut at 1000 x 1889 and then scaled to 1000 x 1529 (the band proportions).
+  This squeezes the cover art to about 81% of its height. Nathan kept it on 2026-10-07
+  ("No it looks fine"). Do not change it without his decision.
