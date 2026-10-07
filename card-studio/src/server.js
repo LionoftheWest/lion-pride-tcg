@@ -63,6 +63,8 @@ app.use(studioAuth({ secret: loadSecret(join(ROOT, '.studio-secret')) }));
 app.use(express.json({ limit: '30mb' }));
 // The Admin view data (read only): flag ADMIN_VIEW=1 (src/admin-routes.js). The pages: public/admin/ (/admin/).
 app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
+// The start page is the Admin view when it is on (ADMIN_VIEW=1); the card editor is /index.html.
+app.get('/', (req, res, next) => (process.env.ADMIN_VIEW === '1' ? res.redirect(302, '/admin/') : next()));
 // Never cache the studio UI, so a browser always loads the latest code.
 app.use(express.static(join(ROOT, 'public'), {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-store'),
