@@ -38,8 +38,8 @@ export const SCREENS = {
   'leaderboard':         { id: 'UI-22', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
   'profile':             { id: 'UI-14', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
   'help':                { id: 'UI-38', steps: [['js', '#menuBtn'], ['js', '[data-menu="faq"]']] },
-  // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under').
-  'menu':                { id: 'UI-60', under: 'UI-03', steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
+  // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
+  'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
   'open-chooser':        { id: 'UI-33', steps: [['wait', 4], ['js', '#dockOpen']] },
 };
 

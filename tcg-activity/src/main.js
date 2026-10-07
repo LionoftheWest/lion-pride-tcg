@@ -22,7 +22,7 @@ import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
-import { initShop, renderShopV2, disposeShop } from './ui-v2-shop.js';
+import { initShop, renderShopV2, disposeShop, repaintShards } from './ui-v2-shop.js';
 import { initDungeon, renderDungeonV2, disposeDungeon, advTabs } from './ui-v2-dungeon.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { initSubtabs } from './subtabs.js';
@@ -355,7 +355,7 @@ function startV3() {
   if (!document.querySelector('link[data-ui3]')) {
     const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/ui3.css'; l.dataset.ui3 = '1'; document.head.appendChild(l);
   }
-  watchSizeClass(window);
+  watchSizeClass(window, () => repaintShards());
 }
 
 // The v2 shell: the dock, the top bar pills, the phone layouts.

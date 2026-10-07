@@ -286,7 +286,7 @@ body.ui-v2.ui-v3[data-size="compact-port"] { --u3-bar: calc(var(--hit) + var(--s
 body.ui-v2.ui-v3[data-size][data-input="coarse"] { --u3-tab: var(--hit); }   /* 9.1: a 44 px hit area on touch */
 /* The views with sub-tabs keep the row space from the start: the v2 code moves the tabs into the row after the view
    paints (subtabs.js), and a later change of --topbar-h would make the fitted grids overflow. */
-body.ui-v2.ui-v3[data-size]:is([data-view="collection"], [data-view="battling"], [data-view="dungeon"], [data-view="trading"], :has(#main > .v2-subtabs)) { --topbar-h: calc(var(--u3-bar) + var(--u3-row)); }
+body.ui-v2.ui-v3[data-size]:where([data-view="collection"], [data-view="battling"], [data-view="dungeon"], [data-view="trading"], :has(#main > .v2-subtabs)) { --topbar-h: calc(var(--u3-bar) + var(--u3-row)); }
 /* 2.3: on a touch phone in portrait with no Discord inset yet, guess the top (the v2 code guesses only landscape). */
 body.ui-v2.ui-v3[data-size="compact-port"].m-sa-guess[data-input="coarse"] { --sa-t: var(--sa-guess-top); }
 
@@ -294,13 +294,21 @@ body.ui-v2.ui-v3[data-size="compact-port"].m-sa-guess[data-input="coarse"] { --s
 /* The shell areas use the token muted color (4.66:1), not the old v2 value (3.7:1). */
 body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs) { --text-muted: var(--u3-text-muted); }
 
+/* tiny (Discord picture-in-picture, 2.1): no top bar, sub-tab row, dock or menu (D-06, 7.1). The small live view
+   (UI-59) is a later screen PR. */
+body.ui-v2.ui-v3[data-size][data-size="tiny"] { --topbar-h: var(--u3-none); --dock-h: var(--u3-none); }
+body.ui-v2.ui-v3[data-size][data-size="tiny"] :is(#topbar, #dock, #main > .v2-subtabs, #u3MenuHost) { display: none; }
+
+/* The keyboard is open (body[data-kb], size-class.js): the dock stays, so every function stays on screen (P1). */
+body.ui-v2.ui-v3[data-size][data-kb] #dock { display: flex; }
+
 /* ---- Top bar (UI-01, D-31): logo, then Shards, Shop, bell, Menu, avatar ---- */
 body.ui-v2.ui-v3[data-size] #topbar { height: var(--u3-bar); padding: 0 var(--sp-5); gap: var(--sp-3); box-sizing: border-box; }
 body.ui-v2.ui-v3[data-size="compact-land"] #topbar, body.ui-v2.ui-v3[data-size="compact-port"] #topbar { padding: 0 var(--sp-3); }
 /* Landscape: the right group ends left of the Discord corner zone (2.3, G-013). */
 body.ui-v2.ui-v3[data-size="compact-land"] #topbar { padding-right: max(var(--sp-3), calc(var(--corner-w) - var(--u3-sa-r))); }
 /* With a sub-tab row, the bar keeps the full --topbar-h of space: the row sits in its lower part (below). */
-body.ui-v2.ui-v3[data-size]:is([data-view="collection"], [data-view="battling"], [data-view="dungeon"], [data-view="trading"], :has(#main > .v2-subtabs)) #topbar { margin-bottom: var(--u3-row); }
+body.ui-v2.ui-v3[data-size]:where([data-view="collection"], [data-view="battling"], [data-view="dungeon"], [data-view="trading"], :has(#main > .v2-subtabs)) #topbar { margin-bottom: var(--u3-row); }
 body.ui-v2.ui-v3[data-size] #topbar .title { gap: var(--sp-2); min-width: 0; }
 .u3-logo { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
 .u3-logo__emblem { flex: none; display: grid; place-items: center; width: var(--emblem); height: var(--emblem); border-radius: var(--rad-md);
@@ -323,6 +331,9 @@ body.ui-v2.ui-v3[data-size] #topbar #v2Shards svg { width: var(--coin); height: 
 body.ui-v2.ui-v3[data-size] #topbar #v2Shards b { font-family: var(--font-ui); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); font-variant-numeric: tabular-nums; }
 body.ui-v2.ui-v3[data-size] #topbar #v2Shards .lbl { font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-muted); }
 body.ui-v2.ui-v3[data-size="compact-port"] #topbar #v2Shards .lbl { display: none; }
+/* compact-port: the bar fits a 9-digit Shards count (123.5M, 10.5) at 375 px; the 8 px between hit areas stays (9.1) */
+body.ui-v2.ui-v3[data-size="compact-port"] #topbar { padding: 0 var(--sp-2); gap: var(--sp-2); }
+body.ui-v2.ui-v3[data-size="compact-port"] #topbar #v2Shards { padding: 0 var(--sp-2); gap: var(--sp-1); }
 
 /* Shop button (UI-42): gold; icon only on compact-port; the "on" look while the Shop is open */
 body.ui-v2.ui-v3[data-size] #topbar #shopBtn { width: auto; height: var(--ctl-icon); padding: 0 var(--sp-3); display: inline-flex; align-items: center; gap: var(--sp-2);

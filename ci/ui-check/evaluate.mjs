@@ -80,6 +80,7 @@ export function verdict(results, register, { title = '', strict = false, browser
   // An enforced ID that no screen of the check opens cannot be checked (plan.mjs uncovered).
   for (const id of plan(enforced).uncovered) all.push({ rule: 'not-checked', where: 'no screen in the check', value: 'add the screen to ci/ui-check/screens.mjs', browser: '-', size: '-', class: '-', screen: '-', variant: '-', owner: id });
   for (const b of browsers) for (const s of SIZES.filter((x) => sizes.includes(sizeKey(x)))) for (const screen of screens) {
+    if (SCREENS[screen].notOn?.includes(s[2])) continue;   // the screen does not exist on this class
     if (!byKey.has([b, sizeKey(s), screen, 'base'].join('|'))) all.push({ rule: 'not-checked', where: 'no result', value: 'the run did not produce this cell', browser: b, size: sizeKey(s), class: s[2], screen, variant: 'base', owner: SCREENS[screen].id });
   }
   // One defect per (rule, owner, where) for each browser, size and screen; keep the first variant.

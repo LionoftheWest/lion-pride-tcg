@@ -76,7 +76,8 @@ test('a missing cell always fails; a runner error fails on an enforced ID', () =
   assert.equal(verdict(rs, REG, { browsers: ['chromium'] }).fails[0].where, 'no result');
   const rs2 = full(); rs2.find((r) => r.screen === 'collection' && r.size === '375x667').error = 'Timeout';
   assert.equal(verdict(rs2, REG, { browsers: ['chromium'] }).fails[0].rule, 'not-checked');
-  assert.equal(verdict(full(), REG, { browsers: ['chromium', 'webkit'] }).fails.length, SIZES.length * Object.keys(SCREENS).length, 'no WebKit results: every WebKit cell fails');
+  const cells = SIZES.reduce((n, s) => n + Object.values(SCREENS).filter((sc) => !sc.notOn?.includes(s[2])).length, 0);   // the menu has no tiny cell
+  assert.equal(verdict(full(), REG, { browsers: ['chromium', 'webkit'] }).fails.length, cells, 'no WebKit results: every WebKit cell fails');
 });
 
 // ---- The plan (plan.mjs): a PR checks only the screens it can fail on --------------------------------------

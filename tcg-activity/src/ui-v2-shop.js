@@ -8,6 +8,7 @@ import { v2ctx, toast, paintCards } from './ui-v2.js';
 import { thumb } from './thumb.js';
 import { isPort, isLand } from './mobile.js';
 import { every } from './poll.js';
+import { fmtFor } from './ui3/number.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -43,7 +44,10 @@ function paintTop() {
   pill.classList.toggle('hidden', !shop.on);
   btn.classList.toggle('hidden', !shop.on);
   if (!shop.on) return;
-  pill.innerHTML = `${COIN}<b>${fmt(shop.data?.balance)}</b><span class="lbl">Shards</span>`;
+  // v3: the compact form on the compact classes (design.md 10.5); the full number stays in the button name
+  const bal = shop.data?.balance, b = document.body;
+  pill.innerHTML = `${COIN}<b>${b.classList.contains('ui-v3') ? fmtFor(bal, b.dataset.size) : fmt(bal)}</b><span class="lbl">Shards</span>`;
+  pill.setAttribute('aria-label', `${fmt(bal)} Shards`);
   btn.classList.toggle('on', ctx().currentView() === 'shop');
 }
 
@@ -54,6 +58,9 @@ async function load() {
   paintTop();
   return shop.data;
 }
+
+/** The size class changed (v3): paint the pill again in its number form. */
+export const repaintShards = () => { if (shop.on) paintTop(); };
 
 // The balance changed elsewhere (a gift, a daily): repaint the top bar pill.
 export const refreshShards = () => (shop.on ? load() : Promise.resolve(null));
