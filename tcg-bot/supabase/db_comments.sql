@@ -200,7 +200,7 @@ comment on function public.collection_power_all() is $c$The collection power of 
 comment on function public.deployable_power(integer) is $c$The sum, over all members, of each member's top N Character and Creature card powers (N = p_cap or hunt_card_cap()). Called by roster_snapshot and roster_stats.$c$;
 comment on function public.my_collection_power(text) is $c$The collection power of one member (the same rule as collection_power_all). Activity /api/collection and /api/profile.$c$;
 comment on function public.reset_stat_points(text,bigint) is $c$Clears the stat points of one card, once per game week (players.stat_reset_week, America/Denver). Activity /api/stats/reset. Returns ok and the new stats, or an error.$c$;
-comment on function public.roster_snapshot() is $c$Writes one roster_power_history row (members, owned cards, total and deployable power, boss HP estimates). Called by spawn_weekly_boss (pg_cron hunt-spawn-mt through weekly_boss_tick), weekly_hunt_rollover and roster-stats.mjs. Returns the row id.$c$;
+comment on function public.roster_snapshot() is $c$Writes one roster_power_history row (members, owned cards, total and deployable power, boss HP estimates). Called by spawn_weekly_boss (pg_cron hunt-spawn-mt through weekly_boss_tick) and roster-stats.mjs. Returns the row id.$c$;
 comment on function public.roster_stats() is $c$The community card power as JSON: counts, total and deployable power, boss HP estimates, cards by rarity and by stars. Only card-studio/scripts/roster-stats.mjs calls it. Writes nothing.$c$;
 comment on function public.roster_top_players(integer) is $c$The members with the most total card power (no set bonus): owned cards, total power, best card. Only card-studio/scripts/roster-stats.mjs calls it.$c$;
 comment on function public.spend_stat_points(text,bigint,jsonb) is $c$Adds stat points to one card (attack, vitality, precision, potency, haste) up to the cap of its stars (balance key stat_points). Activity /api/stats/spend. Returns ok, points and stats, or an error.$c$;
@@ -211,7 +211,6 @@ comment on function public.convertible_copies(text,bigint) is $c$The copies of a
 
 -- ============================================================ functions: packs and gifts
 comment on function public.give_card_gift(text,bigint,text,text) is $c$Puts a card gift in a member's bell (gift_claims, kind card), once per member and reason. Called by launch_player_gift and launch_raider_gift. Returns true when it wrote a row.$c$;
-comment on function public.grant_packs_all(integer,text,text) is $c$Adds packs to every member and writes pack_ledger rows with no ref. Not called by any code or job.$c$;
 comment on function public.launch_player_gift(text) is $c$Gives the Launch Day Player card gift (settings key launch_event_cards) to a member while the offer is open. Called by claim_tutorial_reward and set_launch_player_card. Returns true when it gave the gift.$c$;
 comment on function public.launch_raider_gift() is $c$Trigger launch_raider_gift on hunt_hits: a hit in one of the launch Hunts (settings key launch_event_cards) gives the Launch Day Raider card gift once. Internal helper.$c$;
 comment on function public.set_launch_player_card(bigint) is $c$Admin: sets the Launch Day Player card in settings, gives its subject the Launch Party effect, and sends the gift to the members who finished the tutorial. Not called by any code or job. Returns the gifts sent.$c$;
@@ -393,7 +392,6 @@ comment on function public.nudge_hunt() is $c$[hunt] Writes a hunt_events nudge 
 comment on function public.close_weekly_boss() is $c$[hunt] Closes the newest active Hunt that ends within 1 hour (close_hunt). Called by weekly_boss_tick('close').$c$;
 comment on function public.close_due_hunts() is $c$[hunt] Closes every active Hunt whose closes_at has passed (close_hunt). Called by the pg_cron job hunt-close-due every 10 minutes. Returns {ok, closed}.$c$;
 comment on function public.close_hunt(bigint) is $c$[hunt] Ends an active Hunt by time: status expired, settle_hunt pays the prizes, and a hunt_events expired row with the top 3. Does nothing for a Hunt that is not active. Called by close_due_hunts and close_weekly_boss.$c$;
-comment on function public.weekly_hunt_rollover(integer) is $c$[hunt] The old weekly rollover: expires and settles the active Hunt, then spawns a new one. Not called by any code or job (the pg_cron jobs use weekly_boss_tick).$c$;
 comment on function public.daily_raid_board(timestamp with time zone) is $c$[hunt] Writes the daily Hunt leaderboard post (a hunt_events leaderboard row with the top 10) once per Mountain Time day at 6 AM. Called by the pg_cron job raid-board-mt. Returns true when it wrote a row.$c$;
 comment on function public.hunt_mt_slot(text,timestamp with time zone) is $c$[hunt] True when the time is in the Mountain Time hour of the kind: spawn (Thursday 3 PM), nudge (Monday 11 AM), close (Monday 5 PM), board (every day 6 AM). Internal helper of weekly_boss_tick and daily_raid_board.$c$;
 comment on function public.hunt_next_mt(integer,integer,timestamp with time zone) is $c$[hunt] The next time after p_at at the ISO weekday and hour on the Mountain Time clock (America/Denver). Internal helper of next_hunt_spawn and next_hunt_close.$c$;
@@ -470,7 +468,6 @@ comment on column public.dungeon_days.day is $c$The game day (dungeon_day(), Ame
 comment on column public.dungeon_days.name is $c$The dungeon name, a seeded draw from a fixed list in dungeon_generate.$c$;
 comment on column public.dungeon_days.rule is $c$The daily rule: one object of dungeon_rules() (name, note and one of types, no_rarity, boost_tag + boost, budget). dungeon_start enforces it.$c$;
 comment on column public.dungeon_days.floors is $c$The dungeon: an array of floors, each an array of 5 rooms {type, foes}. Room 1 is a fight, room 5 the floor guardian. The floor count is settings.dungeon floors.$c$;
-comment on column public.dungeon_days.checked is $c$Not written by any code or job (null in every row). An unused column from dungeon.sql.$c$;
 comment on column public.dungeon_days.created_at is $c$When dungeon_generate made the row.$c$;
 
 comment on table public.dungeon_runs is $c$[dungeon] One row per run: a member, a game day and a mode (unique). dungeon_start or gauntlet_start writes it, the member actions change state, dungeon_settle ends it. The boards, the views and shard_ledger_reconcile read it.$c$;
@@ -589,7 +586,6 @@ comment on function public.dungeon_enter(jsonb, jsonb, integer, integer) is $c$I
 comment on function public.dungeon_enemy_turn(jsonb, bigint, integer, integer) is $c$Internal helper: the foes' turn after an attack: poison ticks, each living foe acts (combat_pool_act), then thorns and burn hit the attacker. Returns the new state and the actions.$c$;
 comment on function public.dungeon_after_kill(public.dungeon_runs, jsonb) is $c$Internal helper: after a foe falls, adds the kill loot (daily only). When the room is cleared it offers rewards, or after the guardian banks the floor loot. Returns the state, Shards, card, cleared.$c$;
 comment on function public.dungeon_log_add(bigint, jsonb, jsonb) is $c$Internal helper: writes the next dungeon_log row of a run (action and result).$c$;
-comment on function public.dungeon_end(bigint, text) is $c$Not called by any code or job. The old end of a run (status over, no payment). dungeon_settle replaced it.$c$;
 comment on function public.dungeon_settle_stale() is $c$Ends every active run of an earlier day as abandoned (dungeon_settle, banked loot only). Called by the pg_cron job dungeon-settle-stale and by dungeon_pay. Returns the count.$c$;
 comment on function public.dungeon_start(text, bigint[]) is $c$POST /api/dungeon/start: starts today's daily run with 5 owned cards. Checks the flag, adventure_gate, one run a day, the daily rule and the budget. Writes dungeon_runs and dungeon_log. Returns ok, run and state.$c$;
 comment on function public.dungeon_attack(text, bigint, integer, text) is $c$POST /api/dungeon/attack: one squad card attacks a foe on the shared combat core, then the foes act. Settles the run when the squad falls or the dungeon is cleared. Returns the hit, the enemy actions and the state.$c$;
@@ -658,7 +654,7 @@ comment on column public.voice_minutes.day is $c$The game day (America/Denver).$
 comment on column public.voice_minutes.minutes is $c$The minutes counted on that day. Each tick of add_voice_minutes adds 1.$c$;
 
 -- ===== notifications =====
-comment on table public.notifications is $c$One row per note in the bell of a member. notify_player (the Activity, the bot, SQL), notify_all and claim_tutorial_reward write it. The Activity /api/notifications reads it. prune_old_rows deletes old rows.$c$;
+comment on table public.notifications is $c$One row per note in the bell of a member. notify_player (the Activity, the bot, SQL) and claim_tutorial_reward write it. The Activity /api/notifications reads it. prune_old_rows deletes old rows.$c$;
 comment on column public.notifications.id is $c$The note id.$c$;
 comment on column public.notifications.player_id is $c$The member who gets the note (players.id).$c$;
 comment on column public.notifications.kind is $c$The type of note, for example pack_gift, pack_earned, trade_offer, trade_counter, trade_accepted, auction_bid, card_gift. The writer sets it. No check constraint.$c$;
@@ -741,7 +737,6 @@ comment on function public.give_gift(text, text, text, integer, text, text) is $
 comment on function public.give_gift_all(text, text, integer, text, text) is $c$Puts the same pack gift in the bell of every member (gift_claims rows). Returns the number of gifts made. The bot /grantall calls it.$c$;
 comment on function public.gift_all_members(jsonb, integer, text) is $c$Gives every given server member the one Launch Day gift (give_gift) and makes a players row for a new member. A member who has it is skipped. The bot /grantall everyone calls it. Returns the counts.$c$;
 comment on function public.notify_player(text, text, text) is $c$Writes one note in the bell of a member (notifications). The Activity, the bot, dungeon_pay and expire_auctions call it.$c$;
-comment on function public.notify_all(text, text) is $c$Writes the same note in the bell of every member and returns the number of notes. Not called by any code or job.$c$;
 comment on function public.playing_today(text) is $c$Returns the data of the is-playing post for a member today: name, avatar, the playing ping setting, packs opened, Hunt damage and the best new card. The bot (playing-posts.ts) calls it.$c$;
 comment on function public.submit_report(text, text, text, jsonb) is $c$Stores a member report (player_reports) after the checks: kind, length 5 to 1500, the member exists, and the per-day limit (settings reports.per_day, default 3). The Activity /api/feedback calls it.$c$;
 

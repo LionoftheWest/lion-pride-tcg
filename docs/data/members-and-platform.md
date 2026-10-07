@@ -9,7 +9,7 @@ Members, the Dailies, the bell notes, reports, the balance numbers, the flags an
 
 Tables (12): [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [voice_minutes](#table-voice-minutes)
 
-Functions (29): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_economy()](#fn-balance-check-economy), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_all(text,text)](#fn-notify-all-text-text), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
+Functions (28): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_economy()](#fn-balance-check-economy), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
 
 ## Tables
 
@@ -124,7 +124,7 @@ Table. [players-economy] The allowed reasons of the three ledgers (pack_ledger, 
 
 ### notifications
 
-Table. One row per note in the bell of a member. notify_player (the Activity, the bot, SQL), notify_all and claim_tutorial_reward write it. The Activity /api/notifications reads it. prune_old_rows deletes old rows.
+Table. One row per note in the bell of a member. notify_player (the Activity, the bot, SQL) and claim_tutorial_reward write it. The Activity /api/notifications reads it. prune_old_rows deletes old rows.
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
@@ -483,16 +483,6 @@ Puts the same pack gift in the bell of every member (gift_claims rows). Returns 
 - Security definer: no
 
 Trigger on pack_ledger, card_ledger, shard_ledger and the pack gifts of gift_claims: a new row (or a changed reason) needs a reason in ledger_reasons with status active or reserved. Else check_violation (the old check error class).
-
-<a id="fn-notify-all-text-text"></a>
-
-### notify_all(text,text)
-
-- Function: `notify_all(p_kind text, p_message text)`
-- Returns: `integer`
-- Security definer: no
-
-Writes the same note in the bell of every member and returns the number of notes. Not called by any code or job.
 
 <a id="fn-notify-player-text-text-text"></a>
 
