@@ -55,15 +55,15 @@ ${C('the 5 new Discord pranks exist, a new one starts DISABLED, and an existing 
 
 ${C('the cards Nathan decided: slowmode, 1-min timeout, parrot, spongebob, Discord spotlight, mustache kept, name swap, no hijack', `
     select count(*) into n from subjects s join (values
-      ('Australian Connections', 'slowmode', 'Lag Spike'), ('Bonzan''s Donkey Kong', 'timeout', 'Speechless'),
-      ('Call of Dragons', 'parrot', 'World Chat'), ('Lorcana Prices', 'spongebob', 'Go Back to Pokemon'),
-      ('Baego', 'spotlight_role', 'Better Side'), ('Beetle''s Cloud', 'mustache', 'Grown-Up Stache'),
-      ('Krool Name Swap', 'body_swap', 'Name Swap'), ('Fluffy''s REPO Clutch', 'cleanse', 'Clutch Save'),
-      ('B Button Spam', 'ping_parade', 'B...B...B...'), ('Shave your Head', 'streak_shield', 'Streak Shield')) v(name, prim, ename)
-      on s.name = v.name and s.effect->>'primitive' = v.prim and s.effect->>'name' = v.ename;
+      ('australian-connections', 'slowmode', 'Lag Spike'), ('bonzan-s-donkey-kong', 'timeout', 'Speechless'),
+      ('call-of-dragons', 'parrot', 'World Chat'), ('lorcana-prices', 'spongebob', 'Go Back to Pokemon'),
+      ('baego', 'spotlight_role', 'Better Side'), ('beetle-s-cloud', 'mustache', 'Grown-Up Stache'),
+      ('krool-name-swap', 'body_swap', 'Name Swap'), ('fluffy-s-repo-clutch', 'cleanse', 'Clutch Save'),
+      ('b-button-spam', 'ping_parade', 'B...B...B...'), ('shave-your-head', 'streak_shield', 'Streak Shield')) v(key, prim, ename)
+      on s.key = v.key and s.effect->>'primitive' = v.prim and s.effect->>'name' = v.ename;
     ok := n = 10
       and (select bool_and(jsonb_array_length(effect->'options'->'polls') between 3 and 4) from subjects where effect->>'primitive' = 'hot_take_poll')
-      and (select (effect->'base'->>'duration_s')::int = 60 from subjects where name = 'Bonzan''s Donkey Kong')
+      and (select (effect->'base'->>'duration_s')::int = 60 from subjects where key = 'bonzan-s-donkey-kong')
       and (select (effect->'base'->>'duration_s')::int = 300 and (effect->'base'->>'amount')::int = 30 from subjects where name = 'Australian Connections')
       and not exists (select 1 from subjects where effect->>'primitive' = 'hijack');
     res := res || jsonb_build_object('case', 'the cards Nathan decided: slowmode, 1-min timeout, parrot, spongebob, Discord spotlight, mustache kept, name swap, no hijack', 'ok', ok, 'n', n);`)}
