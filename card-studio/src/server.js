@@ -7,6 +7,7 @@ import { fillHtml, renderPng } from './render.js';
 import { pushCard } from './push.js';
 import { removeTiers } from './tier-delete.js';
 import { supabase } from './supabase.js';
+import { adminRouter } from './admin-routes.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic } from './rarity.js';
 import { getFrame, setFrame } from './frames.js';
 import { getArtist, setArtist } from './artists.js';
@@ -56,6 +57,8 @@ mkdirSync(OUT, { recursive: true });
 
 const app = express();
 app.use(express.json({ limit: '30mb' }));
+// The Admin view data (read only): flag ADMIN_VIEW=1 and STUDIO_USER / STUDIO_PASS (src/admin-routes.js).
+app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args) }));
 // Never cache the studio UI, so a browser always loads the latest code.
 app.use(express.static(join(ROOT, 'public'), {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-store'),
