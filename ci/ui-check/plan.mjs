@@ -9,7 +9,7 @@ import { SCREENS } from './screens.mjs';
 import { isUiFile, git, range, parseRegister, titleIds } from '../gates/lib.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-export const SHELL_IDS = new Set(['UI-01', 'UI-02']);
+export const SHELL_IDS = new Set(['UI-01', 'UI-02', 'UI-42']);   // UI-42: the Shards and Shop pills sit in the top bar
 // The IDs that are on every screen: the shell, and UI-00, the design system (the tokens and the components). A PR with
 // one of these IDs checks every screen. UI-00 owns no screen of its own, so it is never "uncovered".
 export const EVERY_SCREEN_IDS = new Set([...SHELL_IDS, 'UI-00']);

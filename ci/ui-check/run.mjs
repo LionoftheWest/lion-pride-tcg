@@ -49,6 +49,7 @@ const browser = await (BROWSER === 'webkit' ? webkit : chromium).launch(BROWSER 
 const todo = [];
 for (const s of sizes) for (const screen of screens) for (const variant of variants) {
   const [, , cls, touch] = s; const spec = SCREENS[screen];
+  if (spec.notOn?.includes(cls)) continue;   // the screen does not exist on this class (design.md 2.1)
   if ((variant === 'safe' || variant === 'keyboard') && !touch) continue;
   if (variant === 'keyboard' && !spec.input) continue;
   if (variant === 'safe' && (!/^compact/.test(cls) || !SAFE_SCREENS.has(screen))) continue;

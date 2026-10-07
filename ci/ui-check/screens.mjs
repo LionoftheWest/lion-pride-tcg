@@ -33,19 +33,24 @@ export const SCREENS = {
   'gauntlet':            { id: 'UI-52', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   'shop':                { id: 'UI-43', steps: [['js', '#shopBtn'], ['wait', 2]] },
   'shop-confirm':        { id: 'UI-43', steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
-  'dailies':             { id: 'UI-36', steps: [['js', '#dailyBtn'], ['wait', 1.5]] },
+  'dailies':             { id: 'UI-36', steps: [['js', '#menuBtn'], ['js', '[data-menu="dailies"]'], ['wait', 1.5]] },
   'bell':                { id: 'UI-24', steps: [['js', '#bellBtn']] },
-  'leaderboard':         { id: 'UI-22', steps: [['wait', 4], ['js', '#boardBtn', [['dock', 'trading'], ['js', '#commBoard']]], ['wait', 2]] },
-  'profile':             { id: 'UI-14', steps: [['wait', 4], ['js', '#boardBtn', [['dock', 'trading'], ['js', '#commBoard']]], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
-  'help':                { id: 'UI-38', steps: [['js', '#helpBtn']] },
+  'leaderboard':         { id: 'UI-22', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  'profile':             { id: 'UI-14', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
+  'help':                { id: 'UI-38', steps: [['js', '#menuBtn'], ['js', '[data-menu="faq"]']] },
+  // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
+  'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
   'open-chooser':        { id: 'UI-33', steps: [['wait', 4], ['js', '#dockOpen']] },
 };
 
 // The shell (top bar, dock, sub-tabs) is on every screen: a defect there belongs to the shell IDs.
 export function ownerOf(screen, where) {
-  if (/(^|\s|>\s*)#(topbar|dock|shardsBtn|shopBtn|dailyBtn|helpBtn|bellBtn|boardBtn|reportBtn|avatarBtn|dockOpen)\b/.test(where) || /\.dk\b/.test(where)) return 'UI-01';
+  // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
+  if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
+  if (/#(v2Shards|shopBtn)[a-z]*\b/.test(where)) return 'UI-42';
+  if (/(^|\s|>\s*)#(topbar|dock|shardsBtn|dailyBtn|helpBtn|bellBtn|boardBtn|reportBtn|avatarBtn|dockOpen|menuBtn|v2Avatar)[a-z]*\b/.test(where) || /\.dk\b/.test(where)) return 'UI-01';
   if (/v2-subtabs|dg-tabs|#commTabs|#colTabs/.test(where)) return 'UI-02';
-  return SCREENS[screen].id;
+  return SCREENS[screen].under || SCREENS[screen].id;
 }
 
 // ---- Steps (common.py: boot, settle, dock, jsclick, run_steps) ----------------------------------------------
