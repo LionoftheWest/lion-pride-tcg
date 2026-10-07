@@ -2,7 +2,7 @@
  * Measure the boss counter moves (docs/hunt-boss-moves.md section 7) with NO lasting change. Run it on the LOCAL copy:
  *   LOCALDB=1 NODE_OPTIONS=--import=./scripts/localdb-preload.mjs node scripts/sim-boss-moves.mjs [days] [file.sql]
  * For each boss and each squad, it plays scripted squad-days through the real hunt_attack / hunt_support: first with
- * the counter moves off (_share 0), then on (_share 0.4). A day: every ready support plays (heal on the most hurt
+ * the counter moves off (share 0), then on (share 0.4; balance boss_counters). A day: every ready support plays (heal on the most hurt
  * attacker, shield / empower on the next attacker), then one attack; until every attacker is down or the round cap.
  * The result: the average boss damage per squad-day. Off and on use the same random seed for each day (paired).
  * One rolled-back block per boss.
@@ -12,8 +12,9 @@ import { readFileSync } from 'node:fs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https?:\/\/([a-z0-9]+)/)?.[1] || 'local';
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const DAYS = Number(process.argv[2] || 6);
-const mig = readFileSync(process.argv[3] || new URL('../../tcg-bot/supabase/hunt_boss_moves.sql', import.meta.url), 'utf8')
-  .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
+// [file.sql]: a migration to run first (in the block). No file: the database as it is (hunt_boss_moves.sql is
+// superseded; the shares and weights are balance boss_counters since hunt_counter_balance.sql).
+const mig = !process.argv[3] ? '' : readFileSync(process.argv[3], 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 const ALL_BOSSES = ['The Grind Vampire', 'The AFK Warzombie', 'The Smurf Brute', 'The Hardstuck Skeleton', 'Maw of the Meta', 'The Rage-Quit Warlord',
   'The Ranked Nightshade', 'The Lagspike Parasite', 'The Netcode Mutant', 'The Patch-Day Pumpkin', 'The Ban-Wave Demon', 'The Zerg-Rush Queen'];
 // SIM_BOSSES / SIM_SQUADS (JSON) pick a subset, for a quick check.
@@ -32,7 +33,7 @@ function bossSQL(boss) {
   atks bigint[]; sq jsonb; share numeric; day int; h bigint; ids bigint[]; sup bigint[]; a bigint; s bigint; r jsonb; tg bigint;
   rounds int; total bigint; n int; eff text;
 begin
-  execute $m$${mig}$m$;
+  ${mig ? 'execute $m$' + mig + '$m$;' : '-- the database as it is'}
   select array_agg(id order by id) into atks from (select c.id from cards c join subjects s on s.id = c.subject_id
     where s.type in ('Character', 'Creature') and c.rarity = 'full_art' order by c.id limit 8) x;
   insert into players (id, username) values (P, 'tst sim');
@@ -46,7 +47,7 @@ begin
     select coalesce(array_agg(pc.card_id), '{}') into sup from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
       where pc.player_id = P and s.ability->>'kind' = 'support' and s.ability->>'effect' in (select jsonb_array_elements_text(sq->'effs'));
     foreach share in array array[0, 0.4]::numeric[] loop
-      update settings set value = jsonb_set(value, '{_share}', to_jsonb(share)) where key = 'hunt_boss_moves';
+      update balance set value = jsonb_set(value, '{share}', to_jsonb(share)) where key = 'boss_counters';
       total := 0;
       for day in 1..${DAYS} loop
         insert into hunts (name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, closes_at, hp_share, stats)

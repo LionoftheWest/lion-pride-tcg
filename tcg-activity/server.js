@@ -770,20 +770,27 @@ async function activeHunt() {
     return data || null;
   });
 }
-// The boss movesets (hunt_boss_moves.sql, settings.hunt_boss_moves): the counter moves of one boss, for the boss
-// details (listed before the squad locks). Read once a minute. A failed read keeps the last good value.
-let huntMovesCache = { at: 0, cfg: {} };
+// The boss movesets (hunt_boss_moves.sql, hunt_counter_balance.sql): the counter moves of one boss, for the boss
+// details (listed before the squad locks). hunt_boss_move_list renders each text with its numbers from balance
+// boss_counters, so a balance change cannot make a text wrong. Read once a minute per boss. A failed read keeps the
+// last good value.
+const huntMovesCache = new Map();   // boss name -> { at, moves }
 async function huntBossMoves(name) {
-  if (Date.now() - huntMovesCache.at >= 60000) {
-    await singleFlight('huntBossMoves', async () => {
+  const key = String(name || '');
+  const hit = huntMovesCache.get(key);
+  if (!hit || Date.now() - hit.at >= 60000) {
+    await singleFlight(`huntBossMoves:${key}`, async () => {
       try {
-        const { data, error } = await supabase.from('settings').select('value').eq('key', 'hunt_boss_moves').maybeSingle();
-        if (!error) huntMovesCache = { at: Date.now(), cfg: data?.value || {} };
+        let { data, error } = await supabase.rpc('hunt_boss_move_list', { p_boss: key });
+        if (error?.code === 'PGRST202') {   // the function is not there yet (deploy before the migration): the old literal texts
+          const r = await supabase.from('settings').select('value').eq('key', 'hunt_boss_moves').maybeSingle();
+          error = r.error; data = Array.isArray(r.data?.value?.[key]?.moves) ? r.data.value[key].moves : [];
+        }
+        if (!error && Array.isArray(data)) huntMovesCache.set(key, { at: Date.now(), moves: data.map((m) => ({ name: m.name, text: m.text })) });
       } catch { /* keep the last value */ }
     });
   }
-  const moves = huntMovesCache.cfg?.[name]?.moves;
-  return Array.isArray(moves) ? moves.map((m) => ({ name: m.name, text: m.text })) : [];
+  return huntMovesCache.get(key)?.moves || [];
 }
 const matchesWeak = (weak, { type, rarity, season }) => (weak || []).some((w) =>
   (w.kind === 'type' && w.value === type)

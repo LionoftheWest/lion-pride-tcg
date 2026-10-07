@@ -9,7 +9,7 @@ The weekly Hunt (raid boss), squads, the combat rules, the logs of each fight, p
 
 Tables (14): [card_effect_cooldowns](#table-card-effect-cooldowns), [card_plays](#table-card-plays), [combat_actions](#table-combat-actions), [discord_effects](#table-discord-effects), [effect_primitives](#table-effect-primitives), [hunt_adjustments](#table-hunt-adjustments), [hunt_card_hp](#table-hunt-card-hp), [hunt_combat_log](#table-hunt-combat-log), [hunt_combat_state](#table-hunt-combat-state), [hunt_events](#table-hunt-events), [hunt_hits](#table-hunt-hits), [hunt_squads](#table-hunt-squads), [hunts](#table-hunts), [player_effects](#table-player-effects)
 
-Functions (69): [adventure_gate(text)](#fn-adventure-gate-text), [arm_on_open()](#fn-arm-on-open), [arm_player_effects(text)](#fn-arm-player-effects-text), [card_combat(text,integer,numeric,jsonb)](#fn-card-combat-text-integer-numeric-jsonb), [card_effect_active(text,text)](#fn-card-effect-active-text-text), [card_element(text[])](#fn-card-element-text), [card_max_hp(integer)](#fn-card-max-hp-integer), [close_due_hunts()](#fn-close-due-hunts), [close_hunt(bigint)](#fn-close-hunt-bigint), [close_weekly_boss()](#fn-close-weekly-boss), [combat_absorb(integer,integer)](#fn-combat-absorb-integer-integer), [combat_aff_scale(integer)](#fn-combat-aff-scale-integer), [combat_area_roll(numeric,numeric,numeric)](#fn-combat-area-roll-numeric-numeric-numeric), [combat_burn(numeric)](#fn-combat-burn-numeric), [combat_crit_chance(boolean,text,numeric,jsonb)](#fn-combat-crit-chance-boolean-text-numeric-jsonb), [combat_enemy_act(numeric,numeric,integer,integer,numeric,bigint)](#fn-combat-enemy-act-numeric-numeric-integer-integer-numeric-bigint), [combat_enemy_mult(numeric,integer,numeric,integer,integer,boolean,numeric,boolean)](#fn-combat-enemy-mult-numeric-integer-numeric-integer-integer-boolean-numeric-boolean), [combat_hit(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint)](#fn-combat-hit-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint), [combat_lifesteal(integer,numeric,integer)](#fn-combat-lifesteal-integer-numeric-integer), [combat_miss(boolean)](#fn-combat-miss-boolean), [combat_pool_act(numeric,numeric,integer,integer,numeric,integer,jsonb,boolean)](#fn-combat-pool-act-numeric-numeric-integer-integer-numeric-integer-jsonb-boolean), [combat_regen(bigint)](#fn-combat-regen-bigint), [combat_squad(text[],boolean,jsonb,jsonb)](#fn-combat-squad-text-boolean-jsonb-jsonb), [combat_stun_immune(integer,integer)](#fn-combat-stun-immune-integer-integer), [combat_support_value(text,numeric,numeric,integer)](#fn-combat-support-value-text-numeric-numeric-integer), [combat_thorns(integer)](#fn-combat-thorns-integer), [combat_weak(jsonb,jsonb,text,text,text,text[],integer)](#fn-combat-weak-jsonb-jsonb-text-text-text-text-integer), [daily_raid_board(timestamp with time zone)](#fn-daily-raid-board-timestamp-with-time-zone), [deployable_power(integer)](#fn-deployable-power-integer), [effect_preview(text)](#fn-effect-preview-text), [effect_preview_card(text,integer,jsonb,jsonb)](#fn-effect-preview-card-text-integer-jsonb-jsonb), [element_aliases()](#fn-element-aliases), [element_of(text)](#fn-element-of-text), [hunt_attack(text,bigint,bigint)](#fn-hunt-attack-text-bigint-bigint), [hunt_card_cap()](#fn-hunt-card-cap), [hunt_combat_stats(bigint)](#fn-hunt-combat-stats-bigint), [hunt_commit_card(bigint,text,bigint,date,integer)](#fn-hunt-commit-card-bigint-text-bigint-date-integer), [hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)](#fn-hunt-counter-act-bigint-text-date-bigint-integer-numeric-numeric-text-text-integer-integer-integer-numeric), [hunt_counter_cd(bigint,text,date,text,integer,integer)](#fn-hunt-counter-cd-bigint-text-date-text-integer-integer), [hunt_counter_hit(bigint,text,date,bigint,integer,boolean)](#fn-hunt-counter-hit-bigint-text-date-bigint-integer-boolean), [hunt_counter_pick(bigint,text,date,text,text)](#fn-hunt-counter-pick-bigint-text-date-text-text), [hunt_counter_tick(bigint,text,date,bigint,integer)](#fn-hunt-counter-tick-bigint-text-date-bigint-integer), [hunt_damage_reconcile(bigint)](#fn-hunt-damage-reconcile-bigint), [hunt_fight_summary()](#fn-hunt-fight-summary), [hunt_leaderboard(bigint,integer)](#fn-hunt-leaderboard-bigint-integer), [hunt_mark_on(jsonb,text,integer)](#fn-hunt-mark-on-jsonb-text-integer), [hunt_marks_patch(bigint,text,date,jsonb)](#fn-hunt-marks-patch-bigint-text-date-jsonb), [hunt_mt_slot(text,timestamp with time zone)](#fn-hunt-mt-slot-text-timestamp-with-time-zone), [hunt_next_mt(integer,integer,timestamp with time zone)](#fn-hunt-next-mt-integer-integer-timestamp-with-time-zone), [hunt_round_cap()](#fn-hunt-round-cap), [hunt_squad_allows(bigint,text,date,bigint)](#fn-hunt-squad-allows-bigint-text-date-bigint), [hunt_squad_cards(bigint,text,date,bigint)](#fn-hunt-squad-cards-bigint-text-date-bigint), [hunt_squad_done(bigint,text,date,integer)](#fn-hunt-squad-done-bigint-text-date-integer), [hunt_state_round(bigint,text,date)](#fn-hunt-state-round-bigint-text-date), [hunt_support(text,bigint,bigint,bigint)](#fn-hunt-support-text-bigint-bigint-bigint), [hunt_view(text,bigint,date)](#fn-hunt-view-text-bigint-date), [lock_hunt_squad(text,bigint,bigint[])](#fn-lock-hunt-squad-text-bigint-bigint), [next_hunt_close()](#fn-next-hunt-close), [next_hunt_spawn()](#fn-next-hunt-spawn), [nudge_hunt()](#fn-nudge-hunt), [play_card_effect(text,bigint,text)](#fn-play-card-effect-text-bigint-text), [play_card_effect_choice(text,bigint,text,integer)](#fn-play-card-effect-choice-text-bigint-text-integer), [refund_card_play(bigint,text)](#fn-refund-card-play-bigint-text), [settle_hunt(bigint)](#fn-settle-hunt-bigint), [spawn_hunt(integer,text)](#fn-spawn-hunt-integer-text), [spawn_weekly_boss()](#fn-spawn-weekly-boss), [take_player_effect(text,text)](#fn-take-player-effect-text-text), [use_effect_charge(text,text)](#fn-use-effect-charge-text-text), [weekly_boss_tick(text)](#fn-weekly-boss-tick-text)
+Functions (73): [adventure_gate(text)](#fn-adventure-gate-text), [arm_on_open()](#fn-arm-on-open), [arm_player_effects(text)](#fn-arm-player-effects-text), [card_combat(text,integer,numeric,jsonb)](#fn-card-combat-text-integer-numeric-jsonb), [card_effect_active(text,text)](#fn-card-effect-active-text-text), [card_element(text[])](#fn-card-element-text), [card_max_hp(integer)](#fn-card-max-hp-integer), [close_due_hunts()](#fn-close-due-hunts), [close_hunt(bigint)](#fn-close-hunt-bigint), [close_weekly_boss()](#fn-close-weekly-boss), [combat_absorb(integer,integer)](#fn-combat-absorb-integer-integer), [combat_aff_scale(integer)](#fn-combat-aff-scale-integer), [combat_area_roll(numeric,numeric,numeric)](#fn-combat-area-roll-numeric-numeric-numeric), [combat_burn(numeric)](#fn-combat-burn-numeric), [combat_crit_chance(boolean,text,numeric,jsonb)](#fn-combat-crit-chance-boolean-text-numeric-jsonb), [combat_enemy_act(numeric,numeric,integer,integer,numeric,bigint)](#fn-combat-enemy-act-numeric-numeric-integer-integer-numeric-bigint), [combat_enemy_mult(numeric,integer,numeric,integer,integer,boolean,numeric,boolean)](#fn-combat-enemy-mult-numeric-integer-numeric-integer-integer-boolean-numeric-boolean), [combat_hit(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint)](#fn-combat-hit-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint), [combat_lifesteal(integer,numeric,integer)](#fn-combat-lifesteal-integer-numeric-integer), [combat_miss(boolean)](#fn-combat-miss-boolean), [combat_pool_act(numeric,numeric,integer,integer,numeric,integer,jsonb,boolean)](#fn-combat-pool-act-numeric-numeric-integer-integer-numeric-integer-jsonb-boolean), [combat_regen(bigint)](#fn-combat-regen-bigint), [combat_squad(text[],boolean,jsonb,jsonb)](#fn-combat-squad-text-boolean-jsonb-jsonb), [combat_stun_immune(integer,integer)](#fn-combat-stun-immune-integer-integer), [combat_support_value(text,numeric,numeric,integer)](#fn-combat-support-value-text-numeric-numeric-integer), [combat_thorns(integer)](#fn-combat-thorns-integer), [combat_weak(jsonb,jsonb,text,text,text,text[],integer)](#fn-combat-weak-jsonb-jsonb-text-text-text-text-integer), [daily_raid_board(timestamp with time zone)](#fn-daily-raid-board-timestamp-with-time-zone), [deployable_power(integer)](#fn-deployable-power-integer), [effect_preview(text)](#fn-effect-preview-text), [effect_preview_card(text,integer,jsonb,jsonb)](#fn-effect-preview-card-text-integer-jsonb-jsonb), [element_aliases()](#fn-element-aliases), [element_of(text)](#fn-element-of-text), [hunt_attack(text,bigint,bigint)](#fn-hunt-attack-text-bigint-bigint), [hunt_boss_move_list(text)](#fn-hunt-boss-move-list-text), [hunt_card_cap()](#fn-hunt-card-cap), [hunt_combat_stats(bigint)](#fn-hunt-combat-stats-bigint), [hunt_commit_card(bigint,text,bigint,date,integer)](#fn-hunt-commit-card-bigint-text-bigint-date-integer), [hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)](#fn-hunt-counter-act-bigint-text-date-bigint-integer-numeric-numeric-text-text-integer-integer-integer-numeric), [hunt_counter_cd(bigint,text,date,text,integer,integer)](#fn-hunt-counter-cd-bigint-text-date-text-integer-integer), [hunt_counter_hit(bigint,text,date,bigint,integer,boolean)](#fn-hunt-counter-hit-bigint-text-date-bigint-integer-boolean), [hunt_counter_mult(text)](#fn-hunt-counter-mult-text), [hunt_counter_num(text,text)](#fn-hunt-counter-num-text-text), [hunt_counter_pick(bigint,text,date,text,text)](#fn-hunt-counter-pick-bigint-text-date-text-text), [hunt_counter_text(text)](#fn-hunt-counter-text-text), [hunt_counter_tick(bigint,text,date,bigint,integer)](#fn-hunt-counter-tick-bigint-text-date-bigint-integer), [hunt_damage_reconcile(bigint)](#fn-hunt-damage-reconcile-bigint), [hunt_fight_summary()](#fn-hunt-fight-summary), [hunt_leaderboard(bigint,integer)](#fn-hunt-leaderboard-bigint-integer), [hunt_mark_on(jsonb,text,integer)](#fn-hunt-mark-on-jsonb-text-integer), [hunt_marks_patch(bigint,text,date,jsonb)](#fn-hunt-marks-patch-bigint-text-date-jsonb), [hunt_mt_slot(text,timestamp with time zone)](#fn-hunt-mt-slot-text-timestamp-with-time-zone), [hunt_next_mt(integer,integer,timestamp with time zone)](#fn-hunt-next-mt-integer-integer-timestamp-with-time-zone), [hunt_round_cap()](#fn-hunt-round-cap), [hunt_squad_allows(bigint,text,date,bigint)](#fn-hunt-squad-allows-bigint-text-date-bigint), [hunt_squad_cards(bigint,text,date,bigint)](#fn-hunt-squad-cards-bigint-text-date-bigint), [hunt_squad_done(bigint,text,date,integer)](#fn-hunt-squad-done-bigint-text-date-integer), [hunt_state_round(bigint,text,date)](#fn-hunt-state-round-bigint-text-date), [hunt_support(text,bigint,bigint,bigint)](#fn-hunt-support-text-bigint-bigint-bigint), [hunt_view(text,bigint,date)](#fn-hunt-view-text-bigint-date), [lock_hunt_squad(text,bigint,bigint[])](#fn-lock-hunt-squad-text-bigint-bigint), [next_hunt_close()](#fn-next-hunt-close), [next_hunt_spawn()](#fn-next-hunt-spawn), [nudge_hunt()](#fn-nudge-hunt), [play_card_effect(text,bigint,text)](#fn-play-card-effect-text-bigint-text), [play_card_effect_choice(text,bigint,text,integer)](#fn-play-card-effect-choice-text-bigint-text-integer), [refund_card_play(bigint,text)](#fn-refund-card-play-bigint-text), [settle_hunt(bigint)](#fn-settle-hunt-bigint), [spawn_hunt(integer,text)](#fn-spawn-hunt-integer-text), [spawn_weekly_boss()](#fn-spawn-weekly-boss), [take_player_effect(text,text)](#fn-take-player-effect-text-text), [use_effect_charge(text,text)](#fn-use-effect-charge-text-text), [weekly_boss_tick(text)](#fn-weekly-boss-tick-text)
 
 ## Tables
 
@@ -360,7 +360,7 @@ Table. [hunt] One row per Hunt boss. spawn_hunt writes it. hunt_attack and hunt_
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
 | `id` | bigint | not null | `nextval('hunts_id_seq'::regclass)` | Hunt id. Every hunt_* table and combat_actions.ref_id (mode hunt) point at it. |
-| `name` | text | not null |  | The boss name, a random pick from the fixed list of rigged model bosses in spawn_hunt. hunt_counter_pick uses it to find the boss moves in settings key hunt_boss_moves. |
+| `name` | text | not null |  | The boss name, a random pick from the fixed list of rigged model bosses in spawn_hunt. hunt_counter_pick uses it to find the boss moves in settings key hunt_boss_moves (and its share in balance boss_counters.boss_share). |
 | `tier` | text | not null |  | The boss tier: Normal, Heroic or Mythic (Tier 1, 2, 3). spawn_hunt sets it (random, or the p_tier argument). The HP, ATK, weak points and passives come from the balance keys for this tier. |
 | `weak_points` | jsonb | not null |  | The boss weaknesses: a jsonb array of {kind, value}. spawn_hunt writes kind tag (a tag slug). combat_weak also matches kind type, rarity and season. A matched card deals more damage. |
 | `hp_max` | bigint | not null |  | The boss full HP. spawn_hunt sets it from balance key boss_hp (the tier value, not below the floor). |
@@ -754,6 +754,16 @@ The element of one trait or trait slug (robot or trait:robot -> metal), or null.
 
 [hunt] One attack of a squad card on the Hunt boss, then the boss turn. Writes hunt_hits (the damage), hunt_combat_log (one row per attack) and, for a Hunt Crasher charge, the prankster's hunt_hits share and its combat_actions row (kind effect, effect raid_crasher, result.value = the damage). Rules: combat_core.sql; numbers: public.balance.
 
+<a id="fn-hunt-boss-move-list-text"></a>
+
+### hunt_boss_move_list(text)
+
+- Function: `hunt_boss_move_list(p_boss text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[hunt] The counter moves of one boss for the boss details: [{name, text}] in pool order from settings key hunt_boss_moves, the texts with their numbers from balance boss_counters (hunt_counter_text). [] for a boss with no pool. Called by the Activity (GET /api/hunt). Writes nothing.
+
 <a id="fn-hunt-card-cap"></a>
 
 ### hunt_card_cap()
@@ -792,7 +802,7 @@ The element of one trait or trait slug (robot or trait:robot -> metal), or null.
 - Returns: `jsonb`
 - Security definer: no
 
-[hunt] Applies one counter move by key: damage, marks in hunt_combat_state, shield and HP changes in hunt_card_hp. Returns {key, move, anim, base, dmg, loss, pierce, shield, debuff, heal, targets}. Internal helper of hunt_attack.
+[hunt] Applies one counter move by key: damage, marks in hunt_combat_state, shield and HP changes in hunt_card_hp. Every number is in balance boss_counters.moves (hunt_counter_num). Returns {key, move, anim, base, dmg, loss, pierce, shield, debuff, heal, targets}. Internal helper of hunt_attack.
 
 <a id="fn-hunt-counter-cd-bigint-text-date-text-integer-integer"></a>
 
@@ -814,6 +824,26 @@ The element of one trait or trait slug (robot or trait:robot -> metal), or null.
 
 [hunt] Deals damage to one standing squad card (the shield takes it first unless pierce). Returns {card_id, dmg, hp, max_hp, downed}, or null if the card is down or not in the fight. Internal helper of hunt_counter_act and hunt_counter_tick.
 
+<a id="fn-hunt-counter-mult-text"></a>
+
+### hunt_counter_mult(text)
+
+- Function: `hunt_counter_mult(p_mark text)`
+- Returns: `numeric`
+- Security definer: no
+
+[hunt] The share that a support works at under a counter mark with no mult (Bloodrot heal_block_card, Decay half_heal, Fade half_expose, Rollback half_smite, and older marks): the balance boss_counters value of the move that sets the mark. Alt-F4 and Veil block (0, a rule). Raises for an unknown mark. Internal helper of hunt_support.
+
+<a id="fn-hunt-counter-num-text-text"></a>
+
+### hunt_counter_num(text,text)
+
+- Function: `hunt_counter_num(p_move text, p_field text)`
+- Returns: `numeric`
+- Security definer: no
+
+[hunt] One number of one boss counter move: balance boss_counters.moves.<move>.<field> (raises when it is missing). Used by hunt_counter_act, hunt_counter_mult, hunt_counter_text, hunt_attack and hunt_support.
+
 <a id="fn-hunt-counter-pick-bigint-text-date-text-text"></a>
 
 ### hunt_counter_pick(bigint,text,date,text,text)
@@ -822,7 +852,17 @@ The element of one trait or trait slug (robot or trait:robot -> metal), or null.
 - Returns: `jsonb`
 - Security definer: no
 
-[hunt] Picks a counter move for the boss turn from settings key hunt_boss_moves (the boss move pool and share), or returns null for the usual turn. Also handles the Rubberband mark on a stunned turn. Internal helper of hunt_attack.
+[hunt] Picks a counter move for the boss turn from the boss pool in settings key hunt_boss_moves, with the share and the weights of balance boss_counters, or returns null for the usual turn. Also handles the Rubberband mark on a stunned turn. Internal helper of hunt_attack.
+
+<a id="fn-hunt-counter-text-text"></a>
+
+### hunt_counter_text(text)
+
+- Function: `hunt_counter_text(p_text text)`
+- Returns: `text`
+- Security definer: no
+
+[hunt] Renders a counter move text: each {format:move.field} becomes the balance boss_counters number (pct 10%, n 4, times twice, work / works, plays, cards, hits). Raises on an unknown format. Internal helper of hunt_boss_move_list.
 
 <a id="fn-hunt-counter-tick-bigint-text-date-bigint-integer"></a>
 

@@ -21,7 +21,7 @@ do $g$ begin
   if to_regclass('public.balance') is null then
     raise exception '%: apply balance_table.sql first (these functions read the balance table)', 'combat_core.sql';
   end if;
-  if md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), '')) not in ('f84e5768628b1c4afddb89ecfe96a5ec', '5cfa1a4779226661d56ceda56045b58c') then
+  if md5(replace(pg_get_functiondef('public.hunt_attack'::regproc), chr(13), '')) not in ('f84e5768628b1c4afddb89ecfe96a5ec', 'ca913fda0dbc186723793afac8570779') then
     raise exception 'combat_core.sql: the live hunt_attack changed since this file was built. Rebuild from the live text.';
   end if;
   if md5(replace(pg_get_functiondef('public.hunt_support'::regproc), chr(13), '')) not in ('beb6c2738ef2b0966054234c13fa1085', 'ef5d2c1a5eb74bf430cd2ddce1c7af84') then
@@ -29,6 +29,7 @@ do $g$ begin
   end if;
 end $g$;
 -- 2026-10-07 (damage_log.sql): hunt_attack is the live text + the Hunt Crasher log row (md5 5cfa1a47...); the guard accepts that result.
+-- 2026-10-07 (hunt_counter_balance.sql): Counter-pick and Demotion read balance boss_counters (md5 ca913fda...); the guard accepts that result (the same text below).
 -- GUARD-END
 
 -- ---- The attack ---------------------------------------------------------------------------------------
@@ -488,13 +489,13 @@ begin
     v_cardhp := least(v_maxhp, v_cardhp + v_heal);
   end if;
   -- Counter marks on this attack (hunt_boss_moves.sql): Counter-pick (an empowered attack hurts the attacker by the
-  -- bonus) and Demotion (an attack on an exposed boss sends 20% back).
+  -- bonus x counterpick.x) and Demotion (an attack on an exposed boss sends demotion.back back): balance boss_counters.
   if v_dmg > 0 and v_buff > 1 and hunt_mark_on(v_marks, 'counterpick', v_round) then
-    v_cardhp := greatest(0, v_cardhp - greatest(1, round(2 * v_dmg * (v_buff - 1) / v_buff))::int);   -- twice the bonus
+    v_cardhp := greatest(0, v_cardhp - greatest(1, round(hunt_counter_num('counterpick', 'x') * v_dmg * (v_buff - 1) / v_buff))::int);
   end if;
   if v_dmg > 0 and v_exp_until >= v_round and v_expose > 0 and hunt_mark_on(v_marks, 'demotion', v_round)
      and not hunt_mark_on(v_marks, 'block_expose', v_round) then
-    v_cardhp := greatest(0, v_cardhp - greatest(1, round(v_dmg * 0.2))::int);
+    v_cardhp := greatest(0, v_cardhp - greatest(1, round(v_dmg * hunt_counter_num('demotion', 'back')))::int);
   end if;
   v_ubuff := v_buff;   -- the empower this attack used (Tier List)
   v_buff := 1;
@@ -512,7 +513,7 @@ begin
     v_bmult := combat_enemy_mult(v_enrage, v_enr_until,
       case when hunt_mark_on(v_marks, 'block_weaken', v_round) then 0 else v_weaken end,   -- Alt-F4 (hunt_boss_moves.sql)
       v_wk_until, v_round, 'volatile' = any(v_plist), v_lost, 'frenzied' = any(v_plist));
-    if hunt_mark_on(v_marks, 'spiral', v_round) then   -- Rage Spiral: +20% for each weaken played
+    if hunt_mark_on(v_marks, 'spiral', v_round) then   -- Rage Spiral: + spiral.step for each weaken played
       v_bmult := v_bmult * (1 + coalesce((v_marks->'spiral'->>'bonus')::numeric, 0));
     end if;
     v_bheal := 0;
@@ -527,7 +528,7 @@ begin
     v_act := combat_enemy_act(v_atk, v_bmult, v_round, v_stun_until, v_lost, v_share);
     v_bossact := v_act->>'action'; v_cdmg := (v_act->>'dmg')::int; v_area := (v_act->>'area')::numeric;
     v_bheal := v_bheal + (v_act->>'heal')::int;
-    -- A counter move (hunt_boss_moves.sql): 40% of the normal turns of a boss with a move pool. An effect move comes on
+    -- A counter move (hunt_boss_moves.sql): a share of the normal turns of a boss with a move pool (balance boss_counters). An effect move comes on
     -- top of the usual turn (base); a hit move replaces it.
     v_pick := hunt_counter_pick(p_hunt, p_player, v_day, v_bname, v_bossact);
     if v_pick is not null then
