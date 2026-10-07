@@ -144,6 +144,9 @@
   --dock-bar-h: 3px; /* Dock/button active bar height */
   --menu-tile: 88px; /* MenuTile (UI-60 menu grid) */
   --coin: 20px; /* The Shards coin in the top bar pill */
+  --corner-w: 120px; /* The Discord corner zone width, top right (2.3, G-013) */
+  --corner-h: 60px; /* The Discord corner zone height, top right (2.3, G-013) */
+  --sa-guess-top: 48px; /* The portrait top inset guess (2.3): Discord sent 48 on 4 phones (mobile-log, 2026-10-07) */
   --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-num: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;

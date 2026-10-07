@@ -47,8 +47,14 @@ test('touch targets count on touch sizes only', () => {
   assert.equal(defectsOf(r, null).length, 0);
 });
 test('owners: the shell and the sub-tabs have their own IDs', () => {
-  assert.equal(ownerOf('dungeon', '#topbar > #shopBtn'), 'UI-01');
+  assert.equal(ownerOf('dungeon', '#topbar > #shopBtn'), 'UI-42');
+  assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Shards'), 'UI-42');
+  assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Avatar.v2-avatar'), 'UI-01');
+  assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #menuBtn.u3-ibtn'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
+  assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
+  assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
 });

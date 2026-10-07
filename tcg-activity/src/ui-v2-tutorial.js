@@ -16,7 +16,8 @@ export const STEPS = [
   { key: 'collection', target: "#dock .dk[data-view='collection']", title: 'Your collection', text: 'Tap Ascend on a card to spend spare copies on a star, up to 5. Each star gives 3 stat points.' },
   { key: 'hunt', target: "#dock .dk[data-view='battling']", title: 'The Raid Boss', text: 'A new boss every Thursday at 3 PM MT. Attack with up to 8 cards a day until Monday 5 PM MT. Hunters share the packs.' },
   { key: 'community', target: "#dock .dk[data-view='trading']", title: 'Boons and pranks', text: 'Boons help a friend. Pranks mess with them. Some cards block or bounce pranks back.' },
-  { key: 'dailies', target: '#dailyBtn', title: 'Dailies', text: 'Earn up to 5 packs a day by playing. The red number shows what you can claim.' },
+  // The v3 shell keeps Dailies in the menu (UI-60): then the step points at the Menu button.
+  { key: 'dailies', target: ['#dailyBtn', '#menuBtn'], title: 'Dailies', text: 'Earn up to 5 packs a day by playing. The red number shows what you can claim.' },
   { key: 'voice', target: '#homeVoice', title: 'Play together', text: 'Open the game in a voice channel to see your friends play live.' },
 ];
 

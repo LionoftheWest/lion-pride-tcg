@@ -6605,6 +6605,7 @@
    "status": 200,
    "body": {
     "uiV2": true,
+    "uiV3": true,
     "mobile": true,
     "trade2": true,
     "hall": true,
