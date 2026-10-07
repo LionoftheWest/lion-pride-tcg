@@ -9,7 +9,7 @@ Members, the Dailies, the bell notes, reports, the balance numbers, the flags an
 
 Tables (12): [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [voice_minutes](#table-voice-minutes)
 
-Functions (28): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_economy()](#fn-balance-check-economy), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
+Functions (29): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
 
 ## Tables
 
@@ -293,6 +293,16 @@ Adds 1 voice minute today to each given member who has a players row. The bot (v
 - Security definer: no
 
 Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
+
+<a id="fn-balance-check-dungeon"></a>
+
+### balance_check_dungeon()
+
+- Function: `balance_check_dungeon()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.shards, chest.card_chance and offers heal / buff / shards / ward / revive must be 5 numbers (tier 1 to 5), tier_weights must add up to more than 0, the Shards whole numbers, chest.card_chance and door.gamble_rare at most 1, door.rare_tier and offers.min_tier whole numbers from 1 to 5. (balance_check keeps every leaf and its type, so boss_hp_estimate keeps its 4 numbers.)
 
 <a id="fn-balance-check-economy"></a>
 
