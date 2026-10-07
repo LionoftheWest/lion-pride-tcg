@@ -19,6 +19,7 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { REPORTS_ON, registerReportRoutes } from './reports.js';
+import { createLogs, clientInfo, newTutorialSteps, registerLogRoutes } from './logs.js';
 import { createImgCache, normalizeImgUrl } from './img-cache.js';
 import { clientIp, createLimiter, createWhoAmI } from './guards.js';
 import { createBalance, ascendCost as costOf, dailyCardCap, publicBalance } from './balance.js';
@@ -134,6 +135,8 @@ const cardForClient = (c) => ({
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
+// The app logs (logs.js): visits, screen views, walkthrough steps. Flag FEATURE_APP_LOGS; LOADTEST never writes.
+const appLogs = createLogs({ supabase, loadtest: process.env.LOADTEST === '1' });
 
 const app = express();
 app.disable('x-powered-by');
@@ -195,6 +198,8 @@ app.use('/api', async (req, res, next) => {
   if (me && !readLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   next();
 });
+// The app logs (logs.js, logs_app.sql; flag FEATURE_APP_LOGS): the screen views of the data routes below, POST /api/view.
+registerLogRoutes(app, { caller, rateLimit, logs: appLogs });
 
 // Card-art proxy: stream a Supabase storage object through this server. This replaces
 // Discord's flaky /cdn image proxy. Only the public card-art storage path is allowed.
@@ -410,6 +415,9 @@ app.get('/api/flags', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const welcomed = await ensurePlayerRow(me).catch(() => false);
   lptcgRole(me.id); // the LPTCG role at login (the bot gives it once)
+  // The visit with the client hints (?platform=&w=&h=, when the client sends them): written at once, past the 5-minute step.
+  // A new member's first call came before the players row, so the login writes the visit too.
+  if (welcomed || req.query.platform || req.query.w) appLogs.session(me.id, clientInfo(req, { hints: true }), { force: true });
   const hash = me.avatar || null;
   if (hash && avatarHash.get(String(me.id))?.hash !== hash) {
     avatarHash.set(String(me.id), { hash, at: Date.now() });
@@ -433,7 +441,7 @@ app.post('/api/tutorial', async (req, res) => {
   if (action === 'finish') {
     const { data, error } = await supabase.rpc('claim_tutorial_reward', { p_player: id });
     if (error) return res.status(500).json({ error: error.message });
-    if (data?.ok) bustUser(me.id);
+    if (data?.ok) { bustUser(me.id); appLogs.tutorialStep(id, 'finished'); }
     return res.json(data);
   }
   const { data: row } = await supabase.from('players').select('tutorial').eq('id', id).maybeSingle();
@@ -447,6 +455,7 @@ app.post('/api/tutorial', async (req, res) => {
   else return res.status(400).json({ error: 'bad action' });
   const { error } = await supabase.from('players').update({ tutorial: next }).eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
+  for (const step of newTutorialSteps(t, next, action)) appLogs.tutorialStep(id, step); // tutorial_steps (logs.js)
   res.json({ ok: true, tutorial: next });
 });
 
@@ -1691,10 +1700,12 @@ app.post('/api/gift', async (req, res) => {
 
 // Verify the caller from the Bearer token; returns the Discord user or null.
 async function caller(req) {
-  return whoAmI((req.headers.authorization || '').replace(/^Bearer\s+/i, ''), clientIp(req));
+  const me = await whoAmI((req.headers.authorization || '').replace(/^Bearer\s+/i, ''), clientIp(req));
+  if (me) appLogs.session(me.id, () => clientInfo(req)); // the visit (app_sessions), at most every 5 minutes
+  return me;
 }
 registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg, getBalance });
-registerReportRoutes(app, { supabase, caller, rateLimit });
+registerReportRoutes(app, { supabase, caller, rateLimit, targets: appLogs.on }); // targets: player_reports.target_id (logs_app.sql)
 registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn: hallPostsOn });
 registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn });
 registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn });
@@ -1922,7 +1933,8 @@ app.post('/api/notifications/read', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
-  await supabase.from('notifications').update({ read: true }).eq('player_id', me.id).eq('read', false);
+  // read_at (logs_app.sql) only with the app logs on: the column comes with that migration.
+  await supabase.from('notifications').update(appLogs.on ? { read: true, read_at: new Date().toISOString() } : { read: true }).eq('player_id', me.id).eq('read', false);
   res.json({ ok: true });
 });
 

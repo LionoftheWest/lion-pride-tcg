@@ -150,9 +150,9 @@ a one-time grant or a settings value would run again.
 - `special_cards_never_in_packs.sql`: cards
 - `ui_v3_flag.sql`: settings
 
-## No change (19)
+## No change (20)
 
-`achievement_rewards.sql`, `admin_read.sql`, `backup_role.sql`, `card_tags.sql`, `combat_core.sql`, `db_comments.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `lockdown_grants.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`
+`achievement_rewards.sql`, `admin_read.sql`, `backup_role.sql`, `card_tags.sql`, `combat_core.sql`, `db_comments.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`
 
 ## Live functions that no file gives (1)
 

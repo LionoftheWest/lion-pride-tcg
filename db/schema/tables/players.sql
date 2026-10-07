@@ -18,7 +18,9 @@ create table public.players (
   stat_reset_week text,
   notify_prefs jsonb default '{}'::jsonb not null,
   tutorial jsonb default '{}'::jsonb not null,
-  shard_balance integer default 0 not null
+  shard_balance integer default 0 not null,
+  guild_joined_at timestamp with time zone,
+  left_guild_at timestamp with time zone
 );
 
 -- @constraints
