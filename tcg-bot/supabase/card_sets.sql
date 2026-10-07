@@ -1,16 +1,21 @@
 -- Card sets (Nathan, 2026-10-07; docs/design.md Appendix A D-80 to D-84).
 --   D-80 One pack balance: players.pack_balance stays one count; the member chooses the set when opening.
 --   D-81 Old sets stay pullable (Season 1 stays after Season 2 releases): card_sets.pullable.
+--   D-102 The first set is named "Origins". D-103 A set and a season are separate: a season holds one or more
+--      sets. card_sets.season (S1 -> 1); card_sets.code = letters of the name ('ORI'), unique; the card label is
+--      code + number ("ORI · #014").
 --   D-82 Same odds: every set uses the one balance row 'pulls' (no per-set odds here).
 --   D-83 The set code on the card ("S2 · #014"): cards.set_id + cards.set_number, fixed once assigned.
 --   D-84 Rewards (Dungeon, Shop) keep drawing from every pullable set; only packs choose a set.
 --
 -- The design:
---   1. card_sets: one row per set (S1 = 'Season 1').
---   2. cards.set_id is the one source of the set of a card. cards.season stays as a copy of the set name
---      (the Activity, the Hunt weak points 'season' and the studio read it); the trigger cards_set_rules
---      keeps it equal to card_sets.name, so the two can never disagree. A writer that sends only a season
---      (old code) gets the set with that name; no season and no set = S1 (the old || 'Season 1' default).
+--   1. card_sets: one row per set. S1 = 'Origins', code 'ORI', season 1. The id 'S1' stays as the stable key
+--      (cards.set_id, pack_ledger.set_id, players.last_open_set point at it); the members see name and code.
+--   2. cards.set_id is the one source of the set of a card. cards.season stays as 'Season ' || the season of
+--      the set (the Activity, the Hunt weak points 'season', the achievement tag badges and the studio read
+--      it: 'Season 1' for every existing card, unchanged); the trigger cards_set_rules keeps it so. A writer
+--      that sends only a season (old code) gets the one set of that season (several sets: refused, send
+--      set_id); no season and no set = Season 1 (the old || 'Season 1' default).
 --   3. cards.set_number: the number in the set, assigned once by the database from card_sets.last_number
 --      (a counter, so the number of a deleted card is never given again). The backfill uses the order that
 --      the browser uses today (tcg-activity/src/ui-v2.js mergedCards: per season, in catalog order =
@@ -47,7 +52,7 @@ alter table public.cards add column if not exists season text;
 -- 2. The sets ----------------------------------------------------------------------------------------
 create table if not exists public.card_sets (
   id text primary key check (id ~ '^[A-Z0-9]{1,8}$'),
-  name text not null unique,
+  name text not null unique,               -- D-102 'Origins'
   code text not null unique check (code ~ '^[A-Z0-9]{1,8}$'),
   released_at timestamptz,
   pullable boolean not null default true,
@@ -59,9 +64,27 @@ revoke all on public.card_sets from anon, authenticated;
 -- D-90 (section 3b): the pack color of each set (required) and the pack artwork (for later).
 alter table public.card_sets add column if not exists pack_color text;
 alter table public.card_sets add column if not exists pack_art_url text;
-insert into public.card_sets (id, name, code, released_at, sort, pack_color)
-  values ('S1', 'Season 1', 'S1', (select min(created_at) from public.cards), 1, '#ff8d4d')
+-- D-103: the season of the set (a season holds one or more sets).
+alter table public.card_sets add column if not exists season integer;
+insert into public.card_sets (id, name, code, released_at, sort, pack_color, season)
+  values ('S1', 'Origins', 'ORI', (select min(created_at) from public.cards), 1, '#ff8d4d', 1)
   on conflict (id) do nothing;
+alter table public.card_sets alter column season set not null;
+do $q$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'card_sets_season_positive') then
+    alter table public.card_sets add constraint card_sets_season_positive check (season > 0);
+  end if;
+end $q$;
+-- The season number in a cards.season text: 'Season 3' -> 3; '' or null = Season 1; any other text -> null.
+create or replace function public.season_number(p_season text)
+ returns integer
+ language sql
+ immutable
+ set search_path to 'public'
+as $function$
+  select substring(coalesce(nullif(p_season, ''), 'Season 1') from '^Season ([0-9]+)$')::int;
+$function$;
 
 -- 3. cards.set_id and cards.set_number -----------------------------------------------------------------
 alter table public.cards add column if not exists set_id text references public.card_sets(id);
@@ -69,21 +92,21 @@ alter table public.cards add column if not exists set_number integer;
 -- The trigger goes first (it is created again below), so the backfill runs without it.
 drop trigger if exists cards_set_rules on public.cards;
 
--- Every season in use must have its set; else stop before anything is half done.
+-- Every season in use must have exactly one set; else stop before anything is half done.
 do $s$
 declare v text;
 begin
   select string_agg(distinct coalesce(nullif(c.season, ''), 'Season 1'), ', ') into v
     from public.cards c
    where c.set_id is null
-     and not exists (select 1 from public.card_sets s where s.name = coalesce(nullif(c.season, ''), 'Season 1'));
-  if v is not null then raise exception 'card_sets.sql: no card_sets row for the season(s) %: add the set first', v; end if;
+     and (select count(*) from public.card_sets s where s.season = public.season_number(c.season)) <> 1;
+  if v is not null then raise exception 'card_sets.sql: the season(s) % must have exactly one card_sets row for the backfill', v; end if;
 end $s$;
 
--- The set of each card: the set with its season name ('' or null = Season 1, as the browser does).
+-- The set of each card: the one set of its season ('' or null = Season 1, as the browser does).
 update public.cards c set set_id = s.id
   from public.card_sets s
- where c.set_id is null and s.name = coalesce(nullif(c.season, ''), 'Season 1');
+ where c.set_id is null and s.season = public.season_number(c.season);
 
 -- The number: the browser order (ui-v2.js mergedCards: a counter per season over the catalog in id order).
 -- Only cards with no number; they come after the numbers that the set already gave (none on the first run).
@@ -93,8 +116,8 @@ with n as (
    where c.set_number is null)
 update public.cards c set set_number = n.num from n where n.id = c.id;
 update public.card_sets s set last_number = greatest(s.last_number, coalesce((select max(set_number) from public.cards c where c.set_id = s.id), 0));
--- The season copy follows the set name.
-update public.cards c set season = s.name from public.card_sets s where s.id = c.set_id and c.season is distinct from s.name;
+-- The season copy follows the season of the set ('Season 1' for every existing card: no reader sees a change).
+update public.cards c set season = 'Season ' || s.season from public.card_sets s where s.id = c.set_id and c.season is distinct from 'Season ' || s.season;
 
 alter table public.cards alter column set_id set not null;
 alter table public.cards alter column set_number set not null;
@@ -110,8 +133,9 @@ end $k$;
 create index if not exists cards_set_id_idx on public.cards (set_id);
 
 -- The rules of a card's set (BEFORE INSERT / UPDATE):
---   - an insert with no set_id: the set with the season name (no season = Season 1); an unknown name is refused;
---   - season is always the set name (a write of season alone changes nothing);
+--   - an insert with no set_id: the one set of that season (no season = Season 1); no set or several sets in
+--     that season, or a text that is not 'Season <n>', is refused;
+--   - season is always 'Season ' || the season of the set (a write of season alone changes nothing);
 --   - a new card, or a card that moves to another set, gets the next number of its set (card_sets.last_number;
 --     the row lock on the set serializes two inserts at the same time);
 --   - set_number is fixed: a direct change is refused.
@@ -120,14 +144,15 @@ create or replace function public.cards_set_rules()
  language plpgsql
  set search_path to 'public'
 as $function$
+declare v_n int;
 begin
   if tg_op = 'INSERT' and new.set_id is null then
-    select id into new.set_id from card_sets where name = coalesce(nullif(new.season, ''), 'Season 1');
-    if new.set_id is null then
-      raise exception 'cards: no set has the season name % (send set_id, or add the card_sets row)', new.season using errcode = 'check_violation';
+    select min(id), count(*) into new.set_id, v_n from card_sets where season = season_number(new.season);
+    if v_n <> 1 then
+      raise exception 'cards: the season % has % sets (send set_id)', coalesce(new.season, 'null'), v_n using errcode = 'check_violation';
     end if;
   end if;
-  new.season := coalesce((select name from card_sets where id = new.set_id), new.season);
+  new.season := coalesce((select 'Season ' || season from card_sets where id = new.set_id), new.season);
   if tg_op = 'INSERT' or new.set_id is distinct from old.set_id then
     update card_sets set last_number = last_number + 1 where id = new.set_id returning last_number into new.set_number;
   elsif new.set_number is distinct from old.set_number then
@@ -144,7 +169,8 @@ create trigger cards_set_rules before insert or update of set_id, set_number, se
 --      card to another set. A deleted cover card leaves the set with no cover (set null on cover_card_id only).
 -- D-90 The pack of each set has its own color (pack_color, required: a new set must choose one) and, later,
 --      its own artwork (pack_art_url, nullable). S1 = the orange of today's pack: #ff8d4d, the median of the
---      orange swirl pixels of tcg-activity/public/pack_still.png (the pack image of the Open screen,
+--      orange swirl pixels of tcg-activity/public/pack_still.png. D-105: the same color is the outline of
+--      the text on the pack (one column) (the pack image of the Open screen,
 --      tcg-activity/src/main.js packImg).
 -- D-85 The Open window preselects the set the member opened last: players.last_open_set (open_packs with a
 --      set writes it). First visit: the newest pullable set (pullable_sets).
@@ -274,7 +300,7 @@ as $function$
          where pc.player_id = p_player and pc.quantity > 0 group by d.set_id)
   select jsonb_build_object(
     'sets', coalesce((select jsonb_agg(jsonb_build_object(
-        'id', s.id, 'name', s.name, 'code', s.code, 'released_at', s.released_at,
+        'id', s.id, 'name', s.name, 'code', s.code, 'season', s.season, 'released_at', s.released_at,
         'is_new', s.id = (select id from newest) and (select count(*) from s) > 1,
         'cards', coalesce(n.cards, 0), 'owned', coalesce(o.owned, 0),
         'cover_card_id', s.cover_card_id, 'cover_image_url', c.image_url,
@@ -289,6 +315,8 @@ $function$;
 revoke execute on function public.open_packs(text, bigint[], integer, text) from public, anon, authenticated;
 revoke execute on function public.pullable_sets(text) from public, anon, authenticated;
 revoke execute on function public.cards_set_rules() from public, anon, authenticated;
+revoke execute on function public.season_number(text) from public, anon, authenticated;
+grant execute on function public.season_number(text) to service_role;
 grant execute on function public.open_packs(text, bigint[], integer, text) to service_role;
 grant execute on function public.pullable_sets(text) to service_role;
 grant select on public.card_sets, public.draw_pool to service_role;
@@ -297,23 +325,36 @@ grant select on public.card_sets, public.draw_pool to service_role;
 comment on table public.card_sets is
   '[cards] One row per card set (D-80 to D-84). A pack opens from one set (open_packs with p_set); the reward draws use every pullable set (draw_pool).';
 comment on column public.card_sets.id is 'The set id (cards.set_id), for example S1.';
-comment on column public.card_sets.name is 'The display name, for example Season 1. cards.season is a copy of it (cards_set_rules).';
-comment on column public.card_sets.code is 'The code shown on a card with its number, for example "S1 · #014" (D-83).';
+comment on column public.card_sets.name is 'The set name the members see (D-102: S1 = Origins).';
+comment on column public.card_sets.season is 'D-103: the season of the set (a season holds one or more sets). cards.season = ''Season '' || this (cards_set_rules).';
+comment on function public.season_number(text) is 'The season number in a cards.season text: ''Season 3'' -> 3, '''' or null -> 1, any other text -> null.';
+comment on column public.card_sets.code is 'D-103: letters from the set name, unique, shown on a card with its number, for example "ORI · #014" (D-83).';
 comment on column public.card_sets.released_at is 'When the set was released (information for the Open screen; it does not gate the draws).';
 comment on column public.card_sets.pullable is 'true = packs and rewards can give its cards (draw_pool). D-81: an old set stays pullable.';
 comment on column public.card_sets.sort is 'The order of the sets on the Open screen (pullable_sets).';
+comment on column public.card_sets.created_at is 'When the set row was made.';
+comment on column public.draw_pool.id is 'The card id (cards.id).';
+comment on column public.draw_pool.subject_id is 'The subject of the card (cards.subject_id).';
+comment on column public.draw_pool.name is 'The card name (cards.name).';
+comment on column public.draw_pool.rarity is 'The card rarity (cards.rarity); the pack draw groups the pool by it.';
+comment on column public.draw_pool.source is 'Always draw here (cards.source).';
+comment on column public.draw_pool.image_url is 'The card image (cards.image_url).';
+comment on column public.draw_pool.artist_credit is 'The artist (cards.artist_credit).';
+comment on column public.draw_pool.lore is 'The card text (cards.lore).';
+comment on column public.draw_pool.set_id is 'The set of the card (cards.set_id); a pack from a set filters on it.';
+comment on column public.draw_pool.set_number is 'The number of the card in its set (cards.set_number).';
 comment on column public.card_sets.last_number is 'The last set_number given in this set. cards_set_rules adds 1 for each new card, so a number is never given twice.';
-comment on column public.cards.season is 'The set name (a copy of card_sets.name for set_id, kept by cards_set_rules). Read by the Activity, the Hunt weak points and the studio.';
+comment on column public.cards.season is '''Season '' || card_sets.season of set_id (kept by cards_set_rules). Read by the Activity, the Hunt weak points, the achievement tag badges and the studio.';
 comment on column public.cards.set_id is 'The set of the card (card_sets.id): the one source. A pack from a set draws only its cards.';
 comment on column public.cards.set_number is 'The number of the card in its set ("S1 · #014"), given once by cards_set_rules; it never changes.';
 comment on column public.pack_ledger.set_id is 'For an open: the set the member chose (open_packs with p_set). null = an open with no set (every pullable set) or not an open.';
 comment on view public.draw_pool is 'The cards a draw can give: in the draw pool, source draw, and the set is pullable. The bot pack draw, dungeon_card_of (Dungeon chests and loot, Dungeon / Gauntlet prizes) and shop_pick_stock read it.';
 comment on function public.open_packs(text, bigint[], integer, text) is 'Opens up to 10 packs from one set: the set must be pullable and each card in its draw pool (else an error). Then the same as open_packs(text, bigint[], integer), with the set on the pack_ledger rows. Returns the packs opened.';
-comment on function public.pullable_sets(text) is 'The Open screen in one statement: {sets: [id, name, code, released_at, is_new, cards (a pack of the set can give), owned (of those, by the member), cover_card_id, cover_image_url, pack_color, pack_art_url], last_set (D-85)}.';
+comment on function public.pullable_sets(text) is 'The Open screen in one statement: {sets: [id, name, code, season, released_at, is_new, cards (a pack of the set can give), owned (of those, by the member), cover_card_id, cover_image_url, pack_color, pack_art_url], last_set (D-85)}.';
 comment on column public.card_sets.cover_card_id is 'D-86: the picture of the set, a card of the set itself (card_sets_cover_in_set refuses a card of another set). null = no cover.';
-comment on column public.card_sets.pack_color is 'D-90: the color of the pack of the set (#rrggbb). S1 #ff8d4d = the orange of tcg-activity/public/pack_still.png.';
+comment on column public.card_sets.pack_color is 'D-90: the color of the pack of the set (#rrggbb). D-105: also the outline color of the text on the pack (one color, one column). S1 #ff8d4d = the orange of tcg-activity/public/pack_still.png.';
 comment on column public.card_sets.pack_art_url is 'D-90: the pack artwork of the set, for later. null = the color only.';
 comment on column public.players.last_open_set is 'D-85: the set of the member''s last open with a set (open_packs with p_set). The Open window preselects it.';
-comment on function public.cards_set_rules() is 'Trigger on cards: the set from the season name when no set_id is sent, season = the set name, the next set_number for a new card or a card that moves set, and no direct change of set_number.';
+comment on function public.cards_set_rules() is 'Trigger on cards: the one set of the season when no set_id is sent, season = ''Season '' || the set season, the next set_number for a new card or a card that moves set, and no direct change of set_number.';
 
 notify pgrst, 'reload schema';
