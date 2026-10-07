@@ -9,7 +9,7 @@ Members, the Dailies, the bell notes, reports, the balance numbers, the flags an
 
 Tables (12): [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [voice_minutes](#table-voice-minutes)
 
-Functions (31): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [game_day(timestamp with time zone)](#fn-game-day-timestamp-with-time-zone), [game_day_start(date)](#fn-game-day-start-date), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
+Functions (32): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_check_settings()](#fn-balance-check-settings), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [game_day(timestamp with time zone)](#fn-game-day-timestamp-with-time-zone), [game_day_start(date)](#fn-game-day-start-date), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
 
 ## Tables
 
@@ -22,7 +22,7 @@ Table. One row per game number (key) that changes card power, combat or rewards.
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
 | `key` | text | not null |  | The name of the number. The primary key. A key cannot be deleted (balance_check), because the game reads it. |
-| `value` | jsonb | not null |  | The number or the jsonb object of numbers. balance_check refuses a negative number and an update that removes a leaf or changes its type. balance_check_economy checks pulls and daily. |
+| `value` | jsonb | not null |  | The number or the jsonb object of numbers. balance_check refuses a negative number and an update that removes a leaf or changes its type. balance_check_economy checks pulls and daily, balance_check_dungeon checks dungeon_rewards, balance_check_settings checks dungeon, gauntlet, adventure_gate and dungeon_rewards.chest_rarity. |
 | `note` | text | not null |  | What the value does, in plain words: the unit, the readers and the rules. The docs page docs/data/balance.md shows it. |
 | `updated_at` | timestamp with time zone | not null | `now()` | When the value last changed. balance_check sets it on each update. |
 | `updated_by` | text | not null | `SESSION_USER` | Who made the last change: balance_who (the setting balance.by, else the session user). balance_check sets it on each update. |
@@ -240,7 +240,7 @@ Table. One row per SQL file applied with card-studio/scripts/apply-sql.mjs. It s
 
 ### settings
 
-Table. One row per feature flag or config value (key, jsonb). Migrations write most rows. Keys: dailies, dungeon, gauntlet, shards, achievement_tracks, ui_v3 (enabled flags), dungeon_prizes, adventure_gate, reports (per_day limit), hunt_attack_feed, hunt_boss_moves, launch_event_cards, discord_immune (the bot writes it).
+Table. One row per feature flag, member list, date or seed (key, jsonb). Every game number (card power, combat, rewards, costs, odds) is in public.balance. Migrations write most rows. Keys: dailies, gauntlet, shards (enabled flags); dungeon (enabled, salt: the seed of the daily dungeon); dungeon_prizes (enabled, from: the first paid day); achievement_tracks, ui_v3 (flags and member lists); reports (per_day: the player report limit); hunt_attack_feed; hunt_boss_moves (the counter-move pools of each boss, with their share and weights); launch_event_cards (the launch event cards and dates); discord_immune (the bot writes it).
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
@@ -313,6 +313,16 @@ Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.
 - Security definer: no
 
 Trigger (before insert, update on balance): the pulls rates must add up to 1, pulls pack_size must be a whole number from 1 to 20, daily streak_cycle must be at least 1.
+
+<a id="fn-balance-check-settings"></a>
+
+### balance_check_settings()
+
+- Function: `balance_check_settings()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (before insert, update on balance): the shapes of the keys dungeon, gauntlet and adventure_gate (balance_settings_numbers.sql) and dungeon_rewards.chest_rarity. dungeon: squad, budget, floors, round_cap and rules.budget whole numbers of at least 1; a cost (a whole number of at least 1) for every card rarity; hp_growth, atk_growth, foe_mult hp / atk above 0 for fight, horde, elite, miniboss, guardian; rest_heal and rest_revive shares from 0 to 1 (rest_revive above 0); rules.boost a number; room_weights numbers for the room types that add up to more than 0. gauntlet: budget a whole number of at least 1; room_weights the same, without treasure (no loot). adventure_gate: attackers a whole number. dungeon_rewards.chest_rarity: tiers 1 to 5, each 3 numbers that add up to more than 0.
 
 <a id="fn-balance-get-text"></a>
 

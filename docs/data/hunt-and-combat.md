@@ -422,7 +422,7 @@ Table. [effects] An effect that waits on or acts on a member in the Activity or 
 - Returns: `jsonb`
 - Security definer: no
 
-[hunt] The unlock gate for the Hunt, Dungeon and Gauntlet: all starter gifts redeemed and enough attacker cards (settings key adventure_gate). Returns {ok, gifts_open, gifts_total, attackers, need}. Called by /api/hunt and the squad and dungeon functions.
+[hunt] The unlock gate for the Hunt, Dungeon and Gauntlet: all starter gifts redeemed and enough attacker cards (balance adventure_gate.attackers). Returns {ok, gifts_open, gifts_total, attackers, need}. Called by /api/hunt and the squad and dungeon functions.
 
 <a id="fn-arm-on-open"></a>
 

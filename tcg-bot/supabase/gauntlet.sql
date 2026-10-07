@@ -18,16 +18,17 @@ begin
   end if;
   -- shard_ledger_strict.sql (2026-10-07) rebuilt the Shard refs: the second md5 of dungeon_settle is its result; dungeon_pay below = the live text.
   -- balance_dungeon_numbers.sql (2026-10-07) moved the chest, door and room-reward numbers to balance: the second md5 of dungeon_offers, dungeon_enter and dungeon_choose is its result (the same text below).
+  -- balance_settings_numbers.sql (2026-10-07) moved the Dungeon and Gauntlet numbers from settings and code to balance: the second md5 of dungeon_enter, dungeon_after_kill, dungeon_start, dungeon_attack and dungeon_view is its result (the same text below; gauntlet_cfg, gauntlet_pool, gauntlet_squad, gauntlet_generate and gauntlet_view below are its text too).
   foreach x slice 1 in array array[['dungeon_offers', 'f683173e2aea7385570805f9f4c118e5', 'd3cf95a36e58db2081ac6a57e63e55a5'],
-    ['dungeon_enter', '8feecf401e00ed762e33125448a2dfff', 'a1c94c659efc65e139ddd42b6a41920b'],
-    ['dungeon_after_kill', '3a1f54b7341b4982fd63e8ac7d94658b', '7089cf3176ce3e6593fc48208b4cdee6'],
+    ['dungeon_enter', '8feecf401e00ed762e33125448a2dfff', '69bf76b64a86b3cd1326ca3ebd81925e'],
+    ['dungeon_after_kill', '3a1f54b7341b4982fd63e8ac7d94658b', 'e095ff553b4897bb1856f6060499103a'],
     ['dungeon_settle', '3ae0933a2aefdb6c53c21c0bc88163d9', '6c71965b6ec5f325566aeb9d65053a9e'],
-    ['dungeon_start', 'bb04624da5692c5d634e988e91e89c9f', 'e952ba662c6903abdbd766629f25a9b4'],
-    ['dungeon_attack', 'c9858340b49c8040414bbe7a9cc976a1', '4c30628c23a9cc1b1fe19619ad63b61f'],
+    ['dungeon_start', 'bb04624da5692c5d634e988e91e89c9f', 'ce4f9a981e635a21b6023e7e04aa5bb1'],
+    ['dungeon_attack', 'c9858340b49c8040414bbe7a9cc976a1', '0d16a49744abd8af83320d0bd70f8105'],
     ['dungeon_support', '2a585109eb24719dbd354e50061967f9', '48559abccd521a049306926bd7044de8'],
     ['dungeon_choose', '4d00387fadf3af14c85e3662f94573a6', '44c889d2b1f0aa70c30e4b7531eb9861'],
     ['dungeon_retreat', '0e0ceb456382ba4bbd1a47e51df5b183', '370d82a58009283e749f5a8d3e89b99a'],
-    ['dungeon_view', 'a63a0710d6f89738a69def51c811b097', 'f6dd1098039c4c09a693f1e39b80250b'],
+    ['dungeon_view', 'a63a0710d6f89738a69def51c811b097', '678207cdfd8f26716f653cea9cd3d23e'],
     ['dungeon_board', '8952252f1741fc5ed771452d7ec5783d', 'e5e302af2f0732b67abb8394d3c071e9']] loop
     select md5(replace(pg_get_functiondef(p.oid), chr(13), '')) into strict m from pg_proc p where p.proname = x[1] and p.pronamespace = 'public'::regnamespace;
     if m not in (x[2], x[3]) then raise exception 'gauntlet.sql: the live % changed since this file was built. Rebuild from the live text.', x[1]; end if;
@@ -57,7 +58,8 @@ insert into public.settings (key, value) values ('dungeon_prizes', jsonb_build_o
 on conflict (key) do nothing;
 
 create or replace function public.gauntlet_cfg() returns jsonb language sql stable set search_path = public as $$
-  select coalesce((select value from settings where key = 'gauntlet'), '{}'::jsonb);
+  -- settings.gauntlet holds the flag only; the numbers are in balance gauntlet (balance_settings_numbers.sql).
+  select coalesce((select value from settings where key = 'gauntlet'), '{}'::jsonb) || balance_get('gauntlet');
 $$;
 
 -- ---- Storage ---------------------------------------------------------------------------------------------
@@ -126,7 +128,7 @@ create or replace function public.gauntlet_pool() returns table (id bigint, ckey
 language sql stable set search_path = public as $$
   select c.id, hashtext(lower(regexp_replace(c.name, '^[^'']*''s[[:space:]]+', '')))::bigint,
          case when s.type in ('Character', 'Creature') then 'attacker' else 'support' end,
-         coalesce((dungeon_cfg()->'cost'->>c.rarity::text)::int, 1), coalesce(s.tag_slugs, '{}'), s.ability->>'affinity'
+         balance_num('dungeon', 'cost', c.rarity::text)::int, coalesce(s.tag_slugs, '{}'), s.ability->>'affinity'
   from cards c join subjects s on s.id = c.subject_id
   where c.source::text not in ('event', 'promo') and c.rarity::text not in ('event', 'promo')
     and (s.type in ('Character', 'Creature') or (s.type is not null and s.ability->>'kind' = 'support'));
@@ -139,9 +141,9 @@ $$;
 -- the same squad. Without a theme, any attackers, and supports that match them where possible.
 create or replace function public.gauntlet_squad(p_week date) returns jsonb
 language plpgsql stable set search_path = public as $$
-declare cfg jsonb := gauntlet_cfg();
+declare
   k text := coalesce(dungeon_cfg()->>'salt', 'lion') || '|gauntlet|' || p_week::text;
-  v_budget int := coalesce((cfg->>'budget')::int, (dungeon_cfg()->>'budget')::int, 12);
+  v_budget int := balance_num('gauntlet', 'budget')::int;   -- balance gauntlet.budget
   th text; pass int; a_id bigint[]; a_key bigint[]; a_cost int[]; a_tags text[]; s_id bigint[]; s_key bigint[]; s_cost int[]; s_aff text[];
   i int; j int; l int; m int; n int; c int; sc int; best int := -1; pick bigint[]; v_tags text[];
 begin
@@ -190,17 +192,17 @@ end $$;
 -- rooms and scaling, no treasure rooms: the Gauntlet has no loot).
 create or replace function public.gauntlet_generate(p_week date) returns gauntlet_weeks
 language plpgsql set search_path = public as $$
-declare cfg jsonb := dungeon_cfg(); gc jsonb := gauntlet_cfg(); k text := coalesce(cfg->>'salt', 'lion') || '|gauntlet|' || p_week::text;
+declare cfg jsonb := dungeon_cfg(); k text := coalesce(cfg->>'salt', 'lion') || '|gauntlet|' || p_week::text;
   v_floors jsonb := '[]'; v_rooms jsonb; v_type text; f int; r int; v_name text; rk text; sq jsonb; w gauntlet_weeks;
   names text[] := array['The Proving Grounds','The Iron Trial','The Long Descent','The Lion''s Gauntlet','The Endless Stair','The Crucible'];
-  wts jsonb := coalesce(gc->'room_weights', '{"fight":40,"horde":14,"elite":12,"miniboss":8,"rest":10,"choice":16}');
+  wts jsonb := balance_get('gauntlet')->'room_weights';   -- balance gauntlet.room_weights (no treasure: no loot)
 begin
   select * into w from gauntlet_weeks where week = p_week;
   if found then return w; end if;
   sq := gauntlet_squad(p_week);
   if sq is null then raise exception 'gauntlet_generate: no squad fits the budget'; end if;
   v_name := names[1 + floor(dungeon_rand(k || '|name') * array_length(names, 1))::int];
-  for f in 1..coalesce((cfg->>'floors')::int, 30) loop
+  for f in 1..balance_num('dungeon', 'floors')::int loop
     v_rooms := '[]';
     for r in 1..5 loop
       rk := k || '|' || f || '|' || r;
@@ -253,7 +255,7 @@ end $$;
 
 create or replace function public.dungeon_enter(p_state jsonb, p_floors jsonb, p_floor int, p_room int) returns jsonb
 language plpgsql volatile set search_path = public as $$
-declare cfg jsonb := dungeon_cfg(); v_room jsonb := p_floors -> (p_floor - 1) -> (p_room - 1); st jsonb := p_state; k text; c jsonb;
+declare v_room jsonb := p_floors -> (p_floor - 1) -> (p_room - 1); st jsonb := p_state; k text; c jsonb;
   v_old int := coalesce((p_state->>'round')::int, 0); v_left int; t int; v_sh int; v_card bigint; doors text[] := case when p_state->>'mode' = 'gauntlet' then array['elite','rest','horde'] else array['elite','rest','treasure','horde','gamble'] end; d jsonb := '[]'; x text;
 begin
   st := st || jsonb_build_object('round', 0, 'room_type', v_room->>'type', 'sup_round', -1) - 'chest' - 'offers';
@@ -275,9 +277,9 @@ begin
     for k in select jsonb_object_keys(st->'cards') loop
       c := st->'cards'->k;
       if (c->>'down')::boolean then
-        c := c || jsonb_build_object('down', false, 'hp', greatest(1, round((c->>'max')::int * coalesce((cfg->>'rest_revive')::numeric, 0.25)))::int);
+        c := c || jsonb_build_object('down', false, 'hp', greatest(1, round((c->>'max')::int * balance_num('dungeon', 'rest_revive')))::int);
       else
-        c := c || jsonb_build_object('hp', least((c->>'max')::int, (c->>'hp')::int + round((c->>'max')::int * coalesce((cfg->>'rest_heal')::numeric, 0.4))::int));
+        c := c || jsonb_build_object('hp', least((c->>'max')::int, (c->>'hp')::int + round((c->>'max')::int * balance_num('dungeon', 'rest_heal'))::int));
       end if;
       st := jsonb_set(st, array['cards', k], c);
     end loop;
@@ -301,16 +303,16 @@ end $$;
 
 create or replace function public.dungeon_after_kill(p_run dungeon_runs, p_state jsonb) returns jsonb
 language plpgsql volatile set search_path = public as $$
-declare cfg jsonb := dungeon_cfg(); st jsonb := p_state; v_card bigint := null; v_cleared boolean; v_last int; v_loot boolean := coalesce(p_state->>'mode', 'daily') <> 'gauntlet';   -- the Gauntlet: no loot
+declare st jsonb := p_state; v_card bigint := null; v_cleared boolean; v_last int; v_loot boolean := coalesce(p_state->>'mode', 'daily') <> 'gauntlet';   -- the Gauntlet: no loot
 begin
   if v_loot then
-    if random() < coalesce((cfg->>'loot_chance')::numeric, 0.06) then v_card := dungeon_card_of(dungeon_drop_rarity(p_run.floor)); end if;
-    st := dungeon_loot(st, coalesce((cfg->>'shards_kill')::int, 1), v_card);
+    if random() < balance_num('dungeon_rewards', 'loot_chance') then v_card := dungeon_card_of(dungeon_drop_rarity(p_run.floor)); end if;
+    st := dungeon_loot(st, balance_num('dungeon_rewards', 'shards_kill')::int, v_card);
   end if;
   v_cleared := not exists (select 1 from jsonb_array_elements(st->'foes') f where (f->>'hp')::int > 0);
   if v_cleared then
     if st->>'room_type' = 'guardian' then
-      if v_loot then st := dungeon_loot(st, coalesce((cfg->>'floor_shards')::int, 10) * p_run.floor, null); end if;
+      if v_loot then st := dungeon_loot(st, balance_num('dungeon_rewards', 'floor_shards')::int * p_run.floor, null); end if;
       -- The floor is done: its loot is banked (safe from now on).
       st := st || jsonb_build_object('floor_loot', st->'pend',
         'bank', jsonb_build_object('shards', coalesce((st->'bank'->>'shards')::int, 0) + coalesce((st->'pend'->>'shards')::int, 0),
@@ -322,7 +324,7 @@ begin
       st := st || jsonb_build_object('phase', 'choose', 'offers', dungeon_offers(st, p_run.floor));
     end if;
   end if;
-  return jsonb_build_object('state', st, 'shards', case when v_loot then coalesce((cfg->>'shards_kill')::int, 1) else 0 end, 'card', v_card, 'cleared', v_cleared);
+  return jsonb_build_object('state', st, 'shards', case when v_loot then balance_num('dungeon_rewards', 'shards_kill')::int else 0 end, 'card', v_card, 'cleared', v_cleared);
 end $$;
 
 create or replace function public.dungeon_settle(p_run_id bigint, p_how text, p_with_pend boolean) returns jsonb
@@ -349,7 +351,7 @@ end $$;
 
 create or replace function public.dungeon_start(p_player text, p_cards bigint[]) returns jsonb
 language plpgsql set search_path = public as $$
-declare cfg jsonb := dungeon_cfg(); v_day date := dungeon_day(); d dungeon_days; g jsonb; v_n int := coalesce((cfg->>'squad')::int, 5);
+declare cfg jsonb := dungeon_cfg(); v_day date := dungeon_day(); d dungeon_days; g jsonb; v_n int := balance_num('dungeon', 'squad')::int;
   v_cost int := 0; v_budget int; c jsonb; v_cards jsonb := '{}'; x bigint; v_att int := 0; v_hp int; st jsonb; v_id bigint; v_sup boolean;
 begin
   if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
@@ -362,13 +364,13 @@ begin
     return jsonb_build_object('ok', false, 'error', 'squad_size', 'need', v_n); end if;
   perform dungeon_generate(v_day);
   select * into d from dungeon_days where day = v_day;
-  v_budget := coalesce((d.rule->>'budget')::int, (cfg->>'budget')::int, 12);
+  v_budget := coalesce((d.rule->>'budget')::int, balance_num('dungeon', 'budget')::int);   -- the day's rule, else balance dungeon.budget
   foreach x in array p_cards loop
     c := dungeon_card(p_player, x);
     if c is null then return jsonb_build_object('ok', false, 'error', 'not_owned', 'card', x); end if;
     if d.rule ? 'types' and not (d.rule->'types' ? (c->>'type')) then return jsonb_build_object('ok', false, 'error', 'rule', 'card', x); end if;
     if d.rule ? 'no_rarity' and (d.rule->'no_rarity' ? (c->>'rarity')) then return jsonb_build_object('ok', false, 'error', 'rule', 'card', x); end if;
-    v_cost := v_cost + coalesce((cfg->'cost'->>(c->>'rarity'))::int, 1);
+    v_cost := v_cost + balance_num('dungeon', 'cost', c->>'rarity')::int;
     v_sup := c->>'type' not in ('Character', 'Creature');
     if not v_sup then v_att := v_att + 1; v_hp := (c->'cmb'->>'hp')::int; else v_hp := card_max_hp(0); end if;
     v_cards := v_cards || jsonb_build_object(x::text, jsonb_build_object('hp', v_hp, 'max', v_hp, 'down', false, 'shield', 0, 'buff', 1, 'debuff', 1, 'cd', 0, 'sup', v_sup));
@@ -400,7 +402,7 @@ begin
   if info->>'type' not in ('Character', 'Creature') then return jsonb_build_object('ok', false, 'error', 'not_attacker'); end if;
   if (c->>'down')::boolean then return jsonb_build_object('ok', false, 'error', 'downed'); end if;
   v_round := (st->>'round')::int;
-  if v_round >= coalesce((cfg->>'round_cap')::int, 40) then
+  if v_round >= balance_num('dungeon', 'round_cap')::int then   -- balance dungeon.round_cap
     perform dungeon_settle(r.id, 'fell', false); return jsonb_build_object('ok', false, 'error', 'round_cap'); end if;
   if (c->>'cd')::int >= v_round + 1 and exists (
       select 1 from jsonb_each(st->'cards') e join cards cc on cc.id = e.key::bigint join subjects s on s.id = cc.subject_id
@@ -619,13 +621,13 @@ begin
   select * into r from dungeon_runs where player_id = p_player and day = v_day and mode = 'daily';
   select (e->>'rank')::int into v_rank from jsonb_array_elements(dungeon_board(v_day, 1000)) e where e->>'player_id' = p_player;
   return jsonb_build_object('ok', true, 'day', v_day, 'next_at', (v_day + 1)::timestamp at time zone 'America/Denver',
-    'name', d->>'name', 'rule', d->'rule', 'budget', coalesce((d->'rule'->>'budget')::int, (cfg->>'budget')::int, 12),
-    'squad', coalesce((cfg->>'squad')::int, 5), 'cost', cfg->'cost', 'gate', adventure_gate(p_player), 'cap', coalesce((cfg->>'run_shards_cap')::int, 300),
+    'name', d->>'name', 'rule', d->'rule', 'budget', coalesce((d->'rule'->>'budget')::int, balance_num('dungeon', 'budget')::int),
+    'squad', balance_num('dungeon', 'squad')::int, 'cost', cfg->'cost', 'gate', adventure_gate(p_player), 'cap', balance_num('dungeon_rewards', 'run_shards_cap')::int,
     'run', case when r.id is null then null else jsonb_build_object('id', r.id, 'status', r.status, 'ended_by', r.ended_by,
       'floor', r.floor, 'room', r.room, 'turns', r.turns, 'shards', r.shards, 'cards', to_jsonb(r.cards), 'squad', to_jsonb(r.squad),
       'state', r.state, 'rank', v_rank) end,
     'mine', (select coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'type', s.type, 'rarity', c.rarity::text,
-               'cost', coalesce((cfg->'cost'->>c.rarity::text)::int, 1), 'cp', (x.cmb->>'cp')::int,
+               'cost', balance_num('dungeon', 'cost', c.rarity::text)::int, 'cp', (x.cmb->>'cp')::int,
                'hp', case when s.type in ('Character', 'Creature') then (x.cmb->>'hp')::int else card_max_hp(0) end,
                'slugs', coalesce(to_jsonb(s.tag_slugs), '[]'::jsonb)) order by (x.cmb->>'cp')::int desc), '[]'::jsonb)
              from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
@@ -712,9 +714,9 @@ begin
   return jsonb_build_object('ok', true, 'mode', 'gauntlet', 'day', v_day, 'week', v_week,
     'next_at', (v_day + 1)::timestamp at time zone 'America/Denver', 'ends_at', (v_week + 7)::timestamp at time zone 'America/Denver',
     'name', w.name, 'theme', w.theme, 'gate', adventure_gate(p_player), 'cost', cfg->'cost',
-    'budget', coalesce((gauntlet_cfg()->>'budget')::int, (cfg->>'budget')::int, 12),
+    'budget', balance_num('gauntlet', 'budget')::int,
     'squad', (select jsonb_agg(jsonb_build_object('id', x.id, 'type', x.c->>'type', 'rarity', x.c->>'rarity',
-               'cost', coalesce((cfg->'cost'->>(x.c->>'rarity'))::int, 1), 'cp', (x.c->'cmb'->>'cp')::int,
+               'cost', balance_num('dungeon', 'cost', x.c->>'rarity')::int, 'cp', (x.c->'cmb'->>'cp')::int,
                'hp', case when x.c->>'type' in ('Character', 'Creature') then (x.c->'cmb'->>'hp')::int else card_max_hp(0) end,
                'slugs', x.c->'tags') order by x.o)
              from unnest(w.squad) with ordinality x0(id, o) cross join lateral (select x0.id, x0.o, dungeon_card_base(x0.id) c) x),
