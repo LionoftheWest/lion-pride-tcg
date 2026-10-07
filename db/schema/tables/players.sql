@@ -20,12 +20,10 @@ create table public.players (
   tutorial jsonb default '{}'::jsonb not null,
   shard_balance integer default 0 not null,
   guild_joined_at timestamp with time zone,
-  left_guild_at timestamp with time zone,
-  last_open_set text
+  left_guild_at timestamp with time zone
 );
 
 -- @constraints
-alter table public.players add constraint players_last_open_set_fkey FOREIGN KEY (last_open_set) REFERENCES card_sets(id) ON DELETE SET NULL;
 alter table public.players add constraint players_pack_balance_nonneg CHECK ((pack_balance >= 0));
 alter table public.players add constraint players_pkey PRIMARY KEY (id);
 alter table public.players add constraint players_shard_balance_nonneg CHECK ((shard_balance >= 0));
