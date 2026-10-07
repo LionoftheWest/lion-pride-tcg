@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (89)
+## Superseded files (92)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -35,10 +35,11 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `dailies_hunt_any.sql` | SUPERSEDED: reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`) |  |
 | `daily_cap_5.sql` | SUPERSEDED: reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `shard_ledger_strict.sql`); reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`) |  |
 | `daily_cap_default.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.dailies_view(text)` (live = `balance_economy.sql`) |  |
+| `daily_raid_board.sql` | SUPERSEDED: schedules cron job `raid-board-mt`, which live does not have |  |
 | `dungeon.sql` | SUPERSEDED: reverts `public.dungeon_after_kill(dungeon_runs, jsonb)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_attack(text, bigint, integer)`, which live does not have; reverts `public.dungeon_board(date, integer)` (live = `gauntlet.sql`); reverts `public.dungeon_cfg()` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_day()` (live = `fix_search_path.sql`); brings back `public.dungeon_drop_card(text, integer)`, which live does not have; brings back `public.dungeon_end(bigint, text)`, which live does not have; reverts `public.dungeon_enemy_turn(jsonb, bigint, integer, integer)` (live = `balance_table.sql`); reverts `public.dungeon_enter(jsonb, jsonb, integer, integer)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_generate(date)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_retreat(text)`, which live does not have; reverts `public.dungeon_rules()` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_start(text, bigint[])` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_support(text, bigint, bigint, integer)`, which live does not have; reverts `public.dungeon_view(text)` (live = `balance_settings_numbers.sql`) | a re-run stops at an error today: could not create unique index "dungeon_runs_one_a_day" |
 | `dungeon_chest_odds.sql` | SUPERSEDED: reverts `public.dungeon_chest_rarity(integer)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_enter(jsonb, jsonb, integer, integer)` (live = `balance_settings_numbers.sql`) | a re-run stops at an error today: dungeon_chest_odds.sql: a live function changed since this file was built. Rebuild from the live text. |
 | `dungeon_reward_odds.sql` | SUPERSEDED: brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_offers(jsonb, integer)` (live = `balance_dungeon_numbers.sql`) | a re-run stops at an error today: dungeon_reward_odds.sql: a live function changed since this file was built. Rebuild from the live text. |
-| `dungeon_v2.sql` | SUPERSEDED: reverts `public.dungeon_after_kill(dungeon_runs, jsonb)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_attack(text, bigint, integer)`, which live does not have; brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_enter(jsonb, jsonb, integer, integer)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_generate(date)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_loot(jsonb, integer, bigint)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_make_foe(text, integer, integer, text)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_offers(jsonb, integer)` (live = `balance_dungeon_numbers.sql`); brings back `public.dungeon_retreat(text)`, which live does not have; reverts `public.dungeon_settle(bigint, text, boolean)` (live = `shard_ledger_strict.sql`); reverts `public.dungeon_start(text, bigint[])` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_support(text, bigint, bigint, integer)`, which live does not have; reverts `public.dungeon_tier(double precision)` (live = `balance_dungeon_numbers.sql`); reverts `public.dungeon_view(text)` (live = `balance_settings_numbers.sql`) | changes function grants that lockdown_grants.sql does not put back |
+| `dungeon_v2.sql` | SUPERSEDED: reverts `public.dungeon_after_kill(dungeon_runs, jsonb)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_attack(text, bigint, integer)`, which live does not have; brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_enter(jsonb, jsonb, integer, integer)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_generate(date)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_loot(jsonb, integer, bigint)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_make_foe(text, integer, integer, text)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_offers(jsonb, integer)` (live = `balance_dungeon_numbers.sql`); brings back `public.dungeon_retreat(text)`, which live does not have; reverts `public.dungeon_settle(bigint, text, boolean)` (live = `shard_ledger_strict.sql`); reverts `public.dungeon_start(text, bigint[])` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_support(text, bigint, bigint, integer)`, which live does not have; reverts `public.dungeon_tier(double precision)` (live = `balance_dungeon_numbers.sql`); reverts `public.dungeon_view(text)` (live = `balance_settings_numbers.sql`); schedules cron job `dungeon-settle-stale`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `dungeon_v2_fix.sql` | SUPERSEDED: brings back `public.dungeon_attack(text, bigint, integer)`, which live does not have | a re-run stops at an error today: function "public.dungeon_attack(text,bigint,integer)" does not exist |
 | `effects_batch3.sql` | SUPERSEDED: reverts `public.play_card_effect(text, bigint, text)` (live = `balance_economy.sql`); changes table `card_plays`: constraints |  |
 | `effects_batch4.sql` | SUPERSEDED: reverts `public.play_card_effect(text, bigint, text)` (live = `balance_economy.sql`) |  |
@@ -46,12 +47,13 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `effects_outside.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`) |  |
 | `event_cards.sql` | SUPERSEDED: reverts `public.card_power(text, integer, numeric)` (live = `balance_table.sql`); reverts `public.cards_event_rules()` (live = `special_cards_never_in_packs.sql`) |  |
 | `fix_last_copy_remove.sql` | SUPERSEDED: reverts `public.remove_card_from_player(text, bigint)` (live = `card_ledger.sql`) |  |
+| `gauntlet.sql` | SUPERSEDED: schedules cron job `dungeon-prizes`, which live does not have |  |
 | `gift_all_members.sql` | SUPERSEDED: reverts `public.gift_all_members(jsonb, integer, text)` (live = `gift_claims.sql`); reverts `public.welcome_packs()` (live = `balance_economy.sql`) |  |
 | `gift_claims.sql` | SUPERSEDED: reverts `public.claim_gift(text, bigint)` (live = `pack_ledger_strict.sql`); reverts `public.gift_packs(text, text, integer)` (live = `pack_ledger_strict.sql`); reverts `public.welcome_packs()` (live = `balance_economy.sql`) |  |
 | `gift_packs.sql` | SUPERSEDED: reverts `public.gift_packs(text, text, integer)` (live = `pack_ledger_strict.sql`) |  |
 | `gift_packs_fix.sql` | SUPERSEDED: reverts `public.gift_packs(text, text, integer)` (live = `pack_ledger_strict.sql`) |  |
 | `hall_auction_notes.sql` | SUPERSEDED: reverts `public.expire_auctions()` (live = `auction_confirm_24h.sql`) |  |
-| `hall_auctions.sql` | SUPERSEDED: reverts `public.accept_bid(text, bigint)` (live = `auction_confirm_24h.sql`); reverts `public.accept_trade(bigint, text)` (live = `card_ledger.sql`); reverts `public.ascend_card(text, bigint)` (live = `card_ledger.sql`); reverts `public.confirm_bid(text, bigint)` (live = `card_ledger.sql`); reverts `public.decline_accepted_bid(text, bigint)` (live = `auction_confirm_24h.sql`); reverts `public.expire_auctions()` (live = `auction_confirm_24h.sql`); reverts `public.offer_on_listing(text, bigint, bigint)` (live = `hall_offer_any_card.sql`) |  |
+| `hall_auctions.sql` | SUPERSEDED: reverts `public.accept_bid(text, bigint)` (live = `auction_confirm_24h.sql`); reverts `public.accept_trade(bigint, text)` (live = `card_ledger.sql`); reverts `public.ascend_card(text, bigint)` (live = `card_ledger.sql`); reverts `public.confirm_bid(text, bigint)` (live = `card_ledger.sql`); reverts `public.decline_accepted_bid(text, bigint)` (live = `auction_confirm_24h.sql`); reverts `public.expire_auctions()` (live = `auction_confirm_24h.sql`); reverts `public.offer_on_listing(text, bigint, bigint)` (live = `hall_offer_any_card.sql`); schedules cron job `expire-auctions`, which live does not have |  |
 | `hunt.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`); brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_ability_attack.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`) |  |
 | `hunt_ability_support.sql` | SUPERSEDED: reverts `public.hunt_commit_card(bigint, text, bigint, date, integer)` (live = `balance_table.sql`); reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `balance_table.sql`) |  |
@@ -63,7 +65,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `hunt_combat_log.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`) |  |
 | `hunt_combat_v2.sql` | SUPERSEDED: reverts `public.card_max_hp(integer)` (live = `balance_table.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`) |  |
 | `hunt_cron.sql` | SUPERSEDED: schedules cron job `spawn-weekly-boss`, which live does not have; schedules cron job `nudge-weekly-boss`, which live does not have; schedules cron job `close-weekly-boss`, which live does not have | a re-run stops at an error today: dependent privileges exist |
-| `hunt_early_boss.sql` | SUPERSEDED: reverts `public.spawn_hunt(integer, text)` (live = `effect_start_spawn_settle.sql`) |  |
+| `hunt_early_boss.sql` | SUPERSEDED: reverts `public.spawn_hunt(integer, text)` (live = `effect_start_spawn_settle.sql`); schedules cron job `hunt-close-due`, which live does not have |  |
 | `hunt_hp_deployable.sql` | SUPERSEDED: reverts `public.deployable_power(integer)` (live = `balance_table.sql`); reverts `public.roster_snapshot()` (live = `balance_dungeon_numbers.sql`); reverts `public.roster_stats()` (live = `balance_dungeon_numbers.sql`); brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_hp_roster_power.sql` | SUPERSEDED: brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_kerrigan_boss.sql` | SUPERSEDED: brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
@@ -75,7 +77,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `hunt_prizes_fixed.sql` | SUPERSEDED: reverts `public.settle_hunt(bigint)` (live = `balance_economy.sql`) |  |
 | `hunt_rewards.sql` | SUPERSEDED: reverts `public.settle_hunt(bigint)` (live = `balance_economy.sql`); brings back `public.weekly_hunt_rollover(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_schedule.sql` | SUPERSEDED: reverts `public.close_weekly_boss()` (live = `hunt_early_boss.sql`); reverts `public.next_hunt_close()` (live = `hunt_schedule_mt.sql`); reverts `public.next_hunt_spawn()` (live = `hunt_schedule_mt.sql`); reverts `public.spawn_weekly_boss()` (live = `hunt_notifications.sql`) |  |
-| `hunt_schedule_mt.sql` | SUPERSEDED: reverts `public.hunt_mt_slot(text, timestamp with time zone)` (live = `daily_raid_board.sql`) |  |
+| `hunt_schedule_mt.sql` | SUPERSEDED: reverts `public.hunt_mt_slot(text, timestamp with time zone)` (live = `daily_raid_board.sql`); schedules cron job `hunt-spawn-mt`, which live does not have; schedules cron job `hunt-nudge-mt`, which live does not have; schedules cron job `hunt-close-mt-mdt`, which live does not have; schedules cron job `hunt-close-mt-mst`, which live does not have |  |
 | `hunt_squad_done.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`) |  |
 | `hunt_squads.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`); reverts `public.hunt_commit_card(bigint, text, bigint, date, integer)` (live = `balance_table.sql`); reverts `public.hunt_squad_allows(bigint, text, date, bigint)` (live = `adventure_gate.sql`); reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `balance_table.sql`); reverts `public.lock_hunt_squad(text, bigint, bigint[])` (live = `balance_table.sql`) |  |
 | `hunt_support_affinity.sql` | SUPERSEDED: reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `balance_table.sql`) |  |
@@ -92,6 +94,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `pack_economy.sql` | SUPERSEDED: reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `shard_ledger_strict.sql`); brings back `public.grant_packs(text, integer, text, text)`, which live does not have; brings back `public.grant_packs_all(integer, text, text)`, which live does not have; reverts `public.spend_pack(text)` (live = `pack_ledger_strict.sql`) | changes function grants that lockdown_grants.sql does not put back |
 | `pack_open_batch.sql` | SUPERSEDED: reverts `public.add_cards_to_player(text, bigint[])` (live = `card_ledger.sql`) |  |
 | `playing_posts.sql` | SUPERSEDED: reverts `public.playing_today(text)` (live = `card_decisions.sql`) |  |
+| `prune_old_rows.sql` | SUPERSEDED: reverts `public.prune_old_rows()` (live = `logs_sql.sql`) |  |
 | `pull_feed_source.sql` | SUPERSEDED: reverts `public.accept_trade(bigint, text)` (live = `card_ledger.sql`); reverts `public.add_card_to_player(text, bigint, text)` (live = `card_ledger.sql`); reverts `public.gift_card(text, text, bigint)` (live = `card_ledger.sql`) |  |
 | `roster_stats.sql` | SUPERSEDED: reverts `public.roster_snapshot()` (live = `balance_dungeon_numbers.sql`); reverts `public.roster_stats()` (live = `balance_dungeon_numbers.sql`) |  |
 | `schema.sql` | SUPERSEDED: brings back `public.add_card_to_player(text, bigint)`, which live does not have | a re-run stops at an error today: type "card_rarity" already exists; alone, `create or replace function record_activity(p_playe...` fails: cannot change return type of existing function |
@@ -115,7 +118,7 @@ These files have a statement that cannot run in a rolled-back transaction. Read 
 
 A file runs as one transaction, so an error rolls the whole file back.
 
-## No structure change, but a re-run writes rows (29)
+## No structure change, but a re-run writes rows (27)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -131,19 +134,17 @@ a one-time grant or a settings value would run again.
 - `card_decisions.sql`: subjects
 - `card_effects_enable_a1.sql`: effect_primitives
 - `card_ledger.sql`: card_ledger (DO block)
-- `daily_raid_board.sql`: cron.job
 - `damage_log.sql`: combat_actions (DO block)
 - `discord_effects_on.sql`: effect_primitives
 - `dungeon_prizes_daily.sql`: settings
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
-- `gauntlet.sql`: cron.job, settings
 - `gift_pack_off.sql`: effect_primitives
 - `hunt_abilities.sql`: subjects
 - `hunt_damage_trace.sql`: hunt_adjustments (DO block)
 - `ledger_reasons.sql`: ledger_reasons
+- `logs_sql.sql`: cron.job
 - `pack_ledger_strict.sql`: daily_claims, pack_ledger
 - `player_reports.sql`: settings
-- `prune_old_rows.sql`: cron.job
 - `raid_makeup_oct1.sql`: give_gift(), hunt_adjustments
 - `screen_pranks_short.sql`: effect_primitives, player_effects, subjects
 - `shard_ledger_strict.sql`: shard_ledger

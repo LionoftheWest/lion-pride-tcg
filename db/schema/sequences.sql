@@ -2,6 +2,10 @@
 -- The structure of each sequence. The current value is data: it is not here.
 
 -- @sequences
+create sequence public.admin_actions_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.admin_actions.id;
+grant select on sequence public.admin_actions_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.admin_actions_id_seq to postgres;
+grant select, update, usage on sequence public.admin_actions_id_seq to service_role;
 create sequence public.artist_submissions_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.artist_submissions.id;
 grant select on sequence public.artist_submissions_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.artist_submissions_id_seq to postgres;
@@ -86,6 +90,10 @@ create sequence public.player_reports_id_seq as bigint start 1 increment 1 minva
 grant select on sequence public.player_reports_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.player_reports_id_seq to postgres;
 grant select, update, usage on sequence public.player_reports_id_seq to service_role;
+create sequence public.profile_log_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.profile_log.id;
+grant select on sequence public.profile_log_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.profile_log_id_seq to postgres;
+grant select, update, usage on sequence public.profile_log_id_seq to service_role;
 create sequence public.roster_power_history_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.roster_power_history.id;
 grant select on sequence public.roster_power_history_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.roster_power_history_id_seq to postgres;
@@ -94,6 +102,10 @@ create sequence public.schema_migrations_id_seq as bigint start 1 increment 1 mi
 grant select on sequence public.schema_migrations_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.schema_migrations_id_seq to postgres;
 grant select, update, usage on sequence public.schema_migrations_id_seq to service_role;
+create sequence public.settings_log_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.settings_log.id;
+grant select on sequence public.settings_log_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.settings_log_id_seq to postgres;
+grant select, update, usage on sequence public.settings_log_id_seq to service_role;
 create sequence public.shard_ledger_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.shard_ledger.id;
 grant select on sequence public.shard_ledger_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.shard_ledger_id_seq to postgres;
@@ -102,6 +114,10 @@ create sequence public.shop_purchases_id_seq as bigint start 1 increment 1 minva
 grant select on sequence public.shop_purchases_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.shop_purchases_id_seq to postgres;
 grant select, update, usage on sequence public.shop_purchases_id_seq to service_role;
+create sequence public.stat_point_log_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.stat_point_log.id;
+grant select on sequence public.stat_point_log_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.stat_point_log_id_seq to postgres;
+grant select, update, usage on sequence public.stat_point_log_id_seq to service_role;
 create sequence public.subjects_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.subjects.id;
 grant select on sequence public.subjects_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.subjects_id_seq to postgres;
@@ -118,3 +134,7 @@ create sequence public.wish_grants_id_seq as bigint start 1 increment 1 minvalue
 grant select on sequence public.wish_grants_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.wish_grants_id_seq to postgres;
 grant select, update, usage on sequence public.wish_grants_id_seq to service_role;
+create sequence public.wishlist_log_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.wishlist_log.id;
+grant select on sequence public.wishlist_log_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.wishlist_log_id_seq to postgres;
+grant select, update, usage on sequence public.wishlist_log_id_seq to service_role;

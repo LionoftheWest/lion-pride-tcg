@@ -7,9 +7,9 @@ The card catalog, the copies that members hold, packs, the ledgers, trades, the 
 
 ## Contents
 
-Tables (15): [artist_submissions](#table-artist-submissions), [auction_bids](#table-auction-bids), [auctions](#table-auctions), [card_ledger](#table-card-ledger), [card_trades](#table-card-trades), [cards](#table-cards), [gift_claims](#table-gift-claims), [pack_ledger](#table-pack-ledger), [player_cards](#table-player-cards), [roster_power_history](#table-roster-power-history), [subjects](#table-subjects), [trade_listings](#table-trade-listings), [trade_offers](#table-trade-offers), [wish_grants](#table-wish-grants), [wishlists](#table-wishlists)
+Tables (17): [artist_submissions](#table-artist-submissions), [auction_bids](#table-auction-bids), [auctions](#table-auctions), [card_ledger](#table-card-ledger), [card_trades](#table-card-trades), [cards](#table-cards), [gift_claims](#table-gift-claims), [pack_ledger](#table-pack-ledger), [player_cards](#table-player-cards), [roster_power_history](#table-roster-power-history), [stat_point_log](#table-stat-point-log), [subjects](#table-subjects), [trade_listings](#table-trade-listings), [trade_offers](#table-trade-offers), [wish_grants](#table-wish-grants), [wishlist_log](#table-wishlist-log), [wishlists](#table-wishlists)
 
-Functions (63): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_powers(text)](#fn-card-powers-text), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_boss_hp(bigint)](#fn-roster-boss-hp-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
+Functions (65): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_powers(text)](#fn-card-powers-text), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_boss_hp(bigint)](#fn-roster-boss-hp-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_point_log_write()](#fn-stat-point-log-write), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [wishlist_log_write()](#fn-wishlist-log-write), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
 
 ## Tables
 
@@ -288,6 +288,30 @@ Table. [cards] One row per snapshot of the community card power. roster_snapshot
 - Check constraints: none
 - Row level security: on. Policies: none
 
+<a id="table-stat-point-log"></a>
+
+### stat_point_log
+
+Table. One row per stat that changed on an owned card (player_cards.stat_points, the stat_point_log_* triggers): spend (spend_stat_points), reset (reset_stat_points, buy_shop_item stat_reset), other (any other change, for example the player_cards row deleted). Server only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | not null |  | The log row id. |
+| `player_id` | text | not null |  | The member (players.id). No foreign key: the history stays. |
+| `card_id` | bigint | not null |  | The card (cards.id). |
+| `stat` | text | not null |  | The stat key in stat_points: attack, vitality, precision, potency or haste. |
+| `delta` | numeric | not null |  | The change of the points of this stat (positive = spent, negative = reset or removed). |
+| `points` | numeric | not null |  | The points of this stat after the change. |
+| `reason` | text | not null |  | spend (all stats up or the same), reset (all points to {}), other (any other change, a new row with points, a deleted row). |
+| `changed_at` | timestamp with time zone | not null | `now()` | When the change was made. |
+| `changed_by` | text | not null |  | Who made the change: balance_who (the setting balance.by, else the session user). |
+
+- Primary key: `PRIMARY KEY (id)`
+- Foreign keys: none
+- Check constraints: 
+  - `stat_point_log_reason_check`: `CHECK ((reason = ANY (ARRAY['spend'::text, 'reset'::text, 'other'::text])))`
+- Row level security: on. Policies: none
+
 <a id="table-subjects"></a>
 
 ### subjects
@@ -392,6 +416,29 @@ Table. [trading] One row each time a member gives a card that is on the receiver
   - `wish_grants_receiver_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (receiver_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
   - `wish_grants_source_check`: `CHECK ((source = ANY (ARRAY['trade'::text, 'auction'::text, 'gift'::text])))`
+- Row level security: on. Policies: none
+
+<a id="table-wishlist-log"></a>
+
+### wishlist_log
+
+Table. One row per wishlist change (the wishlist_log_write trigger on wishlists): add, remove, replace (another card in the slot), set_top, unset_top. Server only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | not null |  | The log row id. |
+| `player_id` | text | not null |  | The member (players.id). No foreign key: the history stays. |
+| `slot` | integer | not null |  | The wishlist slot (1 to 5). |
+| `op` | text | not null |  | add, remove, replace, set_top or unset_top. |
+| `card_id` | bigint | null |  | The card in the slot after the change (for remove: the card that left). |
+| `old_card_id` | bigint | null |  | For replace: the card that was in the slot before. Else null. |
+| `changed_at` | timestamp with time zone | not null | `now()` | When the change was made. |
+| `changed_by` | text | not null |  | Who made the change: balance_who (the setting balance.by, else the session user). |
+
+- Primary key: `PRIMARY KEY (id)`
+- Foreign keys: none
+- Check constraints: 
+  - `wishlist_log_op_check`: `CHECK ((op = ANY (ARRAY['add'::text, 'remove'::text, 'replace'::text, 'set_top'::text, 'unset_top'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-wishlists"></a>
@@ -978,6 +1025,16 @@ Starts an auction of 1 to 14 days for a free copy, with the seller's minimum. On
 
 The stat point settings: balance key stat_points. Internal helper of the stat point, combat and shop functions.
 
+<a id="fn-stat-point-log-write"></a>
+
+### stat_point_log_write()
+
+- Function: `stat_point_log_write()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (on player_cards: after a change of stat_points, a new row or a deleted row with stat_points not empty): writes one stat_point_log row per changed stat with the reason spend, reset or other.
+
 <a id="fn-stat-pt-jsonb-text"></a>
 
 ### stat_pt(jsonb,text)
@@ -1037,6 +1094,16 @@ The member closes an open listing and declines its pending offers. Activity /api
 - Security definer: no
 
 Trigger players_welcome_packs on players: a new member with a Discord id gets the welcome pack gift in the bell. The number is in balance key welcome_packs. Setting tcg.skip_welcome = on skips it.
+
+<a id="fn-wishlist-log-write"></a>
+
+### wishlist_log_write()
+
+- Function: `wishlist_log_write()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (after insert, update, delete on wishlists): writes wishlist_log rows (add, remove, replace, set_top, unset_top).
 
 <a id="fn-withdraw-bid-text-bigint"></a>
 
