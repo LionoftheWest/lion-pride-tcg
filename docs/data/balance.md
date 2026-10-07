@@ -12,6 +12,7 @@ The values below are the values of the database that made this page.
 The triggers on `balance` check each change:
 
 - `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
+- `balance_check_boss_counters` (`balance_check_boss_counters()`): Trigger (before insert, update on balance): boss_counters must hold only numbers; share, boss_share and the move shares (heal, shield, empower, expose, smite, share, keep, curse, back) from 0 to 1; rounds, wait, plays, cards and hits whole numbers (plays and hits at least 1); hit sizes and multipliers above 0; the weights add up to more than 0. boss_passives: the counter passive numbers (plague_x, shatterer_x, dispeller_x, juggernaut_x, juggernaut_stun_fail, plague_cleanse) from 0 to 1.
 - `balance_check_dungeon` (`balance_check_dungeon()`): Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.shards, chest.card_chance and offers heal / buff / shards / ward / revive must be 5 numbers (tier 1 to 5), tier_weights must add up to more than 0, the Shards whole numbers, chest.card_chance and door.gamble_rare at most 1, door.rare_tier and offers.min_tier whole numbers from 1 to 5. (balance_check keeps every leaf and its type, so boss_hp_estimate keeps its 4 numbers.)
 - `balance_check_economy` (`balance_check_economy()`): Trigger (before insert, update on balance): the pulls rates must add up to 1, pulls pack_size must be a whole number from 1 to 20, daily streak_cycle must be at least 1.
 - `balance_check_settings` (`balance_check_settings()`): Trigger (before insert, update on balance): the shapes of the keys dungeon, gauntlet and adventure_gate (balance_settings_numbers.sql) and dungeon_rewards.chest_rarity. dungeon: squad, budget, floors, round_cap and rules.budget whole numbers of at least 1; a cost (a whole number of at least 1) for every card rarity; hp_growth, atk_growth, foe_mult hp / atk above 0 for fight, horde, elite, miniboss, guardian; rest_heal and rest_revive shares from 0 to 1 (rest_revive above 0); rules.boost a number; room_weights numbers for the room types that add up to more than 0. gauntlet: budget a whole number of at least 1; room_weights the same, without treasure (no loot). adventure_gate: attackers a whole number. dungeon_rewards.chest_rarity: tiers 1 to 5, each 3 numbers that add up to more than 0.
@@ -21,7 +22,7 @@ The triggers on `balance` check each change:
 
 ## Keys
 
-[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [boss_atk](#key-boss-atk), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
+[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
 
 <a id="key-achievement-rewards"></a>
 
@@ -336,6 +337,214 @@ Shape: `object { Heroic: number, Mythic: number, Normal: number }`
 }
 ```
 
+<a id="key-boss-counters"></a>
+
+### boss_counters
+
+The Hunt boss counter moves (the boss pools are content in settings.hunt_boss_moves: counters, key, name, text). share = the share of the normal boss turns that a counter move takes (boss_share = a boss's own share); weights = the draw weight of each move (hunt_counter_pick). moves = the numbers of each move (hunt_counter_act, hunt_attack, hunt_support): hit_x = ATK multiplier of one hit (combat_area_roll), heal_x / weaken_x / support_x / times = the hit on that card type x this, hits = the number of hits; heal / shield / empower / expose / smite = that support works at this share for the rest of the day; wait = the extra rounds of the support cooldown; rounds = the rounds of a damage-over-time (dot_x = ATK multiplier per round) or an enrage (enrage = the boss damage x this); share = Crush: the share of the lost shield; keep = Rattle: the share of each shield that stays; curse = the damage x of a cursed card; back = Demotion: the share of the damage that comes back; x = Counter-pick: the bonus x this hurts the attacker; step = Rage Spiral: the boss damage added by each weaken; plays = the support plays that do nothing; cards = Ban: the support cards that stop. The move texts quote these numbers (hunt_boss_move_list). balance_check_boss_counters checks the shape.
+
+Shape: `object { boss_share: object { The Grind Vampire: number, The Hardstuck Skeleton: number, The Smurf Brute: number, The Zerg-Rush Queen: number }, moves: object { anemia: object { heal_x: number, hit_x: number }, appeal: object { hit_x: number }, ban: object { cards: number }, bloodrot: object { heal: number }, bonepierce: object { hit_x: number }, brood: object { hit_x: number }, bully: object { hit_x: number }, calcify: object { shield: number }, counterpick: object { x: number }, crush: object { share: number }, decay: object { heal: number }, demotion: object { back: number }, fade: object { expose: number }, fakerank: object { hit_x: number, times: number }, feast: object { hit_x: number }, flame: object { hit_x: number, weaken_x: number }, groan: object { wait: number }, hitbox: object { smite: number }, hotfix: object { curse: number }, infect: object { dot_x: number, hit_x: number, rounds: number }, lagspike: object { wait: number }, nerf: object { empower: number }, nightshade: object { dot_x: number, rounds: number }, overrun: object { enrage: number, hit_x: number, rounds: number }, packetloss: object { plays: number }, patch: object { wait: number }, patchnotes: object { empower: number }, pingspike: object { wait: number }, rattle: object { keep: number, shield: number }, rollback: object { smite: number }, rollout: object { curse: number }, rubberband: object { hit_x: number, hits: number }, rush: object { hit_x: number, hits: number }, shadowban: object { plays: number }, shatter: object { shield: number }, spiral: object { step: number }, stuck: object { wait: number }, swarm: object { hit_x: number, support_x: number }, tierlist: object { hit_x: number }, tilt: object { enrage: number, rounds: number }, wave: object { wait: number } }, share: number, weights: object { altf4: number, anemia: number, appeal: number, ban: number, bloodrot: number, bonepierce: number, brood: number, bully: number, calcify: number, counterpick: number, crush: number, decay: number, demotion: number, desync: number, fade: number, fakerank: number, feast: number, flame: number, groan: number, hitbox: number, hotfix: number, infect: number, lagspike: number, mirror: number, nerf: number, nightshade: number, overrun: number, packetloss: number, patch: number, patchnotes: number, pingspike: number, rattle: number, rollback: number, rollout: number, rot: number, rubberband: number, rush: number, shadowban: number, shatter: number, siphon: number, spiral: number, stuck: number, swarm: number, tierlist: number, tilt: number, undying: number, veil: number, wave: number } }`
+
+```json
+{
+  "moves": {
+    "ban": {
+      "cards": 2
+    },
+    "fade": {
+      "expose": 0.5
+    },
+    "nerf": {
+      "empower": 0.25
+    },
+    "rush": {
+      "hits": 2,
+      "hit_x": 0.8
+    },
+    "tilt": {
+      "enrage": 1.4,
+      "rounds": 2
+    },
+    "wave": {
+      "wait": 5
+    },
+    "brood": {
+      "hit_x": 0.8
+    },
+    "bully": {
+      "hit_x": 1
+    },
+    "crush": {
+      "share": 0.5
+    },
+    "decay": {
+      "heal": 0.5
+    },
+    "feast": {
+      "hit_x": 1
+    },
+    "flame": {
+      "hit_x": 0.35,
+      "weaken_x": 2
+    },
+    "groan": {
+      "wait": 4
+    },
+    "patch": {
+      "wait": 4
+    },
+    "stuck": {
+      "wait": 6
+    },
+    "swarm": {
+      "hit_x": 0.35,
+      "support_x": 3
+    },
+    "anemia": {
+      "hit_x": 0.35,
+      "heal_x": 2
+    },
+    "appeal": {
+      "hit_x": 2
+    },
+    "hitbox": {
+      "smite": 0.1
+    },
+    "hotfix": {
+      "curse": 0.7
+    },
+    "infect": {
+      "dot_x": 0.25,
+      "hit_x": 0.35,
+      "rounds": 3
+    },
+    "rattle": {
+      "keep": 0.5,
+      "shield": 0.25
+    },
+    "spiral": {
+      "step": 0.2
+    },
+    "calcify": {
+      "shield": 0.1
+    },
+    "overrun": {
+      "hit_x": 1,
+      "enrage": 1.4,
+      "rounds": 2
+    },
+    "rollout": {
+      "curse": 0.7
+    },
+    "shatter": {
+      "shield": 0.1
+    },
+    "bloodrot": {
+      "heal": 0.1
+    },
+    "demotion": {
+      "back": 0.2
+    },
+    "fakerank": {
+      "hit_x": 1,
+      "times": 2
+    },
+    "lagspike": {
+      "wait": 4
+    },
+    "rollback": {
+      "smite": 0.5
+    },
+    "tierlist": {
+      "hit_x": 2
+    },
+    "pingspike": {
+      "wait": 4
+    },
+    "shadowban": {
+      "plays": 3
+    },
+    "bonepierce": {
+      "hit_x": 1
+    },
+    "nightshade": {
+      "dot_x": 0.25,
+      "rounds": 3
+    },
+    "packetloss": {
+      "plays": 1
+    },
+    "patchnotes": {
+      "empower": 0.1
+    },
+    "rubberband": {
+      "hits": 2,
+      "hit_x": 1
+    },
+    "counterpick": {
+      "x": 2
+    }
+  },
+  "share": 0.4,
+  "weights": {
+    "ban": 1,
+    "rot": 1,
+    "fade": 1,
+    "nerf": 1,
+    "rush": 1,
+    "tilt": 1,
+    "veil": 1,
+    "wave": 1,
+    "altf4": 1,
+    "brood": 1,
+    "bully": 1,
+    "crush": 1,
+    "decay": 1,
+    "feast": 1,
+    "flame": 1,
+    "groan": 1,
+    "patch": 1,
+    "stuck": 1,
+    "swarm": 1,
+    "anemia": 1,
+    "appeal": 1,
+    "desync": 1,
+    "hitbox": 1,
+    "hotfix": 1,
+    "infect": 1,
+    "mirror": 1,
+    "rattle": 1,
+    "siphon": 1,
+    "spiral": 1,
+    "calcify": 1,
+    "overrun": 1,
+    "rollout": 1,
+    "shatter": 1,
+    "undying": 1,
+    "bloodrot": 1,
+    "demotion": 1,
+    "fakerank": 1,
+    "lagspike": 1,
+    "rollback": 1,
+    "tierlist": 1,
+    "pingspike": 1,
+    "shadowban": 1,
+    "bonepierce": 1,
+    "nightshade": 1,
+    "packetloss": 1,
+    "patchnotes": 1,
+    "rubberband": 1,
+    "counterpick": 1
+  },
+  "boss_share": {
+    "The Smurf Brute": 0.6,
+    "The Grind Vampire": 0.5,
+    "The Zerg-Rush Queen": 0.5,
+    "The Hardstuck Skeleton": 0.6
+  }
+}
+```
+
 <a id="key-boss-hp"></a>
 
 ### boss_hp
@@ -410,20 +619,26 @@ Shape: `object { cataclysm_x: number, curse: number, curse_x: number, cycle: num
 
 ### boss_passives
 
-Enemy passives (the Hunt boss and the Dungeon monsters): Armored (melee cards deal x armored_x), Shrouded (+shrouded_miss miss chance), Volatile (enemy hits x volatile_x), Frenzied (+frenzied_per_10pct per 10 % HP lost), Regenerating (the Hunt boss heals regenerating_heal of HP / crew per turn, a Dungeon monster regenerating_heal_foe of its max HP), Thorns (share of the damage back to the card), Flaming (flaming_chance to burn for ATK x flaming_x).
+Enemy passives (the Hunt boss and the Dungeon monsters): Armored (melee cards deal x armored_x), Shrouded (+shrouded_miss miss chance), Volatile (enemy hits x volatile_x), Frenzied (+frenzied_per_10pct per 10 % HP lost), Regenerating (the Hunt boss heals regenerating_heal of HP / crew per turn, a Dungeon monster regenerating_heal_foe of its max HP), Thorns (share of the damage back to the card), Flaming (flaming_chance to burn for ATK x flaming_x). The counter passives (hunt_support): plague_x = a heal works at this share, shatterer_x = a shield and a smite, dispeller_x = an empower and an expose, juggernaut_x = a weaken; juggernaut_stun_fail = the chance that a stun fails; plague_cleanse = the share of a curse that a cleanse removes under Plague.
 
-Shape: `object { armored_x: number, flaming_chance: number, flaming_x: number, frenzied_per_10pct: number, regenerating_heal: number, regenerating_heal_foe: number, shrouded_miss: number, thorns: number, volatile_x: number }`
+Shape: `object { armored_x: number, dispeller_x: number, flaming_chance: number, flaming_x: number, frenzied_per_10pct: number, juggernaut_stun_fail: number, juggernaut_x: number, plague_cleanse: number, plague_x: number, regenerating_heal: number, regenerating_heal_foe: number, shatterer_x: number, shrouded_miss: number, thorns: number, volatile_x: number }`
 
 ```json
 {
   "thorns": 0.1,
+  "plague_x": 0.1,
   "armored_x": 0.72,
   "flaming_x": 0.4,
   "volatile_x": 1.25,
+  "dispeller_x": 0.1,
+  "shatterer_x": 0.1,
+  "juggernaut_x": 0.1,
   "shrouded_miss": 0.1,
   "flaming_chance": 0.3,
+  "plague_cleanse": 0.1,
   "regenerating_heal": 0.005,
   "frenzied_per_10pct": 0.05,
+  "juggernaut_stun_fail": 0.9,
   "regenerating_heal_foe": 0.03
 }
 ```

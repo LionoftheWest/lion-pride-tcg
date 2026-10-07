@@ -1,12 +1,15 @@
 /**
- * Test hunt_boss_moves.sql (the boss counter moves, the counter passives, D-70) with NO lasting change:
+ * Test hunt_boss_moves.sql (the boss counter moves, the counter passives, D-70) and hunt_counter_balance.sql (their
+ * numbers in balance boss_counters / boss_passives, the move texts) with NO lasting change:
  *   node scripts/test-boss-moves.mjs [file.sql]     no file: the CURRENT functions (test-all-local.mjs); a file: the
- *                                                  acceptance run (apply it, the guard, every mutation)
+ *                                                  acceptance run of hunt_counter_balance.sql (apply it, the guard, every mutation)
  *   MUTATE=<name> node scripts/test-boss-moves.mjs  must FAIL, for every name:
  *     nopick    the boss never uses a counter move      shatter   Shatter leaves the shields
  *     plague    Plague does not weaken heals             d70       a support target gets the attacker HP
  *     guard     the live-version guard accepts any version
- * Each move runs through the real hunt_attack: a test boss whose pool holds only that move, with _share 1.
+ *     notext    a move text keeps a fixed number          noshape   balance_check_boss_counters is gone
+ * Each move runs through the real hunt_attack: a test boss whose pool holds only that move, with the share 1
+ * (balance boss_counters.share; the pool is content in settings.hunt_boss_moves).
  * One DO block: apply the file, run every case, then RAISE (everything rolls back).
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
@@ -20,18 +23,19 @@ let mig = !FILE ? '' : readFileSync(FILE, 'utf8')
   .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 const M = process.env.MUTATE;
 const SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
-const MUT = M === 'guard' ? '' : mutation({
-  nopick: ['public.hunt_counter_pick(bigint,text,date,text,text)', "if random() >= coalesce((v_cfg->p_boss->>'share')::numeric, (v_cfg->>'_share')::numeric, 0.4) then return null; end if;", 'return null;'],
+const MUT = M === 'guard' ? '' : M === 'noshape' ? 'drop trigger balance_check_boss_counters on public.balance;' : mutation({
+  nopick: ['public.hunt_counter_pick(bigint,text,date,text,text)', "if random() >= coalesce((v_bal->'boss_share'->>p_boss)::numeric, balance_num('boss_counters', 'share')) then return null; end if;", 'return null;'],
   shatter: ['public.hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)',
     "update hunt_card_hp set shield = 0, updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = p_day and card_id = r.card_id;", 'null;'],
-  plague: [SUP, "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 0.1;", "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 1;"],
+  plague: [SUP, "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * balance_num('boss_passives', 'plague_x');", "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 1;"],
   d70: [SUP, "if v_tkind = 'support' then v_tmaxhp := card_max_hp(0); end if;", 'null;'],
+  notext: ['public.hunt_counter_text(text)', 'v := hunt_counter_num(m[2], m[3]);', "v := case m[2] when 'groan' then 4 else hunt_counter_num(m[2], m[3]) end;"],
 });
 if (M === 'guard' && !FILE) throw new Error('MUTATE=guard changes the migration text: pass the file');
 if (M === 'guard') {
-  const a = "not in ('f84e5768628b1c4afddb89ecfe96a5ec',";
-  if (!mig.includes(a)) throw new Error('bad guard mutation');
-  mig = mig.replace(a, "is null and 'x' not in ('f84e5768628b1c4afddb89ecfe96a5ec',");
+  const a = 'if m not in (x[2], x[3]) then raise';
+  if (mig.split(a).length !== 2) throw new Error('bad guard mutation');
+  mig = mig.replace(a, 'if false then raise');
 }
 if (mig.includes('$m$') || mig.includes('$t$')) throw new Error('the migration must not contain $m$ or $t$');
 const P = 'tst_bmoves';
@@ -119,11 +123,12 @@ const caseSQL = CASES.map(([key, setup, check]) => `
 const body = String.raw`do $t$ declare
   bad text := ''; h bigint; r jsonb; r2 jsonb; r3 jsonb; r4 jsonb; rnd int; k int; st record; ok boolean; v bigint; n int; i int; rec record;
   P text := '${P}'; d date := (now() at time zone 'America/Denver')::date;
-  cfg0 jsonb; a1 bigint; a2 bigint; kh bigint; ks bigint; ke bigint; kw bigint; kx bigint; kt bigint; km bigint; kc bigint; kg bigint; sups bigint[];
+  cfg0 jsonb; bal0 jsonb; a1 bigint; a2 bigint; kh bigint; ks bigint; ke bigint; kw bigint; kx bigint; kt bigint; km bigint; kc bigint; kg bigint; sups bigint[];
 begin
   ${mig ? 'execute $m$' + mig + '$m$;' : '-- the current functions'}
   ${MUT}
   select value into cfg0 from settings where key = 'hunt_boss_moves';   -- as the file sets it (the cases overwrite it)
+  select value into bal0 from balance where key = 'boss_counters';
   select min(c.id) into a1 from cards c join subjects s on s.id = c.subject_id where s.type in ('Character', 'Creature') and c.rarity = 'gold';
   select min(c.id) into a2 from cards c join subjects s on s.id = c.subject_id where s.type in ('Character', 'Creature') and c.rarity = 'gold' and c.id > a1;
   select min(c.id) into kh from cards c join subjects s on s.id = c.subject_id where s.ability->>'effect' = 'heal' and s.ability->>'target' = 'ally';
@@ -142,12 +147,13 @@ begin
   ${GATE(P)}
   update balance set value = '20' where key = 'daily_card_cap';   -- the daily card cap (balance_table.sql)
 
-  -- A fresh boss: its pool = [p_key] at _share 1 ('' = no pool), passives p_pass, the squad committed (attackers 300 HP).
+  -- A fresh boss: its pool = [p_key] at share 1 ('' = no pool), passives p_pass, the squad committed (attackers 300 HP).
   create function pg_temp.mk(p_key text, p_pass jsonb) returns bigint language plpgsql as $f$
   declare h bigint; x bigint; P text := '${P}'; d date := (now() at time zone 'America/Denver')::date;
   begin
-    update settings set value = jsonb_build_object('_share', 1, 'Test Moves Boss', jsonb_build_object('moves',
-      case when p_key = '' then '[]'::jsonb else jsonb_build_array(jsonb_build_object('key', p_key, 'name', p_key, 'w', 1)) end)) where key = 'hunt_boss_moves';
+    update settings set value = jsonb_build_object('Test Moves Boss', jsonb_build_object('moves',
+      case when p_key = '' then '[]'::jsonb else jsonb_build_array(jsonb_build_object('key', p_key, 'name', p_key)) end)) where key = 'hunt_boss_moves';
+    update balance set value = jsonb_set(value, '{share}', '1') where key = 'boss_counters';
     insert into hunts (name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, closes_at, hp_share, stats)
       values ('Test Moves Boss', 'Normal', '[]', '[]', jsonb_build_object('list', (select coalesce(jsonb_agg(jsonb_build_object('kind', k)), '[]'::jsonb) from jsonb_array_elements_text(p_pass) k)),
               9000000, 9000000, now() + interval '1 day', 3000, '{"atk": 40}') returning id into h;
@@ -165,12 +171,13 @@ begin
   -- 1. Every counter move, through hunt_attack.
 ${caseSQL}
 
-  -- 2. The share: a pool of 4 moves at _share 0.4 replaces about 40% of the normal turns (12 bosses x 35 attacks, about 300 normal turns).
+  -- 2. The share: a pool of 4 moves at share 0.4 replaces about 40% of the normal turns (12 bosses x 35 attacks, about 300 normal turns).
   perform setseed(0.42);   -- a fixed sample: the share check was random (0.309 once, limit 0.31)
   n := 0; i := 0;
   for k in 1..12 loop
     h := pg_temp.mk('', '[]');
-    update settings set value = jsonb_build_object('_share', 0.4, 'Test Moves Boss', jsonb_build_object('moves', '[{"key":"nerf","name":"Nerf"},{"key":"wave","name":"Wave"},{"key":"fade","name":"Fade"},{"key":"desync","name":"Desync"}]'::jsonb)) where key = 'hunt_boss_moves';
+    update settings set value = jsonb_build_object('Test Moves Boss', jsonb_build_object('moves', '[{"key":"nerf","name":"Nerf"},{"key":"wave","name":"Wave"},{"key":"fade","name":"Fade"},{"key":"desync","name":"Desync"}]'::jsonb)) where key = 'hunt_boss_moves';
+    update balance set value = jsonb_set(value, '{share}', '0.4') where key = 'boss_counters';
     update hunt_card_hp set hp_remaining = 1000000, max_hp = 1000000 where hunt_id = h and card_id in (a1, a2);
     for rnd in 1..35 loop
       r := hunt_attack(P, h, a1);
@@ -256,9 +263,47 @@ ${caseSQL}
   if n = 0 then bad := bad || 'spawn: no counter passive in 150 spawns; '; end if;
 
   -- 6b. The share for each boss (measured, Nathan 2026-10-06): the shield bosses 0.6, the Vampire and the Queen 0.5.
-  if (cfg0->'The Smurf Brute'->>'share')::numeric + (cfg0->'The Hardstuck Skeleton'->>'share')::numeric
-     + (cfg0->'The Grind Vampire'->>'share')::numeric + (cfg0->'The Zerg-Rush Queen'->>'share')::numeric is distinct from 2.2
-     or (cfg0->>'_share')::numeric is distinct from 0.4 then bad := bad || 'the shares: ' || cfg0::text || '; '; end if;
+  update settings set value = cfg0 where key = 'hunt_boss_moves';   -- the real pools again (the cases wrote a test pool)
+  update balance set value = bal0 where key = 'boss_counters';
+  if (bal0->'boss_share'->>'The Smurf Brute')::numeric + (bal0->'boss_share'->>'The Hardstuck Skeleton')::numeric
+     + (bal0->'boss_share'->>'The Grind Vampire')::numeric + (bal0->'boss_share'->>'The Zerg-Rush Queen')::numeric is distinct from 2.2
+     or (bal0->>'share')::numeric is distinct from 0.4 or (select count(*) from jsonb_object_keys(bal0->'boss_share')) <> 4
+     then bad := bad || 'the shares: ' || coalesce(bal0::text, 'no balance boss_counters') || '; '; end if;
+  -- 6c. The pools hold no number (one source: balance boss_counters), and every move has a weight there.
+  if exists (select 1 from jsonb_each(cfg0) b where b.key = '_share' or b.value ? 'share')
+     or exists (select 1 from jsonb_each(cfg0) b, jsonb_array_elements(b.value->'moves') m where m ? 'w') then bad := bad || 'a number in settings.hunt_boss_moves; '; end if;
+  if exists (select 1 from jsonb_each(cfg0) b, jsonb_array_elements(b.value->'moves') m where not (bal0->'weights' ? (m->>'key'))) then bad := bad || 'a move with no weight; '; end if;
+  -- 6d. Every text renders (no template left), and a text that quotes a number shows the balance value.
+  if exists (select 1 from jsonb_each(cfg0) b, jsonb_array_elements(hunt_boss_move_list(b.key)) m where m->>'text' like '%{%') then bad := bad || 'a template is left in a move text; '; end if;
+  if (select m->>'text' from jsonb_array_elements(hunt_boss_move_list('The AFK Warzombie')) m where m->>'name' = 'Groan') is distinct from 'Heal cards wait 4 more rounds.'
+     or (select m->>'text' from jsonb_array_elements(hunt_boss_move_list('The Grind Vampire')) m where m->>'name' = 'Bloodrot') is distinct from 'Heals on the hit card work at 10% for the rest of the day.'
+  then bad := bad || 'the move texts: ' || hunt_boss_move_list('The AFK Warzombie')::text || '; '; end if;
+  -- ... and a changed balance value changes the text (one source).
+  update balance set value = jsonb_set(jsonb_set(value, '{moves,groan,wait}', '5'), '{moves,shatter,shield}', '0.15') where key = 'boss_counters';
+  if (select m->>'text' from jsonb_array_elements(hunt_boss_move_list('The AFK Warzombie')) m where m->>'name' = 'Groan') is distinct from 'Heal cards wait 5 more rounds.'
+     or (select m->>'text' from jsonb_array_elements(hunt_boss_move_list('The Smurf Brute')) m where m->>'name' = 'Shatter') is distinct from 'Breaks every shield in your squad. Shields work at 15% for the rest of the day.'
+  then bad := bad || 'a changed balance value, the same text: ' || hunt_boss_move_list('The AFK Warzombie')::text || '; '; end if;
+  update balance set value = bal0 where key = 'boss_counters';
+  -- 6e. The shape check (balance_check_boss_counters): a wrong value is refused, a right one is accepted.
+  for rec in select * from (values ('{share}', '1.5', 'from 0 to 1'), ('{boss_share,The Smurf Brute}', '2', 'from 0 to 1'),
+      ('{moves,groan,wait}', '4.5', 'whole number'), ('{moves,rush,hits}', '0', 'at least 1'), ('{moves,feast,hit_x}', '0', 'above 0'),
+      ('{moves,decay,heal}', '1.2', 'from 0 to 1'), ('{moves,groan,note}', '"x"', 'must be a number'), ('{weights,bloodrot}', '-1', 'negative')) v(path, val, msg) loop
+    begin
+      update balance set value = jsonb_set(value, rec.path::text[], rec.val::jsonb) where key = 'boss_counters';
+      bad := bad || 'shape: ' || rec.path || ' = ' || rec.val || ' was accepted; ';
+    exception when others then if sqlerrm not like '%' || rec.msg || '%' then bad := bad || 'shape ' || rec.path || ': ' || sqlerrm || '; '; end if;
+    end;
+  end loop;
+  begin
+    update balance set value = jsonb_set(value, '{juggernaut_stun_fail}', '1.5') where key = 'boss_passives';
+    bad := bad || 'shape: juggernaut_stun_fail 1.5 was accepted; ';
+  exception when others then if sqlerrm not like '%from 0 to 1%' then bad := bad || 'shape passives: ' || sqlerrm || '; '; end if;
+  end;
+  begin
+    update balance set value = jsonb_set(jsonb_set(value, '{moves,groan,wait}', '5'), '{share}', '0.5') where key = 'boss_counters';
+    update balance set value = bal0 where key = 'boss_counters';
+  exception when others then bad := bad || 'shape: a right value was refused: ' || sqlerrm || '; ';
+  end;
 
   -- 7. Every move in the setting has a rule (an unknown key would raise in the fight).
   if (select count(*) from jsonb_each(cfg0) b where b.key <> '_share') <> 12 then bad := bad || 'not 12 bosses in the setting; '; end if;

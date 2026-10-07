@@ -59,8 +59,8 @@ begin
     ['combat_aff_scale', 'e5be70b040755944dcec10487f274197', '7a4054dd69923c816ea97d8bab829ab8'],
     ['combat_support_value', '3a355036a33ec2a2c3719a1ebe569b23', 'f559395d686aae07f5411b3b391c2c20'],
     ['combat_stun_immune', 'a90cde7342cf656740ca6d5a1570f0ff', 'b26ab5f7ae16903480af205f114b237f'],
-    ['hunt_attack', '352f81ffb45b028c1eab6e3dfcc2e707', '5cfa1a4779226661d56ceda56045b58c'],
-    ['hunt_support', '6ffdd26daed7008346262413497b2a24', 'a9addaf61d3a15508001be519589694b'],
+    ['hunt_attack', '352f81ffb45b028c1eab6e3dfcc2e707', 'ca913fda0dbc186723793afac8570779'],
+    ['hunt_support', '6ffdd26daed7008346262413497b2a24', 'fc9e9f0040a9c09d090d75145820b6c3'],
     ['lock_hunt_squad', '4a80c769286b2b6022ab79b4cb01f7c6', '22bf3511259d728791ee370775beb5f2'],
     ['hunt_commit_card', '6ef31cb9924f10f32680369ef3057b16', '165a2c131945eb341f8e4864413f6884'],
     ['deployable_power', '10723321c2ee972b3200918687b0d8b0', 'a744b17aff2b54b776663492ac0c4ce1'],
@@ -81,6 +81,7 @@ end $g$;
 -- 2026-10-07 (card_decisions.sql): combat_squad reads the element list from card_element / element_aliases (robot = metal) (md5 8395926d...); the guard accepts that result.
 -- 2026-10-07 (fix_search_path.sql): the 8 combat helpers above with a fixed search_path (the sp list); the guard accepts that result.
 -- 2026-10-07 (dungeon_combat_log.sql): added the combat_actions log rows: the new md5 of dungeon_attack, dungeon_support and dungeon_enemy_turn is its result (the same text below).
+-- 2026-10-07 (hunt_counter_balance.sql): hunt_attack (Counter-pick, Demotion) and hunt_support (the counter passives, Rage Spiral, the mark defaults) read their numbers from balance boss_counters / boss_passives (md5 ca913fda... / fc9e9f00...); the guard accepts that result.
 -- GUARD-END
 
 -- 1. The table + its history ------------------------------------------------------------------
@@ -787,13 +788,13 @@ begin
     v_cardhp := least(v_maxhp, v_cardhp + v_heal);
   end if;
   -- Counter marks on this attack (hunt_boss_moves.sql): Counter-pick (an empowered attack hurts the attacker by the
-  -- bonus) and Demotion (an attack on an exposed boss sends 20% back).
+  -- bonus x counterpick.x) and Demotion (an attack on an exposed boss sends demotion.back back): balance boss_counters.
   if v_dmg > 0 and v_buff > 1 and hunt_mark_on(v_marks, 'counterpick', v_round) then
-    v_cardhp := greatest(0, v_cardhp - greatest(1, round(2 * v_dmg * (v_buff - 1) / v_buff))::int);   -- twice the bonus
+    v_cardhp := greatest(0, v_cardhp - greatest(1, round(hunt_counter_num('counterpick', 'x') * v_dmg * (v_buff - 1) / v_buff))::int);
   end if;
   if v_dmg > 0 and v_exp_until >= v_round and v_expose > 0 and hunt_mark_on(v_marks, 'demotion', v_round)
      and not hunt_mark_on(v_marks, 'block_expose', v_round) then
-    v_cardhp := greatest(0, v_cardhp - greatest(1, round(v_dmg * 0.2))::int);
+    v_cardhp := greatest(0, v_cardhp - greatest(1, round(v_dmg * hunt_counter_num('demotion', 'back')))::int);
   end if;
   v_ubuff := v_buff;   -- the empower this attack used (Tier List)
   v_buff := 1;
@@ -811,7 +812,7 @@ begin
     v_bmult := combat_enemy_mult(v_enrage, v_enr_until,
       case when hunt_mark_on(v_marks, 'block_weaken', v_round) then 0 else v_weaken end,   -- Alt-F4 (hunt_boss_moves.sql)
       v_wk_until, v_round, 'volatile' = any(v_plist), v_lost, 'frenzied' = any(v_plist));
-    if hunt_mark_on(v_marks, 'spiral', v_round) then   -- Rage Spiral: +20% for each weaken played
+    if hunt_mark_on(v_marks, 'spiral', v_round) then   -- Rage Spiral: + spiral.step for each weaken played
       v_bmult := v_bmult * (1 + coalesce((v_marks->'spiral'->>'bonus')::numeric, 0));
     end if;
     v_bheal := 0;
@@ -826,7 +827,7 @@ begin
     v_act := combat_enemy_act(v_atk, v_bmult, v_round, v_stun_until, v_lost, v_share);
     v_bossact := v_act->>'action'; v_cdmg := (v_act->>'dmg')::int; v_area := (v_act->>'area')::numeric;
     v_bheal := v_bheal + (v_act->>'heal')::int;
-    -- A counter move (hunt_boss_moves.sql): 40% of the normal turns of a boss with a move pool. An effect move comes on
+    -- A counter move (hunt_boss_moves.sql): a share of the normal turns of a boss with a move pool (balance boss_counters). An effect move comes on
     -- top of the usual turn (base); a hit move replaces it.
     v_pick := hunt_counter_pick(p_hunt, p_player, v_day, v_bname, v_bossact);
     if v_pick is not null then
@@ -1065,18 +1066,18 @@ begin
     return jsonb_build_object('ok', true, 'effect', v_eff, 'nullified', true, 'countered', jsonb_build_array('null_next'),
       'ready_round', v_round + v_cd, 'round', v_round, 'boss_hp', (select hp_remaining from hunts where id = p_hunt), 'defeated', false);
   end if;
-  if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'plague'::text; end if;
-  if v_eff in ('shield', 'smite') and 'shatterer' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'shatterer'::text; end if;
-  if v_eff in ('empower', 'expose') and 'dispeller' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'dispeller'::text; end if;
-  if v_eff = 'weaken' and 'juggernaut' = any(v_plist) then v_f := v_f * 0.1; v_ctr := v_ctr || 'juggernaut'::text; end if;
+  if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * balance_num('boss_passives', 'plague_x'); v_ctr := v_ctr || 'plague'::text; end if;
+  if v_eff in ('shield', 'smite') and 'shatterer' = any(v_plist) then v_f := v_f * balance_num('boss_passives', 'shatterer_x'); v_ctr := v_ctr || 'shatterer'::text; end if;
+  if v_eff in ('empower', 'expose') and 'dispeller' = any(v_plist) then v_f := v_f * balance_num('boss_passives', 'dispeller_x'); v_ctr := v_ctr || 'dispeller'::text; end if;
+  if v_eff = 'weaken' and 'juggernaut' = any(v_plist) then v_f := v_f * balance_num('boss_passives', 'juggernaut_x'); v_ctr := v_ctr || 'juggernaut'::text; end if;
   if v_eff = 'heal' and p_target is not null and hunt_mark_on(v_marks->'heal_block_card', p_target::text, v_round) then
-    v_f := v_f * coalesce((v_marks->'heal_block_card'->p_target::text->>'mult')::numeric, 0.1); v_ctr := v_ctr || 'bloodrot'::text;
+    v_f := v_f * coalesce((v_marks->'heal_block_card'->p_target::text->>'mult')::numeric, hunt_counter_mult('heal_block_card')); v_ctr := v_ctr || 'bloodrot'::text;
   end if;
   if v_eff in ('shield', 'empower', 'weaken', 'expose', 'smite') and hunt_mark_on(v_marks, 'block_' || v_eff, v_round) then
-    v_f := v_f * coalesce((v_marks->('block_' || v_eff)->>'mult')::numeric, 0.1); v_ctr := v_ctr || ('block_' || v_eff);
+    v_f := v_f * coalesce((v_marks->('block_' || v_eff)->>'mult')::numeric, hunt_counter_mult('block_' || v_eff)); v_ctr := v_ctr || ('block_' || v_eff);
   end if;
-  if hunt_mark_on(v_marks, 'half_' || v_eff, v_round) then   -- Shatter, Rattle, Nerf (25%), Fade, Rollback, Decay (50%) for the day
-    v_f := v_f * coalesce((v_marks->('half_' || v_eff)->>'mult')::numeric, 0.5); v_ctr := v_ctr || ('half_' || v_eff);
+  if hunt_mark_on(v_marks, 'half_' || v_eff, v_round) then   -- Shatter, Rattle, Nerf, Fade, Rollback, Decay for the day (balance boss_counters)
+    v_f := v_f * coalesce((v_marks->('half_' || v_eff)->>'mult')::numeric, hunt_counter_mult('half_' || v_eff)); v_ctr := v_ctr || ('half_' || v_eff);
   end if;
   if v_f <> 1 then v_amt := v_amt * v_f; end if;
 
@@ -1128,9 +1129,9 @@ begin
   elsif v_eff = 'weaken' then
     update hunt_combat_state set boss_weaken = combat_support_value('weaken', v_amt, v_scale, null), weaken_until = v_round + v_dur, updated_at = now()
       where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
-    if hunt_mark_on(v_marks, 'spiral', v_round) then   -- Rage Spiral: each weaken adds 20% to the boss damage
+    if hunt_mark_on(v_marks, 'spiral', v_round) then   -- Rage Spiral: each weaken adds spiral.step to the boss damage
       perform hunt_marks_patch(p_hunt, p_player, v_day, jsonb_build_object('spiral', (v_marks->'spiral')
-        || jsonb_build_object('bonus', coalesce((v_marks->'spiral'->>'bonus')::numeric, 0) + 0.2)));
+        || jsonb_build_object('bonus', coalesce((v_marks->'spiral'->>'bonus')::numeric, 0) + hunt_counter_num('spiral', 'step'))));
       v_ctr := v_ctr || 'spiral'::text;
     end if;
   elsif v_eff = 'expose' then
@@ -1148,7 +1149,7 @@ begin
       v_fail := true; v_ctr := v_ctr || 'desync'::text;
       update hunt_combat_state set marks = marks - 'stun_fail', updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
     elsif 'juggernaut' = any(v_plist) then
-      if random() < 0.9 then v_fail := true; v_ctr := v_ctr || 'juggernaut'::text; end if;
+      if random() < balance_num('boss_passives', 'juggernaut_stun_fail') then v_fail := true; v_ctr := v_ctr || 'juggernaut'::text; end if;
     end if;
     if not v_fail then
     update hunt_combat_state set stunned_until = v_round + 1, updated_at = now()
@@ -1157,9 +1158,9 @@ begin
   elsif v_eff = 'cleanse' then
     if hunt_mark_on(v_marks, 'lock_cleanse', v_round) then   -- Hotfix (hunt_boss_moves.sql): the curse stays
       v_ctr := v_ctr || 'hotfix'::text;
-    elsif 'plague' = any(v_plist) then                         -- Plague: removes only 10% of a curse
+    elsif 'plague' = any(v_plist) then                         -- Plague: removes only plague_cleanse of a curse
       v_ctr := v_ctr || 'plague'::text;
-      update hunt_card_hp set dmg_debuff = dmg_debuff + (1 - dmg_debuff) * 0.1, updated_at = now()
+      update hunt_card_hp set dmg_debuff = dmg_debuff + (1 - dmg_debuff) * balance_num('boss_passives', 'plague_cleanse'), updated_at = now()
         where hunt_id = p_hunt and player_id = p_player and hit_date = v_day and dmg_debuff <> 1;
     else
     update hunt_card_hp set dmg_debuff = 1, updated_at = now()

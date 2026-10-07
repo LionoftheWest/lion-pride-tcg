@@ -27,8 +27,8 @@ cap attacks. Each boss now punishes a different support type, so no one squad is
 ## 2. The boss turn
 
 1. Stunned, Charging and Cataclysm come first, as today (`combat_enemy_act`).
-2. Else the boss draws: with chance `share` it uses one of its 4 counter moves (equal weights). `share` = the
-   boss's own value, else `_share` (0.40). The Smurf Brute and the Hardstuck Skeleton use 0.60, the Grind Vampire and the
+2. Else the boss draws: with chance `share` it uses one of its 4 counter moves (balance `boss_counters.weights`, all 1). `share` =
+   the boss's own value (balance `boss_counters.boss_share`), else `boss_counters.share` (0.40). The Smurf Brute and the Hardstuck Skeleton use 0.60, the Grind Vampire and the
    Zerg-Rush Queen 0.50 (Nathan, 2026-10-06: "Agreed", after the measurement showed that the squad's heals cover the
    lost shield, and the Vampire and the Queen were just under 50%).
    Else it uses the usual table (strike, slam, drain, stun, enrage, curse, regenerate) as today.
@@ -62,7 +62,9 @@ A "round" is the squad round (`hunt_combat_state.round`). "For N rounds" = until
 
 ## 4. The movesets (approved list)
 
-The numbers are the first values. They live in `settings.hunt_boss_moves`.
+The numbers are the first values. Since hunt_counter_balance.sql (2026-10-07) every number is in balance `boss_counters`
+(the counter passives: `boss_passives`), and `settings.hunt_boss_moves` holds only the pools (keys, names, texts). A text
+that quotes a number is rendered from balance (`hunt_boss_move_list`).
 
 ### The Grind Vampire: counters heal
 - **Bloodrot:** heals on the hit card work at 10% for the rest of the day.

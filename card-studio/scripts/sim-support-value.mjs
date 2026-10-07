@@ -13,8 +13,9 @@ import { readFileSync } from 'node:fs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https?:\/\/([a-z0-9]+)/)?.[1] || 'local';
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const DAYS = Number(process.argv[2] || 30);
-const mig = readFileSync(process.argv[3] || new URL('../../tcg-bot/supabase/hunt_boss_moves.sql', import.meta.url), 'utf8')
-  .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
+// [file.sql]: a migration to run first (in the block). No file: the database as it is (hunt_boss_moves.sql is
+// superseded; the shares and weights are balance boss_counters since hunt_counter_balance.sql).
+const mig = !process.argv[3] ? '' : readFileSync(process.argv[3], 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 const BASE = ['shield', 'empower', 'weaken', 'expose'];
 // boss -> the countered support type ('all' = every support).
 const BOSSES = JSON.parse(process.env.SIM_BOSSES || 'null') || {
@@ -35,7 +36,7 @@ function bossSQL(boss, type, day0, days) {
   atks bigint[]; sq jsonb; share numeric; day int; h bigint; ids bigint[]; sup bigint[]; a bigint; s bigint; r jsonb; tg bigint;
   rounds int; total bigint; healed bigint; applied numeric; eff text; orig jsonb;
 begin
-  execute $m$${mig}$m$;
+  ${mig ? 'execute $m$' + mig + '$m$;' : '-- the database as it is'}
   select array_agg(id order by id) into atks from (select c.id from cards c join subjects s on s.id = c.subject_id
     where s.type in ('Character', 'Creature') and c.rarity = 'full_art' order by c.id limit 8) x;
   insert into players (id, username) values (P, 'tst sim');
@@ -44,7 +45,7 @@ begin
     select P, min(c.id), 1 from cards c join subjects s on s.id = c.subject_id
     where s.ability->>'kind' = 'support' and c.rarity = 'normal' group by s.ability->>'effect';
   update balance set value = '8' where key = 'daily_card_cap';   -- the daily card cap (balance_table.sql)
-  select value into orig from settings where key = 'hunt_boss_moves';
+  select value into orig from balance where key = 'boss_counters';
   for sq in select * from jsonb_array_elements(jsonb_build_array(${squads})) loop
     -- the attackers from the strongest to the weakest (the support targets and the attacks go in this order)
     select array_agg(x order by (card_combat('full_art', 0, s2.cp_mod, '{}'::jsonb)->>'cp')::int desc, x) into ids
@@ -52,8 +53,8 @@ begin
     select coalesce(array_agg(pc.card_id), '{}') into sup from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
       where pc.player_id = P and s.ability->>'kind' = 'support' and s.ability->>'effect' in (select jsonb_array_elements_text(sq->'effs'));
     foreach share in array array[0, 0.4]::numeric[] loop
-      -- off: no counter move at all; on: the setting as built (the boss's own share, else _share)
-      update settings set value = case when share = 0 then jsonb_set(jsonb_set(orig, '{_share}', '0'), '{${boss},share}', '0') else orig end where key = 'hunt_boss_moves';
+      -- off: no counter move at all; on: balance boss_counters as it is (the boss's own share, else share)
+      update balance set value = case when share = 0 then jsonb_set(jsonb_set(orig, '{share}', '0'), array['boss_share', '${boss}'], '0') else orig end where key = 'boss_counters';
       total := 0; healed := 0; applied := 0;
       for day in ${day0 + 1}..${day0 + days} loop
         insert into hunts (name, tier, weak_points, resist_points, passive, hp_max, hp_remaining, closes_at, hp_share, stats)
