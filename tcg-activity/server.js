@@ -388,6 +388,23 @@ function lptcgRole(id) {
     body: JSON.stringify({ userId: String(id) }), signal: AbortSignal.timeout(8000) }).catch(() => lptcgAsked.delete(String(id)));
 }
 
+// The v3 screens (UI-00 foundation, design.md 12.3): settings.ui_v3 = {"enabled": bool, "users": [ids]}. Only the listed
+// members (Nathan, 2026-10-07) see a v3 screen until a step is approved for everyone. Read once a minute; a failed read
+// keeps the last value (off at start).
+let uiV3Cache = { at: 0, cfg: { enabled: false, users: [] } };
+async function uiV3On(id) {
+  if (Date.now() - uiV3Cache.at >= 60000) {
+    await singleFlight('uiV3', async () => {
+      try {
+        const { data, error } = await supabase.from('settings').select('value').eq('key', 'ui_v3').maybeSingle();
+        if (!error) uiV3Cache = { at: Date.now(), cfg: data?.value || { enabled: false, users: [] } };
+      } catch { /* keep the last value */ }
+    });
+  }
+  const c = uiV3Cache.cfg || {};
+  return c.enabled === true || (Array.isArray(c.users) && c.users.map(String).includes(String(id)));
+}
+
 app.get('/api/flags', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
@@ -398,8 +415,8 @@ app.get('/api/flags', async (req, res) => {
     avatarHash.set(String(me.id), { hash, at: Date.now() });
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
-  const { data: tut } = await supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle();
-  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  const [{ data: tut }, uiV3] = await Promise.all([supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle(), uiV3On(me.id)]);
+  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, uiV3, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
