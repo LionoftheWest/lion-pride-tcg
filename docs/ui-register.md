@@ -55,11 +55,11 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 | UI-15 | Profile style editor (titles, frames) and Spotlight editor | lion-pride-tcg-design `UI-15/approved/` (review-1) | 2026-10-05, design, lion-pride-tcg-design `UI-15/approval.md` | #14, #95 | Not migrated | Grid moves to the Card picker UI-64 when approved (D-42) |
 | UI-16 | Profile wishlist and wish picker | lion-pride-tcg-design `UI-16/approved/` (review-2) | 2026-10-05, design, lion-pride-tcg-design `UI-16/approval.md` | #112 | Not migrated | |
 | UI-17 | Hunt: squad select | lion-pride-tcg-design `UI-17/approved/` (review-2) | 2026-10-05, design, lion-pride-tcg-design `UI-17/approval.md` | #12, #84, #85, #157 | Not migrated | Card details in pickers (#157) have no design |
-| UI-18 | Hunt: battle | lion-pride-tcg-design `UI-18/approved/` (review-3) | 2026-10-05, design, lion-pride-tcg-design `UI-18/approval.md` | #10, #27, #103 | Not migrated | #27 changed the layout with no design |
+| UI-18 | Hunt: battle | lion-pride-tcg-design `UI-18/approved/` (review-4) | 2026-10-06, design, lion-pride-tcg-design `UI-18/approval.md` | #10, #27, #103 | Not migrated | #27 changed the layout with no design |
 | UI-19 | Hunt: resting and cooldown | lion-pride-tcg-design `UI-19/approved/` (review-2 + review-3) | 2026-10-05, design, lion-pride-tcg-design `UI-19/approval.md` | #13, #156 | Not migrated | |
-| UI-20 | Boss detail window | lion-pride-tcg-design `UI-20/approved/` (review-1) | 2026-10-05, design, lion-pride-tcg-design `UI-20/approval.md` | v1 `openBossModal` | Not migrated | |
-| UI-21 | Hunt board (Hunt standings) | `12-leaderboard` (inferred) | No record | v1 `openHuntBoard`, #83 | Not migrated | D-12: becomes a tab of the one Leaderboard |
-| UI-22 | Leaderboard | `12-leaderboard.pen` | No record (commit `e68eb37` "designs 10-14") | #13, #107 | Not migrated | Portrait (#107) has no design. Entry depends on another flag (G-074) |
+| UI-20 | Boss detail window | lion-pride-tcg-design `UI-20/approved/` (review-2) | 2026-10-06, design, lion-pride-tcg-design `UI-20/approval.md` | v1 `openBossModal` | Not migrated | |
+| UI-21 | Hunt board (Hunt standings) | `12-leaderboard` (inferred) | No record | v1 `openHuntBoard`, #83 | Retired | Merged into UI-66, one Leaderboard window (D-44). Retired by Nathan 2026-10-06 |
+| UI-22 | Leaderboard | `12-leaderboard.pen` | No record (commit `e68eb37` "designs 10-14") | #13, #107 | Retired | Merged into UI-66, one Leaderboard window (D-44). Retired by Nathan 2026-10-06 |
 | UI-23 | Logo | lion-pride-tcg-design `UI-23/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-23/approval.md` | #13 | Not migrated | D-04: the lion is the master logo |
 | UI-24 | Bell: notifications, gifts to claim, ping settings | lion-pride-tcg-design `UI-24/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-24/approval.md` | #13, #45, #64, #94 | Not migrated | Gift claims, gift animation and ping settings have no design |
 | UI-25 | Community: Trades, trade builder, two-step accept | lion-pride-tcg-design `UI-25/approved/` (review-2) | 2026-10-05, design, lion-pride-tcg-design `UI-25/approval.md` | #13, #78 | Not migrated | Member picker + Pending (D-35, D-43); D-63 answers; review-2 in review |
@@ -81,16 +81,16 @@ This file has one row for each screen, window and view. The rules are in `docs/d
 | UI-41 | Phone layouts (landscape and portrait, all views) | None (no design needed) | 2026-10-06, design, lion-pride-tcg-design `UI-41/approval.md` | #75, #76, #78, #79 and about 15 later fixes | Not migrated | The standard replaces the three layouts with one layout for each screen |
 | UI-42 | Top bar Shards and Shop button | lion-pride-tcg-design `UI-42/approved/` (review-3) | 2026-10-04, design, lion-pride-tcg-design `UI-42/approval.md` | #118 | Approved design, not built | Matches at a glance |
 | UI-43 | Shop: stock, packs, stat reset, confirms, picker | lion-pride-tcg-design `UI-43/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-43/approval.md` | #118, #125 | Not migrated | Featured button label differs. Phone fixes (#125) have no design |
-| UI-44 | Convert extra copies | None | Date not recorded, spec only, #128 (option B) | #128 | Not migrated | |
+| UI-44 | Convert extra copies | lion-pride-tcg-design `UI-44/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-44/approval.md` | #128 | Not migrated | |
 | UI-45 | Adventure tabs (Hunt, Dungeon) | None (no design needed) | 2026-10-06, design, lion-pride-tcg-design `UI-45/approval.md` | #147, #155 | Not migrated | The design shows "SOON" tabs. D-13: hide them |
-| UI-46 | Dungeon lobby | `30-review-2/01, 06, 11` | 2026-10-03, design, #147 | #147, #154 | Not migrated | Filters changed after approval |
+| UI-46 | Dungeon lobby | lion-pride-tcg-design `UI-46/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-46/approval.md` | #147, #154 | Not migrated | Filters changed after approval |
 | UI-47 | Dungeon fight | `30-review-2/02, 07, 12` | 2026-10-03, design, #147 | #147, #154, #158, #159 | Not migrated | |
-| UI-48 | Dungeon: choose a reward | `30-review-2/03, 08, 13` | 2026-10-03, design, #147 | #147, #158 | Not migrated | |
-| UI-49 | Dungeon v2: room map, ? rooms, chest (3D), doors, rest, floor cleared, retreat | None | No | #158, #159, #160 | Not migrated | D-16 step 4 |
-| UI-50 | Dungeon run over | `30-review-2/04, 09, 14` | 2026-10-03, design, #147 | #147, #160, #165 | Not migrated | |
-| UI-51 | Dungeon leaderboard | `30-review-2/05, 10, 15` | 2026-10-03, design, #147 | #147 | Not migrated | D-12: becomes a tab of the one Leaderboard |
-| UI-52 | Gauntlet: lobby, fight, over, prizes, board | None | Date not recorded, spec only, #163 | #163 | Not migrated | D-16 step 4 |
-| UI-53 | Unlock gate | None | No | #147 | Not migrated | |
+| UI-48 | Dungeon: choose a reward | lion-pride-tcg-design `UI-48/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-48/approval.md` | #147, #158 | Not migrated | |
+| UI-49 | Dungeon v2: room map, ? rooms, chest (3D), doors, rest, floor cleared, retreat | lion-pride-tcg-design `UI-49/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-49/approval.md` | #158, #159, #160 | Not migrated | D-16 step 4 |
+| UI-50 | Dungeon run over | lion-pride-tcg-design `UI-50/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-50/approval.md` | #147, #160, #165 | Not migrated | |
+| UI-51 | Dungeon leaderboard | `30-review-2/05, 10, 15` | 2026-10-03, design, #147 | #147 | Retired | Merged into UI-66, one Leaderboard window (D-44). Retired by Nathan 2026-10-06 |
+| UI-52 | Gauntlet: lobby, fight, over, prizes, board | lion-pride-tcg-design `UI-52/approved/` (review-1: lobby, over, prizes, board) | 2026-10-06, design, lion-pride-tcg-design `UI-52/approval.md` | #163 | Not migrated | D-16 step 4 |
+| UI-53 | Unlock gate | lion-pride-tcg-design `UI-53/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-53/approval.md` | #147 | Not migrated | |
 | UI-54 | Music button | None (no design needed) | 2026-10-06, design, lion-pride-tcg-design `UI-54/approval.md` | #159 | Not migrated | Replaced by the one sound control (G-118) |
 | UI-55 | Avatar effects (mustache) on Home, Profile, Leaderboard | lion-pride-tcg-design `UI-55/approved/` (review-1) | 2026-10-05, design, lion-pride-tcg-design `UI-55/approval.md` | #151 (open) | Not migrated | |
 | UI-56 | Loader and sign-in retry (Try again) | lion-pride-tcg-design `UI-56/approved/` (review-1) | 2026-10-06, design, lion-pride-tcg-design `UI-56/approval.md` | v1, #66 | Not migrated | D-16 step 3. Uses the 🦁 emoji and v1 colors |
