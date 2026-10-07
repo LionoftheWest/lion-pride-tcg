@@ -991,7 +991,7 @@ Pays the prizes of an ended Hunt once: packs by damage rank (ref ('hunt', hunt i
 - Returns: `bigint`
 - Security definer: no
 
-[hunt] Makes a new Hunt boss and returns its id. It first marks every active Hunt expired, with no prize payment. Picks the tier, weak and resist tags, passives, HP and ATK from the balance keys. Called by spawn_weekly_boss and test scripts.
+[hunt] Makes a new Hunt boss and returns its id. It first closes every active Hunt with close_hunt, so settle_hunt pays its prizes once. Picks the tier, weak and resist tags, passives, HP and ATK from the balance keys. Called by spawn_weekly_boss and test scripts.
 
 <a id="fn-spawn-weekly-boss"></a>
 
@@ -1011,7 +1011,7 @@ Pays the prizes of an ended Hunt once: packs by damage rank (ref ('hunt', hunt i
 - Returns: `numeric`
 - Security definer: no
 
-[effects] Uses up the oldest waiting effect of the type for the member and returns its amount, or null if none. It does not check starts_at. Called by hunt_attack (mend, rally, butterfingers) and the bot (lucky_pull).
+[effects] Uses up the oldest waiting effect of the type for the member and returns its amount, or null if none. An effect whose starts_at is still in the future (a delayed prank) is not used up. Called by hunt_attack (mend, rally, butterfingers) and the bot (lucky_pull).
 
 <a id="fn-use-effect-charge-text-text"></a>
 

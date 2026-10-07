@@ -61,7 +61,7 @@ begin
     ['lock_hunt_squad', '4a80c769286b2b6022ab79b4cb01f7c6', '22bf3511259d728791ee370775beb5f2'],
     ['hunt_commit_card', '6ef31cb9924f10f32680369ef3057b16', '165a2c131945eb341f8e4864413f6884'],
     ['deployable_power', '10723321c2ee972b3200918687b0d8b0', 'a744b17aff2b54b776663492ac0c4ce1'],
-    ['spawn_hunt', '4b9c670ee18c6ece32d5a3a886b9df1d', 'f9d7209d29cd2d9fb788141a57bc2323'],
+    ['spawn_hunt', '4b9c670ee18c6ece32d5a3a886b9df1d', '87d7ae86ad47945a5e6c7d44f453a1ad'],
     ['play_card_effect', 'e62c11f53b2a82ebff6869214f63d3e9', 'ab436a5ddf42c3ac95f196f2c9b1ba0d'],
     ['my_collection_power', '8f687924f72babcc2b241f0135d810b3', 'a25e996ebcfc49edfeac7d149a5ab4da'],
     ['top_collection_power', 'ea9eb37e441bf3beb8902ebd54b5ebbd', '529a2cacae1407a63e5e304960e81f8c'],
@@ -74,6 +74,7 @@ begin
   end loop;
 end $g$;
 -- 2026-10-07 (damage_log.sql): hunt_attack is the live text + the Hunt Crasher log row (md5 5cfa1a47...); the guard accepts that result.
+-- 2026-10-07 (effect_start_spawn_settle.sql): spawn_hunt closes an active Hunt with close_hunt (md5 87d7ae86...); the guard accepts that result.
 -- GUARD-END
 
 -- 1. The table + its history ------------------------------------------------------------------
@@ -1316,7 +1317,9 @@ declare
                           'The Grind Vampire','The Ban-Wave Demon','The Smurf Brute',
                           'The AFK Warzombie','The Hardstuck Skeleton','The Zerg-Rush Queen'];
 begin
-  update hunts set status = 'expired' where status = 'active';
+  -- A Hunt that is still active ends through the normal close path first (close_hunt: expired, settle_hunt pays
+  -- the prizes once, the 'expired' post). Before, it was only marked expired, so its prizes were never paid.
+  perform close_hunt(a.id) from (select id from hunts where status = 'active' order by id) a;
   -- p_tier picks the tier (an early boss, Nathan 2026-10-04); NULL = random, as the weekly spawn does.
   if p_tier is not null and p_tier not in ('Normal', 'Heroic', 'Mythic') then raise exception 'bad tier %', p_tier; end if;
   v_tier := coalesce(p_tier, (array['Normal','Heroic','Mythic'])[1 + floor(random() * 3)]);
