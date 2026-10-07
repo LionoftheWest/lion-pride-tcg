@@ -25,6 +25,10 @@ begin
   ${GATE('tst_dn_a')}
   r := lock_hunt_squad('tst_dn_a', h, atk || sup); -- a short squad: 3 attackers + 1 support
   if not coalesce((r->>'ok')::boolean, false) then bad := bad || 'lock ' || r::text || '; '; end if;
+  -- A fixed seed (as in test-launch-event-cards.mjs): the fight is random. A card whose every hit missed
+  -- (0 damage, no hunt_hits row) is not in cards_used, and a stun on the last attacker kept it stunned
+  -- (the round moves only on an attack), so about 1 run in 6 failed (2026-10-06).
+  perform setseed(0.42);
   for i in 1..4 loop
     foreach c in array atk loop
       for n in 1..60 loop
