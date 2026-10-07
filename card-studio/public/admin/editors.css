@@ -1,0 +1,106 @@
+/* Lion Pride TCG - Admin view, Phase 2 editors. The tokens of admin.css only. */
+.muted { color: var(--muted); }
+.ico.flip { transform: rotate(180deg); color: var(--muted); width: 14px; height: 14px; }
+.err { color: var(--danger-text); font-size: 13px; }
+
+/* The local copy line (page heads and the change dialog) */
+.local-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
+.local-line > .ico { width: 15px; height: 15px; color: var(--info); }
+.local-line .num { font-size: 12px; }
+.local-tail { flex-basis: 100%; white-space: pre-wrap; font-size: 11px; color: var(--danger-text); }
+
+/* Key panels (Balance, Rewards) */
+.keypanel { padding: 0; }
+.keypanel > summary { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 14px 16px; cursor: pointer; list-style: none; }
+.keypanel > summary::-webkit-details-marker { display: none; }
+.keypanel > summary::before { content: '+'; font: 600 15px var(--mono); color: var(--muted); width: 12px; }
+.keypanel[open] > summary::before { content: '-'; }
+.keypanel .key-name { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+.keypanel .key-code { font-size: 12px; color: var(--muted); }
+.keypanel .key-meta { margin-left: auto; font-size: 12px; color: var(--text-2); }
+.keybody { padding: 0 16px 16px; }
+.form-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.inline { display: inline-flex; align-items: center; gap: 8px; }
+
+/* The value form */
+.vform { display: grid; gap: 8px; }
+.vroot { display: grid; gap: 8px; }
+.vgroup { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--divider); border-radius: 10px; }
+.vgroup-title { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-2); font-weight: 600; overflow-wrap: anywhere; }
+.leaf { display: grid; grid-template-columns: minmax(140px, 260px) minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.leaf-name { font-size: 13px; color: var(--text-2); overflow-wrap: anywhere; }
+.leaf .field { width: 100%; max-width: 280px; }
+.leaf .field.num { max-width: 160px; }
+.leaf-array { display: flex; gap: 6px; flex-wrap: wrap; }
+.leaf-array .field.num { width: 84px; }
+.vtable .field.num { width: 96px; }
+.vtable .field { max-width: 200px; }
+.vtable th[scope=row] { font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--text); white-space: nowrap; }
+.vtable td { vertical-align: middle; }
+.seg.toggle button.on { font-family: var(--ui); }
+details.big > summary { cursor: pointer; font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+
+/* Pull rates */
+.pulls-edit .pct { display: inline-flex; align-items: center; gap: 4px; font: 13px var(--mono); }
+.pulls-edit .rate-in { width: 120px; text-align: right; }
+.pulls-edit tr.sum td { font-weight: 600; }
+
+/* Settings member lists */
+.mlist { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
+.chips.wrap { flex-wrap: wrap; overflow: visible; margin-right: 0; padding-right: 0; }
+.mchip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 4px 0 10px; border: 1px solid var(--edge); border-radius: 8px; font-size: 13px; overflow-wrap: anywhere; }
+.mchip-x { display: inline-flex; border: 0; background: none; color: var(--text-2); cursor: pointer; padding: 4px; border-radius: 6px; }
+.mchip-x:hover { background: var(--selected); color: var(--text); }
+.mchip-x .ico { width: 14px; height: 14px; }
+.picker { position: relative; max-width: 360px; }
+.picker .field { width: 100%; }
+.pick-results { position: absolute; left: 0; right: 0; top: 40px; z-index: 5; background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; padding: 6px; max-height: 280px; overflow: auto; }
+.picked { display: flex; align-items: center; font-size: 13px; min-height: 20px; }
+
+/* Member actions */
+.action-btn.on { cursor: pointer; color: var(--text); }
+.action-btn.on:hover { background: var(--raised); }
+.action-btn.on[aria-expanded=true] { border-color: var(--gold); }
+.act-form { padding: 10px 0 2px; }
+.act-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.act-row select.field { max-width: 100%; }
+
+/* The change dialog */
+.modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 50; }
+.modal { position: fixed; z-index: 51; top: 6vh; left: 50%; transform: translateX(-50%); width: min(720px, calc(100vw - 32px)); max-height: 88vh; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 14px; box-shadow: 0 20px 48px rgba(0,0,0,.55); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--divider); position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.modal-head strong { font-size: 16px; }
+.modal-body { padding: 16px; display: grid; gap: 12px; }
+.modal-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.modal-foot { border-top: 1px solid var(--divider); padding-top: 12px; }
+.reason-row { display: grid; gap: 6px; }
+.field.reason { width: 100%; resize: vertical; font: 13px var(--ui); }
+.diff-target { font-weight: 600; overflow-wrap: anywhere; margin: 4px 0 8px; }
+.diff { display: grid; gap: 6px; }
+.diff-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 10px; align-items: center; padding: 8px 10px; background: var(--raised); border-radius: 8px; font-size: 13px; }
+.diff-path { color: var(--text-2); overflow-wrap: anywhere; }
+.diff-before, .diff-after { font-size: 13px; overflow-wrap: anywhere; max-width: 220px; }
+.diff-after { font-weight: 700; }
+.test-out { display: grid; gap: 8px; }
+.test-head { margin-top: 4px; }
+.check-line { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.check-line .num { font-size: 12px; color: var(--text-2); }
+.readers summary { cursor: pointer; font-size: 12px; color: var(--text-2); }
+.reader-list { font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; margin-top: 6px; }
+.applied { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.log-sum { font-size: 12px; overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .leaf { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .leaf .field, .leaf .field.num { max-width: none; }
+  .modal { top: auto; bottom: 0; left: 0; right: 0; transform: none; width: auto; max-height: 92vh; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .diff-row { grid-template-columns: auto auto minmax(0, 1fr); }
+  .diff-row .diff-path { grid-column: 1 / -1; }
+  .keypanel .key-meta { margin-left: 0; flex-basis: 100%; }
+  .picker { max-width: none; }
+  .pulls-edit .rate-in { width: 96px; }
+}
+.local-line .local-txt { display: inline-flex; align-items: center; gap: 8px; }
+.local-line .local-txt .ico { width: 15px; height: 15px; color: var(--info); flex: none; }
+.leaf .seg { justify-self: start; }
