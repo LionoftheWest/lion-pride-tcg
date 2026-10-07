@@ -61,6 +61,17 @@ export function slotDetails(card, slot) {
   };
 }
 
+/**
+ * The set of a card (tcg-bot/supabase/card_sets.sql): cards.json `set`, for example "S2"; no `set` = "S1".
+ * One set for every tier of the card. push.js writes it to cards.set_id; the database then sets the
+ * season (the set name) and gives the card its number in the set. A bad id stops the push.
+ */
+export function cardSetId(card) {
+  const id = card?.set ?? 'S1';
+  if (typeof id !== 'string' || !/^[A-Z0-9]{1,8}$/.test(id)) throw new Error(`card ${card?.id}: bad set id ${JSON.stringify(id)} (for example "S1")`);
+  return id;
+}
+
 /** Set (merge) the per-tier details for one slot. Returns the updated card. */
 export function setSlotDetails(id, slot, patch) {
   const card = getCard(id);

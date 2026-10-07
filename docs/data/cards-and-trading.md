@@ -7,9 +7,9 @@ The card catalog, the copies that members hold, packs, the ledgers, trades, the 
 
 ## Contents
 
-Tables (17): [artist_submissions](#table-artist-submissions), [auction_bids](#table-auction-bids), [auctions](#table-auctions), [card_ledger](#table-card-ledger), [card_trades](#table-card-trades), [cards](#table-cards), [gift_claims](#table-gift-claims), [pack_ledger](#table-pack-ledger), [player_cards](#table-player-cards), [roster_power_history](#table-roster-power-history), [stat_point_log](#table-stat-point-log), [subjects](#table-subjects), [trade_listings](#table-trade-listings), [trade_offers](#table-trade-offers), [wish_grants](#table-wish-grants), [wishlist_log](#table-wishlist-log), [wishlists](#table-wishlists)
+Tables (19): [artist_submissions](#table-artist-submissions), [auction_bids](#table-auction-bids), [auctions](#table-auctions), [card_ledger](#table-card-ledger), [card_sets](#table-card-sets), [card_trades](#table-card-trades), [cards](#table-cards), [draw_pool](#table-draw-pool), [gift_claims](#table-gift-claims), [pack_ledger](#table-pack-ledger), [player_cards](#table-player-cards), [roster_power_history](#table-roster-power-history), [stat_point_log](#table-stat-point-log), [subjects](#table-subjects), [trade_listings](#table-trade-listings), [trade_offers](#table-trade-offers), [wish_grants](#table-wish-grants), [wishlist_log](#table-wishlist-log), [wishlists](#table-wishlists)
 
-Functions (65): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_powers(text)](#fn-card-powers-text), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_boss_hp(bigint)](#fn-roster-boss-hp-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_point_log_write()](#fn-stat-point-log-write), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [wishlist_log_write()](#fn-wishlist-log-write), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
+Functions (69): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_powers(text)](#fn-card-powers-text), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [cards_set_rules()](#fn-cards-set-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer,text)](#fn-open-packs-text-bigint-integer-text), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [pullable_sets(text)](#fn-pullable-sets-text), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_boss_hp(bigint)](#fn-roster-boss-hp-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [season_number(text)](#fn-season-number-text), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_point_log_write()](#fn-stat-point-log-write), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [wishlist_log_write()](#fn-wishlist-log-write), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
 
 ## Tables
 
@@ -126,6 +126,39 @@ Table. [players-economy] One row per change of a member's copies of a card (play
   - `card_ledger_amount_check`: `CHECK ((amount <> 0))`
 - Row level security: on. Policies: none
 
+<a id="table-card-sets"></a>
+
+### card_sets
+
+Table. [cards] One row per card set (D-80 to D-84). A pack opens from one set (open_packs with p_set); the reward draws use every pullable set (draw_pool).
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | text | not null |  | The set id (cards.set_id), for example S1. |
+| `name` | text | not null |  | The set name the members see (D-102: S1 = Origins). |
+| `code` | text | not null |  | D-103: letters from the set name, unique, shown on a card with its number, for example "ORI · #014" (D-83). |
+| `released_at` | timestamp with time zone | null |  | When the set was released (information for the Open screen; it does not gate the draws). |
+| `pullable` | boolean | not null | `true` | true = packs and rewards can give its cards (draw_pool). D-81: an old set stays pullable. |
+| `sort` | integer | not null | `0` | The order of the sets on the Open screen (pullable_sets). |
+| `last_number` | integer | not null | `0` | The last set_number given in this set. cards_set_rules adds 1 for each new card, so a number is never given twice. |
+| `created_at` | timestamp with time zone | not null | `now()` | When the set row was made. |
+| `pack_color` | text | not null |  | D-90: the color of the pack of the set (#rrggbb). D-105: also the outline color of the text on the pack (one color, one column). S1 #ff8d4d = the orange of tcg-activity/public/pack_still.png. |
+| `pack_art_url` | text | null |  | D-90: the pack artwork of the set, for later. null = the color only. |
+| `season` | integer | not null |  | D-103: the season of the set (a season holds one or more sets). cards.season = 'Season ' \|\| this (cards_set_rules). |
+| `cover_card_id` | bigint | null |  | D-86: the picture of the set, a card of the set itself (card_sets_cover_in_set refuses a card of another set). null = no cover. |
+
+- Primary key: `PRIMARY KEY (id)`
+- Unique: `card_sets_code_key` `UNIQUE (code)`, `card_sets_name_key` `UNIQUE (name)`
+- Foreign keys: 
+  - `card_sets_cover_in_set` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (cover_card_id, id) REFERENCES cards(id, set_id) ON UPDATE RESTRICT ON DELETE SET NULL (cover_card_id)`
+- Check constraints: 
+  - `card_sets_code_check`: `CHECK ((code ~ '^[A-Z0-9]{1,8}$'::text))`
+  - `card_sets_id_check`: `CHECK ((id ~ '^[A-Z0-9]{1,8}$'::text))`
+  - `card_sets_last_number_check`: `CHECK ((last_number >= 0))`
+  - `card_sets_pack_color_hex`: `CHECK ((pack_color ~ '^#[0-9a-f]{6}$'::text))`
+  - `card_sets_season_positive`: `CHECK ((season > 0))`
+- Row level security: on. Policies: none
+
 <a id="table-card-trades"></a>
 
 ### card_trades
@@ -173,15 +206,44 @@ Table. [cards] One row per card: one subject in one rarity. The card studio (car
 | `lore` | text | null |  | The flavor text of this rarity, or null. The card studio sets it. |
 | `in_draw_pool` | boolean | not null | `true` | True when packs can draw the card (the bot draw reads only these rows). The trigger cards_event_rules sets it to false for promo and event cards. |
 | `created_at` | timestamp with time zone | not null | `now()` | Time the row was made (the first push of this rarity). |
-| `season` | text | null |  | The season label of the card (for example 'Season 1'). The card studio sets it. The Activity uses it for Hunt weak points. |
+| `season` | text | null |  | 'Season ' \|\| card_sets.season of set_id (kept by cards_set_rules). Read by the Activity, the Hunt weak points, the achievement tag badges and the studio. |
 | `event` | text | null |  | The event or period name of a promo or event card, else null. The card studio sets it. |
 | `tradeable` | boolean | not null | `true` | False when trades, gifts and the Trading Hall must refuse the card. The card studio sets it per rarity. The trigger cards_event_rules forces false for promo and event cards. |
+| `set_id` | text | not null |  | The set of the card (card_sets.id): the one source. A pack from a set draws only its cards. |
+| `set_number` | integer | not null |  | The number of the card in its set ("S1 · #014"), given once by cards_set_rules; it never changes. |
 
 - Primary key: `PRIMARY KEY (id)`
+- Unique: `cards_id_set_key` `UNIQUE (id, set_id)`, `cards_set_number_key` `UNIQUE (set_id, set_number)`
 - Foreign keys: 
+  - `cards_set_id_fkey` to [card_sets](cards-and-trading.md#table-card-sets): `FOREIGN KEY (set_id) REFERENCES card_sets(id)`
   - `cards_subject_id_fkey` to [subjects](cards-and-trading.md#table-subjects): `FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `cards_set_number_positive`: `CHECK ((set_number > 0))`
 - Row level security: on. Policies: `public read cards`
+
+<a id="table-draw-pool"></a>
+
+### draw_pool
+
+View. The cards a draw can give: in the draw pool, source draw, and the set is pullable. The bot pack draw, dungeon_card_of (Dungeon chests and loot, Dungeon / Gauntlet prizes) and shop_pick_stock read it.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | null |  | The card id (cards.id). |
+| `subject_id` | bigint | null |  | The subject of the card (cards.subject_id). |
+| `name` | text | null |  | The card name (cards.name). |
+| `rarity` | card_rarity | null |  | The card rarity (cards.rarity); the pack draw groups the pool by it. |
+| `source` | card_source | null |  | Always draw here (cards.source). |
+| `image_url` | text | null |  | The card image (cards.image_url). |
+| `artist_credit` | text | null |  | The artist (cards.artist_credit). |
+| `lore` | text | null |  | The card text (cards.lore). |
+| `set_id` | text | null |  | The set of the card (cards.set_id); a pack from a set filters on it. |
+| `set_number` | integer | null |  | The number of the card in its set (cards.set_number). |
+
+- Primary key: none
+- Foreign keys: none
+- Check constraints: none
+- Row level security: OFF. Policies: none
 
 <a id="table-gift-claims"></a>
 
@@ -230,11 +292,13 @@ Table. [players-economy] One row per change of a member's pack balance (players.
 | `ref_kind` | text | null |  | The kind of source row (never null: check pack_ledger_ref_check): gift (gift_claims.id), daily_claim (daily_claims, ref_id = '<day>:<task>'), achievement (achievement_claims.key), shop_purchase (shop_purchases.id), hunt (hunts.id), dungeon_payout (dungeon_payouts, ref_id = '<mode>:<period>'), open (one pack open; ref_id = the open id, the same for the packs of one open), tutorial (ref_id = 'complete'), player (ref_id = a member id: the boon caster). |
 | `ref_id` | text | null |  | The id of the source row (see ref_kind), as text. Never null (check pack_ledger_ref_check). |
 | `ledger` | text | null | `'pack'::text` | Always 'pack' (a stored generated constant): the first column of the foreign key (ledger, reason) -> ledger_reasons. |
+| `set_id` | text | null |  | For an open: the set the member chose (open_packs with p_set). null = an open with no set (every pullable set) or not an open. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
   - `pack_ledger_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
   - `pack_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
+  - `pack_ledger_set_id_fkey` to [card_sets](cards-and-trading.md#table-card-sets): `FOREIGN KEY (set_id) REFERENCES card_sets(id)`
 - Check constraints: 
   - `pack_ledger_amount_check`: `CHECK ((amount <> 0))`
   - `pack_ledger_ref_check`: `CHECK (((ref_kind IS NOT NULL) AND (ref_id IS NOT NULL)))`
@@ -625,6 +689,16 @@ Trigger card_trades_offer on trade_offers (status becomes accepted): writes the 
 
 Trigger cards_event_rules on cards: a promo or event card is never tradeable and never in the draw pool. Internal helper.
 
+<a id="fn-cards-set-rules"></a>
+
+### cards_set_rules()
+
+- Function: `cards_set_rules()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger on cards: the one set of the season when no set_id is sent, season = 'Season ' || the set season, the next set_number for a new card or a card that moves set, and no direct change of set_number.
+
 <a id="fn-claim-gift-text-bigint"></a>
 
 ### claim_gift(text,bigint)
@@ -835,6 +909,16 @@ The collection power of one member (the same rule as collection_power_all). Acti
 
 Makes a trade offer on a Trading Hall listing (create_trade, then sets listing_id). One pending offer per member and listing. Activity /api/hall/offer. Returns ok, id, to.
 
+<a id="fn-open-packs-text-bigint-integer-text"></a>
+
+### open_packs(text,bigint[],integer,text)
+
+- Function: `open_packs(p_player_id text, p_cards bigint[], p_size integer, p_set text)`
+- Returns: `integer`
+- Security definer: no
+
+Opens up to 10 packs from one set: the set must be pullable and each card in its draw pool (else an error). Then the same as open_packs(text, bigint[], integer), with the set on the pack_ledger rows. Returns the packs opened.
+
 <a id="fn-open-packs-text-bigint-integer"></a>
 
 ### open_packs(text,bigint[],integer)
@@ -864,6 +948,16 @@ Proof that the pack ledger is complete: each member's pack_balance = sum(pack_le
 - Security definer: no
 
 Places a bid of 1 to 5 free cards on a live auction and withdraws the member's old bid. A gold card takes only Full Art, Promo or Event bids. Activity /api/auction/bid. Returns ok, id, meets.
+
+<a id="fn-pullable-sets-text"></a>
+
+### pullable_sets(text)
+
+- Function: `pullable_sets(p_player text)`
+- Returns: `jsonb`
+- Security definer: no
+
+The Open screen in one statement: {sets: [id, name, code, season, released_at, is_new, cards (a pack of the set can give), owned (of those, by the member), cover_card_id, cover_image_url, pack_color, pack_art_url], last_set (D-85)}.
 
 <a id="fn-rarity-rank-text"></a>
 
@@ -944,6 +1038,16 @@ The community card power as JSON: counts, total and deployable power, the boss H
 - Security definer: no
 
 The members with the most total card power (no set bonus): owned cards, total power, best card. Only card-studio/scripts/roster-stats.mjs calls it.
+
+<a id="fn-season-number-text"></a>
+
+### season_number(text)
+
+- Function: `season_number(p_season text)`
+- Returns: `integer`
+- Security definer: no
+
+The season number in a cards.season text: 'Season 3' -> 3, '' or null -> 1, any other text -> null.
 
 <a id="fn-set-launch-player-card-bigint"></a>
 

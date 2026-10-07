@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import type { Client, MessageCreateOptions } from 'discord.js';
 import { openPacks, openTestPacks, getPackBalance, giftPacks } from './store.js';
+import { SET_NOT_PULLABLE, isSetId } from './draw-pool.js';
 import { pingableUsers, type PingKind, PING_KINDS } from './ping-prefs.js';
 import { onPlaying } from './playing-posts.js';
 import { giveLptcgRole, lptcgRoleId } from './lptcg-role.js';
@@ -80,6 +81,7 @@ export function startInternalServer(client: Client): void {
           amount?: number;
           message?: string;
           count?: number;
+          set?: string | null;
           kind?: string;
           event?: string;
           activity?: unknown;
@@ -138,21 +140,27 @@ export function startInternalServer(client: Client): void {
         // Open 1, 5 or 10 packs (the Activity's multi-open). Each pack is spent and
         // drawn on its own; if the balance runs out part way, it stops there.
         const count = [1, 5, 10].includes(Number(body.count)) ? Number(body.count) : 1;
+        // The set the member chose (card_sets.sql, D-80). No set: every pullable set, as before.
+        const setId = body.set == null ? undefined : String(body.set);
+        if (setId !== undefined && !isSetId(setId)) return json(400, { error: SET_NOT_PULLABLE });
         // Testers open on demand (draw without spending the balance). Everyone
         // else spends one pack from their balance for each pack drawn.
         if (isTester) {
-          const r = await openTestPacks(String(userId), String(username ?? 'Player'), count);
+          const r = await openTestPacks(String(userId), String(username ?? 'Player'), count, setId);
           json(200, { packs: r.packs });
           void postRarePulls(client, String(userId), String(username ?? ''), r.packs);
           return;
         }
         // One database call for all the packs (open_packs); it stops where the balance runs out.
-        const packs = await openPacks(String(userId), String(username ?? 'Player'), count);
+        const packs = await openPacks(String(userId), String(username ?? 'Player'), count, setId);
         json(200, { packs });
         // A Full Art / Gold pull: a post with a picture (after the reply, so the open is not slower).
         void postRarePulls(client, String(userId), String(username ?? ''), packs);
       } catch (error) {
-        json(500, { error: String((error as Error)?.message ?? error) });
+        const msg = String((error as Error)?.message ?? error);
+        // A set that is not pullable (draw-pool.ts, or open_packs in the database): the caller's mistake.
+        if (msg === SET_NOT_PULLABLE || msg.includes(`${SET_NOT_PULLABLE}:`)) return json(400, { error: SET_NOT_PULLABLE });
+        json(500, { error: msg });
       }
     });
   });
