@@ -8,6 +8,12 @@
  *   R5 each route calls its admin_ function with the parsed arguments; a bad date, number or sort word = 400 before the rpc
  *   R6 the CSV report: the catalog column order, quotes, and a formula cell made safe
  *   R7 a database error = 400 with the message
+ *   R8 the studio login (req.studioAuthed) opens the router without Basic Auth; a client cannot set it
+ *   R9 /source: LIVE, or LOCAL with LOCALDB=1
+ *   R10 /tables: the documented tables (docs/data) with columns and primary keys
+ *   R11 /table/:name: only a documented table (else 404, no query); 50 rows, ordered by the primary key, the offset and the key filter;
+ *       secrets hidden, member-id lists in settings cut to a count
+ *   R12 /search: members through admin_members, cards by name with the LIKE characters escaped, tables by name
  */
 import express from 'express';
 import { adminRouter, toCsv } from '../src/admin-routes.js';
@@ -91,6 +97,97 @@ r = await fetch(`${base}/hunts`);
 check('R3 no STUDIO_PASS: this PC (loopback) is served', r.status === 200, r.status);
 r = await fetch(`${base}/hunts`, { headers: { 'x-forwarded-for': '100.64.1.2' } });
 check('R3 no STUDIO_PASS: a forwarded request is refused (403)', r.status === 403, r.status);
+srv.close();
+
+// R8
+{
+  const app = express();
+  app.use((req, res, next) => { req.studioAuthed = true; next(); });
+  app.use('/api/admin', adminRouter({ rpc, env: { ADMIN_VIEW: '1', STUDIO_USER: 'u', STUDIO_PASS: 'p' } }));
+  const s2 = await new Promise((resolve) => { const x = app.listen(0, '127.0.0.1', () => resolve(x)); });
+  r = await fetch(`http://127.0.0.1:${s2.address().port}/api/admin/hunts`);
+  check('R8 the studio login opens the router without Basic Auth', r.status === 200, r.status);
+  s2.close();
+  srv = await start({ ADMIN_VIEW: '1', STUDIO_USER: 'u', STUDIO_PASS: 'p' });
+  r = await fetch(`http://127.0.0.1:${srv.address().port}/api/admin/hunts?studioAuthed=true`, { headers: { studioauthed: 'true', cookie: 'studioAuthed=true' } });
+  check('R8 a client cannot set studioAuthed (query, header, cookie): 401', r.status === 401, r.status);
+  srv.close();
+}
+
+// R9 - R12: a mock db that records the query chain.
+const queries = [];
+const db = {
+  from(table) {
+    const q = { table, calls: [] };
+    queries.push(q);
+    const b = {};
+    for (const m of ['select', 'eq', 'order', 'ilike', 'limit', 'range']) b[m] = (...a) => { q.calls.push([m, ...a]); return b; };
+    b.then = (ok) => ok(table === 'settings'
+      ? { data: [{ key: 'ui_v3', value: { enabled: true, users: ['123456789012345678', '223456789012345678'] } }, { key: 'dungeon', value: { salt: 'abc', enabled: true } }], count: 2 }
+      : table === 'cards' ? { data: [{ id: 7, name: 'A 50% card', rarity: 'gold' }] }
+        : { data: [{ id: 2, api_token: 'tok', note: 'x' }], count: 99 });
+    return b;
+  },
+};
+const start2 = (env) => new Promise((resolve) => {
+  const app = express();
+  app.use('/api/admin', adminRouter({ rpc, db, env }));
+  const s = app.listen(0, '127.0.0.1', () => resolve(s));
+});
+srv = await start2({ ADMIN_VIEW: '1', STUDIO_USER: 'u', STUDIO_PASS: 'p', LOCALDB: '1' });
+base = `http://127.0.0.1:${srv.address().port}/api/admin`;
+r = await fetch(`${base}/source`, { headers: auth('u', 'p') });
+let j = await r.json();
+check('R9 LOCALDB=1: the source is LOCAL', j.source === 'LOCAL' && j.login === true, j);
+srv.close();
+srv = await start2({ ADMIN_VIEW: '1', STUDIO_USER: 'u', STUDIO_PASS: 'p' });
+base = `http://127.0.0.1:${srv.address().port}/api/admin`;
+r = await fetch(`${base}/source`, { headers: auth('u', 'p') });
+j = await r.json();
+check('R9 no LOCALDB: the source is LIVE', j.source === 'LIVE', j);
+r = await fetch(`${base}/source`);
+check('R9 /source needs the login too', r.status === 401, r.status);
+
+r = await fetch(`${base}/tables`, { headers: auth('u', 'p') });
+j = await r.json();
+const players = j.tables?.find((t) => t.name === 'players'), pc = j.tables?.find((t) => t.name === 'player_cards');
+check('R10 the documented tables with columns and keys', j.tables?.length >= 40 && players?.columns.some((c) => c.name === 'id') && players.pk.join() === 'id'
+  && pc?.pk.join() === 'player_id,card_id' && players.note.length > 20, { n: j.tables?.length, pk: pc?.pk });
+
+let before = queries.length;
+r = await fetch(`${base}/table/pg_authid`, { headers: auth('u', 'p') });
+check('R11 a table not in the docs: 404 and no query', r.status === 404 && queries.length === before, r.status);
+r = await fetch(`${base}/table/players?offset=100`, { headers: auth('u', 'p') });
+j = await r.json();
+const q1 = queries.at(-1);
+check('R11 players: 50 rows from the offset, ordered by the key, newest first', r.status === 200 && q1.table === 'players'
+  && JSON.stringify(q1.calls) === JSON.stringify([['select', '*', { count: 'estimated' }], ['order', 'id', { ascending: false }], ['range', 100, 149]]) && j.total_estimate === 99, q1);
+check('R11 a column named like a secret is hidden', j.rows?.[0]?.api_token === '[hidden]' && j.rows[0].note === 'x', j.rows);
+r = await fetch(`${base}/table/players?key=abc`, { headers: auth('u', 'p') });
+check('R11 key: one row by the primary key', queries.at(-1).calls.some((c) => c[0] === 'eq' && c[1] === 'id' && c[2] === 'abc'), queries.at(-1).calls);
+r = await fetch(`${base}/table/player_cards?key=abc`, { headers: auth('u', 'p') });
+check('R11 key on a two-column key: 400', r.status === 400, r.status);
+r = await fetch(`${base}/table/players?offset=-1`, { headers: auth('u', 'p') });
+check('R11 a bad offset: 400', r.status === 400, r.status);
+r = await fetch(`${base}/table/settings`, { headers: auth('u', 'p') });
+j = await r.json();
+check('R11 settings: a member-id list is a count, a salt is hidden', JSON.stringify(j.rows) === JSON.stringify([
+  { key: 'ui_v3', value: { enabled: true, users: '[2 member ids]' } }, { key: 'dungeon', value: { salt: '[hidden]', enabled: true } }]), j.rows);
+r = await fetch(`${base}/table/players`, { method: 'POST', headers: auth('u', 'p') });
+check('R11 read only: POST is 405', r.status === 405, r.status);
+
+r = await fetch(`${base}/search?q=50%25_x`, { headers: auth('u', 'p') });
+j = await r.json();
+const cq = queries.at(-1);
+check('R12 search: admin_members with the text, limit 8', JSON.stringify(calls.at(-1)) === JSON.stringify({ fn: 'admin_members', args: { p_search: '50%_x', p_sort: 'last_active', p_limit: 8, p_offset: 0 } }), calls.at(-1));
+check('R12 search: cards by name, the LIKE characters escaped', cq.table === 'cards' && cq.calls.some((c) => c[0] === 'ilike' && c[1] === 'name' && c[2] === '%50\\%\\_x%'), cq.calls);
+r = await fetch(`${base}/search?q=play`, { headers: auth('u', 'p') });
+j = await r.json();
+check('R12 search: tables by name', j.tables.includes('players') && j.tables.includes('player_cards'), j.tables);
+before = calls.length;
+r = await fetch(`${base}/search?q=a`, { headers: auth('u', 'p') });
+j = await r.json();
+check('R12 search: under 2 characters = empty, no query', calls.length === before && j.members.length === 0, j);
 srv.close();
 
 console.log(fails ? `${fails} of ${n} FAILED` : `PASS all ${n}`);
