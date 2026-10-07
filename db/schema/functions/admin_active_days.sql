@@ -2,7 +2,7 @@
 
 -- @function public.admin_active_days(date, date)
 -- md5: 43bc0b141f4ecf5f5324b0c9b20c131e   (md5(replace(pg_get_functiondef('public.admin_active_days(date, date)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_active_days(p_from date, p_to date)
  RETURNS TABLE(player_id text, day date, source text, game boolean)
  LANGUAGE sql
@@ -62,4 +62,3 @@ $function$;
 -- @grants public.admin_active_days(date, date)
 grant execute on function public.admin_active_days(date, date) to postgres;
 grant execute on function public.admin_active_days(date, date) to service_role;
-grant execute on function public.admin_active_days(date, date) to supabase_admin;

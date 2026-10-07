@@ -2,7 +2,7 @@
 
 -- @function public.admin_overview(date, date)
 -- md5: 1bd3a58dc96774a8560729db100c44fe   (md5(replace(pg_get_functiondef('public.admin_overview(date, date)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_overview(p_from date DEFAULT NULL::date, p_to date DEFAULT NULL::date)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -156,4 +156,3 @@ end $function$;
 -- @grants public.admin_overview(date, date)
 grant execute on function public.admin_overview(date, date) to postgres;
 grant execute on function public.admin_overview(date, date) to service_role;
-grant execute on function public.admin_overview(date, date) to supabase_admin;

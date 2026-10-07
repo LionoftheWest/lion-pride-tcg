@@ -2,7 +2,7 @@
 
 -- @function public.admin_hunts(integer, integer)
 -- md5: 2b1df9d47c6c9a4e63658824d9d22c3b   (md5(replace(pg_get_functiondef('public.admin_hunts(integer, integer)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_hunts(p_limit integer DEFAULT 20, p_offset integer DEFAULT 0)
  RETURNS jsonb
  LANGUAGE sql
@@ -22,4 +22,3 @@ $function$;
 -- @grants public.admin_hunts(integer, integer)
 grant execute on function public.admin_hunts(integer, integer) to postgres;
 grant execute on function public.admin_hunts(integer, integer) to service_role;
-grant execute on function public.admin_hunts(integer, integer) to supabase_admin;

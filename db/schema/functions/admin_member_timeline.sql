@@ -2,7 +2,7 @@
 
 -- @function public.admin_member_timeline(text, timestamp with time zone, integer, text)
 -- md5: 54583380534b9a2d21752513d73b5546   (md5(replace(pg_get_functiondef('public.admin_member_timeline(text, timestamp with time zone, integer, text)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_member_timeline(p_player text, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limit integer DEFAULT 50, p_before_key text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE sql
@@ -105,4 +105,3 @@ $function$;
 -- @grants public.admin_member_timeline(text, timestamp with time zone, integer, text)
 grant execute on function public.admin_member_timeline(text, timestamp with time zone, integer, text) to postgres;
 grant execute on function public.admin_member_timeline(text, timestamp with time zone, integer, text) to service_role;
-grant execute on function public.admin_member_timeline(text, timestamp with time zone, integer, text) to supabase_admin;

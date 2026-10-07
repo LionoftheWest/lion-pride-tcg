@@ -2,7 +2,7 @@
 
 -- @function public.admin_cards(date, date, text, integer, integer)
 -- md5: b2768b38a5f8549ad15056088f2a9226   (md5(replace(pg_get_functiondef('public.admin_cards(date, date, text, integer, integer)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_cards(p_from date DEFAULT NULL::date, p_to date DEFAULT NULL::date, p_sort text DEFAULT 'copies'::text, p_limit integer DEFAULT 50, p_offset integer DEFAULT 0)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -51,4 +51,3 @@ end $function$;
 -- @grants public.admin_cards(date, date, text, integer, integer)
 grant execute on function public.admin_cards(date, date, text, integer, integer) to postgres;
 grant execute on function public.admin_cards(date, date, text, integer, integer) to service_role;
-grant execute on function public.admin_cards(date, date, text, integer, integer) to supabase_admin;

@@ -2,7 +2,7 @@
 
 -- @function public.admin_report_catalog()
 -- md5: faeb6bda15678632346d38f505e902f9   (md5(replace(pg_get_functiondef('public.admin_report_catalog()'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_report_catalog()
  RETURNS jsonb
  LANGUAGE sql
@@ -39,4 +39,3 @@ $function$;
 -- @grants public.admin_report_catalog()
 grant execute on function public.admin_report_catalog() to postgres;
 grant execute on function public.admin_report_catalog() to service_role;
-grant execute on function public.admin_report_catalog() to supabase_admin;

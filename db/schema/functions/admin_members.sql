@@ -2,7 +2,7 @@
 
 -- @function public.admin_members(text, text, integer, integer)
 -- md5: 857c254016f5228e906cf849bc1d1d21   (md5(replace(pg_get_functiondef('public.admin_members(text, text, integer, integer)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_members(p_search text DEFAULT NULL::text, p_sort text DEFAULT 'last_active'::text, p_limit integer DEFAULT 50, p_offset integer DEFAULT 0)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -65,4 +65,3 @@ end $function$;
 -- @grants public.admin_members(text, text, integer, integer)
 grant execute on function public.admin_members(text, text, integer, integer) to postgres;
 grant execute on function public.admin_members(text, text, integer, integer) to service_role;
-grant execute on function public.admin_members(text, text, integer, integer) to supabase_admin;

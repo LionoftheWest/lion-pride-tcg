@@ -2,7 +2,7 @@
 
 -- @function public.admin_health()
 -- md5: 0869fe0233d1562e3696d3fc46350cb2   (md5(replace(pg_get_functiondef('public.admin_health()'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_health()
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -73,4 +73,3 @@ end $function$;
 -- @grants public.admin_health()
 grant execute on function public.admin_health() to postgres;
 grant execute on function public.admin_health() to service_role;
-grant execute on function public.admin_health() to supabase_admin;

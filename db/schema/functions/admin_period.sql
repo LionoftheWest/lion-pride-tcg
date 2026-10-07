@@ -2,7 +2,7 @@
 
 -- @function public.admin_period(date, date, integer)
 -- md5: de0566216e3c538b0a83d2517316fac2   (md5(replace(pg_get_functiondef('public.admin_period(date, date, integer)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_period(p_from date, p_to date, p_default_days integer DEFAULT 7)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -18,4 +18,3 @@ end $function$;
 -- @grants public.admin_period(date, date, integer)
 grant execute on function public.admin_period(date, date, integer) to postgres;
 grant execute on function public.admin_period(date, date, integer) to service_role;
-grant execute on function public.admin_period(date, date, integer) to supabase_admin;

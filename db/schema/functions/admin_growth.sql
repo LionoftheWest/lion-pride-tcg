@@ -2,7 +2,7 @@
 
 -- @function public.admin_growth(date, date)
 -- md5: 6b34d487627ac86da17d533cd5a35e83   (md5(replace(pg_get_functiondef('public.admin_growth(date, date)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_growth(p_from date DEFAULT NULL::date, p_to date DEFAULT NULL::date)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -91,4 +91,3 @@ end $function$;
 -- @grants public.admin_growth(date, date)
 grant execute on function public.admin_growth(date, date) to postgres;
 grant execute on function public.admin_growth(date, date) to service_role;
-grant execute on function public.admin_growth(date, date) to supabase_admin;

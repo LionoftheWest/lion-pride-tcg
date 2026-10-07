@@ -2,7 +2,7 @@
 
 -- @function public.admin_report(text, jsonb)
 -- md5: 9e2f1f24ffc2daae2dbd7e3f4e0b59c4   (md5(replace(pg_get_functiondef('public.admin_report(text, jsonb)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_report(p_key text, p_params jsonb DEFAULT '{}'::jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -100,4 +100,3 @@ end $function$;
 -- @grants public.admin_report(text, jsonb)
 grant execute on function public.admin_report(text, jsonb) to postgres;
 grant execute on function public.admin_report(text, jsonb) to service_role;
-grant execute on function public.admin_report(text, jsonb) to supabase_admin;

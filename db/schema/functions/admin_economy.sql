@@ -2,7 +2,7 @@
 
 -- @function public.admin_economy(date, date, text)
 -- md5: ad117d79a4626d25ae0075541eb09b4e   (md5(replace(pg_get_functiondef('public.admin_economy(date, date, text)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_economy(p_from date DEFAULT NULL::date, p_to date DEFAULT NULL::date, p_bucket text DEFAULT 'day'::text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -56,4 +56,3 @@ end $function$;
 -- @grants public.admin_economy(date, date, text)
 grant execute on function public.admin_economy(date, date, text) to postgres;
 grant execute on function public.admin_economy(date, date, text) to service_role;
-grant execute on function public.admin_economy(date, date, text) to supabase_admin;

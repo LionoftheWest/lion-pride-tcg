@@ -2,7 +2,7 @@
 
 -- @function public.admin_member(text)
 -- md5: 44d12616ef48754537cb46072834a596   (md5(replace(pg_get_functiondef('public.admin_member(text)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_member(p_player text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -108,4 +108,3 @@ end $function$;
 -- @grants public.admin_member(text)
 grant execute on function public.admin_member(text) to postgres;
 grant execute on function public.admin_member(text) to service_role;
-grant execute on function public.admin_member(text) to supabase_admin;

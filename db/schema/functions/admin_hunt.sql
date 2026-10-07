@@ -2,7 +2,7 @@
 
 -- @function public.admin_hunt(bigint)
 -- md5: b56759ee96acf343cb4cb2ef038a1e23   (md5(replace(pg_get_functiondef('public.admin_hunt(bigint)'::regprocedure), chr(13), '')))
--- owner: supabase_admin
+-- owner: postgres
 CREATE OR REPLACE FUNCTION public.admin_hunt(p_hunt bigint)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -47,4 +47,3 @@ end $function$;
 -- @grants public.admin_hunt(bigint)
 grant execute on function public.admin_hunt(bigint) to postgres;
 grant execute on function public.admin_hunt(bigint) to service_role;
-grant execute on function public.admin_hunt(bigint) to supabase_admin;
