@@ -11,12 +11,13 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { join, dirname, resolve } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const [file, filter = ''] = process.argv.slice(2);
-if (!file) { console.error('Usage: node scripts/rehearse-sql.mjs <file.sql> [test-name-filter]'); process.exit(1); }
+const force = process.argv.includes('--force-superseded'); // passed to apply-sql.mjs (it refuses a superseded file)
+const [file, filter = ''] = process.argv.slice(2).filter((a) => a !== '--force-superseded');
+if (!file) { console.error('Usage: node scripts/rehearse-sql.mjs <file.sql> [test-name-filter] [--force-superseded]'); process.exit(1); }
 const preload = pathToFileURL(join(root, 'scripts', 'localdb-preload.mjs')).href;
 const env = { ...process.env, LOCALDB: '1', NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --import=${preload}`.trim() };
 console.log(`1. apply ${file} to the LOCAL copy`);
-const a = spawnSync(process.execPath, [join('scripts', 'apply-sql.mjs'), resolve(file)], { cwd: root, env, stdio: 'inherit' });
+const a = spawnSync(process.execPath, [join('scripts', 'apply-sql.mjs'), resolve(file), ...(force ? ['--force-superseded'] : [])], { cwd: root, env, stdio: 'inherit' });
 if (a.status !== 0) { console.log('\nREHEARSAL FAILED at the apply step: do not apply it live. Refresh the local copy before the next try.'); process.exit(1); }
 console.log(`\n2. the SQL tests on the LOCAL copy${filter ? ` (filter "${filter}")` : ''}`);
 const t = spawnSync(process.execPath, [join('scripts', 'test-all-local.mjs'), filter], { cwd: root, env: { ...process.env }, stdio: 'inherit' });
