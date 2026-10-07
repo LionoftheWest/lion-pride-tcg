@@ -8,6 +8,7 @@ import { launchActivityRow } from './ui/launch.js';
 import { postRarePulls } from './pull-posts.js';
 import { cleanTradeSpec, tradePicture } from './trade-pictures.js';
 import { AttachmentBuilder } from 'discord.js';
+import { adminIdsFromEnv, dmAdmins } from './admin-alert.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
 // VM (it binds to 127.0.0.1, and the container runs with --network host). It lets
@@ -61,7 +62,7 @@ export function startInternalServer(client: Client): void {
       res.end(JSON.stringify(body));
     };
     const route = req.method === 'POST' ? req.url : null;
-    if (route !== '/open' && route !== '/status' && route !== '/gift' && route !== '/announce' && route !== '/playing' && route !== '/member-role') return json(404, { error: 'not found' });
+    if (route !== '/open' && route !== '/status' && route !== '/gift' && route !== '/announce' && route !== '/playing' && route !== '/member-role' && route !== '/admin-alert') return json(404, { error: 'not found' });
     if (req.headers['x-internal-token'] !== TOKEN) return json(401, { error: 'unauthorized' });
 
     let raw = '';
@@ -99,6 +100,11 @@ export function startInternalServer(client: Client): void {
           let ok = 0;
           for (const id of ids) { if (await giveLptcgRole(client, id).catch(() => false)) ok += 1; }
           return json(200, { ok, of: ids.length });
+        }
+        // Admin alert: a private DM to ADMIN_USER_IDS (a VM job failed, for example the nightly backup).
+        if (route === '/admin-alert') {
+          if (!body.message) return json(400, { error: 'missing message' });
+          return json(200, { sent: await dmAdmins(client, adminIdsFromEnv(), String(body.message)) });
         }
         // Announce: post a directed event to the public notifications channel.
         if (route === '/announce') {

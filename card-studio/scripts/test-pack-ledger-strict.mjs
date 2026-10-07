@@ -62,8 +62,8 @@ begin
        and not exists (select 1 from pack_ledger where player_id = p and (ref_kind is null or ref_id is null));
   end $r$;
 ${kase('a misspelled reason is refused (grant_packs and a direct insert)', `
-    begin perform grant_packs('${P}_a', 1, 'earnd_daily'); ok := false; exception when check_violation then ok := true; end;
-    if ok then begin insert into pack_ledger (player_id, amount, reason) values ('${P}_a', 1, 'earned_dialy'); ok := false; exception when check_violation then ok := true; end; end if;
+    begin perform grant_packs('${P}_a', 1, 'earnd_daily', null, 'test', 'x'); ok := false; exception when check_violation then ok := true; end;
+    if ok then begin insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id) values ('${P}_a', 1, 'earned_dialy', 'test', 'x'); ok := false; exception when check_violation then ok := true; end; end if;
     res := res || jsonb_build_object('case', 'a misspelled reason is refused (grant_packs and a direct insert)', 'ok', ok);`)}
 ${kase('a pack gift with a misspelled reason is refused when it is made', `
     begin perform give_gift('${P}_a', 'promo', 'Test', 1, 'admn', null); ok := false; exception when check_violation then ok := true; end;

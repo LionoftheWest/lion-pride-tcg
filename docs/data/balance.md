@@ -12,6 +12,7 @@ The values below are the values of the database that made this page.
 The triggers on `balance` check each change:
 
 - `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
+- `balance_check_dungeon` (`balance_check_dungeon()`): Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.shards, chest.card_chance and offers heal / buff / shards / ward / revive must be 5 numbers (tier 1 to 5), tier_weights must add up to more than 0, the Shards whole numbers, chest.card_chance and door.gamble_rare at most 1, door.rare_tier and offers.min_tier whole numbers from 1 to 5. (balance_check keeps every leaf and its type, so boss_hp_estimate keeps its 4 numbers.)
 - `balance_check_economy` (`balance_check_economy()`): Trigger (before insert, update on balance): the pulls rates must add up to 1, pulls pack_size must be a whole number from 1 to 20, daily streak_cycle must be at least 1.
 - `balance_log_write` (`balance_log_write()`): Trigger (after insert, update on balance): writes a balance_log row with the old value, the new value and balance_who. Writes nothing when the value and the note did not change.
 
@@ -19,7 +20,7 @@ The triggers on `balance` check each change:
 
 ## Keys
 
-[achievement_rewards](#key-achievement-rewards), [ascend_cost](#key-ascend-cost), [boss_atk](#key-boss-atk), [boss_hp](#key-boss-hp), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
+[achievement_rewards](#key-achievement-rewards), [ascend_cost](#key-ascend-cost), [boss_atk](#key-boss-atk), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
 
 <a id="key-achievement-rewards"></a>
 
@@ -336,6 +337,23 @@ Shape: `object { Heroic: number, Mythic: number, Normal: number, crew: number, f
   "Mythic": 80000,
   "Normal": 70000,
   "heal_share": 3000
+}
+```
+
+<a id="key-boss-hp-estimate"></a>
+
+### boss_hp_estimate
+
+A TOOL estimate, not the real boss HP (that is boss_hp, set by spawn_hunt): roster_boss_hp = max(floor, deployable_power x the tier factor). roster_stats and roster_snapshot (the roster_power_history estimate columns) use it; only card-studio/scripts/roster-stats.mjs reads them. The factors are the spawn multipliers of the 2026-09-16 retune.
+
+Shape: `object { Heroic: number, Mythic: number, Normal: number, floor: number }`
+
+```json
+{
+  "floor": 500,
+  "Heroic": 12,
+  "Mythic": 15,
+  "Normal": 8
 }
 ```
 
@@ -668,12 +686,16 @@ Shape: `object { daily: array(10) of object { shards: number }, weekly: array(10
 
 ### dungeon_rewards
 
-Dungeon run rewards (dungeon_cfg merges this key into settings.dungeon): shards_kill per kill, floor_shards per floor, shards_room per room, at most run_shards_cap Shards in one run; loot_chance = the card drop chance, loot = the drop rarity odds up to floor "to"; chest_rarity = the chest rarity odds by chest tier. The fight numbers and the flag stay in settings.dungeon.
+Dungeon run rewards (dungeon_cfg merges this key into settings.dungeon): shards_kill per kill, floor_shards per floor, shards_room per room, at most run_shards_cap Shards in one run; loot_chance = the card drop chance, loot = the drop rarity odds up to floor "to"; chest_rarity = the chest rarity odds by chest tier. tier_weights = the odds of tier 1 to 5 (dungeon_tier: the chest tier and each room reward tier). chest = a treasure room (dungeon_enter): shards[tier - 1] + shards_per_floor x floor Shards, a card with the chance card_chance[tier - 1]. door = the dark door (dungeon_choose): gamble_rare = the chance of a rare chest (else an ambush), a chest of tier rare_tier. offers = the room rewards by tier (dungeon_offers): heal, buff, ward, revive (shares of max HP or damage), shards[tier - 1] + shards_per_floor x floor; min_tier = the least tier of a reset and a revive. Every tier array has 5 values (tier 1 to 5; balance_check_dungeon). The fight numbers and the flag stay in settings.dungeon.
 
-Shape: `object { chest_rarity: object { 1: array(3) of number, 2: array(3) of number, 3: array(3) of number, 4: array(3) of number, 5: array(3) of number }, floor_shards: number, loot: array(4) of object { illustrated_rare: number, normal: number, secret_rare: number, to: number }, loot_chance: number, run_shards_cap: number, shards_kill: number, shards_room: number }`
+Shape: `object { chest: object { card_chance: array(5) of number, shards: array(5) of number, shards_per_floor: number }, chest_rarity: object { 1: array(3) of number, 2: array(3) of number, 3: array(3) of number, 4: array(3) of number, 5: array(3) of number }, door: object { gamble_rare: number, rare_tier: number }, floor_shards: number, loot: array(4) of object { illustrated_rare: number, normal: number, secret_rare: number, to: number }, loot_chance: number, offers: object { buff: array(5) of number, heal: array(5) of number, min_tier: object { reset: number, revive: number }, revive: array(5) of number, shards: array(5) of number, shards_per_floor: number, ward: array(5) of number }, run_shards_cap: number, shards_kill: number, shards_room: number, tier_weights: array(5) of number }`
 
 ```json
 {
+  "door": {
+    "rare_tier": 4,
+    "gamble_rare": 0.5
+  },
   "loot": [
     {
       "to": 3,
@@ -700,6 +722,65 @@ Shape: `object { chest_rarity: object { 1: array(3) of number, 2: array(3) of nu
       "illustrated_rare": 0.25
     }
   ],
+  "chest": {
+    "shards": [
+      15,
+      25,
+      40,
+      65,
+      110
+    ],
+    "card_chance": [
+      0,
+      0.35,
+      0.6,
+      1,
+      1
+    ],
+    "shards_per_floor": 3
+  },
+  "offers": {
+    "buff": [
+      0.05,
+      0.08,
+      0.12,
+      0.18,
+      0.25
+    ],
+    "heal": [
+      0.25,
+      0.35,
+      0.5,
+      0.75,
+      1
+    ],
+    "ward": [
+      0.1,
+      0.15,
+      0.2,
+      0.3,
+      0.4
+    ],
+    "revive": [
+      0.3,
+      0.3,
+      0.4,
+      0.6,
+      1
+    ],
+    "shards": [
+      8,
+      15,
+      25,
+      40,
+      70
+    ],
+    "min_tier": {
+      "reset": 3,
+      "revive": 2
+    },
+    "shards_per_floor": 2
+  },
   "loot_chance": 0.06,
   "shards_kill": 1,
   "shards_room": 5,
@@ -731,6 +812,13 @@ Shape: `object { chest_rarity: object { 1: array(3) of number, 2: array(3) of nu
     ]
   },
   "floor_shards": 10,
+  "tier_weights": [
+    60,
+    25,
+    10,
+    4,
+    1
+  ],
   "run_shards_cap": 300
 }
 ```

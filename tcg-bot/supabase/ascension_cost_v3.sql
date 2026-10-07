@@ -2,7 +2,7 @@
 -- ~15 for the fifth (Normal), so a Normal card costs ~44 dupes to reach 5-star and
 -- ~50+ with the later Prestige craft. Rarer cards scale down (you pull fewer dupes).
 create or replace function ascend_cost(p_rarity text, p_ascension int)
-returns int language sql immutable as $$
+returns int language sql immutable set search_path = public as $$
   select case when coalesce(p_ascension, 0) >= 5 then null else (
     case p_rarity
       when 'normal'           then (array[4, 6, 8, 11, 15])[p_ascension + 1]

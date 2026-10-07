@@ -5,6 +5,7 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { KEEP_LIVE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = process.argv.includes('--old') ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/launch_event_cards.sql', import.meta.url)), 'utf8');
@@ -13,7 +14,7 @@ const body = String.raw`do $t$
 declare bad text := ''; h bigint := 101698; hb bigint; att bigint; sid bigint; pc bigint; r jsonb; g bigint; n int;
   d date := (now() at time zone 'America/Denver')::date; crash int; credit bigint; i int;
 begin
-  ${mig ? 'execute $m$' + mig + '$m$;' : ''}
+  ${mig ? KEEP_LIVE(['claim_gift', 'claim_tutorial_reward', 'play_card_effect'], mig) : ''}
   insert into players (id, username) values ('tst_lc_a', 'tst a'), ('tst_lc_b', 'tst b'), ('tst_lc_c', 'tst c');
   -- 1. Raider: a first fight in the launch boss gives ONE gift; a later fight gives none.
   -- order by: the same card on every database (2026-10-02: without it a restored copy picked another card).
@@ -34,9 +35,9 @@ begin
   select id into g from gift_claims where player_id = 'tst_lc_b' and reason = 'admin';
   if (claim_gift('tst_lc_b', g)->>'packs')::int is distinct from 2 then bad := bad || 'pack gift; '; end if;
   -- 4. Player card (a test card): a tutorial finished in the window gets the gift + the card its boon.
-  insert into subjects (key, name) values ('tst-launch-player', 'tst launch player') returning id into sid;
+  insert into subjects (key, name, type) values ('tst-launch-player', 'tst launch player', 'Moment') returning id into sid;   -- type: NOT NULL (card_decisions.sql)
   insert into cards (subject_id, name, rarity) values (sid, 'tst Launch Day Player', 'event') returning id into pc;
-  insert into pack_ledger (player_id, amount, reason) values ('tst_lc_c', 1, 'tutorial');
+  insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id) values ('tst_lc_c', 1, 'tutorial', 'tutorial', 'complete');
   n := set_launch_player_card(pc);
   if not exists (select 1 from gift_claims where player_id = 'tst_lc_c' and reason = 'event:launch_player' and card_id = pc) then bad := bad || 'player backfill; '; end if;
   if (select effect->>'primitive' from subjects where id = sid) is distinct from 'launch_party' then bad := bad || 'player effect; '; end if;

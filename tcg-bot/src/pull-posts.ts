@@ -3,6 +3,7 @@ import { getSupabase } from './supabase.js';
 import { announce } from './internal.js';
 import { art, buf } from './playing-posts.js';
 import { renderRarePull } from './post-pictures.js';
+import { RARITY } from './playing-card.js';
 import { launchActivityRow } from './ui/launch.js';
 
 // The rare pull post (Nathan, 2026-10-02): a Full Art or a Gold pull gets a post with a picture in
@@ -15,7 +16,8 @@ type PullCard = { name: string; rarity: string; image_url: string | null };
 
 /** The Full Art + Gold cards of one open action, the rarest first. */
 export function rarePulls(packs: PullCard[][]): PullCard[] {
-  const rank = (r: string): number => (r === 'gold' ? 2 : r === 'full_art' ? 1 : 0);
+  // The one rarity order (RARITY.rank = SQL rarity_rank, both pinned to shared/rarity-rank.json).
+  const rank = (r: string): number => RARITY[r]?.rank ?? 0;
   return packs.flat().filter((c) => RARE_POST.has(c.rarity)).sort((a, b) => rank(b.rarity) - rank(a.rarity));
 }
 

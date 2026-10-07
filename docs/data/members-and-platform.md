@@ -9,7 +9,7 @@ Members, the Dailies, the bell notes, reports, the balance numbers, the flags an
 
 Tables (12): [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [voice_minutes](#table-voice-minutes)
 
-Functions (29): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_economy()](#fn-balance-check-economy), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_all(text,text)](#fn-notify-all-text-text), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
+Functions (31): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [game_day(timestamp with time zone)](#fn-game-day-timestamp-with-time-zone), [game_day_start(date)](#fn-game-day-start-date), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
 
 ## Tables
 
@@ -50,7 +50,8 @@ Table. One row per insert or update of a balance row (the balance_log_write trig
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: none
-- Check constraints: none
+- Check constraints: 
+  - `balance_log_op_check`: `CHECK ((op = ANY (ARRAY['insert'::text, 'update'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-daily-activity"></a>
@@ -70,7 +71,8 @@ Table. [players-economy] The chat message count of a member per game day (record
 - Primary key: `PRIMARY KEY (player_id, activity_date)`
 - Foreign keys: 
   - `daily_activity_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `daily_activity_message_count_check`: `CHECK ((message_count >= 0))`
 - Row level security: on. Policies: none
 
 <a id="table-daily-claims"></a>
@@ -90,7 +92,9 @@ Table. [players-economy] One row per daily task claimed by a member on a game da
 - Primary key: `PRIMARY KEY (player_id, day, task)`
 - Foreign keys: 
   - `daily_claims_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `daily_claims_amount_check`: `CHECK ((amount >= 0))`
+  - `daily_claims_task_check`: `CHECK ((task = ANY (ARRAY['checkin'::text, 'hunt'::text, 'voice'::text, 'social'::text, 'dungeon'::text, 'gauntlet'::text, 'chat'::text, 'chat_bonus'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-ledger-reasons"></a>
@@ -120,7 +124,7 @@ Table. [players-economy] The allowed reasons of the three ledgers (pack_ledger, 
 
 ### notifications
 
-Table. One row per note in the bell of a member. notify_player (the Activity, the bot, SQL), notify_all and claim_tutorial_reward write it. The Activity /api/notifications reads it. prune_old_rows deletes old rows.
+Table. One row per note in the bell of a member. notify_player (the Activity, the bot, SQL) and claim_tutorial_reward write it. The Activity /api/notifications reads it. prune_old_rows deletes old rows.
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
@@ -264,7 +268,8 @@ Table. One row per member per game day (America/Denver): the voice minutes for t
 - Primary key: `PRIMARY KEY (player_id, day)`
 - Foreign keys: 
   - `voice_minutes_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `voice_minutes_minutes_check`: `CHECK ((minutes >= 0))`
 - Row level security: on. Policies: none
 
 ## Functions
@@ -288,6 +293,16 @@ Adds 1 voice minute today to each given member who has a players row. The bot (v
 - Security definer: no
 
 Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
+
+<a id="fn-balance-check-dungeon"></a>
+
+### balance_check_dungeon()
+
+- Function: `balance_check_dungeon()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.shards, chest.card_chance and offers heal / buff / shards / ward / revive must be 5 numbers (tier 1 to 5), tier_weights must add up to more than 0, the Shards whole numbers, chest.card_chance and door.gamble_rare at most 1, door.rare_tier and offers.min_tier whole numbers from 1 to 5. (balance_check keeps every leaf and its type, so boss_hp_estimate keeps its 4 numbers.)
 
 <a id="fn-balance-check-economy"></a>
 
@@ -439,6 +454,26 @@ Returns the Dailies panel of a member: enabled, paused, day, reset time, daily c
 
 Packs a member earned today (America/Denver) from the dailies: the earned_ reasons in an explicit list. The daily cap compares with it.
 
+<a id="fn-game-day-timestamp-with-time-zone"></a>
+
+### game_day(timestamp with time zone)
+
+- Function: `game_day(p_at timestamp with time zone DEFAULT now())`
+- Returns: `date`
+- Security definer: no
+
+The game day of an instant (default now): the date in Mountain Time (America/Denver). A game day starts at midnight MT. The one named rule for the game day (one_source_rules.sql). dungeon_day and shop_day call it. The JS copies (tcg-activity/src/mt-time.js mtToday, tcg-bot/src/store.ts utcToday) are tested equal to it (test-one-source-rules.mjs).
+
+<a id="fn-game-day-start-date"></a>
+
+### game_day_start(date)
+
+- Function: `game_day_start(p_day date)`
+- Returns: `timestamp with time zone`
+- Security definer: no
+
+The instant a game day starts: midnight Mountain Time of that date. The JS copy tcg-activity/src/mt-time.js mtDayStartISO is tested equal to it (test-one-source-rules.mjs).
+
 <a id="fn-gift-all-members-jsonb-integer-text"></a>
 
 ### gift_all_members(jsonb,integer,text)
@@ -479,16 +514,6 @@ Puts the same pack gift in the bell of every member (gift_claims rows). Returns 
 
 Trigger on pack_ledger, card_ledger, shard_ledger and the pack gifts of gift_claims: a new row (or a changed reason) needs a reason in ledger_reasons with status active or reserved. Else check_violation (the old check error class).
 
-<a id="fn-notify-all-text-text"></a>
-
-### notify_all(text,text)
-
-- Function: `notify_all(p_kind text, p_message text)`
-- Returns: `integer`
-- Security definer: no
-
-Writes the same note in the bell of every member and returns the number of notes. Not called by any code or job.
-
 <a id="fn-notify-player-text-text-text"></a>
 
 ### notify_player(text,text,text)
@@ -507,7 +532,7 @@ Writes one note in the bell of a member (notifications). The Activity, the bot, 
 - Returns: `jsonb`
 - Security definer: no
 
-Returns the data of the is-playing post for a member today: name, avatar, the playing ping setting, packs opened, Hunt damage and the best new card. The bot (playing-posts.ts) calls it.
+Returns the data of the is-playing post for a member today: name, avatar, the playing ping setting, packs opened, Hunt damage and the best new card (highest rarity_rank, then the newest). The bot (playing-posts.ts) calls it.
 
 <a id="fn-prune-old-rows"></a>
 

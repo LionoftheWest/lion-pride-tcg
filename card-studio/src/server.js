@@ -5,12 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, unlinkSync, statSync } from 'node:fs';
 import { fillHtml, renderPng } from './render.js';
 import { pushCard } from './push.js';
+import { removeTiers } from './tier-delete.js';
 import { supabase } from './supabase.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic } from './rarity.js';
 import { getFrame, setFrame } from './frames.js';
 import { getArtist, setArtist } from './artists.js';
 import { getSource, setSource } from './artsources.js';
-import { getCards, getCard, addCard, updateCard, deleteCard, slotDetails, setSlotDetails } from './cardstore.js';
+import { getCards, getCard, addCard, updateCard, deleteCard, slotDetails, setSlotDetails, subjectType } from './cardstore.js';
 
 // Injected into a card render when ?edit=1: drag to pan, scroll to zoom, and
 // report the framing back to the studio window.
@@ -179,32 +180,46 @@ app.put('/api/cards/:id', async (req, res) => {
 
   const removed = existing.finishes.filter((f) => !nextFinishes.includes(f));
   const card = { id, name: cleanName, finishes: nextFinishes, updatedAt: Date.now() };
+
+  // A removed tier is deleted from the live game FIRST (src/tier-delete.js): the rows, then the images, and
+  // only if the database accepts. A card with history (Hunt, Shop, combat, plays, auctions) is refused: then
+  // nothing changes, here or live, and the studio shows why.
+  let subject = null, lookupErr = '';
+  try {
+    const q = await supabase.from('subjects').select('id').eq('key', id).maybeSingle();
+    if (q.error) throw new Error(q.error.message);
+    subject = q.data;
+  } catch (e) {
+    lookupErr = e.message || String(e);
+    if (removed.length) return res.status(502).json({ ok: false, error: 'Could not reach the live game, so no tier was removed: ' + (e.message || e) });
+  }
+  let warning = '';
+  if (subject && removed.length) {
+    let r;
+    try {
+      r = await removeTiers({ db: supabase, bucket: BUCKET, cardId: id, subjectId: subject.id, tiers: removed });
+    } catch (e) {
+      r = { ok: false, error: 'The live delete failed, so no tier was removed: ' + (e.message || e) };
+    }
+    if (!r.ok) return res.status(409).json({ ok: false, error: r.error });
+    if (r.warning) warning = `; ${r.warning}`;
+    for (const f of readdirSync(OUT).filter((n) => removed.some((t) => n === `gallery-${id}-${t}.png`))) {
+      try { unlinkSync(join(OUT, f)); } catch { /* ignore */ }
+    }
+  }
   updateCard(id, card);
 
-  // Best-effort: reflect the edit in the live bot, if this card was pushed. Only
+  // Best-effort: reflect the name in the live bot, if this card was pushed. Only
   // the name is card-wide; per-tier text syncs through /api/details.
-  let sync = 'saved (not live yet)';
-  try {
-    const { data: subject } = await supabase.from('subjects').select('id').eq('key', id).maybeSingle();
-    if (subject) {
+  let sync = lookupErr ? 'saved locally; live sync failed: ' + lookupErr : 'saved (not live yet)';
+  if (subject) {
+    try {
       await supabase.from('subjects').update({ name: card.name }).eq('id', subject.id);
       await supabase.from('cards').update({ name: card.name }).eq('subject_id', subject.id);
-      if (removed.length) {
-        const { data: rows } = await supabase
-          .from('cards').select('id').eq('subject_id', subject.id).in('rarity', removed);
-        const rowIds = (rows || []).map((r) => r.id);
-        if (rowIds.length) {
-          // One statement: the foreign keys remove the members' copies (player_cards) and their card_ledger
-          // rows with the card, so the card ledger still reconciles. A separate player_cards delete took the
-          // copies even when the card delete then failed.
-          await supabase.from('cards').delete().in('id', rowIds);
-        }
-        await supabase.storage.from(BUCKET).remove(removed.flatMap((r) => [`cards/${id}-${r}.webp`, `cards/${id}-${r}.png`]));
-      }
-      sync = removed.length ? `live: updated, removed ${removed.join(', ')}` : 'live: updated';
+      sync = (removed.length ? `live: updated, removed ${removed.join(', ')}` : 'live: updated') + warning;
+    } catch (e) {
+      sync = 'saved locally; live sync failed: ' + (e.message || e);
     }
-  } catch (e) {
-    sync = 'saved locally; live sync failed: ' + (e.message || e);
   }
   res.json({ ok: true, card, sync });
 });
@@ -353,11 +368,13 @@ app.post('/api/tags/:id', async (req, res) => {
     realm: arr(b.realm),
     traits: arr(b.traits),
   };
-  updateCard(c.id, { tags });
+  // The Card Info type is the card type too (subjects.type), so a new card can be pushed.
+  const type = subjectType({ tags }) || subjectType(c);
+  updateCard(c.id, type ? { tags, type } : { tags });
   touch(c.id);
   try {
     const { data: subject } = await supabase.from('subjects').select('id').eq('key', c.id).maybeSingle();
-    if (subject) await supabase.from('subjects').update({ tags }).eq('id', subject.id);
+    if (subject) await supabase.from('subjects').update(type ? { tags, type } : { tags }).eq('id', subject.id);
   } catch { /* live sync is best-effort */ }
   res.json({ ok: true, tags });
 });

@@ -29,9 +29,11 @@ export interface OpenResult {
 
 // The game day is Mountain Time (Nathan, 2026-09-30; mt_clock.sql): "YYYY-MM-DD" in
 // America/Denver. The name is kept for the callers; it is NOT the UTC day any more.
+// The SQL game_day() (one_source_rules.sql) is the rule; store.test.ts proves this copy gives the same
+// answers (shared/game-day-golden.json, which card-studio/scripts/test-one-source-rules.mjs checks against the SQL).
 const mtDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' });
-export function utcToday(): string {
-  return mtDay.format(new Date());
+export function utcToday(at: Date = new Date()): string {
+  return mtDay.format(at);
 }
 
 // A process-local cache of players we have already upserted this run (id -> the avatar
@@ -167,19 +169,6 @@ export async function giftPacks(fromId: string, toId: string, amount: number): P
   const { data, error } = await supabase.rpc('gift_packs', { p_from: fromId, p_to: toId, p_amount: amount });
   if (error) throw new Error(`giftPacks failed: ${error.message}`);
   return Boolean(data);
-}
-
-/** Grant packs to a player (gift / event / admin). Returns the new balance. */
-export async function grantPacks(id: string, amount: number, reason: string, by?: string): Promise<number | null> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase.rpc('grant_packs', {
-    p_player_id: id,
-    p_amount: amount,
-    p_reason: reason,
-    p_by: by ?? null,
-  });
-  if (error) throw new Error(`grantPacks failed: ${error.message}`);
-  return (data as number | null) ?? null;
 }
 
 /**

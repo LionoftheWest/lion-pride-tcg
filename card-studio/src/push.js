@@ -12,7 +12,7 @@ import { artKeyFor, ANIMATED, inDrawPool, needsPeriod } from './rarity.js';
 import { getFrame } from './frames.js';
 import { makeThumbs, gridObject, revealObject } from './thumbs.js';
 import { getArtist } from './artists.js';
-import { slotDetails } from './cardstore.js';
+import { slotDetails, subjectType, CARD_TYPES } from './cardstore.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(here, '..');
@@ -61,6 +61,9 @@ function animate(facePng, rarity, framesDir, webpOut, maskPng, onFrame) {
  * tiers), and upsert the subject + card rows so it goes live in the bot.
  */
 export async function pushCard(card, artFor, outDir, onProgress) {
+  // subjects.type is NOT NULL (card_decisions.sql): refuse a card with no type before any render or upload.
+  const type = subjectType(card);
+  if (!type) throw new Error(`"${card.name}" has no type. Pick one of ${CARD_TYPES.join(', ')} in Card Info, save, then push again.`);
   await ensureBucket();
 
   // Progress is measured in frame-units: each animated tier is FRAMES frames,
@@ -78,7 +81,7 @@ export async function pushCard(card, artFor, outDir, onProgress) {
 
   const { data: subject, error: se } = await supabase
     .from('subjects')
-    .upsert({ key: card.id, name: card.name, description: card.genre, type: card.type ?? null, tags: card.tags ?? {}, ability: card.ability ?? null }, { onConflict: 'key' })
+    .upsert({ key: card.id, name: card.name, description: card.genre, type, tags: card.tags ?? {}, ability: card.ability ?? null }, { onConflict: 'key' })
     .select('id')
     .single();
   if (se) throw new Error(`subject: ${se.message}`);

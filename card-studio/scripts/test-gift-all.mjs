@@ -7,6 +7,7 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { PRE_REF_FILE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/gift_all_members.sql', import.meta.url)), 'utf8')
@@ -18,7 +19,7 @@ const OLD = '999999999999999911', NEW = '999999999999999912', EARLY = '999999999
 const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; r2 jsonb; members jsonb; other_before bigint;
 begin
-  execute $m$${mig}$m$;
+  ${PRE_REF_FILE(mig)}
   -- This file's welcome_packs() reads the settings row welcome_packs; balance_economy.sql moved it to balance
   -- (the live function reads balance). The test restores the old row inside its rolled-back block.
   insert into settings (key, value) values ('welcome_packs', '10') on conflict (key) do nothing;

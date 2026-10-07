@@ -34,7 +34,7 @@ begin
 ${kase('the rewards come from balance achievement_rewards: Bronze set to 7 packs + 9 Shards pays 7 + 9', `
     insert into players (id, username) values ('${P}_z', 'tst z');
     update balance set value = jsonb_set(jsonb_set(value, '{tiers,0,packs}', '7'), '{tiers,0,shards}', '9') where key = 'achievement_rewards';
-    insert into pack_ledger (player_id, amount, reason) select '${P}_z', -1, 'opened' from generate_series(1, 10);
+    insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id) select '${P}_z', -1, 'opened', 'test', 'achievement-tracks' from generate_series(1, 10);
     select pack_balance, shard_balance into pb, sb from players where id = '${P}_z';
     r := claim_achievement_tiers('${P}_z', 'track:packs');
     select pack_balance - pb, shard_balance - sb into pb2, sb2 from players where id = '${P}_z';
@@ -43,7 +43,7 @@ ${kase('the rewards come from balance achievement_rewards: Bronze set to 7 packs
       (r->>'ok')::boolean and pb2 = 7 and sb2 = 9 and (select (value->'tiers'->0->>'packs')::int from balance where key = 'achievement_rewards') = 1, 'r', r, 'paid', jsonb_build_array(pb2, sb2));`)}
 
 ${kase('Pack Opener 1,000 opened: 5 tiers pay 1+1+2+3+5 packs, 50+150+200+400+800 Shards, 3 titles, 2 frames', `
-    insert into pack_ledger (player_id, amount, reason) select '${P}_a', -1, 'opened' from generate_series(1, 1000);
+    insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id) select '${P}_a', -1, 'opened', 'test', 'achievement-tracks' from generate_series(1, 1000);
     select pack_balance, shard_balance into pb, sb from players where id = '${P}_a';
     v := achievement_view('${P}_a');
     r := claim_achievement_tiers('${P}_a', 'track:packs');
@@ -58,7 +58,7 @@ ${kase('Pack Opener 1,000 opened: 5 tiers pay 1+1+2+3+5 packs, 50+150+200+400+80
       and (v->>'ready')::int >= 5 and (select (tr->>'reached')::int from jsonb_array_elements(v->'tracks') tr where tr->>'key' = 'packs') = 5,
       'r', r);`)}
 ${kase('Mythic +N: 1,500 opened = 2 steps, 5 packs + 200 Shards each, title "Pack Legend +2"', `
-    insert into pack_ledger (player_id, amount, reason) select '${P}_a', -1, 'opened' from generate_series(1, 500);
+    insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id) select '${P}_a', -1, 'opened', 'test', 'achievement-tracks' from generate_series(1, 500);
     select pack_balance, shard_balance into pb, sb from players where id = '${P}_a';
     r := claim_achievement_tiers('${P}_a', 'track:packs');
     select pack_balance - pb, shard_balance - sb into pb2, sb2 from players where id = '${P}_a';

@@ -11,6 +11,17 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const FILE = join(here, '..', 'cards.json');
 
+// The PVE type of a card (subjects.type, NOT NULL since card_decisions.sql). card.type wins; a card made in
+// the portal has only tags.type (lower case, set by Card Info), so that one counts too. Anything else = null.
+export const CARD_TYPES = ['Character', 'Creature', 'Item', 'Place', 'Moment'];
+export function subjectType(card) {
+  for (const v of [card?.type, card?.tags?.type]) {
+    const t = CARD_TYPES.find((x) => x.toLowerCase() === String(v ?? '').trim().toLowerCase());
+    if (t) return t;
+  }
+  return null;
+}
+
 export function getCards() {
   try {
     return existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : [];

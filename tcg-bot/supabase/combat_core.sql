@@ -74,11 +74,10 @@ begin
     if p_self_in and p_tags && v_wtags then v_stack := v_stack + 1; end if;
   end if;
   -- Element synergy: this card's dominant element + how many other cards share it.
-  v_elem := (select e from unnest(array['fire','water','lightning','ice','nature','earth','air',
-                                        'shadow','light','arcane','psychic','toxic','metal']) e
-             where ('trait:' || e) = any(p_tags) limit 1);
+  -- The element names and their aliases have one source: element_aliases() (card_decisions.sql; robot = metal).
+  v_elem := public.card_element(p_tags);
   if v_elem is not null then
-    select count(*) into v_syn from jsonb_array_elements(v_o) o where o ? ('trait:' || v_elem);
+    select count(*) into v_syn from jsonb_array_elements(v_o) o where exists (select 1 from jsonb_array_elements_text(o) t where public.element_of(t) = v_elem);
     v_syn := coalesce(v_syn, 0) + 1;   -- include this card
     if v_syn >= public.balance_num('combat', 'syn_big_at') then v_synmult := public.balance_num('combat', 'element_big'); elsif v_syn >= public.balance_num('combat', 'syn_small_at') then v_synmult := public.balance_num('combat', 'element_small'); end if;
   else
@@ -94,7 +93,7 @@ begin
   -- Trait (kind) synergy: the best-shared non-element trait.
   select coalesce(max(cnt), 0) into v_ksyn from (
     select count(*) as cnt from unnest(p_tags) tg cross join jsonb_array_elements(v_o) o
-      where tg like 'trait:%' and tg not in ('trait:fire','trait:water','trait:lightning','trait:ice','trait:nature','trait:earth','trait:air','trait:shadow','trait:light','trait:arcane','trait:psychic','trait:toxic','trait:metal')
+      where tg like 'trait:%' and tg not in (select 'trait:' || a.element from public.element_aliases() a)
         and o ? tg
       group by tg) k;
   if v_ksyn > 0 then v_ksyn := v_ksyn + 1; if v_ksyn >= public.balance_num('combat', 'syn_big_at') then v_kmult := public.balance_num('combat', 'trait_big'); elsif v_ksyn >= public.balance_num('combat', 'syn_small_at') then v_kmult := public.balance_num('combat', 'trait_small'); end if; end if;
@@ -149,7 +148,7 @@ end $$;
 
 -- Lifesteal: a share of the damage, capped at 6% of the card's max HP.
 create or replace function public.combat_lifesteal(p_dmg int, p_aamt numeric, p_maxhp int)
-returns int language sql stable as $$
+returns int language sql stable set search_path = public as $$
   select greatest(1, least(round(p_dmg * p_aamt), round(p_maxhp * public.balance_num('combat', 'lifesteal_cap'))))::int;
 $$;
 
@@ -217,13 +216,13 @@ end $$;
 
 -- One card's share of an area hit (Slam, Cataclysm): its own damage roll.
 create or replace function public.combat_area_roll(p_atk numeric, p_area numeric, p_bmult numeric)
-returns int language sql volatile as $$
+returns int language sql volatile set search_path = public as $$
   select greatest(1, round(p_atk * p_area * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span')) * p_bmult))::int;
 $$;
 
 -- A shield absorbs damage first.
 create or replace function public.combat_absorb(p_shield int, p_dmg int)
-returns jsonb language plpgsql immutable as $$
+returns jsonb language plpgsql immutable set search_path = public as $$
 declare v_absorb int := least(p_shield, p_dmg);
 begin
   return jsonb_build_object('shield', p_shield - v_absorb, 'dmg', p_dmg - v_absorb);
@@ -231,25 +230,25 @@ end $$;
 
 -- A Flaming enemy: a 30% chance that the attacking card burns (the damage before shields, 0 = no burn).
 create or replace function public.combat_burn(p_atk numeric)
-returns int language plpgsql volatile as $$
+returns int language plpgsql volatile set search_path = public as $$
 begin
   if random() < public.balance_num('boss_passives', 'flaming_chance') then return greatest(1, round(p_atk * public.balance_num('boss_passives', 'flaming_x') * (public.balance_num('combat', 'roll_min') + random() * public.balance_num('combat', 'roll_span'))))::int; end if;
   return 0;
 end $$;
 
 -- Thorns: 10% of the damage comes back to the attacking card. Regenerating: 0.5% of a share each turn.
-create or replace function public.combat_thorns(p_dmg int) returns int language sql stable as $$ select greatest(1, round(p_dmg * public.balance_num('boss_passives', 'thorns')))::int; $$;
-create or replace function public.combat_regen(p_share bigint) returns int language sql stable as $$ select greatest(1, round(p_share * public.balance_num('boss_passives', 'regenerating_heal')))::int; $$;
+create or replace function public.combat_thorns(p_dmg int) returns int language sql stable set search_path = public as $$ select greatest(1, round(p_dmg * public.balance_num('boss_passives', 'thorns')))::int; $$;
+create or replace function public.combat_regen(p_share bigint) returns int language sql stable set search_path = public as $$ select greatest(1, round(p_share * public.balance_num('boss_passives', 'regenerating_heal')))::int; $$;
 
 -- ---- Supports -----------------------------------------------------------------------------------------
 
 -- The affinity scale (team / enemy effects): +15% for each squad card that shares the affinity, max x2.
-create or replace function public.combat_aff_scale(p_count int) returns numeric language sql stable as $$ select least(public.balance_num('support', 'affinity_cap'), 1 + public.balance_num('support', 'affinity_step') * coalesce(p_count, 0)); $$;
+create or replace function public.combat_aff_scale(p_count int) returns numeric language sql stable set search_path = public as $$ select least(public.balance_num('support', 'affinity_cap'), 1 + public.balance_num('support', 'affinity_step') * coalesce(p_count, 0)); $$;
 
 -- The value of a support effect. Ally effects: shield / heal = a share of the TARGET's max HP (max 100%),
 -- empower = the damage multiplier. Enemy effects: weaken (max 60%), expose (max 100%), smite (damage).
 create or replace function public.combat_support_value(p_eff text, p_amt numeric, p_scale numeric, p_target_maxhp int)
-returns numeric language sql stable as $$
+returns numeric language sql stable set search_path = public as $$
   select case p_eff
     when 'empower' then 1 + p_amt
     when 'shield'  then greatest(1, round(p_target_maxhp * least(p_amt, public.balance_num('support', 'heal_cap'))))
@@ -261,7 +260,7 @@ returns numeric language sql stable as $$
 $$;
 
 -- Stun immunity: after a stun the enemy cannot be stunned again for 2 rounds (at most 1 round in 3).
-create or replace function public.combat_stun_immune(p_stun_until int, p_round int) returns boolean language sql stable as $$
+create or replace function public.combat_stun_immune(p_stun_until int, p_round int) returns boolean language sql stable set search_path = public as $$
   select coalesce(p_stun_until, 0) > 0 and p_round < p_stun_until + public.balance_num('support', 'stun_immune_rounds');
 $$;
 
