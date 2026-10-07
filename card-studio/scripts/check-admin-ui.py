@@ -27,11 +27,13 @@ def api(path):
 
 member = api('/members?limit=1')['rows'][0]['id']
 hunts = api('/hunts?limit=1')['rows']
+card = api('/cards?limit=1&sort=copies')['rows'][0]['id']
 PAGES = [
     ('01', 'Overview', '/overview'), ('02', 'Members', '/members'), ('03', 'Member', f'/member/{member}'), ('04', 'Economy', '/economy'),
     ('05', 'Growth', '/growth'), ('06', 'Cards', '/cards'), ('07', 'Hunt list', '/hunt'),
     ('08', 'Hunt', f'/hunt/{hunts[0]["id"]}' if hunts else '/hunt'), ('09', 'Dungeon', '/dungeon'), ('10', 'Reports', '/reports'),
     ('11', 'Report - top power', '/report/top_power'), ('12', 'Data', '/data'), ('13', 'Data - settings', '/data/settings'), ('14', 'Health', '/health'),
+    ('16', 'Card', f'/card/{card}'), ('17', 'Cards - search', '/cards?q=a'), ('18', 'Activity', '/activity'), ('19', 'Activity - pulls', '/activity?kind=pull'),
 ]
 VIEWS = [('desktop', 1440, 900), ('phone', 390, 844)]
 
@@ -93,6 +95,20 @@ with sync_playwright() as p:
             status = 'PASS' if not problems else 'FAIL'
             if problems: fails += 1
             print(f'{status} {vname} {name}' + ('' if not problems else '\n    ' + '\n    '.join(problems[:12])))
+        if vname == 'desktop':
+            # The timeline chips filter on the server: a chip asks /timeline?kinds=<kind> and every row shown is that kind.
+            pg.goto(a.base + f'/admin/#/member/{member}'); pg.wait_for_load_state('networkidle')
+            pg.wait_for_function("() => document.querySelectorAll('.tl-panel .chips .chip').length > 1 && !document.querySelector('main .state .spin')", timeout=30000)
+            chip = pg.locator('.tl-panel .chips .chip').nth(1)
+            want = chip.evaluate("c => [...c.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim()")
+            with pg.expect_response(lambda r: '/timeline?' in r.url and 'kinds=' in r.url) as resp:
+                chip.click()
+            pg.wait_for_function("() => !document.querySelector('main .state .spin')", timeout=30000)
+            kinds = pg.locator('.tl-table tbody tr td:nth-child(2)').all_inner_texts()
+            n_total = pg.locator('.tl-panel .phead .num').inner_text()
+            ok = resp.value.ok and kinds and all(k.strip() == want for k in kinds)
+            print(f"{'PASS' if ok else 'FAIL'} desktop timeline chip '{want}': {len(kinds)} rows, {n_total}")
+            if not ok: fails += 1
         if vname == 'phone':
             pg.goto(a.base + '/admin/#/overview'); pg.wait_for_load_state('networkidle')
             pg.click('.tabbar button.tab')
