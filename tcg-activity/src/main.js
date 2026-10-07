@@ -30,6 +30,7 @@ import { initTutorial } from './ui-v2-tutorial.js';
 import { every, isIdle } from './poll.js';
 import { watchSizeClass } from './ui3/size-class.js';
 import { startShell } from './ui3/shell.js';
+import { openOpenWindow, prefetchSets } from './ui3/open-window.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
@@ -232,6 +233,7 @@ let dungeon = false; // the Dungeon Run (dungeon.sql), from /api/flags (DUNGEON_
 let shards = false;  // Shards + the Shop (shards_shop.sql), from /api/flags (SHARDS_USERS first)
 let hall = false;    // wishlists + the Trading Hall + auctions, from /api/flags (HALL_USERS first)
 let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
+let uiV3 = false;     // the v3 screens (settings.ui_v3, Nathan only), from /api/flags (flag OFF = the v2 screens)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
 let meUser = null;  // { id, name } of the signed-in member
 let revealItems = []; // the cards in the current pack reveal (for click → viewer)
@@ -335,7 +337,8 @@ async function main() {
   hall = !!flags?.hall;
   shards = !!flags?.shards;
   dungeon = !!flags?.dungeon;
-  if (flags?.uiV3) startV3();
+  uiV3 = !!flags?.uiV3;
+  if (uiV3) startV3();
   // A new member's first login gave them the welcome packs: show them now.
   if (flags.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   startV2();
@@ -358,6 +361,7 @@ function startV3() {
   if (link) link.media = 'all';
   else { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/ui3.css'; l.dataset.ui3 = '1'; document.head.appendChild(l); }
   watchSizeClass(window, () => repaintShards());
+  prefetchSets(api); // the Open window (UI-33) shows the sets at once
 }
 
 // The v2 shell: the dock, the top bar pills, the phone layouts.
@@ -403,6 +407,8 @@ function startV2() {
   document.querySelectorAll('#dock .dk').forEach((b) => b.addEventListener('click', () => { SFX.play('click'); show(b.dataset.view); }));
   // 5+ packs: the chooser (x1 / x5 / x10); fewer: open one, as before.
   el('dockOpen').addEventListener('click', () => {
+    // v3 (UI-33): the Open window, from 1 pack (D-87): the set, then the count. It opens the packs from that set.
+    if (uiV3) { if (packsAvailable >= 1) openOpenWindow({ api, packs: () => packsAvailable, onPick: (n, set) => openPacks(n, set) }); return; }
     if (packsAvailable >= 5) openChooser(openDeps(), packsAvailable, (n) => openPacks(n));
     else openPacks(1);
   });
@@ -672,13 +678,15 @@ const openDeps = () => ({
   el, esc, SFX, RARITY_LABEL, cardBack: () => cardBack, openViewer,
   onClose: () => { sendStatus(VIEW_STATUS[currentView]); releaseFeed(); refreshOwned(); refreshPackStatus(); show(currentView); },
 });
-async function openPacks(count) {
+async function openPacks(count, set) {
   const n = [1, 5, 10].includes(count) ? count : 1; // a click handler passes an event
+  // The set of the v3 Open window (UI-33). The v2 callers pass none: the request stays { instanceId, count }.
+  const s = typeof set === 'string' && set ? set : undefined;
   holdFeed();
   let revealed = false;
   try {
     sendStatus('opening');
-    const data = await apiPost('/api/open', { instanceId, count: n });
+    const data = await apiPost('/api/open', s ? { instanceId, count: n, set: s } : { instanceId, count: n });
     if (data.error) note('Could not open right now.');
     else if (!data.cards || !data.cards.length)
       note('No unopened packs. Post in the server to earn one — 25 messages gets a bonus pack. Resets at midnight MT.');
