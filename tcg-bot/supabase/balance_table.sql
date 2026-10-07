@@ -56,7 +56,7 @@ begin
     ['combat_aff_scale', 'e5be70b040755944dcec10487f274197', '7a4054dd69923c816ea97d8bab829ab8'],
     ['combat_support_value', '3a355036a33ec2a2c3719a1ebe569b23', 'f559395d686aae07f5411b3b391c2c20'],
     ['combat_stun_immune', 'a90cde7342cf656740ca6d5a1570f0ff', 'b26ab5f7ae16903480af205f114b237f'],
-    ['hunt_attack', '352f81ffb45b028c1eab6e3dfcc2e707', '835daea41237378340cc28a88c3b0921'],
+    ['hunt_attack', '352f81ffb45b028c1eab6e3dfcc2e707', '5cfa1a4779226661d56ceda56045b58c'],
     ['hunt_support', '6ffdd26daed7008346262413497b2a24', 'a9addaf61d3a15508001be519589694b'],
     ['lock_hunt_squad', '4a80c769286b2b6022ab79b4cb01f7c6', '22bf3511259d728791ee370775beb5f2'],
     ['hunt_commit_card', '6ef31cb9924f10f32680369ef3057b16', '165a2c131945eb341f8e4864413f6884'],
@@ -73,6 +73,7 @@ begin
     if m not in (x[2], x[3]) then raise exception 'balance_table.sql: the live % changed since this file was built. Rebuild it from the live text.', x[1]; end if;
   end loop;
 end $g$;
+-- 2026-10-07 (damage_log.sql): hunt_attack is the live text + the Hunt Crasher log row (md5 5cfa1a47...); the guard accepts that result.
 -- GUARD-END
 
 -- 1. The table + its history ------------------------------------------------------------------
@@ -619,6 +620,7 @@ declare
   v_stats jsonb; v_atk numeric; v_pts jsonb; v_cmb jsonb;
   v_double boolean := false; v_rally numeric; v_mend numeric; v_bf numeric;
   v_party jsonb; v_crash jsonb; v_crash_dmg int := 0; v_crash_to text; v_crash_card bigint;
+  v_crash_fb boolean := false; v_crash_round int; v_clog bigint;
   v_sq jsonb; v_wk jsonb; v_hit jsonb; v_act jsonb; v_ab jsonb; v_area numeric;
   v_bname text; v_marks jsonb; v_pick jsonb; v_ctr jsonb; v_tick jsonb; v_ubuff numeric := 1;
 begin
@@ -736,6 +738,12 @@ begin
       v_crash_dmg := greatest(1, round(v_dmg * least((v_crash->>'amount')::numeric, balance_num('combat', 'effect_cap_pct')) / 100.0))::int;
       v_crash_to := coalesce(v_crash->'options'->>'credit_to', v_crash->'options'->>'sender_id');
       v_crash_card := (v_crash->'options'->>'card_id')::bigint;
+      -- No owner or no card (damage_log.sql): the extra damage still hits the boss, so the attacker gets the credit on
+      -- the attacking card. Boss HP and hunt_hits then agree; the log row says fallback.
+      if v_crash_to is null or v_crash_card is null then
+        v_crash_to := p_player; v_crash_card := p_card; v_crash_fb := true;
+      end if;
+      v_crash_round := v_round;
     end if;
   end if;
 
@@ -900,7 +908,16 @@ begin
   insert into hunt_combat_log (hunt_id, player_id, card_id, cp, outcome, bonus, crit, block,
     damage, countered, counter_dmg, card_hp_after, card_downed, boss_hp_after)
   values (p_hunt, p_player, p_card, v_cp, v_outcome, v_bonus, v_crit, v_block,
-    v_dmg, v_counter, v_cdmg, v_cardhp, v_downed, v_hp);
+    v_dmg, v_counter, v_cdmg, v_cardhp, v_downed, v_hp)
+  returning id into v_clog;
+
+  -- The Hunt Crasher log row (damage_log.sql): the extra damage that hunt_hits credits to the prankster's Raider card.
+  -- amount = the charge amount (%), result.value = the damage, combat_log_id = the attack it rode on.
+  if v_dmg > 0 and v_crash_dmg > 0 then
+    insert into combat_actions (mode, ref_id, player_id, card_id, kind, game_day, round, effect, amount, result)
+    values ('hunt', p_hunt, v_crash_to, v_crash_card, 'effect', v_day, v_crash_round, 'raid_crasher', (v_crash->>'amount')::numeric,
+      jsonb_build_object('value', v_crash_dmg, 'attacker', p_player, 'attack_card', p_card, 'combat_log_id', v_clog, 'fallback', v_crash_fb));
+  end if;
 
   if v_status = 'defeated' then
     v_settle := settle_hunt(p_hunt);

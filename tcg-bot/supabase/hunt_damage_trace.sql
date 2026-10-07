@@ -6,6 +6,7 @@
 --   Raid Crasher     hunt_attack writes a hunt_hits row for the prankster (their Raider card), no log row
 -- hunt_damage_reconcile(hunt) shows the rest per player as "unexplained" (it must be 0).
 -- This file does NOT change hunt_attack / hunt_support (combat_core.sql has an md5 guard on them).
+-- 2026-10-07: damage_log.sql gives Smite and Raid Crasher their own log rows (combat_actions) and owns the reconcile.
 -- Runs more than once with the same result.
 
 -- 1. The card that an adjustment changed in hunt_hits (null = no single card: the change was spread
@@ -90,58 +91,8 @@ comment on column public.hunt_adjustments.reason is 'Why: oct1_squad_bug (Oct 1 
 comment on column public.hunt_adjustments.created_at is 'When the row was written.';
 comment on column public.hunt_adjustments.card_id is 'The card whose hunt_hits row changed. Null = no single card (spread over the member''s cards that day, or a marker).';
 
--- 4. The reconcile: one row per player in the hunt. All damage numbers are sums over all days.
---    smite / crasher are clamped at 0 per card (these sources only add damage); a negative rest
---    stays in unexplained.
-create or replace function public.hunt_damage_reconcile(p_hunt bigint)
-returns table (player_id text, hits bigint, logged bigint, adjusted bigint, smite bigint, crasher bigint, unexplained bigint)
-language sql stable security invoker set search_path = public as $$
-  with h as (
-    select hh.player_id, hh.card_id, sum(hh.damage)::bigint as d from hunt_hits hh where hh.hunt_id = p_hunt group by 1, 2
-  ), l as (
-    select cl.player_id, cl.card_id, sum(cl.damage)::bigint as d from hunt_combat_log cl where cl.hunt_id = p_hunt group by 1, 2
-  ), a as (
-    select ha.player_id, ha.card_id, sum(ha.damage)::bigint as d from hunt_adjustments ha where ha.hunt_id = p_hunt group by 1, 2
-  ), keys as (
-    select h.player_id, h.card_id from h union select l.player_id, l.card_id from l
-    union select a.player_id, a.card_id from a where a.card_id is not null
-  ), per_card as (
-    select k.player_id, k.card_id,
-           coalesce(h.d, 0) - coalesce(l.d, 0) - coalesce(a.d, 0) as rest,
-           s.ability->>'effect' = 'smite' as is_smite,
-           s.effect->>'primitive' = 'raid_crasher' as is_crasher
-      from keys k
-      left join h on h.player_id = k.player_id and h.card_id = k.card_id
-      left join l on l.player_id = k.player_id and l.card_id = k.card_id
-      left join a on a.player_id = k.player_id and a.card_id = k.card_id
-      left join cards c on c.id = k.card_id
-      left join subjects s on s.id = c.subject_id
-  ), p as (
-    select pc.player_id,
-           coalesce(sum(greatest(0, pc.rest)) filter (where pc.is_smite), 0)::bigint as smite,
-           coalesce(sum(greatest(0, pc.rest)) filter (where pc.is_crasher and not coalesce(pc.is_smite, false)), 0)::bigint as crasher
-      from per_card pc group by pc.player_id
-  ), players_in as (
-    select player_id from h union select player_id from l union select player_id from a
-  )
-  select pi.player_id,
-         coalesce((select sum(d) from h where h.player_id = pi.player_id), 0)::bigint,
-         coalesce((select sum(d) from l where l.player_id = pi.player_id), 0)::bigint,
-         coalesce((select sum(d) from a where a.player_id = pi.player_id), 0)::bigint,
-         coalesce(p.smite, 0),
-         coalesce(p.crasher, 0),
-         (coalesce((select sum(d) from h where h.player_id = pi.player_id), 0)
-          - coalesce((select sum(d) from l where l.player_id = pi.player_id), 0)
-          - coalesce((select sum(d) from a where a.player_id = pi.player_id), 0)
-          - coalesce(p.smite, 0) - coalesce(p.crasher, 0))::bigint
-    from players_in pi left join p on p.player_id = pi.player_id
-   order by 1
-$$;
-
-comment on function public.hunt_damage_reconcile(bigint) is
-  '[hunt] Traces Hunt damage per player: hits (hunt_hits) = logged (hunt_combat_log) + adjusted (hunt_adjustments) + smite (Smite support-card damage, no log row) + crasher (Raid Crasher credit on the prankster''s Raider card, no log row) + unexplained. unexplained must be 0. smite / crasher = hits minus logs minus card adjustments on those cards, at least 0. Service role only.';
-
-revoke execute on function public.hunt_damage_reconcile(bigint) from public, anon, authenticated;
-grant execute on function public.hunt_damage_reconcile(bigint) to service_role;
+-- 4. The reconcile moved to damage_log.sql (2026-10-07): every Smite and Hunt Crasher hit now has a log row
+--    (combat_actions), so hunt_damage_reconcile has no special case. It is defined only there, so a re-run of this
+--    file does not put the old version back.
 
 notify pgrst, 'reload schema';

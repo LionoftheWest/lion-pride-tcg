@@ -31,17 +31,18 @@ begin
     raise exception 'pack_ledger_strict.sql: apply balance_economy.sql first (these functions read its balance keys)';
   end if;
   foreach x slice 1 in array array[
+  -- shard_ledger_strict.sql (2026-10-07) rebuilt the Shard refs: the second md5 of claim_daily, claim_daily_earn, buy_shop_item and dungeon_pay is its result.
     ['spend_pack(text)', '14090957d61b2cf32dcdd89fa0dcf5e3', '9f1f0ea5cc914f9ddd1bd66fdb2f0e03'],
     ['open_packs(text,bigint[],integer)', '4ad361ee52c0e9c5c32f51c226cfb51a', '78cb45be91d898fa0b3dcbde7c8dcd10'],
     ['gift_packs(text,text,integer)', '2eee04ca8a531b64508211cff497bb17', '79ef0b450bc2e9c462daf48283d21cf7'],
     ['claim_gift(text,bigint)', '05851263957dcad0a3d133e9369118d2', '3492a584dd9a8a56a934ce91b8374c4d'],
-    ['claim_daily(text,text)', '795445a3e1d7086d0a6e92cccb8635bc', '56cfe6262392048820acff539666b318'],
-    ['claim_daily_earn(text,date,integer,integer,integer)', 'de096113f5594a1ccd29cfebafb9eddb', 'c18f34c4d6b7a18dce0edae2d0bcb1a2'],
+    ['claim_daily(text,text)', '795445a3e1d7086d0a6e92cccb8635bc', '06541bd131cdb91d3af34abdcf87b675'],
+    ['claim_daily_earn(text,date,integer,integer,integer)', 'de096113f5594a1ccd29cfebafb9eddb', '11c7903f3652523f35e4860e43e0710e'],
     ['claim_achievement(text,text,integer,text,text)', 'd0bb69a4c07462ca5db3b9c97ab457b3', '34f4be6488a0d45577e2745381e41f11'],
     ['claim_achievement_tiers(text,text)', '584b13e1e47fd81e339ccab16c5a86db', '3c0b94a5e0c95bea4922a1ba615f389c'],
-    ['buy_shop_item(text,text,integer,bigint,integer)', '0ef076d1806e22d835b25e128e156a9f', 'c84f7625fb66024c8d15bfec410e01ff'],
+    ['buy_shop_item(text,text,integer,bigint,integer)', '0ef076d1806e22d835b25e128e156a9f', '024201884993cc4fd231dae26319661e'],
     ['settle_hunt(bigint)', '273e0b4c036dfb06217414c3f54d7cbf', 'bb5cc060c1966f554db98be41bee7c44'],
-    ['dungeon_pay(text,date)', '5ee9ef4a43b9bc99b235d5ca86af8f02', '95c577bb1b5334fe7b30b5d6e4458791'],
+    ['dungeon_pay(text,date)', '5ee9ef4a43b9bc99b235d5ca86af8f02', 'c39c6a3b51b2206c2416412a1f49e6cb'],
     ['claim_tutorial_reward(text)', '943aed1c01973dbe24171adfbe579492', 'eec8f640fdc2ea7e70177e68532b43be'],
     ['earned_today(text)', 'e91cf80c468952921856183df5a35ab5', 'ecfaa5439465eecb93af46d51598ce38'],
     ['ach_track_values(text)', '2b337b52301f7c9536bf989031f49cd4', 'a4816a46ab5d8db754a8d37e222f5e07']] loop
@@ -323,7 +324,7 @@ begin
   else
     bal := (select pack_balance from players where id = p_player);
   end if;
-  if sh > 0 then sbal := grant_shards(p_player, sh, 'daily', 'daily', p_task); end if;
+  if sh > 0 then sbal := grant_shards(p_player, sh, 'daily', 'daily_claim', d::text || ':' || p_task); end if;
   return jsonb_build_object('ok', true, 'task', p_task, 'packs', amt, 'shards', sh, 'balance', bal, 'shard_balance', sbal,
     'view', dailies_view(p_player));
 end $function$;
@@ -350,14 +351,14 @@ begin
     -- One daily_claims row per chat claim, also at the cap (amount 0), as claim_daily does: each claim is traceable.
     insert into daily_claims (player_id, day, task, amount) values (p_player_id, p_date, 'chat', greatest(amt, 0));
     if amt > 0 then perform grant_packs(p_player_id, amt, 'earned_daily', null, 'daily_claim', p_date::text || ':chat'); granted := granted + amt; end if;
-    if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily', 'chat'); end if;
+    if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily_claim', p_date::text || ':chat'); end if;
   end if;
   if a.message_count >= balance_num('daily', 'chat_bonus_at') and not a.bonus_claimed then
     update daily_activity set bonus_claimed = true where player_id = p_player_id and activity_date = p_date;
     amt := least(balance_num('daily', 'chat_bonus')::int * greatest(round(mult), 0)::int, greatest(cap - earned_today(p_player_id), 0));
     insert into daily_claims (player_id, day, task, amount) values (p_player_id, p_date, 'chat_bonus', greatest(amt, 0));
     if amt > 0 then perform grant_packs(p_player_id, amt, 'earned_bonus', null, 'daily_claim', p_date::text || ':chat_bonus'); granted := granted + amt; end if;
-    if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily', 'chat_bonus'); end if;
+    if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily_claim', p_date::text || ':chat_bonus'); end if;
   end if;
   return granted;
 end $function$;
@@ -461,8 +462,8 @@ begin
       return jsonb_build_object('ok', false, 'error', 'bad_qty'); end if;
     v_price := (cfg->>'pack_price')::int * p_qty;
     if v_bal < v_price then return jsonb_build_object('ok', false, 'error', 'not_enough', 'balance', v_bal, 'price', v_price); end if;
-    v_new := grant_shards(p_player, -v_price, 'shop', 'pack', p_qty::text);
     insert into shop_purchases (player_id, day, kind, qty, price) values (p_player, v_day, 'pack', p_qty, v_price) returning id into v_purchase;
+    v_new := grant_shards(p_player, -v_price, 'shop', 'shop_purchase', v_purchase::text);
     perform grant_packs(p_player, p_qty, 'shop', null, 'shop_purchase', v_purchase::text);
     return jsonb_build_object('ok', true, 'kind', 'pack', 'qty', p_qty, 'balance', v_new,
       'packs', (select pack_balance from players where id = p_player));
@@ -474,9 +475,10 @@ begin
     if exists (select 1 from shop_purchases where player_id = p_player and day = v_day and kind = 'card' and slot = p_slot) then
       return jsonb_build_object('ok', false, 'error', 'bought'); end if;
     if v_bal < s.price then return jsonb_build_object('ok', false, 'error', 'not_enough', 'balance', v_bal, 'price', s.price); end if;
-    v_new := grant_shards(p_player, -s.price, 'shop', 'card', s.card_id::text);
+    -- The card first (add_card_to_player finds the slot that is not bought yet), then the purchase row, then its Shards.
     perform add_card_to_player(p_player, s.card_id, 'shop');
-    insert into shop_purchases (player_id, day, kind, slot, card_id, price) values (p_player, v_day, 'card', p_slot, s.card_id, s.price);
+    insert into shop_purchases (player_id, day, kind, slot, card_id, price) values (p_player, v_day, 'card', p_slot, s.card_id, s.price) returning id into v_purchase;
+    v_new := grant_shards(p_player, -s.price, 'shop', 'shop_purchase', v_purchase::text);
     return jsonb_build_object('ok', true, 'kind', 'card', 'card_id', s.card_id, 'balance', v_new,
       'quantity', (select quantity from player_cards where player_id = p_player and card_id = s.card_id));
 
@@ -494,10 +496,10 @@ begin
     else
       v_price := (cfg->>'stat_reset_price')::int;
       if v_bal < v_price then return jsonb_build_object('ok', false, 'error', 'not_enough', 'balance', v_bal, 'price', v_price); end if;
-      v_new := grant_shards(p_player, -v_price, 'shop', 'stat_reset', p_card::text);
     end if;
     update player_cards set stat_points = '{}'::jsonb where player_id = p_player and card_id = p_card;
-    insert into shop_purchases (player_id, day, kind, card_id, price) values (p_player, v_day, 'stat_reset', p_card, v_price);
+    insert into shop_purchases (player_id, day, kind, card_id, price) values (p_player, v_day, 'stat_reset', p_card, v_price) returning id into v_purchase;
+    if v_price > 0 then v_new := grant_shards(p_player, -v_price, 'shop', 'shop_purchase', v_purchase::text); end if;
     return jsonb_build_object('ok', true, 'kind', 'stat_reset', 'free', v_price = 0, 'price', v_price, 'balance', v_new, 'points', '{}'::jsonb,
       'stats', card_combat(v_rar, v_asc, v_mod, '{}'::jsonb));
   end if;
@@ -559,7 +561,7 @@ begin
     p := pz->(case when p_mode = 'daily' then 'daily' else 'weekly' end)->((e->>'rank')::int - 1);
     continue when p is null;
     if coalesce((p->>'shards')::int, 0) > 0 then
-      perform grant_shards(e->>'player_id', (p->>'shards')::int, 'dungeon', 'prize_' || p_mode, p_period::text); end if;
+      perform grant_shards(e->>'player_id', (p->>'shards')::int, 'dungeon', 'dungeon_payout', p_mode || ':' || p_period::text); end if;
     if coalesce((p->>'packs')::int, 0) > 0 then
       perform grant_packs(e->>'player_id', (p->>'packs')::int, 'dungeon_prize', null, 'dungeon_payout', p_mode || ':' || p_period::text); end if;
     v_cards := '[]';

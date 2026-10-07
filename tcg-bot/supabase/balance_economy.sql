@@ -30,15 +30,16 @@ declare x text[]; m text;
 begin
   if to_regclass('public.balance') is null then raise exception 'balance_economy.sql: apply balance_table.sql first'; end if;
   foreach x slice 1 in array array[
-    ['claim_daily(text,text)', 'f3e6465d7321c8dcc1e577ae2183a71f', '56cfe6262392048820acff539666b318'],
-    ['claim_daily_earn(text,date,integer,integer,integer)', '6b1d1f2e7195418176f8523a89c0aefa', 'c18f34c4d6b7a18dce0edae2d0bcb1a2'],
+  -- shard_ledger_strict.sql (2026-10-07) rebuilt the Shard refs: the second md5 of claim_daily, claim_daily_earn and dungeon_pay is its result.
+    ['claim_daily(text,text)', 'f3e6465d7321c8dcc1e577ae2183a71f', '06541bd131cdb91d3af34abdcf87b675'],
+    ['claim_daily_earn(text,date,integer,integer,integer)', '6b1d1f2e7195418176f8523a89c0aefa', '11c7903f3652523f35e4860e43e0710e'],
     ['dailies_view(text)', '5b1085b985cb8d92754636700eac4210', 'a6fd7a1215aa849a5ffcf5f100ebfc4e'],
     ['dailies_tasks(text)', 'f6cd0494b958889336acbdfb808aa5a4', '4fe738d217b6a115b373e6f4dca111c1'],
     ['add_voice_minutes(text[])', 'ba6bc11f68058fdf820770d7afa8d808', '9752ca75dd040d5f115263d6d7541b2d'],
     ['claim_achievement(text,text,integer,text,text)', '4f9185d535810a84c48ccef18e7d1c79', '34f4be6488a0d45577e2745381e41f11'],
     ['settle_hunt(bigint)', '4235a21d9b5c8978c96c69eb18068de0', 'bb5cc060c1966f554db98be41bee7c44'],
     ['play_card_effect(text,bigint,text)', '2fc1d7c6fa08f03c87cac5c9caaa9c6a', 'ab436a5ddf42c3ac95f196f2c9b1ba0d'],
-    ['dungeon_pay(text,date)', '4f2bec1174f40079ffbaccd62d47bb5a', '95c577bb1b5334fe7b30b5d6e4458791'],
+    ['dungeon_pay(text,date)', '4f2bec1174f40079ffbaccd62d47bb5a', 'c39c6a3b51b2206c2416412a1f49e6cb'],
     ['dungeon_prize_tick()', '7a98852db2bd22c66ee443a1e053fd44', '5300f541d81b66010ff65074027e89fa'],
     ['gauntlet_view(text)', 'fea70762286ef3a464fa186fd63ade5c', '1c1729a6db87ade14a4b28ee716f82d6'],
     ['welcome_packs()', '409d04f25d7b784e51fd0128b0cbceaa', 'ccdd29c234f840f3905073c8c45885fc'],
@@ -167,7 +168,7 @@ begin
   else
     bal := (select pack_balance from players where id = p_player);
   end if;
-  if sh > 0 then sbal := grant_shards(p_player, sh, 'daily', 'daily', p_task); end if;
+  if sh > 0 then sbal := grant_shards(p_player, sh, 'daily', 'daily_claim', d::text || ':' || p_task); end if;
   return jsonb_build_object('ok', true, 'task', p_task, 'packs', amt, 'shards', sh, 'balance', bal, 'shard_balance', sbal,
     'view', dailies_view(p_player));
 end $function$;
@@ -195,14 +196,14 @@ begin
     -- One daily_claims row per chat claim, also at the cap (amount 0), as claim_daily does: each claim is traceable.
     insert into daily_claims (player_id, day, task, amount) values (p_player_id, p_date, 'chat', greatest(amt, 0));
     if amt > 0 then perform grant_packs(p_player_id, amt, 'earned_daily', null, 'daily_claim', p_date::text || ':chat'); granted := granted + amt; end if;
-    if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily', 'chat'); end if;
+    if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily_claim', p_date::text || ':chat'); end if;
   end if;
   if a.message_count >= balance_num('daily', 'chat_bonus_at') and not a.bonus_claimed then
     update daily_activity set bonus_claimed = true where player_id = p_player_id and activity_date = p_date;
     amt := least(balance_num('daily', 'chat_bonus')::int * greatest(round(mult), 0)::int, greatest(cap - earned_today(p_player_id), 0));
     insert into daily_claims (player_id, day, task, amount) values (p_player_id, p_date, 'chat_bonus', greatest(amt, 0));
     if amt > 0 then perform grant_packs(p_player_id, amt, 'earned_bonus', null, 'daily_claim', p_date::text || ':chat_bonus'); granted := granted + amt; end if;
-    if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily', 'chat_bonus'); end if;
+    if sh > 0 then perform grant_shards(p_player_id, sh, 'daily', 'daily_claim', p_date::text || ':chat_bonus'); end if;
   end if;
   return granted;
 end $function$;
@@ -604,7 +605,7 @@ begin
     p := pz->(case when p_mode = 'daily' then 'daily' else 'weekly' end)->((e->>'rank')::int - 1);
     continue when p is null;
     if coalesce((p->>'shards')::int, 0) > 0 then
-      perform grant_shards(e->>'player_id', (p->>'shards')::int, 'dungeon', 'prize_' || p_mode, p_period::text); end if;
+      perform grant_shards(e->>'player_id', (p->>'shards')::int, 'dungeon', 'dungeon_payout', p_mode || ':' || p_period::text); end if;
     if coalesce((p->>'packs')::int, 0) > 0 then
       perform grant_packs(e->>'player_id', (p->>'packs')::int, 'dungeon_prize', null, 'dungeon_payout', p_mode || ':' || p_period::text); end if;
     v_cards := '[]';
