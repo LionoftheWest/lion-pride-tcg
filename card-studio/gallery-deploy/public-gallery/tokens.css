@@ -131,6 +131,22 @@
   --avatar-md: 38px; /* Avatar md */
   --avatar-lg: 56px; /* Avatar lg */
   --avatar-xl: 96px; /* Avatar xl */
+  --emblem: 38px; /* Logo/emblem (the lion tile in the top bar) */
+  --dock-size: 72px; /* Dock/expanded height (medium, expanded) */
+  --dock-size-compact: 58px; /* Dock/compact height (compact-port, compact-land) */
+  --dock-w: 504px; /* Dock/expanded width: the most the dock grows */
+  --dock-btn-h: 54px; /* Dock/button height */
+  --dock-btn-h-compact: 48px; /* Dock/button height on compact classes */
+  --dock-open: 64px; /* Dock/open circle */
+  --dock-open-compact: 56px; /* Dock/open circle on compact classes */
+  --dock-open-ring: 74px; /* Dock/open ring behind the circle */
+  --dock-bar-w: 18px; /* Dock/button active bar width */
+  --dock-bar-h: 3px; /* Dock/button active bar height */
+  --menu-tile: 88px; /* MenuTile (UI-60 menu grid) */
+  --coin: 20px; /* The Shards coin in the top bar pill */
+  --corner-w: 120px; /* The Discord corner zone width, top right (2.3, G-013) */
+  --corner-h: 60px; /* The Discord corner zone height, top right (2.3, G-013) */
+  --sa-guess-top: 48px; /* The portrait top inset guess (2.3): Discord sent 48 on 4 phones (mobile-log, 2026-10-07) */
   --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-num: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;

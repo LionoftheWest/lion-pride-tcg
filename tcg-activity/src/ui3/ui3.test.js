@@ -3,7 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { sizeClass, isShort } from './size-class.js';
+import { sizeClass, isShort, applySizeClass } from './size-class.js';
+import { fmtFor, fmtCompact } from './number.js';
 import { icon, ICONS } from './icons.js';
 import * as C from './components.js';
 
@@ -60,4 +61,27 @@ test('ui3.css uses tokens only: no color, px or z-index literal (4.1, gate G4)',
   assert.equal((css.match(/z-index:\s*-?\d/g) || []).length, 0, 'z-index literal');
   assert.doesNotMatch(css, /m-land|m-port/);
   assert.doesNotMatch(css, /@media[^{]*(min|max)-(width|height)/, 'raw size media query (2.1)');
+});
+
+test('keyboard: the class holds while a text box has the focus on touch, and returns after (2.1, G-015)', () => {
+  const doc = { documentElement: {}, body: { dataset: {} }, activeElement: null };
+  const win = { innerWidth: 932, innerHeight: 430, document: doc, matchMedia: () => ({ matches: true }), getComputedStyle: () => ({ getPropertyValue: () => '' }) };
+  assert.equal(applySizeClass(win), 'compact-land');
+  doc.activeElement = { tagName: 'INPUT', type: 'search' }; win.innerHeight = 193;   // the keyboard takes 55%
+  assert.equal(applySizeClass(win), 'compact-land');
+  assert.equal(doc.body.dataset.kb, '');
+  doc.activeElement = null;                                                     // the box lost the focus
+  assert.equal(applySizeClass(win), 'tiny');                                    // a really short frame is tiny
+  assert.equal(doc.body.dataset.kb, undefined);
+  const fine = { ...win, innerHeight: 430, matchMedia: () => ({ matches: false }) };
+  applySizeClass(fine); doc.activeElement = { tagName: 'TEXTAREA' }; fine.innerHeight = 193;
+  assert.equal(applySizeClass(fine), 'tiny', 'a pointer device has no on-screen keyboard: no hold');
+});
+
+test('numbers: full form, and the compact form on the compact classes from 10,000 (10.5, G-168)', () => {
+  assert.equal(fmtFor(123456789, 'compact-port'), '123.5M');
+  assert.equal(fmtFor(12345, 'compact-land'), '12.3k');
+  assert.equal(fmtFor(9999, 'compact-port'), '9,999');
+  assert.equal(fmtFor(123456789, 'expanded'), '123,456,789');
+  assert.equal(fmtCompact(1234), '1.2k');
 });
