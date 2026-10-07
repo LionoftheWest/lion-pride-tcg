@@ -23,10 +23,12 @@ ${body}
   end;`;
 const NEW = `array['slowmode', 'hot_take_poll', 'body_swap', 'parrot', 'spongebob']`;
 const body = String.raw`do $t$
-declare res jsonb := '[]'; r jsonb; ok boolean; n int; e record; before jsonb; c bigint;
+declare res jsonb := '[]'; r jsonb; ok boolean; n int; e record; before jsonb; c bigint; flags0 jsonb;
 begin
   -- Every subject's ability and tags before the migration (they must not change).
   select jsonb_object_agg(key, jsonb_build_object('ability', ability, 'tags', tags)) into before from subjects;
+  -- The on/off flag of each new prank before the migration (a row that exists keeps it; a new row starts off).
+  select coalesce(jsonb_object_agg(primitive, enabled), '{}') into flags0 from effect_primitives where primitive = any(${NEW});
   ${mig ? 'execute $m$' + mig + '$m$;' : ''}
   perform set_config('tcg.skip_welcome', 'on', true);
   insert into players (id, username) select '${P}_' || x, 'tst es ' || x from unnest(array['a', 'b', 'c', 'd', 'e', 'f']) x;
@@ -43,12 +45,13 @@ ${C('every effect subject has a unique effect name and a description', `
     res := res || jsonb_build_object('case', 'every effect subject has a unique effect name and a description', 'ok', jsonb_array_length(r) = 0 and n = 0,
       'dup_names', r, 'no_text', n);`)}
 
-${C('the 5 new Discord pranks exist and start DISABLED', `
-    select count(*) into n from effect_primitives where primitive = any(${NEW}) and kind = 'prank' and channel = 'discord' and not enabled
+${C('the 5 new Discord pranks exist, a new one starts DISABLED, and an existing one keeps its flag', `
+    select count(*) into n from effect_primitives where primitive = any(${NEW}) and kind = 'prank' and channel = 'discord'
+      and enabled = coalesce((flags0->>primitive)::boolean, false)
       and (primitive, coalesce(max_amount, -1), max_duration_s) in (('slowmode', 45, 300), ('hot_take_poll', -1, 3600), ('body_swap', -1, 3600),
                                                                    ('parrot', -1, 172800), ('spongebob', -1, 172800));
     select coalesce(jsonb_agg(jsonb_build_array(primitive, kind, channel, max_amount, max_duration_s, enabled)), '[]') into r from effect_primitives where primitive = any(${NEW});
-    res := res || jsonb_build_object('case', 'the 5 new Discord pranks exist and start DISABLED', 'ok', n = 5, 'r', r);`)}
+    res := res || jsonb_build_object('case', 'the 5 new Discord pranks exist, a new one starts DISABLED, and an existing one keeps its flag', 'ok', n = 5, 'r', r, 'before', flags0);`)}
 
 ${C('the cards Nathan decided: slowmode, 1-min timeout, parrot, spongebob, Discord spotlight, mustache kept, name swap, no hijack', `
     select count(*) into n from subjects s join (values
@@ -81,6 +84,7 @@ ${C('every effect uses a known type; abilities and tags did not change', `
     res := res || jsonb_build_object('case', 'every effect uses a known type; abilities and tags did not change', 'ok', ok, 'unknown', n);`)}
 
 ${C('fail closed: a play of a disabled new prank is refused and writes nothing', `
+    update effect_primitives set enabled = false where primitive = any(${NEW});   -- they are on live now: turn them off here
     select c2.id into c from cards c2 join subjects s on s.id = c2.subject_id where s.name = 'Australian Connections' order by c2.id limit 1;
     insert into player_cards (player_id, card_id, quantity) values ('${P}_a', c, 1);
     r := play_card_effect('${P}_a', c, '${P}_b');
