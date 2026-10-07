@@ -32,7 +32,8 @@ Table. [achievements] One row per achievement that a member claimed: an old one-
 - Primary key: `PRIMARY KEY (player_id, key)`
 - Foreign keys: 
   - `achievement_claims_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `achievement_claims_amount_check`: `CHECK (((packs >= 0) AND (shards >= 0)))`
 - Row level security: on. Policies: none
 
 <a id="table-achievement-switch-map"></a>
@@ -187,7 +188,9 @@ Table. [dungeon] One row per run: a member, a game day and a mode (unique). dung
 - Foreign keys: 
   - `dungeon_runs_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
+  - `dungeon_runs_ended_by_check`: `CHECK ((ended_by = ANY (ARRAY['cleared'::text, 'fell'::text, 'retreat'::text, 'abandoned'::text])))`
   - `dungeon_runs_mode_check`: `CHECK ((mode = ANY (ARRAY['daily'::text, 'gauntlet'::text])))`
+  - `dungeon_runs_shards_check`: `CHECK ((shards >= 0))`
   - `dungeon_runs_status_check`: `CHECK ((status = ANY (ARRAY['active'::text, 'over'::text])))`
 - Row level security: on. Policies: none
 
@@ -233,6 +236,7 @@ Table. [players-economy] One row per change of a member's Shard balance (players
   - `shard_ledger_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
   - `shard_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
 - Check constraints: 
+  - `shard_ledger_amount_check`: `CHECK ((amount <> 0))`
   - `shard_ledger_ref_check`: `CHECK (((ref_kind IS NOT NULL) AND (ref_id IS NOT NULL)))`
 - Row level security: on. Policies: none
 
@@ -256,9 +260,12 @@ Table. [shop] One row per Shop purchase: packs, a card of the day or a stat rese
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
+  - `shop_purchases_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `shop_purchases_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
   - `shop_purchases_kind_check`: `CHECK ((kind = ANY (ARRAY['pack'::text, 'card'::text, 'stat_reset'::text])))`
+  - `shop_purchases_price_check`: `CHECK ((price >= 0))`
+  - `shop_purchases_qty_check`: `CHECK ((qty > 0))`
 - Row level security: on. Policies: none
 
 <a id="table-shop-stock"></a>
@@ -280,6 +287,7 @@ Table. [shop] One row per card slot of the Shop of a day. shop_pick_stock writes
   - `shop_stock_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE`
 - Check constraints: 
   - `shop_stock_price_check`: `CHECK ((price > 0))`
+  - `shop_stock_rarity_check`: `CHECK ((rarity = ANY (ARRAY['normal'::text, 'illustrated_rare'::text, 'secret_rare'::text, 'full_art'::text, 'gold'::text, 'promo'::text, 'event'::text])))`
 - Row level security: on. Policies: none
 
 ## Functions

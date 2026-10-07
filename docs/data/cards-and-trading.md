@@ -89,11 +89,13 @@ Table. [trading] One row per Trading Hall auction: one card for bid cards. start
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
+  - `auctions_accepted_bid_id_fkey` to [auction_bids](cards-and-trading.md#table-auction-bids): `FOREIGN KEY (accepted_bid_id) REFERENCES auction_bids(id)`
   - `auctions_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `auctions_seller_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (seller_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
   - `auctions_min_count_check`: `CHECK (((min_count >= 0) AND (min_count <= 5)))`
   - `auctions_min_mode_check`: `CHECK ((min_mode = ANY (ARRAY['and'::text, 'or'::text])))`
+  - `auctions_min_rarity_check`: `CHECK ((min_rarity = ANY (ARRAY['normal'::text, 'illustrated_rare'::text, 'secret_rare'::text, 'full_art'::text, 'gold'::text, 'promo'::text, 'event'::text])))`
   - `auctions_status_check`: `CHECK ((status = ANY (ARRAY['live'::text, 'accepted'::text, 'sold'::text, 'closed'::text, 'expired'::text])))`
 - Row level security: on. Policies: none
 
@@ -146,7 +148,9 @@ Table. [trading] One row per completed card swap: an accepted trade offer or a s
 - Unique: `card_trades_auction_id_key` `UNIQUE (auction_id)`, `card_trades_offer_id_key` `UNIQUE (offer_id)`
 - Foreign keys: 
   - `card_trades_auction_id_fkey` to [auctions](cards-and-trading.md#table-auctions): `FOREIGN KEY (auction_id) REFERENCES auctions(id) ON DELETE SET NULL`
+  - `card_trades_from_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (from_id) REFERENCES players(id)`
   - `card_trades_offer_id_fkey` to [trade_offers](cards-and-trading.md#table-trade-offers): `FOREIGN KEY (offer_id) REFERENCES trade_offers(id) ON DELETE SET NULL`
+  - `card_trades_to_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (to_id) REFERENCES players(id)`
 - Check constraints: 
   - `card_trades_kind_check`: `CHECK ((kind = ANY (ARRAY['offer'::text, 'auction'::text])))`
 - Row level security: on. Policies: none
@@ -231,7 +235,8 @@ Table. [players-economy] One row per change of a member's pack balance (players.
 - Foreign keys: 
   - `pack_ledger_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
   - `pack_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
-- Check constraints: none
+- Check constraints: 
+  - `pack_ledger_amount_check`: `CHECK ((amount <> 0))`
 - Row level security: on. Policies: none
 
 <a id="table-player-cards"></a>
@@ -255,6 +260,7 @@ Table. [cards] The copies of each card that a member holds (one row per member a
   - `player_cards_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE`
   - `player_cards_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
+  - `player_cards_ascension_check`: `CHECK ((ascension >= 0))`
   - `player_cards_quantity_check`: `CHECK ((quantity > 0))`
 - Row level security: on. Policies: none
 
@@ -304,7 +310,8 @@ Table. [cards] One row per card subject (the character or thing on the card), sh
 - Primary key: `PRIMARY KEY (id)`
 - Unique: `subjects_key_key` `UNIQUE (key)`
 - Foreign keys: none
-- Check constraints: none
+- Check constraints: 
+  - `subjects_type_check`: `CHECK ((type = ANY (ARRAY['Character'::text, 'Creature'::text, 'Item'::text, 'Place'::text, 'Moment'::text])))`
 - Row level security: on. Policies: `public read subjects`
 
 <a id="table-trade-listings"></a>
@@ -356,7 +363,8 @@ Table. [trading] One row per one-for-one trade offer between two members. create
   - `trade_offers_offer_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (offer_card_id) REFERENCES cards(id) ON DELETE CASCADE`
   - `trade_offers_request_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (request_card_id) REFERENCES cards(id) ON DELETE CASCADE`
   - `trade_offers_to_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (to_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: none
+- Check constraints: 
+  - `trade_offers_status_check`: `CHECK ((status = ANY (ARRAY['pending'::text, 'countered'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-wish-grants"></a>
@@ -378,6 +386,7 @@ Table. [trading] One row each time a member gives a card that is on the receiver
 - Primary key: `PRIMARY KEY (id)`
 - Unique: `wish_grants_source_ref_id_giver_id_card_id_key` `UNIQUE (source, ref_id, giver_id, card_id)`
 - Foreign keys: 
+  - `wish_grants_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `wish_grants_giver_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (giver_id) REFERENCES players(id) ON DELETE CASCADE`
   - `wish_grants_receiver_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (receiver_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
