@@ -63,8 +63,11 @@ migrate for him, and the code must be in GitHub. So when Nathan says "deploy" or
    Apply it BEFORE the code that needs it goes live.
    The local copy is the Supabase CLI native stack in WSL (tools repo `localdb/up.sh`; Windows
    has no native runtime). Run SQL tests locally: `node scripts/test-all-local.mjs [filter]`.
+   After the rehearsal, run `gen-schema-snapshot.mjs` and `find-superseded.mjs` on the local copy and
+   commit `db/schema/` and `tcg-bot/supabase/SUPERSEDED.md` in the same PR (`db/schema/README.md`).
 4. Deploy from a worktree at `origin/main` with `ops/deploy.sh <activity|bot|gallery>`.
-5. Report the commit, the result, and the live check to Nathan.
+5. Run `node scripts/check-schema-drift.mjs --live` (read-only, also weekly). It must show 0 differences.
+   Report the commit, the result, and the live check to Nathan.
 
 `ops/deploy.sh` refuses uncommitted or unpushed code, builds with `--no-cache`, checks
 the health, rolls back by itself on a failure, registers the slash commands, and sets
@@ -72,7 +75,8 @@ the VM `.env` files to `600`. Do not deploy with `scp` or a manual `docker build
 
 `apply-sql.mjs` records the file in `public.schema_migrations`, applies
 `lockdown_grants.sql` again, and runs `check-grants.mjs`. If the check fails, stop and
-fix the grants before you deploy.
+fix the grants before you deploy. It refuses a file that `SUPERSEDED.md` lists (a re-run
+would put an old version back).
 
 ## Database design
 
