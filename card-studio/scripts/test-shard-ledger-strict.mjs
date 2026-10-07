@@ -5,7 +5,7 @@
  *   node scripts/test-shard-ledger-strict.mjs --old    the database as it is (before the migration: FAILS)
  *   MUTATE=<name> node scripts/test-shard-ledger-strict.mjs   one broken mechanism: must FAIL
  * Invariants:
- *   - a Shard reason that no writer uses is refused; a row without a ref is refused; a negative balance is refused;
+ *   - a Shard reason that is not in the list is refused (the four reserved reasons stay allowed); a row without a ref is refused; a negative balance is refused;
  *   - every path that writes Shards writes ref_kind + ref_id that point at ONE source row;
  *   - after each path the member reconciles: shard_balance = sum(shard_ledger.amount), no row without a ref;
  *   - after a Dungeon run ends, dungeon_runs.shards / cards = its shard_ledger / card_ledger rows;
@@ -36,6 +36,8 @@ const SQL_MUT = {
   noreasoncheck: 'alter table shard_ledger drop constraint shard_ledger_reason_check;',
   norefcheck: 'alter table shard_ledger drop constraint shard_ledger_ref_check;',
   nobalancecheck: 'alter table players drop constraint players_shard_balance_nonneg;',
+  // The list loses a used reason (daily): the daily paths must fail.
+  dropdaily: "alter table shard_ledger drop constraint shard_ledger_reason_check; alter table shard_ledger add constraint shard_ledger_reason_check check (reason in ('dungeon', 'dupes', 'event', 'milestone', 'shop', 'admin', 'expedition', 'arena', 'wandering', 'minigame')) not valid;",
 };
 const MUT = process.env.MUTATE && SQL_MUT[process.env.MUTATE] ? (console.log(`MUTATE=${process.env.MUTATE}`), SQL_MUT[process.env.MUTATE]) : mutation(FN_MUT);
 
@@ -76,10 +78,13 @@ begin
        and (select array(select unnest(cards) order by 1) from dungeon_runs where id = p)
          = coalesce((select array_agg(card_id order by card_id) from card_ledger where reason = 'dungeon_loot' and ref_kind = 'dungeon_run' and ref_id = p::text), '{}');
   end $r$;
-${kase('a reason that no writer uses is refused (grant_shards and a direct insert)', `
-    begin perform grant_shards('${P}_a', 5, 'arena', 'test', 'x'); ok := false; exception when check_violation then ok := true; end;
+${kase('a reason that is not in the list is refused (grant_shards and a direct insert)', `
+    begin perform grant_shards('${P}_a', 5, 'arenna', 'test', 'x'); ok := false; exception when check_violation then ok := true; end;
     if ok then begin insert into shard_ledger (player_id, amount, reason, ref_kind, ref_id) values ('${P}_a', 5, 'dialy', 'test', 'x'); ok := false; exception when check_violation then ok := true; end; end if;
-    ${done('a reason that no writer uses is refused (grant_shards and a direct insert)', 'ok')}`)}
+    ${done('a reason that is not in the list is refused (grant_shards and a direct insert)', 'ok')}`)}
+${kase('the four reserved reasons (expedition, arena, wandering, minigame) are accepted', `
+    perform grant_shards('${P}_v', 1, rsv, 'test', 'reserved reason') from unnest(array['expedition', 'arena', 'wandering', 'minigame']) rsv;
+    ${done('the four reserved reasons (expedition, arena, wandering, minigame) are accepted', `(select count(distinct reason) from shard_ledger where player_id = '${P}_v') = 4 and pg_temp.tst_recon('${P}_v')`)}`)}
 ${kase('a Shard row without a ref is refused', `
     begin perform grant_shards('${P}_a', 5, 'admin'); ok := false; exception when check_violation then ok := true; end;
     if ok then begin perform grant_shards('${P}_a', 5, 'admin', 'test', null); ok := false; exception when check_violation then ok := true; end; end if;

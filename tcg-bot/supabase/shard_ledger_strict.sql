@@ -11,8 +11,8 @@
 --      convert_dupes ('card', card id; the card_ledger 'convert' row points back at this Shards row),
 --      dungeon_settle ('run', dungeon_runs.id).
 --   2. A ref is required (shard_ledger_ref_check): a writer that passes no ref is refused.
---   3. The reason list is the list of the writers (shard_ledger_reason_check). The reasons that no function writes
---      (expedition, arena, wandering, minigame) leave the list: a new feature adds its reason here first.
+--   3. The reason list (shard_ledger_reason_check) = the reasons of the writers plus four reserved for planned
+--      features (expedition, arena, wandering, minigame; Nathan 2026-10-07: keep them). Any other reason is refused.
 --   4. players.shard_balance >= 0 (players_shard_balance_nonneg, from shards_shop.sql) is asserted again.
 --   5. shard_ledger_reconcile(): sum(shard_ledger.amount) = players.shard_balance for each member, every row has a
 --      ref, the three checks are valid, and the Dungeon run totals equal the ledgers:
@@ -78,7 +78,8 @@ update public.shard_ledger
 -- Add a new reason HERE and in the column comment before code writes it.
 alter table public.shard_ledger drop constraint if exists shard_ledger_reason_check;
 alter table public.shard_ledger add constraint shard_ledger_reason_check check (reason in (
-  'daily', 'dungeon', 'dupes', 'event', 'milestone', 'shop', 'admin'));
+  'daily', 'dungeon', 'dupes', 'event', 'milestone', 'shop', 'admin',
+  'expedition', 'arena', 'wandering', 'minigame'));   -- reserved: planned features, no writer yet
 
 -- 3. Every row has a ref ----------------------------------------------------------------------------------------
 alter table public.shard_ledger drop constraint if exists shard_ledger_ref_check;
@@ -361,7 +362,7 @@ comment on column public.shard_ledger.id is 'Row id. A card_ledger convert row p
 comment on column public.shard_ledger.player_id is 'The member (players.id) whose Shard balance changed.';
 comment on column public.shard_ledger.amount is 'The change in Shards: positive = earned or given, negative = spent (shop) or taken back (admin).';
 comment on column public.shard_ledger.reason is
-  'Why (shard_ledger_reason_check lists the allowed values): daily (a daily task, claim_daily / claim_daily_earn); dungeon (Dungeon run loot, dungeon_settle; a Dungeon or Gauntlet board prize, dungeon_pay); dupes (copies turned into Shards, convert_dupes); event (Shards in a bell gift, claim_gift); milestone (an achievement tier, claim_achievement_tiers); shop (a Shop purchase, buy_shop_item); admin (a manual grant or reversal).';
+  'Why (shard_ledger_reason_check lists the allowed values): daily (a daily task, claim_daily / claim_daily_earn); dungeon (Dungeon run loot, dungeon_settle; a Dungeon or Gauntlet board prize, dungeon_pay); dupes (copies turned into Shards, convert_dupes); event (Shards in a bell gift, claim_gift); milestone (an achievement tier, claim_achievement_tiers); shop (a Shop purchase, buy_shop_item); admin (a manual grant or reversal); expedition, arena, wandering, minigame (reserved for planned features; no writer yet).';
 comment on column public.shard_ledger.ref_kind is
   'The kind of source row (required, shard_ledger_ref_check): daily_claim (daily_claims, ref_id = ''<day>:<task>''); run (dungeon_runs.id; Dungeon v1 rows also kill / room / reward with the run id); dungeon_payout (dungeon_payouts, ref_id = ''<mode>:<period>''); card (convert_dupes: the card id); gift (gift_claims.id); achievement (the achievement key); shop_purchase (shop_purchases.id); for admin rows a short label of the manual action. Old rows that matched no source row keep their old kind (daily, pack, card, stat_reset).';
 comment on column public.shard_ledger.ref_id is 'The id of the source row (see ref_kind), as text. Required.';
