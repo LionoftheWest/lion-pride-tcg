@@ -20,6 +20,7 @@ const ARGS = {
   'test-hunt-squad-done.mjs': ['live'],
   'test-hunt-schedule-mt.mjs': ['../tcg-bot/supabase/hunt_schedule_mt.sql'],
   'test-prune-old-rows.mjs': ['../tcg-bot/supabase/logs_sql.sql'], // the current prune_old_rows (365 days, 2026-10-07)
+  'test-events.mjs': ['../tcg-bot/supabase/events.sql'], // a fresh local copy has no pg_cron jobs: the file makes event-tick inside the test
   'test-achievement-tracks.mjs': ['--live'],
   'test-adventure-dailies.mjs': ['--live'],
 };

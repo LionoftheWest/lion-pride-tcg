@@ -26,7 +26,7 @@ const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.matc
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--'));
-const MIG = file ? readFileSync(file, 'utf8').replace(/notify pgrst[^\n]*\n/g, '') : '';
+const MIG = file ? readFileSync(file, 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '') : ''; // LF: a Windows checkout has CRLF, and the mutation texts span lines
 
 // The launch functions that must stay as they are (db/schema/functions/*.sql md5 before this file).
 const LAUNCH_MD5 = {
@@ -46,8 +46,8 @@ declare res jsonb := '[]'; got jsonb; r jsonb; ok boolean; n int; n2 int; T time
   launch_before int;
 begin
   ${mig ? `drop table if exists event_payouts, event_log, events cascade;
-  alter table gift_claims drop column if exists event_id;
-  alter table cards drop column if exists event_id;
+  alter table gift_claims drop column if exists event_id cascade;   -- cascade: the gift_claims_event_link trigger (live since 2026-10-07)
+  alter table cards drop column if exists event_id cascade;
   execute $m$${mig}$m$;
   execute $m$${mig}$m$; -- two times: idempotent` : '-- the database as it is'}
   perform set_config('tcg.skip_welcome', 'on', true);
