@@ -1,14 +1,20 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
-  PACK_SIZE,
-  PULL_RATES,
   type Rarity,
   drawPack,
   luckyRates,
   groupByRarity,
+  pullTable,
   rollRarity,
 } from './draw.js';
+
+// The pull table is the balance key `pulls` (balance_economy.sql): the tests read it from the migration, the one source.
+const MIGRATION = readFileSync(new URL('../supabase/balance_economy.sql', import.meta.url), 'utf8');
+const TABLE = pullTable(JSON.parse(MIGRATION.match(/\('pulls', '(\{[^']*\})',/)![1]!));
+const PACK_SIZE = TABLE.pack_size;
+const PULL_RATES = TABLE.rates;
 
 /** A small deterministic RNG (mulberry32) so tests are repeatable. */
 function seededRng(seed: number): () => number {
@@ -50,7 +56,7 @@ describe('rollRarity', () => {
       gold: 0,
     };
     for (let i = 0; i < runs; i += 1) {
-      counts[rollRarity(rng)] += 1;
+      counts[rollRarity(PULL_RATES, rng)] += 1;
     }
 
     // Absolute tolerance per tier. Comfortable for 500k samples.
@@ -86,14 +92,14 @@ describe('rollRarity', () => {
 describe('drawPack', () => {
   it('returns exactly PACK_SIZE cards', () => {
     const rng = seededRng(1);
-    const cards = drawPack(pool({ normal: 10, gold: 2 }), rng);
+    const cards = drawPack(pool({ normal: 10, gold: 2 }), TABLE, rng);
     assert.equal(cards.length, PACK_SIZE);
   });
 
   it('falls back to Normal when a rolled rarity has no cards', () => {
     const rng = seededRng(999);
     // Only Normal cards exist. Every non-Normal roll must fall back to Normal.
-    const cards = drawPack(pool({ normal: 5 }), rng);
+    const cards = drawPack(pool({ normal: 5 }), TABLE, rng);
     for (const card of cards) {
       assert.equal(card.rarity, 'normal');
     }
@@ -101,7 +107,7 @@ describe('drawPack', () => {
 
   it('throws when the pool has no Normal cards', () => {
     const rng = seededRng(7);
-    assert.throws(() => drawPack(pool({ gold: 3 }), rng), /no Normal cards/);
+    assert.throws(() => drawPack(pool({ gold: 3 }), TABLE, rng), /no Normal cards/);
   });
 });
 
@@ -116,7 +122,7 @@ describe('Event and Promo cards never come from a pack', () => {
     const all = Object.values(grouped).flat();
     assert.ok(!all.some((c) => c.id === 100 || c.id === 101));
     for (let seed = 1; seed <= 200; seed++) {
-      const pack = drawPack(grouped, seededRng(seed));
+      const pack = drawPack(grouped, TABLE, seededRng(seed));
       assert.equal(pack.length, PACK_SIZE);
       assert.ok(pack.every((c) => c.id < 100));
     }
@@ -125,24 +131,24 @@ describe('Event and Promo cards never come from a pack', () => {
 
 describe('luckyRates / drawPack luck (the Lucky Pull boon)', () => {
   it('multiplies every rare rate and keeps the total at 1', () => {
-    const r = luckyRates(3);
+    const r = luckyRates(PULL_RATES, 3);
     assert.equal(r.illustrated_rare, PULL_RATES.illustrated_rare * 3);
     assert.equal(r.gold, PULL_RATES.gold * 3);
     const sum = Object.values(r).reduce((t, x) => t + x, 0);
     assert.ok(Math.abs(sum - 1) < 1e-9);
   });
   it('clamps the luck to 1..3', () => {
-    assert.deepEqual(luckyRates(0.2), PULL_RATES);
-    assert.deepEqual(luckyRates(99), luckyRates(3));
+    assert.deepEqual(luckyRates(PULL_RATES, 0.2), PULL_RATES);
+    assert.deepEqual(luckyRates(PULL_RATES, 99), luckyRates(PULL_RATES, 3));
   });
   it('changes the first slot only, and no luck = the same pack as before', () => {
     const pl = pool({ normal: 10, illustrated_rare: 4, secret_rare: 2, full_art: 2, gold: 2 });
-    const plain = drawPack(pl, seededRng(7));
-    assert.deepEqual(drawPack(pl, seededRng(7), null), plain);
+    const plain = drawPack(pl, TABLE, seededRng(7));
+    assert.deepEqual(drawPack(pl, TABLE, seededRng(7), null), plain);
     let rareFirst = 0, rareRest = 0, rareBase = 0;
     for (let s = 0; s < 4000; s += 1) {
-      const lucky = drawPack(pl, seededRng(s), 3);
-      const base = drawPack(pl, seededRng(s));
+      const lucky = drawPack(pl, TABLE, seededRng(s), 3);
+      const base = drawPack(pl, TABLE, seededRng(s));
       if (lucky[0]!.rarity !== 'normal') rareFirst += 1;
       if (base[0]!.rarity !== 'normal') rareBase += 1;
       if (lucky.slice(1).some((c, i) => c.rarity !== base[i + 1]!.rarity)) rareRest += 1;

@@ -57,7 +57,8 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
   }
   // The caps, the immune list and the primitives are the same for every member: read once a minute,
   // not 3 queries in every member's 30 s poll. A failed read is not kept. The tier table, the per-star
-  // values and the cooldown knob are balance numbers (balance_table.sql): the server's one balance cache.
+  // values, the cooldown knob (balance_table.sql) and the caps (card_effect_caps, balance_economy.sql) are balance
+  // numbers: the server's one balance cache.
   let staticCache = null; // { at, p }
   const staticReads = () => {
     if (staticCache && Date.now() - staticCache.at < 60000) return staticCache.p;
@@ -65,7 +66,6 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     entry.p = Promise.all([
       getBalance(),
       supabase.from('effect_primitives').select('primitive, kind, channel, max_amount, max_duration_s, enabled'),
-      supabase.from('settings').select('value').eq('key', 'card_effect_caps').maybeSingle(),
       supabase.from('settings').select('value').eq('key', 'discord_immune').maybeSingle(),
     ]).then((r) => { if (r.some((x) => x.error) && staticCache === entry) staticCache = null; return r; },
       (e) => { if (staticCache === entry) staticCache = null; throw e; });
@@ -86,7 +86,7 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
     // (for example, the function not there yet) must not break my state: the read still runs.
     await supabase.rpc('arm_player_effects', { p_player: String(me.id) }).then(() => {}, () => {});
     const now = new Date().toISOString(); // after the arm: a prank that starts now is in the read
-    const [cds, act, inc, [bal, prims, caps, immune], sent, mine, pranks, refunds] = await Promise.all([
+    const [cds, act, inc, [bal, prims, immune], sent, mine, pranks, refunds] = await Promise.all([
       supabase.from('card_effect_cooldowns').select('subject_id, ready_at').eq('player_id', me.id).gt('ready_at', now),
       supabase.from('player_effects').select('id, primitive, amount, duration_s, options, expires_at')
         .eq('player_id', me.id).is('consumed_at', null).lte('starts_at', now).or(`expires_at.is.null,expires_at.gt.${now}`),
@@ -121,8 +121,8 @@ export function registerEffectRoutes(app, { supabase, caller, rateLimit, toProxy
       // The Community tab's "Plays today" (the same daily limit play_card_effect uses).
       playsToday: sent.count || 0,
       canTest: canTest(me.id),
-      sendCap: Number(caps.data?.value?.send_per_day) || null,
-      caps: caps.data?.value || {},
+      sendCap: Number(bal.card_effect_caps?.send_per_day) || null,
+      caps: bal.card_effect_caps || {},
       pairs: countBy(mine.data, 'aimed_at'),
       pranked: countBy(pranks.data, 'target_id'),
       immune: Array.isArray(immune.data?.value) ? immune.data.value.map(String) : [],

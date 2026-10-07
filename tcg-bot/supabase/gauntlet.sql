@@ -723,7 +723,7 @@ begin
     'floors', jsonb_array_length(w.floors),
     'players_week', (select count(distinct player_id) from dungeon_runs where mode = 'gauntlet' and day between v_week and v_week + 6),
     'top', gauntlet_board(v_week, 3),
-    'prizes', coalesce((select value->'weekly' from settings where key = 'dungeon_prizes'), '[]'::jsonb));
+    'prizes', coalesce(dungeon_prizes_cfg()->'weekly', '[]'::jsonb));
 end $$;
 
 -- ---- The leaderboard prizes ----------------------------------------------------------------------------
@@ -732,7 +732,7 @@ end $$;
 -- rolls its rarity on the place's odds). Every winner gets a notification.
 create or replace function public.dungeon_pay(p_mode text, p_period date) returns jsonb
 language plpgsql set search_path = public as $$
-declare pz jsonb := coalesce((select value from settings where key = 'dungeon_prizes'), '{}'::jsonb); board jsonb; e jsonb; p jsonb;
+declare pz jsonb := dungeon_prizes_cfg(); board jsonb; e jsonb; p jsonb;
   i int; v_cards jsonb; v_card bigint; v_out jsonb := '[]'; v_rar text; v_msg text;
 begin
   if p_mode not in ('daily', 'gauntlet') then raise exception 'dungeon_pay: bad mode %', p_mode; end if;
@@ -772,7 +772,7 @@ end $$;
 -- paid yet. Off while settings.dungeon_prizes.enabled is false.
 create or replace function public.dungeon_prize_tick() returns jsonb
 language plpgsql set search_path = public as $$
-declare pz jsonb := coalesce((select value from settings where key = 'dungeon_prizes'), '{}'::jsonb); v_from date; d date; v jsonb := '[]'; x jsonb;
+declare pz jsonb := dungeon_prizes_cfg(); v_from date; d date; v jsonb := '[]'; x jsonb;
 begin
   if not coalesce((pz->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
   v_from := coalesce((pz->>'from')::date, dungeon_day());

@@ -1,6 +1,11 @@
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
-import { huntPost, pingsRole } from './hunt-notify.js';
+import { huntPost, huntPrizes, pingsRole, prizeText } from './hunt-notify.js';
+
+// The Raid prizes = balance hunt_prizes (balance_economy.sql): the tests read the migration value, the one source.
+const MIGRATION = readFileSync(new URL('../supabase/balance_economy.sql', import.meta.url), 'utf8');
+const PRIZES = huntPrizes(JSON.parse(MIGRATION.match(/\('hunt_prizes', coalesce\(\(select value from public\.settings where key = 'hunt_prizes'\), '(\{[^']*\})'\)/)![1]!));
 import { LAUNCH_ACTIVITY_ID } from './ui/launch.js';
 
 const closes = '2026-10-05T23:00:00Z';
@@ -14,7 +19,7 @@ const EVENTS: { kind: string; payload: Record<string, unknown> }[] = [
 
 for (const ev of EVENTS) {
   test(`the ${ev.kind} raid post carries the Open Lion Pride TCG button`, () => {
-    const post = huntPost(ev);
+    const post = huntPost(ev, PRIZES);
     assert.ok(post, 'a known event must produce a post');
     assert.ok(post.content && post.content.length > 0);
     assert.doesNotMatch(post.content, /(^|\s)\/[a-z]+/, 'must not tell members to type a command');
@@ -38,7 +43,7 @@ test('the spawn post names the boss once and shows readable weak points', () => 
 
 test('the defeat and escape posts show the same fixed prizes', () => {
   for (const kind of ['defeat', 'expired']) {
-    const post = huntPost({ kind, payload: { name: 'The Salt Kraken', tier: 'Normal', settle: { participants: 12, total_packs: 39 }, top: [] } });
+    const post = huntPost({ kind, payload: { name: 'The Salt Kraken', tier: 'Normal', settle: { participants: 12, total_packs: 39 }, top: [] } }, PRIZES);
     assert.ok(post!.content!.includes('12 hunters earned **39** packs: 1st 7, 2nd 5, 3rd 4, 4th-10th 3, every other hunter 1.'), post!.content!);
     assert.doesNotMatch(post!.content!, /Consolation|by damage dealt/);
   }
@@ -64,4 +69,12 @@ test('the daily leaderboard post names the top 3 without pinging, with the butto
   assert.doesNotMatch(post!.content!, /<@/);
   const rows = (post!.components ?? []).map((r) => ('toJSON' in r ? r.toJSON() : r)) as { components: { label?: string }[] }[];
   assert.equal(rows[0]?.components[0]?.label, 'Open Lion Pride TCG');
+});
+
+test('the prize line follows balance hunt_prizes (the same text as before with today\'s values)', () => {
+  assert.equal(prizeText(PRIZES), '1st 7, 2nd 5, 3rd 4, 4th-10th 3, every other hunter 1');
+  assert.equal(prizeText({ base: 2, ranks: [10, 6, 6, 1] }), '1st 10, 2nd-3rd 6, 4th 1, every other hunter 2');
+  assert.equal(prizeText({ base: 1, ranks: Array(13).fill(2) }), '1st-13th 2, every other hunter 1');
+  assert.throws(() => huntPost({ kind: 'defeat', payload: { name: 'X', settle: {} } }), /prizes/); // fail closed
+  assert.throws(() => huntPrizes({ base: 1 }), /hunt_prizes/);
 });

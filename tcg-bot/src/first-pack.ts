@@ -1,6 +1,6 @@
 import type { Client, MessageCreateOptions } from 'discord.js';
 import { announce } from './internal.js';
-import { claimFirstPackPing, getPackBalance, releaseFirstPackPing } from './store.js';
+import { chatBonusAt, claimFirstPackPing, getPackBalance, releaseFirstPackPing } from './store.js';
 import { launchActivityRow } from './ui/launch.js';
 
 // One public @mention per member, ever, the next time they earn a pack. The bell
@@ -10,13 +10,14 @@ import { launchActivityRow } from './ui/launch.js';
 // Flag: default OFF, and any value other than '1' keeps it off.
 export const firstPackPingEnabled = (): boolean => process.env.FEATURE_FIRST_PACK_PING === '1';
 
-export function firstPackMessage(playerId: string, balance: number): MessageCreateOptions {
+// bonusAt = the message count of the chat bonus pack (balance daily.chat_bonus_at).
+export function firstPackMessage(playerId: string, balance: number, bonusAt: number): MessageCreateOptions {
   const packs = `${balance} pack${balance === 1 ? '' : 's'}`;
   return {
     content:
       `🎁 <@${playerId}> you earned a Lion Pride TCG pack! You have **${packs}** waiting. ` +
       'Press **Open Lion Pride TCG** to open them. You earn a pack each day you post, ' +
-      'and a bonus pack at 25 messages.',
+      `and a bonus pack at ${bonusAt} messages.`,
     components: [launchActivityRow()],
   };
 }
@@ -26,7 +27,7 @@ export async function maybeFirstPackPing(client: Client, playerId: string): Prom
   if (!firstPackPingEnabled()) return false;
   if (!(await claimFirstPackPing(playerId))) return false;
   const balance = await getPackBalance(playerId);
-  if (await announce(client, firstPackMessage(playerId, balance), 'packs')) return true;
+  if (await announce(client, firstPackMessage(playerId, balance, await chatBonusAt()), 'packs')) return true;
   // The post failed (no channel or no permission): free the claim so a later earn retries.
   await releaseFirstPackPing(playerId);
   return false;

@@ -19,6 +19,9 @@ const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; r2 jsonb; members jsonb; other_before bigint;
 begin
   execute $m$${mig}$m$;
+  -- This file's welcome_packs() reads the settings row welcome_packs; balance_economy.sql moved it to balance
+  -- (the live function reads balance). The test restores the old row inside its rolled-back block.
+  insert into settings (key, value) values ('welcome_packs', '10') on conflict (key) do nothing;
   -- A member who already played (a row, no start gift yet) and one who joined early (welcome).
   perform set_config('tcg.skip_welcome', 'on', true);
   insert into players (id, username) values ('${OLD}', 'tst old');

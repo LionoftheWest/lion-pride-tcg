@@ -10,8 +10,12 @@ const A = '999999999999999951', F = '999999999999999952';
 const body = String.raw`do $t$
 declare res jsonb := '[]'; d date := (now() at time zone 'America/Denver')::date; r jsonb; g int; bal int;
 begin
-  update settings set value = '1'::jsonb where key = 'pack_earn_multiplier';
-  update settings set value = value || '{"enabled": true, "cap": 5}' where key = 'dailies';
+  -- The dial and the cap are balance keys (balance_economy.sql); the flag stays in settings.
+  update balance set value = '1'::jsonb where key = 'pack_earn_multiplier';
+  update balance set value = jsonb_set(value, '{cap}', '5') where key = 'daily';
+  update settings set value = value || '{"enabled": true}' where key = 'dailies';
+  -- A 4-pack test achievement: the reward is balance achievement_rewards.badges (the caller's numbers are not read).
+  update balance set value = jsonb_set(value, '{badges,tst_ach}', '{"packs": 4}') where key = 'achievement_rewards';
   perform set_config('tcg.skip_welcome', 'on', true);
   insert into players (id, username, pack_balance) values ('${A}', 'tst act', 0), ('${F}', 'tst friend', 50);
   -- Outside packs FIRST (a big amount): they must not use up the activity room.
@@ -49,5 +53,5 @@ const results = JSON.parse(m[1].replace(/\\"/g, '"').replace(/\n.*$/, ''));
 let fail = 0;
 for (const r of results) { const { case: name, ok, ...rest } = r; if (!ok) fail++; console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : ' ' + JSON.stringify(rest).slice(0, 500)}`); }
 console.log(fail ? `${fail} of ${results.length} FAILED` : `PASS all ${results.length}`);
-console.log('after:', JSON.stringify(await q("select (select count(*) from players where id like '99999999999999995%') test_players, (select value from settings where key='pack_earn_multiplier') dial")));
+console.log('after:', JSON.stringify(await q("select (select count(*) from players where id like '99999999999999995%') test_players, (select value from balance where key='pack_earn_multiplier') dial")));
 process.exitCode = fail ? 1 : 0;

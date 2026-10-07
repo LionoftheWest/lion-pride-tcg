@@ -122,7 +122,9 @@ ${kase('the achievement dailies count reads daily_claims: chat_bonus counts, the
     res := res || jsonb_build_object('case', 'the achievement dailies count reads daily_claims: chat_bonus counts, the plain chat daily not', 'ok',
       (r->>'grind')::int = 1 and (r->>'voice')::int = 1, 'grind', r->'grind', 'voice', r->'voice');`)}
 ${kase('claim_achievement: ref (achievement, key), granted_by null', `
-    r := claim_achievement('${P}_g', 'tst_key_x', 2, null, null);
+    -- The reward is balance achievement_rewards.badges (balance_economy.sql): a 2-pack test badge.
+    update balance set value = jsonb_set(value, '{badges,tst_key_x}', '{"packs": 2}') where key = 'achievement_rewards';
+    r := claim_achievement('${P}_g', 'tst_key_x');
     res := res || jsonb_build_object('case', 'claim_achievement: ref (achievement, key), granted_by null', 'ok',
       (r->>'ok')::boolean and exists (select 1 from pack_ledger where player_id = '${P}_g' and reason = 'achievement' and amount = 2
         and ref_kind = 'achievement' and ref_id = 'tst_key_x' and granted_by is null) and pg_temp.tst_recon('${P}_g'), 'r', r);`)}
@@ -155,7 +157,8 @@ ${kase('settle_hunt: ref (hunt, id)', `
 ${kase('dungeon_pay: ref (dungeon_payout, <mode>:<period>)', `
     -- A fixed board (rolled back): only the pay path is under test here (test-dungeon.mjs tests the boards).
     execute 'create or replace function public.gauntlet_board(p_week date default null, p_limit integer default 20) returns jsonb language sql as $b$ select ''[{"rank": 1, "player_id": "${P}_h"}]''::jsonb $b$';
-    update settings set value = jsonb_set(value, '{weekly}', '[{"packs": 2, "shards": 0, "cards": 0}]') where key = 'dungeon_prizes';
+    -- The prizes are balance dungeon_prizes (balance_economy.sql); the shape is fixed, so only place 1 changes.
+    update balance set value = jsonb_set(value, '{weekly,0}', '{"packs": 2, "shards": 0, "cards": 0, "odds": {"secret_rare": 30, "illustrated_rare": 70}}') where key = 'dungeon_prizes';
     r := dungeon_pay('gauntlet', '2099-01-04');
     res := res || jsonb_build_object('case', 'dungeon_pay: ref (dungeon_payout, <mode>:<period>)', 'ok',
       (r->>'ok')::boolean and exists (select 1 from pack_ledger where player_id = '${P}_h' and reason = 'dungeon_prize' and amount = 2

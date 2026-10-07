@@ -28,5 +28,15 @@ await esbuild.build({
   minify: true,
 });
 
+// The UI-00 gallery (public/ui3.html), its own small bundle with a fixed name.
+await esbuild.build({
+  entryPoints: ['src/ui3/gallery.js'],
+  bundle: true,
+  format: 'esm',
+  target: 'es2020',
+  outfile: 'public/ui3-gallery.js',
+  minify: true,
+});
+
 const built = readdirSync('public').find((f) => /^main\..*\.js$/.test(f));
 console.log('built public/' + built);
