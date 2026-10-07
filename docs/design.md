@@ -883,6 +883,8 @@ The freeze in `CLAUDE.md` lifts when all of these are true:
 
 After the freeze lifts, each screen follows section 12.3. An unchanged screen stays "Not migrated" in the register until its own PR.
 
+**Lifted on 2026-10-06.** All four criteria are met (the token source file `shared/tokens.json` has been on `main` since 2026-10-05). Nathan confirmed: "Yes".
+
 ### 12.10 One-off defects
 Fix these in the first build after the freeze. No new rule applies. (G-193)
 - A dead line inside a comment in `ui-v2-hall.js`.
