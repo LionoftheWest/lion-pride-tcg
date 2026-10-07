@@ -306,9 +306,12 @@ begin
     'discord_effects', n_fx, 'cron_job_run_details', n_cron);
 end $$;
 revoke execute on function public.prune_old_rows() from public, anon, authenticated;
+-- The pg_cron job prune-old-rows calls this function by name. It is live already: schedule it only when it is missing
+-- (a fresh local copy has no cron jobs), so live does not change.
 do $c$ begin
-  perform cron.unschedule('prune-old-rows') where exists (select 1 from cron.job where jobname = 'prune-old-rows');
-  perform cron.schedule('prune-old-rows', '30 10 * * *', 'select prune_old_rows();');
+  if not exists (select 1 from cron.job where jobname = 'prune-old-rows') then
+    perform cron.schedule('prune-old-rows', '30 10 * * *', 'select prune_old_rows();');
+  end if;
 end $c$;
 
 -- ============================================================ comments (the same text is in db_comments.sql)
