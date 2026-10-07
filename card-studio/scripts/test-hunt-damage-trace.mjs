@@ -5,7 +5,9 @@
  *   node scripts/test-hunt-damage-trace.mjs --old    the database as it is (the baseline: before the
  *                                                    migration it has no reconcile, so it FAILS)
  * Invariant: hunt_hits = hunt_combat_log + hunt_adjustments + Smite + Raid Crasher, per player.
- * Any other change to hunt_hits shows as "unexplained".
+ * Any other change to hunt_hits shows as "unexplained". Since damage_log.sql (2026-10-07) Smite and Raid Crasher
+ * are LOG rows (combat_actions) and the reconcile lives there (test-damage-log.mjs): a Raider-card credit with no
+ * log row is unexplained too.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -42,17 +44,17 @@ begin
   res := res || jsonb_build_object('case', 'attacks only: hits = logged > 0, unexplained 0', 'ok',
     coalesce(rec.hits > 0 and rec.hits = rec.logged and rec.unexplained = 0, false), 'row', to_jsonb(rec));
 
-  -- 2. A Smite (support card, no log row): counted as smite, unexplained still 0.
+  -- 2. A Smite (its combat_actions row): counted as smite, unexplained still 0.
   r := hunt_support('${P}', h, sm);
   select * into rec from hunt_damage_reconcile(h) where player_id = '${P}';
   res := res || jsonb_build_object('case', 'a Smite is counted as smite, unexplained 0', 'ok',
     coalesce((r->>'ok')::boolean and rec.smite > 0 and rec.unexplained = 0, false), 'r', r, 'row', to_jsonb(rec));
 
-  -- 3. A Raid Crasher credit (the row hunt_attack writes for the prankster on the Raider card).
+  -- 3. A Raider-card credit with no log row (damage_log.sql: hunt_attack now logs each real one): unexplained.
   insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values (h, '${S}', cr, v_day, 40);
   select * into rec from hunt_damage_reconcile(h) where player_id = '${S}';
-  res := res || jsonb_build_object('case', 'a Raid Crasher credit row is counted as crasher, unexplained 0', 'ok',
-    coalesce(rec.crasher = 40 and rec.unexplained = 0, false), 'row', to_jsonb(rec));
+  res := res || jsonb_build_object('case', 'a Raider-card credit with no log row shows unexplained 40', 'ok',
+    coalesce(rec.crasher = 0 and rec.unexplained = 40, false), 'row', to_jsonb(rec));
 
   -- 4. A manual change of hunt_hits (+100) with no record: unexplained 100.
   update hunt_hits set damage = damage + 100 where hunt_id = h and player_id = '${P}' and card_id = atk[1] and hit_date = v_day;
