@@ -169,19 +169,6 @@ export async function giftPacks(fromId: string, toId: string, amount: number): P
   return Boolean(data);
 }
 
-/** Grant packs to a player (gift / event / admin). Returns the new balance. */
-export async function grantPacks(id: string, amount: number, reason: string, by?: string): Promise<number | null> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase.rpc('grant_packs', {
-    p_player_id: id,
-    p_amount: amount,
-    p_reason: reason,
-    p_by: by ?? null,
-  });
-  if (error) throw new Error(`grantPacks failed: ${error.message}`);
-  return (data as number | null) ?? null;
-}
-
 /**
  * A waiting Lucky Pull boon for this member (effects_cleanup.sql take_player_effect): its
  * amount, used up now, or null. Any error = no luck (the pack still opens).
