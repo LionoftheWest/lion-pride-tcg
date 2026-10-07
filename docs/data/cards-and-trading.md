@@ -176,9 +176,11 @@ Table. [cards] One row per card: one subject in one rarity. The card studio (car
 | `season` | text | null |  | The season label of the card (for example 'Season 1'). The card studio sets it. The Activity uses it for Hunt weak points. |
 | `event` | text | null |  | The event or period name of a promo or event card, else null. The card studio sets it. |
 | `tradeable` | boolean | not null | `true` | False when trades, gifts and the Trading Hall must refuse the card. The card studio sets it per rarity. The trigger cards_event_rules forces false for promo and event cards. |
+| `event_id` | bigint | null |  | The event that gives this card (events.id), else null. Set for the two launch cards by events.sql. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
+  - `cards_event_id_fkey` to [events](events.md#table-events): `FOREIGN KEY (event_id) REFERENCES events(id)`
   - `cards_subject_id_fkey` to [subjects](cards-and-trading.md#table-subjects): `FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE`
 - Check constraints: none
 - Row level security: on. Policies: `public read cards`
@@ -203,10 +205,12 @@ Table. [players-economy] Gifts that wait in a member's bell until they claim the
 | `card_id` | bigint | null |  | The card of a card gift (cards.id), else null. |
 | `shards` | integer | not null | `0` | The Shards paid on claim (0 to 100000). claim_gift pays them with grant_shards reason event. |
 | `reason_ledger` | text | null | ` CASE     WHEN ((kind <> 'card'::text) AND (amount <> 0)) THEN 'pack'::text     ELSE NULL::text END` | 'pack' for a pack gift (kind <> 'card' and amount <> 0), else null (generated). With reason, the foreign key to ledger_reasons: a pack gift must have a pack reason. Null skips the key. |
+| `event_id` | bigint | null |  | The event of the gift (events.id), else null. event_pay sets it; the gift_claims_event_link trigger sets it for a reason in an event's rules.gift_reasons (the launch cards). One gift per event, member, kind and card (gift_claims_event_once). |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
   - `gift_claims_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
+  - `gift_claims_event_id_fkey` to [events](events.md#table-events): `FOREIGN KEY (event_id) REFERENCES events(id)`
   - `gift_claims_pack_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (reason_ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
   - `gift_claims_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 

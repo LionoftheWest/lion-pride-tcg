@@ -46,6 +46,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `effects_cleanup.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`); reverts `public.take_player_effect(text, text)` (live = `effect_start_spawn_settle.sql`) |  |
 | `effects_outside.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`) |  |
 | `event_cards.sql` | SUPERSEDED: reverts `public.card_power(text, integer, numeric)` (live = `balance_table.sql`); reverts `public.cards_event_rules()` (live = `special_cards_never_in_packs.sql`) |  |
+| `events.sql` | SUPERSEDED: schedules cron job `event-tick`, which live does not have |  |
 | `fix_last_copy_remove.sql` | SUPERSEDED: reverts `public.remove_card_from_player(text, bigint)` (live = `card_ledger.sql`) |  |
 | `gift_all_members.sql` | SUPERSEDED: reverts `public.gift_all_members(jsonb, integer, text)` (live = `gift_claims.sql`); reverts `public.welcome_packs()` (live = `balance_economy.sql`) |  |
 | `gift_claims.sql` | SUPERSEDED: reverts `public.claim_gift(text, bigint)` (live = `pack_ledger_strict.sql`); reverts `public.gift_packs(text, text, integer)` (live = `pack_ledger_strict.sql`); reverts `public.welcome_packs()` (live = `balance_economy.sql`) |  |

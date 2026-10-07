@@ -21,17 +21,20 @@ create table public.gift_claims (
 CASE
     WHEN ((kind <> 'card'::text) AND (amount <> 0)) THEN 'pack'::text
     ELSE NULL::text
-END) stored
+END) stored,
+  event_id bigint
 );
 
 -- @constraints
 alter table public.gift_claims add constraint gift_claims_amount_check CHECK (((amount >= 0) AND (amount <= 999) AND (shards >= 0) AND (shards <= 100000) AND ((amount > 0) OR (shards > 0) OR (kind = 'card'::text))));
 alter table public.gift_claims add constraint gift_claims_card_id_fkey FOREIGN KEY (card_id) REFERENCES cards(id);
+alter table public.gift_claims add constraint gift_claims_event_id_fkey FOREIGN KEY (event_id) REFERENCES events(id);
 alter table public.gift_claims add constraint gift_claims_pack_reason_check FOREIGN KEY (reason_ledger, reason) REFERENCES ledger_reasons(ledger, reason);
 alter table public.gift_claims add constraint gift_claims_pkey PRIMARY KEY (id);
 alter table public.gift_claims add constraint gift_claims_player_id_fkey FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE;
 
 -- @indexes
+CREATE UNIQUE INDEX gift_claims_event_once ON public.gift_claims USING btree (event_id, player_id, kind, COALESCE(card_id, (0)::bigint)) WHERE (event_id IS NOT NULL);
 CREATE UNIQUE INDEX gift_claims_once ON public.gift_claims USING btree (player_id, kind) WHERE (kind = ANY (ARRAY['new_player'::text, 'launch_day'::text]));
 CREATE UNIQUE INDEX gift_claims_once_kind ON public.gift_claims USING btree (player_id, kind) WHERE (kind ~~ 'once\_%'::text);
 CREATE INDEX gift_claims_open ON public.gift_claims USING btree (player_id) WHERE (claimed_at IS NULL);
@@ -48,4 +51,5 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 -- @triggers
 CREATE TRIGGER ach_wish_gift AFTER INSERT ON public.gift_claims FOR EACH ROW EXECUTE FUNCTION ach_wish_gift();
 CREATE TRIGGER gift_admin_log AFTER INSERT ON public.gift_claims REFERENCING NEW TABLE AS admin_gift_new FOR EACH STATEMENT EXECUTE FUNCTION gift_admin_log();
+CREATE TRIGGER gift_claims_event_link BEFORE INSERT ON public.gift_claims FOR EACH ROW WHEN (((new.event_id IS NULL) AND (new.reason ~~ 'event:%'::text))) EXECUTE FUNCTION gift_claims_event_link();
 CREATE TRIGGER gift_claims_reason_guard BEFORE INSERT OR UPDATE OF reason, kind, amount ON public.gift_claims FOR EACH ROW WHEN (((new.kind <> 'card'::text) AND (new.amount <> 0))) EXECUTE FUNCTION ledger_reason_guard('pack', 'gift_claims_pack_reason_check');

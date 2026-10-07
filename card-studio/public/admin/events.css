@@ -1,0 +1,31 @@
+/* The Events page (events.js). Only the tokens of admin.css. */
+.ev-name { display: grid; gap: 2px; }
+.ev-key { font-size: 12px; color: var(--text-2); }
+.ev-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.ev-bottom { margin-top: 16px; }
+.btn.ev-danger { color: var(--danger-text); border-color: var(--danger); }
+.ev-msg:empty { display: none; }
+.ev-msg { margin: 0 0 12px; }
+.ev-err { color: var(--danger-text); font-size: 13px; margin: 0 0 4px; overflow-wrap: anywhere; }
+.ev-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0; font-size: 13px; }
+.ev-dl dt { color: var(--text-2); }
+.ev-dl dd { margin: 0; overflow-wrap: anywhere; }
+.ev-h3 { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 16px 0 8px; }
+.ev-form textarea.field { width: 100%; resize: vertical; font: 13px var(--ui); }
+.ev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.ev-field { display: grid; gap: 4px; min-width: 0; }
+.ev-field .field { width: 100%; }
+.ev-wide { grid-column: 1 / -1; }
+.ev-lbl { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-2); font-weight: 600; }
+.ev-check { display: flex; align-items: center; gap: 8px; font-size: 13px; min-height: 34px; align-self: end; }
+.ev-check input { width: 18px; height: 18px; accent-color: var(--gold); }
+.ev-tiers { display: grid; gap: 8px; margin-bottom: 12px; }
+.ev-tier { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 8px; align-items: end; padding: 8px; border: 1px solid var(--divider); border-radius: 8px; }
+.field:disabled, .btn:disabled { opacity: .55; cursor: not-allowed; }
+input[type=datetime-local].field { color-scheme: dark; font-family: var(--mono); }
+@media (max-width: 760px) {
+  .ev-grid { grid-template-columns: minmax(0, 1fr); }
+  .ev-tier { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ev-tier .btn { grid-column: 1 / -1; justify-content: center; }
+  .ev-actions .btn { flex: 1 1 auto; justify-content: center; height: 40px; }
+}

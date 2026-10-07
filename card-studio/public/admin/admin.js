@@ -252,8 +252,9 @@ const NAV = [
   { id: 'reports', label: 'Reports', icon: 'file', match: /^\/reports?(\/|$)/ },
   { id: 'data', label: 'Data', icon: 'table', match: /^\/data(\/|$)/ },
   { id: 'health', label: 'Health', icon: 'activity' },
+  { id: 'events', label: 'Events', icon: 'calendar', match: /^\/events(\/|$)/ }, // events.js (Phase 3, the first editor)
 ];
-const LOCKED = [['Balance', 'scale', 'Phase 2'], ['Settings', 'cog', 'Phase 2'], ['Events', 'calendar', 'Phase 3'], ['Rewards', 'gift', 'Phase 3'], ['Test lab', 'flask', 'Phase 3'], ['Admin log', 'scroll', 'Phase 2']];
+const LOCKED = [['Balance', 'scale', 'Phase 2'], ['Settings', 'cog', 'Phase 2'], ['Rewards', 'gift', 'Phase 3'], ['Test lab', 'flask', 'Phase 3'], ['Admin log', 'scroll', 'Phase 2']];
 const TABS = ['overview', 'members', 'economy', 'hunt'];
 const navActive = (n, path) => (n.match ? n.match.test(path) : path === `/${n.id}`);
 let session = { login: false };
@@ -1212,6 +1213,8 @@ const ROUTES = [
   [/^\/cards$/, pageCards], [/^\/card\/(\d+)$/, pageCard], [/^\/hunt$/, pageHunts], [/^\/hunt\/(\d+)$/, pageHunt], [/^\/dungeon$/, pageDungeon],
   [/^\/activity$/, pageActivity], [/^\/reports$/, pageReports],
   [/^\/report\/([a-z0-9_]+)$/, pageReports], [/^\/data$/, pageData], [/^\/data\/([a-z0-9_]+)$/, pageData], [/^\/health$/, pageHealth],
+  [/^\/events(?:\/(new|\d+))?(?:\/(edit))?$/, (main, a, q) => import('./events.js').then((m) => m.pageEvents(main, a, q, {
+    h, icon, api, panel, table, pageHead, fill, when, N, label, kpi, statusTag, errorState, session, render })).catch((e) => main.replaceChildren(errorState(e)))],
 ];
 function render() {
   const raw = location.hash.replace(/^#/, '') || '/overview';
