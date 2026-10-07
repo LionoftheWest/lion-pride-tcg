@@ -55,10 +55,12 @@ trap 'fail "line $LINENO: $BASH_COMMAND"' ERR
 
 pg() { # a client tool in the container; the password file is mounted read only
   # --user: the files it writes belong to this user, and it can read the 600 password file.
+  # -e NAME=value, not -e NAME: "sudo docker" drops the environment, so an inherited -e NAME is empty.
+  # /etc/passwd + HOME: libpq looks up the user id; the image has no user 1001 ("local user with ID 1001 does not exist").
   # shellcheck disable=SC2086  # $DOCKER is "sudo docker": two words on purpose
-  timeout "${STEP_TIMEOUT:-20m}" $DOCKER run --rm -i --network host --user "$(id -u):$(id -g)" \
+  timeout "${STEP_TIMEOUT:-20m}" $DOCKER run --rm -i --network host --user "$(id -u):$(id -g)" -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro -e HOME=/tmp \
     -v "$PASSFILE:/run/pgpass:ro" -v "$DAILY:/out" -e PGPASSFILE=/run/pgpass \
-    -e PGHOST -e PGPORT -e PGUSER -e PGDATABASE -e PGSSLMODE -e PGCONNECT_TIMEOUT=20 \
+    -e "PGHOST=$PGHOST" -e "PGPORT=$PGPORT" -e "PGUSER=$PGUSER" -e "PGDATABASE=$PGDATABASE" -e "PGSSLMODE=$PGSSLMODE" -e PGCONNECT_TIMEOUT=20 \
     -e PGAPPNAME=lptcg-backup "$PG_IMAGE" "$@"
 }
 

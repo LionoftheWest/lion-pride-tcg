@@ -16,7 +16,7 @@
 import dotenv from 'dotenv';
 import { createHash, createHmac, pbkdf2Sync, randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { resolve4 } from 'node:dns/promises';
+import { lookup } from 'node:dns/promises';
 import { writeFileSync, chmodSync, renameSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -80,7 +80,7 @@ async function main() {
     chmodSync(`${file}.new`, 0o600);
   } else {
     const host = 'lionpridetcg.duckdns.org';
-    const [ip] = await resolve4(host);
+    const { address: ip } = await lookup(host, { family: 4 });   // the OS resolver, as ssh uses (resolve4 asks a DNS server directly and was refused on this PC)
     if (!ip) throw new Error(`cannot resolve ${host}`);
     const key = process.env.KEY || join(homedir(), 'Downloads', 'ssh-key-2026-09-08.key');
     ssh = (cmd, input) => {
