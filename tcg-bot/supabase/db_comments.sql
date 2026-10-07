@@ -843,6 +843,8 @@ do $logs$ begin
     comment on column public.page_views.at is $c$Time of the view.$c$;
     comment on function public.guild_joined(jsonb) is $c$[logs] Sets players.guild_joined_at from a list [{id, at}] (Discord joinedAt): only existing rows, only a newer time. The bot calls it on GuildMemberAdd and for the rows with no time at start and once a day (guild-log.ts, flag FEATURE_GUILD_LOG). Returns the rows changed. Service role only.$c$;
     comment on function public.guild_left(text, timestamp with time zone) is $c$[logs] Sets players.left_guild_at for one member (only an existing row). The bot calls it on GuildMemberRemove (guild-log.ts; needs the Server Members intent). Returns true when a row changed. Service role only.$c$;
+  end if;
+end $logs$;
 -- ===== logs (logs_sql.sql, 2026-10-07) =====
 -- The same notes as in logs_sql.sql. Only when logs_sql.sql is applied (a re-run of this file on a database without it skips them).
 do $logs$ begin

@@ -57,10 +57,12 @@ begin
     coalesce(rec.crasher = 0 and rec.unexplained = 40, false), 'row', to_jsonb(rec));
 
   -- 4. A manual change of hunt_hits (+100) with no record: unexplained 100.
-  update hunt_hits set damage = damage + 100 where hunt_id = h and player_id = '${P}' and card_id = atk[1] and hit_date = v_day;
+  --    Change a row that exists: a fixed card can have no row (random combat), and then the update changes nothing.
+  update hunt_hits set damage = damage + 100 where ctid = (select ctid from hunt_hits where hunt_id = h and player_id = '${P}' order by damage desc limit 1);
+  get diagnostics n = row_count;
   select * into rec from hunt_damage_reconcile(h) where player_id = '${P}';
   res := res || jsonb_build_object('case', 'a manual +100 on hunt_hits shows unexplained 100', 'ok',
-    coalesce(rec.unexplained = 100, false), 'row', to_jsonb(rec));
+    coalesce(n = 1 and rec.unexplained = 100, false), 'updated', n, 'row', to_jsonb(rec));
 
   -- 5. An adjustment row of +100 explains it: unexplained 0 again.
   insert into hunt_adjustments (hunt_id, player_id, hit_date, damage, reason) values (h, '${P}', v_day, 100, 'oct1_squad_bug');
