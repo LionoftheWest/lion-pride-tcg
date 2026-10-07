@@ -9,7 +9,7 @@ The weekly Hunt (raid boss), squads, the combat rules, the logs of each fight, p
 
 Tables (14): [card_effect_cooldowns](#table-card-effect-cooldowns), [card_plays](#table-card-plays), [combat_actions](#table-combat-actions), [discord_effects](#table-discord-effects), [effect_primitives](#table-effect-primitives), [hunt_adjustments](#table-hunt-adjustments), [hunt_card_hp](#table-hunt-card-hp), [hunt_combat_log](#table-hunt-combat-log), [hunt_combat_state](#table-hunt-combat-state), [hunt_events](#table-hunt-events), [hunt_hits](#table-hunt-hits), [hunt_squads](#table-hunt-squads), [hunts](#table-hunts), [player_effects](#table-player-effects)
 
-Functions (67): [adventure_gate(text)](#fn-adventure-gate-text), [arm_on_open()](#fn-arm-on-open), [arm_player_effects(text)](#fn-arm-player-effects-text), [card_combat(text,integer,numeric,jsonb)](#fn-card-combat-text-integer-numeric-jsonb), [card_effect_active(text,text)](#fn-card-effect-active-text-text), [card_max_hp(integer)](#fn-card-max-hp-integer), [close_due_hunts()](#fn-close-due-hunts), [close_hunt(bigint)](#fn-close-hunt-bigint), [close_weekly_boss()](#fn-close-weekly-boss), [combat_absorb(integer,integer)](#fn-combat-absorb-integer-integer), [combat_aff_scale(integer)](#fn-combat-aff-scale-integer), [combat_area_roll(numeric,numeric,numeric)](#fn-combat-area-roll-numeric-numeric-numeric), [combat_burn(numeric)](#fn-combat-burn-numeric), [combat_crit_chance(boolean,text,numeric,jsonb)](#fn-combat-crit-chance-boolean-text-numeric-jsonb), [combat_enemy_act(numeric,numeric,integer,integer,numeric,bigint)](#fn-combat-enemy-act-numeric-numeric-integer-integer-numeric-bigint), [combat_enemy_mult(numeric,integer,numeric,integer,integer,boolean,numeric,boolean)](#fn-combat-enemy-mult-numeric-integer-numeric-integer-integer-boolean-numeric-boolean), [combat_hit(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint)](#fn-combat-hit-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint), [combat_lifesteal(integer,numeric,integer)](#fn-combat-lifesteal-integer-numeric-integer), [combat_miss(boolean)](#fn-combat-miss-boolean), [combat_pool_act(numeric,numeric,integer,integer,numeric,integer,jsonb,boolean)](#fn-combat-pool-act-numeric-numeric-integer-integer-numeric-integer-jsonb-boolean), [combat_regen(bigint)](#fn-combat-regen-bigint), [combat_squad(text[],boolean,jsonb,jsonb)](#fn-combat-squad-text-boolean-jsonb-jsonb), [combat_stun_immune(integer,integer)](#fn-combat-stun-immune-integer-integer), [combat_support_value(text,numeric,numeric,integer)](#fn-combat-support-value-text-numeric-numeric-integer), [combat_thorns(integer)](#fn-combat-thorns-integer), [combat_weak(jsonb,jsonb,text,text,text,text[],integer)](#fn-combat-weak-jsonb-jsonb-text-text-text-text-integer), [daily_raid_board(timestamp with time zone)](#fn-daily-raid-board-timestamp-with-time-zone), [deployable_power(integer)](#fn-deployable-power-integer), [effect_preview(text)](#fn-effect-preview-text), [effect_preview_card(text,integer,jsonb,jsonb)](#fn-effect-preview-card-text-integer-jsonb-jsonb), [hunt_attack(text,bigint,bigint)](#fn-hunt-attack-text-bigint-bigint), [hunt_card_cap()](#fn-hunt-card-cap), [hunt_combat_stats(bigint)](#fn-hunt-combat-stats-bigint), [hunt_commit_card(bigint,text,bigint,date,integer)](#fn-hunt-commit-card-bigint-text-bigint-date-integer), [hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)](#fn-hunt-counter-act-bigint-text-date-bigint-integer-numeric-numeric-text-text-integer-integer-integer-numeric), [hunt_counter_cd(bigint,text,date,text,integer,integer)](#fn-hunt-counter-cd-bigint-text-date-text-integer-integer), [hunt_counter_hit(bigint,text,date,bigint,integer,boolean)](#fn-hunt-counter-hit-bigint-text-date-bigint-integer-boolean), [hunt_counter_pick(bigint,text,date,text,text)](#fn-hunt-counter-pick-bigint-text-date-text-text), [hunt_counter_tick(bigint,text,date,bigint,integer)](#fn-hunt-counter-tick-bigint-text-date-bigint-integer), [hunt_damage_reconcile(bigint)](#fn-hunt-damage-reconcile-bigint), [hunt_fight_summary()](#fn-hunt-fight-summary), [hunt_leaderboard(bigint,integer)](#fn-hunt-leaderboard-bigint-integer), [hunt_mark_on(jsonb,text,integer)](#fn-hunt-mark-on-jsonb-text-integer), [hunt_marks_patch(bigint,text,date,jsonb)](#fn-hunt-marks-patch-bigint-text-date-jsonb), [hunt_mt_slot(text,timestamp with time zone)](#fn-hunt-mt-slot-text-timestamp-with-time-zone), [hunt_next_mt(integer,integer,timestamp with time zone)](#fn-hunt-next-mt-integer-integer-timestamp-with-time-zone), [hunt_round_cap()](#fn-hunt-round-cap), [hunt_squad_allows(bigint,text,date,bigint)](#fn-hunt-squad-allows-bigint-text-date-bigint), [hunt_squad_cards(bigint,text,date,bigint)](#fn-hunt-squad-cards-bigint-text-date-bigint), [hunt_squad_done(bigint,text,date,integer)](#fn-hunt-squad-done-bigint-text-date-integer), [hunt_state_round(bigint,text,date)](#fn-hunt-state-round-bigint-text-date), [hunt_support(text,bigint,bigint,bigint)](#fn-hunt-support-text-bigint-bigint-bigint), [hunt_view(text,bigint,date)](#fn-hunt-view-text-bigint-date), [lock_hunt_squad(text,bigint,bigint[])](#fn-lock-hunt-squad-text-bigint-bigint), [next_hunt_close()](#fn-next-hunt-close), [next_hunt_spawn()](#fn-next-hunt-spawn), [nudge_hunt()](#fn-nudge-hunt), [play_card_effect(text,bigint,text)](#fn-play-card-effect-text-bigint-text), [play_card_effect_choice(text,bigint,text,integer)](#fn-play-card-effect-choice-text-bigint-text-integer), [refund_card_play(bigint,text)](#fn-refund-card-play-bigint-text), [settle_hunt(bigint)](#fn-settle-hunt-bigint), [spawn_hunt(integer,text)](#fn-spawn-hunt-integer-text), [spawn_weekly_boss()](#fn-spawn-weekly-boss), [take_player_effect(text,text)](#fn-take-player-effect-text-text), [use_effect_charge(text,text)](#fn-use-effect-charge-text-text), [weekly_boss_tick(text)](#fn-weekly-boss-tick-text), [weekly_hunt_rollover(integer)](#fn-weekly-hunt-rollover-integer)
+Functions (64): [adventure_gate(text)](#fn-adventure-gate-text), [arm_on_open()](#fn-arm-on-open), [arm_player_effects(text)](#fn-arm-player-effects-text), [card_combat(text,integer,numeric,jsonb)](#fn-card-combat-text-integer-numeric-jsonb), [card_effect_active(text,text)](#fn-card-effect-active-text-text), [card_max_hp(integer)](#fn-card-max-hp-integer), [close_due_hunts()](#fn-close-due-hunts), [close_hunt(bigint)](#fn-close-hunt-bigint), [close_weekly_boss()](#fn-close-weekly-boss), [combat_absorb(integer,integer)](#fn-combat-absorb-integer-integer), [combat_aff_scale(integer)](#fn-combat-aff-scale-integer), [combat_area_roll(numeric,numeric,numeric)](#fn-combat-area-roll-numeric-numeric-numeric), [combat_burn(numeric)](#fn-combat-burn-numeric), [combat_crit_chance(boolean,text,numeric,jsonb)](#fn-combat-crit-chance-boolean-text-numeric-jsonb), [combat_enemy_act(numeric,numeric,integer,integer,numeric,bigint)](#fn-combat-enemy-act-numeric-numeric-integer-integer-numeric-bigint), [combat_enemy_mult(numeric,integer,numeric,integer,integer,boolean,numeric,boolean)](#fn-combat-enemy-mult-numeric-integer-numeric-integer-integer-boolean-numeric-boolean), [combat_hit(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint)](#fn-combat-hit-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint), [combat_lifesteal(integer,numeric,integer)](#fn-combat-lifesteal-integer-numeric-integer), [combat_miss(boolean)](#fn-combat-miss-boolean), [combat_pool_act(numeric,numeric,integer,integer,numeric,integer,jsonb,boolean)](#fn-combat-pool-act-numeric-numeric-integer-integer-numeric-integer-jsonb-boolean), [combat_regen(bigint)](#fn-combat-regen-bigint), [combat_squad(text[],boolean,jsonb,jsonb)](#fn-combat-squad-text-boolean-jsonb-jsonb), [combat_stun_immune(integer,integer)](#fn-combat-stun-immune-integer-integer), [combat_support_value(text,numeric,numeric,integer)](#fn-combat-support-value-text-numeric-numeric-integer), [combat_thorns(integer)](#fn-combat-thorns-integer), [combat_weak(jsonb,jsonb,text,text,text,text[],integer)](#fn-combat-weak-jsonb-jsonb-text-text-text-text-integer), [daily_raid_board(timestamp with time zone)](#fn-daily-raid-board-timestamp-with-time-zone), [deployable_power(integer)](#fn-deployable-power-integer), [hunt_attack(text,bigint,bigint)](#fn-hunt-attack-text-bigint-bigint), [hunt_card_cap()](#fn-hunt-card-cap), [hunt_combat_stats(bigint)](#fn-hunt-combat-stats-bigint), [hunt_commit_card(bigint,text,bigint,date,integer)](#fn-hunt-commit-card-bigint-text-bigint-date-integer), [hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)](#fn-hunt-counter-act-bigint-text-date-bigint-integer-numeric-numeric-text-text-integer-integer-integer-numeric), [hunt_counter_cd(bigint,text,date,text,integer,integer)](#fn-hunt-counter-cd-bigint-text-date-text-integer-integer), [hunt_counter_hit(bigint,text,date,bigint,integer,boolean)](#fn-hunt-counter-hit-bigint-text-date-bigint-integer-boolean), [hunt_counter_pick(bigint,text,date,text,text)](#fn-hunt-counter-pick-bigint-text-date-text-text), [hunt_counter_tick(bigint,text,date,bigint,integer)](#fn-hunt-counter-tick-bigint-text-date-bigint-integer), [hunt_damage_reconcile(bigint)](#fn-hunt-damage-reconcile-bigint), [hunt_fight_summary()](#fn-hunt-fight-summary), [hunt_leaderboard(bigint,integer)](#fn-hunt-leaderboard-bigint-integer), [hunt_mark_on(jsonb,text,integer)](#fn-hunt-mark-on-jsonb-text-integer), [hunt_marks_patch(bigint,text,date,jsonb)](#fn-hunt-marks-patch-bigint-text-date-jsonb), [hunt_mt_slot(text,timestamp with time zone)](#fn-hunt-mt-slot-text-timestamp-with-time-zone), [hunt_next_mt(integer,integer,timestamp with time zone)](#fn-hunt-next-mt-integer-integer-timestamp-with-time-zone), [hunt_round_cap()](#fn-hunt-round-cap), [hunt_squad_allows(bigint,text,date,bigint)](#fn-hunt-squad-allows-bigint-text-date-bigint), [hunt_squad_cards(bigint,text,date,bigint)](#fn-hunt-squad-cards-bigint-text-date-bigint), [hunt_squad_done(bigint,text,date,integer)](#fn-hunt-squad-done-bigint-text-date-integer), [hunt_state_round(bigint,text,date)](#fn-hunt-state-round-bigint-text-date), [hunt_support(text,bigint,bigint,bigint)](#fn-hunt-support-text-bigint-bigint-bigint), [hunt_view(text,bigint,date)](#fn-hunt-view-text-bigint-date), [lock_hunt_squad(text,bigint,bigint[])](#fn-lock-hunt-squad-text-bigint-bigint), [next_hunt_close()](#fn-next-hunt-close), [next_hunt_spawn()](#fn-next-hunt-spawn), [nudge_hunt()](#fn-nudge-hunt), [play_card_effect(text,bigint,text)](#fn-play-card-effect-text-bigint-text), [play_card_effect_choice(text,bigint,text,integer)](#fn-play-card-effect-choice-text-bigint-text-integer), [refund_card_play(bigint,text)](#fn-refund-card-play-bigint-text), [settle_hunt(bigint)](#fn-settle-hunt-bigint), [spawn_hunt(integer,text)](#fn-spawn-hunt-integer-text), [spawn_weekly_boss()](#fn-spawn-weekly-boss), [take_player_effect(text,text)](#fn-take-player-effect-text-text), [use_effect_charge(text,text)](#fn-use-effect-charge-text-text), [weekly_boss_tick(text)](#fn-weekly-boss-tick-text)
 
 ## Tables
 
@@ -67,7 +67,9 @@ Table. [effects] One row per card effect play (a boon, prank or neutral effect s
   - `card_plays_subject_id_fkey` to [subjects](cards-and-trading.md#table-subjects): `FOREIGN KEY (subject_id) REFERENCES subjects(id)`
   - `card_plays_target_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (target_id) REFERENCES players(id)`
 - Check constraints: 
+  - `card_plays_kind_check`: `CHECK ((kind = ANY (ARRAY['boon'::text, 'prank'::text, 'neutral'::text])))`
   - `card_plays_outcome_check`: `CHECK ((outcome = ANY (ARRAY['applied'::text, 'blocked'::text, 'reflected'::text, 'decoyed'::text, 'redirected'::text, 'delayed'::text, 'refunded'::text])))`
+  - `card_plays_rarity_check`: `CHECK ((rarity = ANY (ARRAY['normal'::text, 'illustrated_rare'::text, 'secret_rare'::text, 'full_art'::text, 'gold'::text, 'promo'::text, 'event'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-combat-actions"></a>
@@ -97,6 +99,7 @@ Table. [combat] The shared action log of every fight mode: one row per support p
 - Foreign keys: 
   - `combat_actions_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `combat_actions_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
+  - `combat_actions_target_card_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (target_card) REFERENCES cards(id)`
 - Check constraints: 
   - `combat_actions_kind_check`: `CHECK ((kind = ANY (ARRAY['attack'::text, 'support'::text, 'effect'::text])))`
   - `combat_actions_mode_check`: `CHECK ((mode = ANY (ARRAY['hunt'::text, 'dungeon'::text, 'gauntlet'::text])))`
@@ -208,8 +211,11 @@ Table. [hunt] The fight state of one card of one member on one Hunt day: HP, shi
 
 - Primary key: `PRIMARY KEY (hunt_id, player_id, card_id, hit_date)`
 - Foreign keys: 
+  - `hunt_card_hp_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `hunt_card_hp_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
-- Check constraints: none
+  - `hunt_card_hp_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id)`
+- Check constraints: 
+  - `hunt_card_hp_hp_check`: `CHECK (((max_hp > 0) AND (hp_remaining >= 0) AND (shield >= 0)))`
 - Row level security: on. Policies: none
 
 <a id="table-hunt-combat-log"></a>
@@ -238,8 +244,13 @@ Table. [hunt] One row per attack of a card on the Hunt boss, with the rolls and 
 | `boss_hp_after` | bigint | null |  | The boss HP after this attack and the boss heals of this turn. |
 
 - Primary key: `PRIMARY KEY (id)`
-- Foreign keys: none
-- Check constraints: none
+- Foreign keys: 
+  - `hunt_combat_log_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
+  - `hunt_combat_log_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
+  - `hunt_combat_log_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id)`
+- Check constraints: 
+  - `hunt_combat_log_damage_check`: `CHECK (((damage >= 0) AND (counter_dmg >= 0)))`
+  - `hunt_combat_log_outcome_check`: `CHECK ((outcome = ANY (ARRAY['hit'::text, 'crit'::text, 'blocked'::text, 'miss'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-hunt-combat-state"></a>
@@ -265,7 +276,9 @@ Table. [hunt] The boss fight state of one member on one Hunt day: the round, the
 | `marks` | jsonb | not null | `'{}'::jsonb` | The counter-move marks as jsonb, mostly {key: {until: round, mult}}: for example heal_block_card, dot, half_<effect>, block_<effect>, null_next, stun_fail, mirror, spiral, undying. Written by hunt_counter_act, read by hunt_attack and hunt_support. |
 
 - Primary key: `PRIMARY KEY (hunt_id, player_id, hit_date)`
-- Foreign keys: none
+- Foreign keys: 
+  - `hunt_combat_state_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
+  - `hunt_combat_state_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id)`
 - Check constraints: none
 - Row level security: on. Policies: none
 
@@ -285,8 +298,10 @@ Table. [hunt] The outbox of Hunt posts for Discord. The Hunt functions write a r
 | `posted_at` | timestamp with time zone | null |  | When the bot posted the row. Null = not posted yet. |
 
 - Primary key: `PRIMARY KEY (id)`
-- Foreign keys: none
-- Check constraints: none
+- Foreign keys: 
+  - `hunt_events_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
+- Check constraints: 
+  - `hunt_events_kind_check`: `CHECK ((kind = ANY (ARRAY['spawn'::text, 'attack'::text, 'player_done'::text, 'defeat'::text, 'expired'::text, 'nudge'::text, 'leaderboard'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-hunt-hits"></a>
@@ -307,8 +322,11 @@ Table. [hunt] The damage of one card of one member on one Hunt day: one row per 
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
+  - `hunt_hits_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
   - `hunt_hits_hunt_id_fkey` to [hunts](hunt-and-combat.md#table-hunts): `FOREIGN KEY (hunt_id) REFERENCES hunts(id) ON DELETE CASCADE`
-- Check constraints: none
+  - `hunt_hits_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id)`
+- Check constraints: 
+  - `hunt_hits_damage_check`: `CHECK ((damage >= 0))`
 - Row level security: on. Policies: none
 
 <a id="table-hunt-squads"></a>
@@ -360,7 +378,10 @@ Table. [hunt] One row per Hunt boss. spawn_hunt writes it. hunt_attack and hunt_
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: none
-- Check constraints: none
+- Check constraints: 
+  - `hunts_hp_check`: `CHECK (((hp_max > 0) AND (hp_remaining >= 0)))`
+  - `hunts_status_check`: `CHECK ((status = ANY (ARRAY['active'::text, 'defeated'::text, 'expired'::text])))`
+  - `hunts_tier_check`: `CHECK ((tier = ANY (ARRAY['Normal'::text, 'Heroic'::text, 'Mythic'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-player-effects"></a>
@@ -672,26 +693,6 @@ Table. [effects] An effect that waits on or acts on a member in the Activity or 
 - Security definer: no
 
 The sum, over all members, of each member's top N Character and Creature card powers (N = p_cap or hunt_card_cap()). Called by roster_snapshot and roster_stats.
-
-<a id="fn-effect-preview-text"></a>
-
-### effect_preview(text)
-
-- Function: `effect_preview(p_player text)`
-- Returns: `jsonb`
-- Security definer: no
-
-A JSON map card id to effect_preview_card for every effect card the member owns. Activity GET /api/effects/preview: the card viewer and the play picker show these numbers, so the client does not compute them again.
-
-<a id="fn-effect-preview-card-text-integer-jsonb-jsonb"></a>
-
-### effect_preview_card(text,integer,jsonb,jsonb)
-
-- Function: `effect_preview_card(p_rarity text, p_asc integer, p_pts jsonb, p_effect jsonb)`
-- Returns: `jsonb`
-- Security definer: no
-
-What one effect card copy will do when played: the amount, the duration and the cooldown in hours after the tier (balance effect_tiers), the copy bonus (Potency and Haste with stat points on, else balance effect_ascension per star), the knob effect_cooldown_scale and the hard limits of effect_primitives. The same math as play_card_effect (test-one-source-rules.mjs proves it). Null when the card has no effect.
 
 <a id="fn-hunt-attack-text-bigint-bigint"></a>
 
@@ -1052,13 +1053,3 @@ Pays the prizes of an ended Hunt once: packs by damage rank (ref ('hunt', hunt i
 - Security definer: no
 
 [hunt] The pg_cron entry for the Hunt week: kind spawn, nudge or close. It acts only in the Mountain Time hour of hunt_mt_slot, and spawns only if no Hunt opened in the last 6 hours. Called by the jobs hunt-spawn-mt, hunt-nudge-mt, hunt-close-mt-mdt and hunt-close-mt-mst.
-
-<a id="fn-weekly-hunt-rollover-integer"></a>
-
-### weekly_hunt_rollover(integer)
-
-- Function: `weekly_hunt_rollover(p_days integer DEFAULT 3)`
-- Returns: `jsonb`
-- Security definer: no
-
-[hunt] The old weekly rollover: expires and settles the active Hunt, then spawns a new one. Not called by any code or job (the pg_cron jobs use weekly_boss_tick).
