@@ -17,14 +17,15 @@ begin
     raise exception '%: apply balance_table.sql first (these functions read the balance table)', 'gauntlet.sql';
   end if;
   -- shard_ledger_strict.sql (2026-10-07) rebuilt the Shard refs: the second md5 of dungeon_settle is its result; dungeon_pay below = the live text.
-  foreach x slice 1 in array array[['dungeon_offers', 'f683173e2aea7385570805f9f4c118e5', '96c341db587398eb879b07c969500409'],
-    ['dungeon_enter', '8feecf401e00ed762e33125448a2dfff', '591317f3b1b3ef398d22ff0a4518b788'],
+  -- balance_dungeon_numbers.sql (2026-10-07) moved the chest, door and room-reward numbers to balance: the second md5 of dungeon_offers, dungeon_enter and dungeon_choose is its result (the same text below).
+  foreach x slice 1 in array array[['dungeon_offers', 'f683173e2aea7385570805f9f4c118e5', 'd3cf95a36e58db2081ac6a57e63e55a5'],
+    ['dungeon_enter', '8feecf401e00ed762e33125448a2dfff', 'a1c94c659efc65e139ddd42b6a41920b'],
     ['dungeon_after_kill', '3a1f54b7341b4982fd63e8ac7d94658b', '7089cf3176ce3e6593fc48208b4cdee6'],
     ['dungeon_settle', '3ae0933a2aefdb6c53c21c0bc88163d9', '6c71965b6ec5f325566aeb9d65053a9e'],
     ['dungeon_start', 'bb04624da5692c5d634e988e91e89c9f', 'e952ba662c6903abdbd766629f25a9b4'],
     ['dungeon_attack', 'c9858340b49c8040414bbe7a9cc976a1', '4c30628c23a9cc1b1fe19619ad63b61f'],
     ['dungeon_support', '2a585109eb24719dbd354e50061967f9', '48559abccd521a049306926bd7044de8'],
-    ['dungeon_choose', '4d00387fadf3af14c85e3662f94573a6', 'd4fae931e80f8ee8879efe0344a06ceb'],
+    ['dungeon_choose', '4d00387fadf3af14c85e3662f94573a6', '44c889d2b1f0aa70c30e4b7531eb9861'],
     ['dungeon_retreat', '0e0ceb456382ba4bbd1a47e51df5b183', '370d82a58009283e749f5a8d3e89b99a'],
     ['dungeon_view', 'a63a0710d6f89738a69def51c811b097', 'f6dd1098039c4c09a693f1e39b80250b'],
     ['dungeon_board', '8952252f1741fc5ed771452d7ec5783d', 'e5e302af2f0732b67abb8394d3c071e9']] loop
@@ -237,16 +238,12 @@ begin
     continue when k in ('heal', 'revive') and healed;
     continue when exists (select 1 from jsonb_array_elements(v) o where o->>'kind' = k);
     t := dungeon_tier(random());
-    continue when k = 'reset' and t < 3;          -- a cooldown reset is Rare or better
-    continue when k = 'revive' and t < 2;
+    -- The least tier of a reset / revive and the amounts by tier (1 to 5) are in balance dungeon_rewards.offers.
+    continue when k in ('reset', 'revive') and t < balance_num('dungeon_rewards', 'offers', 'min_tier', k);
     continue when k = 'revive' and not exists (select 1 from jsonb_each(p_state->'cards') c where (c.value->>'down')::boolean);
-    amt := case k
-      when 'heal' then (array[0.25, 0.35, 0.5, 0.75, 1.0])[t]
-      when 'buff' then (array[0.05, 0.08, 0.12, 0.18, 0.25])[t]
-      when 'shards' then (array[8, 15, 25, 40, 70])[t] + 2 * p_floor
-      when 'ward' then (array[0.1, 0.15, 0.2, 0.3, 0.4])[t]
-      when 'revive' then (array[0.3, 0.3, 0.4, 0.6, 1.0])[t]
-      else 0 end;
+    amt := case when k = 'shards' then balance_num('dungeon_rewards', 'offers', 'shards', (t - 1)::text) + balance_num('dungeon_rewards', 'offers', 'shards_per_floor') * p_floor
+                when k in ('heal', 'buff', 'ward', 'revive') then balance_num('dungeon_rewards', 'offers', k, (t - 1)::text)
+                else 0 end;
     v := v || jsonb_build_object('kind', k, 'tier', t, 'amount', amt,   -- a card rolls its rarity when picked; the offer shows the odds
       'odds', case when k = 'card' then dungeon_cfg()->'chest_rarity'->(t::text) end);
     n := n + 1;
@@ -292,8 +289,9 @@ begin
     st := st || jsonb_build_object('phase', 'path', 'foes', '[]'::jsonb, 'offers', d);
   else -- treasure: a chest of a tier (the loot goes to pend: at risk until the floor is cleared)
     t := dungeon_tier(random());
-    v_sh := (array[15, 25, 40, 65, 110])[t] + 3 * p_floor;
-    v_card := case when random() < (array[0, 0.35, 0.6, 1, 1])[t] then dungeon_card_of(dungeon_chest_rarity(t)) end;   -- each tier rolls the rarity (Nathan)
+    -- The chest Shards (by tier, + per floor) and the card chance (by tier) are in balance dungeon_rewards.chest.
+    v_sh := round(balance_num('dungeon_rewards', 'chest', 'shards', (t - 1)::text) + balance_num('dungeon_rewards', 'chest', 'shards_per_floor') * p_floor);
+    v_card := case when random() < balance_num('dungeon_rewards', 'chest', 'card_chance', (t - 1)::text) then dungeon_card_of(dungeon_chest_rarity(t)) end;   -- each tier rolls the rarity (Nathan)
     st := dungeon_loot(st, v_sh, v_card);
     st := st || jsonb_build_object('phase', 'chest', 'foes', '[]'::jsonb, 'chest', jsonb_build_object('tier', t, 'shards', v_sh, 'card', v_card),
       'offers', jsonb_build_array(jsonb_build_object('kind', 'continue')));
@@ -533,7 +531,7 @@ end $$;
 
 create or replace function public.dungeon_choose(p_player text, p_pick int, p_mode text default 'daily') returns jsonb
 language plpgsql set search_path = public as $$
-declare cfg jsonb := dungeon_cfg(); r dungeon_runs; d dungeon_days; st jsonb; o jsonb; k text; c jsonb; v_f int; v_r int; v_card bigint := null; v_to text; rk text;
+declare cfg jsonb := dungeon_cfg(); r dungeon_runs; d dungeon_days; st jsonb; o jsonb; k text; c jsonb; v_f int; v_r int; v_card bigint := null; v_to text; rk text; v_t int; v_sh int;
 begin
   if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
   select * into r from dungeon_runs where player_id = p_player and day = dungeon_day() and status = 'active' and mode = coalesce(p_mode, 'daily') for update;
@@ -554,11 +552,14 @@ begin
   if o->>'kind' = 'door' then
     -- A door turns this room into another room (a gamble: a rare chest or an ambush).
     v_to := o->>'to';
-    if v_to = 'gamble' then v_to := case when random() < 0.5 then 'treasure_rare' else 'elite' end; end if;
+    if v_to = 'gamble' then v_to := case when random() < balance_num('dungeon_rewards', 'door', 'gamble_rare') then 'treasure_rare' else 'elite' end; end if;
     rk := 'door|' || r.id || '|' || r.floor || '|' || r.room;
     if v_to = 'treasure_rare' then
-      st := dungeon_loot(st, 65 + 3 * r.floor, dungeon_card_of(dungeon_chest_rarity(4)));   -- the Ultra odds
-      st := st || jsonb_build_object('phase', 'chest', 'room_type', 'treasure', 'chest', jsonb_build_object('tier', 4, 'shards', 65 + 3 * r.floor, 'card', st->'pend'->'cards'->-1),
+      -- A chest of tier door.rare_tier: that tier's chest Shards and card odds (balance dungeon_rewards).
+      v_t := balance_num('dungeon_rewards', 'door', 'rare_tier')::int;
+      v_sh := round(balance_num('dungeon_rewards', 'chest', 'shards', (v_t - 1)::text) + balance_num('dungeon_rewards', 'chest', 'shards_per_floor') * r.floor);
+      st := dungeon_loot(st, v_sh, dungeon_card_of(dungeon_chest_rarity(v_t)));
+      st := st || jsonb_build_object('phase', 'chest', 'room_type', 'treasure', 'chest', jsonb_build_object('tier', v_t, 'shards', v_sh, 'card', st->'pend'->'cards'->-1),
         'offers', jsonb_build_array(jsonb_build_object('kind', 'continue')));
     else
       st := dungeon_enter(st, jsonb_build_array(jsonb_build_array(jsonb_build_object('type', v_to,
