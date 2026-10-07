@@ -43,7 +43,7 @@ do $g$
 declare x text[]; m text;
 begin
   foreach x slice 1 in array array[['combat_weak', '9ce429e3987062709ad58f2da22ad6ec', '98c1aad65e30464beb60d98c4aa6e538'],
-    ['combat_squad', 'e258afd794372831f5bef1e3dead7912', 'd3618d2947fbb305a84de6d00f7078ff'],
+    ['combat_squad', 'e258afd794372831f5bef1e3dead7912', '8395926de7607dd8f187c45a3555f1c9'],
     ['combat_crit_chance', '2bdd548498d09bea30d2086e9dac0755', '3943bf85ef544d157b419144279abfcb'],
     ['combat_hit', 'c9b8153b96ea601be99eea999164ee90', 'f020462408f217e25a0446d1449aaaea'],
     ['combat_lifesteal', 'a3c71d4f040d9b1c20fa737347838842', '749c45aebf0f3492923243d215e87f10'],
@@ -75,6 +75,7 @@ begin
 end $g$;
 -- 2026-10-07 (damage_log.sql): hunt_attack is the live text + the Hunt Crasher log row (md5 5cfa1a47...); the guard accepts that result.
 -- 2026-10-07 (effect_start_spawn_settle.sql): spawn_hunt closes an active Hunt with close_hunt (md5 87d7ae86...); the guard accepts that result.
+-- 2026-10-07 (card_decisions.sql): combat_squad reads the element list from card_element / element_aliases (robot = metal) (md5 8395926d...); the guard accepts that result.
 -- GUARD-END
 
 -- 1. The table + its history ------------------------------------------------------------------
@@ -400,11 +401,10 @@ begin
     if p_self_in and p_tags && v_wtags then v_stack := v_stack + 1; end if;
   end if;
   -- Element synergy: this card's dominant element + how many other cards share it.
-  v_elem := (select e from unnest(array['fire','water','lightning','ice','nature','earth','air',
-                                        'shadow','light','arcane','psychic','toxic','metal']) e
-             where ('trait:' || e) = any(p_tags) limit 1);
+  -- The element names and their aliases have one source: element_aliases() (card_decisions.sql; robot = metal).
+  v_elem := public.card_element(p_tags);
   if v_elem is not null then
-    select count(*) into v_syn from jsonb_array_elements(v_o) o where o ? ('trait:' || v_elem);
+    select count(*) into v_syn from jsonb_array_elements(v_o) o where exists (select 1 from jsonb_array_elements_text(o) t where public.element_of(t) = v_elem);
     v_syn := coalesce(v_syn, 0) + 1;   -- include this card
     if v_syn >= public.balance_num('combat', 'syn_big_at') then v_synmult := public.balance_num('combat', 'element_big'); elsif v_syn >= public.balance_num('combat', 'syn_small_at') then v_synmult := public.balance_num('combat', 'element_small'); end if;
   else
@@ -420,7 +420,7 @@ begin
   -- Trait (kind) synergy: the best-shared non-element trait.
   select coalesce(max(cnt), 0) into v_ksyn from (
     select count(*) as cnt from unnest(p_tags) tg cross join jsonb_array_elements(v_o) o
-      where tg like 'trait:%' and tg not in ('trait:fire','trait:water','trait:lightning','trait:ice','trait:nature','trait:earth','trait:air','trait:shadow','trait:light','trait:arcane','trait:psychic','trait:toxic','trait:metal')
+      where tg like 'trait:%' and tg not in (select 'trait:' || a.element from public.element_aliases() a)
         and o ? tg
       group by tg) k;
   if v_ksyn > 0 then v_ksyn := v_ksyn + 1; if v_ksyn >= public.balance_num('combat', 'syn_big_at') then v_kmult := public.balance_num('combat', 'trait_big'); elsif v_ksyn >= public.balance_num('combat', 'syn_small_at') then v_kmult := public.balance_num('combat', 'trait_small'); end if; end if;

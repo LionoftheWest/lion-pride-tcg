@@ -1,0 +1,12 @@
+{
+  "_note": "The one rarity order (Nathan 2026-10-07: Event and Promo rank as in the bot). SQL rarity_rank() is checked against this file by card-studio/scripts/test-card-decisions.mjs; the bot copy (tcg-bot/src/playing-card.ts RARITY.rank) by tcg-bot/src/playing-card.test.ts.",
+  "rank": {
+    "normal": 0,
+    "illustrated_rare": 1,
+    "secret_rare": 2,
+    "promo": 2,
+    "full_art": 3,
+    "event": 3,
+    "gold": 4
+  }
+}

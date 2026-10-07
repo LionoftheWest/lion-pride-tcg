@@ -7,6 +7,7 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { PRE_REF_FILE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/welcome_packs.sql', import.meta.url)), 'utf8')
@@ -18,7 +19,7 @@ const body = String.raw`do $t$
 declare res jsonb := '[]'; before_sum bigint; before_n bigint; ok boolean;
 begin
   select coalesce(sum(pack_balance), 0), count(*) into before_sum, before_n from players;
-  execute $m$${mig}$m$;
+  ${PRE_REF_FILE(mig)}
 
   -- The bot's path (ensurePlayer): upsert ... on conflict do update.
   insert into players (id, username) values ('${A}', 'tst new a') on conflict (id) do update set username = excluded.username;

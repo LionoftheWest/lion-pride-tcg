@@ -227,8 +227,8 @@ Table. [players-economy] One row per change of a member's pack balance (players.
 | `reason` | text | not null |  | Why: a pack reason in ledger_reasons (its note gives the meaning). Foreign key pack_ledger_reason_check; a new row needs an active or reserved reason (ledger_reason_guard). The earned_ reasons count to the daily cap (earned_today()). |
 | `granted_by` | text | null |  | The other member in the move, or null: the gift sender (gift_received), the gift receiver (gift_sent), the boon caster (boon), the admin who gave a promo or launch gift. Before pack_ledger_strict.sql it also held achievement keys; those are now in ref_id. |
 | `created_at` | timestamp with time zone | not null | `now()` | When the row was written (the transaction time, the same as the source row). |
-| `ref_kind` | text | null |  | The kind of source row (null only for an old row that could not be matched): gift (gift_claims.id), daily_claim (daily_claims, ref_id = '<day>:<task>'), achievement (achievement_claims.key), shop_purchase (shop_purchases.id), hunt (hunts.id), dungeon_payout (dungeon_payouts, ref_id = '<mode>:<period>'), open (one pack open; ref_id = the open id, the same for the packs of one open), tutorial (ref_id = 'complete'), player (ref_id = a member id: the boon caster). |
-| `ref_id` | text | null |  | The id of the source row (see ref_kind), as text. |
+| `ref_kind` | text | null |  | The kind of source row (never null: check pack_ledger_ref_check): gift (gift_claims.id), daily_claim (daily_claims, ref_id = '<day>:<task>'), achievement (achievement_claims.key), shop_purchase (shop_purchases.id), hunt (hunts.id), dungeon_payout (dungeon_payouts, ref_id = '<mode>:<period>'), open (one pack open; ref_id = the open id, the same for the packs of one open), tutorial (ref_id = 'complete'), player (ref_id = a member id: the boon caster). |
+| `ref_id` | text | null |  | The id of the source row (see ref_kind), as text. Never null (check pack_ledger_ref_check). |
 | `ledger` | text | null | `'pack'::text` | Always 'pack' (a stored generated constant): the first column of the foreign key (ledger, reason) -> ledger_reasons. |
 
 - Primary key: `PRIMARY KEY (id)`
@@ -237,6 +237,7 @@ Table. [players-economy] One row per change of a member's pack balance (players.
   - `pack_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
 - Check constraints: 
   - `pack_ledger_amount_check`: `CHECK ((amount <> 0))`
+  - `pack_ledger_ref_check`: `CHECK (((ref_kind IS NOT NULL) AND (ref_id IS NOT NULL)))`
 - Row level security: on. Policies: none
 
 <a id="table-player-cards"></a>
@@ -300,7 +301,7 @@ Table. [cards] One row per card subject (the character or thing on the card), sh
 | `name` | text | not null |  | The subject name. The card studio sets it. |
 | `description` | text | null |  | The genre text from the card studio, or null. |
 | `created_at` | timestamp with time zone | not null | `now()` | Time the row was made. |
-| `type` | text | null |  | PVE typing: Character \| Creature \| Item \| Place \| Moment |
+| `type` | text | not null |  | The PVE type: Character, Creature, Item, Place or Moment (check subjects_type_check, NOT NULL). Only Character and Creature attack (hunt_attack, dungeon_attack). The card studio push (push.js) sets it and refuses a card with no type. |
 | `cp_mod` | numeric | not null | `1.0` | The power multiplier of this subject (1.0 = no change). card_cp_exact multiplies the card power by it. |
 | `ability` | jsonb | null |  | The Hunt ability of the card as JSON (name, desc, kind attack or support, effect, amount, cooldown, affinity), or null. The card studio and push-abilities.mjs set it. The Hunt functions read it. |
 | `tags` | jsonb | not null | `'{}'::jsonb` | The card tags as JSON facets (for example type, class, origin, traits). Each facet is a string or a list. The card studio and the tag scripts set it. |
@@ -825,7 +826,7 @@ Places a bid of 1 to 5 free cards on a live auction and withdraws the member's o
 - Returns: `integer`
 - Security definer: no
 
-The order of a rarity: normal 0, illustrated_rare 1, secret_rare and promo 2, full_art and event 3, gold 4. Internal helper of auction_meets.
+The one rarity order: normal 0, illustrated_rare 1, secret_rare and promo 2, full_art and event 3, gold 4. Used by auction_meets and playing_today. The bot copy (tcg-bot/src/playing-card.ts RARITY.rank) and this function are both tested against shared/rarity-rank.json.
 
 <a id="fn-remove-card-from-player-text-bigint"></a>
 

@@ -10,6 +10,7 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { KEEP_LIVE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 if (ref !== 'kgvdqqehefezbypozvrh') throw new Error(`wrong Supabase project: ${ref}`);
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
@@ -35,7 +36,7 @@ declare bad text := ''; r jsonb; d date := date '2099-01-05'; i int; j int; n in
   sr bigint; nm bigint; nm2 bigint; ev bigint; c_sr bigint; v_week text;
   ok boolean;
 begin
-  execute $m$${mig}$m$;
+  ${KEEP_LIVE(['buy_shop_item'], mig)}
   -- This file's shard_cfg() reads every Shards number from settings.shards; balance_economy.sql moved them to balance
   -- shards (the live shard_cfg merges them). The test restores the old row inside its rolled-back block.
   update settings set value = value || balance_get('shards') where key = 'shards';

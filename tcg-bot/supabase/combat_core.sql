@@ -74,11 +74,10 @@ begin
     if p_self_in and p_tags && v_wtags then v_stack := v_stack + 1; end if;
   end if;
   -- Element synergy: this card's dominant element + how many other cards share it.
-  v_elem := (select e from unnest(array['fire','water','lightning','ice','nature','earth','air',
-                                        'shadow','light','arcane','psychic','toxic','metal']) e
-             where ('trait:' || e) = any(p_tags) limit 1);
+  -- The element names and their aliases have one source: element_aliases() (card_decisions.sql; robot = metal).
+  v_elem := public.card_element(p_tags);
   if v_elem is not null then
-    select count(*) into v_syn from jsonb_array_elements(v_o) o where o ? ('trait:' || v_elem);
+    select count(*) into v_syn from jsonb_array_elements(v_o) o where exists (select 1 from jsonb_array_elements_text(o) t where public.element_of(t) = v_elem);
     v_syn := coalesce(v_syn, 0) + 1;   -- include this card
     if v_syn >= public.balance_num('combat', 'syn_big_at') then v_synmult := public.balance_num('combat', 'element_big'); elsif v_syn >= public.balance_num('combat', 'syn_small_at') then v_synmult := public.balance_num('combat', 'element_small'); end if;
   else
@@ -94,7 +93,7 @@ begin
   -- Trait (kind) synergy: the best-shared non-element trait.
   select coalesce(max(cnt), 0) into v_ksyn from (
     select count(*) as cnt from unnest(p_tags) tg cross join jsonb_array_elements(v_o) o
-      where tg like 'trait:%' and tg not in ('trait:fire','trait:water','trait:lightning','trait:ice','trait:nature','trait:earth','trait:air','trait:shadow','trait:light','trait:arcane','trait:psychic','trait:toxic','trait:metal')
+      where tg like 'trait:%' and tg not in (select 'trait:' || a.element from public.element_aliases() a)
         and o ? tg
       group by tg) k;
   if v_ksyn > 0 then v_ksyn := v_ksyn + 1; if v_ksyn >= public.balance_num('combat', 'syn_big_at') then v_kmult := public.balance_num('combat', 'trait_big'); elsif v_ksyn >= public.balance_num('combat', 'syn_small_at') then v_kmult := public.balance_num('combat', 'trait_small'); end if; end if;

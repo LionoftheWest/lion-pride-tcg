@@ -8,6 +8,7 @@
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { KEEP_LIVE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/mt_clock.sql', import.meta.url)), 'utf8').replace(/notify pgrst[^\n]*\n/g, '');
@@ -17,7 +18,7 @@ const P = '999999999999999931', Q = '999999999999999932';
 const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; v jsonb; left_utc text; mt date; mt0 timestamptz; late timestamptz; c1 bigint; c2 bigint; h bigint; used int;
 begin
-  execute $m$${mig}$m$;
+  ${KEEP_LIVE(['claim_daily', 'play_card_effect'], mig)}
   mt := (now() at time zone 'America/Denver')::date;
   mt0 := mt::timestamp at time zone 'America/Denver';          -- midnight MT today
   late := mt0 - interval '1 minute';                            -- 23:59 MT yesterday
@@ -33,7 +34,7 @@ begin
   select id into c2 from cards where id <> c1 order by id limit 1;
 
   -- A chat pack at 23:59 MT yesterday is not "today"; one now is.
-  insert into pack_ledger (player_id, amount, reason, created_at) values ('${P}', 1, 'earned_daily', late), ('${P}', 1, 'earned_daily', now());
+  insert into pack_ledger (player_id, amount, reason, created_at, ref_kind, ref_id) values ('${P}', 1, 'earned_daily', late, 'test', 'mt-clock'), ('${P}', 1, 'earned_daily', now(), 'test', 'mt-clock');
   res := res || jsonb_build_object('case', 'earned today counts from midnight MT (a pack at 23:59 MT yesterday is not today)', 'ok', earned_today('${P}') = 1, 'got', earned_today('${P}'));
 
   -- A trade at 23:59 MT yesterday does not do today's social daily.

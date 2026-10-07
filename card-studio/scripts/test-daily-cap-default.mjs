@@ -21,12 +21,12 @@ begin
   res := res || jsonb_build_object('case', 'with no cap set, the Dailies window shows the limit 5', 'ok',
     (dailies_view('${A}')->>'cap')::int = 5, 'r', dailies_view('${A}')->'cap');
   -- A has earned 5 today: a daily pays no packs (the same limit as the chat packs).
-  perform grant_packs('${A}', 5, 'earned_daily', null);
+  perform grant_packs('${A}', 5, 'earned_daily', null, 'test', 'daily-cap');
   r := claim_daily('${A}', 'checkin');
   res := res || jsonb_build_object('case', 'with no cap set, a daily at 5 earned pays 0 packs', 'ok',
     coalesce((r->>'packs')::int, 0) = 0, 'r', r);
   -- B has earned 5 today: the chat packs pay nothing either (claim_daily_earn, already 5).
-  perform grant_packs('${B}', 5, 'earned_checkin', null);
+  perform grant_packs('${B}', 5, 'earned_checkin', null, 'test', 'daily-cap');
   insert into daily_activity (player_id, activity_date, message_count) values ('${B}', d, 50);
   g := claim_daily_earn('${B}', d, 1, 1, 20);
   res := res || jsonb_build_object('case', 'with no cap set, the chat packs at 5 earned pay 0', 'ok', g = 0, 'r', g);
