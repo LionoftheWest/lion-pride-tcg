@@ -969,6 +969,11 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-77 | The Hunter title | The Hunter track's first title is "Hunter", not "Raider" (Nathan, 2026-10-06, UI-13: "Agreed") |
 | D-78 | Same-name titles | An old achievement title and a tier title with the same name stay two entries in the gallery (keyed by source) (Nathan, 2026-10-06, UI-13: "agreed") |
 | D-79 | Title words | Track titles use no forbidden glossary word: Dupe Smelter -> Copy Smelter, Titan Breaker -> Boss Wrecker (Boss Breaker is an old title), Titan Slayer -> Giant Slayer (Nathan, 2026-10-07: "Yes as suggested", then "A") |
+| D-80 | One pack balance, an Open screen | One pack balance; OPEN opens a screen with every pullable set, then the count (Nathan, 2026-10-07: "One pack balance, we will need to look at how to design a new screen then for the 'Opening' instead of it being a one button -> do one thing. There will need to be a screen that has all the sets available that they can pull from.") |
+| D-81 | Old sets stay pullable | Season 1 stays pullable after Season 2 releases (Nathan, 2026-10-07: "Yes") |
+| D-82 | Same odds for every set | Every set uses the one `pulls` odds row (Nathan, 2026-10-07: "Yes same odds") |
+| D-83 | Set code on the card | Each card shows its set code with its number, for example "S2 · #014"; no set symbol (Nathan, 2026-10-07: "Set Code on the card") |
+| D-84 | Rewards from all sets | Dungeon, Shop and other card rewards draw from every pullable set; only packs choose a set (Nathan, 2026-10-07: "I like completely random odds still across all sets") |
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 
