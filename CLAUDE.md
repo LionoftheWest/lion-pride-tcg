@@ -12,24 +12,24 @@ These rules apply to every session in this repository. The global rules in
 - The VM is `lionpridetcg.duckdns.org`. Resolve the name. Do not trust an IP in a note.
 - This repository is PUBLIC. Never commit a secret. The `.env` files stay local and on the VM.
 
-## UI freeze (Nathan, 2026-10-04)
+## UI build rules (the freeze of 2026-10-04 lifted on 2026-10-06)
 
-All new UI BUILD work in `tcg-activity/` is stopped until the freeze exit criteria in
-`docs/design.md` section 12.9 are met. The UI standard `docs/design.md` is APPROVED (2026-10-04).
-Done: the standard, the register, the private design repo, the shell design (UI-00 approved), and
-CI gates G1, G3, G4 (PR #195, required on `main` since 2026-10-05; how they work: `ci/README.md`).
-Open: the token source file on `main` (foundation build).
+The freeze exit criteria in `docs/design.md` section 12.9 are met: the standard (approved 2026-10-04),
+the register and the private design repo, UI-00 (approved 2026-10-05) with the token source file
+`shared/tokens.json` on `main`, and CI gates G1, G3, G4 (required on `main`; how they work: `ci/README.md`).
+Nathan confirmed the lift on 2026-10-06 ("Yes").
 
 `main` is protected: every change goes through a PR, and admins cannot push directly. A PR that
 changes a UI file needs its register ID in the title (`UI-07 ...`) and a recorded design approval.
 The reason: each screen was built three times (desktop, portrait, landscape) with fixed pixels and
 ad-hoc values, so new screen sizes kept breaking.
 
-- Do not add a screen, a component, a restyle, or a layout change in the code.
-- A fix for a defect that a member reported is allowed only when Nathan asks for it. Keep it
-  to the smallest change. Do not add new `m-land` / `m-port` selectors, raw `z-index`
-  numbers, or new color, size, or font literals.
-- Server, SQL, and bot work that does not change the UI is not frozen.
+- Build a screen only from its APPROVED design in the design repo (`<ID>/approved/`), in its own PR
+  (`docs/design.md` 12.3). A screen with no approved design is not built.
+- Use only the tokens and components of UI-00. Do not add new `m-land` / `m-port` selectors, raw
+  `z-index` numbers, or new color, size, or font literals (gate G4 counts them).
+- A fix for a defect that a member reported: the smallest change, and only when Nathan asks for it.
+- Server, SQL, and bot work that does not change the UI needs no design.
 
 ## Design v2 work (read before any design or UI task)
 
