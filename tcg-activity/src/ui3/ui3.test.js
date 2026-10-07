@@ -1,0 +1,63 @@
+// UI-00 v3 foundation: the size class rules (design.md 2.1), the icon set, and the component rules that can be checked
+// without a browser (5.3 labels, G-093 99+ cap, 4.9 the disabled reason, D-36/D-53 pager labels). node --test
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { sizeClass, isShort } from './size-class.js';
+import { icon, ICONS } from './icons.js';
+import * as C from './components.js';
+
+test('size class: the design.md 2.1 rules in their order, every size one class', () => {
+  const cases = [
+    [[359, 800], 'tiny'], [[800, 299], 'tiny'], [[400, 225], 'tiny'],
+    [[667, 375], 'compact-land'], [[932, 430], 'compact-land'], [[1280, 480], 'compact-land'], [[915, 412], 'compact-land'],
+    [[375, 667], 'compact-port'], [[430, 932], 'compact-port'], [[599, 900], 'compact-port'],
+    [[600, 900], 'medium'], [[820, 1180], 'medium'], [[917, 692], 'medium'], [[1180, 820], 'medium'], [[1199, 800], 'medium'],
+    [[1200, 800], 'expanded'], [[1280, 720], 'expanded'], [[1990, 830], 'expanded'],
+    [[480, 490], 'compact-port'],   // height < 500 but not landscape: rule 2 does not match, rule 3 does
+  ];
+  for (const [[w, h], want] of cases) assert.equal(sizeClass(w, h), want, `${w}x${h}`);
+  assert.equal(isShort('expanded', 699), true); assert.equal(isShort('medium', 692), true);
+  assert.equal(isShort('expanded', 720), false); assert.equal(isShort('compact-land', 400), false);
+});
+
+test('icons: one SVG style (stroke 2, currentColor), decorative unless labelled, unknown names refused', () => {
+  const s = icon('award');
+  assert.match(s, /stroke-width="2"/); assert.match(s, /stroke="currentColor"/); assert.match(s, /aria-hidden="true"/);
+  assert.match(icon('x', { label: 'Close' }), /role="img" aria-label="Close"/);
+  assert.throws(() => icon('no-such-icon'), /unknown icon/);
+  for (const n of ['landmark', 'party-popper', 'layers', 'award', 'trophy', 'skull', 'swords', 'castle']) assert.ok(ICONS[n], `tab icon ${n} (3.1)`);
+});
+
+test('icon-only controls need a label (5.3); the pager arrows are labelled (D-53)', () => {
+  assert.throws(() => C.iconButton({ icon: 'x' }), /needs a label/);
+  assert.match(C.iconButton({ icon: 'x', label: 'Close' }), /aria-label="Close"/);
+  const p = C.pager({ page: 1, pages: 3 });
+  assert.match(p, /aria-label="Previous page"[^>]*disabled/); assert.match(p, /1 \/ 3/);
+  assert.doesNotMatch(p.split('aria-label="Next page"')[1].split('>')[0], /disabled/);
+  assert.match(C.pager({ page: 3, pages: 3 }), /aria-label="Next page"[^>]*disabled/);
+});
+
+test('counter caps at 99+ (G-093); a disabled control shows its reason (4.9); busy is announced', () => {
+  assert.match(C.counter(99), />99</); assert.match(C.counter(100), />99\+</); assert.match(C.counter(-3), />0</);
+  const d = C.button({ label: 'Buy', disabled: true, reason: 'Needs 100 Shards' });
+  assert.match(d, /disabled/); assert.match(d, /u3-reason">Needs 100 Shards/);
+  const b = C.button({ label: 'Buy', busy: true });
+  assert.match(b, /aria-busy="true"/); assert.match(b, /u3-spin/);
+});
+
+test('text is escaped; a dialog has Cancel on the left and the action on the right (5.3)', () => {
+  assert.doesNotMatch(C.row({ main: '<img src=x onerror=1>' }), /<img/);
+  const d = C.dialog({ title: 'Buy?', primary: { label: 'Buy' } });
+  assert.ok(d.indexOf('>Cancel<') < d.indexOf('>Buy<'));
+});
+
+test('ui3.css uses tokens only: no color, px or z-index literal (4.1, gate G4)', () => {
+  const css = readFileSync(new URL('../../public/ui3.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.equal((css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length, 0, 'hex color');
+  assert.equal((css.match(/\brgba?\(|\bhsla?\(/g) || []).length, 0, 'rgb/hsl color');
+  assert.equal((css.match(/\d(\.\d+)?px\b/g) || []).length, 0, 'px literal');
+  assert.equal((css.match(/z-index:\s*-?\d/g) || []).length, 0, 'z-index literal');
+  assert.doesNotMatch(css, /m-land|m-port/);
+  assert.doesNotMatch(css, /@media[^{]*(min|max)-(width|height)/, 'raw size media query (2.1)');
+});

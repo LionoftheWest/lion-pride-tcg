@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Lion Pride TCG · UI-00 components</title>
+  <!-- The UI-00 gallery (docs/design.md 5.2): every v3 component and its states. A review page, not a game screen.
+       Relative paths, so it works at /app/ui3.html (Caddy) and at /ui3.html. -->
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="ui3.css" />
+  <style>
+    /* Gallery layout only. Tokens only (4.1). */
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg-base); color: var(--text-primary); font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(--lh-body); }
+    .g-app { height: 100%; display: grid; grid-template-rows: auto auto 1fr auto; gap: var(--sp-3); padding: var(--sp-4); box-sizing: border-box; }
+    .g-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+    .g-h1 { margin: 0; font-family: var(--font-display); font-size: var(--fs-title); line-height: var(--lh-title); }
+    .g-h1 span { color: var(--gold); }
+    .g-meta { font-size: var(--fs-caption); color: var(--text-muted); }
+    #g-nav { overflow-x: auto; }
+    #g-main { min-height: 0; overflow: auto; }
+    .g-title { margin: 0 0 var(--sp-3); font-family: var(--font-display); font-size: var(--fs-heading); }
+    .g-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--sheet-side-w) - var(--sp-5)), 1fr)); gap: var(--sp-4); align-items: start; }
+    .g-spec { margin: 0; display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3); border-radius: var(--rad-lg); background: var(--bg-raised); border: var(--bw-1) solid var(--border); min-width: 0; }
+    .g-spec__body { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); min-width: 0; }
+    .g-spec--frame { grid-column: span 2; }
+    body[data-size="compact-port"] .g-spec--frame, body[data-size="compact-land"] .g-spec--frame { grid-column: auto; }
+    .g-frame { position: relative; height: calc(var(--textarea-h) * 3); border-radius: var(--rad-md); overflow: hidden; background: var(--bg-base); border: var(--bw-1) solid var(--border); }
+    .g-frame .u3-scrim { position: absolute; }
+    .g-cap { font-size: var(--fs-caption); color: var(--text-muted); }
+    .g-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+    .g-swatch { display: inline-flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-pill); background: var(--surface-1); font-size: var(--fs-small); }
+    .g-swatch .u3-pip { width: var(--icon-md); height: var(--icon-md); }
+    .g-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--avatar-xl), 1fr)); gap: var(--sp-2); width: 100%; }
+    .g-icon { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--sp-2); border-radius: var(--rad-md); background: var(--surface-1); color: var(--text-secondary); font-size: var(--fs-label); overflow-wrap: anywhere; text-align: center; }
+    .g-card { width: var(--avatar-xl); aspect-ratio: 5 / 7; display: grid; place-items: center; border-radius: var(--rad-md); background: var(--surface-2); color: var(--text-muted); font-size: var(--fs-label); }
+    .g-rowitem { padding: var(--sp-2) var(--sp-7) var(--sp-2) var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); color: var(--text-muted); font-size: var(--fs-label); }
+    #g-pager { display: flex; justify-content: center; }
+  </style>
+</head>
+<body>
+  <div class="g-app">
+    <header class="g-head"><h1 class="g-h1">UI-00 <span>components</span></h1><span class="g-meta">Size class: <b id="g-size"></b> · Hover and press work with a mouse · From the approved library sheets</span></header>
+    <nav id="g-nav"></nav>
+    <main id="g-main"></main>
+    <footer id="g-pager"></footer>
+  </div>
+  <script type="module" src="ui3-gallery.js"></script>
+</body>
+</html>
