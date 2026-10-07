@@ -963,6 +963,11 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-68 | Role glow in fights | In the Hunt, Dungeon, Gauntlet and Arena fights, the plate behind each card spot glows orange for an attack card (`--role-attack` `#F2611D`) and cyan for a support card (`--role-support` `#3FE3F5`). The card itself does not change; its edge keeps the rarity glow. Orange and cyan, not red and green, so that color-blind players see the difference (Nathan, 2026-10-06: "its strictly just in hunt/dungeon/arena that the spot where the card is at, it glows red/green, its only that, we're not changing anything on the card itself"; then "Yeah lets do the orange and cyan colors.") |
 | D-69 | Support HP in fights | Support cards show an HP bar in the fight, as attackers do (Nathan, 2026-10-06: "the supports need to show health as well since they don't currently do that") |
 | D-70 | Supports on supports | An ally support (heal, shield, empower) can target any squad card, supports too (Nathan, 2026-10-06: "they also need to be able to work on each other vs just attackers") |
+| D-74 | Achievement tier names | Bronze, Silver, Platinum, Diamond, Obsidian; the steps after the last tier are "Obsidian +N". Not Gold (a reserved rarity word) and not Mythic (a superseded rarity name and a boss difficulty word) (Nathan, 2026-10-06, UI-13: "A") |
+| D-75 | Achievement tier colors | The 5 tier colors and frame rings are UI-00 tokens, not literals (Nathan, 2026-10-06, UI-13: "agreed") |
+| D-76 | Achievement track titles | Each track keeps its own 3 titles, an exception to 10.1 "the title is the achievement name" (Nathan, 2026-10-06, UI-13: "Agreed") |
+| D-77 | The Hunter title | The Hunter track's first title is "Hunter", not "Raider" (Nathan, 2026-10-06, UI-13: "Agreed") |
+| D-78 | Same-name titles | An old achievement title and a tier title with the same name stay two entries in the gallery (keyed by source) (Nathan, 2026-10-06, UI-13: "agreed") |
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 

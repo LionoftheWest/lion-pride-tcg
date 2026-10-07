@@ -81,7 +81,7 @@ insert into public.achievement_tracks (key, ord, grp, name, tiers, step, titles)
   ('recycler',    14, 'Shards',     'Recycler',      '{10,50,200,500,1500}',           500,    '{"Recycler","Dupe Smelter","Alchemist"}'),
   ('grind',       15, 'Dailies',    'Daily Grind',   '{10,50,150,400,1000}',           250,    '{"Grinder","Clockwork","Never Misses"}'),
   ('streak',      16, 'Dailies',    'On a Roll',     '{3,7,14,30,60}',                 30,     '{"On a Roll","Unbroken","Eternal Flame"}'),
-  ('raider',      17, 'Hunt',       'Hunter',        '{1,4,10,20,40}',                 10,     '{"Raider","Veteran Hunter","Warlord"}'),
+  ('raider',      17, 'Hunt',       'Hunter',        '{1,4,10,20,40}',                 10,     '{"Hunter","Veteran Hunter","Warlord"}'),
   ('heavy',       18, 'Hunt',       'Heavy Hitter',  '{2500,10000,40000,100000,250000}', 100000, '{"Heavy Hitter","Wrecking Ball","Titan Breaker"}'),
   ('bighit',      19, 'Hunt',       'Big Hit',       '{400,900,1600,2600,4000}',       null,   '{"Big Hitter","One-Shot","Meteor"}'),
   ('slayer',      20, 'Hunt',       'Boss Slayer',   '{1,3,8,15,30}',                  10,     '{"Boss Slayer","Titan Slayer","Dragon''s Bane"}'),
