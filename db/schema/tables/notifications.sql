@@ -11,7 +11,8 @@ create table public.notifications (
   kind text not null,
   message text not null,
   read boolean default false not null,
-  created_at timestamp with time zone default now() not null
+  created_at timestamp with time zone default now() not null,
+  read_at timestamp with time zone
 );
 
 -- @constraints

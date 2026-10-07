@@ -7,9 +7,9 @@ Members, the Dailies, the bell notes, reports, the balance numbers, the flags an
 
 ## Contents
 
-Tables (12): [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [voice_minutes](#table-voice-minutes)
+Tables (14): [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [profile_log](#table-profile-log), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [settings_log](#table-settings-log), [voice_minutes](#table-voice-minutes)
 
-Functions (32): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_check_settings()](#fn-balance-check-settings), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [game_day(timestamp with time zone)](#fn-game-day-timestamp-with-time-zone), [game_day_start(date)](#fn-game-day-start-date), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
+Functions (34): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_check_settings()](#fn-balance-check-settings), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [game_day(timestamp with time zone)](#fn-game-day-timestamp-with-time-zone), [game_day_start(date)](#fn-game-day-start-date), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [profile_log_write()](#fn-profile-log-write), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [settings_log_write()](#fn-settings-log-write), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
 
 ## Tables
 
@@ -134,6 +134,7 @@ Table. One row per note in the bell of a member. notify_player (the Activity, th
 | `message` | text | not null |  | The text that the bell shows. |
 | `read` | boolean | not null | `false` | True after the member opened the bell (the Activity /api/notifications/read sets all to true). |
 | `created_at` | timestamp with time zone | not null | `now()` | When the note was made. The bell shows the newest 30. |
+| `read_at` | timestamp with time zone | null |  | When the member read the note. Null = unread, or read before the write path existed (the column came 2026-10-07; the Activity write path is a separate change). |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
@@ -160,10 +161,12 @@ Table. One row per Bug, Feedback or Idea report that a member sent with the wren
 | `synced_at` | timestamp with time zone | null |  | When the Issue was made. Null = the report waits for the sync. |
 | `attempts` | integer | not null | `0` | The failed sync attempts. The sync stops after 8. |
 | `last_error` | text | null |  | The error of the last failed sync (at most 300 characters). Null after a good sync. |
+| `target_id` | text | null |  | The member that the report is about (players.id), else null. Null when that member row is deleted. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
   - `player_reports_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
+  - `player_reports_target_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (target_id) REFERENCES players(id) ON DELETE SET NULL`
 - Check constraints: 
   - `player_reports_body_check`: `CHECK (((char_length(body) >= 5) AND (char_length(body) <= 1500)))`
   - `player_reports_kind_check`: `CHECK ((kind = ANY (ARRAY['bug'::text, 'feedback'::text, 'idea'::text])))`
@@ -218,6 +221,27 @@ Table. One row per member per game day: the is-playing post of the bot in the no
 - Check constraints: none
 - Row level security: on. Policies: none
 
+<a id="table-profile-log"></a>
+
+### profile_log
+
+Table. One row per changed profile field of a member (the profile_log_write trigger on players): username, avatar, title, frame, spotlight, and each top-level key of notify_prefs and tutorial (notify_prefs.<key>, tutorial.<key>). Not the pack or Shard balance (the ledgers). Server only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | not null |  | The log row id. |
+| `player_id` | text | not null |  | The member (players.id). No foreign key: the history stays. |
+| `field` | text | not null |  | The field: username, avatar, title, frame, spotlight, notify_prefs.<key> or tutorial.<key> (the whole column notify_prefs or tutorial when it is not a jsonb object). |
+| `old_value` | jsonb | null |  | The value before the change as jsonb (null = no value). |
+| `new_value` | jsonb | null |  | The value after the change as jsonb (null = no value). |
+| `changed_at` | timestamp with time zone | not null | `now()` | When the change was made. |
+| `changed_by` | text | not null |  | Who made the change: balance_who (the setting balance.by, else the session user; the Activity and the bot show as authenticator). |
+
+- Primary key: `PRIMARY KEY (id)`
+- Foreign keys: none
+- Check constraints: none
+- Row level security: on. Policies: none
+
 <a id="table-schema-migrations"></a>
 
 ### schema_migrations
@@ -251,6 +275,28 @@ Table. One row per feature flag, member list, date or seed (key, jsonb). Every g
 - Primary key: `PRIMARY KEY (key)`
 - Foreign keys: none
 - Check constraints: none
+- Row level security: on. Policies: none
+
+<a id="table-settings-log"></a>
+
+### settings_log
+
+Table. One row per insert, change or delete of a settings row (the settings_log_write trigger). A changed value is required: an equal value writes no row. Some values hold member id lists (discord_immune, ui_v3.users): server only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | not null |  | The log row id. |
+| `key` | text | not null |  | The settings key that changed (settings.key). |
+| `op` | text | not null |  | insert, update (a changed value) or delete. |
+| `old_value` | jsonb | null |  | The value before the change. Null for an insert. |
+| `new_value` | jsonb | null |  | The value after the change. Null for a delete. |
+| `changed_at` | timestamp with time zone | not null | `now()` | When the change was made. |
+| `changed_by` | text | not null |  | Who made the change: balance_who (the setting balance.by, else the session user). |
+
+- Primary key: `PRIMARY KEY (id)`
+- Foreign keys: none
+- Check constraints: 
+  - `settings_log_op_check`: `CHECK ((op = ANY (ARRAY['insert'::text, 'update'::text, 'delete'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-voice-minutes"></a>
@@ -544,6 +590,16 @@ Writes one note in the bell of a member (notifications). The Activity, the bot, 
 
 Returns the data of the is-playing post for a member today: name, avatar, the playing ping setting, packs opened, Hunt damage and the best new card (highest rarity_rank, then the newest). The bot (playing-posts.ts) calls it.
 
+<a id="fn-profile-log-write"></a>
+
+### profile_log_write()
+
+- Function: `profile_log_write()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (after a players row change with a new username, avatar, title, frame, spotlight, notify_prefs or tutorial): writes one profile_log row per changed field and per changed top-level key of notify_prefs and tutorial.
+
 <a id="fn-prune-old-rows"></a>
 
 ### prune_old_rows()
@@ -552,7 +608,7 @@ Returns the data of the is-playing post for a member today: name, avatar, the pl
 - Returns: `jsonb`
 - Security definer: no
 
-Deletes old rows: read notes after 30 days, unread after 90, posted hunt_events after 30, ended discord_effects after 30, cron run details after 14. The pg_cron job prune-old-rows runs it each day. Returns the counts.
+Deletes old rows: bell notes after 365 days, posted hunt_events after 365, ended discord_effects after 365, cron run details after 90 (logs_sql.sql, 2026-10-07; was 30 / 90 / 30 / 30 / 14). The logs (settings_log, profile_log, wishlist_log, stat_point_log, admin_actions) are never pruned. The pg_cron job prune-old-rows runs it each day. Returns the counts.
 
 <a id="fn-record-activity-text-date"></a>
 
@@ -573,6 +629,16 @@ Adds 1 to the chat message count of a member on a game day (daily_activity) and 
 - Security definer: yes
 
 Event trigger function (the event trigger ensure_rls, at ddl_command_end): turns on row level security for each new table in the public schema.
+
+<a id="fn-settings-log-write"></a>
+
+### settings_log_write()
+
+- Function: `settings_log_write()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (after insert, update, delete on settings): writes a settings_log row with the old value, the new value and balance_who. Writes nothing when the value did not change.
 
 <a id="fn-streak-shield-waiting-text-date"></a>
 

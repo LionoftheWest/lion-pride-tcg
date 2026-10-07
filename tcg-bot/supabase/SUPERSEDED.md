@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (89)
+## Superseded files (90)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -92,6 +92,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `pack_economy.sql` | SUPERSEDED: reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `shard_ledger_strict.sql`); brings back `public.grant_packs(text, integer, text, text)`, which live does not have; brings back `public.grant_packs_all(integer, text, text)`, which live does not have; reverts `public.spend_pack(text)` (live = `pack_ledger_strict.sql`) | changes function grants that lockdown_grants.sql does not put back |
 | `pack_open_batch.sql` | SUPERSEDED: reverts `public.add_cards_to_player(text, bigint[])` (live = `card_ledger.sql`) |  |
 | `playing_posts.sql` | SUPERSEDED: reverts `public.playing_today(text)` (live = `card_decisions.sql`) |  |
+| `prune_old_rows.sql` | SUPERSEDED: reverts `public.prune_old_rows()` (live = `logs_sql.sql`) |  |
 | `pull_feed_source.sql` | SUPERSEDED: reverts `public.accept_trade(bigint, text)` (live = `card_ledger.sql`); reverts `public.add_card_to_player(text, bigint, text)` (live = `card_ledger.sql`); reverts `public.gift_card(text, text, bigint)` (live = `card_ledger.sql`) |  |
 | `roster_stats.sql` | SUPERSEDED: reverts `public.roster_snapshot()` (live = `balance_dungeon_numbers.sql`); reverts `public.roster_stats()` (live = `balance_dungeon_numbers.sql`) |  |
 | `schema.sql` | SUPERSEDED: brings back `public.add_card_to_player(text, bigint)`, which live does not have | a re-run stops at an error today: type "card_rarity" already exists; alone, `create or replace function record_activity(p_playe...` fails: cannot change return type of existing function |
@@ -141,9 +142,9 @@ a one-time grant or a settings value would run again.
 - `hunt_abilities.sql`: subjects
 - `hunt_damage_trace.sql`: hunt_adjustments (DO block)
 - `ledger_reasons.sql`: ledger_reasons
+- `logs_sql.sql`: cron.job
 - `pack_ledger_strict.sql`: daily_claims, pack_ledger
 - `player_reports.sql`: settings
-- `prune_old_rows.sql`: cron.job
 - `raid_makeup_oct1.sql`: give_gift(), hunt_adjustments
 - `screen_pranks_short.sql`: effect_primitives, player_effects, subjects
 - `shard_ledger_strict.sql`: shard_ledger

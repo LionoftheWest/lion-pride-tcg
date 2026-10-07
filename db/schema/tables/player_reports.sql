@@ -16,7 +16,8 @@ create table public.player_reports (
   issue_url text,
   synced_at timestamp with time zone,
   attempts integer default 0 not null,
-  last_error text
+  last_error text,
+  target_id text
 );
 
 -- @constraints
@@ -24,10 +25,12 @@ alter table public.player_reports add constraint player_reports_body_check CHECK
 alter table public.player_reports add constraint player_reports_kind_check CHECK ((kind = ANY (ARRAY['bug'::text, 'feedback'::text, 'idea'::text])));
 alter table public.player_reports add constraint player_reports_pkey PRIMARY KEY (id);
 alter table public.player_reports add constraint player_reports_player_id_fkey FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE;
+alter table public.player_reports add constraint player_reports_target_id_fkey FOREIGN KEY (target_id) REFERENCES players(id) ON DELETE SET NULL;
 
 -- @indexes
 CREATE UNIQUE INDEX player_reports_pkey ON public.player_reports USING btree (id);
 CREATE INDEX player_reports_player_day ON public.player_reports USING btree (player_id, created_at);
+CREATE INDEX player_reports_target ON public.player_reports USING btree (target_id) WHERE (target_id IS NOT NULL);
 CREATE INDEX player_reports_unsynced ON public.player_reports USING btree (id) WHERE (synced_at IS NULL);
 
 -- @rls
