@@ -12,7 +12,7 @@ import { artKeyFor, ANIMATED, inDrawPool, needsPeriod } from './rarity.js';
 import { getFrame } from './frames.js';
 import { makeThumbs, gridObject, revealObject } from './thumbs.js';
 import { getArtist } from './artists.js';
-import { slotDetails, subjectType, CARD_TYPES } from './cardstore.js';
+import { slotDetails, subjectType, CARD_TYPES, cardSetId } from './cardstore.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(here, '..');
@@ -64,6 +64,7 @@ export async function pushCard(card, artFor, outDir, onProgress) {
   // subjects.type is NOT NULL (card_decisions.sql): refuse a card with no type before any render or upload.
   const type = subjectType(card);
   if (!type) throw new Error(`"${card.name}" has no type. Pick one of ${CARD_TYPES.join(', ')} in Card Info, save, then push again.`);
+  const setId = cardSetId(card); // before any upload: a bad set id stops the push here
   await ensureBucket();
 
   // Progress is measured in frame-units: each animated tier is FRAMES frames,
@@ -145,9 +146,9 @@ export async function pushCard(card, artFor, outDir, onProgress) {
       .eq('rarity', rarity)
       .maybeSingle();
 
-    // This tier's own description / season / event; the draw-pool rule comes
-    // from the tier's flags in rarity.js.
-    const rowSeason = det.season || null;
+    // This tier's own description / event; the draw-pool rule comes from the tier's flags in rarity.js.
+    // The set is per card (cardSetId); the database keeps cards.season = 'Season ' + the set's season (card_sets.sql),
+    // so the season is not sent.
     const rowEvent = needsPeriod(rarity) ? (det.event || null) : null;
     const inPool = inDrawPool(rarity);
     // Tradeability is per tier now (det.tradeable): gold never trades, every
@@ -156,12 +157,12 @@ export async function pushCard(card, artFor, outDir, onProgress) {
     if (existing) {
       await supabase
         .from('cards')
-        .update({ name: card.name, lore: det.lore, artist_credit: artist || null, season: rowSeason, event: rowEvent, image_url: url, in_draw_pool: inPool, tradeable, source: 'draw' })
+        .update({ name: card.name, lore: det.lore, artist_credit: artist || null, set_id: setId, event: rowEvent, image_url: url, in_draw_pool: inPool, tradeable, source: 'draw' })
         .eq('id', existing.id);
     } else {
       await supabase
         .from('cards')
-        .insert({ subject_id: subject.id, name: card.name, rarity, lore: det.lore, artist_credit: artist || null, season: rowSeason, event: rowEvent, image_url: url, in_draw_pool: inPool, tradeable, source: 'draw' });
+        .insert({ subject_id: subject.id, name: card.name, rarity, lore: det.lore, artist_credit: artist || null, set_id: setId, event: rowEvent, image_url: url, in_draw_pool: inPool, tradeable, source: 'draw' });
     }
     results.push({ rarity, url, animated: ANIMATED.has(rarity) });
   }
