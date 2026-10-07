@@ -30,7 +30,8 @@ end $g$;
 
 -- 1. A third kind of action: 'effect' (a prank or boon that acts in a fight; first: the Hunt Crasher).
 alter table public.combat_actions drop constraint if exists combat_actions_kind_check;
-alter table public.combat_actions add constraint combat_actions_kind_check check (kind in ('attack', 'support', 'effect'));
+-- dungeon_combat_log.sql (2026-10-07) added 'enemy': it stays here, so a re-run of this file does not drop it.
+alter table public.combat_actions add constraint combat_actions_kind_check check (kind in ('attack', 'support', 'effect', 'enemy'));
 
 -- 2. hunt_attack: the LIVE text + the Hunt Crasher log row (and the no-owner fallback).
 CREATE OR REPLACE FUNCTION public.hunt_attack(p_player text, p_hunt bigint, p_card bigint)
@@ -498,21 +499,21 @@ revoke execute on function public.hunt_damage_reconcile(bigint) from public, ano
 grant execute on function public.hunt_damage_reconcile(bigint) to service_role;
 
 -- 5. What each column of the action log means (kind 'effect' is new).
-comment on table public.combat_actions is
-  '[combat] The shared action log of every fight mode: one row per support play (hunt_support), per Hunt Crasher hit (hunt_attack) and, later, per attack. With hunt_combat_log and hunt_adjustments it traces every point of hunt_hits (hunt_damage_reconcile). Server only (RLS on, no API grants).';
-comment on column public.combat_actions.id is 'Row id (also the order of the plays).';
-comment on column public.combat_actions.mode is 'The fight mode: hunt (later dungeon, gauntlet).';
-comment on column public.combat_actions.ref_id is 'The fight: hunts.id for mode hunt.';
-comment on column public.combat_actions.player_id is 'The member who played it. For a Hunt Crasher row: the member who gets the credit (the prankster), not the attacker (result.attacker).';
-comment on column public.combat_actions.card_id is 'The card that played it. For a Hunt Crasher row: the Raider card that gets the credit in hunt_hits.';
-comment on column public.combat_actions.kind is 'attack, support (a support card play) or effect (a prank or boon that acts in a fight: raid_crasher).';
-comment on column public.combat_actions.game_day is 'The fight day (the Mountain Time day, hunt_hits.hit_date).';
-comment on column public.combat_actions.round is 'The squad round of the play. Null on a backfilled row.';
-comment on column public.combat_actions.effect is 'The effect: the support effect (empower, expose, heal, shield, stun, weaken, smite) or the prank (raid_crasher).';
-comment on column public.combat_actions.amount is 'The ability amount after potency and the affinity match (support), or the charge amount in % (raid_crasher). Not the damage: the damage is result.value. Null on a backfilled row.';
-comment on column public.combat_actions.target_card is 'The ally card the support targets (heal, shield, empower), else null.';
-comment on column public.combat_actions.target_foe is 'The enemy slot the action targets (later modes), else null.';
-comment on column public.combat_actions.result is 'The applied result. value = the applied value (smite and raid_crasher: the damage in hunt_hits). Support: gained, mirrored (true = no boss damage), countered, scale, matched, aff_count, affinity, cooldown, target_after. raid_crasher: attacker, attack_card, combat_log_id, fallback (true = no owner, the attacker got the credit). backfilled = true: written by damage_log.sql from hunt_hits for damage before the log existed.';
-comment on column public.combat_actions.created_at is 'When the row was written.';
+-- (dungeon_combat_log.sql 2026-10-07 wrote these notes again for the Dungeon and Gauntlet rows: the same text here.)
+comment on table public.combat_actions is $c$[combat] The shared action log of every fight mode. Hunt: one row per support play (hunt_support) and per Hunt Crasher hit (hunt_attack); with hunt_combat_log and hunt_adjustments it traces every point of hunt_hits (hunt_damage_reconcile). Dungeon and Gauntlet (dungeon_combat_log.sql): one row per HP change of a run (attack, lifesteal, support play, enemy action, room reward, rest); dungeon_damage_reconcile traces the run HP. Server only (RLS on, no API grants).$c$;
+comment on column public.combat_actions.id is $c$Row id (also the order of the actions).$c$;
+comment on column public.combat_actions.mode is $c$The fight mode: hunt, dungeon (a daily Dungeon run) or gauntlet (a Gauntlet run). A reader that means one mode must filter it: ref_id values of different modes can be equal.$c$;
+comment on column public.combat_actions.ref_id is $c$The fight: hunts.id for mode hunt, dungeon_runs.id for mode dungeon and gauntlet.$c$;
+comment on column public.combat_actions.player_id is $c$The member who played it (Dungeon and Gauntlet: the run's member, also on enemy rows). For a Hunt Crasher row: the member who gets the credit (the prankster), not the attacker (result.attacker).$c$;
+comment on column public.combat_actions.card_id is $c$The card that acted (the attacker, the support card, the lifesteal card). Null on an enemy row and on a Dungeon reward or rest row. For a Hunt Crasher row: the Raider card that gets the credit in hunt_hits.$c$;
+comment on column public.combat_actions.kind is $c$attack (a Dungeon or Gauntlet attack), support (a support card play), effect (a prank, boon or other effect: raid_crasher, lifesteal, reward_heal, reward_revive, rest) or enemy (a Dungeon or Gauntlet foe acts: the card it hit, or its own heal).$c$;
+comment on column public.combat_actions.game_day is $c$The fight day: the Mountain Time day (hunt_hits.hit_date) for the Hunt, dungeon_runs.day for the Dungeon and the Gauntlet.$c$;
+comment on column public.combat_actions.round is $c$The squad round of the action (Dungeon: the round of the attack or play; an enemy row has the next round, the one the foes act in). Null on a backfilled row and on a Dungeon reward or rest row.$c$;
+comment on column public.combat_actions.effect is $c$The effect: the support effect (empower, expose, heal, shield, stun, weaken, smite, cleanse), the attack ability (Dungeon attack rows, null without one), the prank (raid_crasher), lifesteal, reward_heal, reward_revive, rest, or the enemy action (strike, slam, cataclysm, drain, stun, counter and the other pool moves; area = a Slam or Cataclysm hit on another card; poison, thorns, burn; heal = the foe heals).$c$;
+comment on column public.combat_actions.amount is $c$The ability amount after potency and the affinity match (support), the attack ability amount (Dungeon attack), or the charge amount in % (raid_crasher). Not the damage: the HP change is result.value. Null on a backfilled row and on an enemy, reward or rest row.$c$;
+comment on column public.combat_actions.target_card is $c$The card the action targets: the ally of a support (heal, shield, empower), the card a foe hit (enemy rows), the card a lifesteal, reward or rest healed. Else null.$c$;
+comment on column public.combat_actions.target_foe is $c$The foe slot (0 = the first foe of the room): the foe an attack or a support hit, or the foe that acted (enemy rows). Else null.$c$;
+comment on column public.combat_actions.result is $c$The applied result. Hunt: value = the applied value (smite and raid_crasher: the damage in hunt_hits); support: gained, mirrored (true = no boss damage), countered, scale, matched, aff_count, affinity, cooldown, target_after; raid_crasher: attacker, attack_card, combat_log_id, fallback (true = no owner, the attacker got the credit); backfilled = true: written by damage_log.sql from hunt_hits. Dungeon and Gauntlet: side (card or foe: whose HP changed), dir (dmg, heal or null), value (the HP change after the shield and the HP floor, 0 or more), hp_after, max, floor, room; attack: dmg (the hit before the HP floor), guarded, outcome, crit, double, bonus, resisted, cp; support: applied, until, matched, scale, aff_count, affinity, cooldown, kill; enemy: raw (before the shield), absorbed, move, hits, dot, action; reward and rest: hp_before, revived.$c$;
+comment on column public.combat_actions.created_at is $c$When the row was written.$c$;
 
 notify pgrst, 'reload schema';

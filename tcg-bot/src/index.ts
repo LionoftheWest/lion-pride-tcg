@@ -1,4 +1,4 @@
-import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import { Client, Collection, Events, MessageFlags } from 'discord.js';
 import { config } from './config.js';
 import { loadCommands } from './commands/index.js';
 import { onMessageCreate } from './events/messageCreate.js';
@@ -9,14 +9,13 @@ import { startEffectNotifier } from './effect-notify.js';
 import { startAuctionPosts } from './auction-posts.js';
 import { startVoiceDailies } from './voice-dailies.js';
 import { startDiscordEffects, discordEffectsEnabled, onEffectMessage, onEffectVoice, isVoiceJoin, tick as effectsTick } from './discord-effects.js';
+import { clientOptions, startGuildLog } from './guild-log.js';
 import type { Command } from './types.js';
 
 // GuildMessages lets the bot count activity. MessageContent (a privileged intent, on in the Developer
 // Portal; effects_spread.sql) gives the text of a message: only the Parrot and SpongeBob pranks read it,
-// and only the next message of their target.
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.MessageContent],
-});
+// and only the next message of their target. GuildMembers (privileged) only with FEATURE_GUILD_MEMBERS_INTENT (guild-log.ts).
+const client = new Client(clientOptions());
 
 const commands = new Collection<string, Command>();
 for (const command of await loadCommands()) {
@@ -30,6 +29,7 @@ client.once(Events.ClientReady, (ready) => {
   startAuctionPosts(ready); // an auction start / end picture (flag FEATURE_AUCTION_POSTS)
   startDiscordEffects(ready); // real Discord boons/pranks + their undo (flag FEATURE_DISCORD_EFFECTS)
   startVoiceDailies(ready); // the Dailies voice minutes (flag settings.dailies.enabled, in SQL)
+  startGuildLog(ready); // the server join and leave times (flags FEATURE_GUILD_LOG, FEATURE_GUILD_MEMBERS_INTENT)
 });
 
 // Log, do not crash: one failed Discord call must not stop the bot for everyone.

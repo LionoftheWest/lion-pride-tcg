@@ -2,7 +2,7 @@
 // node --test reports.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { issueFor, cleanContext } from './reports.js';
+import { issueFor, cleanContext, reportTarget } from './reports.js';
 
 const row = { id: 12, kind: 'bug', body: 'The pack froze @everyone <img src=x>\nsecond line', context: { screen: 'home', version: 'abc1234', window: '1288x594', error: 'TypeError: x | y' }, created_at: '2026-10-01T15:14:00Z', player_id: '999999999999999999' };
 
@@ -82,4 +82,16 @@ test('sync: no token means no call at all', async () => {
   let called = false;
   assert.equal(await syncOnce(fakeDb(waiting), { token: '', fetchImpl: async () => { called = true; } }), 0);
   assert.equal(called, false);
+});
+
+test('reportTarget: a Discord id that is not the reporter; anything else is null', () => {
+  assert.equal(reportTarget('777777777777777777', '999999999999999999'), '777777777777777777');
+  assert.equal(reportTarget(' 777777777777777777 ', '1'), '777777777777777777');
+  assert.equal(reportTarget('999999999999999999', '999999999999999999'), null, 'not the reporter');
+  for (const bad of [null, undefined, '', '12', 'abc', "1' or 1=1", 7777777777777777777n]) assert.equal(reportTarget(bad === 7777777777777777777n ? '7'.repeat(25) : bad, '1'), null);
+});
+
+test('the target member never goes into the Issue', () => {
+  const i = issueFor({ ...row, target_id: '888888888888888888' });
+  assert.doesNotMatch(i.title + i.body, /888888888888888888/);
 });

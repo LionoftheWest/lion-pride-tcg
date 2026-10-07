@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (89)
+## Superseded files (90)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -35,10 +35,10 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `dailies_hunt_any.sql` | SUPERSEDED: reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`) |  |
 | `daily_cap_5.sql` | SUPERSEDED: reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `shard_ledger_strict.sql`); reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`) |  |
 | `daily_cap_default.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.dailies_view(text)` (live = `balance_economy.sql`) |  |
-| `dungeon.sql` | SUPERSEDED: reverts `public.dungeon_after_kill(dungeon_runs, jsonb)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_attack(text, bigint, integer)`, which live does not have; reverts `public.dungeon_board(date, integer)` (live = `gauntlet.sql`); reverts `public.dungeon_cfg()` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_day()` (live = `fix_search_path.sql`); brings back `public.dungeon_drop_card(text, integer)`, which live does not have; brings back `public.dungeon_end(bigint, text)`, which live does not have; reverts `public.dungeon_enemy_turn(jsonb, bigint, integer, integer)` (live = `balance_table.sql`); reverts `public.dungeon_enter(jsonb, jsonb, integer, integer)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_generate(date)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_retreat(text)`, which live does not have; reverts `public.dungeon_rules()` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_start(text, bigint[])` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_support(text, bigint, bigint, integer)`, which live does not have; reverts `public.dungeon_view(text)` (live = `balance_settings_numbers.sql`) | a re-run stops at an error today: could not create unique index "dungeon_runs_one_a_day" |
+| `dungeon.sql` | SUPERSEDED: reverts `public.dungeon_after_kill(dungeon_runs, jsonb)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_attack(text, bigint, integer)`, which live does not have; reverts `public.dungeon_board(date, integer)` (live = `gauntlet.sql`); reverts `public.dungeon_cfg()` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_day()` (live = `fix_search_path.sql`); brings back `public.dungeon_drop_card(text, integer)`, which live does not have; brings back `public.dungeon_end(bigint, text)`, which live does not have; reverts `public.dungeon_enemy_turn(jsonb, bigint, integer, integer)` (live = `dungeon_combat_log.sql`); reverts `public.dungeon_enter(jsonb, jsonb, integer, integer)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_generate(date)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_retreat(text)`, which live does not have; reverts `public.dungeon_rules()` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_start(text, bigint[])` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_support(text, bigint, bigint, integer)`, which live does not have; reverts `public.dungeon_view(text)` (live = `balance_settings_numbers.sql`) | a re-run stops at an error today: could not create unique index "dungeon_runs_one_a_day" |
 | `dungeon_chest_odds.sql` | SUPERSEDED: reverts `public.dungeon_chest_rarity(integer)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_enter(jsonb, jsonb, integer, integer)` (live = `balance_settings_numbers.sql`) | a re-run stops at an error today: dungeon_chest_odds.sql: a live function changed since this file was built. Rebuild from the live text. |
 | `dungeon_reward_odds.sql` | SUPERSEDED: brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_offers(jsonb, integer)` (live = `balance_dungeon_numbers.sql`) | a re-run stops at an error today: dungeon_reward_odds.sql: a live function changed since this file was built. Rebuild from the live text. |
-| `dungeon_v2.sql` | SUPERSEDED: reverts `public.dungeon_after_kill(dungeon_runs, jsonb)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_attack(text, bigint, integer)`, which live does not have; brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_enter(jsonb, jsonb, integer, integer)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_generate(date)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_loot(jsonb, integer, bigint)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_make_foe(text, integer, integer, text)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_offers(jsonb, integer)` (live = `balance_dungeon_numbers.sql`); brings back `public.dungeon_retreat(text)`, which live does not have; reverts `public.dungeon_settle(bigint, text, boolean)` (live = `shard_ledger_strict.sql`); reverts `public.dungeon_start(text, bigint[])` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_support(text, bigint, bigint, integer)`, which live does not have; reverts `public.dungeon_tier(double precision)` (live = `balance_dungeon_numbers.sql`); reverts `public.dungeon_view(text)` (live = `balance_settings_numbers.sql`) | changes function grants that lockdown_grants.sql does not put back |
+| `dungeon_v2.sql` | SUPERSEDED: reverts `public.dungeon_after_kill(dungeon_runs, jsonb)` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_attack(text, bigint, integer)`, which live does not have; brings back `public.dungeon_choose(text, integer)`, which live does not have; reverts `public.dungeon_enemy_turn(jsonb, bigint, integer, integer)` (live = `dungeon_combat_log.sql`); reverts `public.dungeon_enter(jsonb, jsonb, integer, integer)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_generate(date)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_loot(jsonb, integer, bigint)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_make_foe(text, integer, integer, text)` (live = `balance_settings_numbers.sql`); reverts `public.dungeon_offers(jsonb, integer)` (live = `balance_dungeon_numbers.sql`); brings back `public.dungeon_retreat(text)`, which live does not have; reverts `public.dungeon_settle(bigint, text, boolean)` (live = `shard_ledger_strict.sql`); reverts `public.dungeon_start(text, bigint[])` (live = `balance_settings_numbers.sql`); brings back `public.dungeon_support(text, bigint, bigint, integer)`, which live does not have; reverts `public.dungeon_tier(double precision)` (live = `balance_dungeon_numbers.sql`); reverts `public.dungeon_view(text)` (live = `balance_settings_numbers.sql`) | changes function grants that lockdown_grants.sql does not put back |
 | `dungeon_v2_fix.sql` | SUPERSEDED: brings back `public.dungeon_attack(text, bigint, integer)`, which live does not have | a re-run stops at an error today: function "public.dungeon_attack(text,bigint,integer)" does not exist |
 | `effects_batch3.sql` | SUPERSEDED: reverts `public.play_card_effect(text, bigint, text)` (live = `balance_economy.sql`); changes table `card_plays`: constraints |  |
 | `effects_batch4.sql` | SUPERSEDED: reverts `public.play_card_effect(text, bigint, text)` (live = `balance_economy.sql`) |  |
@@ -92,6 +92,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `pack_economy.sql` | SUPERSEDED: reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `shard_ledger_strict.sql`); brings back `public.grant_packs(text, integer, text, text)`, which live does not have; brings back `public.grant_packs_all(integer, text, text)`, which live does not have; reverts `public.spend_pack(text)` (live = `pack_ledger_strict.sql`) | changes function grants that lockdown_grants.sql does not put back |
 | `pack_open_batch.sql` | SUPERSEDED: reverts `public.add_cards_to_player(text, bigint[])` (live = `card_ledger.sql`) |  |
 | `playing_posts.sql` | SUPERSEDED: reverts `public.playing_today(text)` (live = `card_decisions.sql`) |  |
+| `prune_old_rows.sql` | SUPERSEDED: reverts `public.prune_old_rows()` (live = `logs_sql.sql`) |  |
 | `pull_feed_source.sql` | SUPERSEDED: reverts `public.accept_trade(bigint, text)` (live = `card_ledger.sql`); reverts `public.add_card_to_player(text, bigint, text)` (live = `card_ledger.sql`); reverts `public.gift_card(text, text, bigint)` (live = `card_ledger.sql`) |  |
 | `roster_stats.sql` | SUPERSEDED: reverts `public.roster_snapshot()` (live = `balance_dungeon_numbers.sql`); reverts `public.roster_stats()` (live = `balance_dungeon_numbers.sql`) |  |
 | `schema.sql` | SUPERSEDED: brings back `public.add_card_to_player(text, bigint)`, which live does not have | a re-run stops at an error today: type "card_rarity" already exists; alone, `create or replace function record_activity(p_playe...` fails: cannot change return type of existing function |
@@ -111,9 +112,11 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 
 These files have a statement that cannot run in a rolled-back transaction. Read them before a re-run.
 
-## A re-run fails today, with no structure change (0)
+## A re-run fails today, with no structure change (1)
 
 A file runs as one transaction, so an error rolls the whole file back.
+
+- `db_comments.sql`: a re-run stops at an error today: syntax error at or near "begin"
 
 ## No structure change, but a re-run writes rows (29)
 
@@ -141,18 +144,18 @@ a one-time grant or a settings value would run again.
 - `hunt_abilities.sql`: subjects
 - `hunt_damage_trace.sql`: hunt_adjustments (DO block)
 - `ledger_reasons.sql`: ledger_reasons
+- `logs_sql.sql`: cron.job
 - `pack_ledger_strict.sql`: daily_claims, pack_ledger
 - `player_reports.sql`: settings
-- `prune_old_rows.sql`: cron.job
 - `raid_makeup_oct1.sql`: give_gift(), hunt_adjustments
 - `screen_pranks_short.sql`: effect_primitives, player_effects, subjects
 - `shard_ledger_strict.sql`: shard_ledger
 - `special_cards_never_in_packs.sql`: cards
 - `ui_v3_flag.sql`: settings
 
-## No change (19)
+## No change (20)
 
-`achievement_rewards.sql`, `admin_read.sql`, `backup_role.sql`, `card_tags.sql`, `combat_core.sql`, `db_comments.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `lockdown_grants.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`
+`achievement_rewards.sql`, `admin_read.sql`, `backup_role.sql`, `card_tags.sql`, `combat_core.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_combat_log.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`
 
 ## Live functions that no file gives (1)
 

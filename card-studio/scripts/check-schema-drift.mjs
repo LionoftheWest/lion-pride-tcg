@@ -6,8 +6,8 @@
  * --live is the weekly drift check after each deploy: it finds a hand change on live, or an old migration
  * that was run again (a function md5 that is not the one in the repo). Every query is a single SELECT on the
  * catalog (assertSelect in schema-snapshot-lib.mjs): no row is read, nothing is written.
- * The local copy has no pg_cron jobs (the dump does not carry them): the local check skips cron-jobs.sql when
- * the database has no jobs. --live always checks it.
+ * The local copy has no real pg_cron jobs (the dump does not carry them): the local check always skips
+ * cron-jobs.sql. --live always checks it.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { makeQ, readCatalog, renderSnapshot, renderCron, readSnapshotDir, compareSnapshots, printDiffs, CRON_FILE } from './schema-snapshot-lib.mjs';
@@ -25,8 +25,10 @@ async function drift({ live = LIVE } = {}) {
   const cat = await readCatalog(makeQ());
   const actual = renderSnapshot(cat);
   let cronNote = '';
-  if (cat.cron.length || live) actual.set(CRON_FILE, renderCron(cat));
-  else { expected.delete(CRON_FILE); cronNote = 'cron jobs: not checked (this database has no pg_cron jobs: the local copy; --live checks them)'; }
+  // Only live has the real pg_cron jobs (the local copy gets none from the clone, and a test or a migration may
+  // schedule one there), so cron-jobs.sql is compared with live only.
+  if (live) actual.set(CRON_FILE, renderCron(cat));
+  else { expected.delete(CRON_FILE); cronNote = 'cron jobs: not checked on the local copy (--live checks them)'; }
   return { diffs: compareSnapshots(expected, actual), cat, cronNote };
 }
 

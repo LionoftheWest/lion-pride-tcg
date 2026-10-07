@@ -24,3 +24,6 @@ alter table public.settings enable row level security;
 grant select on table public.settings to lptcg_backup;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.settings to postgres;
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.settings to service_role;
+
+-- @triggers
+CREATE TRIGGER settings_log_write AFTER INSERT OR DELETE OR UPDATE ON public.settings FOR EACH ROW EXECUTE FUNCTION settings_log_write();

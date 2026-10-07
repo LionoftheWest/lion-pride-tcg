@@ -13,7 +13,7 @@
 -- member did at least one game action on that day that a ledger or a log records with its time:
 --   a pack open or a pack gift sent (pack_ledger opened / gift_sent), a card gift sent, an Ascension or a convert
 --   (card_ledger gift_sent / ascend / convert), a gift claimed in the bell (gift_claims.claimed_at), a Hunt attack
---   (hunt_combat_log), a support play (combat_actions kind support), a squad lock (hunt_squads), a Dungeon or Gauntlet
+--   (hunt_combat_log), a support play (combat_actions mode hunt, kind support), a squad lock (hunt_squads), a Dungeon or Gauntlet
 --   run (dungeon_runs), an effect played (card_plays), a trade action (trade_offers made / countered / answered,
 --   trade_listings), an auction or a bid (auctions, auction_bids), a Shop purchase (shop_purchases), an achievement
 --   claim (achievement_claims), a report (player_reports), a daily claimed in the Activity (daily_claims, not the
@@ -39,7 +39,7 @@ language sql stable security invoker set search_path = public as $$
     union all
     select h.player_id, h.ts, 'hunt' from hunt_combat_log h, b where h.ts >= b.t0 and h.ts < b.t1
     union all
-    select a.player_id, a.created_at, 'hunt' from combat_actions a, b where a.kind = 'support' and a.created_at >= b.t0 and a.created_at < b.t1
+    select a.player_id, a.created_at, 'hunt' from combat_actions a, b where a.mode = 'hunt' and a.kind = 'support' and a.created_at >= b.t0 and a.created_at < b.t1
     union all
     select s.player_id, s.locked_at, 'hunt' from hunt_squads s, b where s.locked_at >= b.t0 and s.locked_at < b.t1
     union all
@@ -79,7 +79,7 @@ language sql stable security invoker set search_path = public as $$
 $$;
 
 comment on function public.admin_active_days(date, date) is
-$c$[admin] The one "active member" rule of the Admin view: one row per (member, game day, source) in the period. game = true for a game action that a ledger or a log records with its time: pack_open and gift_send (pack_ledger opened / gift_sent; card_ledger gift_sent), ascend and convert (card_ledger), gift_claim (gift_claims.claimed_at), hunt (hunt_combat_log, combat_actions kind support, hunt_squads), dungeon and gauntlet (dungeon_runs.started_at), effect (card_plays), trade (trade_offers made, countered or answered; trade_listings), auction (auctions, auction_bids), shop (shop_purchases), achievement (achievement_claims), report (player_reports), daily (daily_claims, not chat and chat_bonus). game = false: chat (daily_activity.message_count > 0) and voice (voice_minutes). A member is active on a day with a game row. Service role only.$c$;
+$c$[admin] The one "active member" rule of the Admin view: one row per (member, game day, source) in the period. game = true for a game action that a ledger or a log records with its time: pack_open and gift_send (pack_ledger opened / gift_sent; card_ledger gift_sent), ascend and convert (card_ledger), gift_claim (gift_claims.claimed_at), hunt (hunt_combat_log, combat_actions mode hunt, kind support, hunt_squads), dungeon and gauntlet (dungeon_runs.started_at), effect (card_plays), trade (trade_offers made, countered or answered; trade_listings), auction (auctions, auction_bids), shop (shop_purchases), achievement (achievement_claims), report (player_reports), daily (daily_claims, not chat and chat_bonus). game = false: chat (daily_activity.message_count > 0) and voice (voice_minutes). A member is active on a day with a game row. Service role only.$c$;
 
 -- ============================================================ shared small helpers
 create or replace function public.admin_period(p_from date, p_to date, p_default_days integer default 7)
@@ -210,9 +210,9 @@ begin
   select jsonb_build_object(
     'hunts', (select count(*) from hunts h where h.opens_at < t1 and h.closes_at >= t0),
     'fighters', (select count(distinct x.player_id) from (select player_id from hunt_combat_log where ts >= t0 and ts < t1
-                   union select player_id from combat_actions where kind = 'support' and created_at >= t0 and created_at < t1) x),
+                   union select player_id from combat_actions where mode = 'hunt' and kind = 'support' and created_at >= t0 and created_at < t1) x),
     'attacks', (select count(*) from hunt_combat_log l where l.ts >= t0 and l.ts < t1),
-    'supports', (select count(*) from combat_actions a where a.kind = 'support' and a.created_at >= t0 and a.created_at < t1),
+    'supports', (select count(*) from combat_actions a where a.mode = 'hunt' and a.kind = 'support' and a.created_at >= t0 and a.created_at < t1),
     'damage', (select coalesce(sum(h.damage), 0) from hunt_hits h where h.hit_date between d0 and d1),
     'prize_packs', (select coalesce(sum(l.amount), 0) from pack_ledger l where l.reason = 'hunt_reward' and l.created_at >= t0 and l.created_at < t1))
   into v_hunt;
@@ -429,7 +429,7 @@ begin
         'hunts', (select count(distinct hunt_id) from hunt_hits where player_id = p_player),
         'damage', (select coalesce(sum(damage), 0) from hunt_hits where player_id = p_player),
         'attacks', (select count(*) from hunt_combat_log where player_id = p_player),
-        'supports', (select count(*) from combat_actions where player_id = p_player and kind = 'support'),
+        'supports', (select count(*) from combat_actions where player_id = p_player and mode = 'hunt' and kind = 'support'),
         'prize_packs', (select coalesce(sum(amount), 0) from pack_ledger where player_id = p_player and reason = 'hunt_reward')),
     'dungeon', (select coalesce(jsonb_agg(jsonb_build_object('mode', mode, 'runs', n, 'best_floor', f, 'shards', s) order by mode), '[]')
                   from (select mode, count(*) n, max(floor) f, sum(shards) s from dungeon_runs where player_id = p_player group by 1) x),
@@ -491,7 +491,7 @@ returns jsonb language sql stable security invoker set search_path = public as $
     union all
     select a.created_at, 'combat:' || a.id, 'combat', a.kind || ' ' || coalesce(a.effect, '') || ' (' || a.mode || ' ' || a.ref_id || ')',
            (a.result->>'value')::numeric, a.mode || ':' || a.ref_id
-      from combat_actions a where a.player_id = p_player
+      from combat_actions a where a.player_id = p_player and a.mode = 'hunt'   -- the Dungeon rows (one per HP change) stay out of the feed: the runs are below
     union all
     select s.locked_at, 'squad:' || s.hunt_id || ':' || s.hit_date, 'squad', 'Hunt squad locked: ' || cardinality(s.card_ids) || ' cards', null, 'hunt:' || s.hunt_id
       from hunt_squads s where s.player_id = p_player
@@ -557,7 +557,7 @@ returns jsonb language sql stable security invoker set search_path = public as $
 $$;
 
 comment on function public.admin_member_timeline(text, timestamp with time zone, integer, text) is
-$c$[admin] The history of one member: ONE feed, newest first, of everything the member did or got: joined (players), pack, card and shard moves (pack_ledger and card_ledger grouped by transaction and ref; shard_ledger), daily claims (daily_claims), gifts made and claimed (gift_claims), Hunt attacks per Hunt day (hunt_combat_log), support and Crasher rows (combat_actions), squads (hunt_squads), admin damage changes (hunt_adjustments), Dungeon runs (dungeon_runs start and end), effects sent and received (card_plays), trades (trade_offers made, countered, ended; trade_listings), auctions and bids (auctions, auction_bids), Shop (shop_purchases), achievements (achievement_claims), reports (player_reports), bell notes (notifications, pruned after 30 to 90 days), chat and voice per day (daily_activity, voice_minutes). Keyset pages: (at, key) below (p_before, p_before_key); next gives the values for the next page (null on the last page). p_limit default 50, max 200. Service role only.$c$;
+$c$[admin] The history of one member: ONE feed, newest first, of everything the member did or got: joined (players), pack, card and shard moves (pack_ledger and card_ledger grouped by transaction and ref; shard_ledger), daily claims (daily_claims), gifts made and claimed (gift_claims), Hunt attacks per Hunt day (hunt_combat_log), support and Crasher rows (combat_actions mode hunt), squads (hunt_squads), admin damage changes (hunt_adjustments), Dungeon runs (dungeon_runs start and end), effects sent and received (card_plays), trades (trade_offers made, countered, ended; trade_listings), auctions and bids (auctions, auction_bids), Shop (shop_purchases), achievements (achievement_claims), reports (player_reports), bell notes (notifications, pruned after 30 to 90 days), chat and voice per day (daily_activity, voice_minutes). Keyset pages: (at, key) below (p_before, p_before_key); next gives the values for the next page (null on the last page). p_limit default 50, max 200. Service role only.$c$;
 
 -- ============================================================ 6. cards
 create or replace function public.admin_cards(p_from date default null, p_to date default null, p_sort text default 'copies', p_limit integer default 50, p_offset integer default 0)
@@ -582,7 +582,7 @@ begin
   hit as (select h.card_id, sum(h.damage) dmg, sum(h.damage) filter (where u.status = 'defeated') dmg_won from hunt_hits h join hunts u on u.id = h.hunt_id
            where h.hit_date between d0 and d1 group by 1),
   tot as (select coalesce(sum(damage), 0) d from hunt_hits where hit_date between d0 and d1),
-  sup as (select card_id, count(*) n from combat_actions where kind = 'support' and created_at >= t0 and created_at < t1 group by 1),
+  sup as (select card_id, count(*) n from combat_actions where mode = 'hunt' and kind = 'support' and created_at >= t0 and created_at < t1 group by 1),
   ply as (select card_id, count(*) n from card_plays where created_at >= t0 and created_at < t1 group by 1),
   r as (
     select k.id, k.name, k.rarity::text rarity, k.subject_id, s.type, k.season, k.in_draw_pool, k.tradeable,
@@ -603,7 +603,7 @@ begin
 end $$;
 
 comment on function public.admin_cards(date, date, text, integer, integer) is
-$c$[admin] Each card (one page, default 50, max 200; sort copies, owners, pulls, trades, attacks, damage, plays or id, descending, then id): copies, owners and stars now (player_cards); in the period (default 30 days): pulls (card_ledger reason pack), trades (card_trades, each side that holds the card), attacks (hunt_combat_log), damage and damage_won (hunt_hits, damage_won in Hunts with status defeated), damage_share (of all hunt_hits damage in the period), supports (combat_actions kind support), plays (card_plays). Service role only.$c$;
+$c$[admin] Each card (one page, default 50, max 200; sort copies, owners, pulls, trades, attacks, damage, plays or id, descending, then id): copies, owners and stars now (player_cards); in the period (default 30 days): pulls (card_ledger reason pack), trades (card_trades, each side that holds the card), attacks (hunt_combat_log), damage and damage_won (hunt_hits, damage_won in Hunts with status defeated), damage_share (of all hunt_hits damage in the period), supports (combat_actions mode hunt, kind support), plays (card_plays). Service role only.$c$;
 
 -- ============================================================ 7. Hunts
 create or replace function public.admin_hunts(p_limit integer default 20, p_offset integer default 0)
@@ -691,6 +691,13 @@ begin
           'members_unexplained', (select count(*) from hunt_damage_reconcile(h.id) r where r.unexplained <> 0),
           'unexplained', (select coalesce(sum(r.unexplained), 0) from hunt_damage_reconcile(h.id) r)) x
           from (select * from hunts order by id desc limit 3) h) y),
+    -- dungeon_combat_log.sql: the HP trace of the last 5 Dungeon / Gauntlet runs started after the log began.
+    'dungeon_runs', (select coalesce(jsonb_agg(x order by (x->>'run')::bigint desc), '[]') from (
+        select jsonb_build_object('run', d.id, 'mode', d.mode, 'status', d.status,
+          'rows_unexplained', (select count(*) from dungeon_damage_reconcile(d.id) r where r.unexplained <> 0),
+          'unexplained', (select coalesce(sum(abs(r.unexplained)), 0) from dungeon_damage_reconcile(d.id) r)) x
+          from (select * from dungeon_runs where started_at >= coalesce((select min(applied_at) from schema_migrations where file = 'dungeon_combat_log.sql'), 'infinity')
+                 order by id desc limit 5) d) y),
     'refs_missing', jsonb_build_object(
         'pack_gift', (select count(*) from pack_ledger l where l.ref_kind = 'gift' and not exists (select 1 from gift_claims g where g.id::text = l.ref_id)),
         'pack_shop', (select count(*) from pack_ledger l where l.ref_kind = 'shop_purchase' and not exists (select 1 from shop_purchases s where s.id::text = l.ref_id)),
@@ -729,7 +736,7 @@ begin
 end $$;
 
 comment on function public.admin_health() is
-$c$[admin] The data health in one call: reconcile (pack_ledger_reconcile, card_ledger_reconcile, shard_ledger_reconcile without the long lists), hunts (hunt_damage_reconcile of the last 3 Hunts: members with unexplained damage), refs_missing (ledger rows whose ref points at no row: gift_claims, shop_purchases, hunts, daily_claims, trade_offers, auctions, dungeon_runs), rows_without_ref (the three ledgers), queues (hunt_events not posted, player_reports not synced, discord_effects pending and failed, card_plays not posted), cron (cron.job with the last cron.job_run_details row and the failures of 7 days; null when pg_cron is absent), database_bytes and the 25 largest tables (pg_class), migrations_last (schema_migrations), balance_last (balance_log). Security definer (owner postgres) for the cron schema and the catalog. Service role only.$c$;
+$c$[admin] The data health in one call: reconcile (pack_ledger_reconcile, card_ledger_reconcile, shard_ledger_reconcile without the long lists), hunts (hunt_damage_reconcile of the last 3 Hunts: members with unexplained damage), dungeon_runs (dungeon_damage_reconcile of the last 5 Dungeon and Gauntlet runs started after dungeon_combat_log.sql: rows and HP unexplained), refs_missing (ledger rows whose ref points at no row: gift_claims, shop_purchases, hunts, daily_claims, trade_offers, auctions, dungeon_runs), rows_without_ref (the three ledgers), queues (hunt_events not posted, player_reports not synced, discord_effects pending and failed, card_plays not posted), cron (cron.job with the last cron.job_run_details row and the failures of 7 days; null when pg_cron is absent), database_bytes and the 25 largest tables (pg_class), migrations_last (schema_migrations), balance_last (balance_log). Security definer (owner postgres) for the cron schema and the catalog. Service role only.$c$;
 
 -- ============================================================ 9. reports
 create or replace function public.admin_report_catalog()

@@ -9,7 +9,7 @@ The daily Dungeon, the weekly Gauntlet, the Shards and the Shop, the achievement
 
 Tables (12): [achievement_claims](#table-achievement-claims), [achievement_switch_map](#table-achievement-switch-map), [achievement_tracks](#table-achievement-tracks), [dungeon_days](#table-dungeon-days), [dungeon_log](#table-dungeon-log), [dungeon_monsters](#table-dungeon-monsters), [dungeon_payouts](#table-dungeon-payouts), [dungeon_runs](#table-dungeon-runs), [gauntlet_weeks](#table-gauntlet-weeks), [shard_ledger](#table-shard-ledger), [shop_purchases](#table-shop-purchases), [shop_stock](#table-shop-stock)
 
-Functions (65): [ach_has_element(jsonb)](#fn-ach-has-element-jsonb), [ach_tag_badges(text)](#fn-ach-tag-badges-text), [ach_tier_need(text,integer)](#fn-ach-tier-need-text-integer), [ach_tier_paid_before(text,text,integer)](#fn-ach-tier-paid-before-text-text-integer), [ach_tier_reward(text,integer)](#fn-ach-tier-reward-text-integer), [ach_track_values(text)](#fn-ach-track-values-text), [ach_tracks_on(text)](#fn-ach-tracks-on-text), [ach_wish_gift()](#fn-ach-wish-gift), [ach_wish_grant(text,text,bigint,text,bigint)](#fn-ach-wish-grant-text-text-bigint-text-bigint), [ach_wish_trade()](#fn-ach-wish-trade), [achievement_gallery(text)](#fn-achievement-gallery-text), [achievement_view(text)](#fn-achievement-view-text), [buy_shop_item(text,text,integer,bigint,integer)](#fn-buy-shop-item-text-text-integer-bigint-integer), [claim_achievement(text,text,integer,text,text)](#fn-claim-achievement-text-text-integer-text-text), [claim_achievement_tiers(text,text)](#fn-claim-achievement-tiers-text-text), [dungeon_after_kill(dungeon_runs,jsonb)](#fn-dungeon-after-kill-dungeon-runs-jsonb), [dungeon_attack(text,bigint,integer,text)](#fn-dungeon-attack-text-bigint-integer-text), [dungeon_board(date,integer)](#fn-dungeon-board-date-integer), [dungeon_card(text,bigint)](#fn-dungeon-card-text-bigint), [dungeon_card_base(bigint)](#fn-dungeon-card-base-bigint), [dungeon_card_of(text)](#fn-dungeon-card-of-text), [dungeon_cfg()](#fn-dungeon-cfg), [dungeon_chest_rarity(integer)](#fn-dungeon-chest-rarity-integer), [dungeon_choose(text,integer,text)](#fn-dungeon-choose-text-integer-text), [dungeon_day()](#fn-dungeon-day), [dungeon_drop_rarity(integer)](#fn-dungeon-drop-rarity-integer), [dungeon_enemy_turn(jsonb,bigint,integer,integer)](#fn-dungeon-enemy-turn-jsonb-bigint-integer-integer), [dungeon_enter(jsonb,jsonb,integer,integer)](#fn-dungeon-enter-jsonb-jsonb-integer-integer), [dungeon_generate(date)](#fn-dungeon-generate-date), [dungeon_log_add(bigint,jsonb,jsonb)](#fn-dungeon-log-add-bigint-jsonb-jsonb), [dungeon_loot(jsonb,integer,bigint)](#fn-dungeon-loot-jsonb-integer-bigint), [dungeon_make_foe(text,integer,integer,text)](#fn-dungeon-make-foe-text-integer-integer-text), [dungeon_offers(jsonb,integer)](#fn-dungeon-offers-jsonb-integer), [dungeon_pay(text,date)](#fn-dungeon-pay-text-date), [dungeon_pick(jsonb,numeric)](#fn-dungeon-pick-jsonb-numeric), [dungeon_prize_tick()](#fn-dungeon-prize-tick), [dungeon_prizes_cfg()](#fn-dungeon-prizes-cfg), [dungeon_rand(text)](#fn-dungeon-rand-text), [dungeon_retreat(text,text)](#fn-dungeon-retreat-text-text), [dungeon_room_foes(text,integer,integer,text)](#fn-dungeon-room-foes-text-integer-integer-text), [dungeon_rules()](#fn-dungeon-rules), [dungeon_run_card(dungeon_runs,bigint)](#fn-dungeon-run-card-dungeon-runs-bigint), [dungeon_run_floors(dungeon_runs)](#fn-dungeon-run-floors-dungeon-runs), [dungeon_settle(bigint,text,boolean)](#fn-dungeon-settle-bigint-text-boolean), [dungeon_settle_stale()](#fn-dungeon-settle-stale), [dungeon_start(text,bigint[])](#fn-dungeon-start-text-bigint), [dungeon_support(text,bigint,bigint,integer,text)](#fn-dungeon-support-text-bigint-bigint-integer-text), [dungeon_tier(double precision)](#fn-dungeon-tier-double-precision), [dungeon_txt(jsonb)](#fn-dungeon-txt-jsonb), [dungeon_view(text)](#fn-dungeon-view-text), [gauntlet_board(date,integer)](#fn-gauntlet-board-date-integer), [gauntlet_cfg()](#fn-gauntlet-cfg), [gauntlet_generate(date)](#fn-gauntlet-generate-date), [gauntlet_pool()](#fn-gauntlet-pool), [gauntlet_squad(date)](#fn-gauntlet-squad-date), [gauntlet_start(text)](#fn-gauntlet-start-text), [gauntlet_view(text)](#fn-gauntlet-view-text), [gauntlet_week(date)](#fn-gauntlet-week-date), [give_shards_gift_all(text,text,integer,text)](#fn-give-shards-gift-all-text-text-integer-text), [grant_shards(text,integer,text,text,text)](#fn-grant-shards-text-integer-text-text-text), [shard_cfg()](#fn-shard-cfg), [shard_ledger_reconcile()](#fn-shard-ledger-reconcile), [shop_day()](#fn-shop-day), [shop_pick_stock(date)](#fn-shop-pick-stock-date), [shop_today(text)](#fn-shop-today-text)
+Functions (69): [ach_has_element(jsonb)](#fn-ach-has-element-jsonb), [ach_tag_badges(text)](#fn-ach-tag-badges-text), [ach_tier_need(text,integer)](#fn-ach-tier-need-text-integer), [ach_tier_paid_before(text,text,integer)](#fn-ach-tier-paid-before-text-text-integer), [ach_tier_reward(text,integer)](#fn-ach-tier-reward-text-integer), [ach_track_values(text)](#fn-ach-track-values-text), [ach_tracks_on(text)](#fn-ach-tracks-on-text), [ach_wish_gift()](#fn-ach-wish-gift), [ach_wish_grant(text,text,bigint,text,bigint)](#fn-ach-wish-grant-text-text-bigint-text-bigint), [ach_wish_trade()](#fn-ach-wish-trade), [achievement_gallery(text)](#fn-achievement-gallery-text), [achievement_view(text)](#fn-achievement-view-text), [buy_shop_item(text,text,integer,bigint,integer)](#fn-buy-shop-item-text-text-integer-bigint-integer), [claim_achievement(text,text,integer,text,text)](#fn-claim-achievement-text-text-integer-text-text), [claim_achievement_tiers(text,text)](#fn-claim-achievement-tiers-text-text), [dungeon_after_kill(dungeon_runs,jsonb)](#fn-dungeon-after-kill-dungeon-runs-jsonb), [dungeon_attack(text,bigint,integer,text)](#fn-dungeon-attack-text-bigint-integer-text), [dungeon_board(date,integer)](#fn-dungeon-board-date-integer), [dungeon_card(text,bigint)](#fn-dungeon-card-text-bigint), [dungeon_card_base(bigint)](#fn-dungeon-card-base-bigint), [dungeon_card_of(text)](#fn-dungeon-card-of-text), [dungeon_cfg()](#fn-dungeon-cfg), [dungeon_chest_rarity(integer)](#fn-dungeon-chest-rarity-integer), [dungeon_choose(text,integer,text)](#fn-dungeon-choose-text-integer-text), [dungeon_combat_log(dungeon_runs,jsonb)](#fn-dungeon-combat-log-dungeon-runs-jsonb), [dungeon_damage_reconcile(bigint)](#fn-dungeon-damage-reconcile-bigint), [dungeon_day()](#fn-dungeon-day), [dungeon_drop_rarity(integer)](#fn-dungeon-drop-rarity-integer), [dungeon_enemy_turn(jsonb,bigint,integer,integer)](#fn-dungeon-enemy-turn-jsonb-bigint-integer-integer), [dungeon_enter(jsonb,jsonb,integer,integer)](#fn-dungeon-enter-jsonb-jsonb-integer-integer), [dungeon_generate(date)](#fn-dungeon-generate-date), [dungeon_hp_changes(jsonb,jsonb,text,integer,integer)](#fn-dungeon-hp-changes-jsonb-jsonb-text-integer-integer), [dungeon_hp_event(text,text,bigint,bigint,integer,integer,text,text,integer,jsonb,jsonb)](#fn-dungeon-hp-event-text-text-bigint-bigint-integer-integer-text-text-integer-jsonb-jsonb), [dungeon_log_add(bigint,jsonb,jsonb)](#fn-dungeon-log-add-bigint-jsonb-jsonb), [dungeon_loot(jsonb,integer,bigint)](#fn-dungeon-loot-jsonb-integer-bigint), [dungeon_make_foe(text,integer,integer,text)](#fn-dungeon-make-foe-text-integer-integer-text), [dungeon_offers(jsonb,integer)](#fn-dungeon-offers-jsonb-integer), [dungeon_pay(text,date)](#fn-dungeon-pay-text-date), [dungeon_pick(jsonb,numeric)](#fn-dungeon-pick-jsonb-numeric), [dungeon_prize_tick()](#fn-dungeon-prize-tick), [dungeon_prizes_cfg()](#fn-dungeon-prizes-cfg), [dungeon_rand(text)](#fn-dungeon-rand-text), [dungeon_retreat(text,text)](#fn-dungeon-retreat-text-text), [dungeon_room_foes(text,integer,integer,text)](#fn-dungeon-room-foes-text-integer-integer-text), [dungeon_rules()](#fn-dungeon-rules), [dungeon_run_card(dungeon_runs,bigint)](#fn-dungeon-run-card-dungeon-runs-bigint), [dungeon_run_floors(dungeon_runs)](#fn-dungeon-run-floors-dungeon-runs), [dungeon_settle(bigint,text,boolean)](#fn-dungeon-settle-bigint-text-boolean), [dungeon_settle_stale()](#fn-dungeon-settle-stale), [dungeon_start(text,bigint[])](#fn-dungeon-start-text-bigint), [dungeon_support(text,bigint,bigint,integer,text)](#fn-dungeon-support-text-bigint-bigint-integer-text), [dungeon_tier(double precision)](#fn-dungeon-tier-double-precision), [dungeon_txt(jsonb)](#fn-dungeon-txt-jsonb), [dungeon_view(text)](#fn-dungeon-view-text), [gauntlet_board(date,integer)](#fn-gauntlet-board-date-integer), [gauntlet_cfg()](#fn-gauntlet-cfg), [gauntlet_generate(date)](#fn-gauntlet-generate-date), [gauntlet_pool()](#fn-gauntlet-pool), [gauntlet_squad(date)](#fn-gauntlet-squad-date), [gauntlet_start(text)](#fn-gauntlet-start-text), [gauntlet_view(text)](#fn-gauntlet-view-text), [gauntlet_week(date)](#fn-gauntlet-week-date), [give_shards_gift_all(text,text,integer,text)](#fn-give-shards-gift-all-text-text-integer-text), [grant_shards(text,integer,text,text,text)](#fn-grant-shards-text-integer-text-text-text), [shard_cfg()](#fn-shard-cfg), [shard_ledger_reconcile()](#fn-shard-ledger-reconcile), [shop_day()](#fn-shop-day), [shop_pick_stock(date)](#fn-shop-pick-stock-date), [shop_today(text)](#fn-shop-today-text)
 
 ## Tables
 
@@ -459,7 +459,7 @@ Internal helper: after a foe falls, adds the kill loot (daily only; balance dung
 - Returns: `jsonb`
 - Security definer: no
 
-POST /api/dungeon/attack: one squad card attacks a foe on the shared combat core, then the foes act. Settles the run when the squad falls, the round cap is reached (balance dungeon.round_cap) or the dungeon is cleared. Returns the hit, the enemy actions and the state.
+POST /api/dungeon/attack: one squad card attacks a foe on the shared combat core, then the foes act. Settles the run when the squad falls, the round cap is reached (balance dungeon.round_cap) or the dungeon is cleared. Writes dungeon_runs, dungeon_log and combat_actions (the attack, a lifesteal and every enemy HP change: dungeon_combat_log). Returns the hit, the enemy actions and the state.
 
 <a id="fn-dungeon-board-date-integer"></a>
 
@@ -529,7 +529,27 @@ Internal helper: rolls the rarity of a chest or reward card of a tier 1-5 (balan
 - Returns: `jsonb`
 - Security definer: no
 
-POST /api/dungeon/choose: takes a room reward, a door or continue, then enters the next room (or the next floor after floor_done). The dark door odds and its rare chest are in balance dungeon_rewards.door. Writes dungeon_runs and dungeon_log. Returns the pick and the state.
+POST /api/dungeon/choose: takes a room reward, a door or continue, then enters the next room (or the next floor after floor_done). The dark door odds and its rare chest are in balance dungeon_rewards.door. Writes dungeon_runs, dungeon_log and combat_actions (the HP a heal or revive reward or a rest room gave each card). Returns the pick and the state.
+
+<a id="fn-dungeon-combat-log-dungeon-runs-jsonb"></a>
+
+### dungeon_combat_log(dungeon_runs,jsonb)
+
+- Function: `dungeon_combat_log(p_run dungeon_runs, p_events jsonb)`
+- Returns: `void`
+- Security definer: no
+
+Internal helper (dungeon_combat_log.sql): writes the HP events of one Dungeon or Gauntlet action as combat_actions rows, in order (mode dungeon or gauntlet from the run, ref_id = the run id, game_day = the run day, result.floor and result.room from the run unless the event has them).
+
+<a id="fn-dungeon-damage-reconcile-bigint"></a>
+
+### dungeon_damage_reconcile(bigint)
+
+- Function: `dungeon_damage_reconcile(p_run bigint)`
+- Returns: `TABLE(side text, floor integer, room integer, card_id bigint, foe integer, hp_start integer, hp_now integer, logged_dmg bigint, logged_heal bigint, unexplained bigint)`
+- Security definer: no
+
+[dungeon] Traces the HP of one Dungeon or Gauntlet run: for each squad card (hp_start = max) and each foe (per floor, room and slot; a foe of an earlier room has hp_now 0), unexplained = (hp_start - hp_now) - (logged_dmg - logged_heal) from combat_actions (result.side, dir, value). It must be 0 for a run that started after dungeon_combat_log.sql; older runs have no rows (no backfill possible). Service role only.
 
 <a id="fn-dungeon-day"></a>
 
@@ -559,7 +579,7 @@ Internal helper: rolls the rarity of a kill drop by floor (balance key dungeon_r
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: the foes' turn after an attack: poison ticks, each living foe acts (combat_pool_act), then thorns and burn hit the attacker. Returns the new state and the actions.
+Internal helper: the foes' turn after an attack: poison ticks, each living foe acts (combat_pool_act), then thorns and burn hit the attacker. Returns the new state, the actions and hp_log (one event per HP change; dungeon_attack writes them to combat_actions).
 
 <a id="fn-dungeon-enter-jsonb-jsonb-integer-integer"></a>
 
@@ -580,6 +600,26 @@ Internal helper: moves a run state into a room. A fight room loads its foes, a r
 - Security definer: no
 
 Internal helper: builds the dungeon of a day once (seeded by settings.dungeon salt; balance dungeon floors and room_weights) and writes dungeon_days. Called by dungeon_start and dungeon_view. Returns the day row as jsonb.
+
+<a id="fn-dungeon-hp-changes-jsonb-jsonb-text-integer-integer"></a>
+
+### dungeon_hp_changes(jsonb,jsonb,text,integer,integer)
+
+- Function: `dungeon_hp_changes(p_before jsonb, p_after jsonb, p_effect text, p_floor integer, p_room integer)`
+- Returns: `jsonb`
+- Security definer: no
+
+Internal helper (dungeon_combat_log.sql): the HP events between two run states, one per card whose hp changed (kind effect, effect p_effect: reward_heal, reward_revive, rest). Used by dungeon_choose.
+
+<a id="fn-dungeon-hp-event-text-text-bigint-bigint-integer-integer-text-text-integer-jsonb-jsonb"></a>
+
+### dungeon_hp_event(text,text,bigint,bigint,integer,integer,text,text,integer,jsonb,jsonb)
+
+- Function: `dungeon_hp_event(p_kind text, p_effect text, p_card bigint, p_target_card bigint, p_target_foe integer, p_round integer, p_side text, p_dir text, p_value integer, p_target jsonb, p_extra jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+Internal helper (dungeon_combat_log.sql): builds one HP event of a Dungeon action as jsonb (kind, effect, card, target_card, target_foe, round, result with side, dir, value, hp_after and max of p_target, plus p_extra). dungeon_combat_log writes it.
 
 <a id="fn-dungeon-log-add-bigint-jsonb-jsonb"></a>
 
@@ -759,7 +799,7 @@ POST /api/dungeon/start: starts today's daily run with the squad (balance dungeo
 - Returns: `jsonb`
 - Security definer: no
 
-POST /api/dungeon/support: a support card uses its ability on an ally or a foe (one support a round, with cooldown). Settles the run when the dungeon is cleared. Returns the effect and the state.
+POST /api/dungeon/support: a support card uses its ability on an ally or a foe (one support a round, with cooldown). Settles the run when the dungeon is cleared. Writes dungeon_runs, dungeon_log and one combat_actions row (kind support). Returns the effect and the state.
 
 <a id="fn-dungeon-tier-double-precision"></a>
 

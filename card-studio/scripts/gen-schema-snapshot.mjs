@@ -49,7 +49,8 @@ if (CRON_LIVE) {
 
 const cat = await readCatalog(q);
 const files = renderSnapshot(cat);
-if (cat.cron.length) files.set(CRON_FILE, renderCron(cat));
+// cron-jobs.sql comes from live only (--cron-from-live): a local copy has no real jobs, and a test or a migration
+// may schedule one there.
 // A removed table or function leaves no old file.
 for (const d of ['tables', 'functions']) if (existsSync(join(OUT, d))) for (const f of readdirSync(join(OUT, d))) if (!files.has(`${d}/${f}`)) unlinkSync(join(OUT, d, f));
 writeChecked(files);

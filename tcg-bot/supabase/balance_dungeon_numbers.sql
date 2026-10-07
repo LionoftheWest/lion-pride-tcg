@@ -17,6 +17,7 @@
 
 -- GUARD (the combat_core.sql rule): each function must be the live text this file was built from, or its result.
 -- balance_settings_numbers.sql (2026-10-07) read the rest room numbers from balance: the second md5 of dungeon_enter is its result (the same text below).
+-- dungeon_combat_log.sql (2026-10-07) added the combat_actions log rows to dungeon_choose: its second md5 is that result (the same text below).
 do $g$
 declare x text[]; m text;
 begin
@@ -27,7 +28,7 @@ begin
     ['dungeon_tier(double precision)', 'd1a32a310b377f27622c31cc1c81a209', 'b62e10111584d651cb4718f9d0488eef'],
     ['dungeon_offers(jsonb,integer)', '96c341db587398eb879b07c969500409', 'd3cf95a36e58db2081ac6a57e63e55a5'],
     ['dungeon_enter(jsonb,jsonb,integer,integer)', '591317f3b1b3ef398d22ff0a4518b788', '69bf76b64a86b3cd1326ca3ebd81925e'],
-    ['dungeon_choose(text,integer,text)', 'd4fae931e80f8ee8879efe0344a06ceb', '44c889d2b1f0aa70c30e4b7531eb9861'],
+    ['dungeon_choose(text,integer,text)', 'd4fae931e80f8ee8879efe0344a06ceb', 'cfac716d1904159c8edbe9be89770ea6'],
     ['roster_stats()', '8b71ebb5d6f90d0beb5fa8383bfa33a4', '79b65ad0a29dcd326061c1b2ef623633'],
     ['roster_snapshot()', '5e356ace0bf874af23716664fe1d6250', '9ebbc5b0d0dae19321f488750dd06d0c']] loop
     select md5(replace(pg_get_functiondef(('public.' || x[1])::regprocedure), chr(13), '')) into strict m;
@@ -228,6 +229,7 @@ CREATE OR REPLACE FUNCTION public.dungeon_choose(p_player text, p_pick integer, 
  SET search_path TO 'public'
 AS $function$
 declare cfg jsonb := dungeon_cfg(); r dungeon_runs; d dungeon_days; st jsonb; o jsonb; k text; c jsonb; v_f int; v_r int; v_card bigint := null; v_to text; rk text; v_t int; v_sh int;
+  v_mid jsonb;   -- dungeon_combat_log.sql: the state after the room reward, before the next room
 begin
   if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
   select * into r from dungeon_runs where player_id = p_player and day = dungeon_day() and status = 'active' and mode = coalesce(p_mode, 'daily') for update;
@@ -239,6 +241,7 @@ begin
     -- The next floor, room 1.
     st := dungeon_enter(st - 'floor_loot', d.floors, r.floor + 1, 1);
     update dungeon_runs set state = st, floor = r.floor + 1, room = 1 where id = r.id;
+    perform dungeon_combat_log(r, dungeon_hp_changes(r.state, st, 'rest', r.floor + 1, 1));   -- dungeon_combat_log.sql: a rest room heals
     perform dungeon_log_add(r.id, '{"kind": "next_floor"}', jsonb_build_object('floor', r.floor + 1));
     return jsonb_build_object('ok', true, 'state', st, 'floor', r.floor + 1, 'room', 1, 'status', 'active');
   end if;
@@ -262,6 +265,7 @@ begin
         'foes', case when v_to in ('elite', 'horde') then dungeon_room_foes(rk, r.floor, r.room, v_to) else '[]'::jsonb end))), 1, 1);
     end if;
     update dungeon_runs set state = st where id = r.id;
+    perform dungeon_combat_log(r, dungeon_hp_changes(r.state, st, 'rest', r.floor, r.room));   -- dungeon_combat_log.sql: a rest door heals
     perform dungeon_log_add(r.id, jsonb_build_object('kind', 'door', 'to', v_to), '{}');
     return jsonb_build_object('ok', true, 'picked', o, 'door', v_to, 'state', st, 'floor', r.floor, 'room', r.room, 'status', 'active');
   end if;
@@ -287,8 +291,11 @@ begin
   if o->>'kind' <> 'continue' then st := st || jsonb_build_object('last_pick', o->>'kind'); end if;
   v_f := r.floor; v_r := r.room + 1;
   if v_r > 5 then v_r := 5; end if;   -- the guardian ends a floor through floor_done, never here
+  v_mid := st;
   st := dungeon_enter(st, d.floors, v_f, v_r);
   update dungeon_runs set state = st, room = v_r where id = r.id;
+  -- dungeon_combat_log.sql: the HP that the room reward (heal, revive) and then a rest room gave each card.
+  perform dungeon_combat_log(r, dungeon_hp_changes(r.state, v_mid, 'reward_' || (o->>'kind'), r.floor, r.room) || dungeon_hp_changes(v_mid, st, 'rest', v_f, v_r));
   perform dungeon_log_add(r.id, jsonb_build_object('kind', 'choose', 'pick', o), jsonb_build_object('card', v_card));
   return jsonb_build_object('ok', true, 'picked', o, 'card', v_card, 'state', st, 'floor', v_f, 'room', v_r, 'status', 'active');
 end $function$;
@@ -356,7 +363,7 @@ comment on function public.roster_stats() is $c$The community card power as JSON
 comment on function public.dungeon_tier(double precision) is $c$Internal helper: turns a number from 0 to 1 into a tier 1 to 5 with the weights balance dungeon_rewards.tier_weights. Used for chest and room-reward tiers.$c$;
 comment on function public.dungeon_offers(jsonb, integer) is $c$Internal helper: draws 3 room rewards to choose from (heal, buff, Shards, card, ward, reset, revive) with tiers. The amounts by tier and the least tiers are in balance dungeon_rewards.offers. The Gauntlet offers no Shards or cards. Returns a jsonb array.$c$;
 comment on function public.dungeon_enter(jsonb, jsonb, integer, integer) is $c$Internal helper: moves a run state into a room. A fight room loads its foes, a rest room heals, a choice room offers doors, a treasure room opens a chest (Shards and card chance from balance dungeon_rewards.chest). Returns the new state.$c$;
-comment on function public.dungeon_choose(text, integer, text) is $c$POST /api/dungeon/choose: takes a room reward, a door or continue, then enters the next room (or the next floor after floor_done). The dark door odds and its rare chest are in balance dungeon_rewards.door. Writes dungeon_runs and dungeon_log. Returns the pick and the state.$c$;
+comment on function public.dungeon_choose(text, integer, text) is $c$POST /api/dungeon/choose: takes a room reward, a door or continue, then enters the next room (or the next floor after floor_done). The dark door odds and its rare chest are in balance dungeon_rewards.door. Writes dungeon_runs, dungeon_log and combat_actions (the HP a heal or revive reward or a rest room gave each card). Returns the pick and the state.$c$;
 comment on column public.roster_power_history.boss_hp_normal is $c$An estimate: roster_boss_hp(deployable_power), balance key boss_hp_estimate (min floor). Not the HP of a real boss.$c$;
 comment on column public.roster_power_history.boss_hp_heroic is $c$An estimate: roster_boss_hp(deployable_power), balance key boss_hp_estimate (min floor). Not the HP of a real boss.$c$;
 comment on column public.roster_power_history.boss_hp_mythic is $c$An estimate: roster_boss_hp(deployable_power), balance key boss_hp_estimate (min floor). Not the HP of a real boss.$c$;
