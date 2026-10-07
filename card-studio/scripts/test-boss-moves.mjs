@@ -21,7 +21,7 @@ let mig = !FILE ? '' : readFileSync(FILE, 'utf8')
 const M = process.env.MUTATE;
 const SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
 const MUT = M === 'guard' ? '' : mutation({
-  nopick: ['public.hunt_counter_pick(bigint,text,date,text,text)', "if random() >= coalesce((v_cfg->>'_share')::numeric, 0.4) then return null; end if;", 'return null;'],
+  nopick: ['public.hunt_counter_pick(bigint,text,date,text,text)', "if random() >= coalesce((v_cfg->p_boss->>'share')::numeric, (v_cfg->>'_share')::numeric, 0.4) then return null; end if;", 'return null;'],
   shatter: ['public.hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)',
     "update hunt_card_hp set shield = 0, updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = p_day and card_id = r.card_id;", 'null;'],
   plague: [SUP, "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 0.1;", "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 1;"],
@@ -166,6 +166,7 @@ begin
 ${caseSQL}
 
   -- 2. The share: a pool of 4 moves at _share 0.4 replaces about 40% of the normal turns (12 bosses x 35 attacks, about 300 normal turns).
+  perform setseed(0.42);   -- a fixed sample: the share check was random (0.309 once, limit 0.31)
   n := 0; i := 0;
   for k in 1..12 loop
     h := pg_temp.mk('', '[]');
