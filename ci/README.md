@@ -55,7 +55,9 @@ A PR that changes no file in scope passes G1, and G3 does not run.
 - The browser clock is set to the recording time (time zone America/Denver), so countdowns and the Hunt state stay the same.
 - 6 CI jobs for each browser (Chromium, WebKit): `--shard k/6` gives each job every 6th cell, so all jobs together run
   every cell. The verdict job merges the `g3-*` artifacts. Each job runs 4 cells at a time (`--workers 4`), each cell in
-  its own browser context. One job for each browser took 76 min for 764 cells (2026-10-07).
+  its own browser context. One job for each browser took 76 min for 764 cells; 6 shards took 22 min (PR #267, 2026-10-07).
+- Time limits: the browser install has 8 min for each try and 2 tries (it hung once for 1 h 49 min), the Install step
+  20 min, and a shard job 45 min.
 - Each step waits until the screen is ready (fonts loaded, no loading placeholder, no running animation, the page
   unchanged for 0.75 s), not a fixed time. `UI_CHECK_WAIT=fixed` gives the fixed waits of the audit walkthrough back.
   `compare.mjs <dirA> <dirB>` compares two runs cell by cell.

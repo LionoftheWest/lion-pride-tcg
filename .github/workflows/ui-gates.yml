@@ -80,7 +80,8 @@ jobs:
     needs: plan
     if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # A shard takes 10-22 min (2026-10-07). A hung job stops at 45 min, not 120.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -99,11 +100,18 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('ci/ui-check/package-lock.json') }}
+      # The browser install hung once for 1 h 49 min (2026-10-07): 8 min for each try, 2 tries, 20 min for the step.
       - name: Install
+        timeout-minutes: 20
         run: |
           npm ci --prefix tcg-activity --no-audit --no-fund
           npm ci --prefix ci/ui-check --no-audit --no-fund
-          (cd ci/ui-check && npx playwright install --with-deps ${{ matrix.browser }})
+          cd ci/ui-check
+          for t in 1 2; do
+            timeout 480 npx playwright install --with-deps ${{ matrix.browser }} && break
+            [ "$t" = 2 ] && exit 1
+            echo "playwright install: try $t failed or timed out; one more try"
+          done
       - name: Build the client (SDK stub, fixtures)
         run: node ci/ui-check/build.mjs
       - name: Run the screens
