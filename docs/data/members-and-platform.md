@@ -7,9 +7,9 @@ Members, the Dailies, the bell notes, reports, the balance numbers, the flags an
 
 ## Contents
 
-Tables (11): [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [notifications](#table-notifications), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [voice_minutes](#table-voice-minutes)
+Tables (12): [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [voice_minutes](#table-voice-minutes)
 
-Functions (28): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_economy()](#fn-balance-check-economy), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [notify_all(text,text)](#fn-notify-all-text-text), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
+Functions (29): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [balance_check()](#fn-balance-check), [balance_check_economy()](#fn-balance-check-economy), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_all(text,text)](#fn-notify-all-text-text), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
 
 ## Tables
 
@@ -91,6 +91,29 @@ Table. [players-economy] One row per daily task claimed by a member on a game da
 - Foreign keys: 
   - `daily_claims_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: none
+- Row level security: on. Policies: none
+
+<a id="table-ledger-reasons"></a>
+
+### ledger_reasons
+
+Table. [players-economy] The allowed reasons of the three ledgers (pack_ledger, card_ledger, shard_ledger), one row each, with its meaning. Each ledger has a foreign key (ledger, reason) to this table, and a trigger (ledger_reason_guard) refuses a new row with an unknown or retired reason. Add a reason: insert one row with its note before code writes it. A new pack reason that counts to the daily cap must also go into earned_today().
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `ledger` | text | not null |  | The ledger: pack (pack_ledger), card (card_ledger) or shard (shard_ledger). A pack gift (gift_claims) uses the pack reasons. |
+| `reason` | text | not null |  | The reason value that the ledger rows hold (lower case, digits and _). |
+| `note` | text | not null |  | What the reason means: what the move is, which function writes it and its ref (ref_kind, ref_id). |
+| `status` | text | not null | `'active'::text` | active: writers use it. reserved: a planned feature with no writer yet (new rows are accepted). retired: old rows only, a new row is refused (ledger_reason_guard). Retire a reason only when no writer and no waiting gift (gift_claims) uses it. |
+| `added_on` | date | not null | `CURRENT_DATE` | The day the row was added to this table. The seed (ledger_reasons.sql) has 2026-10-07; a seeded reason can be older. |
+
+- Primary key: `PRIMARY KEY (ledger, reason)`
+- Foreign keys: none
+- Check constraints: 
+  - `ledger_reasons_ledger_check`: `CHECK ((ledger = ANY (ARRAY['pack'::text, 'card'::text, 'shard'::text])))`
+  - `ledger_reasons_note_check`: `CHECK ((length(btrim(note)) > 0))`
+  - `ledger_reasons_reason_check`: `CHECK ((reason ~ '^[a-z][a-z0-9_]*$'::text))`
+  - `ledger_reasons_status_check`: `CHECK ((status = ANY (ARRAY['active'::text, 'reserved'::text, 'retired'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-notifications"></a>
@@ -445,6 +468,16 @@ Puts one pack gift in the bell of a member (a gift_claims row). Returns its id, 
 - Security definer: no
 
 Puts the same pack gift in the bell of every member (gift_claims rows). Returns the number of gifts made. The bot /grantall calls it.
+
+<a id="fn-ledger-reason-guard"></a>
+
+### ledger_reason_guard()
+
+- Function: `ledger_reason_guard()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger on pack_ledger, card_ledger, shard_ledger and the pack gifts of gift_claims: a new row (or a changed reason) needs a reason in ledger_reasons with status active or reserved. Else check_violation (the old check error class).
 
 <a id="fn-notify-all-text-text"></a>
 

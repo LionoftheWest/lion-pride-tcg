@@ -109,18 +109,19 @@ Table. [players-economy] One row per change of a member's copies of a card (play
 | `player_id` | text | not null |  | The member (players.id) whose copies changed. |
 | `card_id` | bigint | not null |  | The card (cards.id). |
 | `amount` | integer | not null |  | The change in copies: positive = copies added, negative = copies removed. Never 0. |
-| `reason` | text | not null |  | Why (card_ledger_reason_check lists the allowed values): opening_balance (the seed: copies received before the ledger); pack (open_packs); test_pack (a tester open with no pack spent, the bot openTestPacks); gift_sent / gift_received (member card gifts); event (an event or launch card gift claimed in the bell); trade (accept_trade, both sides); auction (confirm_bid, both sides); shop (a card of the day); convert (copies turned into Shards); ascend (copies spent on a star); dungeon_loot (cards from a Dungeon run); dungeon_prize (Dungeon / Gauntlet board prizes); admin (a move with no known source). |
+| `reason` | text | not null |  | Why: a card reason in ledger_reasons (its note gives the meaning). Foreign key card_ledger_reason_check; a new row needs an active or reserved reason (ledger_reason_guard). |
 | `ref_kind` | text | not null |  | The kind of source row: opening (ref_id = 'card_ledger.sql'), open (pack_ledger.ref_id of the open), test_open (one tester open), gift (gift_claims.id), trade_offer (trade_offers.id), auction (auctions.id), shop_card (shop_purchases of the member, ref_id = '<day>:<slot>'), shard_ledger (shard_ledger.id of the convert), ascension (ref_id = '<card>:<star reached>'), dungeon_run (dungeon_runs.id), dungeon_payout (dungeon_payouts, ref_id = '<mode>:<period>'), tx (an admin move: ref_id = the transaction id). |
 | `ref_id` | text | not null |  | The id of the source row (see ref_kind), as text. |
 | `created_at` | timestamp with time zone | not null | `now()` | When the row was written (the transaction time, the same as the source row). Seed rows: the first copy (opening_balance), the Shards row (convert), the migration (ascend). |
+| `ledger` | text | null | `'card'::text` | Always 'card' (a stored generated constant): the first column of the foreign key (ledger, reason) -> ledger_reasons. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
   - `card_ledger_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE`
   - `card_ledger_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
+  - `card_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
 - Check constraints: 
   - `card_ledger_amount_check`: `CHECK ((amount <> 0))`
-  - `card_ledger_reason_check`: `CHECK ((reason = ANY (ARRAY['opening_balance'::text, 'pack'::text, 'test_pack'::text, 'gift_sent'::text, 'gift_received'::text, 'event'::text, 'trade'::text, 'auction'::text, 'shop'::text, 'convert'::text, 'ascend'::text, 'dungeon_loot'::text, 'dungeon_prize'::text, 'admin'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-card-trades"></a>
@@ -191,20 +192,21 @@ Table. [players-economy] Gifts that wait in a member's bell until they claim the
 | `kind` | text | not null |  | The gift type: card (a card gift) or a pack/Shards label such as member_gift, new_player, launch_day, promo, once_<name>. new_player, launch_day and once_ kinds are once per member (unique indexes). |
 | `title` | text | not null |  | The text that the bell shows for the gift. A card gift uses the card name. |
 | `amount` | integer | not null |  | The packs paid on claim (0 to 999). A card gift holds 1 (one card). |
-| `reason` | text | not null | `'gift_received'::text` | A pack gift: the pack_ledger reason that claim_gift writes (gift_claims_pack_reason_check). A card gift: member_gift (claimed as gift_received) or an event key such as event:launch_player (claimed as event, once per member). |
+| `reason` | text | not null | `'gift_received'::text` | The pack_ledger reason used when the gift is claimed. A pack gift needs an active or reserved pack reason in ledger_reasons (foreign key gift_claims_pack_reason_check, ledger_reason_guard). |
 | `from_id` | text | null |  | The member who sent the gift (players.id), or null for a game gift. |
 | `created_at` | timestamp with time zone | not null | `now()` | Time the gift was made. |
 | `claimed_at` | timestamp with time zone | null |  | Time the member claimed the gift in the bell, or null while it waits. claim_gift sets it. |
 | `card_id` | bigint | null |  | The card of a card gift (cards.id), else null. |
 | `shards` | integer | not null | `0` | The Shards paid on claim (0 to 100000). claim_gift pays them with grant_shards reason event. |
+| `reason_ledger` | text | null | ` CASE     WHEN ((kind <> 'card'::text) AND (amount <> 0)) THEN 'pack'::text     ELSE NULL::text END` | 'pack' for a pack gift (kind <> 'card' and amount <> 0), else null (generated). With reason, the foreign key to ledger_reasons: a pack gift must have a pack reason. Null skips the key. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
   - `gift_claims_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (card_id) REFERENCES cards(id)`
+  - `gift_claims_pack_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (reason_ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
   - `gift_claims_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
   - `gift_claims_amount_check`: `CHECK (((amount >= 0) AND (amount <= 999) AND ((shards >= 0) AND (shards <= 100000)) AND ((amount > 0) OR (shards > 0) OR (kind = 'card'::text))))`
-  - `gift_claims_pack_reason_check`: `CHECK (((kind = 'card'::text) OR (amount = 0) OR (reason = ANY (ARRAY['opened'::text, 'gift_sent'::text, 'gift_received'::text, 'welcome'::text, 'launch_gift'::text, 'raid_makeup_oct1'::text, 'bug_reward'::text, 'admin'::text, 'event'::text, 'tutorial'::text, 'achievement'::text, 'shop'::text, 'hunt_reward'::text, 'dungeon_prize'::text, 'boon'::text, 'earned_checkin'::text, 'earned_streak'::text, 'earned_hunt'::text, 'earned_voice'::text, 'earned_social'::text, 'earned_dungeon'::text, 'earned_gauntlet'::text, 'earned_daily'::text, 'earned_bonus'::text]))))`
 - Row level security: on. Policies: none
 
 <a id="table-pack-ledger"></a>
@@ -218,17 +220,18 @@ Table. [players-economy] One row per change of a member's pack balance (players.
 | `id` | bigint | not null |  | Row id. |
 | `player_id` | text | not null |  | The member (players.id) whose balance changed. |
 | `amount` | integer | not null |  | The change in packs: positive = packs added, negative = packs used (opened) or given away (gift_sent). |
-| `reason` | text | not null |  | Why (pack_ledger_reason_check lists the allowed values): opened; gift_sent / gift_received (member gifts); welcome, launch_gift, raid_makeup_oct1, bug_reward, admin, event (gifts claimed in the bell); tutorial; achievement; shop; hunt_reward; dungeon_prize; boon (a pack boon card); earned_checkin, earned_streak, earned_hunt, earned_voice, earned_social, earned_dungeon, earned_gauntlet (claim_daily), earned_daily, earned_bonus (the chat dailies). The earned_ reasons count to the daily cap (earned_today()). |
+| `reason` | text | not null |  | Why: a pack reason in ledger_reasons (its note gives the meaning). Foreign key pack_ledger_reason_check; a new row needs an active or reserved reason (ledger_reason_guard). The earned_ reasons count to the daily cap (earned_today()). |
 | `granted_by` | text | null |  | The other member in the move, or null: the gift sender (gift_received), the gift receiver (gift_sent), the boon caster (boon), the admin who gave a promo or launch gift. Before pack_ledger_strict.sql it also held achievement keys; those are now in ref_id. |
 | `created_at` | timestamp with time zone | not null | `now()` | When the row was written (the transaction time, the same as the source row). |
 | `ref_kind` | text | null |  | The kind of source row (null only for an old row that could not be matched): gift (gift_claims.id), daily_claim (daily_claims, ref_id = '<day>:<task>'), achievement (achievement_claims.key), shop_purchase (shop_purchases.id), hunt (hunts.id), dungeon_payout (dungeon_payouts, ref_id = '<mode>:<period>'), open (one pack open; ref_id = the open id, the same for the packs of one open), tutorial (ref_id = 'complete'), player (ref_id = a member id: the boon caster). |
 | `ref_id` | text | null |  | The id of the source row (see ref_kind), as text. |
+| `ledger` | text | null | `'pack'::text` | Always 'pack' (a stored generated constant): the first column of the foreign key (ledger, reason) -> ledger_reasons. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
   - `pack_ledger_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
-- Check constraints: 
-  - `pack_ledger_reason_check`: `CHECK ((reason = ANY (ARRAY['opened'::text, 'gift_sent'::text, 'gift_received'::text, 'welcome'::text, 'launch_gift'::text, 'raid_makeup_oct1'::text, 'bug_reward'::text, 'admin'::text, 'event'::text, 'tutorial'::text, 'achievement'::text, 'shop'::text, 'hunt_reward'::text, 'dungeon_prize'::text, 'boon'::text, 'earned_checkin'::text, 'earned_streak'::text, 'earned_hunt'::text, 'earned_voice'::text, 'earned_social'::text, 'earned_dungeon'::text, 'earned_gauntlet'::text, 'earned_daily'::text, 'earned_bonus'::text])))`
+  - `pack_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
+- Check constraints: none
 - Row level security: on. Policies: none
 
 <a id="table-player-cards"></a>
