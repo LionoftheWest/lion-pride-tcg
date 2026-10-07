@@ -52,3 +52,7 @@ tcg-activity/preview/
 
 # --- The G3 UI check: build and run output (ci/ui-check) ---
 ci/ui-check/.out/
+
+# --- card-studio/pack-art: the pack model stays local until its source and license are recorded ---
+# (cardpack2.fbx + optional_NORMAL.png; see card-studio/pack-art/README.md section 6)
+card-studio/pack-art/model/
