@@ -91,12 +91,12 @@ create table if not exists public.dungeon_log (
 alter table public.dungeon_log enable row level security;
 
 -- The game day (mt_clock.sql).
-create or replace function public.dungeon_day() returns date language sql stable as $$ select (now() at time zone 'America/Denver')::date; $$;
+create or replace function public.dungeon_day() returns date language sql stable set search_path = public as $$ select (now() at time zone 'America/Denver')::date; $$;
 
 -- The unlock gate is adventure_gate() (adventure_gate.sql, applied first).
 
 -- The daily rules (one is drawn each day). types = allowed card types (always with an attacker type).
-create or replace function public.dungeon_rules() returns jsonb language sql immutable as $$
+create or replace function public.dungeon_rules() returns jsonb language sql immutable set search_path = public as $$
   select jsonb_build_array(
     jsonb_build_object('name', 'Creatures and Items only', 'note', 'Heroes, Spells and Memes stay home today.', 'types', jsonb_build_array('Creature', 'Item')),
     jsonb_build_object('name', 'Characters and Moments only', 'note', 'Only people and big moments today.', 'types', jsonb_build_array('Character', 'Moment')),
@@ -110,7 +110,7 @@ create or replace function public.dungeon_rules() returns jsonb language sql imm
 $$;
 
 -- A seeded draw in 0..1 from a text key (stable for the day; never the session random state).
-create or replace function public.dungeon_rand(p_key text) returns numeric language sql immutable as $$
+create or replace function public.dungeon_rand(p_key text) returns numeric language sql immutable set search_path = public as $$
   select (('x' || substr(md5(p_key), 1, 8))::bit(32)::bigint & 2147483647)::numeric / 2147483647;
 $$;
 
@@ -187,7 +187,7 @@ language sql stable set search_path = public as $$
   where pc.player_id = p_player and pc.card_id = p_card and pc.quantity > 0;
 $$;
 
-create or replace function public.dungeon_txt(p jsonb) returns text[] language sql immutable as $$
+create or replace function public.dungeon_txt(p jsonb) returns text[] language sql immutable set search_path = public as $$
   select coalesce(array(select jsonb_array_elements_text(coalesce(p, '[]'::jsonb))), '{}');
 $$;
 

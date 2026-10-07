@@ -36,7 +36,7 @@ create or replace function public.dungeon_day()
  returns date
  language sql
  stable
-as $function$ select public.game_day(); $function$;
+set search_path = public as $function$ select public.game_day(); $function$;
 
 create or replace function public.shop_day()
  returns date

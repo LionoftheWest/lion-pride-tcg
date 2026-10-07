@@ -16,7 +16,7 @@ alter table subjects add column if not exists tag_slugs text[] not null default 
 -- (origin, genre, realm, traits) contributes one slug per element. The `traits`
 -- facet uses the singular prefix `trait` for readability.
 create or replace function subjects_flatten_tags() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = public as $$
 declare
   v text[] := '{}';
   facet text;

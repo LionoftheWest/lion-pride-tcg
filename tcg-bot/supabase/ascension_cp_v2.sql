@@ -14,7 +14,7 @@ update subjects
 -- still resolve). Dropping first avoids an overload ambiguity.
 drop function if exists card_power(text, int);
 create or replace function card_power(p_rarity text, p_ascension int, p_mod numeric default 1.0)
-returns int language sql immutable as $$
+returns int language sql immutable set search_path = public as $$
   select round(
     (case p_rarity
        when 'normal'           then 10

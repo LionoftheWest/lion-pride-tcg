@@ -90,7 +90,7 @@ alter table public.dungeon_payouts enable row level security;
 
 -- ---- Helpers ---------------------------------------------------------------------------------------------
 -- The Sunday of a day's week.
-create or replace function public.gauntlet_week(p_day date) returns date language sql immutable as $$
+create or replace function public.gauntlet_week(p_day date) returns date language sql immutable set search_path = public as $$
   select p_day - extract(dow from p_day)::int;
 $$;
 

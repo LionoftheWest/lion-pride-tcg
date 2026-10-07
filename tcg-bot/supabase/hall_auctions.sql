@@ -82,7 +82,7 @@ returns integer language sql set search_path to 'public' as $$
 $$;
 
 create or replace function public.rarity_rank(p text)
-returns int language sql immutable as $$
+returns int language sql immutable set search_path = public as $$
   select case p when 'normal' then 0 when 'illustrated_rare' then 1 when 'secret_rare' then 2 when 'promo' then 2
                 when 'full_art' then 3 when 'event' then 3 when 'gold' then 4 else 0 end;
 $$;
