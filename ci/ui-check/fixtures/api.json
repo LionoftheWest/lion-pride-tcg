@@ -4421,7 +4421,7 @@
       "can_ascend": false,
       "image_url": "/api/img/storage/v1/object/public/card-art/cards/30-dantucker-pings-normal.png?v=1790135660116",
       "artist": null,
-      "lore": "@TheDanTucker",
+      "lore": "@tst_member_a",
       "season": "Season 1",
       "event": null,
       "tradeable": true,
@@ -16973,7 +16973,7 @@
       "season": "Season 1",
       "event": null,
       "artist": null,
-      "lore": "@TheDanTucker",
+      "lore": "@tst_member_a",
       "power": 10,
       "cp_mod": 1,
       "sid": 201,
@@ -28135,7 +28135,7 @@
      {
       "id": 1176,
       "kind": "trade_counter",
-      "message": "🔄 Bonzo picked a card for your trade! Accept to swap.",
+      "message": "🔄 Misty picked a card for your trade! Accept to swap.",
       "read": true,
       "created_at": "2026-10-01T21:37:04.495354+00:00"
      },
