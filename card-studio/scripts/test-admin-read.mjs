@@ -107,6 +107,10 @@ begin
   -- A: week 2, a prank on B
   insert into card_plays (player_id, target_id, aimed_at, card_id, subject_id, primitive, kind, rarity, amount, outcome, created_at)
     values ('${A}', '${B}', '${B}', z, (select subject_id from cards where id = z), prim, 'prank', 'normal', 1, 'applied', ${mt('2026-03-10 13:00')});
+  -- A: week 2, a Dungeon run that ends with 5 Shards
+  insert into dungeon_runs (player_id, day, squad, state, floor, room, turns, status, ended_by, shards, mode, started_at, ended_at)
+    values ('${A}', '2026-03-11', array[z], '{}', 2, 3, 9, 'over', 'fell', 5, 'daily', ${mt('2026-03-11 19:00')}, ${mt('2026-03-11 19:20')}) returning id into i;
+  insert into shard_ledger (player_id, amount, reason, ref_kind, ref_id, created_at) values ('${A}', 5, 'dungeon', 'run', i::text, ${mt('2026-03-11 19:20')});
   update players p set pack_balance = (select coalesce(sum(amount), 0) from pack_ledger l where l.player_id = p.id),
                        shard_balance = (select coalesce(sum(amount), 0) from shard_ledger l where l.player_id = p.id) where p.id like 'tst_admin_%';
 
@@ -145,9 +149,10 @@ begin
 
   -- ---------------------------------------------------------------- A3 economy
   o := admin_economy('2026-03-02', '2026-03-15', 'week');
-  res := res || jsonb_build_object('case', 'A3 supply per week = ledger sums; ratios week 1', 'ok',
-    o->'supply' = '[{"t":"2026-03-02","packs_held":18,"copies_held":11,"shards_held":10},{"t":"2026-03-09","packs_held":18,"copies_held":11,"shards_held":10}]'
+  res := res || jsonb_build_object('case', 'A3 supply per week = ledger sums; ratios', 'ok',
+    o->'supply' = '[{"t":"2026-03-02","packs_held":18,"copies_held":11,"shards_held":10},{"t":"2026-03-09","packs_held":18,"copies_held":11,"shards_held":15}]'
     and (o->'ratios'->0->>'open_earn')::numeric = 0.1 and (o->'ratios'->0->>'spend_earn')::numeric = 0.75 and o->'ratios'->1->'open_earn' = 'null'
+    and (o->'ratios'->1->>'spend_earn')::numeric = 0 and o->'ratios'->1->'shards_earned' = '5'
     and (select (e->>'in')::int = 10 from jsonb_array_elements(o->'series'->'pack') e where e->>'reason' = 'welcome'), 'got', o - 'series');
   begin perform admin_economy('2026-03-02', '2026-03-15', 'month'); ok := false; exception when others then ok := sqlerrm like '%p_bucket%'; end;
   res := res || jsonb_build_object('case', 'A3 an unknown bucket is refused', 'ok', ok);
@@ -159,9 +164,9 @@ begin
     and (select jsonb_agg(e->'username') from jsonb_array_elements(o2->'rows') e) = '["tst admin two"]', 'got', jsonb_build_object('p1', o->'rows', 'p2', o2->'rows'));
   o := admin_members('tst_admin', 'last_active', 50, 0);
   e := o->'rows'->0;
-  res := res || jsonb_build_object('case', 'A4 last_active order (A 03-10, B 03-04, C never) and the row of A', 'ok',
+  res := res || jsonb_build_object('case', 'A4 last_active order (A 03-11, B 03-04, C never) and the row of A', 'ok',
     (select jsonb_agg(r->'id') from jsonb_array_elements(o->'rows') r) = '["${A}","${B}","${C}"]'
-    and e->'last_active' = '"2026-03-10"' and e->'packs' = '10' and e->'shards' = '10' and e->'copies' = '10' and e->'unique_cards' = '10'
+    and e->'last_active' = '"2026-03-11"' and e->'packs' = '10' and e->'shards' = '15' and e->'copies' = '10' and e->'unique_cards' = '10'
     and e->'hunts' = '1' and e->'hunt_damage' = '600' and o->'rows'->2->'last_active' = 'null', 'got', o->'rows');
   begin perform admin_members(null, 'bogus', 5, 0); ok := false; exception when others then ok := sqlerrm like '%unknown sort%'; end;
   res := res || jsonb_build_object('case', 'A4 an unknown sort is refused', 'ok', ok);
@@ -169,21 +174,23 @@ begin
   -- ---------------------------------------------------------------- A5 one member
   o := admin_member('${A}');
   res := res || jsonb_build_object('case', 'A5 member A: balances = ledger sums, collection, activity, Hunt, trading', 'ok',
-    o->'balances'->'packs' = '10' and o->'balances'->'pack_ledger_sum' = '10' and o->'balances'->'shards' = '10' and o->'balances'->'shard_ledger_sum' = '10'
+    o->'balances'->'packs' = '10' and o->'balances'->'pack_ledger_sum' = '10' and o->'balances'->'shards' = '15' and o->'balances'->'shard_ledger_sum' = '15'
     and o->'balances'->'packs_opened' = '2' and o->'collection'->'unique_cards' = '10' and o->'collection'->'pulls' = '10' and o->'collection'->'pulls_rare_plus' = '2'
     and o->'collection'->'by_rarity' = '[{"rarity":"normal","unique":8,"copies":8},{"rarity":"illustrated_rare","unique":2,"copies":2}]'
-    and o->'activity'->'first_active' = '"2026-03-02"' and o->'activity'->'last_active' = '"2026-03-10"' and o->'activity'->'active_days' = '4'
+    and o->'activity'->'first_active' = '"2026-03-02"' and o->'activity'->'last_active' = '"2026-03-11"' and o->'activity'->'active_days' = '5'
+    and o->'dungeon' = '[{"mode":"daily","runs":1,"best_floor":2,"shards":5}]'
     and o->'activity'->'chat_days' = '1' and o->'hunt' = '{"hunts":1,"damage":600,"attacks":3,"supports":0,"prize_packs":3}'
     and o->'effect_plays'->'sent' = '1' and o->'trading'->'swaps' = '1' and o->'reports'->'by_count' = '0', 'got', o - 'profile');
   res := res || jsonb_build_object('case', 'A5 an unknown member gives found false', 'ok', admin_member('tst_admin_none') = '{"found":false,"player":"tst_admin_none"}');
 
   -- ---------------------------------------------------------------- A6 the timeline
   full_list := admin_member_timeline('${A}', null, 200)->'rows';
-  res := res || jsonb_build_object('case', 'A6 timeline of A: 21 rows from 12 kinds, newest first', 'ok',
-    jsonb_array_length(full_list) = 21
-    and (select jsonb_agg(distinct r->>'kind') from jsonb_array_elements(full_list) r) = '["card","chat","daily","effect_sent","gift","gift_claim","hunt","joined","pack","shard","shop","trade"]'
+  res := res || jsonb_build_object('case', 'A6 timeline of A: 24 rows from 14 kinds, newest first', 'ok',
+    jsonb_array_length(full_list) = 24
+    and (select jsonb_agg(distinct r->>'kind') from jsonb_array_elements(full_list) r) = '["card","chat","daily","dungeon","dungeon_over","effect_sent","gift","gift_claim","hunt","joined","pack","shard","shop","trade"]'
     and (select bool_and(((full_list->(i - 1))->>'at')::timestamptz >= ((full_list->i)->>'at')::timestamptz) from generate_series(1, jsonb_array_length(full_list) - 1) i)
-    and full_list->0->>'kind' = 'effect_sent' and full_list->20->>'kind' = 'joined'
+    and full_list->2->>'kind' = 'dungeon' and full_list->23->>'kind' = 'joined'
+    and (select (r->>'amount')::int = 5 from jsonb_array_elements(full_list) r where r->>'kind' = 'dungeon_over')
     and (select (r->>'amount')::int = 600 from jsonb_array_elements(full_list) r where r->>'kind' = 'hunt'), 'got', full_list);
   paged := '[]'; cur := null; n := 0;
   loop
@@ -191,7 +198,7 @@ begin
     paged := paged || (o->'rows'); cur := o->'next'; n := n + 1;
     exit when cur is null or cur = 'null'::jsonb or n > 20;
   end loop;
-  res := res || jsonb_build_object('case', 'A6 keyset pages of 4 join to the full list (6 pages, no gap, no repeat)', 'ok', paged = full_list and n = 6, 'pages', n,
+  res := res || jsonb_build_object('case', 'A6 keyset pages of 4 join to the full list (6 full pages + 1 empty, no gap, no repeat)', 'ok', paged = full_list and n = 7, 'pages', n,
     'got', (select jsonb_agg(r->'key') from jsonb_array_elements(paged) r));
   o := admin_member_timeline('${B}', null, 200);
   res := res || jsonb_build_object('case', 'A6 timeline of B: gift made and claimed, welcome packs, gift sent, effect received, voice (12 rows)', 'ok',
@@ -269,7 +276,7 @@ begin
      {"week":"2026-03-09","size":1,"weeks":[{"week":0,"active":0,"share":0},{"week":1,"active":0,"share":0},{"week":2,"active":0,"share":0},{"week":3,"active":0,"share":0}]}]', 'got', o->'cohorts');
   res := res || jsonb_build_object('case', 'A10 churn and feature reach', 'ok',
     (o->'churn') - 'previous_period' = '{"active_previous":0,"active_now":2,"kept":0,"churned":0,"churn_rate":null,"new_active":2,"returned":0}'
-    and o->'feature_reach' = '{"active":2,"features":[{"feature":"dailies","members":1,"share":0.5},{"feature":"effects","members":1,"share":0.5},{"feature":"gifts","members":2,"share":1},{"feature":"hunt","members":2,"share":1},{"feature":"packs","members":1,"share":0.5},{"feature":"shop","members":1,"share":0.5},{"feature":"trades","members":2,"share":1}]}'
+    and o->'feature_reach' = '{"active":2,"features":[{"feature":"dailies","members":1,"share":0.5},{"feature":"dungeon","members":1,"share":0.5},{"feature":"effects","members":1,"share":0.5},{"feature":"gifts","members":2,"share":1},{"feature":"hunt","members":2,"share":1},{"feature":"packs","members":1,"share":0.5},{"feature":"shop","members":1,"share":0.5},{"feature":"trades","members":2,"share":1}]}'
     and o->'new_by_week' = '[{"week":"2026-03-02","new":2},{"week":"2026-03-09","new":1}]', 'got', jsonb_build_object('c', o->'churn', 'f', o->'feature_reach', 'w', o->'new_by_week'));
   begin perform admin_growth('2026-03-09', '2026-03-02'); ok := false; exception when others then ok := sqlerrm like '%after p_to%'; end;
   res := res || jsonb_build_object('case', 'A10 p_from after p_to is refused', 'ok', ok);

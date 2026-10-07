@@ -62,7 +62,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `hunt_boss_moves.sql` | SUPERSEDED: reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `balance_table.sql`); reverts `public.spawn_hunt(integer, text)` (live = `effect_start_spawn_settle.sql`) | a re-run stops at an error today: hunt_boss_moves.sql: the live hunt_support changed since this file was built. Rebuild from the live text. |
 | `hunt_combat_log.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`) |  |
 | `hunt_combat_v2.sql` | SUPERSEDED: reverts `public.card_max_hp(integer)` (live = `balance_table.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `damage_log.sql`) |  |
-| `hunt_cron.sql` | SUPERSEDED: schedules cron job `spawn-weekly-boss`, which live does not have; schedules cron job `nudge-weekly-boss`, which live does not have; schedules cron job `close-weekly-boss`, which live does not have |  |
+| `hunt_cron.sql` | SUPERSEDED: schedules cron job `spawn-weekly-boss`, which live does not have; schedules cron job `nudge-weekly-boss`, which live does not have; schedules cron job `close-weekly-boss`, which live does not have | a re-run stops at an error today: dependent privileges exist |
 | `hunt_early_boss.sql` | SUPERSEDED: reverts `public.spawn_hunt(integer, text)` (live = `effect_start_spawn_settle.sql`) |  |
 | `hunt_hp_deployable.sql` | SUPERSEDED: reverts `public.deployable_power(integer)` (live = `balance_table.sql`); reverts `public.roster_snapshot()` (live = `balance_dungeon_numbers.sql`); reverts `public.roster_stats()` (live = `balance_dungeon_numbers.sql`); brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_hp_roster_power.sql` | SUPERSEDED: brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
@@ -149,9 +149,9 @@ a one-time grant or a settings value would run again.
 - `special_cards_never_in_packs.sql`: cards
 - `ui_v3_flag.sql`: settings
 
-## No change (18)
+## No change (19)
 
-`achievement_rewards.sql`, `backup_role.sql`, `card_tags.sql`, `combat_core.sql`, `db_comments.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `lockdown_grants.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`
+`achievement_rewards.sql`, `admin_read.sql`, `backup_role.sql`, `card_tags.sql`, `combat_core.sql`, `db_comments.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `lockdown_grants.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`
 
 ## Live functions that no file gives (1)
 

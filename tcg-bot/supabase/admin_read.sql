@@ -501,7 +501,7 @@ returns jsonb language sql stable security invoker set search_path = public as $
     union all
     select r.started_at, 'run:' || r.id, 'dungeon', initcap(r.mode) || ' run started', null, 'dungeon_run:' || r.id from dungeon_runs r where r.player_id = p_player
     union all
-    select r.ended_at, 'run_end:' || r.id, 'dungeon_end', initcap(r.mode) || ' run ended (' || coalesce(r.ended_by, '?') || ', floor ' || r.floor || ', room ' || r.room || ')', r.shards,
+    select r.ended_at, 'run_end:' || r.id, 'dungeon_over', initcap(r.mode) || ' run ended (' || coalesce(r.ended_by, '?') || ', floor ' || r.floor || ', room ' || r.room || ')', r.shards,
            'dungeon_run:' || r.id
       from dungeon_runs r where r.player_id = p_player and r.ended_at is not null
     union all
