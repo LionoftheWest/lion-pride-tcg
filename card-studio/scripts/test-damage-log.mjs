@@ -133,12 +133,15 @@ begin
              and (v_ca.result->>'value')::int = k and rec.unexplained = 0, false), 'crashed', k, 'delta', v_after - v_before, 'row', to_jsonb(v_ca), 'rec', to_jsonb(rec));
 
   -- 6. A manual change of hunt_hits (+100), and a Crasher-style row with no log row (+40): both unexplained.
-  update hunt_hits set damage = damage + 100 where hunt_id = h and player_id = '${P}' and card_id = atk[1] and hit_date = v_day;
+  --    Change a row that exists: a fixed card can have no row (random combat), and then the update changes nothing.
+  update hunt_hits set damage = damage + 100 where ctid = (select ctid from hunt_hits where hunt_id = h and player_id = '${P}' order by damage desc limit 1);
+  get diagnostics n = row_count;
   select * into rec from hunt_damage_reconcile(h) where player_id = '${P}';
-  res := res || jsonb_build_object('case', 'I6 a manual +100 on hunt_hits shows unexplained 100', 'ok', coalesce(rec.unexplained = 100, false), 'row', to_jsonb(rec));
+  res := res || jsonb_build_object('case', 'I6 a manual +100 on hunt_hits shows unexplained 100', 'ok', coalesce(n = 1 and rec.unexplained = 100, false), 'updated', n, 'row', to_jsonb(rec));
   update hunt_hits set damage = damage + 40 where hunt_id = h and player_id = '${S}' and card_id = cr and hit_date = v_day;
+  get diagnostics n = row_count;
   select * into rec from hunt_damage_reconcile(h) where player_id = '${S}';
-  res := res || jsonb_build_object('case', 'I6 a Raider-card credit with no log row shows unexplained 40 (no special case)', 'ok', coalesce(rec.unexplained = 40, false), 'row', to_jsonb(rec));
+  res := res || jsonb_build_object('case', 'I6 a Raider-card credit with no log row shows unexplained 40 (no special case)', 'ok', coalesce(n = 1 and rec.unexplained = 40, false), 'updated', n, 'row', to_jsonb(rec));
 
   -- 7. The backfill: an ended Hunt with old Smite and Crasher damage and no log rows. Running the file adds one proven
   --    row each, the reconcile is 0, and a second run adds nothing. hunt_attack stays identical (md5).
