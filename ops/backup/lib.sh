@@ -23,7 +23,7 @@ alert() {
 # Reads the WHOLE dump with pg_restore and prints "<table> <rows>" for each table with data.
 # (COPY text has one line per row: a newline inside a value is written as \n.)
 dump_counts() {
-  $DOCKER run --rm --user "$(id -u):$(id -g)" -v "$1:/run/lptcg.dump:ro" "$PG_IMAGE" pg_restore --data-only -f - /run/lptcg.dump \
+  $DOCKER run --rm --user "$(id -u):$(id -g)" -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro -e HOME=/tmp -v "$1:/run/lptcg.dump:ro" "$PG_IMAGE" pg_restore --data-only -f - /run/lptcg.dump \
     | awk '/^COPY public\./ { split($2, a, "."); t = a[2]; gsub(/"/, "", t); n = 0; inside = 1; next }
            inside && /^\\\.$/ { print t, n; inside = 0; next }
            inside { n++ }'
