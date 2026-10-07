@@ -520,6 +520,11 @@ function bustUser(userId) { collCache.delete(userId); ownedCache.delete(userId);
 
 // The card-effect columns exist only after card_effects.sql (see effects.js flags).
 const EFFECT_COLS = EFFECTS_SCHEMA ? ', id, effect' : '';
+// The set of a card and its number in the set (card_sets.sql, D-83: the card shows "S1 · #014").
+// Additive fields: set_id, set_code, set_number. The UI does not read them yet.
+// The foreign key is named: card_sets also points at cards (cover_card_id), so a plain embed is ambiguous.
+const SET_COLS = 'set_id, set_number, card_set:card_sets!cards_set_id_fkey(code)';
+const setFields = (c) => ({ set_id: c?.set_id ?? null, set_code: c?.card_set?.code ?? null, set_number: c?.set_number ?? null });
 
 // Step 2: the caller's own collection.
 app.get('/api/collection', async (req, res) => {
@@ -530,7 +535,7 @@ app.get('/api/collection', async (req, res) => {
   if (cached && Date.now() - cached.at < COLL_TTL) return res.json(cached.payload);
   const [{ data, error }, pw] = await Promise.all([supabase
     .from('player_cards')
-    .select(`quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS}))`)
+    .select(`quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, ${SET_COLS}, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS}))`)
     .eq('player_id', me.id),
   supabase.rpc('card_powers', { p_player: String(me.id) })]); // power + HP of each copy (SQL: the one CP source)
   if (error || pw.error) return res.status(500).json({ error: (error || pw.error).message });
@@ -559,6 +564,7 @@ app.get('/api/collection', async (req, res) => {
       artist: row.card?.artist_credit,
       lore: row.card?.lore,
       season: row.card?.season || 'Season 1',
+      ...setFields(row.card),
       event: row.card?.event || null,
       tradeable: row.card?.tradeable !== false,
       subject: row.card?.subject?.name,
@@ -1352,7 +1358,7 @@ async function getCatalogBase() {
     // Every card (selectAll: a plain read stops at 1,000 rows).
     const { data, error } = await selectAll(() => supabase
       .from('cards')
-      .select(`id, sid:subject_id, name, rarity, image_url, season, event, artist_credit, lore, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS})`), ['id']);
+      .select(`id, sid:subject_id, name, rarity, image_url, season, event, artist_credit, lore, ${SET_COLS}, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS})`), ['id']);
     const pw = error ? null : await supabase.rpc('card_powers', { p_player: null }); // 0-star power + HP (SQL)
     if (error || pw.error) { if (catalogCache) return catalogCache.cards; throw new Error((error || pw.error).message); }
     const base = pw.data || {};
@@ -1362,6 +1368,7 @@ async function getCatalogBase() {
       rarity: c.rarity,
       image_url: toProxyImg(c.image_url),
       season: c.season || 'Season 1',
+      ...setFields(c),
       event: c.event || null,
       artist: c.artist_credit,
       lore: c.lore,
@@ -1588,15 +1595,20 @@ app.post('/api/open', async (req, res) => {
   // 1, 5 or 10 packs at once (Nathan: "in increments of 1x, 5x, 10x"); the bot stops
   // early if the balance runs out. Cards the member did not own before get isNew.
   const count = [1, 5, 10].includes(Number(req.body?.count)) ? Number(req.body.count) : 1;
+  // The set the member chose (card_sets.sql, D-80): optional. No set = every pullable set, the same
+  // request to the bot as before; a set the bot refuses comes back as 400 set_not_pullable.
+  const set = req.body?.set == null ? undefined : String(req.body.set);
+  if (set !== undefined && !/^[A-Z0-9]{1,8}$/.test(set)) return res.status(400).json({ error: 'set_not_pullable' });
   try {
     const { data: before } = await supabase.from('player_cards').select('card_id').eq('player_id', me.id);
     const had = new Set((before || []).map((r) => r.card_id));
     const r = await fetch(`${BOT_INTERNAL_URL}/open`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-internal-token': INTERNAL_TOKEN },
-      body: JSON.stringify({ userId: me.id, username: me.global_name || me.username, count }),
+      body: JSON.stringify({ userId: me.id, username: me.global_name || me.username, count, ...(set !== undefined ? { set } : {}) }),
     });
     const data = await r.json();
+    if (r.status === 400 && data?.error === 'set_not_pullable') return res.status(400).json({ error: 'set_not_pullable' });
     if (!r.ok) return res.status(502).json({ error: data?.error || 'open failed' });
     const seen = new Set();
     const packs = (data.packs || []).map((pack) => pack.map((c) => {
@@ -1616,6 +1628,21 @@ app.post('/api/open', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
+});
+
+// The sets a pack can open from (card_sets.sql, D-80 to D-90), for the coming Open screen. One database call
+// for any number of sets (pullable_sets is one SQL statement). Each set: id, name, code, released_at, is_new
+// (D-89), cards (what a pack of the set can give), owned (how many of them the caller has), cover_card_id +
+// cover_image_url (D-86, a card of the set), pack_color + pack_art_url (D-90). last_set: the set to preselect
+// (D-85: the caller's last opened set, else the newest pullable set).
+app.get('/api/sets', async (req, res) => {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const me = await whoAmI(token, clientIp(req));
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const { data, error } = await supabase.rpc('pullable_sets', { p_player: String(me.id) });
+  if (error) return res.status(500).json({ error: error.message });
+  const sets = (data?.sets || []).map((s) => ({ ...s, cover_image_url: s.cover_image_url ? toProxyImg(s.cover_image_url) : null }));
+  res.json({ sets, last_set: data?.last_set ?? null });
 });
 
 // How many packs the caller has waiting — so the UI shows Open Pack only when

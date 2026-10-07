@@ -16,7 +16,9 @@
  *   The Gauntlet (gauntlet.sql): gcost gpool gtheme gchar gseed (the weekly squad), gtreasure gdoors goffers gloot
  *     gsettle (no loot), gbase gmode (base cards, each action finds its own run), gdaily gbest (the boards),
  *     godds gonce gtick gflag (the prizes and the flags), gguard (the live-version guard).
- *   dailypacks (dungeon_prizes_daily.sql): the daily Dungeon prizes give packs again.
+ *   dailypacks (balance key dungeon_prizes, read by dungeon_pay through dungeon_prizes_cfg since balance_economy.sql):
+ *     the daily 1st prize gives packs again. (dungeon_prizes_daily.sql only writes settings.dungeon_prizes, which the
+ *     balance key overrides, so a mutation of that file can no longer fail.)
  * Env: CORE, GATE, MIG, MIG2, MIG3, MIG4, MIG5, MIG6, MIG7 = other paths for combat_core.sql, adventure_gate.sql, dungeon.sql,
  *      dungeon_v2.sql, dungeon_v2_fix.sql, dungeon_chest_odds.sql, dungeon_reward_odds.sql, gauntlet.sql, dungeon_prizes_daily.sql.
  */
@@ -104,8 +106,10 @@ const MUT6 = {   // gauntlet.sql
   gtick: ["if not coalesce((pz->>'enabled')::boolean, false) then return", "if false then return"],
   gflag: ["or not coalesce((gauntlet_cfg()->>'enabled')::boolean, false) then", "then"],
 };
-const MUT7 = {   // dungeon_prizes_daily.sql
-  dailypacks: ['[{"shards":300},{"shards":200}', '[{"shards":300,"packs":2},{"shards":200}'],
+const MUT7 = {};  // dungeon_prizes_daily.sql (superseded by balance key dungeon_prizes: see BMUT)
+// Balance mutations: a statement that changes one balance value after the files (the mechanism is the value).
+const BMUT = {
+  dailypacks: `update public.balance set value = jsonb_set(value, '{daily,0,packs}', '2') where key = 'dungeon_prizes';`,
 };
 const MUT6G = { gguard: ["if m not in (x[2], x[3]) then raise", "if false then raise"] };   // the guard (section 17, the file as shipped)
 const M = process.env.MUTATE;
@@ -115,7 +119,8 @@ if (M) {
   const files = [['mig', MUT1], ['mig2', MUT2], ['mig3', MUT3], ['mig4', MUT4], ['mig5', MUT5], ['mig6', MUT6], ['mig7', MUT7]];
   const V = { mig, mig2, mig3, mig4, mig5, mig6, mig7 };
   const at = files.findIndex(([, T]) => T[M]);
-  if (GMUT[M]) gate = apply(gate, GMUT[M]);
+  if (BMUT[M]) { /* runs after the files (below) */ }
+  else if (GMUT[M]) gate = apply(gate, GMUT[M]);
   else if (MUT6G[M]) mig6full = apply(mig6full, MUT6G[M]);
   else if (at >= 0) {
     const mm = files[at][1][M];
@@ -141,6 +146,7 @@ begin
   execute $m$${mig5}$m$;
   execute $m$${mig6}$m$;
   execute $m$${mig7}$m$;
+  ${M && BMUT[M] ? `execute $m$${BMUT[M]}$m$;   -- the balance mutation ${M}` : '-- (no balance mutation)'}
   v_day := dungeon_day();
   -- The stun card (it was card 93; card abilities change, so it is looked up).
   select min(c.id) into stn from cards c join subjects s on s.id = c.subject_id where c.rarity = 'normal' and s.ability->>'effect' = 'stun';

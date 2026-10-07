@@ -155,7 +155,7 @@ Table. One row per note in the bell of a member. notify_player (the Activity, th
 | `message` | text | not null |  | The text that the bell shows. |
 | `read` | boolean | not null | `false` | True after the member opened the bell (the Activity /api/notifications/read sets all to true). |
 | `created_at` | timestamp with time zone | not null | `now()` | When the note was made. The bell shows the newest 30. |
-| `read_at` | timestamp with time zone | null |  | Time the member read the note: the bell sets it with read = true (POST /api/notifications/read, the Activity, flag FEATURE_APP_LOGS). Null = not read, or read before this column existed. |
+| `read_at` | timestamp with time zone | null |  | When the member read the note. Null = unread, or read before the write path existed (the column came 2026-10-07; the Activity write path is a separate change). |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
@@ -204,7 +204,7 @@ Table. One row per Bug, Feedback or Idea report that a member sent with the wren
 | `synced_at` | timestamp with time zone | null |  | When the Issue was made. Null = the report waits for the sync. |
 | `attempts` | integer | not null | `0` | The failed sync attempts. The sync stops after 8. |
 | `last_error` | text | null |  | The error of the last failed sync (at most 300 characters). Null after a good sync. |
-| `target_id` | text | null |  | The member that the report is about (players.id), or null. The report form sends it (optional); the Activity checks that the member exists. The GitHub Issue never shows it. |
+| `target_id` | text | null |  | The member that the report is about (players.id), else null. Null when that member row is deleted. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 

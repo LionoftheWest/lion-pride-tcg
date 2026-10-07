@@ -5,9 +5,9 @@ import {
   type PullTable,
   type Rarity,
   drawPack,
-  groupByRarity,
   pullTable,
 } from './draw.js';
+import { loadDrawPool, openPacksArgs } from './draw-pool.js';
 
 /** A card as stored in the database. */
 export interface Card {
@@ -19,6 +19,8 @@ export interface Card {
   artist_credit: string | null;
   lore: string | null;
   subject_name?: string | null;
+  set_id?: string; // card_sets.sql: the set and the number in it ("S1 · #014", D-83)
+  set_number?: number;
 }
 
 /** The result of opening earned packs. */
@@ -190,38 +192,31 @@ async function takeLuck(id: string): Promise<number | null> {
  * 100 players opening 10 at once waited 38 s (pressure test, 2026-09-28). Stops where the
  * balance runs out. The spend and the cards are one transaction, so a failure loses no pack.
  */
-export async function openPacks(id: string, username: string, count: number): Promise<Card[][]> {
+export async function openPacks(id: string, username: string, count: number, setId?: string): Promise<Card[][]> {
   await ensurePlayer(id, username);
-  const pool = await getDrawPool();
+  // No set: every pullable set, as before. A set: only its cards; a set that is not pullable throws first.
+  const pool = await getDrawPool(setId);
   if (pool.normal.length === 0) throw new Error('The card pool is empty. Add at least one Normal draw card with /seed first.');
   // A Lucky Pull boon goes on the first pack, and only when at least one pack can open.
   const table = await pulls(); // before the luck is used up: a balance error must not spend the boon
   const luck = count > 0 && (await getPackBalance(id).catch(() => 0)) > 0 ? await takeLuck(id) : null;
   const packs = Array.from({ length: count }, (_, i) => drawPack(pool, table, Math.random, i === 0 ? luck : null));
-  const { data, error } = await getSupabase().rpc('open_packs', {
-    p_player_id: id, p_cards: packs.flat().map((c) => c.id), p_size: table.pack_size,
-  });
+  const { data, error } = await getSupabase().rpc('open_packs', openPacksArgs(id, packs.flat().map((c) => c.id), table.pack_size, setId));
   if (error) throw new Error(`open_packs failed: ${error.message}`);
   return packs.slice(0, Number(data) || 0);
 }
 
-/** Load every draw-pool card, grouped by rarity, ready for a pack draw. Cached
- * 60s — the pool changes only when cards are added/removed, but it was re-queried
- * on EVERY open (one wasted round-trip per pack). */
-let drawPoolCache: { at: number; pool: Record<Rarity, Card[]> } | null = null;
+/** Load the draw-pool cards (draw-pool.ts: every pullable set, or one set), grouped by rarity, ready
+ * for a pack draw. Cached 60s per set — the pool changes only when cards are added/removed, but it
+ * was re-queried on EVERY open (one wasted round-trip per pack). */
+const drawPoolCache = new Map<string, { at: number; pool: Record<Rarity, Card[]> }>();
 const DRAW_POOL_TTL = 60_000;
-async function getDrawPool(): Promise<Record<Rarity, Card[]>> {
+async function getDrawPool(setId?: string): Promise<Record<Rarity, Card[]>> {
   const now = Date.now();
-  if (drawPoolCache && now - drawPoolCache.at < DRAW_POOL_TTL) return drawPoolCache.pool;
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('cards')
-    .select('id, name, rarity, source, image_url, artist_credit, lore')
-    .eq('in_draw_pool', true)
-    .eq('source', 'draw');
-  if (error) throw new Error(`getDrawPool failed: ${error.message}`);
-  const pool = groupByRarity((data ?? []) as Card[]);
-  drawPoolCache = { at: now, pool };
+  const hit = drawPoolCache.get(setId ?? '');
+  if (hit && now - hit.at < DRAW_POOL_TTL) return hit.pool;
+  const pool = await loadDrawPool(getSupabase(), setId);
+  drawPoolCache.set(setId ?? '', { at: now, pool });
   return pool;
 }
 
@@ -246,10 +241,11 @@ export async function openTestPacks(
   id: string,
   username: string,
   count: number,
+  setId?: string,
 ): Promise<OpenResult> {
   await ensurePlayer(id, username);
 
-  const pool = await getDrawPool();
+  const pool = await getDrawPool(setId);
   if (pool.normal.length === 0) {
     throw new Error(
       'The card pool is empty. Add at least one Normal draw card with /seed first.',

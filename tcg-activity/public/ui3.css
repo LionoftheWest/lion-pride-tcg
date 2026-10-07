@@ -137,7 +137,7 @@ body[data-size="compact-port"] .u3-tab { flex: 1 1 0; }  /* compact-port: the ta
 .u3-seg__item { display: inline-flex; align-items: center; gap: var(--sp-1-5); height: var(--chip-md); padding: 0 var(--sp-2); border-radius: var(--rad-sm);
   color: var(--text-muted); font-size: var(--fs-caption); font-weight: var(--fw-caption); white-space: nowrap; }
 .u3-seg__item.is-active { color: var(--text-primary); background: var(--surface-3); }
-body[data-input="coarse"] .u3-seg__item { height: var(--hit); }
+body[data-input="coarse"] :is(.u3-seg__item, .u3-tab) { height: var(--hit); }
 @media (hover: hover) { .u3-seg__item:hover:not(.is-active) { color: var(--text-secondary); } }
 
 /* ---- Panel, Tile, StatBox (5.2) ---- */
@@ -266,3 +266,166 @@ body[data-input="coarse"] :is(.u3-search__input, .u3-textarea) { font-size: var(
 .u3-pip.is-off { background: var(--surface-3); }
 .u3-pip--bronze { --u3-t: var(--tier-bronze); } .u3-pip--silver { --u3-t: var(--tier-silver); } .u3-pip--platinum { --u3-t: var(--tier-platinum); }
 .u3-pip--diamond { --u3-t: var(--tier-diamond); } .u3-pip--obsidian { --u3-t: var(--tier-obsidian); }
+
+/* ==== The v3 shell (UI-01 top bar and dock, UI-02 sub-tab row, UI-42 Shards and Shop, UI-60 menu grid) ====
+   Only under body.ui-v3 (src/ui3/shell.js). The v2 rules on the same elements stay for everyone else; these rules
+   win by specificity (body.ui-v2.ui-v3[data-size] beats the v2 phone-layout classes). The layout variables of the
+   v2 screens (--topbar-h, --dock-h) take the v3 sizes, so every screen fits the new shell. */
+/* --u3-bar = the top bar. --u3-row = the sub-tab row under it (with its gap). --topbar-h (the v2 screens' layout
+   variable) is the bar, plus the row when the view has one, so a screen's fit code measures only its own space.
+   --u3-sa-* = the safe frame (2.3): the v2 phone values, else none. --u3-pad = the side padding of #body. */
+body.ui-v2.ui-v3[data-size] { --u3-none: calc(var(--sp-1) * 0); --u3-sa-t: var(--sa-t, var(--u3-none)); --u3-sa-r: var(--sa-r, var(--u3-none));
+  --u3-sa-b: var(--sa-b, var(--u3-none)); --u3-sa-l: var(--sa-l, var(--u3-none)); --u3-pad: var(--sp-5);
+  --u3-bar: calc(var(--ctl-icon) + var(--sp-4) * 2); --u3-tab: var(--tab-h); --u3-row-gap: var(--sp-3);
+  --u3-row: calc(var(--u3-tab) + var(--sp-1) * 2 + var(--bw-1) * 2 + var(--u3-row-gap));
+  --topbar-h: var(--u3-bar); --dock-h: var(--dock-size); }
+body.ui-v2.ui-v3[data-size="compact-land"] { --u3-bar: calc(var(--hit) + var(--sp-1) * 2); --u3-tab: var(--chip-md); --u3-row-gap: var(--sp-2);
+  --u3-pad: var(--sp-3); --dock-h: var(--dock-size-compact); }
+/* Portrait: the controls keep below the Discord corner zone (2.3, G-013), so the bar has more vertical padding. */
+body.ui-v2.ui-v3[data-size="compact-port"] { --u3-bar: calc(var(--hit) + var(--sp-3) * 2); --u3-pad: var(--sp-2); --dock-h: var(--dock-size-compact); }
+body.ui-v2.ui-v3[data-size][data-input="coarse"] { --u3-tab: var(--hit); }   /* 9.1: a 44 px hit area on touch */
+/* The views with sub-tabs keep the row space from the start: the v2 code moves the tabs into the row after the view
+   paints (subtabs.js), and a later change of --topbar-h would make the fitted grids overflow. */
+body.ui-v2.ui-v3[data-size]:where([data-view="collection"], [data-view="battling"], [data-view="dungeon"], [data-view="trading"], :has(#main > .v2-subtabs)) { --topbar-h: calc(var(--u3-bar) + var(--u3-row)); }
+/* 2.3: on a touch phone in portrait with no Discord inset yet, guess the top (the v2 code guesses only landscape). */
+body.ui-v2.ui-v3[data-size="compact-port"].m-sa-guess[data-input="coarse"] { --sa-t: var(--sa-guess-top); }
+
+:root { --u3-text-muted: var(--text-muted); }   /* the token value; ui-v2.css keeps the old value on body until each screen PR */
+/* The shell areas use the token muted color (4.66:1), not the old v2 value (3.7:1). */
+body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs) { --text-muted: var(--u3-text-muted); }
+
+/* tiny (Discord picture-in-picture, 2.1): no top bar, sub-tab row, dock or menu (D-06, 7.1). The small live view
+   (UI-59) is a later screen PR. */
+body.ui-v2.ui-v3[data-size][data-size="tiny"] { --topbar-h: var(--u3-none); --dock-h: var(--u3-none); }
+body.ui-v2.ui-v3[data-size][data-size="tiny"] :is(#topbar, #dock, #main > .v2-subtabs, #u3MenuHost) { display: none; }
+
+/* The keyboard is open (body[data-kb], size-class.js): the dock stays, so every function stays on screen (P1). */
+body.ui-v2.ui-v3[data-size][data-kb] #dock { display: flex; }
+
+/* ---- Top bar (UI-01, D-31): logo, then Shards, Shop, bell, Menu, avatar ---- */
+body.ui-v2.ui-v3[data-size] #topbar { height: var(--u3-bar); padding: 0 var(--sp-5); gap: var(--sp-3); box-sizing: border-box; }
+body.ui-v2.ui-v3[data-size="compact-land"] #topbar, body.ui-v2.ui-v3[data-size="compact-port"] #topbar { padding: 0 var(--sp-3); }
+/* Landscape: the right group ends left of the Discord corner zone (2.3, G-013). */
+body.ui-v2.ui-v3[data-size="compact-land"] #topbar { padding-right: max(var(--sp-3), calc(var(--corner-w) - var(--u3-sa-r))); }
+/* With a sub-tab row, the bar keeps the full --topbar-h of space: the row sits in its lower part (below). */
+body.ui-v2.ui-v3[data-size]:where([data-view="collection"], [data-view="battling"], [data-view="dungeon"], [data-view="trading"], :has(#main > .v2-subtabs)) #topbar { margin-bottom: var(--u3-row); }
+body.ui-v2.ui-v3[data-size] #topbar .title { gap: var(--sp-2); min-width: 0; }
+.u3-logo { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-logo__emblem { flex: none; display: grid; place-items: center; width: var(--emblem); height: var(--emblem); border-radius: var(--rad-md);
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold-strong)); box-shadow: var(--glow-action); }
+.u3-logo__emblem img { width: 70%; height: 70%; }
+.u3-logo__word { font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); white-space: nowrap; }
+.u3-logo__word b { font-weight: 800; }
+.u3-gold { color: var(--gold); }
+.u3-logo__tag { font-family: var(--font-display); font-size: var(--fs-label); font-weight: 800; line-height: 1; letter-spacing: 0; padding: var(--sp-1) var(--sp-1-5);
+  border-radius: var(--rad-sm); background: var(--gold); color: var(--on-gold); }
+body.ui-v3[data-size="compact-land"] .u3-logo__tag, body.ui-v3[data-size="compact-port"] .u3-logo__tag, body.ui-v3[data-size="compact-port"] .u3-logo__word { display: none; }
+body.ui-v2.ui-v3[data-size] #topbar .topright { gap: var(--sp-2); }
+body.ui-v2.ui-v3[data-size] :is(#v2Packs, #dailyBtn, #helpBtn, #reportBtn, #boardBtn, #mute, #v2Season, #commBoard) { display: none; }
+
+/* Shards pill (UI-42) */
+body.ui-v2.ui-v3[data-size] #topbar #v2Shards { height: var(--ctl-icon); padding: 0 var(--sp-3); gap: var(--sp-2); border-radius: var(--rad-pill);
+  background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); cursor: pointer; }
+body.ui-v2.ui-v3[data-input="coarse"] #topbar #v2Shards { height: var(--hit); }
+body.ui-v2.ui-v3[data-size] #topbar #v2Shards svg { width: var(--coin); height: var(--coin); }
+body.ui-v2.ui-v3[data-size] #topbar #v2Shards b { font-family: var(--font-ui); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); font-variant-numeric: tabular-nums; }
+body.ui-v2.ui-v3[data-size] #topbar #v2Shards .lbl { font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-muted); }
+body.ui-v2.ui-v3[data-size="compact-port"] #topbar #v2Shards .lbl { display: none; }
+/* compact-port: the bar fits a 9-digit Shards count (123.5M, 10.5) at 375 px; the 8 px between hit areas stays (9.1) */
+body.ui-v2.ui-v3[data-size="compact-port"] #topbar { padding: 0 var(--sp-2); gap: var(--sp-2); }
+body.ui-v2.ui-v3[data-size="compact-port"] #topbar #v2Shards { padding: 0 var(--sp-2); gap: var(--sp-1); }
+
+/* Shop button (UI-42): gold; icon only on compact-port; the "on" look while the Shop is open */
+body.ui-v2.ui-v3[data-size] #topbar #shopBtn { width: auto; height: var(--ctl-icon); padding: 0 var(--sp-3); display: inline-flex; align-items: center; gap: var(--sp-2);
+  border-radius: var(--rad-md); background: var(--gold-a10); border: var(--bw-1) solid var(--gold-a50); color: var(--gold);
+  font-family: var(--font-ui); font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
+body.ui-v2.ui-v3[data-size] #topbar #shopBtn svg { width: var(--icon-lg); height: var(--icon-lg); }
+body.ui-v2.ui-v3[data-size] #topbar #shopBtn.on { background: var(--gold-a20); border-color: var(--gold); }
+body.ui-v2.ui-v3[data-input="coarse"] #topbar #shopBtn { height: var(--hit); }
+body.ui-v2.ui-v3[data-size="compact-port"] #topbar #shopBtn { width: var(--hit); padding: 0; justify-content: center; }
+body.ui-v2.ui-v3[data-size="compact-port"] #topbar #shopBtn .lbl { display: none; }
+
+/* The bell and Menu (IconButton 40, 44 on touch) */
+body.ui-v2.ui-v3[data-size] #topbar .u3-topbtn:not(#shopBtn) { width: var(--ctl-icon); height: var(--ctl-icon); display: grid; place-items: center; position: relative;
+  border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); color: var(--text-secondary); }
+body.ui-v2.ui-v3[data-input="coarse"] #topbar .u3-topbtn:not(#shopBtn) { width: var(--hit); height: var(--hit); }
+body.ui-v2.ui-v3[data-size] #topbar .u3-topbtn svg { width: var(--icon-lg); height: var(--icon-lg); }
+body.ui-v2.ui-v3[data-size] #topbar #menuBtn.is-open { color: var(--gold); background: var(--gold-a10); border-color: var(--gold-a50); }
+.u3-topbtn__dot { position: absolute; top: calc(var(--sp-1) * -1); right: calc(var(--sp-1) * -1); display: none; }
+#menuBtn.has-dot .u3-topbtn__dot { display: block; }
+body.ui-v2.ui-v3[data-size] #topbar .u3-topbtn .navbadge { position: absolute; top: calc(var(--sp-1-5) * -1); right: calc(var(--sp-1-5) * -1); margin: 0;
+  min-width: var(--counter); height: var(--counter); padding: 0 var(--sp-1-5); box-sizing: border-box; border-radius: var(--rad-pill); display: inline-flex; align-items: center; justify-content: center;
+  background: var(--danger-strong); color: var(--text-on-color); border: var(--bw-1) solid var(--bg-raised); font-size: var(--fs-label); font-weight: var(--fw-heading); line-height: 1; }
+@media (hover: hover) { body.ui-v2.ui-v3[data-size] #topbar .u3-topbtn:not(#shopBtn):hover { color: var(--text-primary); background: var(--surface-3); } }
+
+/* Avatar (38, 44 on touch) */
+body.ui-v2.ui-v3[data-size] #topbar #v2Avatar { width: var(--avatar-md); height: var(--avatar-md); flex: none; cursor: pointer; }
+body.ui-v2.ui-v3[data-input="coarse"] #topbar #v2Avatar { width: var(--hit); height: var(--hit); }
+body.ui-v2.ui-v3[data-size] #topbar #v2Avatar:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+
+/* ---- Menu grid (UI-60): a panel under the Menu button; a bottom sheet on compact-port ---- */
+.u3-menuhost { position: fixed; inset: 0; z-index: var(--z-sheet); }
+.u3-menu { position: absolute; top: calc(var(--topbar-h) - var(--sp-2)); right: var(--sp-5); padding: var(--sp-4); border-radius: var(--rad-lg);
+  background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-2); animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top right; }
+.u3-menu__head { display: none; align-items: center; justify-content: space-between; margin-bottom: var(--sp-3); }
+.u3-menu__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); color: var(--text-primary); }
+.u3-menu__grid { display: grid; grid-template-columns: repeat(3, var(--menu-tile)); gap: var(--sp-3); }
+.u3-mtile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); height: var(--menu-tile);
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); color: var(--text-secondary); cursor: pointer; font: inherit;
+  transition: transform var(--dur-instant) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+.u3-mtile:active { transform: scale(.97); }
+.u3-mtile:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+@media (hover: hover) { .u3-mtile:hover { background: var(--surface-2); color: var(--text-primary); } }
+.u3-mtile__name { font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-primary); white-space: nowrap; }
+.u3-mtile__dot { position: absolute; top: var(--sp-3); right: var(--sp-3); display: none; }
+.u3-mtile.has-dot .u3-mtile__dot { display: block; }
+body.ui-v3[data-size="compact-land"] .u3-menu { right: var(--sp-3); }
+body.ui-v3[data-size="compact-port"] .u3-menuhost { background: var(--scrim); }
+body.ui-v3[data-size="compact-port"] .u3-menu { top: auto; left: 0; right: 0; bottom: 0; border-radius: var(--rad-sheet) var(--rad-sheet) 0 0; border-bottom: 0;
+  padding: var(--sp-4) var(--sp-4) calc(var(--sp-4) + var(--u3-sa-b)); animation-name: kf-rise; }
+body.ui-v3[data-size="compact-port"] .u3-menu__head { display: flex; }
+body.ui-v3[data-size="compact-port"] .u3-menu__grid { grid-template-columns: repeat(3, 1fr); }
+
+/* ---- Dock (UI-01): Home, Collection, OPEN, Adventure, Community ---- */
+body.ui-v2.ui-v3[data-size] #dock { width: min(var(--dock-w), calc(100% - var(--sp-4) * 2)); height: var(--dock-size); bottom: var(--sp-3); padding: 0 var(--sp-3); gap: 0;
+  align-items: center; border-radius: var(--rad-sheet); background: var(--overlay); border: var(--bw-1) solid var(--border); box-shadow: var(--elev-2); z-index: var(--z-shell); }
+body.ui-v2.ui-v3[data-size="compact-land"] #dock { height: var(--dock-size-compact); bottom: var(--sp-1); }
+body.ui-v2.ui-v3[data-size="compact-port"] #dock { width: calc(100% - var(--sp-2) * 2); height: var(--dock-size-compact); bottom: calc(var(--sp-2) + var(--u3-sa-b)); }
+body.ui-v2.ui-v3[data-size] #dock .dk { flex: 1 1 0; height: var(--dock-btn-h); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1);
+  border-radius: var(--rad-lg); color: var(--text-muted); font-family: var(--font-ui); font-size: var(--fs-label); font-weight: var(--fw-label); position: relative; }
+body.ui-v2.ui-v3:is([data-size="compact-land"], [data-size="compact-port"]) #dock .dk { height: var(--dock-btn-h-compact); }
+body.ui-v2.ui-v3[data-size] #dock .dk svg { width: var(--icon-xl); height: var(--icon-xl); }
+body.ui-v2.ui-v3[data-size] #dock .dk.active { color: var(--gold); background: var(--surface-2); }
+body.ui-v2.ui-v3[data-size] #dock .dk.active::after { bottom: var(--sp-1); width: var(--dock-bar-w); height: var(--dock-bar-h); border-radius: var(--rad-pill); background: var(--gold); }
+body.ui-v2.ui-v3[data-size] #dock .dk .dot { top: var(--sp-2); width: var(--dot); height: var(--dot); border-radius: var(--rad-round); background: var(--danger); }
+body.ui-v2.ui-v3[data-size] #dock .dk .cnt { top: var(--sp-1); min-width: var(--counter); height: var(--counter); padding: 0 var(--sp-1); border-radius: var(--rad-pill);
+  background: var(--danger-strong); color: var(--text-on-color); font-size: var(--fs-label); line-height: var(--counter); border: var(--bw-1) solid var(--bg-raised); }
+body.ui-v2.ui-v3[data-size] #dock .dk-open { flex: 0 0 var(--dock-open); width: var(--dock-open); height: var(--dock-open); margin: calc(var(--sp-3) * -1) var(--sp-2) 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-half); border-radius: var(--rad-round); color: var(--on-gold);
+  background: radial-gradient(circle at 50% 35%, var(--gold-hi), var(--gold) 50%, var(--gold-strong));
+  box-shadow: 0 0 0 calc((var(--dock-open-ring) - var(--dock-open)) / 2) var(--bg-raised), var(--glow-action);
+  text-overflow: clip; font-family: var(--font-ui); font-size: var(--fs-label); font-weight: var(--fw-heading); }
+body.ui-v2.ui-v3:is([data-size="compact-land"], [data-size="compact-port"]) #dock .dk-open { flex-basis: var(--dock-open-compact); width: var(--dock-open-compact); height: var(--dock-open-compact); }
+body.ui-v2.ui-v3[data-size] #dock .dk-open svg { width: var(--icon-xl); height: var(--icon-xl); }
+body.ui-v2.ui-v3[data-size] #dock .dk-badge { top: calc(var(--sp-1) * -1); right: calc(var(--sp-1-5) * -1); min-width: var(--chip-sm); height: var(--chip-sm); padding: 0 var(--sp-1-5);
+  border-radius: var(--rad-pill); background: var(--danger-strong); color: var(--text-on-color); font-size: var(--fs-label); font-weight: var(--fw-heading); line-height: var(--chip-sm);
+  border: var(--bw-2) solid var(--bg-raised); }
+body.ui-v2.ui-v3[data-size] #dock .dk:focus-visible, body.ui-v2.ui-v3[data-size] #dock .dk-open:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+
+/* ---- Sub-tab row (UI-02): one row directly under the top bar on every class (D-37), content-width tabs with an icon
+   (D-47, D-50), no counts (D-27), the "?" at its end on compact-land, medium and expanded (D-63). The v2 bar markup
+   stays; the row takes the place of the old fixed strip. ---- */
+body.ui-v2.ui-v3[data-size] #main > .v2-subtabs { position: fixed; top: calc(var(--u3-sa-t) + var(--u3-bar)); left: calc(var(--u3-sa-l) + var(--u3-pad)); right: auto;
+  z-index: var(--z-base); max-width: calc(100vw - var(--u3-sa-l) - var(--u3-sa-r) - var(--u3-pad) * 2); display: inline-flex; align-items: center; gap: var(--sp-1);
+  margin: 0; padding: var(--sp-1); border-radius: var(--rad-lg); background: var(--bg-raised); border: var(--bw-1) solid var(--border); overflow: visible; box-sizing: border-box; }
+body.ui-v2.ui-v3[data-size="compact-port"] #main > .v2-subtabs { right: calc(var(--u3-sa-r) + var(--u3-pad)); display: flex; }
+body.ui-v2.ui-v3[data-size] #main:has(> .v2-subtabs) { padding-top: 0; }   /* the v2 portrait strip space: the row is in --topbar-h now */
+body.ui-v2.ui-v3[data-size] #main > .v2-subtabs :is(.dg-tab, .seg > button) { height: var(--u3-tab); padding: 0 var(--sp-3); gap: var(--sp-2); border-radius: var(--rad-md);
+  border: var(--bw-1) solid transparent; background: none; color: var(--text-secondary); font-family: var(--font-ui); font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
+body.ui-v2.ui-v3[data-size] #main > .v2-subtabs :is(.dg-tab, .seg > button) svg { display: inline-block; width: var(--icon-md); height: var(--icon-md); }
+body.ui-v2.ui-v3[data-size] #main > .v2-subtabs :is(.dg-tab.on, .seg > button.on) { color: var(--gold); background: var(--gold-a10); border-color: var(--gold-a50); font-weight: var(--fw-small-strong); }
+body.ui-v2.ui-v3[data-size] #main > .v2-subtabs :is(.dg-tab.on, .seg > button.on) svg { color: var(--gold); }
+body.ui-v2.ui-v3[data-size="compact-land"] #main > .v2-subtabs :is(.dg-tab, .seg > button) { padding: 0 var(--sp-2); font-size: var(--fs-caption); gap: var(--sp-1); }
+body.ui-v2.ui-v3[data-size="compact-port"] #main > .v2-subtabs :is(.dg-tab, .seg > button) { flex: 1 1 0; justify-content: center; padding: 0 var(--sp-1); font-size: var(--fs-caption); gap: var(--sp-1); }
+body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .u3-tabdot { display: inline-flex; }
+body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .ex-q { margin-left: var(--sp-2); flex: none; width: var(--u3-tab); height: var(--u3-tab); min-width: 0; padding: 0; }

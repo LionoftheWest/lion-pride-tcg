@@ -14,6 +14,8 @@
  *   R11 /table/:name: only a documented table (else 404, no query); 50 rows, ordered by the primary key, the offset and the key filter;
  *       secrets hidden, member-id lists in settings cut to a count
  *   R12 /search: members through admin_members, cards by name with the LIKE characters escaped, tables by name
+ *   R13 (2026-10-07) the timeline and feed kind filters (a comma list of words, at most 40), the card search, /card/:id,
+ *       /dungeon and /feed; a bad kind or id = 400 before the rpc
  */
 import express from 'express';
 import { adminRouter, toCsv } from '../src/admin-routes.js';
@@ -62,10 +64,17 @@ const cases = [
   ['/members', 'admin_members', { p_search: null, p_sort: 'last_active', p_limit: 50, p_offset: 0 }],
   ['/member/tst_admin_1', 'admin_member', { p_player: 'tst_admin_1' }],
   ['/member/tst_admin_1/timeline?before=2026-10-01T00:00:00Z&before_key=pack:9&limit=20', 'admin_member_timeline',
-    { p_player: 'tst_admin_1', p_before: '2026-10-01T00:00:00Z', p_limit: 20, p_before_key: 'pack:9' }],
+    { p_player: 'tst_admin_1', p_before: '2026-10-01T00:00:00Z', p_limit: 20, p_before_key: 'pack:9', p_kinds: null }],
+  ['/member/tst_admin_1/timeline?kinds=visit,wishlist,visit,', 'admin_member_timeline', { p_player: 'tst_admin_1', p_before: null, p_limit: 50, p_before_key: null, p_kinds: ['visit', 'wishlist'] }],
   ['/economy?from=2026-09-01&bucket=week', 'admin_economy', { p_from: '2026-09-01', p_to: null, p_bucket: 'week' }],
   ['/growth', 'admin_growth', { p_from: null, p_to: null }],
-  ['/cards?sort=damage', 'admin_cards', { p_from: null, p_to: null, p_sort: 'damage', p_limit: 50, p_offset: 0 }],
+  ['/cards?sort=damage', 'admin_cards', { p_from: null, p_to: null, p_sort: 'damage', p_limit: 50, p_offset: 0, p_search: null }],
+  ['/cards?search=Pika%25', 'admin_cards', { p_from: null, p_to: null, p_sort: 'copies', p_limit: 50, p_offset: 0, p_search: 'Pika%' }],
+  ['/card/42', 'admin_card', { p_card: 42 }],
+  ['/dungeon?from=2026-09-01&to=2026-09-30', 'admin_dungeon', { p_from: '2026-09-01', p_to: '2026-09-30' }],
+  ['/feed', 'admin_feed', { p_kinds: null, p_before: null, p_limit: 50, p_before_key: null }],
+  ['/feed?kinds=pull,hunt&before=2026-10-01T00:00:00Z&before_key=pull:9&limit=30', 'admin_feed',
+    { p_kinds: ['pull', 'hunt'], p_before: '2026-10-01T00:00:00Z', p_limit: 30, p_before_key: 'pull:9' }],
   ['/hunts', 'admin_hunts', { p_limit: 20, p_offset: 0 }],
   ['/hunt/118624', 'admin_hunt', { p_hunt: 118624 }],
   ['/reports', 'admin_report_catalog', {}],
@@ -75,7 +84,8 @@ for (const [path, fn, args] of cases) {
   r = await fetch(base + path, { headers: auth('u', 'p') });
   check(`R5 ${path} -> ${fn}`, r.status === 200 && JSON.stringify(calls.at(-1)) === JSON.stringify({ fn, args }), { status: r.status, call: calls.at(-1) });
 }
-for (const path of ['/overview?from=yesterday', '/members?limit=500', '/members?sort=power;drop', '/hunt/abc', '/member/x/timeline?before=notatime', '/report/top_power?x=' + 'a'.repeat(50)]) {
+for (const path of ['/feed?kinds=pull;drop', '/member/x/timeline?kinds=Visit', '/card/abc', '/card/0', '/dungeon?from=1.1.2026', '/feed?limit=500',
+  '/feed?kinds=' + Array.from({ length: 41 }, (_, i) => 'k' + i).join(','), '/cards?search=' + 'a'.repeat(61), '/overview?from=yesterday', '/members?limit=500', '/members?sort=power;drop', '/hunt/abc', '/member/x/timeline?before=notatime', '/report/top_power?x=' + 'a'.repeat(50)]) {
   const before = calls.length;
   r = await fetch(base + path, { headers: auth('u', 'p') });
   check(`R5 bad input ${path.slice(0, 40)}: 400 before the rpc`, r.status === 400 && calls.length === before, r.status);

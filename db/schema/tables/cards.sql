@@ -18,10 +18,12 @@ create table public.cards (
   created_at timestamp with time zone default now() not null,
   season text,
   event text,
-  tradeable boolean default true not null
+  tradeable boolean default true not null,
+  event_id bigint
 );
 
 -- @constraints
+alter table public.cards add constraint cards_event_id_fkey FOREIGN KEY (event_id) REFERENCES events(id);
 alter table public.cards add constraint cards_pkey PRIMARY KEY (id);
 alter table public.cards add constraint cards_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE;
 
