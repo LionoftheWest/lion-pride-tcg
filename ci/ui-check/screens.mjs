@@ -42,6 +42,9 @@ export const SCREENS = {
   'bell':                { id: 'UI-24', steps: [['js', '#bellBtn']] },
   'leaderboard':         { id: 'UI-22', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
   'profile':             { id: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
+  'style-editor':        { id: 'UI-15', notOn: ['tiny'], steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5]] },
+  // UI-15 opens the Card picker for the Spotlight (D-80 item 16): a defect inside the picker window belongs to UI-64
+  'style-picker':        { id: 'UI-64', under: 'UI-15', notOn: ['tiny'], steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5], ['js', '#u3StyleHost [data-sepick]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
   'help':                { id: 'UI-38', steps: [['js', '#menuBtn'], ['js', '[data-menu="faq"]']] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
   'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
@@ -55,6 +58,8 @@ export function ownerOf(screen, where) {
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
+  // the member profile under a window opened from it (the UI-15 style editor) belongs to UI-14
+  if (screen !== 'profile' && /#memberModal[a-z]*\b|#mem[A-Z]|\.mem-|\.u3-pf\b|\.u3-pf-|\.wl-/.test(where)) return 'UI-14';
   if (/#(v2Dailies|u3DlToast)[a-z]*\b|\.u3-dl\b|\.u3-dl[-_]/.test(where)) return 'UI-36';
   if (/\.u3-logo\b/.test(where)) return 'UI-01';   // the top bar logo (its path can stop above #topbar)
   if (/#(v2Shards|shopBtn)[a-z]*\b/.test(where)) return 'UI-42';

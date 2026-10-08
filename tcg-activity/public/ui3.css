@@ -269,6 +269,48 @@ body[data-input="coarse"] :is(.u3-search__input, .u3-textarea) { font-size: var(
 .u3-pip--bronze { --u3-t: var(--tier-bronze); } .u3-pip--silver { --u3-t: var(--tier-silver); } .u3-pip--platinum { --u3-t: var(--tier-platinum); }
 .u3-pip--diamond { --u3-t: var(--tier-diamond); } .u3-pip--obsidian { --u3-t: var(--tier-obsidian); }
 
+/* ---- UI-15 Profile style editor and Spotlight editor (design repo UI-15/approved, review-1; src/ui3/style-editor.js) ----
+   One window: the slots, the title, the frame and Save. The cards come from the Card picker (D-80 item 16). */
+.u3-se { gap: var(--sp-3); max-height: 100%; box-sizing: border-box; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "head" "a" "b" "foot"; }
+.u3-se__head { grid-area: head; display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.u3-se__head .v2-avatar.u3-se-av { flex: none; width: var(--avatar-lg); height: var(--avatar-lg); padding: var(--sp-1); }
+.u3-se__name { flex: 1 1 auto; min-width: 0; margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading);
+  color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-se__a { grid-area: a; display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.u3-se__b { grid-area: b; display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.u3-se__lab { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2); }
+.u3-se__n { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); }
+.u3-se-slots { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, var(--card-tile))); gap: var(--sp-3); }
+.u3-se-slot { position: relative; aspect-ratio: 5 / 7; border-radius: var(--rad-md); background: var(--bg-base); box-shadow: inset 0 0 0 var(--bw-1) var(--border-strong); }
+.u3-se-slot.is-full { box-shadow: 0 0 0 var(--bw-2) var(--u3-r), 0 0 var(--sp-3) var(--u3-rs); }
+.u3-se-slot__pick { display: grid; place-items: center; width: 100%; height: 100%; padding: 0; border: 0; border-radius: inherit; background: none; cursor: pointer;
+  font-family: var(--font-num); font-size: var(--fs-title); color: var(--text-muted); }
+.u3-se-slot__pick img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.u3-se-slot__pick:focus-visible, .u3-se-slot__x:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+.u3-se-slot__x { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: var(--check-badge); height: var(--check-badge); padding: 0; border: 0;
+  border-radius: var(--rad-round); background: var(--danger); color: var(--text-on-color); cursor: pointer; transform: translate(30%, -30%); }
+body[data-input="coarse"] .u3-se-slot__x { width: var(--hit); height: var(--hit); background: none; transform: translate(25%, -25%); }
+body[data-input="coarse"] .u3-se-slot__x::before { content: ''; position: absolute; inset: calc((var(--hit) - var(--check-badge)) / 2); border-radius: var(--rad-round); background: var(--danger); }
+body[data-input="coarse"] .u3-se-slot__x > .u3-ico { position: relative; }
+.u3-se .u3-select { width: 100%; box-sizing: border-box; }
+.u3-se-frames { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-se-frames .u3-chip { height: var(--ctl-sm); padding: 0 var(--sp-3); font-size: var(--fs-small); }
+body[data-input="coarse"] .u3-se-frames .u3-chip { height: var(--hit); }
+.u3-se-frames .se-ring { display: inline-block; flex: none; width: var(--icon-md); height: var(--icon-md); border-radius: var(--rad-round); }
+.u3-se__foot { grid-area: foot; display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); }
+.u3-se__msg { flex: 1 1 auto; min-width: 0; }
+.u3-se__foot .u3-btn--primary { min-width: calc(var(--sp-7) * 3); }
+#u3StyleHost { --text-muted: var(--u3-text-muted); }   /* the token muted color (4.66:1), as the shell areas */
+body[data-input="coarse"] .u3-se .u3-select { height: auto; }
+body[data-input="coarse"] .u3-se .u3-select__input { min-height: var(--hit); }
+body:has(#u3Picker .u3-pk) #u3StyleHost { visibility: hidden; }   /* the Card picker covers the editor: one window at a time */
+/* compact-land: two columns (the slots left, the title and frame right), so the window fits the short frame */
+body[data-size="compact-land"] .u3-se { width: min(100%, calc(var(--dialog-w) * 2)); padding: var(--sp-4); grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "head head" "a b" "a foot"; }
+body[data-size="compact-land"] .u3-se-scrim { padding: calc(var(--u3-sa-t) + var(--sp-2)) calc(var(--u3-sa-r) + var(--sp-2)) calc(var(--u3-sa-b) + var(--sp-2)) calc(var(--u3-sa-l) + var(--sp-2)); }
+body[data-size="compact-port"] .u3-se-scrim { padding: calc(var(--u3-sa-t) + var(--sp-2)) var(--sp-2) calc(var(--u3-sa-b) + var(--sp-2)); }
+
 /* ==== The v3 shell (UI-01 top bar and dock, UI-02 sub-tab row, UI-42 Shards and Shop, UI-60 menu grid) ====
    Only under body.ui-v3 (src/ui3/shell.js). The v2 rules on the same elements stay for everyone else; these rules
    win by specificity (body.ui-v2.ui-v3[data-size] beats the v2 phone-layout classes). The layout variables of the
