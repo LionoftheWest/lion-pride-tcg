@@ -85,3 +85,20 @@ test('numbers: full form, and the compact form on the compact classes from 10,00
   assert.equal(fmtFor(123456789, 'expanded'), '123,456,789');
   assert.equal(fmtCompact(1234), '1.2k');
 });
+
+test('Card picker grid (UI-64, 8.1): tiles from card-tile to card-tile-max wide, the rows that fit, one smaller row when short', async () => {
+  const { fitGrid } = await import('./card-picker.js');
+  const g = fitGrid(398, 560, 8);                          // a 430x932 phone sheet: 4 columns
+  assert.equal(g.cols, 4); assert.ok(g.tile >= 88 && g.tile <= 112); assert.ok(g.rows >= 3);
+  const w = fitGrid(1200, 300, 12);                        // a wide short area: many columns, rows by height
+  assert.ok(w.tile <= 112 && w.cols >= 10); assert.equal(w.rows, Math.floor((300 + 12) / (w.tile * 1.4 + 12)));
+  const s = fitGrid(300, 100, 8);                          // too short for one row at 88: one row of smaller cards
+  assert.equal(s.rows, 1); assert.ok(s.tile * 1.4 <= 100);
+});
+
+test('Card picker order (6.5a): a tap adds at the end; removing a card moves the later cards up; the cap holds', async () => {
+  const { toggle } = await import('./card-picker.js');
+  assert.deepEqual(toggle([1, 2, 3], 4, 5), [1, 2, 3, 4]);
+  assert.deepEqual(toggle([1, 2, 3], 2, 5), [1, 3]);
+  assert.deepEqual(toggle([1, 2, 3, 4, 5], 6, 5), [1, 2, 3, 4, 5]);
+});

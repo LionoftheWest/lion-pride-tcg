@@ -50,7 +50,9 @@ export function defectsOf(r, expanded) {
   for (const [k, w] of c.covered || []) add('covered', `window ${k}`, w);
   for (const [w, box] of c.corner || []) add('corner-safe', `corner zone: ${w}`, box);
   if ((c.windowOutside || 0) > 0) add('corner-safe', `window outside the frame: ${c.window?.sel || ''}`, c.windowOutside);
-  if (expanded?.checks?.keys && r.size !== EXPANDED && r.class !== 'tiny') {
+  // Not with the keyboard open: it takes up to half the frame, and the screen keeps only the text box and its results
+  // in view (2.3, G-015). The same cell without the keyboard (base) checks P1.
+  if (expanded?.checks?.keys && r.size !== EXPANDED && r.class !== 'tiny' && r.variant !== 'keyboard') {
     for (const [k, v] of Object.entries(expanded.checks.keys)) {
       if (!v.inView) continue;
       const mine = c.keys?.[k];

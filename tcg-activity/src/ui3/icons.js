@@ -5,7 +5,7 @@ import {
   X, ChevronLeft, ChevronRight, ChevronDown, Search, Star, RotateCcw, ArrowLeftRight, LoaderCircle, Check, Lock, Plus,
   Minus, Info, CircleCheck, CircleAlert, TriangleAlert, Timer, SlidersHorizontal, Landmark, PartyPopper, Layers, Award,
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
-  Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText,
+  Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -24,6 +24,8 @@ export const ICONS = {
   'hand-fist': HandFist,
   // the menu grid (UI-60)
   'calendar-check': CalendarCheck, 'circle-help': CircleHelp, 'wrench': Wrench, 'scroll-text': ScrollText,
+  // the Card picker and the squad views (UI-64, UI-46): Filters, an open check, a card not allowed today, a link onward
+  'list-filter': ListFilter, 'circle': Circle, 'ban': Ban, 'arrow-right': ArrowRight,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

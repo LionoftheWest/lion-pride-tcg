@@ -147,6 +147,12 @@
   --corner-w: 120px; /* The Discord corner zone width, top right (2.3, G-013) */
   --corner-h: 60px; /* The Discord corner zone height, top right (2.3, G-013) */
   --sa-guess-top: 48px; /* The portrait top inset guess (2.3): Discord sent 48 on 4 phones (mobile-log, 2026-10-07) */
+  --card-tile: 88px; /* Card size tile (8.1): the minimum width of a card in a grid */
+  --card-tile-max: 112px; /* The widest grid tile before the grid adds a column (UI-64 review-1: 88 to 109 px) */
+  --card-squad: 80px; /* Card size squad (8.1): the minimum width of a squad slot card */
+  --card-thumb: 64px; /* Card size thumb (8.1): pickers, offers */
+  --card-mini: 44px; /* Card size mini (8.1): lists, feed rows */
+  --card-ratio: 1.4; /* Card height / width (5:7, 8.1) */
   --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-num: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
