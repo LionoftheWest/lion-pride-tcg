@@ -6,7 +6,7 @@
 /** The rank of a card is "rare" (SR or better: Secret Rare, Full Art, Gold, Event, Promo), as isRarePull in main.js. */
 export const RARE_RANK = 2;
 
-/** The clips of a set (D-93, D-101): tcg-activity/public/packs/<set_id>/ (card-studio/pack-art, PR #272). */
+/** The clips of a set (D-93, D-101): tcg-activity/public/packs/<set_id>/ (card-studio/pack-art, PR 272). */
 export const CLIPS = ['idle_loop', 'open', 'open_rare'];
 export function clipUrl(set, kind) {
   if (!CLIPS.includes(kind)) throw new Error(`unknown clip "${kind}"`);
