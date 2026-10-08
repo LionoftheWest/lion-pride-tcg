@@ -1799,6 +1799,26 @@ app.get('/api/trades', async (req, res) => {
   res.json({ incoming: all.filter((o) => o.to_id === me.id), outgoing: all.filter((o) => o.from_id === me.id) });
 });
 
+// The trade partners for the Member picker (UI-65, D-64 item 9): one entry for each offer with the caller, in either
+// direction and with any status (an accepted, declined or open offer is a trade or an offer). The client counts them
+// (src/ui3/member-picker.js memberLists: Frequent = 2 or more, top 3; Recent = the others, the latest first). Only the
+// caller's own offers; the newest 300.
+app.get('/api/trade/partners', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const { data, error } = await supabase
+    .from('trade_offers')
+    .select('from_id, to_id, created_at, from_player:players!trade_offers_from_id_fkey(username), to_player:players!trade_offers_to_id_fkey(username)')
+    .or(`to_id.eq.${me.id},from_id.eq.${me.id}`)
+    .order('created_at', { ascending: false })
+    .limit(300);
+  if (error) return res.status(500).json({ error: error.message });
+  const mine = String(me.id);
+  res.json({ partners: (data || []).map((o) => (String(o.from_id) === mine
+    ? { id: String(o.to_id), name: o.to_player?.username, at: o.created_at }
+    : { id: String(o.from_id), name: o.from_player?.username, at: o.created_at })) });
+});
+
 // Gift a card outright (one-sided). RPC enforces: not gold, tradeable, owned.
 app.post('/api/trade/gift', async (req, res) => {
   const me = await caller(req);

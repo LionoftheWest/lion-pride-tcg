@@ -295,7 +295,7 @@ body.ui-v2.ui-v3[data-size="compact-port"].m-sa-guess[data-input="coarse"] { --s
 
 :root { --u3-text-muted: var(--text-muted); }   /* the token value; ui-v2.css keeps the old value on body until each screen PR */
 /* The shell areas use the token muted color (4.66:1), not the old v2 value (3.7:1). */
-body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs, #u3Picker, .u3-dg) { --text-muted: var(--u3-text-muted); }
+body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs, #u3Picker, .u3-dg, .u3-mp) { --text-muted: var(--u3-text-muted); }
 
 /* tiny (Discord picture-in-picture, 2.1): no top bar, sub-tab row, dock or menu (D-06, 7.1). The small live view
    (UI-59) is a later screen PR. */
@@ -956,6 +956,14 @@ body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: 
 .u3-mp__find { position: relative; flex: 1 1 auto; min-width: 0; }
 .u3-mp__find .u3-search { box-sizing: border-box; width: 100%; }
 .u3-mp__find .u3-search__input::-webkit-search-cancel-button { appearance: none; }   /* one clear button: the library one */
+/* the view "?" in the search row (compact-port; D-63 moves it to the sub-tab row on the other classes): a 44 px circle */
+body.ui-v2.ui-v3[data-size] .u3-mp__tools .ex-q { flex: none; width: var(--hit); height: var(--hit); min-width: 0; padding: 0; }
+/* the keyboard is open (size-class.js body[data-kb]): the search and its list only, as a layer at the top of the frame (the
+   view under it is too short for a row); the members return when it closes (2.3, G-015) */
+body[data-kb] .u3-mp__body { display: none; }
+body.ui-v2.ui-v3[data-size][data-kb] .u3-mp { position: fixed; z-index: var(--z-sheet); top: calc(var(--u3-sa-t) + var(--sp-2)); left: var(--mp-host-l);
+  right: var(--mp-host-r); height: auto; padding: var(--sp-2); border-radius: var(--rad-lg); background: var(--bg-raised); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-2); }
+body.ui-v2.ui-v3[data-size="compact-land"][data-kb] .u3-mp { right: max(var(--mp-host-r), var(--corner-w)); }   /* out of the Discord corner zone (2.3) */
 /* the suggest list (UI-29 look, P0): a popover under the field, on the sheet layer (4.10) */
 .u3-mp-sug { position: absolute; top: calc(100% + var(--sp-2)); left: 0; z-index: var(--z-sheet); box-sizing: border-box; width: min(var(--dialog-w), var(--mp-room, 100%));
   display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-1-5); border-radius: var(--rad-lg); background: var(--surface-1);
@@ -982,11 +990,12 @@ body[data-size="compact-port"] .u3-mp-sec__tiles { grid-template-columns: repeat
 /* compact-land: the label column on the left, one line of tiles for each section (UI-65 review-1 form) */
 body[data-size="compact-land"] .u3-mp-sec { display: grid; grid-template-columns: calc(var(--avatar-xl) + var(--sp-3)) minmax(0, 1fr); align-items: center; column-gap: var(--sp-3); }
 body[data-size="compact-land"] :is(.u3-mp, .u3-mp__body) { gap: var(--sp-3); }
-/* compact-land with a paged section (few partners, UI-25 review-2): three lines of list tiles, the Pager at the end of its line */
-body[data-size="compact-land"] .u3-mp__body.has-paged .u3-mp-tile__pick { --mp-av: var(--avatar-sm); flex-direction: row; justify-content: flex-start; gap: var(--sp-2);
+/* compact-land with a paged section (few partners, UI-25 review-2): lines of list tiles, the Pager at the end of its line.
+   The last fit step (data-fit=list, a very short area) uses the same list tiles. */
+:is(body[data-size="compact-land"] .u3-mp__body.has-paged, .u3-mp__body[data-fit="list"]) .u3-mp-tile__pick { --mp-av: var(--avatar-sm); flex-direction: row; justify-content: flex-start; gap: var(--sp-2);
   min-height: var(--hit); padding: var(--sp-1) var(--hit) var(--sp-1) var(--sp-2); text-align: left; }
-body[data-size="compact-land"] .u3-mp__body.has-paged .u3-mp-sec__tiles { grid-template-columns: repeat(auto-fill, minmax(calc(var(--avatar-lg) * 3 - var(--sp-3)), 1fr)); }
-body[data-size="compact-land"] .u3-mp__body.has-paged .u3-mp-tile__info { top: 50%; right: var(--sp-1); transform: translateY(-50%); }
+:is(body[data-size="compact-land"] .u3-mp__body.has-paged, .u3-mp__body[data-fit="list"]) .u3-mp-sec__tiles { grid-template-columns: repeat(auto-fill, minmax(calc(var(--avatar-lg) * 3 - var(--sp-3)), 1fr)); }
+:is(body[data-size="compact-land"] .u3-mp__body.has-paged, .u3-mp__body[data-fit="list"]) .u3-mp-tile__info { top: 50%; right: var(--sp-1); transform: translateY(-50%); }
 body[data-size="compact-land"] .u3-mp-sec.is-paged { grid-template-columns: calc(var(--avatar-xl) + var(--sp-3)) minmax(0, 1fr) auto; }
 body[data-size="compact-land"] .u3-mp-sec.is-paged .u3-mp-sec__pager { grid-column: 3; padding-top: 0; }
 body[data-size="compact-land"] .u3-mp-tile__pick { gap: var(--sp-1); padding: var(--sp-2); }
@@ -1027,3 +1036,7 @@ body[data-size="compact-land"] .u3-mp-tile--list .u3-mp-tile__pick { min-height:
   background: linear-gradient(135deg, var(--avatar-fallback-start), var(--avatar-fallback-end)); box-shadow: 0 0 0 var(--bw-2) var(--gold);
   color: var(--text-on-color); font-size: calc(var(--mp-av) * 0.4); font-weight: var(--fw-heading); }
 .u3-mp-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* the Trades tab under v3 (UI-65 in Trades, D-43): one panel with the Member picker. UI-25 adds Pending (D-32). */
+.u3-trades { box-sizing: border-box; height: 100%; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--u3-pad) var(--sp-3); }
+.u3-trades__panel { box-sizing: border-box; flex: 1 1 auto; min-height: 0; padding: var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+body[data-size="compact-land"] .u3-trades__panel { padding: var(--sp-3); }

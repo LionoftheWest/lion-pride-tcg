@@ -58,7 +58,7 @@ export function memberLists({ history = [], voice = [], all = [], me = null } = 
   return { frequent: frequent.map(strip), recent: recent.map(strip), voice: inVoice, all: az };
 }
 
-const FITS = ['lg', 'md', 'sm'];   // the avatar sizes the fit tries, in order (UI-65: 56, 38 on compact-land, 28 at 375x667)
+const FITS = ['lg', 'md', 'sm', 'list'];   // the avatar sizes the fit tries (UI-65: 56, 38 on compact-land, 28 at 375x667), then list tiles
 let seq = 0;
 
 /**
@@ -102,6 +102,10 @@ export function mountMemberPicker(host, opts) {
 
   function paint() {
     if (!st.alive) return;
+    // the host edges: the keyboard layer (ui3.css body[data-kb]) keeps the picker's own left and right edges
+    const hr = host.getBoundingClientRect();
+    root.style.setProperty('--mp-host-l', `${Math.round(hr.left)}px`);
+    root.style.setProperty('--mp-host-r', `${Math.round(innerWidth - hr.right)}px`);
     const list = sectionsList();
     body.dataset.fit = FITS[st.fit];
     body.classList.toggle('has-paged', !!list.at(-1)?.paged);
@@ -118,7 +122,7 @@ export function mountMemberPicker(host, opts) {
     fit();
   }
 
-  // No scroll (P1, 3.4): a smaller avatar first (lg, md, sm), then only whole tile rows of the unpaged sections.
+  // No scroll (P1, 3.4): a smaller avatar first (lg, md, sm), then list tiles, then only whole tile rows of the unpaged sections.
   // The paged section gets the rows that fit in its area. A long name first gets smaller (to 11 px), then wraps (D-08).
   function fit() {
     for (const n of body.querySelectorAll('.u3-mp-tile__name')) {
@@ -169,6 +173,10 @@ export function mountMemberPicker(host, opts) {
       ? st.sugg.map((m, i) => `<button type="button" class="u3-mp-sug__row" role="option" aria-selected="${i === 0 ? 'true' : 'false'}" data-msug="${i}">${avatar(m)}<span>${markMatch(m.name, st.q)}</span></button>`).join('')
       : '<p class="u3-mp-sug__none">No member with that name</p>';
     find.insertAdjacentHTML('beforeend', `<div class="u3-mp-sug${had ? ' is-still' : ''}" role="listbox" aria-label="Members">${rows}</div>`);
+    // only whole rows above the dock and the frame bottom (a short frame, the keyboard): no row under another layer
+    const box = find.querySelector('.u3-mp-sug');
+    const floor = Math.min(innerHeight, document.getElementById('dock')?.getBoundingClientRect().top || innerHeight);
+    while (box.children.length > 1 && box.getBoundingClientRect().bottom > floor) box.lastElementChild.remove();
   }
   function syncClear() {
     // the clear button shows only with text (SearchField): swap the field, keep the focus and the caret
@@ -212,6 +220,7 @@ export function mountMemberPicker(host, opts) {
   const onDown = (e) => { if (e.target.closest('.u3-mp-sug')) e.preventDefault(); };   // the box keeps the focus; the pick waits for the click
   const member = (ref) => { const [k, i] = String(ref).split(':'); return (st.opts.sections || []).find((s) => s.key === k)?.members?.[Number(i)]; };
   const onClick = (e) => {
+    if (!root.isConnected) { destroy(); return; }   // the screen repainted without destroy(): let go of the page
     const t = e.target.closest('button');
     if (!t || !root.contains(t)) { if (!e.target.closest('.u3-mp__find')) closeSuggest(); return; }
     const d = t.dataset;
@@ -232,18 +241,20 @@ export function mountMemberPicker(host, opts) {
   document.addEventListener('click', onClick);
   let rt = 0;
   const refit = () => { st.fit = 0; st.per = 0; paint(); };
-  const ro = new ResizeObserver(() => { cancelAnimationFrame(rt); rt = requestAnimationFrame(() => { refit(); if (st.sugg) showSuggest(); }); });
+  const ro = new ResizeObserver(() => { cancelAnimationFrame(rt); rt = requestAnimationFrame(() => { if (!root.isConnected) { destroy(); return; } refit(); if (st.sugg) showSuggest(); }); });
   ro.observe(body);
   paint();
   document.fonts?.ready.then(() => { if (st.alive) refit(); });   // the text sizes change when the fonts arrive
 
+  function destroy() {
+    if (!st.alive) return;
+    st.alive = false; clearTimeout(st.timer); cancelAnimationFrame(rt); ro.disconnect();
+    document.removeEventListener('click', onClick);
+    root.remove();
+  }
   return {
     /** New sections or actions (for example after a trade): the page and the search stay. */
-    update(next) { Object.assign(st.opts, next); refit(); },
-    destroy() {
-      st.alive = false; clearTimeout(st.timer); cancelAnimationFrame(rt); ro.disconnect();
-      document.removeEventListener('click', onClick);
-      root.remove();
-    },
+    update(next) { if (!st.alive) return; Object.assign(st.opts, next); refit(); },
+    destroy,
   };
 }
