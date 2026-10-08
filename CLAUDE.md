@@ -26,6 +26,9 @@ ad-hoc values, so new screen sizes kept breaking.
 
 - Build a screen only from its APPROVED design in the design repo (`<ID>/approved/`), in its own PR
   (`docs/design.md` 12.3). A screen with no approved design is not built.
+- Put a new screen's CSS in its own file `tcg-activity/public/ui3/90-ui-<NN>.css`, not at the end of `ui3.css`.
+  The server joins `ui3.css` and `public/ui3/*.css` in name order at `/ui3.css` (`src/ui3/css-parts.js`). The reason:
+  every screen PR added to the end of `ui3.css`, so each merge made the next PR conflict and run CI again.
 - Use only the tokens and components of UI-00. Do not add new `m-land` / `m-port` selectors, raw
   `z-index` numbers, or new color, size, or font literals (gate G4 counts them).
 - A fix for a defect that a member reported: the smallest change, and only when Nathan asks for it.

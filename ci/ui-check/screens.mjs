@@ -26,17 +26,30 @@ export const SCREENS = {
   'hall-listings':       { id: 'UI-30', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#hlList'], ['wait', 2]] },
   'boons':               { id: 'UI-27', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
   'boons-pick':          { id: 'UI-28', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
-  'hunt-squad':          { id: 'UI-17', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
+  'hunt-squad':          { id: 'UI-17', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
+  // v3: the Card picker (UI-64) in Hunt mode over the Hunt view (Auto-pick, locked cards, the short-squad dialog).
+  'hunt-picker':         { id: 'UI-64', under: 'UI-17', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '[data-hpick]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
   'hunt-battle':         { id: 'UI-18', battle: true, steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9]] },
-  'dungeon':             { id: 'UI-46', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  // v3: tiny shows no shell, so the Adventure tabs are not there (D-06: the small live view, UI-59).
+  'dungeon':             { id: 'UI-46', notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  // The Card picker (UI-64) over the Dungeon lobby (D-40): a defect outside the window belongs to the lobby ('under').
+  'dungeon-picker':      { id: 'UI-64', under: 'UI-46', notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '[data-pickopen]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
+  // v3: a run in the "Choose a reward" step (UI-48): the check server answers a run with 3 offers (cookie ci_dungeon=choose).
+  'dungeon-choose':      { id: 'UI-48', notOn: ['tiny'], dungeon: 'choose', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-board':       { id: 'UI-51', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-pane="top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
   'gauntlet':            { id: 'UI-52', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
-  'shop':                { id: 'UI-43', steps: [['js', '#shopBtn'], ['wait', 2]] },
-  'shop-confirm':        { id: 'UI-43', steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
-  'dailies':             { id: 'UI-36', steps: [['js', '#menuBtn'], ['js', '[data-menu="dailies"]'], ['wait', 1.5]] },
-  'bell':                { id: 'UI-24', steps: [['js', '#bellBtn']] },
+  // The Shop (UI-43): tiny has no top bar, so no Shop button (D-06: the small live view, UI-59).
+  'shop':                { id: 'UI-43', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2]] },
+  'shop-confirm':        { id: 'UI-43', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
+  // The Dailies window (UI-36) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
+  // The first wait: the menu shows the Dailies tile only after /api/dailies answered (the tile of a window that is off is hidden).
+  'dailies':             { id: 'UI-36', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 3], ['js', '#menuBtn'], ['js', '[data-menu="dailies"]'], ['wait', 1.5]] },
+  // The bell window (UI-24) opens over Home: a defect outside the window belongs to Home ('under'). tiny has no top bar (D-06).
+  'bell':                { id: 'UI-24', under: 'UI-03', notOn: ['tiny'], steps: [['js', '#bellBtn']] },
+  // The Settings window (UI-61) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
+  'settings':            { id: 'UI-61', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="settings"]'], ['wait', 1.5]] },
   'leaderboard':         { id: 'UI-22', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
-  'profile':             { id: 'UI-14', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
+  'profile':             { id: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
   'help':                { id: 'UI-38', steps: [['js', '#menuBtn'], ['js', '[data-menu="faq"]']] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
   'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
@@ -54,6 +67,12 @@ export function ownerOf(screen, where) {
   // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
+  if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
+  if (/#(v2Dailies|u3DlToast)[a-z]*\b|\.u3-dl\b|\.u3-dl[-_]/.test(where)) return 'UI-36';
+  if (/#v2Notifs[a-z]*\b|\.u3-bell|\.u3-note\b|\.u3-note__|\.u3-gift\b|\.u3-gift__/.test(where)) return 'UI-24';
+  if (/#u3Settings[a-z]*\b|\.u3-st\b|\.u3-st[-_]/.test(where)) return 'UI-61';
+  if (/\.u3-dgc\b|\.u3-dgc[-_]/.test(where)) return 'UI-48';
+  if (/\.u3-logo\b/.test(where)) return 'UI-01';   // the top bar logo (its path can stop above #topbar)
   // The pack reveal stage covers the screen under it: a defect in the stage belongs to the reveal screen.
   // A path keeps 3 levels, so the stage parts are named too (the pack, the cards, the bar, the effects).
   if (/#stage[a-z]*\b|\.u3-reveal|\.u3-pack|\.u3-mpack|\.reveal-grid|\.fc\b|\.pf\b|\.pf-face|\.react\b|\.u3-reacts|\.tap-prompt|\.sunrays|\.rare-banner|\.spark\b|\.mr-/.test(where)) return SCREENS[screen].id;

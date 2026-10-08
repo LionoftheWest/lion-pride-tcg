@@ -19,7 +19,7 @@ import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
-import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge } from './ui-v2.js';
+import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop, repaintShards } from './ui-v2-shop.js';
@@ -30,9 +30,15 @@ import { initTutorial } from './ui-v2-tutorial.js';
 import { every, isIdle } from './poll.js';
 import { watchSizeClass } from './ui3/size-class.js';
 import { startShell } from './ui3/shell.js';
+import { openCardPicker } from './ui3/card-picker.js';
+import { fmtFor } from './ui3/number.js';
+import { TOKENS } from './tokens.js';
+import { icon as ui3Icon } from './ui3/icons.js';
+import { button as ui3Button } from './ui3/components.js';
+import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
+import { initSettingsWindow } from './ui3/settings.js';
 import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
 import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, packSet, releaseClips, fitCards } from './ui3/pack-reveal.js';
-import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
@@ -249,7 +255,7 @@ let usedIds = new Set(); // card ids already sent at the boss today (client mirr
 let feedTopId = 0; // newest boss-feed event id shown (so polls only animate in newer ones)
 let huntDay = ''; // MT date of the current hunt render; a change means the daily reset hit
 const utcToday = () => mtToday(); // the MT game day (the name kept: several callers)
-window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (squad.phase !== 'battle') paintHuntPage(); else sizeSquadGrid(); });
+window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (squad.phase !== 'battle') { if (huntV3()) fitHuntV3(el('main')); else paintHuntPage(); } else sizeSquadGrid(); });
 const cache = {};
 
 // Discord mobile sometimes fails the first authorize with "OAuth2 Authorize Error: Unknown
@@ -350,7 +356,7 @@ async function main() {
   if (flags.reports) initReport();
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
-  if (flags?.uiV3) startShell(); // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps
+  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
 }
 
 // The v3 foundation (UI-00): only for the members in settings.ui_v3 (flags.uiV3). It loads the component CSS and writes
@@ -645,8 +651,9 @@ function mountBossFor(hunt) {
     // v2 squad select: the live boss head as the squad box background (Nathan 2026-09-29:
     // live models, not thumbnails). The fight view mounts the full arena boss.
     const mini = squad.phase !== 'battle' && !!cv.closest('.sq-boss');
+    const stage = squad.phase !== 'battle' && !!cv.closest('.u3-hs-stage');   // v3 (UI-17): the Home slide camera (UI-04)
     bossHandle = mountBoss(cv, hunt.name || 'boss', hunt.tier,
-      mini ? { portrait: true, portraitOpts: { at: 0.8, fit: 0.7, faceAt: 0.3, bust: false, showcase: false } } : undefined);
+      stage ? { portrait: true } : mini ? { portrait: true, portraitOpts: { at: 0.8, fit: 0.7, faceAt: 0.3, bust: false, showcase: false } } : undefined);
     bossVoice = pickBossVoice(hunt.name || hunt.id);
     if (hunt.status === 'defeated' || hunt.hp_remaining <= 0) {
       bossHandle.defeat();
@@ -1368,6 +1375,8 @@ function huntHTML(d) {
   usedIds = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   // Battle phase = a full-bleed arena (boss fills the pane, squad overlays the bottom).
   if (squad.phase === 'battle') return `<div class="main-body hunt arena-mode">${battlePhaseHTML(d)}</div>`;
+  // v3 (UI-17): the boss stage and the squad strip; the Card picker is a window (UI-64).
+  if (huntV3()) return `<div class="main-body hunt u3-hunt-view${squad.ko ? ' ko' : ''}">${huntSelectV3HTML(d)}</div>`;
   // Squad select: the squad column (with the live boss) and the card picker.
   return `<div class="main-body hunt select-mode${squad.ko ? ' ko' : ''}">${selectPhaseHTML(d)}</div>`;
 }
@@ -1792,6 +1801,159 @@ function paintTeam() {
 // The lock-in warning (Nathan, 2026-10-02): Continue locks the short squad; Auto-Fill my Squad keeps
 // the member's picks and fills the rest with Auto-pick, then locks. ✕ (or a tap outside) keeps picking.
 // Resolves 'go', 'fill' or null.
+// ---- v3: Hunt squad select (UI-17), behind ui_v3 -----------------------------------------------------------------
+// Design repo UI-17/approved (review-2, D-61): the boss stage fills the content area like the Home Hunt slide (the boss
+// render, the Tier chip, the name, ATK and WEAK, the HP bar, "Beat in", the Top 3 board), and the squad is one strip
+// at the bottom (count, Squad Power, Synergies, the main button, the 8 slots). Select your squad / Edit open the Card
+// picker (UI-64, D-40); its Confirm locks the squad on the server as Lock in did (hunt_squads.sql).
+const huntV3 = () => document.body.classList.contains('ui-v3');
+const HUNT_TIER_NUM = { Normal: 1, Heroic: 2, Mythic: 3 };
+const huntNum = (n) => fmtFor(n, document.body.dataset.size);   // 10.5: the compact form on the compact classes   // spawn_hunt.sql (E5: "Normal" -> "Tier 1")
+let huntTop = null;   // the Top 3 (GET /api/hunt/leaderboard), loaded once per paint
+function huntSelectV3HTML(d) {
+  const h = d.hunt;
+  const cap = d.dailyCap || 8;
+  const stats = computeSquadStats();
+  const roster = d.roster || [];
+  const picks = [...squad.sel].map((id) => roster.find((c) => Number(c.id) === Number(id))).filter(Boolean);
+  const pct = Math.max(0, Math.min(100, Math.round((100 * h.hp_remaining) / h.hp_max)));
+  const weak = (h.weak_points || []).map((w) => `<span class="u3-hs-weak">${esc(tagLabel(w.value))}</span>`).join('');
+  const atk = Number(h.stats?.atk) > 0 ? `<span class="u3-hs-atk">${ui3Icon('swords', { size: 'sm' })}ATK ${Number(h.stats.atk)}</span>` : '';
+  const tier = HUNT_TIER_NUM[h.tier] ? `Tier ${HUNT_TIER_NUM[h.tier]}` : h.tier;
+  const stage = `<section class="u3-hs-stage" role="button" tabindex="0" data-boss aria-label="Boss details: ${esc(h.name)}">
+    <div class="u3-hs-text">
+      <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span><h1 class="u3-hs-name">${esc(h.name)}</h1></div>
+      <div class="u3-hs-facts">${atk}${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}</div>
+      <div class="u3-hs-hp" role="img" aria-label="${pct}% HP"><i style="--hp:${pct}%"></i><span>${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP</span></div>
+      <div class="u3-hs-left">${cdSpan(h.closes_at, 'Beat in', 'closes countdown')}</div>
+      <div class="u3-hs-top" id="u3HsTop">${huntTopHTML()}</div>
+    </div>
+    <div class="u3-hs-boss"><canvas id="bossCanvas"></canvas></div>
+  </section>`;
+  const slots = Array.from({ length: cap }, (_, i) => {
+    const c = picks[i];
+    return `<li class="u3-hs-slot${c ? ` is-full u3-r-${esc(c.rarity || 'normal')}` : i === picks.length ? ' is-next' : ''}">${c
+      ? `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name || '')}" draggable="false">` : ''}`
+      : `<span aria-hidden="true">${i + 1}</span>`}</li>`;
+  }).join('');
+  const syn = stats.syn.filter((s) => s.n >= 2);
+  const chips = syn.map((s) => `<span class="u3-hs-chip">${esc(s.label)} <b>${s.n}/5</b></span>`).join('');
+  const bonus = stats.effCp - stats.cp;
+  let act;
+  if (squad.ko) act = `<p class="u3-hs-ko">${ui3Icon('lock', { size: 'sm' })}<span>Your squad is down for today.</span> ${cdSpan(nextUtcResetISO(), 'Next battle in', 'countdown kores')}</p>`;
+  else if (squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', data: { henter: '1' } })}`;
+  else act = ui3Button({ label: 'Select your squad', variant: 'primary', data: { hpick: '1' } });
+  return `<div class="u3-hunt">${stage}
+    <section class="u3-hs-squad">
+      <div class="u3-hs-info">
+        <div class="u3-hs-head"><div class="u3-hs-count"><h2>Squad</h2><b>${picks.length}</b><span>/ ${cap}</span></div>
+        <div class="u3-hs-power">${ui3Icon('zap', { size: 'lg' })}<b>${stats.effCp.toLocaleString('en-US')}</b><span class="u3-label">Squad Power</span>${bonus > 0 ? `<em>+${bonus.toLocaleString('en-US')}</em>` : ''}</div></div>
+        <div class="u3-hs-syn"><span class="u3-label">Synergies</span><div class="u3-hs-chips" id="u3HsChips">${chips}</div></div>
+        <div class="u3-hs-act">${act}</div>
+      </div>
+      <div class="u3-hs-slotbox"><ol class="u3-hs-slots" aria-label="Your squad">${slots}</ol></div>
+    </section></div>`;
+}
+function huntTopHTML() {
+  if (!huntTop) return '';
+  const rows = huntTop.slice(0, 3);
+  if (!rows.length) return `<span class="u3-label">Top 3</span><p class="u3-hs-none">No damage dealt yet.</p>`;
+  return `<span class="u3-label">Top 3</span><ol class="u3-hs-board">${rows.map((p, i) => `<li><span class="u3-hs-rk">${i + 1}</span>${avatarHTML(p.player_id, p.username, 'xs')}<b>${esc(p.username || 'Member')}</b><em>${huntNum(p.damage)}</em></li>`).join('')}</ol>`
+    + `<p class="u3-hs-line">Top hunter: <b>${esc(rows[0].username || 'Member')}</b> · ${huntNum(rows[0].damage)}</p>`;
+}
+function wireHuntV3() {
+  const main = el('main');
+  main.querySelector('[data-boss]')?.addEventListener('click', openBossModal);
+  main.querySelector('[data-boss]')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBossModal(); } });
+  main.querySelectorAll('[data-hpick]').forEach((b) => b.addEventListener('click', () => openHuntPicker(b)));
+  main.querySelector('[data-henter]')?.addEventListener('click', () => {
+    if (!squad.locked || squad.sel.size < 1) return;
+    disposeBoss(); squadDownShown = false; squad.phase = 'battle'; SFX?.play?.('reveal');
+    el('main').innerHTML = huntHTML(huntState);
+    wireHunt(); mountBossFor(huntState.hunt); paintTeam(); startHuntTicker();
+  });
+  fitHuntV3(main);
+  api('/api/hunt/leaderboard').then((r) => { huntTop = r?.leaders || []; const box = el('u3HsTop'); if (box) { box.innerHTML = huntTopHTML(); fitHuntV3(el('main')); } }).catch(() => { huntTop = []; });
+}
+// No scroll: chips that do not fit fold into "+N"; a stage too short for the Top 3 board shows the one-line form (E7).
+function fitHuntV3(main) {
+  const chips = main.querySelector('#u3HsChips');
+  if (chips && chips.children.length) foldChips(chips);
+  const stage = main.querySelector('.u3-hs-stage');
+  const hunt = main.querySelector('.u3-hunt');
+  hunt?.classList.remove('is-tight');
+  if (stage) {
+    stage.classList.remove('is-line');
+    const slot = main.querySelector('.u3-hs-slot');
+    const short = slot && slot.getBoundingClientRect().width < TOKENS['card-mini'];   // the strip needs the height (portrait)
+    const over = () => stage.scrollHeight > stage.clientHeight + 1 || [...stage.querySelectorAll('.u3-hs-text, .u3-hs-top')].some((n) => n.scrollHeight > n.clientHeight + 1);
+    if (short || over()) stage.classList.add('is-line');
+    // still too short (a small landscape phone, long names): the tight mode; the Top 3 is one tap away (Menu > Leaderboard, P1)
+    if (over()) hunt?.classList.add('is-tight');
+  }
+}
+function openHuntPicker(from) {
+  const d = huntState;
+  if (!d) return;
+  const cap = d.dailyCap || 8;
+  const roster = d.roster || [];
+  const byId = new Map(roster.map((c) => [Number(c.id), c]));
+  const used = roster.filter((c) => c.used).map((c) => Number(c.id));
+  const statsOf = (sel) => { const keep = squad.sel; squad.sel = new Set(sel); const s = computeSquadStats(); squad.sel = keep; return s; };
+  const fill = async (sel) => {
+    let ids = [];
+    try { ids = (await api('/api/hunt/autopick')).ids || []; } catch { ids = []; }
+    const out = [...sel];
+    for (const x of ids.map(Number)) { if (out.length >= cap) break; if (!out.includes(x)) out.push(x); }
+    return out;
+  };
+  const text = (c) => { const t = c.tags || {}; return [c.name, c.type, c.class, t.origin, ...(Array.isArray(t.traits) ? t.traits : []), t.genre].filter(Boolean).join(' ').toLowerCase(); };
+  const els = ELEMENT_ORDER.filter((e) => roster.some((c) => cardElement(c.tags) === e));
+  openCardPicker({
+    title: 'Squad', cap, cards: roster, selected: [...squad.sel].map(Number), returnFocus: from,
+    locked: (c) => used.includes(Number(c.id)),
+    blocked: (c, sel) => (c.downed ? 'Down for today' : sel.length >= cap ? 'Squad full' : ''),
+    filters: [
+      { key: 'show', label: 'Show', value: 'all', clear: 'all', options: [{ id: 'all', label: 'All cards' }, { id: 'atk', label: 'Attackers' }, { id: 'sup', label: 'Supports' }] },
+      ...(els.length ? [{ key: 'el', label: 'Element', value: 'all', clear: 'all', options: [{ id: 'all', label: 'All' }, ...els.map((e) => ({ id: e, label: ELEMENTS[e]?.name || e }))] }] : []),
+      { key: 'sort', label: 'Sort', value: 'power', clear: 'power', options: [{ id: 'power', label: 'Power' }, { id: 'rarity', label: 'Rarity' }, { id: 'new', label: 'New' }] },
+    ],
+    filterCount: (v) => (v.show !== 'all' ? 1 : 0) + (v.el && v.el !== 'all' ? 1 : 0),
+    apply: (cards, v, q) => {
+      const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      return cards.filter((c) => (v.show === 'atk' ? ATTACKER_TYPES.includes(c.type) : v.show === 'sup' ? !ATTACKER_TYPES.includes(c.type) : true)
+        && (!v.el || v.el === 'all' || cardElement(c.tags) === v.el)
+        && (!words.length || words.every((w) => text(c).includes(w)))).sort(SQUAD_SORT[v.sort] || SQUAD_SORT.power);
+    },
+    status: (sel) => {
+      const s = statsOf(sel);
+      const atkOk = hasAttacker(roster, sel);
+      return { checks: [{ ok: sel.length === cap, label: `${sel.length} / ${cap} cards` }, { stat: s.effCp.toLocaleString('en-US'), label: 'Squad Power' }, { ok: atkOk, label: 'An attacker' }],
+        ready: sel.length > 0 && atkOk, reason: sel.length && !atkOk ? 'Add a Character or a Creature' : null };
+    },
+    autoPick: async () => {
+      let ids = [];
+      try { ids = (await api('/api/hunt/autopick')).ids || []; } catch { ids = []; }
+      return [...used, ...ids.map(Number).filter((x) => !used.includes(x))].slice(0, cap);
+    },
+    confirmCheck: (sel) => (openSlots(roster, sel, { cap }) > 0 ? { title: 'Your squad is not fully filled', line: `${sel.length} of ${cap} cards. Do you want to continue or fill the rest in?`, cancel: 'Continue', primary: 'Auto-fill my squad', fill } : null),
+    detail: (c) => openViewer(byId.get(Number(c.id)) || c, { raid: true }),
+    onConfirm: async (sel) => {
+      const lr = await apiPost('/api/hunt/squad', { cards: sel }).catch((e) => e?.body || null);
+      if (!lr?.ok) {
+        if (lr?.error === 'squad_fixed' && Array.isArray(lr.squad)) squad.sel = new Set(lr.squad.map(Number));
+        toast(lr?.error === 'no_attacker' ? 'Add a Character or a Creature.' : lr?.error === 'squad_fixed' ? 'Your squad is locked for today.' : 'The squad was not saved. Try again.');
+        return lr?.error === 'squad_fixed';
+      }
+      squad.sel = new Set(sel.map(Number)); squad.locked = true; squad.page = 0;
+      saveTeam(huntState.hunt.id, [...squad.sel]);
+      SFX?.play?.('flip');
+      el('main').innerHTML = huntHTML(huntState); wireHunt(); mountBossFor(huntState.hunt); advTabs();
+      return true;
+    },
+  });
+}
+
 function confirmShortSquad(have, cap) {
   return new Promise((done) => {
     document.getElementById('sqWarn')?.remove();
@@ -1903,6 +2065,7 @@ function wireHunt() {
   placeExplain(el('main'), '.hunt-arena .arena-traits');
   el('huntLbBtn')?.addEventListener('click', openHuntBoard);
   if (squad.phase === 'battle') { wireBattlePhase(); return; }
+  if (huntV3()) { wireHuntV3(); return; }
   wireSelectPhase();
 }
 
