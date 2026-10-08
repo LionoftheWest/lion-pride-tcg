@@ -997,3 +997,5 @@ body[data-last-input="pointer"] .u3-st .u3-ibtn:focus-visible { box-shadow: none
 .u3-st-row .u3-switch__input:not(:checked) + .u3-switch__track .u3-switch__knob { background: var(--text-secondary); }
 @media (hover: hover) and (pointer: fine) { .u3-st-row:not(.is-disabled):hover { background: var(--surface-3); } }
 .u3-st__sec > .u3-msg { padding: 0 var(--sp-1); }
+/* The card viewer (v2 #viewer, z 95) is on the window layer in v3, so it opens above the Card picker (UI-64) and the other windows. */
+body.ui-v3 #viewer { z-index: var(--z-modal); }
