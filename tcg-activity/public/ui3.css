@@ -295,7 +295,7 @@ body.ui-v2.ui-v3[data-size="compact-port"].m-sa-guess[data-input="coarse"] { --s
 
 :root { --u3-text-muted: var(--text-muted); }   /* the token value; ui-v2.css keeps the old value on body until each screen PR */
 /* The shell areas use the token muted color (4.66:1), not the old v2 value (3.7:1). */
-body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs, #u3Picker, .u3-dg) { --text-muted: var(--u3-text-muted); }
+body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs, #u3Picker, .u3-dg, .u3-mp) { --text-muted: var(--u3-text-muted); }
 
 /* tiny (Discord picture-in-picture, 2.1): no top bar, sub-tab row, dock or menu (D-06, 7.1). The small live view
    (UI-59) is a later screen PR. */
