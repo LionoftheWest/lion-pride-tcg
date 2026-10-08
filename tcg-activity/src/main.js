@@ -1837,7 +1837,7 @@ function huntSelectV3HTML(d) {
   const slots = Array.from({ length: cap }, (_, i) => {
     const c = picks[i];
     return `<li class="u3-hs-slot${c ? ` is-full u3-r-${esc(c.rarity || 'normal')}${c.downed ? ' is-down' : ''}` : i === picks.length ? ' is-next' : ''}">${c
-      ? `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name || '')}" draggable="false">` : ''}${c.downed ? '<span class="u3-hs-down">Down</span>' : ''}`
+      ? `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name || '')}${c.downed ? ' (down)' : ''}" draggable="false">` : ''}${c.downed ? '<span class="u3-hs-down" aria-hidden="true">Down</span>' : ''}`
       : `<span aria-hidden="true">${i + 1}</span>`}</li>`;
   }).join('');
   const syn = stats.syn.filter((s) => s.n >= 2);
@@ -1939,10 +1939,17 @@ function mountRestBossV3(d) {
   try { bossHandle = mountBoss(cv, h.name || 'boss', h.tier, { portrait: true }); if (h.status === 'defeated') bossHandle.defeat(); } catch { bossHandle = null; }
   // No scroll: the oldest feed rows go first (as fitFeedRows), then the board takes the one-line form
   const stage = el('main').querySelector('.u3-rest');
-  const over = () => stage && stage.scrollHeight > stage.clientHeight + 1;
-  const list = stage?.querySelector('.u3-rest-feedlist');
-  while (over() && list && list.children.length > 1) list.lastElementChild.remove();
+  const over = () => stage && (stage.scrollHeight > stage.clientHeight + 1 || [...stage.querySelectorAll('.u3-hs-text')].some((n) => n.scrollHeight > n.clientHeight + 1));
+  stage?.classList.remove('is-tight');
+  if (over()) stage.classList.add('is-tight');
   fitHuntV3(el('main'));
+  // the feed box has its own height: the rows that do not fit whole go (the newest stay); no row left = no feed
+  const feed = stage?.querySelector('.u3-rest-feed'), list = feed?.querySelector('.u3-rest-feedlist');
+  if (feed && list) {
+    const bottom = () => feed.getBoundingClientRect().bottom + 1;
+    while (list.lastElementChild && list.lastElementChild.getBoundingClientRect().bottom > bottom()) list.lastElementChild.remove();
+    if (!list.children.length) feed.remove();
+  }
 }
 
 function openHuntPicker(from) {
