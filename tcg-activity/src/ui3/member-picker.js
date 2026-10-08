@@ -105,7 +105,7 @@ export function mountMemberPicker(host, opts) {
     // the host edges: the keyboard layer (ui3.css body[data-kb]) keeps the picker's own left and right edges
     const hr = host.getBoundingClientRect();
     root.style.setProperty('--mp-host-l', `${Math.round(hr.left)}px`);
-    root.style.setProperty('--mp-host-r', `${Math.round(innerWidth - hr.right)}px`);
+    root.style.setProperty('--mp-host-w', `${Math.round(hr.width)}px`);
     const list = sectionsList();
     body.dataset.fit = FITS[st.fit];
     body.classList.toggle('has-paged', !!list.at(-1)?.paged);
@@ -182,7 +182,8 @@ export function mountMemberPicker(host, opts) {
     find.insertAdjacentHTML('beforeend', `<div class="u3-mp-sug${had ? ' is-still' : ''}" role="listbox" aria-label="Members">${rows}</div>`);
     // only whole rows above the dock and the frame bottom (a short frame, the keyboard): no row under another layer
     const box = find.querySelector('.u3-mp-sug');
-    const floor = Math.min(innerHeight, document.getElementById('dock')?.getBoundingClientRect().top || innerHeight);
+    const frameBottom = document.body.getBoundingClientRect().bottom;   // the frame bottom (the body fills the frame; no raw window size, G-009)
+    const floor = Math.min(frameBottom, document.getElementById('dock')?.getBoundingClientRect().top || frameBottom);
     while (box.children.length > 1 && box.getBoundingClientRect().bottom > floor) box.lastElementChild.remove();
   }
   function syncClear() {
