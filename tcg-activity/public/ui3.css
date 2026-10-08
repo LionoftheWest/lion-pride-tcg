@@ -838,7 +838,7 @@ body[data-size="compact-land"] .u3-pk__acts { grid-area: pager; justify-self: en
 body[data-size="compact-land"] .u3-pk__pager { justify-self: start; }
 body[data-size="compact-land"] .u3-hs-count h2, body[data-size="compact-land"] .u3-hs-count b { font-size: var(--fs-stat); }
 
-/* ==== UI-20 boss detail window (main.js openBossWindowV3; design repo UI-20/approved review-1) ====
+/* ==== UI-20 boss detail window (main.js openBossWindowV3; design repo UI-20/approved review-2, D-71) ====
    A dialog on medium and expanded (the boss left, the facts and the move pool right), a full sheet on the compact
    classes (the head, the boss, the HP bar, the facts, the move pool in two columns). The scrim covers the shell. */
 #u3BossWin { --text-muted: var(--u3-text-muted); }
@@ -901,7 +901,7 @@ body[data-size="compact-land"] .u3-bw.is-denser, body:not([data-size^="compact"]
 
 body[data-size^="compact"] .u3-bw.is-paged.is-denser { grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; grid-template-areas: "head close" "hp hp" "facts facts" "mlabel mlabel" "moves moves" "mpager mpager"; }
 
-/* ==== UI-19 Hunt resting and squad down (main.js restingV3HTML, huntSelectV3HTML; design repo UI-19/approved review-2) ====
+/* ==== UI-19 Hunt resting and squad down (main.js restingV3HTML, huntSelectV3HTML; design repo UI-19/approved review-2 + review-3) ====
    Resting: the stage fills the content area: the text column, the boss, the boss live feed (wide); one column on phones.
    The result sits directly under the title (FEEDBACK UI-19). Squad down: grey slots with "Down", Edit locked with its reason. */
 .u3-rest { flex: 1 1 0; grid-template-columns: minmax(0, 5fr) minmax(0, 5fr) minmax(0, 4fr); }
@@ -1091,3 +1091,7 @@ body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font
 body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
 /* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
 body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
+/* UI-20 as drawn: the move pool fills column by column; on expanded the window is a centered dialog, not the full frame */
+.u3-bw__moves { grid-auto-flow: column; grid-template-rows: repeat(var(--bw-rows, 1), auto); }
+body[data-size="expanded"] .u3-bw { justify-self: center; width: min(100%, calc(var(--card-tile-max) * 7)); }
+.u3-bw__facts { gap: var(--sp-1); }

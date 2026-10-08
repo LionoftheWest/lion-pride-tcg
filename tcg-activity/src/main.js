@@ -1283,7 +1283,7 @@ function openBossModal() {
   try { bossModalHandle = mountBoss(el('bossModalCanvas'), h.name || 'boss', h.tier); if (defeated) bossModalHandle.defeat(); } catch (e) { bossModalHandle = null; }
 }
 // ---- v3: the boss detail window (UI-20), behind ui_v3 --------------------------------------------------------------
-// Design repo UI-20/approved (review-1): a dialog on medium and expanded, a full sheet on the compact classes; the scrim
+// Design repo UI-20/approved (review-1, review-2 with the move pool, D-71): a dialog on medium and expanded, a full sheet on the compact classes; the scrim
 // covers the shell. The live boss, "The Hunt · Live now", the name with the Tier chip, the HP bar, Attack, Weakness,
 // Resistance, Passive, and the move pool: this boss's own moves (hunt_boss_moves.sql) first, then the common moves.
 let bossWin = null;
@@ -1324,6 +1324,9 @@ function openBossWindowV3() {
   host.querySelector('.u3-bw').focus({ preventScroll: true });
   // No scroll: the move pool gets denser when it does not fit (one line per move), then the render gives its room
   const win = host.querySelector('.u3-bw'), mv = host.querySelector('.u3-bw__moves');
+  // the pool fills column by column, as drawn (Fade, Veil, Demotion down the first column): rows = half the moves
+  const rows = (n) => mv.style.setProperty('--bw-rows', String(Math.max(1, Math.ceil(n / 2))));
+  rows(moves.length);
   for (const step of ['is-dense', 'is-denser']) { if (mv.scrollHeight <= mv.clientHeight + 1) break; win.classList.add(step); }
   // still too many: pages of the moves that fit, the pager under the list (D-36)
   if (mv.scrollHeight > mv.clientHeight + 1) {
@@ -1335,6 +1338,7 @@ function openBossWindowV3() {
     const pages = Math.ceil(moves.length / per);
     let page = 0;
     const paintMoves = () => {
+      rows(Math.min(per, moves.length - page * per));
       mv.innerHTML = moves.slice(page * per, page * per + per).map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('');
       box.innerHTML = ui3Pager({ page: page + 1, pages });
     };
@@ -1829,7 +1833,7 @@ function fitHuntV3(main) {
   }
 }
 // ---- v3: the Hunt with no live boss (UI-19 resting), behind ui_v3 --------------------------------------------------
-// Design repo UI-19/approved (review-2, D-61): the boss stage with the last boss, its result directly under the title
+// Design repo UI-19/approved (review-2 + review-3, D-61): the boss stage with the last boss, its result directly under the title
 // (FEEDBACK UI-19), weak and passives, the result bar, "Next boss in", your damage, the last Top 3, the boss render and
 // the boss live feed.
 function restingV3HTML(d) {
