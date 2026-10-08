@@ -948,6 +948,288 @@ body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font
 body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
 /* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
 body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
+/* ---- Bell window (UI-24, src/ui3/bell.js): a panel under the top bar on medium and expanded (right aligned, ends
+   above the dock), a side sheet on compact-land, a sheet above the dock on compact-port. Gifts to claim, the Hunt card,
+   the rows under Today and Earlier, the Pager (3.4). ---- */
+.u3-bell { position: fixed; z-index: var(--z-sheet); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-3);
+  top: calc(var(--u3-sa-t) + var(--u3-bar) - var(--sp-1)); right: calc(var(--u3-sa-r) + var(--u3-pad)); bottom: calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-2));
+  width: calc(var(--dialog-w) - var(--sp-3) - var(--sp-half)); padding: var(--sp-4); border-radius: var(--rad-lg);
+  background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); animation: kf-fade var(--dur-base) var(--ease-out); }
+body[data-size="compact-land"] .u3-bell { top: calc(var(--u3-sa-t) + var(--sp-1-5)); bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5));
+  width: min(calc(var(--sheet-side-w) + var(--sp-7) + var(--sp-2)), calc(100% - var(--sp-6))); border-radius: var(--rad-sheet); gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); }
+body[data-size="compact-port"] .u3-bell { top: calc(var(--u3-sa-t) + var(--sp-1-5)); left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5));
+  width: auto; border-radius: var(--rad-sheet); }
+.u3-bell > .v2-loading { margin: auto; color: var(--text-muted); font-size: var(--fs-small); }
+.u3-bell__head { flex: none; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-bell__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); white-space: nowrap; }
+.u3-bell__grow { flex: 1 1 auto; }
+.u3-bell__close { display: inline-flex; flex: none; }
+.u3-bell__tabs { flex: none; display: flex; width: 100%; box-sizing: border-box; }
+/* .nt-tabs stays on the tab row (shell.js opens Settings through it): its v2 rules lose to these (one more class) */
+.u3-bell .u3-bell__tabs .u3-seg__item { flex: 1 1 0; justify-content: center; height: var(--chip-md); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); }
+.u3-bell .u3-bell__tabs .u3-seg__item.is-active { color: var(--text-primary); }
+body[data-input="coarse"] .u3-bell .u3-bell__tabs .u3-seg__item, body[data-input="coarse"] .u3-bell .u3-btn--sm { height: var(--hit); }
+body[data-input="coarse"] .u3-note__main { min-height: var(--hit); justify-content: center; }
+.u3-bell .u3-label { color: var(--text-secondary); }
+/* compact-land: the sheet reaches the top edge, so its head keeps the Discord corner zone free (2.3, as the top bar) */
+body[data-size="compact-land"] .u3-bell__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-1-5) - var(--sp-4))); }
+.u3-bell__list { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-bell__list > .u3-state { flex: 1 1 auto; }
+.u3-bell__u { flex: none; min-width: 0; }
+.u3-bell__pager { flex: none; display: flex; justify-content: center; }
+.u3-bell__pager[hidden] { display: none; }
+.u3-bell__pager .u3-pager__arrow { min-width: 0; }   /* style.css "nav button" sets a min width (the old tab bar); the library Pager does not reset it */
+.u3-bell__head2 { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: var(--ctl-sm); }
+.u3-bell__head2 + .u3-msg { margin-top: var(--sp-2); }
+.u3-bell__sec { display: block; padding-top: var(--sp-1); }
+/* A gift to claim: its icon (a gift, the Shards coin, or the card), the title, the amount, Claim */
+.u3-gift { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3); border-radius: var(--rad-lg); background: var(--gold-a10); border: var(--bw-1) solid var(--gold-a35); }
+.u3-gift__ico { flex: none; display: grid; place-items: center; width: calc(var(--card-mini) / var(--card-ratio)); color: var(--gold); }
+.u3-gift__ico--coin svg { width: var(--icon-2xl); height: var(--icon-2xl); }
+.u3-gift__card { flex: none; width: calc(var(--card-mini) / var(--card-ratio)); aspect-ratio: 5 / 7; border-radius: var(--rad-sm); overflow: hidden; box-shadow: 0 0 0 var(--bw-2) var(--u3-r); }
+.u3-gift__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.u3-gift__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }
+.u3-gift__title { font-size: var(--fs-body); font-weight: var(--fw-small-strong); line-height: var(--lh-small); color: var(--text-primary); }
+.u3-gift__what { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--gold); }
+.u3-gift__what[class*="u3-r-"] { color: var(--u3-r); }
+.u3-gift__shards { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--cur-shards); }
+.u3-gift__shards svg { width: var(--icon-md); height: var(--icon-md); }
+/* The Hunt card: HUNT, the boss, its HP, Hunt */
+.u3-bellhunt { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--danger); }
+.u3-bellhunt__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+.u3-bellhunt__chip { display: inline-flex; align-items: center; gap: var(--sp-1-5); height: var(--chip-sm); padding: 0 var(--sp-2); border-radius: var(--rad-pill); border: var(--bw-1) solid var(--danger);
+  color: var(--danger-text); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); }
+.u3-bellhunt__live { width: var(--dot); height: var(--dot); border-radius: var(--rad-round); background: var(--danger); }
+.u3-bellhunt__name { font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-bellhunt__hp .u3-bar__fill { background: var(--danger); }
+/* A notification row: the kind icon, the body (1 line on the panels, 2 on compact-port; a tap shows it all, 10.4), the
+   kind label, the action, the time, the unread mark */
+.u3-note { position: relative; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-5) var(--sp-2) var(--sp-3); border-radius: var(--rad-lg); background: var(--surface-2); }
+.u3-note__ico { flex: none; display: grid; place-items: center; width: var(--ctl-icon); height: var(--ctl-icon); border-radius: var(--rad-md); background: var(--surface-3); color: var(--text-secondary); }
+.u3-note__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-half); padding: 0; margin: 0;
+  border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: var(--rad-sm); }
+body:not([data-last-input="pointer"]) .u3-note__main:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+.u3-note__text { max-width: 100%; font-size: var(--fs-small); font-weight: var(--fw-small-strong); line-height: var(--lh-small); color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-size="compact-port"] .u3-note__text { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.u3-note.is-full .u3-note__text { white-space: normal; display: block; overflow: visible; -webkit-line-clamp: none; }
+.u3-note__kind { font-size: var(--fs-caption); font-weight: var(--fw-caption); line-height: var(--lh-caption); color: var(--gold); }
+.u3-note__ago { flex: none; font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.u3-note__dot { position: absolute; right: var(--sp-2); bottom: var(--sp-2); width: var(--dot); height: var(--dot); border-radius: var(--rad-round); background: var(--gold); }
+/* The bell button shows the "on" look while the window is open (P7, as Shop and Menu) */
+body.ui-v2.ui-v3[data-size] #topbar #bellBtn.is-open { color: var(--gold); background: var(--gold-a10); border-color: var(--gold-a50); }
+
+
+/* ---- UI-14 Profile (member): design repo UI-14/approved (review-1 + review-2); src/ui3/profile.js ---- */
+/* The full-screen view in the content area, 8 px above the dock (S3); the view under it hides (no second screen). */
+body.ui-v2.ui-v3[data-size] { --u3-pf-dock: calc(var(--dock-h) + var(--sp-3) + var(--sp-2)); }
+body.ui-v2.ui-v3[data-size="compact-land"] { --u3-pf-dock: calc(var(--dock-h) + var(--sp-1) + var(--sp-2)); }
+body.ui-v2.ui-v3[data-size="compact-port"] { --u3-pf-dock: calc(var(--dock-h) + var(--sp-2) * 2 + var(--u3-sa-b)); }
+body.ui-v2.ui-v3[data-size="tiny"] { --u3-pf-dock: var(--sp-2); }
+body.ui-v2.ui-v3[data-size] #memberModal.v2-screen { top: calc(var(--u3-sa-t) + var(--u3-bar) + var(--sp-1)); left: calc(var(--u3-sa-l) + var(--u3-pad)); right: calc(var(--u3-sa-r) + var(--u3-pad));
+  bottom: var(--u3-pf-dock); z-index: var(--z-base); background: var(--bg-base); --text-muted: var(--u3-text-muted); }
+body.ui-v2.ui-v3[data-size="tiny"] #memberModal.v2-screen { top: var(--sp-2); left: var(--sp-2); right: var(--sp-2); }
+body.ui-v2.ui-v3[data-size]:has(#memberModal:not(.hidden)) #body { visibility: hidden; }
+.u3-pf { position: relative; height: 100%; display: grid; gap: var(--sp-4); min-height: 0; box-sizing: border-box; }
+.u3-pf-tile { position: relative; min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4);
+  box-sizing: border-box; border-radius: var(--rad-lg); background: var(--bg-raised); border: var(--bw-1) solid var(--border); }
+.u3-pf-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-height: var(--ctl-sm); }
+.u3-pf-h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-stat); font-weight: var(--fw-heading); color: var(--text-primary); }
+.u3-pf-none, .u3-pf-empty { margin: 0; color: var(--text-muted); font-size: var(--fs-small); }
+.u3-pf-empty { flex: 1 1 auto; display: grid; place-items: center; text-align: center; font-size: var(--fs-body); }
+.u3-pf .u3-btn--ghost { padding: 0 var(--sp-1); }
+body[data-input="coarse"] .u3-pf .u3-btn { height: var(--hit); }
+
+/* the layouts (grid areas) */
+.u3-pf-id { grid-area: id; } .u3-pf-spot { grid-area: spot; } .u3-pf-season { grid-area: season; } .u3-pf-wish { grid-area: wish; } .u3-pf-hunt { grid-area: hunt; }
+.u3-pf[data-lay="col3"] { grid-template-columns: minmax(0, calc(var(--sheet-side-w) * .74)) minmax(0, 1fr) minmax(0, calc(var(--sheet-side-w) * .8)); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "id spot wish" "id season hunt"; }
+.u3-pf[data-lay="col3"]:not(:has(.u3-pf-wish)) { grid-template-areas: "id spot hunt" "id season hunt"; }
+.u3-pf[data-lay="col3"]:has(.u3-pf-season.is-all) { grid-template-areas: "id season wish" "id season hunt"; }
+.u3-pf[data-lay="col3"]:has(.u3-pf-season.is-all):not(:has(.u3-pf-wish)) { grid-template-areas: "id season hunt" "id season hunt"; }
+.u3-pf[data-lay="stack"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 4fr) minmax(0, 5fr);
+  grid-template-areas: "id id" "spot season" "wish hunt"; }
+.u3-pf[data-lay="stack"]:not(:has(.u3-pf-wish)) { grid-template-areas: "id id" "spot season" "hunt hunt"; }
+.u3-pf[data-lay="stack"]:has(.u3-pf-season.is-all) { grid-template-areas: "id id" "season season" "wish hunt"; }
+.u3-pf[data-lay="land"] { gap: var(--sp-2); grid-template-columns: minmax(calc(var(--sheet-side-w) * .75), 23fr) minmax(0, 20fr) minmax(0, 20fr); grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "id spot wish" "id season wish"; }
+.u3-pf[data-lay="land"]:not(:has(.u3-pf-wish)) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "id spot" "id season"; }
+.u3-pf[data-lay="land"]:has(.u3-pf-season.is-all) { grid-template-rows: minmax(0, 1fr); grid-template-areas: "id season season"; }
+.u3-pf[data-lay="port"] { gap: var(--sp-2); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 2fr) auto minmax(0, 3fr);
+  grid-template-areas: "id" "spot" "season" "wish"; }
+.u3-pf[data-lay="port"]:not(:has(.u3-pf-wish)) { grid-template-rows: auto minmax(0, 1fr) auto; }
+.u3-pf[data-lay="port"]:has(.u3-pf-season.is-all) { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "id" "season"; }
+.u3-pf[data-lay="tiny"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "id"; }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-tile { padding: var(--sp-3); gap: var(--sp-2); }
+.u3-pf:is([data-lay="land"], [data-lay="port"], [data-lay="tiny"]) .u3-pf-hunt,
+.u3-pf:is([data-lay="port"], [data-lay="land"]):has(.u3-pf-season.is-all) .u3-pf-wish,
+.u3-pf[data-lay="tiny"] :is(.u3-pf-spot, .u3-pf-season, .u3-pf-wish) { display: none; }
+
+/* identity: every part is a grid item of the tile (display: contents), placed by the layout */
+.u3-pf-id { display: grid; align-content: start; column-gap: var(--sp-3); row-gap: var(--sp-2); }
+.u3-pf-who, .u3-pf-name { display: contents; }
+.u3-pf-id > .u3-pf-home { grid-area: home; justify-self: end; }
+.u3-pf-id .v2-avatar.u3-pf-av { grid-area: av; align-self: center; width: calc(var(--avatar-lg) + var(--sp-6)); height: calc(var(--avatar-lg) + var(--sp-6)); padding: var(--sp-1); }
+.u3-pf-id .v2-avatar.u3-pf-av > span { font-size: var(--fs-title); }
+.u3-pf-id .v2-avatar.u3-pf-av.live { box-shadow: 0 0 0 var(--bw-2) var(--bg-raised), 0 0 0 calc(var(--bw-2) * 2) var(--success); }
+.u3-pf-id h2 { grid-area: name; margin: 0; min-width: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading);
+  color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-pf-title { grid-area: title; justify-self: start; padding: var(--sp-half) var(--sp-2); border-radius: var(--rad-sm); background: var(--gold-a10); color: var(--gold);
+  font-size: var(--fs-caption); font-weight: var(--fw-heading); letter-spacing: var(--sp-half); }
+.u3-pf-id #memCos { grid-area: cos; justify-self: start; }
+.u3-pf-badges { grid-area: badges; display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.u3-pf-badge { width: var(--icon-2xl); height: var(--icon-2xl); flex: none; display: grid; place-items: center; border-radius: var(--rad-round); font-size: var(--fs-caption);
+  background: var(--surface-1); border: var(--bw-1) solid var(--gold-a50); }
+.u3-pf-more { margin-left: var(--sp-1); font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-muted); }
+.u3-pf-status { grid-area: status; display: flex; align-items: center; justify-content: center; min-height: var(--ctl-sm); padding: var(--sp-1) var(--sp-3); box-sizing: border-box;
+  border-radius: var(--rad-md); background: var(--gold-a10); border: var(--bw-1) solid var(--gold-a35); color: var(--gold); font-size: var(--fs-small); text-align: center; }
+.u3-pf-acts { grid-area: acts; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+.u3-pf-fx { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-2); }
+.u3-pf-acts .u3-btn { width: 100%; min-width: 0; }
+.u3-pf-stats { grid-area: stats; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-1); padding: var(--sp-2) var(--sp-1);
+  border-radius: var(--rad-md); background: var(--surface-1); }
+.u3-pf-stats > div { display: flex; flex-direction: column; align-items: center; min-width: 0; text-align: center; }
+.u3-pf-stats b { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-heading); color: var(--text-primary); }
+.u3-pf-stats span { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; }
+.u3-pf-stats[data-fs="1"] b { font-size: var(--fs-small); } .u3-pf-stats[data-fs="2"] b { font-size: var(--fs-caption); }
+.u3-pf-stats:is([data-fs="2"], [data-fs="3"]) span { font-size: var(--fs-label); }
+.u3-pf-stats[data-fs="3"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.u3-pf-stats[data-fs="3"] b { font-size: var(--fs-caption); }
+.u3-pf-stats span { font-size: var(--fs-caption); color: var(--text-muted); }
+.u3-pf-achh { grid-area: achh; display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2); }
+.u3-pf-n { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); }
+.u3-pf-ach { grid-area: ach; margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; align-content: flex-start; gap: var(--sp-1-5); min-height: var(--ctl-sm); overflow: hidden; }
+.u3-pf-ab { width: var(--ctl-sm); height: var(--ctl-sm); flex: none; display: grid; place-items: center; box-sizing: border-box; border-radius: var(--rad-round); font-size: var(--fs-small);
+  background: var(--surface-1); border: var(--bw-1) solid var(--gold-a50); }
+.u3-pf-ab--more { font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-muted); border-color: var(--border); }
+
+.u3-pf[data-lay="col3"] .u3-pf-id { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(10, auto) minmax(0, 1fr);
+  grid-template-areas: "home" "av" "name" "title" "cos" "badges" "status" "acts" "stats" "achh" "ach"; }
+.u3-pf[data-lay="col3"] .u3-pf-id > .u3-pf-home { justify-self: start; }
+.u3-pf[data-lay="col3"] .u3-pf-id :is(.v2-avatar.u3-pf-av, h2, .u3-pf-title, .u3-pf-badges) { justify-self: center; text-align: center; }
+.u3-pf:is([data-lay="port"], [data-lay="land"]) .u3-pf-id { grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "av name home" "av title home" "av cos cos" "av badges badges" "status status status" "acts acts acts" "stats stats stats" "achh achh achh" "ach ach ach"; }
+.u3-pf[data-lay="land"][data-self] .u3-pf-id { grid-template-areas: "av name name" "av title title" "av cos home" "av badges badges" "status status status" "acts acts acts" "stats stats stats" "achh achh achh" "ach ach ach"; }
+.u3-pf[data-lay="land"] .u3-pf-id { row-gap: var(--sp-1-5); }
+.u3-pf[data-lay="land"] .u3-pf-id .v2-avatar.u3-pf-av { width: calc(var(--avatar-lg) + var(--sp-2)); height: calc(var(--avatar-lg) + var(--sp-2)); }
+.u3-pf[data-lay="land"] .u3-pf-acts { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr); }
+.u3-pf[data-lay="land"] .u3-pf-acts:not(:has(.u3-pf-fx)) { grid-template-columns: minmax(0, 1fr); }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-stats { gap: var(--sp-1); padding: var(--sp-1); }
+.u3-pf[data-lay="stack"] .u3-pf-id { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: repeat(6, auto) minmax(0, 1fr);
+  grid-template-areas: "home home stats" "av name stats" "av title achh" "av cos ach" "av badges ach" "status status ach" "acts acts ach"; }
+.u3-pf[data-lay="stack"] .u3-pf-id > .u3-pf-home { justify-self: start; }
+.u3-pf[data-lay="tiny"] .u3-pf-id { padding: var(--sp-2); grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "av name" "av badges" "home home" "stats stats"; }
+.u3-pf[data-lay="tiny"] .u3-pf-id > .u3-pf-home { justify-self: start; }
+.u3-pf[data-lay="tiny"] .u3-pf-id :is(.u3-pf-title, #memCos, .u3-pf-status, .u3-pf-acts, .u3-pf-achh, .u3-pf-ach) { display: none; }
+.u3-pf[data-lay="tiny"] .u3-pf-id .v2-avatar.u3-pf-av { width: var(--avatar-lg); height: var(--avatar-lg); }
+
+/* Spotlight: the cards as large as the tile allows (review-2), the main card in the middle */
+.u3-pf-spotrow { flex: 1 1 0; min-height: 0; margin: 0; padding: 0; list-style: none; display: flex; align-items: center; justify-content: center; gap: var(--sp-3);
+  --pf-cw: var(--card-tile); }
+.u3-pf-card { flex: none; position: relative; aspect-ratio: 5 / 7; border-radius: var(--rad-sm); }
+.u3-pf-card > button { position: relative; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; border-radius: inherit; }
+.u3-pf-card img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; filter: drop-shadow(0 0 var(--sp-2) var(--u3-r)); }
+.u3-pf-spotrow > .u3-pf-card { width: calc(var(--pf-cw) * .82); }
+.u3-pf-spotrow[data-even] > .u3-pf-card { width: var(--pf-cw); }
+.u3-pf-spotrow > .u3-pf-card.is-main { width: var(--pf-cw); }
+.u3-pf-spotrow .u3-pf-none { align-self: center; }
+
+/* Season: the title, the bar, View all; the mini grid (whole rows); the rarity chips */
+.u3-pf-shead { display: flex; align-items: center; gap: var(--sp-4); min-width: 0; }
+.u3-pf-stitle { display: flex; flex-direction: column; flex: none; }
+.u3-pf-stitle h2 { margin: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); white-space: nowrap; }
+.u3-pf-sbar { flex: 0 1 calc(var(--sp-7) * 5); min-width: 0; height: var(--bar-sm); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; align-self: flex-start;
+  margin-top: var(--sp-3); }
+.u3-pf-sbar > i { display: block; height: 100%; width: var(--u3-v); background: linear-gradient(90deg, var(--rarity-full_art), var(--gold)); }
+.u3-pf-shead #memAll { margin-left: auto; flex: none; }
+.u3-pf-mini, .u3-pf-allgrid { flex: 1 1 0; min-height: 0; margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(var(--pf-cols, 1), minmax(0, 1fr));
+  align-content: start; gap: var(--sp-2); }
+.u3-pf-mini > .u3-pf-card { outline: var(--bw-2) solid var(--u3-r); outline-offset: calc(var(--bw-2) * -1); overflow: hidden; }
+.u3-pf-mini > .u3-pf-card img { filter: none; object-fit: cover; }
+.u3-pf-card.is-lock { display: grid; place-items: center; border: var(--bw-1) solid var(--border); background: var(--bg-base); color: var(--text-muted); }
+.u3-pf-allgrid { grid-template-columns: repeat(var(--pf-cols, 1), var(--pf-tile, var(--card-tile))); justify-content: center; }
+.u3-pf-pager { display: flex; justify-content: center; min-height: var(--ctl-sm); }
+.u3-pf-rar { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-pf-rchip { display: inline-flex; align-items: center; gap: var(--sp-1-5); height: var(--chip-md); padding: 0 var(--sp-3); border-radius: var(--rad-pill); background: var(--surface-1);
+  border: var(--bw-1) solid var(--border); font-size: var(--fs-small); color: var(--text-secondary); white-space: nowrap; }
+.u3-pf-rchip i { font-style: normal; color: var(--u3-r); }
+.u3-pf-rchip b { font-family: var(--font-num); color: var(--u3-r); }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-mini { display: none; }
+.u3-pf[data-lay="land"] .u3-pf-rar { display: none; }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-stitle h2 { font-size: var(--fs-heading); }
+.u3-pf[data-lay="port"] .u3-pf-rar { justify-content: center; }
+
+/* Wishlist (the v2 rows, restyled; UI-16 builds the editor) */
+.u3-pf-wish .tile-h { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--fs-stat); min-height: var(--ctl-sm); }
+.u3-pf-wish .tile-h b { display: flex; align-items: center; gap: var(--sp-2); font-weight: var(--fw-heading); }
+.u3-pf-wish .tile-h .grow { flex: 1 1 auto; }
+.u3-pf-wish .tile-h .mono { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-pf-wish #wlEdit { min-height: var(--ctl-sm); padding: 0 var(--sp-3); border-radius: var(--rad-md); font-size: var(--fs-small); }
+body.ui-v2.ui-v3[data-input="coarse"] .u3-pf-wish :is(#wlEdit, .wl-row .v2-icon) { min-height: var(--hit); min-width: var(--hit); }
+body.ui-v2.ui-v3 .u3-pf-wish { gap: var(--sp-2); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-list { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-1); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row { flex: none; min-height: calc(var(--ctl-sm) + var(--sp-1)); padding: var(--sp-half) var(--sp-2); gap: var(--sp-3); border-radius: var(--rad-md); background: var(--surface-1); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row[hidden] { display: none; }
+body.ui-v2.ui-v3 .u3-pf-wish :is(.wl-row img, .wl-empty) { height: var(--ctl-sm); width: auto; aspect-ratio: 5 / 7; box-sizing: border-box; flex: none; }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row b { font-size: var(--fs-small); white-space: normal; overflow-wrap: anywhere; }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row span[style] { font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-i { width: var(--sp-3); font-size: var(--fs-caption); color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-pf-wish .hl-n { font-size: var(--fs-label); padding: var(--sp-half) var(--sp-1-5); border-radius: var(--rad-sm); background: var(--bg-base); color: var(--text-muted); }
+.u3-pf-wmore { display: flex; justify-content: center; }
+body[data-input="coarse"] .u3-pf-wmore .u3-more { min-height: var(--hit); }
+.u3-pf[data-lay="port"] .u3-pf-wish .wl-i { display: none; }
+
+/* Hunt (C4, C8) */
+.u3-pf-hunt .mem-hstats span, .u3-pf-hunt .mem-bars .hb span { font-size: var(--fs-label); }
+
+/* No profile / failed load (C17, 7.2) */
+.u3-pf--empty { display: flex; flex-direction: column; align-items: stretch; }
+.u3-pf--empty > .u3-pf-home { align-self: flex-start; }
+.u3-pf--empty > .u3-state { flex: 1 1 auto; }
+.u3-pf--empty .u3-msg { font-size: var(--fs-body); font-weight: var(--fw-body); color: var(--text-secondary); }
+.u3-pf--empty .u3-msg .u3-ico { color: var(--danger); }
+
+/* the tight steps (profile.js fitTight): 1 no rarity chips, 2 a smaller identity, 3 no status line, 4 (phones) the Spotlight
+   and the Wishlist as two tabs */
+.u3-pf[data-tight] .u3-pf-rar { display: none; }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-id { row-gap: var(--sp-1); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-stats { row-gap: var(--sp-half); padding-block: var(--sp-half); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-stats b { font-size: var(--fs-small); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-stats span { font-size: var(--fs-label); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-id .v2-avatar.u3-pf-av { width: var(--avatar-lg); height: var(--avatar-lg); }
+.u3-pf:is([data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-status { display: none; }
+.u3-pf[data-lay="land"]:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-id .v2-avatar.u3-pf-av { width: var(--avatar-md); height: var(--avatar-md); }
+.u3-pf-tabs { display: none; grid-area: tabs; }
+.u3-pf-tabs .u3-seg { display: flex; }
+.u3-pf-tabs .u3-seg__item { flex: 1 1 0; justify-content: center; }
+.u3-pf:is([data-lay="port"]:is([data-tight="4"], [data-tight="5"]), [data-lay="land"][data-tight="5"]) .u3-pf-tabs { display: block; }
+.u3-pf[data-lay="land"][data-tight="5"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "id pane" "id tabs"; }
+.u3-pf[data-lay="land"][data-tight="5"] :is(.u3-pf-spot, .u3-pf-season, .u3-pf-wish) { grid-area: pane; }
+.u3-pf[data-lay="land"][data-tight="5"] .u3-pf-tile[hidden] { display: none; }
+.u3-pf[data-lay="land"][data-tight="5"] .u3-pf-tabs [data-seg="pf:season"] { display: inline-flex; }
+.u3-pf:is([data-lay="land"], [data-lay="port"])[data-tight="5"] .u3-pf-mini { display: grid; }
+.u3-pf:is([data-lay="land"], [data-lay="port"])[data-tight="5"] :is(.u3-pf-achh, .u3-pf-badges) { display: none; }   /* duplicates: the Achievements stat and the grid */
+.u3-pf[data-lay="port"][data-tight="4"] { grid-template-rows: auto auto auto minmax(0, 1fr); grid-template-areas: "id" "season" "tabs" "pane"; }
+.u3-pf[data-lay="port"][data-tight="5"] { grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "id" "tabs" "pane"; }
+.u3-pf-tabs [data-seg="pf:season"] { display: none; }
+.u3-pf[data-lay="port"][data-tight="5"] .u3-pf-tabs [data-seg="pf:season"] { display: inline-flex; }
+.u3-pf[data-lay="port"]:is([data-tight="4"], [data-tight="5"]) :is(.u3-pf-spot, .u3-pf-wish) { grid-area: pane; }
+.u3-pf[data-lay="port"][data-tight="5"] .u3-pf-season { grid-area: pane; }
+.u3-pf[data-lay="port"]:is([data-tight="4"], [data-tight="5"]) .u3-pf-tile[hidden] { display: none; }
+.u3-pf[data-lay="port"]:is([data-tight="4"], [data-tight="5"]) .u3-pf-acts { grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr); }
+.u3-pf:is([data-lay="land"], [data-tight="4"], [data-tight="5"]) .u3-pf-acts .u3-btn { padding: 0 var(--sp-2); gap: var(--sp-1); }
+.u3-pf[data-lay="land"]:is([data-tight="2"], [data-tight="3"]) .u3-pf-id h2 { font-size: var(--fs-stat); }
+.u3-pf[data-small] .u3-pf-id h2 { font-size: var(--fs-small); }
+.u3-pf[data-small] .u3-pf-stats b { font-size: var(--fs-caption); }
+.u3-pf:is([data-lay="port"]:is([data-tight="4"], [data-tight="5"]), [data-lay="land"][data-tight="5"]) .u3-pf-spot > .u3-pf-head { position: absolute; top: var(--sp-1); right: var(--sp-2); }
+.u3-pf:is([data-lay="port"]:is([data-tight="4"], [data-tight="5"]), [data-lay="land"][data-tight="5"]) .u3-pf-spot > .u3-pf-head > .u3-label { display: none; }
+.u3-pf[data-lay="port"]:has(.u3-pf-spotrow > .u3-pf-none) { grid-template-rows: auto auto auto minmax(0, 1fr); }
+.u3-pf:is([data-tight="4"], [data-tight="5"], [data-small]) .u3-pf-ab { width: calc(var(--ctl-sm) - var(--sp-1)); height: calc(var(--ctl-sm) - var(--sp-1)); }
+.u3-pf[data-small] .u3-pf-acts .u3-btn { font-size: var(--fs-caption); }
+.u3-pf[data-lay="stack"] .u3-pf-rchip { height: var(--chip-sm); padding: 0 var(--sp-2); font-size: var(--fs-caption); }
+.u3-pf[data-lay="stack"] .u3-pf-rar { gap: var(--sp-1-5); }
+.u3-pf-pager > .u3-pager { width: auto; flex: none; }
 
 /* ==== UI-61 Settings window (src/ui3/settings.js; design repo UI-61/approved, review-1; FEEDBACK D-80 item 27) ====
    A panel under the top bar on medium and expanded (one column), a bottom sheet on the dock edge on compact-port, and
@@ -997,5 +1279,165 @@ body[data-last-input="pointer"] .u3-st .u3-ibtn:focus-visible { box-shadow: none
 .u3-st-row .u3-switch__input:not(:checked) + .u3-switch__track .u3-switch__knob { background: var(--text-secondary); }
 @media (hover: hover) and (pointer: fine) { .u3-st-row:not(.is-disabled):hover { background: var(--surface-3); } }
 .u3-st__sec > .u3-msg { padding: 0 var(--sp-1); }
-/* The card viewer (v2 #viewer, z 95) is on the window layer in v3, so it opens above the Card picker (UI-64) and the other windows. */
-body.ui-v3 #viewer { z-index: var(--z-modal); }
+/* ---- Shop (UI-43, src/ui3/shop.js; D-41, D-80 23): Today's stock, Packs, Stat reset. Sub-tabs on compact and medium,
+   a right column on expanded. The ShopItem: the card face, then the price pill (the Buy button). --u3-w / --u3-fw come
+   from the one fitter (3.5); every other value is a token. ---- */
+body.ui-v2.ui-v3 #main > .u3-shop { height: 100%; min-height: 0; box-sizing: border-box; color: var(--text-primary); }
+/* the tab row: the library row look (UI-02) on the one .seg inside it */
+body.ui-v2.ui-v3 #main > .u3-shop-tabs > .seg { display: flex; flex: 1 1 auto; gap: var(--sp-1); padding: 0; margin: 0; background: none; border: 0; box-shadow: none; }
+.u3-shop--desk { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--sheet-side-w) - var(--sp-7) - var(--sp-5)); gap: var(--sp-4); }
+.u3-shop--stock, .u3-shop--packs, .u3-shop--reset { display: flex; flex-direction: column; }
+.u3-shop__panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.u3-shop__panel[hidden] { display: none; }
+.u3-sgroup__items { margin: 0; padding: 0; list-style: none; }
+.u3-shop .u3-step__limits { color: var(--text-secondary); }
+.u3-shop__stock { --u3-sg: var(--sp-2); --u3-sG: var(--sp-5); --u3-si: var(--sp-2); --u3-w: var(--card-tile); --u3-fw: var(--card-tile);
+  min-height: 0; min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-shop--desk > .u3-shop__stock { padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+body[data-size="compact-land"] .u3-shop__stock { --u3-sG: var(--sp-4); gap: var(--sp-2); }
+.u3-shop__head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.u3-shop__titles { display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-shop__title { margin: 0; display: inline-flex; align-items: center; gap: var(--sp-3); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); }
+.u3-shop__title > .u3-ico { color: var(--gold); }
+.u3-shop__count { font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-shop__timer { display: inline-flex; align-items: center; gap: var(--sp-2); height: var(--ctl-sm); padding: 0 var(--sp-4); border-radius: var(--rad-pill);
+  border: var(--bw-1) solid var(--border-strong); background: var(--bg-raised); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-shop__timer > .u3-ico { color: var(--gold); }
+.u3-shop__timer b { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.u3-shop__body { flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; display: flex; gap: var(--u3-sG); align-content: flex-start; }
+.u3-shop__pager { flex: none; display: flex; justify-content: center; }
+.u3-shop__pager[hidden] { display: none; }
+.u3-shop__pager .u3-pager__arrow { min-width: 0; }   /* style.css "nav button" sets a min width (the old tab bar) */
+/* the layouts (shopLayout): row = compact-land; wide = medium landscape, expanded; tall = medium portrait; port = pages */
+.u3-shop__stock[data-layout="row"] .u3-shop__body { flex-direction: row; justify-content: center; }
+.u3-shop__stock[data-layout="wide"] .u3-shop__body { display: grid; grid-template-columns: auto auto; grid-template-areas: "feat ir" "feat nm"; justify-content: center; align-content: center; }
+.u3-shop__stock[data-layout="tall"] .u3-shop__body { display: grid; grid-template-columns: auto auto; grid-template-areas: "feat ir" "nm nm"; justify-content: center; align-content: center; }
+.u3-shop__stock[data-layout="port"] .u3-shop__body { flex-direction: column; gap: 0; }
+.u3-shop__stock[data-layout="port"] .u3-sgroup__label-wrap:not(:first-child) { margin-top: var(--u3-sG); }
+.u3-shop__stock[data-layout="port"] .u3-sgroup__label-wrap + .u3-sgroup__items { margin-top: var(--u3-si); }
+.u3-shop__stock[data-layout="port"] .u3-sgroup__items + .u3-sgroup__items { margin-top: var(--u3-sg); }
+.u3-sgroup { display: flex; flex-direction: column; align-items: flex-start; gap: var(--u3-si); min-width: 0; }
+.u3-sgroup--feat { grid-area: feat; } .u3-sgroup--ir { grid-area: ir; } .u3-sgroup--nm { grid-area: nm; }
+.u3-sgroup__items { display: flex; gap: var(--u3-sg); }
+.u3-shop__stock[data-layout="port"] .u3-sgroup__items { justify-content: center; }
+.u3-sgroup__label { display: flex; align-items: center; gap: var(--sp-2); white-space: nowrap; font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label);
+  letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-secondary); }
+.u3-sgroup__label--feat { color: var(--rarity-secret_rare-text); }
+.u3-sgroup__label--ir { color: var(--rarity-illustrated_rare-text); }
+.u3-sgroup__each { display: inline-flex; align-items: center; gap: var(--sp-1); text-transform: none; letter-spacing: 0; font-size: var(--fs-small); font-weight: var(--fw-small); color: var(--text-secondary); }
+.u3-sgroup__each .sh-coin, .u3-spanel__price .sh-coin { width: var(--icon-sm); height: var(--icon-sm); }
+/* ShopItem */
+.u3-shopitem { position: relative; flex: none; width: var(--u3-w); display: flex; flex-direction: column; gap: var(--u3-si); }
+.u3-shopitem--feat { width: var(--u3-fw); }
+.u3-shopitem__card { display: block; width: 100%; aspect-ratio: 5 / 7; padding: 0; margin: 0; cursor: pointer; overflow: hidden; background: var(--surface-2);
+  border: var(--bw-2) solid var(--u3-r); border-radius: calc(var(--u3-w) * var(--rad-card-ratio)); }
+.u3-shopitem--feat .u3-shopitem__card { border-radius: calc(var(--u3-fw) * var(--rad-card-ratio)); box-shadow: 0 0 0 var(--bw-1) var(--u3-r); }
+.u3-shopitem__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.u3-shopitem__new { position: absolute; top: var(--sp-1); right: var(--sp-1); pointer-events: none; }
+.u3-shopitem__buy { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1-5); width: 100%; height: var(--ctl-sm); padding: 0 var(--sp-1); min-width: 0;
+  border-radius: var(--rad-pill); border: var(--bw-1) solid var(--gold-a35); background: var(--gold-a10); color: var(--text-primary); cursor: pointer; font: inherit;
+  transition: transform var(--dur-instant) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+body[data-input="coarse"] .u3-shopitem__buy { height: var(--hit); }
+.u3-shopitem__buy b { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); font-variant-numeric: tabular-nums; }
+.u3-shopitem__buy .sh-coin { flex: none; width: var(--icon-md); height: var(--icon-md); }
+.u3-shopitem__buy:active:not(:disabled) { transform: scale(.97); }
+.u3-shopitem__buy:disabled { cursor: default; color: var(--success); border-color: var(--border); background: var(--surface-1); }
+.u3-shopitem.is-bought .u3-shopitem__card { opacity: var(--item-disabled); }
+.u3-shop__stock.is-tight2, body[data-size] .u3-shop__stock.is-tight2 { --u3-sG: var(--sp-2); --u3-si: var(--sp-1); }
+.u3-shop__stock.is-tight .u3-shopitem__buy .sh-coin { display: none; }
+.u3-shop__stock.is-tight2 .u3-sgroup__label { display: none; }   /* the list keeps the group name (aria-label) */
+.u3-shop__stock.is-tight .u3-shopitem__buy b { font-size: var(--fs-small); }
+@media (hover: hover) { .u3-shopitem__buy:hover:not(:disabled) { background: var(--gold-a20); } }
+body:not([data-last-input="pointer"]) :is(.u3-shopitem__buy, .u3-shopitem__card):focus-visible { outline: none; box-shadow: var(--glow-focus); }
+/* the Packs and Stat reset panels: a column on expanded (D-41), centered alone in their tab */
+.u3-shop__side { display: flex; flex-direction: column; gap: var(--sp-3); min-height: 0; }
+.u3-shop__side .u3-spanel { padding: var(--sp-4); gap: var(--sp-3); }
+.u3-shop__side .u3-spanel__body { gap: var(--sp-3); }
+.u3-shop__side .u3-spack__art { width: calc(var(--card-tile) * 0.75); aspect-ratio: 1; }
+.u3-shop__side .u3-sfree { padding: var(--sp-2) var(--sp-3); }
+.u3-shop__side .u3-sfree b { font-size: var(--fs-small); white-space: nowrap; }
+.u3-shop__side .u3-sfree span { white-space: nowrap; }
+.u3-shop__one:not([hidden]) { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; }
+.u3-shop__one > .u3-spanel { width: min(100%, calc(var(--dialog-w) + var(--sp-7) * 2)); }
+body[data-size="compact-land"] .u3-shop__one > .u3-spanel--packs { width: min(100%, calc(var(--dialog-w) * 3)); }
+.u3-spanel { box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+.u3-spanel__head { display: flex; align-items: center; gap: var(--sp-3); }
+.u3-spanel__ico { display: grid; place-items: center; width: var(--ctl-icon); height: var(--ctl-icon); border-radius: var(--rad-md); background: var(--surface-2); color: var(--gold); flex: none; }
+.u3-spanel__title { margin: 0; flex: 1 1 auto; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); }
+.u3-spanel__price { display: inline-flex; align-items: center; gap: var(--sp-1); font-family: var(--font-num); font-size: var(--fs-stat); }
+.u3-spanel__price i { font-style: normal; font-family: var(--font-ui); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-spanel__body { display: flex; flex-direction: column; gap: var(--sp-4); }
+body[data-size="compact-land"] .u3-shop__one .u3-spanel { padding: var(--sp-3) var(--sp-4); gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-shop__one .u3-spanel__ctl { gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-shop__one .u3-spack__art { width: calc(var(--card-tile) * 0.8); }
+body[data-size="compact-land"] .u3-shop__one .u3-spanel__body { flex-direction: row; align-items: center; }
+body[data-size="compact-land"] .u3-shop__one .u3-spanel__body > * { flex: 1 1 0; }
+.u3-spanel__ctl { display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-spack { display: flex; align-items: center; gap: var(--sp-4); font-size: var(--fs-stat); }
+.u3-spack__art { flex: none; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1);
+  width: calc(var(--card-tile) * 0.8); aspect-ratio: 3 / 4; border-radius: var(--rad-md); color: var(--on-gold); background: linear-gradient(180deg, var(--gold-hi), var(--gold-strong)); }
+.u3-spack__art i { font-style: normal; font-size: var(--fs-label); font-weight: var(--fw-heading); white-space: nowrap; }
+.u3-spack__art svg { width: var(--icon-2xl); height: var(--icon-2xl); }
+.u3-spack__art--big { width: calc(var(--card-tile) * 2); }
+.u3-spack__art em { position: absolute; top: calc(var(--sp-2) * -1); right: calc(var(--sp-2) * -1); display: grid; place-items: center; min-width: var(--ctl-sm); height: var(--ctl-sm);
+  border-radius: var(--rad-pill); background: var(--bg-raised); border: var(--bw-1) solid var(--gold); color: var(--gold); font-style: normal; font-size: var(--fs-small); font-weight: var(--fw-heading); }
+.u3-sqty { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.u3-sqty__label { padding-top: var(--sp-3); font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-stotal { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-stotal__v { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--cur-shards); }
+.u3-stotal__v b { font-family: var(--font-num); font-size: var(--fs-heading); }
+.u3-stotal__v .sh-coin { width: var(--icon-lg); height: var(--icon-lg); }
+.u3-spanel--packs .u3-btn--primary { width: 100%; }
+.u3-sfree { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); border: var(--bw-1) solid var(--border); }
+.u3-sfree > .u3-ico { color: var(--success); }
+.u3-sfree b { flex: 1 1 auto; font-size: var(--fs-body); font-weight: var(--fw-small-strong); }
+.u3-sfree span { font-size: var(--fs-small); color: var(--text-secondary); text-align: right; }
+.u3-sfree.is-ok span { color: var(--success); }
+.u3-schoose { width: 100%; }
+/* the confirm (5.2 Dialog): the art left, the lines right; centered; Dialog/compact on compact-port */
+#u3ShopDlg .u3-scrim { z-index: var(--z-modal); }
+.u3-sdlg { width: min(100%, calc(var(--dialog-w) * 2 + var(--sp-7) * 1.5)); min-width: 0; box-sizing: border-box; flex-direction: row; gap: var(--sp-6); }
+.u3-sdlg__art { flex: 0 0 auto; width: calc(var(--card-tile) * 2.75); display: grid; place-items: center; }
+.u3-sdlg__card { display: block; width: 100%; aspect-ratio: 5 / 7; overflow: hidden; border-radius: var(--rad-lg); border: var(--bw-2) solid var(--u3-r); background: var(--surface-2); }
+.u3-sdlg__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.u3-sdlg__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.u3-sdlg__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.u3-sdlg__head > div { flex: 1 1 auto; min-width: 0; }
+.u3-sdlg__head > [data-x] { flex: none; }
+body[data-size="compact-port"] .u3-sdlg .u3-dialog__title { font-size: var(--fs-body); line-height: var(--lh-small); }
+.u3-sdlg__eyebrow { display: block; margin-bottom: var(--sp-2); color: var(--rarity-secret_rare-text); }
+.u3-sdlg--pack .u3-sdlg__eyebrow, .u3-sdlg--reset .u3-sdlg__eyebrow { color: var(--gold); }
+.u3-sdlg__sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.u3-sdlg__rar { display: inline-flex; align-items: center; gap: var(--sp-1-5); font-size: var(--fs-small); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-secondary); }
+.u3-sdlg__rar > span { color: var(--u3-r); }
+.u3-sdlg__dim { font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-sbal, .u3-spts { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-2); border: var(--bw-1) solid var(--border); }
+.u3-sbal > div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-sbal__v { display: inline-flex; align-items: center; gap: var(--sp-1-5); color: var(--text-primary); }
+.u3-sbal__v b { font-family: var(--font-num); font-size: var(--fs-stat); font-variant-numeric: tabular-nums; }
+.u3-sbal__v .sh-coin { width: var(--icon-md); height: var(--icon-md); }
+.u3-sbal__after { padding-top: var(--sp-2); border-top: var(--bw-1) solid var(--border); }
+.u3-sbal__after > span:first-child { font-size: var(--fs-body); font-weight: var(--fw-small-strong); color: var(--text-primary); }
+.u3-sbal__after .u3-sbal__v b { font-size: var(--fs-heading); color: var(--cur-shards); }
+.u3-sbal__after .u3-sbal__v.is-neg b { color: var(--danger-text); }
+.u3-sbal__free { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--success); }
+.u3-spts__h, .u3-spts__r { display: grid; grid-template-columns: minmax(0, 1fr) var(--sp-7) var(--sp-7); align-items: center; gap: var(--sp-2); }
+.u3-spts__h { font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-secondary); }
+.u3-spts__h > span:not(:first-child), .u3-spts__r > b { text-align: center; }
+.u3-spts__r { font-size: var(--fs-body); }
+.u3-spts__r b { font-family: var(--font-num); }
+.u3-spts__z { color: var(--success); }
+.u3-spts__note { margin: 0; font-size: var(--fs-small); color: var(--success); }
+.u3-sdlg__msgs { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-sdlg__msgs:empty { display: none; }
+body[data-size="compact-port"] .u3-sdlg { flex-wrap: wrap; gap: var(--sp-4); }
+body[data-size="compact-port"] .u3-sdlg__art { width: var(--card-tile); }
+body[data-size="compact-port"] .u3-sdlg { padding: var(--sp-4); }
+body[data-size="compact-port"] .u3-sdlg__main { display: contents; }
+body[data-size="compact-port"] .u3-sdlg__head { flex: 1 1 0; min-width: 0; }
+body[data-size="compact-port"] .u3-sdlg :is(.u3-spts, .u3-sbal, .u3-sdlg__msgs, .u3-dialog__foot) { flex: 1 1 100%; }
+body[data-size="compact-land"] .u3-sdlg { gap: var(--sp-4); padding: var(--sp-4); }
+/* compact-land: the window keeps the Discord corner zone free (2.3): it ends left of the corner width */
+body[data-size="compact-land"] #u3ShopDlg .u3-scrim { padding: var(--sp-2) max(var(--corner-w), calc(var(--u3-sa-r) + var(--sp-2))) var(--sp-2) max(var(--sp-2), var(--u3-sa-l)); }   /* the scrim covers the whole frame (inset 0) */
+body[data-size="compact-land"] .u3-sdlg__art { width: var(--card-tile); }
+body[data-size="compact-land"] .u3-sdlg__main { gap: var(--sp-2); }
