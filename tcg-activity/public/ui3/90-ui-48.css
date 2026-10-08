@@ -1,0 +1,155 @@
+/* ==== UI-48 Dungeon: Choose a reward (ui-v2-dungeon.js chooseV3HTML; design repo UI-48/approved; flag ui_v3) ====
+   The progress pill and the loot chips on the dungeon stage, a panel with "Room cleared", "Choose a reward" and the
+   offers (a row of 3; a stacked list on compact-port). Every selector starts with .u3-dgc, so no other screen changes. */
+body.ui-v2.ui-v3 .v2-dungeon:has(> .u3-dgc) { padding: var(--u3-none) var(--u3-pad) var(--sp-3); gap: var(--u3-none); overflow: hidden; }
+.u3-dgc { --dgc-ci: var(--icon-lg); --dgc-ii: var(--icon-2xl); --dgc-dot: var(--ctl-sm); --dgc-dot-now: var(--avatar-md); --dgc-ic: calc(var(--hit) + var(--sp-3));
+  position: relative; height: 100%; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3); overflow: hidden;
+  color: var(--text-primary); --text-muted: var(--u3-text-muted);
+  background: radial-gradient(ellipse at 50% 55%, color-mix(in srgb, var(--bg-base) 15%, transparent), color-mix(in srgb, var(--bg-base) 75%, transparent)), url(/dungeon/room.webp) center / cover no-repeat; }
+.u3-dgc-hud { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-3); }
+/* the progress pill */
+.u3-dgc-prog { min-width: 0; box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-2) var(--sp-4); border-radius: var(--rad-lg);
+  background: color-mix(in srgb, var(--bg-raised) 88%, transparent); border: var(--bw-1) solid var(--border); }
+.u3-dgc-fl { flex: none; display: flex; flex-direction: column; padding-right: var(--sp-4); border-right: var(--bw-1) solid var(--border); }
+.u3-dgc-fl .u3-label { color: var(--gold); }
+.u3-dgc-fl b { font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); white-space: nowrap; }
+.u3-dgc-dots { flex: none; display: flex; align-items: center; }
+.u3-dgc-link { flex: none; width: var(--sp-3); height: var(--bw-2); background: var(--border); }
+.u3-dgc-link.is-done { background: var(--gold); }
+.u3-dgc-dot { flex: none; box-sizing: border-box; width: var(--dgc-dot); height: var(--dgc-dot); border-radius: var(--rad-round); display: grid; place-items: center;
+  border: var(--bw-1) solid var(--border-strong); background: color-mix(in srgb, var(--bg-raised) 88%, transparent); color: var(--text-muted); font-size: var(--fs-small); }
+.u3-dgc-dot svg { width: var(--icon-md); height: var(--icon-md); }
+.u3-dgc-dot.is-done { border-color: var(--success); background: var(--success-soft); color: var(--success); }
+.u3-dgc-dot.is-now { width: var(--dgc-dot-now); height: var(--dgc-dot-now); border-color: var(--gold); background: var(--gold); color: var(--on-gold); }
+.u3-dgc-dot.t-guardian { border-color: var(--danger); background: var(--danger-soft); color: var(--danger-text); }
+.u3-dgc-guard { min-width: 0; color: var(--danger-text); font-size: var(--fs-body); font-weight: var(--fw-small-strong); line-height: var(--lh-small); }
+/* the loot chips */
+.u3-dgc-chips { flex: none; display: flex; gap: var(--sp-2); margin-left: auto; }
+.u3-dgc-chip { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); height: var(--ctl-icon); padding: var(--u3-none) var(--sp-4); border-radius: var(--rad-pill);
+  background: color-mix(in srgb, var(--bg-raised) 88%, transparent); border: var(--bw-1) solid var(--border); color: var(--text-secondary); font-size: var(--fs-small); white-space: nowrap; }
+body.ui-v2 .u3-dgc-chip > svg { width: var(--dgc-ci); height: var(--dgc-ci); }   /* the body prefix: it wins over .sh-coin (ui-v2-shop.css) */
+.u3-dgc-chip b { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-dgc-chip.is-risk b { color: var(--warning); }
+.u3-dgc-chip.is-bank b { color: var(--success); }
+.u3-dgc-chip.is-bank > svg { color: var(--info); }
+.u3-dgc-chip:last-child > svg { color: var(--gold); }
+.u3-dgc-chip i { font-style: normal; }
+.u3-dgc-chip b svg { width: var(--icon-sm); height: var(--icon-sm); vertical-align: middle; }
+/* expanded: the banked chip is not drawn (as today) */
+body[data-size="expanded"] .u3-dgc-chip.is-bank { display: none; }
+/* the panel */
+.u3-dgc-panel { position: relative; flex: none; align-self: center; box-sizing: border-box; width: min(100%, calc(var(--dialog-w) * 1.8)); margin-block: auto; padding: var(--sp-5); text-align: center;
+  border-radius: var(--rad-lg); border: var(--bw-1) solid var(--border); background: color-mix(in srgb, var(--bg-raised) 94%, transparent); }
+.u3-dgc-k { display: block; color: var(--text-secondary); }
+.u3-dgc-h { margin: var(--sp-2) 0 var(--sp-3); font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); }
+body.ui-v2.ui-v3 .u3-dgc-panel .dg-music { position: absolute; top: var(--sp-3); right: var(--sp-3); width: var(--ctl-sm); height: var(--ctl-sm); box-sizing: border-box; padding: var(--u3-none);
+  border-radius: var(--rad-round); display: grid; place-items: center; cursor: pointer; z-index: var(--z-base);
+  background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); color: var(--gold); }
+body.ui-v2.ui-v3 .u3-dgc-panel .dg-music.off { color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-dgc-panel .dg-music svg { width: var(--icon-md); height: var(--icon-md); }
+body.ui-v2.ui-v3[data-input="coarse"] .u3-dgc-panel .dg-music { width: var(--hit); height: var(--hit); }   /* 9.1: the button is 44 px on touch */
+body.ui-v2.ui-v3 .u3-dgc-panel .dg-music:focus-visible, .u3-dgc-offer:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+/* the offers */
+.u3-dgc-offers { display: grid; gap: var(--sp-3); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.u3-dgc-offers.n1 { grid-template-columns: minmax(0, 1fr); }
+.u3-dgc-offers.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.u3-dgc-offers.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.u3-dgc-offer { --tc: var(--text-secondary); position: relative; box-sizing: border-box; min-width: 0; min-height: var(--hit); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2);
+  padding: var(--sp-4); border-radius: var(--rad-lg); border: var(--bw-1) solid var(--border-strong); background: var(--surface-1); color: var(--text-primary); font: inherit; cursor: pointer;
+  transition: transform var(--dur-instant) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+.u3-dgc-offer.is-t2 { --tc: var(--success); }
+.u3-dgc-offer.is-t3 { --tc: var(--info); }
+.u3-dgc-offer.is-t4 { --tc: var(--effect-prank); }
+.u3-dgc-offer.is-t5 { --tc: var(--gold); }
+.u3-dgc-offer:is(.is-t2, .is-t3, .is-t4, .is-t5) { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 14%, var(--surface-1)); }
+.u3-dgc-offer:active { transform: scale(0.97); }
+@media (hover: hover) { .u3-dgc-offer:hover { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 20%, var(--surface-1)); } }
+.u3-dgc-tier { padding: var(--sp-half) var(--sp-2); border-radius: var(--rad-pill); border: var(--bw-1) solid var(--tc); color: var(--tc); background: color-mix(in srgb, var(--tc) 12%, transparent);
+  font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-dgc-offer.is-t1 .u3-dgc-tier { border-color: var(--border-strong); background: var(--surface-2); }
+.u3-dgc-ic { flex: none; width: var(--dgc-ic); height: var(--dgc-ic); border-radius: var(--rad-round); display: grid; place-items: center;
+  background: color-mix(in srgb, var(--tc) 16%, var(--surface-3)); color: var(--tc); }
+body.ui-v2 .u3-dgc-ic svg { width: var(--dgc-ii); height: var(--dgc-ii); }
+.u3-dgc-offer b { font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); }
+.u3-dgc-offer small { color: var(--text-secondary); font-size: var(--fs-small); line-height: var(--lh-small); }
+/* medium: the progress pill spans the stage, the chips are their own row under it */
+body[data-size="medium"] .u3-dgc-prog { flex: 1 1 100%; }
+body[data-size="medium"] .u3-dgc-chips { margin-left: var(--u3-none); }
+body[data-size="medium"] .u3-dgc-panel { width: 100%; }
+/* compact-land: the chips (numbers only) at the left, the pill beside them; the panel fills the stage, no "Room cleared" line */
+body[data-size="compact-land"] .u3-dgc { --dgc-dot: var(--counter); --dgc-dot-now: var(--avatar-sm); --dgc-ic: var(--ctl-sm); --dgc-ci: var(--icon-md); --dgc-ii: var(--icon-xl); padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-dgc-hud { flex-wrap: nowrap; }
+body[data-size="compact-land"] .u3-dgc-chips { order: -1; margin-left: var(--u3-none); gap: var(--sp-1-5); }
+body[data-size="compact-land"] .u3-dgc-chip { height: var(--ctl-sm); padding: var(--u3-none) var(--sp-3); gap: var(--sp-1-5); }
+body[data-size="compact-land"] .u3-dgc-chip i, body[data-size="compact-land"] .u3-dgc-k { display: none; }
+body[data-size="compact-land"] .u3-dgc-chip.is-bank { display: inline-flex; }
+body[data-size="compact-land"] .u3-dgc-prog { flex: 1 1 0; gap: var(--sp-3); padding: var(--sp-1) var(--sp-3); }
+body[data-size="compact-land"] .u3-dgc-fl { padding-right: var(--sp-3); }
+body[data-size="compact-land"] .u3-dgc-fl b { font-size: var(--fs-small); }
+body[data-size="compact-land"] .u3-dgc-guard { font-size: var(--fs-small); }
+body[data-size="compact-land"] .u3-dgc-dot svg { width: var(--icon-xs); height: var(--icon-xs); }
+body[data-size="compact-land"] .u3-dgc-dot.is-now svg { width: var(--icon-md); height: var(--icon-md); }
+body[data-size="compact-land"] .u3-dgc-link { width: var(--sp-1-5); }
+body[data-size="compact-land"] .u3-dgc-panel { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; align-self: stretch; width: 100%; margin-block: var(--u3-none); padding: var(--sp-3); }
+body[data-size="compact-land"] .u3-dgc-h { margin: var(--sp-1) 0 var(--sp-2); font-size: var(--fs-stat); line-height: var(--lh-stat); }
+body[data-size="compact-land"] .u3-dgc-offer { padding: var(--sp-2) var(--sp-3); gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-dgc-offer b { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+/* compact-port: the pill on its own row (no guardian line), the three chips in a row, the offers stacked as rows */
+body[data-size="compact-port"] .u3-dgc { --dgc-dot: var(--check-badge); --dgc-dot-now: var(--avatar-sm); --dgc-ic: var(--avatar-lg); --dgc-ci: var(--icon-md); padding: var(--sp-2); }
+body[data-size="compact-port"] .u3-dgc-prog { flex: 1 1 100%; gap: var(--sp-3); padding: var(--sp-1-5) var(--sp-3); }
+body[data-size="compact-port"] .u3-dgc-guard { display: none; }
+body[data-size="compact-port"] .u3-dgc-chips { flex: 1 1 100%; margin-left: var(--u3-none); gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-dgc-chip { flex: 1 1 0; min-width: 0; height: var(--ctl-sm); padding: var(--u3-none) var(--sp-2); gap: var(--sp-1); font-size: var(--fs-caption); }
+body[data-size="compact-port"] .u3-dgc-dot svg { width: var(--icon-sm); height: var(--icon-sm); }
+body[data-size="compact-port"] .u3-dgc-panel { width: 100%; padding: var(--sp-4) var(--sp-3); }
+body[data-size="compact-port"] .u3-dgc-h { font-size: var(--fs-heading); line-height: var(--lh-heading); }
+body[data-size="compact-port"] .u3-dgc-offers { grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-dgc-offer { display: grid; grid-template-columns: var(--dgc-ic) minmax(0, 1fr); grid-template-areas: "ic tier" "ic name" "ic sub"; justify-items: start; align-content: center; text-align: left;
+  column-gap: var(--sp-3); row-gap: var(--sp-half); padding: var(--sp-3); }
+body[data-size="compact-port"] .u3-dgc-ic { grid-area: ic; }
+body[data-size="compact-port"] .u3-dgc-tier { grid-area: tier; }
+body[data-size="compact-port"] .u3-dgc-offer b { grid-area: name; }
+body[data-size="compact-port"] .u3-dgc-offer small { grid-area: sub; }
+/* tight (measured in fitChooseV3 when the drawn layout is too high for the stage): smaller icons, gaps and type; every function stays */
+body.ui-v2 .u3-dgc.is-tight { --dgc-ic: var(--ctl-sm); --dgc-ci: var(--icon-md); --dgc-ii: var(--icon-xl); gap: var(--sp-2); padding: var(--sp-2); }
+.u3-dgc.is-tight .u3-dgc-panel { padding: var(--sp-2) var(--sp-3); }
+.u3-dgc.is-tight .u3-dgc-h { margin: var(--sp-1) 0 var(--sp-2); font-size: var(--fs-stat); line-height: var(--lh-stat); }
+.u3-dgc.is-tight .u3-dgc-offers { gap: var(--sp-2); }
+.u3-dgc.is-tight .u3-dgc-offer { padding: var(--sp-2) var(--sp-3); gap: var(--sp-1); }
+.u3-dgc.is-tight .u3-dgc-offer b { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+.u3-dgc.is-tight .u3-dgc-offer small, .u3-dgc.is-tight .u3-dgc-guard { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.u3-dgc.is-tight .u3-dgc-chip { padding: var(--u3-none) var(--sp-2); }
+body[data-size="compact-port"] .u3-dgc.is-tight .u3-dgc-offer { grid-template-columns: var(--dgc-ic) auto minmax(0, 1fr); grid-template-areas: "ic tier name" "ic sub sub"; align-items: center; column-gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-dgc.is-tight .u3-dgc-offer small { align-self: start; }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-offer { display: grid; grid-template-columns: var(--dgc-ic) minmax(0, 1fr); grid-template-areas: "ic tier" "ic name" "ic sub"; justify-items: start; align-content: center; text-align: left; column-gap: var(--sp-2); row-gap: var(--u3-none); }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-prog { gap: var(--sp-2); }
+body[data-size] .u3-dgc.is-tight .u3-dgc-ic { grid-area: ic; }
+body[data-size] .u3-dgc.is-tight .u3-dgc-tier { grid-area: tier; }
+body[data-size] .u3-dgc.is-tight .u3-dgc-offer b { grid-area: name; }
+body[data-size] .u3-dgc.is-tight .u3-dgc-offer small { grid-area: sub; }
+/* tight on compact-land (667x375: the stage is about 180 px high): the smallest paddings, small room dots, the odds line under the icon row */
+body[data-size="compact-land"] .u3-dgc.is-tight { --dgc-dot: var(--sp-4); --dgc-dot-now: var(--ctl-sm); padding: var(--sp-1) var(--sp-2); gap: var(--sp-1-5); }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-link { width: var(--sp-1); }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-dot svg { width: var(--icon-xs); height: var(--icon-xs); }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-dot.is-now svg { width: var(--icon-sm); height: var(--icon-sm); }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-chip { padding: var(--u3-none) var(--sp-2); gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-panel { padding: var(--sp-1-5) var(--sp-3); }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-h { margin: var(--u3-none) var(--u3-none) var(--sp-1); }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-offer { padding: var(--sp-1-5) var(--sp-2); grid-template-areas: "ic tier" "ic name" "sub sub"; }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-offer b { font-size: var(--fs-small); line-height: var(--lh-small); }
+/* compact-land: the offers take the height of the panel (no empty band under them) */
+body[data-size="compact-land"] .u3-dgc-offers { flex: 1 1 0; min-height: 0; }
+/* a tall tablet (medium, portrait; measured in fitChooseV3): the panel fills the stage and the offers stack as rows that share its height */
+.u3-dgc.is-fill .u3-dgc-panel { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; align-self: stretch; width: 100%; margin-block: var(--u3-none); }
+.u3-dgc.is-fill .u3-dgc-offers { flex: 1 1 0; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); }
+.u3-dgc.is-fill .u3-dgc-offer { display: grid; grid-template-columns: var(--dgc-ic) minmax(0, 1fr); grid-template-areas: "ic tier" "ic name" "ic sub"; justify-items: start; align-content: center; text-align: left; column-gap: var(--sp-4); row-gap: var(--sp-half); }
+.u3-dgc.is-fill .u3-dgc-ic { grid-area: ic; }
+.u3-dgc.is-fill .u3-dgc-tier { grid-area: tier; }
+.u3-dgc.is-fill .u3-dgc-offer b { grid-area: name; }
+.u3-dgc.is-fill .u3-dgc-offer small { grid-area: sub; }
+/* compact-land: the music button (44 px on touch, 9.1) has its own column beside the title and the offers, so it covers nothing */
+body[data-size="compact-land"] .u3-dgc-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); column-gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-dgc-panel > :not(.dg-music) { grid-column: 1; }
+body.ui-v2.ui-v3[data-size="compact-land"] .u3-dgc-panel .dg-music { position: static; grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-offer { padding: var(--sp-1-5); column-gap: var(--sp-1-5); }
+body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-offer b { white-space: nowrap; }
