@@ -35,6 +35,7 @@ import { fmtFor } from './ui3/number.js';
 import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
 import { button as ui3Button } from './ui3/components.js';
+import { initSettingsWindow } from './ui3/settings.js';
 import { openOpenWindow, prefetchSets } from './ui3/open-window.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
@@ -353,7 +354,7 @@ async function main() {
   if (flags.reports) initReport();
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
-  if (flags?.uiV3) startShell(); // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps
+  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
 }
 
 // The v3 foundation (UI-00): only for the members in settings.ui_v3 (flags.uiV3). It loads the component CSS and writes
