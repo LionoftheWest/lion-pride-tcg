@@ -948,3 +948,55 @@ body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font
 body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
 /* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
 body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
+
+/* ==== UI-16 Wishlist window (src/ui3/wishlist.js; design repo UI-16/approved, review-1 + review-2; D-66) ====
+   A bottom sheet on the dock edge on compact-port, a side sheet on compact-land, a dialog on medium and expanded (E1).
+   The wish picker is the Card picker (UI-64) in pick-one mode (.u3-pk.is-one, below). */
+body.ui-v2.ui-v3[data-size] #u3Wish { --text-muted: var(--u3-text-muted); }
+#u3Wish .u3-wl-scrim { padding: var(--sp-5); }
+#u3Wish .u3-wl-scrim[data-form="sheet"] { place-items: end stretch; padding: calc(var(--u3-sa-t) + var(--sp-1-5)) calc(var(--u3-sa-r) + var(--sp-1-5))
+  calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-1)) calc(var(--u3-sa-l) + var(--sp-1-5)); }
+#u3Wish .u3-wl-scrim[data-form="side"] { place-items: start end; padding: 0; }
+.u3-wl { box-sizing: border-box; width: min(100%, calc(var(--sheet-side-w) + var(--sp-7) * 2)); max-height: 100%; display: flex; flex-direction: column; gap: var(--sp-4);
+  padding: var(--sp-5); overflow: hidden; border-radius: var(--rad-sheet); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  color: var(--text-primary); animation: kf-pop var(--dur-base) var(--ease-out); }
+.u3-wl:focus { outline: none; }
+[data-form="sheet"] > .u3-wl { width: 100%; padding: var(--sp-4); gap: var(--sp-3); animation-name: kf-rise; }
+[data-form="side"] > .u3-wl { width: min(100%, calc(var(--sheet-side-w) + var(--sp-4) + var(--u3-sa-r))); padding: calc(var(--u3-sa-t) + var(--sp-3)) calc(var(--u3-sa-r) + var(--sp-3)) calc(var(--u3-sa-b) + var(--sp-3)) var(--sp-3);
+  gap: var(--sp-2); border-radius: 0 0 0 var(--rad-sheet); border-top: 0; border-right: 0; animation-name: kf-fade; }
+.u3-wl__head { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-wl__head > .u3-ico { color: var(--text-primary); flex: none; }
+.u3-wl__title { margin: 0; flex: 1 1 auto; min-width: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); }
+[data-form="side"] .u3-wl__title { font-size: var(--fs-heading); }
+.u3-wl__count { font-family: var(--font-num); font-size: var(--fs-stat); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* the close button keeps left of the Discord corner zone in landscape (2.3, G-013), as the Dailies window does */
+[data-form="side"] .u3-wl__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-3))); }
+.u3-wl__list { list-style: none; margin: 0; padding: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+[data-form="side"] .u3-wl__list { gap: var(--sp-1); }
+.u3-wl-row { display: grid; grid-template-columns: var(--sp-3) auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-1-5) var(--sp-2) var(--sp-1-5) var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); }
+[data-form="side"] .u3-wl-row { padding-block: var(--u3-none); }
+.u3-wl-row__n { font-family: var(--font-num); font-size: var(--fs-stat); color: var(--text-muted); text-align: center; }
+.u3-wl-row__card { box-sizing: border-box; height: var(--ctl-sm); aspect-ratio: 1 / var(--card-ratio); display: grid; place-items: center; overflow: hidden;
+  border-radius: var(--rad-sm); border: var(--bw-1) solid var(--u3-r, var(--border-strong)); color: var(--text-secondary); }
+.u3-wl-row__card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-wl-row__main { display: flex; flex-direction: column; gap: var(--sp-half); min-width: 0; }
+.u3-wl-row__name { font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-heading); overflow-wrap: break-word; }
+.u3-wl-row.is-empty .u3-wl-row__name { color: var(--text-muted); }
+.u3-wl-row__r { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--u3-r); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-wl-row__dia { width: var(--dot); height: var(--dot); transform: rotate(45deg); background: currentColor; }
+.u3-wl-row__acts { display: flex; gap: var(--sp-2); }
+.u3-wl-row.is-top [data-wltop] { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+#u3Wish .u3-msg { flex: none; }
+
+/* the Card picker in pick-one mode (the wish picker): no slot row; the title has the icon (UI-16 P1, P3) */
+.u3-pk.is-one { grid-template-rows: auto auto minmax(0, 1fr) auto auto; grid-template-areas: "head close" "tools tools" "grid grid" "pager pager" "foot foot"; }
+body[data-size="compact-land"] .u3-pk.is-one { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "head tools close" "grid grid grid" "pager pager pager"; }
+.u3-pk.is-one .u3-pk__title { align-items: center; }
+.u3-pk.is-one :is(.u3-pk__slots, .u3-pk-checks:empty) { display: none; }
+/* compact-land: the title line, the grid, the pager line with Clear and Confirm; tighter gaps keep 2 rows of cards (P3) */
+body[data-size="compact-land"] .u3-pk.is-one { padding-block: var(--sp-1-5); gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-pk.is-one .u3-pk__grid { gap: var(--sp-2); align-content: center; }
+/* the window under the picker while typing: covered by the scrim, and squeezed by the keyboard (as the picker's view) */
+body[data-kb]:has(#u3Picker .u3-pk) #u3Wish { visibility: hidden; }

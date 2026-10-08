@@ -3,6 +3,7 @@
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { openWishlist } from './ui3/wishlist.js';
 import { fillConvertButton } from './ui-v2-shop.js';
 import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';
@@ -1353,7 +1354,7 @@ function paintWish() {
     ${wl.msg ? `<span class="tr-msg">${esc(wl.msg)}</span>` : ''}`;
   // A portrait phone: the Wishlist sits beside the hunt tile; in Edit it takes the full width (ui-v2-mobile.css).
   ctx.el('memberModal')?.querySelector('.mem-screen')?.classList.toggle('wl-open', isPort() && wl.edit);
-  ctx.el('wlEdit')?.addEventListener('click', () => { wl.edit = !wl.edit; wl.pick = null; closeWishPicker(); paintWish(); });
+  ctx.el('wlEdit')?.addEventListener('click', (e) => { if (wishV3()) { openWishV3(e.currentTarget); return; } wl.edit = !wl.edit; wl.pick = null; closeWishPicker(); paintWish(); });
   box.querySelectorAll('.wl-x').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveWish(Number(b.dataset.slot), null); }));
   box.querySelectorAll('.wl-top').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveTop(Number(b.dataset.slot)); }));
   box.querySelectorAll('.wl-set').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openWishPicker(Number(b.dataset.slot)); }));
@@ -1410,6 +1411,21 @@ function openWishPicker(slot) {
   paintWish();
 }
 function closeWishPicker() { ctx.el('memberModal')?.querySelector('.wl-picker')?.remove(); }
+// v3 (UI-16, body.ui-v3 only): Edit opens the Wishlist window, and the pencil opens the Card picker (src/ui3/wishlist.js).
+const wishV3 = () => document.body.classList.contains('ui-v3');
+function openWishV3(from) {
+  const id = wl.id;
+  openWishlist({
+    slots: wl.slots, returnFocus: from, rarityLabel: ctx.RARITY_LABEL,
+    load: () => ctx.api(`/api/wishlist?id=${encodeURIComponent(id)}`),
+    save: (slot, cardId) => ctx.apiPost('/api/wishlist', { slot, cardId }),
+    star: (slot) => ctx.apiPost('/api/wishlist/top', { slot }),
+    cards: () => mergedCards(),
+    lib: { rarities: RARITY_ORDER.map((r) => [r, ctx.RARITY_LABEL[r] || r]), elements: ELEMENT_ORDER.map((e) => [e, ELEMENTS[e].name]), types: TYPES, games: GAMES, elementOf: (c) => cardElement(c.tags) },
+    detail: (c) => ctx.openViewer(c),
+    onChange: () => { if (wl.id === id) loadWish(id, wl.self); hallChanged(); },
+  });
+}
 
 // Their damage in the live hunt, per day, and their best card.
 function huntBoxHTML(p) {
