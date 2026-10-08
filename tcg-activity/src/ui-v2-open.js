@@ -33,17 +33,20 @@ export function closeChooser() {
 // ---- The multi-pack reveal ----
 let items = [];
 let flipped = 0;
+let opt = {};   // v3 (UI-35, main.js): order (the best card last, D-92), newTag (the New mark), onFit (its size)
 
-export function showMultiReveal(deps, packs) {
+export function showMultiReveal(deps, packs, opts = {}) {
   d = deps;
+  opt = opts;
   const { el, esc } = d;
   // Shuffled (Nathan: "keep them shuffled so its special"): the grid position never
   // tells where the rare cards are. Fisher-Yates.
   items = packs.flat().map((c) => ({ ...c }));
   for (let i = items.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
+  if (opt.order) items = opt.order(items);
   flipped = 0;
   const stage = el('stage');
-  stage.className = 'open v2-multi';
+  stage.className = `open v2-multi${opt.stageClass ? ` ${opt.stageClass}` : ''}`;
   // Nathan: the cards are the whole window (no pack panel), and no "N NEW" count
   // before the flip; each card still shows NEW once it turns over.
   stage.innerHTML = `<div class="mr-wrap full">
@@ -53,7 +56,7 @@ export function showMultiReveal(deps, packs) {
         <button class="v2-btn gold" id="mrAll">Reveal all</button><button class="v2-icon" id="mrClose" aria-label="Close">✕</button></div>
       <div class="mr-grid" id="mrGrid">${items.map((c, i) => `<button class="mr-card r-${c.rarity}${(RANK[c.rarity] ?? 0) >= 2 ? ' hot' : ''}" data-i="${i}">
           <span class="mr-in"><span class="mr-face mr-back"><img src="${esc(d.cardBack())}" alt=""></span>
-          <span class="mr-face mr-front"><img src="${revealThumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">${c.isNew ? '<i class="mr-newtag">NEW</i>' : ''}</span></span></button>`).join('')}</div>
+          <span class="mr-face mr-front"><img src="${revealThumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">${c.isNew ? (opt.newTag || '<i class="mr-newtag">NEW</i>') : ''}</span></span></button>`).join('')}</div>
     </section>
   </div>`;
   fit();
@@ -79,6 +82,7 @@ function fit() {
   }
   grid.style.setProperty('--mw', `${best.cw}px`);
   grid.style.setProperty('--mc', best.cols);
+  opt.onFit?.(grid, best.cw);
 }
 
 function flip(b) {
