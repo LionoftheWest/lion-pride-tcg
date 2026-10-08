@@ -30,7 +30,9 @@ import { initTutorial } from './ui-v2-tutorial.js';
 import { every, isIdle } from './poll.js';
 import { watchSizeClass } from './ui3/size-class.js';
 import { startShell } from './ui3/shell.js';
-import { openOpenWindow, prefetchSets } from './ui3/open-window.js';
+import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
+import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, packSet, releaseClips, fitCards } from './ui3/pack-reveal.js';
+import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
@@ -699,7 +701,7 @@ async function openPacks(count, set) {
       revealed = true;
       const prank = effectsEnabled() ? packPrank() : null; // a jinx / fake gold / photobomb / slow motion on me
       if ((data.packs || []).length > 1) showMultiReveal(openDeps(), data.packs);
-      else showReveal({ user: 'You', cards: data.cards });
+      else showReveal({ user: 'You', cards: data.cards, set: s });
       if (prank) runPackPrank(prank, el('stage'));
     }
   } catch {
@@ -739,7 +741,7 @@ function watchOpen(id) {
   const msg = watchableOpen(id);
   if (!msg) return false;
   if ((msg.packs || []).length > 1) showMultiReveal(openDeps(), msg.packs);
-  else showReveal({ user: msg.user, cards: msg.cards });
+  else showReveal({ user: msg.user, cards: msg.cards, set: msg.set });
   return true;
 }
 
@@ -775,6 +777,7 @@ function tearSource() {
 // A glossy holographic pack (Pokémon-Pocket style): it floats on screen, you TAP
 // to rip the top off with a light-line, then the cards rise for you to flip.
 function showReveal(msg) {
+  if (uiV3) { showRevealV3(msg); return; } // UI-34 (src/ui3/pack-reveal.js); the code below is the flag-OFF reveal
   const cards = msg.cards || [];
   if (!cards.length) return;
   clearTimeout(revealTimer);
@@ -899,6 +902,138 @@ function tearPack(rare) {
   setTimeout(() => { if (pack) pack.remove(); }, 2400);
 }
 
+// ---- UI-34 the single pack reveal, v3 (lion-pride-tcg-design UI-34/approved, review-3; D-73, D-91 to D-101) ----
+// The waiting pack is the idle loop of the set the member opened (D-93, D-101), with today's prompt and no close
+// button (D-73). One tap plays open.webp, or open_rare.webp when the pack holds an SR+ card (D-96), with the rare sound
+// at the burst (~1400 ms, D-97). A second tap does not skip (D-94). The cards rise face down at the burst, the best
+// card last (D-92); then Reveal all (the best card still last, D-109) and the close button show; Reveal all becomes
+// Done when every card is turned.
+const RARE_SFX_MS = 1400;   // D-97: the burst of the open clip (frame 24 of 39 at 60 ms)
+const rankOf = (c) => RARITY_RANK[c?.rarity] ?? 0;
+function showRevealV3(msg) {
+  const cards = bestLast(msg.cards || [], rankOf);
+  if (!cards.length) return;
+  clearTimeout(revealTimer);
+  releaseClips();
+  revealItems = cards;
+  flippedCount = 0;
+  tearing = false;
+  revealMine = msg.user === 'You';
+  revealFlipped = [];
+  if (revealMine) sendStatus('opening', { n: 0, of: cards.length });
+  const rare = isRarePull(cards);
+  const set = packSet(msg.set, knownLastSet());
+  const tiles = cards.map((c, i) => `<div class="fc c ${c.rarity}${rankOf(c) >= 2 ? ' hot' : ''}" data-idx="${i}" style="--i:${i}">
+      <div class="pf">
+        <div class="pf-face pf-back"><img src="${cardBack}" alt=""></div>
+        <div class="pf-face pf-front">${c.image_url ? `<img src="${revealThumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(`${c.name}, ${RARITY_LABEL[c.rarity] || c.rarity}`)}">` : ''}</div>
+      </div></div>`).join('');
+  const stage = el('stage');
+  stage.className = 'open packstage u3-reveal';
+  // The pack box is the pack body of the clip (x 205-594, y 261-964 of the 800 x 1120 frame). The clip is an SVG
+  // image: it paints past the box (rays, stars, the torn strip) and the stage clips it, with no layout overflow.
+  stage.innerHTML =
+    `<div class="u3-reveal__box" role="dialog" aria-modal="true" aria-label="Pack reveal">
+     <button type="button" class="u3-pack" id="packOpen" aria-label="Tap the pack to rip it open">
+       <svg class="u3-pack__clip" viewBox="0 0 389 703" overflow="visible" aria-hidden="true" focusable="false"><image id="packImg" href="${clipUrl(set, 'idle_loop')}" x="-205" y="-261" width="800" height="1120"/></svg>
+     </button>
+     <div class="tap-prompt" id="tapPrompt">Tap the pack to rip it open</div>
+     <div class="reveal-grid hidden" id="revealGrid">${tiles}</div>
+     <div class="reacts u3-reacts" id="reactBar">${REACTIONS.map((e) => `<button type="button" class="react" data-emoji="${e}" aria-label="React ${e}">${e}</button>`).join('')}
+       <span class="u3-reveal__ctl">${u3Button({ label: 'Reveal all', variant: 'primary', data: { reveal: 'all' } })}${u3IconButton({ icon: 'x', label: 'Close', data: { reveal: 'close' } })}</span>
+     </div></div>`;
+  el('reactBar').addEventListener('click', (e) => {
+    const emoji = e.target?.closest?.('[data-emoji]')?.dataset.emoji;
+    if (emoji && roomWs && roomWs.readyState === 1) roomWs.send(JSON.stringify({ type: 'react', emoji }));
+    const act = e.target?.closest?.('[data-reveal]')?.dataset.reveal;
+    if (act === 'close' || act === 'done') endReveal();
+    else if (act === 'all') revealAllV3();
+  });
+  const pack = el('packOpen');
+  pack.addEventListener('click', () => tearPackV3(rare, set));
+  // Preload the open clip of this pack NOW (while the member reads the prompt), so the swap on the tap is instant.
+  clipSource(clipUrl(set, rare ? 'open_rare' : 'open')).then((url) => {
+    if (!pack.isConnected) return;
+    pack.dataset.clip = url;
+    const pre = new Image(); pre.src = url;
+  }).catch(() => {});
+  SFX.play('page');
+  revealTimer = setTimeout(endReveal, 120000); // safety only; no auto-dismiss
+}
+
+function tearPackV3(rare, set) {
+  if (tearing) return; // D-94: no skip
+  tearing = true;
+  const pack = el('packOpen');
+  const img = el('packImg');
+  const tp = el('tapPrompt');
+  if (tp) tp.classList.add('is-gone'); // its place stays while the clip plays (3.3)
+  SFX.play('tear');
+  pack.classList.add('tearing');
+  pack.disabled = true;
+  if (img) img.setAttribute('href', pack.dataset.clip || clipUrl(set, rare ? 'open_rare' : 'open'));
+  if (rare) setTimeout(() => SFX.play('rare'), RARE_SFX_MS); // D-97: today's rare sound at the burst
+  setTimeout(() => {
+    const stage = el('stage');
+    const grid = el('revealGrid');
+    if (!grid || !stage || !stage.classList.contains('u3-reveal')) return;
+    // the one number (3.5): the card width that shows every card in the stage, above the bar
+    const cs = getComputedStyle(stage);
+    const gap = parseFloat(getComputedStyle(grid.parentElement).rowGap) || 0;
+    const w = stage.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    const h = stage.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - (el('reactBar')?.offsetHeight || 0) - gap;
+    const fit = fitCards(revealItems.length, w, h, parseFloat(getComputedStyle(grid).columnGap) || gap);
+    grid.style.setProperty('--u3-fc-w', `${fit.cw}px`);
+    let ox = window.innerWidth / 2;
+    let oy = window.innerHeight * 0.4;
+    if (pack) {
+      const pr = pack.getBoundingClientRect();
+      ox = pr.left + pr.width / 2;
+      oy = pr.top + pr.height * 0.18;
+      pack.style.position = 'fixed';    // pin it where it is, out of flow (as today's reveal)
+      pack.style.top = `${pr.top}px`;
+      pack.style.left = `${pr.left}px`;
+      pack.style.width = `${pr.width}px`;
+      pack.style.height = `${pr.height}px`;
+      pack.style.margin = '0';
+      pack.classList.add('dropping');
+    }
+    tp?.remove();
+    grid.classList.remove('hidden');
+    grid.querySelectorAll('.fc').forEach((fc) => {
+      const r = fc.getBoundingClientRect();
+      fc.style.setProperty('--fromX', `${(ox - (r.left + r.width / 2)).toFixed(0)}px`);
+      fc.style.setProperty('--fromY', `${(oy - (r.top + r.height / 2)).toFixed(0)}px`);
+      fc.style.setProperty('--fromR', `${(Math.random() * 34 - 17).toFixed(1)}deg`);
+    });
+    if (rare) sunRays(stage); // the gold rays behind the cards of a rare pack (approved)
+    SFX.play('reveal');
+    requestAnimationFrame(() => grid.classList.add('go'));
+    stage.classList.add('is-out'); // Reveal all and the close button show now (D-73)
+  }, RARE_SFX_MS);
+  setTimeout(() => { if (pack) pack.remove(); }, RARE_SFX_MS + 1000);
+}
+
+// D-109: Reveal all turns the cards still face down, the best card last (with its own burst, in flipCard).
+function revealAllV3() {
+  const grid = el('revealGrid');
+  if (!grid) return;
+  const down = [...grid.querySelectorAll('.fc[data-idx]:not(.flipped)')].map((fc) => Number(fc.dataset.idx));
+  const order = revealOrder(down, bestIndex(revealItems, rankOf));
+  order.forEach((i, k) => setTimeout(() => {
+    const fc = grid.querySelector(`.fc[data-idx="${i}"]`);
+    if (fc && revealItems[i]) flipCard(fc, revealItems[i]);
+  }, k * 180));
+}
+// The last turn: Reveal all becomes Done (v3).
+function revealDoneV3() {
+  const b = document.querySelector('#reactBar [data-reveal="all"]');
+  if (!b) return;
+  b.dataset.reveal = 'done';
+  const label = b.querySelector('.u3-btn__label');
+  if (label) label.textContent = 'Done';
+}
+
 // Radiating sun-rays behind the cards (rare packs).
 function sunRays(stage) {
   const rays = document.createElement('div');
@@ -945,6 +1080,7 @@ function flipCard(fc, card) {
       rareBanner(RARITY_LABEL[card.rarity] || 'RARE');
     }, 320); // after the flip turns to the front
   }
+  if (flippedCount >= revealItems.length && uiV3) revealDoneV3();
   if (flippedCount >= revealItems.length) {
     const p = el('revealPrompt');
     if (p) p.textContent = ''; // no subtitle once everything is revealed
@@ -983,6 +1119,7 @@ function rareBanner(text) {
 }
 
 function endReveal() {
+  if (uiV3) releaseClips();
   sendStatus(VIEW_STATUS[currentView]);
   releaseFeed();
   clearTimeout(revealTimer);
@@ -2766,7 +2903,7 @@ function initViewer() {
     if (e.key !== 'Escape') return;
     if (!el('bossModal').classList.contains('hidden')) closeBossModal();
     else if (!el('viewer').classList.contains('hidden')) closeViewer();
-    else if (!el('stage').classList.contains('hidden')) { if (revealItems.length && flippedCount >= revealItems.length) endReveal(); } // locked until all revealed
+    else if (!el('stage').classList.contains('hidden')) { if ((revealItems.length && flippedCount >= revealItems.length) || el('stage').classList.contains('is-out')) endReveal(); } // locked until all revealed (v3: until the cards are out, when the close button shows)
     else if (!el('board').classList.contains('hidden')) closeBoard();
   });
 
