@@ -3,6 +3,8 @@
 //   node serve.mjs [port]            (default 4480)
 // Variants (a cookie on the browser context, run.mjs sets it):
 //   ci_hunt=battle   /api/hunt answers the battle state (the squad is locked)
+//   ci_hunt=resting  derived from the recorded /api/hunt: no live boss, the recorded one defeated (UI-19)
+//   ci_hunt=down     derived from the recorded /api/hunt: today's squad (the first 8 roster cards) is down (UI-19)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes.
 import { createServer } from 'node:http';
@@ -29,6 +31,22 @@ export const misses = new Set();
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
+// The two Hunt states with no recording of their own, built from the recorded calls (the same cards, names and numbers).
+function derivedHunt(kind, long) {
+  const pick = (k) => (FIX.routes[k] || BY_PATH[k] || {}).body || {};
+  const base = JSON.parse(JSON.stringify(pick('/api/hunt')));
+  let out;
+  if (kind === 'resting') {
+    const at = new Date(new Date(FIX.recordedAt).getTime() + (3 * 24 + 23) * 3600 * 1000).toISOString();
+    out = { hunt: null, lastResult: { ...base.hunt, status: 'defeated', hp_remaining: 0 }, nextSpawnAt: at,
+      lastBoard: (pick('/api/hunt/leaderboard').leaders || []).slice(0, 3), myLast: base.myDamage || 0, lastFeed: pick('/api/hunt/feed').feed || [] };
+  } else {
+    const ids = (base.roster || []).slice(0, base.dailyCap || 8).map((c) => c.id);
+    base.roster = (base.roster || []).map((c) => (ids.includes(c.id) ? { ...c, used: true, downed: true, hp: 0 } : c));
+    out = { ...base, squad: ids, usedToday: ids.length };
+  }
+  return long ? longData(out) : out;
+}
 createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
@@ -40,6 +58,7 @@ createServer((req, res) => {
   if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); return undefined; }
   if (p.startsWith('/api/')) {
     const c = cookies(req);
+    if (p === '/api/hunt' && (c.ci_hunt === 'resting' || c.ci_hunt === 'down')) return send(res, 200, JSON.stringify(derivedHunt(c.ci_hunt, c.ci_data === 'long')));
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
