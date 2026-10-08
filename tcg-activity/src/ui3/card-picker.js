@@ -48,7 +48,11 @@ let cur = null;   // the open picker: { opts, sel, q, values, page, per, filters
  *   filters: [{ key, label, options: [{ id, label }], value, clear }], apply(cards, values, q) -> the shown list in order,
  *   filterCount(values) -> the number on "Filters (n)",
  *   status(sel) -> { checks: [{ ok, label }], ready, reason },
- *   detail(card) (the magnifier: the Card Detail), onConfirm(sel) -> true to close (async allowed) }
+ *   detail(card) (the magnifier: the Card Detail), onConfirm(sel) -> true to close (async allowed),
+ *   locked(card) -> true: in the squad and cannot leave it (the Hunt: a card that fought today),
+ *   autoPick(sel) -> the new selection (async; the Auto-pick button left of Confirm),
+ *   confirmCheck(sel) -> null, or { title, line, cancel, primary, fill(sel) } (a dialog before Confirm: the Hunt short squad) }
+ *   A status check is { ok, label }, or a stat { stat, label } ("225 Squad Power" with the zap icon, C9).
  */
 export function openCardPicker(opts) {
   closeCardPicker();
@@ -106,13 +110,21 @@ function slotsHTML() {
     return `<li class="u3-pk-slot is-full u3-r-${esc(c.rarity || 'normal')}">`
       + `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" draggable="false">` : ''}`
       + `${badge ? `<span class="u3-pk-badge" aria-hidden="true">${esc(badge)}</span>` : ''}`
-      + `<button type="button" class="u3-pk-slot__x" data-unpick="${c.id}" aria-label="Remove ${esc(c.name || 'card')}">${icon('x', { size: 'sm' })}</button></li>`;
+      + `${cur.opts.locked?.(c) ? '' : `<button type="button" class="u3-pk-slot__x" data-unpick="${c.id}" aria-label="Remove ${esc(c.name || 'card')}">${icon('x', { size: 'sm' })}</button>`}</li>`;
   }).join('')}</ol>`;
 }
 
 function checksHTML(st) {
-  return `<ul class="u3-pk-checks" aria-live="polite">${(st.checks || []).map((k) => `<li class="${k.ok ? 'is-ok' : ''}">`
-    + `${icon(k.ok ? 'circle-check' : 'circle')}<span>${esc(k.label)}</span></li>`).join('')}</ul>`;
+  return `<ul class="u3-pk-checks" aria-live="polite">${(st.checks || []).map((k) => (k.stat != null
+    ? `<li class="is-stat">${icon('zap')}<b>${esc(k.stat)}</b><span>${esc(k.label)}</span></li>`
+    : `<li class="${k.ok ? 'is-ok' : ''}">${icon(k.ok ? 'circle-check' : 'circle')}<span>${esc(k.label)}</span></li>`)).join('')}</ul>`;
+}
+
+// The dialog before Confirm (5.2 Dialog): the cancel button keeps the squad as it is, the primary fills it first.
+function warnHTML(w) {
+  return `<div class="u3-scrim u3-pk-fscrim" data-u3-scrim><div class="u3-dialog u3-pk-warn" role="alertdialog" aria-modal="true" aria-labelledby="u3PkW">`
+    + `<header class="u3-dialog__head"><h2 class="u3-dialog__title" id="u3PkW">${esc(w.title)}</h2>${iconButton({ icon: 'x', label: 'Close', variant: 'plain', data: { wclose: '1' } })}</header>`
+    + `${w.line ? `<p class="u3-dialog__line">${esc(w.line)}</p>` : ''}<footer class="u3-dialog__foot">${button({ label: w.cancel || 'Continue', data: { wgo: '1' } })}${button({ label: w.primary, variant: 'primary', data: { wfill: '1' } })}</footer></div></div>`;
 }
 
 function gridHTML() {
@@ -146,15 +158,15 @@ function paint() {
   const confirm = button({ label: 'Confirm', variant: 'primary', disabled: !st.ready || cur.busy, busy: cur.busy, busyLabel: 'Saving', reason: st.ready ? null : st.reason, data: { confirm: '1' } });
   const a = document.activeElement;
   const caret = a && host.contains(a) && a.classList.contains('u3-search__input') ? a.selectionStart : null;
-  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="u3PkT" style="--pk-cap:${o.cap}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
+  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="u3PkT" style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
     + `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${esc(o.title || 'Squad')} <b>${cur.sel.length}</b><span>/ ${o.cap}</span></h2></header>`
     + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>`
     + `<div class="u3-pk__slots">${slotsHTML()}</div>`
     + `<div class="u3-pk__tools">${searchField({ value: cur.q })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
     + `<ul class="u3-pk__grid${(cur.tile || TOKENS['card-tile']) < TOKENS['card-tile'] ? ' is-small' : ''}" aria-label="Cards" style="--pk-cols:${cur.cols || 1};--pk-tile:${cur.tile || TOKENS['card-tile']}px">${tiles}</ul>`
     + `<div class="u3-pk__pager">${pager({ page: cur.page + 1, pages })}</div>`
-    + `<footer class="u3-pk__foot">${checksHTML(st)}${confirm}</footer>`
-    + `</section></div>${cur.panel ? filterPanelHTML() : ''}`;
+    + `<footer class="u3-pk__foot">${checksHTML(st)}<div class="u3-pk__acts">${o.autoPick ? button({ label: 'Auto-pick', disabled: cur.busy, data: { auto: '1' } }) : ''}${confirm}</div></footer>`
+    + `</section></div>${cur.panel ? filterPanelHTML() : ''}${cur.warn ? warnHTML(cur.warn) : ''}`;
   cur.shown = true;   // the fade-in plays once, when the window opens (a repaint does not flash it)
   if (caret != null) { const i = host.querySelector('.u3-search__input'); i?.focus({ preventScroll: true }); i?.setSelectionRange(caret, caret); }
   measure();
@@ -165,7 +177,7 @@ function measure() {
   const g = document.querySelector('#u3Picker .u3-pk__grid');
   if (!g) return;
   const pk = g.closest('.u3-pk');
-  const foot = pk.querySelector('.u3-pk__foot');
+  const foot = pk.querySelector('.u3-pk-checks');   // the lowest part of the left column (compact-land: the footer box is display: contents)
   if (document.body.dataset.size === 'compact-land' && foot) {
     const over = foot.getBoundingClientRect().bottom - (pk.getBoundingClientRect().bottom - parseFloat(getComputedStyle(pk).paddingBottom));
     const w = cur.slotW || TOKENS['card-thumb'];
@@ -189,7 +201,7 @@ function onResize() { cancelAnimationFrame(rt); rt = requestAnimationFrame(() =>
 function onKey(e) {
   if (!cur || e.key !== 'Escape') return;
   e.preventDefault();
-  if (cur.panel) { cur.panel = false; paint(); } else closeCardPicker();
+  if (cur.warn) { cur.warn = null; paint(); } else if (cur.panel) { cur.panel = false; paint(); } else closeCardPicker();
 }
 
 function onInput(e) {
@@ -206,12 +218,13 @@ async function onClick(e) {
   const d = t.dataset;
   const M = byId();
   if (d.close) { closeCardPicker(); return; }
-  if (t.matches('[data-u3-scrim]')) { if (e.target === t) { if (cur.panel) { cur.panel = false; paint(); } else closeCardPicker(); } return; }
+  if (t.matches('[data-u3-scrim]')) { if (e.target === t) { if (cur.warn) { cur.warn = null; paint(); } else if (cur.panel) { cur.panel = false; paint(); } else closeCardPicker(); } return; }
   if (d.info) { const c = M.get(Number(d.info)); if (c) cur.opts.detail?.(c); return; }
   if (d.pick) {
     const id = Number(d.pick);
     const c = M.get(id);
     if (!c || (t.getAttribute('aria-disabled') === 'true' && !cur.sel.includes(id))) return;
+    if (cur.sel.includes(id) && cur.opts.locked?.(c)) return;   // it fought today: it stays in the squad
     cur.sel = toggle(cur.sel, id, cur.opts.cap);
     paint();
     return;
@@ -224,15 +237,45 @@ async function onClick(e) {
   if (d.seg && cur.panel) { const [k, v] = d.seg.split(':'); cur.draft[k] = v; paint(); return; }
   if (d.fclear) { cur.draft = Object.fromEntries(cur.opts.filters.map((f) => [f.key, f.clear ?? f.options[0].id])); paint(); return; }
   if (d.fok) { cur.values = { ...cur.draft }; cur.panel = false; cur.page = 0; paint(); return; }
+  if (d.auto) {
+    if (cur.busy) return;
+    cur.busy = true; paint();
+    let next = null;
+    try { next = await cur.opts.autoPick([...cur.sel]); } catch { next = null; }
+    if (!cur) return;
+    cur.busy = false;
+    if (Array.isArray(next)) cur.sel = next.map(Number).slice(0, cur.opts.cap);
+    paint();
+    return;
+  }
+  if (d.wclose) { cur.warn = null; paint(); return; }
+  if (d.wgo) { cur.warn = null; await confirmNow(); return; }
+  if (d.wfill) {
+    const w = cur.warn; cur.warn = null; cur.busy = true; paint();
+    let next = null;
+    try { next = await w.fill([...cur.sel]); } catch { next = null; }
+    if (!cur) return;
+    cur.busy = false;
+    if (Array.isArray(next)) cur.sel = next.map(Number).slice(0, cur.opts.cap);
+    await confirmNow();
+    return;
+  }
   if (d.confirm) {
     if (cur.busy) return;
     const st = cur.opts.status ? cur.opts.status(cur.sel) : { ready: true };
     if (!st.ready) return;
-    cur.busy = true; paint();
-    let done = false;
-    try { done = await cur.opts.onConfirm?.([...cur.sel]); } catch { done = false; }
-    if (!cur) return;
-    cur.busy = false;
-    if (done !== false) closeCardPicker(); else paint();
+    const w = cur.opts.confirmCheck?.([...cur.sel]);
+    if (w) { cur.warn = w; paint(); return; }
+    await confirmNow();
   }
+}
+
+async function confirmNow() {
+  if (!cur) return;
+  cur.busy = true; paint();
+  let done = false;
+  try { done = await cur.opts.onConfirm?.([...cur.sel]); } catch { done = false; }
+  if (!cur) return;
+  cur.busy = false;
+  if (done !== false) closeCardPicker(); else paint();
 }
