@@ -32,9 +32,11 @@ export function fitGrid({ width, height, gap, min, minRows = 2, maxCols = 40, ma
   }
   if (best) return best;
   // The box is too small for 2 rows of the minimum tile. The minimum width wins (8.1, as the v2 fitter): one row of
-  // tiles at the minimum width, and the pager shows the rest. Only a box lower than one minimum tile shrinks the tile.
+  // tiles at the minimum width, and the pager shows the rest. A box lower than one minimum tile (the keyboard is open
+  // on a phone, 2.3) shows no row: no tile is cut or shrunk, and the grid comes back when the keyboard closes.
   const cols = Math.max(1, Math.floor((w + gap) / (min + gap)));
-  return { cols, rows: 1, per: cols, cw: Math.max(0, Math.min(min, cwFor(cols, 1))) };
+  const rows = cwFor(cols, 1) >= min ? 1 : 0;
+  return { cols, rows, per: cols * rows, cw: rows ? cwFor(cols, 1) : 0 };
 }
 
 /** The page after a change: inside 0..pages-1. Returns { page, pages, start }. */
@@ -124,7 +126,7 @@ export function paintCollectionV3(main, d, { tabBar, help }) {
       <button type="button" class="u3-btn u3-btn--secondary u3-btn--md u3-col__filters" id="colFilters" aria-haspopup="dialog" aria-expanded="false">${icon('list-filter')}<span class="u3-btn__label" id="colFiltersLbl">${esc(filtersLabel(activeFilterCount(col)))}</span></button>
       <p class="u3-col__set">${help || ''}<span class="u3-col__setname">${esc(col.season)}</span><span class="u3-col__setsub" id="colSetSub"></span></p>
     </div>
-    <div class="u3-col__box" id="colBox"><div class="u3-col__grid" id="colGrid"></div><div class="u3-col__pager" id="colPager"></div></div>
+    <div class="u3-col__box" id="colBox"><ul class="u3-col__grid" id="colGrid" aria-label="Cards"></ul><div class="u3-col__pager" id="colPager"></div></div>
   </div>`;
   wire(main);
   paintGrid();
@@ -201,17 +203,19 @@ function paintGrid({ keepFirst = false } = {}) {
   const grid = $('colGrid');
   if (!grid) return;
   const { col } = deps;
-  const first = keepFirst ? col.page * (Number(grid.dataset.per) || 0) : null;
   items = filterCards(deps.cards, col, { season: col.season, q: col.q, elementOf: deps.elementOf });
   const fit = fitGrid({ ...measure(), min: tileMin(document.body.dataset.size) });
-  if (first != null) col.page = Math.floor(first / fit.per);   // 2.1: keep the first visible card on a size change
-  const { page, pages, start } = pageOf({ total: items.length, per: fit.per, page: col.page });
+  // 2.1: keep the first visible card on a size change. A box with no row (the keyboard is open) keeps the page.
+  const first = Number(grid.dataset.first) || 0;
+  if (keepFirst && fit.per) col.page = Math.floor(first / fit.per);
+  const { page, pages, start } = pageOf({ total: items.length, per: fit.per || Number(grid.dataset.per) || 1, page: col.page });
   col.page = page;
-  grid.dataset.cols = fit.cols; grid.dataset.rows = fit.rows; grid.dataset.per = fit.per;
+  if (fit.per) { grid.dataset.per = fit.per; grid.dataset.first = start; }
+  grid.dataset.cols = fit.cols; grid.dataset.rows = fit.rows;
   grid.style.setProperty('--u3-cols', fit.cols);
-  grid.style.setProperty('--u3-rows', fit.rows);
-  grid.innerHTML = items.length ? items.slice(start, start + fit.per).map((c, i) => tileHTML(c, start + i)).join('')
-    : '<p class="u3-col__none">No cards match.</p>';
+  grid.style.setProperty('--u3-rows', Math.max(1, fit.rows));
+  grid.innerHTML = items.length ? items.slice(start, start + fit.per).map((c, i) => `<li class="u3-col__cell">${tileHTML(c, start + i)}</li>`).join('')
+    : '<li class="u3-col__none">No cards match.</li>';
   grid.classList.toggle('is-empty', !items.length);
   const pg = $('colPager');
   pg.innerHTML = pager({ page: page + 1, pages });

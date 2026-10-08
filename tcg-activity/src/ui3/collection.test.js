@@ -53,6 +53,15 @@ test('the fitter: the most tiles that fit, at least 2 rows, no tile below the mi
   }
 });
 
+test('the fitter: a box lower than one tile (the keyboard is open) shows no row, never a cut or shrunk tile', () => {
+  const r = fitGrid({ width: 359, height: 100, gap: GAP, min: 88 });   // 88 px wide = 123 px high: no row fits
+  assert.equal(r.rows, 0);
+  assert.equal(r.per, 0);
+  const one = fitGrid({ width: 844, height: 136, gap: GAP, min: 55 });   // 932x430 today: one row of 55 px tiles
+  assert.deepEqual([one.cols, one.rows, one.per], [13, 1, 13]);
+  assert.ok(one.cw >= 55);
+});
+
 test('the Filters button: each panel group with a choice counts 1; the search does not count (D-39)', () => {
   assert.equal(activeFilterCount(FILTER_DEFAULTS), 0);
   assert.equal(filtersLabel(0), 'Filters');
