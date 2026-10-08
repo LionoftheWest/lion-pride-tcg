@@ -718,7 +718,7 @@ body[data-size="compact-port"] .u3-dg-act .u3-btn { width: 100%; }
 .u3-dg-top + .u3-btn { width: 100%; color: var(--gold); border-color: var(--gold-a50); }
 .u3-dg-tabs .u3-seg { width: 100%; box-sizing: border-box; }
 .u3-dg-tabs .u3-seg__item { flex: 1 1 0; justify-content: center; }
-body[data-size="compact-land"] .u3-dg-tabs .u3-seg__item { padding-inline: var(--sp-1); font-size: var(--fs-small); }
+body[data-size="compact-land"] .u3-dg-tabs .u3-seg__item { padding-inline: var(--sp-half); font-size: var(--fs-small); }
 .u3-dg-pane { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3); }
 .u3-dg-prow { display: flex; gap: var(--sp-2); align-items: stretch; }
 .u3-dg-prow .u3-dg-tabs { flex: 1 1 auto; min-width: 0; }
@@ -961,3 +961,15 @@ body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font
 body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
 /* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
 body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
+/* UI-46: the lobby tabs keep the touch size (9.1): the side column on compact-land is at least three tabs wide, and
+   the tabs in portrait use the small padding */
+body[data-input="coarse"] .u3-dg-tabs .u3-seg__item { min-width: var(--hit); }
+body[data-size="compact-land"] .u3-dg--side-tabs { grid-template-columns: minmax(calc(var(--hit) * 3 + var(--sp-4) * 2 + var(--sp-2)), 2fr) minmax(0, 5fr); }
+body[data-size="compact-port"] .u3-dg-tabs .u3-seg__item { padding-inline: var(--sp-1); gap: var(--sp-1); }
+body[data-size="compact-port"] .u3-dg-prow .u3-dg-timer { padding-inline: var(--sp-2); }
+.u3-logo.is-no-tag .u3-logo__tag, .u3-logo.is-no-word .u3-logo__word { display: none; }   /* measured in shell.js (no cut logo) */
+/* compact-land: the name keeps whole words; the date chip wraps under it when the row is short of room */
+body[data-size="compact-land"] .u3-dg-head { flex-wrap: wrap; row-gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-dg-name { min-width: min-content; }
+body[data-size][data-low] .u3-dg-panel { padding: var(--sp-3); }
+body[data-size][data-low] .u3-dg--side-tabs { grid-template-columns: minmax(calc(var(--hit) * 3 + var(--sp-3) * 2 + var(--sp-2)), 2fr) minmax(0, 5fr); }
