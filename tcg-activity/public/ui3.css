@@ -186,10 +186,12 @@ body[data-size="compact-port"] .u3-dialog { width: 100%; padding: var(--sp-5); }
 .u3-msg--error { color: var(--danger-text); } .u3-msg--success { color: var(--success); } .u3-msg--info { color: var(--info); }
 
 /* ---- Pager (5.2, D-36, D-53): "1 / N", centered under its grid ---- */
-.u3-pager { display: inline-flex; align-items: center; height: var(--ctl-sm); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); margin-inline: auto; }
-.u3-pager__arrow { display: inline-flex; align-items: center; justify-content: center; width: var(--ctl-sm); height: 100%; border-radius: var(--rad-md); color: var(--text-muted); }
+/* position, padding, gap and flex reset: style.css fixes every <nav> to the screen bottom under 620 px (the old mobile tab bar) */
+.u3-pager { box-sizing: content-box; position: static; padding: 0; gap: 0; flex-wrap: nowrap; display: inline-flex; align-items: center; height: var(--ctl-sm); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); margin-inline: auto; }
+.u3-pager__arrow { flex: none; padding: 0; display: inline-flex; align-items: center; justify-content: center; width: var(--ctl-sm); height: 100%; border-radius: var(--rad-md); color: var(--text-muted); }
 .u3-pager__label { min-width: calc(var(--sp-7) + var(--sp-2)); padding: 0 var(--sp-1); display: inline-flex; justify-content: center; font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 body[data-input="coarse"] .u3-pager { height: var(--hit); }
+body[data-input="coarse"] .u3-search__input { min-height: var(--hit); box-sizing: border-box; }
 body[data-input="coarse"] .u3-pager__arrow { width: var(--hit); }
 @media (hover: hover) { .u3-pager__arrow:hover:not(:disabled) { color: var(--text-primary); background: var(--surface-2); } }
 
@@ -292,7 +294,7 @@ body.ui-v2.ui-v3[data-size="compact-port"].m-sa-guess[data-input="coarse"] { --s
 
 :root { --u3-text-muted: var(--text-muted); }   /* the token value; ui-v2.css keeps the old value on body until each screen PR */
 /* The shell areas use the token muted color (4.66:1), not the old v2 value (3.7:1). */
-body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs) { --text-muted: var(--u3-text-muted); }
+body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs, #u3Picker, .u3-dg) { --text-muted: var(--u3-text-muted); }
 
 /* tiny (Discord picture-in-picture, 2.1): no top bar, sub-tab row, dock or menu (D-06, 7.1). The small live view
    (UI-59) is a later screen PR. */
@@ -498,3 +500,208 @@ body.ui-v3[data-size="compact-land"] .u3-open__sets { align-content: start; alig
 body.ui-v3[data-size="compact-land"] .u3-open__counts { align-items: flex-start; }
 body.ui-v3[data-size="compact-port"] .u3-open.is-measuring { width: calc(100% - var(--sp-1-5) * 2); }
 body.ui-v3[data-size="compact-land"] .u3-open.is-measuring { width: calc(100% - var(--u3-sa-l) - var(--u3-sa-r) - var(--sp-1-5) * 2); }
+/* ==== UI-64 Card picker window (src/ui3/card-picker.js; design.md 6.5 pickers, 6.5a; D-40, D-42) ====
+   A dialog on medium and expanded, a full sheet inside the safe frame on the compact classes (C1). The grid fills its
+   area; card-picker.js measures it and sets --pk-cols and --pk-tile (8.1 tile size). Card face only (D-29). */
+#u3Picker .u3-pk-scrim { padding: var(--sp-5) var(--sp-7); grid-template: minmax(0, 1fr) / minmax(0, 1fr); }   /* one definite cell: the window height resolves */
+.u3-pk:focus { outline: none; }
+.u3-pk-scrim.is-still { animation: none; }
+body[data-kb][data-size^="compact"] #u3Picker .u3-pk-scrim { padding-top: calc(var(--u3-sa-t) + var(--sp-1)); padding-bottom: var(--sp-1); }
+body[data-size^="compact"] #u3Picker .u3-pk-scrim { padding: calc(var(--u3-sa-t) + var(--sp-2)) calc(var(--u3-sa-r) + var(--sp-2)) calc(var(--u3-sa-b) + var(--sp-2)) calc(var(--u3-sa-l) + var(--sp-2)); }
+.u3-pk { box-sizing: border-box; width: 100%; height: 100%; display: grid; gap: var(--sp-4); padding: var(--sp-6);
+  grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "head close" "slots slots" "tools tools" "grid grid" "pager pager" "foot foot";
+  border-radius: var(--rad-sheet); background: var(--bg-raised); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); }
+body[data-size="compact-port"] .u3-pk { padding: var(--sp-4); gap: var(--sp-3); }
+body[data-size="compact-land"] .u3-pk { padding: var(--sp-4); gap: var(--sp-3); grid-template-columns: minmax(0, 2fr) minmax(0, 5fr) auto;
+  grid-template-columns: minmax(0, 2fr) auto minmax(0, 5fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "head close tools" "slots grid grid" "foot grid grid" "foot pager pager"; }   /* the x left of the search: out of the corner zone (2.3) */
+.u3-pk__head { grid-area: head; display: flex; align-items: center; min-width: 0; }
+.u3-pk__title { margin: 0; display: flex; align-items: baseline; gap: var(--sp-2); font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); }
+.u3-pk__title b { font-family: var(--font-num); color: var(--gold); }
+.u3-pk__title span { font-family: var(--font-num); color: var(--text-muted); }
+.u3-pk__close { grid-area: close; }
+.u3-pk__slots { grid-area: slots; min-width: 0; }
+.u3-pk__tools { grid-area: tools; display: flex; gap: var(--sp-3); min-width: 0; }
+.u3-pk__tools .u3-search { flex: 1 1 auto; min-width: 0; }
+.u3-pk__grid { grid-area: grid; min-height: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-3); justify-content: center; align-content: start;
+  grid-template-columns: repeat(var(--pk-cols), var(--pk-tile)); grid-auto-rows: calc(var(--pk-tile) * var(--card-ratio)); }
+.u3-pk__pager { grid-area: pager; display: flex; justify-content: center; }
+.u3-pk__pager:empty { display: none; }
+.u3-pk__foot { grid-area: foot; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-5); flex-wrap: wrap; }
+body[data-size="compact-land"] .u3-pk__foot { flex-direction: column; align-items: flex-start; justify-content: space-between; flex-wrap: nowrap; }
+body[data-size="compact-land"] .u3-pk__foot .u3-pk-checks { flex-direction: column; }
+body[data-size="compact-port"] .u3-pk__foot .u3-btn { margin-left: auto; }
+.u3-pk-none { margin: 0; align-self: center; color: var(--text-muted); font-size: var(--fs-body); }
+/* the slot row (C3): the chosen cards in pick order with an x; the next empty place has the gold outline */
+.u3-pk-slots { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); grid-template-columns: repeat(var(--pk-cap), minmax(0, var(--pk-slot, var(--card-thumb)))); }
+body[data-size="compact-land"] .u3-pk-slots { grid-template-columns: repeat(3, minmax(0, var(--pk-slot, var(--card-thumb)))); }
+body[data-size="compact-land"] .u3-pk-checks { font-size: var(--fs-small); gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-pk__title { font-size: var(--fs-heading); }
+body[data-size="compact-land"] .u3-pk__tools { gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-pk__tools > .u3-btn { padding-inline: var(--sp-2); }
+/* the keyboard is open (size-class.js body[data-kb]): the search and the grid only; the rest returns when it closes (2.3, G-015) */
+body[data-kb] .u3-pk :is(.u3-pk__slots, .u3-pk__pager, .u3-pk__foot) { display: none; }
+body[data-kb] .u3-pk { padding-top: var(--sp-2); padding-bottom: var(--sp-2); gap: var(--sp-2); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "head close" "tools tools" "grid grid"; }
+body[data-kb][data-size="compact-land"] .u3-pk { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "head close tools" "grid grid grid"; }
+/* a tile under the card size (only while typing on a short screen): no magnifier, so the tap target is the card (9.1) */
+.u3-pk__grid.is-small .u3-pk-card__info { display: none; }
+/* the view under the window while typing: covered by the scrim, and squeezed by the keyboard */
+body[data-kb]:has(#u3Picker .u3-pk) #body { visibility: hidden; }
+/* landscape: the top row ends left of the Discord corner zone (2.3) */
+body[data-size="compact-land"] .u3-pk { padding-right: max(var(--sp-4), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-2))); }
+.u3-pk-slot { position: relative; aspect-ratio: 1 / var(--card-ratio); border-radius: var(--rad-md); border: var(--bw-1) solid var(--border-strong); display: grid; place-items: center; overflow: hidden;
+  color: var(--text-muted); font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-heading); }
+.u3-pk-slot.is-next { border: var(--bw-2) solid var(--gold); }
+.u3-pk-slot.is-full { border: var(--bw-2) solid var(--u3-r); }
+.u3-pk-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.u3-pk-slot__x { position: absolute; top: var(--u3-none); right: var(--u3-none); width: var(--hit); height: var(--hit); padding: 0; border: 0; background: none; display: grid; place-items: start end; cursor: pointer; color: var(--text-primary); }
+.u3-pk-slot__x .u3-ico { margin: var(--sp-1); padding: var(--sp-half); border-radius: var(--rad-round); background: var(--scrim); }
+/* the grid tile: the card face, the cost badge (C4), the pick number (C7), the magnifier (C8); greyed when not allowed (C13) */
+.u3-pk-card { position: relative; width: var(--pk-tile); height: calc(var(--pk-tile) * var(--card-ratio)); border-radius: calc(var(--pk-tile) * var(--rad-card-ratio));
+  border: var(--bw-2) solid var(--u3-r); background: var(--surface-1); overflow: hidden; box-sizing: border-box; }
+.u3-pk-card.is-sel { box-shadow: 0 0 0 var(--bw-2) var(--gold); }
+.u3-pk-card.is-off img { opacity: var(--item-disabled); }
+.u3-pk-card__pick { position: absolute; inset: 0; padding: 0; border: 0; background: none; cursor: pointer; }
+.u3-pk-card__pick[aria-disabled="true"] { cursor: not-allowed; }
+.u3-pk-card__pick img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-pk-badge { position: absolute; top: var(--sp-1); left: var(--sp-1); padding: 0 var(--sp-1-5); border-radius: var(--rad-sm); background: var(--u3-r); color: var(--bg-base);
+  font-family: var(--font-ui); font-size: var(--fs-small); font-weight: var(--fw-label); line-height: var(--chip-sm); pointer-events: none; }
+.u3-pk-num { position: absolute; top: var(--sp-1); right: var(--sp-1); width: var(--chip-md); height: var(--chip-md); border-radius: var(--rad-round); display: grid; place-items: center;
+  background: var(--gold); color: var(--on-gold); font-family: var(--font-num); font-size: var(--fs-small); font-weight: var(--fw-heading); pointer-events: none; }
+.u3-pk-card__info { position: absolute; right: var(--u3-none); bottom: var(--u3-none); width: var(--ctl-icon); height: var(--ctl-icon); padding: 0; border: 0; background: none; display: grid; place-items: end end; cursor: pointer; color: var(--text-primary); }
+body[data-input="coarse"] .u3-pk-card__info { width: var(--hit); height: var(--hit); }
+.u3-pk-card__info .u3-ico { margin: var(--sp-1); padding: var(--sp-1); border-radius: var(--rad-round); background: var(--scrim); }
+/* the status bar (C9): the live checks */
+.u3-pk-checks, .u3-dg-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); font-size: var(--fs-body); color: var(--text-primary); }
+.u3-pk-checks li, .u3-dg-checks li { display: inline-flex; align-items: center; gap: var(--sp-1-5); }
+.u3-pk-checks .u3-ico, .u3-dg-checks .u3-ico { color: var(--text-muted); }
+.u3-pk-checks .is-ok .u3-ico, .u3-dg-checks .is-ok .u3-ico { color: var(--success); }
+.u3-pk-filters { width: min(100%, var(--dialog-w)); }
+.u3-pk-fgroup { display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-pk-fgroup .u3-seg { flex-wrap: wrap; }
+
+/* ==== UI-46 Dungeon lobby (ui-v2-dungeon.js lobbyV3HTML; design repo UI-46/approved; D-40) ====
+   The slots, the budget, the checks, "Select your squad" / Edit and Start run; the side column with the timer, the rule,
+   your best and the top 3 (the Rule / Best / Top 3 tabs on compact-land and when the panels do not fit). */
+body.ui-v2.ui-v3 .v2-dungeon:has(> .u3-dg) { padding: 0 var(--u3-pad) var(--sp-3); gap: 0; }
+.u3-dg { height: 100%; min-height: 0; display: grid; gap: var(--sp-4); grid-template-columns: minmax(0, 7fr) minmax(0, 2fr); grid-template-areas: "main side"; }
+.u3-dg--side-tabs { grid-template-columns: minmax(0, 2fr) minmax(0, 5fr); grid-template-areas: "side main"; }
+body[data-size="medium"] .u3-dg:not(.u3-dg--side-tabs) { grid-template-columns: minmax(0, 5fr) minmax(0, 2fr); }
+.u3-dg--port { display: flex; flex-direction: column; gap: var(--sp-3); }
+/* medium portrait (approved 768x1024): the squad panel, then the timer, the rule, your best and the top 3 */
+.u3-dg--stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-dg--stack > .u3-dg-main { flex: 0 1 auto; }
+/* stacked: the slots size from the width (5 in a row); the lower panels take the rest of the height */
+.u3-dg--stack:not(:has(.is-tabs)) .u3-dg-slots { flex: 0 0 auto; container-type: inline-size; }
+.u3-dg--stack:not(:has(.is-tabs)) .u3-dg-slots__in { --dg-w: calc((100cqw - 4 * var(--sp-3)) / 5); }
+.u3-dg--stack .u3-dg-below:not(.is-tabs) { flex: 1 1 auto; align-content: stretch; }
+.u3-dg-below { flex: 0 1 auto; min-height: 0; overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.u3-dg-below > .u3-dg-timer, .u3-dg-below > .u3-dg-rule { grid-column: 1 / -1; }
+.u3-dg-below.is-tabs { flex: 0 0 auto; overflow: visible; grid-template-columns: minmax(0, 1fr); }
+.u3-dg--stack:has(.u3-dg-below.is-tabs) > .u3-dg-main { flex: 1 1 0; }
+.u3-dg-timer--inline { gap: var(--sp-1); }
+.u3-dg-timer--inline b { margin-left: 0; font-size: var(--fs-body); }
+.u3-dg--port > .u3-dg-tabpanel { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-dg .u3-dg-tabpanel[hidden] { display: none; }
+/* tight (a short screen, measured): the budget bar and the budget line go (the points are in the checks), smaller text */
+.u3-dg[data-tight] :is(.u3-dg-bar, .u3-dg-budget, .u3-dg-pane .u3-dg-k, .u3-dg-timer > span) { display: none; }
+.u3-dg[data-tight] .u3-dg-main { gap: var(--sp-2); padding: var(--sp-3); }
+.u3-dg[data-tight] .u3-dg-name { font-size: var(--fs-stat); }
+.u3-dg[data-tight] .u3-dg-checks { font-size: var(--fs-small); gap: var(--sp-1) var(--sp-3); }
+.u3-dg[data-tight] .u3-dg-foot { flex-direction: column; align-items: stretch; gap: var(--sp-2); }
+.u3-dg[data-tight] .u3-dg-foot .u3-dg-checks { flex-wrap: nowrap; }
+.u3-dg[data-tight] .u3-dg-foot .u3-dg-act .u3-btn { flex: 1 1 0; }
+.u3-dg[data-tight] div.u3-dg-slot__card { cursor: default; }
+.u3-dg[data-tight] .u3-dg-act .u3-btn { min-width: 0; }
+.u3-dg[data-tight] .u3-dg-pane :is(.u3-dg-h, .u3-dg-p) { font-size: var(--fs-small); margin-top: var(--sp-1); }
+.u3-dg[data-tight] .u3-dg-panel.u3-dg-timer { padding: var(--sp-2) var(--sp-3); }
+.u3-dg-panel { box-sizing: border-box; padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); min-width: 0; }
+body[data-size^="compact"] .u3-dg-panel { padding: var(--sp-4); }
+.u3-dg-side { grid-area: side; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-dg-main { grid-area: main; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.u3-dg--port .u3-dg-main { flex: 1 1 0; gap: var(--sp-3); }
+.u3-dg-hrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--sp-2) var(--sp-4); }
+.u3-dg-hrow > .u3-dg-budget:first-child, .u3-dg-hrow > .u3-dg-bar { grid-column: 1 / -1; }
+/* medium: the budget in its own row, so the name has the full width to wrap and the date chip its own place (FEEDBACK UI-46 item 4) */
+body[data-size="medium"] .u3-dg-hrow { grid-template-columns: minmax(0, 1fr); }
+body[data-size="medium"] .u3-dg-head { flex-wrap: wrap; }
+.u3-dg-head { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; color: var(--gold); }
+.u3-dg-name { min-width: 0; }
+.u3-dg-date, .u3-dg-head > .u3-ico, .u3-dg-thumb { flex: none; }
+body[data-size="compact-port"] .u3-dg-thumb { display: none; }
+body[data-size="compact-port"] .u3-dg-name { font-size: var(--fs-heading); }
+.u3-dg-thumb { height: var(--hit); aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--rad-md); border: var(--bw-1) solid var(--border); }
+.u3-dg-name { margin: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); }
+.u3-dg-date { padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); background: var(--surface-2); color: var(--text-secondary); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); }
+.u3-dg-budget { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.u3-dg-pts { font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-heading); color: var(--gold); }
+.u3-dg-pts span { font-size: var(--fs-body); color: var(--text-muted); }
+.u3-dg-pts.is-bad { color: var(--danger-text); }
+.u3-dg-bar { display: flex; gap: var(--sp-1); }
+.u3-dg-bar i { flex: 1 1 0; height: var(--sp-2); border-radius: var(--rad-pill); background: var(--surface-3); }
+.u3-dg-bar i.is-on { background: var(--u3-r); }
+.u3-dg-bar i.is-over { background: var(--danger); }
+/* the slots: as large as the area allows (container units), 5 in a row, 3 + 2 in portrait (8.1 squad size) */
+.u3-dg-slots { flex: 1 1 0; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; }
+.u3-dg-slots__in { --dg-cols: 5; --dg-rows: 1; --dg-label: calc(var(--fs-label) * 1.5 + var(--sp-1));
+  --dg-w: min(calc((100cqw - (var(--dg-cols) - 1) * var(--sp-3)) / var(--dg-cols)), calc(((100cqh - (var(--dg-rows) - 1) * var(--sp-3)) / var(--dg-rows) - var(--dg-label)) / var(--card-ratio)));
+  list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: var(--sp-3); }
+/* portrait: the larger of 5 in one row and 3 + 2 in two rows (the flex wrap follows): 3 + 2 on a tall phone, one row on a short one */
+body[data-size="compact-port"] .u3-dg-slots__in { --dg-label: var(--u3-none);
+  --dg-w: max(min(calc((100cqw - 4 * var(--sp-3)) / 5), calc(100cqh / var(--card-ratio))), min(calc((100cqw - 2 * var(--sp-3)) / 3), calc((100cqh - var(--sp-3)) / 2 / var(--card-ratio)))); }
+body[data-size="compact-land"] .u3-dg-slots__in { --dg-label: var(--u3-none); }
+.u3-dg-slot { width: var(--dg-w); display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-dg-slot__card { position: relative; width: 100%; aspect-ratio: 1 / var(--card-ratio); padding: 0; overflow: hidden; display: grid; place-items: center; cursor: pointer;
+  border-radius: calc(var(--dg-w) * var(--rad-card-ratio)); border: var(--bw-1) solid var(--border-strong); background: var(--bg-raised); color: var(--text-muted); }
+.u3-dg-slot.is-full .u3-dg-slot__card { border: var(--bw-2) solid var(--u3-r); }
+.u3-dg-slot__card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.u3-dg-slot__n { font-family: var(--font-num); font-size: min(var(--fs-display), calc(var(--dg-w) / 2)); font-weight: var(--fw-heading); }
+.u3-dg-slot__label { font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-muted); }
+body[data-size^="compact"] .u3-dg-slot__label { display: none; }
+.u3-dg-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-5); }
+.u3-dg-foot .u3-dg-checks { flex: 1 1 auto; }
+.u3-dg-act { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-dg-foot .u3-dg-act { flex: none; }
+.u3-dg-act .u3-btn { min-width: calc(var(--card-tile) * 2); }
+body[data-size="compact-land"] .u3-dg-act .u3-btn { min-width: var(--card-tile); }
+body[data-size="compact-land"] .u3-dg-thumb, body[data-size="compact-land"] .u3-dg-budget .u3-label { display: none; }
+body[data-size="compact-land"] .u3-dg-pane .u3-dg-h { font-size: var(--fs-stat); }
+body[data-size="compact-land"] .u3-dg-pane :is(.u3-dg-p, .u3-dg-rchip) { font-size: var(--fs-small); }
+body[data-size="compact-land"] .u3-dg-panel.u3-dg-timer, body[data-size="compact-land"] .u3-dg-pane { padding: var(--sp-3); }
+body[data-size="compact-land"] .u3-dg-main { gap: var(--sp-2); padding: var(--sp-3); }
+body[data-size="compact-land"] .u3-dg-name { font-size: var(--fs-heading); }
+body[data-size="compact-port"] .u3-dg-act .u3-btn { width: 100%; }
+.u3-dg-go { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-dg-go .u3-dg-checks { flex-direction: column; gap: var(--sp-1); }
+/* the side column */
+.u3-dg-timer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); color: var(--gold); }
+.u3-dg-timer span { color: var(--text-secondary); font-size: var(--fs-body); }
+.u3-dg-timer b { margin-left: auto; font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-dg-k { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--gold); }
+.u3-dg-h { margin: var(--sp-2) 0 0; display: flex; align-items: center; gap: var(--sp-2); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-dg-h.is-muted { color: var(--text-muted); }
+.u3-dg-p { margin: var(--sp-1) 0 0; color: var(--text-secondary); font-size: var(--fs-body); line-height: var(--lh-body); }
+.u3-dg-rchips { margin-top: var(--sp-3); display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-dg-rchip { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-md); border: var(--bw-1) solid; font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
+.u3-dg-rchip.is-yes { color: var(--success); background: var(--success-soft); }
+.u3-dg-rchip.is-no { color: var(--danger-text); background: var(--danger-soft); }
+.u3-dg-mini { margin: var(--sp-3) 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.u3-dg-mini dt { font-size: var(--fs-label); color: var(--text-muted); }
+.u3-dg-mini dd { margin: 0; font-family: var(--font-num); color: var(--text-primary); }
+.u3-dg-toph { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.u3-dg-toph .u3-dg-h { margin: 0; }
+.u3-dg-runs { font-size: var(--fs-small); color: var(--text-muted); }
+.u3-dg-top { list-style: none; margin: var(--sp-3) 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-dg-top li { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); font-size: var(--fs-body); }
+.u3-dg-top li em { margin-left: auto; font-style: normal; font-family: var(--font-num); color: var(--gold); }
+.u3-dg-top li.is-none { color: var(--text-muted); }
+.u3-dg-top + .u3-btn { width: 100%; color: var(--gold); border-color: var(--gold-a50); }
+.u3-dg-tabs .u3-seg { width: 100%; box-sizing: border-box; }
+.u3-dg-tabs .u3-seg__item { flex: 1 1 0; justify-content: center; }
+body[data-size="compact-land"] .u3-dg-tabs .u3-seg__item { padding-inline: var(--sp-1); font-size: var(--fs-small); }
+.u3-dg-pane { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-dg-prow { display: flex; gap: var(--sp-2); align-items: stretch; }
+.u3-dg-prow .u3-dg-tabs { flex: 1 1 auto; min-width: 0; }
+.u3-dg-prow .u3-dg-timer { padding: var(--sp-2) var(--sp-3); }
+.u3-dg-prow .u3-dg-timer span { display: none; }
