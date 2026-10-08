@@ -21,7 +21,7 @@ comment on column public.cards.artist_credit is $c$The artist name printed on th
 comment on column public.cards.lore is $c$The flavor text of this rarity, or null. The card studio sets it.$c$;
 comment on column public.cards.in_draw_pool is $c$True when packs can draw the card (the bot draw reads only these rows). The trigger cards_event_rules sets it to false for promo and event cards.$c$;
 comment on column public.cards.created_at is $c$Time the row was made (the first push of this rarity).$c$;
-comment on column public.cards.season is $c$The season label of the card (for example 'Season 1'). The card studio sets it. The Activity uses it for Hunt weak points.$c$;
+comment on column public.cards.season is $c$'Season ' || card_sets.season of set_id (kept by cards_set_rules). Read by the Activity, the Hunt weak points, the achievement tag badges and the studio.$c$;
 comment on column public.cards.event is $c$The event or period name of a promo or event card, else null. The card studio sets it.$c$;
 comment on column public.cards.tradeable is $c$False when trades, gifts and the Trading Hall must refuse the card. The card studio sets it per rarity. The trigger cards_event_rules forces false for promo and event cards.$c$;
 
