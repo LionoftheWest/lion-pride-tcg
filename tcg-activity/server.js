@@ -32,6 +32,7 @@ import { registerHallRoutes, heldCopies } from './src/hall-routes.js';
 import { registerShopRoutes } from './src/shop-routes.js';
 import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
+import { dailyExtras } from './src/dailies-pay.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -1271,7 +1272,8 @@ app.post('/api/achievements/claim', async (req, res) => {
 // Dailies (dailies.sql): the window's data, and one redeem. The SQL checks the flag, the
 // pause, the task, the one-per-day rule and the daily cap.
 // The Dungeon and Gauntlet dailies (dailies_adventure.sql) show only to a member who has the Dungeon (dungeonOn).
-const advDailies = (v, id) => (v?.tasks && !dungeonOn(id) ? { ...v, tasks: v.tasks.filter((t) => t.task !== 'dungeon' && t.task !== 'gauntlet') } : v);
+// dailyExtras (src/dailies-pay.js): the streak week and the next chat reward from balance daily, for the v3 window (UI-36).
+const advDailies = (v, id) => dailyExtras(v?.tasks && !dungeonOn(id) ? { ...v, tasks: v.tasks.filter((t) => t.task !== 'dungeon' && t.task !== 'gauntlet') } : v, BAL?.daily);
 app.get('/api/dailies', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
