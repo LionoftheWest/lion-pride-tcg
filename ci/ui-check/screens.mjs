@@ -34,7 +34,7 @@ export const SCREENS = {
   // v3: the boss detail window (UI-20) over the Hunt view (a tap on the boss stage).
   'boss-window':         { id: 'UI-20', under: 'UI-17', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '[data-boss]'], ['wait', 2]] },
   'hunt-picker':         { id: 'UI-64', under: 'UI-17', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '[data-hpick]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
-  'hunt-battle':         { id: 'UI-18', battle: true, steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9]] },
+  'hunt-battle':         { id: 'UI-18', notOn: ['tiny'], battle: true, steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9]] },
   // v3: tiny shows no shell, so the Adventure tabs are not there (D-06: the small live view, UI-59).
   'dungeon':             { id: 'UI-46', notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   // The Card picker (UI-64) over the Dungeon lobby (D-40): a defect outside the window belongs to the lobby ('under').

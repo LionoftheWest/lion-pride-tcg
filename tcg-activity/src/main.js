@@ -1560,7 +1560,7 @@ function battleV3HTML(d) {
       <div class="u3-hs-boss u3-ft-boss"><canvas id="bossCanvas"></canvas></div>
       <aside class="u3-ft-feed"><span class="u3-label">Boss live feed</span><div class="u3-ft-feedlist" id="u3FtFeed"></div></aside>
     </section>
-    <section class="u3-ft-hand"><p class="u3-ft-turn" id="u3FtTurn">${FT_TURN}</p><div class="u3-ft-cards"><div class="squad-grid u3-ft-grid" id="huntGrid"></div></div></section>
+    <section class="u3-ft-hand"><p class="u3-ft-turn" id="u3FtTurn">${FT_TURN}</p><div class="u3-ft-cards"><ul class="squad-grid u3-ft-grid" id="huntGrid" aria-label="Your squad"></ul></div></section>
   </div>`;
 }
 // The fight HP line: the compact form on the compact classes in v3 (10.5), the full number in v2
@@ -1571,7 +1571,9 @@ const FT_TURN = 'Play supports, then attack · an attack ends your turn';
 function fitFightV3() {
   const ft = document.querySelector('.u3-ft'), stage = ft?.querySelector('.u3-ft-stage'), hand = ft?.querySelector('.u3-ft-hand'), grid = el('huntGrid');
   if (!stage || !hand || !grid) return;
-  ft.classList.remove('is-short', 'is-tight');
+  // measure again when the fight area changes size (the safe area, the fonts, the shell rows settle after the paint)
+  if (!ft._ro && window.ResizeObserver) { let last = ''; ft._ro = new ResizeObserver(() => { const k = `${ft.clientWidth}x${ft.clientHeight}`; if (k !== last) { last = k; requestAnimationFrame(fitFightV3); } }); ft._ro.observe(ft); }
+  ft.classList.remove('is-short', 'is-tight', 'is-min');
   grid.style.removeProperty('--ft-cap'); hand.style.removeProperty('flex-basis');
   // the feed list is trimmed by fitFeedRows; every other part must fit whole
   const over = () => stage.scrollHeight > stage.clientHeight + 1 || [...stage.children].some((n) => !n.classList.contains('u3-ft-feed') && n.scrollHeight > n.clientHeight + 1);
@@ -1584,8 +1586,19 @@ function fitFightV3() {
     for (let cap = TOKENS['card-tile']; over() && cap > TOKENS['card-mini']; cap -= 4) grid.style.setProperty('--ft-cap', `${cap - 4}px`);
   } else {
     const ah = ft.clientHeight || 1;
-    for (let h = hand.getBoundingClientRect().height; over() && grid.firstElementChild && grid.firstElementChild.getBoundingClientRect().width > TOKENS['card-mini']; ) { h -= 8; hand.style.flexBasis = `${Math.round((100 * h) / ah)}%`; }
+    // the last step (a short landscape phone with the safe area): the boss render gives way, the facts and the HP bar share a line
+    if (over() && document.body.dataset.size === 'compact-land') ft.classList.add('is-min');
+    // the hand panel gets lower while the stage overflows; a step that makes the cards smaller than the mini size is undone
+    const cardW = () => grid.querySelector('.c')?.getBoundingClientRect().width || 0;
+    for (let h = hand.getBoundingClientRect().height; over() && h > TOKENS['card-mini']; ) {
+      const before = hand.style.flexBasis, w0 = cardW();
+      h -= 8; hand.style.flexBasis = `${Math.round((100 * h) / ah)}%`;
+      if (cardW() < w0 && cardW() < TOKENS['card-mini']) { hand.style.flexBasis = before; break; }
+    }
   }
+  // a card under the touch size has no magnifier, so the tap target is the card (9.1, as the Card picker)
+  const art = grid.querySelector('.c .art');
+  grid.classList.toggle('is-small', !!art && art.getBoundingClientRect().width < TOKENS.hit + TOKENS['sp-2']);
   const list = el('u3FtFeed'); if (list) fitFeedRows(list);
 }
 const ftTurn = (t) => { const n = el('u3FtTurn'); if (n) n.textContent = t || FT_TURN; };
@@ -1618,7 +1631,7 @@ function huntTile(c, mode) {
   const elBadge = look ? `<span class="celem" title="${look.name}">${look.glyph}</span>` : '';
   const elStyle = look ? ` style="--el:${look.color};--el2:${look.color2}"` : '';
   return `<div class="${cls}${elem ? ` el-${elem}` : ''}" data-id="${c.id}" data-el="${elem || ''}" data-type="${esc(c.type || '')}" data-used="${usedIds.has(c.id) ? 1 : 0}" data-max="${max}"${elStyle} title="${ab ? esc(ab.name + ' — ' + (ab.desc || '')) : ''}">
-    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×1.5</span>' : ''}${shield}${overlay}${flairHTML(c.ascension)}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">🔍</button></div>
+    <div class="art">${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}" loading="lazy">` : ''}${elBadge}${c.matches && !support ? '<span class="x2">×1.5</span>' : ''}${shield}${overlay}${flairHTML(c.ascension)}<span class="tpow">${support ? '🛡' : `⚡${c.power}`}</span><button class="card-info" data-info="1" aria-label="Details">${huntV3() ? ui3Icon('search', { size: 'sm' }) : '🔍'}</button></div>
     ${hpbar}
     <div class="cap">${isPhone() ? breakable(esc(c.name)) : esc(c.name)}${abLine}</div>
   </div>`;
@@ -1786,7 +1799,7 @@ function paintTeam() {
   const grid = el('huntGrid');
   if (!grid) return;
   const team = (huntState?.roster || []).filter((c) => squad.sel.has(c.id));
-  grid.innerHTML = team.length ? team.map((c) => huntTile(c, 'battle')).join('') : '<p class="empty">No squad chosen.</p>';
+  grid.innerHTML = team.length ? team.map((c) => (huntV3() ? `<li>${huntTile(c, 'battle')}</li>` : huntTile(c, 'battle'))).join('') : '<p class="empty">No squad chosen.</p>';
   sizeSquadGrid();
 }
 // The lock-in warning (Nathan, 2026-10-02): Continue locks the short squad; Auto-Fill my Squad keeps
@@ -2053,7 +2066,7 @@ async function refreshHuntFeed() {
 function fitFeedRows(list) {
   const box = list.getBoundingClientRect();
   // A phone drops even the last row when it does not fit (no cut text on a phone).
-  const keep = isPhone() ? 0 : 1;
+  const keep = isPhone() || list.id === 'u3FtFeed' ? 0 : 1;   // v3 (UI-18): no cut row on any class
   if (!box.height) { if (!keep && currentView === 'battling') list.innerHTML = ''; return; }
   let last = list.lastElementChild;
   while (last && list.children.length > keep && last.getBoundingClientRect().bottom > box.bottom + 1) {

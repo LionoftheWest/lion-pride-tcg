@@ -1025,3 +1025,18 @@ body[data-size] .u3-ft.is-tight .u3-hs-name { font-size: var(--fs-body); }
 .u3-ft.is-short .u3-ft-dmg b { font-size: var(--fs-body); }
 body[data-size="compact-land"] .u3-ft.is-tight .u3-ft-turn { flex-basis: calc(var(--card-tile) * 1.5); font-size: var(--fs-caption); }
 body[data-size="compact-land"] .u3-ft.is-short.is-tight .u3-ft-stage { grid-template-rows: auto auto auto; grid-template-areas: "title boss me" "facts facts me" "hp hp me"; }
+/* the magnifier: the touch hit area in the card corner, the icon drawn small (as the Card picker, C8) */
+.u3-ft-grid .card-info { top: var(--u3-none); left: var(--u3-none); width: var(--ctl-icon); height: var(--ctl-icon); border: 0; border-radius: 0; background: none; opacity: 1; display: grid; place-items: start start; color: var(--text-primary); }
+body[data-input="coarse"] .u3-ft-grid .card-info { width: var(--hit); height: var(--hit); }
+.u3-ft-grid .card-info .u3-ico { margin: var(--sp-1); padding: var(--sp-1); border-radius: var(--rad-round); background: var(--scrim); }
+.u3-ft-grid.is-small .card-info { display: none; }
+body[data-input="coarse"] .u3-ft-me .ex-q { width: var(--hit); height: var(--hit); }
+.u3-ft-grid { list-style: none; margin: 0; padding: 0; }
+.u3-ft-grid > li { display: contents; }
+.u3-ft-feed:has(.u3-ft-feedlist:empty) { display: none; }
+body[data-size="compact-port"] .u3-ft.is-short .u3-ft-stage { grid-template-rows: auto auto auto auto; grid-template-areas: "title title" "boss facts" "boss hp" "me me"; }
+body[data-size="compact-land"] .u3-ft.is-short.is-tight.is-min .u3-ft-stage { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr); grid-template-rows: auto auto; grid-template-areas: "title title me" "facts hp me"; align-items: center; }
+.u3-ft.is-min .u3-ft-boss { display: none; }
+.u3-ft.is-min .u3-ft-me { flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
+.u3-ft.is-min .u3-ft-dmg { flex-wrap: nowrap; }
+.u3-ft.is-min .u3-ft-dmg { padding: 0; border: 0; background: none; }
