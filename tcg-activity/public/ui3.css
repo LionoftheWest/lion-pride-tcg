@@ -949,6 +949,217 @@ body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(
 /* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
 body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
 
+/* ---- UI-14 Profile (member): design repo UI-14/approved (review-1 + review-2); src/ui3/profile.js ---- */
+/* The full-screen view in the content area, 8 px above the dock (S3); the view under it hides (no second screen). */
+body.ui-v2.ui-v3[data-size] { --u3-pf-dock: calc(var(--dock-h) + var(--sp-3) + var(--sp-2)); }
+body.ui-v2.ui-v3[data-size="compact-land"] { --u3-pf-dock: calc(var(--dock-h) + var(--sp-1) + var(--sp-2)); }
+body.ui-v2.ui-v3[data-size="compact-port"] { --u3-pf-dock: calc(var(--dock-h) + var(--sp-2) * 2 + var(--u3-sa-b)); }
+body.ui-v2.ui-v3[data-size="tiny"] { --u3-pf-dock: var(--sp-2); }
+body.ui-v2.ui-v3[data-size] #memberModal.v2-screen { top: calc(var(--u3-sa-t) + var(--u3-bar) + var(--sp-1)); left: calc(var(--u3-sa-l) + var(--u3-pad)); right: calc(var(--u3-sa-r) + var(--u3-pad));
+  bottom: var(--u3-pf-dock); z-index: var(--z-base); background: var(--bg-base); --text-muted: var(--u3-text-muted); }
+body.ui-v2.ui-v3[data-size="tiny"] #memberModal.v2-screen { top: var(--sp-2); left: var(--sp-2); right: var(--sp-2); }
+body.ui-v2.ui-v3[data-size]:has(#memberModal:not(.hidden)) #body { visibility: hidden; }
+.u3-pf { position: relative; height: 100%; display: grid; gap: var(--sp-4); min-height: 0; box-sizing: border-box; }
+.u3-pf-tile { position: relative; min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4);
+  box-sizing: border-box; border-radius: var(--rad-lg); background: var(--bg-raised); border: var(--bw-1) solid var(--border); }
+.u3-pf-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-height: var(--ctl-sm); }
+.u3-pf-h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-stat); font-weight: var(--fw-heading); color: var(--text-primary); }
+.u3-pf-none, .u3-pf-empty { margin: 0; color: var(--text-muted); font-size: var(--fs-small); }
+.u3-pf-empty { flex: 1 1 auto; display: grid; place-items: center; text-align: center; font-size: var(--fs-body); }
+.u3-pf .u3-btn--ghost { padding: 0 var(--sp-1); }
+body[data-input="coarse"] .u3-pf .u3-btn { height: var(--hit); }
+
+/* the layouts (grid areas) */
+.u3-pf-id { grid-area: id; } .u3-pf-spot { grid-area: spot; } .u3-pf-season { grid-area: season; } .u3-pf-wish { grid-area: wish; } .u3-pf-hunt { grid-area: hunt; }
+.u3-pf[data-lay="col3"] { grid-template-columns: minmax(0, calc(var(--sheet-side-w) * .74)) minmax(0, 1fr) minmax(0, calc(var(--sheet-side-w) * .8)); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "id spot wish" "id season hunt"; }
+.u3-pf[data-lay="col3"]:not(:has(.u3-pf-wish)) { grid-template-areas: "id spot hunt" "id season hunt"; }
+.u3-pf[data-lay="col3"]:has(.u3-pf-season.is-all) { grid-template-areas: "id season wish" "id season hunt"; }
+.u3-pf[data-lay="col3"]:has(.u3-pf-season.is-all):not(:has(.u3-pf-wish)) { grid-template-areas: "id season hunt" "id season hunt"; }
+.u3-pf[data-lay="stack"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 4fr) minmax(0, 5fr);
+  grid-template-areas: "id id" "spot season" "wish hunt"; }
+.u3-pf[data-lay="stack"]:not(:has(.u3-pf-wish)) { grid-template-areas: "id id" "spot season" "hunt hunt"; }
+.u3-pf[data-lay="stack"]:has(.u3-pf-season.is-all) { grid-template-areas: "id id" "season season" "wish hunt"; }
+.u3-pf[data-lay="land"] { gap: var(--sp-2); grid-template-columns: minmax(calc(var(--sheet-side-w) * .75), 23fr) minmax(0, 20fr) minmax(0, 20fr); grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "id spot wish" "id season wish"; }
+.u3-pf[data-lay="land"]:not(:has(.u3-pf-wish)) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "id spot" "id season"; }
+.u3-pf[data-lay="land"]:has(.u3-pf-season.is-all) { grid-template-rows: minmax(0, 1fr); grid-template-areas: "id season season"; }
+.u3-pf[data-lay="port"] { gap: var(--sp-2); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 2fr) auto minmax(0, 3fr);
+  grid-template-areas: "id" "spot" "season" "wish"; }
+.u3-pf[data-lay="port"]:not(:has(.u3-pf-wish)) { grid-template-rows: auto minmax(0, 1fr) auto; }
+.u3-pf[data-lay="port"]:has(.u3-pf-season.is-all) { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "id" "season"; }
+.u3-pf[data-lay="tiny"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "id"; }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-tile { padding: var(--sp-3); gap: var(--sp-2); }
+.u3-pf:is([data-lay="land"], [data-lay="port"], [data-lay="tiny"]) .u3-pf-hunt,
+.u3-pf:is([data-lay="port"], [data-lay="land"]):has(.u3-pf-season.is-all) .u3-pf-wish,
+.u3-pf[data-lay="tiny"] :is(.u3-pf-spot, .u3-pf-season, .u3-pf-wish) { display: none; }
+
+/* identity: every part is a grid item of the tile (display: contents), placed by the layout */
+.u3-pf-id { display: grid; align-content: start; column-gap: var(--sp-3); row-gap: var(--sp-2); }
+.u3-pf-who, .u3-pf-name { display: contents; }
+.u3-pf-id > .u3-pf-home { grid-area: home; justify-self: end; }
+.u3-pf-id .v2-avatar.u3-pf-av { grid-area: av; align-self: center; width: calc(var(--avatar-lg) + var(--sp-6)); height: calc(var(--avatar-lg) + var(--sp-6)); padding: var(--sp-1); }
+.u3-pf-id .v2-avatar.u3-pf-av > span { font-size: var(--fs-title); }
+.u3-pf-id .v2-avatar.u3-pf-av.live { box-shadow: 0 0 0 var(--bw-2) var(--bg-raised), 0 0 0 calc(var(--bw-2) * 2) var(--success); }
+.u3-pf-id h2 { grid-area: name; margin: 0; min-width: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading);
+  color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-pf-title { grid-area: title; justify-self: start; padding: var(--sp-half) var(--sp-2); border-radius: var(--rad-sm); background: var(--gold-a10); color: var(--gold);
+  font-size: var(--fs-caption); font-weight: var(--fw-heading); letter-spacing: var(--sp-half); }
+.u3-pf-id #memCos { grid-area: cos; justify-self: start; }
+.u3-pf-badges { grid-area: badges; display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.u3-pf-badge { width: var(--icon-2xl); height: var(--icon-2xl); flex: none; display: grid; place-items: center; border-radius: var(--rad-round); font-size: var(--fs-caption);
+  background: var(--surface-1); border: var(--bw-1) solid var(--gold-a50); }
+.u3-pf-more { margin-left: var(--sp-1); font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-muted); }
+.u3-pf-status { grid-area: status; display: flex; align-items: center; justify-content: center; min-height: var(--ctl-sm); padding: var(--sp-1) var(--sp-3); box-sizing: border-box;
+  border-radius: var(--rad-md); background: var(--gold-a10); border: var(--bw-1) solid var(--gold-a35); color: var(--gold); font-size: var(--fs-small); text-align: center; }
+.u3-pf-acts { grid-area: acts; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+.u3-pf-fx { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-2); }
+.u3-pf-acts .u3-btn { width: 100%; min-width: 0; }
+.u3-pf-stats { grid-area: stats; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-1); padding: var(--sp-2) var(--sp-1);
+  border-radius: var(--rad-md); background: var(--surface-1); }
+.u3-pf-stats > div { display: flex; flex-direction: column; align-items: center; min-width: 0; text-align: center; }
+.u3-pf-stats b { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-heading); color: var(--text-primary); }
+.u3-pf-stats span { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; }
+.u3-pf-stats[data-fs="1"] b { font-size: var(--fs-small); } .u3-pf-stats[data-fs="2"] b { font-size: var(--fs-caption); }
+.u3-pf-stats:is([data-fs="2"], [data-fs="3"]) span { font-size: var(--fs-label); }
+.u3-pf-stats[data-fs="3"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.u3-pf-stats[data-fs="3"] b { font-size: var(--fs-caption); }
+.u3-pf-stats span { font-size: var(--fs-caption); color: var(--text-muted); }
+.u3-pf-achh { grid-area: achh; display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2); }
+.u3-pf-n { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); }
+.u3-pf-ach { grid-area: ach; margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; align-content: flex-start; gap: var(--sp-1-5); min-height: var(--ctl-sm); overflow: hidden; }
+.u3-pf-ab { width: var(--ctl-sm); height: var(--ctl-sm); flex: none; display: grid; place-items: center; box-sizing: border-box; border-radius: var(--rad-round); font-size: var(--fs-small);
+  background: var(--surface-1); border: var(--bw-1) solid var(--gold-a50); }
+.u3-pf-ab--more { font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-muted); border-color: var(--border); }
+
+.u3-pf[data-lay="col3"] .u3-pf-id { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(10, auto) minmax(0, 1fr);
+  grid-template-areas: "home" "av" "name" "title" "cos" "badges" "status" "acts" "stats" "achh" "ach"; }
+.u3-pf[data-lay="col3"] .u3-pf-id > .u3-pf-home { justify-self: start; }
+.u3-pf[data-lay="col3"] .u3-pf-id :is(.v2-avatar.u3-pf-av, h2, .u3-pf-title, .u3-pf-badges) { justify-self: center; text-align: center; }
+.u3-pf:is([data-lay="port"], [data-lay="land"]) .u3-pf-id { grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "av name home" "av title home" "av cos cos" "av badges badges" "status status status" "acts acts acts" "stats stats stats" "achh achh achh" "ach ach ach"; }
+.u3-pf[data-lay="land"][data-self] .u3-pf-id { grid-template-areas: "av name name" "av title title" "av cos home" "av badges badges" "status status status" "acts acts acts" "stats stats stats" "achh achh achh" "ach ach ach"; }
+.u3-pf[data-lay="land"] .u3-pf-id { row-gap: var(--sp-1-5); }
+.u3-pf[data-lay="land"] .u3-pf-id .v2-avatar.u3-pf-av { width: calc(var(--avatar-lg) + var(--sp-2)); height: calc(var(--avatar-lg) + var(--sp-2)); }
+.u3-pf[data-lay="land"] .u3-pf-acts { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr); }
+.u3-pf[data-lay="land"] .u3-pf-acts:not(:has(.u3-pf-fx)) { grid-template-columns: minmax(0, 1fr); }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-stats { gap: var(--sp-1); padding: var(--sp-1); }
+.u3-pf[data-lay="stack"] .u3-pf-id { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: repeat(6, auto) minmax(0, 1fr);
+  grid-template-areas: "home home stats" "av name stats" "av title achh" "av cos ach" "av badges ach" "status status ach" "acts acts ach"; }
+.u3-pf[data-lay="stack"] .u3-pf-id > .u3-pf-home { justify-self: start; }
+.u3-pf[data-lay="tiny"] .u3-pf-id { padding: var(--sp-2); grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "av name" "av badges" "home home" "stats stats"; }
+.u3-pf[data-lay="tiny"] .u3-pf-id > .u3-pf-home { justify-self: start; }
+.u3-pf[data-lay="tiny"] .u3-pf-id :is(.u3-pf-title, #memCos, .u3-pf-status, .u3-pf-acts, .u3-pf-achh, .u3-pf-ach) { display: none; }
+.u3-pf[data-lay="tiny"] .u3-pf-id .v2-avatar.u3-pf-av { width: var(--avatar-lg); height: var(--avatar-lg); }
+
+/* Spotlight: the cards as large as the tile allows (review-2), the main card in the middle */
+.u3-pf-spotrow { flex: 1 1 0; min-height: 0; margin: 0; padding: 0; list-style: none; display: flex; align-items: center; justify-content: center; gap: var(--sp-3);
+  --pf-cw: var(--card-tile); }
+.u3-pf-card { flex: none; position: relative; aspect-ratio: 5 / 7; border-radius: var(--rad-sm); }
+.u3-pf-card > button { position: relative; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; border-radius: inherit; }
+.u3-pf-card img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; filter: drop-shadow(0 0 var(--sp-2) var(--u3-r)); }
+.u3-pf-spotrow > .u3-pf-card { width: calc(var(--pf-cw) * .82); }
+.u3-pf-spotrow[data-even] > .u3-pf-card { width: var(--pf-cw); }
+.u3-pf-spotrow > .u3-pf-card.is-main { width: var(--pf-cw); }
+.u3-pf-spotrow .u3-pf-none { align-self: center; }
+
+/* Season: the title, the bar, View all; the mini grid (whole rows); the rarity chips */
+.u3-pf-shead { display: flex; align-items: center; gap: var(--sp-4); min-width: 0; }
+.u3-pf-stitle { display: flex; flex-direction: column; flex: none; }
+.u3-pf-stitle h2 { margin: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); white-space: nowrap; }
+.u3-pf-sbar { flex: 0 1 calc(var(--sp-7) * 5); min-width: 0; height: var(--bar-sm); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; align-self: flex-start;
+  margin-top: var(--sp-3); }
+.u3-pf-sbar > i { display: block; height: 100%; width: var(--u3-v); background: linear-gradient(90deg, var(--rarity-full_art), var(--gold)); }
+.u3-pf-shead #memAll { margin-left: auto; flex: none; }
+.u3-pf-mini, .u3-pf-allgrid { flex: 1 1 0; min-height: 0; margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(var(--pf-cols, 1), minmax(0, 1fr));
+  align-content: start; gap: var(--sp-2); }
+.u3-pf-mini > .u3-pf-card { outline: var(--bw-2) solid var(--u3-r); outline-offset: calc(var(--bw-2) * -1); overflow: hidden; }
+.u3-pf-mini > .u3-pf-card img { filter: none; object-fit: cover; }
+.u3-pf-card.is-lock { display: grid; place-items: center; border: var(--bw-1) solid var(--border); background: var(--bg-base); color: var(--text-muted); }
+.u3-pf-allgrid { grid-template-columns: repeat(var(--pf-cols, 1), var(--pf-tile, var(--card-tile))); justify-content: center; }
+.u3-pf-pager { display: flex; justify-content: center; min-height: var(--ctl-sm); }
+.u3-pf-rar { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-pf-rchip { display: inline-flex; align-items: center; gap: var(--sp-1-5); height: var(--chip-md); padding: 0 var(--sp-3); border-radius: var(--rad-pill); background: var(--surface-1);
+  border: var(--bw-1) solid var(--border); font-size: var(--fs-small); color: var(--text-secondary); white-space: nowrap; }
+.u3-pf-rchip i { font-style: normal; color: var(--u3-r); }
+.u3-pf-rchip b { font-family: var(--font-num); color: var(--u3-r); }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-mini { display: none; }
+.u3-pf[data-lay="land"] .u3-pf-rar { display: none; }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-stitle h2 { font-size: var(--fs-heading); }
+.u3-pf[data-lay="port"] .u3-pf-rar { justify-content: center; }
+
+/* Wishlist (the v2 rows, restyled; UI-16 builds the editor) */
+.u3-pf-wish .tile-h { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--fs-stat); min-height: var(--ctl-sm); }
+.u3-pf-wish .tile-h b { display: flex; align-items: center; gap: var(--sp-2); font-weight: var(--fw-heading); }
+.u3-pf-wish .tile-h .grow { flex: 1 1 auto; }
+.u3-pf-wish .tile-h .mono { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-pf-wish #wlEdit { min-height: var(--ctl-sm); padding: 0 var(--sp-3); border-radius: var(--rad-md); font-size: var(--fs-small); }
+body.ui-v2.ui-v3[data-input="coarse"] .u3-pf-wish :is(#wlEdit, .wl-row .v2-icon) { min-height: var(--hit); min-width: var(--hit); }
+body.ui-v2.ui-v3 .u3-pf-wish { gap: var(--sp-2); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-list { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-1); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row { flex: none; min-height: calc(var(--ctl-sm) + var(--sp-1)); padding: var(--sp-half) var(--sp-2); gap: var(--sp-3); border-radius: var(--rad-md); background: var(--surface-1); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row[hidden] { display: none; }
+body.ui-v2.ui-v3 .u3-pf-wish :is(.wl-row img, .wl-empty) { height: var(--ctl-sm); width: auto; aspect-ratio: 5 / 7; box-sizing: border-box; flex: none; }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row b { font-size: var(--fs-small); white-space: normal; overflow-wrap: anywhere; }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row span[style] { font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-i { width: var(--sp-3); font-size: var(--fs-caption); color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-pf-wish .hl-n { font-size: var(--fs-label); padding: var(--sp-half) var(--sp-1-5); border-radius: var(--rad-sm); background: var(--bg-base); color: var(--text-muted); }
+.u3-pf-wmore { display: flex; justify-content: center; }
+body[data-input="coarse"] .u3-pf-wmore .u3-more { min-height: var(--hit); }
+.u3-pf[data-lay="port"] .u3-pf-wish .wl-i { display: none; }
+
+/* Hunt (C4, C8) */
+.u3-pf-hunt .mem-hstats span, .u3-pf-hunt .mem-bars .hb span { font-size: var(--fs-label); }
+
+/* No profile / failed load (C17, 7.2) */
+.u3-pf--empty { display: flex; flex-direction: column; align-items: stretch; }
+.u3-pf--empty > .u3-pf-home { align-self: flex-start; }
+.u3-pf--empty > .u3-state { flex: 1 1 auto; }
+.u3-pf--empty .u3-msg { font-size: var(--fs-body); font-weight: var(--fw-body); color: var(--text-secondary); }
+.u3-pf--empty .u3-msg .u3-ico { color: var(--danger); }
+
+/* the tight steps (profile.js fitTight): 1 no rarity chips, 2 a smaller identity, 3 no status line, 4 (phones) the Spotlight
+   and the Wishlist as two tabs */
+.u3-pf[data-tight] .u3-pf-rar { display: none; }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-id { row-gap: var(--sp-1); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-stats { row-gap: var(--sp-half); padding-block: var(--sp-half); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-stats b { font-size: var(--fs-small); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-stats span { font-size: var(--fs-label); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-id .v2-avatar.u3-pf-av { width: var(--avatar-lg); height: var(--avatar-lg); }
+.u3-pf:is([data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-status { display: none; }
+.u3-pf[data-lay="land"]:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-id .v2-avatar.u3-pf-av { width: var(--avatar-md); height: var(--avatar-md); }
+.u3-pf-tabs { display: none; grid-area: tabs; }
+.u3-pf-tabs .u3-seg { display: flex; }
+.u3-pf-tabs .u3-seg__item { flex: 1 1 0; justify-content: center; }
+.u3-pf:is([data-lay="port"]:is([data-tight="4"], [data-tight="5"]), [data-lay="land"][data-tight="5"]) .u3-pf-tabs { display: block; }
+.u3-pf[data-lay="land"][data-tight="5"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "id pane" "id tabs"; }
+.u3-pf[data-lay="land"][data-tight="5"] :is(.u3-pf-spot, .u3-pf-season, .u3-pf-wish) { grid-area: pane; }
+.u3-pf[data-lay="land"][data-tight="5"] .u3-pf-tile[hidden] { display: none; }
+.u3-pf[data-lay="land"][data-tight="5"] .u3-pf-tabs [data-seg="pf:season"] { display: inline-flex; }
+.u3-pf:is([data-lay="land"], [data-lay="port"])[data-tight="5"] .u3-pf-mini { display: grid; }
+.u3-pf:is([data-lay="land"], [data-lay="port"])[data-tight="5"] :is(.u3-pf-achh, .u3-pf-badges) { display: none; }   /* duplicates: the Achievements stat and the grid */
+.u3-pf[data-lay="port"][data-tight="4"] { grid-template-rows: auto auto auto minmax(0, 1fr); grid-template-areas: "id" "season" "tabs" "pane"; }
+.u3-pf[data-lay="port"][data-tight="5"] { grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "id" "tabs" "pane"; }
+.u3-pf-tabs [data-seg="pf:season"] { display: none; }
+.u3-pf[data-lay="port"][data-tight="5"] .u3-pf-tabs [data-seg="pf:season"] { display: inline-flex; }
+.u3-pf[data-lay="port"]:is([data-tight="4"], [data-tight="5"]) :is(.u3-pf-spot, .u3-pf-wish) { grid-area: pane; }
+.u3-pf[data-lay="port"][data-tight="5"] .u3-pf-season { grid-area: pane; }
+.u3-pf[data-lay="port"]:is([data-tight="4"], [data-tight="5"]) .u3-pf-tile[hidden] { display: none; }
+.u3-pf[data-lay="port"]:is([data-tight="4"], [data-tight="5"]) .u3-pf-acts { grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr); }
+.u3-pf:is([data-lay="land"], [data-tight="4"], [data-tight="5"]) .u3-pf-acts .u3-btn { padding: 0 var(--sp-2); gap: var(--sp-1); }
+.u3-pf[data-lay="land"]:is([data-tight="2"], [data-tight="3"]) .u3-pf-id h2 { font-size: var(--fs-stat); }
+.u3-pf[data-small] .u3-pf-id h2 { font-size: var(--fs-small); }
+.u3-pf[data-small] .u3-pf-stats b { font-size: var(--fs-caption); }
+.u3-pf:is([data-lay="port"]:is([data-tight="4"], [data-tight="5"]), [data-lay="land"][data-tight="5"]) .u3-pf-spot > .u3-pf-head { position: absolute; top: var(--sp-1); right: var(--sp-2); }
+.u3-pf:is([data-lay="port"]:is([data-tight="4"], [data-tight="5"]), [data-lay="land"][data-tight="5"]) .u3-pf-spot > .u3-pf-head > .u3-label { display: none; }
+.u3-pf[data-lay="port"]:has(.u3-pf-spotrow > .u3-pf-none) { grid-template-rows: auto auto auto minmax(0, 1fr); }
+.u3-pf:is([data-tight="4"], [data-tight="5"], [data-small]) .u3-pf-ab { width: calc(var(--ctl-sm) - var(--sp-1)); height: calc(var(--ctl-sm) - var(--sp-1)); }
+.u3-pf[data-small] .u3-pf-acts .u3-btn { font-size: var(--fs-caption); }
+.u3-pf[data-lay="stack"] .u3-pf-rchip { height: var(--chip-sm); padding: 0 var(--sp-2); font-size: var(--fs-caption); }
+.u3-pf[data-lay="stack"] .u3-pf-rar { gap: var(--sp-1-5); }
+.u3-pf-pager > .u3-pager { width: auto; flex: none; }
+
 /* ==== UI-61 Settings window (src/ui3/settings.js; design repo UI-61/approved, review-1; FEEDBACK D-80 item 27) ====
    A panel under the top bar on medium and expanded (one column), a bottom sheet on the dock edge on compact-port, and
    2 columns in the safe frame on compact-land (Discord pings left; Effects and Discord posts right; it covers the top
