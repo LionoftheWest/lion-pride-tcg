@@ -34,7 +34,7 @@ import { openCardPicker } from './ui3/card-picker.js';
 import { fmtFor } from './ui3/number.js';
 import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
-import { button as ui3Button } from './ui3/components.js';
+import { button as ui3Button, iconButton as ui3IconButton, pager as ui3Pager } from './ui3/components.js';
 import { openOpenWindow, prefetchSets } from './ui3/open-window.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
@@ -252,7 +252,7 @@ let usedIds = new Set(); // card ids already sent at the boss today (client mirr
 let feedTopId = 0; // newest boss-feed event id shown (so polls only animate in newer ones)
 let huntDay = ''; // MT date of the current hunt render; a change means the daily reset hit
 const utcToday = () => mtToday(); // the MT game day (the name kept: several callers)
-window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (squad.phase !== 'battle') paintHuntPage(); else sizeSquadGrid(); });
+window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (squad.phase !== 'battle') { if (huntV3()) fitHuntV3(el('main')); else paintHuntPage(); } else sizeSquadGrid(); });
 const cache = {};
 
 // Discord mobile sometimes fails the first authorize with "OAuth2 Authorize Error: Unknown
@@ -552,9 +552,10 @@ function connectStreams() {
 // Home paints the community pulls (ui-v2.js). #feed shows only on the Hunt arena
 // (the CSS hides it elsewhere): there it is the Raid Boss feed.
 
+const feedListEl = () => (huntV3() && el('u3FtFeed')) || el('feedList');   // v3 (UI-18): the feed sits in the boss stage
 function renderFeedSidebar() {
   if (currentView === 'home') paintPulls();
-  const list = el('feedList');
+  const list = feedListEl();
   if (!list || currentView !== 'battling') return;
   const head = document.querySelector('.feed-head');
   if (head) head.textContent = 'Raid Boss Live Feed';
@@ -564,7 +565,7 @@ function renderFeedSidebar() {
     ? atk.map(bossFeedRow).join('')
     : '<p class="empty small">No attacks yet — be the first to strike.</p>';
   feedTopId = (atk[0] && atk[0].id) || 0; // remember the newest so polls only add newer
-  fitFeedRows(list);
+  if (list.id === 'u3FtFeed') fitFightV3(); else fitFeedRows(list);
 }
 
 // One boss-attack row (text only — no card art, so many fit without scrolling).
@@ -648,7 +649,7 @@ function mountBossFor(hunt) {
     // v2 squad select: the live boss head as the squad box background (Nathan 2026-09-29:
     // live models, not thumbnails). The fight view mounts the full arena boss.
     const mini = squad.phase !== 'battle' && !!cv.closest('.sq-boss');
-    const stage = squad.phase !== 'battle' && !!cv.closest('.u3-hs-stage');   // v3 (UI-17): the Home slide camera (UI-04)
+    const stage = (squad.phase !== 'battle' && !!cv.closest('.u3-hs-stage')) || !!cv.closest('.u3-ft');   // v3 fight (UI-18): the same camera   // v3 (UI-17): the Home slide camera (UI-04)
     bossHandle = mountBoss(cv, hunt.name || 'boss', hunt.tier,
       stage ? { portrait: true } : mini ? { portrait: true, portraitOpts: { at: 0.8, fit: 0.7, faceAt: 0.3, bust: false, showcase: false } } : undefined);
     bossVoice = pickBossVoice(hunt.name || hunt.id);
@@ -1088,8 +1089,9 @@ function paintHuntView(d) {
   sendLayoutDiag();
   huntResting = !d || !d.hunt;
   if (huntResting) {
-    el('main').innerHTML = `<div class="main-body hunt arena-mode resting">${restingHTML(d)}</div>`;
     live.attacks = (d && d.lastFeed) || [];
+    if (huntV3()) { el('main').innerHTML = `<div class="main-body hunt u3-hunt-view">${restingV3HTML(d)}</div>`; mountRestBossV3(d); }   // v3 (UI-19)
+    else el('main').innerHTML = `<div class="main-body hunt arena-mode resting">${restingHTML(d)}</div>`;
     renderFeedSidebar();
     startHuntTicker(); // count down to the next spawn
     maybeExplain('hunt');
@@ -1166,11 +1168,11 @@ function applyHuntState(d) {
   const fill = document.querySelector('.hpfill');
   if (fill) fill.style.width = `${Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max))}%`;
   const hpText = el('hpText');
-  if (hpText) hpText.textContent = h.status === 'defeated' ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`;
+  if (hpText) hpText.textContent = h.status === 'defeated' ? 'DEFEATED!' : hpLabel(h.hp_remaining, h.hp_max);
   const slot = el('usedSlot');
   if (slot) slot.innerHTML = `Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}`;
   if (currentView === 'battling' && myStatus !== 'battle') sendStatus('hunt', { c: [...usedIds].slice(0, 5), n: d.usedToday || 0, of: d.dailyCap || 8, v: Math.round(huntState.myDamage || 0) || undefined });
-  if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); }
+  if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena, .u3-ft'))?.classList.add('down'); bossHandle?.defeat(); }
   if (squad.phase === 'battle') paintTeam(); else paintHuntPage();
 }
 
@@ -1236,7 +1238,7 @@ function huntHTML(d) {
   const h = d.hunt;
   usedIds = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   // Battle phase = a full-bleed arena (boss fills the pane, squad overlays the bottom).
-  if (squad.phase === 'battle') return `<div class="main-body hunt arena-mode">${battlePhaseHTML(d)}</div>`;
+  if (squad.phase === 'battle') return huntV3() ? `<div class="main-body hunt u3-hunt-view">${battleV3HTML(d)}</div>` : `<div class="main-body hunt arena-mode">${battlePhaseHTML(d)}</div>`;
   // v3 (UI-17): the boss stage and the squad strip; the Card picker is a window (UI-64).
   if (huntV3()) return `<div class="main-body hunt u3-hunt-view${squad.ko ? ' ko' : ''}">${huntSelectV3HTML(d)}</div>`;
   // Squad select: the squad column (with the live boss) and the card picker.
@@ -1258,6 +1260,7 @@ const BOSS_MOVES = [
   ['Regenerate', 'The boss heals'],
 ];
 function openBossModal() {
+  if (huntV3()) { openBossWindowV3(); return; }   // v3: the boss detail window (UI-20)
   const h = huntState && huntState.hunt;
   if (!h) return;
   const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
@@ -1280,6 +1283,76 @@ function openBossModal() {
   el('bossModal').classList.remove('hidden');
   try { bossModalHandle = mountBoss(el('bossModalCanvas'), h.name || 'boss', h.tier); if (defeated) bossModalHandle.defeat(); } catch (e) { bossModalHandle = null; }
 }
+// ---- v3: the boss detail window (UI-20), behind ui_v3 --------------------------------------------------------------
+// Design repo UI-20/approved (review-1): a dialog on medium and expanded, a full sheet on the compact classes; the scrim
+// covers the shell. The live boss, "The Hunt · Live now", the name with the Tier chip, the HP bar, Attack, Weakness,
+// Resistance, Passive, and the move pool: this boss's own moves (hunt_boss_moves.sql) first, then the common moves.
+let bossWin = null;
+function openBossWindowV3() {
+  const d = huntState;
+  const h = d?.hunt;
+  if (!h) return;
+  closeBossWindowV3();
+  const defeated = h.status === 'defeated' || h.hp_remaining <= 0;
+  const pct = Math.max(0, Math.min(100, Math.round((100 * h.hp_remaining) / h.hp_max)));
+  const tier = HUNT_TIER_NUM[h.tier] ? `Tier ${HUNT_TIER_NUM[h.tier]}` : h.tier;
+  const chips = (arr, cls) => (arr || []).map((w) => `<span class="${cls}">${esc(tagLabel(w.value))}</span>`).join('');
+  const p = h.passive;
+  const passives = (Array.isArray(p?.list) && p.list.length ? p.list : p?.kind ? [{ kind: p.kind, label: p.label }] : [])
+    .map((x) => `<span class="u3-bw-passive">${ui3Icon('skull', { size: 'sm' })}${esc(x.label || String(x.kind).charAt(0).toUpperCase() + String(x.kind).slice(1))}</span>`).join('');
+  const none = '<span class="u3-bw-none">None</span>';
+  const fact = (k, v) => `<div><dt>${k}</dt><dd>${v || none}</dd></div>`;
+  const moves = [...(d.bossMoves || []).map((m) => [m.name, m.text]), ...BOSS_MOVES];
+  const host = document.createElement('div');
+  host.id = 'u3BossWin';
+  host.innerHTML = `<div class="u3-scrim u3-bw-scrim" data-u3-scrim><section class="u3-bw" role="dialog" aria-modal="true" aria-labelledby="u3BwT" tabindex="-1">
+    <header class="u3-bw__head"><span class="u3-bw__live${defeated ? ' is-down' : ''}">${defeated ? 'The Hunt · Defeated' : 'The Hunt · Live now'}</span>
+      <h2 class="u3-bw__name" id="u3BwT">${esc(h.name)} <span class="u3-bw__tier">${esc(tier)}</span></h2></header>
+    <div class="u3-bw__close">${ui3IconButton({ icon: 'x', label: 'Close', data: { bwclose: '1' } })}</div>
+    <div class="u3-bw__art"><canvas id="u3BwCanvas"></canvas></div>
+    <div class="u3-bw__hp" role="img" aria-label="${pct}% HP"><i style="--hp:${pct}%"></i><span>${defeated ? 'Defeated' : `${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP`}</span></div>
+    <dl class="u3-bw__facts">${fact('Attack', Number(h.stats?.atk) > 0 ? `<span class="u3-hs-atk">${ui3Icon('swords', { size: 'sm' })}ATK ${Number(h.stats.atk)}</span>` : '')}
+      ${fact('Weakness', chips(h.weak_points, 'u3-hs-weak'))}${fact('Resistance', chips(h.resist_points, 'u3-bw-resist'))}${fact('Passive', passives)}</dl>
+    <span class="u3-label u3-bw__mlabel">Move pool</span>
+    <ul class="u3-bw__moves">${moves.map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('')}</ul>
+    <div class="u3-bw__mpager"></div>
+  </section></div>`;
+  document.body.appendChild(host);
+  const close = () => closeBossWindowV3();
+  host.addEventListener('click', (e) => { if (e.target.closest('[data-bwclose]') || e.target.matches('[data-u3-scrim]')) close(); });
+  bossWin = { host, onKey: (e) => { if (e.key === 'Escape') close(); }, back: document.activeElement };
+  document.addEventListener('keydown', bossWin.onKey);
+  host.querySelector('.u3-bw').focus({ preventScroll: true });
+  // No scroll: the move pool gets denser when it does not fit (one line per move), then the render gives its room
+  const win = host.querySelector('.u3-bw'), mv = host.querySelector('.u3-bw__moves');
+  for (const step of ['is-dense', 'is-denser']) { if (mv.scrollHeight <= mv.clientHeight + 1) break; win.classList.add(step); }
+  // still too many: pages of the moves that fit, the pager under the list (D-36)
+  if (mv.scrollHeight > mv.clientHeight + 1) {
+    win.classList.add('is-paged');
+    const box = host.querySelector('.u3-bw__mpager');
+    box.innerHTML = ui3Pager({ page: 1, pages: 2 });   // the pager takes its row before the page size is measured
+    const bottom = mv.getBoundingClientRect().bottom;
+    const per = Math.max(2, [...mv.children].filter((li) => li.getBoundingClientRect().bottom <= bottom + 1).length & ~1);
+    const pages = Math.ceil(moves.length / per);
+    let page = 0;
+    const paintMoves = () => {
+      mv.innerHTML = moves.slice(page * per, page * per + per).map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('');
+      box.innerHTML = ui3Pager({ page: page + 1, pages });
+    };
+    box.addEventListener('click', (e) => { const b = e.target.closest('[data-page]'); if (!b || b.disabled) return; page = Math.max(0, Math.min(pages - 1, page + (b.dataset.page === 'next' ? 1 : -1))); paintMoves(); });
+    paintMoves();
+  }
+  try { bossModalHandle = mountBoss(el('u3BwCanvas'), h.name || 'boss', h.tier); if (defeated) bossModalHandle.defeat(); } catch { bossModalHandle = null; }
+}
+function closeBossWindowV3() {
+  if (!bossWin) return;
+  if (bossModalHandle) { try { bossModalHandle.dispose(); } catch { /* ignore */ } bossModalHandle = null; }
+  document.removeEventListener('keydown', bossWin.onKey);
+  bossWin.host.remove();
+  bossWin.back?.focus?.();
+  bossWin = null;
+}
+
 function closeBossModal() {
   if (bossModalHandle) { try { bossModalHandle.dispose(); } catch (e) { /* ignore */ } bossModalHandle = null; }
   el('bossModal').classList.add('hidden');
@@ -1462,6 +1535,61 @@ function battlePhaseHTML(d) {
   </div>`;
 }
 
+// ---- v3: the Hunt fight (UI-18), behind ui_v3 ------------------------------------------------------------------------
+// Design repo UI-18/approved (review-4): the boss stage (Tier, name, ATK, Weak to, passives, the HP bar, Your damage,
+// hunting now, ?, the boss, the boss live feed) and the hand panel (the turn line, the squad cards on role plates).
+// No Top hunter, Top 3 or countdown on the fight (D-65). The element IDs are the v2 ones, so the fight code is shared.
+function battleV3HTML(d) {
+  const h = d.hunt;
+  const pct = Math.max(0, Math.min(100, Math.round((100 * h.hp_remaining) / h.hp_max)));
+  const defeated = h.status === 'defeated' || h.hp_remaining <= 0;
+  const tier = HUNT_TIER_NUM[h.tier] ? `Tier ${HUNT_TIER_NUM[h.tier]}` : h.tier;
+  const atk = Number(h.stats?.atk) > 0 ? `<span class="u3-hs-atk">${ui3Icon('swords', { size: 'sm' })}ATK ${Number(h.stats.atk)}</span>` : '';
+  const weak = (h.weak_points || []).map((w) => `<span class="u3-hs-weak">${esc(tagLabel(w.value))}</span>`).join('');
+  const p = h.passive;
+  const passives = (Array.isArray(p?.list) && p.list.length ? p.list : p?.kind ? [{ kind: p.kind, label: p.label }] : [])
+    .map((x) => `<span class="u3-bw-passive">${ui3Icon('skull', { size: 'sm' })}${esc(x.label || String(x.kind).charAt(0).toUpperCase() + String(x.kind).slice(1))}</span>`).join('');
+  return `<div class="u3-ft${defeated ? ' down' : ''}">
+    <section class="u3-ft-stage">
+      <div class="u3-ft-text">
+        <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span><h1 class="u3-hs-name">${esc(h.name)}</h1></div>
+        <div class="u3-hs-facts">${atk}${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}${passives}</div>
+        <div class="u3-ft-hp" role="img" aria-label="Boss HP"><i class="hpfill" style="width:${pct}%"></i><span id="hpText">${defeated ? 'DEFEATED!' : hpLabel(h.hp_remaining, h.hp_max)}</span></div>
+      </div>
+      <div class="u3-ft-me"><div class="u3-ft-dmg" id="myDmg">Your damage: <b>${(d.myDamage || 0).toLocaleString()}</b></div><div class="u3-ft-now" id="fighterCount"></div>${explainBtn('hunt')}</div>
+      <div class="u3-hs-boss u3-ft-boss"><canvas id="bossCanvas"></canvas></div>
+      <aside class="u3-ft-feed"><span class="u3-label">Boss live feed</span><div class="u3-ft-feedlist" id="u3FtFeed"></div></aside>
+    </section>
+    <section class="u3-ft-hand"><p class="u3-ft-turn" id="u3FtTurn">${FT_TURN}</p><div class="u3-ft-cards"><div class="squad-grid u3-ft-grid" id="huntGrid"></div></div></section>
+  </div>`;
+}
+// The fight HP line: the compact form on the compact classes in v3 (10.5), the full number in v2
+const hpLabel = (rem, max) => (huntV3() ? `${huntNum(rem)} / ${huntNum(max)} HP` : `${rem.toLocaleString()} / ${max.toLocaleString()} HP`);
+const FT_TURN = 'Play supports, then attack · an attack ends your turn';
+// No scroll: a stage too short for the boss column takes the short form (the boss beside the facts, as the approved
+// 375x667 frame), then the tight form (the feed gives way; fitFeedRows drops its rows first).
+function fitFightV3() {
+  const ft = document.querySelector('.u3-ft'), stage = ft?.querySelector('.u3-ft-stage'), hand = ft?.querySelector('.u3-ft-hand'), grid = el('huntGrid');
+  if (!stage || !hand || !grid) return;
+  ft.classList.remove('is-short', 'is-tight');
+  grid.style.removeProperty('--ft-cap'); hand.style.removeProperty('flex-basis');
+  // the feed list is trimmed by fitFeedRows; every other part must fit whole
+  const over = () => stage.scrollHeight > stage.clientHeight + 1 || [...stage.children].some((n) => !n.classList.contains('u3-ft-feed') && n.scrollHeight > n.clientHeight + 1);
+  const boss = stage.querySelector('.u3-ft-boss');
+  if (over() || (boss && boss.getBoundingClientRect().height < TOKENS['card-tile'])) ft.classList.add('is-short');
+  if (over()) ft.classList.add('is-tight');
+  // still too short: the cards give way (portrait: a smaller card; the other classes: a lower hand panel), as the
+  // approved frames (EXC-1, the cards below 80 px), down to the mini size
+  if (document.body.dataset.size === 'compact-port') {
+    for (let cap = TOKENS['card-tile']; over() && cap > TOKENS['card-mini']; cap -= 4) grid.style.setProperty('--ft-cap', `${cap - 4}px`);
+  } else {
+    const ah = ft.clientHeight || 1;
+    for (let h = hand.getBoundingClientRect().height; over() && grid.firstElementChild && grid.firstElementChild.getBoundingClientRect().width > TOKENS['card-mini']; ) { h -= 8; hand.style.flexBasis = `${Math.round((100 * h) / ah)}%`; }
+  }
+  const list = el('u3FtFeed'); if (list) fitFeedRows(list);
+}
+const ftTurn = (t) => { const n = el('u3FtTurn'); if (n) n.textContent = t || FT_TURN; };
+
 // A card tile in the picker. mode 'select' shows a selection check; 'battle' shows the
 // card HP bar (it attacks until the boss downs it) and a DOWNED state.
 function huntTile(c, mode) {
@@ -1477,8 +1605,8 @@ function huntTile(c, mode) {
     + `${mode === 'select' && selected ? ' selected' : ''}${mode === 'battle' && downed ? ' downed' : ''}${mode === 'battle' && cdLeft ? ' cooldown' : ''}${mode === 'battle' && stunned && !downed ? ' stunned' : ''}`;
   const overlay = mode === 'select'
     ? (selected ? `<span class="sel-num">${[...squad.sel].indexOf(c.id) + 1}</span>` : '')
-    : (downed ? '<span class="downed-x">DOWNED</span>' : (cdLeft ? `<span class="cd-x">${cdLeft}</span>` : ''));
-  const hpbar = (mode === 'battle' && !support) ? `<div class="thp"><i style="width:${hppct}%"></i></div>` : '';
+    : (downed ? `<span class="downed-x">${huntV3() ? 'Down' : 'DOWNED'}</span>` : (cdLeft ? `<span class="cd-x">${cdLeft}</span>` : ''));
+  const hpbar = (mode === 'battle' && (!support || huntV3())) ? `<div class="thp"><i style="width:${hppct}%"></i></div>` : '';
   const shield = (mode === 'battle' && c.shield > 0) ? `<span class="shield-b">🛡${c.shield}</span>` : '';
   const ab = c.ability;
   const abLine = ab ? `<div class="cability" title="${esc(ab.desc || '')}">${esc(ab.name)}</div>` : '';
@@ -1531,6 +1659,7 @@ const SQUAD_SORT = {
 // height (a phone: sizePhoneHand). The select phase is sized by fitSquadGrid.
 function sizeSquadGrid() {
   const grid = el('huntGrid');
+  if (huntV3()) { fitFightV3(); return; }
   if (!grid || squad.phase !== 'battle') return;
   if (isPhone()) { sizePhoneHand(grid); return; }
   const gap = 8, capH = 30;
@@ -1694,15 +1823,16 @@ function huntSelectV3HTML(d) {
   </section>`;
   const slots = Array.from({ length: cap }, (_, i) => {
     const c = picks[i];
-    return `<li class="u3-hs-slot${c ? ` is-full u3-r-${esc(c.rarity || 'normal')}` : i === picks.length ? ' is-next' : ''}">${c
-      ? `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name || '')}" draggable="false">` : ''}`
+    return `<li class="u3-hs-slot${c ? ` is-full u3-r-${esc(c.rarity || 'normal')}${c.downed ? ' is-down' : ''}` : i === picks.length ? ' is-next' : ''}">${c
+      ? `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name || '')}" draggable="false">` : ''}${c.downed ? '<span class="u3-hs-down">Down</span>' : ''}`
       : `<span aria-hidden="true">${i + 1}</span>`}</li>`;
   }).join('');
   const syn = stats.syn.filter((s) => s.n >= 2);
   const chips = syn.map((s) => `<span class="u3-hs-chip">${esc(s.label)} <b>${s.n}/5</b></span>`).join('');
   const bonus = stats.effCp - stats.cp;
   let act;
-  if (squad.ko) act = `<p class="u3-hs-ko">${ui3Icon('lock', { size: 'sm' })}<span>Your squad is down for today.</span> ${cdSpan(nextUtcResetISO(), 'Next battle in', 'countdown kores')}</p>`;
+  if (squad.ko) act = `<button type="button" class="u3-btn u3-btn--secondary u3-btn--md" disabled aria-describedby="u3HsKo">${ui3Icon('lock', { size: 'sm' })}<span class="u3-btn__label">Edit</span></button>`
+    + `<p class="u3-hs-ko" id="u3HsKo"><span>Squad locked until tomorrow</span><span>${ui3Icon('skull', { size: 'sm' })}Your squad is down for today.</span></p>`;
   else if (squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', data: { henter: '1' } })}`;
   else act = ui3Button({ label: 'Select your squad', variant: 'primary', data: { hpick: '1' } });
   return `<div class="u3-hunt">${stage}
@@ -1749,11 +1879,59 @@ function fitHuntV3(main) {
     const slot = main.querySelector('.u3-hs-slot');
     const short = slot && slot.getBoundingClientRect().width < TOKENS['card-mini'];   // the strip needs the height (portrait)
     const over = () => stage.scrollHeight > stage.clientHeight + 1 || [...stage.querySelectorAll('.u3-hs-text, .u3-hs-top')].some((n) => n.scrollHeight > n.clientHeight + 1);
+    hunt?.classList.toggle('is-mini', !!short);
     if (short || over()) stage.classList.add('is-line');
     // still too short (a small landscape phone, long names): the tight mode; the Top 3 is one tap away (Menu > Leaderboard, P1)
     if (over()) hunt?.classList.add('is-tight');
   }
 }
+// ---- v3: the Hunt with no live boss (UI-19 resting), behind ui_v3 --------------------------------------------------
+// Design repo UI-19/approved (review-2, D-61): the boss stage with the last boss, its result directly under the title
+// (FEEDBACK UI-19), weak and passives, the result bar, "Next boss in", your damage, the last Top 3, the boss render and
+// the boss live feed.
+function restingV3HTML(d) {
+  const h = d && d.lastResult;
+  const next = d && d.nextSpawnAt;
+  if (!h) return `<div class="u3-hunt"><section class="u3-hs-stage u3-rest"><div class="u3-hs-text"><h1 class="u3-hs-name">The hunt is resting</h1>
+    <div class="u3-rest-next"><span class="u3-label">Next boss in</span>${next ? cdSpan(next, '', 'u3-rest-timer') : '<b class="u3-rest-timer">Soon</b>'}</div></div></section></div>`;
+  const won = h.status === 'defeated';
+  const tier = HUNT_TIER_NUM[h.tier] ? `Tier ${HUNT_TIER_NUM[h.tier]}` : h.tier;
+  const pct = h.hp_max ? Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max)) : 0;
+  const weak = (h.weak_points || []).map((w) => `<span class="u3-hs-weak">${esc(tagLabel(w.value))}</span>`).join('');
+  const p = h.passive;
+  const passives = (Array.isArray(p?.list) && p.list.length ? p.list : p?.kind ? [{ kind: p.kind, label: p.label }] : [])
+    .map((x) => `<span class="u3-bw-passive">${ui3Icon('skull', { size: 'sm' })}${esc(x.label || String(x.kind).charAt(0).toUpperCase() + String(x.kind).slice(1))}</span>`).join('');
+  const board = (d.lastBoard || []).slice(0, 3);
+  const top = board.length ? `<span class="u3-label">Top 3</span><ol class="u3-hs-board">${board.map((r, i) => `<li><span class="u3-hs-rk">${i + 1}</span>${avatarHTML(r.player_id, r.username, 'xs')}<b>${esc(r.username || 'Member')}</b><em>${huntNum(r.damage)}</em></li>`).join('')}</ol>`
+    + `<p class="u3-hs-line">Top hunter: <b>${esc(board[0].username || 'Member')}</b> · ${huntNum(board[0].damage)}</p>` : '';
+  const feed = (live.attacks || []).slice(0, 6);
+  return `<div class="u3-hunt"><section class="u3-hs-stage u3-rest">
+    <div class="u3-hs-text">
+      <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span><h1 class="u3-hs-name">${esc(h.name)}</h1></div>
+      <span class="u3-rest-result${won ? ' is-won' : ''}">${ui3Icon(won ? 'trophy' : 'skull', { size: 'sm' })}${won ? 'Defeated' : 'Escaped'}</span>
+      <div class="u3-hs-facts">${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}${passives}</div>
+      <div class="u3-hs-hp u3-rest-bar" role="img" aria-label="${won ? 'Defeated' : `${pct}% HP left`}"><i style="--hp:${won ? 0 : pct}%"></i><span>${won ? 'Defeated' : `${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP left`}</span></div>
+      <div class="u3-rest-row"><div class="u3-rest-next"><span class="u3-label">Next boss in</span>${next ? cdSpan(next, '', 'u3-rest-timer') : '<b class="u3-rest-timer">Soon</b>'}</div>
+        <div class="u3-rest-dmg"><span class="u3-label">Your damage</span><b>${huntNum((d && d.myLast) || 0)}</b></div></div>
+      ${top ? `<div class="u3-hs-top">${top}</div>` : ''}
+    </div>
+    <div class="u3-hs-boss"><canvas id="bossCanvas"></canvas></div>
+    ${feed.length ? `<aside class="u3-rest-feed"><span class="u3-label">Boss live feed</span><ol class="u3-rest-feedlist">${feed.map((e) => `<li>${bossFeedRow(e)}</li>`).join('')}</ol></aside>` : ''}
+  </section></div>`;
+}
+function mountRestBossV3(d) {
+  const h = d && d.lastResult;
+  const cv = el('bossCanvas');
+  if (!h || !cv) return;
+  try { bossHandle = mountBoss(cv, h.name || 'boss', h.tier, { portrait: true }); if (h.status === 'defeated') bossHandle.defeat(); } catch { bossHandle = null; }
+  // No scroll: the oldest feed rows go first (as fitFeedRows), then the board takes the one-line form
+  const stage = el('main').querySelector('.u3-rest');
+  const over = () => stage && stage.scrollHeight > stage.clientHeight + 1;
+  const list = stage?.querySelector('.u3-rest-feedlist');
+  while (over() && list && list.children.length > 1) list.lastElementChild.remove();
+  fitHuntV3(el('main'));
+}
+
 function openHuntPicker(from) {
   const d = huntState;
   if (!d) return;
@@ -1857,7 +2035,7 @@ async function refreshHuntFeed() {
   live.attacks = feed.slice(0, 20);
   if (d && d.hp_max != null) applySharedHp(d.hp_remaining, d.hp_max, d.status, d.fighters);
   if (currentView !== 'battling') return;
-  const list = el('feedList');
+  const list = feedListEl();
   if (!list || !list.classList.contains('attacks')) { renderFeedSidebar(); return; }
   // Incremental: only ANIMATE IN events newer than the top one already shown. Existing
   // rows are left untouched, so the feed no longer blinks on every poll.
@@ -1901,11 +2079,11 @@ function applySharedHp(hp, max, status, fighters) {
   const fill = document.querySelector('.hpfill');
   if (fill) fill.style.width = `${Math.max(0, Math.round((100 * hp) / max))}%`;
   const hpText = el('hpText');
-  if (hpText) hpText.textContent = status === 'defeated' ? 'DEFEATED!' : `${hp.toLocaleString()} / ${max.toLocaleString()} HP`;
+  if (hpText) hpText.textContent = status === 'defeated' ? 'DEFEATED!' : hpLabel(hp, max);
   const fc = el('fighterCount');
-  if (fc) fc.textContent = fighters > 0 ? `🗡 ${fighters} hunting now` : '';
-  if (status === 'defeated' && !document.querySelector('.hunt-arena.down, .boss.down')) {
-    (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down');
+  if (fc) { if (huntV3()) { const t = fighters > 0 ? `${ui3Icon('swords', { size: 'sm' })}${fighters} hunting now` : ''; if (fc.innerHTML !== t) { fc.innerHTML = t; fitFightV3(); } } else fc.textContent = fighters > 0 ? `🗡 ${fighters} hunting now` : ''; }
+  if (status === 'defeated' && !document.querySelector('.hunt-arena.down, .u3-ft.down, .boss.down')) {
+    (document.querySelector('.boss') || document.querySelector('.hunt-arena, .u3-ft'))?.classList.add('down');
     bossHandle?.defeat();
     onBossDefeated(); // guarded by the .down check above so it runs once
   }
@@ -2054,6 +2232,7 @@ function clearTargeting() {
   pendingSupport = null;
   el('huntGrid')?.classList.remove('targeting');
   document.querySelectorAll('.squad-grid .c.casting').forEach((n) => n.classList.remove('casting'));
+  ftTurn();
 }
 function wireBattlePhase() {
   el('huntGrid')?.addEventListener('click', (e) => {
@@ -2066,7 +2245,8 @@ function wireBattlePhase() {
     if (e.target.closest?.('.card-info')) { if (card) openViewer(card, { raid: true }); return; } // inspect, don't attack/cast
     const support = card && !ATTACKER_TYPES.includes(card.type);
     // Completing a support that needed a target: this attacker is the target.
-    if (pendingSupport && !support && !node.classList.contains('downed')) {
+    // v3 (D-70): a support can target any squad card that is not down, supports too (hunt_support takes any owned card)
+    if (pendingSupport && (!support || (huntV3() && id !== pendingSupport)) && !node.classList.contains('downed')) {
       const sup = pendingSupport; clearTargeting(); fireSupport(sup, id); return;
     }
     if (support) {
@@ -2075,7 +2255,7 @@ function wireBattlePhase() {
       if (node.classList.contains('cooldown')) { calloutAt(cx, b.top + 18, 'COOLDOWN', '#8b94a7'); return; }
       const tgt = card.ability && card.ability.target;
       if (tgt === 'ally' || tgt === 'self') { // needs a target ally
-        pendingSupport = card.id; node.classList.add('casting'); el('huntGrid')?.classList.add('targeting');
+        pendingSupport = card.id; node.classList.add('casting'); el('huntGrid')?.classList.add('targeting'); ftTurn('Pick a card');
         calloutAt(cx, b.top + 18, 'PICK ALLY', '#7fe3ff');
       } else { fireSupport(card.id, null); }
       return;
@@ -2126,9 +2306,9 @@ async function refreshHuntState() {
   huntCache = { ...huntCache, ...d }; // keep the instant-open cache warm after each action
   const h = d.hunt; const fill = document.querySelector('.hpfill');
   if (fill) fill.style.width = `${Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max))}%`;
-  const hpText = el('hpText'); if (hpText) hpText.textContent = h.status === 'defeated' ? 'DEFEATED!' : `${h.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`;
+  const hpText = el('hpText'); if (hpText) hpText.textContent = h.status === 'defeated' ? 'DEFEATED!' : hpLabel(h.hp_remaining, h.hp_max);
   const slot = el('usedSlot'); if (slot) slot.innerHTML = `Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}`;
-  if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); }
+  if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena, .u3-ft'))?.classList.add('down'); bossHandle?.defeat(); }
   paintTeam();
   // The squad is down when every ATTACKER of it is down (a card that has not fought is alive).
   if (squad.phase === 'battle' && h.status !== 'defeated' && squadDown(huntState.roster || [], [...squad.sel])) squadDownSequence();
@@ -2167,7 +2347,7 @@ const RARITY_ATK = {
 function launchAttack(node, color, elem) {
   const ac = color || '#7fe3ff';
   const look = elem ? ELEMENTS[elem] : null;
-  const target = document.querySelector('.arena-stage') || document.querySelector('.boss-stage') || document.querySelector('.boss');
+  const target = document.querySelector('.arena-stage, .u3-ft-boss') || document.querySelector('.boss-stage') || document.querySelector('.boss');
   if (!target) return { impact() {}, cancel() {} };
   const cr = node.getBoundingClientRect(), br = target.getBoundingClientRect();
   const sx = cr.left + cr.width / 2, sy = cr.top + cr.height / 2;
@@ -2264,7 +2444,7 @@ function screenShake() {
 // A squad card node by its card id (both phases render into .squad-grid).
 function squadNode(id) { return id ? document.querySelector(`.squad-grid .c[data-id="${id}"]`) : null; }
 function bossPoint() {
-  const boss = document.querySelector('.arena-stage') || document.querySelector('.boss-stage') || document.querySelector('.boss');
+  const boss = document.querySelector('.arena-stage, .u3-ft-boss') || document.querySelector('.boss-stage') || document.querySelector('.boss');
   const br = boss?.getBoundingClientRect();
   return { x: br ? br.left + br.width / 2 : window.innerWidth / 2, y: br ? br.top + br.height * 0.45 : 120, br };
 }
@@ -2380,7 +2560,7 @@ async function huntAttack(cardId, node) {
 // Land the resolved hit (synced to the bolt's arrival): outcome call-out, boss HP,
 // this card's HP, then a possible boss counterattack.
 function resolveHit(node, r, atk) {
-  const boss = document.querySelector('.arena-stage') || document.querySelector('.boss-stage') || document.querySelector('.boss');
+  const boss = document.querySelector('.arena-stage, .u3-ft-boss') || document.querySelector('.boss-stage') || document.querySelector('.boss');
   const br = boss?.getBoundingClientRect();
   const bx = br ? br.left + br.width / 2 : window.innerWidth / 2;
   const by = br ? br.top + br.height * 0.42 : 120;
@@ -2415,7 +2595,7 @@ function resolveHit(node, r, atk) {
   const fill = document.querySelector('.hpfill');
   if (fill) fill.style.width = `${Math.max(0, Math.round((100 * r.hp_remaining) / h.hp_max))}%`;
   const hpText = el('hpText');
-  if (hpText) hpText.textContent = r.defeated ? 'DEFEATED!' : `${r.hp_remaining.toLocaleString()} / ${h.hp_max.toLocaleString()} HP`;
+  if (hpText) hpText.textContent = r.defeated ? 'DEFEATED!' : hpLabel(r.hp_remaining, h.hp_max);
   huntState.myDamage = (huntState.myDamage || 0) + (r.damage || 0);
   sendStatus('battle', { c: [Number(node.dataset.id)].filter(Boolean), v: Math.max(0, Math.round(r.damage || 0)), x: !!(r.crit || r.bonus),
     n: huntState.usedToday || 0, of: huntState.dailyCap || 8 }); // my Live in voice tile
@@ -2428,7 +2608,7 @@ function resolveHit(node, r, atk) {
   if (r.boss_heal > 0) setTimeout(() => calloutAt(bx, by - 104, `+${Number(r.boss_heal).toLocaleString()} HP`, '#5be38a'), PACE.afterHit + 420);
   if (r.phase) setTimeout(() => { calloutAt(bx, by - 130, r.phase === 'rage' ? 'RAGE PHASE!' : `NEW PASSIVE: ${String(r.phase).toUpperCase()}`, '#ff3a3a'); screenShake(); }, PACE.afterHit + 700);
   if (Array.isArray(r.passives) && huntState?.hunt) huntState.hunt.passive = { ...(huntState.hunt.passive || {}), list: r.passives.map((k) => ({ kind: k, label: k })) };
-  if (r.defeated) { (document.querySelector('.boss') || document.querySelector('.hunt-arena'))?.classList.add('down'); bossHandle?.defeat(); SFX.playBoss('defeat'); if (bossVoice) setTimeout(() => SFX.sample(`mon:${bossVoice.roar}`, 0.85), 220); onBossDefeated(); return; }
+  if (r.defeated) { (document.querySelector('.boss') || document.querySelector('.hunt-arena, .u3-ft'))?.classList.add('down'); bossHandle?.defeat(); SFX.playBoss('defeat'); if (bossVoice) setTimeout(() => SFX.sample(`mon:${bossVoice.roar}`, 0.85), 220); onBossDefeated(); return; }
   if (r.outcome === 'miss') SFX?.play?.('page'); // hits already played their element sound
   // The attack ended the round. Now the boss takes its hidden turn (a surprise from its
   // pool). Pace it: a beat to read your hit, then the banner, then the boss acts, then
