@@ -948,3 +948,82 @@ body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font
 body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
 /* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
 body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
+/* ==== UI-65 Member picker (src/ui3/member-picker.js; design.md 6.5 pickers, 6.5b; D-43, D-64) ====
+   The content of its screen (the Trades tab): the search with the suggest list, then the member sections. No scroll:
+   member-picker.js makes the avatar smaller (lg, md, sm) and then shows only whole tile rows; the last section can page. */
+.u3-mp { box-sizing: border-box; height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.u3-mp__tools { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.u3-mp__find { position: relative; flex: 1 1 auto; min-width: 0; }
+.u3-mp__find .u3-search { box-sizing: border-box; width: 100%; }
+.u3-mp__find .u3-search__input::-webkit-search-cancel-button { appearance: none; }   /* one clear button: the library one */
+/* the suggest list (UI-29 look, P0): a popover under the field, on the sheet layer (4.10) */
+.u3-mp-sug { position: absolute; top: calc(100% + var(--sp-2)); left: 0; z-index: var(--z-sheet); box-sizing: border-box; width: min(var(--dialog-w), var(--mp-room, 100%));
+  display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-1-5); border-radius: var(--rad-lg); background: var(--surface-1);
+  border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-2); animation: kf-fade var(--dur-base) var(--ease-out); }
+.u3-mp-sug.is-still { animation: none; }   /* a new letter: the list changes in place (no new fade) */
+.u3-mp-sug__row { --mp-av: var(--avatar-sm); display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--hit); padding: var(--sp-2) var(--sp-3);
+  border: 0; border-radius: var(--rad-md); background: none; color: var(--text-primary); font-family: var(--font-ui); font-size: var(--fs-stat); font-weight: var(--fw-stat);
+  text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.u3-mp-sug__row[aria-selected="true"] { background: var(--surface-2); }
+.u3-mp-sug__row b { font-weight: inherit; color: var(--gold); }
+.u3-mp-sug__row:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+@media (hover: hover) { .u3-mp-sug__row:hover { background: var(--surface-3); } }
+.u3-mp-sug__none { margin: 0; padding: var(--sp-3) var(--sp-4); color: var(--text-secondary); font-size: var(--fs-body); }
+/* the sections */
+.u3-mp__body { --mp-av: var(--avatar-lg); flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-4); }
+.u3-mp__body[data-fit="md"] { --mp-av: var(--avatar-md); }
+.u3-mp__body[data-fit="sm"] { --mp-av: var(--avatar-sm); gap: var(--sp-3); }
+.u3-mp-sec { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.u3-mp-sec__label { margin: 0; }
+.u3-mp-sec__tiles { list-style: none; margin: 0; padding: 0; display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(calc(var(--card-tile) + var(--sp-6)), calc((100% - var(--sp-2) * 4) / 5)), 1fr)); gap: var(--sp-2); }   /* 5 at most (UI-65) */
+body[data-size="compact-port"] .u3-mp-sec__tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.u3-mp-sec__pager { display: flex; justify-content: center; padding-top: var(--sp-2); }
+/* compact-land: the label column on the left, one line of tiles for each section (UI-65 review-1 form) */
+body[data-size="compact-land"] .u3-mp-sec { display: grid; grid-template-columns: calc(var(--avatar-xl) + var(--sp-3)) minmax(0, 1fr); align-items: center; column-gap: var(--sp-3); }
+body[data-size="compact-land"] :is(.u3-mp, .u3-mp__body) { gap: var(--sp-3); }
+/* compact-land with a paged section (few partners, UI-25 review-2): three lines of list tiles, the Pager at the end of its line */
+body[data-size="compact-land"] .u3-mp__body.has-paged .u3-mp-tile__pick { --mp-av: var(--avatar-sm); flex-direction: row; justify-content: flex-start; gap: var(--sp-2);
+  min-height: var(--hit); padding: var(--sp-1) var(--hit) var(--sp-1) var(--sp-2); text-align: left; }
+body[data-size="compact-land"] .u3-mp__body.has-paged .u3-mp-sec__tiles { grid-template-columns: repeat(auto-fill, minmax(calc(var(--avatar-lg) * 3 - var(--sp-3)), 1fr)); }
+body[data-size="compact-land"] .u3-mp__body.has-paged .u3-mp-tile__info { top: 50%; right: var(--sp-1); transform: translateY(-50%); }
+body[data-size="compact-land"] .u3-mp-sec.is-paged { grid-template-columns: calc(var(--avatar-xl) + var(--sp-3)) minmax(0, 1fr) auto; }
+body[data-size="compact-land"] .u3-mp-sec.is-paged .u3-mp-sec__pager { grid-column: 3; padding-top: 0; }
+body[data-size="compact-land"] .u3-mp-tile__pick { gap: var(--sp-1); padding: var(--sp-2); }
+/* the member tile: the tile picks the member; the magnifier (the Inspect form of the card magnifier) opens the Profile (D-64 item 4) */
+.u3-mp-tile { position: relative; min-width: 0; }
+.u3-mp-tile__pick { box-sizing: border-box; width: 100%; height: 100%; min-height: var(--hit); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--sp-2); padding: var(--sp-4) var(--sp-2) var(--sp-3); border-radius: var(--rad-lg); background: var(--surface-2); border: var(--bw-1) solid var(--border);
+  color: var(--text-primary); font-family: var(--font-ui); text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-instant) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+.u3-mp-tile__pick:active:not([aria-disabled="true"]) { transform: scale(.97); }
+.u3-mp-tile__pick:focus-visible, .u3-mp-tile__info:focus-visible .u3-ico { outline: none; box-shadow: var(--glow-focus); }
+@media (hover: hover) { .u3-mp-tile__pick:hover:not([aria-disabled="true"]) { background: var(--surface-3); } }
+.u3-mp__body[data-fit="sm"] .u3-mp-tile__pick { gap: var(--sp-half); padding: var(--sp-1-5) var(--sp-2); }
+.u3-mp-tile.is-off .u3-mp-tile__pick { cursor: not-allowed; }
+.u3-mp-tile.is-off :is(.u3-mp-av, .u3-mp-tile__name) { opacity: var(--item-disabled); }
+/* a long name (D-08, UI-25 review-2): one line, smaller step by step to 11 px, then a wrap at a break point; never "…" */
+.u3-mp-tile__name { min-width: 0; max-width: 100%; font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); white-space: nowrap; }
+.u3-mp-tile__name[data-shrink="1"] { font-size: var(--fs-body); }
+.u3-mp-tile__name[data-shrink="2"] { font-size: var(--fs-small); }
+.u3-mp-tile__name[data-shrink="3"] { font-size: var(--fs-caption); }
+.u3-mp-tile__name:is([data-shrink="4"], [data-shrink="5"], [data-shrink="6"]) { font-size: var(--fs-label); }
+.u3-mp-tile__name:is([data-shrink="5"], [data-shrink="6"]) { white-space: normal; }
+.u3-mp-tile__name[data-shrink="6"] { overflow-wrap: anywhere; }
+.u3-mp-tile__why { font-size: var(--fs-caption); font-weight: var(--fw-caption); line-height: var(--lh-caption); color: var(--text-muted); }
+.u3-mp-tile__info { position: absolute; top: 0; right: 0; width: var(--hit); height: var(--hit); padding: 0; border: 0; background: none; display: grid; place-items: center;
+  color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.u3-mp-tile__info .u3-ico { box-sizing: border-box; width: var(--ctl-sm); height: var(--ctl-sm); padding: calc((var(--ctl-sm) - var(--icon-md)) / 2); border-radius: var(--rad-round);
+  background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); transition: background-color var(--dur-fast) var(--ease-out); }
+@media (hover: hover) { .u3-mp-tile__info:hover .u3-ico { background: var(--surface-3); } }
+.u3-mp-tile__info:active .u3-ico { transform: scale(.97); }
+/* the list tile (All members, D-64 item 5): avatar, name, magnifier in one row */
+.u3-mp-tile--list .u3-mp-tile__pick { --mp-av: var(--avatar-sm); flex-direction: row; justify-content: flex-start; gap: var(--sp-3); min-height: var(--avatar-lg);
+  padding: var(--sp-2) var(--hit) var(--sp-2) var(--sp-3); text-align: left; }
+body[data-size="compact-land"] .u3-mp-tile--list .u3-mp-tile__pick { min-height: var(--hit); padding-block: var(--sp-1); }
+.u3-mp-tile--list .u3-mp-tile__info { top: 50%; right: var(--sp-1); transform: translateY(-50%); }
+/* the Avatar (library form): the picture on the fallback gradient with the initial, the gold ring */
+.u3-mp-av { position: relative; flex: none; width: var(--mp-av); height: var(--mp-av); border-radius: var(--rad-round); overflow: hidden; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--avatar-fallback-start), var(--avatar-fallback-end)); box-shadow: 0 0 0 var(--bw-2) var(--gold);
+  color: var(--text-on-color); font-size: calc(var(--mp-av) * 0.4); font-weight: var(--fw-heading); }
+.u3-mp-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
