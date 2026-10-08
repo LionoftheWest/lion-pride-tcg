@@ -188,3 +188,42 @@ export function barChart({ bars, color = 'var(--hunt)', height = 160, fmt = (v) 
   });
   return wrap;
 }
+
+/**
+ * Paired bars (the Test lab: baseline vs scenario, one row per category). rows: [{ label, a, b }]. Horizontal bars from a
+ * shared zero (one scale), the label above each pair, the value at the end of each bar, a legend, a tooltip per bar.
+ * The baseline is neutral grey (the reference), the scenario one hue.
+ */
+export function pairChart({ rows, names = ['Baseline', 'Scenario'], colors = ['var(--muted)', 'var(--hunt)'], fmt = (v) => v.toLocaleString('en-US'), name = '' }) {
+  const wrap = div('chart');
+  wrap.append(legend(names.map((n, i) => ({ name: n, color: colors[i] }))));
+  const box = div('chart-box');
+  const LBL = 16, BAR = 8, GAP = 2, ROW = LBL + BAR + GAP + BAR + 12;
+  const height = Math.max(1, rows.length) * ROW;
+  box.style.height = `${height}px`;
+  wrap.append(box);
+  const tip = tooltip(box);
+  responsive(box, (W) => {
+    box.querySelector('svg')?.remove();
+    const VW = 64, PW = Math.max(40, W - VW);
+    const max = niceMax(Math.max(0, ...rows.flatMap((r) => [Math.abs(r.a || 0), Math.abs(r.b || 0)])));
+    const svg = s('svg', { width: W, height, role: 'img', 'aria-label': name });
+    rows.forEach((r, i) => {
+      const y0 = i * ROW;
+      const tl = s('text', { x: 0, y: y0 + 11, class: 'chart-axis' }); tl.textContent = r.label; svg.append(tl);
+      [r.a, r.b].forEach((v, j) => {
+        const y = y0 + LBL + j * (BAR + GAP), w = v == null ? 0 : (Math.abs(v) / max) * PW, rr = Math.min(4, BAR / 2, w);
+        const g = s('g', { tabindex: 0, class: 'chart-bar' });
+        if (w > 0) g.append(s('path', { d: `M0,${y}H${w - rr}Q${w},${y} ${w},${y + rr}V${y + BAR - rr}Q${w},${y + BAR} ${w - rr},${y + BAR}H0Z`, fill: colors[j] }));
+        g.append(s('rect', { x: 0, y: y - 1, width: W, height: BAR + 2, fill: 'transparent' }));
+        const show = () => tip.show(Math.min(w, PW - 120), y - 4, r.label, names.map((n, k) => ({ color: colors[k], name: n, value: [r.a, r.b][k] == null ? '-' : fmt([r.a, r.b][k]) })));
+        g.addEventListener('pointerenter', show); g.addEventListener('focus', show);
+        g.addEventListener('pointerleave', () => tip.hide()); g.addEventListener('blur', () => tip.hide());
+        svg.append(g);
+        const tv = s('text', { x: w + 6, y: y + BAR - 0.5, class: 'chart-val' }); tv.textContent = v == null ? '-' : fmt(v); svg.append(tv);
+      });
+    });
+    box.prepend(svg);
+  });
+  return wrap;
+}

@@ -303,12 +303,14 @@ export function localCopy(env = process.env, fetchFn = (...a) => globalThis.fetc
       .map((m) => [m[1], m[2].trim().replace(/^["']|["']$/g, '')]));
     return v.PGMETA_URL ? { ...v, file: f, written_at: statSync(f).mtime.toISOString() } : null;
   };
-  const sql = async (query) => {
+  // The SQL runs as service_role (the role of the live API calls); { role: null } = as the postgres-meta user (the Test lab
+  // cancels a run with it: pg_cancel_backend on its own session).
+  const sql = async (query, { role = 'service_role' } = {}) => {
     const v = read();
     if (!v) throw new BadRequest(`The local copy is not set up: ${basename(file())} not found. Refresh the local copy.`);
     if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(v.PGMETA_URL.replace(/\/+$/, ''))) throw new BadRequest('The local copy must be on this PC (PGMETA_URL)');
     const r = await fetchFn(`${v.PGMETA_URL.replace(/\/+$/, '')}/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: `set role service_role;\n${query}` }) });
+      body: JSON.stringify({ query: role ? `set role service_role;\n${query}` : query }) });
     const text = await r.text();
     let j = null; try { j = JSON.parse(text); } catch { /* text */ }
     if (r.ok) return Array.isArray(j) ? j : [];
@@ -327,7 +329,7 @@ export function localCopy(env = process.env, fetchFn = (...a) => globalThis.fetc
       return { configured: true, reachable: false, file: basename(v.file), written_at: v.written_at, error: String(e.message).split('\n')[0] };
     }
   };
-  return { sql, info, file };
+  return { sql, info, file, read };
 }
 
 /** The refresh of the local copy (localdb/refresh.sh in WSL): one at a time, the last lines kept. */

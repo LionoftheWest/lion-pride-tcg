@@ -254,23 +254,26 @@ const NAV = [
   { id: 'health', label: 'Health', icon: 'activity' },
   { id: 'events', label: 'Events', icon: 'calendar', match: /^\/events(\/|$)/ }, // events.js (Phase 3, the first editor)
 ];
-const LOCKED = [['Balance', 'scale', 'Phase 2'], ['Settings', 'cog', 'Phase 2'], ['Rewards', 'gift', 'Phase 3'], ['Test lab', 'flask', 'Phase 3'], ['Admin log', 'scroll', 'Phase 2']];
+const LOCKED = [['Balance', 'scale', 'Soon'], ['Settings', 'cog', 'Soon'], ['Rewards', 'gift', 'Soon'], ['Test lab', 'flask', 'Soon'], ['Admin log', 'scroll', 'Soon']];
+// The Test lab (public/admin/lab.js, src/admin-lab.js): its nav item opens when the server has ADMIN_LAB=1.
+const LAB = { id: 'lab', label: 'Test lab', icon: 'flask', match: /^\/lab(\/|$)/ };
 const TABS = ['overview', 'members', 'economy', 'hunt'];
 const navActive = (n, path) => (n.match ? n.match.test(path) : path === `/${n.id}`);
 let session = { login: false };
 
 // Phase 2 (the editors, src/admin-write.js): its nav items open when the server has ADMIN_EDIT=1.
 const ED = editors({ h, icon, api, panel, table, fill, pageHead, statusTag, N, P, when, label, RARITY, rarityDot, qs, mtDay, addDays, pager, render: () => render() });
-const navLocked = () => (ED.state.on ? LOCKED.filter(([t]) => !ED.nav.some((n) => n.label === t)) : LOCKED);
+const manageNav = () => [...(ED.state.on ? ED.nav : []), ...(session.lab ? [LAB] : [])];
+const navLocked = () => LOCKED.filter(([t]) => !manageNav().some((n) => n.label === t));
 function navItems(path, { onPick } = {}) {
   return [
-    h('div', { class: 'nav-head' }, 'Phase 1 - Live'),
+    h('div', { class: 'nav-head' }, 'See'),
     NAV.map((n) => h('a', { class: `nav-item${navActive(n, path) ? ' active' : ''}`, href: `#/${n.id}`, 'aria-current': navActive(n, path) ? 'page' : null, onclick: onPick }, icon(n.icon), n.label)),
     h('div', { class: 'nav-sep' }),
-    ...(ED.state.on ? [h('div', { class: 'nav-head' }, 'Phase 2 - Edit'),
-      ...ED.nav.map((n) => h('a', { class: `nav-item${navActive(n, path) ? ' active' : ''}`, href: `#/${n.id}`, 'aria-current': navActive(n, path) ? 'page' : null, onclick: onPick }, icon(n.icon), n.label)),
+    ...(manageNav().length ? [h('div', { class: 'nav-head' }, 'Manage'),
+      ...manageNav().map((n) => h('a', { class: `nav-item${navActive(n, path) ? ' active' : ''}`, href: `#/${n.id}`, 'aria-current': navActive(n, path) ? 'page' : null, onclick: onPick }, icon(n.icon), n.label)),
       h('div', { class: 'nav-sep' })] : []),
-    h('div', { class: 'nav-head' }, ED.state.on ? 'Coming' : 'Phase 2 / 3 - Coming'),
+    navLocked().length ? h('div', { class: 'nav-head' }, 'Coming') : [],
     navLocked().map(([t, ic, ph]) => h('span', { class: 'nav-item locked', 'aria-disabled': 'true' }, icon(ic), t, h('span', { class: 'tag' }, icon('lock'), ph))),
     h('div', { class: 'nav-tools' },
       h('div', { class: 'nav-head' }, 'Tools'),
@@ -1228,7 +1231,7 @@ function render() {
     if (m) {
       main.replaceChildren();
       window.scrollTo(0, 0);
-      const navItem = [...NAV, ...(ED.state.on ? ED.nav : [])].find((n) => navActive(n, path));
+      const navItem = [...NAV, ...manageNav()].find((n) => navActive(n, path));
       document.title = `${navItem ? navItem.label : 'Admin'} - Lion Pride TCG Admin`;
       fn(main, m.slice(1).map(decodeURIComponent), new URLSearchParams(query || ''));
       return;
@@ -1249,6 +1252,11 @@ async function start() {
     session.error = e.message;
   }
   if (await ED.init()) ROUTES.push(...ED.routes);
+  try { await api('/lab/sims'); session.lab = true; } catch { session.lab = false; }
+  if (session.lab) {
+    ROUTES.push([/^\/lab$/, (main, a, q) => import('./lab.js').then((m) => m.pageLab(main, { h, icon, api, panel, table, pageHead, fill, N, P, when, label, statusTag,
+      errorState, RARITY, rarityDot, ED, session, render })).catch((e) => main.replaceChildren(errorState(e)))]);
+  }
   const badge = document.getElementById('source');
   document.getElementById('source-text').textContent = session.source || '?';
   badge.classList.toggle('local', session.source === 'LOCAL');

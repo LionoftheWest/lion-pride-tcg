@@ -1,0 +1,28 @@
+/* Lion Pride TCG - Admin view, the Test lab. The tokens of admin.css only. */
+.lab-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
+.lab-grid .pbody { display: grid; gap: 10px; }
+.lab-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.lab-row .lab-lbl { flex: 1; min-width: 0; }
+.lab-lbl { display: grid; gap: 4px; min-width: 0; }
+.lab-lbl .field { width: 100%; }
+.lab-changes { display: grid; gap: 8px; }
+.lab-change { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--divider); border-radius: 10px; }
+.lab-change-pick { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+.lab-change-pick .field { width: 100%; min-width: 0; }
+.lab-change-val { display: flex; align-items: center; gap: 8px; }
+.lab-change-val .field { flex: 1; min-width: 0; }
+.lab-local { display: inline-flex; align-items: baseline; gap: 6px; font-size: 13px; color: var(--text-2); overflow-wrap: anywhere; }
+.lab-params { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.lab-msg { margin-right: auto; }
+.lab-job { display: grid; gap: 12px; }
+.lab-job-head { display: grid; gap: 2px; }
+.lab-job-head .subtitle { overflow-wrap: anywhere; }
+.lab-progress { display: grid; gap: 8px; }
+.lab-progress-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.lab-progress-top .num { margin-left: auto; }
+.lab-progress .bar > span { background: var(--hunt); }
+.lab-chart { display: grid; gap: 4px; }
+.lab-details > summary { cursor: pointer; font-size: 13px; color: var(--text-2); padding: 6px 0; }
+@media (max-width: 1100px) {
+  .lab-grid { grid-template-columns: minmax(0, 1fr); }
+}

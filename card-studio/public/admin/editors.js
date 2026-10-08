@@ -585,7 +585,7 @@ export function editors(k) {
   }
 
   return {
-    state, init, memberActions,
+    state, init, memberActions, localLine,
     nav: [
       { id: 'balance', label: 'Balance', icon: 'scale', match: /^\/balance(\/|$)/ },
       { id: 'settings', label: 'Settings', icon: 'cog' },

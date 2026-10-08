@@ -1,29 +1,20 @@
 /**
  * Print Pride Hunt combat telemetry for balance tuning.
- *   node scripts/combat-stats.mjs
- * Roll rates (miss/crit/block/weak/counter, downs, avg damage) + per-hunt fight length
- * (attacks, hunters, minutes-to-kill). Reads hunt_combat_log via the Management API.
+ *   node scripts/combat-stats.mjs                                                        (live, read only)
+ *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/combat-stats.mjs        (the local copy)
+ * Roll rates (miss/crit/block/weak/counter, downs, avg damage) + per-hunt fight length (attacks, hunters,
+ * minutes-to-kill). The report itself is card-studio/src/sims/combat-stats.js (the Admin Test lab runs it too).
  */
 import dotenv from 'dotenv';
 dotenv.config({ override: true });
+import { cliQuery } from '../src/sims/common.js';
+import * as cs from '../src/sims/combat-stats.js';
 
-const token = process.env.SUPABASE_ACCESS_TOKEN;
-const url = process.env.SUPABASE_URL || '';
-const ref = (url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
-if (!token || !ref) { console.error('Missing SUPABASE_ACCESS_TOKEN / SUPABASE_URL in .env'); process.exit(1); }
+if (!process.env.SUPABASE_ACCESS_TOKEN || !process.env.SUPABASE_URL) { console.error('Missing SUPABASE_ACCESS_TOKEN / SUPABASE_URL in .env'); process.exit(1); }
+const q = cliQuery({ allowLive: true });   // read only: hunt_combat_stats() and hunt_fight_summary()
+let s, fights;
+try { ({ summary: { stats: s, fights } } = await cs.run(q, cs.params({}))); } catch (e) { console.error('query failed:', e.message); process.exit(1); }
 
-async function q(sql) {
-  const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: sql }),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) { console.error(`query failed ${r.status}:`, JSON.stringify(j)); process.exit(1); }
-  return j;
-}
-
-const [{ s }] = await q('select hunt_combat_stats() as s');
 console.log('\n== Roll rates (all hunts) ==');
 if (!s || !s.attacks) console.log('  (no attacks logged yet)');
 else {
@@ -38,7 +29,6 @@ else {
   console.log(`  total dmg:   ${s.total_damage}`);
 }
 
-const fights = await q('select * from hunt_fight_summary() limit 15');
 console.log('\n== Per-hunt fight length (newest first) ==');
 if (!fights.length) console.log('  (no hunts yet)');
 for (const f of fights) {
