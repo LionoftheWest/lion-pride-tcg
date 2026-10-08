@@ -471,7 +471,7 @@ body.ui-v3 .u3-col__grid.is-empty { flex: 1 1 auto; place-items: center; grid-te
 body.ui-v3 .u3-col__none { margin: 0; font-size: var(--fs-body); color: var(--text-secondary); }
 body.ui-v3 .u3-col__pager { flex: none; height: var(--u3-pager-h); display: flex; justify-content: center; }
 /* The Pager is a <nav>: the v1 narrow-window rule (style.css "nav", fixed at the bottom) must not move it. */
-body.ui-v3 .u3-col__pager .u3-pager { position: static; z-index: auto; flex-wrap: nowrap; gap: 0; padding: 0; box-sizing: border-box; }
+body.ui-v3 .u3-col__pager .u3-pager { position: static; flex-wrap: nowrap; gap: 0; padding: 0; box-sizing: border-box; }
 body.ui-v3 .u3-col__pager .u3-pager__arrow { flex: none; padding: 0; font: inherit; }
 body.ui-v3 .u3-col__pager.is-hidden { visibility: hidden; }
 

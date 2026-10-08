@@ -81,7 +81,7 @@ export function setLine({ inSeason, filtered, filtering }) {
   return `${have}/${inSeason.length} · ${Math.round((100 * have) / (inSeason.length || 1))}%`;
 }
 
-/** The card number on a missing card, as drawn: "#003" (set_number from the server, PR #237; else the place in the set). */
+/** The card number on a missing card, as drawn: a hash and 3 digits (set_number from the server, PR 237; else the place in the set). */
 export const numLabel = (c) => `#${String(c.set_number ?? c.num ?? '').padStart(3, '0')}`;
 
 // ---- Painting ---------------------------------------------------------------------------------------------------
