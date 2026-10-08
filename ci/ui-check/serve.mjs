@@ -10,6 +10,7 @@ import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname, normalize } from 'node:path';
 import { keyOf, longData } from './fixture-lib.mjs';
+import { ui3Css } from '../../tcg-activity/src/ui3/css-parts.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PUB = join(here, '..', '..', 'tcg-activity', 'public');
@@ -34,6 +35,7 @@ createServer((req, res) => {
   const p = url.pathname;
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
+  if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)
   if (/^\/(main|chunk)\..*\.js$/.test(p)) return send(res, 200, readFileSync(join(BUNDLE, p.slice(1))), 'text/javascript');
   if (/^\/(api\/img|cimg|api\/avatar)\//.test(p) || /^\/cdn\//.test(p)) return send(res, 200, PNG, 'image/png');
   // The pull feed stream: open and quiet, as in production with no new pulls (a closed stream makes the client poll).
