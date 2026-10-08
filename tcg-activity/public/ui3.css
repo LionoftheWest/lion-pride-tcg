@@ -444,8 +444,11 @@ body.ui-v3 .u3-col { --u3-gap: var(--sp-2); --u3-pager-gap: var(--sp-2); --u3-pa
    compact-land 12 / 12 (D-60). */
 body.ui-v3[data-size="expanded"] .u3-col { gap: var(--sp-2); }
 body.ui-v3[data-size="compact-land"] .u3-col { --u3-pager-gap: var(--sp-3); }
-/* Touch: the controls inside a frame keep a 44 px hit area (9.1), so the frame adds its border. */
-body.ui-v3[data-input="coarse"] .u3-col { --u3-pager-h: calc(var(--hit) + var(--bw-1) * 2); --u3-bar-h: calc(var(--hit) + var(--bw-1) * 2); }
+/* Touch: the controls inside a frame keep a 44 px hit area (9.1): the frame line is drawn inside (an inset shadow,
+   the same look), so it takes no height from the grid. */
+body.ui-v3[data-input="coarse"] .u3-col { --u3-pager-h: var(--hit); --u3-bar-h: var(--hit); }
+body.ui-v3[data-input="coarse"] :is(.u3-col__search, .u3-col__pager .u3-pager) { border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border-strong); }
+body.ui-v3[data-input="coarse"] .u3-col__search:focus-within { box-shadow: var(--glow-focus), 0 0 0 calc(var(--bw-focus) * 2) var(--bg-base); }
 /* The token muted text (4.66:1), not the old v2 value on body (as the shell areas, above). */
 body.ui-v3 :is(.u3-col, .u3-fhost) { --text-muted: var(--u3-text-muted); }
 body.ui-v3 .u3-col__bar { flex: none; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
@@ -513,7 +516,7 @@ body:is([data-size="compact-port"], [data-size="compact-land"]) .u3-fhost { back
   max-height: calc(100dvh - var(--u3-sa-t) - var(--topbar-h) - var(--u3-bar-h) - var(--sp-2) * 2 - var(--u3-sa-b));
   border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
   animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top left; }
-body[data-input="coarse"] .u3-fpanel { --u3-bar-h: calc(var(--hit) + var(--bw-1) * 2); }
+body[data-input="coarse"] .u3-fpanel { --u3-bar-h: var(--hit); }
 body:is([data-size="compact-port"], [data-size="compact-land"]) .u3-fpanel { top: calc(var(--u3-sa-t) + var(--sp-2)); width: auto; max-height: none;
   left: calc(var(--u3-sa-l) + var(--sp-2)); right: calc(var(--u3-sa-r) + var(--sp-2));
   bottom: calc(var(--u3-sa-b) + var(--dock-size-compact) + var(--sp-2) * 2); border-radius: var(--rad-sheet); animation-name: kf-rise; }
