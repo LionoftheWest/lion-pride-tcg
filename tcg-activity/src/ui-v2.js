@@ -15,6 +15,7 @@ import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
+import { paintCollectionV3 } from './ui3/collection.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -285,6 +286,19 @@ const TYPES = [['character', 'Character'], ['creature', 'Creature'], ['moment', 
 const GAMES = [['smash', 'Smash Bros'], ['pokemon', 'Pokemon'], ['party', 'Party'], ['minecraft', 'Minecraft'], ['meme', 'Memes'], ['community', 'Community']];
 const hasFilters = () => col.rarity !== 'all' || col.element || col.type || col.game || col.own !== 'all' || col.q.trim();
 let colItems = [];
+// The Cards tab of a member with the v3 flag (settings.ui_v3): the v3 Collection (UI-07).
+const v3Cards = () => document.body.classList.contains('ui-v3') && col.view === 'cards';
+const colTabBar = (achDone, achN, ready) => `<div class="seg col-tabs"><button data-tab="cards" class="${col.view === 'cards' ? 'on' : ''}">Cards</button>
+    <button data-tab="ach" class="${col.view === 'ach' || col.view === 'achDetail' ? 'on' : ''}">Achievements <i>${achDone}/${achN}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button>
+    <button data-tab="bosses" class="${col.view === 'bosses' ? 'on' : ''}">Raid Bosses <i>${RAID_BOSSES.length}</i></button></div>`;
+function wireColTabs() {
+  ctx.el('main').querySelector('.col-tabs')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tab]');
+    if (!b) return;
+    col.view = b.dataset.tab === 'ach' ? 'ach' : b.dataset.tab === 'bosses' ? 'bosses' : 'cards';
+    renderCollectionV2();
+  });
+}
 
 export async function renderCollectionV2() {
   const { el } = ctx;
@@ -293,6 +307,7 @@ export async function renderCollectionV2() {
   await Promise.all([ensureCatalog(), loadMyProfile()]);
   if (ctx.currentView() !== 'collection') return;
   if (!ctx.cache.catalog) { // the catalog did not load: a Retry, not a page of empty slots
+    if (v3Cards()) { paintCollectionV3(el('main'), { error: true, rerender: () => renderCollectionV2() }, { tabBar: colTabBar(0, 0, 0) }); wireColTabs(); return; }
     el('main').innerHTML = '<div class="v2-loading">Could not load the cards. <button class="v2-btn" id="colRetry">Retry</button></div>';
     el('colRetry')?.addEventListener('click', () => renderCollectionV2());
     return;
@@ -321,9 +336,23 @@ export async function renderCollectionV2() {
   const gameChips = GAMES.filter(([k]) => inSeason.some((c) => [].concat(c.tags?.origin || []).includes(k))).map(([k, l]) => chip('game', k, l, col.game === k)).join('');
   const ownSeg = [['all', 'All'], ['owned', 'Owned'], ['missing', 'Missing']].map(([v, l]) => `<button data-own="${v}" class="${col.own === v ? 'on' : ''}">${l}</button>`).join('');
 
-  const tabs = `<div class="seg col-tabs"><button data-tab="cards" class="${col.view === 'cards' ? 'on' : ''}">Cards</button>
-    <button data-tab="ach" class="${col.view === 'ach' || col.view === 'achDetail' ? 'on' : ''}">Achievements <i>${achDone}/${achs.length}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button>
-    <button data-tab="bosses" class="${col.view === 'bosses' ? 'on' : ''}">Raid Bosses <i>${RAID_BOSSES.length}</i></button></div>${explainBtn('collection')}`;
+  const tabs = `${colTabBar(achDone, achs.length, ready)}${explainBtn('collection')}`;
+  // v3 (body.ui-v3, UI-07): the Cards tab is the v3 Collection (src/ui3/collection.js). Achievements and Bosses stay v2.
+  if (v3Cards()) {
+    const inUse = (list, key) => list.filter(([k]) => inSeason.some((c) => (key === 'type' ? c.tags?.type === k : [].concat(c.tags?.origin || []).includes(k))));
+    paintCollectionV3(el('main'), {
+      col, cards, seasons, inSeason, rarityLabel: ctx.RARITY_LABEL,
+      rarities: RARITY_ORDER.filter((r) => inSeason.some((c) => c.rarity === r)),
+      elements: ELEMENT_ORDER.filter((e) => inSeason.some((c) => cardElement(c.tags) === e)),
+      types: inUse(TYPES, 'type'), games: inUse(GAMES, 'game'),
+      elementName: (e) => ELEMENTS[e]?.name || e, elIcon, elementOf: (c) => cardElement(c.tags), flair: flairHTML, thumb, onSwipe,
+      openCard: (c, list) => ctx.openViewer(c, { list }),
+      status: () => colStatus(), rerender: () => renderCollectionV2(),
+    }, { tabBar: colTabBar(achDone, achs.length, ready), help: explainBtn('collection') });
+    wireColTabs();
+    maybeExplain('collection');
+    return;
+  }
   let center;
   if (col.view === 'bosses') {
     center = `<div class="v2-col-head">${tabs}<span class="grow"></span></div>
@@ -390,12 +419,7 @@ export async function renderCollectionV2() {
     else return;
     toCards(); renderCollectionV2();
   });
-  el('main').querySelector('.col-tabs')?.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-tab]');
-    if (!b) return;
-    col.view = b.dataset.tab === 'ach' ? 'ach' : b.dataset.tab === 'bosses' ? 'bosses' : 'cards';
-    renderCollectionV2();
-  });
+  wireColTabs();
   el('achAll')?.addEventListener('click', () => redeemAll(el('achAll')));
   // An achievement opens its detail (the cards it needs); Redeem pays it.
   el('colCenter').addEventListener('click', (e) => {
@@ -558,7 +582,10 @@ function paintColGrid() {
   if (!grid) return;
   colItems = colFiltered();
   paintCards(grid, el('colPager'), colItems, colState, (c, t) => pickCard(c, t, grid, colItems), col.sel);
-  // My Live in voice tile (design 19): the set I browse, how much of it I own, 3 owned cards.
+  colStatus();
+}
+// My Live in voice tile (design 19): the set I browse, how much of it I own, 3 owned cards.
+function colStatus() {
   const set = mergedCards().filter((c) => (c.season || 'Season 1') === col.season && (!col.game || [].concat(c.tags?.origin || []).includes(col.game)));
   const own = set.filter((c) => c.owned);
   ctx.status?.('collection', { t: col.game ? (GAMES.find(([k]) => k === col.game)?.[1] || col.season) : col.season,

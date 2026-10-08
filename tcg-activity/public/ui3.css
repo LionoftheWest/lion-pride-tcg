@@ -432,3 +432,113 @@ body.ui-v2.ui-v3[data-size="compact-land"] #main > .v2-subtabs :is(.dg-tab, .seg
 body.ui-v2.ui-v3[data-size="compact-port"] #main > .v2-subtabs :is(.dg-tab, .seg > button) { flex: 1 1 0; justify-content: center; padding: 0 var(--sp-1); font-size: var(--fs-caption); gap: var(--sp-1); }
 body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .u3-tabdot { display: inline-flex; }
 body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .ex-q { margin-left: var(--sp-2); flex: none; width: var(--u3-tab); height: var(--u3-tab); min-width: 0; padding: 0; }
+
+/* ==== UI-07 Collection (src/ui3/collection.js), only under body.ui-v3: the toolbar (search + Filters, D-39), the
+   card grid (card face only, D-29; no card panel, D-38), the pager under the grid (D-36), the Filters panel.
+   Approved: lion-pride-tcg-design UI-07/approved (review-2). The tile width comes from the grid box in CSS; JS gives
+   only the page size (--u3-cols, --u3-rows; 3.5). D-60: 12 px under the toolbar, 8 px between rows, 12 px above the
+   pager. ---- */
+body.ui-v3 .u3-col { --u3-gap: var(--sp-2); --u3-pager-gap: var(--sp-2); --u3-pager-h: var(--ctl-sm); --u3-bar-h: var(--ctl-md);
+  height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); box-sizing: border-box; }
+/* The space under the toolbar and above the pager, as approved: expanded 8 / 8, medium and compact-port 12 / 8,
+   compact-land 12 / 12 (D-60). */
+body.ui-v3[data-size="expanded"] .u3-col { gap: var(--sp-2); }
+body.ui-v3[data-size="compact-land"] .u3-col { --u3-pager-gap: var(--sp-3); }
+body.ui-v3[data-input="coarse"] .u3-col { --u3-pager-h: var(--hit); --u3-bar-h: var(--hit); }
+body.ui-v3 .u3-col__bar { flex: none; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+body.ui-v3 .u3-col__search { flex: 0 1 var(--sheet-side-w); height: var(--u3-bar-h); box-sizing: border-box; }
+body.ui-v3 .u3-col__search .u3-search__input::-webkit-search-cancel-button { display: none; }
+body.ui-v3 .u3-col__clear[hidden] { display: none; }
+body.ui-v3 .u3-col__filters { flex: none; height: var(--u3-bar-h); }
+body.ui-v3 .u3-col__set { margin: 0 0 0 auto; display: inline-flex; align-items: center; gap: var(--sp-3); min-width: 0; white-space: nowrap; }
+body.ui-v3 .u3-col__setname { font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+body.ui-v3 .u3-col__setsub { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+/* compact-port: the set line is its own row under the toolbar, and the search fills the row (approved 430x932). */
+body.ui-v3[data-size="compact-port"] .u3-col__bar { flex-wrap: wrap; row-gap: var(--sp-3); }
+body.ui-v3[data-size="compact-port"] .u3-col__search { flex: 1 1 0; }
+body.ui-v3[data-size="compact-port"] .u3-col__set { flex: 1 0 100%; margin: 0; }
+body.ui-v3 .u3-col__set .ex-q { flex: none; }
+
+/* The grid box: the grid, then the pager centered under it (D-36). On compact-port the pager sits at the bottom of the
+   box, 8 px above the dock (review-1 change 1). */
+body.ui-v3 .u3-col__box { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: stretch; gap: var(--u3-pager-gap); container-type: size; }
+body.ui-v3[data-size="compact-port"] .u3-col__box { justify-content: space-between; padding-bottom: var(--sp-2); box-sizing: border-box; }
+body.ui-v3 .u3-col__grid { --u3-cw: min(calc((100cqw - (var(--u3-cols, 2) - 1) * var(--u3-gap)) / var(--u3-cols, 2)),
+    calc((100cqh - var(--u3-pager-h) - var(--u3-pager-gap) - (var(--u3-rows, 2) - 1) * var(--u3-gap)) / var(--u3-rows, 2) * 5 / 7));
+  display: grid; grid-template-columns: repeat(var(--u3-cols, 2), var(--u3-cw)); grid-auto-rows: calc(var(--u3-cw) * 7 / 5); gap: var(--u3-gap);
+  justify-content: center; align-content: start; min-height: 0; }
+body.ui-v3 .u3-col__grid.is-empty { flex: 1 1 auto; place-items: center; grid-template-columns: 1fr; grid-auto-rows: auto; }
+body.ui-v3 .u3-col__none { margin: 0; font-size: var(--fs-body); color: var(--text-secondary); }
+body.ui-v3 .u3-col__pager { flex: none; height: var(--u3-pager-h); display: flex; justify-content: center; }
+/* The Pager is a <nav>: the v1 narrow-window rule (style.css "nav", fixed at the bottom) must not move it. */
+body.ui-v3 .u3-col__pager .u3-pager { position: static; z-index: auto; flex-wrap: nowrap; gap: 0; padding: 0; box-sizing: border-box; }
+body.ui-v3 .u3-col__pager .u3-pager__arrow { flex: none; padding: 0; font: inherit; }
+body.ui-v3 .u3-col__pager.is-hidden { visibility: hidden; }
+
+/* Card / tile (5.2, 8.1): the card face only; the rarity shows by the frame (D-29). A missing card: the lock and its
+   number. Radius: 5% of the card width (--rad-card-ratio). */
+body.ui-v3 .u3-ctile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2);
+  width: 100%; height: 100%; padding: 0; overflow: hidden; cursor: pointer; font: inherit; color: var(--text-muted);
+  border-radius: calc(var(--u3-cw) * var(--rad-card-ratio)); background: var(--surface-1); border: var(--bw-2) solid var(--u3-r, var(--border));
+  -webkit-tap-highlight-color: transparent; transition: transform var(--dur-instant) var(--ease-out), border-color var(--dur-fast) var(--ease-out); box-sizing: border-box; }
+body.ui-v3 .u3-ctile.is-locked { border-width: var(--bw-1); }
+body.ui-v3 .u3-ctile:active { transform: scale(.97); }
+body.ui-v3 .u3-ctile:focus-visible { outline: none; box-shadow: var(--glow-focus), 0 0 0 calc(var(--bw-focus) * 2) var(--bg-base); }
+body.ui-v3[data-last-input="pointer"] .u3-ctile:focus-visible { box-shadow: none; }
+@media (hover: hover) and (pointer: fine) { body.ui-v3 .u3-ctile.is-locked:hover { border-color: var(--border-strong); } body.ui-v3 .u3-ctile:not(.is-locked):hover { filter: brightness(1.08); } }
+body.ui-v3 .u3-ctile__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+body.ui-v3 .u3-ctile__num { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: 1; font-variant-numeric: tabular-nums; }
+body.ui-v3[data-size="compact-land"] .u3-ctile { gap: var(--sp-1); }
+body.ui-v3[data-size="compact-land"] .u3-ctile__num { font-size: var(--fs-caption); }
+body.ui-v3[data-size="compact-land"] .u3-ctile.is-locked .u3-ico { width: var(--icon-md); height: var(--icon-md); }
+
+/* The error state (7.2): the line with its icon and Retry, centered in the content area. */
+body.ui-v3 .u3-col--error .u3-col__err { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--sp-3); }
+body.ui-v3 .u3-col__errline { margin: 0; display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-body); color: var(--text-secondary); }
+body.ui-v3 .u3-col__errline .u3-ico { color: var(--danger); }
+
+/* ---- The Filters panel (D-39), on top of the view. medium and expanded: a panel under the toolbar, on the scrim.
+   compact-port and compact-land: the panel fills the frame above the dock (approved filters-open frames). ---- */
+.u3-fhost { position: fixed; inset: 0; z-index: var(--z-sheet); background: var(--scrim); animation: kf-fade var(--dur-base) var(--ease-out); }
+body:is([data-size="compact-port"], [data-size="compact-land"]) .u3-fhost { background: none; }
+.u3-fpanel { --u3-bar-h: var(--ctl-md); position: absolute; display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-4); box-sizing: border-box;
+  top: calc(var(--u3-sa-t) + var(--topbar-h) + var(--u3-bar-h) + var(--sp-2)); left: calc(var(--u3-sa-l) + var(--u3-pad));
+  width: min(calc(100vw - var(--u3-sa-l) - var(--u3-sa-r) - var(--u3-pad) * 2), calc(var(--sheet-side-w) * 2));
+  max-height: calc(100dvh - var(--u3-sa-t) - var(--topbar-h) - var(--u3-bar-h) - var(--sp-2) * 2 - var(--u3-sa-b));
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top left; }
+body[data-input="coarse"] .u3-fpanel { --u3-bar-h: var(--hit); }
+body:is([data-size="compact-port"], [data-size="compact-land"]) .u3-fpanel { top: calc(var(--u3-sa-t) + var(--sp-2)); width: auto; max-height: none;
+  left: calc(var(--u3-sa-l) + var(--sp-2)); right: calc(var(--u3-sa-r) + var(--sp-2));
+  bottom: calc(var(--u3-sa-b) + var(--dock-size-compact) + var(--sp-2) * 2); border-radius: var(--rad-sheet); animation-name: kf-rise; }
+/* compact-land: the close button keeps out of the Discord corner zone (2.3), as the top bar does. */
+body[data-size="compact-land"] .u3-fpanel { top: calc(var(--u3-sa-t) + var(--sp-1)); bottom: calc(var(--u3-sa-b) + var(--dock-size-compact) + var(--sp-1) * 2);
+  right: calc(var(--u3-sa-r) + max(var(--sp-2), var(--corner-w) - var(--u3-sa-r) - var(--sp-7))); }
+.u3-fpanel__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-fpanel__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-fpanel__body { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
+/* compact-land: the frame's 4 px steps, so every group fits above the dock (approved 932x430 filters-open). */
+body[data-size="compact-land"] .u3-fpanel { gap: var(--sp-1); padding: var(--sp-2) var(--sp-4); }
+body[data-size="compact-land"] .u3-fpanel__body { gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-fpanel__foot { padding-top: var(--sp-1); }
+.u3-fpanel__own { display: flex; width: 100%; box-sizing: border-box; }
+.u3-fpanel__own .u3-seg__item { flex: 1 1 0; justify-content: center; height: var(--ctl-sm); font-size: var(--fs-small); }
+/* Touch: the switch is 44 px with its frame; each item is 36 px and its hit area takes the frame (9.1). */
+body[data-input="coarse"] .u3-fpanel__own .u3-seg__item { height: calc(var(--hit) - var(--sp-1) * 2); }
+body[data-input="coarse"] .u3-fpanel__own .u3-seg__item::after { content: ''; position: absolute; inset: calc(var(--sp-1) * -1) 0; }
+body[data-size="compact-land"] .u3-fpanel__own { width: auto; align-self: flex-start; }
+body[data-size="compact-land"] .u3-fpanel__own .u3-seg__item { padding: 0 var(--sp-6); }
+.u3-chip__n { font-family: var(--font-num); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.u3-frow { display: grid; grid-template-columns: calc(var(--sp-7) * 2 + var(--sp-4)) 1fr; align-items: center; gap: var(--sp-3); }
+body[data-size="compact-port"] .u3-frow { grid-template-columns: 1fr; gap: var(--sp-2); }
+.u3-frow__chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
+.u3-frow__els { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+body[data-size="compact-port"] .u3-frow__els { display: grid; grid-template-columns: repeat(6, 1fr); width: 100%; justify-items: center; }
+.u3-fpanel .u3-chip { font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-primary); }
+.u3-fpanel .u3-chip--element { color: var(--gold); width: var(--ctl-icon); height: var(--ctl-icon); }
+.u3-fpanel .u3-chip--element .el-ico { width: var(--icon-lg); height: var(--icon-lg); }
+body[data-input="coarse"] .u3-fpanel .u3-chip--filter { height: var(--hit); padding: 0 var(--sp-2); }
+body[data-input="coarse"] .u3-fpanel .u3-chip--element { width: var(--hit); height: var(--hit); }
+body[data-input="coarse"] .u3-fpanel .u3-chip::after { display: none; }
+.u3-fpanel__foot { display: flex; justify-content: flex-end; align-items: center; gap: var(--sp-3); padding-top: var(--sp-3); border-top: var(--bw-1) solid var(--border); }
+body[data-size="compact-port"] .u3-fpanel__foot { justify-content: space-between; }
