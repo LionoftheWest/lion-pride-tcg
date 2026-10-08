@@ -967,7 +967,7 @@ body.ui-v2.ui-v3[data-size] #u3Wish { --text-muted: var(--u3-text-muted); }
 .u3-wl__head { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
 .u3-wl__head > .u3-ico { color: var(--text-primary); flex: none; }
 .u3-wl__title { margin: 0; flex: 1 1 auto; min-width: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); }
-[data-form="side"] .u3-wl__title { font-size: var(--fs-heading); }
+:is([data-form="side"], [data-form="dialog"]) .u3-wl__title { font-size: var(--fs-heading); }
 .u3-wl__count { font-family: var(--font-num); font-size: var(--fs-stat); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 /* the close button keeps left of the Discord corner zone in landscape (2.3, G-013), as the Dailies window does */
 [data-form="side"] .u3-wl__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-3))); }
