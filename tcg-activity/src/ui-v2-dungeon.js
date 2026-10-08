@@ -1103,7 +1103,7 @@ function fitChooseV3(main) {
   const box = main.querySelector('.u3-dgc');
   if (!box) return;
   const measure = () => {
-    box.classList.toggle('is-fill', cls3() === 'medium' && innerHeight > innerWidth);   // a tall tablet: the offers stack and fill the stage
+    box.classList.toggle('is-fill', cls3() === 'medium' && box.clientHeight > box.clientWidth);   // a tall tablet (the stage itself is taller than wide, F-1): the offers stack and fill the stage
     box.classList.remove('is-tight'); if (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) box.classList.add('is-tight'); };
   measure();
   document.fonts?.ready.then(() => { if (box.isConnected) measure(); });
