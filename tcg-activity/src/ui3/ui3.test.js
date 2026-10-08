@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { sizeClass, isShort, applySizeClass } from './size-class.js';
+import { sizeClass, isShort, isLow, applySizeClass } from './size-class.js';
 import { fmtFor, fmtCompact } from './number.js';
 import { icon, ICONS } from './icons.js';
 import * as C from './components.js';
@@ -61,6 +61,17 @@ test('ui3.css uses tokens only: no color, px or z-index literal (4.1, gate G4)',
   assert.equal((css.match(/z-index:\s*-?\d/g) || []).length, 0, 'z-index literal');
   assert.doesNotMatch(css, /m-land|m-port/);
   assert.doesNotMatch(css, /@media[^{]*(min|max)-(width|height)/, 'raw size media query (2.1)');
+});
+
+test('low (D-117): compact-land under 400 px usable height only, written on body', () => {
+  assert.equal(isLow('compact-land', 375), true); assert.equal(isLow('compact-land', 354), true);
+  assert.equal(isLow('compact-land', 412), false); assert.equal(isLow('compact-land', 400), false);
+  assert.equal(isLow('compact-port', 375), false); assert.equal(isLow('medium', 380), false);
+  const doc = { documentElement: {}, body: { dataset: {} }, activeElement: null };
+  const win = { innerWidth: 667, innerHeight: 375, document: doc, matchMedia: () => ({ matches: true }), getComputedStyle: () => ({ getPropertyValue: () => '' }) };
+  assert.equal(applySizeClass(win), 'compact-land'); assert.equal(doc.body.dataset.low, '');
+  win.innerWidth = 932; win.innerHeight = 430;
+  assert.equal(applySizeClass(win), 'compact-land'); assert.equal(doc.body.dataset.low, undefined);
 });
 
 test('keyboard: the class holds while a text box has the focus on touch, and returns after (2.1, G-015)', () => {

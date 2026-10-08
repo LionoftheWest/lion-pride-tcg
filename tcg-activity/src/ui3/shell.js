@@ -139,11 +139,22 @@ export function decorateTabs(main = $('main')) {
     if (!t || b.dataset.u3 === key + (b.querySelector('.tab-dot') ? '1' : '0')) return;
     const waits = !!b.querySelector('.tab-dot');
     b.innerHTML = `${icon(t[0])}<span class="u3-tab__label">${esc(t[1])}</span>${waits ? `<span class="u3-tabdot">${dot('Something to claim')}</span>` : ''}`;
+    b.setAttribute('aria-label', t[1]);   // the name stays when the label gives way to the icon (D-117)
     b.dataset.u3 = key + (waits ? '1' : '0');
   });
   // the view's "?" (ui-v2-explain.js) moves to the end of the row, except on compact-port (D-63: no room there)
   const q = main.querySelector('.ex-q');
   if (q && document.body.dataset.size !== 'compact-port' && !host.contains(q)) host.appendChild(q);
+  fitLowRow(host);
+}
+// D-117: on a low landscape phone the tabs share the top bar row. When they reach the right group (a phone with side
+// insets), the logo emblem gives way (measured, body.u3-low-tight).
+export function fitLowRow(host = $('main')?.querySelector(':scope > .v2-subtabs')) {
+  const body = document.body;
+  body.classList.remove('u3-low-tight');
+  if (!host || !('low' in body.dataset)) return;
+  const right = $('topbar')?.querySelector('.topright');
+  if (right && host.getBoundingClientRect().right > right.getBoundingClientRect().left) body.classList.add('u3-low-tight');
 }
 
 /** Start the v3 shell (after the v2 wiring, main.js). */
@@ -153,6 +164,7 @@ export function startShell() {
   const main = $('main');
   if (main) new MutationObserver(() => decorateTabs(main)).observe(main, { childList: true, subtree: true });
   decorateTabs(main);
+  addEventListener('resize', () => setTimeout(() => fitLowRow(), 200));   // after the size class (120 ms debounce)
   const d = $('dailyBtn');
   if (d) new MutationObserver(syncDots).observe(d, { attributes: true, childList: true, subtree: true });
   syncDots();
