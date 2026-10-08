@@ -252,7 +252,7 @@ let usedIds = new Set(); // card ids already sent at the boss today (client mirr
 let feedTopId = 0; // newest boss-feed event id shown (so polls only animate in newer ones)
 let huntDay = ''; // MT date of the current hunt render; a change means the daily reset hit
 const utcToday = () => mtToday(); // the MT game day (the name kept: several callers)
-window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (squad.phase !== 'battle') paintHuntPage(); else sizeSquadGrid(); });
+window.addEventListener('resize', () => { if (currentView !== 'battling') return; if (squad.phase !== 'battle') { if (huntV3()) fitHuntV3(el('main')); else paintHuntPage(); } else sizeSquadGrid(); });
 const cache = {};
 
 // Discord mobile sometimes fails the first authorize with "OAuth2 Authorize Error: Unknown
