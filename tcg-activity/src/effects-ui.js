@@ -1,5 +1,6 @@
 import { thumb } from './thumb.js';
 import { every } from './poll.js';
+import { reduceEffects } from './ui3/settings.js';
 // Card effects (boons, pranks, neutral) in the Activity. Design: docs/boons-and-pranks.md.
 // Everything here is driven by /api/effects/*; the server returns {enabled:false} when
 // the flag is off, and then this module shows nothing and changes nothing.
@@ -45,6 +46,7 @@ export async function initEffects(d) {
   await refreshEffects();
   if (!state.enabled) return;
   wrapChicken();
+  document.addEventListener('lp:reduce-effects', applyBodyFx);   // the Settings switch (UI-61) changed: apply at once
   refreshBadges();
   every(30000, refreshEffects); // paused while hidden, slower when idle (poll.js)
   every(30000, refreshBadges);
@@ -332,7 +334,8 @@ let fxTimer = null;
 function applyBodyFx() {
   const now = Date.now();
   const live = state.active.filter((e) => BODY_FX[e.primitive] && !(e.expires_at && Date.parse(e.expires_at) <= now));
-  const on = new Set(live.map((e) => BODY_FX[e.primitive]));
+  // Reduce effects (UI-61, D-11; v3 flag only): a screen prank shows as its banner only, the screen stays as it is.
+  const on = reduceEffects() ? new Set() : new Set(live.map((e) => BODY_FX[e.primitive]));
   for (const cls of Object.values(BODY_FX)) document.body.classList.toggle(cls, on.has(cls));
   clearTimeout(fxTimer);
   const next = Math.min(...live.map((e) => (e.expires_at ? Date.parse(e.expires_at) : Infinity)));
@@ -370,7 +373,7 @@ function showIncoming() {
     }
     host.appendChild(div);
     if (!pickColor) setTimeout(() => div.remove(), 12000);
-    if ((p.primitive === 'confetti' || p.primitive === 'gift_wrap') && !['blocked', 'decoyed', 'delayed'].includes(p.outcome)) confetti(p.card?.image_url);
+    if ((p.primitive === 'confetti' || p.primitive === 'gift_wrap') && !['blocked', 'decoyed', 'delayed'].includes(p.outcome) && !reduceEffects()) confetti(p.card?.image_url);
   }
   apiPost('/api/effects/seen', { ids: fresh.map((p) => p.id) }).catch(() => {});
 }
