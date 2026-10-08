@@ -432,3 +432,69 @@ body.ui-v2.ui-v3[data-size="compact-land"] #main > .v2-subtabs :is(.dg-tab, .seg
 body.ui-v2.ui-v3[data-size="compact-port"] #main > .v2-subtabs :is(.dg-tab, .seg > button) { flex: 1 1 0; justify-content: center; padding: 0 var(--sp-1); font-size: var(--fs-caption); gap: var(--sp-1); }
 body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .u3-tabdot { display: inline-flex; }
 body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .ex-q { margin-left: var(--sp-2); flex: none; width: var(--u3-tab); height: var(--u3-tab); min-width: 0; padding: 0; }
+
+/* ---- Open window (UI-33, D-80 to D-90): the sets, then the counts. A sheet on the dock edge on compact-port, a panel
+   above OPEN on the other classes. The dock stays uncovered, so a tap on OPEN closes the window (src/ui3/open-window.js).
+   --u3-open-cols comes from the one fitter (3.5); every other value is a token. ---- */
+body.ui-v3[data-size] { --u3-dock-b: var(--sp-3); }
+body.ui-v3[data-size="compact-land"] { --u3-dock-b: var(--sp-1); }
+body.ui-v3[data-size="compact-port"] { --u3-dock-b: calc(var(--sp-2) + var(--u3-sa-b)); }
+.u3-openhost { position: fixed; inset: 0; z-index: var(--z-sheet); animation: kf-fade var(--dur-base) var(--ease-out); }
+.u3-openhost::before { content: ""; position: absolute; inset: 0 0 calc(var(--u3-dock-b) + var(--dock-h)) 0; background: var(--scrim); }
+.u3-open { --u3-open-gap: var(--sp-3); --u3-open-min: calc(var(--menu-tile) * 2 + var(--sp-1)); --u3-open-pager: var(--ctl-sm); --u3-open-cols: 1;
+  --u3-open-top: calc(var(--u3-sa-t) + var(--sp-5));
+  position: absolute; bottom: calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-2)); left: 50%; transform: translateX(-50%); box-sizing: border-box;
+  width: min(calc(100% - var(--sp-7) * 1.5), max(calc(var(--menu-tile) * 6 + var(--sp-4) * 2),
+    calc(var(--u3-open-cols) * var(--menu-tile) * 2.5 + (var(--u3-open-cols) - 1) * var(--u3-open-gap) + var(--sp-4) * 2)));
+  max-height: calc(100% - var(--u3-dock-b) - var(--dock-h) - var(--sp-2) - var(--u3-open-top));
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "sets" "pager" "counts"; gap: var(--u3-open-gap); align-content: start;
+  padding: var(--sp-4); border-radius: var(--rad-lg); background: var(--bg-raised); border: var(--bw-1) solid var(--gold-a50); box-shadow: var(--elev-3);
+  animation: kf-fade var(--dur-base) var(--ease-out); }
+.u3-open.is-measuring { width: calc(100% - var(--sp-7) * 1.5); }
+body[data-input="coarse"] .u3-open { --u3-open-pager: var(--hit); }
+.u3-open__head { grid-area: head; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-open__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-open__sets { grid-area: sets; display: grid; grid-template-columns: repeat(var(--u3-open-cols), minmax(0, 1fr)); gap: var(--u3-open-gap); min-width: 0; touch-action: pan-y; }
+.u3-open__pager { grid-area: pager; display: flex; justify-content: center; }
+.u3-open__pager[hidden] { display: none; }
+.u3-open__counts { grid-area: counts; display: flex; justify-content: center; gap: var(--u3-open-gap); }
+.u3-open > .u3-state { grid-row: 2 / -1; }
+/* Set tile: the set picture (Card/thumb, 8.1), the name, the code chip and owned / total, "New" (D-89) */
+.u3-set { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-3); text-align: left; cursor: pointer; font: inherit; color: var(--text-primary);
+  border-radius: var(--rad-lg); background: var(--surface-2); border: var(--bw-1) solid var(--border-strong);
+  transition: transform var(--dur-instant) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+.u3-set.is-on { background: var(--gold-a10); border-color: var(--gold); }
+.u3-set:active { transform: scale(.97); }
+body:not([data-last-input="pointer"]) .u3-set:focus-visible, body:not([data-last-input="pointer"]) .u3-count:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+@media (hover: hover) and (pointer: fine) { .u3-set:not(.is-on):hover, .u3-count:not(.is-best):hover { background: var(--surface-3); } }
+.u3-set__cover { flex: none; width: calc(var(--sp-7) + var(--sp-4)); aspect-ratio: 5 / 7; display: grid; place-items: center; overflow: hidden;
+  border-radius: var(--rad-sm); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); }
+.u3-set__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-set__slot { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-set__body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); min-width: 0; }
+.u3-set__name { font-family: var(--font-ui); font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-heading); overflow-wrap: anywhere; }
+.u3-set__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+.u3-set__code { padding: var(--sp-half) var(--sp-2); border-radius: var(--rad-pill); background: var(--surface-3); font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-secondary); }
+.u3-set__owned { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.u3-chip--new { gap: var(--sp-1); color: var(--success); background: var(--success-soft); border-color: var(--success); }
+/* Count tile: the pack fan and "×N"; the largest count has the gold mark */
+.u3-count { flex: 0 0 calc((100% - var(--u3-open-gap) * 2) / 3); min-height: calc(var(--menu-tile) + var(--ctl-icon)); display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-2); cursor: pointer; font: inherit; color: var(--text-primary);
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); transition: transform var(--dur-instant) var(--ease-out); }
+.u3-count:active { transform: scale(.97); }
+.u3-count.is-best { background: var(--gold-a10); border-color: var(--gold); }
+.u3-count__fan { display: block; flex: none; height: var(--sp-7); width: calc(var(--sp-7) * 5 / 7); overflow: visible; }
+.u3-count__n { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); font-variant-numeric: tabular-nums; }
+.u3-count__n i { font-style: normal; font-size: var(--fs-caption); color: var(--text-secondary); margin-right: var(--sp-half); }
+.u3-count.is-best .u3-count__n { color: var(--gold); }
+/* compact-port: a sheet on the dock edge (5.2 Sheet/bottom, as the approved Dailies sheet) */
+body.ui-v3[data-size="compact-port"] .u3-open { --u3-open-top: calc(var(--u3-sa-t) + var(--sp-1-5)); width: calc(100% - var(--sp-1-5) * 2); border-radius: var(--rad-sheet); }
+/* compact-land: the sets on the left; the title, the ✕ and the counts on the right (the area is wider than tall, 3.4) */
+body.ui-v3[data-size="compact-land"] .u3-open { --u3-open-top: calc(var(--u3-sa-t) + var(--sp-1-5)); --u3-open-side: 1;
+  width: calc(100% - var(--u3-sa-l) - var(--u3-sa-r) - var(--sp-1-5) * 2); left: calc(50% + (var(--u3-sa-l) - var(--u3-sa-r)) / 2);
+  grid-template-columns: minmax(0, 1fr) calc((var(--menu-tile) + var(--sp-4)) * 3 + var(--u3-open-gap) * 2);
+  grid-template-areas: "sets head" "sets counts" "pager counts"; grid-template-rows: auto 1fr auto; }
+body.ui-v3[data-size="compact-land"] .u3-open__sets { align-content: start; align-self: start; }
+body.ui-v3[data-size="compact-land"] .u3-open__counts { align-items: flex-start; }
+body.ui-v3[data-size="compact-port"] .u3-open.is-measuring { width: calc(100% - var(--sp-1-5) * 2); }
+body.ui-v3[data-size="compact-land"] .u3-open.is-measuring { width: calc(100% - var(--u3-sa-l) - var(--u3-sa-r) - var(--sp-1-5) * 2); }
