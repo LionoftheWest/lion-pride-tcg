@@ -483,7 +483,7 @@ body:not([data-last-input="pointer"]) .u3-set:focus-visible, body:not([data-last
   border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); transition: transform var(--dur-instant) var(--ease-out); }
 .u3-count:active { transform: scale(.97); }
 .u3-count.is-best { background: var(--gold-a10); border-color: var(--gold); }
-.u3-count__fan { display: block; height: var(--sp-7); aspect-ratio: 5 / 7; overflow: visible; }
+.u3-count__fan { display: block; flex: none; height: var(--sp-7); width: calc(var(--sp-7) * 5 / 7); overflow: visible; }
 .u3-count__n { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); font-variant-numeric: tabular-nums; }
 .u3-count__n i { font-style: normal; font-size: var(--fs-caption); color: var(--text-secondary); margin-right: var(--sp-half); }
 .u3-count.is-best .u3-count__n { color: var(--gold); }
