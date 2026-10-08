@@ -463,7 +463,9 @@ body.ui-v3 .u3-col__setsub { font-family: var(--font-num); font-size: var(--fs-s
 body.ui-v3[data-size="compact-port"] .u3-col__bar { flex-wrap: wrap; row-gap: var(--sp-3); }
 body.ui-v3[data-size="compact-port"] .u3-col__search { flex: 1 1 0; }
 body.ui-v3[data-size="compact-port"] .u3-col__set { flex: 1 0 100%; margin: 0; }
-body.ui-v3 .u3-col__set .ex-q { flex: none; }body.ui-v3[data-input="coarse"] .u3-col__set .ex-q { width: var(--hit); height: var(--hit); }
+body.ui-v3 .u3-col__set .ex-q { flex: none; }
+/* Touch: the "?" has a 44 px hit area (9.1); the row keeps the height of the drawn 34 px button. */
+body.ui-v3[data-input="coarse"] .u3-col__set .ex-q { width: var(--hit); height: var(--hit); margin-block: calc((var(--hit) - var(--ctl-sm)) / -2 + var(--bw-1)); }
 
 /* The grid box: the grid, then the pager centered under it (D-36). On compact-port the pager sits at the bottom of the
    box, 8 px above the dock (review-1 change 1). */
