@@ -415,6 +415,9 @@ export const effectState = () => state;
 export const effectScaled = (card) => scaled(card);
 export const effectReadyIn = (card) => readyIn(card);
 export const EFFECT_KIND = { label: KIND_LABEL, icon: KIND_ICON };
+/** The card with its effect (the Card Detail window, UI-08), and the member picker that plays it. */
+export const effectOf = (card) => effectFor(card);
+export const openEffectPicker = (card) => openPicker(card);
 export const effectError = (code) => errText(code, state.caps) || 'That did not work. Try again.';
 /** Play a card on a member. Returns the server result; refreshes cooldowns + effects. */
 export async function playCard(card, targetId) {

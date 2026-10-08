@@ -15,7 +15,9 @@ import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
-import { paintCollectionV3 } from './ui3/collection.js';
+import { paintCollectionV3, numLabel as numLabelV3 } from './ui3/collection.js';
+import { openCardDetail } from './ui3/card-detail.js';
+import { effectsEnabled, effectOf, effectScaled, effectReadyIn, fmtDur, openEffectPicker } from './effects-ui.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -346,7 +348,7 @@ export async function renderCollectionV2() {
       elements: ELEMENT_ORDER.filter((e) => inSeason.some((c) => cardElement(c.tags) === e)),
       types: inUse(TYPES, 'type'), games: inUse(GAMES, 'game'),
       elementName: (e) => ELEMENTS[e]?.name || e, elIcon, elementOf: (c) => cardElement(c.tags), flair: flairHTML, thumb, onSwipe,
-      openCard: (c, list) => ctx.openViewer(c, { list }),
+      openCard: (c, list) => openCardDetail(c, list, detailDeps(cards)),
       status: () => colStatus(), rerender: () => renderCollectionV2(),
     }, { tabBar: colTabBar(achDone, achs.length, ready), help: explainBtn('collection') });
     wireColTabs();
@@ -584,6 +586,42 @@ function paintColGrid() {
   paintCards(grid, el('colPager'), colItems, colState, (c, t) => pickCard(c, t, grid, colItems), col.sel);
   colStatus();
 }
+// The data and the actions of the v3 Card Detail window (UI-08, src/ui3/card-detail.js): the same calls as the v2
+// card panel (paintPanel, ascend, toggleSpotlight, the stat points).
+function detailDeps(cards) {
+  const statsOn = () => !!ctx.cache.collection?.stats?.on;
+  return {
+    numLabel: numLabelV3, rarityLabel: ctx.RARITY_LABEL, statsOn, cardHp, features: ctx.features,
+    maxPow: Math.max(1, ...cards.map((x) => x.power || 0)),
+    statsResetUsed: () => !!ctx.cache.collection?.stats?.resetUsed,
+    spotlight: () => (myProfile?.spotlight || []).map(Number),
+    elementOf: (c) => cardElement(c.tags), elementName: (e) => ELEMENTS[e]?.name || e, elIcon, gameLabels: GAME_LABELS, flair: flairHTML,
+    noAscendText: ASCEND_ERROR.no_ascend, ascendError: ASCEND_ERROR, toast,
+    fillConvert: fillConvertButton,
+    refresh: async () => { await ctx.refreshOwned(); await renderCollectionV2(); },
+    cardById: (id) => mergedCards().find((x) => x.id === id),
+    openViewer: (c, list) => ctx.openViewer(c, { list: list.filter((x) => !x.locked) }),
+    onTrade: () => ctx.show('trading'),
+    toggleSpotlight: async (c) => {
+      const cur = (myProfile?.spotlight || []).map(Number);
+      const id = Number(c.id);
+      let next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+      if (next.length > 3) next = next.slice(next.length - 3); // the oldest pick leaves
+      let r = null;
+      try { r = await ctx.apiPost('/api/spotlight', { cardIds: next }); } catch { r = null; }
+      if (!r?.ok) return false;
+      if (myProfile) myProfile.spotlight = r.spotlight;
+      return true;
+    },
+    apiPost: ctx.apiPost,
+    celebrate: (c, r, hasStats) => ctx.celebrateAscend(c, { ...c, ascension: r.ascension, quantity: r.quantity, power: r.power, next_cost: r.next_cost,
+      can_ascend: r.next_cost != null && r.quantity >= 1 + r.next_cost }, statsOn() && hasStats),
+    effects: { enabled: effectsEnabled, of: effectOf, scaled: effectScaled, readyIn: effectReadyIn, fmtDur, play: openEffectPicker },
+    onSwipe,
+    onStep: (n) => { col.sel = n.id; },
+  };
+}
+
 // My Live in voice tile (design 19): the set I browse, how much of it I own, 3 owned cards.
 function colStatus() {
   const set = mergedCards().filter((c) => (c.season || 'Season 1') === col.season && (!col.game || [].concat(c.tags?.origin || []).includes(col.game)));
