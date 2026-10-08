@@ -948,6 +948,7 @@ body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font
 body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
 /* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
 body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
+
 /* ==== UI-61 Settings window (src/ui3/settings.js; design repo UI-61/approved, review-1; FEEDBACK D-80 item 27) ====
    A panel under the top bar on medium and expanded (one column), a bottom sheet on the dock edge on compact-port, and
    2 columns in the safe frame on compact-land (Discord pings left; Effects and Discord posts right; it covers the top
