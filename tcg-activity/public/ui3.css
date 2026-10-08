@@ -1184,3 +1184,5 @@ body[data-size="compact-land"] .u3-sdlg { gap: var(--sp-4); padding: var(--sp-4)
 body[data-size="compact-land"] #u3ShopDlg .u3-scrim { padding: var(--sp-2) max(var(--corner-w), calc(var(--u3-sa-r) + var(--sp-2))) var(--sp-2) max(var(--sp-2), var(--u3-sa-l)); }   /* the scrim covers the whole frame (inset 0) */
 body[data-size="compact-land"] .u3-sdlg__art { width: var(--card-tile); }
 body[data-size="compact-land"] .u3-sdlg__main { gap: var(--sp-2); }
+/* The card viewer (v2 #viewer, z 95) is on the window layer in v3, so it opens above the Card picker (UI-64) and the other windows. */
+body.ui-v3 #viewer { z-index: var(--z-modal); }

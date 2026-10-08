@@ -2639,6 +2639,9 @@ function stepViewer(d) {
   viewerNav?.opts.onStep?.(n);
 }
 function openViewer(card, opts = {}) {
+  // v3: the viewer opens above the window that asked for it (the Card picker, the boss window): same layer, last in
+  // the page (Nathan 2026-10-08: the card details opened under the squad picker)
+  if (document.body.classList.contains('ui-v3') && el('viewer') && el('viewer') !== document.body.lastElementChild) document.body.appendChild(el('viewer'));
   const list = Array.isArray(opts.list) ? opts.list : [];
   const i = list.findIndex((x) => String(x.id) === String(card.id));
   viewerNav = list.length > 1 && i >= 0 ? { list, i, opts } : null;
@@ -2928,7 +2931,7 @@ function initViewer() {
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !el('viewer').classList.contains('hidden')) { stepViewer(e.key === 'ArrowLeft' ? -1 : 1); return; }
     if (e.key !== 'Escape') return;
     if (!el('bossModal').classList.contains('hidden')) closeBossModal();
-    else if (!el('viewer').classList.contains('hidden')) closeViewer();
+    else if (!el('viewer').classList.contains('hidden')) { closeViewer(); e.u3Done = true; }   // a v3 window under it keeps open (card-picker.js)
     else if (!el('stage').classList.contains('hidden')) { if (revealItems.length && flippedCount >= revealItems.length) endReveal(); } // locked until all revealed
     else if (!el('board').classList.contains('hidden')) closeBoard();
   });
