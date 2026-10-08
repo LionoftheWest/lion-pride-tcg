@@ -1041,6 +1041,7 @@ function offerInfo(o) {
 function chooseHTML() {
   const R = run(); const st = R.state;
   const ph = st.phase;
+  if (V3() && ph === 'choose') return chooseV3HTML(R, st);   // UI-48 (the other steps keep the v2 view until their screens are built)
   const offer = (o, i) => {
     const t = offerInfo(o);
     return `<button class="dg-offer k-${o.kind}${o.to ? ` to-${o.to}` : ''}" data-choose="${i}" style="${TIER[o.tier] ? `--tc:${TIER[o.tier][1]}` : ''}">${tierTag(o.tier)}<span class="ic">${t[0]}</span><b>${t[1]}</b>${t[2] ? `<small>${t[2]}</small>` : ''}</button>`;
@@ -1056,6 +1057,57 @@ function chooseHTML() {
     <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
     <section class="dg-panel dg-cbox ph-${ph}">${musicBtnHTML()}<span class="k">${head[0]}</span><h2>${head[1]}</h2>${head[2] ? `<p>${head[2]}</p>` : ''}${body}</section>
   </div>`;
+}
+// ---- v3: Choose a reward (UI-48), behind the ui_v3 flag --------------------------------------------------
+// The approved design (design repo UI-48/approved): the progress pill and the loot chips on the dungeon stage, a panel
+// with "Room cleared", "Choose a reward" and the offers (a row of 3; a stacked list on compact-port). The same data,
+// the same data-choose handler and the same /api/dungeon/choose call as the v2 view (choose(), wireChoose()).
+const OFFER_ICON = { card: 'layers', ward: 'shield-check', heal: 'heart', revive: 'heart', buff: 'trending-up', reset: 'rotate-ccw', continue: 'arrow-right' };
+function progressV3HTML(R) {
+  const rooms = dg.data.rooms || [];
+  const ic = { fight: I.sword, horde: I.horde, elite: I.fire, miniboss: I.crown, treasure: I.chest, rest: I.heart, choice: I.split, guardian: I.skull, unknown: I.q };
+  const dots = rooms.map((rm, i) => {
+    const n = i + 1;
+    const state = n < R.room ? 'done' : n === R.room ? 'now' : 'next';
+    const type = n === R.room && R.state?.room_type ? R.state.room_type : rm.type;
+    return `${i ? `<i class="u3-dgc-link${n <= R.room ? ' is-done' : ''}"></i>` : ''}<span class="u3-dgc-dot is-${state} t-${esc(type)}" title="${esc(ROOM[type] || type)}">${state === 'done' ? icon3('check') : ic[type] || I.q}</span>`;
+  }).join('');
+  const g = rooms[4];
+  return `<div class="u3-dgc-prog"><div class="u3-dgc-fl"><span class="u3-label">Floor ${R.floor}</span><b>Room ${R.room} of 5</b></div><div class="u3-dgc-dots">${dots}</div>${g?.name ? `<span class="u3-dgc-guard">Guardian: ${esc(g.name)}</span>` : ''}</div>`;
+}
+function chipsV3HTML(st) {
+  const pend = st.pend || {}, bank = st.bank || {};
+  const buff = Math.round(((st.buff || 1) - 1) * 100);
+  const loot = (b) => `${fmt(b.shards)}${(b.cards || []).length ? ` +${b.cards.length}${icon3('layers', 'sm')}` : ''}`;
+  return `<div class="u3-dgc-chips"><span class="u3-dgc-chip is-risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${loot(pend)}</b><i>at risk</i></span>`
+    + `<span class="u3-dgc-chip is-bank" title="Banked loot: safe. Yours when the run ends.">${icon3('lock')}<b>${loot(bank)}</b><i>banked</i></span>`
+    + `<span class="u3-dgc-chip" title="The run damage bonus">${icon3('trending-up')}<b>+${buff}%</b><i>damage</i></span></div>`;
+}
+function chooseV3HTML(R, st) {
+  const offers = st.offers || [];
+  const offer = (o, i) => {
+    const t = offerInfo(o);
+    const ic = o.kind === 'shards' ? COIN : OFFER_ICON[o.kind] ? icon3(OFFER_ICON[o.kind], '2xl') : t[0];
+    const tier = TIER[o.tier];
+    return `<button type="button" class="u3-dgc-offer is-t${tier ? o.tier : 0} k-${esc(o.kind)}" data-choose="${i}">${tier ? `<span class="u3-dgc-tier">${tier[0]}</span>` : ''}<span class="u3-dgc-ic">${ic}</span><b>${t[1]}</b>${t[2] ? `<small>${t[2]}</small>` : ''}</button>`;
+  };
+  return `<div class="u3-dgc ph-choose"><div class="u3-dgc-hud">${progressV3HTML(R)}${chipsV3HTML(st)}</div>
+    <section class="u3-dgc-panel">${musicBtnHTML()}<span class="u3-label u3-dgc-k">Room cleared</span><h2 class="u3-dgc-h">Choose a reward</h2><div class="u3-dgc-offers n${offers.length}">${offers.map(offer).join('')}</div></section>
+  </div>`;
+}
+// Measured fit (UI-48): when the drawn layout is too high for the stage (a short phone), the stage gets .is-tight (smaller
+// icons and gaps, the tier chip beside the name). It is measured again after the fonts load and after a resize.
+let chooseRO = null;
+function fitChooseV3(main) {
+  chooseRO?.disconnect(); chooseRO = null;
+  const box = main.querySelector('.u3-dgc');
+  if (!box) return;
+  const measure = () => {
+    box.classList.toggle('is-fill', cls3() === 'medium' && box.clientHeight > box.clientWidth);   // a tall tablet (the stage itself is taller than wide, F-1): the offers stack and fill the stage
+    box.classList.remove('is-tight'); if (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) box.classList.add('is-tight'); };
+  measure();
+  document.fonts?.ready.then(() => { if (box.isConnected) measure(); });
+  if (typeof ResizeObserver === 'function') { chooseRO = new ResizeObserver(() => { if (box.isConnected) measure(); }); chooseRO.observe(box); }
 }
 // The chest (item 14): closed until tapped; then the lid opens, its tier glows, the loot shows.
 function chestHTML(st) {
@@ -1124,6 +1176,7 @@ async function choose(pick) {
   await load(); paint();
 }
 function wireChoose(main) {
+  fitChooseV3(main);
   main.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', () => choose(Number(b.dataset.choose))));
   const box = main.querySelector('.dg-chestbox');
   // The 3D chest (a real model with its open animation); the drawn chest stays as the fallback.
