@@ -159,6 +159,13 @@ export function mountMemberPicker(host, opts) {
         if (!over()) break;
       }
     }
+    // Still too short (tiny, a landscape phone with the safe insets): the last sections go, then the last tiles of
+    // the first section, so that nothing shows cut (3.3). The search finds every member.
+    const secs = [...body.querySelectorAll('.u3-mp-sec')];
+    while (over() && secs.length > 1) secs.pop().remove();
+    const first = secs[0]?.querySelector('.u3-mp-sec__tiles');
+    while (over() && first?.children.length) first.lastElementChild.remove();
+    if (over() || (first && !first.children.length)) secs[0]?.remove();
   }
 
   // ---- the search and its suggest list (UI-29, unchanged look: avatar, name with the match in gold) ----

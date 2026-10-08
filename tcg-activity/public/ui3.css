@@ -1036,6 +1036,10 @@ body[data-size="compact-land"] .u3-mp-tile--list .u3-mp-tile__pick { min-height:
   background: linear-gradient(135deg, var(--avatar-fallback-start), var(--avatar-fallback-end)); box-shadow: 0 0 0 var(--bw-2) var(--gold);
   color: var(--text-on-color); font-size: calc(var(--mp-av) * 0.4); font-weight: var(--fw-heading); }
 .u3-mp-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* tiny (D-06, the small live view UI-59 comes later): no top bar, so the search row ends left of the Discord corner zone
+   (2.3, G-013), and only the search stays in it (no room for "?" and Pending) */
+body[data-size="tiny"] .u3-mp__tools { margin-right: var(--corner-w); }
+body[data-size="tiny"] .u3-mp__tools > :not(.u3-mp__find) { display: none; }
 /* the Trades tab under v3 (UI-65 in Trades, D-43): one panel with the Member picker. UI-25 adds Pending (D-32). */
 .u3-trades { box-sizing: border-box; height: 100%; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--u3-pad) var(--sp-3); }
 .u3-trades__panel { box-sizing: border-box; flex: 1 1 auto; min-height: 0; padding: var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
