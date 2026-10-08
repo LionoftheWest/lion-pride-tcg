@@ -25,6 +25,7 @@ import { clientIp, createLimiter, createWhoAmI } from './guards.js';
 import { createBalance, ascendCost as costOf, dailyCardCap, publicBalance } from './balance.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
+import { ui3Css } from './src/ui3/css-parts.js';
 import { bestSquad } from './src/squad-pick.js';
 import { selectAll } from './src/select-all.js';
 import { rankByName } from './src/name-rank.js';
@@ -54,7 +55,9 @@ const cssVersion = createHash('sha1').update(readFileSync(join(PUBLIC, 'style.cs
 // Every other stylesheet link (the ui-v2*.css files) gets its own content version the
 // same way: without it, Discord served a stale ui-v2-open.css after a deploy (the new
 // reveal ran with the old 420px column, 2026-09-27).
-const cssV = (name) => createHash('sha1').update(readFileSync(join(PUBLIC, name))).digest('hex').slice(0, 8);
+// /ui3.css is joined from public/ui3.css and public/ui3/*.css (src/ui3/css-parts.js); its version is the joined text.
+const ui3Body = ui3Css(PUBLIC);
+const cssV = (name) => createHash('sha1').update(name === 'ui3.css' ? ui3Body : readFileSync(join(PUBLIC, name))).digest('hex').slice(0, 8);
 const indexHtml = readFileSync(join(PUBLIC, 'index.html'), 'utf8')
   .replace('__BUNDLE__', bundleName)
   .replace('__CSSV__', cssVersion)
@@ -298,6 +301,10 @@ app.get(['/', '/index.html'], (req, res) => {
 // https://lionpridetcg.duckdns.org/app/terms and /app/privacy (Caddy strips /app).
 app.get('/terms', (req, res) => res.sendFile(join(PUBLIC, 'legal', 'terms.html')));
 app.get('/privacy', (req, res) => res.sendFile(join(PUBLIC, 'legal', 'privacy.html')));
+app.get('/ui3.css', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');   // as every unhashed stylesheet (express.static below); the link has ?v=
+  res.type('css').send(ui3Body);
+});
 app.use(express.static(PUBLIC, {
   setHeaders: (res, path) => {
     const base = path.split(/[\\/]/).pop();
