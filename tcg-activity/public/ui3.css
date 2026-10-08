@@ -435,6 +435,19 @@ body.ui-v2.ui-v3[data-size="compact-land"] #main > .v2-subtabs :is(.dg-tab, .seg
 body.ui-v2.ui-v3[data-size="compact-port"] #main > .v2-subtabs :is(.dg-tab, .seg > button) { flex: 1 1 0; justify-content: center; padding: 0 var(--sp-1); font-size: var(--fs-caption); gap: var(--sp-1); }
 body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .u3-tabdot { display: inline-flex; }
 body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .ex-q { margin-left: var(--sp-2); flex: none; width: var(--u3-tab); height: var(--u3-tab); min-width: 0; padding: 0; }
+/* D-117: a low landscape phone (body[data-low], size-class.js): the sub-tabs sit in the top bar row, right of the emblem,
+   as icon tabs (the name is the aria-label) with the "?" at the end; the screens get the row height back (--u3-row = none). */
+body.ui-v2.ui-v3[data-size][data-low] { --u3-row: max(var(--u3-none), calc(var(--corner-h) - var(--u3-bar) - var(--u3-sa-t))); }   /* the content starts under the Discord corner zone (2.3) */
+body.ui-v2.ui-v3[data-size][data-low] .u3-logo__word { display: none; }
+body.ui-v2.ui-v3[data-size][data-low] #main > .v2-subtabs { top: calc(var(--u3-sa-t) + (var(--u3-bar) - var(--u3-tab)) / 2); left: calc(var(--u3-sa-l) + var(--u3-pad) + var(--emblem) + var(--sp-3));
+  z-index: var(--z-shell); padding: 0; border: 0; background: none; gap: var(--sp-1); }
+body.ui-v2.ui-v3[data-size][data-low] #main > .v2-subtabs :is(.dg-tab, .seg > button) { width: var(--u3-tab); padding: 0; justify-content: center; }
+body.ui-v2.ui-v3[data-size][data-low] #main > .v2-subtabs .u3-tab__label { display: none; }
+body.ui-v2.ui-v3[data-size][data-low] #topbar { gap: var(--sp-2); }
+body.ui-v2.ui-v3[data-size][data-low] #topbar .topright { gap: var(--sp-1); }
+body.ui-v2.ui-v3[data-size][data-low] #main > .v2-subtabs { gap: var(--u3-none); }
+body.ui-v2.ui-v3[data-size][data-low].u3-low-tight #topbar .u3-logo { display: none; }
+body.ui-v2.ui-v3[data-size][data-low].u3-low-tight #main > .v2-subtabs { left: calc(var(--u3-sa-l) + var(--u3-pad)); }
 
 /* ---- Open window (UI-33, D-80 to D-90): the sets, then the counts. A sheet on the dock edge on compact-port, a panel
    above OPEN on the other classes. The dock stays uncovered, so a tap on OPEN closes the window (src/ui3/open-window.js).
