@@ -1050,10 +1050,8 @@ function showPacksV3(packs, set) {
   const stage = el('stage');
   stage.className = 'open v2-multi u3-multi';
   stage.innerHTML = `<div class="mr-wrap full"><section class="mr-main u3-mwait" role="dialog" aria-modal="true" aria-label="Pack reveal">
-      <div class="mr-head u3-mhead" aria-hidden="true"></div>
       <div class="u3-mpacks" id="u3Packs">${packs.map((_, i) => `<button type="button" class="u3-mpack" data-p="${i}" aria-label="Open the packs">`
-        + `<svg class="u3-pack__clip" viewBox="0 0 389 703" overflow="visible" aria-hidden="true" focusable="false"><image href="${clipUrl(s, 'idle_loop')}" x="-205" y="-261" width="800" height="1120"/></svg></button>`).join('')}</div>
-      <p class="u3-mhint" id="u3Hint">Swipe to open</p></section></div>`;
+        + `<svg class="u3-pack__clip" viewBox="0 0 389 703" overflow="visible" aria-hidden="true" focusable="false"><image href="${clipUrl(s, 'idle_loop')}" x="-205" y="-261" width="800" height="1120"/></svg></button>`).join('')}<p class="u3-mhint" id="u3Hint">Swipe to open</p></div></section></div>`;
   fitPacksV3();
   window.addEventListener('resize', fitPacksV3);
   const area = el('u3Packs');
@@ -1074,14 +1072,21 @@ function fitPacksV3() {
   const area = el('u3Packs');
   if (!area) { window.removeEventListener('resize', fitPacksV3); return; }
   const cs = getComputedStyle(area);
-  const gap = parseFloat(cs.columnGap) || 0;
-  const n = area.querySelectorAll('.u3-mpack').length;
-  const fit = fitPacks(n, area.clientWidth, area.clientHeight, gap);
+  const gap = parseFloat(cs.rowGap) || 0;
+  const btns = [...area.querySelectorAll('.u3-mpack')].sort((a, b) => a.dataset.p - b.dataset.p);
+  const hint = el('u3Hint');   // the hint is the last line of the pack area: the packs and the hint are centered together
+  const fit = fitPacks(btns.length, area.clientWidth, area.clientHeight - (hint?.offsetHeight || 0) - gap, gap);
   area.style.setProperty('--u3-pw', `${fit.pw}px`);
-  area.querySelectorAll('.u3-mbreak').forEach((b) => b.remove());
-  const btns = [...area.querySelectorAll('.u3-mpack')];
+  // one row box for each row of the fit (balanced rows)
+  area.querySelectorAll('.u3-mrow').forEach((r) => r.remove());
   let at = 0;
-  fit.rows.slice(0, -1).forEach((len) => { at += len; btns[at - 1].insertAdjacentHTML('afterend', '<span class="u3-mbreak" aria-hidden="true"></span>'); });
+  for (const len of fit.rows) {
+    const row = document.createElement('div');
+    row.className = 'u3-mrow';
+    row.append(...btns.slice(at, at + len));
+    at += len;
+    area.insertBefore(row, hint);
+  }
 }
 
 function openPacksV3(rare) {
@@ -1113,6 +1118,7 @@ function openPacksV3(rare) {
       newTag: '<i class="mr-newtag u3-newmark"><span aria-hidden="true">✦</span><span class="u3-newmark__t">New</span></i>',
       onFit: (grid, cw) => { grid.dataset.newmark = newMark(cw); },
       stageClass: 'u3-multi',
+      cardLabel: (c, i, n) => `Card ${i + 1} of ${n}`,
     });
   }, starts[starts.length - 1] + RARE_SFX_MS);
 }

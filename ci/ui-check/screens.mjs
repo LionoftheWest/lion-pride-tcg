@@ -62,7 +62,7 @@ export function ownerOf(screen, where) {
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
   // The pack reveal stage covers the screen under it: a defect in the stage belongs to the reveal screen.
   // A path keeps 3 levels, so the stage parts are named too (the pack, the cards, the bar, the effects).
-  if (/#stage[a-z]*\b|\.u3-reveal|\.u3-pack|\.u3-mpack|\.u3-mhint|\.u3-mwait|\.u3-newmark|\.reveal-grid|\.fc\b|\.pf\b|\.pf-face|\.react\b|\.u3-reacts|\.tap-prompt|\.sunrays|\.rare-banner|\.spark\b|\.mr-/.test(where)) return SCREENS[screen].id;
+  if (/#stage[a-z]*\b|\.u3-reveal|\.u3-pack|\.u3-mpack|\.u3-mhint|\.u3-mrow|\.u3-mwait|\.u3-newmark|\.reveal-grid|\.fc\b|\.pf\b|\.pf-face|\.react\b|\.u3-reacts|\.tap-prompt|\.sunrays|\.rare-banner|\.spark\b|\.mr-/.test(where)) return SCREENS[screen].id;
   if (/#(v2Shards|shopBtn)[a-z]*\b/.test(where)) return 'UI-42';
   if (/(^|\s|>\s*)#(topbar|dock|shardsBtn|dailyBtn|helpBtn|bellBtn|boardBtn|reportBtn|avatarBtn|dockOpen|menuBtn|v2Avatar)[a-z]*\b/.test(where) || /\.dk\b/.test(where)) return 'UI-01';
   if (/v2-subtabs|dg-tabs|#commTabs|#colTabs/.test(where)) return 'UI-02';

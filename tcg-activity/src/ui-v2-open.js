@@ -54,7 +54,7 @@ export function showMultiReveal(deps, packs, opts = {}) {
       <div class="mr-head"><h2>${items.length} cards</h2><span class="grow"></span>
         <span class="mr-flip mono" id="mrFlip">0 / ${items.length}</span>
         <button class="v2-btn gold" id="mrAll">Reveal all</button><button class="v2-icon" id="mrClose" aria-label="Close">✕</button></div>
-      <div class="mr-grid" id="mrGrid">${items.map((c, i) => `<button class="mr-card r-${c.rarity}${(RANK[c.rarity] ?? 0) >= 2 ? ' hot' : ''}" data-i="${i}">
+      <div class="mr-grid" id="mrGrid">${items.map((c, i) => `<button class="mr-card r-${c.rarity}${(RANK[c.rarity] ?? 0) >= 2 ? ' hot' : ''}" data-i="${i}"${opt.cardLabel ? ` aria-label="${esc(opt.cardLabel(c, i, items.length))}"` : ''}>
           <span class="mr-in"><span class="mr-face mr-back"><img src="${esc(d.cardBack())}" alt=""></span>
           <span class="mr-face mr-front"><img src="${revealThumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}">${c.isNew ? (opt.newTag || '<i class="mr-newtag">NEW</i>') : ''}</span></span></button>`).join('')}</div>
     </section>
@@ -89,6 +89,7 @@ function flip(b) {
   // A card already face up opens in the zoomed 3D view (the reveal stays behind it).
   if (b.classList.contains('up')) { d.openViewer?.(items[Number(b.dataset.i)]); return; }
   b.classList.add('up');
+  if (opt.cardLabel) { const t = items[Number(b.dataset.i)]; b.setAttribute('aria-label', `${t.name}, ${d.RARITY_LABEL?.[t.rarity] || t.rarity}`); }
   flipped += 1;
   const c = items[Number(b.dataset.i)];
   if ((RANK[c.rarity] ?? 0) >= 2) { b.classList.add('mr-burst'); d.SFX?.play?.('rare'); } else d.SFX?.play?.('flip');
