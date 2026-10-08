@@ -188,7 +188,7 @@ body[data-size="compact-port"] .u3-dialog { width: 100%; padding: var(--sp-5); }
 /* ---- Pager (5.2, D-36, D-53): "1 / N", centered under its grid ---- */
 /* position, padding, gap and flex reset: style.css fixes every <nav> to the screen bottom under 620 px (the old mobile tab bar) */
 .u3-pager { box-sizing: content-box; position: static; padding: 0; gap: 0; flex-wrap: nowrap; display: inline-flex; align-items: center; height: var(--ctl-sm); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); margin-inline: auto; }
-.u3-pager__arrow { flex: none; padding: 0; display: inline-flex; align-items: center; justify-content: center; width: var(--ctl-sm); height: 100%; border-radius: var(--rad-md); color: var(--text-muted); }
+.u3-pager__arrow { flex: none; min-width: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; width: var(--ctl-sm); height: 100%; border-radius: var(--rad-md); color: var(--text-muted); }
 .u3-pager__label { min-width: calc(var(--sp-7) + var(--sp-2)); padding: 0 var(--sp-1); display: inline-flex; justify-content: center; font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 body[data-input="coarse"] .u3-pager { height: var(--hit); }
 body[data-input="coarse"] .u3-search__input { min-height: var(--hit); box-sizing: border-box; }
@@ -705,3 +705,127 @@ body[data-size="compact-land"] .u3-dg-tabs .u3-seg__item { padding-inline: var(-
 .u3-dg-prow .u3-dg-tabs { flex: 1 1 auto; min-width: 0; }
 .u3-dg-prow .u3-dg-timer { padding: var(--sp-2) var(--sp-3); }
 .u3-dg-prow .u3-dg-timer span { display: none; }
+
+/* ==== UI-36 Dailies window (src/ui3/dailies.js, ui-v2-dailies.js; design repo UI-36/approved, review-1) ====
+   A 2-column panel under the top bar on medium (landscape) and expanded, a 2-column window in the safe frame on
+   compact-land (it covers the top bar), a 1-column panel on medium portrait and a bottom sheet on the dock edge on
+   compact-port (as tall as its content). The layout values are custom properties that the class rules set. */
+.u3-dl { --dl-cols: repeat(2, minmax(0, 1fr)); --dl-ck-cols: auto auto minmax(0, 1fr) auto; --dl-ck-areas: "ico main streak end";
+  --dl-sum-cols: minmax(0, 1fr) auto; --dl-sum-areas: "k k" "nums legend" "seg seg"; --dl-pad: var(--sp-4); --dl-row-pad: var(--sp-2);
+  position: fixed; z-index: var(--z-sheet); top: calc(var(--topbar-h) - var(--sp-2)); right: var(--sp-5); width: calc(var(--sheet-side-w) * 2);
+  max-width: calc(100% - var(--sp-5) * 2); max-height: calc(100% - var(--topbar-h) - var(--u3-dock-b) - var(--dock-h)); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--dl-pad); overflow: hidden;
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  color: var(--text-primary); animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top right; }
+.u3-dl.hidden { display: none; }
+body.ui-v3[data-size] .u3-dl { --text-muted: var(--u3-text-muted); }
+/* medium portrait: one column, today's panel width (D-46: a tall area stacks) */
+@media (orientation: portrait) {
+  body.ui-v3[data-size="medium"] .u3-dl { width: calc(var(--sheet-side-w) + var(--sp-5)); --dl-cols: minmax(0, 1fr); --dl-ck-cols: auto minmax(0, 1fr) auto;
+    --dl-ck-areas: "ico main end" "streak streak streak"; --dl-sum-cols: minmax(0, 1fr); --dl-sum-areas: "k" "nums" "seg" "legend"; }
+}
+/* compact-port: a sheet on the dock edge, one column (6.2 Sheet bottom; 3.4) */
+body.ui-v3[data-size="compact-port"] .u3-dl { --dl-cols: minmax(0, 1fr); --dl-ck-cols: auto minmax(0, 1fr) auto; --dl-ck-areas: "ico main end" "streak streak streak";
+  --dl-sum-cols: minmax(0, 1fr); --dl-sum-areas: "k" "nums" "seg" "legend";
+  top: auto; left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none;
+  bottom: calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-1)); max-height: calc(100% - var(--u3-dock-b) - var(--dock-h) - var(--sp-1) - var(--u3-sa-t) - var(--sp-1-5));
+  border-radius: var(--rad-sheet); animation-name: kf-rise; transform-origin: bottom center; --dl-row-pad: var(--sp-2); }
+/* tight (measured, ui-v2-dailies.js fitV3: the content is taller than the room, for example 375x667): smaller gaps */
+body.ui-v3[data-size] .u3-dl.is-tight { --dl-pad: var(--sp-3); --dl-row-pad: var(--sp-1); gap: var(--sp-2); }
+.u3-dl.is-tight .u3-dl__list { gap: var(--sp-1); }
+.u3-dl.is-tight .u3-dl__sum { padding: var(--sp-2) var(--sp-3); row-gap: var(--sp-1-5); }
+.u3-dl.is-tight .u3-dl__head { margin-block: calc(var(--sp-1) * -1); }
+.u3-dl.is-tight :is(.u3-dl__packs, .u3-dl__shards) b { font-size: var(--fs-heading); }
+.u3-dl.is-tight .u3-dl-task { row-gap: var(--sp-1); }
+.u3-dl.is-tight .u3-dl-task__main { gap: 0; }
+.u3-dl.is-tight .u3-dl-task__name { font-size: var(--fs-body); }
+.u3-dl.is-tight :is(.u3-dl-chip, .u3-dl-mark, .u3-dl-day) { height: var(--chip-sm); }
+.u3-dl.is-tight .u3-dl-mark { width: var(--chip-sm); }
+.u3-dl.is-tight .u3-dl-chip { padding: 0 var(--sp-1-5); font-size: var(--fs-caption); }
+/* compact-land: the safe frame width, from the top (2.3; the window covers the top bar, as UI-24) */
+body.ui-v3[data-size="compact-land"] .u3-dl { --dl-pad: var(--sp-3); --dl-row-pad: var(--sp-2); top: calc(var(--u3-sa-t) + var(--sp-1-5));
+  left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none;
+  max-height: calc(100% - var(--u3-sa-t) - var(--u3-sa-b) - var(--sp-1-5) * 2); gap: var(--sp-2); border-radius: var(--rad-sheet); }
+/* the header keeps the close button left of the Discord corner zone (2.3, G-013), as the top bar does */
+body.ui-v3[data-size="compact-land"] .u3-dl__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-1-5) - var(--dl-pad))); }
+body.ui-v3[data-size="tiny"] .u3-dl { display: none; }
+
+.u3-dl__head { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-dl__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-dl__reset { margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-1-5); min-height: var(--ctl-sm); padding: 0 var(--sp-3);
+  border-radius: var(--rad-pill); background: var(--surface-2); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); text-align: center; }
+body.ui-v3[data-size="compact-port"] .u3-dl__reset { font-size: var(--fs-caption); padding: 0 var(--sp-2); }
+.u3-dl__head > .u3-ibtn { margin-left: var(--sp-1); }
+.u3-dl__empty { margin: 0; font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-dl__loading { height: calc(var(--menu-tile) * 2); border-radius: var(--rad-lg); background: var(--surface-2); animation: kf-pulse var(--dur-celebrate) var(--ease-in-out) infinite; }
+
+/* Today: the packs and Shards of the day, the cap segments, the legend */
+.u3-dl__sum { display: grid; grid-template-columns: var(--dl-sum-cols); grid-template-areas: var(--dl-sum-areas); align-items: end; gap: var(--sp-2) var(--sp-4);
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-lg); background: var(--gold-a10); border: var(--bw-1) solid var(--gold-a35); }
+.u3-dl__k { grid-area: k; }
+.u3-dl__nums { grid-area: nums; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-5); min-width: 0; }
+.u3-dl__packs, .u3-dl__shards { display: inline-flex; align-items: baseline; gap: var(--sp-2); white-space: nowrap; }
+.u3-dl__packs b, .u3-dl__shards b { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); font-variant-numeric: tabular-nums; }
+.u3-dl__packs b { color: var(--gold); }
+.u3-dl__packs span { font-family: var(--font-num); font-size: var(--fs-stat); color: var(--text-secondary); }
+.u3-dl__shards { align-self: center; align-items: center; }
+.u3-dl__shards b { color: var(--cur-shards); }
+.u3-dl__shards span { font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-dl__all { grid-column: 1 / -1; display: flex; }
+.u3-dl-seg { grid-area: seg; display: flex; gap: var(--sp-1-5); height: var(--bar-md); }
+.u3-dl-seg__s { flex: 1 1 0; border-radius: var(--rad-pill); background: var(--surface-3); }
+.u3-dl-seg__s.is-on { background: var(--gold); }
+.u3-dl-seg__s.is-ready { background: none; box-shadow: inset 0 0 0 var(--bw-2) var(--gold); }
+.u3-dl__legend { grid-area: legend; display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); }
+.u3-dl__legend > span { display: inline-flex; align-items: center; gap: var(--sp-1-5); white-space: nowrap; }
+.u3-dl__legend i { width: var(--icon-xs); height: var(--icon-xs); border-radius: var(--sp-half); background: var(--surface-3); }
+.u3-dl__legend i.is-on { background: var(--gold); }
+.u3-dl__legend i.is-ready { background: none; box-shadow: inset 0 0 0 var(--bw-2) var(--gold); }
+
+/* The tasks: Check in on its own row, then the others in --dl-cols */
+.u3-dl__list { flex: none; display: grid; grid-template-columns: var(--dl-cols); gap: var(--sp-2); }
+/* the last step (measured, 3.5): when the tight spacing does not fit either (for example 667x375, or 375x667 with the
+   Discord insets), the tasks page "1 / N" (fitV3) */
+.u3-dl__pager { flex: none; display: flex; justify-content: center; }
+.u3-dl-task { --dl-c: var(--text-secondary); --dl-cs: var(--surface-3); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "ico main end";
+  align-items: center; gap: var(--sp-2) var(--sp-3); padding: var(--dl-row-pad) var(--sp-3); min-width: 0; border-radius: var(--rad-lg);
+  background: var(--surface-2); border: var(--bw-1) solid transparent; }
+.u3-dl-task.k-checkin { grid-column: 1 / -1; grid-template-columns: var(--dl-ck-cols); grid-template-areas: var(--dl-ck-areas); --dl-c: var(--warning); --dl-cs: var(--warning-soft); }
+.u3-dl-task.k-chat { --dl-c: var(--info); --dl-cs: var(--info-soft); }
+.u3-dl-task.k-hunt { --dl-c: var(--hunt-text); }
+.u3-dl-task.k-voice { --dl-c: var(--rarity-full_art); --dl-cs: var(--rarity-full_art-soft); }
+.u3-dl-task.k-social { --dl-c: var(--success); --dl-cs: var(--success-soft); }
+.u3-dl-task.is-go { background: var(--gold-a10); border-color: var(--gold-a50); }
+.u3-dl-task__ico { grid-area: ico; display: grid; place-items: center; width: var(--ctl-sm); height: var(--ctl-sm); border-radius: var(--rad-md); background: var(--dl-cs); color: var(--dl-c); }
+.u3-dl-task__main { grid-area: main; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.u3-dl-task__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+.u3-dl-task__name { font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-dl-task.is-claimed .u3-dl-task__name { color: var(--text-muted); }
+.u3-dl-task__sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); min-width: 0; }
+.u3-dl-task__note { font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-dl-task__count { flex: 0 1 auto; min-width: 0; font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.u3-dl-bar { flex: 1 1 var(--sp-7); min-width: var(--sp-6); height: var(--bar-md); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; }
+.u3-dl-bar > span { display: block; height: 100%; width: var(--u3-v, 0%); border-radius: inherit; background: var(--dl-c); }
+.u3-dl-task__end { grid-area: end; display: flex; justify-content: flex-end; }
+.u3-dl-task__chips { display: inline-flex; align-items: center; gap: var(--sp-1-5); }
+.u3-dl-task__auto { display: inline-flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+.u3-dl-chip { display: inline-flex; align-items: center; gap: var(--sp-1); height: var(--chip-md); padding: 0 var(--sp-2); border-radius: var(--rad-pill);
+  background: var(--surface-3); border: var(--bw-1) solid transparent; font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); white-space: nowrap; }
+.u3-dl-chip--paid { background: var(--success-soft); color: var(--success); }
+.u3-dl-chip--sm { height: var(--chip-sm); padding: 0 var(--sp-2); }
+.u3-dl-chip--shards { background: var(--cur-shards-soft); border-color: var(--cur-shards); color: var(--text-primary); }
+.u3-dl-streak { grid-area: streak; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-dl-day { display: inline-flex; align-items: center; height: var(--chip-md); padding: 0 var(--sp-3); border-radius: var(--rad-sm); background: var(--warning-soft); color: var(--warning);
+  font-family: var(--font-num); font-size: var(--fs-label); font-weight: var(--fw-heading); letter-spacing: var(--ls-label); text-transform: uppercase; white-space: nowrap; }
+.u3-dl-marks { display: inline-flex; flex-wrap: wrap; gap: var(--sp-1); }
+.u3-dl-mark { display: grid; place-items: center; width: var(--chip-md); height: var(--chip-md); border-radius: var(--rad-sm); background: var(--surface-3); color: var(--text-muted); }
+.u3-dl-mark.is-done { background: var(--warning-soft); color: var(--warning); }
+.u3-dl-mark.is-today { box-shadow: inset 0 0 0 var(--bw-2) var(--gold); color: var(--gold); }
+body.ui-v3[data-size="compact-land"] .u3-dl__sum { padding: var(--sp-2) var(--sp-3); }
+body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font-size: var(--fs-heading); }
+/* the claim toast (7.3): the top of the content on phones, under the panel on the wide classes; never over Claim or the dock */
+.u3-dl-toast { position: fixed; z-index: var(--z-toast); left: 0; right: 0; top: calc(var(--topbar-h) + var(--sp-3)); display: flex; justify-content: center; pointer-events: none; padding: 0 var(--sp-3); }
+.u3-dl-toast > .u3-toast { pointer-events: auto; }
+body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
+/* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
+body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
