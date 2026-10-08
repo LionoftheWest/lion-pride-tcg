@@ -948,3 +948,52 @@ body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font
 body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
 /* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
 body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
+
+/* ==== UI-61 Settings window (src/ui3/settings.js; design repo UI-61/approved, review-1; FEEDBACK D-80 item 27) ====
+   A panel under the top bar on medium and expanded (one column), a bottom sheet on the dock edge on compact-port, and
+   2 columns in the safe frame on compact-land (Discord pings left; Effects and Discord posts right; it covers the top
+   bar, as UI-24). Rows: 44 px, 48 px on touch; the whole row is the switch (9.1, 9.3). */
+.u3-st { --st-row: var(--hit); --st-gap: var(--sp-2);
+  position: fixed; z-index: var(--z-sheet); top: calc(var(--topbar-h) - var(--sp-2)); right: var(--sp-5); width: calc(var(--sheet-side-w) + var(--sp-5));
+  max-width: calc(100% - var(--sp-5) * 2); max-height: calc(100% - var(--topbar-h) - var(--u3-dock-b) - var(--dock-h)); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); overflow: hidden;
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  color: var(--text-primary); animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top right; }
+.u3-st.hidden { display: none; }
+body.ui-v3[data-size] .u3-st { --text-muted: var(--u3-text-muted); }
+body.ui-v3[data-input="coarse"] .u3-st { --st-row: calc(var(--hit) + var(--sp-1)); }
+body.ui-v3[data-size="compact-port"] .u3-st { top: auto; left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none;
+  bottom: calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-1)); max-height: calc(100% - var(--u3-dock-b) - var(--dock-h) - var(--sp-1) - var(--u3-sa-t) - var(--sp-1-5));
+  border-radius: var(--rad-sheet); animation-name: kf-rise; transform-origin: bottom center; }
+body.ui-v3[data-size="compact-land"] .u3-st { --st-row: var(--hit); top: calc(var(--u3-sa-t) + var(--sp-1-5)); left: calc(var(--u3-sa-l) + var(--sp-1-5));
+  right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none; max-height: calc(100% - var(--u3-sa-t) - var(--u3-sa-b) - var(--sp-1-5) * 2);
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-sheet); }
+body.ui-v3[data-size="tiny"] .u3-st { display: none; }
+/* tight (measured, settings.js): a short frame, for example 375x667 with the Discord insets */
+body.ui-v3[data-size] .u3-st.is-tight { --st-row: var(--hit); --st-gap: var(--sp-1); gap: var(--sp-2); padding-block: var(--sp-3); }
+
+.u3-st__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-st__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+/* compact-land: ✕ keeps left of the Discord corner zone (2.3, G-013) */
+body.ui-v3[data-size="compact-land"] .u3-st__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-1-5) - var(--sp-4))); }
+.u3-st__grid { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "fx" "pings" "posts"; gap: var(--sp-3) var(--sp-4); align-content: start; }
+body.ui-v3[data-size="compact-land"] .u3-st__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "pings fx" "pings posts"; grid-template-rows: auto 1fr; }
+.u3-st__sec { display: flex; flex-direction: column; gap: var(--st-gap); min-width: 0; }
+.u3-st__sec--fx { grid-area: fx; } .u3-st__sec--pings { grid-area: pings; } .u3-st__sec--posts { grid-area: posts; }
+.u3-st__label { margin: 0 0 var(--sp-half); }
+.u3-st__loading { height: calc(var(--menu-tile) * 3); border-radius: var(--rad-lg); background: var(--surface-2); animation: kf-pulse var(--dur-celebrate) var(--ease-in-out) infinite; }
+.u3-st-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: var(--st-row); padding: 0 var(--sp-4); box-sizing: border-box;
+  border-radius: var(--rad-md); background: var(--surface-2); cursor: pointer; }
+.u3-st-row.is-disabled { opacity: var(--item-disabled); cursor: not-allowed; }
+.u3-st-row__name { font-size: var(--fs-body); font-weight: var(--fw-small-strong); line-height: var(--lh-body); color: var(--text-primary); }
+.u3-st-row .u3-switch { min-height: 0; flex: none; }
+.u3-st-row .u3-switch.is-disabled, .u3-st-row.is-disabled .u3-switch { cursor: not-allowed; }
+body:not([data-last-input="pointer"]) .u3-st-row:has(.u3-switch__input:focus-visible) { box-shadow: var(--glow-focus); }
+.u3-st-row .u3-switch__input:focus-visible + .u3-switch__track { box-shadow: none; }   /* the row shows the ring (above) */
+body[data-last-input="pointer"] .u3-st .u3-ibtn:focus-visible { box-shadow: none; }   /* 9.3: the ring after a key only, as the shell */
+/* the Switch off look of the approved frames (UI-61 notes change 8; lane A request A1 asks the library for it):
+   the track with a control edge (9.4: 3:1) and a grey knob */
+.u3-st-row .u3-switch__input:not(:checked) + .u3-switch__track { box-shadow: inset 0 0 0 var(--bw-1) var(--border-strong); }
+.u3-st-row .u3-switch__input:not(:checked) + .u3-switch__track .u3-switch__knob { background: var(--text-secondary); }
+@media (hover: hover) and (pointer: fine) { .u3-st-row:not(.is-disabled):hover { background: var(--surface-3); } }
+.u3-st__sec > .u3-msg { padding: 0 var(--sp-1); }
