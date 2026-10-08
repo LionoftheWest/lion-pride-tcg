@@ -188,7 +188,8 @@ body[data-size="compact-port"] .u3-dialog { width: 100%; padding: var(--sp-5); }
 /* ---- Pager (5.2, D-36, D-53): "1 / N", centered under its grid ---- */
 /* position, padding, gap and flex reset: style.css fixes every <nav> to the screen bottom under 620 px (the old mobile tab bar) */
 .u3-pager { box-sizing: content-box; position: static; padding: 0; gap: 0; flex-wrap: nowrap; display: inline-flex; align-items: center; height: var(--ctl-sm); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); margin-inline: auto; }
-.u3-pager__arrow { flex: none; padding: 0; display: inline-flex; align-items: center; justify-content: center; width: var(--ctl-sm); height: 100%; border-radius: var(--rad-md); color: var(--text-muted); }
+/* min-width, border, background, font reset: style.css styles every "nav button" (min-width 134 px, a fill and a border) */
+.u3-pager__arrow { flex: none; padding: 0; min-width: 0; border: 0; background: none; font: inherit; display: inline-flex; align-items: center; justify-content: center; width: var(--ctl-sm); height: 100%; border-radius: var(--rad-md); color: var(--text-muted); }
 .u3-pager__label { min-width: calc(var(--sp-7) + var(--sp-2)); padding: 0 var(--sp-1); display: inline-flex; justify-content: center; font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 body[data-input="coarse"] .u3-pager { height: var(--hit); }
 body[data-input="coarse"] .u3-search__input { min-height: var(--hit); box-sizing: border-box; }
@@ -528,14 +529,14 @@ body[data-size="compact-land"] .u3-pk { padding: var(--sp-4); gap: var(--sp-3); 
   grid-template-columns: repeat(var(--pk-cols), var(--pk-tile)); grid-auto-rows: calc(var(--pk-tile) * var(--card-ratio)); }
 .u3-pk__pager { grid-area: pager; display: flex; justify-content: center; }
 .u3-pk__pager:empty { display: none; }
+.u3-pk__pager .u3-pager { width: max-content; }
 .u3-pk__foot { grid-area: foot; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-5); flex-wrap: wrap; }
 body[data-size="compact-land"] .u3-pk__foot { flex-direction: column; align-items: flex-start; justify-content: space-between; flex-wrap: nowrap; }
 body[data-size="compact-land"] .u3-pk__foot .u3-pk-checks { flex-direction: column; }
-body[data-size="compact-port"] .u3-pk__foot .u3-btn { margin-left: auto; }
 .u3-pk-none { margin: 0; align-self: center; color: var(--text-muted); font-size: var(--fs-body); }
 /* the slot row (C3): the chosen cards in pick order with an x; the next empty place has the gold outline */
 .u3-pk-slots { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); grid-template-columns: repeat(var(--pk-cap), minmax(0, var(--pk-slot, var(--card-thumb)))); }
-body[data-size="compact-land"] .u3-pk-slots { grid-template-columns: repeat(3, minmax(0, var(--pk-slot, var(--card-thumb)))); }
+body[data-size="compact-land"] .u3-pk-slots { grid-template-columns: repeat(var(--pk-scols), minmax(0, var(--pk-slot, var(--card-thumb)))); }
 body[data-size="compact-land"] .u3-pk-checks { font-size: var(--fs-small); gap: var(--sp-1); }
 body[data-size="compact-land"] .u3-pk__title { font-size: var(--fs-heading); }
 body[data-size="compact-land"] .u3-pk__tools { gap: var(--sp-2); }
@@ -577,6 +578,11 @@ body[data-input="coarse"] .u3-pk-card__info { width: var(--hit); height: var(--h
 .u3-pk-checks li, .u3-dg-checks li { display: inline-flex; align-items: center; gap: var(--sp-1-5); }
 .u3-pk-checks .u3-ico, .u3-dg-checks .u3-ico { color: var(--text-muted); }
 .u3-pk-checks .is-ok .u3-ico, .u3-dg-checks .is-ok .u3-ico { color: var(--success); }
+.u3-pk-checks .is-stat .u3-ico { color: var(--gold); }
+.u3-pk-checks .is-stat b { font-family: var(--font-num); font-weight: var(--fw-stat); }
+.u3-pk-checks .is-stat span { color: var(--text-muted); }
+.u3-pk__acts { display: flex; gap: var(--sp-3); margin-left: auto; }
+body[data-size="compact-land"] .u3-pk__acts { margin-left: 0; }
 .u3-pk-filters { width: min(100%, var(--dialog-w)); }
 .u3-pk-fgroup { display: flex; flex-direction: column; gap: var(--sp-2); }
 .u3-pk-fgroup .u3-seg { flex-wrap: wrap; }
@@ -705,3 +711,116 @@ body[data-size="compact-land"] .u3-dg-tabs .u3-seg__item { padding-inline: var(-
 .u3-dg-prow .u3-dg-tabs { flex: 1 1 auto; min-width: 0; }
 .u3-dg-prow .u3-dg-timer { padding: var(--sp-2) var(--sp-3); }
 .u3-dg-prow .u3-dg-timer span { display: none; }
+
+/* ==== UI-17 Hunt squad select (main.js huntSelectV3HTML; design repo UI-17/approved review-2; D-61) ====
+   The boss stage fills the content area (the Home slide camera), the squad strip sits at the bottom above the dock.
+   The stage shows the one-line "Top hunter" form when the Top 3 board does not fit (E7, measured in fitHuntV3). */
+body.ui-v2.ui-v3 .main-body.hunt.u3-hunt-view { --text-muted: var(--u3-text-muted); height: 100%; min-height: 0; padding: 0 var(--u3-pad) var(--sp-3); box-sizing: border-box; display: block; }
+.u3-hunt { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-hs-stage { flex: 1 1 0; min-height: 0; position: relative; overflow: hidden; cursor: pointer; display: grid; gap: var(--sp-2) var(--sp-5);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+.u3-hs-stage:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+body[data-size="medium"] .u3-hs-stage { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.u3-hs-text { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-hs-boss { position: relative; min-height: 0; }
+.u3-hs-boss canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.u3-hs-title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
+.u3-hs-tier { padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); background: color-mix(in srgb, var(--hunt) 85%, var(--bg-base)); color: var(--text-on-color); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-hs-name { margin: 0; min-width: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); text-transform: uppercase; color: var(--text-primary); }
+.u3-hs-facts { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-hs-atk, .u3-hs-weak { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); font-size: var(--fs-small); font-weight: var(--fw-small-strong); text-transform: uppercase; }
+.u3-hs-atk { color: var(--danger-text); background: var(--danger-soft); }
+.u3-hs-weak { color: var(--gold); background: var(--gold-a10); }
+.u3-hs-hp { position: relative; min-width: max-content; padding: 0 var(--sp-2); height: var(--chip-md); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.u3-hs-hp i { position: absolute; inset: 0 auto 0 0; width: var(--hp); background: var(--danger); }
+.u3-hs-hp span { position: relative; font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-primary); }
+.u3-hs-left { font-family: var(--font-num); font-size: var(--fs-body); color: var(--text-primary); }
+.u3-hs-top { min-height: 0; padding: var(--sp-3); border-radius: var(--rad-md); background: var(--bg-raised); border: var(--bw-1) solid var(--border); }
+.u3-hs-top:empty { display: none; }
+.u3-hs-board { list-style: none; margin: var(--sp-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-hs-board li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-small); color: var(--text-primary); }
+.u3-hs-board li b { flex: 1 1 auto; min-width: 0; }
+.u3-hs-board li em { margin-left: auto; font-style: normal; font-family: var(--font-num); color: var(--gold); }
+.u3-hs-rk { width: var(--sp-4); color: var(--text-muted); font-family: var(--font-num); }
+.u3-hs-line { display: none; margin: 0; font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-hs-line b { color: var(--text-primary); }
+.u3-hs-none { margin: var(--sp-2) 0 0; color: var(--text-muted); font-size: var(--fs-body); }
+.u3-hs-stage.is-line :is(.u3-hs-board, .u3-hs-top > .u3-label) { display: none; }
+.u3-hs-stage.is-line .u3-hs-line { display: block; }
+.u3-hs-stage.is-line .u3-hs-top { padding: var(--sp-2) var(--sp-3); }
+/* the squad strip */
+.u3-hs-squad { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: center; gap: var(--sp-3) var(--sp-5);
+  padding: var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+.u3-hs-info { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.u3-hs-count { display: flex; align-items: baseline; gap: var(--sp-2); }
+.u3-hs-count h2 { margin: 0 auto 0 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); color: var(--text-primary); }
+.u3-hs-count b { font-family: var(--font-num); color: var(--gold); font-size: var(--fs-heading); }
+.u3-hs-count span { font-family: var(--font-num); color: var(--text-muted); }
+.u3-hs-power { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); color: var(--gold); }
+.u3-hs-power b { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-hs-power em { font-style: normal; font-family: var(--font-num); color: var(--success); }
+.u3-hs-syn { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-hs-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); min-width: 0; max-height: var(--chip-md); overflow: hidden; }
+.u3-hs-chip, .u3-hs-chips .syn-chip.more { display: inline-flex; align-items: center; gap: var(--sp-1); height: var(--chip-md); padding: 0 var(--sp-2); border-radius: var(--rad-pill);
+  border: var(--bw-1) solid var(--border-strong); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-hs-chip b { color: var(--gold); font-family: var(--font-num); }
+.u3-hs-act { display: flex; gap: var(--sp-2); }
+.u3-hs-act .u3-btn--primary { flex: 1 1 auto; }
+.u3-hs-ko { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); color: var(--text-secondary); font-size: var(--fs-body); }
+.u3-hs-head { display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-hs-slotbox { min-width: 0; }
+.u3-hs-slots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(8, minmax(0, var(--card-tile))); justify-content: center; gap: var(--sp-2); }
+.u3-hs-slot { aspect-ratio: 1 / var(--card-ratio); border-radius: var(--rad-md); border: var(--bw-1) solid var(--border-strong); background: var(--bg-raised); overflow: hidden; display: grid; place-items: center;
+  color: var(--text-muted); font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-heading); }
+.u3-hs-slot.is-next { border: var(--bw-2) solid var(--gold); }
+.u3-hs-slot.is-full { border: var(--bw-2) solid var(--u3-r); }
+.u3-hs-slot img { width: 100%; height: 100%; object-fit: cover; }
+/* portrait: the stage text beside the boss, the board under both; the strip: count + power, 4 x 2 slots, synergies, the buttons */
+body[data-size="compact-port"] .u3-hs-stage { flex: 0 1 auto; padding: var(--sp-3); gap: var(--sp-1) var(--sp-3); grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+body[data-size="compact-port"] .u3-hs-text { display: contents; }
+body[data-size="compact-port"] .u3-hs-stage { grid-template-areas: "a boss" "c boss" "d boss" "b b" "top top"; grid-template-rows: auto auto auto auto auto; }
+body[data-size="compact-port"] .u3-hs-title { grid-area: a; } body[data-size="compact-port"] .u3-hs-facts { grid-area: b; }
+body[data-size="compact-port"] .u3-hs-hp { grid-area: c; } body[data-size="compact-port"] .u3-hs-left { grid-area: d; }
+body[data-size="compact-port"] .u3-hs-top { grid-area: top; } body[data-size="compact-port"] .u3-hs-boss { grid-area: boss; }
+body[data-size="compact-port"] .u3-hs-name { font-size: var(--fs-stat); }
+body[data-size="compact-port"] .u3-hs-squad { flex: 1 1 0; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; padding: var(--sp-3); gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-hs-info { display: contents; }
+body[data-size="compact-port"] .u3-hs-head { grid-row: 1; flex-direction: row; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+body[data-size="compact-port"] .u3-hs-slotbox { grid-row: 2; min-height: 0; align-self: stretch; container-type: size; display: grid; place-items: center; }
+body[data-size="compact-port"] .u3-hs-power b { font-size: var(--fs-heading); }
+/* the larger of 4 x 2 and 8 in one row (the flex wrap follows): 4 x 2 on a tall phone, one row on a short one */
+body[data-size="compact-port"] .u3-hs-slots { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; width: 100%;
+  --hs-w: max(min(calc((100cqw - 3 * var(--sp-2)) / 4), calc((100cqh - var(--sp-2)) / 2 / var(--card-ratio))), min(calc((100cqw - 7 * var(--sp-2)) / 8), calc(100cqh / var(--card-ratio)))); }
+body[data-size="compact-port"] .u3-hs-slot { width: var(--hs-w); font-size: min(var(--fs-heading), calc(var(--hs-w) / 2)); }
+body[data-size="compact-port"] .u3-hs-syn { grid-row: 3; }
+body[data-size="compact-port"] .u3-hs-act { grid-row: 4; }
+body[data-size="compact-port"] .u3-hs-act .u3-btn { flex: 1 1 0; }
+/* landscape: a smaller name, the strip info column narrow */
+body[data-size="compact-land"] .u3-hs-stage { padding: var(--sp-3) var(--sp-4); }
+body[data-size="compact-land"] .u3-hs-name { font-size: var(--fs-heading); }
+body[data-size="compact-land"] .u3-hs-stage { grid-template-columns: minmax(0, 4fr) minmax(0, 1fr); padding: var(--sp-2) var(--sp-3); }
+body[data-size="compact-land"] .u3-hs-line { font-size: var(--fs-small); }
+.u3-hunt.is-tight .u3-hs-top { display: none; }
+.u3-hunt.is-tight .u3-hs-stage { padding: var(--sp-1) var(--sp-3); }
+.u3-hunt.is-tight .u3-hs-squad { padding: var(--sp-2); }
+.u3-hunt.is-tight .u3-hs-slots { grid-template-columns: repeat(8, minmax(0, var(--card-thumb))); }
+.u3-hunt.is-tight .u3-hs-text { grid-template-columns: minmax(0, auto) minmax(0, 1fr); grid-template-areas: "a c" "b d"; }
+.u3-hunt.is-tight .u3-hs-title { grid-area: a; flex-wrap: nowrap; }
+.u3-hunt.is-tight .u3-hs-facts { grid-area: b; grid-column: auto; }
+.u3-hunt.is-tight .u3-hs-hp { grid-area: c; min-width: 0; }
+.u3-hunt.is-tight .u3-hs-hp span { font-size: var(--fs-caption); }
+.u3-hunt.is-tight .u3-hs-left { grid-area: d; }
+.u3-hunt.is-tight .u3-hs-name { font-size: var(--fs-stat); }
+body[data-size="compact-land"] .u3-hs-text { display: grid; grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(0, 1fr); align-items: center; gap: var(--sp-1) var(--sp-3); align-content: start; }
+body[data-size="compact-land"] .u3-hs-facts { grid-column: 2 / -1; }
+body[data-size="compact-land"] .u3-hs-top { grid-column: 1 / -1; padding: 0; border: 0; background: none; }
+body[data-size="compact-land"] .u3-hs-hp { min-width: calc(var(--card-tile) * 2); }
+body[data-size="compact-land"] .u3-hs-squad { padding: var(--sp-3); gap: var(--sp-2) var(--sp-3); }
+body[data-size="compact-land"] .u3-hs-power b { font-size: var(--fs-stat); }
+body[data-size="compact-land"] .u3-hs-info { gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-hs-head { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
+body[data-size="compact-land"] .u3-pk__foot { display: contents; }
+body[data-size="compact-land"] .u3-pk__foot > .u3-pk-checks { grid-area: foot; align-self: start; }
+body[data-size="compact-land"] .u3-pk__acts { grid-area: pager; justify-self: end; align-self: center; margin: 0; }
+body[data-size="compact-land"] .u3-pk__pager { justify-self: start; }
+body[data-size="compact-land"] .u3-hs-count h2, body[data-size="compact-land"] .u3-hs-count b { font-size: var(--fs-stat); }
