@@ -1,0 +1,213 @@
+/* ==== UI-49 Dungeon room steps (ui-v2-dungeon.js chooseV3HTML, chestV3HTML, floorDoneV3HTML; design repo UI-49/approved; flag ui_v3) ====
+   Rest, Pick a door and the chest use the stage of UI-48 (.u3-dgc: the progress pill, the loot chips, the panel); this file
+   adds only what the steps need. Floor cleared is one panel on the stage. Every selector starts with .u3-dgs, so no other
+   screen changes. The sizes come from body[data-size] and from measuring the stage (.is-tight, .is-fill: fitChooseV3, fitFloorV3). */
+
+/* ---- the stage parts shared with UI-48 ---- */
+body[data-size="expanded"] .u3-dgs .u3-dgc-chip.is-bank { display: inline-flex; }   /* R9: the three counters are always whole */
+.u3-dgs .u3-dgc-offer:is(.k-door, .k-continue) { --tc: var(--gold); }
+.u3-dgs-line { margin: var(--u3-none) var(--u3-none) var(--sp-3); color: var(--text-secondary); font-size: var(--fs-body); line-height: var(--lh-body); }
+.u3-dgs .u3-dgc-offers { margin-top: var(--sp-3); }
+.u3-dgs .u3-dgc-h { margin-bottom: var(--sp-1); }
+.u3-dgs-line + .u3-dgc-offers { margin-top: var(--u3-none); }
+
+/* ---- the chest: the chest, then (when it is open) the tier, the Shards, the card face down and Continue ---- */
+.u3-dgs-chest { --dgs-w: calc(var(--avatar-xl) * 1.5); --dgs-card: var(--card-tile-max); display: grid; grid-template-columns: auto; grid-template-areas: "box"; justify-content: center; justify-items: center; align-items: center;
+  gap: var(--sp-3) var(--sp-4); margin-top: var(--sp-3); }
+.u3-dgs-chestbox { grid-area: box; position: relative; width: var(--dgs-w); aspect-ratio: 6 / 5; padding: var(--u3-none); border: 0; background: none; color: var(--tc); cursor: pointer; display: grid; place-items: center; border-radius: var(--rad-lg); }
+.u3-dgs-chestbox:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+.u3-dgs-fb { position: absolute; inset: var(--u3-none); display: grid; place-items: center; }
+.u3-dgs-fb svg { display: none; width: 60%; height: 60%; }
+.u3-dgs-fb i { width: 60%; height: 50%; border-radius: var(--rad-lg); background: color-mix(in srgb, var(--tc) 10%, transparent); }   /* the placeholder from the first paint: no art until the 3D chest is ready */
+.u3-dgs-chestbox.fail .u3-dgs-fb svg { display: block; }
+.u3-dgs-chestbox.fail .u3-dgs-fb i, .u3-dgs-chestbox.has3d .u3-dgs-fb { display: none; }
+.u3-dgs-cv { position: absolute; inset: var(--u3-none); width: 100%; height: 100%; z-index: var(--z-base); pointer-events: none; }
+.u3-dgs-chest.open .u3-dgs-chestbox { cursor: default; }
+.u3-dgs-loot { display: none; }
+.u3-dgs-chest.open { grid-template-columns: auto auto auto; grid-template-areas: "box box box" "ct ct ct" "sh cf bt"; }
+.u3-dgs-chest.open .u3-dgs-loot { display: contents; }
+.u3-dgs-ct { grid-area: ct; padding: var(--sp-1) var(--sp-3); border-radius: var(--rad-pill); border: var(--bw-1) solid var(--tc); color: var(--tc); background: color-mix(in srgb, var(--tc) 12%, transparent);
+  font-size: var(--fs-small); font-weight: var(--fw-label); line-height: var(--lh-small); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-dgs-sh { grid-area: sh; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+body.ui-v2 .u3-dgs-sh > svg { width: var(--ctl-icon); height: var(--ctl-icon); }
+.u3-dgs-sh b { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); }
+.u3-dgs-sh small { color: var(--text-secondary); font-size: var(--fs-body); line-height: var(--lh-body); }
+.u3-dgs-cf { grid-area: cf; flex: none; width: calc(var(--dgs-card) / var(--card-ratio)); height: var(--dgs-card); min-height: 0; padding: var(--u3-none); gap: var(--u3-none); }
+.u3-dgs-chest > .u3-btn, .u3-dgs-loot > .u3-btn { grid-area: bt; }
+/* the card turned up: it grows, and on a wide stage the chest moves to its left (the approved "card flipped" frames) */
+.u3-dgs-chest.open:has(.u3-dgs-cf .up) { --dgs-card: calc(var(--card-tile-max) * 1.5); }
+.u3-dgs-chest.open:has(.u3-dgs-cf .up) { grid-template-areas: "box sh cf" "ct . bt"; }
+/* the open chest has no hint line (it was used) */
+.u3-dgc-panel:has(.u3-dgs-chest.open) .u3-dgs-line { display: none; }
+/* the face-down card's caption (the real card face: name and rarity): no cut, no "...", at least the label size, wraps when the card is narrow */
+.u3-dgs .dg-flip .dg-nm { left: var(--sp-1); right: var(--sp-1); bottom: var(--sp-1); gap: var(--u3-none); }
+body.ui-v2 .u3-dgs .dg-flip .dg-nm b { flex: none; overflow: visible; white-space: normal; text-overflow: clip; font-size: max(var(--fs-label), 8cqw); line-height: var(--lh-label); }
+body.ui-v2 .u3-dgs .dg-flip .dg-nm small { flex: none; overflow: visible; white-space: normal; text-overflow: clip; font-size: max(var(--fs-label), 6.5cqw); line-height: var(--lh-label); letter-spacing: var(--u3-none); }
+
+/* a card face down shows no caption; a face-up card too narrow for the 11 px caption shows the real face only (it prints its name and rarity) */
+.u3-dgs .dg-flip:not(.up) .face.front { visibility: hidden; }
+.u3-dgs .dg-flips.is-nocap .dg-nm { display: none; }
+
+/* ---- Floor cleared ---- */
+.u3-dgs-fd { padding: var(--u3-none); background: none; gap: var(--u3-none); }
+.u3-dgs-fdp { --dgs-sw: calc(var(--card-tile-max) * 1.4); position: relative; flex: 1 1 0; min-height: 0; min-width: 0; box-sizing: border-box; overflow: hidden; display: grid; gap: var(--sp-3) var(--sp-4); padding: var(--sp-5);
+  grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "h stats" "lh lh" "fl fl" "btns btns";
+  border-radius: var(--rad-lg); border: var(--bw-1) solid var(--border);
+  background: linear-gradient(color-mix(in srgb, var(--bg-base) 70%, transparent), color-mix(in srgb, var(--bg-base) 92%, transparent)), url(/dungeon/room.webp) center / cover no-repeat; }
+.u3-dgs-fdh { grid-area: h; min-width: 0; align-self: start; }
+.u3-dgs-fdk { display: flex; align-items: center; gap: var(--sp-2); color: var(--text-secondary); }
+.u3-dgs-fdk svg { color: var(--gold); }
+.u3-dgs-fdp .u3-dgc-h { margin: var(--sp-2) var(--u3-none) var(--u3-none); }
+.u3-dgs-stats { grid-area: stats; align-self: start; display: grid; grid-template-columns: repeat(3, minmax(var(--dgs-sw), max-content)); gap: var(--sp-3); margin-right: calc(var(--hit) + var(--sp-3)); }
+.u3-dgs-stat { min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-3); border-radius: var(--rad-md); background: color-mix(in srgb, var(--surface-1) 80%, transparent); }
+.u3-dgs-sl { color: var(--text-secondary); font-size: var(--fs-small); line-height: var(--lh-small); }
+.u3-dgs-stat b { display: flex; align-items: center; gap: var(--sp-2); font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-stat); line-height: var(--lh-heading); white-space: nowrap; }
+body.ui-v2 .u3-dgs-stat b > svg { flex: none; width: var(--icon-xl); height: var(--icon-xl); }
+.u3-dgs-lh { grid-area: lh; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-dgs-lh h3 { margin: var(--u3-none); font-family: var(--font-display); font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-stat); }
+.u3-dgs-lh h3 small { margin-left: var(--sp-1); color: var(--text-muted); font-family: var(--font-num); font-size: var(--fs-stat); }
+.u3-dgs-fl { grid-area: fl; min-width: 0; min-height: 0; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: var(--sp-3); }
+.u3-dgs-none { grid-area: fl; align-self: center; justify-self: center; margin: var(--u3-none); color: var(--text-secondary); }
+.u3-dgs-btns { grid-area: btns; display: flex; justify-content: flex-end; gap: var(--sp-3); }
+.u3-dgs-btns .u3-btn { min-width: 0; }
+body.ui-v2.ui-v3 .u3-dgs-fdp .dg-music { position: absolute; top: var(--sp-3); right: var(--sp-3); width: var(--ctl-sm); height: var(--ctl-sm); box-sizing: border-box; padding: var(--u3-none);
+  border-radius: var(--rad-round); display: grid; place-items: center; cursor: pointer; z-index: var(--z-base); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); color: var(--gold); }
+body.ui-v2.ui-v3 .u3-dgs-fdp .dg-music.off { color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-dgs-fdp .dg-music svg { width: var(--icon-md); height: var(--icon-md); }
+body.ui-v2.ui-v3[data-input="coarse"] .u3-dgs-fdp .dg-music { width: var(--hit); height: var(--hit); }
+body.ui-v2.ui-v3 .u3-dgs-fdp .dg-music:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+
+/* ---- medium ---- */
+body[data-size="medium"] .u3-dgs .u3-dgc-panel { width: min(100%, calc(var(--dialog-w) * 1.8)); }
+body[data-size="medium"] .u3-dgs-chest { --dgs-w: calc(var(--avatar-xl) * 2); --dgs-card: calc(var(--card-tile-max) * 1.3); }
+body[data-size="medium"] .u3-dgs-chest.open:has(.u3-dgs-cf .up) { --dgs-card: calc(var(--card-tile-max) * 1.5); }
+/* a tall tablet (measured: the stage is taller than wide): Floor cleared stacks as on a phone */
+.u3-dgs-fd.is-fill .u3-dgs-fdp { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr) auto; grid-template-areas: "h" "stats" "lh" "fl" "btns"; }
+.u3-dgs-fd.is-fill .u3-dgs-fdh { padding-right: calc(var(--hit) + var(--sp-3)); }
+.u3-dgs-fd.is-fill .u3-dgs-stats { grid-template-columns: repeat(3, minmax(min-content, 1fr)); margin-right: var(--u3-none); }
+
+/* ---- compact-port ---- */
+body[data-size="compact-port"] .u3-dgs-chest { --dgs-w: calc(var(--avatar-xl) * 2); --dgs-card: calc(var(--card-tile-max) * 1.3); }
+body[data-size="compact-port"] .u3-dgs-chest.open:has(.u3-dgs-cf .up) { --dgs-card: calc(var(--card-tile-max) * 1.5); }
+body[data-size="compact-port"] .u3-dgs-chest.open, body[data-size="compact-port"] .u3-dgs-chest.open:has(.u3-dgs-cf .up) { grid-template-columns: auto auto; grid-template-areas: "box box" "ct ct" "sh cf" "bt bt"; }
+body[data-size="compact-port"] .u3-dgs-chest > .u3-btn, body[data-size="compact-port"] .u3-dgs-loot > .u3-btn { justify-self: center; }
+body[data-size="compact-port"] .u3-dgs-fdp { padding: var(--sp-4) var(--sp-3); gap: var(--sp-3); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr) auto; grid-template-areas: "h" "stats" "lh" "fl" "btns"; }
+body[data-size="compact-port"] .u3-dgs-fdh { padding-right: calc(var(--hit) + var(--sp-3)); }
+body[data-size="compact-port"] .u3-dgs-stats { grid-template-columns: repeat(3, minmax(min-content, 1fr)); margin-right: var(--u3-none); gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-dgs-stat { padding: var(--sp-2) var(--sp-3); }
+body[data-size="compact-port"] .u3-dgs-stat b { font-size: var(--fs-stat); line-height: var(--lh-stat); gap: var(--sp-1); }
+body[data-size="compact-port"] .u3-dgs-fdp .u3-dgc-h { font-size: var(--fs-title); line-height: var(--lh-title); }
+.u3-dgs-fd.is-fill .u3-dgs-btns, body[data-size="compact-port"] .u3-dgs-btns { flex-direction: column-reverse; align-items: stretch; }
+body[data-size="compact-port"] .u3-dgs-btns { gap: var(--sp-2); }
+
+/* ---- compact-land: the title and the counters on one row, the cards between "Cards found" and the buttons ---- */
+body[data-size="compact-land"] .u3-dgs .u3-dgc-panel { display: flex; flex-direction: column; align-self: stretch; flex: 1 1 0; min-height: 0; margin-block: var(--u3-none); padding: var(--sp-3) calc(var(--hit) + var(--sp-3)); }   /* the music button is in the corner of the panel: the content keeps clear of it on both sides (nothing overlaps) */
+body[data-size="compact-land"] .u3-dgs .u3-dgc-panel > .u3-dgc-h { margin-top: auto; }
+body[data-size="compact-land"] .u3-dgs .u3-dgc-panel > :last-child { margin-bottom: auto; }
+body.ui-v2.ui-v3[data-size="compact-land"] .u3-dgs .u3-dgc-panel .dg-music { position: absolute; top: var(--sp-3); right: var(--sp-3); grid-column: auto; grid-row: auto; }
+body[data-size="compact-land"] .u3-dgs .u3-dgc-offers { flex: none; }
+body[data-size="compact-land"] .u3-dgs .u3-dgs-line { display: none; }
+body[data-size="compact-land"] .u3-dgs-chest { --dgs-w: calc(var(--avatar-xl) * 1.2); --dgs-card: var(--card-tile); gap: var(--sp-2) var(--sp-4); margin-top: var(--sp-2); }
+body[data-size="compact-land"] .u3-dgs-chest.open, body[data-size="compact-land"] .u3-dgs-chest.open:has(.u3-dgs-cf .up) { grid-template-areas: "box ct ct ct" "box sh cf bt"; }
+body[data-size="compact-land"] .u3-dgs-chest.open:has(.u3-dgs-cf .up) { --dgs-card: calc(var(--card-tile-max) * 1.3); }
+body[data-size="compact-land"] .u3-dgs-chest .u3-dgs-chestbox { grid-row: 1 / span 2; }
+body[data-size="compact-land"] .u3-dgs-fdp { --dgs-sw: calc(var(--card-tile-max) * 1.25); padding: var(--sp-3) var(--sp-3); gap: var(--sp-2) var(--sp-3);
+  grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "h h stats stats" "lh fl fl btns"; }
+body[data-size="compact-land"] .u3-dgs-btns { justify-self: end; align-self: center; }
+body[data-size="compact-land"] .u3-dgs-fdp .u3-dgc-h { font-size: var(--fs-heading); line-height: var(--lh-heading); margin-top: var(--sp-1); }
+body[data-size="compact-land"] .u3-dgs-stat { padding: var(--sp-2) var(--sp-3); }
+body[data-size="compact-land"] .u3-dgs-stat b { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+body[data-size="compact-land"] .u3-dgs-lh { flex-direction: column; align-items: flex-start; justify-content: center; }
+body[data-size="compact-land"] .u3-dgs-fl { justify-content: flex-start; }
+body[data-size="compact-land"] .u3-dgs-btns { flex-direction: column; justify-content: center; }
+
+/* ---- tight (measured when the drawn layout is too high for the stage): smaller chest, cards, type and gaps; every function stays ---- */
+body.ui-v2 .u3-dgs.is-short .u3-dgs-chest, body.ui-v2 .u3-dgs.is-short .u3-dgs-chest.open:has(.u3-dgs-cf .up) { --dgs-w: calc(var(--avatar-xl) * 1.1); --dgs-card: var(--card-squad); gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-2); }
+body[data-size="compact-port"].ui-v2 .u3-dgs.is-short .u3-dgs-chest.open, body[data-size="compact-port"].ui-v2 .u3-dgs.is-short .u3-dgs-chest.open:has(.u3-dgs-cf .up) { grid-template-columns: auto auto auto; grid-template-areas: "box box box" "ct ct ct" "sh cf bt"; }
+.u3-dgs.is-short .u3-dgs-sh b { font-size: var(--fs-heading); line-height: var(--lh-heading); }
+body.ui-v2 .u3-dgs.is-short .u3-dgs-sh > svg { width: var(--icon-2xl); height: var(--icon-2xl); }
+.u3-dgs-fd.is-tight .u3-dgs-fdp { padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); --dgs-sw: var(--card-tile-max); }
+.u3-dgs-fd.is-tight .u3-dgs-fdp .u3-dgc-h { font-size: var(--fs-heading); line-height: var(--lh-heading); margin-top: var(--sp-half); }
+.u3-dgs-fd.is-tight .u3-dgs-stat { padding: var(--sp-1) var(--sp-2); gap: var(--u3-none); }
+.u3-dgs-fd.is-tight .u3-dgs-sl { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.u3-dgs-fd.is-tight .u3-dgs-stat b { font-size: var(--fs-small); line-height: var(--lh-small); }
+.u3-dgs-fd.is-tight .u3-dgs-lh h3, .u3-dgs-fd.is-tight .u3-dgs-lh h3 small { font-size: var(--fs-small); line-height: var(--lh-small); }
+
+/* ---- the counters on a narrow phone (375: measured in fitChooseV3: a chip is wider than its box) ---- */
+body[data-size="compact-port"] .u3-dgc:is(.is-tight, .is-wide) .u3-dgc-chip { padding: var(--u3-none) var(--sp-1); gap: var(--sp-half); font-size: var(--fs-label); }
+body[data-size="compact-port"] .u3-dgc:is(.is-tight, .is-wide) .u3-dgc-chip b { font-size: var(--fs-small); }
+body[data-size="compact-port"] .u3-dgc:is(.is-tight, .is-wide) .u3-dgc-chip b svg { width: var(--icon-xs); height: var(--icon-xs); }
+/* the Floor cleared counters: smaller icons on a phone */
+body[data-size="compact-port"] .u3-dgs-stat b > svg, body[data-size="compact-land"] .u3-dgs-stat b > svg { width: var(--icon-md); height: var(--icon-md); }
+body.ui-v2[data-size="compact-port"] .u3-dgs-stat b > svg, body.ui-v2[data-size="compact-land"] .u3-dgs-stat b > svg { width: var(--icon-md); height: var(--icon-md); }
+body[data-size="compact-port"] .u3-dgs-stat { padding: var(--sp-2); }
+body[data-size="compact-port"] .u3-dgs-fd.is-tight .u3-dgs-stat b, body[data-size="compact-land"] .u3-dgs-fd.is-tight .u3-dgs-stat b { font-size: var(--fs-small); gap: var(--sp-half); }
+/* tight on compact-land (667x375: the stage is about 170 px high): Floor cleared in one band, the counters beside a two-line title */
+body[data-size="compact-land"] .u3-dgs-fd.is-tight .u3-dgs-fdp { --dgs-sw: calc(var(--card-tile) * 1.15); padding: var(--sp-2) var(--sp-3); gap: var(--sp-1-5) var(--sp-3); }
+body[data-size="compact-land"] .u3-dgs-fd.is-tight .u3-dgs-fdk { letter-spacing: var(--u3-none); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+body[data-size="compact-land"] .u3-dgs-fd.is-tight .u3-dgs-btns { gap: var(--sp-1-5); }
+body[data-size="compact-land"] .u3-dgc:is(.is-tight, .is-wide) .u3-dgc-chip { padding: var(--u3-none) var(--sp-1-5); gap: var(--sp-half); }
+body[data-size="compact-land"] .u3-dgc:is(.is-tight, .is-wide) .u3-dgc-chip b { font-size: var(--fs-small); }
+body[data-size="compact-land"] .u3-dgs-fd.is-tight .u3-dgs-stats { grid-template-columns: repeat(3, auto); gap: var(--sp-1-5); }
+body[data-size="compact-land"] .u3-dgs-fd.is-tight .u3-dgs-stat { padding: var(--sp-1) var(--sp-2); }
+body[data-size="compact-land"] .u3-dgs-fd.is-tight .u3-dgs-fdk { gap: var(--sp-1); }
+body.ui-v2[data-size="compact-land"] .u3-dgs-fd.is-tight .u3-dgs-fdk svg { width: var(--icon-xs); height: var(--icon-xs); }
+/* tight on compact-land, the open chest: the tier under the chest, the loot beside it (the panel is about 125 px high) */
+body.ui-v2[data-size="compact-land"] .u3-dgs.is-short .u3-dgs-chest, body.ui-v2[data-size="compact-land"] .u3-dgs.is-short .u3-dgs-chest.open:has(.u3-dgs-cf .up) { --dgs-w: calc(var(--avatar-xl) * 0.75); --dgs-card: var(--card-thumb); gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-1); }
+body.ui-v2[data-size="compact-land"] .u3-dgs.is-short .u3-dgs-chest.open, body.ui-v2[data-size="compact-land"] .u3-dgs.is-short .u3-dgs-chest.open:has(.u3-dgs-cf .up) { grid-template-areas: "box sh cf bt" "ct sh cf bt"; }
+body[data-size="compact-land"] .u3-dgs.is-short .u3-dgs-chest .u3-dgs-chestbox { grid-row: auto; }
+body[data-size="compact-land"] .u3-dgs.is-short .u3-dgs-sh small { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+body[data-size="compact-land"] .u3-dgs.is-short .u3-dgs-ct { padding: var(--sp-half) var(--sp-2); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+body[data-size="compact-port"] .u3-dgc:is(.is-tight, .is-wide) .u3-dgc-chip { flex: 1 1 auto; }
+body[data-size="compact-port"] .u3-dgc:is(.is-tight, .is-wide) .u3-dgc-chip b { font-size: var(--fs-caption); }
+body[data-size="compact-port"] .u3-dgs-fd.is-tight .u3-dgs-stat { padding: var(--sp-1) var(--sp-1-5); }
+body.ui-v2[data-size="compact-port"] .u3-dgs-fd.is-tight .u3-dgs-stat b > svg { width: var(--icon-sm); height: var(--icon-sm); }
+/* roomy (measured in fitChooseV3: over 20% of the stage height is free above and below the panel, a wide desktop or a tall tablet): the panel takes the height of the stage and the doors, the chest and the Continue row grow with it */
+.u3-dgs.is-roomy .u3-dgc-panel { flex: 1 1 0; min-height: 0; margin-block: var(--u3-none); display: flex; flex-direction: column; justify-content: center; }
+.u3-dgs.is-roomy .u3-dgc-offers { flex: 1 1 0; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+.u3-dgs.is-roomy .u3-dgs-chest { flex: 1 1 0; min-height: 0; align-content: center; }
+body.ui-v2 .u3-dgs.is-roomy .u3-dgs-chest { --dgs-w: calc(var(--avatar-xl) * 2.4); }
+.u3-dgs.is-roomy .u3-dgs-chest:not(.open) .u3-dgs-chestbox { width: min(100%, calc(var(--avatar-xl) * 3.6)); }
+.u3-dgs.is-roomy .u3-dgs-chest:not(.open) { grid-template-columns: minmax(0, 1fr); }
+body.ui-v2 .u3-dgs.is-roomy .u3-dgs-chest.open { --dgs-w: calc(var(--avatar-xl) * 3); --dgs-card: calc(var(--card-tile-max) * 1.5); }
+body.ui-v2 .u3-dgs.is-roomy .u3-dgs-chest.open:has(.u3-dgs-cf .up) { --dgs-card: calc(var(--card-tile-max) * 2); }
+/* tight on compact-land: the music button has its own column at the right edge of the panel, so nothing sits under it */
+body[data-size="compact-land"] .u3-dgs.is-tight .u3-dgc-panel { padding-right: calc(var(--hit) + var(--sp-3)); }
+body[data-size="compact-land"] .u3-dgs.is-tight .u3-dgc-panel > .u3-dgc-h { padding-inline: var(--u3-none); }
+/* lean (measured in fitFloorV3: the cards would be under 1.5 widest grid tiles high): the buttons share one row and the gaps shrink, so the cards take the room */
+.u3-dgs-fd.is-lean .u3-dgs-fdp { gap: var(--sp-2); }
+body.ui-v2 .u3-dgs-fd.is-lean .u3-dgs-btns { flex-direction: row; gap: var(--sp-2); }
+.u3-dgs-fd.is-lean .u3-dgs-btns .u3-btn { flex: 1 1 0; }
+/* long counters (a 9-digit number, or the compact form "123.5M" on a phone): the counters may wrap to a second row of chips when one row is too wide (measured: is-tight2) */
+.u3-dgc:is(.is-tight2, .is-wide2) .u3-dgc-chips { flex-wrap: wrap; }
+body[data-size="compact-port"] .u3-dgc:is(.is-tight2, .is-wide2) .u3-dgc-chip { flex: 1 1 auto; }
+/* the open chest, narrow and short (375x667 with the safe-area insets): the smallest chest and card */
+body.ui-v2 .u3-dgs.is-short2 .u3-dgs-chest, body.ui-v2 .u3-dgs.is-short2 .u3-dgs-chest.open:has(.u3-dgs-cf .up) { --dgs-w: calc(var(--avatar-xl) * 0.8); --dgs-card: var(--card-thumb); gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-1); }
+.u3-dgs.is-short2 .u3-dgs-sh > svg { display: none; }
+/* Floor cleared, tight2: the buttons lose their icons (decorative) and their padding, so the cards get the width */
+.u3-dgs-fd.is-tight2 .u3-btn svg { display: none; }
+.u3-dgs-fd.is-tight2 .u3-dgs-btns .u3-btn, .u3-dgs-fd.is-tight2 .u3-dgs-lh .u3-btn { padding-inline: var(--sp-2); }
+body.ui-v2 .u3-dgs-fd.is-tight2 .u3-dgs-lh .u3-btn { height: var(--hit); }
+/* the guardian line: smaller and tighter when the pill is squeezed */
+.u3-dgc:is(.is-tight2, .is-wide2) .u3-dgc-guard { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.u3-dgc:is(.is-tight2, .is-wide2) .u3-dgc-prog { gap: var(--sp-2); padding-inline: var(--sp-2); }
+.u3-dgc:is(.is-tight2, .is-wide2) .u3-dgc-fl { padding-right: var(--sp-2); }
+/* long counters: the pill under the counters when both do not fit on one row (compact-land, measured: is-tight2) */
+body[data-size="compact-land"] .u3-dgc:is(.is-tight2, .is-wide2) .u3-dgc-hud { flex-wrap: wrap; }
+body[data-size="compact-land"] .u3-dgc:is(.is-tight2, .is-wide2) .u3-dgc-prog { flex: 1 1 100%; }
+/* the counters in a medium stage (692 wide with 9-digit counts): the row of counters may shrink and wrap (the container is not fixed to its content) */
+.u3-dgc:is(.is-tight2, .is-wide2) .u3-dgc-chips { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+
+/* ---- Choose a reward (UI-48, D-125): the same panel every time ----
+   The line under each reward takes the room of the LONGEST reward line (a hidden copy of it shares the cell), whatever the reward says (or none), so the
+   offers, the panel and the measured mode do not change from one room to the next. There is no music button in this panel (Nathan). */
+.u3-dgc.ph-choose .u3-dgc-offer small { display: grid; }
+.u3-dgc.ph-choose .u3-dgc-offer small > * { grid-area: 1 / 1; }
+.u3-dgc-ghost { visibility: hidden; pointer-events: none; }
+.u3-dgc.ph-choose .u3-dgc-offers { grid-auto-rows: 1fr; }
+body[data-size="compact-land"] .u3-dgc.ph-choose .u3-dgc-panel { grid-template-columns: minmax(0, 1fr); }
+/* Choose a reward, still too high after tight (375x667 with the safe-area insets): the least padding and gaps; every line stays */
+body[data-size="compact-port"] .u3-dgc.ph-choose.is-tight2 .u3-dgc-offer { padding: var(--sp-1) var(--sp-2); row-gap: var(--u3-none); }
+body[data-size="compact-port"] .u3-dgc.ph-choose.is-tight2 .u3-dgc-offers { gap: var(--sp-1); }
+body[data-size="compact-port"] .u3-dgc.ph-choose.is-tight2 .u3-dgc-panel { padding-block: var(--sp-2); }
+body[data-size="compact-port"] .u3-dgc.ph-choose.is-tight2 .u3-dgc-h { margin: var(--u3-none) var(--u3-none) var(--sp-1); font-size: var(--fs-stat); line-height: var(--lh-stat); }
