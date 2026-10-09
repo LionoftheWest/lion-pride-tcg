@@ -60,6 +60,35 @@ export function fitCards(n, width, height, gap) {
   return best;
 }
 
+/** The pack body of the clips: 389 x 703 of the 800 x 1120 frame (x 205-594, y 261-964). */
+export const PACK_RATIO = 389 / 703;
+
+/** UI-35 the waiting packs (D-100): the largest pack body that shows every pack, and the rows (balanced: 10 packs in 3
+ *  rows are 4, 3, 3, not 4, 4, 2). */
+const TOUCH_MIN = 44;   // design.md 9.1
+export function fitPacks(n, width, height, gap) {
+  const count = Math.max(1, n | 0);
+  const all = [];
+  for (let cols = 1; cols <= count; cols++) {
+    const rows = Math.ceil(count / cols);
+    all.push({ cols, rows, pw: Math.floor(Math.min((width - (cols - 1) * gap) / cols, ((height - (rows - 1) * gap) / rows) * PACK_RATIO)) });
+  }
+  const top = Math.max(...all.map((c) => c.pw));
+  // A pack up to 15% smaller is worth fewer rows (5 packs are 3 + 2 as drawn on 430x932, not 2 + 2 + 1), but never a pack
+  // under the 44 px touch size (9.1) when a larger one fits.
+  const best = all.filter((c) => c.pw >= Math.min(top, Math.max(top * 0.85, TOUCH_MIN))).sort((x, y) => x.rows - y.rows || y.pw - x.pw)[0];
+  return { pw: best.pw, cols: best.cols, rows: balancedRows(count, best.rows) };
+}
+/** n items in r rows, as even as possible, the longer rows first: (10, 3) -> [4, 3, 3]. */
+export function balancedRows(n, r) {
+  const rows = Math.max(1, Math.min(n, r | 0));
+  const base = Math.floor(n / rows), extra = n % rows;
+  return Array.from({ length: rows }, (_, i) => base + (i < extra ? 1 : 0));
+}
+
+/** D-72 / review-2: the New mark follows the card width: a chip from 88 px, a small chip from 70 px, else a dot. */
+export const newMark = (cardWidth) => (cardWidth >= 88 ? 'chip' : cardWidth >= 70 ? 'small' : 'dot');
+
 /** D-100: the packs of a multi open start one after the other, about 0.4 s apart. The start time of each pack (ms). */
 export const PACK_GAP_MS = 400;
 export const packStarts = (n) => Array.from({ length: Math.max(0, n | 0) }, (_, i) => i * PACK_GAP_MS);
