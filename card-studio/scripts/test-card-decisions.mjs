@@ -24,7 +24,8 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 const root = (p) => fileURLToPath(new URL(`../../${p}`, import.meta.url));
 const OLD = process.argv.includes('--old');
 const src = readFileSync(root('tcg-bot/supabase/card_decisions.sql'), 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
-const balanceTable = readFileSync(root('tcg-bot/supabase/balance_table.sql'), 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
+// 2026-10-09: the live-version guard of balance_table.sql is left out (hunt_random_target.sql replaced hunt_attack; see test-balance-table.mjs).
+const balanceTable = readFileSync(root('tcg-bot/supabase/balance_table.sql'), 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '').replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 for (const s of [src, balanceTable]) if (s.includes("$m$") || s.includes("$cdt$")) throw new Error('a migration must not contain $m$');
 const GOLDEN = JSON.parse(readFileSync(root('shared/rarity-rank.json'), 'utf8')).rank;
 
