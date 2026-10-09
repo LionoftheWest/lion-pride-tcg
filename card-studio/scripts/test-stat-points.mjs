@@ -13,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = ['balance_table.sql'].map((f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8')
-  .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '')).join('\n');
+  .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '').replace(/do \$g\$[\s\S]*?end \$g\$;/, '')).join('\n');
+// 2026-10-09: the live-version guard of balance_table.sql is left out (hunt_random_target.sql replaced hunt_attack; see test-balance-table.mjs).
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 
 const body = String.raw`do $t$

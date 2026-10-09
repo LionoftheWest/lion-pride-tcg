@@ -36,8 +36,8 @@ const call = (pg, src, arg) => pg.evaluate(`(${src})(${arg === undefined ? '' : 
 const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;--discord-safe-area-inset-bottom:${land ? 21 : 34}px;--discord-safe-area-inset-left:${land ? 59 : 0}px;--discord-safe-area-inset-right:${land ? 59 : 0}px}`;
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
-const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'dungeon', 'hunt-battle', 'trades', 'settings']);
+const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
+const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'dungeon', 'hunt-battle', 'trades', 'settings', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
@@ -92,6 +92,10 @@ async function runCell([s, screen, variant], ref = {}) {
             const focused = await pg.evaluate((sel) => { const e = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length); if (!e) return false; e.focus(); return true; }, spec.input);
             res.keyboard = { focused, height: Math.round(H * (land ? 0.55 : 0.4)) };
             if (focused) { await pg.setViewportSize({ width: W, height: H - res.keyboard.height }); await sleep(1);
+              // size-class.js sets body[data-kb] after a debounced resize (120 ms). On a loaded runner the resize came late once
+              // (PR #277, 915x412: the cell was measured before the layout changed). Wait for it on a v3 page, then measure.
+              await pg.waitForFunction(() => !document.body.classList.contains('ui-v3') || document.body.hasAttribute('data-kb'), null, { timeout: 8000 }).catch(() => {});
+              res.keyboard.dataKb = await pg.evaluate(() => document.body.hasAttribute('data-kb')); await sleep(0.3);
               res.keyboard.inputInView = await pg.evaluate(() => { const r = document.activeElement?.getBoundingClientRect(); return !!r && r.top >= 0 && r.bottom <= innerHeight + 1; }); }
           }
           await pg.evaluate(() => { const b = document.getElementById('effectBanners'); if (b) b.style.display = 'none'; });

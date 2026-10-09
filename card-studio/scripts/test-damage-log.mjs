@@ -20,7 +20,10 @@ import { fileURLToPath } from 'node:url';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).text();
 const old = process.argv.includes('--old');
-const src = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/damage_log.sql', import.meta.url)), 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
+// 2026-10-09: the live-version guards of the old files (this one and the re-run files) are left out: hunt_random_target.sql and
+// dungeon_rules_supports_targets.sql replaced hunt_attack / dungeon_enemy_turn, so the guards refuse them on a current database
+// (as designed). The test checks what the files DO, on their own text, inside the rolled-back block.
+const src = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/damage_log.sql', import.meta.url)), 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '').replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 
 // One mutation per invariant (the guard also accepts the mutated text, so the file can run).
 const MUTATIONS = {

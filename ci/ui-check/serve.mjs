@@ -4,8 +4,10 @@
 // Variants (a cookie on the browser context, run.mjs sets it):
 //   ci_hunt=battle   /api/hunt answers the battle state (the squad is locked)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
+//   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
-// Every non-GET request answers 403 (as the audit walkthrough): the check never writes.
+// Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
+// answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -29,19 +31,67 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAUAAAAHCAYAAADAp4fuAAAAEUlEQVR
 export const misses = new Set();
 
 // UI-48: a Dungeon run in the "Choose a reward" step. The offers cover the kinds the approved frames show
-// (an Uncommon card, 10 Shards, a Ward). The squad is the first cards of the recorded collection.
+// (an Uncommon card, 10 Shards, a Shield). The squad is the first cards of the recorded collection.
+// ci_dungeon=choose2: the same step with other rewards (a Heal, a damage bonus, a Revive: no odds line), to check that the panel does not change.
+function derivedChoose2(body) {
+  const d = derivedDungeon(body);
+  d.run.state.offers = [{ kind: 'heal', tier: 3, amount: 0.4 }, { kind: 'buff', tier: 4, amount: 0.1 }, { kind: 'revive', tier: 5, amount: 0.5 }];
+  return d;
+}
 function derivedDungeon(body) {
   const ids = (body.mine || []).slice(0, body.squad || 5).map((c) => c.id);
   return { ...body, run: { id: 1, status: 'active', floor: 1, room: 1, squad: ids, state: { phase: 'choose', room_type: 'fight', buff: 1, cards: {},
     pend: { shards: 1, cards: [] }, bank: { shards: 0, cards: [] },
     offers: [{ kind: 'card', tier: 2, odds: [70, 25, 5] }, { kind: 'shards', tier: 1, amount: 10 }, { kind: 'ward', tier: 1, amount: 0.1 }] } } };
 }
+// UI-49: the other steps of a run (cookie ci_dungeon = rest | path | chest | floor): the room steps and Floor cleared, as in the
+// approved frames (a real run's numbers). The loot cards are the first cards of the recorded collection with the names of the frames.
+const LOOT = [['Cocky little Freak!', 'normal'], ["LionoftheWest's Tsareena", 'illustrated_rare'], ["Texafornia's Richter", 'illustrated_rare']];
+function derivedRoom(body, kind) {
+  const base = derivedDungeon(body);
+  const mine = body.mine || [];
+  const lootCards = {};
+  LOOT.forEach(([name, rarity], i) => { const c = mine[i]; lootCards[c.id] = { ...c, name, rarity }; });
+  const ids = Object.keys(lootCards).map(Number);
+  const st = { phase: 'choose', room_type: 'fight', buff: 1, cards: {}, pend: { shards: 1, cards: [ids[0]] }, bank: { shards: 0, cards: [] }, offers: [] };
+  const R = { ...base.run, floor: 1, room: 2 };
+  if (kind === 'path') Object.assign(st, { phase: 'path', room_type: 'choice', offers: [{ kind: 'door', to: 'gamble' }, { kind: 'door', to: 'rest' }] });
+  if (kind === 'chest') Object.assign(st, { phase: 'chest', room_type: 'treasure', chest: { tier: 4, shards: 68, card: ids[0] }, offers: [{ kind: 'continue' }] });
+  if (kind === 'rest') { R.floor = 3; Object.assign(st, { phase: 'rest', room_type: 'rest', buff: 1.08, pend: { shards: 3, cards: [] }, bank: { shards: 204, cards: ids.concat(ids[0]) }, offers: [{ kind: 'continue' }] }); }
+  if (kind === 'floor') { R.room = 5; Object.assign(st, { phase: 'floor_done', room_type: 'guardian', floor_loot: { shards: 150, cards: ids }, pend: { shards: 0, cards: [] }, bank: { shards: 150, cards: ids } }); }
+  return { ...base, name: 'The Hollow Mines', lootCards, run: { ...R, state: st } };
+}
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
+
+// The pack reveal screens (UI-34, UI-35) need the answer of a pack open. POST /api/open answers a fixed open made from
+// the fixture catalog; nothing is written (the check has no database). 5 cards a pack; only pack 2 of a multi open
+// (pack 1 of a single open) holds an SR+ card (a Full Art), so the rare clip plays on one pack (D-107). isNew on every
+// second card. The Full Art is the 2nd card of its pack, so the reveal must move it to the end (D-92). The same count
+// gives the same answer on every run.
+const CATALOG = (FIX.routes['/api/catalog']?.body?.cards || []);
+const byRarity = (r) => CATALOG.filter((c) => c.rarity === r);
+export function openAnswer(count) {
+  const n = [1, 5, 10].includes(count) ? count : 1;
+  const pool = { normal: byRarity('normal'), illustrated_rare: byRarity('illustrated_rare'), full_art: byRarity('full_art') };
+  const take = (r, i) => { const l = pool[r]; return l.length ? l[i % l.length] : CATALOG[i % CATALOG.length]; };
+  const rarePack = n === 1 ? 0 : 1;
+  let k = 0;
+  const packs = Array.from({ length: n }, (_, p) => ['normal', p === rarePack ? 'full_art' : 'normal', 'normal', 'illustrated_rare', 'normal']
+    .map((r) => { const c = take(r, k * 7 + p); k += 1;
+      return { id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, artist: c.artist ?? null, lore: c.lore ?? null, isNew: k % 2 === 0 }; }));
+  return { award: null, packs, cards: packs.flat() };
+}
 
 createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
+  if (req.method === 'POST' && p === '/api/open') {
+    let raw = '';
+    req.on('data', (d) => { raw += d; });
+    req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
+    return undefined;
+  }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)
@@ -56,7 +106,9 @@ createServer((req, res) => {
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
     const hit = FIX.routes[key] || FIX.routes[keyOf(p, '')] || BY_PATH[p];
     if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
-    const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body) : hit.body;
+    const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
+      : p === '/api/dungeon' && c.ci_dungeon === 'choose2' && hit.body?.ok ? derivedChoose2(hit.body)
+      : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon) : hit.body;
     const body = c.ci_data === 'long' ? longData(raw) : raw;
     return send(res, hit.status || 200, JSON.stringify(body));
   }
