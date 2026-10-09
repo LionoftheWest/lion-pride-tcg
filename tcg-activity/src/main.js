@@ -599,6 +599,7 @@ function ago(iso) {
 // ---- Main pane -------------------------------------------------------------
 
 async function show(view) {
+  closeBossWindowV3();   // UI-20: the boss window belongs to the Hunt view; a view change (dock, sub-tab, menu, a turned phone) closes it
   currentView = view;
   if (view !== 'dungeon') disposeDungeon(); // the 3D room stage
   document.querySelectorAll('#dock .dk').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
@@ -1323,26 +1324,31 @@ function openBossWindowV3() {
   bossWin = { host, onKey: (e) => { if (e.key === 'Escape') close(); }, back: document.activeElement };
   document.addEventListener('keydown', bossWin.onKey);
   host.querySelector('.u3-bw').focus({ preventScroll: true });
-  // No scroll: the move pool gets denser when it does not fit (one line per move), then the render gives its room
+  // No scroll: the move pool gets denser when it does not fit (one line per move), then pages (the render keeps its room)
   const win = host.querySelector('.u3-bw'), mv = host.querySelector('.u3-bw__moves');
   // the pool fills column by column, as drawn (Fade, Veil, Demotion down the first column): rows = half the moves
   const rows = (n) => mv.style.setProperty('--bw-rows', String(Math.max(1, Math.ceil(n / 2))));
   rows(moves.length);
-  for (const step of ['is-dense', 'is-denser']) { if (mv.scrollHeight <= mv.clientHeight + 1) break; win.classList.add(step); }
-  // still too many: pages of the moves that fit, the pager under the list (D-36)
-  if (mv.scrollHeight > mv.clientHeight + 1) {
+  const over = () => mv.scrollHeight > mv.clientHeight + 1 || win.scrollHeight > win.clientHeight + 1;
+  if (over()) win.classList.add('is-dense');
+  // still too many: pages of the moves that fit, the pager under the list (D-36); the render keeps its room
+  if (over()) {
     win.classList.add('is-paged');
     const box = host.querySelector('.u3-bw__mpager');
     box.innerHTML = ui3Pager({ page: 1, pages: 2 });   // the pager takes its row before the page size is measured
-    const bottom = mv.getBoundingClientRect().bottom;
-    const per = Math.max(2, [...mv.children].filter((li) => li.getBoundingClientRect().bottom <= bottom + 1).length & ~1);
-    const pages = Math.ceil(moves.length / per);
+    const fits = () => { const bottom = mv.getBoundingClientRect().bottom; return Math.max(2, [...mv.children].filter((li) => li.getBoundingClientRect().bottom <= bottom + 1).length & ~1); };
+    let per = fits();
+    if (per < 4 && !win.classList.contains('is-dense')) { win.classList.add('is-dense'); per = fits(); }   // a page of one row: one line per move
+    let pages = Math.ceil(moves.length / per);
     let page = 0;
     const paintMoves = () => {
       rows(Math.min(per, moves.length - page * per));
       mv.innerHTML = moves.slice(page * per, page * per + per).map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('');
       box.innerHTML = ui3Pager({ page: page + 1, pages });
     };
+    // a page of long texts can be taller than the rows measured above: fewer moves a page until every page fits whole
+    const everyPageFits = () => { for (page = 0; page < pages; page++) { paintMoves(); if (mv.scrollHeight > mv.clientHeight + 1) { page = 0; return false; } } page = 0; return true; };
+    while (per > 2 && !everyPageFits()) { per -= 2; pages = Math.ceil(moves.length / per); }
     box.addEventListener('click', (e) => { const b = e.target.closest('[data-page]'); if (!b || b.disabled) return; page = Math.max(0, Math.min(pages - 1, page + (b.dataset.page === 'next' ? 1 : -1))); paintMoves(); });
     paintMoves();
   }
