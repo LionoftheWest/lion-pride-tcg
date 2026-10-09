@@ -1,0 +1,29 @@
+
+/* ---- Pack reveal (UI-34 single, D-73, D-91 to D-101): the stage over the shell, the set's clips, the cards, the bar.
+   The pack box is the pack body of the clip (x 205-594, y 261-964 of the 800 x 1120 frame); the clip is larger than
+   the body (rays, stars, the torn strip) and the stage clips it. The card width is the one number of the reveal (3.5,
+   main.js tearPackV3). ---- */
+/* The stage covers the shell (the dock too, as drawn): the modal layer. The blur is on a pseudo-element, so the stage
+   is no containing block for the pinned pack and the rays. The dialog box holds the content (9.3). */
+body.ui-v2.ui-v3 #stage.u3-reveal { z-index: var(--z-modal); background: var(--scrim); margin: 0;   /* the scrim covers the whole frame; the content stays in the safe frame (2.3) */
+  padding: calc(var(--sp-4) + var(--u3-sa-t)) calc(var(--sp-4) + var(--u3-sa-r)) calc(var(--sp-4) + var(--u3-sa-b)) calc(var(--sp-4) + var(--u3-sa-l)); }
+body.ui-v3 #stage.u3-reveal::before { content: ""; position: absolute; inset: 0; pointer-events: none; backdrop-filter: blur(var(--sp-3)); -webkit-backdrop-filter: blur(var(--sp-3)); }
+body.ui-v3 #stage.u3-reveal .u3-reveal__box { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-4);
+  max-width: 100%; max-height: 100%; }
+body.ui-v3 #stage.u3-reveal .u3-pack { position: relative; flex: none; height: min(60vh, 102vw); aspect-ratio: 389 / 703; padding: 0; margin: 0;
+  border: 0; border-radius: var(--rad-sm); background: none; cursor: pointer; }
+body.ui-v3 #stage.u3-reveal .u3-pack:disabled { cursor: default; }
+body.ui-v3:not([data-last-input="pointer"]) #stage.u3-reveal .u3-pack:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+body.ui-v3 #stage.u3-reveal .u3-pack__clip { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+body.ui-v3 #stage.u3-reveal .sunrays { position: fixed; }
+body.ui-v3 #stage.u3-reveal .u3-pack.dropping { pointer-events: none; animation: packDrop var(--dur-reveal) var(--ease-in-out) forwards; }
+body.ui-v3 #stage.u3-reveal .tap-prompt { align-self: stretch; text-align: center; font-family: var(--font-ui); font-size: var(--fs-body); font-weight: var(--fw-heading); color: var(--text-primary); }
+body.ui-v3 #stage.u3-reveal .tap-prompt.is-gone { visibility: hidden; }
+body.ui-v3 #stage.u3-reveal .reveal-grid { gap: var(--sp-3); max-width: 100%; }
+body.ui-v3 #stage.u3-reveal .fc { width: var(--u3-fc-w, calc(var(--menu-tile) * 1.5)); }
+body.ui-v3 #stage.u3-reveal .u3-reacts { flex-wrap: wrap; gap: var(--sp-2); margin: 0; }
+body.ui-v3 #stage.u3-reveal .react { width: var(--hit); height: var(--hit); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong);
+  color: var(--text-primary); font-size: var(--fs-heading); }
+body.ui-v3 #stage.u3-reveal .u3-reveal__ctl { display: inline-flex; gap: var(--sp-2); visibility: hidden; }
+body.ui-v3 #stage.u3-reveal.is-out .u3-reveal__ctl { visibility: visible; }
+body.ui-v3 #stage.u3-reveal .u3-reveal__ctl .u3-btn { min-width: calc(var(--menu-tile) * 1.5); }

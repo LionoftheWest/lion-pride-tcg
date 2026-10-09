@@ -60,7 +60,7 @@ export function subTabs(tabs, { slim = false, help = null } = {}) {
 /** Level 2: the segmented switch. */
 export function segmented(items, { label = null } = {}) {
   return `<div class="u3-seg" role="tablist"${label ? ` aria-label="${esc(label)}"` : ''}>${items.map((s) => `<button${attrs({ type: 'button', role: 'tab', class: cx('u3-seg__item', s.active && 'is-active'),
-    'aria-selected': String(!!s.active), 'data-seg': s.id })}>${s.icon ? icon(s.icon) : ''}<span>${esc(s.label)}</span></button>`).join('')}</div>`;
+    'aria-selected': String(!!s.active), 'aria-controls': s.controls || null, 'data-seg': s.id })}>${s.icon ? icon(s.icon) : ''}<span>${esc(s.label)}</span></button>`).join('')}</div>`;
 }
 
 /** Panel (one header, one section label), Tile, StatBox. */

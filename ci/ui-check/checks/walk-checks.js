@@ -48,12 +48,13 @@
   const ISEL = 'button, a[href], input, select, textarea, [role=button], [role=tab], .v2-cell, [data-member], [data-buy], [data-tab], [data-adv], [data-pane]';
   const small = [], tiny = [], coveredBtns = [], corner = [], keys = {};
   const zone = { l: vw - 120, t: 0, r: vw, b: 60 };
+  const keyOf = (e) => (e.id ? '#' + e.id : e.dataset.tab ? 'tab:' + e.dataset.tab : e.dataset.adv ? 'adv:' + e.dataset.adv : e.dataset.pane ? 'pane:' + e.dataset.pane
+    : (e.title && !/\d/.test(e.title)) ? 'title:' + e.title : (!e.closest('.v2-cell, [data-member], .lb-row, .tr-mem, .hl-card, li') && label(e) && !/\d/.test(label(e))) ? 'text:' + label(e) : null);
   for (const e of document.querySelectorAll(ISEL)) {
     if (!visDeep(e) || e.closest('#loader, #tutLayer')) continue;
     if (e.parentElement?.closest(ISEL) && e.tagName !== 'BUTTON' && e.tagName !== 'INPUT') continue;
     const r = e.getBoundingClientRect();
-    const key = e.id ? '#' + e.id : e.dataset.tab ? 'tab:' + e.dataset.tab : e.dataset.adv ? 'adv:' + e.dataset.adv : e.dataset.pane ? 'pane:' + e.dataset.pane
-      : (e.title && !/\d/.test(e.title)) ? 'title:' + e.title : (!e.closest('.v2-cell, [data-member], .lb-row, .tr-mem, .hl-card, li') && label(e) && !/\d/.test(label(e))) ? 'text:' + label(e) : null;
+    const key = keyOf(e);
     if (key) { const k2 = keys[key] || { inView: false }; k2.inView = k2.inView || (r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1); keys[key] = k2; }
     if (!inView(r)) continue;
     // covered: the center hit is not the element (a bar or a banner lies on it)
@@ -65,6 +66,13 @@
     }
     if (touch && (r.width < 44 || r.height < 44)) { (r.width < 32 || r.height < 32 ? tiny : small).push([path(e) + ' "' + label(e) + '"', Math.round(r.width) + 'x' + Math.round(r.height)]); }
     if (phone && r.right > zone.l && r.left < zone.r && r.bottom > zone.t && r.top < zone.b) corner.push([path(e) + ' "' + label(e) + '"', [r.left, r.top, r.width, r.height].map(Math.round).join(',')]);
+  }
+  // P1: a size class can move content into a tab. A control in a hidden tab panel (role=tabpanel, hidden, id) counts as
+  // reachable when the visible tab that controls it (aria-controls) is on the screen. Removed content still counts as missing.
+  for (const p of document.querySelectorAll('[role="tabpanel"][hidden][id]')) {
+    const tab = document.querySelector(`[aria-controls~="${CSS.escape(p.id)}"]`);
+    if (!tab || !visDeep(tab)) continue;
+    for (const e of p.querySelectorAll(ISEL)) { const k = keyOf(e); if (k) keys[k] = { inView: true, inTab: true }; }
   }
   out.tapSmall = small; out.tapTiny = tiny; out.coveredBtns = coveredBtns; out.corner = corner; out.keys = keys;
   // 5) text under 11 px (inside the window)
@@ -86,7 +94,8 @@
     const t = e.tagName;
     const own = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     const bg = getComputedStyle(e).backgroundImage;
-    if (own || /^(IMG|CANVAS|VIDEO|INPUT|BUTTON|SELECT|svg)$/i.test(t) || (bg && bg !== 'none' && !/gradient/.test(bg))) {
+    // The library Switch (UI-00 5.2) hides its input (1 px, opacity 0): its visible track is the control's ink.
+    if (own || /^(IMG|CANVAS|VIDEO|INPUT|BUTTON|SELECT|svg)$/i.test(t) || (bg && bg !== 'none' && !/gradient/.test(bg)) || e.classList.contains('u3-switch__track')) {
       const r = e.getBoundingClientRect();
       const l = Math.max(r.left, wr.left, 0), tp = Math.max(r.top, wr.top, 0), rt = Math.min(r.right, wr.right, vw), bt = Math.min(r.bottom, wr.bottom, vh);
       if (rt > l && bt > tp) leaves.push([l, tp, rt, bt]);

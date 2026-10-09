@@ -37,6 +37,8 @@ test('missing vs 1990x830: a control in view at expanded and absent or outside h
   const r = clean('home', '430x932'); r.checks.keys = {};
   assert.deepEqual(defectsOf(r, exp).map((x) => [x.rule, x.where]), [['missing', '#boardBtn']]);
   const tiny = clean('home', '400x225'); assert.equal(defectsOf(tiny, exp).length, 0, 'the tiny class is the P1 exception');
+  const kb = { ...clean('home', '430x932'), variant: 'keyboard' }; kb.checks.keys = {};
+  assert.equal(defectsOf(kb, exp).length, 0, 'the keyboard cell: P1 is checked on the base cell (G-015)');
 });
 test('a cell with no check data is not checked (the silent-undefined defect)', () => {
   const r = clean('home'); delete r.checks;
@@ -54,6 +56,9 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('pack-multi', '.u3-mpacks > .u3-mrow > .u3-mpack'), 'UI-35');
+  assert.equal(ownerOf('pack-multi-cards', '.mr-main > #mrGrid.mr-grid > .mr-card'), 'UI-35');
+  assert.equal(ownerOf('pack-multi', '#topbar > #shopBtn'), 'UI-42');
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');

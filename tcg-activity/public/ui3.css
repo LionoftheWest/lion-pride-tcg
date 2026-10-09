@@ -186,10 +186,13 @@ body[data-size="compact-port"] .u3-dialog { width: 100%; padding: var(--sp-5); }
 .u3-msg--error { color: var(--danger-text); } .u3-msg--success { color: var(--success); } .u3-msg--info { color: var(--info); }
 
 /* ---- Pager (5.2, D-36, D-53): "1 / N", centered under its grid ---- */
-.u3-pager { display: inline-flex; align-items: center; height: var(--ctl-sm); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); margin-inline: auto; }
-.u3-pager__arrow { display: inline-flex; align-items: center; justify-content: center; width: var(--ctl-sm); height: 100%; border-radius: var(--rad-md); color: var(--text-muted); }
+/* position, padding, gap and flex reset: style.css fixes every <nav> to the screen bottom under 620 px (the old mobile tab bar) */
+.u3-pager { box-sizing: content-box; position: static; padding: 0; gap: 0; flex-wrap: nowrap; display: inline-flex; align-items: center; height: var(--ctl-sm); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); margin-inline: auto; }
+/* min-width, border, background, font reset: style.css styles every "nav button" (min-width 134 px, a fill and a border) */
+.u3-pager__arrow { flex: none; padding: 0; min-width: 0; border: 0; background: none; font: inherit; display: inline-flex; align-items: center; justify-content: center; width: var(--ctl-sm); height: 100%; border-radius: var(--rad-md); color: var(--text-muted); }
 .u3-pager__label { min-width: calc(var(--sp-7) + var(--sp-2)); padding: 0 var(--sp-1); display: inline-flex; justify-content: center; font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 body[data-input="coarse"] .u3-pager { height: var(--hit); }
+body[data-input="coarse"] .u3-search__input { min-height: var(--hit); box-sizing: border-box; }
 body[data-input="coarse"] .u3-pager__arrow { width: var(--hit); }
 @media (hover: hover) { .u3-pager__arrow:hover:not(:disabled) { color: var(--text-primary); background: var(--surface-2); } }
 
@@ -292,7 +295,7 @@ body.ui-v2.ui-v3[data-size="compact-port"].m-sa-guess[data-input="coarse"] { --s
 
 :root { --u3-text-muted: var(--text-muted); }   /* the token value; ui-v2.css keeps the old value on body until each screen PR */
 /* The shell areas use the token muted color (4.66:1), not the old v2 value (3.7:1). */
-body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs) { --text-muted: var(--u3-text-muted); }
+body.ui-v2.ui-v3[data-size] :is(#topbar, #dock, #u3MenuHost, #main > .v2-subtabs, #u3Picker, .u3-dg) { --text-muted: var(--u3-text-muted); }
 
 /* tiny (Discord picture-in-picture, 2.1): no top bar, sub-tab row, dock or menu (D-06, 7.1). The small live view
    (UI-59) is a later screen PR. */
@@ -498,63 +501,943 @@ body.ui-v3[data-size="compact-land"] .u3-open__sets { align-content: start; alig
 body.ui-v3[data-size="compact-land"] .u3-open__counts { align-items: flex-start; }
 body.ui-v3[data-size="compact-port"] .u3-open.is-measuring { width: calc(100% - var(--sp-1-5) * 2); }
 body.ui-v3[data-size="compact-land"] .u3-open.is-measuring { width: calc(100% - var(--u3-sa-l) - var(--u3-sa-r) - var(--sp-1-5) * 2); }
+/* ==== UI-64 Card picker window (src/ui3/card-picker.js; design.md 6.5 pickers, 6.5a; D-40, D-42) ====
+   A dialog on medium and expanded, a full sheet inside the safe frame on the compact classes (C1). The grid fills its
+   area; card-picker.js measures it and sets --pk-cols and --pk-tile (8.1 tile size). Card face only (D-29). */
+#u3Picker .u3-pk-scrim { padding: var(--sp-5) var(--sp-7); grid-template: minmax(0, 1fr) / minmax(0, 1fr); }   /* one definite cell: the window height resolves */
+.u3-pk:focus { outline: none; }
+.u3-pk-scrim.is-still { animation: none; }
+body[data-kb][data-size^="compact"] #u3Picker .u3-pk-scrim { padding-top: calc(var(--u3-sa-t) + var(--sp-1)); padding-bottom: var(--sp-1); }
+body[data-size^="compact"] #u3Picker .u3-pk-scrim { padding: calc(var(--u3-sa-t) + var(--sp-2)) calc(var(--u3-sa-r) + var(--sp-2)) calc(var(--u3-sa-b) + var(--sp-2)) calc(var(--u3-sa-l) + var(--sp-2)); }
+.u3-pk { box-sizing: border-box; width: 100%; height: 100%; display: grid; gap: var(--sp-4); padding: var(--sp-6);
+  grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "head close" "slots slots" "tools tools" "grid grid" "pager pager" "foot foot";
+  border-radius: var(--rad-sheet); background: var(--bg-raised); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); }
+body[data-size="compact-port"] .u3-pk { padding: var(--sp-4); gap: var(--sp-3); }
+body[data-size="compact-land"] .u3-pk { padding: var(--sp-4); gap: var(--sp-3); grid-template-columns: minmax(0, 2fr) minmax(0, 5fr) auto;
+  grid-template-columns: minmax(0, 2fr) auto minmax(0, 5fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "head close tools" "slots grid grid" "foot grid grid" "foot pager pager"; }   /* the x left of the search: out of the corner zone (2.3) */
+.u3-pk__head { grid-area: head; display: flex; align-items: center; min-width: 0; }
+.u3-pk__title { margin: 0; display: flex; align-items: baseline; gap: var(--sp-2); font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); }
+.u3-pk__title b { font-family: var(--font-num); color: var(--gold); }
+.u3-pk__title span { font-family: var(--font-num); color: var(--text-muted); }
+.u3-pk__close { grid-area: close; }
+.u3-pk__slots { grid-area: slots; min-width: 0; }
+.u3-pk__tools { grid-area: tools; display: flex; gap: var(--sp-3); min-width: 0; }
+.u3-pk__tools .u3-search { flex: 1 1 auto; min-width: 0; }
+.u3-pk__grid { grid-area: grid; min-height: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-3); justify-content: center; align-content: start;
+  grid-template-columns: repeat(var(--pk-cols), var(--pk-tile)); grid-auto-rows: calc(var(--pk-tile) * var(--card-ratio)); }
+.u3-pk__pager { grid-area: pager; display: flex; justify-content: center; }
+.u3-pk__pager:empty { display: none; }
+.u3-pk__pager .u3-pager { width: max-content; }
+.u3-pk__foot { grid-area: foot; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-5); flex-wrap: wrap; }
+body[data-size="compact-land"] .u3-pk__foot { flex-direction: column; align-items: flex-start; justify-content: space-between; flex-wrap: nowrap; }
+body[data-size="compact-land"] .u3-pk__foot .u3-pk-checks { flex-direction: column; }
+.u3-pk-none { margin: 0; align-self: center; color: var(--text-muted); font-size: var(--fs-body); }
+/* the slot row (C3): the chosen cards in pick order with an x; the next empty place has the gold outline */
+.u3-pk-slots { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); grid-template-columns: repeat(var(--pk-cap), minmax(0, var(--pk-slot, var(--card-thumb)))); }
+body[data-size="compact-land"] .u3-pk-slots { grid-template-columns: repeat(var(--pk-scols), minmax(0, var(--pk-slot, var(--card-thumb)))); }
+body[data-size="compact-land"] .u3-pk-checks { font-size: var(--fs-small); gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-pk__title { font-size: var(--fs-heading); }
+body[data-size="compact-land"] .u3-pk__tools { gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-pk__tools > .u3-btn { padding-inline: var(--sp-2); }
+/* the keyboard is open (size-class.js body[data-kb]): the search and the grid only; the rest returns when it closes (2.3, G-015) */
+body[data-kb] .u3-pk :is(.u3-pk__slots, .u3-pk__pager, .u3-pk__foot) { display: none; }
+body[data-kb] .u3-pk { padding-top: var(--sp-2); padding-bottom: var(--sp-2); gap: var(--sp-2); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "head close" "tools tools" "grid grid"; }
+body[data-kb][data-size="compact-land"] .u3-pk { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "head close tools" "grid grid grid"; }
+/* a tile under the card size (only while typing on a short screen): no magnifier, so the tap target is the card (9.1) */
+.u3-pk__grid.is-small .u3-pk-card__info { display: none; }
+/* the view under the window while typing: covered by the scrim, and squeezed by the keyboard */
+body[data-kb]:has(#u3Picker .u3-pk) #body { visibility: hidden; }
+/* landscape: the top row ends left of the Discord corner zone (2.3) */
+body[data-size="compact-land"] .u3-pk { padding-right: max(var(--sp-4), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-2))); }
+.u3-pk-slot { position: relative; aspect-ratio: 1 / var(--card-ratio); border-radius: var(--rad-md); border: var(--bw-1) solid var(--border-strong); display: grid; place-items: center; overflow: hidden;
+  color: var(--text-muted); font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-heading); }
+.u3-pk-slot.is-next { border: var(--bw-2) solid var(--gold); }
+.u3-pk-slot.is-full { border: var(--bw-2) solid var(--u3-r); }
+.u3-pk-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.u3-pk-slot__x { position: absolute; top: var(--u3-none); right: var(--u3-none); width: var(--hit); height: var(--hit); padding: 0; border: 0; background: none; display: grid; place-items: start end; cursor: pointer; color: var(--text-primary); }
+.u3-pk-slot__x .u3-ico { margin: var(--sp-1); padding: var(--sp-half); border-radius: var(--rad-round); background: var(--scrim); }
+/* the grid tile: the card face, the cost badge (C4), the pick number (C7), the magnifier (C8); greyed when not allowed (C13) */
+.u3-pk-card { position: relative; width: var(--pk-tile); height: calc(var(--pk-tile) * var(--card-ratio)); border-radius: calc(var(--pk-tile) * var(--rad-card-ratio));
+  border: var(--bw-2) solid var(--u3-r); background: var(--surface-1); overflow: hidden; box-sizing: border-box; }
+.u3-pk-card.is-sel { box-shadow: 0 0 0 var(--bw-2) var(--gold); }
+.u3-pk-card.is-off img { opacity: var(--item-disabled); }
+.u3-pk-card__pick { position: absolute; inset: 0; padding: 0; border: 0; background: none; cursor: pointer; }
+.u3-pk-card__pick[aria-disabled="true"] { cursor: not-allowed; }
+.u3-pk-card__pick img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-pk-badge { position: absolute; top: var(--sp-1); left: var(--sp-1); padding: 0 var(--sp-1-5); border-radius: var(--rad-sm); background: var(--u3-r); color: var(--bg-base);
+  font-family: var(--font-ui); font-size: var(--fs-small); font-weight: var(--fw-label); line-height: var(--chip-sm); pointer-events: none; }
+.u3-pk-num { position: absolute; top: var(--sp-1); right: var(--sp-1); width: var(--chip-md); height: var(--chip-md); border-radius: var(--rad-round); display: grid; place-items: center;
+  background: var(--gold); color: var(--on-gold); font-family: var(--font-num); font-size: var(--fs-small); font-weight: var(--fw-heading); pointer-events: none; }
+.u3-pk-card__info { position: absolute; right: var(--u3-none); bottom: var(--u3-none); width: var(--ctl-icon); height: var(--ctl-icon); padding: 0; border: 0; background: none; display: grid; place-items: end end; cursor: pointer; color: var(--text-primary); }
+body[data-input="coarse"] .u3-pk-card__info { width: var(--hit); height: var(--hit); }
+.u3-pk-card__info .u3-ico { margin: var(--sp-1); padding: var(--sp-1); border-radius: var(--rad-round); background: var(--scrim); }
+/* the status bar (C9): the live checks */
+.u3-pk-checks, .u3-dg-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); font-size: var(--fs-body); color: var(--text-primary); }
+.u3-pk-checks li, .u3-dg-checks li { display: inline-flex; align-items: center; gap: var(--sp-1-5); }
+.u3-pk-checks .u3-ico, .u3-dg-checks .u3-ico { color: var(--text-muted); }
+.u3-pk-checks .is-ok .u3-ico, .u3-dg-checks .is-ok .u3-ico { color: var(--success); }
+.u3-pk-checks .is-stat .u3-ico { color: var(--gold); }
+.u3-pk-checks .is-stat b { font-family: var(--font-num); font-weight: var(--fw-stat); }
+.u3-pk-checks .is-stat span { color: var(--text-muted); }
+.u3-pk__acts { display: flex; gap: var(--sp-3); margin-left: auto; }
+body[data-size="compact-land"] .u3-pk__acts { margin-left: 0; }
+.u3-pk-filters { width: min(100%, var(--dialog-w)); }
+.u3-pk-fgroup { display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-pk-fgroup .u3-seg { flex-wrap: wrap; }
 
-/* ---- Pack reveal (UI-34 single, D-73, D-91 to D-101): the stage over the shell, the set's clips, the cards, the bar.
-   The pack box is the pack body of the clip (x 205-594, y 261-964 of the 800 x 1120 frame); the clip is larger than
-   the body (rays, stars, the torn strip) and the stage clips it. The card width is the one number of the reveal (3.5,
-   main.js tearPackV3). ---- */
-/* The stage covers the shell (the dock too, as drawn): the modal layer. The blur is on a pseudo-element, so the stage
-   is no containing block for the pinned pack and the rays. The dialog box holds the content (9.3). */
-body.ui-v2.ui-v3 #stage.u3-reveal { z-index: var(--z-modal); background: var(--scrim); margin: 0;   /* the scrim covers the whole frame; the content stays in the safe frame (2.3) */
-  padding: calc(var(--sp-4) + var(--u3-sa-t)) calc(var(--sp-4) + var(--u3-sa-r)) calc(var(--sp-4) + var(--u3-sa-b)) calc(var(--sp-4) + var(--u3-sa-l)); }
-body.ui-v3 #stage.u3-reveal::before { content: ""; position: absolute; inset: 0; pointer-events: none; backdrop-filter: blur(var(--sp-3)); -webkit-backdrop-filter: blur(var(--sp-3)); }
-body.ui-v3 #stage.u3-reveal .u3-reveal__box { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-4);
-  max-width: 100%; max-height: 100%; }
-body.ui-v3 #stage.u3-reveal .u3-pack { position: relative; flex: none; height: min(60vh, 102vw); aspect-ratio: 389 / 703; padding: 0; margin: 0;
-  border: 0; border-radius: var(--rad-sm); background: none; cursor: pointer; }
-body.ui-v3 #stage.u3-reveal .u3-pack:disabled { cursor: default; }
-body.ui-v3:not([data-last-input="pointer"]) #stage.u3-reveal .u3-pack:focus-visible { outline: none; box-shadow: var(--glow-focus); }
-body.ui-v3 #stage.u3-reveal .u3-pack__clip { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-body.ui-v3 #stage.u3-reveal .sunrays { position: fixed; }
-body.ui-v3 #stage.u3-reveal .u3-pack.dropping { pointer-events: none; animation: packDrop var(--dur-reveal) var(--ease-in-out) forwards; }
-body.ui-v3 #stage.u3-reveal .tap-prompt { align-self: stretch; text-align: center; font-family: var(--font-ui); font-size: var(--fs-body); font-weight: var(--fw-heading); color: var(--text-primary); }
-body.ui-v3 #stage.u3-reveal .tap-prompt.is-gone { visibility: hidden; }
-body.ui-v3 #stage.u3-reveal .reveal-grid { gap: var(--sp-3); max-width: 100%; }
-body.ui-v3 #stage.u3-reveal .fc { width: var(--u3-fc-w, calc(var(--menu-tile) * 1.5)); }
-body.ui-v3 #stage.u3-reveal .u3-reacts { flex-wrap: wrap; gap: var(--sp-2); margin: 0; }
-body.ui-v3 #stage.u3-reveal .react { width: var(--hit); height: var(--hit); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong);
-  color: var(--text-primary); font-size: var(--fs-heading); }
-body.ui-v3 #stage.u3-reveal .u3-reveal__ctl { display: inline-flex; gap: var(--sp-2); visibility: hidden; }
-body.ui-v3 #stage.u3-reveal.is-out .u3-reveal__ctl { visibility: visible; }
-body.ui-v3 #stage.u3-reveal .u3-reveal__ctl .u3-btn { min-width: calc(var(--menu-tile) * 1.5); }
+/* ==== UI-46 Dungeon lobby (ui-v2-dungeon.js lobbyV3HTML; design repo UI-46/approved; D-40) ====
+   The slots, the budget, the checks, "Select your squad" / Edit and Start run; the side column with the timer, the rule,
+   your best and the top 3 (the Rule / Best / Top 3 tabs on compact-land and when the panels do not fit). */
+body.ui-v2.ui-v3 .v2-dungeon:has(> .u3-dg) { padding: 0 var(--u3-pad) var(--sp-3); gap: 0; }
+.u3-dg { height: 100%; min-height: 0; display: grid; gap: var(--sp-4); grid-template-columns: minmax(0, 7fr) minmax(0, 2fr); grid-template-areas: "main side"; }
+.u3-dg--side-tabs { grid-template-columns: minmax(0, 2fr) minmax(0, 5fr); grid-template-areas: "side main"; }
+body[data-size="medium"] .u3-dg:not(.u3-dg--side-tabs) { grid-template-columns: minmax(0, 5fr) minmax(0, 2fr); }
+.u3-dg--port { display: flex; flex-direction: column; gap: var(--sp-3); }
+/* medium portrait (approved 768x1024): the squad panel, then the timer, the rule, your best and the top 3 */
+.u3-dg--stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-dg--stack > .u3-dg-main { flex: 0 1 auto; }
+/* stacked: the slots size from the width (5 in a row); the lower panels take the rest of the height */
+.u3-dg--stack:not(:has(.is-tabs)) .u3-dg-slots { flex: 0 0 auto; container-type: inline-size; }
+.u3-dg--stack:not(:has(.is-tabs)) .u3-dg-slots__in { --dg-w: calc((100cqw - 4 * var(--sp-3)) / 5); }
+.u3-dg--stack .u3-dg-below:not(.is-tabs) { flex: 1 1 auto; align-content: stretch; }
+.u3-dg-below { flex: 0 1 auto; min-height: 0; overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.u3-dg-below > .u3-dg-timer, .u3-dg-below > .u3-dg-rule { grid-column: 1 / -1; }
+.u3-dg-below.is-tabs { flex: 0 0 auto; overflow: visible; grid-template-columns: minmax(0, 1fr); }
+.u3-dg--stack:has(.u3-dg-below.is-tabs) > .u3-dg-main { flex: 1 1 0; }
+.u3-dg-timer--inline { gap: var(--sp-1); }
+.u3-dg-timer--inline b { margin-left: 0; font-size: var(--fs-body); }
+.u3-dg--port > .u3-dg-tabpanel { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-dg .u3-dg-tabpanel[hidden] { display: none; }
+/* tight (a short screen, measured): the budget bar and the budget line go (the points are in the checks), smaller text */
+.u3-dg[data-tight] :is(.u3-dg-bar, .u3-dg-budget, .u3-dg-pane .u3-dg-k, .u3-dg-timer > span) { display: none; }
+.u3-dg[data-tight] .u3-dg-main { gap: var(--sp-2); padding: var(--sp-3); }
+.u3-dg[data-tight] .u3-dg-name { font-size: var(--fs-stat); }
+.u3-dg[data-tight] .u3-dg-checks { font-size: var(--fs-small); gap: var(--sp-1) var(--sp-3); }
+.u3-dg[data-tight] .u3-dg-foot { flex-direction: column; align-items: stretch; gap: var(--sp-2); }
+.u3-dg[data-tight] .u3-dg-foot .u3-dg-checks { flex-wrap: nowrap; }
+.u3-dg[data-tight] .u3-dg-foot .u3-dg-act .u3-btn { flex: 1 1 0; }
+.u3-dg[data-tight] div.u3-dg-slot__card { cursor: default; }
+.u3-dg[data-tight] .u3-dg-act .u3-btn { min-width: 0; }
+.u3-dg[data-tight] .u3-dg-pane :is(.u3-dg-h, .u3-dg-p) { font-size: var(--fs-small); margin-top: var(--sp-1); }
+.u3-dg[data-tight] .u3-dg-panel.u3-dg-timer { padding: var(--sp-2) var(--sp-3); }
+.u3-dg-panel { box-sizing: border-box; padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); min-width: 0; }
+body[data-size^="compact"] .u3-dg-panel { padding: var(--sp-4); }
+.u3-dg-side { grid-area: side; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-dg-main { grid-area: main; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.u3-dg--port .u3-dg-main { flex: 1 1 0; gap: var(--sp-3); }
+.u3-dg-hrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--sp-2) var(--sp-4); }
+.u3-dg-hrow > .u3-dg-budget:first-child, .u3-dg-hrow > .u3-dg-bar { grid-column: 1 / -1; }
+/* medium: the budget in its own row, so the name has the full width to wrap and the date chip its own place (FEEDBACK UI-46 item 4) */
+body[data-size="medium"] .u3-dg-hrow { grid-template-columns: minmax(0, 1fr); }
+body[data-size="medium"] .u3-dg-head { flex-wrap: wrap; }
+.u3-dg-head { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; color: var(--gold); }
+.u3-dg-name { min-width: 0; }
+.u3-dg-date, .u3-dg-head > .u3-ico, .u3-dg-thumb { flex: none; }
+body[data-size="compact-port"] .u3-dg-thumb { display: none; }
+body[data-size="compact-port"] .u3-dg-name { font-size: var(--fs-heading); }
+.u3-dg-thumb { height: var(--hit); aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--rad-md); border: var(--bw-1) solid var(--border); }
+.u3-dg-name { margin: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); }
+.u3-dg-date { padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); background: var(--surface-2); color: var(--text-secondary); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); }
+.u3-dg-budget { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.u3-dg-pts { font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-heading); color: var(--gold); }
+.u3-dg-pts span { font-size: var(--fs-body); color: var(--text-muted); }
+.u3-dg-pts.is-bad { color: var(--danger-text); }
+.u3-dg-bar { display: flex; gap: var(--sp-1); }
+.u3-dg-bar i { flex: 1 1 0; height: var(--sp-2); border-radius: var(--rad-pill); background: var(--surface-3); }
+.u3-dg-bar i.is-on { background: var(--u3-r); }
+.u3-dg-bar i.is-over { background: var(--danger); }
+/* the slots: as large as the area allows (container units), 5 in a row, 3 + 2 in portrait (8.1 squad size) */
+.u3-dg-slots { flex: 1 1 0; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; }
+.u3-dg-slots__in { --dg-cols: 5; --dg-rows: 1; --dg-label: calc(var(--fs-label) * 1.5 + var(--sp-1));
+  --dg-w: min(calc((100cqw - (var(--dg-cols) - 1) * var(--sp-3)) / var(--dg-cols)), calc(((100cqh - (var(--dg-rows) - 1) * var(--sp-3)) / var(--dg-rows) - var(--dg-label)) / var(--card-ratio)));
+  list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: var(--sp-3); }
+/* portrait: the larger of 5 in one row and 3 + 2 in two rows (the flex wrap follows): 3 + 2 on a tall phone, one row on a short one */
+body[data-size="compact-port"] .u3-dg-slots__in { --dg-label: var(--u3-none);
+  --dg-w: max(min(calc((100cqw - 4 * var(--sp-3)) / 5), calc(100cqh / var(--card-ratio))), min(calc((100cqw - 2 * var(--sp-3)) / 3), calc((100cqh - var(--sp-3)) / 2 / var(--card-ratio)))); }
+body[data-size="compact-land"] .u3-dg-slots__in { --dg-label: var(--u3-none); }
+.u3-dg-slot { width: var(--dg-w); display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-dg-slot__card { position: relative; width: 100%; aspect-ratio: 1 / var(--card-ratio); padding: 0; overflow: hidden; display: grid; place-items: center; cursor: pointer;
+  border-radius: calc(var(--dg-w) * var(--rad-card-ratio)); border: var(--bw-1) solid var(--border-strong); background: var(--bg-raised); color: var(--text-muted); }
+.u3-dg-slot.is-full .u3-dg-slot__card { border: var(--bw-2) solid var(--u3-r); }
+.u3-dg-slot__card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.u3-dg-slot__n { font-family: var(--font-num); font-size: min(var(--fs-display), calc(var(--dg-w) / 2)); font-weight: var(--fw-heading); }
+.u3-dg-slot__label { font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-muted); }
+body[data-size^="compact"] .u3-dg-slot__label { display: none; }
+.u3-dg-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-5); }
+.u3-dg-foot .u3-dg-checks { flex: 1 1 auto; }
+.u3-dg-act { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-dg-foot .u3-dg-act { flex: none; }
+.u3-dg-act .u3-btn { min-width: calc(var(--card-tile) * 2); }
+body[data-size="compact-land"] .u3-dg-act .u3-btn { min-width: var(--card-tile); }
+body[data-size="compact-land"] .u3-dg-thumb, body[data-size="compact-land"] .u3-dg-budget .u3-label { display: none; }
+body[data-size="compact-land"] .u3-dg-pane .u3-dg-h { font-size: var(--fs-stat); }
+body[data-size="compact-land"] .u3-dg-pane :is(.u3-dg-p, .u3-dg-rchip) { font-size: var(--fs-small); }
+body[data-size="compact-land"] .u3-dg-panel.u3-dg-timer, body[data-size="compact-land"] .u3-dg-pane { padding: var(--sp-3); }
+body[data-size="compact-land"] .u3-dg-main { gap: var(--sp-2); padding: var(--sp-3); }
+body[data-size="compact-land"] .u3-dg-name { font-size: var(--fs-heading); }
+body[data-size="compact-port"] .u3-dg-act .u3-btn { width: 100%; }
+.u3-dg-go { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-dg-go .u3-dg-checks { flex-direction: column; gap: var(--sp-1); }
+/* the side column */
+.u3-dg-timer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); color: var(--gold); }
+.u3-dg-timer span { color: var(--text-secondary); font-size: var(--fs-body); }
+.u3-dg-timer b { margin-left: auto; font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-dg-k { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--gold); }
+.u3-dg-h { margin: var(--sp-2) 0 0; display: flex; align-items: center; gap: var(--sp-2); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-dg-h.is-muted { color: var(--text-muted); }
+.u3-dg-p { margin: var(--sp-1) 0 0; color: var(--text-secondary); font-size: var(--fs-body); line-height: var(--lh-body); }
+.u3-dg-rchips { margin-top: var(--sp-3); display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-dg-rchip { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-md); border: var(--bw-1) solid; font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
+.u3-dg-rchip.is-yes { color: var(--success); background: var(--success-soft); }
+.u3-dg-rchip.is-no { color: var(--danger-text); background: var(--danger-soft); }
+.u3-dg-mini { margin: var(--sp-3) 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.u3-dg-mini dt { font-size: var(--fs-label); color: var(--text-muted); }
+.u3-dg-mini dd { margin: 0; font-family: var(--font-num); color: var(--text-primary); }
+.u3-dg-toph { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.u3-dg-toph .u3-dg-h { margin: 0; }
+.u3-dg-runs { font-size: var(--fs-small); color: var(--text-muted); }
+.u3-dg-top { list-style: none; margin: var(--sp-3) 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-dg-top li { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); font-size: var(--fs-body); }
+.u3-dg-top li em { margin-left: auto; font-style: normal; font-family: var(--font-num); color: var(--gold); }
+.u3-dg-top li.is-none { color: var(--text-muted); }
+.u3-dg-top + .u3-btn { width: 100%; color: var(--gold); border-color: var(--gold-a50); }
+.u3-dg-tabs .u3-seg { width: 100%; box-sizing: border-box; }
+.u3-dg-tabs .u3-seg__item { flex: 1 1 0; justify-content: center; }
+body[data-size="compact-land"] .u3-dg-tabs .u3-seg__item { padding-inline: var(--sp-1); font-size: var(--fs-small); }
+.u3-dg-pane { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-dg-prow { display: flex; gap: var(--sp-2); align-items: stretch; }
+.u3-dg-prow .u3-dg-tabs { flex: 1 1 auto; min-width: 0; }
+.u3-dg-prow .u3-dg-timer { padding: var(--sp-2) var(--sp-3); }
+.u3-dg-prow .u3-dg-timer span { display: none; }
 
-/* ---- Multi-pack reveal (UI-35, D-72, D-99, D-100, D-106 to D-109): the full-screen view between the top bar and the dock.
-   The packs wait together (the pack width is the one number of the row, main.js fitPacksV3), then every card on one
-   screen (ui-v2-open.js, the approved header and fitter). ---- */
-body.ui-v2.ui-v3 #stage.v2-multi.u3-multi { inset: var(--topbar-h) var(--u3-pad) calc(var(--dock-h) + var(--u3-dock-b) + var(--sp-3)); padding: var(--sp-4);
-  border-radius: var(--rad-lg); background: var(--bg-base); border: var(--bw-1) solid var(--border); box-sizing: border-box;
-  overflow: visible; }   /* the burst ring of a rare card may pass the edge for a moment */
-body.ui-v3 #stage.u3-multi .u3-mwait { height: 100%; }
-body.ui-v3 #stage.u3-multi .u3-mpacks { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3); touch-action: none; }
-body.ui-v3 #stage.u3-multi .u3-mrow { display: flex; gap: var(--sp-3); }
-body.ui-v3 #stage.u3-multi .u3-mpack { flex: none; width: var(--u3-pw, var(--menu-tile)); aspect-ratio: 389 / 703; padding: 0; margin: 0; border: 0; border-radius: var(--rad-sm);
-  background: none; cursor: pointer; }
-body.ui-v3 #stage.u3-multi .u3-mpack:disabled { cursor: default; }
-body.ui-v3:not([data-last-input="pointer"]) #stage.u3-multi .u3-mpack:focus-visible { outline: none; box-shadow: var(--glow-focus); }
-body.ui-v3 #stage.u3-multi .u3-pack__clip { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-body.ui-v3 #stage.u3-multi .u3-mhint { flex: none; align-self: stretch; margin: 0; text-align: center; font-family: var(--font-ui); font-size: var(--fs-body); font-weight: var(--fw-heading); color: var(--text-primary); }
-body.ui-v3 #stage.u3-multi .u3-mhint.is-gone { visibility: hidden; animation: kf-fade var(--u3-seq, var(--dur-celebrate)) var(--ease-linear); }
-/* The New mark (review-2): "✦ New" at the card bottom (the top on a Full Art face, its name is at the bottom); a small chip
-   on cards of 70 to 87 px; a dot under 70 px (pack-reveal.js newMark). */
-body.ui-v3 #stage.u3-multi .mr-newtag.u3-newmark { top: auto; right: auto; left: 5%; bottom: 4%; display: inline-flex; align-items: center; gap: var(--sp-half);
-  padding: var(--sp-half) var(--sp-1-5); border-radius: var(--rad-pill); background: var(--bg-raised); border: var(--bw-1) solid var(--success); color: var(--success);
-  font-family: var(--font-ui); font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label); letter-spacing: normal; }
-body.ui-v3 #stage.u3-multi .mr-card.r-full_art .u3-newmark { top: 4%; bottom: auto; }
-body.ui-v3 #stage.u3-multi .mr-grid[data-newmark="small"] .u3-newmark { padding: 0 var(--sp-1); gap: 0; }
-body.ui-v3 #stage.u3-multi .mr-grid[data-newmark="small"] .u3-newmark > [aria-hidden] { display: none; }
-body.ui-v3 #stage.u3-multi .mr-grid[data-newmark="dot"] .u3-newmark { width: var(--dot); height: var(--dot); padding: 0; border: 0; border-radius: var(--rad-round); background: var(--success); }
-body.ui-v3 #stage.u3-multi .mr-grid[data-newmark="dot"] .u3-newmark > * { display: none; }
-/* The cards view (ui-v2-open.js): the grid is centered in the view (3.4), the header controls keep 44 px on touch (9.1). */
-body.ui-v3 #stage.u3-multi .mr-grid { align-content: center; }
-body.ui-v3[data-input="coarse"] #stage.u3-multi .mr-head .v2-btn { height: var(--hit); }
-body.ui-v3[data-input="coarse"] #stage.u3-multi .mr-head .v2-icon { width: var(--hit); height: var(--hit); flex-basis: var(--hit); }
+/* ==== UI-17 Hunt squad select (main.js huntSelectV3HTML; design repo UI-17/approved review-2; D-61) ====
+   The boss stage fills the content area (the Home slide camera), the squad strip sits at the bottom above the dock.
+   The stage shows the one-line "Top hunter" form when the Top 3 board does not fit (E7, measured in fitHuntV3). */
+body.ui-v2.ui-v3 .main-body.hunt.u3-hunt-view { --text-muted: var(--u3-text-muted); height: 100%; min-height: 0; padding: 0 var(--u3-pad) var(--sp-3); box-sizing: border-box; display: block; }
+.u3-hunt { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-hs-stage { flex: 1 1 0; min-height: 0; position: relative; overflow: hidden; cursor: pointer; display: grid; gap: var(--sp-2) var(--sp-5);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+.u3-hs-stage:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+body[data-size="medium"] .u3-hs-stage { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.u3-hs-text { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-hs-boss { position: relative; min-height: 0; }
+.u3-hs-boss canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.u3-hs-title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
+.u3-hs-tier { padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); background: color-mix(in srgb, var(--hunt) 85%, var(--bg-base)); color: var(--text-on-color); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-hs-name { margin: 0; min-width: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); text-transform: uppercase; color: var(--text-primary); }
+.u3-hs-facts { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-hs-atk, .u3-hs-weak { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); font-size: var(--fs-small); font-weight: var(--fw-small-strong); text-transform: uppercase; }
+.u3-hs-atk { color: var(--danger-text); background: var(--danger-soft); }
+.u3-hs-weak { color: var(--gold); background: var(--gold-a10); }
+.u3-hs-hp { position: relative; min-width: max-content; padding: 0 var(--sp-2); height: var(--chip-md); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.u3-hs-hp i { position: absolute; inset: 0 auto 0 0; width: var(--hp); background: var(--danger); }
+.u3-hs-hp span { position: relative; font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-primary); }
+.u3-hs-left { font-family: var(--font-num); font-size: var(--fs-body); color: var(--text-primary); }
+.u3-hs-top { min-height: 0; padding: var(--sp-3); border-radius: var(--rad-md); background: var(--bg-raised); border: var(--bw-1) solid var(--border); }
+.u3-hs-top:empty { display: none; }
+.u3-hs-board { list-style: none; margin: var(--sp-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-hs-board li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-small); color: var(--text-primary); }
+.u3-hs-board li b { flex: 1 1 auto; min-width: 0; }
+.u3-hs-board li em { margin-left: auto; font-style: normal; font-family: var(--font-num); color: var(--gold); }
+.u3-hs-rk { width: var(--sp-4); color: var(--text-muted); font-family: var(--font-num); }
+.u3-hs-line { display: none; margin: 0; font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-hs-line b { color: var(--text-primary); }
+.u3-hs-none { margin: var(--sp-2) 0 0; color: var(--text-muted); font-size: var(--fs-body); }
+.u3-hs-stage.is-line :is(.u3-hs-board, .u3-hs-top > .u3-label) { display: none; }
+.u3-hs-stage.is-line .u3-hs-line { display: block; }
+.u3-hs-stage.is-line .u3-hs-top { padding: var(--sp-2) var(--sp-3); }
+/* the squad strip */
+.u3-hs-squad { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: center; gap: var(--sp-3) var(--sp-5);
+  padding: var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+.u3-hs-info { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.u3-hs-count { display: flex; align-items: baseline; gap: var(--sp-2); }
+.u3-hs-count h2 { margin: 0 auto 0 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); color: var(--text-primary); }
+.u3-hs-count b { font-family: var(--font-num); color: var(--gold); font-size: var(--fs-heading); }
+.u3-hs-count span { font-family: var(--font-num); color: var(--text-muted); }
+.u3-hs-power { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); color: var(--gold); }
+.u3-hs-power b { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-hs-power em { font-style: normal; font-family: var(--font-num); color: var(--success); }
+.u3-hs-syn { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-hs-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); min-width: 0; max-height: var(--chip-md); overflow: hidden; }
+.u3-hs-chip, .u3-hs-chips .syn-chip.more { display: inline-flex; align-items: center; gap: var(--sp-1); height: var(--chip-md); padding: 0 var(--sp-2); border-radius: var(--rad-pill);
+  border: var(--bw-1) solid var(--border-strong); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-hs-chip b { color: var(--gold); font-family: var(--font-num); }
+.u3-hs-act { display: flex; gap: var(--sp-2); }
+.u3-hs-act .u3-btn--primary { flex: 1 1 auto; }
+.u3-hs-ko { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); color: var(--text-secondary); font-size: var(--fs-body); }
+.u3-hs-head { display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-hs-slotbox { min-width: 0; }
+.u3-hs-slots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(8, minmax(0, var(--card-tile))); justify-content: center; gap: var(--sp-2); }
+.u3-hs-slot { aspect-ratio: 1 / var(--card-ratio); border-radius: var(--rad-md); border: var(--bw-1) solid var(--border-strong); background: var(--bg-raised); overflow: hidden; display: grid; place-items: center;
+  color: var(--text-muted); font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-heading); }
+.u3-hs-slot.is-next { border: var(--bw-2) solid var(--gold); }
+.u3-hs-slot.is-full { border: var(--bw-2) solid var(--u3-r); }
+.u3-hs-slot img { width: 100%; height: 100%; object-fit: cover; }
+/* portrait: the stage text beside the boss, the board under both; the strip: count + power, 4 x 2 slots, synergies, the buttons */
+body[data-size="compact-port"] .u3-hs-stage { flex: 0 1 auto; padding: var(--sp-3); gap: var(--sp-1) var(--sp-3); grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+body[data-size="compact-port"] .u3-hs-text { display: contents; }
+body[data-size="compact-port"] .u3-hs-stage { grid-template-areas: "a boss" "c boss" "d boss" "b b" "top top"; grid-template-rows: auto auto auto auto auto; }
+body[data-size="compact-port"] .u3-hs-title { grid-area: a; } body[data-size="compact-port"] .u3-hs-facts { grid-area: b; }
+body[data-size="compact-port"] .u3-hs-hp { grid-area: c; } body[data-size="compact-port"] .u3-hs-left { grid-area: d; }
+body[data-size="compact-port"] .u3-hs-top { grid-area: top; } body[data-size="compact-port"] .u3-hs-boss { grid-area: boss; }
+body[data-size="compact-port"] .u3-hs-name { font-size: var(--fs-stat); }
+body[data-size="compact-port"] .u3-hs-squad { flex: 1 1 0; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; padding: var(--sp-3); gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-hs-info { display: contents; }
+body[data-size="compact-port"] .u3-hs-head { grid-row: 1; flex-direction: row; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+body[data-size="compact-port"] .u3-hs-slotbox { grid-row: 2; min-height: 0; align-self: stretch; container-type: size; display: grid; place-items: center; }
+body[data-size="compact-port"] .u3-hs-power b { font-size: var(--fs-heading); }
+/* the larger of 4 x 2 and 8 in one row (the flex wrap follows): 4 x 2 on a tall phone, one row on a short one */
+body[data-size="compact-port"] .u3-hs-slots { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; width: 100%;
+  --hs-w: max(min(calc((100cqw - 3 * var(--sp-2)) / 4), calc((100cqh - var(--sp-2)) / 2 / var(--card-ratio))), min(calc((100cqw - 7 * var(--sp-2)) / 8), calc(100cqh / var(--card-ratio)))); }
+body[data-size="compact-port"] .u3-hs-slot { width: var(--hs-w); font-size: min(var(--fs-heading), calc(var(--hs-w) / 2)); }
+body[data-size="compact-port"] .u3-hs-syn { grid-row: 3; }
+body[data-size="compact-port"] .u3-hs-act { grid-row: 4; }
+body[data-size="compact-port"] .u3-hs-act .u3-btn { flex: 1 1 0; }
+/* landscape: a smaller name, the strip info column narrow */
+body[data-size="compact-land"] .u3-hs-stage { padding: var(--sp-3) var(--sp-4); }
+body[data-size="compact-land"] .u3-hs-name { font-size: var(--fs-heading); }
+body[data-size="compact-land"] .u3-hs-stage { grid-template-columns: minmax(0, 4fr) minmax(0, 1fr); padding: var(--sp-2) var(--sp-3); }
+body[data-size="compact-land"] .u3-hs-line { font-size: var(--fs-small); }
+.u3-hunt.is-tight .u3-hs-top { display: none; }
+.u3-hunt.is-tight .u3-hs-stage { padding: var(--sp-1) var(--sp-3); }
+.u3-hunt.is-tight .u3-hs-squad { padding: var(--sp-2); }
+.u3-hunt.is-tight .u3-hs-slots { grid-template-columns: repeat(8, minmax(0, var(--card-thumb))); }
+.u3-hunt.is-tight .u3-hs-text { grid-template-columns: minmax(0, auto) minmax(0, 1fr); grid-template-areas: "a c" "b d"; }
+.u3-hunt.is-tight .u3-hs-title { grid-area: a; flex-wrap: nowrap; }
+.u3-hunt.is-tight .u3-hs-facts { grid-area: b; grid-column: auto; }
+.u3-hunt.is-tight .u3-hs-hp { grid-area: c; min-width: 0; }
+.u3-hunt.is-tight .u3-hs-hp span { font-size: var(--fs-caption); }
+.u3-hunt.is-tight .u3-hs-left { grid-area: d; }
+.u3-hunt.is-tight .u3-hs-name { font-size: var(--fs-stat); }
+body[data-size="compact-land"] .u3-hs-text { display: grid; grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(0, 1fr); align-items: center; gap: var(--sp-1) var(--sp-3); align-content: start; }
+body[data-size="compact-land"] .u3-hs-facts { grid-column: 2 / -1; }
+body[data-size="compact-land"] .u3-hs-top { grid-column: 1 / -1; padding: 0; border: 0; background: none; }
+body[data-size="compact-land"] .u3-hs-hp { min-width: calc(var(--card-tile) * 2); }
+body[data-size="compact-land"] .u3-hs-squad { padding: var(--sp-3); gap: var(--sp-2) var(--sp-3); }
+body[data-size="compact-land"] .u3-hs-power b { font-size: var(--fs-stat); }
+body[data-size="compact-land"] .u3-hs-info { gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-hs-head { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
+body[data-size="compact-land"] .u3-pk__foot { display: contents; }
+body[data-size="compact-land"] .u3-pk__foot > .u3-pk-checks { grid-area: foot; align-self: start; }
+body[data-size="compact-land"] .u3-pk__acts { grid-area: pager; justify-self: end; align-self: center; margin: 0; }
+body[data-size="compact-land"] .u3-pk__pager { justify-self: start; }
+body[data-size="compact-land"] .u3-hs-count h2, body[data-size="compact-land"] .u3-hs-count b { font-size: var(--fs-stat); }
+
+/* ==== UI-36 Dailies window (src/ui3/dailies.js, ui-v2-dailies.js; design repo UI-36/approved, review-1) ====
+   A 2-column panel under the top bar on medium (landscape) and expanded, a 2-column window in the safe frame on
+   compact-land (it covers the top bar), a 1-column panel on medium portrait and a bottom sheet on the dock edge on
+   compact-port (as tall as its content). The layout values are custom properties that the class rules set. */
+.u3-dl { --dl-cols: repeat(2, minmax(0, 1fr)); --dl-ck-cols: auto auto minmax(0, 1fr) auto; --dl-ck-areas: "ico main streak end";
+  --dl-sum-cols: minmax(0, 1fr) auto; --dl-sum-areas: "k k" "nums legend" "seg seg"; --dl-pad: var(--sp-4); --dl-row-pad: var(--sp-2);
+  position: fixed; z-index: var(--z-sheet); top: calc(var(--topbar-h) - var(--sp-2)); right: var(--sp-5); width: calc(var(--sheet-side-w) * 2);
+  max-width: calc(100% - var(--sp-5) * 2); max-height: calc(100% - var(--topbar-h) - var(--u3-dock-b) - var(--dock-h)); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--dl-pad); overflow: hidden;
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  color: var(--text-primary); animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top right; }
+.u3-dl.hidden { display: none; }
+body.ui-v3[data-size] .u3-dl { --text-muted: var(--u3-text-muted); }
+/* medium portrait: one column, today's panel width (D-46: a tall area stacks) */
+@media (orientation: portrait) {
+  body.ui-v3[data-size="medium"] .u3-dl { width: calc(var(--sheet-side-w) + var(--sp-5)); --dl-cols: minmax(0, 1fr); --dl-ck-cols: auto minmax(0, 1fr) auto;
+    --dl-ck-areas: "ico main end" "streak streak streak"; --dl-sum-cols: minmax(0, 1fr); --dl-sum-areas: "k" "nums" "seg" "legend"; }
+}
+/* compact-port: a sheet on the dock edge, one column (6.2 Sheet bottom; 3.4) */
+body.ui-v3[data-size="compact-port"] .u3-dl { --dl-cols: minmax(0, 1fr); --dl-ck-cols: auto minmax(0, 1fr) auto; --dl-ck-areas: "ico main end" "streak streak streak";
+  --dl-sum-cols: minmax(0, 1fr); --dl-sum-areas: "k" "nums" "seg" "legend";
+  top: auto; left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none;
+  bottom: calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-1)); max-height: calc(100% - var(--u3-dock-b) - var(--dock-h) - var(--sp-1) - var(--u3-sa-t) - var(--sp-1-5));
+  border-radius: var(--rad-sheet); animation-name: kf-rise; transform-origin: bottom center; --dl-row-pad: var(--sp-2); }
+/* tight (measured, ui-v2-dailies.js fitV3: the content is taller than the room, for example 375x667): smaller gaps */
+body.ui-v3[data-size] .u3-dl.is-tight { --dl-pad: var(--sp-3); --dl-row-pad: var(--sp-1); gap: var(--sp-2); }
+.u3-dl.is-tight .u3-dl__list { gap: var(--sp-1); }
+.u3-dl.is-tight .u3-dl__sum { padding: var(--sp-2) var(--sp-3); row-gap: var(--sp-1-5); }
+.u3-dl.is-tight .u3-dl__head { margin-block: calc(var(--sp-1) * -1); }
+.u3-dl.is-tight :is(.u3-dl__packs, .u3-dl__shards) b { font-size: var(--fs-heading); }
+.u3-dl.is-tight .u3-dl-task { row-gap: var(--sp-1); }
+.u3-dl.is-tight .u3-dl-task__main { gap: 0; }
+.u3-dl.is-tight .u3-dl-task__name { font-size: var(--fs-body); }
+.u3-dl.is-tight :is(.u3-dl-chip, .u3-dl-mark, .u3-dl-day) { height: var(--chip-sm); }
+.u3-dl.is-tight .u3-dl-mark { width: var(--chip-sm); }
+.u3-dl.is-tight .u3-dl-chip { padding: 0 var(--sp-1-5); font-size: var(--fs-caption); }
+/* compact-land: the safe frame width, from the top (2.3; the window covers the top bar, as UI-24) */
+body.ui-v3[data-size="compact-land"] .u3-dl { --dl-pad: var(--sp-3); --dl-row-pad: var(--sp-2); top: calc(var(--u3-sa-t) + var(--sp-1-5));
+  left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none;
+  max-height: calc(100% - var(--u3-sa-t) - var(--u3-sa-b) - var(--sp-1-5) * 2); gap: var(--sp-2); border-radius: var(--rad-sheet); }
+/* the header keeps the close button left of the Discord corner zone (2.3, G-013), as the top bar does */
+body.ui-v3[data-size="compact-land"] .u3-dl__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-1-5) - var(--dl-pad))); }
+body.ui-v3[data-size="tiny"] .u3-dl { display: none; }
+
+.u3-dl__head { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-dl__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-dl__reset { margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-1-5); min-height: var(--ctl-sm); padding: 0 var(--sp-3);
+  border-radius: var(--rad-pill); background: var(--surface-2); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); text-align: center; }
+body.ui-v3[data-size="compact-port"] .u3-dl__reset { font-size: var(--fs-caption); padding: 0 var(--sp-2); }
+.u3-dl__head > .u3-ibtn { margin-left: var(--sp-1); }
+.u3-dl__empty { margin: 0; font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-dl__loading { height: calc(var(--menu-tile) * 2); border-radius: var(--rad-lg); background: var(--surface-2); animation: kf-pulse var(--dur-celebrate) var(--ease-in-out) infinite; }
+
+/* Today: the packs and Shards of the day, the cap segments, the legend */
+.u3-dl__sum { display: grid; grid-template-columns: var(--dl-sum-cols); grid-template-areas: var(--dl-sum-areas); align-items: end; gap: var(--sp-2) var(--sp-4);
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-lg); background: var(--gold-a10); border: var(--bw-1) solid var(--gold-a35); }
+.u3-dl__k { grid-area: k; }
+.u3-dl__nums { grid-area: nums; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-5); min-width: 0; }
+.u3-dl__packs, .u3-dl__shards { display: inline-flex; align-items: baseline; gap: var(--sp-2); white-space: nowrap; }
+.u3-dl__packs b, .u3-dl__shards b { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); font-variant-numeric: tabular-nums; }
+.u3-dl__packs b { color: var(--gold); }
+.u3-dl__packs span { font-family: var(--font-num); font-size: var(--fs-stat); color: var(--text-secondary); }
+.u3-dl__shards { align-self: center; align-items: center; }
+.u3-dl__shards b { color: var(--cur-shards); }
+.u3-dl__shards span { font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-dl__all { grid-column: 1 / -1; display: flex; }
+.u3-dl-seg { grid-area: seg; display: flex; gap: var(--sp-1-5); height: var(--bar-md); }
+.u3-dl-seg__s { flex: 1 1 0; border-radius: var(--rad-pill); background: var(--surface-3); }
+.u3-dl-seg__s.is-on { background: var(--gold); }
+.u3-dl-seg__s.is-ready { background: none; box-shadow: inset 0 0 0 var(--bw-2) var(--gold); }
+.u3-dl__legend { grid-area: legend; display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); }
+.u3-dl__legend > span { display: inline-flex; align-items: center; gap: var(--sp-1-5); white-space: nowrap; }
+.u3-dl__legend i { width: var(--icon-xs); height: var(--icon-xs); border-radius: var(--sp-half); background: var(--surface-3); }
+.u3-dl__legend i.is-on { background: var(--gold); }
+.u3-dl__legend i.is-ready { background: none; box-shadow: inset 0 0 0 var(--bw-2) var(--gold); }
+
+/* The tasks: Check in on its own row, then the others in --dl-cols */
+.u3-dl__list { flex: none; display: grid; grid-template-columns: var(--dl-cols); gap: var(--sp-2); }
+/* the last step (measured, 3.5): when the tight spacing does not fit either (for example 667x375, or 375x667 with the
+   Discord insets), the tasks page "1 / N" (fitV3) */
+.u3-dl__pager { flex: none; display: flex; justify-content: center; }
+.u3-dl-task { --dl-c: var(--text-secondary); --dl-cs: var(--surface-3); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "ico main end";
+  align-items: center; gap: var(--sp-2) var(--sp-3); padding: var(--dl-row-pad) var(--sp-3); min-width: 0; border-radius: var(--rad-lg);
+  background: var(--surface-2); border: var(--bw-1) solid transparent; }
+.u3-dl-task.k-checkin { grid-column: 1 / -1; grid-template-columns: var(--dl-ck-cols); grid-template-areas: var(--dl-ck-areas); --dl-c: var(--warning); --dl-cs: var(--warning-soft); }
+.u3-dl-task.k-chat { --dl-c: var(--info); --dl-cs: var(--info-soft); }
+.u3-dl-task.k-hunt { --dl-c: var(--hunt-text); }
+.u3-dl-task.k-voice { --dl-c: var(--rarity-full_art); --dl-cs: var(--rarity-full_art-soft); }
+.u3-dl-task.k-social { --dl-c: var(--success); --dl-cs: var(--success-soft); }
+.u3-dl-task.is-go { background: var(--gold-a10); border-color: var(--gold-a50); }
+.u3-dl-task__ico { grid-area: ico; display: grid; place-items: center; width: var(--ctl-sm); height: var(--ctl-sm); border-radius: var(--rad-md); background: var(--dl-cs); color: var(--dl-c); }
+.u3-dl-task__main { grid-area: main; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.u3-dl-task__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+.u3-dl-task__name { font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-dl-task.is-claimed .u3-dl-task__name { color: var(--text-muted); }
+.u3-dl-task__sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); min-width: 0; }
+.u3-dl-task__note { font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-dl-task__count { flex: 0 1 auto; min-width: 0; font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.u3-dl-bar { flex: 1 1 var(--sp-7); min-width: var(--sp-6); height: var(--bar-md); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; }
+.u3-dl-bar > span { display: block; height: 100%; width: var(--u3-v, 0%); border-radius: inherit; background: var(--dl-c); }
+.u3-dl-task__end { grid-area: end; display: flex; justify-content: flex-end; }
+.u3-dl-task__chips { display: inline-flex; align-items: center; gap: var(--sp-1-5); }
+.u3-dl-task__auto { display: inline-flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+.u3-dl-chip { display: inline-flex; align-items: center; gap: var(--sp-1); height: var(--chip-md); padding: 0 var(--sp-2); border-radius: var(--rad-pill);
+  background: var(--surface-3); border: var(--bw-1) solid transparent; font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); white-space: nowrap; }
+.u3-dl-chip--paid { background: var(--success-soft); color: var(--success); }
+.u3-dl-chip--sm { height: var(--chip-sm); padding: 0 var(--sp-2); }
+.u3-dl-chip--shards { background: var(--cur-shards-soft); border-color: var(--cur-shards); color: var(--text-primary); }
+.u3-dl-streak { grid-area: streak; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-dl-day { display: inline-flex; align-items: center; height: var(--chip-md); padding: 0 var(--sp-3); border-radius: var(--rad-sm); background: var(--warning-soft); color: var(--warning);
+  font-family: var(--font-num); font-size: var(--fs-label); font-weight: var(--fw-heading); letter-spacing: var(--ls-label); text-transform: uppercase; white-space: nowrap; }
+.u3-dl-marks { display: inline-flex; flex-wrap: wrap; gap: var(--sp-1); }
+.u3-dl-mark { display: grid; place-items: center; width: var(--chip-md); height: var(--chip-md); border-radius: var(--rad-sm); background: var(--surface-3); color: var(--text-muted); }
+.u3-dl-mark.is-done { background: var(--warning-soft); color: var(--warning); }
+.u3-dl-mark.is-today { box-shadow: inset 0 0 0 var(--bw-2) var(--gold); color: var(--gold); }
+body.ui-v3[data-size="compact-land"] .u3-dl__sum { padding: var(--sp-2) var(--sp-3); }
+body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font-size: var(--fs-heading); }
+/* the claim toast (7.3): the top of the content on phones, under the panel on the wide classes; never over Claim or the dock */
+.u3-dl-toast { position: fixed; z-index: var(--z-toast); left: 0; right: 0; top: calc(var(--topbar-h) + var(--sp-3)); display: flex; justify-content: center; pointer-events: none; padding: 0 var(--sp-3); }
+.u3-dl-toast > .u3-toast { pointer-events: auto; }
+body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
+/* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
+body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
+/* ---- Bell window (UI-24, src/ui3/bell.js): a panel under the top bar on medium and expanded (right aligned, ends
+   above the dock), a side sheet on compact-land, a sheet above the dock on compact-port. Gifts to claim, the Hunt card,
+   the rows under Today and Earlier, the Pager (3.4). ---- */
+.u3-bell { position: fixed; z-index: var(--z-sheet); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-3);
+  top: calc(var(--u3-sa-t) + var(--u3-bar) - var(--sp-1)); right: calc(var(--u3-sa-r) + var(--u3-pad)); bottom: calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-2));
+  width: calc(var(--dialog-w) - var(--sp-3) - var(--sp-half)); padding: var(--sp-4); border-radius: var(--rad-lg);
+  background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); animation: kf-fade var(--dur-base) var(--ease-out); }
+body[data-size="compact-land"] .u3-bell { top: calc(var(--u3-sa-t) + var(--sp-1-5)); bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5));
+  width: min(calc(var(--sheet-side-w) + var(--sp-7) + var(--sp-2)), calc(100% - var(--sp-6))); border-radius: var(--rad-sheet); gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); }
+body[data-size="compact-port"] .u3-bell { top: calc(var(--u3-sa-t) + var(--sp-1-5)); left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5));
+  width: auto; border-radius: var(--rad-sheet); }
+.u3-bell > .v2-loading { margin: auto; color: var(--text-muted); font-size: var(--fs-small); }
+.u3-bell__head { flex: none; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-bell__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); white-space: nowrap; }
+.u3-bell__grow { flex: 1 1 auto; }
+.u3-bell__close { display: inline-flex; flex: none; }
+.u3-bell__tabs { flex: none; display: flex; width: 100%; box-sizing: border-box; }
+/* .nt-tabs stays on the tab row (shell.js opens Settings through it): its v2 rules lose to these (one more class) */
+.u3-bell .u3-bell__tabs .u3-seg__item { flex: 1 1 0; justify-content: center; height: var(--chip-md); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-secondary); }
+.u3-bell .u3-bell__tabs .u3-seg__item.is-active { color: var(--text-primary); }
+body[data-input="coarse"] .u3-bell .u3-bell__tabs .u3-seg__item, body[data-input="coarse"] .u3-bell .u3-btn--sm { height: var(--hit); }
+body[data-input="coarse"] .u3-note__main { min-height: var(--hit); justify-content: center; }
+.u3-bell .u3-label { color: var(--text-secondary); }
+/* compact-land: the sheet reaches the top edge, so its head keeps the Discord corner zone free (2.3, as the top bar) */
+body[data-size="compact-land"] .u3-bell__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-1-5) - var(--sp-4))); }
+.u3-bell__list { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-bell__list > .u3-state { flex: 1 1 auto; }
+.u3-bell__u { flex: none; min-width: 0; }
+.u3-bell__pager { flex: none; display: flex; justify-content: center; }
+.u3-bell__pager[hidden] { display: none; }
+.u3-bell__pager .u3-pager__arrow { min-width: 0; }   /* style.css "nav button" sets a min width (the old tab bar); the library Pager does not reset it */
+.u3-bell__head2 { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: var(--ctl-sm); }
+.u3-bell__head2 + .u3-msg { margin-top: var(--sp-2); }
+.u3-bell__sec { display: block; padding-top: var(--sp-1); }
+/* A gift to claim: its icon (a gift, the Shards coin, or the card), the title, the amount, Claim */
+.u3-gift { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3); border-radius: var(--rad-lg); background: var(--gold-a10); border: var(--bw-1) solid var(--gold-a35); }
+.u3-gift__ico { flex: none; display: grid; place-items: center; width: calc(var(--card-mini) / var(--card-ratio)); color: var(--gold); }
+.u3-gift__ico--coin svg { width: var(--icon-2xl); height: var(--icon-2xl); }
+.u3-gift__card { flex: none; width: calc(var(--card-mini) / var(--card-ratio)); aspect-ratio: 5 / 7; border-radius: var(--rad-sm); overflow: hidden; box-shadow: 0 0 0 var(--bw-2) var(--u3-r); }
+.u3-gift__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.u3-gift__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }
+.u3-gift__title { font-size: var(--fs-body); font-weight: var(--fw-small-strong); line-height: var(--lh-small); color: var(--text-primary); }
+.u3-gift__what { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--gold); }
+.u3-gift__what[class*="u3-r-"] { color: var(--u3-r); }
+.u3-gift__shards { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--cur-shards); }
+.u3-gift__shards svg { width: var(--icon-md); height: var(--icon-md); }
+/* The Hunt card: HUNT, the boss, its HP, Hunt */
+.u3-bellhunt { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--danger); }
+.u3-bellhunt__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+.u3-bellhunt__chip { display: inline-flex; align-items: center; gap: var(--sp-1-5); height: var(--chip-sm); padding: 0 var(--sp-2); border-radius: var(--rad-pill); border: var(--bw-1) solid var(--danger);
+  color: var(--danger-text); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); }
+.u3-bellhunt__live { width: var(--dot); height: var(--dot); border-radius: var(--rad-round); background: var(--danger); }
+.u3-bellhunt__name { font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-bellhunt__hp .u3-bar__fill { background: var(--danger); }
+/* A notification row: the kind icon, the body (1 line on the panels, 2 on compact-port; a tap shows it all, 10.4), the
+   kind label, the action, the time, the unread mark */
+.u3-note { position: relative; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-5) var(--sp-2) var(--sp-3); border-radius: var(--rad-lg); background: var(--surface-2); }
+.u3-note__ico { flex: none; display: grid; place-items: center; width: var(--ctl-icon); height: var(--ctl-icon); border-radius: var(--rad-md); background: var(--surface-3); color: var(--text-secondary); }
+.u3-note__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-half); padding: 0; margin: 0;
+  border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: var(--rad-sm); }
+body:not([data-last-input="pointer"]) .u3-note__main:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+.u3-note__text { max-width: 100%; font-size: var(--fs-small); font-weight: var(--fw-small-strong); line-height: var(--lh-small); color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-size="compact-port"] .u3-note__text { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.u3-note.is-full .u3-note__text { white-space: normal; display: block; overflow: visible; -webkit-line-clamp: none; }
+.u3-note__kind { font-size: var(--fs-caption); font-weight: var(--fw-caption); line-height: var(--lh-caption); color: var(--gold); }
+.u3-note__ago { flex: none; font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.u3-note__dot { position: absolute; right: var(--sp-2); bottom: var(--sp-2); width: var(--dot); height: var(--dot); border-radius: var(--rad-round); background: var(--gold); }
+/* The bell button shows the "on" look while the window is open (P7, as Shop and Menu) */
+body.ui-v2.ui-v3[data-size] #topbar #bellBtn.is-open { color: var(--gold); background: var(--gold-a10); border-color: var(--gold-a50); }
+
+
+/* ---- UI-14 Profile (member): design repo UI-14/approved (review-1 + review-2); src/ui3/profile.js ---- */
+/* The full-screen view in the content area, 8 px above the dock (S3); the view under it hides (no second screen). */
+body.ui-v2.ui-v3[data-size] { --u3-pf-dock: calc(var(--dock-h) + var(--sp-3) + var(--sp-2)); }
+body.ui-v2.ui-v3[data-size="compact-land"] { --u3-pf-dock: calc(var(--dock-h) + var(--sp-1) + var(--sp-2)); }
+body.ui-v2.ui-v3[data-size="compact-port"] { --u3-pf-dock: calc(var(--dock-h) + var(--sp-2) * 2 + var(--u3-sa-b)); }
+body.ui-v2.ui-v3[data-size="tiny"] { --u3-pf-dock: var(--sp-2); }
+body.ui-v2.ui-v3[data-size] #memberModal.v2-screen { top: calc(var(--u3-sa-t) + var(--u3-bar) + var(--sp-1)); left: calc(var(--u3-sa-l) + var(--u3-pad)); right: calc(var(--u3-sa-r) + var(--u3-pad));
+  bottom: var(--u3-pf-dock); z-index: var(--z-base); background: var(--bg-base); --text-muted: var(--u3-text-muted); }
+body.ui-v2.ui-v3[data-size="tiny"] #memberModal.v2-screen { top: var(--sp-2); left: var(--sp-2); right: var(--sp-2); }
+body.ui-v2.ui-v3[data-size]:has(#memberModal:not(.hidden)) #body { visibility: hidden; }
+.u3-pf { position: relative; height: 100%; display: grid; gap: var(--sp-4); min-height: 0; box-sizing: border-box; }
+.u3-pf-tile { position: relative; min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4);
+  box-sizing: border-box; border-radius: var(--rad-lg); background: var(--bg-raised); border: var(--bw-1) solid var(--border); }
+.u3-pf-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-height: var(--ctl-sm); }
+.u3-pf-h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-stat); font-weight: var(--fw-heading); color: var(--text-primary); }
+.u3-pf-none, .u3-pf-empty { margin: 0; color: var(--text-muted); font-size: var(--fs-small); }
+.u3-pf-empty { flex: 1 1 auto; display: grid; place-items: center; text-align: center; font-size: var(--fs-body); }
+.u3-pf .u3-btn--ghost { padding: 0 var(--sp-1); }
+body[data-input="coarse"] .u3-pf .u3-btn { height: var(--hit); }
+
+/* the layouts (grid areas) */
+.u3-pf-id { grid-area: id; } .u3-pf-spot { grid-area: spot; } .u3-pf-season { grid-area: season; } .u3-pf-wish { grid-area: wish; } .u3-pf-hunt { grid-area: hunt; }
+.u3-pf[data-lay="col3"] { grid-template-columns: minmax(0, calc(var(--sheet-side-w) * .74)) minmax(0, 1fr) minmax(0, calc(var(--sheet-side-w) * .8)); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "id spot wish" "id season hunt"; }
+.u3-pf[data-lay="col3"]:not(:has(.u3-pf-wish)) { grid-template-areas: "id spot hunt" "id season hunt"; }
+.u3-pf[data-lay="col3"]:has(.u3-pf-season.is-all) { grid-template-areas: "id season wish" "id season hunt"; }
+.u3-pf[data-lay="col3"]:has(.u3-pf-season.is-all):not(:has(.u3-pf-wish)) { grid-template-areas: "id season hunt" "id season hunt"; }
+.u3-pf[data-lay="stack"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 4fr) minmax(0, 5fr);
+  grid-template-areas: "id id" "spot season" "wish hunt"; }
+.u3-pf[data-lay="stack"]:not(:has(.u3-pf-wish)) { grid-template-areas: "id id" "spot season" "hunt hunt"; }
+.u3-pf[data-lay="stack"]:has(.u3-pf-season.is-all) { grid-template-areas: "id id" "season season" "wish hunt"; }
+.u3-pf[data-lay="land"] { gap: var(--sp-2); grid-template-columns: minmax(calc(var(--sheet-side-w) * .75), 23fr) minmax(0, 20fr) minmax(0, 20fr); grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "id spot wish" "id season wish"; }
+.u3-pf[data-lay="land"]:not(:has(.u3-pf-wish)) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "id spot" "id season"; }
+.u3-pf[data-lay="land"]:has(.u3-pf-season.is-all) { grid-template-rows: minmax(0, 1fr); grid-template-areas: "id season season"; }
+.u3-pf[data-lay="port"] { gap: var(--sp-2); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 2fr) auto minmax(0, 3fr);
+  grid-template-areas: "id" "spot" "season" "wish"; }
+.u3-pf[data-lay="port"]:not(:has(.u3-pf-wish)) { grid-template-rows: auto minmax(0, 1fr) auto; }
+.u3-pf[data-lay="port"]:has(.u3-pf-season.is-all) { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "id" "season"; }
+.u3-pf[data-lay="tiny"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "id"; }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-tile { padding: var(--sp-3); gap: var(--sp-2); }
+.u3-pf:is([data-lay="land"], [data-lay="port"], [data-lay="tiny"]) .u3-pf-hunt,
+.u3-pf:is([data-lay="port"], [data-lay="land"]):has(.u3-pf-season.is-all) .u3-pf-wish,
+.u3-pf[data-lay="tiny"] :is(.u3-pf-spot, .u3-pf-season, .u3-pf-wish) { display: none; }
+
+/* identity: every part is a grid item of the tile (display: contents), placed by the layout */
+.u3-pf-id { display: grid; align-content: start; column-gap: var(--sp-3); row-gap: var(--sp-2); }
+.u3-pf-who, .u3-pf-name { display: contents; }
+.u3-pf-id > .u3-pf-home { grid-area: home; justify-self: end; }
+.u3-pf-id .v2-avatar.u3-pf-av { grid-area: av; align-self: center; width: calc(var(--avatar-lg) + var(--sp-6)); height: calc(var(--avatar-lg) + var(--sp-6)); padding: var(--sp-1); }
+.u3-pf-id .v2-avatar.u3-pf-av > span { font-size: var(--fs-title); }
+.u3-pf-id .v2-avatar.u3-pf-av.live { box-shadow: 0 0 0 var(--bw-2) var(--bg-raised), 0 0 0 calc(var(--bw-2) * 2) var(--success); }
+.u3-pf-id h2 { grid-area: name; margin: 0; min-width: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading);
+  color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-pf-title { grid-area: title; justify-self: start; padding: var(--sp-half) var(--sp-2); border-radius: var(--rad-sm); background: var(--gold-a10); color: var(--gold);
+  font-size: var(--fs-caption); font-weight: var(--fw-heading); letter-spacing: var(--sp-half); }
+.u3-pf-id #memCos { grid-area: cos; justify-self: start; }
+.u3-pf-badges { grid-area: badges; display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.u3-pf-badge { width: var(--icon-2xl); height: var(--icon-2xl); flex: none; display: grid; place-items: center; border-radius: var(--rad-round); font-size: var(--fs-caption);
+  background: var(--surface-1); border: var(--bw-1) solid var(--gold-a50); }
+.u3-pf-more { margin-left: var(--sp-1); font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-muted); }
+.u3-pf-status { grid-area: status; display: flex; align-items: center; justify-content: center; min-height: var(--ctl-sm); padding: var(--sp-1) var(--sp-3); box-sizing: border-box;
+  border-radius: var(--rad-md); background: var(--gold-a10); border: var(--bw-1) solid var(--gold-a35); color: var(--gold); font-size: var(--fs-small); text-align: center; }
+.u3-pf-acts { grid-area: acts; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+.u3-pf-fx { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-2); }
+.u3-pf-acts .u3-btn { width: 100%; min-width: 0; }
+.u3-pf-stats { grid-area: stats; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-1); padding: var(--sp-2) var(--sp-1);
+  border-radius: var(--rad-md); background: var(--surface-1); }
+.u3-pf-stats > div { display: flex; flex-direction: column; align-items: center; min-width: 0; text-align: center; }
+.u3-pf-stats b { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-heading); color: var(--text-primary); }
+.u3-pf-stats span { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; }
+.u3-pf-stats[data-fs="1"] b { font-size: var(--fs-small); } .u3-pf-stats[data-fs="2"] b { font-size: var(--fs-caption); }
+.u3-pf-stats:is([data-fs="2"], [data-fs="3"]) span { font-size: var(--fs-label); }
+.u3-pf-stats[data-fs="3"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.u3-pf-stats[data-fs="3"] b { font-size: var(--fs-caption); }
+.u3-pf-stats span { font-size: var(--fs-caption); color: var(--text-muted); }
+.u3-pf-achh { grid-area: achh; display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2); }
+.u3-pf-n { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); }
+.u3-pf-ach { grid-area: ach; margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; align-content: flex-start; gap: var(--sp-1-5); min-height: var(--ctl-sm); overflow: hidden; }
+.u3-pf-ab { width: var(--ctl-sm); height: var(--ctl-sm); flex: none; display: grid; place-items: center; box-sizing: border-box; border-radius: var(--rad-round); font-size: var(--fs-small);
+  background: var(--surface-1); border: var(--bw-1) solid var(--gold-a50); }
+.u3-pf-ab--more { font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-muted); border-color: var(--border); }
+
+.u3-pf[data-lay="col3"] .u3-pf-id { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(10, auto) minmax(0, 1fr);
+  grid-template-areas: "home" "av" "name" "title" "cos" "badges" "status" "acts" "stats" "achh" "ach"; }
+.u3-pf[data-lay="col3"] .u3-pf-id > .u3-pf-home { justify-self: start; }
+.u3-pf[data-lay="col3"] .u3-pf-id :is(.v2-avatar.u3-pf-av, h2, .u3-pf-title, .u3-pf-badges) { justify-self: center; text-align: center; }
+.u3-pf:is([data-lay="port"], [data-lay="land"]) .u3-pf-id { grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "av name home" "av title home" "av cos cos" "av badges badges" "status status status" "acts acts acts" "stats stats stats" "achh achh achh" "ach ach ach"; }
+.u3-pf[data-lay="land"][data-self] .u3-pf-id { grid-template-areas: "av name name" "av title title" "av cos home" "av badges badges" "status status status" "acts acts acts" "stats stats stats" "achh achh achh" "ach ach ach"; }
+.u3-pf[data-lay="land"] .u3-pf-id { row-gap: var(--sp-1-5); }
+.u3-pf[data-lay="land"] .u3-pf-id .v2-avatar.u3-pf-av { width: calc(var(--avatar-lg) + var(--sp-2)); height: calc(var(--avatar-lg) + var(--sp-2)); }
+.u3-pf[data-lay="land"] .u3-pf-acts { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr); }
+.u3-pf[data-lay="land"] .u3-pf-acts:not(:has(.u3-pf-fx)) { grid-template-columns: minmax(0, 1fr); }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-stats { gap: var(--sp-1); padding: var(--sp-1); }
+.u3-pf[data-lay="stack"] .u3-pf-id { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: repeat(6, auto) minmax(0, 1fr);
+  grid-template-areas: "home home stats" "av name stats" "av title achh" "av cos ach" "av badges ach" "status status ach" "acts acts ach"; }
+.u3-pf[data-lay="stack"] .u3-pf-id > .u3-pf-home { justify-self: start; }
+.u3-pf[data-lay="tiny"] .u3-pf-id { padding: var(--sp-2); grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "av name" "av badges" "home home" "stats stats"; }
+.u3-pf[data-lay="tiny"] .u3-pf-id > .u3-pf-home { justify-self: start; }
+.u3-pf[data-lay="tiny"] .u3-pf-id :is(.u3-pf-title, #memCos, .u3-pf-status, .u3-pf-acts, .u3-pf-achh, .u3-pf-ach) { display: none; }
+.u3-pf[data-lay="tiny"] .u3-pf-id .v2-avatar.u3-pf-av { width: var(--avatar-lg); height: var(--avatar-lg); }
+
+/* Spotlight: the cards as large as the tile allows (review-2), the main card in the middle */
+.u3-pf-spotrow { flex: 1 1 0; min-height: 0; margin: 0; padding: 0; list-style: none; display: flex; align-items: center; justify-content: center; gap: var(--sp-3);
+  --pf-cw: var(--card-tile); }
+.u3-pf-card { flex: none; position: relative; aspect-ratio: 5 / 7; border-radius: var(--rad-sm); }
+.u3-pf-card > button { position: relative; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; border-radius: inherit; }
+.u3-pf-card img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; filter: drop-shadow(0 0 var(--sp-2) var(--u3-r)); }
+.u3-pf-spotrow > .u3-pf-card { width: calc(var(--pf-cw) * .82); }
+.u3-pf-spotrow[data-even] > .u3-pf-card { width: var(--pf-cw); }
+.u3-pf-spotrow > .u3-pf-card.is-main { width: var(--pf-cw); }
+.u3-pf-spotrow .u3-pf-none { align-self: center; }
+
+/* Season: the title, the bar, View all; the mini grid (whole rows); the rarity chips */
+.u3-pf-shead { display: flex; align-items: center; gap: var(--sp-4); min-width: 0; }
+.u3-pf-stitle { display: flex; flex-direction: column; flex: none; }
+.u3-pf-stitle h2 { margin: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); white-space: nowrap; }
+.u3-pf-sbar { flex: 0 1 calc(var(--sp-7) * 5); min-width: 0; height: var(--bar-sm); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; align-self: flex-start;
+  margin-top: var(--sp-3); }
+.u3-pf-sbar > i { display: block; height: 100%; width: var(--u3-v); background: linear-gradient(90deg, var(--rarity-full_art), var(--gold)); }
+.u3-pf-shead #memAll { margin-left: auto; flex: none; }
+.u3-pf-mini, .u3-pf-allgrid { flex: 1 1 0; min-height: 0; margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(var(--pf-cols, 1), minmax(0, 1fr));
+  align-content: start; gap: var(--sp-2); }
+.u3-pf-mini > .u3-pf-card { outline: var(--bw-2) solid var(--u3-r); outline-offset: calc(var(--bw-2) * -1); overflow: hidden; }
+.u3-pf-mini > .u3-pf-card img { filter: none; object-fit: cover; }
+.u3-pf-card.is-lock { display: grid; place-items: center; border: var(--bw-1) solid var(--border); background: var(--bg-base); color: var(--text-muted); }
+.u3-pf-allgrid { grid-template-columns: repeat(var(--pf-cols, 1), var(--pf-tile, var(--card-tile))); justify-content: center; }
+.u3-pf-pager { display: flex; justify-content: center; min-height: var(--ctl-sm); }
+.u3-pf-rar { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-pf-rchip { display: inline-flex; align-items: center; gap: var(--sp-1-5); height: var(--chip-md); padding: 0 var(--sp-3); border-radius: var(--rad-pill); background: var(--surface-1);
+  border: var(--bw-1) solid var(--border); font-size: var(--fs-small); color: var(--text-secondary); white-space: nowrap; }
+.u3-pf-rchip i { font-style: normal; color: var(--u3-r); }
+.u3-pf-rchip b { font-family: var(--font-num); color: var(--u3-r); }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-mini { display: none; }
+.u3-pf[data-lay="land"] .u3-pf-rar { display: none; }
+.u3-pf:is([data-lay="land"], [data-lay="port"]) .u3-pf-stitle h2 { font-size: var(--fs-heading); }
+.u3-pf[data-lay="port"] .u3-pf-rar { justify-content: center; }
+
+/* Wishlist (the v2 rows, restyled; UI-16 builds the editor) */
+.u3-pf-wish .tile-h { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--fs-stat); min-height: var(--ctl-sm); }
+.u3-pf-wish .tile-h b { display: flex; align-items: center; gap: var(--sp-2); font-weight: var(--fw-heading); }
+.u3-pf-wish .tile-h .grow { flex: 1 1 auto; }
+.u3-pf-wish .tile-h .mono { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-pf-wish #wlEdit { min-height: var(--ctl-sm); padding: 0 var(--sp-3); border-radius: var(--rad-md); font-size: var(--fs-small); }
+body.ui-v2.ui-v3[data-input="coarse"] .u3-pf-wish :is(#wlEdit, .wl-row .v2-icon) { min-height: var(--hit); min-width: var(--hit); }
+body.ui-v2.ui-v3 .u3-pf-wish { gap: var(--sp-2); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-list { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-1); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row { flex: none; min-height: calc(var(--ctl-sm) + var(--sp-1)); padding: var(--sp-half) var(--sp-2); gap: var(--sp-3); border-radius: var(--rad-md); background: var(--surface-1); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row[hidden] { display: none; }
+body.ui-v2.ui-v3 .u3-pf-wish :is(.wl-row img, .wl-empty) { height: var(--ctl-sm); width: auto; aspect-ratio: 5 / 7; box-sizing: border-box; flex: none; }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row b { font-size: var(--fs-small); white-space: normal; overflow-wrap: anywhere; }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-row span[style] { font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); }
+body.ui-v2.ui-v3 .u3-pf-wish .wl-i { width: var(--sp-3); font-size: var(--fs-caption); color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-pf-wish .hl-n { font-size: var(--fs-label); padding: var(--sp-half) var(--sp-1-5); border-radius: var(--rad-sm); background: var(--bg-base); color: var(--text-muted); }
+.u3-pf-wmore { display: flex; justify-content: center; }
+body[data-input="coarse"] .u3-pf-wmore .u3-more { min-height: var(--hit); }
+.u3-pf[data-lay="port"] .u3-pf-wish .wl-i { display: none; }
+
+/* Hunt (C4, C8) */
+.u3-pf-hunt .mem-hstats span, .u3-pf-hunt .mem-bars .hb span { font-size: var(--fs-label); }
+
+/* No profile / failed load (C17, 7.2) */
+.u3-pf--empty { display: flex; flex-direction: column; align-items: stretch; }
+.u3-pf--empty > .u3-pf-home { align-self: flex-start; }
+.u3-pf--empty > .u3-state { flex: 1 1 auto; }
+.u3-pf--empty .u3-msg { font-size: var(--fs-body); font-weight: var(--fw-body); color: var(--text-secondary); }
+.u3-pf--empty .u3-msg .u3-ico { color: var(--danger); }
+
+/* the tight steps (profile.js fitTight): 1 no rarity chips, 2 a smaller identity, 3 no status line, 4 (phones) the Spotlight
+   and the Wishlist as two tabs */
+.u3-pf[data-tight] .u3-pf-rar { display: none; }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-id { row-gap: var(--sp-1); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-stats { row-gap: var(--sp-half); padding-block: var(--sp-half); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-stats b { font-size: var(--fs-small); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-stats span { font-size: var(--fs-label); }
+.u3-pf:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-id .v2-avatar.u3-pf-av { width: var(--avatar-lg); height: var(--avatar-lg); }
+.u3-pf:is([data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-status { display: none; }
+.u3-pf[data-lay="land"]:is([data-tight="2"], [data-tight="3"], [data-tight="4"], [data-tight="5"]) .u3-pf-id .v2-avatar.u3-pf-av { width: var(--avatar-md); height: var(--avatar-md); }
+.u3-pf-tabs { display: none; grid-area: tabs; }
+.u3-pf-tabs .u3-seg { display: flex; }
+.u3-pf-tabs .u3-seg__item { flex: 1 1 0; justify-content: center; }
+.u3-pf:is([data-lay="port"]:is([data-tight="4"], [data-tight="5"]), [data-lay="land"][data-tight="5"]) .u3-pf-tabs { display: block; }
+.u3-pf[data-lay="land"][data-tight="5"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "id pane" "id tabs"; }
+.u3-pf[data-lay="land"][data-tight="5"] :is(.u3-pf-spot, .u3-pf-season, .u3-pf-wish) { grid-area: pane; }
+.u3-pf[data-lay="land"][data-tight="5"] .u3-pf-tile[hidden] { display: none; }
+.u3-pf[data-lay="land"][data-tight="5"] .u3-pf-tabs [data-seg="pf:season"] { display: inline-flex; }
+.u3-pf:is([data-lay="land"], [data-lay="port"])[data-tight="5"] .u3-pf-mini { display: grid; }
+.u3-pf:is([data-lay="land"], [data-lay="port"])[data-tight="5"] :is(.u3-pf-achh, .u3-pf-badges) { display: none; }   /* duplicates: the Achievements stat and the grid */
+.u3-pf[data-lay="port"][data-tight="4"] { grid-template-rows: auto auto auto minmax(0, 1fr); grid-template-areas: "id" "season" "tabs" "pane"; }
+.u3-pf[data-lay="port"][data-tight="5"] { grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "id" "tabs" "pane"; }
+.u3-pf-tabs [data-seg="pf:season"] { display: none; }
+.u3-pf[data-lay="port"][data-tight="5"] .u3-pf-tabs [data-seg="pf:season"] { display: inline-flex; }
+.u3-pf[data-lay="port"]:is([data-tight="4"], [data-tight="5"]) :is(.u3-pf-spot, .u3-pf-wish) { grid-area: pane; }
+.u3-pf[data-lay="port"][data-tight="5"] .u3-pf-season { grid-area: pane; }
+.u3-pf[data-lay="port"]:is([data-tight="4"], [data-tight="5"]) .u3-pf-tile[hidden] { display: none; }
+.u3-pf[data-lay="port"]:is([data-tight="4"], [data-tight="5"]) .u3-pf-acts { grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr); }
+.u3-pf:is([data-lay="land"], [data-tight="4"], [data-tight="5"]) .u3-pf-acts .u3-btn { padding: 0 var(--sp-2); gap: var(--sp-1); }
+.u3-pf[data-lay="land"]:is([data-tight="2"], [data-tight="3"]) .u3-pf-id h2 { font-size: var(--fs-stat); }
+.u3-pf[data-small] .u3-pf-id h2 { font-size: var(--fs-small); }
+.u3-pf[data-small] .u3-pf-stats b { font-size: var(--fs-caption); }
+.u3-pf:is([data-lay="port"]:is([data-tight="4"], [data-tight="5"]), [data-lay="land"][data-tight="5"]) .u3-pf-spot > .u3-pf-head { position: absolute; top: var(--sp-1); right: var(--sp-2); }
+.u3-pf:is([data-lay="port"]:is([data-tight="4"], [data-tight="5"]), [data-lay="land"][data-tight="5"]) .u3-pf-spot > .u3-pf-head > .u3-label { display: none; }
+.u3-pf[data-lay="port"]:has(.u3-pf-spotrow > .u3-pf-none) { grid-template-rows: auto auto auto minmax(0, 1fr); }
+.u3-pf:is([data-tight="4"], [data-tight="5"], [data-small]) .u3-pf-ab { width: calc(var(--ctl-sm) - var(--sp-1)); height: calc(var(--ctl-sm) - var(--sp-1)); }
+.u3-pf[data-small] .u3-pf-acts .u3-btn { font-size: var(--fs-caption); }
+.u3-pf[data-lay="stack"] .u3-pf-rchip { height: var(--chip-sm); padding: 0 var(--sp-2); font-size: var(--fs-caption); }
+.u3-pf[data-lay="stack"] .u3-pf-rar { gap: var(--sp-1-5); }
+.u3-pf-pager > .u3-pager { width: auto; flex: none; }
+
+/* ==== UI-61 Settings window (src/ui3/settings.js; design repo UI-61/approved, review-1; FEEDBACK D-80 item 27) ====
+   A panel under the top bar on medium and expanded (one column), a bottom sheet on the dock edge on compact-port, and
+   2 columns in the safe frame on compact-land (Discord pings left; Effects and Discord posts right; it covers the top
+   bar, as UI-24). Rows: 44 px, 48 px on touch; the whole row is the switch (9.1, 9.3). */
+.u3-st { --st-row: var(--hit); --st-gap: var(--sp-2);
+  position: fixed; z-index: var(--z-sheet); top: calc(var(--topbar-h) - var(--sp-2)); right: var(--sp-5); width: calc(var(--sheet-side-w) + var(--sp-5));
+  max-width: calc(100% - var(--sp-5) * 2); max-height: calc(100% - var(--topbar-h) - var(--u3-dock-b) - var(--dock-h)); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); overflow: hidden;
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  color: var(--text-primary); animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top right; }
+.u3-st.hidden { display: none; }
+body.ui-v3[data-size] .u3-st { --text-muted: var(--u3-text-muted); }
+body.ui-v3[data-input="coarse"] .u3-st { --st-row: calc(var(--hit) + var(--sp-1)); }
+body.ui-v3[data-size="compact-port"] .u3-st { top: auto; left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none;
+  bottom: calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-1)); max-height: calc(100% - var(--u3-dock-b) - var(--dock-h) - var(--sp-1) - var(--u3-sa-t) - var(--sp-1-5));
+  border-radius: var(--rad-sheet); animation-name: kf-rise; transform-origin: bottom center; }
+body.ui-v3[data-size="compact-land"] .u3-st { --st-row: var(--hit); top: calc(var(--u3-sa-t) + var(--sp-1-5)); left: calc(var(--u3-sa-l) + var(--sp-1-5));
+  right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none; max-height: calc(100% - var(--u3-sa-t) - var(--u3-sa-b) - var(--sp-1-5) * 2);
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-sheet); }
+body.ui-v3[data-size="tiny"] .u3-st { display: none; }
+/* tight (measured, settings.js): a short frame, for example 375x667 with the Discord insets */
+body.ui-v3[data-size] .u3-st.is-tight { --st-row: var(--hit); --st-gap: var(--sp-1); gap: var(--sp-2); padding-block: var(--sp-3); }
+
+.u3-st__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-st__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+/* compact-land: ✕ keeps left of the Discord corner zone (2.3, G-013) */
+body.ui-v3[data-size="compact-land"] .u3-st__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-1-5) - var(--sp-4))); }
+.u3-st__grid { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "fx" "pings" "posts"; gap: var(--sp-3) var(--sp-4); align-content: start; }
+body.ui-v3[data-size="compact-land"] .u3-st__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "pings fx" "pings posts"; grid-template-rows: auto 1fr; }
+.u3-st__sec { display: flex; flex-direction: column; gap: var(--st-gap); min-width: 0; }
+.u3-st__sec--fx { grid-area: fx; } .u3-st__sec--pings { grid-area: pings; } .u3-st__sec--posts { grid-area: posts; }
+.u3-st__label { margin: 0 0 var(--sp-half); }
+.u3-st__loading { height: calc(var(--menu-tile) * 3); border-radius: var(--rad-lg); background: var(--surface-2); animation: kf-pulse var(--dur-celebrate) var(--ease-in-out) infinite; }
+.u3-st-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: var(--st-row); padding: 0 var(--sp-4); box-sizing: border-box;
+  border-radius: var(--rad-md); background: var(--surface-2); cursor: pointer; }
+.u3-st-row.is-disabled { opacity: var(--item-disabled); cursor: not-allowed; }
+.u3-st-row__name { font-size: var(--fs-body); font-weight: var(--fw-small-strong); line-height: var(--lh-body); color: var(--text-primary); }
+.u3-st-row .u3-switch { min-height: 0; flex: none; }
+.u3-st-row .u3-switch.is-disabled, .u3-st-row.is-disabled .u3-switch { cursor: not-allowed; }
+body:not([data-last-input="pointer"]) .u3-st-row:has(.u3-switch__input:focus-visible) { box-shadow: var(--glow-focus); }
+.u3-st-row .u3-switch__input:focus-visible + .u3-switch__track { box-shadow: none; }   /* the row shows the ring (above) */
+body[data-last-input="pointer"] .u3-st .u3-ibtn:focus-visible { box-shadow: none; }   /* 9.3: the ring after a key only, as the shell */
+/* the Switch off look of the approved frames (UI-61 notes change 8; lane A request A1 asks the library for it):
+   the track with a control edge (9.4: 3:1) and a grey knob */
+.u3-st-row .u3-switch__input:not(:checked) + .u3-switch__track { box-shadow: inset 0 0 0 var(--bw-1) var(--border-strong); }
+.u3-st-row .u3-switch__input:not(:checked) + .u3-switch__track .u3-switch__knob { background: var(--text-secondary); }
+@media (hover: hover) and (pointer: fine) { .u3-st-row:not(.is-disabled):hover { background: var(--surface-3); } }
+.u3-st__sec > .u3-msg { padding: 0 var(--sp-1); }
+/* ---- Shop (UI-43, src/ui3/shop.js; D-41, D-80 23): Today's stock, Packs, Stat reset. Sub-tabs on compact and medium,
+   a right column on expanded. The ShopItem: the card face, then the price pill (the Buy button). --u3-w / --u3-fw come
+   from the one fitter (3.5); every other value is a token. ---- */
+body.ui-v2.ui-v3 #main > .u3-shop { height: 100%; min-height: 0; box-sizing: border-box; color: var(--text-primary); }
+/* the tab row: the library row look (UI-02) on the one .seg inside it */
+body.ui-v2.ui-v3 #main > .u3-shop-tabs > .seg { display: flex; flex: 1 1 auto; gap: var(--sp-1); padding: 0; margin: 0; background: none; border: 0; box-shadow: none; }
+.u3-shop--desk { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--sheet-side-w) - var(--sp-7) - var(--sp-5)); gap: var(--sp-4); }
+.u3-shop--stock, .u3-shop--packs, .u3-shop--reset { display: flex; flex-direction: column; }
+.u3-shop__panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.u3-shop__panel[hidden] { display: none; }
+.u3-sgroup__items { margin: 0; padding: 0; list-style: none; }
+.u3-shop .u3-step__limits { color: var(--text-secondary); }
+.u3-shop__stock { --u3-sg: var(--sp-2); --u3-sG: var(--sp-5); --u3-si: var(--sp-2); --u3-w: var(--card-tile); --u3-fw: var(--card-tile);
+  min-height: 0; min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-shop--desk > .u3-shop__stock { padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+body[data-size="compact-land"] .u3-shop__stock { --u3-sG: var(--sp-4); gap: var(--sp-2); }
+.u3-shop__head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.u3-shop__titles { display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-shop__title { margin: 0; display: inline-flex; align-items: center; gap: var(--sp-3); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); }
+.u3-shop__title > .u3-ico { color: var(--gold); }
+.u3-shop__count { font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-shop__timer { display: inline-flex; align-items: center; gap: var(--sp-2); height: var(--ctl-sm); padding: 0 var(--sp-4); border-radius: var(--rad-pill);
+  border: var(--bw-1) solid var(--border-strong); background: var(--bg-raised); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-shop__timer > .u3-ico { color: var(--gold); }
+.u3-shop__timer b { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.u3-shop__body { flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; display: flex; gap: var(--u3-sG); align-content: flex-start; }
+.u3-shop__pager { flex: none; display: flex; justify-content: center; }
+.u3-shop__pager[hidden] { display: none; }
+.u3-shop__pager .u3-pager__arrow { min-width: 0; }   /* style.css "nav button" sets a min width (the old tab bar) */
+/* the layouts (shopLayout): row = compact-land; wide = medium landscape, expanded; tall = medium portrait; port = pages */
+.u3-shop__stock[data-layout="row"] .u3-shop__body { flex-direction: row; justify-content: center; }
+.u3-shop__stock[data-layout="wide"] .u3-shop__body { display: grid; grid-template-columns: auto auto; grid-template-areas: "feat ir" "feat nm"; justify-content: center; align-content: center; }
+.u3-shop__stock[data-layout="tall"] .u3-shop__body { display: grid; grid-template-columns: auto auto; grid-template-areas: "feat ir" "nm nm"; justify-content: center; align-content: center; }
+.u3-shop__stock[data-layout="port"] .u3-shop__body { flex-direction: column; gap: 0; }
+.u3-shop__stock[data-layout="port"] .u3-sgroup__label-wrap:not(:first-child) { margin-top: var(--u3-sG); }
+.u3-shop__stock[data-layout="port"] .u3-sgroup__label-wrap + .u3-sgroup__items { margin-top: var(--u3-si); }
+.u3-shop__stock[data-layout="port"] .u3-sgroup__items + .u3-sgroup__items { margin-top: var(--u3-sg); }
+.u3-sgroup { display: flex; flex-direction: column; align-items: flex-start; gap: var(--u3-si); min-width: 0; }
+.u3-sgroup--feat { grid-area: feat; } .u3-sgroup--ir { grid-area: ir; } .u3-sgroup--nm { grid-area: nm; }
+.u3-sgroup__items { display: flex; gap: var(--u3-sg); }
+.u3-shop__stock[data-layout="port"] .u3-sgroup__items { justify-content: center; }
+.u3-sgroup__label { display: flex; align-items: center; gap: var(--sp-2); white-space: nowrap; font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label);
+  letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-secondary); }
+.u3-sgroup__label--feat { color: var(--rarity-secret_rare-text); }
+.u3-sgroup__label--ir { color: var(--rarity-illustrated_rare-text); }
+.u3-sgroup__each { display: inline-flex; align-items: center; gap: var(--sp-1); text-transform: none; letter-spacing: 0; font-size: var(--fs-small); font-weight: var(--fw-small); color: var(--text-secondary); }
+.u3-sgroup__each .sh-coin, .u3-spanel__price .sh-coin { width: var(--icon-sm); height: var(--icon-sm); }
+/* ShopItem */
+.u3-shopitem { position: relative; flex: none; width: var(--u3-w); display: flex; flex-direction: column; gap: var(--u3-si); }
+.u3-shopitem--feat { width: var(--u3-fw); }
+.u3-shopitem__card { display: block; width: 100%; aspect-ratio: 5 / 7; padding: 0; margin: 0; cursor: pointer; overflow: hidden; background: var(--surface-2);
+  border: var(--bw-2) solid var(--u3-r); border-radius: calc(var(--u3-w) * var(--rad-card-ratio)); }
+.u3-shopitem--feat .u3-shopitem__card { border-radius: calc(var(--u3-fw) * var(--rad-card-ratio)); box-shadow: 0 0 0 var(--bw-1) var(--u3-r); }
+.u3-shopitem__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.u3-shopitem__new { position: absolute; top: var(--sp-1); right: var(--sp-1); pointer-events: none; }
+.u3-shopitem__buy { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1-5); width: 100%; height: var(--ctl-sm); padding: 0 var(--sp-1); min-width: 0;
+  border-radius: var(--rad-pill); border: var(--bw-1) solid var(--gold-a35); background: var(--gold-a10); color: var(--text-primary); cursor: pointer; font: inherit;
+  transition: transform var(--dur-instant) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+body[data-input="coarse"] .u3-shopitem__buy { height: var(--hit); }
+.u3-shopitem__buy b { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); font-variant-numeric: tabular-nums; }
+.u3-shopitem__buy .sh-coin { flex: none; width: var(--icon-md); height: var(--icon-md); }
+.u3-shopitem__buy:active:not(:disabled) { transform: scale(.97); }
+.u3-shopitem__buy:disabled { cursor: default; color: var(--success); border-color: var(--border); background: var(--surface-1); }
+.u3-shopitem.is-bought .u3-shopitem__card { opacity: var(--item-disabled); }
+.u3-shop__stock.is-tight2, body[data-size] .u3-shop__stock.is-tight2 { --u3-sG: var(--sp-2); --u3-si: var(--sp-1); }
+.u3-shop__stock.is-tight .u3-shopitem__buy .sh-coin { display: none; }
+.u3-shop__stock.is-tight2 .u3-sgroup__label { display: none; }   /* the list keeps the group name (aria-label) */
+.u3-shop__stock.is-tight .u3-shopitem__buy b { font-size: var(--fs-small); }
+@media (hover: hover) { .u3-shopitem__buy:hover:not(:disabled) { background: var(--gold-a20); } }
+body:not([data-last-input="pointer"]) :is(.u3-shopitem__buy, .u3-shopitem__card):focus-visible { outline: none; box-shadow: var(--glow-focus); }
+/* the Packs and Stat reset panels: a column on expanded (D-41), centered alone in their tab */
+.u3-shop__side { display: flex; flex-direction: column; gap: var(--sp-3); min-height: 0; }
+.u3-shop__side .u3-spanel { padding: var(--sp-4); gap: var(--sp-3); }
+.u3-shop__side .u3-spanel__body { gap: var(--sp-3); }
+.u3-shop__side .u3-spack__art { width: calc(var(--card-tile) * 0.75); aspect-ratio: 1; }
+.u3-shop__side .u3-sfree { padding: var(--sp-2) var(--sp-3); }
+.u3-shop__side .u3-sfree b { font-size: var(--fs-small); white-space: nowrap; }
+.u3-shop__side .u3-sfree span { white-space: nowrap; }
+.u3-shop__one:not([hidden]) { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; }
+.u3-shop__one > .u3-spanel { width: min(100%, calc(var(--dialog-w) + var(--sp-7) * 2)); }
+body[data-size="compact-land"] .u3-shop__one > .u3-spanel--packs { width: min(100%, calc(var(--dialog-w) * 3)); }
+.u3-spanel { box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+.u3-spanel__head { display: flex; align-items: center; gap: var(--sp-3); }
+.u3-spanel__ico { display: grid; place-items: center; width: var(--ctl-icon); height: var(--ctl-icon); border-radius: var(--rad-md); background: var(--surface-2); color: var(--gold); flex: none; }
+.u3-spanel__title { margin: 0; flex: 1 1 auto; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); }
+.u3-spanel__price { display: inline-flex; align-items: center; gap: var(--sp-1); font-family: var(--font-num); font-size: var(--fs-stat); }
+.u3-spanel__price i { font-style: normal; font-family: var(--font-ui); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-spanel__body { display: flex; flex-direction: column; gap: var(--sp-4); }
+body[data-size="compact-land"] .u3-shop__one .u3-spanel { padding: var(--sp-3) var(--sp-4); gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-shop__one .u3-spanel__ctl { gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-shop__one .u3-spack__art { width: calc(var(--card-tile) * 0.8); }
+body[data-size="compact-land"] .u3-shop__one .u3-spanel__body { flex-direction: row; align-items: center; }
+body[data-size="compact-land"] .u3-shop__one .u3-spanel__body > * { flex: 1 1 0; }
+.u3-spanel__ctl { display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-spack { display: flex; align-items: center; gap: var(--sp-4); font-size: var(--fs-stat); }
+.u3-spack__art { flex: none; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1);
+  width: calc(var(--card-tile) * 0.8); aspect-ratio: 3 / 4; border-radius: var(--rad-md); color: var(--on-gold); background: linear-gradient(180deg, var(--gold-hi), var(--gold-strong)); }
+.u3-spack__art i { font-style: normal; font-size: var(--fs-label); font-weight: var(--fw-heading); white-space: nowrap; }
+.u3-spack__art svg { width: var(--icon-2xl); height: var(--icon-2xl); }
+.u3-spack__art--big { width: calc(var(--card-tile) * 2); }
+.u3-spack__art em { position: absolute; top: calc(var(--sp-2) * -1); right: calc(var(--sp-2) * -1); display: grid; place-items: center; min-width: var(--ctl-sm); height: var(--ctl-sm);
+  border-radius: var(--rad-pill); background: var(--bg-raised); border: var(--bw-1) solid var(--gold); color: var(--gold); font-style: normal; font-size: var(--fs-small); font-weight: var(--fw-heading); }
+.u3-sqty { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.u3-sqty__label { padding-top: var(--sp-3); font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-stotal { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-stotal__v { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--cur-shards); }
+.u3-stotal__v b { font-family: var(--font-num); font-size: var(--fs-heading); }
+.u3-stotal__v .sh-coin { width: var(--icon-lg); height: var(--icon-lg); }
+.u3-spanel--packs .u3-btn--primary { width: 100%; }
+.u3-sfree { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); border: var(--bw-1) solid var(--border); }
+.u3-sfree > .u3-ico { color: var(--success); }
+.u3-sfree b { flex: 1 1 auto; font-size: var(--fs-body); font-weight: var(--fw-small-strong); }
+.u3-sfree span { font-size: var(--fs-small); color: var(--text-secondary); text-align: right; }
+.u3-sfree.is-ok span { color: var(--success); }
+.u3-schoose { width: 100%; }
+/* the confirm (5.2 Dialog): the art left, the lines right; centered; Dialog/compact on compact-port */
+#u3ShopDlg .u3-scrim { z-index: var(--z-modal); }
+.u3-sdlg { width: min(100%, calc(var(--dialog-w) * 2 + var(--sp-7) * 1.5)); min-width: 0; box-sizing: border-box; flex-direction: row; gap: var(--sp-6); }
+.u3-sdlg__art { flex: 0 0 auto; width: calc(var(--card-tile) * 2.75); display: grid; place-items: center; }
+.u3-sdlg__card { display: block; width: 100%; aspect-ratio: 5 / 7; overflow: hidden; border-radius: var(--rad-lg); border: var(--bw-2) solid var(--u3-r); background: var(--surface-2); }
+.u3-sdlg__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.u3-sdlg__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.u3-sdlg__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.u3-sdlg__head > div { flex: 1 1 auto; min-width: 0; }
+.u3-sdlg__head > [data-x] { flex: none; }
+body[data-size="compact-port"] .u3-sdlg .u3-dialog__title { font-size: var(--fs-body); line-height: var(--lh-small); }
+.u3-sdlg__eyebrow { display: block; margin-bottom: var(--sp-2); color: var(--rarity-secret_rare-text); }
+.u3-sdlg--pack .u3-sdlg__eyebrow, .u3-sdlg--reset .u3-sdlg__eyebrow { color: var(--gold); }
+.u3-sdlg__sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.u3-sdlg__rar { display: inline-flex; align-items: center; gap: var(--sp-1-5); font-size: var(--fs-small); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-secondary); }
+.u3-sdlg__rar > span { color: var(--u3-r); }
+.u3-sdlg__dim { font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-sbal, .u3-spts { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-2); border: var(--bw-1) solid var(--border); }
+.u3-sbal > div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-sbal__v { display: inline-flex; align-items: center; gap: var(--sp-1-5); color: var(--text-primary); }
+.u3-sbal__v b { font-family: var(--font-num); font-size: var(--fs-stat); font-variant-numeric: tabular-nums; }
+.u3-sbal__v .sh-coin { width: var(--icon-md); height: var(--icon-md); }
+.u3-sbal__after { padding-top: var(--sp-2); border-top: var(--bw-1) solid var(--border); }
+.u3-sbal__after > span:first-child { font-size: var(--fs-body); font-weight: var(--fw-small-strong); color: var(--text-primary); }
+.u3-sbal__after .u3-sbal__v b { font-size: var(--fs-heading); color: var(--cur-shards); }
+.u3-sbal__after .u3-sbal__v.is-neg b { color: var(--danger-text); }
+.u3-sbal__free { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--success); }
+.u3-spts__h, .u3-spts__r { display: grid; grid-template-columns: minmax(0, 1fr) var(--sp-7) var(--sp-7); align-items: center; gap: var(--sp-2); }
+.u3-spts__h { font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-secondary); }
+.u3-spts__h > span:not(:first-child), .u3-spts__r > b { text-align: center; }
+.u3-spts__r { font-size: var(--fs-body); }
+.u3-spts__r b { font-family: var(--font-num); }
+.u3-spts__z { color: var(--success); }
+.u3-spts__note { margin: 0; font-size: var(--fs-small); color: var(--success); }
+.u3-sdlg__msgs { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-sdlg__msgs:empty { display: none; }
+body[data-size="compact-port"] .u3-sdlg { flex-wrap: wrap; gap: var(--sp-4); }
+body[data-size="compact-port"] .u3-sdlg__art { width: var(--card-tile); }
+body[data-size="compact-port"] .u3-sdlg { padding: var(--sp-4); }
+body[data-size="compact-port"] .u3-sdlg__main { display: contents; }
+body[data-size="compact-port"] .u3-sdlg__head { flex: 1 1 0; min-width: 0; }
+body[data-size="compact-port"] .u3-sdlg :is(.u3-spts, .u3-sbal, .u3-sdlg__msgs, .u3-dialog__foot) { flex: 1 1 100%; }
+body[data-size="compact-land"] .u3-sdlg { gap: var(--sp-4); padding: var(--sp-4); }
+/* compact-land: the window keeps the Discord corner zone free (2.3): it ends left of the corner width */
+body[data-size="compact-land"] #u3ShopDlg .u3-scrim { padding: var(--sp-2) max(var(--corner-w), calc(var(--u3-sa-r) + var(--sp-2))) var(--sp-2) max(var(--sp-2), var(--u3-sa-l)); }   /* the scrim covers the whole frame (inset 0) */
+body[data-size="compact-land"] .u3-sdlg__art { width: var(--card-tile); }
+body[data-size="compact-land"] .u3-sdlg__main { gap: var(--sp-2); }

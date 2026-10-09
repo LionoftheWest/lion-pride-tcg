@@ -65,15 +65,19 @@ export const PACK_RATIO = 389 / 703;
 
 /** UI-35 the waiting packs (D-100): the largest pack body that shows every pack, and the rows (balanced: 10 packs in 3
  *  rows are 4, 3, 3, not 4, 4, 2). */
+const TOUCH_MIN = 44;   // design.md 9.1
 export function fitPacks(n, width, height, gap) {
   const count = Math.max(1, n | 0);
-  let best = { pw: 0, cols: count };
+  const all = [];
   for (let cols = 1; cols <= count; cols++) {
     const rows = Math.ceil(count / cols);
-    const pw = Math.floor(Math.min((width - (cols - 1) * gap) / cols, ((height - (rows - 1) * gap) / rows) * PACK_RATIO));
-    if (pw > best.pw) best = { pw, cols };
+    all.push({ cols, rows, pw: Math.floor(Math.min((width - (cols - 1) * gap) / cols, ((height - (rows - 1) * gap) / rows) * PACK_RATIO)) });
   }
-  return { ...best, rows: balancedRows(count, Math.ceil(count / best.cols)) };
+  const top = Math.max(...all.map((c) => c.pw));
+  // A pack up to 15% smaller is worth fewer rows (5 packs are 3 + 2 as drawn on 430x932, not 2 + 2 + 1), but never a pack
+  // under the 44 px touch size (9.1) when a larger one fits.
+  const best = all.filter((c) => c.pw >= Math.min(top, Math.max(top * 0.85, TOUCH_MIN))).sort((x, y) => x.rows - y.rows || y.pw - x.pw)[0];
+  return { pw: best.pw, cols: best.cols, rows: balancedRows(count, best.rows) };
 }
 /** n items in r rows, as even as possible, the longer rows first: (10, 3) -> [4, 3, 3]. */
 export function balancedRows(n, r) {

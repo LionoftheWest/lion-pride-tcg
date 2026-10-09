@@ -98,6 +98,7 @@ test('D-100: the waiting packs: all packs show, the rows are balanced (10 = 4, 3
     assert.ok(rows * (f.pw / PACK_RATIO) + (rows - 1) * 12 <= h + 1, `${n} packs fit the height`);
   }
   assert.deepEqual(fitPacks(10, 398, 520, 12).rows, [4, 3, 3], '10 packs in 3 rows: 4, 3, 3 (as drawn on 430x932)');
+  assert.deepEqual(fitPacks(5, 398, 640, 12).rows, [3, 2], '5 packs in 2 rows: 3, 2 (as drawn on 430x932)');
   assert.deepEqual(fitPacks(10, 1240, 420, 12).rows, [10], 'a wide area: one row (as drawn on 1990x830)');
 });
 

@@ -37,7 +37,7 @@ const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;-
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
 const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'dungeon', 'hunt-battle', 'trades']);
+const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'dungeon', 'hunt-battle', 'trades', 'settings']);
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
@@ -64,14 +64,15 @@ todo.splice(0, todo.length, ...todo.filter((_, i) => i % SHARD_N === SHARD_K - 1
 console.log(`shard ${SHARD_K}/${SHARD_N}: ${todo.length} of ${all} cells`);
 
 let cells = 0, failures = 0;
-async function runCell([s, screen, variant]) {
+async function runCell([s, screen, variant], ref = {}) {
         const [W, H, cls, touch] = s; const size = sizeKey(s); const land = W > H;
         const spec = SCREENS[screen];
         const t0 = Date.now();
-        const ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: touch, isMobile: touch && BROWSER === 'chromium', deviceScaleFactor: 1, timezoneId: 'America/Denver', locale: 'en-US' });
+        const ctx = ref.ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: touch, isMobile: touch && BROWSER === 'chromium', deviceScaleFactor: 1, timezoneId: 'America/Denver', locale: 'en-US' });
         await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
         const cookies = [];
         if (spec.battle) cookies.push({ name: 'ci_hunt', value: 'battle', url: BASE });
+        if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);
         if (spec.battle && FIX.meta?.teamKey) await ctx.addInitScript(([k, v]) => localStorage.setItem(k, v), [FIX.meta.teamKey, JSON.stringify({ date: MT_DAY, ids: FIX.meta.teamIds })]);   // the date of the game day (MT), as main.js loadTeam() checks
@@ -102,18 +103,38 @@ async function runCell([s, screen, variant]) {
           if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
           await pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70 });
         } catch (e) {
-          res.error = String(e).slice(0, 300); failures++;
+          res.error = String(e).slice(0, 300); if (!ref.dead) failures++;
           try { await pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70 }); } catch { /* ignore */ }
         }
         res.blocked = [...new Set(blocked)]; res.noFixture = [...noFixture]; res.pageErrors = errs.slice(0, 5); res.seconds = Math.round((Date.now() - t0) / 1000);
+        if (ref.dead) return;   // this try timed out: the retry writes the result
         writeFileSync(join(OUT, `${BROWSER}-${size}-${screen}-${variant}.json`), JSON.stringify(res));
         cells++;
         console.log(`${BROWSER} ${size} ${screen.padEnd(20)} ${variant.padEnd(8)} ${String(res.seconds).padStart(3)}s miss=${(res.miss || []).length} fit=${(res.fit || []).length} cut=${(res.cut || []).length}${res.error ? ' ERROR ' + res.error.slice(0, 80) : ''}`);
         await ctx.close();
 }
+// A hung cell (one WebKit shard ran 55 min instead of 11, PR #270, 2026-10-08): each try has a time limit, and a cell that
+// times out runs once more. Two timeouts: the cell is a runner error ("not checked" in the verdict), not a lost shard.
+const CELL_LIMIT = Number(process.env.UI_CHECK_CELL_LIMIT) || 150;   // seconds; a cell takes 10 to 25 s (the variable is for a test)
+async function runCellGuarded(c) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const ref = {}; let timer;
+    const limit = new Promise((_, no) => { timer = setTimeout(() => no(new Error(`over ${CELL_LIMIT} s`)), CELL_LIMIT * 1000); });
+    try { await Promise.race([runCell(c, ref), limit]); clearTimeout(timer); return; } catch (e) {
+      clearTimeout(timer); ref.dead = true;
+      try { await ref.ctx?.close(); } catch { /* the hung context */ }
+      const [s, screen, variant] = c;
+      console.log(`${BROWSER} ${sizeKey(s)} ${screen} ${variant}: try ${attempt} ${e.message}${attempt === 1 ? ', one more try' : ''}`);
+      if (attempt === 2) {
+        writeFileSync(join(OUT, `${BROWSER}-${sizeKey(s)}-${screen}-${variant}.json`), JSON.stringify({ browser: BROWSER, size: sizeKey(s), class: s[2], touch: s[3], screen, id: SCREENS[screen].id, variant, error: `the cell timed out twice (${CELL_LIMIT} s)` }));
+        cells++; failures++;
+      }
+    }
+  }
+}
 const t00 = Date.now();
 try {
-  await Promise.all(Array.from({ length: Math.min(WORKERS, todo.length) }, async () => { for (let c; (c = todo.shift());) await runCell(c); }));
+  await Promise.all(Array.from({ length: Math.min(WORKERS, todo.length) }, async () => { for (let c; (c = todo.shift());) await runCellGuarded(c); }));
 } finally {
   await browser.close(); server.kill();
 }

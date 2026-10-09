@@ -16,6 +16,9 @@
     const rg = document.createRange(); rg.selectNodeContents(n);
     const rects = [...rg.getClientRects()].filter((r) => r.width > 0);
     if (!rects.length) continue;
+    // Not a text marked data-trunc: design.md 10.4 permits "…" on notification bodies, offer notes and feed lines that
+    // show their full text on tap (the bell rows, UI-24). Its clipped part is not cut text.
+    if (e.closest('[data-trunc]')) continue;
     // An ellipsis on this element or an ancestor that clips it.
     for (let x = e; x && x !== document.body; x = x.parentElement) {
       const cs = getComputedStyle(x);
