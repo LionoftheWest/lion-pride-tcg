@@ -15,6 +15,7 @@ import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
+import * as pf3 from './ui3/profile.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -1203,7 +1204,7 @@ function paintSpotEditor() {
 // live hunt, and the cards each of you has that the other one needs.
 
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const mem = { page: 0, all: false };
+const mem = { page: 0, all: false, wishFrom: 0, pane: '' };   // pane '' = the first tab with content (profile.js fitTight)
 let memData = null;
 
 // The needs / closest achievements list: a phone shows only whole rows; no room for one row hides
@@ -1228,12 +1229,27 @@ export async function openMember(id) {
   const self = String(id) === String(me?.id);
   let p = null;
   try { p = await ctx.api(`/api/profile${self ? '' : `?id=${encodeURIComponent(id)}`}`); } catch { p = null; }
-  if (!p || p.error) { box.innerHTML = '<div class="mem-empty"><button class="v2-btn" id="memBack">← Home</button><p class="v2-empty">This member has no profile yet.</p></div>'; return; }
+  if (!p || p.error) {
+    if (pf3.isV3()) { // v3 (UI-14 C17, D-80 item 15): no profile (404) or a failed load with Try again
+      box.innerHTML = pf3.emptyHTML(p?.error !== 'no such player');
+      ctx.el('memRetry')?.addEventListener('click', () => openMember(id));
+      return;
+    }
+    box.innerHTML = '<div class="mem-empty"><button class="v2-btn" id="memBack">← Home</button><p class="v2-empty">This member has no profile yet.</p></div>'; return;
+  }
   memData = { p, self, cards: mergedCards(self ? undefined : (p.cards || [])) };
-  mem.all = false; mem.page = 0;
+  mem.all = false; mem.page = 0; mem.wishFrom = 0; mem.pane = '';
   paintMember();
 }
 export function closeMember() { ctx.el('memberModal')?.classList.add('hidden'); }
+/** v3: the Profile closes when another screen or window is chosen (the dock, a tab, the Shop, the bell, the Menu ...; capture phase, so a
+ *  Profile that the same tap opens (the avatar) opens after it closed). Flag off: no change. */
+export function closeMemberOnShell() {
+  if (!pf3.isV3()) return;
+  const m = ctx?.el('memberModal');
+  if (m && !m.classList.contains('hidden')) closeMember();
+}
+document.addEventListener('click', (e) => { if (pf3.closesProfile(e.target)) closeMemberOnShell(); }, true);
 
 function paintMember() {
   const { el } = ctx;
@@ -1251,6 +1267,7 @@ function paintMember() {
   const spotOrder = spot.length === 3 ? [spot[1], spot[0], spot[2]] : spot; // the strongest in the middle
   const stat = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
   const effects = !self && ctx.effectsEnabled?.();
+  if (pf3.isV3()) { paintMemberV3({ box, p, self, cards, s, achs, done, pres, sIco, sTxt, season, ownedN, byR, spot, spotOrder, effects }); return; }
 
   box.innerHTML = `<div class="mem-screen">
     <aside class="mem-col mem-left">
@@ -1330,6 +1347,62 @@ function paintMember() {
   setTimeout(() => fitNeed(box), 300); // again after the fonts and images load
 }
 
+// ---- UI-14 v3 (body.ui-v3 only): the same data and element ids, the approved layout (src/ui3/profile.js) ----
+let memLay = '';
+function paintMemberV3({ box, p, self, cards, s, achs, done, pres, sIco, sTxt, season, ownedN, byR, spot, spotOrder, effects }) {
+  const lay = pf3.layoutOf(document.body.dataset.size, innerWidth, innerHeight);
+  memLay = lay;
+  const spotItems = spotOrder.map((c0, i) => { const { card, stache } = spotPrank(c0, p.id, i); return { id: c0.id, card, stache, main: c0 === spot[0] }; });
+  const all = mem.all;
+  box.innerHTML = pf3.profileHTML({
+    p, self, lay, all, effects,
+    avatar: avatarHTML(p.id, p.name, `u3-pf-av${pres ? ' live' : ''}`, p.frame),
+    name: nameBadge(p.id, p.name), title: p.title,
+    pres: pres ? { ico: sIco, txt: sTxt } : null,
+    stats: [[`${ownedN}/${season.length}`, 'Cards'], [p.huntRank ? `#${p.huntRank}` : '—', 'Hunt rank'], [`${done.length}/${achs.length}`, 'Achievements'],
+      [fmt(s.packsOpened), 'Packs opened'], [p.power != null ? fmt(p.power) : '—', 'Power'], [String(byR('full_art')), 'Full Arts']],
+    done, total: achs.length, spot: spotItems,
+    season: { name: col.season || 'Season 1', owned: ownedN, total: season.length, pct: Math.round((100 * ownedN) / (season.length || 1)) },
+    rarities: RARITY_ORDER.map((r) => ({ r, label: ctx.RARITY_LABEL[r] || r, n: byR(r) })),
+    wish: !!ctx.hallOn?.(),
+    huntHTML: pf3.huntHTML(p.hunt, p.huntRank, p.hunt ? huntBoxHTML(p).replace(/^<div class="tile-h">[\s\S]*?<\/div>/, '') : ''),
+  });
+  const { el } = ctx;
+  const owned = cards.filter((c) => c.owned).sort((a, b) => (b.power || 0) - (a.power || 0));
+  const open = (e) => { const b = e.target.closest('button[data-id]'); const c = b && cards.find((x) => String(x.id) === b.dataset.id); if (c) ctx.openViewer(c, all ? { list: owned } : undefined); };
+  el('memSpot')?.addEventListener('click', open);
+  el('memGrid')?.addEventListener('click', open);
+  el('memStyle')?.addEventListener('click', () => openSpotEditor());
+  el('memCos')?.addEventListener('click', () => openSpotEditor());
+  el('memAll').addEventListener('click', () => { mem.all = !mem.all; mem.page = 0; paintMember(); });
+  el('memBoon')?.addEventListener('click', () => ctx.playOnMember('boon', { id: p.id, name: p.name }));
+  el('memPrank')?.addEventListener('click', () => ctx.playOnMember('prank', { id: p.id, name: p.name }));
+  el('memTrade')?.addEventListener('click', () => { closeMember(); ctx.openTrade({ id: p.id, name: p.name }); });
+  box.querySelector('.u3-pf-tabs')?.addEventListener('click', (e) => { const b = e.target.closest('[data-seg]'); if (!b) return; mem.pane = b.dataset.seg.slice(3); fit(); });
+  el('memPager')?.addEventListener('click', (e) => { const b = e.target.closest('button[data-page]'); if (!b || b.disabled) return; mem.page += b.dataset.page === 'next' ? 1 : -1; pf3.fitAll(el('memGrid'), el('memPager'), owned, mem); });
+  const fit = () => {
+    if (!box.querySelector('.u3-pf')) return;
+    el('memWish')?.querySelectorAll('.wl-row').forEach((r) => { r.hidden = false; });
+    el('memWish')?.querySelector('.u3-pf-wmore')?.remove();
+    pf3.fitTight(box.querySelector('.u3-pf'), mem.pane, () => pf3.fitStats(box.querySelector('.u3-pf-stats')));
+    pf3.fitAch(el('memAch'), done);
+    pf3.fitSpot(el('memSpot'));
+    if (all) pf3.fitAll(el('memGrid'), el('memPager'), owned, mem); else pf3.fitMini(el('memGrid'), season);
+    const w = el('memWish'); if (w?.querySelector('.wl-list')) pf3.fitWish(w, mem);
+  };
+  requestAnimationFrame(fit);
+  document.fonts?.ready.then(() => { if (memFit === fit) fit(); });   // the number font changes the widths
+  memFit = fit;
+  if (ctx.hallOn?.()) loadWish(p.id, self);
+}
+// A resize: a new layout paints again, the same layout fits again (no scroll, G-010).
+let memFit = null; let memRT = null;
+addEventListener('resize', () => {
+  if (!memFit || !pf3.isV3() || ctx?.el('memberModal')?.classList.contains('hidden')) return;
+  clearTimeout(memRT);
+  memRT = setTimeout(() => { if (pf3.layoutOf(document.body.dataset.size, innerWidth, innerHeight) !== memLay) paintMember(); else memFit(); }, 150);
+});
+
 // ---- The Wishlist (5 slots, one card each; everyone can see it) ------------------------------
 const wl = { id: null, self: false, slots: [], edit: false, pick: null, rarity: 'normal', q: '', page: 0, sel: null, msg: '' };
 async function loadWish(id, self) {
@@ -1363,6 +1436,7 @@ function paintWish() {
     const c = x?.card && (ctx.cache.catalog?.cards || []).find((k) => Number(k.id) === Number(x.card.id));
     if (c) ctx.openViewer(c);
   }));
+  if (pf3.isV3() && box.closest('.u3-pf')) memFit?.(); // v3: fit again with the rows (the tight steps, "+N more": UI-14 C12)
 }
 async function saveWish(slot, cardId) {
   let r = null;
@@ -1386,7 +1460,7 @@ async function saveTop(slot) {
 }
 // The card picker over the center column: search, a rarity row, Clear + Save (frame 02).
 function openWishPicker(slot) {
-  const center = ctx.el('memberModal')?.querySelector('.mem-center');
+  const center = ctx.el('memberModal')?.querySelector('.mem-center, .u3-pf'); // v3: over the whole profile until UI-16
   if (!center) return;
   const cur = wl.slots.find((x) => x.slot === slot)?.card;
   Object.assign(wl, { pick: slot, sel: cur ? Number(cur.id) : null, rarity: cur?.rarity || wl.rarity, page: 0 });

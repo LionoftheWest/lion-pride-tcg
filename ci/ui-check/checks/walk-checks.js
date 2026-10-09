@@ -22,6 +22,7 @@
     if (z >= wz) { wz = z; win = e; }
   }
   const winRoot = win;
+  const hadWin = !!win;
   if (win) {
     const r = win.getBoundingClientRect();
     if (r.width >= vw - 2 && r.height >= vh - 2) {
@@ -44,6 +45,8 @@
     if (hit && !win.contains(hit) && !hit.contains(win)) out.covered.push([k, path(hit), 0]);
   }
   out.windowOutside = Math.round(Math.max(0, -wr.left, -wr.top, wr.right - vw, wr.bottom - vh));
+  // the window box itself keeps out of the Discord corner zone on a phone (2.3: Discord puts its buttons over the corner; a window under them is cut off)
+  if (phone && hadWin && wr.right > vw - 120 && wr.left < vw && wr.bottom > 0 && wr.top < 60) out.windowCorner = [Math.round(Math.min(wr.right, vw) - Math.max(wr.left, vw - 120)), Math.round(Math.min(wr.bottom, 60) - Math.max(wr.top, 0))];
   // 4) interactive elements: tap size, covered buttons, corner zone, keys for the desktop compare
   const ISEL = 'button, a[href], input, select, textarea, [role=button], [role=tab], .v2-cell, [data-member], [data-buy], [data-tab], [data-adv], [data-pane]';
   const small = [], tiny = [], coveredBtns = [], corner = [], keys = {};
@@ -57,12 +60,16 @@
     const key = keyOf(e);
     if (key) { const k2 = keys[key] || { inView: false }; k2.inView = k2.inView || (r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1); keys[key] = k2; }
     if (!inView(r)) continue;
+    { const na = e.closest('[data-scroll-area]'); if (na) { const nr = na.getBoundingClientRect(); const my = r.top + r.height / 2; if (my < nr.top || my > nr.bottom) continue; } }   // a row the named scroll area scrolled out of view (design.md 3.3, D-07)
     // covered: the center hit is not the element (a bar or a banner lies on it)
     const cx = clampX(r.left + r.width / 2), cy = clampY(r.top + r.height / 2);
     const hit = document.elementFromPoint(cx, cy);
     if (hit && !e.contains(hit) && !hit.contains(e) && !hit.closest(ISEL)?.contains(e) && !(winRoot && winRoot !== win.ownerDocument && !winRoot.contains(e) && winRoot.contains(hit))) {
-      // ignore an element hidden under its own scroll container edge
-      coveredBtns.push([path(e) + ' "' + label(e) + '"', 'under ' + path(hit)]);
+      // ignore an element hidden under its own scroll container edge: a named scroll area (design.md 3.3, D-07:
+      // data-scroll-area) has its rows scrolled out of view on purpose; their center lies outside the area
+      const sa = e.closest('[data-scroll-area]');
+      const sr = sa && sa.getBoundingClientRect();
+      if (!(sr && (cy < sr.top || cy > sr.bottom))) coveredBtns.push([path(e) + ' "' + label(e) + '"', 'under ' + path(hit)]);
     }
     if (touch && (r.width < 44 || r.height < 44)) { (r.width < 32 || r.height < 32 ? tiny : small).push([path(e) + ' "' + label(e) + '"', Math.round(r.width) + 'x' + Math.round(r.height)]); }
     if (phone && r.right > zone.l && r.left < zone.r && r.bottom > zone.t && r.top < zone.b) corner.push([path(e) + ' "' + label(e) + '"', [r.left, r.top, r.width, r.height].map(Math.round).join(',')]);
@@ -94,7 +101,8 @@
     const t = e.tagName;
     const own = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     const bg = getComputedStyle(e).backgroundImage;
-    if (own || /^(IMG|CANVAS|VIDEO|INPUT|BUTTON|SELECT|svg)$/i.test(t) || (bg && bg !== 'none' && !/gradient/.test(bg))) {
+    // The library Switch (UI-00 5.2) hides its input (1 px, opacity 0): its visible track is the control's ink.
+    if (own || /^(IMG|CANVAS|VIDEO|INPUT|BUTTON|SELECT|svg)$/i.test(t) || (bg && bg !== 'none' && !/gradient/.test(bg)) || e.classList.contains('u3-switch__track')) {
       const r = e.getBoundingClientRect();
       const l = Math.max(r.left, wr.left, 0), tp = Math.max(r.top, wr.top, 0), rt = Math.min(r.right, wr.right, vw), bt = Math.min(r.bottom, wr.bottom, vh);
       if (rt > l && bt > tp) leaves.push([l, tp, rt, bt]);

@@ -1,0 +1,9 @@
+/* ==== UI-43 Shop stock on the compact classes (src/ui3/shop.js fitStock; design repo UI-43/approved; flag ui_v3) ====
+   No pager (Nathan 2026-10-08): the whole stock shows. "stack" = Featured and the Illustrated Rare cards in row 1, the
+   Normal cards under them in rows of --u3-nmcols (6 or 3). Every selector starts with .u3-shop__stock. */
+.u3-shop__stock[data-layout="stack"] .u3-shop__body { display: grid; grid-template-columns: auto auto; grid-template-areas: "feat ir" "nm nm"; justify-content: center; align-content: center; justify-items: start; }
+.u3-shop__stock[data-layout="stack"] .u3-sgroup--nm { justify-self: center; }
+.u3-shop__stock[data-layout="stack"] .u3-sgroup--nm .u3-sgroup__items { flex-wrap: wrap; width: calc(var(--u3-nmcols) * var(--u3-w) + (var(--u3-nmcols) - 1) * var(--u3-sg)); max-width: 100%; }
+.u3-shop__stock[data-layout="row"] .u3-shop__body { align-items: center; }
+/* narrow cards (is-tight): the New mark is the star alone so it stays inside the card; its name "New" stays on the chip (aria-label) */
+.u3-shop__stock.is-tight .u3-shopitem__newtxt { display: none; }

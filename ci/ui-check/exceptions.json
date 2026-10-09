@@ -1,0 +1,12 @@
+[
+  { "decision": "D-120", "id": "UI-35", "screen": "pack-multi-10", "size": "1990x830", "rule": "empty",
+    "why": "10 packs in the approved one-row layout leave an empty band of 29% above and below the row (frame expanded-1990x830-2-waiting-10-packs)." },
+  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-cards", "size": "667x375", "rule": "tap",
+    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." },
+  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-all", "size": "667x375", "rule": "tap",
+    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." },
+  { "decision": "D-131", "id": "UI-64", "screen": "dungeon-picker-detail", "size": "820x1180", "rule": "empty",
+    "why": "The approved card window (UI-09 frames, D-131) is one framed window with the card (about 160 px) beside its info; the Dungeon boon card at this tall size leaves a band of 33% under the content, as the approved portrait frame does." },
+  { "decision": "D-131", "id": "UI-64", "screen": "dungeon-picker-detail", "size": "692x917", "rule": "empty",
+    "why": "The approved card window (UI-09 frames, D-131) is one framed window with the card (about 160 px) beside its info; at this size it leaves a band of 33% around the window, as the approved frames do." }
+]

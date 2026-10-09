@@ -24,7 +24,9 @@ const OLD = process.argv.includes('--old');
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = OLD ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/balance_table.sql', import.meta.url)), 'utf8')
-  .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
+  .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '').replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
+// 2026-10-09: the live-version guard of this old file is left out. hunt_random_target.sql replaced hunt_attack, so the guard
+// refuses the file on a current database (as designed). The test checks what the file DOES, inside the rolled-back block.
 if (mig.includes('$m$') || mig.includes('$r$')) throw new Error('the migration must not contain $m$ or $r$');
 
 // Option C (Nathan 2026-10-03), written here on purpose: the test checks the table against the decision.

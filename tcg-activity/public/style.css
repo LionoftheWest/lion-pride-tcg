@@ -119,6 +119,7 @@ nav button.active { background: #f5b942; color: #0a0d14; border-color: #f5b942; 
   align-items: center; justify-content: center; gap: 28px;
   background: radial-gradient(circle at 50% 40%, #15101d 0%, #05060a 85%); padding: 20px;
 }
+.viewer-win, .vi-main, .vi-side { display: contents; }   /* v2: no box of its own (the flex layout of #viewer is unchanged); v3 gives it the window box (ui3/90-ui-09-viewer-fit.css) */
 #viewer-close { position: absolute; top: 14px; right: 16px; background: #263149; color: #fff; border: 0; width: 38px; height: 38px; border-radius: 50%; font-size: 17px; cursor: pointer; z-index: 2; }
 .viewer-stage { perspective: 1400px; width: min(300px, 54vmin); aspect-ratio: 5 / 7; touch-action: none; }
 .card3d {

@@ -1,0 +1,131 @@
+-- dungeon_rules_supports_targets.sql (2026-10-08). Nathan's decisions (design repo FEEDBACK.md, 2026-10-08):
+--   D-126  Supports are never knocked out in the Dungeon: "in the Dungeon we don't want that happening, only in the
+--          Hunt/Arena can supports go down. In the dungeon runs, Supports are mainly just there to buff/help the attackers".
+--   D-127  A monster's single-target hit picks a RANDOM attacker, not the next one down the squad line. Area hits
+--          (Slam, Cataclysm, the area part of a move) still hit all the attackers.
+--   Nathan, same day: "Gauntlet has the same ruleset as the dungeon too". The Gauntlet runs on the same functions
+--   (dungeon_attack / dungeon_support / dungeon_enemy_turn with p_mode), so both modes change with one function.
+-- The only function that deals damage to a card in a Dungeon or Gauntlet run is dungeon_enemy_turn (poison ticks, the
+-- foes' single hit, the foes' area hit). The Hunt does not call it (it has hunt_attack / hunt_counter_act): the Hunt keeps
+-- supports going down. combat_enemy_act / combat_area_roll / combat_squad are not changed (the Hunt and this function
+-- share only the number rolls; the choice of the target is in dungeon_enemy_turn).
+-- Changes (3 lines of dungeon_enemy_turn, rebuilt from the LIVE text of 2026-10-08, md5 c263102cb58d3e620b9bc93ea2bb674d):
+--   1. poison tick: skips a support card (a support can never be poisoned now, this keeps an old run safe)
+--   2. single target: a random standing attacker (order by random()); before: the attacking card, else the first card by id,
+--      which could be a support
+--   3. area hit: skips a support card
+-- Not changed: dungeon_attack still ends the run (phase fell) when no attacker stands; a support that is already down in a
+-- run from before this file stays down until the next rest room (dungeon_enter revives it). Thorns and burn hit the
+-- attacking card, which is never a support. No balance number changes.
+-- Test: card-studio/scripts/test-dungeon-rules-targets.mjs.
+
+-- GUARD (the combat_core.sql rule): the function must be the live text this file was built from, or its result.
+do $g$
+declare m text;
+begin
+  select md5(replace(pg_get_functiondef('public.dungeon_enemy_turn(jsonb,bigint,integer,integer)'::regprocedure), chr(13), '')) into strict m;
+  if m not in ('c263102cb58d3e620b9bc93ea2bb674d', 'fd3a88b3812218f932abeb14f381901b') then
+    raise exception 'dungeon_rules_supports_targets.sql: the live dungeon_enemy_turn changed since this file was built. Rebuild it from the live text.';
+  end if;
+end $g$;
+-- GUARD-END
+
+CREATE OR REPLACE FUNCTION public.dungeon_enemy_turn(p_state jsonb, p_attacker bigint, p_attacked integer, p_dmg integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare st jsonb := p_state; v_round int := (p_state->>'round')::int + 1; i int; f jsonb; act jsonb; v_lost numeric; v_bmult numeric;
+  v_tgt text; c jsonb; v_d int; ab jsonb; k text; raw int; v_out jsonb := '[]'; v_heal int; v_pl text[]; v_burn int; v_area jsonb; v_ticks jsonb := '[]'; p int;
+  v_log jsonb := '[]'; v_h0 int;   -- dungeon_combat_log.sql: one event per HP change (dungeon_attack writes them to combat_actions)
+begin
+  st := st || jsonb_build_object('round', v_round);
+  -- Poison: each poisoned card loses its poison damage this round.
+  for k in select key from jsonb_each(st->'cards') where not (value->>'down')::boolean and not coalesce((value->>'sup')::boolean, false) and coalesce((value->>'psnu')::int, -1) >= v_round order by key loop   -- D-126: a support takes no poison
+    c := st->'cards'->k; p := coalesce((c->>'psn')::int, 0); v_h0 := (c->>'hp')::int;
+    c := c || jsonb_build_object('hp', greatest(0, (c->>'hp')::int - p)); c := c || jsonb_build_object('down', (c->>'hp')::int <= 0);
+    st := jsonb_set(st, array['cards', k], c);
+    v_ticks := v_ticks || jsonb_build_object('card', k::bigint, 'dmg', p);
+    v_log := v_log || dungeon_hp_event('enemy', 'poison', null, k::bigint, null, v_round, 'card', 'dmg', v_h0 - (c->>'hp')::int, c, jsonb_build_object('raw', p));
+  end loop;
+  for i in 0..jsonb_array_length(st->'foes') - 1 loop
+    f := st->'foes'->i;
+    continue when (f->>'hp')::int <= 0;
+    v_pl := dungeon_txt(f->'passives');
+    v_lost := 1 - (f->>'hp')::numeric / greatest(1, (f->>'max')::int);
+    v_bmult := combat_enemy_mult((f->>'enr')::numeric, (f->>'enru')::int, (f->>'wk')::numeric, (f->>'wku')::int, v_round,
+                                 'volatile' = any(v_pl), v_lost, 'frenzied' = any(v_pl));
+    act := combat_pool_act((f->>'atk')::numeric, v_bmult, v_round, (f->>'st')::int, v_lost, (f->>'max')::int, f->'moves', coalesce((f->>'charge')::boolean, false));
+    -- D-127: a single-target hit picks a RANDOM standing attacker (not the attacking card, not the next one in the line).
+    -- D-126: a support card is never a target. The run plays on random() (as combat_pool_act does), not on a seed.
+    v_tgt := (select key from jsonb_each(st->'cards') where not (value->>'down')::boolean and not coalesce((value->>'sup')::boolean, false) order by random() limit 1);
+    exit when v_tgt is null;   -- every attacker is down
+    v_area := '[]';
+    if (act->>'dmg')::int > 0 then
+      c := st->'cards'->v_tgt; v_h0 := (c->>'hp')::int;
+      ab := combat_absorb((c->>'shield')::int, (act->>'dmg')::int);
+      v_d := (ab->>'dmg')::int;
+      c := c || jsonb_build_object('shield', (ab->>'shield')::int, 'hp', greatest(0, (c->>'hp')::int - v_d));
+      c := c || jsonb_build_object('down', (c->>'hp')::int <= 0);
+      if act->>'action' = 'stun' then c := c || jsonb_build_object('cd', greatest((c->>'cd')::int, v_round + 1)); end if;
+      if (act->>'dot')::int > 0 then c := c || jsonb_build_object('psn', (act->>'dot')::int, 'psnu', v_round + 3); end if;
+      st := jsonb_set(st, array['cards', v_tgt], c);
+      v_log := v_log || dungeon_hp_event('enemy', act->>'action', null, v_tgt::bigint, i, v_round, 'card', 'dmg', v_h0 - (c->>'hp')::int, c,
+        jsonb_build_object('raw', (act->>'dmg')::int, 'absorbed', (act->>'dmg')::int - v_d, 'move', act->>'move', 'hits', (act->>'hits')::int, 'dot', (act->>'dot')::int));
+    end if;
+    if (act->>'area')::numeric > 0 then
+      for k in select key from jsonb_each(st->'cards') where key <> v_tgt and not (value->>'down')::boolean and not coalesce((value->>'sup')::boolean, false) order by key loop   -- D-126: an area hit skips the supports, all other attackers still take it
+        c := st->'cards'->k; v_h0 := (c->>'hp')::int;
+        raw := combat_area_roll((f->>'atk')::numeric, (act->>'area')::numeric, v_bmult);
+        ab := combat_absorb((c->>'shield')::int, raw);
+        c := c || jsonb_build_object('hp', greatest(0, (c->>'hp')::int - (ab->>'dmg')::int), 'shield', (ab->>'shield')::int);
+        c := c || jsonb_build_object('down', (c->>'hp')::int <= 0);
+        st := jsonb_set(st, array['cards', k], c);
+        v_area := v_area || jsonb_build_object('card', k::bigint, 'dmg', (ab->>'dmg')::int);
+        v_log := v_log || dungeon_hp_event('enemy', 'area', null, k::bigint, i, v_round, 'card', 'dmg', v_h0 - (c->>'hp')::int, c,
+          jsonb_build_object('raw', raw, 'absorbed', raw - (ab->>'dmg')::int, 'action', act->>'action', 'move', act->>'move'));
+      end loop;
+    end if;
+    if act->>'action' = 'enrage' then f := f || jsonb_build_object('enr', balance_num('boss_moves', 'enrage_x'), 'enru', v_round + balance_num('boss_moves', 'enrage_rounds')::int);
+    elsif act->>'action' = 'curse' then st := jsonb_set(st, array['cards', v_tgt, 'debuff'], to_jsonb(balance_num('boss_moves', 'curse_x')));
+    elsif act->>'action' = 'guard' then f := f || jsonb_build_object('sh', coalesce((f->>'sh')::int, 0) + (act->>'guard')::int);
+    end if;
+    v_heal := (act->>'heal')::int;
+    if 'regenerating' = any(v_pl) and act->>'action' <> 'stunned' then v_heal := v_heal + greatest(1, round((f->>'max')::int * balance_num('boss_passives', 'regenerating_heal_foe')))::int; end if;
+    if v_heal > 0 then
+      v_h0 := (f->>'hp')::int;
+      f := f || jsonb_build_object('hp', least((f->>'max')::int, (f->>'hp')::int + v_heal));
+      v_log := v_log || dungeon_hp_event('enemy', 'heal', null, null, i, v_round, 'foe', 'heal', (f->>'hp')::int - v_h0, f,
+        jsonb_build_object('raw', v_heal, 'action', act->>'action', 'move', act->>'move'));
+    end if;
+    st := jsonb_set(st, array['foes', i::text], f);
+    v_out := v_out || jsonb_build_object('foe', i, 'action', act->>'action', 'move', act->>'move', 'card', v_tgt::bigint, 'dmg', coalesce(v_d, 0),
+      'hits', (act->>'hits')::int, 'area', v_area, 'heal', v_heal, 'guard', (act->>'guard')::int, 'dot', (act->>'dot')::int);
+    v_d := null;
+  end loop;
+  f := st->'foes'->p_attacked;
+  if f is not null and (f->>'hp')::int > 0 and not coalesce((st->'cards'->p_attacker::text->>'down')::boolean, true) then
+    v_pl := dungeon_txt(f->'passives');
+    c := st->'cards'->p_attacker::text;
+    if 'thorns' = any(v_pl) and p_dmg > 0 then
+      v_h0 := (c->>'hp')::int;
+      c := c || jsonb_build_object('hp', greatest(0, (c->>'hp')::int - combat_thorns(p_dmg)));
+      v_log := v_log || dungeon_hp_event('enemy', 'thorns', null, p_attacker, p_attacked, v_round, 'card', 'dmg', v_h0 - (c->>'hp')::int, c, null);
+    end if;
+    if 'flaming' = any(v_pl) then
+      v_burn := combat_burn((f->>'atk')::numeric);
+      if v_burn > 0 then
+        v_h0 := (c->>'hp')::int;
+        ab := combat_absorb((c->>'shield')::int, v_burn);
+        c := c || jsonb_build_object('shield', (ab->>'shield')::int, 'hp', greatest(0, (c->>'hp')::int - (ab->>'dmg')::int));
+        v_log := v_log || dungeon_hp_event('enemy', 'burn', null, p_attacker, p_attacked, v_round, 'card', 'dmg', v_h0 - (c->>'hp')::int, c,
+          jsonb_build_object('raw', v_burn, 'absorbed', v_burn - (ab->>'dmg')::int));
+      end if;
+    end if;
+    c := c || jsonb_build_object('down', (c->>'hp')::int <= 0);
+    st := jsonb_set(st, array['cards', p_attacker::text], c);
+  end if;
+  return jsonb_build_object('state', st, 'actions', v_out, 'burned', coalesce(v_burn, 0), 'poison', v_ticks, 'hp_log', v_log);
+end $function$;
+grant execute on function public.dungeon_enemy_turn(jsonb, bigint, integer, integer) to postgres;
+grant execute on function public.dungeon_enemy_turn(jsonb, bigint, integer, integer) to service_role;

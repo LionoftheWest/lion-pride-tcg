@@ -9,6 +9,8 @@ import { thumb } from './thumb.js';
 import { isPort, isLand } from './mobile.js';
 import { every } from './poll.js';
 import { fmtFor } from './ui3/number.js';
+import { shopHTML, stockBlocks, fitStock, confirmHTML } from './ui3/shop.js';
+import { openCardPicker } from './ui3/card-picker.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -33,7 +35,8 @@ const ICON = {
 const STAT_NAME = { attack: 'Attack', vitality: 'Vitality', precision: 'Precision', potency: 'Potency', haste: 'Haste' };
 const STAT_SHORT = { attack: 'ATK', vitality: 'VIT', precision: 'PRE', potency: 'POT', haste: 'HST' };
 
-export const shop = { on: false, data: null, qty: 1, tab: 'stock', modal: null, busy: false, msg: '', pick: { page: 0 } };
+export const shop = { on: false, data: null, qty: 1, tab: 'stock', modal: null, busy: false, msg: '', pick: { page: 0 }, page: 1 };
+const isV3 = () => document.body.classList.contains('ui-v3');
 let tick = null;
 
 // ---- The top bar ------------------------------------------------------------------------------
@@ -187,6 +190,7 @@ function resetHTML() {
 }
 
 function paint() {
+  if (isV3()) { paintV3(); return; }
   const { el } = ctx();
   const d = shop.data;
   if (!d || d.closed) { el('main').innerHTML = `<div class="sh-closed"><b>${esc(d?.message || 'The Shop is closed.')}</b></div>`; return; }
@@ -213,13 +217,44 @@ function paint() {
   startTick();
 }
 
-function wire() {
-  const root = ctx().el('main').querySelector('.v2-shop');
-  if (!root) return;
-  root.onclick = (e) => {
+// ---- The v3 Shop (UI-43, src/ui3/shop.js): the same data, prices and buy calls, the approved layout ----
+let fitT = null;
+function onShopResize() {
+  clearTimeout(fitT);
+  fitT = setTimeout(() => { if (ctx().currentView() === 'shop' && isV3()) paint(); else removeEventListener('resize', onShopResize); }, 120);
+}
+function paintV3() {
+  const { el } = ctx();
+  const d = shop.data;
+  if (!d || d.closed) { el('main').innerHTML = `<div class="sh-closed"><b>${esc(d?.message || 'The Shop is closed.')}</b></div>`; return; }
+  const size = document.body.dataset.size || 'expanded';
+  shop.qty = Math.min(Math.max(1, shop.qty), d.max_packs_per_buy || 10);
+  el('main').innerHTML = shopHTML({ d, tab: shop.tab, qty: shop.qty, size, left: left(d.next_at), coin: COIN, rarityLabel: RL, day: nextDay(d.free_reset_next) });
+  const root = el('main').querySelector('.u3-shop');
+  if (root?.querySelector('.u3-shop__stock')) {
+    const r = fitStock(root, stockBlocks(d, COIN, RL), { size });
+    shop.page = r.page; shop.pages = r.pages;
+  }
+  // the tab row and the Shop root (not #main: its click handler would outlive the view)
+  wire([el('main').querySelector(':scope > .u3-shop-tabs'), root]);
+  startTick();
+  removeEventListener('resize', onShopResize);
+  addEventListener('resize', onShopResize);
+  // the fitter measured with the fallback font: measure again once the fonts are in (their sizes move the parts)
+  if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { if (ctx().currentView() === 'shop' && isV3()) paint(); });
+}
+
+function wire(hosts) {
+  const roots = (hosts || [ctx().el('main').querySelector('.v2-shop')]).filter(Boolean);
+  if (!roots.length) return;
+  const onclick = (e) => {
     const t = e.target;
     const tab = t.closest('[data-tab]');
-    if (tab) { shop.tab = tab.dataset.tab; paint(); return; }
+    if (tab) { shop.tab = tab.dataset.tab; shop.page = 1; paint(); return; }
+    const pg = t.closest('[data-page]');
+    if (pg && !pg.disabled) { shop.page = Math.min(shop.pages || 1, Math.max(1, shop.page + (pg.dataset.page === 'next' ? 1 : -1))); paint(); return; }
+    if (t.closest('[data-buypacks]')) { openConfirm({ kind: 'pack', qty: shop.qty }); return; }
+    if (t.closest('[data-choose]')) { openPicker(); return; }
     const np = t.closest('[data-np]');
     if (np && !np.disabled) { shop.nmPage = (shop.nmPage || 0) + Number(np.dataset.np); paint(); return; }
     const q = t.closest('[data-q]');
@@ -235,6 +270,7 @@ function wire() {
     const art = t.closest('[data-view]');
     if (art) openCard(Number(art.dataset.view));
   };
+  for (const r of roots) r.onclick = onclick;
 }
 
 // Tap the card art: the card information window (Nathan, 2026-10-02), with the full catalog card
@@ -261,7 +297,11 @@ function modalBox() {
   }
   return box;
 }
-function closeModal() { shop.modal = null; shop.msg = ''; modalBox().classList.add('hidden'); }
+function closeModal() {
+  shop.modal = null; shop.msg = '';
+  if (isV3()) { ctx().el('u3ShopDlg')?.remove(); if (!ctx().el('shopModal')) return; }
+  modalBox().classList.add('hidden');
+}
 
 function balanceRows(cost, freeText) {
   const bal = shop.data.balance || 0;
@@ -278,6 +318,7 @@ function openConfirm(m) {
   paintModal();
 }
 function paintModal() {
+  if (isV3() && shop.modal && shop.modal.kind !== 'convert') { paintModalV3(); return; }
   const box = modalBox();
   const m = shop.modal;
   if (!m) { box.classList.add('hidden'); return; }
@@ -330,6 +371,58 @@ function paintModal() {
   box.querySelector('.sh-go').onclick = () => buy();
 }
 
+// The v3 confirm (UI-43): the library Dialog, centered; Cancel left, the action right (5.3); the reset is the danger
+// action (7.4); a negative balance after uses danger (4.5); a refused buy shows the 10.6 text.
+function dlgHost() {
+  let host = ctx().el('u3ShopDlg');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'u3ShopDlg';
+    document.body.appendChild(host);
+    host.addEventListener('click', (e) => {
+      if (shop.busy) return;
+      if (e.target.matches('[data-u3-scrim]') || e.target.closest('[data-x], [data-cancel]')) { closeModal(); return; }
+      if (e.target.closest('[data-go]')) buy();
+    });
+  }
+  return host;
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('u3ShopDlg') && !shop.busy) closeModal(); });
+function paintModalV3() {
+  const m = shop.modal;
+  const d = shop.data;
+  const art = (c) => `<span class="u3-sdlg__card u3-r-${esc(c.rarity)}">${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" draggable="false">` : ''}</span>`;
+  const rar = (r) => `<span class="u3-sdlg__rar u3-r-${esc(r)}"><span aria-hidden="true">◆</span>${esc(RL(r))}</span>`;
+  const chip = (t) => `<span class="u3-chip u3-chip--sm u3-sdlg__chip">${esc(t)}</span>`;
+  let c;
+  if (m.kind === 'card') {
+    const s = d.stock.find((x) => x.slot === m.slot);
+    if (!s) { closeModal(); return; }
+    c = { kind: 'card', art: art(s.card), eyebrow: s.rarity === 'secret_rare' ? "Featured · Today's stock" : "Today's stock", title: `Buy ${s.card.name}?`,
+      sub: `${rar(s.rarity)}${s.bought ? '' : s.owned ? chip(`Owned ${s.owned}`) : chip('✦ New')}`, cost: s.price, priceLabel: 'Price', go: { label: 'Buy', reward: fmt(s.price) } };
+  } else if (m.kind === 'pack') {
+    c = { kind: 'pack', art: `<span class="u3-spack__art u3-spack__art--big">${ICON.crown}<i>LION PRIDE</i><em>x${m.qty}</em></span>`, eyebrow: 'Packs · Shop',
+      title: `Buy ${m.qty} pack${m.qty === 1 ? '' : 's'}?`, sub: `<span class="u3-sdlg__dim">Lion Pride pack</span>${chip(`x${m.qty}`)}`, cost: d.pack_price * m.qty,
+      priceLabel: `Price · ${m.qty} × ${fmt(d.pack_price)}`, go: { label: `Buy ${m.qty} pack${m.qty === 1 ? '' : 's'}`, reward: fmt(d.pack_price * m.qty) } };
+  } else {
+    const card = m.card;
+    const pts = card.stat?.points || {};
+    const total = Object.values(pts).reduce((a, b) => a + Number(b || 0), 0);
+    const free = !!d.free_reset;
+    const table = `<div class="u3-spts"><div class="u3-spts__h"><span>Stat points</span><span>Now</span><span>After</span></div>${Object.entries(pts).filter(([, v]) => Number(v) > 0)
+      .map(([k, v]) => `<div class="u3-spts__r"><span>${esc(STAT_NAME[k] || k)}</span><b>${v}</b><b class="u3-spts__z">0</b></div>`).join('')}<p class="u3-spts__note">${total} points ready to place again.</p></div>`;
+    c = { kind: 'reset', art: art(card), eyebrow: 'Stat reset', title: `Reset ${card.name}?`, table,
+      sub: `${rar(card.rarity)}${chip(free ? 'Free weekly reset' : `Free reset used · back ${nextDay(d.free_reset_next)}`)}`, cost: free ? 0 : d.stat_reset_price, priceLabel: 'Price',
+      freeText: free ? 'Free · weekly reset' : '', go: { label: 'Reset', icon: 'rotate-ccw', variant: 'danger', reward: free ? null : fmt(d.stat_reset_price) } };
+  }
+  const bal = d.balance || 0;
+  const html = confirmHTML({ ...c, rows: { now: bal, price: c.cost, priceLabel: c.priceLabel, after: bal - c.cost, freeText: c.freeText || '' },
+    msg: shop.msg, short: bal < c.cost, busy: shop.busy }, COIN);
+  const host = dlgHost();
+  host.innerHTML = html;
+  host.querySelector(shop.busy ? '.u3-sdlg' : '[data-cancel]')?.focus?.();
+}
+
 async function buy() {
   const m = shop.modal;
   if (!m || shop.busy) return;
@@ -338,7 +431,7 @@ async function buy() {
   let r = null;
   try { r = await ctx().apiPost('/api/shop/buy', body); } catch { r = null; }
   shop.busy = false;
-  if (!r?.ok) { shop.msg = r?.message || 'That did not work. Try again.'; paintModal(); return; }
+  if (!r?.ok) { shop.msg = r?.message || (isV3() ? 'Something went wrong. Try again.' : 'That did not work. Try again.'); paintModal(); return; }
   ctx().sfx?.(m.kind === 'card' ? 'rare' : 'page');
   if (shop.data) shop.data.balance = r.balance;
   closeModal();
@@ -352,6 +445,7 @@ async function buy() {
 
 // The stat reset picker (design 29, 04): only the member's cards with stat points spent.
 async function openPicker() {
+  if (isV3()) { openPickerV3(); return; }
   const box = modalBox();
   shop.modal = { kind: 'pick' };
   if (!ctx().cache.collection) { box.innerHTML = '<div class="sh-picker"><div class="loading">Loading…</div></div>'; box.classList.remove('hidden'); try { await ctx().refreshOwned(); } catch { /* keep */ } }
@@ -371,6 +465,23 @@ async function openPicker() {
   const state = { page: 0, tile: (c, idx) => `<div class="v2-cell" data-idx="${idx}"><div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
       <div class="v2-cap sh-pts-cap">${Object.entries(c.stat.points).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${STAT_SHORT[k] || k} ${v}`).join(' · ')}</div></div>` };
   requestAnimationFrame(() => paintCards(grid, box.querySelector('.sh-pk-pager'), list, state, (c) => openConfirm({ kind: 'reset', card: c })));
+}
+
+// The v3 stat reset picker: the Card picker (UI-64) with one card; the stat points on each card; the free reset line.
+async function openPickerV3() {
+  if (!ctx().cache.collection) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
+  const d = shop.data;
+  const list = (ctx().cache.collection?.cards || []).filter((c) => c.stat?.points && Object.values(c.stat.points).some((v) => Number(v) > 0));
+  const free = !!d.free_reset;
+  const line = `${free ? 'Your free weekly reset is available' : `Free reset used · back ${nextDay(d.free_reset_next)}`} · This reset costs ${fmt(free ? 0 : d.stat_reset_price)} Shards`;
+  openCardPicker({
+    title: 'Choose a card', cap: 1, cards: list, selected: [],
+    badge: (c) => Object.entries(c.stat?.points || {}).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${STAT_SHORT[k] || k} ${v}`).join(' · '),
+    status: (sel) => ({ checks: [{ ok: free, label: line }], ready: sel.length === 1, reason: 'Choose a card' }),
+    detail: (c) => ctx().openViewer?.(c),
+    returnFocus: document.querySelector('[data-choose]'),
+    onConfirm: (sel) => { const card = list.find((c) => Number(c.id) === Number(sel[0])); if (card) setTimeout(() => openConfirm({ kind: 'reset', card }), 0); return true; },
+  });
 }
 
 // ---- Convert extras (the Collection card panel): extra copies become Shards. The server keeps

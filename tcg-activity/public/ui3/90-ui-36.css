@@ -1,0 +1,7 @@
+/* ==== UI-36 Dailies window: compact-land corner zone (design.md 2.3; Nathan 2026-10-08, "still cut off on the right in landscape") ====
+   The window box ends left of the Discord corner zone (the width of --corner-w from the right edge, as the Shop window), with the same margin on the left so the window stays centered as in the approved frame, not only its
+   header content: Discord puts its buttons over the corner and cuts off a window that reaches under them. The header needs no extra
+   padding any more, because the whole window is out of the zone. */
+body.ui-v3[data-size="compact-land"] .u3-dl { --dl-m: max(var(--corner-w), calc(var(--u3-sa-l) + var(--sp-1-5)), calc(var(--u3-sa-r) + var(--sp-1-5))); --dl-minw: calc(var(--sheet-side-w) * 1.5);
+  right: var(--dl-m); left: max(calc(var(--u3-sa-l) + var(--sp-1-5)), min(var(--dl-m), calc(100% - var(--dl-m) - var(--dl-minw)))); }   /* equal margins while the window keeps --dl-minw; a narrower frame (667x375) gives the left margin up first, the right one stays out of the zone */
+body.ui-v3[data-size="compact-land"] .u3-dl__head { padding-right: var(--u3-none); }
