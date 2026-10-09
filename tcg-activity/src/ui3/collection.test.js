@@ -11,7 +11,7 @@ const GAP = 8;   // --sp-2 between tiles (ui3.css --u3-gap)
 const FRAMES = [
   { name: 'compact-port 375x667', cls: 'compact-port', width: 359, height: 257, cols: 3, rows: 2, per: 6 },
   { name: 'compact-port 430x932', cls: 'compact-port', width: 414, height: 522, cols: 4, rows: 4, per: 16 },
-  { name: 'compact-land 932x430 (D-60: 55 x 77, 2 rows, 24)', cls: 'compact-land', width: 780, height: 162, cols: 12, rows: 2, per: 24 },
+  { name: 'compact-land 932x430 (D-119: one row of tiles at least 88 wide)', cls: 'compact-land', width: 908, height: 134, cols: 8, rows: 1, per: 8 },
   { name: 'medium 917x692', cls: 'medium', width: 869, height: 258, cols: 9, rows: 2, per: 18 },
   { name: 'expanded 1280x720', cls: 'expanded', width: 1208, height: 416, cols: 12, rows: 3, per: 36 },
 ];
@@ -22,15 +22,13 @@ test('cards per page: the approved frame of each size class', () => {
     assert.deepEqual([r.cols, r.rows, r.per], [f.cols, f.rows, f.per], f.name);
     assert.ok(r.cw >= tileMin(f.cls), `${f.name}: tile ${r.cw} below the minimum`);
   }
-  // D-60: the compact-land tile is 55 x 77 in the 932x430 frame
-  const land = fitGrid({ width: 780, height: 162, gap: GAP, min: tileMin('compact-land') });
-  assert.equal(Math.round(land.cw), 55);
-  assert.equal(Math.round((land.cw * 7) / 5), 77);
+  // D-119: the compact-land tile is not below 88 wide (rule 8.1); one row
+  const land = fitGrid({ width: 908, height: 134, gap: GAP, min: tileMin('compact-land') });
+  assert.ok(land.cw >= 88 && land.rows === 1);
 });
 
-test('the minimum tile: 88 px, 55 px on compact-land only (8.1, D-60)', () => {
-  for (const c of ['compact-port', 'medium', 'expanded', 'tiny']) assert.equal(tileMin(c), 88, c);
-  assert.equal(tileMin('compact-land'), 55);
+test('the minimum tile: 88 px on every class, compact-land too (8.1, D-119)', () => {
+  for (const c of ['compact-port', 'compact-land', 'medium', 'expanded', 'tiny']) assert.equal(tileMin(c), 88, c);
 });
 
 test('the fitter: the most tiles that fit, at least 2 rows, no tile below the minimum, the tiles inside the box', () => {
@@ -57,9 +55,9 @@ test('the fitter: a box lower than one tile (the keyboard is open) shows no row,
   const r = fitGrid({ width: 359, height: 100, gap: GAP, min: 88 });   // 88 px wide = 123 px high: no row fits
   assert.equal(r.rows, 0);
   assert.equal(r.per, 0);
-  const one = fitGrid({ width: 844, height: 136, gap: GAP, min: 55 });   // 932x430 today: one row of 55 px tiles
-  assert.deepEqual([one.cols, one.rows, one.per], [13, 1, 13]);
-  assert.ok(one.cw >= 55);
+  const one = fitGrid({ width: 844, height: 136, gap: GAP, min: 88 });   // 932x430 (D-119): one row, tiles as high as the box allows
+  assert.deepEqual([one.cols, one.rows, one.per], [8, 1, 8]);
+  assert.ok(one.cw >= 88 && one.cw <= (136 * 5) / 7 + 0.01);
 });
 
 test('the Filters button: each panel group with a choice counts 1; the search does not count (D-39)', () => {
