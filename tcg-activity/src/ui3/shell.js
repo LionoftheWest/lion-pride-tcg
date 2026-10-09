@@ -6,6 +6,7 @@
 // in the page, hidden: the menu tiles click them, so their windows and badges keep working (D-31).
 import { icon } from './icons.js';
 import { esc, dot } from './components.js';
+import { openSettingsWindow } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -18,6 +19,17 @@ function buildTopbar() {
   if (title) {
     title.innerHTML = '<span class="u3-logo" aria-label="Lion Pride TCG" role="img"><span class="u3-logo__emblem"><img src="/logo-lion.svg" alt=""></span>'
       + '<span class="u3-logo__word"><b>LION</b> <b class="u3-gold">PRIDE</b></span><span class="u3-logo__tag">TCG</span></span>';
+  }
+  // No cut logo (3.3): when the right group leaves the logo too little room (a long Shards number), the "TCG" tag
+  // gives way, then the word; the emblem always stays (measured on every size change of the logo box)
+  const logo = title?.querySelector('.u3-logo');
+  if (logo && window.ResizeObserver) {
+    const fitLogo = () => {
+      logo.classList.remove('is-no-tag', 'is-no-word');
+      if (logo.scrollWidth > logo.clientWidth + 1) logo.classList.add('is-no-tag');
+      if (logo.scrollWidth > logo.clientWidth + 1) logo.classList.add('is-no-word');
+    };
+    new ResizeObserver(() => requestAnimationFrame(fitLogo)).observe(logo);
   }
   const right = bar.querySelector('.topright');
   if (!right) return;
@@ -83,16 +95,8 @@ function toggleMenu() {
     if (t?.target) $(t.target)?.click();
   });
 }
-// Settings live in the notifications window today (its Settings tab): open it on that tab.
-function openSettings() {
-  $('bellBtn')?.click();
-  // the window fills in after its fetch: wait for its Settings tab (at most 2 s)
-  let n = 0;
-  const t = setInterval(() => {
-    const tab = document.querySelector('#v2Notifs .nt-tabs [data-t="settings"]');
-    if (tab || ++n > 20) { clearInterval(t); if (tab && !tab.classList.contains('on')) tab.click(); }
-  }, 100);
-}
+// Settings: the UI-61 window (src/ui3/settings.js): the ping settings and Reduce effects (D-31).
+function openSettings() { openSettingsWindow(); }
 document.addEventListener('keydown', (e) => { if (menuOpen && e.key === 'Escape') { closeMenu(); $('menuBtn')?.focus(); } });
 document.addEventListener('click', (e) => { if (menuOpen && !e.target.closest('#u3Menu, #menuBtn')) closeMenu(); });
 

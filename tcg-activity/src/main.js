@@ -35,6 +35,7 @@ import { fmtFor } from './ui3/number.js';
 import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
 import { button as ui3Button, iconButton as ui3IconButton, pager as ui3Pager } from './ui3/components.js';
+import { initSettingsWindow } from './ui3/settings.js';
 import { openOpenWindow, prefetchSets } from './ui3/open-window.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
@@ -353,7 +354,7 @@ async function main() {
   if (flags.reports) initReport();
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
-  if (flags?.uiV3) startShell(); // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps
+  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
 }
 
 // The v3 foundation (UI-00): only for the members in settings.ui_v3 (flags.uiV3). It loads the component CSS and writes
@@ -2770,6 +2771,9 @@ function stepViewer(d) {
   viewerNav?.opts.onStep?.(n);
 }
 function openViewer(card, opts = {}) {
+  // v3: the viewer opens above the window that asked for it (the Card picker, the boss window): same layer, last in
+  // the page (Nathan 2026-10-08: the card details opened under the squad picker)
+  if (document.body.classList.contains('ui-v3') && el('viewer') && el('viewer') !== document.body.lastElementChild) document.body.appendChild(el('viewer'));
   const list = Array.isArray(opts.list) ? opts.list : [];
   const i = list.findIndex((x) => String(x.id) === String(card.id));
   viewerNav = list.length > 1 && i >= 0 ? { list, i, opts } : null;
@@ -3059,7 +3063,7 @@ function initViewer() {
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !el('viewer').classList.contains('hidden')) { stepViewer(e.key === 'ArrowLeft' ? -1 : 1); return; }
     if (e.key !== 'Escape') return;
     if (!el('bossModal').classList.contains('hidden')) closeBossModal();
-    else if (!el('viewer').classList.contains('hidden')) closeViewer();
+    else if (!el('viewer').classList.contains('hidden')) { closeViewer(); e.u3Done = true; }   // a v3 window under it keeps open (card-picker.js)
     else if (!el('stage').classList.contains('hidden')) { if (revealItems.length && flippedCount >= revealItems.length) endReveal(); } // locked until all revealed
     else if (!el('board').classList.contains('hidden')) closeBoard();
   });

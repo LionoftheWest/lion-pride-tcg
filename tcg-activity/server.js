@@ -25,6 +25,7 @@ import { clientIp, createLimiter, createWhoAmI } from './guards.js';
 import { createBalance, ascendCost as costOf, dailyCardCap, publicBalance } from './balance.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
+import { ui3Css } from './src/ui3/css-parts.js';
 import { bestSquad } from './src/squad-pick.js';
 import { selectAll } from './src/select-all.js';
 import { rankByName } from './src/name-rank.js';
@@ -54,7 +55,9 @@ const cssVersion = createHash('sha1').update(readFileSync(join(PUBLIC, 'style.cs
 // Every other stylesheet link (the ui-v2*.css files) gets its own content version the
 // same way: without it, Discord served a stale ui-v2-open.css after a deploy (the new
 // reveal ran with the old 420px column, 2026-09-27).
-const cssV = (name) => createHash('sha1').update(readFileSync(join(PUBLIC, name))).digest('hex').slice(0, 8);
+// /ui3.css is joined from public/ui3.css and public/ui3/*.css (src/ui3/css-parts.js); its version is the joined text.
+const ui3Body = ui3Css(PUBLIC);
+const cssV = (name) => createHash('sha1').update(name === 'ui3.css' ? ui3Body : readFileSync(join(PUBLIC, name))).digest('hex').slice(0, 8);
 const indexHtml = readFileSync(join(PUBLIC, 'index.html'), 'utf8')
   .replace('__BUNDLE__', bundleName)
   .replace('__CSSV__', cssVersion)
@@ -298,6 +301,10 @@ app.get(['/', '/index.html'], (req, res) => {
 // https://lionpridetcg.duckdns.org/app/terms and /app/privacy (Caddy strips /app).
 app.get('/terms', (req, res) => res.sendFile(join(PUBLIC, 'legal', 'terms.html')));
 app.get('/privacy', (req, res) => res.sendFile(join(PUBLIC, 'legal', 'privacy.html')));
+app.get('/ui3.css', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');   // as every unhashed stylesheet (express.static below); the link has ?v=
+  res.type('css').send(ui3Body);
+});
 app.use(express.static(PUBLIC, {
   setHeaders: (res, path) => {
     const base = path.split(/[\\/]/).pop();
@@ -1797,6 +1804,26 @@ app.get('/api/trades', async (req, res) => {
   });
   const all = (data || []).map(shape);
   res.json({ incoming: all.filter((o) => o.to_id === me.id), outgoing: all.filter((o) => o.from_id === me.id) });
+});
+
+// The trade partners for the Member picker (UI-65, D-64 item 9): one entry for each offer with the caller, in either
+// direction and with any status (an accepted, declined or open offer is a trade or an offer). The client counts them
+// (src/ui3/member-picker.js memberLists: Frequent = 2 or more, top 3; Recent = the others, the latest first). Only the
+// caller's own offers; the newest 300.
+app.get('/api/trade/partners', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  const { data, error } = await supabase
+    .from('trade_offers')
+    .select('from_id, to_id, created_at, from_player:players!trade_offers_from_id_fkey(username), to_player:players!trade_offers_to_id_fkey(username)')
+    .or(`to_id.eq.${me.id},from_id.eq.${me.id}`)
+    .order('created_at', { ascending: false })
+    .limit(300);
+  if (error) return res.status(500).json({ error: error.message });
+  const mine = String(me.id);
+  res.json({ partners: (data || []).map((o) => (String(o.from_id) === mine
+    ? { id: String(o.to_id), name: o.to_player?.username, at: o.created_at }
+    : { id: String(o.from_id), name: o.from_player?.username, at: o.created_at })) });
 });
 
 // Gift a card outright (one-sided). RPC enforces: not gold, tradeable, owned.
