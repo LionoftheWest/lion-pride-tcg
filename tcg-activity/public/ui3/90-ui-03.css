@@ -242,3 +242,5 @@ body.ui-v2.ui-v3[data-size="compact-land"] #body:has(> #main > .u3-home) { heigh
 body.ui-v2.ui-v3 #main > .u3-home.is-compact { padding-bottom: var(--u3-none); }   /* the compact step: no bottom padding (the body already leaves the gap to the dock) */
 .u3-hm-hb.is-tighter .u3-hm-chip { padding-inline: var(--sp-2); gap: var(--sp-1); }
 .u3-hm-hb.is-tight .u3-hm-stats { justify-content: space-between; }   /* the free width goes between the three stats (the minimum gap stays at 8 px) */
+/* The open window (UI-33, here under UI-03): a set name never breaks inside a word. On the landscape phone the tile is narrow (the safe-area sides take 59 px each), so the name steps down to the small size and wraps only at a space. */
+body.ui-v3[data-size="compact-land"] .u3-set__name { font-size: var(--fs-small); overflow-wrap: normal; word-break: normal; }
