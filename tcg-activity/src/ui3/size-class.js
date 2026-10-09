@@ -1,5 +1,5 @@
 // The size class (docs/design.md 2.1): ONE module computes it from the usable frame (the Activity frame minus the safe
-// areas) and writes it on <body>. CSS reads body[data-size] and body[data-short]; screen CSS uses no raw width or height
+// areas) and writes it on <body>. CSS reads body[data-size], body[data-short] and body[data-low]; screen CSS uses no raw width or height
 // media query (G-009, G-021). The input comes from (pointer: coarse), never from the size (G-008).
 // v3 only: it runs when the ui-v3 flag is on (body.ui-v3), so the live screens do not change.
 
@@ -13,6 +13,9 @@ export function sizeClass(width, height) {
 }
 /** The modifier "short": medium and expanded below 700 px usable height. */
 export const isShort = (cls, height) => (cls === 'medium' || cls === 'expanded') && height < 700;
+/** The modifier "low" (D-117): compact-land below 400 px usable height (the 667x375 phones). The sub-tabs go into the
+ *  top bar row there, because the second shell row would take an eighth of the height. */
+export const isLow = (cls, height) => cls === 'compact-land' && height < 400;
 
 /** The usable frame: the viewport minus the Discord safe-area insets (the CSS variables Discord sets). */
 export function usableFrame(win = globalThis.window) {
@@ -43,6 +46,7 @@ export function applySizeClass(win = globalThis.window) {
   if (kb) body.dataset.kb = ''; else delete body.dataset.kb;
   body.dataset.size = cls;
   if (isShort(cls, height)) body.dataset.short = ''; else delete body.dataset.short;
+  if (isLow(cls, height)) body.dataset.low = ''; else delete body.dataset.low;
   body.dataset.input = win.matchMedia('(pointer: coarse)').matches ? 'coarse' : 'fine';
   return cls;
 }
