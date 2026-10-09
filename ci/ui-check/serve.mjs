@@ -37,6 +37,11 @@ function derivedDungeon(body) {
     pend: { shards: 1, cards: [] }, bank: { shards: 0, cards: [] },
     offers: [{ kind: 'card', tier: 2, odds: [70, 25, 5] }, { kind: 'shards', tier: 1, amount: 10 }, { kind: 'ward', tier: 1, amount: 0.1 }] } } };
 }
+// UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
+function derivedWish(body) {
+  const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
+  return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
+}
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
@@ -83,7 +88,8 @@ createServer((req, res) => {
     const hit = FIX.routes[key] || FIX.routes[keyOf(p, '')] || BY_PATH[p];
     if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
     const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body) : hit.body;
-    const body = c.ci_data === 'long' ? longData(raw) : raw;
+    const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
+    const body = c.ci_data === 'long' ? longData(body0) : body0;
     return send(res, hit.status || 200, JSON.stringify(body));
   }
   const f = normalize(join(PUB, decodeURIComponent(p)));
