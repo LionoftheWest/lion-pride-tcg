@@ -232,7 +232,7 @@ function paintV3() {
   el('main').innerHTML = shopHTML({ d, tab: shop.tab, qty: shop.qty, size, left: left(d.next_at), coin: COIN, rarityLabel: RL, day: nextDay(d.free_reset_next) });
   const root = el('main').querySelector('.u3-shop');
   if (root?.querySelector('.u3-shop__stock')) {
-    const r = fitStock(root, stockBlocks(d, COIN, RL), { page: shop.page, size });
+    const r = fitStock(root, stockBlocks(d, COIN, RL), { size });
     shop.page = r.page; shop.pages = r.pages;
   }
   // the tab row and the Shop root (not #main: its click handler would outlive the view)
