@@ -1,0 +1,4 @@
+/* ==== UI-60 menu panel: out of the Discord corner zone on compact-land (2.3, G-013) ====
+   The menu host covers the whole frame (inset 0), so the panel keeps its right edge left of the corner width, or of the
+   safe frame when that is wider. The zone is 120 wide at the top right, so the panel must not reach into it. */
+body.ui-v3[data-size="compact-land"] .u3-menu { right: max(var(--corner-w), calc(var(--u3-sa-r) + var(--sp-3))); }
