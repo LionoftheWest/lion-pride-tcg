@@ -105,3 +105,27 @@ test('verdict with a plan: only the planned screens must have results; an uncove
   const v = verdict(only, reg, { title: 'UI-46 + UI-49', browsers: ['chromium'], screens: ['dungeon'] });
   assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-49', 'no screen in the check']]);
 });
+
+test('an accepted exception (decision ID, one ID/screen/size/rule) does not fail; anything else still fails', () => {
+  const rs = full();
+  const cell = rs.find((r) => r.screen === 'home' && r.size === '430x932');
+  cell.checks.emptyBandY = 0.29;
+  const other = rs.find((r) => r.screen === 'home' && r.size === '375x667');
+  other.checks.emptyBandY = 0.29;
+  const ex = [{ decision: 'D-999', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty', why: 'test' }];
+  const v = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'], exceptions: ex });
+  assert.equal(v.defects.filter((x) => x.accepted === 'D-999').length, 1);
+  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '375x667']]);   // the other size still fails
+  const none = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'] });
+  assert.equal(none.fails.length, 2);
+});
+
+test('a bad exception entry stops the gate', () => {
+  for (const bad of [{ id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty', why: 'x' },           // no decision
+    { decision: 'D-1', id: 'UI-03', screen: 'nope', size: '430x932', rule: 'empty', why: 'x' },
+    { decision: 'D-1', id: 'UI-03', screen: 'home', size: '1x1', rule: 'empty', why: 'x' },
+    { decision: 'D-1', id: 'UI-03', screen: 'home', size: '430x932', rule: 'not-checked', why: 'x' },
+    { decision: 'D-1', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty' }]) {                  // no why
+    assert.throws(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: [bad] }));
+  }
+});
