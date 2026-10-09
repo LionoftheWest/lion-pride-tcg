@@ -113,6 +113,7 @@ The UI check (section 12.6) runs every screen and every overlay at these sizes. 
 - Header: in portrait, the inset can arrive after the first frame. The shell reads the inset again when it changes. (G-014)
 - Keyboard: the shell exposes the keyboard height from `visualViewport`. The keyboard never covers the focused text box. (G-015)
 - Dock while typing: every class keeps the dock while the keyboard is open (P1). On compact-land only, the dock gives way while `body[data-kb]` is set and returns when the keyboard closes, because the keyboard leaves about 50 px and the search fields need that space. (D-118)
+- Sub-tab row while typing: on compact-port only, the sub-tab row gives way while `body[data-kb]` is set, so one row of cards fits above the keyboard (375x667: the search left about 96 px, one row needs 123 px). The screens get its height back. It returns when the keyboard closes. Every other class keeps the row. (D-122)
 - Platform: the shell reads iOS, Android, desktop or web from the SDK, and owns each platform difference. (G-016)
 
 ## 3. Screen areas and layout models
@@ -979,6 +980,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-84 | Rewards from all sets | Dungeon, Shop and other card rewards draw from every pullable set; only packs choose a set (Nathan, 2026-10-07: "I like completely random odds still across all sets") |
 | D-117 | Sub-tabs on low landscape phones | On `compact-land` below 400 px usable height, the sub-tabs move into the top bar row beside the emblem (an exception to D-37). On 667x375 the second shell row took about 50 px of 375 px, and every Hunt screen was cut (Nathan, 2026-10-08: chose "Tabs into top bar") |
 | D-118 | The dock gives way on compact-land while typing | On compact-land, while the keyboard is open (`body[data-kb]`), the dock gives way and returns when the keyboard closes. Every other class keeps the dock while typing (P1). (Nathan, 2026-10-08: "On compact-land, while the keyboard is open, the dock gives way; it returns when the keyboard closes. Every other class keeps the dock while typing")
+| D-122 | The sub-tab row gives way on compact-port while typing | On compact-port, while the keyboard is open (`body[data-kb]`), the sub-tab row gives way and returns when the keyboard closes, so one row of cards fits above the keyboard. (Nathan, 2026-10-08: chose "Tab row hides while typing"; 375x667: the Collection search left about 96 px, one row needs 123 px) |
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 

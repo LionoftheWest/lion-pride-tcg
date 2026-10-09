@@ -1,0 +1,8 @@
+[
+  { "decision": "D-120", "id": "UI-35", "screen": "pack-multi-10", "size": "1990x830", "rule": "empty",
+    "why": "10 packs in the approved one-row layout leave an empty band of 29% above and below the row (frame expanded-1990x830-2-waiting-10-packs)." },
+  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-cards", "size": "667x375", "rule": "tap",
+    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." },
+  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-all", "size": "667x375", "rule": "tap",
+    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." }
+]

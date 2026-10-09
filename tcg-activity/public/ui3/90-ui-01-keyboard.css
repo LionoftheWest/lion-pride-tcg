@@ -4,3 +4,11 @@
    keyboard closes. The selector is longer than the keep-the-dock rule in ui3.css, so it wins on any file order. */
 body.ui-v2.ui-v3[data-size][data-size="compact-land"][data-kb] { --dock-h: var(--u3-none); }
 body.ui-v2.ui-v3[data-size][data-size="compact-land"][data-kb] #dock { display: none; }
+
+/* ==== UI-02 shell: the sub-tab row while the keyboard is open (D-122; design.md 2.3) ====
+   On compact-port only, the keyboard leaves one row of cards above it (375x667: the Collection search left about 96 px,
+   one row needs 123 px). So the sub-tab row (#main > .v2-subtabs) gives way while body[data-kb] is set, and the screens
+   get its height back: --u3-row = none moves both --topbar-h and the bar's margin (ui3.css). It returns when the keyboard
+   closes. Other classes keep the row. */
+body.ui-v2.ui-v3[data-size][data-size="compact-port"][data-kb] { --u3-row: var(--u3-none); }
+body.ui-v2.ui-v3[data-size][data-size="compact-port"][data-kb] #main > .v2-subtabs { display: none; }
