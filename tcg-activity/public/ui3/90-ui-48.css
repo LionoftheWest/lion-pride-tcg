@@ -153,3 +153,6 @@ body[data-size="compact-land"] .u3-dgc-panel > :not(.dg-music) { grid-column: 1;
 body.ui-v2.ui-v3[data-size="compact-land"] .u3-dgc-panel .dg-music { position: static; grid-column: 2; grid-row: 1 / span 2; align-self: start; }
 body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-offer { padding: var(--sp-1-5); column-gap: var(--sp-1-5); }
 body[data-size="compact-land"] .u3-dgc.is-tight .u3-dgc-offer b { white-space: nowrap; }
+/* tight2 (measured in fitChooseV3, compact-land: the offer is too narrow for the tier chip beside the icon, e.g. with the safe-area insets): the chip has its own row, the name may take two lines */
+body[data-size="compact-land"] .u3-dgc.is-tight2 .u3-dgc-offer { grid-template-areas: "tier tier" "ic name" "sub sub"; }
+body[data-size="compact-land"] .u3-dgc.is-tight2 .u3-dgc-offer b { white-space: normal; }

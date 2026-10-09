@@ -1,16 +1,16 @@
 // UI-43 the Shop: the logic that can be checked without a browser. node --test
-// 3.5 the one card-width fitter (fitShop), D-46 the layout by frame shape (shopLayout), 3.4 the compact-port pages
-// (pageBlocks), D-80 23 the price pill is the Buy button, D-29 no owned badge, "New" stays.
+// 3.5 the one card-width fitter (fitShop), D-46 the layout by frame shape (shopLayout), 3.4 the compact stack (no pager)
+// (fitStack, no pager), D-80 23 the price pill is the Buy button, D-29 no owned badge, "New" stays.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fitShop, shopLayout, pageBlocks, stockBlocks } from './shop.js';
+import { fitShop, fitStack, shopLayout, stockBlocks } from './shop.js';
 
 const M = (x) => ({ gap: 8, G: 24, labelH: 12, si: 8, pillH: 44, f: 1, ir: 3, nm: 6, ratio: 1.4, max: 112, ...x });
 const extra = 12 + 16 + 44;   // label + 2 inner gaps + pill
 
 test('D-41 / D-46: the layout of each class (an upright tablet stacks rows)', () => {
-  assert.equal(shopLayout('compact-port', 430, 932), 'port');
-  assert.equal(shopLayout('compact-land', 932, 430), 'row');
+  assert.equal(shopLayout('compact-port', 430, 932), 'compact');
+  assert.equal(shopLayout('compact-land', 932, 430), 'compact');
   assert.equal(shopLayout('medium', 768, 1024), 'tall');
   assert.equal(shopLayout('medium', 917, 692), 'wide');
   assert.equal(shopLayout('expanded', 1280, 720), 'wide');
@@ -48,24 +48,21 @@ test('tall (medium portrait): Normal in one row of 6 across; Featured at most 1.
   assert.ok(extra + fw * 1.4 + 24 + extra + w * 1.4 <= 800 + 1, 'both rows fit the height');
 });
 
-test('port (compact-port): 3 across; Featured and the Illustrated Rare row share page 1 when a 15% smaller card allows', () => {
-  const full = fitShop('port', M({ W: 414, H: 1200 }));
-  assert.equal(full.w, Math.floor((414 - 16) / 3), 'room: the width decides');
-  const pair = fitShop('port', M({ W: 414, H: 530 }));
-  assert.ok(pair.w < full.w && pair.w >= full.w * 0.85, 'shrunk at most 15%');
-  assert.ok(2 * extra + 24 + 1.4 * (pair.fw + pair.w) <= 530 + 2, 'Featured + one row fit the page');
-  const none = fitShop('port', M({ W: 414, H: 380 }));
-  assert.ok(none.w >= Math.floor(full.w * 0.85) || none.w === Math.floor((380 - extra) / 1.4), 'no shrink below 85% for the pair');
-});
-
-test('3.4 pageBlocks: a group label never ends a page, shows again when its group goes on; the gaps above units count', () => {
-  const U = (h, x = {}) => ({ h, ...x });
-  const units = [U(12, { head: true, gap: 24, below: 8 }), U(200, { gap: 8 }), U(12, { head: true, gap: 24, below: 8 }), U(180, { gap: 8 }), U(180, { gap: 8 })];
-  assert.deepEqual(pageBlocks(units, { full: 1000, paged: 900 }), [[0, 1, 2, 3, 4]]);
-  // 12 + 8 + 200 + 24 + 12 + 8 + 180 = 444 fits 450; the next row (8 + 180) does not
-  assert.deepEqual(pageBlocks(units, { full: 500, paged: 450 }), [[0, 1, 2, 3], [2, 4]]);
-  // a head with no room for its first row moves with it
-  assert.deepEqual(pageBlocks(units, { full: 300, paged: 240 }), [[0, 1], [2, 3], [2, 4]]);
+test('stack (compact, no pager): both width and height hold; 3 columns beat 6 when the height is the limit; nothing is dropped', () => {
+  const m = M({ W: 414, H: 635, ratio: 1.4, labelW: [90, 200, 150] });
+  for (const cols of [6, 3]) {
+    const { w, fw } = fitStack({ ...m, cols });
+    const rows = Math.ceil(6 / cols);
+    assert.ok(w > 0 && fw >= w, 'a card size');
+    assert.ok(Math.max(fw, 90) + 24 + Math.max(200, 3 * w + 16) <= 414 + 1, 'row 1 fits the width');
+    assert.ok(Math.max(150, cols * w + (cols - 1) * 8) <= 414 + 1, 'the Normal row fits the width');
+    const h = (12 + 8 + fw * 1.4 + 8 + 44) + 24 + (12 + 8 + rows * (w * 1.4 + 8 + 44) + (rows - 1) * 8);
+    assert.ok(h <= 635 + 2, 'both rows fit the height');
+    assert.ok(fitStack({ ...m, cols, W: 414 + 20 }).w >= w, 'monotonic');
+  }
+  assert.ok(fitStack({ ...m, cols: 3 }).w > fitStack({ ...m, cols: 6 }).w, '430x932: 2 rows of 3 give the larger card');
+  const short = fitStack({ ...M({ W: 359, H: 370, labelW: [90, 200, 150] }), cols: 6 });
+  assert.ok(short.w >= 44, '375x667: the whole stock at 44 px or more');
 });
 
 test('D-80 23 / D-29: one Buy control per card (the price pill), no owned badge, "New" only on a card not owned', () => {
