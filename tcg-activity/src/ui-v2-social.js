@@ -9,6 +9,8 @@ import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
 import { isPhone, isPort, isLand } from './mobile.js';
 import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v2-hall.js';
+import { mountMemberPicker, memberLists } from './ui3/member-picker.js';
+import { button as button3 } from './ui3/components.js';
 import { paintBell } from './ui3/bell.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
@@ -357,7 +359,7 @@ export const tradeActions = (d) => (d?.incoming || []).filter((o) => o.status !=
 // A profile's Trade button (and its "You need" cards): the Community trade screen with that member
 // picked. It opened the OLD trade builder (the sender picked their card too), 2026-10-01.
 export function openTradeWith(to) {
-  Object.assign(tr, { tab: 'trades', mode: 'offer', to: { id: String(to.id), name: to.name }, give: null, get: null, respond: null, page: 0, msg: '' });
+  Object.assign(tr, { tab: 'trades', mode: 'offer', to: { id: String(to.id), name: to.name }, give: null, get: null, respond: null, page: 0, msg: '', v3from: true });
   ctx().show('trading');
 }
 
@@ -381,7 +383,9 @@ export async function renderTradingV2() {
   const { el, api } = ctx();
   el('main').innerHTML = '<div class="v2-loading">Loading…</div>';
   await ensureCatalog();
-  const [players, offers] = await Promise.all([api('/api/players').catch(() => ({ players: [] })), api('/api/trades').catch(() => ({}))]);
+  const [players, offers] = await Promise.all([api('/api/players').catch(() => ({ players: [] })), api('/api/trades').catch(() => ({})), V3() ? loadPartnersV3() : null]);
+  // v3: the Trades tab opens the Member picker (UI-65), except when a profile's Trade button chose the member
+  tr.v3pick = !tr.v3from; tr.v3from = false;
   if (!ctx().cache.collection) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
   if (ctx().currentView() !== 'trading') return;
   const me = String(ctx().user()?.id || '');
@@ -408,7 +412,10 @@ export function wireCommTabs() {
   ctx().el('commBoard')?.addEventListener('click', () => ctx().el('boardBtn')?.click());
   ctx().el('commTabs')?.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-tab]');
-    if (!b || b.dataset.tab === tr.tab) return;
+    if (!b) return;
+    // v3: Trades again, from the trade builder, goes back to the Member picker (UI-65)
+    if (b.dataset.tab === tr.tab) { if (V3() && tr.tab === 'trades' && !tr.v3pick) { tr.v3pick = true; tr.respond = null; paintTrade(); } return; }
+    dropPickerV3();
     tr.tab = b.dataset.tab; tr.page = 0; tr.msg = '';
     if (tr.tab === 'effects') { await loadFx(); paintEffects(); } else if (tr.tab === 'hall') await renderHall(); else paintTrade();
   });
@@ -557,7 +564,54 @@ function wireFind(after) {
   box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement?.id !== 'trFind') closeSuggest(); }, 250));
 }
 
+// ---- v3 (body.ui-v3 only): the Trades tab opens with the Member picker (UI-65, D-43, 6.5b) ----
+// A tap on a member opens the trade builder with that member (the v2 builder until the Trade window UI-63 is built);
+// the magnifier opens the profile; Pending opens the builder, where the offers are (until UI-25 builds Pending).
+const V3 = () => document.body.classList.contains('ui-v3');
+let mpV3 = null, partnersV3 = null;
+function dropPickerV3() { mpV3?.destroy(); mpV3 = null; }
+async function loadPartnersV3() {
+  try { partnersV3 = (await ctx().api('/api/trade/partners')).partners || []; } catch { partnersV3 = partnersV3 || []; }
+}
+function sectionsV3() {
+  const me = String(ctx().user()?.id || '');
+  const l = memberLists({ history: partnersV3 || [], voice: tr.members.filter((m) => m.voice), all: tr.members.filter((m) => !m.voice), me });
+  // Few partners (D-64 item 5): In voice first, then All members with the Pager. "Few" = less than one full line of
+  // 5 tiles (UI-25 review-2 proposal 1, open for Nathan).
+  const few = l.frequent.length + l.recent.length < 5;
+  return [
+    ...(few ? [{ key: 'voice', label: 'In voice', members: l.voice }] : []),
+    { key: 'frequent', label: 'Frequent', members: l.frequent },
+    { key: 'recent', label: 'Recent', members: l.recent },
+    ...(few ? [{ key: 'all', label: 'All members', members: l.all, form: 'list', paged: true }] : []),
+  ];
+}
+function paintMemberPickerV3() {
+  const main = ctx().el('main');
+  if (mpV3 && main.querySelector('.u3-trades #u3TradesPick')) { mpV3.update({ sections: sectionsV3() }); return; }
+  dropPickerV3();
+  main.innerHTML = `<div class="u3-trades">${commTabs()}<section class="u3-trades__panel" id="u3TradesPick"></section></div>`;
+  wireCommTabs();
+  mpV3 = mountMemberPicker(ctx().el('u3TradesPick'), {
+    sections: sectionsV3(),
+    lead: explainBtn('trades'),
+    trail: button3({ label: 'Pending', data: { pending: '1' } }),
+    search: async (q) => ((await ctx().api(`/api/players?q=${encodeURIComponent(q)}`)).players || []).map((p) => ({ id: String(p.id), name: p.username })),
+    onPick: async (m) => {
+      tr.members = [m, ...tr.members.filter((x) => x.id !== m.id)];
+      Object.assign(tr, { to: m, get: null, give: null, msg: '', v3pick: false });
+      await loadTheirs(m.id);
+      paintTrade();
+    },
+    onProfile: (m) => openMember(m.id),
+  });
+  main.querySelector('[data-pending]')?.addEventListener('click', () => { tr.v3pick = false; paintTrade(); });
+  maybeExplain('trades');
+}
+
 function paintTrade() {
+  if (V3() && tr.tab === 'trades' && tr.v3pick && !tr.respond) { paintMemberPickerV3(); return; }
+  dropPickerV3();
   const { el } = ctx();
   const focus = takeFocus();
   const toName = tr.to?.name || 'a member';
@@ -610,7 +664,7 @@ function paintTrade() {
   const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
   el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}${tr.respond ? ' responding' : ''}">
     <section class="tr-main">
-      <div class="tr-top">${commTabs()}${explainBtn('trades')}<span class="grow"></span>
+      <div class="tr-top">${commTabs()}${explainBtn('trades')}${V3() && tr.tab === 'trades' && !tr.respond ? button3({ label: 'Members', icon: 'chevron-left', data: { backpick: '1' } }) : ''}<span class="grow"></span>
         <div class="seg" id="trMode"><button data-m="offer" class="${tr.mode === 'offer' ? 'on' : ''}">⇄ Offer</button><button data-m="gift" class="${tr.mode === 'gift' ? 'on' : ''}">🎁 Gift</button></div></div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
         ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
@@ -653,6 +707,8 @@ function paintTrade() {
     await loadTheirs(tr.to.id); paintTrade();
   };
   wireFind(async () => { await loadTheirs(tr.to.id); paintTrade(); });
+  // v3: back to the Member picker (UI-65; Nathan 2026-10-08), not the v1 member search
+  main.querySelector('[data-backpick]')?.addEventListener('click', () => { tr.v3pick = true; tr.respond = null; paintTrade(); });
   el('trClear').addEventListener('click', () => { tr.give = null; tr.get = null; tr.side = 'mine'; tr.respond = null; tr.page = 0; tr.msg = ''; paintTrade(); });
   // Pick my card for an incoming offer: the grid shows my cards of that rarity.
   el('trSend').addEventListener('click', send);

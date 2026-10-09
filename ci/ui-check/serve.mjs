@@ -7,7 +7,8 @@
 //   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
 //                       busy = a resting hunt with a last result, live = the recorded live hunt
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
-// Every non-GET request answers 403 (as the audit walkthrough): the check never writes.
+// Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
+// answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -54,9 +55,34 @@ function derivedResting() {
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
+// The pack reveal screens (UI-34, UI-35) need the answer of a pack open. POST /api/open answers a fixed open made from
+// the fixture catalog; nothing is written (the check has no database). 5 cards a pack; only pack 2 of a multi open
+// (pack 1 of a single open) holds an SR+ card (a Full Art), so the rare clip plays on one pack (D-107). isNew on every
+// second card. The Full Art is the 2nd card of its pack, so the reveal must move it to the end (D-92). The same count
+// gives the same answer on every run.
+const CATALOG = (FIX.routes['/api/catalog']?.body?.cards || []);
+const byRarity = (r) => CATALOG.filter((c) => c.rarity === r);
+export function openAnswer(count) {
+  const n = [1, 5, 10].includes(count) ? count : 1;
+  const pool = { normal: byRarity('normal'), illustrated_rare: byRarity('illustrated_rare'), full_art: byRarity('full_art') };
+  const take = (r, i) => { const l = pool[r]; return l.length ? l[i % l.length] : CATALOG[i % CATALOG.length]; };
+  const rarePack = n === 1 ? 0 : 1;
+  let k = 0;
+  const packs = Array.from({ length: n }, (_, p) => ['normal', p === rarePack ? 'full_art' : 'normal', 'normal', 'illustrated_rare', 'normal']
+    .map((r) => { const c = take(r, k * 7 + p); k += 1;
+      return { id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, artist: c.artist ?? null, lore: c.lore ?? null, isNew: k % 2 === 0 }; }));
+  return { award: null, packs, cards: packs.flat() };
+}
+
 createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
+  if (req.method === 'POST' && p === '/api/open') {
+    let raw = '';
+    req.on('data', (d) => { raw += d; });
+    req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
+    return undefined;
+  }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)

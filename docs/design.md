@@ -66,6 +66,8 @@ Test the rules in this order. The first match sets the class. Every size matches
 | 5 | `expanded` | all other sizes (width ≥ 1200, height ≥ 500) | Discord desktop 1280x720 to 1990x830 | Three columns |
 
 The modifier `short` applies to `medium` and `expanded` when the usable height is below 700. It makes spacing tighter. It never hides a function. (G-007)
+
+The modifier `low` applies to `compact-land` when the usable height is below 400 (the 667x375 phones). The sub-tabs move into the top bar row, right of the logo emblem, as icon tabs. The logo word and the "?" leave the bar (the "?" stays in the screen, as on `compact-port`). (D-117)
 - One shell module sets the class, the input, the platform, the GPU tier and the keyboard state on `body`. (G-009, G-016)
 - Read the input from `(pointer: coarse)` or the SDK platform. Never derive the input from the size. (G-008)
 - Do not use a raw `@media` width or height query in screen CSS. Use the class or `@container`. **[CI]** (G-009, G-021)
@@ -124,7 +126,7 @@ The shell is one CSS grid of named areas. No element uses the px size of another
 | `content` | 1 column | 2 columns | 2 columns | 3 columns |
 | `action rail` | Above the dock | Right edge | Bottom of the content | In the content |
 | `dock` | Full width, bottom | Slim, bottom (as today, P0) | Bottom, centered | Bottom, centered |
-- Sub-tabs are always one row directly under the top bar, on every class except `tiny`. The place never changes. On `compact-port` the tabs share the full width equally. On the other classes they are compact and left-aligned. On `compact-land` the row is slim (about 30 px). (D-37, G-018)
+- Sub-tabs are always one row directly under the top bar, on every class except `tiny`. The place never changes. On `compact-port` the tabs share the full width equally. On the other classes they are compact and left-aligned. On `compact-land` the row is slim (about 30 px). Exception: on `compact-land` with `low`, the tabs are in the top bar row (D-117). (D-37, G-018)
 - A view has at most 4 visible sub-tabs, so every label fits at 375 px. Never cut a tab label. **[CI]** (G-065)
 - Every sub-tab has an icon and its name, on every class. All tab icons come from the one line-icon set of the UI-00 library: the same stroke, size and color rules. Cards, Achievements and Bosses get icons from that set. (D-47)
 - Each tab is as wide as its icon and name, and the row fills its width. The row fits on every phone width (320 px and up). A tab name always stays on one line: it may shrink to the minimum type size, but it never wraps. This is an exception to D-08 for sub-tabs. The row never scrolls and never cuts a name. (D-49)
@@ -974,6 +976,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-82 | Same odds for every set | Every set uses the one `pulls` odds row (Nathan, 2026-10-07: "Yes same odds") |
 | D-83 | Set code on the card | Each card shows its set code with its number, for example "S2 · #014"; no set symbol (Nathan, 2026-10-07: "Set Code on the card") |
 | D-84 | Rewards from all sets | Dungeon, Shop and other card rewards draw from every pullable set; only packs choose a set (Nathan, 2026-10-07: "I like completely random odds still across all sets") |
+| D-117 | Sub-tabs on low landscape phones | On `compact-land` below 400 px usable height, the sub-tabs move into the top bar row beside the emblem (an exception to D-37). On 667x375 the second shell row took about 50 px of 375 px, and every Hunt screen was cut (Nathan, 2026-10-08: chose "Tabs into top bar") |
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 

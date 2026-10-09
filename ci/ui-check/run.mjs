@@ -98,6 +98,10 @@ async function runCell([s, screen, variant], ref = {}) {
             const focused = await pg.evaluate((sel) => { const e = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length); if (!e) return false; e.focus(); return true; }, spec.input);
             res.keyboard = { focused, height: Math.round(H * (land ? 0.55 : 0.4)) };
             if (focused) { await pg.setViewportSize({ width: W, height: H - res.keyboard.height }); await sleep(1);
+              // size-class.js sets body[data-kb] after a debounced resize (120 ms). On a loaded runner the resize came late once
+              // (PR #277, 915x412: the cell was measured before the layout changed). Wait for it on a v3 page, then measure.
+              await pg.waitForFunction(() => !document.body.classList.contains('ui-v3') || document.body.hasAttribute('data-kb'), null, { timeout: 8000 }).catch(() => {});
+              res.keyboard.dataKb = await pg.evaluate(() => document.body.hasAttribute('data-kb')); await sleep(0.3);
               res.keyboard.inputInView = await pg.evaluate(() => { const r = document.activeElement?.getBoundingClientRect(); return !!r && r.top >= 0 && r.bottom <= innerHeight + 1; }); }
           }
           await pg.evaluate(() => { const b = document.getElementById('effectBanners'); if (b) b.style.display = 'none'; });
