@@ -42,7 +42,7 @@ let noteTab = 'all';
 let noteItems = [];
 let noteHunt = null;
 let noteGifts = []; // gifts waiting to be redeemed (gift_claims.sql)
-let bell3 = { page: 1, giftError: false, expanded: new Set(), pages: 1 }; // the v3 window (UI-24, flag ui_v3): page, claim error, opened rows
+let bell3 = { giftError: false, expanded: new Set() }; // the v3 window (UI-24, flag ui_v3): claim error, opened rows
 const isV3 = () => document.body.classList.contains('ui-v3');
 let pingPrefs = null; // the Settings tab: which bot posts may ping me (null = not loaded)
 const PING_ROWS = [['plays', 'Card plays on me'], ['trades', 'Trades & gifts'], ['raid', 'Raid boss'], ['packs', 'Pack reminders']];
@@ -54,7 +54,7 @@ export async function openNotifsV2() {
   if (!box.classList.contains('hidden')) { closeNotifsV2(); return; }
   box.classList.remove('hidden');
   if (isV3()) {
-    bell3 = { page: 1, giftError: false, expanded: new Set(), pages: 1 };
+    bell3 = { giftError: false, expanded: new Set() };
     el('bellBtn')?.classList.add('is-open');
     el('bellBtn')?.setAttribute('aria-expanded', 'true');
     window.addEventListener('resize', bellResize);
@@ -147,30 +147,24 @@ function paintBellV3() {
   const { el, apiPost } = ctx();
   const box = el('v2Notifs');
   if (!box) return;
-  const r = paintBell(box, {
+  paintBell(box, {
     tab: noteTab, items: noteItems, gifts: noteGifts, hunt: noteHunt, unread: noteItems.filter((x) => !x.read).length,
-    giftError: bell3.giftError, page: bell3.page, expanded: bell3.expanded, size: document.body.dataset.size || '', now: Date.now(),
+    giftError: bell3.giftError, expanded: bell3.expanded, size: document.body.dataset.size || '', now: Date.now(),
     kindOf: noteKind, strip: stripEmoji, ago: ctx().ago, thumb, coin: COIN, rarityLabel: (k) => ctx().RARITY_LABEL[k] || k,
     settings: noteTab === 'settings' ? settingsHTML() : null, focus: bell3.focus ?? null,
   });
   bell3.focus = null;
-  bell3.pages = r.pages;
-  if (r.page) bell3.page = r.page;
   box.querySelector('[data-close]')?.addEventListener('click', closeNotifsV2);
   box.querySelector('[data-read]')?.addEventListener('click', async () => {
     try { await apiPost('/api/notifications/read', {}); } catch { /* keep */ }
     noteItems = noteItems.map((x) => ({ ...x, read: true })); ctx().updateNotifBadge(noteGifts.length); paintNotifs();
   });
   box.querySelectorAll('.u3-bell__tabs [data-t]').forEach((b) => b.addEventListener('click', () => {
-    noteTab = b.dataset.t; bell3.page = 1; paintNotifs(); if (noteTab === 'settings' && !pingPrefs) loadPingPrefs();
+    noteTab = b.dataset.t; paintNotifs(); if (noteTab === 'settings' && !pingPrefs) loadPingPrefs();
   }));
   box.querySelector('.ps-list')?.addEventListener('change', savePingPref);
   box.querySelectorAll('[data-claim]').forEach((b) => b.addEventListener('click', () => redeem(b, [Number(b.dataset.claim)])));
   box.querySelector('[data-claimall]')?.addEventListener('click', (e) => redeem(e.currentTarget, noteGifts.map((g) => g.id)));
-  box.querySelectorAll('[data-page]').forEach((b) => b.addEventListener('click', () => {
-    const p = Math.min(bell3.pages, Math.max(1, bell3.page + (b.dataset.page === 'next' ? 1 : -1)));
-    if (p !== bell3.page) { bell3.page = p; paintNotifs(); }
-  }));
   // 10.4: a tap on a row shows its full text in place (and a second tap shortens it again)
   box.querySelectorAll('.u3-note__main').forEach((b) => b.addEventListener('click', () => {
     const id = Number(b.closest('[data-note]').dataset.note);

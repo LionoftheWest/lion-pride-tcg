@@ -7,6 +7,7 @@
 //   ci_hunt=down     derived from the recorded /api/hunt: today's squad (the first 8 roster cards) is down (UI-19)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
+//   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
@@ -68,6 +69,12 @@ function derivedRoom(body, kind) {
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
+}
+// UI-24 (D-144): a bell with many notes (cookie ci_notes=many): the recorded notes repeated to 45, so the list scrolls on every size.
+function derivedNotes(body) {
+  const base = body.items, items = [];
+  for (let i = 0; i < 45; i += 1) items.push({ ...base[i % base.length], id: 5000 + i, read: i > 3, created_at: new Date(Date.parse(base[i % base.length].created_at) - Math.floor(i / base.length) * 86400000).toISOString() });
+  return { ...body, items };
 }
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
@@ -135,7 +142,8 @@ createServer((req, res) => {
     const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
       : p === '/api/dungeon' && c.ci_dungeon === 'choose2' && hit.body?.ok ? derivedChoose2(hit.body)
       : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon) : hit.body;
-    const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
+    const raw2 = p === '/api/notifications' && c.ci_notes === 'many' && raw?.items ? derivedNotes(raw) : raw;
+    const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw2?.slots ? derivedWish(raw2) : raw2;
     const body = c.ci_data === 'long' ? longData(body0) : body0;
     return send(res, hit.status || 200, JSON.stringify(body));
   }
