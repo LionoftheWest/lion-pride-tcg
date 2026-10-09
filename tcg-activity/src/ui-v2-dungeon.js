@@ -1102,9 +1102,11 @@ function fitChooseV3(main) {
   chooseRO?.disconnect(); chooseRO = null;
   const box = main.querySelector('.u3-dgc');
   if (!box) return;
+  // too high or too wide: the stage itself, or a part that clips its own content (the panel and the offers share the stage height; the guardian text sits in the pill; D-117 gives the stage more height but not more width)
+  const over = () => [box, ...box.querySelectorAll('.u3-dgc-prog, .u3-dgc-guard, .u3-dgc-panel, .u3-dgc-offers, .u3-dgc-offer, .u3-dgc-tier, .u3-dgc-offer b, .u3-dgc-offer small')].some((e) => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1);
   const measure = () => {
     box.classList.toggle('is-fill', cls3() === 'medium' && box.clientHeight > box.clientWidth);   // a tall tablet (the stage itself is taller than wide, F-1): the offers stack and fill the stage
-    box.classList.remove('is-tight'); if (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) box.classList.add('is-tight'); };
+    box.classList.remove('is-tight', 'is-tight2'); if (over()) { box.classList.add('is-tight'); if (over()) box.classList.add('is-tight2'); } };   // is-tight2: still too wide (a narrow stage: the safe-area insets), so the tier chip gets its own row
   measure();
   document.fonts?.ready.then(() => { if (box.isConnected) measure(); });
   if (typeof ResizeObserver === 'function') { chooseRO = new ResizeObserver(() => { if (box.isConnected) measure(); }); chooseRO.observe(box); }
