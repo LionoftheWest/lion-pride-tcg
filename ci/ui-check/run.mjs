@@ -37,7 +37,7 @@ const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;-
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
 const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell', 'wishlist', 'wishlist-drawer']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'help-closed', 'help-item5', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'wishlist', 'wishlist-drawer', 'wish-picker']);
+const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'help-closed', 'help-item5', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'dungeon-picker-detail', 'hunt-picker-detail', 'wishlist', 'wishlist-drawer', 'wish-picker']);
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
