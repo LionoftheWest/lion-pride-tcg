@@ -1,7 +1,7 @@
 // Tests for the G3 verdict: node --test ci/ui-check/evaluate.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defectsOf, verdict } from './evaluate.mjs';
+import { defectsOf, verdict, checkExceptions, accepts } from './evaluate.mjs';
 import { SIZES, SCREENS, sizeKey, ownerOf } from './screens.mjs';
 import { parseRegister } from '../gates/lib.mjs';
 
@@ -72,6 +72,10 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
+  assert.equal(ownerOf('leaderboard', '#u3LbHost > #u3Lb.u3-lb > .u3-lb__panel .u3-lb-row'), 'UI-66');   // the Leaderboard window (UI-66)
+  assert.equal(ownerOf('leaderboard', '#u3Lb > header.u3-lb__top'), 'UI-66');
+  assert.equal(ownerOf('dungeon-board', '#main > .dg-lobby'), 'UI-46', 'a defect behind the window is the lobby');
+  assert.equal(ownerOf('leaderboard', '#main > .home-hero'), 'UI-03', 'a defect behind the window is Home');
 });
 test('a clean complete run passes', () => {
   assert.equal(verdict(full(), REG, { browsers: ['chromium'] }).fails.length, 0);
@@ -139,4 +143,16 @@ test('a bad exception entry stops the gate', () => {
     { decision: 'D-1', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty' }]) {                  // no why
     assert.throws(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: [bad] }));
   }
+});
+
+test('UI-66 state exceptions (D-124): the 5 state specs on every touch and pointer size accept only the empty-space rule', async () => {
+  const { readFileSync } = await import('node:fs');
+  const list = checkExceptions(JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8')).filter((e) => e.id === 'UI-66'));
+  const states = ['leaderboard-error', 'leaderboard-hunt-error', 'leaderboard-hunt-empty', 'leaderboard-dungeon-empty', 'leaderboard-gauntlet-empty'];
+  assert.equal(list.length, states.length * (SIZES.length - 1), 'every size but tiny (the window is not shown there)');
+  assert.ok(list.every((e) => e.decision === 'D-124' && e.rule === 'empty' && states.includes(e.screen)));
+  const x = (screen, rule) => ({ owner: 'UI-66', screen, size: '430x932', rule });
+  assert.ok(list.some((e) => accepts(e, x('leaderboard-hunt-empty', 'empty'))));
+  assert.ok(!list.some((e) => accepts(e, x('leaderboard', 'empty'))), 'the Main tab with rows is not excepted');
+  assert.ok(!list.some((e) => accepts(e, x('leaderboard-hunt-empty', 'bleed'))), 'only the empty-space rule is excepted');
 });

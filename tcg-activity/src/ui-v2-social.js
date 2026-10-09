@@ -12,6 +12,7 @@ import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v
 import { mountMemberPicker, memberLists } from './ui3/member-picker.js';
 import { button as button3 } from './ui3/components.js';
 import { paintBell } from './ui3/bell.js';
+import { openLeaderboardWindow } from './ui3/leaderboard.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
 const ctx = () => v2ctx();
@@ -257,6 +258,7 @@ const METRICS = [
 const board = { metric: 'power', data: null, back: 'home' };
 
 export function openLeaderboardV2() {
+  if (isV3()) { openLeaderboardWindow('main'); return; }   // v3 (UI-66, D-44): the one Leaderboard window; the view below stays for the flag off
   const c = ctx();
   if (c.currentView() !== 'leaderboard') board.back = c.currentView();
   c.show('leaderboard');

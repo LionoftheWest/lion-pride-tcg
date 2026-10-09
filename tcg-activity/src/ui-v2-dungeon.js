@@ -16,6 +16,7 @@ import { COIN } from './ui-v2-shop.js';
 import { cardElement } from './elements.js';
 import { setMood, stopMusic, toggleMute, musicBtnHTML, paintMusicBtn } from './dungeon-music.js';
 import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
+import { openLeaderboardWindow } from './ui3/leaderboard.js';
 import { icon as ui3Icon } from './ui3/icons.js';
 import { button as btn3, segmented as ui3Segmented } from './ui3/components.js';
 import { TOKENS } from './tokens.js';
@@ -1383,6 +1384,7 @@ function gaOverHTML(R) {
 // ---- The leaderboard ---------------------------------------------------------------------------
 let board = null;
 async function openBoard() {
+  if (V3()) { openLeaderboardWindow(GA() ? 'gauntlet' : 'dungeon'); return; }   // v3 (UI-66, D-44): the Dungeon or Gauntlet tab of the one Leaderboard window
   dg.view = 'board'; board = null; paint();
   try { board = await ctx().api(`${API()}/board`); } catch { board = { board: [] }; }
   if (ctx().currentView() === 'dungeon' && dg.view === 'board') paint();

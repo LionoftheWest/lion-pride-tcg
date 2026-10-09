@@ -4,6 +4,7 @@
 // Variants (a cookie on the browser context, run.mjs sets it):
 //   ci_hunt=battle   /api/hunt answers the battle state (the squad is locked)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
+//   ci_board=rows|empty|error   the 4 Leaderboard answers (UI-66): rows = a board with many rows, empty = no rows, error = HTTP 500 (derived below)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
@@ -36,6 +37,25 @@ function derivedDungeon(body) {
   return { ...body, run: { id: 1, status: 'active', floor: 1, room: 1, squad: ids, state: { phase: 'choose', room_type: 'fight', buff: 1, cards: {},
     pend: { shards: 1, cards: [] }, bank: { shards: 0, cards: [] },
     offers: [{ kind: 'card', tier: 2, odds: [70, 25, 5] }, { kind: 'shards', tier: 1, amount: 10 }, { kind: 'ward', tier: 1, amount: 0.1 }] } } };
+}
+// UI-66: the Leaderboard answers of a board state. The recorded answers have 2 Hunt rows and an empty Dungeon board (no
+// Gauntlet board): 'rows' gives each tab a list long enough to page, with the member's own row inside it.
+const BOARD_PATHS = new Set(['/api/leaderboard/v2', '/api/hunt/leaderboard', '/api/dungeon/board', '/api/gauntlet/board']);
+function derivedBoard(p, mode, me) {
+  const id = (i) => String(100000000000000100n + BigInt(i));
+  const name = (i) => `Member ${String(100 + i).padStart(3, '0')}`;
+  if (mode === 'empty') return p === '/api/hunt/leaderboard' ? { leaders: [], me } : { ok: true, board: [], me };
+  if (p === '/api/hunt/leaderboard') return { leaders: Array.from({ length: 24 }, (_, i) => ({ player_id: i === 7 ? me : id(i), username: name(i), damage: 4700 - i * 190 })), me };
+  return { ok: true, me, board: Array.from({ length: 12 }, (_, i) => ({ rank: i + 1, player_id: i === 0 ? me : id(i), username: name(i), floor: 5 - (i >> 2), room: 1 + (i % 3), turns: 27 + i * 3, runs: 1 + (i % 2), status: i === 3 ? 'active' : 'done' })) };
+}
+const TITLE = 'the Unbreakable Champion of the Realm';
+function withTitles(p, body, FIX) {
+  if (p === '/api/leaderboard/v2' && Array.isArray(body?.rows)) return { ...body, rows: body.rows.map((r) => ({ ...r, title: 'Season 1 Champion' })) };
+  if (p === '/api/effects/badges') {
+    const ids = [...(FIX.routes['/api/leaderboard/v2']?.body?.rows || []).map((r) => r.id), '100000000000000001', ...Array.from({ length: 40 }, (_, i) => String(100000000000000100n + BigInt(i)))];
+    return { badges: Object.fromEntries(ids.map((id) => [id, { title: TITLE, sticker: null, spotlight: false }])) };
+  }
+  return body;
 }
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
@@ -86,11 +106,18 @@ createServer((req, res) => {
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
     const hit = FIX.routes[key] || FIX.routes[keyOf(p, '')] || BY_PATH[p];
-    if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
-    const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body) : hit.body;
+    // UI-66: a Leaderboard board state (cookie ci_board) answers before the fixture lookup (the Gauntlet board has no recorded answer)
+    if (BOARD_PATHS.has(p) && c.ci_board === 'error') return send(res, 500, '{"error":"ui-check: board error"}');
+    const board = BOARD_PATHS.has(p) && p !== '/api/leaderboard/v2' && (c.ci_board === 'rows' || c.ci_board === 'empty')
+      ? derivedBoard(p, c.ci_board, FIX.routes['/api/hunt/leaderboard']?.body?.me || '100000000000000001') : null;
+    if (!hit && !board) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
+    const base = board || (p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body) : hit.body);
+    // UI-66 (ci_board=rows): every member has a title, an achievement title on the Main board and a name badge title everywhere
+    // else, so a long name and a title meet on every row and podium spot.
+    const raw = c.ci_board === 'rows' ? withTitles(p, base, FIX) : base;
     const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
     const body = c.ci_data === 'long' ? longData(body0) : body0;
-    return send(res, hit.status || 200, JSON.stringify(body));
+    return send(res, board ? 200 : (hit.status || 200), JSON.stringify(body));
   }
   const f = normalize(join(PUB, decodeURIComponent(p)));
   if (!f.startsWith(PUB) || !existsSync(f) || !statSync(f).isFile()) return send(res, 404, 'not found', 'text/plain');

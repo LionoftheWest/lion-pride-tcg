@@ -36,8 +36,8 @@ const call = (pg, src, arg) => pg.evaluate(`(${src})(${arg === undefined ? '' : 
 const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;--discord-safe-area-inset-bottom:${land ? 21 : 34}px;--discord-safe-area-inset-left:${land ? 59 : 0}px;--discord-safe-area-inset-right:${land ? 59 : 0}px}`;
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
-const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'help-closed', 'help-item5', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings']);
+const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'leaderboard-hunt', 'leaderboard-dungeon', 'leaderboard-gauntlet', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'dungeon-board', 'gauntlet-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell']);
+const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'help-closed', 'help-item5', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'leaderboard', 'leaderboard-hunt', 'leaderboard-dungeon', 'leaderboard-gauntlet', 'dungeon-board', 'gauntlet-board']);
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
@@ -73,6 +73,7 @@ async function runCell([s, screen, variant], ref = {}) {
         const cookies = [];
         if (spec.battle) cookies.push({ name: 'ci_hunt', value: 'battle', url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
+        if (spec.board) cookies.push({ name: 'ci_board', value: spec.board, url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);

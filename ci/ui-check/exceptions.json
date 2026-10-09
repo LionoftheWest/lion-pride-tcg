@@ -1,8 +1,586 @@
 [
-  { "decision": "D-120", "id": "UI-35", "screen": "pack-multi-10", "size": "1990x830", "rule": "empty",
-    "why": "10 packs in the approved one-row layout leave an empty band of 29% above and below the row (frame expanded-1990x830-2-waiting-10-packs)." },
-  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-cards", "size": "667x375", "rule": "tap",
-    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." },
-  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-all", "size": "667x375", "rule": "tap",
-    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." }
+ {
+  "decision": "D-120",
+  "id": "UI-35",
+  "screen": "pack-multi-10",
+  "size": "1990x830",
+  "rule": "empty",
+  "why": "10 packs in the approved one-row layout leave an empty band of 29% above and below the row (frame expanded-1990x830-2-waiting-10-packs)."
+ },
+ {
+  "decision": "D-121",
+  "id": "UI-35",
+  "screen": "pack-multi-cards",
+  "size": "667x375",
+  "rule": "tap",
+  "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap."
+ },
+ {
+  "decision": "D-121",
+  "id": "UI-35",
+  "screen": "pack-multi-all",
+  "size": "667x375",
+  "rule": "tap",
+  "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "375x667",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "667x375",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "430x932",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "932x430",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "430x822",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "412x915",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "915x412",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "820x1180",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "1180x820",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "692x917",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "917x692",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "1280x720",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "1990x830",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-error",
+  "size": "1280x480",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "375x667",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "667x375",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "430x932",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "932x430",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "430x822",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "412x915",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "915x412",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "820x1180",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "1180x820",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "692x917",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "917x692",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "1280x720",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "1990x830",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-error",
+  "size": "1280x480",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "375x667",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "667x375",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "430x932",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "932x430",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "430x822",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "412x915",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "915x412",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "820x1180",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "1180x820",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "692x917",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "917x692",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "1280x720",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "1990x830",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-hunt-empty",
+  "size": "1280x480",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "375x667",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "667x375",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "430x932",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "932x430",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "430x822",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "412x915",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "915x412",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "820x1180",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "1180x820",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "692x917",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "917x692",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "1280x720",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "1990x830",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-dungeon-empty",
+  "size": "1280x480",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "375x667",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "667x375",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "430x932",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "932x430",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "430x822",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "412x915",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "915x412",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "820x1180",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "1180x820",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "692x917",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "917x692",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "1280x720",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "1990x830",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ },
+ {
+  "decision": "D-124",
+  "id": "UI-66",
+  "screen": "leaderboard-gauntlet-empty",
+  "size": "1280x480",
+  "rule": "empty",
+  "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window."
+ }
 ]

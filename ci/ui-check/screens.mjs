@@ -41,7 +41,10 @@ export const SCREENS = {
   'dungeon-picker':      { id: 'UI-64', under: 'UI-46', notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '[data-pickopen]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
   // v3: a run in the "Choose a reward" step (UI-48): the check server answers a run with 3 offers (cookie ci_dungeon=choose).
   'dungeon-choose':      { id: 'UI-48', notOn: ['tiny'], dungeon: 'choose', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
-  'dungeon-board':       { id: 'UI-51', notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-pane="top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
+  // v3: the Dungeon "See the leaderboard" button opens the one Leaderboard window (UI-66) on the Dungeon tab: a defect outside the window belongs to the lobby ('under').
+  'dungeon-board':       { id: 'UI-66', under: 'UI-46', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-seg="pane:top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
+  // The Gauntlet lobby "See the leaderboard" button opens the Leaderboard window (UI-66) on the Gauntlet tab; behind it the lobby is UI-52.
+  'gauntlet-board':      { id: 'UI-66', under: 'UI-52', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-pane="top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
   'gauntlet':            { id: 'UI-52', notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   // The Shop (UI-43): tiny has no top bar, so no Shop button (D-06: the small live view, UI-59).
   'shop':                { id: 'UI-43', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2]] },
@@ -53,7 +56,17 @@ export const SCREENS = {
   'bell':                { id: 'UI-24', under: 'UI-03', notOn: ['tiny'], steps: [['js', '#bellBtn']] },
   // The Settings window (UI-61) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
   'settings':            { id: 'UI-61', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="settings"]'], ['wait', 1.5]] },
-  'leaderboard':         { id: 'UI-22', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  // The Leaderboard window (UI-66, D-44) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
+  'leaderboard':         { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  'leaderboard-hunt':    { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-dungeon': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
+  'leaderboard-gauntlet': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
+  // The states: Main with an error answer, and the Hunt, Dungeon and Gauntlet tabs with no rows or an error answer.
+  'leaderboard-error':   { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'error', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  'leaderboard-hunt-error': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'error', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-hunt-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-dungeon-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
+  'leaderboard-gauntlet-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
   'profile':             { id: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
   // The own profile (the avatar in the top bar): the Spotlight Edit, Title & frame and the editable wishlist show only here.
   'profile-own':         { id: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3]] },
@@ -84,6 +97,7 @@ export function ownerOf(screen, where) {
   // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
+  if (/#u3Lb(Host)?[a-z]*\b|\.u3-lb\b|\.u3-lb[-_]|\.u3-lbhost\b/.test(where)) return 'UI-66';
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/#(v2Dailies|u3DlToast)[a-z]*\b|\.u3-dl\b|\.u3-dl[-_]/.test(where)) return 'UI-36';
   if (/\.u3-mp\b|\.u3-mp[-_]/.test(where)) return 'UI-65';
