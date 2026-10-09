@@ -2,7 +2,7 @@
 // and 24 (or the component's own icon token). One icon has one meaning in the whole app (3.1). The element icons are
 // in element-icons.js (13; the 14th, physical, is 'hand-fist' here). Only the icons named here are bundled.
 import {
-  X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Star, RotateCcw, ArrowLeftRight, LoaderCircle, Check, Lock, Plus,
+  X, ChevronLeft, ChevronRight, ChevronDown, Search, Star, RotateCcw, ArrowLeftRight, LoaderCircle, Check, Lock, Plus,
   Minus, Info, CircleCheck, CircleAlert, TriangleAlert, Timer, SlidersHorizontal, Landmark, PartyPopper, Layers, Award,
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
@@ -11,7 +11,7 @@ import {
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
 export const ICONS = {
-  'x': X, 'chevron-left': ChevronLeft, 'chevron-right': ChevronRight, 'chevron-down': ChevronDown, 'chevron-up': ChevronUp, 'search': Search,
+  'x': X, 'chevron-left': ChevronLeft, 'chevron-right': ChevronRight, 'chevron-down': ChevronDown, 'search': Search,
   'star': Star, 'rotate-ccw': RotateCcw, 'arrow-left-right': ArrowLeftRight, 'loader-circle': LoaderCircle,
   'check': Check, 'lock': Lock, 'plus': Plus, 'minus': Minus, 'info': Info, 'circle-check': CircleCheck,
   'circle-alert': CircleAlert, 'triangle-alert': TriangleAlert, 'timer': Timer, 'sliders-horizontal': SlidersHorizontal,
