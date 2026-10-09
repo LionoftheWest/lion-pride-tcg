@@ -37,6 +37,15 @@ function derivedDungeon(body) {
     pend: { shards: 1, cards: [] }, bank: { shards: 0, cards: [] },
     offers: [{ kind: 'card', tier: 2, odds: [70, 25, 5] }, { kind: 'shards', tier: 1, amount: 10 }, { kind: 'ward', tier: 1, amount: 0.1 }] } } };
 }
+// UI-24: the bell with many rows (cookie ci_notes=many): 3 gifts (packs, a Shards gift, a card gift) and the 12 newest notifications,
+// the first 4 of them unread and dated on the capture day, so the Today and Earlier groups both show. Nothing is written.
+function derivedNotes(body, now) {
+  const items = (body.items || []).slice(0, 12).map((x, i) => ({ ...x, read: i >= 4, created_at: i < 4 ? new Date(new Date(now).getTime() - i * 3600e3).toISOString() : x.created_at }));
+  const card = { id: 1, name: 'Event card', rarity: 'illustrated_rare', image_url: '/api/img/event.png' };
+  const gifts = [{ id: 901, kind: 'packs', title: 'New Player Bonus', amount: 10, shards: 0 }, { id: 902, kind: 'shards', title: 'Launch Day gift', amount: 0, shards: 1000 },
+    { id: 903, kind: 'card', title: 'Event card', amount: 0, shards: 0, card }];
+  return { ...body, items, gifts, unread: items.filter((x) => !x.read).length + gifts.length };
+}
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
@@ -82,7 +91,8 @@ createServer((req, res) => {
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
     const hit = FIX.routes[key] || FIX.routes[keyOf(p, '')] || BY_PATH[p];
     if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
-    const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body) : hit.body;
+    const rawIn = p === '/api/notifications' && c.ci_notes === 'many' && hit.body?.items ? derivedNotes(hit.body, FIX.recordedAt) : null;
+    const raw = rawIn || (p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body) : hit.body);
     const body = c.ci_data === 'long' ? longData(raw) : raw;
     return send(res, hit.status || 200, JSON.stringify(body));
   }

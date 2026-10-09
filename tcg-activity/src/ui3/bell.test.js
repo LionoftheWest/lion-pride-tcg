@@ -3,7 +3,7 @@
 // 10.1 the glossary (Claim, HUNT), 7.3 the claim error line.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { packPages, noteIcon, bellUnits, CLAIM_ERROR } from './bell.js';
+import { packPages, packColumns, noteIcon, bellUnits, CLAIM_ERROR } from './bell.js';
 
 const H = (h, x = {}) => ({ h, ...x });
 
@@ -75,14 +75,14 @@ test('10.1: Gifts to claim, Claim, Claim all +N (packs only); the claim error on
   assert.equal(u.filter((x) => x.html.includes('u3-btn--primary')).length, 1, 'one primary button (5.3)');
 });
 
-test('the Hunt card: HUNT (not PRIDE HUNT), not on the Trades tab, page 2 only on compact-land', () => {
+test('the Hunt card: HUNT (not PRIDE HUNT), not on the Trades tab, on no page 2 any more (Nathan 2026-10-09)', () => {
   const hunt = { name: 'Boss', hp_remaining: 50, hp_max: 100 };
   const t = text(bellUnits(base({ hunt })));
   assert.match(t, /HUNT Boss/);
   assert.doesNotMatch(t, /PRIDE/);
   assert.equal(bellUnits(base({ hunt, tab: 'trades' })).length, 0);
-  assert.equal(bellUnits(base({ hunt, size: 'compact-land' }))[0].page2, true);
-  assert.equal(bellUnits(base({ hunt }))[0].page2, false);
+  assert.ok(!bellUnits(base({ hunt, size: 'compact-land' }))[0].page2, 'compact-land: the Hunt card stays in the flow, no pager lift');
+  assert.ok(!bellUnits(base({ hunt }))[0].page2);
 });
 
 test('rows: Today and Earlier, the tab filter, the unread mark, the full text after a tap (10.4)', () => {
@@ -96,4 +96,16 @@ test('rows: Today and Earlier, the tab filter, the unread mark, the full text af
   assert.ok(!u.find((x) => x.note === 7).html.includes('is-full'));
   assert.ok(bellUnits(base({ items, now, expanded: new Set([7]) })).find((x) => x.note === 7).html.includes('is-full'));
   assert.deepEqual(bellUnits(base({ items, now, tab: 'trades' })).filter((x) => x.note).map((x) => x.note), [8]);
+});
+
+test('compact-land (Nathan 2026-10-09): the rows stand in columns and fit one screen: no pager while they fit', () => {
+  const units = [H(20, { head: true }), ...[1, 2, 3, 4, 5, 6].map(() => H(40, { section: 'a' }))];
+  // a column of 140 holds the head and 2 rows: 6 rows need 3 columns
+  assert.deepEqual(packColumns(units, { full: 140, paged: 100, gap: 10, cols: 3 }), [[[0, 1, 2], [0, 3, 4], [0, 5, 6]]], '3 columns, one page, the head again on each column');
+  const two = packColumns(units, { full: 140, paged: 100, gap: 10, cols: 2 });
+  assert.ok(two.length > 1, '6 rows do not fit 2 columns: the pager comes back (a row is never hidden)');
+  assert.ok(two.every((p) => p.length <= 2), 'at most 2 columns on a page');
+  const rows = two.flat(2).filter((i) => i !== 0).sort();
+  assert.deepEqual(rows, [1, 2, 3, 4, 5, 6], 'every row on exactly one page');
+  assert.deepEqual(packColumns(units, { full: 400, paged: 340, gap: 10, cols: 1 }), [[[0, 1, 2, 3, 4, 5, 6]]], 'cols 1 = packPages');
 });
