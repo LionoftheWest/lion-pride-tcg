@@ -46,6 +46,13 @@ function derivedTrades(body) {
   return { incoming: [o(201, '100000000000000012', me, 'pending', card(1, 'normal'), card(2, 'normal')), o(202, '100000000000000012', me, 'pending', card(3, 'illustrated_rare'), card(4, 'illustrated_rare'))],
     outgoing: [...(body.outgoing || []), o(203, me, '100000000000000011', 'countered', card(5, 'normal'), card(6, 'normal')), o(204, me, '100000000000000163', 'pending', card(7, 'secret_rare'), null)] };
 }
+// UI-63: the cards of another member (the recorded answer has none): every second card of the recorded collection, with
+// 1 to 4 copies, in the shape of GET /api/player-cards.
+function derivedTheirCards() {
+  const cards = (FIX.routes['/api/collection']?.body?.cards || []).filter((_, i) => i % 2 === 0).map((c, i) => ({ quantity: 1 + (i % 4), id: c.id, name: c.name,
+    rarity: c.rarity, image_url: c.image_url, tradeable: true, season: c.season || 'Season 1', event: null, artist: null, lore: null, subject: c.subject }));
+  return { cards };
+}
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
@@ -98,6 +105,7 @@ createServer((req, res) => {
     if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
     const few = c.ci_trades === 'few';
     const raw = few && p === '/api/trades' && hit.body ? derivedTrades(hit.body)
+      : p === '/api/player-cards' && hit.body && !(hit.body.cards || []).length ? derivedTheirCards()
       : few && p === '/api/trade/partners' && hit.body ? { partners: (hit.body.partners || []).slice(0, 1) }
       : p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body) : hit.body;
     const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
