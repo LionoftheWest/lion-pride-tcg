@@ -2678,7 +2678,7 @@ function setCardHp(node, hp, max) {
 function markDowned(node) {
   node.classList.add('downed');
   setCardHp(node, 0, Number(node.dataset.max) || 1);
-  if (!node.querySelector('.downed-x')) { const d = document.createElement('span'); d.className = 'downed-x'; d.textContent = 'DOWNED'; (node.querySelector('.art') || node.querySelector('.hart'))?.appendChild(d); }
+  if (!node.querySelector('.downed-x')) { const d = document.createElement('span'); d.className = 'downed-x'; d.textContent = huntV3() ? 'Down' : 'DOWNED'; (node.querySelector('.art') || node.querySelector('.hart'))?.appendChild(d); }
 }
 function recoilCard(node, dmg) {
   node.classList.remove('hit'); void node.offsetWidth; node.classList.add('hit');

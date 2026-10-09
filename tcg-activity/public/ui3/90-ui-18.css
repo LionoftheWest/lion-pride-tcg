@@ -43,7 +43,8 @@ body[data-size="compact-port"] .u3-ft-turn { width: 100%; box-sizing: border-box
   box-shadow: 0 0 var(--sp-3) color-mix(in srgb, var(--role) 45%, transparent); }
 .u3-ft-grid .c.support { --role: var(--role-support); }
 .u3-ft-grid .c .art { border-width: var(--bw-2); }
-.u3-ft-grid .c.support .art { filter: none; opacity: 0.62; }   /* the support face stays dim as approved; its plate and HP bar do not */
+.u3-ft-grid .c.support .art { filter: none; }
+.u3-ft-grid .c.support .art > img { opacity: 0.62; }   /* the support face stays dim as approved; its plate and HP bar do not */
 .u3-ft-grid .c :is(.tpow, .celem, .x2) { display: none; }
 .u3-ft-grid .c .cap { display: none; }
 .u3-ft-grid .thp { height: var(--sp-1); margin-top: var(--sp-1); border: 0; border-radius: var(--rad-pill); background: var(--boss-hp-track); }
@@ -106,3 +107,5 @@ body[data-size="compact-port"] .u3-ft.is-short .u3-ft-me { flex-wrap: wrap; }
 body[data-size="compact-port"] .u3-ft.is-short .u3-ft-now { order: -1; flex: 1 0 100%; }
 /* portrait, the last step (is-min): the boss render gives way, the text uses the full width */
 body[data-size="compact-port"] .u3-ft.is-short.is-tight.is-min .u3-ft-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto; grid-template-areas: "title" "facts" "hp" "me"; }
+/* expanded and medium: the hand panel takes the share the approved frames give it (the cards 99 x 138 at 1280x720) */
+body[data-size="expanded"] .u3-ft-hand { flex-basis: 46%; }

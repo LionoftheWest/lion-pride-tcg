@@ -48,6 +48,17 @@ const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';'
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
 // The two Hunt states with no recording of their own, built from the recorded calls (the same cards, names and numbers).
+// UI-18: the fight with two supports (a heal and a shield on an ally) and one card down, as the approved frames draw it
+// (the recorded squad has attackers only). Ids 370 and 72 become supports, id 30 is down.
+function derivedBattleMix() {
+  const b = JSON.parse(JSON.stringify((FIX.routes['/api/hunt#battle'] || {}).body || {}));
+  const AB = { 370: { name: 'Comeback', desc: 'Heal an ally.', kind: 'support', effect: 'heal', target: 'ally' }, 72: { name: 'Bulwark', desc: 'Shield an ally.', kind: 'support', effect: 'shield', target: 'ally' } };
+  for (const c of b.roster || []) {
+    if (AB[c.id]) { c.type = 'Item'; c.ability = AB[c.id]; c.hp = c.max_hp = 60; }
+    if (c.id === 30) { c.hp = 0; c.downed = true; }
+  }
+  return b;
+}
 function derivedHunt(kind, long) {
   const pick = (k) => (FIX.routes[k] || BY_PATH[k] || {}).body || {};
   const base = JSON.parse(JSON.stringify(pick('/api/hunt')));
@@ -102,6 +113,7 @@ createServer((req, res) => {
   if (p.startsWith('/api/')) {
     const c = cookies(req);
     if (p === '/api/hunt' && (c.ci_hunt === 'resting' || c.ci_hunt === 'down')) return send(res, 200, JSON.stringify(derivedHunt(c.ci_hunt, c.ci_data === 'long')));
+    if (p === '/api/hunt' && c.ci_hunt === 'battle-mix') return send(res, 200, JSON.stringify(derivedBattleMix()));
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
