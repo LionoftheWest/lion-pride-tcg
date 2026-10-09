@@ -15,7 +15,9 @@ const COMM = '#commTabs';
 export const SCREENS = {
   'home':                { id: 'UI-03', steps: [] },
   'collection':          { id: 'UI-07', steps: [['dock', 'collection']], input: '#colSearch' },
-  'collection-detail':   { id: 'UI-08', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
+  // the Filters panel open (D-39, D-123: under tabs where the groups do not fit the height)
+  'collection-filters': { id: 'UI-07', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#colFilters'], ['wait', 1]] },
+  'collection-detail':  { id: 'UI-08', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
   'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   'achievements-detail': { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main .ach-card, #main .ach-row, #main [data-ach]']] },
   'bosses':              { id: 'UI-11', steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },

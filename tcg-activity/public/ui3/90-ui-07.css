@@ -7,9 +7,9 @@
 body.ui-v3 .u3-col { --u3-gap: var(--sp-2); --u3-pager-gap: var(--sp-2); --u3-pager-h: var(--ctl-sm); --u3-bar-h: var(--ctl-md);
   height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); box-sizing: border-box; }
 /* The space under the toolbar and above the pager, as approved: expanded 8 / 8, medium and compact-port 12 / 8,
-   compact-land 12 / 12 (D-60). */
+   compact-land 8 / 8 (D-119: one row; D-60 had 12 / 12 for 2 rows). */
 body.ui-v3[data-size="expanded"] .u3-col { gap: var(--sp-2); }
-body.ui-v3[data-size="compact-land"] .u3-col { --u3-pager-gap: var(--sp-3); }
+body.ui-v3[data-size="compact-land"] .u3-col { --u3-pager-gap: var(--sp-2); gap: var(--sp-2); }   /* D-119: one row, so 8 / 8 as expanded (the 12 px steps were for 2 rows) */
 /* Touch: the controls inside a frame keep a 44 px hit area (9.1): the frame line is drawn inside (an inset shadow,
    the same look), so it takes no height from the grid. */
 body.ui-v3[data-input="coarse"] .u3-col { --u3-pager-h: var(--hit); --u3-bar-h: var(--hit); }
@@ -30,8 +30,20 @@ body.ui-v3[data-size="compact-port"] .u3-col__bar { flex-wrap: wrap; row-gap: va
 body.ui-v3[data-size="compact-port"] .u3-col__search { flex: 1 1 0; }
 body.ui-v3[data-size="compact-port"] .u3-col__set { flex: 1 0 100%; margin: 0; }
 body.ui-v3 .u3-col__set .ex-q { flex: none; }
-/* Touch: the "?" has a 44 px hit area (9.1); the row keeps the height of the drawn 34 px button. */
-body.ui-v3[data-input="coarse"] .u3-col__set .ex-q { width: var(--hit); height: var(--hit); margin-block: calc((var(--hit) - var(--ctl-sm)) / -2 + var(--bw-1)); }
+/* Touch: the set line box holds the 44 px button (nothing pokes out of its parent). Where the set line has its own row
+   (compact-port, tiny) the row gap and the bar margin take back the height of the drawn 34 px button. */
+body.ui-v3[data-input="coarse"] .u3-col__set { min-height: var(--hit); }
+body.ui-v3[data-input="coarse"] .u3-col__set .ex-q { width: var(--hit); height: var(--hit); }
+body.ui-v3[data-input="coarse"]:is([data-size="compact-port"], [data-size="tiny"]) .u3-col__bar { row-gap: calc(var(--sp-3) - (var(--hit) - var(--ctl-sm)) / 2); margin-bottom: calc((var(--hit) - var(--ctl-sm)) / -2); }
+/* tiny (Discord picture-in-picture, 2.1): no room for the toolbar in one row. The search, Filters and the set line each
+   have a row. Both rows end left of the Discord corner zone (2.3). */
+body.ui-v3[data-size="tiny"] .u3-col__bar { flex-wrap: wrap; row-gap: var(--sp-2); padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r))); }
+body.ui-v3[data-size="tiny"] .u3-col__search { flex: 1 0 100%; }
+body.ui-v3[data-size="tiny"] .u3-col__set { flex: 1 0 100%; margin: 0; }
+/* compact-port with the keyboard open (body[data-kb]): the search, Filters and the cards stay; the set line returns when the
+   keyboard closes (as the Card picker, 2.3), so one row of tiles has room above the keyboard. */
+body.ui-v3[data-size="compact-port"][data-kb] .u3-col__set { display: none; }
+body.ui-v3[data-input="coarse"][data-size="compact-port"][data-kb] .u3-col__bar { margin-bottom: 0; }
 
 /* The grid box: the grid, then the pager centered under it (D-36). On compact-port the pager sits at the bottom of the
    box, 8 px above the dock (review-1 change 1). */
@@ -41,8 +53,8 @@ body.ui-v3 .u3-col__grid { --u3-cw: min(calc((100cqw - (var(--u3-cols, 2) - 1) *
     calc((100cqh - var(--u3-pager-h) - var(--u3-pager-gap) - (var(--u3-rows, 2) - 1) * var(--u3-gap)) / var(--u3-rows, 2) * 5 / 7));
   display: grid; grid-template-columns: repeat(var(--u3-cols, 2), var(--u3-cw)); grid-auto-rows: calc(var(--u3-cw) * 7 / 5); gap: var(--u3-gap);
   justify-content: center; align-content: start; min-height: 0; }
-body.ui-v3 .u3-col__grid.is-empty { flex: 1 1 auto; place-items: center; grid-template-columns: 1fr; grid-auto-rows: auto; }
-body.ui-v3 .u3-col__none { margin: 0; font-size: var(--fs-body); color: var(--text-secondary); }
+body.ui-v3 .u3-col__grid.is-empty { flex: 1 1 0; align-content: center; place-items: center; grid-template-columns: 1fr; grid-auto-rows: auto; }
+body.ui-v3 .u3-col__none { list-style: none; margin: 0; text-align: center; font-size: var(--fs-body); color: var(--text-secondary); }
 body.ui-v3 .u3-col__pager { flex: none; height: var(--u3-pager-h); display: flex; justify-content: center; }
 /* The Pager is a <nav>: the v1 narrow-window rule (style.css "nav", fixed at the bottom) must not move it. */
 body.ui-v3 .u3-col__pager .u3-pager { position: static; flex-wrap: nowrap; gap: 0; padding: 0; box-sizing: border-box; height: var(--u3-pager-h); }
@@ -71,7 +83,7 @@ body.ui-v3[data-size="compact-land"] .u3-ctile.is-locked .u3-ico { width: var(--
 
 /* The error state (7.2): the line with its icon and Retry, centered in the content area. */
 body.ui-v3 .u3-col--error .u3-col__err { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--sp-3); }
-body.ui-v3 .u3-col__errline { margin: 0; display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-body); color: var(--text-secondary); }
+body.ui-v3 .u3-col__errline { margin: 0; display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-small); color: var(--text-secondary); }
 body.ui-v3 .u3-col__errline .u3-ico { color: var(--danger); }
 
 /* ---- The Filters panel (D-39), on top of the view. medium and expanded: a panel under the toolbar, on the scrim.
@@ -79,18 +91,18 @@ body.ui-v3 .u3-col__errline .u3-ico { color: var(--danger); }
 .u3-fhost { position: fixed; inset: 0; z-index: var(--z-sheet); background: var(--scrim); animation: kf-fade var(--dur-base) var(--ease-out); }
 body:is([data-size="compact-port"], [data-size="compact-land"]) .u3-fhost { background: none; }
 .u3-fpanel { --u3-bar-h: var(--ctl-md); position: absolute; display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-4); box-sizing: border-box;
-  top: calc(var(--u3-sa-t) + var(--topbar-h) + var(--u3-bar-h) + var(--sp-2)); left: calc(var(--u3-sa-l) + var(--u3-pad));
+  top: calc(var(--u3-fp-top, var(--u3-sa-t) + var(--topbar-h) + var(--u3-bar-h)) + var(--sp-1-5)); left: calc(var(--u3-sa-l) + var(--u3-pad));
   width: min(calc(100vw - var(--u3-sa-l) - var(--u3-sa-r) - var(--u3-pad) * 2), calc(var(--sheet-side-w) * 2));
-  max-height: calc(100dvh - var(--u3-sa-t) - var(--topbar-h) - var(--u3-bar-h) - var(--sp-2) * 2 - var(--u3-sa-b));
+  max-height: calc(100dvh - var(--u3-fp-top, var(--u3-sa-t) + var(--topbar-h) + var(--u3-bar-h)) - var(--sp-1-5) - var(--sp-2) - var(--u3-sa-b));
   border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
   animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top left; }
 body[data-input="coarse"] .u3-fpanel { --u3-bar-h: var(--hit); }
-body:is([data-size="compact-port"], [data-size="compact-land"]) .u3-fpanel { top: calc(var(--u3-sa-t) + var(--sp-2)); width: auto; max-height: none;
-  left: calc(var(--u3-sa-l) + var(--sp-2)); right: calc(var(--u3-sa-r) + var(--sp-2));
+body:is([data-size="compact-port"], [data-size="compact-land"]) .u3-fpanel { top: calc(var(--u3-sa-t) + var(--sp-1-5)); width: auto; max-height: none;
+  left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5));
   bottom: calc(var(--u3-sa-b) + var(--dock-size-compact) + var(--sp-2) * 2); border-radius: var(--rad-sheet); animation-name: kf-rise; }
 /* compact-land: the close button keeps out of the Discord corner zone (2.3), as the top bar does. */
-body[data-size="compact-land"] .u3-fpanel { top: calc(var(--u3-sa-t) + var(--sp-1)); bottom: calc(var(--u3-sa-b) + var(--dock-size-compact) + var(--sp-1) * 2);
-  right: calc(var(--u3-sa-r) + max(var(--sp-2), var(--corner-w) - var(--u3-sa-r) - var(--sp-7))); }
+body[data-size="compact-land"] .u3-fpanel { top: calc(var(--u3-sa-t) + var(--sp-1-5)); bottom: calc(var(--u3-sa-b) + var(--dock-size-compact) + var(--sp-1) * 2);
+  right: calc(var(--u3-sa-r) + max(var(--sp-2), var(--corner-w) - var(--u3-sa-r) - var(--sp-4))); }
 .u3-fpanel__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .u3-fpanel__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
 .u3-fpanel__body { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -100,9 +112,8 @@ body[data-size="compact-land"] .u3-fpanel__body { gap: var(--sp-1); }
 body[data-size="compact-land"] .u3-fpanel__foot { padding-top: var(--sp-1); }
 .u3-fpanel__own { display: flex; width: 100%; box-sizing: border-box; }
 .u3-fpanel__own .u3-seg__item { flex: 1 1 0; justify-content: center; height: var(--ctl-sm); font-size: var(--fs-small); }
-/* Touch: the switch is 44 px with its frame; each item is 36 px and its hit area takes the frame (9.1). */
-body[data-input="coarse"] .u3-fpanel__own .u3-seg__item { height: calc(var(--hit) - var(--sp-1) * 2); }
-body[data-input="coarse"] .u3-fpanel__own .u3-seg__item::after { content: ''; position: absolute; inset: calc(var(--sp-1) * -1) 0; }
+/* Touch: each item is 44 px (9.1), the switch with its frame is 52 px, as the approved frames draw it. */
+body[data-input="coarse"] :is(.u3-fpanel__own, .u3-fpanel__tabs) .u3-seg__item { height: var(--hit); }
 body[data-size="compact-land"] .u3-fpanel__own { width: auto; align-self: flex-start; }
 body[data-size="compact-land"] .u3-fpanel__own .u3-seg__item { padding: 0 var(--sp-6); }
 .u3-chip__n { font-family: var(--font-num); color: var(--text-muted); font-variant-numeric: tabular-nums; }
@@ -111,7 +122,9 @@ body[data-size="compact-port"] .u3-frow { grid-template-columns: 1fr; gap: var(-
 .u3-frow__chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
 .u3-frow__els { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 body[data-size="compact-port"] .u3-frow__els { display: grid; grid-template-columns: repeat(6, 1fr); width: 100%; justify-items: center; }
-.u3-fpanel .u3-chip { font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-primary); }
+.u3-fpanel .u3-chip { font-size: var(--fs-small); font-weight: var(--fw-small); color: var(--text-secondary); }
+.u3-fpanel .u3-chip--filter.is-on { color: var(--gold); }
+.u3-fpanel .u3-seg { background: var(--bg-base); }
 .u3-fpanel .u3-chip--element { color: var(--gold); width: var(--ctl-icon); height: var(--ctl-icon); }
 .u3-fpanel .u3-chip--element .el-ico { width: var(--icon-lg); height: var(--icon-lg); }
 body[data-input="coarse"] .u3-fpanel .u3-chip--filter { height: var(--hit); padding: 0 var(--sp-2); }
@@ -119,3 +132,22 @@ body[data-input="coarse"] .u3-fpanel .u3-chip--element { width: var(--hit); heig
 body[data-input="coarse"] .u3-fpanel .u3-chip::after { display: none; }
 .u3-fpanel__foot { display: flex; justify-content: flex-end; align-items: center; gap: var(--sp-3); padding-top: var(--sp-3); border-top: var(--bw-1) solid var(--border); }
 body[data-size="compact-port"] .u3-fpanel__foot { justify-content: space-between; }
+/* D-123: the groups under tabs (collection.js fitPanel). The tab strip is the UI-00 segmented switch, 44 px on touch like the
+   Show switch above it; the open group fills the rest. */
+.u3-fpanel__tabs .u3-seg { display: flex; width: 100%; box-sizing: border-box; }
+.u3-fpanel__tabs .u3-seg__item { flex: 1 1 0; justify-content: center; height: var(--ctl-sm); font-size: var(--fs-small); }
+.u3-fpanel__sec { align-content: flex-start; }
+.u3-fpanel__sec[hidden] { display: none; }
+/* Under tabs the panel is as high as its content (no empty band under the group), up to the dock. */
+body[data-size] .u3-fpanel.is-tabs { bottom: auto; max-height: calc(100dvh - var(--u3-sa-t) - var(--sp-1-5) - var(--u3-sa-b) - var(--dock-size-compact) - var(--sp-2) * 2); }
+/* compact-land under tabs: the height is the limit, so Clear all and Confirm move up into the title row (left of Close, which
+   keeps out of the Discord corner zone) and the body gets the rest. Both stay in view. */
+body[data-size="compact-land"] .u3-fpanel.is-tabs { display: grid; grid-template-columns: 1fr auto auto auto; grid-template-rows: auto 1fr; align-items: center; column-gap: var(--sp-3); }
+body[data-size="compact-land"] .u3-fpanel.is-tabs :is(.u3-fpanel__head, .u3-fpanel__foot) { display: contents; }
+body[data-size="compact-land"] .u3-fpanel.is-tabs .u3-fpanel__title { grid-column: 1; grid-row: 1; }
+body[data-size="compact-land"] .u3-fpanel.is-tabs .u3-fpanel__head .u3-ibtn { grid-column: 4; grid-row: 1; }
+body[data-size="compact-land"] .u3-fpanel.is-tabs [data-fclear] { grid-column: 2; grid-row: 1; }
+body[data-size="compact-land"] .u3-fpanel.is-tabs [data-fok] { grid-column: 3; grid-row: 1; }
+body[data-size="compact-land"] .u3-fpanel.is-tabs .u3-fpanel__body { grid-column: 1 / -1; grid-row: 2; align-self: stretch; }
+/* compact-land: the panel is as high as its groups (no empty band under them), up to the dock. */
+body[data-size="compact-land"] .u3-fpanel { bottom: auto; max-height: calc(100dvh - var(--u3-sa-t) - var(--sp-1-5) - var(--u3-sa-b) - var(--dock-size-compact) - var(--sp-2) * 2); }

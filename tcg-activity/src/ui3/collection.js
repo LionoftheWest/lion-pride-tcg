@@ -4,14 +4,15 @@
 // member without the flag: ui-v2.js calls paintCollectionV3() only when body.ui-v3 is set and the Cards tab is open.
 // The state object (col) and the card data stay in ui-v2.js, so the Achievements and Bosses tabs do not change.
 import { icon } from './icons.js';
-import { esc, iconButton, button, pager } from './components.js';
+import { esc, iconButton, button, pager, segmented } from './components.js';
 
 // ---- Pure logic (tested in collection.test.js) ----------------------------------------------------------------
 
 /** The minimum tile width (design.md 8.1 "tile" 88 px; D-60: 55 px on compact-land, so that 2 rows fit). */
 export const TILE_MIN = 88;
-export const TILE_MIN_COMPACT_LAND = 55;
-export const tileMin = (cls) => (cls === 'compact-land' ? TILE_MIN_COMPACT_LAND : TILE_MIN);
+// D-119 (Nathan 2026-10-08): compact-land keeps the minimum card size of 8.1 too (the 55 px tile of D-60 is withdrawn):
+// when two rows of 88 px tiles do not fit, the fitter shows ONE row (the fallback below) and the pager has more pages.
+export const tileMin = () => TILE_MIN;
 
 /**
  * The one grid fitter (design.md 3.4, 3.5): the page size is the number of 5:7 tiles that fit in the box, each tile at
@@ -34,7 +35,10 @@ export function fitGrid({ width, height, gap, min, minRows = 2, maxCols = 40, ma
   // The box is too small for 2 rows of the minimum tile. The minimum width wins (8.1, as the v2 fitter): one row of
   // tiles at the minimum width, and the pager shows the rest. A box lower than one minimum tile (the keyboard is open
   // on a phone, 2.3) shows no row: no tile is cut or shrunk, and the grid comes back when the keyboard closes.
-  const cols = Math.max(1, Math.floor((w + gap) / (min + gap)));
+  // The one row uses the box height: the tile is as large as the height allows (D-119: larger, readable cards), so no
+  // band stays empty under the row; a narrower box gives fewer columns.
+  const tall = Math.max(min, (h * 5) / 7);
+  const cols = Math.max(1, Math.floor((w + gap) / (tall + gap)));
   const rows = cwFor(cols, 1) >= min ? 1 : 0;
   return { cols, rows, per: cols * rows, cw: rows ? cwFor(cols, 1) : 0 };
 }
@@ -219,7 +223,10 @@ function paintGrid({ keepFirst = false } = {}) {
   grid.classList.toggle('is-empty', !items.length);
   const pg = $('colPager');
   pg.innerHTML = pager({ page: page + 1, pages });
-  pg.classList.toggle('is-hidden', !items.length);   // the place stays (3.3: nothing moves)
+  // the place stays (3.3: nothing moves). A box with no row for a tile (the keyboard is open, or a tiny window) keeps
+  // the pager only when the box is as high as the pager: else it lies under the dock (G3 4.10).
+  const noRoom = !fit.rows && $('colBox').clientHeight < pg.offsetHeight;
+  pg.classList.toggle('is-hidden', !items.length || noRoom);
   const sub = $('colSetSub');
   if (sub) sub.textContent = setLine({ inSeason: deps.inSeason, filtered: items, filtering: filtering(col) });
   deps.status?.();
@@ -243,33 +250,68 @@ function panelHTML() {
   const els = d.elements.map((e) => `<button type="button" class="u3-chip u3-chip--element u3-chip--md${f.element === e ? ' is-on' : ''}" aria-pressed="${f.element === e}" aria-label="${esc(d.elementName(e))}" data-f="element" data-v="${e}">${d.elIcon(e)}</button>`).join('');
   const types = d.types.map(([k, l]) => chipHTML('type', k, l, f.type === k)).join('');
   const games = d.games.map(([k, l]) => chipHTML('game', k, l, f.game === k)).join('');
-  return `<section class="u3-fpanel" role="dialog" aria-modal="true" aria-labelledby="u3FiltersT">
+  const secs = [['set', 'Set', sets], ['rarity', 'Rarity', rar], ['element', 'Element', `<div class="u3-frow__els">${els}</div>`], ['type', 'Type', types], ['game', 'Game', games]].filter((x) => x[2]);
+  // D-123: when the groups do not fit the height (measured, fitPanel), one group shows at a time under tabs; the switch,
+  // Clear all and Confirm stay in view.
+  if (fTab && !secs.some((x) => x[0] === fTab)) fTab = null;
+  const cur = tabsMode ? (fTab || secs[0][0]) : null;
+  const groups = tabsMode
+    ? `<div class="u3-fpanel__tabs">${segmented(secs.map((x) => ({ id: x[0], label: x[1], active: x[0] === cur, controls: `u3fp-${x[0]}` })), { label: 'Filter group' })}</div>`
+      + secs.map((x) => `<div class="u3-frow__chips u3-fpanel__sec" role="tabpanel" id="u3fp-${x[0]}"${x[0] === cur ? '' : ' hidden'}>${x[2]}</div>`).join('')
+    : secs.map((x) => row(x[1], x[2])).join('');
+  return `<section class="u3-fpanel${tabsMode ? ' is-tabs' : ''}" role="dialog" aria-modal="true" aria-labelledby="u3FiltersT">
     <header class="u3-fpanel__head"><h2 class="u3-fpanel__title" id="u3FiltersT">Filters</h2>${iconButton({ icon: 'x', label: 'Close', variant: 'panel', data: { fclose: '1' } })}</header>
     <div class="u3-fpanel__body">
       <div class="u3-seg u3-fpanel__own" role="radiogroup" aria-label="Show">${own}</div>
-      ${row('Set', sets)}${row('Rarity', rar)}${row('Element', `<div class="u3-frow__els">${els}</div>`)}${row('Type', types)}${row('Game', games)}
+      ${groups}
     </div>
     <footer class="u3-fpanel__foot">${button({ label: 'Clear all', variant: 'ghost', data: { fclear: '1' } })}${button({ label: 'Confirm', variant: 'primary', data: { fok: '1' } })}</footer>
   </section>`;
 }
 
+// D-123: the mode comes from a measurement of the panel itself (F-1), not from the window size: all groups are
+// rendered; when the body is taller than its box, the panel shows one group at a time under tabs.
+let fro = null;
+let tabsMode = false;
+let fTab = null;
+function fitPanel() {
+  const host = $('u3Filters');
+  const body = () => host?.querySelector('.u3-fpanel__body');
+  if (!body()) return;
+  const was = tabsMode;
+  tabsMode = false;
+  host.innerHTML = panelHTML();
+  const over = body().scrollHeight > body().clientHeight + 1;
+  if (over) { tabsMode = true; host.innerHTML = panelHTML(); }
+  if (!host.contains(document.activeElement)) host.querySelector('[data-fclose]')?.focus();
+}
+
 function openFilters() {
   if ($('u3Filters')) return;
   const { col } = deps;
+  tabsMode = false; fTab = null;
   draft = { own: col.own, rarity: col.rarity, element: col.element, type: col.type, game: col.game, season: col.season };
   const host = document.createElement('div');
   host.id = 'u3Filters'; host.className = 'u3-fhost';
   host.innerHTML = panelHTML();
   document.body.appendChild(host);
+  // medium and expanded: the panel drops from under the Filters button (measured from the button, not from the shell rows)
+  const fb = $('colFilters')?.getBoundingClientRect();
+  if (fb) host.style.setProperty('--u3-fp-top', `${Math.round(fb.bottom)}px`);
   $('colFilters')?.setAttribute('aria-expanded', 'true');
   host.querySelector('[data-fclose]')?.focus();
   host.addEventListener('click', onPanelClick);
+  fitPanel();
+  fro = new ResizeObserver(() => fitPanel());
+  fro.observe(host);
+  document.fonts?.ready.then(fitPanel);
   document.addEventListener('keydown', onPanelKey, true);
 }
 function closeFilters({ apply = false } = {}) {
   const host = $('u3Filters');
   if (!host) return;
   document.removeEventListener('keydown', onPanelKey, true);
+  fro?.disconnect(); fro = null;
   host.remove();
   const btn = $('colFilters');
   btn?.setAttribute('aria-expanded', 'false');
@@ -289,6 +331,8 @@ function onPanelClick(e) {
   if (e.target === host || e.target.closest('[data-fclose]')) { closeFilters(); return; }
   if (e.target.closest('[data-fok]')) { closeFilters({ apply: true }); return; }
   if (e.target.closest('[data-fclear]')) { Object.assign(draft, FILTER_DEFAULTS); repaintPanel(); return; }
+  const sg = e.target.closest('[data-seg]');
+  if (sg) { fTab = sg.dataset.seg; repaintPanel(); return; }
   const o = e.target.closest('[data-own]');
   if (o) { draft.own = o.dataset.own; repaintPanel(); return; }
   const c = e.target.closest('[data-f]');
@@ -298,13 +342,19 @@ function onPanelClick(e) {
   else draft[k] = draft[k] === v ? (k === 'rarity' ? 'all' : null) : v;
   repaintPanel();
 }
+const FKEY = '[data-f], [data-own], [data-fclear], [data-seg]';
+const keyOf = (n) => ['f', 'v', 'own', 'fclear', 'seg'].map((k) => n.dataset[k] || '').join('|');
+function restoreFocus(key) {
+  const host = $('u3Filters');
+  if (host && key) [...host.querySelectorAll(FKEY)].find((n) => keyOf(n) === key)?.focus();
+}
 function repaintPanel() {
   const host = $('u3Filters');
   if (!host) return;
-  const focused = document.activeElement?.closest('[data-f], [data-own], [data-fclear]');
-  const key = focused ? ['f', 'v', 'own', 'fclear'].map((k) => focused.dataset[k] || '').join('|') : null;
+  const focused = document.activeElement?.closest(FKEY);
+  const key = focused ? keyOf(focused) : null;
   host.innerHTML = panelHTML();
-  if (key) [...host.querySelectorAll('[data-f], [data-own], [data-fclear]')].find((n) => ['f', 'v', 'own', 'fclear'].map((k) => n.dataset[k] || '').join('|') === key)?.focus();
+  restoreFocus(key);
 }
 // 6.2: Escape closes; the focus stays in the window (Tab wraps).
 function onPanelKey(e) {
