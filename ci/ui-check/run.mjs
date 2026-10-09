@@ -71,7 +71,7 @@ async function runCell([s, screen, variant], ref = {}) {
         const ctx = ref.ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: touch, isMobile: touch && BROWSER === 'chromium', deviceScaleFactor: 1, timezoneId: 'America/Denver', locale: 'en-US' });
         await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
         const cookies = [];
-        if (spec.battle) cookies.push({ name: 'ci_hunt', value: 'battle', url: BASE });
+        if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? 'battle' : spec.hunt, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
