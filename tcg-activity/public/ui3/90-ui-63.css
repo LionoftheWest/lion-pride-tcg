@@ -1,0 +1,77 @@
+/* ==== UI-63 Trade window (src/ui3/trade-window.js; design.md 6.5b; D-35, D-42, D-64; design repo UI-63/approved; flag ui_v3) ====
+   Over the Trades tab (the Member picker). Two layouts, chosen by trade-window.js from the window box itself (is-split =
+   wider than tall): the stack (head, view switch, toolbar, grid, pager, Gift a pack, GIVE / GET and actions) and the split
+   (a left column with the head, the view switch, the slots and the actions; the toolbar, the grid and the pager on the right).
+   The grid page size comes from fitGrid (8.1); the card tiles are the Card picker tiles (.u3-pk-card). Every selector
+   starts with #u3TradeWin or .u3-tw, so no other screen changes. */
+#u3TradeWin { grid-template: minmax(0, 1fr) / minmax(0, 1fr); padding: calc(var(--u3-sa-t) + var(--sp-2)) calc(var(--u3-sa-r) + var(--sp-2)) calc(var(--u3-sa-b) + var(--sp-2)) calc(var(--u3-sa-l) + var(--sp-2)); }
+body[data-size="compact-port"] #u3TradeWin { padding: calc(var(--u3-sa-t) + var(--sp-1-5)) calc(var(--u3-sa-r) + var(--sp-1-5)) calc(var(--u3-sa-b) + var(--sp-1-5)) calc(var(--u3-sa-l) + var(--sp-1-5)); }
+body:is([data-size="medium"], [data-size="expanded"]) #u3TradeWin { padding: var(--sp-5); }
+body[data-size="compact-land"] #u3TradeWin { padding-right: max(calc(var(--u3-sa-r) + var(--sp-2)), var(--corner-w)); }   /* the ✕ stays out of the Discord corner zone (2.3) */
+.u3-tw { --tw-slot: var(--card-thumb); box-sizing: border-box; width: 100%; height: 100%; min-height: 0; display: grid; align-content: stretch; gap: var(--sp-3);
+  padding: var(--sp-4); border-radius: var(--rad-sheet); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); animation: kf-pop var(--dur-slow) var(--ease-out);
+  grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas: "head close" "views views" "tools tools" "grid grid" "pager pager" "pack pack" "bar bar"; }
+.u3-tw:focus { outline: none; }
+.u3-tw { --text-muted: var(--u3-text-muted); }
+.u3-tw.is-still { animation: none; }
+.u3-tw__head { grid-area: head; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-width: 0; }
+.u3-tw__who { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-tw__head .u3-mp-av { --mp-av: var(--avatar-md); }
+.u3-tw__name { min-width: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); overflow-wrap: break-word; }
+.u3-tw__swap { flex: none; display: grid; place-items: center; color: var(--gold); }
+.u3-tw__close { grid-area: close; align-self: start; }
+.u3-tw__views { grid-area: views; display: flex; }
+.u3-tw__views .u3-seg { display: flex; flex: 1 1 auto; min-width: 0; }
+.u3-tw__views .u3-seg__item { flex: 1 1 0; justify-content: center; min-width: 0; height: var(--hit); }
+.u3-tw__tools { grid-area: tools; display: flex; gap: var(--sp-3); min-width: 0; }
+.u3-tw__tools .u3-search { flex: 1 1 auto; min-width: 0; }
+.u3-tw__tools > .u3-btn { flex: none; }
+.u3-tw__grid { grid-area: grid; min-height: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1-5); justify-content: center; align-content: start;
+  grid-template-columns: repeat(var(--pk-cols), var(--pk-tile)); grid-auto-rows: calc(var(--pk-tile) * var(--card-ratio)); }
+.u3-tw__pager { grid-area: pager; display: flex; justify-content: center; }
+.u3-tw__pager .u3-pager { width: max-content; }
+.u3-tw__pack { grid-area: pack; display: flex; }
+.u3-tw__pack:empty { display: none; }
+.u3-tw__pack .u3-btn { flex: 1 1 auto; }
+.u3-tw__packn { font-family: var(--font-num); }
+.u3-tw__bar { grid-area: bar; display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.u3-tw__slots { flex: none; display: flex; align-items: flex-start; gap: var(--sp-3); }
+.u3-tw__swap2 { align-self: center; display: grid; place-items: center; color: var(--text-secondary); margin-bottom: var(--sp-5); }
+.u3-tw-slot { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+.u3-tw-slot__box { box-sizing: border-box; position: relative; width: var(--tw-slot); height: calc(var(--tw-slot) * var(--card-ratio)); border-radius: calc(var(--tw-slot) * var(--rad-card-ratio)); overflow: hidden;
+  display: grid; place-items: center; border: var(--bw-1) solid var(--border-strong); color: var(--text-muted); font-size: var(--fs-body); }
+.u3-tw-slot__box.is-full { border: var(--bw-2) solid var(--u3-r); background: var(--surface-2); }
+.u3-tw-slot__box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-tw-slot__tag { font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--success); }
+.u3-tw__acts { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; align-content: center; gap: var(--sp-2) var(--sp-3); }
+.u3-tw__acts .u3-btn, .u3-tw__acts .u3-ctl { flex: 0 1 auto; }
+.u3-tw-check { position: absolute; top: var(--sp-1); right: var(--sp-1); width: var(--check-badge); height: var(--check-badge); display: grid; place-items: center; border-radius: var(--rad-pill);
+  background: var(--gold); color: var(--on-gold); pointer-events: none; }
+.u3-tw-fscrim { z-index: var(--z-modal); }
+.u3-tw-filters { width: min(100%, var(--dialog-w)); }
+.u3-tw-fgroup { display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-tw-fgroup .u3-seg { flex-wrap: wrap; }
+/* the split: a left column (head, view switch, slots, Gift a pack, actions) and the right column (toolbar and ✕, grid, pager) */
+.u3-tw.is-split { grid-template-columns: minmax(calc(var(--hit) * 4 + var(--sp-4)), 3fr) minmax(0, 7fr) auto; grid-template-rows: auto auto minmax(0, 1fr) auto auto var(--hit);
+  grid-template-areas: "head tools close" "views grid grid" "slots grid grid" "pack grid grid" "acts grid grid" "acts pager pager"; --tw-slot: var(--card-squad); }
+.u3-tw.is-split .u3-tw__bar { display: contents; }
+.u3-tw.is-split .u3-tw__slots { grid-area: slots; align-self: start; justify-self: start; }
+.u3-tw.is-split .u3-tw__acts { grid-area: acts; flex-direction: column; flex-wrap: nowrap; justify-content: flex-end; align-items: stretch; min-height: calc(var(--hit) * 2 + var(--sp-2)); }
+.u3-tw.is-split .u3-tw__pack:empty { display: block; min-height: var(--hit); }   /* the row stays (3.3: nothing moves with the view) */
+body[data-size="expanded"] .u3-tw.is-split { --tw-slot: var(--card-tile-max); }
+body[data-size="compact-land"] .u3-tw.is-split { gap: var(--sp-2); padding: var(--sp-3); }
+body[data-size="compact-land"] .u3-tw.is-split .u3-tw__name { font-size: var(--fs-stat); }
+body[data-size="compact-land"] .u3-tw.is-split .u3-tw__head .u3-mp-av { --mp-av: var(--avatar-sm); }
+body[data-size="compact-port"] .u3-tw { gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-tw__name { font-size: var(--fs-stat); }
+body[data-size="compact-port"] .u3-tw__head .u3-mp-av { --mp-av: var(--avatar-sm); }
+/* the keyboard is open (body[data-kb], 2.3): the head, the search and the cards only; the rest returns when it closes */
+body[data-kb] .u3-tw :is(.u3-tw__views, .u3-tw__pager, .u3-tw__pack, .u3-tw__bar) { display: none; }
+body[data-kb] .u3-tw { grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "head close" "tools tools" "grid grid"; }
+body[data-kb] .u3-tw.is-split { grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(calc(var(--hit) * 4 + var(--sp-4)), 3fr) minmax(0, 7fr) auto; grid-template-areas: "head tools close" "grid grid grid"; }
+/* the tight modes (measured by trade-window.js): Gift and Offer side by side; Filters as an icon */
+.u3-tw.is-tight .u3-tw__acts { flex-direction: row; flex-wrap: nowrap; justify-content: stretch; min-height: var(--hit); }
+.u3-tw.is-tight .u3-tw__acts > * { flex: 1 1 0; min-width: 0; }
+.u3-tw__tools > .u3-btn.is-icon { width: var(--hit); padding: 0; }
+.u3-tw__tools > .u3-btn.is-icon .u3-btn__label { display: none; }
