@@ -83,20 +83,22 @@ The UI check (section 12.6) runs every screen and every overlay at these sizes. 
 | # | Size (CSS px) | Device or window | Class | Input |
 |---|---|---|---|---|
 | 1 | 375x667 | iPhone SE, portrait | compact-port | touch |
-| 2 | 667x375 | iPhone SE, landscape | compact-land | touch |
+| 2 | 667x375 | Desktop window, short | compact-land | pointer |
 | 3 | 430x932 | iPhone 15 Pro Max, portrait | compact-port | touch |
-| 4 | 932x430 | iPhone 15 Pro Max, landscape | compact-land | touch |
+| 4 | 932x430 | Desktop window, short | compact-land | pointer |
 | 5 | 430x822 | Nathan's iPhone, portrait | compact-port | touch |
 | 6 | 412x915 | Pixel, portrait | compact-port | touch |
-| 7 | 915x412 | Pixel, landscape | compact-land | touch |
+| 7 | 915x412 | Desktop window, short | compact-land | pointer |
 | 8 | 820x1180 | iPad, portrait | medium | touch |
-| 9 | 1180x820 | iPad, landscape | medium | touch |
+| 9 | 1180x820 | Desktop window, medium | medium | pointer |
 | 10 | 692x917 | Android tablet, portrait | medium | touch |
-| 11 | 917x692 | Android tablet, landscape | medium + short | touch |
+| 11 | 917x692 | Desktop window, short | medium + short | pointer |
 | 12 | 1280x720 | Discord desktop, small | expanded | pointer |
 | 13 | 1990x830 | Discord desktop, design target | expanded | pointer |
 | 14 | 1280x480 | Discord desktop, short window | compact-land | pointer |
 | 15 | 400x225 | Discord PiP | tiny | touch |
+
+D-136: phones and tablets are locked to portrait (Nathan sets the lock in the Discord Developer Portal), so only desktop has landscape. Rows 2, 4, 7, 9 and 11 are desktop windows: the check runs them with no touch, no safe-area preset and no keyboard variant. D-138: there is no typing in the tiny window, so row 15 has no keyboard variant.
 - Run each size in Chromium and in WebKit. Run the touch sizes with the safe-area presets and with the keyboard open. (G-185, G-013, G-015)
 - Measure the real PiP and grid-tile frames in Discord. Update row 15 with the measured size. (G-012)
 
@@ -977,6 +979,8 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-83 | Set code on the card | Each card shows its set code with its number, for example "S2 · #014"; no set symbol (Nathan, 2026-10-07: "Set Code on the card") |
 | D-84 | Rewards from all sets | Dungeon, Shop and other card rewards draw from every pullable set; only packs choose a set (Nathan, 2026-10-07: "I like completely random odds still across all sets") |
 | D-117 | Sub-tabs on low landscape phones | On `compact-land` below 400 px usable height, the sub-tabs move into the top bar row beside the emblem (an exception to D-37). On 667x375 the second shell row took about 50 px of 375 px, and every Hunt screen was cut (Nathan, 2026-10-08: chose "Tabs into top bar") |
+| D-136 | Phones and tablets portrait only | Phones and tablets are locked to portrait; only desktop has landscape. The lock is the Discord Developer Portal setting (no app code). 667x375, 932x430, 915x412, 1180x820 and 917x692 stay in the UI check as desktop windows (no touch, no keyboard and no safe variants). Flag OFF keeps its own lock. Conditional on Nathan's Discord poll (Nathan, 2026-10-09: "I'm honestly wondering if we should even make landscape a thing"; chose "Phones portrait only"; then "tablet would be just a bigger version of portrait in my mind") |
+| D-138 | No typing in the tiny window | The UI check drops the keyboard variant at the tiny size (Discord picture-in-picture). Assumed: a tap on the small window opens the full Activity first (not tested on a phone) (Nathan, 2026-10-09, with D-136) |
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 

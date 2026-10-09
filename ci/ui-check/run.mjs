@@ -53,6 +53,7 @@ for (const s of sizes) for (const screen of screens) for (const variant of varia
   if (spec.notOn?.includes(cls)) continue;   // the screen does not exist on this class (design.md 2.1)
   if ((variant === 'safe' || variant === 'keyboard') && !touch) continue;
   if (variant === 'keyboard' && !spec.input) continue;
+  if (variant === 'keyboard' && cls === 'tiny') continue;   // D-138: no typing in the tiny window (Discord picture-in-picture)
   if (variant === 'safe' && (!/^compact/.test(cls) || !SAFE_SCREENS.has(screen))) continue;
   if (variant === 'long' && !LONG_SCREENS.has(screen)) continue;
   todo.push([s, screen, variant]);
