@@ -1,98 +1,30 @@
 [
-  {
-    "decision": "D-120",
-    "id": "UI-35",
-    "screen": "pack-multi-10",
-    "size": "1990x830",
-    "rule": "empty",
-    "why": "10 packs in the approved one-row layout leave an empty band of 29% above and below the row (frame expanded-1990x830-2-waiting-10-packs)."
-  },
-  {
-    "decision": "D-121",
-    "id": "UI-35",
-    "screen": "pack-multi-cards",
-    "size": "667x375",
-    "rule": "tap",
-    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap."
-  },
-  {
-    "decision": "D-121",
-    "id": "UI-35",
-    "screen": "pack-multi-all",
-    "size": "667x375",
-    "rule": "tap",
-    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap."
-  },
-  {
-    "decision": "D-134",
-    "id": "UI-49",
-    "screen": "dungeon-chest",
-    "size": "412x915",
-    "rule": "empty",
-    "why": "The approved closed chest (D-134: the smaller panel with the room picture around it, frame chest-closed) leaves an empty band above and below the panel on this size."
-  },
-  {
-    "decision": "D-134",
-    "id": "UI-49",
-    "screen": "dungeon-chest",
-    "size": "430x932",
-    "rule": "empty",
-    "why": "The approved closed chest (D-134: the smaller panel with the room picture around it, frame chest-closed) leaves an empty band above and below the panel on this size."
-  },
-  {
-    "decision": "D-134",
-    "id": "UI-49",
-    "screen": "dungeon-path",
-    "size": "1990x830",
-    "rule": "empty",
-    "why": "The approved door choice (D-134: the smaller panel with the room picture around it, frame path-doors) leaves an empty band above and below the panel on this size."
-  },
-  {
-    "decision": "D-134",
-    "id": "UI-49",
-    "screen": "dungeon-path",
-    "size": "412x915",
-    "rule": "empty",
-    "why": "The approved door choice (D-134: the smaller panel with the room picture around it, frame path-doors) leaves an empty band above and below the panel on this size."
-  },
-  {
-    "decision": "D-134",
-    "id": "UI-49",
-    "screen": "dungeon-path",
-    "size": "430x932",
-    "rule": "empty",
-    "why": "The approved door choice (D-134: the smaller panel with the room picture around it, frame path-doors) leaves an empty band above and below the panel on this size."
-  },
-  {
-    "decision": "D-134",
-    "id": "UI-49",
-    "screen": "dungeon-path",
-    "size": "820x1180",
-    "rule": "empty",
-    "why": "The approved door choice (D-134: the smaller panel with the room picture around it, frame path-doors) leaves an empty band above and below the panel on this size."
-  },
-  {
-    "decision": "D-134",
-    "id": "UI-49",
-    "screen": "dungeon-rest",
-    "size": "1280x480",
-    "rule": "empty",
-    "why": "The approved rest panel (D-134: the smaller panel with the room picture around it, frame rest) leaves an empty band above and below the panel on this size."
-  },
-  {
-    "decision": "D-134",
-    "id": "UI-49",
-    "screen": "dungeon-rest",
-    "size": "412x915",
-    "rule": "empty",
-    "why": "The approved rest panel (D-134: the smaller panel with the room picture around it, frame rest) leaves an empty band above and below the panel on this size."
-  },
-  {
-    "decision": "D-134",
-    "id": "UI-49",
-    "screen": "dungeon-rest",
-    "size": "430x932",
-    "rule": "empty",
-    "why": "The approved rest panel (D-134: the smaller panel with the room picture around it, frame rest) leaves an empty band above and below the panel on this size."
-  }
+  { "decision": "D-120", "id": "UI-35", "screen": "pack-multi-10", "size": "1990x830", "rule": "empty",
+    "why": "10 packs in the approved one-row layout leave an empty band of 29% above and below the row (frame expanded-1990x830-2-waiting-10-packs)." },
+  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-cards", "size": "667x375", "rule": "tap",
+    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." },
+  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-all", "size": "667x375", "rule": "tap",
+    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." },
+  { "decision": "D-131", "id": "UI-64", "screen": "dungeon-picker-detail", "size": "820x1180", "rule": "empty",
+    "why": "The approved card window (UI-09 frames, D-131) is one framed window with the card (about 160 px) beside its info; the Dungeon boon card at this tall size leaves a band of 33% under the content, as the approved portrait frame does." },
+  { "decision": "D-131", "id": "UI-64", "screen": "dungeon-picker-detail", "size": "692x917", "rule": "empty",
+    "why": "The approved card window (UI-09 frames, D-131) is one framed window with the card (about 160 px) beside its info; at this size it leaves a band of 33% around the window, as the approved frames do." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-chest", "size": "412x915", "rule": "empty",
+    "why": "The approved closed chest (D-134: the smaller panel with the room picture around it, frame chest-closed) leaves an empty band above and below the panel on this size." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-chest", "size": "430x932", "rule": "empty",
+    "why": "The approved closed chest (D-134: the smaller panel with the room picture around it, frame chest-closed) leaves an empty band above and below the panel on this size." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-path", "size": "1990x830", "rule": "empty",
+    "why": "The approved door choice (D-134: the smaller panel with the room picture around it, frame path-doors) leaves an empty band above and below the panel on this size." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-path", "size": "412x915", "rule": "empty",
+    "why": "The approved door choice (D-134: the smaller panel with the room picture around it, frame path-doors) leaves an empty band above and below the panel on this size." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-path", "size": "430x932", "rule": "empty",
+    "why": "The approved door choice (D-134: the smaller panel with the room picture around it, frame path-doors) leaves an empty band above and below the panel on this size." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-path", "size": "820x1180", "rule": "empty",
+    "why": "The approved door choice (D-134: the smaller panel with the room picture around it, frame path-doors) leaves an empty band above and below the panel on this size." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-rest", "size": "1280x480", "rule": "empty",
+    "why": "The approved rest panel (D-134: the smaller panel with the room picture around it, frame rest) leaves an empty band above and below the panel on this size." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-rest", "size": "412x915", "rule": "empty",
+    "why": "The approved rest panel (D-134: the smaller panel with the room picture around it, frame rest) leaves an empty band above and below the panel on this size." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-rest", "size": "430x932", "rule": "empty",
+    "why": "The approved rest panel (D-134: the smaller panel with the room picture around it, frame rest) leaves an empty band above and below the panel on this size." }
 ]

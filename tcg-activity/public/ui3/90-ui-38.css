@@ -1,0 +1,61 @@
+/* ==== UI-38 FAQ window (src/ui3/help.js, src/ui-v2-help.js; design repo UI-38/approved, review-1) ====
+   The same window pattern as Dailies (UI-36) and Settings (UI-61): a panel under the top bar on medium and expanded
+   (ends above the dock), a bottom sheet on the dock edge on compact-port (as tall as its content), a side sheet on
+   compact-land that keeps equal side margins of at least the Discord corner zone width (2.3, G-013). The list is the
+   named scroll area "help answers" (3.3, D-07) with a scroll cue; it scrolls only when the questions do not fit. */
+.u3-hp { --hp-row: var(--ctl-sm); --hp-gap: var(--sp-1); --hp-a: var(--fs-small);
+  position: fixed; z-index: var(--z-sheet); top: calc(var(--topbar-h) - var(--sp-2)); right: var(--sp-5); width: calc(var(--sheet-side-w) + var(--sp-5));
+  max-width: calc(100% - var(--sp-5) * 2); max-height: calc(100% - var(--topbar-h) - var(--u3-dock-b) - var(--dock-h)); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); overflow: hidden;
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  color: var(--text-primary); animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top right; }
+.u3-hp.hidden { display: none; }
+body.ui-v3[data-size] .u3-hp { --text-muted: var(--u3-text-muted); }
+body.ui-v3[data-input="coarse"] .u3-hp { --hp-row: var(--hit); --hp-a: var(--fs-body); }
+body.ui-v3[data-size="compact-port"] .u3-hp { top: auto; left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none;
+  bottom: calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-1)); max-height: calc(100% - var(--u3-dock-b) - var(--dock-h) - var(--sp-1) - max(calc(var(--u3-sa-t) + var(--sp-1-5)), var(--corner-h)));
+  border-radius: var(--rad-sheet); animation-name: kf-rise; transform-origin: bottom center; }
+/* compact-land: from the top to the bottom of the safe frame, centered with equal side margins of at least the corner width */
+body.ui-v3[data-size="compact-land"] .u3-hp { top: calc(var(--u3-sa-t) + var(--sp-1-5)); bottom: auto;
+  left: max(calc(var(--u3-sa-l) + var(--sp-1-5)), var(--corner-w)); right: max(calc(var(--u3-sa-r) + var(--sp-1-5)), var(--corner-w));
+  width: min(calc(var(--sheet-side-w) + var(--sp-7) + var(--sp-2)), calc(100% - var(--corner-w) * 2)); max-width: none; margin-inline: auto;
+  max-height: calc(100% - var(--u3-sa-t) - var(--u3-sa-b) - var(--sp-1-5) * 2); gap: var(--sp-2); padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--rad-sheet); transform-origin: top center; }
+body.ui-v3[data-size="tiny"] .u3-hp { display: none; }
+
+.u3-hp__head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-hp__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-hp__foot { flex: none; display: flex; }
+.u3-hp__foot > .u3-btn { flex: 1 1 auto; justify-content: center; }
+body.ui-v3[data-input="coarse"] .u3-hp__foot > .u3-btn { height: var(--hit); }
+
+/* the named scroll area: a 4 px rail with a thumb (UI-38 notes change 6) */
+.u3-hp__area { position: relative; flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.u3-hp__list { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--hp-gap); overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain; scrollbar-width: none; }
+.u3-hp__list::-webkit-scrollbar { display: none; }
+/* the cue (3.3, D-07): a rail with a thumb, real elements, so it shows on every device; it sits in the window padding at the
+   right edge of the list (help.js syncRail sets --hp-thumb-top and --hp-thumb-h) */
+.u3-hp__rail { position: absolute; top: 0; bottom: 0; right: calc(var(--sp-2) * -1); width: var(--bar-sm); border-radius: var(--rad-pill); background: var(--surface-3); pointer-events: none; }
+.u3-hp__rail[hidden] { display: none; }
+.u3-hp__thumb { position: absolute; left: 0; right: 0; top: var(--hp-thumb-top, 0%); height: var(--hp-thumb-h, 100%); border-radius: var(--rad-pill); background: var(--border-strong); }
+.u3-hp__list:focus-visible { outline: none; box-shadow: var(--glow-focus); border-radius: var(--rad-md); }
+.u3-hp__item { flex: none; border-radius: var(--rad-md); background: var(--surface-2); border: var(--bw-1) solid transparent; }
+.u3-hp__item.is-open { background: var(--gold-a10); border-color: var(--gold-a50); }
+.u3-hp__q { width: 100%; min-height: var(--hp-row); box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1) var(--sp-3);
+  background: none; border: 0; border-radius: var(--rad-md); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.u3-hp__q:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+body[data-last-input="pointer"] .u3-hp__q:focus-visible, body[data-last-input="pointer"] .u3-hp__list:focus-visible { box-shadow: none; }
+@media (hover: hover) and (pointer: fine) { .u3-hp__item:not(.is-open) > .u3-hp__q:hover { background: var(--surface-3); } }
+.u3-hp__ico { flex: none; display: grid; place-items: center; width: var(--icon-2xl); color: var(--text-secondary); }
+.u3-hp__item.is-open .u3-hp__ico { color: var(--gold); }
+.u3-hp__qt { flex: 1 1 auto; min-width: 0; font-size: var(--fs-small); font-weight: var(--fw-heading); line-height: var(--lh-small); color: var(--text-primary); overflow-wrap: break-word; }
+body.ui-v3[data-input="coarse"] .u3-hp__qt { font-size: var(--fs-body); line-height: var(--lh-body); }
+.u3-hp__chev { flex: none; display: grid; place-items: center; color: var(--text-secondary); }
+.u3-hp__a { padding: 0 var(--sp-3) var(--sp-3) calc(var(--sp-3) + var(--icon-2xl) + var(--sp-3)); }
+.u3-hp__a p { margin: 0; font-size: var(--hp-a); line-height: var(--lh-body); color: var(--text-secondary); }
+.u3-hp__chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.u3-hp__chips .u3-chip { text-transform: none; letter-spacing: normal; font-size: var(--fs-small); }
+body.ui-v3[data-size="compact-land"] .u3-hp__a { padding-bottom: var(--sp-2); }
+/* the fact chips are text, not controls: no 44 px hit area over the rows around them */
+body[data-input="coarse"] .u3-hp__chips .u3-chip::after { content: none; }

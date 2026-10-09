@@ -1,7 +1,7 @@
 // UI-14 Profile (v3): the pure fit rules of src/ui3/profile.js. node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutOf, places, spotWidth, miniGrid, profileHTML, emptyHTML, huntHTML } from './profile.js';
+import { layoutOf, places, spotWidth, miniGrid, profileHTML, emptyHTML, huntHTML, closesProfile, SHELL_TAP } from './profile.js';
 import { TOKENS } from '../tokens.js';
 
 test('layout: one layout for each size class (medium portrait stacks, C15)', () => {
@@ -70,4 +70,14 @@ test('no profile and a failed load are two states (G-083, D-80 item 15)', () => 
   assert.ok(!emptyHTML(false).includes('Try again'));
   const e = emptyHTML(true);
   assert.ok(e.includes('Something went wrong. Try again.') && e.includes('id="memRetry"') && e.includes('role="alert"'));
+});
+
+test('a tap on the shell (dock, top bar, Menu) closes the Profile layer; a tap inside the Profile or its own windows does not', () => {
+  // a tiny stand-in for an element: closest() matches the selector list the way the browser does
+  const el = (inside) => ({ closest: (sel) => (sel.split(',').map((x) => x.trim()).some((x) => inside.includes(x)) ? {} : null) });
+  for (const part of ['#dock', '#topbar', '#u3MenuHost']) assert.equal(closesProfile(el([part])), true, part);
+  assert.equal(closesProfile(el(['#memberModal'])), false);
+  assert.equal(closesProfile(el(['#u3Picker'])), false);
+  assert.equal(closesProfile(null), false);
+  assert.equal(SHELL_TAP, '#dock, #topbar, #u3MenuHost');
 });

@@ -3,6 +3,8 @@
 //   node serve.mjs [port]            (default 4480)
 // Variants (a cookie on the browser context, run.mjs sets it):
 //   ci_hunt=battle   /api/hunt answers the battle state (the squad is locked)
+//   ci_hunt=resting  derived from the recorded /api/hunt: no live boss, the recorded one defeated (UI-19)
+//   ci_hunt=down     derived from the recorded /api/hunt: today's squad (the first 8 roster cards) is down (UI-19)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
@@ -61,8 +63,31 @@ function derivedRoom(body, kind) {
   if (kind === 'floor') { R.room = 5; Object.assign(st, { phase: 'floor_done', room_type: 'guardian', floor_loot: { shards: 150, cards: ids }, pend: { shards: 0, cards: [] }, bank: { shards: 150, cards: ids } }); }
   return { ...base, name: 'The Hollow Mines', lootCards, run: { ...R, state: st } };
 }
+
+// UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
+function derivedWish(body) {
+  const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
+  return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
+}
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
+
+// The two Hunt states with no recording of their own, built from the recorded calls (the same cards, names and numbers).
+function derivedHunt(kind, long) {
+  const pick = (k) => (FIX.routes[k] || BY_PATH[k] || {}).body || {};
+  const base = JSON.parse(JSON.stringify(pick('/api/hunt')));
+  let out;
+  if (kind === 'resting') {
+    const at = new Date(new Date(FIX.recordedAt).getTime() + (3 * 24 + 23) * 3600 * 1000).toISOString();
+    out = { hunt: null, lastResult: { ...base.hunt, status: 'defeated', hp_remaining: 0 }, nextSpawnAt: at,
+      lastBoard: (pick('/api/hunt/leaderboard').leaders || []).slice(0, 3), myLast: base.myDamage || 0, lastFeed: pick('/api/hunt/feed').feed || [] };
+  } else {
+    const ids = (base.roster || []).slice(0, base.dailyCap || 8).map((c) => c.id);
+    base.roster = (base.roster || []).map((c) => (ids.includes(c.id) ? { ...c, used: true, downed: true, hp: 0 } : c));
+    out = { ...base, squad: ids, usedToday: ids.length };
+  }
+  return long ? longData(out) : out;
+}
 
 // The pack reveal screens (UI-34, UI-35) need the answer of a pack open. POST /api/open answers a fixed open made from
 // the fixture catalog; nothing is written (the check has no database). 5 cards a pack; only pack 2 of a multi open
@@ -101,6 +126,7 @@ createServer((req, res) => {
   if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); return undefined; }
   if (p.startsWith('/api/')) {
     const c = cookies(req);
+    if (p === '/api/hunt' && (c.ci_hunt === 'resting' || c.ci_hunt === 'down')) return send(res, 200, JSON.stringify(derivedHunt(c.ci_hunt, c.ci_data === 'long')));
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
@@ -109,7 +135,8 @@ createServer((req, res) => {
     const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
       : p === '/api/dungeon' && c.ci_dungeon === 'choose2' && hit.body?.ok ? derivedChoose2(hit.body)
       : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon) : hit.body;
-    const body = c.ci_data === 'long' ? longData(raw) : raw;
+    const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
+    const body = c.ci_data === 'long' ? longData(body0) : body0;
     return send(res, hit.status || 200, JSON.stringify(body));
   }
   const f = normalize(join(PUB, decodeURIComponent(p)));
