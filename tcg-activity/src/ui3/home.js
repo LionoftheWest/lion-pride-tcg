@@ -13,7 +13,7 @@ const TAB_LABEL = [['all', 'All'], ['top', 'Top pulls'], ['den', 'Voice']];   //
 
 /** The "Top hunter" line: a button with a frame that opens the Leaderboard (D-48, D-52). */
 export const topHunterHTML = (row, fmt) => (row
-  ? `<button type="button" class="u3-hm-top" data-top-hunter><span class="u3-hm-topt"><span>Top hunter:</span> <b>${breakable(esc(row.username))}</b> <i>·</i> <em>${fmt(row.damage)}</em></span></button>`
+  ? `<button type="button" class="u3-hm-top" data-top-hunter aria-label="Top hunter: ${esc(row.username)}, ${fmt(row.damage)}"><span class="u3-hm-topt"><span class="u3-hm-topl">Top hunter:</span> <b>${breakable(esc(row.username))}</b> <i>·</i> <em>${fmt(row.damage)}</em></span></button>`
   : '<span class="u3-hm-top-slot"></span>');
 
 /** The hero tile, resting (d = the /api/hunt answer, no active hunt). h = { fmt, hasModel }. */
@@ -38,14 +38,14 @@ export function heroLiveHTML(hunt, pct, h) {
     + `<span class="u3-hm-mono u3-hm-rank">${esc(h.rank || '')}</span></div><span class="u3-hm-top-slot" id="heroTop"></span></div></div></div>`;
 }
 /** Keep the hero inside its tile: when the info is taller than the tile, the layout mode is-tight (the boss beside the
- *  title, the stats under it), then is-tighter (smaller type). Measured on the elements (design.md 3.3, brief section 5). */
+ *  title, the stats under it), then is-tighter (smaller type), then is-nolabel (the Top hunter line without its label). Measured on the elements (design.md 3.3, brief section 5). */
 export function fitHero(box) {
   const hb = box?.querySelector('.u3-hm-hb');
   const info = hb?.querySelector('.u3-hm-info');
   if (!hb || !info) return;
-  hb.classList.remove('is-tight', 'is-tighter');
+  hb.classList.remove('is-tight', 'is-tighter', 'is-nolabel');
   const over = () => info.scrollHeight > info.clientHeight + 1 || info.scrollWidth > info.clientWidth + 1 || hb.scrollHeight > hb.clientHeight + 1 || hb.scrollWidth > hb.clientWidth + 1;
-  if (over()) { hb.classList.add('is-tight'); if (over()) hb.classList.add('is-tighter'); }
+  if (over()) { hb.classList.add('is-tight'); if (over()) { hb.classList.add('is-tighter'); if (over()) hb.classList.add('is-nolabel'); } }
 }
 
 /** How much content is cut: the overflow in px of every tile and of the grid (3.3). 0 = nothing is cut. */

@@ -179,19 +179,66 @@ body[data-size="compact-land"] .u3-home.is-compact .u3-hm > .pulls { grid-row: 1
 .u3-hm-tile.pulls.is-tight .u3-hm-pg { padding-top: var(--u3-none); }
 body[data-size="compact-land"] .u3-hm-ph .u3-seg__item { padding-inline: var(--sp-1); }   /* the tabs and the title keep one row in the narrow pulls column */
 .u3-hm-hb.is-tighter { grid-template-columns: minmax(0, 1fr) auto; }
-/* compact-port, still cut at the compact step (the 375 x 667 frame of UI-04): Live in voice is ONE row, the title block at the left and the
+/* compact-port, still cut at the compact step (is-vrow, measured) (the 375 x 667 frame of UI-04): Live in voice is ONE row, the title block at the left and the
    cells at the right; the avatar is smaller and the cell text wraps inside its cell. */
-body[data-size="compact-port"] .u3-home.is-compact .u3-hm-tile.voice { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-2); }
-body[data-size="compact-port"] .u3-home.is-compact .u3-hm-vh { display: flex; flex-wrap: wrap; align-content: center; max-width: calc(var(--avatar-xl) * 1.15); gap: var(--sp-1) var(--sp-2); }
-body[data-size="compact-port"] .u3-home.is-compact .u3-hm-vt { white-space: normal; max-width: 100%; }
-body[data-size="compact-port"] .u3-home.is-compact .u3-hm-vrow { gap: var(--sp-2); }
-body[data-size="compact-port"] .u3-home.is-compact .u3-hm-cell { gap: var(--sp-2); padding: var(--sp-1) var(--sp-2); }
-body[data-size="compact-port"] .u3-home.is-compact .u3-hm-cell .v2-avatar { width: var(--avatar-sm); height: var(--avatar-sm); }
-body[data-size="compact-port"] .u3-home.is-compact .u3-hm-ago { display: none; }   /* the 375 x 667 frame draws the cell with a name and a status only */
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-tile.voice { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-vh { display: flex; flex-wrap: wrap; align-content: center; max-width: calc(var(--avatar-xl) * 1.15); gap: var(--sp-1) var(--sp-2); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-vt { white-space: normal; max-width: 100%; }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-vrow { gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-cell { gap: var(--sp-2); padding: var(--sp-1) var(--sp-2); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-cell .v2-avatar { width: var(--avatar-sm); height: var(--avatar-sm); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-ago { display: none; }   /* the 375 x 667 frame draws the cell with a name and a status only */
 .u3-home.is-compact .u3-hm-ph .u3-seg { padding: var(--u3-none); }
 .u3-home.is-compact .u3-hm-tile.pulls { padding: var(--sp-1) var(--sp-2); }
 .u3-hm-list:empty { display: none; }
 .u3-hm-hb.is-tighter { gap: var(--sp-half) var(--sp-3); padding-block: var(--sp-1); }
-.u3-hm-hb.is-tighter.is-live { grid-template-columns: minmax(0, 1fr) minmax(calc(var(--card-squad) + var(--sp-4)), auto); }
+.u3-hm-hb.is-tighter.is-live { grid-template-columns: minmax(0, 1fr) minmax(var(--card-thumb), auto); }
 .u3-hm-hb.is-tighter .u3-hm-act, .u3-hm-hb.is-tighter .u3-hm-hpg { gap: var(--sp-half) var(--sp-3); }
 .u3-hm-hb.is-tighter .u3-hm-stage { min-height: var(--u3-none); }
+body[data-size="compact-land"] .u3-home.is-pull .u3-hm { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+.u3-hm-hb.is-nolabel .u3-hm-topl { display: none; }   /* the shortest step: the Top hunter line is the name and the damage (aria-label keeps the full text) */
+/* compact-land, compact step: the pulls title wraps beside the tabs (one header row), and the grid uses the 12 px the dock padding leaves */
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-ph { flex-wrap: nowrap; }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-pt { white-space: normal; }
+
+/* compact-port, compact step: smaller names in the voice cell (the long names wrap in the cell) */
+body[data-size="compact-port"] .u3-home.is-compact .u3-hm-c1 > b { font-size: var(--fs-small); line-height: var(--lh-small); }
+body[data-size="compact-port"] .u3-home.is-compact .u3-hm-ago { display: none; }
+.u3-hm-hb.is-tighter .u3-hm-stats { column-gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.pulls { padding-inline: var(--sp-1); }
+.u3-hm-hb.is-tighter .u3-hm-stats span, .u3-hm-hb.is-tighter .u3-hm-next > span { font-size: var(--fs-label); line-height: var(--lh-label); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.pulls { padding-top: var(--sp-2); }   /* the tabs stay under the Discord corner zone (2.3) */
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.voice { padding-block: var(--sp-half); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.pulls { padding-bottom: var(--sp-half); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.pulls { gap: var(--u3-none); }
+.u3-hm-hb.is-tighter .u3-hm-chip { letter-spacing: var(--u3-none); }
+.u3-hm-hb.is-tighter { padding-block: var(--sp-half); }
+
+.u3-home.is-compact .u3-hm-hb.is-tight.is-tighter { padding-block: var(--sp-half); }
+.u3-hm-hb.is-tighter .u3-hm-i1 { gap: var(--sp-half); }
+.u3-hm-hb.is-tighter .u3-hm-hpg { row-gap: var(--u3-none); }
+.u3-hm-hb.is-tighter .u3-hm-act { row-gap: var(--u3-none); }
+.u3-hm-tile.pulls.is-tight .u3-hm-feat { padding-block: var(--sp-half); }
+.u3-home.is-compact .u3-hm-tile.pulls { padding-block: var(--sp-half); }
+.u3-home.is-compact .u3-hm-tile.voice { padding-block: var(--sp-half); }
+/* live hero, last tight step: the Join button and the Top hunter button share a row, the faces and the rank follow (one row less) */
+.u3-hm-hb.is-tighter.is-live .u3-hm-join { display: contents; }
+.u3-hm-hb.is-tighter.is-live .u3-hm-top { order: 1; }
+.u3-hm-hb.is-tighter.is-live :is(.u3-hm-faces, .u3-hm-rank) { order: 2; }
+.u3-hm-hb.is-tighter.is-live .u3-hm-act { column-gap: var(--sp-2); }
+.u3-hm-hb.is-tighter.is-live .u3-hm-top { padding-inline: var(--sp-2); }
+.u3-hm-hb.is-tighter.is-live .u3-btn { padding-inline: var(--sp-3); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-c1 > b { font-size: var(--fs-small); line-height: var(--lh-small); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-ago { display: none; }
+.u3-hm-hb.is-tighter { padding-inline: var(--sp-2); }
+body[data-size="compact-land"] .u3-hm-tile.pulls.is-tight .u3-hm-ft b { font-size: var(--fs-label); line-height: var(--lh-caption); }
+body[data-size="compact-land"] .u3-hm-tile.pulls.is-tight .u3-hm-ft { gap: var(--u3-none); }
+body[data-size="compact-land"] .u3-hm-tile.pulls.is-tight .u3-hm-fk { font-size: var(--fs-label); line-height: var(--lh-label); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-pt { font-size: var(--fs-small); gap: var(--sp-1); }
+.u3-hm-hb.is-tighter .u3-hm-stats { column-gap: var(--sp-2); }   /* the three stats keep a gap of 8 px at the tightest step */
+.u3-hm-hb.is-tighter.is-rest { column-gap: var(--sp-2); }
+/* compact-land: v2 subtracts the bottom safe area from the body height AND the dock sits at the bottom edge, so the content stopped 20 to 40 px above the dock. The Home body runs to the dock (8 px above it). */
+body.ui-v2.ui-v3[data-size="compact-land"] #body:has(> #main > .u3-home) { height: calc(100dvh - var(--topbar-h) - var(--sa-t, var(--u3-none))); padding-bottom: calc(var(--dock-h) + var(--sp-3)); }
+body.ui-v2.ui-v3 #main > .u3-home.is-compact { padding-bottom: var(--u3-none); }   /* the compact step: no bottom padding (the body already leaves the gap to the dock) */
+.u3-hm-hb.is-tighter .u3-hm-chip { padding-inline: var(--sp-2); gap: var(--sp-1); }
+.u3-hm-hb.is-tight .u3-hm-stats { justify-content: space-between; }   /* the free width goes between the three stats (the minimum gap stays at 8 px) */

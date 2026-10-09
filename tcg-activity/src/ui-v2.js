@@ -1120,21 +1120,21 @@ const watchHomeV3 = () => {   // refit the voice cells and the pull rows when a 
   document.fonts?.ready?.then(fitHomeV3);
 };
 // The whole Home: every tile fits its box. When something is still cut, the layout modes in steps (the last step with the fewest
-// cut tiles stays): is-compact (smaller gaps and padding).
+// cut tiles stays): is-compact (smaller gaps and padding), is-vrow (Live in voice in one row, compact-port), is-pull (a wider Live pulls column, compact-land).
 function fitHomeV3() {
   const root = ctx.el('main')?.querySelector('.u3-home');
   if (!root) return;
   const run = () => { hm3.fitHero(ctx.el('homeHero')); hm3.fitVoice(ctx.el('homeVoice')); fitPullsV3(); };
   let best = null;
-  for (const step of [[], ['is-compact']]) {
-    root.classList.remove('is-compact');
+  for (const step of [[], ['is-compact'], ['is-compact', 'is-vrow'], ['is-compact', 'is-vrow', 'is-pull']]) {
+    root.classList.remove('is-compact', 'is-vrow', 'is-pull');
     root.classList.add(...step);
     run();
     const cut = hm3.cutTiles(root);
     if (!best || cut <= best.cut) best = { step, cut };   // a tie keeps the later (denser) step
     if (!cut) break;
   }
-  root.classList.remove('is-compact');
+  root.classList.remove('is-compact', 'is-vrow', 'is-pull');
   root.classList.add(...best.step);
   run();
 }
@@ -1166,7 +1166,7 @@ function paintHeroV3(box, d, h) {
   ctx.api('/api/hunt/leaderboard').then((b) => {
     const top = (b?.leaders || [])[0];
     const slot = el('heroTop');
-    if (top && slot) { slot.outerHTML = hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); hm3.fitHero(el('homeHero')); }
+    if (top && slot) { slot.outerHTML = hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); fitHomeV3(); }
   }).catch(() => {});
   tickCloses();
   try { heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true }); } catch { heroBoss = null; }
