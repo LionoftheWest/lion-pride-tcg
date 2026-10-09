@@ -1,0 +1,83 @@
+// UI-34 and UI-35 the pack reveal (lion-pride-tcg-design UI-34/approved and UI-35/approved, review-3; D-91 to D-109).
+// The logic of the reveal, apart from the DOM (main.js paints the stage): the clips of the chosen set (D-101), which
+// pack plays the rare clip (D-96, D-107), and the order of the cards (the best card last, D-92, D-109).
+// Only under body.ui-v3: main.js calls this module only when settings.ui_v3 is on.
+
+/** The rank of a card is "rare" (SR or better: Secret Rare, Full Art, Gold, Event, Promo), as isRarePull in main.js. */
+export const RARE_RANK = 2;
+
+/** The clips of a set (D-93, D-101): tcg-activity/public/packs/<set_id>/ (card-studio/pack-art, PR 272). */
+export const CLIPS = ['idle_loop', 'open', 'open_rare'];
+export function clipUrl(set, kind) {
+  if (!CLIPS.includes(kind)) throw new Error(`unknown clip "${kind}"`);
+  return `/packs/${encodeURIComponent(String(set))}/${kind}.webp`;
+}
+
+/** The set whose pack shows: the set of the open (the Open window, UI-33), else the fallback (the set the member
+ *  would open next: the server's last_set). Never empty: Season 1 (S1) is the first set. */
+export const packSet = (set, fallback) => String(set || fallback || 'S1');
+
+/** The index of the best card: the highest rank; the first of equal ranks. -1 for no cards. */
+export function bestIndex(cards, rank) {
+  let best = -1, br = -Infinity;
+  (cards || []).forEach((c, i) => { const r = rank(c); if (r > br) { br = r; best = i; } });
+  return best;
+}
+
+/** D-92: the best card is revealed last: the same cards, the best one moved to the end. The order of the others stays
+ *  (the server order in a single pack, the shuffle in a multi open). */
+export function bestLast(cards, rank) {
+  const list = [...(cards || [])];
+  const i = bestIndex(list, rank);
+  if (i < 0 || i === list.length - 1) return list;
+  const [best] = list.splice(i, 1);
+  list.push(best);
+  return list;
+}
+
+/** D-109: "Reveal all" turns the cards that are still face down, the best card last. faceDown = the indexes still face
+ *  down; best = the index of the best card. */
+export function revealOrder(faceDown, best) {
+  const rest = [...faceDown].filter((i) => i !== best).sort((a, b) => a - b);
+  return faceDown.includes(best) ? [...rest, best] : rest;
+}
+
+/** D-96, D-107: the packs that play the rare clip: the packs that hold an SR+ card. Every other pack plays open.webp. */
+export function rarePacks(packs, rank) {
+  return (packs || []).map((p, i) => ((p || []).some((c) => rank(c) >= RARE_RANK) ? i : -1)).filter((i) => i >= 0);
+}
+
+/** The one number of a reveal (3.5): the largest 5:7 card width that shows every card in the area, no scroll (D-72).
+ *  Returns the width and the columns. */
+export function fitCards(n, width, height, gap) {
+  const count = Math.max(1, n | 0);
+  let best = { cw: 0, cols: count };
+  for (let cols = 1; cols <= count; cols++) {
+    const rows = Math.ceil(count / cols);
+    const cw = Math.floor(Math.min((width - (cols - 1) * gap) / cols, ((height - (rows - 1) * gap) / rows) * 5 / 7));
+    if (cw > best.cw) best = { cw, cols };
+  }
+  return best;
+}
+
+/** D-100: the packs of a multi open start one after the other, about 0.4 s apart. The start time of each pack (ms). */
+export const PACK_GAP_MS = 400;
+export const packStarts = (n) => Array.from({ length: Math.max(0, n | 0) }, (_, i) => i * PACK_GAP_MS);
+
+// ---- The clips: fetched once per set into a Blob; each play gets a fresh object URL, so the clip starts at frame 1
+// with no new download (as tearSource in main.js). Preloaded while the member reads the prompt. ----
+const blobs = new Map();   // url -> Promise<Blob>
+const live = new Set();    // object URLs of the reveal on screen
+export function clipBlob(url, fetcher = globalThis.fetch) {
+  if (!blobs.has(url)) {
+    blobs.set(url, fetcher(url).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .catch((e) => { blobs.delete(url); throw e; }));   // the next reveal tries again
+  }
+  return blobs.get(url);
+}
+/** A fresh object URL of a clip (a new URL restarts the animation). */
+export function clipSource(url) {
+  return clipBlob(url).then((b) => { const u = URL.createObjectURL(b); live.add(u); return u; });
+}
+/** The reveal closed: free the object URLs. */
+export function releaseClips() { for (const u of live) URL.revokeObjectURL(u); live.clear(); }
