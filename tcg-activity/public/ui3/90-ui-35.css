@@ -28,3 +28,6 @@ body.ui-v3 #stage.u3-multi .mr-grid[data-newmark="dot"] .u3-newmark > * { displa
 body.ui-v3 #stage.u3-multi .mr-grid { align-content: center; }
 body.ui-v3[data-input="coarse"] #stage.u3-multi .mr-head .v2-btn { height: var(--hit); }
 body.ui-v3[data-input="coarse"] #stage.u3-multi .mr-head .v2-icon { width: var(--hit); height: var(--hit); flex-basis: var(--hit); }
+/* The card box has its own size and look (the card ratio and a bordered face), so a slow or failed card image never collapses it: the image fills the box when it arrives. */
+body.ui-v3 #stage.u3-multi .mr-card { width: var(--mw); height: auto; aspect-ratio: 5 / 7; }
+body.ui-v3 #stage.u3-multi .mr-face { box-sizing: border-box; border: var(--bw-1) solid var(--border-strong); background: var(--surface-1); border-radius: var(--rad-sm); }
