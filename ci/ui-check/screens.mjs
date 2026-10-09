@@ -55,7 +55,9 @@ export const SCREENS = {
   'settings':            { id: 'UI-61', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="settings"]'], ['wait', 1.5]] },
   'leaderboard':         { id: 'UI-22', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
   'profile':             { id: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
-  'help':                { id: 'UI-38', steps: [['js', '#menuBtn'], ['js', '[data-menu="faq"]']] },
+  'help':                { id: 'UI-38', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5]] },
+  'help-closed':          { id: 'UI-38', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="0"]'], ['wait', 0.5]] },
+  'help-item5':           { id: 'UI-38', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
   'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
   // The Open window (UI-33) opens over Home: a defect outside the window belongs to Home ('under'). tiny has no dock (D-06).
@@ -83,6 +85,7 @@ export function ownerOf(screen, where) {
   if (/\.u3-mp\b|\.u3-mp[-_]/.test(where)) return 'UI-65';
   if (/#v2Notifs[a-z]*\b|\.u3-bell|\.u3-note\b|\.u3-note__|\.u3-gift\b|\.u3-gift__/.test(where)) return 'UI-24';
   if (/#u3Settings[a-z]*\b|\.u3-st\b|\.u3-st[-_]/.test(where)) return 'UI-61';
+  if (/#v2Help[a-z]*\b|\.u3-hp\b|\.u3-hp[-_]/.test(where)) return 'UI-38';
   if (/\.u3-dgc\b|\.u3-dgc[-_]/.test(where)) return 'UI-48';
   if (/\.u3-logo\b/.test(where)) return 'UI-01';   // the top bar logo (its path can stop above #topbar)
   // The pack reveal stage covers the screen under it: a defect in the stage belongs to the reveal screen.
