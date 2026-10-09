@@ -9,3 +9,5 @@ body[data-kb]:has(#u3Picker .u3-pk) #memberModal { visibility: hidden; }
 body.ui-v2.ui-v3 .u3-pf-wish.is-tight2 .tile-h .u3-pf-wmore { flex: none; }
 /* Own profile on landscape phones: Home sits in the name row, so the Title & frame button never runs into it (it did at 932x430; the check measures centers, not edges). */
 .u3-pf[data-lay="land"][data-self] .u3-pf-id { grid-template-areas: "av name home" "av title home" "av cos cos" "av badges badges" "status status status" "acts acts acts" "stats stats stats" "achh achh achh" "ach ach ach"; }
+/* tight 5 has three rows (id, tabs, pane): with no Spotlight cards the pane takes the free height (the general empty-Spotlight rule counts four rows and left a band under it). */
+.u3-pf[data-lay="port"][data-tight="5"]:has(.u3-pf-spotrow > .u3-pf-none) { grid-template-rows: auto auto minmax(0, 1fr); }

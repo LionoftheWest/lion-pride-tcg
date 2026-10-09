@@ -1204,7 +1204,7 @@ function paintSpotEditor() {
 // live hunt, and the cards each of you has that the other one needs.
 
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const mem = { page: 0, all: false, wishFrom: 0, pane: 'spot' };
+const mem = { page: 0, all: false, wishFrom: 0, pane: '' };   // pane '' = the first tab with content (profile.js fitTight)
 let memData = null;
 
 // The needs / closest achievements list: a phone shows only whole rows; no room for one row hides
@@ -1238,7 +1238,7 @@ export async function openMember(id) {
     box.innerHTML = '<div class="mem-empty"><button class="v2-btn" id="memBack">← Home</button><p class="v2-empty">This member has no profile yet.</p></div>'; return;
   }
   memData = { p, self, cards: mergedCards(self ? undefined : (p.cards || [])) };
-  mem.all = false; mem.page = 0; mem.wishFrom = 0;
+  mem.all = false; mem.page = 0; mem.wishFrom = 0; mem.pane = '';
   paintMember();
 }
 export function closeMember() { ctx.el('memberModal')?.classList.add('hidden'); }

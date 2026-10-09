@@ -211,7 +211,7 @@ export function fitWish(box, st) {
 /** The tight steps (no scroll, P0), the first step where every tile fits wins: 1 hides the rarity chips, 2 makes the
  *  identity smaller, 3 hides the status line; phones: 4 the actions in one row and the Spotlight and the Wishlist as tabs
  *  (P1: content moves into a tab), 5 the Season too (compact-land: 5 after 3). Last: a long name takes the small size. */
-export function fitTight(root, pane = 'spot', each = () => {}) {
+export function fitTight(root, pane = '', each = () => {}) {
   if (!root) return;
   delete root.dataset.tight;
   delete root.dataset.small;
@@ -229,7 +229,9 @@ export function fitTight(root, pane = 'spot', each = () => {}) {
     const t = Number(root.dataset.tight) || 0;
     if (t < 4) return;
     const inTabs = t >= 5 ? ['spot', 'season', 'wish'] : ['spot', 'wish'];
-    const cur = inTabs.includes(pane) && panels[pane] ? pane : 'spot';
+    // no tab chosen yet (pane ''): a profile with no Spotlight cards opens on the next tab that has content, not on an empty one
+    const want = pane || (panels.spot && !root.querySelector('.u3-pf-spotrow .u3-pf-card') ? inTabs.find((k) => k !== 'spot' && panels[k]) : 'spot');
+    const cur = inTabs.includes(want) && panels[want] ? want : 'spot';
     inTabs.forEach((k) => { const n = panels[k]; if (n) { n.setAttribute('role', 'tabpanel'); n.hidden = k !== cur; } });
     root.querySelectorAll('.u3-pf-tabs [data-seg]').forEach((b) => { const on = b.dataset.seg === `pf:${cur}`; b.classList.toggle('is-active', on); b.setAttribute('aria-selected', String(on)); });
   };
