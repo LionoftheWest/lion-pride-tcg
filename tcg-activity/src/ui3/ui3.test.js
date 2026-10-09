@@ -2,8 +2,12 @@
 // without a browser (5.3 labels, G-093 99+ cap, 4.9 the disabled reason, D-36/D-53 pager labels). node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { sizeClass, isShort, applySizeClass } from './size-class.js';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ui3Css, ui3PartNames } from './css-parts.js';
+import { sizeClass, isShort, isLow, applySizeClass } from './size-class.js';
 import { fmtFor, fmtCompact } from './number.js';
 import { icon, ICONS } from './icons.js';
 import * as C from './components.js';
@@ -54,13 +58,24 @@ test('text is escaped; a dialog has Cancel on the left and the action on the rig
 });
 
 test('ui3.css uses tokens only: no color, px or z-index literal (4.1, gate G4)', () => {
-  const css = readFileSync(new URL('../../public/ui3.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const css = ui3Css(fileURLToPath(new URL('../../public', import.meta.url))).replace(/\/\*[\s\S]*?\*\//g, '');   // ui3.css and public/ui3/*.css
   assert.equal((css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length, 0, 'hex color');
   assert.equal((css.match(/\brgba?\(|\bhsla?\(/g) || []).length, 0, 'rgb/hsl color');
   assert.equal((css.match(/\d(\.\d+)?px\b/g) || []).length, 0, 'px literal');
   assert.equal((css.match(/z-index:\s*-?\d/g) || []).length, 0, 'z-index literal');
   assert.doesNotMatch(css, /m-land|m-port/);
   assert.doesNotMatch(css, /@media[^{]*(min|max)-(width|height)/, 'raw size media query (2.1)');
+});
+
+test('low (D-117): compact-land under 400 px usable height only, written on body', () => {
+  assert.equal(isLow('compact-land', 375), true); assert.equal(isLow('compact-land', 354), true);
+  assert.equal(isLow('compact-land', 412), false); assert.equal(isLow('compact-land', 400), false);
+  assert.equal(isLow('compact-port', 375), false); assert.equal(isLow('medium', 380), false);
+  const doc = { documentElement: {}, body: { dataset: {} }, activeElement: null };
+  const win = { innerWidth: 667, innerHeight: 375, document: doc, matchMedia: () => ({ matches: true }), getComputedStyle: () => ({ getPropertyValue: () => '' }) };
+  assert.equal(applySizeClass(win), 'compact-land'); assert.equal(doc.body.dataset.low, '');
+  win.innerWidth = 932; win.innerHeight = 430;
+  assert.equal(applySizeClass(win), 'compact-land'); assert.equal(doc.body.dataset.low, undefined);
 });
 
 test('keyboard: the class holds while a text box has the focus on touch, and returns after (2.1, G-015)', () => {
@@ -84,4 +99,38 @@ test('numbers: full form, and the compact form on the compact classes from 10,00
   assert.equal(fmtFor(9999, 'compact-port'), '9,999');
   assert.equal(fmtFor(123456789, 'expanded'), '123,456,789');
   assert.equal(fmtCompact(1234), '1.2k');
+});
+
+test('Card picker grid (UI-64, 8.1): tiles from card-tile to card-tile-max wide, the rows that fit, one smaller row when short', async () => {
+  const { fitGrid } = await import('./card-picker.js');
+  const g = fitGrid(398, 560, 8);                          // a 430x932 phone sheet: 4 columns
+  assert.equal(g.cols, 4); assert.ok(g.tile >= 88 && g.tile <= 112); assert.ok(g.rows >= 3);
+  const w = fitGrid(1200, 300, 12);                        // a wide short area: many columns, rows by height
+  assert.ok(w.tile <= 112 && w.cols >= 10); assert.equal(w.rows, Math.floor((300 + 12) / (w.tile * 1.4 + 12)));
+  const s = fitGrid(300, 100, 8);                          // too short for one row at 88: one row of smaller cards
+  assert.equal(s.rows, 1); assert.ok(s.tile * 1.4 <= 100);
+});
+
+test('Card picker order (6.5a): a tap adds at the end; removing a card moves the later cards up; the cap holds', async () => {
+  const { toggle } = await import('./card-picker.js');
+  assert.deepEqual(toggle([1, 2, 3], 4, 5), [1, 2, 3, 4]);
+  assert.deepEqual(toggle([1, 2, 3], 2, 5), [1, 3]);
+  assert.deepEqual(toggle([1, 2, 3, 4, 5], 6, 5), [1, 2, 3, 4, 5]);
+});
+
+test('/ui3.css joins public/ui3.css, then public/ui3/*.css in name order (one file per new screen)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ui3css-'));
+  writeFileSync(join(dir, 'ui3.css'), '.base{}');
+  mkdirSync(join(dir, 'ui3'));
+  writeFileSync(join(dir, 'ui3', '90-ui-48.css'), '.b{}');
+  writeFileSync(join(dir, 'ui3', '90-ui-20.css'), '.a{}');
+  writeFileSync(join(dir, 'ui3', 'notes.txt'), 'not css');
+  assert.deepEqual(ui3PartNames(dir), ['90-ui-20.css', '90-ui-48.css']);
+  const css = ui3Css(dir);
+  assert.ok(css.startsWith('.base{}'));
+  assert.ok(css.indexOf('.a{}') < css.indexOf('.b{}'));
+  assert.doesNotMatch(css, /not css/);
+  const none = mkdtempSync(join(tmpdir(), 'ui3css-'));
+  writeFileSync(join(none, 'ui3.css'), '.only{}');
+  assert.equal(ui3Css(none), '.only{}', 'no ui3/ folder: ui3.css alone');
 });

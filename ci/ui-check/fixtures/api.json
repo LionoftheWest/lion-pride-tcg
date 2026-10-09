@@ -2,7 +2,11 @@
  "recordedAt": "2026-10-05T03:35:37.490Z",
  "source": {
   "commit": "20a1327",
-  "note": "Recorded from the local database copy, then anonymized (fixture-lib.mjs). No real member data."
+  "note": "Recorded from the local database copy, then anonymized (fixture-lib.mjs). No real member data.",
+  "sets": "GET /api/sets added by hand on 2026-10-07 (UI-33): the one live set (card_sets.sql, PR #237), the fixture catalog (352 cards), the fixture collection (144 owned), the cover = catalog card 24. No member data.",
+  "dailies": "GET /api/dailies: streak_cycle and the chat next added by hand on 2026-10-07 (UI-36), the fields that dailyExtras (src/dailies-pay.js) adds from balance daily (streak_cycle 7, chat 1).",
+  "partners": "GET /api/trade/partners added by hand on 2026-10-07 (UI-65): 15 offers with 8 fixture members of GET /api/players (Frequent: Member 012, 011, 163; Recent: Member 110, 076, 161, 077, 032). No member data.",
+  "notifyPrefs": "GET /api/notify-prefs added by hand on 2026-10-07 (UI-61): a member with no saved prefs (every ping on, the server default)."
  },
  "meta": {
   "teamKey": "lpt_team_999",
@@ -7101,7 +7105,8 @@
       "have": 0,
       "need": 25,
       "task": "chat",
-      "packs": 0
+      "packs": 0,
+      "next": 1
      },
      {
       "done": false,
@@ -7150,7 +7155,8 @@
     "shards": 40,
     "enabled": true,
     "resets_at": "2026-10-05T06:00:00+00:00",
-    "shards_today": 0
+    "shards_today": 0,
+    "streak_cycle": 7
    }
   },
   "/api/shop": {
@@ -33797,6 +33803,116 @@
    "status": 200,
    "body": {
     "packs": 12
+   }
+  },
+  "/api/sets": {
+   "status": 200,
+   "body": {
+    "sets": [
+     {
+      "id": "S1",
+      "name": "Origins",
+      "code": "ORI",
+      "season": 1,
+      "released_at": "2026-09-01T00:00:00+00:00",
+      "is_new": false,
+      "cards": 352,
+      "owned": 144,
+      "cover_card_id": 24,
+      "cover_image_url": "/api/img/storage/v1/object/public/card-art/cards/mr-mob-s-mr-mime-normal.png?v=1789072668252",
+      "pack_color": "#ff8d4d",
+      "pack_art_url": null
+     }
+    ],
+    "last_set": "S1"
+   }
+  },
+  "/api/trade/partners": {
+   "status": 200,
+   "body": {
+    "partners": [
+     {
+      "id": "100000000000000110",
+      "name": "Member 110",
+      "at": "2026-10-04T22:10:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-04T21:00:00.000Z"
+     },
+     {
+      "id": "100000000000000076",
+      "name": "Member 076",
+      "at": "2026-10-04T20:00:00.000Z"
+     },
+     {
+      "id": "100000000000000161",
+      "name": "Member 161",
+      "at": "2026-10-04T18:30:00.000Z"
+     },
+     {
+      "id": "100000000000000011",
+      "name": "Member 011",
+      "at": "2026-10-04T17:00:00.000Z"
+     },
+     {
+      "id": "100000000000000077",
+      "name": "Member 077",
+      "at": "2026-10-03T23:00:00.000Z"
+     },
+     {
+      "id": "100000000000000032",
+      "name": "Member 032",
+      "at": "2026-10-03T20:00:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-03T19:00:00.000Z"
+     },
+     {
+      "id": "100000000000000163",
+      "name": "Member 163",
+      "at": "2026-10-03T18:00:00.000Z"
+     },
+     {
+      "id": "100000000000000011",
+      "name": "Member 011",
+      "at": "2026-10-03T12:00:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-02T15:00:00.000Z"
+     },
+     {
+      "id": "100000000000000163",
+      "name": "Member 163",
+      "at": "2026-10-02T11:00:00.000Z"
+     },
+     {
+      "id": "100000000000000011",
+      "name": "Member 011",
+      "at": "2026-10-01T21:00:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-01T20:00:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-01T19:00:00.000Z"
+     }
+    ]
+   }
+  },
+  "/api/notify-prefs": {
+   "status": 200,
+   "body": {
+    "prefs": {}
    }
   }
  }

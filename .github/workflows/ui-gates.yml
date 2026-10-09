@@ -80,7 +80,14 @@ jobs:
     needs: plan
     if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # A shard takes 10-22 min (2026-10-07). A hung job stops at 45 min, not 120.
+    timeout-minutes: 45
+    # The official Playwright image of the version in ci/ui-check/package.json: the browsers and their system
+    # libraries are in it. The old step ran "playwright install --with-deps" (apt-get) on every runner, and on
+    # 2026-10-08 both 8-minute tries timed out in 3 runs (#285, #278, #277). Change the tag with the package version.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
     strategy:
       fail-fast: false
       matrix:
@@ -95,15 +102,11 @@ jobs:
           cache-dependency-path: |
             tcg-activity/package-lock.json
             ci/ui-check/package-lock.json
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('ci/ui-check/package-lock.json') }}
       - name: Install
+        timeout-minutes: 10
         run: |
           npm ci --prefix tcg-activity --no-audit --no-fund
           npm ci --prefix ci/ui-check --no-audit --no-fund
-          (cd ci/ui-check && npx playwright install --with-deps ${{ matrix.browser }})
       - name: Build the client (SDK stub, fixtures)
         run: node ci/ui-check/build.mjs
       - name: Run the screens

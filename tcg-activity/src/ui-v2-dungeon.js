@@ -15,8 +15,14 @@ import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { COIN } from './ui-v2-shop.js';
 import { cardElement } from './elements.js';
 import { setMood, stopMusic, toggleMute, musicBtnHTML, paintMusicBtn } from './dungeon-music.js';
+import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
+import { icon as ui3Icon } from './ui3/icons.js';
+import { button as btn3, segmented as ui3Segmented } from './ui3/components.js';
+import { TOKENS } from './tokens.js';
 
 const ctx = () => v2ctx();
+const icon3 = (name, size = 'md') => ui3Icon(name, { size });
+const segmented3 = (items, label) => ui3Segmented(items, { label });
 const esc = (s) => ctx().esc(s ?? '');
 const fmt = (n) => Number(n || 0).toLocaleString();
 const RL = (r) => ctx().RARITY_LABEL?.[r] || String(r || '').replace(/_/g, ' ');
@@ -141,7 +147,7 @@ export async function renderDungeonV2() {
   const { el } = ctx();
   localStorage.setItem(LAST, GA() ? 'gauntlet' : 'dungeon');
   markDock();
-  dg.per = 0; dg.pcols = 0; // measure the card grid again (the size may have changed)
+  dg.per = 0; dg.pcols = 0; dg.v3tabs = false; dg.tight = 0; // measure the card grid and the v3 side column again (the size may have changed)
   if (!dg.on) { el('main').innerHTML = '<div class="dg-closed"><b>The Dungeon is closed.</b></div>'; return; }
   if (dg.data && !dg.data.closed) paint(); else el('main').innerHTML = `<div class="loading">${GA() ? 'Opening the Gauntlet…' : 'Opening the dungeon…'}</div>`;
   // The star gems come from the collection (ascension per copy): load it when it is not cached yet.
@@ -158,6 +164,7 @@ export function disposeDungeon() {
   clearInterval(tick); tick = null;
   dg.stage?.dispose(); dg.stage = null; dg.roomKey = '';
   clearTimeout(autoT); stopMusic(); dg.chest?.dispose(); dg.chest = null;
+  closeCardPicker();   // the Card picker belongs to the lobby (UI-64)
 }
 
 function left(iso) {
@@ -202,7 +209,7 @@ function paint() {
   else if (active() && d.run.state?.phase === 'floor_done') body = floorDoneHTML();
   else if (active()) body = chooseHTML();
   else if (run()) body = overHTML();
-  else body = GA() ? gaLobbyHTML() : lobbyHTML();
+  else body = GA() ? gaLobbyHTML() : V3() ? lobbyV3HTML() : lobbyHTML();
   main.innerHTML = `<div class="v2-dungeon${GA() ? ' ga' : ''}${fight ? ' dg-fighting' : ''}${d.run?.state?.phase ? ` ph-${d.run.state.phase}` : ''}">${body}</div>`;
   // Item 19: the music follows the room (silent until Nathan picks the tracks: dungeon-music.js).
   setMood(fight ? (['guardian', 'miniboss'].includes(d.run.state.room_type) ? 'boss' : 'fight') : active() ? 'explore' : null);
@@ -215,7 +222,7 @@ function paint() {
   else if (active() && d.run.state?.phase === 'floor_done') wireFloorDone(main);
   else if (active()) wireChoose(main);
   else if (run()) wireOver(main);
-  else if (!d.closed && d.gate?.ok) (GA() ? wireGaLobby : wireLobby)(main);
+  else if (!d.closed && d.gate?.ok) (GA() ? wireGaLobby : V3() ? wireLobbyV3 : wireLobby)(main);
   startTick();
 }
 
@@ -345,6 +352,152 @@ function lobbyHTML() {
     <aside class="dg-side">${timer}<section class="dg-panel dg-rule">${ruleIn}</section><section class="dg-panel dg-best">${bestIn}</section>${topHTML()}</aside>
   </div>`;
 }
+// ---- v3: today's dungeon (UI-46) and the Card picker (UI-64), behind the ui_v3 flag --------------------------------
+// The approved design (design repo UI-46/approved): the squad slots, the budget, the live checks, "Select your squad" /
+// Edit and Start run; no card grid in the view (D-40). The grid is the Card picker window (UI-64, src/ui3/card-picker.js).
+// Build condition of the approval (P1): "Your best today" shows on every class (a panel, or the Rule / Best / Top 3 tabs).
+const V3 = () => document.body.classList.contains('ui-v3');
+const cls3 = () => document.body.dataset.size || 'expanded';
+/** The checks of a squad (one source for the view and the picker): size, budget, an attacker, today's rule. */
+function squadStatus(ids) {
+  const d = dg.data;
+  const M = mine();
+  const picks = ids.map((id) => M.get(Number(id))).filter(Boolean);
+  const size = d.squad || 5;
+  const budget = d.budget || 12;
+  const cost = picks.reduce((t, c) => t + (c.cost || 1), 0);
+  const full = picks.length === size;
+  const atk = picks.some((c) => ATTACKER.has(c.type));
+  const ruleOk = picks.every((c) => !ruleBlock(c));
+  const rule = d.rule || {};
+  const checks = [
+    { ok: full, label: `${picks.length} / ${size} cards` },
+    { ok: picks.length > 0 && cost <= budget, label: `${cost} / ${budget} points` },
+    { ok: atk, label: 'An attacker' },
+    ...(rule.types || rule.no_rarity ? [{ ok: picks.length > 0 && ruleOk, label: rule.name || 'Today\'s rule' }] : []),
+  ];
+  return { picks, size, budget, cost, ok: full && cost <= budget && atk && ruleOk, checks };
+}
+function budgetBarHTML(s) {
+  const segs = []; s.picks.forEach((c) => { for (let i = 0; i < (c.cost || 1); i++) segs.push(c.rarity || 'normal'); });
+  return `<div class="u3-dg-bar" role="img" aria-label="${s.cost} of ${s.budget} points">${Array.from({ length: Math.max(s.budget, segs.length) }, (_, i) => `<i class="${segs[i] ? `u3-r-${esc(segs[i])} is-on` : ''}${i >= s.budget ? ' is-over' : ''}"></i>`).join('')}</div>`;
+}
+const ptsHTML = (s) => `<b class="u3-dg-pts${s.cost > s.budget ? ' is-bad' : ''}">${s.cost}<span> / ${s.budget} pts</span></b>`;
+const checksHTML3 = (s) => `<ul class="u3-dg-checks">${s.checks.map((k) => `<li class="${k.ok ? 'is-ok' : ''}">${icon3(k.ok ? 'circle-check' : 'circle')}<span>${esc(k.label)}</span></li>`).join('')}</ul>`;
+function slotsHTML3(s) {
+  return `<div class="u3-dg-slots"><ol class="u3-dg-slots__in" aria-label="Your squad">${Array.from({ length: s.size }, (_, i) => {
+    const c = s.picks[i];
+    const tag = dg.tight ? 'div' : 'button';   // tight: a preview; the Select / Edit button is the action (9.1)
+    return `<li class="u3-dg-slot${c ? ` is-full u3-r-${esc(c.rarity || 'normal')}` : ''}"><${tag}${dg.tight ? '' : ' type="button" data-pickopen'} class="u3-dg-slot__card" aria-label="${c ? `Slot ${i + 1}: ${esc(c.name || 'card')}, ${c.cost || 1} points` : `Slot ${i + 1}, empty`}${dg.tight ? '' : c ? '. Edit the squad' : '. Select your squad'}">`
+      + `${c ? `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" draggable="false">` : ''}<span class="u3-pk-badge" aria-hidden="true">${c.cost || 1} PT</span>` : `<span class="u3-dg-slot__n" aria-hidden="true">${i + 1}</span>`}</${tag}>`
+      + `<span class="u3-dg-slot__label">Slot ${i + 1}</span></li>`;
+  }).join('')}</ol></div>`;
+}
+function lobbyV3HTML() {
+  const d = dg.data;
+  const s = squadStatus(dg.sel);
+  const rule = d.rule || {};
+  const size = cls3();
+  const date = `<span class="u3-dg-date">${esc(new Date(d.day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase())}</span>`;
+  const head = `<header class="u3-dg-head"><img class="u3-dg-thumb" src="/dungeon/room.webp" alt="">${icon3('castle', 'lg')}<h1 class="u3-dg-name">${esc(d.name)}</h1>${date}</header>`;
+  const timer = `<section class="u3-dg-panel u3-dg-timer">${icon3('timer')}<span>New dungeon in</span><b class="dg-left">${left(d.next_at)}</b></section>`;
+  const pick = s.picks.length ? btn3({ label: 'Edit', data: { pickopen: '1' } }) : btn3({ label: 'Select your squad', variant: 'primary', data: { pickopen: '1' } });
+  const start = btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok || dg.busy, busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } });
+  const types = ['Character', 'Creature', 'Item', 'Moment', 'Place'];
+  const ruleChips = rule.types ? `<div class="u3-dg-rchips">${types.map((t) => `<span class="u3-dg-rchip ${rule.types.includes(t) ? 'is-yes' : 'is-no'}">${icon3(rule.types.includes(t) ? 'check' : 'ban')}${t}</span>`).join('')}</div>` : '';
+  const ruleIn = `<span class="u3-label u3-dg-k">${icon3('layers')}Today's rule</span><h2 class="u3-dg-h">${esc(rule.name || 'Everything goes')}</h2>${rule.note ? `<p class="u3-dg-p">${esc(rule.note)}</p>` : ''}${ruleChips}`;
+  const best = d.season_best;
+  const bestIn = `<span class="u3-label u3-dg-k">${icon3('star')}Your best today</span><h2 class="u3-dg-h is-muted">No run yet</h2>`
+    + `<dl class="u3-dg-mini"><div><dt>Season best</dt><dd>${best ? `${best.floor}F Room ${best.room}` : 'None yet'}</dd></div><div><dt>Runs today</dt><dd>${fmt(d.runs_today)}</dd></div></dl>`;
+  const top = d.top || [];
+  const topIn = `<div class="u3-dg-toph"><h2 class="u3-dg-h">${icon3('trophy', 'lg')}Today's top 3</h2><span class="u3-dg-runs">${fmt(d.runs_today)} run${Number(d.runs_today) === 1 ? '' : 's'}</span></div>`
+    + `<ol class="u3-dg-top">${top.length ? top.map((t) => `<li><span>${t.rank}</span><b>${esc(t.username || 'Member')}</b><em>${t.floor}F Room ${t.room}</em></li>`).join('') : '<li class="is-none">No runs yet today. Be the first.</li>'}</ol>`
+    + btn3({ label: 'See the leaderboard', icon: null, data: { board: '1' } }).replace('</span></button>', `</span>${icon3('arrow-right')}</button>`);
+  const tabs = (keys) => `<div class="u3-dg-tabs">${segmented3(keys.map(([k, ic, label]) => ({ id: `pane:${k}`, icon: ic, label, active: dg.pane === k, controls: `u3DgPane-${k}` })), 'Today')}</div>`;
+  const paneIn = { rule: ruleIn, best: bestIn, top: topIn };
+  // every tab panel is in the page; the inactive ones are hidden (P1: content moves into a tab, it is not removed)
+  const panels = (map) => Object.entries(map).map(([k, html]) => `<div class="u3-dg-tabpanel" role="tabpanel" id="u3DgPane-${k}"${dg.pane === k ? '' : ' hidden'}>${html}</div>`).join('');
+  const squadPanel = (withHead, extra = '') => `<section class="u3-dg-panel u3-dg-main"><div class="u3-dg-hrow">${withHead ? head : ''}${extra}`
+    + `<div class="u3-dg-budget"><span class="u3-label">${size === 'compact-port' ? 'Your squad' : 'Squad budget'}</span>${ptsHTML(s)}</div>${budgetBarHTML(s)}</div>${slotsHTML3(s)}`
+    + (size === 'compact-port' ? `<div class="u3-dg-act">${pick}</div></section><div class="u3-dg-go">${checksHTML3(s)}${start}</div>`
+      : `<div class="u3-dg-foot">${checksHTML3(s)}<div class="u3-dg-act">${pick}${start}</div></div></section>`);
+  if (size === 'compact-port') {
+    if (!['squad', 'rule', 'top'].includes(dg.pane)) dg.pane = 'squad';
+    const body = panels({ squad: `${head}${squadPanel(false)}`, rule: `<section class="u3-dg-panel">${ruleIn}</section><section class="u3-dg-panel">${bestIn}</section>`, top: `<section class="u3-dg-panel">${topIn}</section>` });
+    return `<div class="u3-dg u3-dg--port"${dg.tight ? ` data-tight="${dg.tight}"` : ''}><div class="u3-dg-prow">${tabs([['squad', 'users', 'Squad'], ['rule', 'layers', 'Rule'], ['top', 'trophy', 'Top 3']])}${timer}</div>${body}</div>`;
+  }
+  if (size === 'medium' && innerHeight > innerWidth) {
+    if (!dg.v3tabs) return `<div class="u3-dg u3-dg--stack"${dg.tight ? ` data-tight="${dg.tight}"` : ''}>${squadPanel(true)}<div class="u3-dg-below">${timer}<section class="u3-dg-panel u3-dg-rule">${ruleIn}</section><section class="u3-dg-panel">${bestIn}</section><section class="u3-dg-panel">${topIn}</section></div></div>`;
+    if (!['rule', 'best', 'top'].includes(dg.pane)) dg.pane = 'rule';
+    return `<div class="u3-dg u3-dg--stack"${dg.tight ? ` data-tight="${dg.tight}"` : ''}>${squadPanel(true)}<div class="u3-dg-below is-tabs">${timer}<section class="u3-dg-panel u3-dg-pane">${tabs([['rule', null, 'Rule'], ['best', null, 'Best'], ['top', null, 'Top 3']])}<div class="u3-dg-pane__in">${panels(paneIn)}</div></section></div></div>`;
+  }
+  if (size === 'compact-land' || dg.v3tabs) {
+    if (!['rule', 'best', 'top'].includes(dg.pane)) dg.pane = 'rule';
+    // tight: the timer moves next to the name (where the budget line was), so the tab panel has the side column
+    const t2 = dg.tight ? `<div class="u3-dg-timer u3-dg-timer--inline">${icon3('timer')}<b class="dg-left">${left(d.next_at)}</b></div>` : '';
+    return `<div class="u3-dg u3-dg--side-tabs"${dg.tight ? ` data-tight="${dg.tight}"` : ''}><aside class="u3-dg-side">${dg.tight ? '' : timer}<section class="u3-dg-panel u3-dg-pane">${tabs([['rule', null, 'Rule'], ['best', null, 'Best'], ['top', null, 'Top 3']])}<div class="u3-dg-pane__in">${panels(paneIn)}</div></section></aside>${squadPanel(true, t2)}</div>`;
+  }
+  return `<div class="u3-dg"${dg.tight ? ` data-tight="${dg.tight}"` : ''}><aside class="u3-dg-side">${timer}<section class="u3-dg-panel">${ruleIn}</section><section class="u3-dg-panel">${bestIn}</section><section class="u3-dg-panel">${topIn}</section></aside>${squadPanel(true)}</div>`;
+}
+function openDungeonPicker(from) {
+  const d = dg.data;
+  const cap = d.squad || 5;
+  const budget = d.budget || 12;
+  const all = d.mine || [];
+  const blocked = all.some((c) => ruleBlock(c));
+  const costOf = (sel) => { const M = mine(); return sel.reduce((t, id) => t + (M.get(Number(id))?.cost || 1), 0); };
+  const text = (c) => [c.name, c.type, RL(c.rarity), ...(Array.isArray(c.tags) ? c.tags : [])].join(' ').toLowerCase();
+  openCardPicker({
+    title: 'Squad', cap, cards: all, selected: dg.sel, returnFocus: from,
+    badge: (c) => `${c.cost ?? 1} PT`,
+    blocked: (c, sel) => ruleBlock(c) || (sel.length >= cap ? 'Squad full' : '') || (costOf(sel) + (c.cost || 1) > budget ? 'Over the budget' : ''),
+    filters: [
+      { key: 'show', label: 'Show', value: 'allowed', clear: 'all', options: [{ id: 'allowed', label: 'Allowed today' }, { id: 'atk', label: 'Attackers' }, { id: 'sup', label: 'Supports' },
+        ...(blocked ? [{ id: 'blocked', label: 'Blocked' }] : []), { id: 'all', label: 'All cards' }] },
+      { key: 'sort', label: 'Sort', value: 'power', clear: 'power', options: [{ id: 'power', label: 'Power' }, { id: 'cost', label: 'Cost' }] },
+    ],
+    filterCount: (v) => (v.show !== 'all' ? 1 : 0),
+    apply: (cards, v, q) => {
+      const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      return cards.filter((c) => {
+        const why = ruleBlock(c);
+        if (v.show === 'allowed' && why) return false;
+        if (v.show === 'blocked' && !why) return false;
+        if (v.show === 'atk' && (why || !ATTACKER.has(c.type))) return false;
+        if (v.show === 'sup' && (why || ATTACKER.has(c.type))) return false;
+        return !words.length || words.every((w) => text(c).includes(w));
+      }).sort((a, b) => (v.sort === 'cost' ? (a.cost - b.cost) || (b.cp - a.cp) : (b.cp - a.cp)));
+    },
+    status: (sel) => { const s = squadStatus(sel); return { checks: s.checks, ready: s.ok, reason: null }; },
+    detail: (c) => openInfo(c.id),
+    onConfirm: (sel) => { dg.sel = sel; ctx().sfx?.('click'); paint(); return true; },
+  });
+}
+function wireLobbyV3(main) {
+  const M = mine();
+  main.querySelectorAll('[data-pickopen]').forEach((b) => b.addEventListener('click', () => openDungeonPicker(b)));
+  main.querySelectorAll('[data-seg^="pane:"]').forEach((b) => b.addEventListener('click', () => { dg.pane = b.dataset.seg.slice(5); paint(); }));
+  main.querySelectorAll('[data-board]').forEach((b) => b.addEventListener('click', () => openBoard()));
+  // medium and expanded: the side column shows every panel when they fit, else the Rule / Best / Top 3 tabs (P1)
+  const side = main.querySelector('.u3-dg:not(.u3-dg--side-tabs):not(.u3-dg--port) .u3-dg-side, .u3-dg-below:not(.is-tabs)');
+  if (side && side.scrollHeight > side.clientHeight + 1) { dg.v3tabs = true; paint(); return; }
+  // a short screen: the tight mode when a slot is smaller than a tap target (9.1), or a column overflows
+  const slot = main.querySelector('.u3-dg-tabpanel:not([hidden]) .u3-dg-slot__card, .u3-dg-main .u3-dg-slot__card');
+  const over = [...main.querySelectorAll('.u3-dg-main, .u3-dg-side, .u3-dg-tabpanel:not([hidden])')].some((n) => n.scrollHeight > n.clientHeight + 1);
+  if (!dg.tight && ((slot && slot.getBoundingClientRect().width < TOKENS['card-mini']) || over)) { dg.tight = 1; paint(); return; }
+  main.querySelector('[data-start3]')?.addEventListener('click', async () => {
+    if (dg.busy || !squadStatus(dg.sel).ok) return;
+    dg.busy = true; paint();
+    let r = null;
+    try { r = await ctx().apiPost('/api/dungeon/start', { cards: dg.sel.filter((id) => M.has(id)) }); } catch (e) { r = e?.body || null; }
+    dg.busy = false;
+    if (!r?.ok) { toast(r?.message || 'The run did not start.'); paint(); return; }
+    ctx().sfx?.('click');
+    dg.log = []; dg.target = 0; dg.sel = [];
+    await load(); paint();
+  });
+}
+
 function topHTML(bare) {
   const d = dg.data;
   const top = d.top || [];
@@ -888,6 +1041,7 @@ function offerInfo(o) {
 function chooseHTML() {
   const R = run(); const st = R.state;
   const ph = st.phase;
+  if (V3() && ph === 'choose') return chooseV3HTML(R, st);   // UI-48 (the other steps keep the v2 view until their screens are built)
   const offer = (o, i) => {
     const t = offerInfo(o);
     return `<button class="dg-offer k-${o.kind}${o.to ? ` to-${o.to}` : ''}" data-choose="${i}" style="${TIER[o.tier] ? `--tc:${TIER[o.tier][1]}` : ''}">${tierTag(o.tier)}<span class="ic">${t[0]}</span><b>${t[1]}</b>${t[2] ? `<small>${t[2]}</small>` : ''}</button>`;
@@ -903,6 +1057,59 @@ function chooseHTML() {
     <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
     <section class="dg-panel dg-cbox ph-${ph}">${musicBtnHTML()}<span class="k">${head[0]}</span><h2>${head[1]}</h2>${head[2] ? `<p>${head[2]}</p>` : ''}${body}</section>
   </div>`;
+}
+// ---- v3: Choose a reward (UI-48), behind the ui_v3 flag --------------------------------------------------
+// The approved design (design repo UI-48/approved): the progress pill and the loot chips on the dungeon stage, a panel
+// with "Room cleared", "Choose a reward" and the offers (a row of 3; a stacked list on compact-port). The same data,
+// the same data-choose handler and the same /api/dungeon/choose call as the v2 view (choose(), wireChoose()).
+const OFFER_ICON = { card: 'layers', ward: 'shield-check', heal: 'heart', revive: 'heart', buff: 'trending-up', reset: 'rotate-ccw', continue: 'arrow-right' };
+function progressV3HTML(R) {
+  const rooms = dg.data.rooms || [];
+  const ic = { fight: I.sword, horde: I.horde, elite: I.fire, miniboss: I.crown, treasure: I.chest, rest: I.heart, choice: I.split, guardian: I.skull, unknown: I.q };
+  const dots = rooms.map((rm, i) => {
+    const n = i + 1;
+    const state = n < R.room ? 'done' : n === R.room ? 'now' : 'next';
+    const type = n === R.room && R.state?.room_type ? R.state.room_type : rm.type;
+    return `${i ? `<i class="u3-dgc-link${n <= R.room ? ' is-done' : ''}"></i>` : ''}<span class="u3-dgc-dot is-${state} t-${esc(type)}" title="${esc(ROOM[type] || type)}">${state === 'done' ? icon3('check') : ic[type] || I.q}</span>`;
+  }).join('');
+  const g = rooms[4];
+  return `<div class="u3-dgc-prog"><div class="u3-dgc-fl"><span class="u3-label">Floor ${R.floor}</span><b>Room ${R.room} of 5</b></div><div class="u3-dgc-dots">${dots}</div>${g?.name ? `<span class="u3-dgc-guard">Guardian: ${esc(g.name)}</span>` : ''}</div>`;
+}
+function chipsV3HTML(st) {
+  const pend = st.pend || {}, bank = st.bank || {};
+  const buff = Math.round(((st.buff || 1) - 1) * 100);
+  const loot = (b) => `${fmt(b.shards)}${(b.cards || []).length ? ` +${b.cards.length}${icon3('layers', 'sm')}` : ''}`;
+  return `<div class="u3-dgc-chips"><span class="u3-dgc-chip is-risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${loot(pend)}</b><i>at risk</i></span>`
+    + `<span class="u3-dgc-chip is-bank" title="Banked loot: safe. Yours when the run ends.">${icon3('lock')}<b>${loot(bank)}</b><i>banked</i></span>`
+    + `<span class="u3-dgc-chip" title="The run damage bonus">${icon3('trending-up')}<b>+${buff}%</b><i>damage</i></span></div>`;
+}
+function chooseV3HTML(R, st) {
+  const offers = st.offers || [];
+  const offer = (o, i) => {
+    const t = offerInfo(o);
+    const ic = o.kind === 'shards' ? COIN : OFFER_ICON[o.kind] ? icon3(OFFER_ICON[o.kind], '2xl') : t[0];
+    const tier = TIER[o.tier];
+    return `<button type="button" class="u3-dgc-offer is-t${tier ? o.tier : 0} k-${esc(o.kind)}" data-choose="${i}">${tier ? `<span class="u3-dgc-tier">${tier[0]}</span>` : ''}<span class="u3-dgc-ic">${ic}</span><b>${t[1]}</b>${t[2] ? `<small>${t[2]}</small>` : ''}</button>`;
+  };
+  return `<div class="u3-dgc ph-choose"><div class="u3-dgc-hud">${progressV3HTML(R)}${chipsV3HTML(st)}</div>
+    <section class="u3-dgc-panel">${musicBtnHTML()}<span class="u3-label u3-dgc-k">Room cleared</span><h2 class="u3-dgc-h">Choose a reward</h2><div class="u3-dgc-offers n${offers.length}">${offers.map(offer).join('')}</div></section>
+  </div>`;
+}
+// Measured fit (UI-48): when the drawn layout is too high for the stage (a short phone), the stage gets .is-tight (smaller
+// icons and gaps, the tier chip beside the name). It is measured again after the fonts load and after a resize.
+let chooseRO = null;
+function fitChooseV3(main) {
+  chooseRO?.disconnect(); chooseRO = null;
+  const box = main.querySelector('.u3-dgc');
+  if (!box) return;
+  // too high or too wide: the stage itself, or a part that clips its own content (the panel and the offers share the stage height; the guardian text sits in the pill; D-117 gives the stage more height but not more width)
+  const over = () => [box, ...box.querySelectorAll('.u3-dgc-prog, .u3-dgc-guard, .u3-dgc-panel, .u3-dgc-offers, .u3-dgc-offer, .u3-dgc-tier, .u3-dgc-offer b, .u3-dgc-offer small')].some((e) => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1);
+  const measure = () => {
+    box.classList.toggle('is-fill', cls3() === 'medium' && box.clientHeight > box.clientWidth);   // a tall tablet (the stage itself is taller than wide, F-1): the offers stack and fill the stage
+    box.classList.remove('is-tight', 'is-tight2'); if (over()) { box.classList.add('is-tight'); if (over()) box.classList.add('is-tight2'); } };   // is-tight2: still too wide (a narrow stage: the safe-area insets), so the tier chip gets its own row
+  measure();
+  document.fonts?.ready.then(() => { if (box.isConnected) measure(); });
+  if (typeof ResizeObserver === 'function') { chooseRO = new ResizeObserver(() => { if (box.isConnected) measure(); }); chooseRO.observe(box); }
 }
 // The chest (item 14): closed until tapped; then the lid opens, its tier glows, the loot shows.
 function chestHTML(st) {
@@ -941,6 +1148,13 @@ function fitFlips(main) {
   });
 }
 window.addEventListener('resize', () => { const m = document.getElementById('main'); if (m?.querySelector('.dg-flips')) fitFlips(m); });
+// v3 lobby (UI-46): measure the side column and the tight mode again after a resize (a turn, the keyboard)
+let v3rt = null;
+window.addEventListener('resize', () => {
+  if (!V3() || !document.querySelector('#main .u3-dg')) return;
+  clearTimeout(v3rt);
+  v3rt = setTimeout(() => { if (document.querySelector('#main .u3-dg')) { dg.v3tabs = false; dg.tight = 0; paint(); } }, 150);
+});
 function wireFlips(main) {
   fitFlips(main);
   const flip = (b) => { if (b.classList.contains('up')) { const id = Number(b.dataset.id); if (id) openInfo(id); return; } b.classList.add('up'); ups.add(upTag(b.dataset.flip)); ctx().sfx?.('flip'); };
@@ -964,6 +1178,7 @@ async function choose(pick) {
   await load(); paint();
 }
 function wireChoose(main) {
+  fitChooseV3(main);
   main.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', () => choose(Number(b.dataset.choose))));
   const box = main.querySelector('.dg-chestbox');
   // The 3D chest (a real model with its open animation); the drawn chest stays as the fallback.

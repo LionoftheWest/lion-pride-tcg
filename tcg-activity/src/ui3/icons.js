@@ -5,7 +5,8 @@ import {
   X, ChevronLeft, ChevronRight, ChevronDown, Search, Star, RotateCcw, ArrowLeftRight, LoaderCircle, Check, Lock, Plus,
   Minus, Info, CircleCheck, CircleAlert, TriangleAlert, Timer, SlidersHorizontal, Landmark, PartyPopper, Layers, Award,
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
-  Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter,
+  Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
+  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -24,8 +25,12 @@ export const ICONS = {
   'hand-fist': HandFist,
   // the menu grid (UI-60)
   'calendar-check': CalendarCheck, 'circle-help': CircleHelp, 'wrench': Wrench, 'scroll-text': ScrollText,
-  // the Filters button of every card grid (UI-07, D-39)
-  'list-filter': ListFilter,
+  // the Card picker and the squad views (UI-64, UI-46): Filters, an open check, a card not allowed today, a link onward
+  'list-filter': ListFilter, 'circle': Circle, 'ban': Ban, 'arrow-right': ArrowRight,
+  // the Dailies window (UI-36): the streak mark (replaces the emoji, G-053), the Chat and Voice task icons
+  'flame': Flame, 'message-circle': MessageCircle, 'headphones': Headphones,
+  // the Dungeon reward choice (UI-48): a Ward, the damage bonus, a heal
+  'shield-check': ShieldCheck, 'trending-up': TrendingUp, 'heart': Heart,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

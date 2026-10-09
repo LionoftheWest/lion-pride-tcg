@@ -7,6 +7,8 @@ import { v2ctx, toast } from './ui-v2.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
 import { every, isIdle } from './poll.js';
 import { payNow } from './dailies-pay.js';
+import { dailiesHTML } from './ui3/dailies.js';
+import { toast as u3Toast } from './ui3/components.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -27,6 +29,8 @@ const NAME = { checkin: 'Check in', chat: 'Chat', hunt: 'Hunt the boss', voice: 
 const UNIT = { chat: 'msgs', hunt: 'cards', voice: 'min' };
 let view = null;
 let tickTimer = null;
+// v3 (UI-36, flag ui_v3): the same data, claims and refresh; only the markup and the window differ (src/ui3/dailies.js).
+const v3 = () => document.body.classList.contains('ui-v3');
 
 // The dailies a member can redeem NOW: the red count on the Dailies button. None while
 // paused or once the daily cap is reached (a claim would pay nothing). With Shards on
@@ -111,6 +115,7 @@ function row(t, paused) {
 function paint() {
   const box = ctx().el('v2Dailies');
   if (!box || !view) return;
+  if (v3()) { fitV3(box); return; }
   if (!view.enabled) { box.innerHTML = '<p class="v2-empty">Nothing here yet.</p>'; return; }
   const n = ready(view).length, rp = readyPacks(view), cap = view.cap || 5, earned = Math.min(view.earned, cap);
   const seg = Array.from({ length: cap }, (_, i) => `<i class="${i < earned ? 'on' : i < earned + rp ? 'ready' : ''}"></i>`).join('');
@@ -133,12 +138,15 @@ async function claim(b, path, body) {
   try { r = await ctx().apiPost(path, body); } catch { r = null; }
   if (r?.ok) {
     const parts = [r.packs ? `+${r.packs} pack${r.packs === 1 ? '' : 's'}` : '', r.shards ? `+${r.shards} Shards` : ''].filter(Boolean);
-    toast(`🎁 ${parts.join(' · ') || 'Claimed'}`);
+    if (v3()) v3Toast('success', parts.join(' · ') || 'Claimed');
+    else toast(`🎁 ${parts.join(' · ') || 'Claimed'}`);
     view = r.view || view;
     ctx().refreshPacks?.();
     if (r.shards) refreshShards();
   } else {
-    toast(r?.error === 'capped' ? `Daily limit: ${view?.cap} packs` : r?.error === 'paused' ? 'Paused' : 'Try again');
+    const why = r?.error === 'capped' ? `Daily limit: ${view?.cap} packs` : r?.error === 'paused' ? 'Paused' : null;
+    if (v3()) v3Toast('error', why || 'Something went wrong. Try again.'); // 10.6: an unknown error
+    else toast(why || 'Try again');
     await refreshDailies();
   }
   paintBadge();
@@ -148,11 +156,19 @@ async function claim(b, path, body) {
 export async function openDailiesV2() {
   const { el } = ctx();
   let box = el('v2Dailies');
-  if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="v2Dailies" class="v2-drop dl-drop hidden"></div>'); box = el('v2Dailies'); }
+  if (!box) {
+    document.body.insertAdjacentHTML('beforeend', v3()
+      ? '<div id="v2Dailies" class="u3-dl hidden" role="dialog" aria-modal="false" aria-labelledby="u3DlTitle"></div>'
+      : '<div id="v2Dailies" class="v2-drop dl-drop hidden"></div>');
+    box = el('v2Dailies');
+    if (v3()) box.addEventListener('click', onV3Click);
+  }
   if (!box.classList.contains('hidden')) { closeDailiesV2(); return; }
   box.classList.remove('hidden');
-  if (!view) box.innerHTML = '<div class="v2-loading">Loading…</div>';
+  if (v3()) { document.getElementById('menuBtn')?.classList.add('is-open'); document.addEventListener('keydown', onV3Key); addEventListener('resize', onV3Resize); }
+  if (!view) box.innerHTML = v3() ? '<div class="u3-dl__loading" aria-busy="true" aria-label="Loading"></div>' : '<div class="v2-loading">Loading…</div>';
   else paint();
+  if (v3()) box.querySelector('[data-dl-close]')?.focus();
   await refreshDailies();
   paint();
   clearInterval(tickTimer);
@@ -169,4 +185,57 @@ export function closeDailiesV2() {
   box.classList.add('hidden');
   clearInterval(tickTimer);
   document.removeEventListener('pointerdown', outside, { capture: true });
+  if (v3()) {
+    document.removeEventListener('keydown', onV3Key);
+    removeEventListener('resize', onV3Resize);
+    const menu = document.getElementById('menuBtn');
+    menu?.classList.remove('is-open');
+    if (box.contains(document.activeElement) || document.activeElement === document.body) menu?.focus(); // 6.2: focus returns to the opener
+  }
+}
+
+// ---- v3 (UI-36) ----
+// No scroll (3.3): when the content is taller than the room (a short phone, the safe-area insets), the tight spacing.
+// The last step (3.5): the tasks page ("1 / N") with the most that fit on one page.
+let dlPage = 1, dlPer = 0;   // the page of the tasks and the tasks on one page (0 = all, no pager)
+const drawV3 = (box) => { box.innerHTML = dailiesHTML(view, { page: dlPage, perPage: dlPer, size: document.body.dataset.size || '' }); };
+function fitV3(box) {
+  const over = () => box.scrollHeight > box.clientHeight + 1;
+  box.classList.remove('is-tight');
+  dlPer = 0; drawV3(box);
+  if (!over()) { dlPage = 1; return; }
+  box.classList.add('is-tight');
+  if (!over()) { dlPage = 1; return; }
+  const all = (view?.tasks || []).length;
+  for (dlPer = all - 1; dlPer > 1; dlPer--) { drawV3(box); if (!over()) return; }
+  dlPer = 1; drawV3(box);
+}
+function onV3Click(e) {
+  if (e.target.closest('[data-dl-close]')) { closeDailiesV2(); return; }
+  const pg = e.target.closest('[data-page]');
+  if (pg) {
+    if (pg.disabled) return;
+    const box = ctx().el('v2Dailies');
+    dlPage += pg.dataset.page === 'next' ? 1 : -1;
+    drawV3(box);
+    box.querySelector(`[data-page="${pg.dataset.page}"]`)?.focus();
+    return;
+  }
+  const b = e.target.closest('button[data-task], button[data-all]');
+  if (!b || b.disabled) return;
+  if (b.dataset.all) claim(b, '/api/dailies/claim-all', {});
+  else claim(b, '/api/dailies/claim', { task: b.dataset.task });
+}
+function onV3Resize() { const box = ctx().el('v2Dailies'); if (box && !box.classList.contains('hidden')) fitV3(box); }
+function onV3Key(e) { if (e.key === 'Escape') { e.preventDefault(); closeDailiesV2(); } }
+// 7.3: a library toast (4 s), at the top of the content on phones and under the panel on the wide classes (ui3.css).
+let toastTimer = null;
+function v3Toast(kind, text) {
+  document.getElementById('u3DlToast')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div id="u3DlToast" class="u3-dl-toast">${u3Toast({ kind, text })}</div>`);
+  const r = ctx().el('v2Dailies')?.getBoundingClientRect();
+  const t = document.getElementById('u3DlToast');
+  if (r && t) { t.style.setProperty('--dl-tt', `${Math.round(r.bottom)}px`); t.style.setProperty('--dl-tx', `${Math.round(r.left + r.width / 2)}px`); }
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => document.getElementById('u3DlToast')?.remove(), 4000);
 }

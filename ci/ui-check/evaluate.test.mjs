@@ -37,6 +37,8 @@ test('missing vs 1990x830: a control in view at expanded and absent or outside h
   const r = clean('home', '430x932'); r.checks.keys = {};
   assert.deepEqual(defectsOf(r, exp).map((x) => [x.rule, x.where]), [['missing', '#boardBtn']]);
   const tiny = clean('home', '400x225'); assert.equal(defectsOf(tiny, exp).length, 0, 'the tiny class is the P1 exception');
+  const kb = { ...clean('home', '430x932'), variant: 'keyboard' }; kb.checks.keys = {};
+  assert.equal(defectsOf(kb, exp).length, 0, 'the keyboard cell: P1 is checked on the base cell (G-015)');
 });
 test('a cell with no check data is not checked (the silent-undefined defect)', () => {
   const r = clean('home'); delete r.checks;
@@ -54,9 +56,16 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('dungeon', '#main.has-adv > .dg-tabs.v2-subtabs > .dg-tab'), 'UI-02');   // the shell sub-tab row
+  assert.equal(ownerOf('dungeon', '.u3-dg-tabs > .u3-seg > .u3-seg__item'), 'UI-46');               // the lobby's own tabs (Rule / Best / Top 3)
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
+  assert.equal(ownerOf('collection', '#main > .u3-col > .u3-ctile.is-owned'), 'UI-07');
+  assert.equal(ownerOf('collection', '.u3-col__bar > .u3-search.u3-col__search > #colSearch.u3-search__input'), 'UI-07');
+  assert.equal(ownerOf('achievements', '.v2-collection.ach-mode > .m-colbar > #colSearch.v2-search'), 'UI-12');   // the v2 id is not UI-07
+  assert.equal(ownerOf('collection', '.u3-fpanel__foot > button'), 'UI-07');
+  assert.equal(ownerOf('collection-detail', '#main > .v2-cell'), 'UI-08');
 });
 test('a clean complete run passes', () => {
   assert.equal(verdict(full(), REG, { browsers: ['chromium'] }).fails.length, 0);
