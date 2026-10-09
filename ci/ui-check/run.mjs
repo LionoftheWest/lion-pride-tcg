@@ -37,7 +37,7 @@ const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;-
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
 const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell', 'wishlist', 'wishlist-drawer']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'wishlist', 'wishlist-drawer', 'wish-picker']);
+const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'help-closed', 'help-item5', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'wishlist', 'wishlist-drawer', 'wish-picker']);
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
@@ -71,7 +71,7 @@ async function runCell([s, screen, variant], ref = {}) {
         const ctx = ref.ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: touch, isMobile: touch && BROWSER === 'chromium', deviceScaleFactor: 1, timezoneId: 'America/Denver', locale: 'en-US' });
         await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
         const cookies = [];
-        if (spec.battle) cookies.push({ name: 'ci_hunt', value: 'battle', url: BASE });
+        if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? 'battle' : spec.hunt, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
