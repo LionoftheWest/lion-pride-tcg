@@ -7,9 +7,11 @@
 //   the same item, larger. "New" stays on the card; no owned badge (D-29).
 // - "New stock in" is a chip in the stock header on every class.
 // - The card width is the one number this module computes (3.5): the largest that fits the stock area for the layout
-//   of the class (row: compact-land; wide: medium landscape and expanded; tall: medium portrait; port: compact-port,
-//   which pages by blocks, 3.4).
-import { esc, button, iconButton, pager, inlineMessage, rewardPill } from './components.js';
+//   of the class (wide: medium landscape and expanded; tall: medium portrait). Both compact classes (compact: portrait and
+//   landscape phones) show the whole stock with NO pager (Nathan 2026-10-08): the fitter measures three arrangements, one
+//   row of 10 (row), Featured + Illustrated Rare over the 6 Normal in one row (stack, 6 columns) or over 2 rows of 3
+//   (stack, 3 columns), and takes the one with the largest card.
+import { esc, button, iconButton, inlineMessage, rewardPill } from './components.js';
 import { icon } from './icons.js';
 import { TOKENS } from '../tokens.js';
 import { thumb } from '../thumb.js';
@@ -18,8 +20,7 @@ const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
 /** The layout for a size class and the stock area (D-41, D-46: a tall area stacks rows, a wide area keeps columns). */
 export function shopLayout(size, width, height) {
-  if (size === 'compact-port') return 'port';
-  if (size === 'compact-land') return 'row';
+  if (size === 'compact-port' || size === 'compact-land') return 'compact';
   if (size === 'medium' && height > width) return 'tall';
   return 'wide';
 }
@@ -60,40 +61,34 @@ export function fitShop(layout, m) {
     w = Math.min(w, wTop);
     // Featured at most 1.65 cards wide (UI-43 approved 768x1024: 180 to 109), so the row above the Normal cards stays one block
     fw = f ? Math.min(byH(H - row2 - (nm ? G : 0)), W - (top ? G + top * w + (top - 1) * g : 0), w * 1.65) : 0;
-  } else {   // port: 3 in a row; one block must fit the page
-    w = Math.min((W - 2 * g) / 3, byH(H));
-    // Featured and the Illustrated Rare row share page 1 when a card at most 15% smaller lets them (UI-43 approved 430x932)
-    const pair = f && ir ? (H - G - 2 * extra) / (ratio * 2.15) : 0;
-    if (pair >= w * 0.85 && pair < w) w = pair;
-    fw = Math.min(w * 1.15, W, byH(H));
+  } else {   // stack (compact): Featured + Illustrated Rare over the Normal rows; m.cols = the Normal cards in one row
+    return fitStack(m);
   }
   return { w: Math.max(0, Math.floor(w)), fw: Math.max(0, Math.floor(fw)) };
 }
 
 /**
- * The compact-port pages (3.4): the blocks that fit, then the next page. units: [{ h, head? }] in order; a head (a group
- * label) never ends a page and shows again on the next page when its group goes on. A unit's gap is the space above it
- * (none at the top of a page; an item under its head uses the head's own gap below). full / paged = the area height
- * without / with the pager. Returns [[unit index]]. (The bell, UI-24, pages its rows the same way.)
+ * The stack arrangement of the compact classes (no pager): row 1 = Featured (fw = 1.15 cards, the UI-43 approved 430x932
+ * ratio) beside the Illustrated Rare cards, row 2 = the Normal cards in rows of m.cols. The largest card width whose
+ * width (labels included) and height (labels, pills, gaps) both fit. Returns { w, fw } (floored).
  */
-export function pageBlocks(units, { full, paged, gap = 0 }) {
-  const gapOf = (i) => units[i].gap ?? gap;
-  const run = (H) => {
-    const pages = [];
-    let cur = []; let used = 0; let head = null; let headOn = false;
-    const push = (i, g) => { used += (cur.length ? g : 0) + units[i].h; cur.push(i); };
-    for (let i = 0; i < units.length; i++) {
-      if (units[i].head) { head = i; headOn = false; continue; }
-      const withHead = head != null && !headOn;
-      const need = withHead ? (cur.length ? gapOf(head) : 0) + units[head].h + (units[head].below ?? gapOf(i)) + units[i].h : (cur.length ? gapOf(i) : 0) + units[i].h;
-      if (cur.length && used + need > H) { pages.push(cur); cur = []; used = 0; headOn = false; }
-      if (head != null && !headOn) { push(head, gapOf(head)); headOn = true; push(i, units[head].below ?? gapOf(i)); } else push(i, gapOf(i));
-    }
-    if (cur.length) pages.push(cur);
-    return pages.length ? pages : [[]];
+export const STACK_FEAT = 1.15;
+export function fitStack(m) {
+  const { W, H, gap: g, G, labelH, si, pillH, f = 1, ir = 3, nm = 6, cols = 6, ratio = TOKENS['card-ratio'], max = TOKENS['card-tile-max'] } = m;
+  const lw = m.labelW || [];
+  const rows = Math.max(1, Math.ceil(nm / Math.max(1, cols)));
+  const ok = (w) => {
+    const fw = f ? w * STACK_FEAT : 0;
+    const top = [f ? Math.max(lw[0] || 0, fw) : 0, ir ? Math.max(lw[ir && f ? 1 : 0] || 0, ir * w + (ir - 1) * g) : 0].filter(Boolean);
+    const w1 = top.reduce((t, x) => t + x, 0) + Math.max(0, top.length - 1) * G;
+    const w2 = nm ? Math.max(lw[lw.length - 1] || 0, Math.min(cols, nm) * w + (Math.min(cols, nm) - 1) * g) : 0;
+    const h1 = top.length ? labelH + si + Math.max(fw, ir ? w : 0) * ratio + si + pillH : 0;
+    const h2 = nm ? labelH + si + rows * (w * ratio + si + pillH) + (rows - 1) * g : 0;
+    return Math.max(w1, w2) <= W && h1 + h2 + (h1 && h2 ? G : 0) <= H;
   };
-  const one = run(full);
-  return one.length > 1 ? run(paged) : one;
+  let lo = 0; let hi = max;
+  if (ok(hi)) lo = hi; else for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (ok(mid)) lo = mid; else hi = mid; }
+  return { w: Math.max(0, Math.floor(lo)), fw: f ? Math.floor(lo * STACK_FEAT) : 0 };
 }
 
 // ---- Markup ----
@@ -158,8 +153,8 @@ export function shopHTML(s) {
   const n = (d.stock || []).length;
   const tab = tabs ? s.tab : 'stock';
   const sub = tabs ? `<div class="v2-subtabs u3-shop-tabs" role="tablist"><div class="seg">${[['stock', 'store', "Today's stock"], ['packs', 'package', 'Packs'], ['reset', 'rotate-ccw', 'Stat reset']]
-    .map(([k, ic, t]) => `<button type="button" role="tab" data-tab="${k}" class="${tab === k ? 'on' : ''}" aria-selected="${tab === k}" aria-controls="u3ShopP-${k}">${icon(ic)}<span>${t}</span></button>`).join('')}</div></div>` : '';
-  const stock = `<section class="u3-shop__stock">${stockHead({ count: n, left: s.left, title: size === 'expanded' })}<div class="u3-shop__body"></div><div class="u3-shop__pager" hidden></div></section>`;
+    .map(([k, ic, t]) => `<button type="button" role="tab" data-tab="${k}" class="${tab === k ? 'on' : ''}" aria-selected="${tab === k}" aria-controls="u3ShopP-${k}" aria-label="${t}">${icon(ic)}<span class="u3-tab__label">${t}</span></button>`).join('')}</div></div>` : '';
+  const stock = `<section class="u3-shop__stock">${stockHead({ count: n, left: s.left, title: size === 'expanded' })}<div class="u3-shop__body"></div></section>`;
   if (!tabs) return `<div class="u3-shop u3-shop--desk">${stock}<div class="u3-shop__side">${packsPanel(d, s.qty, s.coin)}${resetPanel(d, s.coin, s.day)}</div></div>`;
   // every tab panel is in the page (the hidden ones with role=tabpanel): the one fitter paints only the stock that shows
   const panel = (k, html) => `<div class="u3-shop__panel${k === 'stock' ? '' : ' u3-shop__one'}" role="tabpanel" id="u3ShopP-${k}"${tab === k ? '' : ' hidden'}>${k === 'stock' && tab !== 'stock' ? '' : html}</div>`;
@@ -167,24 +162,29 @@ export function shopHTML(s) {
 }
 
 const px = (v) => parseFloat(v) || 0;
-/** Fit and paint the stock area of a painted Shop. page = the compact-port page (1-based). Returns { pages, page }. */
-export function fitStock(root, blocks, { page = 1, size }) {
+/**
+ * Fit and paint the stock area of a painted Shop. The whole stock always shows: there is no pager and no hidden card.
+ * Compact classes: the arrangement with the largest card (row, stack of 6, stack of 3), then the measured modes
+ * is-tight (no coin in the price pill) and is-tight2 (the group labels only for screen readers) when the card is too
+ * narrow for its price (9.1: a touch target of 44 px). Returns { pages: 1, page: 1, mode }.
+ */
+export function fitStock(root, blocks, { size }) {
   const body = root.querySelector('.u3-shop__body');
-  const pg = root.querySelector('.u3-shop__pager');
-  if (!body) return { pages: 1, page: 1 };
-  const all = (list) => list.map((b) => group(b.key, b.head, b.items.join(''), b.name)).join('');
-  // pass 1: measure the parts at the default width
-  body.innerHTML = all(blocks);
-  pg.innerHTML = pager({ page: 1, pages: 2 });
-  pg.hidden = false;
-  const Hp = body.clientHeight;
-  pg.hidden = true;
-  const H = body.clientHeight;
-  const W = body.clientWidth;
-  const cs = getComputedStyle(body);
-  const labelH = body.querySelector('.u3-sgroup__label')?.getBoundingClientRect().height || 0;
-  const labelW = [...body.querySelectorAll('.u3-sgroup__label')].map((n) => n.scrollWidth);
-  const pillH = body.querySelector('.u3-shopitem__buy')?.getBoundingClientRect().height || 0;
+  const done = (mode = '') => ({ pages: 1, page: 1, mode });
+  if (!body) return done();
+  const stock = root.querySelector('.u3-shop__stock');
+  stock.classList.remove('is-tight', 'is-tight2');
+  body.innerHTML = blocks.map((b) => group(b.key, b.head, b.items.join(''), b.name)).join('');
+  const layout = shopLayout(size, root.clientWidth, root.clientHeight);   // the shape of the Shop area: an upright tablet stacks (D-46)
+  const setW = (w, fw) => { body.style.setProperty('--u3-w', `${w}px`); body.style.setProperty('--u3-fw', `${fw}px`); };
+  const measure = () => {
+    const cs = getComputedStyle(body);
+    const labels = [...body.querySelectorAll('.u3-sgroup__label')];
+    return { W: body.clientWidth, H: body.clientHeight, gap: px(cs.getPropertyValue('--u3-sg')), G: px(cs.getPropertyValue('--u3-sG')), si: px(cs.getPropertyValue('--u3-si')),
+      labelH: labels[0]?.getBoundingClientRect().height || 0, labelW: labels.map((n) => n.scrollWidth),
+      pillH: body.querySelector('.u3-shopitem__buy')?.getBoundingClientRect().height || 0,
+      f: blocks.some((b) => b.key === 'feat') ? 1 : 0, ir: blocks.find((b) => b.key === 'ir')?.items.length || 0, nm: blocks.find((b) => b.key === 'nm')?.items.length || 0 };
+  };
   // the narrowest card whose price pill still shows its whole price (coin, number, the pill padding)
   const pillMinOf = () => Math.max(0, ...[...body.querySelectorAll('.u3-shopitem__buy')].map((b) => {
     const c = getComputedStyle(b);
@@ -192,64 +192,37 @@ export function fitStock(root, blocks, { page = 1, size }) {
     return kids.reduce((t, k) => t + k.getBoundingClientRect().width, 0) + px(c.columnGap) * Math.max(0, kids.length - 1)
       + px(c.paddingLeft) + px(c.paddingRight) + px(c.borderLeftWidth) + px(c.borderRightWidth);
   }));
-  const pillMin = pillMinOf();
-  const m = { W, H, gap: px(cs.getPropertyValue('--u3-sg')), G: px(cs.getPropertyValue('--u3-sG')), si: px(cs.getPropertyValue('--u3-si')), labelH, pillH,
-    labelW, f: blocks.some((b) => b.key === 'feat') ? 1 : 0, ir: blocks.find((b) => b.key === 'ir')?.items.length || 0, nm: blocks.find((b) => b.key === 'nm')?.items.length || 0 };
-  const layout = shopLayout(size, innerWidth, innerHeight);   // the frame shape: an upright tablet stacks (D-46)
-  root.querySelector('.u3-shop__stock')?.setAttribute('data-layout', layout);
-  const setW = (w, fw) => { body.style.setProperty('--u3-w', `${w}px`); body.style.setProperty('--u3-fw', `${fw}px`); };
-  if (layout !== 'port') {
+  if (layout !== 'compact') {
+    const m = measure();
+    stock.setAttribute('data-layout', layout);
     const { w, fw } = fitShop(layout, m);
-    if (layout !== 'row' || w >= pillMin) { setW(w, fw); return { pages: 1, page: 1 }; }
-    // a narrow row: first the price number without its coin (is-tight); on a short landscape phone also the group labels
-    // only for screen readers (is-tight2: the frame color shows the rarity, the price is on every card), so every card
-    // shows its whole price and stays a touch target (9.1)
-    const stock = root.querySelector('.u3-shop__stock');
+    setW(w, fw);
+    return done(layout);
+  }
+  const pick = (m) => {
+    const cands = [['row', fitShop('row', m)], ['stack6', fitStack({ ...m, cols: 6 })], ['stack3', fitStack({ ...m, cols: 3 })]];
+    cands.forEach((c) => { c.w = c[1].w; });
+    return cands.reduce((best, c) => (c[1].w > best[1].w ? c : best));   // a tie keeps the earlier one (row first)
+  };
+  const apply = (c) => {
+    const mode = c[0];
+    stock.setAttribute('data-layout', mode === 'row' ? 'row' : 'stack');
+    body.style.setProperty('--u3-nmcols', mode === 'stack3' ? '3' : '6');
+    setW(c[1].w, mode === 'row' ? c[1].w : c[1].fw);
+  };
+  let m = measure();
+  let c = pick(m);
+  apply(c);
+  const pillMin = () => pillMinOf();
+  if (c[1].w < pillMin()) {
     stock.classList.add('is-tight');
-    const t1 = fitShop('row', { ...m, labelW: [...body.querySelectorAll('.u3-sgroup__label')].map((n) => n.scrollWidth) });
-    if (t1.w >= Math.max(pillMinOf(), TOKENS.hit)) { setW(t1.w, t1.fw); return { pages: 1, page: 1 }; }
-    stock.classList.add('is-tight2');
-    const tcs = getComputedStyle(body);
-    const tight = fitShop('row', { ...m, G: px(tcs.getPropertyValue('--u3-sG')), si: px(tcs.getPropertyValue('--u3-si')), labelH: 0, labelW: [] });
-    const paged = blocks.length > 1 ? fitShop('row', { ...m, H: Hp, f: 1, ir: Math.max(m.ir, m.nm), nm: 0, labelW: [] }) : { w: 0 };
-    if (tight.w >= TOKENS.hit || paged.w < tight.w) { setW(tight.w, tight.fw); return { pages: 1, page: 1 }; }
-    stock.classList.remove('is-tight', 'is-tight2');
-    // a short landscape phone: one row of every card would cut the prices, so the groups page (3.4: Featured and
-    // Illustrated Rare, then Normal), every page at the same card width
-    const split = [blocks.filter((b) => b.key !== 'nm'), blocks.filter((b) => b.key === 'nm')].filter((x) => x.length);
-    const sub = (list) => fitShop('row', { ...m, H: Hp, labelW: list.map((b) => labelW[blocks.indexOf(b)]),
-      f: list.some((b) => b.key === 'feat') ? 1 : 0, ir: list.find((b) => b.key === 'ir')?.items.length || 0, nm: list.find((b) => b.key === 'nm')?.items.length || 0 });
-    const ws = split.map(sub);
-    const w2 = Math.min(...ws.map((x) => x.w));
-    setW(w2, w2);
-    const p = Math.min(Math.max(1, page), split.length);
-    body.innerHTML = all(split[p - 1]);
-    pg.innerHTML = pager({ page: p, pages: split.length });
-    pg.hidden = false;
-    return { pages: split.length, page: p };
+    m = measure(); c = pick(m); apply(c);
+    if (c[1].w < Math.max(pillMin(), TOKENS.hit)) {
+      stock.classList.add('is-tight2');
+      m = { ...measure(), labelH: 0, labelW: [] }; c = pick(m); apply(c);
+    }
   }
-  // compact-port: blocks of 3 cards, the pages by height (3.4); a group that goes on shows its label again
-  const { w, fw } = fitShop('port', { ...m, H: Hp });
-  setW(w, fw);
-  // the space above each unit: a group label G, its first row si, a next row of the same group gap (the port CSS)
-  const units = [];
-  for (const b of blocks) {
-    units.push({ head: true, html: b.head, key: b.key, gap: m.G, below: m.si });
-    for (let i = 0; i < b.items.length; i += 3) units.push({ section: b.key, key: b.key, gap: i ? m.gap : m.si, html: b.items.slice(i, i + 3).join('') });
-  }
-  body.innerHTML = units.map((u) => (u.head ? `<div class="u3-sgroup__label-wrap">${u.html}</div>` : `<ul class="u3-sgroup__items u3-sgroup__items--${u.key}">${u.html}</ul>`)).join('');
-  [...body.children].forEach((el, i) => { units[i].h = el.getBoundingClientRect().height; });
-  const pages = pageBlocks(units, { full: H, paged: Hp });
-  const p = Math.min(Math.max(1, page), pages.length);
-  // a page that holds only Featured: the card grows to fill it (3.4: content fills its area; UI-43 approved 375x667)
-  if (pages[p - 1].every((i) => units[i].key === 'feat')) {
-    const big = Math.min(W * 0.75, (pages.length > 1 ? Hp : H) - (labelH + 2 * m.si + pillH)) ;
-    setW(w, Math.max(fw, Math.floor(Math.min(W * 0.75, big / (TOKENS['card-ratio'])))));
-  }
-  body.innerHTML = pages[p - 1].map((i) => (units[i].head ? `<div class="u3-sgroup__label-wrap">${units[i].html}</div>` : `<ul class="u3-sgroup__items u3-sgroup__items--${units[i].key}">${units[i].html}</ul>`)).join('');
-  pg.innerHTML = pages.length > 1 ? pager({ page: p, pages: pages.length }) : '';
-  pg.hidden = pages.length <= 1;
-  return { pages: pages.length, page: p };
+  return done(c[0]);
 }
 
 // ---- The confirm window (5.2 Dialog: Cancel left, the action right; one primary) ----
