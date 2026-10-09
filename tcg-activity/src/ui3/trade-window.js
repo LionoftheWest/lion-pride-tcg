@@ -65,6 +65,17 @@ function fitTradePass(width, height, gap, { min, max = TOKENS['card-tile-max'], 
   return { cols: best.cols, rows: best.rows, tile: best.tile, used: best.used };
 }
 
+/**
+ * A fixed number of columns (compact-port: 4, as the approved frames): the tile follows the column width, the rows are the
+ * whole rows that fit (at least 1). Pure (unit-tested).
+ */
+export function fitCols(width, height, gap, cols = 4, ratio = TOKENS['card-ratio']) {
+  if (!(width > 0 && height > 0)) return { cols, rows: 1, tile: TOKENS['card-mini'] };
+  const tile = Math.floor((width - gap * (cols - 1)) / cols);
+  const rows = Math.max(1, Math.floor((height + gap) / (tile * ratio + gap)));
+  return { cols, rows, tile };
+}
+
 /** The rules of the server (gift_card, create_trade_open): a card to offer must be tradeable; a card to gift also not Gold. */
 export const canOffer = (c) => !!c && c.tradeable !== false;
 export const canGift = (c) => canOffer(c) && c.rarity !== 'gold';
@@ -219,7 +230,8 @@ function measure() {
     if (cx.measureText(inp.placeholder).width > inp.clientWidth - parseFloat(getComputedStyle(inp).paddingLeft || 0) * 2) { st.narrow = true; paint(); return; }
   }
   const cs = getComputedStyle(g);
-  const f = fitTradeGrid(g.clientWidth, g.clientHeight, parseFloat(cs.columnGap) || 0);
+  const gap = parseFloat(cs.columnGap) || 0;
+  const f = document.body.dataset.size === 'compact-port' ? fitCols(g.clientWidth, g.clientHeight, gap, 4) : fitTradeGrid(g.clientWidth, g.clientHeight, gap);
   const per = f.cols * f.rows;
   if (per !== st.per || f.tile !== st.tile || f.cols !== st.cols) {
     const first = st.page[st.view] * (st.per || per);

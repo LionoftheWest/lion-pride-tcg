@@ -2,7 +2,7 @@
 // D-35 (actions), D-64 item 3 (extra copies first), the two-step server rule (server.js /api/trade/offer).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { orderCards, filterCards, pageOf, actionsFor, planFor, canGift, canOffer, fitTradeGrid } from './trade-window.js';
+import { orderCards, filterCards, pageOf, actionsFor, planFor, canGift, canOffer, fitTradeGrid, fitCols } from './trade-window.js';
 
 const C = (id, quantity, extra = {}) => ({ id, name: `Card ${id}`, rarity: 'normal', quantity, ...extra });
 
@@ -85,4 +85,12 @@ test('the grid of the frames: 7 x 3 at 1280x720, a tile of 88 to 112, one tile s
   // an area 245 high cannot hold 2 rows of 88: 2 rows of 80 fill it (no empty band, 3.4)
   assert.equal(fitTradeGrid(480, 245, 6).rows, 2);
   assert.deepEqual(fitTradeGrid(0, 0, 6).cols, 1);
+});
+
+test('compact-port: 4 columns, the tile follows the column width, whole rows only', () => {
+  const g = fitCols(384, 560, 6);
+  assert.equal(g.cols, 4); assert.equal(g.tile, 91);
+  assert.equal(g.rows, Math.floor((560 + 6) / (91 * 1.4 + 6)));
+  assert.equal(fitCols(329, 100, 6).rows, 1);   // never 0 rows
+  assert.equal(fitCols(0, 0, 6).cols, 4);
 });
