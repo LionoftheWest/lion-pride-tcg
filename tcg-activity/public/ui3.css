@@ -435,6 +435,19 @@ body.ui-v2.ui-v3[data-size="compact-land"] #main > .v2-subtabs :is(.dg-tab, .seg
 body.ui-v2.ui-v3[data-size="compact-port"] #main > .v2-subtabs :is(.dg-tab, .seg > button) { flex: 1 1 0; justify-content: center; padding: 0 var(--sp-1); font-size: var(--fs-caption); gap: var(--sp-1); }
 body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .u3-tabdot { display: inline-flex; }
 body.ui-v2.ui-v3[data-size] #main > .v2-subtabs .ex-q { margin-left: var(--sp-2); flex: none; width: var(--u3-tab); height: var(--u3-tab); min-width: 0; padding: 0; }
+/* D-117: a low landscape phone (body[data-low], size-class.js): the sub-tabs sit in the top bar row, right of the emblem,
+   as icon tabs (the name is the aria-label) with the "?" at the end; the screens get the row height back (--u3-row = none). */
+body.ui-v2.ui-v3[data-size][data-low] { --u3-row: max(var(--u3-none), calc(var(--corner-h) - var(--u3-bar) - var(--u3-sa-t))); }   /* the content starts under the Discord corner zone (2.3) */
+body.ui-v2.ui-v3[data-size][data-low] .u3-logo__word { display: none; }
+body.ui-v2.ui-v3[data-size][data-low] #main > .v2-subtabs { top: calc(var(--u3-sa-t) + (var(--u3-bar) - var(--u3-tab)) / 2); left: calc(var(--u3-sa-l) + var(--u3-pad) + var(--emblem) + var(--sp-3));
+  z-index: var(--z-shell); padding: 0; border: 0; background: none; gap: var(--sp-1); }
+body.ui-v2.ui-v3[data-size][data-low] #main > .v2-subtabs :is(.dg-tab, .seg > button) { width: var(--u3-tab); padding: 0; justify-content: center; }
+body.ui-v2.ui-v3[data-size][data-low] #main > .v2-subtabs .u3-tab__label { display: none; }
+body.ui-v2.ui-v3[data-size][data-low] #topbar { gap: var(--sp-2); }
+body.ui-v2.ui-v3[data-size][data-low] #topbar .topright { gap: var(--sp-1); }
+body.ui-v2.ui-v3[data-size][data-low] #main > .v2-subtabs { gap: var(--u3-none); }
+body.ui-v2.ui-v3[data-size][data-low].u3-low-tight #topbar .u3-logo { display: none; }
+body.ui-v2.ui-v3[data-size][data-low].u3-low-tight #main > .v2-subtabs { left: calc(var(--u3-sa-l) + var(--u3-pad)); }
 
 /* ---- Open window (UI-33, D-80 to D-90): the sets, then the counts. A sheet on the dock edge on compact-port, a panel
    above OPEN on the other classes. The dock stays uncovered, so a tap on OPEN closes the window (src/ui3/open-window.js).
@@ -705,7 +718,7 @@ body[data-size="compact-port"] .u3-dg-act .u3-btn { width: 100%; }
 .u3-dg-top + .u3-btn { width: 100%; color: var(--gold); border-color: var(--gold-a50); }
 .u3-dg-tabs .u3-seg { width: 100%; box-sizing: border-box; }
 .u3-dg-tabs .u3-seg__item { flex: 1 1 0; justify-content: center; }
-body[data-size="compact-land"] .u3-dg-tabs .u3-seg__item { padding-inline: var(--sp-1); font-size: var(--fs-small); }
+body[data-size="compact-land"] .u3-dg-tabs .u3-seg__item { padding-inline: var(--sp-half); font-size: var(--fs-small); }
 .u3-dg-pane { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3); }
 .u3-dg-prow { display: flex; gap: var(--sp-2); align-items: stretch; }
 .u3-dg-prow .u3-dg-tabs { flex: 1 1 auto; min-width: 0; }
@@ -948,6 +961,19 @@ body.ui-v3[data-size="compact-land"] :is(.u3-dl__packs, .u3-dl__shards) b { font
 body.ui-v3[data-size="compact-land"] .u3-dl-toast { top: auto; bottom: calc(var(--u3-sa-b) + var(--sp-1-5)); }
 /* medium and expanded: under the panel, centered on it (ui-v2-dailies.js sets --dl-tt and --dl-tx from the panel box) */
 body.ui-v3:is([data-size="medium"], [data-size="expanded"]) .u3-dl-toast { top: calc(var(--dl-tt) + var(--sp-3)); left: var(--dl-tx); right: auto; transform: translateX(-50%); padding: 0; }
+/* UI-46: the lobby tabs keep the touch size (9.1): the side column on compact-land is at least three tabs wide, and
+   the tabs in portrait use the small padding */
+body[data-input="coarse"] .u3-dg-tabs .u3-seg__item { min-width: var(--hit); }
+body[data-size="compact-land"] .u3-dg--side-tabs { grid-template-columns: minmax(calc(var(--hit) * 3 + var(--sp-4) * 2 + var(--sp-2)), 2fr) minmax(0, 5fr); }
+body[data-size="compact-port"] .u3-dg-tabs .u3-seg__item { padding-inline: var(--sp-1); gap: var(--sp-1); }
+body[data-size="compact-port"] .u3-dg-prow .u3-dg-timer { padding-inline: var(--sp-2); }
+.u3-logo.is-no-tag .u3-logo__tag, .u3-logo.is-no-word .u3-logo__word { display: none; }   /* measured in shell.js (no cut logo) */
+/* compact-land: the name keeps whole words; the date chip wraps under it when the row is short of room */
+body[data-size="compact-land"] .u3-dg-head { flex-wrap: wrap; row-gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-dg-name { min-width: min-content; }
+body[data-size][data-low] .u3-dg-panel { padding: var(--sp-3); }
+body[data-size][data-low] .u3-dg--side-tabs { grid-template-columns: minmax(calc(var(--hit) * 3 + var(--sp-3) * 2 + var(--sp-2)), 2fr) minmax(0, 5fr); }
+
 /* ---- Bell window (UI-24, src/ui3/bell.js): a panel under the top bar on medium and expanded (right aligned, ends
    above the dock), a side sheet on compact-land, a sheet above the dock on compact-port. Gifts to claim, the Hunt card,
    the rows under Today and Earlier, the Pager (3.4). ---- */
@@ -1441,3 +1467,5 @@ body[data-size="compact-land"] .u3-sdlg { gap: var(--sp-4); padding: var(--sp-4)
 body[data-size="compact-land"] #u3ShopDlg .u3-scrim { padding: var(--sp-2) max(var(--corner-w), calc(var(--u3-sa-r) + var(--sp-2))) var(--sp-2) max(var(--sp-2), var(--u3-sa-l)); }   /* the scrim covers the whole frame (inset 0) */
 body[data-size="compact-land"] .u3-sdlg__art { width: var(--card-tile); }
 body[data-size="compact-land"] .u3-sdlg__main { gap: var(--sp-2); }
+/* The card viewer (v2 #viewer, z 95) is on the window layer in v3, so it opens above the Card picker (UI-64) and the other windows. */
+body.ui-v3 #viewer { z-index: var(--z-modal); }
