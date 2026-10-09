@@ -1,0 +1,86 @@
+/* ==== UI-20 boss detail window (main.js openBossWindowV3; design repo UI-20/approved review-2, D-71) ====
+   A dialog on medium and expanded (the boss left, the facts and the move pool right), a full sheet on the compact
+   classes (the head, the boss, the HP bar, the facts, the move pool in two columns). The scrim covers the shell. */
+#u3BossWin { --text-muted: var(--u3-text-muted); }
+#u3BossWin .u3-bw-scrim { padding: var(--sp-3) var(--sp-7); grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+body[data-size^="compact"] #u3BossWin .u3-bw-scrim { padding: calc(var(--u3-sa-t) + var(--sp-2)) calc(var(--u3-sa-r) + var(--sp-2)) calc(var(--u3-sa-b) + var(--sp-2)) calc(var(--u3-sa-l) + var(--sp-2)); }
+.u3-bw { box-sizing: border-box; width: 100%; height: 100%; min-height: 0; overflow: hidden; display: grid; gap: var(--sp-3) var(--sp-6); padding: var(--sp-6);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr) auto; grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-areas: "art head close" "art hp hp" "art facts facts" "art mlabel mlabel" "art moves moves";
+  border-radius: var(--rad-sheet); background: var(--bg-raised); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); }
+.u3-bw:focus { outline: none; }
+.u3-bw__head { grid-area: head; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-bw__close { grid-area: close; }
+.u3-bw__live { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--danger-text); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-bw__live::before { content: ""; width: var(--dot); height: var(--dot); border-radius: var(--rad-round); background: var(--danger); }
+.u3-bw__live.is-down { color: var(--text-muted); }
+.u3-bw__live.is-down::before { background: var(--text-muted); }
+.u3-bw__name { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-bw__tier { padding: var(--sp-half) var(--sp-2); border-radius: var(--rad-pill); background: var(--gold-a10); color: var(--text-secondary); font-family: var(--font-ui); font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
+.u3-bw__art { grid-area: art; position: relative; min-height: 0; border-radius: var(--rad-lg); background: var(--bg-base); overflow: hidden; }
+.u3-bw__art canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.u3-bw__hp { grid-area: hp; position: relative; height: var(--chip-md); border-radius: var(--rad-pill); background: var(--boss-hp-track); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.u3-bw__hp i { position: absolute; inset: 0 auto 0 0; width: var(--hp); background: linear-gradient(90deg, var(--boss-hp-low), var(--danger), var(--boss-hp-high)); border-radius: var(--rad-pill); }
+.u3-bw__hp span { position: relative; font-family: var(--font-num); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-primary); }
+.u3-bw__facts { grid-area: facts; margin: 0; display: grid; gap: var(--sp-2); }
+.u3-bw__facts > div { display: grid; grid-template-columns: calc(var(--card-tile) + var(--sp-7)) minmax(0, 1fr); align-items: center; gap: var(--sp-3); }
+.u3-bw__facts dt { font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-muted); }
+.u3-bw__facts dd { margin: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-bw-none { color: var(--text-muted); font-size: var(--fs-body); }
+.u3-bw-resist { display: inline-flex; align-items: center; padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); background: var(--surface-2); color: var(--text-secondary); font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
+.u3-bw-passive { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); background: var(--danger-soft); color: var(--danger-text); font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
+.u3-bw__mlabel { grid-area: mlabel; }
+.u3-bw__mpager { display: none; grid-area: mpager; justify-self: center; }
+.u3-bw.is-paged .u3-bw__mpager { display: block; }
+.u3-bw.is-paged { grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; grid-template-areas: "art head close" "art hp hp" "art facts facts" "art mlabel mlabel" "art moves moves" "art mpager mpager"; }
+.u3-bw__moves { grid-area: moves; min-height: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: row; align-content: start; gap: var(--sp-2); }
+.u3-bw__moves li { display: flex; flex-direction: column; gap: var(--sp-half); padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); }
+.u3-bw__moves b { color: var(--gold); font-size: var(--fs-body); }
+.u3-bw__moves span { color: var(--text-primary); font-size: var(--fs-small); line-height: var(--lh-small); }
+/* phones: one column of parts, the boss under the name */
+body[data-size^="compact"] .u3-bw { padding: var(--sp-4); gap: var(--sp-2); grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
+  grid-template-areas: "head close" "art art" "hp hp" "facts facts" "mlabel mlabel" "moves moves"; }
+body[data-size="compact-port"] .u3-bw__name { font-size: var(--fs-stat); }
+body[data-size="compact-land"] .u3-bw { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) auto; grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-areas: "art head close" "art hp hp" "art facts facts" "art mlabel mlabel" "art moves moves"; }
+body[data-size^="compact"] .u3-bw__moves li { padding: var(--sp-1) var(--sp-2); }
+body[data-size^="compact"] .u3-bw__moves b { font-size: var(--fs-small); }
+body[data-size^="compact"] .u3-bw__moves span { font-size: var(--fs-caption); }
+body[data-size^="compact"] .u3-bw__facts { gap: var(--sp-1); }
+body[data-size^="compact"] .u3-bw__facts > div { grid-template-columns: var(--card-tile) minmax(0, 1fr); }
+/* dense (measured, and always on landscape phones as drawn): one line per move; the boss render is never hidden (review-2) */
+.u3-bw.is-dense .u3-bw__moves, body[data-size="compact-land"] .u3-bw__moves { gap: var(--sp-1); }
+.u3-bw.is-dense .u3-bw__moves li, body[data-size="compact-land"] .u3-bw__moves li { display: block; padding: var(--sp-1) var(--sp-2); }
+.u3-bw.is-dense .u3-bw__moves b, body[data-size="compact-land"] .u3-bw__moves b { margin-right: var(--sp-1); font-size: var(--fs-small); }
+.u3-bw.is-dense .u3-bw__moves span, body[data-size="compact-land"] .u3-bw__moves span { font-size: var(--fs-caption); }
+
+/* UI-20 as drawn: the move pool fills column by column; on expanded the window is a centered dialog, not the full frame */
+.u3-bw__moves { grid-auto-flow: column; grid-template-rows: repeat(var(--bw-rows, 1), auto); }
+body[data-size="expanded"] .u3-bw { justify-self: center; width: min(100%, calc(var(--card-tile-max) * 7)); }
+.u3-bw__facts { gap: var(--sp-1); }
+/* landscape phones: the Close button stays out of the Discord corner zone (2.3), as the card picker */
+body[data-size="compact-land"] .u3-bw { padding-right: max(var(--sp-4), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-2))); }
+/* phones in portrait: the render keeps its room (about one and a quarter card tiles high; the approved frame is 146 px, the safe frame takes 48 px more at the top); the move text keeps the small size */
+body[data-size="compact-port"] .u3-bw { grid-template-rows: auto minmax(calc(var(--card-tile) * 5 / 4), 1fr) auto auto auto auto; }
+body[data-size="compact-port"] .u3-bw.is-paged { grid-template-rows: auto calc(var(--card-tile) * 5 / 4) auto auto auto minmax(0, 1fr) auto; grid-template-areas: "head close" "art art" "hp hp" "facts facts" "mlabel mlabel" "moves moves" "mpager mpager"; }
+body[data-size="compact-port"] .u3-bw:not(.is-dense) .u3-bw__moves li { padding: var(--sp-2) var(--sp-3); }
+body[data-size="compact-port"] .u3-bw:not(.is-dense) .u3-bw__moves b { font-size: var(--fs-body); }
+body[data-size="compact-port"] .u3-bw:not(.is-dense) .u3-bw__moves span { font-size: var(--fs-small); }
+/* landscape phones: the facts in two columns (Attack, Weakness / Resistance, Passive) */
+body[data-size="compact-land"] .u3-bw__facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-1) var(--sp-4); }
+body[data-size="compact-land"] .u3-bw__facts > div { grid-template-columns: auto minmax(0, 1fr); }
+/* medium, tall (frame medium-768x1024): the render across the top, then the head with Close (the frame puts Close on the render: G3 reports that as an overlap), the HP bar, the facts, the move pool */
+body[data-size="medium"] .u3-bw { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(calc(var(--card-tile) * 2), 1fr) auto auto auto auto auto;
+  grid-template-areas: "art art" "head close" "hp hp" "facts facts" "mlabel mlabel" "moves moves"; }
+body[data-size="medium"] .u3-bw.is-paged { grid-template-rows: minmax(calc(var(--card-tile) * 2), 1fr) auto auto auto auto minmax(0, 1fr) auto; grid-template-areas: "art art" "head close" "hp hp" "facts facts" "mlabel mlabel" "moves moves" "mpager mpager"; }
+
+/* medium, short (frame medium-917x692): the render beside the head, the HP bar and the facts; the move pool across the full width under both */
+body[data-size="medium"][data-short] .u3-bw { grid-template-columns: minmax(0, calc(var(--card-tile) * 17 / 5)) minmax(0, 1fr) auto; grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-areas: "art head close" "art hp hp" "art facts facts" "mlabel mlabel mlabel" "moves moves moves"; }
+body[data-size="medium"][data-short] .u3-bw.is-paged { grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; grid-template-areas: "art head close" "art hp hp" "art facts facts" "mlabel mlabel mlabel" "moves moves moves" "mpager mpager mpager"; }
+.u3-bw .u3-hs-atk { white-space: nowrap; }
+/* low landscape phones (D-117, under 400 px usable height): the pager shares the row of the "Move pool" label, so the pool keeps the height */
+body[data-low] .u3-bw.is-paged { grid-template-rows: auto auto auto auto minmax(0, 1fr); grid-template-areas: "art head close" "art hp hp" "art facts facts" "art mlabel mlabel" "art moves moves"; }
+body[data-low] .u3-bw.is-paged .u3-bw__mpager { grid-area: mlabel; justify-self: end; }
+body[data-low] .u3-bw.is-paged .u3-bw__mlabel { justify-self: start; }
+body[data-low] .u3-bw { gap: var(--sp-1) var(--sp-3); }
