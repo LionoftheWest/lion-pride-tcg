@@ -1572,7 +1572,7 @@ function fitFightV3() {
   const ft = document.querySelector('.u3-ft'), stage = ft?.querySelector('.u3-ft-stage'), hand = ft?.querySelector('.u3-ft-hand'), grid = el('huntGrid');
   if (!stage || !hand || !grid) return;
   // measure again when the fight area changes size (the safe area, the fonts, the shell rows settle after the paint)
-  if (!ft._ro && window.ResizeObserver) { let last = ''; ft._ro = new ResizeObserver(() => { const k = `${ft.clientWidth}x${ft.clientHeight}`; if (k !== last) { last = k; requestAnimationFrame(fitFightV3); } }); ft._ro.observe(ft); }
+  if (!ft._ro && window.ResizeObserver) { let last = ''; ft._ro = new ResizeObserver(() => { const k = `${ft.clientWidth}x${ft.clientHeight}`; if (k !== last) { last = k; requestAnimationFrame(fitFightV3); } }); ft._ro.observe(ft); document.fonts?.ready.then(() => requestAnimationFrame(fitFightV3)); }
   ft.classList.remove('is-short', 'is-tight', 'is-min');
   grid.style.removeProperty('--ft-cap'); hand.style.removeProperty('flex-basis');
   // the feed list is trimmed by fitFeedRows; every other part must fit whole
@@ -1583,7 +1583,11 @@ function fitFightV3() {
   // still too short: the cards give way (portrait: a smaller card; the other classes: a lower hand panel), as the
   // approved frames (EXC-1, the cards below 80 px), down to the mini size
   if (document.body.dataset.size === 'compact-port') {
-    for (let cap = TOKENS['card-tile']; over() && cap > TOKENS['card-mini']; cap -= 4) grid.style.setProperty('--ft-cap', `${cap - 4}px`);
+    // the cards get smaller first, to the mini size and one step; then the boss render gives way; then the mini size
+    const shrink = (floor) => { for (let cap = parseFloat(grid.style.getPropertyValue('--ft-cap')) || TOKENS['card-tile']; over() && cap > floor; cap -= 4) grid.style.setProperty('--ft-cap', `${cap - 4}px`); };
+    shrink(TOKENS['card-mini'] + TOKENS['sp-2']);
+    if (over()) ft.classList.add('is-min');
+    shrink(TOKENS['card-mini']);
   } else {
     const ah = ft.clientHeight || 1;
     // the last step (a short landscape phone with the safe area): the boss render gives way, the facts and the HP bar share a line
