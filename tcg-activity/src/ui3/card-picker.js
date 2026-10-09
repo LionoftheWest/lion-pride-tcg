@@ -200,6 +200,7 @@ function onResize() { cancelAnimationFrame(rt); rt = requestAnimationFrame(() =>
 
 function onKey(e) {
   if (!cur || e.key !== 'Escape') return;
+  if (e.u3Done || document.querySelector('#viewer:not(.hidden)')) return;   // the card details are open above: Escape closes them first
   e.preventDefault();
   if (cur.warn) { cur.warn = null; paint(); } else if (cur.panel) { cur.panel = false; paint(); } else closeCardPicker();
 }

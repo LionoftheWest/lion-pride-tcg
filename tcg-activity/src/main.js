@@ -34,7 +34,8 @@ import { openCardPicker } from './ui3/card-picker.js';
 import { fmtFor } from './ui3/number.js';
 import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
-import { button as ui3Button, iconButton as ui3IconButton } from './ui3/components.js';
+import { button as ui3Button } from './ui3/components.js';
+import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
 import { initSettingsWindow } from './ui3/settings.js';
 import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
 import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, fitPacks, rarePacks, packStarts, newMark } from './ui3/pack-reveal.js';
@@ -946,7 +947,7 @@ function showRevealV3(msg) {
      <div class="tap-prompt" id="tapPrompt">Tap the pack to rip it open</div>
      <div class="reveal-grid hidden" id="revealGrid">${tiles}</div>
      <div class="reacts u3-reacts" id="reactBar">${REACTIONS.map((e) => `<button type="button" class="react" data-emoji="${e}" aria-label="React ${e}">${e}</button>`).join('')}
-       <span class="u3-reveal__ctl">${ui3Button({ label: 'Reveal all', variant: 'primary', data: { reveal: 'all' } })}${ui3IconButton({ icon: 'x', label: 'Close', data: { reveal: 'close' } })}</span>
+       <span class="u3-reveal__ctl">${u3Button({ label: 'Reveal all', variant: 'primary', data: { reveal: 'all' } })}${u3IconButton({ icon: 'x', label: 'Close', data: { reveal: 'close' } })}</span>
      </div></div>`;
   el('reactBar').addEventListener('click', (e) => {
     const emoji = e.target?.closest?.('[data-emoji]')?.dataset.emoji;
@@ -990,9 +991,8 @@ function tearPackV3(rare, set) {
     const h = stage.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - (el('reactBar')?.offsetHeight || 0) - gap;
     const fit = fitCards(revealItems.length, w, h, parseFloat(getComputedStyle(grid).columnGap) || gap);
     grid.style.setProperty('--u3-fc-w', `${fit.cw}px`);
-    const sb = stage.getBoundingClientRect();
-    let ox = sb.left + sb.width / 2;
-    let oy = sb.top + sb.height * 0.4;
+    let ox = window.innerWidth / 2;
+    let oy = window.innerHeight * 0.4;
     if (pack) {
       const pr = pack.getBoundingClientRect();
       ox = pr.left + pr.width / 2;
@@ -2865,6 +2865,9 @@ function stepViewer(d) {
   viewerNav?.opts.onStep?.(n);
 }
 function openViewer(card, opts = {}) {
+  // v3: the viewer opens above the window that asked for it (the Card picker, the boss window): same layer, last in
+  // the page (Nathan 2026-10-08: the card details opened under the squad picker)
+  if (document.body.classList.contains('ui-v3') && el('viewer') && el('viewer') !== document.body.lastElementChild) document.body.appendChild(el('viewer'));
   const list = Array.isArray(opts.list) ? opts.list : [];
   const i = list.findIndex((x) => String(x.id) === String(card.id));
   viewerNav = list.length > 1 && i >= 0 ? { list, i, opts } : null;
@@ -3154,7 +3157,7 @@ function initViewer() {
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !el('viewer').classList.contains('hidden')) { stepViewer(e.key === 'ArrowLeft' ? -1 : 1); return; }
     if (e.key !== 'Escape') return;
     if (!el('bossModal').classList.contains('hidden')) closeBossModal();
-    else if (!el('viewer').classList.contains('hidden')) closeViewer();
+    else if (!el('viewer').classList.contains('hidden')) { closeViewer(); e.u3Done = true; }   // a v3 window under it keeps open (card-picker.js)
     else if (!el('stage').classList.contains('hidden')) { if ((revealItems.length && flippedCount >= revealItems.length) || el('stage').classList.contains('is-out')) endReveal(); } // locked until all revealed (v3: until the cards are out, when the close button shows)
     else if (!el('board').classList.contains('hidden')) closeBoard();
   });
