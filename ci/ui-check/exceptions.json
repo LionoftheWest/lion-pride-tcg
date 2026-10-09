@@ -1,8 +1,20 @@
 [
-  { "decision": "D-120", "id": "UI-35", "screen": "pack-multi-10", "size": "1990x830", "rule": "empty",
-    "why": "10 packs in the approved one-row layout leave an empty band of 29% above and below the row (frame expanded-1990x830-2-waiting-10-packs)." },
-  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-cards", "size": "667x375", "rule": "tap",
-    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." },
-  { "decision": "D-121", "id": "UI-35", "screen": "pack-multi-all", "size": "667x375", "rule": "tap",
-    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap." }
+  {"decision": "D-120", "id": "UI-35", "screen": "pack-multi-10", "size": "1990x830", "rule": "empty",
+    "why": "10 packs in the approved one-row layout leave an empty band of 29% above and below the row (frame expanded-1990x830-2-waiting-10-packs)."},
+  {"decision": "D-121", "id": "UI-35", "screen": "pack-multi-cards", "size": "667x375", "rule": "tap",
+    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap."},
+  {"decision": "D-121", "id": "UI-35", "screen": "pack-multi-all", "size": "667x375", "rule": "tap",
+    "why": "25 cards on one screen (D-72) fit only at 35x49 px at this size; Reveal all turns every card in one tap."},
+  {"decision": "D-139", "id": "UI-25", "screen": "trades", "size": "1180x820", "rule": "empty",
+    "why": "The approved Trades frames for the wide windows (UI-25/approved expanded-1990x830-trades, the same layout at 1180x820) leave this band; Nathan accepted it as drawn (D-139, 2026-10-09)."},
+  {"decision": "D-139", "id": "UI-25", "screen": "trades-picker", "size": "1180x820", "rule": "empty",
+    "why": "The approved Trades frames for the wide windows (UI-25/approved expanded-1990x830-trades, the same layout at 1180x820) leave this band; Nathan accepted it as drawn (D-139, 2026-10-09)."},
+  {"decision": "D-139", "id": "UI-25", "screen": "trades-pick-back", "size": "1180x820", "rule": "empty",
+    "why": "The approved Trades frames for the wide windows (UI-25/approved expanded-1990x830-trades, the same layout at 1180x820) leave this band; Nathan accepted it as drawn (D-139, 2026-10-09)."},
+  {"decision": "D-139", "id": "UI-25", "screen": "trades", "size": "1990x830", "rule": "empty",
+    "why": "The approved Trades frames for the wide windows (UI-25/approved expanded-1990x830-trades, the same layout at 1180x820) leave this band; Nathan accepted it as drawn (D-139, 2026-10-09)."},
+  {"decision": "D-139", "id": "UI-25", "screen": "trades-picker", "size": "1990x830", "rule": "empty",
+    "why": "The approved Trades frames for the wide windows (UI-25/approved expanded-1990x830-trades, the same layout at 1180x820) leave this band; Nathan accepted it as drawn (D-139, 2026-10-09)."},
+  {"decision": "D-139", "id": "UI-25", "screen": "trades-pick-back", "size": "1990x830", "rule": "empty",
+    "why": "The approved Trades frames for the wide windows (UI-25/approved expanded-1990x830-trades, the same layout at 1180x820) leave this band; Nathan accepted it as drawn (D-139, 2026-10-09)."}
 ]
