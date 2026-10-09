@@ -34,9 +34,12 @@ const old = process.argv.includes('--old');
 const SUP = new URL('../../tcg-bot/supabase/', import.meta.url);
 const strip = (s) => s.replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
 const file = (n) => strip(readFileSync(fileURLToPath(new URL(n, SUP)), 'utf8'));
-const src = file('dungeon_combat_log.sql');
+// The live-version guard of this file is left out (2026-10-09): dungeon_rules_supports_targets.sql replaced dungeon_enemy_turn, so
+// the guard refuses the file on a current database (as designed). The test checks what the file DOES, on its own text.
+const src = file('dungeon_combat_log.sql').replace(/do \$g\$[\s\S]*?end \$g\$;/, '');
 const adminSrc = file('admin_read.sql');
-const RERUN = ['gauntlet.sql', 'balance_settings_numbers.sql', 'balance_dungeon_numbers.sql', 'balance_table.sql', 'damage_log.sql', 'admin_read.sql', 'dungeon_combat_log.sql'].map(file);
+const RERUN = ['gauntlet.sql', 'balance_settings_numbers.sql', 'balance_dungeon_numbers.sql', 'balance_table.sql', 'damage_log.sql', 'admin_read.sql', 'dungeon_combat_log.sql'].map(file)
+  .map((s) => s.replace(/do \$g\$[\s\S]*?end \$g\$;/, ''));   // 2026-10-09: the guards of the old files are left out (see src)
 // The functions BEFORE this file: the live text of 2026-10-07 (the schema snapshot at git 95cf127).
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const OLD = ['dungeon_attack', 'dungeon_support', 'dungeon_enemy_turn', 'dungeon_choose'].map((n) => {

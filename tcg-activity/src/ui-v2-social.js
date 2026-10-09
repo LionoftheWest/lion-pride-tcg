@@ -664,7 +664,7 @@ function paintTrade() {
   const packMode = tr.mode === 'gift' && tr.giftKind === 'pack';
   el('main').innerHTML = `<div class="v2-trade${packMode ? ' pack-mode' : ''}${tr.respond ? ' responding' : ''}">
     <section class="tr-main">
-      <div class="tr-top">${commTabs()}${explainBtn('trades')}<span class="grow"></span>
+      <div class="tr-top">${commTabs()}${explainBtn('trades')}${V3() && tr.tab === 'trades' && !tr.respond ? button3({ label: 'Members', icon: 'chevron-left', data: { backpick: '1' } }) : ''}<span class="grow"></span>
         <div class="seg" id="trMode"><button data-m="offer" class="${tr.mode === 'offer' ? 'on' : ''}">⇄ Offer</button><button data-m="gift" class="${tr.mode === 'gift' ? 'on' : ''}">🎁 Gift</button></div></div>
       <div class="tr-members" id="trMembers"><span class="side-h">To</span>
         ${tr.members.map((p) => `<button class="tr-mem${tr.to?.id === p.id ? ' on' : ''}" data-id="${esc(p.id)}">${avatarHTML(p.id, p.name, 'xs')}<span>${nameBadge(p.id, p.name, isPhone())}</span>${p.voice ? '<i class="tr-live"></i>' : ''}</button>`).join('')}
@@ -707,6 +707,8 @@ function paintTrade() {
     await loadTheirs(tr.to.id); paintTrade();
   };
   wireFind(async () => { await loadTheirs(tr.to.id); paintTrade(); });
+  // v3: back to the Member picker (UI-65; Nathan 2026-10-08), not the v1 member search
+  main.querySelector('[data-backpick]')?.addEventListener('click', () => { tr.v3pick = true; tr.respond = null; paintTrade(); });
   el('trClear').addEventListener('click', () => { tr.give = null; tr.get = null; tr.side = 'mine'; tr.respond = null; tr.page = 0; tr.msg = ''; paintTrade(); });
   // Pick my card for an incoming offer: the grid shows my cards of that rarity.
   el('trSend').addEventListener('click', send);

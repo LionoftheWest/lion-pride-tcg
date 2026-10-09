@@ -32,6 +32,12 @@ test('each 12.6 item comes from its detector', () => {
   const rules = defectsOf(r, null).map((x) => x.rule).sort();
   assert.deepEqual(rules, ['bleed', 'bleed', 'contrast', 'corner-safe', 'covered', 'ellipsis', 'empty', 'icon-name', 'overlap', 'scroll', 'small-text', 'tap'].sort());
 });
+test('a window box in the corner zone is a corner-safe defect only on a screen that opts in (UI-36)', () => {
+  const r = clean('dailies', '932x430'); r.checks.windowCorner = [50, 54]; r.checks.window = { sel: '#v2Dailies.u3-dl' };
+  assert.deepEqual(defectsOf(r, null).map((x) => x.rule), ['corner-safe']);
+  const h = clean('home', '932x430'); h.checks.windowCorner = [50, 54];
+  assert.equal(defectsOf(h, null).length, 0, 'the other windows are not enforced yet');
+});
 test('missing vs 1990x830: a control in view at expanded and absent or outside here', () => {
   const exp = clean('home', '1990x830'); exp.checks.keys = { '#boardBtn': { inView: true }, '#mute': { inView: false } };
   const r = clean('home', '430x932'); r.checks.keys = {};
@@ -56,6 +62,9 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('pack-multi', '.u3-mpacks > .u3-mrow > .u3-mpack'), 'UI-35');
+  assert.equal(ownerOf('pack-multi-cards', '.mr-main > #mrGrid.mr-grid > .mr-card'), 'UI-35');
+  assert.equal(ownerOf('pack-multi', '#topbar > #shopBtn'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#main.has-adv > .dg-tabs.v2-subtabs > .dg-tab'), 'UI-02');   // the shell sub-tab row
   assert.equal(ownerOf('dungeon', '.u3-dg-tabs > .u3-seg > .u3-seg__item'), 'UI-46');               // the lobby's own tabs (Rule / Best / Top 3)
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
@@ -104,4 +113,28 @@ test('verdict with a plan: only the planned screens must have results; an uncove
   assert.equal(verdict(only, reg, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon'] }).fails.length, 0);
   const v = verdict(only, reg, { title: 'UI-46 + UI-49', browsers: ['chromium'], screens: ['dungeon'] });
   assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-49', 'no screen in the check']]);
+});
+
+test('an accepted exception (decision ID, one ID/screen/size/rule) does not fail; anything else still fails', () => {
+  const rs = full();
+  const cell = rs.find((r) => r.screen === 'home' && r.size === '430x932');
+  cell.checks.emptyBandY = 0.29;
+  const other = rs.find((r) => r.screen === 'home' && r.size === '375x667');
+  other.checks.emptyBandY = 0.29;
+  const ex = [{ decision: 'D-999', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty', why: 'test' }];
+  const v = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'], exceptions: ex });
+  assert.equal(v.defects.filter((x) => x.accepted === 'D-999').length, 1);
+  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '375x667']]);   // the other size still fails
+  const none = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'] });
+  assert.equal(none.fails.length, 2);
+});
+
+test('a bad exception entry stops the gate', () => {
+  for (const bad of [{ id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty', why: 'x' },           // no decision
+    { decision: 'D-1', id: 'UI-03', screen: 'nope', size: '430x932', rule: 'empty', why: 'x' },
+    { decision: 'D-1', id: 'UI-03', screen: 'home', size: '1x1', rule: 'empty', why: 'x' },
+    { decision: 'D-1', id: 'UI-03', screen: 'home', size: '430x932', rule: 'not-checked', why: 'x' },
+    { decision: 'D-1', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty' }]) {                  // no why
+    assert.throws(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: [bad] }));
+  }
 });

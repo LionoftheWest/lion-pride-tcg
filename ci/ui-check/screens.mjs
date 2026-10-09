@@ -22,6 +22,8 @@ export const SCREENS = {
   'trades':              { id: 'UI-25', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`]], input: '#trFind, #main input[type=search], #main input[type=text]' },
   // v3: the Trades tab opens with the Member picker (UI-65); a tap on a member opens the builder. v2: the builder.
   'trades-pick':         { id: 'UI-25', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main .u3-mp-tile__pick', [['wait', 0]]], ['wait', 1.5], ['js', '.v2-trade .v2-cell']] },
+  // v3: from the trade builder, the Members button (UI-65, Nathan 2026-10-08) goes back to the Member picker, not the v1 search.
+  'trades-pick-back':    { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main .u3-mp-tile__pick', [['wait', 0]]], ['wait', 1.5], ['js', '[data-backpick]'], ['wait', 1.5], ['js', '#main .u3-mp .u3-search__input']] },
   // The Member picker (UI-65) is the Trades tab content under v3 (D-43, 6.5b): a defect outside it belongs to Trades ('under').
   'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
   'trades-explain':      { id: 'UI-39', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
@@ -51,7 +53,7 @@ export const SCREENS = {
   'shop-confirm':        { id: 'UI-43', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
   // The Dailies window (UI-36) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
   // The first wait: the menu shows the Dailies tile only after /api/dailies answered (the tile of a window that is off is hidden).
-  'dailies':             { id: 'UI-36', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 3], ['js', '#menuBtn'], ['js', '[data-menu="dailies"]'], ['wait', 1.5]] },
+  'dailies':             { id: 'UI-36', under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 3], ['js', '#menuBtn'], ['js', '[data-menu="dailies"]'], ['wait', 1.5]] },
   // The bell window (UI-24) opens over Home: a defect outside the window belongs to Home ('under'). tiny has no top bar (D-06).
   'bell':                { id: 'UI-24', under: 'UI-03', notOn: ['tiny'], steps: [['js', '#bellBtn']] },
   // The Settings window (UI-61) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
@@ -63,6 +65,17 @@ export const SCREENS = {
   'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
   // The Open window (UI-33) opens over Home: a defect outside the window belongs to Home ('under'). tiny has no dock (D-06).
   'open-chooser':        { id: 'UI-33', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen']] },
+  // The single pack reveal (UI-34): the open answer comes from serve.mjs (openAnswer, 1 pack with a Full Art).
+  // Waiting (the idle loop), then the cards face down after the tap, then every card turned (Reveal all).
+  'pack-single':         { id: 'UI-34', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="1"]'], ['wait', 1.5]] },
+  'pack-single-cards':   { id: 'UI-34', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="1"]'], ['wait', 1.5], ['js', '#packOpen'], ['wait', 4]] },
+  // The multi-pack reveal (UI-35): 5 and 10 packs waiting, then (5 packs) the cards face down after one tap on a pack,
+  // then every card turned. The 10-pack cards (50 on one screen) are below 44 px on 375x667 and 932x430 by design (D-108).
+  'pack-multi':          { id: 'UI-35', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="5"]'], ['wait', 1.5]] },
+  'pack-multi-10':       { id: 'UI-35', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="10"]'], ['wait', 1.5]] },
+  'pack-multi-cards':    { id: 'UI-35', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="5"]'], ['wait', 1.5], ['js', '.u3-mpack'], ['wait', 5]] },
+  'pack-multi-all':      { id: 'UI-35', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="5"]'], ['wait', 1.5], ['js', '.u3-mpack'], ['wait', 5], ['js', '#mrAll'], ['wait', 4]] },
+  'pack-single-all':     { id: 'UI-34', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="1"]'], ['wait', 1.5], ['js', '#packOpen'], ['wait', 4], ['js', '[data-reveal="all"]'], ['wait', 4]] },
 };
 
 // The shell (top bar, dock, sub-tabs) is on every screen: a defect there belongs to the shell IDs.
@@ -78,6 +91,9 @@ export function ownerOf(screen, where) {
   if (/#u3Settings[a-z]*\b|\.u3-st\b|\.u3-st[-_]/.test(where)) return 'UI-61';
   if (/\.u3-dgc\b|\.u3-dgc[-_]/.test(where)) return 'UI-48';
   if (/\.u3-logo\b/.test(where)) return 'UI-01';   // the top bar logo (its path can stop above #topbar)
+  // The pack reveal stage covers the screen under it: a defect in the stage belongs to the reveal screen.
+  // A path keeps 3 levels, so the stage parts are named too (the pack, the cards, the bar, the effects).
+  if (/#stage[a-z]*\b|\.u3-reveal|\.u3-pack|.u3-mpack|.u3-mhint|.u3-mrow|.u3-mwait|.u3-newmark|.reveal-grid|\.fc\b|\.pf\b|\.pf-face|\.react\b|\.u3-reacts|\.tap-prompt|\.sunrays|\.rare-banner|\.spark\b|\.mr-/.test(where)) return SCREENS[screen].id;
   if (/#(v2Shards|shopBtn)[a-z]*\b/.test(where)) return 'UI-42';
   if (/(^|\s|>\s*)#(topbar|dock|shardsBtn|dailyBtn|helpBtn|bellBtn|boardBtn|reportBtn|avatarBtn|dockOpen|menuBtn|v2Avatar)[a-z]*\b/.test(where) || /\.dk\b/.test(where)) return 'UI-01';
   if (/v2-subtabs|(?<![\w-])dg-tabs\b|#commTabs|#colTabs/.test(where)) return 'UI-02';
