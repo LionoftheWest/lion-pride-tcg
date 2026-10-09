@@ -44,6 +44,8 @@
       const kids = [...e.children].filter((k) => vis(k) && !/(absolute|fixed)/.test(getComputedStyle(k).position));
       // b2) a child that pokes out past the right or bottom edge of its flex/grid box
       for (const k of kids) { const kr = k.getBoundingClientRect(); const d = Math.max(kr.right - r.right, kr.bottom - r.bottom); if (d > 3 && /(visible)/.test(cs.overflow)) out.push(['pokeOut', path(k) + '  past ' + name(e), Math.round(d)]); }
+      // b3) a shop card's absolute mark (the New chip) wider than its card: sticks out past the card's left or right edge (UI-43)
+      if (e.classList.contains('u3-shopitem')) for (const k of [...e.children].filter((x) => vis(x) && getComputedStyle(x).position === 'absolute')) { const kr = k.getBoundingClientRect(); const d = Math.max(r.left - kr.left, kr.right - r.right); if (d > 1) out.push(['pokeOut', path(k) + '  past ' + name(e), Math.round(d)]); }
       for (let i = 0; i < kids.length; i++) for (let j = i + 1; j < kids.length; j++) {
         const a = kids[i].getBoundingClientRect(), b = kids[j].getBoundingClientRect();
         const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left), oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);

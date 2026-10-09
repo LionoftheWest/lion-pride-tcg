@@ -1331,21 +1331,13 @@ body[data-size="compact-land"] .u3-shop__stock { --u3-sG: var(--sp-4); gap: var(
 .u3-shop__timer > .u3-ico { color: var(--gold); }
 .u3-shop__timer b { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .u3-shop__body { flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; display: flex; gap: var(--u3-sG); align-content: flex-start; }
-.u3-shop__pager { flex: none; display: flex; justify-content: center; }
-.u3-shop__pager[hidden] { display: none; }
-.u3-shop__pager .u3-pager__arrow { min-width: 0; }   /* style.css "nav button" sets a min width (the old tab bar) */
-/* the layouts (shopLayout): row = compact-land; wide = medium landscape, expanded; tall = medium portrait; port = pages */
+/* the layouts (fitStock): row / stack = the compact classes (one row of 10, or Featured + Illustrated Rare over the Normal; see 90-ui-43.css); wide = medium landscape, expanded; tall = medium portrait */
 .u3-shop__stock[data-layout="row"] .u3-shop__body { flex-direction: row; justify-content: center; }
 .u3-shop__stock[data-layout="wide"] .u3-shop__body { display: grid; grid-template-columns: auto auto; grid-template-areas: "feat ir" "feat nm"; justify-content: center; align-content: center; }
 .u3-shop__stock[data-layout="tall"] .u3-shop__body { display: grid; grid-template-columns: auto auto; grid-template-areas: "feat ir" "nm nm"; justify-content: center; align-content: center; }
-.u3-shop__stock[data-layout="port"] .u3-shop__body { flex-direction: column; gap: 0; }
-.u3-shop__stock[data-layout="port"] .u3-sgroup__label-wrap:not(:first-child) { margin-top: var(--u3-sG); }
-.u3-shop__stock[data-layout="port"] .u3-sgroup__label-wrap + .u3-sgroup__items { margin-top: var(--u3-si); }
-.u3-shop__stock[data-layout="port"] .u3-sgroup__items + .u3-sgroup__items { margin-top: var(--u3-sg); }
 .u3-sgroup { display: flex; flex-direction: column; align-items: flex-start; gap: var(--u3-si); min-width: 0; }
 .u3-sgroup--feat { grid-area: feat; } .u3-sgroup--ir { grid-area: ir; } .u3-sgroup--nm { grid-area: nm; }
 .u3-sgroup__items { display: flex; gap: var(--u3-sg); }
-.u3-shop__stock[data-layout="port"] .u3-sgroup__items { justify-content: center; }
 .u3-sgroup__label { display: flex; align-items: center; gap: var(--sp-2); white-space: nowrap; font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label);
   letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-secondary); }
 .u3-sgroup__label--feat { color: var(--rarity-secret_rare-text); }

@@ -64,6 +64,8 @@ export function prefetchSets(api) {
 /** The open used this set: select it next time (D-85), and refetch the owned counts. */
 export function noteOpened(setId) { if (setId) sessionLast = setId; cache = null; }
 export const isOpen = () => !!$('u3OpenHost');
+/** The set the member opens next (D-85): this session's last open, else the server's last_set. */
+export const knownLastSet = () => sessionLast || cache?.last_set || null;
 
 function setTile(s, selected) {
   const cover = s.cover_image_url
