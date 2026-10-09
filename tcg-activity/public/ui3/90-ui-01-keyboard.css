@@ -1,0 +1,6 @@
+/* ==== UI-01 shell: the dock while the keyboard is open (D-118; design.md 2.3) ====
+   Every class keeps the dock while typing (ui3.css, P1). On compact-land only, the keyboard leaves about 50 px, so the
+   dock gives way while body[data-kb] is set (size-class.js) and the screens get its height back. It returns when the
+   keyboard closes. The selector is longer than the keep-the-dock rule in ui3.css, so it wins on any file order. */
+body.ui-v2.ui-v3[data-size][data-size="compact-land"][data-kb] { --dock-h: var(--u3-none); }
+body.ui-v2.ui-v3[data-size][data-size="compact-land"][data-kb] #dock { display: none; }

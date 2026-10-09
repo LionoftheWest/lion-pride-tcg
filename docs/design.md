@@ -110,6 +110,7 @@ The UI check (section 12.6) runs every screen and every overlay at these sizes. 
 - Corner buttons: Discord puts Leave and collapse in the corners. Keep every control out of the corner zones. **[CI]** (G-013)
 - Header: in portrait, the inset can arrive after the first frame. The shell reads the inset again when it changes. (G-014)
 - Keyboard: the shell exposes the keyboard height from `visualViewport`. The keyboard never covers the focused text box. (G-015)
+- Dock while typing: every class keeps the dock while the keyboard is open (P1). On compact-land only, the dock gives way while `body[data-kb]` is set and returns when the keyboard closes, because the keyboard leaves about 50 px and the search fields need that space. (D-118)
 - Platform: the shell reads iOS, Android, desktop or web from the SDK, and owns each platform difference. (G-016)
 
 ## 3. Screen areas and layout models
@@ -974,6 +975,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-82 | Same odds for every set | Every set uses the one `pulls` odds row (Nathan, 2026-10-07: "Yes same odds") |
 | D-83 | Set code on the card | Each card shows its set code with its number, for example "S2 · #014"; no set symbol (Nathan, 2026-10-07: "Set Code on the card") |
 | D-84 | Rewards from all sets | Dungeon, Shop and other card rewards draw from every pullable set; only packs choose a set (Nathan, 2026-10-07: "I like completely random odds still across all sets") |
+| D-118 | The dock gives way on compact-land while typing | On compact-land, while the keyboard is open (`body[data-kb]`), the dock gives way and returns when the keyboard closes. Every other class keeps the dock while typing (P1). (Nathan, 2026-10-08: "On compact-land, while the keyboard is open, the dock gives way; it returns when the keyboard closes. Every other class keeps the dock while typing")
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 
