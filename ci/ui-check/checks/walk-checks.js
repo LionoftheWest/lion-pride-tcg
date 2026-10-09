@@ -22,6 +22,7 @@
     if (z >= wz) { wz = z; win = e; }
   }
   const winRoot = win;
+  const hadWin = !!win;
   if (win) {
     const r = win.getBoundingClientRect();
     if (r.width >= vw - 2 && r.height >= vh - 2) {
@@ -44,6 +45,8 @@
     if (hit && !win.contains(hit) && !hit.contains(win)) out.covered.push([k, path(hit), 0]);
   }
   out.windowOutside = Math.round(Math.max(0, -wr.left, -wr.top, wr.right - vw, wr.bottom - vh));
+  // the window box itself keeps out of the Discord corner zone on a phone (2.3: Discord puts its buttons over the corner; a window under them is cut off)
+  if (phone && hadWin && wr.right > vw - 120 && wr.left < vw && wr.bottom > 0 && wr.top < 60) out.windowCorner = [Math.round(Math.min(wr.right, vw) - Math.max(wr.left, vw - 120)), Math.round(Math.min(wr.bottom, 60) - Math.max(wr.top, 0))];
   // 4) interactive elements: tap size, covered buttons, corner zone, keys for the desktop compare
   const ISEL = 'button, a[href], input, select, textarea, [role=button], [role=tab], .v2-cell, [data-member], [data-buy], [data-tab], [data-adv], [data-pane]';
   const small = [], tiny = [], coveredBtns = [], corner = [], keys = {};

@@ -32,6 +32,12 @@ test('each 12.6 item comes from its detector', () => {
   const rules = defectsOf(r, null).map((x) => x.rule).sort();
   assert.deepEqual(rules, ['bleed', 'bleed', 'contrast', 'corner-safe', 'covered', 'ellipsis', 'empty', 'icon-name', 'overlap', 'scroll', 'small-text', 'tap'].sort());
 });
+test('a window box in the corner zone is a corner-safe defect only on a screen that opts in (UI-36)', () => {
+  const r = clean('dailies', '932x430'); r.checks.windowCorner = [50, 54]; r.checks.window = { sel: '#v2Dailies.u3-dl' };
+  assert.deepEqual(defectsOf(r, null).map((x) => x.rule), ['corner-safe']);
+  const h = clean('home', '932x430'); h.checks.windowCorner = [50, 54];
+  assert.equal(defectsOf(h, null).length, 0, 'the other windows are not enforced yet');
+});
 test('missing vs 1990x830: a control in view at expanded and absent or outside here', () => {
   const exp = clean('home', '1990x830'); exp.checks.keys = { '#boardBtn': { inView: true }, '#mute': { inView: false } };
   const r = clean('home', '430x932'); r.checks.keys = {};
