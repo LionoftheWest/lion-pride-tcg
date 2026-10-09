@@ -4,6 +4,8 @@
 // Variants (a cookie on the browser context, run.mjs sets it):
 //   ci_hunt=battle   /api/hunt answers the battle state (the squad is locked)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
+//   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
+//                       busy = a resting hunt with a last result, live = the recorded live hunt
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes.
 import { createServer } from 'node:http';
@@ -36,6 +38,19 @@ function derivedDungeon(body) {
     pend: { shards: 1, cards: [] }, bank: { shards: 0, cards: [] },
     offers: [{ kind: 'card', tier: 2, odds: [70, 25, 5] }, { kind: 'shards', tier: 1, amount: 10 }, { kind: 'ward', tier: 1, amount: 0.1 }] } } };
 }
+// UI-03 Home: the states the recorded fixtures do not have. A resting hunt (the last boss, its result, the top hunter, the next spawn)
+// and a feed of pulls built from the recorded catalog (names of the people are made up: no member data).
+const WHO = ['Member B', 'Member C', 'Member D', 'Member E', 'Member F'];
+function derivedPulls() {
+  const cards = (FIX.routes['/api/catalog']?.body?.cards || []).filter((c) => c.image_url);
+  const t0 = new Date(FIX.recordedAt).getTime();
+  return { pulls: cards.slice(0, 9).map((c, i) => ({ id: i + 1, player_id: `10000000000000010${i % 5}`, player: WHO[i % 5], name: c.name, rarity: i === 0 ? 'normal' : c.rarity, image_url: c.image_url, at: new Date(t0 - (i + 1) * 3_600_000).toISOString() })) };
+}
+function derivedResting() {
+  const t0 = new Date(FIX.recordedAt).getTime();
+  return { hunt: null, nextSpawnAt: new Date(t0 + 4 * 86_400_000 + 3_600_000).toISOString(), lastResult: { name: 'The Ranked Nightshade', tier: 'Tier 1', status: 'defeated', hp_max: 30000 },
+    lastBoard: [{ player_id: '100000000000000102', username: 'Member C', damage: 6075 }], myLast: 3766, lastFeed: [] };
+}
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
@@ -48,9 +63,11 @@ createServer((req, res) => {
   if (/^\/(main|chunk)\..*\.js$/.test(p)) return send(res, 200, readFileSync(join(BUNDLE, p.slice(1))), 'text/javascript');
   if (/^\/(api\/img|cimg|api\/avatar)\//.test(p) || /^\/cdn\//.test(p)) return send(res, 200, PNG, 'image/png');
   // The pull feed stream: open and quiet, as in production with no new pulls (a closed stream makes the client poll).
-  if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); return undefined; }
+  if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); const k = cookies(req); if (k.ci_home) res.write(`data: ${JSON.stringify(k.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls())}\n\n`); return undefined; }
   if (p.startsWith('/api/')) {
     const c = cookies(req);
+    if (c.ci_home && p === '/api/pulls') return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls()));
+    if (c.ci_home === 'busy' && p === '/api/hunt') return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(derivedResting()) : derivedResting()));
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).

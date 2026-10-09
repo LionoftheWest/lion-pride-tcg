@@ -36,8 +36,8 @@ const call = (pg, src, arg) => pg.evaluate(`(${src})(${arg === undefined ? '' : 
 const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;--discord-safe-area-inset-bottom:${land ? 21 : 34}px;--discord-safe-area-inset-left:${land ? 59 : 0}px;--discord-safe-area-inset-right:${land ? 59 : 0}px}`;
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
-const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'dungeon', 'hunt-battle', 'trades', 'settings']);
+const LONG_SCREENS = new Set(['home', 'home-live', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell']);
+const SAFE_SCREENS = new Set(['home', 'home-live', 'dailies', 'bell', 'help', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'dungeon', 'hunt-battle', 'trades', 'settings']);
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
@@ -64,6 +64,10 @@ todo.splice(0, todo.length, ...todo.filter((_, i) => i % SHARD_N === SHARD_K - 1
 console.log(`shard ${SHARD_K}/${SHARD_N}: ${todo.length} of ${all} cells`);
 
 let cells = 0, failures = 0;
+// The members in voice for Home (UI-03): made-up names. busy = 5 (the "+N" case), live = 3.
+const PRESENCE = (kind, long) => { const at = new Date(FIX.recordedAt).getTime() - 120_000; const u = (n, name, status) => ({ id: `10000000000000010${n}`, name: long ? `${name}_with_a_very_long_name_xx`.slice(0, 32) : name, status: { ...status, at } });
+  const all = [u(1, 'Member B', { kind: 'opening', d: { n: 3, of: 25, c: [] } }), u(2, 'Member C', { kind: 'battle', d: { v: 146, n: 8, of: 8, c: [] } }), u(3, 'Member D', { kind: 'playing', d: { c: [] } }),
+    u(4, 'Member E', { kind: 'trading', d: {} }), u(5, 'Member F', { kind: 'home' })]; return kind === 'live' ? all.slice(0, 3) : all; };
 async function runCell([s, screen, variant], ref = {}) {
         const [W, H, cls, touch] = s; const size = sizeKey(s); const land = W > H;
         const spec = SCREENS[screen];
@@ -73,11 +77,13 @@ async function runCell([s, screen, variant], ref = {}) {
         const cookies = [];
         if (spec.battle) cookies.push({ name: 'ci_hunt', value: 'battle', url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
+        if (spec.home) cookies.push({ name: 'ci_home', value: spec.home, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);
         if (spec.battle && FIX.meta?.teamKey) await ctx.addInitScript(([k, v]) => localStorage.setItem(k, v), [FIX.meta.teamKey, JSON.stringify({ date: MT_DAY, ids: FIX.meta.teamIds })]);   // the date of the game day (MT), as main.js loadTeam() checks
         if (variant === 'safe') await ctx.addInitScript((css) => { document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); }); }, SAFE(land));
         const pg = await ctx.newPage(); const errs = []; const blocked = [];
+        if (spec.home) await pg.routeWebSocket(/\/ws/, (ws) => ws.onMessage(() => {}) || ws.send(JSON.stringify({ type: 'presence', users: PRESENCE(spec.home, variant === 'long') })));   // the room socket: who is in voice const blocked = [];
         pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
         pg.on('response', (r) => { if (r.status() === 403 && r.request().method() !== 'GET') blocked.push(r.request().method() + ' ' + new URL(r.url()).pathname); });
         const noFixture = new Set();   // a GET /api call with no recorded answer (the screen may show an error state)

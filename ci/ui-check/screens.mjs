@@ -13,7 +13,9 @@ export const EXPANDED = '1990x830';   // the size that "missing on another class
 
 const COMM = '#commTabs';
 export const SCREENS = {
-  'home':                { id: 'UI-03', steps: [] },
+  // Home (UI-03): a resting hunt, 9 pulls and 5 members in voice (the state of the approved frames, UI-03/approved); home-live: the recorded live hunt.
+  'home':                { id: 'UI-03', home: 'busy', notOn: ['tiny'], steps: [] },
+  'home-live':           { id: 'UI-03', home: 'live', notOn: ['tiny'], steps: [] },
   'collection':          { id: 'UI-07', steps: [['dock', 'collection']], input: '#colSearch' },
   'collection-detail':   { id: 'UI-08', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
   'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
