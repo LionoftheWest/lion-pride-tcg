@@ -25,8 +25,11 @@
       if (cs.textOverflow === 'ellipsis' && x.scrollWidth > x.clientWidth + 1) { out.push(['ellipsis', name(x), t.slice(0, 40)]); break; }
       if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
         const b = x.getBoundingClientRect();
-        const cut = rects.some((r) => r.left < b.left - 1 || r.right > b.right + 1 || r.top < b.top - 1 || r.bottom > b.bottom + 1);
+        // A named scroll area (design.md 3.3, D-07: data-scroll-area) scrolls on purpose: only a cut across its width counts.
+        const named = x.hasAttribute('data-scroll-area') && /(auto|scroll)/.test(cs.overflowY);
+        const cut = rects.some((r) => r.left < b.left - 1 || r.right > b.right + 1 || (!named && (r.top < b.top - 1 || r.bottom > b.bottom + 1)));
         if (cut) { out.push(['clipped', name(x) + ' > ' + name(e), t.slice(0, 40)]); break; }
+        if (named) break;   // what the area scrolls out of view is not clipped by the boxes around it
       }
       if (cs.position === 'fixed') break; // a fixed box escapes the clip of its ancestors
     }
@@ -38,7 +41,7 @@
       if (tops.size > 1) { out.push(['midword', name(e), m[0].slice(0, 40)]); break; }
     }
     // Off the window.
-    if (rects.some((r) => r.left < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1)) out.push(['offscreen', name(e), t.slice(0, 40)]);
+    if (rects.some((r) => r.left < -1 || r.right > innerWidth + 1 || (r.bottom > innerHeight + 1 && !e.closest('[data-scroll-area]')))) out.push(['offscreen', name(e), t.slice(0, 40)]);
   }
   // Placeholders: the whole placeholder fits in the input.
   const cv = document.createElement('canvas').getContext('2d');
