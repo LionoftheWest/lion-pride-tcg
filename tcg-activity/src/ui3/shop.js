@@ -99,7 +99,7 @@ function item(s, coin, featured = false) {
   return `<li class="u3-shopitem u3-r-${esc(s.rarity)}${featured ? ' u3-shopitem--feat' : ''}${s.bought ? ' is-bought' : ''}">`
     + `<button type="button" class="u3-shopitem__card" data-view="${s.slot}" aria-label="See ${esc(c.name)}">`
     + `${c.image_url ? `<img src="${esc(thumb(c.image_url))}" alt="" draggable="false">` : ''}</button>`
-    + `${isNew ? '<span class="u3-chip u3-chip--sm u3-chip--new u3-shopitem__new"><span aria-hidden="true">✦</span><span>New</span></span>' : ''}`
+    + `${isNew ? '<span class="u3-chip u3-chip--sm u3-chip--new u3-shopitem__new" role="img" aria-label="New"><span aria-hidden="true">✦</span><span class="u3-shopitem__newtxt" aria-hidden="true">New</span></span>' : ''}`
     + `<button type="button" class="u3-shopitem__buy" data-buy="${s.slot}"${s.bought ? ' disabled' : ''} aria-label="${s.bought ? `${esc(c.name)}: Bought` : `Buy ${esc(c.name)} for ${fmt(s.price)} Shards`}">`
     + `${s.bought ? `${icon('check', { size: 'sm' })}<b>Bought</b>` : pillBody(coin, s.price)}</button></li>`;
 }
