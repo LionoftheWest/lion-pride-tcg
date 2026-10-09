@@ -2,7 +2,7 @@
 // D-92 / D-109 the best card last, D-96 / D-107 the rare clip only on the pack with an SR+ card, D-101 the set's clips.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bestLast, bestIndex, revealOrder, rarePacks, fitCards, clipUrl, packSet, packStarts } from './pack-reveal.js';
+import { bestLast, bestIndex, revealOrder, rarePacks, fitCards, clipUrl, packSet, packStarts, fitPacks, balancedRows, newMark, PACK_RATIO } from './pack-reveal.js';
 
 const RANK = { normal: 0, illustrated_rare: 1, secret_rare: 2, full_art: 3, gold: 4, event: 3, promo: 2 };
 const rank = (c) => RANK[c.rarity] ?? 0;
@@ -81,4 +81,29 @@ test('D-72: one screen: the card width shows every card in the area, 5:7', () =>
   assert.equal(fitCards(5, 398, 760, 12).cols, 2);
   // 932x430: one row of 5
   assert.equal(fitCards(5, 860, 300, 12).cols, 5);
+});
+
+test('D-100: the waiting packs: all packs show, the rows are balanced (10 = 4, 3, 3)', () => {
+  assert.deepEqual(balancedRows(10, 3), [4, 3, 3]);
+  assert.deepEqual(balancedRows(5, 2), [3, 2]);
+  assert.deepEqual(balancedRows(10, 1), [10]);
+  assert.deepEqual(balancedRows(10, 2), [5, 5]);
+  assert.deepEqual(balancedRows(3, 9), [1, 1, 1], 'never more rows than packs');
+  for (const [n, w, h] of [[5, 398, 560], [10, 398, 560], [10, 1240, 520], [10, 860, 260], [5, 343, 400]]) {
+    const f = fitPacks(n, w, h, 12);
+    const rows = f.rows.length;
+    assert.equal(f.rows.reduce((a, b) => a + b, 0), n, `${n} packs, all shown`);
+    assert.ok(Math.max(...f.rows) - Math.min(...f.rows) <= 1, `${n} packs, balanced rows ${f.rows}`);
+    assert.ok(Math.max(...f.rows) * f.pw + (Math.max(...f.rows) - 1) * 12 <= w + 0.5, `${n} packs fit the width`);
+    assert.ok(rows * (f.pw / PACK_RATIO) + (rows - 1) * 12 <= h + 1, `${n} packs fit the height`);
+  }
+  assert.deepEqual(fitPacks(10, 398, 520, 12).rows, [4, 3, 3], '10 packs in 3 rows: 4, 3, 3 (as drawn on 430x932)');
+  assert.deepEqual(fitPacks(5, 398, 640, 12).rows, [3, 2], '5 packs in 2 rows: 3, 2 (as drawn on 430x932)');
+  assert.deepEqual(fitPacks(10, 1240, 420, 12).rows, [10], 'a wide area: one row (as drawn on 1990x830)');
+});
+
+test('review-2: the New mark is a chip from 88 px, a small chip from 70 px, else a dot', () => {
+  assert.equal(newMark(138), 'chip'); assert.equal(newMark(88), 'chip');
+  assert.equal(newMark(87), 'small'); assert.equal(newMark(70), 'small');
+  assert.equal(newMark(69), 'dot'); assert.equal(newMark(38), 'dot');
 });
