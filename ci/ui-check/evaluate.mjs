@@ -49,6 +49,8 @@ export function defectsOf(r, expanded) {
   for (const [w, under] of c.coveredBtns || []) add('covered', w, under);
   for (const [k, w] of c.covered || []) add('covered', `window ${k}`, w);
   for (const [w, box] of c.corner || []) add('corner-safe', `corner zone: ${w}`, box);
+  // opt in per screen (cornerWindow in screens.mjs): the screen builds its window box out of the corner zone (UI-36); the other windows join when they are fixed
+  if (c.windowCorner && SCREENS[r.screen]?.cornerWindow) add('corner-safe', `window in the corner zone: ${c.window?.sel || ''}`, `${c.windowCorner[0]}x${c.windowCorner[1]}`);
   if ((c.windowOutside || 0) > 0) add('corner-safe', `window outside the frame: ${c.window?.sel || ''}`, c.windowOutside);
   // Not with the keyboard open: it takes up to half the frame, and the screen keeps only the text box and its results
   // in view (2.3, G-015). The same cell without the keyboard (base) checks P1.
