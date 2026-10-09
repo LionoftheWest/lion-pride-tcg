@@ -4,6 +4,7 @@
 // Variants (a cookie on the browser context, run.mjs sets it):
 //   ci_hunt=battle   /api/hunt answers the battle state (the squad is locked)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
+//   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
@@ -36,6 +37,14 @@ function derivedDungeon(body) {
   return { ...body, run: { id: 1, status: 'active', floor: 1, room: 1, squad: ids, state: { phase: 'choose', room_type: 'fight', buff: 1, cards: {},
     pend: { shards: 1, cards: [] }, bank: { shards: 0, cards: [] },
     offers: [{ kind: 'card', tier: 2, odds: [70, 25, 5] }, { kind: 'shards', tier: 1, amount: 10 }, { kind: 'ward', tier: 1, amount: 0.1 }] } } };
+}
+// UI-25: open offers in every state (derived from the recorded sent offer), and a member with one trade partner (D-116).
+function derivedTrades(body) {
+  const card = (n, rarity) => ({ id: 900 + n, name: `Card ${n}`, rarity, image_url: body.outgoing?.[0]?.offer?.image_url || '' });
+  const o = (id, from, to, status, offer, request) => ({ id, from_id: from, to_id: to, status, from_name: from === '100000000000000999' ? 'Member 999' : `Member ${from.slice(-3)}`, to_name: `Member ${to.slice(-3)}`, created_at: new Date(Date.parse(FIX.recordedAt) - 86400000).toISOString(), offer, request });
+  const me = body.outgoing?.[0]?.from_id || '100000000000000001';
+  return { incoming: [o(201, '100000000000000012', me, 'pending', card(1, 'normal'), card(2, 'normal')), o(202, '100000000000000012', me, 'pending', card(3, 'illustrated_rare'), card(4, 'illustrated_rare'))],
+    outgoing: [...(body.outgoing || []), o(203, me, '100000000000000011', 'countered', card(5, 'normal'), card(6, 'normal')), o(204, me, '100000000000000163', 'pending', card(7, 'secret_rare'), null)] };
 }
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
@@ -87,7 +96,10 @@ createServer((req, res) => {
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
     const hit = FIX.routes[key] || FIX.routes[keyOf(p, '')] || BY_PATH[p];
     if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
-    const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body) : hit.body;
+    const few = c.ci_trades === 'few';
+    const raw = few && p === '/api/trades' && hit.body ? derivedTrades(hit.body)
+      : few && p === '/api/trade/partners' && hit.body ? { partners: (hit.body.partners || []).slice(0, 1) }
+      : p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body) : hit.body;
     const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
     const body = c.ci_data === 'long' ? longData(body0) : body0;
     return send(res, hit.status || 200, JSON.stringify(body));

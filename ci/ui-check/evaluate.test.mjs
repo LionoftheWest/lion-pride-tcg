@@ -62,6 +62,9 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('trades-few', '.u3-trades__cols > #u3Pd.u3-pd > #u3PdSide.u3-pd__body'), 'UI-25');   // Pending
+  assert.equal(ownerOf('trades-offer', '.u3-pd-view > .u3-pd-view__foot > .u3-btn'), 'UI-25');   // the Offer view
+  assert.equal(ownerOf('trades-few', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');   // the picker stays UI-65
   assert.equal(ownerOf('pack-multi', '.u3-mpacks > .u3-mrow > .u3-mpack'), 'UI-35');
   assert.equal(ownerOf('pack-multi-cards', '.mr-main > #mrGrid.mr-grid > .mr-card'), 'UI-35');
   assert.equal(ownerOf('pack-multi', '#topbar > #shopBtn'), 'UI-42');
@@ -113,6 +116,19 @@ test('verdict with a plan: only the planned screens must have results; an uncove
   assert.equal(verdict(only, reg, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon'] }).fails.length, 0);
   const v = verdict(only, reg, { title: 'UI-46 + UI-49', browsers: ['chromium'], screens: ['dungeon'] });
   assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-49', 'no screen in the check']]);
+});
+
+test('the keyboard variant does not check the empty band; the same band in base is a defect (2.3, G-015)', () => {
+  const kb = { ...clean('trades-picker', '375x667'), variant: 'keyboard' }; kb.checks.emptyBandY = 1;
+  assert.equal(defectsOf(kb, null).filter((x) => x.rule === 'empty').length, 0);
+  const base = clean('trades-picker', '375x667'); base.checks.emptyBandY = 1;
+  assert.equal(defectsOf(base, null).filter((x) => x.rule === 'empty').length, 1);
+});
+
+test('trades-pick measures the old v2 trade builder: its owner is UI-63 (the Trade window), not UI-25', () => {
+  assert.equal(SCREENS['trades-pick'].id, 'UI-63');
+  assert.equal(ownerOf('trades-pick', '.tr-main > #trMembers.tr-members > .tr-mem'), 'UI-63');
+  assert.equal(ownerOf('trades', '.u3-pd-row'), 'UI-25');
 });
 
 test('an accepted exception (decision ID, one ID/screen/size/rule) does not fail; anything else still fails', () => {
