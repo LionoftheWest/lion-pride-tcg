@@ -1,9 +1,11 @@
 /* UI-14 Profile (member): fixes after the first build (the own profile; D-113). Scoped to .u3-pf. */
 /* The Spotlight Edit button (own profile): the 44 px touch target (9.1); its row grows with it so nothing pokes out. */
-body[data-input="coarse"] .u3-pf .u3-pf-head { min-height: var(--hit); }
+body[data-input="coarse"] .u3-pf .u3-pf-head { min-height: var(--hit); min-width: var(--hit); }
 body[data-input="coarse"] .u3-pf #memStyle { min-width: var(--hit); min-height: var(--hit); }
 body.ui-v2.ui-v3 .u3-pf-wish.is-tight { padding: var(--sp-2); gap: var(--sp-1); }
 /* The keyboard is open over a picker (the wish picker, UI-16; the Card picker, UI-64): the picker is a layer over the whole frame, so the Profile
    under it is not shown (as #body under the Card picker, ui3.css) and returns when the keyboard closes. */
 body[data-kb]:has(#u3Picker .u3-pk) #memberModal { visibility: hidden; }
 body.ui-v2.ui-v3 .u3-pf-wish.is-tight2 .tile-h .u3-pf-wmore { flex: none; }
+/* Own profile on landscape phones: Home sits in the name row, so the Title & frame button never runs into it (it did at 932x430; the check measures centers, not edges). */
+.u3-pf[data-lay="land"][data-self] .u3-pf-id { grid-template-areas: "av name home" "av title home" "av cos cos" "av badges badges" "status status status" "acts acts acts" "stats stats stats" "achh achh achh" "ach ach ach"; }
