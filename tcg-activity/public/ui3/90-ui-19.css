@@ -1,0 +1,115 @@
+/* ==== UI-19 Hunt resting and squad down (main.js restingV3HTML, huntSelectV3HTML; design repo UI-19/approved review-2 + review-3) ====
+   Resting: the stage fills the content area: the text column, the boss, the boss live feed (wide); one column on phones.
+   The result sits directly under the title (FEEDBACK UI-19). Squad down: grey slots with "Down", Edit locked with its reason. */
+.u3-rest { flex: 1 1 0; grid-template-columns: minmax(0, 5fr) minmax(0, 5fr) minmax(0, 4fr); }
+.u3-rest-result { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--danger-text); }
+.u3-rest-result.is-won { color: var(--success); }
+.u3-rest-bar { border: var(--bw-1) solid var(--border-strong); }
+.u3-rest-row { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.u3-rest-next { display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-rest-timer { font-family: var(--font-num); font-size: var(--fs-display); font-weight: var(--fw-display); line-height: var(--lh-display); color: var(--text-primary); }
+.u3-rest-dmg { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-md); background: var(--bg-raised); border: var(--bw-1) solid var(--border); }
+.u3-rest-dmg b { font-family: var(--font-num); font-size: var(--fs-heading); color: var(--gold); }
+.u3-rest-feed { min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-rest-feedlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-rest-feedlist li { padding: var(--sp-1) var(--sp-2); border-left: var(--bw-2) solid var(--hunt); border-radius: var(--rad-sm); background: var(--surface-2); font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-rest-feedlist li:has(.bhit) { border-left-color: var(--danger); }
+body[data-size="compact-port"] .u3-rest { flex: 1 1 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas: "a" "r" "b" "c" "boss" "row" "top" "feed"; }
+body[data-size="compact-port"] .u3-rest .u3-rest-result { grid-area: r; }
+body[data-size="compact-port"] .u3-rest .u3-hs-facts { grid-area: b; }
+body[data-size="compact-port"] .u3-rest .u3-rest-bar { grid-area: c; }
+body[data-size="compact-port"] .u3-rest .u3-rest-row { grid-area: row; }
+body[data-size="compact-port"] .u3-rest .u3-rest-feed { grid-area: feed; }
+body[data-size="compact-port"] .u3-rest .u3-hs-boss { min-height: var(--card-tile); }
+body[data-size="compact-land"] .u3-rest { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr); }
+body[data-size="compact-land"] .u3-rest .u3-hs-text { display: flex; }
+body[data-size="compact-land"] .u3-rest-timer { font-size: var(--fs-title); }
+/* squad down */
+.u3-hs-slot { position: relative; }
+.u3-hs-slot.is-down img { filter: grayscale(1); opacity: var(--item-disabled); }
+.u3-hs-down { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: var(--sp-half) var(--sp-2); border-radius: var(--rad-pill); background: var(--scrim); color: var(--text-primary); font-family: var(--font-ui); font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
+.u3-hs-ko { margin: 0; display: flex; flex-direction: column; gap: var(--sp-half); color: var(--text-secondary); font-size: var(--fs-small); }
+.u3-hs-ko span { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.u3-hs-ko span + span { color: var(--text-primary); }
+body[data-size="compact-land"] .u3-hs-ko { font-size: var(--fs-caption); line-height: var(--lh-small); }
+body[data-size="compact-land"] .u3-hs-ko span { white-space: nowrap; }
+/* landscape, squad down (frame compact-land-932x430-squad-down-for-today): the head and the synergies in one row, under it the locked Edit with its reason on the left and the slots on the right */
+body[data-size="compact-land"] .u3-hs-squad:has(.u3-hs-ko) { grid-template-columns: minmax(0, calc(var(--card-tile) * 3)) minmax(0, 1fr) minmax(0, auto); grid-template-areas: "head head syn" "act slots slots"; align-items: center; padding: var(--sp-2) var(--sp-3); row-gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-hs-squad:has(.u3-hs-ko) .u3-hs-info { display: contents; }
+body[data-size="compact-land"] .u3-hs-squad:has(.u3-hs-ko) .u3-hs-head { grid-area: head; }
+body[data-size="compact-land"] .u3-hs-squad:has(.u3-hs-ko) .u3-hs-syn { grid-area: syn; justify-self: end; }
+body[data-size="compact-land"] .u3-hs-squad:has(.u3-hs-ko) .u3-hs-act { grid-area: act; flex-direction: row; align-items: center; gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-hs-squad:has(.u3-hs-ko) .u3-hs-slotbox { grid-area: slots; }
+body:is([data-size="compact-land"], [data-size="compact-port"]) .u3-hs-ko span:last-child { order: -1; }   /* the reason first, as the compact frames */
+body:is([data-size="compact-land"], [data-size="compact-port"]) .u3-hs-ko { flex-direction: column; }
+.u3-hunt.is-mini .u3-hs-down { display: none; }   /* the image name says "(down)" */
+.u3-hs-down { padding: var(--sp-half) var(--sp-1); font-size: var(--fs-caption); white-space: nowrap; }
+.u3-hs-slot { box-sizing: border-box; }
+/* measured (mountRestBossV3): a short landscape phone, the resting text in fewer lines */
+body[data-size="compact-land"] .u3-rest.is-tight { grid-template-columns: minmax(0, 4fr) minmax(0, 2fr) minmax(0, 3fr); padding: var(--sp-2) var(--sp-3); }
+.u3-rest.is-tight .u3-hs-text { gap: var(--sp-1); }
+.u3-rest.is-tight .u3-hs-title { flex-wrap: nowrap; }
+body[data-size] .u3-rest.is-tight .u3-hs-name { font-size: var(--fs-body); }
+body[data-size] .u3-rest.is-tight .u3-rest-timer { font-size: var(--fs-heading); }
+.u3-rest.is-tight .u3-rest-row { flex-wrap: nowrap; align-items: center; }
+.u3-rest.is-tight .u3-rest-dmg { flex-direction: row; align-items: baseline; padding: var(--sp-1) var(--sp-2); }
+.u3-rest.is-tight .u3-rest-dmg b { font-size: var(--fs-body); }
+.u3-rest.is-tight .u3-hs-hp { height: var(--sp-5); }
+/* a short landscape squad: the stage title and chips in fewer pixels */
+body[data-size] .u3-hunt.is-tight .u3-hs-name { font-size: var(--fs-body); }
+.u3-hunt.is-tight .u3-hs-tier { padding: var(--sp-half) var(--sp-1); font-size: var(--fs-caption); }
+.u3-hunt.is-tight :is(.u3-hs-atk, .u3-hs-weak) { padding: var(--sp-half) var(--sp-1); }
+.u3-hunt.is-tight .u3-hs-text { row-gap: var(--sp-1); }
+/* UI-17 squad rule, widened for the down state (the info column keeps three card tiles) */
+.u3-hs-squad { grid-template-columns: minmax(0, calc(var(--card-tile) * 3)) minmax(0, 1fr); }
+/* resting on landscape phones: the text column is left aligned and full width (the UI-17 stage rule centers its items) */
+body[data-size="compact-land"] .u3-rest .u3-hs-text { align-items: stretch; }
+body[data-size="compact-land"] .u3-rest .u3-rest-result { align-self: flex-start; }
+body[data-size="compact-land"] .u3-hs-squad:has(.u3-hs-ko) .u3-hs-ko span { white-space: normal; }
+body:is([data-size="compact-land"], [data-size="compact-port"]) .u3-hs-ko { align-items: flex-start; }
+/* medium and expanded, short (frame medium-917x692-squad-down-for-today): the head, the synergies and the locked Edit in one row, then the reason, then the slots across the full width */
+body[data-short]:is([data-size="medium"], [data-size="expanded"]) .u3-hs-squad:has(.u3-hs-ko) { grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; grid-template-areas: "head syn edit" "ko ko ko" "slots slots slots"; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-3) var(--sp-4); }
+body[data-short]:is([data-size="medium"], [data-size="expanded"]) .u3-hs-squad:has(.u3-hs-ko) :is(.u3-hs-info, .u3-hs-act) { display: contents; }
+body[data-short]:is([data-size="medium"], [data-size="expanded"]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-head { grid-area: head; flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); }
+body[data-short]:is([data-size="medium"], [data-size="expanded"]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-syn { grid-area: syn; }
+body[data-short]:is([data-size="medium"], [data-size="expanded"]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-act > .u3-btn { grid-area: edit; }
+body[data-short]:is([data-size="medium"], [data-size="expanded"]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-ko { grid-area: ko; flex-direction: row; justify-content: space-between; align-items: center; }
+body[data-short]:is([data-size="medium"], [data-size="expanded"]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-ko span:last-child { order: -1; }
+body[data-short]:is([data-size="medium"], [data-size="expanded"]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-slotbox { grid-area: slots; }
+body[data-short]:is([data-size="medium"], [data-size="expanded"]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-slots { grid-template-columns: repeat(8, minmax(0, var(--card-thumb))); }
+/* resting, medium tall (frame medium-768x1024-resting): the title, the result, the weak line and the bar across the width; the live feed beside the boss; the timer and the damage; the Top 3 across the width */
+body[data-size="medium"]:not([data-short]) .u3-rest { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto; gap: var(--sp-2) var(--sp-5);
+  grid-template-areas: "title title" "res res" "facts facts" "bar bar" "feed boss" "row row" "top top"; align-items: stretch; }
+body[data-size="medium"]:not([data-short]) .u3-rest .u3-hs-text { display: contents; }
+body[data-size="medium"]:not([data-short]) .u3-rest .u3-hs-title { grid-area: title; }
+body[data-size="medium"]:not([data-short]) .u3-rest .u3-rest-result { grid-area: res; justify-self: start; }
+body[data-size="medium"]:not([data-short]) .u3-rest .u3-hs-facts { grid-area: facts; }
+body[data-size="medium"]:not([data-short]) .u3-rest .u3-rest-bar { grid-area: bar; }
+body[data-size="medium"]:not([data-short]) .u3-rest .u3-rest-row { grid-area: row; }
+body[data-size="medium"]:not([data-short]) .u3-rest .u3-hs-top { grid-area: top; }
+body[data-size="medium"]:not([data-short]) .u3-rest .u3-hs-boss { grid-area: boss; min-height: 0; }
+body[data-size="medium"]:not([data-short]) .u3-rest .u3-rest-feed { grid-area: feed; }
+/* resting, medium short (frame medium-917x692-resting): the head rows across the width; the feed, the boss, and the damage, the timer and the Top 3 side by side */
+body[data-size="medium"][data-short] .u3-rest { grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 3fr); grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; gap: var(--sp-2) var(--sp-4);
+  grid-template-areas: "title title title" "res res res" "facts facts facts" "bar bar bar" "feed boss row" "feed boss top"; align-items: stretch; }
+body[data-size="medium"][data-short] .u3-rest .u3-hs-text { display: contents; }
+body[data-size="medium"][data-short] .u3-rest .u3-hs-title { grid-area: title; }
+body[data-size="medium"][data-short] .u3-rest .u3-rest-result { grid-area: res; justify-self: start; }
+body[data-size="medium"][data-short] .u3-rest .u3-hs-facts { grid-area: facts; }
+body[data-size="medium"][data-short] .u3-rest .u3-rest-bar { grid-area: bar; }
+body[data-size="medium"][data-short] .u3-rest .u3-rest-row { grid-area: row; flex-direction: column-reverse; flex-wrap: nowrap; align-items: stretch; }
+body[data-size="medium"][data-short] .u3-rest .u3-rest-timer { font-size: var(--fs-title); }
+body[data-size="medium"][data-short] .u3-rest .u3-hs-top { grid-area: top; }
+body[data-size="medium"][data-short] .u3-rest .u3-hs-boss { grid-area: boss; min-height: 0; }
+body[data-size="medium"][data-short] .u3-rest .u3-rest-feed { grid-area: feed; }
+/* squad down, medium tall (frame medium-768x1024-squad-down-for-today): the head, the locked Edit and "Squad locked" in one row; the slots across the width; the synergies and the reason under them */
+body[data-size="medium"]:not([data-short]) .u3-hs-squad:has(.u3-hs-ko) { grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto auto; grid-template-areas: "head head edit lock" "slots slots slots slots" "syn syn syn down"; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-3) var(--sp-4); }
+body[data-size="medium"]:not([data-short]) .u3-hs-squad:has(.u3-hs-ko) :is(.u3-hs-info, .u3-hs-act, .u3-hs-ko) { display: contents; }
+body[data-size="medium"]:not([data-short]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-head { grid-area: head; flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); }
+body[data-size="medium"]:not([data-short]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-act > .u3-btn { grid-area: edit; }
+body[data-size="medium"]:not([data-short]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-ko span:first-child { grid-area: lock; }
+body[data-size="medium"]:not([data-short]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-ko span:last-child { grid-area: down; justify-self: end; }
+body[data-size="medium"]:not([data-short]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-syn { grid-area: syn; }
+body[data-size="medium"]:not([data-short]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-slotbox { grid-area: slots; }
+body[data-size="medium"]:not([data-short]) .u3-hs-squad:has(.u3-hs-ko) .u3-hs-slots { grid-template-columns: repeat(8, minmax(0, var(--card-tile))); }

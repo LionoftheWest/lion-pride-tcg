@@ -61,10 +61,19 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #menuBtn.u3-ibtn'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
+  assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
+  assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
   assert.equal(ownerOf('trades-few', '.u3-trades__cols > #u3Pd.u3-pd > #u3PdSide.u3-pd__body'), 'UI-25');   // Pending
   assert.equal(ownerOf('trades-offer', '.u3-pd-view > .u3-pd-view__foot > .u3-btn'), 'UI-25');   // the Offer view
   assert.equal(ownerOf('trades-few', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');   // the picker stays UI-65
+  assert.equal(ownerOf('hunt-picker-detail', '#viewer.raid-info > #viewer-closebutton'), 'UI-64');
+  assert.equal(ownerOf('hunt-picker-detail', '.vr-stats > .vr-stat > span "Power"'), 'UI-64');
+  assert.equal(ownerOf('hunt-picker-detail', '.u3-hs-hp > span'), 'UI-17');
+  assert.equal(ownerOf('dungeon-picker-detail', '#v-raid.v-raid > .vr-head'), 'UI-64');
+  assert.equal(ownerOf('collection-detail', '#viewer > #viewer-prev'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', '#viewer > #viewer-close'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', '#viewer > .viewer-stage'), 'UI-08');
   assert.equal(ownerOf('trades-pick', '#u3TradeWin > .u3-tw > ul.u3-tw__grid'), 'UI-63');   // the Trade window
   assert.equal(ownerOf('trades-pick', '.u3-tw__grid > li.u3-pk-card > button.u3-pk-card__pick'), 'UI-63');   // its tiles are Card picker classes
   assert.equal(ownerOf('hunt-picker', '#u3Picker > .u3-pk-scrim > .u3-pk'), 'UI-64');   // the Card picker stays UI-64
