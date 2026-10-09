@@ -94,7 +94,8 @@
     const t = e.tagName;
     const own = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     const bg = getComputedStyle(e).backgroundImage;
-    if (own || /^(IMG|CANVAS|VIDEO|INPUT|BUTTON|SELECT|svg)$/i.test(t) || (bg && bg !== 'none' && !/gradient/.test(bg))) {
+    // The library Switch (UI-00 5.2) hides its input (1 px, opacity 0): its visible track is the control's ink.
+    if (own || /^(IMG|CANVAS|VIDEO|INPUT|BUTTON|SELECT|svg)$/i.test(t) || (bg && bg !== 'none' && !/gradient/.test(bg)) || e.classList.contains('u3-switch__track')) {
       const r = e.getBoundingClientRect();
       const l = Math.max(r.left, wr.left, 0), tp = Math.max(r.top, wr.top, 0), rt = Math.min(r.right, wr.right, vw), bt = Math.min(r.bottom, wr.bottom, vh);
       if (rt > l && bt > tp) leaves.push([l, tp, rt, bt]);
