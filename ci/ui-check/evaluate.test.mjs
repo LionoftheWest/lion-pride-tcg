@@ -62,6 +62,10 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('hunt-picker-detail', '#viewer.raid-info > #viewer-closebutton'), 'UI-64');
+  assert.equal(ownerOf('hunt-picker-detail', '.vr-stats > .vr-stat > span "Power"'), 'UI-64');
+  assert.equal(ownerOf('hunt-picker-detail', '.u3-hs-hp > span'), 'UI-17');
+  assert.equal(ownerOf('dungeon-picker-detail', '#v-raid.v-raid > .vr-head'), 'UI-64');
   assert.equal(ownerOf('pack-multi', '.u3-mpacks > .u3-mrow > .u3-mpack'), 'UI-35');
   assert.equal(ownerOf('pack-multi-cards', '.mr-main > #mrGrid.mr-grid > .mr-card'), 'UI-35');
   assert.equal(ownerOf('pack-multi', '#topbar > #shopBtn'), 'UI-42');

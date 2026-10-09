@@ -31,6 +31,7 @@ import { every, isIdle } from './poll.js';
 import { watchSizeClass } from './ui3/size-class.js';
 import { startShell } from './ui3/shell.js';
 import { openCardPicker } from './ui3/card-picker.js';
+import { fitViewer, watchViewerFit } from './ui3/viewer-fit.js';
 import { fmtFor } from './ui3/number.js';
 import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
@@ -2905,6 +2906,8 @@ function openViewer(card, opts = {}) {
   renderAscension(card);
   rx = 0; ry = 0; hoverX = 0; hoverY = 0; applyView();
   el('viewer').classList.remove('hidden');
+  fitViewer(el('viewer'));   // v3: the card and its info fit the safe frame (viewer-fit.js)
+  watchViewerFit();
   enableGyro();
 }
 
