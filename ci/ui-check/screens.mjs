@@ -55,15 +55,16 @@ export const SCREENS = {
   'settings':            { id: 'UI-61', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="settings"]'], ['wait', 1.5]] },
   'leaderboard':         { id: 'UI-22', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
   'profile':             { id: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
-  // The Wishlist window (UI-16) opens over the own Profile (UI-14) from Edit: a defect outside the window belongs to the
-  // Profile ('under'). The wish picker is the Card picker (UI-64) over the window. tiny has no top bar avatar (D-06). On the smallest phones the
-  // Wishlist is a Profile tab (UI-14 P1): the step taps the tab first.
-  'wishlist':            { id: 'UI-16', under: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '#wlEdit', [['js', '[data-seg="pf:wish"]'], ['wait', 1.5], ['js', '#wlEdit']]], ['wait', 1.5]] },
-  'wish-picker':         { id: 'UI-16', under: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '#wlEdit', [['js', '[data-seg="pf:wish"]'], ['wait', 1.5], ['js', '#wlEdit']]], ['wait', 1.5], ['js', '#u3Wish [data-wlset]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
+  // The Wishlist drawer (UI-16, D-128) pulls up from the handle strip at the bottom of the own Profile (UI-14): a defect outside the drawer
+  // belongs to the Profile ('under'). The wish picker is the Card picker (UI-64) over the drawer. tiny has no top bar avatar (D-06).
+  // 'wishlist' = 4 cards and an empty slot (the approved edit-empty-slot state); 'wishlist-drawer' = all 5 slots filled (the approved edit state).
+  'wishlist':            { id: 'UI-16', under: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '#wlHandle'], ['wait', 1.5]] },
+  'wishlist-drawer':     { id: 'UI-16', under: 'UI-14', wish: 'full', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '#wlHandle'], ['wait', 1.5]] },
+  'wish-picker':         { id: 'UI-16', under: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '#wlHandle'], ['wait', 1.5], ['js', '#u3Wish [data-wlset]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
   // The own profile (the avatar in the top bar): the Spotlight Edit, Title & frame and the editable wishlist show only here.
   'profile-own':         { id: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3]] },
-  // The same with the Wishlist tab open (phones show the Spotlight, the Season and the Wishlist as tabs, D-113).
-  'profile-own-wish':    { id: 'UI-14', wish: 'full', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '[data-seg="pf:wish"]', [['wait', 0]]], ['wait', 2]] },
+  // The same with all five wishlist slots filled (the handle strip shows 5/5; the Spotlight and the Season are tabs on the smallest phones, D-113; the Wishlist never is, D-128).
+  'profile-own-wish':    { id: 'UI-14', wish: 'full', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['wait', 2]] },
   'help':                { id: 'UI-38', steps: [['js', '#menuBtn'], ['js', '[data-menu="faq"]']] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
   'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
@@ -88,7 +89,7 @@ export function ownerOf(screen, where) {
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
-  if (/#u3Wish[a-z]*\b|\.u3-wl\b|\.u3-wl[-_]/.test(where)) return 'UI-16';
+  if (/#u3Wish[a-z]*\b|\.u3-wl\b|\.u3-wl[-_]|#wlHandle|\.u3-pf-wishbar/.test(where)) return 'UI-16';
   if (/#(v2Dailies|u3DlToast)[a-z]*\b|\.u3-dl\b|\.u3-dl[-_]/.test(where)) return 'UI-36';
   if (/\.u3-mp\b|\.u3-mp[-_]/.test(where)) return 'UI-65';
   if (/#v2Notifs[a-z]*\b|\.u3-bell|\.u3-note\b|\.u3-note__|\.u3-gift\b|\.u3-gift__/.test(where)) return 'UI-24';

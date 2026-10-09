@@ -15,15 +15,14 @@ const slots = [
 ];
 const LABEL = { normal: 'Normal', gold: 'Gold', full_art: 'Full Art', secret_rare: 'Secret Rare' };
 
-test('the window form for each size class (E1): sheet, side sheet, dialog', () => {
-  assert.equal(formOf('compact-port'), 'sheet');
-  assert.equal(formOf('compact-land'), 'side');
-  for (const s of ['medium', 'expanded', 'tiny', undefined]) assert.equal(formOf(s), 'dialog', String(s));
+test('the window form is the bottom drawer on every size class (D-128)', () => {
+  for (const s of ['compact-port', 'compact-land', 'medium', 'expanded', 'tiny', undefined]) assert.equal(formOf(s), 'drawer', String(s));
 });
 
 test('the window: title, count, 5 rows with the slot numbers, the star only for a card, the pencil on every row', () => {
-  const h = wishlistHTML({ slots, form: 'sheet', rarityLabel: LABEL });
-  assert.match(h, /data-form="sheet"/);
+  const h = wishlistHTML({ slots, form: 'drawer', rarityLabel: LABEL });
+  assert.match(h, /data-form="drawer"/);
+  assert.match(h, /class="u3-wl__grab"/, 'the grab line of the drawer');
   assert.match(h, />Wishlist</);
   assert.match(h, /class="u3-wl__count">4\/5</);
   assert.equal((h.match(/class="u3-wl-row[ "]/g) || []).length, 5);
@@ -109,4 +108,15 @@ test('the Card picker pick-one mode: a tap replaces the choice, a tap on the cho
   assert.deepEqual(pickOne([5], 5), []);
   // pick several keeps its rule (6.5a)
   assert.deepEqual(toggle([5], 7, 1), [5]);
+});
+
+test('read-only drawer (another member): no star or pencil buttons, the card opens the viewer, the top want and your copies show (D-128)', () => {
+  const other = slots.map((x) => ({ ...x, mine: x.slot }));
+  const h = wishlistHTML({ slots: other, form: 'drawer', rarityLabel: LABEL, readonly: true });
+  assert.doesNotMatch(h, /data-wlset=|data-wltop=/);
+  assert.equal((h.match(/data-wlview=/g) || []).length, 4, 'a view button on each card row');
+  assert.equal((h.match(/class="u3-wl-row__top"/g) || []).length, 1, 'one top-want mark');
+  assert.equal((h.match(/class="u3-wl-row__mine"/g) || []).length, 4);
+  assert.match(h, /aria-label="Your free copies: 2"/);
+  assert.match(h, /aria-label="Close"/);
 });

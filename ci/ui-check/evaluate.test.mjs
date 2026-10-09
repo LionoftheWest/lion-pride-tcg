@@ -63,7 +63,9 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
   assert.equal(ownerOf('wishlist', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl-row'), 'UI-16');
-  assert.equal(ownerOf('wishlist', '#memWish > .wl-list'), 'UI-14');
+  assert.equal(ownerOf('wishlist-drawer', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl__list > .u3-wl-row'), 'UI-16');
+  assert.equal(ownerOf('profile-own-wish', '#memWish > #wlHandle.u3-pf-wishbar'), 'UI-16');   // the handle strip is the Wishlist's (D-128)
+  assert.equal(ownerOf('profile-own-wish', '#memWish.u3-pf-tile'), 'UI-14');                  // the tile that holds it is the Profile's
   assert.equal(ownerOf('wish-picker', '#u3Picker > .u3-pk.is-one'), 'UI-64');
   assert.equal(ownerOf('pack-multi', '.u3-mpacks > .u3-mrow > .u3-mpack'), 'UI-35');
   assert.equal(ownerOf('pack-multi-cards', '.mr-main > #mrGrid.mr-grid > .mr-card'), 'UI-35');

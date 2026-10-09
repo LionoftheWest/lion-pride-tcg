@@ -1,8 +1,10 @@
-// UI-16 the Wishlist window and the wish picker, v3 (lion-pride-tcg-design UI-16/approved, review-1 + review-2;
-// FEEDBACK D-66). Only under body.ui-v3 (settings.ui_v3): the Profile's Edit button (ui-v2.js paintWish) opens this
-// window in place of the v2 in-place editor. With the flag off nothing here runs.
-// - The window (E1): a bottom sheet on the dock edge on compact-port, a side sheet on compact-land, a dialog on medium
-//   and expanded. Each row: the slot number, the card, the top-want star (only for a card) and the pencil (E3-E6).
+// UI-16 the Wishlist drawer and the wish picker, v3 (lion-pride-tcg-design UI-16/approved, review-1 + review-2;
+// FEEDBACK D-66, D-128). Only under body.ui-v3 (settings.ui_v3): the Profile's Wishlist handle (ui-v2.js paintWish,
+// profile.js wishBarHTML) opens this drawer in place of the v2 in-place editor. With the flag off nothing here runs.
+// - The drawer (D-128): it pulls up from the bottom, above the dock, on every size class, with every wishlist card.
+//   The approved frames (E1) drew a bottom sheet (compact-port), a side sheet (compact-land) and a dialog (medium, expanded);
+//   Nathan decided on the drawer for the Profile (D-128). Each row: the slot number, the card, the top-want star (only
+//   for a card) and the pencil (E3-E6). On another member's Profile the drawer is read-only: the card opens the viewer.
 // - The wish picker is the one Card picker (UI-64, D-42) in pick-one mode: "Wish Slot N", the Collection filters
 //   (D-66 item 3), Clear and Confirm (Clear only in the picker, D-66 item 2).
 // - Every rule is on the server (/api/wishlist: set_wishlist, set_wish_top, the top want of hall_top_want.sql). This
@@ -11,14 +13,16 @@ import { esc, iconButton, inlineMessage } from './components.js';
 import { icon } from './icons.js';
 import { thumb } from '../thumb.js';
 import { openCardPicker } from './card-picker.js';
+import { TOKENS } from '../tokens.js';
 
 export const SAVE_ERROR = 'Something went wrong. Try again.';
 
-/** The window form of a size class (E1). */
-export const formOf = (size) => (size === 'compact-port' ? 'sheet' : size === 'compact-land' ? 'side' : 'dialog');
+/** The window form of a size class: the drawer on every size (D-128; it replaces the E1 sheet, side sheet and dialog). */
+export const formOf = () => 'drawer';
 
-function rowHTML(x, rarityLabel) {
+function rowHTML(x, rarityLabel, readonly = false) {
   const c = x.card;
+  if (readonly) return viewRowHTML(x, rarityLabel);
   const pencil = iconButton({ icon: 'pencil', label: `Pick a card for slot ${x.slot}`, data: { wlset: x.slot } });
   if (!c) {
     return `<li class="u3-wl-row is-empty"><span class="u3-wl-row__n">${x.slot}</span><span class="u3-wl-row__card">${icon('plus')}</span>`
@@ -32,13 +36,29 @@ function rowHTML(x, rarityLabel) {
     + `<span class="u3-wl-row__acts">${star}${pencil}</span></li>`;
 }
 
-/** The window. slots = the /api/wishlist slots, msg = the error line (or ''), form = formOf(size). */
-export function wishlistHTML({ slots = [], msg = '', form = 'dialog', rarityLabel = {} }) {
+/** A row of another member's wishlist: no edit controls; the card opens the viewer, the top want is marked, your free copies show. */
+function viewRowHTML(x, rarityLabel) {
+  const c = x.card;
+  if (!c) {
+    return `<li class="u3-wl-row is-empty"><span class="u3-wl-row__n">${x.slot}</span><span class="u3-wl-row__card">${icon('plus')}</span>`
+      + `<span class="u3-wl-row__main"><b class="u3-wl-row__name">Empty</b></span></li>`;
+  }
+  return `<li class="u3-wl-row u3-r-${esc(c.rarity || 'normal')}${x.top ? ' is-top' : ''}"><span class="u3-wl-row__n">${x.slot}</span>`
+    + `<button type="button" class="u3-wl-row__card is-view" data-wlview="${esc(c.id)}" aria-label="${esc(c.name)}">${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" draggable="false">` : ''}</button>`
+    + `<span class="u3-wl-row__main"><b class="u3-wl-row__name">${esc(c.name)}</b>`
+    + `<span class="u3-wl-row__r"><span class="u3-wl-row__dia" aria-hidden="true"></span>${esc(rarityLabel?.[c.rarity] || c.rarity)}</span></span>`
+    + `<span class="u3-wl-row__acts">${x.top ? `<span class="u3-wl-row__top">${icon('star', { size: 'lg', label: 'Top want' })}</span>` : ''}`
+    + (x.mine != null ? `<span class="u3-wl-row__mine">${icon('layers', { size: 'sm' })}<span aria-label="Your free copies: ${x.mine | 0}">×${x.mine | 0}</span></span>` : '')
+    + `</span></li>`;
+}
+
+/** The drawer. slots = the /api/wishlist slots, msg = the error line (or ''), form = formOf(size), readonly = another member's list. */
+export function wishlistHTML({ slots = [], msg = '', form = 'drawer', rarityLabel = {}, readonly = false }) {
   const n = slots.filter((x) => x.card).length;
   return `<div class="u3-scrim u3-wl-scrim" data-u3-scrim data-form="${form}"><section class="u3-wl" role="dialog" aria-modal="true" aria-labelledby="u3WlT">`
-    + `<header class="u3-wl__head">${icon('heart', { size: 'xl' })}<h2 class="u3-wl__title" id="u3WlT">Wishlist</h2>`
+    + `<span class="u3-wl__grab" aria-hidden="true"></span><header class="u3-wl__head">${icon('heart', { size: 'xl' })}<h2 class="u3-wl__title" id="u3WlT">Wishlist</h2>`
     + `<span class="u3-wl__count">${n}/${slots.length}</span>${iconButton({ icon: 'x', label: 'Close', data: { wlclose: '1' } })}</header>`
-    + `<ol class="u3-wl__list">${slots.map((x) => rowHTML(x, rarityLabel)).join('')}</ol>`
+    + `<ol class="u3-wl__list">${slots.map((x) => rowHTML(x, rarityLabel, readonly)).join('')}</ol>`
     + `${msg ? inlineMessage({ kind: 'error', text: msg }) : ''}</section></div>`;
 }
 
@@ -92,6 +112,8 @@ export function openWishlist(o) {
   host.id = 'u3Wish';
   document.body.appendChild(host);
   host.addEventListener('click', onClick);
+  host.addEventListener('pointerdown', onDown);
+  host.addEventListener('pointermove', onMove);
   document.addEventListener('keydown', onKey);
   addEventListener('resize', paint);
   paint();
@@ -103,7 +125,7 @@ export function closeWishlist() {
   document.getElementById('u3Wish')?.remove();
   document.removeEventListener('keydown', onKey);
   removeEventListener('resize', paint);
-  const back = st.o.returnFocus;
+  const back = typeof st.o.returnFocus === 'function' ? st.o.returnFocus() : st.o.returnFocus;   // a function: the handle is painted again after a save
   st = null;
   back?.focus?.();
 }
@@ -111,8 +133,19 @@ export function closeWishlist() {
 function paint() {
   const host = document.getElementById('u3Wish');
   if (!host || !st) return;
-  host.innerHTML = wishlistHTML({ slots: st.slots, msg: st.msg, form: formOf(document.body.dataset.size), rarityLabel: st.o.rarityLabel });
+  host.innerHTML = wishlistHTML({ slots: st.slots, msg: st.msg, form: formOf(document.body.dataset.size), rarityLabel: st.o.rarityLabel, readonly: !!st.o.readonly });
   host.querySelector('.u3-wl').tabIndex = -1;
+  fit(host);
+  document.fonts?.ready.then(() => { if (st && host.isConnected) fit(host); });   // the fonts change the row heights
+}
+
+/** No scroll (D-07): when the five rows do not fit above the dock (a short window), the drawer sits on the screen edge and covers the dock. */
+function fit(host) {
+  const scrim = host.querySelector('.u3-wl-scrim');
+  const box = host.querySelector('.u3-wl');
+  if (!scrim || !box) return;
+  scrim.classList.remove('is-tight');
+  if (box.scrollHeight > box.clientHeight + 1) scrim.classList.add('is-tight');
 }
 
 // a save or a star: the server answers, then the window shows the server's list again
@@ -150,6 +183,11 @@ function openPicker(slot, from) {
   });
 }
 
+// a drag down on the grab line or the header closes the drawer (the pull-up handle of the Profile opens it)
+let drag = null;
+function onDown(e) { drag = e.target.closest('.u3-wl__grab, .u3-wl__head') && !e.target.closest('button') ? e.clientY : null; }
+function onMove(e) { if (drag != null && e.clientY - drag >= TOKENS.hit / 2) { drag = null; closeWishlist(); } }
+
 function onKey(e) {
   if (!st || e.key !== 'Escape' || document.getElementById('u3Picker')) return;   // the picker closes first
   e.preventDefault();
@@ -165,4 +203,5 @@ function onClick(e) {
   if (d.wlclose) { closeWishlist(); return; }
   if (d.wltop) { if (t.getAttribute('aria-pressed') !== 'true') run(() => st.o.star(Number(d.wltop))); return; }
   if (d.wlset) openPicker(Number(d.wlset), t);
+  if (d.wlview) st.o.view?.(Number(d.wlview));
 }
