@@ -1242,6 +1242,14 @@ export async function openMember(id) {
   paintMember();
 }
 export function closeMember() { ctx.el('memberModal')?.classList.add('hidden'); }
+/** v3: the Profile closes when another screen or window is chosen (the dock, a tab, the Shop, the bell, the Menu ...; capture phase, so a
+ *  Profile that the same tap opens (the avatar) opens after it closed). Flag off: no change. */
+export function closeMemberOnShell() {
+  if (!pf3.isV3()) return;
+  const m = ctx?.el('memberModal');
+  if (m && !m.classList.contains('hidden')) closeMember();
+}
+document.addEventListener('click', (e) => { if (pf3.closesProfile(e.target)) closeMemberOnShell(); }, true);
 
 function paintMember() {
   const { el } = ctx;

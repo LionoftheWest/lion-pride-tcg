@@ -19,7 +19,7 @@ import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
-import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
+import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop, repaintShards } from './ui-v2-shop.js';
@@ -600,6 +600,7 @@ function ago(iso) {
 
 async function show(view) {
   currentView = view;
+  closeMemberOnShell();   // v3: the Profile is a layer, a new screen closes it
   if (view !== 'dungeon') disposeDungeon(); // the 3D room stage
   document.querySelectorAll('#dock .dk').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.body.dataset.view = view;

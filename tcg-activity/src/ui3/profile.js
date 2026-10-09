@@ -11,6 +11,11 @@ import { TOKENS } from '../tokens.js';
 import { thumb } from '../thumb.js';
 
 export const isV3 = () => document.body.classList.contains('ui-v3');
+
+/** The shell parts that open another screen or window (the dock, the top bar, the Menu). A tap on one of them closes the Profile
+ *  (it is a layer over the screens: the same "tap outside" rule as the Settings window). Pure on its argument (unit-tested). */
+export const SHELL_TAP = '#dock, #topbar, #u3MenuHost';
+export const closesProfile = (target) => !!target?.closest?.(SHELL_TAP);
 const fmt = (n) => Number(n || 0).toLocaleString();
 
 /** The layout of the profile for a size class and the usable frame. Pure (unit-tested). */
@@ -174,22 +179,32 @@ export function fitWish(box, st) {
   const list = box?.querySelector('.wl-list');
   if (!list) return;
   box.querySelector('.u3-pf-wmore')?.remove();
+  box.classList.remove('is-tight', 'is-tight2');
   const rows = [...list.children];
   rows.forEach((r) => { r.hidden = false; });
   if (list.scrollHeight <= list.clientHeight + 1) return;
   const more = document.createElement('div');
   more.className = 'u3-pf-wmore';
   list.after(more);
-  // the rows from the offset that fit, with the "+N more" line under them
   const from = st.wishFrom % rows.length;
-  rows.forEach((r, i) => { r.hidden = i < from; });
-  let shown = rows.filter((r) => !r.hidden);
-  more.innerHTML = listMore(rows.length - shown.length);
-  while (shown.length > 1 && list.scrollHeight > list.clientHeight + 1) {
-    shown.pop().hidden = true;
-    shown = rows.filter((r) => !r.hidden);
+  // the rows from the offset that fit, with the "+N more" line under them
+  const pack = () => {
+    rows.forEach((r, i) => { r.hidden = i < from; });
+    let shown = rows.filter((r) => !r.hidden);
     more.innerHTML = listMore(rows.length - shown.length);
-  }
+    while (shown.length > 1 && list.scrollHeight > list.clientHeight + 1) {
+      shown.pop().hidden = true;
+      shown = rows.filter((r) => !r.hidden);
+      more.innerHTML = listMore(rows.length - shown.length);
+    }
+    return shown;
+  };
+  let shown = pack();
+  // one row and "+N more" still do not fit (a short pane): the tile takes the tight mode (smaller padding and gaps), then packs again
+  if (list.scrollHeight > list.clientHeight + 1) { box.classList.add('is-tight'); shown = pack(); }
+  // still not: the "+N more" button moves into the header line (next to Edit), so a row gets the room of that line
+  const head = box.querySelector('.tile-h');
+  if (head && list.scrollHeight > list.clientHeight + 1) { box.classList.add('is-tight2'); head.insertBefore(more, head.querySelector('#wlEdit')); shown = pack(); }
   more.firstElementChild.addEventListener('click', () => { st.wishFrom = from + shown.length >= rows.length ? 0 : from + shown.length; fitWish(box, st); });
 }
 
