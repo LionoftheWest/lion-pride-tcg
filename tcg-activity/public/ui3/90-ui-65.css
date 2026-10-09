@@ -8,11 +8,16 @@
 .u3-mp__find .u3-search__input::-webkit-search-cancel-button { appearance: none; }   /* one clear button: the library one */
 /* the view "?" in the search row (compact-port; D-63 moves it to the sub-tab row on the other classes): a 44 px circle */
 body.ui-v2.ui-v3[data-size] .u3-mp__tools .ex-q { flex: none; width: var(--hit); height: var(--hit); min-width: 0; padding: 0; }
-/* the keyboard is open (size-class.js body[data-kb]): the search and its list only, as a layer at the top of the frame (the
+/* the keyboard is open (size-class.js body[data-kb]): the search and its list only, as a layer that starts where the content starts, under the top bar and the sub-tab row (UI-01: it covers no shell control; the
    view under it is too short for a row); the members return when it closes (2.3, G-015) */
 body[data-kb] .u3-mp__body { display: none; }
-body.ui-v2.ui-v3[data-size][data-kb] .u3-mp { position: fixed; z-index: var(--z-sheet); top: calc(var(--u3-sa-t) + var(--sp-2)); left: var(--mp-host-l);
+body.ui-v2.ui-v3[data-size][data-kb] .u3-mp { position: fixed; z-index: var(--z-sheet); top: calc(var(--u3-sa-t) + var(--u3-bar) + var(--u3-row)); left: var(--mp-host-l);
   width: min(var(--mp-host-w), calc(100% - var(--mp-host-l))); height: auto; padding: var(--sp-2); border-radius: var(--rad-lg); background: var(--bg-raised); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-2); }
+body.ui-v2.ui-v3[data-size][data-kb] #main:has(> .u3-trades .u3-mp) { overflow: visible; }   /* the layer is fixed: the box of the view must not clip it (the members are hidden) */
+/* D-118: on compact-land the dock gives way while the keyboard is open (the lane 1 shell rule does this for every view; this line is the same
+   rule for the picker, so the layer never lies on the dock before that PR merges) */
+body.ui-v2.ui-v3[data-size="compact-land"][data-kb]:has(.u3-mp) #dock { display: none; }
+body.ui-v2.ui-v3[data-size="tiny"][data-kb] .u3-mp { top: calc(var(--u3-sa-t) + var(--sp-2)); }   /* tiny has no top bar (D-06) */
 body.ui-v2.ui-v3[data-size="compact-land"][data-kb] .u3-mp { width: min(var(--mp-host-w), calc(100% - var(--mp-host-l) - var(--corner-w))); }   /* out of the Discord corner zone (2.3) */
 /* the panel keeps no frame while typing: its content is the layer above (a framed empty panel is taller than the squeezed view) */
 body[data-kb][data-size] .u3-trades { padding-bottom: 0; }body[data-kb][data-size] .u3-trades__panel { padding: 0; border: 0; background: none; }
@@ -96,4 +101,3 @@ body[data-size="tiny"] .u3-mp__tools > :not(.u3-mp__find) { display: none; }
 .u3-trades { box-sizing: border-box; height: 100%; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--u3-pad) var(--sp-3); }
 .u3-trades__panel { box-sizing: border-box; flex: 1 1 auto; min-height: 0; padding: var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
 body[data-size="compact-land"] .u3-trades__panel { padding: var(--sp-3); }
-
