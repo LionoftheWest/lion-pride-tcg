@@ -3,6 +3,7 @@
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { openWishlist, closeWishlist } from './ui3/wishlist.js';
 import { fillConvertButton } from './ui-v2-shop.js';
 import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';
@@ -1204,7 +1205,7 @@ function paintSpotEditor() {
 // live hunt, and the cards each of you has that the other one needs.
 
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const mem = { page: 0, all: false, wishFrom: 0, pane: '' };   // pane '' = the first tab with content (profile.js fitTight)
+const mem = { page: 0, all: false, pane: '' };   // pane '' = the first tab with content (profile.js fitTight)
 let memData = null;
 
 // The needs / closest achievements list: a phone shows only whole rows; no room for one row hides
@@ -1238,7 +1239,7 @@ export async function openMember(id) {
     box.innerHTML = '<div class="mem-empty"><button class="v2-btn" id="memBack">← Home</button><p class="v2-empty">This member has no profile yet.</p></div>'; return;
   }
   memData = { p, self, cards: mergedCards(self ? undefined : (p.cards || [])) };
-  mem.all = false; mem.page = 0; mem.wishFrom = 0; mem.pane = '';
+  mem.all = false; mem.page = 0; mem.pane = '';
   paintMember();
 }
 export function closeMember() { ctx.el('memberModal')?.classList.add('hidden'); }
@@ -1247,7 +1248,7 @@ export function closeMember() { ctx.el('memberModal')?.classList.add('hidden'); 
 export function closeMemberOnShell() {
   if (!pf3.isV3()) return;
   const m = ctx?.el('memberModal');
-  if (m && !m.classList.contains('hidden')) closeMember();
+  if (m && !m.classList.contains('hidden')) { closeWishlist(); closeMember(); }   // the Wishlist drawer belongs to the Profile (D-128)
 }
 document.addEventListener('click', (e) => { if (pf3.closesProfile(e.target)) closeMemberOnShell(); }, true);
 
@@ -1382,13 +1383,10 @@ function paintMemberV3({ box, p, self, cards, s, achs, done, pres, sIco, sTxt, s
   el('memPager')?.addEventListener('click', (e) => { const b = e.target.closest('button[data-page]'); if (!b || b.disabled) return; mem.page += b.dataset.page === 'next' ? 1 : -1; pf3.fitAll(el('memGrid'), el('memPager'), owned, mem); });
   const fit = () => {
     if (!box.querySelector('.u3-pf')) return;
-    el('memWish')?.querySelectorAll('.wl-row').forEach((r) => { r.hidden = false; });
-    el('memWish')?.querySelector('.u3-pf-wmore')?.remove();
     pf3.fitTight(box.querySelector('.u3-pf'), mem.pane, () => pf3.fitStats(box.querySelector('.u3-pf-stats')));
     pf3.fitAch(el('memAch'), done);
     pf3.fitSpot(el('memSpot'));
     if (all) pf3.fitAll(el('memGrid'), el('memPager'), owned, mem); else pf3.fitMini(el('memGrid'), season);
-    const w = el('memWish'); if (w?.querySelector('.wl-list')) pf3.fitWish(w, mem);
   };
   requestAnimationFrame(fit);
   document.fonts?.ready.then(() => { if (memFit === fit) fit(); });   // the number font changes the widths
@@ -1415,6 +1413,12 @@ function paintWish() {
   const box = ctx.el('memWish');
   if (!box) return;
   const n = wl.slots.filter((x) => x.card).length;
+  if (pf3.isV3() && box.closest('.u3-pf')) {   // v3 (UI-16, D-128): the Profile shows a handle strip; a tap or a drag up opens the drawer
+    box.innerHTML = pf3.wishBarHTML(n, wl.slots.length || 5);
+    pf3.bindWishHandle(ctx.el('wlHandle'), (h) => openWishV3(h));
+    memFit?.();
+    return;
+  }
   box.innerHTML = `<div class="tile-h"><b>♡ Wishlist</b><span class="grow"></span><span class="mono dim">${n}/5</span>
       ${wl.self ? `<button class="v2-chip-btn${wl.edit ? ' gold' : ''}" id="wlEdit">${wl.edit ? '✓ Done' : '✎ Edit'}</button>` : ''}</div>
     <div class="wl-list">${wl.slots.map((x) => `<div class="wl-row${wl.pick === x.slot ? ' on' : ''}" data-slot="${x.slot}"><span class="wl-i mono">${x.slot}</span>
@@ -1426,7 +1430,7 @@ function paintWish() {
     ${wl.msg ? `<span class="tr-msg">${esc(wl.msg)}</span>` : ''}`;
   // A portrait phone: the Wishlist sits beside the hunt tile; in Edit it takes the full width (ui-v2-mobile.css).
   ctx.el('memberModal')?.querySelector('.mem-screen')?.classList.toggle('wl-open', isPort() && wl.edit);
-  ctx.el('wlEdit')?.addEventListener('click', () => { wl.edit = !wl.edit; wl.pick = null; closeWishPicker(); paintWish(); });
+  ctx.el('wlEdit')?.addEventListener('click', (e) => { if (wishV3()) { openWishV3(e.currentTarget); return; } wl.edit = !wl.edit; wl.pick = null; closeWishPicker(); paintWish(); });
   box.querySelectorAll('.wl-x').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveWish(Number(b.dataset.slot), null); }));
   box.querySelectorAll('.wl-top').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveTop(Number(b.dataset.slot)); }));
   box.querySelectorAll('.wl-set').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openWishPicker(Number(b.dataset.slot)); }));
@@ -1484,6 +1488,22 @@ function openWishPicker(slot) {
   paintWish();
 }
 function closeWishPicker() { ctx.el('memberModal')?.querySelector('.wl-picker')?.remove(); }
+// v3 (UI-16, body.ui-v3 only): the Wishlist handle opens the drawer (D-128), and the pencil opens the Card picker (src/ui3/wishlist.js).
+const wishV3 = () => document.body.classList.contains('ui-v3');
+function openWishV3() {
+  const id = wl.id;
+  openWishlist({
+    slots: wl.slots, returnFocus: () => ctx.el('wlHandle'), readonly: !wl.self, rarityLabel: ctx.RARITY_LABEL,
+    view: (cardId) => { const c = (ctx.cache.catalog?.cards || []).find((k) => Number(k.id) === cardId); if (c) ctx.openViewer(c); },
+    load: () => ctx.api(`/api/wishlist?id=${encodeURIComponent(id)}`),
+    save: (slot, cardId) => ctx.apiPost('/api/wishlist', { slot, cardId }),
+    star: (slot) => ctx.apiPost('/api/wishlist/top', { slot }),
+    cards: () => mergedCards(),
+    lib: { rarities: RARITY_ORDER.map((r) => [r, ctx.RARITY_LABEL[r] || r]), elements: ELEMENT_ORDER.map((e) => [e, ELEMENTS[e].name]), types: TYPES, games: GAMES, elementOf: (c) => cardElement(c.tags) },
+    detail: (c) => ctx.openViewer(c),
+    onChange: () => { if (wl.id === id) loadWish(id, wl.self); hallChanged(); },
+  });
+}
 
 // Their damage in the live hunt, per day, and their best card.
 function huntBoxHTML(p) {

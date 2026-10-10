@@ -8,6 +8,7 @@
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_board=rows|empty|error   the 4 Leaderboard answers (UI-66): rows = a board with many rows, empty = no rows, error = HTTP 500 (derived below)
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
+//   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
@@ -92,6 +93,16 @@ function derivedRoom(body, kind) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedRoom(body, c.ci_dungeon) });
 
+// UI-25: open offers in every state (derived from the recorded sent offer), and a member with one trade partner (D-116).
+function derivedTrades(body) {
+  const card = (n, rarity) => ({ id: 900 + n, name: `Card ${n}`, rarity, image_url: body.outgoing?.[0]?.offer?.image_url || '' });
+  const o = (id, from, to, status, offer, request) => ({ id, from_id: from, to_id: to, status, from_name: from === '100000000000000999' ? 'Member 999' : `Member ${from.slice(-3)}`, to_name: `Member ${to.slice(-3)}`, created_at: new Date(Date.parse(FIX.recordedAt) - 86400000).toISOString(), offer, request });
+  const me = body.outgoing?.[0]?.from_id || '100000000000000001';
+  return { incoming: [o(201, '100000000000000012', me, 'pending', card(1, 'normal'), card(2, 'normal')), o(202, '100000000000000012', me, 'pending', card(3, 'illustrated_rare'), card(4, 'illustrated_rare'))],
+    outgoing: [...(body.outgoing || []), o(203, me, '100000000000000011', 'countered', card(5, 'normal'), card(6, 'normal')), o(204, me, '100000000000000163', 'pending', card(7, 'secret_rare'), null)] };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body) => derivedTrades(body) });
+DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_trades === 'few' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
