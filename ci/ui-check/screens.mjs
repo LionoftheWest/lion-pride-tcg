@@ -21,6 +21,8 @@ export const SCREENS = {
   // Home (UI-03): a resting hunt, 9 pulls and 5 members in voice (the state of the approved frames, UI-03/approved); home-live: the recorded live hunt.
   'home':                { id: 'UI-03', safe: true, long: true, home: 'busy', notOn: ['tiny'], steps: [] },
   'home-live':           { id: 'UI-03', long: true, safe: true, home: 'live', notOn: ['tiny'], steps: [] },
+  // UI-04: the live Hunt hero with the Top 3 board (D-58) inside the UI-03 Home; a defect outside the board belongs to Home ('under').
+  'home-board':          { id: 'UI-04', under: 'UI-03', long: true, home: 'live', notOn: ['tiny'], steps: [] },
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
   // the Filters panel open (D-39, D-123: under tabs where the groups do not fit the height)
   'collection-filters': { id: 'UI-07', safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#colFilters'], ['wait', 1]] },
@@ -154,7 +156,8 @@ export function ownerOf(screen, where) {
   // The card details (the v2 #viewer) opened from a Card picker: UI-64 owns them there (only the picker detail specs), the screen under the scrim does not.
   // Other screens keep their owner (collection-detail: UI-08 opens the viewer at some sizes and its side panel at others).
   if (/-picker-detail$/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b|\.vr-|#v-[a-z-]+/.test(where)) return 'UI-64';
-  if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
+  if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';
+  if (/\.u3-hm-board\b|\.u3-hm-br[a-z]*\b/.test(where)) return 'UI-04';   // the Top 3 board in the Home hero (D-58)   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/#u3Wish[a-z]*\b|\.u3-wl\b|\.u3-wl[-_]|#wlHandle|\.u3-pf-wishbar/.test(where)) return 'UI-16';
   // the member profile under a window opened from it (the UI-15 style editor) belongs to UI-14

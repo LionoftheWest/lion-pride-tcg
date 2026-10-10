@@ -6,6 +6,7 @@
 import { icon } from './icons.js';
 import { pager, button, segmented, progressSegmented, esc } from './components.js';
 import { breakable } from '../effects-ui.js';
+import { topMode } from './home-boss.js';
 
 export const homeV3 = () => document.body.classList.contains('ui-v3');
 
@@ -43,8 +44,11 @@ export function fitHero(box) {
   const hb = box?.querySelector('.u3-hm-hb');
   const info = hb?.querySelector('.u3-hm-info');
   if (!hb || !info) return;
-  hb.classList.remove('is-tight', 'is-tighter', 'is-nolabel');
+  hb.classList.remove('is-line', 'is-tight', 'is-tighter', 'is-nolabel');
   const over = () => info.scrollHeight > info.clientHeight + 1 || info.scrollWidth > info.clientWidth + 1 || hb.scrollHeight > hb.clientHeight + 1 || hb.scrollWidth > hb.clientWidth + 1;
+  // UI-04: the Top 3 board first; the one "Top hunter" line on compact-land (D-58) or when the board does not fit
+  if (hb.querySelector('.u3-hm-board') && topMode(document.body.dataset.size, false) === 'line') hb.classList.add('is-line');
+  if (over() && hb.querySelector('.u3-hm-board') && !hb.classList.contains('is-line')) hb.classList.add('is-line');
   if (over()) { hb.classList.add('is-tight'); if (over()) { hb.classList.add('is-tighter'); if (over()) hb.classList.add('is-nolabel'); } }
 }
 
