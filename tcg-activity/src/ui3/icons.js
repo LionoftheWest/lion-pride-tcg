@@ -6,7 +6,7 @@ import {
   Minus, Info, CircleCheck, CircleAlert, TriangleAlert, Timer, SlidersHorizontal, Landmark, PartyPopper, Layers, Award,
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
-  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, Gem, BellOff, ChevronUp,
+  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, DoorOpen, Gem, BellOff, ChevronUp,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -31,6 +31,8 @@ export const ICONS = {
   'flame': Flame, 'message-circle': MessageCircle, 'headphones': Headphones,
   // the Dungeon reward choice (UI-48): a Ward, the damage bonus, a heal
   'shield-check': ShieldCheck, 'trending-up': TrendingUp, 'heart': Heart,
+  // Floor cleared (UI-49): Retreat with the loot
+  'door-open': DoorOpen,
   // the FAQ window (UI-38): the rarities, the Pings answer, the open row's chevron
   'gem': Gem, 'bell-off': BellOff, 'chevron-up': ChevronUp,
 };
