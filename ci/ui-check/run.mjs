@@ -53,6 +53,7 @@ for (const s of sizes) for (const screen of screens) for (const variant of varia
   if (spec.notOn?.includes(cls)) continue;   // the screen does not exist on this class (design.md 2.1)
   if ((variant === 'safe' || variant === 'keyboard') && !touch) continue;
   if (variant === 'keyboard' && !spec.input) continue;
+  if (variant === 'keyboard' && cls === 'tiny') continue;   // D-138: no typing in the tiny window (Discord picture-in-picture)
   if (variant === 'safe' && (!/^compact/.test(cls) || !SAFE_SCREENS.has(screen))) continue;
   if (variant === 'long' && !LONG_SCREENS.has(screen)) continue;
   todo.push([s, screen, variant]);
@@ -72,6 +73,7 @@ async function runCell([s, screen, variant], ref = {}) {
         await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
         const cookies = [];
         if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? 'battle' : spec.hunt, url: BASE });
+        if (spec.trades) cookies.push({ name: 'ci_trades', value: spec.trades, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)

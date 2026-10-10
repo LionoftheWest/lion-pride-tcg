@@ -391,13 +391,14 @@ function startV3() {
 function startV2() {
   // Without the phone layouts, a phone stays in landscape (the old layout breaks in portrait).
   // Nathan set the Developer Portal to unlocked on 2026-10-01, so the app sets the lock.
-  if (!mobileUi) { try { sdkRef?.commands?.setOrientationLockState?.({ lock_state: 3, picture_in_picture_lock_state: 3, grid_lock_state: 3 })?.catch?.(() => {}); } catch { /* an old Discord client */ } }
+  // D-136: in v3 the Developer Portal setting decides the orientation, so neither lock call below runs (flag OFF: both run as before).
+  if (!mobileUi && !uiV3) { try { sdkRef?.commands?.setOrientationLockState?.({ lock_state: 3, picture_in_picture_lock_state: 3, grid_lock_state: 3 })?.catch?.(() => {}); } catch { /* an old Discord client */ } }
   if (mobileUi) {
     initMobile(() => show(currentView)); // a phone turned: paint the screen in its new layout
     // The phone layouts handle both directions: let the member turn the phone (Nathan, 2026-10-01).
     const mlog = (ev, d) => apiPost('/api/mobile-log', { ev, ...d, w: innerWidth, h: innerHeight, body: document.body.className.split(' ').filter((c) => c.startsWith('m-')).join(' '),
       sa: ['top', 'right', 'bottom', 'left'].map((k) => getComputedStyle(document.documentElement).getPropertyValue(`--discord-safe-area-inset-${k}`).trim() || '-').join(' ') }).catch(() => {});
-    try {
+    if (!uiV3) try {
       const p = sdkRef?.commands?.setOrientationLockState?.({ lock_state: 1, picture_in_picture_lock_state: 1, grid_lock_state: 1 });
       if (p?.then) p.then((r) => mlog('unlock-ok', { r: r ?? null }), (e) => mlog('unlock-err', { e: String(e?.message || e) })); else mlog('unlock-none', {});
     } catch (e) { mlog('unlock-throw', { e: String(e?.message || e) }); }
