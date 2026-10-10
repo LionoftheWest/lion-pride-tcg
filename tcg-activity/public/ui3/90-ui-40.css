@@ -1,0 +1,54 @@
+/* ==== UI-40 Feedback window (src/ui3/report.js, src/ui-v2-report.js; design repo UI-40/approved, review-1) ====
+   The same window pattern as the FAQ (UI-38), Dailies (UI-36) and Settings (UI-61): a panel under the top bar on medium and
+   expanded, a bottom sheet on the dock edge on compact-port (as tall as its content), a side sheet on compact-land that keeps
+   equal side margins of at least the Discord corner zone width (2.3, G-013). The text box is the named scroll area
+   "report text" (3.3, D-07) with a scroll cue; it scrolls only when the message does not fit. */
+.u3-rp { --rp-gap: var(--sp-3);
+  position: fixed; z-index: var(--z-sheet); top: calc(var(--topbar-h) - var(--sp-2)); right: var(--sp-5); width: calc(var(--sheet-side-w) + var(--sp-5));
+  max-width: calc(100% - var(--sp-5) * 2); max-height: calc(100% - var(--topbar-h) - var(--u3-dock-b) - var(--dock-h)); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: var(--rp-gap); padding: var(--sp-4); overflow: hidden;
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  color: var(--text-primary); animation: kf-pop var(--dur-base) var(--ease-out); transform-origin: top right; }
+.u3-rp.hidden { display: none; }
+body.ui-v3[data-size] .u3-rp { --text-muted: var(--u3-text-muted); }
+body.ui-v3[data-size="compact-port"] .u3-rp { top: auto; left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5)); width: auto; max-width: none;
+  bottom: calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-1)); max-height: calc(100% - var(--u3-dock-b) - var(--dock-h) - var(--sp-1) - max(calc(var(--u3-sa-t) + var(--sp-1-5)), var(--corner-h)));
+  border-radius: var(--rad-sheet); animation-name: kf-rise; transform-origin: bottom center; }
+/* compact-land: from the top to the bottom of the safe frame, centered with equal side margins of at least the corner width */
+body.ui-v3[data-size="compact-land"] .u3-rp { --rp-gap: var(--sp-2); top: calc(var(--u3-sa-t) + var(--sp-1-5)); bottom: auto;
+  left: max(calc(var(--u3-sa-l) + var(--sp-1-5)), var(--corner-w)); right: max(calc(var(--u3-sa-r) + var(--sp-1-5)), var(--corner-w));
+  width: min(calc(var(--sheet-side-w) + var(--sp-7) + var(--sp-2)), calc(100% - var(--corner-w) * 2)); max-width: none; margin-inline: auto;
+  max-height: calc(100% - var(--u3-sa-t) - var(--u3-sa-b) - var(--sp-1-5) * 2); padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--rad-sheet); transform-origin: top center; }
+body.ui-v3[data-size="tiny"] .u3-rp { display: none; }
+
+.u3-rp__head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-rp__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-rp > .u3-seg { flex: none; display: flex; }
+.u3-rp .u3-seg__item { flex: 1 1 0; min-width: 0; justify-content: center; }
+
+/* the named scroll area: the text box with a 4 px rail and a thumb at its right edge */
+.u3-rp__area { position: relative; flex: 0 1 auto; min-height: calc(var(--hit) * 2); display: flex; flex-direction: column; }
+.u3-rp__area > .u3-textarea { flex: 1 1 var(--textarea-h); height: auto; min-height: calc(var(--hit) * 2); box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.u3-rp__area > .u3-textarea::-webkit-scrollbar { display: none; }
+.u3-rp__area > .u3-textarea:focus-visible { outline: none; }
+.u3-rp__rail { position: absolute; top: var(--sp-2); bottom: var(--sp-2); right: var(--sp-1); width: var(--bar-sm); border-radius: var(--rad-pill); background: var(--surface-3); pointer-events: none; }
+.u3-rp__rail[hidden] { display: none; }
+.u3-rp__thumb { position: absolute; left: 0; right: 0; top: var(--rp-thumb-top, 0%); height: var(--rp-thumb-h, 100%); border-radius: var(--rad-pill); background: var(--border-strong); }
+
+/* the keyboard is open (size-class.js body[data-kb]): the head, the kinds, the text box and Send; the facts return when it closes (2.3, G-015) */
+body[data-kb] .u3-rp__with { display: none; }
+body[data-kb] .u3-rp__area, body[data-kb] .u3-rp__area > .u3-textarea { min-height: var(--hit); }
+.u3-rp__with { flex: none; display: flex; flex-direction: column; gap: var(--sp-1-5); }
+.u3-rp__facts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+/* the facts are text, not controls: no 44 px hit area over the rows around them */
+.u3-rp__fact { text-transform: none; letter-spacing: normal; font-size: var(--fs-small); }
+body[data-input="coarse"] .u3-rp__fact::after { content: none; }
+.u3-rp__foot { flex: none; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-rp__foot > .u3-ctl, .u3-rp__foot > .u3-btn { width: 100%; }
+.u3-rp__foot .u3-btn { width: 100%; justify-content: center; }
+body.ui-v3[data-input="coarse"] .u3-rp__foot .u3-btn { height: var(--hit); }
+
+.u3-rp__done { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--sp-4) 0 var(--sp-2); color: var(--text-secondary); }
+.u3-rp__done > .u3-ico { color: var(--success); }
+.u3-rp__thanks { font-family: var(--font-display); font-size: var(--fs-heading); line-height: var(--lh-heading); color: var(--text-primary); }

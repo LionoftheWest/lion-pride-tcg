@@ -7,6 +7,7 @@ import {
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
   Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, DoorOpen, Gem, BellOff, ChevronUp,
+  Bug, MessageSquare, Lightbulb, Monitor, GitCommitHorizontal, Clock, Send,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -35,6 +36,8 @@ export const ICONS = {
   'door-open': DoorOpen,
   // the FAQ window (UI-38): the rarities, the Pings answer, the open row's chevron
   'gem': Gem, 'bell-off': BellOff, 'chevron-up': ChevronUp,
+  // the Feedback window (UI-40): the three kinds and the three facts sent with a report, Send
+  'bug': Bug, 'message-square': MessageSquare, 'lightbulb': Lightbulb, 'monitor': Monitor, 'git-commit-horizontal': GitCommitHorizontal, 'clock': Clock, 'send': Send,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

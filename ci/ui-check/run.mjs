@@ -37,7 +37,7 @@ const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;-
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
 const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'help-closed', 'help-item5', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'dungeon-picker-detail', 'hunt-picker-detail', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
+const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'help-closed', 'help-item5', 'report', 'report-typed', 'report-error', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'dungeon-picker-detail', 'hunt-picker-detail', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
@@ -73,6 +73,7 @@ async function runCell([s, screen, variant], ref = {}) {
         const cookies = [];
         if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? 'battle' : spec.hunt, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
+        if (spec.report) cookies.push({ name: 'ci_report', value: 'on', url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);
