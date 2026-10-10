@@ -3,7 +3,14 @@
 // My auctions). The rules live in SQL (hall_auctions.sql), the data in src/hall-routes.js.
 // Privacy: another member's wishlist and listed cards show here, never their collection.
 import { explainBtn, maybeExplain } from './ui-v2-explain.js';
-import { v2ctx, avatarHTML, paintCards, fitChildren, toast, openMember } from './ui-v2.js';
+import { v2ctx, avatarHTML, paintCards, fitChildren, toast, openMember, onSwipe, ensureCatalog } from './ui-v2.js';
+import { esc as esc3, button, iconButton, searchField, pager, chip, segmented, stateEmpty } from './ui3/components.js';
+import { fitGrid } from './ui3/card-picker.js';
+import { switchHTML, activeSwitch, switchTarget, applyHall, emptyState, notOwned, clampPage, pagesOf, manageLabel, filterCount, toggleFilter,
+  NO_FILTERS, OWN_OPTIONS, RARITY_CHIPS, TYPE_CHIPS, GAME_CHIPS, fitAll } from './ui3/hall.js';
+import { TOKENS } from './tokens.js';
+import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { elIcon } from './element-icons.js';
 import { thumb } from './thumb.js';
 import { isPhone, isPort } from './mobile.js';
 import { nameBadge, breakable } from './effects-ui.js';
@@ -19,7 +26,8 @@ const nm = (id, name) => nameBadge(id, name, isPhone());
 const title = (s) => (isPhone() ? breakable(esc(s)) : esc(s));
 
 export const hall = { sub: 'hall', view: 'wanted', aview: 'open', page: 0, data: null, held: {}, sel: null, wish: null, give: null, msg: '',
-  listing: false, auctions: null, auctionsBy: {}, auction: null, bid: [], start: null, sellerWish: [], q: '' };
+  listing: false, auctions: null, auctionsBy: {}, auction: null, bid: [], start: null, sellerWish: [], q: '', f: { ...NO_FILTERS }, fdraft: null };
+const isV3 = () => document.body.classList.contains('ui-v3');
 
 // ---- Data -------------------------------------------------------------------------------------
 async function loadHall() {
@@ -70,6 +78,7 @@ export async function refreshHall() {
 }
 
 function paintHall() {
+  if (isV3() && (hall.sub === 'auctions' || hall.listing || hall.sel)) closeHallFilters();
   if (hall.sub === 'auctions') {
     if (hall.start) return paintStart();
     if (hall.auction) return paintAuction();
@@ -83,7 +92,9 @@ function paintHall() {
 // ---- The shell --------------------------------------------------------------------------------
 function shell(body, { aside = '', back = null, full = true } = {}) {
   const { el } = ctx();
-  const sub = `<div class="seg" id="hlSub"><button data-s="hall" class="${hall.sub === 'hall' ? 'on' : ''}">▦<span class="bt"> Trade Hall</span></button><button data-s="auctions" class="${hall.sub === 'auctions' ? 'on' : ''}">🔨<span class="bt"> Auctions</span></button></div>`;
+  // v3 (UI-30, D-67 item 1): the one switch Wanted, For trade, Auctions with the UI-00 line icons; the v2 views under it keep their own look
+  const sub = isV3() ? `<div class="u3-hl__sw" id="hlSub">${switchHTML(hall.sub, hall.view)}</div>`
+    : `<div class="seg" id="hlSub"><button data-s="hall" class="${hall.sub === 'hall' ? 'on' : ''}">▦<span class="bt"> Trade Hall</span></button><button data-s="auctions" class="${hall.sub === 'auctions' ? 'on' : ''}">🔨<span class="bt"> Auctions</span></button></div>`;
   // A portrait phone: the right panel is a bottom sheet (design 27): its title row is the handle.
   const sheet = isPort() && aside;
   el('main').innerHTML = `<div class="v2-trade hall-view${full ? ' hall-full' : ''}${sheet ? ` has-sheet${hall.sheet ? ' sheet-open' : ''}` : ''}">
@@ -105,15 +116,24 @@ function shell(body, { aside = '', back = null, full = true } = {}) {
     side?.querySelector('.hl-grab')?.addEventListener('click', toggle);
     side?.querySelector('.tile-h')?.addEventListener('click', toggle);
   }
-  el('hlSub').onclick = async (e) => {
-    const b = e.target.closest('[data-s]'); if (!b || b.dataset.s === hall.sub) return;
-    Object.assign(hall, { sub: b.dataset.s, sel: null, listing: false, auction: null, start: null, page: 0, msg: '' });
-    await renderHall();
-  };
+  el('hlSub').onclick = onSwitch;
   el('hlBack')?.addEventListener('click', async () => {
     Object.assign(hall, { sel: null, listing: false, auction: null, start: null, give: null, bid: [], page: 0, msg: '', sheet: false });
     await renderHall();
   });
+}
+// The switch (v2: Trade Hall | Auctions; v3: Wanted | For trade | Auctions)
+async function onSwitch(e) {
+  if (isV3()) {
+    const b = e.target.closest('[data-seg]'); if (!b || b.dataset.seg === activeSwitch(hall.sub, hall.view)) return;
+    const t = switchTarget(b.dataset.seg, hall.view), changed = t.sub !== hall.sub;
+    Object.assign(hall, { ...t, sel: null, listing: false, auction: null, start: null, give: null, bid: [], page: 0, msg: '', sheet: false });
+    if (changed) await renderHall(); else paintHall();
+    return;
+  }
+  const b = e.target.closest('[data-s]'); if (!b || b.dataset.s === hall.sub) return;
+  Object.assign(hall, { sub: b.dataset.s, sel: null, listing: false, auction: null, start: null, page: 0, msg: '' });
+  await renderHall();
 }
 const cardImg = (c, cls = '') => (c ? `<div class="hl-card ${cls} r-${c.rarity}"><img src="${thumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(c.name)}"></div>` : `<div class="hl-card empty ${cls}"><span>?</span></div>`);
 const rarityTag = (c) => (c ? `<span class="hl-rar" style="color:var(--r-${c.rarity})">◆ ${esc(RL(c.rarity))}</span>` : '');
@@ -136,6 +156,7 @@ const bidSummary = (cards) => {
 
 // ---- Trade Hall: Wanted | For trade ----------------------------------------------------------
 function paintHallGrid() {
+  if (isV3()) return paintHallV3();
   const { el } = ctx();
   const d = hall.data || { wanted: [], forTrade: [], mine: [] };
   const list = hall.view === 'wanted' ? d.wanted : d.forTrade;
@@ -158,12 +179,7 @@ function paintHallGrid() {
       ${isPhone() ? `<div class="v2-cap hl-cap two ph"><span class="hl-who" data-member="${esc(it.player_id)}">${nm(it.player_id, it.name)}</span><span class="hl-r2">${chip}</span></div>`
         : `<div class="v2-cap hl-cap">${avatarHTML(it.player_id, it.name, 'xs')}<span class="hl-who" data-member="${esc(it.player_id)}">${nm(it.player_id, it.name)}</span>${chip}</div>`}</div>`;
   };
-  paintCards(el('hlGrid'), el('hlPager'), items, hall, async (c) => {
-    if (hall.view === 'fortrade' && c._it.mine === true) { hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); return; }
-    if (hall.view === 'wanted' && c._it.yours) { openMember(c._it.player_id); return; } // my top want: my profile Wishlist
-    hall.sel = { kind: hall.view, ...c._it }; hall.give = null; hall.msg = '';
-    await openComposer();
-  });
+  paintCards(el('hlGrid'), el('hlPager'), items, hall, pickListing);
   if (!items.length) el('hlGrid').innerHTML = `<p class="v2-empty">${hall.view === 'wanted' ? 'No member has a wishlist yet. Set yours with ♡ My Wishlist.' : 'No cards are listed yet. List one with Manage My Listings.'}</p>`;
   // A member name opens their profile (the full wishlist). Capture: before the card tap opens an offer.
   el('hlGrid').addEventListener('click', (e) => { const t = e.target.closest('.hl-who[data-member]'); if (!t) return; e.stopPropagation(); openMember(t.dataset.member); }, true);
@@ -171,6 +187,192 @@ function paintHallGrid() {
   el('hlView').onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b) return; hall.view = b.dataset.v; hall.page = 0; paintHall(); };
   el('hlQ').addEventListener('input', (e) => { hall.q = e.target.value; hall.page = 0; const pos = e.target.selectionStart; paintHall(); const n = el('hlQ'); n.focus(); try { n.setSelectionRange(pos, pos); } catch { /* */ } });
   el('hlList').onclick = async () => { try { await ctx().refreshOwned(); } catch { /* keep */ } hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); };
+}
+
+// A tap on a listing card: my own listing opens Manage, my top want my profile, any other an offer
+async function pickListing(c) {
+  if (hall.view === 'fortrade' && c._it.mine === true) { hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); return; }
+  if (hall.view === 'wanted' && c._it.yours) { openMember(c._it.player_id); return; } // my top want: my profile Wishlist
+  hall.sel = { kind: hall.view, ...c._it }; hall.give = null; hall.msg = '';
+  await openComposer();
+}
+async function openManage() { try { await ctx().refreshOwned(); } catch { /* keep */ } hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); }
+
+// ---- UI-30 Trade Hall lists under body.ui-v3 (src/ui3/hall.js; design repo UI-30/approved; D-67, D-80 item 21) ----------
+// The same data, handlers and API calls as the v2 grid. The card face only (D-29): no member line, no "Yours", no counts.
+// The grid is fitted to its box (8.1: the most cards at 88 to 112 px), the pager shows with two pages or more (D-36).
+let catSrc = null, catTags = null, hlRO = null, hlItems = [], hlResizeT = null, hlResizeOn = false;
+const tagsOf = (c) => {
+  const cards = ctx().cache.catalog?.cards;
+  if (!cards) return {};
+  if (catSrc !== cards) { catSrc = cards; catTags = new Map(cards.map((x) => [Number(x.id), x.tags])); }
+  return catTags.get(Number(c.id)) || {};
+};
+const owns = (c) => mine().some((x) => Number(x.id) === Number(c.id) && (x.quantity || 0) > 0);
+function hallItemsV3() {
+  const d = hall.data || { wanted: [], forTrade: [], mine: [] };
+  const list = hall.view === 'wanted' ? d.wanted : d.forTrade;
+  return applyHall(list, { q: hall.q, filters: hall.f, tagsOf, elementOf: cardElement, owns }).map((x, i) => ({ ...x.card, _it: x, _k: i }));
+}
+function tileV3(c, idx) {
+  const it = c._it, off = notOwned(hall.view, it);
+  return `<li class="u3-hl-card u3-r-${esc3(c.rarity || 'normal')}${off ? ' is-notowned' : ''}"><button type="button" class="u3-hl-card__pick" data-idx="${idx}" aria-label="${esc3(c.name)}, ${esc3(it.name)}${off ? ', not owned' : ''}">`
+    + `${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${esc3(c.image_url)}" alt="" loading="lazy" draggable="false">` : ''}</button></li>`;
+}
+const searchHTML = () => searchField({ value: hall.q, placeholder: 'Search cards, tags…' });
+function paintHallV3() {
+  const { el } = ctx();
+  const d = hall.data || { wanted: [], forTrade: [], mine: [] };
+  const n = filterCount(hall.f);
+  hlRO?.disconnect();
+  hall.cls = document.body.dataset.size;
+  el('main').innerHTML = `<div class="u3-hl">${commTabs()}${explainBtn(hall.sub)}`
+    + `<div class="u3-hl__sw" id="hlSub">${switchHTML('hall', hall.view)}</div>`
+    + `<div class="u3-hl__manage">${button({ label: manageLabel(d.mine.length), variant: 'primary', icon: 'settings', data: { hlmanage: '1' } })}</div>`
+    + `<div class="u3-hl__wish">${button({ label: 'My wishlist', icon: 'heart', data: { hlwish: '1' } })}</div>`
+    + `<div class="u3-hl__wishi">${iconButton({ icon: 'heart', label: 'My wishlist', data: { hlwish: '1' } })}</div>`
+    + `<div class="u3-hl__find" id="hlSearch">${searchHTML()}</div>`
+    + `<div class="u3-hl__filt">${button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { hlfilters: '1' } })}</div>`
+    + `<ul class="u3-hl__grid" id="hlGrid" aria-label="${hall.view === 'wanted' ? 'Wanted cards' : 'Cards for trade'}"></ul><div class="u3-hl__pager" id="hlPager"></div></div>`;
+  wireCommTabs();
+  maybeExplain(hall.sub);
+  const root = el('main').querySelector('.u3-hl');
+  root.querySelector('#hlSub').onclick = onSwitch;
+  root.querySelector('[data-hlmanage]').onclick = openManage;
+  root.querySelectorAll('[data-hlwish]').forEach((b) => b.addEventListener('click', () => { const me = ctx().user?.(); if (me?.id) openMember(me.id); }));
+  root.querySelector('[data-hlfilters]').onclick = openHallFilters;
+  const find = el('hlSearch');
+  find.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('u3-search__input')) return;
+    const had = !!hall.q;
+    hall.q = e.target.value; hall.page = 0;
+    if (!!hall.q !== had) refreshSearch(true);   // the clear button comes and goes
+    fillV3();
+  });
+  find.addEventListener('click', (e) => {
+    if (!e.target.closest('.u3-ibtn')) return;
+    hall.q = ''; hall.page = 0; refreshSearch(true); fillV3();
+  });
+  const g = el('hlGrid');
+  g.addEventListener('click', (e) => { const b = e.target.closest('[data-idx]'); const c = b && hlItems[Number(b.dataset.idx)]; if (c) pickListing(c); });
+  onSwipe(g, (dir) => { const pages = pagesOf(hlItems.length, g._per); const p = clampPage(hall.page + dir, pages); if (p !== hall.page) { hall.page = p; fillV3(); } });
+  el('hlPager').onclick = (e) => {
+    const b = e.target.closest('button[data-page]'); if (!b || b.disabled) return;
+    hall.page += b.dataset.page === 'next' ? 1 : -1; fillV3();
+  };
+  if (window.ResizeObserver) { hlRO = new ResizeObserver(() => requestAnimationFrame(() => { if (el('hlGrid') === g && g.isConnected) fillV3(); })); hlRO.observe(g); }
+  if (!ctx().cache.catalog) ensureCatalog().then(() => { if (el('hlGrid') === g && (hall.q || filterCount(hall.f))) fillV3(); });
+  if (!hlResizeOn) { hlResizeOn = true; addEventListener('resize', onHallResize); }
+  fillV3();
+  document.fonts?.ready.then(() => { if (el('hlGrid') === g) fillV3(); });
+}
+// the search field again (the clear button), with the focus and the caret kept
+function refreshSearch(focus) {
+  const f = ctx().el('hlSearch'); if (!f) return;
+  const a = document.activeElement, had = a && f.contains(a);
+  const caret = had ? a.selectionStart : null;
+  f.innerHTML = searchHTML();
+  if (focus && had) { const i = f.querySelector('.u3-search__input'); i?.focus({ preventScroll: true }); try { i.setSelectionRange(caret, caret); } catch { /* */ } }
+}
+// the page: the grid fitted to its box, the tiles of the page, the pager
+function fillV3() {
+  const { el } = ctx();
+  const g = el('hlGrid'); if (!g) return;
+  hlItems = hallItemsV3();
+  const root = g.closest('.u3-hl');
+  const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, parseFloat(getComputedStyle(g).columnGap) || 0, o);
+  // G-099: two rows at least. A short frame first brings the rows closer (is-tight), then the cards get smaller (D-60 small tiles).
+  // The pager takes room only when the cards do not all fit (has-pager), so the fit does not move when it appears.
+  const solve = () => {
+    root.classList.remove('is-tight');
+    let r = fit();
+    if (r.rows < 2) { root.classList.add('is-tight'); r = fit(); }
+    if (r.rows < 2) { const s = fit({ min: TOKENS['card-mini'] }); if (s.rows >= 2) r = s; }
+    return r;
+  };
+  root.classList.remove('has-pager');
+  let f = solve();
+  if (hlItems.length > f.cols * f.rows) { root.classList.add('has-pager'); f = solve(); if (hlItems.length <= f.cols * f.rows) { root.classList.remove('has-pager'); f = solve(); } }
+  // every card on one page: the cards grow to fill the box (up to the largest tile)
+  if (hlItems.length && hlItems.length <= f.cols * f.rows) {
+    const all = fitAll(hlItems.length, g.clientWidth, g.clientHeight, parseFloat(getComputedStyle(g).columnGap) || 0, { min: f.tile, max: TOKENS['card-tile-max'], ratio: TOKENS['card-ratio'] });
+    if (all) f = { ...f, ...all };
+  }
+  // a box under one card of the touch size (the keyboard on a short frame): no room for a card to tap, so the cards wait (the Member picker does the same)
+  g.classList.toggle('is-short', f.tile < TOKENS.hit);
+  const per = f.cols * f.rows;
+  g._per = per;
+  hall.page = clampPage(hall.page, pagesOf(hlItems.length, per));
+  g.style.setProperty('--hl-cols', f.cols); g.style.setProperty('--hl-tile', `${f.tile}px`);
+  const empty = emptyState(hall.view, { q: hall.q, filters: hall.f });
+  g.classList.toggle('is-empty', !hlItems.length);
+  const html = hlItems.length ? hlItems.slice(hall.page * per, hall.page * per + per).map((c, i) => tileV3(c, hall.page * per + i)).join('') : `<li class="u3-hl__none">${stateEmpty({ title: empty.title, line: empty.line })}</li>`;
+  if (g._html !== html) { g._html = html; g.innerHTML = html; }
+  const pages = pagesOf(hlItems.length, per), p = el('hlPager');
+  const ph = pages > 1 ? pager({ page: hall.page + 1, pages }) : '';
+  if (p && p._html !== ph) { p._html = ph; p.innerHTML = ph; }
+}
+// a new size class repaints the toolbar (the "?" and the wishlist button change place); the keyboard does not
+function onHallResize() {
+  clearTimeout(hlResizeT);
+  hlResizeT = setTimeout(() => {
+    if (ctx().currentView() !== 'trading' || tr.tab !== 'hall' || !isV3() || hall.sub !== 'hall' || hall.sel || hall.listing) return;
+    if (document.body.dataset.size !== hall.cls && !ctx().el('u3HlF')) paintHall();
+  }, 300);
+}
+
+// The Filters panel = the Collection Filters panel (D-67 item 10): no counts, no "Can ascend" (D-80 item 21)
+const fchip = (key, id, label, on, extra = {}) => chip({ label, on, data: { hlf: `${key}:${id}` }, ...extra });
+function filtersHTML() {
+  const f = hall.fdraft;
+  const group = (label, body, cls = '') => `<div class="u3-hl-fgroup"><span class="u3-label">${esc3(label)}</span><div class="u3-hl-chips${cls}">${body}</div></div>`;
+  // the elements some card has (as the Collection panel); every element until the catalog is loaded
+  const cat = ctx().cache.catalog?.cards;
+  const have = cat ? new Set(cat.map((c) => cardElement(c.tags))) : null;
+  const els = ELEMENT_ORDER.filter((e) => !have || have.has(e)).map((e) => chip({ kind: 'element', element: e, label: ELEMENTS[e].name, on: f.element === e, elementIcon: elIcon(e), data: { hlf: `element:${e}` } })).join('');
+  return `<div class="u3-scrim u3-hl-fscrim" id="u3HlF" data-u3-scrim><div class="u3-dialog u3-hl-filters" role="dialog" aria-modal="true" aria-labelledby="u3HlFt" tabindex="-1">`
+    + `<header class="u3-dialog__head u3-hl-fhead"><h2 class="u3-dialog__title" id="u3HlFt">Filters</h2>${segmented(OWN_OPTIONS.map(([id, label]) => ({ id: `own:${id}`, label, active: f.own === id })), { label: 'Ownership' })}${iconButton({ icon: 'x', label: 'Close filters', variant: 'panel', data: { hlfclose: '1' } })}</header>`
+    + group('Rarity', RARITY_CHIPS.map(([id, l]) => fchip('rarity', id, l, f.rarity === id, { rarity: id })).join(''))
+    + group('Element', els)
+    + group('Type', TYPE_CHIPS.map(([id, l]) => fchip('type', id, l, f.type === id)).join(''))
+    + group('Game', GAME_CHIPS.map(([id, l]) => fchip('game', id, l, f.game === id)).join(''))
+    + `<footer class="u3-dialog__foot">${button({ label: 'Clear all', variant: 'ghost', data: { hlfclear: '1' } })}${button({ label: 'Confirm', variant: 'primary', data: { hlfok: '1' } })}</footer></div></div>`;
+}
+function paintHallFilters() {
+  let host = document.getElementById('u3HlFHost');
+  if (!host) { host = document.createElement('div'); host.id = 'u3HlFHost'; document.body.appendChild(host); host.addEventListener('click', onHallFilterClick); }
+  host.innerHTML = filtersHTML();
+  // a short frame: the gaps close up when the panel does not fit (no scroll, 3.3)
+  const dlg = host.querySelector('.u3-hl-filters');
+  if (dlg && dlg.scrollHeight > dlg.clientHeight + 1) dlg.classList.add('is-tight');
+}
+async function openHallFilters() {
+  hall.fdraft = { ...hall.f };
+  paintHallFilters();
+  document.addEventListener('keydown', onHallFilterKey);
+  document.getElementById('u3HlF')?.querySelector('.u3-hl-filters')?.focus({ preventScroll: true });
+  if (!ctx().cache.catalog) ensureCatalog().then(() => { if (document.getElementById('u3HlF')) paintHallFilters(); if (ctx().el('hlGrid')) fillV3(); });
+}
+function closeHallFilters() {
+  document.getElementById('u3HlFHost')?.remove();
+  document.removeEventListener('keydown', onHallFilterKey);
+  ctx().el('main')?.querySelector('[data-hlfilters]')?.focus?.({ preventScroll: true });
+}
+function onHallFilterKey(e) { if (e.key === 'Escape' && document.getElementById('u3HlF') && !document.querySelector('#viewer:not(.hidden)')) { e.preventDefault(); closeHallFilters(); } }
+function onHallFilterClick(e) {
+  const scrim = e.target.closest('[data-u3-scrim]');
+  const b = e.target.closest('button');
+  if (!b) { if (scrim && e.target === scrim) closeHallFilters(); return; }
+  const d = b.dataset;
+  if (d.hlfclose) { closeHallFilters(); return; }
+  if (d.hlf) { const [k, v] = d.hlf.split(':'); hall.fdraft = toggleFilter(hall.fdraft, k, v); paintHallFilters(); return; }
+  if (d.seg) { const [, v] = d.seg.split(':'); hall.fdraft = { ...hall.fdraft, own: v }; paintHallFilters(); return; }
+  if (d.hlfclear) { hall.fdraft = { ...NO_FILTERS }; paintHallFilters(); return; }
+  if (d.hlfok) {
+    hall.f = { ...hall.fdraft }; hall.page = 0;
+    closeHallFilters();
+    if (ctx().el('hlGrid')) paintHallV3();
+  }
 }
 
 // ---- The offer composer (an offer on a Wanted or a For trade card) -----------------------------
