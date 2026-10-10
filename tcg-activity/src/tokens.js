@@ -35,6 +35,8 @@ export const TOKENS = {
   "success-soft": "#5BE38A1F",
   "info": "#7FB2FF",
   "info-soft": "#7FB2FF24",
+  "role-attack": "#F2611D",
+  "role-support": "#3FE3F5",
   "rarity-normal": "#A3ACBC",
   "rarity-normal-soft": "#A3ACBC24",
   "rarity-illustrated_rare": "#3E8BFF",

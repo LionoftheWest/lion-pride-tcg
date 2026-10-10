@@ -10,8 +10,10 @@ import { COIN, refreshShards } from './ui-v2-shop.js';
 import { isPhone, isPort, isLand } from './mobile.js';
 import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v2-hall.js';
 import { mountMemberPicker, memberLists } from './ui3/member-picker.js';
-import { button as button3 } from './ui3/components.js';
+import { button as button3, dot as dot3, sheet as sheet3, toast as toast3, counter as counter3 } from './ui3/components.js';
+import { pendingLists, waiting, sectionsHTML, headHTML, viewHTML } from './ui3/pending.js';
 import { paintBell } from './ui3/bell.js';
+import { openTradeWindow, closeTradeWindow, refreshTradeWindow } from './ui3/trade-window.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
 const ctx = () => v2ctx();
@@ -42,7 +44,7 @@ let noteTab = 'all';
 let noteItems = [];
 let noteHunt = null;
 let noteGifts = []; // gifts waiting to be redeemed (gift_claims.sql)
-let bell3 = { page: 1, giftError: false, expanded: new Set(), pages: 1 }; // the v3 window (UI-24, flag ui_v3): page, claim error, opened rows
+let bell3 = { giftError: false, expanded: new Set() }; // the v3 window (UI-24, flag ui_v3): claim error, opened rows
 const isV3 = () => document.body.classList.contains('ui-v3');
 let pingPrefs = null; // the Settings tab: which bot posts may ping me (null = not loaded)
 const PING_ROWS = [['plays', 'Card plays on me'], ['trades', 'Trades & gifts'], ['raid', 'Raid boss'], ['packs', 'Pack reminders']];
@@ -54,7 +56,7 @@ export async function openNotifsV2() {
   if (!box.classList.contains('hidden')) { closeNotifsV2(); return; }
   box.classList.remove('hidden');
   if (isV3()) {
-    bell3 = { page: 1, giftError: false, expanded: new Set(), pages: 1 };
+    bell3 = { giftError: false, expanded: new Set() };
     el('bellBtn')?.classList.add('is-open');
     el('bellBtn')?.setAttribute('aria-expanded', 'true');
     window.addEventListener('resize', bellResize);
@@ -147,30 +149,24 @@ function paintBellV3() {
   const { el, apiPost } = ctx();
   const box = el('v2Notifs');
   if (!box) return;
-  const r = paintBell(box, {
+  paintBell(box, {
     tab: noteTab, items: noteItems, gifts: noteGifts, hunt: noteHunt, unread: noteItems.filter((x) => !x.read).length,
-    giftError: bell3.giftError, page: bell3.page, expanded: bell3.expanded, size: document.body.dataset.size || '', now: Date.now(),
+    giftError: bell3.giftError, expanded: bell3.expanded, size: document.body.dataset.size || '', now: Date.now(),
     kindOf: noteKind, strip: stripEmoji, ago: ctx().ago, thumb, coin: COIN, rarityLabel: (k) => ctx().RARITY_LABEL[k] || k,
     settings: noteTab === 'settings' ? settingsHTML() : null, focus: bell3.focus ?? null,
   });
   bell3.focus = null;
-  bell3.pages = r.pages;
-  if (r.page) bell3.page = r.page;
   box.querySelector('[data-close]')?.addEventListener('click', closeNotifsV2);
   box.querySelector('[data-read]')?.addEventListener('click', async () => {
     try { await apiPost('/api/notifications/read', {}); } catch { /* keep */ }
     noteItems = noteItems.map((x) => ({ ...x, read: true })); ctx().updateNotifBadge(noteGifts.length); paintNotifs();
   });
   box.querySelectorAll('.u3-bell__tabs [data-t]').forEach((b) => b.addEventListener('click', () => {
-    noteTab = b.dataset.t; bell3.page = 1; paintNotifs(); if (noteTab === 'settings' && !pingPrefs) loadPingPrefs();
+    noteTab = b.dataset.t; paintNotifs(); if (noteTab === 'settings' && !pingPrefs) loadPingPrefs();
   }));
   box.querySelector('.ps-list')?.addEventListener('change', savePingPref);
   box.querySelectorAll('[data-claim]').forEach((b) => b.addEventListener('click', () => redeem(b, [Number(b.dataset.claim)])));
   box.querySelector('[data-claimall]')?.addEventListener('click', (e) => redeem(e.currentTarget, noteGifts.map((g) => g.id)));
-  box.querySelectorAll('[data-page]').forEach((b) => b.addEventListener('click', () => {
-    const p = Math.min(bell3.pages, Math.max(1, bell3.page + (b.dataset.page === 'next' ? 1 : -1)));
-    if (p !== bell3.page) { bell3.page = p; paintNotifs(); }
-  }));
   // 10.4: a tap on a row shows its full text in place (and a second tap shortens it again)
   box.querySelectorAll('.u3-note__main').forEach((b) => b.addEventListener('click', () => {
     const id = Number(b.closest('[data-note]').dataset.note);
@@ -569,7 +565,7 @@ function wireFind(after) {
 // the magnifier opens the profile; Pending opens the builder, where the offers are (until UI-25 builds Pending).
 const V3 = () => document.body.classList.contains('ui-v3');
 let mpV3 = null, partnersV3 = null;
-function dropPickerV3() { mpV3?.destroy(); mpV3 = null; }
+function dropPickerV3() { closeTradeWindow(); mpV3?.destroy(); mpV3 = null; dropPendingV3(); }
 async function loadPartnersV3() {
   try { partnersV3 = (await ctx().api('/api/trade/partners')).partners || []; } catch { partnersV3 = partnersV3 || []; }
 }
@@ -586,31 +582,267 @@ function sectionsV3() {
     ...(few ? [{ key: 'all', label: 'All members', members: l.all, form: 'list', paged: true }] : []),
   ];
 }
+// ---- UI-63 Trade window (D-35, D-64; approved frames in the design repo UI-63/approved) ----
+// The window (src/ui3/trade-window.js) owns the layout and the rules; this part gives it the cards and does the calls
+// (the same server routes as the v2 builder: /api/trade/offer two-step, /api/trade/gift, /api/gift).
+function openTradeWindowV3() {
+  const to = tr.to;
+  if (!to) return;
+  const me = ctx().user();
+  const b = () => base();
+  openTradeWindow({
+    me: { id: String(me?.id || ''), name: me?.name || me?.username || 'You' },
+    to: { id: String(to.id), name: to.name },
+    mine: () => (ctx().cache.collection?.cards || []).map((c) => withBase({ ...c, owned: true, locked: false }, b())),
+    theirs: () => (tr.theirs[to.id] || []).map((c) => withBase(c, b())),
+    packs: () => Number(ctx().packs()) || 0,
+    twoStep: !!ctx().trade2?.(),
+    rarities: Object.keys(ctx().RARITY_LABEL || {}),
+    rarityLabel: (k) => ctx().RARITY_LABEL?.[k] || k,
+    avatar: pdAvatar,
+    send: async (act, plan) => {
+      const r = await ctx().apiPost(plan.path, plan.body);
+      if (r?.ok) {
+        delete tr.theirs[to.id];
+        await Promise.all([ctx().refreshOwned(), ctx().refreshPacks?.()]);
+        await refreshOffers();
+        await loadTheirs(to.id);
+      }
+      return r;
+    },
+    onDone: (act) => {
+      infoToastV3(act === 'offer' ? `Offer sent to ${to.name}` : act === 'pack' ? `Pack sent to ${to.name}` : `Gift sent to ${to.name}`);
+      if (mpV3) paintPendingV3();
+    },
+    onError: () => errorToastV3(),
+  });
+}
+
 function paintMemberPickerV3() {
   const main = ctx().el('main');
-  if (mpV3 && main.querySelector('.u3-trades #u3TradesPick')) { mpV3.update({ sections: sectionsV3() }); return; }
+  if (mpV3 && main.querySelector('.u3-trades #u3TradesPick')) { mpV3.update({ sections: sectionsV3() }); paintPendingV3(); return; }
   dropPickerV3();
-  main.innerHTML = `<div class="u3-trades">${commTabs()}<section class="u3-trades__panel" id="u3TradesPick"></section></div>`;
+  main.innerHTML = `<div class="u3-trades">${commTabs()}<div class="u3-trades__cols"><section class="u3-trades__panel" id="u3TradesPick"></section>`
+    + '<aside class="u3-pd u3-trades__pending" id="u3Pd" aria-label="Pending"><div class="u3-pd__body" id="u3PdSide"></div></aside><span class="u3-trades__probe" aria-hidden="true"></span></div></div>';
   wireCommTabs();
   mpV3 = mountMemberPicker(ctx().el('u3TradesPick'), {
     sections: sectionsV3(),
     lead: explainBtn('trades'),
     trail: button3({ label: 'Pending', data: { pending: '1' } }),
     search: async (q) => ((await ctx().api(`/api/players?q=${encodeURIComponent(q)}`)).players || []).map((p) => ({ id: String(p.id), name: p.username })),
+    // UI-63: a tap on a member opens the Trade window over the Member picker; its close button is the way back to the picker
     onPick: async (m) => {
+      closePendingUi();
       tr.members = [m, ...tr.members.filter((x) => x.id !== m.id)];
-      Object.assign(tr, { to: m, get: null, give: null, msg: '', v3pick: false });
+      Object.assign(tr, { to: m, get: null, give: null, msg: '' });
       await loadTheirs(m.id);
-      paintTrade();
+      openTradeWindowV3();
     },
     onProfile: (m) => openMember(m.id),
   });
-  main.querySelector('[data-pending]')?.addEventListener('click', () => { tr.v3pick = false; paintTrade(); });
+  mountPendingV3(main);
   maybeExplain('trades');
 }
 
+// ---- UI-25 Pending (D-32, D-35; approved frames in the design repo UI-25/approved) ----
+// Medium and expanded: the side panel (stacked under the picker when there is no room for both); compact-port and
+// compact-land: the Pending button opens it as a sheet. A row opens the Offer view. Decline and Cancel wait 8 s with
+// "Undo" (7.4, D-10, D-64 item 7): the server has no undo, so the call goes out when the 8 s end.
+const UNDO_MS = 8000;
+const pd = { hidden: new Set(), pageIn: 0, pageOut: 0, ro: null, timers: new Map(), toastT: 0, onClick: null, onKey: null };
+const pdAvatar = (id, name) => `<span class="u3-mp-av u3-pd-av" aria-hidden="true"><span>${esc(String(name || '?').trim().charAt(0).toUpperCase() || '?')}</span><img src="/api/avatar/${esc(id)}" alt="" data-err="remove"></span>`;
+const pdH = { thumb, avatar: pdAvatar };
+const pdLists = () => pendingLists(tr.offers, pd.hidden);
+
+function mountPendingV3(main) {
+  const cols = main.querySelector('.u3-trades__cols');
+  pd.onClick = (e) => onPdClick(e);
+  pd.onKey = (e) => {
+    if (e.key !== 'Escape') return;
+    if (document.querySelector('.u3-pd-scrim')) { e.preventDefault(); closeViewV3(); } else if (document.querySelector('.u3-pd-sheet')) { e.preventDefault(); closeSheetV3(); }
+  };
+  document.addEventListener('click', pd.onClick);
+  document.addEventListener('keydown', pd.onKey);
+  // the layout reads the panel itself (F-1: no window size): side by side when there is room, else stacked
+  pd.ro = new ResizeObserver(() => { layoutPendingV3(); paintPendingV3(); });
+  pd.ro.observe(cols);
+  pd.ro.observe(main.querySelector('#u3PdSide'));
+  document.fonts?.ready.then(() => { if (pd.ro) { layoutPendingV3(); paintPendingV3(); } });
+  layoutPendingV3();
+  paintPendingV3();
+}
+function dropPendingV3() {
+  pd.ro?.disconnect(); pd.ro = null;
+  if (pd.onClick) document.removeEventListener('click', pd.onClick);
+  if (pd.onKey) document.removeEventListener('keydown', pd.onKey);
+  pd.onClick = pd.onKey = null;
+  closePendingUi();
+}
+function closePendingUi() { closeViewV3(); closeSheetV3(); }
+function layoutPendingV3() {
+  const cols = document.querySelector('.u3-trades__cols');
+  const probe = cols?.querySelector('.u3-trades__probe');
+  if (!cols || !probe) return;
+  cols.classList.toggle('is-stack', cols.clientWidth < probe.offsetWidth);   // the probe is as wide as the picker minimum + the panel (CSS)
+}
+// Fit: all rows first, then fewer rows in the longer section (a pager under it); a mode that still does not fit takes
+// the next form: is-tight = the pager in the head line of its section, is-tight2 = small cards and a one-line row.
+const PD_MODES = [[], ['is-tight'], ['is-tight', 'is-tight2']];
+function fitPendingV3(box) {
+  const lists = pdLists();
+  let perIn = lists.inc.length, perOut = lists.out.length;
+  const draw = (mode) => {
+    box.classList.remove('is-tight', 'is-tight2');
+    box.classList.add(...mode);
+    box.innerHTML = headHTML(box.id === 'u3PdSheet' ? 0 : waiting(lists), box.id === 'u3PdSheet') + sectionsHTML({ ...lists, perIn, perOut, pageIn: pd.pageIn, pageOut: pd.pageOut }, pdH);
+    // a long name first gets smaller (to 11 px), then wraps at its break points; never cut (D-08)
+    for (const n of box.querySelectorAll('.u3-pd-row__name')) {
+      let k = 0;
+      while (n.scrollWidth > n.clientWidth + 0.5 && k < 4) n.dataset.shrink = String(++k);
+    }
+    return box.scrollHeight <= box.clientHeight + 0.5;
+  };
+  for (const mode of PD_MODES) {
+    perIn = lists.inc.length; perOut = lists.out.length;
+    for (let g = 0; g < 40; g += 1) {
+      if (draw(mode)) return;
+      if (perIn >= perOut && perIn > 1) perIn -= 1;
+      else if (perOut > 1) perOut -= 1;
+      else if (perIn > 1) perIn -= 1;
+      else break;
+    }
+  }
+}
+function paintPendingV3() {
+  const lists = pdLists();
+  const n = waiting(lists);
+  const btn = document.querySelector('.u3-mp__tools [data-pending]');
+  if (btn) {
+    const has = btn.querySelector('.u3-dot');
+    if (n && !has) btn.insertAdjacentHTML('beforeend', dot3(`${n} waiting`));
+    if (!n && has) has.remove();
+  }
+  const side = document.getElementById('u3PdSide');
+  if (side && side.getClientRects().length) fitPendingV3(side);
+  const sh = document.getElementById('u3PdSheet');
+  if (sh) fitPendingV3(sh);
+  // the head of a sheet is the sheet header: it shows the count beside the title
+  const t = document.querySelector('.u3-pd-sheet .u3-sheet__title');
+  if (t) { t.querySelector('.u3-counter')?.remove(); if (n) t.insertAdjacentHTML('beforeend', counter3(n)); }
+}
+function openSheetV3() {
+  if (document.querySelector('.u3-pd-sheet')) return;
+  const side = document.body.dataset.size === 'compact-port' ? 'bottom' : 'side';
+  document.body.insertAdjacentHTML('beforeend', sheet3({ side, title: 'Pending', body: '<div class="u3-pd__body u3-pd__body--sheet" id="u3PdSheet"></div>' }));
+  const sh = [...document.querySelectorAll('.u3-sheet')].pop();
+  sh?.classList.add('u3-pd-sheet');
+  pd.pageIn = 0; pd.pageOut = 0;
+  const body = document.getElementById('u3PdSheet');
+  if (pd.ro && body) pd.ro.observe(body);
+  paintPendingV3();
+  sh?.querySelector('.u3-ibtn')?.focus({ preventScroll: true });
+}
+function closeSheetV3() {
+  const s = document.querySelector('.u3-pd-sheet');
+  if (!s) return;
+  const b = document.getElementById('u3PdSheet');
+  if (pd.ro && b) pd.ro.unobserve(b);
+  s.closest('[data-u3-scrim]')?.remove();
+  document.querySelector('.u3-mp__tools [data-pending]')?.focus({ preventScroll: true });
+}
+function closeViewV3() { document.querySelector('.u3-pd-scrim')?.remove(); }
+const findOffer = (id) => {
+  const i = (tr.offers?.incoming || []).find((o) => Number(o.id) === Number(id));
+  if (i) return { o: i, dir: 'in' };
+  const o = (tr.offers?.outgoing || []).find((x) => Number(x.id) === Number(id));
+  return o ? { o, dir: 'out' } : null;
+};
+function openViewV3(id) {
+  const f = findOffer(id);
+  if (!f) return;
+  closeViewV3();
+  document.body.insertAdjacentHTML('beforeend', viewHTML(f.o, f.dir, pdH));
+  document.querySelector('.u3-pd-view .u3-ibtn')?.focus({ preventScroll: true });
+}
+function undoToastV3(text, onUndo) {
+  document.getElementById('u3PdToast')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div id="u3PdToast" class="u3-pd-toast">${toast3({ kind: 'info', text, action: 'Undo' })}</div>`);
+  const host = document.getElementById('u3PdToast');
+  host.querySelector('.u3-toast__action').addEventListener('click', () => { host.remove(); clearTimeout(pd.toastT); onUndo(); });
+  clearTimeout(pd.toastT);
+  pd.toastT = setTimeout(() => host.remove(), UNDO_MS);
+}
+function infoToastV3(text) {
+  document.getElementById('u3PdToast')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div id="u3PdToast" class="u3-pd-toast">${toast3({ kind: 'success', text })}</div>`);
+  clearTimeout(pd.toastT);
+  pd.toastT = setTimeout(() => document.getElementById('u3PdToast')?.remove(), 4000);
+}
+function errorToastV3() {
+  document.getElementById('u3PdToast')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div id="u3PdToast" class="u3-pd-toast">${toast3({ kind: 'error', text: 'Something went wrong. Try again.' })}</div>`);
+  clearTimeout(pd.toastT);
+  pd.toastT = setTimeout(() => document.getElementById('u3PdToast')?.remove(), 4000);
+}
+// Decline or cancel: the row leaves now, the call goes out when the undo window ends.
+function removeWithUndoV3(id, action) {
+  pd.hidden.add(id);
+  closeViewV3();
+  paintPendingV3();
+  const timer = setTimeout(async () => {
+    pd.timers.delete(id);
+    let r = null;
+    try { r = await ctx().apiPost('/api/trade/resolve', { offerId: id, action }); } catch { r = null; }
+    await refreshOffers();
+    pd.hidden.delete(id);
+    if (!r?.ok) errorToastV3();
+    if (ctx().currentView() === 'trading' && tr.tab === 'trades' && tr.v3pick && !tr.respond && mpV3) paintPendingV3();
+  }, UNDO_MS);
+  pd.timers.set(id, timer);
+  undoToastV3(action === 'decline' ? 'Offer declined' : 'Offer cancelled', () => { clearTimeout(timer); pd.timers.delete(id); pd.hidden.delete(id); paintPendingV3(); });
+}
+function onPdClick(e) {
+  const t = e.target.closest('button, [data-u3-scrim]');
+  if (!t) return;
+  if (t.matches('[data-pending]') && t.closest('.u3-mp__tools')) { openSheetV3(); return; }
+  const inSheet = t.closest('.u3-pd-sheet');
+  if (inSheet && t.closest('.u3-sheet__head') && !t.dataset.act) { closeSheetV3(); return; }
+  if (t.matches('[data-u3-scrim]')) {
+    if (e.target === t) { if (t.classList.contains('u3-pd-scrim')) closeViewV3(); else if (t.querySelector('.u3-pd-sheet')) closeSheetV3(); }
+    return;
+  }
+  const pg = t.closest('.u3-pd-sec__pager') && t.dataset.page;
+  if (pg) {
+    const key = t.closest('.u3-pd-sec').dataset.sec === 'in' ? 'pageIn' : 'pageOut';
+    pd[key] = Math.max(0, pd[key] + (pg === 'next' ? 1 : -1));
+    paintPendingV3();
+    return;
+  }
+  const act = t.dataset.act;
+  if (!act || !(t.closest('.u3-pd') || inSheet || t.closest('.u3-pd-scrim'))) return;
+  if (act === 'close') { closeViewV3(); return; }
+  const id = Number(t.dataset.id);
+  if (act === 'view') { openViewV3(id); return; }
+  if (act === 'decline' || act === 'cancel') { removeWithUndoV3(id, act); return; }
+  if (act === 'accept') { t.disabled = true; closeViewV3(); closeSheetV3(); resolve('/api/trade/accept', { offerId: id }, paintTrade); return; }
+  if (act === 'pick') {
+    const f = findOffer(id);
+    if (!f) return;
+    closePendingUi();
+    tr.respond = f.o; tr.tab = 'trades'; tr.mode = 'offer'; tr.give = null; tr.page = 0; tr.msg = '';
+    paintTrade();
+  }
+}
+
 function paintTrade() {
-  if (V3() && tr.tab === 'trades' && tr.v3pick && !tr.respond) { paintMemberPickerV3(); return; }
+  if (V3() && tr.tab === 'trades' && !tr.respond) {
+    // the Member picker is the Trades tab; a profile's Trade button (tr.v3pick false) opens the Trade window over it
+    const fromProfile = !tr.v3pick && !!tr.to;
+    tr.v3pick = true;
+    paintMemberPickerV3();
+    if (fromProfile) openTradeWindowV3(); else refreshTradeWindow();
+    return;
+  }
   dropPickerV3();
   const { el } = ctx();
   const focus = takeFocus();

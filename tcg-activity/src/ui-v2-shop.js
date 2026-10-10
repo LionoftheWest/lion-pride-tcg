@@ -11,6 +11,7 @@ import { every } from './poll.js';
 import { fmtFor } from './ui3/number.js';
 import { shopHTML, stockBlocks, fitStock, confirmHTML } from './ui3/shop.js';
 import { openCardPicker } from './ui3/card-picker.js';
+import { stepCount, convertTotals, keepNote, convertControl, convertState } from './ui3/convert.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -318,7 +319,7 @@ function openConfirm(m) {
   paintModal();
 }
 function paintModal() {
-  if (isV3() && shop.modal && shop.modal.kind !== 'convert') { paintModalV3(); return; }
+  if (isV3() && shop.modal) { paintModalV3(); return; }
   const box = modalBox();
   const m = shop.modal;
   if (!m) { box.classList.add('hidden'); return; }
@@ -382,14 +383,56 @@ function dlgHost() {
     host.addEventListener('click', (e) => {
       if (shop.busy) return;
       if (e.target.matches('[data-u3-scrim]') || e.target.closest('[data-x], [data-cancel]')) { closeModal(); return; }
-      if (e.target.closest('[data-go]')) buy();
+      const step = e.target.closest('.u3-step__btn');
+      if (step && shop.modal?.kind === 'convert') { stepConvert(step.getAttribute('aria-label') === 'Increase' ? 1 : -1); return; }
+      if (e.target.closest('[data-go]')) { if (shop.modal?.kind === 'convert') convertNow(); else buy(); }
     });
   }
   return host;
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('u3ShopDlg') && !shop.busy) closeModal(); });
+// The v3 Convert window (UI-44): the same Dialog as the confirm; the Stepper chooses the copies (1 to the extras).
+function paintConvertV3() {
+  const m = shop.modal;
+  const card = m.card;
+  const t = convertTotals({ n: m.n, each: m.each, balance: shop.data?.balance });
+  const html = confirmHTML({ kind: 'convert', art: `<span class="u3-sdlg__card u3-r-${esc(card.rarity)}">${card.image_url ? `<img src="${thumb(card.image_url)}" alt="" draggable="false">` : ''}</span>`,
+    eyebrow: 'Convert extras', title: `Convert extra copies of ${card.name}?`,
+    sub: `<span class="u3-sdlg__rar u3-r-${esc(card.rarity)}"><span aria-hidden="true">◆</span>${esc(RL(card.rarity))}</span><span class="u3-chip u3-chip--sm u3-sdlg__chip">${esc(`Owned ${card.quantity}`)}</span>`,
+    control: convertControl({ n: m.n, max: m.max, each: m.each }),
+    rows: { now: t.now, price: t.get, priceLabel: `You get · ${m.n} × ${fmt(m.each)}`, sign: '+', after: t.after },
+    note: keepNote(card), msg: shop.msg, busy: shop.busy, go: { label: 'Convert', reward: `+${fmt(t.get)}`, busyLabel: 'Converting' } }, COIN);
+  const host = dlgHost();
+  host.innerHTML = html;
+  const want = m.refocus && host.querySelector(`.u3-step__btn[aria-label="${m.refocus}"]:not(:disabled)`);
+  m.refocus = null;
+  (want || host.querySelector(shop.busy ? '.u3-sdlg' : '[data-cancel]'))?.focus?.();
+}
+function stepConvert(dir) {
+  const m = shop.modal;
+  if (!m || shop.busy) return;
+  m.n = stepCount(m.n, dir, m.max); m.refocus = dir > 0 ? 'Increase' : 'Decrease'; shop.msg = '';
+  paintConvertV3();
+}
+async function convertNow() {
+  const m = shop.modal;
+  if (!m || shop.busy) return;
+  shop.busy = true; shop.msg = ''; paintConvertV3();
+  let r = null;
+  try { r = await ctx().apiPost('/api/shards/convert', { cardId: m.card.id, count: m.n }); } catch { r = null; }
+  shop.busy = false;
+  if (!r?.ok) { shop.msg = r?.message || 'Something went wrong. Try again.'; paintConvertV3(); return; }
+  ctx().sfx?.('page');
+  if (shop.data) shop.data.balance = r.balance;
+  closeModal();
+  toast(`+${fmt(r.shards)} Shards`);
+  refreshShards();
+  m.onDone?.(r);
+}
+
 function paintModalV3() {
   const m = shop.modal;
+  if (m.kind === 'convert') { paintConvertV3(); return; }
   const d = shop.data;
   const art = (c) => `<span class="u3-sdlg__card u3-r-${esc(c.rarity)}">${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" draggable="false">` : ''}</span>`;
   const rar = (r) => `<span class="u3-sdlg__rar u3-r-${esc(r)}"><span aria-hidden="true">◆</span>${esc(RL(r))}</span>`;
@@ -496,7 +539,7 @@ export async function fillConvertButton(card, onDone) {
   btn.innerHTML = `${COIN}<span class="cv-long">Convert ${r.count} extra${r.count === 1 ? '' : 's'}</span><span class="cv-short">×${r.count}</span>`;
   btn.title = `${r.count} extra cop${r.count === 1 ? 'y' : 'ies'} = ${fmt(r.count * r.each)} Shards`;
   btn.classList.remove('hidden');
-  btn.onclick = () => { shop.modal = { kind: 'convert', card, max: r.count, each: r.each, n: r.count, onDone }; shop.msg = ''; paintModal(); };
+  btn.onclick = () => { shop.modal = { ...convertState(r, card), onDone }; shop.msg = ''; paintModal(); };
 }
 
 function paintConvert() {
