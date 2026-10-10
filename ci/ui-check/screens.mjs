@@ -108,7 +108,8 @@ export const SCREENS = {
   // v3: the Dungeon "See the leaderboard" button opens the one Leaderboard window (UI-66) on the Dungeon tab: a defect outside the window belongs to the lobby ('under').
   'dungeon-board':       { safe: true, long: true, id: 'UI-66', under: 'UI-46', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-seg="pane:top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
   // The Gauntlet lobby "See the leaderboard" button opens the Leaderboard window (UI-66) on the Gauntlet tab; behind it the lobby is UI-52.
-  'gauntlet-board':      { safe: true, long: true, id: 'UI-66', under: 'UI-52', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-pane="top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
+  // The v3 lobby (UI-52) keeps the button in the Top 3 panel: on phones and tall tablets that panel is the segment pane:top (data-seg), so the fallback taps it first.
+  'gauntlet-board':      { safe: true, long: true, id: 'UI-66', under: 'UI-52', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-seg="pane:top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
   // The Gauntlet (UI-52): the lobby, then its Prizes and Top 3 tabs (phones show them as tabs; the wide classes show them in the lobby).
   'gauntlet':            { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   'gauntlet-over':       { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
