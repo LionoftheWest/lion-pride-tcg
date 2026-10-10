@@ -25,6 +25,10 @@ body:is([data-size="medium"], [data-size="expanded"]) .u3-bn-onyou { display: no
 body[data-size="compact-land"] .u3-mp-sec__head { display: contents; }
 .u3-mp__meta { display: flex; flex-direction: column; gap: var(--sp-2); }
 body[data-kb] .u3-mp__meta { display: none; }
+/* a capped member in a list tile: the name keeps its row, the reason takes its own line under it (never a name in single letters, D-08) */
+:is(.u3-mp__body[data-fit="list"], .u3-mp-tile--list, .u3-mp__body.has-paged) .u3-mp-tile.is-off .u3-mp-tile__pick { flex-wrap: wrap; align-content: center; }
+:is(.u3-mp__body[data-fit="list"], .u3-mp-tile--list, .u3-mp__body.has-paged) .u3-mp-tile.is-off .u3-mp-tile__name { flex: 1 1 auto; }
+:is(.u3-mp__body[data-fit="list"], .u3-mp-tile--list, .u3-mp__body.has-paged) .u3-mp-tile.is-off .u3-mp-tile__why { flex: 1 0 100%; }
 .u3-bn-onyou { flex: none; padding-inline: var(--sp-3); gap: var(--sp-2); }
 .u3-boons .u3-mp__tools { gap: var(--sp-2); }
 body[data-size="compact-port"] .u3-boons__pick { padding: var(--sp-3); }   /* the drawn panel padding on phones: the search keeps room for "Find a member" next to "On you" */
