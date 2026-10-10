@@ -4,8 +4,10 @@
 // Privacy: another member's wishlist and listed cards show here, never their collection.
 import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { v2ctx, avatarHTML, paintCards, fitChildren, toast, openMember, onSwipe, ensureCatalog } from './ui-v2.js';
-import { esc as esc3, button, iconButton, searchField, pager, chip, segmented, stateEmpty } from './ui3/components.js';
-import { fitGrid } from './ui3/card-picker.js';
+import { esc as esc3, button, iconButton, searchField, pager, chip, segmented, stateEmpty, inlineMessage, toast as toast3 } from './ui3/components.js';
+import { icon } from './ui3/icons.js';
+import { fitGrid, openCardPicker } from './ui3/card-picker.js';
+import { LIST_MAX, LIST_FULL, slotsOf, listable, listFit, applyListPick, listFilterCount, unlistedText, listError, offerSeed, offerPlan } from './ui3/compose.js';
 import { switchHTML, activeSwitch, switchTarget, applyHall, emptyState, notOwned, clampPage, pagesOf, manageLabel, filterCount, toggleFilter,
   NO_FILTERS, OWN_OPTIONS, RARITY_CHIPS, TYPE_CHIPS, GAME_CHIPS, fitAll } from './ui3/hall.js';
 import { TOKENS } from './tokens.js';
@@ -14,7 +16,7 @@ import { elIcon } from './element-icons.js';
 import { thumb } from './thumb.js';
 import { isPhone, isPort } from './mobile.js';
 import { nameBadge, breakable } from './effects-ui.js';
-import { tr, commTabs, wireCommTabs, offersAsideHTML, wireOffers, refreshOffers } from './ui-v2-social.js';
+import { tr, commTabs, wireCommTabs, offersAsideHTML, wireOffers, refreshOffers, openHallOfferV3 } from './ui-v2-social.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -84,7 +86,7 @@ function paintHall() {
     if (hall.auction) return paintAuction();
     return paintAuctionGrid();
   }
-  if (hall.listing) return paintListSheet();
+  if (hall.listing) return isV3() ? paintListV3() : paintListSheet();
   if (hall.sel) return paintComposer();
   return paintHallGrid();
 }
@@ -193,8 +195,22 @@ function paintHallGrid() {
 async function pickListing(c) {
   if (hall.view === 'fortrade' && c._it.mine === true) { hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); return; }
   if (hall.view === 'wanted' && c._it.yours) { openMember(c._it.player_id); return; } // my top want: my profile Wishlist
+  if (isV3()) return openOfferV3({ kind: hall.view, ...c._it });   // UI-31: the Trade window, no separate composer
   hall.sel = { kind: hall.view, ...c._it }; hall.give = null; hall.msg = '';
   await openComposer();
+}
+// UI-31 (D-64 item 7, v3 only): an offer on a listing opens the Trade window UI-63 on the chosen card (src/ui3/compose.js)
+let offerOpen = false;
+async function openOfferV3(sel) {
+  if (offerOpen) return;
+  offerOpen = true;
+  try {
+    await openHallOfferV3(sel, {
+      start: offerSeed(sel.kind, sel), plan: (p) => offerPlan(sel.kind, sel, p), onClose: () => { offerOpen = false; },
+      onSent: () => { loadHall().then(() => { if (hall.sub === 'hall' && !hall.listing && ctx().el('hlGrid')) fillV3(); }).catch(() => {}); },
+    });
+  } catch { /* keep */ }
+  if (!document.getElementById('u3TradeWin')) offerOpen = false;
 }
 async function openManage() { try { await ctx().refreshOwned(); } catch { /* keep */ } hall.listing = true; hall.page = 0; hall.msg = ''; paintHall(); }
 
@@ -225,6 +241,7 @@ function paintHallV3() {
   const d = hall.data || { wanted: [], forTrade: [], mine: [] };
   const n = filterCount(hall.f);
   hlRO?.disconnect();
+  closeLsToast();
   hall.cls = document.body.dataset.size;
   el('main').innerHTML = `<div class="u3-hl">${commTabs()}${explainBtn(hall.sub)}`
     + `<div class="u3-hl__sw" id="hlSub">${switchHTML('hall', hall.view)}</div>`
@@ -445,6 +462,93 @@ function paintComposer() {
   };
   wireOffers(el('main'), paintHall);
   requestAnimationFrame(() => { fitChildren(el('ofIn')); fitChildren(el('ofOut')); });
+}
+
+// ---- UI-31 List a card under body.ui-v3 (src/ui3/compose.js; design repo UI-31/approved; D-67 item 6) --------------
+// The five slots of "Your listings" (a plus adds a card with the Card picker UI-64 in pick-one mode, an X takes one off with
+// Undo). The same calls as the v2 sheet: /api/hall/list and /api/hall/unlist. The slot size is measured from the slots box.
+let lsRO = null, lsToastT = 0;
+const closeLsToast = () => { clearTimeout(lsToastT); document.getElementById('u3LsToast')?.remove(); };
+function lsSlotHTML(x) {
+  if (!x) return `<li class="u3-ls-slot is-empty"><button type="button" class="u3-ls-slot__add" data-lsadd="1" aria-label="List a card">${icon('plus', { size: 'lg' })}</button></li>`;
+  const c = x.card || {};
+  return `<li class="u3-ls-slot u3-ls-card u3-r-${esc3(c.rarity || 'normal')}"><span class="u3-ls-card__face">${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc3(c.name)}" draggable="false">` : ''}</span>`
+    + `<span class="u3-ls-card__x">${iconButton({ icon: 'x', label: `Take ${c.name || 'the card'} off the Hall`, data: { lsunlist: x.id } })}</span></li>`;
+}
+function paintListV3() {
+  const { el } = ctx();
+  const d = hall.data || { mine: [] };
+  lsRO?.disconnect();
+  el('main').innerHTML = `<div class="u3-ls">${commTabs()}${explainBtn(hall.sub)}`
+    + `<div class="u3-ls__back">${button({ label: 'Trade Hall', icon: 'arrow-left', data: { lsback: '1' } })}</div>`
+    + `<section class="u3-ls__panel" aria-label="Your listings"><h2 class="u3-ls__head"><span class="u3-label">Your listings</span><b>${d.mine.length}/${LIST_MAX}</b></h2>`
+    + `<ul class="u3-ls__slots" id="lsSlots">${slotsOf(d.mine).map(lsSlotHTML).join('')}</ul>`
+    + `<div class="u3-ls__msg">${hall.msg ? inlineMessage({ kind: 'error', text: hall.msg }) : ''}</div></section></div>`;
+  wireCommTabs();
+  maybeExplain(hall.sub);
+  const root = el('main').querySelector('.u3-ls');
+  root.addEventListener('click', onListClick);
+  const box = root.querySelector('#lsSlots');
+  const size = () => {
+    if (!box.isConnected) return;
+    const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
+    const f = listFit(box.clientWidth, box.clientHeight, gap, { min: TOKENS['card-tile'], ratio: TOKENS['card-ratio'] });
+    if (box._tile !== f.tile || box._cols !== f.cols) { box._tile = f.tile; box._cols = f.cols; box.style.setProperty('--ls-tile', `${f.tile}px`); }
+  };
+  if (window.ResizeObserver) { lsRO = new ResizeObserver(() => requestAnimationFrame(size)); lsRO.observe(box); }
+  size();
+  document.fonts?.ready.then(size);
+}
+async function onListClick(e) {
+  const b = e.target.closest('button'); if (!b) return;
+  const d = b.dataset;
+  if (d.lsback) {
+    closeLsToast(); lsRO?.disconnect();
+    Object.assign(hall, { sel: null, listing: false, auction: null, start: null, give: null, bid: [], page: 0, msg: '', sheet: false });
+    await renderHall();
+  } else if (d.lsadd) await openListPicker(b);
+  else if (d.lsunlist) await unlistV3(Number(d.lsunlist));
+}
+const listingNow = () => hall.listing && isV3() && ctx().el('main')?.querySelector('.u3-ls');
+async function listCard(cardId) {
+  if ((hall.data?.mine || []).length >= LIST_MAX) { hall.msg = LIST_FULL; paintListV3(); return; }
+  let r = null;
+  try { r = await ctx().apiPost('/api/hall/list', { cardId }); } catch (e) { r = e?.body || null; }
+  hall.msg = r?.ok ? '' : listError(r);
+  await loadHall();
+  if (listingNow()) paintListV3();
+}
+async function openListPicker(from) {
+  try { await ctx().refreshOwned(); } catch { /* keep */ }
+  await ensureCatalog().catch(() => {});
+  closeLsToast();
+  const cards = listable(mine(), hall.data?.mine, hall.held).map((c) => ({ ...c, tags: c.tags || tagsOf(c) }));
+  const rarities = RARITY_CHIPS.filter(([id]) => id !== 'gold' && cards.some((c) => c.rarity === id));
+  openCardPicker({
+    title: 'Your listings', icon: 'tag', of: { n: (hall.data?.mine || []).length, max: LIST_MAX }, one: true, cap: 1, cards, selected: [], returnFocus: from,
+    filters: [{ key: 'rarity', label: 'Rarity', value: 'all', clear: 'all', options: [{ id: 'all', label: 'All' }, ...rarities.map(([id, label]) => ({ id, label }))] }],
+    filterCount: listFilterCount, apply: applyListPick,
+    status: (sel) => ({ checks: [], ready: sel.length === 1 }),
+    detail: (c) => ctx().openViewer?.(c),
+    clear: { label: 'Clear', resets: true },
+    onConfirm: async (sel) => { await listCard(Number(sel[0])); return true; },
+  });
+}
+// Take a card off: the slot empties now, the toast offers Undo (D-67 item 6; the call to list it again is /api/hall/list).
+async function unlistV3(id) {
+  const x = (hall.data?.mine || []).find((l) => Number(l.id) === id);
+  let r = null;
+  try { r = await ctx().apiPost('/api/hall/unlist', { listingId: id }); } catch (e) { r = e?.body || null; }
+  closeLsToast();
+  if (!r?.ok) { hall.msg = r?.message || 'Could not take that card off.'; paintListV3(); return; }
+  hall.msg = '';
+  await loadHall();
+  if (!listingNow()) return;
+  paintListV3();
+  document.body.insertAdjacentHTML('beforeend', `<div id="u3LsToast" class="u3-ls-toast">${toast3({ kind: 'info', text: unlistedText(x?.card?.name), action: 'Undo' })}</div>`);
+  const host = document.getElementById('u3LsToast');
+  host.querySelector('.u3-toast__action').addEventListener('click', async () => { closeLsToast(); if (x?.card?.id != null) await listCard(Number(x.card.id)); });
+  lsToastT = setTimeout(closeLsToast, 8000);
 }
 
 // ---- List a card -------------------------------------------------------------------------------
