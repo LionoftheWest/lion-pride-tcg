@@ -29,6 +29,7 @@ import { initSubtabs } from './subtabs.js';
 import { initTutorial } from './ui-v2-tutorial.js';
 import { every, isIdle } from './poll.js';
 import { watchSizeClass } from './ui3/size-class.js';
+import { createLoader, paintLoader, writeHint } from './ui3/loader.js';
 import { startShell } from './ui3/shell.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import { fitViewer, watchViewerFit } from './ui3/viewer-fit.js';
@@ -49,6 +50,12 @@ import { initMobile, isPhone } from './mobile.js';
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
 const loaderMsg = (t) => { const m = el('loaderMsg'); if (m) m.textContent = t; };
+// UI-56: the v3 loader. index.html draws it when the last session stored the hint (body.ui3-boot); the flag itself comes
+// only after the sign-in. Flag off or no hint: ldr3 is null and the loader is exactly the old one.
+const ldr3 = document.body.classList.contains('ui3-boot')
+  ? createLoader({ paint: (v) => paintLoader(document, v) }) : null;
+const ldr3Stop = ldr3 ? watchSizeClass(window) : null; // body[data-size] for the loader CSS (tiny); startV3 replaces this watcher
+ldr3 && el('ldr3Retry')?.addEventListener('click', () => location.reload());
 // Escape for HTML. Includes the double and single quote so a value placed inside
 // a quoted attribute (for example data-name="${esc(...)}") cannot break out of the
 // attribute and inject a handler. A display name is player-controlled, so this
@@ -276,7 +283,10 @@ async function authorizeWithRetry(discordSdk, clientId) {
 
 async function main() {
   loaderMsg('Connecting to Discord…');
-  const { clientId, backUrl, features: feat } = await (await fetch('/api/config')).json();
+  ldr3?.send({ type: 'phase', phase: 'connecting' });
+  const cfgRes = await fetch('/api/config');
+  if (ldr3 && !cfgRes.ok) throw new Error(`/api/config ${cfgRes.status}`); // UI-56 (7.1): a failed config is the error state (v3 loader only)
+  const { clientId, backUrl, features: feat } = await cfgRes.json();
   cardBack = backUrl || '';
   features = feat || {};
 
@@ -286,6 +296,7 @@ async function main() {
   instanceId = discordSdk.instanceId;
 
   loaderMsg('Shuffling the deck…');
+  ldr3?.send({ type: 'phase', phase: 'shuffling' });
   const { code } = await authorizeWithRetry(discordSdk, clientId);
   const { access_token } = await (await fetch('/api/token', {
     method: 'POST',
@@ -301,6 +312,7 @@ async function main() {
   el('bossModalClose')?.addEventListener('click', closeBossModal);
   el('bossModal')?.addEventListener('click', (e) => { if (e.target === el('bossModal')) closeBossModal(); });
   el('body').classList.remove('hidden');
+  ldr3?.send({ type: 'done' });
   el('loader').classList.add('gone'); // fade the loading screen away
 
   // Sound: unlock the audio context on the first interaction, and wire mute.
@@ -348,6 +360,7 @@ async function main() {
   shards = !!flags?.shards;
   dungeon = !!flags?.dungeon;
   uiV3 = !!flags?.uiV3;
+  if (flags?.uiV3 !== undefined) writeHint(localStorage, uiV3); // UI-56: the next start draws the v3 loader. No answer (3 failed tries) keeps the old hint.
   if (uiV3) startV3();
   // A new member's first login gave them the welcome packs: show them now.
   if (flags.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
@@ -370,6 +383,7 @@ function startV3() {
   const link = document.querySelector('link[data-ui3]');
   if (link) link.media = 'all';
   else { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/ui3.css'; l.dataset.ui3 = '1'; document.head.appendChild(l); }
+  ldr3Stop?.(); // the loader's own size watcher (one watcher only)
   watchSizeClass(window, () => repaintShards());
   prefetchSets(api); // the Open window (UI-33) shows the sets at once
 }
@@ -3429,6 +3443,7 @@ function enableGyro() {
 initViewer();
 main().catch((e) => {
   console.error(e);
+  if (ldr3) { ldr3.send({ type: 'fail' }); setStatus('Something went wrong'); return; } // UI-56: no raw error text (10.6); the button is in the loader block
   loaderMsg('Something went wrong: ' + (e?.message || e));
   // A dead end is worse than a retry: the button reloads the Activity (the URL keeps the SDK params).
   const m = el('loaderMsg');
