@@ -44,6 +44,10 @@ export const SCREENS = {
 'trades-few':         { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]] },
 'trades-pending':     { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5]] },
 'trades-offer':       { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['js', '.u3-pd-row__open'], ['wait', 1.5]] },
+  // UI-26 Trade animation: the Accept in Pending starts it; the page clock holds each phase (start, swap), landed = the layer gone (Pending without the offer).
+  'trades-fx-start':     { id: 'UI-26', trades: 'few', tfx: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5], ['tfx', '.u3-pd-sheet [data-act="accept"], .u3-pd [data-act="accept"]', 600]] },
+  'trades-fx-swap':      { id: 'UI-26', trades: 'few', tfx: true, long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5], ['tfx', '.u3-pd-sheet [data-act="accept"], .u3-pd [data-act="accept"]', 2400]] },
+  'trades-fx-landed':    { id: 'UI-26', trades: 'few', tfx: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5], ['tfx', '.u3-pd-sheet [data-act="accept"], .u3-pd [data-act="accept"]', 7000, 'gone']] },
 'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
   'trades-explain':      { id: 'UI-39', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
   // v3 (UI-30): the Trade Hall lists with the listings of other members (cookie ci_hall=many: the recording holds only the signed-in member's own).
@@ -159,6 +163,7 @@ export function ownerOf(screen, where) {
   // The card details (the v2 #viewer) opened from a Card picker: UI-64 owns them there (only the picker detail specs), the screen under the scrim does not.
   // Other screens keep their owner (collection-detail: UI-08 opens the viewer at some sizes and its side panel at others).
   if (/-picker-detail$/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b|\.vr-|#v-[a-z-]+/.test(where)) return 'UI-64';
+  if (/#u3Tfx\b|\.u3-tfx\b|\.u3-tfx[-_]/.test(where)) return 'UI-26';   // the trade animation layer
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/#u3Wish[a-z]*\b|\.u3-wl\b|\.u3-wl[-_]|#wlHandle|\.u3-pf-wishbar/.test(where)) return 'UI-16';
@@ -239,6 +244,17 @@ export async function runSteps(pg, steps) {
   for (const st of steps) {
     if (st[0] === 'dock') await dock(pg, st[1], st[2] ?? 2.5);
     else if (st[0] === 'wait') { if (FIXED) await sleep(st[1]); else await ready(pg, st[1] + 10); }
+    else if (st[0] === 'tfx') {
+      // UI-26: hold the trade animation at one phase. ['tfx', <accept selector>, <ms after the layer opened>, <'gone' to wait for the layer to leave>].
+      // The page clock (run.mjs installs it for these cells) stops, the click starts the animation, and runFor moves its timers to the
+      // wanted moment; CSS transitions then finish in real time and the phase stays (a stopped clock gives the same frame on every run).
+      await pg.clock.pauseAt(new Date(await pg.evaluate('Date.now()') + 50));
+      if (!(await pg.evaluate((s) => { const e = [...document.querySelectorAll(s)].find((x) => x.getClientRects().length); if (!e) return false; e.click(); return true; }, st[1]))) { miss.push(st[1]); await pg.clock.resume(); continue; }
+      try { await pg.waitForSelector('#u3Tfx', { state: 'attached', timeout: 10000 }); } catch { miss.push('#u3Tfx'); await pg.clock.resume(); continue; }
+      await pg.clock.runFor(st[2]);
+      if (st[3] === 'gone') { await pg.waitForSelector('#u3Tfx', { state: 'detached', timeout: 10000 }).catch(() => miss.push('#u3Tfx stays')); await pg.clock.resume(); await settle(pg); }
+      else await sleep(1.5);   // the CSS transitions of the phase finish in real time
+    }
     else if (st[0] === 'js') {
       if (st[2] && !(await pg.evaluate((s) => [...document.querySelectorAll(s)].some((x) => x.getClientRects().length), st[1]))) {
         miss.push(`${st[1]} (fallback used)`); miss.push(...(await runSteps(pg, st[2]))); continue;
