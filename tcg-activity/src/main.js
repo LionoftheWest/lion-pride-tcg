@@ -3159,7 +3159,6 @@ function renderAscension(card) {
   box.classList.toggle('hidden', !show);
   const c3 = el('card3d');
   c3.className = c3.className.replace(/\b(asc-\d|atier-\d|asc-pop)\b/g, '').replace(/\s+/g, ' ').trim();
-  c3.className = c3.className.replace(/(asc-\d|atier-\d|asc-pop)/g, '').replace(/\s+/g, ' ').trim();
   setFlair(c3.querySelector('.front'), show ? card.ascension : 0); // the border, the star-gems, the crown
   if (!show) return;
   const a = card.ascension || 0;
