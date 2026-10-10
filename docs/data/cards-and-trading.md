@@ -9,7 +9,7 @@ The card catalog, the copies that members hold, packs, the ledgers, trades, the 
 
 Tables (19): [artist_submissions](#table-artist-submissions), [auction_bids](#table-auction-bids), [auctions](#table-auctions), [card_ledger](#table-card-ledger), [card_sets](#table-card-sets), [card_trades](#table-card-trades), [cards](#table-cards), [draw_pool](#table-draw-pool), [gift_claims](#table-gift-claims), [pack_ledger](#table-pack-ledger), [player_cards](#table-player-cards), [roster_power_history](#table-roster-power-history), [stat_point_log](#table-stat-point-log), [subjects](#table-subjects), [trade_listings](#table-trade-listings), [trade_offers](#table-trade-offers), [wish_grants](#table-wish-grants), [wishlist_log](#table-wishlist-log), [wishlists](#table-wishlists)
 
-Functions (69): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_powers(text)](#fn-card-powers-text), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [cards_set_rules()](#fn-cards-set-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer,text)](#fn-open-packs-text-bigint-integer-text), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [pullable_sets(text)](#fn-pullable-sets-text), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_boss_hp(bigint)](#fn-roster-boss-hp-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [season_number(text)](#fn-season-number-text), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_point_log_write()](#fn-stat-point-log-write), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [wishlist_log_write()](#fn-wishlist-log-write), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
+Functions (71): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_powers(text)](#fn-card-powers-text), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [cards_set_rules()](#fn-cards-set-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [counter_trade_request(bigint,text,bigint)](#fn-counter-trade-request-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [create_trade_request(text,text,bigint)](#fn-create-trade-request-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer,text)](#fn-open-packs-text-bigint-integer-text), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [pullable_sets(text)](#fn-pullable-sets-text), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_boss_hp(bigint)](#fn-roster-boss-hp-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [season_number(text)](#fn-season-number-text), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_point_log_write()](#fn-stat-point-log-write), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [wishlist_log_write()](#fn-wishlist-log-write), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
 
 ## Tables
 
@@ -434,14 +434,14 @@ Table. [trading] One row per card that a member lists in the Trading Hall. list_
 
 ### trade_offers
 
-Table. [trading] One row per one-for-one trade offer between two members. create_trade, create_trade_open and offer_on_listing write it. counter_trade, accept_trade and set_trade_status change it. The Activity /api/trades reads it.
+Table. [trading] One row per one-for-one trade offer between two members. create_trade (full proposal), create_trade_open (offer), create_trade_request (request) and offer_on_listing write it. counter_trade and counter_trade_request pick the second card. accept_trade and set_trade_status change it. The Activity /api/trades reads it.
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
 | `id` | bigint | not null |  | Row id. card_ledger rows of the trade use ref ('trade_offer', id). |
 | `from_id` | text | not null |  | The member who made the offer (players.id). |
 | `to_id` | text | not null |  | The member who receives the offer (players.id). |
-| `offer_card_id` | bigint | not null |  | The card that from_id gives (cards.id). One copy is held (free_copies) while the offer is pending or countered. |
+| `offer_card_id` | bigint | null |  | The card that from_id gives (cards.id). One copy is held (free_copies) while the offer is pending or countered. Null for a request (create_trade_request) until the owner picks a card with counter_trade_request. |
 | `request_card_id` | bigint | null |  | The card that to_id gives (cards.id), same rarity. Null for an open offer (create_trade_open) until to_id picks a card with counter_trade. |
 | `status` | text | not null | `'pending'::text` | pending (waits for to_id), countered (to_id picked a card, waits for from_id), accepted, declined or cancelled. |
 | `created_at` | timestamp with time zone | not null | `now()` | Time the offer was made. |
@@ -457,6 +457,7 @@ Table. [trading] One row per one-for-one trade offer between two members. create
   - `trade_offers_request_card_id_fkey` to [cards](cards-and-trading.md#table-cards): `FOREIGN KEY (request_card_id) REFERENCES cards(id) ON DELETE CASCADE`
   - `trade_offers_to_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (to_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
+  - `trade_offers_has_card_check`: `CHECK (((offer_card_id IS NOT NULL) OR (request_card_id IS NOT NULL)))`
   - `trade_offers_status_check`: `CHECK ((status = ANY (ARRAY['pending'::text, 'countered'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])))`
 - Row level security: on. Policies: none
 
@@ -551,7 +552,7 @@ The seller accepts one open bid: the bid and the auction become accepted, and th
 - Returns: `boolean`
 - Security definer: no
 
-Accepts a trade offer: the four moves (ref ('trade_offer', id)) are one unit; when a copy is gone nothing moves.
+The swap of a trade offer. A countered offer (the receiver picked a card, also a request the owner picked for) is accepted by from_id. An old pending offer that names both cards (create_trade, the full proposal) is accepted by to_id. A request with no picked card (offer_card_id null) is refused. The four card_move rows are one unit; the trigger card_trades_offer logs the swap.
 
 <a id="fn-add-card-to-player-text-bigint-text"></a>
 
@@ -773,6 +774,16 @@ The copies of a card that a member can turn into Shards: free_copies minus one (
 
 The receiver of an open offer picks the card to give back (same rarity, tradeable, free copy): sets request_card_id and status countered. Activity /api/trade/counter. Returns true when it worked.
 
+<a id="fn-counter-trade-request-bigint-text-bigint"></a>
+
+### counter_trade_request(bigint,text,bigint)
+
+- Function: `counter_trade_request(p_offer_id bigint, p_actor text, p_card bigint)`
+- Returns: `boolean`
+- Security definer: no
+
+Trade request, step 2 (D-168). The card owner (to_id) picks one of the requester's cards: the same rarity as the requested card, tradeable, a free copy of the requester, not the same card. Sets offer_card_id and status countered (both cards are then held by free_copies). The requester then accepts with accept_trade. Returns false when any check fails.
+
 <a id="fn-create-trade-text-text-bigint-bigint"></a>
 
 ### create_trade(text,text,bigint,bigint)
@@ -792,6 +803,16 @@ Makes a pending one-for-one offer (both cards tradeable, same rarity, a free cop
 - Security definer: no
 
 Makes a pending offer with no requested card: the receiver picks one later with counter_trade. Activity /api/trade/offer. Returns the trade_offers id, or null.
+
+<a id="fn-create-trade-request-text-text-bigint"></a>
+
+### create_trade_request(text,text,bigint)
+
+- Function: `create_trade_request(p_from text, p_to text, p_request bigint)`
+- Returns: `bigint`
+- Security definer: no
+
+Trade request, step 1 (D-168). p_from asks p_to for one card (p_request) and gives nothing yet: a pending trade_offers row with offer_card_id null. Returns the offer id, or null when the members are the same, p_to is unknown, the card is not tradeable or p_to has no free copy (free_copies). The owner then picks a card with counter_trade_request.
 
 <a id="fn-decline-accepted-bid-text-bigint"></a>
 

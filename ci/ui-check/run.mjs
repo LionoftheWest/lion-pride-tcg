@@ -92,6 +92,7 @@ async function runCell([s, screen, variant], ref = {}) {
         }
         if (spec.avfx) cookies.push({ name: 'ci_avfx', value: spec.avfx, url: BASE });
         if (spec.hall) cookies.push({ name: 'ci_hall', value: spec.hall, url: BASE });
+        if (spec.treq) cookies.push({ name: 'ci_treq', value: spec.treq, url: BASE });   // UI-63 / UI-25 trade requests (serve.mjs)
         if (spec.fx) cookies.push({ name: 'ci_fx', value: spec.fx, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);

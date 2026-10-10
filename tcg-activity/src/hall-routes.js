@@ -42,7 +42,8 @@ export async function heldCopies(supabase, id) {
     supabase.from('auction_bids').select('cards').eq('bidder_id', id).in('status', ['open', 'accepted']),
   ]);
   const m = new Map(); const add = (c) => m.set(Number(c), (m.get(Number(c)) || 0) + 1);
-  (o1.data || []).forEach((r) => add(r.offer_card_id)); (o2.data || []).forEach((r) => add(r.request_card_id));
+  (o1.data || []).forEach((r) => { if (r.offer_card_id != null) add(r.offer_card_id); }); // a request has no offer card until the pick
+  (o2.data || []).forEach((r) => add(r.request_card_id));
   (au.data || []).forEach((r) => add(r.card_id)); (bids.data || []).forEach((r) => (r.cards || []).forEach(add));
   return m;
 }

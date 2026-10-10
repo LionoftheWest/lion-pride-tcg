@@ -15,7 +15,7 @@ import { button as button3, dot as dot3, sheet as sheet3, toast as toast3, count
 import { icon as icon3 } from './ui3/icons.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import { KINDS, kindName, playHistory, memberReason, dayLine, leftPct, pageOf, pickerCards } from './ui3/boons.js';
-import { pendingLists, waiting, sectionsHTML, headHTML, viewHTML } from './ui3/pending.js';
+import { pendingLists, waiting, sectionsHTML, headHTML, viewHTML, isRequest } from './ui3/pending.js';
 import { paintBell } from './ui3/bell.js';
 import { openTradeWindow, closeTradeWindow, refreshTradeWindow } from './ui3/trade-window.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
@@ -469,16 +469,18 @@ export function offersAsideHTML() {
         const decline = `<button class="v2-btn of-decline" data-id="${o.id}" title="Decline">✕<span class="of-t"> Decline</span></button>`;
         const acts = o.status === 'countered'
           ? `<span class="of-wait dim">Waiting<span class="of-wn"> for ${esc(o.from_name || 'them')}</span></span>${decline}`
+          : isRequest(o) // a request (D-168) is answered in the new Trade window only
+            ? `<span class="of-wait dim">Asked for your card</span>${decline}`
           : o.request
             ? `<button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button>${decline}`
             : `<button class="v2-btn gold of-pick" data-id="${o.id}">Pick your card</button>${decline}`;
         return `<div class="of-row${tr.respond && Number(tr.respond.id) === Number(o.id) ? ' on' : ''}"><div class="of-who">${avatarHTML(o.from_id, o.from_name, 'xs')}<b>${nameBadge(o.from_id, o.from_name || 'Someone', isPhone())}</b></div>
-        <div class="of-cards">${offerCard(o.offer, 'Get')}${o.request ? `<span>⇄</span>${offerCard(o.request, 'Give')}` : ''}</div>
+        <div class="of-cards">${offerCard(o.offer, 'Get')}${o.request ? `${o.offer ? '<span>⇄</span>' : ''}${offerCard(o.request, 'Give')}` : ''}</div>
         <div class="of-acts">${acts}</div></div>`;
       }).join('') || '<p class="v2-empty">No incoming offers.</p>'}</div>
       <div class="side-h">Sent <span class="n">${out.length}</span></div>
-      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone', isPhone())}</b><span class="dim">${o.status === 'countered' ? 'Picked a card' : o.request ? 'Waiting' : 'Picking a card'}</span></div>
-        <div class="of-cards">${offerCard(o.offer, 'Give')}${o.request ? `<span>⇄</span>${offerCard(o.request, 'Get')}` : ''}</div>
+      <div class="of-list" id="ofOut">${out.map((o) => `<div class="of-row sent"><div class="of-who">${avatarHTML(o.to_id, o.to_name, 'xs')}<b>${nameBadge(o.to_id, o.to_name || 'Someone', isPhone())}</b><span class="dim">${o.status === 'countered' ? 'Picked a card' : isRequest(o) ? 'Asked for a card' : o.request ? 'Waiting' : 'Picking a card'}</span></div>
+        <div class="of-cards">${offerCard(o.offer, 'Give')}${o.request ? `${o.offer ? '<span>⇄</span>' : ''}${offerCard(o.request, 'Get')}` : ''}</div>
         ${o.status === 'countered' ? `<div class="of-acts"><button class="v2-btn gold of-accept" data-id="${o.id}">✓ Accept</button><button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button></div>` : `<button class="v2-icon of-cancel" data-id="${o.id}" title="Cancel">✕</button>`}</div>`).join('') || '<p class="v2-empty">No sent offers.</p>'}</div>
     </aside>`;
 }
@@ -590,7 +592,9 @@ function sectionsV3(history = partnersV3) {
 // The window (src/ui3/trade-window.js) owns the layout and the rules; this part gives it the cards and does the calls
 // (the same server routes as the v2 builder: /api/trade/offer two-step, /api/trade/gift, /api/gift).
 // o (UI-31, an offer on a Hall listing): start = the view and the cards chosen, plan(plan) = the call to send, onClose, onSent
+// o.pick (D-168): { offerId, want } = the owner answers a request
 function openTradeWindowV3(o = {}) {
+  const pick = o.pick || null;
   const to = tr.to;
   if (!to) return;
   const me = ctx().user();
@@ -603,6 +607,8 @@ function openTradeWindowV3(o = {}) {
     theirs: () => (tr.theirs[to.id] || []).map((c) => withBase(c, b())),
     packs: () => Number(ctx().packs()) || 0,
     twoStep: !!ctx().trade2?.(),
+    requests: !!ctx().tradeRequest?.() && !!ctx().trade2?.(),   // requests + full proposals: the server flag (D-168)
+    pick,
     rarities: Object.keys(ctx().RARITY_LABEL || {}),
     rarityLabel: (k) => ctx().RARITY_LABEL?.[k] || k,
     avatar: pdAvatar,
@@ -618,7 +624,7 @@ function openTradeWindowV3(o = {}) {
       return r;
     },
     onDone: (act) => {
-      infoToastV3(act === 'offer' ? `Offer sent to ${to.name}` : act === 'pack' ? `Pack sent to ${to.name}` : `Gift sent to ${to.name}`);
+      infoToastV3(act === 'offer' ? `Offer sent to ${to.name}` : act === 'request' ? `Request sent to ${to.name}` : act === 'pick' ? `Card picked for ${to.name}` : act === 'pack' ? `Pack sent to ${to.name}` : `Gift sent to ${to.name}`);
       if (mpV3) paintPendingV3();
       o.onSent?.(act);
     },
@@ -845,6 +851,14 @@ function onPdClick(e) {
     const f = findOffer(id);
     if (!f) return;
     closePendingUi();
+    if (isRequest(f.o)) {
+      // A request (D-168): I own the asked card; I pick one of THEIR cards in the Trade window (pick-one mode), then they confirm.
+      const m = { id: String(f.o.from_id), name: f.o.from_name };
+      tr.members = [m, ...tr.members.filter((x) => x.id !== m.id)];
+      Object.assign(tr, { to: m, get: null, give: null, msg: '' });
+      loadTheirs(m.id).then(() => openTradeWindowV3({ pick: { offerId: f.o.id, want: f.o.request } }));
+      return;
+    }
     tr.respond = f.o; tr.tab = 'trades'; tr.mode = 'offer'; tr.give = null; tr.page = 0; tr.msg = '';
     paintTrade();
   }
