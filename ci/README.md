@@ -96,6 +96,10 @@ defects of the enforced IDs:
 The other IDs are reported, not enforced, because a screen stays `Not migrated` until its own PR (design.md 12.9).
 Today every screen fails the full list (the 2026-10-04 audit found 1,599 detector defects), so a gate that enforced every
 screen would block every PR. `evaluate.mjs --strict` enforces every ID.
+- D-136 (landscape phones and tablets do not exist): the five former landscape phone and tablet sizes 667x375, 932x430, 915x412,
+  1180x820 and 917x692, and (D-154) 375x667 and 1280x480, are REPORT ONLY. Their cells still run and their defects are in the summary table and `defects.json`,
+  but they never fail the verdict (`REPORT_ONLY_SIZES` in `screens.mjs`, `reportOnly()` in `evaluate.mjs`). A cell with no result
+  still fails there. 1280x480, 1280x720, 1990x830, the portrait phones and tablets and tiny stay enforced.
 - A defect in the top bar or the dock belongs to `UI-01`. A defect in the sub-tab bar belongs to `UI-02` (`ownerOf()` in `screens.mjs`).
 - A cell with no result, a step that finds no control, or a call with no fixture is "not checked". On an enforced ID, it fails.
 - An enforced ID that no screen of `screens.mjs` opens (for example `UI-49` today) fails as "not checked". Add its screen
