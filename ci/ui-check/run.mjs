@@ -111,6 +111,7 @@ async function runCell([s, screen, variant], ref = {}) {
             res.miss = [];
           } else {
           await boot(pg, BASE + '/');
+          if (spec.page) { await pg.goto(BASE + spec.page); await pg.waitForLoadState('load'); await pg.evaluate(() => document.fonts?.ready); } else await boot(pg, BASE + '/');   // a standalone page (UI-57) has no Activity to boot
           res.miss = await runSteps(pg, spec.steps);
           }
           for (let i = 0; i < 20; i++) { if (await pg.evaluate(IMGWAIT)) break; await sleep(0.5); }
