@@ -178,7 +178,7 @@ function paint() {
   const a = document.activeElement;
   const caret = a && host.contains(a) && a.classList.contains('u3-search__input') ? a.selectionStart : null;
   // opts.head (UI-27): the head is the caller's HTML (who plays on whom), the title is its accessible name; opts.kinds: the
-  // kind switch row under the head (values.kind); opts.cls: a class on the window. Pick one card: opts.one (UI-64, #318).
+  // kind switch row under the head (values.kind); opts.cls: a class on the window. Pick one card: opts.one (UI-64, PR 318).
   const clear = o.clear ? button({ label: o.clear.label || 'Clear', disabled: !!o.clear.disabled || cur.busy, data: { pkclear: '1' } }) : '';
   const count = o.one ? '' : ` <b>${cur.sel.length}</b><span>/ ${o.cap}</span>`;
   const head = o.head
