@@ -20,18 +20,18 @@ const COMM = '#commTabs';
 export const SCREENS = {
   'home':                { id: 'UI-03', long: true, safe: true, steps: [] },
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
-  'collection-detail':   { id: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
+  'collection-detail':   { id: 'UI-08', under: 'UI-07', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
   // v3: the Card Detail states of UI-08 (the approved frames): a card to ascend (cookie ci_col=ascend), the stat points editor (ci_col=points), a locked card.
-  'collection-detail-ascend': { id: 'UI-08', safe: true, col: 'ascend', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
-  'collection-detail-points': { id: 'UI-08', safe: true, col: 'points', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]'], ['wait', 1]] },
-  'collection-detail-locked': { id: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-card.locked'], ['wait', 2.5]] },
+  'collection-detail-ascend': { id: 'UI-08', under: 'UI-07', safe: true, col: 'ascend', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
+  'collection-detail-points': { id: 'UI-08', under: 'UI-07', safe: true, col: 'points', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]'], ['wait', 1]] },
+  'collection-detail-locked': { id: 'UI-08', under: 'UI-07', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-card.locked'], ['wait', 2.5]] },
   // v3: the card viewer (UI-09) opened from the Card Detail art (a tap on #pArt; at the sizes where the viewer opens with the panel it opens again).
-  'collection-viewer':   { id: 'UI-09', under: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pArt'], ['wait', 1.5]] },
+  'collection-viewer':   { id: 'UI-09', under: 'UI-07', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pArt'], ['wait', 1.5]] },
   // v3: the celebration after an Ascend (UI-10 C1-C4): the viewer with the card and "Spend points" (cookie ci_col=ascend-ok answers the Ascend).
-  'ascend-celebration':  { id: 'UI-10', under: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 5]], col: 'ascend-ok' },
+  'ascend-celebration':  { id: 'UI-10', under: 'UI-07', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 5]], col: 'ascend-ok' },
   // v3: the Ascend refused (UI-10 E1: the writes answer 403 here, cookie ci_col=points) and the stat points save error (S2).
-  'ascend-error':        { id: 'UI-10', under: 'UI-08', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 1.5]], col: 'ascend' },
-  'stat-points-error':   { id: 'UI-10', under: 'UI-08', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '[data-add="attack"]', [['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]']]], ['wait', 1], ['js', '#ptsSave'], ['wait', 1.5]], col: 'points' },
+  'ascend-error':        { id: 'UI-10', under: 'UI-07', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 1.5]], col: 'ascend' },
+  'stat-points-error':   { id: 'UI-10', under: 'UI-07', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '[data-add="attack"]', [['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]']]], ['wait', 1], ['js', '#ptsSave'], ['wait', 1.5]], col: 'points' },
   'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   'achievements-detail': { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main .ach-card, #main .ach-row, #main [data-ach]']] },
   'bosses':              { id: 'UI-11', steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
@@ -135,7 +135,11 @@ export function ownerOf(screen, where) {
   if (/-picker-detail$/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b|\.vr-|#v-[a-z-]+/.test(where)) return 'UI-64';
   // UI-09: the card viewer opened from the Card Detail (collection-viewer): the viewer and its buttons. UI-10: the celebration's Spend points
   // button and the inline errors of an Ascend or a stat point save (the Card Detail panel around them is UI-08).
+  // The Card Detail window (UI-08) is the top layer of the Collection specs; the Collection behind its scrim (the v2 grid and Filters, UI-07) owns what is
+  // not in the window. Without this rule a Game chip that the filter panel folds away at 1280x720 (fitChips) was blamed on UI-08.
   if (/\.asc-spend\b|#pAscFail|#ptsFail|\.u3-fail\b/.test(where)) return 'UI-10';
+  if (/^collection-detail/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b/.test(where)) return 'UI-08';   // the viewer that opens with the window at some sizes
+  if (/#u3Det|\.u3-det\b|\.u3-det__|#pPts|#pAscend|#pConvert|#pSpot|#pTrade|#pArt|#pClose|#colEffect/.test(where)) return 'UI-08';
   if (screen === 'collection-viewer' && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav|win)\b|#v-[a-z-]+|#card3d/.test(where)) return 'UI-09';
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/#u3Wish[a-z]*\b|\.u3-wl\b|\.u3-wl[-_]|#wlHandle|\.u3-pf-wishbar/.test(where)) return 'UI-16';
