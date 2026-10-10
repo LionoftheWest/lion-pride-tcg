@@ -110,3 +110,10 @@ body[data-size="compact-port"] .u3-ft.is-short.is-tight.is-min .u3-ft-stage { gr
 /* expanded and medium: the hand panel takes the share the approved frames give it (the cards 99 x 138 at 1280x720) */
 body[data-size="expanded"] .u3-ft-hand { flex-basis: 46%; }
 .u3-ft-grid.is-small .downed-x { font-size: var(--fs-caption); padding: var(--sp-half); }
+/* a tablet held upright (is-tall, measured): one column as the approved 768x1024 frame: the text, the boss, then Your damage beside the feed;
+   the hand is one row of 8 sized from its width */
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-stage { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "text text" "boss boss" "me feed"; }
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-hand { flex: 0 0 auto; }
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-cards { flex: 0 0 auto; container-type: inline-size; }
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-grid.squad-grid { --ft-w: calc((100cqw - 7 * var(--sp-2)) / 8); }
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-feedlist { flex: 0 0 auto; max-height: calc(var(--chip-md) * 2 + var(--sp-1)); }

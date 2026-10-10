@@ -1813,6 +1813,7 @@ function fitFightV3() {
   // measure again when the fight area changes size (the safe area, the fonts, the shell rows settle after the paint)
   if (!ft._ro && window.ResizeObserver) { let last = ''; ft._ro = new ResizeObserver(() => { const k = `${ft.clientWidth}x${ft.clientHeight}`; if (k !== last) { last = k; requestAnimationFrame(fitFightV3); } }); ft._ro.observe(ft); document.fonts?.ready.then(() => requestAnimationFrame(fitFightV3)); }
   ft.classList.remove('is-short', 'is-tight', 'is-min');
+  ft.classList.toggle('is-tall', document.body.dataset.size === 'medium' && ft.clientHeight > ft.clientWidth);   // a tablet held upright: the portrait form (D-136), measured on the fight box
   grid.style.removeProperty('--ft-cap'); hand.style.removeProperty('flex-basis');
   // the feed list is trimmed by fitFeedRows; every other part must fit whole
   const over = () => stage.scrollHeight > stage.clientHeight + 1 || [...stage.children].some((n) => !n.classList.contains('u3-ft-feed') && n.scrollHeight > n.clientHeight + 1);
@@ -1827,7 +1828,7 @@ function fitFightV3() {
     shrink(TOKENS['card-mini'] + TOKENS['sp-2']);
     if (over()) ft.classList.add('is-min');
     shrink(TOKENS['card-mini']);
-  } else {
+  } else if (!ft.classList.contains('is-tall')) {
     const ah = ft.clientHeight || 1;
     // the last step (a short landscape phone with the safe area): the boss render gives way, the facts and the HP bar share a line
     if (over() && document.body.dataset.size === 'compact-land') ft.classList.add('is-min');
