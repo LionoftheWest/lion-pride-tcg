@@ -52,3 +52,5 @@ body.ui-v3[data-input="coarse"] .u3-rp__foot .u3-btn { height: var(--hit); }
 .u3-rp__done { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--sp-4) 0 var(--sp-2); color: var(--text-secondary); }
 .u3-rp__done > .u3-ico { color: var(--success); }
 .u3-rp__thanks { font-family: var(--font-display); font-size: var(--fs-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+/* the keyboard is open over the Report sheet: the screen under it is squeezed by the keyboard and covered, so it is hidden (as UI-15) */
+body[data-kb]:has(#v2Report.u3-rp) #main { visibility: hidden; }
