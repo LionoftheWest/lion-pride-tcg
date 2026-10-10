@@ -78,6 +78,13 @@ function derivedWish(body) {
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
+// UI-64 (Shop stat reset picker, pick one): the recorded collection has 3 cards with stat points; ci_stats=many gives the
+// first 30 cards points (a member who spent points on many cards), so the picker shows a full page.
+const STAT_KEYS = ['attack', 'vitality', 'precision', 'potency', 'haste'];
+function derivedStats(body) {
+  return { ...body, cards: body.cards.map((c, i) => (i < 30 ? { ...c, stat: { ...(c.stat || {}), points: Object.fromEntries(STAT_KEYS.filter((_, k) => (i + k) % 3 !== 0).map((k, j) => [k, 1 + ((i + j) % 4)])) } } : { ...c, stat: { ...(c.stat || {}), points: {} } })) };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/collection' && c.ci_stats === 'many' && Array.isArray(body?.cards), make: (body) => derivedStats(body) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 

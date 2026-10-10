@@ -12,10 +12,10 @@ import { thumb } from '../thumb.js';
  * that shows the most cards (then the larger tile). An area too short for one row of card-tile cards gets one row of
  * smaller cards. `extra` is the height under each card (the caption, pick-one). `floor` (opt-in, below min): when the
  * best fit leaves more than a quarter of the height empty, cards down to `floor` wide may add a row with the same columns (a width-limited
- * grid cannot grow its cards to the free height). Pure (unit-tested).
+ * grid cannot grow its cards to the free height). `count` is the number of cards: when they all fit, nothing relaxes. Pure (unit-tested).
  */
 const EMPTY_MAX = 1 / 4;   // 3.4: an empty band above 25% of the window is a defect
-export function fitGrid(width, height, gap, { min = TOKENS['card-tile'], max = TOKENS['card-tile-max'], ratio = TOKENS['card-ratio'], extra = 0, floor = min } = {}) {
+export function fitGrid(width, height, gap, { min = TOKENS['card-tile'], max = TOKENS['card-tile-max'], ratio = TOKENS['card-ratio'], extra = 0, floor = min, count = Infinity } = {}) {
   if (!(width > 0 && height > 0)) return { cols: 1, rows: 1, tile: min };
   const search = (lo, atLeast = 1, colCap = Infinity) => {
     let best = null;
@@ -33,7 +33,7 @@ export function fitGrid(width, height, gap, { min = TOKENS['card-tile'], max = T
     return best;
   };
   let best = search(min);
-  if (best && floor < min) {
+  if (best && floor < min && count > best.n) {
     const used = (b) => (b.rows * (b.tile * ratio + extra) + gap * (b.rows - 1)) / height;
     if (1 - used(best) > EMPTY_MAX) { const alt = search(floor, best.rows + 1, best.cols); if (alt && alt.n > best.n) best = alt; }
   }
@@ -183,14 +183,14 @@ function paint() {
   const n = o.filterCount ? o.filterCount(cur.values) : 0;
   const { tiles, pages } = gridHTML();
   const clear = o.clear && cur.one ? button({ label: o.clear, disabled: cur.busy || !cur.sel.length, data: { clear: '1' } }) : '';
-  const confirm = button({ label: 'Confirm', variant: 'primary', disabled: !st.ready || cur.busy, busy: cur.busy, busyLabel: 'Saving', reason: st.ready ? null : st.reason, data: { confirm: '1' } });
+  const confirm = button({ label: 'Confirm', variant: 'primary', disabled: !st.ready || cur.busy, busy: cur.busy, busyLabel: 'Saving', reason: st.ready || cur.one ? null : st.reason, data: { confirm: '1' } });
   const a = document.activeElement;
   const caret = a && host.contains(a) && a.classList.contains('u3-search__input') ? a.selectionStart : null;
   host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk${cur.one ? ' is-one' : ''}" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="u3PkT" style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
     + `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${o.icon ? icon(o.icon) : ''}${esc(o.title || 'Squad')}${cur.one ? '' : ` <b>${cur.sel.length}</b><span>/ ${o.cap}</span>`}</h2></header>`
     + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>`
     + (cur.one ? '' : `<div class="u3-pk__slots">${slotsHTML()}</div>`)
-    + `<div class="u3-pk__tools">${searchField({ value: cur.q, placeholder: document.body.dataset.size === 'compact-land' ? 'Search cards…' : undefined })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
+    + `<div class="u3-pk__tools">${searchField({ value: cur.q, placeholder: document.body.dataset.size === 'compact-land' ? 'Search cardsï¿½' : undefined })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
     + `<ul class="u3-pk__grid${(cur.tile || TOKENS['card-tile']) < TOKENS['card-thumb'] ? ' is-small' : ''}${o.caption ? ' has-cap' : ''}" aria-label="Cards" style="--pk-cols:${cur.cols || 1};--pk-tile:${cur.tile || TOKENS['card-tile']}px${o.caption ? `;--pk-cap-h:${cur.capH || 0}px` : ''}">${tiles}</ul>`
     + `<div class="u3-pk__pager">${pager({ page: cur.per ? cur.page + 1 : 1, pages })}</div>`
     + `<footer class="u3-pk__foot">${checksHTML(st)}<div class="u3-pk__acts">${clear}${o.autoPick ? button({ label: 'Auto-pick', disabled: cur.busy, data: { auto: '1' } }) : ''}${confirm}</div></footer>`
@@ -213,7 +213,7 @@ function measure() {
   }
   const cs = getComputedStyle(g);
   const gap = parseFloat(cs.columnGap) || 0;
-  const fit = (extra) => fitGrid(g.clientWidth, g.clientHeight, gap, { extra, floor: TOKENS['card-thumb'] });
+  const fit = (extra) => fitGrid(g.clientWidth, g.clientHeight, gap, { extra, floor: TOKENS['card-thumb'], count: shown().length });
   let capH = cur.capH || 0;
   let f = fit(capH);
   if (cur.opts.caption) {

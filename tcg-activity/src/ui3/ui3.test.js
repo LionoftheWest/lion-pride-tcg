@@ -128,6 +128,9 @@ test('Card picker grid (UI-64): a width-limited area adds a row of smaller cards
   // never below the floor
   const f = fitGrid(557, 150, 12, opt);
   assert.equal(f.rows, 1);
+  // count: when all the cards fit (3 cards), nothing relaxes: no smaller cards for cards that are not there
+  const few = fitGrid(325, 274, 12, { extra: 37, floor: 64, count: 3 });
+  assert.ok(few.tile >= 88);
   // extra: the caption height is part of each row
   const c = fitGrid(380, 539, 12, { extra: 37 });
   assert.ok(c.rows * (c.tile * 1.4 + 37) + 12 * (c.rows - 1) <= 539);
