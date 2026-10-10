@@ -88,6 +88,13 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#main.has-adv > .dg-tabs.v2-subtabs > .dg-tab'), 'UI-02');   // the shell sub-tab row
   assert.equal(ownerOf('dungeon', '.u3-dg-tabs > .u3-seg > .u3-seg__item'), 'UI-46');               // the lobby's own tabs (Rule / Best / Top 3)
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
+  // the style editor (UI-15) opens over the profile: the profile under it is UI-14, the window is UI-15, the picker UI-64
+  assert.equal(ownerOf('style-editor', '.mem-col.mem-left > .mem-grid-stats > div > span'), 'UI-14');
+  assert.equal(ownerOf('style-editor', '.u3-pf-tile.u3-pf-id > #memBack.u3-btn'), 'UI-14');
+  assert.equal(ownerOf('style-editor', '.u3-se > .u3-se__foot > .u3-btn'), 'UI-15');
+  assert.equal(ownerOf('style-picker', '#u3Picker > .u3-pk'), 'UI-64');
+  assert.equal(ownerOf('style-picker', '.u3-se-slots > li'), 'UI-15');
+  assert.equal(ownerOf('profile', '.mem-col.mem-left > span'), 'UI-14');
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
   assert.equal(ownerOf('dungeon-path', '#main > .u3-dgs > .u3-dgc-panel'), 'UI-49');   // the room steps (UI-49)
