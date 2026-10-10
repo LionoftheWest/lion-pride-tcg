@@ -107,6 +107,17 @@ function derivedResting() {
   return { hunt: null, nextSpawnAt: new Date(t0 + 4 * 86_400_000 + 3_600_000).toISOString(), lastResult: { name: 'The Ranked Nightshade', tier: 'Tier 1', status: 'defeated', hp_max: 30000 },
     lastBoard: [{ player_id: '100000000000000102', username: 'Member C', damage: 6075 }], myLast: 3766, lastFeed: [] };
 }
+// UI-30: a Trade Hall with listings of other members (the recording holds the signed-in member's own only; cookie ci_hall=many):
+// 10 Wanted cards (every third one owned 0 times: the Not owned look) and 11 For trade cards. The cards come from the recorded catalog.
+function derivedHall(body) {
+  const cat = (FIX.routes['/api/catalog']?.body?.cards || []).filter((c) => c.image_url);
+  const pick = (i) => { const c = cat[(i * 37) % cat.length]; return { id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, power: c.power }; };
+  const who = (i) => ({ player_id: `1000000000000001${String(i).padStart(2, '0')}`, name: `Member ${String(i + 1).padStart(3, '0')}` });
+  const wanted = body.wanted.concat(Array.from({ length: 9 }, (_, i) => ({ ...who(i + 1), card: pick(i + 1), yours: false, mine: i % 3 === 0 ? 0 : (i % 3) })));
+  const forTrade = body.forTrade.slice(0, 2).concat(Array.from({ length: 9 }, (_, i) => ({ id: 100 + i, ...who(i + 1), card: pick(i + 20), mine: false, match: i % 2, at: body.forTrade[0].at })));
+  return { ...body, wanted, forTrade };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/hall' && c.ci_hall === 'many' && body?.wanted, make: (body) => derivedHall(body) });
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];

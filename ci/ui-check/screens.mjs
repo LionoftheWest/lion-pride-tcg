@@ -22,6 +22,8 @@ export const SCREENS = {
   'home':                { id: 'UI-03', safe: true, long: true, home: 'busy', notOn: ['tiny'], steps: [] },
   'home-live':           { id: 'UI-03', long: true, safe: true, home: 'live', notOn: ['tiny'], steps: [] },
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
+  // the Filters panel open (D-39, D-123: under tabs where the groups do not fit the height)
+  'collection-filters': { id: 'UI-07', safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#colFilters'], ['wait', 1]] },
   'collection-detail':   { id: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
   'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   'achievements-detail': { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main .ach-card, #main .ach-row, #main [data-ach]']] },
@@ -44,8 +46,13 @@ export const SCREENS = {
 'trades-offer':       { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['js', '.u3-pd-row__open'], ['wait', 1.5]] },
 'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
   'trades-explain':      { id: 'UI-39', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
-  'hall':                { id: 'UI-30', long: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5]], input: '#main input[type=search], #main input[type=text]' },
-  'hall-listings':       { id: 'UI-30', long: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#hlList'], ['wait', 2]] },
+  // v3 (UI-30): the Trade Hall lists with the listings of other members (cookie ci_hall=many: the recording holds only the signed-in member's own).
+  'hall':                { id: 'UI-30', safe: true, long: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5]], input: '#main input[type=search], #main input[type=text]' },
+  'hall-fortrade':       { id: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="fortrade"]'], ['wait', 1]], input: '#main input[type=search], #main input[type=text]' },
+  'hall-filters':        { id: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '[data-hlfilters]'], ['wait', 1]] },
+  // The v2 views behind the Hall (UI-31 Manage my listings, UI-32 Auctions) stay reachable from the v3 Hall.
+  'hall-listings':       { id: 'UI-31', long: true, hall: 'many', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#hlList, [data-hlmanage]'], ['wait', 2]] },
+  'hall-auctions':       { id: 'UI-32', long: true, hall: 'many', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="auctions"]'], ['wait', 1.5]] },
   'boons':               { id: 'UI-27', long: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
   'boons-pick':          { id: 'UI-28', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
   'hunt-squad':          { id: 'UI-17', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
@@ -169,6 +176,7 @@ export function ownerOf(screen, where) {
   if (/\.u3-dgs\b|\.u3-dgs[-_]/.test(where) || (SCREENS[screen].id === 'UI-49' && /\.u3-dgc\b|\.u3-dgc[-_]/.test(where))) return 'UI-49';   // the room steps share the UI-48 stage parts
   if (/#v2Help[a-z]*\b|\.u3-hp\b|\.u3-hp[-_]/.test(where)) return 'UI-38';
   if (/\.u3-dgc\b|\.u3-dgc[-_]/.test(where)) return 'UI-48';
+  if (/\.u3-(col|fpanel|ctile|fhost|frow)\b|\.u3-(col|fpanel|ctile|frow)[-_]|#u3FiltersT\b/.test(where)) return 'UI-07';   // the v3 Collection (the v2 ids #colSearch and #colFilters are also on Achievements and Bosses: only the u3 classes count)
   if (/\.u3-logo\b/.test(where)) return 'UI-01';   // the top bar logo (its path can stop above #topbar)
   // The pack reveal stage covers the screen under it: a defect in the stage belongs to the reveal screen.
   // A path keeps 3 levels, so the stage parts are named too (the pack, the cards, the bar, the effects).
