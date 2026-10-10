@@ -9,7 +9,7 @@
   const path = (e) => { const p = []; for (let x = e; x && x !== document.body && p.length < 3; x = x.parentElement) p.unshift(name(x)); return p.join(' > '); };
   const visDeep = (e) => { for (let x = e; x && x !== document.body; x = x.parentElement) { const cs = getComputedStyle(x); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return false; } const r = e.getBoundingClientRect(); return r.width > 2 && r.height > 2; };
   const inView = (r) => r.right > 0 && r.bottom > 0 && r.left < vw && r.top < vh;
-  const skip = (e) => e.closest('#loader, #tutLayer, svg, canvas, .hidden');
+  const skip = (e) => e.closest('#loader:not([data-measure]), #tutLayer, svg, canvas, .hidden');
   const out = { iconNoName: [], contrast: [], contrastSkipped: 0 };
 
   // 1) icon-only controls
