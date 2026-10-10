@@ -40,7 +40,7 @@ const LONG_SCREENS = new Set(Object.entries(SCREENS).filter(([, s]) => s.long).m
 const SAFE_SCREENS = new Set(Object.entries(SCREENS).filter(([, s]) => s.safe).map(([k]) => k));   // the spec's `safe: true` flag (screens.mjs)
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
-const port = 4480 + Math.floor(Math.random() * 400);
+const port = Number(process.env.UI_CHECK_PORT) || 4480 + Math.floor(Math.random() * 400);   // UI_CHECK_PORT: a builder keeps its own port range
 const server = spawn(process.execPath, [join(here, 'serve.mjs'), String(port)], { stdio: ['ignore', 'pipe', 'inherit'] });
 await new Promise((ok) => server.stdout.once('data', ok));
 const BASE = `http://127.0.0.1:${port}`;

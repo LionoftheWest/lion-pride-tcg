@@ -84,6 +84,14 @@ function derivedTrades(body) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body) => derivedTrades(body) });
 DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_trades === 'few' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
+// UI-63: the cards of another member (the recorded answer has none): every second card of the recorded collection, with
+// 1 to 4 copies, in the shape of GET /api/player-cards.
+function derivedTheirCards() {
+  const cards = (FIX.routes['/api/collection']?.body?.cards || []).filter((_, i) => i % 2 === 0).map((c, i) => ({ quantity: 1 + (i % 4), id: c.id, name: c.name,
+    rarity: c.rarity, image_url: c.image_url, tradeable: true, season: c.season || 'Season 1', event: null, artist: null, lore: null, subject: c.subject }));
+  return { cards };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/player-cards' && body && !(body.cards || []).length, make: () => derivedTheirCards() });
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
