@@ -1,8 +1,8 @@
 // Tests for the G3 verdict: node --test ci/ui-check/evaluate.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defectsOf, verdict } from './evaluate.mjs';
-import { SIZES, SCREENS, sizeKey, ownerOf } from './screens.mjs';
+import { defectsOf, verdict, reportOnly } from './evaluate.mjs';
+import { SIZES, SCREENS, REPORT_ONLY_SIZES, sizeKey, ownerOf } from './screens.mjs';
 import { parseRegister } from '../gates/lib.mjs';
 
 const REG = parseRegister(`| UI-01 | Shell | x | No | #10 | Not migrated | |
@@ -108,7 +108,7 @@ test('a defect fails only on an enforced ID (title or Migrated)', () => {
 test('a missing cell always fails; a runner error fails on an enforced ID', () => {
   const rs = full().filter((r) => !(r.screen === 'dungeon' && r.size === '375x667'));
   assert.equal(verdict(rs, REG, { browsers: ['chromium'] }).fails[0].where, 'no result');
-  const rs2 = full(); rs2.find((r) => r.screen === 'collection' && r.size === '375x667').error = 'Timeout';
+  const rs2 = full(); rs2.find((r) => r.screen === 'collection' && r.size === '430x932').error = 'Timeout';
   assert.equal(verdict(rs2, REG, { browsers: ['chromium'] }).fails[0].rule, 'not-checked');
   const cells = SIZES.reduce((n, s) => n + Object.values(SCREENS).filter((sc) => !sc.notOn?.includes(s[2])).length, 0);   // the menu has no tiny cell
   assert.equal(verdict(full(), REG, { browsers: ['chromium', 'webkit'] }).fails.length, cells, 'no WebKit results: every WebKit cell fails');
@@ -165,12 +165,12 @@ test('an accepted exception (decision ID, one ID/screen/size/rule) does not fail
   const rs = full();
   const cell = rs.find((r) => r.screen === 'home' && r.size === '430x932');
   cell.checks.emptyBandY = 0.29;
-  const other = rs.find((r) => r.screen === 'home' && r.size === '375x667');
+  const other = rs.find((r) => r.screen === 'home' && r.size === '412x915');
   other.checks.emptyBandY = 0.29;
   const ex = [{ decision: 'D-999', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty', why: 'test' }];
   const v = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'], exceptions: ex });
   assert.equal(v.defects.filter((x) => x.accepted === 'D-999').length, 1);
-  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '375x667']]);   // the other size still fails
+  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '412x915']]);   // the other size still fails
   const none = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'] });
   assert.equal(none.fails.length, 2);
 });
@@ -181,6 +181,19 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
   const mine = list.filter((e) => e.id === 'UI-49');
   assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+});
+
+test('D-136: a defect at a report-only landscape size is listed but does not fail; the same defect at a portrait size fails', () => {
+  assert.deepEqual(REPORT_ONLY_SIZES, ['667x375', '932x430', '915x412', '1180x820', '917x692', '375x667', '1280x480']);
+  const rs = full();
+  for (const size of ['667x375', '430x932']) rs.find((r) => r.screen === 'home' && r.size === size).checks.emptyBandY = 0.4;
+  const v = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'] });
+  assert.equal(v.defects.filter((x) => x.rule === 'empty').length, 2, 'both are listed');
+  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '430x932']]);
+  for (const size of ['1280x720', '1990x830', '430x932', '430x822', '412x915', '820x1180', '692x917', '400x225']) assert.ok(!REPORT_ONLY_SIZES.includes(size), size + ' stays enforced');
+  assert.equal(reportOnly({ size: '667x375', where: 'no result' }), false, 'a missing cell still fails');
+  const miss = full().filter((r) => !(r.screen === 'home' && r.size === '667x375'));
+  assert.ok(verdict(miss, REG, { title: 'UI-03 Home', browsers: ['chromium'] }).fails.some((x) => x.size === '667x375' && x.where === 'no result'));
 });
 
 test('a bad exception entry stops the gate', () => {
