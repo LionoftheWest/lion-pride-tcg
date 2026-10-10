@@ -39,7 +39,8 @@ import { button as ui3Button, iconButton as ui3IconButton, pager as ui3Pager } f
 import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
 import { initSettingsWindow } from './ui3/settings.js';
 import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
-import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, fitPacks, rarePacks, packStarts, newMark } from './ui3/pack-reveal.js';
+import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, rarePacks, newMark, PACK_RATIO, PACK_GAP_MS, STACK_LAYERS, stackTimeline, stackDepth } from './ui3/pack-reveal.js';
+import { counter as u3Counter } from './ui3/components.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
@@ -1062,8 +1063,8 @@ function showPacksV3(packs, set) {
   const stage = el('stage');
   stage.className = 'open v2-multi u3-multi';
   stage.innerHTML = `<div class="mr-wrap full"><section class="mr-main u3-mwait" role="dialog" aria-modal="true" aria-label="Pack reveal">
-      <div class="u3-mpacks" id="u3Packs">${packs.map((_, i) => `<button type="button" class="u3-mpack" data-p="${i}" aria-label="Open the packs">`
-        + `<svg class="u3-pack__clip" viewBox="0 0 389 703" overflow="visible" aria-hidden="true" focusable="false"><image href="${clipUrl(s, 'idle_loop')}" x="-205" y="-261" width="800" height="1120"/></svg></button>`).join('')}<p class="u3-mhint" id="u3Hint">Swipe to open</p></div></section></div>`;
+      <div class="u3-mpacks" id="u3Packs">${packs.map((_, i) => `<${i ? 'div aria-hidden="true"' : 'button type="button" aria-label="Open the packs"'} class="u3-mpack" data-p="${i}">`   // D-135: one control for the stack (the front pack); the packs behind are not controls
+        + `<svg class="u3-pack__clip" viewBox="0 0 389 703" overflow="visible" aria-hidden="true" focusable="false"><image href="${clipUrl(s, 'idle_loop')}" x="-205" y="-261" width="800" height="1120"/></svg></${i ? 'div' : 'button'}>`).join('')}<p class="u3-mhint" id="u3Hint">Swipe to open</p></div></section></div>`;
   fitPacksV3();
   window.addEventListener('resize', fitPacksV3);
   const area = el('u3Packs');
@@ -1087,32 +1088,43 @@ function fitPacksV3() {
   const gap = parseFloat(cs.rowGap) || 0;
   const btns = [...area.querySelectorAll('.u3-mpack')].sort((a, b) => a.dataset.p - b.dataset.p);
   const hint = el('u3Hint');   // the hint is the last line of the pack area: the packs and the hint are centered together
-  const fit = fitPacks(btns.length, area.clientWidth, area.clientHeight - (hint?.offsetHeight || 0) - gap, gap);
-  area.style.setProperty('--u3-pw', `${fit.pw}px`);
-  // one row box for each row of the fit (balanced rows)
-  area.querySelectorAll('.u3-mrow').forEach((r) => r.remove());
-  let at = 0;
-  for (const len of fit.rows) {
-    const row = document.createElement('div');
-    row.className = 'u3-mrow';
-    row.append(...btns.slice(at, at + len));
-    at += len;
-    area.insertBefore(row, hint);
-  }
+  // D-135: one stack. The front pack is the UI-34 single pack size (90-ui-34.css: height min(60vh, 102vw)), smaller only
+  // when the view is short. Each pack behind rises one sp-2 (the depth of the stack is above the front pack).
+  const step = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-2')) || 8;
+  const depth = Math.min(btns.length - 1, STACK_LAYERS) * step;
+  const single = Math.min(innerHeight * 0.6, innerWidth * 1.02) * PACK_RATIO;
+  const pw = Math.floor(Math.min(single, area.clientWidth, (area.clientHeight - (hint?.offsetHeight || 0) - gap - depth) * PACK_RATIO));
+  area.style.setProperty('--u3-pw', `${pw}px`);
+  area.style.setProperty('--u3-depth', `${depth}px`);
+  if (area.querySelector('.u3-mstack')) return;
+  const stack = document.createElement('div');
+  stack.className = 'u3-mstack';
+  // the DOM paints the last child on top: pack 0 (the front pack) is the last child. The rare packs keep their place (D-140).
+  btns.forEach((b) => { b.style.setProperty("--d", stackDepth(+b.dataset.p, 0)); b.classList.toggle("is-front", +b.dataset.p === 0); });
+  stack.append(...[...btns].reverse());
+  stack.insertAdjacentHTML('beforeend', `<span class="u3-mcount" id="u3Count" aria-hidden="true">${u3Counter(btns.length, { neutral: true })}</span>`);   // D-141
+  area.insertBefore(stack, hint);
 }
 
 function openPacksV3(rare) {
   if (!multiRun || multiRun.started) return; // one swipe opens all (D-100); no skip (D-94)
   multiRun.started = true;
   const { packs, set } = multiRun;
-  const starts = packStarts(packs.length);
+  // D-135, D-140: the stack opens from the front. A pack is in front 0.4 s, a rare pack 1.4 s (its burst), in its real place.
+  const tl = stackTimeline(packs.length, rare, PACK_GAP_MS, RARE_SFX_MS);
   // The hint place stays (3.3). Its fade runs for the whole sequence, so the page states that it is busy (the G3 ready check).
   const hint = el('u3Hint');
-  hint?.style.setProperty('--u3-seq', `${starts[starts.length - 1] + RARE_SFX_MS}ms`);
+  hint?.style.setProperty('--u3-seq', `${tl.end}ms`);
   hint?.classList.add('is-gone');
-  const btns = [...document.querySelectorAll('#u3Packs .u3-mpack')];
+  const btns = [...document.querySelectorAll('#u3Packs .u3-mpack')].sort((a, b) => a.dataset.p - b.dataset.p);
   btns.forEach((b) => { b.disabled = true; });
-  starts.forEach((t, i) => setTimeout(() => {
+  tl.steps.forEach(({ pack: i, start: t, left }) => setTimeout(() => {
+    if (i) {   // the pack in front leaves, every pack behind comes one layer forward (D-135)
+      btns[i - 1]?.classList.add('is-gone');
+      btns.forEach((b, j) => { b.style.setProperty("--d", stackDepth(j, i)); b.classList.toggle("is-front", j === i); });
+    }
+    const num = document.querySelector('#u3Count .u3-counter');
+    if (num) num.textContent = String(left);   // D-141
     const img = btns[i]?.querySelector('image');
     if (!img || !img.isConnected) return;
     const kind = rare.has(i) ? 'open_rare' : 'open';
@@ -1132,7 +1144,7 @@ function openPacksV3(rare) {
       stageClass: 'u3-multi',
       cardLabel: (c, i, n) => `Card ${i + 1} of ${n}`,
     });
-  }, starts[starts.length - 1] + RARE_SFX_MS);
+  }, tl.end);
 }
 
 // Radiating sun-rays behind the cards (rare packs).
@@ -3225,7 +3237,6 @@ function renderAscension(card) {
   box.classList.toggle('hidden', !show);
   const c3 = el('card3d');
   c3.className = c3.className.replace(/\b(asc-\d|atier-\d|asc-pop)\b/g, '').replace(/\s+/g, ' ').trim();
-  c3.className = c3.className.replace(/(asc-\d|atier-\d|asc-pop)/g, '').replace(/\s+/g, ' ').trim();
   setFlair(c3.querySelector('.front'), show ? card.ascension : 0); // the border, the star-gems, the crown
   if (!show) return;
   const a = card.ascension || 0;
