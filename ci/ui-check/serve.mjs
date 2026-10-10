@@ -9,6 +9,8 @@
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
 //   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
+//   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
+//                       busy = a resting hunt with a last result, live = the recorded live hunt
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
@@ -92,6 +94,19 @@ function derivedTheirCards() {
   return { cards };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/player-cards' && body && !(body.cards || []).length, make: () => derivedTheirCards() });
+// UI-03 Home: the states the recorded fixtures do not have. A resting hunt (the last boss, its result, the top hunter, the next spawn)
+// and a feed of pulls built from the recorded catalog (names of the people are made up: no member data).
+const WHO = ['Member B', 'Member C', 'Member D', 'Member E', 'Member F'];
+function derivedPulls() {
+  const cards = (FIX.routes['/api/catalog']?.body?.cards || []).filter((c) => c.image_url);
+  const t0 = new Date(FIX.recordedAt).getTime();
+  return { pulls: cards.slice(0, 9).map((c, i) => ({ id: i + 1, player_id: `10000000000000010${i % 5}`, player: WHO[i % 5], name: c.name, rarity: i === 0 ? 'normal' : c.rarity, image_url: c.image_url, at: new Date(t0 - (i + 1) * 3_600_000).toISOString() })) };
+}
+function derivedResting() {
+  const t0 = new Date(FIX.recordedAt).getTime();
+  return { hunt: null, nextSpawnAt: new Date(t0 + 4 * 86_400_000 + 3_600_000).toISOString(), lastResult: { name: 'The Ranked Nightshade', tier: 'Tier 1', status: 'defeated', hp_max: 30000 },
+    lastBoard: [{ player_id: '100000000000000102', username: 'Member C', damage: 6075 }], myLast: 3766, lastFeed: [] };
+}
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
@@ -170,9 +185,11 @@ createServer((req, res) => {
   if (/^\/(main|chunk)\..*\.js$/.test(p)) return send(res, 200, readFileSync(join(BUNDLE, p.slice(1))), 'text/javascript');
   if (/^\/(api\/img|cimg|api\/avatar)\//.test(p) || /^\/cdn\//.test(p)) return send(res, 200, PNG, 'image/png');
   // The pull feed stream: open and quiet, as in production with no new pulls (a closed stream makes the client poll).
-  if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); return undefined; }
+  if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); const k = cookies(req); if (k.ci_home) res.write(`data: ${JSON.stringify(k.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls())}\n\n`); return undefined; }
   if (p.startsWith('/api/')) {
     const c = cookies(req);
+    if (c.ci_home && p === '/api/pulls') return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls()));
+    if (c.ci_home === 'busy' && p === '/api/hunt') return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(derivedResting()) : derivedResting()));
     if (p === '/api/hunt' && (c.ci_hunt === 'resting' || c.ci_hunt === 'down')) return send(res, 200, JSON.stringify(derivedHunt(c.ci_hunt, c.ci_data === 'long')));
     if (p === '/api/hunt' && c.ci_hunt === 'battle-mix') return send(res, 200, JSON.stringify(derivedBattleMix()));
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
