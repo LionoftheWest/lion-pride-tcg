@@ -21,6 +21,7 @@ import * as pf3 from './ui3/profile.js';
 import * as se3 from './ui3/style-editor.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import * as hm3 from './ui3/home.js';
+import { boardRows, boardHTML } from './ui3/home-boss.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -1196,13 +1197,14 @@ function paintHeroV3(box, d, h) {
   ctx.api('/api/hunt/leaderboard').then((b) => {
     const top = (b?.leaders || [])[0];
     const slot = el('heroTop');
-    if (top && slot) { slot.outerHTML = hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); fitHomeV3(); }
+    const rows = boardRows(b?.leaders);
+    if (top && slot) { slot.outerHTML = boardHTML(rows, { fmt, avatar: (id, name) => avatarHTML(id, name, 'xs') }) + hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); fitHomeV3(); }
   }).catch(() => {});
   tickCloses();
   try { heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true }); } catch { heroBoss = null; }
 }
 // "Top hunter" opens the Leaderboard window (the hidden v2 button that the menu tile clicks too)
-function wireTopHunter(box) { box?.querySelector('[data-top-hunter]')?.addEventListener('click', () => document.getElementById('boardBtn')?.click()); }
+function wireTopHunter(box) { box?.querySelectorAll('[data-top-hunter]').forEach((b) => { if (!b.dataset.wired) { b.dataset.wired = '1'; b.addEventListener('click', () => document.getElementById('boardBtn')?.click()); } }); }
 
 function paintVoiceV3(box) {
   const me = ctx.user();
