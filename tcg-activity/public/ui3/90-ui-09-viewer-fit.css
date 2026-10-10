@@ -1,0 +1,63 @@
+/* ==== The card details (v2 #viewer) opened from a picker: one framed window, as UI-09 draws it (D-131; UI-64 fix) ====
+   Nathan 2026-10-09 (D-131): the card details from the pickers are as approved: one framed window with the card (about 160 px
+   on tablet and desktop) beside its info. src/ui3/viewer-fit.js sets data-vmode on #viewer ("row": wider than tall, "col":
+   taller; the card at the left of two info columns, or the card beside the name with the stats, the ability and the tags
+   under it) and the card width --vf-card-w (it measures the window itself: no scroll, nothing cut). The frame is the safe frame
+   plus a margin (2.3). On the compact classes the close button stays out of the Discord corner zone: in "row" it sits left of
+   the zone, in "col" the whole window starts under the zone. Flag off: none of this applies (.viewer-win is display: contents). */
+body.ui-v2.ui-v3[data-size] #viewer {
+  --vf-t: calc(var(--u3-sa-t) + var(--sp-3)); --vf-r: calc(var(--u3-sa-r) + var(--sp-3));
+  --vf-b: calc(var(--u3-sa-b) + var(--sp-3)); --vf-l: calc(var(--u3-sa-l) + var(--sp-3));
+  box-sizing: border-box; padding: var(--vf-t) var(--vf-r) var(--vf-b) var(--vf-l); overflow: hidden; container-type: size;
+  display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center;   /* one window, centered in the frame */
+}
+body.ui-v2.ui-v3[data-size^="compact"] #viewer[data-vmode="col"] { --vf-t: calc(max(var(--u3-sa-t), var(--corner-h)) + var(--sp-2)); }
+body.ui-v2.ui-v3 #viewer .viewer-win { box-sizing: border-box; max-width: 100%; max-height: 100%; }
+body.ui-v2.ui-v3 #viewer #viewer-close { top: var(--vf-t); right: var(--vf-r); width: var(--hit); height: var(--hit); }
+body.ui-v2.ui-v3[data-size^="compact"] #viewer[data-vmode="row"] #viewer-close { right: calc(max(var(--u3-sa-r), var(--corner-w)) + var(--sp-2)); }
+
+/* the card alone (the collection, the card panel): centered, the whole card inside the frame */
+body.ui-v2.ui-v3 #viewer.card-only .viewer-win { display: grid; place-items: center; }
+body.ui-v2.ui-v3 #viewer.card-only .viewer-stage { width: min(var(--sheet-side-w), 100cqw, calc(100cqh / var(--card-ratio))); }
+
+/* the window: the card and its info (the Hunt and the Dungeon pickers) */
+body.ui-v2.ui-v3 #viewer.raid-info .viewer-win { position: relative; padding: var(--sp-4); background: var(--bg-raised); border: var(--bw-1) solid var(--border-strong);
+  border-radius: var(--rad-lg); box-shadow: var(--elev-3); }
+body.ui-v2.ui-v3 #viewer.raid-info #viewer-close { top: var(--sp-3); right: var(--sp-3); }
+body.ui-v2.ui-v3 #viewer.raid-info .viewer-stage { width: var(--vf-card-w, var(--card-squad)); flex: none; }
+body.ui-v2.ui-v3 #viewer.raid-info .viewer-info { width: auto; max-width: none; max-height: none; padding: 0; border: 0; border-radius: 0; background: none; overflow: visible; box-sizing: border-box; }
+body.ui-v2.ui-v3 #viewer.raid-info .viewer-info h3 { margin: 0; }
+body.ui-v2.ui-v3 #viewer.raid-info :is(.vi-main, .vi-side) > * { margin-top: 0; margin-bottom: 0; }
+body.ui-v2.ui-v3 #viewer.raid-info .vi-main > .badge { align-self: flex-start; }
+
+/* row: the card at the left, the info in two columns (the name and the numbers; the ability and the tags) */
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="row"] .viewer-win { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-4); align-items: start;
+  width: min(100%, calc(var(--vf-card-w) + var(--sp-4) * 3 + var(--sheet-side-w) * 1.9 + var(--bw-1) * 2)); }
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="row"] .viewer-info { display: grid; grid-template-columns: minmax(0, 56fr) minmax(0, 44fr); gap: var(--sp-3); align-items: start; }
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="row"] :is(.vi-main, .vi-side) { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="row"] .vi-side { padding-top: calc(var(--hit) + var(--sp-1)); }   /* the close button above the ability */
+body.ui-v2.ui-v3[data-size^="compact"] #viewer.raid-info[data-vmode="row"] #viewer-close { right: calc(max(var(--u3-none), var(--corner-w) - var(--u3-sa-r) - var(--sp-3)) + var(--sp-2)); }
+
+/* is-tight (a landscape phone with the safe area; viewer-fit.js measures it): the stats in 2 x 2, smaller gaps and padding */
+body.ui-v2.ui-v3 #viewer.raid-info.is-tight[data-vmode="row"] .viewer-win { padding: var(--sp-2); gap: var(--sp-2); }
+body.ui-v2.ui-v3 #viewer.raid-info.is-tight[data-vmode="row"] .viewer-info { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-2); }
+body.ui-v2.ui-v3 #viewer.raid-info.is-tight[data-vmode="row"] :is(.vi-main, .vi-side) { gap: var(--sp-1); }
+body.ui-v2.ui-v3 #viewer.raid-info.is-tight[data-vmode="row"] .vr-stats { grid-template-columns: repeat(2, 1fr); gap: var(--sp-1); }
+body.ui-v2.ui-v3 #viewer.raid-info.is-tight[data-vmode="row"] :is(.v-ability, .v-effect, .v-tags) { padding: var(--sp-2); }
+body.ui-v2.ui-v3 #viewer.raid-info.is-tight[data-vmode="row"] .v-tag-rows { gap: var(--sp-half); }
+
+/* col: the card beside the name; the stats, the ability and the tags under both (the frame at 430x932) */
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="col"] .viewer-win { display: flow-root; width: 100%; }
+body.ui-v2.ui-v3:is([data-size="expanded"], [data-size^="medium"]) #viewer.raid-info[data-vmode="col"] .viewer-win { width: min(100%, calc(var(--sheet-side-w) * 1.5)); }
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="col"] .viewer-stage { float: left; margin: 0 var(--sp-3) var(--sp-2) 0; }
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="col"] :is(.viewer-info, .vi-main, .vi-side) { display: contents; }
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="col"] :is(.vi-main, .vi-side) > * + *, body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="col"] .vi-side > :first-child { margin-top: var(--sp-2); }
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="col"] :is(.v-subject, .viewer-info h3) { padding-right: calc(var(--hit) + var(--sp-2)); }
+body.ui-v2.ui-v3 #viewer.raid-info[data-vmode="col"] :is(.v-raid, .v-ability, .v-effect, .v-tags) { clear: both; }
+
+/* the readable text of the card info (G3 4.7 text size, 4.5:1 contrast, 9.1 touch size): the v2 chips and stat labels were 10.5 px
+   and muted; the badge text is dark (the rarity colors are light fills); the play button of a boon is a 44 px target */
+body.ui-v2.ui-v3 #viewer .vr-role, body.ui-v2.ui-v3 #viewer .vr-weak, body.ui-v2.ui-v3 #viewer .vr-down { font-size: var(--fs-caption); }
+body.ui-v2.ui-v3 #viewer .vr-stat span { font-size: var(--fs-caption); color: var(--text-secondary); }
+body.ui-v2.ui-v3 #viewer .vi-main > .badge { color: var(--on-gold); }
+body.ui-v2.ui-v3 #viewer .v-effect .v-play { min-height: var(--hit); }
