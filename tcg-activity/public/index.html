@@ -33,7 +33,17 @@
       <div class="ldr-bar"><span></span></div>
       <div class="ldr-msg" id="loaderMsg">Entering the Pride…</div>
     </div>
+    <!-- UI-56: the v3 loader (src/ui3/loader.js). Hidden, and drawn only when the last session stored the hint lp_ui3=1
+         (the flag itself is known only after the sign-in). Every state keeps the bar, the text and the button in the same place. -->
+    <div class="ldr3" id="ldr3" data-state="loading" hidden>
+      <span class="ldr3-emblem"><img src="/logo-lion.svg" alt="" /></span>
+      <span class="ldr3-word" role="img" aria-label="Lion Pride TCG"><b>LION</b> <b class="ldr3-gold">PRIDE</b><i class="ldr3-tag">TCG</i></span>
+      <div class="ldr3-bar" aria-hidden="true"><span></span></div>
+      <p class="ldr3-msg" id="ldr3Msg" role="status" aria-live="polite">Connecting to Discord…</p>
+      <div class="ldr3-act"><button type="button" class="u3-btn u3-btn--primary u3-btn--md" id="ldr3Retry" tabindex="-1"><span class="u3-btn__label">Try again</span></button></div>
+    </div>
   </div>
+  <script>try{if(localStorage.getItem('lp_ui3')==='1'){document.body.classList.add('ui3-boot');var l3=document.querySelector('link[data-ui3]');if(l3)l3.media='all';document.getElementById('ldr3').hidden=false;document.querySelector('#loader .ldr').hidden=true;}}catch(e){}</script>
   <header id="topbar">
     <div class="title"><span class="logo">🦁</span> <span class="v2-name">Lion Pride TCG</span><span class="v2-logo v2-only"><span class="v2-emblem"><img src="/logo-lion.svg" alt=""></span><b>LION</b><b class="gold">PRIDE</b><i>TCG</i></span><span class="v2-season v2-only" id="v2Season"></span></div>
     <div class="topright">

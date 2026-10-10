@@ -55,6 +55,8 @@ test('touch targets count on touch sizes only', () => {
   assert.equal(defectsOf(r, null).length, 0);
 });
 test('owners: the shell and the sub-tabs have their own IDs', () => {
+  assert.equal(ownerOf('convert', '#u3ShopDlg > .u3-scrim > .u3-dialog.u3-sdlg.u3-sdlg--convert > .u3-sdlg__main > .u3-scvt'), 'UI-44');
+  assert.equal(ownerOf('convert', '#main > .v2-collection > .p-actions'), 'UI-08');
   assert.equal(ownerOf('dungeon', '#topbar > #shopBtn'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Shards'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Avatar.v2-avatar'), 'UI-01');
@@ -79,14 +81,29 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('collection-detail', '#viewer > #viewer-prev'), 'UI-08');
   assert.equal(ownerOf('collection-detail', '#viewer > #viewer-close'), 'UI-08');
   assert.equal(ownerOf('collection-detail', '#viewer > .viewer-stage'), 'UI-08');
+  assert.equal(ownerOf('trades-pick', '#u3TradeWin > .u3-tw > ul.u3-tw__grid'), 'UI-63');   // the Trade window
+  assert.equal(ownerOf('trades-pick', '.u3-tw__grid > li.u3-pk-card > button.u3-pk-card__pick'), 'UI-63');   // its tiles are Card picker classes
+  assert.equal(ownerOf('hunt-picker', '#u3Picker > .u3-pk-scrim > .u3-pk'), 'UI-64');   // the Card picker stays UI-64
   assert.equal(ownerOf('pack-multi', '.u3-mpacks > .u3-mrow > .u3-mpack'), 'UI-35');
   assert.equal(ownerOf('pack-multi-cards', '.mr-main > #mrGrid.mr-grid > .mr-card'), 'UI-35');
   assert.equal(ownerOf('pack-multi', '#topbar > #shopBtn'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#main.has-adv > .dg-tabs.v2-subtabs > .dg-tab'), 'UI-02');   // the shell sub-tab row
   assert.equal(ownerOf('dungeon', '.u3-dg-tabs > .u3-seg > .u3-seg__item'), 'UI-46');               // the lobby's own tabs (Rule / Best / Top 3)
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
+  // the style editor (UI-15) opens over the profile: the profile under it is UI-14, the window is UI-15, the picker UI-64
+  assert.equal(ownerOf('style-editor', '.mem-col.mem-left > .mem-grid-stats > div > span'), 'UI-14');
+  assert.equal(ownerOf('style-editor', '.u3-pf-tile.u3-pf-id > #memBack.u3-btn'), 'UI-14');
+  assert.equal(ownerOf('style-editor', '.u3-se > .u3-se__foot > .u3-btn'), 'UI-15');
+  assert.equal(ownerOf('style-picker', '#u3Picker > .u3-pk'), 'UI-64');
+  assert.equal(ownerOf('style-picker', '.u3-se-slots > li'), 'UI-15');
+  assert.equal(ownerOf('profile', '.mem-col.mem-left > span'), 'UI-14');
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
+  assert.equal(ownerOf('collection', '#main > .u3-col > .u3-ctile.is-owned'), 'UI-07');
+  assert.equal(ownerOf('collection', '.u3-col__bar > .u3-search.u3-col__search > #colSearch.u3-search__input'), 'UI-07');
+  assert.equal(ownerOf('achievements', '.v2-collection.ach-mode > .m-colbar > #colSearch.v2-search'), 'UI-12');   // the v2 id is not UI-07
+  assert.equal(ownerOf('collection', '.u3-fpanel__foot > button'), 'UI-07');
+  assert.equal(ownerOf('collection-detail', '#main > .v2-cell'), 'UI-08');
   assert.equal(ownerOf('dungeon-path', '#main > .u3-dgs > .u3-dgc-panel'), 'UI-49');   // the room steps (UI-49)
   assert.equal(ownerOf('dungeon-floor', '#main > .u3-dgs-fd > .u3-dgs-fdp'), 'UI-49');
   assert.equal(ownerOf('dungeon-rest', '#main > .u3-dgc > .u3-dgc-hud'), 'UI-49');   // the stage parts shared with UI-48 belong to the screen under test
