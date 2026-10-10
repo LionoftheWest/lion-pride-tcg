@@ -127,6 +127,11 @@ function derivedNotes(body) {
   return { ...body, items };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_notes === 'many' && body?.items, make: (body) => derivedNotes(body) });
+// UI-53: the locked Hunt, Dungeon and Gauntlet (cookie ci_hunt=gate / ci_dungeon=gate): the recorded answer plus the gate of the
+// approved frames (starter gifts 0 of 2 claimed, 3 of 8 attackers). The server rule itself is not touched.
+const LOCKED = { ok: false, need: 8, attackers: 3, gifts_open: 2, gifts_total: 2 };
+DERIVED.push({ when: (p, c, body) => p === '/api/hunt' && c.ci_hunt === 'gate' && body?.hunt, make: (body) => ({ ...body, gate: { ...LOCKED } }) });
+DERIVED.push({ when: (p, c, body) => (p === '/api/dungeon' || p === '/api/gauntlet') && c.ci_dungeon === 'gate' && body?.ok, make: (body) => ({ ...body, closed: false, gate: { ...LOCKED } }) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
