@@ -13,8 +13,17 @@ const clean = (screen, size = '430x932', browser = 'chromium', variant = 'base')
   const s = SIZES.find((x) => sizeKey(x) === size);
   return { browser, size, class: s[2], touch: s[3], screen, id: SCREENS[screen].id, variant, miss: [], fit: [], cut: [],
     checks: { pageScroll: { x: 0, y: 0 }, tinyText: {}, tapSmall: [], tapTiny: [], coveredBtns: [], covered: [], corner: [], windowOutside: 0, keys: {}, emptyBandX: 0, emptyBandY: 0 },
-    extra: { iconNoName: [], contrast: [] } };
+    extra: { iconNoName: [], contrast: [] }, ...(SCREENS[screen].walk ? { walk: [] } : {}) };
 };
+test('UI-37 walk specs: no walk result or a missing card is "not checked"; the card rows become defects of UI-37', () => {
+  const r = clean('walk-5'); delete r.walk;
+  assert.deepEqual(defectsOf(r).map((x) => x.rule), ['not-checked']);
+  r.walk = [['missing', '#tutLayer .u3-wt__card', 'the walkthrough did not open']];
+  assert.deepEqual(defectsOf(r).map((x) => x.rule), ['not-checked']);
+  r.walk = [['overlap', '.u3-wt__card over the spotlighted control', '1,2,3x4'], ['corner-safe', 'corner zone: .u3-wt__card', '300,0'], ['tap', 'button[data-wt=next]', '40x40']];
+  assert.deepEqual(defectsOf(r).map((x) => x.rule), ['overlap', 'corner-safe', 'tap']);
+  assert.equal(defectsOf(clean('walk-5')).length, 0);
+});
 // A complete run: every base cell, clean.
 const full = (browsers = ['chromium']) => browsers.flatMap((b) => SIZES.flatMap((s) => Object.keys(SCREENS).map((sc) => clean(sc, sizeKey(s), b))));
 
@@ -62,6 +71,9 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
+  assert.equal(ownerOf('walk-5', '#tutLayer.u3-wt > .u3-wt__card > .u3-wt__act'), 'UI-37');
+  assert.equal(ownerOf('walk-5', '.u3-wt__card over the spotlighted control'), 'UI-37');
+  assert.equal(ownerOf('walk-5', '#main > .u3-hs'), 'UI-03');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
   assert.equal(ownerOf('hunt-picker-detail', '#viewer.raid-info > #viewer-closebutton'), 'UI-64');

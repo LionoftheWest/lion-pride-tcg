@@ -24,7 +24,7 @@ const WORKERS = Math.max(1, Number(arg('workers', 4)));
 mkdirSync(join(OUT, 'shots'), { recursive: true });
 const FIX = JSON.parse(readFileSync(join(here, 'fixtures', 'api.json'), 'utf8'));
 const read = (f) => readFileSync(join(here, 'checks', f), 'utf8');
-const CHECKS = read('walk-checks.js'), FIT = read('fitdetect.js'), CUT = read('cutdetect.js'), EXTRA = read('extra.js');
+const CHECKS = read('walk-checks.js'), FIT = read('fitdetect.js'), CUT = read('cutdetect.js'), EXTRA = read('extra.js'), WALK = read('walkthrough.js');
 // The game day (MT) of the recording: main.js keeps the locked squad for that day only.
 const MT_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(FIX.recordedAt));
 const sleep = (s) => new Promise((ok) => setTimeout(ok, s * 1000));
@@ -37,7 +37,7 @@ const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;-
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
 const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'help-closed', 'help-item5', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'dungeon-picker-detail', 'hunt-picker-detail', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
+const SAFE_SCREENS = new Set(['walk-1', 'walk-2', 'walk-5', 'walk-8', 'home','dailies', 'bell', 'help', 'help-closed', 'help-item5', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'dungeon-picker-detail', 'hunt-picker-detail', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
@@ -73,6 +73,7 @@ async function runCell([s, screen, variant], ref = {}) {
         const cookies = [];
         if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? 'battle' : spec.hunt, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
+        if (spec.gifts) cookies.push({ name: 'ci_gifts', value: '1', url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);
@@ -105,6 +106,7 @@ async function runCell([s, screen, variant], ref = {}) {
           res.cut = await call(pg, CUT, 'body');
           res.cutWin = await call(pg, CUT, '[data-audit-win]');
           res.extra = await call(pg, EXTRA);
+          if (spec.walk) res.walk = await call(pg, WALK, { touch });   // UI-37: the walkthrough card (the other checks skip #tutLayer)
           if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
           await pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70 });
         } catch (e) {

@@ -135,7 +135,9 @@ createServer((req, res) => {
     const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
       : p === '/api/dungeon' && c.ci_dungeon === 'choose2' && hit.body?.ok ? derivedChoose2(hit.body)
       : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon) : hit.body;
-    const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
+    // UI-37: a gift waits in the bell (cookie ci_gifts=1), so walkthrough step 1 shows; the recorded answer has none.
+    const raw2 = p === '/api/notifications' && c.ci_gifts === '1' && raw && typeof raw === 'object' ? { ...raw, gifts: [{ id: 1, kind: 'packs', title: 'New Player Bonus', amount: 10 }] } : raw;
+    const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw2?.slots ? derivedWish(raw2) : raw2;
     const body = c.ci_data === 'long' ? longData(body0) : body0;
     return send(res, hit.status || 200, JSON.stringify(body));
   }

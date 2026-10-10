@@ -62,6 +62,11 @@ export function defectsOf(r, expanded) {
     }
   }
   if ((c.emptyBandY || 0) > 0.25 || (c.emptyBandX || 0) > 0.25) add('empty', c.window?.sel || '#main', `band ${Math.round(Math.max(c.emptyBandY || 0, c.emptyBandX || 0) * 100)}%`);
+  // UI-37: a walk spec must produce its card rows (walk: true in screens.mjs); a missing card is "not checked", never a pass
+  if (SCREENS[r.screen]?.walk) {
+    if (!Array.isArray(r.walk)) add('not-checked', 'walkthrough', 'the walkthrough check returned nothing');
+    for (const [rule, where, value] of r.walk || []) { if (rule === 'missing') add('not-checked', where, value); else add(rule, where, value); }
+  }
   for (const [w, why] of r.extra?.iconNoName || []) add('icon-name', w, why);
   for (const [w, ratio, need] of r.extra?.contrast || []) add('contrast', w, `${ratio} < ${need}`);
   if (r.keyboard?.focused && r.keyboard.inputInView === false) add('keyboard', 'focused text box', `keyboard ${r.keyboard.height}px`);
