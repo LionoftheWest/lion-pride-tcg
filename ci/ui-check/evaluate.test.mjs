@@ -61,7 +61,16 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #menuBtn.u3-ibtn'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
+  assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
+  assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('hunt-picker-detail', '#viewer.raid-info > #viewer-closebutton'), 'UI-64');
+  assert.equal(ownerOf('hunt-picker-detail', '.vr-stats > .vr-stat > span "Power"'), 'UI-64');
+  assert.equal(ownerOf('hunt-picker-detail', '.u3-hs-hp > span'), 'UI-17');
+  assert.equal(ownerOf('dungeon-picker-detail', '#v-raid.v-raid > .vr-head'), 'UI-64');
+  assert.equal(ownerOf('collection-detail', '#viewer > #viewer-prev'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', '#viewer > #viewer-close'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', '#viewer > .viewer-stage'), 'UI-08');
   assert.equal(ownerOf('pack-multi', '.u3-mpacks > .u3-mrow > .u3-mpack'), 'UI-35');
   assert.equal(ownerOf('pack-multi-cards', '.mr-main > #mrGrid.mr-grid > .mr-card'), 'UI-35');
   assert.equal(ownerOf('pack-multi', '#topbar > #shopBtn'), 'UI-42');
@@ -70,6 +79,10 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
+  assert.equal(ownerOf('dungeon-path', '#main > .u3-dgs > .u3-dgc-panel'), 'UI-49');   // the room steps (UI-49)
+  assert.equal(ownerOf('dungeon-floor', '#main > .u3-dgs-fd > .u3-dgs-fdp'), 'UI-49');
+  assert.equal(ownerOf('dungeon-rest', '#main > .u3-dgc > .u3-dgc-hud'), 'UI-49');   // the stage parts shared with UI-48 belong to the screen under test
+  assert.equal(ownerOf('dungeon-choose', '#main > .u3-dgc > .u3-dgc-hud'), 'UI-48');
 });
 test('a clean complete run passes', () => {
   assert.equal(verdict(full(), REG, { browsers: ['chromium'] }).fails.length, 0);
@@ -102,17 +115,29 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
   assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
   assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');
-  assert.deepEqual(plan(new Set(['UI-49'])), { screens: [], uncovered: ['UI-49'] });
+  assert.deepEqual(plan(new Set(['UI-50'])), { screens: [], uncovered: ['UI-50'] });
+  assert.deepEqual(plan(new Set(['UI-49'])).screens.filter((x) => x.startsWith('dungeon-')).sort(), ['dungeon-chest', 'dungeon-chest-flipped', 'dungeon-chest-open', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-path', 'dungeon-rest', 'dungeon-retreat']);   // the 8 UI-49 specs
   assert.deepEqual(plan(new Set()).screens, []);
   assert.equal(plan(new Set(), { full: true }).screens.length, Object.keys(SCREENS).length);
+});
+test('plan with the title IDs (pick): a PR runs only its own screens and the screens under them, not every Migrated row', () => {
+  const enforced = new Set(['UI-07', 'UI-46', 'UI-17']);   // the title UI-46 plus Migrated rows
+  assert.deepEqual(plan(enforced, { pick: new Set(['UI-46']) }).screens, ['dungeon', 'dungeon-picker', 'dungeon-picker-detail']);   // the pickers sit under UI-46
+  const ui17 = plan(enforced, { pick: new Set(['UI-17']) }).screens;
+  assert.ok(ui17.includes('hunt-picker') && ui17.includes('boss-window'), 'the screens UNDER the title ID run too');
+  assert.ok(!ui17.includes('collection'), 'a Migrated row that is not in the title does not run');
+  assert.equal(plan(enforced, { pick: new Set(['UI-01']) }).screens.length, Object.keys(SCREENS).length, 'the shell still runs every screen');
+  assert.deepEqual(plan(enforced, { pick: new Set() }).screens, [], 'no title ID: nothing to run');
+  assert.equal(plan(enforced, { full: true, pick: new Set(['UI-46']) }).screens.length, Object.keys(SCREENS).length, '--full (the nightly report) runs every screen');
+  assert.deepEqual(plan(new Set(['UI-50']), { pick: new Set(['UI-50']) }).uncovered, ['UI-50']);
 });
 test('verdict with a plan: only the planned screens must have results; an uncovered enforced ID fails', () => {
   const only = full().filter((r) => r.screen === 'dungeon');
   assert.equal(verdict(only, REG, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon', 'collection'] }).fails.length, SIZES.length, 'collection was planned and has no result');
   const reg = { ...REG, 'UI-07': { ...REG['UI-07'], standard: 'Not migrated' } };
   assert.equal(verdict(only, reg, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon'] }).fails.length, 0);
-  const v = verdict(only, reg, { title: 'UI-46 + UI-49', browsers: ['chromium'], screens: ['dungeon'] });
-  assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-49', 'no screen in the check']]);
+  const v = verdict(only, reg, { title: 'UI-46 + UI-50', browsers: ['chromium'], screens: ['dungeon'] });
+  assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-50', 'no screen in the check']]);
 });
 
 test('an accepted exception (decision ID, one ID/screen/size/rule) does not fail; anything else still fails', () => {
@@ -127,6 +152,14 @@ test('an accepted exception (decision ID, one ID/screen/size/rule) does not fail
   assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '375x667']]);   // the other size still fails
   const none = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'] });
   assert.equal(none.fails.length, 2);
+});
+
+test('exceptions.json: every entry is valid; the UI-49 empty-space entries name D-134 and a screen of the check', async () => {
+  const { readFileSync } = await import('node:fs');
+  const list = JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8'));
+  assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
+  const mine = list.filter((e) => e.id === 'UI-49');
+  assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
 });
 
 test('a bad exception entry stops the gate', () => {

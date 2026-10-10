@@ -156,8 +156,10 @@ function gridHTML() {
   const list = shown();
   const per = cur.per || list.length || 1;
   const pages = Math.max(1, Math.ceil(list.length / per));
-  cur.page = Math.min(cur.page, pages - 1);
-  const slice = list.slice(cur.page * per, cur.page * per + per);
+  // per = 0: the size is measured again (a resize, a class change), the list shows whole for one pass; measure() puts the
+  // page back from cur.first, so this pass must not clamp (and lose) the page
+  if (cur.per) cur.page = Math.min(cur.page, pages - 1);
+  const slice = cur.per ? list.slice(cur.page * per, cur.page * per + per) : list;
   const tiles = slice.map((c) => {
     const n = cur.sel.indexOf(Number(c.id)) + 1;
     return tileHTML(c, n, n ? '' : cur.opts.blocked?.(c, cur.sel) || '');
@@ -188,9 +190,9 @@ function paint() {
     + `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${o.icon ? icon(o.icon) : ''}${esc(o.title || 'Squad')}${cur.one ? '' : ` <b>${cur.sel.length}</b><span>/ ${o.cap}</span>`}</h2></header>`
     + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>`
     + (cur.one ? '' : `<div class="u3-pk__slots">${slotsHTML()}</div>`)
-    + `<div class="u3-pk__tools">${searchField({ value: cur.q })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
+    + `<div class="u3-pk__tools">${searchField({ value: cur.q, placeholder: document.body.dataset.size === 'compact-land' ? 'Search cards…' : undefined })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
     + `<ul class="u3-pk__grid${(cur.tile || TOKENS['card-tile']) < TOKENS['card-thumb'] ? ' is-small' : ''}${o.caption ? ' has-cap' : ''}" aria-label="Cards" style="--pk-cols:${cur.cols || 1};--pk-tile:${cur.tile || TOKENS['card-tile']}px${o.caption ? `;--pk-cap-h:${cur.capH || 0}px` : ''}">${tiles}</ul>`
-    + `<div class="u3-pk__pager">${pager({ page: cur.page + 1, pages })}</div>`
+    + `<div class="u3-pk__pager">${pager({ page: cur.per ? cur.page + 1 : 1, pages })}</div>`
     + `<footer class="u3-pk__foot">${checksHTML(st)}<div class="u3-pk__acts">${clear}${o.autoPick ? button({ label: 'Auto-pick', disabled: cur.busy, data: { auto: '1' } }) : ''}${confirm}</div></footer>`
     + `</section></div>${cur.panel ? filterPanelHTML() : ''}${cur.warn ? warnHTML(cur.warn) : ''}`;
   cur.shown = true;   // the fade-in plays once, when the window opens (a repaint does not flash it)
@@ -225,7 +227,8 @@ function measure() {
   const per = f.cols * f.rows;
   if (per !== cur.per || f.tile !== cur.tile || f.cols !== cur.cols || capH !== (cur.capH || 0)) {
     cur.capH = capH;
-    const first = cur.page * (cur.per || per);
+    const first = cur.first ?? cur.page * (cur.per || per);   // the first card on the page: a new page size keeps it in view
+    cur.first = null;
     Object.assign(cur, { per, tile: f.tile, cols: f.cols, page: Math.floor(first / per) });
     paint();
   }
@@ -247,7 +250,8 @@ function captionHeight(tile) {
 
 let rt = null;
 // a resize or a class change (the keyboard): measure again on the next frame (no timer: the keyboard check reads the window soon after)
-function onResize() { cancelAnimationFrame(rt); rt = requestAnimationFrame(() => { if (cur) { cur.per = 0; cur.slotW = 0; cur.capH = 0; paint(); } }); }
+// The page stays: cur.first keeps the first card on it (Nathan 2026-10-08: the squad picker went back to page 1 after the card details closed).
+function onResize() { cancelAnimationFrame(rt); rt = requestAnimationFrame(() => { if (cur) { if (cur.per) cur.first = cur.page * cur.per; cur.per = 0; cur.slotW = 0; cur.capH = 0; paint(); } }); }
 
 function onKey(e) {
   if (!cur || e.key !== 'Escape') return;

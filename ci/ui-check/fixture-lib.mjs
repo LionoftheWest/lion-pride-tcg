@@ -28,6 +28,13 @@ export function longData(v, key = '', parent = null) {
 // ---- The anonymizer ------------------------------------------------------------------------------------------
 const TEXT_KEYS = /^(message|text|note|body|msg|detail|title|desc|description|line|label|caption)$/i;
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// A notification names the other member by the Discord DISPLAY name (server.js and hall-routes.js notify(): `${who}`,
+// `${from}`, global_name), which the players table does not hold, so the name list above cannot find it. The name
+// sits between the leading emoji and one of these fixed phrases.
+const SLOT_TAIL = ['accepted your', 'picked a card for your trade', 'sent you a trade offer', 'made an offer on your',
+  'bid on your auction', 'declined your accepted bid', 'confirmed: your auction'];
+export const NAME_SLOT = new RegExp(`^([^\\p{L}\\p{N}]*\\s)(.+?)(?= (?:${SLOT_TAIL.map(esc).join('|')}))`, 'u');
+const ANON = /^(?:Member A|Member \d{3})$/;
 
 /**
  * Make an anonymizer from the real members (id, username): the signed-in member becomes "Member A" with the id
@@ -44,6 +51,9 @@ export function anonymizer(members, meId) {
   const idRe = ids.size ? new RegExp([...ids.keys()].sort((a, b) => b.length - a.length).map(esc).join('|'), 'g') : null;
   const longNames = [...names.keys()].filter((n) => n.length >= 3).sort((a, b) => b.length - a.length);
   const nameRe = longNames.length ? new RegExp(`(?<![\\w])(?:${longNames.map(esc).join('|')})(?![\\w])`, 'gi') : null;
+  const shown = new Map();   // a display name in a notification -> "Member 901", "Member 902" ...
+  const slot = (s) => s.replace(NAME_SLOT, (m, pre, n) => (ANON.test(n) ? m
+    : pre + (shown.get(n.toLowerCase()) || shown.set(n.toLowerCase(), `Member ${901 + shown.size}`).get(n.toLowerCase()))));
   const walk = (v, key = '') => {
     if (Array.isArray(v)) return v.map((x) => walk(x, key));
     if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [idRe ? k.replace(idRe, (m) => ids.get(m)) : k, walk(x, k)]));
@@ -53,6 +63,7 @@ export function anonymizer(members, meId) {
     const exact = names.get(s.toLowerCase());
     if (exact) return exact;
     if (nameRe && TEXT_KEYS.test(key)) s = s.replace(nameRe, (m) => names.get(m.toLowerCase()));
+    if (TEXT_KEYS.test(key)) s = slot(s);
     return s;
   };
   return { walk, ids, names };
@@ -83,6 +94,11 @@ export function residue(text, members) {
       const at = text.search(re);
       if (at >= 0) hits.push(`name "${m.username}" near: ${text.slice(Math.max(0, at - 60), at + 40).replace(/\s+/g, ' ')}`);
     }
+  }
+  // a display name left in a notification name slot (it is in no members list)
+  for (const [, msg] of text.matchAll(/"(?:message|text|body|msg)":"((?:[^"\\]|\\.)*)"/g)) {
+    const m = msg.match(NAME_SLOT);
+    if (m && !ANON.test(m[2])) hits.push(`display name in a notification: ${msg.slice(0, 80)}`);
   }
   return hits;
 }
