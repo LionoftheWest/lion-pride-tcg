@@ -48,6 +48,10 @@ export const SCREENS = {
 'trades-few':         { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]] },
 'trades-pending':     { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5]] },
 'trades-offer':       { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['js', '.u3-pd-row__open'], ['wait', 1.5]] },
+  // UI-26 Trade animation: the Accept in Pending starts it; the page clock holds each phase (start, swap), landed = the layer gone (Pending without the offer).
+  'trades-fx-start':     { id: 'UI-26', trades: 'few', tfx: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5], ['tfx', '.u3-pd-sheet [data-act="accept"], .u3-pd [data-act="accept"]', 600]] },
+  'trades-fx-swap':      { id: 'UI-26', trades: 'few', tfx: true, long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5], ['tfx', '.u3-pd-sheet [data-act="accept"], .u3-pd [data-act="accept"]', 2400]] },
+  'trades-fx-landed':    { id: 'UI-26', trades: 'few', tfx: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5], ['tfx', '.u3-pd-sheet [data-act="accept"], .u3-pd [data-act="accept"]', 7000, 'gone']] },
 'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
   // UI-29: the member suggest list (typed "Member": the fixture answers with every member, so the list holds more rows than fit and scrolls). The keyboard variant keeps the text and the list.
   'trades-suggest':      { id: 'UI-29', long: true, under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5], ['type', '#main .u3-mp .u3-search__input', 'Member']], input: '#main .u3-mp .u3-search__input' },
@@ -164,6 +168,11 @@ export const SCREENS = {
   'profile-own':         { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3]] },
   // The same with all five wishlist slots filled (the handle strip shows 5/5; the Spotlight and the Season are tabs on the smallest phones, D-113; the Wishlist never is, D-128).
   'profile-own-wish':    { id: 'UI-14', safe: true, long: true, wish: 'full', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['wait', 2]] },
+  // Avatar effects (UI-55): the mustache on every avatar of the member (cookie ci_avfx=on: serve.mjs adds it to the badge list for the signed-in
+  // member, the Home members and the leaderboard). A defect outside the effect belongs to the host screen ('under').
+  'avatarfx-home':       { id: 'UI-55', under: 'UI-03', long: true, safe: true, home: 'busy', avfx: 'on', notOn: ['tiny'], steps: [['wait', 3]] },
+  'avatarfx-profile':    { id: 'UI-55', under: 'UI-14', long: true, safe: true, avfx: 'on', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3]] },
+  'avatarfx-board':      { id: 'UI-55', under: 'UI-22', long: true, avfx: 'on', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
   'help':                { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5]] },
   'help-closed':          { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="0"]'], ['wait', 0.5]] },
   // UI-57: the standalone public legal pages (no Activity, no flag): `page` loads that path instead of the Activity.
@@ -204,6 +213,7 @@ export const SCREENS = {
 export function ownerOf(screen, where) {
   // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
   if (/#tutLayer[a-z]*\b|\.u3-wt\b|\.u3-wt[-_]/.test(where)) return 'UI-37';
+  if (/\.u3-avfx\b|\.u3-avfx[-_]/.test(where)) return 'UI-55';   // the avatar effect overlay (UI-55)
   if (/\.u3-tn\b|\.u3-tn[-_]/.test(where)) return 'UI-59';   // the small live view (tiny class)
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
@@ -215,6 +225,8 @@ export function ownerOf(screen, where) {
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).
   if (screen === 'boons-picker' && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
+  if (/#u3Tfx\b|\.u3-tfx\b|\.u3-tfx[-_]/.test(where)) return 'UI-26';   // the trade animation layer
+  if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/\.u3-ls\b|\.u3-ls[-_]|#lsSlots|#u3LsToast/.test(where)) return 'UI-31';   // List a card (the sheet, its slots, the Undo toast)
   if (/#u3Wish[a-z]*\b|\.u3-wl\b|\.u3-wl[-_]|#wlHandle|\.u3-pf-wishbar/.test(where)) return 'UI-16';
@@ -305,7 +317,19 @@ export async function runSteps(pg, steps) {
         await sleep(0.8);
       } catch { miss.push(st[1]); }
       await settle(pg);
-    } else if (st[0] === 'js') {
+    }
+    else if (st[0] === 'tfx') {
+      // UI-26: hold the trade animation at one phase. ['tfx', <accept selector>, <ms after the layer opened>, <'gone' to wait for the layer to leave>].
+      // The page clock (run.mjs installs it for these cells) stops, the click starts the animation, and runFor moves its timers to the
+      // wanted moment; CSS transitions then finish in real time and the phase stays (a stopped clock gives the same frame on every run).
+      await pg.clock.pauseAt(new Date(await pg.evaluate('Date.now()') + 50));
+      if (!(await pg.evaluate((s) => { const e = [...document.querySelectorAll(s)].find((x) => x.getClientRects().length); if (!e) return false; e.click(); return true; }, st[1]))) { miss.push(st[1]); await pg.clock.resume(); continue; }
+      try { await pg.waitForSelector('#u3Tfx', { state: 'attached', timeout: 10000 }); } catch { miss.push('#u3Tfx'); await pg.clock.resume(); continue; }
+      await pg.clock.runFor(st[2]);
+      if (st[3] === 'gone') { await pg.waitForSelector('#u3Tfx', { state: 'detached', timeout: 10000 }).catch(() => miss.push('#u3Tfx stays')); await pg.clock.resume(); await settle(pg); }
+      else await sleep(1.5);   // the CSS transitions of the phase finish in real time
+    }
+    else if (st[0] === 'js') {
       if (st[2] && !(await pg.evaluate((s) => [...document.querySelectorAll(s)].some((x) => x.getClientRects().length), st[1]))) {
         miss.push(`${st[1]} (fallback used)`); miss.push(...(await runSteps(pg, st[2]))); continue;
       }

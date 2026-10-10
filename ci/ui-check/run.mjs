@@ -74,7 +74,8 @@ async function runCell([s, screen, variant], ref = {}) {
         const spec = SCREENS[screen];
         const t0 = Date.now();
         const ctx = ref.ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: touch, isMobile: touch && BROWSER === 'chromium', deviceScaleFactor: 1, timezoneId: 'America/Denver', locale: 'en-US' });
-        await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
+        if (spec.tfx) await ctx.clock.install({ time: new Date(FIX.recordedAt) });   // UI-26: the animation phases are held with the page clock (the tfx step of screens.mjs)
+        else await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
         const cookies = [];
         if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? (spec.battle === 'mix' ? 'battle-mix' : 'battle') : spec.hunt, url: BASE });
         if (spec.trades) cookies.push({ name: 'ci_trades', value: spec.trades, url: BASE });
@@ -88,6 +89,7 @@ async function runCell([s, screen, variant], ref = {}) {
           cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });
           await ctx.addInitScript(() => localStorage.setItem('lp_ui3', '1'));
         }
+        if (spec.avfx) cookies.push({ name: 'ci_avfx', value: spec.avfx, url: BASE });
         if (spec.hall) cookies.push({ name: 'ci_hall', value: spec.hall, url: BASE });
         if (spec.fx) cookies.push({ name: 'ci_fx', value: spec.fx, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
@@ -106,6 +108,13 @@ async function runCell([s, screen, variant], ref = {}) {
             // The app never starts here (no ui-v2 class): wait for the loader state itself (the timeout is the real 15 s), then let the
             // checks see the loader: they skip #loader (it covers the page during a normal boot), so the loader gets data-measure for this cell only.
             const want = { loading: 'loading', timeout: 'timeout', error: 'error' }[spec.loader];
+            // The loading cell must not reach the 15 s timeout while the checks run (a slow CI cell measured the timeout state and
+            // found "Try again", 2026-10-10): in this cell a timer of 15 s or more waits much longer. Only long timers: a paused page
+            // clock also stopped the timers and frames the checks wait for, and the CI shards hung.
+            if (want === 'loading') await pg.addInitScript(() => { const st = window.setTimeout; window.setTimeout = (fn, ms, ...a) => st(fn, ms >= 15000 ? 2 ** 31 - 1 : ms, ...a); });
+            // The timeout cell need not wait the real 15 s (about 30 s a cell; the full run went past the 45 min job limit): its timer of
+            // 15 s or more fires after 1 s. The state and the screen are the same.
+            if (want === 'timeout') await pg.addInitScript(() => { const st = window.setTimeout; window.setTimeout = (fn, ms, ...a) => st(fn, ms >= 15000 ? 1000 : ms, ...a); });
             await pg.goto(BASE + '/');
             await pg.waitForFunction((w) => document.getElementById('ldr3')?.dataset.state === w && !document.getElementById('ldr3').hidden, want, { timeout: 40000 });
             await pg.evaluate(() => document.fonts?.ready); await sleep(1.5);

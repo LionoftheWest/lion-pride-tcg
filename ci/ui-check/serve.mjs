@@ -140,7 +140,11 @@ function derivedTrades(body) {
   return { incoming: [o(201, '100000000000000012', me, 'pending', card(1, 'normal'), card(2, 'normal')), o(202, '100000000000000012', me, 'pending', card(3, 'illustrated_rare'), card(4, 'illustrated_rare'))],
     outgoing: [...(body.outgoing || []), o(203, me, '100000000000000011', 'countered', card(5, 'normal'), card(6, 'normal')), o(204, me, '100000000000000163', 'pending', card(7, 'secret_rare'), null)] };
 }
-DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body) => derivedTrades(body) });
+// UI-26: an accepted offer leaves Pending (the server rule): POST /api/trade/accept (below) sets the cookie ci_accepted=<offer id>
+// and the derived list drops that offer, so the landed state shows Pending without it.
+DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body, c) => {
+  const t = derivedTrades(body); const gone = Number(c.ci_accepted);
+  return gone ? { ...t, incoming: t.incoming.filter((o) => o.id !== gone) } : t; } });
 DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_trades === 'few' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
 // UI-63: the cards of another member (the recorded answer has none): every second card of the recorded collection, with
 // 1 to 4 copies, in the shape of GET /api/player-cards.
@@ -235,6 +239,14 @@ function derivedFx(path, mode, body) {
 }
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/recent' && body?.plays, make: (body, c) => derivedFx('/api/effects/recent', c.ci_fx, body) });
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/me' && body?.enabled, make: (body, c) => derivedFx('/api/effects/me', c.ci_fx, body) });
+// UI-55: avatar effects (cookie ci_avfx=on): the badge list holds the mustache for the signed-in member, the five members of Home
+// (pulls and voice) and every member of the recorded leaderboard, so every avatar of the three screens shows it.
+function derivedAvatarFx(body) {
+  const ids = new Set([FIX.routes['/api/leaderboard/v2']?.body?.me, ...Array.from({ length: 5 }, (_, i) => `10000000000000010${i}`),
+    ...(FIX.routes['/api/leaderboard/v2']?.body?.rows || []).map((r) => r.id)].filter(Boolean));
+  return { ...body, badges: { ...(body?.badges || {}), ...Object.fromEntries([...ids].map((id) => [id, { mustache: true }])) } };
+}
+DERIVED.push({ when: (p, c) => p === '/api/effects/badges' && c.ci_avfx === 'on', make: (body) => derivedAvatarFx(body) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
@@ -296,6 +308,13 @@ createServer((req, res) => {
   }
   // UI-31: taking a card off the Hall answers ok (nothing is written) so the screen shows the "unlisted" toast with Undo; a list call stays refused (the error state).
   if (req.method === 'POST' && p === '/api/hall/unlist') return send(res, 200, '{"ok":true}');
+  if (req.method === 'POST' && p === '/api/trade/accept') {   // UI-26: nothing is written; the answer is ok and the cookie hides the offer
+    let raw = '';
+    req.on('data', (d) => { raw += d; });
+    req.on('end', () => { let id = 0; try { id = Number(JSON.parse(raw || '{}').offerId) || 0; } catch { /* no id */ }
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'set-cookie': `ci_accepted=${id}; Path=/` }); res.end('{"ok":true}'); });
+    return undefined;
+  }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)
