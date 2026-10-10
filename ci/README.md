@@ -84,7 +84,7 @@ A PR that changes no file in scope passes G1, and G3 does not run.
 - `base`: every screen.
 - `long`: a 32-character name and a 9-digit number, on the 16 screens that show member names or counts (`LONG_SCREENS` in `run.mjs`).
 - `safe`: the safe-area presets (portrait: top 59, bottom 34; landscape: sides 59, bottom 21), on the compact touch sizes,
-  on the 12 overlays, windows and stages (`SAFE_SCREENS`).
+  on the 14 overlays, windows and stages (`SAFE_SCREENS`).
 - `keyboard`: a text box focused and the keyboard height taken off the view (40% in portrait, 55% in landscape), on the
   touch sizes, for the screens with a text box.
 

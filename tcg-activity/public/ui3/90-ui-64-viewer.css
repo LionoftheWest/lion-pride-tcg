@@ -1,0 +1,2 @@
+/* The card viewer (v2 #viewer, z 95) is on the window layer in v3, so it opens above the Card picker (UI-64) and the other windows. */
+body.ui-v3 #viewer { z-index: var(--z-modal); }

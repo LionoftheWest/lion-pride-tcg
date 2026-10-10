@@ -19,7 +19,7 @@ import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
-import { initV2, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
+import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop, repaintShards } from './ui-v2-shop.js';
@@ -31,12 +31,15 @@ import { every, isIdle } from './poll.js';
 import { watchSizeClass } from './ui3/size-class.js';
 import { startShell } from './ui3/shell.js';
 import { openCardPicker } from './ui3/card-picker.js';
+import { fitViewer, watchViewerFit } from './ui3/viewer-fit.js';
 import { fmtFor } from './ui3/number.js';
 import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
-import { button as ui3Button } from './ui3/components.js';
+import { button as ui3Button, iconButton as ui3IconButton, pager as ui3Pager } from './ui3/components.js';
+import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
 import { initSettingsWindow } from './ui3/settings.js';
-import { openOpenWindow, prefetchSets } from './ui3/open-window.js';
+import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
+import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, fitPacks, rarePacks, packStarts, newMark } from './ui3/pack-reveal.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
@@ -599,7 +602,9 @@ function ago(iso) {
 // ---- Main pane -------------------------------------------------------------
 
 async function show(view) {
+  closeBossWindowV3();   // UI-20: the boss window belongs to the Hunt view; a view change (dock, sub-tab, menu, a turned phone) closes it
   currentView = view;
+  closeMemberOnShell();   // v3: the Profile is a layer, a new screen closes it
   if (view !== 'dungeon') disposeDungeon(); // the 3D room stage
   document.querySelectorAll('#dock .dk').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.body.dataset.view = view;
@@ -683,7 +688,7 @@ function renderMain(view) {
 
 const openDeps = () => ({
   el, esc, SFX, RARITY_LABEL, cardBack: () => cardBack, openViewer,
-  onClose: () => { sendStatus(VIEW_STATUS[currentView]); releaseFeed(); refreshOwned(); refreshPackStatus(); show(currentView); },
+  onClose: () => { if (uiV3) { releaseClips(); multiRun = null; } sendStatus(VIEW_STATUS[currentView]); releaseFeed(); refreshOwned(); refreshPackStatus(); show(currentView); },
 });
 async function openPacks(count, set) {
   const n = [1, 5, 10].includes(count) ? count : 1; // a click handler passes an event
@@ -705,8 +710,8 @@ async function openPacks(count, set) {
       suppressOpenUntil = Date.now() + 3000;
       revealed = true;
       const prank = effectsEnabled() ? packPrank() : null; // a jinx / fake gold / photobomb / slow motion on me
-      if ((data.packs || []).length > 1) showMultiReveal(openDeps(), data.packs);
-      else showReveal({ user: 'You', cards: data.cards });
+      if ((data.packs || []).length > 1) { if (uiV3) showPacksV3(data.packs, s); else showMultiReveal(openDeps(), data.packs); }
+      else showReveal({ user: 'You', cards: data.cards, set: s });
       if (prank) runPackPrank(prank, el('stage'));
     }
   } catch {
@@ -745,8 +750,8 @@ function watchableOpen(id) {
 function watchOpen(id) {
   const msg = watchableOpen(id);
   if (!msg) return false;
-  if ((msg.packs || []).length > 1) showMultiReveal(openDeps(), msg.packs);
-  else showReveal({ user: msg.user, cards: msg.cards });
+  if ((msg.packs || []).length > 1) { if (uiV3) showPacksV3(msg.packs, msg.set); else showMultiReveal(openDeps(), msg.packs); }
+  else showReveal({ user: msg.user, cards: msg.cards, set: msg.set });
   return true;
 }
 
@@ -782,6 +787,7 @@ function tearSource() {
 // A glossy holographic pack (Pokémon-Pocket style): it floats on screen, you TAP
 // to rip the top off with a light-line, then the cards rise for you to flip.
 function showReveal(msg) {
+  if (uiV3) { showRevealV3(msg); return; } // UI-34 (src/ui3/pack-reveal.js); the code below is the flag-OFF reveal
   const cards = msg.cards || [];
   if (!cards.length) return;
   clearTimeout(revealTimer);
@@ -906,6 +912,227 @@ function tearPack(rare) {
   setTimeout(() => { if (pack) pack.remove(); }, 2400);
 }
 
+// ---- UI-34 the single pack reveal, v3 (lion-pride-tcg-design UI-34/approved, review-3; D-73, D-91 to D-101) ----
+// The waiting pack is the idle loop of the set the member opened (D-93, D-101), with today's prompt and no close
+// button (D-73). One tap plays open.webp, or open_rare.webp when the pack holds an SR+ card (D-96), with the rare sound
+// at the burst (~1400 ms, D-97). A second tap does not skip (D-94). The cards rise face down at the burst, the best
+// card last (D-92); then Reveal all (the best card still last, D-109) and the close button show; Reveal all becomes
+// Done when every card is turned.
+const RARE_SFX_MS = 1400;   // D-97: the burst of the open clip (frame 24 of 39 at 60 ms)
+const rankOf = (c) => RARITY_RANK[c?.rarity] ?? 0;
+function showRevealV3(msg) {
+  const cards = bestLast(msg.cards || [], rankOf);
+  if (!cards.length) return;
+  clearTimeout(revealTimer);
+  releaseClips();
+  revealItems = cards;
+  flippedCount = 0;
+  tearing = false;
+  revealMine = msg.user === 'You';
+  revealFlipped = [];
+  if (revealMine) sendStatus('opening', { n: 0, of: cards.length });
+  const rare = isRarePull(cards);
+  const set = packSet(msg.set, knownLastSet());
+  const tiles = cards.map((c, i) => `<div class="fc c ${c.rarity}${rankOf(c) >= 2 ? ' hot' : ''}" data-idx="${i}" style="--i:${i}">
+      <div class="pf">
+        <div class="pf-face pf-back"><img src="${cardBack}" alt=""></div>
+        <div class="pf-face pf-front">${c.image_url ? `<img src="${revealThumb(c.image_url)}" data-full="${c.image_url || ''}" alt="${esc(`${c.name}, ${RARITY_LABEL[c.rarity] || c.rarity}`)}">` : ''}</div>
+      </div></div>`).join('');
+  const stage = el('stage');
+  stage.className = 'open packstage u3-reveal';
+  // The pack box is the pack body of the clip (x 205-594, y 261-964 of the 800 x 1120 frame). The clip is an SVG
+  // image: it paints past the box (rays, stars, the torn strip) and the stage clips it, with no layout overflow.
+  stage.innerHTML =
+    `<div class="u3-reveal__box" role="dialog" aria-modal="true" aria-label="Pack reveal">
+     <button type="button" class="u3-pack" id="packOpen" aria-label="Tap the pack to rip it open">
+       <svg class="u3-pack__clip" viewBox="0 0 389 703" overflow="visible" aria-hidden="true" focusable="false"><image id="packImg" href="${clipUrl(set, 'idle_loop')}" x="-205" y="-261" width="800" height="1120"/></svg>
+     </button>
+     <div class="tap-prompt" id="tapPrompt">Tap the pack to rip it open</div>
+     <div class="reveal-grid hidden" id="revealGrid">${tiles}</div>
+     <div class="reacts u3-reacts" id="reactBar">${REACTIONS.map((e) => `<button type="button" class="react" data-emoji="${e}" aria-label="React ${e}">${e}</button>`).join('')}
+       <span class="u3-reveal__ctl">${u3Button({ label: 'Reveal all', variant: 'primary', data: { reveal: 'all' } })}${u3IconButton({ icon: 'x', label: 'Close', data: { reveal: 'close' } })}</span>
+     </div></div>`;
+  el('reactBar').addEventListener('click', (e) => {
+    const emoji = e.target?.closest?.('[data-emoji]')?.dataset.emoji;
+    if (emoji && roomWs && roomWs.readyState === 1) roomWs.send(JSON.stringify({ type: 'react', emoji }));
+    const act = e.target?.closest?.('[data-reveal]')?.dataset.reveal;
+    if (act === 'close' || act === 'done') endReveal();
+    else if (act === 'all') revealAllV3();
+  });
+  const pack = el('packOpen');
+  pack.addEventListener('click', () => tearPackV3(rare, set));
+  // Preload the open clip of this pack NOW (while the member reads the prompt), so the swap on the tap is instant.
+  clipSource(clipUrl(set, rare ? 'open_rare' : 'open')).then((url) => {
+    if (!pack.isConnected) return;
+    pack.dataset.clip = url;
+    const pre = new Image(); pre.src = url;
+  }).catch(() => {});
+  SFX.play('page');
+  revealTimer = setTimeout(endReveal, 120000); // safety only; no auto-dismiss
+}
+
+function tearPackV3(rare, set) {
+  if (tearing) return; // D-94: no skip
+  tearing = true;
+  const pack = el('packOpen');
+  const img = el('packImg');
+  const tp = el('tapPrompt');
+  if (tp) tp.classList.add('is-gone'); // its place stays while the clip plays (3.3)
+  SFX.play('tear');
+  pack.classList.add('tearing');
+  pack.disabled = true;
+  if (img) img.setAttribute('href', pack.dataset.clip || clipUrl(set, rare ? 'open_rare' : 'open'));
+  if (rare) setTimeout(() => SFX.play('rare'), RARE_SFX_MS); // D-97: today's rare sound at the burst
+  setTimeout(() => {
+    const stage = el('stage');
+    const grid = el('revealGrid');
+    if (!grid || !stage || !stage.classList.contains('u3-reveal')) return;
+    // the one number (3.5): the card width that shows every card in the stage, above the bar
+    const cs = getComputedStyle(stage);
+    const gap = parseFloat(getComputedStyle(grid.parentElement).rowGap) || 0;
+    const w = stage.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    const h = stage.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - (el('reactBar')?.offsetHeight || 0) - gap;
+    const fit = fitCards(revealItems.length, w, h, parseFloat(getComputedStyle(grid).columnGap) || gap);
+    grid.style.setProperty('--u3-fc-w', `${fit.cw}px`);
+    let ox = window.innerWidth / 2;
+    let oy = window.innerHeight * 0.4;
+    if (pack) {
+      const pr = pack.getBoundingClientRect();
+      ox = pr.left + pr.width / 2;
+      oy = pr.top + pr.height * 0.18;
+      pack.style.position = 'fixed';    // pin it where it is, out of flow (as today's reveal)
+      pack.style.top = `${pr.top}px`;
+      pack.style.left = `${pr.left}px`;
+      pack.style.width = `${pr.width}px`;
+      pack.style.height = `${pr.height}px`;
+      pack.style.margin = '0';
+      pack.classList.add('dropping');
+    }
+    tp?.remove();
+    grid.classList.remove('hidden');
+    grid.querySelectorAll('.fc').forEach((fc) => {
+      const r = fc.getBoundingClientRect();
+      fc.style.setProperty('--fromX', `${(ox - (r.left + r.width / 2)).toFixed(0)}px`);
+      fc.style.setProperty('--fromY', `${(oy - (r.top + r.height / 2)).toFixed(0)}px`);
+      fc.style.setProperty('--fromR', `${(Math.random() * 34 - 17).toFixed(1)}deg`);
+    });
+    if (rare) sunRays(stage); // the gold rays behind the cards of a rare pack (approved)
+    SFX.play('reveal');
+    requestAnimationFrame(() => grid.classList.add('go'));
+    stage.classList.add('is-out'); // Reveal all and the close button show now (D-73)
+  }, RARE_SFX_MS);
+  setTimeout(() => { if (pack) pack.remove(); }, RARE_SFX_MS + 1000);
+}
+
+// D-109: Reveal all turns the cards still face down, the best card last (with its own burst, in flipCard).
+function revealAllV3() {
+  const grid = el('revealGrid');
+  if (!grid) return;
+  const down = [...grid.querySelectorAll('.fc[data-idx]:not(.flipped)')].map((fc) => Number(fc.dataset.idx));
+  const order = revealOrder(down, bestIndex(revealItems, rankOf));
+  order.forEach((i, k) => setTimeout(() => {
+    const fc = grid.querySelector(`.fc[data-idx="${i}"]`);
+    if (fc && revealItems[i]) flipCard(fc, revealItems[i]);
+  }, k * 180));
+}
+// The last turn: Reveal all becomes Done (v3).
+function revealDoneV3() {
+  const b = document.querySelector('#reactBar [data-reveal="all"]');
+  if (!b) return;
+  b.dataset.reveal = 'done';
+  const label = b.querySelector('.u3-btn__label');
+  if (label) label.textContent = 'Done';
+}
+
+// ---- UI-35 the multi-pack reveal, v3 (lion-pride-tcg-design UI-35/approved, review-3; D-72, D-99, D-100, D-106 to D-109) ----
+// The 5 or 10 packs wait together, each in the idle loop of the set (D-98, D-100, D-101), with "Swipe to open" (D-106).
+// One swipe (or a tap on a pack: the single-tap alternative, 9.1) opens them one after the other, about 0.4 s apart;
+// only the pack that holds an SR+ card plays the rare clip, with the rare sound at its burst (D-96, D-97, D-107). Then
+// every card on one screen, face down (D-72, D-99): the best card last (D-92), Reveal all keeps it last (D-109).
+let multiRun = null;   // { packs, set, started }
+function showPacksV3(packs, set) {
+  if (!packs?.length) return;
+  clearTimeout(revealTimer);
+  releaseClips();
+  const s = packSet(set, knownLastSet());
+  multiRun = { packs, set: s, started: false };
+  const rare = new Set(rarePacks(packs, rankOf));
+  const stage = el('stage');
+  stage.className = 'open v2-multi u3-multi';
+  stage.innerHTML = `<div class="mr-wrap full"><section class="mr-main u3-mwait" role="dialog" aria-modal="true" aria-label="Pack reveal">
+      <div class="u3-mpacks" id="u3Packs">${packs.map((_, i) => `<button type="button" class="u3-mpack" data-p="${i}" aria-label="Open the packs">`
+        + `<svg class="u3-pack__clip" viewBox="0 0 389 703" overflow="visible" aria-hidden="true" focusable="false"><image href="${clipUrl(s, 'idle_loop')}" x="-205" y="-261" width="800" height="1120"/></svg></button>`).join('')}<p class="u3-mhint" id="u3Hint">Swipe to open</p></div></section></div>`;
+  fitPacksV3();
+  window.addEventListener('resize', fitPacksV3);
+  const area = el('u3Packs');
+  // one swipe (40 px, as the Pager) or a tap on a pack starts the sequence
+  let x0 = null, y0 = null;
+  area.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; });
+  area.addEventListener('pointermove', (e) => { if (x0 != null && Math.hypot(e.clientX - x0, e.clientY - y0) >= 40) { x0 = null; openPacksV3(rare); } });
+  area.addEventListener('pointerup', () => { x0 = null; });
+  area.addEventListener('click', (e) => { if (e.target.closest('.u3-mpack')) openPacksV3(rare); });
+  // preload both clips while the member reads the hint
+  for (const k of rare.size ? ['open', 'open_rare'] : ['open']) clipBlob(clipUrl(s, k)).catch(() => {});
+  SFX.play('page');
+  revealTimer = setTimeout(() => { if (!multiRun?.started) endReveal(); }, 120000); // safety only
+}
+
+// The one number of the pack row (3.5): the pack width that shows every pack, the rows balanced (10 = 4, 3, 3).
+function fitPacksV3() {
+  const area = el('u3Packs');
+  if (!area) { window.removeEventListener('resize', fitPacksV3); return; }
+  const cs = getComputedStyle(area);
+  const gap = parseFloat(cs.rowGap) || 0;
+  const btns = [...area.querySelectorAll('.u3-mpack')].sort((a, b) => a.dataset.p - b.dataset.p);
+  const hint = el('u3Hint');   // the hint is the last line of the pack area: the packs and the hint are centered together
+  const fit = fitPacks(btns.length, area.clientWidth, area.clientHeight - (hint?.offsetHeight || 0) - gap, gap);
+  area.style.setProperty('--u3-pw', `${fit.pw}px`);
+  // one row box for each row of the fit (balanced rows)
+  area.querySelectorAll('.u3-mrow').forEach((r) => r.remove());
+  let at = 0;
+  for (const len of fit.rows) {
+    const row = document.createElement('div');
+    row.className = 'u3-mrow';
+    row.append(...btns.slice(at, at + len));
+    at += len;
+    area.insertBefore(row, hint);
+  }
+}
+
+function openPacksV3(rare) {
+  if (!multiRun || multiRun.started) return; // one swipe opens all (D-100); no skip (D-94)
+  multiRun.started = true;
+  const { packs, set } = multiRun;
+  const starts = packStarts(packs.length);
+  // The hint place stays (3.3). Its fade runs for the whole sequence, so the page states that it is busy (the G3 ready check).
+  const hint = el('u3Hint');
+  hint?.style.setProperty('--u3-seq', `${starts[starts.length - 1] + RARE_SFX_MS}ms`);
+  hint?.classList.add('is-gone');
+  const btns = [...document.querySelectorAll('#u3Packs .u3-mpack')];
+  btns.forEach((b) => { b.disabled = true; });
+  starts.forEach((t, i) => setTimeout(() => {
+    const img = btns[i]?.querySelector('image');
+    if (!img || !img.isConnected) return;
+    const kind = rare.has(i) ? 'open_rare' : 'open';
+    clipSource(clipUrl(set, kind)).then((u) => { if (img.isConnected) img.setAttribute('href', u); }).catch(() => img.setAttribute('href', clipUrl(set, kind)));
+    btns[i].classList.add('is-open', ...(rare.has(i) ? ['is-rare'] : []));
+    SFX.play('tear');
+    if (rare.has(i)) setTimeout(() => SFX.play('rare'), RARE_SFX_MS); // D-97
+  }, t));
+  // the cards come after the burst of the last pack
+  setTimeout(() => {
+    if (!multiRun || multiRun.packs !== packs) return;
+    window.removeEventListener('resize', fitPacksV3);
+    showMultiReveal(openDeps(), packs, {
+      order: (items) => bestLast(items, rankOf),   // D-92: the best card last (D-109: Reveal all turns the cards in this order)
+      newTag: '<i class="mr-newtag u3-newmark"><span aria-hidden="true">✦</span><span class="u3-newmark__t">New</span></i>',
+      onFit: (grid, cw) => { grid.dataset.newmark = newMark(cw); },
+      stageClass: 'u3-multi',
+      cardLabel: (c, i, n) => `Card ${i + 1} of ${n}`,
+    });
+  }, starts[starts.length - 1] + RARE_SFX_MS);
+}
+
 // Radiating sun-rays behind the cards (rare packs).
 function sunRays(stage) {
   const rays = document.createElement('div');
@@ -952,6 +1179,7 @@ function flipCard(fc, card) {
       rareBanner(RARITY_LABEL[card.rarity] || 'RARE');
     }, 320); // after the flip turns to the front
   }
+  if (flippedCount >= revealItems.length && uiV3) revealDoneV3();
   if (flippedCount >= revealItems.length) {
     const p = el('revealPrompt');
     if (p) p.textContent = ''; // no subtitle once everything is revealed
@@ -990,6 +1218,7 @@ function rareBanner(text) {
 }
 
 function endReveal() {
+  if (uiV3) releaseClips();
   sendStatus(VIEW_STATUS[currentView]);
   releaseFeed();
   clearTimeout(revealTimer);
@@ -1089,8 +1318,9 @@ function paintHuntView(d) {
   sendLayoutDiag();
   huntResting = !d || !d.hunt;
   if (huntResting) {
-    el('main').innerHTML = `<div class="main-body hunt arena-mode resting">${restingHTML(d)}</div>`;
     live.attacks = (d && d.lastFeed) || [];
+    if (huntV3()) { el('main').innerHTML = `<div class="main-body hunt u3-hunt-view">${restingV3HTML(d)}</div>`; mountRestBossV3(d); }   // v3 (UI-19)
+    else el('main').innerHTML = `<div class="main-body hunt arena-mode resting">${restingHTML(d)}</div>`;
     renderFeedSidebar();
     startHuntTicker(); // count down to the next spawn
     maybeExplain('hunt');
@@ -1259,6 +1489,7 @@ const BOSS_MOVES = [
   ['Regenerate', 'The boss heals'],
 ];
 function openBossModal() {
+  if (huntV3()) { openBossWindowV3(); return; }   // v3: the boss detail window (UI-20)
   const h = huntState && huntState.hunt;
   if (!h) return;
   const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
@@ -1281,6 +1512,85 @@ function openBossModal() {
   el('bossModal').classList.remove('hidden');
   try { bossModalHandle = mountBoss(el('bossModalCanvas'), h.name || 'boss', h.tier); if (defeated) bossModalHandle.defeat(); } catch (e) { bossModalHandle = null; }
 }
+// ---- v3: the boss detail window (UI-20), behind ui_v3 --------------------------------------------------------------
+// Design repo UI-20/approved (review-1, review-2 with the move pool, D-71): a dialog on medium and expanded, a full sheet on the compact classes; the scrim
+// covers the shell. The live boss, "The Hunt · Live now", the name with the Tier chip, the HP bar, Attack, Weakness,
+// Resistance, Passive, and the move pool: this boss's own moves (hunt_boss_moves.sql) first, then the common moves.
+let bossWin = null;
+function openBossWindowV3() {
+  const d = huntState;
+  const h = d?.hunt;
+  if (!h) return;
+  closeBossWindowV3();
+  const defeated = h.status === 'defeated' || h.hp_remaining <= 0;
+  const pct = Math.max(0, Math.min(100, Math.round((100 * h.hp_remaining) / h.hp_max)));
+  const tier = HUNT_TIER_NUM[h.tier] ? `Tier ${HUNT_TIER_NUM[h.tier]}` : h.tier;
+  const chips = (arr, cls) => (arr || []).map((w) => `<span class="${cls}">${esc(tagLabel(w.value))}</span>`).join('');
+  const p = h.passive;
+  const passives = (Array.isArray(p?.list) && p.list.length ? p.list : p?.kind ? [{ kind: p.kind, label: p.label }] : [])
+    .map((x) => `<span class="u3-bw-passive">${ui3Icon('skull', { size: 'sm' })}${esc(x.label || String(x.kind).charAt(0).toUpperCase() + String(x.kind).slice(1))}</span>`).join('');
+  const none = '<span class="u3-bw-none">None</span>';
+  const fact = (k, v) => `<div><dt>${k}</dt><dd>${v || none}</dd></div>`;
+  const moves = [...(d.bossMoves || []).map((m) => [m.name, m.text]), ...BOSS_MOVES];
+  const host = document.createElement('div');
+  host.id = 'u3BossWin';
+  host.innerHTML = `<div class="u3-scrim u3-bw-scrim" data-u3-scrim><section class="u3-bw" role="dialog" aria-modal="true" aria-labelledby="u3BwT" tabindex="-1">
+    <header class="u3-bw__head"><span class="u3-bw__live${defeated ? ' is-down' : ''}">${defeated ? 'The Hunt · Defeated' : 'The Hunt · Live now'}</span>
+      <h2 class="u3-bw__name" id="u3BwT">${esc(h.name)} <span class="u3-bw__tier">${esc(tier)}</span></h2></header>
+    <div class="u3-bw__close">${ui3IconButton({ icon: 'x', label: 'Close', data: { bwclose: '1' } })}</div>
+    <div class="u3-bw__art"><canvas id="u3BwCanvas"></canvas></div>
+    <div class="u3-bw__hp" role="img" aria-label="${pct}% HP"><i style="--hp:${pct}%"></i><span>${defeated ? 'Defeated' : `${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP`}</span></div>
+    <dl class="u3-bw__facts">${fact('Attack', Number(h.stats?.atk) > 0 ? `<span class="u3-hs-atk">${ui3Icon('swords', { size: 'sm' })}ATK ${Number(h.stats.atk)}</span>` : '')}
+      ${fact('Weakness', chips(h.weak_points, 'u3-hs-weak'))}${fact('Resistance', chips(h.resist_points, 'u3-bw-resist'))}${fact('Passive', passives)}</dl>
+    <span class="u3-label u3-bw__mlabel">Move pool</span>
+    <ul class="u3-bw__moves">${moves.map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('')}</ul>
+    <div class="u3-bw__mpager"></div>
+  </section></div>`;
+  document.body.appendChild(host);
+  const close = () => closeBossWindowV3();
+  host.addEventListener('click', (e) => { if (e.target.closest('[data-bwclose]') || e.target.matches('[data-u3-scrim]')) close(); });
+  bossWin = { host, onKey: (e) => { if (e.key === 'Escape') close(); }, back: document.activeElement };
+  document.addEventListener('keydown', bossWin.onKey);
+  host.querySelector('.u3-bw').focus({ preventScroll: true });
+  // No scroll: the move pool gets denser when it does not fit (one line per move), then pages (the render keeps its room)
+  const win = host.querySelector('.u3-bw'), mv = host.querySelector('.u3-bw__moves');
+  // the pool fills column by column, as drawn (Fade, Veil, Demotion down the first column): rows = half the moves
+  const rows = (n) => mv.style.setProperty('--bw-rows', String(Math.max(1, Math.ceil(n / 2))));
+  rows(moves.length);
+  const over = () => mv.scrollHeight > mv.clientHeight + 1 || win.scrollHeight > win.clientHeight + 1;
+  if (over()) win.classList.add('is-dense');
+  // still too many: pages of the moves that fit, the pager under the list (D-36); the render keeps its room
+  if (over()) {
+    win.classList.add('is-paged');
+    const box = host.querySelector('.u3-bw__mpager');
+    box.innerHTML = ui3Pager({ page: 1, pages: 2 });   // the pager takes its row before the page size is measured
+    const fits = () => { const bottom = mv.getBoundingClientRect().bottom; return Math.max(2, [...mv.children].filter((li) => li.getBoundingClientRect().bottom <= bottom + 1).length & ~1); };
+    let per = fits();
+    if (per < 4 && !win.classList.contains('is-dense')) { win.classList.add('is-dense'); per = fits(); }   // a page of one row: one line per move
+    let pages = Math.ceil(moves.length / per);
+    let page = 0;
+    const paintMoves = () => {
+      rows(Math.min(per, moves.length - page * per));
+      mv.innerHTML = moves.slice(page * per, page * per + per).map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('');
+      box.innerHTML = ui3Pager({ page: page + 1, pages });
+    };
+    // a page of long texts can be taller than the rows measured above: fewer moves a page until every page fits whole
+    const everyPageFits = () => { for (page = 0; page < pages; page++) { paintMoves(); if (mv.scrollHeight > mv.clientHeight + 1) { page = 0; return false; } } page = 0; return true; };
+    while (per > 2 && !everyPageFits()) { per -= 2; pages = Math.ceil(moves.length / per); }
+    box.addEventListener('click', (e) => { const b = e.target.closest('[data-page]'); if (!b || b.disabled) return; page = Math.max(0, Math.min(pages - 1, page + (b.dataset.page === 'next' ? 1 : -1))); paintMoves(); });
+    paintMoves();
+  }
+  try { bossModalHandle = mountBoss(el('u3BwCanvas'), h.name || 'boss', h.tier); if (defeated) bossModalHandle.defeat(); } catch { bossModalHandle = null; }
+}
+function closeBossWindowV3() {
+  if (!bossWin) return;
+  if (bossModalHandle) { try { bossModalHandle.dispose(); } catch { /* ignore */ } bossModalHandle = null; }
+  document.removeEventListener('keydown', bossWin.onKey);
+  bossWin.host.remove();
+  bossWin.back?.focus?.();
+  bossWin = null;
+}
+
 function closeBossModal() {
   if (bossModalHandle) { try { bossModalHandle.dispose(); } catch (e) { /* ignore */ } bossModalHandle = null; }
   el('bossModal').classList.add('hidden');
@@ -1695,15 +2005,16 @@ function huntSelectV3HTML(d) {
   </section>`;
   const slots = Array.from({ length: cap }, (_, i) => {
     const c = picks[i];
-    return `<li class="u3-hs-slot${c ? ` is-full u3-r-${esc(c.rarity || 'normal')}` : i === picks.length ? ' is-next' : ''}">${c
-      ? `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name || '')}" draggable="false">` : ''}`
+    return `<li class="u3-hs-slot${c ? ` is-full u3-r-${esc(c.rarity || 'normal')}${c.downed ? ' is-down' : ''}` : i === picks.length ? ' is-next' : ''}">${c
+      ? `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name || '')}${c.downed ? ' (down)' : ''}" draggable="false">` : ''}${c.downed ? '<span class="u3-hs-down" aria-hidden="true">Down</span>' : ''}`
       : `<span aria-hidden="true">${i + 1}</span>`}</li>`;
   }).join('');
   const syn = stats.syn.filter((s) => s.n >= 2);
   const chips = syn.map((s) => `<span class="u3-hs-chip">${esc(s.label)} <b>${s.n}/5</b></span>`).join('');
   const bonus = stats.effCp - stats.cp;
   let act;
-  if (squad.ko) act = `<p class="u3-hs-ko">${ui3Icon('lock', { size: 'sm' })}<span>Your squad is down for today.</span> ${cdSpan(nextUtcResetISO(), 'Next battle in', 'countdown kores')}</p>`;
+  if (squad.ko) act = `<button type="button" class="u3-btn u3-btn--secondary u3-btn--md" disabled aria-describedby="u3HsKo">${ui3Icon('lock', { size: 'sm' })}<span class="u3-btn__label">Edit</span></button>`
+    + `<p class="u3-hs-ko" id="u3HsKo"><span>Squad locked until tomorrow</span><span>${ui3Icon('skull', { size: 'sm' })}Your squad is down for today.</span></p>`;
   else if (squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', data: { henter: '1' } })}`;
   else act = ui3Button({ label: 'Select your squad', variant: 'primary', data: { hpick: '1' } });
   return `<div class="u3-hunt">${stage}
@@ -1750,11 +2061,66 @@ function fitHuntV3(main) {
     const slot = main.querySelector('.u3-hs-slot');
     const short = slot && slot.getBoundingClientRect().width < TOKENS['card-mini'];   // the strip needs the height (portrait)
     const over = () => stage.scrollHeight > stage.clientHeight + 1 || [...stage.querySelectorAll('.u3-hs-text, .u3-hs-top')].some((n) => n.scrollHeight > n.clientHeight + 1);
+    hunt?.classList.toggle('is-mini', !!short);
     if (short || over()) stage.classList.add('is-line');
     // still too short (a small landscape phone, long names): the tight mode; the Top 3 is one tap away (Menu > Leaderboard, P1)
     if (over()) hunt?.classList.add('is-tight');
   }
 }
+// ---- v3: the Hunt with no live boss (UI-19 resting), behind ui_v3 --------------------------------------------------
+// Design repo UI-19/approved (review-2 + review-3, D-61): the boss stage with the last boss, its result directly under the title
+// (FEEDBACK UI-19), weak and passives, the result bar, "Next boss in", your damage, the last Top 3, the boss render and
+// the boss live feed.
+function restingV3HTML(d) {
+  const h = d && d.lastResult;
+  const next = d && d.nextSpawnAt;
+  if (!h) return `<div class="u3-hunt"><section class="u3-hs-stage u3-rest"><div class="u3-hs-text"><h1 class="u3-hs-name">The hunt is resting</h1>
+    <div class="u3-rest-next"><span class="u3-label">Next boss in</span>${next ? cdSpan(next, '', 'u3-rest-timer') : '<b class="u3-rest-timer">Soon</b>'}</div></div></section></div>`;
+  const won = h.status === 'defeated';
+  const tier = HUNT_TIER_NUM[h.tier] ? `Tier ${HUNT_TIER_NUM[h.tier]}` : h.tier;
+  const pct = h.hp_max ? Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max)) : 0;
+  const weak = (h.weak_points || []).map((w) => `<span class="u3-hs-weak">${esc(tagLabel(w.value))}</span>`).join('');
+  const p = h.passive;
+  const passives = (Array.isArray(p?.list) && p.list.length ? p.list : p?.kind ? [{ kind: p.kind, label: p.label }] : [])
+    .map((x) => `<span class="u3-bw-passive">${ui3Icon('skull', { size: 'sm' })}${esc(x.label || String(x.kind).charAt(0).toUpperCase() + String(x.kind).slice(1))}</span>`).join('');
+  const board = (d.lastBoard || []).slice(0, 3);
+  const top = board.length ? `<span class="u3-label">Top 3</span><ol class="u3-hs-board">${board.map((r, i) => `<li><span class="u3-hs-rk">${i + 1}</span>${avatarHTML(r.player_id, r.username, 'xs')}<b>${esc(r.username || 'Member')}</b><em>${huntNum(r.damage)}</em></li>`).join('')}</ol>`
+    + `<p class="u3-hs-line">Top hunter: <b>${esc(board[0].username || 'Member')}</b> · ${huntNum(board[0].damage)}</p>` : '';
+  const feed = (live.attacks || []).slice(0, 6);
+  return `<div class="u3-hunt"><section class="u3-hs-stage u3-rest">
+    <div class="u3-hs-text">
+      <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span><h1 class="u3-hs-name">${esc(h.name)}</h1></div>
+      <span class="u3-rest-result${won ? ' is-won' : ''}">${ui3Icon(won ? 'trophy' : 'skull', { size: 'sm' })}${won ? 'Defeated' : 'Escaped'}</span>
+      <div class="u3-hs-facts">${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}${passives}</div>
+      <div class="u3-hs-hp u3-rest-bar" role="img" aria-label="${won ? 'Defeated' : `${pct}% HP left`}"><i style="--hp:${won ? 0 : pct}%"></i><span>${won ? 'Defeated' : `${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP left`}</span></div>
+      <div class="u3-rest-row"><div class="u3-rest-next"><span class="u3-label">Next boss in</span>${next ? cdSpan(next, '', 'u3-rest-timer') : '<b class="u3-rest-timer">Soon</b>'}</div>
+        <div class="u3-rest-dmg"><span class="u3-label">Your damage</span><b>${huntNum((d && d.myLast) || 0)}</b></div></div>
+      ${top ? `<div class="u3-hs-top">${top}</div>` : ''}
+    </div>
+    <div class="u3-hs-boss"><canvas id="bossCanvas"></canvas></div>
+    ${feed.length ? `<aside class="u3-rest-feed"><span class="u3-label">Boss live feed</span><ol class="u3-rest-feedlist">${feed.map((e) => `<li>${bossFeedRow(e)}</li>`).join('')}</ol></aside>` : ''}
+  </section></div>`;
+}
+function mountRestBossV3(d) {
+  const h = d && d.lastResult;
+  const cv = el('bossCanvas');
+  if (!h || !cv) return;
+  try { bossHandle = mountBoss(cv, h.name || 'boss', h.tier, { portrait: true }); if (h.status === 'defeated') bossHandle.defeat(); } catch { bossHandle = null; }
+  // No scroll: the oldest feed rows go first (as fitFeedRows), then the board takes the one-line form
+  const stage = el('main').querySelector('.u3-rest');
+  const over = () => stage && (stage.scrollHeight > stage.clientHeight + 1 || [...stage.querySelectorAll('.u3-hs-text')].some((n) => n.scrollHeight > n.clientHeight + 1));
+  stage?.classList.remove('is-tight');
+  if (over()) stage.classList.add('is-tight');
+  fitHuntV3(el('main'));
+  // the feed box has its own height: the rows that do not fit whole go (the newest stay); no row left = no feed
+  const feed = stage?.querySelector('.u3-rest-feed'), list = feed?.querySelector('.u3-rest-feedlist');
+  if (feed && list) {
+    const bottom = () => feed.getBoundingClientRect().bottom + 1;
+    while (list.lastElementChild && list.lastElementChild.getBoundingClientRect().bottom > bottom()) list.lastElementChild.remove();
+    if (!list.children.length) feed.remove();
+  }
+}
+
 function openHuntPicker(from) {
   const d = huntState;
   if (!d) return;
@@ -2639,6 +3005,9 @@ function stepViewer(d) {
   viewerNav?.opts.onStep?.(n);
 }
 function openViewer(card, opts = {}) {
+  // v3: the viewer opens above the window that asked for it (the Card picker, the boss window): same layer, last in
+  // the page (Nathan 2026-10-08: the card details opened under the squad picker)
+  if (document.body.classList.contains('ui-v3') && el('viewer') && el('viewer') !== document.body.lastElementChild) document.body.appendChild(el('viewer'));
   const list = Array.isArray(opts.list) ? opts.list : [];
   const i = list.findIndex((x) => String(x.id) === String(card.id));
   viewerNav = list.length > 1 && i >= 0 ? { list, i, opts } : null;
@@ -2676,6 +3045,8 @@ function openViewer(card, opts = {}) {
   renderAscension(card);
   rx = 0; ry = 0; hoverX = 0; hoverY = 0; applyView();
   el('viewer').classList.remove('hidden');
+  fitViewer(el('viewer'));   // v3: the card and its info fit the safe frame (viewer-fit.js)
+  watchViewerFit();
   enableGyro();
 }
 
@@ -2928,8 +3299,8 @@ function initViewer() {
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !el('viewer').classList.contains('hidden')) { stepViewer(e.key === 'ArrowLeft' ? -1 : 1); return; }
     if (e.key !== 'Escape') return;
     if (!el('bossModal').classList.contains('hidden')) closeBossModal();
-    else if (!el('viewer').classList.contains('hidden')) closeViewer();
-    else if (!el('stage').classList.contains('hidden')) { if (revealItems.length && flippedCount >= revealItems.length) endReveal(); } // locked until all revealed
+    else if (!el('viewer').classList.contains('hidden')) { closeViewer(); e.u3Done = true; }   // a v3 window under it keeps open (card-picker.js)
+    else if (!el('stage').classList.contains('hidden')) { if ((revealItems.length && flippedCount >= revealItems.length) || el('stage').classList.contains('is-out')) endReveal(); } // locked until all revealed (v3: until the cards are out, when the close button shows)
     else if (!el('board').classList.contains('hidden')) closeBoard();
   });
 

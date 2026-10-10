@@ -89,7 +89,8 @@ begin
     v := (r->'boss_action'->>'round')::int;
     if (k = 'charging') <> (v % 8 = 7) or (k = 'cataclysm') <> (v % 8 = 0 and k <> 'stunned') then bad_cycle := bad_cycle + 1; end if;
     if k = 'strike' and (r->>'card_max_hp')::int > 0 then
-      strikes := array_append(strikes, round((r->>'counter_dmg')::numeric / 40, 3));
+      -- D-129 (hunt_random_target.sql): the strike lands on a random squad card, so the damage is the hit card's entry of the targets.
+      strikes := array_append(strikes, round(coalesce((select max((e->>'dmg')::numeric) from jsonb_array_elements(r->'boss_action'->'targets') e), 0) / 40, 3));
     end if;
     if k in ('drain', 'regenerate') then heals := heals || jsonb_build_object('k', k, 'heal', (r->>'boss_heal')::int); end if;
   end loop;

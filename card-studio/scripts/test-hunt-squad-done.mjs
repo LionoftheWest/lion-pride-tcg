@@ -39,9 +39,14 @@ begin
   end loop;
   select count(*) into ev from hunt_events where hunt_id = h and kind = 'player_done' and payload->>'player_id' = 'tst_dn_a';
   if ev <> 1 then bad := bad || 'player_done events ' || ev || ' (want 1); '; end if;
-  -- It posts after the LAST attacker is down, not the first: the summary counts all 3 attackers.
+  -- It posts after the LAST attacker is down, not the first: the summary counts every card that dealt damage in the day.
+  -- (D-132, hunt_random_target.sql: the boss's single hit can down an attacker that never acted, so "3 cards" is not fixed any more;
+  -- an early post would count fewer cards than the hits that came after it.)
   select (payload->>'cards_used')::int into n from hunt_events where hunt_id = h and kind = 'player_done' and payload->>'player_id' = 'tst_dn_a' order by id limit 1;
-  if n is distinct from 3 then bad := bad || 'the summary counts ' || coalesce(n::text, 'null') || ' cards (want 3: it posted before the last attacker was down); '; end if;
+  if n is distinct from (select count(distinct card_id)::int from hunt_hits where hunt_id = h and player_id = 'tst_dn_a') or n < 1 then
+    bad := bad || 'the summary counts ' || coalesce(n::text, 'null') || ' cards, the day had ' || (select count(distinct card_id) from hunt_hits where hunt_id = h and player_id = 'tst_dn_a') || ' (it posted before the last attacker was down); '; end if;
+  if exists (select 1 from unnest(atk) x where not exists (select 1 from hunt_card_hp where hunt_id = h and player_id = 'tst_dn_a' and card_id = x and downed)) then
+    bad := bad || 'an attacker is not down at the end of the day; '; end if;
   raise exception 'RESULTS [%]', bad;
 exception when others then
   if sqlerrm like 'RESULTS%' then raise; end if;

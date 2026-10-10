@@ -5,6 +5,8 @@
   "note": "Recorded from the local database copy, then anonymized (fixture-lib.mjs). No real member data.",
   "sets": "GET /api/sets added by hand on 2026-10-07 (UI-33): the one live set (card_sets.sql, PR #237), the fixture catalog (352 cards), the fixture collection (144 owned), the cover = catalog card 24. No member data.",
   "dailies": "GET /api/dailies: streak_cycle and the chat next added by hand on 2026-10-07 (UI-36), the fields that dailyExtras (src/dailies-pay.js) adds from balance daily (streak_cycle 7, chat 1).",
+  "wishlist": "GET /api/wishlist for the fixture member (me) added by hand on 2026-10-08 (UI-16): 4 fixture catalog cards (27, 32, 37, 42) in slots 1-4, slot 1 the top want, slot 5 empty (the approved edit-empty-slot state). No member data.",
+  "partners": "GET /api/trade/partners added by hand on 2026-10-07 (UI-65): 15 offers with 8 fixture members of GET /api/players (Frequent: Member 012, 011, 163; Recent: Member 110, 076, 161, 077, 032). No member data.",
   "notifyPrefs": "GET /api/notify-prefs added by hand on 2026-10-07 (UI-61): a member with no saved prefs (every ping on, the server default)."
  },
  "meta": {
@@ -28078,7 +28080,7 @@
      {
       "id": 1222,
       "kind": "trade_counter",
-      "message": "🔄 xeno picked a card for your trade! Accept to swap.",
+      "message": "🔄 Member 901 picked a card for your trade! Accept to swap.",
       "read": true,
       "created_at": "2026-10-02T15:37:09.134138+00:00"
      },
@@ -28120,14 +28122,14 @@
      {
       "id": 1187,
       "kind": "trade_accepted",
-      "message": "✅ Broken Warden accepted your trade!",
+      "message": "✅ Member 902 accepted your trade!",
       "read": true,
       "created_at": "2026-10-01T22:48:05.649359+00:00"
      },
      {
       "id": 1185,
       "kind": "trade_offer",
-      "message": "🔄 Broken Warden sent you a trade offer! Pick a card to trade back.",
+      "message": "🔄 Member 902 sent you a trade offer! Pick a card to trade back.",
       "read": true,
       "created_at": "2026-10-01T22:46:33.465905+00:00"
      },
@@ -28141,7 +28143,7 @@
      {
       "id": 1176,
       "kind": "trade_counter",
-      "message": "🔄 Misty picked a card for your trade! Accept to swap.",
+      "message": "🔄 Member 903 picked a card for your trade! Accept to swap.",
       "read": true,
       "created_at": "2026-10-01T21:37:04.495354+00:00"
      },
@@ -29559,6 +29561,69 @@
      {
       "slot": 4,
       "card": null,
+      "mine": 0,
+      "top": false
+     },
+     {
+      "slot": 5,
+      "card": null,
+      "mine": 0,
+      "top": false
+     }
+    ]
+   }
+  },
+  "/api/wishlist?id=100000000000000001": {
+   "status": 200,
+   "body": {
+    "id": "100000000000000001",
+    "top": 1,
+    "slots": [
+     {
+      "slot": 1,
+      "card": {
+       "id": 32,
+       "name": "LionoftheWest's Pikachu",
+       "rarity": "full_art",
+       "image_url": "/api/img/storage/v1/object/public/card-art/cards/lionofthewest-s-pikachu-full_art.webp?v=1789073355222",
+       "power": 80
+      },
+      "mine": 0,
+      "top": true
+     },
+     {
+      "slot": 2,
+      "card": {
+       "id": 27,
+       "name": "Mr. Mob's Mime",
+       "rarity": "full_art",
+       "image_url": "/api/img/storage/v1/object/public/card-art/cards/mr-mob-s-mr-mime-full_art.webp?v=1789072935797",
+       "power": 71
+      },
+      "mine": 0,
+      "top": false
+     },
+     {
+      "slot": 3,
+      "card": {
+       "id": 37,
+       "name": "Kaminari's King K. Rool",
+       "rarity": "full_art",
+       "image_url": "/api/img/storage/v1/object/public/card-art/cards/kaminari-s-krool-full_art.webp?v=1789680196368",
+       "power": 73
+      },
+      "mine": 0,
+      "top": false
+     },
+     {
+      "slot": 4,
+      "card": {
+       "id": 42,
+       "name": "Ottozone's Rob",
+       "rarity": "full_art",
+       "image_url": "/api/img/storage/v1/object/public/card-art/cards/ottozone-s-rob-full_art.webp?v=1789073765025",
+       "power": 80
+      },
       "mine": 0,
       "top": false
      },
@@ -33824,6 +33889,88 @@
      }
     ],
     "last_set": "S1"
+   }
+  },
+  "/api/trade/partners": {
+   "status": 200,
+   "body": {
+    "partners": [
+     {
+      "id": "100000000000000110",
+      "name": "Member 110",
+      "at": "2026-10-04T22:10:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-04T21:00:00.000Z"
+     },
+     {
+      "id": "100000000000000076",
+      "name": "Member 076",
+      "at": "2026-10-04T20:00:00.000Z"
+     },
+     {
+      "id": "100000000000000161",
+      "name": "Member 161",
+      "at": "2026-10-04T18:30:00.000Z"
+     },
+     {
+      "id": "100000000000000011",
+      "name": "Member 011",
+      "at": "2026-10-04T17:00:00.000Z"
+     },
+     {
+      "id": "100000000000000077",
+      "name": "Member 077",
+      "at": "2026-10-03T23:00:00.000Z"
+     },
+     {
+      "id": "100000000000000032",
+      "name": "Member 032",
+      "at": "2026-10-03T20:00:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-03T19:00:00.000Z"
+     },
+     {
+      "id": "100000000000000163",
+      "name": "Member 163",
+      "at": "2026-10-03T18:00:00.000Z"
+     },
+     {
+      "id": "100000000000000011",
+      "name": "Member 011",
+      "at": "2026-10-03T12:00:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-02T15:00:00.000Z"
+     },
+     {
+      "id": "100000000000000163",
+      "name": "Member 163",
+      "at": "2026-10-02T11:00:00.000Z"
+     },
+     {
+      "id": "100000000000000011",
+      "name": "Member 011",
+      "at": "2026-10-01T21:00:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-01T20:00:00.000Z"
+     },
+     {
+      "id": "100000000000000012",
+      "name": "Member 012",
+      "at": "2026-10-01T19:00:00.000Z"
+     }
+    ]
    }
   },
   "/api/notify-prefs": {

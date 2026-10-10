@@ -32,6 +32,12 @@ test('each 12.6 item comes from its detector', () => {
   const rules = defectsOf(r, null).map((x) => x.rule).sort();
   assert.deepEqual(rules, ['bleed', 'bleed', 'contrast', 'corner-safe', 'covered', 'ellipsis', 'empty', 'icon-name', 'overlap', 'scroll', 'small-text', 'tap'].sort());
 });
+test('a window box in the corner zone is a corner-safe defect only on a screen that opts in (UI-36)', () => {
+  const r = clean('dailies', '932x430'); r.checks.windowCorner = [50, 54]; r.checks.window = { sel: '#v2Dailies.u3-dl' };
+  assert.deepEqual(defectsOf(r, null).map((x) => x.rule), ['corner-safe']);
+  const h = clean('home', '932x430'); h.checks.windowCorner = [50, 54];
+  assert.equal(defectsOf(h, null).length, 0, 'the other windows are not enforced yet');
+});
 test('missing vs 1990x830: a control in view at expanded and absent or outside here', () => {
   const exp = clean('home', '1990x830'); exp.checks.keys = { '#boardBtn': { inView: true }, '#mute': { inView: false } };
   const r = clean('home', '430x932'); r.checks.keys = {};
@@ -55,7 +61,26 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #menuBtn.u3-ibtn'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
+  assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
+  assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('wishlist', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl-row'), 'UI-16');
+  assert.equal(ownerOf('wishlist-drawer', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl__list > .u3-wl-row'), 'UI-16');
+  assert.equal(ownerOf('profile-own-wish', '#memWish > #wlHandle.u3-pf-wishbar'), 'UI-16');   // the handle strip is the Wishlist's (D-128)
+  assert.equal(ownerOf('profile-own-wish', '#memWish.u3-pf-tile'), 'UI-14');                  // the tile that holds it is the Profile's
+  assert.equal(ownerOf('wish-picker', '#u3Picker > .u3-pk.is-one'), 'UI-64');
+  assert.equal(ownerOf('hunt-picker-detail', '#viewer.raid-info > #viewer-closebutton'), 'UI-64');
+  assert.equal(ownerOf('hunt-picker-detail', '.vr-stats > .vr-stat > span "Power"'), 'UI-64');
+  assert.equal(ownerOf('hunt-picker-detail', '.u3-hs-hp > span'), 'UI-17');
+  assert.equal(ownerOf('dungeon-picker-detail', '#v-raid.v-raid > .vr-head'), 'UI-64');
+  assert.equal(ownerOf('collection-detail', '#viewer > #viewer-prev'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', '#viewer > #viewer-close'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', '#viewer > .viewer-stage'), 'UI-08');
+  assert.equal(ownerOf('pack-multi', '.u3-mpacks > .u3-mrow > .u3-mpack'), 'UI-35');
+  assert.equal(ownerOf('pack-multi-cards', '.mr-main > #mrGrid.mr-grid > .mr-card'), 'UI-35');
+  assert.equal(ownerOf('pack-multi', '#topbar > #shopBtn'), 'UI-42');
+  assert.equal(ownerOf('dungeon', '#main.has-adv > .dg-tabs.v2-subtabs > .dg-tab'), 'UI-02');   // the shell sub-tab row
+  assert.equal(ownerOf('dungeon', '.u3-dg-tabs > .u3-seg > .u3-seg__item'), 'UI-46');               // the lobby's own tabs (Rule / Best / Top 3)
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
   // the style editor (UI-15) opens over the profile: the profile under it is UI-14, the window is UI-15, the picker UI-64
   assert.equal(ownerOf('style-editor', '.mem-col.mem-left > .mem-grid-stats > div > span'), 'UI-14');
@@ -66,6 +91,10 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('profile', '.mem-col.mem-left > span'), 'UI-14');
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
+  assert.equal(ownerOf('dungeon-path', '#main > .u3-dgs > .u3-dgc-panel'), 'UI-49');   // the room steps (UI-49)
+  assert.equal(ownerOf('dungeon-floor', '#main > .u3-dgs-fd > .u3-dgs-fdp'), 'UI-49');
+  assert.equal(ownerOf('dungeon-rest', '#main > .u3-dgc > .u3-dgc-hud'), 'UI-49');   // the stage parts shared with UI-48 belong to the screen under test
+  assert.equal(ownerOf('dungeon-choose', '#main > .u3-dgc > .u3-dgc-hud'), 'UI-48');
 });
 test('a clean complete run passes', () => {
   assert.equal(verdict(full(), REG, { browsers: ['chromium'] }).fails.length, 0);
@@ -98,7 +127,8 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
   assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
   assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');
-  assert.deepEqual(plan(new Set(['UI-49'])), { screens: [], uncovered: ['UI-49'] });
+  assert.deepEqual(plan(new Set(['UI-50'])), { screens: [], uncovered: ['UI-50'] });
+  assert.deepEqual(plan(new Set(['UI-49'])).screens.filter((x) => x.startsWith('dungeon-')).sort(), ['dungeon-chest', 'dungeon-chest-flipped', 'dungeon-chest-open', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-path', 'dungeon-rest', 'dungeon-retreat']);   // the 8 UI-49 specs
   assert.deepEqual(plan(new Set()).screens, []);
   assert.equal(plan(new Set(), { full: true }).screens.length, Object.keys(SCREENS).length);
 });
@@ -107,6 +137,38 @@ test('verdict with a plan: only the planned screens must have results; an uncove
   assert.equal(verdict(only, REG, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon', 'collection'] }).fails.length, SIZES.length, 'collection was planned and has no result');
   const reg = { ...REG, 'UI-07': { ...REG['UI-07'], standard: 'Not migrated' } };
   assert.equal(verdict(only, reg, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon'] }).fails.length, 0);
-  const v = verdict(only, reg, { title: 'UI-46 + UI-49', browsers: ['chromium'], screens: ['dungeon'] });
-  assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-49', 'no screen in the check']]);
+  const v = verdict(only, reg, { title: 'UI-46 + UI-50', browsers: ['chromium'], screens: ['dungeon'] });
+  assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-50', 'no screen in the check']]);
+});
+
+test('an accepted exception (decision ID, one ID/screen/size/rule) does not fail; anything else still fails', () => {
+  const rs = full();
+  const cell = rs.find((r) => r.screen === 'home' && r.size === '430x932');
+  cell.checks.emptyBandY = 0.29;
+  const other = rs.find((r) => r.screen === 'home' && r.size === '375x667');
+  other.checks.emptyBandY = 0.29;
+  const ex = [{ decision: 'D-999', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty', why: 'test' }];
+  const v = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'], exceptions: ex });
+  assert.equal(v.defects.filter((x) => x.accepted === 'D-999').length, 1);
+  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '375x667']]);   // the other size still fails
+  const none = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'] });
+  assert.equal(none.fails.length, 2);
+});
+
+test('exceptions.json: every entry is valid; the UI-49 empty-space entries name D-134 and a screen of the check', async () => {
+  const { readFileSync } = await import('node:fs');
+  const list = JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8'));
+  assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
+  const mine = list.filter((e) => e.id === 'UI-49');
+  assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+});
+
+test('a bad exception entry stops the gate', () => {
+  for (const bad of [{ id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty', why: 'x' },           // no decision
+    { decision: 'D-1', id: 'UI-03', screen: 'nope', size: '430x932', rule: 'empty', why: 'x' },
+    { decision: 'D-1', id: 'UI-03', screen: 'home', size: '1x1', rule: 'empty', why: 'x' },
+    { decision: 'D-1', id: 'UI-03', screen: 'home', size: '430x932', rule: 'not-checked', why: 'x' },
+    { decision: 'D-1', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty' }]) {                  // no why
+    assert.throws(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: [bad] }));
+  }
 });

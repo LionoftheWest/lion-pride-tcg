@@ -1,0 +1,85 @@
+/* ==== UI-16 Wishlist (src/ui3/wishlist.js, src/ui3/profile.js wishBarHTML; design repo UI-16/approved, review-1 + review-2; D-66, D-128) ====
+   The Profile shows the Wishlist as a handle strip at its bottom edge; a tap or a drag up opens the drawer: it pulls up from the bottom,
+   above the dock, on every size class, with every wishlist card and the edit controls (D-128 replaces the E1 sheet, side sheet and dialog).
+   The wish picker is the Card picker (UI-64) in pick-one mode (.u3-pk.is-one, below). */
+body.ui-v2.ui-v3[data-size] #u3Wish { --text-muted: var(--u3-text-muted); }
+
+/* ---- The handle strip on the Profile ---- */
+body.ui-v2.ui-v3 .u3-pf-tile.u3-pf-wish { padding: var(--u3-none); gap: var(--u3-none); }
+.u3-pf-wishbar { position: relative; box-sizing: border-box; width: 100%; min-height: var(--hit); margin: 0; padding: var(--sp-2) var(--sp-3); display: flex; align-items: center; gap: var(--sp-2);
+  background: none; border: 0; color: var(--text-primary); font: inherit; font-size: var(--fs-stat); text-align: left; cursor: pointer; touch-action: none; }
+.u3-pf-wishbar.is-loading { cursor: default; }
+.u3-pf-wishbar > .u3-ico { flex: none; }
+.u3-pf-wishbar__t { flex: 1 1 auto; min-width: 0; font-weight: var(--fw-heading); }
+.u3-pf-wishbar__n { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.u3-pf-wishbar__grab { position: absolute; top: var(--sp-half); left: 50%; width: var(--sp-6); height: var(--sp-half); border-radius: var(--rad-sm); background: var(--border-strong); transform: translateX(-50%); }
+.u3-pf-wishbar:focus-visible { outline: none; box-shadow: var(--glow-focus); border-radius: var(--rad-lg); }
+
+/* ---- The Profile grid with the strip: a row under the content, across every column but the identity tile ---- */
+.u3-pf[data-lay="col3"][data-wd] { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto; grid-template-areas: "id spot hunt" "id season hunt" "id wish wish"; }
+.u3-pf[data-lay="col3"][data-wd]:has(.u3-pf-season.is-all) { grid-template-areas: "id season hunt" "id season hunt" "id wish wish"; }
+.u3-pf[data-lay="stack"][data-wd] { grid-template-rows: auto minmax(0, 4fr) minmax(0, 5fr) auto; grid-template-areas: "id id" "spot season" "hunt hunt" "wish wish"; }
+.u3-pf[data-lay="stack"][data-wd]:has(.u3-pf-season.is-all) { grid-template-areas: "id id" "season season" "hunt hunt" "wish wish"; }
+.u3-pf[data-lay="land"][data-wd] { grid-template-columns: minmax(calc(var(--sheet-side-w) * .75), 23fr) minmax(0, 40fr); grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-areas: "id spot" "id season" "id wish"; }
+.u3-pf[data-lay="port"][data-wd] { grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-areas: "id" "spot" "season" "wish"; }
+.u3-pf[data-lay="land"][data-wd][data-tight="5"] { grid-template-columns: calc(50% - var(--sp-half) * 2) minmax(0, 1fr) auto;   /* the identity tile keeps its half */ grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "id pane pane" "id tabs wish"; }
+.u3-pf[data-lay="land"][data-wd][data-tight="5"] .u3-pf-wish { grid-area: wish; }
+.u3-pf:is([data-lay="land"], [data-lay="port"])[data-wd][data-tight="5"] :is(.u3-pf-wishbar__t, .u3-pf-wishbar__grab) { display: none; }
+/* the smallest phones and the short landscape windows (tight 5): the handle shares the row of the tabs (heart, count, chevron), so the Spotlight keeps the height of the strip */
+.u3-pf[data-lay="port"][data-wd][data-tight="5"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "id id" "tabs wish" "pane pane"; }
+.u3-pf[data-lay="port"][data-wd]:is([data-tight="4"], [data-tight="5"]) .u3-pf-wish { grid-area: wish; }
+.u3-pf:is([data-lay="land"], [data-lay="port"])[data-wd][data-tight="5"] .u3-pf-wishbar { justify-content: center; }
+
+/* ---- The drawer ---- */
+#u3Wish .u3-wl-scrim[data-form="drawer"] { place-items: end center; padding: calc(var(--u3-sa-t) + var(--sp-1-5)) calc(var(--u3-sa-r) + var(--sp-1-5))
+  calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-1)) calc(var(--u3-sa-l) + var(--sp-1-5)); }
+.u3-wl { box-sizing: border-box; width: min(100%, var(--sheet-bottom-w)); max-height: 100%; display: flex; flex-direction: column; gap: var(--sp-3);
+  padding: var(--sp-4); overflow: hidden; border-radius: var(--rad-sheet); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  color: var(--text-primary); animation: kf-rise var(--dur-slow) var(--ease-out); }
+.u3-wl:focus { outline: none; }
+/* a short window (compact-land): the drawer stays left of the Discord corner zone (2.3), and when the rows do not fit above the dock it takes the screen edge (fit()) */
+body[data-size="compact-land"] .u3-wl { width: min(100%, var(--sheet-bottom-w), calc(100vw - 2 * var(--corner-w) - var(--sp-1))); }
+#u3Wish .u3-wl-scrim[data-form="drawer"].is-tight { padding-bottom: calc(var(--u3-sa-b) + var(--sp-1)); }
+.u3-wl__grab { flex: none; align-self: center; width: var(--sp-6); height: var(--sp-half); margin-top: calc(var(--sp-1) * -1); border-radius: var(--rad-sm); background: var(--border-strong); touch-action: none; }
+.u3-wl__head { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; touch-action: none; }
+.u3-wl__head > .u3-ico { color: var(--text-primary); flex: none; }
+.u3-wl__title { margin: 0; flex: 1 1 auto; min-width: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-title); line-height: var(--lh-title); }
+.u3-wl__count { font-family: var(--font-num); font-size: var(--fs-stat); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.u3-wl__list { list-style: none; margin: 0; padding: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-wl { padding: var(--sp-3); gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-wl__list { gap: var(--sp-1); }
+.u3-wl-row { display: grid; grid-template-columns: var(--sp-3) auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-1-5) var(--sp-2) var(--sp-1-5) var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); }
+body[data-size="compact-land"] .u3-wl-row { padding-block: var(--u3-none); }
+.u3-wl-row__n { font-family: var(--font-num); font-size: var(--fs-stat); color: var(--text-muted); text-align: center; }
+.u3-wl-row__card { box-sizing: border-box; position: relative; padding: 0; height: var(--ctl-sm); aspect-ratio: 1 / var(--card-ratio); display: grid; place-items: center; overflow: visible;
+  border-radius: var(--rad-sm); border: var(--bw-1) solid var(--u3-r, var(--border-strong)); color: var(--text-secondary); background: none; }
+.u3-wl-row__card img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
+.u3-wl-row__card.is-view { cursor: pointer; }
+body[data-input="coarse"] .u3-wl-row__card.is-view::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, var(--hit)); height: max(100%, var(--hit)); transform: translate(-50%, -50%); }
+.u3-wl-row__main { display: flex; flex-direction: column; gap: var(--sp-half); min-width: 0; }
+.u3-wl-row__name { font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-heading); overflow-wrap: break-word; }
+.u3-wl-row.is-empty .u3-wl-row__name { color: var(--text-muted); }
+.u3-wl-row__r { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--u3-r); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-wl-row__dia { width: var(--dot); height: var(--dot); transform: rotate(45deg); background: currentColor; }
+.u3-wl-row__acts { display: flex; align-items: center; gap: var(--sp-2); }
+.u3-wl-row.is-top [data-wltop] { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.u3-wl-row__top { display: inline-flex; color: var(--gold); }
+.u3-wl-row__mine { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); padding: var(--sp-half) var(--sp-1-5); border-radius: var(--rad-sm); background: var(--bg-base); color: var(--text-muted); }
+#u3Wish .u3-msg { flex: none; }
+
+/* the Card picker in pick-one mode (the wish picker): no slot row; the title has the icon (UI-16 P1, P3) */
+.u3-pk.is-one { grid-template-rows: auto auto minmax(0, 1fr) auto auto; grid-template-areas: "head close" "tools tools" "grid grid" "pager pager" "foot foot"; }
+body[data-size="compact-land"] .u3-pk.is-one { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "head tools close" "grid grid grid" "pager pager pager"; }
+.u3-pk.is-one .u3-pk__title { align-items: center; }
+.u3-pk.is-one :is(.u3-pk__slots, .u3-pk-checks:empty) { display: none; }
+/* compact-land: the title line, the grid, the pager line with Clear and Confirm; tighter gaps keep 2 rows of cards (P3) */
+body[data-size="compact-land"] .u3-pk.is-one { padding-block: var(--sp-1-5); gap: var(--sp-2); }
+/* the 667x375 phones with the safe area leave 533 px: the title takes the stat size and drops its heart so the search keeps its whole placeholder (the title text stays) */
+body[data-low] .u3-pk.is-one .u3-pk__title { font-size: var(--fs-stat); }
+body[data-low] .u3-pk.is-one .u3-pk__title > .u3-ico { display: none; }
+body[data-size="compact-land"] .u3-pk.is-one .u3-pk__grid { gap: var(--sp-2); align-content: center; }
+/* the window under the picker while typing: covered by the scrim, and squeezed by the keyboard (as the picker's view) */
+body[data-kb]:has(#u3Picker .u3-pk) #u3Wish { visibility: hidden; }

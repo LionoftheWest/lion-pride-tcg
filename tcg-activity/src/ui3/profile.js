@@ -1,16 +1,21 @@
 // UI-14 Profile (member), v3: design repo UI-14/approved (review-1 + review-2), only under body.ui-v3 (settings.ui_v3).
 // ui-v2.js paintMember() keeps the data and the wiring (the same element ids); this module gives the v3 markup and fits
 // the parts that must not scroll: the achievements grid ("+N" in its last place, C7), the Season mini grid (whole rows,
-// C14), the Spotlight card size (review-2: as large as the tile allows), the wishlist rows ("+N more", C12) and the
+// C14), the Spotlight card size (review-2: as large as the tile allows), the wishlist handle (D-128: a strip that opens the drawer of src/ui3/wishlist.js) and the
 // View all grid (the card face only, the pager under it, C16). Layouts per size class: col3 (expanded, medium
 // landscape), stack (medium portrait, C15), land (compact-land), port (compact-port), tiny.
-import { esc, button, pager, stateError, listMore, segmented } from './components.js';
+import { esc, button, pager, stateError, segmented } from './components.js';
 import { icon } from './icons.js';
 import { fitGrid } from './card-picker.js';
 import { TOKENS } from '../tokens.js';
 import { thumb } from '../thumb.js';
 
 export const isV3 = () => document.body.classList.contains('ui-v3');
+
+/** The shell parts that open another screen or window (the dock, the top bar, the Menu). A tap on one of them closes the Profile
+ *  (it is a layer over the screens: the same "tap outside" rule as the Settings window). Pure on its argument (unit-tested). */
+export const SHELL_TAP = '#dock, #topbar, #u3MenuHost';
+export const closesProfile = (target) => !!target?.closest?.(SHELL_TAP);
 const fmt = (n) => Number(n || 0).toLocaleString();
 
 /** The layout of the profile for a size class and the usable frame. Pure (unit-tested). */
@@ -87,12 +92,34 @@ export function profileHTML(d) {
       : `<ul class="u3-pf-mini" id="memGrid" aria-label="${esc(d.season.name)}"></ul>
     <div class="u3-pf-rar">${d.rarities.map((x) => `<span class="u3-pf-rchip u3-r-${x.r}"><i aria-hidden="true">◆</i>${esc(x.label)} <b>${x.n}</b></span>`).join('')}</div>`}
   </section>`;
-  const right = `${d.wish ? '<section class="u3-pf-tile u3-pf-wish" id="memWish"><div class="tile-h"><b>♡ Wishlist</b></div><p class="u3-pf-none">Loading…</p></section>' : ''}
-    <section class="u3-pf-tile u3-pf-hunt">${d.huntHTML}</section>`;
-  // the smallest phones: the Spotlight and the Wishlist share one place, as two tabs (P1; fitTight step 4)
+  // D-128: the Wishlist is a strip (the handle) at the bottom of the Profile; a tap opens the drawer with every wishlist card
+  const wish = d.wish ? `<section class="u3-pf-tile u3-pf-wish" id="memWish">${wishBarHTML(null)}</section>` : '';
+  const hunt = `<section class="u3-pf-tile u3-pf-hunt">${d.huntHTML}</section>`;
+  // the smallest phones: the Spotlight and the Season share one place, as two tabs (P1; fitTight step 5). The handle stays outside the tabs.
   const tabs = !d.all ? `<div class="u3-pf-tabs">${segmented([{ id: 'pf:spot', label: 'Spotlight', active: true, controls: 'u3PfSpot' },
-    { id: 'pf:season', label: d.season.name, controls: 'u3PfSeason' }, ...(d.wish ? [{ id: 'pf:wish', label: 'Wishlist', controls: 'memWish' }] : [])], { label: 'Profile' })}</div>` : '';
-  return `<div class="u3-pf" data-lay="${d.lay}"${self ? ' data-self=""' : ''}>${id}${spot}${season}${tabs}${right}</div>`;
+    { id: 'pf:season', label: d.season.name, controls: 'u3PfSeason' }], { label: 'Profile' })}</div>` : '';
+  return `<div class="u3-pf" data-lay="${d.lay}"${self ? ' data-self=""' : ''}${d.wish ? ' data-wd=""' : ''}>${id}${spot}${season}${tabs}${hunt}${wish}</div>`;
+}
+
+/** The Wishlist handle (D-128): one 44 px strip. n = the filled slots, total = the slots; null while the list loads (then it is not a button yet). */
+export function wishBarHTML(n, total = 5) {
+  const head = `<span class="u3-pf-wishbar__grab" aria-hidden="true"></span>${icon('heart')}<b class="u3-pf-wishbar__t">Wishlist</b>`;
+  if (n == null) return `<div class="u3-pf-wishbar is-loading">${head}</div>`;
+  return `<button type="button" class="u3-pf-wishbar" id="wlHandle" aria-haspopup="dialog" aria-label="Wishlist, ${n} of ${total}. Open">${head}`
+    + `<span class="u3-pf-wishbar__n">${n}/${total}</span>${icon('chevron-up', { size: 'lg' })}</button>`;
+}
+
+/** The Wishlist handle opens the drawer on a tap and on a drag up (D-128). onOpen(handle) runs once; the click that ends a drag is dropped. */
+export function bindWishHandle(btn, onOpen) {
+  if (!btn) return;
+  let y0 = null;
+  let dragged = false;
+  btn.addEventListener('pointerdown', (e) => { y0 = e.clientY; dragged = false; });
+  btn.addEventListener('pointermove', (e) => { if (y0 != null && !dragged && y0 - e.clientY >= TOKENS.hit / 2) { dragged = true; y0 = null; onOpen(btn); } });
+  const end = () => { y0 = null; };
+  btn.addEventListener('pointerup', end);
+  btn.addEventListener('pointercancel', end);
+  btn.addEventListener('click', () => { if (dragged) { dragged = false; return; } onOpen(btn); });
 }
 
 /** The Hunt tile (C4: "The Hunt"; C8: the empty line centered). h = p.hunt. */
@@ -169,52 +196,29 @@ export function fitAll(ul, pagerBox, cards, st) {
   if (pagerBox) pagerBox.innerHTML = pages > 1 ? pager({ page: st.page + 1, pages }) : '';
 }
 
-/** The wishlist rows that fit; the rest behind "+N more" (C12). A tap on it shows the next rows. */
-export function fitWish(box, st) {
-  const list = box?.querySelector('.wl-list');
-  if (!list) return;
-  box.querySelector('.u3-pf-wmore')?.remove();
-  const rows = [...list.children];
-  rows.forEach((r) => { r.hidden = false; });
-  if (list.scrollHeight <= list.clientHeight + 1) return;
-  const more = document.createElement('div');
-  more.className = 'u3-pf-wmore';
-  list.after(more);
-  // the rows from the offset that fit, with the "+N more" line under them
-  const from = st.wishFrom % rows.length;
-  rows.forEach((r, i) => { r.hidden = i < from; });
-  let shown = rows.filter((r) => !r.hidden);
-  more.innerHTML = listMore(rows.length - shown.length);
-  while (shown.length > 1 && list.scrollHeight > list.clientHeight + 1) {
-    shown.pop().hidden = true;
-    shown = rows.filter((r) => !r.hidden);
-    more.innerHTML = listMore(rows.length - shown.length);
-  }
-  more.firstElementChild.addEventListener('click', () => { st.wishFrom = from + shown.length >= rows.length ? 0 : from + shown.length; fitWish(box, st); });
-}
-
 /** The tight steps (no scroll, P0), the first step where every tile fits wins: 1 hides the rarity chips, 2 makes the
- *  identity smaller, 3 hides the status line; phones: 4 the actions in one row and the Spotlight and the Wishlist as tabs
- *  (P1: content moves into a tab), 5 the Season too (compact-land: 5 after 3). Last: a long name takes the small size. */
-export function fitTight(root, pane = 'spot', each = () => {}) {
+ *  identity smaller, 3 hides the status line; phones: 5 the actions in one row and the Spotlight and the Season as tabs
+ *  (P1: content moves into a tab; D-113). The Wishlist is a handle strip (D-128), never in a tab. Last: a long name takes the small size. */
+export function fitTight(root, pane = '', each = () => {}) {
   if (!root) return;
   delete root.dataset.tight;
   delete root.dataset.small;
-  const panels = { spot: root.querySelector('.u3-pf-spot'), season: root.querySelector('.u3-pf-season'), wish: root.querySelector('.u3-pf-wish') };
+  const panels = { spot: root.querySelector('.u3-pf-spot'), season: root.querySelector('.u3-pf-season') };
   Object.values(panels).forEach((n) => { if (n) { n.hidden = false; n.removeAttribute('role'); } });
   const minCard = TOKENS['card-mini'] * TOKENS['card-ratio'];
   const shown = (sel) => { const n = root.querySelector(sel); return n && n.offsetParent ? n : null; };
   const bad = () => [...root.querySelectorAll('.u3-pf-tile')].some((t) => t.offsetParent && t.scrollHeight > t.clientHeight + 1)
     || (shown('.u3-pf-spotrow .u3-pf-card') && shown('.u3-pf-spotrow').clientHeight < minCard)
-    || [...root.querySelectorAll('.u3-pf-acts .u3-btn')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1)
-    || (shown('.u3-pf-wish .wl-list') && shown('.u3-pf-wish .wl-list').clientHeight < TOKENS.hit * 2 + TOKENS['sp-2']);
+    || [...root.querySelectorAll('.u3-pf-acts .u3-btn')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
   const hasTabs = !!root.querySelector('.u3-pf-tabs');
-  const steps = root.dataset.lay === 'port' && hasTabs ? [1, 2, 3, 4, 5] : root.dataset.lay === 'land' && hasTabs ? [1, 2, 3, 5] : [1, 2, 3];
+  const steps = root.dataset.lay === 'port' && hasTabs ? [1, 2, 3, 5] : root.dataset.lay === 'land' && hasTabs ? [1, 2, 3, 5] : [1, 2, 3];
   const tabs = () => {
     const t = Number(root.dataset.tight) || 0;
-    if (t < 4) return;
-    const inTabs = t >= 5 ? ['spot', 'season', 'wish'] : ['spot', 'wish'];
-    const cur = inTabs.includes(pane) && panels[pane] ? pane : 'spot';
+    if (t < 5) return;
+    const inTabs = ['spot', 'season'];
+    // no tab chosen yet (pane ''): a profile with no Spotlight cards opens on the next tab that has content, not on an empty one
+    const want = pane || (panels.spot && !root.querySelector('.u3-pf-spotrow .u3-pf-card') ? inTabs.find((k) => k !== 'spot' && panels[k]) : 'spot');
+    const cur = inTabs.includes(want) && panels[want] ? want : 'spot';
     inTabs.forEach((k) => { const n = panels[k]; if (n) { n.setAttribute('role', 'tabpanel'); n.hidden = k !== cur; } });
     root.querySelectorAll('.u3-pf-tabs [data-seg]').forEach((b) => { const on = b.dataset.seg === `pf:${cur}`; b.classList.toggle('is-active', on); b.setAttribute('aria-selected', String(on)); });
   };
