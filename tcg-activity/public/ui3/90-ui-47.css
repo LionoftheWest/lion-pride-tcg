@@ -221,3 +221,5 @@ body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-d
 body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 { grid-template-rows: auto auto minmax(calc(var(--sp-7) + var(--sp-6) + var(--sp-5)), 1fr) auto auto auto auto; grid-template-areas: "top" "turn" "arena" "hint" "units" "right" "logc"; }
 /* medium, narrow box (measured, is-slim): one support under the other, so a long name has the whole width */
 body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-slim .dg-sups { grid-template-columns: minmax(0, 1fr); }
+/* the picking glow is the static ring: the bounce (a moving transform) made the Details button measure 43.99994 px high on a CI runner (a float error of the animated card), so the card does not move while picking */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.picking .dg-unit:not(.down) .dg-card { animation: none; }
