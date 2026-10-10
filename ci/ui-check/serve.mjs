@@ -64,6 +64,16 @@ function derivedRoom(body, kind) {
   return { ...base, name: 'The Hollow Mines', lootCards, run: { ...R, state: st } };
 }
 
+// UI-30: a Trade Hall with listings of other members (the recording holds the signed-in member's own only; cookie ci_hall=many):
+// 10 Wanted cards (every third one owned 0 times: the Not owned look) and 11 For trade cards. The cards come from the recorded catalog.
+function derivedHall(body) {
+  const cat = (FIX.routes['/api/catalog']?.body?.cards || []).filter((c) => c.image_url);
+  const pick = (i) => { const c = cat[(i * 37) % cat.length]; return { id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, power: c.power }; };
+  const who = (i) => ({ player_id: `1000000000000001${String(i).padStart(2, '0')}`, name: `Member ${String(i + 1).padStart(3, '0')}` });
+  const wanted = body.wanted.concat(Array.from({ length: 9 }, (_, i) => ({ ...who(i + 1), card: pick(i + 1), yours: false, mine: i % 3 === 0 ? 0 : (i % 3) })));
+  const forTrade = body.forTrade.slice(0, 2).concat(Array.from({ length: 9 }, (_, i) => ({ id: 100 + i, ...who(i + 1), card: pick(i + 20), mine: false, match: i % 2, at: body.forTrade[0].at })));
+  return { ...body, wanted, forTrade };
+}
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
@@ -132,7 +142,8 @@ createServer((req, res) => {
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
     const hit = FIX.routes[key] || FIX.routes[keyOf(p, '')] || BY_PATH[p];
     if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
-    const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
+    const raw = p === '/api/hall' && c.ci_hall === 'many' && hit.body?.wanted ? derivedHall(hit.body)
+      : p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
       : p === '/api/dungeon' && c.ci_dungeon === 'choose2' && hit.body?.ok ? derivedChoose2(hit.body)
       : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon) : hit.body;
     const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
