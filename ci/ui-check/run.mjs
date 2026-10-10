@@ -36,8 +36,8 @@ const call = (pg, src, arg) => pg.evaluate(`(${src})(${arg === undefined ? '' : 
 const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;--discord-safe-area-inset-bottom:${land ? 21 : 34}px;--discord-safe-area-inset-left:${land ? 59 : 0}px;--discord-safe-area-inset-right:${land ? 59 : 0}px}`;
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
-const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'help-closed', 'help-item5', 'report', 'report-typed', 'report-error', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'profile-own', 'profile-own-wish', 'dungeon', 'hunt-battle', 'trades', 'settings', 'dungeon-picker-detail', 'hunt-picker-detail', 'dungeon-choose', 'dungeon-choose2', 'dungeon-rest', 'dungeon-path', 'dungeon-chest', 'dungeon-chest-open', 'dungeon-chest-flipped', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-retreat']);
+const LONG_SCREENS = new Set(Object.entries(SCREENS).filter(([, s]) => s.long).map(([k]) => k));   // the spec's `long: true` flag (screens.mjs)
+const SAFE_SCREENS = new Set(Object.entries(SCREENS).filter(([, s]) => s.safe).map(([k]) => k));   // the spec's `safe: true` flag (screens.mjs)
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
@@ -53,6 +53,7 @@ for (const s of sizes) for (const screen of screens) for (const variant of varia
   if (spec.notOn?.includes(cls)) continue;   // the screen does not exist on this class (design.md 2.1)
   if ((variant === 'safe' || variant === 'keyboard') && !touch) continue;
   if (variant === 'keyboard' && !spec.input) continue;
+  if (variant === 'keyboard' && cls === 'tiny') continue;   // D-138: no typing in the tiny window (Discord picture-in-picture)
   if (variant === 'safe' && (!/^compact/.test(cls) || !SAFE_SCREENS.has(screen))) continue;
   if (variant === 'long' && !LONG_SCREENS.has(screen)) continue;
   todo.push([s, screen, variant]);
@@ -72,6 +73,7 @@ async function runCell([s, screen, variant], ref = {}) {
         await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
         const cookies = [];
         if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? 'battle' : spec.hunt, url: BASE });
+        if (spec.trades) cookies.push({ name: 'ci_trades', value: spec.trades, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (spec.report) cookies.push({ name: 'ci_report', value: 'on', url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
