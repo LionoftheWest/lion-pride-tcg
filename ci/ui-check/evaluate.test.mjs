@@ -64,6 +64,9 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
+  assert.equal(ownerOf('dungeon-over', '.u3-dgs-fdp > .u3-dgs-stats > .u3-dgs-stat'), 'UI-50');
+  assert.equal(ownerOf('dungeon-floor', '.u3-dgs-fdp > .u3-dgs-stats > .u3-dgs-stat'), 'UI-49');
+  assert.equal(ownerOf('dungeon-fight', '.dg-fight > .dg-arena > .dg-plates'), 'UI-47');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
   assert.equal(ownerOf('trades-few', '.u3-trades__cols > #u3Pd.u3-pd > #u3PdSide.u3-pd__body'), 'UI-25');   // Pending
@@ -140,7 +143,9 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
   assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
   assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');
-  assert.deepEqual(plan(new Set(['UI-50'])), { screens: [], uncovered: ['UI-50'] });
+  assert.deepEqual(plan(new Set(['UI-58'])), { screens: [], uncovered: ['UI-58'] });
+  assert.deepEqual(plan(new Set(['UI-47'])).screens.sort(), ['dungeon-fight', 'dungeon-fight-pick', 'dungeon-fight2']);   // the 3 UI-47 specs
+  assert.deepEqual(plan(new Set(['UI-50'])).screens.sort(), ['dungeon-over', 'dungeon-over-revealed']);   // the 2 UI-50 specs
   assert.deepEqual(plan(new Set(['UI-49'])).screens.filter((x) => x.startsWith('dungeon-')).sort(), ['dungeon-chest', 'dungeon-chest-flipped', 'dungeon-chest-open', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-path', 'dungeon-rest', 'dungeon-retreat']);   // the 8 UI-49 specs
   assert.deepEqual(plan(new Set()).screens, []);
   assert.equal(plan(new Set(), { full: true }).screens.length, Object.keys(SCREENS).length);
@@ -154,15 +159,15 @@ test('plan with the title IDs (pick): a PR runs only its own screens and the scr
   assert.equal(plan(enforced, { pick: new Set(['UI-01']) }).screens.length, Object.keys(SCREENS).length, 'the shell still runs every screen');
   assert.deepEqual(plan(enforced, { pick: new Set() }).screens, [], 'no title ID: nothing to run');
   assert.equal(plan(enforced, { full: true, pick: new Set(['UI-46']) }).screens.length, Object.keys(SCREENS).length, '--full (the nightly report) runs every screen');
-  assert.deepEqual(plan(new Set(['UI-50']), { pick: new Set(['UI-50']) }).uncovered, ['UI-50']);
+  assert.deepEqual(plan(new Set(['UI-58']), { pick: new Set(['UI-58']) }).uncovered, ['UI-58']);
 });
 test('verdict with a plan: only the planned screens must have results; an uncovered enforced ID fails', () => {
   const only = full().filter((r) => r.screen === 'dungeon');
   assert.equal(verdict(only, REG, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon', 'collection'] }).fails.length, SIZES.length, 'collection was planned and has no result');
   const reg = { ...REG, 'UI-07': { ...REG['UI-07'], standard: 'Not migrated' } };
   assert.equal(verdict(only, reg, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon'] }).fails.length, 0);
-  const v = verdict(only, reg, { title: 'UI-46 + UI-50', browsers: ['chromium'], screens: ['dungeon'] });
-  assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-50', 'no screen in the check']]);
+  const v = verdict(only, reg, { title: 'UI-46 + UI-58', browsers: ['chromium'], screens: ['dungeon'] });
+  assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-58', 'no screen in the check']]);
 });
 
 test('the keyboard variant does not check the empty band; the same band in base is a defect (2.3, G-015)', () => {
@@ -198,6 +203,8 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
   const mine = list.filter((e) => e.id === 'UI-49');
   assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+  const fight = list.filter((e) => e.id === 'UI-47');   // D-155: the phone controls of the fight
+  assert.ok(fight.length > 0 && fight.every((e) => e.decision === 'D-155' && e.rule === 'missing' && /^dungeon-fight/.test(e.screen) && ['430x932', '430x822', '412x915'].includes(e.size)));
 });
 
 test('D-136: a defect at a report-only landscape size is listed but does not fail; the same defect at a portrait size fails', () => {
