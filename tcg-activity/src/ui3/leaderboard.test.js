@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { ranked, pageFit, packPages, tabState, myRanks, toNext, runLine, TABS, METRICS, TOP, ERROR_TEXT } from './leaderboard.js';
+import { ranked, pageFit, packPages, metricSwitch, tabState, myRanks, toNext, runLine, TABS, METRICS, TOP, ERROR_TEXT } from './leaderboard.js';
 
 const rows = [
   { id: 'a', name: 'Ann', power: 10, huntDamage: 5, bosses: 0, cards: 3, achievements: 1 },
@@ -43,6 +43,15 @@ test('packPages: rows of different heights fill each page in order; a row taller
   assert.deepEqual(packPages([], 100), [{ start: 0, end: 0 }]);
   const all = packPages([40, 40, 40], 1000, 8);
   assert.equal(all.length, 1); assert.equal(all[0].end, 3);
+});
+
+test('metricSwitch: the same board has the same title on a phone (short names) and on a wide window (P1 compares them)', () => {
+  const titles = (h) => [...h.matchAll(/data-seg="([a-zA-Z]+)" title="([^"]+)"/g)].map((m) => m[1] + ':' + m[2]);
+  const full = metricSwitch('power', false), short = metricSwitch('power', true);
+  assert.deepEqual(titles(full), titles(short));
+  assert.deepEqual(titles(full), ['power:Collection Power', 'huntDamage:Hunt damage', 'bosses:Bosses downed', 'cards:Cards', 'achievements:Achievements']);
+  assert.match(short, />Hunt dmg</); assert.match(full, />Hunt damage</);
+  assert.match(short, /aria-selected="true"[^>]*data-seg="power"/);
 });
 
 test('tabState: an error answer never shows as an empty list (G-083); empty and ok are told apart', () => {
