@@ -67,6 +67,11 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('home', '#topbar > .title > .u3-logo > .u3-logo__emblem'), 'UI-23');   // the logo lockups are UI-23
   assert.equal(ownerOf('loader', '#ldr3 > .ldr3-emblem'), 'UI-23');
+  assert.equal(ownerOf('boons-hist', '.u3-bn-panel > .u3-bn-sec > .u3-bn-list'), 'UI-27');
+  assert.equal(ownerOf('boons-onyou', '#u3BoonsSheet > .u3-sheet'), 'UI-27');
+  assert.equal(ownerOf('boons-hist', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');
+  assert.equal(ownerOf('boons-picker', '#u3Picker > .u3-scrim > .u3-pk--boons'), 'UI-27');
+  assert.equal(ownerOf('hunt-picker', '#u3Picker > .u3-scrim > .u3-pk'), 'UI-64');
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
   assert.equal(ownerOf('dungeon-over', '.u3-dgs-fdp > .u3-dgs-stats > .u3-dgs-stat'), 'UI-50');
   assert.equal(ownerOf('dungeon-floor', '.u3-dgs-fdp > .u3-dgs-stats > .u3-dgs-stat'), 'UI-49');
