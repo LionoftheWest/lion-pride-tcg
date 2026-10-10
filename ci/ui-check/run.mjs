@@ -69,6 +69,7 @@ let cells = 0, failures = 0;
 const PRESENCE = (kind, long) => { const at = new Date(FIX.recordedAt).getTime() - 120_000; const u = (n, name, status) => ({ id: `10000000000000010${n}`, name: long ? `${name}_with_a_very_long_name_xx`.slice(0, 32) : name, status: { ...status, at } });
   const all = [u(1, 'Member B', { kind: 'opening', d: { n: 3, of: 25, c: [] } }), u(2, 'Member C', { kind: 'battle', d: { v: 146, n: 8, of: 8, c: [] } }), u(3, 'Member D', { kind: 'playing', d: { c: [] } }),
     u(4, 'Member E', { kind: 'trading', d: {} }), u(5, 'Member F', { kind: 'home' })]; return kind === 'live' ? all.slice(0, 3) : all; };
+const SHOT_TIMEOUT = Number(process.env.UI_CHECK_SHOT_TIMEOUT) || 30000;   // ms, the Playwright default (the variable is for a test)
 async function runCell([s, screen, variant], ref = {}) {
         const [W, H, cls, touch] = s; const size = sizeKey(s); const land = W > H;
         const spec = SCREENS[screen];
@@ -97,7 +98,7 @@ async function runCell([s, screen, variant], ref = {}) {
         pg.on('response', (r) => { if (r.status() === 403 && r.request().method() !== 'GET') blocked.push(r.request().method() + ' ' + new URL(r.url()).pathname); });
         const noFixture = new Set();   // a GET /api call with no recorded answer (the screen may show an error state)
         pg.on('response', (r) => { const u = new URL(r.url()); if (r.status() === 404 && u.pathname.startsWith('/api/')) noFixture.add(u.pathname); });
-        const res = { browser: BROWSER, size, class: cls, touch, screen, id: spec.id, variant };
+        const res = { browser: BROWSER, size, class: cls, touch, screen, id: spec.id, variant }; let shotRetry = false;
         try {
           if (spec.loader) {
             // The app never starts here (no ui-v2 class): wait for the loader state itself (the timeout is the real 15 s), then let the
@@ -131,7 +132,10 @@ async function runCell([s, screen, variant], ref = {}) {
           res.cutWin = await call(pg, CUT, '[data-audit-win]');
           res.extra = await call(pg, EXTRA);
           if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
-          await pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70 });
+          // A loaded runner (software WebGL, the 3D chest) timed out on page.screenshot (PR #290, three runs). On a TimeoutError wait 2 s
+          // and try once more with a longer timeout. A second failure is a runner error as before. The cell line says "screenshot retry".
+          const shot = (timeout) => pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70, timeout });
+          try { await shot(SHOT_TIMEOUT); } catch (e) { if (e?.name !== 'TimeoutError') throw e; shotRetry = true; await sleep(2); await shot(SHOT_TIMEOUT * 2); }
         } catch (e) {
           res.error = String(e).slice(0, 300); if (!ref.dead) failures++;
           try { await pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70 }); } catch { /* ignore */ }
@@ -140,7 +144,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (ref.dead) return;   // this try timed out: the retry writes the result
         writeFileSync(join(OUT, `${BROWSER}-${size}-${screen}-${variant}.json`), JSON.stringify(res));
         cells++;
-        console.log(`${BROWSER} ${size} ${screen.padEnd(20)} ${variant.padEnd(8)} ${String(res.seconds).padStart(3)}s miss=${(res.miss || []).length} fit=${(res.fit || []).length} cut=${(res.cut || []).length}${res.error ? ' ERROR ' + res.error.slice(0, 80) : ''}`);
+        console.log(`${BROWSER} ${size} ${screen.padEnd(20)} ${variant.padEnd(8)} ${String(res.seconds).padStart(3)}s miss=${(res.miss || []).length} fit=${(res.fit || []).length} cut=${(res.cut || []).length}${shotRetry ? ' screenshot retry' : ''}${res.error ? ' ERROR ' + res.error.slice(0, 80) : ''}`);
         await ctx.close();
 }
 // A hung cell (one WebKit shard ran 55 min instead of 11, PR #270, 2026-10-08): each try has a time limit, and a cell that
