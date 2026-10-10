@@ -3,6 +3,7 @@
 // paints. It is used only when /api/flags says uiV2, so the v1 screens are untouched.
 
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
+import { openWishlist, closeWishlist } from './ui3/wishlist.js';
 import { fillConvertButton } from './ui-v2-shop.js';
 import { isLand, isPort, isPhone } from './mobile.js';
 import { thumb } from './thumb.js';
@@ -16,6 +17,8 @@ import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import * as pf3 from './ui3/profile.js';
+import * as se3 from './ui3/style-editor.js';
+import { openCardPicker } from './ui3/card-picker.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -1112,6 +1115,7 @@ export async function openSpotEditor() {
   const cards = mergedCards();
   sp.ids = spotlightOf(cards, myProfile?.spotlight).map((c) => Number(c.id));
   sp.title = myProfile?.title || null; sp.frame = myProfile?.frame || null; sp.q = ''; sp.page = 0;
+  if (document.body.classList.contains('ui-v3')) { sp.msg = ''; sp.busy = false; paintStyleV3(); return; }   // UI-15 v3 (src/ui3/style-editor.js)
   let box = el('spotEditor');
   if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="spotEditor" class="v2-modal hidden"></div>'); box = el('spotEditor'); }
   box.classList.remove('hidden');
@@ -1198,13 +1202,87 @@ function paintSpotEditor() {
   });
 }
 
+// ---- UI-15 v3 (body.ui-v3 only): the slots, the title, the frame and Save; the cards come from the Card picker (D-80 16) ----
+// The titles and frames the member owns are the ones the server sends (GET /api/profile: titles, frames, from
+// achievement_claims: the same list POST /api/cosmetics accepts); the locked ones show what exists and how to get it.
+const TIER_FRAME = { diamond: 'Diamond frame', mythic: 'Obsidian frame' };   // the tier frames 'diamond:<track>', 'mythic:<track>' (D-74)
+const frameLabel = (f) => FRAMES[f] || TIER_FRAME[String(f).split(':')[0]] || String(f);
+function styleLists() {
+  const achs = measure(mergedCards(), myProfile?.stats);
+  const claimed = achs.filter((a) => claimedSet().has(a.key));
+  const by = (kind, v) => achs.filter((a) => rewardOf(a.key)[kind] === v).map((a) => a.name).join(' or ');
+  const all = (kind) => [...new Set(achs.map((a) => rewardOf(a.key)[kind]).filter(Boolean))];
+  const ownT = Array.isArray(myProfile?.titles) ? myProfile.titles : [...new Set(claimed.map((a) => rewardOf(a.key).title).filter(Boolean))];
+  const ownF = Array.isArray(myProfile?.frames) ? myProfile.frames : [...new Set(claimed.map((a) => rewardOf(a.key).frame).filter(Boolean))];
+  return {
+    titles: { owned: ownT, locked: all('title').filter((t) => !ownT.includes(t)).map((t) => ({ value: t, by: by('title', t) })) },
+    frames: { owned: ownF.map((f) => ({ value: f, label: frameLabel(f) })), locked: all('frame').filter((f) => !ownF.includes(f)).map((f) => ({ value: f, label: frameLabel(f), by: by('frame', f) })) },
+  };
+}
+function styleHost() {
+  let host = document.getElementById('u3StyleHost');
+  if (host) return host;
+  host = document.createElement('div');
+  host.id = 'u3StyleHost';
+  document.body.appendChild(host);
+  host.addEventListener('click', onStyleClick);
+  host.addEventListener('change', (e) => { if (e.target.id === 'u3SeTitle') { sp.title = e.target.value || null; sp.msg = ''; paintStyleV3(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && host.firstChild && !document.getElementById('u3Picker')) closeStyleV3(); });
+  return host;
+}
+function closeStyleV3() { const h = document.getElementById('u3StyleHost'); if (h) h.innerHTML = ''; }
+function paintStyleV3() {
+  const me = ctx.user();
+  const byId = new Map(mergedCards().filter((c) => c.owned).map((c) => [Number(c.id), c]));
+  const lists = styleLists();
+  styleHost().innerHTML = se3.styleEditorHTML({
+    avatar: avatarHTML(me?.id, me?.name, 'u3-se-av', sp.frame), name: me?.name || '',
+    cards: sp.ids.map((id) => byId.get(Number(id))).filter(Boolean), title: sp.title, frame: sp.frame, msg: sp.msg, busy: sp.busy, ...lists,
+  });
+}
+function openSpotPicker(from) {
+  const owned = mergedCards().filter((c) => c.owned).sort((a, b) => (b.power || 0) - (a.power || 0));
+  openCardPicker({
+    title: 'Spotlight', cap: se3.SPOT_CAP, cards: owned, selected: sp.ids.map(Number), returnFocus: from,
+    blocked: (c, sel) => (sel.length >= se3.SPOT_CAP ? 'The Spotlight holds 3 cards' : ''),
+    apply: (cards, v, q) => { const w = q.trim().toLowerCase(); return w ? cards.filter((c) => [c.name, c.subject].filter(Boolean).join(' ').toLowerCase().includes(w)) : cards; },
+    status: () => ({ checks: [], ready: true }),
+    detail: (c) => ctx.openViewer(c),
+    onConfirm: (sel) => { sp.ids = sel; sp.msg = ''; paintStyleV3(); return true; },
+  });
+}
+async function onStyleClick(e) {
+  const t = e.target.closest('button, [data-u3-scrim]');
+  if (!t) return;
+  const d = t.dataset;
+  if (t.matches('[data-u3-scrim]')) { if (e.target === t && !sp.busy) closeStyleV3(); return; }
+  if (d.seclose) { closeStyleV3(); return; }
+  if (d.sepick) { openSpotPicker(t); return; }
+  if (d.seunpick) { sp.ids = sp.ids.filter((x) => String(x) !== d.seunpick); sp.msg = ''; paintStyleV3(); return; }
+  if ('seframe' in d && !t.disabled) { sp.frame = d.seframe || null; sp.msg = ''; paintStyleV3(); return; }
+  if (d.sesave && !sp.busy) {
+    sp.busy = true; sp.msg = ''; paintStyleV3();
+    const [a, b] = await Promise.all([
+      ctx.apiPost('/api/spotlight', { cardIds: sp.ids }).catch(() => null),
+      (sp.title !== (myProfile?.title || null) || sp.frame !== (myProfile?.frame || null)) ? ctx.apiPost('/api/cosmetics', { title: sp.title, frame: sp.frame }).catch(() => null) : Promise.resolve({ ok: true }),
+    ]);
+    sp.busy = false;
+    if (!a?.ok || !b?.ok) { sp.msg = 'Could not save. Try again.'; paintStyleV3(); return; }
+    myProfile = { ...(myProfile || {}), spotlight: a.spotlight, title: sp.title, frame: sp.frame };
+    closeStyleV3();
+    if (ctx.currentView() === 'home') paintProfile();
+    if (memData?.self && !ctx.el('memberModal')?.classList.contains('hidden')) openMember(ctx.user()?.id); // show the new title + frame
+    toast('Profile saved');
+  }
+}
+
 // ---- A member's profile (design/15-member-profile-screen.png, approved 2026-09-27) ----
 // Opened from a tile in "Live in voice". Left: who they are, what they do now, the
 // actions, the stats and badges. Centre: the spotlight and their season. Right: their
 // live hunt, and the cards each of you has that the other one needs.
 
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const mem = { page: 0, all: false, wishFrom: 0, pane: '' };   // pane '' = the first tab with content (profile.js fitTight)
+const mem = { page: 0, all: false, pane: '' };   // pane '' = the first tab with content (profile.js fitTight)
 let memData = null;
 
 // The needs / closest achievements list: a phone shows only whole rows; no room for one row hides
@@ -1238,7 +1316,7 @@ export async function openMember(id) {
     box.innerHTML = '<div class="mem-empty"><button class="v2-btn" id="memBack">← Home</button><p class="v2-empty">This member has no profile yet.</p></div>'; return;
   }
   memData = { p, self, cards: mergedCards(self ? undefined : (p.cards || [])) };
-  mem.all = false; mem.page = 0; mem.wishFrom = 0; mem.pane = '';
+  mem.all = false; mem.page = 0; mem.pane = '';
   paintMember();
 }
 export function closeMember() { ctx.el('memberModal')?.classList.add('hidden'); }
@@ -1247,7 +1325,7 @@ export function closeMember() { ctx.el('memberModal')?.classList.add('hidden'); 
 export function closeMemberOnShell() {
   if (!pf3.isV3()) return;
   const m = ctx?.el('memberModal');
-  if (m && !m.classList.contains('hidden')) closeMember();
+  if (m && !m.classList.contains('hidden')) { closeWishlist(); closeMember(); }   // the Wishlist drawer belongs to the Profile (D-128)
 }
 document.addEventListener('click', (e) => { if (pf3.closesProfile(e.target)) closeMemberOnShell(); }, true);
 
@@ -1382,13 +1460,10 @@ function paintMemberV3({ box, p, self, cards, s, achs, done, pres, sIco, sTxt, s
   el('memPager')?.addEventListener('click', (e) => { const b = e.target.closest('button[data-page]'); if (!b || b.disabled) return; mem.page += b.dataset.page === 'next' ? 1 : -1; pf3.fitAll(el('memGrid'), el('memPager'), owned, mem); });
   const fit = () => {
     if (!box.querySelector('.u3-pf')) return;
-    el('memWish')?.querySelectorAll('.wl-row').forEach((r) => { r.hidden = false; });
-    el('memWish')?.querySelector('.u3-pf-wmore')?.remove();
     pf3.fitTight(box.querySelector('.u3-pf'), mem.pane, () => pf3.fitStats(box.querySelector('.u3-pf-stats')));
     pf3.fitAch(el('memAch'), done);
     pf3.fitSpot(el('memSpot'));
     if (all) pf3.fitAll(el('memGrid'), el('memPager'), owned, mem); else pf3.fitMini(el('memGrid'), season);
-    const w = el('memWish'); if (w?.querySelector('.wl-list')) pf3.fitWish(w, mem);
   };
   requestAnimationFrame(fit);
   document.fonts?.ready.then(() => { if (memFit === fit) fit(); });   // the number font changes the widths
@@ -1415,6 +1490,12 @@ function paintWish() {
   const box = ctx.el('memWish');
   if (!box) return;
   const n = wl.slots.filter((x) => x.card).length;
+  if (pf3.isV3() && box.closest('.u3-pf')) {   // v3 (UI-16, D-128): the Profile shows a handle strip; a tap or a drag up opens the drawer
+    box.innerHTML = pf3.wishBarHTML(n, wl.slots.length || 5);
+    pf3.bindWishHandle(ctx.el('wlHandle'), (h) => openWishV3(h));
+    memFit?.();
+    return;
+  }
   box.innerHTML = `<div class="tile-h"><b>♡ Wishlist</b><span class="grow"></span><span class="mono dim">${n}/5</span>
       ${wl.self ? `<button class="v2-chip-btn${wl.edit ? ' gold' : ''}" id="wlEdit">${wl.edit ? '✓ Done' : '✎ Edit'}</button>` : ''}</div>
     <div class="wl-list">${wl.slots.map((x) => `<div class="wl-row${wl.pick === x.slot ? ' on' : ''}" data-slot="${x.slot}"><span class="wl-i mono">${x.slot}</span>
@@ -1426,7 +1507,7 @@ function paintWish() {
     ${wl.msg ? `<span class="tr-msg">${esc(wl.msg)}</span>` : ''}`;
   // A portrait phone: the Wishlist sits beside the hunt tile; in Edit it takes the full width (ui-v2-mobile.css).
   ctx.el('memberModal')?.querySelector('.mem-screen')?.classList.toggle('wl-open', isPort() && wl.edit);
-  ctx.el('wlEdit')?.addEventListener('click', () => { wl.edit = !wl.edit; wl.pick = null; closeWishPicker(); paintWish(); });
+  ctx.el('wlEdit')?.addEventListener('click', (e) => { if (wishV3()) { openWishV3(e.currentTarget); return; } wl.edit = !wl.edit; wl.pick = null; closeWishPicker(); paintWish(); });
   box.querySelectorAll('.wl-x').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveWish(Number(b.dataset.slot), null); }));
   box.querySelectorAll('.wl-top').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); saveTop(Number(b.dataset.slot)); }));
   box.querySelectorAll('.wl-set').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openWishPicker(Number(b.dataset.slot)); }));
@@ -1484,6 +1565,22 @@ function openWishPicker(slot) {
   paintWish();
 }
 function closeWishPicker() { ctx.el('memberModal')?.querySelector('.wl-picker')?.remove(); }
+// v3 (UI-16, body.ui-v3 only): the Wishlist handle opens the drawer (D-128), and the pencil opens the Card picker (src/ui3/wishlist.js).
+const wishV3 = () => document.body.classList.contains('ui-v3');
+function openWishV3() {
+  const id = wl.id;
+  openWishlist({
+    slots: wl.slots, returnFocus: () => ctx.el('wlHandle'), readonly: !wl.self, rarityLabel: ctx.RARITY_LABEL,
+    view: (cardId) => { const c = (ctx.cache.catalog?.cards || []).find((k) => Number(k.id) === cardId); if (c) ctx.openViewer(c); },
+    load: () => ctx.api(`/api/wishlist?id=${encodeURIComponent(id)}`),
+    save: (slot, cardId) => ctx.apiPost('/api/wishlist', { slot, cardId }),
+    star: (slot) => ctx.apiPost('/api/wishlist/top', { slot }),
+    cards: () => mergedCards(),
+    lib: { rarities: RARITY_ORDER.map((r) => [r, ctx.RARITY_LABEL[r] || r]), elements: ELEMENT_ORDER.map((e) => [e, ELEMENTS[e].name]), types: TYPES, games: GAMES, elementOf: (c) => cardElement(c.tags) },
+    detail: (c) => ctx.openViewer(c),
+    onChange: () => { if (wl.id === id) loadWish(id, wl.self); hallChanged(); },
+  });
+}
 
 // Their damage in the live hunt, per day, and their best card.
 function huntBoxHTML(p) {
