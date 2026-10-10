@@ -347,6 +347,9 @@ const MOBILE_UI_USERS = new Set((process.env.MOBILE_UI_USERS || '').split(',').m
 const TRADE2_ALL = process.env.FEATURE_TRADE_TWO_STEP === '1';
 const TRADE2_USERS = new Set((process.env.TRADE2_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
 const trade2On = (id) => TRADE2_ALL || TRADE2_USERS.has(String(id));
+// Trade REQUESTS and full proposals under two-step trades (trade_request.sql, decision D-168). Default OFF:
+// FEATURE_TRADE_REQUEST=1. Off = the offer routes behave as before (a request or a full proposal is refused).
+const TRADE_REQUEST_ON = process.env.FEATURE_TRADE_REQUEST === '1';
 // Wishlists + the Trading Hall + Auctions (hall_auctions.sql). Default OFF: HALL_USERS=id,id first
 // (Nathan, 2026-10-02: "have it flagged just for me at first"), FEATURE_HALL=1 for everyone.
 // FEATURE_HALL_POSTS=1: the Discord posts (a new listing, an accepted bid); OFF while it is a test.
@@ -432,7 +435,7 @@ app.get('/api/flags', async (req, res) => {
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
   const [{ data: tut }, uiV3] = await Promise.all([supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle(), uiV3On(me.id)]);
-  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, uiV3, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, uiV3, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), tradeRequest: TRADE_REQUEST_ON, hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
@@ -1855,21 +1858,30 @@ app.post('/api/trade/offer', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const toId = String(req.body?.toId || '');
-  const offerCardId = Number(req.body?.offerCardId);
+  const offerCardId = Number(req.body?.offerCardId) || null;
   const requestCardId = Number(req.body?.requestCardId) || null;
-  if (!toId || !offerCardId) return res.status(400).json({ error: 'bad request' });
+  if (!toId || (!offerCardId && !requestCardId)) return res.status(400).json({ error: 'bad request' });
+  // A REQUEST (no offer card, D-168): ask for one of their cards; the owner picks one of mine (trade_request.sql).
+  const isRequest = !offerCardId && !!requestCardId;
+  if (isRequest && !TRADE_REQUEST_ON) return res.status(400).json({ error: 'requests are not on yet' });
+  // The new Pending and Trade window (ui_v3) answer a request; the v2 screens cannot. Both members need ui_v3.
+  if (isRequest && !(trade2On(me.id) && trade2On(toId) && await uiV3On(me.id) && await uiV3On(toId))) return res.status(400).json({ error: 'two-step trades are not on for that member yet' });
   if (!requestCardId && !(trade2On(me.id) && trade2On(toId))) return res.status(400).json({ error: 'two-step trades are not on for that member yet' });
-  // Two-step on: the old flow (the sender also picks the card they get) is refused from any screen.
-  if (requestCardId && trade2On(me.id)) return res.status(400).json({ error: 'Send your card; they pick the card they give back.' });
+  // Two-step on: the old flow (the sender also picks the card they get) is refused from any screen, unless the
+  // request flag is on: then the full proposal (both cards) is allowed and the receiver accepts or declines.
+  if (offerCardId && requestCardId && trade2On(me.id) && !TRADE_REQUEST_ON) return res.status(400).json({ error: 'Send your card; they pick the card they give back.' });
   // Nathan, 2026-10-01: the sender offers one card; the receiver picks theirs (trade_two_step.sql).
-  const { data, error } = requestCardId
-    ? await supabase.rpc('create_trade', { p_from: me.id, p_to: toId, p_offer: offerCardId, p_request: requestCardId })
-    : await supabase.rpc('create_trade_open', { p_from: me.id, p_to: toId, p_offer: offerCardId });
+  const { data, error } = isRequest
+    ? await supabase.rpc('create_trade_request', { p_from: me.id, p_to: toId, p_request: requestCardId })
+    : requestCardId
+      ? await supabase.rpc('create_trade', { p_from: me.id, p_to: toId, p_offer: offerCardId, p_request: requestCardId })
+      : await supabase.rpc('create_trade_open', { p_from: me.id, p_to: toId, p_offer: offerCardId });
   if (error) return res.status(500).json({ error: error.message });
   if (data != null) {
     const from = me.global_name || me.username;
-    notify(toId, 'trade_offer', requestCardId ? `🔄 ${from} sent you a trade offer! Open the Trading tab.` : `🔄 ${from} sent you a trade offer! Pick a card to trade back.`);
-    if (tradePings.allow(me.id, toId)) announce(requestCardId ? `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to accept or decline.` : `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to pick your card or decline.`, 'trades', { type: 'trade', kind: 'offer', offerId: Number(data) });
+    const asked = isRequest ? (await supabase.from('cards').select('name').eq('id', requestCardId).maybeSingle()).data?.name : null;
+    notify(toId, 'trade_offer', isRequest ? `🔄 ${from} asked for your ${asked || 'card'}! Pick a card you want back.` : requestCardId ? `🔄 ${from} sent you a trade offer! Open the Trading tab.` : `🔄 ${from} sent you a trade offer! Pick a card to trade back.`);
+    if (tradePings.allow(me.id, toId)) announce(isRequest ? `🔄 <@${toId}> — **${from}** asked for your ${asked || 'card'}! Open Lion Pride TCG to pick a card you want back.` : requestCardId ? `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to accept or decline.` : `🔄 <@${toId}> — **${from}** sent you a trade offer! Open Lion Pride TCG to pick your card or decline.`, 'trades', { type: 'trade', kind: 'offer', offerId: Number(data) });
   }
   res.json({ ok: data != null, id: data });
 });
@@ -1882,12 +1894,15 @@ app.post('/api/trade/counter', async (req, res) => {
   const offerId = Number(req.body?.offerId);
   const cardId = Number(req.body?.cardId);
   if (!offerId || !cardId) return res.status(400).json({ error: 'bad request' });
-  const { data: offer } = await supabase.from('trade_offers').select('from_id').eq('id', offerId).maybeSingle();
-  const { data, error } = await supabase.rpc('counter_trade', { p_offer_id: offerId, p_actor: me.id, p_card: cardId });
+  const { data: offer } = await supabase.from('trade_offers').select('from_id, offer_card_id').eq('id', offerId).maybeSingle();
+  // A request (no offer card yet, D-168): the owner picks one of the REQUESTER's cards (trade_request.sql).
+  const isRequest = offer && offer.offer_card_id == null;
+  if (isRequest && !TRADE_REQUEST_ON) return res.status(400).json({ error: 'requests are not on yet' });
+  const { data, error } = await supabase.rpc(isRequest ? 'counter_trade_request' : 'counter_trade', { p_offer_id: offerId, p_actor: me.id, p_card: cardId });
   if (error) return res.status(500).json({ error: error.message });
   if (data && offer?.from_id) {
     const who = me.global_name || me.username;
-    notify(offer.from_id, 'trade_counter', `🔄 ${who} picked a card for your trade! Accept to swap.`);
+    notify(offer.from_id, 'trade_counter', isRequest ? `🔄 ${who} picked a card they want for your request! Confirm to swap.` : `🔄 ${who} picked a card for your trade! Accept to swap.`);
     if (tradePings.allow(me.id, offer.from_id)) announce(`🔄 <@${offer.from_id}> — **${who}** picked a card for your trade! Open Lion Pride TCG to accept.`, 'trades', { type: 'trade', kind: 'picked', offerId });
   }
   res.json({ ok: Boolean(data) });

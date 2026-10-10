@@ -2,7 +2,7 @@
 // D-35 (actions), D-64 item 3 (extra copies first), the two-step server rule (server.js /api/trade/offer).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { orderCards, filterCards, pageOf, actionsFor, planFor, canGift, canOffer, fitTradeGrid, fitCols } from './trade-window.js';
+import { orderCards, filterCards, pageOf, actionsFor, planFor, canGift, canOffer, fitTradeGrid, fitCols, pickCards } from './trade-window.js';
 
 const C = (id, quantity, extra = {}) => ({ id, name: `Card ${id}`, rarity: 'normal', quantity, ...extra });
 
@@ -93,4 +93,35 @@ test('compact-port: 4 columns, the tile follows the column width, whole rows onl
   assert.equal(g.rows, Math.floor((560 + 6) / (91 * 1.4 + 6)));
   assert.equal(fitCols(329, 100, 6).rows, 1);   // never 0 rows
   assert.equal(fitCols(0, 0, 6).cols, 4);
+});
+
+test('D-168 requests ON: Request works with their card only; the full proposal sends both cards', () => {
+  const give = C(7, 1), get = C(9, 1);
+  const rq = actionsFor({ get, requests: true })[0];
+  assert.equal(rq.id, 'request'); assert.equal(rq.disabled, false); assert.equal(rq.primary, true);
+  assert.equal(actionsFor({ get: C(9, 1, { tradeable: false }), requests: true })[0].disabled, true);
+  assert.deepEqual(planFor('request', { get, to: 'm1', requests: true }), { path: '/api/trade/offer', body: { toId: 'm1', requestCardId: 9 } });
+  assert.deepEqual(planFor('offer', { give, get, to: 'm1', twoStep: true, requests: true }), { path: '/api/trade/offer', body: { toId: 'm1', offerCardId: 7, requestCardId: 9 } });
+  // one card of mine and no card of theirs is still the plain two-step Offer
+  assert.deepEqual(planFor('offer', { give, to: 'm1', twoStep: true, requests: true }), { path: '/api/trade/offer', body: { toId: 'm1', offerCardId: 7 } });
+});
+
+test('D-168 requests OFF (the default): nothing changes, a request has no call', () => {
+  const get = C(9, 1), give = C(7, 1);
+  assert.equal(actionsFor({ get })[0].disabled, true);
+  assert.equal(actionsFor({ get })[0].reason, 'Not open yet');
+  assert.equal(planFor('request', { get, to: 'm1' }), null);
+  assert.deepEqual(planFor('offer', { give, get, to: 'm1', twoStep: true }), { path: '/api/trade/offer', body: { toId: 'm1', offerCardId: 7 } });
+  assert.equal(planFor('pick', { get }), null);
+});
+
+test('D-168 the owner answers a request: the requester cards of the same rarity, one Pick action, the counter route', () => {
+  const want = C(5, 1, { rarity: 'rare' });
+  const theirs = [C(1, 1, { rarity: 'rare' }), C(5, 1, { rarity: 'rare' }), C(2, 1, { rarity: 'normal' }), C(3, 1, { rarity: 'rare', tradeable: false }), C(4, 2, { rarity: 'rare' })];
+  assert.deepEqual(pickCards(theirs, want).map((c) => c.id), [1, 4]);
+  assert.deepEqual(pickCards(theirs, null), []);
+  const pick = { offerId: 42, want };
+  assert.deepEqual(actionsFor({ pick }), []);
+  assert.deepEqual(actionsFor({ pick, get: theirs[0] }).map((a) => [a.id, a.primary, a.disabled]), [['pick', true, false]]);
+  assert.deepEqual(planFor('pick', { pick, get: theirs[0], to: 'm1' }), { path: '/api/trade/counter', body: { offerId: 42, cardId: 1 } });
 });

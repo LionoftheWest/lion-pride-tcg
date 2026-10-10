@@ -76,6 +76,12 @@ export function fitCols(width, height, gap, cols = 4, ratio = TOKENS['card-ratio
   return { cols, rows, tile };
 }
 
+/** The cards the owner of a request may pick (D-168, counter_trade_request): the requester's tradeable cards of the same
+ *  rarity as the asked card, not that card. Pure (unit-tested). */
+export function pickCards(cards, want) {
+  return (cards || []).filter((c) => c.tradeable !== false && !!want && c.rarity === want.rarity && Number(c.id) !== Number(want.id));
+}
+
 /** The rules of the server (gift_card, create_trade_open): a card to offer must be tradeable; a card to gift also not Gold. */
 export const canOffer = (c) => !!c && c.tradeable !== false;
 export const canGift = (c) => canOffer(c) && c.rarity !== 'gold';
@@ -87,25 +93,32 @@ export const canGift = (c) => canOffer(c) && c.rarity !== 'gold';
  * card alone, so Request waits for the server change (D-35); with the old rule (twoStep off) Offer needs both cards.
  * Pure (unit-tested).
  */
-export function actionsFor({ give = null, get = null, twoStep = true } = {}) {
+export function actionsFor({ give = null, get = null, twoStep = true, requests = false, pick = null } = {}) {
+  // The owner answers a request (D-168): one card of the requester, one action. Nothing chosen = no action.
+  if (pick) return get ? [{ id: 'pick', primary: true, disabled: !canOffer(get), reason: canOffer(get) ? '' : 'Locked' }] : [];
   if (give && !get) {
     return [
       { id: 'gift', disabled: !canGift(give), reason: give.rarity === 'gold' ? 'Gold cannot be gifted' : (canOffer(give) ? '' : 'Locked') },
       { id: 'offer', primary: true, disabled: !canOffer(give) || !twoStep, reason: !canOffer(give) ? 'Locked' : (twoStep ? '' : 'Pick their card') },
     ];
   }
-  if (!give && get) return [{ id: 'request', primary: true, disabled: true, reason: 'Not open yet' }];
+  // Request (D-168): their card only. It works when the server has requests on (FEATURE_TRADE_REQUEST).
+  if (!give && get) return [{ id: 'request', primary: true, disabled: !requests || !canOffer(get), reason: requests ? (canOffer(get) ? '' : 'Locked') : 'Not open yet' }];
   if (give && get) return [{ id: 'offer', primary: true, disabled: !canOffer(give), reason: canOffer(give) ? '' : 'Locked' }];
   return [];
 }
 
 /** The server call for an action (the paths and fields of server.js). Pure (unit-tested). */
-export function planFor(action, { give = null, get = null, to, twoStep = true } = {}) {
+export function planFor(action, { give = null, get = null, to, twoStep = true, requests = false, pick = null } = {}) {
+  if (action === 'pick') return pick && get ? { path: '/api/trade/counter', body: { offerId: Number(pick.offerId), cardId: get.id } } : null;
+  if (action === 'request') return requests && get && to ? { path: '/api/trade/offer', body: { toId: String(to), requestCardId: get.id } } : null;
   if (action === 'gift') return give && to ? { path: '/api/trade/gift', body: { toId: String(to), cardId: give.id } } : null;
   if (action === 'pack') return to ? { path: '/api/gift', body: { toId: String(to), amount: 1 } } : null;
   if (action === 'offer') {
     if (!give || !to) return null;
     // two-step on: only my card goes; the other member picks theirs. Off: both cards go (the old flow).
+    // Requests on (D-168): with both cards picked, the FULL PROPOSAL goes (both cards; the receiver accepts or declines).
+    if (requests && get) return { path: '/api/trade/offer', body: { toId: String(to), offerCardId: give.id, requestCardId: get.id } };
     if (twoStep) return { path: '/api/trade/offer', body: { toId: String(to), offerCardId: give.id } };
     return get ? { path: '/api/trade/offer', body: { toId: String(to), offerCardId: give.id, requestCardId: get.id } } : null;
   }
@@ -133,12 +146,12 @@ function slotHTML(c, tag) {
 }
 
 function list() {
-  const base = st.view === 'mine' ? st.d.mine() : st.d.theirs();
+  const base = st.d.pick ? pickCards(st.d.theirs(), st.d.pick.want) : st.view === 'mine' ? st.d.mine() : st.d.theirs();
   return orderCards(filterCards(base, { q: st.q, rarity: st.rarity }));
 }
 
 function actionHTML(a) {
-  const label = { gift: 'Gift', offer: 'Offer', request: 'Request' }[a.id];
+  const label = { gift: 'Gift', offer: 'Offer', request: 'Request', pick: 'Pick' }[a.id];
   return button({ label, icon: a.id === 'gift' ? 'gift' : null, variant: a.primary ? 'primary' : 'secondary', disabled: a.disabled, reason: a.reason || null,
     busy: st.busy === a.id, data: { act: a.id } });
 }
@@ -151,7 +164,8 @@ function paint() {
   const all = list();
   const pg = pageOf(all, st.per || all.length || 1, st.page[st.view]);
   st.page[st.view] = pg.page;
-  const acts = actionsFor({ give: st.give, get: st.get, twoStep: d.twoStep });
+  const acts = actionsFor({ give: st.give, get: st.get, twoStep: d.twoStep, requests: !!d.requests, pick: d.pick });
+  const views = d.pick ? [{ id: 'their', label: 'Their cards', active: true }] : [{ id: 'mine', label: 'Your cards', active: mine }, { id: 'their', label: 'Their cards', active: !mine }];
   const packs = d.packs();
   const caret = document.activeElement?.classList.contains('u3-search__input') && host.contains(document.activeElement) ? document.activeElement.selectionStart : null;
   const n = st.rarity !== 'all' ? 1 : 0;
@@ -159,13 +173,13 @@ function paint() {
     + `<header class="u3-tw__head"><span class="u3-tw__who">${d.avatar(d.me.id, d.me.name)}<span class="u3-tw__name">${breakName(d.me.name)}</span></span><span class="u3-tw__swap">${icon('arrow-left-right', { size: 'lg' })}</span>`
     + `<span class="u3-tw__who">${d.avatar(d.to.id, d.to.name)}<span class="u3-tw__name">${breakName(d.to.name)}</span></span></header>`
     + `<div class="u3-tw__close">${iconButton({ icon: 'x', label: 'Close', data: { backpick: '1', close: '1' } })}</div>`
-    + `<div class="u3-tw__views">${segmented([{ id: 'mine', label: 'Your cards', active: mine }, { id: 'their', label: 'Their cards', active: !mine }], { label: 'Cards' })}</div>`
+    + `<div class="u3-tw__views">${segmented(views, { label: 'Cards' })}</div>`
     + `<div class="u3-tw__tools">${searchField({ value: st.q, placeholder: st.narrow ? 'Search' : 'Search cards, tags…' })}${filtersHTML(n)}</div>`
     + `<ul class="u3-tw__grid${(st.tile || TOKENS['card-tile']) < TOKENS['card-tile'] ? ' is-small' : ''}" aria-label="${mine ? 'Your cards' : 'Their cards'}" style="--pk-cols:${st.cols || 1};--pk-tile:${st.tile || TOKENS['card-tile']}px">`
     + `${pg.items.map((c) => tileHTML(c, Number((mine ? st.give : st.get)?.id) === Number(c.id))).join('') || `<li class="u3-pk-none">${esc(st.q || st.rarity !== 'all' ? 'No cards match.' : 'No cards here.')}</li>`}</ul>`
     + `<div class="u3-tw__pager">${pager({ page: pg.page + 1, pages: pg.pages })}</div>`
     + `<div class="u3-tw__pack">${mine ? packHTML(packs) : ''}</div>`
-    + `<div class="u3-tw__bar"><div class="u3-tw__slots">${slotHTML(st.give, 'GIVE')}<span class="u3-tw__swap2">${icon('arrow-left-right', { size: 'lg' })}</span>${slotHTML(st.get, 'GET')}</div>`
+    + `<div class="u3-tw__bar"><div class="u3-tw__slots">${slotHTML(d.pick ? d.pick.want : st.give, 'GIVE')}<span class="u3-tw__swap2">${icon('arrow-left-right', { size: 'lg' })}</span>${slotHTML(st.get, 'GET')}</div>`
     + `<div class="u3-tw__acts">${acts.map(actionHTML).join('')}</div></div>`
     + `</section>${st.panel ? filterPanelHTML() : ''}${st.confirm ? confirmHTML() : ''}`;
   st.shown = true;   // the pop-in plays once, when the window opens (a repaint does not restart it)
@@ -261,7 +275,7 @@ function onInput(e) {
 async function run(act) {
   if (!st || st.busy) return;
   const { d } = st;
-  const plan = planFor(act, { give: st.give, get: st.get, to: d.to.id, twoStep: d.twoStep });
+  const plan = planFor(act, { give: st.give, get: st.get, to: d.to.id, twoStep: d.twoStep, requests: !!d.requests, pick: d.pick });
   if (!plan) return;
   st.busy = act === 'pack' ? 'pack' : act;
   paint();
@@ -306,18 +320,19 @@ async function onClick(e) {
   if (d.cgo) { run(d.cgo); return; }
   if (d.act === 'gift') { st.confirm = { act: 'gift', title: `Gift ${st.give?.name || 'this card'} to ${st.d.to.name}?`, primary: 'Gift' }; paint(); return; }
   if (d.act === 'pack') { st.confirm = { act: 'pack', title: `Gift 1 pack to ${st.d.to.name}?`, primary: 'Gift' }; paint(); return; }
-  if (d.act === 'offer' || d.act === 'request') { run(d.act); }
+  if (d.act === 'offer' || d.act === 'request' || d.act === 'pick') { run(d.act); }
 }
 
 /**
  * Open the window.
  * d: { me: {id, name}, to: {id, name}, mine(): cards, theirs(): cards (each { id, name, rarity, image_url, quantity, tradeable }),
- *   packs(): my pack count, twoStep: boolean, rarities: [keys], rarityLabel(key), avatar(id, name): html,
+ *   packs(): my pack count, twoStep: boolean, requests: boolean (the server has requests on, D-168),
+ *   pick: null | { offerId, want: card } (the owner answers a request: theirs() = the requester's cards), rarities: [keys], rarityLabel(key), avatar(id, name): html,
  *   send(action, plan) -> { ok } (async), onDone(action, result), onError(action), onClose() }
  */
 export function openTradeWindow(d) {
   if (st) return;
-  st = { d, view: 'mine', give: null, get: null, q: '', rarity: 'all', page: { mine: 0, their: 0 }, per: 0, cols: 0, tile: 0, panel: false, draft: 'all', busy: null, confirm: null };
+  st = { d, view: d.pick ? 'their' : 'mine', give: null, get: null, q: '', rarity: 'all', page: { mine: 0, their: 0 }, per: 0, cols: 0, tile: 0, panel: false, draft: 'all', busy: null, confirm: null };
   const host = document.createElement('div');
   host.id = 'u3TradeWin';
   host.className = 'u3-scrim u3-tw-scrim';

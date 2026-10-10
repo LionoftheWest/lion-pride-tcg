@@ -141,6 +141,19 @@ function derivedTrades(body) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body) => derivedTrades(body) });
 DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_trades === 'few' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
+// UI-63 / UI-25 trade REQUESTS (D-168, trade_request.sql): cookie ci_treq=on makes /api/flags carry tradeRequest (the Request button works,
+// Offer with both cards is the full proposal); ci_treq=rows also derives open requests in every state: an incoming request (the owner picks), a
+// sent request (waiting), a sent request that the owner picked for (the requester confirms). Nothing is written (every POST answers 403).
+DERIVED.push({ when: (p, c, body) => p === '/api/flags' && (c.ci_treq === 'on' || c.ci_treq === 'rows') && body, make: (body) => ({ ...body, tradeRequest: true }) });
+function derivedTradeRequests(body) {
+  const card = (n, rarity) => ({ id: 900 + n, name: `Card ${n}`, rarity, image_url: body.outgoing?.[0]?.offer?.image_url || '' });
+  const o = (id, from, to, status, offer, request) => ({ id, from_id: from, to_id: to, status, from_name: `Member ${from.slice(-3)}`, to_name: `Member ${to.slice(-3)}`, created_at: new Date(Date.parse(FIX.recordedAt) - 3600000).toISOString(), offer, request });
+  const me = body.outgoing?.[0]?.from_id || '100000000000000001';
+  return { incoming: [o(211, '100000000000000012', me, 'pending', null, card(1, 'normal'))],
+    outgoing: [o(212, me, '100000000000000011', 'pending', null, card(2, 'normal')), o(213, me, '100000000000000163', 'countered', card(3, 'normal'), card(4, 'normal'))] };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_treq === 'rows' && body, make: (body) => derivedTradeRequests(body) });
+DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_treq === 'rows' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
 // UI-63: the cards of another member (the recorded answer has none): every second card of the recorded collection, with
 // 1 to 4 copies, in the shape of GET /api/player-cards.
 function derivedTheirCards() {
