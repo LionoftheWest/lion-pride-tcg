@@ -18,8 +18,12 @@ export const EXPANDED = '1990x830';   // the size that "missing on another class
 
 const COMM = '#commTabs';
 export const SCREENS = {
-  'home':                { id: 'UI-03', long: true, safe: true, steps: [] },
+  // Home (UI-03): a resting hunt, 9 pulls and 5 members in voice (the state of the approved frames, UI-03/approved); home-live: the recorded live hunt.
+  'home':                { id: 'UI-03', safe: true, long: true, home: 'busy', notOn: ['tiny'], steps: [] },
+  'home-live':           { id: 'UI-03', long: true, safe: true, home: 'live', notOn: ['tiny'], steps: [] },
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
+  // the Filters panel open (D-39, D-123: under tabs where the groups do not fit the height)
+  'collection-filters': { id: 'UI-07', safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#colFilters'], ['wait', 1]] },
   'collection-detail':   { id: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
   'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   'achievements-detail': { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main .ach-card, #main .ach-row, #main [data-ach]']] },
@@ -70,6 +74,10 @@ export const SCREENS = {
   // v3: the room steps and Floor cleared (UI-49), derived runs of the check server (cookie ci_dungeon = rest | path | chest | floor).
   'dungeon-rest':        { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'rest', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-path':        { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'path', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  // v3: the unlock gate (UI-53) on the three Adventure tabs: the check server answers a locked member (cookie ci_hunt / ci_dungeon = gate).
+  'gate-hunt':           { id: 'UI-53', long: true, safe: true, notOn: ['tiny'], hunt: 'gate', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 4]] },
+  'gate-dungeon':        { id: 'UI-53', long: true, safe: true, notOn: ['tiny'], dungeon: 'gate', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'gate-gauntlet':       { id: 'UI-53', long: true, safe: true, notOn: ['tiny'], dungeon: 'gate', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   'dungeon-chest':       { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'chest', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-chest-open':  { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'chest', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-chestbox'], ['wait', 2.5]] },
   'dungeon-chest-flipped': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'chest', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-chestbox'], ['wait', 2.5], ['js', '.u3-dgs-cf [data-flip]'], ['wait', 1.5]] },
@@ -94,11 +102,13 @@ export const SCREENS = {
   'gauntlet':            { id: 'UI-52', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   // The Shop (UI-43): tiny has no top bar, so no Shop button (D-06: the small live view, UI-59).
   'shop':                { id: 'UI-43', long: true, safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2]] },
+  // The stat reset picker (UI-64 pick one, from Shop > Stat reset > Choose a card): a defect outside the window belongs to the Shop ('under').
+  'shop-reset-picker':   { id: 'UI-64', long: true, safe: true, stats: 'many', under: 'UI-43', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-tab="reset"]', [['wait', 0]]], ['js', '[data-choose]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
+  'shop-confirm':        { id: 'UI-43', safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
   // Convert extra copies (UI-44): the window over the card detail (UI-08); minus = one copy less; error = the refused write (no fixture for POST).
   'convert':             { id: 'UI-44', under: 'UI-08', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1]] },
   'convert-minus':       { id: 'UI-44', under: 'UI-08', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1], ['js', '#u3ShopDlg [aria-label="Decrease"]'], ['wait', 0.5]] },
   'convert-error':       { id: 'UI-44', under: 'UI-08', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1], ['js', '#u3ShopDlg [data-go]'], ['wait', 1.5]] },
-  'shop-confirm':      { id: 'UI-43', safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
   // The Dailies window (UI-36) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
   // The first wait: the menu shows the Dailies tile only after /api/dailies answered (the tile of a window that is off is hidden).
   'dailies':             { id: 'UI-36', long: true, safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 3], ['js', '#menuBtn'], ['js', '[data-menu="dailies"]'], ['wait', 1.5]] },
@@ -165,6 +175,7 @@ export function ownerOf(screen, where) {
   if (/\.u3-dgs\b|\.u3-dgs[-_]/.test(where) || (SCREENS[screen].id === 'UI-49' && /\.u3-dgc\b|\.u3-dgc[-_]/.test(where))) return 'UI-49';   // the room steps share the UI-48 stage parts
   if (/#v2Help[a-z]*\b|\.u3-hp\b|\.u3-hp[-_]/.test(where)) return 'UI-38';
   if (/\.u3-dgc\b|\.u3-dgc[-_]/.test(where)) return 'UI-48';
+  if (/\.u3-(col|fpanel|ctile|fhost|frow)\b|\.u3-(col|fpanel|ctile|frow)[-_]|#u3FiltersT\b/.test(where)) return 'UI-07';   // the v3 Collection (the v2 ids #colSearch and #colFilters are also on Achievements and Bosses: only the u3 classes count)
   if (/\.u3-logo\b/.test(where)) return 'UI-01';   // the top bar logo (its path can stop above #topbar)
   // The pack reveal stage covers the screen under it: a defect in the stage belongs to the reveal screen.
   // A path keeps 3 levels, so the stage parts are named too (the pack, the cards, the bar, the effects).
