@@ -3219,7 +3219,7 @@ function playAscend(tier) {
   card.classList.remove('asc-pop'); void card.offsetWidth; card.classList.add('asc-pop');
   const fx = document.createElement('div');
   fx.className = 'asc-fx';
-  fx.innerHTML = `<div class="asc-flash"></div><div class="asc-ring"></div><div class="asc-ring d2"></div><div class="asc-label">${'★'.repeat(tier)} ${info.name}</div>`;
+  fx.innerHTML = `<div class="asc-flash"></div><div class="asc-ring"></div><div class="asc-ring d2"></div><div class="asc-label">${document.body.classList.contains('ui-v3') ? `★${tier}` : `${'★'.repeat(tier)} ${info.name}`}</div>`;   // D-157: v3 shows the star level, not a tier name
   stage.appendChild(fx);
   const r = stage.getBoundingClientRect();
   const cx = r.width / 2, cy = r.height / 2;
