@@ -9,11 +9,14 @@
 //   ci_board=rows|empty|error   the 4 Leaderboard answers (UI-66): rows = a board with many rows, empty = no rows, error = HTTP 500 (derived below)
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_dungeon=fight|fight2   a Dungeon fight with 5 or 2 monsters (UI-47); ci_dungeon=over the run over (UI-50)
+//   ci_fx=hist|day|member   the Boons tab (UI-27): my play history, the day limit used up, a member at the pair cap
 //   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
 //   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
 //   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
 //                       busy = a resting hunt with a last result, live = the recorded live hunt
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
+//   ci_report=on     /api/flags answers reports: true (the Feedback window, UI-40); the send stays blocked (403), so a send shows the error state
+//   ci_data=long    every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
 import { createServer } from 'node:http';
@@ -160,8 +163,25 @@ function derivedTrades(body) {
   return { incoming: [o(201, '100000000000000012', me, 'pending', card(1, 'normal'), card(2, 'normal')), o(202, '100000000000000012', me, 'pending', card(3, 'illustrated_rare'), card(4, 'illustrated_rare'))],
     outgoing: [...(body.outgoing || []), o(203, me, '100000000000000011', 'countered', card(5, 'normal'), card(6, 'normal')), o(204, me, '100000000000000163', 'pending', card(7, 'secret_rare'), null)] };
 }
-DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body) => derivedTrades(body) });
+// UI-26: an accepted offer leaves Pending (the server rule): POST /api/trade/accept (below) sets the cookie ci_accepted=<offer id>
+// and the derived list drops that offer, so the landed state shows Pending without it.
+DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body, c) => {
+  const t = derivedTrades(body); const gone = Number(c.ci_accepted);
+  return gone ? { ...t, incoming: t.incoming.filter((o) => o.id !== gone) } : t; } });
 DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_trades === 'few' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
+// UI-63 / UI-25 trade REQUESTS (D-168, trade_request.sql): cookie ci_treq=on makes /api/flags carry tradeRequest (the Request button works,
+// Offer with both cards is the full proposal); ci_treq=rows also derives open requests in every state: an incoming request (the owner picks), a
+// sent request (waiting), a sent request that the owner picked for (the requester confirms). Nothing is written (every POST answers 403).
+DERIVED.push({ when: (p, c, body) => p === '/api/flags' && (c.ci_treq === 'on' || c.ci_treq === 'rows') && body, make: (body) => ({ ...body, tradeRequest: true }) });
+function derivedTradeRequests(body) {
+  const card = (n, rarity) => ({ id: 900 + n, name: `Card ${n}`, rarity, image_url: body.outgoing?.[0]?.offer?.image_url || '' });
+  const o = (id, from, to, status, offer, request) => ({ id, from_id: from, to_id: to, status, from_name: `Member ${from.slice(-3)}`, to_name: `Member ${to.slice(-3)}`, created_at: new Date(Date.parse(FIX.recordedAt) - 3600000).toISOString(), offer, request });
+  const me = body.outgoing?.[0]?.from_id || '100000000000000001';
+  return { incoming: [o(211, '100000000000000012', me, 'pending', null, card(1, 'normal'))],
+    outgoing: [o(212, me, '100000000000000011', 'pending', null, card(2, 'normal')), o(213, me, '100000000000000163', 'countered', card(3, 'normal'), card(4, 'normal'))] };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_treq === 'rows' && body, make: (body) => derivedTradeRequests(body) });
+DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_treq === 'rows' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
 // UI-63: the cards of another member (the recorded answer has none): every second card of the recorded collection, with
 // 1 to 4 copies, in the shape of GET /api/player-cards.
 function derivedTheirCards() {
@@ -193,13 +213,33 @@ function derivedHall(body) {
   const forTrade = body.forTrade.slice(0, 2).concat(Array.from({ length: 9 }, (_, i) => ({ id: 100 + i, ...who(i + 1), card: pick(i + 20), mine: false, match: i % 2, at: body.forTrade[0].at })));
   return { ...body, wanted, forTrade };
 }
-DERIVED.push({ when: (p, c, body) => p === '/api/hall' && c.ci_hall === 'many' && body?.wanted, make: (body) => derivedHall(body) });
+// UI-31: ci_hall=list = two listings of mine (the approved list frames show 2/5; the recording has 5/5); ci_hall=offer = one Wanted card
+// I own copies of (Wanted index 2) and one For trade card in the derived cards of the lister (For trade index 2), for the Trade window.
+function derivedHallMode(body, mode) {
+  const out = derivedHall(body);
+  const col = FIX.routes['/api/collection']?.body?.cards || [];
+  if (mode === 'list') return { ...out, mine: out.mine.slice(0, 2) };
+  if (mode === 'offer' && col.length > 5) {
+    const pick = (c) => ({ id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, power: c.power });
+    const wanted = out.wanted.slice(), forTrade = out.forTrade.slice();
+    wanted[2] = { ...wanted[2], card: pick(col[5]), mine: col[5].quantity };
+    forTrade[2] = { ...forTrade[2], card: pick(col[2]) };   // every other collection card is in the derived cards of a member (derivedTheirCards)
+    return { ...out, wanted, forTrade };
+  }
+  return out;
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/hall' && ['many', 'list', 'offer'].includes(c.ci_hall) && body?.wanted, make: (body, c) => derivedHallMode(body, c.ci_hall) });
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
 }
+// UI-37: a gift waits in the bell (cookie ci_gifts=1), so walkthrough step 1 shows; the recorded answer has none.
+const derivedGifts = (body) => ({ ...body, gifts: [{ id: 1, kind: 'packs', title: 'New Player Bonus', amount: 10 }] });
+DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_gifts === '1' && body && typeof body === 'object', make: (body) => derivedGifts(body) });
 DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
+// UI-12: two achievements that are done and not claimed (First Pull, First Shine), so the tab shows Claim and Claim all (cookie ci_ach=ready).
+DERIVED.push({ when: (p, c, body) => p === '/api/profile' && c.ci_ach === 'ready' && Array.isArray(body?.claimed), make: (body) => ({ ...body, claimed: body.claimed.filter((k) => k !== 'first' && k !== 'ir1') }) });
 // UI-64 (Shop stat reset picker, pick one): the recorded collection has 3 cards with stat points; ci_stats=many gives the
 // first 30 cards points (a member who spent points on many cards), so the picker shows a full page.
 const STAT_KEYS = ['attack', 'vitality', 'precision', 'potency', 'haste'];
@@ -219,6 +259,34 @@ DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_notes ==
 const LOCKED = { ok: false, need: 8, attackers: 3, gifts_open: 2, gifts_total: 2 };
 DERIVED.push({ when: (p, c, body) => p === '/api/hunt' && c.ci_hunt === 'gate' && body?.hunt, make: (body) => ({ ...body, gate: { ...LOCKED } }) });
 DERIVED.push({ when: (p, c, body) => (p === '/api/dungeon' || p === '/api/gauntlet') && c.ci_dungeon === 'gate' && body?.ok, make: (body) => ({ ...body, closed: false, gate: { ...LOCKED } }) });
+// UI-27 (Boons): cookie ci_fx. hist = I played cards on members before (Frequent and Recent in the Member picker; the recorded plays are other
+// members') ; day = all 10 plays of the day used; member = 3 plays on the first member (the pair cap). day and member include hist.
+const ME = '100000000000000001';
+function derivedFx(path, mode, body) {
+  if (!mode) return body;
+  if (path === '/api/effects/recent' && body?.plays) {
+    const ids = ['012', '012', '012', '163', '163', '011', '011', '110', '076', '161', '077', '032'];
+    const mine = ids.map((n, i) => ({ id: 9000 + i, from_id: ME, to_id: `100000000000000${n}`, from: 'Member A', to: `Member ${n}`, primitive: 'confetti', kind: 'boon', outcome: 'applied', at: new Date(Date.parse(FIX.recordedAt) - (i + 1) * 3600e3).toISOString() }));
+    return { ...body, plays: [...mine, ...body.plays] };
+  }
+  if (path === '/api/effects/me' && body?.enabled) {
+    if (mode === 'day') return { ...body, playsToday: 10, dayEnds: new Date(Date.parse(FIX.recordedAt) + (7 * 60 + 25) * 60e3).toISOString() };
+    if (mode === 'member') return { ...body, playsToday: 3, pairs: { '100000000000000012': 3 } };
+  }
+  return body;
+}
+DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/recent' && body?.plays, make: (body, c) => derivedFx('/api/effects/recent', c.ci_fx, body) });
+DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/me' && body?.enabled, make: (body, c) => derivedFx('/api/effects/me', c.ci_fx, body) });
+// UI-55: avatar effects (cookie ci_avfx=on): the badge list holds the mustache for the signed-in member, the five members of Home
+// (pulls and voice) and every member of the recorded leaderboard, so every avatar of the three screens shows it.
+function derivedAvatarFx(body) {
+  const ids = new Set([FIX.routes['/api/leaderboard/v2']?.body?.me, ...Array.from({ length: 5 }, (_, i) => `10000000000000010${i}`),
+    ...(FIX.routes['/api/leaderboard/v2']?.body?.rows || []).map((r) => r.id)].filter(Boolean));
+  return { ...body, badges: { ...(body?.badges || {}), ...Object.fromEntries([...ids].map((id) => [id, { mustache: true }])) } };
+}
+DERIVED.push({ when: (p, c) => p === '/api/effects/badges' && c.ci_avfx === 'on', make: (body) => derivedAvatarFx(body) });
+// UI-40: the recorded /api/flags has the report flag off; ci_report=on turns it on (the send stays blocked, so a send shows the error)
+DERIVED.push({ when: (p, c, body) => p === '/api/flags' && c.ci_report === 'on' && body, make: (body) => ({ ...body, reports: true }) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
@@ -271,11 +339,20 @@ export function openAnswer(count) {
 
 createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  const p = url.pathname;
+  const p = url.pathname.replace(/^\/app(?=\/)/, '');   // production serves under /app (Caddy strips it); the legal pages (UI-57) link /app/...
   if (req.method === 'POST' && p === '/api/open') {
     let raw = '';
     req.on('data', (d) => { raw += d; });
     req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
+    return undefined;
+  }
+  // UI-31: taking a card off the Hall answers ok (nothing is written) so the screen shows the "unlisted" toast with Undo; a list call stays refused (the error state).
+  if (req.method === 'POST' && p === '/api/hall/unlist') return send(res, 200, '{"ok":true}');
+  if (req.method === 'POST' && p === '/api/trade/accept') {   // UI-26: nothing is written; the answer is ok and the cookie hides the offer
+    let raw = '';
+    req.on('data', (d) => { raw += d; });
+    req.on('end', () => { let id = 0; try { id = Number(JSON.parse(raw || '{}').offerId) || 0; } catch { /* no id */ }
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'set-cookie': `ci_accepted=${id}; Path=/` }); res.end('{"ok":true}'); });
     return undefined;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');

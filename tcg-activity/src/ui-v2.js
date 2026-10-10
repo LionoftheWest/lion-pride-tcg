@@ -18,9 +18,12 @@ import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import { paintCollectionV3 } from './ui3/collection.js';
 import * as pf3 from './ui3/profile.js';
+import { paintAchievementsV3, paintBossesV3 } from './ui3/collection-tabs.js';
 import * as se3 from './ui3/style-editor.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import * as hm3 from './ui3/home.js';
+import { boardRows, boardHTML } from './ui3/home-boss.js';
+import * as tn3 from './ui3/tiny.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -280,6 +283,55 @@ export function toast(text) {
   setTimeout(() => n.remove(), 3200);
 }
 
+// ---- v3 Achievements and Bosses tabs (UI-12, UI-11; src/ui3/collection-tabs.js): the same data and calls as the v2 tabs ----
+// Claim: the same server call as redeem(); the view repaints after the profile reloads. Returns { ok } for the Claim button.
+async function claimV3(key) {
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim', { key }); } catch { r = null; }
+  if (!r?.ok && r?.error !== 'claimed') return { ok: false };
+  if (r?.ok) {
+    myProfile = { ...(myProfile || {}), claimed: [...(myProfile?.claimed || []), key] };
+    ctx.refreshPacks?.();
+    const rw = r.reward || rewardOf(key);
+    if (rw?.title || rw?.frame) toastAction(`🎁 ${rewardLabel(rw)}`, 'Equip now', () => equipTitle(rw.title || null, rw.frame || null));
+    else toast(`🎁 ${rewardLabel(rw)}`);
+  }
+  loadMyProfile(true).then(() => { refreshCollectionBadge(); if (ctx.currentView() === 'collection') renderCollectionV2(); });
+  return { ok: true };
+}
+async function claimAllV3() {
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim-all', {}); } catch { r = null; }
+  if (!r?.ok) return { ok: false };
+  ctx.refreshPacks?.();
+  const parts = [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.titles?.length ? `${r.titles.length} title${r.titles.length === 1 ? '' : 's'}` : null, r.frames?.length ? `${r.frames.length} frame${r.frames.length === 1 ? '' : 's'}` : null].filter(Boolean);
+  const msg = `🎁 ${r.claimed.length} claimed${parts.length ? ` · ${parts.join(' + ')}` : ''}`;
+  if (r.titles?.length || r.frames?.length) toastAction(msg, 'Choose title', () => openSpotEditor()); else toast(msg);
+  await loadMyProfile(true);
+  refreshCollectionBadge();
+  if (ctx.currentView() === 'collection') renderCollectionV2();
+  return { ok: true };
+}
+function paintTabV3(achs, tabBar) {
+  const main = ctx.el('main');
+  const help = explainBtn('collection');
+  if (col.view === 'bosses') {
+    paintBossesV3(main, { tabBar, help,
+      bosses: RAID_BOSSES.map((b) => ({ arch: b.arch, title: b.title, blurb: b.blurb, credit: b.credit, thumb: thumbFor(b) })),
+      mount: (canvas, b) => { disposeGalBoss(); const rb = RAID_BOSSES.find((x) => x.arch === b.arch); try { galBoss = mountBoss(canvas, seedForBoss(rb), 'Mythic', { portrait: true, portraitOpts: { at: 0.5 } }); } catch { galBoss = null; } },
+      dispose: disposeGalBoss });
+  } else {
+    col.view = 'ach'; // v3 has no sub-view: the achievement opens in a window
+    const order = (a) => (a.done ? (claimedSet().has(a.key) ? 2 : 0) : 1);   // ready first, then in progress, then claimed
+    paintAchievementsV3(main, { tabBar, help, achs: [...achs].sort((a, b) => order(a) - order(b)), claimed: claimedSet(),
+      rewardText: (a) => rewardLabel(rewardOf(a.key)), numLabel, thumb, flair: flairHTML,
+      claim: claimV3, claimAll: claimAllV3,
+      sortedSet: (a) => [...(a.set || [])].sort((x, y) => (y.owned - x.owned) || (x.num - y.num)),
+      openCard: (c, list) => ctx.openViewer(c, { list: list.filter((x) => !x.locked) }) });
+  }
+  wireColTabs();
+  maybeExplain('collection');
+}
 // ---- Collection ------------------------------------------------------------
 
 const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0, boss: 0 };
@@ -342,7 +394,9 @@ export async function renderCollectionV2() {
   const ownSeg = [['all', 'All'], ['owned', 'Owned'], ['missing', 'Missing']].map(([v, l]) => `<button data-own="${v}" class="${col.own === v ? 'on' : ''}">${l}</button>`).join('');
 
   const tabs = `${colTabBar(achDone, achs.length, ready)}${explainBtn('collection')}`;
-  // v3 (body.ui-v3, UI-07): the Cards tab is the v3 Collection (src/ui3/collection.js). Achievements and Bosses stay v2.
+  // v3 (body.ui-v3, UI-11 and UI-12): the Achievements and Bosses tabs (src/ui3/collection-tabs.js).
+  if (document.body.classList.contains('ui-v3') && col.view !== 'cards') { paintTabV3(achs, colTabBar(achDone, achs.length, ready)); return; }
+  // v3 (body.ui-v3, UI-07): the Cards tab is the v3 Collection (src/ui3/collection.js).
   if (v3Cards()) {
     const inUse = (list, key) => list.filter(([k]) => inSeason.some((c) => (key === 'type' ? c.tags?.type === k : [].concat(c.tags?.origin || []).includes(k))));
     paintCollectionV3(el('main'), {
@@ -914,6 +968,7 @@ export async function renderHomeV2() {
   // Design 19 (Nathan, 2026-09-30): the hunt + Live in voice on the left, Live pulls down
   // the right to the same bottom line. No profile tile: the top-bar avatar opens it.
   const v3 = hm3.homeV3();
+  if (tn3.tinyV3()) { await renderTinyV3(); return; }   // UI-59: the small live view replaces Home in the tiny window
   el('main').innerHTML = `<div class="${v3 ? 'u3-home' : 'v2-home h19'}">
     ${v3 ? '<div class="u3-hm">' : ''}<section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} hero" id="homeHero"><div class="v2-loading">Loading…</div></section>
     <section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} voice" id="homeVoice"></section>
@@ -1138,7 +1193,39 @@ export function paintPulls() {
   requestAnimationFrame(() => setTimeout(() => fitChildren(el('plList')), 300));
 }
 
-export function homeTick() { tickCloses(); }
+export function homeTick() { tickCloses(); paintTinyPacks(); }
+
+// ---- The small live view (UI-59, the tiny class, v3): src/ui3/tiny.js has the markup ----
+// Open full: the Embedded App SDK has no command that leaves picture-in-picture (checked in the installed SDK), so a tap
+// on the button does nothing of its own; Discord opens the full Activity on a tap on the window (D-138, assumed).
+async function renderTinyV3() {
+  const { el } = ctx;
+  const main = el('main');
+  main.innerHTML = '<div class="u3-tn-host" id="homeHero"><div class="v2-loading">Loading…</div></div>';
+  const [d] = await Promise.all([ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null), ctx.refreshPacks?.()]);
+  if (ctx.currentView() !== 'home' || !tn3.tinyV3()) return;
+  const host = el('homeHero');
+  if (!host) return;
+  if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
+  const last = d?.lastResult;
+  host.innerHTML = tn3.tinyHTML(d, { packs: ctx.packs(), hasModel: !!(last && modelKey(last.name)) });
+  tickCloses();
+  const fit = () => tn3.fitTiny(host);
+  fit();
+  document.fonts?.ready?.then(fit);
+  if (typeof ResizeObserver !== 'undefined') { homeRO = new ResizeObserver(() => requestAnimationFrame(fit)); homeRO.observe(host); }
+  const h = d?.hunt;
+  try {
+    if (h) heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true });
+    else if (last && el('restCanvas')) heroBoss = mountBoss(el('restCanvas'), last.name, last.tier, { portrait: true });
+  } catch { heroBoss = null; }
+}
+// the pack count follows the packs the member has (the OPEN mark, no tap)
+function paintTinyPacks() {
+  const mark = document.querySelector('.u3-tn__open');
+  if (!mark || !tn3.tinyV3()) return;
+  mark.outerHTML = tn3.openMarkHTML(ctx.packs());
+}
 
 // ---- Home v3 (UI-03, body.ui-v3): src/ui3/home.js has the markup; these paint it and wire it ----
 const pullsPage = { start: 0 };
@@ -1196,13 +1283,14 @@ function paintHeroV3(box, d, h) {
   ctx.api('/api/hunt/leaderboard').then((b) => {
     const top = (b?.leaders || [])[0];
     const slot = el('heroTop');
-    if (top && slot) { slot.outerHTML = hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); fitHomeV3(); }
+    const rows = boardRows(b?.leaders);
+    if (top && slot) { slot.outerHTML = boardHTML(rows, { fmt, avatar: (id, name) => avatarHTML(id, name, 'xs') }) + hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); fitHomeV3(); }
   }).catch(() => {});
   tickCloses();
   try { heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true }); } catch { heroBoss = null; }
 }
 // "Top hunter" opens the Leaderboard window (the hidden v2 button that the menu tile clicks too)
-function wireTopHunter(box) { box?.querySelector('[data-top-hunter]')?.addEventListener('click', () => document.getElementById('boardBtn')?.click()); }
+function wireTopHunter(box) { box?.querySelectorAll('[data-top-hunter]').forEach((b) => { if (!b.dataset.wired) { b.dataset.wired = '1'; b.addEventListener('click', () => document.getElementById('boardBtn')?.click()); } }); }
 
 function paintVoiceV3(box) {
   const me = ctx.user();

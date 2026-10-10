@@ -2,7 +2,7 @@
 // D-30 (rows), D-32 (names, count), D-64 items 7 and 10 (Decline danger, Accept secondary), D-08 (no "…").
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ago, offerKind, pendingLists, waiting, rowHTML, sectionsHTML, viewHTML, headHTML } from './pending.js';
+import { ago, offerKind, pendingLists, waiting, rowHTML, sectionsHTML, viewHTML, headHTML, sentStatus, isRequest } from './pending.js';
 
 const H = { thumb: (u) => `/t${u}`, avatar: (id) => `<i data-av="${id}"></i>` };
 const card = (id, rarity = 'normal') => ({ id, name: `tst_card_${id}`, rarity, image_url: `/img/${id}.png` });
@@ -91,4 +91,35 @@ test('viewHTML: the Offer view has Decline and Accept (primary) for an incoming 
   const s = viewHTML(offer(9, 'pending'), 'out', H);
   assert.match(s, /data-act="cancel"/);
   assert.ok(!/data-act="accept"/.test(s));
+});
+
+// D-168: a REQUEST has no offer card until the owner picks. The row is built from DERIVED data (tst_ names).
+const req = (id, status = 'pending', extra = {}) => ({ id, status, from_id: 'tst_a_1', to_id: 'tst_b_1', from_name: 'tst_from', to_name: 'tst_to', offer: null, request: card(2), ...extra });
+
+test('D-168 a request: the owner picks (not accept); the requester sees what they asked for', () => {
+  assert.equal(offerKind(req(1), 'in'), 'pick');
+  assert.equal(offerKind(req(1), 'out'), 'wait');
+  assert.equal(offerKind(req(1, 'countered', { offer: card(1) }), 'out'), 'accept');   // the owner picked: the requester confirms
+  assert.equal(sentStatus(req(1)), 'Asked for tst_card_2');
+  assert.equal(sentStatus(req(1, 'countered', { offer: card(1) })), 'Picked a card');
+  assert.equal(isRequest(req(1)), true);
+  assert.equal(isRequest(offer(1, 'pending')), false);
+  assert.equal(isRequest(offer(1, 'pending', null)), false);   // an open offer (no request card) is not a request
+});
+
+test('D-168 rowHTML of a request: "Asked for", one card, no swap arrow; the owner has "Pick a card" and Decline', () => {
+  const inc = rowHTML(req(3), 'in', H);
+  assert.match(inc, /Asked for tst_card_2/);
+  assert.match(inc, /Pick a card/);
+  assert.match(inc, /data-act="pick"/);
+  assert.match(inc, /data-act="decline"/);
+  assert.ok(!/data-act="accept"/.test(inc));
+  assert.ok(!/u3-pd-swap/.test(inc));
+  const out = rowHTML(req(3), 'out', H);
+  assert.match(out, /Asked for tst_card_2/);
+  assert.match(out, /data-act="cancel"/);
+  assert.ok(!/data-act="accept"/.test(out));
+  // after the pick: the requester's row shows both cards and Accept
+  assert.match(rowHTML(req(3, 'countered', { offer: card(1) }), 'out', H), /data-act="accept"/);
+  assert.match(viewHTML(req(3), 'in', H), /Pick a card/);
 });
