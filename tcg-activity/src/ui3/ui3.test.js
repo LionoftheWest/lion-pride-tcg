@@ -111,31 +111,13 @@ test('Card picker grid (UI-64, 8.1): tiles from card-tile to card-tile-max wide,
   assert.equal(s.rows, 1); assert.ok(s.tile * 1.4 <= 100);
 });
 
-test('Card picker grid (UI-64): a width-limited area adds a row of smaller cards instead of an empty band; extra height under each card', async () => {
+test('Card picker grid (UI-64): extra height under each card is part of each row', async () => {
   const { fitGrid } = await import('./card-picker.js');
-  const opt = { floor: 64 };
-  // 915x412 compact-land: 557 x 248, 5 columns of 101; 2 rows of 88 need 258 (10 px more than the area has)
-  const plain = fitGrid(557, 248, 12);
-  assert.equal(plain.rows, 1); assert.equal(plain.cols, 5);
-  const g = fitGrid(557, 248, 12, opt);
-  assert.equal(g.cols, 5); assert.equal(g.rows, 2); assert.ok(g.tile >= 64 && g.tile < 88);
-  assert.ok(2 * g.tile * 1.4 + 12 <= 248);
-  // 932x430: 569 x 266 already fits 2 rows of 88 or more: the floor changes nothing
-  assert.deepEqual(fitGrid(569, 266, 12, opt), fitGrid(569, 266, 12));
-  // few columns, wide band: the floor never adds columns, only a row with the same columns
-  const w = fitGrid(1200, 300, 12, opt);
-  assert.ok(w.tile >= 88);
-  // never below the floor
-  const f = fitGrid(557, 150, 12, opt);
-  assert.equal(f.rows, 1);
-  // count: when all the cards fit (3 cards), nothing relaxes: no smaller cards for cards that are not there
-  const few = fitGrid(325, 274, 12, { extra: 37, floor: 64, count: 3 });
-  assert.ok(few.tile >= 88);
-  // extra: the caption height is part of each row
   const c = fitGrid(380, 539, 12, { extra: 37 });
-  assert.ok(c.rows * (c.tile * 1.4 + 37) + 12 * (c.rows - 1) <= 539);
+  assert.ok(c.tile >= 88 && c.rows * (c.tile * 1.4 + 37) + 12 * (c.rows - 1) <= 539);
   const c0 = fitGrid(380, 539, 12);
   assert.ok(c.rows <= c0.rows);
+  assert.deepEqual(fitGrid(569, 266, 12, { extra: 0 }), fitGrid(569, 266, 12));
 });
 
 test('Card picker order (6.5a): a tap adds at the end; removing a card moves the later cards up; the cap holds', async () => {
