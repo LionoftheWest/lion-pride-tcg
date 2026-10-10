@@ -50,7 +50,7 @@ body[data-size="compact-port"] .u3-ft-turn { width: 100%; box-sizing: border-box
 .u3-ft-grid .thp { height: var(--sp-1); margin-top: var(--sp-1); border: 0; border-radius: var(--rad-pill); background: var(--boss-hp-track); }
 .u3-ft-grid .thp i { background: var(--role); }
 .u3-ft-grid .c.downed { opacity: var(--item-disabled); box-shadow: none; }
-.u3-ft-grid .downed-x { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: var(--sp-half) var(--sp-2); border-radius: var(--rad-pill); background: var(--scrim); color: var(--text-primary); font-size: var(--fs-small); font-weight: var(--fw-small-strong); letter-spacing: normal; }
+.u3-ft-grid .downed-x { position: absolute; left: 0; right: 0; margin-inline: auto; width: fit-content; top: 50%; transform: translateY(-50%); padding: var(--sp-half) var(--sp-1); max-width: 100%; box-sizing: border-box; white-space: nowrap; line-height: var(--lh-small); border-radius: var(--rad-pill); background: var(--scrim); color: var(--text-primary); font-size: var(--fs-small); font-weight: var(--fw-small-strong); letter-spacing: normal; }
 /* targeting (D-70): the casting card has the gold mark, every card that can take the effect has the success ring */
 .u3-ft-grid.targeting .c.support { opacity: 1; }
 .u3-ft-grid .c.casting .art { outline: var(--bw-2) solid var(--gold); outline-offset: var(--sp-half); }
@@ -109,3 +109,4 @@ body[data-size="compact-port"] .u3-ft.is-short .u3-ft-now { order: -1; flex: 1 0
 body[data-size="compact-port"] .u3-ft.is-short.is-tight.is-min .u3-ft-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto; grid-template-areas: "title" "facts" "hp" "me"; }
 /* expanded and medium: the hand panel takes the share the approved frames give it (the cards 99 x 138 at 1280x720) */
 body[data-size="expanded"] .u3-ft-hand { flex-basis: 46%; }
+.u3-ft-grid.is-small .downed-x { font-size: var(--fs-caption); padding: var(--sp-half); }
