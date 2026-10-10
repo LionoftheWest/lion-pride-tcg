@@ -58,7 +58,11 @@
     if (e.parentElement?.closest(ISEL) && e.tagName !== 'BUTTON' && e.tagName !== 'INPUT') continue;
     const r = e.getBoundingClientRect();
     const key = keyOf(e);
-    if (key) { const k2 = keys[key] || { inView: false }; k2.inView = k2.inView || (r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1); keys[key] = k2; }
+    // P1: a row of a named scroll area (design.md 3.3, D-07: data-scroll-area) is reachable when the area itself is in the view:
+    // the area scrolls to it on purpose (the FAQ list, UI-38), as a control in a tab panel is reachable through its tab (below)
+    const sa0 = key && e.closest('[data-scroll-area]'); const sar = sa0 && visDeep(sa0) && sa0.getBoundingClientRect();
+    const inArea = !!(sar && sar.width > 0 && sar.height > 0 && sar.left >= -1 && sar.top >= -1 && sar.right <= vw + 1 && sar.bottom <= vh + 1);
+    if (key) { const k2 = keys[key] || { inView: false }; k2.inView = k2.inView || inArea || (r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1); keys[key] = k2; }
     if (!inView(r)) continue;
     { const na = e.closest('[data-scroll-area]'); if (na) { const nr = na.getBoundingClientRect(); const my = r.top + r.height / 2; if (my < nr.top || my > nr.bottom) continue; } }   // a row the named scroll area scrolled out of view (design.md 3.3, D-07)
     // covered: the center hit is not the element (a bar or a banner lies on it)

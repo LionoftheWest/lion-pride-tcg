@@ -510,7 +510,7 @@ async function openPicker() {
   requestAnimationFrame(() => paintCards(grid, box.querySelector('.sh-pk-pager'), list, state, (c) => openConfirm({ kind: 'reset', card: c })));
 }
 
-// The v3 stat reset picker: the Card picker (UI-64) with one card; the stat points on each card; the free reset line.
+// The v3 stat reset picker: the Card picker (UI-64) in pick-one mode; the stat points on each card; the free reset line.
 async function openPickerV3() {
   if (!ctx().cache.collection) { try { await ctx().refreshOwned(); } catch { /* keep */ } }
   const d = shop.data;
@@ -518,8 +518,8 @@ async function openPickerV3() {
   const free = !!d.free_reset;
   const line = `${free ? 'Your free weekly reset is available' : `Free reset used · back ${nextDay(d.free_reset_next)}`} · This reset costs ${fmt(free ? 0 : d.stat_reset_price)} Shards`;
   openCardPicker({
-    title: 'Choose a card', cap: 1, cards: list, selected: [],
-    badge: (c) => Object.entries(c.stat?.points || {}).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${STAT_SHORT[k] || k} ${v}`).join(' · '),
+    title: 'Choose a card', one: true, cap: 1, cards: list, selected: [],
+    caption: (c) => Object.entries(c.stat?.points || {}).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${STAT_SHORT[k] || k} ${v}`),
     status: (sel) => ({ checks: [{ ok: free, label: line }], ready: sel.length === 1, reason: 'Choose a card' }),
     detail: (c) => ctx().openViewer?.(c),
     returnFocus: document.querySelector('[data-choose]'),
