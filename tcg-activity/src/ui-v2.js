@@ -19,6 +19,7 @@ import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import * as pf3 from './ui3/profile.js';
 import * as se3 from './ui3/style-editor.js';
 import { openCardPicker } from './ui3/card-picker.js';
+import * as hm3 from './ui3/home.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -873,8 +874,10 @@ function spotHTML(cards) {
 let heroBoss = null;
 const pullsTab = { v: 'all' };
 
+let homeRO = null;
 export function disposeHomeV2() {
   disposeGalBoss();
+  if (homeRO) { homeRO.disconnect(); homeRO = null; }
   if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
 }
 
@@ -883,13 +886,15 @@ export async function renderHomeV2() {
   disposeHomeV2();
   // Design 19 (Nathan, 2026-09-30): the hunt + Live in voice on the left, Live pulls down
   // the right to the same bottom line. No profile tile: the top-bar avatar opens it.
-  el('main').innerHTML = `<div class="v2-home h19">
-    <section class="v2-tile hero" id="homeHero"><div class="v2-loading">Loading…</div></section>
-    <section class="v2-tile voice" id="homeVoice"></section>
-    <section class="v2-tile pulls" id="homePulls"></section>
+  const v3 = hm3.homeV3();
+  el('main').innerHTML = `<div class="${v3 ? 'u3-home' : 'v2-home h19'}">
+    ${v3 ? '<div class="u3-hm">' : ''}<section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} hero" id="homeHero"><div class="v2-loading">Loading…</div></section>
+    <section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} voice" id="homeVoice"></section>
+    <section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} pulls" id="homePulls"></section>${v3 ? '</div>' : ''}
   </div>`;
   paintVoice();
   paintPulls();
+  if (v3) watchHomeV3();
   const [hunt] = await Promise.all([
     ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null),
     loadMyProfile(true),
@@ -905,6 +910,7 @@ function paintHero(d) {
   const box = el('homeHero');
   if (!box) return;
   const h = d?.hunt;
+  if (hm3.homeV3()) { paintHeroV3(box, d, h); return; }
   if (!h) {
     const last = d?.lastResult;
     const won = last?.status === 'defeated';
@@ -1057,6 +1063,7 @@ export function paintVoice() {
   const { el } = ctx;
   const box = el('homeVoice');
   if (!box) return;
+  if (hm3.homeV3()) { paintVoiceV3(box); return; }
   const me = ctx.user();
   const people = [...(ctx.live.presence || [])];
   // The member always sees their own tile, first (Nathan: not "Just you right now").
@@ -1084,6 +1091,7 @@ export function paintPulls() {
   const { el } = ctx;
   const box = el('homePulls');
   if (!box) return;
+  if (hm3.homeV3()) { paintPullsV3(box); return; }
   const all = ctx.live.pulls || [];
   // Den (design 19): the pulls of the members in my voice channel now.
   const den = new Set([...(ctx.live.presence || []).map((p) => String(p.id)), String(ctx.user()?.id || '')]);
@@ -1104,6 +1112,108 @@ export function paintPulls() {
 }
 
 export function homeTick() { tickCloses(); }
+
+// ---- Home v3 (UI-03, body.ui-v3): src/ui3/home.js has the markup; these paint it and wire it ----
+const pullsPage = { start: 0 };
+const watchHomeV3 = () => {   // refit the voice cells and the pull rows when a tile changes size (fonts, class change)
+  if (typeof ResizeObserver === 'undefined') return;
+  let t = null;
+  homeRO = new ResizeObserver(() => { if (t) cancelAnimationFrame(t); t = requestAnimationFrame(() => { t = null; fitHomeV3(); }); });
+  homeRO.observe(ctx.el('homeHero')); homeRO.observe(ctx.el('homeVoice')); homeRO.observe(ctx.el('homePulls'));
+  document.fonts?.ready?.then(fitHomeV3);
+};
+// The whole Home: every tile fits its box. When something is still cut, the layout modes in steps (the last step with the fewest
+// cut tiles stays): is-compact (smaller gaps and padding), is-vrow (Live in voice in one row, compact-port), is-pull (a wider Live pulls column, compact-land).
+function fitHomeV3() {
+  const root = ctx.el('main')?.querySelector('.u3-home');
+  if (!root) return;
+  const run = () => { hm3.fitHero(ctx.el('homeHero')); hm3.fitVoice(ctx.el('homeVoice')); fitPullsV3(); };
+  let best = null;
+  for (const step of [[], ['is-compact'], ['is-compact', 'is-vrow'], ['is-compact', 'is-vrow', 'is-pull']]) {
+    root.classList.remove('is-compact', 'is-vrow', 'is-pull');
+    root.classList.add(...step);
+    run();
+    const cut = hm3.cutTiles(root);
+    if (!best || cut <= best.cut) best = { step, cut };   // a tie keeps the later (denser) step
+    if (!cut) break;
+  }
+  root.classList.remove('is-compact', 'is-vrow', 'is-pull');
+  root.classList.add(...best.step);
+  run();
+}
+function paintHeroV3(box, d, h) {
+  const { el } = ctx;
+  if (!h) {
+    const last = d?.lastResult;
+    const key = last ? modelKey(last.name) : null;
+    box.innerHTML = hm3.heroRestHTML(d, { fmt, hasModel: !!key });
+    wireTopHunter(box);
+    hm3.fitHero(box);
+    tickCloses();
+    // the last boss, alive (the live 3D portrait, as today)
+    if (key) { try { heroBoss = mountBoss(el('restCanvas'), last.name, last.tier, { portrait: true }); } catch { heroBoss = null; } }
+    return;
+  }
+  const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
+  const rank = myProfile?.huntRank ? `#${myProfile.huntRank} of ${myProfile.huntPlayers}` : '';
+  box.innerHTML = hm3.heroLiveHTML(h, pct, { rank });
+  hm3.fitHero(box);
+  box.querySelector('[data-hjoin]')?.addEventListener('click', () => ctx.show('battling'));
+  ctx.api('/api/hunt/feed').then((f) => {
+    const seen = new Map();
+    for (const r of f?.feed || []) if (r.player_id && !seen.has(r.player_id)) seen.set(r.player_id, r.player);
+    const faces = el('heroFaces');
+    if (faces) faces.innerHTML = [...seen].slice(0, 4).map(([id, name]) => avatarHTML(id, name, 'xs')).join('');
+  }).catch(() => {});
+  // the Top hunter line during a live fight (D-52): the first row of the Hunt board
+  ctx.api('/api/hunt/leaderboard').then((b) => {
+    const top = (b?.leaders || [])[0];
+    const slot = el('heroTop');
+    if (top && slot) { slot.outerHTML = hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); fitHomeV3(); }
+  }).catch(() => {});
+  tickCloses();
+  try { heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true }); } catch { heroBoss = null; }
+}
+// "Top hunter" opens the Leaderboard window (the hidden v2 button that the menu tile clicks too)
+function wireTopHunter(box) { box?.querySelector('[data-top-hunter]')?.addEventListener('click', () => document.getElementById('boardBtn')?.click()); }
+
+function paintVoiceV3(box) {
+  const me = ctx.user();
+  const people = [...(ctx.live.presence || [])];
+  if (me && !people.some((p) => String(p.id) === String(me.id))) people.unshift({ id: me.id, name: me.name, status: { kind: 'home' } });
+  // D-55: the other members first, then you
+  people.sort((a, b) => (String(a.id) === String(me?.id)) - (String(b.id) === String(me?.id)));
+  const cell = (p) => {
+    const kind = p.status?.kind || 'here';
+    const self = String(p.id) === String(me?.id);
+    return hm3.voiceCellHTML(p, vcBody(p), { avatar: avatarHTML(p.id, p.name, 'sm'), name: nameBadge(p.id, p.name, true), ico: (STATUS_TEXT[kind] || ['•'])[0],
+      ago: vcAgo(p.status?.at), self, watch: !self && kind === 'opening' && !!ctx.watchable?.(p.id) });
+  };
+  box.innerHTML = hm3.voiceHTML(people.map(cell), people.length);
+  hm3.fitVoice(box);
+  box.onclick = (e) => { const t = e.target.closest('[data-member]'); if (!t) return; if (t.classList.contains('watch') && ctx.watchOpen?.(t.dataset.member)) return; openMember(t.dataset.member); };
+}
+
+let pullsAll = [];
+const pullHelpers = () => ({ thumb, name: (p) => nameBadge(p.player_id, p.player, true), ago: ctx.ago, label: ctx.RARITY_LABEL });
+function fitPullsV3() {
+  const box = ctx.el('homePulls');
+  if (!box || !box.querySelector('#plList')) return;
+  const h = pullHelpers();
+  pullsPage.start = hm3.fitPulls(box, pullsAll, pullsPage.start, h, (start) => { pullsPage.start = start; fitPullsV3(); });
+}
+function paintPullsV3(box) {
+  const all = ctx.live.pulls || [];
+  const den = new Set([...(ctx.live.presence || []).map((p) => String(p.id)), String(ctx.user()?.id || '')]);
+  const pulls = pullsTab.v === 'top' ? all.filter((p) => TOP_RARITY.has(p.rarity))
+    : pullsTab.v === 'den' ? all.filter((p) => den.has(String(p.player_id))) : all;
+  pullsAll = pulls;
+  box.innerHTML = hm3.pullsHTML(pullsTab.v);
+  box.querySelectorAll('[data-seg]').forEach((b) => b.addEventListener('click', () => { pullsTab.v = b.dataset.seg; pullsPage.start = 0; paintPullsV3(box); }));
+  box.onclick = (e) => { const r = e.target.closest('[data-pi]'); if (r && pulls[Number(r.dataset.pi)]) ctx.openViewer(pulls[Number(r.dataset.pi)]); };
+  fitPullsV3();
+}
+
 
 // ---- The Spotlight + style editor (Nathan: easier select / deselect) ----------------
 // Three slots on top (tap a slot to empty it), your cards below (tap to add or remove),
