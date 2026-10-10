@@ -1,7 +1,7 @@
 // UI-11 / UI-12 pure logic (src/ui3/collection-tabs.js): the claim status, the page fit, the boss grid, the credit line.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { statusOf, claimLine, bossCredit, rowsThatFit, pageSlice, bossGrid } from './collection-tabs.js';
+import { statusOf, claimLine, bossCredit, rowsThatFit, pageSlice, bossGrid, wideColumns, WIDE_COLS } from './collection-tabs.js';
 
 test('statusOf: ready only when done and not claimed', () => {
   const claimed = new Set(['b']);
@@ -42,4 +42,11 @@ test('bossGrid: 6 x 2 in a wide box, 3 x 4 in a tall box, never more columns tha
 
 test('bossGrid: a phone held upright stays 3 columns even when a safe area makes the box wider than tall', () => {
   assert.deepEqual(bossGrid(12, 359, 320, 'compact-port'), { cols: 3, rows: 4 });
+});
+
+test('wideColumns: 4 columns stay 4 at 1280, a list that fits 6 or more takes 8 (the 1990x830 frame)', () => {
+  assert.equal(wideColumns(4), false);
+  assert.equal(wideColumns(5), false);
+  assert.equal(wideColumns(6), true);
+  assert.equal(WIDE_COLS, 8);
 });

@@ -35,6 +35,9 @@ export function pageSlice(total, per, page) {
   const pg = Math.min(Math.max(0, page | 0), pages - 1);
   return { page: pg, pages, start: pg * p, end: Math.min(total, pg * p + p) };
 }
+/** A list that fits 6 or more columns of the tile width spreads to 8 (the approved 1990x830 frame: 8 x 3; 1280x720: 4). */
+export const WIDE_COLS = 8;
+export const wideColumns = (fit) => fit >= 6;
 /** The grid for the Bosses list: wide boxes get 6 columns, tall boxes 3 (approved frames); the rows follow the count. */
 export function bossGrid(n, boxW, boxH, cls = '') {
   const wide = cls === 'compact-port' ? false : boxW > boxH;   // a phone held upright is always tall, whatever a safe area leaves of the box
@@ -52,7 +55,7 @@ const sizeCls = () => document.body.dataset.size || '';
 // ---- Achievements ---------------------------------------------------------------------------------------------
 
 function statHTML(a, st, d) {
-  if (st === 'claimed') return '<span class="u3-at__claimed">Claimed ✓</span>';
+  if (st === 'claimed') return `<span class="u3-at__done">${icon('check', { size: 'md', label: 'Done' })}</span>`;   // the frame: a check at the top right, "Claimed" in the foot
   if (st === 'ready') {
     const busy = S.busy.has(a.key);
     return button({ label: S.err.has(a.key) ? 'Try again' : 'Claim', busyLabel: 'Claiming…', variant: 'primary', size: 'sm', busy, data: { claim: a.key } });
@@ -68,7 +71,7 @@ export function achTileHTML(a, d) {
     + `<div class="u3-at__top"><span class="u3-at__ico" aria-hidden="true">${esc(a.icon)}</span>`
     + `<button type="button" class="u3-at__name" data-ach="${esc(a.key)}">${esc(a.name)}</button>${statHTML(a, st, d)}</div>`
     + `<p class="u3-at__desc">${esc(a.desc)}</p>${progressLinear({ value: pct })}`
-    + `<p class="u3-at__rw">${icon('gift', { size: 'sm' })}<span>${esc(d.rewardText(a))}</span></p></li>`;
+    + `<div class="u3-at__foot"><p class="u3-at__rw">${icon('gift', { size: 'sm' })}<span>${esc(d.rewardText(a))}</span></p>${st === 'claimed' ? '<span class="u3-at__claimed">Claimed ✓</span>' : ''}</div></li>`;
 }
 
 function headHTML(d, ready) {
@@ -121,8 +124,12 @@ function fitAchievements(root, d) {
   const pass = (tight) => {
     grid.classList.toggle('is-tight', tight);
     grid.style.removeProperty('--u3-ct-h');
+    grid.style.removeProperty('--u3-ct-cols');
     grid.innerHTML = d.achs.map((a) => achTileHTML(a, d)).join('');
     const gap = px(getComputedStyle(grid).rowGap);
+    // the columns that fit the tile width; a wide window (6 or more) takes 8, as drawn at 1990x830 (UI-12 approved)
+    const fitCols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length;
+    if (wideColumns(fitCols)) grid.style.setProperty('--u3-ct-cols', WIDE_COLS);
     let h = 0;
     for (const t of grid.children) h = Math.max(h, t.getBoundingClientRect().height);
     h = Math.ceil(h);
