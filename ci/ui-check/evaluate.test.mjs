@@ -64,6 +64,9 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('trades-few', '.u3-trades__cols > #u3Pd.u3-pd > #u3PdSide.u3-pd__body'), 'UI-25');   // Pending
+  assert.equal(ownerOf('trades-offer', '.u3-pd-view > .u3-pd-view__foot > .u3-btn'), 'UI-25');   // the Offer view
+  assert.equal(ownerOf('trades-few', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');   // the picker stays UI-65
   assert.equal(ownerOf('wishlist', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl-row'), 'UI-16');
   assert.equal(ownerOf('wishlist-drawer', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl__list > .u3-wl-row'), 'UI-16');
   assert.equal(ownerOf('profile-own-wish', '#memWish > #wlHandle.u3-pf-wishbar'), 'UI-16');   // the handle strip is the Wishlist's (D-128)
@@ -132,6 +135,17 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
   assert.deepEqual(plan(new Set()).screens, []);
   assert.equal(plan(new Set(), { full: true }).screens.length, Object.keys(SCREENS).length);
 });
+test('plan with the title IDs (pick): a PR runs only its own screens and the screens under them, not every Migrated row', () => {
+  const enforced = new Set(['UI-07', 'UI-46', 'UI-17']);   // the title UI-46 plus Migrated rows
+  assert.deepEqual(plan(enforced, { pick: new Set(['UI-46']) }).screens, ['dungeon', 'dungeon-picker', 'dungeon-picker-detail']);   // the pickers sit under UI-46
+  const ui17 = plan(enforced, { pick: new Set(['UI-17']) }).screens;
+  assert.ok(ui17.includes('hunt-picker') && ui17.includes('boss-window'), 'the screens UNDER the title ID run too');
+  assert.ok(!ui17.includes('collection'), 'a Migrated row that is not in the title does not run');
+  assert.equal(plan(enforced, { pick: new Set(['UI-01']) }).screens.length, Object.keys(SCREENS).length, 'the shell still runs every screen');
+  assert.deepEqual(plan(enforced, { pick: new Set() }).screens, [], 'no title ID: nothing to run');
+  assert.equal(plan(enforced, { full: true, pick: new Set(['UI-46']) }).screens.length, Object.keys(SCREENS).length, '--full (the nightly report) runs every screen');
+  assert.deepEqual(plan(new Set(['UI-50']), { pick: new Set(['UI-50']) }).uncovered, ['UI-50']);
+});
 test('verdict with a plan: only the planned screens must have results; an uncovered enforced ID fails', () => {
   const only = full().filter((r) => r.screen === 'dungeon');
   assert.equal(verdict(only, REG, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon', 'collection'] }).fails.length, SIZES.length, 'collection was planned and has no result');
@@ -139,6 +153,19 @@ test('verdict with a plan: only the planned screens must have results; an uncove
   assert.equal(verdict(only, reg, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon'] }).fails.length, 0);
   const v = verdict(only, reg, { title: 'UI-46 + UI-50', browsers: ['chromium'], screens: ['dungeon'] });
   assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-50', 'no screen in the check']]);
+});
+
+test('the keyboard variant does not check the empty band; the same band in base is a defect (2.3, G-015)', () => {
+  const kb = { ...clean('trades-picker', '375x667'), variant: 'keyboard' }; kb.checks.emptyBandY = 1;
+  assert.equal(defectsOf(kb, null).filter((x) => x.rule === 'empty').length, 0);
+  const base = clean('trades-picker', '375x667'); base.checks.emptyBandY = 1;
+  assert.equal(defectsOf(base, null).filter((x) => x.rule === 'empty').length, 1);
+});
+
+test('trades-pick measures the old v2 trade builder: its owner is UI-63 (the Trade window), not UI-25', () => {
+  assert.equal(SCREENS['trades-pick'].id, 'UI-63');
+  assert.equal(ownerOf('trades-pick', '.tr-main > #trMembers.tr-members > .tr-mem'), 'UI-63');
+  assert.equal(ownerOf('trades', '.u3-pd-row'), 'UI-25');
 });
 
 test('an accepted exception (decision ID, one ID/screen/size/rule) does not fail; anything else still fails', () => {
