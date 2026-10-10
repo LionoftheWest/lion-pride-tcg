@@ -1244,7 +1244,7 @@ function fitFloorV3(main) {
       const tile = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-tile-max')) || 112;
       if ((parseFloat(fl.style.getPropertyValue('--fh')) || 0) < 1.5 * tile) box.classList.add('is-lean');
     }
-    const wide = [...box.querySelectorAll('.u3-dgs-stat > b, .u3-btn')].some((e) => e.scrollWidth > e.clientWidth + 1);
+    const wide = [...box.querySelectorAll('.u3-dgs-stat > b, .u3-btn, .u3-dgs-btns')].some((e) => e.scrollWidth > e.clientWidth + 1);   // UI-50: the row of the leaderboard button and the timer too
     if (wide || panel.scrollHeight > panel.clientHeight + 1 || panel.scrollWidth > panel.clientWidth + 1) box.classList.add('is-tight');
     fitFlips(main);
     // is-tight2: a card is still narrower than the touch size (a short, narrow stage: the safe-area insets), so the buttons lose their icons and the counters shrink again
@@ -1394,6 +1394,7 @@ function overHTML() {
   const R = run();
   if (GA()) return gaOverHTML(R);
   const t = { cleared: ['Dungeon cleared!'], retreat: ['You retreated'], fell: ['Your squad fell'] }[R.ended_by] || ['Run over'];
+  if (V3()) return overV3HTML(R, t);   // UI-50 (the Gauntlet's end above keeps the v2 view)
   const loot = dg.data.loot || [];
   const cards = loot.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}${upCls(String(i))}" data-flip="${i}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
       <span class="face back">${cardBack ? `<img src="${esc(cardBack)}" alt="">` : '<i></i>'}</span>
@@ -1407,19 +1408,34 @@ function overHTML() {
     </section>
   </div>`;
 }
+// ---- v3: the run over (UI-50), behind the ui_v3 flag ----
+// The approved design (design repo UI-50/approved): the Floor cleared panel of UI-49 (u3-dgs-fd) with the run totals, the cards found face down,
+// "Reveal all", "See the leaderboard" and (phones) the timer of the next dungeon. The same data, handlers and counts as the v2 view (wireOver).
+function overV3HTML(R, t) {
+  dg.numCls = cls3();
+  const loot = dg.data.loot || [];
+  const box = (label, val) => `<div class="u3-dgs-stat"><span class="u3-dgs-sl">${label}</span><b>${val}</b></div>`;
+  return `<div class="u3-dgc u3-dgs u3-dgs-fd u3-dgs-ov ph-over"><section class="u3-dgs-fdp">
+    <div class="u3-dgs-fdh"><span class="u3-label u3-dgs-fdk">${icon3('castle', 'md')}${esc(dg.data.name)}</span><h1 class="u3-dgc-h">${t[0]}</h1></div>
+    <div class="u3-dgs-stats">${box('Depth', `${R.floor}F Room ${R.room}`)}${box('Rank today', `#${R.rank || '—'}`)}${box('Shards', `${COIN}<em class="dg-count" data-to="${Number(R.shards) || 0}">0</em>`)}${box('Turns', fmt3(R.turns))}</div>
+    ${loot.length ? `<div class="u3-dgs-lh"><h3>Cards found <small>${loot.length}</small></h3>${btn3({ label: 'Reveal all', variant: 'primary', icon: 'layers' }).replace('class="u3-btn', 'class="u3-dgs-reveal u3-btn')}</div><div class="dg-flips u3-dgs-fl" style="--n:${loot.length}">${flipHTML(loot, 'over')}</div>` : '<p class="u3-dgs-none">No cards dropped this run.</p>'}
+    <div class="u3-dgs-btns">${btn3({ label: 'See the leaderboard', variant: 'secondary', icon: 'trophy' }).replace('class="u3-btn', 'data-board class="u3-btn')}<span class="u3-dgs-note">${icon3('timer')}A new dungeon in <b class="dg-left">${left(dg.data.next_at)}</b></span></div>
+  </section></div>`;
+}
 function wireOver(main) {
+  if (main.querySelector('.u3-dgs-ov')) fitFloorV3(main);
   fitFlips(main);
   main.querySelectorAll('[data-board]').forEach((b) => b.addEventListener('click', () => openBoard()));
   // The Shards count up.
   const c = main.querySelector('.dg-count');
-  if (c) { const to = Number(c.dataset.to) || 0; const t0 = performance.now(); const f = (t) => { const k = Math.min(1, (t - t0) / 1200); c.textContent = fmt(Math.round(to * k * (2 - k))); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }
+  if (c) { const to = Number(c.dataset.to) || 0; const t0 = performance.now(); const f = (t) => { const k = Math.min(1, (t - t0) / 1200); c.textContent = V3() ? fmt3(Math.round(to * k * (2 - k))) : fmt(Math.round(to * k * (2 - k))); if (k < 1) requestAnimationFrame(f); else if (V3() && main.querySelector('.u3-dgs-ov')) fitFloorV3(main); }; requestAnimationFrame(f); }
   const flip = (b) => { if (b.classList.contains('up')) { const it = (dg.data.loot || [])[Number(b.dataset.flip)]; if (it) openInfo(Number(it.id)); return; } b.classList.add('up'); ups.add(upTag(b.dataset.flip)); ctx().sfx?.('flip'); if (main.querySelector('.u3-dgs-chest')) requestAnimationFrame(() => { fitFlips(main); fitChooseV3(main); fitFlips(main); }); };
   main.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', () => flip(b)));
   main.querySelector('.dg-reveal, .u3-dgs-reveal')?.addEventListener('click', (e) => {
     e.currentTarget.disabled = true;
     [...main.querySelectorAll('[data-flip]:not(.up)')].forEach((b, i) => setTimeout(() => flip(b), i * 220));
   });
-  if (cardBack == null) getBack().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-over') && cardBack) paint(); });
+  if (cardBack == null) getBack().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-over, .u3-dgs-ov') && cardBack) paint(); });
 }
 
 // ---- The Gauntlet: the week's squad (gauntlet.sql) ------------------------------------------------------

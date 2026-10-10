@@ -7,7 +7,7 @@
 //   ci_hunt=down     derived from the recorded /api/hunt: today's squad (the first 8 roster cards) is down (UI-19)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
-//   ci_dungeon=fight|fight2   a Dungeon fight with 5 or 2 monsters (UI-47)
+//   ci_dungeon=fight|fight2   a Dungeon fight with 5 or 2 monsters (UI-47); ci_dungeon=over the run over (UI-50)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
@@ -66,7 +66,7 @@ function derivedRoom(body, kind) {
 }
 
 // UI-47: a Dungeon fight (cookie ci_dungeon = fight | fight2): the 5-monster horde and a 2-monster room, with 3 attackers and
-// 2 supports, the numbers of the approved frames (run 1879, squad HP 320 / 392).
+// 2 supports, the numbers of the approved frames (run 1879, squad HP 320 / 392). ci_dungeon=over: the run over (UI-50).
 const FOES5 = [['skeleton', 'Water Skeleton', 'water', 50, ['caster']], ['squidle', 'Earth Squid', 'earth', 0, ['hero']], ['goleling', 'Water Golem', 'water', 85, ['agile']],
   ['dino', 'Lightning Raptor', 'lightning', 50, ['strong']], ['blue_demon', 'Ice Demon', 'ice', 55, ['strong']]];
 function derivedFight(body, kind) {
@@ -84,6 +84,14 @@ function derivedFight(body, kind) {
   const R = { ...base.run, floor: 2, room: 4, squad: atk.concat(sup).map((c) => c.id) };
   const st = { phase: 'fight', room_type: 'horde', round: 0, buff: 1.23, cards, foes, pend: { shards: 0, cards: [] }, bank: { shards: 0, cards: [] }, sup_round: -1 };
   return { ...base, name: 'The Hollow Mines', run: { ...R, state: st } };
+}
+// UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
+function derivedOver(body) {
+  const base = derivedDungeon(body);
+  const mine = body.mine || [];
+  const loot = LOOT.concat([["LionoftheWest's Dodrio", 'normal']]).map(([name, rarity], i) => ({ ...mine[i], name, rarity }));
+  return { ...base, name: 'The Hollow Mines', loot, next_at: new Date(Date.parse(FIX.recordedAt) + 8 * 3600 * 1000).toISOString(),
+    run: { id: 1, status: 'over', ended_by: 'fell', floor: 3, room: 2, rank: 1, shards: 204, turns: 27, squad: [], state: { phase: 'over', cards: {} } } };
 }
 
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
@@ -157,7 +165,8 @@ createServer((req, res) => {
     const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
       : p === '/api/dungeon' && c.ci_dungeon === 'choose2' && hit.body?.ok ? derivedChoose2(hit.body)
       : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon)
-      : p === '/api/dungeon' && ['fight', 'fight2'].includes(c.ci_dungeon) && hit.body?.ok ? derivedFight(hit.body, c.ci_dungeon) : hit.body;
+      : p === '/api/dungeon' && ['fight', 'fight2'].includes(c.ci_dungeon) && hit.body?.ok ? derivedFight(hit.body, c.ci_dungeon)
+      : p === '/api/dungeon' && c.ci_dungeon === 'over' && hit.body?.ok ? derivedOver(hit.body) : hit.body;
     const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
     const body = c.ci_data === 'long' ? longData(body0) : body0;
     return send(res, hit.status || 200, JSON.stringify(body));
