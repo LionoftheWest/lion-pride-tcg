@@ -1,0 +1,149 @@
+/* ==== UI-08 The Card Detail window, v3 (body.ui-v3): src/ui3/card-detail.js, card-detail-fit.js, ui-v2.js paintDetail ====
+   Approved 2026-10-05 (UI-08/approved, review-1; D-38, D-46; D-80 item 11). No card panel beside the grid: the window opens on a tap, as a
+   dialog with the scrim on medium and expanded (two columns), and as a sheet above the dock on compact-port (one column, as tall as its content).
+   A tap on the art opens the 3D viewer (UI-09). card-detail-fit.js measures the window and sets --det-art-w (the card width) and is-tight, so
+   nothing scrolls and nothing is cut. Flag off: none of this applies (the v2 side panel stays). */
+
+/* ---- the v2 side panel is not shown in v3 (the Bosses view keeps its own panel) ---- */
+body.ui-v2.ui-v3 .v2-collection:not(.boss-mode) #colPanel { display: none; }
+body.ui-v2.ui-v3:is([data-size="expanded"], [data-size^="medium"]) .v2-collection:not(.boss-mode):not(.ach-mode) { grid-template-columns: calc(var(--sheet-side-w) * 9 / 16) minmax(0, 1fr); }
+
+/* ---- the layer: the scrim and the window ---- */
+body.ui-v2.ui-v3 .u3-detwrap { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: var(--sp-4);
+  background: var(--scrim); animation: kf-fade var(--dur-base) var(--ease-out); }
+body.ui-v2.ui-v3 .u3-detwrap.hidden { display: none; }
+body.ui-v2.ui-v3 .u3-det { --det-gap: var(--sp-3); position: relative; box-sizing: border-box; width: min(100%, calc(var(--sheet-side-w) * 2.25)); max-height: 100%;
+  overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: var(--sp-5); align-items: start; padding: var(--sp-5);
+  background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); border-radius: var(--rad-lg); box-shadow: var(--elev-3);
+  color: var(--text-primary); font-family: var(--font-ui); animation: kf-pop var(--dur-slow) var(--ease-out); }
+/* compact-port: a sheet on the dock edge, as tall as its content; the scrim is off so the dock stays in sight; the top stays out of the corner zone */
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-detwrap { z-index: var(--z-sheet); place-items: end stretch; background: none; pointer-events: none; animation: none;
+  padding: max(calc(var(--u3-sa-t) + var(--sp-1-5)), var(--corner-h)) calc(var(--u3-sa-r) + var(--sp-1-5)) calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-2)) calc(var(--u3-sa-l) + var(--sp-1-5)); }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det { width: auto; grid-template-columns: minmax(0, 1fr); gap: var(--det-gap); padding: var(--sp-4); border-radius: var(--rad-sheet);
+  pointer-events: auto; animation-name: kf-rise; }
+body.ui-v2.ui-v3 .u3-det.is-tight { --det-gap: var(--sp-2); padding: var(--sp-3); gap: var(--sp-3); }
+body.ui-v2.ui-v3 .u3-det :is(.u3-det__main, .u3-det__side) { display: flex; flex-direction: column; gap: var(--det-gap); min-width: 0; }
+body.ui-v2.ui-v3 .u3-det :is(.u3-det__main, .u3-det__side) > * { flex: none; min-width: 0; }
+
+/* ---- close: IconButton, top right ---- */
+body.ui-v2.ui-v3 .u3-det__x { position: absolute; top: var(--sp-5); right: var(--sp-5); }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det__x { top: var(--sp-4); right: var(--sp-4); }
+body.ui-v2.ui-v3 .u3-det.is-tight .u3-det__x { top: var(--sp-3); right: var(--sp-3); }
+body[data-input="coarse"].ui-v2.ui-v3 .u3-det__x { width: var(--hit); height: var(--hit); }
+
+/* ---- the top row: the art and the title block ---- */
+body.ui-v2.ui-v3 .u3-det__top { display: grid; grid-template-columns: var(--det-art-w, calc(var(--card-squad) * 2)) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+body.ui-v2.ui-v3 .u3-det__art { position: relative; container-type: inline-size; width: var(--det-art-w, calc(var(--card-squad) * 2)); aspect-ratio: 5 / 7; box-sizing: border-box;
+  border-radius: calc(var(--det-art-w, calc(var(--card-squad) * 2)) * var(--rad-card-ratio)); cursor: zoom-in; overflow: hidden; background: var(--surface-1); }
+body.ui-v2.ui-v3 .u3-det__art img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+body.ui-v2.ui-v3 .u3-det__art.is-locked { display: grid; place-items: center; cursor: default; color: var(--gold); border: var(--bw-1) solid var(--border-strong); }
+body.ui-v2.ui-v3 .u3-det__art.is-locked .u3-ico { width: var(--icon-2xl); height: var(--icon-2xl); }
+body.ui-v2.ui-v3 .u3-det__id { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); min-width: 0; }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det__id { padding-right: calc(var(--hit) + var(--sp-2)); }
+body.ui-v2.ui-v3 .u3-det__num { font-family: var(--font-num); font-size: var(--fs-small); letter-spacing: var(--ls-label); color: var(--text-secondary); }
+body.ui-v2.ui-v3 .u3-det__name { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-title); line-height: var(--lh-heading); color: var(--text-primary); overflow-wrap: anywhere; }
+body.ui-v2.ui-v3 .u3-det__ownrow { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-body); color: var(--text-secondary); }
+body.ui-v2.ui-v3 .u3-det__stars { display: inline-flex; gap: var(--sp-half); color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-det__stars .is-on { color: var(--gold); fill: var(--gold); }
+
+/* ---- stats, lore, tags ---- */
+body.ui-v2.ui-v3 .u3-det__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+body.ui-v2.ui-v3 .u3-det__stat { display: flex; flex-direction: column; gap: var(--sp-half); padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); min-width: 0; }
+body.ui-v2.ui-v3 .u3-det__stat b { font-family: var(--font-num); font-size: var(--fs-body); font-weight: var(--fw-stat); line-height: var(--lh-stat); font-variant-numeric: tabular-nums; }
+body.ui-v2.ui-v3 .u3-det__stat span { font-size: var(--fs-caption); color: var(--text-secondary); }
+body.ui-v2.ui-v3 .u3-det__bar { display: block; height: var(--bar-sm); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; }
+body.ui-v2.ui-v3 .u3-det__bar > i { display: block; height: 100%; border-radius: inherit; }
+body.ui-v2.ui-v3 .u3-det__bar--lg { height: var(--bar-md); }
+body.ui-v2.ui-v3 .u3-det__lore { margin: 0; font-family: var(--font-flavor); font-style: italic; font-size: var(--fs-heading); line-height: var(--lh-heading); color: var(--text-secondary); overflow-wrap: anywhere; }
+body.ui-v2.ui-v3 .u3-det__tags { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+body.ui-v2.ui-v3 .u3-det__tags .u3-chip { cursor: default; }
+body.ui-v2.ui-v3 .u3-det__tags .u3-chip.is-on { border-color: var(--gold); color: var(--text-primary); background: var(--surface-1); }
+body.ui-v2.ui-v3 .u3-det__tags .u3-chip .el-ico { width: var(--icon-md); height: var(--icon-md); color: var(--gold); flex: none; }
+body.ui-v2.ui-v3 .u3-det .u3-chip--rarity .u3-ico { flex: none; }
+
+/* ---- the actions: Convert, Ascend, Spotlight, Trade ---- */
+body.ui-v2.ui-v3 .u3-det__acts { display: flex; flex-wrap: wrap; align-items: stretch; gap: var(--sp-2); }
+body.ui-v2.ui-v3 .u3-det__acts > .u3-btn { flex: 1 1 auto; justify-content: center; min-height: var(--hit); height: auto; white-space: nowrap; }
+body.ui-v2.ui-v3 .u3-det__acts > .u3-ibtn { flex: none; width: var(--hit); height: var(--hit); }
+body.ui-v2.ui-v3 .u3-det__acts > #pConvert.hidden { display: none; }
+body.ui-v2.ui-v3 #pConvert { color: var(--cur-shards); background: var(--cur-shards-soft); border-color: var(--cur-shards-deep); gap: var(--sp-2); }
+body.ui-v2.ui-v3 #pConvert .sh-coin { width: var(--icon-xl); height: var(--icon-xl); }
+body.ui-v2.ui-v3 #pConvert .cv-short { display: none; }
+body.ui-v2.ui-v3 #pSpot.is-on { color: var(--gold); border-color: var(--gold); background: var(--gold-a10); }
+body.ui-v2.ui-v3 #pSpot.is-on .u3-ico { fill: var(--gold); }
+
+/* ---- the right column: ability, effect, ascension ---- */
+body.ui-v2.ui-v3 .u3-det__box { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-md); background: var(--surface-2); border: var(--bw-1) solid var(--border); }
+body.ui-v2.ui-v3 .u3-det__box p { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); }
+body.ui-v2.ui-v3 .u3-det__boxhead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+body.ui-v2.ui-v3 .u3-det__boxhead b { font-size: var(--fs-body); font-weight: var(--fw-heading); color: var(--text-primary); }
+body.ui-v2.ui-v3 .u3-det__mono { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); white-space: nowrap; }
+body.ui-v2.ui-v3 .u3-det__asc { display: flex; flex-direction: column; gap: var(--sp-2); }
+body.ui-v2.ui-v3 .u3-det__fx { --fx: var(--effect-shield); --fx-soft: var(--effect-shield-soft); display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--sp-3); row-gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-md); background: linear-gradient(var(--fx-soft), var(--fx-soft)), var(--surface-2); border: var(--bw-1) solid var(--fx); }
+body.ui-v2.ui-v3 .u3-det__fx.hidden { display: none; }
+body.ui-v2.ui-v3 .u3-det__fx[data-kind="boon"] { --fx: var(--effect-boon); --fx-soft: var(--effect-boon-soft); }
+body.ui-v2.ui-v3 .u3-det__fx[data-kind="prank"] { --fx: var(--effect-prank); --fx-soft: var(--effect-prank-soft); }
+body.ui-v2.ui-v3 .u3-det__fx > * { grid-column: 1; margin: 0; min-width: 0; }
+body.ui-v2.ui-v3 .u3-det__fx .v-sec-head { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--fx); }
+body.ui-v2.ui-v3 .u3-det__fx .v-effect-name { font-size: var(--fs-body); font-weight: var(--fw-heading); color: var(--text-primary); }
+body.ui-v2.ui-v3 .u3-det__fx .v-effect-desc { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); }
+body.ui-v2.ui-v3 .u3-det__fx .v-effect-meta { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); }
+body.ui-v2.ui-v3 .u3-det__fx .v-play { grid-column: 2; grid-row: 1 / span 2; align-self: start; width: auto; min-height: var(--hit); margin: 0; padding: 0 var(--sp-4); border: 0; border-radius: var(--rad-md);
+  font: inherit; font-weight: var(--fw-heading); color: var(--on-gold); background: linear-gradient(180deg, var(--gold-hi), var(--gold-strong)); box-shadow: var(--glow-action); cursor: pointer; white-space: nowrap; }
+body.ui-v2.ui-v3 .u3-det__fx .v-play:disabled { opacity: var(--item-disabled); cursor: not-allowed; box-shadow: none; }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det__fx .v-play { grid-column: 1; grid-row: auto; width: 100%; margin-top: var(--sp-2); }
+
+/* ---- stat points: the summary row, and the editor (it takes the place of the other blocks, W6) ---- */
+body.ui-v2.ui-v3 .u3-det__pts.is-closed { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
+body.ui-v2.ui-v3 .u3-det__sum { display: flex; flex-wrap: wrap; gap: var(--sp-2); flex: 1 1 auto; min-width: 0; }
+body.ui-v2.ui-v3 .u3-det__free { font-family: var(--font-num); font-size: var(--fs-heading); color: var(--text-primary); margin-left: auto; white-space: nowrap; }
+body.ui-v2.ui-v3 .u3-det__pts.is-open { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); border-radius: var(--rad-lg); border: var(--bw-1) solid var(--gold); background: var(--bg-raised); }
+body.ui-v2.ui-v3 .u3-det__ptshead { display: flex; align-items: center; gap: var(--sp-3); }
+body.ui-v2.ui-v3 .u3-det__ptshead .u3-det__free { color: var(--gold); }
+body.ui-v2.ui-v3 .u3-det__ptshead .u3-ibtn { flex: none; }
+body[data-input="coarse"].ui-v2.ui-v3 .u3-det__ptshead .u3-ibtn { width: var(--hit); height: var(--hit); }
+body.ui-v2.ui-v3 .u3-det__rows { display: grid; gap: var(--sp-2); }
+body.ui-v2.ui-v3 .u3-det__row { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); min-width: 0; }
+body.ui-v2.ui-v3 .u3-det__row span { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body); color: var(--text-secondary); }
+body.ui-v2.ui-v3 .u3-det__row b { font-family: var(--font-num); font-size: var(--fs-body); white-space: nowrap; }
+body.ui-v2.ui-v3 .u3-det__row b i { margin-left: var(--sp-2); font-style: normal; color: var(--gold); }
+body.ui-v2.ui-v3 .u3-det__plus { flex: none; width: var(--ctl-icon); height: var(--ctl-icon); padding: 0; justify-content: center; }
+body[data-input="coarse"].ui-v2.ui-v3 .u3-det__plus { width: var(--hit); height: var(--hit); }
+body.ui-v2.ui-v3 .u3-det__acts2 { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+/* the editor is open: on a dialog it fills the right column; on a sheet it replaces everything under the top row */
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det.is-editing :is(.u3-det__stats, .u3-det__lore, .u3-det__tags, .u3-det__acts) { display: none; }
+
+/* ---- the tight layout (card-detail-fit.js: nothing else fits): the stats in a slimmer box, smaller type ---- */
+body.ui-v2.ui-v3 .u3-det.is-tight .u3-det__stat { padding: var(--sp-1) var(--sp-2); }
+body.ui-v2.ui-v3 .u3-det.is-tight .u3-det__lore { font-size: var(--fs-body); }
+body.ui-v2.ui-v3 .u3-det.is-tight .u3-det__top { gap: var(--sp-3); }
+body.ui-v2.ui-v3 .u3-det.is-tight .u3-det__box, body.ui-v2.ui-v3 .u3-det.is-tight .u3-det__fx { padding: var(--sp-2) var(--sp-3); }
+
+/* tight on a sheet (a short phone): the stats move up beside the art, under the title block, so the card is as tall as the title block and the stats together */
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det.is-tight .u3-det__main { display: grid; grid-template-columns: var(--det-art-w, calc(var(--card-squad) * 2)) minmax(0, 1fr); column-gap: var(--sp-3); row-gap: var(--det-gap); align-items: start; }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det.is-tight .u3-det__top { display: contents; }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det.is-tight .u3-det__art { grid-column: 1; grid-row: 1 / span 2; }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det.is-tight .u3-det__id { grid-column: 2; grid-row: 1; }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det.is-tight .u3-det__stats { grid-column: 2; grid-row: 2; align-self: end; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det.is-tight .u3-det__main > :is(.u3-det__lore, .u3-det__tags, .u3-det__acts, .u3-fail) { grid-column: 1 / -1; }
+/* the effect: the play button beside the kind line */
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det.is-tight .u3-det__fx .v-play { grid-column: 2; grid-row: 1 / span 2; width: auto; margin-top: 0; }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det.is-tight .u3-det__fx :is(.v-effect-desc, .v-effect-meta) { grid-column: 1 / -1; }
+/* the window cannot fit even so (card-detail-fit.js): it scrolls rather than cut the lower blocks (a defect for the report) */
+body.ui-v2.ui-v3 .u3-det.is-over { overflow-y: auto; overscroll-behavior: contain; }
+
+/* the right column starts under the close button (the dialog); the Convert button takes its own row when Ascend shows (as the phone frame) */
+body.ui-v2.ui-v3:not([data-size="compact-port"]) .u3-det__side { padding-top: calc(var(--ctl-icon) + var(--sp-3)); }
+body.ui-v2.ui-v3 .u3-det__acts:has(#pAscend) > #pConvert { flex: 1 0 100%; }
+
+/* text on the soft rarity fills: the text tokens (4.5:1); the labels in the window are secondary text (4.5:1 on the raised boxes) */
+body.ui-v2.ui-v3 .u3-det .u3-chip--rarity { color: var(--u3-rt, var(--u3-r)); }
+body.ui-v2.ui-v3 .u3-det .u3-r-illustrated_rare { --u3-rt: var(--rarity-illustrated_rare-text); }
+body.ui-v2.ui-v3 .u3-det .u3-r-secret_rare { --u3-rt: var(--rarity-secret_rare-text); }
+body.ui-v2.ui-v3 .u3-det .u3-label { color: var(--text-secondary); }
+/* the stat rows: two columns where they fit, else one */
+body.ui-v2.ui-v3 .u3-det__rows { grid-template-columns: repeat(auto-fit, minmax(calc(var(--sheet-side-w) * 0.45), 1fr)); }
+/* a narrow dialog (card-detail-fit.js: is-narrow): the effect button gets its own row, as on a sheet */
+body.ui-v2.ui-v3 .u3-det.is-narrow .u3-det__fx .v-play { grid-column: 1; grid-row: auto; width: 100%; margin-top: var(--sp-2); }
+body.ui-v2.ui-v3 .u3-det__fx .v-sec-head { min-width: 0; flex-wrap: wrap; }
