@@ -92,7 +92,10 @@ export const SCREENS = {
   'loader':              { id: 'UI-56', loader: 'loading', steps: [] },
   'loader-timeout':      { id: 'UI-56', loader: 'timeout', steps: [] },
   'loader-error':        { id: 'UI-56', loader: 'error', steps: [] },
-  'dungeon-board':       { id: 'UI-51', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-pane="top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
+  // v3: the Dungeon "See the leaderboard" button opens the one Leaderboard window (UI-66) on the Dungeon tab: a defect outside the window belongs to the lobby ('under').
+  'dungeon-board':       { safe: true, long: true, id: 'UI-66', under: 'UI-46', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-seg="pane:top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
+  // The Gauntlet lobby "See the leaderboard" button opens the Leaderboard window (UI-66) on the Gauntlet tab; behind it the lobby is UI-52.
+  'gauntlet-board':      { safe: true, long: true, id: 'UI-66', under: 'UI-52', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-pane="top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
   'gauntlet':            { id: 'UI-52', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   // The Shop (UI-43): tiny has no top bar, so no Shop button (D-06: the small live view, UI-59).
   'shop':                { id: 'UI-43', long: true, safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2]] },
@@ -111,7 +114,17 @@ export const SCREENS = {
   'bell':                { id: 'UI-24', safe: true, long: true, under: 'UI-03', notOn: ['tiny'], steps: [['js', '#bellBtn']] },
   // The Settings window (UI-61) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
   'settings':            { id: 'UI-61', safe: true, under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="settings"]'], ['wait', 1.5]] },
-  'leaderboard':         { id: 'UI-22', long: true, steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  // The Leaderboard window (UI-66, D-44) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
+  'leaderboard':         { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  'leaderboard-hunt':    { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-dungeon': { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
+  'leaderboard-gauntlet': { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
+  // The states: Main with an error answer, and the Hunt, Dungeon and Gauntlet tabs with no rows or an error answer.
+  'leaderboard-error':   { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'error', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  'leaderboard-hunt-error': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'error', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-hunt-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-dungeon-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
+  'leaderboard-gauntlet-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
   'profile':             { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
   'style-editor':        { id: 'UI-15', safe: true, notOn: ['tiny'], steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5]] },
   // UI-15 opens the Card picker for the Spotlight (D-80 item 16): a defect inside the picker window belongs to UI-64
@@ -151,6 +164,7 @@ export function ownerOf(screen, where) {
   // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
+  if (/#u3Lb(Host)?[a-z]*\b|\.u3-lb\b|\.u3-lb[-_]|\.u3-lbhost\b/.test(where)) return 'UI-66';
   // The card details (the v2 #viewer) opened from a Card picker: UI-64 owns them there (only the picker detail specs), the screen under the scrim does not.
   // Other screens keep their owner (collection-detail: UI-08 opens the viewer at some sizes and its side panel at others).
   if (/-picker-detail$/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b|\.vr-|#v-[a-z-]+/.test(where)) return 'UI-64';

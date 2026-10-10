@@ -13,6 +13,7 @@ import { mountMemberPicker, memberLists } from './ui3/member-picker.js';
 import { button as button3, dot as dot3, sheet as sheet3, toast as toast3, counter as counter3 } from './ui3/components.js';
 import { pendingLists, waiting, sectionsHTML, headHTML, viewHTML } from './ui3/pending.js';
 import { paintBell } from './ui3/bell.js';
+import { openLeaderboardWindow } from './ui3/leaderboard.js';
 import { openTradeWindow, closeTradeWindow, refreshTradeWindow } from './ui3/trade-window.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
@@ -253,6 +254,7 @@ const METRICS = [
 const board = { metric: 'power', data: null, back: 'home' };
 
 export function openLeaderboardV2() {
+  if (isV3()) { openLeaderboardWindow('main'); return; }   // v3 (UI-66, D-44): the one Leaderboard window; the view below stays for the flag off
   const c = ctx();
   if (c.currentView() !== 'leaderboard') board.back = c.currentView();
   c.show('leaderboard');

@@ -39,6 +39,7 @@ import { icon as ui3Icon } from './ui3/icons.js';
 import { button as ui3Button, iconButton as ui3IconButton, pager as ui3Pager } from './ui3/components.js';
 import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
 import { initSettingsWindow } from './ui3/settings.js';
+import { initLeaderboardWindow, openLeaderboardWindow } from './ui3/leaderboard.js';
 import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
 import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, rarePacks, newMark, PACK_RATIO, PACK_GAP_MS, STACK_LAYERS, stackTimeline, stackDepth } from './ui3/pack-reveal.js';
 import { counter as u3Counter } from './ui3/components.js';
@@ -371,7 +372,7 @@ async function main() {
   if (flags.reports) initReport();
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
-  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
+  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); initLeaderboardWindow({ api, user: () => meUser, avatarHTML, nameBadge, openMember }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
 }
 
 // The v3 foundation (UI-00): only for the members in settings.ui_v3 (flags.uiV3). It loads the component CSS and writes
@@ -3018,6 +3019,7 @@ function resolveBossTurn(act) {
 }
 
 async function openHuntBoard() {
+  if (huntV3()) { openLeaderboardWindow('hunt'); return; }   // v3 (UI-66, D-44): the Hunt tab of the one Leaderboard window
   const b = el('board');
   b.className = 'open';
   b.innerHTML =
