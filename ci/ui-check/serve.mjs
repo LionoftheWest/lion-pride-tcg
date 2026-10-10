@@ -113,6 +113,8 @@ function derivedWish(body) {
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
+// UI-12: two achievements that are done and not claimed (First Pull, First Shine), so the tab shows Claim and Claim all (cookie ci_ach=ready).
+DERIVED.push({ when: (p, c, body) => p === '/api/profile' && c.ci_ach === 'ready' && Array.isArray(body?.claimed), make: (body) => ({ ...body, claimed: body.claimed.filter((k) => k !== 'first' && k !== 'ir1') }) });
 // UI-64 (Shop stat reset picker, pick one): the recorded collection has 3 cards with stat points; ci_stats=many gives the
 // first 30 cards points (a member who spent points on many cards), so the picker shows a full page.
 const STAT_KEYS = ['attack', 'vitality', 'precision', 'potency', 'haste'];

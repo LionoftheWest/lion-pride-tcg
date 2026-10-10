@@ -136,7 +136,7 @@ import { plan, enforcedIds } from './plan.mjs';
 test('plan: the title IDs and the Migrated rows; the shell checks every screen; an unknown screen is uncovered', () => {
   assert.deepEqual([...enforcedIds('UI-46 Dungeon lobby', REG)].sort(), ['UI-07', 'UI-46'], 'UI-07 is Migrated in REG');
   assert.deepEqual(plan(new Set(['UI-46'])).screens, ['dungeon']);
-  assert.deepEqual(plan(new Set(['UI-12'])).screens, ['achievements', 'achievements-detail']);
+  assert.deepEqual(plan(new Set(['UI-12'])).screens, ['achievements', 'achievements-detail', 'achievements-ready', 'achievements-claim-error']);
   assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
   assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');

@@ -25,9 +25,14 @@ export const SCREENS = {
   // the Filters panel open (D-39, D-123: under tabs where the groups do not fit the height)
   'collection-filters': { id: 'UI-07', safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#colFilters'], ['wait', 1]] },
   'collection-detail':   { id: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
-  'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
-  'achievements-detail': { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main .ach-card, #main .ach-row, #main [data-ach]']] },
-  'bosses':              { id: 'UI-11', steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
+  'achievements':        { id: 'UI-12', long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
+  // v3: the achievement window (a tap on a tile), the tab with an achievement ready to claim (cookie ci_ach=ready, derived in
+  // serve.mjs), and a Claim that the server refuses (the check server blocks every write: the button shows "Try again").
+  'achievements-detail': { id: 'UI-12', long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-ach="s1"]'], ['wait', 1.5]] },
+  'achievements-ready':  { id: 'UI-12', long: true, safe: true, ach: 'ready', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
+  'achievements-claim-error': { id: 'UI-12', safe: true, ach: 'ready', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-claim]'], ['wait', 1.5]] },
+  'bosses':              { id: 'UI-11', long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
+  'boss-detail':         { id: 'UI-11', long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]'], ['js', '#main [data-bi]'], ['wait', 2]] },
   'trades':              { id: 'UI-25', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`]], input: '#trFind, #main input[type=search], #main input[type=text]' },
   // v3: the Trades tab opens with the Member picker (UI-65); a tap on a member opens the builder. v2: the builder.
   // UI-63: a tap on a member opens the Trade window (Your cards); the states of the approved frames: one of my cards chosen

@@ -18,6 +18,7 @@ import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import { paintCollectionV3 } from './ui3/collection.js';
 import * as pf3 from './ui3/profile.js';
+import { paintAchievementsV3, paintBossesV3 } from './ui3/collection-tabs.js';
 import * as se3 from './ui3/style-editor.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import * as hm3 from './ui3/home.js';
@@ -280,6 +281,55 @@ export function toast(text) {
   setTimeout(() => n.remove(), 3200);
 }
 
+// ---- v3 Achievements and Bosses tabs (UI-12, UI-11; src/ui3/collection-tabs.js): the same data and calls as the v2 tabs ----
+// Claim: the same server call as redeem(); the view repaints after the profile reloads. Returns { ok } for the Claim button.
+async function claimV3(key) {
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim', { key }); } catch { r = null; }
+  if (!r?.ok && r?.error !== 'claimed') return { ok: false };
+  if (r?.ok) {
+    myProfile = { ...(myProfile || {}), claimed: [...(myProfile?.claimed || []), key] };
+    ctx.refreshPacks?.();
+    const rw = r.reward || rewardOf(key);
+    if (rw?.title || rw?.frame) toastAction(`🎁 ${rewardLabel(rw)}`, 'Equip now', () => equipTitle(rw.title || null, rw.frame || null));
+    else toast(`🎁 ${rewardLabel(rw)}`);
+  }
+  loadMyProfile(true).then(() => { refreshCollectionBadge(); if (ctx.currentView() === 'collection') renderCollectionV2(); });
+  return { ok: true };
+}
+async function claimAllV3() {
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim-all', {}); } catch { r = null; }
+  if (!r?.ok) return { ok: false };
+  ctx.refreshPacks?.();
+  const parts = [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.titles?.length ? `${r.titles.length} title${r.titles.length === 1 ? '' : 's'}` : null, r.frames?.length ? `${r.frames.length} frame${r.frames.length === 1 ? '' : 's'}` : null].filter(Boolean);
+  const msg = `🎁 ${r.claimed.length} claimed${parts.length ? ` · ${parts.join(' + ')}` : ''}`;
+  if (r.titles?.length || r.frames?.length) toastAction(msg, 'Choose title', () => openSpotEditor()); else toast(msg);
+  await loadMyProfile(true);
+  refreshCollectionBadge();
+  if (ctx.currentView() === 'collection') renderCollectionV2();
+  return { ok: true };
+}
+function paintTabV3(achs, tabBar) {
+  const main = ctx.el('main');
+  const help = explainBtn('collection');
+  if (col.view === 'bosses') {
+    paintBossesV3(main, { tabBar, help,
+      bosses: RAID_BOSSES.map((b) => ({ arch: b.arch, title: b.title, blurb: b.blurb, credit: b.credit, thumb: thumbFor(b) })),
+      mount: (canvas, b) => { disposeGalBoss(); const rb = RAID_BOSSES.find((x) => x.arch === b.arch); try { galBoss = mountBoss(canvas, seedForBoss(rb), 'Mythic', { portrait: true, portraitOpts: { at: 0.5 } }); } catch { galBoss = null; } },
+      dispose: disposeGalBoss });
+  } else {
+    col.view = 'ach'; // v3 has no sub-view: the achievement opens in a window
+    const order = (a) => (a.done ? (claimedSet().has(a.key) ? 2 : 0) : 1);   // ready first, then in progress, then claimed
+    paintAchievementsV3(main, { tabBar, help, achs: [...achs].sort((a, b) => order(a) - order(b)), claimed: claimedSet(),
+      rewardText: (a) => rewardLabel(rewardOf(a.key)), numLabel, thumb, flair: flairHTML,
+      claim: claimV3, claimAll: claimAllV3,
+      sortedSet: (a) => [...(a.set || [])].sort((x, y) => (y.owned - x.owned) || (x.num - y.num)),
+      openCard: (c, list) => ctx.openViewer(c, { list: list.filter((x) => !x.locked) }) });
+  }
+  wireColTabs();
+  maybeExplain('collection');
+}
 // ---- Collection ------------------------------------------------------------
 
 const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0, boss: 0 };
@@ -342,7 +392,9 @@ export async function renderCollectionV2() {
   const ownSeg = [['all', 'All'], ['owned', 'Owned'], ['missing', 'Missing']].map(([v, l]) => `<button data-own="${v}" class="${col.own === v ? 'on' : ''}">${l}</button>`).join('');
 
   const tabs = `${colTabBar(achDone, achs.length, ready)}${explainBtn('collection')}`;
-  // v3 (body.ui-v3, UI-07): the Cards tab is the v3 Collection (src/ui3/collection.js). Achievements and Bosses stay v2.
+  // v3 (body.ui-v3, UI-11 and UI-12): the Achievements and Bosses tabs (src/ui3/collection-tabs.js).
+  if (document.body.classList.contains('ui-v3') && col.view !== 'cards') { paintTabV3(achs, colTabBar(achDone, achs.length, ready)); return; }
+  // v3 (body.ui-v3, UI-07): the Cards tab is the v3 Collection (src/ui3/collection.js).
   if (v3Cards()) {
     const inUse = (list, key) => list.filter(([k]) => inSeason.some((c) => (key === 'type' ? c.tags?.type === k : [].concat(c.tags?.origin || []).includes(k))));
     paintCollectionV3(el('main'), {
