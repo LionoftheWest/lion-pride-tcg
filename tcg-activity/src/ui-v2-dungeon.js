@@ -595,6 +595,7 @@ const supDesc = (c) => { const a = c.ability || {}; return (EFFECT[a.effect] || 
 
 // The plate name: the element word is its own span (landscape hides it: the icon shows the element).
 const plateName = (f) => { const n = String(f.name || ''); const w = n.split(' ')[0]; return f.element && w.toLowerCase() === String(f.element).toLowerCase() ? `<i class="pre">${esc(w)} </i>${esc(n.slice(w.length + 1))}` : esc(n); };
+const ctlHTML = () => `${musicBtnHTML()}<button class="dg-auto${dg.auto ? " on" : ""}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button>`;
 function fightHTML() {
   const R = run(); const st = R.state;
   const foes = foesOf(st);
@@ -614,7 +615,7 @@ function fightHTML() {
       <span class="dg-hp"><i></i></span><small class="dg-hpn"></small></div>`;
   const supB = (c) => `<button class="dg-sup" data-sup="${c.id}">
       ${c.image_url ? `<img src="${thumb(c.image_url)}" alt="">` : '<span></span>'}
-      <span class="t"><b>${esc(c.name)}</b><small>${esc(supDesc(c))}</small></span><em></em></button>`;
+      <span class="t"><b>${esc(c.name)}</b><small>${esc(supDesc(c))}</small></span><em></em></button>`;   // D-156: a support has no HP bar in the Dungeon and the Gauntlet (they never go down, D-126)
   return `<div class="dg-fight" data-room="${roomKey()}">
     <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
     <div class="dg-meter"></div>
@@ -623,9 +624,9 @@ function fightHTML() {
       <canvas class="dg-canvas"></canvas>
       <div class="dg-reticle"><i></i></div>
       <div class="dg-pops"></div>
-      ${musicBtnHTML()}<button class="dg-auto${dg.auto ? " on" : ""}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button>
+      ${V3() ? '' : ctlHTML()}
     </div>
-    <div class="dg-hint"></div>
+    ${V3() ? `<div class="dg-ctl">${musicBtnHTML()}<div class="dg-hint"></div><button class="dg-auto${dg.auto ? ' on' : ''}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button></div>` : '<div class="dg-hint"></div>'}
     <div class="dg-units">${atk.map(unit).join('')}</div>
     <aside class="dg-right"><section class="dg-panel dg-shp"><span class="k">Squad HP</span><b class="v"></b><span class="dg-hp big"><i></i></span></section>
       <section class="dg-panel dg-sups"><span class="k">Support</span>${sup.map(supB).join('') || '<p class="dg-none">No support cards in this squad.</p>'}</section></aside>
@@ -702,7 +703,7 @@ function fightUpdate(main, st) {
       // Item 17: one support per turn. After one, the others wait for the next turn (an attack ends it).
       const used = Number(st.sup_round ?? -1) === round;
       const ready = round >= (c.s.cd || 0) && !c.s.down;
-      b.disabled = !ready || used || dg.busy;
+      b.disabled = (!ready || used || dg.busy) && !(V3() && dg.support && !dg.busy);   // v3 (D-70): while a support is picking a target, every support is a valid target
       b.classList.toggle('wait', !ready || used);
       b.classList.toggle('on', dg.support === Number(c.id));
       b.querySelector('em').innerHTML = c.s.down ? 'Down' : !ready ? `${I.timer}In ${c.s.cd - round} round${c.s.cd - round === 1 ? '' : 's'}` : used ? `${I.lock}Next turn` : `${I.check}Ready`;
@@ -720,6 +721,28 @@ function fightUpdate(main, st) {
   const sb = F.querySelector('.dg-stats'); if (sb) sb.outerHTML = statsHTML();
   placeArena(main);
 }
+// v3 (UI-47): the fight stacks (the phone layout of the approved frames) on a compact-port phone and on a tall tablet. The tall tablet is
+// measured on the fight box itself (F-1): the box is taller than wide. The class is read again after a resize.
+let fightRO = null;
+function fitFightV3(F) {
+  fightRO?.disconnect(); fightRO = null;
+  if (!V3() || !F) return;
+  const measure = () => {
+    if (!F.isConnected) return;
+    const tile = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-tile-max')) || 112;
+    F.classList.toggle('is-stack', cls3() === 'compact-port' || (cls3() === 'medium' && F.clientHeight > F.clientWidth));
+    F.classList.toggle('is-narrow', cls3() === 'compact-port' && F.clientWidth < 3.5 * tile); F.classList.toggle('is-slim', cls3() === 'medium' && F.clientWidth < 6.4 * tile);
+    // is-short, is-short2: the fight is taller than its box, or the stage is under 2.2 widest card tiles high: the cards, then Squad HP and the supports, take less room
+    const arena = F.querySelector('.dg-arena');
+    F.classList.remove('is-short', 'is-short2');
+    const over = () => F.scrollHeight > F.clientHeight + 1 || (arena && arena.clientHeight < 2.2 * tile);
+    if (F.classList.contains('is-stack') && over()) { F.classList.add('is-short'); if (over()) F.classList.add('is-short2'); }
+    placeArena(document.getElementById('main'));
+  };
+  measure();
+  document.fonts?.ready.then(measure);
+  if (typeof ResizeObserver === 'function') { fightRO = new ResizeObserver(measure); fightRO.observe(F); const ar = F.querySelector('.dg-arena'); if (ar) fightRO.observe(ar); }
+}
 // The name plates sit in a band above the monsters (never on the turn meter, never on each other);
 // the reticle marks the target on the monster itself.
 function placeArena(main) {
@@ -734,6 +757,12 @@ function placeArena(main) {
   main.querySelectorAll('.dg-plate').forEach((p) => {
     const l = L[Number(p.dataset.foe)];
     if (!l) return;
+    if (V3()) {   // UI-47: the plates stand in even slots over the stage, one slot for each monster (the approved frames), whatever the monsters' size
+      const cnt = Math.max(1, L.length), slot = (W || 0) / cnt, gap = phone ? 4 : 8;
+      p.style.width = `${Math.max(48, slot - gap)}px`;
+      p.style.left = `${slot * (Number(p.dataset.foe) + 0.5)}px`;
+      return;
+    }
     const room = Math.min(9999, ...xs.filter((x) => x !== l.x).map((x) => Math.abs(x - l.x))) - 6;
     const w = Math.max(48, Math.min(250, l.w * (phone ? 0.84 : 0.92), room, W ? W - 8 : 9999));
     p.style.width = `${w}px`;
@@ -782,15 +811,20 @@ async function wireFight(main, keepCanvas) {
     } catch (e) { console.warn('dungeon stage', e); }
   }
   requestAnimationFrame(() => placeArena(main));
+  fitFightV3(F);
   F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); dg.auto = !dg.auto; localStorage.setItem(AUTO, dg.auto ? '1' : ''); e.currentTarget.classList.toggle('on', dg.auto); ctx().sfx?.('click'); autoNext(); });
   autoNext();
   F.addEventListener('click', (e) => {
     const t = e.target;
+    if (V3() && dg.support && !t.closest('.dg-unit, .dg-sup, .dg-hint')) { dg.support = null; fightUpdate(main, run().state); return; }   // v3 (UI-47): the dim layer is drawn, not a box, so a tap outside the targets cancels here
     if (t.closest('.dg-cancel') || t.closest('.dg-shade')) { dg.support = null; fightUpdate(main, run().state); return; }
     if (t.closest('.card-info')) { const id = Number(t.closest('.dg-card')?.dataset.id); if (id) openInfo(id); return; }
     const p = t.closest('[data-foe]'); if (p) { target(main, Number(p.dataset.foe)); return; }
     if (t.closest('.dg-retreat')) { retreat(); return; }
     const s = t.closest('[data-sup]');
+    if (s && V3() && dg.support && Number(s.dataset.sup) !== dg.support && !dg.busy) {   // v3 (UI-47, D-70): a support is a valid target of another support
+      const sid = dg.support; dg.support = null; act('support', { cardId: sid, targetCard: Number(s.dataset.sup) }); return;
+    }
     if (s && !s.disabled) {
       const id = Number(s.dataset.sup);
       const tgt = mine().get(id)?.ability?.target || 'boss';
@@ -1202,7 +1236,7 @@ function fitFloorV3(main) {
       const tile = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-tile-max')) || 112;
       if ((parseFloat(fl.style.getPropertyValue('--fh')) || 0) < 1.5 * tile) box.classList.add('is-lean');
     }
-    const wide = [...box.querySelectorAll('.u3-dgs-stat > b, .u3-btn')].some((e) => e.scrollWidth > e.clientWidth + 1);
+    const wide = [...box.querySelectorAll('.u3-dgs-stat > b, .u3-btn, .u3-dgs-btns')].some((e) => e.scrollWidth > e.clientWidth + 1);   // UI-50: the row of the leaderboard button and the timer too
     if (wide || panel.scrollHeight > panel.clientHeight + 1 || panel.scrollWidth > panel.clientWidth + 1) box.classList.add('is-tight');
     fitFlips(main);
     // is-tight2: a card is still narrower than the touch size (a short, narrow stage: the safe-area insets), so the buttons lose their icons and the counters shrink again
@@ -1352,6 +1386,7 @@ function overHTML() {
   const R = run();
   if (GA()) return gaOverHTML(R);
   const t = { cleared: ['Dungeon cleared!'], retreat: ['You retreated'], fell: ['Your squad fell'] }[R.ended_by] || ['Run over'];
+  if (V3()) return overV3HTML(R, t);   // UI-50 (the Gauntlet's end above keeps the v2 view)
   const loot = dg.data.loot || [];
   const cards = loot.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}${upCls(String(i))}" data-flip="${i}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
       <span class="face back">${cardBack ? `<img src="${esc(cardBack)}" alt="">` : '<i></i>'}</span>
@@ -1365,19 +1400,34 @@ function overHTML() {
     </section>
   </div>`;
 }
+// ---- v3: the run over (UI-50), behind the ui_v3 flag ----
+// The approved design (design repo UI-50/approved): the Floor cleared panel of UI-49 (u3-dgs-fd) with the run totals, the cards found face down,
+// "Reveal all", "See the leaderboard" and (phones) the timer of the next dungeon. The same data, handlers and counts as the v2 view (wireOver).
+function overV3HTML(R, t) {
+  dg.numCls = cls3();
+  const loot = dg.data.loot || [];
+  const box = (label, val) => `<div class="u3-dgs-stat"><span class="u3-dgs-sl">${label}</span><b>${val}</b></div>`;
+  return `<div class="u3-dgc u3-dgs u3-dgs-fd u3-dgs-ov ph-over"><section class="u3-dgs-fdp">
+    <div class="u3-dgs-fdh"><span class="u3-label u3-dgs-fdk">${icon3('castle', 'md')}${esc(dg.data.name)}</span><h1 class="u3-dgc-h">${t[0]}</h1></div>
+    <div class="u3-dgs-stats">${box('Depth', `${R.floor}F Room ${R.room}`)}${box('Rank today', `#${R.rank || '—'}`)}${box('Shards', `${COIN}<em class="dg-count" data-to="${Number(R.shards) || 0}">0</em>`)}${box('Turns', fmt3(R.turns))}</div>
+    ${loot.length ? `<div class="u3-dgs-lh"><h3>Cards found <small>${loot.length}</small></h3>${btn3({ label: 'Reveal all', variant: 'primary', icon: 'layers' }).replace('class="u3-btn', 'class="u3-dgs-reveal u3-btn')}</div><div class="dg-flips u3-dgs-fl" style="--n:${loot.length}">${flipHTML(loot, 'over')}</div>` : '<p class="u3-dgs-none">No cards dropped this run.</p>'}
+    <div class="u3-dgs-btns">${btn3({ label: 'See the leaderboard', variant: 'secondary', icon: 'trophy' }).replace('class="u3-btn', 'data-board class="u3-btn')}<span class="u3-dgs-note">${icon3('timer')}A new dungeon in <b class="dg-left">${left(dg.data.next_at)}</b></span></div>
+  </section></div>`;
+}
 function wireOver(main) {
+  if (main.querySelector('.u3-dgs-ov')) fitFloorV3(main);
   fitFlips(main);
   main.querySelectorAll('[data-board]').forEach((b) => b.addEventListener('click', () => openBoard()));
   // The Shards count up.
   const c = main.querySelector('.dg-count');
-  if (c) { const to = Number(c.dataset.to) || 0; const t0 = performance.now(); const f = (t) => { const k = Math.min(1, (t - t0) / 1200); c.textContent = fmt(Math.round(to * k * (2 - k))); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }
+  if (c) { const to = Number(c.dataset.to) || 0; const t0 = performance.now(); const f = (t) => { const k = Math.min(1, (t - t0) / 1200); c.textContent = V3() ? fmt3(Math.round(to * k * (2 - k))) : fmt(Math.round(to * k * (2 - k))); if (k < 1) requestAnimationFrame(f); else if (V3() && main.querySelector('.u3-dgs-ov')) fitFloorV3(main); }; requestAnimationFrame(f); }
   const flip = (b) => { if (b.classList.contains('up')) { const it = (dg.data.loot || [])[Number(b.dataset.flip)]; if (it) openInfo(Number(it.id)); return; } b.classList.add('up'); ups.add(upTag(b.dataset.flip)); ctx().sfx?.('flip'); if (main.querySelector('.u3-dgs-chest')) requestAnimationFrame(() => { fitFlips(main); fitChooseV3(main); fitFlips(main); }); };
   main.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', () => flip(b)));
   main.querySelector('.dg-reveal, .u3-dgs-reveal')?.addEventListener('click', (e) => {
     e.currentTarget.disabled = true;
     [...main.querySelectorAll('[data-flip]:not(.up)')].forEach((b, i) => setTimeout(() => flip(b), i * 220));
   });
-  if (cardBack == null) getBack().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-over') && cardBack) paint(); });
+  if (cardBack == null) getBack().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-over, .u3-dgs-ov') && cardBack) paint(); });
 }
 
 // ---- The Gauntlet: the week's squad (gauntlet.sql) ------------------------------------------------------
