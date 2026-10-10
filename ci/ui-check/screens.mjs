@@ -173,11 +173,16 @@ export const SCREENS = {
   'avatarfx-home':       { id: 'UI-55', under: 'UI-03', long: true, safe: true, home: 'busy', avfx: 'on', notOn: ['tiny'], steps: [['wait', 3]] },
   'avatarfx-profile':    { id: 'UI-55', under: 'UI-14', long: true, safe: true, avfx: 'on', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3]] },
   'avatarfx-board':      { id: 'UI-55', under: 'UI-22', long: true, avfx: 'on', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  // The same with the Wishlist tab open (phones show the Spotlight, the Season and the Wishlist as tabs, D-113).
   'help':                { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5]] },
   'help-closed':          { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="0"]'], ['wait', 0.5]] },
   // UI-57: the standalone public legal pages (no Activity, no flag): `page` loads that path instead of the Activity.
   'legal-terms':         { id: 'UI-57', safe: true, cornerWindow: true, page: '/app/legal/terms.html', steps: [] },
   'legal-privacy':       { id: 'UI-57', safe: true, cornerWindow: true, page: '/app/legal/privacy.html', steps: [] },
+  // The Feedback window (UI-40) opens over Home from the menu (the check server turns the report flag on: cookie ci_report). The send is blocked (403): report-error shows the error state.
+  'report':              { id: 'UI-40', safe: true, under: 'UI-03', report: true, cornerWindow: true, notOn: ['tiny'], input: '#u3RpText', steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="feedback"]'], ['wait', 1.5]] },
+  'report-typed':        { id: 'UI-40', safe: true, under: 'UI-03', report: true, cornerWindow: true, notOn: ['tiny'], input: '#u3RpText', steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="feedback"]'], ['wait', 1.5], ['type', '#u3RpText', 'The pack chooser covers the dock.']] },
+  'report-error':        { id: 'UI-40', safe: true, under: 'UI-03', report: true, cornerWindow: true, notOn: ['tiny'], input: '#u3RpText', steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="feedback"]'], ['wait', 1.5], ['type', '#u3RpText', 'The pack chooser covers the dock.'], ['js', '[data-rp-send]'], ['wait', 1.5]] },
   'help-item5':         { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
   'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
@@ -243,6 +248,7 @@ export function ownerOf(screen, where) {
   if (SCREENS[screen].id === 'UI-50' && /\.u3-dg[sc]\b|\.u3-dg[sc][-_]/.test(where)) return 'UI-50';   // the run over shares the room-step parts of UI-49
   if (/\.u3-dgs\b|\.u3-dgs[-_]/.test(where) || (SCREENS[screen].id === 'UI-49' && /\.u3-dgc\b|\.u3-dgc[-_]/.test(where))) return 'UI-49';   // the room steps share the UI-48 stage parts
   if (/#v2Help[a-z]*\b|\.u3-hp\b|\.u3-hp[-_]/.test(where)) return 'UI-38';
+  if (/#(v2Report|u3Rp)[a-z]*\b|\.u3-rp\b|\.u3-rp[-_]/.test(where)) return 'UI-40';
   if (/\.u3-dgc\b|\.u3-dgc[-_]/.test(where)) return 'UI-48';
   if (/\.u3-(col|fpanel|ctile|fhost|frow)\b|\.u3-(col|fpanel|ctile|frow)[-_]|#u3FiltersT\b/.test(where)) return 'UI-07';   // the v3 Collection (the v2 ids #colSearch and #colFilters are also on Achievements and Bosses: only the u3 classes count)
   if (/\.u3-logo\b|\.ldr3-emblem\b/.test(where)) return 'UI-23';   // the logo lockups (UI-23): the top bar logo (its path can stop above #topbar) and the loader tile
@@ -313,7 +319,7 @@ export async function runSteps(pg, steps) {
     else if (st[0] === 'type') {   // the text goes into a field with an input event (no focus: the v2 m-kb class would hide the dock; the keyboard variant focuses it later); then the suggest request and its answer
       try {
         await pg.waitForSelector(st[1], { state: 'attached', timeout: 8000 });
-        await pg.evaluate(([sel, text]) => { const e = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(e, text); e.dispatchEvent(new Event('input', { bubbles: true })); }, [st[1], st[2]]);
+        await pg.evaluate(([sel, text]) => { const e = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length); const set = Object.getOwnPropertyDescriptor(e instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value').set;   /* an input or a textarea (the Report box, UI-40) */ set.call(e, text); e.dispatchEvent(new Event('input', { bubbles: true })); }, [st[1], st[2]]);
         await sleep(0.8);
       } catch { miss.push(st[1]); }
       await settle(pg);

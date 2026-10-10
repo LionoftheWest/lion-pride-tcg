@@ -14,6 +14,8 @@
 //   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
 //                       busy = a resting hunt with a last result, live = the recorded live hunt
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
+//   ci_report=on     /api/flags answers reports: true (the Feedback window, UI-40); the send stays blocked (403), so a send shows the error state
+//   ci_data=long    every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
 import { createServer } from 'node:http';
@@ -247,6 +249,8 @@ function derivedAvatarFx(body) {
   return { ...body, badges: { ...(body?.badges || {}), ...Object.fromEntries([...ids].map((id) => [id, { mustache: true }])) } };
 }
 DERIVED.push({ when: (p, c) => p === '/api/effects/badges' && c.ci_avfx === 'on', make: (body) => derivedAvatarFx(body) });
+// UI-40: the recorded /api/flags has the report flag off; ci_report=on turns it on (the send stays blocked, so a send shows the error)
+DERIVED.push({ when: (p, c, body) => p === '/api/flags' && c.ci_report === 'on' && body, make: (body) => ({ ...body, reports: true }) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 

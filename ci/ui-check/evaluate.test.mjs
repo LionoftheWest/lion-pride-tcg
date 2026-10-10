@@ -91,6 +91,8 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('walk-5', '.u3-wt__card over the spotlighted control'), 'UI-37');
   assert.equal(ownerOf('walk-5', '#main > .u3-hs'), 'UI-03');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
+  assert.equal(ownerOf('report', '#v2Report.u3-rp > .u3-rp__area > textarea.u3-textarea'), 'UI-40');
+  assert.equal(ownerOf('report-error', '.u3-rp__foot > .u3-msg'), 'UI-40');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
   assert.equal(ownerOf('trades-few', '.u3-trades__cols > #u3Pd.u3-pd > #u3PdSide.u3-pd__body'), 'UI-25');   // Pending
   assert.equal(ownerOf('trades-offer', '.u3-pd-view > .u3-pd-view__foot > .u3-btn'), 'UI-25');   // the Offer view
