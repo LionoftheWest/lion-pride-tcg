@@ -165,6 +165,8 @@ export const SCREENS = {
   'pack-multi-10':       { id: 'UI-35', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="10"]'], ['wait', 1.5]] },
   'pack-multi-cards':    { id: 'UI-35', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="5"]'], ['wait', 1.5], ['js', '.u3-mpack'], ['wait', 5]] },
   'pack-multi-all':      { id: 'UI-35', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="5"]'], ['wait', 1.5], ['js', '.u3-mpack'], ['wait', 5], ['js', '#mrAll'], ['wait', 4]] },
+  // The logo (UI-23): the top bar lockup (A, B or C by size class) on the Home screen; the loader lockup D is the specs loader / loader-error (UI-56 frame).
+  'logo':                { id: 'UI-23', safe: true, under: 'UI-03', home: 'busy', notOn: ['tiny'], steps: [] },
   'pack-single-all':     { id: 'UI-34', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="1"]'], ['wait', 1.5], ['js', '#packOpen'], ['wait', 4], ['js', '[data-reveal="all"]'], ['wait', 4]] },
 };
 
@@ -194,7 +196,7 @@ export function ownerOf(screen, where) {
   if (/#v2Help[a-z]*\b|\.u3-hp\b|\.u3-hp[-_]/.test(where)) return 'UI-38';
   if (/\.u3-dgc\b|\.u3-dgc[-_]/.test(where)) return 'UI-48';
   if (/\.u3-(col|fpanel|ctile|fhost|frow)\b|\.u3-(col|fpanel|ctile|frow)[-_]|#u3FiltersT\b/.test(where)) return 'UI-07';   // the v3 Collection (the v2 ids #colSearch and #colFilters are also on Achievements and Bosses: only the u3 classes count)
-  if (/\.u3-logo\b/.test(where)) return 'UI-01';   // the top bar logo (its path can stop above #topbar)
+  if (/\.u3-logo\b|\.ldr3-emblem\b/.test(where)) return 'UI-23';   // the logo lockups (UI-23): the top bar logo (its path can stop above #topbar) and the loader tile
   // The pack reveal stage covers the screen under it: a defect in the stage belongs to the reveal screen.
   // A path keeps 3 levels, so the stage parts are named too (the pack, the cards, the bar, the effects).
   if (/#stage[a-z]*\b|\.u3-reveal|\.u3-pack|.u3-mpack|.u3-mhint|.u3-mrow|.u3-mwait|.u3-newmark|.reveal-grid|\.fc\b|\.pf\b|\.pf-face|\.react\b|\.u3-reacts|\.tap-prompt|\.sunrays|\.rare-banner|\.spark\b|\.mr-/.test(where)) return SCREENS[screen].id;

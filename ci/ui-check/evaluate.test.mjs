@@ -65,6 +65,8 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('trades-suggest', '#main > .u3-mp > .u3-mp__body'), 'UI-65');
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
+  assert.equal(ownerOf('home', '#topbar > .title > .u3-logo > .u3-logo__emblem'), 'UI-23');   // the logo lockups are UI-23
+  assert.equal(ownerOf('loader', '#ldr3 > .ldr3-emblem'), 'UI-23');
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
   assert.equal(ownerOf('dungeon-over', '.u3-dgs-fdp > .u3-dgs-stats > .u3-dgs-stat'), 'UI-50');
   assert.equal(ownerOf('dungeon-floor', '.u3-dgs-fdp > .u3-dgs-stats > .u3-dgs-stat'), 'UI-49');
