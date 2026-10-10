@@ -36,8 +36,8 @@ const call = (pg, src, arg) => pg.evaluate(`(${src})(${arg === undefined ? '' : 
 const SAFE = (land) => `:root{--discord-safe-area-inset-top:${land ? 0 : 59}px;--discord-safe-area-inset-bottom:${land ? 21 : 34}px;--discord-safe-area-inset-left:${land ? 59 : 0}px;--discord-safe-area-inset-right:${land ? 59 : 0}px}`;
 // The variants run where they can change the result: long data where member names and counts show, the safe-area
 // presets on the overlays, the windows and the stages (the screens that touch the frame edges).
-const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'hunt-squad', 'hunt-battle', 'bell']);
-const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'shop', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'dungeon', 'hunt-battle', 'trades', 'settings']);
+const LONG_SCREENS = new Set(['home', 'collection', 'trades', 'hall', 'hall-listings', 'boons', 'leaderboard', 'profile', 'dungeon', 'dungeon-board', 'gauntlet', 'dailies', 'shop', 'shop-reset-picker', 'hunt-squad', 'hunt-battle', 'bell']);
+const SAFE_SCREENS = new Set(['home', 'dailies', 'bell', 'help', 'shop', 'shop-reset-picker', 'shop-confirm', 'open-chooser', 'collection-detail', 'profile', 'dungeon', 'hunt-battle', 'trades', 'settings']);
 const IMGWAIT ="() => [...document.images].filter((i) => i.getClientRects().length && i.loading !== 'lazy').every((i) => i.complete)";
 
 const port = 4480 + Math.floor(Math.random() * 400);
