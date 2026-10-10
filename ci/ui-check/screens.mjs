@@ -144,11 +144,15 @@ export const SCREENS = {
   'pack-multi-cards':    { id: 'UI-35', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="5"]'], ['wait', 1.5], ['js', '.u3-mpack'], ['wait', 5]] },
   'pack-multi-all':      { id: 'UI-35', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="5"]'], ['wait', 1.5], ['js', '.u3-mpack'], ['wait', 5], ['js', '#mrAll'], ['wait', 4]] },
   'pack-single-all':     { id: 'UI-34', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="1"]'], ['wait', 1.5], ['js', '#packOpen'], ['wait', 4], ['js', '[data-reveal="all"]'], ['wait', 4]] },
+  // The small live view (UI-59, the tiny class only): the live Hunt and the resting state (ci_home live and busy). No typing there (D-138).
+  'tiny-live':           { id: 'UI-59', long: true, home: 'live', notOn: ['compact-port', 'compact-land', 'medium', 'medium-short', 'expanded'], steps: [] },
+  'tiny-rest':           { id: 'UI-59', long: true, home: 'busy', notOn: ['compact-port', 'compact-land', 'medium', 'medium-short', 'expanded'], steps: [] },
 };
 
 // The shell (top bar, dock, sub-tabs) is on every screen: a defect there belongs to the shell IDs.
 export function ownerOf(screen, where) {
   // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
+  if (/\.u3-tn\b|\.u3-tn[-_]/.test(where)) return 'UI-59';   // the small live view (tiny class)
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
   // The card details (the v2 #viewer) opened from a Card picker: UI-64 owns them there (only the picker detail specs), the screen under the scrim does not.
