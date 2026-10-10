@@ -32,6 +32,11 @@ const TYPES = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/htm
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAUAAAAHCAYAAADAp4fuAAAAEUlEQVR42mNkYGD4z0AEYBxVSF8AAN8VBgGrDJ8AAAAASUVORK5CYII=', 'base64');
 export const misses = new Set();
 
+// The derived states of an /api answer (a recorded body becomes a state the recording does not hold). The table keeps one
+// entry for each state, registered next to its own helper below: { when: (p, c, body) => bool, make: (body, c) => newBody }.
+// p = the path, c = the cookies, body = the recorded body. Every entry whose `when` is true runs, in table order.
+const DERIVED = [];
+
 // UI-48: a Dungeon run in the "Choose a reward" step. The offers cover the kinds the approved frames show
 // (an Uncommon card, 10 Shards, a Shield). The squad is the first cards of the recorded collection.
 // ci_dungeon=choose2: the same step with other rewards (a Heal, a damage bonus, a Revive: no odds line), to check that the panel does not change.
@@ -40,12 +45,14 @@ function derivedChoose2(body) {
   d.run.state.offers = [{ kind: 'heal', tier: 3, amount: 0.4 }, { kind: 'buff', tier: 4, amount: 0.1 }, { kind: 'revive', tier: 5, amount: 0.5 }];
   return d;
 }
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && c.ci_dungeon === 'choose2' && body?.ok, make: (body) => derivedChoose2(body) });
 function derivedDungeon(body) {
   const ids = (body.mine || []).slice(0, body.squad || 5).map((c) => c.id);
   return { ...body, run: { id: 1, status: 'active', floor: 1, room: 1, squad: ids, state: { phase: 'choose', room_type: 'fight', buff: 1, cards: {},
     pend: { shards: 1, cards: [] }, bank: { shards: 0, cards: [] },
     offers: [{ kind: 'card', tier: 2, odds: [70, 25, 5] }, { kind: 'shards', tier: 1, amount: 10 }, { kind: 'ward', tier: 1, amount: 0.1 }] } } };
 }
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && c.ci_dungeon === 'choose' && body?.ok, make: (body) => derivedDungeon(body) });
 // UI-49: the other steps of a run (cookie ci_dungeon = rest | path | chest | floor): the room steps and Floor cleared, as in the
 // approved frames (a real run's numbers). The loot cards are the first cards of the recorded collection with the names of the frames.
 const LOOT = [['Cocky little Freak!', 'normal'], ["LionoftheWest's Tsareena", 'illustrated_rare'], ["Texafornia's Richter", 'illustrated_rare']];
@@ -63,6 +70,7 @@ function derivedRoom(body, kind) {
   if (kind === 'floor') { R.room = 5; Object.assign(st, { phase: 'floor_done', room_type: 'guardian', floor_loot: { shards: 150, cards: ids }, pend: { shards: 0, cards: [] }, bank: { shards: 150, cards: ids } }); }
   return { ...base, name: 'The Hollow Mines', lootCards, run: { ...R, state: st } };
 }
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedRoom(body, c.ci_dungeon) });
 
 // UI-30: a Trade Hall with listings of other members (the recording holds the signed-in member's own only; cookie ci_hall=many):
 // 10 Wanted cards (every third one owned 0 times: the Not owned look) and 11 For trade cards. The cards come from the recorded catalog.
@@ -74,11 +82,13 @@ function derivedHall(body) {
   const forTrade = body.forTrade.slice(0, 2).concat(Array.from({ length: 9 }, (_, i) => ({ id: 100 + i, ...who(i + 1), card: pick(i + 20), mine: false, match: i % 2, at: body.forTrade[0].at })));
   return { ...body, wanted, forTrade };
 }
+DERIVED.push({ when: (p, c, body) => p === '/api/hall' && c.ci_hall === 'many' && body?.wanted, make: (body) => derivedHall(body) });
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
 }
+DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
@@ -142,11 +152,7 @@ createServer((req, res) => {
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
     const hit = FIX.routes[key] || FIX.routes[keyOf(p, '')] || BY_PATH[p];
     if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
-    const raw = p === '/api/hall' && c.ci_hall === 'many' && hit.body?.wanted ? derivedHall(hit.body)
-      : p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
-      : p === '/api/dungeon' && c.ci_dungeon === 'choose2' && hit.body?.ok ? derivedChoose2(hit.body)
-      : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon) : hit.body;
-    const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
+    const body0 = DERIVED.reduce((b, d) => (d.when(p, c, b) ? d.make(b, c) : b), hit.body);
     const body = c.ci_data === 'long' ? longData(body0) : body0;
     return send(res, hit.status || 200, JSON.stringify(body));
   }
