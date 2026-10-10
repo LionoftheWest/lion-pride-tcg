@@ -35,6 +35,11 @@ body.ui-v2 .u3-dgc-chip > svg { width: var(--dgc-ci); height: var(--dgc-ci); }  
 .u3-dgc-chip:last-child > svg { color: var(--gold); }
 .u3-dgc-chip i { font-style: normal; }
 .u3-dgc-chip b svg { width: var(--icon-sm); height: var(--icon-sm); vertical-align: middle; }
+/* expanded and medium: the panel grows with the stage (the approved 1280x720 frame: the panel is 57% of the stage high; a 1990x830 stage left a 29% empty band) */
+body[data-size]:is([data-size="expanded"], [data-size="medium"]) .u3-dgc:not(.is-tight, .is-fill) .u3-dgc-panel { padding: var(--sp-6); }
+body[data-size]:is([data-size="expanded"], [data-size="medium"]) .u3-dgc:not(.is-tight, .is-fill) .u3-dgc-offers { margin-top: var(--sp-4); }
+body[data-size]:is([data-size="expanded"], [data-size="medium"]) .u3-dgc:not(.is-tight, .is-fill) .u3-dgc-offer { min-height: calc(var(--hit) * 5); }
+body[data-size]:is([data-size="expanded"], [data-size="medium"]) .u3-dgs:not(.is-tight, .is-fill) .u3-dgc-offer { min-height: calc(var(--hit) * 4.5); }
 /* expanded: the banked chip is not drawn (as today) */
 body[data-size="expanded"] .u3-dgc-chip.is-bank { display: none; }
 /* the panel */
