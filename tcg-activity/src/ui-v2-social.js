@@ -9,8 +9,11 @@ import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
 import { isPhone, isPort, isLand } from './mobile.js';
 import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v2-hall.js';
-import { mountMemberPicker, memberLists } from './ui3/member-picker.js';
-import { button as button3, dot as dot3, sheet as sheet3, toast as toast3, counter as counter3 } from './ui3/components.js';
+import { mountMemberPicker, memberLists, breakName } from './ui3/member-picker.js';
+import { button as button3, dot as dot3, sheet as sheet3, toast as toast3, counter as counter3, iconButton, inlineMessage, pager as pager3, progressLinear } from './ui3/components.js';
+import { icon as icon3 } from './ui3/icons.js';
+import { openCardPicker } from './ui3/card-picker.js';
+import { KINDS, kindName, playHistory, memberReason, dayLine, leftPct, pageOf, pickerCards } from './ui3/boons.js';
 import { pendingLists, waiting, sectionsHTML, headHTML, viewHTML } from './ui3/pending.js';
 import { paintBell } from './ui3/bell.js';
 import { openTradeWindow, closeTradeWindow, refreshTradeWindow } from './ui3/trade-window.js';
@@ -565,13 +568,13 @@ function wireFind(after) {
 // the magnifier opens the profile; Pending opens the builder, where the offers are (until UI-25 builds Pending).
 const V3 = () => document.body.classList.contains('ui-v3');
 let mpV3 = null, partnersV3 = null;
-function dropPickerV3() { closeTradeWindow(); mpV3?.destroy(); mpV3 = null; dropPendingV3(); }
+function dropPickerV3() { closeTradeWindow(); mpV3?.destroy(); mpV3 = null; dropPendingV3(); boonsRO?.disconnect(); boonsRO = null; closeBoonsSheet(); }
 async function loadPartnersV3() {
   try { partnersV3 = (await ctx().api('/api/trade/partners')).partners || []; } catch { partnersV3 = partnersV3 || []; }
 }
-function sectionsV3() {
+function sectionsV3(history = partnersV3) {
   const me = String(ctx().user()?.id || '');
-  const l = memberLists({ history: partnersV3 || [], voice: tr.members.filter((m) => m.voice), all: tr.members.filter((m) => !m.voice), me });
+  const l = memberLists({ history: history || [], voice: tr.members.filter((m) => m.voice), all: tr.members.filter((m) => !m.voice), me });
   // Few partners (D-64 item 5): In voice first, then All members with the Pager. "Few" = less than one full line of
   // 5 tiles (UI-25 review-2 proposal 1, open for Nathan).
   const few = l.frequent.length + l.recent.length < 5;
@@ -1075,7 +1078,204 @@ function resultText(r, to, voice) {
   }
 }
 
+// ---- v3 (body.ui-v3 only): the Boons tab (UI-27, D-42, D-43, D-62) ----
+// The Member picker (UI-65), then the Card picker (UI-64) with only effect cards, then Confirm plays the card (the play confirm
+// window UI-28 comes later). "On you" and "Recent plays" are a side panel (expanded), a panel under the picker (medium) or a
+// sheet behind the "On you" button (compact). The server rules and routes are the same as v2 (play_card_effect).
+let boonsRO = null;
+const bn = { page: { on: 0, rec: 0 }, msgKind: 'success' };
+const KIND_ICON3 = { boon: 'gift', prank: 'drama', shield: 'shield-check' };
+const avatarSrc = (id) => `/api/avatar/${encodeURIComponent(id)}`;
+const whoHTML = (id, name) => `<span class="u3-bn-who"><span class="u3-mp-av" aria-hidden="true"><span>${esc(String(name || '?').trim().charAt(0).toUpperCase() || '?')}</span><img src="${esc(avatarSrc(id))}" alt="" draggable="false"></span><span class="u3-bn-who__name">${breakName(name || 'Member')}</span></span>`;
+
+function boonsRows() {
+  const st = effectState();
+  const now = Date.now();
+  const on = (st.active || []).map((e) => {
+    const k = kindName(st.primitives?.[e.primitive]?.kind);
+    const leftMs = e.expires_at ? new Date(e.expires_at) - now : null;
+    return `<li class="u3-bn-row u3-bn-on k-${k}"><span class="u3-bn-ico">${icon3('sparkles', { size: 'lg' })}</span>`
+      + `<span class="u3-bn-main"><span class="u3-bn-name">${esc(pretty(e.primitive))}${e.options?.test ? ' <i class="u3-bn-test">TEST</i>' : ''}</span><span class="u3-bn-sub">${esc(e.card?.name || '')}</span>`
+      + `${progressLinear({ value: leftPct(e.duration_s, e.expires_at, now) / 100 })}</span>`
+      + `<span class="u3-bn-left">${leftMs != null ? esc(fmtDur(leftMs / 1000)) : ''}</span></li>`;
+  });
+  const rec = fx.recent.map((r) => {
+    const k = kindName(r.kind);
+    return `<li class="u3-bn-row u3-bn-rec k-${k}"><span class="u3-bn-pair">${[[r.from_id, r.from], [r.to_id, r.to]].map(([id, n]) => `<span class="u3-mp-av" aria-hidden="true"><span>${esc(String(n || '?').charAt(0).toUpperCase())}</span><img src="${esc(avatarSrc(id))}" alt="" draggable="false"></span>`).join('')}</span>`
+      + `<span class="u3-bn-main"><span class="u3-bn-name">${breakName(r.from || 'Someone')} ${icon3('arrow-right', { size: 'sm' })} ${breakName(r.to || 'Someone')}</span>`
+      + `<span class="u3-bn-kind">${icon3(KIND_ICON3[k] || 'sparkles', { size: 'sm' })}<span>${esc(OUTCOME_LABEL[r.outcome] || pretty(r.primitive))}</span></span></span>`
+      + `<span class="u3-bn-left">${esc(ctx().ago(r.at))}</span></li>`;
+  });
+  return { on, rec };
+}
+// the two lists of the panel (the side panel, the panel under the picker, the sheet); fillBoons() puts the rows in
+function boonsPanelHTML({ sheet = false } = {}) {
+  const n = (effectState().active || []).length;
+  const head = (t, tail) => `<header class="u3-bn-head"><h3 class="u3-bn-title">${t}</h3>${tail}</header>`;
+  return `<div class="u3-bn-panel${sheet ? ' u3-bn-panel--sheet' : ''}">`
+    + `<section class="u3-bn-sec" data-sec="on">${sheet ? '' : head('On you', `<span class="u3-bn-count">${n}</span>`)}<ul class="u3-bn-list" data-list="on"></ul><div class="u3-bn-pager" data-pager="on"></div></section>`
+    + `<section class="u3-bn-sec" data-sec="rec">${head('Recent plays', `<span class="u3-bn-live">${dot3()}<span>LIVE</span></span>`)}<ul class="u3-bn-list" data-list="rec"></ul><div class="u3-bn-pager" data-pager="rec"></div></section></div>`;
+}
+// No scroll (3.4): the rows that fit the list, the rest on pages (the Pager, D-36). A page with no pager when all rows fit.
+function fillBoons(root) {
+  if (!root?.isConnected) return;
+  const rows = boonsRows();
+  const secs = ['on', 'rec'].map((key) => {
+    const sec = root.querySelector(`[data-sec="${key}"]`);
+    return sec && { key, sec, ul: sec.querySelector('.u3-bn-list'), pg: sec.querySelector('.u3-bn-pager'), all: rows[key] };
+  }).filter(Boolean);
+  // the height each section needs with all its rows and no pager; the panel gives each what it needs, and the one that
+  // needs more than half gets the rest (so one row of "On you" does not leave a gap, and the long list pages)
+  for (const s of secs) {
+    s.sec.style.flex = '0 0 auto'; s.pg.hidden = true; s.pg.innerHTML = '';
+    s.ul.innerHTML = s.all.length ? s.all.join('') : `<li class="u3-bn-none">${s.key === 'on' ? 'Nothing is active on you.' : 'No plays yet.'}</li>`;
+    s.need = s.sec.offsetHeight;
+  }
+  const gap = parseFloat(getComputedStyle(root).rowGap) || 0;
+  const avail = root.clientHeight;
+  if (secs.length === 2 && secs[0].need + secs[1].need + gap > avail) {
+    const first = Math.min(secs[0].need, Math.max((avail - gap) / 2, avail - gap - secs[1].need));
+    secs[0].sec.style.flex = `0 0 ${Math.floor(first)}px`;
+    secs[1].sec.style.flex = '1 1 0';
+  }
+  for (const s of secs) {
+    const { key, ul, pg, all } = s;
+    if (!all.length) continue;
+    const fits = (per) => { ul.innerHTML = all.slice(0, per).join(''); return ul.scrollHeight <= ul.clientHeight + 0.5; };
+    let per = 1;
+    while (per < all.length && fits(per + 1)) per += 1;   // all rows without the pager, else the most that fit
+    if (per < all.length) {
+      pg.hidden = false; pg.innerHTML = pager3({ page: 1, pages: 2 });   // the pager takes its height; measure again with it
+      per = 1;
+      while (per < all.length && fits(per + 1)) per += 1;
+    }
+    const pgs = pageOf(all, per, bn.page[key]);
+    bn.page[key] = pgs.page;
+    ul.innerHTML = pgs.rows.join('');
+    if (!pg.hidden) pg.innerHTML = pager3({ page: pgs.page + 1, pages: pgs.pages });
+  }
+}
+function wireBoonsPanel(root) {
+  root.addEventListener('click', (e) => {
+    const b = e.target.closest('.u3-bn-pager [data-page]');
+    if (!b) return;
+    const key = b.closest('[data-pager]').dataset.pager;
+    bn.page[key] += b.dataset.page === 'next' ? 1 : -1;
+    fillBoons(root);
+  });
+  const ro = new ResizeObserver(() => fillBoons(root));
+  ro.observe(root);
+  document.fonts?.ready.then(() => fillBoons(root));
+  return ro;
+}
+let sheetKey = null, sheetRO = null;
+function closeBoonsSheet() {
+  sheetRO?.disconnect(); sheetRO = null;
+  document.getElementById('u3BoonsSheet')?.remove();
+  if (sheetKey) { document.removeEventListener('keydown', sheetKey); sheetKey = null; }
+}
+function openBoonsSheet() {
+  closeBoonsSheet();
+  const n = (effectState().active || []).length;
+  const side = document.body.dataset.size === 'compact-land' ? 'side' : 'bottom';
+  document.body.insertAdjacentHTML('beforeend', `<div class="u3-scrim" id="u3BoonsSheet" data-u3-scrim><aside class="u3-sheet u3-sheet--${side} u3-bn-sheet" role="dialog" aria-modal="true" aria-labelledby="u3BnT">`
+    + `<header class="u3-sheet__head"><h2 class="u3-sheet__title" id="u3BnT">On you <span class="u3-bn-count">${n}</span></h2>${iconButton({ icon: 'x', label: 'Close', data: { bnclose: '1' } })}</header>`
+    + `${boonsPanelHTML({ sheet: true })}</aside></div>`);
+  const host = document.getElementById('u3BoonsSheet');
+  host.addEventListener('click', (e) => { if (e.target === host || e.target.closest('[data-bnclose]')) closeBoonsSheet(); });
+  sheetKey = (e) => { if (e.key === 'Escape') closeBoonsSheet(); };
+  document.addEventListener('keydown', sheetKey);
+  sheetRO = wireBoonsPanel(host.querySelector('.u3-bn-panel'));
+  fillBoons(host.querySelector('.u3-bn-panel'));
+  host.querySelector('[data-bnclose]')?.focus({ preventScroll: true });
+}
+
+// The Card picker for one member: only effect cards (D-42), the kind switch All / Boon / Prank / Shield, one card, Confirm plays it.
+function openBoonCards(to) {
+  const st = effectState();
+  const me = ctx().user();
+  const b = base();
+  const cards = (ctx().cache.collection?.cards || []).filter((c) => c.effect?.primitive).map((c) => ({ ...(b.get(c.id) || {}), ...c, owned: true, locked: false }));
+  const rars = [...new Set(cards.map((c) => c.rarity))];
+  const caps = st.caps || {};
+  const used = st.playsToday || 0, cap = st.sendCap || 0;
+  const dayOver = !!cap && used >= cap;
+  const find = (id) => cards.find((c) => Number(c.id) === Number(id));
+  // why the pick cannot be played on this member now (the counts of play_card_effect)
+  const whyNot = (c) => {
+    if (!c) return 'Pick an effect card';
+    if (dayOver) return `You played your ${cap} cards today.`;
+    const mr = memberReason(to, { pairs: st.pairs, caps });
+    if (mr) return mr;
+    if (kindOf(c) === 'prank' && caps.prank_recv_per_day && (st.pranked?.[String(to.id)] || 0) >= caps.prank_recv_per_day) return `${to.name} got ${caps.prank_recv_per_day} pranks today.`;
+    if (['discord', 'voice'].includes(st.primitives?.[c.effect?.primitive]?.channel) && (st.immune || []).includes(String(to.id))) return `Discord cannot change the server owner: pick an in-game card for ${to.name}.`;
+    return '';
+  };
+  openCardPicker({
+    title: `Play a card on ${to.name}`, cap: 1, one: true, cls: 'u3-pk--boons', cards,
+    head: `${whoHTML(me?.id, me?.name)}<span class="u3-bn-arrow">${icon3('arrow-right', { size: 'lg' })}</span>${whoHTML(to.id, to.name)}`,
+    kinds: KINDS,
+    filters: [{ key: 'rarity', label: 'Rarity', value: 'all', clear: 'all', options: [{ id: 'all', label: 'All' }, ...rars.map((r) => ({ id: r, label: ctx().RARITY_LABEL?.[r] || r }))] }],
+    filterCount: (v) => (v.rarity && v.rarity !== 'all' ? 1 : 0),
+    apply: (list, values, q) => pickerCards(list, values, q, kindOf, effectReadyIn),
+    blocked: (c) => (!effectScaled(c).enabled ? 'Unlocks soon' : effectReadyIn(c) > 0 ? `Ready in ${fmtDur(effectReadyIn(c))}` : ''),
+    badge: (c) => (effectReadyIn(c) > 0 ? fmtDur(effectReadyIn(c)) : ''),
+    status: (sel) => { const c = find(sel[0]); const why = whyNot(c); return { checks: why && c ? [{ ok: false, label: why }] : [], ready: !!c && !why, reason: why || 'Pick an effect card' }; },
+    detail: (c) => ctx().openViewer?.(c),
+    returnFocus: document.querySelector('.u3-mp-tile__pick'),
+    onConfirm: async (sel) => {
+      const card = find(sel[0]);
+      if (!card) return false;
+      const voice = effectState().primitives?.[card.effect?.primitive]?.channel === 'voice';
+      const r = await playCard(card, to.id);
+      fx.msg = r?.ok ? resultText(r, to, voice) : effectError(r?.error);
+      bn.msgKind = r?.ok ? 'success' : 'error';
+      await loadFx();
+      paintBoonsV3();
+      return true;
+    },
+  });
+}
+
+function paintBoonsV3() {
+  const { el } = ctx();
+  const main = el('main');
+  dropPickerV3();
+  const st = effectState();
+  const me = String(ctx().user()?.id || '');
+  const cap = st.sendCap || 0, used = st.playsToday || 0;
+  const resetIn = st.dayEnds ? Math.max(0, (new Date(st.dayEnds) - Date.now()) / 1000) : 0;
+  const limit = dayLine({ cap, used, resetIn }, fmtDur);
+  const today = (cls) => (cap ? `<div class="u3-bn-today u3-bn-today--${cls}${used >= cap ? ' is-full' : ''}"><span class="u3-bn-today__label">Plays today</span>${progressLinear({ value: used / cap, label: 'Plays today' })}<b class="u3-bn-today__n">${used}/${cap}</b></div>` : '');
+  const note = limit ? `<p class="u3-bn-note u3-bn-note--limit">${icon3('circle-alert')}<span>${esc(limit)}</span></p>` : fx.msg ? inlineMessage({ kind: bn.msgKind, text: fx.msg }) : '';
+  main.innerHTML = `<div class="u3-trades u3-boons">${commTabs()}<div class="u3-boons__body">`
+    + `<section class="u3-trades__panel u3-boons__pick" id="u3BoonsPick"></section>`
+    + `<aside class="u3-trades__panel u3-boons__side" aria-label="On you and Recent plays">${boonsPanelHTML()}</aside></div></div>`;
+  wireCommTabs();
+  mpV3 = mountMemberPicker(el('u3BoonsPick'), {
+    sections: sectionsV3(playHistory(fx.recent, me)),
+    lead: explainBtn('pranks'),
+    trail: `${today('tools')}<button type="button" class="u3-btn u3-btn--secondary u3-btn--md u3-bn-onyou" data-onyou="1"><span class="u3-btn__label">On you</span>${counter3((st.active || []).length, { neutral: true })}</button>`,
+    labelTail: today('row'),
+    meta: note,
+    search: async (q) => ((await ctx().api(`/api/players?q=${encodeURIComponent(q)}`)).players || []).map((p) => ({ id: String(p.id), name: p.username })),
+    blocked: (m) => memberReason(m, { pairs: st.pairs, caps: st.caps }),
+    onPick: (m) => {
+      tr.members = [m, ...tr.members.filter((x) => x.id !== m.id)];
+      tr.to = m; fx.msg = '';
+      openBoonCards(m);
+    },
+    onProfile: (m) => openMember(m.id),
+  });
+  main.querySelector('[data-onyou]')?.addEventListener('click', openBoonsSheet);
+  const side = main.querySelector('.u3-boons__side .u3-bn-panel');
+  boonsRO = wireBoonsPanel(side);
+  fillBoons(side);
+  maybeExplain('pranks');
+}
+
 function paintEffects() {
+  if (V3()) { paintBoonsV3(); return; }
   const { el } = ctx();
   const focus = takeFocus();
   const st = effectState();

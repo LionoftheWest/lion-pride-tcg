@@ -1,0 +1,108 @@
+/* ==== UI-27 Boons tab (src/ui3/boons.js, ui-v2-social.js paintBoonsV3; design.md 6.5; D-42, D-43, D-62) ====
+   The Member picker (UI-65) in a panel, "On you" and "Recent plays" beside it (expanded), under it (medium) or in a sheet behind
+   the "On you" button (compact); the Card picker (UI-64) with the head "me > member" and the kind switch. Tokens only. */
+.u3-boons__body { box-sizing: border-box; flex: 1 1 auto; min-height: 0; display: flex; gap: var(--sp-3); }
+.u3-boons__pick { flex: 1 1 0; min-width: 0; }
+.u3-boons__side { flex: 0 0 var(--sheet-side-w); min-width: 0; display: flex; flex-direction: column; }
+body[data-size="medium"] .u3-boons__body { flex-direction: column; }
+body[data-size="medium"] :is(.u3-boons__pick, .u3-boons__side) { flex: 1 1 0; min-height: 0; }
+body[data-size="medium"] .u3-boons__side { flex-basis: 0; }
+body[data-size^="compact"] .u3-boons__side { display: none; }
+body[data-size="tiny"] .u3-boons__side { display: none; }
+body[data-size="expanded"] .u3-boons__side { flex-basis: calc(var(--sheet-side-w) - var(--sp-5)); }
+
+/* Plays today: in the search row (medium, expanded) or in its own row under it (compact, where the "On you" button takes the room) */
+.u3-bn-today { display: flex; align-items: center; gap: var(--sp-2); flex: none; color: var(--text-secondary); font-size: var(--fs-small); line-height: var(--lh-small); white-space: nowrap; }
+.u3-bn-today .u3-bar { width: var(--avatar-lg); flex: none; }
+.u3-bn-today__n { font-family: var(--font-num); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-bn-today.is-full .u3-bar__fill { background: var(--danger); }
+.u3-bn-today.is-full .u3-bn-today__n { color: var(--danger-text); }
+.u3-bn-today--row { display: none; }
+body[data-size="compact-port"] .u3-bn-today--row { display: flex; }
+body[data-size="compact-port"] .u3-bn-today--tools { display: none; }
+body:is([data-size="medium"], [data-size="expanded"]) .u3-bn-onyou { display: none; }
+.u3-mp-sec__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-width: 0; }
+body[data-size="compact-land"] .u3-mp-sec__head { display: contents; }
+.u3-mp__meta { display: flex; flex-direction: column; gap: var(--sp-2); }
+body[data-kb] .u3-mp__meta { display: none; }
+/* a capped member in a list tile: the name keeps its row, the reason takes its own line under it (never a name in single letters, D-08) */
+:is(.u3-mp__body[data-fit="list"], .u3-mp-tile--list, .u3-mp__body.has-paged) .u3-mp-tile.is-off .u3-mp-tile__pick { flex-wrap: wrap; align-content: center; }
+:is(.u3-mp__body[data-fit="list"], .u3-mp-tile--list, .u3-mp__body.has-paged) .u3-mp-tile.is-off .u3-mp-tile__name { flex: 1 1 auto; }
+:is(.u3-mp__body[data-fit="list"], .u3-mp-tile--list, .u3-mp__body.has-paged) .u3-mp-tile.is-off .u3-mp-tile__why { flex: 1 0 100%; }
+.u3-bn-onyou { flex: none; padding-inline: var(--sp-3); gap: var(--sp-2); }
+.u3-boons .u3-mp__tools { gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-boons__pick { padding: var(--sp-3); }   /* the drawn panel padding on phones: the search keeps room for "Find a member" next to "On you" */
+.u3-bn-note { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-small); line-height: var(--lh-small); }
+.u3-bn-note--limit { color: var(--danger-text); }
+.u3-bn-note .u3-ico { flex: none; }
+
+/* On you and Recent plays */
+.u3-bn-panel { box-sizing: border-box; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.u3-bn-sec { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-bn-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-bn-title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-bn-count { font-family: var(--font-num); font-size: var(--fs-body); color: var(--text-muted); }
+.u3-bn-live { display: inline-flex; align-items: center; gap: var(--sp-2); height: var(--chip-md); padding: 0 var(--sp-3); border-radius: var(--rad-pill); border: var(--bw-1) solid var(--danger); color: var(--danger-text);
+  font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); }
+.u3-bn-list { flex: 1 1 auto; min-height: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-bn-pager { flex: none; display: flex; justify-content: center; }
+.u3-bn-pager[hidden] { display: none; }
+.u3-bn-none { margin: 0; color: var(--text-muted); font-size: var(--fs-body); }
+.u3-bn-row { flex: none; box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.u3-bn-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }
+.u3-bn-name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-1-5); min-width: 0; font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-bn-sub { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); overflow-wrap: anywhere; }
+.u3-bn-left { flex: none; font-family: var(--font-num); font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--text-secondary); white-space: nowrap; }
+.u3-bn-test { font-style: normal; font-size: var(--fs-label); color: var(--text-muted); }
+.u3-bn-on { padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-lg); background: var(--surface-2); border: var(--bw-1) solid var(--border); }
+.u3-bn-on .u3-bn-left { align-self: flex-start; }
+.u3-bn-ico { flex: none; width: var(--ctl-icon); height: var(--ctl-icon); display: grid; place-items: center; border-radius: var(--rad-md); background: var(--surface-3); color: var(--text-secondary); }
+.u3-bn-on.k-boon .u3-bar__fill { background: var(--effect-boon); }
+.u3-bn-on.k-prank .u3-bar__fill { background: var(--effect-prank); }
+.u3-bn-on.k-shield .u3-bar__fill { background: var(--effect-shield); }
+.u3-bn-pair { flex: none; display: flex; }
+.u3-bn-pair .u3-mp-av { --mp-av: var(--avatar-sm); }
+.u3-bn-pair { gap: var(--sp-half); }
+.u3-bn-kind { display: inline-flex; align-items: center; gap: var(--sp-1-5); font-size: var(--fs-stat); line-height: var(--lh-stat); }
+.u3-bn-rec.k-boon .u3-bn-kind { color: var(--effect-boon); }
+.u3-bn-rec.k-prank .u3-bn-kind { color: var(--effect-prank); }
+.u3-bn-rec.k-shield .u3-bn-kind { color: var(--effect-shield); }
+.u3-bn-name .u3-ico { flex: none; color: var(--text-muted); }
+
+/* the sheet behind the "On you" button (compact): under the top bar, down to the frame bottom */
+.u3-bn-sheet { box-sizing: border-box; height: calc(100% - var(--u3-sa-t) - var(--u3-bar)); min-height: 0; padding-bottom: calc(var(--sp-4) + var(--u3-sa-b)); }
+.u3-bn-sheet .u3-sheet__head { flex: none; align-items: center; }
+.u3-bn-sheet .u3-sheet__title .u3-bn-count { display: inline-grid; place-items: center; min-width: var(--counter); height: var(--counter); margin-left: var(--sp-2); padding: 0 var(--sp-1-5);
+  border-radius: var(--rad-pill); background: var(--surface-3); color: var(--text-secondary); font-size: var(--fs-caption); }
+body[data-size="compact-land"] .u3-bn-sheet { height: 100%; }
+body[data-size="compact-land"] .u3-bn-sheet .u3-sheet__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--sp-4))); }   /* the side sheet reaches the top edge: the close stays left of the Discord corner zone (2.3) */
+
+/* the Card picker for one member (UI-64 window, the Boons form) */
+.u3-pk--boons .u3-pk__head { flex-wrap: wrap; gap: var(--sp-2); }
+.u3-bn-who { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; flex: 0 1 auto; }
+.u3-bn-who .u3-mp-av { --mp-av: var(--avatar-sm); }
+.u3-bn-who__name { min-width: 0; font-size: var(--fs-body); font-weight: var(--fw-stat); line-height: var(--lh-body); color: var(--text-primary); overflow-wrap: break-word; }
+.u3-pk--boons .u3-pk-slot__x { display: none; }
+body[data-size^="compact"] .u3-bn-who__name { font-size: var(--fs-small); line-height: var(--lh-small); }
+.u3-bn-arrow { flex: none; display: inline-flex; color: var(--gold); }
+.u3-pk__kinds { grid-area: kinds; min-width: 0; }
+.u3-pk__kinds .u3-seg { width: 100%; }
+.u3-pk__kinds .u3-seg__item { flex: 1 1 0; }
+.u3-pk__kinds [data-seg="kind:boon"] { color: var(--effect-boon); }
+.u3-pk__kinds [data-seg="kind:prank"] { color: var(--effect-prank); }
+.u3-pk__kinds [data-seg="kind:shield"] { color: var(--effect-shield); }
+.u3-pk__kinds .is-active { color: var(--text-primary); }
+body[data-size] .u3-pk--boons { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "head close" "kinds kinds" "tools tools" "grid grid" "pager pager" "slots foot"; }
+body[data-size] .u3-pk--boons .u3-pk__slots { align-self: end; justify-self: start; }
+body[data-size] .u3-pk--boons .u3-pk__foot { justify-self: end; align-self: end; max-width: calc(var(--dialog-w) / 1.5); }
+body[data-size="expanded"] .u3-pk--boons { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) auto; grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "head tools close" "kinds grid grid" "slots grid grid" "foot pager pager"; }
+body[data-size="expanded"] .u3-pk--boons .u3-pk__slots { align-self: stretch; justify-self: stretch; min-height: 0; display: grid; place-items: center; }
+body[data-size="expanded"] .u3-pk--boons .u3-pk-slots { height: 100%; max-height: calc(var(--card-tile-max) * var(--card-ratio) * 2); grid-template-columns: none; grid-auto-flow: column; justify-content: center; }
+body[data-size="expanded"] .u3-pk--boons .u3-pk-slot { height: 100%; }
+body[data-size="expanded"] .u3-pk--boons .u3-pk__foot { justify-self: stretch; max-width: none; }
+body[data-size="expanded"] .u3-pk--boons .u3-pk__acts { margin-left: 0; width: 100%; }
+body[data-size="expanded"] .u3-pk--boons .u3-pk__acts .u3-btn { width: 100%; }
+body[data-kb] .u3-pk--boons .u3-pk__kinds { display: none; }
+body[data-kb][data-size] .u3-pk--boons { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "head close" "tools tools" "grid grid"; }

@@ -63,6 +63,11 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #menuBtn.u3-ibtn'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
+  assert.equal(ownerOf('boons-hist', '.u3-bn-panel > .u3-bn-sec > .u3-bn-list'), 'UI-27');
+  assert.equal(ownerOf('boons-onyou', '#u3BoonsSheet > .u3-sheet'), 'UI-27');
+  assert.equal(ownerOf('boons-hist', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');
+  assert.equal(ownerOf('boons-picker', '#u3Picker > .u3-scrim > .u3-pk--boons'), 'UI-27');
+  assert.equal(ownerOf('hunt-picker', '#u3Picker > .u3-scrim > .u3-pk'), 'UI-64');
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');

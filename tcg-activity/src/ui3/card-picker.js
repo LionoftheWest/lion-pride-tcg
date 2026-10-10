@@ -67,6 +67,7 @@ let cur = null;   // the open picker: { opts, sel, q, values, page, per, filters
 export function openCardPicker(opts) {
   closeCardPicker();
   const values = Object.fromEntries((opts.filters || []).map((f) => [f.key, f.value]));
+  if (opts.kinds) values.kind = opts.kindValue || opts.kinds[0].id;   // UI-27: the kind switch under the head
   cur = { opts, sel: [...(opts.selected || [])].slice(0, opts.one ? 1 : opts.cap), q: '', values, page: 0, per: 0, panel: false, busy: false };
   const host = document.createElement('div');
   host.id = 'u3Picker';
@@ -176,11 +177,17 @@ function paint() {
   const confirm = button({ label: 'Confirm', variant: 'primary', disabled: !st.ready || cur.busy, busy: cur.busy, busyLabel: 'Saving', reason: st.ready || o.one ? null : st.reason, data: { confirm: '1' } });
   const a = document.activeElement;
   const caret = a && host.contains(a) && a.classList.contains('u3-search__input') ? a.selectionStart : null;
+  // opts.head (UI-27): the head is the caller's HTML (who plays on whom), the title is its accessible name; opts.kinds: the
+  // kind switch row under the head (values.kind); opts.cls: a class on the window. Pick one card: opts.one (UI-64, PR 318).
   const clear = o.clear ? button({ label: o.clear.label || 'Clear', disabled: !!o.clear.disabled || cur.busy, data: { pkclear: '1' } }) : '';
   const count = o.one ? '' : ` <b>${cur.sel.length}</b><span>/ ${o.cap}</span>`;
-  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk${o.one ? ' is-one' : ''}" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="u3PkT" style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
-    + `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${o.icon ? icon(o.icon, { size: 'xl' }) : ''}${esc(o.title || 'Squad')}${count}</h2></header>`
-    + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>`
+  const head = o.head
+    ? `<header class="u3-pk__head">${o.head}</header>`
+    : `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${o.icon ? icon(o.icon, { size: 'xl' }) : ''}${esc(o.title || 'Squad')}${count}</h2></header>`;
+  const kinds = o.kinds ? `<div class="u3-pk__kinds">${segmented(o.kinds.map((k) => ({ id: `kind:${k.id}`, label: k.label, active: cur.values.kind === k.id })), { label: 'Kind' })}</div>` : '';
+  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk${o.one ? ' is-one' : ''}${o.cls ? ` ${esc(o.cls)}` : ''}" tabindex="-1" role="dialog" aria-modal="true" ${o.head ? `aria-label="${esc(o.title || 'Cards')}"` : 'aria-labelledby="u3PkT"'} style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
+    + head
+    + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>${kinds}`
     + `<div class="u3-pk__slots">${slotsHTML()}</div>`
     + `<div class="u3-pk__tools">${searchField({ value: cur.q, placeholder: document.body.dataset.size === 'compact-land' ? 'Search cards…' : undefined })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
     + `<ul class="u3-pk__grid${(cur.tile || TOKENS['card-tile']) < TOKENS['card-tile'] ? ' is-small' : ''}${o.caption ? ' has-cap' : ''}" aria-label="Cards" style="--pk-cols:${cur.cols || 1};--pk-tile:${cur.tile || TOKENS['card-tile']}px${o.caption ? `;--pk-cap-h:${cur.capH || 0}px` : ''}">${tiles}</ul>`
@@ -284,7 +291,8 @@ async function onClick(e) {
   if (d.filters) { cur.draft = { ...cur.values }; cur.panel = true; paint(); return; }
   if (d.fclose) { cur.panel = false; paint(); return; }
   if (d.seg && cur.panel) { const [k, v] = d.seg.split(':'); cur.draft[k] = v; paint(); return; }
-  if (d.fclear) { cur.draft = Object.fromEntries(cur.opts.filters.map((f) => [f.key, f.clear ?? f.options[0].id])); paint(); return; }
+  if (d.seg && cur.opts.kinds && d.seg.startsWith('kind:')) { cur.values.kind = d.seg.slice(5); cur.page = 0; paint(); return; }
+  if (d.fclear) { cur.draft = { ...Object.fromEntries(cur.opts.filters.map((f) => [f.key, f.clear ?? f.options[0].id])), ...(cur.opts.kinds ? { kind: cur.draft.kind } : {}) }; paint(); return; }
   if (d.fok) { cur.values = { ...cur.draft }; cur.panel = false; cur.page = 0; paint(); return; }
   if (d.auto) {
     if (cur.busy) return;

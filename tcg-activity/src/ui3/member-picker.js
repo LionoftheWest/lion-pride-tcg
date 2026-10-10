@@ -69,6 +69,8 @@ let seq = 0;
  *   search(q) -> Promise<[{ id, name }]>  the suggest list (the server match, best first), at most 6 show,
  *   onPick(member), onProfile(member),
  *   lead, trail: HTML before and after the search (the view "?", the Pending button: UI-25 owns them),
+ *   labelTail: HTML at the right end of the label row of the first section (UI-27: "Plays today" on compact-port),
+ *   meta: HTML in a row between the search row and the sections (UI-27: the day limit line and the result of a play),
  *   blocked(member) -> reason or '' (the tile greys out with the reason, for example a daily limit; UI-28),
  *   avatarUrl(member) (default /api/avatar/<id>), placeholder (default "Find a member"),
  * }
@@ -77,7 +79,7 @@ export function mountMemberPicker(host, opts) {
   const id = `u3Mp${++seq}`;
   const st = { opts: { ...opts }, q: '', sugg: null, page: 0, per: 0, fit: 0, timer: null, ask: 0, alive: true };
   host.innerHTML = `<div class="u3-mp" id="${id}"><div class="u3-mp__tools">${st.opts.lead || ''}<div class="u3-mp__find">${field('')}</div>${st.opts.trail || ''}</div>`
-    + '<div class="u3-mp__body"></div></div>';
+    + `${st.opts.meta ? `<div class="u3-mp__meta">${st.opts.meta}</div>` : ''}<div class="u3-mp__body"></div></div>`;
   const root = host.querySelector('.u3-mp');
   const body = root.querySelector('.u3-mp__body');
   const find = root.querySelector('.u3-mp__find');
@@ -114,7 +116,8 @@ export function mountMemberPicker(host, opts) {
       let ms = s.members.map((m, i) => [m, i]);
       let pages = 1;
       if (paged && st.per) { pages = Math.max(1, Math.ceil(ms.length / st.per)); st.page = Math.min(st.page, pages - 1); ms = ms.slice(st.page * st.per, st.page * st.per + st.per); }
-      return `<section class="u3-mp-sec${paged ? ' is-paged' : ''}" aria-label="${esc(s.label)}"><h3 class="u3-label u3-mp-sec__label">${esc(s.label)}</h3>`
+      const label = `<h3 class="u3-label u3-mp-sec__label">${esc(s.label)}</h3>`;
+      return `<section class="u3-mp-sec${paged ? ' is-paged' : ''}" aria-label="${esc(s.label)}">${k === 0 && st.opts.labelTail ? `<div class="u3-mp-sec__head">${label}${st.opts.labelTail}</div>` : label}`
         + `<ul class="u3-mp-sec__tiles u3-mp-sec__tiles--${s.form === 'list' ? 'list' : 'avatar'}" data-sec="${esc(s.key)}">`
         + ms.map(([m, i]) => tileHTML(m, s.form === 'list' ? 'list' : 'avatar', s.key, i)).join('') + '</ul>'
         + `${paged ? `<div class="u3-mp-sec__pager">${pager({ page: st.page + 1, pages })}</div>` : ''}</section>`;
