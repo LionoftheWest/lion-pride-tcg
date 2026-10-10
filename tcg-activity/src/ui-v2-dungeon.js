@@ -210,7 +210,7 @@ function paint() {
   else if (active() && d.run.state?.phase === 'floor_done') body = floorDoneHTML();
   else if (active()) body = chooseHTML();
   else if (run()) body = overHTML();
-  else body = GA() ? gaLobbyHTML() : V3() ? lobbyV3HTML() : lobbyHTML();
+  else body = GA() ? (V3() ? gaLobbyV3HTML() : gaLobbyHTML()) : V3() ? lobbyV3HTML() : lobbyHTML();
   main.innerHTML = `<div class="v2-dungeon${GA() ? ' ga' : ''}${fight ? ' dg-fighting' : ''}${d.run?.state?.phase ? ` ph-${d.run.state.phase}` : ''}">${body}</div>`;
   // Item 19: the music follows the room (silent until Nathan picks the tracks: dungeon-music.js).
   setMood(fight ? (['guardian', 'miniboss'].includes(d.run.state.room_type) ? 'boss' : 'fight') : active() ? 'explore' : null);
@@ -223,7 +223,7 @@ function paint() {
   else if (active() && d.run.state?.phase === 'floor_done') wireFloorDone(main);
   else if (active()) wireChoose(main);
   else if (run()) wireOver(main);
-  else if (!d.closed && d.gate?.ok) (GA() ? wireGaLobby : V3() ? wireLobbyV3 : wireLobby)(main);
+  else if (!d.closed && d.gate?.ok) (GA() ? (V3() ? wireGaLobbyV3 : wireGaLobby) : V3() ? wireLobbyV3 : wireLobby)(main);
   startTick();
 }
 
@@ -500,6 +500,107 @@ function wireLobbyV3(main) {
   });
 }
 
+// ---- v3: the Gauntlet lobby (UI-52), behind the ui_v3 flag --------------------------------------------------------------
+// The approved design (design repo UI-52/approved): the week's squad (read-only, the same for everyone: gauntlet.sql), the
+// budget, Start run, the weekly prizes, the timer, the theme, your best and the Top 3. It uses the parts of the UI-46 lobby
+// (.u3-dg-*); what is new is .u3-ga-* (public/ui3/90-ui-52.css). The squad cannot be changed, so there is no picker.
+const gaPrizeOdds = (o) => Object.keys(SHORT).filter((k) => (o || {})[k]).map((k) => `${o[k]}% ${SHORT[k]}`).join(' · ');   // the rarity order
+function gaPrizesV3HTML(panel, extra = '') {
+  const pz = dg.data.prizes || [];
+  const row = (rk, p, sm) => `<li class="u3-ga-prize"><span class="u3-ga-rk${sm ? ' is-range' : ''}">${rk}</span><div class="u3-ga-ptext"><b>${esc(prizeText(p))}</b>${p.cards && gaPrizeOdds(p.odds) ? `<em>${esc(gaPrizeOdds(p.odds))}</em>` : ''}</div></li>`;
+  const rows = pz.slice(0, 3).map((p, i) => row(i + 1, p)).join('') + (pz[3] ? row('4-10', pz[3], true) : '');
+  const inner = `<div class="u3-ga-ph"><h2 class="u3-dg-h">${icon3('crown', 'lg')}Weekly prizes</h2><small>Paid at the week's end</small></div><ol class="u3-ga-plist">${rows}</ol>`;
+  return `<section class="u3-ga-prizes${panel ? ' u3-dg-panel' : ''}${extra ? ' ' + extra : ''}">${inner}</section>`;
+}
+function gaSlotsHTML3(sq) {
+  return `<div class="u3-dg-slots"><ol class="u3-dg-slots__in" aria-label="This week's squad">${sq.map((c) => {
+    const atk = ATTACKER.has(c.type);
+    return `<li class="u3-dg-slot is-full u3-r-${esc(c.rarity || 'normal')}"><div class="u3-dg-slot__card" role="img" aria-label="${esc(c.name || 'Card')}, ${c.cost || 1} points, ${atk ? 'attacker' : 'support'}">`
+      + `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" draggable="false">` : ''}<span class="u3-pk-badge" aria-hidden="true">${c.cost || 1} PT</span></div>`
+      + `<span class="u3-dg-slot__label">${atk ? 'Attacker' : 'Support'}</span></li>`;
+  }).join('')}</ol></div>`;
+}
+function gaLobbyV3HTML() {
+  const d = dg.data;
+  const sq = Array.isArray(d.squad) ? d.squad : [];
+  const budget = d.budget || 12;
+  const s = { picks: sq, cost: sq.reduce((t, c) => t + (c.cost || 1), 0), budget };
+  const size = cls3();
+  const wk = new Date(d.week + 'T12:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
+  const head = `<header class="u3-dg-head"><img class="u3-dg-thumb" src="/dungeon/room.webp" alt="">${icon3('crown', 'lg')}<h1 class="u3-dg-name">${esc(d.name)}</h1><span class="u3-dg-date">WEEK OF ${esc(wk)}</span></header>`;
+  const timer = `<section class="u3-dg-panel u3-dg-timer">${icon3('timer')}<span>Week ends in</span><b class="dg-wleft">${leftLong(d.ends_at)}</b></section>`;
+  const start = btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: dg.busy, busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } });
+  const theme = d.theme ? tagName(d.theme) : 'Mixed';
+  const themeIn = `<span class="u3-label u3-dg-k">${icon3('layers')}This week's theme</span><h2 class="u3-dg-h">${esc(theme)}</h2>`;
+  const b = d.best;
+  const bestIn = `<div class="u3-ga-bh"><span class="u3-label u3-dg-k">Your best this week</span><span class="u3-ga-pill">1 run today</span></div><h2 class="u3-dg-h${b ? '' : ' is-muted'}">${b ? `${fmt3(b.floor)}F Room ${fmt3(b.room)}` : 'No run yet'}</h2>`
+    + `<dl class="u3-dg-mini"><div><dt>Rank</dt><dd>${b ? `#${fmt3(b.rank)}` : '—'}</dd></div><div><dt>Your runs</dt><dd>${fmt3(b?.runs || 0)}</dd></div></dl>`;
+  const top = d.top || [];
+  const topIn = `<div class="u3-dg-toph"><h2 class="u3-dg-h">${icon3('trophy', 'lg')}Top 3 this week</h2><span class="u3-dg-runs">${fmt3(d.players_week)} member${Number(d.players_week) === 1 ? '' : 's'}</span></div>`
+    + `<ol class="u3-dg-top">${top.length ? top.map((t) => `<li><span>${t.rank}</span><b>${esc(t.username || 'Member')}</b><em>${fmt3(t.floor)}F Room ${fmt3(t.room)}</em></li>`).join('') : '<li class="is-none">No runs yet this week. Be the first.</li>'}</ol>`
+    + btn3({ label: 'See the leaderboard', icon: null, data: { board: '1' } }).replace('</span></button>', `</span>${icon3('arrow-right')}</button>`);
+  const tabs = (keys) => `<div class="u3-dg-tabs">${segmented3(keys.map(([k, ic, label]) => ({ id: `pane:${k}`, icon: ic, label, active: dg.pane === k, controls: `u3GaPane-${k}` })), 'This week')}</div>`;
+  const panels = (map) => Object.entries(map).map(([k, html]) => `<div class="u3-dg-tabpanel" role="tabpanel" id="u3GaPane-${k}"${dg.pane === k ? '' : ' hidden'}>${html}</div>`).join('');
+  const budgetRow = `<div class="u3-dg-budget"><span class="u3-label">This week's squad</span>${ptsHTML(s)}</div>${budgetBarHTML(s)}`;
+  const mainEl = document.getElementById('main');
+  const tall = mainEl ? mainEl.clientHeight > mainEl.clientWidth : false;   // the shape of the content area (D-46)
+  if (size === 'compact-port' || size === 'tiny') {
+    if (!['squad', 'prizes', 'top'].includes(dg.pane)) dg.pane = 'squad';
+    const body = panels({
+      squad: `${head}<section class="u3-dg-panel u3-dg-main"><div class="u3-dg-hrow">${budgetRow}</div>${gaSlotsHTML3(sq)}</section><div class="u3-ga-go">${start}</div><section class="u3-dg-panel u3-ga-theme">${themeIn}</section>`,
+      prizes: gaPrizesV3HTML(true),
+      top: `<section class="u3-dg-panel">${bestIn}</section><section class="u3-dg-panel">${topIn}</section>`,
+    });
+    return `<div class="u3-dg u3-dg--port u3-ga${dg.gtight ? ' is-tight' : ''}"><div class="u3-dg-prow">${tabs([['squad', 'crown', 'Squad'], ['prizes', 'trophy', 'Prizes'], ['top', 'trophy', 'Top 3']])}${timer}</div>${body}</div>`;
+  }
+  const squadRow = `<div class="u3-ga-squad">${gaSlotsHTML3(sq)}<div class="u3-ga-go">${start}</div></div>`;
+  if (size === 'medium' && tall && dg.gtabs) {   // too narrow for the panels side by side: the timer and the theme, then Prizes / Best / Top 3 as tabs (P1: content moves into a tab)
+    if (!['prizes', 'best', 'top'].includes(dg.pane)) dg.pane = 'prizes';
+    return `<div class="u3-dg u3-dg--stack u3-ga u3-ga--stack"><section class="u3-dg-panel u3-dg-main"><div class="u3-dg-hrow">${head}${budgetRow}</div>${gaSlotsHTML3(sq)}<div class="u3-ga-go">${start}</div></section>`
+      + `<div class="u3-dg-below u3-ga-below is-tabs"><div class="u3-ga-trow">${timer}<section class="u3-dg-panel u3-ga-theme">${themeIn}</section></div><section class="u3-dg-panel u3-dg-pane">${tabs([['prizes', 'crown', 'Prizes'], ['best', 'star', 'Best'], ['top', 'trophy', 'Top 3']])}<div class="u3-dg-pane__in">${panels({ prizes: gaPrizesV3HTML(false), best: bestIn, top: topIn })}</div></section></div></div>`;
+  }
+  if (size === 'medium' && tall) {
+    return `<div class="u3-dg u3-dg--stack u3-ga u3-ga--stack"><section class="u3-dg-panel u3-dg-main"><div class="u3-dg-hrow">${head}${budgetRow}</div>${gaSlotsHTML3(sq)}<div class="u3-ga-go">${start}</div></section>`
+      + `<div class="u3-dg-below u3-ga-below">${timer}<section class="u3-dg-panel u3-ga-theme">${themeIn}</section><section class="u3-dg-panel">${bestIn}</section><section class="u3-dg-panel">${topIn}</section>${gaPrizesV3HTML(true)}</div></div>`;
+  }
+  if (size === 'compact-land' || dg.gtabs) {
+    if (!['theme', 'best', 'top'].includes(dg.pane)) dg.pane = 'theme';
+    return `<div class="u3-dg u3-dg--side-tabs u3-ga"><aside class="u3-dg-side">${timer}<section class="u3-dg-panel u3-dg-pane">${tabs([['theme', null, 'Theme'], ['best', null, 'Best'], ['top', null, 'Top 3']])}<div class="u3-dg-pane__in">${panels({ theme: themeIn, best: bestIn, top: topIn })}</div></section></aside>`
+      + `<section class="u3-dg-panel u3-dg-main"><div class="u3-dg-hrow">${head}${budgetRow}</div>${squadRow}${gaPrizesV3HTML(false)}</section></div>`;
+  }
+  return `<div class="u3-dg u3-ga"><aside class="u3-dg-side">${timer}<section class="u3-dg-panel u3-ga-theme">${themeIn}</section><section class="u3-dg-panel">${bestIn}</section><section class="u3-dg-panel">${topIn}</section></aside>`
+    + `<section class="u3-dg-panel u3-dg-main"><div class="u3-dg-hrow">${head}${budgetRow}</div>${squadRow}${gaPrizesV3HTML(false)}</section></div>`;
+}
+function wireGaLobbyV3(main) {
+  main.querySelectorAll('[data-seg^="pane:"]').forEach((b) => b.addEventListener('click', () => { dg.pane = b.dataset.seg.slice(5); paint(); }));
+  main.querySelectorAll('[data-board]').forEach((b) => b.addEventListener('click', () => openBoard()));
+  // the side column shows every panel when they fit, else the Theme / Best / Top 3 tabs (P1: content moves into a tab, it is not removed)
+  const stack = main.querySelector('.u3-ga--stack:not(:has(.is-tabs))');
+  if (stack && !dg.gtabs) {
+    const below = stack.querySelector('.u3-dg-below');
+    const over = stack.scrollHeight > stack.clientHeight + 1 || below.scrollHeight > below.clientHeight + 1 || [...below.querySelectorAll(':scope > *')].some((n) => n.scrollWidth > n.clientWidth + 1);
+    if (over) { dg.gtabs = true; paint(); return; }
+  }
+  const side = main.querySelector('.u3-ga:not(.u3-dg--side-tabs):not(.u3-dg--port) > .u3-dg-side');
+  if (side && !dg.gtabs && side.scrollHeight > side.clientHeight + 1) { dg.gtabs = true; paint(); return; }
+  // a short phone: the tight mode (no room thumbnail, the theme in one row) when a squad card would be smaller than the phone frame's card (61 px) or a tab panel does not fit
+  const slot = main.querySelector('.u3-dg--port .u3-dg-tabpanel:not([hidden]) .u3-dg-slot__card');
+  const pane = main.querySelector('.u3-dg--port .u3-dg-tabpanel:not([hidden])');
+  const sin = pane?.querySelector('.u3-dg-slots__in');
+  const slotsOver = !!sin && sin.scrollHeight > sin.parentElement.clientHeight + 1;
+  if (!dg.gtight && ((slot && slot.getBoundingClientRect().width < TOKENS['card-tile'] * 0.7) || slotsOver || (pane && pane.scrollHeight > pane.clientHeight + 1))) { dg.gtight = true; paint(); return; }
+  main.querySelector('[data-start3]')?.addEventListener('click', async () => {
+    if (dg.busy) return;
+    dg.busy = true; paint();
+    let r = null;
+    try { r = await ctx().apiPost('/api/gauntlet/start', {}); } catch (e) { r = e?.body || null; }
+    dg.busy = false;
+    if (!r?.ok) { toast(r?.message || 'The run did not start.'); paint(); return; }
+    ctx().sfx?.('click');
+    dg.log = []; dg.target = 0;
+    await load(); paint();
+  });
+}
 function topHTML(bare) {
   const d = dg.data;
   const top = d.top || [];
@@ -1350,7 +1451,7 @@ const upCls = (f) => (ups.has(upTag(f)) ? ' up' : '');
 const getBack = async () => { if (cardBack == null) { try { cardBack = (await (await fetch('/api/config')).json()).backUrl || ''; } catch { cardBack = ''; } } return cardBack; };
 function overHTML() {
   const R = run();
-  if (GA()) return gaOverHTML(R);
+  if (GA()) return V3() ? gaOverV3HTML(R) : gaOverHTML(R);
   const t = { cleared: ['Dungeon cleared!'], retreat: ['You retreated'], fell: ['Your squad fell'] }[R.ended_by] || ['Run over'];
   const loot = dg.data.loot || [];
   const cards = loot.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}${upCls(String(i))}" data-flip="${i}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
@@ -1474,6 +1575,18 @@ function wireGaLobby(main) {
     dg.log = []; dg.target = 0;
     await load(); paint();
   });
+}
+// v3: the Gauntlet run is over (UI-52): the room-art header with the result, the four depth tiles, the weekly prizes, the board and the next run.
+function gaOverV3HTML(R) {
+  const t = { cleared: 'Gauntlet cleared!', retreat: 'Run ended', fell: 'Your squad fell' }[R.ended_by] || 'Run over';
+  const b = dg.data.best;
+  const stat = (k, v) => `<div class="u3-go-stat"><span>${k}</span><b>${v}</b></div>`;
+  return `<div class="u3-go"><section class="u3-go-panel"><div class="u3-go-in">
+    <div class="u3-go-head"><div class="u3-go-title"><span class="u3-go-k">${icon3('crown')}${esc(dg.data.name)}</span><h1>${esc(t)}</h1></div>
+      <div class="u3-go-stats">${stat('Depth', `${fmt3(R.floor)}F Room ${fmt3(R.room)}`)}${stat('Week best', b ? `${fmt3(b.floor)}F R${fmt3(b.room)}` : '—')}${stat('Rank this week', `#${b?.rank ? fmt3(b.rank) : '—'}`)}${stat('Turns', fmt3(R.turns))}</div></div>
+    ${gaPrizesV3HTML(false, 'u3-go-prizes')}
+    <div class="u3-go-foot">${btn3({ label: 'See the leaderboard', icon: 'trophy', data: { board: '1' } })}<span class="u3-go-next">${icon3('timer')}<span>Your next run in</span><b class="dg-left">${left(dg.data.next_at)}</b></span></div>
+  </div></section></div>`;
 }
 // The run is over: the depth, the week's rank and best (no loot in the Gauntlet).
 function gaOverHTML(R) {
