@@ -90,6 +90,8 @@ export const SCREENS = {
   'boons-picker':        { id: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1]], input: '#u3Picker .u3-search__input' },
   'boons-pick':          { id: 'UI-28', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
   'hunt-squad':          { id: 'UI-17', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
+  // D-166: the trophy button in the squad stage Top 3 row opens the Leaderboard window (UI-66) on the Hunt tab; behind it the squad stage is UI-17.
+  'hunt-board':          { safe: true, long: true, id: 'UI-66', under: 'UI-17', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '#main [data-hboard]'], ['wait', 2.5]] },
   // v3: the Card picker (UI-64) in Hunt mode over the Hunt view (Auto-pick, locked cards, the short-squad dialog).
   // The Hunt with no live boss and with today's squad down (UI-19): states derived in serve.mjs from the recorded calls.
   'hunt-resting':        { id: 'UI-19', hunt: 'resting', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
