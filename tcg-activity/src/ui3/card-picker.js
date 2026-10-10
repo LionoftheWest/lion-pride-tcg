@@ -59,7 +59,8 @@ let cur = null;   // the open picker: { opts, sel, q, values, page, per, filters
  *   one: true -> pick one (cap 1): no slot row and no count, a tap replaces the choice, the chosen card has the check mark,
  *   icon: the icon before the title (the wishlist heart),
  *   clear: { label, disabled, onClear() -> true to close (async allowed) } (the second button left of Confirm: the
- *   wishlist Clear, D-66)
+ *   wishlist Clear, D-66); clear.resets: true -> Clear takes the choice off and the window stays (List a card, UI-31)
+ *   of: { n, max } -> the gold "n / max" after the title in pick-one mode (Your listings 2 / 5, UI-31)
  *   A status check is { ok, label }, or a stat { stat, label } ("225 Squad Power" with the zap icon, C9).
  *   caption(card) -> text, or a list of parts that wrap whole, under each card (the Shop stat points, D-80 item 23);
  *   the status checks are the status line slot; slotsLabel: the aria-label of the slot row (default "Your squad").
@@ -179,8 +180,8 @@ function paint() {
   const caret = a && host.contains(a) && a.classList.contains('u3-search__input') ? a.selectionStart : null;
   // opts.head (UI-27): the head is the caller's HTML (who plays on whom), the title is its accessible name; opts.kinds: the
   // kind switch row under the head (values.kind); opts.cls: a class on the window. Pick one card: opts.one (UI-64, PR 318).
-  const clear = o.clear ? button({ label: o.clear.label || 'Clear', disabled: !!o.clear.disabled || cur.busy, data: { pkclear: '1' } }) : '';
-  const count = o.one ? '' : ` <b>${cur.sel.length}</b><span>/ ${o.cap}</span>`;
+  const clear = o.clear ? button({ label: o.clear.label || 'Clear', disabled: (o.clear.resets ? !cur.sel.length : !!o.clear.disabled) || cur.busy, data: { pkclear: '1' } }) : '';
+  const count = o.of ? ` <b>${o.of.n | 0}</b><span>/ ${o.of.max | 0}</span>` : o.one ? '' : ` <b>${cur.sel.length}</b><span>/ ${o.cap}</span>`;
   const head = o.head
     ? `<header class="u3-pk__head">${o.head}</header>`
     : `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${o.icon ? icon(o.icon, { size: 'xl' }) : ''}${esc(o.title || 'Squad')}${count}</h2></header>`;
@@ -307,6 +308,7 @@ async function onClick(e) {
   }
   if (d.pkclear) {
     if (cur.busy) return;
+    if (cur.opts.clear.resets) { cur.sel = []; paint(); return; }   // UI-31: Clear takes the choice off (no call, the window stays)
     cur.busy = true; paint();
     let done = false;
     try { done = await cur.opts.clear.onClear(); } catch { done = false; }

@@ -7,6 +7,7 @@
 //   ci_hunt=down     derived from the recorded /api/hunt: today's squad (the first 8 roster cards) is down (UI-19)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
+//   ci_dungeon=fight|fight2   a Dungeon fight with 5 or 2 monsters (UI-47); ci_dungeon=over the run over (UI-50)
 //   ci_fx=hist|day|member   the Boons tab (UI-27): my play history, the day limit used up, a member at the pair cap
 //   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
 //   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
@@ -77,6 +78,60 @@ function derivedRoom(body, kind) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedRoom(body, c.ci_dungeon) });
 
+// UI-52: the Gauntlet after a run (cookie ci_dungeon = g-over): the run is over (the squad fell on floor 4), as in the approved frame:
+// 4F Room 1, week best 4F R1, rank #1, 62 turns, the next run in 10:27:13. The prizes come from the recorded lobby answer.
+function derivedGauntletOver(body) {
+  const next = new Date(Date.parse(FIX.recordedAt) + ((10 * 60 + 27) * 60 + 13) * 1000).toISOString();
+  return { ...body, next_at: next, best: { floor: 4, room: 1, rank: 1, runs: 1 }, run: { id: 1, status: 'over', ended_by: 'fell', floor: 4, room: 1, turns: 62, rank: 1, squad: (body.squad || []).map((c) => c.id), state: {} } };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/gauntlet' && c.ci_dungeon === 'g-over' && body?.ok, make: (body) => derivedGauntletOver(body) });
+
+// UI-47: a Dungeon fight (cookie ci_dungeon = fight | fight2): the 5-monster horde and a 2-monster room, with 3 attackers and
+// 2 supports, the numbers of the approved frames (run 1879, squad HP 320 / 392). ci_dungeon=over: the run over (UI-50).
+const FOES5 = [['skeleton', 'Water Skeleton', 'water', 50, ['caster']], ['squidle', 'Earth Squid', 'earth', 0, ['hero']], ['goleling', 'Water Golem', 'water', 85, ['agile']],
+  ['dino', 'Lightning Raptor', 'lightning', 50, ['strong']], ['blue_demon', 'Ice Demon', 'ice', 55, ['strong']]];
+function derivedFight(body, kind) {
+  const base = derivedDungeon(body);
+  const mine = body.mine || [];
+  const atk = mine.filter((c) => ['Character', 'Creature'].includes(c.type)).slice(0, 3);
+  const sup = mine.filter((c) => c.ability?.kind === 'support' && ['heal', 'shield', 'empower'].includes(c.ability.effect)).slice(0, 2);
+  const cards = {};
+  [[48, 72, 14], [119, 128, 1], [52, 72, 14]].forEach(([hp, max, shield], i) => { cards[atk[i].id] = { hp, max, shield, cd: 0 }; });
+  [[51, 60, 12], [50, 60, 12]].forEach(([hp, max, shield], i) => { cards[sup[i].id] = { hp, max, shield, cd: 0 }; });
+  const list = kind === 'fight2' ? FOES5.slice(0, 2) : FOES5;
+  const foes = list.map(([key, name, element, max, passives], i) => ({ key, name, element, level: 2, hp: max, max: max || 45, sh: 0, st: 0,
+    weak: [{ value: 'lightning' }, { value: `trait:${passives[0]}` }], resist: [{ value: 'fire' }], passives: [] }));
+  if (kind !== 'fight2') foes[1].hp = 0;
+  const R = { ...base.run, floor: 2, room: 4, squad: atk.concat(sup).map((c) => c.id) };
+  const st = { phase: 'fight', room_type: 'horde', round: 0, buff: 1.23, cards, foes, pend: { shards: 0, cards: [] }, bank: { shards: 0, cards: [] }, sup_round: -1 };
+  return { ...base, name: 'The Hollow Mines', run: { ...R, state: st } };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['fight', 'fight2'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedFight(body, c.ci_dungeon) });
+// UI-52: a Gauntlet fight (cookie ci_dungeon = g-fight): the week's squad (3 attackers, 2 supports) against the 5-monster horde of the
+// approved frames; floor 2, room 4 of 5, week best 4F R1, damage +23%. The squad cards come from the recorded lobby answer.
+function derivedGauntletFight(body) {
+  // the two supports heal an ally (the approved frames), so that a support can be picked and then a card (D-70)
+  const heal = (c, name) => ({ ...c, name, ability: { ...(c.ability || {}), kind: 'support', effect: 'heal', amount: 0.3, target: 'ally' } });
+  const sq = (body.squad || []).map((c, i) => (i === 3 ? heal(c, "I'll get it back, don't worry") : i === 4 ? heal(c, "Zeoic's Redstone Machine") : c));
+  const cards = {};
+  [[48, 72, 14], [119, 128, 1], [52, 72, 14], [51, 60, 12], [50, 60, 12]].forEach(([hp, max, shield], i) => { if (sq[i]) cards[sq[i].id] = { hp, max, shield, cd: 0 }; });
+  const foes = FOES5.map(([key, name, element, max, passives]) => ({ key, name, element, level: 2, hp: max, max: max || 45, sh: 0, st: 0,
+    weak: [{ value: 'lightning' }, { value: `trait:${passives[0]}` }], resist: [{ value: 'fire' }], passives: [] }));
+  foes[1].hp = 0;
+  const st = { phase: 'fight', room_type: 'horde', round: 0, buff: 1.23, cards, foes, pend: { shards: 0, cards: [] }, bank: { shards: 0, cards: [] }, sup_round: -1 };
+  return { ...body, squad: sq, best: { floor: 4, room: 1, rank: 1, runs: 1 }, run: { id: 1, status: 'active', floor: 2, room: 4, squad: sq.map((c) => c.id), state: st } };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/gauntlet' && c.ci_dungeon === 'g-fight' && body?.ok, make: (body) => derivedGauntletFight(body) });
+// UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
+function derivedOver(body) {
+  const base = derivedDungeon(body);
+  const mine = body.mine || [];
+  const loot = LOOT.concat([["LionoftheWest's Dodrio", 'normal']]).map(([name, rarity], i) => ({ ...mine[i], name, rarity }));
+  return { ...base, name: 'The Hollow Mines', loot, next_at: new Date(Date.parse(FIX.recordedAt) + 8 * 3600 * 1000).toISOString(),
+    run: { id: 1, status: 'over', ended_by: 'fell', floor: 3, room: 2, rank: 1, shards: 204, turns: 27, squad: [], state: { phase: 'over', cards: {} } } };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && c.ci_dungeon === 'over' && body?.ok, make: (body) => derivedOver(body) });
+
 // UI-25: open offers in every state (derived from the recorded sent offer), and a member with one trade partner (D-116).
 function derivedTrades(body) {
   const card = (n, rarity) => ({ id: 900 + n, name: `Card ${n}`, rarity, image_url: body.outgoing?.[0]?.offer?.image_url || '' });
@@ -118,7 +173,22 @@ function derivedHall(body) {
   const forTrade = body.forTrade.slice(0, 2).concat(Array.from({ length: 9 }, (_, i) => ({ id: 100 + i, ...who(i + 1), card: pick(i + 20), mine: false, match: i % 2, at: body.forTrade[0].at })));
   return { ...body, wanted, forTrade };
 }
-DERIVED.push({ when: (p, c, body) => p === '/api/hall' && c.ci_hall === 'many' && body?.wanted, make: (body) => derivedHall(body) });
+// UI-31: ci_hall=list = two listings of mine (the approved list frames show 2/5; the recording has 5/5); ci_hall=offer = one Wanted card
+// I own copies of (Wanted index 2) and one For trade card in the derived cards of the lister (For trade index 2), for the Trade window.
+function derivedHallMode(body, mode) {
+  const out = derivedHall(body);
+  const col = FIX.routes['/api/collection']?.body?.cards || [];
+  if (mode === 'list') return { ...out, mine: out.mine.slice(0, 2) };
+  if (mode === 'offer' && col.length > 5) {
+    const pick = (c) => ({ id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, power: c.power });
+    const wanted = out.wanted.slice(), forTrade = out.forTrade.slice();
+    wanted[2] = { ...wanted[2], card: pick(col[5]), mine: col[5].quantity };
+    forTrade[2] = { ...forTrade[2], card: pick(col[2]) };   // every other collection card is in the derived cards of a member (derivedTheirCards)
+    return { ...out, wanted, forTrade };
+  }
+  return out;
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/hall' && ['many', 'list', 'offer'].includes(c.ci_hall) && body?.wanted, make: (body, c) => derivedHallMode(body, c.ci_hall) });
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
@@ -214,13 +284,15 @@ export function openAnswer(count) {
 
 createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  const p = url.pathname;
+  const p = url.pathname.replace(/^\/app(?=\/)/, '');   // production serves under /app (Caddy strips it); the legal pages (UI-57) link /app/...
   if (req.method === 'POST' && p === '/api/open') {
     let raw = '';
     req.on('data', (d) => { raw += d; });
     req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
     return undefined;
   }
+  // UI-31: taking a card off the Hall answers ok (nothing is written) so the screen shows the "unlisted" toast with Undo; a list call stays refused (the error state).
+  if (req.method === 'POST' && p === '/api/hall/unlist') return send(res, 200, '{"ok":true}');
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)
