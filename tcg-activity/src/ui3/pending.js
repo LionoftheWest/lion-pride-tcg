@@ -24,11 +24,15 @@ export function ago(iso, now = Date.now()) {
  * sent + countered: they picked a card, I accept ("accept"); sent: wait.
  */
 export function offerKind(o, dir) {
-  if (dir === 'in') return o.status === 'countered' ? 'wait' : (o.request ? 'accept' : 'pick');
+  if (dir === 'in') return o.status === 'countered' ? 'wait' : (o.request && o.offer ? 'accept' : 'pick');
   return o.status === 'countered' ? 'accept' : 'wait';
 }
 /** The sent-row status text (as the v2 panel). */
-export const sentStatus = (o) => (o.status === 'countered' ? 'Picked a card' : o.request ? 'Waiting' : 'Picking a card');
+export const sentStatus = (o) => (o.status === 'countered' ? 'Picked a card' : isRequest(o) ? `Asked for ${o.request.name || 'a card'}` : o.request ? 'Waiting' : 'Picking a card');
+/** A request (D-168): they ask for one card and no card of the requester is picked yet. */
+export const isRequest = (o) => !!o && !o.offer && !!o.request;
+/** The incoming status text of a request: what they asked for. */
+export const askedText = (o) => `Asked for ${o.request?.name || 'your card'}`;
 
 /** The rows: incoming first those that wait for me; sent first those that I can accept. Hidden ids (an undo window) leave. */
 export function pendingLists(offers, hidden = new Set()) {
@@ -57,15 +61,15 @@ export function rowHTML(o, dir, h) {
   const k = offerKind(o, dir);
   const who = dir === 'in' ? { id: o.from_id, name: o.from_name } : { id: o.to_id, name: o.to_name };
   const name = who.name || 'Someone';
-  const status = dir === 'out' ? sentStatus(o) : (k === 'wait' ? 'Waiting' : '');
+  const status = dir === 'out' ? sentStatus(o) : (isRequest(o) ? askedText(o) : (k === 'wait' ? 'Waiting' : ''));
   // incoming: they give o.offer (GET) for o.request (GIVE); sent: I give o.offer (GIVE) for o.request (GET)
   const first = cardThumb(o.offer, dir === 'in' ? 'Get' : 'Give', h);
-  const second = o.request ? swap() + cardThumb(o.request, dir === 'in' ? 'Give' : 'Get', h) : '';
+  const second = o.request ? (o.offer ? swap() : '') + cardThumb(o.request, dir === 'in' ? 'Give' : 'Get', h) : '';
   const data = { id: o.id };
   let acts = '';
   if (dir === 'in') {
     const main = k === 'accept' ? act('Accept', 'secondary', 'check', o.id, 'accept')
-      : k === 'pick' ? act('Pick your card', 'secondary', 'arrow-left-right', o.id, 'pick') : '';
+      : k === 'pick' ? act(isRequest(o) ? 'Pick a card' : 'Pick your card', 'secondary', 'arrow-left-right', o.id, 'pick') : '';
     acts = `${main}${act('Decline', 'danger', 'x', o.id, 'decline')}`;
   } else {
     acts = `${k === 'accept' ? act('Accept', 'secondary', 'check', o.id, 'accept') : ''}`
@@ -103,12 +107,12 @@ export function viewHTML(o, dir, h) {
   const t = ago(o.created_at);
   const accept = button({ label: 'Accept', variant: 'primary', icon: 'check', data: { act: 'accept', id: o.id } });
   const foot = dir === 'in'
-    ? `${button({ label: 'Decline', variant: 'danger', icon: 'x', data: { act: 'decline', id: o.id } })}${k === 'accept' ? accept : k === 'pick' ? button({ label: 'Pick your card', variant: 'primary', data: { act: 'pick', id: o.id } }) : ''}`
+    ? `${button({ label: 'Decline', variant: 'danger', icon: 'x', data: { act: 'decline', id: o.id } })}${k === 'accept' ? accept : k === 'pick' ? button({ label: isRequest(o) ? 'Pick a card' : 'Pick your card', variant: 'primary', data: { act: 'pick', id: o.id } }) : ''}`
     : `${button({ label: 'Cancel offer', variant: 'danger', icon: 'x', data: { act: 'cancel', id: o.id } })}${k === 'accept' ? accept : ''}`;
   return `<div class="u3-scrim u3-pd-scrim" data-u3-scrim><div class="u3-dialog u3-pd-view" role="dialog" aria-modal="true" aria-labelledby="u3PdVt">`
     + `<header class="u3-pd-view__head">${h.avatar(who.id, who.name || 'Someone')}<div class="u3-pd-view__who"><span class="u3-label">Trade offer</span>`
     + `<div class="u3-pd-view__line"><h2 class="u3-pd-view__name" id="u3PdVt">${breakName(who.name || 'Someone')}</h2>${chip({ label: dir === 'in' ? 'Incoming' : 'Sent', kind: 'status' })}</div>`
     + `${t ? `<span class="u3-pd-view__time">Sent ${t}</span>` : ''}</div>${iconButton({ icon: 'x', label: 'Close', variant: 'plain', data: { act: 'close' } })}</header>`
-    + `<div class="u3-pd-view__cards">${big(o.offer, dir === 'in' ? 'Get' : 'Give')}${o.request ? swap() + big(o.request, dir === 'in' ? 'Give' : 'Get') : ''}</div>`
+    + `<div class="u3-pd-view__cards">${big(o.offer, dir === 'in' ? 'Get' : 'Give')}${o.request ? (o.offer ? swap() : '') + big(o.request, dir === 'in' ? 'Give' : 'Get') : ''}</div>`
     + `<footer class="u3-pd-view__foot">${foot}</footer></div></div>`;
 }

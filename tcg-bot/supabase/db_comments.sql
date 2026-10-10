@@ -63,11 +63,11 @@ comment on column public.gift_claims.card_id is $c$The card of a card gift (card
 comment on column public.gift_claims.shards is $c$The Shards paid on claim (0 to 100000). claim_gift pays them with grant_shards reason event.$c$;
 
 -- ============================================================ trade_offers
-comment on table public.trade_offers is $c$[trading] One row per one-for-one trade offer between two members. create_trade, create_trade_open and offer_on_listing write it. counter_trade, accept_trade and set_trade_status change it. The Activity /api/trades reads it.$c$;
+comment on table public.trade_offers is $c$[trading] One row per one-for-one trade offer between two members. create_trade (full proposal), create_trade_open (offer), create_trade_request (request) and offer_on_listing write it. counter_trade and counter_trade_request pick the second card. accept_trade and set_trade_status change it. The Activity /api/trades reads it.$c$;
 comment on column public.trade_offers.id is $c$Row id. card_ledger rows of the trade use ref ('trade_offer', id).$c$;
 comment on column public.trade_offers.from_id is $c$The member who made the offer (players.id).$c$;
 comment on column public.trade_offers.to_id is $c$The member who receives the offer (players.id).$c$;
-comment on column public.trade_offers.offer_card_id is $c$The card that from_id gives (cards.id). One copy is held (free_copies) while the offer is pending or countered.$c$;
+comment on column public.trade_offers.offer_card_id is $c$The card that from_id gives (cards.id). One copy is held (free_copies) while the offer is pending or countered. Null for a request (create_trade_request) until the owner picks a card with counter_trade_request.$c$;
 comment on column public.trade_offers.request_card_id is $c$The card that to_id gives (cards.id), same rarity. Null for an open offer (create_trade_open) until to_id picks a card with counter_trade.$c$;
 comment on column public.trade_offers.status is $c$pending (waits for to_id), countered (to_id picked a card, waits for from_id), accepted, declined or cancelled.$c$;
 comment on column public.trade_offers.created_at is $c$Time the offer was made.$c$;

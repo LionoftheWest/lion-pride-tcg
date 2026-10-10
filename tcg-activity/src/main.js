@@ -17,7 +17,7 @@ import { setFlair, flairHTML } from './flair.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
+import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable, badgeOf } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
@@ -39,7 +39,8 @@ import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
 import { button as ui3Button, iconButton as ui3IconButton, pager as ui3Pager } from './ui3/components.js';
 import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
-import { initSettingsWindow } from './ui3/settings.js';
+import { initSettingsWindow, reduceEffects } from './ui3/settings.js';
+import { startAvatarFx } from './ui3/avatarfx.js';
 import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
 import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, rarePacks, newMark, PACK_RATIO, PACK_GAP_MS, STACK_LAYERS, stackTimeline, stackDepth } from './ui3/pack-reveal.js';
 import { counter as u3Counter } from './ui3/components.js';
@@ -251,6 +252,7 @@ let dungeon = false; // the Dungeon Run (dungeon.sql), from /api/flags (DUNGEON_
 let shards = false;  // Shards + the Shop (shards_shop.sql), from /api/flags (SHARDS_USERS first)
 let hall = false;    // wishlists + the Trading Hall + auctions, from /api/flags (HALL_USERS first)
 let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
+let tradeRequest = false; // trade requests + full proposals (trade_request.sql, FEATURE_TRADE_REQUEST), from /api/flags (OFF = no change)
 let uiV3 = false;     // the v3 screens (settings.ui_v3, Nathan only), from /api/flags (flag OFF = the v2 screens)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
 let meUser = null;  // { id, name } of the signed-in member
@@ -357,6 +359,7 @@ async function main() {
   flags = flags || {};
   mobileUi = !!flags?.mobile;
   trade2 = !!flags?.trade2;
+  tradeRequest = !!flags?.tradeRequest;
   hall = !!flags?.hall;
   shards = !!flags?.shards;
   dungeon = !!flags?.dungeon;
@@ -372,7 +375,7 @@ async function main() {
   if (flags.reports) initReport();
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
-  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
+  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); startAvatarFx({ badgeOf, reduce: reduceEffects }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
 }
 
 // The v3 foundation (UI-00): only for the members in settings.ui_v3 (flags.uiV3). It loads the component CSS and writes
@@ -385,7 +388,14 @@ function startV3() {
   if (link) link.media = 'all';
   else { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/ui3.css'; l.dataset.ui3 = '1'; document.head.appendChild(l); }
   ldr3Stop?.(); // the loader's own size watcher (one watcher only)
-  watchSizeClass(window, () => repaintShards());
+  let sizeWas = document.body.dataset.size;
+  watchSizeClass(window, (cls) => {
+    repaintShards();
+    // UI-59: the tiny window shows the small live view of Home; entering or leaving it repaints Home
+    const tinyChange = (cls === 'tiny') !== (sizeWas === 'tiny');
+    sizeWas = cls;
+    if (tinyChange && document.body.classList.contains('ui-v3')) show(cls === 'tiny' ? 'home' : currentView);   // flag off: unchanged
+  });
   prefetchSets(api); // the Open window (UI-33) shows the sets at once
 }
 
@@ -412,7 +422,7 @@ function startV2() {
   }
   initV2({
     api, apiPost, apiData, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
-    playOnMember, effectsEnabled, trade2: () => trade2, hallOn: () => hall, openTrade: openTradeWith,
+    playOnMember, effectsEnabled, trade2: () => trade2, tradeRequest: () => tradeRequest, hallOn: () => hall, openTrade: openTradeWith,
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
     watchable: (id) => Boolean(watchableOpen(id)), watchOpen, sfx: (n) => SFX.play(n),

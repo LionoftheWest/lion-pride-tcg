@@ -38,7 +38,7 @@ begin
     ['add_cards_to_player(text,bigint[])', 'bbf6efbebd9e6a5185907902d166b8a4', '95870387c3be9cb49983099a84d4ca94'],
     ['remove_card_from_player(text,bigint)', 'e095f3fb0aeac6302967cbe0a3556dab', '21d5736103da9e8c5f082ef0e5662867'],
     ['gift_card(text,text,bigint)', '024ef82348f935313189159889efc28b', '7115dbfa61f8d04307aecff0b0ad1165'],
-    ['accept_trade(bigint,text)', 'b15f29f8dd6193d8b64051d0024cfdd3', '01f88e6f078190ef575fd1201396e0b5'],
+    ['accept_trade(bigint,text)', 'b15f29f8dd6193d8b64051d0024cfdd3', 'e41b20ce608cf97f28afa8e9e673024d'], -- the result is the text of trade_request.sql (a request with no picked card is refused)
     ['confirm_bid(text,bigint)', '5f13b5afd663744a382902b1ee91a61e', '6ac442cd582125b90b0a0de03b03b009'],
     ['ascend_card(text,bigint)', 'a85e5f0cef6cbd2e59464c94eedce83f', '0b8f5728ecc8b1c69a5721d28a8da536'],
     ['convert_dupes(text,bigint,integer)', '931db28ed179ddf43b33f2983b0bc7a7', 'c1afa328d3a94dba53074edc0b040832']] loop
@@ -226,7 +226,7 @@ AS $function$
 declare t record;
 begin
   select * into t from trade_offers where id = p_offer_id and status in ('pending', 'countered') for update;
-  if not found or t.request_card_id is null then return false; end if;
+  if not found or t.request_card_id is null or t.offer_card_id is null then return false; end if;
   if t.status = 'countered' and t.from_id <> p_accepter then return false; end if;
   if t.status = 'pending' and t.to_id <> p_accepter then return false; end if;
   -- A card held by an auction or a bid (hall_auctions.sql) is not free to trade away.
