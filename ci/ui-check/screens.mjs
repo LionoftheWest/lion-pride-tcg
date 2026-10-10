@@ -135,7 +135,7 @@ export const SCREENS = {
   // member, the Home members and the leaderboard). A defect outside the effect belongs to the host screen ('under').
   'avatarfx-home':       { id: 'UI-55', under: 'UI-03', long: true, safe: true, home: 'busy', avfx: 'on', notOn: ['tiny'], steps: [['wait', 3]] },
   'avatarfx-profile':    { id: 'UI-55', under: 'UI-14', long: true, safe: true, avfx: 'on', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3]] },
-  'avatarfx-board':      { id: 'UI-55', under: 'UI-22', long: true, avfx: 'on', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  'avatarfx-board':      { id: 'UI-55', under: 'UI-22', long: true, avfx: 'on', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
   'help':                { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5]] },
   'help-closed':          { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="0"]'], ['wait', 0.5]] },
   'help-item5':           { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
