@@ -615,7 +615,7 @@ function fightHTML() {
       <span class="dg-hp"><i></i></span><small class="dg-hpn"></small></div>`;
   const supB = (c) => `<button class="dg-sup" data-sup="${c.id}">
       ${c.image_url ? `<img src="${thumb(c.image_url)}" alt="">` : '<span></span>'}
-      <span class="t"><b>${esc(c.name)}</b><small>${esc(supDesc(c))}</small></span><em></em>${V3() ? '<span class="dg-sp"><i class="dg-spfx"></i><span class="dg-hp"><i></i></span><small class="dg-hpn"></small></span>' : ''}</button>`;   // v3 (UI-47, D-69): a support shows its HP row like an attacker
+      <span class="t"><b>${esc(c.name)}</b><small>${esc(supDesc(c))}</small></span><em></em></button>`;   // D-156: a support has no HP bar in the Dungeon and the Gauntlet (they never go down, D-126)
   return `<div class="dg-fight" data-room="${roomKey()}">
     <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
     <div class="dg-meter"></div>
@@ -706,14 +706,6 @@ function fightUpdate(main, st) {
       b.disabled = (!ready || used || dg.busy) && !(V3() && dg.support && !dg.busy);   // v3 (D-70): while a support is picking a target, every support is a valid target
       b.classList.toggle('wait', !ready || used);
       b.classList.toggle('on', dg.support === Number(c.id));
-      const sp = b.querySelector('.dg-sp');
-      if (sp) {   // v3 (UI-47, D-69): shield mark, HP bar, "51/60 +12" (the same row as an attacker)
-        const pct = Math.max(0, Math.min(100, ((c.s.hp || 0) / Math.max(1, c.s.max || 1)) * 100));
-        sp.querySelector('.dg-spfx').innerHTML = c.s.shield > 0 ? I.ward : '';
-        sp.querySelector('.dg-hp i').style.width = `${pct}%`;
-        sp.querySelector('.dg-hp i').classList.toggle('low', pct < 30);
-        sp.querySelector('.dg-hpn').innerHTML = `${fmt(c.s.hp)}/${fmt(c.s.max)}${c.s.shield ? ` <em>+${fmt(c.s.shield)}</em>` : ''}`;
-      }
       b.querySelector('em').innerHTML = c.s.down ? 'Down' : !ready ? `${I.timer}In ${c.s.cd - round} round${c.s.cd - round === 1 ? '' : 's'}` : used ? `${I.lock}Next turn` : `${I.check}Ready`;
     }
   }
@@ -739,7 +731,7 @@ function fitFightV3(F) {
     if (!F.isConnected) return;
     const tile = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-tile-max')) || 112;
     F.classList.toggle('is-stack', cls3() === 'compact-port' || (cls3() === 'medium' && F.clientHeight > F.clientWidth));
-    F.classList.toggle('is-narrow', cls3() === 'compact-port' && F.clientWidth < 3.5 * tile);
+    F.classList.toggle('is-narrow', cls3() === 'compact-port' && F.clientWidth < 3.5 * tile); F.classList.toggle('is-slim', cls3() === 'medium' && F.clientWidth < 6.4 * tile);
     // is-short, is-short2: the fight is taller than its box, or the stage is under 2.2 widest card tiles high: the cards, then Squad HP and the supports, take less room
     const arena = F.querySelector('.dg-arena');
     F.classList.remove('is-short', 'is-short2');

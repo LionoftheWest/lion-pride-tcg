@@ -165,6 +165,8 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
   const mine = list.filter((e) => e.id === 'UI-49');
   assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+  const fight = list.filter((e) => e.id === 'UI-47');   // D-155: the phone controls of the fight
+  assert.ok(fight.length > 0 && fight.every((e) => e.decision === 'D-155' && e.rule === 'missing' && /^dungeon-fight/.test(e.screen) && ['430x932', '430x822', '412x915'].includes(e.size)));
 });
 
 test('a bad exception entry stops the gate', () => {

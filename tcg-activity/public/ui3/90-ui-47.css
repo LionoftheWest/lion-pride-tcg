@@ -1,7 +1,7 @@
 /* ==== UI-47 Dungeon fight (ui-v2-dungeon.js fightHTML, fightUpdate, placeArena; design repo UI-47/approved; flag ui_v3) ====
    The fight keeps the structure of today's screen (the room line and counters, the turn order, the monster plates over the stage,
    the controls row, the squad cards, Squad HP and the support items) and takes the approved changes:
-   D-68 an orange plate behind each attack card and a cyan plate behind each support thumb, D-69 the HP row of a support,
+   D-68 an orange plate behind each attack card and a cyan plate behind each support thumb, D-156 no HP bar on a support in the Dungeon,
    D-70 a support is a valid target of another support, the plates in even slots, the picking state (the hint with Cancel).
    Every selector starts with the fight prefix, so no other screen changes. Desktop and portrait only (D-136). */
 
@@ -47,7 +47,7 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-unit:hover .dg-card { transform: none
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-unit .dg-hp i, body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup .dg-hp i, body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-shp .dg-hp i { background: var(--success); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-hp i.low { background: var(--danger); }
 
-/* ---- the support items: the thumb, the name (it wraps), the effect, the state, and (D-69) the HP row ---- */
+/* ---- the support items: the thumb, the name (it wraps), the effect, the state, (no HP row, D-156) ---- */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-panel { background: color-mix(in srgb, var(--surface-1) 90%, transparent); border-radius: var(--rad-lg); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto auto; align-items: start; gap: var(--sp-half) var(--sp-2); padding: var(--sp-2); border-radius: var(--rad-md); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup img, body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup > span:first-child { grid-row: 1 / 4; align-self: center; display: block; }
@@ -55,15 +55,9 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup .t b { white-space: normal; overf
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup .t small { white-space: normal; overflow: visible; display: block; -webkit-line-clamp: none; font-size: var(--fs-small); line-height: var(--lh-small); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup em { font-size: var(--fs-small); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup em svg { width: var(--icon-sm); height: var(--icon-sm); }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sp { grid-column: 2; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sp .dg-hp { flex: 1 1 auto; min-width: var(--sp-5); }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-spfx { flex: none; width: var(--icon-sm); height: var(--icon-sm); display: inline-flex; color: var(--info); }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-spfx svg { width: var(--icon-sm); height: var(--icon-sm); }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sp .dg-hpn { flex: none; font-size: var(--fs-small); line-height: var(--lh-small); white-space: nowrap; }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup .dg-hpn { text-align: right; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup.on { border-color: var(--success); box-shadow: 0 0 0 var(--bw-1) var(--success); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup.wait { opacity: 1; }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup.wait > :not(.dg-sp) { opacity: .55; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup.wait > * { opacity: .55; }
 
 /* ---- D-70: while a support picks its target, every other support is a target (the ring), the casting one stays under the shade ---- */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.picking .dg-sup:not(.on) img, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.picking .dg-sup:not(.on) > span:first-child { box-shadow: 0 0 0 var(--bw-2) var(--success), 0 0 var(--sp-3) color-mix(in srgb, var(--success) 60%, transparent); }
@@ -93,8 +87,6 @@ body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup { grid-
 body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup img, body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup > span:first-child { display: block; }
 body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup .t b { font-size: var(--fs-small); }
 body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sup .t small { font-size: var(--fs-caption); }
-body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sp { gap: var(--sp-1); }
-body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-sp .dg-hpn { font-size: var(--fs-caption); }
 
 /* ---- the cards: the face prints its own name, so the app caption goes (it was cut at 8.5 px); the power badge is 11 px at least ---- */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-unit .dg-nm { display: none; }
@@ -138,7 +130,7 @@ body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack .dg-ri
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-shp .dg-hp { display: block; }
 
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-unit .dg-tap { display: none; }   /* the approved frames have no hover label on the cards */
-body[data-input="coarse"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-unit .card-info { width: var(--hit); height: var(--hit); }
+body[data-input="coarse"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-unit .card-info { box-sizing: border-box; width: var(--hit); height: var(--hit); min-width: var(--hit); min-height: var(--hit); }
 body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-meter { gap: var(--sp-half); padding: var(--sp-half) var(--sp-1); }
 body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-meter .dg-mt { padding: var(--sp-half) var(--sp-1-5); }
 body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-meter .dg-mt b { font-size: var(--fs-label); }
@@ -156,7 +148,6 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-sup { grid-template-columns
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-sup img, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-sup > span:first-child { grid-row: 1; grid-column: 1; align-self: center; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-sup em { grid-row: 1; grid-column: 2; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-sup .t { grid-row: 2; grid-column: 1 / -1; }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-sup .dg-sp { grid-row: 3; grid-column: 1 / -1; }
 
 /* narrow: the counters join the floor pill in one row (icon and number, the captions are the titles); one row for the shield, the bar and the number under each card (the approved 375x667 frames) */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto; grid-template-areas: "top" "turn" "arena" "hint" "units" "right" "logc"; }
@@ -210,3 +201,23 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-fl { padding-right: var(--s
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-dot { width: var(--icon-lg); height: var(--icon-lg); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-dot.now { width: var(--icon-xl); height: var(--icon-xl); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-narrow .dg-dot svg { width: var(--icon-xs); height: var(--icon-xs); }
+
+/* short2 on a phone: the counters join the floor pill row (icon and number; the captions are the titles), as in narrow; this takes a row */
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-ftop { display: flex; grid-area: top; align-items: center; gap: var(--sp-2); min-width: 0; }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-prog { flex: 0 1 auto; min-width: 0; }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-stats { flex: 1 1 auto; min-width: 0; margin: var(--u3-none); gap: var(--sp-1); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-stats span { padding: var(--u3-none) var(--sp-1-5); gap: var(--sp-1); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-stats i { display: none; }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-prog { padding: var(--sp-1-5) var(--sp-2); gap: var(--sp-2); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-fl { padding-right: var(--sp-2); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-dot { width: var(--icon-xl); height: var(--icon-xl); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-dot.now { width: var(--icon-2xl); height: var(--icon-2xl); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-link { width: var(--sp-1); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-prog { padding: var(--sp-1-5); gap: var(--sp-1-5); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-fl { padding-right: var(--sp-1-5); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-dot { width: var(--icon-lg); height: var(--icon-lg); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-dot.now { width: var(--icon-xl); height: var(--icon-xl); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 .dg-dot svg { width: var(--icon-xs); height: var(--icon-xs); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 { grid-template-rows: auto auto minmax(calc(var(--sp-7) + var(--sp-6) + var(--sp-5)), 1fr) auto auto auto auto; grid-template-areas: "top" "turn" "arena" "hint" "units" "right" "logc"; }
+/* medium, narrow box (measured, is-slim): one support under the other, so a long name has the whole width */
+body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-slim .dg-sups { grid-template-columns: minmax(0, 1fr); }
