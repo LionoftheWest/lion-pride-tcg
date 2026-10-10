@@ -250,6 +250,8 @@ function measure() {
   if (per !== st.per || f.tile !== st.tile || f.cols !== st.cols) {
     const first = st.page[st.view] * (st.per || per);
     st.page[st.view] = Math.floor(first / per);
+    const at = st.focus != null ? list().findIndex((c) => Number(c.id) === st.focus) : -1;   // the chosen card of a Hall listing stays on the page
+    if (at >= 0) st.page[st.view] = Math.floor(at / per);
     Object.assign(st, { per, tile: f.tile, cols: f.cols });
     paint();
   }
@@ -268,6 +270,7 @@ function onKey(e) {
 function onInput(e) {
   if (!e.target.classList.contains('u3-search__input')) return;
   st.q = e.target.value;
+  st.focus = null;
   st.page[st.view] = 0;
   paint();
 }
@@ -301,7 +304,7 @@ async function onClick(e) {
     return;
   }
   if (d.close) { closeTradeWindow(); return; }
-  if (d.seg && !st.panel) { st.view = d.seg; paint(); return; }
+  if (d.seg && !st.panel) { st.view = d.seg; st.focus = null; paint(); return; }
   if (d.pick) {
     const c = (st.view === 'mine' ? st.d.mine() : st.d.theirs()).find((x) => Number(x.id) === Number(d.pick));
     const key = st.view === 'mine' ? 'give' : 'get';
@@ -309,13 +312,13 @@ async function onClick(e) {
     paint();
     return;
   }
-  if (d.page) { st.page[st.view] += d.page === 'next' ? 1 : -1; paint(); return; }
+  if (d.page) { st.page[st.view] += d.page === 'next' ? 1 : -1; st.focus = null; paint(); return; }
   if (t.matches('.u3-ibtn') && t.closest('.u3-search')) { st.q = ''; st.page[st.view] = 0; paint(); return; }
   if (d.filters) { st.draft = st.rarity; st.panel = true; paint(); return; }
   if (d.fclose) { st.panel = false; paint(); return; }
   if (d.seg && st.panel) { st.draft = d.seg.split(':')[1]; paint(); return; }
   if (d.fclear) { st.draft = 'all'; paint(); return; }
-  if (d.fok) { st.rarity = st.draft; st.panel = false; st.page.mine = 0; st.page.their = 0; paint(); return; }
+  if (d.fok) { st.rarity = st.draft; st.focus = null; st.panel = false; st.page.mine = 0; st.page.their = 0; paint(); return; }
   if (d.cclose) { st.confirm = null; paint(); return; }
   if (d.cgo) { run(d.cgo); return; }
   if (d.act === 'gift') { st.confirm = { act: 'gift', title: `Gift ${st.give?.name || 'this card'} to ${st.d.to.name}?`, primary: 'Gift' }; paint(); return; }
@@ -327,12 +330,24 @@ async function onClick(e) {
  * Open the window.
  * d: { me: {id, name}, to: {id, name}, mine(): cards, theirs(): cards (each { id, name, rarity, image_url, quantity, tradeable }),
  *   packs(): my pack count, twoStep: boolean, requests: boolean (the server has requests on, D-168),
- *   pick: null | { offerId, want: card } (the owner answers a request: theirs() = the requester's cards), rarities: [keys], rarityLabel(key), avatar(id, name): html,
- *   send(action, plan) -> { ok } (async), onDone(action, result), onError(action), onClose() }
+ *   pick: null | { offerId, want: card } (the owner answers a request: theirs() = the requester's cards),
+ *   rarities: [keys], rarityLabel(key), avatar(id, name): html,
+ *   send(action, plan) -> { ok } (async), onDone(action, result), onError(action), onClose(),
+ *   start: { view: 'mine' | 'their', giveId, getId } -> opens on that view with the card chosen, on its page (a Hall listing, UI-31) }
  */
 export function openTradeWindow(d) {
   if (st) return;
-  st = { d, view: d.pick ? 'their' : 'mine', give: null, get: null, q: '', rarity: 'all', page: { mine: 0, their: 0 }, per: 0, cols: 0, tile: 0, panel: false, draft: 'all', busy: null, confirm: null };
+  st = { d, view: d.pick ? 'their' : 'mine', give: null, get: null, q: '', rarity: 'all', page: { mine: 0, their: 0 }, per: 0, cols: 0, tile: 0, panel: false, draft: 'all', busy: null, confirm: null, focus: null };
+  // UI-31 (D-64 item 7): an offer on a Hall listing opens the window on the chosen card: its view, the card in its slot, and its page
+  const s = d.start;
+  if (s) {
+    const find = (list, id) => (id == null ? null : (list() || []).find((c) => Number(c.id) === Number(id)) || null);
+    st.view = d.pick || s.view === 'their' ? 'their' : 'mine';
+    st.give = find(d.mine, s.giveId);
+    st.get = find(d.theirs, s.getId);
+    st.focus = Number((st.view === 'mine' ? st.give : st.get)?.id ?? NaN);
+    if (Number.isNaN(st.focus)) st.focus = null;
+  }
   const host = document.createElement('div');
   host.id = 'u3TradeWin';
   host.className = 'u3-scrim u3-tw-scrim';

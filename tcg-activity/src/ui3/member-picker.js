@@ -7,23 +7,11 @@
 // The caller gives the sections and the actions; this module owns the layout, the search and the fit (no scroll, P1).
 import { esc, searchField, pager } from './components.js';
 import { icon } from './icons.js';
+import { markMatch, breakName, rankMatches, visibleRows, listHeight } from './suggest.js';
+import { syncRailEls } from './scroll-rail.js';
 
-/** The match in a name, marked (the typed part in gold, UI-29). Escapes the name. Pure (unit-tested). */
-export function markMatch(name, q) {
-  const n = String(name ?? ''), t = String(q ?? '').trim();
-  const i = t ? n.toLowerCase().indexOf(t.toLowerCase()) : -1;
-  if (i < 0) return breakName(n);
-  return `${breakName(n.slice(0, i))}<b>${esc(n.slice(i, i + t.length))}</b>${breakName(n.slice(i + t.length))}`;
-}
-
-/** A name never ends in "…" (D-08): break points after _ . - , between a letter and a digit, and at camelCase.
- *  Escapes the name. Pure (unit-tested). */
-export function breakName(name) {
-  return esc(name)
-    .replace(/(?<=[a-z0-9])([_.\-])(?=[a-z0-9])/gi, '$1<wbr>')
-    .replace(/([a-z])(?=[A-Z])/g, '$1<wbr>')
-    .replace(/([a-z])(?=[0-9])/gi, '$1<wbr>');
-}
+// The match in a name (the typed part in gold, UI-29) and the break points of a name (D-08) live in suggest.js.
+export { markMatch, breakName };
 
 /**
  * The member lists (6.5b, D-64 items 5 and 9). Pure (unit-tested).
@@ -69,6 +57,8 @@ let seq = 0;
  *   search(q) -> Promise<[{ id, name }]>  the suggest list (the server match, best first), at most 6 show,
  *   onPick(member), onProfile(member),
  *   lead, trail: HTML before and after the search (the view "?", the Pending button: UI-25 owns them),
+ *   labelTail: HTML at the right end of the label row of the first section (UI-27: "Plays today" on compact-port),
+ *   meta: HTML in a row between the search row and the sections (UI-27: the day limit line and the result of a play),
  *   blocked(member) -> reason or '' (the tile greys out with the reason, for example a daily limit; UI-28),
  *   avatarUrl(member) (default /api/avatar/<id>), placeholder (default "Find a member"),
  * }
@@ -77,7 +67,7 @@ export function mountMemberPicker(host, opts) {
   const id = `u3Mp${++seq}`;
   const st = { opts: { ...opts }, q: '', sugg: null, page: 0, per: 0, fit: 0, timer: null, ask: 0, alive: true };
   host.innerHTML = `<div class="u3-mp" id="${id}"><div class="u3-mp__tools">${st.opts.lead || ''}<div class="u3-mp__find">${field('')}</div>${st.opts.trail || ''}</div>`
-    + '<div class="u3-mp__body"></div></div>';
+    + `${st.opts.meta ? `<div class="u3-mp__meta">${st.opts.meta}</div>` : ''}<div class="u3-mp__body"></div></div>`;
   const root = host.querySelector('.u3-mp');
   const body = root.querySelector('.u3-mp__body');
   const find = root.querySelector('.u3-mp__find');
@@ -114,7 +104,8 @@ export function mountMemberPicker(host, opts) {
       let ms = s.members.map((m, i) => [m, i]);
       let pages = 1;
       if (paged && st.per) { pages = Math.max(1, Math.ceil(ms.length / st.per)); st.page = Math.min(st.page, pages - 1); ms = ms.slice(st.page * st.per, st.page * st.per + st.per); }
-      return `<section class="u3-mp-sec${paged ? ' is-paged' : ''}" aria-label="${esc(s.label)}"><h3 class="u3-label u3-mp-sec__label">${esc(s.label)}</h3>`
+      const label = `<h3 class="u3-label u3-mp-sec__label">${esc(s.label)}</h3>`;
+      return `<section class="u3-mp-sec${paged ? ' is-paged' : ''}" aria-label="${esc(s.label)}">${k === 0 && st.opts.labelTail ? `<div class="u3-mp-sec__head">${label}${st.opts.labelTail}</div>` : label}`
         + `<ul class="u3-mp-sec__tiles u3-mp-sec__tiles--${s.form === 'list' ? 'list' : 'avatar'}" data-sec="${esc(s.key)}">`
         + ms.map(([m, i]) => tileHTML(m, s.form === 'list' ? 'list' : 'avatar', s.key, i)).join('') + '</ul>'
         + `${paged ? `<div class="u3-mp-sec__pager">${pager({ page: st.page + 1, pages })}</div>` : ''}</section>`;
@@ -181,22 +172,38 @@ export function mountMemberPicker(host, opts) {
   }
 
   // ---- the search and its suggest list (UI-29, unchanged look: avatar, name with the match in gold) ----
-  function closeSuggest() { st.sugg = null; root.querySelector('.u3-mp-sug')?.remove(); }
+  let stopRail = null;   // the scroll listener of the shown list (UI-29)
+  function closeSuggest() { st.sugg = null; stopRail?.(); stopRail = null; root.querySelector('.u3-mp-sug')?.remove(); }
   function showSuggest() {
     const had = root.querySelector('.u3-mp-sug');
     had?.remove();
     if (!st.sugg || !st.q.trim()) return;
     // the list is as wide as the dialog width at most, and ends at the right edge of the picker
     find.style.setProperty('--mp-room', `${Math.max(0, root.getBoundingClientRect().right - find.getBoundingClientRect().left)}px`);
-    const rows = st.sugg.length
-      ? st.sugg.map((m, i) => `<button type="button" class="u3-mp-sug__row" role="option" aria-selected="${i === 0 ? 'true' : 'false'}" data-msug="${i}">${avatar(m)}<span>${markMatch(m.name, st.q)}</span></button>`).join('')
+    const inner = st.sugg.length
+      ? `<div class="u3-mp-sug__list" role="listbox" aria-label="Members" data-scroll-area="member suggestions">`
+        + st.sugg.map((m, i) => `<button type="button" class="u3-mp-sug__row" role="option" aria-selected="${i === 0 ? 'true' : 'false'}" data-msug="${i}">${avatar(m)}<span>${markMatch(m.name, st.q)}</span></button>`).join('')
+        + '</div><span class="u3-mp-sug__rail" aria-hidden="true" hidden><span class="u3-mp-sug__thumb"></span></span>'
       : '<p class="u3-mp-sug__none">No member with that name</p>';
-    find.insertAdjacentHTML('beforeend', `<div class="u3-mp-sug${had ? ' is-still' : ''}" role="listbox" aria-label="Members">${rows}</div>`);
-    // only whole rows above the dock and the frame bottom (a short frame, the keyboard): no row under another layer
+    find.insertAdjacentHTML('beforeend', `<div class="u3-mp-sug${had ? ' is-still' : ''}" data-popover="1">${inner}</div>`);
+    // UI-29 (3.3, D-07): a named scroll area. Only WHOLE rows (at most 6) above the dock and the frame bottom (a short frame,
+    // the keyboard): no row under another layer, none cut. More matches scroll inside the list; the rail is the cue.
     const box = find.querySelector('.u3-mp-sug');
+    const list = box.querySelector('.u3-mp-sug__list');
+    stopRail?.(); stopRail = null;
+    if (!list) return;
     const frameBottom = document.body.getBoundingClientRect().bottom;   // the frame bottom (the body fills the frame; no raw window size, G-009)
     const floor = Math.min(frameBottom, document.getElementById('dock')?.getBoundingClientRect().top || frameBottom);
-    while (box.children.length > 1 && box.getBoundingClientRect().bottom > floor) box.lastElementChild.remove();
+    const row = list.firstElementChild.getBoundingClientRect();
+    const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
+    const padB = parseFloat(getComputedStyle(box).paddingBottom) + parseFloat(getComputedStyle(box).borderBottomWidth) || 0;
+    const n = visibleRows({ room: floor - padB - list.getBoundingClientRect().top, rowH: row.height, gap, count: list.children.length });
+    list.style.setProperty('--sug-h', `${listHeight(n, row.height, gap)}px`);
+    const rail = box.querySelector('.u3-mp-sug__rail');
+    const sync = () => syncRailEls(list, rail, '--sug-thumb-top', '--sug-thumb-h');
+    list.addEventListener('scroll', sync, { passive: true });
+    sync();
+    stopRail = () => list.removeEventListener('scroll', sync);
   }
   function syncClear() {
     // the clear button shows only with text (SearchField): swap the field, keep the focus and the caret
@@ -228,7 +235,7 @@ export function mountMemberPicker(host, opts) {
       let found = [];
       try { found = (await st.opts.search?.(q)) || []; } catch { return; }   // keep the last list
       if (ask !== st.ask || !st.alive) return;   // a newer letter is on its way
-      st.sugg = found.slice(0, 6);
+      st.sugg = rankMatches(found, q);   // the name that starts with the text first; the list scrolls past 6 rows (UI-29)
       showSuggest();
     }, 150);
   };

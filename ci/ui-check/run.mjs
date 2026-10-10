@@ -24,7 +24,7 @@ const WORKERS = Math.max(1, Number(arg('workers', 4)));
 mkdirSync(join(OUT, 'shots'), { recursive: true });
 const FIX = JSON.parse(readFileSync(join(here, 'fixtures', 'api.json'), 'utf8'));
 const read = (f) => readFileSync(join(here, 'checks', f), 'utf8');
-const CHECKS = read('walk-checks.js'), FIT = read('fitdetect.js'), CUT = read('cutdetect.js'), EXTRA = read('extra.js');
+const CHECKS = read('walk-checks.js'), FIT = read('fitdetect.js'), CUT = read('cutdetect.js'), EXTRA = read('extra.js'), WALK = read('walkthrough.js');
 // The game day (MT) of the recording: main.js keeps the locked squad for that day only.
 const MT_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(FIX.recordedAt));
 const sleep = (s) => new Promise((ok) => setTimeout(ok, s * 1000));
@@ -74,21 +74,25 @@ async function runCell([s, screen, variant], ref = {}) {
         const spec = SCREENS[screen];
         const t0 = Date.now();
         const ctx = ref.ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: touch, isMobile: touch && BROWSER === 'chromium', deviceScaleFactor: 1, timezoneId: 'America/Denver', locale: 'en-US' });
-        await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
+        if (spec.tfx) await ctx.clock.install({ time: new Date(FIX.recordedAt) });   // UI-26: the animation phases are held with the page clock (the tfx step of screens.mjs)
+        else await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
         const cookies = [];
         if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? (spec.battle === 'mix' ? 'battle-mix' : 'battle') : spec.hunt, url: BASE });
         if (spec.trades) cookies.push({ name: 'ci_trades', value: spec.trades, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (spec.notes) cookies.push({ name: 'ci_notes', value: spec.notes, url: BASE });
         if (spec.home) cookies.push({ name: 'ci_home', value: spec.home, url: BASE });
+        if (spec.gifts) cookies.push({ name: 'ci_gifts', value: '1', url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (spec.stats) cookies.push({ name: 'ci_stats', value: spec.stats, url: BASE });
         if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)
           cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });
           await ctx.addInitScript(() => localStorage.setItem('lp_ui3', '1'));
         }
+        if (spec.avfx) cookies.push({ name: 'ci_avfx', value: spec.avfx, url: BASE });
         if (spec.hall) cookies.push({ name: 'ci_hall', value: spec.hall, url: BASE });
         if (spec.treq) cookies.push({ name: 'ci_treq', value: spec.treq, url: BASE });   // UI-63 / UI-25 trade requests (serve.mjs)
+        if (spec.fx) cookies.push({ name: 'ci_fx', value: spec.fx, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);
         if (spec.battle && FIX.meta?.teamKey) await ctx.addInitScript(([k, v]) => localStorage.setItem(k, v), [FIX.meta.teamKey, JSON.stringify({ date: MT_DAY, ids: FIX.meta.teamIds })]);   // the date of the game day (MT), as main.js loadTeam() checks
@@ -105,6 +109,13 @@ async function runCell([s, screen, variant], ref = {}) {
             // The app never starts here (no ui-v2 class): wait for the loader state itself (the timeout is the real 15 s), then let the
             // checks see the loader: they skip #loader (it covers the page during a normal boot), so the loader gets data-measure for this cell only.
             const want = { loading: 'loading', timeout: 'timeout', error: 'error' }[spec.loader];
+            // The loading cell must not reach the 15 s timeout while the checks run (a slow CI cell measured the timeout state and
+            // found "Try again", 2026-10-10): in this cell a timer of 15 s or more waits much longer. Only long timers: a paused page
+            // clock also stopped the timers and frames the checks wait for, and the CI shards hung.
+            if (want === 'loading') await pg.addInitScript(() => { const st = window.setTimeout; window.setTimeout = (fn, ms, ...a) => st(fn, ms >= 15000 ? 2 ** 31 - 1 : ms, ...a); });
+            // The timeout cell need not wait the real 15 s (about 30 s a cell; the full run went past the 45 min job limit): its timer of
+            // 15 s or more fires after 1 s. The state and the screen are the same.
+            if (want === 'timeout') await pg.addInitScript(() => { const st = window.setTimeout; window.setTimeout = (fn, ms, ...a) => st(fn, ms >= 15000 ? 1000 : ms, ...a); });
             await pg.goto(BASE + '/');
             await pg.waitForFunction((w) => document.getElementById('ldr3')?.dataset.state === w && !document.getElementById('ldr3').hidden, want, { timeout: 40000 });
             await pg.evaluate(() => document.fonts?.ready); await sleep(1.5);
@@ -112,6 +123,7 @@ async function runCell([s, screen, variant], ref = {}) {
             res.miss = [];
           } else {
           await boot(pg, BASE + '/');
+          if (spec.page) { await pg.goto(BASE + spec.page); await pg.waitForLoadState('load'); await pg.evaluate(() => document.fonts?.ready); } else await boot(pg, BASE + '/');   // a standalone page (UI-57) has no Activity to boot
           res.miss = await runSteps(pg, spec.steps);
           }
           for (let i = 0; i < 20; i++) { if (await pg.evaluate(IMGWAIT)) break; await sleep(0.5); }
@@ -132,6 +144,7 @@ async function runCell([s, screen, variant], ref = {}) {
           res.cut = await call(pg, CUT, 'body');
           res.cutWin = await call(pg, CUT, '[data-audit-win]');
           res.extra = await call(pg, EXTRA);
+          if (spec.walk) res.walk = await call(pg, WALK, { touch });   // UI-37: the walkthrough card (the other checks skip #tutLayer)
           if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
           await pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70 });
         } catch (e) {
