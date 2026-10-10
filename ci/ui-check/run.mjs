@@ -108,6 +108,13 @@ async function runCell([s, screen, variant], ref = {}) {
             // The app never starts here (no ui-v2 class): wait for the loader state itself (the timeout is the real 15 s), then let the
             // checks see the loader: they skip #loader (it covers the page during a normal boot), so the loader gets data-measure for this cell only.
             const want = { loading: 'loading', timeout: 'timeout', error: 'error' }[spec.loader];
+            // The loading cell must not reach the 15 s timeout while the checks run (a slow CI cell measured the timeout state and
+            // found "Try again", 2026-10-10): in this cell a timer of 15 s or more waits much longer. Only long timers: a paused page
+            // clock also stopped the timers and frames the checks wait for, and the CI shards hung.
+            if (want === 'loading') await pg.addInitScript(() => { const st = window.setTimeout; window.setTimeout = (fn, ms, ...a) => st(fn, ms >= 15000 ? 2 ** 31 - 1 : ms, ...a); });
+            // The timeout cell need not wait the real 15 s (about 30 s a cell; the full run went past the 45 min job limit): its timer of
+            // 15 s or more fires after 1 s. The state and the screen are the same.
+            if (want === 'timeout') await pg.addInitScript(() => { const st = window.setTimeout; window.setTimeout = (fn, ms, ...a) => st(fn, ms >= 15000 ? 1000 : ms, ...a); });
             await pg.goto(BASE + '/');
             await pg.waitForFunction((w) => document.getElementById('ldr3')?.dataset.state === w && !document.getElementById('ldr3').hidden, want, { timeout: 40000 });
             await pg.evaluate(() => document.fonts?.ready); await sleep(1.5);
