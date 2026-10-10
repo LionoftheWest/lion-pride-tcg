@@ -106,6 +106,13 @@ function headHTML() {
     + `<span class="u3-lb__x" data-lb-close>${iconButton({ icon: 'x', label: 'Close' })}</span></header>`;
 }
 
+/** The board switch (level 2). A phone shows the short names; every switch item carries the full name as its title (the tooltip and
+ *  the one name that the UI check compares between sizes, P1), so the same board has the same name on every size class. */
+export function metricSwitch(active, short = false) {
+  const html = segmented(METRICS.map((x) => ({ id: x.key, icon: x.icon, label: short ? x.col : x.label, active: x.key === active })), { label: 'Board' });
+  return METRICS.reduce((s, x) => s.replace(`data-seg="${x.key}"`, `data-seg="${x.key}" title="${esc(x.label)}"`), html);
+}
+
 function podiumHTML(rows, d) {
   const m = METRICS.find((x) => x.key === st.metric);
   const tile = (r, n) => {
@@ -157,7 +164,7 @@ function rowHTML(r, i, d) {
 function mainHTML(d) {
   const rows = ranked(d.rows, st.metric);
   const m = METRICS.find((x) => x.key === st.metric);
-  const seg = segmented(METRICS.map((x) => ({ id: x.key, icon: x.icon, label: shortNames() ? x.col : x.label, active: x.key === st.metric })), { label: 'Board' });
+  const seg = metricSwitch(st.metric, shortNames());
   const th = `<div class="u3-lb-row u3-lb-th"><span class="u3-lb-i">#</span><span class="u3-lb-p">Player</span>${METRICS.map((x) => `<span class="u3-lb-c${x.key === m.key ? ' is-on' : ''}" data-m="${x.key}">${x.key === m.key ? '<i class="u3-lb-sort" aria-hidden="true">▾</i>' : ''}${esc(x.col)}</span>`).join('')}</div>`;
   const meIdx = rows.findIndex((r) => r.id === d.me);
   const pin = meIdx >= TOP ? `<div class="u3-lb-pin">${rowHTML(rows[meIdx], meIdx, d)}</div>` : '';
