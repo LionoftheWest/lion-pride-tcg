@@ -11,7 +11,7 @@
   const se = document.scrollingElement;
   out.pageScroll = { x: Math.max(0, se.scrollWidth - vw), y: Math.max(0, se.scrollHeight - vh) };
   // 2) the window: the top fixed box that covers > 8% of the window (not the bars), else #main
-  const SKIP = '#topbar, #dock, #effectBanners, #feed, #loader, #status, #tutLayer';
+  const SKIP = '#topbar, #dock, #effectBanners, #feed, #loader:not([data-measure]), #status, #tutLayer';
   let win = null, wz = -1;
   for (const e of document.body.querySelectorAll('*')) {
     const cs = getComputedStyle(e);
@@ -54,18 +54,22 @@
   const keyOf = (e) => (e.id ? '#' + e.id : e.dataset.tab ? 'tab:' + e.dataset.tab : e.dataset.adv ? 'adv:' + e.dataset.adv : e.dataset.pane ? 'pane:' + e.dataset.pane
     : (e.title && !/\d/.test(e.title)) ? 'title:' + e.title : (!e.closest('.v2-cell, [data-member], .lb-row, .tr-mem, .hl-card, li') && label(e) && !/\d/.test(label(e))) ? 'text:' + label(e) : null);
   for (const e of document.querySelectorAll(ISEL)) {
-    if (!visDeep(e) || e.closest('#loader, #tutLayer')) continue;
+    if (!visDeep(e) || e.closest('#loader:not([data-measure]), #tutLayer')) continue;
     if (e.parentElement?.closest(ISEL) && e.tagName !== 'BUTTON' && e.tagName !== 'INPUT') continue;
     const r = e.getBoundingClientRect();
     const key = keyOf(e);
     if (key) { const k2 = keys[key] || { inView: false }; k2.inView = k2.inView || (r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1); keys[key] = k2; }
     if (!inView(r)) continue;
+    { const na = e.closest('[data-scroll-area]'); if (na) { const nr = na.getBoundingClientRect(); const my = r.top + r.height / 2; if (my < nr.top || my > nr.bottom) continue; } }   // a row the named scroll area scrolled out of view (design.md 3.3, D-07)
     // covered: the center hit is not the element (a bar or a banner lies on it)
     const cx = clampX(r.left + r.width / 2), cy = clampY(r.top + r.height / 2);
     const hit = document.elementFromPoint(cx, cy);
     if (hit && !e.contains(hit) && !hit.contains(e) && !hit.closest(ISEL)?.contains(e) && !(winRoot && winRoot !== win.ownerDocument && !winRoot.contains(e) && winRoot.contains(hit))) {
-      // ignore an element hidden under its own scroll container edge
-      coveredBtns.push([path(e) + ' "' + label(e) + '"', 'under ' + path(hit)]);
+      // ignore an element hidden under its own scroll container edge: a named scroll area (design.md 3.3, D-07:
+      // data-scroll-area) has its rows scrolled out of view on purpose; their center lies outside the area
+      const sa = e.closest('[data-scroll-area]');
+      const sr = sa && sa.getBoundingClientRect();
+      if (!(sr && (cy < sr.top || cy > sr.bottom))) coveredBtns.push([path(e) + ' "' + label(e) + '"', 'under ' + path(hit)]);
     }
     if (touch && (r.width < 44 || r.height < 44)) { (r.width < 32 || r.height < 32 ? tiny : small).push([path(e) + ' "' + label(e) + '"', Math.round(r.width) + 'x' + Math.round(r.height)]); }
     if (phone && r.right > zone.l && r.left < zone.r && r.bottom > zone.t && r.top < zone.b) corner.push([path(e) + ' "' + label(e) + '"', [r.left, r.top, r.width, r.height].map(Math.round).join(',')]);
@@ -81,7 +85,7 @@
   // 5) text under 11 px (inside the window)
   const tinyText = {};
   for (const e of document.body.querySelectorAll('*')) {
-    if (e.closest('svg, #loader, #tutLayer, .v2-card, canvas')) continue;
+    if (e.closest('svg, #loader:not([data-measure]), #tutLayer, .v2-card, canvas')) continue;
     const own = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
     if (!own) continue;
     const fs = parseFloat(getComputedStyle(e).fontSize);

@@ -38,6 +38,10 @@ export function toggle(sel, id, cap) {
   return sel.length < cap ? [...sel, id] : sel;
 }
 
+/** Pick one (the wishlist, D-42): a tap chooses the card in place of the last one; a tap on the chosen card takes it
+ *  off. Pure (unit-tested). */
+export const pickOne = (sel, id) => (sel[0] === id ? [] : [id]);
+
 let cur = null;   // the open picker: { opts, sel, q, values, page, per, filters }
 
 /**
@@ -51,7 +55,11 @@ let cur = null;   // the open picker: { opts, sel, q, values, page, per, filters
  *   detail(card) (the magnifier: the Card Detail), onConfirm(sel) -> true to close (async allowed),
  *   locked(card) -> true: in the squad and cannot leave it (the Hunt: a card that fought today),
  *   autoPick(sel) -> the new selection (async; the Auto-pick button left of Confirm),
- *   confirmCheck(sel) -> null, or { title, line, cancel, primary, fill(sel) } (a dialog before Confirm: the Hunt short squad) }
+ *   confirmCheck(sel) -> null, or { title, line, cancel, primary, fill(sel) } (a dialog before Confirm: the Hunt short squad),
+ *   one: true -> pick one (cap 1): no slot row and no count, a tap replaces the choice, the chosen card has the check mark,
+ *   icon: the icon before the title (the wishlist heart),
+ *   clear: { label, disabled, onClear() -> true to close (async allowed) } (the second button left of Confirm: the
+ *   wishlist Clear, D-66) }
  *   A status check is { ok, label }, or a stat { stat, label } ("225 Squad Power" with the zap icon, C9).
  */
 export function openCardPicker(opts) {
@@ -96,11 +104,12 @@ function tileHTML(c, n, why) {
     + ` aria-label="${name}${badge ? `, ${esc(badge)}` : ''}${n ? `, number ${n}` : ''}${why ? `, ${esc(why)}` : ''}"${why && !n ? ' aria-disabled="true"' : ''}>`
     + `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" loading="lazy" draggable="false">` : ''}</button>`
     + `${badge ? `<span class="u3-pk-badge" aria-hidden="true">${esc(badge)}</span>` : ''}`
-    + `${n ? `<span class="u3-pk-num" aria-hidden="true">${n}</span>` : ''}`
+    + `${n ? `<span class="u3-pk-num" aria-hidden="true">${cur.opts.one ? icon('check', { size: 'sm' }) : n}</span>` : ''}`
     + `<button type="button" class="u3-pk-card__info" data-info="${c.id}" aria-label="Card details: ${name}">${icon('search')}</button></li>`;
 }
 
 function slotsHTML() {
+  if (cur.opts.one) return '';
   const M = byId();
   const cards = cur.sel.map((id) => M.get(id)).filter(Boolean);
   return `<ol class="u3-pk-slots" aria-label="Your squad">${Array.from({ length: cur.opts.cap }, (_, i) => {
@@ -131,8 +140,10 @@ function gridHTML() {
   const list = shown();
   const per = cur.per || list.length || 1;
   const pages = Math.max(1, Math.ceil(list.length / per));
-  cur.page = Math.min(cur.page, pages - 1);
-  const slice = list.slice(cur.page * per, cur.page * per + per);
+  // per = 0: the size is measured again (a resize, a class change), the list shows whole for one pass; measure() puts the
+  // page back from cur.first, so this pass must not clamp (and lose) the page
+  if (cur.per) cur.page = Math.min(cur.page, pages - 1);
+  const slice = cur.per ? list.slice(cur.page * per, cur.page * per + per) : list;
   const tiles = slice.map((c) => {
     const n = cur.sel.indexOf(Number(c.id)) + 1;
     return tileHTML(c, n, n ? '' : cur.opts.blocked?.(c, cur.sel) || '');
@@ -158,14 +169,16 @@ function paint() {
   const confirm = button({ label: 'Confirm', variant: 'primary', disabled: !st.ready || cur.busy, busy: cur.busy, busyLabel: 'Saving', reason: st.ready ? null : st.reason, data: { confirm: '1' } });
   const a = document.activeElement;
   const caret = a && host.contains(a) && a.classList.contains('u3-search__input') ? a.selectionStart : null;
-  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="u3PkT" style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
-    + `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${esc(o.title || 'Squad')} <b>${cur.sel.length}</b><span>/ ${o.cap}</span></h2></header>`
+  const clear = o.clear ? button({ label: o.clear.label || 'Clear', disabled: !!o.clear.disabled || cur.busy, data: { pkclear: '1' } }) : '';
+  const count = o.one ? '' : ` <b>${cur.sel.length}</b><span>/ ${o.cap}</span>`;
+  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk${o.one ? ' is-one' : ''}" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="u3PkT" style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
+    + `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${o.icon ? icon(o.icon, { size: 'xl' }) : ''}${esc(o.title || 'Squad')}${count}</h2></header>`
     + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>`
     + `<div class="u3-pk__slots">${slotsHTML()}</div>`
-    + `<div class="u3-pk__tools">${searchField({ value: cur.q })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
+    + `<div class="u3-pk__tools">${searchField({ value: cur.q, placeholder: document.body.dataset.size === 'compact-land' ? 'Search cards…' : undefined })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
     + `<ul class="u3-pk__grid${(cur.tile || TOKENS['card-tile']) < TOKENS['card-tile'] ? ' is-small' : ''}" aria-label="Cards" style="--pk-cols:${cur.cols || 1};--pk-tile:${cur.tile || TOKENS['card-tile']}px">${tiles}</ul>`
-    + `<div class="u3-pk__pager">${pager({ page: cur.page + 1, pages })}</div>`
-    + `<footer class="u3-pk__foot">${checksHTML(st)}<div class="u3-pk__acts">${o.autoPick ? button({ label: 'Auto-pick', disabled: cur.busy, data: { auto: '1' } }) : ''}${confirm}</div></footer>`
+    + `<div class="u3-pk__pager">${pager({ page: cur.per ? cur.page + 1 : 1, pages })}</div>`
+    + `<footer class="u3-pk__foot">${checksHTML(st)}<div class="u3-pk__acts">${o.autoPick ? button({ label: 'Auto-pick', disabled: cur.busy, data: { auto: '1' } }) : ''}${clear}${confirm}</div></footer>`
     + `</section></div>${cur.panel ? filterPanelHTML() : ''}${cur.warn ? warnHTML(cur.warn) : ''}`;
   cur.shown = true;   // the fade-in plays once, when the window opens (a repaint does not flash it)
   if (caret != null) { const i = host.querySelector('.u3-search__input'); i?.focus({ preventScroll: true }); i?.setSelectionRange(caret, caret); }
@@ -188,7 +201,8 @@ function measure() {
   const f = fitGrid(g.clientWidth, g.clientHeight, gap);
   const per = f.cols * f.rows;
   if (per !== cur.per || f.tile !== cur.tile || f.cols !== cur.cols) {
-    const first = cur.page * (cur.per || per);
+    const first = cur.first ?? cur.page * (cur.per || per);   // the first card on the page: a new page size keeps it in view
+    cur.first = null;
     Object.assign(cur, { per, tile: f.tile, cols: f.cols, page: Math.floor(first / per) });
     paint();
   }
@@ -196,7 +210,8 @@ function measure() {
 
 let rt = null;
 // a resize or a class change (the keyboard): measure again on the next frame (no timer: the keyboard check reads the window soon after)
-function onResize() { cancelAnimationFrame(rt); rt = requestAnimationFrame(() => { if (cur) { cur.per = 0; cur.slotW = 0; paint(); } }); }
+// The page stays: cur.first keeps the first card on it (Nathan 2026-10-08: the squad picker went back to page 1 after the card details closed).
+function onResize() { cancelAnimationFrame(rt); rt = requestAnimationFrame(() => { if (cur) { if (cur.per) cur.first = cur.page * cur.per; cur.per = 0; cur.slotW = 0; paint(); } }); }
 
 function onKey(e) {
   if (!cur || e.key !== 'Escape') return;
@@ -226,7 +241,7 @@ async function onClick(e) {
     const c = M.get(id);
     if (!c || (t.getAttribute('aria-disabled') === 'true' && !cur.sel.includes(id))) return;
     if (cur.sel.includes(id) && cur.opts.locked?.(c)) return;   // it fought today: it stays in the squad
-    cur.sel = toggle(cur.sel, id, cur.opts.cap);
+    cur.sel = cur.opts.one ? pickOne(cur.sel, id) : toggle(cur.sel, id, cur.opts.cap);
     paint();
     return;
   }
@@ -247,6 +262,16 @@ async function onClick(e) {
     cur.busy = false;
     if (Array.isArray(next)) cur.sel = next.map(Number).slice(0, cur.opts.cap);
     paint();
+    return;
+  }
+  if (d.pkclear) {
+    if (cur.busy) return;
+    cur.busy = true; paint();
+    let done = false;
+    try { done = await cur.opts.clear.onClear(); } catch { done = false; }
+    if (!cur) return;
+    cur.busy = false;
+    if (done !== false) closeCardPicker(); else paint();
     return;
   }
   if (d.wclose) { cur.warn = null; paint(); return; }

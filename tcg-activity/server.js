@@ -1797,6 +1797,7 @@ app.get('/api/trades', async (req, res) => {
     from_id: o.from_id,
     to_id: o.to_id,
     status: o.status, // pending (the receiver picks) | countered (the sender accepts), trade_two_step.sql
+    created_at: o.created_at, // the Offer view shows the age (UI-25)
     from_name: o.from_player?.username,
     to_name: o.to_player?.username,
     offer: cardShape(o.offer),

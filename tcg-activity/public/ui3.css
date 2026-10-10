@@ -821,7 +821,7 @@ body[data-size="compact-land"] .u3-hs-line { font-size: var(--fs-small); }
 .u3-hunt.is-tight .u3-hs-title { grid-area: a; flex-wrap: nowrap; }
 .u3-hunt.is-tight .u3-hs-facts { grid-area: b; grid-column: auto; }
 .u3-hunt.is-tight .u3-hs-hp { grid-area: c; min-width: 0; }
-.u3-hunt.is-tight .u3-hs-hp span { font-size: var(--fs-caption); }
+.u3-hunt.is-tight .u3-hs-hp span { font-size: var(--fs-caption); line-height: 1; }   /* a text box taller than the pill (28 px) is clipped by it */
 .u3-hunt.is-tight .u3-hs-left { grid-area: d; }
 .u3-hunt.is-tight .u3-hs-name { font-size: var(--fs-stat); }
 body[data-size="compact-land"] .u3-hs-text { display: grid; grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(0, 1fr); align-items: center; gap: var(--sp-1) var(--sp-3); align-content: start; }
