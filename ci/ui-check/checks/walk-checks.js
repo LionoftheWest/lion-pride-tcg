@@ -11,7 +11,7 @@
   const se = document.scrollingElement;
   out.pageScroll = { x: Math.max(0, se.scrollWidth - vw), y: Math.max(0, se.scrollHeight - vh) };
   // 2) the window: the top fixed box that covers > 8% of the window (not the bars), else #main
-  const SKIP = '#topbar, #dock, #effectBanners, #feed, #loader, #status, #tutLayer';
+  const SKIP = '#topbar, #dock, #effectBanners, #feed, #loader:not([data-measure]), #status, #tutLayer';
   let win = null, wz = -1;
   for (const e of document.body.querySelectorAll('*')) {
     const cs = getComputedStyle(e);
@@ -54,7 +54,7 @@
   const keyOf = (e) => (e.id ? '#' + e.id : e.dataset.tab ? 'tab:' + e.dataset.tab : e.dataset.adv ? 'adv:' + e.dataset.adv : e.dataset.pane ? 'pane:' + e.dataset.pane
     : (e.title && !/\d/.test(e.title)) ? 'title:' + e.title : (!e.closest('.v2-cell, [data-member], .lb-row, .tr-mem, .hl-card, li') && label(e) && !/\d/.test(label(e))) ? 'text:' + label(e) : null);
   for (const e of document.querySelectorAll(ISEL)) {
-    if (!visDeep(e) || e.closest('#loader, #tutLayer')) continue;
+    if (!visDeep(e) || e.closest('#loader:not([data-measure]), #tutLayer')) continue;
     if (e.parentElement?.closest(ISEL) && e.tagName !== 'BUTTON' && e.tagName !== 'INPUT') continue;
     const r = e.getBoundingClientRect();
     const key = keyOf(e);
@@ -85,7 +85,7 @@
   // 5) text under 11 px (inside the window)
   const tinyText = {};
   for (const e of document.body.querySelectorAll('*')) {
-    if (e.closest('svg, #loader, #tutLayer, .v2-card, canvas')) continue;
+    if (e.closest('svg, #loader:not([data-measure]), #tutLayer, .v2-card, canvas')) continue;
     const own = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
     if (!own) continue;
     const fs = parseFloat(getComputedStyle(e).fontSize);
