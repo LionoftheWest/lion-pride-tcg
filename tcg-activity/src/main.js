@@ -17,7 +17,7 @@ import { setFlair, flairHTML } from './flair.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
+import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable, badgeOf } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
@@ -38,7 +38,8 @@ import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
 import { button as ui3Button, iconButton as ui3IconButton, pager as ui3Pager } from './ui3/components.js';
 import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
-import { initSettingsWindow } from './ui3/settings.js';
+import { initSettingsWindow, reduceEffects } from './ui3/settings.js';
+import { startAvatarFx } from './ui3/avatarfx.js';
 import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
 import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, rarePacks, newMark, PACK_RATIO, PACK_GAP_MS, STACK_LAYERS, stackTimeline, stackDepth } from './ui3/pack-reveal.js';
 import { counter as u3Counter } from './ui3/components.js';
@@ -371,7 +372,7 @@ async function main() {
   if (flags.reports) initReport();
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
-  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
+  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); startAvatarFx({ badgeOf, reduce: reduceEffects }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
 }
 
 // The v3 foundation (UI-00): only for the members in settings.ui_v3 (flags.uiV3). It loads the component CSS and writes

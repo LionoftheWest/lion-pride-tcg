@@ -62,6 +62,8 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Avatar.v2-avatar'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #menuBtn.u3-ibtn'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
+  assert.equal(ownerOf('avatarfx-home', '#main > .u3-home > .v2-avatar.sm > .u3-avfx > .u3-avfx__stache'), 'UI-55');   // the avatar effect overlay (UI-55)
+  assert.equal(ownerOf('avatarfx-home', '#main > .u3-home > .u3-hm-tile'), 'UI-03');   // a defect outside the effect belongs to the host
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
