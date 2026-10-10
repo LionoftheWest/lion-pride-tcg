@@ -64,6 +64,16 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
+  assert.equal(ownerOf('collection-viewer', 'body > #viewer > #viewer-close.u3-ibtn'), 'UI-09');
+  assert.equal(ownerOf('collection-viewer', 'body > #viewer > .viewer-nav.next'), 'UI-09');
+  assert.equal(ownerOf('collection-detail', 'text:Smash Bros'), 'UI-07');   // the Collection behind the window owns what is not in it
+  assert.equal(ownerOf('collection-detail', '.v2-collection > .v2-side.filters > .side-h "Rarity"'), 'UI-07');
+  assert.equal(ownerOf('ascend-celebration', 'text:Pokemon'), 'UI-07');
+  assert.equal(ownerOf('collection-detail', '#u3DetWin.u3-det > .u3-det__main > .u3-det__acts > #pConvert'), 'UI-08');
+  assert.equal(ownerOf('collection-detail-points', '#pPts.u3-det__pts.is-open > .u3-det__ptshead'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', 'body > #viewer > #viewer-close'), 'UI-08');
+  assert.equal(ownerOf('ascend-error', '#colPanel > .p-actions > #pAscFail'), 'UI-10');
+  assert.equal(ownerOf('stat-points-error', '#pPts > #ptsFail.u3-fail'), 'UI-10');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
   assert.equal(ownerOf('trades-few', '.u3-trades__cols > #u3Pd.u3-pd > #u3PdSide.u3-pd__body'), 'UI-25');   // Pending
@@ -103,7 +113,7 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('collection', '.u3-col__bar > .u3-search.u3-col__search > #colSearch.u3-search__input'), 'UI-07');
   assert.equal(ownerOf('achievements', '.v2-collection.ach-mode > .m-colbar > #colSearch.v2-search'), 'UI-12');   // the v2 id is not UI-07
   assert.equal(ownerOf('collection', '.u3-fpanel__foot > button'), 'UI-07');
-  assert.equal(ownerOf('collection-detail', '#main > .v2-cell'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', '#main > .u3-col > .u3-ctile'), 'UI-07');
   assert.equal(ownerOf('dungeon-path', '#main > .u3-dgs > .u3-dgc-panel'), 'UI-49');   // the room steps (UI-49)
   assert.equal(ownerOf('dungeon-floor', '#main > .u3-dgs-fd > .u3-dgs-fdp'), 'UI-49');
   assert.equal(ownerOf('dungeon-rest', '#main > .u3-dgc > .u3-dgc-hud'), 'UI-49');   // the stage parts shared with UI-48 belong to the screen under test

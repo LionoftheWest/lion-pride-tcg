@@ -18,6 +18,10 @@ import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import { paintCollectionV3 } from './ui3/collection.js';
 import * as pf3 from './ui3/profile.js';
+import { ascendFailText, SAVE_FAIL_TEXT } from './ui3/viewer.js';
+import { detailHTML, pointsHTML as pointsV3, statHTML, styleEffect } from './ui3/card-detail.js';
+import { fitDetail, watchDetailFit } from './ui3/card-detail-fit.js';
+import { inlineMessage } from './ui3/components.js';
 import * as se3 from './ui3/style-editor.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import * as hm3 from './ui3/home.js';
@@ -351,7 +355,7 @@ export async function renderCollectionV2() {
       elements: ELEMENT_ORDER.filter((e) => inSeason.some((c) => cardElement(c.tags) === e)),
       types: inUse(TYPES, 'type'), games: inUse(GAMES, 'game'),
       elementName: (e) => ELEMENTS[e]?.name || e, elIcon, elementOf: (c) => cardElement(c.tags), flair: flairHTML, thumb, onSwipe,
-      openCard: (c, list) => ctx.openViewer(c, { list }),
+      openCard: (c, list) => { panelList = list || []; col.sel = c.id; paintPanel(c); },   // UI-08: a grid tap opens the Card Detail window; its art opens the viewer (D-80 item 11)
       status: () => colStatus(), rerender: () => renderCollectionV2(),
     }, { tabBar: colTabBar(achDone, achs.length, ready), help: explainBtn('collection') });
     wireColTabs();
@@ -455,7 +459,8 @@ export async function renderCollectionV2() {
   else if (col.view === 'bosses') { paintBossPanel(); return; }
   else paintColGrid();
   const selCard = cards.find((c) => c.id === col.sel) || inSeason.find((c) => c.owned) || inSeason[0];
-  if (col.view !== 'ach') paintPanel(selCard);
+  if (v3()) v3Refresh();   // UI-08: the window opens only on a tap; an open one follows the repaint
+  else if (col.view !== 'ach') paintPanel(selCard);
 }
 
 // The filter panel never scrolls: when it is too tall, the chip counts go, then the
@@ -551,6 +556,7 @@ function pickCard(c, node, grid, list) {
   col.sel = c.id;
   grid.querySelectorAll('.v2-cell.sel').forEach((n) => n.classList.remove('sel'));
   node?.classList.add('sel');
+  if (v3()) { paintPanel(c); return; }   // UI-08: the Card Detail window opens on a tap (D-38); the viewer opens from its art (D-80 item 11)
   // A phone has no room for the side panel: the panel opens as the full-screen card view
   // (designs 24 + 25), and a tap on its big card opens the 3D viewer.
   if (isPhone()) { ctx.el('colPanel')?.classList.add('m-open'); paintPanel(c); return; }
@@ -600,12 +606,93 @@ function colStatus() {
 const TAG_FACETS = ['type', 'class', 'origin', 'genre', 'traits'];
 const GAME_LABELS = { smash: 'Super Smash Bros', pokemon: 'Pokemon', minecraft: 'Minecraft', party: 'Party Games', meme: 'Memes', community: 'Community' };
 
+// ---- UI-08 (body.ui-v3 only): the Card Detail window, in place of the v2 side panel (src/ui3/card-detail.js, public/ui3/90-ui-08.css) ----
+// A grid tap opens the window (dialog on medium and expanded, sheet on compact); a tap on its art opens the 3D viewer (D-80 item 11).
+// The handlers of the v2 panel stay: the element ids are the same. The window lives outside #main, so a repaint of the Collection keeps it open.
+const v3 = () => document.body.classList.contains('ui-v3');
+let detWrap = null;
+function detHost() {
+  if (detWrap?.isConnected) return detWrap;
+  detWrap = document.createElement('div');
+  detWrap.id = 'u3Det'; detWrap.className = 'u3-detwrap hidden';
+
+  detWrap.innerHTML = '<div class="u3-det" id="u3DetWin" role="dialog" aria-modal="true" aria-label="Card details"></div>';
+  document.body.appendChild(detWrap);
+  detWrap.addEventListener('click', (e) => { if (e.target === detWrap) closeDetail(); });   // the scrim
+  document.addEventListener('click', (e) => { if (isDetailOpen() && e.target.closest('#dock, #topbar, .u3-subtabs')) closeDetail(); }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.u3Done || !isDetailOpen() || document.querySelector('#viewer:not(.hidden)')) return;
+    e.u3Done = true; closeDetail();
+  });
+  watchDetailFit();
+  return detWrap;
+}
+const isDetailOpen = () => !!detWrap?.isConnected && !detWrap.classList.contains('hidden');
+export function closeDetail() {
+  if (!detWrap) return;
+  detWrap.classList.add('hidden');
+  col.sel = null; pend.open = false; pend.add = {};
+  ctx.el('main')?.querySelectorAll('.v2-cell.sel').forEach((n) => n.classList.remove('sel'));
+}
+/** After an ascend, a spend or a convert: the open window shows the new numbers of the same card. */
+function v3Refresh() {
+  if (!v3() || !isDetailOpen() || col.sel == null) return;
+  const c = mergedCards().find((x) => String(x.id) === String(col.sel));
+  if (c) paintPanel(c);
+}
+function paintDetail(c, v) {
+  const wrap = detHost();
+  const win = wrap.querySelector('#u3DetWin');
+  const a = v.a;
+  const keys = statKeys(c);
+  let points = '';
+  if (v.sp && keys.length) {
+    if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; pend.open = false; }
+    const picked = Object.values(pend.add).reduce((t, n) => t + n, 0);
+    const spent = Object.values(v.sp.points || {}).reduce((t, n) => t + (Number(n) || 0), 0);
+    points = pointsV3({ keys: STAT_DEFS.filter(([k]) => keys.includes(k)), pts: v.sp.points || {}, add: pend.add, free: v.sp.free || 0, picked,
+      canReset: spent > 0 && !picked && !ctx.cache.collection?.stats?.resetUsed, open: pend.open });
+  }
+  const spare = Math.max(0, (c.quantity || 0) - 1);
+  const need = c.next_cost;
+  const asc = c.locked || !ctx.features().ascension ? null
+    : need == null && a < 5 ? { text: ASCEND_ERROR.no_ascend } : a >= 5 ? { text: '★5 max' } : { have: Math.min(spare, need || 0), need };
+  const tags = [];
+  if (v.el0) tags.push({ label: v.el0.name, ico: elIcon(v.el0.key) });
+  const t = c.tags || {};
+  for (const f of TAG_FACETS) {
+    let vals = Array.isArray(t[f]) ? t[f] : (t[f] ? [t[f]] : []);
+    if (f === 'traits' && v.el0) vals = vals.filter((x) => String(x).toLowerCase() !== v.el0.key);
+    if (f === 'origin') vals = vals.map((x) => GAME_LABELS[x] || x);
+    for (const x of vals) { const w = String(x).split(':').pop(); tags.push({ label: w.charAt(0).toUpperCase() + w.slice(1) }); }
+  }
+  const pc = (n, m) => Math.min(100, Math.round((100 * n) / (m || 1)));
+  win.innerHTML = detailHTML({
+    c, num: numLabel(c.num), season: c.season || 'Season 1', name: c.name, rarity: c.rarity, rarityLabel: ctx.RARITY_LABEL[c.rarity] || c.rarity,
+    locked: !!c.locked, art: c.image_url ? `<img src="${c.image_url}" alt="">${flairHTML(a)}` : '', a, own: v.owned,
+    stats: [statHTML('Power', v.power, pc(v.power, v.maxPow), '--gold'), statHTML('HP', v.hp, pc(v.hp, cardHp(v.maxPow)), '--danger'), statHTML('Crit', `${v.crit}%`, pc(v.crit, 60), '--gold-hi')],
+    lore: c.lore, tags, ability: c.ability, asc, points, canAsc: v.canAsc, ascLabel: `Ascend to ★${a + 1} · uses ${c.next_cost}`, inSpot: v.inSpot,
+  });
+  win.classList.toggle('is-editing', pend.open && !!points);
+  detWrap.classList.remove('hidden');
+  ctx.el('pArt')?.addEventListener('click', () => { if (!c.locked) ctx.openViewer(c, viewerNav()); });
+  ctx.el('pClose')?.addEventListener('click', closeDetail);
+  if (isPhone()) onSwipe(win, stepPanel);
+  ctx.el('pTrade')?.addEventListener('click', () => { closeDetail(); ctx.show('trading'); });
+  ctx.el('pSpot')?.addEventListener('click', () => toggleSpotlight(c));
+  ctx.el('pAscend')?.addEventListener('click', () => ascend(c));
+  fillConvertButton(c, async () => { await ctx.refreshOwned(); v3Refresh(); renderCollectionV2(); });
+  if (v.sp && keys.length) wirePoints(c, v.sp, win);
+  fitDetail(win);
+  fillViewerEffect(c, 'colEffect').then(() => { styleEffect(ctx.el('colEffect')); fitDetail(win); });
+}
+
 // The right panel: everything about one card (Nathan: stats, tags, effect, artist).
 function paintPanel(c) {
   const { el } = ctx;
   const box = el('colPanel');
-  if (!box) return;
-  if (!c) { box.innerHTML = '<p class="v2-empty">Pick a card.</p>'; return; }
+  if (!box && !v3()) return;   // v3 (UI-07 grid): there is no side panel; the Card Detail window is its own layer
+  if (!c) { if (box) box.innerHTML = '<p class="v2-empty">Pick a card.</p>'; return; }
   const el0 = elemOf(c);
   const all = mergedCards();
   const maxPow = Math.max(1, ...all.map((x) => x.power || 0));
@@ -641,6 +728,7 @@ function paintPanel(c) {
   const inSpot = (myProfile?.spotlight || []).map(Number).includes(Number(c.id));
   const canAsc = !c.locked && ctx.features().ascension && a < 5 && c.can_ascend;
   const owned = c.locked ? 'Not in your collection yet' : `${c.quantity} ${c.quantity === 1 ? 'copy' : 'copies'}`;
+  if (v3()) { paintDetail(c, { power, hp, crit, maxPow, sp, el0, canAsc, inSpot, owned, a }); return; }
   box.innerHTML = `${isPhone() ? '<button class="v2-icon p-close" id="pClose" aria-label="Close">✕</button>' : ''}<div class="p-top">
       <div class="p-art${c.locked ? ' locked' : ''}" id="pArt">${!c.locked && c.image_url ? `<img src="${c.image_url}" alt="">${flairHTML(a)}` : '<span class="lk">🔒</span>'}</div>
       <div class="p-id">
@@ -797,23 +885,49 @@ function wirePoints(c, sp, box) {
       r = save ? await ctx.apiPost('/api/stats/spend', { cardId: c.id, add: pend.add })
         : await ctx.apiPost('/api/stats/reset', { cardId: c.id });
     } catch { r = null; }
-    if (!r?.ok) { (save || reset).disabled = false; (save || reset).textContent = r?.error === 'reset_used' ? 'Next week' : 'Try again'; return; }
+    if (!r?.ok) {
+      (save || reset).disabled = false; (save || reset).textContent = r?.error === 'reset_used' ? 'Next week' : 'Try again';
+      if (document.body.classList.contains('ui-v3') && r?.error !== 'reset_used') showFail(box.querySelector('#pPts'), 'ptsFail', SAVE_FAIL_TEXT);   // UI-10 S2 (D-80 item 13)
+      return;
+    }
     pend.add = {}; pend.open = false;
     await ctx.refreshOwned();
+    v3Refresh();
     renderCollectionV2();
   });
 }
 
+// v3 (UI-10): a failed action shows an inline error message (7.3) at the end of its block; the next try or a repaint removes it.
+function showFail(host, id, text) {
+  if (!host) return;
+  host.querySelector(`#${id}`)?.remove();
+  const t = document.createElement('div');
+  t.id = id; t.className = 'u3-fail'; t.innerHTML = inlineMessage({ kind: 'error', text });
+  host.append(t);
+  fitPanel(host.closest('#colPanel'));   // the optional lines (lore, tags) make room for the message, as for the stat rows
+}
+
 async function ascend(c) {
   const btn = ctx.el('pAscend');
+  const v3 = document.body.classList.contains('ui-v3');
+  const label = `Ascend to ★${(c.ascension || 0) + 1} · uses ${c.next_cost}`;
+  ctx.el('pAscFail')?.remove();
   if (btn) { btn.disabled = true; btn.textContent = 'Ascending…'; }
   let r = null;
   try { r = await ctx.apiPost('/api/ascend', { cardId: c.id }); } catch { r = null; }
-  if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } if (r?.error && ASCEND_ERROR[r.error]) toast(ASCEND_ERROR[r.error]); return; }
+  if (!r?.ok) {
+    if (v3) {   // UI-10 E1 (D-80 item 14): the button keeps its label; the error and the reason are an inline message under the actions
+      if (btn) { btn.disabled = false; btn.textContent = label; }
+      showFail(btn?.closest('.p-actions, .u3-det__acts')?.parentElement || ctx.el('colPanel'), 'pAscFail', ascendFailText(ASCEND_ERROR[r?.error]));
+      return;
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } if (r?.error && ASCEND_ERROR[r.error]) toast(ASCEND_ERROR[r.error]); return;
+  }
   const after = { ...c, ascension: r.ascension, quantity: r.quantity, power: r.power, next_cost: r.next_cost,
     can_ascend: r.next_cost != null && r.quantity >= 1 + r.next_cost };
   ctx.celebrateAscend(c, after, !!ctx.cache.collection?.stats?.on && statKeys(c).length > 0);
   await ctx.refreshOwned();
+  v3Refresh();   // UI-10 C7: the window under the celebration shows the new stars and numbers
   renderCollectionV2();
 }
 
