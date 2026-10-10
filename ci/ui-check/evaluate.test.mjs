@@ -73,6 +73,8 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('trades-suggest', '#main > .u3-mp > .u3-mp__tools > .u3-mp__find > .u3-mp-sug > .u3-mp-sug__list'), 'UI-29');
   assert.equal(ownerOf('trades-suggest', '#main > .u3-mp > .u3-mp__body'), 'UI-65');
   assert.equal(ownerOf('dungeon', '#dock > .dk.active'), 'UI-01');
+  assert.equal(ownerOf('avatarfx-home', '#main > .u3-home > .v2-avatar.sm > .u3-avfx > .u3-avfx__stache'), 'UI-55');   // the avatar effect overlay (UI-55)
+  assert.equal(ownerOf('avatarfx-home', '#main > .u3-home > .u3-hm-tile'), 'UI-03');   // a defect outside the effect belongs to the host
   assert.equal(ownerOf('dungeon', '#docknav > .dk > span'), 'UI-01');
   assert.equal(ownerOf('home', '#topbar > .title > .u3-logo > .u3-logo__emblem'), 'UI-23');   // the logo lockups are UI-23
   assert.equal(ownerOf('loader', '#ldr3 > .ldr3-emblem'), 'UI-23');

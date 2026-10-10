@@ -88,6 +88,7 @@ async function runCell([s, screen, variant], ref = {}) {
           cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });
           await ctx.addInitScript(() => localStorage.setItem('lp_ui3', '1'));
         }
+        if (spec.avfx) cookies.push({ name: 'ci_avfx', value: spec.avfx, url: BASE });
         if (spec.hall) cookies.push({ name: 'ci_hall', value: spec.hall, url: BASE });
         if (spec.fx) cookies.push({ name: 'ci_fx', value: spec.fx, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });

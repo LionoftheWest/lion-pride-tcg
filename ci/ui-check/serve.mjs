@@ -235,6 +235,14 @@ function derivedFx(path, mode, body) {
 }
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/recent' && body?.plays, make: (body, c) => derivedFx('/api/effects/recent', c.ci_fx, body) });
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/me' && body?.enabled, make: (body, c) => derivedFx('/api/effects/me', c.ci_fx, body) });
+// UI-55: avatar effects (cookie ci_avfx=on): the badge list holds the mustache for the signed-in member, the five members of Home
+// (pulls and voice) and every member of the recorded leaderboard, so every avatar of the three screens shows it.
+function derivedAvatarFx(body) {
+  const ids = new Set([FIX.routes['/api/leaderboard/v2']?.body?.me, ...Array.from({ length: 5 }, (_, i) => `10000000000000010${i}`),
+    ...(FIX.routes['/api/leaderboard/v2']?.body?.rows || []).map((r) => r.id)].filter(Boolean));
+  return { ...body, badges: { ...(body?.badges || {}), ...Object.fromEntries([...ids].map((id) => [id, { mustache: true }])) } };
+}
+DERIVED.push({ when: (p, c) => p === '/api/effects/badges' && c.ci_avfx === 'on', make: (body) => derivedAvatarFx(body) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
