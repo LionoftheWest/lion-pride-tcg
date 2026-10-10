@@ -36,7 +36,7 @@ export function memberReason(member, { pairs = {}, caps = {} } = {}) {
   return '';
 }
 
-/** The day limit (PR #151): "" while plays are left, else the line with the time to the new day. Pure.
+/** The day limit (PR 151): "" while plays are left, else the line with the time to the new day. Pure.
  *  fmt(seconds) -> "7h 25m". */
 export function dayLine({ cap = 0, used = 0, resetIn = 0 }, fmt) {
   if (!cap || used < cap) return '';
