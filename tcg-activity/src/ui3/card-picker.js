@@ -200,9 +200,10 @@ function measure() {
   const cs = getComputedStyle(g);
   const gap = parseFloat(cs.columnGap) || 0;
   const fit = (extra) => fitGrid(g.clientWidth, g.clientHeight, gap, { extra });
-  let capH = cur.capH || 0;
+  const kb = document.body.hasAttribute('data-kb');   // the keyboard is open: the captions give way (90-ui-64-pick-one.css), the grid fits by card size alone
+  let capH = kb ? 0 : cur.capH || 0;
   let f = fit(capH);
-  if (cur.opts.caption) {
+  if (cur.opts.caption && !kb) {
     // the caption height: the tallest caption of the whole list at the tile width (it wraps); the fit and the height settle together
     for (let i = 0; i < 4; i++) {
       const need = captionHeight(f.tile);
