@@ -9,6 +9,8 @@
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
 //   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
+//   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
+//                       busy = a resting hunt with a last result, live = the recorded live hunt
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
@@ -92,6 +94,19 @@ function derivedTheirCards() {
   return { cards };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/player-cards' && body && !(body.cards || []).length, make: () => derivedTheirCards() });
+// UI-03 Home: the states the recorded fixtures do not have. A resting hunt (the last boss, its result, the top hunter, the next spawn)
+// and a feed of pulls built from the recorded catalog (names of the people are made up: no member data).
+const WHO = ['Member B', 'Member C', 'Member D', 'Member E', 'Member F'];
+function derivedPulls() {
+  const cards = (FIX.routes['/api/catalog']?.body?.cards || []).filter((c) => c.image_url);
+  const t0 = new Date(FIX.recordedAt).getTime();
+  return { pulls: cards.slice(0, 9).map((c, i) => ({ id: i + 1, player_id: `10000000000000010${i % 5}`, player: WHO[i % 5], name: c.name, rarity: i === 0 ? 'normal' : c.rarity, image_url: c.image_url, at: new Date(t0 - (i + 1) * 3_600_000).toISOString() })) };
+}
+function derivedResting() {
+  const t0 = new Date(FIX.recordedAt).getTime();
+  return { hunt: null, nextSpawnAt: new Date(t0 + 4 * 86_400_000 + 3_600_000).toISOString(), lastResult: { name: 'The Ranked Nightshade', tier: 'Tier 1', status: 'defeated', hp_max: 30000 },
+    lastBoard: [{ player_id: '100000000000000102', username: 'Member C', damage: 6075 }], myLast: 3766, lastFeed: [] };
+}
 // UI-30: a Trade Hall with listings of other members (the recording holds the signed-in member's own only; cookie ci_hall=many):
 // 10 Wanted cards (every third one owned 0 times: the Not owned look) and 11 For trade cards. The cards come from the recorded catalog.
 function derivedHall(body) {
@@ -109,6 +124,13 @@ function derivedWish(body) {
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
+// UI-64 (Shop stat reset picker, pick one): the recorded collection has 3 cards with stat points; ci_stats=many gives the
+// first 30 cards points (a member who spent points on many cards), so the picker shows a full page.
+const STAT_KEYS = ['attack', 'vitality', 'precision', 'potency', 'haste'];
+function derivedStats(body) {
+  return { ...body, cards: body.cards.map((c, i) => (i < 30 ? { ...c, stat: { ...(c.stat || {}), points: Object.fromEntries(STAT_KEYS.filter((_, k) => (i + k) % 3 !== 0).map((k, j) => [k, 1 + ((i + j) % 4)])) } } : { ...c, stat: { ...(c.stat || {}), points: {} } })) };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/collection' && c.ci_stats === 'many' && Array.isArray(body?.cards), make: (body) => derivedStats(body) });
 // UI-24 (D-144): a bell with many notes (cookie ci_notes=many): the recorded notes repeated to 45, so the list scrolls on every size.
 function derivedNotes(body) {
   const base = body.items, items = [];
@@ -116,6 +138,11 @@ function derivedNotes(body) {
   return { ...body, items };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_notes === 'many' && body?.items, make: (body) => derivedNotes(body) });
+// UI-53: the locked Hunt, Dungeon and Gauntlet (cookie ci_hunt=gate / ci_dungeon=gate): the recorded answer plus the gate of the
+// approved frames (starter gifts 0 of 2 claimed, 3 of 8 attackers). The server rule itself is not touched.
+const LOCKED = { ok: false, need: 8, attackers: 3, gifts_open: 2, gifts_total: 2 };
+DERIVED.push({ when: (p, c, body) => p === '/api/hunt' && c.ci_hunt === 'gate' && body?.hunt, make: (body) => ({ ...body, gate: { ...LOCKED } }) });
+DERIVED.push({ when: (p, c, body) => (p === '/api/dungeon' || p === '/api/gauntlet') && c.ci_dungeon === 'gate' && body?.ok, make: (body) => ({ ...body, closed: false, gate: { ...LOCKED } }) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
@@ -181,9 +208,11 @@ createServer((req, res) => {
   if (/^\/(main|chunk)\..*\.js$/.test(p)) return send(res, 200, readFileSync(join(BUNDLE, p.slice(1))), 'text/javascript');
   if (/^\/(api\/img|cimg|api\/avatar)\//.test(p) || /^\/cdn\//.test(p)) return send(res, 200, PNG, 'image/png');
   // The pull feed stream: open and quiet, as in production with no new pulls (a closed stream makes the client poll).
-  if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); return undefined; }
+  if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); const k = cookies(req); if (k.ci_home) res.write(`data: ${JSON.stringify(k.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls())}\n\n`); return undefined; }
   if (p.startsWith('/api/')) {
     const c = cookies(req);
+    if (c.ci_home && p === '/api/pulls') return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls()));
+    if (c.ci_home === 'busy' && p === '/api/hunt') return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(derivedResting()) : derivedResting()));
     if (p === '/api/hunt' && (c.ci_hunt === 'resting' || c.ci_hunt === 'down')) return send(res, 200, JSON.stringify(derivedHunt(c.ci_hunt, c.ci_data === 'long')));
     if (p === '/api/hunt' && c.ci_hunt === 'battle-mix') return send(res, 200, JSON.stringify(derivedBattleMix()));
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');

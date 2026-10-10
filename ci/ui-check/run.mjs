@@ -65,6 +65,10 @@ todo.splice(0, todo.length, ...todo.filter((_, i) => i % SHARD_N === SHARD_K - 1
 console.log(`shard ${SHARD_K}/${SHARD_N}: ${todo.length} of ${all} cells`);
 
 let cells = 0, failures = 0;
+// The members in voice for Home (UI-03): made-up names. busy = 5 (the "+N" case), live = 3.
+const PRESENCE = (kind, long) => { const at = new Date(FIX.recordedAt).getTime() - 120_000; const u = (n, name, status) => ({ id: `10000000000000010${n}`, name: long ? `${name}_with_a_very_long_name_xx`.slice(0, 32) : name, status: { ...status, at } });
+  const all = [u(1, 'Member B', { kind: 'opening', d: { n: 3, of: 25, c: [] } }), u(2, 'Member C', { kind: 'battle', d: { v: 146, n: 8, of: 8, c: [] } }), u(3, 'Member D', { kind: 'playing', d: { c: [] } }),
+    u(4, 'Member E', { kind: 'trading', d: {} }), u(5, 'Member F', { kind: 'home' })]; return kind === 'live' ? all.slice(0, 3) : all; };
 async function runCell([s, screen, variant], ref = {}) {
         const [W, H, cls, touch] = s; const size = sizeKey(s); const land = W > H;
         const spec = SCREENS[screen];
@@ -76,7 +80,9 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.trades) cookies.push({ name: 'ci_trades', value: spec.trades, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (spec.notes) cookies.push({ name: 'ci_notes', value: spec.notes, url: BASE });
+        if (spec.home) cookies.push({ name: 'ci_home', value: spec.home, url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
+        if (spec.stats) cookies.push({ name: 'ci_stats', value: spec.stats, url: BASE });
         if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)
           cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });
           await ctx.addInitScript(() => localStorage.setItem('lp_ui3', '1'));
@@ -87,6 +93,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.battle && FIX.meta?.teamKey) await ctx.addInitScript(([k, v]) => localStorage.setItem(k, v), [FIX.meta.teamKey, JSON.stringify({ date: MT_DAY, ids: FIX.meta.teamIds })]);   // the date of the game day (MT), as main.js loadTeam() checks
         if (variant === 'safe') await ctx.addInitScript((css) => { document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); }); }, SAFE(land));
         const pg = await ctx.newPage(); const errs = []; const blocked = [];
+        if (spec.home) await pg.routeWebSocket(/\/ws/, (ws) => ws.onMessage(() => {}) || ws.send(JSON.stringify({ type: 'presence', users: PRESENCE(spec.home, variant === 'long') })));   // the room socket: who is in voice const blocked = [];
         pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
         pg.on('response', (r) => { if (r.status() === 403 && r.request().method() !== 'GET') blocked.push(r.request().method() + ' ' + new URL(r.url()).pathname); });
         const noFixture = new Set();   // a GET /api call with no recorded answer (the screen may show an error state)
