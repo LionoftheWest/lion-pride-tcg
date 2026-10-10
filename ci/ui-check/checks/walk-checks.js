@@ -42,7 +42,7 @@
     const cx = clampX(x), cy = clampY(y);
     if (cx !== x || cy !== y) out.covered.push([k, 'window corner outside the viewport', Math.round(Math.max(x - cx, cx - x, y - cy, cy - y))]);
     const hit = document.elementFromPoint(cx, cy);
-    if (hit && !win.contains(hit) && !hit.contains(win)) out.covered.push([k, path(hit), 0]);
+    if (hit && !hit.closest('#tutLayer') && !win.contains(hit) && !hit.contains(win)) out.covered.push([k, path(hit), 0]);
   }
   out.windowOutside = Math.round(Math.max(0, -wr.left, -wr.top, wr.right - vw, wr.bottom - vh));
   // the window box itself keeps out of the Discord corner zone on a phone (2.3: Discord puts its buttons over the corner; a window under them is cut off)
@@ -68,7 +68,8 @@
     // covered: the center hit is not the element (a bar or a banner lies on it)
     const cx = clampX(r.left + r.width / 2), cy = clampY(r.top + r.height / 2);
     const hit = document.elementFromPoint(cx, cy);
-    if (hit && !e.contains(hit) && !hit.contains(e) && !hit.closest(ISEL)?.contains(e) && !(winRoot && winRoot !== win.ownerDocument && !winRoot.contains(e) && winRoot.contains(hit))) {
+    // the walkthrough card (UI-37) lies over the page by design: checks/walkthrough.js judges it (it must not cover the shell or its control)
+    if (hit && !hit.closest('#tutLayer') && !e.contains(hit) && !hit.contains(e) && !hit.closest(ISEL)?.contains(e) && !(winRoot && winRoot !== win.ownerDocument && !winRoot.contains(e) && winRoot.contains(hit))) {
       // ignore an element hidden under its own scroll container edge: a named scroll area (design.md 3.3, D-07:
       // data-scroll-area) has its rows scrolled out of view on purpose; their center lies outside the area
       const sa = e.closest('[data-scroll-area]');

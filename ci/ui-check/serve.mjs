@@ -123,6 +123,9 @@ function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
 }
+// UI-37: a gift waits in the bell (cookie ci_gifts=1), so walkthrough step 1 shows; the recorded answer has none.
+const derivedGifts = (body) => ({ ...body, gifts: [{ id: 1, kind: 'packs', title: 'New Player Bonus', amount: 10 }] });
+DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_gifts === '1' && body && typeof body === 'object', make: (body) => derivedGifts(body) });
 DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
 // UI-64 (Shop stat reset picker, pick one): the recorded collection has 3 cards with stat points; ci_stats=many gives the
 // first 30 cards points (a member who spent points on many cards), so the picker shows a full page.

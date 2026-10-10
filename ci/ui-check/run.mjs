@@ -24,7 +24,7 @@ const WORKERS = Math.max(1, Number(arg('workers', 4)));
 mkdirSync(join(OUT, 'shots'), { recursive: true });
 const FIX = JSON.parse(readFileSync(join(here, 'fixtures', 'api.json'), 'utf8'));
 const read = (f) => readFileSync(join(here, 'checks', f), 'utf8');
-const CHECKS = read('walk-checks.js'), FIT = read('fitdetect.js'), CUT = read('cutdetect.js'), EXTRA = read('extra.js');
+const CHECKS = read('walk-checks.js'), FIT = read('fitdetect.js'), CUT = read('cutdetect.js'), EXTRA = read('extra.js'), WALK = read('walkthrough.js');
 // The game day (MT) of the recording: main.js keeps the locked squad for that day only.
 const MT_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(FIX.recordedAt));
 const sleep = (s) => new Promise((ok) => setTimeout(ok, s * 1000));
@@ -81,6 +81,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (spec.notes) cookies.push({ name: 'ci_notes', value: spec.notes, url: BASE });
         if (spec.home) cookies.push({ name: 'ci_home', value: spec.home, url: BASE });
+        if (spec.gifts) cookies.push({ name: 'ci_gifts', value: '1', url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (spec.stats) cookies.push({ name: 'ci_stats', value: spec.stats, url: BASE });
         if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)
@@ -131,6 +132,7 @@ async function runCell([s, screen, variant], ref = {}) {
           res.cut = await call(pg, CUT, 'body');
           res.cutWin = await call(pg, CUT, '[data-audit-win]');
           res.extra = await call(pg, EXTRA);
+          if (spec.walk) res.walk = await call(pg, WALK, { touch });   // UI-37: the walkthrough card (the other checks skip #tutLayer)
           if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
           await pg.screenshot({ path: join(OUT, 'shots', `${BROWSER}-${size}-${screen}-${variant}.jpg`), type: 'jpeg', quality: 70 });
         } catch (e) {

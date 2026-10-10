@@ -17,6 +17,8 @@ export const REPORT_ONLY_SIZES = ['667x375', '932x430', '915x412', '1180x820', '
 export const EXPANDED = '1990x830';   // the size that "missing on another class" compares with (12.6, P1)
 
 const COMM = '#commTabs';
+const WALK_START = [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1], ['js', '[data-hp-replay]'], ['wait', 2]];
+const WALK_NEXT = (n) => Array.from({ length: n }, () => [['js', '[data-wt="next"]'], ['wait', 1]]).flat();
 export const SCREENS = {
   // Home (UI-03): a resting hunt, 9 pulls and 5 members in voice (the state of the approved frames, UI-03/approved); home-live: the recorded live hunt.
   'home':                { id: 'UI-03', safe: true, long: true, home: 'busy', notOn: ['tiny'], steps: [] },
@@ -136,6 +138,14 @@ export const SCREENS = {
   'help-item5':           { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
   'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
+  // The first-time walkthrough (UI-37): FAQ > Replay tutorial starts it over Home, then Next goes on. walk: true runs checks/walkthrough.js
+  // (the check skips #tutLayer everywhere else): the card never covers the spotlighted control or the corner zone, Skip and Next are 44 px.
+  // gifts: true = a gift waits in the bell (cookie ci_gifts, serve.mjs): step 1 shows; without it step 1 is skipped ("STEP 1 OF 7").
+  // The page under the dim belongs to Home ('under'). tiny has no shell (D-06).
+  'walk-1':              { id: 'UI-37', safe: true, under: 'UI-03', walk: true, gifts: true, notOn: ['tiny'], steps: [...WALK_START, ['wait', 1]] },
+  'walk-2':              { id: 'UI-37', safe: true, under: 'UI-03', walk: true, notOn: ['tiny'], steps: [...WALK_START, ['wait', 1]] },
+  'walk-5':              { id: 'UI-37', safe: true, under: 'UI-03', walk: true, notOn: ['tiny'], steps: [...WALK_START, ...WALK_NEXT(3)] },
+  'walk-8':              { id: 'UI-37', safe: true, under: 'UI-03', walk: true, notOn: ['tiny'], steps: [...WALK_START, ...WALK_NEXT(6)] },
   // The Open window (UI-33) opens over Home: a defect outside the window belongs to Home ('under'). tiny has no dock (D-06).
   'open-chooser':        { id: 'UI-33', safe: true, under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen']] },
   // The single pack reveal (UI-34): the open answer comes from serve.mjs (openAnswer, 1 pack with a Full Art).
@@ -154,6 +164,7 @@ export const SCREENS = {
 // The shell (top bar, dock, sub-tabs) is on every screen: a defect there belongs to the shell IDs.
 export function ownerOf(screen, where) {
   // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
+  if (/#tutLayer[a-z]*\b|\.u3-wt\b|\.u3-wt[-_]/.test(where)) return 'UI-37';
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
   // The card details (the v2 #viewer) opened from a Card picker: UI-64 owns them there (only the picker detail specs), the screen under the scrim does not.
