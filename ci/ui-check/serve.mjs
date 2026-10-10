@@ -8,6 +8,7 @@
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
+//   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
 //   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
 //                       busy = a resting hunt with a last result, live = the recorded live hunt
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
@@ -85,6 +86,14 @@ function derivedTrades(body) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body) => derivedTrades(body) });
 DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_trades === 'few' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
+// UI-63: the cards of another member (the recorded answer has none): every second card of the recorded collection, with
+// 1 to 4 copies, in the shape of GET /api/player-cards.
+function derivedTheirCards() {
+  const cards = (FIX.routes['/api/collection']?.body?.cards || []).filter((_, i) => i % 2 === 0).map((c, i) => ({ quantity: 1 + (i % 4), id: c.id, name: c.name,
+    rarity: c.rarity, image_url: c.image_url, tradeable: true, season: c.season || 'Season 1', event: null, artist: null, lore: null, subject: c.subject }));
+  return { cards };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/player-cards' && body && !(body.cards || []).length, make: () => derivedTheirCards() });
 // UI-03 Home: the states the recorded fixtures do not have. A resting hunt (the last boss, its result, the top hunter, the next spawn)
 // and a feed of pulls built from the recorded catalog (names of the people are made up: no member data).
 const WHO = ['Member B', 'Member C', 'Member D', 'Member E', 'Member F'];
@@ -104,10 +113,28 @@ function derivedWish(body) {
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
+// UI-24 (D-144): a bell with many notes (cookie ci_notes=many): the recorded notes repeated to 45, so the list scrolls on every size.
+function derivedNotes(body) {
+  const base = body.items, items = [];
+  for (let i = 0; i < 45; i += 1) items.push({ ...base[i % base.length], id: 5000 + i, read: i > 3, created_at: new Date(Date.parse(base[i % base.length].created_at) - Math.floor(i / base.length) * 86400000).toISOString() });
+  return { ...body, items };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_notes === 'many' && body?.items, make: (body) => derivedNotes(body) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
 // The two Hunt states with no recording of their own, built from the recorded calls (the same cards, names and numbers).
+// UI-18: the fight with two supports (a heal and a shield on an ally) and one card down, as the approved frames draw it
+// (the recorded squad has attackers only). Ids 370 and 72 become supports, id 30 is down.
+function derivedBattleMix() {
+  const b = JSON.parse(JSON.stringify((FIX.routes['/api/hunt#battle'] || {}).body || {}));
+  const AB = { 370: { name: 'Comeback', desc: 'Heal an ally.', kind: 'support', effect: 'heal', target: 'ally' }, 72: { name: 'Bulwark', desc: 'Shield an ally.', kind: 'support', effect: 'shield', target: 'ally' } };
+  for (const c of b.roster || []) {
+    if (AB[c.id]) { c.type = 'Item'; c.ability = AB[c.id]; c.hp = c.max_hp = 60; }
+    if (c.id === 30) { c.hp = 0; c.downed = true; }
+  }
+  return b;
+}
 function derivedHunt(kind, long) {
   const pick = (k) => (FIX.routes[k] || BY_PATH[k] || {}).body || {};
   const base = JSON.parse(JSON.stringify(pick('/api/hunt')));
@@ -164,6 +191,7 @@ createServer((req, res) => {
     if (c.ci_home && p === '/api/pulls') return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls()));
     if (c.ci_home === 'busy' && p === '/api/hunt') return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(derivedResting()) : derivedResting()));
     if (p === '/api/hunt' && (c.ci_hunt === 'resting' || c.ci_hunt === 'down')) return send(res, 200, JSON.stringify(derivedHunt(c.ci_hunt, c.ci_data === 'long')));
+    if (p === '/api/hunt' && c.ci_hunt === 'battle-mix') return send(res, 200, JSON.stringify(derivedBattleMix()));
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).

@@ -17,6 +17,8 @@ import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import * as pf3 from './ui3/profile.js';
+import * as se3 from './ui3/style-editor.js';
+import { openCardPicker } from './ui3/card-picker.js';
 import * as hm3 from './ui3/home.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
@@ -1223,6 +1225,7 @@ export async function openSpotEditor() {
   const cards = mergedCards();
   sp.ids = spotlightOf(cards, myProfile?.spotlight).map((c) => Number(c.id));
   sp.title = myProfile?.title || null; sp.frame = myProfile?.frame || null; sp.q = ''; sp.page = 0;
+  if (document.body.classList.contains('ui-v3')) { sp.msg = ''; sp.busy = false; paintStyleV3(); return; }   // UI-15 v3 (src/ui3/style-editor.js)
   let box = el('spotEditor');
   if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="spotEditor" class="v2-modal hidden"></div>'); box = el('spotEditor'); }
   box.classList.remove('hidden');
@@ -1307,6 +1310,80 @@ function paintSpotEditor() {
     if (memData?.self && !ctx.el('memberModal')?.classList.contains('hidden')) openMember(ctx.user()?.id); // show the new title + frame
     toast('Profile saved');
   });
+}
+
+// ---- UI-15 v3 (body.ui-v3 only): the slots, the title, the frame and Save; the cards come from the Card picker (D-80 16) ----
+// The titles and frames the member owns are the ones the server sends (GET /api/profile: titles, frames, from
+// achievement_claims: the same list POST /api/cosmetics accepts); the locked ones show what exists and how to get it.
+const TIER_FRAME = { diamond: 'Diamond frame', mythic: 'Obsidian frame' };   // the tier frames 'diamond:<track>', 'mythic:<track>' (D-74)
+const frameLabel = (f) => FRAMES[f] || TIER_FRAME[String(f).split(':')[0]] || String(f);
+function styleLists() {
+  const achs = measure(mergedCards(), myProfile?.stats);
+  const claimed = achs.filter((a) => claimedSet().has(a.key));
+  const by = (kind, v) => achs.filter((a) => rewardOf(a.key)[kind] === v).map((a) => a.name).join(' or ');
+  const all = (kind) => [...new Set(achs.map((a) => rewardOf(a.key)[kind]).filter(Boolean))];
+  const ownT = Array.isArray(myProfile?.titles) ? myProfile.titles : [...new Set(claimed.map((a) => rewardOf(a.key).title).filter(Boolean))];
+  const ownF = Array.isArray(myProfile?.frames) ? myProfile.frames : [...new Set(claimed.map((a) => rewardOf(a.key).frame).filter(Boolean))];
+  return {
+    titles: { owned: ownT, locked: all('title').filter((t) => !ownT.includes(t)).map((t) => ({ value: t, by: by('title', t) })) },
+    frames: { owned: ownF.map((f) => ({ value: f, label: frameLabel(f) })), locked: all('frame').filter((f) => !ownF.includes(f)).map((f) => ({ value: f, label: frameLabel(f), by: by('frame', f) })) },
+  };
+}
+function styleHost() {
+  let host = document.getElementById('u3StyleHost');
+  if (host) return host;
+  host = document.createElement('div');
+  host.id = 'u3StyleHost';
+  document.body.appendChild(host);
+  host.addEventListener('click', onStyleClick);
+  host.addEventListener('change', (e) => { if (e.target.id === 'u3SeTitle') { sp.title = e.target.value || null; sp.msg = ''; paintStyleV3(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && host.firstChild && !document.getElementById('u3Picker')) closeStyleV3(); });
+  return host;
+}
+function closeStyleV3() { const h = document.getElementById('u3StyleHost'); if (h) h.innerHTML = ''; }
+function paintStyleV3() {
+  const me = ctx.user();
+  const byId = new Map(mergedCards().filter((c) => c.owned).map((c) => [Number(c.id), c]));
+  const lists = styleLists();
+  styleHost().innerHTML = se3.styleEditorHTML({
+    avatar: avatarHTML(me?.id, me?.name, 'u3-se-av', sp.frame), name: me?.name || '',
+    cards: sp.ids.map((id) => byId.get(Number(id))).filter(Boolean), title: sp.title, frame: sp.frame, msg: sp.msg, busy: sp.busy, ...lists,
+  });
+}
+function openSpotPicker(from) {
+  const owned = mergedCards().filter((c) => c.owned).sort((a, b) => (b.power || 0) - (a.power || 0));
+  openCardPicker({
+    title: 'Spotlight', cap: se3.SPOT_CAP, cards: owned, selected: sp.ids.map(Number), returnFocus: from,
+    blocked: (c, sel) => (sel.length >= se3.SPOT_CAP ? 'The Spotlight holds 3 cards' : ''),
+    apply: (cards, v, q) => { const w = q.trim().toLowerCase(); return w ? cards.filter((c) => [c.name, c.subject].filter(Boolean).join(' ').toLowerCase().includes(w)) : cards; },
+    status: () => ({ checks: [], ready: true }),
+    detail: (c) => ctx.openViewer(c),
+    onConfirm: (sel) => { sp.ids = sel; sp.msg = ''; paintStyleV3(); return true; },
+  });
+}
+async function onStyleClick(e) {
+  const t = e.target.closest('button, [data-u3-scrim]');
+  if (!t) return;
+  const d = t.dataset;
+  if (t.matches('[data-u3-scrim]')) { if (e.target === t && !sp.busy) closeStyleV3(); return; }
+  if (d.seclose) { closeStyleV3(); return; }
+  if (d.sepick) { openSpotPicker(t); return; }
+  if (d.seunpick) { sp.ids = sp.ids.filter((x) => String(x) !== d.seunpick); sp.msg = ''; paintStyleV3(); return; }
+  if ('seframe' in d && !t.disabled) { sp.frame = d.seframe || null; sp.msg = ''; paintStyleV3(); return; }
+  if (d.sesave && !sp.busy) {
+    sp.busy = true; sp.msg = ''; paintStyleV3();
+    const [a, b] = await Promise.all([
+      ctx.apiPost('/api/spotlight', { cardIds: sp.ids }).catch(() => null),
+      (sp.title !== (myProfile?.title || null) || sp.frame !== (myProfile?.frame || null)) ? ctx.apiPost('/api/cosmetics', { title: sp.title, frame: sp.frame }).catch(() => null) : Promise.resolve({ ok: true }),
+    ]);
+    sp.busy = false;
+    if (!a?.ok || !b?.ok) { sp.msg = 'Could not save. Try again.'; paintStyleV3(); return; }
+    myProfile = { ...(myProfile || {}), spotlight: a.spotlight, title: sp.title, frame: sp.frame };
+    closeStyleV3();
+    if (ctx.currentView() === 'home') paintProfile();
+    if (memData?.self && !ctx.el('memberModal')?.classList.contains('hidden')) openMember(ctx.user()?.id); // show the new title + frame
+    toast('Profile saved');
+  }
 }
 
 // ---- A member's profile (design/15-member-profile-screen.png, approved 2026-09-27) ----
