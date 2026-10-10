@@ -46,8 +46,13 @@ export const SCREENS = {
 'trades-offer':       { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['js', '.u3-pd-row__open'], ['wait', 1.5]] },
 'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
   'trades-explain':      { id: 'UI-39', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
-  'hall':                { id: 'UI-30', long: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5]], input: '#main input[type=search], #main input[type=text]' },
-  'hall-listings':       { id: 'UI-30', long: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#hlList'], ['wait', 2]] },
+  // v3 (UI-30): the Trade Hall lists with the listings of other members (cookie ci_hall=many: the recording holds only the signed-in member's own).
+  'hall':                { id: 'UI-30', safe: true, long: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5]], input: '#main input[type=search], #main input[type=text]' },
+  'hall-fortrade':       { id: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="fortrade"]'], ['wait', 1]], input: '#main input[type=search], #main input[type=text]' },
+  'hall-filters':        { id: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '[data-hlfilters]'], ['wait', 1]] },
+  // The v2 views behind the Hall (UI-31 Manage my listings, UI-32 Auctions) stay reachable from the v3 Hall.
+  'hall-listings':       { id: 'UI-31', long: true, hall: 'many', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#hlList, [data-hlmanage]'], ['wait', 2]] },
+  'hall-auctions':       { id: 'UI-32', long: true, hall: 'many', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="auctions"]'], ['wait', 1.5]] },
   'boons':               { id: 'UI-27', long: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
   'boons-pick':          { id: 'UI-28', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
   'hunt-squad':          { id: 'UI-17', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
@@ -88,6 +93,12 @@ export const SCREENS = {
   'dungeon-retreat':     { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'floor', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-leave'], ['wait', 1.5]] },
   // The same step with other rewards (Heal, damage bonus, Revive): the panel is the same size as in dungeon-choose (D-125 review: one layout).
   'dungeon-choose2':     { id: 'UI-48', long: true, safe: true, notOn: ['tiny'], dungeon: 'choose2', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  // v3: a Dungeon fight (UI-47, a horde of 5 and a room of 2; D-70 the support picking) and the run over (UI-50): derived runs of the check server.
+  'dungeon-fight':       { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-fight2':      { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight2', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-fight-pick':  { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['js', '.dg-sup'], ['wait', 1]] },
+  'dungeon-over':        { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-over-revealed': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-reveal, .dg-reveal'], ['wait', 3]] },
   // v3: the loader and the sign-in retry (UI-56). `loader` = the sign-in state (sdk-stub.js reads the cookie ci_loader): wait = never answers
   // (loader: 'loading' shows the bar; 'timeout' waits the real 15 s), error = fails. run.mjs stores the hint lp_ui3=1 (the loader cannot know
   // the flag before the sign-in) and measures the loader block (the checks skip #loader, so run.mjs renames it for these cells).
@@ -98,7 +109,14 @@ export const SCREENS = {
   'dungeon-board':       { safe: true, long: true, id: 'UI-66', under: 'UI-46', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-seg="pane:top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
   // The Gauntlet lobby "See the leaderboard" button opens the Leaderboard window (UI-66) on the Gauntlet tab; behind it the lobby is UI-52.
   'gauntlet-board':      { safe: true, long: true, id: 'UI-66', under: 'UI-52', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-pane="top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
-  'gauntlet':            { id: 'UI-52', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
+  // The Gauntlet (UI-52): the lobby, then its Prizes and Top 3 tabs (phones show them as tabs; the wide classes show them in the lobby).
+  'gauntlet':            { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
+  'gauntlet-over':       { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
+  // The Gauntlet fight (UI-52, a delta on the UI-47 fight) and a support picking a target (D-70): the derived run of the check server (cookie ci_dungeon = g-fight).
+  'gauntlet-fight':      { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 12]] },
+  'gauntlet-fight-pick': { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 5], ['js', '.dg-sup'], ['wait', 1]] },
+  'gauntlet-prizes':     { id: 'UI-52', long: true, safe: true, notOn: ['tiny', 'medium', 'expanded', 'compact-land'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '[data-seg="pane:prizes"]', [['wait', 0]]], ['wait', 1]] },
+  'gauntlet-top':        { id: 'UI-52', long: true, safe: true, notOn: ['tiny', 'medium', 'expanded', 'compact-land'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '[data-seg="pane:top"]', [['wait', 0]]], ['wait', 1]] },
   // The Shop (UI-43): tiny has no top bar, so no Shop button (D-06: the small live view, UI-59).
   'shop':                { id: 'UI-43', long: true, safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2]] },
   // The stat reset picker (UI-64 pick one, from Shop > Stat reset > Choose a card): a defect outside the window belongs to the Shop ('under').
@@ -181,6 +199,7 @@ export function ownerOf(screen, where) {
   if (/\.u3-pd\b|\.u3-pd[-_]|#u3Pd[a-z]*\b|\.u3-trades\b|\.u3-trades[-_]/.test(where)) return 'UI-25';   // Pending, its sheet, the Offer view, the Trades layout
   if (/#v2Notifs[a-z]*\b|\.u3-bell|\.u3-note\b|\.u3-note__|\.u3-gift\b|\.u3-gift__/.test(where)) return 'UI-24';
   if (/#u3Settings[a-z]*\b|\.u3-st\b|\.u3-st[-_]/.test(where)) return 'UI-61';
+  if (SCREENS[screen].id === 'UI-50' && /\.u3-dg[sc]\b|\.u3-dg[sc][-_]/.test(where)) return 'UI-50';   // the run over shares the room-step parts of UI-49
   if (/\.u3-dgs\b|\.u3-dgs[-_]/.test(where) || (SCREENS[screen].id === 'UI-49' && /\.u3-dgc\b|\.u3-dgc[-_]/.test(where))) return 'UI-49';   // the room steps share the UI-48 stage parts
   if (/#v2Help[a-z]*\b|\.u3-hp\b|\.u3-hp[-_]/.test(where)) return 'UI-38';
   if (/\.u3-dgc\b|\.u3-dgc[-_]/.test(where)) return 'UI-48';
