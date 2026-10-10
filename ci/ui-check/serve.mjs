@@ -7,6 +7,7 @@
 //   ci_hunt=down     derived from the recorded /api/hunt: today's squad (the first 8 roster cards) is down (UI-19)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
+//   ci_dungeon=fight|fight2   a Dungeon fight with 5 or 2 monsters (UI-47)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
@@ -62,6 +63,27 @@ function derivedRoom(body, kind) {
   if (kind === 'rest') { R.floor = 3; Object.assign(st, { phase: 'rest', room_type: 'rest', buff: 1.08, pend: { shards: 3, cards: [] }, bank: { shards: 204, cards: ids.concat(ids[0]) }, offers: [{ kind: 'continue' }] }); }
   if (kind === 'floor') { R.room = 5; Object.assign(st, { phase: 'floor_done', room_type: 'guardian', floor_loot: { shards: 150, cards: ids }, pend: { shards: 0, cards: [] }, bank: { shards: 150, cards: ids } }); }
   return { ...base, name: 'The Hollow Mines', lootCards, run: { ...R, state: st } };
+}
+
+// UI-47: a Dungeon fight (cookie ci_dungeon = fight | fight2): the 5-monster horde and a 2-monster room, with 3 attackers and
+// 2 supports, the numbers of the approved frames (run 1879, squad HP 320 / 392).
+const FOES5 = [['skeleton', 'Water Skeleton', 'water', 50, ['caster']], ['squidle', 'Earth Squid', 'earth', 0, ['hero']], ['goleling', 'Water Golem', 'water', 85, ['agile']],
+  ['dino', 'Lightning Raptor', 'lightning', 50, ['strong']], ['blue_demon', 'Ice Demon', 'ice', 55, ['strong']]];
+function derivedFight(body, kind) {
+  const base = derivedDungeon(body);
+  const mine = body.mine || [];
+  const atk = mine.filter((c) => ['Character', 'Creature'].includes(c.type)).slice(0, 3);
+  const sup = mine.filter((c) => c.ability?.kind === 'support' && ['heal', 'shield', 'empower'].includes(c.ability.effect)).slice(0, 2);
+  const cards = {};
+  [[48, 72, 14], [119, 128, 1], [52, 72, 14]].forEach(([hp, max, shield], i) => { cards[atk[i].id] = { hp, max, shield, cd: 0 }; });
+  [[51, 60, 12], [50, 60, 12]].forEach(([hp, max, shield], i) => { cards[sup[i].id] = { hp, max, shield, cd: 0 }; });
+  const list = kind === 'fight2' ? FOES5.slice(0, 2) : FOES5;
+  const foes = list.map(([key, name, element, max, passives], i) => ({ key, name, element, level: 2, hp: max, max: max || 45, sh: 0, st: 0,
+    weak: [{ value: 'lightning' }, { value: `trait:${passives[0]}` }], resist: [{ value: 'fire' }], passives: [] }));
+  if (kind !== 'fight2') foes[1].hp = 0;
+  const R = { ...base.run, floor: 2, room: 4, squad: atk.concat(sup).map((c) => c.id) };
+  const st = { phase: 'fight', room_type: 'horde', round: 0, buff: 1.23, cards, foes, pend: { shards: 0, cards: [] }, bank: { shards: 0, cards: [] }, sup_round: -1 };
+  return { ...base, name: 'The Hollow Mines', run: { ...R, state: st } };
 }
 
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
@@ -134,7 +156,8 @@ createServer((req, res) => {
     if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
     const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
       : p === '/api/dungeon' && c.ci_dungeon === 'choose2' && hit.body?.ok ? derivedChoose2(hit.body)
-      : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon) : hit.body;
+      : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon)
+      : p === '/api/dungeon' && ['fight', 'fight2'].includes(c.ci_dungeon) && hit.body?.ok ? derivedFight(hit.body, c.ci_dungeon) : hit.body;
     const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
     const body = c.ci_data === 'long' ? longData(body0) : body0;
     return send(res, hit.status || 200, JSON.stringify(body));

@@ -595,6 +595,7 @@ const supDesc = (c) => { const a = c.ability || {}; return (EFFECT[a.effect] || 
 
 // The plate name: the element word is its own span (landscape hides it: the icon shows the element).
 const plateName = (f) => { const n = String(f.name || ''); const w = n.split(' ')[0]; return f.element && w.toLowerCase() === String(f.element).toLowerCase() ? `<i class="pre">${esc(w)} </i>${esc(n.slice(w.length + 1))}` : esc(n); };
+const ctlHTML = () => `${musicBtnHTML()}<button class="dg-auto${dg.auto ? " on" : ""}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button>`;
 function fightHTML() {
   const R = run(); const st = R.state;
   const foes = foesOf(st);
@@ -614,7 +615,7 @@ function fightHTML() {
       <span class="dg-hp"><i></i></span><small class="dg-hpn"></small></div>`;
   const supB = (c) => `<button class="dg-sup" data-sup="${c.id}">
       ${c.image_url ? `<img src="${thumb(c.image_url)}" alt="">` : '<span></span>'}
-      <span class="t"><b>${esc(c.name)}</b><small>${esc(supDesc(c))}</small></span><em></em></button>`;
+      <span class="t"><b>${esc(c.name)}</b><small>${esc(supDesc(c))}</small></span><em></em>${V3() ? '<span class="dg-sp"><i class="dg-spfx"></i><span class="dg-hp"><i></i></span><small class="dg-hpn"></small></span>' : ''}</button>`;   // v3 (UI-47, D-69): a support shows its HP row like an attacker
   return `<div class="dg-fight" data-room="${roomKey()}">
     <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
     <div class="dg-meter"></div>
@@ -623,9 +624,9 @@ function fightHTML() {
       <canvas class="dg-canvas"></canvas>
       <div class="dg-reticle"><i></i></div>
       <div class="dg-pops"></div>
-      ${musicBtnHTML()}<button class="dg-auto${dg.auto ? " on" : ""}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button>
+      ${V3() ? '' : ctlHTML()}
     </div>
-    <div class="dg-hint"></div>
+    ${V3() ? `<div class="dg-ctl">${musicBtnHTML()}<div class="dg-hint"></div><button class="dg-auto${dg.auto ? ' on' : ''}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button></div>` : '<div class="dg-hint"></div>'}
     <div class="dg-units">${atk.map(unit).join('')}</div>
     <aside class="dg-right"><section class="dg-panel dg-shp"><span class="k">Squad HP</span><b class="v"></b><span class="dg-hp big"><i></i></span></section>
       <section class="dg-panel dg-sups"><span class="k">Support</span>${sup.map(supB).join('') || '<p class="dg-none">No support cards in this squad.</p>'}</section></aside>
@@ -702,9 +703,17 @@ function fightUpdate(main, st) {
       // Item 17: one support per turn. After one, the others wait for the next turn (an attack ends it).
       const used = Number(st.sup_round ?? -1) === round;
       const ready = round >= (c.s.cd || 0) && !c.s.down;
-      b.disabled = !ready || used || dg.busy;
+      b.disabled = (!ready || used || dg.busy) && !(V3() && dg.support && !dg.busy);   // v3 (D-70): while a support is picking a target, every support is a valid target
       b.classList.toggle('wait', !ready || used);
       b.classList.toggle('on', dg.support === Number(c.id));
+      const sp = b.querySelector('.dg-sp');
+      if (sp) {   // v3 (UI-47, D-69): shield mark, HP bar, "51/60 +12" (the same row as an attacker)
+        const pct = Math.max(0, Math.min(100, ((c.s.hp || 0) / Math.max(1, c.s.max || 1)) * 100));
+        sp.querySelector('.dg-spfx').innerHTML = c.s.shield > 0 ? I.ward : '';
+        sp.querySelector('.dg-hp i').style.width = `${pct}%`;
+        sp.querySelector('.dg-hp i').classList.toggle('low', pct < 30);
+        sp.querySelector('.dg-hpn').innerHTML = `${fmt(c.s.hp)}/${fmt(c.s.max)}${c.s.shield ? ` <em>+${fmt(c.s.shield)}</em>` : ''}`;
+      }
       b.querySelector('em').innerHTML = c.s.down ? 'Down' : !ready ? `${I.timer}In ${c.s.cd - round} round${c.s.cd - round === 1 ? '' : 's'}` : used ? `${I.lock}Next turn` : `${I.check}Ready`;
     }
   }
@@ -720,6 +729,28 @@ function fightUpdate(main, st) {
   const sb = F.querySelector('.dg-stats'); if (sb) sb.outerHTML = statsHTML();
   placeArena(main);
 }
+// v3 (UI-47): the fight stacks (the phone layout of the approved frames) on a compact-port phone and on a tall tablet. The tall tablet is
+// measured on the fight box itself (F-1): the box is taller than wide. The class is read again after a resize.
+let fightRO = null;
+function fitFightV3(F) {
+  fightRO?.disconnect(); fightRO = null;
+  if (!V3() || !F) return;
+  const measure = () => {
+    if (!F.isConnected) return;
+    const tile = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-tile-max')) || 112;
+    F.classList.toggle('is-stack', cls3() === 'compact-port' || (cls3() === 'medium' && F.clientHeight > F.clientWidth));
+    F.classList.toggle('is-narrow', cls3() === 'compact-port' && F.clientWidth < 3.5 * tile);
+    // is-short, is-short2: the fight is taller than its box, or the stage is under 2.2 widest card tiles high: the cards, then Squad HP and the supports, take less room
+    const arena = F.querySelector('.dg-arena');
+    F.classList.remove('is-short', 'is-short2');
+    const over = () => F.scrollHeight > F.clientHeight + 1 || (arena && arena.clientHeight < 2.2 * tile);
+    if (F.classList.contains('is-stack') && over()) { F.classList.add('is-short'); if (over()) F.classList.add('is-short2'); }
+    placeArena(document.getElementById('main'));
+  };
+  measure();
+  document.fonts?.ready.then(measure);
+  if (typeof ResizeObserver === 'function') { fightRO = new ResizeObserver(measure); fightRO.observe(F); const ar = F.querySelector('.dg-arena'); if (ar) fightRO.observe(ar); }
+}
 // The name plates sit in a band above the monsters (never on the turn meter, never on each other);
 // the reticle marks the target on the monster itself.
 function placeArena(main) {
@@ -734,6 +765,12 @@ function placeArena(main) {
   main.querySelectorAll('.dg-plate').forEach((p) => {
     const l = L[Number(p.dataset.foe)];
     if (!l) return;
+    if (V3()) {   // UI-47: the plates stand in even slots over the stage, one slot for each monster (the approved frames), whatever the monsters' size
+      const cnt = Math.max(1, L.length), slot = (W || 0) / cnt, gap = phone ? 4 : 8;
+      p.style.width = `${Math.max(48, slot - gap)}px`;
+      p.style.left = `${slot * (Number(p.dataset.foe) + 0.5)}px`;
+      return;
+    }
     const room = Math.min(9999, ...xs.filter((x) => x !== l.x).map((x) => Math.abs(x - l.x))) - 6;
     const w = Math.max(48, Math.min(250, l.w * (phone ? 0.84 : 0.92), room, W ? W - 8 : 9999));
     p.style.width = `${w}px`;
@@ -782,15 +819,20 @@ async function wireFight(main, keepCanvas) {
     } catch (e) { console.warn('dungeon stage', e); }
   }
   requestAnimationFrame(() => placeArena(main));
+  fitFightV3(F);
   F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); dg.auto = !dg.auto; localStorage.setItem(AUTO, dg.auto ? '1' : ''); e.currentTarget.classList.toggle('on', dg.auto); ctx().sfx?.('click'); autoNext(); });
   autoNext();
   F.addEventListener('click', (e) => {
     const t = e.target;
+    if (V3() && dg.support && !t.closest('.dg-unit, .dg-sup, .dg-hint')) { dg.support = null; fightUpdate(main, run().state); return; }   // v3 (UI-47): the dim layer is drawn, not a box, so a tap outside the targets cancels here
     if (t.closest('.dg-cancel') || t.closest('.dg-shade')) { dg.support = null; fightUpdate(main, run().state); return; }
     if (t.closest('.card-info')) { const id = Number(t.closest('.dg-card')?.dataset.id); if (id) openInfo(id); return; }
     const p = t.closest('[data-foe]'); if (p) { target(main, Number(p.dataset.foe)); return; }
     if (t.closest('.dg-retreat')) { retreat(); return; }
     const s = t.closest('[data-sup]');
+    if (s && V3() && dg.support && Number(s.dataset.sup) !== dg.support && !dg.busy) {   // v3 (UI-47, D-70): a support is a valid target of another support
+      const sid = dg.support; dg.support = null; act('support', { cardId: sid, targetCard: Number(s.dataset.sup) }); return;
+    }
     if (s && !s.disabled) {
       const id = Number(s.dataset.sup);
       const tgt = mine().get(id)?.ability?.target || 'boss';
