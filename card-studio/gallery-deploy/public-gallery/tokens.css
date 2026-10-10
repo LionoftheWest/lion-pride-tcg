@@ -33,6 +33,8 @@
   --success-soft: #5BE38A1F; /* success at 12% */
   --info: #7FB2FF; /* Base and text */
   --info-soft: #7FB2FF24; /* info at 14% */
+  --role-attack: #F2611D; /* Fight card role, the plate glow only (D-68). Not --warning */
+  --role-support: #3FE3F5; /* Fight card role, the plate glow only (D-68) */
   --rarity-normal: #A3ACBC; /* Normal */
   --rarity-normal-soft: #A3ACBC24;
   --rarity-illustrated_rare: #3E8BFF; /* Illustrated Rare */
