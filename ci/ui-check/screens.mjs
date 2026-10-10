@@ -124,11 +124,15 @@ export const SCREENS = {
   'wish-picker':         { id: 'UI-16', safe: true, under: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '#wlHandle'], ['wait', 1.5], ['js', '#u3Wish [data-wlset]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
   // The own profile (the avatar in the top bar): the Spotlight Edit, Title & frame and the editable wishlist show only here.
   'profile-own':         { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3]] },
-  // The same with all five wishlist slots filled (the handle strip shows 5/5; the Spotlight and the Season are tabs on the smallest phones, D-113; the Wishlist never is, D-128).
-  'profile-own-wish':    { id: 'UI-14', safe: true, long: true, wish: 'full', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['wait', 2]] },
+  // The same with the Wishlist tab open (phones show the Spotlight, the Season and the Wishlist as tabs, D-113).
+  'profile-own-wish':    { id: 'UI-14', safe: true, long: true, wish: 'full', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '[data-seg="pf:wish"]', [['wait', 0]]], ['wait', 2]] },
   'help':                { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5]] },
   'help-closed':          { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="0"]'], ['wait', 0.5]] },
-  'help-item5':           { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
+  // The Feedback window (UI-40) opens over Home from the menu (the check server turns the report flag on: cookie ci_report). The send is blocked (403): report-error shows the error state.
+  'report':              { id: 'UI-40', safe: true, under: 'UI-03', report: true, cornerWindow: true, notOn: ['tiny'], input: '#u3RpText', steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="feedback"]'], ['wait', 1.5]] },
+  'report-typed':        { id: 'UI-40', safe: true, under: 'UI-03', report: true, cornerWindow: true, notOn: ['tiny'], input: '#u3RpText', steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="feedback"]'], ['wait', 1.5], ['type', '#u3RpText', 'The pack chooser covers the dock.']] },
+  'report-error':        { id: 'UI-40', safe: true, under: 'UI-03', report: true, cornerWindow: true, notOn: ['tiny'], input: '#u3RpText', steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="feedback"]'], ['wait', 1.5], ['type', '#u3RpText', 'The pack chooser covers the dock.'], ['js', '[data-rp-send]'], ['wait', 1.5]] },
+  'help-item5':         { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
   'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
   // The Open window (UI-33) opens over Home: a defect outside the window belongs to Home ('under'). tiny has no dock (D-06).
@@ -167,6 +171,7 @@ export function ownerOf(screen, where) {
   if (/#u3Settings[a-z]*\b|\.u3-st\b|\.u3-st[-_]/.test(where)) return 'UI-61';
   if (/\.u3-dgs\b|\.u3-dgs[-_]/.test(where) || (SCREENS[screen].id === 'UI-49' && /\.u3-dgc\b|\.u3-dgc[-_]/.test(where))) return 'UI-49';   // the room steps share the UI-48 stage parts
   if (/#v2Help[a-z]*\b|\.u3-hp\b|\.u3-hp[-_]/.test(where)) return 'UI-38';
+  if (/#(v2Report|u3Rp)[a-z]*\b|\.u3-rp\b|\.u3-rp[-_]/.test(where)) return 'UI-40';
   if (/\.u3-dgc\b|\.u3-dgc[-_]/.test(where)) return 'UI-48';
   if (/\.u3-(col|fpanel|ctile|fhost|frow)\b|\.u3-(col|fpanel|ctile|frow)[-_]|#u3FiltersT\b/.test(where)) return 'UI-07';   // the v3 Collection (the v2 ids #colSearch and #colFilters are also on Achievements and Bosses: only the u3 classes count)
   if (/\.u3-logo\b/.test(where)) return 'UI-01';   // the top bar logo (its path can stop above #topbar)
@@ -233,6 +238,7 @@ export async function runSteps(pg, steps) {
   const miss = [];
   for (const st of steps) {
     if (st[0] === 'dock') await dock(pg, st[1], st[2] ?? 2.5);
+    else if (st[0] === 'type') { await pg.fill(st[1], st[2]); await ready(pg, 3); }   // ['type', selector, text]: the text box of a window (UI-40)
     else if (st[0] === 'wait') { if (FIXED) await sleep(st[1]); else await ready(pg, st[1] + 10); }
     else if (st[0] === 'js') {
       if (st[2] && !(await pg.evaluate((s) => [...document.querySelectorAll(s)].some((x) => x.getClientRects().length), st[1]))) {

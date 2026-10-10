@@ -4,7 +4,9 @@
 // the member. Shown only when /api/flags says reports: true (FEATURE_REPORTS=1).
 
 import { v2ctx } from './ui-v2.js';
+import { reportHTML, footHTML, errorText, syncRail } from './ui3/report.js';
 
+const v3 = () => document.body.classList.contains('ui-v3');
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
 const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
@@ -37,7 +39,7 @@ const screen = () => {
   return SCREENS[v] || v.charAt(0).toUpperCase() + v.slice(1);
 };
 const when = () => new Date().toLocaleString('en-US', { timeZone: 'America/Denver', month: 'short', day: 'numeric' })
-  + ' · ' + new Date().toLocaleString('en-US', { timeZone: 'America/Denver', hour: 'numeric', minute: '2-digit' });
+  + ' · ' + new Date().toLocaleString('en-US', { timeZone: 'America/Denver', hour: 'numeric', minute: '2-digit', ...(v3() ? { timeZoneName: 'short' } : {}) });   // v3: the zone label (UI-40 frame: "3:56 PM MDT")
 
 export function initReport() {
   const btn = ctx().el('reportBtn');
@@ -50,6 +52,7 @@ export function initReport() {
 function paint() {
   const box = ctx().el('v2Report');
   if (!box) return;
+  if (v3()) { paintV3(box); return; }
   if (state.sent) {
     box.innerHTML = `<div class="nt-head"><h3>Report a problem</h3><span class="grow"></span><button class="v2-icon" id="rpClose" aria-label="Close">✕</button></div>
       <div class="rp-done"><span class="rp-check">${ICON.check}</span><b>Thanks!</b><span>Report #${esc(state.sent)} sent</span></div>`;
@@ -84,20 +87,54 @@ async function send() {
       context: { screen: screen(), version: version(), window: `${innerWidth}x${innerHeight}`, error: lastError },
     });
     if (r?.ok) { state.sent = r.id; state.text = ''; }
-    else state.error = r?.error === 'limit' ? `You can send ${r.limit || 3} reports a day.` : r?.error === 'short' ? 'Write a little more.' : 'That did not send. Try again.';
-  } catch { state.error = 'That did not send. Try again.'; }
+    else state.error = v3() ? errorText(r) : r?.error === 'limit' ? `You can send ${r.limit || 3} reports a day.` : r?.error === 'short' ? 'Write a little more.' : 'That did not send. Try again.';
+  } catch { state.error = v3() ? errorText(null) : 'That did not send. Try again.'; }
   state.busy = false;
   paint();
 }
 
+// ---- v3 (UI-40): the Feedback window (src/ui3/report.js) ----
+function paintV3(box) {
+  box.innerHTML = reportHTML({ ...state, screen: screen(), version: version(), when: when() });
+  box.querySelector('[data-rp-close]').addEventListener('click', closeReport);
+  const ta = box.querySelector('#u3RpText');
+  if (!ta) return;   // the thanks view
+  const area = ta.parentElement;
+  ta.addEventListener('input', () => {
+    state.text = ta.value;
+    box.querySelector('#u3RpFoot').innerHTML = footHTML(state);
+    syncRail(area);
+  });
+  ta.addEventListener('scroll', () => syncRail(area), { passive: true });
+  railObs?.disconnect();
+  if (window.ResizeObserver) { railObs = new ResizeObserver(() => syncRail(area)); railObs.observe(ta); }
+  syncRail(area);
+}
+let railObs = null;
+function onV3Click(e) {
+  const box = ctx().el('v2Report');
+  const k = e.target.closest('[data-seg]');
+  if (k) { state.kind = k.dataset.seg; state.error = ''; paint(); box.querySelector('#u3RpText')?.focus(); return; }
+  if (e.target.closest('[data-rp-send]')) send();
+}
+function onV3Key(e) { if (e.key === 'Escape') { e.preventDefault(); closeReport(); } }
+
 export function openReport() {
   const { el } = ctx();
   let box = el('v2Report');
-  if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="v2Report" class="v2-drop rp-drop hidden"></div>'); box = el('v2Report'); }
+  if (!box) {
+    document.body.insertAdjacentHTML('beforeend', v3()
+      ? '<div id="v2Report" class="u3-rp hidden" role="dialog" aria-modal="false" aria-labelledby="u3RpTitle"></div>'
+      : '<div id="v2Report" class="v2-drop rp-drop hidden"></div>');
+    box = el('v2Report');
+    if (v3()) box.addEventListener('click', onV3Click);
+  }
   if (!box.classList.contains('hidden')) { closeReport(); return; }
   state.sent = null; state.error = '';
   box.classList.remove('hidden');
+  if (v3()) { document.getElementById('menuBtn')?.classList.add('is-open'); document.addEventListener('keydown', onV3Key); }
   paint();
+  if (v3()) box.querySelector('[data-rp-close]')?.focus();   // not the text box: on a phone that would open the keyboard before the member chose to type
   setTimeout(() => document.addEventListener('pointerdown', outside, { capture: true }), 0);
 }
 function outside(e) {
@@ -109,4 +146,11 @@ export function closeReport() {
   if (!box || box.classList.contains('hidden')) return;
   box.classList.add('hidden');
   document.removeEventListener('pointerdown', outside, { capture: true });
+  if (v3()) {
+    document.removeEventListener('keydown', onV3Key);
+    railObs?.disconnect();
+    const menu = document.getElementById('menuBtn');
+    menu?.classList.remove('is-open');
+    if (box.contains(document.activeElement) || document.activeElement === document.body) menu?.focus();   // 6.2: back to the opener
+  }
 }
