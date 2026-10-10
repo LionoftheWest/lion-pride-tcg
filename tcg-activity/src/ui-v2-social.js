@@ -12,11 +12,13 @@ import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v
 import { mountMemberPicker, memberLists, breakName } from './ui3/member-picker.js';
 import { button as button3, dot as dot3, sheet as sheet3, toast as toast3, counter as counter3, iconButton, inlineMessage, pager as pager3, progressLinear } from './ui3/components.js';
 import { icon as icon3 } from './ui3/icons.js';
-import { openCardPicker } from './ui3/card-picker.js';
+import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
+import { ownerBlocked, ownerBlockText, pollQuestions, playResultText } from './ui3/effects.js';
+import { openPlayWindow, openNotice, playToast } from './ui3/play-window.js';
 import { KINDS, kindName, playHistory, memberReason, dayLine, leftPct, pageOf, pickerCards } from './ui3/boons.js';
 import { pendingLists, waiting, sectionsHTML, headHTML, viewHTML } from './ui3/pending.js';
 import { paintBell } from './ui3/bell.js';
-import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
+import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable, setProfilePlay } from './effects-ui.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -1146,8 +1148,10 @@ function openBoonsSheet() {
 }
 
 // The Card picker for one member: only effect cards (D-42), the kind switch All / Boon / Prank / Shield, one card, Confirm plays it.
-function openBoonCards(to) {
+function openBoonCards(to, { kind: startKind = 'all', returnFocus = null } = {}) {
   const st = effectState();
+  let onTarget = [];   // the effects active on the member, for the confirm window (loaded while the picker is open)
+  ctx().api(`/api/effects/on?id=${encodeURIComponent(to.id)}`).then((r) => { onTarget = r?.active || []; }).catch(() => {});
   const me = ctx().user();
   const b = base();
   const cards = (ctx().cache.collection?.cards || []).filter((c) => c.effect?.primitive).map((c) => ({ ...(b.get(c.id) || {}), ...c, owned: true, locked: false }));
@@ -1163,11 +1167,29 @@ function openBoonCards(to) {
     const mr = memberReason(to, { pairs: st.pairs, caps });
     if (mr) return mr;
     if (kindOf(c) === 'prank' && caps.prank_recv_per_day && (st.pranked?.[String(to.id)] || 0) >= caps.prank_recv_per_day) return `${to.name} got ${caps.prank_recv_per_day} pranks today.`;
-    if (['discord', 'voice'].includes(st.primitives?.[c.effect?.primitive]?.channel) && (st.immune || []).includes(String(to.id))) return `Discord cannot change the server owner: pick an in-game card for ${to.name}.`;
+    if (ownerBlocked(c.effect?.primitive, to.id, st.immune)) return ownerBlockText(c.effect.primitive);   // UI-28: only what Discord refuses on the owner (the server list)
     return '';
   };
+  const winView = (card) => {
+    const sc = effectScaled(card);
+    const chips = [sc.dur ? { icon: 'timer', text: fmtDur(sc.dur) } : null, { icon: 'rotate-ccw', text: `${fmtDur(sc.cooldownH * 3600)} cooldown` }, sc.amount != null ? { icon: 'sparkles', text: String(sc.amount) } : null].filter(Boolean);
+    return { kind: kindName(kindOf(card)), title: card.effect.name || pretty(card.effect.primitive), desc: card.effect.desc || '', imgSrc: thumb(card.image_url), rarity: card.rarity, chips,
+      whoHTML: whoHTML(to.id, to.name), toName: to.name, active: onTarget.map((e) => pretty(e.primitive)), polls: pollQuestions(card.effect, to.name), used: st.playsToday || 0, cap: st.sendCap || 0 };
+  };
+  const playIt = async (card, choice) => {
+    const voice = effectState().primitives?.[card.effect?.primitive]?.channel === 'voice';
+    const r = await playCard(card, to.id, choice);
+    if (!r?.ok) return { ok: false, message: r?.error === 'owner_forbidden' ? ownerBlockText(r.primitive || card.effect?.primitive) : effectError(r?.error) };
+    const other = r.target && String(r.target) !== String(to.id) ? (tr.members.find((m) => String(m.id) === String(r.target))?.name || null) : null;
+    closeCardPicker();
+    playToast(['blocked', 'reflected', 'decoyed'].includes(r.outcome) ? 'info' : 'success', playResultText(r, to.name, other, voice));
+    fx.msg = '';
+    await loadFx();
+    if (document.getElementById('u3BoonsPick')) paintBoonsV3();
+    return { ok: true };
+  };
   openCardPicker({
-    title: `Play a card on ${to.name}`, cap: 1, single: true, cls: 'u3-pk--boons', cards,
+    title: `Play a card on ${to.name}`, cap: 1, single: true, cls: 'u3-pk--boons', cards, kindValue: startKind,
     head: `${whoHTML(me?.id, me?.name)}<span class="u3-bn-arrow">${icon3('arrow-right', { size: 'lg' })}</span>${whoHTML(to.id, to.name)}`,
     kinds: KINDS,
     filters: [{ key: 'rarity', label: 'Rarity', value: 'all', clear: 'all', options: [{ id: 'all', label: 'All' }, ...rars.map((r) => ({ id: r, label: ctx().RARITY_LABEL?.[r] || r }))] }],
@@ -1175,22 +1197,26 @@ function openBoonCards(to) {
     apply: (list, values, q) => pickerCards(list, values, q, kindOf, effectReadyIn),
     blocked: (c) => (!effectScaled(c).enabled ? 'Unlocks soon' : effectReadyIn(c) > 0 ? `Ready in ${fmtDur(effectReadyIn(c))}` : ''),
     badge: (c) => (effectReadyIn(c) > 0 ? fmtDur(effectReadyIn(c)) : ''),
-    status: (sel) => { const c = find(sel[0]); const why = whyNot(c); return { checks: why && c ? [{ ok: false, label: why }] : [], ready: !!c && !why, reason: why || 'Pick an effect card' }; },
+    status: (sel) => { const c = find(sel[0]); const why = whyNot(c); return { checks: why && c ? [{ ok: false, label: why }] : [], ready: !!c && !why, reason: c ? null : 'Pick an effect card' }; },   // a picked card that cannot play has its reason in the check line (no second copy under Confirm)
     detail: (c) => ctx().openViewer?.(c),
-    returnFocus: document.querySelector('.u3-mp-tile__pick'),
+    returnFocus: returnFocus || document.querySelector('.u3-mp-tile__pick'),
+    // a card the server refuses on the server owner: the popup says why, before the play (nothing is spent)
+    onSelect: (c) => { if (ownerBlocked(c.effect?.primitive, to.id, st.immune)) openNotice({ title: 'This card cannot be played', line: ownerBlockText(c.effect.primitive) }); },
+    // Confirm opens the play window over the picker (UI-28); Back keeps the pick, the play closes both
     onConfirm: async (sel) => {
       const card = find(sel[0]);
       if (!card) return false;
-      const voice = effectState().primitives?.[card.effect?.primitive]?.channel === 'voice';
-      const r = await playCard(card, to.id);
-      fx.msg = r?.ok ? resultText(r, to, voice) : effectError(r?.error);
-      bn.msgKind = r?.ok ? 'success' : 'error';
-      await loadFx();
-      paintBoonsV3();
-      return true;
+      openPlayWindow(winView(card), (choice) => playIt(card, choice));
+      return false;
     },
   });
 }
+
+// The v3 profile Boon and Prank buttons: the same Card picker with the member already chosen (UI-28, D-42, D-43).
+setProfilePlay((kind, target) => {
+  if (!target?.id) return;
+  openBoonCards({ id: String(target.id), name: target.name }, { kind: kind === 'prank' ? 'prank' : 'boon', returnFocus: document.getElementById(kind === 'prank' ? 'memPrank' : 'memBoon') });
+});
 
 function paintBoonsV3() {
   const { el } = ctx();

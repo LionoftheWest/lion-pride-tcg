@@ -103,9 +103,27 @@ function derivedFx(path, mode, body) {
   if (path === '/api/effects/me' && body?.enabled) {
     if (mode === 'day') return { ...body, playsToday: 10, dayEnds: new Date(Date.parse(FIX.recordedAt) + (7 * 60 + 25) * 60e3).toISOString() };
     if (mode === 'member') return { ...body, playsToday: 3, pairs: { '100000000000000012': 3 } };
+    // UI-28: every effect enabled and ready, so that the first card of the picker can be picked (the confirm, poll and owner states)
+    const open = { ...body, cooldowns: {}, primitives: Object.fromEntries(Object.entries(body.primitives || {}).map(([k, v]) => [k, { ...v, enabled: true }])) };
+    if (mode === 'owner') return { ...open, immune: ['012', '163', '011', '110', '076', '161', '077', '032'].map((n) => `100000000000000${n}`), primitives: { ...open.primitives, nickname: { primitive: 'nickname', kind: 'prank', channel: 'discord', enabled: true } } };
+    if (mode === 'poll') return open;
+    if (mode === 'refund') return { ...open, refunds: [{ id: 9201, primitive: 'nickname', reason: 'not_manageable', target: 'Member 012', card: { name: 'Card A' } }] };
+    if (mode === 'banners') {
+      const art = (FIX.routes['/api/collection']?.body?.cards || []).slice(0, 3).map((c) => ({ name: c.name, image_url: c.image_url }));
+      const mk = (i, kind, outcome, sender) => ({ id: 9300 + i, primitive: 'confetti', kind, outcome, sender, created_at: FIX.recordedAt, card: art[i] || null });
+      return { ...open, incoming: [mk(2, 'boon', 'applied', 'Member B'), mk(1, 'prank', 'decoyed', 'Member B'), mk(0, 'prank', 'applied', 'Member A')] };
+    }
   }
   return body;
 }
+// UI-28: the collection cards carry a poll (4 questions with the member name) or the owner-refused effect (nickname).
+function derivedFxCards(body, mode) {
+  const polls = [1, 2, 3, 4].map((n) => ({ question: `Question ${n} about {name}?`, answers: ['Yes', 'No'] }));
+  return { ...body, cards: (body.cards || []).map((c) => (!c.effect?.primitive ? c
+    : mode === 'poll' ? { ...c, effect: { ...c.effect, options: { ...(c.effect.options || {}), polls } } }
+    : mode === 'owner' ? { ...c, effect: { ...c.effect, primitive: 'nickname' } } : c)) };
+}
+DERIVED.push({ when: (p, c, body) => ['poll', 'owner'].includes(c.ci_fx) && p === '/api/collection' && body?.cards, make: (body, c) => derivedFxCards(body, c.ci_fx) });
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/recent' && body?.plays, make: (body, c) => derivedFx('/api/effects/recent', c.ci_fx, body) });
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/me' && body?.enabled, make: (body, c) => derivedFx('/api/effects/me', c.ci_fx, body) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
@@ -156,6 +174,8 @@ createServer((req, res) => {
     req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
     return undefined;
   }
+  // UI-28 (cookie ci_play=ok): a play that works. Nothing is written. Without the cookie the play stays blocked (the error state of the confirm window).
+  if (req.method === 'POST' && p === '/api/effects/play' && cookies(req).ci_play === 'ok') { req.resume(); return send(res, 200, JSON.stringify({ ok: true, outcome: 'applied', kind: 'boon', primitive: 'lucky_pull' })); }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)

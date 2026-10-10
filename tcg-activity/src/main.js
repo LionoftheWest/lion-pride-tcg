@@ -17,7 +17,7 @@ import { setFlair, flairHTML } from './flair.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
+import { releaseEffects, initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
@@ -348,6 +348,7 @@ async function main() {
   dungeon = !!flags?.dungeon;
   uiV3 = !!flags?.uiV3;
   if (uiV3) startV3();
+  releaseEffects();   // the incoming banners of the effects (v2 or v3 kind, UI-28)
   // A new member's first login gave them the welcome packs: show them now.
   if (flags.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   startV2();

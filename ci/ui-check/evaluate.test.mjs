@@ -65,6 +65,12 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('boons-onyou', '#u3BoonsSheet > .u3-sheet'), 'UI-27');
   assert.equal(ownerOf('boons-hist', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');
   assert.equal(ownerOf('boons-picker', '#u3Picker > .u3-scrim > .u3-pk--boons'), 'UI-27');
+  assert.equal(ownerOf('fx-confirm', '#u3FxWin > .u3-scrim > .u3-fxw'), 'UI-28');
+  assert.equal(ownerOf('fx-owner', '#u3FxNote > .u3-scrim > .u3-fxn'), 'UI-28');
+  assert.equal(ownerOf('fx-banners', '#u3FxBanners > .u3-banner.u3-fxb'), 'UI-28');
+  assert.equal(ownerOf('fx-played', 'body > #u3FxToast > .u3-toast'), 'UI-28');
+  assert.equal(ownerOf('fx-confirm', '#u3Picker > .u3-scrim > .u3-pk--boons'), 'UI-27', 'the Card picker under the window is the Boons form');
+  assert.equal(ownerOf('fx-profile-prank', '#u3Picker > .u3-scrim > .u3-pk'), 'UI-27');
   assert.equal(ownerOf('hunt-picker', '#u3Picker > .u3-scrim > .u3-pk'), 'UI-64');
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');

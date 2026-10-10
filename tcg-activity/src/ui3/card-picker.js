@@ -238,6 +238,7 @@ async function onClick(e) {
     if (!c || (t.getAttribute('aria-disabled') === 'true' && !cur.sel.includes(id))) return;
     if (cur.sel.includes(id) && cur.opts.locked?.(c)) return;   // it fought today: it stays in the squad
     cur.sel = cur.opts.single ? (cur.sel.includes(id) ? [] : [id]) : toggle(cur.sel, id, cur.opts.cap);
+    if (cur.opts.onSelect && cur.sel.includes(id)) queueMicrotask(() => cur?.opts.onSelect?.(c));   // UI-28: the Boons picker warns about a card the server refuses on the owner
     paint();
     return;
   }

@@ -1,0 +1,84 @@
+/* ==== UI-28 Effects: the play flow (src/ui3/effects.js, src/ui3/play-window.js; design.md 5.2 Dialog, Toast, Banner; D-42, D-43) ====
+   The confirm window over the Card picker (boon, prank, shield, poll), the owner and refund popups, the play toast, and the
+   incoming banners under the top bar. Tokens only. Approved: design repo UI-28/approved. */
+
+/* Button/shield (the kind variant of the Play button: the library has boon and prank only; asked of lane 1) */
+.u3-btn--shield { color: var(--text-on-color); background: linear-gradient(180deg, var(--effect-shield-grad-start), var(--effect-shield-grad-end)); }
+@media (hover: hover) { .u3-btn--shield:hover:not(:disabled) { filter: brightness(1.08); } }
+
+/* ---- the confirm window ---- */
+.u3-fxw-scrim { z-index: var(--z-modal); }
+.u3-dialog.u3-fxw { box-sizing: border-box; width: min(100%, calc(var(--dialog-w) * 1.5)); max-height: 100%; min-height: 0; gap: var(--sp-3); padding: var(--sp-5); }
+body[data-size="compact-port"] .u3-dialog.u3-fxw { width: 100%; padding: var(--sp-4); }
+.u3-fxw:focus, .u3-fxn:focus { outline: none; }
+.u3-fxw .u3-label { color: var(--text-secondary); }   /* the muted label color is below 4.5 : 1 on the window (9.4) */
+.u3-fxw__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.u3-fxw__tags { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); min-width: 0; padding-top: var(--sp-1-5); }
+.u3-fxw__state { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-small); font-weight: var(--fw-small-strong); line-height: var(--lh-small); color: var(--success); }
+.u3-fxw__state::before { content: ""; width: var(--sp-2); height: var(--sp-2); border-radius: var(--rad-pill); background: var(--success); }
+.u3-fxw__title { margin-top: calc(var(--sp-3) * -1); overflow-wrap: anywhere; }
+.u3-fxw__main { display: flex; align-items: flex-start; gap: var(--sp-4); min-width: 0; }
+.u3-fxw__card { flex: none; box-sizing: border-box; width: calc(var(--card-tile-max) * 1.1); aspect-ratio: 1 / var(--card-ratio); border-radius: var(--rad-md);
+  border: var(--bw-2) solid var(--border-strong); background: var(--surface-2); overflow: hidden; }
+body[data-size="expanded"] .u3-fxw__card { width: calc(var(--card-tile-max) * 1.5); }
+.u3-fxw__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.u3-fxw--boon .u3-fxw__card { border-color: var(--effect-boon); }
+.u3-fxw--prank .u3-fxw__card { border-color: var(--border-strong); }
+.u3-fxw__info { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-fxw__desc { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); overflow-wrap: anywhere; }
+.u3-fxw__chips, .u3-fxw__on { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-fxw__chip { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--chip-md); padding: 0 var(--sp-3); border-radius: var(--rad-pill);
+  background: var(--surface-2); border: var(--bw-1) solid var(--border); font-family: var(--font-num); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-secondary); white-space: nowrap; }
+.u3-fxw__chip--plain { font-family: var(--font-ui); color: var(--text-primary); }
+.u3-fxw__none { font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-fxw__to { display: flex; align-items: center; gap: var(--sp-4); min-width: 0; }
+.u3-fxw__to .u3-bn-who { gap: var(--sp-3); }
+.u3-fxw__to .u3-mp-av { --mp-av: var(--avatar-md); }
+.u3-fxw__to .u3-bn-who__name { font-size: var(--fs-heading); line-height: var(--lh-heading); font-weight: var(--fw-heading); }
+.u3-fxw__on { gap: var(--sp-3); }
+.u3-fxw__msg { min-width: 0; }
+.u3-fxw__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-4); flex-wrap: wrap; }
+.u3-fxw__foot > .u3-bn-today { flex: none; }
+.u3-fxw__acts { flex: 1 1 0; min-width: 0; display: flex; gap: var(--sp-3); max-width: calc(var(--dialog-w) * 0.8); margin-left: auto; }
+.u3-fxw__acts > .u3-btn { flex: 1 1 0; min-width: 0; }
+body[data-size="compact-port"] .u3-fxw__foot { flex-direction: column; align-items: stretch; }
+body[data-size="compact-port"] .u3-fxw__foot > .u3-bn-today { align-self: flex-end; }
+body[data-size="compact-port"] .u3-fxw__acts { max-width: none; margin-left: 0; }
+
+/* poll cards: the questions (44 px buttons, the pick has the gold edge) */
+.u3-fxw__polls { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.u3-fxw__plist { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+body:is([data-size="medium"], [data-size="expanded"]) .u3-fxw__plist { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.u3-fxw__q { box-sizing: border-box; min-height: var(--ctl-md); padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-md); border: var(--bw-1) solid var(--border-strong); background: var(--surface-2);
+  color: var(--text-primary); font-size: var(--fs-body); line-height: var(--lh-body); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.u3-fxw__q.is-on { border-color: var(--gold); background: var(--gold-a10); color: var(--gold); }
+.u3-fxw__q:focus-visible { outline: none; box-shadow: var(--glow-focus), 0 0 0 calc(var(--bw-focus) * 2) var(--bg-base); }
+
+/* a short window (a phone, a poll card): the card shrinks so that nothing is cut */
+body[data-short] .u3-fxw__card, body[data-size="compact-port"][data-low] .u3-fxw__card { width: var(--card-tile); }
+
+/* ---- the owner and refund popups ---- */
+.u3-fxn__line { margin: 0; }
+.u3-fxn__foot { display: flex; justify-content: flex-end; }
+.u3-fxn__foot > .u3-btn { min-width: calc(var(--dialog-w) / 3); }
+body[data-size="compact-port"] .u3-fxn { padding: var(--sp-5); }
+
+/* ---- the play toast (7.3): above the dock, centered, 4 seconds ---- */
+.u3-fx-toast { position: fixed; z-index: var(--z-toast); left: 0; right: 0; bottom: calc(var(--dock-h) + var(--u3-sa-b) + var(--sp-6)); display: flex; justify-content: center; pointer-events: none; padding: 0 var(--sp-3); }
+.u3-fx-toast > .u3-toast { pointer-events: auto; max-width: 100%; }
+
+/* ---- the incoming banners (5.2 Banner): under the top bar, three at most; the rest wait ---- */
+.u3-fxb-host { position: fixed; z-index: var(--z-toast); top: calc(var(--u3-sa-t) + var(--u3-bar) + var(--sp-1)); left: 0; right: 0; display: flex; flex-direction: column; gap: var(--sp-2);
+  padding: 0 calc(var(--u3-pad) + var(--u3-sa-r)) 0 calc(var(--u3-pad) + var(--u3-sa-l)); pointer-events: none; }
+body:is([data-size="medium"], [data-size="expanded"]) .u3-fxb-host { left: 50%; right: auto; width: min(100%, calc(var(--dialog-w) * 1.25)); transform: translateX(-50%); box-sizing: border-box; }
+.u3-fxb { pointer-events: auto; box-sizing: border-box; min-width: 0; padding: var(--sp-2) var(--sp-3); border-width: var(--bw-2); align-items: center; }
+.u3-fxb__card { flex: none; width: var(--card-mini); aspect-ratio: 1 / var(--card-ratio); border-radius: var(--rad-sm); border: var(--bw-1) solid var(--border-strong); background: var(--surface-2); overflow: hidden; }
+.u3-fxb__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.u3-fxb__text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }
+.u3-fxb__who { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); }
+.u3-fxb__who > span { min-width: 0; overflow-wrap: anywhere; }
+.u3-fxb__name { font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-fxb__tail { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); overflow-wrap: anywhere; }
+.u3-fxb > .u3-ibtn { flex: none; align-self: center; }
+.u3-fxb__colors { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding-top: var(--sp-2); }
+.u3-fxb__color { width: var(--ctl-md); height: var(--ctl-md); border-radius: var(--rad-pill); border: var(--bw-2) solid var(--border-strong); background: var(--c); cursor: pointer; }

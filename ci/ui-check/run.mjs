@@ -76,9 +76,12 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (spec.fx) cookies.push({ name: 'ci_fx', value: spec.fx, url: BASE });
+        if (spec.play) cookies.push({ name: 'ci_play', value: spec.play, url: BASE });   // UI-28: the check server answers POST /api/effects/play (a play that works)
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);
         if (spec.battle && FIX.meta?.teamKey) await ctx.addInitScript(([k, v]) => localStorage.setItem(k, v), [FIX.meta.teamKey, JSON.stringify({ date: MT_DAY, ids: FIX.meta.teamIds })]);   // the date of the game day (MT), as main.js loadTeam() checks
+        // UI-28 (spec.hold): the 4 s toast and the 12 s banners stay while the cell is measured (a cell takes longer than 4 s after the step). Only these two delays are skipped.
+        if (spec.hold) await ctx.addInitScript(() => { const st = window.setTimeout.bind(window); window.setTimeout = (fn, ms, ...a) => ((ms === 4000 || ms === 12000) ? 0 : st(fn, ms, ...a)); });
         if (variant === 'safe') await ctx.addInitScript((css) => { document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); }); }, SAFE(land));
         const pg = await ctx.newPage(); const errs = []; const blocked = [];
         pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));

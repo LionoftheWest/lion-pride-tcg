@@ -41,6 +41,17 @@ export const SCREENS = {
   'boons-member':        { id: 'UI-27', long: true, fx: 'member', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
   'boons-onyou':         { id: 'UI-27', long: true, safe: true, fx: 'hist', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.u3-bn-onyou', [['wait', 0]]], ['wait', 1.5]] },
   'boons-picker':        { id: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1]], input: '#u3Picker .u3-search__input' },
+  // v3 (UI-28): the play flow. The confirm window over the Card picker (boon or prank, a poll card, the error of a play that the check server
+  // blocks), the played toast (ci_play=ok answers the play), the owner popup, the refund popup and the banners (derived /api/effects/me), and the profile Prank.
+  'fx-confirm':          { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1.5]] },
+  'fx-error':            { id: 'UI-28', under: 'UI-27', long: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1], ['js', '#u3FxWin [data-fxplay]'], ['wait', 1.5]] },
+  'fx-played':           { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'hist', play: 'ok', hold: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1], ['js', '#u3FxWin [data-fxplay]'], ['wait', 1.5]] },
+  'fx-poll':             { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'poll', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1], ['js', '#u3FxWin [data-fxq="1"]'], ['wait', 1]] },
+  'fx-owner':            { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'owner', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1.5]] },
+  'fx-refund':           { id: 'UI-28', under: 'UI-03', long: true, safe: true, fx: 'refund', notOn: ['tiny'], steps: [['wait', 3]] },
+  'fx-banners':          { id: 'UI-28', under: 'UI-03', long: true, safe: true, fx: 'banners', hold: true, notOn: ['tiny'], steps: [['wait', 3]] },
+  'fx-profile-prank':    { id: 'UI-28', under: 'UI-14', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3], ['js', '#memPrank'], ['wait', 1.5]] },
+  'fx-profile-confirm':  { id: 'UI-28', under: 'UI-14', long: true, fx: 'hist', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3], ['js', '#memPrank'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1.5]] },
   'boons-pick':          { id: 'UI-28', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
   'hunt-squad':          { id: 'UI-17', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   // v3: the Card picker (UI-64) in Hunt mode over the Hunt view (Auto-pick, locked cards, the short-squad dialog).
@@ -119,6 +130,9 @@ export function ownerOf(screen, where) {
   if (/-picker-detail$/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b|\.vr-|#v-[a-z-]+/.test(where)) return 'UI-64';
   // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).
   if (screen === 'boons-picker' && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
+  // UI-28: the confirm window, the owner and refund popups, the play toast and the incoming banners; the Card picker under them stays UI-27's (the Boons form)
+  if (/#u3Fx[A-Za-z]*\b|\.u3-fxw\b|\.u3-fxw[-_]|\.u3-fxn\b|\.u3-fxn[-_]|\.u3-fxb\b|\.u3-fxb[-_]|\.u3-fx-toast\b/.test(where)) return 'UI-28';
+  if (/^fx-/.test(screen) && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/#u3BossWin[a-z]*\b|\.u3-bw\b|\.u3-bw[-_]/.test(where)) return 'UI-20';
   if (/#(v2Dailies|u3DlToast)[a-z]*\b|\.u3-dl\b|\.u3-dl[-_]/.test(where)) return 'UI-36';
