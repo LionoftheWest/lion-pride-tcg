@@ -1,0 +1,38 @@
+/* ==== UI-11 Collection: Bosses tab (src/ui3/collection-tabs.js; design repo UI-11/approved; flag ui_v3). The .u3-ct view
+   frame is in 90-ui-12.css (it loads after this file in name order, and the frame has no rule that this file needs at
+   once). Every selector is scoped to body.ui-v3. Tokens only (G4). ==== */
+
+/* The boss list: every boss on one page (B6). JS sets --u3-cols and --u3-rows from the box (wide: 6 columns, tall: 3). */
+body.ui-v3 .u3-ct--boss .u3-ct__box { display: block; }
+body.ui-v3 .u3-bg { --u3-cols: 6; --u3-rows: 2; margin: 0; padding: 0; list-style: none; width: 100%; height: 100%; min-height: 0; box-sizing: border-box;
+  display: grid; grid-template-columns: repeat(var(--u3-cols), minmax(0, 1fr)); grid-template-rows: repeat(var(--u3-rows), minmax(0, 1fr)); gap: var(--sp-3); }
+body.ui-v3[data-size="compact-port"] .u3-bg { gap: var(--sp-2); padding-bottom: var(--sp-2); }
+body.ui-v3 .u3-bt { list-style: none; min-width: 0; min-height: 0; }
+body.ui-v3 .u3-bt__btn { position: relative; display: block; width: 100%; height: 100%; padding: 0; overflow: hidden; cursor: pointer; text-align: left; font: inherit; color: var(--text-primary);
+  background: var(--bg-raised); border: var(--bw-1) solid var(--border); border-radius: var(--rad-lg); -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-instant) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+body.ui-v3 .u3-bt__btn:active { transform: scale(.97); }
+body.ui-v3 .u3-bt__btn:focus-visible { outline: none; box-shadow: var(--glow-focus), 0 0 0 calc(var(--bw-focus) * 2) var(--bg-base); }
+@media (hover: hover) and (pointer: fine) { body.ui-v3 .u3-bt__btn:hover { border-color: var(--border-strong); } }
+body.ui-v3 .u3-bt__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
+body.ui-v3 .u3-bt__name { position: absolute; left: 0; right: 0; bottom: 0; padding: var(--sp-6) var(--sp-3) var(--sp-3); box-sizing: border-box;
+  background: linear-gradient(to top, var(--scrim), transparent); font-size: var(--fs-small); font-weight: var(--fw-heading); line-height: var(--lh-small); }
+body.ui-v3[data-size="compact-port"] .u3-bt__name { padding-inline: var(--sp-2); font-size: var(--fs-caption); }
+
+/* ---- The boss window (B3): a full sheet above the dock on compact-port, a centered dialog on the other classes ---- */
+body.ui-v3 .u3-cbwhost { position: fixed; inset: 0; z-index: var(--z-sheet); display: grid; place-items: center; background: var(--scrim); animation: kf-fade var(--dur-base) var(--ease-out); --text-muted: var(--u3-text-muted); }
+body.ui-v3 .u3-cbw { position: relative; display: flex; flex-direction: column; gap: var(--sp-3); box-sizing: border-box; width: min(calc(100vw - var(--u3-pad) * 2), calc(var(--dialog-w) + var(--sp-2)));
+  max-height: calc(100dvh - var(--u3-sa-t) - var(--u3-sa-b) - var(--sp-5) * 2); padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1);
+  border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); animation: kf-pop var(--dur-base) var(--ease-out); overflow: hidden; }
+body.ui-v3 .u3-cbw__top { position: absolute; top: var(--sp-5); right: var(--sp-5); z-index: var(--z-base); }
+body.ui-v3 .u3-cbw__stage { position: relative; flex: 0 1 auto; min-height: 0; align-self: center; width: calc(var(--dialog-w) / 2); aspect-ratio: 5 / 7; margin-top: var(--sp-4); border-radius: var(--rad-md); overflow: hidden; background: var(--bg-base); }
+body.ui-v3 .u3-cbw__stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+body.ui-v3 .u3-cbw__info { flex: none; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; margin-top: var(--sp-2); }
+body.ui-v3 .u3-cbw__name { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); overflow-wrap: anywhere; }
+body.ui-v3 .u3-cbw__lore { margin: 0; font-family: var(--font-flavor); font-style: italic; font-size: var(--fs-heading); line-height: var(--lh-heading); color: var(--text-secondary); }
+body.ui-v3 .u3-cbw__credit { margin: var(--sp-1) 0 0; padding-top: var(--sp-2); border-top: var(--bw-1) solid var(--border); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-secondary); overflow-wrap: anywhere; }
+body.ui-v3[data-size="compact-port"] .u3-cbwhost { display: block; background: none; }
+body.ui-v3[data-size="compact-port"] .u3-cbw { position: absolute; top: calc(var(--u3-sa-t) + var(--sp-1-5)); bottom: calc(var(--dock-h) + var(--sp-3) + var(--u3-sa-b)); left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5));
+  width: auto; max-height: none; padding: var(--sp-4); border-radius: var(--rad-sheet); justify-content: space-between; animation-name: kf-rise; }
+body.ui-v3[data-size="compact-port"] .u3-cbw__top { top: var(--sp-4); right: var(--sp-4); }
+body.ui-v3[data-size="compact-port"] .u3-cbw__stage { width: 100%; margin-top: var(--sp-7); }
