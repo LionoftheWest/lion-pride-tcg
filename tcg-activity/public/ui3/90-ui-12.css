@@ -1,0 +1,104 @@
+/* ==== UI-12 Collection: Achievements, the achievement window and Claim (src/ui3/collection-tabs.js; design repo
+   UI-12/approved; flag ui_v3). Shared with UI-11 (90-ui-11.css): the .u3-ct view frame. Every selector is scoped to
+   body.ui-v3. Tokens only (G4). ==== */
+
+/* The view frame under the sub-tab row: the head row (the "?" on compact-port, the Claim line), then the box. */
+body.ui-v3 .u3-ct { --u3-pager-h: var(--ctl-sm); --u3-ct-gap: var(--sp-2); --text-muted: var(--u3-text-muted);
+  height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--u3-ct-gap); box-sizing: border-box; }
+body.ui-v3[data-input="coarse"] .u3-ct { --u3-pager-h: var(--hit); }
+body.ui-v3[data-size="compact-port"] .u3-ct { gap: var(--sp-3); }
+body.ui-v3[data-size="expanded"] .u3-ct__box { gap: var(--sp-2); }
+body.ui-v3 .u3-ct__head { flex: none; display: flex; align-items: center; gap: var(--sp-3); min-width: 0; min-height: var(--ctl-sm); }
+body.ui-v3 .u3-ct__head:empty { display: none; }
+body.ui-v3 .u3-ct__head .ex-q { flex: none; }
+/* Touch: the "?" has a 44 px hit area (9.1); the row keeps the height of the drawn 34 px button. */
+body.ui-v3[data-input="coarse"] .u3-ct__head { min-height: var(--hit); }
+body.ui-v3[data-input="coarse"] .u3-ct__head .ex-q { width: var(--hit); height: var(--hit); min-width: 0; padding: 0; }
+body.ui-v3[data-input="coarse"][data-size="compact-port"] .u3-ct { gap: var(--sp-1); }
+body.ui-v3 .u3-ct__right { margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+body.ui-v3 .u3-ct__ready { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-small); font-weight: var(--fw-heading); line-height: var(--lh-small); color: var(--gold); white-space: nowrap; }
+body.ui-v3 .u3-ct__box { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3); }
+body.ui-v3[data-size="compact-port"] .u3-ct__box { justify-content: space-between; padding-bottom: var(--sp-2); box-sizing: border-box; }
+body.ui-v3 .u3-ct__pager { flex: none; height: var(--u3-pager-h); display: flex; justify-content: center; }
+body.ui-v3 .u3-ct__pager.is-hidden { visibility: hidden; }
+/* The Pager is a <nav>: the v1 narrow-window rule (style.css "nav", fixed at the bottom) must not move it. */
+body.ui-v3 :is(.u3-ct__pager, .u3-ath__pager) .u3-pager { position: static; flex-wrap: nowrap; gap: 0; padding: 0; box-sizing: border-box; height: var(--u3-pager-h); }
+body.ui-v3 :is(.u3-ct__pager, .u3-ath__pager) .u3-pager__arrow { flex: none; padding: 0; font: inherit; }
+body.ui-v3[data-input="coarse"] :is(.u3-ct__pager, .u3-ath__pager) .u3-pager { border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border-strong); }
+
+/* The list: columns that fit (a tile is at least this wide), one height for every tile (JS measures it, A6), the rows
+   that fit make the page (JS, 3.5). */
+body.ui-v3 .u3-ct--ach .u3-ct__grid { --u3-ct-min: calc(var(--sp-7) * 5 + var(--sp-5) + var(--sp-3)); margin: 0; padding: 0; list-style: none; min-height: 0; flex: 1 1 auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--u3-ct-min), 1fr)); grid-auto-rows: var(--u3-ct-h, auto); gap: var(--sp-2); align-content: start; overflow: hidden; }
+body.ui-v3[data-size="compact-port"] .u3-ct--ach .u3-ct__grid { flex: 0 0 auto; grid-template-columns: minmax(0, 1fr); }
+
+body.ui-v3 .u3-at { position: relative; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-1-5); padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+body.ui-v3 .u3-at.is-ready { background: var(--gold-a10); border-color: var(--gold-a50); box-shadow: var(--glow-action); }
+body.ui-v3 .u3-at.is-claimed { border-color: var(--gold-a35); }
+body.ui-v3 .u3-at__top { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+body.ui-v3 .u3-at__ico { flex: none; width: var(--ctl-sm); height: var(--ctl-sm); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--rad-md);
+  background: var(--surface-2); font-size: var(--fs-stat); line-height: 1; }
+body.ui-v3 .u3-at__name { flex: 1 1 auto; min-width: 0; margin: 0; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; font: inherit;
+  font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-small); color: var(--text-primary); overflow-wrap: anywhere; }
+/* The whole tile opens the window: the name stretches over it (the Claim button stays on top, it comes later in the tile). */
+body.ui-v3 .u3-at__name::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+body.ui-v3 .u3-at__name:focus-visible { outline: none; }
+body.ui-v3 .u3-at__name:focus-visible::after { box-shadow: var(--glow-focus), 0 0 0 calc(var(--bw-focus) * 2) var(--bg-base); }
+body.ui-v3 .u3-at__top > :is(.u3-btn, .u3-at__n, .u3-at__claimed) { position: relative; flex: none; }
+body.ui-v3 .u3-at__n { font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+body.ui-v3 .u3-at__claimed { font-size: var(--fs-caption); font-weight: var(--fw-small-strong); color: var(--gold); white-space: nowrap; }
+body.ui-v3 .u3-at__desc { margin: 0; font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-secondary); overflow-wrap: anywhere; }
+body.ui-v3 .u3-at__rw { margin: 0; display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--fs-label); line-height: var(--lh-caption); color: var(--text-muted); }
+body.ui-v3 .u3-at__rw .u3-ico { flex: none; margin-top: var(--sp-half); }
+body.ui-v3 .u3-at.is-ready .u3-at__rw { color: var(--text-secondary); }
+
+/* ---- The achievement window (A8): a sheet above the dock on compact-port, a dialog on the other classes ---- */
+body.ui-v3 .u3-athhost { position: fixed; inset: 0; z-index: var(--z-sheet); background: var(--scrim); animation: kf-fade var(--dur-base) var(--ease-out); --text-muted: var(--u3-text-muted); }
+body.ui-v3 .u3-ath { position: absolute; display: flex; flex-direction: column; gap: var(--sp-3); box-sizing: border-box; padding: var(--sp-5);
+  top: calc(var(--u3-sa-t) + var(--u3-bar) + var(--sp-5)); bottom: calc(var(--dock-h) + var(--sp-5) + var(--u3-sa-b)); left: 50%; transform: translateX(-50%);
+  width: min(calc(100vw - var(--u3-sa-l) - var(--u3-sa-r) - var(--u3-pad) * 2), calc(var(--sheet-side-w) * 2 + var(--sp-5) * 4));
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); animation: kf-pop var(--dur-base) var(--ease-out); }
+body.ui-v3[data-size="compact-port"] .u3-athhost { background: none; }
+body.ui-v3[data-size="compact-port"] .u3-ath { top: calc(var(--u3-sa-t) + var(--sp-1-5)); bottom: calc(var(--dock-h) + var(--sp-3) + var(--u3-sa-b)); left: calc(var(--u3-sa-l) + var(--sp-1-5)); right: calc(var(--u3-sa-r) + var(--sp-1-5));
+  width: auto; transform: none; padding: var(--sp-4); border-radius: var(--rad-sheet); animation-name: kf-rise; }
+body.ui-v3[data-size="compact-land"] .u3-ath { top: calc(var(--u3-sa-t) + var(--sp-1)); bottom: calc(var(--dock-h) + var(--sp-2) + var(--u3-sa-b)); padding: var(--sp-3) var(--sp-4); }
+body.ui-v3 .u3-ath__head { flex: none; display: flex; align-items: center; gap: var(--sp-3); }
+body.ui-v3 .u3-ath__ico { flex: none; width: var(--ctl-md); height: var(--ctl-md); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--rad-md); background: var(--surface-2); font-size: var(--fs-heading); line-height: 1; }
+body.ui-v3 .u3-ath__title { flex: 1 1 auto; min-width: 0; margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); overflow-wrap: anywhere; }
+body.ui-v3 .u3-ath__head > .u3-btn { flex: none; }
+body.ui-v3 .u3-ath__line { flex: none; margin: 0; display: block; font-family: var(--font-num); font-size: var(--fs-small); line-height: var(--lh-body); color: var(--text-secondary); }
+body.ui-v3 .u3-ath__line .u3-ico { display: inline-block; vertical-align: middle; color: var(--text-secondary); }
+body.ui-v3 .u3-ath > .u3-bar { flex: none; height: var(--bar-md); }
+body.ui-v3 .u3-ath__box { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+body.ui-v3[data-size="compact-port"] .u3-ath__box { justify-content: flex-start; }
+body.ui-v3 .u3-ath__pager { flex: none; height: var(--u3-pager-h); display: flex; justify-content: center; --u3-pager-h: var(--ctl-sm); }
+body.ui-v3[data-input="coarse"] .u3-ath__pager { --u3-pager-h: var(--hit); }
+body.ui-v3 .u3-ath__pager.is-hidden { visibility: hidden; }
+body.ui-v3 .u3-ath__grid { --u3-ath-min: calc(var(--card-tile-max) - var(--sp-2)); margin: 0; padding: 0; list-style: none; min-height: 0; flex: 0 1 auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--u3-ath-min), 1fr)); gap: var(--sp-2); align-content: start; overflow: hidden; }
+body.ui-v3[data-size="compact-port"] .u3-ath__grid { --u3-ath-min: var(--card-tile); }
+body.ui-v3 .u3-ath__cell { list-style: none; min-width: 0; aspect-ratio: 5 / 7; }
+/* A card in the window: the face only (D-29); a missing card is the lock and its number. Radius 5% of the card width. */
+body.ui-v3 .u3-ath__card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1); width: 100%; height: 100%; padding: 0; overflow: hidden; cursor: pointer;
+  font: inherit; color: var(--text-muted); background: var(--surface-1); border: var(--bw-2) solid var(--u3-r, var(--border)); box-sizing: border-box; container-type: inline-size;
+  border-radius: calc(var(--card-tile) * var(--rad-card-ratio)); -webkit-tap-highlight-color: transparent; }
+body.ui-v3 .u3-ath__card.is-locked { border-width: var(--bw-1); border-color: var(--border); }
+body.ui-v3 .u3-ath__card:active { transform: scale(.97); }
+body.ui-v3 .u3-ath__card:focus-visible { outline: none; box-shadow: var(--glow-focus), 0 0 0 calc(var(--bw-focus) * 2) var(--bg-base); }
+body.ui-v3 .u3-ath__card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+body.ui-v3 .u3-ath__num { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: 1; font-variant-numeric: tabular-nums; }
+body.ui-v3 .u3-ath__stat { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1); }
+body.ui-v3 .u3-ath__stat b { font-family: var(--font-num); font-size: var(--fs-display); font-weight: var(--fw-display); line-height: var(--lh-display); color: var(--text-primary); }
+body.ui-v3 .u3-ath__stat span { font-size: var(--fs-body); color: var(--text-secondary); }
+
+/* Touch (9.1): Claim, Claim all and the tile name are 44 px controls. The tile row is 44 px high (the tile pads 4 px less on top). */
+body.ui-v3[data-input="coarse"] .u3-at { padding-top: var(--sp-1); }
+body.ui-v3[data-input="coarse"] .u3-at__top { min-height: var(--hit); }
+body.ui-v3[data-input="coarse"] :is(.u3-at__top, .u3-ath__head, .u3-ct__right) > .u3-btn--sm { height: var(--hit); }
+body.ui-v3[data-input="coarse"] .u3-at__name { min-height: var(--hit); display: flex; align-items: center; }
+
+/* The tight mode (JS, fitAchievements): a box that leaves a blank band under the rows takes one more row of tighter tiles. */
+body.ui-v3 .u3-ct__grid.is-tight { gap: var(--sp-1); }
+body.ui-v3 .u3-ct__grid.is-tight .u3-at { padding-block: var(--sp-2); gap: var(--sp-1); }
+body.ui-v3[data-input="coarse"] .u3-ct__grid.is-tight .u3-at { padding-top: var(--sp-half); }
