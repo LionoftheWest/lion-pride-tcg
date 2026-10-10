@@ -384,7 +384,14 @@ function startV3() {
   if (link) link.media = 'all';
   else { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/ui3.css'; l.dataset.ui3 = '1'; document.head.appendChild(l); }
   ldr3Stop?.(); // the loader's own size watcher (one watcher only)
-  watchSizeClass(window, () => repaintShards());
+  let sizeWas = document.body.dataset.size;
+  watchSizeClass(window, (cls) => {
+    repaintShards();
+    // UI-59: the tiny window shows the small live view of Home; entering or leaving it repaints Home
+    const tinyChange = (cls === 'tiny') !== (sizeWas === 'tiny');
+    sizeWas = cls;
+    if (tinyChange && document.body.classList.contains('ui-v3')) show(cls === 'tiny' ? 'home' : currentView);   // flag off: unchanged
+  });
   prefetchSets(api); // the Open window (UI-33) shows the sets at once
 }
 

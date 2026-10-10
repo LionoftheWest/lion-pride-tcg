@@ -1,0 +1,41 @@
+/* UI-59 Small live view (the tiny class, Discord picture-in-picture, design.md 2.1, D-06). Home is replaced by one view:
+   the boss on the left; on the right the Hunt state, the name, the HP, and the OPEN mark with Open full.
+   Tokens only (4.x). The Discord corner zones stay empty: the right column ends below the top right zone and the
+   action row ends beside the two bottom zones (frames tiny-400x225-hunt-live-corner-zones).
+   Layout modes (measured in tiny.js fitTiny, never from the window size): is-tight and is-tighter, for a long boss name. */
+/* the view fills the whole window (frames: no outer margin). The picture-in-picture window has no phone notch or home bar, so the
+   touch safe-area guess (64 px on the right) and the Home gutters do not apply to it. */
+body.ui-v2.ui-v3[data-size="tiny"]:has(#main > .u3-tn-host) { padding: var(--u3-none); }
+body.ui-v2.ui-v3[data-size="tiny"]:has(#main > .u3-tn-host) #body { padding: var(--u3-none); margin: var(--u3-none); height: 100dvh; }
+body.ui-v3[data-size="tiny"] #main:has(> .u3-tn-host) { padding: var(--u3-none); overflow: hidden; }
+.u3-tn-host { height: 100%; min-height: 0; }
+.u3-tn { height: 100%; min-height: 0; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); overflow: hidden; }
+.u3-tn.is-nostage, .u3-tn.is-none { grid-template-columns: minmax(0, 1fr); }
+.u3-tn__stage { position: relative; min-width: 0; min-height: 0; margin-bottom: var(--sp-7); }   /* the boss box starts above the bottom left corner zone */
+.u3-tn__stage .u3-hm-boss { position: absolute; inset: 0; }
+.u3-tn__info { min-width: 0; min-height: 0; box-sizing: border-box; padding: var(--sp-3) var(--sp-5) var(--sp-3) var(--u3-none); display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+.u3-tn.is-none .u3-tn__info { align-items: center; justify-content: center; padding-inline: var(--sp-7); }
+.u3-tn__title { font-size: var(--fs-heading); line-height: var(--lh-heading); }
+.u3-tn .u3-hm-chip { max-width: 100%; box-sizing: border-box; letter-spacing: var(--u3-none); padding-inline: var(--sp-2); }
+.u3-tn .u3-hm-hp { align-self: stretch; white-space: nowrap; }
+.u3-tn .u3-segbar { flex: none; }
+.u3-tn .u3-hm-res { letter-spacing: var(--u3-none); }
+.u3-tn .u3-hm-next { align-self: stretch; flex-wrap: nowrap; white-space: nowrap; }
+.u3-tn__act { margin-top: auto; align-self: stretch; display: flex; align-items: center; gap: var(--sp-3); flex: none; }
+.u3-tn.is-none .u3-tn__act { margin-top: var(--u3-none); }
+.u3-tn__act .u3-btn { flex: 1 1 auto; min-width: 0; }
+/* The OPEN mark: a disc with the count, no tap (D-80). Dim when no pack waits. */
+.u3-tn { --tn-disc: calc(var(--sp-7) + var(--sp-5)); }
+.u3-tn.is-tight { --tn-disc: calc(var(--sp-7) + var(--sp-1)); }
+.u3-tn.is-tighter { --tn-disc: var(--sp-7); }
+.u3-tn__open { position: relative; flex: none; display: inline-flex; }
+.u3-tn__disc { box-sizing: border-box; width: var(--tn-disc); height: var(--tn-disc); border-radius: var(--rad-round); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-half);
+  color: var(--on-gold); background: linear-gradient(180deg, var(--gold-hi), var(--gold-strong)); border: var(--sp-1) solid var(--bg-raised); box-shadow: var(--glow-action); }
+.u3-tn__openl { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: var(--fw-stat); letter-spacing: var(--u3-none); text-transform: uppercase; }
+.u3-tn__open.is-empty .u3-tn__disc { background: var(--gold-a50); color: var(--text-secondary); box-shadow: none; }
+.u3-tn__count { position: absolute; top: calc(var(--sp-1) * -1); right: calc(var(--sp-1) * -1); }
+.u3-tn.is-tight .u3-tn__info, .u3-tn.is-tighter .u3-tn__info { gap: var(--sp-1); }
+.u3-tn.is-tight .u3-tn__title, .u3-tn.is-tighter .u3-tn__title { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+.u3-tn.is-tighter .u3-hm-chip { min-height: var(--chip-sm); font-size: var(--fs-label); }
+.u3-tn.is-tighter .u3-hm-next b { font-size: var(--fs-stat); }
+.u3-tn.is-tighter .u3-tn__openl { display: none; }

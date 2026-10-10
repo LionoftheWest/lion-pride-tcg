@@ -90,6 +90,8 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#main.has-adv > .dg-tabs.v2-subtabs > .dg-tab'), 'UI-02');   // the shell sub-tab row
   assert.equal(ownerOf('dungeon', '.u3-dg-tabs > .u3-seg > .u3-seg__item'), 'UI-46');               // the lobby's own tabs (Rule / Best / Top 3)
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
+  assert.equal(ownerOf('tiny-live', '#main > .u3-tn > .u3-tn__info > .u3-tn__act'), 'UI-59');   // the small live view
+  assert.equal(ownerOf('tiny-rest', '#main > .u3-tn.is-rest > .u3-tn__stage'), 'UI-59');
   // the style editor (UI-15) opens over the profile: the profile under it is UI-14, the window is UI-15, the picker UI-64
   assert.equal(ownerOf('style-editor', '.mem-col.mem-left > .mem-grid-stats > div > span'), 'UI-14');
   assert.equal(ownerOf('style-editor', '.u3-pf-tile.u3-pf-id > #memBack.u3-btn'), 'UI-14');

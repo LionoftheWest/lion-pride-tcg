@@ -21,6 +21,7 @@ import * as pf3 from './ui3/profile.js';
 import * as se3 from './ui3/style-editor.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import * as hm3 from './ui3/home.js';
+import * as tn3 from './ui3/tiny.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -914,6 +915,7 @@ export async function renderHomeV2() {
   // Design 19 (Nathan, 2026-09-30): the hunt + Live in voice on the left, Live pulls down
   // the right to the same bottom line. No profile tile: the top-bar avatar opens it.
   const v3 = hm3.homeV3();
+  if (tn3.tinyV3()) { await renderTinyV3(); return; }   // UI-59: the small live view replaces Home in the tiny window
   el('main').innerHTML = `<div class="${v3 ? 'u3-home' : 'v2-home h19'}">
     ${v3 ? '<div class="u3-hm">' : ''}<section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} hero" id="homeHero"><div class="v2-loading">Loading…</div></section>
     <section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} voice" id="homeVoice"></section>
@@ -1138,7 +1140,39 @@ export function paintPulls() {
   requestAnimationFrame(() => setTimeout(() => fitChildren(el('plList')), 300));
 }
 
-export function homeTick() { tickCloses(); }
+export function homeTick() { tickCloses(); paintTinyPacks(); }
+
+// ---- The small live view (UI-59, the tiny class, v3): src/ui3/tiny.js has the markup ----
+// Open full: the Embedded App SDK has no command that leaves picture-in-picture (checked in the installed SDK), so a tap
+// on the button does nothing of its own; Discord opens the full Activity on a tap on the window (D-138, assumed).
+async function renderTinyV3() {
+  const { el } = ctx;
+  const main = el('main');
+  main.innerHTML = '<div class="u3-tn-host" id="homeHero"><div class="v2-loading">Loading…</div></div>';
+  const [d] = await Promise.all([ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null), ctx.refreshPacks?.()]);
+  if (ctx.currentView() !== 'home' || !tn3.tinyV3()) return;
+  const host = el('homeHero');
+  if (!host) return;
+  if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
+  const last = d?.lastResult;
+  host.innerHTML = tn3.tinyHTML(d, { packs: ctx.packs(), hasModel: !!(last && modelKey(last.name)) });
+  tickCloses();
+  const fit = () => tn3.fitTiny(host);
+  fit();
+  document.fonts?.ready?.then(fit);
+  if (typeof ResizeObserver !== 'undefined') { homeRO = new ResizeObserver(() => requestAnimationFrame(fit)); homeRO.observe(host); }
+  const h = d?.hunt;
+  try {
+    if (h) heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true });
+    else if (last && el('restCanvas')) heroBoss = mountBoss(el('restCanvas'), last.name, last.tier, { portrait: true });
+  } catch { heroBoss = null; }
+}
+// the pack count follows the packs the member has (the OPEN mark, no tap)
+function paintTinyPacks() {
+  const mark = document.querySelector('.u3-tn__open');
+  if (!mark || !tn3.tinyV3()) return;
+  mark.outerHTML = tn3.openMarkHTML(ctx.packs());
+}
 
 // ---- Home v3 (UI-03, body.ui-v3): src/ui3/home.js has the markup; these paint it and wire it ----
 const pullsPage = { start: 0 };
