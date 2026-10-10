@@ -83,6 +83,10 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('profile-own-wish', '#memWish > #wlHandle.u3-pf-wishbar'), 'UI-16');   // the handle strip is the Wishlist's (D-128)
   assert.equal(ownerOf('profile-own-wish', '#memWish.u3-pf-tile'), 'UI-14');                  // the tile that holds it is the Profile's
   assert.equal(ownerOf('wish-picker', '#u3Picker > .u3-pk.is-one'), 'UI-64');
+  assert.equal(ownerOf('hall-listings', '#main > .u3-ls > .u3-ls__panel > #lsSlots.u3-ls__slots'), 'UI-31');   // List a card
+  assert.equal(ownerOf('hall-unlisted', 'body > #u3LsToast.u3-ls-toast > .u3-toast'), 'UI-31');
+  assert.equal(ownerOf('hall-offer-wanted', '#u3TradeWin > .u3-tw > .u3-tw__bar'), 'UI-63');   // the offer is the Trade window
+  assert.equal(ownerOf('hall-offer-wanted', '#main > .u3-hl > .u3-hl__grid'), 'UI-30');   // the Hall behind it
   assert.equal(ownerOf('hunt-picker-detail', '#viewer.raid-info > #viewer-closebutton'), 'UI-64');
   assert.equal(ownerOf('hunt-picker-detail', '.vr-stats > .vr-stat > span "Power"'), 'UI-64');
   assert.equal(ownerOf('hunt-picker-detail', '.u3-hs-hp > span'), 'UI-17');

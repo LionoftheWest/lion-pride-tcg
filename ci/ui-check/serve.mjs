@@ -172,7 +172,22 @@ function derivedHall(body) {
   const forTrade = body.forTrade.slice(0, 2).concat(Array.from({ length: 9 }, (_, i) => ({ id: 100 + i, ...who(i + 1), card: pick(i + 20), mine: false, match: i % 2, at: body.forTrade[0].at })));
   return { ...body, wanted, forTrade };
 }
-DERIVED.push({ when: (p, c, body) => p === '/api/hall' && c.ci_hall === 'many' && body?.wanted, make: (body) => derivedHall(body) });
+// UI-31: ci_hall=list = two listings of mine (the approved list frames show 2/5; the recording has 5/5); ci_hall=offer = one Wanted card
+// I own copies of (Wanted index 2) and one For trade card in the derived cards of the lister (For trade index 2), for the Trade window.
+function derivedHallMode(body, mode) {
+  const out = derivedHall(body);
+  const col = FIX.routes['/api/collection']?.body?.cards || [];
+  if (mode === 'list') return { ...out, mine: out.mine.slice(0, 2) };
+  if (mode === 'offer' && col.length > 5) {
+    const pick = (c) => ({ id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, power: c.power });
+    const wanted = out.wanted.slice(), forTrade = out.forTrade.slice();
+    wanted[2] = { ...wanted[2], card: pick(col[5]), mine: col[5].quantity };
+    forTrade[2] = { ...forTrade[2], card: pick(col[2]) };   // every other collection card is in the derived cards of a member (derivedTheirCards)
+    return { ...out, wanted, forTrade };
+  }
+  return out;
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/hall' && ['many', 'list', 'offer'].includes(c.ci_hall) && body?.wanted, make: (body, c) => derivedHallMode(body, c.ci_hall) });
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
@@ -257,6 +272,8 @@ createServer((req, res) => {
     req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
     return undefined;
   }
+  // UI-31: taking a card off the Hall answers ok (nothing is written) so the screen shows the "unlisted" toast with Undo; a list call stays refused (the error state).
+  if (req.method === 'POST' && p === '/api/hall/unlist') return send(res, 200, '{"ok":true}');
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)

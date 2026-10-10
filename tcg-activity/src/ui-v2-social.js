@@ -585,12 +585,14 @@ function sectionsV3() {
 // ---- UI-63 Trade window (D-35, D-64; approved frames in the design repo UI-63/approved) ----
 // The window (src/ui3/trade-window.js) owns the layout and the rules; this part gives it the cards and does the calls
 // (the same server routes as the v2 builder: /api/trade/offer two-step, /api/trade/gift, /api/gift).
-function openTradeWindowV3() {
+// o (UI-31, an offer on a Hall listing): start = the view and the cards chosen, plan(plan) = the call to send, onClose, onSent
+function openTradeWindowV3(o = {}) {
   const to = tr.to;
   if (!to) return;
   const me = ctx().user();
   const b = () => base();
   openTradeWindow({
+    start: o.start, onClose: o.onClose,
     me: { id: String(me?.id || ''), name: me?.name || me?.username || 'You' },
     to: { id: String(to.id), name: to.name },
     mine: () => (ctx().cache.collection?.cards || []).map((c) => withBase({ ...c, owned: true, locked: false }, b())),
@@ -601,7 +603,8 @@ function openTradeWindowV3() {
     rarityLabel: (k) => ctx().RARITY_LABEL?.[k] || k,
     avatar: pdAvatar,
     send: async (act, plan) => {
-      const r = await ctx().apiPost(plan.path, plan.body);
+      const p = o.plan ? o.plan(plan) : plan;
+      const r = await ctx().apiPost(p.path, p.body);
       if (r?.ok) {
         delete tr.theirs[to.id];
         await Promise.all([ctx().refreshOwned(), ctx().refreshPacks?.()]);
@@ -613,9 +616,18 @@ function openTradeWindowV3() {
     onDone: (act) => {
       infoToastV3(act === 'offer' ? `Offer sent to ${to.name}` : act === 'pack' ? `Pack sent to ${to.name}` : `Gift sent to ${to.name}`);
       if (mpV3) paintPendingV3();
+      o.onSent?.(act);
     },
     onError: () => errorToastV3(),
   });
+}
+// UI-31 (D-64 item 7, v3 only): a tap on a Hall listing opens the Trade window with that member and the card chosen.
+// sel = the Hall row { kind: 'wanted' | 'fortrade', player_id, name, card, mine, id }; the caller gives the pure rules (src/ui3/compose.js).
+export async function openHallOfferV3(sel, { start, plan, onClose, onSent }) {
+  await ensureCatalog();
+  Object.assign(tr, { to: { id: String(sel.player_id), name: sel.name }, get: null, give: null, msg: '' });
+  await loadTheirs(String(sel.player_id));
+  openTradeWindowV3({ start, plan, onClose, onSent });
 }
 
 function paintMemberPickerV3() {
