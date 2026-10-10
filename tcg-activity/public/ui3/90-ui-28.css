@@ -68,10 +68,9 @@ body[data-size="compact-port"] .u3-fxn { padding: var(--sp-5); }
 .u3-fx-toast > .u3-toast { pointer-events: auto; max-width: 100%; }
 
 /* ---- the incoming banners (5.2 Banner): under the top bar, three at most; the rest wait ---- */
-.u3-fxb-host { position: fixed; z-index: var(--z-toast); top: calc(var(--u3-sa-t) + var(--u3-bar) + var(--sp-1)); left: 0; right: 0; display: flex; flex-direction: column; gap: var(--sp-2);
-  padding: 0 calc(var(--u3-pad) + var(--u3-sa-r)) 0 calc(var(--u3-pad) + var(--u3-sa-l)); pointer-events: none; }
+.u3-fxb-host { position: fixed; z-index: var(--z-toast); top: calc(var(--u3-sa-t) + var(--u3-bar) + var(--sp-1)); left: calc(var(--u3-pad) + var(--u3-sa-l)); right: calc(var(--u3-pad) + var(--u3-sa-r)); display: flex; flex-direction: column; gap: var(--sp-2); }
 body:is([data-size="medium"], [data-size="expanded"]) .u3-fxb-host { left: 50%; right: auto; width: min(100%, calc(var(--dialog-w) * 1.25)); transform: translateX(-50%); box-sizing: border-box; }
-.u3-fxb { pointer-events: auto; box-sizing: border-box; min-width: 0; padding: var(--sp-2) var(--sp-3); border-width: var(--bw-2); align-items: center; }
+.u3-fxb { box-sizing: border-box; min-width: 0; padding: var(--sp-2) var(--sp-3); border-width: var(--bw-2); align-items: center; }
 .u3-fxb__card { flex: none; width: var(--card-mini); aspect-ratio: 1 / var(--card-ratio); border-radius: var(--rad-sm); border: var(--bw-1) solid var(--border-strong); background: var(--surface-2); overflow: hidden; }
 .u3-fxb__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .u3-fxb__text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }

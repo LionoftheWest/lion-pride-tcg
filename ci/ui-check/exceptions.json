@@ -260,5 +260,11 @@
   { "decision": "D-167", "id": "UI-26", "screen": "trades-fx-swap", "size": "1990x830", "rule": "empty",
     "why": "The approved trade animation is a card group floating over a scrim; Nathan accepted the band as drawn (D-167, 2026-10-10)." },
   { "decision": "D-167", "id": "UI-26", "screen": "trades-fx-landed", "size": "1990x830", "rule": "empty",
-    "why": "The approved trade animation is a card group floating over a scrim; Nathan accepted the band as drawn (D-167, 2026-10-10)." }
+    "why": "The approved trade animation is a card group floating over a scrim; Nathan accepted the band as drawn (D-167, 2026-10-10)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "fx-played", "size": "430x932", "rule": "missing",
+    "why": "The Boons tab after a play is the UI-27 screen: on compact sizes the Recent plays pager is in the On you sheet (approved frame on-you-open); Nathan accepted it (D-152)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "fx-played", "size": "412x915", "rule": "missing",
+    "why": "The Boons tab after a play is the UI-27 screen: on compact sizes the Recent plays pager is in the On you sheet (approved frame on-you-open); Nathan accepted it (D-152)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "fx-played", "size": "430x822", "rule": "missing",
+    "why": "The Boons tab after a play is the UI-27 screen: on compact sizes the Recent plays pager is in the On you sheet (approved frame on-you-open); Nathan accepted it (D-152)." }
 ]
