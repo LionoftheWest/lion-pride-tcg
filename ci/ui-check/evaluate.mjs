@@ -10,7 +10,7 @@
 import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
-import { SIZES, SCREENS, EXPANDED, sizeKey, ownerOf } from './screens.mjs';
+import { SIZES, SCREENS, EXPANDED, REPORT_ONLY_SIZES, sizeKey, ownerOf } from './screens.mjs';
 import { parseRegister, summary } from '../gates/lib.mjs';
 import { enforcedIds, plan } from './plan.mjs';
 
@@ -82,6 +82,9 @@ export function checkExceptions(list) {
 }
 export const accepts = (e, x) => e.id === x.owner && e.screen === x.screen && e.size === x.size && e.rule === x.rule;
 
+/** D-136: a defect at a report-only size is listed but never fails. A cell that produced no result still fails (the run is broken). */
+export const reportOnly = (x) => REPORT_ONLY_SIZES.includes(x.size) && x.where !== 'no result';
+
 /** The verdict: { enforced, isEnforced, defects, fails }. */
 // screens = the screens that the run planned (plan.mjs): each of them must have a result in each browser and size.
 export function verdict(results, register, { title = '', strict = false, browsers = ['chromium', 'webkit'], sizes = SIZES.map(sizeKey), screens = Object.keys(SCREENS), exceptions = [] } = {}) {
@@ -106,7 +109,7 @@ export function verdict(results, register, { title = '', strict = false, browser
   const seen = new Set();
   const defects = all.filter((x) => { const k = [x.rule, x.owner, x.where, x.browser, x.size, x.screen].join('|'); if (seen.has(k)) return false; seen.add(k); return true; });
   for (const x of defects) { const e = exceptions.find((ex) => accepts(ex, x)); if (e) x.accepted = e.decision; }
-  const fails = defects.filter((x) => !x.accepted && (isEnforced(x.owner) || x.where === 'no result'));
+  const fails = defects.filter((x) => !x.accepted && !reportOnly(x) && (isEnforced(x.owner) || x.where === 'no result'));
   return { enforced, isEnforced, defects, fails };
 }
 
@@ -134,11 +137,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   let md = `### G3 UI check: ${fails.length ? 'FAIL' : 'PASS'}\n\n`;
   md += `${results.length} cells (${BROWSERS.join(' + ')}, ${SIZES.length} sizes, ${Object.keys(SCREENS).length} screens and windows, variants base, long, safe, keyboard). `;
   md += `Enforced IDs: ${STRICT ? '**all** (--strict)' : enforced.size ? [...enforced].sort().join(', ') : 'none (no ID in the PR title, and no register row is Migrated or In migration)'}.\n\n`;
-  md += `Defects by register ID and check item (design.md 12.6). "report" = listed, not enforced.\n\n`;
+  md += `Defects by register ID and check item (design.md 12.6). "report" = listed, not enforced. D-136: defects at ${REPORT_ONLY_SIZES.join(', ')} are listed in the table but never fail.\n\n`;
   md += `| ID | Screen | ${cols.join(' | ')} | Verdict |\n|---|---|${cols.map(() => '---').join('|')}|---|\n`;
   for (const id of ids) {
     const mine = defects.filter((x) => x.owner === id && !x.accepted);
-    md += `| ${id} | ${(register[id]?.screen || '').slice(0, 34)} | ${cols.map((k) => mine.filter((x) => x.rule === k).length || '').join(' | ')} | ${isEnforced(id) ? (mine.length ? '**FAIL**' : 'PASS') : 'report'} |\n`;
+    const mineEnf = mine.filter((x) => !reportOnly(x));   // D-136: the report-only sizes do not count for the verdict
+    md += `| ${id} | ${(register[id]?.screen || '').slice(0, 34)} | ${cols.map((k) => mine.filter((x) => x.rule === k).length || '').join(' | ')} | ${isEnforced(id) ? (mineEnf.length ? '**FAIL**' : 'PASS') : 'report'} |\n`;
   }
   if (fails.length) {
     md += `\n#### Enforced defects (first 60 of ${fails.length})\n\n| Rule | ID | Browser | Size | Screen | Variant | Where | Value |\n|---|---|---|---|---|---|---|---|\n`;

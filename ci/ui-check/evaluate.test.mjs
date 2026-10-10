@@ -1,8 +1,8 @@
 // Tests for the G3 verdict: node --test ci/ui-check/evaluate.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defectsOf, verdict } from './evaluate.mjs';
-import { SIZES, SCREENS, sizeKey, ownerOf } from './screens.mjs';
+import { defectsOf, verdict, reportOnly } from './evaluate.mjs';
+import { SIZES, SCREENS, REPORT_ONLY_SIZES, sizeKey, ownerOf } from './screens.mjs';
 import { parseRegister } from '../gates/lib.mjs';
 
 const REG = parseRegister(`| UI-01 | Shell | x | No | #10 | Not migrated | |
@@ -149,6 +149,19 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
   const mine = list.filter((e) => e.id === 'UI-49');
   assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+});
+
+test('D-136: a defect at a report-only landscape size is listed but does not fail; the same defect at a portrait size fails', () => {
+  assert.deepEqual(REPORT_ONLY_SIZES, ['667x375', '932x430', '915x412', '1180x820', '917x692']);
+  const rs = full();
+  for (const size of ['667x375', '430x932']) rs.find((r) => r.screen === 'home' && r.size === size).checks.emptyBandY = 0.4;
+  const v = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'] });
+  assert.equal(v.defects.filter((x) => x.rule === 'empty').length, 2, 'both are listed');
+  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '430x932']]);
+  for (const size of ['1280x480', '1280x720', '1990x830', '375x667', '820x1180', '692x917', '400x225']) assert.ok(!REPORT_ONLY_SIZES.includes(size), size + ' stays enforced');
+  assert.equal(reportOnly({ size: '667x375', where: 'no result' }), false, 'a missing cell still fails');
+  const miss = full().filter((r) => !(r.screen === 'home' && r.size === '667x375'));
+  assert.ok(verdict(miss, REG, { title: 'UI-03 Home', browsers: ['chromium'] }).fails.some((x) => x.size === '667x375' && x.where === 'no result'));
 });
 
 test('a bad exception entry stops the gate', () => {

@@ -9,6 +9,9 @@ export const SIZES = [   // docs/design.md 2.2 (D-18): [width, height, class, to
   [1990, 830, 'expanded', false], [1280, 480, 'compact-land', false], [400, 225, 'tiny', true],
 ];
 export const sizeKey = (s) => `${s[0]}x${s[1]}`;
+// D-136 (Nathan, 2026-10-09: "anything that is wrong with landscapes currently don't worry about it"): the five former landscape phone and
+// tablet sizes keep running, and their defects are REPORTED (summary table, defects.json) but do NOT fail the verdict. The one list.
+export const REPORT_ONLY_SIZES = ['667x375', '932x430', '915x412', '1180x820', '917x692'];
 export const EXPANDED = '1990x830';   // the size that "missing on another class" compares with (12.6, P1)
 
 const COMM = '#commTabs';
