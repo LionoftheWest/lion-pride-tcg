@@ -91,6 +91,8 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('walk-5', '.u3-wt__card over the spotlighted control'), 'UI-37');
   assert.equal(ownerOf('walk-5', '#main > .u3-hs'), 'UI-03');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
+  assert.equal(ownerOf('report', '#v2Report.u3-rp > .u3-rp__area > textarea.u3-textarea'), 'UI-40');
+  assert.equal(ownerOf('report-error', '.u3-rp__foot > .u3-msg'), 'UI-40');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
   assert.equal(ownerOf('trades-few', '.u3-trades__cols > #u3Pd.u3-pd > #u3PdSide.u3-pd__body'), 'UI-25');   // Pending
   assert.equal(ownerOf('trades-offer', '.u3-pd-view > .u3-pd-view__foot > .u3-btn'), 'UI-25');   // the Offer view
@@ -123,6 +125,8 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#main.has-adv > .dg-tabs.v2-subtabs > .dg-tab'), 'UI-02');   // the shell sub-tab row
   assert.equal(ownerOf('dungeon', '.u3-dg-tabs > .u3-seg > .u3-seg__item'), 'UI-46');               // the lobby's own tabs (Rule / Best / Top 3)
   assert.equal(ownerOf('menu', '#main > .home-hero'), 'UI-03');   // under the menu: Home
+  assert.equal(ownerOf('tiny-live', '#main > .u3-tn > .u3-tn__info > .u3-tn__act'), 'UI-59');   // the small live view
+  assert.equal(ownerOf('tiny-rest', '#main > .u3-tn.is-rest > .u3-tn__stage'), 'UI-59');
   // the style editor (UI-15) opens over the profile: the profile under it is UI-14, the window is UI-15, the picker UI-64
   assert.equal(ownerOf('style-editor', '.mem-col.mem-left > .mem-grid-stats > div > span'), 'UI-14');
   assert.equal(ownerOf('style-editor', '.u3-pf-tile.u3-pf-id > #memBack.u3-btn'), 'UI-14');
