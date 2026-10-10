@@ -171,11 +171,11 @@ body.ui-v2 .u3-lb .nb .nb-title { display: inline; margin-left: var(--sp-1); whi
 .u3-lb-to { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); font-size: var(--fs-small); color: var(--text-secondary); }
 .u3-lb-to b { font-family: var(--font-num); font-weight: var(--fw-stat); color: var(--gold); }
 .u3-lb-me .u3-bar { height: var(--bar-md); background: var(--surface-3); }
-.u3-lb-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--card-tile), 1fr)); gap: var(--sp-2); margin-top: var(--sp-1); }
+.u3-lb-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--card-tile) + var(--sp-6)), 1fr)); gap: var(--sp-2); margin-top: var(--sp-1); }
 .u3-lb-st { box-sizing: border-box; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2); border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid transparent; }
 .u3-lb-st.is-on { border-color: var(--gold); }
 .u3-lb-st__top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--sp-2); }
-.u3-lb-st__top b { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-lb-st__v { min-width: 0; overflow-wrap: break-word; font-family: var(--font-num); font-size: var(--fs-small); font-weight: var(--fw-stat); color: var(--text-primary); }
 .u3-lb-st__top span { font-size: var(--fs-caption); color: var(--text-muted); }
 .u3-lb-st__k span { min-width: 0; overflow-wrap: break-word; }
 .u3-lb-st__k { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-1); font-size: var(--fs-caption); font-weight: var(--fw-body); line-height: var(--lh-small); color: var(--text-secondary); }

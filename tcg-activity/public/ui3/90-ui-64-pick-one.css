@@ -1,0 +1,12 @@
+/* ==== UI-64 Card picker, pick one: the captions (card-picker.js option caption; the layout of the mode is in 90-ui-16.css) ====
+   The caption under each card (the Shop stat points): the row is as tall as the tallest caption (measured, card-picker.js). */
+.u3-pk__grid.has-cap { grid-auto-rows: calc(var(--pk-tile) * var(--card-ratio) + var(--pk-cap-h)); }
+.u3-pk-cell { list-style: none; width: var(--pk-tile); min-width: var(--u3-none); display: grid; grid-template-rows: calc(var(--pk-tile) * var(--card-ratio)) minmax(0, 1fr); }
+.u3-pk-cell > .u3-pk-card { width: 100%; height: 100%; }
+.u3-pk-cap { display: block; box-sizing: border-box; width: var(--pk-tile); padding-top: var(--sp-1); text-align: center; overflow-wrap: anywhere;
+  font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-secondary); }
+.u3-pk-cap__i { white-space: nowrap; }
+.u3-pk-capprobe { position: absolute; top: var(--u3-none); left: var(--u3-none); visibility: hidden; pointer-events: none; }
+/* the keyboard is open (the member searches by name): the captions give way with the slot row, pager and footer of ui3.css; the reserve returns when it closes */
+body[data-kb] .u3-pk__grid.has-cap { grid-auto-rows: calc(var(--pk-tile) * var(--card-ratio)); }
+body[data-kb] .u3-pk-cell > .u3-pk-cap { display: none; }

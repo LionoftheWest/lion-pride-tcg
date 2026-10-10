@@ -128,7 +128,7 @@ function meHTML(rows, d) {
   const to = nx.above
     ? `<div class="u3-lb-toline"><div class="u3-lb-to"><span>To #${nx.i}</span><b>${num(nx.gap)}</b></div>${progressLinear({ value: nx.pct / 100, label: `To #${nx.i}` })}</div>`
     : nx.i === 0 ? '<div class="u3-lb-to"><span>You lead this board</span></div>' : '';
-  const tiles = METRICS.map((x) => `<div class="u3-lb-st${x.key === m.key ? ' is-on' : ''}"><span class="u3-lb-st__top"><b>${me ? val(me, x, d) : '—'}</b>`
+  const tiles = METRICS.map((x) => `<div class="u3-lb-st${x.key === m.key ? ' is-on' : ''}"><span class="u3-lb-st__top"><b class="u3-lb-st__v">${me ? val(me, x, d).replace('/', '/<wbr>') : '—'}</b>`
     + `<span>${ranks[x.key] >= 0 ? `#${ranks[x.key] + 1}` : '—'}</span></span><span class="u3-lb-st__k">${icon(x.icon)}<span>${esc(x.label)}</span></span></div>`).join('');
   return `<section class="u3-lb-me" aria-label="Your rank"><div class="u3-lb-me__id">${av(d.me, name, me?.frame, 'u3-lb-av u3-lb-av--me')}`
     + `<div class="u3-lb-me__who"><h3>${esc(name)}</h3><span>${esc(m.label)}</span></div><b class="u3-lb-me__rank">${nx.i >= 0 ? `#${nx.i + 1}` : '—'}</b></div>${to}`
@@ -142,7 +142,7 @@ function huntTileHTML(d) {
   const leaders = live.leaders || [];
   const meIdx = leaders.findIndex((x) => String(x.player_id) === d.me);
   const lrow = (x, i) => `<li class="u3-lb-live${String(x.player_id) === d.me ? ' is-me' : ''}"><span class="u3-lb-live__i">${i + 1}</span>`
-    + `<b>${deps.nameBadge(x.player_id, x.username, true)}</b><span class="u3-lb-live__d">${num(x.damage)}</span></li>`;
+    + `<b class="u3-lb-live__nm">${deps.nameBadge(x.player_id, x.username, true)}</b><span class="u3-lb-live__d">${num(x.damage)}</span></li>`;
   const rows = leaders.slice(0, 4).map(lrow).join('') + (meIdx >= 4 ? lrow(leaders[meIdx], meIdx) : '');
   return `<section class="u3-lb-hunt">${head}<p class="u3-lb-hunt__boss"><b>${esc(live.name)}</b><span class="u3-lb-livechip">LIVE</span></p>`
     + `<span class="u3-label">Top damage</span><ol class="u3-lb-lives">${rows || '<li class="u3-lb-hunt__none">No attacks yet.</li>'}</ol></section>`;
