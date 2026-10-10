@@ -13,6 +13,7 @@ import { mountMemberPicker, memberLists } from './ui3/member-picker.js';
 import { button as button3, dot as dot3, sheet as sheet3, toast as toast3, counter as counter3 } from './ui3/components.js';
 import { pendingLists, waiting, sectionsHTML, headHTML, viewHTML } from './ui3/pending.js';
 import { paintBell } from './ui3/bell.js';
+import { openTradeWindow, closeTradeWindow, refreshTradeWindow } from './ui3/trade-window.js';
 import { effectState, effectScaled, effectReadyIn, EFFECT_KIND, effectError, playCard, reloadEffects, fmtDur, testCard, clearTests, nameBadge, breakable } from './effects-ui.js';
 
 const ctx = () => v2ctx();
@@ -43,7 +44,7 @@ let noteTab = 'all';
 let noteItems = [];
 let noteHunt = null;
 let noteGifts = []; // gifts waiting to be redeemed (gift_claims.sql)
-let bell3 = { page: 1, giftError: false, expanded: new Set(), pages: 1 }; // the v3 window (UI-24, flag ui_v3): page, claim error, opened rows
+let bell3 = { giftError: false, expanded: new Set() }; // the v3 window (UI-24, flag ui_v3): claim error, opened rows
 const isV3 = () => document.body.classList.contains('ui-v3');
 let pingPrefs = null; // the Settings tab: which bot posts may ping me (null = not loaded)
 const PING_ROWS = [['plays', 'Card plays on me'], ['trades', 'Trades & gifts'], ['raid', 'Raid boss'], ['packs', 'Pack reminders']];
@@ -55,7 +56,7 @@ export async function openNotifsV2() {
   if (!box.classList.contains('hidden')) { closeNotifsV2(); return; }
   box.classList.remove('hidden');
   if (isV3()) {
-    bell3 = { page: 1, giftError: false, expanded: new Set(), pages: 1 };
+    bell3 = { giftError: false, expanded: new Set() };
     el('bellBtn')?.classList.add('is-open');
     el('bellBtn')?.setAttribute('aria-expanded', 'true');
     window.addEventListener('resize', bellResize);
@@ -148,30 +149,24 @@ function paintBellV3() {
   const { el, apiPost } = ctx();
   const box = el('v2Notifs');
   if (!box) return;
-  const r = paintBell(box, {
+  paintBell(box, {
     tab: noteTab, items: noteItems, gifts: noteGifts, hunt: noteHunt, unread: noteItems.filter((x) => !x.read).length,
-    giftError: bell3.giftError, page: bell3.page, expanded: bell3.expanded, size: document.body.dataset.size || '', now: Date.now(),
+    giftError: bell3.giftError, expanded: bell3.expanded, size: document.body.dataset.size || '', now: Date.now(),
     kindOf: noteKind, strip: stripEmoji, ago: ctx().ago, thumb, coin: COIN, rarityLabel: (k) => ctx().RARITY_LABEL[k] || k,
     settings: noteTab === 'settings' ? settingsHTML() : null, focus: bell3.focus ?? null,
   });
   bell3.focus = null;
-  bell3.pages = r.pages;
-  if (r.page) bell3.page = r.page;
   box.querySelector('[data-close]')?.addEventListener('click', closeNotifsV2);
   box.querySelector('[data-read]')?.addEventListener('click', async () => {
     try { await apiPost('/api/notifications/read', {}); } catch { /* keep */ }
     noteItems = noteItems.map((x) => ({ ...x, read: true })); ctx().updateNotifBadge(noteGifts.length); paintNotifs();
   });
   box.querySelectorAll('.u3-bell__tabs [data-t]').forEach((b) => b.addEventListener('click', () => {
-    noteTab = b.dataset.t; bell3.page = 1; paintNotifs(); if (noteTab === 'settings' && !pingPrefs) loadPingPrefs();
+    noteTab = b.dataset.t; paintNotifs(); if (noteTab === 'settings' && !pingPrefs) loadPingPrefs();
   }));
   box.querySelector('.ps-list')?.addEventListener('change', savePingPref);
   box.querySelectorAll('[data-claim]').forEach((b) => b.addEventListener('click', () => redeem(b, [Number(b.dataset.claim)])));
   box.querySelector('[data-claimall]')?.addEventListener('click', (e) => redeem(e.currentTarget, noteGifts.map((g) => g.id)));
-  box.querySelectorAll('[data-page]').forEach((b) => b.addEventListener('click', () => {
-    const p = Math.min(bell3.pages, Math.max(1, bell3.page + (b.dataset.page === 'next' ? 1 : -1)));
-    if (p !== bell3.page) { bell3.page = p; paintNotifs(); }
-  }));
   // 10.4: a tap on a row shows its full text in place (and a second tap shortens it again)
   box.querySelectorAll('.u3-note__main').forEach((b) => b.addEventListener('click', () => {
     const id = Number(b.closest('[data-note]').dataset.note);
@@ -570,7 +565,7 @@ function wireFind(after) {
 // the magnifier opens the profile; Pending opens the builder, where the offers are (until UI-25 builds Pending).
 const V3 = () => document.body.classList.contains('ui-v3');
 let mpV3 = null, partnersV3 = null;
-function dropPickerV3() { mpV3?.destroy(); mpV3 = null; dropPendingV3(); }
+function dropPickerV3() { closeTradeWindow(); mpV3?.destroy(); mpV3 = null; dropPendingV3(); }
 async function loadPartnersV3() {
   try { partnersV3 = (await ctx().api('/api/trade/partners')).partners || []; } catch { partnersV3 = partnersV3 || []; }
 }
@@ -587,6 +582,42 @@ function sectionsV3() {
     ...(few ? [{ key: 'all', label: 'All members', members: l.all, form: 'list', paged: true }] : []),
   ];
 }
+// ---- UI-63 Trade window (D-35, D-64; approved frames in the design repo UI-63/approved) ----
+// The window (src/ui3/trade-window.js) owns the layout and the rules; this part gives it the cards and does the calls
+// (the same server routes as the v2 builder: /api/trade/offer two-step, /api/trade/gift, /api/gift).
+function openTradeWindowV3() {
+  const to = tr.to;
+  if (!to) return;
+  const me = ctx().user();
+  const b = () => base();
+  openTradeWindow({
+    me: { id: String(me?.id || ''), name: me?.name || me?.username || 'You' },
+    to: { id: String(to.id), name: to.name },
+    mine: () => (ctx().cache.collection?.cards || []).map((c) => withBase({ ...c, owned: true, locked: false }, b())),
+    theirs: () => (tr.theirs[to.id] || []).map((c) => withBase(c, b())),
+    packs: () => Number(ctx().packs()) || 0,
+    twoStep: !!ctx().trade2?.(),
+    rarities: Object.keys(ctx().RARITY_LABEL || {}),
+    rarityLabel: (k) => ctx().RARITY_LABEL?.[k] || k,
+    avatar: pdAvatar,
+    send: async (act, plan) => {
+      const r = await ctx().apiPost(plan.path, plan.body);
+      if (r?.ok) {
+        delete tr.theirs[to.id];
+        await Promise.all([ctx().refreshOwned(), ctx().refreshPacks?.()]);
+        await refreshOffers();
+        await loadTheirs(to.id);
+      }
+      return r;
+    },
+    onDone: (act) => {
+      infoToastV3(act === 'offer' ? `Offer sent to ${to.name}` : act === 'pack' ? `Pack sent to ${to.name}` : `Gift sent to ${to.name}`);
+      if (mpV3) paintPendingV3();
+    },
+    onError: () => errorToastV3(),
+  });
+}
+
 function paintMemberPickerV3() {
   const main = ctx().el('main');
   if (mpV3 && main.querySelector('.u3-trades #u3TradesPick')) { mpV3.update({ sections: sectionsV3() }); paintPendingV3(); return; }
@@ -599,12 +630,13 @@ function paintMemberPickerV3() {
     lead: explainBtn('trades'),
     trail: button3({ label: 'Pending', data: { pending: '1' } }),
     search: async (q) => ((await ctx().api(`/api/players?q=${encodeURIComponent(q)}`)).players || []).map((p) => ({ id: String(p.id), name: p.username })),
+    // UI-63: a tap on a member opens the Trade window over the Member picker; its close button is the way back to the picker
     onPick: async (m) => {
       closePendingUi();
       tr.members = [m, ...tr.members.filter((x) => x.id !== m.id)];
-      Object.assign(tr, { to: m, get: null, give: null, msg: '', v3pick: false });
+      Object.assign(tr, { to: m, get: null, give: null, msg: '' });
       await loadTheirs(m.id);
-      paintTrade();
+      openTradeWindowV3();
     },
     onProfile: (m) => openMember(m.id),
   });
@@ -740,6 +772,12 @@ function undoToastV3(text, onUndo) {
   clearTimeout(pd.toastT);
   pd.toastT = setTimeout(() => host.remove(), UNDO_MS);
 }
+function infoToastV3(text) {
+  document.getElementById('u3PdToast')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div id="u3PdToast" class="u3-pd-toast">${toast3({ kind: 'success', text })}</div>`);
+  clearTimeout(pd.toastT);
+  pd.toastT = setTimeout(() => document.getElementById('u3PdToast')?.remove(), 4000);
+}
 function errorToastV3() {
   document.getElementById('u3PdToast')?.remove();
   document.body.insertAdjacentHTML('beforeend', `<div id="u3PdToast" class="u3-pd-toast">${toast3({ kind: 'error', text: 'Something went wrong. Try again.' })}</div>`);
@@ -797,7 +835,14 @@ function onPdClick(e) {
 }
 
 function paintTrade() {
-  if (V3() && tr.tab === 'trades' && tr.v3pick && !tr.respond) { paintMemberPickerV3(); return; }
+  if (V3() && tr.tab === 'trades' && !tr.respond) {
+    // the Member picker is the Trades tab; a profile's Trade button (tr.v3pick false) opens the Trade window over it
+    const fromProfile = !tr.v3pick && !!tr.to;
+    tr.v3pick = true;
+    paintMemberPickerV3();
+    if (fromProfile) openTradeWindowV3(); else refreshTradeWindow();
+    return;
+  }
   dropPickerV3();
   const { el } = ctx();
   const focus = takeFocus();
