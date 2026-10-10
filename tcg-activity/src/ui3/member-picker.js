@@ -144,8 +144,20 @@ export function mountMemberPicker(host, opts) {
         const free = body.clientHeight - (body.scrollHeight - paged.getBoundingClientRect().height);
         const rows = Math.max(1, Math.floor((free + gap) / (h + gap)));
         st.per = cols * rows;
+        st.grow = true; st.grew = false;
         if (st.per < tiles.length) { paint(); return; }
       }
+    } else if (paged && st.per && st.grow) {
+      // A page never ends with room for one more whole row (3.4): the first measure can be a row short when the
+      // engine sizes the rows of the measuring pass differently (webkit on Linux, 1280x480: 2 rows and a 38% band).
+      // One more row while it fits; if that row does not fit, back one row and stop.
+      const all = sectionsList().at(-1)?.members.length || 0;
+      const cols = getComputedStyle(paged).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+      const gap = parseFloat(getComputedStyle(paged).rowGap) || 0;
+      const h = paged.firstElementChild?.getBoundingClientRect().height || 0;
+      const room = body.getBoundingClientRect().bottom - (parseFloat(getComputedStyle(body).paddingBottom) || 0) - paged.getBoundingClientRect().bottom;
+      if (over() && st.grew) { st.per -= cols; st.grow = false; paint(); return; }
+      if (h && st.per < all && !over() && room >= h + gap) { st.per += cols; st.grew = true; paint(); return; }
     }
     if (over() && st.fit < FITS.length - 1) { st.fit += 1; st.per = 0; paint(); return; }
     if (over()) {
