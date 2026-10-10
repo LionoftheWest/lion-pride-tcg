@@ -16,6 +16,8 @@ import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import * as pf3 from './ui3/profile.js';
+import { ascendFailText, SAVE_FAIL_TEXT } from './ui3/viewer.js';
+import { inlineMessage } from './ui3/components.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -766,19 +768,43 @@ function wirePoints(c, sp, box) {
       r = save ? await ctx.apiPost('/api/stats/spend', { cardId: c.id, add: pend.add })
         : await ctx.apiPost('/api/stats/reset', { cardId: c.id });
     } catch { r = null; }
-    if (!r?.ok) { (save || reset).disabled = false; (save || reset).textContent = r?.error === 'reset_used' ? 'Next week' : 'Try again'; return; }
+    if (!r?.ok) {
+      (save || reset).disabled = false; (save || reset).textContent = r?.error === 'reset_used' ? 'Next week' : 'Try again';
+      if (document.body.classList.contains('ui-v3') && r?.error !== 'reset_used') showFail(box.querySelector('#pPts'), 'ptsFail', SAVE_FAIL_TEXT);   // UI-10 S2 (D-80 item 13)
+      return;
+    }
     pend.add = {}; pend.open = false;
     await ctx.refreshOwned();
     renderCollectionV2();
   });
 }
 
+// v3 (UI-10): a failed action shows an inline error message (7.3) at the end of its block; the next try or a repaint removes it.
+function showFail(host, id, text) {
+  if (!host) return;
+  host.querySelector(`#${id}`)?.remove();
+  const t = document.createElement('div');
+  t.id = id; t.className = 'u3-fail'; t.innerHTML = inlineMessage({ kind: 'error', text });
+  host.append(t);
+  fitPanel(host.closest('#colPanel'));   // the optional lines (lore, tags) make room for the message, as for the stat rows
+}
+
 async function ascend(c) {
   const btn = ctx.el('pAscend');
+  const v3 = document.body.classList.contains('ui-v3');
+  const label = `Ascend to ★${(c.ascension || 0) + 1} · uses ${c.next_cost}`;
+  ctx.el('pAscFail')?.remove();
   if (btn) { btn.disabled = true; btn.textContent = 'Ascending…'; }
   let r = null;
   try { r = await ctx.apiPost('/api/ascend', { cardId: c.id }); } catch { r = null; }
-  if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } if (r?.error && ASCEND_ERROR[r.error]) toast(ASCEND_ERROR[r.error]); return; }
+  if (!r?.ok) {
+    if (v3) {   // UI-10 E1 (D-80 item 14): the button keeps its label; the error and the reason are an inline message under the actions
+      if (btn) { btn.disabled = false; btn.textContent = label; }
+      showFail(btn?.closest('.p-actions')?.parentElement || ctx.el('colPanel'), 'pAscFail', ascendFailText(ASCEND_ERROR[r?.error]));
+      return;
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } if (r?.error && ASCEND_ERROR[r.error]) toast(ASCEND_ERROR[r.error]); return;
+  }
   const after = { ...c, ascension: r.ascension, quantity: r.quantity, power: r.power, next_cost: r.next_cost,
     can_ascend: r.next_cost != null && r.quantity >= 1 + r.next_cost };
   ctx.celebrateAscend(c, after, !!ctx.cache.collection?.stats?.on && statKeys(c).length > 0);
