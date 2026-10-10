@@ -74,7 +74,8 @@ async function runCell([s, screen, variant], ref = {}) {
         const spec = SCREENS[screen];
         const t0 = Date.now();
         const ctx = ref.ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: touch, isMobile: touch && BROWSER === 'chromium', deviceScaleFactor: 1, timezoneId: 'America/Denver', locale: 'en-US' });
-        await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
+        if (spec.tfx) await ctx.clock.install({ time: new Date(FIX.recordedAt) });   // UI-26: the animation phases are held with the page clock (the tfx step of screens.mjs)
+        else await ctx.clock.setSystemTime(new Date(FIX.recordedAt));
         const cookies = [];
         if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? (spec.battle === 'mix' ? 'battle-mix' : 'battle') : spec.hunt, url: BASE });
         if (spec.trades) cookies.push({ name: 'ci_trades', value: spec.trades, url: BASE });
