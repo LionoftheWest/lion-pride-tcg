@@ -30,7 +30,7 @@
       if (kid) win = kid;
     }
   }
-  if (!win) win = document.getElementById('main');
+  if (!win) win = document.getElementById('main') || document.body;   // a standalone page (UI-57 legal) has no #main
   document.querySelectorAll('[data-audit-win]').forEach((x) => x.removeAttribute('data-audit-win')); win.setAttribute('data-audit-win', '1');
   const wr = win.getBoundingClientRect();
   out.window = { sel: path(win), rect: [wr.left, wr.top, wr.width, wr.height].map(Math.round) };
@@ -69,7 +69,8 @@
     const cx = clampX(r.left + r.width / 2), cy = clampY(r.top + r.height / 2);
     const hit = document.elementFromPoint(cx, cy);
     // the walkthrough card (UI-37) lies over the page by design: checks/walkthrough.js judges it (it must not cover the shell or its control)
-    if (hit && !hit.closest('#tutLayer') && !e.contains(hit) && !hit.contains(e) && !hit.closest(ISEL)?.contains(e) && !(winRoot && winRoot !== win.ownerDocument && !winRoot.contains(e) && winRoot.contains(hit))) {
+    // a popover under its field (data-popover: the member suggest list, UI-29, z-sheet 4.10) lies on the content below it by design
+    if (hit && !hit.closest('#tutLayer') && !e.contains(hit) && !hit.contains(e) && !hit.closest(ISEL)?.contains(e) && !hit.closest('[data-popover]') && !(winRoot && winRoot !== win.ownerDocument && !winRoot.contains(e) && winRoot.contains(hit))) {
       // ignore an element hidden under its own scroll container edge: a named scroll area (design.md 3.3, D-07:
       // data-scroll-area) has its rows scrolled out of view on purpose; their center lies outside the area
       const sa = e.closest('[data-scroll-area]');
