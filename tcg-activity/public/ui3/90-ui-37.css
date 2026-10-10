@@ -1,0 +1,33 @@
+/* ==== UI-37 First-time walkthrough, v3 (src/ui3/walkthrough.js, src/ui-v2-tutorial.js; design repo UI-37/approved, review-1) ====
+   A dim with a gold-ringed hole over the real control, and one card with the step label ("STEP N OF M"), the title, the text,
+   the Finish chip, Skip and Next. The layer keeps the id #tutLayer (the v2 code and the checks find it) and sits at z-system.
+   The place of the card is set by walkthrough.js placeCard: never over the ring, never in the Discord corner zone (2.3).
+   The layer lets clicks through to the real control (the card does not). Only body.ui-v3 paints this markup. */
+body.ui-v3 #tutLayer.u3-wt { z-index: var(--z-system); }
+.u3-wt__spot { position: fixed; border-radius: var(--rad-lg); pointer-events: none;
+  box-shadow: 0 0 0 100vmax var(--scrim), 0 0 0 var(--bw-2) var(--gold), 0 0 var(--sp-5) var(--sp-1) var(--gold-a50);
+  transition: left var(--dur-base) var(--ease-out), top var(--dur-base) var(--ease-out), width var(--dur-base) var(--ease-out), height var(--dur-base) var(--ease-out); }
+.u3-wt__card { position: fixed; box-sizing: border-box; pointer-events: auto; width: calc(var(--dialog-w) * .72);
+  max-width: calc(100vw - var(--sp-3) * 2); display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-4);
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3);
+  --text-muted: var(--u3-text-muted); animation: kf-pop var(--dur-base) var(--ease-out); }
+.u3-wt__top { align-self: stretch; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-wt__step { font-family: var(--font-num); font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label); letter-spacing: var(--ls-label); color: var(--gold); }
+.u3-wt__dots { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.u3-wt__dot { display: block; width: var(--sp-1-5); height: var(--sp-1-5); border-radius: var(--rad-pill); background: var(--surface-3); }
+.u3-wt__dot.is-done { background: var(--gold-a50); }
+.u3-wt__dot.is-on { width: var(--sp-4); background: var(--gold); }
+.u3-wt__title { font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); overflow-wrap: break-word; }
+.u3-wt__text { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); overflow-wrap: break-word; }
+.u3-wt__reward { text-transform: none; letter-spacing: normal; color: var(--gold); background: var(--gold-a10); border-color: var(--gold-a50); font-size: var(--fs-small); }
+.u3-wt__act { align-self: stretch; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-1); }
+.u3-wt__skip { color: var(--text-secondary); }
+@media (hover: hover) and (pointer: fine) { .u3-wt__skip:hover:not(:disabled) { color: var(--text-primary); background: var(--surface-2); } }
+.u3-wt__arrow { position: absolute; left: var(--wt-arrow, 50%); width: var(--sp-4); height: var(--sp-4); margin-left: calc(var(--sp-2) * -1);
+  background: var(--surface-1); border-right: var(--bw-1) solid var(--border-strong); border-bottom: var(--bw-1) solid var(--border-strong); transform: rotate(45deg); }
+.u3-wt__card[data-side="above"] .u3-wt__arrow { bottom: calc(var(--sp-2) * -1); }
+.u3-wt__card[data-side="below"] .u3-wt__arrow { top: calc(var(--sp-2) * -1); transform: rotate(225deg); }
+.u3-wt__card[data-side="left"] .u3-wt__arrow, .u3-wt__card[data-side="right"] .u3-wt__arrow { left: auto; margin-left: 0; top: var(--wt-arrow, 50%); margin-top: calc(var(--sp-2) * -1); }
+.u3-wt__card[data-side="left"] .u3-wt__arrow { right: calc(var(--sp-2) * -1); transform: rotate(-45deg); }
+.u3-wt__card[data-side="right"] .u3-wt__arrow { left: calc(var(--sp-2) * -1); transform: rotate(135deg); }
+body.ui-v3[data-size="compact-land"] .u3-wt__card { padding: var(--sp-3) var(--sp-4); gap: var(--sp-1); }

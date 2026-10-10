@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 24
       - name: Test the gate scripts
-        run: node --test ci/gates/gates.test.mjs ci/ui-check/evaluate.test.mjs ci/ui-check/fixture-lib.test.mjs
+        run: node --test ci/gates/gates.test.mjs ci/ui-check/evaluate.test.mjs ci/ui-check/fixture-lib.test.mjs ci/gates/source-bytes.test.mjs
       - name: G1 Register
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
