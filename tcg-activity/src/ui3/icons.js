@@ -6,7 +6,7 @@ import {
   Minus, Info, CircleCheck, CircleAlert, TriangleAlert, Timer, SlidersHorizontal, Landmark, PartyPopper, Layers, Award,
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
-  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, Eye, DoorOpen, Gem, BellOff, ChevronUp, Tag, Gavel, ArrowLeft,
+  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, Eye, DoorOpen, Gem, BellOff, ChevronUp, Tag, Gavel, ArrowLeft, Sparkles, Drama,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -38,6 +38,7 @@ export const ICONS = {
   'tag': Tag, 'gavel': Gavel,
   // List a card (UI-31): the back button
   'arrow-left': ArrowLeft,
+  'sparkles': Sparkles, 'drama': Drama,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

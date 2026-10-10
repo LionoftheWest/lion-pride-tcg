@@ -17,6 +17,8 @@ export const REPORT_ONLY_SIZES = ['667x375', '932x430', '915x412', '1180x820', '
 export const EXPANDED = '1990x830';   // the size that "missing on another class" compares with (12.6, P1)
 
 const COMM = '#commTabs';
+const WALK_START = [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1], ['js', '[data-hp-replay]'], ['wait', 2]];
+const WALK_NEXT = (n) => Array.from({ length: n }, () => [['js', '[data-wt="next"]'], ['wait', 1]]).flat();
 export const SCREENS = {
   // Home (UI-03): a resting hunt, 9 pulls and 5 members in voice (the state of the approved frames, UI-03/approved); home-live: the recorded live hunt.
   'home':                { id: 'UI-03', safe: true, long: true, home: 'busy', notOn: ['tiny'], steps: [] },
@@ -65,8 +67,14 @@ export const SCREENS = {
   'hall-offer-wanted':   { id: 'UI-31', under: 'UI-30', long: true, safe: true, hall: 'offer', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__grid [data-idx="2"]'], ['wait', 2]], input: '#u3TradeWin .u3-search__input' },
   'hall-offer-fortrade': { id: 'UI-31', under: 'UI-30', long: true, safe: true, hall: 'offer', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="fortrade"]'], ['wait', 1], ['js', '.u3-hl__grid [data-idx="2"]'], ['wait', 2]], input: '#u3TradeWin .u3-search__input' },
   'hall-auctions':       { id: 'UI-32', long: true, hall: 'many', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="auctions"]'], ['wait', 1.5]] },
-  'boons':               { id: 'UI-27', long: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
-  'boons-pick':          { id: 'UI-28', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
+  'boons':               { id: 'UI-27', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
+  // v3 (UI-27): the Boons tab with my play history (Frequent and Recent), the limit states, the On you sheet, and the Card picker for a member (a card picked).
+  'boons-hist':          { id: 'UI-27', notOn: ['tiny'], long: true, safe: true, fx: 'hist', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
+  'boons-day':           { id: 'UI-27', notOn: ['tiny'], long: true, fx: 'day', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
+  'boons-member':        { id: 'UI-27', notOn: ['tiny'], long: true, fx: 'member', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
+  'boons-onyou':         { id: 'UI-27', notOn: ['tiny'], long: true, safe: true, fx: 'hist', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.u3-bn-onyou', [['wait', 0]]], ['wait', 1.5]] },
+  'boons-picker':        { id: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1]], input: '#u3Picker .u3-search__input' },
+  'boons-pick':          { id: 'UI-28', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
   'hunt-squad':          { id: 'UI-17', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   // v3: the Card picker (UI-64) in Hunt mode over the Hunt view (Auto-pick, locked cards, the short-squad dialog).
   // The Hunt with no live boss and with today's squad down (UI-19): states derived in serve.mjs from the recorded calls.
@@ -169,6 +177,14 @@ export const SCREENS = {
   'help-item5':         { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
   'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
+  // The first-time walkthrough (UI-37): FAQ > Replay tutorial starts it over Home, then Next goes on. walk: true runs checks/walkthrough.js
+  // (the check skips #tutLayer everywhere else): the card never covers the spotlighted control or the corner zone, Skip and Next are 44 px.
+  // gifts: true = a gift waits in the bell (cookie ci_gifts, serve.mjs): step 1 shows; without it step 1 is skipped ("STEP 1 OF 7").
+  // The page under the dim belongs to Home ('under'). tiny has no shell (D-06).
+  'walk-1':              { id: 'UI-37', safe: true, under: 'UI-03', walk: true, gifts: true, notOn: ['tiny'], steps: [...WALK_START, ['wait', 1]] },
+  'walk-2':              { id: 'UI-37', safe: true, under: 'UI-03', walk: true, notOn: ['tiny'], steps: [...WALK_START, ['wait', 1]] },
+  'walk-5':              { id: 'UI-37', safe: true, under: 'UI-03', walk: true, notOn: ['tiny'], steps: [...WALK_START, ...WALK_NEXT(3)] },
+  'walk-8':              { id: 'UI-37', safe: true, under: 'UI-03', walk: true, notOn: ['tiny'], steps: [...WALK_START, ...WALK_NEXT(6)] },
   // The Open window (UI-33) opens over Home: a defect outside the window belongs to Home ('under'). tiny has no dock (D-06).
   'open-chooser':        { id: 'UI-33', safe: true, under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen']] },
   // The single pack reveal (UI-34): the open answer comes from serve.mjs (openAnswer, 1 pack with a Full Art).
@@ -189,6 +205,7 @@ export const SCREENS = {
 // The shell (top bar, dock, sub-tabs) is on every screen: a defect there belongs to the shell IDs.
 export function ownerOf(screen, where) {
   // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
+  if (/#tutLayer[a-z]*\b|\.u3-wt\b|\.u3-wt[-_]/.test(where)) return 'UI-37';
   if (/\.u3-avfx\b|\.u3-avfx[-_]/.test(where)) return 'UI-55';   // the avatar effect overlay (UI-55)
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
@@ -197,6 +214,9 @@ export function ownerOf(screen, where) {
   if (/-picker-detail$/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b|\.vr-|#v-[a-z-]+/.test(where)) return 'UI-64';
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';
   if (/\.u3-hm-board\b|\.u3-hm-br[a-z]*\b/.test(where)) return 'UI-04';   // the Top 3 board in the Home hero (D-58)   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
+  if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
+  // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).
+  if (screen === 'boons-picker' && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/\.u3-ls\b|\.u3-ls[-_]|#lsSlots|#u3LsToast/.test(where)) return 'UI-31';   // List a card (the sheet, its slots, the Undo toast)
   if (/#u3Wish[a-z]*\b|\.u3-wl\b|\.u3-wl[-_]|#wlHandle|\.u3-pf-wishbar/.test(where)) return 'UI-16';
@@ -205,6 +225,7 @@ export function ownerOf(screen, where) {
   if (/#u3BossWin[a-z]*\b|\.u3-bw\b|\.u3-bw[-_]/.test(where)) return 'UI-20';
   if (/#(v2Dailies|u3DlToast)[a-z]*\b|\.u3-dl\b|\.u3-dl[-_]/.test(where)) return 'UI-36';
   if (/\.u3-mp-sug\b|\.u3-mp-sug[-_]/.test(where)) return 'UI-29';   // the member suggest list under the Member picker search
+  if (/\.u3-bn-|#u3BoonsSheet|\.u3-boons\b/.test(where)) return 'UI-27';   // the Boons tab: the panel, the lists, the limit line (the Member picker inside stays UI-65)
   if (/\.u3-mp\b|\.u3-mp[-_]/.test(where)) return 'UI-65';
   if (/\.u3-pd\b|\.u3-pd[-_]|#u3Pd[a-z]*\b|\.u3-trades\b|\.u3-trades[-_]/.test(where)) return 'UI-25';   // Pending, its sheet, the Offer view, the Trades layout
   if (/#v2Notifs[a-z]*\b|\.u3-bell|\.u3-note\b|\.u3-note__|\.u3-gift\b|\.u3-gift__/.test(where)) return 'UI-24';

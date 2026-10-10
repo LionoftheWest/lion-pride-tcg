@@ -8,6 +8,7 @@
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_dungeon=fight|fight2   a Dungeon fight with 5 or 2 monsters (UI-47); ci_dungeon=over the run over (UI-50)
+//   ci_fx=hist|day|member   the Boons tab (UI-27): my play history, the day limit used up, a member at the pair cap
 //   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
 //   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
 //   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
@@ -193,6 +194,9 @@ function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
 }
+// UI-37: a gift waits in the bell (cookie ci_gifts=1), so walkthrough step 1 shows; the recorded answer has none.
+const derivedGifts = (body) => ({ ...body, gifts: [{ id: 1, kind: 'packs', title: 'New Player Bonus', amount: 10 }] });
+DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_gifts === '1' && body && typeof body === 'object', make: (body) => derivedGifts(body) });
 DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
 // UI-64 (Shop stat reset picker, pick one): the recorded collection has 3 cards with stat points; ci_stats=many gives the
 // first 30 cards points (a member who spent points on many cards), so the picker shows a full page.
@@ -213,6 +217,24 @@ DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_notes ==
 const LOCKED = { ok: false, need: 8, attackers: 3, gifts_open: 2, gifts_total: 2 };
 DERIVED.push({ when: (p, c, body) => p === '/api/hunt' && c.ci_hunt === 'gate' && body?.hunt, make: (body) => ({ ...body, gate: { ...LOCKED } }) });
 DERIVED.push({ when: (p, c, body) => (p === '/api/dungeon' || p === '/api/gauntlet') && c.ci_dungeon === 'gate' && body?.ok, make: (body) => ({ ...body, closed: false, gate: { ...LOCKED } }) });
+// UI-27 (Boons): cookie ci_fx. hist = I played cards on members before (Frequent and Recent in the Member picker; the recorded plays are other
+// members') ; day = all 10 plays of the day used; member = 3 plays on the first member (the pair cap). day and member include hist.
+const ME = '100000000000000001';
+function derivedFx(path, mode, body) {
+  if (!mode) return body;
+  if (path === '/api/effects/recent' && body?.plays) {
+    const ids = ['012', '012', '012', '163', '163', '011', '011', '110', '076', '161', '077', '032'];
+    const mine = ids.map((n, i) => ({ id: 9000 + i, from_id: ME, to_id: `100000000000000${n}`, from: 'Member A', to: `Member ${n}`, primitive: 'confetti', kind: 'boon', outcome: 'applied', at: new Date(Date.parse(FIX.recordedAt) - (i + 1) * 3600e3).toISOString() }));
+    return { ...body, plays: [...mine, ...body.plays] };
+  }
+  if (path === '/api/effects/me' && body?.enabled) {
+    if (mode === 'day') return { ...body, playsToday: 10, dayEnds: new Date(Date.parse(FIX.recordedAt) + (7 * 60 + 25) * 60e3).toISOString() };
+    if (mode === 'member') return { ...body, playsToday: 3, pairs: { '100000000000000012': 3 } };
+  }
+  return body;
+}
+DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/recent' && body?.plays, make: (body, c) => derivedFx('/api/effects/recent', c.ci_fx, body) });
+DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/me' && body?.enabled, make: (body, c) => derivedFx('/api/effects/me', c.ci_fx, body) });
 // UI-55: avatar effects (cookie ci_avfx=on): the badge list holds the mustache for the signed-in member, the five members of Home
 // (pulls and voice) and every member of the recorded leaderboard, so every avatar of the three screens shows it.
 function derivedAvatarFx(body) {
