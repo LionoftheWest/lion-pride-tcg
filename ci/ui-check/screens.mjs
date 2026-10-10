@@ -281,7 +281,7 @@ export async function runSteps(pg, steps) {
     else if (st[0] === 'type') {   // the text goes into a field with an input event (no focus: the v2 m-kb class would hide the dock; the keyboard variant focuses it later); then the suggest request and its answer
       try {
         await pg.waitForSelector(st[1], { state: 'attached', timeout: 8000 });
-        await pg.evaluate(([sel, text]) => { const e = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(e, text); e.dispatchEvent(new Event('input', { bubbles: true })); }, [st[1], st[2]]);
+        await pg.evaluate(([sel, text]) => { const e = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length); const set = Object.getOwnPropertyDescriptor(e instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value').set;   /* an input or a textarea (the Report box, UI-40) */ set.call(e, text); e.dispatchEvent(new Event('input', { bubbles: true })); }, [st[1], st[2]]);
         await sleep(0.8);
       } catch { miss.push(st[1]); }
       await settle(pg);
