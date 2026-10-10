@@ -12,7 +12,7 @@ export const STEPS = [
   { key: 'gifts', target: '#bellBtn', title: 'Claim your gifts', text: 'Your New Player Bonus and Launch Day gift wait in the bell. Redeem them to get your packs.' },
   { key: 'open', target: '#dockOpen', title: 'Open your first pack', text: 'Tap OPEN to reveal your cards. Each pack has 5 cards.' },
   // Design 22: on the member's own 5 cards in the reveal; without a pack, on Live pulls.
-  { key: 'rarity', target: ['#revealGrid', '#mrGrid', '#homePulls .pl-top', '#homePulls'], title: 'Rarities', text: 'Cards come in 5 rarities: Normal, Illustrated Rare, Secret Rare, Full Art and Gold. Gold is the rarest.' },
+  { key: 'rarity', target: ['#revealGrid', '#mrGrid', '#homePulls .pl-top', '#homePulls .u3-hm-feat', '#homePulls'], title: 'Rarities', text: 'Cards come in 5 rarities: Normal, Illustrated Rare, Secret Rare, Full Art and Gold. Gold is the rarest.' },
   { key: 'collection', target: "#dock .dk[data-view='collection']", title: 'Your collection', text: 'Tap Ascend on a card to spend spare copies on a star, up to 5. Each star gives 3 stat points.' },
   { key: 'hunt', target: "#dock .dk[data-view='battling']", title: 'The Raid Boss', text: 'A new boss every Thursday at 3 PM MT. Attack with up to 8 cards a day until Monday 5 PM MT. Hunters share the packs.' },
   { key: 'community', target: "#dock .dk[data-view='trading']", title: 'Boons and pranks', text: 'Boons help a friend. Pranks mess with them. Some cards block or bounce pranks back.' },
