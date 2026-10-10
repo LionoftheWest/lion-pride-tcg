@@ -75,6 +75,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? (spec.battle === 'mix' ? 'battle-mix' : 'battle') : spec.hunt, url: BASE });
         if (spec.trades) cookies.push({ name: 'ci_trades', value: spec.trades, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
+        if (spec.notes) cookies.push({ name: 'ci_notes', value: spec.notes, url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);
