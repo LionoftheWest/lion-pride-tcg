@@ -6,6 +6,7 @@ import { v2ctx, avatarHTML, titleHTML, ensureCatalog, paintCards, fitChildren, o
 import { thumb } from './thumb.js';
 import { explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
 import { playTradeFx, playGiftFx } from './ui-v2-tradefx.js';
+import { playTradeFxV3 } from './ui3/tradefx.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
 import { isPhone, isPort, isLand } from './mobile.js';
 import { renderHall, repaintHall, prefetchHall, hall as hallState } from './ui-v2-hall.js';
@@ -1023,9 +1024,11 @@ async function resolve(path, body, repaint = paintTrade) {
   try { r = await ctx().apiPost(path, body); } catch { r = null; }
   tr.msg = r?.ok ? '' : 'That did not work. Try again.';
   // The swap went through: play the trade while the collection and the offers reload.
-  const fx = r?.ok && offer?.offer && offer?.request
-    ? playTradeFx({ give: hit.mine ? offer.offer : offer.request, get: hit.mine ? offer.request : offer.offer, esc, label: (k) => ctx().RARITY_LABEL?.[k] || k, sfx: ctx().sfx })
+  const fxArgs = r?.ok && offer?.offer && offer?.request
+    ? { give: hit.mine ? offer.offer : offer.request, get: hit.mine ? offer.request : offer.offer, label: (k) => ctx().RARITY_LABEL?.[k] || k, sfx: ctx().sfx }
     : null;
+  // UI-26 (flag ui_v3): the approved animation; flag off keeps the v2 one.
+  const fx = !fxArgs ? null : V3() ? playTradeFxV3(fxArgs) : playTradeFx({ ...fxArgs, esc });
   if (r?.ok && accepting) await ctx().refreshOwned();
   tr.theirs = {};
   if (tr.to) await loadTheirs(tr.to.id);

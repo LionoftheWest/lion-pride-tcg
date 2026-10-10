@@ -83,6 +83,7 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('collection-detail', '#viewer > .viewer-stage'), 'UI-08');
   assert.equal(ownerOf('trades-pick', '#u3TradeWin > .u3-tw > ul.u3-tw__grid'), 'UI-63');   // the Trade window
   assert.equal(ownerOf('trades-pick', '.u3-tw__grid > li.u3-pk-card > button.u3-pk-card__pick'), 'UI-63');   // its tiles are Card picker classes
+  assert.equal(ownerOf('trades-fx-swap', '#u3Tfx > .u3-tfx__stage > .u3-tfx__card'), 'UI-26');   // the trade animation layer
   assert.equal(ownerOf('hunt-picker', '#u3Picker > .u3-pk-scrim > .u3-pk'), 'UI-64');   // the Card picker stays UI-64
   assert.equal(ownerOf('pack-multi', '.u3-mpacks > .u3-mrow > .u3-mpack'), 'UI-35');
   assert.equal(ownerOf('pack-multi-cards', '.mr-main > #mrGrid.mr-grid > .mr-card'), 'UI-35');

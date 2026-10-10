@@ -84,7 +84,11 @@ function derivedTrades(body) {
   return { incoming: [o(201, '100000000000000012', me, 'pending', card(1, 'normal'), card(2, 'normal')), o(202, '100000000000000012', me, 'pending', card(3, 'illustrated_rare'), card(4, 'illustrated_rare'))],
     outgoing: [...(body.outgoing || []), o(203, me, '100000000000000011', 'countered', card(5, 'normal'), card(6, 'normal')), o(204, me, '100000000000000163', 'pending', card(7, 'secret_rare'), null)] };
 }
-DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body) => derivedTrades(body) });
+// UI-26: an accepted offer leaves Pending (the server rule): POST /api/trade/accept (below) sets the cookie ci_accepted=<offer id>
+// and the derived list drops that offer, so the landed state shows Pending without it.
+DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few' && body, make: (body, c) => {
+  const t = derivedTrades(body); const gone = Number(c.ci_accepted);
+  return gone ? { ...t, incoming: t.incoming.filter((o) => o.id !== gone) } : t; } });
 DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_trades === 'few' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
 // UI-63: the cards of another member (the recorded answer has none): every second card of the recorded collection, with
 // 1 to 4 copies, in the shape of GET /api/player-cards.
@@ -189,6 +193,13 @@ createServer((req, res) => {
     let raw = '';
     req.on('data', (d) => { raw += d; });
     req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
+    return undefined;
+  }
+  if (req.method === 'POST' && p === '/api/trade/accept') {   // UI-26: nothing is written; the answer is ok and the cookie hides the offer
+    let raw = '';
+    req.on('data', (d) => { raw += d; });
+    req.on('end', () => { let id = 0; try { id = Number(JSON.parse(raw || '{}').offerId) || 0; } catch { /* no id */ }
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'set-cookie': `ci_accepted=${id}; Path=/` }); res.end('{"ok":true}'); });
     return undefined;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
