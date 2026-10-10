@@ -96,6 +96,7 @@ const OWN = [['all', 'All'], ['owned', 'Owned'], ['missing', 'Missing'], ['ascen
 const $ = (id) => document.getElementById(id);
 let deps = null;          // { col, cards, seasons, inSeason, rarities, elements, types, games, rarityLabel, elementName, elIcon, elementOf, flair, thumb, openCard, onSwipe, status, rerender }
 let items = [];           // the filtered cards of the grid
+let mo = null;            // the MutationObserver of body data-kb / data-size: the keyboard and the class change the box (as the Card picker)
 let ro = null;            // the ResizeObserver of the grid box (re-fit within 200 ms, G-010)
 let draft = null;         // the Filters panel choices before Confirm
 
@@ -174,10 +175,13 @@ function wire(main) {
     const b = e.target.closest('[data-page]');
     if (b && !b.disabled) turn(b.dataset.page === 'next' ? 1 : -1);
   });
-  ro?.disconnect();
+  ro?.disconnect(); mo?.disconnect();
   let rt = null;
-  ro = new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { if (document.body.contains(grid)) paintGrid({ keepFirst: true }); else ro?.disconnect(); }, 100); });
+  const refit = () => { clearTimeout(rt); rt = setTimeout(() => { if (document.body.contains(grid)) paintGrid({ keepFirst: true }); else { ro?.disconnect(); mo?.disconnect(); } }, 100); };
+  ro = new ResizeObserver(refit);
   ro.observe($('colBox'));
+  mo = new MutationObserver(refit);
+  mo.observe(document.body, { attributes: true, attributeFilter: ['data-kb', 'data-size', 'data-input', 'data-short'] });
 }
 
 function turn(dir) {
@@ -224,8 +228,9 @@ function paintGrid({ keepFirst = false } = {}) {
   const pg = $('colPager');
   pg.innerHTML = pager({ page: page + 1, pages });
   // the place stays (3.3: nothing moves). A box with no row for a tile (the keyboard is open, or a tiny window) keeps
-  // the pager only when the box is as high as the pager: else it lies under the dock (G3 4.10).
-  const noRoom = !fit.rows && $('colBox').clientHeight < pg.offsetHeight;
+  // the pager only when the box holds the pager and the gap above it: else it lies under the dock (G3 4.10).
+  const boxEl = $('colBox');
+  const noRoom = !fit.rows && boxEl.clientHeight < pg.offsetHeight + (parseFloat(getComputedStyle(boxEl).rowGap) || 0);
   pg.classList.toggle('is-hidden', !items.length || noRoom);
   const sub = $('colSetSub');
   if (sub) sub.textContent = setLine({ inSeason: deps.inSeason, filtered: items, filtering: filtering(col) });
@@ -369,4 +374,4 @@ function onPanelKey(e) {
 }
 
 /** Close the panel when the view changes (the dock, a tab). */
-export function disposeCollectionV3() { closeFilters(); ro?.disconnect(); ro = null; }
+export function disposeCollectionV3() { closeFilters(); ro?.disconnect(); ro = null; mo?.disconnect(); mo = null; }

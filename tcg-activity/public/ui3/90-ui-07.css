@@ -151,3 +151,7 @@ body[data-size="compact-land"] .u3-fpanel.is-tabs [data-fok] { grid-column: 3; g
 body[data-size="compact-land"] .u3-fpanel.is-tabs .u3-fpanel__body { grid-column: 1 / -1; grid-row: 2; align-self: stretch; }
 /* compact-land: the panel is as high as its groups (no empty band under them), up to the dock. */
 body[data-size="compact-land"] .u3-fpanel { bottom: auto; max-height: calc(100dvh - var(--u3-sa-t) - var(--sp-1-5) - var(--u3-sa-b) - var(--dock-size-compact) - var(--sp-2) * 2); }
+/* compact-port with the keyboard open: the pager gives way too (it returns when the keyboard closes), so the height goes to one row
+   of tiles above the keyboard (D-122 frees the tab row). */
+body.ui-v3[data-size="compact-port"][data-kb] .u3-col { --u3-pager-gap: var(--u3-none); --u3-pager-h: var(--u3-none); }
+body.ui-v3[data-size="compact-port"][data-kb] .u3-col__pager { display: none; }
