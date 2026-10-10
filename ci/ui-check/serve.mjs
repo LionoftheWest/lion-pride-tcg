@@ -72,6 +72,18 @@ function derivedRoom(body, kind) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedRoom(body, c.ci_dungeon) });
 
+// UI-10: the Collection with every owned card ready to ascend (ascend) or with 2 free stat points (points) (cookie ci_col=ascend | points). The write calls answer 403,
+// so an Ascend or a Save shows the real error path. The recording has no card with stat points.
+function derivedCol(body, kind) {
+  const hp = (c) => Math.round((c.power || 0) * 3);
+  return { ...body, cards: body.cards.map((c) => {
+    if (!(c.quantity > 0)) return c;
+    if (kind.startsWith('ascend')) return { ...c, quantity: Math.max(c.quantity, 3), can_ascend: c.next_cost != null };
+    return { ...c, stat: { cp: c.power || 0, hp: hp(c), crit: 0, free: 2, points: {} } };   // 'points'
+  }) };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/collection' && ['ascend', 'ascend-ok', 'points'].includes(c.ci_col) && body?.cards, make: (body, c) => derivedCol(body, c.ci_col) });
+
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
@@ -126,6 +138,8 @@ createServer((req, res) => {
     req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
     return undefined;
   }
+  // UI-10: with ci_col=ascend-ok the Ascend answers success (the celebration); with ci_col=ascend it is refused (403 below). Writes nothing.
+  if (req.method === 'POST' && p === '/api/ascend' && cookies(req).ci_col === 'ascend-ok') return send(res, 200, JSON.stringify({ ok: true, ascension: 1, quantity: 2, power: 12, next_cost: 2 }));
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)

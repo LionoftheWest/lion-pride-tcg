@@ -16,6 +16,13 @@ export const SCREENS = {
   'home':                { id: 'UI-03', long: true, safe: true, steps: [] },
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
   'collection-detail':   { id: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
+  // v3: the card viewer (UI-09) opened from the Card Detail art (a tap on #pArt; at the sizes where the viewer opens with the panel it opens again).
+  'collection-viewer':   { id: 'UI-09', under: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pArt'], ['wait', 1.5]] },
+  // v3: the celebration after an Ascend (UI-10 C1-C4): the viewer with the card and "Spend points" (cookie ci_col=ascend-ok answers the Ascend).
+  'ascend-celebration':  { id: 'UI-10', under: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 5]], col: 'ascend-ok' },
+  // v3: the Ascend refused (UI-10 E1: the writes answer 403 here, cookie ci_col=points) and the stat points save error (S2).
+  'ascend-error':        { id: 'UI-10', under: 'UI-08', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 1.5]], col: 'ascend' },
+  'stat-points-error':   { id: 'UI-10', under: 'UI-08', steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '[data-add="attack"]', [['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]']]], ['wait', 1], ['js', '#ptsSave'], ['wait', 1.5]], col: 'points' },
   'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   'achievements-detail': { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main .ach-card, #main .ach-row, #main [data-ach]']] },
   'bosses':              { id: 'UI-11', steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
@@ -106,6 +113,10 @@ export function ownerOf(screen, where) {
   // The card details (the v2 #viewer) opened from a Card picker: UI-64 owns them there (only the picker detail specs), the screen under the scrim does not.
   // Other screens keep their owner (collection-detail: UI-08 opens the viewer at some sizes and its side panel at others).
   if (/-picker-detail$/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b|\.vr-|#v-[a-z-]+/.test(where)) return 'UI-64';
+  // UI-09: the card viewer opened from the Card Detail (collection-viewer): the viewer and its buttons. UI-10: the celebration's Spend points
+  // button and the inline errors of an Ascend or a stat point save (the Card Detail panel around them is UI-08).
+  if (/\.asc-spend\b|#pAscFail|#ptsFail|\.u3-fail\b/.test(where)) return 'UI-10';
+  if (screen === 'collection-viewer' && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav|win)\b|#v-[a-z-]+|#card3d/.test(where)) return 'UI-09';
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/#u3BossWin[a-z]*\b|\.u3-bw\b|\.u3-bw[-_]/.test(where)) return 'UI-20';
   if (/#(v2Dailies|u3DlToast)[a-z]*\b|\.u3-dl\b|\.u3-dl[-_]/.test(where)) return 'UI-36';

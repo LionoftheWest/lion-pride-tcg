@@ -32,6 +32,7 @@ import { watchSizeClass } from './ui3/size-class.js';
 import { startShell } from './ui3/shell.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import { fitViewer, watchViewerFit } from './ui3/viewer-fit.js';
+import { styleViewerButtons, spendClasses } from './ui3/viewer.js';
 import { fmtFor } from './ui3/number.js';
 import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
@@ -3008,6 +3009,7 @@ function openViewer(card, opts = {}) {
   // v3: the viewer opens above the window that asked for it (the Card picker, the boss window): same layer, last in
   // the page (Nathan 2026-10-08: the card details opened under the squad picker)
   if (document.body.classList.contains('ui-v3') && el('viewer') && el('viewer') !== document.body.lastElementChild) document.body.appendChild(el('viewer'));
+  if (document.body.classList.contains('ui-v3')) styleViewerButtons(el('viewer'));   // UI-09: the library IconButton look (src/ui3/viewer.js)
   const list = Array.isArray(opts.list) ? opts.list : [];
   const i = list.findIndex((x) => String(x.id) === String(card.id));
   viewerNav = list.length > 1 && i >= 0 ? { list, i, opts } : null;
@@ -3251,7 +3253,7 @@ function celebrateAscend(before, after, points) {
     setTimeout(() => {
       if (el('viewer').classList.contains('hidden')) return;
       const b = document.createElement('button');
-      b.className = 'v2-btn gold asc-spend';
+      b.className = document.body.classList.contains('ui-v3') ? spendClasses : 'v2-btn gold asc-spend';   // UI-10: the primary Button in v3
       b.textContent = 'Spend points';
       b.addEventListener('click', closeViewer);
       el('viewer').appendChild(b);
