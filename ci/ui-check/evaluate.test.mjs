@@ -55,6 +55,8 @@ test('touch targets count on touch sizes only', () => {
   assert.equal(defectsOf(r, null).length, 0);
 });
 test('owners: the shell and the sub-tabs have their own IDs', () => {
+  assert.equal(ownerOf('convert', '#u3ShopDlg > .u3-scrim > .u3-dialog.u3-sdlg.u3-sdlg--convert > .u3-sdlg__main > .u3-scvt'), 'UI-44');
+  assert.equal(ownerOf('convert', '#main > .v2-collection > .p-actions'), 'UI-08');
   assert.equal(ownerOf('dungeon', '#topbar > #shopBtn'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Shards'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Avatar.v2-avatar'), 'UI-01');
