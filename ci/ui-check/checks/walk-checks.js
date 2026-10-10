@@ -30,7 +30,7 @@
       if (kid) win = kid;
     }
   }
-  if (!win) win = document.getElementById('main');
+  if (!win) win = document.getElementById('main') || document.body;   // a standalone page (UI-57 legal) has no #main
   document.querySelectorAll('[data-audit-win]').forEach((x) => x.removeAttribute('data-audit-win')); win.setAttribute('data-audit-win', '1');
   const wr = win.getBoundingClientRect();
   out.window = { sel: path(win), rect: [wr.left, wr.top, wr.width, wr.height].map(Math.round) };

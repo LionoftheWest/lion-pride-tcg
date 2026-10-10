@@ -85,7 +85,7 @@ async function runCell([s, screen, variant], ref = {}) {
         pg.on('response', (r) => { const u = new URL(r.url()); if (r.status() === 404 && u.pathname.startsWith('/api/')) noFixture.add(u.pathname); });
         const res = { browser: BROWSER, size, class: cls, touch, screen, id: spec.id, variant };
         try {
-          await boot(pg, BASE + '/');
+          if (spec.page) { await pg.goto(BASE + spec.page); await pg.waitForLoadState('load'); await pg.evaluate(() => document.fonts?.ready); } else await boot(pg, BASE + '/');   // a standalone page (UI-57) has no Activity to boot
           res.miss = await runSteps(pg, spec.steps);
           for (let i = 0; i < 20; i++) { if (await pg.evaluate(IMGWAIT)) break; await sleep(0.5); }
           await pg.evaluate(() => document.fonts?.ready); await sleep(1);

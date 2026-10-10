@@ -119,7 +119,7 @@ export function openAnswer(count) {
 
 createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  const p = url.pathname;
+  const p = url.pathname.replace(/^\/app(?=\/)/, '');   // production serves under /app (Caddy strips it); the legal pages (UI-57) link /app/...
   if (req.method === 'POST' && p === '/api/open') {
     let raw = '';
     req.on('data', (d) => { raw += d; });
