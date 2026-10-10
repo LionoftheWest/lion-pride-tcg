@@ -103,8 +103,12 @@ async function runCell([s, screen, variant], ref = {}) {
             // The app never starts here (no ui-v2 class): wait for the loader state itself (the timeout is the real 15 s), then let the
             // checks see the loader: they skip #loader (it covers the page during a normal boot), so the loader gets data-measure for this cell only.
             const want = { loading: 'loading', timeout: 'timeout', error: 'error' }[spec.loader];
+            // The loading cell must not reach the 15 s timeout while the checks run (a slow CI cell measured the timeout state and
+            // found "Try again", 2026-10-10): the page clock is installed before the boot and paused once the loading state shows.
+            if (want === 'loading') await pg.clock.install();
             await pg.goto(BASE + '/');
             await pg.waitForFunction((w) => document.getElementById('ldr3')?.dataset.state === w && !document.getElementById('ldr3').hidden, want, { timeout: 40000 });
+            if (want === 'loading') await pg.clock.pauseAt(await pg.evaluate(() => Date.now() + 50));
             await pg.evaluate(() => document.fonts?.ready); await sleep(1.5);
             await pg.evaluate("document.getElementById('loader').dataset.measure = ''");
             res.miss = [];
