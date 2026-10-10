@@ -26,5 +26,9 @@
   { "decision": "D-134", "id": "UI-49", "screen": "dungeon-rest", "size": "412x915", "rule": "empty",
     "why": "The approved rest panel (D-134: the smaller panel with the room picture around it, frame rest) leaves an empty band above and below the panel on this size." },
   { "decision": "D-134", "id": "UI-49", "screen": "dungeon-rest", "size": "430x932", "rule": "empty",
-    "why": "The approved rest panel (D-134: the smaller panel with the room picture around it, frame rest) leaves an empty band above and below the panel on this size." }
+    "why": "The approved rest panel (D-134: the smaller panel with the room picture around it, frame rest) leaves an empty band above and below the panel on this size." },
+  { "decision": "D-163", "id": "UI-57", "screen": "legal-terms", "size": "1990x830", "rule": "empty",
+    "why": "The approved 760 px legal text column leaves this band on the widest window; Nathan accepted it as drawn (D-163, 2026-10-09)." },
+  { "decision": "D-163", "id": "UI-57", "screen": "legal-privacy", "size": "1990x830", "rule": "empty",
+    "why": "The approved 760 px legal text column leaves this band on the widest window; Nathan accepted it as drawn (D-163, 2026-10-09)." }
 ]
