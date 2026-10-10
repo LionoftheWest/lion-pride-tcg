@@ -103,6 +103,21 @@ function derivedFight(body, kind) {
   return { ...base, name: 'The Hollow Mines', run: { ...R, state: st } };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['fight', 'fight2'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedFight(body, c.ci_dungeon) });
+// UI-52: a Gauntlet fight (cookie ci_dungeon = g-fight): the week's squad (3 attackers, 2 supports) against the 5-monster horde of the
+// approved frames; floor 2, room 4 of 5, week best 4F R1, damage +23%. The squad cards come from the recorded lobby answer.
+function derivedGauntletFight(body) {
+  // the two supports heal an ally (the approved frames), so that a support can be picked and then a card (D-70)
+  const heal = (c, name) => ({ ...c, name, ability: { ...(c.ability || {}), kind: 'support', effect: 'heal', amount: 0.3, target: 'ally' } });
+  const sq = (body.squad || []).map((c, i) => (i === 3 ? heal(c, "I'll get it back, don't worry") : i === 4 ? heal(c, "Zeoic's Redstone Machine") : c));
+  const cards = {};
+  [[48, 72, 14], [119, 128, 1], [52, 72, 14], [51, 60, 12], [50, 60, 12]].forEach(([hp, max, shield], i) => { if (sq[i]) cards[sq[i].id] = { hp, max, shield, cd: 0 }; });
+  const foes = FOES5.map(([key, name, element, max, passives]) => ({ key, name, element, level: 2, hp: max, max: max || 45, sh: 0, st: 0,
+    weak: [{ value: 'lightning' }, { value: `trait:${passives[0]}` }], resist: [{ value: 'fire' }], passives: [] }));
+  foes[1].hp = 0;
+  const st = { phase: 'fight', room_type: 'horde', round: 0, buff: 1.23, cards, foes, pend: { shards: 0, cards: [] }, bank: { shards: 0, cards: [] }, sup_round: -1 };
+  return { ...body, squad: sq, best: { floor: 4, room: 1, rank: 1, runs: 1 }, run: { id: 1, status: 'active', floor: 2, room: 4, squad: sq.map((c) => c.id), state: st } };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/gauntlet' && c.ci_dungeon === 'g-fight' && body?.ok, make: (body) => derivedGauntletFight(body) });
 // UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
 function derivedOver(body) {
   const base = derivedDungeon(body);

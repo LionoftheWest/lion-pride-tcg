@@ -56,5 +56,17 @@
   { "decision": "D-139", "id": "UI-25", "screen": "trades-picker", "size": "1990x830", "rule": "empty",
     "why": "The approved Trades frames for the wide windows (UI-25/approved expanded-1990x830-trades, the same layout at 1180x820) leave this band; Nathan accepted it as drawn (D-139, 2026-10-09)." },
   { "decision": "D-139", "id": "UI-25", "screen": "trades-pick-back", "size": "1990x830", "rule": "empty",
-    "why": "The approved Trades frames for the wide windows (UI-25/approved expanded-1990x830-trades, the same layout at 1180x820) leave this band; Nathan accepted it as drawn (D-139, 2026-10-09)." }
+    "why": "The approved Trades frames for the wide windows (UI-25/approved expanded-1990x830-trades, the same layout at 1180x820) leave this band; Nathan accepted it as drawn (D-139, 2026-10-09)." },
+  { "decision": "D-155", "id": "UI-52", "screen": "gauntlet-fight", "size": "430x932", "rule": "missing",
+    "why": "The Gauntlet fight is the UI-47 fight: on phones it hides Music and Auto while a support picks a target and shows no card Details magnifier, as the approved phone frames (D-155)." },
+  { "decision": "D-155", "id": "UI-52", "screen": "gauntlet-fight", "size": "430x822", "rule": "missing",
+    "why": "The Gauntlet fight is the UI-47 fight: on phones it hides Music and Auto while a support picks a target and shows no card Details magnifier, as the approved phone frames (D-155)." },
+  { "decision": "D-155", "id": "UI-52", "screen": "gauntlet-fight", "size": "412x915", "rule": "missing",
+    "why": "The Gauntlet fight is the UI-47 fight: on phones it hides Music and Auto while a support picks a target and shows no card Details magnifier, as the approved phone frames (D-155)." },
+  { "decision": "D-155", "id": "UI-52", "screen": "gauntlet-fight-pick", "size": "430x932", "rule": "missing",
+    "why": "The Gauntlet fight is the UI-47 fight: on phones it hides Music and Auto while a support picks a target and shows no card Details magnifier, as the approved phone frames (D-155)." },
+  { "decision": "D-155", "id": "UI-52", "screen": "gauntlet-fight-pick", "size": "430x822", "rule": "missing",
+    "why": "The Gauntlet fight is the UI-47 fight: on phones it hides Music and Auto while a support picks a target and shows no card Details magnifier, as the approved phone frames (D-155)." },
+  { "decision": "D-155", "id": "UI-52", "screen": "gauntlet-fight-pick", "size": "412x915", "rule": "missing",
+    "why": "The Gauntlet fight is the UI-47 fight: on phones it hides Music and Auto while a support picks a target and shows no card Details magnifier, as the approved phone frames (D-155)." }
 ]
