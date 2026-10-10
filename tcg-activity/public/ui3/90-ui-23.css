@@ -1,0 +1,10 @@
+/* ==== UI-23 Logo (D-04, design.md 8.3; design repo UI-23/approved sheet-1-lockups) ====
+   One master tile on every surface: the top-to-bottom gold gradient, the lion at 71 percent, radius 29 percent, --glow-action.
+   The percent values scale with the tile, so lockup A (24 and up), the top bar tile (--emblem) and the loader tile (80, 48 on tiny)
+   keep the same form. The lion is /logo-lion.svg (no new art). Only under the v3 flag: the top bar logo exists only in the v3 shell
+   and the loader lockup shows only under body.ui3-boot. The wordmark sizes stay --fs-heading (top bar, tiny loader) and --fs-title
+   (loader), weight 800, as drawn. */
+body.ui-v3 .u3-logo__emblem { border-radius: 29%; }
+body.ui-v3 .u3-logo__emblem img { width: 71%; height: 71%; }
+html body.ui3-boot[data-size] .ldr3-emblem { border-radius: 29%; }
+html body.ui3-boot[data-size] .ldr3-emblem img { width: 71%; height: 71%; }
