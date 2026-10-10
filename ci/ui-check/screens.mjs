@@ -52,6 +52,9 @@ export const SCREENS = {
   // The card details (the v2 #viewer) opened from a Card picker tile (UI-64, Nathan 2026-10-08): the card and its info whole inside the safe frame.
   'hunt-picker-detail':  { id: 'UI-64', safe: true, under: 'UI-17', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '[data-hpick]'], ['wait', 1.5], ['js', '.u3-pk-card__info'], ['wait', 1.5]] },
   'hunt-battle':         { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], battle: true, steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9]] },
+  // UI-18: the fight with two supports and one card down (D-68 plates, D-69 support HP), and the targeting state (D-70: a support is a valid target).
+  'hunt-battle-mix':    { safe: true, long: true, id: 'UI-18', notOn: ['tiny'], battle: 'mix', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9]] },
+  'hunt-battle-target': { safe: true, long: true, id: 'UI-18', notOn: ['tiny'], battle: 'mix', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9], ['js', '.u3-ft-grid .c[data-id="370"]'], ['wait', 1]] },
   // v3: tiny shows no shell, so the Adventure tabs are not there (D-06: the small live view, UI-59).
   'dungeon':             { id: 'UI-46', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   // The Card picker (UI-64) over the Dungeon lobby (D-40): a defect outside the window belongs to the lobby ('under').
