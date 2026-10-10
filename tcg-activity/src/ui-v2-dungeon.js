@@ -19,6 +19,7 @@ import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
 import { icon as ui3Icon } from './ui3/icons.js';
 import { button as btn3, segmented as ui3Segmented } from './ui3/components.js';
 import { TOKENS } from './tokens.js';
+import { fmtFor } from './ui3/number.js';
 
 const ctx = () => v2ctx();
 const icon3 = (name, size = 'md') => ui3Icon(name, { size });
@@ -358,6 +359,7 @@ function lobbyHTML() {
 // Build condition of the approval (P1): "Your best today" shows on every class (a panel, or the Rule / Best / Top 3 tabs).
 const V3 = () => document.body.classList.contains('ui-v3');
 const cls3 = () => document.body.dataset.size || 'expanded';
+const fmt3 = (n) => fmtFor(n, cls3());   // 10.5: the compact number form on the compact classes (the counters of the v3 room screens)
 /** The checks of a squad (one source for the view and the picker): size, budget, an attacker, today's rule. */
 function squadStatus(ids) {
   const d = dg.data;
@@ -992,6 +994,15 @@ function lootDrop(main, i, loot) {
 function confirmBox(title, text, ok) {
   return new Promise((done) => {
     const w = document.createElement('div');
+    if (V3()) {   // UI-49: the one window system (Dialog look, scrim, Cancel + the action, no close button: a blocking confirm)
+      w.className = 'u3-dgs-modal';
+      w.innerHTML = `<div class="u3-scrim" data-u3-scrim><div class="u3-dialog u3-dgs-dlg" role="dialog" aria-modal="true" aria-labelledby="u3DgsT"><div><h2 class="u3-dialog__title" id="u3DgsT">${esc(title)}</h2><p class="u3-dialog__line">${esc(text)}</p></div>`
+        + `<footer class="u3-dialog__foot">${btn3({ label: 'Cancel', data: { m: '0' } })}${btn3({ label: ok, variant: 'primary', data: { m: '1' } })}</footer></div></div>`;
+      document.body.appendChild(w);
+      w.addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b && !e.target.matches('[data-u3-scrim]')) return; w.remove(); done(b?.dataset.m === '1'); });
+      const dlg = w.querySelector('.u3-dialog'); dlg.tabIndex = -1; dlg.focus({ preventScroll: true });   // the window takes the focus (no ring on a button)
+      return;
+    }
     w.className = 'dg-modal';
     w.innerHTML = `<div class="dg-mbox"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="dg-mbtn"><button class="v2-btn" data-m="0">Cancel</button><button class="v2-btn gold" data-m="1">${esc(ok)}</button></div></div>`;
     document.body.appendChild(w);
@@ -1025,7 +1036,7 @@ function offerInfo(o) {
     buff: [I.up, `+${pct(o.amount)} damage`, ''],
     shards: [COIN, `${fmt(o.amount)} Shards`, ''],
     card: [I.cards, 'A random card', oddsLine(o.odds)],
-    ward: [I.ward, `Ward ${pct(o.amount)}`, ''],
+    ward: [I.ward, `Shield ${pct(o.amount)}`, ''],   // D-125: the internal kind stays 'ward'; the member sees "Shield"
     reset: [I.reset, 'Cooldown reset', ''],
     revive: [I.heart, `Revive at ${pct(o.amount)}`, 'Once per floor'],
     continue: [I.arrow, 'Continue', ''],
@@ -1041,7 +1052,7 @@ function offerInfo(o) {
 function chooseHTML() {
   const R = run(); const st = R.state;
   const ph = st.phase;
-  if (V3() && ph === 'choose') return chooseV3HTML(R, st);   // UI-48 (the other steps keep the v2 view until their screens are built)
+  if (V3() && ['choose', 'rest', 'path', 'chest'].includes(ph)) return chooseV3HTML(R, st);   // UI-48 (the reward) and UI-49 (rest, doors, chest)
   const offer = (o, i) => {
     const t = offerInfo(o);
     return `<button class="dg-offer k-${o.kind}${o.to ? ` to-${o.to}` : ''}" data-choose="${i}" style="${TIER[o.tier] ? `--tc:${TIER[o.tier][1]}` : ''}">${tierTag(o.tier)}<span class="ic">${t[0]}</span><b>${t[1]}</b>${t[2] ? `<small>${t[2]}</small>` : ''}</button>`;
@@ -1062,6 +1073,19 @@ function chooseHTML() {
 // The approved design (design repo UI-48/approved): the progress pill and the loot chips on the dungeon stage, a panel
 // with "Room cleared", "Choose a reward" and the offers (a row of 3; a stacked list on compact-port). The same data,
 // the same data-choose handler and the same /api/dungeon/choose call as the v2 view (choose(), wireChoose()).
+// D-125 (Nathan: "the little explainer of what the reward does"): the line under each reward, from the words the code and the design already have
+// (the Shield and Heal lines of EFFECT, the run buff line of the dungeon design, the loot chip tooltip). A reward with no such words shows none (reset).
+function offerExplain(o, t) {
+  const p = pct(o.amount);
+  return ({
+    heal: `Heal ${p} of max HP · Once per floor`,
+    ward: `Shield ${p} of max HP`,
+    buff: `Your attackers deal +${p} for the rest of the run`,
+    shards: EXPLAIN_LONGEST,
+    reset: 'Resets every cooldown in your squad',   // D-133
+  })[o.kind] || t[2] || '';
+}
+const EXPLAIN_LONGEST = "This floor's loot: lost if the squad falls. The floor guardian banks it.";
 const OFFER_ICON = { card: 'layers', ward: 'shield-check', heal: 'heart', revive: 'heart', buff: 'trending-up', reset: 'rotate-ccw', continue: 'arrow-right' };
 function progressV3HTML(R) {
   const rooms = dg.data.rooms || [];
@@ -1078,22 +1102,58 @@ function progressV3HTML(R) {
 function chipsV3HTML(st) {
   const pend = st.pend || {}, bank = st.bank || {};
   const buff = Math.round(((st.buff || 1) - 1) * 100);
-  const loot = (b) => `${fmt(b.shards)}${(b.cards || []).length ? ` +${b.cards.length}${icon3('layers', 'sm')}` : ''}`;
+  const loot = (b) => `${fmt3(b.shards)}${(b.cards || []).length ? ` +${b.cards.length}${icon3('layers', 'sm')}` : ''}`;
   return `<div class="u3-dgc-chips"><span class="u3-dgc-chip is-risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${loot(pend)}</b><i>at risk</i></span>`
     + `<span class="u3-dgc-chip is-bank" title="Banked loot: safe. Yours when the run ends.">${icon3('lock')}<b>${loot(bank)}</b><i>banked</i></span>`
     + `<span class="u3-dgc-chip" title="The run damage bonus">${icon3('trending-up')}<b>+${buff}%</b><i>damage</i></span></div>`;
 }
+const ROOM_HEAD_V3 = {
+  choose: ['Room cleared', 'Choose a reward', ''],
+  rest: ['Rest room', 'Take a breath', 'The squad healed 40%, and each downed card came back with 25% HP.'],
+  path: ['A choice', 'Pick a door', ''],
+  chest: ['Treasure room', 'You found a chest', 'Tap the chest to open it.'],
+};
 function chooseV3HTML(R, st) {
+  dg.numCls = cls3();
   const offers = st.offers || [];
+  const ph = st.phase;
+  const head = ROOM_HEAD_V3[ph] || ROOM_HEAD_V3.choose;
   const offer = (o, i) => {
     const t = offerInfo(o);
     const ic = o.kind === 'shards' ? COIN : OFFER_ICON[o.kind] ? icon3(OFFER_ICON[o.kind], '2xl') : t[0];
     const tier = TIER[o.tier];
-    return `<button type="button" class="u3-dgc-offer is-t${tier ? o.tier : 0} k-${esc(o.kind)}" data-choose="${i}">${tier ? `<span class="u3-dgc-tier">${tier[0]}</span>` : ''}<span class="u3-dgc-ic">${ic}</span><b>${t[1]}</b>${t[2] ? `<small>${t[2]}</small>` : ''}</button>`;
+    return `<button type="button" class="u3-dgc-offer is-t${tier ? o.tier : 0} k-${esc(o.kind)}${o.to ? ` to-${esc(o.to)}` : ''}" data-choose="${i}">${tier ? `<span class="u3-dgc-tier">${tier[0]}</span>` : ''}<span class="u3-dgc-ic">${ic}</span><b>${t[1]}</b><small><span>${esc(offerExplain(o, t))}</span>${ph === 'choose' ? `<span class="u3-dgc-ghost" aria-hidden="true">${esc(EXPLAIN_LONGEST)}</span>` : ''}</small></button>`;
   };
-  return `<div class="u3-dgc ph-choose"><div class="u3-dgc-hud">${progressV3HTML(R)}${chipsV3HTML(st)}</div>
-    <section class="u3-dgc-panel">${musicBtnHTML()}<span class="u3-label u3-dgc-k">Room cleared</span><h2 class="u3-dgc-h">Choose a reward</h2><div class="u3-dgc-offers n${offers.length}">${offers.map(offer).join('')}</div></section>
+  const body = ph === 'chest' ? chestV3HTML(st) : `<div class="u3-dgc-offers n${offers.length}">${offers.map(offer).join('')}</div>`;
+  return `<div class="u3-dgc${ph === 'choose' ? '' : ' u3-dgs'} ph-${esc(ph)}"><div class="u3-dgc-hud">${progressV3HTML(R)}${chipsV3HTML(st)}</div>
+    <section class="u3-dgc-panel">${ph === 'choose' ? '' : musicBtnHTML()}<span class="u3-label u3-dgc-k">${head[0]}</span><h2 class="u3-dgc-h">${head[1]}</h2>${head[2] ? `<p class="u3-dgs-line">${head[2]}</p>` : ''}${body}</section>
   </div>`;
+}
+// ---- v3: the chest (UI-49): the 3D chest, then the loot (Shards, the card face down, Continue) when it is open ----
+function chestV3HTML(st) {
+  const c = st.chest || {};
+  const t = TIER[c.tier] || TIER[1];
+  const card = c.card ? dg.data.lootCards?.[c.card] : null;
+  return `<div class="u3-dgs-chest" style="--tc:${t[1]}">
+    <button type="button" class="u3-dgs-chestbox" aria-label="Open the chest"><span class="u3-dgs-fb"><i></i>${I.chest}</span><canvas class="u3-dgs-cv"></canvas></button>
+    <div class="u3-dgs-loot"><span class="u3-dgs-ct">${t[0]} chest</span>
+      <span class="u3-dgs-sh">${COIN}<b>+${fmt3(c.shards)}</b><small>Shards</small></span>${card ? `<div class="dg-flips u3-dgs-cf">${flipHTML([card], 'chest')}</div>` : ''}
+      ${btn3({ label: 'Continue', variant: 'primary', icon: 'arrow-right', data: { choose: '0' } })}</div>
+  </div>`;
+}
+// ---- v3: Floor cleared (UI-49) ----
+function floorDoneV3HTML(R, st) {
+  dg.numCls = cls3();
+  const fl = st.floor_loot || {}; const bank = st.bank || {};
+  const cards = (fl.cards || []).map((id) => dg.data.lootCards?.[id] || { id });
+  const capLeft = Math.max(0, (dg.data.cap || 300) - (bank.shards || 0));
+  const box = (label, val) => `<div class="u3-dgs-stat"><span class="u3-dgs-sl">${label}</span><b>${val}</b></div>`;
+  return `<div class="u3-dgc u3-dgs u3-dgs-fd ph-floor_done"><section class="u3-dgs-fdp">${musicBtnHTML()}
+    <div class="u3-dgs-fdh"><span class="u3-label u3-dgs-fdk">${icon3('castle', 'md')}${esc(dg.data.name)} · Floor ${R.floor}</span><h1 class="u3-dgc-h">Floor ${R.floor} cleared!</h1></div>
+    <div class="u3-dgs-stats">${box('Loot gained', `${COIN}+${fmt3(fl.shards)}`)}${box('Banked', `${icon3('lock')}${fmt3(bank.shards)}${(bank.cards || []).length ? ` +${(bank.cards || []).length}${icon3('layers')}` : ''}`)}${box('Cap left', fmt3(capLeft))}</div>
+    ${cards.length ? `<div class="u3-dgs-lh"><h3>Cards found <small>${cards.length}</small></h3>${btn3({ label: 'Reveal all', variant: 'primary', icon: 'layers' }).replace('class="u3-btn', 'class="u3-dgs-reveal u3-btn')}</div><div class="dg-flips u3-dgs-fl" style="--n:${cards.length}">${flipHTML(cards, 'floor')}</div>` : '<p class="u3-dgs-none">No cards on this floor.</p>'}
+    <div class="u3-dgs-btns">${btn3({ label: 'Retreat with the loot', variant: 'danger', icon: 'door-open' }).replace('class="u3-btn', 'class="u3-dgs-leave u3-btn')}${btn3({ label: `Descend to Floor ${R.floor + 1}`, variant: 'primary', icon: 'arrow-right' }).replace('class="u3-btn', 'class="u3-dgs-next u3-btn')}</div>
+  </section></div>`;
 }
 // Measured fit (UI-48): when the drawn layout is too high for the stage (a short phone), the stage gets .is-tight (smaller
 // icons and gaps, the tier chip beside the name). It is measured again after the fonts load and after a resize.
@@ -1103,13 +1163,55 @@ function fitChooseV3(main) {
   const box = main.querySelector('.u3-dgc');
   if (!box) return;
   // too high or too wide: the stage itself, or a part that clips its own content (the panel and the offers share the stage height; the guardian text sits in the pill; D-117 gives the stage more height but not more width)
-  const over = () => [box, ...box.querySelectorAll('.u3-dgc-prog, .u3-dgc-guard, .u3-dgc-panel, .u3-dgc-offers, .u3-dgc-offer, .u3-dgc-tier, .u3-dgc-offer b, .u3-dgc-offer small')].some((e) => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1);
+  const dgs = box.classList.contains('u3-dgs');
+  const stable = dgs || box.classList.contains('ph-choose');   // the counters never change the size of the panel (a long counter only shrinks the counters)
+  const chipsOver = () => [...box.querySelectorAll('.u3-dgc-chips, .u3-dgc-chip')].some((e) => e.scrollWidth > e.clientWidth + 1) || [...box.querySelectorAll('.u3-dgc-hud > *')].some((e) => e.getBoundingClientRect().right > box.getBoundingClientRect().right);
+  const parts = box.querySelectorAll(stable ? '.u3-dgc-prog, .u3-dgc-guard, .u3-dgc-panel, .u3-dgc-offers, .u3-dgc-offer, .u3-dgc-tier, .u3-dgc-offer b, .u3-dgc-offer small' : '.u3-dgc-prog, .u3-dgc-chip, .u3-dgc-guard, .u3-dgc-panel, .u3-dgc-offers, .u3-dgc-offer, .u3-dgc-tier, .u3-dgc-offer b, .u3-dgc-offer small');
+  const over = () => (stable ? box.scrollHeight > box.clientHeight + 1 : box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) || [...parts].some((e) => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1);
   const measure = () => {
-    box.classList.toggle('is-fill', cls3() === 'medium' && box.clientHeight > box.clientWidth);   // a tall tablet (the stage itself is taller than wide, F-1): the offers stack and fill the stage
-    box.classList.remove('is-tight', 'is-tight2'); if (over()) { box.classList.add('is-tight'); if (over()) box.classList.add('is-tight2'); } };   // is-tight2: still too wide (a narrow stage: the safe-area insets), so the tier chip gets its own row
+    box.classList.toggle('is-fill', cls3() === 'medium' && box.clientHeight > box.clientWidth && !box.classList.contains('u3-dgs'));   // a tall tablet (the stage itself is taller than wide, F-1): the offers stack and fill the stage
+    box.classList.remove('is-tight', 'is-tight2', 'is-short', 'is-short2', 'is-roomy', 'is-wide', 'is-wide2');
+    // UI-49: a large stage (expanded or medium, never the door choice and never a phone: D-134, the approved frames keep the smaller panel) with a small panel: the panel takes the height of the stage (the doors, the chest and the Continue row grow with it)
+    const panel = box.querySelector('.u3-dgc-panel'), hud = box.querySelector('.u3-dgc-hud');
+    if (box.classList.contains('u3-dgs') && panel && hud && (cls3() === 'expanded' || cls3() === 'medium') && !box.classList.contains('ph-path') && (box.clientHeight - hud.offsetHeight - panel.offsetHeight) / 2 > 0.2 * box.clientHeight) box.classList.add('is-roomy');
+    if (over()) { box.classList.add('is-tight'); if (over()) box.classList.add('is-tight2'); }
+    // UI-49: a long counter only makes the counters too WIDE: they shrink and wrap (is-wide, is-wide2) and the panel keeps its size
+    if (stable && chipsOver()) { box.classList.add('is-wide'); if (chipsOver()) box.classList.add('is-wide2'); }
+    // UI-49: is-short / is-short2 = the stage is still too HIGH (not only too wide): the chest, the loot and the type shrink (a long counter makes it only wide)
+    const high = () => box.scrollHeight > box.clientHeight + 1 || (panel && panel.scrollHeight > panel.clientHeight + 1);
+    if (box.classList.contains('u3-dgs') && high()) { box.classList.add('is-short'); if (high()) box.classList.add('is-short2'); } };   // is-tight2: still too wide (a narrow stage: the safe-area insets), so the tier chip gets its own row
   measure();
   document.fonts?.ready.then(() => { if (box.isConnected) measure(); });
   if (typeof ResizeObserver === 'function') { chooseRO = new ResizeObserver(() => { if (box.isConnected) measure(); }); chooseRO.observe(box); }
+}
+// UI-49: the Floor cleared screen is measured too: when the drawn layout is too high (a short phone), the panel gets .is-tight
+// (smaller type, gaps and boxes). The face-down cards then take the space that is left (fitFlips).
+let floorRO = null;
+function fitFloorV3(main) {
+  floorRO?.disconnect(); floorRO = null;
+  const box = main.querySelector('.u3-dgs-fd');
+  if (!box) return;
+  const panel = box.querySelector('.u3-dgs-fdp');
+  const measure = () => {
+    box.classList.toggle('is-fill', cls3() === 'medium' && box.clientHeight > box.clientWidth);   // a tall tablet (measured on the stage itself, F-1): the stacked layout
+    box.classList.remove('is-tight', 'is-tight2', 'is-lean');
+    // is-lean (a phone, portrait): the cards come out smaller than 1.5 widest grid tiles high, so the two buttons share one row and the gaps shrink; the cards take the room
+    const fl = box.querySelector('.u3-dgs-fl');
+    if (fl && (cls3() === 'compact-port' || box.classList.contains('is-fill'))) {
+      fitFlips(main);
+      const tile = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-tile-max')) || 112;
+      if ((parseFloat(fl.style.getPropertyValue('--fh')) || 0) < 1.5 * tile) box.classList.add('is-lean');
+    }
+    const wide = [...box.querySelectorAll('.u3-dgs-stat > b, .u3-btn')].some((e) => e.scrollWidth > e.clientWidth + 1);
+    if (wide || panel.scrollHeight > panel.clientHeight + 1 || panel.scrollWidth > panel.clientWidth + 1) box.classList.add('is-tight');
+    fitFlips(main);
+    // is-tight2: a card is still narrower than the touch size (a short, narrow stage: the safe-area insets), so the buttons lose their icons and the counters shrink again
+    const hit = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hit')) || 44;
+    if (box.querySelector('.u3-dgs-fl') && [...box.querySelectorAll('.u3-dgs-fl .dg-flip')].some((f) => f.getBoundingClientRect().width < hit)) { box.classList.add('is-tight', 'is-tight2'); fitFlips(main); }
+  };
+  measure();
+  document.fonts?.ready.then(() => { if (box.isConnected) measure(); });
+  if (typeof ResizeObserver === 'function') { floorRO = new ResizeObserver(() => { if (box.isConnected) measure(); }); floorRO.observe(box); }
 }
 // The chest (item 14): closed until tapped; then the lid opens, its tier glows, the loot shows.
 function chestHTML(st) {
@@ -1126,7 +1228,7 @@ function chestHTML(st) {
 }
 // Cards face down; a tap flips one (the same as a pack). Used by the chest, the floor screen, the end.
 function flipHTML(list, key) {
-  return list.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}${upCls(`${key}:${i}`)}" data-flip="${key}:${i}" data-id="${c.id}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
+  return list.map((c, i) => `<button class="dg-flip r-${c.rarity || 'normal'}${upCls(`${key}:${i}`)}"${V3() ? ` aria-label="${esc(`${c.name || 'Card'}, ${RL(c.rarity || 'normal')}`)}"` : ''} data-flip="${key}:${i}" data-id="${c.id}" style="--rc:${RCOL[c.rarity] || '#9AA3B5'}; --d:${i * 90}ms">
       <span class="face back">${cardBack ? `<img src="${esc(cardBack)}" alt="">` : '<i></i>'}</span>
       <span class="face front">${cardTile({ ...c, cost: null }, { top: '', info: false })}</span></button>`).join('');
 }
@@ -1145,21 +1247,24 @@ function fitFlips(main) {
       best = Math.max(best, Math.min(byW, byH));
     }
     box.style.setProperty('--fh', `${Math.floor(Math.min(best, 280))}px`);
+    // v3 (UI-49): the app caption (name and rarity, 11 px at least) shows when the card is as wide as the widest grid tile; a narrower card shows the real face only (it prints its own name)
+    if (V3() && box.closest('.u3-dgs')) box.classList.toggle('is-nocap', Math.floor(Math.min(best, 280)) / (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-ratio')) || 1.4) < (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-tile-max')) || 112));
   });
 }
 window.addEventListener('resize', () => { const m = document.getElementById('main'); if (m?.querySelector('.dg-flips')) fitFlips(m); });
 // v3 lobby (UI-46): measure the side column and the tight mode again after a resize (a turn, the keyboard)
 let v3rt = null;
 window.addEventListener('resize', () => {
+  if (V3() && document.querySelector('#main .u3-dgc') && dg.numCls && dg.numCls !== cls3() && ctx().currentView() === 'dungeon') { dg.numCls = cls3(); clearTimeout(v3rt); v3rt = setTimeout(paint, 150); return; }   // UI-49: the number form follows the size class
   if (!V3() || !document.querySelector('#main .u3-dg')) return;
   clearTimeout(v3rt);
   v3rt = setTimeout(() => { if (document.querySelector('#main .u3-dg')) { dg.v3tabs = false; dg.tight = 0; paint(); } }, 150);
 });
 function wireFlips(main) {
   fitFlips(main);
-  const flip = (b) => { if (b.classList.contains('up')) { const id = Number(b.dataset.id); if (id) openInfo(id); return; } b.classList.add('up'); ups.add(upTag(b.dataset.flip)); ctx().sfx?.('flip'); };
+  const flip = (b) => { if (b.classList.contains('up')) { const id = Number(b.dataset.id); if (id) openInfo(id); return; } b.classList.add('up'); ups.add(upTag(b.dataset.flip)); ctx().sfx?.('flip'); if (main.querySelector('.u3-dgs-chest')) requestAnimationFrame(() => { fitFlips(main); fitChooseV3(main); fitFlips(main); }); };
   main.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); flip(b); }));
-  main.querySelector('.dg-reveal')?.addEventListener('click', (e) => {
+  main.querySelector('.dg-reveal, .u3-dgs-reveal')?.addEventListener('click', (e) => {
     e.currentTarget.disabled = true;
     [...main.querySelectorAll('[data-flip]:not(.up)')].forEach((b, i) => setTimeout(() => flip(b), i * 220));
   });
@@ -1180,18 +1285,20 @@ async function choose(pick) {
 function wireChoose(main) {
   fitChooseV3(main);
   main.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', () => choose(Number(b.dataset.choose))));
-  const box = main.querySelector('.dg-chestbox');
-  // The 3D chest (a real model with its open animation); the drawn chest stays as the fallback.
-  const cv = box?.querySelector('.dg-chest3d');
+  const box = main.querySelector('.dg-chestbox, .u3-dgs-chestbox');
+  const croot = box?.closest('.dg-chest, .u3-dgs-chest');
+  // The 3D chest (a real model with its open animation); the drawn chest (v3: the chest icon) stays as the fallback.
+  const cv = box?.querySelector('.dg-chest3d, .u3-dgs-cv');
   if (cv) {
     cv.addEventListener('chest-ready', () => box.classList.add('has3d'), { once: true });
-    import('./dungeon-chest.js').then(({ mountChest }) => { if (main.contains(cv)) { dg.chest?.dispose(); dg.chest = mountChest(cv, getComputedStyle(box.closest('.dg-chest')).getPropertyValue('--tc').trim() || '#9AA3B5'); } }).catch(() => {});
+    cv.addEventListener('chest-fail', () => box.classList.add('fail'), { once: true });   // v3: only then the chest icon shows (no old chest art flashes before the 3D chest)
+    import('./dungeon-chest.js').then(({ mountChest }) => { if (main.contains(cv)) { dg.chest?.dispose(); dg.chest = mountChest(cv, getComputedStyle(croot).getPropertyValue('--tc').trim() || '#9AA3B5'); } }).catch(() => {});
   }
   box?.addEventListener('click', () => {
-    if (box.closest('.dg-chest').classList.contains('open')) return;
+    if (croot.classList.contains('open')) return;
     dg.chest?.open();
     snd('boss:enrage', 0.25);
-    setTimeout(() => { box.closest('.dg-chest').classList.add('open'); ctx().sfx?.('rare'); }, dg.chest ? 650 : 0);
+    setTimeout(() => { croot.classList.add('open'); fitChooseV3(main); fitFlips(main); ctx().sfx?.('rare'); }, dg.chest ? 650 : 0);
   });
   wireFlips(main);
 }
@@ -1212,6 +1319,7 @@ function floorDoneHTML() {
     </section>
   </div>`;
   }
+  if (V3()) return floorDoneV3HTML(R, st);   // UI-49 (the Gauntlet's floor screen above keeps the v2 view)
   const fl = st.floor_loot || {}; const bank = st.bank || {};
   const cards = (fl.cards || []).map((id) => dg.data.lootCards?.[id] || { id });
   const capLeft = Math.max(0, (dg.data.cap || 300) - (bank.shards || 0));
@@ -1225,8 +1333,9 @@ function floorDoneHTML() {
   </div>`;
 }
 function wireFloorDone(main) {
-  main.querySelector('.dg-next')?.addEventListener('click', () => choose(0));
-  main.querySelector('.dg-leave')?.addEventListener('click', () => retreat());
+  fitFloorV3(main);
+  main.querySelector('.dg-next, .u3-dgs-next')?.addEventListener('click', () => choose(0));
+  main.querySelector('.dg-leave, .u3-dgs-leave')?.addEventListener('click', () => retreat());
   wireFlips(main);
 }
 
@@ -1262,9 +1371,9 @@ function wireOver(main) {
   // The Shards count up.
   const c = main.querySelector('.dg-count');
   if (c) { const to = Number(c.dataset.to) || 0; const t0 = performance.now(); const f = (t) => { const k = Math.min(1, (t - t0) / 1200); c.textContent = fmt(Math.round(to * k * (2 - k))); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }
-  const flip = (b) => { if (b.classList.contains('up')) { const it = (dg.data.loot || [])[Number(b.dataset.flip)]; if (it) openInfo(Number(it.id)); return; } b.classList.add('up'); ups.add(upTag(b.dataset.flip)); ctx().sfx?.('flip'); };
+  const flip = (b) => { if (b.classList.contains('up')) { const it = (dg.data.loot || [])[Number(b.dataset.flip)]; if (it) openInfo(Number(it.id)); return; } b.classList.add('up'); ups.add(upTag(b.dataset.flip)); ctx().sfx?.('flip'); if (main.querySelector('.u3-dgs-chest')) requestAnimationFrame(() => { fitFlips(main); fitChooseV3(main); fitFlips(main); }); };
   main.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', () => flip(b)));
-  main.querySelector('.dg-reveal')?.addEventListener('click', (e) => {
+  main.querySelector('.dg-reveal, .u3-dgs-reveal')?.addEventListener('click', (e) => {
     e.currentTarget.disabled = true;
     [...main.querySelectorAll('[data-flip]:not(.up)')].forEach((b, i) => setTimeout(() => flip(b), i * 220));
   });
