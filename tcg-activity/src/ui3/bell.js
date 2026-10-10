@@ -7,8 +7,10 @@
 //   shows "Something went wrong. Try again." under the gifts head (7.3, 10.6).
 // - The Hunt card, then the rows under "Today" and "Earlier". A row body may truncate (10.4); a tap on the row shows
 //   its full text in place (the approval's build note).
-// - The list pages "1 / N" (3.4, G-022, D-36): no row is dropped. On compact-land the Hunt card starts page 2 (D-80 22).
-import { esc, button, iconButton, counter, pager, inlineMessage, stateEmpty } from './components.js';
+// - The rows that do not fit scroll: the Earlier rows (the Today rows when there is no Earlier) are the named scroll
+//   area "bell notes" with a visible rail (3.3, D-07, D-144), like the FAQ list. No pager; no row is dropped.
+import { esc, button, iconButton, counter, inlineMessage, stateEmpty } from './components.js';
+import { watchRail } from './scroll-rail.js';
 import { icon } from './icons.js';
 
 export const CLAIM_ERROR = 'Something went wrong. Try again.';
@@ -26,42 +28,6 @@ export function noteIcon(kind) {
   return 'bell';
 }
 
-/**
- * The pages of the list (3.4: the rows that fit, then the Pager). units: [{ h, head?, section?, page2? }] in order.
- * A head (a section label) never ends a page: it moves to the page of its first row, and a section that goes on
- * to the next page shows its head again. A unit with page2 starts page 2 (D-80 22: the Hunt card on compact-land).
- * full = the list height with no pager, paged = the list height with the pager. Returns { pages: [[unit index]] }:
- * a head index can appear on more than one page.
- */
-export function packPages(units, { full, paged, gap = 0 }) {
-  const run = (H) => {
-    const pages = [];
-    let cur = []; let used = 0; let head = null; let headOn = false;
-    const push = (i) => { used += (cur.length ? gap : 0) + units[i].h; cur.push(i); };
-    const lift = units.findIndex((u) => u.page2);
-    const order = units.map((_, i) => i).filter((i) => i !== lift);
-    const breakPage = () => {
-      pages.push(cur); cur = []; used = 0; headOn = false;
-      if (lift >= 0 && pages.length === 1) { const h = head; head = null; push(lift); head = h; }
-    };
-    for (const i of order) {
-      const u = units[i];
-      if (u.head) { head = i; headOn = false; continue; }
-      if (u.section == null) head = null;
-      const withHead = head != null && !headOn ? units[head].h + gap : 0;
-      const need = (cur.length ? gap : 0) + withHead + u.h;
-      if (cur.length && used + need > H) breakPage();
-      if (head != null && !headOn) { push(head); headOn = true; }
-      push(i);
-    }
-    if (cur.length) pages.push(cur);
-    if (lift >= 0 && !pages.flat().includes(lift)) pages.push([lift]);
-    return pages.length ? pages : [[]];
-  };
-  const one = run(full);
-  return { pages: one.length > 1 ? run(paged) : one };
-}
-
 // ---- The window markup ----
 const giftWhat = (g, rarityLabel, coin) => {
   if (g.kind === 'card' && g.card) return `<span class="u3-gift__what u3-r-${esc(g.card.rarity)}">${esc(rarityLabel(g.card.rarity))} card</span>`;
@@ -76,7 +42,8 @@ const giftLead = (g, thumb, coin) => {
   return `<span class="u3-gift__ico">${icon('gift', { size: 'xl' })}</span>`;
 };
 
-/** The units of the list for a tab: gifts head + gifts, the Hunt card, then Today and Earlier with their rows. */
+/** The units of the list for a tab: gifts head + gifts, the Hunt card, then Today and Earlier with their rows.
+ *  scroll = true on the rows of the scroll area (the Earlier rows, or the Today rows when there is no Earlier). */
 export function bellUnits(s) {
   const u = [];
   if (s.gifts.length) {
@@ -90,7 +57,7 @@ export function bellUnits(s) {
   }
   if (s.hunt && s.tab !== 'trades') {
     const pct = s.hunt.hp_max ? Math.max(0, Math.min(100, Math.round((100 * s.hunt.hp_remaining) / s.hunt.hp_max))) : 0;
-    u.push({ page2: s.size === 'compact-land', html: `<div class="u3-bellhunt"><span class="u3-bellhunt__main"><span class="u3-bellhunt__chip"><span class="u3-bellhunt__live" aria-hidden="true"></span>HUNT</span>`
+    u.push({ html: `<div class="u3-bellhunt"><span class="u3-bellhunt__main"><span class="u3-bellhunt__chip"><span class="u3-bellhunt__live" aria-hidden="true"></span>HUNT</span>`
       + `<span class="u3-bellhunt__name">${esc(s.hunt.name)}</span><span class="u3-bar u3-bar--sm u3-bellhunt__hp" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Boss HP">`
       + `<span class="u3-bar__fill" style="--u3-v:${pct}%"></span></span></span>${button({ label: 'Hunt', variant: 'primary', icon: 'swords', data: { act: 'Hunt' } })}</div>` });
   }
@@ -98,13 +65,14 @@ export function bellUnits(s) {
   const list = s.items.filter((x) => s.tab === 'all' || s.kindOf(x.kind).tab === s.tab);
   const groups = [['today', 'Today', list.filter((x) => new Date(x.created_at).toDateString() === today)],
     ['earlier', 'Earlier', list.filter((x) => new Date(x.created_at).toDateString() !== today)]];
+  const scrollKey = groups[1][2].length ? 'earlier' : 'today';
   for (const [key, label, rows] of groups) {
     if (!rows.length) continue;
     u.push({ head: true, html: `<span class="u3-label u3-bell__sec">${label}</span>` });
     for (const x of rows) {
       const k = s.kindOf(x.kind);
       const open = s.expanded.has(x.id);
-      u.push({ section: key, note: x.id, html: `<div class="u3-note${x.read ? '' : ' is-unread'}${open ? ' is-full' : ''}" data-note="${esc(x.id)}">`
+      u.push({ section: key, scroll: key === scrollKey, note: x.id, html: `<div class="u3-note${x.read ? '' : ' is-unread'}${open ? ' is-full' : ''}" data-note="${esc(x.id)}">`
         + `<span class="u3-note__ico">${icon(noteIcon(x.kind), { size: 'lg' })}</span>`
         + `<button type="button" class="u3-note__main" aria-expanded="${open}"><span class="u3-note__text" data-trunc>${esc(s.strip(x.message))}</span>`
         + `${k.label ? `<span class="u3-note__kind">${esc(k.label)}</span>` : ''}</button>`
@@ -125,38 +93,41 @@ function frame(s) {
   const inline = false;
   return `<header class="u3-bell__head"><h2 class="u3-bell__title" id="u3BellT">Notifications</h2>${s.unread ? counter(s.unread) : ''}`
     + `<span class="u3-bell__grow"></span>${read}${inline ? seg : ''}<span class="u3-bell__close" data-close>${iconButton({ icon: 'x', label: 'Close' })}</span></header>${inline ? '' : seg}`
-    + `<div class="u3-bell__list" id="ntList"></div><div class="u3-bell__pager" hidden></div>`;
+    + `<div class="u3-bell__list" id="ntList"></div>`;
 }
 
+let stopRail = null;
+
 /**
- * Paint the window into box. s = { tab, items, gifts, hunt, unread, giftError, page, expanded (Set of ids), size, now,
- * kindOf, strip, ago, thumb, coin, rarityLabel, settings (HTML or null), focus (a row id or null) }. Returns { pages, page }.
+ * Paint the window into box. s = { tab, items, gifts, hunt, unread, giftError, expanded (Set of ids), size, now,
+ * kindOf, strip, ago, thumb, coin, rarityLabel, settings (HTML or null), focus (a row id or null) }.
+ * The rows that scroll sit in the named scroll area "bell notes" (the rail shows only when they overflow). After a tap
+ * on a row (focus) the scroll position stays and the row is kept whole in view. Returns { scroll: boolean }.
  */
 export function paintBell(box, s) {
+  const keep = s.focus != null ? box.querySelector('.u3-bell__scroll')?.scrollTop || 0 : 0;
+  stopRail?.(); stopRail = null;
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-labelledby', 'u3BellT');
   box.innerHTML = frame(s);
   const list = box.querySelector('.u3-bell__list');
-  const pg = box.querySelector('.u3-bell__pager');
-  if (s.settings != null) { list.innerHTML = s.settings; return { pages: 1 }; }
+  if (s.settings != null) { list.innerHTML = s.settings; return { scroll: false }; }
   const units = bellUnits(s);
-  if (!units.length) { list.innerHTML = stateEmpty({ title: 'Nothing here yet.' }); return { pages: 1 }; }
-  // measure: every unit once, the list height with and without the pager
-  list.innerHTML = units.map((u, i) => `<div class="u3-bell__u" data-u="${i}">${u.html}</div>`).join('');
-  pg.innerHTML = pager({ page: 1, pages: 2 });
-  pg.hidden = false;
-  const paged = list.clientHeight;
-  pg.hidden = true;
-  const full = list.clientHeight;
-  const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
-  units.forEach((u, i) => { u.h = list.children[i].getBoundingClientRect().height; });
-  const { pages } = packPages(units, { full, paged, gap });
-  // the page of the row that the member just opened or closed (its new height can move it), else the asked page
-  const fi = s.focus != null ? units.findIndex((u) => u.note === s.focus) : -1;
-  const at = fi >= 0 ? pages.findIndex((p) => p.includes(fi)) + 1 : 0;
-  const page = at || Math.min(Math.max(1, s.page | 0), pages.length);
-  list.innerHTML = pages[page - 1].map((i) => `<div class="u3-bell__u">${units[i].html}</div>`).join('');
-  pg.innerHTML = pages.length > 1 ? pager({ page, pages: pages.length }) : '';
-  pg.hidden = pages.length <= 1;
-  return { pages: pages.length, page };
+  if (!units.length) { list.innerHTML = stateEmpty({ title: 'Nothing here yet.' }); return { scroll: false }; }
+  const wrap = (u) => `<div class="u3-bell__u">${u.html}</div>`;
+  const rows = units.filter((u) => u.scroll);
+  list.innerHTML = `<div class="u3-bell__fixed">${units.filter((u) => !u.scroll).map(wrap).join('')}</div>`
+    + (rows.length ? `<div class="u3-bell__area"><div class="u3-bell__scroll" role="region" aria-label="Notifications list" data-scroll-area="bell notes" tabindex="0">${rows.map(wrap).join('')}</div>`
+      + `<span class="u3-bell__rail" aria-hidden="true" hidden><span class="u3-bell__thumb"></span></span></div>` : '');
+  const sc = list.querySelector('.u3-bell__scroll');
+  if (!sc) return { scroll: false };
+  sc.scrollTop = keep;
+  const row = s.focus != null ? sc.querySelector(`[data-note="${CSS.escape(String(s.focus))}"]`)?.parentElement : null;
+  if (row && sc.scrollHeight > sc.clientHeight + 1) {
+    const top = row.offsetTop - sc.offsetTop, bottom = top + row.offsetHeight;
+    if (row.offsetHeight >= sc.clientHeight || top < sc.scrollTop) sc.scrollTop = top;
+    else if (bottom > sc.scrollTop + sc.clientHeight) sc.scrollTop = bottom - sc.clientHeight;
+  }
+  stopRail = watchRail(sc, list.querySelector('.u3-bell__rail'), '--bell-thumb-top', '--bell-thumb-h');
+  return { scroll: true };
 }
