@@ -64,7 +64,11 @@ export const SCREENS = {
   'gauntlet':            { id: 'UI-52', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   // The Shop (UI-43): tiny has no top bar, so no Shop button (D-06: the small live view, UI-59).
   'shop':                { id: 'UI-43', long: true, safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2]] },
-  'shop-confirm':        { id: 'UI-43', safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
+  // Convert extra copies (UI-44): the window over the card detail (UI-08); minus = one copy less; error = the refused write (no fixture for POST).
+  'convert':             { id: 'UI-44', under: 'UI-08', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1]] },
+  'convert-minus':       { id: 'UI-44', under: 'UI-08', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1], ['js', '#u3ShopDlg [aria-label="Decrease"]'], ['wait', 0.5]] },
+  'convert-error':       { id: 'UI-44', under: 'UI-08', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1], ['js', '#u3ShopDlg [data-go]'], ['wait', 1.5]] },
+  'shop-confirm':      { id: 'UI-43', safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
   // The Dailies window (UI-36) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
   // The first wait: the menu shows the Dailies tile only after /api/dailies answered (the tile of a window that is off is hidden).
   'dailies':             { id: 'UI-36', long: true, safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 3], ['js', '#menuBtn'], ['js', '[data-menu="dailies"]'], ['wait', 1.5]] },
@@ -119,6 +123,7 @@ export function ownerOf(screen, where) {
   // The pack reveal stage covers the screen under it: a defect in the stage belongs to the reveal screen.
   // A path keeps 3 levels, so the stage parts are named too (the pack, the cards, the bar, the effects).
   if (/#stage[a-z]*\b|\.u3-reveal|\.u3-pack|.u3-mpack|.u3-mhint|.u3-mrow|.u3-mwait|.u3-newmark|.reveal-grid|\.fc\b|\.pf\b|\.pf-face|\.react\b|\.u3-reacts|\.tap-prompt|\.sunrays|\.rare-banner|\.spark\b|\.mr-/.test(where)) return SCREENS[screen].id;
+  if (/#u3ShopDlg|\.u3-sdlg|\.u3-sbal|\.u3-scvt|\.u3-scrim|\.u3-dialog|\.u3-step|\.u3-msg/.test(where) && SCREENS[screen].id === 'UI-44') return 'UI-44';   // the Convert window (it is the Shop confirm plus the quantity row)
   if (/#(v2Shards|shopBtn)[a-z]*\b/.test(where)) return 'UI-42';
   if (/(^|\s|>\s*)#(topbar|dock|shardsBtn|dailyBtn|helpBtn|bellBtn|boardBtn|reportBtn|avatarBtn|dockOpen|menuBtn|v2Avatar)[a-z]*\b/.test(where) || /\.dk\b/.test(where)) return 'UI-01';
   if (/v2-subtabs|(?<![\w-])dg-tabs\b|#commTabs|#colTabs/.test(where)) return 'UI-02';
