@@ -1,0 +1,13 @@
+/* UI-55 Avatar effects (v3 only): the effect overlay of src/ui3/avatarfx.js, inside every avatar of the member (top bar, Home, Profile,
+   Leaderboard). It sits in the avatar box (the avatar clips it), takes no tap, and never moves the layout (absolute). */
+body.ui-v3 .v2-avatar { position: relative; }
+body.ui-v3 .u3-avfx { position: absolute; inset: 0; display: block; pointer-events: none; }
+/* The mustache: 88% of the avatar width, 49% from the top, 6% from the left (the approved frames). Dark fill, light outline so it shows on any picture. */
+body.ui-v3 .u3-avfx__stache { position: absolute; left: 6%; top: 49%; width: 88%; height: auto; aspect-ratio: 5 / 2; overflow: visible;
+  fill: var(--bg-base); stroke: var(--text-on-color); stroke-width: var(--bw-2); stroke-linejoin: round; paint-order: stroke; vector-effect: non-scaling-stroke;
+  transform-origin: 50% 50%; animation: u3-avfx-wobble calc(var(--dur-celebrate) * 2) var(--ease-in-out) infinite; }
+body.ui-v3 .u3-avfx__stache path { vector-effect: non-scaling-stroke; }
+@keyframes u3-avfx-wobble { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+/* Reduced motion: the device setting, and Reduce effects in Settings (D-11, body.u3-calm): the mustache stands still. */
+@media (prefers-reduced-motion: reduce) { body.ui-v3 .u3-avfx__stache { animation: none; } }
+body.ui-v3.u3-calm .u3-avfx__stache { animation: none; }
