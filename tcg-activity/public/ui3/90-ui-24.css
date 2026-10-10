@@ -1,0 +1,19 @@
+/* ==== UI-24 bell window: the named scroll area (D-144; docs/design.md 3.3, D-07) ====
+   The Earlier rows (the Today rows when there is no Earlier) are the scroll area "bell notes" with a visible rail, as the
+   FAQ list (90-ui-38.css). The tabs, the gifts, the Hunt card and the section heads stay fixed. No pager. */
+.u3-bell__list { flex: 1 1 auto; min-height: 0; overflow: visible; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-bell__fixed { flex: none; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-bell__area { position: relative; flex: 0 1 auto; min-height: calc(var(--hit) * 2); display: flex; flex-direction: column; }
+.u3-bell__scroll { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain; scrollbar-width: none; }
+.u3-bell__scroll::-webkit-scrollbar { display: none; }
+/* the cue: a rail with a thumb, real elements, in the window padding at the right edge (bell.js sets --bell-thumb-top and --bell-thumb-h) */
+.u3-bell__rail { position: absolute; top: 0; bottom: 0; right: calc(var(--sp-2) * -1); width: var(--bar-sm); border-radius: var(--rad-pill); background: var(--surface-3); pointer-events: none; }
+.u3-bell__rail[hidden] { display: none; }
+.u3-bell__thumb { position: absolute; left: 0; right: 0; top: var(--bell-thumb-top, 0%); height: var(--bell-thumb-h, 100%); border-radius: var(--rad-pill); background: var(--border-strong); }
+.u3-bell__scroll:focus-visible { outline: none; box-shadow: var(--glow-focus); border-radius: var(--rad-md); }
+body[data-last-input="pointer"] .u3-bell__scroll:focus-visible { box-shadow: none; }
+/* The head with unread notes (Counter + "Mark all read" + Close) must fit the narrowest window: the check icon of Mark all
+   read goes, the label stays; the title never shrinks. */
+body[data-size="compact-port"] .u3-bell__head [data-read] svg { display: none; }
+.u3-bell__head [data-read] { flex: 0 1 auto; min-width: 0; padding: 0 var(--sp-2); }

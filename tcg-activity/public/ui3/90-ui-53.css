@@ -1,0 +1,32 @@
+/* ==== UI-53 Unlock gate (ui-v2-gate.js gateV3HTML; design repo UI-53/approved; flag ui_v3) ====
+   The locked Hunt, Dungeon and Gauntlet: a panel with the lock, "Unlock the ...", and two step rows (circle, title, progress,
+   one button). The first unfinished step has the primary button, the other one the secondary. Every selector starts with .u3-gate
+   or .u3-gt-, so no other screen changes. The panel is centered in the content area and keeps clear of the dock. */
+body.ui-v2.ui-v3 .main-body:has(> .u3-gate), body.ui-v2.ui-v3 .v2-dungeon:has(> .u3-gate) {
+  flex: 1 1 0; height: 100%; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden;
+  padding: var(--u3-none) var(--u3-none) var(--sp-3); gap: var(--u3-none); --text-muted: var(--u3-text-muted); }
+body.ui-v2.ui-v3 .u3-gate, body.ui-v2.ui-v3 .v2-dungeon > .u3-gate { flex: 1 1 0; min-height: 0; display: grid; place-items: center; }
+.u3-gt-card { --gt-ic: calc(var(--icon-2xl) + var(--sp-1)); --gt-lock: calc(var(--hit) + var(--sp-4));
+  box-sizing: border-box; width: min(100%, calc(var(--dialog-w) * 1.25)); max-height: 100%; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); padding: var(--sp-5);
+  border-radius: var(--rad-lg); border: var(--bw-1) solid var(--border); background: var(--bg-raised); color: var(--text-primary); }
+.u3-gt-lock { flex: none; box-sizing: border-box; width: var(--gt-lock); height: var(--gt-lock); border-radius: var(--rad-round); display: grid; place-items: center;
+  background: var(--gold-a10); color: var(--gold); border: var(--bw-1) solid var(--gold-a50); }
+.u3-gt-lock svg { width: var(--icon-2xl); height: var(--icon-2xl); }
+.u3-gt-title { flex: none; margin: var(--u3-none); text-align: center; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title);
+  line-height: var(--lh-title); letter-spacing: var(--ls-display); color: var(--text-primary); }
+.u3-gt-steps { align-self: stretch; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-gt-step { box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); text-align: left; }
+.u3-gt-ic { flex: none; box-sizing: border-box; width: var(--gt-ic); height: var(--gt-ic); border-radius: var(--rad-round); display: grid; place-items: center;
+  border: var(--bw-1) solid var(--border-strong); color: var(--success); }
+.u3-gt-ic svg { width: var(--icon-md); height: var(--icon-md); }
+.u3-gt-step.is-done .u3-gt-ic { border-color: var(--success); background: var(--success-soft); }
+.u3-gt-txt { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-gt-txt b { font-size: var(--fs-body); font-weight: var(--fw-heading); line-height: var(--lh-small); color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-gt-txt span { font-family: var(--font-num); font-size: var(--fs-caption); font-weight: var(--fw-caption); line-height: var(--lh-caption); color: var(--text-muted); overflow-wrap: anywhere; }
+.u3-gt-ok { flex: none; color: var(--success); font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
+.u3-gt-step > .u3-btn { flex: none; }
+/* compact-port: the panel uses the full content width (3.4); the title, the text and the button of a step may need more room */
+body[data-size="compact-port"] .u3-gt-card { width: 100%; }
+

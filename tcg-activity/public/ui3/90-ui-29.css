@@ -1,0 +1,15 @@
+/* ==== UI-29 Member suggest (src/ui3/member-picker.js, suggest.js; design.md 3.3, D-07; approved frames: design repo UI-29/approved) ====
+   The look of the popover is UI-65 (90-ui-65.css, unchanged). This file adds the NAMED SCROLL AREA: the list holds whole 44 px rows
+   (at most 6, member-picker.js sets --sug-h from the room above the dock or the keyboard), more matches scroll inside it, and a rail
+   with a thumb is the cue (real elements, so it shows on every device). The rail sits in the padding of the popover. */
+.u3-mp-sug__list { display: flex; flex-direction: column; gap: var(--sp-1); height: var(--sug-h, auto); min-height: 0; overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain; scrollbar-width: none; }
+.u3-mp-sug__list::-webkit-scrollbar { display: none; }
+.u3-mp-sug__row { flex: none; }
+.u3-mp-sug__row > span:not(.u3-mp-av) { min-width: 0; overflow-wrap: anywhere; }   /* a long name wraps at its break points, never "..." (D-08) */
+.u3-mp-sug__rail { position: absolute; top: var(--sp-1-5); bottom: var(--sp-1-5); right: var(--sp-half); width: var(--bar-sm); border-radius: var(--rad-pill);
+  background: var(--surface-3); pointer-events: none; }
+.u3-mp-sug__rail[hidden] { display: none; }
+.u3-mp-sug__thumb { position: absolute; left: 0; right: 0; top: var(--sug-thumb-top, 0%); height: var(--sug-thumb-h, 100%); border-radius: var(--rad-pill); background: var(--border-strong); }
+/* the clear button of the search while text is typed (the library SearchField typed state): a 44 px touch target (9.1) */
+body[data-input="coarse"] .u3-mp__find .u3-search .u3-ibtn--sm { width: var(--hit); height: var(--hit); }

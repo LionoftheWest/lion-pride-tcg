@@ -10,7 +10,12 @@ window.fetch = (url, opts) => {
 };
 export class DiscordSDK {
   constructor() { this.instanceId = 'ui-check-room'; }
-  async ready() {}
+  // UI-56 loader states (cookie ci_loader, set by run.mjs for a spec with `loader`): wait = the sign-in never answers, error = it fails.
+  async ready() {
+    const mode = /(?:^|; )ci_loader=(\w+)/.exec(document.cookie)?.[1];
+    if (mode === 'wait') await new Promise(() => {});
+    if (mode === 'error') throw new Error('OAuth2 Authorize Error: Unknown Error');
+  }
   commands = {
     authorize: async () => ({ code: 'ui-check' }),
     authenticate: async () => ({ user: { id: ID, username: 'member_a', global_name: NAME } }),

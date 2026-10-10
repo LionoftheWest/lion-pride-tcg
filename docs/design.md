@@ -83,20 +83,22 @@ The UI check (section 12.6) runs every screen and every overlay at these sizes. 
 | # | Size (CSS px) | Device or window | Class | Input |
 |---|---|---|---|---|
 | 1 | 375x667 | iPhone SE, portrait | compact-port | touch |
-| 2 | 667x375 | iPhone SE, landscape | compact-land | touch |
+| 2 | 667x375 | Desktop window, short | compact-land | pointer |
 | 3 | 430x932 | iPhone 15 Pro Max, portrait | compact-port | touch |
-| 4 | 932x430 | iPhone 15 Pro Max, landscape | compact-land | touch |
+| 4 | 932x430 | Desktop window, short | compact-land | pointer |
 | 5 | 430x822 | Nathan's iPhone, portrait | compact-port | touch |
 | 6 | 412x915 | Pixel, portrait | compact-port | touch |
-| 7 | 915x412 | Pixel, landscape | compact-land | touch |
+| 7 | 915x412 | Desktop window, short | compact-land | pointer |
 | 8 | 820x1180 | iPad, portrait | medium | touch |
-| 9 | 1180x820 | iPad, landscape | medium | touch |
+| 9 | 1180x820 | Desktop window, medium | medium | pointer |
 | 10 | 692x917 | Android tablet, portrait | medium | touch |
-| 11 | 917x692 | Android tablet, landscape | medium + short | touch |
+| 11 | 917x692 | Desktop window, short | medium + short | pointer |
 | 12 | 1280x720 | Discord desktop, small | expanded | pointer |
 | 13 | 1990x830 | Discord desktop, design target | expanded | pointer |
 | 14 | 1280x480 | Discord desktop, short window | compact-land | pointer |
 | 15 | 400x225 | Discord PiP | tiny | touch |
+
+D-136: phones and tablets are locked to portrait (Nathan sets the lock in the Discord Developer Portal), so only desktop has landscape. Rows 2, 4, 7, 9 and 11 are desktop windows: the check runs them with no touch, no safe-area preset and no keyboard variant. D-138: there is no typing in the tiny window, so row 15 has no keyboard variant.
 - Run each size in Chromium and in WebKit. Run the touch sizes with the safe-area presets and with the keyboard open. (G-185, G-013, G-015)
 - Measure the real PiP and grid-tile frames in Discord. Update row 15 with the measured size. (G-012)
 
@@ -112,6 +114,8 @@ The UI check (section 12.6) runs every screen and every overlay at these sizes. 
 - Corner buttons: Discord puts Leave and collapse in the corners. Keep every control out of the corner zones. **[CI]** (G-013)
 - Header: in portrait, the inset can arrive after the first frame. The shell reads the inset again when it changes. (G-014)
 - Keyboard: the shell exposes the keyboard height from `visualViewport`. The keyboard never covers the focused text box. (G-015)
+- Dock while typing: every class keeps the dock while the keyboard is open (P1). On compact-land only, the dock gives way while `body[data-kb]` is set and returns when the keyboard closes, because the keyboard leaves about 50 px and the search fields need that space. (D-118)
+- Sub-tab row while typing: on compact-port only, the sub-tab row gives way while `body[data-kb]` is set, so one row of cards fits above the keyboard (375x667: the search left about 96 px, one row needs 123 px). The screens get its height back. It returns when the keyboard closes. Every other class keeps the row. (D-122)
 - Platform: the shell reads iOS, Android, desktop or web from the SDK, and owns each platform difference. (G-016)
 
 ## 3. Screen areas and layout models
@@ -977,6 +981,10 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-83 | Set code on the card | Each card shows its set code with its number, for example "S2 · #014"; no set symbol (Nathan, 2026-10-07: "Set Code on the card") |
 | D-84 | Rewards from all sets | Dungeon, Shop and other card rewards draw from every pullable set; only packs choose a set (Nathan, 2026-10-07: "I like completely random odds still across all sets") |
 | D-117 | Sub-tabs on low landscape phones | On `compact-land` below 400 px usable height, the sub-tabs move into the top bar row beside the emblem (an exception to D-37). On 667x375 the second shell row took about 50 px of 375 px, and every Hunt screen was cut (Nathan, 2026-10-08: chose "Tabs into top bar") |
+| D-118 | The dock gives way on compact-land while typing | On compact-land, while the keyboard is open (`body[data-kb]`), the dock gives way and returns when the keyboard closes. Every other class keeps the dock while typing (P1). (Nathan, 2026-10-08: "On compact-land, while the keyboard is open, the dock gives way; it returns when the keyboard closes. Every other class keeps the dock while typing")
+| D-122 | The sub-tab row gives way on compact-port while typing | On compact-port, while the keyboard is open (`body[data-kb]`), the sub-tab row gives way and returns when the keyboard closes, so one row of cards fits above the keyboard. (Nathan, 2026-10-08: chose "Tab row hides while typing"; 375x667: the Collection search left about 96 px, one row needs 123 px) |
+| D-136 | Phones and tablets portrait only | Phones and tablets are locked to portrait; only desktop has landscape. The lock is the Discord Developer Portal setting (no app code). 667x375, 932x430, 915x412, 1180x820 and 917x692 stay in the UI check as desktop windows (no touch, no keyboard and no safe variants); their defects are REPORT ONLY: listed in the G3 summary, never failing the verdict (Nathan, 2026-10-09: "anything that is wrong with landscapes currently don't worry about it"; `REPORT_ONLY_SIZES` in `ci/ui-check/screens.mjs`). Flag OFF keeps its own lock. Conditional on Nathan's Discord poll (Nathan, 2026-10-09: "I'm honestly wondering if we should even make landscape a thing"; chose "Phones portrait only"; then "tablet would be just a bigger version of portrait in my mind") |
+| D-138 | No typing in the tiny window | The UI check drops the keyboard variant at the tiny size (Discord picture-in-picture). Assumed: a tap on the small window opens the full Activity first (not tested on a phone) (Nathan, 2026-10-09, with D-136) |
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 

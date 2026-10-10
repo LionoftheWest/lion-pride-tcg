@@ -1,0 +1,246 @@
+/* ==== UI-03 Home (src/ui3/home.js, ui-v2.js paintHeroV3 / paintVoiceV3 / paintPullsV3; design repo UI-03/approved; flag ui_v3) ====
+   Three tiles: the hero (the Hunt), Live in voice and Live pulls. Wide frames: two columns (hero and voice at the left,
+   pulls at the right). A frame taller than wide (measured on the Home box itself, not the window): one column, hero, pulls,
+   voice. Every selector starts with .u3-home or .u3-hm-, so no other screen changes. Tokens only. */
+body.ui-v2.ui-v3 #main > .u3-home { --hm-gap: var(--sp-4); --hm-pad: var(--sp-4); --hm-name: var(--fs-stat); height: 100%; min-height: 0; box-sizing: border-box; container-type: size;
+  padding: var(--u3-none) var(--u3-pad) var(--sp-3); color: var(--text-primary); --text-muted: var(--u3-text-muted); }
+body[data-size="compact-land"] .u3-home, body[data-size="compact-port"] .u3-home { --hm-gap: var(--sp-2); --hm-pad: var(--sp-3); --hm-name: var(--fs-small); }
+.u3-hm { height: 100%; min-height: 0; display: grid; gap: var(--hm-gap); grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+body[data-size="expanded"] .u3-hm { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); }
+.u3-hm > .hero { grid-column: 1; grid-row: 1; }
+.u3-hm > .voice { grid-column: 1; grid-row: 2; }
+.u3-hm > .pulls { grid-column: 2; grid-row: 1 / span 2; }
+@container (aspect-ratio < 1) {
+  .u3-hm { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr) auto; }
+  .u3-hm > .hero { grid-column: 1; grid-row: 1; }
+  .u3-hm > .pulls { grid-column: 1; grid-row: 2; }
+  .u3-hm > .voice { grid-column: 1; grid-row: 3; }
+}
+.u3-hm-tile { min-width: 0; min-height: 0; box-sizing: border-box; overflow: hidden; border-radius: var(--rad-lg); border: var(--bw-1) solid var(--border); background: var(--bg-raised); }
+.u3-hm-tile.hero { container-type: size; padding: var(--u3-none);
+  background: radial-gradient(ellipse at 75% 45%, color-mix(in srgb, var(--hunt) 24%, transparent), transparent 62%), var(--bg-raised); }
+.u3-hm-tile.voice { padding: var(--sp-3) var(--hm-pad); display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-3); }
+.u3-hm-tile.pulls { padding: var(--hm-pad); display: flex; flex-direction: column; gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-hm-tile.voice { grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: var(--sp-2); }
+
+/* ---- the hero ---- */
+.u3-hm-hb { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.u3-hm-hb > .u3-hm-info { grid-column: 1; grid-row: 1; }
+.u3-hm-hb > .u3-hm-stage { grid-column: 2; grid-row: 1; }
+@container (aspect-ratio < 1.35) {
+  .u3-hm-hb { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .u3-hm-hb > .u3-hm-stage { grid-column: 1; grid-row: 1; }
+  .u3-hm-hb > .u3-hm-info { grid-column: 1; grid-row: 2; }
+}
+.u3-hm-hb:not(:has(> .u3-hm-stage)) { grid-template-columns: minmax(0, 1fr); }
+.u3-hm-stage { min-height: 0; min-width: 0; position: relative; }
+.u3-hm-boss { position: absolute; inset: 0; }
+.u3-hm-boss canvas { display: block; width: 100%; height: 100%; background: none; }
+.u3-hm-info { min-width: 0; min-height: 0; box-sizing: border-box; padding: var(--hm-pad); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; justify-content: safe center; gap: var(--sp-2); position: relative; z-index: var(--z-base); }   /* safe: never above the top edge, so a measured overflow shows downward */
+.u3-hm-chip { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--chip-md); box-sizing: border-box; padding: var(--u3-none) var(--sp-3); border-radius: var(--rad-pill); background: var(--surface-2);
+  border: var(--bw-1) solid var(--border); color: var(--text-secondary); font-size: var(--fs-caption); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; white-space: nowrap; }
+.u3-hm-chip.is-live { color: var(--danger-text); background: var(--danger-soft); border-color: var(--danger); }
+.u3-hm-livedot { flex: none; display: inline-block; width: var(--dot); height: var(--dot); border-radius: var(--rad-round); background: var(--danger); }
+.u3-hm-title { margin: var(--u3-none); font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); letter-spacing: var(--ls-display); overflow-wrap: break-word; }
+body[data-size="compact-land"] .u3-hm-title, body[data-size="compact-port"] .u3-hm-title { font-size: var(--fs-heading); line-height: var(--lh-heading); }
+.u3-hm-res { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-caption); font-weight: var(--fw-stat); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-hm-res.is-won { color: var(--success); }
+.u3-hm-res.is-lost { color: var(--danger-text); }
+.u3-hm-stats { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-5); }
+.u3-hm-stats > div { display: flex; flex-direction: column; min-width: 0; }
+.u3-hm-stats b { font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-stat); line-height: var(--lh-heading); }
+.u3-hm-stats span { color: var(--text-muted); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.u3-hm-next { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-3); color: var(--text-secondary); font-size: var(--fs-small); }
+.u3-hm-next b { font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-hm-top { box-sizing: border-box; min-height: var(--hit); max-width: 100%; min-width: 0; display: inline-flex; align-items: center; padding: var(--sp-1) var(--sp-4);
+  border-radius: var(--rad-md); border: var(--bw-1) solid var(--border); background: var(--surface-1); color: var(--text-secondary); font: inherit; font-size: var(--fs-small); text-align: left; cursor: pointer; overflow-wrap: break-word; }
+.u3-hm-topt { min-width: 0; }
+.u3-hm-top b { color: var(--text-primary); font-weight: var(--fw-small-strong); }
+.u3-hm-top i { font-style: normal; color: var(--text-muted); }
+.u3-hm-top em { font-style: normal; font-family: var(--font-num); color: var(--gold); }
+.u3-hm-top:focus-visible, .u3-hm-cell:focus-visible, .u3-hm-row:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+@media (hover: hover) { .u3-hm-top:hover { border-color: var(--border-strong); } }
+.u3-hm-top-slot { display: none; }
+.u3-hm-hp { align-self: stretch; display: flex; justify-content: space-between; gap: var(--sp-3); color: var(--text-secondary); font-size: var(--fs-small); }
+.u3-hm-mono { font-family: var(--font-num); }
+.u3-hm-info > .u3-segbar { align-self: stretch; }
+.u3-hm-act { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+.u3-hm-join { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.u3-hm-faces { display: inline-flex; }
+.u3-hm-faces .v2-avatar { width: var(--avatar-sm); height: var(--avatar-sm); box-shadow: 0 0 0 var(--bw-2) var(--bg-raised); }
+.u3-hm-faces .v2-avatar + .v2-avatar { margin-left: calc(var(--sp-2) * -1); }
+.u3-hm-rank { color: var(--text-muted); font-size: var(--fs-small); }
+
+/* ---- Live pulls ---- */
+.u3-hm-ph { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-3); }
+.u3-hm-pt { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-stat); font-weight: var(--fw-heading); white-space: nowrap; }
+.u3-hm-ph .u3-seg { max-width: 100%; }
+.u3-hm-feat { flex: none; box-sizing: border-box; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-3); padding: var(--sp-2); border-radius: var(--rad-lg); border: var(--bw-1) solid var(--u3-r, var(--border-strong)); background: var(--surface-1); cursor: pointer; min-width: 0; }
+.u3-hm-feat img, .u3-hm-row img { flex: none; width: var(--card-mini); aspect-ratio: 5 / 7; object-fit: cover; border-radius: var(--rad-sm); border: var(--bw-2) solid var(--u3-r, var(--border-strong)); box-sizing: border-box; }
+.u3-hm-ft { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-hm-fk { color: var(--text-secondary); font-size: var(--fs-small); font-weight: var(--fw-label); letter-spacing: var(--ls-label); }
+.u3-hm-ft b { font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); overflow-wrap: break-word; }
+.u3-hm-list { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-hm-row { flex: none; box-sizing: border-box; min-height: calc(var(--card-mini) * var(--card-ratio)); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); padding: var(--u3-none) var(--sp-1); cursor: pointer; min-width: 0; }
+.u3-hm-rt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); text-align: left; font-size: var(--fs-small); line-height: var(--lh-small); }
+.u3-hm-who { color: var(--text-secondary); overflow-wrap: break-word; }
+.u3-hm-who b { color: var(--text-primary); font-weight: var(--fw-small-strong); }
+.u3-hm-card { color: var(--u3-rt, var(--u3-r, var(--text-primary))); overflow-wrap: break-word; }
+.u3-hm-row.u3-r-illustrated_rare { --u3-rt: var(--rarity-illustrated_rare-text); }
+.u3-hm-row.u3-r-secret_rare { --u3-rt: var(--rarity-secret_rare-text); }
+.u3-hm-time { flex: none; color: var(--text-muted); font-family: var(--font-num); font-size: var(--fs-small); }
+.u3-hm-pg { flex: none; display: flex; justify-content: center; padding-top: var(--sp-1); }
+.u3-hm-pg:empty { display: none; }
+.u3-hm-empty { margin: var(--u3-none); color: var(--text-secondary); font-size: var(--fs-body); }
+
+/* ---- Live in voice ---- */
+.u3-hm-vh { min-width: 0; display: grid; grid-template-columns: auto auto; justify-content: start; align-items: center; gap: var(--sp-1) var(--sp-3); }
+.u3-hm-vh .u3-hm-live { grid-column: 1 / -1; justify-self: start; }
+body[data-size="expanded"] .u3-hm-vh, body[data-size="compact-port"] .u3-hm-vh { display: flex; flex-wrap: wrap; }
+.u3-hm-vt { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-stat); font-weight: var(--fw-heading); white-space: nowrap; }
+.u3-hm-vn { color: var(--text-muted); font-size: var(--fs-stat); }
+.u3-hm-live { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--chip-sm); box-sizing: border-box; padding: var(--u3-none) var(--sp-3); border-radius: var(--rad-pill);
+  border: var(--bw-1) solid var(--danger); background: var(--danger-soft); color: var(--danger-text); font-size: var(--fs-caption); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-hm-live::before { content: ""; width: var(--dot); height: var(--dot); border-radius: var(--rad-round); background: var(--danger); }
+.u3-hm-vrow { min-width: 0; display: flex; align-items: stretch; gap: var(--sp-3); }
+.u3-hm-cell { --k: var(--text-muted); flex: 0 1 auto; min-width: 0; box-sizing: border-box; min-height: var(--hit); display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--rad-md); border: var(--bw-1) solid var(--border); background: var(--surface-1); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.u3-hm-cell[hidden] { display: none; }
+.u3-hm-vrow.is-measure .u3-hm-cell { flex: none; }
+.u3-hm-cell.k-opening { --k: var(--gold); }
+.u3-hm-cell.k-collection { --k: var(--info); }
+.u3-hm-cell.k-hunt, .u3-hm-cell.k-trading { --k: var(--success); }
+.u3-hm-cell.k-battle { --k: var(--danger-text); }
+.u3-hm-cell.k-playing { --k: var(--effect-prank); }
+.u3-hm-cell.watch { border-color: var(--gold-a50); background: var(--gold-a10); }
+.u3-hm-cell .v2-avatar { flex: none; width: var(--avatar-md); height: var(--avatar-md); }
+.u3-hm-cn { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }
+.u3-hm-c1 { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+.u3-hm-c1 > b { min-width: 0; font-size: var(--hm-name); font-weight: var(--fw-stat); line-height: var(--lh-stat); overflow-wrap: break-word; }
+.u3-hm-you { font-style: normal; color: var(--text-muted); font-size: var(--fs-caption); }
+.u3-hm-ago { color: var(--text-muted); font-family: var(--font-num); font-size: var(--fs-caption); }
+.u3-hm-st { color: var(--k); font-size: var(--fs-small); font-weight: var(--fw-small-strong); line-height: var(--lh-small); overflow-wrap: break-word; }
+.u3-hm-watch { flex: none; display: inline-flex; align-items: center; gap: var(--sp-1-5); min-height: var(--chip-md); box-sizing: border-box; padding: var(--u3-none) var(--sp-3); border-radius: var(--rad-pill);
+  background: var(--gold); color: var(--on-gold); font-size: var(--fs-small); font-weight: var(--fw-heading); }
+.u3-hm-more { flex: none; box-sizing: border-box; min-width: var(--hit); min-height: var(--hit); display: grid; place-items: center; padding: var(--u3-none) var(--sp-2); border-radius: var(--rad-md);
+  border: var(--bw-1) solid var(--border); background: var(--surface-1); color: var(--text-secondary); font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); }
+
+/* 9.1: the library segment is 44 px high on touch; its width is the label, so a short label gets the hit width too */
+body[data-input="coarse"] .u3-hm-ph .u3-seg__item { min-width: var(--hit); justify-content: center; }
+
+.u3-hm-fw { flex: none; min-width: 0; }
+/* compact-land (the height is the limit): the hero column is wider, the info is tighter, the voice tile is one cell row */
+body[data-size="compact-land"] .u3-hm { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+body[data-size="compact-land"] .u3-hm-info { padding: var(--sp-2) var(--sp-3); gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-hm-stats b, body[data-size="compact-land"] .u3-hm-next b { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+body[data-size="compact-land"] .u3-hm-chip { min-height: var(--chip-sm); }
+body[data-size="compact-land"] .u3-hm-tile.voice { padding: var(--sp-1) var(--sp-3); }
+body[data-size="compact-land"] .u3-hm-tile.pulls { padding: var(--sp-2) var(--sp-3); }
+
+/* the hero groups: the title block, the HP block */
+.u3-hm-i1 { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+.u3-hm-hpg { align-self: stretch; display: flex; flex-direction: column; gap: var(--sp-2); }
+/* is-tight (measured: fitHero in home.js): the info is taller than the tile. The boss moves beside the title block, the
+   stats and the countdown sit under them, the Top hunter button has its own row (the 375 x 667 frame of UI-04). */
+.u3-hm-hb.is-tight { grid-template-columns: minmax(0, 1fr) minmax(calc(var(--card-squad) + var(--sp-4)), auto); grid-template-rows: auto auto auto auto; align-content: start; gap: var(--sp-1) var(--sp-3); padding: var(--sp-2) var(--sp-3); box-sizing: border-box; }
+.u3-hm-hb.is-tight > .u3-hm-info { display: contents; }
+.u3-hm-hb.is-tight > .u3-hm-stage { grid-area: stage; min-height: var(--card-thumb); }
+.u3-hm-hb.is-tight .u3-hm-i1 { grid-area: i1; }
+.u3-hm-hb.is-tight .u3-hm-stats { grid-area: st; align-self: end; }
+.u3-hm-hb.is-tight .u3-hm-next { grid-area: nx; align-self: end; }
+.u3-hm-hb.is-tight .u3-hm-hpg { grid-area: hpg; }
+.u3-hm-hb.is-tight .u3-hm-act { grid-area: act; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); }
+.u3-hm-hb.is-tight .u3-hm-top, .u3-hm-hb.is-tight .u3-hm-top-slot { grid-area: top; justify-self: start; }
+.u3-hm-hb.is-tight.is-rest { grid-template-areas: "i1 stage" "st nx" "top top"; }
+.u3-hm-hb.is-tight.is-live { grid-template-areas: "i1 stage" "hpg hpg" "act act"; }
+.u3-hm-hb.is-tighter .u3-hm-title { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+.u3-hm-hb.is-tighter .u3-hm-i1 { gap: var(--sp-1); }
+.u3-hm-hb.is-tighter .u3-hm-chip { min-height: var(--chip-sm); font-size: var(--fs-label); }
+.u3-hm-hb.is-tighter .u3-hm-stats b, .u3-hm-hb.is-tighter .u3-hm-next b { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+.u3-hm-hb.is-tighter .u3-hm-stats { gap: var(--sp-1) var(--sp-3); }
+
+/* is-compact (measured: fitHomeV3 in ui-v2.js): a tile is still cut at the normal gaps. Smaller gaps and padding; on compact-land the
+   Live in voice tile spans both columns, so the hero and the pulls keep the height. */
+.u3-home.is-compact { --hm-gap: var(--sp-1); --hm-pad: var(--sp-2); padding-bottom: var(--u3-none); }
+.u3-home.is-compact .u3-hm-tile.voice { padding-block: var(--sp-1); }
+.u3-home.is-compact .u3-hm-tile.pulls { gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm > .voice { grid-column: 1 / -1; }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm > .pulls { grid-row: 1; }
+@container (aspect-ratio < 1) { .u3-home.is-compact .u3-hm { grid-template-rows: minmax(0, 0.9fr) minmax(0, 1fr) auto; } }
+.u3-home.is-compact .u3-hm-feat { padding: var(--sp-1) var(--sp-2); }
+.u3-home.is-compact .u3-hm-pg { padding-top: var(--u3-none); }
+.u3-home.is-compact .u3-hm-hb.is-tight { padding: var(--sp-1) var(--sp-3); }
+.u3-hm-hb.is-tight .u3-hm-next { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: var(--u3-none); }
+.u3-hm-hb.is-tighter .u3-hm-res { letter-spacing: var(--u3-none); }
+/* the Live pulls tile is-tight (measured in fitPulls): the featured pull and the pager do not fit at the normal type and gaps */
+.u3-hm-tile.pulls.is-tight { gap: var(--u3-none); }
+.u3-hm-tile.pulls.is-tight .u3-hm-feat { padding: var(--sp-1) var(--sp-2); gap: var(--sp-2); }
+.u3-hm-tile.pulls.is-tight .u3-hm-ft b { font-size: var(--fs-small); line-height: var(--lh-small); }
+.u3-hm-tile.pulls.is-tight .u3-hm-pg { padding-top: var(--u3-none); }
+body[data-size="compact-land"] .u3-hm-ph .u3-seg__item { padding-inline: var(--sp-1); }   /* the tabs and the title keep one row in the narrow pulls column */
+.u3-hm-hb.is-tighter { grid-template-columns: minmax(0, 1fr) auto; }
+/* compact-port, still cut at the compact step (is-vrow, measured) (the 375 x 667 frame of UI-04): Live in voice is ONE row, the title block at the left and the
+   cells at the right; the avatar is smaller and the cell text wraps inside its cell. */
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-tile.voice { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-vh { display: flex; flex-wrap: wrap; align-content: center; max-width: calc(var(--avatar-xl) * 1.15); gap: var(--sp-1) var(--sp-2); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-vt { white-space: normal; max-width: 100%; }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-vrow { gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-cell { gap: var(--sp-2); padding: var(--sp-1) var(--sp-2); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-cell .v2-avatar { width: var(--avatar-sm); height: var(--avatar-sm); }
+body[data-size="compact-port"] .u3-home.is-vrow .u3-hm-ago { display: none; }   /* the 375 x 667 frame draws the cell with a name and a status only */
+.u3-home.is-compact .u3-hm-ph .u3-seg { padding: var(--u3-none); }
+.u3-home.is-compact .u3-hm-tile.pulls { padding: var(--sp-1) var(--sp-2); }
+.u3-hm-list:empty { display: none; }
+.u3-hm-hb.is-tighter { gap: var(--sp-half) var(--sp-3); padding-block: var(--sp-1); }
+.u3-hm-hb.is-tighter.is-live { grid-template-columns: minmax(0, 1fr) minmax(var(--card-thumb), auto); }
+.u3-hm-hb.is-tighter .u3-hm-act, .u3-hm-hb.is-tighter .u3-hm-hpg { gap: var(--sp-half) var(--sp-3); }
+.u3-hm-hb.is-tighter .u3-hm-stage { min-height: var(--u3-none); }
+body[data-size="compact-land"] .u3-home.is-pull .u3-hm { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+.u3-hm-hb.is-nolabel .u3-hm-topl { display: none; }   /* the shortest step: the Top hunter line is the name and the damage (aria-label keeps the full text) */
+/* compact-land, compact step: the pulls title wraps beside the tabs (one header row), and the grid uses the 12 px the dock padding leaves */
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-ph { flex-wrap: nowrap; }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-pt { white-space: normal; }
+
+/* compact-port, compact step: smaller names in the voice cell (the long names wrap in the cell) */
+body[data-size="compact-port"] .u3-home.is-compact .u3-hm-c1 > b { font-size: var(--fs-small); line-height: var(--lh-small); }
+body[data-size="compact-port"] .u3-home.is-compact .u3-hm-ago { display: none; }
+.u3-hm-hb.is-tighter .u3-hm-stats { column-gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.pulls { padding-inline: var(--sp-1); }
+.u3-hm-hb.is-tighter .u3-hm-stats span, .u3-hm-hb.is-tighter .u3-hm-next > span { font-size: var(--fs-label); line-height: var(--lh-label); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.pulls { padding-top: var(--sp-2); }   /* the tabs stay under the Discord corner zone (2.3) */
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.voice { padding-block: var(--sp-half); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.pulls { padding-bottom: var(--sp-half); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-tile.pulls { gap: var(--u3-none); }
+.u3-hm-hb.is-tighter .u3-hm-chip { letter-spacing: var(--u3-none); }
+.u3-hm-hb.is-tighter { padding-block: var(--sp-half); }
+
+.u3-home.is-compact .u3-hm-hb.is-tight.is-tighter { padding-block: var(--sp-half); }
+.u3-hm-hb.is-tighter .u3-hm-i1 { gap: var(--sp-half); }
+.u3-hm-hb.is-tighter .u3-hm-hpg { row-gap: var(--u3-none); }
+.u3-hm-hb.is-tighter .u3-hm-act { row-gap: var(--u3-none); }
+.u3-hm-tile.pulls.is-tight .u3-hm-feat { padding-block: var(--sp-half); }
+.u3-home.is-compact .u3-hm-tile.pulls { padding-block: var(--sp-half); }
+.u3-home.is-compact .u3-hm-tile.voice { padding-block: var(--sp-half); }
+/* live hero, last tight step: the Join button and the Top hunter button share a row, the faces and the rank follow (one row less) */
+.u3-hm-hb.is-tighter.is-live .u3-hm-join { display: contents; }
+.u3-hm-hb.is-tighter.is-live .u3-hm-top { order: 1; }
+.u3-hm-hb.is-tighter.is-live :is(.u3-hm-faces, .u3-hm-rank) { order: 2; }
+.u3-hm-hb.is-tighter.is-live .u3-hm-act { column-gap: var(--sp-2); }
+.u3-hm-hb.is-tighter.is-live .u3-hm-top { padding-inline: var(--sp-2); }
+.u3-hm-hb.is-tighter.is-live .u3-btn { padding-inline: var(--sp-3); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-c1 > b { font-size: var(--fs-small); line-height: var(--lh-small); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-ago { display: none; }
+.u3-hm-hb.is-tighter { padding-inline: var(--sp-2); }
+body[data-size="compact-land"] .u3-hm-tile.pulls.is-tight .u3-hm-ft b { font-size: var(--fs-label); line-height: var(--lh-caption); }
+body[data-size="compact-land"] .u3-hm-tile.pulls.is-tight .u3-hm-ft { gap: var(--u3-none); }
+body[data-size="compact-land"] .u3-hm-tile.pulls.is-tight .u3-hm-fk { font-size: var(--fs-label); line-height: var(--lh-label); }
+body[data-size="compact-land"] .u3-home.is-compact .u3-hm-pt { font-size: var(--fs-small); gap: var(--sp-1); }
+.u3-hm-hb.is-tighter .u3-hm-stats { column-gap: var(--sp-2); }   /* the three stats keep a gap of 8 px at the tightest step */
+.u3-hm-hb.is-tighter.is-rest { column-gap: var(--sp-2); }
+/* compact-land: v2 subtracts the bottom safe area from the body height AND the dock sits at the bottom edge, so the content stopped 20 to 40 px above the dock. The Home body runs to the dock (8 px above it). */
+body.ui-v2.ui-v3[data-size="compact-land"] #body:has(> #main > .u3-home) { height: calc(100dvh - var(--topbar-h) - var(--sa-t, var(--u3-none))); padding-bottom: calc(var(--dock-h) + var(--sp-3)); }
+body.ui-v2.ui-v3 #main > .u3-home.is-compact { padding-bottom: var(--u3-none); }   /* the compact step: no bottom padding (the body already leaves the gap to the dock) */
+.u3-hm-hb.is-tighter .u3-hm-chip { padding-inline: var(--sp-2); gap: var(--sp-1); }
+.u3-hm-hb.is-tight .u3-hm-stats { justify-content: space-between; }   /* the free width goes between the three stats (the minimum gap stays at 8 px) */
+/* The open window (UI-33, here under UI-03): a set name never breaks inside a word. On the landscape phone the tile is narrow (the safe-area sides take 59 px each), so the name steps down to the small size and wraps only at a space. */
+body.ui-v3[data-size="compact-land"] .u3-set__name { font-size: var(--fs-small); overflow-wrap: normal; word-break: normal; }

@@ -2,7 +2,7 @@
 // D-92 / D-109 the best card last, D-96 / D-107 the rare clip only on the pack with an SR+ card, D-101 the set's clips.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bestLast, bestIndex, revealOrder, rarePacks, fitCards, clipUrl, packSet, packStarts, fitPacks, balancedRows, newMark, PACK_RATIO } from './pack-reveal.js';
+import { bestLast, bestIndex, revealOrder, rarePacks, fitCards, clipUrl, packSet, packStarts, fitPacks, balancedRows, newMark, PACK_RATIO, stackTimeline, stackDepth } from './pack-reveal.js';
 
 const RANK = { normal: 0, illustrated_rare: 1, secret_rare: 2, full_art: 3, gold: 4, event: 3, promo: 2 };
 const rank = (c) => RANK[c.rarity] ?? 0;
@@ -57,6 +57,24 @@ test('D-100: the packs start about 0.4 s apart', () => {
   assert.deepEqual(packStarts(5), [0, 400, 800, 1200, 1600]);
   assert.equal(packStarts(10).length, 10);
   assert.deepEqual(packStarts(0), []);
+});
+
+test('D-140: each pack is in front 0.4 s, a rare pack keeps its place and holds the front 1.4 s', () => {
+  const t = stackTimeline(5, [1, 3]);
+  assert.deepEqual(t.steps.map((s) => s.pack), [0, 1, 2, 3, 4], 'the rare packs stay in their real place');
+  assert.deepEqual(t.steps.map((s) => s.start), [0, 400, 1800, 2200, 3600]);
+  assert.deepEqual(t.steps.map((s) => s.left), [5, 4, 3, 2, 1], 'D-141: the packs left');
+  assert.equal(t.end, 3600 + 1400, 'the cards come at the burst of the last pack');
+  assert.deepEqual(stackTimeline(10, new Set()).steps.map((s) => s.start), packStarts(10), 'no rare pack: 0.4 s each');
+  assert.equal(stackTimeline(10, []).end, 9 * 400 + 1400, '10 normal packs: 5.0 s');
+  assert.deepEqual(stackTimeline(0), { steps: [], end: 0 });
+  assert.equal(stackTimeline(3, [2]).steps[2].start, 800, 'a rare last pack: the same start');
+});
+
+test('D-142: at most 4 packs show behind the front pack', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 9].map((p) => stackDepth(p, 0)), [0, 1, 2, 3, 4, 4, 4]);
+  assert.equal(stackDepth(3, 3), 0);
+  assert.equal(stackDepth(2, 3), 0, 'a pack that is gone does not go below 0');
 });
 
 test('D-101: the clips come from the folder of the chosen set', () => {

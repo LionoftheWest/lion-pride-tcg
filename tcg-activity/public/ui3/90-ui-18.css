@@ -1,0 +1,119 @@
+
+/* ==== UI-18 Hunt fight (main.js battleV3HTML; design repo UI-18/approved review-4: D-65, D-68, D-69, D-70) ====
+   The boss stage (the text column, the boss, Your damage / hunting now / ?, the boss live feed) over the hand panel.
+   Each card stands on a role plate (attack orange, support cyan, D-68); every card has its HP bar (D-69). The cards
+   size from the hand panel (container units): one row of 8, or 4 x 2 when that is larger (a tall phone). */
+.u3-ft { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-ft-stage { flex: 1 1 0; min-height: 0; position: relative; overflow: hidden; display: grid; gap: var(--sp-3) var(--sp-5);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 4fr); grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "text boss me" "text boss feed"; padding: var(--sp-5); border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+.u3-ft-text { grid-area: text; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-ft-text > * { flex: none; }
+.u3-ft-boss { grid-area: boss; }
+.u3-ft-me { grid-area: me; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.u3-ft-me .ex-q { margin-left: auto; }
+.u3-ft-dmg { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-md); background: var(--bg-raised); border: var(--bw-1) solid var(--border);
+  font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-secondary); }
+.u3-ft-dmg b { font-family: var(--font-num); font-size: var(--fs-heading); letter-spacing: normal; color: var(--gold); }
+.u3-ft-now { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--info); font-size: var(--fs-body); font-weight: var(--fw-small-strong); }
+.u3-ft-now:empty { display: none; }
+.u3-ft-hp { position: relative; height: var(--chip-md); border-radius: var(--rad-pill); background: var(--boss-hp-track); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.u3-ft-hp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--boss-hp-low), var(--danger), var(--boss-hp-high)); border-radius: var(--rad-pill); transition: width var(--dur-base) var(--ease-out); }
+.u3-ft-hp span { position: relative; font-family: var(--font-num); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-primary); }
+.u3-ft-feed { grid-area: feed; min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-ft-feedlist { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-ft-feedlist .afrow { flex: none; padding: var(--sp-1) var(--sp-2); border-left: var(--bw-2) solid var(--hunt); border-radius: var(--rad-sm); background: var(--surface-2); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-secondary); }
+.u3-ft-feedlist .afrow.bhit { border-left-color: var(--danger); }
+.u3-ft-feedlist .empty { margin: 0; color: var(--text-muted); font-size: var(--fs-small); }
+/* the hand panel */
+.u3-ft-hand { flex: 0 0 40%; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4) var(--sp-3);
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border); box-sizing: border-box; }
+.u3-ft-turn { margin: 0; padding: var(--sp-1) var(--sp-4); border-radius: var(--rad-pill); border: var(--bw-1) solid var(--border-strong); background: var(--bg-base); color: var(--text-primary); font-size: var(--fs-body); font-weight: var(--fw-small-strong); text-align: center; }
+.u3-ft-cards { flex: 1 1 0; min-height: 0; width: 100%; container-type: size; display: grid; place-items: center; }
+.u3-ft-grid.squad-grid { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: var(--sp-2); width: 100%; overflow: visible;
+  --ft-h: calc(var(--sp-3) + var(--sp-1));   /* the plate padding, the HP bar and its gap under the card */
+  --ft-w: min(calc((100cqw - 7 * var(--sp-2)) / 8), calc((100cqh - var(--ft-h)) / var(--card-ratio))); }
+/* portrait phones: 4 x 2 (as approved) */
+body[data-size="compact-port"] .u3-ft-grid.squad-grid { max-width: calc(4 * var(--ft-w) + 3 * var(--sp-2)); --ft-w: min(calc((100cqw - 3 * var(--sp-2)) / 4), var(--ft-cap, var(--card-tile))); }
+body[data-size="compact-port"] .u3-ft-cards { flex: 0 0 auto; container-type: inline-size; }
+body[data-size="compact-port"] .u3-ft-hand { flex: 0 0 auto; }
+body[data-size="compact-port"] .u3-ft-turn { width: 100%; box-sizing: border-box; padding-inline: var(--sp-2); font-size: var(--fs-caption); }
+.u3-ft-grid .c { --role: var(--role-attack); width: var(--ft-w); box-sizing: border-box; padding: var(--sp-1); border-radius: var(--rad-md); opacity: 1;
+  background: color-mix(in srgb, var(--role) 14%, transparent); border: var(--bw-1) solid color-mix(in srgb, var(--role) 70%, transparent);
+  box-shadow: 0 0 var(--sp-3) color-mix(in srgb, var(--role) 45%, transparent); }
+.u3-ft-grid .c.support { --role: var(--role-support); }
+.u3-ft-grid .c .art { border-width: var(--bw-2); }
+.u3-ft-grid .c.support .art { filter: none; }
+.u3-ft-grid .c.support .art > img { opacity: 0.62; }   /* the support face stays dim as approved; its plate and HP bar do not */
+.u3-ft-grid .c :is(.tpow, .celem, .x2) { display: none; }
+.u3-ft-grid .c .cap { display: none; }
+.u3-ft-grid .thp { height: var(--sp-1); margin-top: var(--sp-1); border: 0; border-radius: var(--rad-pill); background: var(--boss-hp-track); }
+.u3-ft-grid .thp i { background: var(--role); }
+.u3-ft-grid .c.downed { opacity: var(--item-disabled); box-shadow: none; }
+.u3-ft-grid .downed-x { position: absolute; left: 0; right: 0; margin-inline: auto; width: fit-content; top: 50%; transform: translateY(-50%); padding: var(--sp-half) var(--sp-1); max-width: 100%; box-sizing: border-box; white-space: nowrap; line-height: var(--lh-small); border-radius: var(--rad-pill); background: var(--scrim); color: var(--text-primary); font-size: var(--fs-small); font-weight: var(--fw-small-strong); letter-spacing: normal; }
+/* targeting (D-70): the casting card has the gold mark, every card that can take the effect has the success ring */
+.u3-ft-grid.targeting .c.support { opacity: 1; }
+.u3-ft-grid .c.casting .art { outline: var(--bw-2) solid var(--gold); outline-offset: var(--sp-half); }
+.u3-ft-grid.targeting .c:not(.downed):not(.casting) .art { box-shadow: 0 0 0 var(--bw-2) var(--success), 0 0 var(--sp-2) var(--success); }
+/* medium: the feed under the facts; portrait: one column */
+body[data-size="medium"] .u3-ft-stage { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "text boss" "me boss" "feed boss"; }
+body[data-size="compact-port"] .u3-ft { gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-ft-stage { padding: var(--sp-3); gap: var(--sp-2); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "text" "me" "boss" "feed"; }
+body[data-size="compact-port"] .u3-hs-name, body[data-size="compact-land"] .u3-ft .u3-hs-name { font-size: var(--fs-heading); }
+body[data-size="compact-port"] .u3-ft-hand { padding: var(--sp-2); }
+body[data-size="compact-port"] .u3-ft-feedlist { flex: 0 0 auto; max-height: calc(var(--chip-md) * 2 + var(--sp-1)); }
+body[data-size="compact-land"] .u3-ft { gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-ft-stage { padding: var(--sp-2) var(--sp-3); gap: var(--sp-1) var(--sp-3); grid-template-columns: minmax(0, 4fr) minmax(0, 2fr) minmax(0, 4fr); }
+body[data-size="compact-land"] .u3-ft-hand { flex: 0 0 50%; flex-direction: row; align-items: stretch; padding: var(--sp-2); }
+body[data-size="compact-land"] .u3-ft-turn { align-self: center; }
+body[data-size="compact-land"] .u3-ft-turn { flex: 0 0 calc(var(--card-tile) * 2); padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-md); font-size: var(--fs-small); }
+body[data-size="compact-land"] .u3-ft-dmg b { font-size: var(--fs-body); }
+/* measured (fitFightV3): short = the boss beside the facts, no feed; tight = smaller gaps */
+.u3-ft.is-short .u3-ft-stage { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-rows: auto auto auto minmax(0, 1fr); grid-template-areas: "title title" "boss facts" "boss hp" "boss me"; }
+.u3-ft.is-short .u3-ft-text { display: contents; }
+.u3-ft.is-short .u3-hs-title { grid-area: title; }
+.u3-ft.is-short .u3-hs-facts { grid-area: facts; }
+.u3-ft.is-short .u3-ft-hp { grid-area: hp; }
+.u3-ft.is-short .u3-ft-me { align-self: start; }
+.u3-ft.is-short .u3-ft-feed { display: none; }
+body[data-size="compact-land"] .u3-ft.is-short .u3-ft-stage { grid-template-columns: minmax(0, 3fr) minmax(0, 1fr) minmax(0, 2fr); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "title boss me" "facts boss me" "hp boss me"; }
+.u3-ft.is-tight .u3-ft-stage { padding: var(--sp-1) var(--sp-3); row-gap: var(--sp-1); }
+.u3-ft.is-tight .u3-hs-facts { gap: var(--sp-1); }
+.u3-ft.is-tight :is(.u3-hs-atk, .u3-hs-weak, .u3-bw-passive) { padding: var(--sp-half) var(--sp-1); }
+.u3-ft.is-tight .u3-ft-dmg { padding: var(--sp-1) var(--sp-2); }
+body[data-size] .u3-ft.is-tight .u3-hs-name { font-size: var(--fs-body); }
+.u3-ft.is-tight .u3-hs-title { flex-wrap: nowrap; }
+.u3-ft.is-tight .u3-ft-hp { height: var(--sp-5); }
+.u3-ft.is-short .u3-ft-dmg b { font-size: var(--fs-body); }
+body[data-size="compact-land"] .u3-ft.is-tight .u3-ft-turn { flex-basis: calc(var(--card-tile) * 1.5); font-size: var(--fs-caption); }
+body[data-size="compact-land"] .u3-ft.is-short.is-tight .u3-ft-stage { grid-template-rows: auto auto auto; grid-template-areas: "title boss me" "facts facts me" "hp hp me"; }
+/* the magnifier: the touch hit area in the card corner, the icon drawn small (as the Card picker, C8) */
+.u3-ft-grid .card-info { top: var(--u3-none); left: var(--u3-none); width: var(--ctl-icon); height: var(--ctl-icon); border: 0; border-radius: 0; background: none; opacity: 1; display: grid; place-items: start start; color: var(--text-primary); }
+body[data-input="coarse"] .u3-ft-grid .card-info { width: var(--hit); height: var(--hit); }
+.u3-ft-grid .card-info .u3-ico { margin: var(--sp-1); padding: var(--sp-1); border-radius: var(--rad-round); background: var(--scrim); }
+.u3-ft-grid.is-small .card-info { display: none; }
+body[data-input="coarse"] .u3-ft-me .ex-q { width: var(--hit); height: var(--hit); }
+.u3-ft-grid { list-style: none; margin: 0; padding: 0; }
+.u3-ft-grid > li { display: contents; }
+.u3-ft-feed:has(.u3-ft-feedlist:empty) { display: none; }
+body[data-size="compact-port"] .u3-ft.is-short .u3-ft-stage { grid-template-rows: auto auto auto auto; grid-template-areas: "title title" "boss facts" "boss hp" "me me"; }
+body[data-size="compact-land"] .u3-ft.is-short.is-tight.is-min .u3-ft-stage { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr); grid-template-rows: auto auto; grid-template-areas: "title title me" "facts hp me"; align-items: center; }
+.u3-ft.is-min .u3-ft-boss { display: none; }
+body[data-size="compact-land"] .u3-ft.is-min .u3-ft-me { flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
+.u3-ft.is-min .u3-ft-dmg { flex-wrap: nowrap; }
+.u3-ft.is-min .u3-ft-dmg { padding: 0; border: 0; background: none; }
+/* the short portrait form as drawn (375x667): "hunting now" on its own line, then Your damage and the "?" */
+body[data-size="compact-port"] .u3-ft.is-short .u3-ft-me { flex-wrap: wrap; }
+body[data-size="compact-port"] .u3-ft.is-short .u3-ft-now { order: -1; flex: 1 0 100%; }
+/* portrait, the last step (is-min): the boss render gives way, the text uses the full width */
+body[data-size="compact-port"] .u3-ft.is-short.is-tight.is-min .u3-ft-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto; grid-template-areas: "title" "facts" "hp" "me"; }
+/* expanded and medium: the hand panel takes the share the approved frames give it (the cards 99 x 138 at 1280x720) */
+body[data-size="expanded"] .u3-ft-hand { flex-basis: 46%; }
+.u3-ft-grid.is-small .downed-x { font-size: var(--fs-caption); padding: var(--sp-half); }
+/* a tablet held upright (is-tall, measured): one column as the approved 768x1024 frame: the text, the boss, then Your damage beside the feed;
+   the hand is one row of 8 sized from its width */
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-stage { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "text text" "boss boss" "me feed"; }
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-hand { flex: 0 0 auto; }
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-cards { flex: 0 0 auto; container-type: inline-size; }
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-grid.squad-grid { --ft-w: calc((100cqw - 7 * var(--sp-2)) / 8); }
+body[data-size="medium"] .u3-ft.is-tall .u3-ft-feedlist { flex: 0 0 auto; max-height: calc(var(--chip-md) * 2 + var(--sp-1)); }

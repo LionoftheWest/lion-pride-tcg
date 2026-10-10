@@ -93,6 +93,28 @@ export const newMark = (cardWidth) => (cardWidth >= 88 ? 'chip' : cardWidth >= 7
 export const PACK_GAP_MS = 400;
 export const packStarts = (n) => Array.from({ length: Math.max(0, n | 0) }, (_, i) => i * PACK_GAP_MS);
 
+/** D-135, D-140: the packs stand in one stack. The pack with index 0 is in front; a rare pack stays in its real place
+ *  (it is not moved). Each pack is in front for 0.4 s; a rare pack holds the front for 1.4 s, until its burst (D-97). */
+export const RARE_HOLD_MS = 1400;
+/** D-142: the packs that show behind the front pack. */
+export const STACK_LAYERS = 4;
+/** The order of the stack opening: for each pack its start time (ms), the packs left (D-141: this pack and the ones
+ *  behind it, so it starts at n and ends at 1) and the end of the sequence (the cards come then: the last pack plays its
+ *  whole clip up to its burst). rare = a Set or an array of the indexes of the rare packs. */
+export function stackTimeline(n, rare = [], gap = PACK_GAP_MS, hold = RARE_HOLD_MS) {
+  const count = Math.max(0, n | 0);
+  const isRare = new Set(rare);
+  const steps = [];
+  let t = 0;
+  for (let i = 0; i < count; i++) {
+    steps.push({ pack: i, start: t, left: count - i });
+    t += isRare.has(i) ? hold : gap;
+  }
+  return { steps, end: count ? steps[count - 1].start + hold : 0 };
+}
+/** The layer of a pack behind the front pack: 0 in front, up to STACK_LAYERS (the packs further back hide behind it). */
+export const stackDepth = (pack, front, layers = STACK_LAYERS) => Math.min(Math.max(0, pack - front), layers);
+
 // ---- The clips: fetched once per set into a Blob; each play gets a fresh object URL, so the clip starts at frame 1
 // with no new download (as tearSource in main.js). Preloaded while the member reads the prompt. ----
 const blobs = new Map();   // url -> Promise<Blob>

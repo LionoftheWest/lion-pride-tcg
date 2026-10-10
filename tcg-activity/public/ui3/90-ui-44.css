@@ -1,0 +1,12 @@
+/* ==== UI-44 Convert extra copies (src/ui3/convert.js, ui-v2-shop.js paintConvertV3; design repo UI-44/approved; flag ui_v3) ====
+   The window is the Shop confirm (.u3-sdlg, ui3.css) with one more block: the quantity row (.u3-scvt) with the Stepper. */
+.u3-sdlg--convert .u3-sdlg__eyebrow { color: var(--gold); }
+.u3-sdlg--convert .u3-scvt { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-4);
+  border-radius: var(--rad-lg); background: var(--surface-2); border: var(--bw-1) solid var(--border); }
+.u3-sdlg--convert .u3-scvt__text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); padding-top: var(--sp-2); }
+.u3-sdlg--convert .u3-scvt__label { font-size: var(--fs-body); font-weight: var(--fw-small-strong); color: var(--text-primary); }
+.u3-sdlg--convert .u3-scvt__each { font-size: var(--fs-small); color: var(--text-secondary); }
+.u3-sdlg--convert .u3-scvt .u3-step { flex: none; }
+.u3-sdlg--convert .u3-scvt .u3-step__limits { color: var(--text-secondary); }
+body[data-size="compact-port"] .u3-sdlg--convert .u3-dialog__title { font-size: var(--fs-heading); line-height: var(--lh-heading); }   /* the frame: the heading size, 3 lines at 430 */
+body[data-size="compact-port"] .u3-sdlg--convert .u3-scvt { flex: 1 1 100%; }

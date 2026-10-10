@@ -1,0 +1,37 @@
+/* ==== UI-56 Loader and sign-in retry (src/ui3/loader.js, index.html #ldr3; design repo UI-56/approved) ====
+   Drawn only under body.ui3-boot: index.html sets it when the last session stored the hint lp_ui3=1 (the v3 flag is known
+   only after the sign-in). The old .ldr block stays for every other member. One column, centred as a whole: the lion lockup,
+   the bar, the text, the button. The bar, the text and the button keep their places in every state (nothing moves, 3.3):
+   loading = bar + text; timeout = bar + red text + Try again; error = bar hidden (the place stays) + red text + Try again. */
+body.ui3-boot #loader { z-index: var(--z-system); background: radial-gradient(circle at 50% 40%, var(--surface-1), var(--bg-base) 75%); }
+.ldr3[hidden] { display: none; }
+.ldr3 { display: flex; flex-direction: column; align-items: center; max-width: 100%; box-sizing: border-box; padding: 0 var(--sp-4); text-align: center; }
+.ldr3-emblem { display: grid; place-items: center; flex: none; width: calc(var(--sp-7) + var(--sp-6)); height: calc(var(--sp-7) + var(--sp-6)); border-radius: var(--rad-sheet);
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold-strong)); box-shadow: var(--glow-action); }
+.ldr3-emblem img { width: 70%; height: 70%; }
+.ldr3-word { display: inline-flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-4); white-space: nowrap;
+  font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); }
+.ldr3-word b { font-weight: 800; }
+.ldr3-gold { color: var(--gold); }
+.ldr3-tag { font-style: normal; font-size: var(--fs-small); font-weight: 800; line-height: 1; padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); background: var(--gold); color: var(--on-gold); }
+.ldr3-bar { flex: none; width: calc(var(--menu-tile) * 5 / 2); max-width: 100%; height: var(--bar-sm); margin-top: var(--sp-6); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; }
+.ldr3-bar span { display: block; width: 40%; height: 100%; border-radius: inherit; background: var(--gold); animation: ldr3-slide 1.15s var(--ease-in-out) infinite alternate; }
+.ldr3[data-state="error"] .ldr3-bar { visibility: hidden; }   /* the bar stops and goes; its place stays */
+.ldr3[data-state="error"] .ldr3-bar span { animation: none; }
+.ldr3-msg { margin: var(--sp-3) 0 0; font-family: var(--font-ui); font-size: var(--fs-body); font-weight: var(--fw-body); line-height: var(--lh-body); color: var(--text-secondary); text-wrap: balance; }
+.ldr3[data-state="timeout"] .ldr3-msg, .ldr3[data-state="error"] .ldr3-msg { color: var(--danger-text); }
+.ldr3-act { flex: none; display: flex; justify-content: center; margin-top: var(--sp-3); height: var(--hit); }
+.ldr3[data-state="loading"] .ldr3-act .u3-btn { visibility: hidden; }   /* the place of Try again stays in every state */
+body[data-input="fine"] .ldr3-act .u3-btn { height: var(--ctl-icon); align-self: flex-start; }   /* 40 on pointer, 44 on touch (9.1) */
+.ldr3-act .u3-btn { cursor: pointer; }
+/* the fill moves inside its track (margin, not a transform past the end): nothing leaves the box */
+@keyframes ldr3-slide { from { margin-left: 0; } to { margin-left: 60%; } }
+@media (prefers-reduced-motion: reduce) { .ldr3-bar span { animation: none; } }
+
+/* tiny (the 400x225 picture-in-picture window, UI-59): the smaller lockup, text and gaps; the column still fits and stays centred */
+body[data-size="tiny"] .ldr3-emblem { width: var(--sp-7); height: var(--sp-7); border-radius: var(--rad-lg); }
+body[data-size="tiny"] .ldr3-word { margin-top: var(--sp-2); font-size: var(--fs-heading); line-height: var(--lh-heading); }
+body[data-size="tiny"] .ldr3-tag { font-size: var(--fs-label); }
+body[data-size="tiny"] .ldr3-bar { width: calc(var(--sp-7) * 3 + var(--sp-4)); margin-top: var(--sp-4); }
+body[data-size="tiny"] .ldr3-msg { margin-top: var(--sp-2); font-size: var(--fs-small); line-height: var(--lh-small); }
+body[data-size="tiny"] .ldr3-act { margin-top: var(--sp-2); }

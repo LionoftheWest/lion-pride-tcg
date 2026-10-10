@@ -11,7 +11,7 @@
   const se = document.scrollingElement;
   out.pageScroll = { x: Math.max(0, se.scrollWidth - vw), y: Math.max(0, se.scrollHeight - vh) };
   // 2) the window: the top fixed box that covers > 8% of the window (not the bars), else #main
-  const SKIP = '#topbar, #dock, #effectBanners, #feed, #loader, #status, #tutLayer';
+  const SKIP = '#topbar, #dock, #effectBanners, #feed, #loader:not([data-measure]), #status, #tutLayer';
   let win = null, wz = -1;
   for (const e of document.body.querySelectorAll('*')) {
     const cs = getComputedStyle(e);
@@ -30,7 +30,7 @@
       if (kid) win = kid;
     }
   }
-  if (!win) win = document.getElementById('main');
+  if (!win) win = document.getElementById('main') || document.body;   // a standalone page (UI-57 legal) has no #main
   document.querySelectorAll('[data-audit-win]').forEach((x) => x.removeAttribute('data-audit-win')); win.setAttribute('data-audit-win', '1');
   const wr = win.getBoundingClientRect();
   out.window = { sel: path(win), rect: [wr.left, wr.top, wr.width, wr.height].map(Math.round) };
@@ -42,7 +42,7 @@
     const cx = clampX(x), cy = clampY(y);
     if (cx !== x || cy !== y) out.covered.push([k, 'window corner outside the viewport', Math.round(Math.max(x - cx, cx - x, y - cy, cy - y))]);
     const hit = document.elementFromPoint(cx, cy);
-    if (hit && !win.contains(hit) && !hit.contains(win)) out.covered.push([k, path(hit), 0]);
+    if (hit && !hit.closest('#tutLayer') && !win.contains(hit) && !hit.contains(win)) out.covered.push([k, path(hit), 0]);
   }
   out.windowOutside = Math.round(Math.max(0, -wr.left, -wr.top, wr.right - vw, wr.bottom - vh));
   // the window box itself keeps out of the Discord corner zone on a phone (2.3: Discord puts its buttons over the corner; a window under them is cut off)
@@ -54,17 +54,23 @@
   const keyOf = (e) => (e.id ? '#' + e.id : e.dataset.tab ? 'tab:' + e.dataset.tab : e.dataset.adv ? 'adv:' + e.dataset.adv : e.dataset.pane ? 'pane:' + e.dataset.pane
     : (e.title && !/\d/.test(e.title)) ? 'title:' + e.title : (!e.closest('.v2-cell, [data-member], .lb-row, .tr-mem, .hl-card, li') && label(e) && !/\d/.test(label(e))) ? 'text:' + label(e) : null);
   for (const e of document.querySelectorAll(ISEL)) {
-    if (!visDeep(e) || e.closest('#loader, #tutLayer')) continue;
+    if (!visDeep(e) || e.closest('#loader:not([data-measure]), #tutLayer')) continue;
     if (e.parentElement?.closest(ISEL) && e.tagName !== 'BUTTON' && e.tagName !== 'INPUT') continue;
     const r = e.getBoundingClientRect();
     const key = keyOf(e);
-    if (key) { const k2 = keys[key] || { inView: false }; k2.inView = k2.inView || (r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1); keys[key] = k2; }
+    // P1: a row of a named scroll area (design.md 3.3, D-07: data-scroll-area) is reachable when the area itself is in the view:
+    // the area scrolls to it on purpose (the FAQ list, UI-38), as a control in a tab panel is reachable through its tab (below)
+    const sa0 = key && e.closest('[data-scroll-area]'); const sar = sa0 && visDeep(sa0) && sa0.getBoundingClientRect();
+    const inArea = !!(sar && sar.width > 0 && sar.height > 0 && sar.left >= -1 && sar.top >= -1 && sar.right <= vw + 1 && sar.bottom <= vh + 1);
+    if (key) { const k2 = keys[key] || { inView: false }; k2.inView = k2.inView || inArea || (r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1); keys[key] = k2; }
     if (!inView(r)) continue;
     { const na = e.closest('[data-scroll-area]'); if (na) { const nr = na.getBoundingClientRect(); const my = r.top + r.height / 2; if (my < nr.top || my > nr.bottom) continue; } }   // a row the named scroll area scrolled out of view (design.md 3.3, D-07)
     // covered: the center hit is not the element (a bar or a banner lies on it)
     const cx = clampX(r.left + r.width / 2), cy = clampY(r.top + r.height / 2);
     const hit = document.elementFromPoint(cx, cy);
-    if (hit && !e.contains(hit) && !hit.contains(e) && !hit.closest(ISEL)?.contains(e) && !(winRoot && winRoot !== win.ownerDocument && !winRoot.contains(e) && winRoot.contains(hit))) {
+    // the walkthrough card (UI-37) lies over the page by design: checks/walkthrough.js judges it (it must not cover the shell or its control)
+    // a popover under its field (data-popover: the member suggest list, UI-29, z-sheet 4.10) lies on the content below it by design
+    if (hit && !hit.closest('#tutLayer') && !e.contains(hit) && !hit.contains(e) && !hit.closest(ISEL)?.contains(e) && !hit.closest('[data-popover]') && !(winRoot && winRoot !== win.ownerDocument && !winRoot.contains(e) && winRoot.contains(hit))) {
       // ignore an element hidden under its own scroll container edge: a named scroll area (design.md 3.3, D-07:
       // data-scroll-area) has its rows scrolled out of view on purpose; their center lies outside the area
       const sa = e.closest('[data-scroll-area]');
@@ -85,7 +91,7 @@
   // 5) text under 11 px (inside the window)
   const tinyText = {};
   for (const e of document.body.querySelectorAll('*')) {
-    if (e.closest('svg, #loader, #tutLayer, .v2-card, canvas')) continue;
+    if (e.closest('svg, #loader:not([data-measure]), #tutLayer, .v2-card, canvas')) continue;
     const own = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
     if (!own) continue;
     const fs = parseFloat(getComputedStyle(e).fontSize);
@@ -102,7 +108,7 @@
     const own = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     const bg = getComputedStyle(e).backgroundImage;
     // The library Switch (UI-00 5.2) hides its input (1 px, opacity 0): its visible track is the control's ink.
-    if (own || /^(IMG|CANVAS|VIDEO|INPUT|BUTTON|SELECT|svg)$/i.test(t) || (bg && bg !== 'none' && !/gradient/.test(bg)) || e.classList.contains('u3-switch__track')) {
+    if (own || /^(IMG|CANVAS|VIDEO|INPUT|TEXTAREA|BUTTON|SELECT|svg)$/i.test(t) || (bg && bg !== 'none' && !/gradient/.test(bg)) || e.classList.contains('u3-switch__track')) {
       const r = e.getBoundingClientRect();
       const l = Math.max(r.left, wr.left, 0), tp = Math.max(r.top, wr.top, 0), rt = Math.min(r.right, wr.right, vw), bt = Math.min(r.bottom, wr.bottom, vh);
       if (rt > l && bt > tp) leaves.push([l, tp, rt, bt]);

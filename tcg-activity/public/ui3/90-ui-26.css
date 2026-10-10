@@ -1,0 +1,68 @@
+/* ==== UI-26 Trade animation (src/ui3/tradefx.js; design repo UI-26/approved) ====
+   The layer (body.ui-v3 only: the v2 animation uses .tx-layer) is a scrim over the whole page: the two cards and the swap
+   badge (start), the card you get with "Trade complete" (swap). The landed state is the page under it, so the layer is
+   removed. data-phase on #u3Tfx: pre, start, swap, land, out. Motion tokens only (4.11). Reduced motion: no movement, fades. */
+.u3-tfx { --tfx-r: var(--rarity-normal); --tfx-t: var(--rarity-normal); --tfx-g: var(--glow-rarity-normal);
+  --tfx-w: min(calc(var(--sp-7) * 5), calc((100vw - var(--sp-4) - var(--u3-sa-l, var(--sp-1) * 0) - var(--u3-sa-r, var(--sp-1) * 0)) / 1.85), calc((100vh - var(--sp-7) * 4) / 2));
+  position: fixed; inset: 0; z-index: var(--z-modal); box-sizing: border-box; overflow: hidden; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3);
+  padding: calc(var(--u3-sa-t, var(--sp-1) * 0) + var(--sp-2)) var(--sp-2) calc(var(--u3-sa-b, var(--sp-1) * 0) + var(--sp-2));
+  background: var(--scrim); backdrop-filter: blur(var(--sp-1)); opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
+.u3-tfx:not([data-phase="pre"]):not([data-phase="out"]) { opacity: 1; }
+
+/* the rarity: card edge and glow (4.9), the text color (4.6: the text variant where there is one) */
+.u3-tfx-r-normal { --tfx-r: var(--rarity-normal); --tfx-t: var(--rarity-normal); --tfx-g: var(--glow-rarity-normal); }
+.u3-tfx-r-illustrated_rare { --tfx-r: var(--rarity-illustrated_rare); --tfx-t: var(--rarity-illustrated_rare-text); --tfx-g: var(--glow-rarity-illustrated_rare); }
+.u3-tfx-r-secret_rare { --tfx-r: var(--rarity-secret_rare); --tfx-t: var(--rarity-secret_rare-text); --tfx-g: var(--glow-rarity-secret_rare); }
+.u3-tfx-r-full_art { --tfx-r: var(--rarity-full_art); --tfx-t: var(--rarity-full_art); --tfx-g: var(--glow-rarity-full_art); }
+.u3-tfx-r-gold { --tfx-r: var(--rarity-gold); --tfx-t: var(--rarity-gold); --tfx-g: var(--glow-rarity-gold); }
+.u3-tfx-r-event { --tfx-r: var(--rarity-event); --tfx-t: var(--rarity-event); --tfx-g: var(--glow-rarity-event); }
+.u3-tfx-r-promo { --tfx-r: var(--rarity-promo); --tfx-t: var(--rarity-promo); --tfx-g: var(--glow-rarity-promo); }
+
+/* the stage: the cards sit in the middle of it; the card size is the Card/full size (240) that the width and the height allow */
+.u3-tfx__stage { position: relative; flex: none; width: calc(var(--tfx-w) * 2); height: calc(var(--tfx-w) * var(--card-ratio, 1.4)); max-width: 100%; }
+.u3-tfx__card { --x: 0; --r: 0deg; --s: 1; position: absolute; left: 50%; top: 50%; box-sizing: border-box; width: var(--tfx-w); aspect-ratio: 5 / 7;
+  border: var(--sp-1) solid var(--tfx-r); border-radius: calc(var(--tfx-w) * var(--rad-card-ratio)); background: var(--surface-1); overflow: hidden;
+  box-shadow: var(--tfx-g), var(--elev-3); visibility: hidden; opacity: 0;
+  transform: translate(-50%, -50%) translateX(calc(var(--tfx-w) * var(--x))) rotate(var(--r)) scale(var(--s));
+  transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out), visibility 0s linear var(--dur-slow); }
+.u3-tfx__card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.u3-tfx__card--give { --x: -2; --r: -4deg; }
+.u3-tfx__card--get { --x: 2; --r: 4deg; }
+.u3-tfx[data-phase="start"] .u3-tfx__card, .u3-tfx[data-phase="swap"] .u3-tfx__card--get, .u3-tfx[data-phase="land"] .u3-tfx__card--get { visibility: visible; opacity: 1; transition-delay: 0s; }
+.u3-tfx[data-phase="start"] .u3-tfx__card--give { --x: -.35; }
+.u3-tfx[data-phase="start"] .u3-tfx__card--get { --x: .35; }
+/* swap: the card you give leaves, the card you get comes to the middle, straight and a little bigger */
+.u3-tfx[data-phase="swap"] .u3-tfx__card--give, .u3-tfx[data-phase="land"] .u3-tfx__card--give, .u3-tfx[data-phase="out"] .u3-tfx__card--give { --x: 0; --r: -8deg; --s: .8; }
+.u3-tfx[data-phase="swap"] .u3-tfx__card--get, .u3-tfx[data-phase="land"] .u3-tfx__card--get, .u3-tfx[data-phase="out"] .u3-tfx__card--get { --x: 0; --r: 0deg; --s: 1; transition-duration: var(--dur-reveal), var(--dur-slow), 0s; transition-timing-function: var(--ease-spring), var(--ease-out), linear; }
+
+/* the swap badge: the one trade icon on a gold disc, between the two cards; it goes when the swap starts */
+.u3-tfx__badge { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: calc(var(--sp-7) + var(--sp-2)); height: calc(var(--sp-7) + var(--sp-2));
+  border-radius: var(--rad-round); background: var(--gold); color: var(--on-gold); box-shadow: var(--glow-action); opacity: 0; transform: translate(-50%, -50%) scale(.6);
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-spring); }
+.u3-tfx[data-phase="start"] .u3-tfx__badge { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.u3-tfx[data-phase="swap"] .u3-tfx__badge, .u3-tfx[data-phase="land"] .u3-tfx__badge, .u3-tfx[data-phase="out"] .u3-tfx__badge { opacity: 0; transform: translate(-50%, -50%) rotate(1turn) scale(.4); transition-duration: var(--dur-base); }
+
+/* the line under the cards: GIVE and GET (start), then "Trade complete", the name and the rarity (swap); one place, so nothing moves */
+.u3-tfx__tags, .u3-tfx__done { grid-area: 1 / 1; }
+.u3-tfx__tags { display: grid; grid-template-columns: 1fr 1fr; width: calc(var(--tfx-w) * 1.4); align-self: start; text-align: center; opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
+.u3-tfx__tags span { font-family: var(--font-ui); font-size: var(--fs-heading); font-weight: var(--fw-heading); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-secondary); }
+.u3-tfx[data-phase="start"] .u3-tfx__tags { opacity: 1; }
+.u3-tfx__done { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); max-width: 100%; text-align: center; opacity: 0; transform: translateY(var(--sp-2));
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out); }
+.u3-tfx[data-phase="swap"] .u3-tfx__done, .u3-tfx[data-phase="land"] .u3-tfx__done { opacity: 1; transform: none; transition-delay: var(--dur-base); }
+.u3-tfx__k { font-family: var(--font-ui); font-size: var(--fs-heading); font-weight: var(--fw-heading); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--gold); }
+.u3-tfx__name { max-width: 100%; font-family: var(--font-ui); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--tfx-t); overflow-wrap: anywhere; text-wrap: balance; }
+.u3-tfx__rar { font-family: var(--font-ui); font-size: var(--fs-body); font-weight: var(--fw-body); color: var(--text-secondary); }
+/* the two lines share one grid cell under the cards */
+.u3-tfx__under { display: grid; justify-items: center; flex: none; max-width: 100%; }
+.u3-tfx__tags { justify-self: center; }
+
+/* reduced motion (4.11): no movement; each change is a fade of 200 ms or less */
+@media (prefers-reduced-motion: reduce) {
+  .u3-tfx__card, .u3-tfx__badge, .u3-tfx__done { transition: opacity var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-base); transform: translate(-50%, -50%) translateX(calc(var(--tfx-w) * var(--x))) rotate(var(--r)) scale(var(--s)); }
+  .u3-tfx__done { transform: none; transition-delay: 0s; }
+  .u3-tfx__badge { transform: translate(-50%, -50%); }
+  .u3-tfx[data-phase="swap"] .u3-tfx__card--get, .u3-tfx[data-phase="land"] .u3-tfx__card--get, .u3-tfx[data-phase="out"] .u3-tfx__card--get { transition-duration: var(--dur-base); transition-timing-function: var(--ease-out); }
+  .u3-tfx[data-phase="swap"] .u3-tfx__badge, .u3-tfx[data-phase="land"] .u3-tfx__badge, .u3-tfx[data-phase="out"] .u3-tfx__badge { transform: translate(-50%, -50%); }
+}

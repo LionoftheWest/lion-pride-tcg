@@ -4,7 +4,7 @@
   const path = (e) => { const p = []; for (let x = e; x && x !== document.body && p.length < 3; x = x.parentElement) p.unshift(name(x)); return p.join(' > '); };
   const vis = (e) => { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return false; const r = e.getBoundingClientRect(); return r.width > 2 && r.height > 2; };
   for (const e of document.body.querySelectorAll('*')) {
-    if (e.closest('#loader, #tutLayer, svg, canvas, #feed, .hidden, #topbar nav')) continue;
+    if (e.closest('#loader:not([data-measure]), #tutLayer, svg, canvas, #feed, .hidden, #topbar nav')) continue;
     // a0) text squashed to (almost) nothing inside a visible parent: a name column at 0 px
     { const cs0 = getComputedStyle(e); const pr = e.parentElement && vis(e.parentElement); if (pr && cs0.display !== 'none' && cs0.visibility !== 'hidden' && e.children.length === 0 && e.textContent.trim().length > 2 && e.getBoundingClientRect().width < 20 && e.scrollWidth > e.clientWidth + 2) out.push(['squashed', path(e), Math.round(e.getBoundingClientRect().width)]); }
     if (!vis(e)) continue;

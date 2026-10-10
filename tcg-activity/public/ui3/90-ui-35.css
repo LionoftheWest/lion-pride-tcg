@@ -6,7 +6,6 @@ body.ui-v2.ui-v3 #stage.v2-multi.u3-multi { inset: var(--topbar-h) var(--u3-pad)
   overflow: visible; }   /* the burst ring of a rare card may pass the edge for a moment */
 body.ui-v3 #stage.u3-multi .u3-mwait { height: 100%; }
 body.ui-v3 #stage.u3-multi .u3-mpacks { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3); touch-action: none; }
-body.ui-v3 #stage.u3-multi .u3-mrow { display: flex; gap: var(--sp-3); }
 body.ui-v3 #stage.u3-multi .u3-mpack { flex: none; width: var(--u3-pw, var(--menu-tile)); aspect-ratio: 389 / 703; padding: 0; margin: 0; border: 0; border-radius: var(--rad-sm);
   background: none; cursor: pointer; }
 body.ui-v3 #stage.u3-multi .u3-mpack:disabled { cursor: default; }
@@ -31,3 +30,25 @@ body.ui-v3[data-input="coarse"] #stage.u3-multi .mr-head .v2-icon { width: var(-
 /* The card box has its own size and look (the card ratio and a bordered face), so a slow or failed card image never collapses it: the image fills the box when it arrives. */
 body.ui-v3 #stage.u3-multi .mr-card { width: var(--mw); height: auto; aspect-ratio: 5 / 7; }
 body.ui-v3 #stage.u3-multi .mr-face { box-sizing: border-box; border: var(--bw-1) solid var(--border-strong); background: var(--surface-1); border-radius: var(--rad-sm); }
+/* ---- D-135, D-140 to D-142 (review-4): the packs stand in one stack, one behind the other. The front pack is the UI-34 single
+   pack size. Each pack behind sits one sp-2 higher and 3% smaller (the 3% step is not a token: the one number of the stack),
+   at most 4 packs show behind the front pack; the shadow tokens separate the layers. The open pack leaves (up and out),
+   the next comes forward. ---- */
+body.ui-v3 #stage.u3-multi .u3-mstack { --u3-step: 0.03; position: relative; flex: none; width: var(--u3-pw); aspect-ratio: 389 / 703; margin-top: var(--u3-depth); }
+body.ui-v3 #stage.u3-multi .u3-mstack .u3-mpack { position: absolute; inset: 0; width: 100%; transform-origin: 50% 0;
+  transform: translateY(calc(var(--d, 0) * var(--sp-2) * -1)) scale(calc(1 - var(--d, 0) * var(--u3-step)));
+  filter: drop-shadow(var(--elev-1));
+  transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out); }
+body.ui-v3 #stage.u3-multi .u3-mstack .u3-mpack.is-front { filter: drop-shadow(var(--elev-2)); }
+body.ui-v3 #stage.u3-multi .u3-mstack .u3-mpack.is-gone { transform: translateY(calc(var(--sp-7) * -1)) scale(calc(1 + var(--u3-step))); opacity: 0;
+  transition: transform var(--dur-slow) var(--ease-in-out), opacity var(--dur-slow) var(--ease-in-out); pointer-events: none; }
+/* An open pack has no shadow: the clip glow is semi-transparent over the whole clip frame, and its shadow showed as a dark box. */
+body.ui-v3 #stage.u3-multi .u3-mstack .u3-mpack.is-open { filter: none; }
+/* D-141: the count of the packs left, the UI-00 neutral Counter at the top-right of the stack (it paints over the packs). */
+body.ui-v3 #stage.u3-multi .u3-mstack .u3-mcount { position: absolute; top: calc(var(--u3-depth) * -1 + var(--sp-1)); right: var(--sp-1); pointer-events: none; }
+/* The rays and stars of the clip stop at the edge of the pack view (the top bar and the dock stay clear). */
+body.ui-v3 #stage.u3-multi .u3-mwait .u3-mpacks { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  body.ui-v3 #stage.u3-multi .u3-mstack .u3-mpack, body.ui-v3 #stage.u3-multi .u3-mstack .u3-mpack.is-gone { transition: opacity var(--dur-base) var(--ease-out); }
+  body.ui-v3 #stage.u3-multi .u3-mstack .u3-mpack.is-gone { transform: translateY(calc(var(--d, 0) * var(--sp-2) * -1)) scale(calc(1 - var(--d, 0) * var(--u3-step))); }
+}

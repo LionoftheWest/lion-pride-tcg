@@ -1,7 +1,7 @@
 // UI-14 Profile (v3): the pure fit rules of src/ui3/profile.js. node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutOf, places, spotWidth, miniGrid, profileHTML, emptyHTML, huntHTML, closesProfile, SHELL_TAP } from './profile.js';
+import { layoutOf, places, spotWidth, miniGrid, wishBarHTML, bindWishHandle, profileHTML, emptyHTML, huntHTML, closesProfile, SHELL_TAP } from './profile.js';
 import { TOKENS } from '../tokens.js';
 
 test('layout: one layout for each size class (medium portrait stacks, C15)', () => {
@@ -80,4 +80,32 @@ test('a tap on the shell (dock, top bar, Menu) closes the Profile layer; a tap i
   assert.equal(closesProfile(el(['#u3Picker'])), false);
   assert.equal(closesProfile(null), false);
   assert.equal(SHELL_TAP, '#dock, #topbar, #u3MenuHost');
+});
+test('the Wishlist is one handle strip, not a list or a tab (D-128)', () => {
+  const h = profileHTML(base);
+  assert.ok(h.includes('class="u3-pf-tile u3-pf-wish" id="memWish"'));
+  assert.ok(!h.includes('wl-list') && !h.includes('pf:wish') && !h.includes('more</button>'), 'no rows, no tab, no "+N more"');
+  assert.ok(h.includes('data-wd'), 'the Profile grid has a row for the strip');
+  assert.ok(!profileHTML({ ...base, wish: false }).includes('memWish'));
+  const bar = wishBarHTML(4);
+  assert.match(bar, /<button type="button" class="u3-pf-wishbar" id="wlHandle" aria-haspopup="dialog" aria-label="Wishlist, 4 of 5. Open">/);
+  assert.ok(bar.includes('class="u3-pf-wishbar__n">4/5<'));
+  assert.doesNotMatch(wishBarHTML(null), /<button/, 'not a button while the list loads');
+});
+
+test('the handle opens on a tap and on a drag up of half the tap size, and only once', () => {
+  const ev = {};
+  const btn = { addEventListener: (n, fn) => { ev[n] = fn; } };
+  let opened = 0;
+  bindWishHandle(btn, () => { opened++; });
+  ev.pointerdown({ clientY: 500 }); ev.pointermove({ clientY: 490 });
+  assert.equal(opened, 0, 'a small move is not a drag');
+  ev.pointermove({ clientY: 470 }); ev.pointermove({ clientY: 440 });
+  assert.equal(opened, 1, 'a drag up opens the drawer once');
+  ev.pointerup({}); ev.click();   // the click that ends the drag is dropped
+  assert.equal(opened, 1);
+  ev.pointerdown({ clientY: 500 }); ev.pointerup({}); ev.click();
+  assert.equal(opened, 2, 'the next tap opens it again');
+  ev.pointerdown({ clientY: 300 }); ev.pointermove({ clientY: 340 });
+  assert.equal(opened, 2, 'a drag down does not open it');
 });

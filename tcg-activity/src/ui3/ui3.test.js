@@ -111,6 +111,15 @@ test('Card picker grid (UI-64, 8.1): tiles from card-tile to card-tile-max wide,
   assert.equal(s.rows, 1); assert.ok(s.tile * 1.4 <= 100);
 });
 
+test('Card picker grid (UI-64): extra height under each card is part of each row', async () => {
+  const { fitGrid } = await import('./card-picker.js');
+  const c = fitGrid(380, 539, 12, { extra: 37 });
+  assert.ok(c.tile >= 88 && c.rows * (c.tile * 1.4 + 37) + 12 * (c.rows - 1) <= 539);
+  const c0 = fitGrid(380, 539, 12);
+  assert.ok(c.rows <= c0.rows);
+  assert.deepEqual(fitGrid(569, 266, 12, { extra: 0 }), fitGrid(569, 266, 12));
+});
+
 test('Card picker order (6.5a): a tap adds at the end; removing a card moves the later cards up; the cap holds', async () => {
   const { toggle } = await import('./card-picker.js');
   assert.deepEqual(toggle([1, 2, 3], 4, 5), [1, 2, 3, 4]);

@@ -233,13 +233,13 @@ export function fitStock(root, blocks, { size }) {
 export function confirmHTML(c, coin) {
   const after = c.rows.after;
   const price = c.rows.freeText ? `<b class="u3-sbal__free">${icon('calendar-check', { size: 'sm' })}${esc(c.rows.freeText)}</b>`
-    : `<span class="u3-sbal__v">${coin}<b>- ${fmt(c.rows.price)}</b></span>`;
-  const msgs = [c.msg ? inlineMessage({ kind: 'error', text: c.msg }) : c.short ? inlineMessage({ kind: 'error', text: 'You do not have enough Shards.' }) : ''].join('');
-  const go = button({ label: c.go.label, variant: c.go.variant || 'primary', icon: c.go.icon || null, reward: c.go.reward ?? null, disabled: c.short, busy: c.busy, busyLabel: c.kind === 'reset' ? 'Resetting' : 'Buying', data: { go: '' } });
+    : `<span class="u3-sbal__v">${coin}<b>${c.rows.sign || '-'} ${fmt(c.rows.price)}</b></span>`;
+  const msgs = [c.note ? inlineMessage({ kind: 'info', text: c.note }) : '', c.msg ? inlineMessage({ kind: 'error', text: c.msg }) : c.short ? inlineMessage({ kind: 'error', text: 'You do not have enough Shards.' }) : ''].join('');
+  const go = button({ label: c.go.label, variant: c.go.variant || 'primary', icon: c.go.icon || null, reward: c.go.reward ?? null, disabled: c.short, busy: c.busy, busyLabel: c.go.busyLabel || (c.kind === 'reset' ? 'Resetting' : 'Buying'), data: { go: '' } });
   return `<div class="u3-scrim u3-sdlg-scrim" data-u3-scrim><div class="u3-dialog u3-sdlg u3-sdlg--${c.kind}" role="dialog" aria-modal="true" aria-labelledby="u3SdlgT">`
     + `<div class="u3-sdlg__art">${c.art}</div><div class="u3-sdlg__main"><header class="u3-sdlg__head"><div><span class="u3-label u3-sdlg__eyebrow">${esc(c.eyebrow)}</span>`
     + `<h2 class="u3-dialog__title" id="u3SdlgT">${esc(c.title)}</h2><div class="u3-sdlg__sub">${c.sub}</div></div>`
-    + `<span data-x>${iconButton({ icon: 'x', label: 'Close' })}</span></header>${c.table || ''}`
+    + `<span data-x>${iconButton({ icon: 'x', label: 'Close' })}</span></header>${c.table || ''}${c.control || ''}`
     + `<div class="u3-sbal"><div><span>Balance now</span><span class="u3-sbal__v">${coin}<b>${fmt(c.rows.now)}</b></span></div>`
     + `<div><span>${esc(c.rows.priceLabel)}</span>${price}</div>`
     + `<div class="u3-sbal__after"><span>${c.rows.price ? 'Balance after' : 'Balance after · no change'}</span><span class="u3-sbal__v${after < 0 ? ' is-neg' : ''}">${coin}<b>${fmt(after)}</b></span></div></div>`

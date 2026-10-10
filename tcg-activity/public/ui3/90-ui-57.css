@@ -1,0 +1,43 @@
+/* ==== UI-57 Legal pages: Terms of Service, Privacy Policy (public/legal/*.html, public/legal/legal.js; design repo UI-57/approved) ====
+   Standalone public pages (no Activity, no flag, no Discord corner zone), so they load /app/tokens.css and /app/ui3.css.
+   The page is one column as tall as the window: a fixed header (logo tile, title, date) and the legal text as the named
+   scroll area "legal text" (3.3, D-07) with a rail and thumb cue. The text is not changed (D-07). */
+.lg { margin: 0; height: 100dvh; overflow: hidden; background: var(--bg-base); color: var(--text-primary);
+  font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(--lh-body); }
+.lg *, .lg *::before, .lg *::after { box-sizing: border-box; }
+.lg__page { height: 100%; width: min(100%, calc(var(--sheet-side-w) * 2)); margin: 0 auto; padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  display: flex; flex-direction: column; gap: var(--sp-3); }
+.lg__head { flex: none; display: flex; align-items: center; gap: var(--sp-4); padding-bottom: var(--sp-3); border-bottom: var(--bw-1) solid var(--border); }
+.lg__head .logo { flex: none; width: var(--avatar-lg); height: var(--avatar-lg); display: grid; place-items: center; border-radius: var(--rad-lg);
+  background: linear-gradient(145deg, var(--gold-hi), var(--gold) 45%, var(--gold-deep)); }
+.lg__head .logo img { width: var(--emblem); height: var(--emblem); }
+.lg__head > div { min-width: 0; }
+.lg h1 { margin: 0; font-family: var(--font-display); font-size: var(--fs-title); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); overflow-wrap: break-word; }
+.lg .meta { margin: var(--sp-half) 0 0; font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-muted); }
+
+/* the named scroll area with the cue: a rail with a thumb in the page padding at the right edge (legal.js sets the thumb) */
+.lg__area { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.lg__text { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: none; padding-right: var(--sp-1); }
+.lg__text::-webkit-scrollbar { display: none; }
+.lg__text:focus-visible { outline: none; box-shadow: var(--glow-focus); border-radius: var(--rad-md); }
+.lg__rail { position: absolute; top: 0; bottom: 0; right: calc(var(--sp-3) * -1); width: var(--bar-sm); border-radius: var(--rad-pill); background: var(--surface-3); pointer-events: none; }
+.lg__rail[hidden] { display: none; }
+.lg__thumb { position: absolute; left: 0; right: 0; top: var(--lg-thumb-top, 0%); height: var(--lg-thumb-h, 100%); border-radius: var(--rad-pill); background: var(--border-strong); }
+
+.lg__text { --lg-lh: calc(var(--fs-body) * var(--lh-body) + var(--sp-half)); line-height: var(--lg-lh); }   /* a little over the body line, so that the 44 px boxes of links on two lines do not cover each other's center */
+.lg__text > :first-child { margin-top: 0; }
+.lg__text p { margin: 0 0 var(--sp-3); }
+.lg__text h2 { margin: var(--sp-5) 0 var(--sp-2); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--gold); }
+.lg__text ul { margin: 0 0 var(--sp-3); padding-left: var(--sp-5); }
+.lg__text li { margin: var(--sp-2) 0; }
+.lg__text li::marker { color: var(--text-muted); }
+.lg__text a { color: var(--gold); }
+/* a link inside a sentence is a 44 px target (9.1): the padding makes the box 44 px high, the negative margin keeps the line spacing */
+.lg__text :is(p, li) a { --lg-pad: calc((var(--hit) - var(--lg-lh)) / 2); display: inline-block; white-space: nowrap; padding-block: var(--lg-pad); margin-block: calc(var(--lg-pad) * -1); }
+/* a hyphenated word is never split at its hyphen (no cut words, 3.3) */
+.lg__text .nw { white-space: nowrap; }
+.lg__text b { font-weight: var(--fw-heading); }
+.lg__text code { padding: var(--sp-half) var(--sp-1-5); border-radius: var(--rad-sm); background: var(--surface-1); font-size: var(--fs-small); }
+/* the link to the other page at the end of the text: a 44 px target */
+.lg__text .links { margin: var(--sp-5) 0 0; padding-top: var(--sp-3); border-top: var(--bw-1) solid var(--border); }
+.lg__text .links a { display: inline-flex; align-items: center; min-height: var(--hit); }

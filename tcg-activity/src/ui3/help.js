@@ -7,6 +7,7 @@
 // - The list is the named scroll area "help answers" (3.3, D-07) with a scroll cue, only when the questions do not fit.
 import { esc, iconButton, button, chip } from './components.js';
 import { icon } from './icons.js';
+import { thumbMetrics, syncRailEls } from './scroll-rail.js';
 
 // One icon has one meaning (D-50): the Hunt swords, Boons party-popper, Trades arrow-left-right.
 const ICON = ['package', 'timer', 'gem', 'star', 'swords', 'calendar-check', 'party-popper', 'arrow-left-right', 'bell-off'];
@@ -36,24 +37,9 @@ export function showOpen(list) {
   else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
 }
 
-const MIN_THUMB = 0.12;   // the shortest thumb, as a share of the rail (a very long list keeps a thumb that can be seen)
-
-/** The scroll cue (3.3, D-07): the thumb of the rail for a list. Pure: show = the list overflows; top and height are
- *  percent of the rail. The thumb is as long as the visible share of the list and moves with scrollTop. */
-export function thumbMetrics({ scrollTop, clientHeight, scrollHeight }) {
-  if (!(scrollHeight > clientHeight + 1) || !(clientHeight > 0)) return { show: false, top: 0, height: 100 };
-  const height = Math.min(100, Math.max(MIN_THUMB, clientHeight / scrollHeight) * 100);
-  const room = scrollHeight - clientHeight;
-  const share = Math.min(1, Math.max(0, scrollTop / room));
-  return { show: true, top: share * (100 - height), height };
-}
+export { thumbMetrics };
 
 /** Put the rail of the area in line with its list. Called on scroll, on resize and after every repaint. */
 export function syncRail(area) {
-  const list = area?.querySelector('.u3-hp__list'), rail = area?.querySelector('.u3-hp__rail');
-  if (!list || !rail) return;
-  const m = thumbMetrics(list);
-  rail.hidden = !m.show;
-  rail.style.setProperty('--hp-thumb-top', `${m.top}%`);
-  rail.style.setProperty('--hp-thumb-h', `${m.height}%`);
+  syncRailEls(area?.querySelector('.u3-hp__list'), area?.querySelector('.u3-hp__rail'), '--hp-thumb-top', '--hp-thumb-h');
 }

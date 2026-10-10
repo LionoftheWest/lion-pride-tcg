@@ -6,7 +6,7 @@ import {
   Minus, Info, CircleCheck, CircleAlert, TriangleAlert, Timer, SlidersHorizontal, Landmark, PartyPopper, Layers, Award,
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
-  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, DoorOpen, Gem, BellOff, ChevronUp, Sparkles, Drama,
+  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, Eye, DoorOpen, Gem, BellOff, ChevronUp, Tag, Gavel, ArrowLeft, Sparkles, Drama, Bug, MessageSquare, Lightbulb, Monitor, GitCommitHorizontal, Clock, Send,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -30,13 +30,16 @@ export const ICONS = {
   // the Dailies window (UI-36): the streak mark (replaces the emoji, G-053), the Chat and Voice task icons
   'flame': Flame, 'message-circle': MessageCircle, 'headphones': Headphones,
   // the Dungeon reward choice (UI-48): a Ward, the damage bonus, a heal
-  'shield-check': ShieldCheck, 'trending-up': TrendingUp, 'heart': Heart,
+  'shield-check': ShieldCheck, 'trending-up': TrendingUp, 'heart': Heart, 'eye': Eye,
   // Floor cleared (UI-49): Retreat with the loot
   'door-open': DoorOpen,
   // the FAQ window (UI-38): the rarities, the Pings answer, the open row's chevron
   'gem': Gem, 'bell-off': BellOff, 'chevron-up': ChevronUp,
-  // the Boons tab (UI-27): an effect on you (sparkles), a prank in Recent plays (drama); a boon is gift, a shield is shield-check
+  'tag': Tag, 'gavel': Gavel,
+  // List a card (UI-31): the back button
+  'arrow-left': ArrowLeft,
   'sparkles': Sparkles, 'drama': Drama,
+  'bug': Bug, 'message-square': MessageSquare, 'lightbulb': Lightbulb, 'monitor': Monitor, 'git-commit-horizontal': GitCommitHorizontal, 'clock': Clock, 'send': Send,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
