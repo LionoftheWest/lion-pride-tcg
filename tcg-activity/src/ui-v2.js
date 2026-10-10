@@ -16,11 +16,15 @@ import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
+import { paintCollectionV3 } from './ui3/collection.js';
 import * as pf3 from './ui3/profile.js';
 import { ascendFailText, SAVE_FAIL_TEXT } from './ui3/viewer.js';
 import { detailHTML, pointsHTML as pointsV3, statHTML, styleEffect } from './ui3/card-detail.js';
 import { fitDetail, watchDetailFit } from './ui3/card-detail-fit.js';
 import { inlineMessage } from './ui3/components.js';
+import * as se3 from './ui3/style-editor.js';
+import { openCardPicker } from './ui3/card-picker.js';
+import * as hm3 from './ui3/home.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -291,6 +295,19 @@ const TYPES = [['character', 'Character'], ['creature', 'Creature'], ['moment', 
 const GAMES = [['smash', 'Smash Bros'], ['pokemon', 'Pokemon'], ['party', 'Party'], ['minecraft', 'Minecraft'], ['meme', 'Memes'], ['community', 'Community']];
 const hasFilters = () => col.rarity !== 'all' || col.element || col.type || col.game || col.own !== 'all' || col.q.trim();
 let colItems = [];
+// The Cards tab of a member with the v3 flag (settings.ui_v3): the v3 Collection (UI-07).
+const v3Cards = () => document.body.classList.contains('ui-v3') && col.view === 'cards';
+const colTabBar = (achDone, achN, ready) => `<div class="seg col-tabs"><button data-tab="cards" class="${col.view === 'cards' ? 'on' : ''}">Cards</button>
+    <button data-tab="ach" class="${col.view === 'ach' || col.view === 'achDetail' ? 'on' : ''}">Achievements <i>${achDone}/${achN}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button>
+    <button data-tab="bosses" class="${col.view === 'bosses' ? 'on' : ''}">Raid Bosses <i>${RAID_BOSSES.length}</i></button></div>`;
+function wireColTabs() {
+  ctx.el('main').querySelector('.col-tabs')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tab]');
+    if (!b) return;
+    col.view = b.dataset.tab === 'ach' ? 'ach' : b.dataset.tab === 'bosses' ? 'bosses' : 'cards';
+    renderCollectionV2();
+  });
+}
 
 export async function renderCollectionV2() {
   const { el } = ctx;
@@ -299,6 +316,7 @@ export async function renderCollectionV2() {
   await Promise.all([ensureCatalog(), loadMyProfile()]);
   if (ctx.currentView() !== 'collection') return;
   if (!ctx.cache.catalog) { // the catalog did not load: a Retry, not a page of empty slots
+    if (v3Cards()) { paintCollectionV3(el('main'), { error: true, rerender: () => renderCollectionV2() }, { tabBar: colTabBar(0, 0, 0) }); wireColTabs(); return; }
     el('main').innerHTML = '<div class="v2-loading">Could not load the cards. <button class="v2-btn" id="colRetry">Retry</button></div>';
     el('colRetry')?.addEventListener('click', () => renderCollectionV2());
     return;
@@ -327,9 +345,23 @@ export async function renderCollectionV2() {
   const gameChips = GAMES.filter(([k]) => inSeason.some((c) => [].concat(c.tags?.origin || []).includes(k))).map(([k, l]) => chip('game', k, l, col.game === k)).join('');
   const ownSeg = [['all', 'All'], ['owned', 'Owned'], ['missing', 'Missing']].map(([v, l]) => `<button data-own="${v}" class="${col.own === v ? 'on' : ''}">${l}</button>`).join('');
 
-  const tabs = `<div class="seg col-tabs"><button data-tab="cards" class="${col.view === 'cards' ? 'on' : ''}">Cards</button>
-    <button data-tab="ach" class="${col.view === 'ach' || col.view === 'achDetail' ? 'on' : ''}">Achievements <i>${achDone}/${achs.length}</i>${ready ? `<b class="tab-dot">${ready}</b>` : ''}</button>
-    <button data-tab="bosses" class="${col.view === 'bosses' ? 'on' : ''}">Raid Bosses <i>${RAID_BOSSES.length}</i></button></div>${explainBtn('collection')}`;
+  const tabs = `${colTabBar(achDone, achs.length, ready)}${explainBtn('collection')}`;
+  // v3 (body.ui-v3, UI-07): the Cards tab is the v3 Collection (src/ui3/collection.js). Achievements and Bosses stay v2.
+  if (v3Cards()) {
+    const inUse = (list, key) => list.filter(([k]) => inSeason.some((c) => (key === 'type' ? c.tags?.type === k : [].concat(c.tags?.origin || []).includes(k))));
+    paintCollectionV3(el('main'), {
+      col, cards, seasons, inSeason, rarityLabel: ctx.RARITY_LABEL,
+      rarities: RARITY_ORDER.filter((r) => inSeason.some((c) => c.rarity === r)),
+      elements: ELEMENT_ORDER.filter((e) => inSeason.some((c) => cardElement(c.tags) === e)),
+      types: inUse(TYPES, 'type'), games: inUse(GAMES, 'game'),
+      elementName: (e) => ELEMENTS[e]?.name || e, elIcon, elementOf: (c) => cardElement(c.tags), flair: flairHTML, thumb, onSwipe,
+      openCard: (c, list) => { panelList = list || []; col.sel = c.id; paintPanel(c); },   // UI-08: a grid tap opens the Card Detail window; its art opens the viewer (D-80 item 11)
+      status: () => colStatus(), rerender: () => renderCollectionV2(),
+    }, { tabBar: colTabBar(achDone, achs.length, ready), help: explainBtn('collection') });
+    wireColTabs();
+    maybeExplain('collection');
+    return;
+  }
   let center;
   if (col.view === 'bosses') {
     center = `<div class="v2-col-head">${tabs}<span class="grow"></span></div>
@@ -396,12 +428,7 @@ export async function renderCollectionV2() {
     else return;
     toCards(); renderCollectionV2();
   });
-  el('main').querySelector('.col-tabs')?.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-tab]');
-    if (!b) return;
-    col.view = b.dataset.tab === 'ach' ? 'ach' : b.dataset.tab === 'bosses' ? 'bosses' : 'cards';
-    renderCollectionV2();
-  });
+  wireColTabs();
   el('achAll')?.addEventListener('click', () => redeemAll(el('achAll')));
   // An achievement opens its detail (the cards it needs); Redeem pays it.
   el('colCenter').addEventListener('click', (e) => {
@@ -566,7 +593,10 @@ function paintColGrid() {
   if (!grid) return;
   colItems = colFiltered();
   paintCards(grid, el('colPager'), colItems, colState, (c, t) => pickCard(c, t, grid, colItems), col.sel);
-  // My Live in voice tile (design 19): the set I browse, how much of it I own, 3 owned cards.
+  colStatus();
+}
+// My Live in voice tile (design 19): the set I browse, how much of it I own, 3 owned cards.
+function colStatus() {
   const set = mergedCards().filter((c) => (c.season || 'Season 1') === col.season && (!col.game || [].concat(c.tags?.origin || []).includes(col.game)));
   const own = set.filter((c) => c.owned);
   ctx.status?.('collection', { t: col.game ? (GAMES.find(([k]) => k === col.game)?.[1] || col.season) : col.season,
@@ -661,8 +691,8 @@ function paintDetail(c, v) {
 function paintPanel(c) {
   const { el } = ctx;
   const box = el('colPanel');
-  if (!box) return;
-  if (!c) { box.innerHTML = '<p class="v2-empty">Pick a card.</p>'; return; }
+  if (!box && !v3()) return;   // v3 (UI-07 grid): there is no side panel; the Card Detail window is its own layer
+  if (!c) { if (box) box.innerHTML = '<p class="v2-empty">Pick a card.</p>'; return; }
   const el0 = elemOf(c);
   const all = mergedCards();
   const maxPow = Math.max(1, ...all.map((x) => x.power || 0));
@@ -985,8 +1015,10 @@ function spotHTML(cards) {
 let heroBoss = null;
 const pullsTab = { v: 'all' };
 
+let homeRO = null;
 export function disposeHomeV2() {
   disposeGalBoss();
+  if (homeRO) { homeRO.disconnect(); homeRO = null; }
   if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
 }
 
@@ -995,13 +1027,15 @@ export async function renderHomeV2() {
   disposeHomeV2();
   // Design 19 (Nathan, 2026-09-30): the hunt + Live in voice on the left, Live pulls down
   // the right to the same bottom line. No profile tile: the top-bar avatar opens it.
-  el('main').innerHTML = `<div class="v2-home h19">
-    <section class="v2-tile hero" id="homeHero"><div class="v2-loading">Loading…</div></section>
-    <section class="v2-tile voice" id="homeVoice"></section>
-    <section class="v2-tile pulls" id="homePulls"></section>
+  const v3 = hm3.homeV3();
+  el('main').innerHTML = `<div class="${v3 ? 'u3-home' : 'v2-home h19'}">
+    ${v3 ? '<div class="u3-hm">' : ''}<section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} hero" id="homeHero"><div class="v2-loading">Loading…</div></section>
+    <section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} voice" id="homeVoice"></section>
+    <section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} pulls" id="homePulls"></section>${v3 ? '</div>' : ''}
   </div>`;
   paintVoice();
   paintPulls();
+  if (v3) watchHomeV3();
   const [hunt] = await Promise.all([
     ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null),
     loadMyProfile(true),
@@ -1017,6 +1051,7 @@ function paintHero(d) {
   const box = el('homeHero');
   if (!box) return;
   const h = d?.hunt;
+  if (hm3.homeV3()) { paintHeroV3(box, d, h); return; }
   if (!h) {
     const last = d?.lastResult;
     const won = last?.status === 'defeated';
@@ -1169,6 +1204,7 @@ export function paintVoice() {
   const { el } = ctx;
   const box = el('homeVoice');
   if (!box) return;
+  if (hm3.homeV3()) { paintVoiceV3(box); return; }
   const me = ctx.user();
   const people = [...(ctx.live.presence || [])];
   // The member always sees their own tile, first (Nathan: not "Just you right now").
@@ -1196,6 +1232,7 @@ export function paintPulls() {
   const { el } = ctx;
   const box = el('homePulls');
   if (!box) return;
+  if (hm3.homeV3()) { paintPullsV3(box); return; }
   const all = ctx.live.pulls || [];
   // Den (design 19): the pulls of the members in my voice channel now.
   const den = new Set([...(ctx.live.presence || []).map((p) => String(p.id)), String(ctx.user()?.id || '')]);
@@ -1217,6 +1254,108 @@ export function paintPulls() {
 
 export function homeTick() { tickCloses(); }
 
+// ---- Home v3 (UI-03, body.ui-v3): src/ui3/home.js has the markup; these paint it and wire it ----
+const pullsPage = { start: 0 };
+const watchHomeV3 = () => {   // refit the voice cells and the pull rows when a tile changes size (fonts, class change)
+  if (typeof ResizeObserver === 'undefined') return;
+  let t = null;
+  homeRO = new ResizeObserver(() => { if (t) cancelAnimationFrame(t); t = requestAnimationFrame(() => { t = null; fitHomeV3(); }); });
+  homeRO.observe(ctx.el('homeHero')); homeRO.observe(ctx.el('homeVoice')); homeRO.observe(ctx.el('homePulls'));
+  document.fonts?.ready?.then(fitHomeV3);
+};
+// The whole Home: every tile fits its box. When something is still cut, the layout modes in steps (the last step with the fewest
+// cut tiles stays): is-compact (smaller gaps and padding), is-vrow (Live in voice in one row, compact-port), is-pull (a wider Live pulls column, compact-land).
+function fitHomeV3() {
+  const root = ctx.el('main')?.querySelector('.u3-home');
+  if (!root) return;
+  const run = () => { hm3.fitHero(ctx.el('homeHero')); hm3.fitVoice(ctx.el('homeVoice')); fitPullsV3(); };
+  let best = null;
+  for (const step of [[], ['is-compact'], ['is-compact', 'is-vrow'], ['is-compact', 'is-vrow', 'is-pull']]) {
+    root.classList.remove('is-compact', 'is-vrow', 'is-pull');
+    root.classList.add(...step);
+    run();
+    const cut = hm3.cutTiles(root);
+    if (!best || cut <= best.cut) best = { step, cut };   // a tie keeps the later (denser) step
+    if (!cut) break;
+  }
+  root.classList.remove('is-compact', 'is-vrow', 'is-pull');
+  root.classList.add(...best.step);
+  run();
+}
+function paintHeroV3(box, d, h) {
+  const { el } = ctx;
+  if (!h) {
+    const last = d?.lastResult;
+    const key = last ? modelKey(last.name) : null;
+    box.innerHTML = hm3.heroRestHTML(d, { fmt, hasModel: !!key });
+    wireTopHunter(box);
+    hm3.fitHero(box);
+    tickCloses();
+    // the last boss, alive (the live 3D portrait, as today)
+    if (key) { try { heroBoss = mountBoss(el('restCanvas'), last.name, last.tier, { portrait: true }); } catch { heroBoss = null; } }
+    return;
+  }
+  const pct = Math.max(0, Math.round((100 * h.hp_remaining) / h.hp_max));
+  const rank = myProfile?.huntRank ? `#${myProfile.huntRank} of ${myProfile.huntPlayers}` : '';
+  box.innerHTML = hm3.heroLiveHTML(h, pct, { rank });
+  hm3.fitHero(box);
+  box.querySelector('[data-hjoin]')?.addEventListener('click', () => ctx.show('battling'));
+  ctx.api('/api/hunt/feed').then((f) => {
+    const seen = new Map();
+    for (const r of f?.feed || []) if (r.player_id && !seen.has(r.player_id)) seen.set(r.player_id, r.player);
+    const faces = el('heroFaces');
+    if (faces) faces.innerHTML = [...seen].slice(0, 4).map(([id, name]) => avatarHTML(id, name, 'xs')).join('');
+  }).catch(() => {});
+  // the Top hunter line during a live fight (D-52): the first row of the Hunt board
+  ctx.api('/api/hunt/leaderboard').then((b) => {
+    const top = (b?.leaders || [])[0];
+    const slot = el('heroTop');
+    if (top && slot) { slot.outerHTML = hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); fitHomeV3(); }
+  }).catch(() => {});
+  tickCloses();
+  try { heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true }); } catch { heroBoss = null; }
+}
+// "Top hunter" opens the Leaderboard window (the hidden v2 button that the menu tile clicks too)
+function wireTopHunter(box) { box?.querySelector('[data-top-hunter]')?.addEventListener('click', () => document.getElementById('boardBtn')?.click()); }
+
+function paintVoiceV3(box) {
+  const me = ctx.user();
+  const people = [...(ctx.live.presence || [])];
+  if (me && !people.some((p) => String(p.id) === String(me.id))) people.unshift({ id: me.id, name: me.name, status: { kind: 'home' } });
+  // D-55: the other members first, then you
+  people.sort((a, b) => (String(a.id) === String(me?.id)) - (String(b.id) === String(me?.id)));
+  const cell = (p) => {
+    const kind = p.status?.kind || 'here';
+    const self = String(p.id) === String(me?.id);
+    return hm3.voiceCellHTML(p, vcBody(p), { avatar: avatarHTML(p.id, p.name, 'sm'), name: nameBadge(p.id, p.name, true), ico: (STATUS_TEXT[kind] || ['•'])[0],
+      ago: vcAgo(p.status?.at), self, watch: !self && kind === 'opening' && !!ctx.watchable?.(p.id) });
+  };
+  box.innerHTML = hm3.voiceHTML(people.map(cell), people.length);
+  hm3.fitVoice(box);
+  box.onclick = (e) => { const t = e.target.closest('[data-member]'); if (!t) return; if (t.classList.contains('watch') && ctx.watchOpen?.(t.dataset.member)) return; openMember(t.dataset.member); };
+}
+
+let pullsAll = [];
+const pullHelpers = () => ({ thumb, name: (p) => nameBadge(p.player_id, p.player, true), ago: ctx.ago, label: ctx.RARITY_LABEL });
+function fitPullsV3() {
+  const box = ctx.el('homePulls');
+  if (!box || !box.querySelector('#plList')) return;
+  const h = pullHelpers();
+  pullsPage.start = hm3.fitPulls(box, pullsAll, pullsPage.start, h, (start) => { pullsPage.start = start; fitPullsV3(); });
+}
+function paintPullsV3(box) {
+  const all = ctx.live.pulls || [];
+  const den = new Set([...(ctx.live.presence || []).map((p) => String(p.id)), String(ctx.user()?.id || '')]);
+  const pulls = pullsTab.v === 'top' ? all.filter((p) => TOP_RARITY.has(p.rarity))
+    : pullsTab.v === 'den' ? all.filter((p) => den.has(String(p.player_id))) : all;
+  pullsAll = pulls;
+  box.innerHTML = hm3.pullsHTML(pullsTab.v);
+  box.querySelectorAll('[data-seg]').forEach((b) => b.addEventListener('click', () => { pullsTab.v = b.dataset.seg; pullsPage.start = 0; paintPullsV3(box); }));
+  box.onclick = (e) => { const r = e.target.closest('[data-pi]'); if (r && pulls[Number(r.dataset.pi)]) ctx.openViewer(pulls[Number(r.dataset.pi)]); };
+  fitPullsV3();
+}
+
+
 // ---- The Spotlight + style editor (Nathan: easier select / deselect) ----------------
 // Three slots on top (tap a slot to empty it), your cards below (tap to add or remove),
 // and the titles + frames the member has redeemed. Save writes both.
@@ -1227,6 +1366,7 @@ export async function openSpotEditor() {
   const cards = mergedCards();
   sp.ids = spotlightOf(cards, myProfile?.spotlight).map((c) => Number(c.id));
   sp.title = myProfile?.title || null; sp.frame = myProfile?.frame || null; sp.q = ''; sp.page = 0;
+  if (document.body.classList.contains('ui-v3')) { sp.msg = ''; sp.busy = false; paintStyleV3(); return; }   // UI-15 v3 (src/ui3/style-editor.js)
   let box = el('spotEditor');
   if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="spotEditor" class="v2-modal hidden"></div>'); box = el('spotEditor'); }
   box.classList.remove('hidden');
@@ -1311,6 +1451,80 @@ function paintSpotEditor() {
     if (memData?.self && !ctx.el('memberModal')?.classList.contains('hidden')) openMember(ctx.user()?.id); // show the new title + frame
     toast('Profile saved');
   });
+}
+
+// ---- UI-15 v3 (body.ui-v3 only): the slots, the title, the frame and Save; the cards come from the Card picker (D-80 16) ----
+// The titles and frames the member owns are the ones the server sends (GET /api/profile: titles, frames, from
+// achievement_claims: the same list POST /api/cosmetics accepts); the locked ones show what exists and how to get it.
+const TIER_FRAME = { diamond: 'Diamond frame', mythic: 'Obsidian frame' };   // the tier frames 'diamond:<track>', 'mythic:<track>' (D-74)
+const frameLabel = (f) => FRAMES[f] || TIER_FRAME[String(f).split(':')[0]] || String(f);
+function styleLists() {
+  const achs = measure(mergedCards(), myProfile?.stats);
+  const claimed = achs.filter((a) => claimedSet().has(a.key));
+  const by = (kind, v) => achs.filter((a) => rewardOf(a.key)[kind] === v).map((a) => a.name).join(' or ');
+  const all = (kind) => [...new Set(achs.map((a) => rewardOf(a.key)[kind]).filter(Boolean))];
+  const ownT = Array.isArray(myProfile?.titles) ? myProfile.titles : [...new Set(claimed.map((a) => rewardOf(a.key).title).filter(Boolean))];
+  const ownF = Array.isArray(myProfile?.frames) ? myProfile.frames : [...new Set(claimed.map((a) => rewardOf(a.key).frame).filter(Boolean))];
+  return {
+    titles: { owned: ownT, locked: all('title').filter((t) => !ownT.includes(t)).map((t) => ({ value: t, by: by('title', t) })) },
+    frames: { owned: ownF.map((f) => ({ value: f, label: frameLabel(f) })), locked: all('frame').filter((f) => !ownF.includes(f)).map((f) => ({ value: f, label: frameLabel(f), by: by('frame', f) })) },
+  };
+}
+function styleHost() {
+  let host = document.getElementById('u3StyleHost');
+  if (host) return host;
+  host = document.createElement('div');
+  host.id = 'u3StyleHost';
+  document.body.appendChild(host);
+  host.addEventListener('click', onStyleClick);
+  host.addEventListener('change', (e) => { if (e.target.id === 'u3SeTitle') { sp.title = e.target.value || null; sp.msg = ''; paintStyleV3(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && host.firstChild && !document.getElementById('u3Picker')) closeStyleV3(); });
+  return host;
+}
+function closeStyleV3() { const h = document.getElementById('u3StyleHost'); if (h) h.innerHTML = ''; }
+function paintStyleV3() {
+  const me = ctx.user();
+  const byId = new Map(mergedCards().filter((c) => c.owned).map((c) => [Number(c.id), c]));
+  const lists = styleLists();
+  styleHost().innerHTML = se3.styleEditorHTML({
+    avatar: avatarHTML(me?.id, me?.name, 'u3-se-av', sp.frame), name: me?.name || '',
+    cards: sp.ids.map((id) => byId.get(Number(id))).filter(Boolean), title: sp.title, frame: sp.frame, msg: sp.msg, busy: sp.busy, ...lists,
+  });
+}
+function openSpotPicker(from) {
+  const owned = mergedCards().filter((c) => c.owned).sort((a, b) => (b.power || 0) - (a.power || 0));
+  openCardPicker({
+    title: 'Spotlight', cap: se3.SPOT_CAP, cards: owned, selected: sp.ids.map(Number), returnFocus: from,
+    blocked: (c, sel) => (sel.length >= se3.SPOT_CAP ? 'The Spotlight holds 3 cards' : ''),
+    apply: (cards, v, q) => { const w = q.trim().toLowerCase(); return w ? cards.filter((c) => [c.name, c.subject].filter(Boolean).join(' ').toLowerCase().includes(w)) : cards; },
+    status: () => ({ checks: [], ready: true }),
+    detail: (c) => ctx.openViewer(c),
+    onConfirm: (sel) => { sp.ids = sel; sp.msg = ''; paintStyleV3(); return true; },
+  });
+}
+async function onStyleClick(e) {
+  const t = e.target.closest('button, [data-u3-scrim]');
+  if (!t) return;
+  const d = t.dataset;
+  if (t.matches('[data-u3-scrim]')) { if (e.target === t && !sp.busy) closeStyleV3(); return; }
+  if (d.seclose) { closeStyleV3(); return; }
+  if (d.sepick) { openSpotPicker(t); return; }
+  if (d.seunpick) { sp.ids = sp.ids.filter((x) => String(x) !== d.seunpick); sp.msg = ''; paintStyleV3(); return; }
+  if ('seframe' in d && !t.disabled) { sp.frame = d.seframe || null; sp.msg = ''; paintStyleV3(); return; }
+  if (d.sesave && !sp.busy) {
+    sp.busy = true; sp.msg = ''; paintStyleV3();
+    const [a, b] = await Promise.all([
+      ctx.apiPost('/api/spotlight', { cardIds: sp.ids }).catch(() => null),
+      (sp.title !== (myProfile?.title || null) || sp.frame !== (myProfile?.frame || null)) ? ctx.apiPost('/api/cosmetics', { title: sp.title, frame: sp.frame }).catch(() => null) : Promise.resolve({ ok: true }),
+    ]);
+    sp.busy = false;
+    if (!a?.ok || !b?.ok) { sp.msg = 'Could not save. Try again.'; paintStyleV3(); return; }
+    myProfile = { ...(myProfile || {}), spotlight: a.spotlight, title: sp.title, frame: sp.frame };
+    closeStyleV3();
+    if (ctx.currentView() === 'home') paintProfile();
+    if (memData?.self && !ctx.el('memberModal')?.classList.contains('hidden')) openMember(ctx.user()?.id); // show the new title + frame
+    toast('Profile saved');
+  }
 }
 
 // ---- A member's profile (design/15-member-profile-screen.png, approved 2026-09-27) ----

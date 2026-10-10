@@ -1,0 +1,10 @@
+/* ==== UI-02 shell: the sub-tab row on medium and expanded (found in the UI-07 review) ====
+   The page keeps its old padding on these classes (style.css: body padding 10 12 12, #body margin-top 8), but the
+   row is position: fixed from the viewport corner, so it sat 10 px too high and 12 px too far left, and its gap
+   was counted twice (--u3-row-gap + the #body margin), so every screen started 22 to 30 px lower than the approved
+   frames. The row now starts at the page padding, and the #body margin is the one gap under it. */
+body.ui-v2.ui-v3[data-size]:is([data-size="medium"], [data-size="medium-short"], [data-size="expanded"]) {
+  --u3-page-t: calc(var(--sp-1-5) + var(--sp-1)); --u3-page-l: var(--sp-3); --u3-row-gap: var(--u3-none); }
+body.ui-v2.ui-v3[data-size]:is([data-size="medium"], [data-size="medium-short"], [data-size="expanded"]) #main > .v2-subtabs {
+  top: calc(var(--u3-sa-t) + var(--u3-page-t) + var(--u3-bar)); left: calc(var(--u3-sa-l) + var(--u3-page-l) + var(--u3-pad));
+  max-width: calc(100vw - var(--u3-sa-l) - var(--u3-sa-r) - var(--u3-page-l) * 2 - var(--u3-pad) * 2); }
