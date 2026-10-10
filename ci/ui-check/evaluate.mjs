@@ -61,7 +61,9 @@ export function defectsOf(r, expanded) {
       if (!mine) add('missing', k, 'absent'); else if (!mine.inView) add('missing', k, 'outside the view');
     }
   }
-  if ((c.emptyBandY || 0) > 0.25 || (c.emptyBandX || 0) > 0.25) add('empty', c.window?.sel || '#main', `band ${Math.round(Math.max(c.emptyBandY || 0, c.emptyBandX || 0) * 100)}%`);
+  // Not with the keyboard open either: it takes up to half the frame and the layer shows only the search (2.3, G-015), so the
+  // rest of the frame is empty by design. The same cell in base checks the empty band.
+  if (r.variant !== 'keyboard' && ((c.emptyBandY || 0) > 0.25 || (c.emptyBandX || 0) > 0.25)) add('empty', c.window?.sel || '#main', `band ${Math.round(Math.max(c.emptyBandY || 0, c.emptyBandX || 0) * 100)}%`);
   for (const [w, why] of r.extra?.iconNoName || []) add('icon-name', w, why);
   for (const [w, ratio, need] of r.extra?.contrast || []) add('contrast', w, `${ratio} < ${need}`);
   if (r.keyboard?.focused && r.keyboard.inputInView === false) add('keyboard', 'focused text box', `keyboard ${r.keyboard.height}px`);

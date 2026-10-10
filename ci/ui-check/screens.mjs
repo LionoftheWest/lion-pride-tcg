@@ -19,13 +19,18 @@ export const SCREENS = {
   'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   'achievements-detail': { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main .ach-card, #main .ach-row, #main [data-ach]']] },
   'bosses':              { id: 'UI-11', steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
-  'trades':              { id: 'UI-25', long: true, safe: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`]], input: '#trFind, #main input[type=search], #main input[type=text]' },
+  'trades':              { id: 'UI-25', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`]], input: '#trFind, #main input[type=search], #main input[type=text]' },
   // v3: the Trades tab opens with the Member picker (UI-65); a tap on a member opens the builder. v2: the builder.
-  'trades-pick':         { id: 'UI-25', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main .u3-mp-tile__pick', [['wait', 0]]], ['wait', 1.5], ['js', '.v2-trade .v2-cell']] },
+  'trades-pick':         { id: 'UI-63', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main .u3-mp-tile__pick', [['wait', 0]]], ['wait', 1.5], ['js', '.v2-trade .v2-cell']] },
   // v3: from the trade builder, the Members button (UI-65, Nathan 2026-10-08) goes back to the Member picker, not the v1 search.
   'trades-pick-back':    { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main .u3-mp-tile__pick', [['wait', 0]]], ['wait', 1.5], ['js', '[data-backpick]'], ['wait', 1.5], ['js', '#main .u3-mp .u3-search__input']] },
   // The Member picker (UI-65) is the Trades tab content under v3 (D-43, 6.5b): a defect outside it belongs to Trades ('under').
-  'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
+  // UI-25: Pending with offers in every state, and a member with few partners (D-64 item 5, D-116): In voice, All members + Pager.
+// Compact classes open the Pending sheet with its button; the wide classes show the panel (the button is hidden there: the fallback).
+'trades-few':         { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]] },
+'trades-pending':     { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5]] },
+'trades-offer':       { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['js', '.u3-pd-row__open'], ['wait', 1.5]] },
+'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
   'trades-explain':      { id: 'UI-39', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
   'hall':                { id: 'UI-30', long: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5]], input: '#main input[type=search], #main input[type=text]' },
   'hall-listings':       { id: 'UI-30', long: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#hlList'], ['wait', 2]] },
@@ -110,6 +115,7 @@ export function ownerOf(screen, where) {
   if (/#u3BossWin[a-z]*\b|\.u3-bw\b|\.u3-bw[-_]/.test(where)) return 'UI-20';
   if (/#(v2Dailies|u3DlToast)[a-z]*\b|\.u3-dl\b|\.u3-dl[-_]/.test(where)) return 'UI-36';
   if (/\.u3-mp\b|\.u3-mp[-_]/.test(where)) return 'UI-65';
+  if (/\.u3-pd\b|\.u3-pd[-_]|#u3Pd[a-z]*\b|\.u3-trades\b|\.u3-trades[-_]/.test(where)) return 'UI-25';   // Pending, its sheet, the Offer view, the Trades layout
   if (/#v2Notifs[a-z]*\b|\.u3-bell|\.u3-note\b|\.u3-note__|\.u3-gift\b|\.u3-gift__/.test(where)) return 'UI-24';
   if (/#u3Settings[a-z]*\b|\.u3-st\b|\.u3-st[-_]/.test(where)) return 'UI-61';
   if (/\.u3-dgs\b|\.u3-dgs[-_]/.test(where) || (SCREENS[screen].id === 'UI-49' && /\.u3-dgc\b|\.u3-dgc[-_]/.test(where))) return 'UI-49';   // the room steps share the UI-48 stage parts

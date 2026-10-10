@@ -1,0 +1,131 @@
+/* ==== UI-25 Community > Trades (ui-v2-social.js paintMemberPickerV3, src/ui3/pending.js; design repo UI-25/approved; flag ui_v3) ====
+   The Member picker (UI-65, 90-ui-65.css) and Pending: a side panel on medium and expanded (stacked under the picker
+   when the panel has no room for both), a sheet behind the Pending button on compact-port and compact-land. Every
+   selector starts with .u3-trades or .u3-pd, so no other screen changes. */
+.u3-trades { --pd-w: calc(var(--avatar-xl) * 3 + var(--sp-6)); }
+.u3-trades__cols { position: relative; flex: 1 1 auto; min-height: 0; display: flex; gap: var(--sp-4); }
+.u3-trades__cols > .u3-trades__panel { flex: 1 1 0; min-width: 0; }
+.u3-trades__probe { position: absolute; left: 0; top: 0; height: 0; width: calc(var(--avatar-xl) * 4 + var(--sp-4) + var(--pd-w)); visibility: hidden; pointer-events: none; }
+.u3-trades__cols.is-stack { flex-direction: column; }
+.u3-trades__cols.is-stack > .u3-trades__pending { flex: 1 1 0; width: auto; padding: var(--sp-2) var(--sp-4); }
+/* Pending: the panel only where there is room for it; the button elsewhere */
+.u3-trades__pending { display: none; flex-direction: column; box-sizing: border-box; flex: 0 0 var(--pd-w); min-width: 0; min-height: 0; padding: var(--sp-4); border-radius: var(--rad-lg);
+  background: var(--surface-1); border: var(--bw-1) solid var(--border); }
+body:is([data-size="medium"], [data-size="expanded"]) .u3-trades__pending { display: flex; }
+.u3-trades__pending > .u3-pd__body { flex: 1 1 auto; height: auto; }
+body:is([data-size="medium"], [data-size="expanded"]) .u3-mp__tools [data-pending] { display: none; }
+.u3-mp__tools [data-pending] { flex: none; }
+.u3-mp__tools [data-pending] .u3-dot { margin-left: var(--sp-2); }
+.u3-pd__body { --pd-card: var(--card-thumb); box-sizing: border-box; height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); overflow: hidden; --text-muted: var(--u3-text-muted); }
+.u3-pd__body.is-tight { gap: var(--sp-2); }
+.u3-pd__body.is-tight2 { --pd-card: var(--card-mini); gap: var(--sp-1); }
+.u3-pd__body.is-tight2 .u3-pd-sec { row-gap: var(--sp-half); }
+.u3-pd__body.is-tight2 .u3-pd-sec__list { gap: var(--sp-1); }
+.u3-pd__head { flex: none; display: flex; align-items: center; gap: var(--sp-3); }
+.u3-pd__title, .u3-pd-sheet .u3-sheet__title { margin: 0; display: flex; align-items: center; gap: var(--sp-3); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-pd-sec { flex: none; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-pd-sec__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-pd-sec__head .u3-label { margin: 0; }
+.u3-pd-sec__n { font-size: var(--fs-small); color: var(--text-muted); }
+.u3-pd-sec__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-pd-sec__pager { flex: none; display: flex; justify-content: center; }
+.u3-pd-empty { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); }
+/* the row (Row/offer, D-30) */
+.u3-pd-row { flex: none; box-sizing: border-box; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-lg); background: var(--surface-2); border: var(--bw-1) solid var(--border); }
+.u3-pd-row__open { box-sizing: border-box; min-width: 0; min-height: var(--hit); display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); padding: 0; border: 0; background: none;
+  color: var(--text-primary); font-family: var(--font-ui); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.u3-pd-row__open:focus-visible { outline: none; box-shadow: var(--glow-focus); border-radius: var(--rad-md); }
+.u3-pd-row__who { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-half) var(--sp-2); min-width: 0; max-width: 100%; }
+.u3-pd-av { --mp-av: var(--avatar-sm); }
+.u3-pd-row__name { min-width: 0; font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); }
+.u3-pd-row__st { flex: 0 1 auto; min-width: 0; font-size: var(--fs-body); color: var(--text-muted); }
+.u3-pd-row__cards { display: flex; align-items: center; gap: var(--sp-2); }
+.u3-pd-card { display: flex; flex-direction: column; align-items: center; gap: var(--sp-half); }
+.u3-pd-card__img { box-sizing: border-box; display: block; width: var(--pd-card); height: calc(var(--pd-card) * var(--card-ratio)); border-radius: calc(var(--pd-card) * var(--rad-card-ratio));
+  border: var(--bw-2) solid var(--u3-r); background: var(--surface-1); overflow: hidden; }
+.u3-pd-card__img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-pd-card__tag { font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--success); }
+.u3-pd-swap { display: grid; place-items: center; color: var(--text-secondary); }
+.u3-pd-row__acts { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2); }
+.u3-pd-row--out .u3-pd-row__acts { align-items: flex-end; }
+.u3-pd-row__acts .u3-btn { white-space: nowrap; }
+.u3-pd-row__acts .u3-btn .u3-ico { display: none; }   /* the labels as drawn; the icons only in the tight form */
+/* tight: the pager sits in the head line of its section (one line less); tight2: small cards, the member beside them */
+.u3-pd__body.is-tight2 .u3-pd-row { padding: var(--u3-none) var(--sp-2); }
+.u3-pd__body.is-tight2 .u3-pd-row__open { flex-direction: row; align-items: center; gap: var(--sp-2); }
+.u3-pd__body.is-tight2 .u3-pd-row__cards { order: -1; flex: none; }
+.u3-pd__body.is-tight2 .u3-pd-row__who { flex: 1 1 0; }
+.u3-pd__body.is-tight2 .u3-pd-av, .u3-pd__body.is-tight2 .u3-pd-swap { display: none; }   /* the picture and the arrow leave for the room; the name and the GET / GIVE labels stay */
+.u3-pd__body.is-tight2 .u3-pd-row__cards { gap: var(--sp-1); }
+.u3-pd__body.is-tight2 .u3-pd-row__name { font-size: var(--fs-body); }   /* the name stays; the picture leaves for the room */
+.u3-pd__body.is-tight2 .u3-pd-row__st { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.u3-pd__body.is-tight2 .u3-pd-row__acts { flex-direction: row; align-items: center; }
+.u3-pd__body.is-tight2 .u3-pd-row__acts .u3-btn { min-width: var(--hit); padding-inline: var(--sp-2); }
+.u3-pd__body.is-tight2 .u3-pd-row__acts .u3-btn__label { display: none; }
+.u3-pd__body.is-tight2 .u3-pd-row__acts .u3-btn .u3-ico { display: inline-block; }   /* the icon alone; the name is in aria-label */
+.u3-pd__body.is-tight .u3-pd-sec { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--sp-3); row-gap: var(--sp-1); }
+.u3-pd__body.is-tight .u3-pd-sec > * { grid-column: 1 / -1; }
+.u3-pd__body.is-tight .u3-pd-sec__head { grid-column: 1; grid-row: 1; }
+.u3-pd__body.is-tight .u3-pd-sec__pager { grid-column: 2; grid-row: 1; }
+.u3-pd__body.is-tight .u3-pd-sec__list { grid-row: 2; }
+.u3-pd__body.is-tight .u3-pd-empty { grid-row: 2; }
+/* the sheet (compact-port: bottom, full height under the top bar; compact-land: the side sheet) */
+.u3-pd-sheet { box-sizing: border-box; min-height: 0; }
+.u3-pd-sheet.u3-sheet--bottom { height: calc(100% - var(--u3-bar) - var(--u3-sa-t) - var(--sp-2)); }
+.u3-pd-sheet.u3-sheet--side { height: 100%; }
+.u3-pd-sheet .u3-pd__body--sheet { flex: 1 1 auto; height: auto; }
+body[data-size="compact-land"] .u3-pd-sheet .u3-sheet__head { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--sp-3))); }   /* the Close button ends left of the Discord corner zone (2.3, G-013); the sheet reaches the frame edge */
+body[data-size="compact-land"] .u3-pd-sheet.u3-sheet--side { padding: var(--sp-3); gap: var(--sp-2); }
+/* the undo toast (7.4): centered above the dock, on the toast layer */
+.u3-pd-toast { position: fixed; z-index: var(--z-toast); left: 50%; transform: translateX(-50%); bottom: calc(var(--dock-h) + var(--sp-4)); max-width: calc(100% - var(--sp-4) * 2); pointer-events: none; }
+.u3-pd-toast > .u3-toast { pointer-events: auto; }
+body[data-size="compact-land"] .u3-pd-toast { bottom: var(--sp-3); }
+/* the Offer view (D-30): the member, both cards large, the actions */
+.u3-pd-scrim { z-index: var(--z-modal); }
+.u3-pd-view { --text-muted: var(--u3-text-muted); box-sizing: border-box; height: calc(100% - var(--sp-4) * 2); max-height: calc(var(--dialog-w) * 2); width: min(100%, calc(var(--dialog-w) * 1.6)); gap: var(--sp-3); padding: var(--sp-4); }
+body[data-size="compact-port"] .u3-pd-view { width: 100%; height: auto; max-height: calc(100% - var(--u3-bar) - var(--u3-sa-t) - var(--sp-2)); align-self: end; border-radius: var(--rad-sheet) var(--rad-sheet) 0 0; padding: var(--sp-4); }
+body[data-size="compact-port"] .u3-pd-scrim { place-items: end center; padding: var(--sp-2) var(--sp-2) var(--u3-none); }
+body[data-size="compact-land"] .u3-pd-scrim { padding: var(--sp-2) max(var(--corner-w), calc(var(--u3-sa-r) + var(--sp-2))) var(--sp-2) max(var(--sp-2), var(--u3-sa-l)); }
+body[data-size="compact-land"] .u3-pd-view { height: 100%; padding: var(--sp-3); gap: var(--sp-2); }
+.u3-pd-view__head { flex: none; display: flex; align-items: center; gap: var(--sp-3); }
+.u3-pd-view__head .u3-pd-av { --mp-av: var(--avatar-lg); }
+.u3-pd-view__who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.u3-pd-view__line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
+.u3-pd-view__name { margin: 0; min-width: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); }
+.u3-pd-view__time { font-size: var(--fs-small); color: var(--text-muted); }
+.u3-pd-view__cards { flex: 1 1 auto; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; gap: var(--sp-4); }
+.u3-pd-big { --pd-big: min(calc((100cqw - var(--sp-4) * 2 - var(--sp-5)) / 2), calc((100cqh - var(--sp-6)) / var(--card-ratio))); display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
+.u3-pd-big__img { box-sizing: border-box; display: block; width: var(--pd-big); height: calc(var(--pd-big) * var(--card-ratio)); border-radius: calc(var(--pd-big) * var(--rad-card-ratio));
+  border: var(--bw-2) solid var(--u3-r); background: var(--surface-1); overflow: hidden; }
+.u3-pd-big__img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-pd-view__foot { flex: none; display: flex; gap: var(--sp-3); }
+.u3-pd-view__foot .u3-btn { flex: 1 1 0; min-width: 0; }
+/* compact-port: the view is as high as its content (a bottom sheet); the card size comes from the width, so no empty band shows above and under the cards */
+body[data-size="compact-port"] .u3-pd-view__cards { container-type: inline-size; flex: none; }
+body[data-size="compact-port"] .u3-pd-big { --pd-big: calc((100cqw - var(--sp-4) * 2 - var(--sp-5)) / 2); }
+/* the list tiles (All members): the width of a name + the avatar + the magnifier, so 3 on expanded as drawn (UI-25 review-2); compact-port keeps its 2 columns */
+.u3-trades .u3-mp-sec__tiles--list { grid-template-columns: repeat(auto-fill, minmax(calc(var(--avatar-xl) * 2 + var(--sp-6)), 1fr)); }
+body[data-size="compact-port"] .u3-trades .u3-mp-sec__tiles--list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* compact-port: the search row has to fit "Find a member" at 375 px */
+body[data-size="compact-port"] .u3-trades__panel { padding: var(--sp-3); }
+body[data-size="compact-port"] .u3-trades .u3-mp__tools { gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-mp__tools [data-pending] { padding-inline: var(--sp-3); gap: var(--sp-1-5); }
+.u3-mp__tools [data-pending] .u3-dot { margin-left: 0; }
+/* a long member name in Pending: smaller step by step to 11 px (D-08, as the picker tiles) */
+.u3-pd__body .u3-pd-row__name[data-shrink="1"] { font-size: var(--fs-body); }
+.u3-pd__body .u3-pd-row__name[data-shrink="2"] { font-size: var(--fs-small); }
+.u3-pd__body .u3-pd-row__name[data-shrink="3"] { font-size: var(--fs-caption); }
+.u3-pd__body .u3-pd-row__name[data-shrink="4"] { font-size: var(--fs-label); }
+.u3-pd__body.is-tight2 .u3-pd-row { padding-inline: var(--sp-1); }
+.u3-pd__body.is-tight2 .u3-pd-row__acts { gap: var(--sp-1); }
+/* the keyboard is open (the picker is only the search layer, 90-ui-65.css): the Pending panel waits too */
+body[data-kb] .u3-trades__pending { display: none; }
+/* compact-port list tiles (All members): a little more room for the name beside the avatar and the magnifier */
+body[data-size="compact-port"] .u3-trades .u3-mp-tile--list .u3-mp-tile__pick { gap: var(--sp-1); padding-left: var(--sp-1); padding-right: var(--ctl-icon); }
+/* compact-land with few partners and long names: the list tiles are 3 lines high, so the picker tightens its gaps until a second row of the paged list fits (measured at 932x430) */
+body[data-size="compact-land"] .u3-trades .u3-mp:has(.has-paged) { gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-trades .u3-mp__body.has-paged { gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-trades__panel:has(.has-paged) { padding-block: var(--sp-2); }
+body[data-size="compact-land"] .u3-trades .u3-mp__body.has-paged .u3-mp-sec__tiles { row-gap: var(--sp-1); }
+body[data-size="compact-land"] .u3-trades .u3-mp__body.has-paged .u3-mp-tile__pick { padding-block: var(--u3-none); }
