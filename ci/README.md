@@ -82,9 +82,9 @@ A PR that changes no file in scope passes G1, and G3 does not run.
 
 **Variants** (design.md 12.6), on every size unless stated:
 - `base`: every screen.
-- `long`: a 32-character name and a 9-digit number, on the 16 screens that show member names or counts (`LONG_SCREENS` in `run.mjs`).
+- `long`: a 32-character name and a 9-digit number, on the screens that show member names or counts (the spec has `long: true`).
 - `safe`: the safe-area presets (portrait: top 59, bottom 34; landscape: sides 59, bottom 21), on the compact touch sizes,
-  on the 12 overlays, windows and stages (`SAFE_SCREENS`).
+  on the overlays, windows and stages (the spec has `safe: true`).
 - `keyboard`: a text box focused and the keyboard height taken off the view (40% in portrait, 55% in landscape), on the
   touch sizes, for the screens with a text box.
 
@@ -96,10 +96,23 @@ defects of the enforced IDs:
 The other IDs are reported, not enforced, because a screen stays `Not migrated` until its own PR (design.md 12.9).
 Today every screen fails the full list (the 2026-10-04 audit found 1,599 detector defects), so a gate that enforced every
 screen would block every PR. `evaluate.mjs --strict` enforces every ID.
+- D-136 (landscape phones and tablets do not exist): the five former landscape phone and tablet sizes 667x375, 932x430, 915x412,
+  1180x820 and 917x692, and (D-154) 375x667 and 1280x480, are REPORT ONLY. Their cells still run and their defects are in the summary table and `defects.json`,
+  but they never fail the verdict (`REPORT_ONLY_SIZES` in `screens.mjs`, `reportOnly()` in `evaluate.mjs`). A cell with no result
+  still fails there. 1280x480, 1280x720, 1990x830, the portrait phones and tablets and tiny stay enforced.
 - A defect in the top bar or the dock belongs to `UI-01`. A defect in the sub-tab bar belongs to `UI-02` (`ownerOf()` in `screens.mjs`).
 - A cell with no result, a step that finds no control, or a call with no fixture is "not checked". On an enforced ID, it fails.
 - An enforced ID that no screen of `screens.mjs` opens (for example `UI-49` today) fails as "not checked". Add its screen
   to `screens.mjs` in the PR that builds it.
+
+**How to add a screen.** Each step changes only the lines of the new screen, so two PRs do not conflict on a shared line:
+1. Add one spec line to `SCREENS` in `ui-check/screens.mjs`: `'my-screen': { id: 'UI-nn', notOn: [...], steps: [...] }`.
+2. Put the flags on that same line. `long: true` runs the `long` variant. `safe: true` runs the `safe` variant.
+   `run.mjs` reads both from `SCREENS`. It has no list of screen names.
+3. If the screen needs a state that the recording does not hold, set a cookie field on the spec (for example `dungeon: 'rest'`).
+   Then register the state in `ui-check/serve.mjs`: write the helper function and, directly under it, one line
+   `DERIVED.push({ when: (p, c, body) => ..., make: (body, c) => ... })`. `p` is the path, `c` the cookies, `body` the recorded answer.
+   Do not edit the request handler.
 
 **Record the fixtures again** when the API changes (the summary shows "no fixture" on a screen):
 1. Start the preview server on the LOCAL database copy, with `LOADTEST=1` and every `FEATURE_*` flag on (port 4471).

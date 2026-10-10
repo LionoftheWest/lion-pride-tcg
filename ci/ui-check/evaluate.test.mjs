@@ -1,8 +1,8 @@
 // Tests for the G3 verdict: node --test ci/ui-check/evaluate.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defectsOf, verdict } from './evaluate.mjs';
-import { SIZES, SCREENS, sizeKey, ownerOf } from './screens.mjs';
+import { defectsOf, verdict, reportOnly } from './evaluate.mjs';
+import { SIZES, SCREENS, REPORT_ONLY_SIZES, sizeKey, ownerOf } from './screens.mjs';
 import { parseRegister } from '../gates/lib.mjs';
 
 const REG = parseRegister(`| UI-01 | Shell | x | No | #10 | Not migrated | |
@@ -64,6 +64,14 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
   assert.equal(ownerOf('help', '.u3-hp__q > .u3-hp__qt'), 'UI-38');
   assert.equal(ownerOf('menu', '.u3-menu__grid > button.u3-mtile'), 'UI-60');
+  assert.equal(ownerOf('trades-few', '.u3-trades__cols > #u3Pd.u3-pd > #u3PdSide.u3-pd__body'), 'UI-25');   // Pending
+  assert.equal(ownerOf('trades-offer', '.u3-pd-view > .u3-pd-view__foot > .u3-btn'), 'UI-25');   // the Offer view
+  assert.equal(ownerOf('trades-few', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');   // the picker stays UI-65
+  assert.equal(ownerOf('wishlist', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl-row'), 'UI-16');
+  assert.equal(ownerOf('wishlist-drawer', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl__list > .u3-wl-row'), 'UI-16');
+  assert.equal(ownerOf('profile-own-wish', '#memWish > #wlHandle.u3-pf-wishbar'), 'UI-16');   // the handle strip is the Wishlist's (D-128)
+  assert.equal(ownerOf('profile-own-wish', '#memWish.u3-pf-tile'), 'UI-14');                  // the tile that holds it is the Profile's
+  assert.equal(ownerOf('wish-picker', '#u3Picker > .u3-pk.is-one'), 'UI-64');
   assert.equal(ownerOf('hunt-picker-detail', '#viewer.raid-info > #viewer-closebutton'), 'UI-64');
   assert.equal(ownerOf('hunt-picker-detail', '.vr-stats > .vr-stat > span "Power"'), 'UI-64');
   assert.equal(ownerOf('hunt-picker-detail', '.u3-hs-hp > span'), 'UI-17');
@@ -100,7 +108,7 @@ test('a defect fails only on an enforced ID (title or Migrated)', () => {
 test('a missing cell always fails; a runner error fails on an enforced ID', () => {
   const rs = full().filter((r) => !(r.screen === 'dungeon' && r.size === '375x667'));
   assert.equal(verdict(rs, REG, { browsers: ['chromium'] }).fails[0].where, 'no result');
-  const rs2 = full(); rs2.find((r) => r.screen === 'collection' && r.size === '375x667').error = 'Timeout';
+  const rs2 = full(); rs2.find((r) => r.screen === 'collection' && r.size === '430x932').error = 'Timeout';
   assert.equal(verdict(rs2, REG, { browsers: ['chromium'] }).fails[0].rule, 'not-checked');
   const cells = SIZES.reduce((n, s) => n + Object.values(SCREENS).filter((sc) => !sc.notOn?.includes(s[2])).length, 0);   // the menu has no tiny cell
   assert.equal(verdict(full(), REG, { browsers: ['chromium', 'webkit'] }).fails.length, cells, 'no WebKit results: every WebKit cell fails');
@@ -120,6 +128,17 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
   assert.deepEqual(plan(new Set()).screens, []);
   assert.equal(plan(new Set(), { full: true }).screens.length, Object.keys(SCREENS).length);
 });
+test('plan with the title IDs (pick): a PR runs only its own screens and the screens under them, not every Migrated row', () => {
+  const enforced = new Set(['UI-07', 'UI-46', 'UI-17']);   // the title UI-46 plus Migrated rows
+  assert.deepEqual(plan(enforced, { pick: new Set(['UI-46']) }).screens, ['dungeon', 'dungeon-picker', 'dungeon-picker-detail']);   // the pickers sit under UI-46
+  const ui17 = plan(enforced, { pick: new Set(['UI-17']) }).screens;
+  assert.ok(ui17.includes('hunt-picker') && ui17.includes('boss-window'), 'the screens UNDER the title ID run too');
+  assert.ok(!ui17.includes('collection'), 'a Migrated row that is not in the title does not run');
+  assert.equal(plan(enforced, { pick: new Set(['UI-01']) }).screens.length, Object.keys(SCREENS).length, 'the shell still runs every screen');
+  assert.deepEqual(plan(enforced, { pick: new Set() }).screens, [], 'no title ID: nothing to run');
+  assert.equal(plan(enforced, { full: true, pick: new Set(['UI-46']) }).screens.length, Object.keys(SCREENS).length, '--full (the nightly report) runs every screen');
+  assert.deepEqual(plan(new Set(['UI-50']), { pick: new Set(['UI-50']) }).uncovered, ['UI-50']);
+});
 test('verdict with a plan: only the planned screens must have results; an uncovered enforced ID fails', () => {
   const only = full().filter((r) => r.screen === 'dungeon');
   assert.equal(verdict(only, REG, { title: 'UI-46 lobby', browsers: ['chromium'], screens: ['dungeon', 'collection'] }).fails.length, SIZES.length, 'collection was planned and has no result');
@@ -129,16 +148,29 @@ test('verdict with a plan: only the planned screens must have results; an uncove
   assert.deepEqual(v.fails.map((x) => [x.owner, x.where]), [['UI-50', 'no screen in the check']]);
 });
 
+test('the keyboard variant does not check the empty band; the same band in base is a defect (2.3, G-015)', () => {
+  const kb = { ...clean('trades-picker', '375x667'), variant: 'keyboard' }; kb.checks.emptyBandY = 1;
+  assert.equal(defectsOf(kb, null).filter((x) => x.rule === 'empty').length, 0);
+  const base = clean('trades-picker', '375x667'); base.checks.emptyBandY = 1;
+  assert.equal(defectsOf(base, null).filter((x) => x.rule === 'empty').length, 1);
+});
+
+test('trades-pick measures the old v2 trade builder: its owner is UI-63 (the Trade window), not UI-25', () => {
+  assert.equal(SCREENS['trades-pick'].id, 'UI-63');
+  assert.equal(ownerOf('trades-pick', '.tr-main > #trMembers.tr-members > .tr-mem'), 'UI-63');
+  assert.equal(ownerOf('trades', '.u3-pd-row'), 'UI-25');
+});
+
 test('an accepted exception (decision ID, one ID/screen/size/rule) does not fail; anything else still fails', () => {
   const rs = full();
   const cell = rs.find((r) => r.screen === 'home' && r.size === '430x932');
   cell.checks.emptyBandY = 0.29;
-  const other = rs.find((r) => r.screen === 'home' && r.size === '375x667');
+  const other = rs.find((r) => r.screen === 'home' && r.size === '412x915');
   other.checks.emptyBandY = 0.29;
   const ex = [{ decision: 'D-999', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty', why: 'test' }];
   const v = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'], exceptions: ex });
   assert.equal(v.defects.filter((x) => x.accepted === 'D-999').length, 1);
-  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '375x667']]);   // the other size still fails
+  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '412x915']]);   // the other size still fails
   const none = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'] });
   assert.equal(none.fails.length, 2);
 });
@@ -149,6 +181,19 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
   const mine = list.filter((e) => e.id === 'UI-49');
   assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+});
+
+test('D-136: a defect at a report-only landscape size is listed but does not fail; the same defect at a portrait size fails', () => {
+  assert.deepEqual(REPORT_ONLY_SIZES, ['667x375', '932x430', '915x412', '1180x820', '917x692', '375x667', '1280x480']);
+  const rs = full();
+  for (const size of ['667x375', '430x932']) rs.find((r) => r.screen === 'home' && r.size === size).checks.emptyBandY = 0.4;
+  const v = verdict(rs, REG, { title: 'UI-03 Home', browsers: ['chromium'] });
+  assert.equal(v.defects.filter((x) => x.rule === 'empty').length, 2, 'both are listed');
+  assert.deepEqual(v.fails.map((x) => [x.rule, x.size]), [['empty', '430x932']]);
+  for (const size of ['1280x720', '1990x830', '430x932', '430x822', '412x915', '820x1180', '692x917', '400x225']) assert.ok(!REPORT_ONLY_SIZES.includes(size), size + ' stays enforced');
+  assert.equal(reportOnly({ size: '667x375', where: 'no result' }), false, 'a missing cell still fails');
+  const miss = full().filter((r) => !(r.screen === 'home' && r.size === '667x375'));
+  assert.ok(verdict(miss, REG, { title: 'UI-03 Home', browsers: ['chromium'] }).fails.some((x) => x.size === '667x375' && x.where === 'no result'));
 });
 
 test('a bad exception entry stops the gate', () => {
