@@ -38,6 +38,10 @@ export function toggle(sel, id, cap) {
   return sel.length < cap ? [...sel, id] : sel;
 }
 
+/** Pick one (the wishlist, D-42): a tap chooses the card in place of the last one; a tap on the chosen card takes it
+ *  off. Pure (unit-tested). */
+export const pickOne = (sel, id) => (sel[0] === id ? [] : [id]);
+
 let cur = null;   // the open picker: { opts, sel, q, values, page, per, filters }
 
 /**
@@ -51,19 +55,19 @@ let cur = null;   // the open picker: { opts, sel, q, values, page, per, filters
  *   detail(card) (the magnifier: the Card Detail), onConfirm(sel) -> true to close (async allowed),
  *   locked(card) -> true: in the squad and cannot leave it (the Hunt: a card that fought today),
  *   autoPick(sel) -> the new selection (async; the Auto-pick button left of Confirm),
- *   confirmCheck(sel) -> null, or { title, line, cancel, primary, fill(sel) } (a dialog before Confirm: the Hunt short squad) }
+ *   confirmCheck(sel) -> null, or { title, line, cancel, primary, fill(sel) } (a dialog before Confirm: the Hunt short squad),
+ *   one: true -> pick one (cap 1): no slot row and no count, a tap replaces the choice, the chosen card has the check mark,
+ *   icon: the icon before the title (the wishlist heart),
+ *   clear: { label, disabled, onClear() -> true to close (async allowed) } (the second button left of Confirm: the
+ *   wishlist Clear, D-66)
  *   A status check is { ok, label }, or a stat { stat, label } ("225 Squad Power" with the zap icon, C9).
- *   mode: 'one' = pick one (6.5, the wishlist, the Shop stat reset): no slot row, no count, one card at a time with the
- *   gold check mark (no number); a tap on the picked card clears it. cap is 1 then.
- *   icon: the name of an icon left of the title. clear: the label of a Clear button left of Confirm (pick one: the
- *   wishlist frames). caption(card) -> text (or a list of parts) under each card (the Shop stat points, D-80 item 23). status(sel).checks is
- *   the status line slot. slotsLabel: the aria-label of the slot row (default "Your squad").
+ *   caption(card) -> text, or a list of parts that wrap whole, under each card (the Shop stat points, D-80 item 23);
+ *   the status checks are the status line slot; slotsLabel: the aria-label of the slot row (default "Your squad").
  */
 export function openCardPicker(opts) {
   closeCardPicker();
   const values = Object.fromEntries((opts.filters || []).map((f) => [f.key, f.value]));
-  const one = opts.mode === 'one';
-  cur = { one, opts, sel: [...(opts.selected || [])].slice(0, one ? 1 : opts.cap), q: '', values, page: 0, per: 0, panel: false, busy: false };
+  cur = { opts, sel: [...(opts.selected || [])].slice(0, opts.one ? 1 : opts.cap), q: '', values, page: 0, per: 0, panel: false, busy: false };
   const host = document.createElement('div');
   host.id = 'u3Picker';
   document.body.appendChild(host);
@@ -100,10 +104,10 @@ function tileHTML(c, n, why) {
   const tag = cur.opts.caption ? 'div' : 'li';   // a caption: the card sits in a cell with its caption under it (<li class="u3-pk-cell">)
   const card = `<${tag} class="u3-pk-card u3-r-${esc(c.rarity || 'normal')}${n ? ' is-sel' : ''}${why ? ' is-off' : ''}" data-card="${c.id}">`
     + `<button type="button" class="u3-pk-card__pick" data-pick="${c.id}" aria-pressed="${n ? 'true' : 'false'}"`
-    + ` aria-label="${name}${badge ? `, ${esc(badge)}` : ''}${n ? (cur.one ? ', selected' : `, number ${n}`) : ''}${why ? `, ${esc(why)}` : ''}"${why && !n ? ' aria-disabled="true"' : ''}>`
+    + ` aria-label="${name}${badge ? `, ${esc(badge)}` : ''}${n ? (cur.opts.one ? ', selected' : `, number ${n}`) : ''}${why ? `, ${esc(why)}` : ''}"${why && !n ? ' aria-disabled="true"' : ''}>`
     + `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" loading="lazy" draggable="false">` : ''}</button>`
     + `${badge ? `<span class="u3-pk-badge" aria-hidden="true">${esc(badge)}</span>` : ''}`
-    + `${n ? (cur.one ? `<span class="u3-pk-num is-mark" aria-hidden="true">${icon('check', { size: 'sm' })}</span>` : `<span class="u3-pk-num" aria-hidden="true">${n}</span>`) : ''}`
+    + `${n ? `<span class="u3-pk-num" aria-hidden="true">${cur.opts.one ? icon('check', { size: 'sm' }) : n}</span>` : ''}`
     + `<button type="button" class="u3-pk-card__info" data-info="${c.id}" aria-label="Card details: ${name}">${icon('search')}</button></${tag}>`;
   return cur.opts.caption ? `<li class="u3-pk-cell">${card}<span class="u3-pk-cap">${capHTML(cur.opts.caption(c))}</span></li>` : card;
 }
@@ -112,6 +116,7 @@ function tileHTML(c, n, why) {
 const capHTML = (v) => (Array.isArray(v) ? v.map((x) => `<span class="u3-pk-cap__i">${esc(x)}</span>`).join(' ') : esc(v || ''));
 
 function slotsHTML() {
+  if (cur.opts.one) return '';
   const M = byId();
   const cards = cur.sel.map((id) => M.get(id)).filter(Boolean);
   return `<ol class="u3-pk-slots" aria-label="${esc(cur.opts.slotsLabel || 'Your squad')}">${Array.from({ length: cur.opts.cap }, (_, i) => {
@@ -168,18 +173,19 @@ function paint() {
   const st = o.status ? o.status(cur.sel) : { checks: [], ready: cur.sel.length > 0 };
   const n = o.filterCount ? o.filterCount(cur.values) : 0;
   const { tiles, pages } = gridHTML();
-  const clear = o.clear && cur.one ? button({ label: o.clear, disabled: cur.busy || !cur.sel.length, data: { clear: '1' } }) : '';
-  const confirm = button({ label: 'Confirm', variant: 'primary', disabled: !st.ready || cur.busy, busy: cur.busy, busyLabel: 'Saving', reason: st.ready || cur.one ? null : st.reason, data: { confirm: '1' } });
+  const confirm = button({ label: 'Confirm', variant: 'primary', disabled: !st.ready || cur.busy, busy: cur.busy, busyLabel: 'Saving', reason: st.ready || o.one ? null : st.reason, data: { confirm: '1' } });
   const a = document.activeElement;
   const caret = a && host.contains(a) && a.classList.contains('u3-search__input') ? a.selectionStart : null;
-  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk${cur.one ? ' is-one' : ''}" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="u3PkT" style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
-    + `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${o.icon ? icon(o.icon) : ''}${esc(o.title || 'Squad')}${cur.one ? '' : ` <b>${cur.sel.length}</b><span>/ ${o.cap}</span>`}</h2></header>`
+  const clear = o.clear ? button({ label: o.clear.label || 'Clear', disabled: !!o.clear.disabled || cur.busy, data: { pkclear: '1' } }) : '';
+  const count = o.one ? '' : ` <b>${cur.sel.length}</b><span>/ ${o.cap}</span>`;
+  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk${o.one ? ' is-one' : ''}" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="u3PkT" style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
+    + `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${o.icon ? icon(o.icon, { size: 'xl' }) : ''}${esc(o.title || 'Squad')}${count}</h2></header>`
     + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>`
-    + (cur.one ? '' : `<div class="u3-pk__slots">${slotsHTML()}</div>`)
-    + `<div class="u3-pk__tools">${searchField({ value: cur.q, placeholder: document.body.dataset.size === 'compact-land' ? 'Search cards�' : undefined })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
+    + `<div class="u3-pk__slots">${slotsHTML()}</div>`
+    + `<div class="u3-pk__tools">${searchField({ value: cur.q, placeholder: document.body.dataset.size === 'compact-land' ? 'Search cards…' : undefined })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
     + `<ul class="u3-pk__grid${(cur.tile || TOKENS['card-tile']) < TOKENS['card-tile'] ? ' is-small' : ''}${o.caption ? ' has-cap' : ''}" aria-label="Cards" style="--pk-cols:${cur.cols || 1};--pk-tile:${cur.tile || TOKENS['card-tile']}px${o.caption ? `;--pk-cap-h:${cur.capH || 0}px` : ''}">${tiles}</ul>`
     + `<div class="u3-pk__pager">${pager({ page: cur.per ? cur.page + 1 : 1, pages })}</div>`
-    + `<footer class="u3-pk__foot">${checksHTML(st)}<div class="u3-pk__acts">${clear}${o.autoPick ? button({ label: 'Auto-pick', disabled: cur.busy, data: { auto: '1' } }) : ''}${confirm}</div></footer>`
+    + `<footer class="u3-pk__foot">${checksHTML(st)}<div class="u3-pk__acts">${o.autoPick ? button({ label: 'Auto-pick', disabled: cur.busy, data: { auto: '1' } }) : ''}${clear}${confirm}</div></footer>`
     + `</section></div>${cur.panel ? filterPanelHTML() : ''}${cur.warn ? warnHTML(cur.warn) : ''}`;
   cur.shown = true;   // the fade-in plays once, when the window opens (a repaint does not flash it)
   if (caret != null) { const i = host.querySelector('.u3-search__input'); i?.focus({ preventScroll: true }); i?.setSelectionRange(caret, caret); }
@@ -192,7 +198,7 @@ function measure() {
   if (!g) return;
   const pk = g.closest('.u3-pk');
   const foot = pk.querySelector('.u3-pk-checks');   // the lowest part of the left column (compact-land: the footer box is display: contents)
-  if (document.body.dataset.size === 'compact-land' && foot && !cur.one) {
+  if (document.body.dataset.size === 'compact-land' && foot && !cur.opts.one) {
     const over = foot.getBoundingClientRect().bottom - (pk.getBoundingClientRect().bottom - parseFloat(getComputedStyle(pk).paddingBottom));
     const w = cur.slotW || TOKENS['card-thumb'];
     if (over > 0.5 && w > TOKENS['card-mini']) { cur.slotW = Math.max(TOKENS['card-mini'], Math.floor(w - over / 2 / TOKENS['card-ratio']) - 1); paint(); return; }
@@ -268,11 +274,10 @@ async function onClick(e) {
     const c = M.get(id);
     if (!c || (t.getAttribute('aria-disabled') === 'true' && !cur.sel.includes(id))) return;
     if (cur.sel.includes(id) && cur.opts.locked?.(c)) return;   // it fought today: it stays in the squad
-    cur.sel = cur.one ? (cur.sel[0] === id ? [] : [id]) : toggle(cur.sel, id, cur.opts.cap);
+    cur.sel = cur.opts.one ? pickOne(cur.sel, id) : toggle(cur.sel, id, cur.opts.cap);
     paint();
     return;
   }
-  if (d.clear) { cur.sel = []; paint(); return; }
   if (d.unpick) { cur.sel = cur.sel.filter((x) => x !== Number(d.unpick)); paint(); return; }
   if (d.page) { cur.page += d.page === 'next' ? 1 : -1; paint(); return; }
   if (t.classList.contains('u3-search__input') === false && t.closest('.u3-search') && t.matches('.u3-ibtn')) { cur.q = ''; cur.page = 0; paint(); return; }
@@ -290,6 +295,16 @@ async function onClick(e) {
     cur.busy = false;
     if (Array.isArray(next)) cur.sel = next.map(Number).slice(0, cur.opts.cap);
     paint();
+    return;
+  }
+  if (d.pkclear) {
+    if (cur.busy) return;
+    cur.busy = true; paint();
+    let done = false;
+    try { done = await cur.opts.clear.onClear(); } catch { done = false; }
+    if (!cur) return;
+    cur.busy = false;
+    if (done !== false) closeCardPicker(); else paint();
     return;
   }
   if (d.wclose) { cur.warn = null; paint(); return; }

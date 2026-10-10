@@ -475,7 +475,7 @@ async function openPickerV3() {
   const free = !!d.free_reset;
   const line = `${free ? 'Your free weekly reset is available' : `Free reset used · back ${nextDay(d.free_reset_next)}`} · This reset costs ${fmt(free ? 0 : d.stat_reset_price)} Shards`;
   openCardPicker({
-    title: 'Choose a card', mode: 'one', cap: 1, cards: list, selected: [],
+    title: 'Choose a card', one: true, cap: 1, cards: list, selected: [],
     caption: (c) => Object.entries(c.stat?.points || {}).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${STAT_SHORT[k] || k} ${v}`),
     status: (sel) => ({ checks: [{ ok: free, label: line }], ready: sel.length === 1, reason: 'Choose a card' }),
     detail: (c) => ctx().openViewer?.(c),
