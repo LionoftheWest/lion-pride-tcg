@@ -60,6 +60,12 @@ export const SCREENS = {
   'dungeon-retreat':     { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'floor', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-leave'], ['wait', 1.5]] },
   // The same step with other rewards (Heal, damage bonus, Revive): the panel is the same size as in dungeon-choose (D-125 review: one layout).
   'dungeon-choose2':     { id: 'UI-48', long: true, safe: true, notOn: ['tiny'], dungeon: 'choose2', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  // v3: the loader and the sign-in retry (UI-56). `loader` = the sign-in state (sdk-stub.js reads the cookie ci_loader): wait = never answers
+  // (loader: 'loading' shows the bar; 'timeout' waits the real 15 s), error = fails. run.mjs stores the hint lp_ui3=1 (the loader cannot know
+  // the flag before the sign-in) and measures the loader block (the checks skip #loader, so run.mjs renames it for these cells).
+  'loader':              { id: 'UI-56', loader: 'loading', steps: [] },
+  'loader-timeout':      { id: 'UI-56', loader: 'timeout', steps: [] },
+  'loader-error':        { id: 'UI-56', loader: 'error', steps: [] },
   'dungeon-board':       { id: 'UI-51', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-pane="top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
   'gauntlet':            { id: 'UI-52', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   // The Shop (UI-43): tiny has no top bar, so no Shop button (D-06: the small live view, UI-59).

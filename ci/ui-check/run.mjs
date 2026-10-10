@@ -74,6 +74,10 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.battle || spec.hunt) cookies.push({ name: 'ci_hunt', value: spec.battle ? 'battle' : spec.hunt, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
+        if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)
+          cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });
+          await ctx.addInitScript(() => localStorage.setItem('lp_ui3', '1'));
+        }
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);
         if (spec.battle && FIX.meta?.teamKey) await ctx.addInitScript(([k, v]) => localStorage.setItem(k, v), [FIX.meta.teamKey, JSON.stringify({ date: MT_DAY, ids: FIX.meta.teamIds })]);   // the date of the game day (MT), as main.js loadTeam() checks
@@ -85,8 +89,19 @@ async function runCell([s, screen, variant], ref = {}) {
         pg.on('response', (r) => { const u = new URL(r.url()); if (r.status() === 404 && u.pathname.startsWith('/api/')) noFixture.add(u.pathname); });
         const res = { browser: BROWSER, size, class: cls, touch, screen, id: spec.id, variant };
         try {
+          if (spec.loader) {
+            // The app never starts here (no ui-v2 class): wait for the loader state itself (the timeout is the real 15 s), then let the
+            // checks see the loader: they skip #loader (it covers the page during a normal boot), so the loader gets data-measure for this cell only.
+            const want = { loading: 'loading', timeout: 'timeout', error: 'error' }[spec.loader];
+            await pg.goto(BASE + '/');
+            await pg.waitForFunction((w) => document.getElementById('ldr3')?.dataset.state === w && !document.getElementById('ldr3').hidden, want, { timeout: 40000 });
+            await pg.evaluate(() => document.fonts?.ready); await sleep(1.5);
+            await pg.evaluate("document.getElementById('loader').dataset.measure = ''");
+            res.miss = [];
+          } else {
           await boot(pg, BASE + '/');
           res.miss = await runSteps(pg, spec.steps);
+          }
           for (let i = 0; i < 20; i++) { if (await pg.evaluate(IMGWAIT)) break; await sleep(0.5); }
           await pg.evaluate(() => document.fonts?.ready); await sleep(1);
           if (variant === 'keyboard') {
