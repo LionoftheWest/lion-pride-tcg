@@ -47,6 +47,8 @@ export const SCREENS = {
 'trades-pending':     { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['wait', 1.5]] },
 'trades-offer':       { id: 'UI-25', long: true, safe: true, trades: 'few', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '.u3-mp__tools [data-pending]', [['wait', 0]]], ['js', '.u3-pd-row__open'], ['wait', 1.5]] },
 'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
+  // UI-29: the member suggest list (typed "Member": the fixture answers with every member, so the list holds more rows than fit and scrolls). The keyboard variant keeps the text and the list.
+  'trades-suggest':      { id: 'UI-29', long: true, under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5], ['type', '#main .u3-mp .u3-search__input', 'Member']], input: '#main .u3-mp .u3-search__input' },
   'trades-explain':      { id: 'UI-39', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
   // v3 (UI-30): the Trade Hall lists with the listings of other members (cookie ci_hall=many: the recording holds only the signed-in member's own).
   'hall':                { id: 'UI-30', safe: true, long: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5]], input: '#main input[type=search], #main input[type=text]' },
@@ -182,6 +184,7 @@ export function ownerOf(screen, where) {
   if (screen !== 'profile' && /#memberModal[a-z]*\b|#mem[A-Z]|\.mem-|\.u3-pf\b|\.u3-pf-|\.wl-/.test(where)) return 'UI-14';
   if (/#u3BossWin[a-z]*\b|\.u3-bw\b|\.u3-bw[-_]/.test(where)) return 'UI-20';
   if (/#(v2Dailies|u3DlToast)[a-z]*\b|\.u3-dl\b|\.u3-dl[-_]/.test(where)) return 'UI-36';
+  if (/\.u3-mp-sug\b|\.u3-mp-sug[-_]/.test(where)) return 'UI-29';   // the member suggest list under the Member picker search
   if (/\.u3-mp\b|\.u3-mp[-_]/.test(where)) return 'UI-65';
   if (/\.u3-pd\b|\.u3-pd[-_]|#u3Pd[a-z]*\b|\.u3-trades\b|\.u3-trades[-_]/.test(where)) return 'UI-25';   // Pending, its sheet, the Offer view, the Trades layout
   if (/#v2Notifs[a-z]*\b|\.u3-bell|\.u3-note\b|\.u3-note__|\.u3-gift\b|\.u3-gift__/.test(where)) return 'UI-24';
@@ -256,7 +259,14 @@ export async function runSteps(pg, steps) {
   for (const st of steps) {
     if (st[0] === 'dock') await dock(pg, st[1], st[2] ?? 2.5);
     else if (st[0] === 'wait') { if (FIXED) await sleep(st[1]); else await ready(pg, st[1] + 10); }
-    else if (st[0] === 'js') {
+    else if (st[0] === 'type') {   // the text goes into a field with an input event (no focus: the v2 m-kb class would hide the dock; the keyboard variant focuses it later); then the suggest request and its answer
+      try {
+        await pg.waitForSelector(st[1], { state: 'attached', timeout: 8000 });
+        await pg.evaluate(([sel, text]) => { const e = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(e, text); e.dispatchEvent(new Event('input', { bubbles: true })); }, [st[1], st[2]]);
+        await sleep(0.8);
+      } catch { miss.push(st[1]); }
+      await settle(pg);
+    } else if (st[0] === 'js') {
       if (st[2] && !(await pg.evaluate((s) => [...document.querySelectorAll(s)].some((x) => x.getClientRects().length), st[1]))) {
         miss.push(`${st[1]} (fallback used)`); miss.push(...(await runSteps(pg, st[2]))); continue;
       }
