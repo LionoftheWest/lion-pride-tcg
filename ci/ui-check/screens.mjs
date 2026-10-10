@@ -24,18 +24,18 @@ export const SCREENS = {
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
   // the Filters panel open (D-39, D-123: under tabs where the groups do not fit the height)
   'collection-filters': { id: 'UI-07', safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#colFilters'], ['wait', 1]] },
-  'collection-detail':   { id: 'UI-08', under: 'UI-07', safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5]] },
+  'collection-detail':   { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5]] },
   // v3: the Card Detail states of UI-08 (the approved frames): a card to ascend (cookie ci_col=ascend), the stat points editor (ci_col=points), a locked card.
-  'collection-detail-ascend': { id: 'UI-08', under: 'UI-07', safe: true, col: 'ascend', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5]] },
-  'collection-detail-points': { id: 'UI-08', under: 'UI-07', safe: true, col: 'points', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]'], ['wait', 1]] },
-  'collection-detail-locked': { id: 'UI-08', under: 'UI-07', safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile.is-locked'], ['wait', 2.5]] },
+  'collection-detail-ascend': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, col: 'ascend', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5]] },
+  'collection-detail-points': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, col: 'points', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]'], ['wait', 1]] },
+  'collection-detail-locked': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile.is-locked'], ['wait', 2.5]] },
   // v3: the card viewer (UI-09) opened from the Card Detail art (a tap on #pArt; at the sizes where the viewer opens with the panel it opens again).
-  'collection-viewer':   { id: 'UI-09', under: 'UI-07', safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pArt'], ['wait', 1.5]] },
+  'collection-viewer':   { id: 'UI-09', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pArt'], ['wait', 1.5]] },
   // v3: the celebration after an Ascend (UI-10 C1-C4): the viewer with the card and "Spend points" (cookie ci_col=ascend-ok answers the Ascend).
-  'ascend-celebration':  { id: 'UI-10', under: 'UI-07', safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 5]], col: 'ascend-ok' },
+  'ascend-celebration':  { id: 'UI-10', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 5]], col: 'ascend-ok' },
   // v3: the Ascend refused (UI-10 E1: the writes answer 403 here, cookie ci_col=points) and the stat points save error (S2).
-  'ascend-error':        { id: 'UI-10', under: 'UI-07', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 1.5]], col: 'ascend' },
-  'stat-points-error':   { id: 'UI-10', under: 'UI-07', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '[data-add="attack"]', [['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]']]], ['wait', 1], ['js', '#ptsSave'], ['wait', 1.5]], col: 'points' },
+  'ascend-error':        { id: 'UI-10', under: 'UI-07', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 1.5]], col: 'ascend' },
+  'stat-points-error':   { id: 'UI-10', under: 'UI-07', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '[data-add="attack"]', [['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]']]], ['wait', 1], ['js', '#ptsSave'], ['wait', 1.5]], col: 'points' },
   'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   'achievements-detail': { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main .ach-card, #main .ach-row, #main [data-ach]']] },
   'bosses':              { id: 'UI-11', steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
