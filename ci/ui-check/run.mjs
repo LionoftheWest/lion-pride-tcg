@@ -104,11 +104,11 @@ async function runCell([s, screen, variant], ref = {}) {
             // checks see the loader: they skip #loader (it covers the page during a normal boot), so the loader gets data-measure for this cell only.
             const want = { loading: 'loading', timeout: 'timeout', error: 'error' }[spec.loader];
             // The loading cell must not reach the 15 s timeout while the checks run (a slow CI cell measured the timeout state and
-            // found "Try again", 2026-10-10): the page clock is installed before the boot and paused once the loading state shows.
-            if (want === 'loading') await pg.clock.install();
+            // found "Try again", 2026-10-10): in this cell a timer of 15 s or more waits much longer. Only long timers: a paused page
+            // clock also stopped the timers and frames the checks wait for, and the CI shards hung.
+            if (want === 'loading') await pg.addInitScript(() => { const st = window.setTimeout; window.setTimeout = (fn, ms, ...a) => st(fn, ms >= 15000 ? 2 ** 31 - 1 : ms, ...a); });
             await pg.goto(BASE + '/');
             await pg.waitForFunction((w) => document.getElementById('ldr3')?.dataset.state === w && !document.getElementById('ldr3').hidden, want, { timeout: 40000 });
-            if (want === 'loading') await pg.clock.pauseAt(await pg.evaluate(() => Date.now() + 50));
             await pg.evaluate(() => document.fonts?.ready); await sleep(1.5);
             await pg.evaluate("document.getElementById('loader').dataset.measure = ''");
             res.miss = [];
