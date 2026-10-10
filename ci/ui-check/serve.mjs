@@ -7,6 +7,7 @@
 //   ci_hunt=down     derived from the recorded /api/hunt: today's squad (the first 8 roster cards) is down (UI-19)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
+//   ci_fx=hist|day|member   the Boons tab (UI-27): my play history, the day limit used up, a member at the pair cap
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
@@ -68,6 +69,22 @@ function derivedRoom(body, kind) {
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
   return { ...body, slots: body.slots.map((x, i) => ({ ...x, card: { id: 900 + i, name: i === 1 ? 'A card with a very long name for the row' : `Wish card ${i + 1}`, rarity: R[i][0], image_url: '/api/img/x' }, mine: i })), top: 1 };
+}
+// UI-27 (Boons): cookie ci_fx. hist = I played cards on members before (Frequent and Recent in the Member picker; the recorded plays are other
+// members'); day = all 10 plays of the day used; member = 3 plays on the first member (the pair cap). day and member include hist.
+const ME = '100000000000000001';
+function derivedFx(path, mode, body) {
+  if (!mode) return body;
+  if (path === '/api/effects/recent' && body?.plays) {
+    const ids = ['012', '012', '012', '163', '163', '011', '011', '110', '076', '161', '077', '032'];
+    const mine = ids.map((n, i) => ({ id: 9000 + i, from_id: ME, to_id: `100000000000000${n}`, from: 'Member A', to: `Member ${n}`, primitive: 'confetti', kind: 'boon', outcome: 'applied', at: new Date(Date.parse(FIX.recordedAt) - (i + 1) * 3600e3).toISOString() }));
+    return { ...body, plays: [...mine, ...body.plays] };
+  }
+  if (path === '/api/effects/me' && body?.enabled) {
+    if (mode === 'day') return { ...body, playsToday: 10, dayEnds: new Date(Date.parse(FIX.recordedAt) + (7 * 60 + 25) * 60e3).toISOString() };
+    if (mode === 'member') return { ...body, playsToday: 3, pairs: { '100000000000000012': 3 } };
+  }
+  return body;
 }
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
@@ -135,7 +152,7 @@ createServer((req, res) => {
     const raw = p === '/api/dungeon' && c.ci_dungeon === 'choose' && hit.body?.ok ? derivedDungeon(hit.body)
       : p === '/api/dungeon' && c.ci_dungeon === 'choose2' && hit.body?.ok ? derivedChoose2(hit.body)
       : p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && hit.body?.ok ? derivedRoom(hit.body, c.ci_dungeon) : hit.body;
-    const body0 = p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw;
+    const body0 = derivedFx(p, c.ci_fx, p === '/api/wishlist' && c.ci_wish === 'full' && raw?.slots ? derivedWish(raw) : raw);
     const body = c.ci_data === 'long' ? longData(body0) : body0;
     return send(res, hit.status || 200, JSON.stringify(body));
   }

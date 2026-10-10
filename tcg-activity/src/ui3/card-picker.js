@@ -57,6 +57,7 @@ let cur = null;   // the open picker: { opts, sel, q, values, page, per, filters
 export function openCardPicker(opts) {
   closeCardPicker();
   const values = Object.fromEntries((opts.filters || []).map((f) => [f.key, f.value]));
+  if (opts.kinds) values.kind = opts.kindValue || opts.kinds[0].id;   // UI-27: the kind switch under the head
   cur = { opts, sel: [...(opts.selected || [])].slice(0, opts.cap), q: '', values, page: 0, per: 0, panel: false, busy: false };
   const host = document.createElement('div');
   host.id = 'u3Picker';
@@ -96,7 +97,7 @@ function tileHTML(c, n, why) {
     + ` aria-label="${name}${badge ? `, ${esc(badge)}` : ''}${n ? `, number ${n}` : ''}${why ? `, ${esc(why)}` : ''}"${why && !n ? ' aria-disabled="true"' : ''}>`
     + `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" loading="lazy" draggable="false">` : ''}</button>`
     + `${badge ? `<span class="u3-pk-badge" aria-hidden="true">${esc(badge)}</span>` : ''}`
-    + `${n ? `<span class="u3-pk-num" aria-hidden="true">${n}</span>` : ''}`
+    + `${n ? `<span class="u3-pk-num" aria-hidden="true">${cur.opts.single ? icon('check', { size: 'sm' }) : n}</span>` : ''}`
     + `<button type="button" class="u3-pk-card__info" data-info="${c.id}" aria-label="Card details: ${name}">${icon('search')}</button></li>`;
 }
 
@@ -160,9 +161,15 @@ function paint() {
   const confirm = button({ label: 'Confirm', variant: 'primary', disabled: !st.ready || cur.busy, busy: cur.busy, busyLabel: 'Saving', reason: st.ready ? null : st.reason, data: { confirm: '1' } });
   const a = document.activeElement;
   const caret = a && host.contains(a) && a.classList.contains('u3-search__input') ? a.selectionStart : null;
-  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="u3PkT" style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
-    + `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${esc(o.title || 'Squad')} <b>${cur.sel.length}</b><span>/ ${o.cap}</span></h2></header>`
-    + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>`
+  // opts.head (UI-27): the head is the caller's HTML (who plays on whom), the title is its accessible name; opts.kinds: the
+  // kind switch row under the head (values.kind); opts.single: a tap on another card replaces the pick; opts.cls: a class on the window
+  const head = o.head
+    ? `<header class="u3-pk__head">${o.head}</header>`
+    : `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${esc(o.title || 'Squad')} <b>${cur.sel.length}</b><span>/ ${o.cap}</span></h2></header>`;
+  const kinds = o.kinds ? `<div class="u3-pk__kinds">${segmented(o.kinds.map((k) => ({ id: `kind:${k.id}`, label: k.label, active: cur.values.kind === k.id })), { label: 'Kind' })}</div>` : '';
+  host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk${o.cls ? ` ${esc(o.cls)}` : ''}" tabindex="-1" role="dialog" aria-modal="true" ${o.head ? `aria-label="${esc(o.title || 'Cards')}"` : 'aria-labelledby="u3PkT"'} style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
+    + head
+    + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>${kinds}`
     + `<div class="u3-pk__slots">${slotsHTML()}</div>`
     + `<div class="u3-pk__tools">${searchField({ value: cur.q, placeholder: document.body.dataset.size === 'compact-land' ? 'Search cards…' : undefined })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
     + `<ul class="u3-pk__grid${(cur.tile || TOKENS['card-tile']) < TOKENS['card-tile'] ? ' is-small' : ''}" aria-label="Cards" style="--pk-cols:${cur.cols || 1};--pk-tile:${cur.tile || TOKENS['card-tile']}px">${tiles}</ul>`
@@ -230,7 +237,7 @@ async function onClick(e) {
     const c = M.get(id);
     if (!c || (t.getAttribute('aria-disabled') === 'true' && !cur.sel.includes(id))) return;
     if (cur.sel.includes(id) && cur.opts.locked?.(c)) return;   // it fought today: it stays in the squad
-    cur.sel = toggle(cur.sel, id, cur.opts.cap);
+    cur.sel = cur.opts.single ? (cur.sel.includes(id) ? [] : [id]) : toggle(cur.sel, id, cur.opts.cap);
     paint();
     return;
   }
@@ -240,7 +247,8 @@ async function onClick(e) {
   if (d.filters) { cur.draft = { ...cur.values }; cur.panel = true; paint(); return; }
   if (d.fclose) { cur.panel = false; paint(); return; }
   if (d.seg && cur.panel) { const [k, v] = d.seg.split(':'); cur.draft[k] = v; paint(); return; }
-  if (d.fclear) { cur.draft = Object.fromEntries(cur.opts.filters.map((f) => [f.key, f.clear ?? f.options[0].id])); paint(); return; }
+  if (d.seg && cur.opts.kinds && d.seg.startsWith('kind:')) { cur.values.kind = d.seg.slice(5); cur.page = 0; paint(); return; }
+  if (d.fclear) { cur.draft = { ...Object.fromEntries(cur.opts.filters.map((f) => [f.key, f.clear ?? f.options[0].id])), ...(cur.opts.kinds ? { kind: cur.draft.kind } : {}) }; paint(); return; }
   if (d.fok) { cur.values = { ...cur.draft }; cur.panel = false; cur.page = 0; paint(); return; }
   if (d.auto) {
     if (cur.busy) return;

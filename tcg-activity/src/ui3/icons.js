@@ -6,7 +6,7 @@ import {
   Minus, Info, CircleCheck, CircleAlert, TriangleAlert, Timer, SlidersHorizontal, Landmark, PartyPopper, Layers, Award,
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
-  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, DoorOpen, Gem, BellOff, ChevronUp,
+  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, DoorOpen, Gem, BellOff, ChevronUp, Sparkles, Drama,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -35,6 +35,8 @@ export const ICONS = {
   'door-open': DoorOpen,
   // the FAQ window (UI-38): the rarities, the Pings answer, the open row's chevron
   'gem': Gem, 'bell-off': BellOff, 'chevron-up': ChevronUp,
+  // the Boons tab (UI-27): an effect on you (sparkles), a prank in Recent plays (drama); a boon is gift, a shield is shield-check
+  'sparkles': Sparkles, 'drama': Drama,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
