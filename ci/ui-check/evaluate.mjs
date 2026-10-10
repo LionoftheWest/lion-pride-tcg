@@ -61,9 +61,10 @@ export function defectsOf(r, expanded) {
       if (!mine) add('missing', k, 'absent'); else if (!mine.inView) add('missing', k, 'outside the view');
     }
   }
+  // Not on a walkthrough spec (UI-37): the page under the card is dimmed and checks/walkthrough.js judges the card.
   // Not with the keyboard open either: it takes up to half the frame and the layer shows only the search (2.3, G-015), so the
   // rest of the frame is empty by design. The same cell in base checks the empty band.
-  if (r.variant !== 'keyboard' && ((c.emptyBandY || 0) > 0.25 || (c.emptyBandX || 0) > 0.25)) add('empty', c.window?.sel || '#main', `band ${Math.round(Math.max(c.emptyBandY || 0, c.emptyBandX || 0) * 100)}%`);
+  if (r.variant !== 'keyboard' && !SCREENS[r.screen]?.walk && ((c.emptyBandY || 0) > 0.25 || (c.emptyBandX || 0) > 0.25)) add('empty', c.window?.sel || '#main', `band ${Math.round(Math.max(c.emptyBandY || 0, c.emptyBandX || 0) * 100)}%`);
   // UI-37: a walk spec must produce its card rows (walk: true in screens.mjs); a missing card is "not checked", never a pass
   if (SCREENS[r.screen]?.walk) {
     if (!Array.isArray(r.walk)) add('not-checked', 'walkthrough', 'the walkthrough check returned nothing');

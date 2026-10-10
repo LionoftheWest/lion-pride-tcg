@@ -179,6 +179,13 @@ test('the keyboard variant does not check the empty band; the same band in base 
   assert.equal(defectsOf(base, null).filter((x) => x.rule === 'empty').length, 1);
 });
 
+test('a walkthrough spec does not check the empty band of the dimmed page under its card (UI-37); a normal spec does', () => {
+  const walk = { ...clean('walk-1', '430x932'), walk: [] }; walk.checks.emptyBandY = 1;
+  assert.equal(defectsOf(walk, null).filter((x) => x.rule === 'empty').length, 0);
+  const home = clean('home', '430x932'); home.checks.emptyBandY = 1;
+  assert.equal(defectsOf(home, null).filter((x) => x.rule === 'empty').length, 1);
+});
+
 test('trades-pick measures the old v2 trade builder: its owner is UI-63 (the Trade window), not UI-25', () => {
   assert.equal(SCREENS['trades-pick'].id, 'UI-63');
   assert.equal(ownerOf('trades-pick', '.tr-main > #trMembers.tr-members > .tr-mem'), 'UI-63');
