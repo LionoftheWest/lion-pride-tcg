@@ -404,8 +404,6 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
    reset for now. The Gauntlet stays equal for all.
 6. **Latent upgrade:** at 3 stars, the Silver tier, each card's base ability is upgraded.
    Not a second ability (F-3 item 10).
-8. **Ability effects:** the list must grow large. Effects become data made from building
-   blocks, with one interpreter for every mode (F-3 item 12).
 7. **Stat screen:** the new names, an explainer for each stat, and a live preview of the
    card stats (F-3 item 11).
 
@@ -415,3 +413,5 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 3. **Reprints:** yes. A set can add cards from other sets, or whole sets, to its pull pool
    (F-2 item 5).
 4. **Live variables:** yes. A live event can change its variables.
+8. **Ability effects:** the list must grow large. Effects become data made from building
+   blocks, with one interpreter for every mode (F-3 item 12).
