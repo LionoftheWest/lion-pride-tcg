@@ -349,7 +349,8 @@ function derivedAchView(long) {
     const need = (n) => (n <= 5 ? tiers[n - 1] : step ? tiers[4] + (n - 5) * step : null);
     let reached = 0;
     while (need(reached + 1) != null && value >= need(reached + 1) && reached < 2000) reached += 1;
-    return { key, group: '', name, value, tiers, step, titles, reached, claimed: Math.min(claimed, reached), next: need(reached + 1) };
+    // D-183: tiers an old achievement already paid (Collector: 2 unclaimed rows; Shine: 4, so the tile foot shows the tier-4 reward without packs)
+    return { key, group: '', name, value, tiers, step, titles, reached, claimed: Math.min(claimed, reached), next: need(reached + 1), old_paid: { collector: 2, shine: 4 }[key] || 0 };
   });
   const badges = ACH_BADGES.map(([tag, label, have, need, packs, claimed]) => ({ key: `tag:S1:${tag}`, season: 'Season 1', short: 'S1', tag, label, title: `${label} Master S1`, need, have, packs, claimed }));
   const ready = tracks.reduce((s, t) => s + Math.max(0, t.reached - t.claimed), 0) + badges.filter((b) => b.have >= b.need && !b.claimed).length;

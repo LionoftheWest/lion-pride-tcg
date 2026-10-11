@@ -17,7 +17,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 
 | File | Reasons | Notes |
 |---|---|---|
-| `achievement_tracks.sql` | SUPERSEDED: reverts `public.ach_has_element(jsonb)` (live = `card_decisions.sql`); reverts `public.ach_track_values(text)` (live = `pack_ledger_strict.sql`); reverts `public.claim_achievement_tiers(text, text)` (live = `pack_ledger_strict.sql`) | a re-run stops at an error today: achievement_tracks.sql: the live claim_achievement changed since this file was built. Rebuild from the live text.; alone, `create or replace function public.claim_achievemen...` fails: cannot remove parameter defaults from existing function |
+| `achievement_tracks.sql` | SUPERSEDED: reverts `public.ach_has_element(jsonb)` (live = `card_decisions.sql`); reverts `public.ach_track_values(text)` (live = `pack_ledger_strict.sql`); reverts `public.achievement_view(text)` (live = `achievement_view_old_paid.sql`); reverts `public.claim_achievement_tiers(text, text)` (live = `pack_ledger_strict.sql`) | a re-run stops at an error today: achievement_tracks.sql: the live claim_achievement changed since this file was built. Rebuild from the live text.; alone, `create or replace function public.claim_achievemen...` fails: cannot remove parameter defaults from existing function |
 | `ascend_guard.sql` | SUPERSEDED: reverts `public.ascend_card(text, bigint)` (live = `card_ledger.sql`) |  |
 | `ascension.sql` | SUPERSEDED: reverts `public.ascend_card(text, bigint)` (live = `card_ledger.sql`); reverts `public.ascend_cost(text, integer)` (live = `balance_table.sql`); brings back `public.card_power(text, integer)`, which live does not have; reverts `public.my_collection_power(text)` (live = `perf_collection_power.sql`); reverts `public.top_collection_power(integer)` (live = `perf_collection_power.sql`) | a re-run stops at an error today: function card_power(text, integer) is not unique |
 | `ascension_cost_v3.sql` | SUPERSEDED: reverts `public.ascend_cost(text, integer)` (live = `balance_table.sql`) |  |
@@ -159,9 +159,9 @@ a one-time grant or a settings value would run again.
 - `special_cards_never_in_packs.sql`: cards
 - `ui_v3_flag.sql`: settings
 
-## No change (28)
+## No change (29)
 
-`achievement_rewards.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_auto_rounds.sql`, `dungeon_rules_supports_targets.sql`, `dungeon_stun_pass.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_boards_once.sql`, `perf_card_power_reads.sql`, `perf_collection_power.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
+`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_auto_rounds.sql`, `dungeon_rules_supports_targets.sql`, `dungeon_stun_pass.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_boards_once.sql`, `perf_card_power_reads.sql`, `perf_collection_power.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
 
 ## Live functions that no file gives (1)
 
