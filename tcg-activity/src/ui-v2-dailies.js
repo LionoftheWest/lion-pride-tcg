@@ -29,6 +29,9 @@ const NAME = { checkin: 'Check in', chat: 'Chat', hunt: 'Hunt the boss', voice: 
 const UNIT = { chat: 'msgs', hunt: 'cards', voice: 'min' };
 let view = null;
 let tickTimer = null;
+export const DL_OPEN_MS = 30000;    // the window is open and the member is using it
+export const DL_BADGE_MS = 120000;  // the badge on the button while the window is closed
+const isOpen = () => { const b = document.getElementById('v2Dailies'); return !!b && !b.classList.contains('hidden'); };
 // v3 (UI-36, flag ui_v3): the same data, claims and refresh; only the markup and the window differ (src/ui3/dailies.js).
 const v3 = () => document.body.classList.contains('ui-v3');
 
@@ -67,7 +70,7 @@ export function initDailies() {
   btn.innerHTML = ICON.checkin;
   btn.addEventListener('click', openDailiesV2);
   refreshDailies();
-  every(60000, refreshDailies); // paused while hidden, slower when idle (poll.js)
+  every(DL_BADGE_MS, () => { if (!isOpen()) return refreshDailies(); }); // the badge: paused while hidden, slower when idle (poll.js); the open window has its own timer
 }
 
 function left(iso) {
@@ -172,7 +175,7 @@ export async function openDailiesV2() {
   await refreshDailies();
   paint();
   clearInterval(tickTimer);
-  tickTimer = setInterval(() => { if (!document.hidden && !isIdle()) refreshDailies(); }, 10000); // while open and in use: new chat, voice minutes, and the countdown within 10 s
+  tickTimer = setInterval(() => { if (!document.hidden && !isIdle()) refreshDailies(); }, DL_OPEN_MS); // while open and in use: new chat and voice minutes within 30 s (was 10 s: 14,000 dailies_view calls)
   setTimeout(() => document.addEventListener('pointerdown', outside, { capture: true }), 0);
 }
 function outside(e) {
