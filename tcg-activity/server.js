@@ -37,6 +37,7 @@ import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
 import { dailyExtras } from './src/dailies-pay.js';
 import { makeTtlCache } from './src/ttl-cache.js';
+import { createRouteTiming } from './src/route-timing.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -191,6 +192,14 @@ app.use((req, res, next) => {
   res.append('Content-Security-Policy-Report-Only', CSP_STRICT);
   next();
 });
+// Route timing (src/route-timing.js): p50 / p95 / max per route pattern over 5 minutes, printed to the container log. No member data.
+// LOADTEST runs print it too (ROUTE_TIMING_MS shortens the window for a test).
+const routeTiming = createRouteTiming({
+  windowMs: Number(process.env.ROUTE_TIMING_MS || 300_000),
+  extra: () => 'shared caches ' + Object.entries(sharedCaches).map(([k, c]) => `${k}=${c.stats.hit}/${c.stats.stale}/${c.stats.miss}`).join(' ') + ' (hit/stale/miss)',
+});
+app.use(routeTiming.middleware);
+routeTiming.timer();
 // CSP violation reports (report-only mode): logged, so the policy can be checked in the real client.
 let cspReports = 0;
 app.post('/api/csp-report', express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'], limit: '16kb' }), (req, res) => {
@@ -548,6 +557,10 @@ const achViewCache = new Map(); // userId -> { at, view }
 // Per-member caches of the heavier reads (src/ttl-cache.js). userCache() makes one that bustUser clears with the others.
 const memberCaches = [];
 function userCache(opts) { const c = makeTtlCache(opts); memberCaches.push(c); return c; }
+// SHARED caches (the same answer for every member; never put one member's data in them). One copy in this server's memory,
+// one load at a time (single flight), dropped by time (ttl) and by sharedCaches[name].bust(key) after the writes that change it.
+const sharedCaches = {};
+function sharedCache(name, opts) { return (sharedCaches[name] = makeTtlCache(opts)); }
 function bustUser(userId) { collCache.delete(userId); ownedCache.delete(userId); packStatusCache.delete(userId); achViewCache.delete(String(userId)); for (const c of memberCaches) c.bust(String(userId)); }
 // card_powers(member) is the heaviest read (172 ms live): the power, HP and combat numbers of every copy. It changes only when the
 // member's cards, stars or stat points change (all of which call bustUser), so 10 s is safe. Used by the collection, the Hunt and the auto-pick.
@@ -573,11 +586,13 @@ app.get('/api/collection', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const cached = collCache.get(me.id);
   if (cached && Date.now() - cached.at < COLL_TTL) return res.json(cached.payload);
-  const [{ data, error }, pw] = await Promise.all([supabase
+  // The total power and the stat points ride in the same round trip (before they ran after the card list).
+  const [{ data, error }, pw, [cpRes, stRes]] = await Promise.all([supabase
     .from('player_cards')
     .select(`quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, ${SET_COLS}, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS}))`)
     .eq('player_id', me.id),
-  cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e }))]); // power + HP of each copy (SQL: the one CP source)
+  cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })), // power + HP of each copy (SQL: the one CP source)
+  Promise.allSettled([supabase.rpc('my_collection_power', { p_player_id: me.id }), supabase.rpc('card_stats_for', { p_player: me.id })])]);
   if (error || pw.error) return res.status(500).json({ error: (error || pw.error).message });
   const powers = pw.data || {};
   // Can ascend = the FREE copies (a copy in a trade offer, an auction or a bid is held) cover the cost
@@ -620,10 +635,6 @@ app.get('/api/collection', async (req, res) => {
   let totalPower = cards.reduce((s, c) => s + c.power, 0);
   // Stat points (stat_points.sql): the combat numbers of each ascended copy. The SQL is the
   // only formula; while the flag is off (or the function is not live) there is no stats key.
-  const [cpRes, stRes] = await Promise.allSettled([
-    supabase.rpc('my_collection_power', { p_player_id: me.id }),
-    supabase.rpc('card_stats_for', { p_player: me.id }),
-  ]);
   if (cpRes.status === 'fulfilled' && cpRes.value.data != null) totalPower = Number(cpRes.value.data);
   const st = stRes.status === 'fulfilled' && !stRes.value.error ? stRes.value.data : null;
   let stats = null;
@@ -838,6 +849,33 @@ async function huntBossMoves(name) {
   }
   return huntMovesCache.get(key)?.moves || [];
 }
+// Every hunt's status (id, status): the profile counts the bosses a member defeated from it (10 s) instead of one query per profile.
+const huntStatuses = sharedCache('huntStatuses', { ttl: 10000, stale: true });
+const huntStatusMap = () => huntStatuses.get('all', async () => {
+  const { data, error } = await selectAll(() => supabase.from('hunts').select('id, status'), ['id']);
+  if (error) throw new Error(error.message);
+  return new Map((data || []).map((h) => [h.id, h.status]));
+});
+// Between two bosses every member asks the same things (next spawn, the last boss, its top 5 and its feed). One read for
+// everyone, 10 s; the member's own damage in the last boss (myLast) stays a per-member query.
+const huntCooldown = sharedCache('huntCooldown', { ttl: 10000, stale: true });
+const loadHuntCooldown = () => huntCooldown.get('c', async () => {
+  const [{ data: nextSpawnAt }, { data: last }] = await Promise.all([
+    supabase.rpc('next_hunt_spawn'),
+    supabase.from('hunts').select('id, name, tier, status, hp_max, hp_remaining, weak_points, resist_points, passive, closes_at')
+      .in('status', ['defeated', 'expired']).order('id', { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  let lastBoard = [], lastFeed = [];
+  if (last) {
+    const [lb, fd] = await Promise.all([
+      supabase.rpc('hunt_leaderboard', { p_hunt: last.id, p_limit: 5 }),
+      queryHuntFeed(last.id).catch(() => ({ feed: [] })),
+    ]);
+    lastBoard = lb.data || [];
+    lastFeed = (fd.feed || []).slice(0, 8);
+  }
+  return { nextSpawnAt: nextSpawnAt || null, last: last || null, lastBoard, lastFeed };
+});
 const matchesWeak = (weak, { type, rarity, season }) => (weak || []).some((w) =>
   (w.kind === 'type' && w.value === type)
   || (w.kind === 'rarity' && w.value === rarity)
@@ -866,30 +904,27 @@ app.get('/api/hunt', async (req, res) => {
   }
   if (!hunt) {
     // Cooldown: no active boss. Return the next spawn time + the last boss outcome.
-    const [{ data: nextSpawnAt }, { data: last }] = await Promise.all([
-      supabase.rpc('next_hunt_spawn'),
-      supabase.from('hunts').select('id, name, tier, status, hp_max, hp_remaining, weak_points, resist_points, passive, closes_at')
-        .in('status', ['defeated', 'expired']).order('id', { ascending: false }).limit(1).maybeSingle(),
-    ]);
-    let lastBoard = [], myLast = 0, lastFeed = [];
+    const { nextSpawnAt, last, lastBoard, lastFeed } = await loadHuntCooldown();   // shared (10 s)
+    let myLast = 0;
     if (last) {
-      const [lb, mine, fd] = await Promise.all([
-        supabase.rpc('hunt_leaderboard', { p_hunt: last.id, p_limit: 5 }),
-        supabase.from('hunt_hits').select('damage').eq('hunt_id', last.id).eq('player_id', me.id),
-        queryHuntFeed(last.id).catch(() => ({ feed: [] })),
-      ]);
-      lastBoard = lb.data || [];
+      const mine = await supabase.from('hunt_hits').select('damage').eq('hunt_id', last.id).eq('player_id', me.id);
       myLast = (mine.data || []).reduce((t, h) => t + (h.damage || 0), 0);
-      lastFeed = (fd.feed || []).slice(0, 8);
     }
-    return res.json({ hunt: null, nextSpawnAt: nextSpawnAt || null, lastResult: last || null, lastBoard, myLast, lastFeed });
+    return res.json({ hunt: null, nextSpawnAt, lastResult: last, lastBoard, myLast, lastFeed });
   }
   const today = mtToday(); // the MT game day (mt_clock.sql)
   // One call (hunt_view.sql) instead of 4: 100 players opening the Hunt at once waited ~6 s.
   let cards, hpRows, myDamage, round, statCards = null;
-  const [{ data: view, error: viewErr }, pw] = await Promise.all([
+  // The squad of the day, the unlock gate and the boss details do not depend on the view: they run in the same round trip
+  // (before, the squad and the gate waited for the view: two database round trips in a row).
+  const [{ data: view, error: viewErr }, pw, bossMoves, { data: sqRow }, { data: gate }] = await Promise.all([
     supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today }),
     cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })), // combat power + HP of each copy (SQL card_combat)
+    huntBossMoves(hunt.name),   // the boss details (hunt_boss_moves.sql), shared and cached
+    // The squad locked today (hunt_squads.sql): one squad per day, per member.
+    supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
+    // The unlock gate (adventure_gate.sql): null while the function is not live, so nothing locks.
+    supabase.rpc('adventure_gate', { p_player: String(me.id) }),
   ]);
   if (pw.error) return res.status(500).json({ error: pw.error.message });
   const powers = pw.data || {};
@@ -929,13 +964,6 @@ app.get('/api/hunt', async (req, res) => {
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
   // The daily card cap (balance daily_card_cap, the same value hunt_attack reads).
   const dailyCap = dailyCardCap(bal());
-  const bossMoves = await huntBossMoves(hunt.name);   // the boss details (hunt_boss_moves.sql)
-  // The squad locked today (hunt_squads.sql): one squad per day, per member.
-  // The unlock gate (adventure_gate.sql): null while the function is not live, so nothing locks.
-  const [{ data: sqRow }, { data: gate }] = await Promise.all([
-    supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
-    supabase.rpc('adventure_gate', { p_player: String(me.id) }),
-  ]);
   res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null, bossMoves });
 });
 
@@ -1090,6 +1118,8 @@ app.get('/api/hunt/feed', async (req, res) => {
   res.json({ feed: fd.feed, fighters: fd.fighters, hp_remaining: hunt.hp_remaining, hp_max: hunt.hp_max, status: hunt.status });
 });
 
+// The five newest finished bosses (D-178 "Last boss" tab): the same for everyone, 15 s.
+const huntFinished = sharedCache('huntFinished', { ttl: 15000, stale: true });
 // Per-hunt contribution leaderboard.
 app.get('/api/hunt/leaderboard', async (req, res) => {
   const me = await caller(req);
@@ -1097,8 +1127,11 @@ app.get('/api/hunt/leaderboard', async (req, res) => {
   const hunt = await activeHunt();
   if (req.query.last) {   // D-178: the final standings of the newest finished boss that is not the live one
     try {
-      const { data, error } = await supabase.from('hunts').select('id, name, tier, status').in('status', FINISHED).order('id', { ascending: false }).limit(5);
-      if (error) throw new Error(error.message);
+      const { data } = await huntFinished.get('f', async () => {
+        const r = await supabase.from('hunts').select('id, name, tier, status').in('status', FINISHED).order('id', { ascending: false }).limit(5);
+        if (r.error) throw new Error(r.error.message);
+        return r;
+      });
       const last = pickLastHunt(data, hunt?.id ?? null);
       if (!last) return res.json({ leaders: [], me: me.id, boss: null });
       return res.json({ leaders: (await huntLeaders(last.id)).slice(0, 20), me: me.id, boss: { name: last.name, tier: last.tier, status: last.status } });
@@ -1140,7 +1173,7 @@ async function loadProfile(id) {
     selectAll(() => supabase.from('card_plays').select('kind').eq('player_id', id).neq('outcome', 'refunded'), ['id']),
     supabase.from('card_plays').select('id', { count: 'exact', head: true }).eq('target_id', id).eq('kind', 'prank').neq('outcome', 'refunded').neq('player_id', id),
     supabase.from('card_trades').select('id', { count: 'exact', head: true }).or(`from_id.eq.${id},to_id.eq.${id}`),
-    hunt ? supabase.rpc('hunt_leaderboard', { p_hunt: hunt.id, p_limit: 100 }) : Promise.resolve({ data: [] }),
+    hunt ? huntLeaders(hunt.id).then((data) => ({ data }), () => ({ data: [] })) : Promise.resolve({ data: [] }),   // the shared standings (2 s), not one query per profile
     supabase.rpc('my_collection_power', { p_player_id: id }),
     supabase.from('player_cards').select('card_id, quantity, ascension').eq('player_id', id),
     supabase.from('achievement_claims').select('key, title, frame').eq('player_id', id),
@@ -1150,8 +1183,9 @@ async function loadProfile(id) {
   const joined = [...new Set((fought.data || []).map((h) => h.hunt_id))];
   let defeated = 0;
   if (joined.length) {
-    const { count } = await supabase.from('hunts').select('id', { count: 'exact', head: true }).in('id', joined).eq('status', 'defeated');
-    defeated = count || 0;
+    const st = await huntStatusMap().catch(() => null);   // shared (10 s)
+    if (st) defeated = joined.filter((h) => st.get(h) === 'defeated').length;
+    else { const { count } = await supabase.from('hunts').select('id', { count: 'exact', head: true }).in('id', joined).eq('status', 'defeated'); defeated = count || 0; }
   }
   const kinds = (plays.data || []).reduce((m, r) => { m[r.kind] = (m[r.kind] || 0) + 1; return m; }, {});
   const leaders = lb.data || [];
@@ -1838,7 +1872,7 @@ registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg, getBalance 
 registerReportRoutes(app, { supabase, caller, rateLimit, targets: appLogs.on }); // targets: player_reports.target_id (logs_app.sql)
 registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn: hallPostsOn });
 registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn, userCache });
-registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache });
+registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache, sharedCache });
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.

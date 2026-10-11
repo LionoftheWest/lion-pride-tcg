@@ -29,7 +29,14 @@ const idx = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 0 &
 // An error or refused answer is never served from the cache either.
 export const viewValid = (v, now = Date.now()) => v?.status === 200 && !((v?.body?.next_at && Date.parse(v.body.next_at) <= now) || (v?.body?.ends_at && Date.parse(v.body.ends_at) <= now));
 
-export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun, userCache }) {
+export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun, userCache, sharedCache }) {
+  // The two boards are the same for every member: one read for everyone, 5 s (a rank changes only when a run moves). A new run
+  // and a retreat drop them at once. (The member's own rank is in the cached per-member view, which a write also drops.)
+  const boards = sharedCache ? sharedCache('dungeonBoards', { ttl: 5000, stale: true }) : null;
+  const board = (key, fn, args) => {
+    const load = async () => { const { data, error } = await supabase.rpc(fn, args); if (error) throw new Error(error.message); return data || []; };
+    return boards ? boards.get(key, load) : load();
+  };
   // The two views (dungeon_view 187 ms, gauntlet_view 286 ms live, each reads the whole collection through card_combat) are read
   // on every Home visit and every Dungeon open. One answer per member for 15 s; every write of the member drops it (the answer
   // of the write itself carries the new state), so a member always sees the result of their own action.
@@ -43,7 +50,7 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
     // A run action: tell the "is playing" post which mode the member is in, so its floor stays current (server.js dungeonPing).
     if (write) {
       onRun?.(me, req.path.startsWith('/api/gauntlet') || req.body?.mode === 'gauntlet' ? 'gauntlet' : 'daily');
-      dropViews(me); res.on('finish', () => dropViews(me));
+      dropViews(me); res.on('finish', () => { dropViews(me); if (req.path.endsWith('/start') || req.path.endsWith('/retreat')) { boards?.bust('d'); boards?.bust('g'); } });
     }
     return me;
   };
@@ -94,9 +101,8 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
   });
   app.get('/api/dungeon/board', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
-    const { data, error } = await supabase.rpc('dungeon_board', { p_day: null, p_limit: 50 });
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ ok: true, board: data || [], me: String(me.id) });
+    try { res.json({ ok: true, board: await board('d', 'dungeon_board', { p_day: null, p_limit: 50 }), me: String(me.id) }); }
+    catch (e) { res.status(500).json({ error: e.message }); }
   });
   app.post('/api/dungeon/start', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;
@@ -148,9 +154,8 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
   });
   app.get('/api/gauntlet/board', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
-    const { data, error } = await supabase.rpc('gauntlet_board', { p_week: null, p_limit: 50 });
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ ok: true, board: data || [], me: String(me.id) });
+    try { res.json({ ok: true, board: await board('g', 'gauntlet_board', { p_week: null, p_limit: 50 }), me: String(me.id) }); }
+    catch (e) { res.status(500).json({ error: e.message }); }
   });
   app.post('/api/gauntlet/start', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;
