@@ -13,6 +13,7 @@
  *              SUPABASE_SERVICE_ROLE_KEY, PORT (default 4441)
  */
 import 'dotenv/config';
+import { createTradeRequestProbe } from './src/trade-request-probe.js';
 import { measure as measureAchievements, ACHIEVEMENTS, LEDGER } from './src/achievements.js';
 const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
@@ -350,6 +351,9 @@ const trade2On = (id) => TRADE2_ALL || TRADE2_USERS.has(String(id));
 // Trade REQUESTS and full proposals under two-step trades (trade_request.sql, decision D-168). Default OFF:
 // FEATURE_TRADE_REQUEST=1. Off = the offer routes behave as before (a request or a full proposal is refused).
 const TRADE_REQUEST_ON = process.env.FEATURE_TRADE_REQUEST === '1';
+// The flag alone is not enough: the SQL must be live too (UI-25; src/trade-request-probe.js). Off for the client = the
+// Request button stays disabled ("Not open yet") and no member meets an error.
+const tradeRequestOn = createTradeRequestProbe({ supabase, flag: TRADE_REQUEST_ON, singleFlight, warn: (m) => console.warn(m) });
 // Wishlists + the Trading Hall + Auctions (hall_auctions.sql). Default OFF: HALL_USERS=id,id first
 // (Nathan, 2026-10-02: "have it flagged just for me at first"), FEATURE_HALL=1 for everyone.
 // FEATURE_HALL_POSTS=1: the Discord posts (a new listing, an accepted bid); OFF while it is a test.
@@ -434,8 +438,8 @@ app.get('/api/flags', async (req, res) => {
     avatarHash.set(String(me.id), { hash, at: Date.now() });
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
-  const [{ data: tut }, uiV3] = await Promise.all([supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle(), uiV3On(me.id)]);
-  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, uiV3, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), tradeRequest: TRADE_REQUEST_ON, hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  const [{ data: tut }, uiV3, tradeRequest] = await Promise.all([supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle(), uiV3On(me.id), tradeRequestOn()]);
+  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, uiV3, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), tradeRequest, hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
@@ -1863,9 +1867,9 @@ app.post('/api/trade/offer', async (req, res) => {
   if (!toId || (!offerCardId && !requestCardId)) return res.status(400).json({ error: 'bad request' });
   // A REQUEST (no offer card, D-168): ask for one of their cards; the owner picks one of mine (trade_request.sql).
   const isRequest = !offerCardId && !!requestCardId;
-  if (isRequest && !TRADE_REQUEST_ON) return res.status(400).json({ error: 'requests are not on yet' });
+  if (isRequest && !(await tradeRequestOn())) return res.status(400).json({ error: 'requests are not on yet', reason: 'Requests are not open yet.' });
   // The new Pending and Trade window (ui_v3) answer a request; the v2 screens cannot. Both members need ui_v3.
-  if (isRequest && !(trade2On(me.id) && trade2On(toId) && await uiV3On(me.id) && await uiV3On(toId))) return res.status(400).json({ error: 'two-step trades are not on for that member yet' });
+  if (isRequest && !(trade2On(me.id) && trade2On(toId) && await uiV3On(me.id) && await uiV3On(toId))) return res.status(400).json({ error: 'two-step trades are not on for that member yet', reason: 'That member cannot get requests yet.' });
   if (!requestCardId && !(trade2On(me.id) && trade2On(toId))) return res.status(400).json({ error: 'two-step trades are not on for that member yet' });
   // Two-step on: the old flow (the sender also picks the card they get) is refused from any screen, unless the
   // request flag is on: then the full proposal (both cards) is allowed and the receiver accepts or declines.
@@ -1877,6 +1881,7 @@ app.post('/api/trade/offer', async (req, res) => {
       ? await supabase.rpc('create_trade', { p_from: me.id, p_to: toId, p_offer: offerCardId, p_request: requestCardId })
       : await supabase.rpc('create_trade_open', { p_from: me.id, p_to: toId, p_offer: offerCardId });
   if (error) return res.status(500).json({ error: error.message });
+  if (data == null && isRequest) return res.json({ ok: false, id: null, reason: 'They have no free copy of that card.' });
   if (data != null) {
     const from = me.global_name || me.username;
     const asked = isRequest ? (await supabase.from('cards').select('name').eq('id', requestCardId).maybeSingle()).data?.name : null;
