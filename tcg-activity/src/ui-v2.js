@@ -24,6 +24,8 @@ import { openCardPicker } from './ui3/card-picker.js';
 import * as hm3 from './ui3/home.js';
 import { boardRows, boardHTML } from './ui3/home-boss.js';
 import * as tn3 from './ui3/tiny.js';
+import * as hs3 from './ui3/home-slides.js';
+import * as vw3 from './ui3/voice.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -956,9 +958,12 @@ let heroBoss = null;
 const pullsTab = { v: 'all' };
 
 let homeRO = null;
+let slideTimer = null;   // UI-05: the one second tick of the Dungeon and Gauntlet slide timers (v3 only)
+const homeSlides = { hunt: null, dungeon: null, gauntlet: null, key: null };   // UI-05: the carousel data and the slide shown (v3 only)
 export function disposeHomeV2() {
   disposeGalBoss();
   if (homeRO) { homeRO.disconnect(); homeRO = null; }
+  if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
   if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
 }
 
@@ -977,12 +982,19 @@ export async function renderHomeV2() {
   paintVoice();
   paintPulls();
   if (v3) watchHomeV3();
-  const [hunt] = await Promise.all([
+  // UI-05 (v3 only): the Dungeon and Gauntlet slides read the same routes as their lobbies; a closed or off mode has no slide
+  const modes = v3 && document.body.classList.contains('adv-on');
+  const [hunt, , , dgd, gad] = await Promise.all([
     ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null),
     loadMyProfile(true),
     ensureCatalog(),
+    modes ? ctx.api('/api/dungeon').catch(() => null) : Promise.resolve(null),
+    modes ? ctx.api('/api/gauntlet').catch(() => null) : Promise.resolve(null),
   ]);
   if (ctx.currentView() !== 'home') return;
+  homeSlides.key = null;
+  homeSlides.dungeon = dgd?.ok && !dgd.closed ? dgd : null;
+  homeSlides.gauntlet = gad?.ok && !gad.closed ? gad : null;
   paintHero(hunt);
   paintVoice(); // the catalog is loaded now: the tiles can show card pictures
 }
@@ -1241,7 +1253,7 @@ const watchHomeV3 = () => {   // refit the voice cells and the pull rows when a 
 function fitHomeV3() {
   const root = ctx.el('main')?.querySelector('.u3-home');
   if (!root) return;
-  const run = () => { hm3.fitHero(ctx.el('homeHero')); hm3.fitVoice(ctx.el('homeVoice')); fitPullsV3(); };
+  const run = () => { hm3.fitHero(ctx.el('homeHero')); hs3.fitSlide(ctx.el('homeHero')); hm3.fitVoice(ctx.el('homeVoice')); fitPullsV3(); };
   let best = null;
   for (const step of [[], ['is-compact'], ['is-compact', 'is-vrow'], ['is-compact', 'is-vrow', 'is-pull']]) {
     root.classList.remove('is-compact', 'is-vrow', 'is-pull');
@@ -1255,7 +1267,48 @@ function fitHomeV3() {
   root.classList.add(...best.step);
   run();
 }
+// UI-05: the hero is a carousel (Hunt, Dungeon, Gauntlet) when a mode is open; the Hunt slide is the UI-03 / UI-04 hero below.
+const slideOrder = () => hs3.slideOrder({ huntLive: !!homeSlides.hunt?.h, dungeon: !!homeSlides.dungeon, gauntlet: !!homeSlides.gauntlet });
+function tickSlides() {
+  document.querySelectorAll('[data-hms]').forEach((n) => { n.textContent = hs3.hms(n.dataset.hms); });
+  document.querySelectorAll('[data-dhm]').forEach((n) => { n.textContent = hs3.dhm(n.dataset.dhm); });
+}
+function openMode(kind) {   // the Adventure button opens the last tab (ui-v2-dungeon.js initDungeon): set it, then press it
+  try { localStorage.setItem('lp.adventure.tab', kind); } catch { /* storage off */ }
+  document.querySelector('#dock .dk[data-view="battling"]')?.click();
+}
+function goSlide(box, key) {
+  if (!key || key === homeSlides.key) return;
+  homeSlides.key = key;
+  paintHeroV3(box, homeSlides.hunt.d, homeSlides.hunt.h);
+}
 function paintHeroV3(box, d, h) {
+  homeSlides.hunt = { d, h };
+  const order = slideOrder();
+  if (!order.includes(homeSlides.key)) homeSlides.key = order[0];
+  const key = homeSlides.key;
+  if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
+  const html = key === 'dungeon' ? hs3.dungeonSlideHTML(homeSlides.dungeon) : key === 'gauntlet' ? hs3.gauntletSlideHTML(homeSlides.gauntlet) : '';
+  box.innerHTML = hs3.carouselHTML(order, key, html, { dungeon: hs3.slideNews('dungeon', homeSlides.dungeon) });
+  box.onclick = (e) => {
+    const go = e.target.closest('[data-slide-go]');
+    if (go) { goSlide(box, go.dataset.slideGo); return; }
+    const dir = e.target.closest('[data-slidedir]');
+    if (dir) { goSlide(box, hs3.slideStep(order, key, dir.dataset.slidedir === 'prev' ? -1 : 1)); return; }
+    const open = e.target.closest('[data-slide-open]');
+    if (open) openMode(open.dataset.slideOpen);
+  };
+  let x0 = null;   // a swipe on the slide moves one slide (no automatic sliding, D-45)
+  box.ontouchstart = (e) => { x0 = e.touches[0]?.clientX ?? null; };
+  box.ontouchend = (e) => { const x1 = e.changedTouches[0]?.clientX; if (x0 !== null && x1 !== undefined && Math.abs(x1 - x0) > 48 && order.length > 1) goSlide(box, hs3.slideStep(order, key, x1 < x0 ? 1 : -1)); x0 = null; };
+  if (key !== 'hunt') {
+    hs3.fitSlide(box);
+    if (!slideTimer) slideTimer = setInterval(tickSlides, 1000);
+    return;
+  }
+  paintHuntSlideV3(box.querySelector('.u3-hm-slide'), d, h);
+}
+function paintHuntSlideV3(box, d, h) {
   const { el } = ctx;
   if (!h) {
     const last = d?.lastResult;
@@ -1306,7 +1359,12 @@ function paintVoiceV3(box) {
   };
   box.innerHTML = hm3.voiceHTML(people.map(cell), people.length);
   hm3.fitVoice(box);
-  box.onclick = (e) => { const t = e.target.closest('[data-member]'); if (!t) return; if (t.classList.contains('watch') && ctx.watchOpen?.(t.dataset.member)) return; openMember(t.dataset.member); };
+  // UI-06: "+N" opens the window with every member in voice (D-59); a tap on a member there does what a tap on the cell does
+  const pick = (id, watch) => { if (watch && ctx.watchOpen?.(id)) return; openMember(id); };
+  box.onclick = (e) => {
+    const more = e.target.closest('[data-voice-all]');
+    if (more) { vw3.openVoiceWindow(people.map(cell), { onPick: pick, from: more }); return; }
+    const t = e.target.closest('[data-member]'); if (!t) return; if (t.classList.contains('watch') && ctx.watchOpen?.(t.dataset.member)) return; openMember(t.dataset.member); };
 }
 
 let pullsAll = [];

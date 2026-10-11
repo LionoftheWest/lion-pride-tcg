@@ -7,6 +7,7 @@ import { icon } from './icons.js';
 import { pager, button, segmented, progressSegmented, esc } from './components.js';
 import { breakable } from '../effects-ui.js';
 import { topMode } from './home-boss.js';
+import { moreLabel } from './voice.js';
 
 export const homeV3 = () => document.body.classList.contains('ui-v3');
 
@@ -94,7 +95,7 @@ export function fitVoice(box) {
   if (sum(k) > avail) { while (k > 1 && sum(k) + gap + moreW > avail) k -= 1; }
   row.classList.remove('is-measure');
   cells.forEach((c, i) => { c.hidden = i >= k; });
-  if (k < cells.length) row.insertAdjacentHTML('beforeend', `<span class="u3-hm-more" aria-label="${cells.length - k} more members">+${cells.length - k}</span>`);
+  if (k < cells.length) row.insertAdjacentHTML('beforeend', `<button type="button" class="u3-hm-more" data-voice-all aria-label="${moreLabel(cells.length)}">+${cells.length - k}</button>`);   // UI-06: opens the Live in voice window (D-59)
 }
 
 /** One pull row (the data-pi hook of the v2 Home; the v2 classes pl-row and pl-top are not used: their v2 rules would reach into these rows). */

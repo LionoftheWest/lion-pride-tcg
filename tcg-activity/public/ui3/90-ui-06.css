@@ -1,0 +1,23 @@
+/* ==== UI-06 Live in voice: the "+N" window (src/ui3/voice.js, ui-v2.js paintVoiceV3; design repo UI-06/approved; flag ui_v3) ====
+   D-59: a side panel on expanded (under the top bar, above the dock), a side sheet on medium and compact-land, a bottom sheet on
+   compact-port. One row per member (the cell of the Live in voice tile, full width), the others first and you last, paged "1 / N"
+   where the rows do not fit (no scroll). The sheet itself is the library Sheet (ui3.css). Every selector starts with .u3-vw. Tokens only. */
+.u3-vw { --text-muted: var(--u3-text-muted); box-sizing: border-box; min-height: 0; gap: var(--sp-3); padding: var(--sp-4); }   /* the window sits outside .u3-home: it takes the same muted text color (9.4) */
+/* a side panel is as tall as its rows (up to the free height), so no empty band stays under 5 or 6 rows */
+.u3-vw.u3-sheet--side { align-self: start; max-height: 100%; }
+.u3-vw .u3-sheet__head { flex: none; align-items: center; }
+.u3-vw-list { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-vw-list .u3-hm-cell { flex: none; width: 100%; min-height: calc(var(--hit) + var(--sp-3)); padding-inline: var(--sp-3); }
+.u3-vw-list .u3-hm-cn { flex: 1 1 auto; }
+.u3-vw-list .u3-hm-c1 { flex-wrap: nowrap; }
+.u3-vw-list .u3-hm-c1 > b { flex: 0 1 auto; }
+.u3-vw-list .u3-hm-watch { margin-left: auto; }
+.u3-vw-pg { flex: none; display: flex; justify-content: center; }
+.u3-vw-pg:empty { display: none; }
+
+/* expanded: a panel at the right edge, from under the top bar to above the dock (the frame: 16 px from the right edge) */
+body[data-size="expanded"] .u3-vw { max-height: calc(100% - var(--topbar-h) - var(--sp-2) - var(--dock-h) - var(--sp-3)); width: calc(var(--sheet-side-w) + var(--sp-5)); margin: calc(var(--topbar-h) + var(--sp-2)) var(--sp-4) calc(var(--dock-h) + var(--sp-3)) var(--u3-none); border-radius: var(--rad-sheet); border: var(--bw-1) solid var(--border-strong); }
+/* compact-land: the sheet reaches the top edge, so its head keeps the Discord corner zone free (2.3) */
+body[data-size="compact-land"] .u3-vw { padding-right: max(var(--sp-4), calc(var(--corner-w) - var(--u3-sa-r))); }
+/* compact-port: a sheet on the dock edge, as tall as its rows (up to the top bar) */
+body[data-size="compact-port"] .u3-vw { max-height: calc(100% - var(--topbar-h)); }

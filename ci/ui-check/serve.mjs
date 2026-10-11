@@ -88,6 +88,11 @@ function derivedGauntletOver(body) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/gauntlet' && c.ci_dungeon === 'g-over' && body?.ok, make: (body) => derivedGauntletOver(body) });
 
+// UI-05: the Home slides with a Top 3 (cookie ci_dungeon = top): three runs today and three members this week (the Dungeon and Gauntlet slides draw the board rows).
+const TOP3 = [{ rank: 1, username: 'Member B', floor: 6, room: 3 }, { rank: 2, username: 'Member C', floor: 5, room: 2 }, { rank: 3, username: 'Member D', floor: 3, room: 1 }];
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && c.ci_dungeon === 'top' && body?.ok, make: (body) => ({ ...body, top: TOP3, runs_today: 3 }) });
+DERIVED.push({ when: (p, c, body) => p === '/api/gauntlet' && c.ci_dungeon === 'top' && body?.ok, make: (body) => ({ ...body, top: TOP3, players_week: 3 }) });
+
 // UI-47: a Dungeon fight (cookie ci_dungeon = fight | fight2): the 5-monster horde and a 2-monster room, with 3 attackers and
 // 2 supports, the numbers of the approved frames (run 1879, squad HP 320 / 392). ci_dungeon=over: the run over (UI-50).
 const FOES5 = [['skeleton', 'Water Skeleton', 'water', 50, ['caster']], ['squidle', 'Earth Squid', 'earth', 0, ['hero']], ['goleling', 'Water Golem', 'water', 85, ['agile']],
