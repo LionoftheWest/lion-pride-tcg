@@ -4,7 +4,7 @@
  * in the comments) against a local Activity server. The script counts the database statements through pg_stat_statements
  * (local) and prints them per member per minute. Run the server first:
  *   LOADTEST=1 FEATURE_HUNT=1 FEATURE_DUNGEON=1 FEATURE_SHARDS=1 SUPABASE_URL=<local> SUPABASE_SERVICE_ROLE_KEY=<local> PORT=4471 node server.js
- *   SCHEDULE=before|after SCENARIO=home|hunt|dailies [N=10] [SECONDS=120] [PORT=4471] node card-studio/scripts/loadtest-idle.mjs
+ *   SCHEDULE=before|after SCENARIO=home|hunt|dailies|dungeon|standings [N=10] [SECONDS=120] [PORT=4471] node card-studio/scripts/loadtest-idle.mjs
  * SCHEDULE=before: the timers and the Home / Hunt calls of origin/main 6e042e8 (2026-10-11). after: this branch.
  * Note: other sessions that use the same local database add noise; the table shows the functions, so read those rows.
  */
@@ -37,13 +37,16 @@ const SCENARIOS = {
   // the Dailies window open: every 10 s before, 30 s after (ui-v2-dailies.js:175); the badge timer skips while it is open (after)
   dailies: { start: [...HOME, ['/api/dailies', 0]], timers: [...BACKGROUND, ...(A ? [] : [DAILIES_BADGE]), ['/api/dailies', A ? 30 : 10]] },
 };
+// The Dungeon / Gauntlet screens and the standings: the board routes are the same answer for every member (shared cache).
+SCENARIOS.dungeon = { start: [['/api/dungeon', 0], ['/api/dungeon/board', 0], ['/api/gauntlet', 0], ['/api/gauntlet/board', 0]], timers: [...BACKGROUND, DAILIES_BADGE, ['/api/dungeon/board', 10], ['/api/gauntlet/board', 10]] };
+SCENARIOS.standings = { start: [['/api/leaderboard/v2', 0], ['/api/hunt/leaderboard', 0], ['/api/hunt/leaderboard?last=1', 0], ['/api/profile', 0]], timers: [...BACKGROUND, DAILIES_BADGE, ['/api/hunt/leaderboard', 10], ['/api/leaderboard/v2', 30]] };
 const sc = SCENARIOS[SCENARIO]; if (!sc) throw new Error('SCENARIO');
 const members = (await sql(`select id from players order by (select count(*) from player_cards pc where pc.player_id=players.id) desc limit ${N}`)).map((r) => r.id);
 const base = `http://127.0.0.1:${PORT}`;
-const http = {}; const lat = [];
+const http = {}; const lat = []; const latBy = {};
 const call = async (id, path) => {
   const t0 = performance.now();
-  try { const r = await fetch(base + path, { headers: { Authorization: `Bearer lt:${id}` } }); await r.text(); const k = path.split('?')[0]; http[k] = (http[k] || 0) + 1; lat.push(performance.now() - t0); }
+  try { const r = await fetch(base + path, { headers: { Authorization: `Bearer lt:${id}` } }); await r.text(); const k = path.split('?')[0]; http[k] = (http[k] || 0) + 1; lat.push(performance.now() - t0); (latBy[k] ||= []).push(performance.now() - t0); }
   catch { /* counted as nothing */ }
 };
 // Group the statements by function: the PostgREST text of an RPC names it after "public".
@@ -69,5 +72,7 @@ console.log(`SCHEDULE=${SCHEDULE} SCENARIO=${SCENARIO} N=${N} SECONDS=${SECONDS}
 console.log(`HTTP calls per member per minute: ${per(Object.values(http).reduce((a, b) => a + b, 0))}   mean latency ${(lat.reduce((a, b) => a + b, 0) / lat.length).toFixed(0)} ms   p95 ${[...lat].sort((a, b) => a - b)[Math.floor(lat.length * 0.95)]?.toFixed(0)} ms`);
 console.log(`database statements per member per minute: ${per(totalCalls)}   database time per member per minute: ${(totalMs / N / (SECONDS / 60)).toFixed(0)} ms`);
 console.log('HTTP by route (per member per minute):', Object.entries(http).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${per(v)}`).join(', '));
+const pc = (a, p) => [...a].sort((x, y) => x - y)[Math.min(a.length - 1, Math.floor(p * a.length))].toFixed(0);
+console.log('route latency ms (p50 / p95 / calls):', Object.entries(latBy).map(([k, v]) => `${k} ${pc(v, 0.5)}/${pc(v, 0.95)}/${v.length}`).join(', '));
 for (const r of keep.slice(0, 10)) console.log(`  ${String(r.ms).padStart(6)} ms  ${String(r.c).padStart(5)} calls  ${r.q}`);
 process.exit(0);
