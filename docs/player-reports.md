@@ -77,6 +77,10 @@ Cleanup: the Activity runs `pruneShotsOnce` 1 minute after the start and then ev
 `FEATURE_REPORTS` off. `report_shots_expired()` lists the screenshots older than `keep_days`. The Activity
 removes the files with the storage API, then the rows. SQL cannot do this: a row delete in
 `storage.objects` does not remove the stored file. If the file removal fails, the rows stay for the next pass.
+Then `pruneOrphanShotsOnce` lists the bucket with the storage API, page by page. It removes every file that is
+older than `keep_days`. It also removes every file that has no `player_report_shots` row and is older than 1 day,
+for example the files of a deleted member (the rows go with the report). The 1-day grace protects an upload in
+progress. Without the balance key, or when the rows cannot be read, it removes nothing.
 
 The Admin page: card studio, Admin view, **Player reports** (`#/player-reports`, `ADMIN_VIEW=1`). It is read only.
 It shows each report with the kind, the text, the device facts, the Issue link, the reporter and the target,

@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
-import { registerReportRoutes, sniffImage, makeShotLimiter, pruneShotsOnce } from './reports.js';
+import { registerReportRoutes, sniffImage, makeShotLimiter, pruneShotsOnce, pruneOrphanShotsOnce } from './reports.js';
 
 const ME = '111111111111111111', OTHER = '222222222222222222';
 const MAX_BYTES = 1572864;   // balance report_shots.max_bytes in the fake
@@ -161,4 +161,68 @@ test('pruneShotsOnce removes the files first, then the rows; a failed file remov
   calls.length = 0;
   assert.equal(await pruneShotsOnce(mk({ message: 'down' })), 0);
   assert.equal(calls.some((c) => c[0] === 'delete'), false);
+});
+
+// ---- The orphan cleanup: files that no row protects (a deleted member's files, a failed write after the upload).
+const NOW = Date.parse('2026-10-11T12:00:00Z');
+const ago = (h) => new Date(NOW - h * 3600_000).toISOString();
+function fakeBucket({ objects, rows, keepDays = 90, rowError = null }) {
+  const removed = [], lists = [];
+  const db = {
+    removed, lists,
+    from: (t) => {
+      if (t === 'balance') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: keepDays == null ? null : { value: { keep_days: keepDays } } }) }) }) };
+      return { select: () => ({ in: async (_c, paths) => (rowError ? { error: rowError } : { data: rows.filter((p) => paths.includes(p)).map((path) => ({ path })) }) }) };
+    },
+    storage: { from: (b) => ({
+      list: async (prefix, o) => {
+        lists.push([b, prefix, o.offset]);
+        const items = prefix === ''
+          ? [...new Set(objects.filter((x) => x.path.includes('/')).map((x) => x.path.split('/')[0]))].map((name) => ({ name, id: null }))
+            .concat(objects.filter((x) => !x.path.includes('/')).map((x) => ({ name: x.path, id: x.path, created_at: x.at })))
+          : objects.filter((x) => x.path.startsWith(prefix + '/')).map((x) => ({ name: x.path.slice(prefix.length + 1), id: x.path, created_at: x.at }));
+        items.sort((a, c) => a.name.localeCompare(c.name));
+        return { data: items.slice(o.offset, o.offset + o.limit) };
+      },
+      remove: async (paths) => { removed.push(...paths.map((p) => `${b}:${p}`)); return { error: null }; },
+    }) },
+  };
+  return db;
+}
+const OBJECTS = [
+  { path: '10/1.webp', at: ago(2) },          // a row, new: kept
+  { path: '10/2.webp', at: ago(2) },          // no row, 2 hours: an upload in progress, kept (grace)
+  { path: '20/1.webp', at: ago(48) },         // no row, 2 days: the orphan of a deleted member, removed
+  { path: '20/2.png', at: ago(100 * 24) },    // a row, 100 days: older than keep_days, removed
+  { path: '30/1.webp', at: ago(23) },         // no row, 23 hours: kept (grace)
+  { path: 'stray.webp', at: ago(72) },        // a stray top-level file, no row, 3 days: removed
+];
+const ROWS = ['10/1.webp', '20/2.png'];
+
+test('orphan cleanup: removes the old files and the files with no row after 1 day; keeps new rows and uploads in progress', async () => {
+  const db = fakeBucket({ objects: OBJECTS, rows: ROWS });
+  assert.equal(await pruneOrphanShotsOnce(db, { now: NOW }), 3);
+  assert.deepEqual(db.removed.sort(), ['report-shots:20/1.webp', 'report-shots:20/2.png', 'report-shots:stray.webp']);
+});
+
+test('orphan cleanup: keep_days comes from balance (200 days keeps the 100-day file that has a row)', async () => {
+  const db = fakeBucket({ objects: OBJECTS, rows: ROWS, keepDays: 200 });
+  await pruneOrphanShotsOnce(db, { now: NOW });
+  assert.equal(db.removed.includes('report-shots:20/2.png'), false, 'a row and younger than keep_days 200: kept');
+});
+
+test('orphan cleanup: pages through the bucket (an orphan on page 2 of a folder is found)', async () => {
+  const many = Array.from({ length: 5 }, (_, i) => ({ path: `40/${i + 1}.webp`, at: ago(2) }));
+  const db = fakeBucket({ objects: [...many, { path: '40/9.webp', at: ago(30) }], rows: many.map((x) => x.path) });
+  assert.equal(await pruneOrphanShotsOnce(db, { now: NOW, pageSize: 2 }), 1);
+  assert.deepEqual(db.removed, ['report-shots:40/9.webp']);
+  assert.ok(db.lists.some(([, p, off]) => p === '40' && off === 4), 'the third page of folder 40 was read');
+});
+
+test('orphan cleanup fails closed: no balance key, or a failed row read, removes nothing', async () => {
+  const a = fakeBucket({ objects: OBJECTS, rows: ROWS, keepDays: null });
+  assert.equal(await pruneOrphanShotsOnce(a, { now: NOW }), 0);
+  const b = fakeBucket({ objects: OBJECTS, rows: ROWS, rowError: { message: 'down' } });
+  assert.equal(await pruneOrphanShotsOnce(b, { now: NOW }), 0);
+  assert.equal(a.removed.length + b.removed.length, 0);
 });

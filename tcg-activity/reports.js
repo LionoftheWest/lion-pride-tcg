@@ -15,7 +15,7 @@
 // Screenshots (report_shots.sql, 2026-10-11): after the report is sent, the client uploads up to 3 images to
 // POST /api/feedback/:id/shot. They go to the PRIVATE bucket report-shots, never to GitHub. The Issue only counts them;
 // images that arrive after the Issue get one comment ("1 more screenshot ..."). The Activity removes the images
-// after balance report_shots.keep_days (pruneShotsOnce).
+// after balance report_shots.keep_days, and files with no row after 1 day (pruneShotsOnce, pruneOrphanShotsOnce).
 import express from 'express';
 
 export const REPORTS_ON = process.env.FEATURE_REPORTS === '1';
@@ -177,6 +177,54 @@ export async function pruneShotsOnce(supabase) {
   return delErr ? 0 : data.length;
 }
 
+// An object with no player_report_shots row may be an upload in progress (the row comes first, the file second):
+// it is removed only after this grace time.
+export const ORPHAN_GRACE_MS = 24 * 3600_000;
+
+/** Remove the files that no row protects: every object of the bucket older than keep_days, and every object with
+ *  no player_report_shots row that is older than ORPHAN_GRACE_MS (for example the files of a deleted member: the
+ *  rows go with the report, the files stay). Lists the bucket with the storage API, page by page (the bucket is
+ *  small: at most per_report files per report, for keep_days). Returns the number of removed files. */
+export async function pruneOrphanShotsOnce(supabase, { now = Date.now(), pageSize = 1000 } = {}) {
+  const { data: bal, error: bErr } = await supabase.from('balance').select('value').eq('key', 'report_shots').maybeSingle();
+  const keepDays = Number(bal?.value?.keep_days);
+  if (bErr || !(keepDays >= 1)) return 0;   // no number, no removal (fail closed)
+  const bucket = supabase.storage.from(SHOT_BUCKET);
+  const list = async (prefix) => {
+    const out = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await bucket.list(prefix, { limit: pageSize, offset, sortBy: { column: 'name', order: 'asc' } });
+      if (error) throw new Error(error.message || String(error));
+      out.push(...(data || []));
+      if (!data || data.length < pageSize) return out;
+    }
+  };
+  // The paths are <report id>/<n>.<ext>: the top level holds the report folders (id null), and maybe a stray file.
+  const files = [];
+  for (const item of await list('')) {
+    if (item.id == null) for (const f of await list(item.name)) { if (f.id != null) files.push({ path: `${item.name}/${f.name}`, at: Date.parse(f.created_at) }); }
+    else files.push({ path: item.name, at: Date.parse(item.created_at) });
+  }
+  if (!files.length) return 0;
+  const known = new Set();
+  for (let i = 0; i < files.length; i += 200) {
+    const { data, error } = await supabase.from('player_report_shots').select('path').in('path', files.slice(i, i + 200).map((f) => f.path));
+    if (error) return 0;   // cannot tell which files have a row: remove nothing
+    for (const r of data || []) known.add(r.path);
+  }
+  const old = (f, ms) => Number.isFinite(f.at) && now - f.at > ms;
+  const gone = files.filter((f) => old(f, keepDays * 86400_000) || (!known.has(f.path) && old(f, ORPHAN_GRACE_MS))).map((f) => f.path);
+  let removed = 0;
+  for (let i = 0; i < gone.length; i += 100) {
+    const { error } = await bucket.remove(gone.slice(i, i + 100));
+    if (!error) removed += Math.min(100, gone.length - i);
+  }
+  return removed;
+}
+
+/** The cleanup pass: the expired rows and their files, then the files that no row protects. */
+export const cleanupShots = (supabase) => pruneShotsOnce(supabase).catch(() => 0).then(() => pruneOrphanShotsOnce(supabase)).catch(() => 0);
+
 // reserve_report_shot errors -> HTTP status.
 const SHOT_ERRORS = { type: 415, big: 413, report: 404, full: 409 };
 
@@ -245,8 +293,8 @@ export function registerReportRoutes(app, { supabase, caller, rateLimit, targets
   if (on && token) setInterval(() => { syncOnce(supabase).then(() => syncShotNotes(supabase)).catch(() => {}); }, 60000).unref();
   // The cleanup runs with the flag off too: a screenshot is member data, so it must still end after keep_days.
   if (prune) {
-    setTimeout(() => pruneShotsOnce(supabase).catch(() => {}), 60000).unref();
-    setInterval(() => pruneShotsOnce(supabase).catch(() => {}), 6 * 3600_000).unref();
+    setTimeout(() => cleanupShots(supabase), 60000).unref();
+    setInterval(() => cleanupShots(supabase), 6 * 3600_000).unref();
   }
   if (on && !token) console.log('reports: on, but no GITHUB_ISSUES_TOKEN - reports wait in player_reports');
 }
