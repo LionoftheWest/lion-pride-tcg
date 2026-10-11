@@ -31,7 +31,7 @@ const q = async (query) => {
 const DOMAINS = [
   { slug: 'cards-and-trading', title: 'Cards and trading', about: 'The card catalog, the copies that members hold, packs, the ledgers, trades, the Trading Hall, auctions, wishlists, gifts, stars and stat points, collection power.',
     names: ['cards', 'subjects', 'player_cards', 'card_ledger', 'pack_ledger', 'card_trades', 'trade_listings', 'trade_offers', 'auctions', 'auction_bids', 'wishlists', 'wish_grants', 'gift_claims', 'artist_submissions', 'roster_power_history',
-      'accept_bid', 'accept_trade', 'add_card_to_player', 'add_cards_to_player', 'ascend_card', 'ascend_cost', 'claim_gift', 'close_auction', 'confirm_bid', 'convert_dupes', 'convertible_copies', 'counter_trade', 'create_trade', 'create_trade_open',
+      'accept_bid', 'accept_trade', 'add_card_to_player', 'add_cards_to_player', 'ascend_card', 'ascend_cost', 'claim_gift', 'close_auction', 'confirm_bid', 'convert_dupes', 'convertible_copies', 'counter_trade', 'counter_trade_request', 'create_trade', 'create_trade_open', 'create_trade_request',
       'decline_accepted_bid', 'expire_auctions', 'free_copies', 'give_card_gift', 'launch_player_gift', 'launch_raider_gift', 'list_for_trade', 'my_collection_power', 'offer_on_listing', 'open_packs', 'pack_ledger_reconcile', 'place_bid', 'rarity_rank',
       'remove_card_from_player', 'reset_stat_points', 'return_bids', 'set_launch_player_card', 'set_trade_status', 'set_wish_top', 'set_wishlist', 'spend_pack', 'spend_stat_points', 'start_auction', 'subjects_flatten_tags', 'top_collection_power',
       'unlist_for_trade', 'welcome_packs', 'withdraw_bid', 'draw_pool', 'pullable_sets', 'season_number'],

@@ -6,6 +6,8 @@
 import { icon } from './icons.js';
 import { pager, button, segmented, progressSegmented, esc } from './components.js';
 import { breakable } from '../effects-ui.js';
+import { topMode } from './home-boss.js';
+import { moreLabel } from './voice.js';
 
 export const homeV3 = () => document.body.classList.contains('ui-v3');
 
@@ -43,8 +45,11 @@ export function fitHero(box) {
   const hb = box?.querySelector('.u3-hm-hb');
   const info = hb?.querySelector('.u3-hm-info');
   if (!hb || !info) return;
-  hb.classList.remove('is-tight', 'is-tighter', 'is-nolabel');
+  hb.classList.remove('is-line', 'is-tight', 'is-tighter', 'is-nolabel');
   const over = () => info.scrollHeight > info.clientHeight + 1 || info.scrollWidth > info.clientWidth + 1 || hb.scrollHeight > hb.clientHeight + 1 || hb.scrollWidth > hb.clientWidth + 1;
+  // UI-04: the Top 3 board first; the one "Top hunter" line on compact-land (D-58) or when the board does not fit
+  if (hb.querySelector('.u3-hm-board') && topMode(document.body.dataset.size, false) === 'line') hb.classList.add('is-line');
+  if (over() && hb.querySelector('.u3-hm-board') && !hb.classList.contains('is-line')) hb.classList.add('is-line');
   if (over()) { hb.classList.add('is-tight'); if (over()) { hb.classList.add('is-tighter'); if (over()) hb.classList.add('is-nolabel'); } }
 }
 
@@ -90,7 +95,7 @@ export function fitVoice(box) {
   if (sum(k) > avail) { while (k > 1 && sum(k) + gap + moreW > avail) k -= 1; }
   row.classList.remove('is-measure');
   cells.forEach((c, i) => { c.hidden = i >= k; });
-  if (k < cells.length) row.insertAdjacentHTML('beforeend', `<span class="u3-hm-more" aria-label="${cells.length - k} more members">+${cells.length - k}</span>`);
+  if (k < cells.length) row.insertAdjacentHTML('beforeend', `<button type="button" class="u3-hm-more" data-voice-all aria-label="${moreLabel(cells.length)}">+${cells.length - k}</button>`);   // UI-06: opens the Live in voice window (D-59)
 }
 
 /** One pull row (the data-pi hook of the v2 Home; the v2 classes pl-row and pl-top are not used: their v2 rules would reach into these rows). */

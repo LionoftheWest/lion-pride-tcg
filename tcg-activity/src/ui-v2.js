@@ -18,9 +18,19 @@ import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import { paintCollectionV3 } from './ui3/collection.js';
 import * as pf3 from './ui3/profile.js';
+import { ascendFailText, SAVE_FAIL_TEXT } from './ui3/viewer.js';
+import { detailHTML, pointsHTML as pointsV3, statHTML, styleEffect } from './ui3/card-detail.js';
+import { fitDetail, watchDetailFit } from './ui3/card-detail-fit.js';
+import { fmtCompact } from './ui3/number.js';
+import { inlineMessage } from './ui3/components.js';
+import { paintAchievementsV3, paintBossesV3 } from './ui3/collection-tabs.js';
 import * as se3 from './ui3/style-editor.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import * as hm3 from './ui3/home.js';
+import { boardRows, boardHTML } from './ui3/home-boss.js';
+import * as tn3 from './ui3/tiny.js';
+import * as hs3 from './ui3/home-slides.js';
+import * as vw3 from './ui3/voice.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
 export function initV2(c) { ctx = c; }
@@ -280,6 +290,55 @@ export function toast(text) {
   setTimeout(() => n.remove(), 3200);
 }
 
+// ---- v3 Achievements and Bosses tabs (UI-12, UI-11; src/ui3/collection-tabs.js): the same data and calls as the v2 tabs ----
+// Claim: the same server call as redeem(); the view repaints after the profile reloads. Returns { ok } for the Claim button.
+async function claimV3(key) {
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim', { key }); } catch { r = null; }
+  if (!r?.ok && r?.error !== 'claimed') return { ok: false };
+  if (r?.ok) {
+    myProfile = { ...(myProfile || {}), claimed: [...(myProfile?.claimed || []), key] };
+    ctx.refreshPacks?.();
+    const rw = r.reward || rewardOf(key);
+    if (rw?.title || rw?.frame) toastAction(`🎁 ${rewardLabel(rw)}`, 'Equip now', () => equipTitle(rw.title || null, rw.frame || null));
+    else toast(`🎁 ${rewardLabel(rw)}`);
+  }
+  loadMyProfile(true).then(() => { refreshCollectionBadge(); if (ctx.currentView() === 'collection') renderCollectionV2(); });
+  return { ok: true };
+}
+async function claimAllV3() {
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim-all', {}); } catch { r = null; }
+  if (!r?.ok) return { ok: false };
+  ctx.refreshPacks?.();
+  const parts = [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.titles?.length ? `${r.titles.length} title${r.titles.length === 1 ? '' : 's'}` : null, r.frames?.length ? `${r.frames.length} frame${r.frames.length === 1 ? '' : 's'}` : null].filter(Boolean);
+  const msg = `🎁 ${r.claimed.length} claimed${parts.length ? ` · ${parts.join(' + ')}` : ''}`;
+  if (r.titles?.length || r.frames?.length) toastAction(msg, 'Choose title', () => openSpotEditor()); else toast(msg);
+  await loadMyProfile(true);
+  refreshCollectionBadge();
+  if (ctx.currentView() === 'collection') renderCollectionV2();
+  return { ok: true };
+}
+function paintTabV3(achs, tabBar) {
+  const main = ctx.el('main');
+  const help = explainBtn('collection');
+  if (col.view === 'bosses') {
+    paintBossesV3(main, { tabBar, help,
+      bosses: RAID_BOSSES.map((b) => ({ arch: b.arch, title: b.title, blurb: b.blurb, credit: b.credit, thumb: thumbFor(b) })),
+      mount: (canvas, b) => { disposeGalBoss(); const rb = RAID_BOSSES.find((x) => x.arch === b.arch); try { galBoss = mountBoss(canvas, seedForBoss(rb), 'Mythic', { portrait: true, portraitOpts: { at: 0.5 } }); } catch { galBoss = null; } },
+      dispose: disposeGalBoss });
+  } else {
+    col.view = 'ach'; // v3 has no sub-view: the achievement opens in a window
+    const order = (a) => (a.done ? (claimedSet().has(a.key) ? 2 : 0) : 1);   // ready first, then in progress, then claimed
+    paintAchievementsV3(main, { tabBar, help, achs: [...achs].sort((a, b) => order(a) - order(b)), claimed: claimedSet(),
+      rewardText: (a) => rewardLabel(rewardOf(a.key)), numLabel, thumb, flair: flairHTML,
+      claim: claimV3, claimAll: claimAllV3,
+      sortedSet: (a) => [...(a.set || [])].sort((x, y) => (y.owned - x.owned) || (x.num - y.num)),
+      openCard: (c, list) => ctx.openViewer(c, { list: list.filter((x) => !x.locked) }) });
+  }
+  wireColTabs();
+  maybeExplain('collection');
+}
 // ---- Collection ------------------------------------------------------------
 
 const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0, boss: 0 };
@@ -342,7 +401,9 @@ export async function renderCollectionV2() {
   const ownSeg = [['all', 'All'], ['owned', 'Owned'], ['missing', 'Missing']].map(([v, l]) => `<button data-own="${v}" class="${col.own === v ? 'on' : ''}">${l}</button>`).join('');
 
   const tabs = `${colTabBar(achDone, achs.length, ready)}${explainBtn('collection')}`;
-  // v3 (body.ui-v3, UI-07): the Cards tab is the v3 Collection (src/ui3/collection.js). Achievements and Bosses stay v2.
+  // v3 (body.ui-v3, UI-11 and UI-12): the Achievements and Bosses tabs (src/ui3/collection-tabs.js).
+  if (document.body.classList.contains('ui-v3') && col.view !== 'cards') { paintTabV3(achs, colTabBar(achDone, achs.length, ready)); return; }
+  // v3 (body.ui-v3, UI-07): the Cards tab is the v3 Collection (src/ui3/collection.js).
   if (v3Cards()) {
     const inUse = (list, key) => list.filter(([k]) => inSeason.some((c) => (key === 'type' ? c.tags?.type === k : [].concat(c.tags?.origin || []).includes(k))));
     paintCollectionV3(el('main'), {
@@ -351,7 +412,7 @@ export async function renderCollectionV2() {
       elements: ELEMENT_ORDER.filter((e) => inSeason.some((c) => cardElement(c.tags) === e)),
       types: inUse(TYPES, 'type'), games: inUse(GAMES, 'game'),
       elementName: (e) => ELEMENTS[e]?.name || e, elIcon, elementOf: (c) => cardElement(c.tags), flair: flairHTML, thumb, onSwipe,
-      openCard: (c, list) => ctx.openViewer(c, { list }),
+      openCard: (c, list) => { panelList = list || []; col.sel = c.id; paintPanel(c); },   // UI-08: a grid tap opens the Card Detail window; its art opens the viewer (D-80 item 11)
       status: () => colStatus(), rerender: () => renderCollectionV2(),
     }, { tabBar: colTabBar(achDone, achs.length, ready), help: explainBtn('collection') });
     wireColTabs();
@@ -455,7 +516,8 @@ export async function renderCollectionV2() {
   else if (col.view === 'bosses') { paintBossPanel(); return; }
   else paintColGrid();
   const selCard = cards.find((c) => c.id === col.sel) || inSeason.find((c) => c.owned) || inSeason[0];
-  if (col.view !== 'ach') paintPanel(selCard);
+  if (v3()) v3Refresh();   // UI-08: the window opens only on a tap; an open one follows the repaint
+  else if (col.view !== 'ach') paintPanel(selCard);
 }
 
 // The filter panel never scrolls: when it is too tall, the chip counts go, then the
@@ -551,6 +613,7 @@ function pickCard(c, node, grid, list) {
   col.sel = c.id;
   grid.querySelectorAll('.v2-cell.sel').forEach((n) => n.classList.remove('sel'));
   node?.classList.add('sel');
+  if (v3()) { paintPanel(c); return; }   // UI-08: the Card Detail window opens on a tap (D-38); the viewer opens from its art (D-80 item 11)
   // A phone has no room for the side panel: the panel opens as the full-screen card view
   // (designs 24 + 25), and a tap on its big card opens the 3D viewer.
   if (isPhone()) { ctx.el('colPanel')?.classList.add('m-open'); paintPanel(c); return; }
@@ -600,12 +663,95 @@ function colStatus() {
 const TAG_FACETS = ['type', 'class', 'origin', 'genre', 'traits'];
 const GAME_LABELS = { smash: 'Super Smash Bros', pokemon: 'Pokemon', minecraft: 'Minecraft', party: 'Party Games', meme: 'Memes', community: 'Community' };
 
+// ---- UI-08 (body.ui-v3 only): the Card Detail window, in place of the v2 side panel (src/ui3/card-detail.js, public/ui3/90-ui-08.css) ----
+// A grid tap opens the window (dialog on medium and expanded, sheet on compact); a tap on its art opens the 3D viewer (D-80 item 11).
+// The handlers of the v2 panel stay: the element ids are the same. The window lives outside #main, so a repaint of the Collection keeps it open.
+const v3 = () => document.body.classList.contains('ui-v3');
+let detWrap = null;
+function detHost() {
+  if (detWrap?.isConnected) return detWrap;
+  detWrap = document.createElement('div');
+  detWrap.id = 'u3Det'; detWrap.className = 'u3-detwrap hidden';
+
+  detWrap.innerHTML = '<div class="u3-det" id="u3DetWin" role="dialog" aria-modal="true" aria-label="Card details"></div>';
+  document.body.appendChild(detWrap);
+  detWrap.addEventListener('click', (e) => { if (e.target === detWrap) closeDetail(); });   // the scrim
+  document.addEventListener('click', (e) => { if (isDetailOpen() && e.target.closest('#dock, #topbar, .u3-subtabs')) closeDetail(); }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.u3Done || !isDetailOpen() || document.querySelector('#viewer:not(.hidden)')) return;
+    e.u3Done = true; closeDetail();
+  });
+  watchDetailFit();
+  return detWrap;
+}
+const isDetailOpen = () => !!detWrap?.isConnected && !detWrap.classList.contains('hidden');
+export function closeDetail() {
+  if (!detWrap) return;
+  detWrap.classList.add('hidden');
+  col.sel = null; pend.open = false; pend.add = {};
+  ctx.el('main')?.querySelectorAll('.v2-cell.sel').forEach((n) => n.classList.remove('sel'));
+}
+/** After an ascend, a spend or a convert: the open window shows the new numbers of the same card. */
+function v3Refresh() {
+  if (!v3() || !isDetailOpen() || col.sel == null) return;
+  const c = mergedCards().find((x) => String(x.id) === String(col.sel));
+  if (c) paintPanel(c);
+}
+// The three stat boxes are narrow on every size: 10,000 or more uses the compact form (10.5: "12.3k").
+const num3 = (n) => (Math.abs(Number(n) || 0) >= 10000 ? fmtCompact(n) : String(n));
+function paintDetail(c, v) {
+  const wrap = detHost();
+  const win = wrap.querySelector('#u3DetWin');
+  const a = v.a;
+  const keys = statKeys(c);
+  let points = '';
+  if (v.sp && keys.length) {
+    if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; pend.open = false; }
+    const picked = Object.values(pend.add).reduce((t, n) => t + n, 0);
+    const spent = Object.values(v.sp.points || {}).reduce((t, n) => t + (Number(n) || 0), 0);
+    points = pointsV3({ keys: STAT_DEFS.filter(([k]) => keys.includes(k)), pts: v.sp.points || {}, add: pend.add, free: v.sp.free || 0, picked,
+      canReset: spent > 0 && !picked && !ctx.cache.collection?.stats?.resetUsed, open: pend.open });
+  }
+  const spare = Math.max(0, (c.quantity || 0) - 1);
+  const need = c.next_cost;
+  const asc = c.locked || !ctx.features().ascension ? null
+    : need == null && a < 5 ? { text: ASCEND_ERROR.no_ascend } : a >= 5 ? { text: '★5 max' } : { have: Math.min(spare, need || 0), need };
+  const tags = [];
+  if (v.el0) tags.push({ label: v.el0.name, ico: elIcon(v.el0.key) });
+  const t = c.tags || {};
+  for (const f of TAG_FACETS) {
+    let vals = Array.isArray(t[f]) ? t[f] : (t[f] ? [t[f]] : []);
+    if (f === 'traits' && v.el0) vals = vals.filter((x) => String(x).toLowerCase() !== v.el0.key);
+    if (f === 'origin') vals = vals.map((x) => GAME_LABELS[x] || x);
+    for (const x of vals) { const w = String(x).split(':').pop(); tags.push({ label: w.charAt(0).toUpperCase() + w.slice(1) }); }
+  }
+  const pc = (n, m) => Math.min(100, Math.round((100 * n) / (m || 1)));
+  win.innerHTML = detailHTML({
+    c, num: numLabel(c.num), season: c.season || 'Season 1', name: c.name, rarity: c.rarity, rarityLabel: ctx.RARITY_LABEL[c.rarity] || c.rarity,
+    locked: !!c.locked, art: c.image_url ? `<img src="${c.image_url}" alt="">${flairHTML(a)}` : '', a, own: v.owned,
+    stats: [statHTML('Power', num3(v.power), pc(v.power, v.maxPow), '--gold'), statHTML('HP', num3(v.hp), pc(v.hp, cardHp(v.maxPow)), '--danger'), statHTML('Crit', `${v.crit}%`, pc(v.crit, 60), '--gold-hi')],
+    lore: c.lore, tags, ability: c.ability, asc, points, canAsc: v.canAsc, ascLabel: `Ascend to ★${a + 1} · uses ${c.next_cost}`, inSpot: v.inSpot,
+  });
+  win.classList.toggle('is-editing', pend.open && !!points);
+  detWrap.classList.remove('hidden');
+  ctx.el('pArt')?.addEventListener('click', () => { if (!c.locked) ctx.openViewer(c, viewerNav()); });
+  ctx.el('pClose')?.addEventListener('click', closeDetail);
+  if (isPhone()) onSwipe(win, stepPanel);
+  ctx.el('pTrade')?.addEventListener('click', () => { closeDetail(); ctx.show('trading'); });
+  ctx.el('pSpot')?.addEventListener('click', () => toggleSpotlight(c));
+  ctx.el('pAscend')?.addEventListener('click', () => ascend(c));
+  fillConvertButton(c, async () => { await ctx.refreshOwned(); v3Refresh(); renderCollectionV2(); });
+  if (v.sp && keys.length) wirePoints(c, v.sp, win);
+  fitDetail(win);
+  fillViewerEffect(c, 'colEffect').then(() => { styleEffect(ctx.el('colEffect')); fitDetail(win); });
+}
+
 // The right panel: everything about one card (Nathan: stats, tags, effect, artist).
 function paintPanel(c) {
   const { el } = ctx;
   const box = el('colPanel');
-  if (!box) return;
-  if (!c) { box.innerHTML = '<p class="v2-empty">Pick a card.</p>'; return; }
+  if (!box && !v3()) return;   // v3 (UI-07 grid): there is no side panel; the Card Detail window is its own layer
+  if (!c) { if (box) box.innerHTML = '<p class="v2-empty">Pick a card.</p>'; return; }
   const el0 = elemOf(c);
   const all = mergedCards();
   const maxPow = Math.max(1, ...all.map((x) => x.power || 0));
@@ -641,6 +787,7 @@ function paintPanel(c) {
   const inSpot = (myProfile?.spotlight || []).map(Number).includes(Number(c.id));
   const canAsc = !c.locked && ctx.features().ascension && a < 5 && c.can_ascend;
   const owned = c.locked ? 'Not in your collection yet' : `${c.quantity} ${c.quantity === 1 ? 'copy' : 'copies'}`;
+  if (v3()) { paintDetail(c, { power, hp, crit, maxPow, sp, el0, canAsc, inSpot, owned, a }); return; }
   box.innerHTML = `${isPhone() ? '<button class="v2-icon p-close" id="pClose" aria-label="Close">✕</button>' : ''}<div class="p-top">
       <div class="p-art${c.locked ? ' locked' : ''}" id="pArt">${!c.locked && c.image_url ? `<img src="${c.image_url}" alt="">${flairHTML(a)}` : '<span class="lk">🔒</span>'}</div>
       <div class="p-id">
@@ -797,23 +944,49 @@ function wirePoints(c, sp, box) {
       r = save ? await ctx.apiPost('/api/stats/spend', { cardId: c.id, add: pend.add })
         : await ctx.apiPost('/api/stats/reset', { cardId: c.id });
     } catch { r = null; }
-    if (!r?.ok) { (save || reset).disabled = false; (save || reset).textContent = r?.error === 'reset_used' ? 'Next week' : 'Try again'; return; }
+    if (!r?.ok) {
+      (save || reset).disabled = false; (save || reset).textContent = r?.error === 'reset_used' ? 'Next week' : 'Try again';
+      if (document.body.classList.contains('ui-v3') && r?.error !== 'reset_used') showFail(box.querySelector('#pPts'), 'ptsFail', SAVE_FAIL_TEXT);   // UI-10 S2 (D-80 item 13)
+      return;
+    }
     pend.add = {}; pend.open = false;
     await ctx.refreshOwned();
+    v3Refresh();
     renderCollectionV2();
   });
 }
 
+// v3 (UI-10): a failed action shows an inline error message (7.3) at the end of its block; the next try or a repaint removes it.
+function showFail(host, id, text) {
+  if (!host) return;
+  host.querySelector(`#${id}`)?.remove();
+  const t = document.createElement('div');
+  t.id = id; t.className = 'u3-fail'; t.innerHTML = inlineMessage({ kind: 'error', text });
+  host.append(t);
+  fitPanel(host.closest('#colPanel'));   // the optional lines (lore, tags) make room for the message, as for the stat rows
+}
+
 async function ascend(c) {
   const btn = ctx.el('pAscend');
+  const v3 = document.body.classList.contains('ui-v3');
+  const label = `Ascend to ★${(c.ascension || 0) + 1} · uses ${c.next_cost}`;
+  ctx.el('pAscFail')?.remove();
   if (btn) { btn.disabled = true; btn.textContent = 'Ascending…'; }
   let r = null;
   try { r = await ctx.apiPost('/api/ascend', { cardId: c.id }); } catch { r = null; }
-  if (!r?.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } if (r?.error && ASCEND_ERROR[r.error]) toast(ASCEND_ERROR[r.error]); return; }
+  if (!r?.ok) {
+    if (v3) {   // UI-10 E1 (D-80 item 14): the button keeps its label; the error and the reason are an inline message under the actions
+      if (btn) { btn.disabled = false; btn.textContent = label; }
+      showFail(btn?.closest('.p-actions, .u3-det__acts')?.parentElement || ctx.el('colPanel'), 'pAscFail', ascendFailText(ASCEND_ERROR[r?.error]));
+      return;
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Could not ascend'; } if (r?.error && ASCEND_ERROR[r.error]) toast(ASCEND_ERROR[r.error]); return;
+  }
   const after = { ...c, ascension: r.ascension, quantity: r.quantity, power: r.power, next_cost: r.next_cost,
     can_ascend: r.next_cost != null && r.quantity >= 1 + r.next_cost };
   ctx.celebrateAscend(c, after, !!ctx.cache.collection?.stats?.on && statKeys(c).length > 0);
   await ctx.refreshOwned();
+  v3Refresh();   // UI-10 C7: the window under the celebration shows the new stars and numbers
   renderCollectionV2();
 }
 
@@ -902,9 +1075,12 @@ let heroBoss = null;
 const pullsTab = { v: 'all' };
 
 let homeRO = null;
+let slideTimer = null;   // UI-05: the one second tick of the Dungeon and Gauntlet slide timers (v3 only)
+const homeSlides = { hunt: null, dungeon: null, gauntlet: null, key: null };   // UI-05: the carousel data and the slide shown (v3 only)
 export function disposeHomeV2() {
   disposeGalBoss();
   if (homeRO) { homeRO.disconnect(); homeRO = null; }
+  if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
   if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
 }
 
@@ -914,6 +1090,7 @@ export async function renderHomeV2() {
   // Design 19 (Nathan, 2026-09-30): the hunt + Live in voice on the left, Live pulls down
   // the right to the same bottom line. No profile tile: the top-bar avatar opens it.
   const v3 = hm3.homeV3();
+  if (tn3.tinyV3()) { await renderTinyV3(); return; }   // UI-59: the small live view replaces Home in the tiny window
   el('main').innerHTML = `<div class="${v3 ? 'u3-home' : 'v2-home h19'}">
     ${v3 ? '<div class="u3-hm">' : ''}<section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} hero" id="homeHero"><div class="v2-loading">Loading…</div></section>
     <section class="${v3 ? 'u3-hm-tile' : 'v2-tile'} voice" id="homeVoice"></section>
@@ -922,12 +1099,19 @@ export async function renderHomeV2() {
   paintVoice();
   paintPulls();
   if (v3) watchHomeV3();
-  const [hunt] = await Promise.all([
+  // UI-05 (v3 only): the Dungeon and Gauntlet slides read the same routes as their lobbies; a closed or off mode has no slide
+  const modes = v3 && document.body.classList.contains('adv-on');
+  const [hunt, , , dgd, gad] = await Promise.all([
     ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null),
     loadMyProfile(true),
     ensureCatalog(),
+    modes ? ctx.api('/api/dungeon').catch(() => null) : Promise.resolve(null),
+    modes ? ctx.api('/api/gauntlet').catch(() => null) : Promise.resolve(null),
   ]);
   if (ctx.currentView() !== 'home') return;
+  homeSlides.key = null;
+  homeSlides.dungeon = dgd?.ok && !dgd.closed ? dgd : null;
+  homeSlides.gauntlet = gad?.ok && !gad.closed ? gad : null;
   paintHero(hunt);
   paintVoice(); // the catalog is loaded now: the tiles can show card pictures
 }
@@ -1138,7 +1322,39 @@ export function paintPulls() {
   requestAnimationFrame(() => setTimeout(() => fitChildren(el('plList')), 300));
 }
 
-export function homeTick() { tickCloses(); }
+export function homeTick() { tickCloses(); paintTinyPacks(); }
+
+// ---- The small live view (UI-59, the tiny class, v3): src/ui3/tiny.js has the markup ----
+// Open full: the Embedded App SDK has no command that leaves picture-in-picture (checked in the installed SDK), so a tap
+// on the button does nothing of its own; Discord opens the full Activity on a tap on the window (D-138, assumed).
+async function renderTinyV3() {
+  const { el } = ctx;
+  const main = el('main');
+  main.innerHTML = '<div class="u3-tn-host" id="homeHero"><div class="v2-loading">Loading…</div></div>';
+  const [d] = await Promise.all([ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null), ctx.refreshPacks?.()]);
+  if (ctx.currentView() !== 'home' || !tn3.tinyV3()) return;
+  const host = el('homeHero');
+  if (!host) return;
+  if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
+  const last = d?.lastResult;
+  host.innerHTML = tn3.tinyHTML(d, { packs: ctx.packs(), hasModel: !!(last && modelKey(last.name)) });
+  tickCloses();
+  const fit = () => tn3.fitTiny(host);
+  fit();
+  document.fonts?.ready?.then(fit);
+  if (typeof ResizeObserver !== 'undefined') { homeRO = new ResizeObserver(() => requestAnimationFrame(fit)); homeRO.observe(host); }
+  const h = d?.hunt;
+  try {
+    if (h) heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true });
+    else if (last && el('restCanvas')) heroBoss = mountBoss(el('restCanvas'), last.name, last.tier, { portrait: true });
+  } catch { heroBoss = null; }
+}
+// the pack count follows the packs the member has (the OPEN mark, no tap)
+function paintTinyPacks() {
+  const mark = document.querySelector('.u3-tn__open');
+  if (!mark || !tn3.tinyV3()) return;
+  mark.outerHTML = tn3.openMarkHTML(ctx.packs());
+}
 
 // ---- Home v3 (UI-03, body.ui-v3): src/ui3/home.js has the markup; these paint it and wire it ----
 const pullsPage = { start: 0 };
@@ -1154,7 +1370,7 @@ const watchHomeV3 = () => {   // refit the voice cells and the pull rows when a 
 function fitHomeV3() {
   const root = ctx.el('main')?.querySelector('.u3-home');
   if (!root) return;
-  const run = () => { hm3.fitHero(ctx.el('homeHero')); hm3.fitVoice(ctx.el('homeVoice')); fitPullsV3(); };
+  const run = () => { hm3.fitHero(ctx.el('homeHero')); hs3.fitSlide(ctx.el('homeHero')); hm3.fitVoice(ctx.el('homeVoice')); fitPullsV3(); };
   let best = null;
   for (const step of [[], ['is-compact'], ['is-compact', 'is-vrow'], ['is-compact', 'is-vrow', 'is-pull']]) {
     root.classList.remove('is-compact', 'is-vrow', 'is-pull');
@@ -1168,7 +1384,48 @@ function fitHomeV3() {
   root.classList.add(...best.step);
   run();
 }
+// UI-05: the hero is a carousel (Hunt, Dungeon, Gauntlet) when a mode is open; the Hunt slide is the UI-03 / UI-04 hero below.
+const slideOrder = () => hs3.slideOrder({ huntLive: !!homeSlides.hunt?.h, dungeon: !!homeSlides.dungeon, gauntlet: !!homeSlides.gauntlet });
+function tickSlides() {
+  document.querySelectorAll('[data-hms]').forEach((n) => { n.textContent = hs3.hms(n.dataset.hms); });
+  document.querySelectorAll('[data-dhm]').forEach((n) => { n.textContent = hs3.dhm(n.dataset.dhm); });
+}
+function openMode(kind) {   // the Adventure button opens the last tab (ui-v2-dungeon.js initDungeon): set it, then press it
+  try { localStorage.setItem('lp.adventure.tab', kind); } catch { /* storage off */ }
+  document.querySelector('#dock .dk[data-view="battling"]')?.click();
+}
+function goSlide(box, key) {
+  if (!key || key === homeSlides.key) return;
+  homeSlides.key = key;
+  paintHeroV3(box, homeSlides.hunt.d, homeSlides.hunt.h);
+}
 function paintHeroV3(box, d, h) {
+  homeSlides.hunt = { d, h };
+  const order = slideOrder();
+  if (!order.includes(homeSlides.key)) homeSlides.key = order[0];
+  const key = homeSlides.key;
+  if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
+  const html = key === 'dungeon' ? hs3.dungeonSlideHTML(homeSlides.dungeon) : key === 'gauntlet' ? hs3.gauntletSlideHTML(homeSlides.gauntlet) : '';
+  box.innerHTML = hs3.carouselHTML(order, key, html, { dungeon: hs3.slideNews('dungeon', homeSlides.dungeon) });
+  box.onclick = (e) => {
+    const go = e.target.closest('[data-slide-go]');
+    if (go) { goSlide(box, go.dataset.slideGo); return; }
+    const dir = e.target.closest('[data-slidedir]');
+    if (dir) { goSlide(box, hs3.slideStep(order, key, dir.dataset.slidedir === 'prev' ? -1 : 1)); return; }
+    const open = e.target.closest('[data-slide-open]');
+    if (open) openMode(open.dataset.slideOpen);
+  };
+  let x0 = null;   // a swipe on the slide moves one slide (no automatic sliding, D-45)
+  box.ontouchstart = (e) => { x0 = e.touches[0]?.clientX ?? null; };
+  box.ontouchend = (e) => { const x1 = e.changedTouches[0]?.clientX; if (x0 !== null && x1 !== undefined && Math.abs(x1 - x0) > 48 && order.length > 1) goSlide(box, hs3.slideStep(order, key, x1 < x0 ? 1 : -1)); x0 = null; };
+  if (key !== 'hunt') {
+    hs3.fitSlide(box);
+    if (!slideTimer) slideTimer = setInterval(tickSlides, 1000);
+    return;
+  }
+  paintHuntSlideV3(box.querySelector('.u3-hm-slide'), d, h);
+}
+function paintHuntSlideV3(box, d, h) {
   const { el } = ctx;
   if (!h) {
     const last = d?.lastResult;
@@ -1196,13 +1453,14 @@ function paintHeroV3(box, d, h) {
   ctx.api('/api/hunt/leaderboard').then((b) => {
     const top = (b?.leaders || [])[0];
     const slot = el('heroTop');
-    if (top && slot) { slot.outerHTML = hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); fitHomeV3(); }
+    const rows = boardRows(b?.leaders);
+    if (top && slot) { slot.outerHTML = boardHTML(rows, { fmt, avatar: (id, name) => avatarHTML(id, name, 'xs') }) + hm3.topHunterHTML(top, fmt); wireTopHunter(el('homeHero')); fitHomeV3(); }
   }).catch(() => {});
   tickCloses();
   try { heroBoss = mountBoss(el('heroCanvas'), h.name || 'boss', h.tier, { portrait: true }); } catch { heroBoss = null; }
 }
 // "Top hunter" opens the Leaderboard window (the hidden v2 button that the menu tile clicks too)
-function wireTopHunter(box) { box?.querySelector('[data-top-hunter]')?.addEventListener('click', () => document.getElementById('boardBtn')?.click()); }
+function wireTopHunter(box) { box?.querySelectorAll('[data-top-hunter]').forEach((b) => { if (!b.dataset.wired) { b.dataset.wired = '1'; b.addEventListener('click', () => document.getElementById('boardBtn')?.click()); } }); }
 
 function paintVoiceV3(box) {
   const me = ctx.user();
@@ -1218,7 +1476,12 @@ function paintVoiceV3(box) {
   };
   box.innerHTML = hm3.voiceHTML(people.map(cell), people.length);
   hm3.fitVoice(box);
-  box.onclick = (e) => { const t = e.target.closest('[data-member]'); if (!t) return; if (t.classList.contains('watch') && ctx.watchOpen?.(t.dataset.member)) return; openMember(t.dataset.member); };
+  // UI-06: "+N" opens the window with every member in voice (D-59); a tap on a member there does what a tap on the cell does
+  const pick = (id, watch) => { if (watch && ctx.watchOpen?.(id)) return; openMember(id); };
+  box.onclick = (e) => {
+    const more = e.target.closest('[data-voice-all]');
+    if (more) { vw3.openVoiceWindow(people.map(cell), { onPick: pick, from: more }); return; }
+    const t = e.target.closest('[data-member]'); if (!t) return; if (t.classList.contains('watch') && ctx.watchOpen?.(t.dataset.member)) return; openMember(t.dataset.member); };
 }
 
 let pullsAll = [];

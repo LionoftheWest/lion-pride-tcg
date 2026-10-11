@@ -9,7 +9,7 @@ create table public.trade_offers (
   id bigint generated always as identity not null,
   from_id text not null,
   to_id text not null,
-  offer_card_id bigint not null,
+  offer_card_id bigint,
   request_card_id bigint,
   status text default 'pending'::text not null,
   created_at timestamp with time zone default now() not null,
@@ -20,6 +20,7 @@ create table public.trade_offers (
 
 -- @constraints
 alter table public.trade_offers add constraint trade_offers_from_id_fkey FOREIGN KEY (from_id) REFERENCES players(id) ON DELETE CASCADE;
+alter table public.trade_offers add constraint trade_offers_has_card_check CHECK (((offer_card_id IS NOT NULL) OR (request_card_id IS NOT NULL)));
 alter table public.trade_offers add constraint trade_offers_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES trade_listings(id);
 alter table public.trade_offers add constraint trade_offers_offer_card_id_fkey FOREIGN KEY (offer_card_id) REFERENCES cards(id) ON DELETE CASCADE;
 alter table public.trade_offers add constraint trade_offers_pkey PRIMARY KEY (id);

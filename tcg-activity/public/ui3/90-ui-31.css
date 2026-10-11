@@ -1,0 +1,34 @@
+/* ==== UI-31 List a card (src/ui-v2-hall.js paintListV3, src/ui3/compose.js; design repo UI-31/approved; D-67 item 6) ====
+   Under body.ui-v3: the back button, then the panel "Your listings" with its five slots. The slot size is measured from the
+   slots box (listFit): five in a row when they fit at the card size, else three and two (the frames). The offer on a listing
+   is the Trade window (90-ui-63.css) and the card picker is UI-64: no CSS of their own here. */
+.u3-ls { box-sizing: border-box; height: 100%; min-height: 0; padding: 0 0 var(--sp-3); display: grid; gap: var(--sp-3); align-content: start; align-items: center;
+  grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "back ." "panel panel"; --text-muted: var(--u3-text-muted); }
+.u3-ls > .ex-q { display: none; }
+body[data-size="compact-port"] .u3-ls { grid-template-areas: "back help" "panel panel"; }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-ls > .ex-q { display: inline-flex; grid-area: help; justify-self: end; width: var(--hit); height: var(--hit); min-width: 0; padding: 0; justify-content: center; align-items: center; }
+.u3-ls__back { grid-area: back; min-width: 0; justify-self: start; }
+.u3-ls__panel { grid-area: panel; align-self: stretch; min-height: 0; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-6);
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); }
+body[data-size="compact-port"] .u3-ls__panel { padding: var(--sp-5); }
+.u3-ls__head { flex: none; margin: 0; display: flex; align-items: baseline; gap: var(--sp-2); }
+.u3-ls__head > b { font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-secondary); }
+.u3-ls__slots { flex: 1 1 0; min-height: 0; min-width: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-4); justify-content: center; align-content: center; }
+.u3-ls__msg { flex: none; min-width: 0; }
+.u3-ls__msg:empty { display: none; }
+.u3-ls-slot { position: relative; flex: none; box-sizing: border-box; width: var(--ls-tile, var(--card-tile)); height: calc(var(--ls-tile, var(--card-tile)) * var(--card-ratio));
+  border-radius: calc(var(--ls-tile, var(--card-tile)) * var(--rad-card-ratio)); }
+.u3-ls-slot.is-empty { border: var(--bw-1) solid var(--border-strong); background: var(--surface-1); }
+.u3-ls-slot__add { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; border-radius: inherit; background: none; color: var(--text-muted); cursor: pointer; display: grid; place-items: center; }
+.u3-ls-slot__add:hover { color: var(--text-primary); }
+.u3-ls-slot__add:focus-visible { outline: var(--bw-2) solid var(--gold); outline-offset: var(--bw-2); }
+/* a listed card: the face with its rarity frame over it, the X in the corner */
+.u3-ls-card { background: var(--surface-2); }
+.u3-ls-card__face { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
+.u3-ls-card__face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-ls-card::after { content: ''; position: absolute; inset: 0; box-sizing: border-box; border: var(--bw-2) solid var(--u3-r); border-radius: inherit; pointer-events: none; }
+.u3-ls-card__x { position: absolute; top: var(--sp-2); right: var(--sp-2); }
+/* the Undo toast (D-67 item 6): over the dock, centered */
+.u3-ls-toast { position: fixed; z-index: var(--z-toast); left: var(--sp-4); right: var(--sp-4); bottom: calc(var(--dock-h) + var(--sp-4)); display: flex; justify-content: center; pointer-events: none; }
+.u3-ls-toast > .u3-toast { pointer-events: auto; }
+body[data-size="compact-land"] .u3-ls-toast { bottom: var(--sp-3); }
