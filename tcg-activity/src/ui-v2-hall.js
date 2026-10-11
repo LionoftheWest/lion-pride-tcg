@@ -34,7 +34,7 @@ export const hall = { sub: 'hall', view: 'wanted', aview: 'open', page: 0, data:
 const isV3 = () => document.body.classList.contains('ui-v3');
 // UI-32 Auctions under body.ui-v3 (src/ui-v2-auctions.js, src/ui3/auctions.js): the v3 views over the same state, handlers and API calls
 let AV3 = null;
-const av3 = () => AV3 || (AV3 = auctionsV3({ hall, stopHall: () => { hlRO?.disconnect(); closeLsToast(); }, renderHall: () => renderHall(), paintHall: () => paintHall(),
+const av3 = () => AV3 || (AV3 = auctionsV3({ hall, stopHall: () => { hlRO?.disconnect(); hlMO?.disconnect(); closeLsToast(); }, renderHall: () => renderHall(), paintHall: () => paintHall(),
   openAuction: (id) => openAuction(id), onSwitch: (e) => onSwitch(e), openHallFilters: () => openHallFilters(), tagsOf: (c) => tagsOf(c), owns: (c) => owns(c) }));
 const paintAuctionsV3 = () => av3().list();
 const fillAuctionsV3 = (g) => av3().fill(g);
@@ -227,7 +227,7 @@ async function openManage() { try { await ctx().refreshOwned(); } catch { /* kee
 // ---- UI-30 Trade Hall lists under body.ui-v3 (src/ui3/hall.js; design repo UI-30/approved; D-67, D-80 item 21) ----------
 // The same data, handlers and API calls as the v2 grid. The card face only (D-29): no member line, no "Yours", no counts.
 // The grid is fitted to its box (8.1: the most cards at 88 to 112 px), the pager shows with two pages or more (D-36).
-let catSrc = null, catTags = null, hlRO = null, hlItems = [], hlResizeT = null, hlResizeOn = false;
+let catSrc = null, catTags = null, hlRO = null, hlMO = null, hlItems = [], hlResizeT = null, hlResizeOn = false;
 const tagsOf = (c) => {
   const cards = ctx().cache.catalog?.cards;
   if (!cards) return {};
@@ -253,11 +253,12 @@ function tileV3(c, idx) {
     + `<span class="u3-hl-cap"><span class="u3-hl-av" role="img" aria-label="${esc3(info.who)}" title="${esc3(info.who)}">${avatarHTML(it.player_id, info.who, '')}</span>${count}</span></li>`;
 }
 const searchHTML = () => searchField({ value: hall.q, placeholder: 'Search cards, tags…' });
+const BODY_FIT = ['data-kb', 'data-size', 'data-input', 'data-short'];
 function paintHallV3() {
   const { el } = ctx();
   const d = hall.data || { wanted: [], forTrade: [], mine: [] };
   const n = filterCount(hall.f);
-  hlRO?.disconnect();
+  hlRO?.disconnect(); hlMO?.disconnect();
   closeLsToast();
   hall.cls = document.body.dataset.size;
   el('main').innerHTML = `<div class="u3-hl">${commTabs()}${explainBtn(hall.sub)}`
@@ -295,6 +296,8 @@ function paintHallV3() {
     hall.page += b.dataset.page === 'next' ? 1 : -1; fillV3();
   };
   if (window.ResizeObserver) { hlRO = new ResizeObserver(() => requestAnimationFrame(() => { if (el('hlGrid') === g && g.isConnected) fillV3(); })); hlRO.observe(g); }
+  // the keyboard and the size class change the box after the resize (data-kb is set when the box takes focus): fit again, the page kept (as the Collection and the Card picker)
+  if (window.MutationObserver) { let t = 0; hlMO = new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { if (el('hlGrid') === g && g.isConnected) { g._keep = hall.page * (g._per || 1); fillV3(); } else hlMO?.disconnect(); }, 100); }); hlMO.observe(document.body, { attributes: true, attributeFilter: BODY_FIT }); }
   if (!ctx().cache.catalog) ensureCatalog().then(() => { if (el('hlGrid') === g && (hall.q || filterCount(hall.f))) fillV3(); });
   if (!hlResizeOn) { hlResizeOn = true; addEventListener('resize', onHallResize); }
   fillV3();
@@ -317,7 +320,9 @@ function fillV3() {
   const root = g.closest('.u3-hl');
   // D-175: the caption under each card (member + copies): its height is measured from a probe with the real caption CSS
   const probe = document.createElement('li'); probe.className = 'u3-hl-probe'; probe.innerHTML = `<span class="u3-hl-cap"><span class="u3-hl-av">${avatarHTML(null, 'A', '')}</span><span class="u3-hl-n">Ag</span></span>`;
-  g.appendChild(probe); const capH = Math.ceil(probe.querySelector('.u3-hl-cap').getBoundingClientRect().height); probe.remove();
+  // the keyboard is open (body[data-kb]): the captions give way (90-ui-30.css) and the grid fits by card size alone, never under the tile size (as the Card picker)
+  const kb = document.body.hasAttribute('data-kb');
+  g.appendChild(probe); const capH = kb ? 0 : Math.ceil(probe.querySelector('.u3-hl-cap').getBoundingClientRect().height); probe.remove();
   g.style.setProperty('--hl-cap-h', `${capH}px`);
   const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, parseFloat(getComputedStyle(g).columnGap) || 0, { extra: capH, ...o });
   // G-099: two rows at least. A short frame first brings the rows closer (is-tight), then the cards get smaller (D-60 small tiles).
@@ -326,7 +331,7 @@ function fillV3() {
     root.classList.remove('is-tight');
     let r = fit();
     if (r.rows < 2) { root.classList.add('is-tight'); r = fit(); }
-    if (r.rows < 2) { const s = fit({ min: TOKENS['card-mini'] }); if (s.rows >= 2) r = s; }
+    if (!kb && r.rows < 2) { const s = fit({ min: TOKENS['card-mini'] }); if (s.rows >= 2) r = s; }
     return r;
   };
   root.classList.remove('has-pager');
@@ -341,6 +346,7 @@ function fillV3() {
   g.classList.toggle('is-short', f.tile < TOKENS.hit);
   const per = f.cols * f.rows;
   g._per = per;
+  if (g._keep != null) { hall.page = Math.floor(g._keep / per); g._keep = null; }   // a refit from the keyboard or a class change keeps the first card in view
   hall.page = clampPage(hall.page, pagesOf(hlItems.length, per));
   g.style.setProperty('--hl-cols', f.cols); g.style.setProperty('--hl-tile', `${f.tile}px`);
   const empty = emptyState(hall.view, { q: hall.q, filters: hall.f });
