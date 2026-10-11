@@ -26,27 +26,28 @@ the onboarding and the daily reasons to return matter as much as recruitment.
 | R-03 | A code for each streamer or community? | Yes. |
 | R-04 | How often is Community Week? | As often as Nathan wants. The admin page gets a calendar. Nathan schedules events on it and makes them shorter or longer. The same calendar controls the live modes (Hunt, Dungeon, Gauntlet). |
 | R-05 | Set 2 | Theme not decided. Release in the next two weeks (by about 2026-10-25). At least 150 cards. |
+| R-06 | Combat and Set 2 | The combat overhaul is done before Set 2 comes out, so that the new set gets all the new features. |
 
 ## 3. The order
 
 | Step | Work | Why it is at this position |
 |---|---|---|
 | 1 | Activity count (R-01) and referral tracking | A join before the tracking is live cannot get credit later. |
-| 2 | Set plumbing, then Set 2 content | The release date is two weeks out (R-05). |
-| 3 | Admin calendar (R-04) | Community Week and every event start from it. |
-| 4 | Onboarding (R-02) | Recruits must get going before Community Week #1 brings them in. |
-| 5 | The first mini-game, then Community Week #1 | Recruits need a daily reason to return. |
-| 6 | Combat overhaul | It needs measured simulations, not a deadline. |
+| 2 | Combat overhaul, with set plumbing at the same time | Set 2 must get all the new features (R-06). |
+| 3 | Set 2 content (tags and abilities after step 2) | Each card is tagged once, on the new engine. |
+| 4 | Admin calendar (R-04) | Community Week and every event start from it. |
+| 5 | Onboarding (R-02) | Recruits must get going before Community Week #1 brings them in. |
+| 6 | The first mini-game, then Community Week #1 | Recruits need a daily reason to return. |
 | 7 | PvP Arena | It needs the overhauled engine and the JS copy of it. |
 
-Steps 1, 2 and 3 can run at the same time in separate sessions. Each new screen needs an
+Steps 1, 2 and 4 can run at the same time in separate sessions. Each new screen needs an
 approved design first (`docs/design.md` 12.3), so claim the design IDs in week 1.
 
-**Set 2 and combat.** The full combat overhaul cannot finish in two weeks. Before the
-Set 2 cards are tagged, fix the tag vocabulary and the ability power budget
-(`docs/card-tags-and-battle-engine.md` 4.3). Then the overhaul changes only numbers in the
-`balance` table and in `subjects.cp_mod`, not the Set 2 card data. Without this step, every
-Set 2 card is tagged twice.
+**Set 2 and combat (R-06).** The overhaul ships before Set 2. Work that does not depend on
+the engine starts now: the theme, the subject list, and the art. Tags, abilities and
+ for Set 2 are set only after the overhaul is merged. The overhaul has a fixed scope
+(4.7), so that it fits before the release date. If the measured simulations are not ready
+in time, Nathan decides: move the release date, or cut scope from the overhaul.
 
 ## 4. The work for each item
 
@@ -136,7 +137,7 @@ Set 2 content:
 - Size: at least 150 cards. Nathan to confirm whether "card" means a subject (S1 has 130) or
   a finish (S1 has 352). 150 subjects means about 750 finishes of art in two weeks.
 
-### 4.7 Combat overhaul
+### 4.7 Combat overhaul (before Set 2, R-06)
 
 Known issues (`docs/hunt-boss-moves.md`, `docs/card-tags-and-battle-engine.md`):
 - Support stacking (for example 3 attackers and 5 supports) is the strongest strategy.
