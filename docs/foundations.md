@@ -299,7 +299,7 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
      - Attack raises only attack power. Vitality raises only HP.
      - The Gauntlet stays equal for all: 0 stars and no points.
      - The stat names must say what each stat does. Proposal (the stored keys do not
-       change, only the labels in ):
+       change, only the labels in `balance`):
 
        | Now | New label | What it does |
        |---|---|---|
@@ -309,16 +309,16 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
        | Potency | Support | +5% strength of the card's support (heal, shield, empower) |
        | Haste | Recharge | −4% support cooldown for each point |
 
-       Not Speed (it suggests turn order) and not Accuracy (the game has a miss chance,
+       Not "Speed" (it suggests turn order) and not "Accuracy" (the game has a miss chance,
        and Precision does not change it).
 10. **Latent abilities (Nathan, 2026-10-11).** Every card has a base ability for fights.
     At a set star level, a second (latent) ability unlocks.
-    -  stays the base ability. A new  holds the second
-      ability, checked by the same  rules and the same power budget.
-    -  key : the star that unlocks it (one number for all).
-    -  returns the latent ability when the card has enough stars. The fights
+    - `subjects.ability` stays the base ability. A new `subjects.latent` holds the second
+      ability, checked by the same `ability_kinds` rules and the same power budget.
+    - `balance` key `latent_unlock_star`: the star that unlocks it (one number for all).
+    - `card_combat` returns the latent ability when the card has enough stars. The fights
       read it from there. The Gauntlet (0 stars) never has it.
-    -  and the Combat Lab show and test both abilities.
+    - `combat_sheet` and the Combat Lab show and test both abilities.
     - Content: every S1 card needs a latent ability, and every Set 2 card has both.
 
 ### Acceptance tests
