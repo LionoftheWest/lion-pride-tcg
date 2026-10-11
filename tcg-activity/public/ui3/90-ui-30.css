@@ -1,0 +1,83 @@
+/* ==== UI-30 Trade Hall lists (src/ui-v2-hall.js paintHallV3, src/ui3/hall.js; design repo UI-30/approved; D-67, D-80 item 21) ====
+   Wanted and For trade under body.ui-v3. The toolbar is one grid whose areas change with the size class (the frames):
+   expanded = one row; medium and compact-land = the switch with the two buttons, then the search with Filters;
+   compact-port = the switch with the "?", the Manage button with the wishlist icon button, then the search with Filters.
+   The grid shows the card face only (D-29); the page size comes from the fitted box (src/ui3/card-picker.js fitGrid). */
+.u3-hl { box-sizing: border-box; height: 100%; min-height: 0; padding: 0 0 var(--sp-3);   /* #body already holds the side padding (--u3-pad) */ display: grid; gap: var(--sp-3); align-content: start; align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto; grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "sw find filt wish manage" "grid grid grid grid grid" "pager pager pager pager pager"; }
+.u3-hl > .ex-q { display: none; }
+.u3-hl__sw { grid-area: sw; min-width: 0; }
+.u3-hl__manage { grid-area: manage; min-width: 0; }
+.u3-hl__wish { grid-area: wish; min-width: 0; }
+.u3-hl__wishi { grid-area: wishi; display: none; justify-self: end; }
+.u3-hl__find { grid-area: find; min-width: 0; }
+.u3-hl__find .u3-search { box-sizing: border-box; width: 100%; }
+.u3-hl__find .u3-search__input::-webkit-search-cancel-button { appearance: none; }   /* one clear button: the library one */
+.u3-hl__filt { grid-area: filt; min-width: 0; justify-self: end; }
+.u3-hl__manage .u3-btn, .u3-hl__wish .u3-btn, .u3-hl__filt .u3-btn { max-width: 100%; }
+.u3-hl__grid { grid-area: grid; align-self: stretch; min-height: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); justify-content: start; align-content: start;
+  grid-template-columns: repeat(var(--hl-cols, 1), var(--hl-tile, var(--card-tile))); grid-auto-rows: calc(var(--hl-tile, var(--card-tile)) * var(--card-ratio)); }
+.u3-hl__grid.is-empty { display: flex; align-items: flex-start; }
+.u3-hl__none { flex: 1 1 auto; min-width: 0; }
+.u3-hl__none .u3-state { align-items: flex-start; text-align: left; padding-inline: var(--sp-2); }
+.u3-hl__pager { grid-area: pager; display: none; justify-content: center; }
+.u3-hl.has-pager .u3-hl__pager { display: flex; }
+.u3-hl__pager .u3-pager { width: max-content; }
+/* the card face (the rarity frame, the live state Not owned 4.9) */
+.u3-hl-card { position: relative; width: var(--hl-tile); height: calc(var(--hl-tile) * var(--card-ratio)); border-radius: calc(var(--hl-tile) * var(--rad-card-ratio));
+  background: var(--surface-1); overflow: hidden; box-sizing: border-box; }
+/* the rarity frame is drawn over the face, so the tap target is the whole card (9.1) */
+.u3-hl-card::after { content: ''; position: absolute; inset: 0; box-sizing: border-box; border: var(--bw-2) solid var(--u3-r); border-radius: inherit; pointer-events: none; }
+.u3-hl-card__pick { position: absolute; inset: 0; padding: 0; border: 0; background: none; cursor: pointer; }
+.u3-hl-card__pick img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-hl-card.is-notowned img { filter: var(--item-not-owned); }
+.u3-hl-card:focus-within { outline: var(--bw-2) solid var(--gold); outline-offset: var(--bw-2); }
+/* medium and compact-land */
+body[data-size="medium"] .u3-hl, body[data-size="compact-land"] .u3-hl { grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "sw . wish manage" "find find find filt" "grid grid grid grid" "pager pager pager pager"; }
+/* compact-port */
+body[data-size="compact-port"] .u3-hl { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "sw help" "manage wishi" "find filt" "grid grid" "pager pager"; }
+body[data-size="compact-port"] .u3-hl__wish { display: none; }
+body[data-size="compact-port"] .u3-hl__wishi { display: block; }
+body[data-size="compact-port"] .u3-hl__manage .u3-btn { width: 100%; }
+body[data-size="compact-port"] .u3-hl__sw .u3-seg { display: flex; width: 100%; box-sizing: border-box; }
+body[data-size="compact-port"] .u3-hl__sw .u3-seg__item { flex: 1 1 0; min-width: 0; justify-content: center; padding-inline: var(--sp-1); }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-hl > .ex-q { display: inline-flex; grid-area: help; justify-self: end; width: var(--hit); height: var(--hit); min-width: 0; padding: 0; justify-content: center; align-items: center; }
+/* the Filters panel (the Collection Filters panel, D-67 item 10: no counts, no Can ascend) */
+.u3-hl-fscrim { padding: calc(var(--u3-sa-t) + var(--sp-2)) calc(var(--u3-sa-r) + var(--sp-2)) calc(var(--u3-sa-b) + var(--sp-2)) calc(var(--u3-sa-l) + var(--sp-2)); }
+body[data-size="compact-land"] .u3-hl-fscrim { padding-right: max(var(--sp-4), calc(var(--corner-w) - var(--u3-sa-r) - var(--sp-2))); }
+.u3-hl-filters { box-sizing: border-box; width: min(100%, calc(var(--dialog-w) * 2)); max-height: 100%; overflow: hidden; gap: var(--sp-3); }
+body[data-size="compact-port"] .u3-hl-filters { height: 100%; }
+.u3-hl-filters .u3-seg { display: flex; width: 100%; box-sizing: border-box; }
+.u3-hl-filters .u3-seg__item { flex: 1 1 0; min-width: 0; justify-content: center; }
+.u3-hl-fgroup { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.u3-hl-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
+body[data-size="expanded"] .u3-hl-fgroup { flex-direction: row; align-items: center; gap: var(--sp-4); }
+body[data-size="expanded"] .u3-hl-fgroup > .u3-label { flex: none; width: calc(var(--dialog-w) / 4); }
+.u3-hl-filters .u3-dialog__foot { margin-top: auto; justify-content: space-between; }
+.u3-hl-filters .u3-dialog__foot > * { flex: 0 1 auto; }
+.u3-hl, .u3-hl-fscrim { --text-muted: var(--u3-text-muted); }   /* the shell contrast value (9.4), as the other v3 windows */
+/* a short compact-port frame (375x667): the rows come closer so the grid keeps two rows of cards (G-099); measured in fillV3 */
+.u3-hl.is-tight { gap: var(--sp-1); padding-bottom: var(--sp-1); }
+/* the keyboard is open (size-class.js body[data-kb]): the search and the grid only; the rest returns when it closes (2.3, G-015) */
+body[data-kb] .u3-hl { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "find filt" "grid grid"; }
+body[data-kb] .u3-hl :is(.u3-hl__sw, .u3-hl__manage, .u3-hl__wish, .u3-hl__wishi, .u3-hl__pager, .ex-q) { display: none; }
+/* touch: a chip is a 44 px target (9.1) */
+body[data-input="coarse"] .u3-hl-filters .u3-chip { height: var(--hit); box-sizing: border-box; }
+body[data-input="coarse"] .u3-hl-filters .u3-chip--element { width: var(--hit); }
+/* compact-port: the window starts under the Discord corner zone, so its close button is out of it (2.3) */
+body[data-size="compact-port"] .u3-hl-fscrim { padding-top: calc(var(--u3-sa-t) + var(--corner-h) - var(--sp-5)); }
+.u3-hl-filters.is-tight { gap: var(--sp-2); }
+.u3-hl-filters.is-tight .u3-hl-chips { gap: var(--sp-1); }
+/* the panel head: the title and Close, the Owned switch under them; when the panel is tight (a 375x667 frame) the switch moves between them */
+.u3-hl-fhead { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "t x" "s s"; align-items: center; gap: var(--sp-3); }
+.u3-hl-fhead > .u3-dialog__title { grid-area: t; }
+.u3-hl-fhead > .u3-seg { grid-area: s; }
+.u3-hl-fhead > .u3-ibtn { grid-area: x; }
+.u3-hl-filters.is-tight { padding: var(--sp-3) var(--sp-4); }
+.u3-hl-filters.is-tight .u3-hl-fhead { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "t s x"; gap: var(--sp-2); }
+body[data-input="coarse"] .u3-hl-filters .u3-chip { min-width: var(--hit); }
+body[data-kb] .u3-hl__grid.is-short > .u3-hl-card { display: none; }
+body.ui-v2.ui-v3[data-kb] .u3-hl > .ex-q { display: none; }

@@ -4,6 +4,7 @@
 // It starts by itself until the member finishes or skips it; the ? panel replays it.
 
 import { v2ctx, toast } from './ui-v2.js';
+import * as wt from './ui3/walkthrough.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -23,6 +24,10 @@ export const STEPS = [
 
 let state = { done: [], skipped: false };
 let idx = -1;
+// UI-37 (v3): the steps with no control on screen for this member (step 1 with no gift): "STEP 1 OF 7" (FEEDBACK item 17).
+let skippedKeys = [];
+const v3 = () => document.body.classList.contains('ui-v3');
+const steps = () => (v3() ? wt.STEPS : STEPS);
 let onResize = null;
 
 // Not offsetParent: it is always null for a fixed element (the reveal, the dock).
@@ -35,14 +40,15 @@ async function post(body) { try { return await ctx().apiPost('/api/tutorial', bo
 /** Called once after login with the saved progress. */
 export function initTutorial(saved) {
   state = { done: [], skipped: false, ...(saved || {}) };
-  if (!state.skipped && (state.done || []).length < STEPS.length) setTimeout(() => start(firstOpen()), 1500);
+  if (!state.skipped && (state.done || []).length < steps().length) { skippedKeys = []; setTimeout(() => start(firstOpen()), 1500); }
 }
-const firstOpen = () => Math.max(0, STEPS.findIndex((s) => !(state.done || []).includes(s.key)));
+const firstOpen = () => Math.max(0, steps().findIndex((s) => !(state.done || []).includes(s.key)));
 
 /** The ? panel: start again from step 1 (it never pays twice). */
 export async function replayTutorial() {
   const r = await post({ action: 'replay' });
   state = r?.tutorial || { done: [], skipped: false };
+  skippedKeys = [];
   start(0);
 }
 
@@ -54,7 +60,7 @@ async function start(i, opts = {}) {
     if (ctx().currentView() !== 'home') { ctx().show('home'); await wait(500); }
     while (revealOpen()) await wait(400); // never over a pack reveal
   }
-  const step = STEPS[idx];
+  const step = steps()[idx];
   if (!step) return close();
   let target = findTarget(step.target);
   if (step.key === 'gifts') {
@@ -63,6 +69,7 @@ async function start(i, opts = {}) {
     if (!n) target = null; // nothing to redeem: skip this step
   }
   if (!target) { // not on screen for this member (for example the Dailies are off): skip it
+    if (!skippedKeys.includes(step.key)) skippedKeys.push(step.key);
     await mark(step.key);
     return start(idx + 1);
   }
@@ -70,7 +77,7 @@ async function start(i, opts = {}) {
   if (step.key === 'gifts') {
     // The real action: the member opens the bell and redeems; the tour goes on when it closes.
     target.addEventListener('click', async () => {
-      if (STEPS[idx]?.key !== 'gifts') return;
+      if (steps()[idx]?.key !== 'gifts') return;
       hide();
       await wait(600);
       while (visible(document.getElementById('v2Notifs'))) await wait(400);
@@ -82,7 +89,7 @@ async function start(i, opts = {}) {
     // The real action: tapping OPEN opens a pack. Step 2 waits until the 5 cards are face up
     // and explains the rarities on them (design 22), for up to 3 minutes.
     target.addEventListener('click', async () => {
-      if (STEPS[idx]?.key !== 'open') return;
+      if (steps()[idx]?.key !== 'open') return;
       hide();
       await mark('open');
       const t0 = Date.now();
@@ -94,7 +101,7 @@ async function start(i, opts = {}) {
         if (!revealOpen()) break; // no reveal (no pack): step 2 goes on Live pulls
         await wait(300);
       }
-      start(STEPS.findIndex((x) => x.key === 'rarity'), { inReveal: revealOpen() });
+      start(steps().findIndex((x) => x.key === 'rarity'), { inReveal: revealOpen() });
     }, { once: true });
   }
 }
@@ -114,10 +121,12 @@ function close() { hide(); idx = -1; }
 
 function paint(step, target) {
   hide();
-  const last = idx === STEPS.length - 1;
+  const last = idx === steps().length - 1;
   const layer = document.createElement('div');
   layer.id = 'tutLayer';
-  layer.innerHTML = `<div class="tut-spot"></div>
+  const useV3 = v3();
+  if (useV3) layer.className = 'u3-wt';
+  layer.innerHTML = useV3 ? wt.cardHTML(step, skippedKeys, { last }) : `<div class="tut-spot"></div>
     <div class="tut-card" role="dialog" aria-label="Tutorial"><div class="tut-top"><span class="tut-step mono">STEP ${idx + 1} OF ${STEPS.length}</span>
       <span class="tut-dots">${STEPS.map((_, i) => `<i class="${i === idx ? 'on' : i < idx ? 'done' : ''}"></i>`).join('')}</span></div>
       <h3>${esc(step.title)}</h3><p>${esc(step.text)}</p>
@@ -125,7 +134,21 @@ function paint(step, target) {
       <div class="tut-act"><button class="link-btn" id="tutSkip">Skip</button><button class="v2-btn gold" id="tutNext">${last ? 'Finish' : 'Next →'}</button></div>
       <i class="tut-arrow"></i></div>`;
   document.body.appendChild(layer);
+  // v3 (UI-37): the card never covers the ring and never sits in the Discord corner zone (walkthrough.js placeCard).
+  const tok = (name) => parseFloat(getComputedStyle(document.body).getPropertyValue(name)) || 0;
+  const placeV3 = () => {
+    const r = target.getBoundingClientRect(), ring = tok('--sp-2');
+    const spot = layer.querySelector('.u3-wt__spot'), card = layer.querySelector('.u3-wt__card'), arrow = layer.querySelector('.u3-wt__arrow');
+    Object.assign(spot.style, { left: `${r.left - ring}px`, top: `${r.top - ring}px`, width: `${r.width + ring * 2}px`, height: `${r.height + ring * 2}px` });
+    const p = wt.placeCard(r, { w: card.offsetWidth, h: card.offsetHeight }, { w: layer.clientWidth, h: layer.clientHeight },   // the layer is fixed inset 0: its own box is the frame (F-1)
+      { gap: tok('--sp-4'), margin: tok('--sp-3'), ring, corner: { w: tok('--corner-w'), h: tok('--corner-h') },
+        frame: { l: tok('--u3-sa-l'), t: tok('--u3-sa-t'), r: tok('--u3-sa-r'), b: tok('--u3-sa-b') } });
+    Object.assign(card.style, { left: `${p.left}px`, top: `${p.top}px` });
+    card.dataset.side = p.side;
+    arrow.style.setProperty('--wt-arrow', `${p.arrow}px`);
+  };
   const place = () => {
+    if (useV3) return placeV3();
     const r = target.getBoundingClientRect(), pad = 8;
     const spot = layer.querySelector('.tut-spot');
     Object.assign(spot.style, { left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px` });
@@ -153,8 +176,8 @@ function paint(step, target) {
   place();
   onResize = place;
   window.addEventListener('resize', onResize);
-  layer.querySelector('#tutSkip').addEventListener('click', async () => { close(); state.skipped = true; await post({ action: 'skip' }); });
-  layer.querySelector('#tutNext').addEventListener('click', async () => {
+  layer.querySelector('#tutSkip, [data-wt="skip"]').addEventListener('click', async () => { close(); state.skipped = true; await post({ action: 'skip' }); });
+  layer.querySelector('#tutNext, [data-wt="next"]').addEventListener('click', async () => {
     await mark(step.key);
     if (inReveal) { // close the reveal with its own button, then go on
       hide();

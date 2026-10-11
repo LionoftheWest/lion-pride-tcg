@@ -1,0 +1,193 @@
+/* ==== UI-52 Gauntlet (ui-v2-dungeon.js gaLobbyV3HTML, gaOverV3HTML, fightV3HTML; design repo UI-52/approved; flag ui_v3) ====
+   The lobby uses the parts of the UI-46 lobby (.u3-dg-*); this file adds what the Gauntlet needs: the read-only squad with its
+   role labels, the weekly prizes, the over screen and the fight. Every selector starts with .u3-ga (lobby), .u3-go (over) or
+   .u3-gf (fight), so no other screen changes. Sizes come from body[data-size] and from measuring (D-136: desktop and portrait). */
+
+/* ---- lobby: the head row, the squad row, Start run ---- */
+.u3-ga .u3-dg-slot__card { cursor: default; }
+body[data-size] .u3-ga .u3-dg-slot__label { display: flex; justify-content: center; white-space: nowrap; }
+body[data-size="compact-land"] .u3-ga .u3-dg-slot__label { display: none; }
+body[data-size] .u3-ga .u3-dg-slot { min-width: max-content; }
+.u3-ga .u3-dg-hrow > .u3-dg-bar { grid-column: 1 / -1; }
+body[data-size="expanded"] .u3-ga:not(.u3-dg--side-tabs) .u3-dg-hrow { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+body[data-size="expanded"] .u3-ga:not(.u3-dg--side-tabs) .u3-dg-hrow > .u3-dg-bar { grid-column: 2; }
+body[data-size="expanded"] .u3-ga:not(.u3-dg--side-tabs) .u3-dg-hrow > .u3-dg-head { grid-row: 1 / span 2; align-self: center; }
+body[data-size="expanded"] .u3-ga:not(.u3-dg--side-tabs) .u3-dg-hrow > .u3-dg-budget { grid-column: 2; grid-row: 1; }
+.u3-ga-squad { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--sp-5); }
+.u3-ga-squad .u3-dg-slots { height: 100%; justify-content: flex-start; }
+.u3-ga-squad .u3-dg-slots__in { justify-content: flex-start; }
+.u3-ga-go { display: flex; align-items: center; }
+.u3-ga-go .u3-btn { min-width: calc(var(--card-tile) * 2); }
+.u3-ga-squad .u3-ga-go { padding-inline-end: var(--sp-1); }
+.u3-ga--stack .u3-ga-go .u3-btn, body[data-size="compact-port"] .u3-ga-go .u3-btn, .u3-dg--port > .u3-ga-go { width: 100%; }
+body[data-size="compact-port"] .u3-ga-go { flex: none; }
+body[data-size="compact-port"] .u3-ga:not(.is-tight) .u3-dg-thumb { display: block; }
+body[data-size="compact-port"] .u3-ga .u3-dg-slots__in { --dg-label: calc(var(--fs-label) * 1.5 + var(--sp-1));
+  --dg-w: max(min(calc((100cqw - 4 * var(--sp-3)) / 5), calc((100cqh - var(--dg-label)) / var(--card-ratio))),
+    min(calc((100cqw - 2 * var(--sp-3)) / 3), calc((100cqh - var(--sp-3)) / 2 - var(--dg-label)) / var(--card-ratio))); }
+.u3-ga--stack:not(:has(.is-tabs)) .u3-dg-slots { flex: 0 0 auto; container-type: inline-size; }
+.u3-ga--stack:not(:has(.is-tabs)) .u3-dg-slots__in { --dg-w: calc((100cqw - 4 * var(--sp-3)) / 5); }
+.u3-ga--stack .u3-dg-below { grid-template-columns: 1fr 1fr; }
+.u3-ga--stack .u3-dg-below > .u3-ga-prizes, .u3-ga--stack .u3-dg-below > .u3-dg-timer { grid-column: auto; }
+.u3-ga--stack .u3-dg-below > .u3-ga-prizes { grid-column: 1 / -1; }
+.u3-ga .u3-ga-theme { border-color: var(--gold-a35); background: linear-gradient(var(--gold-a10), var(--surface-1)); }
+.u3-dg--stack .u3-ga-theme, .u3-dg--stack .u3-dg-timer { align-self: stretch; }
+.u3-ga--stack .u3-ga-theme { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-ga--stack .u3-ga-theme .u3-dg-h { margin: var(--u3-none); }
+.u3-ga-bh { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.u3-ga-pill { padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-md); border: var(--bw-1) solid var(--gold-a50); color: var(--gold); font-size: var(--fs-small); font-weight: var(--fw-small-strong); white-space: nowrap; }
+.u3-ga .u3-dg-mini > div { padding: var(--sp-2) var(--sp-3); border-radius: var(--rad-md); background: var(--surface-2); }
+
+/* ---- the weekly prizes ---- */
+.u3-ga-prizes { flex: none; display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.u3-ga-ph { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); color: var(--gold); }
+.u3-ga-ph .u3-dg-h { margin: var(--u3-none); }
+.u3-ga-ph small { color: var(--text-muted); font-size: var(--fs-body); }
+.u3-ga-plist { list-style: none; margin: var(--u3-none); padding: var(--u3-none); display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(calc(var(--card-tile) * 3.4), 1fr)); }
+.u3-ga-prize { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-2) var(--sp-4); border-radius: var(--rad-md); background: var(--surface-2); }
+.u3-ga-rk { flex: none; min-width: var(--chip-md); height: var(--chip-md); box-sizing: border-box; padding-inline: var(--sp-2); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--rad-pill);
+  border: var(--bw-1) solid var(--gold); color: var(--gold); font-family: var(--font-num); font-size: var(--fs-small); font-weight: var(--fw-label); }
+.u3-ga-ptext { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }
+.u3-ga-ptext b { font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); color: var(--text-primary); }
+.u3-ga-ptext em { font-style: normal; font-size: var(--fs-small); color: var(--text-secondary); }
+body[data-size="compact-port"] .u3-ga-prizes.u3-dg-panel { flex: 1 1 0; min-height: 0; }
+body[data-size="compact-port"] .u3-ga-plist { flex: 1 1 0; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); }
+body[data-size="compact-port"] .u3-ga-prize { padding: var(--sp-2) var(--sp-3); }
+body[data-size="compact-port"] .u3-ga-ptext b { font-size: var(--fs-body); }
+body[data-size="compact-port"] .u3-ga-ph small { font-size: var(--fs-small); }
+
+/* ---- the side column: the four panels fit 1280 x 720 whole (the approved frame), so they are tighter than the UI-46 panels ---- */
+.u3-ga > .u3-dg-side { gap: var(--sp-2); }
+.u3-ga > .u3-dg-side > .u3-dg-panel { padding: var(--sp-3) var(--sp-4); }
+.u3-ga > .u3-dg-side .u3-dg-h { margin-top: var(--sp-1); }
+.u3-ga > .u3-dg-side .u3-dg-mini { margin-top: var(--sp-2); }
+.u3-ga > .u3-dg-side .u3-dg-top { margin: var(--sp-2) 0; }
+.u3-ga > .u3-dg-side .u3-dg-mini > div { padding: var(--sp-1) var(--sp-3); }
+.u3-ga .u3-dg-top li.is-none { font-size: var(--fs-small); }
+body[data-size="expanded"] .u3-ga:not(.u3-dg--side-tabs) { grid-template-columns: minmax(0, 1fr) minmax(calc(var(--card-tile) * 3.2), 16%); }
+.u3-ga .u3-dg-budget { white-space: nowrap; }
+.u3-ga .u3-dg-budget .u3-label { white-space: nowrap; }
+.u3-ga > .u3-dg-side > .u3-dg-panel { padding-inline: var(--sp-3); }
+.u3-ga .u3-dg-toph { flex-wrap: nowrap; }
+.u3-ga .u3-dg-toph .u3-dg-h, .u3-ga .u3-dg-runs, .u3-ga .u3-ga-bh .u3-label { white-space: nowrap; }
+.u3-ga .u3-dg-runs { flex: none; }
+/* a wide screen: the squad cards stop at the tile size of the frame (about 200 px), the prize tiles stand (rank over the text) */
+body[data-size="expanded"] .u3-ga .u3-dg-slots__in { --dg-w: min(calc((100cqw - (var(--dg-cols) - 1) * var(--sp-3)) / var(--dg-cols)), calc(((100cqh - var(--dg-label)) / var(--card-ratio))), calc(var(--card-tile-max) * 1.8)); }
+.u3-ga-prizes { container-type: inline-size; }
+@container (min-width: 75rem) {
+  .u3-ga-prize { flex-direction: column; align-items: flex-start; padding: var(--sp-4); }
+  body[data-size] .u3-go-prizes .u3-ga-prize { flex-direction: row; align-items: center; padding: var(--sp-2) var(--sp-4); }
+  body[data-size] .u3-go-prizes .u3-ga-ptext { justify-content: flex-start; gap: var(--sp-5); }
+  body[data-size] .u3-go-prizes .u3-ga-ptext em { margin-inline-start: 0; }
+}
+
+/* ---- tight (a short phone): no thumbnail, the theme in one row, tighter gaps ---- */
+.u3-ga.is-tight { gap: var(--sp-2); }
+.u3-ga.is-tight .u3-dg-name { white-space: nowrap; }
+.u3-ga.is-tight .u3-ga-theme { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4); }
+.u3-ga.is-tight .u3-ga-theme .u3-dg-h { margin: var(--u3-none); }
+.u3-ga.is-tight .u3-dg-tabpanel { gap: var(--sp-2); }
+.u3-ga.is-tight .u3-dg-main { padding: var(--sp-3) var(--sp-4); gap: var(--sp-2); }
+.u3-ga.is-tight .u3-dg-slot__label { letter-spacing: var(--u3-none); }
+
+/* ==== the run is over (gaOverV3HTML): the room-art panel, the four depth tiles, the weekly prizes, the board and the next run ==== */
+body.ui-v2.ui-v3 .v2-dungeon:has(> .u3-go) { padding: 0 var(--u3-pad) var(--sp-3); gap: 0; }
+.u3-go { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+.u3-go-panel { container-type: size; flex: 1 1 0; min-height: 0; box-sizing: border-box; overflow: hidden;
+  border-radius: var(--rad-lg); border: var(--bw-1) solid var(--border);
+  background: linear-gradient(color-mix(in srgb, var(--bg-base) 70%, transparent), color-mix(in srgb, var(--bg-base) 92%, transparent)), url(/dungeon/room.webp) center / cover no-repeat; }
+.u3-go-in { height: 100%; width: 100%; max-width: calc(var(--card-tile) * 15); margin-inline: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-5); }
+.u3-go-head { flex: none; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-3) var(--sp-4); }
+.u3-go-title { flex: none; white-space: nowrap; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-go-k { display: flex; align-items: center; gap: var(--sp-2); color: var(--text-secondary); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.u3-go-k .u3-ico { color: var(--gold); }
+.u3-go-title h1 { margin: var(--u3-none); font-family: var(--font-display); font-size: var(--fs-display); font-weight: var(--fw-title); line-height: var(--lh-title); color: var(--text-primary); }
+.u3-go-stats { flex: 1 1 auto; justify-content: flex-start; display: flex; gap: var(--sp-3); min-width: 0; }
+.u3-go-stat { flex: 1 1 0; box-sizing: border-box; min-width: calc(var(--card-tile) * 1.2); max-width: calc(var(--card-tile) * 2.2); display: flex; flex-direction: column; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-md); border: var(--bw-1) solid var(--border); background: color-mix(in srgb, var(--surface-1) 80%, transparent); }
+.u3-go-stat span { color: var(--text-secondary); font-size: var(--fs-body); }
+.u3-go-stat b { font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-heading); color: var(--text-primary); white-space: nowrap; }
+.u3-go-prizes { flex: 1 1 0; min-height: 0; justify-content: flex-start; }
+body[data-size] .u3-go-prizes .u3-ga-prize { flex-direction: row; align-items: center; }
+body[data-size] .u3-go-prizes .u3-ga-plist { flex: 1 1 0; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(min-content, calc(var(--card-tile) * 1.1)); align-content: center; }
+.u3-go-prizes .u3-ga-prize { background: color-mix(in srgb, var(--surface-2) 90%, transparent); }
+.u3-go-prizes .u3-ga-ptext { flex: 1 1 auto; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--sp-4); }
+.u3-go-prizes .u3-ga-ptext em { margin-inline-start: auto; text-align: end; }
+.u3-go-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-go-next { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text-secondary); font-size: var(--fs-body); }
+.u3-go-next b { font-family: var(--font-num); color: var(--text-primary); }
+body[data-size="compact-port"] .u3-go-in, body[data-size="medium"] .u3-go-in { padding: var(--sp-4); gap: var(--sp-3); }
+body[data-size="compact-port"] .u3-go-stat { max-width: none; min-width: 0; min-height: calc(var(--card-tile) * 1.05); padding: var(--sp-3) var(--sp-2); }
+body[data-size="compact-port"] .u3-go-stat span { font-size: var(--fs-small); }
+body[data-size="compact-port"] .u3-go-stat b { font-size: var(--fs-stat); white-space: normal; }
+body[data-size="compact-port"] .u3-go-title h1 { font-size: var(--fs-title); }
+body[data-size="compact-port"] .u3-go-stats { width: 100%; gap: var(--sp-2); }
+body[data-size="compact-port"] .u3-go-prizes .u3-ga-ptext, body[data-size="compact-port"] .u3-go-prizes .u3-ga-ptext { flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--sp-half); }
+body[data-size="compact-port"] .u3-go-prizes .u3-ga-ptext em { margin-inline-start: 0; text-align: start; }
+body[data-size="compact-port"] .u3-go-next > span { display: none; }
+/* a short panel (a 375 x 667 phone): the tiles and the rows take only their text, the prize odds sit at the right of the row */
+@container (max-height: 26rem) or ((max-height: 38rem) and (max-width: 32rem)) {
+  body[data-size] .u3-go-in { padding: var(--sp-3); gap: var(--sp-2); }
+  body[data-size] .u3-go-head { gap: var(--sp-2); }
+  body[data-size] .u3-go-title { gap: var(--sp-1); }
+  body[data-size] .u3-go-title h1 { font-size: var(--fs-heading); }
+  body[data-size] .u3-go-stats { gap: var(--sp-1); }
+  body[data-size] .u3-go-stat { flex: 1 1 auto; min-height: 0; gap: var(--sp-1); padding: var(--sp-2) var(--sp-1); }
+  body[data-size] .u3-go-stat b { font-size: var(--fs-small); white-space: nowrap; }
+  body[data-size] .u3-go-prizes { gap: var(--sp-2); }
+  body[data-size] .u3-go-prizes .u3-ga-ph .u3-dg-h { font-size: var(--fs-stat); }
+  body[data-size] .u3-go-prizes .u3-ga-plist { gap: var(--sp-1); grid-auto-rows: minmax(min-content, 1fr); }
+  body[data-size] .u3-go-prizes .u3-ga-prize { padding: var(--sp-1) var(--sp-3); }
+  body[data-size] .u3-go-prizes .u3-ga-ptext b { font-size: var(--fs-small); }
+}
+
+/* a very short phone (375 x 667 with the safe frame): the same parts, tighter */
+@container (max-height: 33rem) and (max-width: 32rem) {
+  body[data-size] .u3-go-in { padding: var(--sp-2); gap: var(--sp-1); }
+  body[data-size] .u3-go-stat { padding: var(--sp-1); gap: var(--u3-none); }
+  body[data-size] .u3-go-prizes { gap: var(--sp-1); }
+  body[data-size] .u3-go-prizes .u3-ga-prize { padding: var(--sp-half) var(--sp-3); }
+  body[data-size] .u3-go-prizes .u3-ga-ptext { gap: var(--u3-none); }
+}
+
+/* ---- the Top 3 pane on a phone: the best and the Top 3 panels share the height, their text centered ---- */
+#u3GaPane-top.u3-dg-tabpanel > .u3-dg-panel { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+.u3-ga.is-tight .u3-dg-tabpanel > .u3-dg-panel { padding: var(--sp-2) var(--sp-3); }
+.u3-ga.is-tight .u3-dg-mini { margin-top: var(--sp-1); }
+.u3-ga.is-tight .u3-dg-top { margin: var(--sp-1) 0; }
+
+/* tight: the squad row keeps the role labels whole (a slot is at least as wide as its label), with a narrow gap */
+body[data-size] .u3-ga.is-tight .u3-dg-slots__in { gap: var(--sp-1); --dg-label: calc(var(--fs-label) * 1.2 + var(--sp-1));
+  --dg-w: min(calc((100cqw - 4 * var(--sp-1)) / 5), calc((100cqh - var(--dg-label)) / var(--card-ratio))); }
+body[data-size] .u3-ga.is-tight .u3-dg-slot { min-width: max-content; }
+body[data-size] .u3-ga.is-tight .u3-dg-slot__label { line-height: var(--lh-label); }
+
+/* the stack with tabs (a narrow tall tablet): the timer and the theme share a row, the tab panel follows */
+.u3-ga-trow { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.u3-ga-trow > .u3-dg-panel { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.u3-ga--stack .u3-dg-pane { flex: none; }
+.u3-ga--stack .u3-dg-below.is-tabs { gap: var(--sp-3); }
+/* the Top 3 pane on a phone: larger type, so the two panels fill their share */
+#u3GaPane-top .u3-dg-h { font-size: var(--fs-title); }
+#u3GaPane-top .u3-dg-toph .u3-dg-h { font-size: var(--fs-heading); }
+#u3GaPane-top .u3-dg-mini dd { font-size: var(--fs-heading); }
+#u3GaPane-top .u3-dg-top li { font-size: var(--fs-stat); padding: var(--sp-3); }
+.u3-ga--stack .u3-dg-below.is-tabs { grid-template-columns: minmax(0, 1fr); }
+.u3-ga--stack .u3-dg-pane .u3-ga-plist { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.u3-ga--stack .u3-dg-pane .u3-ga-prize { padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
+.u3-ga--stack .u3-dg-pane .u3-ga-ptext b { font-size: var(--fs-body); }
+.u3-ga--stack .u3-dg-pane { gap: var(--sp-2); }
+.u3-ga--stack .u3-dg-pane .u3-ga-ptext b { font-size: var(--fs-small); }
+.u3-ga--stack .u3-dg-pane .u3-ga-ph .u3-dg-h { font-size: var(--fs-stat); }
+.u3-ga--stack .u3-dg-pane, .u3-ga-trow > .u3-dg-panel { padding: var(--sp-3); }
+.u3-ga--stack .u3-dg-pane .u3-ga-plist { gap: var(--sp-2); }
+.u3-ga--stack:has(.is-tabs) .u3-dg-main { padding: var(--sp-3) var(--sp-4); gap: var(--sp-2); }
+#u3GaPane-top .u3-btn { flex: none; }
+/* a medium panel: the tile values one step smaller, so "4F Room 1" stays whole */
+@container (max-width: 42rem) {
+  body[data-size] .u3-go-stat b { font-size: var(--fs-stat); }
+}
+/* a short wide panel (a landscape window): the rank pills one step smaller, so the four rows fit */
+@container (max-height: 26rem) {
+  body[data-size] .u3-go-prizes .u3-ga-rk { height: calc(var(--chip-md) * 0.8); min-width: calc(var(--chip-md) * 0.8); }
+  body[data-size] .u3-go-prizes .u3-ga-prize { padding-block: var(--sp-half); }
+}

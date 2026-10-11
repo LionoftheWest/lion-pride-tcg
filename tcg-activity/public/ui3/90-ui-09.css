@@ -1,0 +1,27 @@
+/* ==== UI-09 The card viewer (3D) with swipe arrows: v3 (body.ui-v3), the card alone (#viewer.card-only) ====
+   Approved 2026-10-05 (UI-09/approved, review-1). The viewer keeps its card size (P0: the card is as wide as 62% of the short side, at most
+   the side width), gets the library scrim over the Card Detail under it (V1), the IconButton for close and the arrows (V3, V4: 40 px on a pointer,
+   44 px on touch), the arrows beside the card, and the card shadow --elev-3 (V5). The card with its info (the Hunt and Dungeon pickers) is
+   90-ui-09-viewer-fit.css (UI-64, D-131). Flag off: none of this applies. */
+body.ui-v2.ui-v3[data-size] #viewer.card-only {
+  background: var(--scrim);
+  --uv-w: min(var(--sheet-side-w), 62vmin);                                /* the card width (P0) */
+  --uv-cw: min(var(--uv-w), calc(100cqh / var(--card-ratio)));            /* ... and the whole card inside the frame height */
+  --uv-ch: calc(var(--uv-cw) * var(--card-ratio));
+}
+body.ui-v2.ui-v3 #viewer.card-only .viewer-stage { width: var(--uv-cw); border-radius: calc(var(--uv-cw) * var(--rad-card-ratio)); box-shadow: var(--elev-3); }
+body.ui-v2.ui-v3 #viewer.card-only .card3d .face { border-radius: calc(var(--uv-cw) * var(--rad-card-ratio)); }
+body.ui-v2.ui-v3 #viewer.card-only .card3d:not([class*="atier-"]) { filter: none; }   /* the ring and glow of an ascended card stay */
+
+/* the buttons: IconButton (40 on a pointer, 44 on touch), inset one step from the frame */
+body.ui-v2.ui-v3 #viewer :is(#viewer-close, .viewer-nav) { width: var(--ctl-icon); height: var(--ctl-icon); padding: 0; margin: 0; border-radius: var(--rad-md);
+  border: var(--bw-1) solid var(--border-strong); background: var(--surface-2); color: var(--text-secondary); font-size: inherit; }
+body[data-input="coarse"].ui-v2.ui-v3 #viewer :is(#viewer-close, .viewer-nav) { width: var(--hit); height: var(--hit); }
+@media (hover: hover) { body.ui-v2.ui-v3 #viewer :is(#viewer-close, .viewer-nav):hover:not(:disabled) { color: var(--text-primary); background: var(--surface-3); } }
+body.ui-v2.ui-v3 #viewer .viewer-nav:disabled { opacity: var(--item-disabled); cursor: not-allowed; }
+body.ui-v2.ui-v3 #viewer .viewer-nav { top: 50%; margin-top: 0; transform: translateY(-50%); }
+body.ui-v2.ui-v3 #viewer .viewer-nav.hidden { display: none; }
+
+/* the arrows sit beside the card, not over it, and never closer to the edge than the safe frame */
+body.ui-v2.ui-v3 #viewer.card-only .viewer-nav.prev { left: max(calc(var(--u3-sa-l) + var(--sp-3)), calc(50% - var(--uv-cw) / 2 - var(--sp-4) - var(--hit))); right: auto; }
+body.ui-v2.ui-v3 #viewer.card-only .viewer-nav.next { right: max(calc(var(--u3-sa-r) + var(--sp-3)), calc(50% - var(--uv-cw) / 2 - var(--sp-4) - var(--hit))); left: auto; }

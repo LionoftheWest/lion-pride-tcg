@@ -1,6 +1,16 @@
 import { thumb } from './thumb.js';
 import { every } from './poll.js';
 import { reduceEffects } from './ui3/settings.js';
+import { bannerOf, refundText } from './ui3/effects.js';
+import { pushBanner, openNotice } from './ui3/play-window.js';
+
+const isV3 = () => document.body.classList.contains('ui-v3');
+// The v3 profile Boon / Prank buttons (UI-28): the Boons tab module sets the handler, so that this file needs no import of it.
+let profilePlay = null;
+export const setProfilePlay = (fn) => { profilePlay = fn; };
+// The banners and the refund popup wait for the flags (main.js): the v3 class on the body decides which kind shows (UI-28).
+let released = false;
+export function releaseEffects() { released = true; showIncoming(); showRefunds(); }
 // Card effects (boons, pranks, neutral) in the Activity. Design: docs/boons-and-pranks.md.
 // Everything here is driven by /api/effects/*; the server returns {enabled:false} when
 // the flag is off, and then this module shows nothing and changes nothing.
@@ -58,7 +68,7 @@ async function refreshEffects() {
     if (!s || !s.enabled) { state.enabled = false; return; }
     state = s;
     applyBodyFx();
-    showIncoming();
+    if (released) { showIncoming(); showRefunds(); }
   } catch { /* keep the previous state */ }
 }
 
@@ -204,6 +214,7 @@ function openPicker(card) {
 export function playOnMember(kind, target) {
   const { el, esc } = deps;
   if (!state.enabled) return;
+  if (isV3() && profilePlay) { profilePlay(kind, target); return; }   // UI-28: the Card picker with the member chosen
   const mine = (deps.ownedCards?.() || []).filter((c) => c.effect?.primitive && scaled(c).kind === kind);
   const m = el('effectPick');
   m.className = 'open';
@@ -347,6 +358,7 @@ function showIncoming() {
   const { el, esc, apiPost } = deps;
   const fresh = (state.incoming || []).filter((p) => !shown.has(p.id));
   if (!fresh.length) return;
+  if (isV3()) { showIncomingV3(fresh); return; }
   const host = el('effectBanners');
   for (const p of fresh.reverse()) {
     shown.add(p.id);
@@ -376,6 +388,40 @@ function showIncoming() {
     if ((p.primitive === 'confetti' || p.primitive === 'gift_wrap') && !['blocked', 'decoyed', 'delayed'].includes(p.outcome) && !reduceEffects()) confetti(p.card?.image_url);
   }
   apiPost('/api/effects/seen', { ids: fresh.map((p) => p.id) }).catch(() => {});
+}
+
+// v3 (UI-28): the incoming banners are the library Banner under the top bar (src/ui3/play-window.js), the name color row stays.
+function showIncomingV3(fresh) {
+  const { apiPost, esc } = deps;
+  for (const p of [...fresh].reverse()) {
+    shown.add(p.id);
+    const pickColor = p.primitive === 'color_role' && p.outcome === 'applied';
+    const extra = pickColor ? `<span class="u3-fxb__colors">${NAME_COLORS.map((c) => `<button type="button" class="u3-fxb__color" data-color="${c}" style="--c:${c}" aria-label="Name color ${c}"></button>`).join('')}</span>` : '';
+    pushBanner({ ...bannerOf(p), imgSrc: p.card?.image_url ? thumb(p.card.image_url) : '' }, {
+      extra, ms: pickColor ? 0 : 12000,
+      wire: pickColor ? (node) => node.querySelector('.u3-fxb__colors').addEventListener('click', async (e) => {
+        const b = e.target.closest('.u3-fxb__color');
+        if (!b) return;
+        const r = await apiPost('/api/effects/color', { playId: p.id, color: b.dataset.color }).catch(() => null);
+        if (r?.ok) { node.querySelector('.u3-fxb__colors').innerHTML = `<b>${esc('Color saved')}</b>`; setTimeout(() => node.querySelector('[data-fxbclose]')?.click(), 1800); }
+      }) : null,
+    });
+    if ((p.primitive === 'confetti' || p.primitive === 'gift_wrap') && !['blocked', 'decoyed', 'delayed'].includes(p.outcome) && !reduceEffects()) confetti(p.card?.image_url);
+  }
+  apiPost('/api/effects/seen', { ids: fresh.map((p) => p.id) }).catch(() => {});
+}
+
+// v3 (UI-28): a refunded play of mine (the bot could not do it on Discord): one popup says why, then the next one.
+const refundShown = new Set();
+function showRefunds() {
+  if (!isV3()) return;
+  const next = (state.refunds || []).find((r) => !refundShown.has(r.id));
+  if (!next) return;
+  refundShown.add(next.id);
+  openNotice({ title: 'Play refunded', line: refundText(next) }, () => {
+    deps.apiPost('/api/effects/refunds/seen', { ids: [next.id] }).catch(() => {});
+    showRefunds();
+  });
 }
 
 // Card art bursts over the screen (confetti + gift wrap).
@@ -420,8 +466,8 @@ export const effectReadyIn = (card) => readyIn(card);
 export const EFFECT_KIND = { label: KIND_LABEL, icon: KIND_ICON };
 export const effectError = (code) => errText(code, state.caps) || 'That did not work. Try again.';
 /** Play a card on a member. Returns the server result; refreshes cooldowns + effects. */
-export async function playCard(card, targetId) {
-  const r = await deps.apiPost('/api/effects/play', { cardId: card.id, targetId }).catch(() => ({ ok: false }));
+export async function playCard(card, targetId, choice = null) {
+  const r = await deps.apiPost('/api/effects/play', { cardId: card.id, targetId, ...(choice != null ? { choice } : {}) }).catch(() => ({ ok: false }));
   if (r?.ok) {
     deps.status?.('playing', { c: [Number(card.id)].filter(Boolean), t: card.effect?.name || card.name }); // my Live in voice tile
     deps.SFX?.play?.(r.kind === 'prank' ? 'rare' : 'reveal'); await refreshEffects();

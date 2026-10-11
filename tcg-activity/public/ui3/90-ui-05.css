@@ -1,0 +1,94 @@
+/* ==== UI-05 Home carousel (src/ui3/home-slides.js, ui-v2.js paintHeroV3; design repo UI-05/approved; flag ui_v3) ====
+   The hero tile holds one slide (Hunt, Dungeon or Gauntlet) and the slide control under it. The Hunt slide is UI-03 / UI-04.
+   The Dungeon and Gauntlet slides use the Hunt layout: the text column (info) and the art, side by side on wide frames and
+   stacked on tall frames (measured on the hero tile, not the window). The control: dots on the compact classes and labels on
+   expanded and medium (D-57), chosen by body[data-size]. Every selector starts with .u3-hm-. Tokens only. */
+.u3-hm-car { height: 100%; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; }
+.u3-hm-slide { flex: 1 1 0; min-height: 0; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+.u3-hm-ctl { flex: none; display: flex; align-items: center; justify-content: center; gap: var(--sp-3); padding: var(--sp-1) var(--hm-pad) var(--hm-pad); }
+.u3-home.is-compact .u3-hm-ctl, body[data-size="compact-port"] .u3-hm-ctl { padding-block: var(--u3-none) var(--sp-1); }
+
+/* ---- the control ---- */
+/* a dot is a 44 px button (9.1; the check measures the button, not a ::after) that draws a small dot; the dots are 44 px apart */
+.u3-hm-dots { display: flex; align-items: center; }
+.u3-hm-pip { position: relative; flex: none; box-sizing: border-box; width: var(--hit); height: var(--hit); padding: var(--u3-none); border: 0; border-radius: var(--rad-md); background: none; cursor: pointer; display: grid; place-items: center; }
+.u3-hm-pip::before { content: ''; width: var(--dot); height: var(--dot); border-radius: var(--rad-pill); background: var(--border-strong); transition: width var(--dur-base) var(--ease-out); }
+.u3-hm-pip.is-on::before { width: var(--sp-6); background: var(--gold); }
+.u3-hm-pip:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+.u3-hm-pip .u3-dot { position: absolute; left: calc(50% + var(--sp-1)); top: calc(50% - var(--sp-3)); }
+.u3-hm-labels { display: none; }
+body[data-size="expanded"] .u3-hm-labels, body[data-size="medium"] .u3-hm-labels { display: inline-flex; }
+body[data-size="expanded"] .u3-hm-dots, body[data-size="medium"] .u3-hm-dots { display: none; }
+.u3-hm-labels .u3-seg__item { gap: var(--sp-2); }
+.u3-hm-labels .u3-seg__item.is-active { color: var(--gold); }
+body[data-input="coarse"] .u3-hm-labels .u3-seg__item { min-height: var(--hit); min-width: var(--hit); justify-content: center; }
+
+/* ---- the Dungeon and Gauntlet slides ---- */
+.u3-hm-sb { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); cursor: pointer; }
+.u3-hm-sb > .u3-hm-sinfo { grid-column: 1; grid-row: 1; }
+.u3-hm-sb > .u3-hm-sart { grid-column: 2; grid-row: 1; }
+@container (aspect-ratio < 1.35) {
+  .u3-hm-sb { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .u3-hm-sb > .u3-hm-sart { grid-column: 1; grid-row: 1; }
+  .u3-hm-sb > .u3-hm-sinfo { grid-column: 1; grid-row: 2; }
+}
+.u3-hm-sart { min-width: 0; min-height: 0; box-sizing: border-box; padding: var(--hm-pad); display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; }
+/* wide frames: the picture fills the art column (cropped at the sides, as the frames); tall frames: the whole picture at its own shape, centered */
+/* the real lobby picture (a background, so a crop is not a clipped child). It is 1408 x 768 with 52 black rows on top: it is drawn 768 / 716 times the box height, bottom aligned, so the black rows fall outside the box */
+.u3-hm-simg { box-sizing: border-box; width: 100%; height: 100%; border-radius: var(--rad-lg); border: var(--bw-1) solid var(--border-strong);
+  background: url("/dungeon/room.webp") 50% 100% / auto calc(100% * 768 / 716) no-repeat var(--bg-base); }
+@container (aspect-ratio < 1.35) {
+  .u3-hm-sb { grid-template-rows: minmax(auto, 1fr) auto; }
+  .u3-hm-sart { min-height: calc(var(--card-squad) * 1.5); }
+  .u3-hm-simg { width: auto; max-width: 100%; height: 100%; aspect-ratio: 1408 / 716; }   /* the picture's shape when the box has the room; narrower, it is cropped at the sides */
+  .u3-hm-sb.is-tight .u3-hm-sart { min-height: var(--card-squad); }
+  .u3-hm-sb.is-tighter .u3-hm-sart { min-height: var(--u3-none); }   /* the last step: the picture takes what the text leaves */
+}
+.u3-hm-sline .u3-hm-topt { overflow-wrap: anywhere; }
+.u3-hm-sb.is-tighter .u3-hm-sinfo { padding-block: var(--u3-none); }
+.u3-hm-sb.is-tighter .u3-hm-sline { padding-inline: var(--sp-2); }
+.u3-hm-sb.is-nolabel .u3-hm-topl { display: none; }
+.u3-hm-sb.is-noart { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.u3-hm-sb.is-noart > .u3-hm-sinfo { grid-column: 1; grid-row: 1; }
+.u3-hm-sb.is-noart > .u3-hm-sart { display: none; }
+@container (aspect-ratio >= 1.35) { .u3-hm-sb.is-nolabel:not(.is-noart) { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }   /* a narrow wide frame: the text column gets more of the width than the picture */
+.u3-hm-strow { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.u3-hm-sb .u3-hm-title { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-hm-sb .u3-hm-title > .u3-ico { flex: none; color: var(--gold); }
+.u3-hm-sb .u3-hm-title > span { min-width: 0; }
+.u3-hm-date { flex: none; box-sizing: border-box; padding: var(--sp-1) var(--sp-2); border-radius: var(--rad-sm); background: var(--surface-2); border: var(--bw-1) solid var(--border); color: var(--text-secondary);
+  font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; white-space: nowrap; }
+.u3-hm-stimer { align-items: center; }
+.u3-hm-stimer > .u3-ico { flex: none; color: var(--gold); }
+.u3-hm-rule { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }
+.u3-hm-rl { color: var(--gold); font-size: var(--fs-label); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; line-height: var(--lh-label); }
+.u3-hm-rule > b { font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); overflow-wrap: break-word; }
+/* the Top 3 of the mode, in the text column and never over the art (D-58); one line where 3 rows do not fit */
+.u3-hm-sboard { box-sizing: border-box; align-self: stretch; min-width: 0; min-height: var(--hit); display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--rad-md); border: var(--bw-1) solid var(--border); background: var(--surface-1); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.u3-hm-sboard:focus-visible, .u3-hm-sline:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+@media (hover: hover) { .u3-hm-sboard:hover { border-color: var(--border-strong); } }
+.u3-hm-sbh { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-1) var(--sp-3); color: var(--text-secondary); font-size: var(--fs-small); }
+.u3-hm-sbt { color: var(--text-secondary); font-size: var(--fs-caption); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; line-height: var(--lh-caption); }
+.u3-hm-sbk { color: var(--text-secondary); font-size: var(--fs-small); text-align: center; }
+.u3-hm-sbn { min-width: 0; font-size: var(--fs-small); font-weight: var(--fw-small-strong); overflow-wrap: break-word; }
+.u3-hm-sbd { font-style: normal; font-family: var(--font-num); font-size: var(--fs-small); color: var(--gold); }
+.u3-hm-sbe { margin: var(--u3-none); color: var(--text-secondary); font-size: var(--fs-small); overflow-wrap: break-word; }
+.u3-hm-sbl { list-style: none; margin: var(--u3-none); padding: var(--u3-none); display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-hm-sbr { min-width: 0; display: grid; grid-template-columns: var(--sp-5) minmax(0, 1fr) auto; align-items: center; gap: var(--sp-2); }
+.u3-hm-sb .u3-hm-sline { display: none; }
+.u3-hm-sb.is-line .u3-hm-sboard { display: none; }
+.u3-hm-sb.is-line .u3-hm-sline { display: inline-flex; }
+.u3-hm-sinfo { gap: var(--sp-3); }
+body[data-size="compact-land"] .u3-hm-sinfo, body[data-size="compact-port"] .u3-hm-sinfo { gap: var(--sp-2); }
+body[data-size="compact-land"] .u3-hm-sb > .u3-hm-sinfo { padding: var(--sp-2) var(--sp-3); }
+/* is-tight (measured: fitSlide): the text column is taller than the tile; smaller type, gaps and art padding, then once more */
+.u3-hm-sb.is-tight .u3-hm-sinfo { gap: var(--sp-1); padding-block: var(--sp-1); }
+.u3-hm-sb.is-tight .u3-hm-title { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+.u3-hm-sb.is-tight .u3-hm-chip { min-height: var(--chip-sm); }
+.u3-hm-sb.is-tight .u3-hm-stimer b { font-size: var(--fs-stat); line-height: var(--lh-stat); }
+.u3-hm-sb.is-tight .u3-hm-sart { padding-block: var(--sp-1); }
+.u3-hm-sb.is-tighter .u3-hm-sinfo { gap: var(--sp-half); }
+.u3-hm-sb.is-tighter .u3-hm-chip { letter-spacing: var(--u3-none); }
+.u3-hm-sb.is-tighter .u3-hm-rule > b { font-size: var(--fs-small); line-height: var(--lh-small); }
+.u3-hm-sb.is-tighter .u3-hm-rl { font-size: var(--fs-label); }

@@ -17,7 +17,7 @@ import { setFlair, flairHTML } from './flair.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable } from './effects-ui.js';
+import { releaseEffects, initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable, badgeOf } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
@@ -33,12 +33,15 @@ import { createLoader, paintLoader, writeHint } from './ui3/loader.js';
 import { startShell } from './ui3/shell.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import { fitViewer, watchViewerFit } from './ui3/viewer-fit.js';
+import { styleViewerButtons, spendClasses } from './ui3/viewer.js';
 import { fmtFor } from './ui3/number.js';
 import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
 import { button as ui3Button, iconButton as ui3IconButton, pager as ui3Pager } from './ui3/components.js';
 import { button as u3Button, iconButton as u3IconButton } from './ui3/components.js';
-import { initSettingsWindow } from './ui3/settings.js';
+import { initSettingsWindow, reduceEffects } from './ui3/settings.js';
+import { startAvatarFx } from './ui3/avatarfx.js';
+import { initLeaderboardWindow, openLeaderboardWindow } from './ui3/leaderboard.js';
 import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
 import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, rarePacks, newMark, PACK_RATIO, PACK_GAP_MS, STACK_LAYERS, stackTimeline, stackDepth } from './ui3/pack-reveal.js';
 import { counter as u3Counter } from './ui3/components.js';
@@ -250,6 +253,7 @@ let dungeon = false; // the Dungeon Run (dungeon.sql), from /api/flags (DUNGEON_
 let shards = false;  // Shards + the Shop (shards_shop.sql), from /api/flags (SHARDS_USERS first)
 let hall = false;    // wishlists + the Trading Hall + auctions, from /api/flags (HALL_USERS first)
 let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
+let tradeRequest = false; // trade requests + full proposals (trade_request.sql, FEATURE_TRADE_REQUEST), from /api/flags (OFF = no change)
 let uiV3 = false;     // the v3 screens (settings.ui_v3, Nathan only), from /api/flags (flag OFF = the v2 screens)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
 let meUser = null;  // { id, name } of the signed-in member
@@ -356,12 +360,14 @@ async function main() {
   flags = flags || {};
   mobileUi = !!flags?.mobile;
   trade2 = !!flags?.trade2;
+  tradeRequest = !!flags?.tradeRequest;
   hall = !!flags?.hall;
   shards = !!flags?.shards;
   dungeon = !!flags?.dungeon;
   uiV3 = !!flags?.uiV3;
   if (flags?.uiV3 !== undefined) writeHint(localStorage, uiV3); // UI-56: the next start draws the v3 loader. No answer (3 failed tries) keeps the old hint.
   if (uiV3) startV3();
+  releaseEffects();   // the incoming banners of the effects (v2 or v3 kind, UI-28)
   // A new member's first login gave them the welcome packs: show them now.
   if (flags.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   startV2();
@@ -371,7 +377,7 @@ async function main() {
   if (flags.reports) initReport();
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
-  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
+  if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); startAvatarFx({ badgeOf, reduce: reduceEffects }); initLeaderboardWindow({ api, user: () => meUser, avatarHTML, nameBadge, openMember }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
 }
 
 // The v3 foundation (UI-00): only for the members in settings.ui_v3 (flags.uiV3). It loads the component CSS and writes
@@ -384,7 +390,14 @@ function startV3() {
   if (link) link.media = 'all';
   else { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/ui3.css'; l.dataset.ui3 = '1'; document.head.appendChild(l); }
   ldr3Stop?.(); // the loader's own size watcher (one watcher only)
-  watchSizeClass(window, () => repaintShards());
+  let sizeWas = document.body.dataset.size;
+  watchSizeClass(window, (cls) => {
+    repaintShards();
+    // UI-59: the tiny window shows the small live view of Home; entering or leaving it repaints Home
+    const tinyChange = (cls === 'tiny') !== (sizeWas === 'tiny');
+    sizeWas = cls;
+    if (tinyChange && document.body.classList.contains('ui-v3')) show(cls === 'tiny' ? 'home' : currentView);   // flag off: unchanged
+  });
   prefetchSets(api); // the Open window (UI-33) shows the sets at once
 }
 
@@ -411,7 +424,7 @@ function startV2() {
   }
   initV2({
     api, apiPost, apiData, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
-    playOnMember, effectsEnabled, trade2: () => trade2, hallOn: () => hall, openTrade: openTradeWith,
+    playOnMember, effectsEnabled, trade2: () => trade2, tradeRequest: () => tradeRequest, hallOn: () => hall, openTrade: openTradeWith,
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
     features: () => features, user: () => meUser, currentView: () => currentView,
     watchable: (id) => Boolean(watchableOpen(id)), watchOpen, sfx: (n) => SFX.play(n),
@@ -2130,11 +2143,20 @@ function huntSelectV3HTML(d) {
       <div class="u3-hs-slotbox"><ol class="u3-hs-slots" aria-label="Your squad">${slots}</ol></div>
     </section></div>`;
 }
+// D-166: the Top 3 label row carries the trophy icon button of the Menu grid; it opens the Leaderboard window on the Hunt tab
+function huntTopHead() {
+  return `<div class="u3-hs-toprow"><span class="u3-label">Top 3</span>${ui3IconButton({ icon: 'trophy', label: 'Leaderboard', size: 'md', data: { hboard: '1' } })}</div>`;
+}
+function wireHuntTopBtn(box) {
+  // the squad stage is itself a button (boss details): the trophy button must not reach it
+  box?.addEventListener('click', (e) => { if (e.target.closest('[data-hboard]')) { e.stopPropagation(); openLeaderboardWindow('hunt'); } });
+  box?.addEventListener('keydown', (e) => { if (e.target.closest('[data-hboard]')) e.stopPropagation(); });
+}
 function huntTopHTML() {
   if (!huntTop) return '';
   const rows = huntTop.slice(0, 3);
-  if (!rows.length) return `<span class="u3-label">Top 3</span><p class="u3-hs-none">No damage dealt yet.</p>`;
-  return `<span class="u3-label">Top 3</span><ol class="u3-hs-board">${rows.map((p, i) => `<li><span class="u3-hs-rk">${i + 1}</span>${avatarHTML(p.player_id, p.username, 'xs')}<b>${esc(p.username || 'Member')}</b><em>${huntNum(p.damage)}</em></li>`).join('')}</ol>`
+  if (!rows.length) return `${huntTopHead()}<p class="u3-hs-none">No damage dealt yet.</p>`;
+  return `${huntTopHead()}<ol class="u3-hs-board">${rows.map((p, i) => `<li><span class="u3-hs-rk">${i + 1}</span>${avatarHTML(p.player_id, p.username, 'xs')}<b>${esc(p.username || 'Member')}</b><em>${huntNum(p.damage)}</em></li>`).join('')}</ol>`
     + `<p class="u3-hs-line">Top hunter: <b>${esc(rows[0].username || 'Member')}</b> · ${huntNum(rows[0].damage)}</p>`;
 }
 function wireHuntV3() {
@@ -2148,8 +2170,10 @@ function wireHuntV3() {
     el('main').innerHTML = huntHTML(huntState);
     wireHunt(); mountBossFor(huntState.hunt); paintTeam(); startHuntTicker();
   });
+  wireHuntTopBtn(el('u3HsTop'));
   fitHuntV3(main);
-  api('/api/hunt/leaderboard').then((r) => { huntTop = r?.leaders || []; const box = el('u3HsTop'); if (box) { box.innerHTML = huntTopHTML(); fitHuntV3(el('main')); } }).catch(() => { huntTop = []; });
+  api('/api/hunt/leaderboard').then((r) => { huntTop = r?.leaders || []; const box = el('u3HsTop'); if (box) { box.innerHTML = huntTopHTML(); fitHuntV3(el('main')); } })
+    .catch(() => { huntTop = []; const box = el('u3HsTop'); if (box) { box.innerHTML = huntTopHTML(); fitHuntV3(el('main')); } });
 }
 // No scroll: chips that do not fit fold into "+N"; a stage too short for the Top 3 board shows the one-line form (E7).
 function fitHuntV3(main) {
@@ -2186,8 +2210,8 @@ function restingV3HTML(d) {
   const passives = (Array.isArray(p?.list) && p.list.length ? p.list : p?.kind ? [{ kind: p.kind, label: p.label }] : [])
     .map((x) => `<span class="u3-bw-passive">${ui3Icon('skull', { size: 'sm' })}${esc(x.label || String(x.kind).charAt(0).toUpperCase() + String(x.kind).slice(1))}</span>`).join('');
   const board = (d.lastBoard || []).slice(0, 3);
-  const top = board.length ? `<span class="u3-label">Top 3</span><ol class="u3-hs-board">${board.map((r, i) => `<li><span class="u3-hs-rk">${i + 1}</span>${avatarHTML(r.player_id, r.username, 'xs')}<b>${esc(r.username || 'Member')}</b><em>${huntNum(r.damage)}</em></li>`).join('')}</ol>`
-    + `<p class="u3-hs-line">Top hunter: <b>${esc(board[0].username || 'Member')}</b> · ${huntNum(board[0].damage)}</p>` : '';
+  const top = board.length ? `${huntTopHead()}<ol class="u3-hs-board">${board.map((r, i) => `<li><span class="u3-hs-rk">${i + 1}</span>${avatarHTML(r.player_id, r.username, 'xs')}<b>${esc(r.username || 'Member')}</b><em>${huntNum(r.damage)}</em></li>`).join('')}</ol>`
+    + `<p class="u3-hs-line">Top hunter: <b>${esc(board[0].username || 'Member')}</b> · ${huntNum(board[0].damage)}</p>` : `${huntTopHead()}<p class="u3-hs-none">No damage dealt yet.</p>`;
   const feed = (live.attacks || []).slice(0, 6);
   return `<div class="u3-hunt"><section class="u3-hs-stage u3-rest">
     <div class="u3-hs-text">
@@ -2197,7 +2221,7 @@ function restingV3HTML(d) {
       <div class="u3-hs-hp u3-rest-bar" role="img" aria-label="${won ? 'Defeated' : `${pct}% HP left`}"><i style="--hp:${won ? 0 : pct}%"></i><span>${won ? 'Defeated' : `${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP left`}</span></div>
       <div class="u3-rest-row"><div class="u3-rest-next"><span class="u3-label">Next boss in</span>${next ? cdSpan(next, '', 'u3-rest-timer') : '<b class="u3-rest-timer">Soon</b>'}</div>
         <div class="u3-rest-dmg"><span class="u3-label">Your damage</span><b>${huntNum((d && d.myLast) || 0)}</b></div></div>
-      ${top ? `<div class="u3-hs-top">${top}</div>` : ''}
+      <div class="u3-hs-top">${top}</div>
     </div>
     <div class="u3-hs-boss"><canvas id="bossCanvas"></canvas></div>
     ${feed.length ? `<aside class="u3-rest-feed"><span class="u3-label">Boss live feed</span><ol class="u3-rest-feedlist">${feed.map((e) => `<li>${bossFeedRow(e)}</li>`).join('')}</ol></aside>` : ''}
@@ -2207,6 +2231,7 @@ function mountRestBossV3(d) {
   const h = d && d.lastResult;
   const cv = el('bossCanvas');
   if (!h || !cv) return;
+  wireHuntTopBtn(el('main').querySelector('.u3-rest .u3-hs-top'));
   try { bossHandle = mountBoss(cv, h.name || 'boss', h.tier, { portrait: true }); if (h.status === 'defeated') bossHandle.defeat(); } catch { bossHandle = null; }
   // No scroll: the oldest feed rows go first (as fitFeedRows), then the board takes the one-line form
   const stage = el('main').querySelector('.u3-rest');
@@ -3018,6 +3043,7 @@ function resolveBossTurn(act) {
 }
 
 async function openHuntBoard() {
+  if (huntV3()) { openLeaderboardWindow('hunt'); return; }   // v3 (UI-66, D-44): the Hunt tab of the one Leaderboard window
   const b = el('board');
   b.className = 'open';
   b.innerHTML =
@@ -3112,6 +3138,7 @@ function openViewer(card, opts = {}) {
   // v3: the viewer opens above the window that asked for it (the Card picker, the boss window): same layer, last in
   // the page (Nathan 2026-10-08: the card details opened under the squad picker)
   if (document.body.classList.contains('ui-v3') && el('viewer') && el('viewer') !== document.body.lastElementChild) document.body.appendChild(el('viewer'));
+  if (document.body.classList.contains('ui-v3')) styleViewerButtons(el('viewer'));   // UI-09: the library IconButton look (src/ui3/viewer.js)
   const list = Array.isArray(opts.list) ? opts.list : [];
   const i = list.findIndex((x) => String(x.id) === String(card.id));
   viewerNav = list.length > 1 && i >= 0 ? { list, i, opts } : null;
@@ -3320,7 +3347,7 @@ function playAscend(tier) {
   card.classList.remove('asc-pop'); void card.offsetWidth; card.classList.add('asc-pop');
   const fx = document.createElement('div');
   fx.className = 'asc-fx';
-  fx.innerHTML = `<div class="asc-flash"></div><div class="asc-ring"></div><div class="asc-ring d2"></div><div class="asc-label">${'★'.repeat(tier)} ${info.name}</div>`;
+  fx.innerHTML = `<div class="asc-flash"></div><div class="asc-ring"></div><div class="asc-ring d2"></div><div class="asc-label">${document.body.classList.contains('ui-v3') ? `★${tier}` : `${'★'.repeat(tier)} ${info.name}`}</div>`;   // D-157: v3 shows the star level, not a tier name
   stage.appendChild(fx);
   const r = stage.getBoundingClientRect();
   const cx = r.width / 2, cy = r.height / 2;
@@ -3354,7 +3381,7 @@ function celebrateAscend(before, after, points) {
     setTimeout(() => {
       if (el('viewer').classList.contains('hidden')) return;
       const b = document.createElement('button');
-      b.className = 'v2-btn gold asc-spend';
+      b.className = document.body.classList.contains('ui-v3') ? spendClasses : 'v2-btn gold asc-spend';   // UI-10: the primary Button in v3
       b.textContent = 'Spend points';
       b.addEventListener('click', closeViewer);
       el('viewer').appendChild(b);
