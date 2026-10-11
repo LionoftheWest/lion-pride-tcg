@@ -435,17 +435,17 @@ measured against the full Lab, not only the 84 Hunt golden fights.
 
 1. Remove the JS combat math (the auto-pick and Team CP call SQL). Delete the old
    simulators. Fix Haste. Attack no longer raises HP (from item 9).
-2.  and  tables. Remove the fixed copies.
+2. `elements` and `passives` tables. Remove the fixed copies.
 3. The Combat Lab, and the golden test for the Dungeon and Gauntlet on the local copy.
-4.  as effect data: the primitives, the triggers, the one fight state shape,
-   the one interpreter , and the 13 effects as rows. The Lab and the golden
+4. `ability_kinds` as effect data: the primitives, the triggers, the one fight state shape,
+   the one interpreter `combat_effect`, and the 13 effects as rows. The Lab and the golden
    fights show no change in play, and the time budget holds. The three CI checks of item 14.
-5. The  view and the Admin page Combat section.
-6. One log: move the readers to , then remove the old logs.
+5. The `combat_sheet` view and the Admin page Combat section.
+6. One log: move the readers to `combat_actions`, then remove the old logs.
 7. Ascension and stat points: the new labels, one power number everywhere, and the Lab
    measurement.
-8. Latent upgrade: the 3 subjects with no ability get one first. Then ,
-   , , the fight support, and the Card Portal field.
+8. Latent upgrade: the 3 subjects with no ability get one first. Then `latent_upgrades`,
+   `subjects.latent`, `latent_unlock_star`, the fight support, and the Card Portal field.
 9. UI-10 stat screen: the updated design first, then the build (explainers and live preview).
 10. The effect builder in the Card Portal, with the Lab result for each new effect.
 
