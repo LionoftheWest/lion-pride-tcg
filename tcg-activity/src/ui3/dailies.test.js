@@ -79,3 +79,12 @@ test('UI-36 off: "Nothing here yet." and no reset chip', () => {
   const t = text(dailiesHTML({ enabled: false }));
   assert.match(t, /Dailies Nothing here yet\./); assert.doesNotMatch(t, /Resets/);
 });
+
+test('a claimed daily shows the packs it paid: paid 0 at the pack limit = only the Shards chip; no field = the reward', () => {
+  const html = (t) => dailiesHTML({ ...VIEW, tasks: [task('voice', { done: true, claimed: true, ...t })] }, { now: NOW });
+  const chips = (h) => (h.match(/u3-dl-chip--paid/g) || []).length;
+  assert.equal(chips(html({ paid: 0 })), 0);
+  assert.match(html({ paid: 0 }), /u3-dl-chip--shards/);
+  assert.equal(chips(html({ paid: 1 })), 1);
+  assert.equal(chips(html({})), 1);                       // an older answer without paid: the reward, as before
+});

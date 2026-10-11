@@ -17,3 +17,11 @@ export function dailyExtras(view, daily) {
   });
   return { ...view, ...(cycle > 0 ? { streak_cycle: cycle } : {}), tasks };
 }
+
+// The toast of a successful claim (r = the claim answer, v = the view BEFORE the claim). At the daily pack limit the claim
+// pays 0 packs and the Shards (shards_dailies_gifts.sql): the line says why no pack came.
+export function claimNote(r, v) {
+  const packs = Number(r?.packs) || 0, shards = Number(r?.shards) || 0;
+  if (!packs && shards && v && (Number(v.earned) || 0) >= (Number(v.cap) || 0)) return 'Daily pack limit reached: Shards claimed.';
+  return [packs ? `+${packs} pack${packs === 1 ? '' : 's'}` : '', shards ? `+${shards} Shards` : ''].filter(Boolean).join(' · ') || 'Claimed';
+}

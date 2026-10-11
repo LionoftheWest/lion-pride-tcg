@@ -35,3 +35,11 @@ test('dailyExtras: an off view or no balance row is returned unchanged', () => {
   assert.equal(dailyExtras(null, DAILY), null);
   assert.equal('streak_cycle' in dailyExtras(v, { chat: 1, chat_bonus: 1 }), false);
 });
+
+import { claimNote } from './dailies-pay.js';
+test('claimNote: at the pack limit the line names the limit; otherwise the packs and Shards', () => {
+  assert.equal(claimNote({ ok: true, packs: 0, shards: 40 }, { earned: 5, cap: 5 }), 'Daily pack limit reached: Shards claimed.');
+  assert.equal(claimNote({ ok: true, packs: 1, shards: 40 }, { earned: 4, cap: 5 }), '+1 pack · +40 Shards');
+  assert.equal(claimNote({ ok: true, packs: 3, shards: 80 }, { earned: 2, cap: 5 }), '+3 packs · +80 Shards');
+  assert.equal(claimNote({ ok: true, packs: 0, shards: 0 }, { earned: 5, cap: 5 }), 'Claimed');
+});
