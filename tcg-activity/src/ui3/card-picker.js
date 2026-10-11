@@ -199,13 +199,15 @@ function paint() {
     ? `<header class="u3-pk__head">${o.head}</header>`
     : `<header class="u3-pk__head"><h2 class="u3-pk__title" id="u3PkT">${o.icon ? icon(o.icon, { size: 'xl' }) : ''}${esc(o.title || 'Squad')}${count}</h2></header>`;
   const kinds = o.kinds ? `<div class="u3-pk__kinds">${segmented(o.kinds.map((k) => ({ id: `kind:${k.id}`, label: k.label, active: cur.values.kind === k.id })), { label: 'Kind' })}</div>` : '';
+  // opts.selInfo(card | null) -> HTML (D-174): the detail of the selected card, in a reserved area (nothing moves when a card is picked)
+  const sel = o.selInfo ? `<div class="u3-pk__sel" aria-live="polite">${o.selInfo(byId().get(cur.sel[0]) || null)}</div>` : '';
   host.innerHTML = `<div class="u3-scrim u3-pk-scrim${cur.shown ? ' is-still' : ''}" data-u3-scrim><section class="u3-pk${o.one ? ' is-one' : ''}${o.cls ? ` ${esc(o.cls)}` : ''}" tabindex="-1" role="dialog" aria-modal="true" ${o.head ? `aria-label="${esc(o.title || 'Cards')}"` : 'aria-labelledby="u3PkT"'} style="--pk-cap:${o.cap};--pk-scols:${o.cap > 5 ? 4 : 3}${cur.slotW ? `;--pk-slot:${cur.slotW}px` : ''}">`
     + head
     + `<div class="u3-pk__close">${iconButton({ icon: 'x', label: 'Close', data: { close: '1' } })}</div>${kinds}`
     + `<div class="u3-pk__slots">${slotsHTML()}</div>`
     + `<div class="u3-pk__tools">${searchField({ value: cur.q, placeholder: document.body.dataset.size === 'compact-land' ? 'Search cards…' : undefined })}${(o.filters || []).length ? button({ label: n ? `Filters (${n})` : 'Filters', icon: 'list-filter', data: { filters: '1' } }) : ''}</div>`
     + `<ul class="u3-pk__grid${(cur.tile || TOKENS['card-tile']) < TOKENS['card-tile'] ? ' is-small' : ''}${o.caption ? ' has-cap' : ''}" aria-label="Cards" style="--pk-cols:${cur.cols || 1};--pk-tile:${cur.tile || TOKENS['card-tile']}px${o.caption ? `;--pk-cap-h:${cur.capH || 0}px` : ''}">${tiles}</ul>`
-    + `<div class="u3-pk__pager">${pager({ page: cur.per ? cur.page + 1 : 1, pages })}</div>`
+    + `<div class="u3-pk__pager">${pager({ page: cur.per ? cur.page + 1 : 1, pages })}</div>${sel}`
     + `<footer class="u3-pk__foot">${checksHTML(st)}<div class="u3-pk__acts">${o.autoPick ? button({ label: 'Auto-pick', disabled: cur.busy, data: { auto: '1' } }) : ''}${clear}${confirm}</div></footer>`
     + `</section></div>${cur.panel ? filterPanelHTML() : ''}${cur.warn ? warnHTML(cur.warn) : ''}`;
   cur.panelShown = !!cur.panel;   // the Filters window fades in once, when it opens (a repaint does not replay it)

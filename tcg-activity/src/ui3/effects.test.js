@@ -1,7 +1,7 @@
 // UI-28 the play flow: the rules and the HTML of the confirm window, the popups and the banners. node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ownerBlocked, ownerBlockText, pollQuestions, playResultText, refundText, bannerOf, confirmHTML, noticeHTML, bannerHTML, todayHTML, OWNER_FORBIDDEN, BANNERS_MAX } from './effects.js';
+import { ownerBlocked, ownerBlockText, pollQuestions, playResultText, refundText, bannerOf, confirmHTML, abilityHTML, abilityChips, noticeHTML, bannerHTML, todayHTML, OWNER_FORBIDDEN, BANNERS_MAX } from './effects.js';
 import { OWNER_FORBIDDEN as SERVER_LIST } from '../../effects.js';
 
 test('the owner list is the list of the server (a card the server refuses must be blocked before the play)', () => {
@@ -73,7 +73,7 @@ test('confirmHTML: kind chip, title, To, On, Plays today, Back left and the play
   assert.match(h, /Play prank/);
   assert.match(confirmHTML({ ...view, kind: 'boon', polls: [] }), /Play boon/);
   assert.match(confirmHTML({ ...view, kind: 'shield', polls: [] }), /u3-btn--shield/);
-  assert.match(confirmHTML({ ...view, kind: 'neutral', polls: [] }), /Play shield/, 'an unknown kind is a shield');
+  assert.match(confirmHTML({ ...view, kind: 'neutral', polls: [] }), /Play neutral/, 'an unknown kind is neutral (D-174)');
 });
 
 test('confirmHTML: a poll card plays only after a question is picked, and the pick has aria-checked', () => {
@@ -113,4 +113,17 @@ test('bannerHTML: the library banner with a close button labelled for a screen r
   assert.match(h, /data-fxb="b1"/);
   assert.match(h, /aria-label="Close"/);
   assert.match(h, /on you!/);
+});
+
+test('D-174 abilityHTML: the picked card shows its kind (Neutral, never Shield), name, text and chips; the same chips as the confirm window', () => {
+  const o = { kind: 'shield', title: 'Cardboard Cutout', desc: 'A decoy takes the next hit.', chips: [{ icon: 'timer', text: '2h' }, { icon: 'rotate-ccw', text: '24h cooldown' }] };
+  const h = abilityHTML(o);
+  assert.match(h, /Neutral/);
+  assert.doesNotMatch(h, /Shield/);
+  assert.match(h, /Cardboard Cutout/);
+  assert.match(h, /A decoy takes the next hit\./);
+  assert.ok(h.includes(abilityChips(o.chips)) && confirmHTML({ ...o, polls: [] }).includes(abilityChips(o.chips)), 'one source of the chips');
+  assert.match(abilityHTML({ ...o, kind: 'neutral' }), /Neutral/, 'the server kind neutral');
+  assert.match(abilityHTML(null), /Pick a card/);
+  assert.match(abilityHTML({ ...o, title: '<b>x</b>' }), /&lt;b&gt;/);
 });
