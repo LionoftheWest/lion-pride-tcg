@@ -531,6 +531,7 @@ createServer((req, res) => {
     }
     if (c.ci_ach === 'tracks' && p === '/api/achievements') return send(res, 200, JSON.stringify(derivedAchView(c.ci_data === 'long')));   // UI-13
     if (c.ci_ach === 'tracks' && p === '/api/achievements/gallery') return send(res, 200, JSON.stringify(derivedAchGallery(c.ci_data === 'long')));   // UI-13
+    if (p === '/api/achievements') return send(res, 200, JSON.stringify({ enabled: false, rewards: null }));   // tracks off (the live answer of achievement_view + withRewards): the UI-12 list
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
