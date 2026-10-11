@@ -491,7 +491,7 @@ function wireLobbyV3(main) {
   if (!dg.tight && ((slot && slot.getBoundingClientRect().width < TOKENS['card-mini']) || over)) { dg.tight = 1; paint(); return; }
   main.querySelector('[data-start3]')?.addEventListener('click', async () => {
     if (dg.busy || !squadStatus(dg.sel).ok) return;
-    dg.busy = true; paint();
+    dg.busy = true; paint(); mark('room:go');
     let r = null;
     try { r = await ctx().apiPost('/api/dungeon/start', { cards: dg.sel.filter((id) => M.has(id)) }); } catch (e) { r = e?.body || null; }
     dg.busy = false;
@@ -643,7 +643,7 @@ function wireLobby(main) {
   }
   main.querySelector('.dg-start')?.addEventListener('click', async () => {
     if (dg.busy) return;
-    dg.busy = true; paint();
+    dg.busy = true; paint(); mark('room:go');
     let r = null;
     try { r = await ctx().apiPost('/api/dungeon/start', { cards: dg.sel.filter((id) => M.has(id)) }); } catch (e) { r = e?.body || null; }
     dg.busy = false;
@@ -895,6 +895,7 @@ function popCard(main, id, txt, cls = '') {
   u.classList.remove('hurt'); void u.offsetWidth; if (cls === 'hurt') u.classList.add('hurt');
 }
 async function wireFight(main, keepCanvas) {
+  if (!keepCanvas) mark('room:enter');
   const R = run();
   const F = main.querySelector('.dg-fight');
   const canvas = main.querySelector('.dg-canvas');
@@ -909,6 +910,7 @@ async function wireFight(main, keepCanvas) {
       dg.stage.canvas = canvas;
       dg.roomKey = roomKey();
       await dg.stage.setFoes(foesOf(R.state));
+      mark('room:ready');
       { const fs0 = foesOf(R.state).filter((x) => x.hp > 0); loadVoices(fs0); if (fs0.length && (R.state.round || 0) === 0) snd(voiceOf(fs0[0].key).roar, fs0[0].boss ? 0.75 : 0.45); }
       fightUpdate(main, run().state);
     } catch (e) { console.warn('dungeon stage', e); }
@@ -950,6 +952,8 @@ function target(main, i) {
   dg.target = i; ctx().sfx?.('click'); fightUpdate(main, run().state);
 }
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+// Timing marks for the browser measurement (tools/fight-rig.mjs): tap, motion (the first thing that moves), answer, room:go, room:enter, room:ready.
+const mark = (n) => { try { performance.mark(`dg:${n}`); } catch { /* the marks are optional */ } };
 const clone = (o) => JSON.parse(JSON.stringify(o));
 // One action: the hit lands at once, then each monster takes its turn in order with a clear pause,
 // the meter lights the one acting, and every HP bar moves step by step. The server's state is the
@@ -957,9 +961,11 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 async function act(kind, body) {
   if (dg.busy) return false;
   const main = document.getElementById('main');
+  mark('tap');
   dg.busy = true; fightUpdate(main, run().state);
   let r = null;
   try { r = await ctx().apiPost(`/api/dungeon/${kind}`, { ...body, mode: dg.mode }); } catch (e) { r = e?.body || null; }
+  mark('answer');
   if (!r?.ok) { dg.busy = false; fightUpdate(main, run().state); toast(r?.message || 'That did not work.'); return false; }
   const M = mine();
   const before = clone(run().state);
@@ -970,6 +976,7 @@ async function act(kind, body) {
     const t = r.target ?? body.target;
     const f = foes[t];
     // Item 13: the card's element effect from the Raid flies to the monster, then the hit lands.
+    mark('motion');
     if (dg.stage?.cast) { const elx = cardElement(M.get(Number(body.cardId))?.tags) || 'physical'; snd(elx, 0.6); dg.stage.cast(t, elx); await sleep(dg.auto ? 300 : 480); }
     ctx().sfx?.(r.damage > 0 ? 'hit' : 'click');
     dg.stage?.play(t, r.kill ? 'death' : 'hit');
@@ -1017,6 +1024,7 @@ async function act(kind, body) {
     dg.acting = null;
     if (r.burned > 0) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
   } else {
+    mark('motion');
     ctx().sfx?.('click');
     const tx = body.targetCard ? nm(body.targetCard) : foes[body.targetFoe]?.name || 'Monster';
     dg.log.push({ kind: 'sup', who: nm(body.cardId), to: tx, txt: esc(r.effect || '') });
@@ -1412,7 +1420,7 @@ function wireFlips(main) {
 }
 async function choose(pick) {
   if (dg.busy) return;
-  dg.busy = true;
+  dg.busy = true; mark('room:go');
   let r = null;
   try { r = await ctx().apiPost('/api/dungeon/choose', { pick, mode: dg.mode }); } catch (e) { r = e?.body || null; }
   dg.busy = false;
