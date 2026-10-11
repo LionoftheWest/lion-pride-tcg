@@ -69,14 +69,25 @@ export const manageLabel = (n) => `Manage my listings ${n | 0}/5`;
 
 /**
  * When every card fits one page, the largest tile (up to max) that still shows them all in the box: the cards fill the
- * area instead of the 88 px minimum (8.1). Returns { cols, rows, tile } or null when no tile of min or more fits them all.
+ * area instead of the 88 px minimum (8.1). `extra` is the height under each card (the caption, D-175). Returns { cols, rows, tile } or null when no tile of min or more fits them all.
  */
-export function fitAll(n, width, height, gap, { min, max, ratio }) {
+export function fitAll(n, width, height, gap, { min, max, ratio, extra = 0 }) {
   if (!(n > 0 && width > 0 && height > 0)) return null;
   for (let tile = Math.floor(max); tile >= min; tile--) {
     const cols = Math.max(1, Math.floor((width + gap) / (tile + gap)));
     const rows = Math.ceil(n / cols);
-    if (rows * (tile * ratio + gap) - gap <= height) return { cols, rows, tile };
+    if (rows * (tile * ratio + extra + gap) - gap <= height) return { cols, rows, tile };
   }
   return null;
+}
+
+/**
+ * D-175: what the caption of a Hall tile shows (every tile: Wanted, For trade): the member who wants or lists the card and the
+ * copies of it the member owns. Wanted counts the free copies (the ones that can go in a trade, from the Hall answer);
+ * For trade counts the owned copies (the collection already loaded). A tile of the member's own card says "Yours".
+ * Returns { who, yours, n } (n = null when yours).
+ */
+export function tileInfo(view, it, ownedQty = 0) {
+  const yours = view === 'wanted' ? !!it?.yours : it?.mine === true;
+  return { who: String(it?.name || 'A member'), yours, n: yours ? null : Math.max(0, Number(view === 'wanted' ? it?.mine : ownedQty) || 0) };
 }

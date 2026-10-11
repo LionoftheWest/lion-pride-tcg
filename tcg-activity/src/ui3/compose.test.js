@@ -20,11 +20,11 @@ test('free copies: owned less held', () => {
   assert.equal(freeOf(C(1, 'a', 'normal', 2)), 2);
 });
 
-test('the list picker offers tradeable, not Gold, free, not listed cards: best rarity first, then copies', () => {
+test('the list picker offers tradeable, not Gold, free, not listed cards: duplicates first (D-176), then best rarity', () => {
   const cards = [C(1, 'n1', 'normal', 1), C(2, 'fa', 'full_art', 1), C(3, 'g', 'gold', 2), C(4, 'held', 'secret_rare', 1), C(5, 'locked', 'normal', 2, { tradeable: false }),
     C(6, 'listed', 'normal', 2), C(7, 'n7', 'normal', 3), C(8, 'sr', 'secret_rare', 2)];
   const got = listable(cards, [{ card: { id: 6 } }], { 4: 1 }).map((c) => c.name);
-  assert.deepEqual(got, ['fa', 'sr', 'n7', 'n1']);
+  assert.deepEqual(got, ['sr', 'n7', 'fa', 'n1']);
 });
 
 test('search and the rarity filter', () => {
