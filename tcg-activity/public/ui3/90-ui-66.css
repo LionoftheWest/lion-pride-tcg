@@ -102,7 +102,7 @@ body[data-size="expanded"] .u3-lb .u3-lb-pod--1 .v2-avatar.u3-lb-av--pod, body[d
 .u3-lb-pod__face { position: relative; display: inline-flex; margin-bottom: var(--sp-2); }
 .u3-lb-pod__face .u3-lb-place { position: absolute; left: 50%; bottom: calc(var(--sp-3) * -1); transform: translateX(-50%); box-shadow: 0 0 0 var(--bw-2) var(--bg-raised); }
 .u3-lb-pod__who { min-width: 0; max-width: 100%; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin-top: var(--sp-1); }
-.u3-lb-pod .u3-lb-nm { font-size: var(--fs-body); line-height: var(--lh-small); }
+.u3-lb-pod .u3-lb-nm { font-size: var(--fs-body); line-height: var(--lh-small); max-width: 100%; overflow-wrap: anywhere; }
 .u3-lb-pod__val { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--sp-1); max-width: 100%; font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); color: var(--gold); }
 .u3-lb-pod__val .u3-ico { color: var(--element-fire); }
 .u3-lb-pod__val b { min-width: 0; font-weight: inherit; overflow-wrap: anywhere; }
@@ -196,7 +196,7 @@ body[data-size="medium"] .u3-lb[data-lay="tall"] .u3-lb-tiles { grid-template-co
 .u3-lb-live__i, .u3-lb-live__d { font-family: var(--font-num); color: var(--text-secondary); }
 .u3-lb-live__d { color: var(--gold); }
 
-/* ---- the Hunt, Dungeon and Gauntlet tabs: a heading (Dungeon, Gauntlet), the list box, the pager in its fixed place ---- */
+/* ---- the Hunt, Dungeon and Gauntlet tabs: the Main tab's podium and table (D-178). The empty and error states keep a heading, a box and the pager ---- */
 .u3-lb-lt { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
 .u3-lb-lh { flex: none; margin: 0; display: flex; align-items: center; gap: var(--sp-3); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); }
 .u3-lb-lh .u3-ico { color: var(--gold); }
@@ -205,31 +205,6 @@ body[data-size="medium"] .u3-lb[data-lay="tall"] .u3-lb-tiles { grid-template-co
 .u3-lb-lt--dungeon .u3-lb-none, .u3-lb-lt--gauntlet .u3-lb-none { text-align: left; padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-md); background: var(--surface-2); }   /* the approved empty line of these two tabs: a row */
 .u3-lb-msg .u3-msg { justify-content: center; font-size: var(--fs-body); font-weight: var(--fw-body); line-height: var(--lh-body); color: var(--text-secondary); }
 .u3-lb-msg .u3-msg .u3-ico { color: var(--danger); }
-.u3-lb-list { margin: 0; padding: 0; list-style: none; min-width: 0; align-content: start; }
-.u3-lb-list--hunt { display: grid; grid-template-columns: repeat(var(--lb-cols, 1), minmax(0, 1fr)); grid-template-rows: repeat(var(--lb-rows, 1), var(--lb-rowh, var(--lb-hrow))); grid-auto-flow: column; gap: var(--sp-2) var(--sp-4); }
-.u3-lb-list--hunt.is-probe { grid-template-columns: repeat(auto-fill, minmax(min(var(--lb-colmin), 100%), 1fr)); grid-template-rows: none; grid-auto-flow: row; }
-.u3-lb-hr { box-sizing: border-box; min-width: 0; min-height: var(--lb-hrow); display: grid; grid-template-columns: calc(var(--chip-md) + var(--sp-2)) minmax(0, 1fr) auto; align-items: center; column-gap: var(--sp-3); padding: 0 var(--sp-4);
-  border-radius: var(--rad-md); background: var(--surface-2); border: var(--bw-1) solid transparent; }
-.u3-lb-hr.is-me { background: var(--gold-a10); border-color: var(--gold); }
-.u3-lb-hr .u3-lb-place { --lb-place: var(--check-badge); }
-.u3-lb-hr > * { align-self: stretch; display: flex; align-items: center; }
-.u3-lb-hr__rk { justify-content: center; }
-.u3-lb-rk { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); }
-.u3-lb-hr__nm { min-width: 0; font-size: var(--fs-body); line-height: var(--lh-small); overflow-wrap: break-word; }
-.u3-lb-hr__d { display: flex; align-items: center; justify-self: end; gap: var(--sp-1); font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--gold-hi); }
-.u3-lb-hr__d .u3-ico { color: var(--gold-hi); }
-.u3-lb-list--dungeon, .u3-lb-list--gauntlet { display: flex; flex-direction: column; gap: var(--sp-2); }
-.u3-lb-list--dungeon.is-probe, .u3-lb-list--gauntlet.is-probe { display: flex; }
-.u3-lb-dr { box-sizing: border-box; flex: none; min-width: 0; display: grid; grid-template-columns: auto minmax(calc(var(--sp-7) * 2), 1fr) minmax(0, max-content); grid-template-areas: "rk nm f" "rk nm t"; align-items: center; column-gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-lg); background: var(--surface-2); border: var(--bw-1) solid transparent; }
-.u3-lb-dr.is-me { background: var(--gold-a10); border-color: var(--gold); }
-.u3-lb[data-lay="wide"] .u3-lb-dr { grid-template-columns: auto minmax(calc(var(--sp-7) * 2), 1fr) minmax(0, 1fr) auto; grid-template-areas: "rk nm f t"; column-gap: var(--sp-5); }
-.u3-lb[data-lay="wide"] .u3-lb-dr__f { justify-self: center; }   /* the approved wide row: floor, then turns, on one line */
-.u3-lb-dr__rk { grid-area: rk; box-sizing: border-box; width: calc(var(--check-badge) + var(--sp-1)); height: calc(var(--check-badge) + var(--sp-1)); display: inline-grid; place-items: center; border-radius: var(--rad-round);
-  border: var(--bw-1) solid var(--gold); color: var(--gold); font-family: var(--font-num); font-size: var(--fs-small); font-weight: var(--fw-stat); }
-.u3-lb-dr__nm { grid-area: nm; align-self: center; min-width: 0; font-size: var(--fs-body); font-weight: var(--fw-small-strong); overflow-wrap: break-word; }
-.u3-lb-dr__f { grid-area: f; justify-self: end; font-family: var(--font-num); font-size: var(--fs-body); font-weight: var(--fw-stat); color: var(--gold); white-space: nowrap; }
-.u3-lb-dr__t { grid-area: t; justify-self: end; min-width: 0; font-size: var(--fs-body); color: var(--text-muted); text-align: right; }
 
 /* ---- tight (measured, leaderboard.js fit): the window is too short for 3 table rows, for example 375x667 with the
    safe areas. The spacing goes down and the bars lose their padding; every element stays. The selector keeps the
@@ -251,6 +226,20 @@ body[data-size] .u3-lb.is-tight .u3-lb-toline > .u3-bar { order: 1; flex: 1 1 au
 body[data-size] .u3-lb.is-tight .u3-lb-to > b { order: 2; }
 body[data-size] .u3-lb.is-tight .u3-lb-p { padding-block: 0; }
 .u3-lb-toline { display: flex; flex-direction: column; gap: var(--sp-1); }
-.u3-lb-hr__rk > *, .u3-lb-hr__d > b { align-self: stretch; display: flex; align-items: center; }   /* the number is one box as tall as its row */
-.u3-lb-hr__rk > .u3-lb-place { align-self: center; }
-body.ui-v2 .u3-lb .u3-lb-hr__nm .nb, body.ui-v2 .u3-lb .u3-lb-dr__nm .nb { display: block; flex: 1 1 auto; min-width: 0; }   /* the name and its title are one box, as wide as the name cell */
+
+/* ---- D-178: the board tabs (Hunt, Dungeon, Gauntlet) use the Main grid without the side panel; the columns are the board's ---- */
+.u3-lb-table[data-cols="1"] { --lb-tpl: var(--sp-6) minmax(calc(var(--sp-7) * 3), 1fr) var(--lb-w0, auto); }
+.u3-lb-table[data-cols="2"] { --lb-tpl: var(--sp-6) minmax(calc(var(--sp-7) * 3), 1fr) var(--lb-w0, auto) var(--lb-w1, auto); }
+.u3-lb-table[data-cols="3"] { --lb-tpl: var(--sp-6) minmax(calc(var(--sp-7) * 3), 1fr) var(--lb-w0, auto) var(--lb-w1, auto) var(--lb-w2, auto); }
+.u3-lb-table.is-narrow[data-cols] { --lb-tpl: var(--sp-6) minmax(0, 1fr) var(--lb-wa, auto); }
+body[data-size="expanded"] .u3-lb .u3-lb-main.u3-lb-main--board,
+body[data-size="medium"] .u3-lb .u3-lb-main.u3-lb-main--board,
+body[data-size="compact-port"] .u3-lb .u3-lb-main.u3-lb-main--board { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "seg" "pod" "tbl" "pg"; }
+body[data-size="expanded"] .u3-lb .u3-lb-main.u3-lb-main--board.is-flat,
+body[data-size="medium"] .u3-lb .u3-lb-main.u3-lb-main--board.is-flat,
+body[data-size="compact-port"] .u3-lb .u3-lb-main.u3-lb-main--board.is-flat { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "seg" "tbl" "pg"; }
+body[data-size="compact-land"] .u3-lb-main--board { grid-template-rows: auto minmax(0, 1fr) auto; }
+.u3-lb-main--board .u3-lb-pod__sub { max-width: 100%; overflow-wrap: break-word; text-align: center; }
+/* a board with few rows (a tall window on a tablet or desktop; a phone has no spare height): the rows share the free height, at most twice their height, so the table has no empty band */
+body[data-size="medium"] .u3-lb-main--board .u3-lb-rows:not(.is-probe) > .u3-lb-row,
+body[data-size="expanded"] .u3-lb-main--board .u3-lb-rows:not(.is-probe) > .u3-lb-row { flex: 1 0 auto; max-height: calc(var(--lb-row) * 2); }

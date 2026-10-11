@@ -27,6 +27,7 @@ export const METRICS = [
   { key: 'achievements', label: 'Achievements', col: 'Ach.', icon: 'award' },
 ];
 export const TOP = 10;   // "the most it can show is the top 10" (Nathan, 2026-10-01): podium 1-3, table 4-10
+export const TOP_BOARD = 20;   // the Hunt, Dungeon and Gauntlet boards page their top 20 (the server sends 20 on the Hunt board): podium 1-3, table 4-20
 export const ERROR_TEXT = 'The leaderboard is not available.';
 const ENDPOINT = { main: '/api/leaderboard/v2', hunt: '/api/hunt/leaderboard', dungeon: '/api/dungeon/board', gauntlet: '/api/gauntlet/board' };
 
@@ -60,6 +61,20 @@ export function tabState(tab, d) {
   if (tab === 'main') return Array.isArray(d.rows) ? 'ok' : 'error';
   if (tab === 'hunt') return !Array.isArray(d.leaders) ? 'error' : d.leaders.length ? 'ok' : 'empty';
   return !Array.isArray(d.board) ? 'error' : d.board.length ? 'ok' : 'empty';
+}
+
+/** The Hunt, Dungeon and Gauntlet tabs use the Main tab's podium + table (D-178). Each board has its own columns; the first
+ *  column is the one the podium shows. A row: { id, name, title, cells: { key: text }, sub }. The order is the server's order. */
+export const BOARD_COLS = {
+  hunt: [{ key: 'damage', col: 'Damage', icon: 'swords' }],
+  dungeon: [{ key: 'at', col: 'Floor', icon: 'castle' }, { key: 'turns', col: 'Turns' }],
+  gauntlet: [{ key: 'at', col: 'Floor', icon: 'crown' }, { key: 'turns', col: 'Turns' }, { key: 'runs', col: 'Runs' }],
+};
+export const BOARD_TITLE = { hunt: 'Current Hunt', dungeon: "Today's leaderboard", gauntlet: "This week's leaderboard" };
+export function boardRows(tab, d, f = (n) => String(n)) {
+  if (tab === 'hunt') return (d.leaders || []).map((p) => ({ id: String(p.player_id), name: p.username, title: '', cells: { damage: f(p.damage) }, sub: '' }));
+  return (d.board || []).map((b) => ({ id: String(b.player_id), name: b.username || 'Member', title: b.status === 'active' ? 'In the dungeon' : '',
+    cells: { at: `${b.floor}F Room ${b.room}`, turns: f(b.turns), runs: f(b.runs || 0) }, sub: runLine(b, tab === 'gauntlet', f) }));
 }
 
 /** My place on every board of the Main tab (the stat tiles). */
@@ -173,23 +188,39 @@ function mainHTML(d) {
     + `<div class="u3-lb-table">${th}<div class="u3-lb-rows" data-lb-list></div>${pin}</div><div class="u3-lb-pager" data-lb-pager></div></div>`;
 }
 
-const medal = (n) => (n <= 3 ? place(n) : `<span class="u3-lb-rk">${n}</span>`);
-function huntRow(p, i, d) {
-  return `<li class="u3-lb-hr${String(p.player_id) === String(d.me) ? ' is-me' : ''}"><span class="u3-lb-hr__rk">${medal(i + 1)}</span>`
-    + `<span class="u3-lb-hr__nm">${deps.nameBadge(p.player_id, p.username, true)}</span><span class="u3-lb-hr__d">${icon('swords')}<b>${num(p.damage)}</b></span></li>`;
+// The Hunt, Dungeon and Gauntlet tabs: the Main tab's podium and table with the columns of the board (D-178).
+function boardPodiumHTML(rows, tab, d) {
+  const c0 = BOARD_COLS[tab][0];
+  const tile = (r, n) => {
+    if (!r) return `<div class="u3-lb-pod u3-lb-pod--${n} is-empty"></div>`;
+    return `<button type="button" class="u3-lb-pod u3-lb-pod--${n}${r.id === String(d.me) ? ' is-me' : ''}" data-member="${esc(r.id)}">`
+      + `<span class="u3-lb-pod__face">${av(r.id, r.name, '', 'u3-lb-av u3-lb-av--pod')}${place(n)}</span>`
+      + `<span class="u3-lb-pod__who"><b class="u3-lb-nm">${deps.nameBadge(r.id, r.name, true)}</b>${titleChip(r.title)}</span>`
+      + `<span class="u3-lb-pod__val">${icon(c0.icon, { size: 'xl' })}<b>${esc(r.cells[c0.key])}</b></span>${r.sub ? `<span class="u3-lb-pod__sub">${esc(r.sub)}</span>` : ''}</button>`;
+  };
+  return `<div class="u3-lb-podium">${[rows[1], rows[0], rows[2]].map((r, i) => tile(r, [2, 1, 3][i])).join('')}</div>`;
 }
-function runRow(b, d, gauntlet) {
-  const mine = String(b.player_id) === String(d.me);
-  return `<li class="u3-lb-dr${mine ? ' is-me' : ''}"><span class="u3-lb-dr__rk">${b.rank}</span><b class="u3-lb-dr__nm">${deps.nameBadge(b.player_id, b.username || 'Member', true)}</b>`
-    + `<span class="u3-lb-dr__f">${b.floor}F Room ${b.room}</span><span class="u3-lb-dr__t">${esc(runLine(b, gauntlet, num))}</span></li>`;
+function boardRowHTML(r, i, tab, d) {
+  const cols = BOARD_COLS[tab].map((c, k) => `<span class="u3-lb-c${k === 0 ? ' is-on' : ''}" data-m="${c.key}">${esc(r.cells[c.key])}</span>`).join('');
+  const mine = r.id === String(d.me);
+  return `<div class="u3-lb-row${mine ? ' is-me' : ''}" role="button" tabindex="0" data-member="${esc(r.id)}"><span class="u3-lb-i">${i + 1}</span>`
+    + `<span class="u3-lb-p">${av(r.id, r.name, '', 'u3-lb-av u3-lb-av--row')}<span class="u3-lb-who"><b class="u3-lb-nm">${deps.nameBadge(r.id, r.name, true)}</b> ${titleChip(r.title)} ${mine ? youChip : ''}</span></span>${cols}</div>`;
+}
+function boardHTML(tab, d) {
+  const rows = boardRows(tab, d, num);
+  const cols = BOARD_COLS[tab];
+  const th = `<div class="u3-lb-row u3-lb-th"><span class="u3-lb-i">#</span><span class="u3-lb-p">Player</span>${cols.map((c, k) => `<span class="u3-lb-c${k === 0 ? ' is-on' : ''}" data-m="${c.key}">${esc(c.col)}</span>`).join('')}</div>`;
+  const meIdx = rows.findIndex((r) => r.id === String(d.me));
+  const pin = meIdx >= TOP_BOARD ? `<div class="u3-lb-pin">${boardRowHTML(rows[meIdx], meIdx, tab, d)}</div>` : '';
+  return `<div class="u3-lb-main u3-lb-main--board${st.flat ? ' is-flat' : ''}" data-board="${tab}"><div class="u3-lb-segrow"><h3 class="u3-lb-lh">${icon(tab === 'hunt' ? 'swords' : 'trophy', { size: '2xl' })}<span>${BOARD_TITLE[tab]}</span></h3></div>`
+    + `${st.flat ? '' : boardPodiumHTML(rows, tab, d)}<div class="u3-lb-table" data-cols="${cols.length}">${th}<div class="u3-lb-rows" data-lb-list></div>${pin}</div><div class="u3-lb-pager" data-lb-pager></div></div>`;
 }
 
 function listTabHTML(tab, d, state) {
-  const gauntlet = tab === 'gauntlet';
   const head = tab === 'hunt' ? '' : `<h3 class="u3-lb-lh">${icon('trophy', { size: '2xl' })}<span>${gauntlet ? 'This week\'s leaderboard' : 'Today\'s leaderboard'}</span></h3>`;
   const body = state === 'error' ? `<div class="u3-lb-msg u3-lb-msg--error">${inlineMessage({ kind: 'error', text: ERROR_TEXT })}</div>`
     : state === 'empty' ? `<p class="u3-lb-msg u3-lb-none">${tab === 'hunt' ? 'No damage dealt yet.' : gauntlet ? 'No runs yet this week.' : 'No runs yet today.'}</p>`
-      : `<ol class="u3-lb-list u3-lb-list--${tab}" data-lb-list></ol>`;
+      : '';
   return `<div class="u3-lb-lt u3-lb-lt--${tab}">${head}<div class="u3-lb-lbox">${body}</div><div class="u3-lb-pager" data-lb-pager></div></div>`;
 }
 
@@ -199,7 +230,7 @@ function panelHTML() {
   const d = st.data[tab];
   const state = tabState(tab, d);
   if (tab === 'main') return state === 'ok' ? mainHTML(d) : `<p class="u3-lb-merr">${ERROR_TEXT}</p>`;
-  return listTabHTML(tab, d, state);
+  return state === 'ok' ? boardHTML(tab, d) : listTabHTML(tab, d, state);
 }
 
 // ---- Paint and fit ----
@@ -261,11 +292,13 @@ function fitList(win, items, render, { gridCols = false, variable = false, onPro
 function fitCols(win) {
   const table = win.querySelector('.u3-lb-table');
   if (!table) return;
+  const keys = st.tab === 'main' ? METRICS.map((m) => m.key) : BOARD_COLS[st.tab].map((c) => c.key);
+  const open = st.tab === 'main' ? st.metric : keys[0];
   table.classList.remove('is-narrow');
-  METRICS.forEach((m, i) => table.style.setProperty(`--lb-w${i}`, 'max-content'));
-  const w = METRICS.map((m) => Math.ceil(Math.max(0, ...[...table.querySelectorAll(`.u3-lb-c[data-m="${m.key}"]`)].map((e) => e.getBoundingClientRect().width))));
+  keys.forEach((k, i) => table.style.setProperty(`--lb-w${i}`, 'max-content'));
+  const w = keys.map((k) => Math.ceil(Math.max(0, ...[...table.querySelectorAll(`.u3-lb-c[data-m="${k}"]`)].map((e) => e.getBoundingClientRect().width))));
   w.forEach((x, i) => table.style.setProperty(`--lb-w${i}`, `${x}px`));
-  table.style.setProperty('--lb-wa', `${w[METRICS.findIndex((m) => m.key === st.metric)]}px`);
+  table.style.setProperty('--lb-wa', `${w[keys.indexOf(open)]}px`);
   const th = table.querySelector('.u3-lb-th');
   table.classList.toggle('is-narrow', th.scrollWidth > th.clientWidth + 1);
 }
@@ -282,25 +315,27 @@ function fit() {
   const strip = win.querySelector('.u3-subtabs__strip');
   if (strip && strip.scrollWidth > strip.clientWidth + 1) win.classList.add('is-stack');
   const tab = st.tab;
-  if (tab !== 'main') win.classList.remove('is-tight');   // the tight spacing belongs to the Main tab
   if (st.load[tab] === 'busy') return;
   const d = st.data[tab];
   const state = tabState(tab, d);
-  if (tab === 'main') {
+  if (tab !== 'main' && state !== 'ok') { paintPager(win, 1, false); return; }
+  {
     if (state !== 'ok') return;
-    const rows = ranked(d.rows, st.metric);
+    const board = tab !== 'main';
+    const rows = board ? boardRows(tab, d, num) : ranked(d.rows, st.metric);
+    const rowOf = (r, i) => (board ? boardRowHTML(r, i, tab, d) : rowHTML(r, i, d));
     // The switch row: the short names when the full names do not fit it (measured).
     const sg = panel.querySelector('.u3-seg');
     if (sg && !st.short && sg.scrollWidth > sg.clientWidth + 1) { st.short = true; paint(); return; }
     // The flat mode (below): the podium is not drawn, ranks 1 to 10 are table rows.
     const first = st.flat ? 0 : 3;
-    const rest = rows.slice(first, TOP);
+    const rest = rows.slice(first, board ? TOP_BOARD : TOP);
     const list = panel.querySelector('[data-lb-list]');
-    if (!rest.length) { list.innerHTML = '<p class="u3-lb-none">More players show here once they open packs.</p>'; paintPager(win, 1, false); return; }
+    if (!rest.length) { list.innerHTML = `<p class="u3-lb-none">${board ? 'No more players on this board.' : 'More players show here once they open packs.'}</p>`; paintPager(win, 1, false); return; }
     // A short window (a phone with its safe areas): the tight mode takes the spacing down until 3 rows fit (measured).
     win.classList.remove('is-tight');
-    let f = fitList(win, rest, (r, i) => rowHTML(r, i + first, d), { variable: true, onProbe: () => fitCols(win) });
-    if (f.pageSize < Math.min(3, rest.length)) { win.classList.add('is-tight'); f = fitList(win, rest, (r, i) => rowHTML(r, i + first, d), { variable: true, onProbe: () => fitCols(win) }); }
+    let f = fitList(win, rest, (r, i) => rowOf(r, i + first), { variable: true, onProbe: () => fitCols(win) });
+    if (f.pageSize < Math.min(3, rest.length)) { win.classList.add('is-tight'); f = fitList(win, rest, (r, i) => rowOf(r, i + first), { variable: true, onProbe: () => fitCols(win) }); }
     // A podium spot whose parts do not fit its box (a long name and two titles in a stacked tile) also ends the podium.
     const podCut = [...panel.querySelectorAll('.u3-lb-pod')].some((p) => p.scrollHeight > p.clientHeight + 1 || p.scrollWidth > p.clientWidth + 1);
     if (podCut && !st.flat) { st.flat = true; st.page = 1; paint(); return; }
@@ -310,15 +345,11 @@ function fit() {
     const side = panel.querySelector('.u3-lb-side');
     const lives = side?.querySelector('.u3-lb-lives');
     while (lives && lives.children.length > 1 && side.scrollHeight > side.clientHeight + 1) lives.removeChild([...lives.children].filter((x) => !x.classList.contains('is-me')).pop() || lives.lastElementChild);
-    return;
   }
-  if (state !== 'ok') { paintPager(win, 1, false); return; }
-  if (tab === 'hunt') fitList(win, d.leaders, (p, i) => huntRow(p, i, d), { gridCols: true });
-  else fitList(win, d.board, (b) => runRow(b, d, tab === 'gauntlet'), { variable: true });
 }
 
 // A resize or a class change starts the measured modes again (the full names, the podium).
-const scheduleFit = () => { clearTimeout(fitT); fitT = setTimeout(() => { if (!isOpen()) return; const w = $('u3Lb').clientWidth; if (st.w !== w) { st.w = w; st.short = false; st.flat = false; if (st.tab === 'main' && st.load.main !== 'busy' && tabState('main', st.data.main) === 'ok') { paint(); return; } } redrawLabels(); fit(); }, 60); };
+const scheduleFit = () => { clearTimeout(fitT); fitT = setTimeout(() => { if (!isOpen()) return; const w = $('u3Lb').clientWidth; if (st.w !== w) { st.w = w; st.short = false; st.flat = false; if (st.load[st.tab] !== 'busy' && tabState(st.tab, st.data[st.tab]) === 'ok') { paint(); return; } } redrawLabels(); fit(); }, 60); };
 // A class change swaps the segment names (a phone says "Power", a tablet "Collection Power").
 function redrawLabels() {
   const win = $('u3Lb');
@@ -346,6 +377,7 @@ function select(tab) {
   const was = st.tab;
   st.tab = tab;
   st.page = 1;
+  st.flat = false; st.short = false;   // the measured modes start again on each tab
   if (!st.data[tab]) load(tab); else paint();
   if (was !== tab) $('u3Lb')?.querySelector(`.u3-subtabs [data-tab="${tab}"]`)?.focus();
 }
