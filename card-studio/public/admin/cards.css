@@ -153,3 +153,29 @@
 .st-inclist li { display: flex; align-items: center; gap: 8px; }
 .st-inclist .btn { margin-left: auto; }
 .st-cards .cs-from { align-self: flex-start; margin-left: 0; }
+
+/* F-2 item 7: the pickers (pickers.js): chips, the library dropdown with counts, "+ Add new" */
+.pk { position: relative; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 34px; padding: 4px; background: var(--raised); border: 1px solid var(--edge); border-radius: 8px; }
+.pk-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.pk-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border-radius: 6px; background: var(--selected); border: 1px solid var(--edge); font-size: 12px; }
+.pk-chip.off { border-style: dashed; border-color: var(--warning); }
+.pk-x { display: inline-flex; width: 18px; height: 18px; padding: 2px; border: 0; background: none; color: var(--text-2); cursor: pointer; border-radius: 4px; }
+.pk-x:hover { background: var(--raised); color: var(--text); }
+.pk-none { font-size: 12px; color: var(--muted); padding: 0 4px; }
+.pk-open { min-height: 26px; padding: 0 8px; font-size: 12px; }
+.pk-pop { position: absolute; z-index: 60; top: calc(100% + 4px); left: 0; width: min(420px, 90vw); padding: 8px; background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45); display: grid; gap: 6px; }
+.pk-filter { width: 100%; }
+.pk-list { max-height: 260px; overflow: auto; display: grid; gap: 1px; }
+.pk-group { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 6px 2px; }
+.pk-opt { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--text); font: 13px var(--ui); text-align: left; cursor: pointer; }
+.pk-opt:hover, .pk-opt:focus-visible { background: var(--raised); outline: none; }
+.pk-opt.on { background: var(--selected); }
+.pk-opt.off .pk-label { color: var(--warning); }
+.pk-check { display: inline-flex; width: 16px; height: 16px; color: var(--gold); flex: none; }
+.pk-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.pk-near { font-size: 11px; color: var(--warning); }
+.pk-count { font-size: 11px; color: var(--text-2); white-space: nowrap; }
+.pk-new { justify-content: flex-start; }
+.pk-msg { margin: 0; font-size: 12px; color: var(--text-2); }
+.pk-msg:empty, .pk-empty:empty { display: none; }
+.pk-empty { font-size: 12px; color: var(--muted); padding: 6px; }

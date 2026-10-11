@@ -7,6 +7,8 @@
 // The grid copy of a card image (card-studio/src/thumbs.js; the same rule as tcg-activity/src/thumb.js).
 const GRID_PARTS = /\/card-art\/(cards\/[^?]+?)\.(png|webp|jpe?g)(\?|$)/i;
 const gridThumb = (url) => (url ? url.replace(GRID_PARTS, '/card-art/grid/$1.webp$3') : url);
+import { picker } from './pickers.js';
+
 const $ = (id) => document.getElementById(id);
 const JSON_HEAD = { 'content-type': 'application/json' };
 const post = (url, body, method = 'POST') => fetch(url, { method, headers: JSON_HEAD, body: JSON.stringify(body) });
@@ -18,6 +20,16 @@ let cards = [];
 let sets = { sets: [], includes: [], pool: [], pools_ready: false };
 const loadSets = async () => {
   try { const r = await (await fetch('/api/sets')).json(); if (r.ok) sets = r; } catch { /* the list still shows, under the set ids */ }
+};
+// The tag library of the pickers (GET /api/tag-vocab, src/tag-vocab.js; F-2 item 7) and the pickers of the open page.
+let facets = {};
+const loadFacets = async () => {
+  try { const r = await (await fetch('/api/tag-vocab')).json(); if (r.ok) facets = r.facets; } catch { /* the pickers show the chosen values only */ }
+};
+const pk = {};
+const makePicker = (id, facet, label, onChange) => {
+  pk[id] = picker({ h, icon, id, facet, label, onChange, getFacet: () => facets[facet], setFacets: (f) => { facets = f; } });
+  return pk[id].el;
 };
 const setById = (id) => sets.sets.find((s) => s.id === id) || null;
 const setLabel = (id) => { const s = setById(id); return s ? `${s.name} (${s.code})` : id; };
@@ -71,7 +83,7 @@ export async function pageCardEditor(main, args, q, helpers) {
   main.append(h('div', { class: 'state', role: 'status' }, h('span', { class: 'spin' }), 'Loading'));
   try {
     await initTiers();
-    [cards] = await Promise.all([fetch('/api/cards').then((r) => r.json()), loadSets()]);
+    [cards] = await Promise.all([fetch('/api/cards').then((r) => r.json()), loadSets(), loadFacets()]);
   } catch (e) {
     main.replaceChildren(k.errorState(e, () => k.render()));
     return;
@@ -98,6 +110,8 @@ function dialog(id, title, body, { cls = '' } = {}) {
       body));
   return wrap;
 }
+// A picker goes in a div, not a label: a label would pass a click on it to the picker's first button.
+const pfield = (lbl, input, note) => h('div', { class: 'cs-field', role: 'group', 'aria-label': lbl }, h('span', { class: 'lbl' }, lbl, note ? h('span', { class: 'cs-note' }, ` ${note}`) : null), input);
 const field = (lbl, input, note) => h('label', { class: 'cs-field' }, h('span', { class: 'lbl' }, lbl, note ? h('span', { class: 'cs-note' }, ` ${note}`) : null), input);
 
 /* ================= the list ================= */
@@ -257,12 +271,19 @@ function creatorDialog() {
   return dialog('cs-creator', 'Create a new card', h('div', null,
     field('Card name', h('input', { class: 'field', id: 'cs-c-name', placeholder: "e.g. Ash's Pikachu" })),
     field('Set', h('select', { class: 'field', id: 'cs-c-set' }), '(required: the set where the card is printed and numbered)'),
+    h('div', { class: 'cs-fgrid two' },
+      field('Type', h('select', { class: 'field', id: 'cs-c-type' }, ['Character', 'Creature', 'Item', 'Place', 'Moment'].map((x) => h('option', { value: x }, x)))),
+      pfield('Subject', makePicker('cs-c-subject', 'subject', 'Subject'))),
+    pfield('Origin', makePicker('cs-c-origin', 'origin', 'Origin')),
     h('p', { class: 'subtitle' }, 'Add the subject, description, artwork and tiers on the card page that opens next.'),
     h('div', { class: 'cs-dfoot' }, h('span', { class: 'subtitle', id: 'cs-creator-status', role: 'status' }),
       h('button', { class: 'btn primary', id: 'cs-creator-save', type: 'button', onclick: createCard }, 'Create card'))), { cls: 'narrow' });
 }
 function openCreator(preset) {
   $('cs-c-name').value = '';
+  $('cs-c-type').value = 'Character';
+  pk['cs-c-subject'].set('');
+  pk['cs-c-origin'].set([]);
   $('cs-c-set').replaceChildren(h('option', { value: '' }, 'Choose a set'),
     ...sets.sets.map((s) => h('option', { value: s.id }, `${s.name} (${s.code})${s.pullable ? '' : ' - not pullable'}`)));
   $('cs-c-set').value = preset && setById(preset) ? preset : '';
@@ -277,7 +298,10 @@ async function createCard() {
   if (!set) return ($('cs-creator-status').textContent = 'Choose the set of the card.');
   const season = `Season ${setById(set).season}`;
   $('cs-creator-save').disabled = true;
-  const r = await (await post('/api/cards', { name, season, set, finishes: [] })).json();
+  const type = $('cs-c-type').value, origin = pk['cs-c-origin'].get();
+  const r = await (await post('/api/cards', { name, season, set, genre: pk['cs-c-subject'].get(), finishes: [] })).json();
+  // The type and the origin are tags (subject level): saved like Card info does.
+  if (r.ok) await post(`/api/tags/${r.card.id}`, { class: ['Character', 'Creature'].includes(type) ? 'attacker' : 'support', type, origin, genre: [], realm: [], traits: [] });
   $('cs-creator-save').disabled = false;
   if (!r.ok) return ($('cs-creator-status').textContent = `Error: ${r.error}`);
   $('cs-creator').hidden = true;
@@ -315,10 +339,11 @@ function cardPage(main, id) {
     h('div', { class: 'cs-fgrid' },
       field('Class', sel('cs-t-class', [['attacker', 'attacker'], ['support', 'support']])),
       field('Type', sel('cs-t-type', ['Character', 'Creature', 'Item', 'Place', 'Moment'].map((x) => [x, x]))),
-      field('Origin', inp('cs-t-origin', 'e.g. pokemon'), '(comma-separated)'),
-      field('Genre', inp('cs-t-genre', 'e.g. moba, creature-battler')),
-      field('Realm', inp('cs-t-realm', 'e.g. pokemon-world')),
-      field('Traits', inp('cs-t-traits', 'e.g. water, armored'))),
+      // F-2 item 7: pickers of the library with "+ Add new" (src/tag-vocab.js), not comma text.
+      pfield('Origin', makePicker('cs-t-origin', 'origin', 'Origin')),
+      pfield('Genre', makePicker('cs-t-genre', 'genre', 'Genre')),
+      pfield('Realm', makePicker('cs-t-realm', 'realm', 'Realm')),
+      h('div', { class: 'cs-wide' }, pfield('Traits', makePicker('cs-t-traits', 'traits', 'Traits'), '(the element and the kinds)'))),
     h('div', { class: 'cs-h3' }, 'Ability', h('span', { class: 'cs-note' }, ' A blank name = no ability')),
     h('div', { class: 'cs-fgrid' },
       field('Name', inp('cs-a-name', 'e.g. Tidal Guard')),
@@ -340,7 +365,7 @@ function cardPage(main, id) {
 
   main.append(name.el, setsPanel.el, info.el, tiers.el, tierDialog(), framerDialog(), addTierDialog());
   $('cs-name').addEventListener('change', saveCardDetails);
-  ['cs-d-genre', 'cs-d-lore', 'cs-d-season', 'cs-d-event'].forEach((x) => $(x).addEventListener('change', saveTierDetails));
+  ['cs-d-lore', 'cs-d-season', 'cs-d-event'].forEach((x) => $(x).addEventListener('change', saveTierDetails));
   setupHolo();
 
   setCardTitle(c.name);
@@ -443,13 +468,9 @@ async function saveCardSets() {
 // Fill the Card Info editors (tags + ability) from the card.
 function fillCardInfo(c) {
   const t = c.tags || {};
-  const csv = (v) => (Array.isArray(v) ? v.join(', ') : (v || ''));
   $('cs-t-class').value = t.class || (['Item', 'Place', 'Moment'].includes(c.type) ? 'support' : 'attacker');
   $('cs-t-type').value = c.type || (t.type ? t.type[0].toUpperCase() + t.type.slice(1) : 'Character');
-  $('cs-t-origin').value = csv(t.origin);
-  $('cs-t-genre').value = csv(t.genre);
-  $('cs-t-realm').value = csv(t.realm);
-  $('cs-t-traits').value = csv(t.traits);
+  for (const f of ['origin', 'genre', 'realm', 'traits']) pk[`cs-t-${f}`].set(t[f] || []);
   const a = c.ability || {};
   $('cs-a-name').value = a.name || '';
   $('cs-a-kind').value = a.kind || 'support';
@@ -480,7 +501,7 @@ async function saveCardDetails() {
 // Save the Card Info (tags + ability): subject-level, pushes live.
 async function saveCardInfo() {
   if (!current) return;
-  const list = (id) => $(id).value.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const list = (id) => pk[id].get();
   const num = (id) => ($(id).value === '' ? null : Number($(id).value));
   const tags = { class: $('cs-t-class').value, type: $('cs-t-type').value, origin: list('cs-t-origin'), genre: list('cs-t-genre'), realm: list('cs-t-realm'), traits: list('cs-t-traits') };
   const ability = { name: $('cs-a-name').value.trim(), kind: $('cs-a-kind').value, effect: $('cs-a-effect').value.trim(), amount: num('cs-a-amount'),
@@ -572,7 +593,7 @@ function tierDialog() {
       field('Artist credit', artist, '(optional, blank if none)'),
       field('Or reuse art from another tier', source),
       h('div', { class: 'cs-h3' }, 'Card details', h('span', { class: 'cs-note' }, ' This tier only')),
-      field('Subject', h('input', { class: 'field', id: 'cs-d-genre', placeholder: 'Subject (e.g. Pokemon Unite)' })),
+      pfield('Subject', makePicker('cs-d-genre', 'subject', 'Subject', () => saveTierDetails())),
       field('Description', h('textarea', { class: 'field', id: 'cs-d-lore', rows: '2', placeholder: 'Description / lore' })),
       h('div', { class: 'cs-row' },
         field('Season / origin', h('input', { class: 'field', id: 'cs-d-season', placeholder: 'Season / origin' })),
@@ -588,7 +609,7 @@ function openTier(rarity) {
   $('cs-tier-title').textContent = tierName(rarity).replace(/\b\w/g, (m) => m.toUpperCase());
   $('cs-tier-artist').value = (slot && slot.artist) || '';
   const det = (slot && slot.details) || {};
-  $('cs-d-genre').value = det.genre || '';
+  pk['cs-d-genre'].set(det.genre || '');
   $('cs-d-lore').value = det.lore || '';
   $('cs-d-season').value = det.season || '';
   $('cs-d-event').value = det.event || '';
@@ -643,7 +664,7 @@ function setupHolo() {
 // Save the per-tier subject / description / season / event for the open tier.
 async function saveTierDetails() {
   if (!current || !tierSlot) return;
-  const body = { genre: $('cs-d-genre').value.trim(), lore: $('cs-d-lore').value.trim(), season: $('cs-d-season').value.trim(), event: $('cs-d-event').value.trim() };
+  const body = { genre: pk['cs-d-genre'].get(), lore: $('cs-d-lore').value.trim(), season: $('cs-d-season').value.trim(), event: $('cs-d-event').value.trim() };
   const r = await (await post(`/api/details/${current.id}/${tierSlot}`, body)).json();
   if (!r.ok) { setStatus('Error: ' + r.error); return; }
   const s = current.slots.find((x) => x.slot === tierSlot);
@@ -666,7 +687,7 @@ async function copyDetails() {
   if (!fromSlot) return;
   const s = current.slots.find((x) => x.slot === fromSlot);
   const det = (s && s.details) || {};
-  $('cs-d-genre').value = det.genre || '';
+  pk['cs-d-genre'].set(det.genre || '');
   $('cs-d-lore').value = det.lore || '';
   $('cs-d-season').value = det.season || '';
   $('cs-d-event').value = det.event || '';

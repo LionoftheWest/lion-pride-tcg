@@ -11,6 +11,7 @@ import { adminRouter } from './admin-routes.js';
 import { eventsRouter } from './admin-events-routes.js';
 import { adminWriteRouter } from './admin-write.js';
 import { setsRouter } from './sets-routes.js';
+import { loadVocab, saveVocab, vocabView, addValue } from './tag-vocab.js';
 import { studioAuth, loadSecret } from './studio-auth.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic } from './rarity.js';
 import { getFrame, setFrame } from './frames.js';
@@ -404,6 +405,21 @@ app.post('/api/tradeable/:id', async (req, res) => {
     if (subject) await supabase.from('cards').update({ tradeable }).eq('subject_id', subject.id);
   } catch { /* live sync is best-effort */ }
   res.json({ ok: true, tradeable });
+});
+
+// The tag library of the pickers (F-2 item 7, src/tag-vocab.js): each facet with its values and how many cards use each.
+app.get('/api/tag-vocab', (req, res) => {
+  try { res.json({ ok: true, facets: vocabView(loadVocab(), allCards()) }); } catch (e) { res.status(500).json({ ok: false, error: e.message || String(e) }); }
+});
+// "+ Add new": checked against the library first (the same value, or a near duplicate = refused with a suggestion).
+app.post('/api/tag-vocab', (req, res) => {
+  const { facet, value } = req.body || {};
+  let vocab;
+  try { vocab = loadVocab(); } catch (e) { return res.status(500).json({ ok: false, error: e.message || String(e) }); }
+  const r = addValue(vocab, String(facet || ''), value);
+  if (!r.ok) return res.status(r.suggest ? 409 : 400).json(r);
+  if (!r.existed) saveVocab(vocab);
+  res.json({ ...r, facets: vocabView(vocab, allCards()) });
 });
 
 // Set the faceted tags for a card (subject-level: class, type, origin, genre,
