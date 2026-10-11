@@ -15,6 +15,7 @@ import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
 import { cardElement } from './elements.js';
 import { foePace } from './dungeon-pace.js';
+import { warmFoes, warmRoster, slowLink } from './dungeon-preload.js';
 import { setMood, stopMusic, toggleMute, musicBtnHTML, paintMusicBtn } from './dungeon-music.js';
 import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
 import { openLeaderboardWindow } from './ui3/leaderboard.js';
@@ -226,9 +227,25 @@ function paint() {
   else if (active()) wireChoose(main);
   else if (run()) wireOver(main);
   else if (!d.closed && d.gate?.ok) (GA() ? (V3() ? wireGaLobbyV3 : wireGaLobby) : V3() ? wireLobbyV3 : wireLobby)(main);
+  warmScreen(d, fight);
   startTick();
 }
 
+// Preload (dungeon-preload.js): what the next room needs, in idle time, a small budget for each screen. The lobby, the reward step and the
+// floor screen each load a few monster models of the roster, the voices and the squad art; the fight does the same once its room stands.
+const warmedArt = new Set();
+const warmArt = (cards) => { for (const c of cards || []) { const u = c?.image_url ? thumb(c.image_url) : ''; if (u && !warmedArt.has(u)) { warmedArt.add(u); const i = new Image(); i.decoding = 'async'; i.src = u; } } };
+const warmedVoice = new Set();
+const warmVoices = () => { if (slowLink()) return; for (const list of Object.values(DSND)) for (const l of Object.values(list)) for (const n of l) if (!warmedVoice.has(n)) { warmedVoice.add(n); fetch(`sfx/dungeon/${n}.mp3`, { priority: 'low' }).catch(() => {}); } };
+function warmScreen(d, fight) {
+  if (!dg.on || d.closed || !d.gate?.ok || dg.view === 'board') return;
+  const R = d.run;
+  if (fight) { warmArt(squadOf(run())); return; }   // the fight warms the roster when its own room stands (wireFight)
+  if (!R) { warmRoster('lobby', `${dg.mode}|${d.day || d.week || ''}`); warmVoices(); return; }
+  if (R.status !== 'active') return;
+  warmArt(squadOf(R)); warmVoices();
+  warmRoster(R.state?.phase === 'floor_done' ? 'floor' : 'reward', `${dg.mode}|${R.id}|${R.floor}|${R.room}|${R.state?.phase}`);
+}
 const cardTile = (c, opts = {}) => {
   const r = c?.rarity || 'normal';
   return `<div class="dg-card r-${r}${opts.cls ? ' ' + opts.cls : ''}" data-id="${c?.id}"${opts.attr || ''} style="--rc:${RCOL[r] || '#9AA3B5'}">
@@ -491,13 +508,15 @@ function wireLobbyV3(main) {
   if (!dg.tight && ((slot && slot.getBoundingClientRect().width < TOKENS['card-mini']) || over)) { dg.tight = 1; paint(); return; }
   main.querySelector('[data-start3]')?.addEventListener('click', async () => {
     if (dg.busy || !squadStatus(dg.sel).ok) return;
-    dg.busy = true; paint();
+    dg.busy = true; paint(); mark('room:go');
     let r = null;
     try { r = await ctx().apiPost('/api/dungeon/start', { cards: dg.sel.filter((id) => M.has(id)) }); } catch (e) { r = e?.body || null; }
     dg.busy = false;
     if (!r?.ok) { toast(r?.message || 'The run did not start.'); paint(); return; }
     ctx().sfx?.('click');
-    dg.log = []; dg.target = 0; dg.sel = [];
+    dg.log = []; dg.target = 0;
+    const squad = dg.sel.filter((id) => M.has(id)); dg.sel = [];
+    if (enterAt(r, squad)) return;   // the answer holds the first room: paint it at once
     await load(); paint();
   });
 }
@@ -643,13 +662,15 @@ function wireLobby(main) {
   }
   main.querySelector('.dg-start')?.addEventListener('click', async () => {
     if (dg.busy) return;
-    dg.busy = true; paint();
+    dg.busy = true; paint(); mark('room:go');
     let r = null;
     try { r = await ctx().apiPost('/api/dungeon/start', { cards: dg.sel.filter((id) => M.has(id)) }); } catch (e) { r = e?.body || null; }
     dg.busy = false;
     if (!r?.ok) { toast(r?.message || 'The run did not start.'); paint(); return; }
     ctx().sfx?.('click');
-    dg.log = []; dg.target = 0; dg.sel = [];
+    dg.log = []; dg.target = 0;
+    const squad = dg.sel.filter((id) => M.has(id)); dg.sel = [];
+    if (enterAt(r, squad)) return;   // the answer holds the first room: paint it at once
     await load(); paint();
   });
 }
@@ -817,7 +838,7 @@ function fightUpdate(main, st) {
   F.querySelector('.dg-meter').innerHTML = meterHTML(st);
   F.querySelector('.dg-log').innerHTML = dg.log.slice(-6).reverse().map((l) => `<li class="${l.kind}"><b>${esc(l.who)}</b><span>→ ${esc(l.to)}</span><em>${l.txt}</em></li>`).join('') || '<li class="none">The fight starts. Tap a card.</li>';
   const sc = dg.support ? mine().get(dg.support) : null;
-  F.querySelector('.dg-hint').innerHTML = sc ? `${I.hand}Choose a card for <b>${esc(sc.name)}</b><button class="dg-cancel">Cancel</button>`
+  F.querySelector('.dg-hint').innerHTML = dg.notice ? `${I.timer}${dg.notice}` : sc ? `${I.hand}Choose a card for <b>${esc(sc.name)}</b><button class="dg-cancel">Cancel</button>`
     : dg.busy ? `${I.timer}The monsters are acting…` : Number(st.sup_round ?? -1) === round ? `${I.hand}Support used · tap a card to attack` : `${I.hand}${foes.filter((f) => f.hp > 0).length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
   F.classList.toggle('picking', !!sc);
   F.classList.toggle('busy', !!dg.busy);
@@ -895,6 +916,7 @@ function popCard(main, id, txt, cls = '') {
   u.classList.remove('hurt'); void u.offsetWidth; if (cls === 'hurt') u.classList.add('hurt');
 }
 async function wireFight(main, keepCanvas) {
+  if (!keepCanvas) mark('room:enter');
   const R = run();
   const F = main.querySelector('.dg-fight');
   const canvas = main.querySelector('.dg-canvas');
@@ -909,6 +931,8 @@ async function wireFight(main, keepCanvas) {
       dg.stage.canvas = canvas;
       dg.roomKey = roomKey();
       await dg.stage.setFoes(foesOf(R.state));
+      mark('room:ready');
+      if (run()) warmRoster('fight', `${dg.mode}|${run().id}|${roomKey()}`);   // the left screen has no run: nothing to warm
       { const fs0 = foesOf(R.state).filter((x) => x.hp > 0); loadVoices(fs0); if (fs0.length && (R.state.round || 0) === 0) snd(voiceOf(fs0[0].key).roar, fs0[0].boss ? 0.75 : 0.45); }
       fightUpdate(main, run().state);
     } catch (e) { console.warn('dungeon stage', e); }
@@ -917,6 +941,7 @@ async function wireFight(main, keepCanvas) {
   fitFightV3(F);
   F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); dg.auto = !dg.auto; localStorage.setItem(AUTO, dg.auto ? '1' : ''); e.currentTarget.classList.toggle('on', dg.auto); ctx().sfx?.('click'); autoNext(); });
   autoNext();
+  passIfNoAction();   // D-182: the fight opens with nothing to play (every attacker stunned, no support ready)
   F.addEventListener('click', (e) => {
     const t = e.target;
     if (V3() && dg.support && !t.closest('.dg-unit, .dg-sup, .dg-hint')) { dg.support = null; fightUpdate(main, run().state); return; }   // v3 (UI-47): the dim layer is drawn, not a box, so a tap outside the targets cancels here
@@ -940,6 +965,7 @@ async function wireFight(main, keepCanvas) {
       const id = Number(u.dataset.card);
       if (dg.support) { const sid = dg.support; dg.support = null; act('support', { cardId: sid, targetCard: id }); return; }
       if (u.classList.contains('down')) { toast('That card is down.'); return; }
+      if (u.classList.contains('stun')) { toast('That card is stunned for a round.'); return; }   // D-182: a stunned card never attacks (no request)
       act('attack', { cardId: id, target: dg.target });
     }
   });
@@ -950,6 +976,35 @@ function target(main, i) {
   dg.target = i; ctx().sfx?.('click'); fightUpdate(main, run().state);
 }
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+// No action can be taken (D-182, as the Hunt since D-173): every standing attacker is stunned and no support is ready (or the support turn of this round
+// is used). The notice shows, the server passes the turn (POST /api/dungeon/pass, dungeon_pass_turn: the monsters act) and the monsters' turn plays.
+const NO_ACTION = 'No action can be taken';
+function noAction(R) {
+  const st = R?.state; if (!st || st.phase !== 'fight') return false;
+  const round = st.round || 0;
+  const cards = squadOf(R);
+  if (cards.some((c) => ATTACKER.has(c.type) && !c.s.down && (c.s.cd || 0) < round + 1)) return false;   // an attacker that is not stunned can attack
+  if (Number(st.sup_round ?? -1) !== round && cards.some((c) => !ATTACKER.has(c.type) && c.ability?.effect && !c.s.down && round >= (c.s.cd || 0))) return false;   // a support is ready
+  return cards.some((c) => !c.s.down);
+}
+let passFail = '';
+async function passIfNoAction() {
+  const R = run(); const main = document.getElementById('main');
+  if (dg.busy || !R || !main?.querySelector('.dg-fight') || ctx().currentView() !== 'dungeon' || !noAction(R)) return false;
+  const key = `${dg.mode}|${R.id}|${R.floor}|${R.room}|${R.state.round}`;
+  if (passFail === key) return false;   // the server refused this round once: not asked again (a stale state cannot loop)
+  dg.busy = true; dg.notice = NO_ACTION; fightUpdate(main, R.state);
+  await sleep(900);
+  let r = null;
+  try { r = await ctx().apiPost('/api/dungeon/pass', { mode: dg.mode }); } catch (e) { r = e?.body || null; }
+  dg.notice = '';
+  if (!r?.ok) { passFail = key; dg.busy = false; fightUpdate(main, run().state); return false; }
+  await playResult('pass', {}, r);
+  await settle(main, r, false);
+  return true;
+}
+// Timing marks for the browser measurement (tools/fight-rig.mjs): tap, motion (the first thing that moves), answer, room:go, room:enter, room:ready.
+const mark = (n) => { try { performance.mark(`dg:${n}`); } catch { /* the marks are optional */ } };
 const clone = (o) => JSON.parse(JSON.stringify(o));
 // One action: the hit lands at once, then each monster takes its turn in order with a clear pause,
 // the meter lights the one acting, and every HP bar moves step by step. The server's state is the
@@ -957,16 +1012,33 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 async function act(kind, body) {
   if (dg.busy) return false;
   const main = document.getElementById('main');
+  mark('tap');
   dg.busy = true; fightUpdate(main, run().state);
+  // Instant feedback (under 100 ms): the tapped card lifts at once while the request runs. The server stays the only source of the
+  // result: nothing is counted here. The answer plays the real result; an error takes the lift back and shows the reason.
+  const striker = main.querySelector(kind === 'attack' ? `.dg-unit[data-card="${body.cardId}"]` : `.dg-sup[data-sup="${body.cardId}"]`);
+  striker?.classList.add('striking'); mark('motion');
+  requestAnimationFrame(() => requestAnimationFrame(() => mark('painted')));   // the measurement: the lift is on the screen
+  if (!dg.auto) ctx().sfx?.('click');
   let r = null;
   try { r = await ctx().apiPost(`/api/dungeon/${kind}`, { ...body, mode: dg.mode }); } catch (e) { r = e?.body || null; }
+  mark('answer');
+  striker?.classList.remove('striking');
   if (!r?.ok) { dg.busy = false; fightUpdate(main, run().state); toast(r?.message || 'That did not work.'); return false; }
+  await playResult(kind, body, r);
+  return settle(main, r, r.kill);
+}
+// The animation of one answer of the server (an attack with the monsters' turn, or a support): the same for a tap and for each round of an
+// Auto batch. At its end the run state is the server's state of that answer (the next round of a batch starts from it).
+async function playResult(kind, body, r) {
+  const main = document.getElementById('main');
   const M = mine();
   const before = clone(run().state);
   const foes = foesOf(before);
   const nm = (id) => M.get(Number(id))?.name || 'Card';
   const step = clone(before);
-  if (kind === 'attack') {
+  if (kind === 'attack' || kind === 'pass') {   // a pass (D-182): no card acts, only the monsters' turn below
+    if (kind === 'attack') {
     const t = r.target ?? body.target;
     const f = foes[t];
     // Item 13: the card's element effect from the Raid flies to the monster, then the hit lands.
@@ -983,6 +1055,7 @@ async function act(kind, body) {
     if (r.kill) { dg.log.push({ kind: 'kill', who: f?.name || 'Monster', to: 'defeated', txt: GA() ? '' : `${COIN}+${fmt(r.loot?.shards)}` }); if (!GA()) lootDrop(main, t, r.loot); }
     fightUpdate(main, step);
     await sleep(r.kill ? 1100 : 750);
+    }
     const hurt = (id, d, label = '') => { const k = String(id); if (!step.cards[k] || !d) return; step.cards[k].hp = Math.max(0, step.cards[k].hp - d); popCard(main, id, `-${fmt(d)}${label}`, 'hurt'); };
     // Poison ticks first (item 20: Acid Spit, Infect).
     if ((r.poison || []).length) {
@@ -1015,7 +1088,7 @@ async function act(kind, body) {
       await sleep(650 * pace);
     }
     dg.acting = null;
-    if (r.burned > 0) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
+    if (r.burned > 0 && body.cardId) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
   } else {
     ctx().sfx?.('click');
     const tx = body.targetCard ? nm(body.targetCard) : foes[body.targetFoe]?.name || 'Monster';
@@ -1026,8 +1099,11 @@ async function act(kind, body) {
     await sleep(r.kill ? 900 : 350);
   }
   if (r.loot?.card) toast('A card dropped!');
-  // The truth from the server, then the run totals (Shards, cards) in the background.
-  dg.data.run.state = r.state;
+  dg.data.run.state = r.state;   // the truth from the server
+}
+// After the last answer: the screen follows the state. A step that is not a fight (reward, floor, over) loads the view first; a kill reloads the
+// run totals in the background; Auto continues.
+async function settle(main, r, kill) {
   dg.busy = false;
   const phase = r.state?.phase;
   if (r.status === 'over') refreshShards();   // the run ended and paid its banked Shards (cleared, fell)
@@ -1035,7 +1111,8 @@ async function act(kind, body) {
   fightUpdate(main, r.state);
   // The run totals come from GET /api/dungeon (dungeon_view: the heaviest call of the fight). Only a kill can change the room,
   // so a hit that kills nothing needs no reload (the answer holds the whole state).
-  if (r.kill) load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
+  if (kill) load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
+  if (await passIfNoAction()) return true;   // D-182: nothing can be played: the turn passes
   autoNext();
   return true;
 }
@@ -1044,6 +1121,34 @@ async function act(kind, body) {
 // every choice (rewards, chests, doors, the floor screen): those stay the member's. Auto counts on the
 // leaderboard (Nathan). Every rule still runs in SQL; Auto only picks the same actions a tap would.
 let autoT = null;
+// Auto on the server (dungeon_auto_rounds.sql, POST /api/dungeon/auto): one request plays up to 5 rounds with the same rules as the taps (it calls
+// dungeon_support and dungeon_attack); the answer lists them and each one is animated in order by the same code as a tap (playResult). The call
+// stops at a kill, a step that is not a fight, the end of the run, a refused action or the 5th round, and then this code continues from the state.
+const AUTO_ROUNDS = 5;
+async function autoBatch() {
+  const main = document.getElementById('main');
+  dg.busy = true; fightUpdate(main, run().state);
+  let r = null;
+  try { r = await ctx().apiPost('/api/dungeon/auto', { mode: dg.mode, max: AUTO_ROUNDS }); } catch (e) { r = e?.body || null; }
+  if (!r?.ok) {
+    dg.busy = false; fightUpdate(main, run().state);
+    if (r?.error === 'auto_unavailable') { dg.autoServer = false; autoNext(); return; }   // the server code is older than the function: play one request for each action
+    dg.auto = false; localStorage.setItem(AUTO, ''); document.querySelector('.dg-auto')?.classList.remove('on');
+    toast(r?.message || 'That did not work.');
+    return;
+  }
+  let kill = false;
+  for (const rd of r.rounds || []) {
+    if (rd.sup) await playResult('support', { cardId: rd.sup.card, targetCard: rd.sup.target_card, targetFoe: rd.sup.target_foe }, rd.sup);
+    if (rd.pass) { dg.notice = NO_ACTION; fightUpdate(main, run().state); await sleep(700); await playResult('pass', {}, rd.pass); dg.notice = ''; }
+    if (rd.atk) { dg.target = rd.atk.target; await playResult('attack', { cardId: rd.atk.card, target: rd.atk.target }, rd.atk); kill = kill || !!rd.atk.kill; }
+    // The member left the fight (another view, a repaint without the fight): the rounds are played on the server, so the state is the final one.
+    if (ctx().currentView() !== 'dungeon' || !document.querySelector('.dg-fight')) { dg.data.run.state = r.state; dg.busy = false; return; }
+  }
+  dg.data.run.state = r.state;
+  if (r.error?.message) { toast(r.error.message); dg.auto = false; localStorage.setItem(AUTO, ''); document.querySelector('.dg-auto')?.classList.remove('on'); }   // a refused attack ends Auto, as before
+  await settle(main, r, kill);
+}
 function autoNext() {
   clearTimeout(autoT);
   if (!dg.auto) return;
@@ -1052,6 +1157,7 @@ function autoNext() {
 async function autoStep() {
   const R = run(); const st = R?.state;
   if (!dg.auto || dg.busy || dg.support || !st || st.phase !== 'fight' || ctx().currentView() !== 'dungeon' || !document.querySelector('.dg-fight')) return;
+  if (dg.autoServer !== false) { await autoBatch(); return; }   // the server plays up to 5 rounds in one request; the code below is the fallback (one request for each action)
   const M = mine(); const round = st.round || 0;
   const foes = foesOf(st);
   const alive = foes.map((f, i) => ({ ...f, i })).filter((f) => f.hp > 0);
@@ -1062,8 +1168,8 @@ async function autoStep() {
   const squad = squadOf(R);
   const atk = squad.filter((c) => ATTACKER.has(c.type) && !c.s.down);
   const ready = atk.filter((c) => (c.s.cd || 0) < round + 1);
-  const pool = ready.length ? ready : atk;
-  if (!pool.length) return;
+  const pool = ready;   // D-182: a stunned card never attacks; with no ready attacker the turn passes
+  if (!pool.length) { passIfNoAction(); return; }
   // The attacker: a weakness hit first, then the most power.
   const best = pool.reduce((a, b) => ((hitsWeak(b, tf) ? 1 : 0) - (hitsWeak(a, tf) ? 1 : 0) || b.cp - a.cp) > 0 ? b : a);
   // One support per turn, only when it helps.
@@ -1425,9 +1531,23 @@ function wireFlips(main) {
   });
   if (cardBack == null) getBack().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('[data-flip]') && cardBack) main.querySelectorAll('.dg-flip .face.back').forEach((f) => { f.innerHTML = `<img src="${esc(cardBack)}" alt="">`; }); });
 }
+// The answer of start / choose already holds the next fight (state, floor, room). Paint it at once and load its monsters in parallel,
+// instead of waiting for GET /api/dungeon (dungeon_view, the heaviest call of the run). Nothing in the fight reads the rest of the view:
+// the totals and the loot cards are read by the screens that follow (reward, floor, over), and each of them loads the view first.
+// A new floor shows other rooms, so a floor change keeps the old path (the view reloads).
+function enterAt(r, squad) {
+  const st = r?.state; const R = run();
+  if (st?.phase !== 'fight' || !Array.isArray(st.foes) || !st.foes.length || !dg.data || dg.data.closed) return false;
+  const start = !!squad;
+  if (start ? !squad.length || !r.run : (!R || Number(r.floor) !== Number(R.floor) || !(Number(r.room) > 0))) return false;
+  warmFoes(st.foes); loadVoices(foesOf(st));
+  dg.data.run = start ? { id: r.run, status: 'active', floor: 1, room: 1, turns: 0, shards: 0, cards: [], squad, state: st } : { ...R, status: 'active', floor: r.floor, room: r.room, state: st };
+  paint();
+  return true;
+}
 async function choose(pick) {
   if (dg.busy) return;
-  dg.busy = true;
+  dg.busy = true; mark('room:go');
   let r = null;
   try { r = await ctx().apiPost('/api/dungeon/choose', { pick, mode: dg.mode }); } catch (e) { r = e?.body || null; }
   dg.busy = false;
@@ -1435,6 +1555,7 @@ async function choose(pick) {
   ctx().sfx?.('click');
   if (r.door === 'elite') toast('An ambush!');
   dg.log = []; dg.target = 0;
+  if (enterAt(r)) return;   // the answer holds the next fight: paint it at once
   await load(); paint();
 }
 function wireChoose(main) {

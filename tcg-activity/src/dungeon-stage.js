@@ -21,9 +21,28 @@ const TARGET = 0xff3b55;
 const cache = new Map();
 const loader = new GLTFLoader();
 const load = (model) => {
-  if (!cache.has(model)) cache.set(model, new Promise((ok, no) => loader.load(BASE + model + '.glb', ok, undefined, no)));
+  if (!cache.has(model)) {
+    const p = new Promise((ok, no) => loader.load(BASE + model + '.glb', ok, undefined, no));
+    cache.set(model, p);
+    p.catch(() => { if (cache.get(model) === p) cache.delete(model); });   // a failed load is tried again on the next use (never kept as a permanent empty slot)
+  }
   return cache.get(model);
 };
+// The monster models of public/dungeon/monsters (the server picks one of these for each monster: dungeon_monsters.model). Loading one
+// into the cache makes the next room that uses it appear at once. An unknown name is harmless (a 404 is dropped from the cache).
+export const STAGE_MODELS = ['skeleton', 'zombie', 'giant', 'yeti', 'green_blob', 'pink_slime', 'blue_demon', 'goleling', 'squidle', 'dino'];
+const warm = new Set();
+/** Load up to `max` models that are not loaded yet (one after the other, so that the room in play is not slowed down). Returns how many it started. */
+export async function preloadModels(models, max = 3) {
+  let n = 0;
+  for (const m of models) {
+    if (!m || warm.has(m) || n >= max) continue;
+    warm.add(m); n++;
+    try { await load(m); } catch { warm.delete(m); }
+  }
+  return n;
+}
+export const modelsLoaded = () => [...warm];
 const clipOf = (clips, kind) => {
   for (const n of CLIPS[kind] || []) { const c = clips.find((x) => x.name === n || x.name.endsWith('|' + n)); if (c) return c; }
   return null;

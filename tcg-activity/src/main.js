@@ -49,6 +49,7 @@ import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-exp
 import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
 import { initMobile, isPhone } from './mobile.js';
+import { mergeFightRows } from './hunt-merge.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -2672,7 +2673,11 @@ async function fireSupport(cardId, targetId) {
 
 // Re-fetch the hunt state (roster shields/cooldowns/hp, round, boss hp) and repaint the team.
 async function refreshHuntState() {
-  let d; try { d = await api('/api/hunt'); } catch { return; }
+  let d; try { d = await api('/api/hunt?fight=1'); } catch { return; }
+  if (d?.fight && d.hunt && Array.isArray(huntState?.roster)) {
+    // The light answer (the boss, the HP rows, the round): merge it into the roster we hold, in the order the server gives (downed last).
+    d = { hunt: d.hunt, roster: mergeFightRows(huntState.roster, d.hp), round: d.round, usedToday: d.usedToday };
+  } else if (d?.fight) { try { d = await api('/api/hunt'); } catch { return; } }   // no roster held yet: the full answer
   if (!d || !d.hunt) { huntCache = d; if (currentView === 'battling') renderHunt(); return; }
   huntState = { ...huntState, roster: d.roster, round: d.round, usedToday: d.usedToday, hunt: d.hunt };
   huntCache = { ...huntCache, ...d }; // keep the instant-open cache warm after each action

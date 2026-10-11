@@ -336,7 +336,8 @@ app.use(express.static(PUBLIC, {
     // Sounds and pictures: 1 day, not a week. Their names are not hashed and a file can change
     // in place (the explain/ captures), so a change shows within a day. no-store reloaded each
     // one on every use.
-    else if (/\.(mp3|png|webp|jpe?g|svg)$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=86400');
+    // The Dungeon monster models and the chest (.glb, 2.7 MB) were no-store: every visit loaded them again. Same day-long cache as the pictures.
+    else if (/\.(mp3|png|webp|jpe?g|svg|glb)$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=86400');
     else res.setHeader('Cache-Control', 'no-store');
   },
 }));
@@ -889,6 +890,18 @@ app.get('/api/hunt', async (req, res) => {
   // ?light=1: the boss only (Home, the small window, the bell, the Hunt dot). No roster, so no card_powers, hunt_view,
   // hunt_squads or adventure_gate: those four cost ~250 ms of database time for an answer that these screens never read.
   if (hunt && req.query.light) return res.json({ hunt });
+  // ?fight=1: what a fight needs after an attack or a support: the boss, the HP rows of the cards that fought today and the round. The client merges them
+  // into the roster it already holds (hp, downed, shield, cooldown, used). No collection, no card_powers, no hunt_view, no gate, no boss moves: those
+  // are the Hunt screen's opening, and the fight refreshed all of them after every boss turn (~250 ms of database time each time).
+  if (hunt && req.query.fight) {
+    const day = mtToday();
+    const [hp, st] = await Promise.all([
+      supabase.from('hunt_card_hp').select('card_id, hp_remaining, max_hp, downed, shield, cd_until_round').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', day),
+      supabase.from('hunt_combat_state').select('round').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', day).maybeSingle(),
+    ]);
+    if (hp.error || st.error) return res.status(500).json({ error: (hp.error || st.error).message });
+    return res.json({ hunt, fight: true, hp: hp.data || [], round: st.data?.round || 0, usedToday: (hp.data || []).length });
+  }
   if (!hunt) {
     // Cooldown: no active boss. Return the next spawn time + the last boss outcome.
     const { nextSpawnAt, last, lastBoard, lastFeed } = await loadHuntCooldown();   // shared (10 s)
