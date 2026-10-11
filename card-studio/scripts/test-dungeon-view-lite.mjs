@@ -48,11 +48,16 @@ begin
                       order by floor desc, room desc, turns limit 1));
   end $f$;
 
+  -- The cards of 'mine' are sorted by cp; cards with the same cp have no defined order (the old text has none either, and the
+  -- order changes with the plan after new statistics). So the comparison sorts 'mine' by (cp desc, id) on both sides.
+  create function norm_view(j jsonb) returns jsonb language sql immutable as $f$
+    select case when j ? 'mine' then (j - 'mine') || jsonb_build_object('mine', (select coalesce(jsonb_agg(e order by (e->>'cp')::int desc, (e->>'id')::bigint), '[]'::jsonb) from jsonb_array_elements(j->'mine') e)) else j end $f$;
+
   select value into en from settings where key = 'dungeon';
   update settings set value = value || '{"enabled": true}' where key = 'dungeon';
   for pid in select id from players loop
     n := n + 1; x := dungeon_view(pid); y := ref_dungeon_view(pid);
-    if x is distinct from y then bad := bad + 1; end if;
+    if norm_view(x) is distinct from norm_view(y) then bad := bad + 1; end if;
     if y->'run' is not null and y->'run' <> 'null'::jsonb then withrun := withrun + 1; end if;
     if dungeon_view_lite(pid) is distinct from (x - 'mine') or (dungeon_view_lite(pid) ? 'mine') then badlite := badlite + 1; end if;
     if jsonb_array_length(x->'mine') <> (select count(*) from player_cards where player_id = pid and quantity > 0) then badmine := badmine + 1; end if;
