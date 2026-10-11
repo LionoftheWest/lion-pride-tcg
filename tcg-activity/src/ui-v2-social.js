@@ -632,7 +632,7 @@ function openTradeWindowV3(o = {}) {
       if (mpV3) paintPendingV3();
       o.onSent?.(act);
     },
-    onError: () => errorToastV3(),
+    onError: (_act, r) => errorToastV3(r?.reason),   // a short member-facing reason from the server (UI-25); none = the generic text
   });
 }
 // UI-31 (D-64 item 7, v3 only): a tap on a Hall listing opens the Trade window with that member and the card chosen.
@@ -804,9 +804,9 @@ function infoToastV3(text) {
   clearTimeout(pd.toastT);
   pd.toastT = setTimeout(() => document.getElementById('u3PdToast')?.remove(), 4000);
 }
-function errorToastV3() {
+function errorToastV3(reason) {
   document.getElementById('u3PdToast')?.remove();
-  document.body.insertAdjacentHTML('beforeend', `<div id="u3PdToast" class="u3-pd-toast">${toast3({ kind: 'error', text: 'Something went wrong. Try again.' })}</div>`);
+  document.body.insertAdjacentHTML('beforeend', `<div id="u3PdToast" class="u3-pd-toast">${toast3({ kind: 'error', text: typeof reason === 'string' && reason && reason.length <= 80 ? reason : 'Something went wrong. Try again.' })}</div>`);
   clearTimeout(pd.toastT);
   pd.toastT = setTimeout(() => document.getElementById('u3PdToast')?.remove(), 4000);
 }
