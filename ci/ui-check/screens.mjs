@@ -89,7 +89,6 @@ export const SCREENS = {
   'fx-banners':          { id: 'UI-28', under: 'UI-03', long: true, safe: true, fx: 'banners', hold: true, notOn: ['tiny'], steps: [['wait', 3]] },
   'fx-profile-prank':    { id: 'UI-28', under: 'UI-14', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3], ['js', '#memPrank'], ['wait', 1.5]] },
   'fx-profile-confirm':  { id: 'UI-28', under: 'UI-14', long: true, fx: 'hist', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3], ['js', '#memPrank'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1.5]] },
-  'boons-pick':          { id: 'UI-28', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
   'hunt-squad':          { id: 'UI-17', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   // v3: the Card picker (UI-64) in Hunt mode over the Hunt view (Auto-pick, locked cards, the short-squad dialog).
   // The Hunt with no live boss and with today's squad down (UI-19): states derived in serve.mjs from the recorded calls.

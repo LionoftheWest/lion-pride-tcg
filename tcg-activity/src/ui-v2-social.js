@@ -1257,7 +1257,7 @@ function openBoonCards(to, { kind: startKind = 'all', returnFocus = null } = {})
     apply: (list, values, q) => pickerCards(list, values, q, kindOf, effectReadyIn),
     blocked: (c) => (!effectScaled(c).enabled ? 'Unlocks soon' : effectReadyIn(c) > 0 ? `Ready in ${fmtDur(effectReadyIn(c))}` : ''),
     badge: (c) => (effectReadyIn(c) > 0 ? fmtDur(effectReadyIn(c)) : ''),
-    status: (sel) => { const c = find(sel[0]); const why = whyNot(c); return { checks: why && c ? [{ ok: false, label: why }] : [], ready: !!c && !why, reason: c ? null : 'Pick an effect card' }; },   // a picked card that cannot play has its reason in the check line (no second copy under Confirm)
+    status: (sel) => { const c = find(sel[0]); const why = whyNot(c); const owner = !!c && ownerBlocked(c.effect?.primitive, to.id, st.immune); return { checks: why && c && !owner ? [{ ok: false, label: why }] : [], ready: !!c && !why, reason: c ? null : 'Pick an effect card' }; },   // a picked card that cannot play has its reason in the check line (no second copy under Confirm)
     detail: (c) => ctx().openViewer?.(c),
     returnFocus: returnFocus || document.querySelector('.u3-mp-tile__pick'),
     // a card the server refuses on the server owner: the popup says why, before the play (nothing is spent)
