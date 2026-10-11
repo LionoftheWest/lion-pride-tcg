@@ -36,27 +36,45 @@ a balance change in one place leaves the other places wrong.
 
 ### The design
 
-1. **The `events` table becomes the calendar.** It gets three new parts:
+Nathan (2026-10-11): "I want the freedom to make any kind of event I want." An event can be
+about recruitment (Community Week), bosses, trading, pranks and boons, or anything else.
+So the design has no code for one specific event. It gives building blocks: time, variables,
+theme, audience, rewards, and a library of saved events to schedule again.
+
+0. **The event library.** Each saved event is a template in `event_templates`: name, kind,
+   variables, theme, audience, rewards, rules, and a default length. Nathan builds the
+   library over time. To run one, he drops it on the calendar (one time or as a repeat).
+   Each calendar entry is an `events` row made from the template. A change to one entry does
+   not change the template. "Save as template" turns any event into a library entry.
+1. **The `events` table becomes the calendar.** It gets these new parts:
    - `vars` jsonb: the variables that the event changes, for example
      `{"pull_rare_mult": 2, "dungeon_runs_per_day": 2}`.
    - `theme` jsonb: name, color, art, banner text.
    - `repeat_id`: a link to a repeat rule (item 4).
+   - `template_id`: the library entry that it came from (item 0), if any.
    Two new kinds are added: `modifier` (variables only, no payouts) and `hunt` (item 3).
 2. **A variable registry `event_vars`.** Each row has: key, label, note, the balance key
    and path that holds its base value, how events combine (`multiply` or `max`), and the
    limits. Only registered variables can go into `events.vars`. A check refuses a value
-   outside the limits. First variables:
-   - `pull_rare_mult`, `pack_earn_mult`
-   - `dungeon_runs_per_day`, `gauntlet_runs_per_week`
-   - `shard_reward_mult`, `dungeon_reward_mult`, `hunt_prize_mult`, `daily_reward_mult`
+   outside the limits. The registry covers every system, so that any kind of event is
+   possible. A value that is fixed in code becomes a `balance` key first, then a variable.
+   First variables (the full list is made from the code in PR 1):
+   - Packs and pulls: `pull_rare_mult`, `pack_earn_mult`, Shop prices.
+   - Modes: `dungeon_runs_per_day`, `gauntlet_runs_per_week`, Hunt rewards, Dungeon rewards.
+   - Daily: `daily_reward_mult`, the Shards for each daily task.
+   - Trading and auctions: the limits and the fees that exist in code.
+   - Pranks and boons: the play limits, the costs and the strengths.
+   - Recruitment: the rewards for a recruit and for the recruiter (Community Week).
+   Each new system adds its own variables to the registry. Then an event can use them with
+   no new code.
 3. **The Hunt becomes a calendar item.** Each Hunt is an `events` row of kind `hunt`.
    - At `starts_at`, `event_step` spawns the boss and links it (`hunts.event_id`).
    - `hunts.closes_at` follows `events.ends_at`. A change to the end time moves the close.
    - The fixed `hunt-*-mt` cron jobs and the 6-hour guard are removed.
-   - Boss Rush is several `hunt` events in one week.
-4. **Repeats.** `event_repeats` holds a template (kind, vars, theme, length) and a rule
-   (for example "each Thursday 15:00 MT"). A cron step makes the next 4 weeks of rows. A
-   change to one row does not change the template. The current weekly Hunt becomes the
+   - Several Hunt events can be on the calendar in one week, with no special code.
+4. **Repeats.** `event_repeats` links a library template (item 0) to a rule (for example
+   "each Thursday 15:00 MT"). A cron step makes the next 4 weeks of rows. A change to one
+   row does not change the template. The current weekly Hunt becomes the
    first repeat, so nothing changes for players on the day of the switch.
 5. **One reader: `game_var(key)`.** It returns the base value from `balance`, combined
    with every live event that changes it, kept inside the limits. Every reader of these
@@ -66,7 +84,8 @@ a balance change in one place leaves the other places wrong.
    count with `game_var('dungeon_runs_per_day')` and `game_var('gauntlet_runs_per_week')`.
 7. **Timing.** `event-tick` runs every minute, not every 10 minutes. The bot cache for
    game variables is 30 s. An event starts within about 1 minute.
-8. **Live edits.** A live event can change its end time, variables and theme. It cannot
+8. **Live edits (Nathan, 2026-10-11: yes).** A live event can change its end time,
+   variables and theme, for example a double pull rate tuned up during the event. It cannot
    change its start or kind. Each change is written to `event_log`.
 9. **The admin calendar (Nathan, 2026-10-11: "just like a Google Calendar view").**
    - The default view is the full current month. Every event shows on its days: Hunts,
@@ -85,20 +104,25 @@ a balance change in one place leaves the other places wrong.
 1. No event live: each `game_var` equals its `balance` value.
 2. A `pull_rare_mult = 2` event: the rates double while it is live and return after it
    ends. The rates still add up to 1.
-3. Boss Rush: three `hunt` events in one week spawn three bosses. Each closes at its own
-   end time. A moved end time moves `closes_at`. Each reward pays once.
+3. Three `hunt` events in one week spawn three bosses. Each closes at its own end time. A
+   moved end time moves `closes_at`. Each reward pays once.
 4. `dungeon_runs_per_day = 2`: a player starts 2 runs. The third is refused. With no
    event, the second run is refused (the flag-off state).
 5. A repeat makes the next 4 weeks. A change to one week leaves the other weeks the same.
 6. A value outside the limits is refused.
+7. Save an event as a template, then schedule it twice. A change to one entry leaves the
+   template and the other entry the same.
+8. A live `pull_rare_mult` changes from 2 to 3. The next pack uses 3 (within the 30 s
+   cache), and `event_log` records the change.
 
 ### PR order
 
-1. SQL: `event_vars`, `game_var`, the new `events` columns and kinds, a one-minute tick.
+1. SQL: `event_vars`, `game_var`, `event_templates` (the library), the new `events` columns and kinds, a one-minute tick.
 2. SQL: Hunt as a calendar event, `event_repeats`, removal of the fixed Hunt jobs.
 3. SQL: runs each day for the Dungeon and the Gauntlet.
 4. Bot: pull odds and earned packs read `game_var`. `/packrate` becomes a `modifier` event.
-5. Admin: the calendar view.
+5. Admin: the month calendar, the detail panel, and the event library.
+6. More variables for each system (trading, pranks and boons, recruitment), one PR each.
 
 ---
 
@@ -142,9 +166,22 @@ a balance change in one place leaves the other places wrong.
    - The Hunt weak point kind `season` becomes `set`.
    - The badges and "Season 1 Complete" work for each set.
    - The Open window shows the pack art of each set.
-5. **Fixes:** `push.js` checks every insert error. `spawn_hunt` and the achievement
+5. **Reprints and set pools (Nathan, 2026-10-11).** A card has one home set, where it is
+   printed and numbered. Any other set can add that card to its pull pool. The player gets
+   the same card, not a copy. This supports a future "mega set" with every card, and
+   special event packs.
+   - `set_pool(set_id, card_id)`: one card added to the pool of another set.
+   - `set_includes(set_id, included_set_id)`: a whole set added. A mega set includes every
+     set, and it updates by itself when a new set comes out.
+   - The `draw_pool` view becomes: the home cards of the set, plus `set_pool`, plus the
+     cards of each included set. Each pack still draws from one set's pool (D-82 odds).
+   - In the Sets section: "Add cards from other sets" (search and select), and "Include a
+     whole set".
+   - `push.js` no longer moves a card to a new set. A push only changes the home set when
+     Nathan changes it on purpose.
+6. **Fixes:** `push.js` checks every insert error. `spawn_hunt` and the achievement
    functions read `draw_pool`.
-6. **A set check script:** each card has a set, a number, art for every finish, and tags
+7. **A set check script:** each card has a set, a number, art for every finish, and tags
    from the fixed list (F-3).
 
 ### Acceptance test (local copy)
@@ -153,12 +190,16 @@ Nathan creates the set "S2 test", uploads pack art, makes one card in it, and pu
 pack of S2 gives only S2 cards and shows the S2 art. S1 is unchanged, and the S1 numbers
 are the same.
 
+Then Nathan adds five S1 cards to the S2 pool. An S2 pack can give those cards, and they
+keep their S1 numbers. A test set that includes S1 and S2 can give any card of both.
+
 ### PR order
 
 1. Merge the portal into the Admin page (no new features).
-2. The Sets section with pack art. `set` in `cards.json`. `push.js` fixes.
-3. Remove "Season" text in SQL, then in the Activity (the Activity change is a UI PR).
-4. The set check script.
+2. SQL: `set_pool`, `set_includes`, and the new `draw_pool`.
+3. The Sets section with pack art and set pools. `set` in `cards.json`. `push.js` fixes.
+4. Remove "Season" text in SQL, then in the Activity (the Activity change is a UI PR).
+5. The set check script.
 
 ---
 
@@ -195,8 +236,23 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 2. **No fixed numbers in the callers.** Each number becomes a `balance` key.
 3. **No combat math in JS.** The auto-pick and Team CP call one SQL function that uses
    `combat_squad`. Delete the JS copies and the old simulators.
-4. **Haste works in fights**, or it is removed with a refund (Nathan decides).
-5. **The Combat Lab: one place to analyze.** One command runs seeded fights on the local
+4. **Haste works in fights.** It lowers the support cooldown in the Hunt and the Dungeon,
+   as its label says (Nathan approved the recommendations, 2026-10-11).
+5. **One place (Nathan, 2026-10-11: "lets make it one PLACE").** One place to read, one
+   place to calculate, and typed tables under them. Not one physical table: the data has
+   different shapes, and a table of stored results becomes wrong when a balance number, a
+   star or a stat point changes. Size is not a problem (about 5,500 combat rows in total).
+   - **One calculation:** `card_combat()` is the only code that calculates CP, HP, crit,
+     potency and Haste. The fights, the auto-pick, Team CP and the Arena all call it.
+   - **One table to read:** the view `combat_sheet`, one row for each card and finish. It
+     shows the calculated CP, HP and crit, the ability with its power cost, the element, the
+     tags and the synergy groups. It calculates on each read, so it is always current. If it
+     becomes slow, it becomes a materialized view that refreshes after each balance change.
+   - **One log:** `combat_actions` only. `hunt_combat_log` and `dungeon_log` are removed
+     after their readers move to `combat_actions`.
+   - **The Admin page Combat section:** the `combat_sheet` with sorting and filters, the
+     `balance` combat keys, and the last Combat Lab report.
+6. **The Combat Lab: one place to analyze.** One command runs seeded fights on the local
    copy for the Hunt, the Dungeon and the Gauntlet, with every card and every boss.
    It reports:
    - Damage and support value for each card, with the top and bottom outliers.
@@ -206,10 +262,10 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
    - **Invariants:** HP is never below 0 or above the maximum, no value is NaN, and each
      reward pays once.
    Later the Admin page shows the last report.
-6. **The golden test covers the Dungeon and the Gauntlet**, and runs on the local copy and
+7. **The golden test covers the Dungeon and the Gauntlet**, and runs on the local copy and
    in the SQL test run. Today it covers the Hunt only, and it runs against the live
    database.
-7. **The Arena (later):** a JS copy of the core is allowed only with a test that plays the
+8. **The Arena (later):** a JS copy of the core is allowed only with a test that plays the
    golden fights on both copies and fails on any difference.
 
 ### Acceptance tests
@@ -226,16 +282,17 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
    simulators. Fix Haste.
 2. `elements` and `passives` tables. Remove the fixed copies.
 3. `ability_kinds` and the ability check.
-4. The Combat Lab, and the golden test for the Dungeon and Gauntlet on the local copy.
+4. The `combat_sheet` view and the Admin page Combat section.
+5. The Combat Lab, and the golden test for the Dungeon and Gauntlet on the local copy.
+6. One log: move the readers to `combat_actions`, then remove the old logs.
 
 ---
 
-## Decisions for Nathan
+## Decisions recorded (Nathan, 2026-10-11)
 
-1. **Boss Rush:** one boss after another, or several bosses at the same time? One after
-   another needs no Activity screen change. Several at the same time needs a new Hunt
-   screen design.
-2. **Haste:** make it work in fights (recommended), or remove it and refund the points?
-3. **Reprints:** can an existing card appear again in a new set?
-4. **Live variables:** confirm that a live event can change its variables (for example
-   from 2x to 3x pull rates during the event).
+1. **Events:** no code for one specific event. Nathan wants the freedom to make any kind of
+   event and to build a library of events to schedule (F-1 item 0).
+2. **Combat:** F-3 is approved, with one place (F-3 item 5). Haste works in fights.
+3. **Reprints:** yes. A set can add cards from other sets, or whole sets, to its pull pool
+   (F-2 item 5).
+4. **Live variables:** yes. A live event can change its variables.
