@@ -32,7 +32,7 @@ export const SCREENS = {
   // v3: the Card Detail states of UI-08 (the approved frames): a card to ascend (cookie ci_col=ascend), the stat points editor (ci_col=points), a locked card.
   'collection-detail-ascend': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, col: 'ascend', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5]] },
   'collection-detail-points': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, col: 'points', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]'], ['wait', 1]] },
-  'collection-detail-locked': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile.is-locked'], ['wait', 2.5]] },
+  'collection-detail-locked': { id: 'UI-08', under: 'UI-07', safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile.is-locked'], ['wait', 2.5]] },
   // v3: the card viewer (UI-09) opened from the Card Detail art (a tap on #pArt; at the sizes where the viewer opens with the panel it opens again).
   'collection-viewer':   { id: 'UI-09', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pArt'], ['wait', 1.5]] },
   // v3: the celebration after an Ascend (UI-10 C1-C4): the viewer with the card and "Spend points" (cookie ci_col=ascend-ok answers the Ascend).
