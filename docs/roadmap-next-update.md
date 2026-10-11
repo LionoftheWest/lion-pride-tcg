@@ -45,9 +45,10 @@ approved design first (`docs/design.md` 12.3), so claim the design IDs in week 1
 
 **Set 2 and combat (R-06).** The overhaul ships before Set 2. Work that does not depend on
 the engine starts now: the theme, the subject list, and the art. Tags, abilities and
-`cp_mod` for Set 2 are set only after the overhaul is merged. The overhaul has a fixed scope
-(4.7), so that it fits before the release date. If the measured simulations are not ready
-in time, Nathan decides: move the release date, or cut scope from the overhaul.
+`cp_mod` for Set 2 are set only after the overhaul is merged. Nathan (2026-10-11): all
+of this fits in two weeks, because v1.1 built the foundation (the `combat_*` engine, the
+golden fights, `card_sets`, `events`). Each balance change is still measured on the local
+copy before it goes live.
 
 ## 4. The work for each item
 
