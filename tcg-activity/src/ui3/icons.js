@@ -7,6 +7,7 @@ import {
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
   Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, Eye, DoorOpen, Gem, BellOff, ChevronUp, Tag, Gavel, ArrowLeft, Sparkles, Drama, Bug, MessageSquare, Lightbulb, Monitor, GitCommitHorizontal, Clock, Send, Shield,
+  Image as ImageIcon, Rainbow, Puzzle, Dumbbell, HandHeart, Handshake, Target, Hammer, ShoppingCart, Recycle, Sun, Mic, Pickaxe, Laugh, User, PawPrint, Hourglass, Backpack, Map as MapIcon,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -42,6 +43,10 @@ export const ICONS = {
   'arrow-left': ArrowLeft,
   'sparkles': Sparkles, 'drama': Drama,
   'bug': Bug, 'message-square': MessageSquare, 'lightbulb': Lightbulb, 'monitor': Monitor, 'git-commit-horizontal': GitCommitHorizontal, 'clock': Clock, 'send': Send,
+  // the achievement tracks and set badges (UI-13): line icons, not emoji
+  'image': ImageIcon, 'rainbow': Rainbow, 'puzzle': Puzzle, 'dumbbell': Dumbbell, 'hand-heart': HandHeart, 'handshake': Handshake, 'target': Target, 'hammer': Hammer,
+  'shopping-cart': ShoppingCart, 'recycle': Recycle, 'sun': Sun, 'mic': Mic, 'pickaxe': Pickaxe, 'laugh': Laugh, 'user': User, 'paw-print': PawPrint, 'hourglass': Hourglass,
+  'backpack': Backpack, 'map': MapIcon,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

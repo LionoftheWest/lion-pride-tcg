@@ -55,6 +55,15 @@ export const SCREENS = {
   'achievements-detail': { id: 'UI-12', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-ach="s1"]'], ['wait', 1.5]] },
   'achievements-ready':  { id: 'UI-12', notOn: ['tiny'], long: true, safe: true, ach: 'ready', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   'achievements-claim-error': { id: 'UI-12', notOn: ['tiny'], safe: true, ach: 'ready', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-claim]'], ['wait', 1.5]] },
+  // UI-13 (the tracks under the UI-12 Achievements tab; cookie ci_ach=tracks makes the achievement view and the gallery, serve.mjs): the Tracks list, a track
+  // window, the Badges list, the Titles list, the Frames list, a Claim and an Equip that the server refuses (the check server blocks every write).
+  'tracks':              { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
+  'tracks-window':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-track]'], ['wait', 1]] },
+  'tracks-badges':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="badges"]'], ['wait', 1]] },
+  'tracks-titles':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="titles"]'], ['wait', 1]] },
+  'tracks-frames':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="frames"]'], ['wait', 1]] },
+  'tracks-claim-error':  { id: 'UI-13', notOn: ['tiny'], safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-claim]'], ['wait', 1.5]] },
+  'tracks-equip-error':  { id: 'UI-13', notOn: ['tiny'], safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="titles"]'], ['wait', 1], ['js', '#main [data-equip]'], ['wait', 1.5]] },
   'bosses':              { id: 'UI-11', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
   'boss-detail':         { id: 'UI-11', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]'], ['js', '#main [data-bi]'], ['wait', 2]] },
   'trades':              { id: 'UI-25', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`]], input: '#trFind, #main input[type=search], #main input[type=text]' },
@@ -274,6 +283,7 @@ export const SCREENS = {
 export function ownerOf(screen, where) {
   // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
   if (/#tutLayer[a-z]*\b|\.u3-wt\b|\.u3-wt[-_]/.test(where)) return 'UI-37';
+  if (/#u3TrHost\b|\.u3-trhost\b|\.u3-tr\b|\.u3-tr[-_]|\.u3-trw\b|\.u3-trw[-_]|\.u3-fr\b|\.u3-fr[-_]/.test(where)) return 'UI-13';   // the tracks, the track window, the title and frame tiles (UI-13)
   if (/\.u3-avfx\b|\.u3-avfx[-_]/.test(where)) return 'UI-55';   // the avatar effect overlay (UI-55)
   if (/\.u3-tn\b|\.u3-tn[-_]/.test(where)) return 'UI-59';   // the small live view (tiny class)
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';

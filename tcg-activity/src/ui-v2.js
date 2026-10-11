@@ -24,6 +24,9 @@ import { fitDetail, watchDetailFit } from './ui3/card-detail-fit.js';
 import { fmtCompact } from './ui3/number.js';
 import { inlineMessage } from './ui3/components.js';
 import { paintAchievementsV3, paintBossesV3 } from './ui3/collection-tabs.js';
+import { paintTracksV3, closeWindow as closeTrackWindow, switchHTML as trackSwitchHTML } from './ui3/tracks-view.js';
+import * as tk3 from './ui3/tracks.js';
+import { icon } from './ui3/icons.js';
 import * as se3 from './ui3/style-editor.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import * as hm3 from './ui3/home.js';
@@ -255,7 +258,8 @@ export async function refreshCollectionBadge({ profile = false } = {}) {
   if (!ctx) return;
   await Promise.all([ensureCatalog(), loadMyProfile(profile)]);
   const asc = (ctx.cache.collection?.cards || []).filter((c) => c.can_ascend).length;
-  const ach = measure(mergedCards(), myProfile?.stats).filter((a) => a.done && !claimedSet().has(a.key)).length;
+  const tv = await achViewV3(profile);   // v3 with the tracks on (UI-13): the rewards ready are the view's count
+  const ach = tv ? tv.ready | 0 : measure(mergedCards(), myProfile?.stats).filter((a) => a.done && !claimedSet().has(a.key)).length;
   const btn = document.querySelector('#dock .dk[data-view="collection"]');
   if (!btn) return;
   let b = btn.querySelector('.cnt');
@@ -319,9 +323,74 @@ async function claimAllV3() {
   if (ctx.currentView() === 'collection') renderCollectionV2();
   return { ok: true };
 }
+// ---- v3 Achievement tracks, badges, titles and frames (UI-13; src/ui3/tracks.js, tracks-view.js) ----
+// Only under body.ui-v3 and only for a member whose achievement view is enabled (settings.achievement_tracks): otherwise
+// achTv stays null and the UI-12 list shows as before. The view is GET /api/achievements, the titles and frames GET
+// /api/achievements/gallery. A Claim of a track or a tag badge is the same POST /api/achievements/claim (the SQL pays).
+let achTv = null; let achTvAt = 0; let achGal = null;
+async function achViewV3(force) {
+  if (!document.body.classList.contains('ui-v3')) return null;
+  if (!force && Date.now() - achTvAt < 10000) return achTv;
+  try { const v = await ctx.api('/api/achievements'); achTv = v?.enabled ? v : null; } catch { achTv = achTv && Date.now() - achTvAt < 60000 ? achTv : null; }
+  achTvAt = Date.now();
+  return achTv;
+}
+const isTierKey = (k) => /^(track|tag):/.test(k);
+async function claimTracksV3(key) {
+  if (!isTierKey(key)) { achTvAt = 0; return claimV3(key); }
+  let r = null;
+  try { r = await ctx.apiPost('/api/achievements/claim', { key }); } catch { r = null; }
+  if (!r?.ok && r?.error !== 'claimed') return { ok: false };
+  achTvAt = 0;
+  if (r?.ok) {
+    ctx.refreshPacks?.();
+    const n = (w, c) => (c ? `${c} ${w}${c === 1 ? '' : 's'}` : null);
+    const msg = [n('pack', r.packs), r.shards ? `${r.shards} Shards` : null, n('title', r.titles?.length), n('frame', r.frames?.length)].filter(Boolean).join(' + ');
+    const last = r.titles?.[r.titles.length - 1];
+    if (last) toastAction(msg, 'Equip now', () => equipTitle(last, null)); else if (msg) toast(msg);
+  }
+  loadMyProfile(true).then(() => { refreshCollectionBadge(); if (ctx.currentView() === 'collection') renderCollectionV2(); });
+  return { ok: true };
+}
+async function equipTracksV3(kind, value) {
+  const next = { title: kind === 'title' ? value : (myProfile?.title ?? null), frame: kind === 'frame' ? value : (myProfile?.frame ?? null) };
+  const r = await ctx.apiPost('/api/cosmetics', next).catch(() => null);
+  if (!(r && r.ok !== false)) { toast('Could not equip it'); return { ok: false }; }
+  myProfile = { ...(myProfile || {}), ...next };
+  toast(kind === 'title' ? `Title equipped: ${value}` : `${tk3.frameLabel(value)} equipped`);
+  paintProfile();
+  if (ctx.currentView() === 'collection') renderCollectionV2();
+  return { ok: true };
+}
+/** A frame ring around the member's avatar (a tier frame also shows the icon of its track). */
+function frameAvatarV3(value, track) {
+  const me = ctx.user();
+  const kind = String(value || '').split(':')[0];
+  const mark = track ? `<span class="u3-fr__ico">${icon(tk3.trackIcon(track), { size: 'sm' })}</span>` : '';
+  return `<span class="u3-fr u3-fr--${esc(kind)}" aria-hidden="true"><span class="u3-fr__face"><img src="/api/avatar/${esc(me?.id || '')}" alt="" data-err="remove"></span>${mark}</span>`;
+}
+function paintTracksTabV3(main, achs, tabBar, help) {
+  const seg = col.achSeg;
+  const onSeg = (s) => { col.achSeg = s; renderCollectionV2(); };
+  const base = { tabBar, help, seg, view: achTv, gallery: achGal, readyTotal: achTv.ready | 0, onSeg, claim: claimTracksV3, claimAll: claimAllV3, equip: equipTracksV3,
+    avatar: frameAvatarV3, equipped: { title: myProfile?.title ?? null, frame: myProfile?.frame ?? null } };
+  if (seg !== 'badges') { paintTracksV3(main, base); return; }
+  closeTrackWindow(false);
+  const catalog = mergedCards();
+  const retired = new Set(achTv.retired || []);
+  const tagRows = (achTv.badges || []).map((b) => tk3.tagBadge(b, catalog));
+  const claimed = claimedSet();
+  for (const b of achTv.badges || []) if (b.claimed) claimed.add(b.key);
+  const old = achs.filter((a) => !retired.has(a.key)).map((a) => ({ ...a, iconName: tk3.badgeIcon(a.key) }));
+  paintAchievementsV3(main, { ...base, switchHTML: trackSwitchHTML('badges'), achs: tk3.badgeList(tagRows, old, claimed, retired), claimed,
+    rewardText: (a) => (a.tag ? tk3.badgeReward(a.reward) : rewardLabel(rewardOf(a.key))), numLabel, thumb, flair: flairHTML,
+    sortedSet: (a) => [...(a.set || [])].sort((x, y) => (y.owned - x.owned) || (x.num - y.num)),
+    openCard: (c, list) => ctx.openViewer(c, { list: list.filter((x) => !x.locked) }) });
+}
 function paintTabV3(achs, tabBar) {
   const main = ctx.el('main');
   const help = explainBtn('collection');
+  if (col.view !== 'bosses' && achTv) { col.view = 'ach'; paintTracksTabV3(main, achs, tabBar, help); wireColTabs(); maybeExplain('collection'); return; }
   if (col.view === 'bosses') {
     paintBossesV3(main, { tabBar, help,
       bosses: RAID_BOSSES.map((b) => ({ arch: b.arch, title: b.title, blurb: b.blurb, credit: b.credit, thumb: thumbFor(b) })),
@@ -341,7 +410,7 @@ function paintTabV3(achs, tabBar) {
 }
 // ---- Collection ------------------------------------------------------------
 
-const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0, boss: 0 };
+const col = { season: null, rarity: 'all', element: null, type: null, game: null, own: 'all', q: '', page: 0, sel: null, view: 'cards', achKey: null, achPage: 0, detailPage: 0, boss: 0, achSeg: 'tracks' };
 // The Raid Bosses tab: the rigged model bosses (the ones the weekly hunt spawns).
 const RAID_BOSSES = BOSS_LIST.filter((b) => modelKey(`arch:${b.arch}`));
 let galBoss = null; // the live boss in the Raid Bosses panel
@@ -382,8 +451,12 @@ export async function renderCollectionV2() {
   const inSeason = cards.filter((c) => (c.season || 'Season 1') === col.season);
   const achs = measure(cards, myProfile?.stats);
   const achDone = achs.filter((a) => a.done).length;
-  const ready = achs.filter((a) => a.done && !claimedSet().has(a.key)).length;
-  const cnt = (f) => inSeason.filter(f).length;
+  // v3 (UI-13): with the tracks on, the rewards ready are the view's count (tiers + set badges + the one-time badges), not the 50 old achievements
+  const tv = await achViewV3(col.view === 'ach');
+  if (tv && col.view === 'ach' && (col.achSeg === 'titles' || col.achSeg === 'frames')) { try { achGal = await ctx.api('/api/achievements/gallery'); } catch { achGal = null; } }
+  if (ctx.currentView() !== 'collection') return;
+  const ready = tv ? tv.ready | 0 : achs.filter((a) => a.done && !claimedSet().has(a.key)).length;
+  const cnt =(f) => inSeason.filter(f).length;
 
   // One panel, filters only (Nathan: "ONE thing, which is just a filtered panel").
   const chip = (group, value, label, on, n) => `<button class="f-chip${on ? ' on' : ''}" data-f="${group}" data-v="${esc(value)}">${label}${n != null ? `<i>${n}</i>` : ''}</button>`;
