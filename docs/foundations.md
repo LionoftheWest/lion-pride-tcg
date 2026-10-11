@@ -311,19 +311,28 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 
        Not "Speed" (it suggests turn order) and not "Accuracy" (the game has a miss chance,
        and Precision does not change it).
-10. **Latent abilities (Nathan, 2026-10-11).** Every card has a base ability for fights.
-    At a set star level, a second (latent) ability unlocks.
-    - `subjects.ability` stays the base ability. A new `subjects.latent` holds the second
-      ability, checked by the same `ability_kinds` rules and the same power budget.
-    - `balance` key `latent_unlock_star`: the star that unlocks it (one number for all).
-    - `card_combat` returns the latent ability when the card has enough stars. The fights
-      read it from there. The Gauntlet (0 stars) never has it.
-    - `combat_sheet` and the Combat Lab show and test both abilities.
-    - Content: every S1 card needs a latent ability, and every Set 2 card has both.
-    - **Decided (Nathan, 2026-10-11):** the latent ability unlocks at 3 stars, the Silver
-      tier (`latent_unlock_star = 3`).
-    - Drafts for S1: written after the Combat Lab exists (item 6), so that each draft is
-      measured. Nathan approves or changes each one in the Card Portal.
+10. **Latent upgrade (Nathan, 2026-10-11).** Every card has one base ability for fights.
+    At 3 stars, the Silver tier, the base ability is upgraded. It is not a second ability
+    and not a second button. Live: 127 of 130 subjects have an ability, with 13 effects
+    (attack: focus, lifesteal, rampage, execute, pierce; support: weaken, empower, shield,
+    expose, heal, smite, cleanse, stun).
+    - **A default upgrade for each effect** in `balance` key `latent_upgrades`, for example
+      heal: amount +25%; stun: duration +1 round; pierce: amount +20%. Every card gets the
+      upgrade of its effect with no extra content work.
+    - **An optional upgrade for one card** in `subjects.latent`: a name and its own changes
+      (for example a burn that also lowers defense). It replaces the default for that card.
+    - `ability_kinds` lists, for each effect, the fields that an upgrade can change and the
+      limits. The power budget counts the upgraded ability too.
+    - `balance` key `latent_unlock_star = 3`.
+    - `card_combat` returns the ability already upgraded when the card has enough stars. The
+      fights read it from there and need no new action. The Gauntlet (0 stars) never has it.
+    - `combat_sheet` and the Combat Lab show and test each card with and without the upgrade.
+    - The 3 subjects with no ability get one first.
+    - Card-specific upgrades for S1: drafted after the Combat Lab exists (item 6), so that each
+      one is measured. Nathan approves or changes each one in the Card Portal.
+    - Screens: the Card Detail ability box (UI-08) shows the upgrade line, dimmed with
+      "Unlocks at Silver" before 3 stars. The Silver frame gets a small mark. The 3-star
+      celebration (UI-10) shows "Ability upgraded". The printed card image does not change.
 11. **The stat screen (UI-10) (Nathan, 2026-10-11).**
     - The new stat names (item 9), each with a one-line explainer of what it does, for
       example "Recharge: supports are ready sooner (−4% cooldown for each point)". The text
@@ -355,7 +364,7 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 5. The Combat Lab, and the golden test for the Dungeon and Gauntlet on the local copy.
 6. One log: move the readers to `combat_actions`, then remove the old logs.
 7. Ascension and stat points: the fixes, the new labels, one power number everywhere, and the Lab measurement.
-8. Latent abilities: `subjects.latent`, `latent_unlock_star`, the fight support, and the Card Portal field.
+8. Latent upgrade: `latent_upgrades`, `subjects.latent`, `latent_unlock_star`, the fight support, and the Card Portal field.
 9. UI-10 stat screen: the updated design first, then the build (explainers and live preview).
 
 ---
@@ -364,8 +373,8 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 
 5. **Stats:** Attack raises only attack power, Vitality only HP. Clearer stat names. No free
    reset for now. The Gauntlet stays equal for all.
-6. **Latent abilities:** each card unlocks a second ability at 3 stars, the Silver tier
-   (F-3 item 10).
+6. **Latent upgrade:** at 3 stars, the Silver tier, each card's base ability is upgraded.
+   Not a second ability (F-3 item 10).
 7. **Stat screen:** the new names, an explainer for each stat, and a live preview of the
    card stats (F-3 item 11).
 
