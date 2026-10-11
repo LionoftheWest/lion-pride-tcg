@@ -343,6 +343,34 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
       (item 3). The same call gives the latent ability state ("unlocks at Silver").
     - UI-10 has an approved design (2026-10-05). These additions need an updated design in
       the design repo and Nathan's approval before the build (`docs/design.md` 12.3).
+12. **A large library of ability effects (Nathan, 2026-10-11).** Only 13 effects exist.
+    Nathan wants that list to become large, as the Combat Lab finds fun synergies, builds
+    and strategies.
+    - **The barrier today (observed):** each effect is a hand-written branch in the fight
+      code, for example `if v_eff = 'weaken'` in `hunt_support.sql:146`. The same branch is
+      written again for the Dungeon (`dungeon_support.sql:64`). Attack effects are in
+      `combat_hit` and `combat_crit_chance`. One new effect means changes to 4 to 6 functions.
+    - **The change: effects are data, made from building blocks.**
+      - A small set of **primitives** in code, each written once: deal damage, heal, shield,
+        change a stat for N rounds (attack, defense, crit, cooldown), apply a status (stun,
+        burn, mark), remove a status, and repeat.
+      - **Conditions and targets** as data: "if the target is below 30% HP", "for each fire
+        card in the squad", "the lowest-HP ally", "all enemies".
+      - **An effect is a row in `ability_kinds`**: a list of steps (primitive + condition +
+        target + amount), its limits and its power cost. A new effect that uses existing
+        primitives is a new row, with no code change. Only a new primitive needs code.
+      - **One interpreter** `combat_effect(fight, card, effect)` runs the steps and returns
+        a list of changes. The Hunt and the Dungeon apply the changes to their own storage.
+        So each effect is written once for every mode, and later for the Arena.
+      - The 13 current effects become the first rows. The golden fights must give the same
+        results before and after (no change in play).
+    - **Synergy builds** come from the conditions: an effect can count tags, elements or
+      classes in the squad, so that cards reward squads that are built around them.
+    - **The Combat Lab tests each new effect** by itself: its power cost against its
+      measured value, loops (for example two effects that trigger each other), and the
+      strongest squads that use it.
+    - **The Card Portal** gets an effect builder: choose the primitives, conditions and
+      amounts, and see the Lab result before the effect is saved.
 
 ### Acceptance tests
 
@@ -359,13 +387,14 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 1. Remove the JS combat math (the auto-pick and Team CP call SQL). Delete the old
    simulators. Fix Haste.
 2. `elements` and `passives` tables. Remove the fixed copies.
-3. `ability_kinds` and the ability check.
+3. `ability_kinds` as effect data: the primitives, the one interpreter `combat_effect`, and the 13 effects as rows (golden fights unchanged).
 4. The `combat_sheet` view and the Admin page Combat section.
 5. The Combat Lab, and the golden test for the Dungeon and Gauntlet on the local copy.
 6. One log: move the readers to `combat_actions`, then remove the old logs.
 7. Ascension and stat points: the fixes, the new labels, one power number everywhere, and the Lab measurement.
 8. Latent upgrade: `latent_upgrades`, `subjects.latent`, `latent_unlock_star`, the fight support, and the Card Portal field.
 9. UI-10 stat screen: the updated design first, then the build (explainers and live preview).
+10. The effect builder in the Card Portal, with the Lab result for each new effect.
 
 ---
 
@@ -375,6 +404,8 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
    reset for now. The Gauntlet stays equal for all.
 6. **Latent upgrade:** at 3 stars, the Silver tier, each card's base ability is upgraded.
    Not a second ability (F-3 item 10).
+8. **Ability effects:** the list must grow large. Effects become data made from building
+   blocks, with one interpreter for every mode (F-3 item 12).
 7. **Stat screen:** the new names, an explainer for each stat, and a live preview of the
    card stats (F-3 item 11).
 
