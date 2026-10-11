@@ -23,14 +23,26 @@ const id = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n
 const mode = (v) => (v === 'gauntlet' ? 'gauntlet' : 'daily');
 const idx = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n < 10 ? n : null; };
 
-export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun }) {
+// A view that ended its day / week (next_at, ends_at in the past) is never served again, whatever its age.
+// An error or refused answer is never served from the cache either.
+export const viewValid = (v, now = Date.now()) => v?.status === 200 && !((v?.body?.next_at && Date.parse(v.body.next_at) <= now) || (v?.body?.ends_at && Date.parse(v.body.ends_at) <= now));
+
+export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun, userCache }) {
+  // The two views (dungeon_view 187 ms, gauntlet_view 286 ms live, each reads the whole collection through card_combat) are read
+  // on every Home visit and every Dungeon open. One answer per member for 15 s; every write of the member drops it (the answer
+  // of the write itself carries the new state), so a member always sees the result of their own action.
+  const views = userCache ? userCache({ ttl: 15000, valid: viewValid }) : null;
+  const dropViews = (me) => { views?.bust(`d:${me.id}`); views?.bust(`g:${me.id}`); };
   const gate = async (req, res, write = false) => {
     const me = await caller(req);
     if (!me) { res.status(401).json({ error: 'not authenticated' }); return null; }
     if (!dungeonOn(me.id)) { res.status(403).json({ error: 'off' }); return null; }
     if (write && !rateLimit(me.id)) { res.status(429).json({ error: 'slow down' }); return null; }
     // A run action: tell the "is playing" post which mode the member is in, so its floor stays current (server.js dungeonPing).
-    if (write) onRun?.(me, req.path.startsWith('/api/gauntlet') || req.body?.mode === 'gauntlet' ? 'gauntlet' : 'daily');
+    if (write) {
+      onRun?.(me, req.path.startsWith('/api/gauntlet') || req.body?.mode === 'gauntlet' ? 'gauntlet' : 'daily');
+      dropViews(me); res.on('finish', () => dropViews(me));
+    }
     return me;
   };
   // The card details for the screen (the stats come from SQL: dungeon_view.mine, card_combat).
@@ -59,9 +71,20 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
     res.json(after ? await after(data) : data);
   };
 
+  // One cached view: { status, body } of the answer (an error answer is cached too, for the same 15 s).
+  const cachedView = async (res, key, fn, args) => {
+    const load = async () => {
+      const { data, error } = await supabase.rpc(fn, args);
+      if (error) return { status: 500, body: { error: error.message } };
+      if (!data?.ok) return { status: 400, body: { ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' } };
+      return { status: 200, body: await withCards(data) };
+    };
+    const v = views ? await views.get(key, load) : await load();
+    res.status(v.status).json(v.body);
+  };
   app.get('/api/dungeon', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
-    await rpc(res, 'dungeon_view', { p_player: String(me.id) }, withCards);
+    await cachedView(res, `d:${me.id}`, 'dungeon_view', { p_player: String(me.id) });
   });
   app.get('/api/dungeon/board', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
@@ -97,7 +120,7 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
   // above with mode 'gauntlet'. The database flag settings.gauntlet.enabled is the second switch.
   app.get('/api/gauntlet', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
-    await rpc(res, 'gauntlet_view', { p_player: String(me.id) }, withCards);
+    await cachedView(res, `g:${me.id}`, 'gauntlet_view', { p_player: String(me.id) });
   });
   app.get('/api/gauntlet/board', async (req, res) => {
     const me = await gate(req, res); if (!me) return;

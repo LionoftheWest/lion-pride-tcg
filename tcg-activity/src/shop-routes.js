@@ -18,7 +18,13 @@ const fail = (res, data, msg) => res.status(400).json({ ...data, ok: false, mess
 const KINDS = new Set(['pack', 'card', 'stat_reset']);
 const int = (v) => (Number.isInteger(v) ? v : null);
 
-export function registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn }) {
+export function registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn, userCache }) {
+  // shop_today (32 ms live) answers for the member only (stock, owned, balance): one answer per member for 10 s.
+  // bustUser (every buy, convert, claim, pack and trade) drops it, because userCache registers it there. The stock rolls over at
+  // next_at: an answer past that time is never served.
+  // A failed or refused answer (error, closed) is never kept: valid() is false for it.
+  const views = userCache ? userCache({ ttl: 10000, valid: (r, now) => !r.error && !!r.data?.ok && !(r.data.next_at && Date.parse(r.data.next_at) <= now) }) : null;
+  const shopToday = (id) => (views ? views.get(String(id), () => supabase.rpc('shop_today', { p_player: String(id) })) : supabase.rpc('shop_today', { p_player: String(id) }));
   // shard_cfg(): the flag settings.shards.enabled + the numbers in balance shards (balance_economy.sql), the same
   // object the SQL reads. Read once a minute (the dupe values and the pack limit).
   let cfg = null;
@@ -39,7 +45,7 @@ export function registerShopRoutes(app, { supabase, caller, rateLimit, bustUser,
   // The Shop view: the balance, today's stock with the card details and my owned count, the prices.
   app.get('/api/shop', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
-    const { data, error } = await supabase.rpc('shop_today', { p_player: String(me.id) });
+    const { data, error } = await shopToday(me.id);
     if (error) return res.status(500).json({ error: error.message });
     if (!data?.ok) return fail(res, data);
     const ids = (data.stock || []).map((s) => Number(s.card_id));
