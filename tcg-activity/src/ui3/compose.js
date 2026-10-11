@@ -15,13 +15,13 @@ export const slotsOf = (listings, max = LIST_MAX) => Array.from({ length: max },
 export const freeOf = (card, held = {}) => Math.max(0, Number(card?.quantity || 0) - Number(held[card?.id] || 0));
 
 /**
- * The cards the picker offers: tradeable, not Gold, a free copy, not listed already. Best rarity first, then the most copies
- * (as the v2 sheet). cards = my collection, listings = my listings ({ card }), held = { cardId: copies held }.
+ * The cards the picker offers: tradeable, not Gold, a free copy, not listed already. Duplicates first (D-176: a card with two or
+ * more free copies), then best rarity, then the most copies. cards = my collection, listings = my listings ({ card }), held = { cardId: copies held }.
  */
 export function listable(cards, listings = [], held = {}) {
   const listed = new Set((listings || []).map((x) => Number(x.card?.id)));
   return (cards || []).filter((c) => c.tradeable !== false && c.rarity !== 'gold' && freeOf(c, held) > 0 && !listed.has(Number(c.id)))
-    .sort((a, b) => (RANK[b.rarity] ?? 0) - (RANK[a.rarity] ?? 0) || (b.quantity || 0) - (a.quantity || 0));
+    .sort((a, b) => (freeOf(b, held) > 1) - (freeOf(a, held) > 1) || (RANK[b.rarity] ?? 0) - (RANK[a.rarity] ?? 0) || freeOf(b, held) - freeOf(a, held));
 }
 
 /**

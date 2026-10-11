@@ -7,7 +7,7 @@ import { v2ctx, avatarHTML, paintCards, fitChildren, toast, openMember, onSwipe,
 import { esc as esc3, button, iconButton, searchField, pager, chip, segmented, stateEmpty, inlineMessage, toast as toast3 } from './ui3/components.js';
 import { icon } from './ui3/icons.js';
 import { fitGrid, openCardPicker } from './ui3/card-picker.js';
-import { LIST_MAX, LIST_FULL, slotsOf, listable, listFit, applyListPick, listFilterCount, unlistedText, listError, offerSeed, offerPlan } from './ui3/compose.js';
+import { LIST_MAX, LIST_FULL, slotsOf, freeOf, listable, listFit, applyListPick, listFilterCount, unlistedText, listError, offerSeed, offerPlan } from './ui3/compose.js';
 import { switchHTML, activeSwitch, switchTarget, applyHall, emptyState, notOwned, clampPage, pagesOf, manageLabel, filterCount, toggleFilter,
   NO_FILTERS, OWN_OPTIONS, RARITY_CHIPS, TYPE_CHIPS, GAME_CHIPS, fitAll, tileInfo } from './ui3/hall.js';
 import { TOKENS } from './tokens.js';
@@ -540,6 +540,7 @@ async function openListPicker(from) {
     title: 'Your listings', icon: 'tag', of: { n: (hall.data?.mine || []).length, max: LIST_MAX }, one: true, cap: 1, cards, selected: [], returnFocus: from,
     filters: [{ key: 'rarity', label: 'Rarity', value: 'all', clear: 'all', options: [{ id: 'all', label: 'All' }, ...rarities.map(([id, label]) => ({ id, label }))] }],
     filterCount: listFilterCount, apply: applyListPick,
+    caption: (c) => `${fmtFor(freeOf(c, hall.held), document.body.dataset.size)} free`,
     status: (sel) => ({ checks: [], ready: sel.length === 1 }),
     detail: (c) => ctx().openViewer?.(c),
     clear: { label: 'Clear', resets: true },
