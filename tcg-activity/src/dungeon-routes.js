@@ -15,7 +15,7 @@ const ERR = {
   bad_target: 'Pick a card in your squad.', target_downed: 'A heal cannot revive a downed card.', boss_stun_immune: 'That monster cannot be stunned again yet.',
   not_choosing: 'There is nothing to choose.', bad_pick: 'Pick one of the rewards.',
   one_support: 'One support per turn. Attack to end the turn.', not_between_floors: 'You can leave only between floors, after the guardian.',
-  already_gauntlet: 'You used today\'s Gauntlet run. Come back tomorrow.',
+  can_act: 'You can still act: the turn does not pass.', already_gauntlet: 'You used today\'s Gauntlet run. Come back tomorrow.',
 };
 const fail = (res, data) => res.status(400).json({ ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' });
 const id = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
@@ -125,6 +125,11 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
     if (!data?.ok) return fail(res, data);
     if (data.error) data.error = { ...data.error, message: ERR[data.error.error] || data.error.error };   // a refused action that ended the call after some rounds
     res.json(await withCards(data));
+  });
+  // D-182: no action can be taken (every standing attacker stunned, no support ready): the round advances and the monsters act once (dungeon_pass_turn).
+  app.post('/api/dungeon/pass', async (req, res) => {
+    const me = await gate(req, res, true); if (!me) return;
+    await rpc(res, 'dungeon_pass_turn', { p_player: String(me.id), p_mode: mode(req.body?.mode) }, withCards);
   });
   app.post('/api/dungeon/choose', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;

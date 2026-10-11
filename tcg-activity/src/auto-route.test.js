@@ -57,3 +57,13 @@ test('a refused action after some rounds: ok with the rounds, and the message of
   const r = await h.post('/api/dungeon/auto', {});
   assert.equal(r.status, 200); assert.equal(r.json.rounds.length, 1); assert.equal(r.json.error.message, 'That card is stunned for a round.');
 });
+
+test('POST /api/dungeon/pass (D-182): the member from the token, the mode from the body, a refusal keeps the message', async () => {
+  const h = harness(ok({ no_action: true, round: 3, enemy: [] }));
+  const r = await h.post('/api/dungeon/pass', { mode: 'gauntlet', p_player: '999' });
+  assert.deepEqual(h.calls[0], { name: 'dungeon_pass_turn', args: { p_player: '77', p_mode: 'gauntlet' } });
+  assert.equal(r.status, 200); assert.equal(r.json.no_action, true);
+  const d = harness(() => ({ data: { ok: false, error: 'can_act', why: 'attacker' }, error: null }));
+  const x = await d.post('/api/dungeon/pass', {});
+  assert.equal(x.status, 400); assert.equal(x.json.message, 'You can still act: the turn does not pass.');
+});

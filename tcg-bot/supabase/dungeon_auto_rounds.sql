@@ -7,8 +7,8 @@
 -- dungeon_auto_attackers(run, squad, foe, round)   the attackers that stand, with ready / weakness / CP / HP share (a helper, pure)
 -- dungeon_auto_action(run, squad, tried, kind)     the choice. Pure (stable): reads the run state and the squad cards, writes nothing.
 --   target = the living monster closest to falling (the lowest HP; the first of equals)
---   attack = a READY attacker (cooldown over) that hits a weakness of the target first, then the highest CP, then the squad order;
---            when no attacker is ready, the same choice among all attackers that stand
+--   attack = a READY attacker (not stunned) that hits a weakness of the target first, then the highest CP, then the squad order;
+--            when no attacker is ready there is no attack (D-182: a stunned card never attacks)
 --   support (at most one a round, only when sup_round is not the round) = the first support card in squad order that stands, is
 --            ready, is not in `tried` and has something useful to do:
 --              heal    -> the attacker under 50% HP that is the lowest      shield -> the attacker under 60% HP that is the lowest
@@ -17,12 +17,13 @@
 -- dungeon_auto_rounds(player, mode, max)           the loop: a support (when useful), then an attack, per round, up to `max` rounds (1 to 10).
 --   It stops at: a kill (the loot, the next monster or the reward step belong to the member), a step that is not a fight any more
 --   (reward, floor, cleared), a run that is over (the squad fell, the round cap), an action the rules refuse, or `max`.
---   The answer: ok, rounds [{sup, atk}] (each one = the answer of dungeon_support / dungeon_attack plus the card and the target),
+--   A round with no possible attack (every standing attacker is stunned, D-182) is a PASS: dungeon_pass_turn runs the monsters' turn, the entry is {sup?, pass}.
+--   The answer: ok, rounds [{sup, atk | pass}] (each one = the answer of dungeon_support / dungeon_attack plus the card and the target),
 --   stopped (kill | phase | over | max | error | none), error, played, state, status. The client animates the rounds in order.
 --   A support that the rules refuse (cooldown, one support a turn ...) is skipped; a refused attack ends the call with the reason.
 --   When nothing was played, the answer is the refusal itself ({ok: false, error}), as the single call would give it.
 -- Same rows as the single calls (dungeon_log, combat_actions): each action goes through the same function.
--- New functions only: no live function is replaced, so no live-text guard is needed. Test: card-studio/scripts/test-dungeon-auto-rounds.mjs.
+-- Needs dungeon_stun_pass.sql (dungeon_pass_turn). New functions only: no live function is replaced, so no live-text guard is needed. Test: card-studio/scripts/test-dungeon-auto-rounds.mjs.
 
 create or replace function public.dungeon_auto_attackers(p_run dungeon_runs, p_squad jsonb, p_foe jsonb, p_round int)
  returns table(id bigint, ord int, ready boolean, weak boolean, cp int, hp numeric)
@@ -53,10 +54,12 @@ begin
   select (e.ord - 1)::int, e.f into v_tf, v_foe from jsonb_array_elements(st->'foes') with ordinality e(f, ord)
     where (e.f->>'hp')::int > 0 order by (e.f->>'hp')::int, e.ord limit 1;
   if v_tf is null then return null; end if;
-  -- the attacker: ready first, a weakness hit first, then the CP, then the squad order
-  select a.id into v_best from dungeon_auto_attackers(p_run, p_squad, v_foe, v_round) a order by a.ready desc, a.weak desc, a.cp desc, a.ord limit 1;
-  if v_best is null then return null; end if;
-  if p_kind = 'attack' then return jsonb_build_object('kind', 'attack', 'card', v_best, 'target', v_tf); end if;
+  -- the attacker: only a card that is NOT stunned (D-182: a stunned card never attacks); a weakness hit first, then the CP, then the squad order
+  select a.id into v_best from dungeon_auto_attackers(p_run, p_squad, v_foe, v_round) a where a.ready order by a.weak desc, a.cp desc, a.ord limit 1;
+  if p_kind = 'attack' then
+    if v_best is null then return null; end if;   -- every attacker is stunned: no attack (the loop passes the turn)
+    return jsonb_build_object('kind', 'attack', 'card', v_best, 'target', v_tf);
+  end if;
   -- the support: the first card in squad order that stands, is ready and has something useful to do
   for r in select x.id from unnest(p_run.squad) with ordinality x(id, ord)
       where coalesce(p_squad->(x.id::text)->>'type', '') not in ('Character', 'Creature')
@@ -127,8 +130,16 @@ begin
     -- the attack
     v_act := dungeon_auto_action(r, v_squad, null, 'attack');
     if v_act is null then
-      if v_entry->'sup' is not null then v_rounds := v_rounds || jsonb_build_array(v_entry); end if;
-      v_stop := 'none'; exit;
+      -- No attack is possible (every standing attacker is stunned): the turn passes (D-182), the monsters act once. force: a ready support with nothing useful to do is not played.
+      v_res := dungeon_pass_turn(p_player, v_mode, true);
+      if not coalesce((v_res->>'ok')::boolean, false) then
+        if v_entry->'sup' is not null then v_rounds := v_rounds || jsonb_build_array(v_entry); end if;
+        v_err := v_res; v_stop := 'error'; exit;
+      end if;
+      v_rounds := v_rounds || jsonb_build_array(v_entry || jsonb_build_object('pass', v_res));
+      v_n := v_n + 1;
+      if v_res->>'status' <> 'active' then v_stop := 'over'; exit; end if;
+      continue;
     end if;
     v_res := dungeon_attack(p_player, (v_act->>'card')::bigint, (v_act->>'target')::int, v_mode);
     if not coalesce((v_res->>'ok')::boolean, false) then

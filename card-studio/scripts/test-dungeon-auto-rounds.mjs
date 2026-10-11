@@ -27,9 +27,10 @@ if (src.includes('$m$') || src.includes('$t$') || src.includes('$f$')) throw new
 // One mutation per mechanism: [text, replacement]. Each text is in the file exactly once.
 const MUTATIONS = {
   'the target is the monster with the MOST HP': ["order by (e.f->>'hp')::int, e.ord limit 1;", "order by (e.f->>'hp')::int desc, e.ord limit 1;"],
-  'the cooldown of an attacker is ignored': ['order by a.ready desc, a.weak desc, a.cp desc, a.ord limit 1', 'order by a.weak desc, a.cp desc, a.ord limit 1'],
-  'a weakness is ignored': ['order by a.ready desc, a.weak desc, a.cp desc, a.ord limit 1', 'order by a.ready desc, a.cp desc, a.ord limit 1'],
-  'the LOWEST CP attacks': ['order by a.ready desc, a.weak desc, a.cp desc, a.ord limit 1', 'order by a.ready desc, a.weak desc, a.cp, a.ord limit 1'],
+  'a stunned attacker can attack (the ready filter is gone)': ['where a.ready order by a.weak desc, a.cp desc, a.ord limit 1', 'order by a.weak desc, a.cp desc, a.ord limit 1'],
+  'a weakness is ignored': ['where a.ready order by a.weak desc, a.cp desc, a.ord limit 1', 'where a.ready order by a.cp desc, a.ord limit 1'],
+  'the LOWEST CP attacks': ['where a.ready order by a.weak desc, a.cp desc, a.ord limit 1', 'where a.ready order by a.weak desc, a.cp, a.ord limit 1'],
+  'Auto does not pass the turn when every attacker is stunned': ["v_res := dungeon_pass_turn(p_player, v_mode, true);", "v_res := jsonb_build_object('ok', false, 'error', 'x');"],
   'a card that is down can attack': ["and not coalesce((p_run.state->'cards'->(x.id::text)->>'down')::boolean, false);", ';'],
   'a heal goes to a card under 100% (not 50%)': ["when 'heal' then (select a.id from dungeon_auto_attackers(p_run, p_squad, v_foe, v_round) a where a.hp < 0.5", "when 'heal' then (select a.id from dungeon_auto_attackers(p_run, p_squad, v_foe, v_round) a where a.hp < 1.01"],
   'a cleanse plays with nothing to cleanse': ["if exists (select 1 from jsonb_each(st->'cards') c", 'if true or exists (select 1 from jsonb_each(st->\'cards\') c'],
@@ -113,14 +114,14 @@ begin
   act := dungeon_auto_action(r, sq, null, 'attack');
   res := res || jsonb_build_object('case', 'P4 the highest CP attacks; equal CP: the first card of the squad', 'ok', (act->>'card')::bigint = 2, 'act', act);
 
-  -- P5 every attacker on cooldown: the best of all still attacks; a card that is down never does, and with none standing there is no action
+  -- P5 every attacker stunned (D-182): no attack at all; a card that is down never attacks, and with none standing there is no action
   r.state := jsonb_build_object('round', 0, 'foes', jsonb_build_array(pg_temp.fo(100)),
     'cards', jsonb_build_object('1', pg_temp.cs(100, false, 4), '2', pg_temp.cs(100, false, 4), '3', pg_temp.cs(100, true)));
   sq := jsonb_build_object('1', pg_temp.ci('Character', 100), '2', pg_temp.ci('Character', 200), '3', pg_temp.ci('Character', 900));
   act := dungeon_auto_action(r, sq, null, 'attack');
   x := dungeon_auto_action(jsonb_populate_record(r, jsonb_build_object('state', jsonb_set(r.state, '{cards}', jsonb_build_object('1', pg_temp.cs(0, true), '2', pg_temp.cs(0, true), '3', pg_temp.cs(0, true))))), sq, null, 'attack');
-  res := res || jsonb_build_object('case', 'P5 all on cooldown: the best one (CP 200) attacks, the card that is down (CP 900) never; nobody standing = no action', 'ok',
-    (act->>'card')::bigint = 2 and x is null, 'act', act, 'none', x);
+  res := res || jsonb_build_object('case', 'P5 every attacker stunned: no attack (D-182); nobody standing: no action', 'ok',
+    act is null and x is null, 'act', act, 'none', x);
 
   -- P6 the heal: the lowest attacker under 50%; nobody under 50% = this support does nothing; the next useful support is chosen
   r.state := jsonb_build_object('round', 0, 'foes', jsonb_build_array(pg_temp.fo(100)),
@@ -285,6 +286,15 @@ begin
   ra := dungeon_auto_rounds('${P}e', 'daily', 1);
   res := res || jsonb_build_object('case', 'C6 a stun that the rules refuse (the monster was stunned a round ago) is skipped: the round plays its attack', 'ok',
     (ra->>'ok')::boolean and (ra->>'played')::int = 1 and ra->'rounds'->0->'sup' is null and ra->'rounds'->0->'atk'->>'card' is not null, 'round0', ra->'rounds'->0);
+  -- C8 every attacker stunned and the supports on cooldown: Auto passes (the monsters act), never attacks with a stunned card, and attacks again once the stun is over
+  perform pg_temp.dar_member('${P}s');
+  ra := dungeon_start('${P}s', array[atk[1], atk[2], atk[3], (sups->>'heal')::bigint, (sups->>'smite')::bigint]);
+  update dungeon_runs set state = jsonb_set(jsonb_set(jsonb_set(state, '{foes}', jsonb_build_array((state->'foes'->0) || foe)), '{sup_round}', '0'),
+      '{cards}', (select jsonb_object_agg(key, case when coalesce((value->>'sup')::boolean, false) then value || '{"cd": 9}' else value || '{"hp": 10000000, "max": 10000000, "cd": 1}' end) from jsonb_each(state->'cards'))) where player_id = '${P}s' and day = v_day;
+  ra := dungeon_auto_rounds('${P}s', 'daily', 3);
+  res := res || jsonb_build_object('case', 'C8 every attacker stunned: Auto passes the turn (pass entry, the monsters act), then attacks when the stun is over', 'ok',
+    (ra->>'ok')::boolean and ra->'rounds'->0->'pass' is not null and ra->'rounds'->0->'atk' is null and jsonb_array_length(ra->'rounds'->0->'pass'->'enemy') >= 1
+    and ra->'rounds'->1->'atk'->>'card' is not null and (ra->>'played')::int = 3 and not exists (select 1 from jsonb_array_elements(ra->'rounds') e where e->'atk' is not null and e->'pass' is not null), 'first', ra->'rounds'->0->'pass'->'no_action', 'second', ra->'rounds'->1->'atk'->'card', 'played', ra->'played');
   -- C7 the Gauntlet: p_mode reaches the rules (the run is a gauntlet run)
   perform pg_temp.dar_member('${P}g');
   ra := gauntlet_start('${P}g');
