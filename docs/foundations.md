@@ -181,14 +181,14 @@ theme, audience, rewards, and a library of saved events to schedule again.
      Nathan changes it on purpose.
 6. **Fixes:** `push.js` checks every insert error. `spawn_hunt` and the achievement
    functions read `draw_pool`.
-8. **Pickers, not typing (Nathan, 2026-10-11).** In the card editor and the new-card dialog,
+7. **Pickers, not typing (Nathan, 2026-10-11).** In the card editor and the new-card dialog,
    every classification field (class, type, genre, realm, origin, traits, other tag facets)
    is a dropdown of the values already in the library, with "+ Add new". Origin and traits
    allow several values. A new value is checked against near-duplicates (case, spaces,
    plural). The vocabulary is data, because the tags feed the combat synergies. Ability
    fields are not in this step: Nathan adds abilities to all cards at once after the effect
    engine (F-3 item 12).
-7. **A set check script:** each card has a set, a number, art for every finish, and tags
+8. **A set check script:** each card has a set, a number, art for every finish, and tags
    from the fixed list (F-3).
 
 ### Acceptance test (local copy)
