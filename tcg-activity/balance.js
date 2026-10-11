@@ -9,18 +9,23 @@ export const BALANCE_TTL_MS = 60_000;
 
 // The server cache. load() returns the rows { key: value }. A failed refresh keeps the last good values;
 // with no values at all the call throws (fail closed: no number is better than an invented one).
-export function createBalance(load, { ttl = BALANCE_TTL_MS, now = Date.now } = {}) {
+export function createBalance(load, { ttl = BALANCE_TTL_MS, now = Date.now, stale = true } = {}) {
   let cache = null; let at = 0; let inflight = null;
   return async function getBalance() {
     if (cache && now() - at < ttl) return cache;
-    if (!inflight) {
+    // Stale while revalidate (2026-10-11): once the table was read, an expired copy is served at once and refreshed behind the
+    // request, so no member waits for the read every minute. A failed refresh keeps the copy.
+    if (cache && stale) { if (!inflight) refresh().catch(() => {}); return cache; }
+    if (!inflight) refresh();
+    try { return await inflight; } catch (e) { if (cache) return cache; throw e; }
+    function refresh() {
       inflight = (async () => {
         const v = await load();
         if (!v || !v.rarity_cp || !v.stars) throw new Error('balance: the table is empty');
         cache = v; at = now(); return v;
       })().finally(() => { inflight = null; });
+      return inflight;
     }
-    try { return await inflight; } catch (e) { if (cache) return cache; throw e; }
   };
 }
 

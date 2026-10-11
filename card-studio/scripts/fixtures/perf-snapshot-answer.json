@@ -1,0 +1,114 @@
+[
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_player\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_player\" text) LIMIT 1) pgrst_body , LATERAL (SELECT \"public\".\"dungeon_view\"(\"p_player\" := pgrst_body.\"p_player\") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT \"dungeon_view\".* FROM \"pgrst_source\" AS \"dungeon_view\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 17,
+  "total_exec_time": 417.2519,
+  "mean_exec_time": 24.5442294117647,
+  "max_exec_time": 45.369575,
+  "rows": 17
+ },
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_player\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_player\" text) LIMIT 1) pgrst_body , LATERAL (SELECT \"public\".\"gauntlet_view\"(\"p_player\" := pgrst_body.\"p_player\") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT \"gauntlet_view\".* FROM \"pgrst_source\" AS \"gauntlet_view\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 15,
+  "total_exec_time": 320.643366,
+  "mean_exec_time": 21.3762244,
+  "max_exec_time": 87.846397,
+  "rows": 15
+ },
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_player\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_player\" text) LIMIT 1) pgrst_body , LATERAL (SELECT \"public\".\"card_powers\"(\"p_player\" := pgrst_body.\"p_player\") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT \"card_powers\".* FROM \"pgrst_source\" AS \"card_powers\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 19,
+  "total_exec_time": 301.636666,
+  "mean_exec_time": 15.875614,
+  "max_exec_time": 73.676866,
+  "rows": 19
+ },
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_week\", \"p_limit\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_week\" date, \"p_limit\" integer) LIMIT $4) pgrst_body , LATERAL (SELECT \"public\".\"gauntlet_board\"(\"p_week\" := pgrst_body.\"p_week\", \"p_limit\" := pgrst_body.\"p_limit\") pgrst_scalar) pgrst_call) SELECT $5::bigint AS total_result_set, $6 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$7, $8) AS body, nullif(current_setting($9, $10), $11) AS response_headers, nullif(current_setting($12, $13), $14) AS response_status, $15 AS response_inserted FROM (SELECT \"gauntlet_board\".* FROM \"pgrst_source\" AS \"gauntlet_board\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 90,
+  "total_exec_time": 254.4499,
+  "mean_exec_time": 2.82722111111111,
+  "max_exec_time": 118.294322,
+  "rows": 90
+ },
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_day\", \"p_limit\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_day\" date, \"p_limit\" integer) LIMIT $4) pgrst_body , LATERAL (SELECT \"public\".\"dungeon_board\"(\"p_day\" := pgrst_body.\"p_day\", \"p_limit\" := pgrst_body.\"p_limit\") pgrst_scalar) pgrst_call) SELECT $5::bigint AS total_result_set, $6 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$7, $8) AS body, nullif(current_setting($9, $10), $11) AS response_headers, nullif(current_setting($12, $13), $14) AS response_status, $15 AS response_inserted FROM (SELECT \"dungeon_board\".* FROM \"pgrst_source\" AS \"dungeon_board\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 90,
+  "total_exec_time": 155.683297,
+  "mean_exec_time": 1.72981441111111,
+  "max_exec_time": 16.77298,
+  "rows": 90
+ },
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_player\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_player\" text) LIMIT 1) pgrst_body , LATERAL (SELECT \"public\".\"dailies_view\"(\"p_player\" := pgrst_body.\"p_player\") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT \"dailies_view\".* FROM \"pgrst_source\" AS \"dailies_view\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 17,
+  "total_exec_time": 90.857285,
+  "mean_exec_time": 5.34454617647059,
+  "max_exec_time": 19.595872,
+  "rows": 17
+ },
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_player\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_player\" text) LIMIT 1) pgrst_body , LATERAL (SELECT \"public\".\"card_stats_for\"(\"p_player\" := pgrst_body.\"p_player\") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT \"card_stats_for\".* FROM \"pgrst_source\" AS \"card_stats_for\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 17,
+  "total_exec_time": 84.42689,
+  "mean_exec_time": 4.96628764705882,
+  "max_exec_time": 14.808166,
+  "rows": 17
+ },
+ {
+  "query": "WITH pgrst_source AS ( SELECT \"public\".\"player_cards\".\"quantity\", \"public\".\"player_cards\".\"ascension\", row_to_json(\"player_cards_card_1\".*)::jsonb AS \"card\" FROM \"public\".\"player_cards\" LEFT JOIN LATERAL ( SELECT \"cards_1\".\"id\", \"cards_1\".\"name\", \"cards_1\".\"rarity\", \"cards_1\".\"image_url\", \"cards_1\".\"artist_credit\", \"cards_1\".\"lore\", \"cards_1\".\"season\", \"cards_1\".\"event\", \"cards_1\".\"tradeable\", \"cards_1\".\"set_id\", \"cards_1\".\"set_number\", row_to_json(\"cards_card_set_2\".*)::jsonb AS \"card_set\", row_to_json(\"cards_subject_2\".*)::jsonb AS \"subject\" FROM \"public\".\"cards\" AS \"cards_1\" LEFT JOIN LATERAL ( SELECT \"card_sets_2\".\"code\" FROM \"public\".\"card_sets\" AS \"card_sets_2\" WHERE \"card_sets_2\".\"id\" = \"cards_1\".\"set_id\"   LIMIT $1 OFFSET $2 ) AS \"cards_card_set_2\" ON TRUE  LEFT JOIN LATERAL ( SELECT \"subjects_2\".\"name\", \"subjects_2\".\"type\", \"subjects_2\".\"cp_mod\", \"subjects_2\".\"tags\", \"subjects_2\".\"ability\" FROM \"public\".\"subjects\" AS \"subjects_2\" WHERE \"subjects_2\".\"id\" = \"cards_1\".\"subject_id\"   LIMIT $3 OFFSET $4 ) AS \"cards_subject_2\" ON TRUE WHERE \"cards_1\".\"id\" = \"public\".\"player_cards\".\"card_id\"   LIMIT $5 OFFSET $6 ) AS \"player_cards_card_1\" ON TRUE WHERE  \"public\".\"player_cards\".\"player_id\" = $7   LIMIT $8 OFFSET $9 )  SELECT null::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), '[]') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM ( SELECT * FROM pgrst_source ) _postgrest_t",
+  "calls": 17,
+  "total_exec_time": 74.160066,
+  "mean_exec_time": 4.36235682352941,
+  "max_exec_time": 13.985186,
+  "rows": 17
+ },
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_player_id\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_player_id\" text) LIMIT 1) pgrst_body , LATERAL (SELECT \"public\".\"my_collection_power\"(\"p_player_id\" := pgrst_body.\"p_player_id\") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT \"my_collection_power\".* FROM \"pgrst_source\" AS \"my_collection_power\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 18,
+  "total_exec_time": 39.352153,
+  "mean_exec_time": 2.18623072222222,
+  "max_exec_time": 9.78547,
+  "rows": 18
+ },
+ {
+  "query": "WITH pgrst_source AS ( SELECT \"public\".\"cards\".\"id\", \"public\".\"cards\".\"subject_id\" AS \"sid\", \"public\".\"cards\".\"name\", \"public\".\"cards\".\"rarity\", \"public\".\"cards\".\"image_url\", \"public\".\"cards\".\"season\", \"public\".\"cards\".\"event\", \"public\".\"cards\".\"artist_credit\", \"public\".\"cards\".\"lore\", \"public\".\"cards\".\"set_id\", \"public\".\"cards\".\"set_number\", row_to_json(\"cards_card_set_1\".*)::jsonb AS \"card_set\", row_to_json(\"cards_subject_1\".*)::jsonb AS \"subject\" FROM \"public\".\"cards\" LEFT JOIN LATERAL ( SELECT \"card_sets_1\".\"code\" FROM \"public\".\"card_sets\" AS \"card_sets_1\" WHERE \"card_sets_1\".\"id\" = \"public\".\"cards\".\"set_id\"   LIMIT $1 OFFSET $2 ) AS \"cards_card_set_1\" ON TRUE  LEFT JOIN LATERAL ( SELECT \"subjects_1\".\"name\", \"subjects_1\".\"type\", \"subjects_1\".\"cp_mod\", \"subjects_1\".\"tags\", \"subjects_1\".\"ability\" FROM \"public\".\"subjects\" AS \"subjects_1\" WHERE \"subjects_1\".\"id\" = \"public\".\"cards\".\"subject_id\"   LIMIT $3 OFFSET $4 ) AS \"cards_subject_1\" ON TRUE  ORDER BY \"public\".\"cards\".\"id\" ASC  LIMIT $5 OFFSET $6 )  SELECT null::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), '[]') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM ( SELECT * FROM pgrst_source ) _postgrest_t",
+  "calls": 4,
+  "total_exec_time": 14.576251,
+  "mean_exec_time": 3.64406275,
+  "max_exec_time": 8.393069,
+  "rows": 4
+ },
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_player\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_player\" text) LIMIT 1) pgrst_body , LATERAL (SELECT \"public\".\"shop_today\"(\"p_player\" := pgrst_body.\"p_player\") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT \"shop_today\".* FROM \"pgrst_source\" AS \"shop_today\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 15,
+  "total_exec_time": 8.863824,
+  "mean_exec_time": 0.5909216,
+  "max_exec_time": 1.141708,
+  "rows": 15
+ },
+ {
+  "query": "select set_config('search_path', $1, true), set_config('role', $2, true), set_config('request.jwt.claims', $3, true), set_config('request.method', $4, true), set_config('request.path', $5, true), set_config('request.headers', $6, true), set_config('request.cookies', $7, true)",
+  "calls": 506,
+  "total_exec_time": 7.639187,
+  "mean_exec_time": 0.0150972075098814,
+  "max_exec_time": 0.360138,
+  "rows": 506
+ },
+ {
+  "query": "WITH pgrst_source AS ( SELECT \"public\".\"auctions\".\"card_id\" FROM \"public\".\"auctions\" WHERE  \"public\".\"auctions\".\"seller_id\" = $1 AND  \"public\".\"auctions\".\"status\" = ANY ($2)    LIMIT $3 OFFSET $4 )  SELECT null::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), '[]') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM ( SELECT * FROM pgrst_source ) _postgrest_t",
+  "calls": 15,
+  "total_exec_time": 7.237656,
+  "mean_exec_time": 0.4825104,
+  "max_exec_time": 7.027666,
+  "rows": 15
+ },
+ {
+  "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_player\", \"p_cards\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_player\" text, \"p_cards\" bigint[]) LIMIT 1) pgrst_body , LATERAL (SELECT \"public\".\"dungeon_start\"(\"p_player\" := pgrst_body.\"p_player\", \"p_cards\" := pgrst_body.\"p_cards\") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT \"dungeon_start\".* FROM \"pgrst_source\" AS \"dungeon_start\"   LIMIT $2 OFFSET $3) _postgrest_t",
+  "calls": 1,
+  "total_exec_time": 4.684837,
+  "mean_exec_time": 4.684837,
+  "max_exec_time": 4.684837,
+  "rows": 1
+ }
+]
