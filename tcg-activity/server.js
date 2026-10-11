@@ -37,6 +37,7 @@ import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
 import { dailyExtras } from './src/dailies-pay.js';
 import { makeTtlCache } from './src/ttl-cache.js';
+import { createRouteTiming } from './src/route-timing.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -191,6 +192,14 @@ app.use((req, res, next) => {
   res.append('Content-Security-Policy-Report-Only', CSP_STRICT);
   next();
 });
+// Route timing (src/route-timing.js): p50 / p95 / max per route pattern over 5 minutes, printed to the container log. No member data.
+// LOADTEST runs print it too (ROUTE_TIMING_MS shortens the window for a test).
+const routeTiming = createRouteTiming({
+  windowMs: Number(process.env.ROUTE_TIMING_MS || 300_000),
+  extra: () => 'shared caches ' + Object.entries(sharedCaches).map(([k, c]) => `${k}=${c.stats.hit}/${c.stats.stale}/${c.stats.miss}`).join(' ') + ' (hit/stale/miss)',
+});
+app.use(routeTiming.middleware);
+routeTiming.timer();
 // CSP violation reports (report-only mode): logged, so the policy can be checked in the real client.
 let cspReports = 0;
 app.post('/api/csp-report', express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'], limit: '16kb' }), (req, res) => {
