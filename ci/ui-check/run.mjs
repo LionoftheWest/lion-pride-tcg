@@ -85,6 +85,8 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.gifts) cookies.push({ name: 'ci_gifts', value: '1', url: BASE });
         if (spec.report) cookies.push({ name: 'ci_report', value: 'on', url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
+        if (spec.board) cookies.push({ name: 'ci_board', value: spec.board, url: BASE });   // UI-66: the Leaderboard board states (rows | empty | error)
+        if (spec.ach) cookies.push({ name: 'ci_ach', value: spec.ach, url: BASE });
         if (spec.stats) cookies.push({ name: 'ci_stats', value: spec.stats, url: BASE });
         if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)
           cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });
@@ -92,6 +94,7 @@ async function runCell([s, screen, variant], ref = {}) {
         }
         if (spec.avfx) cookies.push({ name: 'ci_avfx', value: spec.avfx, url: BASE });
         if (spec.hall) cookies.push({ name: 'ci_hall', value: spec.hall, url: BASE });
+        if (spec.treq) cookies.push({ name: 'ci_treq', value: spec.treq, url: BASE });   // UI-63 / UI-25 trade requests (serve.mjs)
         if (spec.fx) cookies.push({ name: 'ci_fx', value: spec.fx, url: BASE });
         if (spec.play) cookies.push({ name: 'ci_play', value: spec.play, url: BASE });   // UI-28: the check server answers POST /api/effects/play (a play that works)
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });

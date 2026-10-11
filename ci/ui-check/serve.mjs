@@ -6,6 +6,7 @@
 //   ci_hunt=resting  derived from the recorded /api/hunt: no live boss, the recorded one defeated (UI-19)
 //   ci_hunt=down     derived from the recorded /api/hunt: today's squad (the first 8 roster cards) is down (UI-19)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
+//   ci_board=rows|empty|error   the 4 Leaderboard answers (UI-66): rows = a board with many rows, empty = no rows, error = HTTP 500 (derived below)
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_dungeon=fight|fight2   a Dungeon fight with 5 or 2 monsters (UI-47); ci_dungeon=over the run over (UI-50)
 //   ci_fx=hist|day|member   the Boons tab (UI-27): my play history, the day limit used up, a member at the pair cap
@@ -59,6 +60,26 @@ function derivedDungeon(body) {
   return { ...body, run: { id: 1, status: 'active', floor: 1, room: 1, squad: ids, state: { phase: 'choose', room_type: 'fight', buff: 1, cards: {},
     pend: { shards: 1, cards: [] }, bank: { shards: 0, cards: [] },
     offers: [{ kind: 'card', tier: 2, odds: [70, 25, 5] }, { kind: 'shards', tier: 1, amount: 10 }, { kind: 'ward', tier: 1, amount: 0.1 }] } } };
+}
+// UI-66: the Leaderboard answers of a board state. The recorded answers have 2 Hunt rows and an empty Dungeon board (no
+// Gauntlet board): 'rows' gives each tab a list long enough to page, with the member's own row inside it.
+const BOARD_PATHS = new Set(['/api/leaderboard/v2', '/api/hunt/leaderboard', '/api/dungeon/board', '/api/gauntlet/board']);
+function derivedBoard(p, mode, me) {
+  const id = (i) => String(100000000000000100n + BigInt(i));
+  const name = (i) => `Member ${String(100 + i).padStart(3, '0')}`;
+  if (mode === 'empty') return p === '/api/hunt/leaderboard' ? { leaders: [], me } : { ok: true, board: [], me };
+  if (p === '/api/hunt/leaderboard') return { leaders: Array.from({ length: 24 }, (_, i) => ({ player_id: i === 7 ? me : id(i), username: name(i), damage: 4700 - i * 190 })), me };
+  return { ok: true, me, board: Array.from({ length: 12 }, (_, i) => ({ rank: i + 1, player_id: i === 0 ? me : id(i), username: name(i), floor: 5 - (i >> 2), room: 1 + (i % 3), turns: 27 + i * 3, runs: 1 + (i % 2), status: i === 3 ? 'active' : 'done' })) };
+}
+const TITLE = 'the Unbreakable Champion of the Realm';
+function withTitles(p, body, FIX) {
+  if (p === '/api/leaderboard/v2' && Array.isArray(body?.rows)) return { ...body, rows: body.rows.map((r) => ({ ...r, title: 'Season 1 Champion' })) };
+  if (p === '/api/effects/badges') {
+    const ids = [...(FIX.routes['/api/leaderboard/v2']?.body?.rows || []).map((r) => r.id), ...Array.from({ length: 40 }, (_, i) => String(100000000000000100n + BigInt(i)))];
+    // the signed-in member is left out: Home (behind the window) shows that name too, and its own layout is not under test here
+    return { badges: Object.fromEntries(ids.filter((id) => id !== '100000000000000001').map((id) => [id, { title: TITLE, sticker: null, spotlight: false }])) };
+  }
+  return body;
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && c.ci_dungeon === 'choose' && body?.ok, make: (body) => derivedDungeon(body) });
 // UI-49: the other steps of a run (cookie ci_dungeon = rest | path | chest | floor): the room steps and Floor cleared, as in the
@@ -148,6 +169,19 @@ DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_trades === 'few
   const t = derivedTrades(body); const gone = Number(c.ci_accepted);
   return gone ? { ...t, incoming: t.incoming.filter((o) => o.id !== gone) } : t; } });
 DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_trades === 'few' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
+// UI-63 / UI-25 trade REQUESTS (D-168, trade_request.sql): cookie ci_treq=on makes /api/flags carry tradeRequest (the Request button works,
+// Offer with both cards is the full proposal); ci_treq=rows also derives open requests in every state: an incoming request (the owner picks), a
+// sent request (waiting), a sent request that the owner picked for (the requester confirms). Nothing is written (every POST answers 403).
+DERIVED.push({ when: (p, c, body) => p === '/api/flags' && (c.ci_treq === 'on' || c.ci_treq === 'rows') && body, make: (body) => ({ ...body, tradeRequest: true }) });
+function derivedTradeRequests(body) {
+  const card = (n, rarity) => ({ id: 900 + n, name: `Card ${n}`, rarity, image_url: body.outgoing?.[0]?.offer?.image_url || '' });
+  const o = (id, from, to, status, offer, request) => ({ id, from_id: from, to_id: to, status, from_name: `Member ${from.slice(-3)}`, to_name: `Member ${to.slice(-3)}`, created_at: new Date(Date.parse(FIX.recordedAt) - 3600000).toISOString(), offer, request });
+  const me = body.outgoing?.[0]?.from_id || '100000000000000001';
+  return { incoming: [o(211, '100000000000000012', me, 'pending', null, card(1, 'normal'))],
+    outgoing: [o(212, me, '100000000000000011', 'pending', null, card(2, 'normal')), o(213, me, '100000000000000163', 'countered', card(3, 'normal'), card(4, 'normal'))] };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/trades' && c.ci_treq === 'rows' && body, make: (body) => derivedTradeRequests(body) });
+DERIVED.push({ when: (p, c, body) => p === '/api/trade/partners' && c.ci_treq === 'rows' && body, make: (body) => ({ partners: (body.partners || []).slice(0, 1) }) });
 // UI-63: the cards of another member (the recorded answer has none): every second card of the recorded collection, with
 // 1 to 4 copies, in the shape of GET /api/player-cards.
 function derivedTheirCards() {
@@ -204,6 +238,8 @@ function derivedWish(body) {
 const derivedGifts = (body) => ({ ...body, gifts: [{ id: 1, kind: 'packs', title: 'New Player Bonus', amount: 10 }] });
 DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_gifts === '1' && body && typeof body === 'object', make: (body) => derivedGifts(body) });
 DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
+// UI-12: two achievements that are done and not claimed (First Pull, First Shine), so the tab shows Claim and Claim all (cookie ci_ach=ready).
+DERIVED.push({ when: (p, c, body) => p === '/api/profile' && c.ci_ach === 'ready' && Array.isArray(body?.claimed), make: (body) => ({ ...body, claimed: body.claimed.filter((k) => k !== 'first' && k !== 'ir1') }) });
 // UI-64 (Shop stat reset picker, pick one): the recorded collection has 3 cards with stat points; ci_stats=many gives the
 // first 30 cards points (a member who spent points on many cards), so the picker shows a full page.
 const STAT_KEYS = ['attack', 'vitality', 'precision', 'potency', 'haste'];
@@ -356,10 +392,17 @@ createServer((req, res) => {
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
     const hit = FIX.routes[key] || FIX.routes[keyOf(p, '')] || BY_PATH[p];
-    if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
-    const body0 = DERIVED.reduce((b, d) => (d.when(p, c, b) ? d.make(b, c) : b), hit.body);
+    // UI-66: a Leaderboard board state (cookie ci_board) answers before the fixture lookup (the Gauntlet board has no recorded answer)
+    if (BOARD_PATHS.has(p) && c.ci_board === 'error') return send(res, 500, '{"error":"ui-check: board error"}');
+    const board = BOARD_PATHS.has(p) && p !== '/api/leaderboard/v2' && (c.ci_board === 'rows' || c.ci_board === 'empty')
+      ? derivedBoard(p, c.ci_board, FIX.routes['/api/hunt/leaderboard']?.body?.me || '100000000000000001') : null;
+    if (!hit && !board) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
+    const derived = board || DERIVED.reduce((b, d) => (d.when(p, c, b) ? d.make(b, c) : b), hit.body);
+    // UI-66 (ci_board=rows): every member has a title, an achievement title on the Main board and a name badge title everywhere
+    // else, so a long name and a title meet on every row and podium spot.
+    const body0 = c.ci_board === 'rows' ? withTitles(p, derived, FIX) : derived;
     const body = c.ci_data === 'long' ? longData(body0) : body0;
-    return send(res, hit.status || 200, JSON.stringify(body));
+    return send(res, board ? 200 : (hit.status || 200), JSON.stringify(body));
   }
   const f = normalize(join(PUB, decodeURIComponent(p)));
   if (!f.startsWith(PUB) || !existsSync(f) || !statSync(f).isFile()) return send(res, 404, 'not found', 'text/plain');
