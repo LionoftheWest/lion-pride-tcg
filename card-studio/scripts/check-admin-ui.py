@@ -30,10 +30,10 @@ hunts = api('/hunts?limit=1')['rows']
 card = api('/cards?limit=1&sort=copies')['rows'][0]['id']
 PAGES = [
     ('01', 'Overview', '/overview'), ('02', 'Members', '/members'), ('03', 'Member', f'/member/{member}'), ('04', 'Economy', '/economy'),
-    ('05', 'Growth', '/growth'), ('06', 'Cards', '/cards'), ('07', 'Hunt list', '/hunt'),
+    ('05', 'Growth', '/growth'), ('06', 'Card stats', '/card-stats'), ('07', 'Hunt list', '/hunt'),
     ('08', 'Hunt', f'/hunt/{hunts[0]["id"]}' if hunts else '/hunt'), ('09', 'Dungeon', '/dungeon'), ('10', 'Reports', '/reports'),
     ('11', 'Report - top power', '/report/top_power'), ('12', 'Data', '/data'), ('13', 'Data - settings', '/data/settings'), ('14', 'Health', '/health'),
-    ('16', 'Card', f'/card/{card}'), ('17', 'Cards - search', '/cards?q=a'), ('18', 'Activity', '/activity'), ('19', 'Activity - pulls', '/activity?kind=pull'),
+    ('16', 'Card', f'/card/{card}'), ('17', 'Card stats - search', '/card-stats?q=a'), ('18', 'Activity', '/activity'), ('19', 'Activity - pulls', '/activity?kind=pull'),
 ]
 # Phase 2 (ADMIN_EDIT=1): the editors and the change dialog.
 try:
