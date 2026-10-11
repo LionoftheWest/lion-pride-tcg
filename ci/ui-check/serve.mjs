@@ -6,6 +6,7 @@
 //   ci_hunt=resting  derived from the recorded /api/hunt: no live boss, the recorded one defeated (UI-19)
 //   ci_hunt=down     derived from the recorded /api/hunt: today's squad (the first 8 roster cards) is down (UI-19)
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
+//   ci_board=rows|empty|error   the 4 Leaderboard answers (UI-66): rows = a board with many rows, empty = no rows, error = HTTP 500 (derived below)
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_dungeon=fight|fight2   a Dungeon fight with 5 or 2 monsters (UI-47); ci_dungeon=over the run over (UI-50)
 //   ci_fx=hist|day|member   the Boons tab (UI-27): my play history, the day limit used up, a member at the pair cap
@@ -59,6 +60,26 @@ function derivedDungeon(body) {
   return { ...body, run: { id: 1, status: 'active', floor: 1, room: 1, squad: ids, state: { phase: 'choose', room_type: 'fight', buff: 1, cards: {},
     pend: { shards: 1, cards: [] }, bank: { shards: 0, cards: [] },
     offers: [{ kind: 'card', tier: 2, odds: [70, 25, 5] }, { kind: 'shards', tier: 1, amount: 10 }, { kind: 'ward', tier: 1, amount: 0.1 }] } } };
+}
+// UI-66: the Leaderboard answers of a board state. The recorded answers have 2 Hunt rows and an empty Dungeon board (no
+// Gauntlet board): 'rows' gives each tab a list long enough to page, with the member's own row inside it.
+const BOARD_PATHS = new Set(['/api/leaderboard/v2', '/api/hunt/leaderboard', '/api/dungeon/board', '/api/gauntlet/board']);
+function derivedBoard(p, mode, me) {
+  const id = (i) => String(100000000000000100n + BigInt(i));
+  const name = (i) => `Member ${String(100 + i).padStart(3, '0')}`;
+  if (mode === 'empty') return p === '/api/hunt/leaderboard' ? { leaders: [], me } : { ok: true, board: [], me };
+  if (p === '/api/hunt/leaderboard') return { leaders: Array.from({ length: 24 }, (_, i) => ({ player_id: i === 7 ? me : id(i), username: name(i), damage: 4700 - i * 190 })), me };
+  return { ok: true, me, board: Array.from({ length: 12 }, (_, i) => ({ rank: i + 1, player_id: i === 0 ? me : id(i), username: name(i), floor: 5 - (i >> 2), room: 1 + (i % 3), turns: 27 + i * 3, runs: 1 + (i % 2), status: i === 3 ? 'active' : 'done' })) };
+}
+const TITLE = 'the Unbreakable Champion of the Realm';
+function withTitles(p, body, FIX) {
+  if (p === '/api/leaderboard/v2' && Array.isArray(body?.rows)) return { ...body, rows: body.rows.map((r) => ({ ...r, title: 'Season 1 Champion' })) };
+  if (p === '/api/effects/badges') {
+    const ids = [...(FIX.routes['/api/leaderboard/v2']?.body?.rows || []).map((r) => r.id), ...Array.from({ length: 40 }, (_, i) => String(100000000000000100n + BigInt(i)))];
+    // the signed-in member is left out: Home (behind the window) shows that name too, and its own layout is not under test here
+    return { badges: Object.fromEntries(ids.filter((id) => id !== '100000000000000001').map((id) => [id, { title: TITLE, sticker: null, spotlight: false }])) };
+  }
+  return body;
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && c.ci_dungeon === 'choose' && body?.ok, make: (body) => derivedDungeon(body) });
 // UI-49: the other steps of a run (cookie ci_dungeon = rest | path | chest | floor): the room steps and Floor cleared, as in the
@@ -256,9 +277,27 @@ function derivedFx(path, mode, body) {
   if (path === '/api/effects/me' && body?.enabled) {
     if (mode === 'day') return { ...body, playsToday: 10, dayEnds: new Date(Date.parse(FIX.recordedAt) + (7 * 60 + 25) * 60e3).toISOString() };
     if (mode === 'member') return { ...body, playsToday: 3, pairs: { '100000000000000012': 3 } };
+    // UI-28: every effect enabled and ready, so that the first card of the picker can be picked (the confirm, poll and owner states)
+    const open = { ...body, cooldowns: {}, primitives: Object.fromEntries(Object.entries(body.primitives || {}).map(([k, v]) => [k, { ...v, enabled: true }])) };
+    if (mode === 'owner') return { ...open, immune: ['012', '163', '011', '110', '076', '161', '077', '032'].map((n) => `100000000000000${n}`), primitives: { ...open.primitives, nickname: { primitive: 'nickname', kind: 'prank', channel: 'discord', enabled: true } } };
+    if (mode === 'poll') return open;
+    if (mode === 'refund') return { ...open, refunds: [{ id: 9201, primitive: 'nickname', reason: 'not_manageable', target: 'Member 012', card: { name: 'Card A' } }] };
+    if (mode === 'banners') {
+      const art = (FIX.routes['/api/collection']?.body?.cards || []).slice(0, 3).map((c) => ({ name: c.name, image_url: c.image_url }));
+      const mk = (i, kind, outcome, sender) => ({ id: 9300 + i, primitive: 'confetti', kind, outcome, sender, created_at: FIX.recordedAt, card: art[i] || null });
+      return { ...open, incoming: [mk(2, 'boon', 'applied', 'Member B'), mk(1, 'prank', 'decoyed', 'Member B'), mk(0, 'prank', 'applied', 'Member A')] };
+    }
   }
   return body;
 }
+// UI-28: the collection cards carry a poll (4 questions with the member name) or the owner-refused effect (nickname).
+function derivedFxCards(body, mode) {
+  const polls = [1, 2, 3, 4].map((n) => ({ question: `Question ${n} about {name}?`, answers: ['Yes', 'No'] }));
+  return { ...body, cards: (body.cards || []).map((c) => (!c.effect?.primitive ? c
+    : mode === 'poll' ? { ...c, effect: { ...c.effect, options: { ...(c.effect.options || {}), polls } } }
+    : mode === 'owner' ? { ...c, effect: { ...c.effect, primitive: 'nickname' } } : c)) };
+}
+DERIVED.push({ when: (p, c, body) => ['poll', 'owner'].includes(c.ci_fx) && p === '/api/collection' && body?.cards, make: (body, c) => derivedFxCards(body, c.ci_fx) });
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/recent' && body?.plays, make: (body, c) => derivedFx('/api/effects/recent', c.ci_fx, body) });
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/me' && body?.enabled, make: (body, c) => derivedFx('/api/effects/me', c.ci_fx, body) });
 // UI-55: avatar effects (cookie ci_avfx=on): the badge list holds the mustache for the signed-in member, the five members of Home
@@ -330,6 +369,8 @@ createServer((req, res) => {
     req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
     return undefined;
   }
+  // UI-28 (cookie ci_play=ok): a play that works. Nothing is written. Without the cookie the play stays blocked (the error state of the confirm window).
+  if (req.method === 'POST' && p === '/api/effects/play' && cookies(req).ci_play === 'ok') { req.resume(); return send(res, 200, JSON.stringify({ ok: true, outcome: 'applied', kind: 'boon', primitive: 'lucky_pull' })); }
   // UI-31: taking a card off the Hall answers ok (nothing is written) so the screen shows the "unlisted" toast with Undo; a list call stays refused (the error state).
   if (req.method === 'POST' && p === '/api/hall/unlist') return send(res, 200, '{"ok":true}');
   if (req.method === 'POST' && p === '/api/trade/accept') {   // UI-26: nothing is written; the answer is ok and the cookie hides the offer
@@ -356,10 +397,17 @@ createServer((req, res) => {
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
     const hit = FIX.routes[key] || FIX.routes[keyOf(p, '')] || BY_PATH[p];
-    if (!hit) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
-    const body0 = DERIVED.reduce((b, d) => (d.when(p, c, b) ? d.make(b, c) : b), hit.body);
+    // UI-66: a Leaderboard board state (cookie ci_board) answers before the fixture lookup (the Gauntlet board has no recorded answer)
+    if (BOARD_PATHS.has(p) && c.ci_board === 'error') return send(res, 500, '{"error":"ui-check: board error"}');
+    const board = BOARD_PATHS.has(p) && p !== '/api/leaderboard/v2' && (c.ci_board === 'rows' || c.ci_board === 'empty')
+      ? derivedBoard(p, c.ci_board, FIX.routes['/api/hunt/leaderboard']?.body?.me || '100000000000000001') : null;
+    if (!hit && !board) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
+    const derived = board || DERIVED.reduce((b, d) => (d.when(p, c, b) ? d.make(b, c) : b), hit.body);
+    // UI-66 (ci_board=rows): every member has a title, an achievement title on the Main board and a name badge title everywhere
+    // else, so a long name and a title meet on every row and podium spot.
+    const body0 = c.ci_board === 'rows' ? withTitles(p, derived, FIX) : derived;
     const body = c.ci_data === 'long' ? longData(body0) : body0;
-    return send(res, hit.status || 200, JSON.stringify(body));
+    return send(res, board ? 200 : (hit.status || 200), JSON.stringify(body));
   }
   const f = normalize(join(PUB, decodeURIComponent(p)));
   if (!f.startsWith(PUB) || !existsSync(f) || !statSync(f).isFile()) return send(res, 404, 'not found', 'text/plain');

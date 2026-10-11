@@ -81,7 +81,7 @@ body[data-size="compact-land"] .u3-bn-sheet .u3-sheet__head { padding-right: max
 .u3-pk--boons .u3-pk__head { flex-wrap: wrap; gap: var(--sp-2); }
 .u3-bn-who { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; flex: 0 1 auto; }
 .u3-bn-who .u3-mp-av { --mp-av: var(--avatar-sm); }
-.u3-bn-who__name { min-width: 0; font-size: var(--fs-body); font-weight: var(--fw-stat); line-height: var(--lh-body); color: var(--text-primary); overflow-wrap: break-word; }
+.u3-bn-who__name { min-width: 0; font-size: var(--fs-body); font-weight: var(--fw-stat); line-height: var(--lh-body); color: var(--text-primary); overflow-wrap: normal; white-space: normal; }   /* a name wraps at a space, never inside a word (3.3) */
 .u3-pk--boons .u3-pk-slot__x { display: none; }
 body[data-size^="compact"] .u3-bn-who__name { font-size: var(--fs-small); line-height: var(--lh-small); }
 .u3-bn-arrow { flex: none; display: inline-flex; color: var(--gold); }
@@ -94,6 +94,10 @@ body[data-size^="compact"] .u3-bn-who__name { font-size: var(--fs-small); line-h
 .u3-pk__kinds .is-active { color: var(--text-primary); }
 body[data-size] .u3-pk--boons { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
   grid-template-areas: "head close" "kinds kinds" "tools tools" "grid grid" "pager pager" "slots foot"; }
+/* Close sits at the right edge of the head row on every class but expanded: the Close column was as wide as the Confirm foot under it (it spans
+   the middle column now), so the names got about 100 px (UI-28 review, G3 fx-owner 412x915) */
+body:is([data-size="compact-port"], [data-size="compact-land"], [data-size="medium"], [data-size="tiny"]):not([data-kb]) .u3-pk--boons { grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "head head close" "kinds kinds kinds" "tools tools tools" "grid grid grid" "pager pager pager" "slots foot foot"; }
 body[data-size] .u3-pk--boons .u3-pk__slots { align-self: end; justify-self: start; }
 body[data-size] .u3-pk--boons .u3-pk__foot { justify-self: end; align-self: end; max-width: calc(var(--dialog-w) / 1.5); }
 body[data-size="expanded"] .u3-pk--boons { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) auto; grid-template-rows: auto auto minmax(0, 1fr) auto;
