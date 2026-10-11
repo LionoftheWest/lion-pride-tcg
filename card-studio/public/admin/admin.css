@@ -78,6 +78,12 @@ button, input, select { font: inherit; color: inherit; }
 .nav-sep { height: 12px; }
 .nav-tools { margin-top: auto; border-top: 1px solid var(--divider); padding-top: 12px; }
 
+/* The side column background is ALSO painted on the body, so it reaches the end of a long page in a full-page
+   capture (a fixed element covers only the first viewport there; the Cards section showed it ending at ~900 px). */
+@media (min-width: 761px) {
+  body { background: linear-gradient(to right, var(--bar) calc(var(--side-w) - 1px), var(--divider) calc(var(--side-w) - 1px), var(--divider) var(--side-w), var(--page) var(--side-w)); }
+}
+
 /* Main */
 main { margin: var(--top-h) 0 0 var(--side-w); padding: 28px 32px 40px; min-height: calc(100vh - var(--top-h)); outline: none; }
 .page-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
