@@ -293,7 +293,33 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
      curve can be seen in one place.
    - The Combat Lab measures the value of one point in each stat and one star for each
      rarity. A stat that is always the best choice, or never worth a point, is a defect.
-   - A free reset of stat points after the fix, because the Haste and Attack rules change.
+   - No free reset for now (Nathan, 2026-10-11). Cards with Attack points lose the HP part
+     of the bonus. Cards with Haste points gain the cooldown effect.
+   - **Decided (Nathan, 2026-10-11):**
+     - Attack raises only attack power. Vitality raises only HP.
+     - The Gauntlet stays equal for all: 0 stars and no points.
+     - The stat names must say what each stat does. Proposal (the stored keys do not
+       change, only the labels in ):
+
+       | Now | New label | What it does |
+       |---|---|---|
+       | Attack | Attack | +5% attack power for each point |
+       | Vitality | Health | +6% HP for each point |
+       | Precision | Crit | +3% chance of a critical hit for each point |
+       | Potency | Support | +5% strength of the card's support (heal, shield, empower) |
+       | Haste | Recharge | −4% support cooldown for each point |
+
+       Not Speed (it suggests turn order) and not Accuracy (the game has a miss chance,
+       and Precision does not change it).
+10. **Latent abilities (Nathan, 2026-10-11).** Every card has a base ability for fights.
+    At a set star level, a second (latent) ability unlocks.
+    -  stays the base ability. A new  holds the second
+      ability, checked by the same  rules and the same power budget.
+    -  key : the star that unlocks it (one number for all).
+    -  returns the latent ability when the card has enough stars. The fights
+      read it from there. The Gauntlet (0 stars) never has it.
+    -  and the Combat Lab show and test both abilities.
+    - Content: every S1 card needs a latent ability, and every Set 2 card has both.
 
 ### Acceptance tests
 
@@ -314,11 +340,16 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 4. The `combat_sheet` view and the Admin page Combat section.
 5. The Combat Lab, and the golden test for the Dungeon and Gauntlet on the local copy.
 6. One log: move the readers to `combat_actions`, then remove the old logs.
-7. Ascension and stat points: the fixes, one power number everywhere, the free reset, and the Lab measurement.
+7. Ascension and stat points: the fixes, the new labels, one power number everywhere, and the Lab measurement.
+8. Latent abilities: `subjects.latent`, `latent_unlock_star`, the fight support, and the Card Portal field.
 
 ---
 
 ## Decisions recorded (Nathan, 2026-10-11)
+
+5. **Stats:** Attack raises only attack power, Vitality only HP. Clearer stat names. No free
+   reset for now. The Gauntlet stays equal for all.
+6. **Latent abilities:** each card unlocks a second ability at a set star (F-3 item 10).
 
 1. **Events:** no code for one specific event. Nathan wants the freedom to make any kind of
    event and to build a library of events to schedule (F-1 item 0).
