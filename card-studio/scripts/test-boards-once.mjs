@@ -2,6 +2,7 @@
  * Acceptance test for tcg-bot/supabase/perf_boards_once.sql, NO lasting change (one DO block; the final RAISE rolls it back):
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-boards-once.mjs        must PASS
  *   MUTATE=<name> ...                                                                         must FAIL, for every name:
+ *     tieorder the top 3 of the Dungeon is sorted by name, not by rank (a tie shows)
  *     top3     the top 3 list holds 4 rows                 twice    the top 3 reads the board again (two board reads)
  *     rank     the member rank comes from the top 3 only   guard    the live-version guard accepts any version
  *   node scripts/test-boards-once.mjs --live   the same cases on the CURRENT functions (test-all-local.mjs: the file is applied already)
@@ -28,6 +29,7 @@ const MUT = {
   top3: ["where o <= 3),\n    'season_best'", "where o <= 4),\n    'season_best'"],
   twice: ["'top', (select coalesce(jsonb_agg(e order by o), '[]'::jsonb) from jsonb_array_elements(v_board) with ordinality t(e, o) where o <= 3),\n    'prizes'", "'top', gauntlet_board(v_week, 3),\n    'prizes'"],
   rank: ["select (e->>'rank')::int into v_rank from jsonb_array_elements(v_board) e where", "select (e->>'rank')::int into v_rank from jsonb_array_elements(dungeon_board(v_day, 3)) e where"],
+  tieorder: ["order by o), '[]'::jsonb) from jsonb_array_elements(v_board) with ordinality t(e, o) where o <= 3),\n    'season_best'", "order by e->>'player_id' desc), '[]'::jsonb) from jsonb_array_elements(v_board) with ordinality t(e, o) where o <= 3),\n    'season_best'"],
   guard: ["if m2 not in ('0b729835b6ce3b124f0c947b1098a8de',", "if m2 is null and 'x' not in ("],
 };
 if (process.env.MUTATE) {
@@ -124,7 +126,20 @@ end $rf$;
     select 'tst_bo_' || i, d, '{1,2,3,4,5}', '{}', 'daily', 'over', 1 + (i % 9), 1 + (i % 5), i from generate_series(1, 600) i;
   insert into dungeon_runs (player_id, day, squad, state, mode, status, floor, room, turns)
     select 'tst_bo_' || i, d, '{1,2,3,4,5}', '{}', 'gauntlet', 'over', 1 + (i % 7), 1 + (i % 4), i from generate_series(1, 600) i;
-  ids := array['tst_bo_1', 'tst_bo_7', 'tst_bo_300', 'tst_bo_599', 'tst_bo_600', 'tst_bo_nobody'] || array(select id from players where id not like 'tst_bo_%' order by id limit 10);
+  -- TIES (the order of a tie must be the order the old view gave): 8 members tied at the top (same floor, room, turns, end time), 6 ACTIVE
+  -- members tied in the middle (no end time: the board sorts them by now(), the same for all), 5 ended members tied in the middle.
+  insert into players (id, username) select 'tst_tie_' || i, 'tie ' || i from generate_series(1, 19) i;
+  insert into dungeon_runs (player_id, day, squad, state, mode, status, floor, room, turns, ended_at)
+    select 'tst_tie_' || i, d, '{1,2,3,4,5}', '{}', 'daily', case when i between 9 and 14 then 'active' else 'over' end,
+           case when i <= 8 then 9 when i <= 14 then 4 else 5 end, case when i <= 8 then 5 when i <= 14 then 2 else 3 end,
+           case when i <= 8 then 0 when i <= 14 then 3 else 7 end,
+           case when i between 9 and 14 then null else timestamptz '2026-01-01 12:00+00' end from generate_series(1, 19) i;
+  insert into dungeon_runs (player_id, day, squad, state, mode, status, floor, room, turns, ended_at)
+    select 'tst_tie_' || i, d, '{1,2,3,4,5}', '{}', 'gauntlet', case when i between 9 and 14 then 'active' else 'over' end,
+           case when i <= 8 then 7 when i <= 14 then 3 else 4 end, case when i <= 8 then 4 when i <= 14 then 2 else 3 end,
+           case when i <= 8 then 0 when i <= 14 then 3 else 7 end,
+           case when i between 9 and 14 then null else timestamptz '2026-01-01 12:00+00' end from generate_series(1, 19) i;
+  ids := array(select 'tst_tie_' || i from generate_series(1, 19) i) || array['tst_bo_1', 'tst_bo_7', 'tst_bo_300', 'tst_bo_599', 'tst_bo_600', 'tst_bo_nobody'] || array(select id from players where id not like 'tst_bo_%' order by id limit 10);
 
   -- 1. The same answer, key by key.
   foreach pid in array ids loop
@@ -133,6 +148,14 @@ end $rf$;
     if dungeon_view_core(pid, false) is distinct from ref_dungeon_view_core(pid, false) then bad := bad || 'dungeon_view_core(' || pid || ', false) differs; '; end if;
     if gauntlet_view(pid) is distinct from ref_gauntlet_view(pid) then bad := bad || 'gauntlet_view(' || pid || ') differs: ' || left(gauntlet_view(pid)::text, 300) || ' vs ' || left(ref_gauntlet_view(pid)::text, 300) || '; '; end if;
   end loop;
+  -- ties: the 8 tied members at the top hold the top 3 rows (so the order of a tie is visible in 'top'), and every tied member
+  -- has the rank that the old board call gives (the same call, the same order)
+  if (select count(*) from jsonb_array_elements(dungeon_view_core('tst_tie_5', false)->'top') e where e->>'player_id' like 'tst_tie_%') <> 3
+     or (select count(*) from jsonb_array_elements(gauntlet_view('tst_tie_5')->'top') e where e->>'player_id' like 'tst_tie_%') <> 3 then bad := bad || 'the tie test needs ties in the top 3; '; end if;
+  if exists (select 1 from jsonb_array_elements(dungeon_board(d, 1000)) e where e->>'player_id' like 'tst_tie_%'
+             and (dungeon_view_core(e->>'player_id', false)->'run'->>'rank')::int is distinct from (e->>'rank')::int) then bad := bad || 'a tied member has another rank than the board gives; '; end if;
+  if exists (select 1 from jsonb_array_elements(gauntlet_board(gauntlet_week(d), 1000)) e where e->>'player_id' like 'tst_tie_%'
+             and (gauntlet_view(e->>'player_id')->'run'->>'rank')::int is distinct from (e->>'rank')::int) then bad := bad || 'a tied gauntlet member has another rank than the board gives; '; end if;
   -- the ranks of the test members are what the board says
   if (dungeon_view_core('tst_bo_300', false)->'run'->>'rank')::int is distinct from (select (e->>'rank')::int from jsonb_array_elements(dungeon_board(d, 1000)) e where e->>'player_id' = 'tst_bo_300') then bad := bad || 'rank of tst_bo_300; '; end if;
   if jsonb_array_length(dungeon_view_core('tst_bo_1', false)->'top') <> 3 or jsonb_array_length(gauntlet_view('tst_bo_1')->'top') <> 3 then bad := bad || 'top is not 3 rows; '; end if;

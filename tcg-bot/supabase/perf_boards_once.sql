@@ -4,6 +4,9 @@
 -- Change (built from the LIVE text of 2026-10-11): read the board once into v_board; the rank and the top 3 both come from it.
 --   The answer is the same, key by key. (When two runs tie on floor, room, turns and end time, the old text ordered them
 --   twice, in two sorts, and could rank the member and the top 3 differently; now both come from one order.)
+-- The ORDER BY of the boards is NOT touched: dungeon_board and gauntlet_board are the same functions, so the keys, the directions and the
+--   tie-break (the end time, now() for an active run) are the old ones, and a member's rank is the rank the old view gave. The test has
+--   tied runs (8 at the top, 6 active, 5 ended) and compares the old and the new answer for each.
 -- No balance number and no rule changes. Test: card-studio/scripts/test-boards-once.mjs.
 
 -- GUARD (the combat_core.sql rule): each function must be the live text this file was built from, or the text this file made.
