@@ -32,7 +32,7 @@ export const SCREENS = {
   // v3: the Card Detail states of UI-08 (the approved frames): a card to ascend (cookie ci_col=ascend), the stat points editor (ci_col=points), a locked card.
   'collection-detail-ascend': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, col: 'ascend', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5]] },
   'collection-detail-points': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, col: 'points', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]'], ['wait', 1]] },
-  'collection-detail-locked': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile.is-locked'], ['wait', 2.5]] },
+  'collection-detail-locked': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile.is-locked'], ['wait', 2.5]] },
   // v3: the card viewer (UI-09) opened from the Card Detail art (a tap on #pArt; at the sizes where the viewer opens with the panel it opens again).
   'collection-viewer':   { id: 'UI-09', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pArt'], ['wait', 1.5]] },
   // v3: the celebration after an Ascend (UI-10 C1-C4): the viewer with the card and "Spend points" (cookie ci_col=ascend-ok answers the Ascend).
@@ -40,9 +40,14 @@ export const SCREENS = {
   // v3: the Ascend refused (UI-10 E1: the writes answer 403 here, cookie ci_col=points) and the stat points save error (S2).
   'ascend-error':        { id: 'UI-10', under: 'UI-07', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 1.5]], col: 'ascend' },
   'stat-points-error':   { id: 'UI-10', under: 'UI-07', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '[data-add="attack"]', [['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]']]], ['wait', 1], ['js', '#ptsSave'], ['wait', 1.5]], col: 'points' },
-  'achievements':        { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
-  'achievements-detail': { id: 'UI-12', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main .ach-card, #main .ach-row, #main [data-ach]']] },
-  'bosses':              { id: 'UI-11', steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
+  'achievements':        { id: 'UI-12', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
+  // v3: the achievement window (a tap on a tile), the tab with an achievement ready to claim (cookie ci_ach=ready, derived in
+  // serve.mjs), and a Claim that the server refuses (the check server blocks every write: the button shows "Try again").
+  'achievements-detail': { id: 'UI-12', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-ach="s1"]'], ['wait', 1.5]] },
+  'achievements-ready':  { id: 'UI-12', notOn: ['tiny'], long: true, safe: true, ach: 'ready', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
+  'achievements-claim-error': { id: 'UI-12', notOn: ['tiny'], safe: true, ach: 'ready', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-claim]'], ['wait', 1.5]] },
+  'bosses':              { id: 'UI-11', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
+  'boss-detail':         { id: 'UI-11', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]'], ['js', '#main [data-bi]'], ['wait', 2]] },
   'trades':              { id: 'UI-25', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`]], input: '#trFind, #main input[type=search], #main input[type=text]' },
   // v3: the Trades tab opens with the Member picker (UI-65); a tap on a member opens the builder. v2: the builder.
   // UI-63: a tap on a member opens the Trade window (Your cards); the states of the approved frames: one of my cards chosen
@@ -96,6 +101,8 @@ export const SCREENS = {
   'boons-picker':        { id: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1]], input: '#u3Picker .u3-search__input' },
   'boons-pick':          { id: 'UI-28', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
   'hunt-squad':          { id: 'UI-17', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
+  // D-166: the trophy button in the squad stage Top 3 row opens the Leaderboard window (UI-66) on the Hunt tab; behind it the squad stage is UI-17.
+  'hunt-board':          { safe: true, long: true, id: 'UI-66', under: 'UI-17', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '#main [data-hboard]'], ['wait', 2.5]] },
   // v3: the Card picker (UI-64) in Hunt mode over the Hunt view (Auto-pick, locked cards, the short-squad dialog).
   // The Hunt with no live boss and with today's squad down (UI-19): states derived in serve.mjs from the recorded calls.
   'hunt-resting':        { id: 'UI-19', hunt: 'resting', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
@@ -143,7 +150,11 @@ export const SCREENS = {
   'loader':              { id: 'UI-56', loader: 'loading', steps: [] },
   'loader-timeout':      { id: 'UI-56', loader: 'timeout', steps: [] },
   'loader-error':        { id: 'UI-56', loader: 'error', steps: [] },
-  'dungeon-board':       { id: 'UI-51', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-pane="top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
+  // v3: the Dungeon "See the leaderboard" button opens the one Leaderboard window (UI-66) on the Dungeon tab: a defect outside the window belongs to the lobby ('under').
+  'dungeon-board':       { safe: true, long: true, id: 'UI-66', under: 'UI-46', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-seg="pane:top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
+  // The Gauntlet lobby "See the leaderboard" button opens the Leaderboard window (UI-66) on the Gauntlet tab; behind it the lobby is UI-52.
+  // The v3 lobby (UI-52) keeps the button in the Top 3 panel: on phones and tall tablets that panel is the segment pane:top (data-seg), so the fallback taps it first.
+  'gauntlet-board':      { safe: true, long: true, id: 'UI-66', under: 'UI-52', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-seg="pane:top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
   // The Gauntlet (UI-52): the lobby, then its Prizes and Top 3 tabs (phones show them as tabs; the wide classes show them in the lobby).
   'gauntlet':            { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   'gauntlet-over':       { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
@@ -169,7 +180,17 @@ export const SCREENS = {
   'bell':                { id: 'UI-24', safe: true, long: true, under: 'UI-03', notOn: ['tiny'], steps: [['js', '#bellBtn']] },
   // The Settings window (UI-61) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
   'settings':            { id: 'UI-61', safe: true, under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="settings"]'], ['wait', 1.5]] },
-  'leaderboard':         { id: 'UI-22', long: true, steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  // The Leaderboard window (UI-66, D-44) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
+  'leaderboard':         { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  'leaderboard-hunt':    { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-dungeon': { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
+  'leaderboard-gauntlet': { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
+  // The states: Main with an error answer, and the Hunt, Dungeon and Gauntlet tabs with no rows or an error answer.
+  'leaderboard-error':   { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'error', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  'leaderboard-hunt-error': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'error', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-hunt-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-dungeon-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
+  'leaderboard-gauntlet-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
   'profile':             { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
   'style-editor':        { id: 'UI-15', safe: true, notOn: ['tiny'], steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5]] },
   // UI-15 opens the Card picker for the Spotlight (D-80 item 16): a defect inside the picker window belongs to UI-64
@@ -238,6 +259,7 @@ export function ownerOf(screen, where) {
   if (/\.u3-tn\b|\.u3-tn[-_]/.test(where)) return 'UI-59';   // the small live view (tiny class)
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
+  if (/#u3Lb(Host)?[a-z]*\b|\.u3-lb\b|\.u3-lb[-_]|\.u3-lbhost\b/.test(where)) return 'UI-66';
   // The card details (the v2 #viewer) opened from a Card picker: UI-64 owns them there (only the picker detail specs), the screen under the scrim does not.
   // Other screens keep their owner (collection-detail: UI-08 opens the viewer at some sizes and its side panel at others).
   if (/-picker-detail$/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b|\.vr-|#v-[a-z-]+/.test(where)) return 'UI-64';

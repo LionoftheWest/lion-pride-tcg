@@ -1,7 +1,7 @@
 // Tests for the G3 verdict: node --test ci/ui-check/evaluate.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defectsOf, verdict, reportOnly } from './evaluate.mjs';
+import { defectsOf, verdict, checkExceptions, accepts, reportOnly } from './evaluate.mjs';
 import { SIZES, SCREENS, REPORT_ONLY_SIZES, sizeKey, ownerOf } from './screens.mjs';
 import { parseRegister } from '../gates/lib.mjs';
 
@@ -146,6 +146,10 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('profile', '.mem-col.mem-left > span'), 'UI-14');
   assert.equal(ownerOf('dungeon', 'cutBtn: #main > .dg-tabs.v2-subtabs'), 'UI-02');
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
+  assert.equal(ownerOf('leaderboard', '#u3LbHost > #u3Lb.u3-lb > .u3-lb__panel .u3-lb-row'), 'UI-66');   // the Leaderboard window (UI-66)
+  assert.equal(ownerOf('leaderboard', '#u3Lb > header.u3-lb__top'), 'UI-66');
+  assert.equal(ownerOf('dungeon-board', '#main > .dg-lobby'), 'UI-46', 'a defect behind the window is the lobby');
+  assert.equal(ownerOf('leaderboard', '#main > .home-hero'), 'UI-03', 'a defect behind the window is Home');
   assert.equal(ownerOf('collection', '#main > .u3-col > .u3-ctile.is-owned'), 'UI-07');
   assert.equal(ownerOf('collection', '.u3-col__bar > .u3-search.u3-col__search > #colSearch.u3-search__input'), 'UI-07');
   assert.equal(ownerOf('achievements', '.v2-collection.ach-mode > .m-colbar > #colSearch.v2-search'), 'UI-12');   // the v2 id is not UI-07
@@ -183,7 +187,7 @@ import { plan, enforcedIds } from './plan.mjs';
 test('plan: the title IDs and the Migrated rows; the shell checks every screen; an unknown screen is uncovered', () => {
   assert.deepEqual([...enforcedIds('UI-46 Dungeon lobby', REG)].sort(), ['UI-07', 'UI-46'], 'UI-07 is Migrated in REG');
   assert.deepEqual(plan(new Set(['UI-46'])).screens, ['dungeon']);
-  assert.deepEqual(plan(new Set(['UI-12'])).screens, ['achievements', 'achievements-detail']);
+  assert.deepEqual(plan(new Set(['UI-12'])).screens, ['achievements', 'achievements-detail', 'achievements-ready', 'achievements-claim-error']);
   assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
   assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');
@@ -196,7 +200,7 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
 });
 test('plan with the title IDs (pick): a PR runs only its own screens and the screens under them, not every Migrated row', () => {
   const enforced = new Set(['UI-07', 'UI-46', 'UI-17']);   // the title UI-46 plus Migrated rows
-  assert.deepEqual(plan(enforced, { pick: new Set(['UI-46']) }).screens, ['dungeon', 'dungeon-picker', 'dungeon-picker-detail']);   // the pickers sit under UI-46
+  assert.deepEqual(plan(enforced, { pick: new Set(['UI-46']) }).screens, ['dungeon', 'dungeon-picker', 'dungeon-picker-detail', 'dungeon-board']);   // the pickers and the Leaderboard window (UI-66) sit under UI-46
   const ui17 = plan(enforced, { pick: new Set(['UI-17']) }).screens;
   assert.ok(ui17.includes('hunt-picker') && ui17.includes('boss-window'), 'the screens UNDER the title ID run too');
   assert.ok(!ui17.includes('collection'), 'a Migrated row that is not in the title does not run');
@@ -254,6 +258,9 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
   const mine = list.filter((e) => e.id === 'UI-49');
   assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+  const pts = list.filter((e) => e.id === 'UI-08');   // D-171: the open stat points editor on a phone sheet
+  assert.equal(pts.length, 6);   // the enforced phone sizes (375x667 is report-only, D-136)
+  assert.ok(pts.every((e) => e.decision === 'D-171' && e.rule === 'missing' && ['collection-detail-points', 'stat-points-error'].includes(e.screen) && ['412x915', '430x822', '430x932'].includes(e.size) && /stat-points-open/.test(e.why)));
   const fight = list.filter((e) => e.id === 'UI-47');   // D-155: the phone controls of the fight
   assert.ok(fight.length > 0 && fight.every((e) => e.decision === 'D-155' && e.rule === 'missing' && /^dungeon-fight/.test(e.screen) && ['430x932', '430x822', '412x915'].includes(e.size)));
 });
@@ -279,4 +286,16 @@ test('a bad exception entry stops the gate', () => {
     { decision: 'D-1', id: 'UI-03', screen: 'home', size: '430x932', rule: 'empty' }]) {                  // no why
     assert.throws(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: [bad] }));
   }
+});
+
+test('UI-66 state exceptions (D-124): the 5 state specs on every touch and pointer size accept only the empty-space rule', async () => {
+  const { readFileSync } = await import('node:fs');
+  const list = checkExceptions(JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8')).filter((e) => e.id === 'UI-66'));
+  const states = ['leaderboard-error', 'leaderboard-hunt-error', 'leaderboard-hunt-empty', 'leaderboard-dungeon-empty', 'leaderboard-gauntlet-empty'];
+  assert.equal(list.length, states.length * (SIZES.length - 1), 'every size but tiny (the window is not shown there)');
+  assert.ok(list.every((e) => e.decision === 'D-124' && e.rule === 'empty' && states.includes(e.screen)));
+  const x = (screen, rule) => ({ owner: 'UI-66', screen, size: '430x932', rule });
+  assert.ok(list.some((e) => accepts(e, x('leaderboard-hunt-empty', 'empty'))));
+  assert.ok(!list.some((e) => accepts(e, x('leaderboard', 'empty'))), 'the Main tab with rows is not excepted');
+  assert.ok(!list.some((e) => accepts(e, x('leaderboard-hunt-empty', 'bleed'))), 'only the empty-space rule is excepted');
 });
