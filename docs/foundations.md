@@ -371,6 +371,52 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
       strongest squads that use it.
     - **The Card Portal** gets an effect builder: choose the primitives, conditions and
       amounts, and see the Lab result before the effect is saved.
+13. **New combat layers later (Nathan, 2026-10-11).** The design must allow new layers in
+    the future, for example energy, positions, terrain or weather, equipment, combos, or
+    turn order. Two parts make this possible:
+    - **Triggers.** An effect step can run on a game moment, not only on use: start of a
+      round, on hit, on a critical hit, on a kill, on damage taken, when an ally goes down,
+      at low HP. The triggers are a fixed list in `combat_effect`. Most new layers are new
+      triggers, conditions and primitives, not new fight code.
+    - **One fight state shape.** Today the Hunt keeps its fight state in table columns
+      (`hunt_card_hp`, `hunt_combat_state`), and the Dungeon keeps it in
+      `dungeon_runs.state` jsonb (observed). Each new field would need two storage changes.
+      The change: one defined shape for the fight state (cards, enemies, statuses, round,
+      and room for new fields), read and written only through `combat_effect`. Each mode
+      keeps its own storage (the Hunt boss stays a locked row, because many players hit
+      it at once), but a new field is defined once.
+    How much work each kind of change needs:
+
+    | Change | Work |
+    |---|---|
+    | A number | One `balance` value. No code. |
+    | An effect, condition or target from existing parts | One row. No code. |
+    | A new primitive or trigger (for example "reflect", "summon") | One piece of code in `combat_effect`, with a Lab test. Then every card and mode can use it. |
+    | A new layer (for example energy or positions) | A new field in the fight state, its primitives and conditions, and Lab invariants. Then a screen design, because players must see it. |
+
+    The Combat Lab covers a new layer by itself, because it calls the same functions as
+    real fights. Each new layer adds its own invariants (for example "energy is never
+    below 0").
+14. **How the parts fit, and the checks that keep them in one place.**
+
+    ```
+    1. DATA ........ balance (numbers), subjects (card facts, card upgrade),
+                     ability_kinds (effects as steps), elements, passives
+    2. CALCULATE ... card_combat (card stats), combat_effect (every effect and trigger),
+                     combat_* (hit, crit, synergy, enemy turn). The only combat math.
+    3. READ ........ combat_sheet view, the Admin Combat section
+    4. RECORD ...... combat_actions (one log)
+    5. PROVE ....... the Combat Lab and the golden fights, through the same layer 2
+    Every user of combat (Hunt, Dungeon, Gauntlet, Arena, auto-pick, stat preview) calls
+    layer 2 and never calculates.
+    ```
+
+    CI checks:
+    1. No combat number outside `balance`.
+    2. No effect branch (`v_eff = '...'`) outside `combat_effect`.
+    3. No combat math in the Activity or the bot (the synergy and crit numbers in JS).
+    The reason: without these checks, a fast fix can put a branch back into a mode
+    function. The JS copies of the synergy numbers show that this already happened once.
 
 ### Acceptance tests
 
@@ -387,7 +433,7 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 1. Remove the JS combat math (the auto-pick and Team CP call SQL). Delete the old
    simulators. Fix Haste.
 2. `elements` and `passives` tables. Remove the fixed copies.
-3. `ability_kinds` as effect data: the primitives, the one interpreter `combat_effect`, and the 13 effects as rows (golden fights unchanged).
+3. `ability_kinds` as effect data: the primitives, the triggers, the one fight state shape, the one interpreter `combat_effect`, and the 13 effects as rows (golden fights unchanged). The three CI checks of item 14.
 4. The `combat_sheet` view and the Admin page Combat section.
 5. The Combat Lab, and the golden test for the Dungeon and Gauntlet on the local copy.
 6. One log: move the readers to `combat_actions`, then remove the old logs.
@@ -414,3 +460,5 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
    card stats (F-3 item 11).
 8. **Ability effects:** the list must grow large. Effects become data made from building
    blocks, with one interpreter for every mode (F-3 item 12).
+9. **New layers:** the design must allow new combat layers later. Triggers and one fight
+   state shape make this possible (F-3 item 13).
