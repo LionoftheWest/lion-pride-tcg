@@ -95,3 +95,89 @@ test('the target member never goes into the Issue', () => {
   const i = issueFor({ ...row, target_id: '888888888888888888' });
   assert.doesNotMatch(i.title + i.body, /888888888888888888/);
 });
+
+// ---- Device facts (2026-10-11): six short keys, each with its limit; the Issue shows them as rows.
+const facts = { app: 'Mobile app', device: 'Phone', os: 'iOS 18', engine: 'WebKit', layout: 'compact landscape', dpr: '3x' };
+
+test('cleanContext keeps the 6 device facts, each cut to its limit, and still drops a raw user agent', () => {
+  assert.deepEqual(cleanContext({ ...facts, ua: 'Mozilla/5.0 (iPhone ...)', userAgent: 'Mozilla/5.0' }), facts);
+  const long = cleanContext({ app: 'a'.repeat(99), device: 'd'.repeat(99), os: 'o'.repeat(99), engine: 'e'.repeat(99), layout: 'l'.repeat(99), dpr: '9'.repeat(99) });
+  assert.deepEqual(Object.fromEntries(Object.entries(long).map(([k, v]) => [k, v.length])), { app: 20, device: 12, os: 24, engine: 12, layout: 32, dpr: 8 });
+  assert.equal(cleanContext({ os: 'iOS\n18' }).os, 'iOS 18', 'no line break');
+});
+
+test('issueFor shows each sent device fact as a row (App, Device, System, Engine, Layout, Pixel ratio), and no row for a missing one', () => {
+  const i = issueFor({ ...row, context: { ...row.context, ...facts } });
+  for (const [k, v] of [['App', 'Mobile app'], ['Device', 'Phone'], ['System', 'iOS 18'], ['Engine', 'WebKit'], ['Layout', 'compact landscape'], ['Pixel ratio', '3x']]) {
+    assert.match(i.body, new RegExp(`\| ${k} \| ${v} \|`), k);
+  }
+  const plain = issueFor(row);
+  assert.doesNotMatch(plain.body, /\| (App|Device|System|Engine|Layout|Pixel ratio) \|/);
+  const evil = issueFor({ ...row, context: { os: '@everyone | <b>' } });
+  assert.match(evil.body, /\| System \| @​everyone &lt;b> \|/, 'a fact is a member string: no ping, no table break, no HTML');
+});
+
+test('issueFor counts the screenshots and points to the private Admin page, never to a storage link', () => {
+  assert.match(issueFor({ ...row, shots: 2 }).body, /\n\n2 screenshots, see the Admin page \(private\)\.$/);
+  assert.match(issueFor({ ...row, shots: 1 }).body, /1 screenshot, see the Admin page/);
+  assert.doesNotMatch(issueFor(row).body, /screenshot/);
+  assert.doesNotMatch(issueFor({ ...row, shots: 3 }).body, /supabase|storage|report-shots/i);
+});
+
+// A fake supabase for the screenshot sync: player_report_shots and player_reports rows, records every update.
+function shotDb({ reports = [], shots = [] }) {
+  const updates = [];
+  const table = (name) => {
+    const rows = name === 'player_reports' ? reports : shots;
+    const f = []; let lim = Infinity;
+    const q = {
+      select: () => q, order: () => q,
+      eq: (c, v) => { f.push((r) => r[c] === v); return q; },
+      is: (c, v) => { f.push((r) => (r[c] ?? null) === v); return q; },
+      lt: (c, v) => { f.push((r) => r[c] < v); return q; },
+      not: (c, _op, v) => { f.push((r) => (r[c] ?? null) !== v); return q; },
+      in: (c, vs) => { f.push((r) => vs.includes(r[c])); return q; },
+      limit: (n) => { lim = n; return q; },
+      then: (ok, bad) => Promise.resolve({ data: rows.filter((r) => f.every((p) => p(r))).slice(0, lim) }).then(ok, bad),
+      update: (v) => ({
+        eq: async (c, val) => { for (const r of rows.filter((x) => x[c] === val)) { Object.assign(r, v); updates.push({ table: name, id: r.id, ...v }); } return {}; },
+        in: async (c, vals) => { for (const r of rows.filter((x) => vals.includes(x[c]))) { Object.assign(r, v); updates.push({ table: name, id: r.id, ...v }); } return {}; },
+      }),
+    };
+    return q;
+  };
+  return { updates, from: table };
+}
+
+test('sync: the Issue counts the stored screenshots of the report and marks them noted (not an unstored one)', async () => {
+  const { syncOnce } = await import('./reports.js');
+  const db = shotDb({ reports: [{ id: 7, kind: 'bug', body: 'The pack froze', context: {}, created_at: '2026-10-01T15:00:00Z', attempts: 0, synced_at: null }],
+    shots: [{ id: 1, report_id: 7, stored_at: 'x', noted_at: null }, { id: 2, report_id: 7, stored_at: 'x', noted_at: null }, { id: 3, report_id: 7, stored_at: null, noted_at: null }] });
+  let sent;
+  const fetchImpl = async (_u, o) => { sent = JSON.parse(o.body); return { ok: true, json: async () => ({ number: 50, html_url: 'u' }) }; };
+  assert.equal(await syncOnce(db, { token: 't', repo: 'x/y', fetchImpl }), 1);
+  assert.match(sent.body, /2 screenshots, see the Admin page \(private\)/);
+  assert.deepEqual(db.updates.filter((u) => u.table === 'player_report_shots').map((u) => u.id).sort(), [1, 2]);
+});
+
+test('sync: screenshots stored after the Issue get ONE comment on that Issue, then they are noted (no second comment)', async () => {
+  const { syncShotNotes } = await import('./reports.js');
+  const db = shotDb({ reports: [{ id: 7, issue_number: 50 }, { id: 8, issue_number: null }],
+    shots: [{ id: 4, report_id: 7, stored_at: 'x', noted_at: null }, { id: 5, report_id: 7, stored_at: 'x', noted_at: null }, { id: 6, report_id: 8, stored_at: 'x', noted_at: null }] });
+  const calls = [];
+  const fetchImpl = async (url, o) => { calls.push({ url, body: JSON.parse(o.body).body }); return { ok: true, json: async () => ({}) }; };
+  assert.equal(await syncShotNotes(db, { token: 't', repo: 'x/y', fetchImpl }), 1);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://api.github.com/repos/x/y/issues/50/comments');
+  assert.match(calls[0].body, /^2 screenshots added to report #7 after this Issue, see the Admin page \(private\)\.$/);
+  assert.deepEqual(db.updates.map((u) => u.id).sort(), [4, 5], 'report 8 has no Issue yet: its screenshot waits for the Issue text');
+  assert.equal(await syncShotNotes(db, { token: 't', repo: 'x/y', fetchImpl }), 0);
+  assert.equal(calls.length, 1);
+});
+
+test('sync: a failed comment keeps the screenshots waiting', async () => {
+  const { syncShotNotes } = await import('./reports.js');
+  const db = shotDb({ reports: [{ id: 7, issue_number: 50 }], shots: [{ id: 4, report_id: 7, stored_at: 'x', noted_at: null }] });
+  assert.equal(await syncShotNotes(db, { token: 't', repo: 'x/y', fetchImpl: async () => ({ ok: false, status: 500 }) }), 0);
+  assert.equal(db.updates.length, 0);
+});

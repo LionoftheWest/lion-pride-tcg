@@ -255,6 +255,7 @@ const NAV = [
   { id: 'hunt', label: 'Hunt', icon: 'swords', match: /^\/hunts?(\/|$)/ },
   { id: 'dungeon', label: 'Dungeon', icon: 'castle' },
   { id: 'activity', label: 'Activity', icon: 'zap' },
+  { id: 'player-reports', label: 'Player reports', icon: 'flag' }, // player-reports.js: the in-game reports and their private screenshots
   { id: 'reports', label: 'Reports', icon: 'file', match: /^\/reports?(\/|$)/ },
   { id: 'data', label: 'Data', icon: 'table', match: /^\/data(\/|$)/ },
   { id: 'health', label: 'Health', icon: 'activity' },
@@ -1214,6 +1215,8 @@ async function pageHealth(main) {
 
 /* ---------- router ---------- */
 const ROUTES = [
+  [/^\/player-reports$/, (main, a, q) => import('./player-reports.js').then((m) => m.pagePlayerReports(main, a, q, { h, icon, api, panel, pageHead, when, errorState }))
+    .catch((e) => main.replaceChildren(errorState(e)))],
   [/^\/overview$/, pageOverview], [/^\/members$/, pageMembers], [/^\/member\/([^/]+)$/, pageMember], [/^\/economy$/, pageEconomy], [/^\/growth$/, pageGrowth],
   [/^\/card-stats$/, pageCards], [/^\/card\/(\d+)$/, pageCard], [/^\/hunt$/, pageHunts], [/^\/hunt\/(\d+)$/, pageHunt], [/^\/dungeon$/, pageDungeon],
   [/^\/activity$/, pageActivity], [/^\/reports$/, pageReports],
