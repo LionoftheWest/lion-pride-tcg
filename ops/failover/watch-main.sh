@@ -82,7 +82,7 @@ if [ -f "$FAILED_OVER" ]; then
   check_main
   if [ "$DIRECT_OK" = 1 ] && [ ! -f "$BACK_FILE" ]; then
     date -u +%FT%TZ > "$BACK_FILE"
-    notify "Lion Pride backup VM: the main VM answers again. Its bot and its DuckDNS cron may start by themselves, so TWO bots may run. Run ops/failover/failback.sh on the backup VM now."
+    notify "Lion Pride backup VM: the main VM answers again. Its bot may have started by itself, so TWO bots may run (the hold file on the main VM stops only its DuckDNS cron). Run ops/failover/failback.sh on the backup VM now."
   fi
   exit 0
 fi
@@ -110,5 +110,5 @@ log "dns: $R_DNS"
 if $DOCKER_CMD start "$BOT" >/dev/null 2>&1; then R_BOT=ok; fi
 log "bot start: $R_BOT"
 echo "dns=$R_DNS bot=$R_BOT" >> "$FAILED_OVER"
-notify "Lion Pride FAILOVER: the main VM did not answer $N times in a row. The backup VM took over. DuckDNS update: $R_DNS. Bot start: $R_BOT. Check the Activity, then plan the failback (docs/ops/backup-vm.md)."
+notify "Lion Pride FAILOVER: the main VM did not answer $N times in a row. The backup VM took over. DuckDNS update: $R_DNS. Bot start: $R_BOT. Check the Activity. If the main VM is reachable, set the hold on it now: touch /home/ubuntu/failover/hold. Failback: docs/ops/backup-vm.md."
 exit 0

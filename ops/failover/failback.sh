@@ -23,9 +23,9 @@ cat <<STEPS
    The Activity must answer with "hunt":true. Fix the main VM first if it does not.
 2. Make sure ONE bot runs on the main VM (docker ps shows tcg-bot Up). Start it if it is stopped:
      ssh ubuntu@<MAIN_IP> 'sudo docker start tcg-bot'
-3. Point DuckDNS at the main VM (use the token file on this box; the IP is the main IP):
-     curl -sS -K <(printf 'url = "https://www.duckdns.org/update?domains=$NAME&token=%s&ip=<MAIN_IP>"\n' "\$(cat $DIR/duckdns.token)")
-   The answer must be: OK. (The main VM's own duck.sh cron also does this within 5 minutes.)
+3. Give the name back. On the MAIN VM (the hold file stops its cron from taking the name):
+     ssh ubuntu@<MAIN_IP> 'rm -f /home/ubuntu/failover/hold && /home/ubuntu/failover/duck-guarded.sh; tail -3 /home/ubuntu/duckdns/guarded.log'
+   The log must show: UPDATE ... OK. (The main cron runs duck-guarded.sh every 5 minutes. It does nothing while the hold file exists.)
 4. Wait 1-2 minutes. Then check: curl -sSI https://$NAME.duckdns.org/app/ | head -5
 5. Re-arm the watcher (only after steps 1-4 pass):
      rm -f $STATE_DIR/failed-over $STATE_DIR/fail-count $STATE_DIR/main-back-notified

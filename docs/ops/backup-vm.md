@@ -28,7 +28,7 @@ Decision: Nathan, 2026-10-11. The old Oracle free AMD micro VM is a warm backup 
 
 - One bot only. Two bots double-post and double-run jobs. The deploy script never starts the backup bot. Only the watcher (on failover) or a person does.
 - The `.env` files on the backup are copies of the main VM files, copied VM to VM. Never copy a local `.env`. Copy again after each change to a main VM `.env`.
-- No DuckDNS cron on the backup. The main VM keeps its own cron.
+- No DuckDNS cron on the backup. The main VM runs `ops/failover/duck-guarded.sh` (not the plain `duck.sh`) from cron. It updates the name only when the local Activity answers `"hunt":true` and the file `/home/ubuntu/failover/hold` does not exist. Reason: if only the main Activity failed, a plain `duck.sh` took the name back within 5 minutes and players bounced between two servers. Each decision is in `/home/ubuntu/duckdns/guarded.log`.
 - The watcher never fails back by itself.
 
 ## Update the backup
@@ -49,10 +49,12 @@ commands. `TARGET=backup ops/deploy.sh backup` is refused (the database backup r
 ## Fail over
 
 Automatic: `ops/failover/watch-main.sh` (cron, every minute, on the backup). Install: `ops/failover/README.md`.
+After the notice, set the hold on the main VM at once if it is reachable: `touch /home/ubuntu/failover/hold`.
 It acts when the public name AND the main IP both fail 3 times in a row. A DNS-only problem does nothing.
 
 Manual (if you decide before the watcher does):
 
+0. On the MAIN VM, if reachable: `touch /home/ubuntu/failover/hold` (the main cron then leaves the name alone).
 1. On the backup: `sudo docker start tcg-bot`.
 2. Point DuckDNS at the backup (the update call with the token file, `ip=` empty uses the caller IP).
 3. Write the state file so the watcher does not repeat: `date -u > /home/ubuntu/failover/state/failed-over`.
@@ -65,8 +67,20 @@ The control probe and the two-way check lower this risk. They do not remove it.
 
 1. Fix the main VM. Check it directly (the steps print from `ops/failover/failback.sh`).
 2. On the backup, run `ops/failover/failback.sh`. It stops the backup bot and prints the steps.
-3. Make sure ONE bot runs on the main VM. Point DuckDNS at the main IP. Check the site.
+3. Make sure ONE bot runs on the main VM. Remove the hold file on the main VM and run `duck-guarded.sh` once (the log must show `UPDATE ... OK`). Check the site.
 4. Re-arm the watcher (remove the files in `state/`, as the script prints).
 
-When the main VM returns, its own DuckDNS cron (every 5 minutes) and its bot (restart policy) may start by
-themselves. The watcher posts a notice for this. Run `failback.sh` at once.
+When the main VM returns, its bot (restart policy) may start by itself. The hold file stops only its DuckDNS cron.
+The watcher posts a notice. Run `failback.sh` at once.
+
+## Main VM: install the guarded DuckDNS cron (once)
+
+```
+mkdir -p /home/ubuntu/failover && chmod 700 /home/ubuntu/failover
+# ship ops/failover/duck-guarded.sh to /home/ubuntu/failover/ (git archive pipe, as in ops/failover/README.md), chmod 700
+(crontab -l | grep -v 'duckdns/duck.sh' | grep -v duck-guarded.sh; echo '*/5 * * * * /home/ubuntu/failover/duck-guarded.sh') | crontab -
+crontab -l
+```
+
+Test: run `/home/ubuntu/failover/duck-guarded.sh`, then `tail -2 /home/ubuntu/duckdns/guarded.log` (it must show `UPDATE ... OK`).
+Then `touch /home/ubuntu/failover/hold`, run it again (the log shows `SKIP: hold file`), and `rm /home/ubuntu/failover/hold`.

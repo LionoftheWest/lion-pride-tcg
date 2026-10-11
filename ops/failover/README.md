@@ -5,6 +5,7 @@ takes over. Full picture: `docs/ops/backup-vm.md`.
 
 Files (all in this folder):
 - `watch-main.sh`: the watcher. Cron runs it every minute.
+- `duck-guarded.sh`: runs on the MAIN VM from cron, in place of `duck.sh` (see `docs/ops/backup-vm.md`).
 - `failback.sh`: run by hand. Stops the backup bot and prints the steps to go back.
 - `test-watch-main.sh` + `stub-server.mjs`: the local dry-run test (no VM needed).
 
