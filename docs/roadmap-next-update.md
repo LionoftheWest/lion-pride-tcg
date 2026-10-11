@@ -26,6 +26,7 @@ the onboarding and the daily reasons to return matter as much as recruitment.
 | R-03 | A code for each streamer or community? | Yes. |
 | R-04 | How often is Community Week? | As often as Nathan wants. The admin page gets a calendar. Nathan schedules events on it and makes them shorter or longer. The same calendar controls the live modes (Hunt, Dungeon, Gauntlet). |
 | R-05 | Set 2 | Theme not decided. Release in the next two weeks (by about 2026-10-25). At least 150 cards. |
+| R-07 | Set size and recruit credit | Set 2 has no fixed size (about 150 finishes is a ballpark). Nothing in code fixes a set size. A recruiter gets credit when the recruit finishes onboarding. |
 | R-06 | Combat and Set 2 | The combat overhaul is done before Set 2 comes out, so that the new set gets all the new features. |
 
 ## 2a. The three foundations and their success tests (Nathan, 2026-10-11)
@@ -106,11 +107,10 @@ The change:
 - Make it a list of first-week steps with rewards: open the first pack, build a squad, hit
   the Hunt boss, run the Dungeon, claim the dailies, make a trade.
 - Each step pays once and is recorded in the ledger.
-- **Proposal for the credit rule:** the recruiter gets credit when the recruit finishes
+- **The credit rule (R-07, decided):** the recruiter gets credit when the recruit finishes
   onboarding. The steps need game actions on more than one day, so one person cannot
   finish a fake account in a few minutes.
 
-  Nathan to confirm. Without some threshold, a recruiter can get credit for alt accounts.
 - The UI needs a design (new register ID).
 
 ### 4.4 Mini-games
@@ -145,8 +145,8 @@ Plumbing (before the Set 2 content):
 
 Set 2 content:
 - Theme: open (R-05).
-- Size: at least 150 cards. Nathan to confirm whether "card" means a subject (S1 has 130) or
-  a finish (S1 has 352). 150 subjects means about 750 finishes of art in two weeks.
+- Size: no fixed number (R-07). About 150 finishes is a ballpark. Nothing in code limits
+  the size of a set.
 
 ### 4.7 Combat overhaul (before Set 2, R-06)
 
@@ -171,6 +171,5 @@ Method:
 
 ## 5. Open questions for Nathan
 
-1. Do you accept "recruit credit when onboarding is finished" (4.3)?
-2. Set 2: does 150 mean subjects or finishes? What is the theme?
-3. Which onboarding rewards and which Community Week rewards (packs, Shards)?
+1. Which onboarding rewards and which Community Week rewards (packs, Shards)? These become
+   event variables (F-1), so they can change at any time.
