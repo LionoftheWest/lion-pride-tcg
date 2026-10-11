@@ -140,8 +140,9 @@ export function decorateTabs(main = $('main')) {
   host.querySelectorAll('button[data-tab], button[data-adv]').forEach((b) => {
     const key = b.dataset.tab || b.dataset.adv;
     const t = TAB[key];
-    if (!t || b.dataset.u3 === key + (b.querySelector('.tab-dot') ? '1' : '0')) return;
-    const waits = !!b.querySelector('.tab-dot');
+    // the Dot is a .tab-dot (v2 markup) until this pass rewrites it into a .u3-tabdot: a second pass must see it too, or it strips the Dot
+    const waits = !!b.querySelector('.tab-dot, .u3-tabdot');
+    if (!t || b.dataset.u3 === key + (waits ? '1' : '0')) return;
     b.innerHTML = `${icon(t[0])}<span class="u3-tab__label">${esc(t[1])}</span>${waits ? `<span class="u3-tabdot">${dot('Something to claim')}</span>` : ''}`;
     b.setAttribute('aria-label', t[1]);   // the name stays when the label gives way to the icon (D-117)
     b.dataset.u3 = key + (waits ? '1' : '0');

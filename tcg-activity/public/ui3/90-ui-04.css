@@ -1,0 +1,18 @@
+/* UI-04 Home boss (v3 only, body.ui-v3): the Top 3 board of the live Hunt slide (D-58). The boss portrait, the chip, the HP
+   block and the Join row are UI-03 (90-ui-03.css). The board is one button with a frame (D-52); the single "Top hunter" line
+   shows instead on compact-land and when the hero is cut (the mode is-line, set by fitHero in src/ui3/home.js). Tokens only. */
+.u3-hm-board { box-sizing: border-box; align-self: stretch; min-width: 0; min-height: var(--hit); display: flex; flex-direction: column; gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-4); border-radius: var(--rad-md); border: var(--bw-1) solid var(--border); background: var(--surface-1);
+  color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.u3-hm-board:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+@media (hover: hover) { .u3-hm-board:hover { border-color: var(--border-strong); } }
+.u3-hm-brh { color: var(--text-muted); font-size: var(--fs-caption); font-weight: var(--fw-label); letter-spacing: var(--ls-label); text-transform: uppercase; line-height: var(--lh-caption); }
+.u3-hm-brl { list-style: none; margin: var(--u3-none); padding: var(--u3-none); display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-hm-br { min-width: 0; display: grid; grid-template-columns: var(--sp-5) var(--avatar-sm) minmax(0, 1fr) auto; align-items: center; gap: var(--sp-2); }
+.u3-hm-brk { color: var(--text-secondary); font-size: var(--fs-small); text-align: center; }
+.u3-hm-br .v2-avatar { width: var(--avatar-sm); height: var(--avatar-sm); }
+.u3-hm-brn { min-width: 0; font-size: var(--fs-small); font-weight: var(--fw-small-strong); overflow-wrap: break-word; }
+.u3-hm-brd { font-style: normal; font-family: var(--font-num); font-size: var(--fs-small); color: var(--gold); }
+.u3-hm-hb.is-line .u3-hm-board { display: none; }
+.u3-hm-hb:not(.is-line) .u3-hm-board + .u3-hm-top { display: none; }
+.u3-hm-act:has(> .u3-hm-board) { align-self: stretch; }

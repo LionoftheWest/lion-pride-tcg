@@ -1,0 +1,8 @@
+/* D-166: the trophy icon button in the Top 3 label row (UI-17 squad select, UI-19 resting). Tokens only. */
+.u3-hs-toprow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-block: calc(var(--sp-3) * -1); }
+/* the one-line form: the label goes, the button stays at the end of the "Top hunter" line */
+.u3-hs-stage.is-line .u3-hs-top { position: relative; min-height: var(--ctl-icon); padding-inline-end: calc(var(--ctl-icon) + var(--sp-3)); display: flex; align-items: center; }
+.u3-hs-stage.is-line .u3-hs-toprow { position: absolute; inset-block: 0; inset-inline-end: var(--sp-2); margin: 0; }
+.u3-hs-stage.is-line .u3-hs-toprow .u3-label { display: none; }
+.u3-hs-stage.is-line .u3-hs-toprow .u3-ibtn { margin: 0; }
+.u3-hs-stage.is-line .u3-hs-none { margin: 0; }
