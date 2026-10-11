@@ -324,7 +324,8 @@ begin
            and not has_function_privilege('anon', p.oid, 'execute') and not has_function_privilege('authenticated', p.oid, 'execute') and has_function_privilege('service_role', p.oid, 'execute'))) into got
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and (p.proname like 'event\_%' or p.proname like 'admin\_event%' or p.proname in ('events_touch', 'gift_claims_event_link'));
-  res := res || jsonb_build_object('case', 'E12 the 21 functions: invoker, search_path public, a comment, no API execute, service_role execute', 'ok', got = '[21, 21]'::jsonb, 'got', got);
+  -- at least the 21 functions of events.sql (event_vars.sql adds more event_* and admin_event* functions): every one locked down
+  res := res || jsonb_build_object('case', 'E12 the 21 functions: invoker, search_path public, a comment, no API execute, service_role execute', 'ok', (got->>0)::int >= 21 and got->0 = got->1, 'got', got);
   ok := true;
   foreach cnt in array array['"anon"'::jsonb, '"authenticated"'::jsonb] loop
     perform set_config('role', cnt #>> '{}', true);
@@ -334,8 +335,9 @@ begin
     perform set_config('role', 'postgres', true);
   end loop;
   res := res || jsonb_build_object('case', 'E12 anon and authenticated: admin_events, event_tick and the events table are refused', 'ok', ok);
-  res := res || jsonb_build_object('case', 'E12 the pg_cron job event-tick every 10 minutes', 'ok',
-    exists (select 1 from cron.job where jobname = 'event-tick' and schedule = '*/10 * * * *' and command = 'select public.event_tick();'));
+  res := res || jsonb_build_object('case', 'E12 the pg_cron job event-tick every 10 minutes (every minute once event_vars.sql made event_vars)', 'ok',
+    exists (select 1 from cron.job where jobname = 'event-tick' and command = 'select public.event_tick();'
+             and schedule = case when to_regclass('public.event_vars') is null then '*/10 * * * *' else '* * * * *' end));
   raise exception 'RESULTS %', res;
 end $t$;`;
 
