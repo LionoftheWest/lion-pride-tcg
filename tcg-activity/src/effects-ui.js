@@ -58,8 +58,8 @@ export async function initEffects(d) {
   wrapChicken();
   document.addEventListener('lp:reduce-effects', applyBodyFx);   // the Settings switch (UI-61) changed: apply at once
   refreshBadges();
-  every(30000, refreshEffects); // paused while hidden, slower when idle (poll.js)
-  every(30000, refreshBadges);
+  every(45000, refreshEffects); // paused while hidden, slower when idle (poll.js); 12 reads each time, so 45 s (was 30 s)
+  every(45000, refreshBadges);
 }
 
 async function refreshEffects() {

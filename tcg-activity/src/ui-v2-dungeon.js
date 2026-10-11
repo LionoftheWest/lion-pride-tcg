@@ -12,8 +12,9 @@ import { elIcon } from './element-icons.js';
 import { thumb } from './thumb.js';
 import { isPort } from './mobile.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
-import { COIN } from './ui-v2-shop.js';
+import { COIN, refreshShards } from './ui-v2-shop.js';
 import { cardElement } from './elements.js';
+import { foePace } from './dungeon-pace.js';
 import { setMood, stopMusic, toggleMute, musicBtnHTML, paintMusicBtn } from './dungeon-music.js';
 import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
 import { openLeaderboardWindow } from './ui3/leaderboard.js';
@@ -990,15 +991,16 @@ async function act(kind, body) {
       fightUpdate(main, step); await sleep(550);
     }
     // The monsters' turn, one by one: each uses a named move from its pool (item 20).
+    const pace = foePace((r.enemy || []).length);   // dungeon-pace.js: a horde shares the time of 2 monsters
     for (const e of r.enemy || []) {
       dg.acting = e.foe; fightUpdate(main, step);
       const move = e.move || ACT[e.action] || e.action;
       pop(main, e.foe, esc(move), 'act move', -30);
-      await sleep(450);
+      await sleep(450 * pace);
       dg.stage?.foeFx?.(e.foe, e.action);   // item 13: the Raid boss effect of the move
       if (e.action !== 'stunned') mvoice(foes[e.foe], 'atk', 0.55);
       if (['slam', 'cataclysm', 'curse', 'poison', 'enrage', 'charging', 'stunned'].includes(e.action)) snd(MOVE_SND[e.action], 0.4);
-      if (e.action !== 'stunned' && e.action !== 'charging' && (e.dmg || (e.area || []).length)) { dg.stage?.play(e.foe, 'attack'); await sleep(380); }
+      if (e.action !== 'stunned' && e.action !== 'charging' && (e.dmg || (e.area || []).length)) { dg.stage?.play(e.foe, 'attack'); await sleep(380 * pace); }
       hurt(e.card, e.dmg, e.hits > 1 ? ` ×${e.hits}` : '');
       for (const a of e.area || []) hurt(a.card, a.dmg);
       if (e.dot > 0 && e.dmg > 0) popCard(main, e.card, `${I.drop}Poisoned`, 'debuff');
@@ -1010,7 +1012,7 @@ async function act(kind, body) {
       const area = (e.area || []).reduce((a, x) => a + (x.dmg || 0), 0);
       dg.log.push({ kind: 'foe', who: `${ef(foes, e.foe)} · ${move}`, to: e.dmg ? nm(e.card) : area ? 'the squad' : (ACT[e.action] || e.action), txt: e.dmg || area ? `-${fmt((e.dmg || 0) + area)}${area ? ' all' : ''}` : '' });
       fightUpdate(main, step);
-      await sleep(650);
+      await sleep(650 * pace);
     }
     dg.acting = null;
     if (r.burned > 0) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
@@ -1028,9 +1030,12 @@ async function act(kind, body) {
   dg.data.run.state = r.state;
   dg.busy = false;
   const phase = r.state?.phase;
+  if (r.status === 'over') refreshShards();   // the run ended and paid its banked Shards (cleared, fell)
   if (r.status === 'over' || phase !== 'fight') { await load(); if (ctx().currentView() === 'dungeon') paint(); return true; }
   fightUpdate(main, r.state);
-  load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
+  // The run totals come from GET /api/dungeon (dungeon_view: the heaviest call of the fight). Only a kill can change the room,
+  // so a hit that kills nothing needs no reload (the answer holds the whole state).
+  if (r.kill) load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
   autoNext();
   return true;
 }
@@ -1148,9 +1153,23 @@ function confirmBox(title, text, ok) {
 async function retreat() {
   if (!(await (GA() ? confirmBox('End the run here?', 'Your depth counts for this week. Your next Gauntlet run is tomorrow.', 'End the run')
     : confirmBox('Retreat with the loot?', 'The run ends here. You keep your depth and every banked Shard and card.', 'Retreat')))) return;
+  if (dg.busy) return;
+  // The window is gone and the answer takes a moment: show that the request runs (no second tap, no silent wait).
+  dg.busy = true;
+  const bts = [...document.querySelectorAll('#main .dg-leave, #main .u3-dgs-leave, #main .dg-next, #main .u3-dgs-next')];
+  const lab = document.querySelector('#main .dg-leave, #main .u3-dgs-leave')?.querySelector('.u3-btn__label');
+  const was = lab?.textContent;
+  bts.forEach((x) => { x.disabled = true; x.setAttribute('aria-busy', 'true'); });
+  if (lab) lab.textContent = 'Retreating';
   let r = null;
   try { r = await ctx().apiPost('/api/dungeon/retreat', { mode: dg.mode }); } catch (e) { r = e?.body || null; }
-  if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
+  dg.busy = false;
+  if (!r?.ok) {
+    bts.forEach((x) => { x.disabled = false; x.removeAttribute('aria-busy'); });
+    if (lab && was) lab.textContent = was;
+    toast(r?.message || 'That did not work.'); return;
+  }
+  refreshShards();   // the run paid its banked Shards: the top bar pill shows the new balance
   await load(); paint();
 }
 
