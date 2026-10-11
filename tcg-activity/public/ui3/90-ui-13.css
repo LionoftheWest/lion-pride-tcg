@@ -57,6 +57,7 @@ body.ui-v3 .u3-trw__row > .u3-pip { grid-area: pip; }
 body.ui-v3 .u3-trw__tier { grid-area: tier; font-weight: var(--fw-heading); color: var(--text-primary); }
 body.ui-v3 .u3-trw__need { grid-area: need; font-family: var(--font-num); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 body.ui-v3 .u3-trw__rw { grid-area: rw; min-width: 0; color: var(--text-secondary); overflow-wrap: anywhere; }
+body.ui-v3 .u3-trw__note { display: block; font-size: var(--fs-small); color: var(--text-muted); }
 body.ui-v3 .u3-trw__st { grid-area: st; justify-self: end; font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; display: inline-flex; align-items: center; gap: var(--sp-1); }
 body.ui-v3 .u3-trw__st.is-ready { font-family: inherit; font-weight: var(--fw-heading); color: var(--gold); }
 body.ui-v3 .u3-trw__st.is-claimed { font-family: inherit; color: var(--success); }

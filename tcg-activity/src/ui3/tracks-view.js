@@ -29,7 +29,7 @@ export function trackTileHTML(t, rewards = null) {
   const goal = T.trackGoal(t);
   const pips = Array.from({ length: 5 }, (_, i) => tierPip(T.tierKey(i + 1), { reached: i < (t.reached | 0) })).join('');
   const count = goal.done ? num(t.value) : `${num(t.value)}/${num(goal.need)}`;
-  const foot = goal.done ? `All ${T.TIER_NAMES.length} tiers reached` : T.rewardShort((t.reached | 0) + 1, t.titles, rewards);
+  const foot = goal.done ? `All ${T.TIER_NAMES.length} tiers reached` : T.rewardShort((t.reached | 0) + 1, t.titles, rewards, T.tierOldPaid(t, (t.reached | 0) + 1));
   return `<li class="u3-at u3-tr is-${ready ? 'ready' : 'progress'}" data-key="${esc(t.key)}">`
     + `<div class="u3-at__top"><span class="u3-at__ico" aria-hidden="true">${icon(T.trackIcon(t.key))}</span>`
     + `<button type="button" class="u3-at__name" data-track="${esc(t.key)}">${esc(t.name)}</button>${ready ? claimBtn(`track:${t.key}`, ready) : ''}</div>`
@@ -201,7 +201,7 @@ function windowHTML(t, d) {
       : r.state === 'claimed' ? `<span class="u3-trw__st is-claimed">${icon('check', { size: 'sm' })} Claimed</span>`
         : `<span class="u3-trw__st">${num(t.value)} / ${num(r.need)}</span>`;
     return `<li class="u3-trw__row is-${r.state}">${tierPip(r.key)}<span class="u3-trw__tier">${esc(r.name)}</span><span class="u3-trw__need">${num(r.need)}</span>`
-      + `<span class="u3-trw__rw">${esc(r.reward)}</span>${st}</li>`;
+      + `<span class="u3-trw__rw">${esc(r.reward)}${r.oldPaid ? `<span class="u3-trw__note">${esc(T.OLD_PAID_NOTE)}</span>` : ''}</span>${st}</li>`;
   }).join('');
   return `<div class="u3-ath u3-trw" role="dialog" aria-modal="true" aria-labelledby="u3TrwT">`
     + `<header class="u3-ath__head"><span class="u3-ath__ico" aria-hidden="true">${icon(T.trackIcon(t.key), { size: 'lg' })}</span><h2 class="u3-ath__title" id="u3TrwT">${esc(t.name)}</h2>`
