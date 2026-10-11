@@ -24,7 +24,25 @@ export function registerShopRoutes(app, { supabase, caller, rateLimit, bustUser,
   // next_at: an answer past that time is never served.
   // A failed or refused answer (error, closed) is never kept: valid() is false for it.
   const views = userCache ? userCache({ ttl: 10000, valid: (r, now) => !r.error && !!r.data?.ok && !(r.data.next_at && Date.parse(r.data.next_at) <= now) }) : null;
-  const shopToday = (id) => (views ? views.get(String(id), () => supabase.rpc('shop_today', { p_player: String(id) })) : supabase.rpc('shop_today', { p_player: String(id) }));
+  // The whole answer is cached: shop_today, the card details and the member's owned counts (a second query on player_cards).
+  const buildView = async (id) => {
+    const r = await supabase.rpc('shop_today', { p_player: String(id) });
+    if (r.error || !r.data?.ok) return r;
+    const data = r.data;
+    const ids = (data.stock || []).map((s) => Number(s.card_id));
+    const [base, own] = await Promise.all([
+      getCatalogBase(),
+      ids.length ? supabase.from('player_cards').select('card_id, quantity').eq('player_id', String(id)).in('card_id', ids) : { data: [] },
+    ]);
+    const cat = new Map(base.map((c) => [Number(c.id), c]));
+    const owned = new Map((own.data || []).map((x) => [Number(x.card_id), x.quantity]));
+    const stock = (data.stock || []).map((s) => {
+      const c = cat.get(Number(s.card_id));
+      return { ...s, card: c ? { id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, power: c.power } : null, owned: owned.get(Number(s.card_id)) || 0 };
+    });
+    return { data: { ...data, stock }, error: null };
+  };
+  const shopView = (id) => (views ? views.get(String(id), () => buildView(id)) : buildView(id));
   // shard_cfg(): the flag settings.shards.enabled + the numbers in balance shards (balance_economy.sql), the same
   // object the SQL reads. Read once a minute (the dupe values and the pack limit).
   let cfg = null;
@@ -45,21 +63,10 @@ export function registerShopRoutes(app, { supabase, caller, rateLimit, bustUser,
   // The Shop view: the balance, today's stock with the card details and my owned count, the prices.
   app.get('/api/shop', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
-    const { data, error } = await shopToday(me.id);
+    const { data, error } = await shopView(me.id);
     if (error) return res.status(500).json({ error: error.message });
     if (!data?.ok) return fail(res, data);
-    const ids = (data.stock || []).map((s) => Number(s.card_id));
-    const [base, own] = await Promise.all([
-      getCatalogBase(),
-      ids.length ? supabase.from('player_cards').select('card_id, quantity').eq('player_id', String(me.id)).in('card_id', ids) : { data: [] },
-    ]);
-    const cat = new Map(base.map((c) => [Number(c.id), c]));
-    const owned = new Map((own.data || []).map((r) => [Number(r.card_id), r.quantity]));
-    const stock = (data.stock || []).map((s) => {
-      const c = cat.get(Number(s.card_id));
-      return { ...s, card: c ? { id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, power: c.power } : null, owned: owned.get(Number(s.card_id)) || 0 };
-    });
-    res.json({ ...data, stock });
+    res.json(data);
   });
 
   // Buy: { kind: 'pack', qty } | { kind: 'card', slot } | { kind: 'stat_reset', cardId }.

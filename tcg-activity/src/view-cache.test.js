@@ -14,7 +14,7 @@ function harness(register, extra, rpcs) {
   const bustUser = (id) => caches.forEach((c) => c.bust(String(id)));
   let who = { id: '1' };
   const supabase = { rpc: async (name, args) => { calls.push({ name, args }); return (rpcs[name] || (() => ({ data: { ok: true } })))(args); },
-    from: () => ({ select: () => ({ eq: () => ({ in: async () => ({ data: [] }) }) }) }) };
+    from: (t) => ({ select: (...a) => { calls.push({ name: 'from:' + t }); return { eq: () => ({ in: async () => ({ data: [] }) }) }; }, _unused: () => ({ eq: () => ({ in: async () => ({ data: [] }) }) }) }) };
   register(app, { supabase, caller: async () => who, rateLimit: () => true, bustUser, userCache, shardsOn: () => true, dungeonOn: () => true, getCatalogBase: async () => [], ...extra });
   const run = async (key, { body = {}, query = {} } = {}) => {
     let status = 200, json = null; const fin = [];
@@ -34,6 +34,11 @@ test('shop: the second read within 10 s does not call shop_today; a buy or a bus
   assert.equal(n(h.calls, 'shop_today'), 2, 'ttl over');
   await h.run('POST /api/shop/buy', { body: { kind: 'pack', qty: 1 } }); await h.run('GET /api/shop');
   assert.equal(n(h.calls, 'shop_today'), 3, 'a buy drops the answer');
+});
+test('shop: a cache hit reads neither shop_today nor player_cards (the owned counts are in the cached answer)', async () => {
+  const h = harness(registerShopRoutes, {}, { shop_today: () => ({ data: { ok: true, balance: 5, stock: [{ slot: 1, card_id: 7 }] } }) });
+  await h.run('GET /api/shop'); await h.run('GET /api/shop'); await h.run('GET /api/shop');
+  assert.equal(n(h.calls, 'shop_today'), 1); assert.equal(n(h.calls, 'from:player_cards'), 1);
 });
 test('shop: one member never reads the answer of another', async () => {
   const h = harness(registerShopRoutes, {}, { shop_today: (a) => ({ data: { ok: true, balance: Number(a.p_player), stock: [] } }) });
