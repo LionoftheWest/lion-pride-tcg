@@ -838,7 +838,7 @@ function fightUpdate(main, st) {
   F.querySelector('.dg-meter').innerHTML = meterHTML(st);
   F.querySelector('.dg-log').innerHTML = dg.log.slice(-6).reverse().map((l) => `<li class="${l.kind}"><b>${esc(l.who)}</b><span>→ ${esc(l.to)}</span><em>${l.txt}</em></li>`).join('') || '<li class="none">The fight starts. Tap a card.</li>';
   const sc = dg.support ? mine().get(dg.support) : null;
-  F.querySelector('.dg-hint').innerHTML = sc ? `${I.hand}Choose a card for <b>${esc(sc.name)}</b><button class="dg-cancel">Cancel</button>`
+  F.querySelector('.dg-hint').innerHTML = dg.notice ? `${I.timer}${dg.notice}` : sc ? `${I.hand}Choose a card for <b>${esc(sc.name)}</b><button class="dg-cancel">Cancel</button>`
     : dg.busy ? `${I.timer}The monsters are acting…` : Number(st.sup_round ?? -1) === round ? `${I.hand}Support used · tap a card to attack` : `${I.hand}${foes.filter((f) => f.hp > 0).length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
   F.classList.toggle('picking', !!sc);
   F.classList.toggle('busy', !!dg.busy);
@@ -941,6 +941,7 @@ async function wireFight(main, keepCanvas) {
   fitFightV3(F);
   F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); dg.auto = !dg.auto; localStorage.setItem(AUTO, dg.auto ? '1' : ''); e.currentTarget.classList.toggle('on', dg.auto); ctx().sfx?.('click'); autoNext(); });
   autoNext();
+  passIfNoAction();   // D-182: the fight opens with nothing to play (every attacker stunned, no support ready)
   F.addEventListener('click', (e) => {
     const t = e.target;
     if (V3() && dg.support && !t.closest('.dg-unit, .dg-sup, .dg-hint')) { dg.support = null; fightUpdate(main, run().state); return; }   // v3 (UI-47): the dim layer is drawn, not a box, so a tap outside the targets cancels here
@@ -964,6 +965,7 @@ async function wireFight(main, keepCanvas) {
       const id = Number(u.dataset.card);
       if (dg.support) { const sid = dg.support; dg.support = null; act('support', { cardId: sid, targetCard: id }); return; }
       if (u.classList.contains('down')) { toast('That card is down.'); return; }
+      if (u.classList.contains('stun')) { toast('That card is stunned for a round.'); return; }   // D-182: a stunned card never attacks (no request)
       act('attack', { cardId: id, target: dg.target });
     }
   });
@@ -974,6 +976,33 @@ function target(main, i) {
   dg.target = i; ctx().sfx?.('click'); fightUpdate(main, run().state);
 }
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+// No action can be taken (D-182, as the Hunt since D-173): every standing attacker is stunned and no support is ready (or the support turn of this round
+// is used). The notice shows, the server passes the turn (POST /api/dungeon/pass, dungeon_pass_turn: the monsters act) and the monsters' turn plays.
+const NO_ACTION = 'No action can be taken';
+function noAction(R) {
+  const st = R?.state; if (!st || st.phase !== 'fight') return false;
+  const round = st.round || 0;
+  const cards = squadOf(R);
+  if (cards.some((c) => ATTACKER.has(c.type) && !c.s.down && (c.s.cd || 0) < round + 1)) return false;   // an attacker that is not stunned can attack
+  if (Number(st.sup_round ?? -1) !== round && cards.some((c) => !ATTACKER.has(c.type) && c.ability?.effect && !c.s.down && round >= (c.s.cd || 0))) return false;   // a support is ready
+  return cards.some((c) => !c.s.down);
+}
+let passFail = '';
+async function passIfNoAction() {
+  const R = run(); const main = document.getElementById('main');
+  if (dg.busy || !R || !main?.querySelector('.dg-fight') || ctx().currentView() !== 'dungeon' || !noAction(R)) return false;
+  const key = `${dg.mode}|${R.id}|${R.floor}|${R.room}|${R.state.round}`;
+  if (passFail === key) return false;   // the server refused this round once: not asked again (a stale state cannot loop)
+  dg.busy = true; dg.notice = NO_ACTION; fightUpdate(main, R.state);
+  await sleep(900);
+  let r = null;
+  try { r = await ctx().apiPost('/api/dungeon/pass', { mode: dg.mode }); } catch (e) { r = e?.body || null; }
+  dg.notice = '';
+  if (!r?.ok) { passFail = key; dg.busy = false; fightUpdate(main, run().state); return false; }
+  await playResult('pass', {}, r);
+  await settle(main, r, false);
+  return true;
+}
 // Timing marks for the browser measurement (tools/fight-rig.mjs): tap, motion (the first thing that moves), answer, room:go, room:enter, room:ready.
 const mark = (n) => { try { performance.mark(`dg:${n}`); } catch { /* the marks are optional */ } };
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -1008,7 +1037,8 @@ async function playResult(kind, body, r) {
   const foes = foesOf(before);
   const nm = (id) => M.get(Number(id))?.name || 'Card';
   const step = clone(before);
-  if (kind === 'attack') {
+  if (kind === 'attack' || kind === 'pass') {   // a pass (D-182): no card acts, only the monsters' turn below
+    if (kind === 'attack') {
     const t = r.target ?? body.target;
     const f = foes[t];
     // Item 13: the card's element effect from the Raid flies to the monster, then the hit lands.
@@ -1025,6 +1055,7 @@ async function playResult(kind, body, r) {
     if (r.kill) { dg.log.push({ kind: 'kill', who: f?.name || 'Monster', to: 'defeated', txt: GA() ? '' : `${COIN}+${fmt(r.loot?.shards)}` }); if (!GA()) lootDrop(main, t, r.loot); }
     fightUpdate(main, step);
     await sleep(r.kill ? 1100 : 750);
+    }
     const hurt = (id, d, label = '') => { const k = String(id); if (!step.cards[k] || !d) return; step.cards[k].hp = Math.max(0, step.cards[k].hp - d); popCard(main, id, `-${fmt(d)}${label}`, 'hurt'); };
     // Poison ticks first (item 20: Acid Spit, Infect).
     if ((r.poison || []).length) {
@@ -1057,7 +1088,7 @@ async function playResult(kind, body, r) {
       await sleep(650 * pace);
     }
     dg.acting = null;
-    if (r.burned > 0) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
+    if (r.burned > 0 && body.cardId) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
   } else {
     ctx().sfx?.('click');
     const tx = body.targetCard ? nm(body.targetCard) : foes[body.targetFoe]?.name || 'Monster';
@@ -1080,6 +1111,7 @@ async function settle(main, r, kill) {
   // The run totals come from GET /api/dungeon (dungeon_view: the heaviest call of the fight). Only a kill can change the room,
   // so a hit that kills nothing needs no reload (the answer holds the whole state).
   if (kill) load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
+  if (await passIfNoAction()) return true;   // D-182: nothing can be played: the turn passes
   autoNext();
   return true;
 }
@@ -1107,6 +1139,7 @@ async function autoBatch() {
   let kill = false;
   for (const rd of r.rounds || []) {
     if (rd.sup) await playResult('support', { cardId: rd.sup.card, targetCard: rd.sup.target_card, targetFoe: rd.sup.target_foe }, rd.sup);
+    if (rd.pass) { dg.notice = NO_ACTION; fightUpdate(main, run().state); await sleep(700); await playResult('pass', {}, rd.pass); dg.notice = ''; }
     if (rd.atk) { dg.target = rd.atk.target; await playResult('attack', { cardId: rd.atk.card, target: rd.atk.target }, rd.atk); kill = kill || !!rd.atk.kill; }
     // The member left the fight (another view, a repaint without the fight): the rounds are played on the server, so the state is the final one.
     if (ctx().currentView() !== 'dungeon' || !document.querySelector('.dg-fight')) { dg.data.run.state = r.state; dg.busy = false; return; }
@@ -1134,8 +1167,8 @@ async function autoStep() {
   const squad = squadOf(R);
   const atk = squad.filter((c) => ATTACKER.has(c.type) && !c.s.down);
   const ready = atk.filter((c) => (c.s.cd || 0) < round + 1);
-  const pool = ready.length ? ready : atk;
-  if (!pool.length) return;
+  const pool = ready;   // D-182: a stunned card never attacks; with no ready attacker the turn passes
+  if (!pool.length) { passIfNoAction(); return; }
   // The attacker: a weakness hit first, then the most power.
   const best = pool.reduce((a, b) => ((hitsWeak(b, tf) ? 1 : 0) - (hitsWeak(a, tf) ? 1 : 0) || b.cp - a.cp) > 0 ? b : a);
   // One support per turn, only when it helps.

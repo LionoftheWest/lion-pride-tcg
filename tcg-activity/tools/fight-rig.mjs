@@ -58,8 +58,10 @@ await new Promise((ok) => proxy.listen(PORT, '127.0.0.1', ok));
 const call = async (method, path, body) => { const r = await fetch(`http://127.0.0.1:4470${path}`, { method, headers: { Authorization: `Bearer lt:${PLAYER}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
 
 // ---- a valid squad: the cheapest attackers the day's rule allows ----------------------------------
+const GAUNTLET = argv.includes('--gauntlet');
 const startRun = async () => {
   await sql(`delete from dungeon_runs where player_id = '${PLAYER}' and day = dungeon_day()`);
+  if (GAUNTLET) { const g = await call('POST', '/api/gauntlet/start', {}); if (!g.j.ok) throw new Error('gauntlet start ' + JSON.stringify(g.j)); return []; }
   const { j: d } = await call('GET', '/api/dungeon');
   const rule = d.rule || {};
   const ok = (c) => ['Character', 'Creature'].includes(c.type) && (!rule.types || rule.types.includes(c.type));
@@ -141,6 +143,42 @@ try {
     const toast = await page.evaluate(() => [...document.querySelectorAll('.toast, #toast, [class*="toast"]')].map((e) => e.textContent.trim()).filter(Boolean).join(' | '));
     const busy = await page.$eval('.dg-fight', (f) => f.classList.contains('busy'));
     log({ lift_during_request: during, lift_after_error: after, toast, fight_busy_after: busy, posts_for_3_taps: posts });
+  } else if (scenario === 'stun') {
+    // D-182: (1) one card stunned, the others fine: the stunned card shows as stunned and a tap on it sends no request, another card attacks;
+    // (2) every attacker stunned and the supports on cooldown: the notice "No action can be taken" shows, POST /api/dungeon/pass is sent, the monsters
+    // act, and the next round the cards can attack again. --gauntlet runs it on the Gauntlet. The stun is written into the LOCAL run state.
+    await startRun();
+    const mode = GAUNTLET ? 'gauntlet' : 'daily';
+    const setCards = (f) => sql(`update dungeon_runs set state = jsonb_set(state, '{cards}', (select jsonb_object_agg(key, ${f}) from jsonb_each(state->'cards'))) where player_id = '${PLAYER}' and day = dungeon_day() and mode = '${mode}'`);
+    const first = (await sql(`select key from dungeon_runs, jsonb_each(state->'cards') where player_id = '${PLAYER}' and day = dungeon_day() and mode = '${mode}' and not coalesce((value->>'sup')::boolean, false) order by key limit 1`))[0].key;
+    await sql(`update dungeon_runs set state = jsonb_set(state, '{cards,${first},cd}', '1') where player_id = '${PLAYER}' and day = dungeon_day() and mode = '${mode}'`);
+    const { page } = await newPage();
+    await openAdventure(page);
+    if (GAUNTLET) { await sleep(1500); await page.click('[data-adv="gauntlet"]'); }
+    await page.waitForSelector('.dg-fight .dg-unit', { timeout: 30000 });
+    await page.waitForFunction(() => performance.getEntriesByName('dg:room:ready').length > 0, null, { timeout: 30000 });
+    await sleep(800);
+    const out = { mode };
+    out.stunned_class = await page.$eval(`.dg-unit[data-card="${first}"]`, (u) => u.classList.contains('stun'));
+    const s1 = stats.reqs.length;
+    await page.click(`.dg-unit[data-card="${first}"]`, { force: true }); await sleep(500);
+    out.requests_after_tap_on_stunned = stats.reqs.slice(s1).filter((r) => r.m === 'POST').length;
+    await page.screenshot({ path: join(process.env.TEMP || tmpdir(), 'fr', `stun1-${mode}-${W}x${H}.png`) });
+    // (2) every attacker stunned, supports on cooldown
+    await setCards("case when coalesce(value->>'sup', 'false') = 'true' then value || '{\"cd\": 9}' else value || jsonb_build_object('cd', (state->>'round')::int + 1) end");
+    await sleep(16000);   // the server keeps a view 15 s (a direct database write is not known to it)
+    await page.reload(); await page.waitForSelector('#dock .dk[data-view="battling"]'); await openAdventure(page);
+    const s2 = stats.reqs.length;
+    await page.waitForSelector('.dg-fight .dg-unit', { timeout: 30000 });
+    await page.waitForFunction(() => /No action can be taken/.test(document.querySelector('.dg-hint')?.textContent || ''), null, { timeout: 8000 }).then(() => { out.notice_shown = true; }).catch(() => { out.notice_shown = false; });
+    await page.screenshot({ path: join(process.env.TEMP || tmpdir(), 'fr', `stun2-${mode}-${W}x${H}.png`) });
+    await sleep(6000);
+    const calls = stats.reqs.slice(s2).filter((r) => r.m === 'POST').map((r) => r.p);
+    out.posts_after_open = calls;
+    out.round_after = (await sql(`select state->>'round' r from dungeon_runs where player_id = '${PLAYER}' and day = dungeon_day() and mode = '${mode}'`))[0].r;
+    out.stunned_cards_after = await page.$$eval('.dg-unit.stun', (n) => n.length);
+    out.hint_after = await page.$eval('.dg-hint', (h) => h.textContent.trim());
+    log(out);
   } else if (scenario === 'hunt') {
     // The Hunt fight refresh: GET /api/hunt (full) against GET /api/hunt?fight=1 (light) after a real squad lock and two attacks, on the local stack.
     // Checks that the roster merged from the light answer equals the roster of the full answer (the fields the fight reads), and times both.
