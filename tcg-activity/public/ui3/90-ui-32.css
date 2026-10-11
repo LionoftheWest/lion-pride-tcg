@@ -11,6 +11,7 @@
 .u3-au-cap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-half) var(--sp-1); min-width: 0; font-size: var(--fs-small); font-weight: var(--fw-small-strong); line-height: var(--lh-small); color: var(--text-secondary);
   font-variant-numeric: tabular-nums; }
 .u3-au-cap > span { white-space: nowrap; }
+.u3-au-grid.is-narrow .u3-au-cap { font-size: var(--fs-label); line-height: var(--lh-label); gap: var(--sp-half); }
 .u3-au-cap > .u3-ico { color: var(--text-muted); }
 .u3-au-cap.is-soon > .u3-ico:first-child, .u3-au-cap.is-soon > span:first-of-type { color: var(--warning); }
 .u3-au-cap.is-confirm { color: var(--gold); }

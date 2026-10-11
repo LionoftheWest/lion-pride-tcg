@@ -168,6 +168,7 @@ export function auctionsV3(deps) {
       if (all) f = { ...f, ...all };
     }
     g.classList.toggle('is-short', f.tile < TOKENS.hit);
+    g.classList.toggle('is-narrow', f.tile < TOKENS['card-tile']);   // a card under the tile size (the keyboard is open): the caption takes the label size so it fits the cell
     const per = f.cols * f.rows;
     g._per = per;
     hall.page = clampPage(hall.page, pagesOf(auItems.length, per));
