@@ -25,6 +25,15 @@ export const SCREENS = {
   'home-live':           { id: 'UI-03', long: true, safe: true, home: 'live', notOn: ['tiny'], steps: [] },
   // UI-04: the live Hunt hero with the Top 3 board (D-58) inside the UI-03 Home; a defect outside the board belongs to Home ('under').
   'home-board':          { id: 'UI-04', under: 'UI-03', long: true, home: 'live', notOn: ['tiny'], steps: [] },
+  // UI-05: the Home carousel. With the Hunt resting the Dungeon slide is first (D-14, D-45): the first four specs are the Dungeon slide
+  // (no runs yet, then with a Top 3), the Gauntlet slide (no runs, then with a Top 3), and the resting Hunt slide behind the control.
+  // UI-06: the "+N" window of Live in voice (5 members in voice; where every member fits the tile there is no "+N" and the spec is the Home).
+  'home-dungeon':        { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [] },
+  'home-dungeon-top':    { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', dungeon: 'top', notOn: ['tiny'], steps: [] },
+  'home-gauntlet':       { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-slide-go="gauntlet"]'], ['wait', 0.5]] },
+  'home-gauntlet-top':   { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', dungeon: 'top', notOn: ['tiny'], steps: [['js', '[data-slide-go="gauntlet"]'], ['wait', 0.5]] },
+  'home-hunt-rest':      { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-slide-go="hunt"]'], ['wait', 0.5]] },
+  'home-voice-all':      { id: 'UI-06', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-voice-all]', [['wait', 0]]], ['wait', 1]] },
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
   // the Filters panel open (D-39, D-123: under tabs where the groups do not fit the height)
   'collection-filters': { id: 'UI-07', safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#colFilters'], ['wait', 1]] },
@@ -282,6 +291,8 @@ export function ownerOf(screen, where) {
   if (/#u3Det|\.u3-det\b|\.u3-det__|#pPts|#pAscend|#pConvert|#pSpot|#pTrade|#pArt|#pClose|#colEffect/.test(where)) return 'UI-08';
   if (screen === 'collection-viewer' && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav|win)\b|#v-[a-z-]+|#card3d/.test(where)) return 'UI-09';
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';
+  if (/#u3VoiceWin[a-z]*\b|\.u3-vw\b|\.u3-vw[-_]|\.u3-hm-more\b/.test(where)) return 'UI-06';   // the Live in voice window and its "+N" button
+  if (/\.u3-hm-(car|ctl|slide|dots|pip|labels|sb|sart|sinfo|strow|date|stimer|rule|rl|sline|sboard|sbh|sbt|sbl|sbr|sbk|sbn|sbd|sbe|sbc)\b/.test(where)) return 'UI-05';   // the carousel: the slides, the control
   if (/\.u3-hm-board\b|\.u3-hm-br[a-z]*\b/.test(where)) return 'UI-04';   // the Top 3 board in the Home hero (D-58)   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).

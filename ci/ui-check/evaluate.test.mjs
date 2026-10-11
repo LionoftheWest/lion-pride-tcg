@@ -114,6 +114,12 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('trades-offer', '.u3-pd-view > .u3-pd-view__foot > .u3-btn'), 'UI-25');   // the Offer view
   assert.equal(ownerOf('trades-few', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');   // the picker stays UI-65
   assert.equal(ownerOf('home-board', '#homeHero > .u3-hm-board > .u3-hm-brl'), 'UI-04');   // the Top 3 board
+  assert.equal(ownerOf('home-dungeon', '#homeHero > .u3-hm-car > .u3-hm-ctl'), 'UI-05');   // UI-05: the carousel control
+  assert.equal(ownerOf('home-dungeon-top', '.u3-hm-sb > .u3-hm-sinfo > .u3-hm-sboard'), 'UI-05');   // the Dungeon slide Top 3 (not the UI-04 board classes)
+  assert.equal(ownerOf('home-gauntlet', '.u3-hm-slide > .u3-hm-sb > .u3-hm-sart'), 'UI-05');
+  assert.equal(ownerOf('home-voice-all', '#u3VoiceWin > .u3-scrim > .u3-sheet'), 'UI-06');   // UI-06: the Live in voice window
+  assert.equal(ownerOf('home-voice-all', '#homeVoice > .u3-hm-vrow > .u3-hm-more'), 'UI-06');   // its "+N" button
+  assert.equal(ownerOf('home-dungeon', '#homeVoice > .u3-hm-vrow > .u3-hm-cell'), 'UI-03');   // the rest of Home stays UI-03
   assert.equal(ownerOf('home-board', '#homeHero.u3-hm-tile.hero > .u3-hm-info'), 'UI-03');   // the rest of the hero is Home's
   assert.equal(ownerOf('wishlist', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl-row'), 'UI-16');
   assert.equal(ownerOf('wishlist-drawer', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl__list > .u3-wl-row'), 'UI-16');
