@@ -203,6 +203,7 @@ export function fitTight(root, pane = '', each = () => {}) {
   if (!root) return;
   delete root.dataset.tight;
   delete root.dataset.small;
+  delete root.dataset.roomy;
   const panels = { spot: root.querySelector('.u3-pf-spot'), season: root.querySelector('.u3-pf-season') };
   Object.values(panels).forEach((n) => { if (n) { n.hidden = false; n.removeAttribute('role'); } });
   const minCard = TOKENS['card-mini'] * TOKENS['card-ratio'];
@@ -225,6 +226,9 @@ export function fitTight(root, pane = '', each = () => {}) {
   each();
   for (const t of steps) { if (!bad()) break; root.dataset.tight = String(t); tabs(); each(); }
   if (bad()) { root.dataset.small = ''; each(); }
+  // D-181: a portrait tablet (the frame is taller than the tiles need): the Wishlist handle strip keeps its own height and the Spotlight takes the room (measured: the strip's tile has more than 0.15 of the frame free around the strip)
+  const wishTile = root.querySelector('.u3-pf-wish');
+  if (root.dataset.lay === 'port' && wishTile && wishTile.offsetParent && wishTile.clientHeight - (wishTile.firstElementChild?.offsetHeight || 0) > 0.15 * root.clientHeight) { root.dataset.roomy = ''; each(); }
 }
 
 /** The stat values and labels stay on one line: a smaller step when one does not fit (a 9-digit count, 12.6); last, two columns. */

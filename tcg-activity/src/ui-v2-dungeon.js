@@ -1306,6 +1306,8 @@ function fitChooseV3(main) {
   const over = () => (stable ? box.scrollHeight > box.clientHeight + 1 : box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) || [...parts].some((e) => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1);
   const measure = () => {
     box.classList.toggle('is-fill', cls3() === 'medium' && box.clientHeight > box.clientWidth && !box.classList.contains('u3-dgs'));   // a tall tablet (the stage itself is taller than wide, F-1): the offers stack and fill the stage
+    // D-181: a portrait tablet (compact-port) with a tall stage: when the panel leaves more than 0.2 of the stage above and under it, the panel fills the stage as on medium (measured with is-fill off)
+    if (cls3() === 'compact-port' && !dgs) { box.classList.remove('is-fill'); const pn = box.querySelector('.u3-dgc-panel'), hd = box.querySelector('.u3-dgc-hud'); if (pn && hd && (box.clientHeight - hd.offsetHeight - pn.offsetHeight) / 2 > 0.2 * box.clientHeight) box.classList.add('is-fill'); }
     box.classList.remove('is-tight', 'is-tight2', 'is-short', 'is-short2', 'is-roomy', 'is-wide', 'is-wide2');
     // UI-49: a large stage (expanded or medium, never the door choice and never a phone: D-134, the approved frames keep the smaller panel) with a small panel: the panel takes the height of the stage (the doors, the chest and the Continue row grow with it)
     const panel = box.querySelector('.u3-dgc-panel'), hud = box.querySelector('.u3-dgc-hud');

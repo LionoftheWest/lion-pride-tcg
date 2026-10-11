@@ -11,3 +11,8 @@ body.ui-v2.ui-v3 .u3-pf-wish.is-tight2 .tile-h .u3-pf-wmore { flex: none; }
 .u3-pf[data-lay="land"][data-self] .u3-pf-id { grid-template-areas: "av name home" "av title home" "av cos cos" "av badges badges" "status status status" "acts acts acts" "stats stats stats" "achh achh achh" "ach ach ach"; }
 /* tight 5 has three rows (id, tabs, pane): with no Spotlight cards the pane takes the free height (the general empty-Spotlight rule counts four rows and left a band under it). */
 .u3-pf[data-lay="port"][data-tight="5"]:has(.u3-pf-spotrow > .u3-pf-none) { grid-template-rows: auto auto minmax(0, 1fr); }
+/* D-181 (UI-14): a portrait tablet (profile.js fitTight sets data-roomy when the Wishlist strip tile has more than 0.15 of the frame free): the Wishlist handle strip keeps its own height.
+   With Spotlight cards the Spotlight row takes the room (its cards are measured to it). With none the tiles keep their own height and the room goes evenly between them. */
+.u3-pf[data-lay="port"][data-roomy]:not([data-tight]) { grid-template-rows: auto minmax(0, 1fr) auto auto; }
+.u3-pf[data-lay="port"][data-roomy]:not([data-tight]):not(:has(.u3-pf-wish)) { grid-template-rows: auto minmax(0, 1fr) auto; }
+.u3-pf[data-lay="port"][data-roomy]:not([data-tight]):has(.u3-pf-spotrow > .u3-pf-none) { grid-template-rows: auto auto auto auto; align-content: space-evenly; }

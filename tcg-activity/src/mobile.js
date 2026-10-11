@@ -5,7 +5,8 @@ const LAND = matchMedia('(orientation: landscape) and (max-height: 500px)');
 const PORT = matchMedia('(orientation: portrait) and (max-width: 600px)');
 // D-181: in v3 a portrait window under 1000 px wide (a tablet) is the compact-port class, so it gets the phone layout too
 // (the same rule as sizeClass in src/ui3/size-class.js). The legacy layout (flag OFF) keeps 600.
-const TABLET = matchMedia('(orientation: portrait) and (max-width: 999px)');
+const TABLET_W = 1000;   // the CSS px width at which a portrait window is no longer compact-port (the same number as sizeClass)
+const TABLET = matchMedia(`(orientation: portrait) and (max-width: ${TABLET_W - 1}px)`);
 const portOn = () => PORT.matches || (document.body.classList.contains('ui-v3') && TABLET.matches);
 
 // The body classes, not the media queries: with the flag OFF there are no classes, so a
