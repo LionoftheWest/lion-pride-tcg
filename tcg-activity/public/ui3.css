@@ -520,6 +520,7 @@ body.ui-v3[data-size="compact-land"] .u3-open.is-measuring { width: calc(100% - 
 #u3Picker .u3-pk-scrim { padding: var(--sp-5) var(--sp-7); grid-template: minmax(0, 1fr) / minmax(0, 1fr); }   /* one definite cell: the window height resolves */
 .u3-pk:focus { outline: none; }
 .u3-pk-scrim.is-still { animation: none; }
+.u3-pk-fscrim.is-still, .u3-pk-fscrim.is-still .u3-dialog { animation: none; }   /* the Filters window: the fade plays once, a repaint does not replay it */
 body[data-kb][data-size^="compact"] #u3Picker .u3-pk-scrim { padding-top: calc(var(--u3-sa-t) + var(--sp-1)); padding-bottom: var(--sp-1); }
 body[data-size^="compact"] #u3Picker .u3-pk-scrim { padding: calc(var(--u3-sa-t) + var(--sp-2)) calc(var(--u3-sa-r) + var(--sp-2)) calc(var(--u3-sa-b) + var(--sp-2)) calc(var(--u3-sa-l) + var(--sp-2)); }
 .u3-pk { box-sizing: border-box; width: 100%; height: 100%; display: grid; gap: var(--sp-4); padding: var(--sp-6);
