@@ -28,6 +28,16 @@ the onboarding and the daily reasons to return matter as much as recruitment.
 | R-05 | Set 2 | Theme not decided. Release in the next two weeks (by about 2026-10-25). At least 150 cards. |
 | R-06 | Combat and Set 2 | The combat overhaul is done before Set 2 comes out, so that the new set gets all the new features. |
 
+## 2a. The three foundations and their success tests (Nathan, 2026-10-11)
+
+Build these first. Each one is done only when Nathan can do its test himself.
+
+| # | Foundation | Success test |
+|---|---|---|
+| F-1 | Event calendar | Nathan has an idea, opens the admin page, creates a new event, selects the variables that it brings (for example 2x pull rates, 2x dungeon runs), and schedules it one time or as a repeat. Time, variables and theme are each changeable, also on a live event. The calendar also controls Hunt, Dungeon and Gauntlet. |
+| F-2 | Card sets | Nathan makes a new set easily, adds cards to that set, and sets up its pack art, all in the Card Portal. |
+| F-3 | Combat in one place | Every combat number and rule is in one place, so that balance and tweaks are easy as abilities, cards and synergies are added. The same place finds bugs, loopholes and infinite loops. |
+
 ## 3. The order
 
 | Step | Work | Why it is at this position |
