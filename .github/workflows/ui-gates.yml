@@ -90,6 +90,9 @@ jobs:
       options: --ipc=host
     strategy:
       fail-fast: false
+      # A free account runs at most 20 jobs at once. On 2026-10-11 one PR's 24 shards held all 20 for over
+      # 35 min, and the G1/G4 jobs of every other PR stayed queued. 12 leaves 8 slots for other PRs.
+      max-parallel: 12
       matrix:
         browser: [chromium, webkit]
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
