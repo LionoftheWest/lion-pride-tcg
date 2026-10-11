@@ -80,8 +80,8 @@ jobs:
     needs: plan
     if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
-    # A shard took 10-22 min (2026-10-07). On 2026-10-10 a full run (106 screens) hit 45 min in all 6 shards: now 12 shards, 60 min.
-    timeout-minutes: 60
+    # A shard took 10-22 min (2026-10-07). On 2026-10-10 a full run (106 screens) hit 45 min in all 6 shards: now 12 shards; a shard hit 60 min on 2026-10-11, so the stop is 90 min.
+    timeout-minutes: 90
     # The official Playwright image of the version in ci/ui-check/package.json: the browsers and their system
     # libraries are in it. The old step ran "playwright install --with-deps" (apt-get) on every runner, and on
     # 2026-10-08 both 8-minute tries timed out in 3 runs (#285, #278, #277). Change the tag with the package version.
