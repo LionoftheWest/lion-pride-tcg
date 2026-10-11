@@ -1,6 +1,9 @@
 /**
  * Apply a .sql file to the PERSONAL Supabase project via the Management API.
- *   node scripts/apply-sql.mjs <path-to.sql> [--force-superseded]
+ *   node scripts/apply-sql.mjs <path-to.sql> --live [--force-superseded]      LIVE (the flag is required)
+ *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/apply-sql.mjs <path-to.sql>   the LOCAL copy
+ * Without LOCALDB=1 the file goes to the LIVE project (.env). So it REFUSES, before any network call, unless --live is on
+ * the command line (2026-10-10: a rehearsal command without LOCALDB=1 wrote to live).
  * It REFUSES a file that tcg-bot/supabase/SUPERSEDED.md lists (a re-run would put an old version back).
  * Uses SUPABASE_ACCESS_TOKEN + SUPABASE_URL from this project's .env (override:true
  * so the personal token wins over any ambient work-account token).
@@ -25,9 +28,15 @@ const url = process.env.SUPABASE_URL || '';
 const ref = (url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
 const file = process.argv.slice(2).find((a) => !a.startsWith('--'));
 
+// LIVE guard: no LOCALDB=1 = the target is the live project. Refuse unless --live. Nothing above this line touches the network.
+if (process.env.LOCALDB !== '1' && !process.argv.includes('--live')) {
+  console.error('apply-sql: refusing to write to LIVE without --live; use LOCALDB=1 for the local copy');
+  process.exit(2);
+}
+
 if (!token) { console.error('Missing SUPABASE_ACCESS_TOKEN in .env'); process.exit(1); }
 if (!ref) { console.error('Could not read the project ref from SUPABASE_URL'); process.exit(1); }
-if (!file) { console.error('Usage: node scripts/apply-sql.mjs <path-to.sql> [--force-superseded]'); process.exit(1); }
+if (!file) { console.error('Usage: node scripts/apply-sql.mjs <path-to.sql> --live [--force-superseded]'); process.exit(1); }
 
 // A superseded file would put an old version back (tcg-bot/supabase/SUPERSEDED.md, made by find-superseded.mjs).
 const SUPERSEDED = fileURLToPath(new URL('../../tcg-bot/supabase/SUPERSEDED.md', import.meta.url));
