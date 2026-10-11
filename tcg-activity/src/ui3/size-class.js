@@ -43,11 +43,14 @@ export function applySizeClass(win = globalThis.window) {
   const { width, height } = held;
   const cls = sizeClass(width, height);
   const body = win.document.body;
-  if (kb) body.dataset.kb = ''; else delete body.dataset.kb;
-  body.dataset.size = cls;
-  if (isShort(cls, height)) body.dataset.short = ''; else delete body.dataset.short;
-  if (isLow(cls, height)) body.dataset.low = ''; else delete body.dataset.low;
-  body.dataset.input = win.matchMedia('(pointer: coarse)').matches ? 'coarse' : 'fine';
+  // Write only a value that changes: a write of the same value still fires a MutationObserver, and the Card picker
+  // and the Trade window repaint on it (a focusout repainted the picker every 130 ms: the flicker, UI-64).
+  const put = (k, v) => { if (v === null) { if (k in body.dataset) delete body.dataset[k]; } else if (body.dataset[k] !== v) body.dataset[k] = v; };
+  put('kb', kb ? '' : null);
+  put('size', cls);
+  put('short', isShort(cls, height) ? '' : null);
+  put('low', isLow(cls, height) ? '' : null);
+  put('input', win.matchMedia('(pointer: coarse)').matches ? 'coarse' : 'fine');
   return cls;
 }
 

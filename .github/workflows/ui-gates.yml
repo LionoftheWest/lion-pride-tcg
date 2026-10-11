@@ -71,17 +71,17 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node ci/ui-check/plan.mjs >> "$GITHUB_OUTPUT"
 
-  # 6 jobs for each browser (--shard k/6: every 6th cell), 4 cells at a time in each job (a runner has 4 cores). All
+  # 12 jobs for each browser (--shard k/12: every 12th cell), 4 cells at a time in each job (a runner has 4 cores). All
   # shards together run every cell; the verdict job merges the g3-* artifacts. One job ran 764 cells in 76 min (2026-10-07).
   # The plan names the screens:
   # the screens of the enforced IDs, or every screen for the shell IDs and for a change to the check itself.
   g3-run:
-    name: G3 run (${{ matrix.browser }} ${{ matrix.shard }}/6)
+    name: G3 run (${{ matrix.browser }} ${{ matrix.shard }}/12)
     needs: plan
     if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
-    # A shard takes 10-22 min (2026-10-07). A hung job stops at 45 min, not 120.
-    timeout-minutes: 45
+    # A shard took 10-22 min (2026-10-07). On 2026-10-10 a full run (106 screens) hit 45 min in all 6 shards: now 12 shards; a shard hit 60 min on 2026-10-11, so the stop is 90 min.
+    timeout-minutes: 90
     # The official Playwright image of the version in ci/ui-check/package.json: the browsers and their system
     # libraries are in it. The old step ran "playwright install --with-deps" (apt-get) on every runner, and on
     # 2026-10-08 both 8-minute tries timed out in 3 runs (#285, #278, #277). Change the tag with the package version.
@@ -92,7 +92,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, webkit]
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -112,7 +112,7 @@ jobs:
       - name: Run the screens
         env:
           SCREENS: ${{ needs.plan.outputs.screens }}
-        run: node ci/ui-check/run.mjs --browser ${{ matrix.browser }} --screens "$SCREENS" --workers 4 --shard ${{ matrix.shard }}/6 --out ci/ui-check/.out/results
+        run: node ci/ui-check/run.mjs --browser ${{ matrix.browser }} --screens "$SCREENS" --workers 4 --shard ${{ matrix.shard }}/12 --out ci/ui-check/.out/results
       - uses: actions/upload-artifact@v4
         if: always()
         with:

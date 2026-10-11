@@ -142,7 +142,7 @@ function checksHTML(st) {
 
 // The dialog before Confirm (5.2 Dialog): the cancel button keeps the squad as it is, the primary fills it first.
 function warnHTML(w) {
-  return `<div class="u3-scrim u3-pk-fscrim" data-u3-scrim><div class="u3-dialog u3-pk-warn" role="alertdialog" aria-modal="true" aria-labelledby="u3PkW">`
+  return `<div class="u3-scrim u3-pk-fscrim${cur.panelShown ? ' is-still' : ''}" data-u3-scrim><div class="u3-dialog u3-pk-warn" role="alertdialog" aria-modal="true" aria-labelledby="u3PkW">`
     + `<header class="u3-dialog__head"><h2 class="u3-dialog__title" id="u3PkW">${esc(w.title)}</h2>${iconButton({ icon: 'x', label: 'Close', variant: 'plain', data: { wclose: '1' } })}</header>`
     + `${w.line ? `<p class="u3-dialog__line">${esc(w.line)}</p>` : ''}<footer class="u3-dialog__foot">${button({ label: w.cancel || 'Continue', data: { wgo: '1' } })}${button({ label: w.primary, variant: 'primary', data: { wfill: '1' } })}</footer></div></div>`;
 }
@@ -165,9 +165,20 @@ function gridHTML() {
 function filterPanelHTML() {
   const groups = (cur.opts.filters || []).map((f) => `<div class="u3-pk-fgroup"><span class="u3-label">${esc(f.label)}</span>`
     + segmented(f.options.map((o) => ({ id: `${f.key}:${o.id}`, label: o.label, active: cur.draft[f.key] === o.id })), { label: f.label }) + '</div>').join('');
-  return `<div class="u3-scrim u3-pk-fscrim" data-u3-scrim><div class="u3-dialog u3-pk-filters" role="dialog" aria-modal="true" aria-labelledby="u3PkF">`
+  return `<div class="u3-scrim u3-pk-fscrim${cur.panelShown ? ' is-still' : ''}" data-u3-scrim><div class="u3-dialog u3-pk-filters" role="dialog" aria-modal="true" aria-labelledby="u3PkF">`
     + `<header class="u3-dialog__head"><h2 class="u3-dialog__title" id="u3PkF">Filters</h2>${iconButton({ icon: 'x', label: 'Close filters', variant: 'plain', data: { fclose: '1' } })}</header>`
     + `${groups}<footer class="u3-dialog__foot">${button({ label: 'Clear all', data: { fclear: '1' } })}${button({ label: 'Confirm', variant: 'primary', data: { fok: '1' } })}</footer></div></div>`;
+}
+
+// A chip tap or Clear all changes the draft only: the chips update in place (no repaint of the window and the grid until
+// Confirm; the window did flicker when each tap rebuilt it).
+function syncPanel(panel) {
+  panel?.querySelectorAll('[data-seg]').forEach((b) => {
+    const [k, v] = b.dataset.seg.split(':');
+    const on = cur.draft[k] === v;
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-selected', String(on));
+  });
 }
 
 function paint() {
@@ -199,6 +210,7 @@ function paint() {
     + `<div class="u3-pk__pager">${pager({ page: cur.per ? cur.page + 1 : 1, pages })}</div>${sel}`
     + `<footer class="u3-pk__foot">${checksHTML(st)}<div class="u3-pk__acts">${o.autoPick ? button({ label: 'Auto-pick', disabled: cur.busy, data: { auto: '1' } }) : ''}${clear}${confirm}</div></footer>`
     + `</section></div>${cur.panel ? filterPanelHTML() : ''}${cur.warn ? warnHTML(cur.warn) : ''}`;
+  cur.panelShown = !!cur.panel;   // the Filters window fades in once, when it opens (a repaint does not replay it)
   cur.shown = true;   // the fade-in plays once, when the window opens (a repaint does not flash it)
   if (caret != null) { const i = host.querySelector('.u3-search__input'); i?.focus({ preventScroll: true }); i?.setSelectionRange(caret, caret); }
   measure();
@@ -296,9 +308,9 @@ async function onClick(e) {
   if (t.classList.contains('u3-search__input') === false && t.closest('.u3-search') && t.matches('.u3-ibtn')) { cur.q = ''; cur.page = 0; paint(); return; }
   if (d.filters) { cur.draft = { ...cur.values }; cur.panel = true; paint(); return; }
   if (d.fclose) { cur.panel = false; paint(); return; }
-  if (d.seg && cur.panel) { const [k, v] = d.seg.split(':'); cur.draft[k] = v; paint(); return; }
+  if (d.seg && cur.panel) { const [k, v] = d.seg.split(':'); cur.draft[k] = v; syncPanel(t.closest('.u3-pk-filters')); return; }
   if (d.seg && cur.opts.kinds && d.seg.startsWith('kind:')) { cur.values.kind = d.seg.slice(5); cur.page = 0; paint(); return; }
-  if (d.fclear) { cur.draft = { ...Object.fromEntries(cur.opts.filters.map((f) => [f.key, f.clear ?? f.options[0].id])), ...(cur.opts.kinds ? { kind: cur.draft.kind } : {}) }; paint(); return; }
+  if (d.fclear) { cur.draft = { ...Object.fromEntries(cur.opts.filters.map((f) => [f.key, f.clear ?? f.options[0].id])), ...(cur.opts.kinds ? { kind: cur.draft.kind } : {}) }; syncPanel(document.querySelector('#u3Picker .u3-pk-filters')); return; }
   if (d.fok) { cur.values = { ...cur.draft }; cur.panel = false; cur.page = 0; paint(); return; }
   if (d.auto) {
     if (cur.busy) return;

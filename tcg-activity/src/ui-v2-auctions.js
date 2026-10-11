@@ -22,7 +22,7 @@ export function auctionsV3(deps) {
   const mine = () => ctx().cache.collection?.cards || [];
   const catalog = () => ctx().cache.catalog?.cards || [];
   const R = (r) => AU.rarityName(r);
-  let ro = null, auItems = [], dlgKey = null, toastT = 0;
+  let ro = null, mo = null, auItems = [], dlgKey = null, toastT = 0;
 
   // ---- the shared parts ------------------------------------------------------------------------
   const avatar = (id, name) => `<span class="u3-mp-av" aria-hidden="true"><span>${esc(String(name || '?').trim().charAt(0).toUpperCase() || '?')}</span>`
@@ -35,7 +35,7 @@ export function auctionsV3(deps) {
   const detail = (c) => { const full = catalog().find((x) => Number(x.id) === Number(c.id)) || c; ctx().openViewer?.(full); };
   const lookup = (id) => mine().find((c) => Number(c.id) === Number(id)) || catalog().find((c) => Number(c.id) === Number(id));
 
-  function stop() { ro?.disconnect(); ro = null; deps.stopHall(); }
+  function stop() { ro?.disconnect(); ro = null; mo?.disconnect(); mo = null; deps.stopHall(); }
   // Layout modes measured from the page box (the info panel and the main panel share the height): level 0 = the frames, 1 = is-tight, 2 = is-tighter.
   const stacked = () => /^(compact-port|medium)$/.test(document.body.dataset.size || '');
   function settle(root, fits, max = 3) {
@@ -120,6 +120,8 @@ export function auctionsV3(deps) {
     onSwipe(g, (dir) => { const p = clampPage(hall.page + dir, pagesOf(auItems.length, g._per)); if (p !== hall.page) { hall.page = p; fill(g); } });
     el('hlPager').onclick = (e) => { const b = e.target.closest('button[data-page]'); if (!b || b.disabled) return; hall.page += b.dataset.page === 'next' ? 1 : -1; fill(g); };
     if (window.ResizeObserver) { ro = new ResizeObserver(() => requestAnimationFrame(() => { if (el('hlGrid') === g && g.isConnected) fill(g); })); ro.observe(g); }
+    // the keyboard and the size class change the box after the resize: fit again, the page kept (as the Collection and the Card picker)
+    if (window.MutationObserver) { let t = 0; mo = new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { if (el('hlGrid') === g && g.isConnected) { g._keep = hall.page * (g._per || 1); fill(g); } else mo?.disconnect(); }, 100); }); mo.observe(document.body, { attributes: true, attributeFilter: ['data-kb', 'data-size', 'data-input', 'data-short'] }); }
     if (!ctx().cache.catalog) ensureCatalog().then(() => { if (el('hlGrid') === g && (hall.q || filterCount(hall.f))) fill(g); });
     // From the bell's Confirm: open the auction that waits for me (the cached list may not have it yet).
     if (hall.openAccepted) {
@@ -150,13 +152,17 @@ export function auctionsV3(deps) {
     auItems = applyHall(rows, { q: hall.q, filters: hall.f, tagsOf: deps.tagsOf, elementOf: cardElement, owns: deps.owns }).map((x, i) => ({ ...x.card, _a: x, _k: i }));
     const root = g.closest('.u3-hl');
     const gap = parseFloat(getComputedStyle(g).columnGap) || 0;
-    const cap = g._cap || TOKENS['sp-5'];
-    const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, gap, { extra: cap + TOKENS['sp-1'], ...o });
+    // the keyboard is open (body[data-kb]): the captions give way (90-ui-32.css) and the grid fits by card size alone, as the Card picker;
+    // the tile never goes under the tile size, so the pick button stays 44 px or more (fewer cards on the page is fine)
+    const kb = document.body.hasAttribute('data-kb');
+    const cap = kb ? 0 : g._cap || TOKENS['sp-5'];
+    const extra = kb ? 0 : cap + TOKENS['sp-1'];
+    const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, gap, { extra, ...o });
     const solve = () => {
       root.classList.remove('is-tight');
       let r = fit();
       if (r.rows < 2) { root.classList.add('is-tight'); r = fit(); }
-      if (r.rows < 2) { const s = fit({ min: TOKENS['card-mini'] }); if (s.rows >= 2) r = s; }
+      if (!kb && r.rows < 2) { const s = fit({ min: TOKENS['card-mini'] }); if (s.rows >= 2) r = s; }
       return r;
     };
     root.classList.remove('has-pager');
@@ -164,13 +170,14 @@ export function auctionsV3(deps) {
     if (auItems.length > f.cols * f.rows) { root.classList.add('has-pager'); f = solve(); if (auItems.length <= f.cols * f.rows) { root.classList.remove('has-pager'); f = solve(); } }
     // every card on one page: the cards grow to fill the box (up to the largest tile), as the Trade Hall lists
     if (auItems.length && auItems.length <= f.cols * f.rows) {
-      const all = AU.fitAllWithCaption(auItems.length, g.clientWidth, g.clientHeight, gap, { min: f.tile, max: TOKENS['card-tile-max'], ratio: TOKENS['card-ratio'], extra: cap + TOKENS['sp-1'] });
+      const all = AU.fitAllWithCaption(auItems.length, g.clientWidth, g.clientHeight, gap, { min: f.tile, max: TOKENS['card-tile-max'], ratio: TOKENS['card-ratio'], extra });
       if (all) f = { ...f, ...all };
     }
     g.classList.toggle('is-short', f.tile < TOKENS.hit);
     g.classList.toggle('is-narrow', f.tile < TOKENS['card-tile']);   // a card under the tile size (the keyboard is open): the caption takes the label size so it fits the cell
     const per = f.cols * f.rows;
     g._per = per;
+    if (g._keep != null) { hall.page = Math.floor(g._keep / per); g._keep = null; }
     hall.page = clampPage(hall.page, pagesOf(auItems.length, per));
     g.style.setProperty('--hl-cols', f.cols); g.style.setProperty('--hl-tile', `${f.tile}px`); g.style.setProperty('--au-cap', `${cap}px`);
     g.classList.toggle('is-empty', !auItems.length);
@@ -180,7 +187,7 @@ export function auctionsV3(deps) {
     // the caption height as laid out (it can wrap on a small card): fit again once with it
     const hs = [...g.querySelectorAll('.u3-au-cap')].map((e) => Math.ceil(e.getBoundingClientRect().height));
     const need = hs.length ? Math.max(...hs) : cap;
-    if (need !== g._cap && need > 0 && !g._capTry) { g._cap = need; g._capTry = true; g._html = null; fill(g); g._capTry = false; return; }
+    if (!kb && need !== g._cap && need > 0 && !g._capTry) { g._cap = need; g._capTry = true; g._html = null; fill(g); g._capTry = false; return; }
     const pages = pagesOf(auItems.length, per), p = ctx().el('hlPager');
     const ph = pages > 1 ? pager({ page: hall.page + 1, pages }) : '';
     if (p && p._html !== ph) { p._html = ph; p.innerHTML = ph; }

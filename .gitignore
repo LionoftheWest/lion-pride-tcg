@@ -56,3 +56,8 @@ ci/ui-check/.out/
 # --- card-studio/pack-art: the pack model stays local until its source and license are recorded ---
 # (cardpack2.fbx + optional_NORMAL.png; see card-studio/pack-art/README.md section 6)
 card-studio/pack-art/model/
+
+# Local builder helpers (screenshots, loops): never commit
+ci/ui-check/.shell-shot.mjs
+ci/ui-check/.lv.sh
+ci/ui-check/.out/

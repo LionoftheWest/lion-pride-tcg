@@ -20,6 +20,7 @@
 body[data-size="compact-port"] .u3-au-list { grid-template-areas: "sw help" "manage wish" "find filt" "grid grid" "pager pager"; grid-template-columns: minmax(0, 1fr) auto; }
 body[data-size="compact-port"] .u3-au-list .u3-hl__wish { display: block; }
 body[data-size="compact-port"] .u3-au-list .u3-hl__wish .u3-btn { width: 100%; }
+body[data-kb] .u3-au-grid .u3-au-cap { display: none; }   /* the captions give way while the keyboard is open (as the Card picker); the aria-label of the card keeps them */
 body[data-kb] .u3-au-list { grid-template-areas: "find filt" "grid grid"; }
 body[data-kb] .u3-au-list :is(.u3-hl__wish, .u3-hl__manage) { display: none; }
 body.ui-v2.ui-v3 .u3-au-list > .ex-q { display: none; }

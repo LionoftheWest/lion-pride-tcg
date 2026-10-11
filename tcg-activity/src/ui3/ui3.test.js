@@ -78,6 +78,20 @@ test('low (D-117): compact-land under 400 px usable height only, written on body
   assert.equal(applySizeClass(win), 'compact-land'); assert.equal(doc.body.dataset.low, undefined);
 });
 
+test('applySizeClass writes a body attribute only when its value changes (a same-value write repainted the Card picker, UI-64)', () => {
+  const writes = [];
+  const data = new Proxy({}, { set(o, k, v) { writes.push(k); o[k] = v; return true; }, deleteProperty(o, k) { writes.push(`-${k}`); delete o[k]; return true; } });
+  const doc = { documentElement: {}, body: { dataset: data }, activeElement: null };
+  const win = { innerWidth: 1280, innerHeight: 720, document: doc, matchMedia: () => ({ matches: false }), getComputedStyle: () => ({ getPropertyValue: () => '' }) };
+  applySizeClass(win);
+  writes.length = 0;
+  applySizeClass(win); applySizeClass(win);
+  assert.deepEqual(writes, [], 'the second and third call write nothing');
+  win.innerWidth = 430; win.innerHeight = 932;
+  applySizeClass(win);
+  assert.ok(writes.includes('size'), 'a real change still writes');
+});
+
 test('keyboard: the class holds while a text box has the focus on touch, and returns after (2.1, G-015)', () => {
   const doc = { documentElement: {}, body: { dataset: {} }, activeElement: null };
   const win = { innerWidth: 932, innerHeight: 430, document: doc, matchMedia: () => ({ matches: true }), getComputedStyle: () => ({ getPropertyValue: () => '' }) };
