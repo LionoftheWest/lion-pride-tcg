@@ -64,10 +64,12 @@ function derivedDungeon(body) {
 // UI-66: the Leaderboard answers of a board state. The recorded answers have 2 Hunt rows and an empty Dungeon board (no
 // Gauntlet board): 'rows' gives each tab a list long enough to page, with the member's own row inside it.
 const BOARD_PATHS = new Set(['/api/leaderboard/v2', '/api/hunt/leaderboard', '/api/dungeon/board', '/api/gauntlet/board']);
-function derivedBoard(p, mode, me) {
+function derivedBoard(p, mode, me, last = false) {
   const id = (i) => String(100000000000000100n + BigInt(i));
   const name = (i) => `Member ${String(100 + i).padStart(3, '0')}`;
-  if (mode === 'empty') return p === '/api/hunt/leaderboard' ? { leaders: [], me } : { ok: true, board: [], me };
+  if (mode === 'empty') return p === '/api/hunt/leaderboard' ? (last ? { leaders: [], me, boss: null } : { leaders: [], me }) : { ok: true, board: [], me };
+  // D-178: ?last=1 = the final standings of the last boss (the same shape, with the boss)
+  if (p === '/api/hunt/leaderboard' && last) return { leaders: Array.from({ length: 20 }, (_, i) => ({ player_id: i === 3 ? me : id(i + 30), username: name(i + 30), damage: 6100 - i * 240 })), me, boss: { name: 'Warden of the Hollow Deep', tier: 'Heroic', status: 'defeated' } };
   if (p === '/api/hunt/leaderboard') return { leaders: Array.from({ length: 24 }, (_, i) => ({ player_id: i === 7 ? me : id(i), username: name(i), damage: 4700 - i * 190 })), me };
   return { ok: true, me, board: Array.from({ length: 12 }, (_, i) => ({ rank: i + 1, player_id: i === 0 ? me : id(i), username: name(i), floor: 5 - (i >> 2), room: 1 + (i % 3), turns: 27 + i * 3, runs: 1 + (i % 2), status: i === 3 ? 'active' : 'done' })) };
 }
@@ -466,7 +468,7 @@ createServer((req, res) => {
     // UI-66: a Leaderboard board state (cookie ci_board) answers before the fixture lookup (the Gauntlet board has no recorded answer)
     if (BOARD_PATHS.has(p) && c.ci_board === 'error') return send(res, 500, '{"error":"ui-check: board error"}');
     const board = BOARD_PATHS.has(p) && p !== '/api/leaderboard/v2' && (c.ci_board === 'rows' || c.ci_board === 'empty')
-      ? derivedBoard(p, c.ci_board, FIX.routes['/api/hunt/leaderboard']?.body?.me || '100000000000000001') : null;
+      ? derivedBoard(p, c.ci_board, FIX.routes['/api/hunt/leaderboard']?.body?.me || '100000000000000001', url.searchParams.get('last') === '1') : null;
     if (!hit && !board) { misses.add(key); return send(res, 404, '{"error":"ui-check: no fixture"}'); }
     const derived = board || DERIVED.reduce((b, d) => (d.when(p, c, b) ? d.make(b, c) : b), hit.body);
     // UI-66 (ci_board=rows): every member has a title, an achievement title on the Main board and a name badge title everywhere
