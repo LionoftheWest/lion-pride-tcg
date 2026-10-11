@@ -88,7 +88,17 @@ export const SCREENS = {
   'boons-member':        { id: 'UI-27', notOn: ['tiny'], long: true, fx: 'member', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
   'boons-onyou':         { id: 'UI-27', notOn: ['tiny'], long: true, safe: true, fx: 'hist', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.u3-bn-onyou', [['wait', 0]]], ['wait', 1.5]] },
   'boons-picker':        { id: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1]], input: '#u3Picker .u3-search__input' },
-  'boons-pick':          { id: 'UI-28', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
+  // v3 (UI-28): the play flow. The confirm window over the Card picker (boon or prank, a poll card, the error of a play that the check server
+  // blocks), the played toast (ci_play=ok answers the play), the owner popup, the refund popup and the banners (derived /api/effects/me), and the profile Prank.
+  'fx-confirm':          { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1.5]] },
+  'fx-error':            { id: 'UI-28', under: 'UI-27', long: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1], ['js', '#u3FxWin [data-fxplay]'], ['wait', 1.5]] },
+  'fx-played':           { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'hist', play: 'ok', hold: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1], ['js', '#u3FxWin [data-fxplay]'], ['wait', 1.5]] },
+  'fx-poll':             { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'poll', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1], ['js', '#u3FxWin [data-fxq="1"]'], ['wait', 1]] },
+  'fx-owner':            { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'owner', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1.5]] },
+  'fx-refund':           { id: 'UI-28', under: 'UI-03', long: true, safe: true, fx: 'refund', notOn: ['tiny'], steps: [['wait', 3]] },
+  'fx-banners':          { id: 'UI-28', under: 'UI-03', long: true, safe: true, fx: 'banners', hold: true, notOn: ['tiny'], steps: [['wait', 3]] },
+  'fx-profile-prank':    { id: 'UI-28', under: 'UI-14', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '.u3-lb-row[data-member]:not(.is-me)'], ['wait', 3], ['js', '#memPrank'], ['wait', 1.5]] },
+  'fx-profile-confirm':  { id: 'UI-28', under: 'UI-14', long: true, fx: 'hist', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '.u3-lb-row[data-member]:not(.is-me)'], ['wait', 3], ['js', '#memPrank'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1.5]] },
   'hunt-squad':          { id: 'UI-17', long: true, notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   // D-166: the trophy button in the squad stage Top 3 row opens the Leaderboard window (UI-66) on the Hunt tab; behind it the squad stage is UI-17.
   'hunt-board':          { safe: true, long: true, id: 'UI-66', under: 'UI-17', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '#main [data-hboard]'], ['wait', 2.5]] },
@@ -180,7 +190,7 @@ export const SCREENS = {
   'leaderboard-hunt-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
   'leaderboard-dungeon-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
   'leaderboard-gauntlet-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
-  'profile':             { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
+  'profile':             { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '.u3-lb-row[data-member]:not(.is-me)'], ['wait', 3]] },   // lane 1 v3 Leaderboard rows (UI-66)
   'style-editor':        { id: 'UI-15', safe: true, notOn: ['tiny'], steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5]] },
   // UI-15 opens the Card picker for the Spotlight (D-80 item 16): a defect inside the picker window belongs to UI-64
   'style-picker':        { id: 'UI-64', under: 'UI-15', notOn: ['tiny'], steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5], ['js', '#u3StyleHost [data-sepick]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
@@ -259,6 +269,9 @@ export function ownerOf(screen, where) {
   if (screen === 'boons-picker' && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
   if (/#u3Tfx\b|\.u3-tfx\b|\.u3-tfx[-_]/.test(where)) return 'UI-26';   // the trade animation layer
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
+  // UI-28: the confirm window, the owner and refund popups, the play toast and the incoming banners; the Card picker under them stays UI-27's (the Boons form)
+  if (/#u3Fx[A-Za-z]*\b|\.u3-fxw\b|\.u3-fxw[-_]|\.u3-fxn\b|\.u3-fxn[-_]|\.u3-fxb\b|\.u3-fxb[-_]|\.u3-fx-toast\b/.test(where)) return 'UI-28';
+  if (/^fx-/.test(screen) && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/\.u3-ls\b|\.u3-ls[-_]|#lsSlots|#u3LsToast/.test(where)) return 'UI-31';   // List a card (the sheet, its slots, the Undo toast)
   if (/#u3Wish[a-z]*\b|\.u3-wl\b|\.u3-wl[-_]|#wlHandle|\.u3-pf-wishbar/.test(where)) return 'UI-16';
