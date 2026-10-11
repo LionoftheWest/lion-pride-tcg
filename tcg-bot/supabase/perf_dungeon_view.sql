@@ -16,7 +16,7 @@ do $g$
 declare m text;
 begin
   select md5(replace(pg_get_functiondef('public.dungeon_view(text)'::regprocedure), chr(13), '')) into strict m;
-  if m <> '678207cdfd8f26716f653cea9cd3d23e' then
+  if m not in ('678207cdfd8f26716f653cea9cd3d23e', '55e9c45781aa9e6b224ff6072d4d1733') then   -- the live text, or the text this file made
     raise exception 'perf_dungeon_view.sql: the live dungeon_view changed since this file was built. Rebuild it from the live text.';
   end if;
   perform 'public.card_balance()'::regprocedure;   -- perf_card_power_reads.sql is applied
@@ -81,4 +81,7 @@ as $function$ select dungeon_view_core(p_player, false) $function$;
 grant execute on function public.dungeon_view_core(text, boolean) to postgres, service_role;
 grant execute on function public.dungeon_view(text) to postgres, service_role;
 grant execute on function public.dungeon_view_lite(text) to postgres, service_role;
+
+comment on function public.dungeon_view_core(text, boolean) is 'The Dungeon view of a member (the day, the rule, the run, the rooms, the board top). With mine = true it also lists the cards of the member with cost, CP and HP (the squad pick). dungeon_view and dungeon_view_lite call it.';
+comment on function public.dungeon_view_lite(text) is 'The Dungeon view without the member card list (key mine). The Home slide reads it: 3 ms instead of 13 ms.';
 notify pgrst, 'reload schema';

@@ -13,17 +13,18 @@
 -- on rarities x stars x mods x point sets, flag on and off, and on every player of the database). No balance number changes.
 -- The signatures of the existing functions stay, so every caller (hunt_attack, dungeon_card, effects, the bot) is untouched.
 
--- GUARD (the combat_core.sql rule): each function must be the live text this file was built from.
+-- GUARD (the combat_core.sql rule): each function must be the live text this file was built from, or the text this file made
+-- (a second md5: a re-run after the file went live is accepted, like hunt_random_target.sql).
 do $g$
 declare r record;
 begin
   for r in select * from (values
-    ('public.card_combat(text,integer,numeric,jsonb)', 'f7b151cfedfd8f0a595404e327f80d33'),
-    ('public.card_cp_exact(text,integer,numeric)', '58e5d3a7cf343ddebb4752caf3674f5e'),
-    ('public.card_max_hp(integer)', '8239c710ad593efd647ae2deb84b0b91'),
-    ('public.stat_pt(jsonb,text)', '521ff10a291b32e121412cc192eef43d'),
-    ('public.card_powers(text)', '6ebdafc5b7e1637d6f19d7222c9d3879')) v(fn, md5) loop
-    if md5(replace(pg_get_functiondef(r.fn::regprocedure), chr(13), '')) <> r.md5 then
+    ('public.card_combat(text,integer,numeric,jsonb)', 'f7b151cfedfd8f0a595404e327f80d33', '3690c8d32639ad413d76ee6b834f663e'),
+    ('public.card_cp_exact(text,integer,numeric)', '58e5d3a7cf343ddebb4752caf3674f5e', '75de3ca331a247fa31b15a62d932e62c'),
+    ('public.card_max_hp(integer)', '8239c710ad593efd647ae2deb84b0b91', '75e642626cb232af2eafa9f75720fa86'),
+    ('public.stat_pt(jsonb,text)', '521ff10a291b32e121412cc192eef43d', '6bdf59f27fdc2b299f61eb07acf1c45a'),
+    ('public.card_powers(text)', '6ebdafc5b7e1637d6f19d7222c9d3879', '26523cb226facd148993e069a064aa85')) v(fn, md5, md5_after) loop
+    if md5(replace(pg_get_functiondef(r.fn::regprocedure), chr(13), '')) not in (r.md5, r.md5_after) then
       raise exception 'perf_card_power_reads.sql: the live % changed since this file was built. Rebuild it from the live text.', r.fn;
     end if;
   end loop;
@@ -134,4 +135,10 @@ grant execute on function public.stat_pt(jsonb, text) to postgres, service_role;
 grant execute on function public.card_combat(text, integer, numeric, jsonb, jsonb) to postgres, service_role;
 grant execute on function public.card_combat(text, integer, numeric, jsonb) to postgres, service_role;
 grant execute on function public.card_powers(text) to postgres, service_role;
+
+comment on function public.card_balance() is 'The four balance keys of the combat formula (stat_points, rarity_cp, stars, card_hp) in one read. Pass it to card_combat(..., bundle) so that many cards read the balance table once.';
+comment on function public.card_combat(text, integer, numeric, jsonb, jsonb) is 'The combat formula (CP, HP, crit, potency, haste, free points) of one copy on a balance bundle (card_balance()). The 4-argument form reads the bundle itself. Same answer as before 2026-10-11.';
+comment on function public.card_cp_exact(text, integer, numeric, jsonb, jsonb) is 'The CP formula (rarity x star x cp_mod) on given rarity_cp and stars values: the pure form. The 3-argument card_cp_exact reads the balance table, then calls this.';
+comment on function public.card_max_hp(integer, numeric, numeric) is 'The HP formula (max of the floor and cp x per_cp) on given values: the pure form. The 1-argument card_max_hp reads balance card_hp, then calls this.';
+comment on function public.stat_pt(jsonb, text, integer) is 'The stat-point clamp (0 to max, whole number) of one stat key on a given limit: the pure form. The 2-argument stat_pt reads balance stat_points.max_per_stat, then calls this.';
 notify pgrst, 'reload schema';

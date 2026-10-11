@@ -16,14 +16,16 @@ grant execute on function public.card_max_hp(integer) to postgres;
 grant execute on function public.card_max_hp(integer) to service_role;
 
 -- @function public.card_max_hp(integer, numeric, numeric)
--- md5: 1f5c00be179d793dd4fd8a9d980fb40e   (md5(replace(pg_get_functiondef('public.card_max_hp(integer, numeric, numeric)'::regprocedure), chr(13), '')))
+-- md5: 2c696eb6437873ba53ea9205a1144725   (md5(replace(pg_get_functiondef('public.card_max_hp(integer, numeric, numeric)'::regprocedure), chr(13), '')))
 -- owner: postgres
 CREATE OR REPLACE FUNCTION public.card_max_hp(p_cp integer, p_floor numeric, p_per_cp numeric)
  RETURNS integer
  LANGUAGE sql
  IMMUTABLE
  SET search_path TO 'public'
-AS $function$ select greatest(p_floor, round(p_cp * p_per_cp))::int; $function$;
+AS $function$
+  select greatest(p_floor, round(p_cp * p_per_cp))::int;
+$function$;
 -- @grants public.card_max_hp(integer, numeric, numeric)
 grant execute on function public.card_max_hp(integer, numeric, numeric) to postgres;
 grant execute on function public.card_max_hp(integer, numeric, numeric) to service_role;
