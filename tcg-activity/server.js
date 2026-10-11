@@ -576,11 +576,13 @@ app.get('/api/collection', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const cached = collCache.get(me.id);
   if (cached && Date.now() - cached.at < COLL_TTL) return res.json(cached.payload);
-  const [{ data, error }, pw] = await Promise.all([supabase
+  // The total power and the stat points ride in the same round trip (before they ran after the card list).
+  const [{ data, error }, pw, [cpRes, stRes]] = await Promise.all([supabase
     .from('player_cards')
     .select(`quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, ${SET_COLS}, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS}))`)
     .eq('player_id', me.id),
-  cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e }))]); // power + HP of each copy (SQL: the one CP source)
+  cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })), // power + HP of each copy (SQL: the one CP source)
+  Promise.allSettled([supabase.rpc('my_collection_power', { p_player_id: me.id }), supabase.rpc('card_stats_for', { p_player: me.id })])]);
   if (error || pw.error) return res.status(500).json({ error: (error || pw.error).message });
   const powers = pw.data || {};
   // Can ascend = the FREE copies (a copy in a trade offer, an auction or a bid is held) cover the cost
@@ -623,10 +625,6 @@ app.get('/api/collection', async (req, res) => {
   let totalPower = cards.reduce((s, c) => s + c.power, 0);
   // Stat points (stat_points.sql): the combat numbers of each ascended copy. The SQL is the
   // only formula; while the flag is off (or the function is not live) there is no stats key.
-  const [cpRes, stRes] = await Promise.allSettled([
-    supabase.rpc('my_collection_power', { p_player_id: me.id }),
-    supabase.rpc('card_stats_for', { p_player: me.id }),
-  ]);
   if (cpRes.status === 'fulfilled' && cpRes.value.data != null) totalPower = Number(cpRes.value.data);
   const st = stRes.status === 'fulfilled' && !stRes.value.error ? stRes.value.data : null;
   let stats = null;
@@ -895,9 +893,16 @@ app.get('/api/hunt', async (req, res) => {
   const today = mtToday(); // the MT game day (mt_clock.sql)
   // One call (hunt_view.sql) instead of 4: 100 players opening the Hunt at once waited ~6 s.
   let cards, hpRows, myDamage, round, statCards = null;
-  const [{ data: view, error: viewErr }, pw] = await Promise.all([
+  // The squad of the day, the unlock gate and the boss details do not depend on the view: they run in the same round trip
+  // (before, the squad and the gate waited for the view: two database round trips in a row).
+  const [{ data: view, error: viewErr }, pw, bossMoves, { data: sqRow }, { data: gate }] = await Promise.all([
     supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today }),
     cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })), // combat power + HP of each copy (SQL card_combat)
+    huntBossMoves(hunt.name),   // the boss details (hunt_boss_moves.sql), shared and cached
+    // The squad locked today (hunt_squads.sql): one squad per day, per member.
+    supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
+    // The unlock gate (adventure_gate.sql): null while the function is not live, so nothing locks.
+    supabase.rpc('adventure_gate', { p_player: String(me.id) }),
   ]);
   if (pw.error) return res.status(500).json({ error: pw.error.message });
   const powers = pw.data || {};
@@ -937,13 +942,6 @@ app.get('/api/hunt', async (req, res) => {
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
   // The daily card cap (balance daily_card_cap, the same value hunt_attack reads).
   const dailyCap = dailyCardCap(bal());
-  const bossMoves = await huntBossMoves(hunt.name);   // the boss details (hunt_boss_moves.sql)
-  // The squad locked today (hunt_squads.sql): one squad per day, per member.
-  // The unlock gate (adventure_gate.sql): null while the function is not live, so nothing locks.
-  const [{ data: sqRow }, { data: gate }] = await Promise.all([
-    supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
-    supabase.rpc('adventure_gate', { p_player: String(me.id) }),
-  ]);
   res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null, bossMoves });
 });
 

@@ -29,7 +29,7 @@ const BACKGROUND = [
   ['/api/collection', 0],                      // refreshOwned at start
 ];
 const DAILIES_BADGE = ['/api/dailies', A ? 120 : 60];   // ui-v2-dailies.js:70
-const HOME = [[A ? '/api/hunt?light=1' : '/api/hunt', 0], ['/api/profile', 0], ['/api/catalog', 0], ['/api/dungeon', 0], ['/api/gauntlet', 0]];   // ui-v2.js:1184 (each Home visit)
+const HOME = [['/api/flags', 0], [A ? '/api/hunt?light=1' : '/api/hunt', 0], ['/api/profile', 0], ['/api/catalog', 0], ['/api/dungeon', 0], ['/api/gauntlet', 0]];   // ui-v2.js:1184 (each Home visit)
 const SCENARIOS = {
   home: { start: HOME, timers: [...BACKGROUND, DAILIES_BADGE, ['/api/hunt/feed', 0]] },
   // the Hunt screen: the full /api/hunt twice at open (renderHunt + backgroundRefreshHunt), the feed every 3 s (main.js:1322)
@@ -74,5 +74,5 @@ console.log(`database statements per member per minute: ${per(totalCalls)}   dat
 console.log('HTTP by route (per member per minute):', Object.entries(http).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${per(v)}`).join(', '));
 const pc = (a, p) => [...a].sort((x, y) => x - y)[Math.min(a.length - 1, Math.floor(p * a.length))].toFixed(0);
 console.log('route latency ms (p50 / p95 / calls):', Object.entries(latBy).map(([k, v]) => `${k} ${pc(v, 0.5)}/${pc(v, 0.95)}/${v.length}`).join(', '));
-for (const r of keep.slice(0, 10)) console.log(`  ${String(r.ms).padStart(6)} ms  ${String(r.c).padStart(5)} calls  ${r.q}`);
+for (const r of keep.slice(0, Number(process.env.ROWS || 10))) console.log(`  ${String(r.ms).padStart(6)} ms  ${String(r.c).padStart(5)} calls  ${r.q}`);
 process.exit(0);
