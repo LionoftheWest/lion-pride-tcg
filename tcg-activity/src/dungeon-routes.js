@@ -15,19 +15,28 @@ const ERR = {
   bad_target: 'Pick a card in your squad.', target_downed: 'A heal cannot revive a downed card.', boss_stun_immune: 'That monster cannot be stunned again yet.',
   not_choosing: 'There is nothing to choose.', bad_pick: 'Pick one of the rewards.',
   one_support: 'One support per turn. Attack to end the turn.', not_between_floors: 'You can leave only between floors, after the guardian.',
-  already_gauntlet: 'You used today\'s Gauntlet run. Come back tomorrow.',
+  can_act: 'You can still act: the turn does not pass.', already_gauntlet: 'You used today\'s Gauntlet run. Come back tomorrow.',
 };
 const fail = (res, data) => res.status(400).json({ ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' });
 const id = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
 // The run mode: the daily Dungeon or the weekly Gauntlet (gauntlet.sql). Each action finds the run of its mode.
 const mode = (v) => (v === 'gauntlet' ? 'gauntlet' : 'daily');
+// The most rounds one Auto call plays (the SQL function clamps to 10 as well).
+export const AUTO_MAX = 5;
 const idx = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n < 10 ? n : null; };
 
 // A view that ended its day / week (next_at, ends_at in the past) is never served again, whatever its age.
 // An error or refused answer is never served from the cache either.
 export const viewValid = (v, now = Date.now()) => v?.status === 200 && !((v?.body?.next_at && Date.parse(v.body.next_at) <= now) || (v?.body?.ends_at && Date.parse(v.body.ends_at) <= now));
 
-export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun, userCache }) {
+export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun, userCache, sharedCache }) {
+  // The two boards are the same for every member: one read for everyone, 5 s (a rank changes only when a run moves). A new run
+  // and a retreat drop them at once. (The member's own rank is in the cached per-member view, which a write also drops.)
+  const boards = sharedCache ? sharedCache('dungeonBoards', { ttl: 5000, stale: true }) : null;
+  const board = (key, fn, args) => {
+    const load = async () => { const { data, error } = await supabase.rpc(fn, args); if (error) throw new Error(error.message); return data || []; };
+    return boards ? boards.get(key, load) : load();
+  };
   // The two views (dungeon_view 187 ms, gauntlet_view 286 ms live, each reads the whole collection through card_combat) are read
   // on every Home visit and every Dungeon open. One answer per member for 15 s; every write of the member drops it (the answer
   // of the write itself carries the new state), so a member always sees the result of their own action.
@@ -41,7 +50,7 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
     // A run action: tell the "is playing" post which mode the member is in, so its floor stays current (server.js dungeonPing).
     if (write) {
       onRun?.(me, req.path.startsWith('/api/gauntlet') || req.body?.mode === 'gauntlet' ? 'gauntlet' : 'daily');
-      dropViews(me); res.on('finish', () => dropViews(me));
+      dropViews(me); res.on('finish', () => { dropViews(me); if (req.path.endsWith('/start') || req.path.endsWith('/retreat')) { boards?.bust('d'); boards?.bust('g'); } });
     }
     return me;
   };
@@ -92,9 +101,8 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
   });
   app.get('/api/dungeon/board', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
-    const { data, error } = await supabase.rpc('dungeon_board', { p_day: null, p_limit: 50 });
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ ok: true, board: data || [], me: String(me.id) });
+    try { res.json({ ok: true, board: await board('d', 'dungeon_board', { p_day: null, p_limit: 50 }), me: String(me.id) }); }
+    catch (e) { res.status(500).json({ error: e.message }); }
   });
   app.post('/api/dungeon/start', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;
@@ -110,6 +118,24 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
     const me = await gate(req, res, true); if (!me) return;
     const card = id(req.body?.cardId); if (!card) return fail(res, { error: 'not_in_squad' });
     await rpc(res, 'dungeon_support', { p_player: String(me.id), p_card: card, p_target_card: id(req.body?.targetCard), p_target_foe: idx(req.body?.targetFoe), p_mode: mode(req.body?.mode) }, withCards);
+  });
+  // Auto on the server (dungeon_auto_rounds.sql): up to 5 rounds (a useful support, then the best attack) in one call. Every action is a call of
+  // dungeon_support / dungeon_attack, so every rule is the one of a tap. The answer lists the rounds for the client to animate in order.
+  app.post('/api/dungeon/auto', async (req, res) => {
+    const me = await gate(req, res, true); if (!me) return;
+    const max = Math.min(AUTO_MAX, Math.max(1, Math.floor(Number(req.body?.max)) || AUTO_MAX));
+    const { data, error } = await supabase.rpc('dungeon_auto_rounds', { p_player: String(me.id), p_mode: mode(req.body?.mode), p_max: max });
+    // The code before the migration: the client falls back to one request for each action (it reads error auto_unavailable).
+    if (error?.code === 'PGRST202') return res.status(404).json({ ok: false, error: 'auto_unavailable', message: 'Auto is not available.' });
+    if (error) return res.status(500).json({ error: error.message });
+    if (!data?.ok) return fail(res, data);
+    if (data.error) data.error = { ...data.error, message: ERR[data.error.error] || data.error.error };   // a refused action that ended the call after some rounds
+    res.json(await withCards(data));
+  });
+  // D-182: no action can be taken (every standing attacker stunned, no support ready): the round advances and the monsters act once (dungeon_pass_turn).
+  app.post('/api/dungeon/pass', async (req, res) => {
+    const me = await gate(req, res, true); if (!me) return;
+    await rpc(res, 'dungeon_pass_turn', { p_player: String(me.id), p_mode: mode(req.body?.mode) }, withCards);
   });
   app.post('/api/dungeon/choose', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;
@@ -128,9 +154,8 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
   });
   app.get('/api/gauntlet/board', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
-    const { data, error } = await supabase.rpc('gauntlet_board', { p_week: null, p_limit: 50 });
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ ok: true, board: data || [], me: String(me.id) });
+    try { res.json({ ok: true, board: await board('g', 'gauntlet_board', { p_week: null, p_limit: 50 }), me: String(me.id) }); }
+    catch (e) { res.status(500).json({ error: e.message }); }
   });
   app.post('/api/gauntlet/start', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;

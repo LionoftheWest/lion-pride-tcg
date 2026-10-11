@@ -173,7 +173,18 @@ async function runCell([s, screen, variant], ref = {}) {
 // A hung cell (one WebKit shard ran 55 min instead of 11, PR #270, 2026-10-08): each try has a time limit, and a cell that
 // times out runs once more. Two timeouts: the cell is a runner error ("not checked" in the verdict), not a lost shard.
 const CELL_LIMIT = Number(process.env.UI_CHECK_CELL_LIMIT) || 150;   // seconds; a cell takes 10 to 25 s (the variable is for a test)
+// A spec with `heavy: true` (screens.mjs: the 3D chest, drawn by software WebGL on a CI runner) runs alone among the heavy cells
+// (one at a time, over all workers) and has twice the cell limit: software-GL cells at once starved each other and a cell
+// timed out twice (150 s) at random sizes. The light cells keep running beside it.
+const HEAVY_FACTOR = 2;
+let heavyTail = Promise.resolve();
 async function runCellGuarded(c) {
+  if (!SCREENS[c[1]].heavy) return runCellTimed(c, CELL_LIMIT);
+  const turn = heavyTail; let release; heavyTail = new Promise((ok) => { release = ok; });
+  await turn;
+  try { await runCellTimed(c, CELL_LIMIT * HEAVY_FACTOR); } finally { release(); }
+}
+async function runCellTimed(c, CELL_LIMIT) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     const ref = {}; let timer;
     const limit = new Promise((_, no) => { timer = setTimeout(() => no(new Error(`over ${CELL_LIMIT} s`)), CELL_LIMIT * 1000); });
