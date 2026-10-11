@@ -157,6 +157,7 @@ a one-time grant or a settings value would run again.
 - `screen_pranks_short.sql`: effect_primitives, player_effects, subjects
 - `shard_ledger_strict.sql`: shard_ledger
 - `special_cards_never_in_packs.sql`: cards
+- `report_shots.sql`: balance, storage.buckets
 - `ui_v3_flag.sql`: settings
 
 ## No change (29)

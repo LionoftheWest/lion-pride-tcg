@@ -113,6 +113,7 @@ revoke execute on function public.report_shots_expired(int) from public, anon, a
 
 -- 6. Comments (the same text is in db_comments.sql).
 comment on table public.player_report_shots is $c$One row per private screenshot of a player report (reserve_report_shot, the Activity POST /api/feedback/:id/shot). The file is in the private storage bucket report-shots at path. It never goes to GitHub: the Issue counts the stored rows. The Activity removes the file and the row after balance report_shots.keep_days (report_shots_expired).$c$;
+comment on column public.player_report_shots.id is $c$The screenshot id.$c$;
 comment on column public.player_report_shots.report_id is $c$The report (player_reports.id). Only the member who sent the report can add a screenshot.$c$;
 comment on column public.player_report_shots.n is $c$1, 2, 3 ...: the place on the report, at most balance report_shots.per_report.$c$;
 comment on column public.player_report_shots.path is $c$The object path in the bucket report-shots: <report id>/<n>.<webp|png|jpg>.$c$;
