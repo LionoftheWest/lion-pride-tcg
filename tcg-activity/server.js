@@ -931,6 +931,22 @@ app.post('/api/hunt/support', async (req, res) => {
   res.json(data);
 });
 
+// D-173: the member has no action (every attacker down, every standing support on cooldown): the round advances and the boss acts once.
+// The RPC refuses (can_act, squad_down, round_cap, no_squad) when the member can still act, so it cannot skip a turn.
+app.post('/api/hunt/pass', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!FEATURE_HUNT) return res.status(403).json({ error: 'hunt disabled' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const hunt = await activeHunt();
+  if (!hunt) return res.status(400).json({ error: 'no active hunt' });
+  const { data, error } = await huntRpcGate(() => supabase.rpc('hunt_pass_turn', { p_player: me.id, p_hunt: hunt.id }));
+  if (error) return res.status(500).json({ error: error.message });
+  if (data?.ok && activeHuntCache?.data?.id === hunt.id) activeHuntCache.data = { ...activeHuntCache.data, hp_remaining: data.hp_remaining };
+  if (data?.ok) notifyPlaying(me, 'update');
+  res.json(data);
+});
+
 // Auto-pick a squad: the best cards you own against TODAY'S boss. Scores each
 // attacker by expected damage (CP x the same weakness/resistance multiplier the
 // battle uses), tops the squad up with your best support, and returns the card

@@ -8,7 +8,7 @@
  * whole session. The old v1 screens were removed on 2026-10-03.
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
-import { openSlots, squadDown, hasAttacker } from './squad-pick.js';
+import { openSlots, squadDown, hasAttacker, noAction } from './squad-pick.js';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 import { mtToday, nextMtMidnightISO } from './mt-time.js';
 installImgFallback();
@@ -2085,6 +2085,7 @@ function paintTeam() {
   const team = (huntState?.roster || []).filter((c) => squad.sel.has(c.id));
   grid.innerHTML = team.length ? team.map((c) => (huntV3() ? `<li>${huntTile(c, 'battle')}</li>` : huntTile(c, 'battle'))).join('') : '<p class="empty">No squad chosen.</p>';
   sizeSquadGrid();
+  if (squad.phase === 'battle') setTimeout(passTurnIfNoAction, 0);   // D-173: no action possible -> the boss acts
 }
 // The lock-in warning (Nathan, 2026-10-02): Continue locks the short squad; Auto-Fill my Squad keeps
 // the member's picks and fills the rest with Auto-pick, then locks. ✕ (or a tap outside) keeps picking.
@@ -2626,7 +2627,7 @@ async function refreshHuntState() {
   const slot = el('usedSlot'); if (slot) slot.innerHTML = `Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}`;
   if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena, .u3-ft'))?.classList.add('down'); bossHandle?.defeat(); }
   paintTeam();
-  // The squad is down when every ATTACKER of it is down (a card that has not fought is alive).
+  // D-173: the squad is down when EVERY card of it is down (supports too; a card that has not fought is alive).
   if (squad.phase === 'battle' && h.status !== 'defeated' && squadDown(huntState.roster || [], [...squad.sel])) squadDownSequence();
 }
 
@@ -2963,13 +2964,36 @@ function onBossDefeated() {
   }, 2600);
 }
 
+// D-173: every attacker is down and every standing support is on cooldown: nothing can be played. Say it, then the server
+// advances the round and the boss acts once (POST /api/hunt/pass -> hunt_pass_turn). The arena is locked while it runs. If the
+// server refuses (it still sees an action), the same round is not asked again, so a stale roster cannot loop.
+const NO_ACTION = 'No action can be taken';
+let passingTurn = false, passFailRound = -1;
+async function passTurnIfNoAction() {
+  if (passingTurn || bossActing || squad.phase !== 'battle' || huntState?.hunt?.status !== 'active') return;
+  const round = huntState.round || 0;
+  if (round === passFailRound || !noAction(huntState.roster || [], [...squad.sel], round)) return;
+  passingTurn = true; bossActing = true; lockArena(true);
+  ftTurn(NO_ACTION); showBossTurn(NO_ACTION);
+  await new Promise((done) => setTimeout(done, PACE.afterHit));
+  let r; try { r = await apiPost('/api/hunt/pass', {}); } catch { r = null; }
+  if (!r || !r.ok || !r.boss_action) {
+    passFailRound = round; passingTurn = false; bossActing = false; lockArena(false); ftTurn();
+    if (r?.error === 'squad_down' || r?.error === 'hunt_over' || r?.error === 'no active hunt') refreshHuntState();
+    return;
+  }
+  showBossTurn();
+  setTimeout(() => resolveBossTurn(r.boss_action), 320);
+  setTimeout(() => { passingTurn = false; bossActing = false; lockArena(false); ftTurn(); refreshHuntState(); }, PACE.bossHold);
+}
+
 // A brief "Boss's turn" banner — the player learns the boss is acting, never what is coming.
-function showBossTurn() {
+function showBossTurn(text) {
   const arena = document.querySelector('.hunt-arena') || document.querySelector('.main-body.hunt');
   if (!arena) return;
   const b = document.createElement('div');
   b.className = 'boss-turn-banner';
-  b.textContent = "⚔ Boss's Turn";
+  b.textContent = text || "⚔ Boss's Turn";
   arena.appendChild(b);
   setTimeout(() => b.remove(), 1250);
 }
