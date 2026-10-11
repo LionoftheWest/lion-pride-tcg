@@ -52,6 +52,22 @@ test('shop: an answer past next_at is not served', async () => {
   assert.equal(n(h.calls, 'shop_today'), 2);
 });
 
+const dvl = { dungeon_view_lite: () => ({ data: { ok: true, next_at: new Date(9e12).toISOString(), run: null } }), dungeon_view: () => ({ data: { ok: true, next_at: new Date(9e12).toISOString(), mine: [{ id: 1 }], run: null } }) };
+test('dungeon: ?lite=1 reads dungeon_view_lite (no mine), has its own cache entry and a write drops both', async () => {
+  const h = harness(registerDungeonRoutes, {}, { ...dvl, dungeon_start: () => ({ data: { ok: true } }) });
+  const a = await h.run('GET /api/dungeon', { query: { lite: '1' } }); await h.run('GET /api/dungeon', { query: { lite: '1' } });
+  assert.equal(n(h.calls, 'dungeon_view_lite'), 1); assert.equal(n(h.calls, 'dungeon_view'), 0); assert.equal(a.json.mine, undefined);
+  const b = await h.run('GET /api/dungeon'); assert.equal(n(h.calls, 'dungeon_view'), 1); assert.ok(b.json.mine);
+  await h.run('POST /api/dungeon/start', { body: { cards: [1, 2, 3, 4, 5] } });
+  await h.run('GET /api/dungeon', { query: { lite: '1' } }); await h.run('GET /api/dungeon');
+  assert.equal(n(h.calls, 'dungeon_view_lite'), 2); assert.equal(n(h.calls, 'dungeon_view'), 2);
+});
+test('dungeon: ?lite=1 falls back to dungeon_view while the migration is not live', async () => {
+  const h = harness(registerDungeonRoutes, {}, { dungeon_view_lite: () => ({ error: { code: 'PGRST202', message: 'no function' } }), dungeon_view: () => ({ data: { ok: true, mine: [] } }) });
+  const a = await h.run('GET /api/dungeon', { query: { lite: '1' } });
+  assert.equal(a.status, 200); assert.deepEqual(a.json.mine, []);
+});
+
 const dv = { dungeon_view: () => ({ data: { ok: true, next_at: new Date(9e12).toISOString(), mine: [{ id: 1 }], run: null } }), gauntlet_view: () => ({ data: { ok: true, ends_at: new Date(9e12).toISOString(), squad: [] } }) };
 test('dungeon: Home and the lobby share one view for 15 s; every write drops it', async () => {
   const h = harness(registerDungeonRoutes, {}, { ...dv, dungeon_start: () => ({ data: { ok: true } }) });

@@ -32,7 +32,7 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
   // on every Home visit and every Dungeon open. One answer per member for 15 s; every write of the member drops it (the answer
   // of the write itself carries the new state), so a member always sees the result of their own action.
   const views = userCache ? userCache({ ttl: 15000, valid: viewValid }) : null;
-  const dropViews = (me) => { views?.bust(`d:${me.id}`); views?.bust(`g:${me.id}`); };
+  const dropViews = (me) => { for (const k of ['d', 'dl', 'g']) views?.bust(`${k}:${me.id}`); };
   const gate = async (req, res, write = false) => {
     const me = await caller(req);
     if (!me) { res.status(401).json({ error: 'not authenticated' }); return null; }
@@ -74,7 +74,9 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
   // One cached view: { status, body } of the answer (an error answer is cached too, for the same 15 s).
   const cachedView = async (res, key, fn, args) => {
     const load = async () => {
-      const { data, error } = await supabase.rpc(fn, args);
+      let { data, error } = await supabase.rpc(fn, args);
+      // The lite view (perf_dungeon_view.sql) is not live yet (code before the migration): the full view, whose answer has the same keys plus 'mine'.
+      if (error?.code === 'PGRST202' && fn === 'dungeon_view_lite') ({ data, error } = await supabase.rpc('dungeon_view', args));
       if (error) return { status: 500, body: { error: error.message } };
       if (!data?.ok) return { status: 400, body: { ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' } };
       return { status: 200, body: await withCards(data) };
@@ -84,7 +86,9 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
   };
   app.get('/api/dungeon', async (req, res) => {
     const me = await gate(req, res); if (!me) return;
-    await cachedView(res, `d:${me.id}`, 'dungeon_view', { p_player: String(me.id) });
+    // ?lite=1: the Home slide (no collection, 3 ms instead of 13 ms on the local copy; the lobby and the squad pick read the full view).
+    const lite = !!req.query?.lite;
+    await cachedView(res, `${lite ? 'dl' : 'd'}:${me.id}`, lite ? 'dungeon_view_lite' : 'dungeon_view', { p_player: String(me.id) });
   });
   app.get('/api/dungeon/board', async (req, res) => {
     const me = await gate(req, res); if (!me) return;

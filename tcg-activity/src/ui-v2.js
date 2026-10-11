@@ -1184,7 +1184,7 @@ export async function renderHomeV2() {
     ctx.features().hunt ? ctx.api('/api/hunt?light=1').catch(() => null) : Promise.resolve(null),   // the boss only: Home reads no roster
     loadMyProfile(true),
     ensureCatalog(),
-    modes ? ctx.api('/api/dungeon').catch(() => null) : Promise.resolve(null),
+    modes ? ctx.api('/api/dungeon?lite=1').catch(() => null) : Promise.resolve(null),   // the slide reads no collection
     modes ? ctx.api('/api/gauntlet').catch(() => null) : Promise.resolve(null),
   ]);
   if (ctx.currentView() !== 'home') return;
