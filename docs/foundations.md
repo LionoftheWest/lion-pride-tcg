@@ -99,6 +99,22 @@ theme, audience, rewards, and a library of saved events to schedule again.
    - Previous and next month buttons and a "Today" button. A week view is optional.
    - Drag moves an event. Drag of the edge changes its length.
 
+10. **The player side (Nathan, 2026-10-11).**
+    - **Menu grid (UI-60):** the Events tile, already in the approved menu design, opens the
+      Events page.
+    - **Events page (UI-62):** a calendar view of the month for players, with every
+      scheduled and live event (Hunts, modifiers, Community Week). A tap on an event shows its
+      theme, its time, and what it changes in plain words (for example "2x rare pull rate").
+      UI-62 is approved as "Patch notes and upcoming events, content source to decide". The
+      content source is now the event calendar. The calendar is a new layout, so UI-62
+      needs a design in the design repo and Nathan's approval before the build.
+    - **Home carousel (UI-05):** each live event gets the Events slide as a shortcut, with its
+      theme (name, art, color). This lifts D-51 ("hidden until the events and daily content
+      exists") when the first player-facing event is live.
+    - **Data:** one read-only server route for players, `/api/events`. It returns only
+      scheduled and live events that are not drafts, with the theme and a plain-word list of
+      the variables. No admin fields.
+
 ### Acceptance tests (local copy)
 
 1. No event live: each `game_var` equals its `balance` value.
@@ -122,6 +138,8 @@ theme, audience, rewards, and a library of saved events to schedule again.
 3. SQL: runs each day for the Dungeon and the Gauntlet.
 4. Bot: pull odds and earned packs read `game_var`. `/packrate` becomes a `modifier` event.
 5. Admin: the month calendar, the detail panel, and the event library.
+5a. Player side: `/api/events`, then the UI-62 Events page and the UI-05 Events slide
+    (each after its design is approved, one UI PR each).
 6. More variables for each system (trading, pranks and boons, recruitment), one PR each.
 
 ---
