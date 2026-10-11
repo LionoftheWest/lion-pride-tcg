@@ -963,9 +963,16 @@ async function act(kind, body) {
   const main = document.getElementById('main');
   mark('tap');
   dg.busy = true; fightUpdate(main, run().state);
+  // Instant feedback (under 100 ms): the tapped card lifts at once while the request runs. The server stays the only source of the
+  // result: nothing is counted here. The answer plays the real result; an error takes the lift back and shows the reason.
+  const striker = main.querySelector(kind === 'attack' ? `.dg-unit[data-card="${body.cardId}"]` : `.dg-sup[data-sup="${body.cardId}"]`);
+  striker?.classList.add('striking'); mark('motion');
+  requestAnimationFrame(() => requestAnimationFrame(() => mark('painted')));   // the measurement: the lift is on the screen
+  if (!dg.auto) ctx().sfx?.('click');
   let r = null;
   try { r = await ctx().apiPost(`/api/dungeon/${kind}`, { ...body, mode: dg.mode }); } catch (e) { r = e?.body || null; }
   mark('answer');
+  striker?.classList.remove('striking');
   if (!r?.ok) { dg.busy = false; fightUpdate(main, run().state); toast(r?.message || 'That did not work.'); return false; }
   const M = mine();
   const before = clone(run().state);
@@ -976,7 +983,6 @@ async function act(kind, body) {
     const t = r.target ?? body.target;
     const f = foes[t];
     // Item 13: the card's element effect from the Raid flies to the monster, then the hit lands.
-    mark('motion');
     if (dg.stage?.cast) { const elx = cardElement(M.get(Number(body.cardId))?.tags) || 'physical'; snd(elx, 0.6); dg.stage.cast(t, elx); await sleep(dg.auto ? 300 : 480); }
     ctx().sfx?.(r.damage > 0 ? 'hit' : 'click');
     dg.stage?.play(t, r.kill ? 'death' : 'hit');
@@ -1024,7 +1030,6 @@ async function act(kind, body) {
     dg.acting = null;
     if (r.burned > 0) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
   } else {
-    mark('motion');
     ctx().sfx?.('click');
     const tx = body.targetCard ? nm(body.targetCard) : foes[body.targetFoe]?.name || 'Monster';
     dg.log.push({ kind: 'sup', who: nm(body.cardId), to: tx, txt: esc(r.effect || '') });

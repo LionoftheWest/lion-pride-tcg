@@ -111,10 +111,30 @@ try {
       await page.waitForFunction(() => performance.getEntriesByName('dg:answer').length > 0, null, { timeout: 30000 });
       await sleep(200);
       const m = await marks(page);
-      if (m.tap != null && m.motion != null && m.answer != null) rows.push({ motion: m.motion - m.tap, answer: m.answer - m.tap });
+      if (m.tap != null && m.motion != null && m.answer != null) rows.push({ motion: m.motion - m.tap, painted: m.painted != null ? m.painted - m.tap : null, answer: m.answer - m.tap });
       await page.waitForFunction(() => document.querySelector('.dg-fight:not(.busy)') || !document.querySelector('.dg-fight'), null, { timeout: 30000 });
     }
-    log({ taps: rows.length, tap_to_motion_ms: rows.map((r) => r.motion), tap_to_answer_ms: rows.map((r) => r.answer), median_motion: med(rows.map((r) => r.motion)), median_answer: med(rows.map((r) => r.answer)) });
+    log({ taps: rows.length, tap_to_motion_ms: rows.map((r) => r.motion), tap_to_painted_ms: rows.map((r) => r.painted), tap_to_answer_ms: rows.map((r) => r.answer), median_motion: med(rows.map((r) => r.motion)), median_painted: med(rows.map((r) => r.painted).filter((x) => x != null)), median_answer: med(rows.map((r) => r.answer)) });
+  } else if (scenario === 'err') {
+    // The server refuses an attack: the lift must go, the reason must show; a double tap must send ONE request.
+    await startRun();
+    const { page } = await newPage();
+    await openAdventure(page);
+    await page.waitForSelector('.dg-fight .dg-unit', { timeout: 30000 });
+    await page.waitForFunction(() => performance.getEntriesByName('dg:room:ready').length > 0, null, { timeout: 30000 });
+    await sleep(600);
+    let posts = 0;
+    await page.route('**/api/dungeon/attack', async (route) => { posts++; await sleep(400); await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'stunned', message: 'That card is stunned for a round.' }) }); });
+    const unit = await page.$('.dg-fight .dg-unit:not(.down)');
+    await unit.click({ force: true }); await unit.click({ force: true }); await unit.click({ force: true });
+    await sleep(120);
+    const during = await page.$eval('.dg-unit.striking', () => true).catch(() => false);
+    await page.screenshot({ path: join(process.env.TEMP || tmpdir(), 'fr', `lift-${W}x${H}.png`) });
+    await sleep(900);
+    const after = await page.$eval('.dg-unit.striking', () => true).catch(() => false);
+    const toast = await page.evaluate(() => [...document.querySelectorAll('.toast, #toast, [class*="toast"]')].map((e) => e.textContent.trim()).filter(Boolean).join(' | '));
+    const busy = await page.$eval('.dg-fight', (f) => f.classList.contains('busy'));
+    log({ lift_during_request: during, lift_after_error: after, toast, fight_busy_after: busy, posts_for_3_taps: posts });
   } else if (scenario === 'room') {
     // The member opens the lobby, waits, picks the squad and starts: from the Start tap to the monsters standing in the room.
     await sql(`delete from dungeon_runs where player_id = '${PLAYER}' and day = dungeon_day()`);
