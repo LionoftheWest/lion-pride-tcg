@@ -34,7 +34,7 @@ Build these first. Each one is done only when Nathan can do its test himself.
 
 | # | Foundation | Success test |
 |---|---|---|
-| F-1 | Event calendar | Nathan has an idea, opens the admin page, creates a new event, selects the variables that it brings (for example 2x pull rates, 2x dungeon runs), and schedules it one time or as a repeat. Time, variables and theme are each changeable, also on a live event. The calendar also controls Hunt, Dungeon and Gauntlet. |
+| F-1 | Event calendar | Nathan has an idea, opens the admin page, creates a new event, selects the variables that it brings (for example 2x pull rates, 2x dungeon runs), and schedules it one time or as a repeat. Time, variables and theme are each changeable, also on a live event. The calendar also controls Hunt, Dungeon and Gauntlet. Every value that is fixed in code today becomes a variable that an event can change (for example, a "Boss Rush" week with several raid bosses in one week, or 2 Dungeon runs each day). |
 | F-2 | Card sets | Nathan makes a new set easily, adds cards to that set, and sets up its pack art, all in the Card Portal. |
 | F-3 | Combat in one place | Every combat number and rule is in one place, so that balance and tweaks are easy as abilities, cards and synergies are added. The same place finds bugs, loopholes and infinite loops. |
 
