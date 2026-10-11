@@ -69,7 +69,7 @@ export async function openNotifsV2() {
     window.addEventListener('resize', bellResize);
   }
   box.innerHTML = '<div class="v2-loading">Loading…</div>';
-  const [n, h] = await Promise.all([api('/api/notifications').catch(() => ({ items: [] })), ctx().features().hunt ? api('/api/hunt').catch(() => null) : null]);
+  const [n, h] = await Promise.all([api('/api/notifications').catch(() => ({ items: [] })), ctx().features().hunt ? api('/api/hunt?light=1').catch(() => null) : null]);
   noteItems = n.items || [];
   noteGifts = n.gifts || [];
   noteHunt = h && h.hunt ? h.hunt : null;

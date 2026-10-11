@@ -23,7 +23,7 @@ import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHo
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop, repaintShards } from './ui-v2-shop.js';
-import { initDungeon, renderDungeonV2, disposeDungeon, advTabs } from './ui-v2-dungeon.js';
+import { initDungeon, renderDungeonV2, disposeDungeon, advTabs, dg } from './ui-v2-dungeon.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { initSubtabs } from './subtabs.js';
 import { initTutorial } from './ui-v2-tutorial.js';
@@ -348,7 +348,7 @@ async function main() {
   refreshTradeBadge();
   every(45000, refreshTradeBadge); // show a badge when a trade offer arrives
   // The trade screen open: every 8 s, so an answered offer leaves the list at once.
-  every(8000, () => { if (currentView === 'trading') refreshTradeBadge(); });
+  every(15000, () => { if (currentView === 'trading') refreshTradeBadge(); });
   initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], statsOn: () => !!cache.collection?.stats?.on, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   let flags = null;
   // 3 tries. If all 3 fail, the session still gets the v2 UI, with every other flag off.
@@ -457,7 +457,7 @@ function startV2() {
   }).catch(() => {});
   every(30000, () => { if (currentView === 'home') homeTick(); });
   // The red dot on the Hunt button while a boss is live.
-  const huntDot = () => { if (!features.hunt) return; api('/api/hunt').then((d) => {
+  const huntDot = () => { if (!features.hunt) return; api('/api/hunt?light=1').then((d) => {
     document.querySelector('#dock .dk[data-view="battling"]')?.classList.toggle('live', !!(d?.hunt && d.hunt.status !== 'defeated'));
   }).catch(() => {}); };
   huntDot();
@@ -473,6 +473,12 @@ function sendStatus(kind, d) {
   if (kind && (kind !== myStatus || d !== undefined)) myDetail = d || null;
   myStatus = kind || myStatus;
   if (roomWs && roomWs.readyState === 1) { try { roomWs.send(JSON.stringify({ type: 'status', kind: myStatus, d: myDetail })); } catch { /* dropped */ } }
+}
+// The status of a view. The Dungeon and Gauntlet views report as 'hunt' with s = the mode: the bot's "is playing" picture
+// shows the run (tcg-bot dungeon-card.ts). Leaving them clears that detail (the same kind keeps its detail otherwise).
+const inRunView = () => myDetail?.s === 'dungeon' || myDetail?.s === 'gauntlet';
+function sendViewStatus(view) {
+  sendStatus(VIEW_STATUS[view], view === 'dungeon' ? { s: dg.mode === 'gauntlet' ? 'gauntlet' : 'dungeon' } : (inRunView() ? null : undefined));
 }
 const VIEW_STATUS = { home: 'home', collection: 'collection', battling: 'hunt', trading: 'trading', leaderboard: 'home', shop: 'home', dungeon: 'hunt' };
 
@@ -638,7 +644,7 @@ async function show(view) {
   if (view !== 'dungeon') disposeDungeon(); // the 3D room stage
   document.querySelectorAll('#dock .dk').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.body.dataset.view = view;
-  sendStatus(VIEW_STATUS[view]);
+  sendViewStatus(view);
   if (DATA[view] && !cache[DATA[view].key]) {
     el('main').innerHTML = '<div class="loading">Loading…</div>';
     let d;
@@ -718,7 +724,7 @@ function renderMain(view) {
 
 const openDeps = () => ({
   el, esc, SFX, RARITY_LABEL, cardBack: () => cardBack, openViewer,
-  onClose: () => { if (uiV3) { releaseClips(); multiRun = null; } sendStatus(VIEW_STATUS[currentView]); releaseFeed(); refreshOwned(); refreshPackStatus(); show(currentView); },
+  onClose: () => { if (uiV3) { releaseClips(); multiRun = null; } sendViewStatus(currentView); releaseFeed(); refreshOwned(); refreshPackStatus(); show(currentView); },
 });
 async function openPacks(count, set) {
   const n = [1, 5, 10].includes(count) ? count : 1; // a click handler passes an event
@@ -1260,7 +1266,7 @@ function rareBanner(text) {
 
 function endReveal() {
   if (uiV3) releaseClips();
-  sendStatus(VIEW_STATUS[currentView]);
+  sendViewStatus(currentView);
   releaseFeed();
   clearTimeout(revealTimer);
   const stage = el('stage');

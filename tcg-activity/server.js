@@ -36,6 +36,7 @@ import { registerShopRoutes } from './src/shop-routes.js';
 import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
 import { dailyExtras } from './src/dailies-pay.js';
+import { makeTtlCache } from './src/ttl-cache.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
@@ -118,6 +119,7 @@ async function forwardActivity(me, st) {
   const d = st?.d || {};
   let act = { kind: 'idle' };
   if (st?.kind === 'opening') act = { kind: 'opening', cards: d.c || [] };
+  else if (st?.kind === 'hunt' && (d.s === 'dungeon' || d.s === 'gauntlet')) act = { kind: d.s }; // the Dungeon and Gauntlet views report as 'hunt' with s = the mode
   else if (st?.kind === 'battle' || st?.kind === 'hunt') {
     const h = await activeHunt().catch(() => null);
     const key = h ? bossModelFor(h.name) : null;
@@ -128,6 +130,16 @@ async function forwardActivity(me, st) {
   if (lastActivity.get(me.id) === k) return;
   lastActivity.set(me.id, k);
   notifyPlaying(me, 'update', act);
+}
+// The Dungeon / Gauntlet picture (tcg-bot dungeon-card.ts): a run action refreshes the activity (the bot drops an
+// activity older than 3 minutes) and asks for an update. The bot reads the real floor from the database, edits the
+// post in place, at most once a minute (the same limit as the boss picture). Here: at most one call per member per 20 s.
+const lastDungeonPing = new Map(); // member id -> ms
+function dungeonPing(me, mode) {
+  const now = Date.now();
+  if (now - (lastDungeonPing.get(me.id) || 0) < 20_000) return;
+  lastDungeonPing.set(me.id, now);
+  notifyPlaying(me, 'update', { kind: mode === 'gauntlet' ? 'gauntlet' : 'dungeon' });
 }
 // A bot Card -> the browser shape, with the art routed through the /cdn proxy.
 const cardForClient = (c) => ({
@@ -532,7 +544,18 @@ const PACK_STATUS_TTL = 8000;
 // The tiered achievements of a member (achievement_view, achievement_tracks.sql), 15 s. A pack, a
 // trade or an ascend changes a track, so bustUser clears it too.
 const achViewCache = new Map(); // userId -> { at, view }
-function bustUser(userId) { collCache.delete(userId); ownedCache.delete(userId); packStatusCache.delete(userId); achViewCache.delete(String(userId)); }
+// Per-member caches of the heavier reads (src/ttl-cache.js). userCache() makes one that bustUser clears with the others.
+const memberCaches = [];
+function userCache(opts) { const c = makeTtlCache(opts); memberCaches.push(c); return c; }
+function bustUser(userId) { collCache.delete(userId); ownedCache.delete(userId); packStatusCache.delete(userId); achViewCache.delete(String(userId)); for (const c of memberCaches) c.bust(String(userId)); }
+// card_powers(member) is the heaviest read (172 ms live): the power, HP and combat numbers of every copy. It changes only when the
+// member's cards, stars or stat points change (all of which call bustUser), so 10 s is safe. Used by the collection, the Hunt and the auto-pick.
+const powersCache = userCache({ ttl: 10000 });
+const cardPowersFor = (id) => powersCache.get(String(id), async () => {
+  const r = await supabase.rpc('card_powers', { p_player: String(id) });
+  if (r.error) throw new Error(r.error.message);
+  return r.data || {};
+});
 
 // The card-effect columns exist only after card_effects.sql (see effects.js flags).
 const EFFECT_COLS = EFFECTS_SCHEMA ? ', id, effect' : '';
@@ -553,7 +576,7 @@ app.get('/api/collection', async (req, res) => {
     .from('player_cards')
     .select(`quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, ${SET_COLS}, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS}))`)
     .eq('player_id', me.id),
-  supabase.rpc('card_powers', { p_player: String(me.id) })]); // power + HP of each copy (SQL: the one CP source)
+  cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e }))]); // power + HP of each copy (SQL: the one CP source)
   if (error || pw.error) return res.status(500).json({ error: (error || pw.error).message });
   const powers = pw.data || {};
   // Can ascend = the FREE copies (a copy in a trade offer, an auction or a bid is held) cover the cost
@@ -825,6 +848,9 @@ app.get('/api/hunt', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!FEATURE_HUNT) return res.json({ hunt: null });
   const hunt = await activeHunt();
+  // ?light=1: the boss only (Home, the small window, the bell, the Hunt dot). No roster, so no card_powers, hunt_view,
+  // hunt_squads or adventure_gate: those four cost ~250 ms of database time for an answer that these screens never read.
+  if (hunt && req.query.light) return res.json({ hunt });
   if (!hunt) {
     // Cooldown: no active boss. Return the next spawn time + the last boss outcome.
     const [{ data: nextSpawnAt }, { data: last }] = await Promise.all([
@@ -850,7 +876,7 @@ app.get('/api/hunt', async (req, res) => {
   let cards, hpRows, myDamage, round, statCards = null;
   const [{ data: view, error: viewErr }, pw] = await Promise.all([
     supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today }),
-    supabase.rpc('card_powers', { p_player: String(me.id) }), // combat power + HP of each copy (SQL card_combat)
+    cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })), // combat power + HP of each copy (SQL card_combat)
   ]);
   if (pw.error) return res.status(500).json({ error: pw.error.message });
   const powers = pw.data || {};
@@ -983,7 +1009,7 @@ app.get('/api/hunt/autopick', async (req, res) => {
       .select('ascension, card:cards(id, rarity, season, subject:subjects(type, cp_mod, tag_slugs, ability))')
       .eq('player_id', me.id),
     supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: mtToday() }),
-    supabase.rpc('card_powers', { p_player: String(me.id) }),
+    cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })),
   ]);
   if (pw.error) return res.status(500).json({ error: pw.error.message });
   const powers = pw.data || {};
@@ -1404,6 +1430,12 @@ const CATALOG_TTL = 60 * 1000;
 async function getCatalogBase() {
   const now = Date.now();
   if (catalogCache && now - catalogCache.at < CATALOG_TTL) return catalogCache.cards;
+  // Stale while revalidate: once the catalog exists, an expired copy is served at once and refreshed behind the request
+  // (the refresh read 350 cards + card_powers and made every request wait, 5-7 s under load). A failed refresh keeps the copy.
+  if (catalogCache) { if (!catalogInflight) refreshCatalogBase().catch(() => {}); return catalogCache.cards; }
+  return refreshCatalogBase();
+}
+function refreshCatalogBase() {
   if (catalogInflight) return catalogInflight; // a refresh is already running — join it
   catalogInflight = (async () => {
     // Every card (selectAll: a plain read stops at 1,000 rows).
@@ -1792,8 +1824,8 @@ async function caller(req) {
 registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg, getBalance });
 registerReportRoutes(app, { supabase, caller, rateLimit, targets: appLogs.on }); // targets: player_reports.target_id (logs_app.sql)
 registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn: hallPostsOn });
-registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn });
-registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn });
+registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn, userCache });
+registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache });
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.
