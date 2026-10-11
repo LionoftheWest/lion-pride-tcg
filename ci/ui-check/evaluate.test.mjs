@@ -82,8 +82,24 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('boons-onyou', '#u3BoonsSheet > .u3-sheet'), 'UI-27');
   assert.equal(ownerOf('boons-hist', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');
   assert.equal(ownerOf('boons-picker', '#u3Picker > .u3-scrim > .u3-pk--boons'), 'UI-27');
+  assert.equal(ownerOf('fx-confirm', '#u3FxWin > .u3-scrim > .u3-fxw'), 'UI-28');
+  assert.equal(ownerOf('fx-owner', '#u3FxNote > .u3-scrim > .u3-fxn'), 'UI-28');
+  assert.equal(ownerOf('fx-banners', '#u3FxBanners > .u3-banner.u3-fxb'), 'UI-28');
+  assert.equal(ownerOf('fx-played', 'body > #u3FxToast > .u3-toast'), 'UI-28');
+  assert.equal(ownerOf('fx-confirm', '#u3Picker > .u3-scrim > .u3-pk--boons'), 'UI-27', 'the Card picker under the window is the Boons form');
+  assert.equal(ownerOf('fx-profile-prank', '#u3Picker > .u3-scrim > .u3-pk'), 'UI-27');
   assert.equal(ownerOf('hunt-picker', '#u3Picker > .u3-scrim > .u3-pk'), 'UI-64');
   assert.equal(ownerOf('help', '#v2Help.u3-hp > .u3-hp__list > .u3-hp__item'), 'UI-38');
+  assert.equal(ownerOf('collection-viewer', 'body > #viewer > #viewer-close.u3-ibtn'), 'UI-09');
+  assert.equal(ownerOf('collection-viewer', 'body > #viewer > .viewer-nav.next'), 'UI-09');
+  assert.equal(ownerOf('collection-detail', 'text:Smash Bros'), 'UI-07');   // the Collection behind the window owns what is not in it
+  assert.equal(ownerOf('collection-detail', '.v2-collection > .v2-side.filters > .side-h "Rarity"'), 'UI-07');
+  assert.equal(ownerOf('ascend-celebration', 'text:Pokemon'), 'UI-07');
+  assert.equal(ownerOf('collection-detail', '#u3DetWin.u3-det > .u3-det__main > .u3-det__acts > #pConvert'), 'UI-08');
+  assert.equal(ownerOf('collection-detail-points', '#pPts.u3-det__pts.is-open > .u3-det__ptshead'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', 'body > #viewer > #viewer-close'), 'UI-08');
+  assert.equal(ownerOf('ascend-error', '#colPanel > .p-actions > #pAscFail'), 'UI-10');
+  assert.equal(ownerOf('stat-points-error', '#pPts > #ptsFail.u3-fail'), 'UI-10');
   assert.equal(ownerOf('dungeon-over', '.u3-dgs-fdp > .u3-dgs-stats > .u3-dgs-stat'), 'UI-50');
   assert.equal(ownerOf('dungeon-floor', '.u3-dgs-fdp > .u3-dgs-stats > .u3-dgs-stat'), 'UI-49');
   assert.equal(ownerOf('dungeon-fight', '.dg-fight > .dg-arena > .dg-plates'), 'UI-47');
@@ -98,6 +114,12 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('trades-offer', '.u3-pd-view > .u3-pd-view__foot > .u3-btn'), 'UI-25');   // the Offer view
   assert.equal(ownerOf('trades-few', '.u3-mp > .u3-mp__body > .u3-mp-sec'), 'UI-65');   // the picker stays UI-65
   assert.equal(ownerOf('home-board', '#homeHero > .u3-hm-board > .u3-hm-brl'), 'UI-04');   // the Top 3 board
+  assert.equal(ownerOf('home-dungeon', '#homeHero > .u3-hm-car > .u3-hm-ctl'), 'UI-05');   // UI-05: the carousel control
+  assert.equal(ownerOf('home-dungeon-top', '.u3-hm-sb > .u3-hm-sinfo > .u3-hm-sboard'), 'UI-05');   // the Dungeon slide Top 3 (not the UI-04 board classes)
+  assert.equal(ownerOf('home-gauntlet', '.u3-hm-slide > .u3-hm-sb > .u3-hm-sart'), 'UI-05');
+  assert.equal(ownerOf('home-voice-all', '#u3VoiceWin > .u3-scrim > .u3-sheet'), 'UI-06');   // UI-06: the Live in voice window
+  assert.equal(ownerOf('home-voice-all', '#homeVoice > .u3-hm-vrow > .u3-hm-more'), 'UI-06');   // its "+N" button
+  assert.equal(ownerOf('home-dungeon', '#homeVoice > .u3-hm-vrow > .u3-hm-cell'), 'UI-03');   // the rest of Home stays UI-03
   assert.equal(ownerOf('home-board', '#homeHero.u3-hm-tile.hero > .u3-hm-info'), 'UI-03');   // the rest of the hero is Home's
   assert.equal(ownerOf('wishlist', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl-row'), 'UI-16');
   assert.equal(ownerOf('wishlist-drawer', '#u3Wish > .u3-wl-scrim > .u3-wl > .u3-wl__list > .u3-wl-row'), 'UI-16');
@@ -148,7 +170,7 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('collection', '.u3-col__bar > .u3-search.u3-col__search > #colSearch.u3-search__input'), 'UI-07');
   assert.equal(ownerOf('achievements', '.v2-collection.ach-mode > .m-colbar > #colSearch.v2-search'), 'UI-12');   // the v2 id is not UI-07
   assert.equal(ownerOf('collection', '.u3-fpanel__foot > button'), 'UI-07');
-  assert.equal(ownerOf('collection-detail', '#main > .v2-cell'), 'UI-08');
+  assert.equal(ownerOf('collection-detail', '#main > .u3-col > .u3-ctile'), 'UI-07');
   assert.equal(ownerOf('dungeon-path', '#main > .u3-dgs > .u3-dgc-panel'), 'UI-49');   // the room steps (UI-49)
   assert.equal(ownerOf('dungeon-floor', '#main > .u3-dgs-fd > .u3-dgs-fdp'), 'UI-49');
   assert.equal(ownerOf('dungeon-rest', '#main > .u3-dgc > .u3-dgc-hud'), 'UI-49');   // the stage parts shared with UI-48 belong to the screen under test
@@ -252,6 +274,9 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
   const mine = list.filter((e) => e.id === 'UI-49');
   assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+  const pts = list.filter((e) => e.id === 'UI-08');   // D-171: the open stat points editor on a phone sheet
+  assert.equal(pts.length, 6);   // the enforced phone sizes (375x667 is report-only, D-136)
+  assert.ok(pts.every((e) => e.decision === 'D-171' && e.rule === 'missing' && ['collection-detail-points', 'stat-points-error'].includes(e.screen) && ['412x915', '430x822', '430x932'].includes(e.size) && /stat-points-open/.test(e.why)));
   const fight = list.filter((e) => e.id === 'UI-47');   // D-155: the phone controls of the fight
   assert.ok(fight.length > 0 && fight.every((e) => e.decision === 'D-155' && e.rule === 'missing' && /^dungeon-fight/.test(e.screen) && ['430x932', '430x822', '412x915'].includes(e.size)));
 });

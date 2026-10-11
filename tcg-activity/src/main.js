@@ -17,7 +17,7 @@ import { setFlair, flairHTML } from './flair.js';
 import { modelFor } from './boss-models.js';
 import { elIcon } from './element-icons.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
-import { initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable, badgeOf } from './effects-ui.js';
+import { releaseEffects, initEffects, fillViewerEffect, nameBadge, playOnMember, effectsEnabled, packPrank, runPackPrank, breakable, badgeOf } from './effects-ui.js';
 import { openChooser, showMultiReveal } from './ui-v2-open.js';
 import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHomeV2, paintVoice, paintPulls, homeTick, openMember, refreshCollectionBadge, avatarHTML, toast } from './ui-v2.js';
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
@@ -33,6 +33,7 @@ import { createLoader, paintLoader, writeHint } from './ui3/loader.js';
 import { startShell } from './ui3/shell.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import { fitViewer, watchViewerFit } from './ui3/viewer-fit.js';
+import { styleViewerButtons, spendClasses } from './ui3/viewer.js';
 import { fmtFor } from './ui3/number.js';
 import { TOKENS } from './tokens.js';
 import { icon as ui3Icon } from './ui3/icons.js';
@@ -366,6 +367,7 @@ async function main() {
   uiV3 = !!flags?.uiV3;
   if (flags?.uiV3 !== undefined) writeHint(localStorage, uiV3); // UI-56: the next start draws the v3 loader. No answer (3 failed tries) keeps the old hint.
   if (uiV3) startV3();
+  releaseEffects();   // the incoming banners of the effects (v2 or v3 kind, UI-28)
   // A new member's first login gave them the welcome packs: show them now.
   if (flags.welcomed) { refreshPackStatus(); refreshNotifBadge(); }
   startV2();
@@ -3136,6 +3138,7 @@ function openViewer(card, opts = {}) {
   // v3: the viewer opens above the window that asked for it (the Card picker, the boss window): same layer, last in
   // the page (Nathan 2026-10-08: the card details opened under the squad picker)
   if (document.body.classList.contains('ui-v3') && el('viewer') && el('viewer') !== document.body.lastElementChild) document.body.appendChild(el('viewer'));
+  if (document.body.classList.contains('ui-v3')) styleViewerButtons(el('viewer'));   // UI-09: the library IconButton look (src/ui3/viewer.js)
   const list = Array.isArray(opts.list) ? opts.list : [];
   const i = list.findIndex((x) => String(x.id) === String(card.id));
   viewerNav = list.length > 1 && i >= 0 ? { list, i, opts } : null;
@@ -3344,7 +3347,7 @@ function playAscend(tier) {
   card.classList.remove('asc-pop'); void card.offsetWidth; card.classList.add('asc-pop');
   const fx = document.createElement('div');
   fx.className = 'asc-fx';
-  fx.innerHTML = `<div class="asc-flash"></div><div class="asc-ring"></div><div class="asc-ring d2"></div><div class="asc-label">${'★'.repeat(tier)} ${info.name}</div>`;
+  fx.innerHTML = `<div class="asc-flash"></div><div class="asc-ring"></div><div class="asc-ring d2"></div><div class="asc-label">${document.body.classList.contains('ui-v3') ? `★${tier}` : `${'★'.repeat(tier)} ${info.name}`}</div>`;   // D-157: v3 shows the star level, not a tier name
   stage.appendChild(fx);
   const r = stage.getBoundingClientRect();
   const cx = r.width / 2, cy = r.height / 2;
@@ -3378,7 +3381,7 @@ function celebrateAscend(before, after, points) {
     setTimeout(() => {
       if (el('viewer').classList.contains('hidden')) return;
       const b = document.createElement('button');
-      b.className = 'v2-btn gold asc-spend';
+      b.className = document.body.classList.contains('ui-v3') ? spendClasses : 'v2-btn gold asc-spend';   // UI-10: the primary Button in v3
       b.textContent = 'Spend points';
       b.addEventListener('click', closeViewer);
       el('viewer').appendChild(b);

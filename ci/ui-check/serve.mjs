@@ -101,6 +101,17 @@ function derivedRoom(body, kind) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedRoom(body, c.ci_dungeon) });
 
+// UI-10: the Collection with every owned card ready to ascend (ascend) or with 2 free stat points (points) (cookie ci_col=ascend | points). The write calls answer 403,
+// so an Ascend or a Save shows the real error path. The recording has no card with stat points.
+function derivedCol(body, kind) {
+  const hp = (c) => Math.round((c.power || 0) * 3);
+  return { ...body, cards: body.cards.map((c) => {
+    if (!(c.quantity > 0)) return c;
+    if (kind.startsWith('ascend')) return { ...c, quantity: Math.max(c.quantity, 3), can_ascend: c.next_cost != null };
+    return { ...c, stat: { cp: c.power || 0, hp: hp(c), crit: 0, free: 2, points: {} } };   // 'points'
+  }) };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/collection' && ['ascend', 'ascend-ok', 'points'].includes(c.ci_col) && body?.cards, make: (body, c) => derivedCol(body, c.ci_col) });
 // UI-52: the Gauntlet after a run (cookie ci_dungeon = g-over): the run is over (the squad fell on floor 4), as in the approved frame:
 // 4F Room 1, week best 4F R1, rank #1, 62 turns, the next run in 10:27:13. The prizes come from the recorded lobby answer.
 function derivedGauntletOver(body) {
@@ -108,6 +119,11 @@ function derivedGauntletOver(body) {
   return { ...body, next_at: next, best: { floor: 4, room: 1, rank: 1, runs: 1 }, run: { id: 1, status: 'over', ended_by: 'fell', floor: 4, room: 1, turns: 62, rank: 1, squad: (body.squad || []).map((c) => c.id), state: {} } };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/gauntlet' && c.ci_dungeon === 'g-over' && body?.ok, make: (body) => derivedGauntletOver(body) });
+
+// UI-05: the Home slides with a Top 3 (cookie ci_dungeon = top): three runs today and three members this week (the Dungeon and Gauntlet slides draw the board rows).
+const TOP3 = [{ rank: 1, username: 'Member B', floor: 6, room: 3 }, { rank: 2, username: 'Member C', floor: 5, room: 2 }, { rank: 3, username: 'Member D', floor: 3, room: 1 }];
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && c.ci_dungeon === 'top' && body?.ok, make: (body) => ({ ...body, top: TOP3, runs_today: 3 }) });
+DERIVED.push({ when: (p, c, body) => p === '/api/gauntlet' && c.ci_dungeon === 'top' && body?.ok, make: (body) => ({ ...body, top: TOP3, players_week: 3 }) });
 
 // UI-47: a Dungeon fight (cookie ci_dungeon = fight | fight2): the 5-monster horde and a 2-monster room, with 3 attackers and
 // 2 supports, the numbers of the approved frames (run 1879, squad HP 320 / 392). ci_dungeon=over: the run over (UI-50).
@@ -319,9 +335,27 @@ function derivedFx(path, mode, body) {
   if (path === '/api/effects/me' && body?.enabled) {
     if (mode === 'day') return { ...body, playsToday: 10, dayEnds: new Date(Date.parse(FIX.recordedAt) + (7 * 60 + 25) * 60e3).toISOString() };
     if (mode === 'member') return { ...body, playsToday: 3, pairs: { '100000000000000012': 3 } };
+    // UI-28: every effect enabled and ready, so that the first card of the picker can be picked (the confirm, poll and owner states)
+    const open = { ...body, cooldowns: {}, primitives: Object.fromEntries(Object.entries(body.primitives || {}).map(([k, v]) => [k, { ...v, enabled: true }])) };
+    if (mode === 'owner') return { ...open, immune: ['012', '163', '011', '110', '076', '161', '077', '032'].map((n) => `100000000000000${n}`), primitives: { ...open.primitives, nickname: { primitive: 'nickname', kind: 'prank', channel: 'discord', enabled: true } } };
+    if (mode === 'poll') return open;
+    if (mode === 'refund') return { ...open, refunds: [{ id: 9201, primitive: 'nickname', reason: 'not_manageable', target: 'Member 012', card: { name: 'Card A' } }] };
+    if (mode === 'banners') {
+      const art = (FIX.routes['/api/collection']?.body?.cards || []).slice(0, 3).map((c) => ({ name: c.name, image_url: c.image_url }));
+      const mk = (i, kind, outcome, sender) => ({ id: 9300 + i, primitive: 'confetti', kind, outcome, sender, created_at: FIX.recordedAt, card: art[i] || null });
+      return { ...open, incoming: [mk(2, 'boon', 'applied', 'Member B'), mk(1, 'prank', 'decoyed', 'Member B'), mk(0, 'prank', 'applied', 'Member A')] };
+    }
   }
   return body;
 }
+// UI-28: the collection cards carry a poll (4 questions with the member name) or the owner-refused effect (nickname).
+function derivedFxCards(body, mode) {
+  const polls = [1, 2, 3, 4].map((n) => ({ question: `Question ${n} about {name}?`, answers: ['Yes', 'No'] }));
+  return { ...body, cards: (body.cards || []).map((c) => (!c.effect?.primitive ? c
+    : mode === 'poll' ? { ...c, effect: { ...c.effect, options: { ...(c.effect.options || {}), polls } } }
+    : mode === 'owner' ? { ...c, effect: { ...c.effect, primitive: 'nickname' } } : c)) };
+}
+DERIVED.push({ when: (p, c, body) => ['poll', 'owner'].includes(c.ci_fx) && p === '/api/collection' && body?.cards, make: (body, c) => derivedFxCards(body, c.ci_fx) });
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/recent' && body?.plays, make: (body, c) => derivedFx('/api/effects/recent', c.ci_fx, body) });
 DERIVED.push({ when: (p, c, body) => c.ci_fx && p === '/api/effects/me' && body?.enabled, make: (body, c) => derivedFx('/api/effects/me', c.ci_fx, body) });
 // UI-55: avatar effects (cookie ci_avfx=on): the badge list holds the mustache for the signed-in member, the five members of Home
@@ -393,6 +427,10 @@ createServer((req, res) => {
     req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
     return undefined;
   }
+  // UI-10: with ci_col=ascend-ok the Ascend answers success (the celebration); with ci_col=ascend it is refused (403 below). Writes nothing.
+  if (req.method === 'POST' && p === '/api/ascend' && cookies(req).ci_col === 'ascend-ok') return send(res, 200, JSON.stringify({ ok: true, ascension: 1, quantity: 2, power: 12, next_cost: 2 }));
+  // UI-28 (cookie ci_play=ok): a play that works. Nothing is written. Without the cookie the play stays blocked (the error state of the confirm window).
+  if (req.method === 'POST' && p === '/api/effects/play' && cookies(req).ci_play === 'ok') { req.resume(); return send(res, 200, JSON.stringify({ ok: true, outcome: 'applied', kind: 'boon', primitive: 'lucky_pull' })); }
   // UI-31: taking a card off the Hall answers ok (nothing is written) so the screen shows the "unlisted" toast with Undo; a list call stays refused (the error state).
   if (req.method === 'POST' && p === '/api/hall/unlist') return send(res, 200, '{"ok":true}');
   if (req.method === 'POST' && p === '/api/trade/accept') {   // UI-26: nothing is written; the answer is ok and the cookie hides the offer

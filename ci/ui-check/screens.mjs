@@ -25,10 +25,30 @@ export const SCREENS = {
   'home-live':           { id: 'UI-03', long: true, safe: true, home: 'live', notOn: ['tiny'], steps: [] },
   // UI-04: the live Hunt hero with the Top 3 board (D-58) inside the UI-03 Home; a defect outside the board belongs to Home ('under').
   'home-board':          { id: 'UI-04', under: 'UI-03', long: true, home: 'live', notOn: ['tiny'], steps: [] },
+  // UI-05: the Home carousel. With the Hunt resting the Dungeon slide is first (D-14, D-45): the first four specs are the Dungeon slide
+  // (no runs yet, then with a Top 3), the Gauntlet slide (no runs, then with a Top 3), and the resting Hunt slide behind the control.
+  // UI-06: the "+N" window of Live in voice (5 members in voice; where every member fits the tile there is no "+N" and the spec is the Home).
+  'home-dungeon':        { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [] },
+  'home-dungeon-top':    { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', dungeon: 'top', notOn: ['tiny'], steps: [] },
+  'home-gauntlet':       { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-slide-go="gauntlet"]'], ['wait', 0.5]] },
+  'home-gauntlet-top':   { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', dungeon: 'top', notOn: ['tiny'], steps: [['js', '[data-slide-go="gauntlet"]'], ['wait', 0.5]] },
+  'home-hunt-rest':      { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-slide-go="hunt"]'], ['wait', 0.5]] },
+  'home-voice-all':      { id: 'UI-06', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-voice-all]', [['wait', 0]]], ['wait', 1]] },
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
   // the Filters panel open (D-39, D-123: under tabs where the groups do not fit the height)
   'collection-filters': { id: 'UI-07', safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#colFilters'], ['wait', 1]] },
-  'collection-detail':   { id: 'UI-08', safe: true, steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5]] },
+  'collection-detail':   { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5]] },
+  // v3: the Card Detail states of UI-08 (the approved frames): a card to ascend (cookie ci_col=ascend), the stat points editor (ci_col=points), a locked card.
+  'collection-detail-ascend': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, col: 'ascend', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5]] },
+  'collection-detail-points': { id: 'UI-08', under: 'UI-07', notOn: ['tiny'], safe: true, col: 'points', steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]'], ['wait', 1]] },
+  'collection-detail-locked': { id: 'UI-08', under: 'UI-07', safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile.is-locked'], ['wait', 2.5]] },
+  // v3: the card viewer (UI-09) opened from the Card Detail art (a tap on #pArt; at the sizes where the viewer opens with the panel it opens again).
+  'collection-viewer':   { id: 'UI-09', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pArt'], ['wait', 1.5]] },
+  // v3: the celebration after an Ascend (UI-10 C1-C4): the viewer with the card and "Spend points" (cookie ci_col=ascend-ok answers the Ascend).
+  'ascend-celebration':  { id: 'UI-10', under: 'UI-07', notOn: ['tiny'], safe: true, steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 5]], col: 'ascend-ok' },
+  // v3: the Ascend refused (UI-10 E1: the writes answer 403 here, cookie ci_col=points) and the stat points save error (S2).
+  'ascend-error':        { id: 'UI-10', under: 'UI-07', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pAscend'], ['wait', 1.5]], col: 'ascend' },
+  'stat-points-error':   { id: 'UI-10', under: 'UI-07', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '[data-add="attack"]', [['js', '#ptsOpen'], ['wait', 1], ['js', '[data-add="attack"]']]], ['wait', 1], ['js', '#ptsSave'], ['wait', 1.5]], col: 'points' },
   'achievements':        { id: 'UI-12', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   // v3: the achievement window (a tap on a tile), the tab with an achievement ready to claim (cookie ci_ach=ready, derived in
   // serve.mjs), and a Claim that the server refuses (the check server blocks every write: the button shows "Try again").
@@ -87,6 +107,17 @@ export const SCREENS = {
   'boons-member':        { id: 'UI-27', notOn: ['tiny'], long: true, fx: 'member', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
   'boons-onyou':         { id: 'UI-27', notOn: ['tiny'], long: true, safe: true, fx: 'hist', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.u3-bn-onyou', [['wait', 0]]], ['wait', 1.5]] },
   'boons-picker':        { id: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1]], input: '#u3Picker .u3-search__input' },
+  // v3 (UI-28): the play flow. The confirm window over the Card picker (boon or prank, a poll card, the error of a play that the check server
+  // blocks), the played toast (ci_play=ok answers the play), the owner popup, the refund popup and the banners (derived /api/effects/me), and the profile Prank.
+  'fx-confirm':          { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1.5]] },
+  'fx-error':            { id: 'UI-28', under: 'UI-27', long: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1], ['js', '#u3FxWin [data-fxplay]'], ['wait', 1.5]] },
+  'fx-played':           { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'hist', play: 'ok', hold: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1], ['js', '#u3FxWin [data-fxplay]'], ['wait', 1.5]] },
+  'fx-poll':             { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'poll', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1], ['js', '#u3FxWin [data-fxq="1"]'], ['wait', 1]] },
+  'fx-owner':            { id: 'UI-28', under: 'UI-27', long: true, safe: true, fx: 'owner', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1.5]] },
+  'fx-refund':           { id: 'UI-28', under: 'UI-03', long: true, safe: true, fx: 'refund', notOn: ['tiny'], steps: [['wait', 3]] },
+  'fx-banners':          { id: 'UI-28', under: 'UI-03', long: true, safe: true, fx: 'banners', hold: true, notOn: ['tiny'], steps: [['wait', 3]] },
+  'fx-profile-prank':    { id: 'UI-28', under: 'UI-14', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '.u3-lb-row[data-member]:not(.is-me)'], ['wait', 3], ['js', '#memPrank'], ['wait', 1.5]] },
+  'fx-profile-confirm':  { id: 'UI-28', under: 'UI-14', long: true, fx: 'hist', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '.u3-lb-row[data-member]:not(.is-me)'], ['wait', 3], ['js', '#memPrank'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1], ['js', '#u3Picker [data-confirm]'], ['wait', 1.5]] },
   'boons-pick':          { id: 'UI-28', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.fx-view .v2-cell']] },
   // v3 (UI-32): Auctions. The recording holds no auction: cookie ci_auction gives the derived states (serve.mjs: open, seller, seller-bids, seller-accepted,
   // bidder, bidder-bid, bidder-confirm). The list with 9 auctions, the empty Open and My auctions, Start (empty, the Card picker, a card chosen), the seller
@@ -175,9 +206,9 @@ export const SCREENS = {
   'shop-reset-picker':   { id: 'UI-64', long: true, safe: true, stats: 'many', under: 'UI-43', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-tab="reset"]', [['wait', 0]]], ['js', '[data-choose]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
   'shop-confirm':        { id: 'UI-43', safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
   // Convert extra copies (UI-44): the window over the card detail (UI-08); minus = one copy less; error = the refused write (no fixture for POST).
-  'convert':             { id: 'UI-44', under: 'UI-08', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1]] },
-  'convert-minus':       { id: 'UI-44', under: 'UI-08', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1], ['js', '#u3ShopDlg [aria-label="Decrease"]'], ['wait', 0.5]] },
-  'convert-error':       { id: 'UI-44', under: 'UI-08', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .v2-cell'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1], ['js', '#u3ShopDlg [data-go]'], ['wait', 1.5]] },
+  'convert':             { id: 'UI-44', under: 'UI-08', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1]] },
+  'convert-minus':       { id: 'UI-44', under: 'UI-08', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1], ['js', '#u3ShopDlg [aria-label="Decrease"]'], ['wait', 0.5]] },
+  'convert-error':       { id: 'UI-44', under: 'UI-08', notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1], ['js', '#u3ShopDlg [data-go]'], ['wait', 1.5]] },
   // The Dailies window (UI-36) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
   // The first wait: the menu shows the Dailies tile only after /api/dailies answered (the tile of a window that is off is hidden).
   'dailies':             { id: 'UI-36', long: true, safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 3], ['js', '#menuBtn'], ['js', '[data-menu="dailies"]'], ['wait', 1.5]] },
@@ -197,7 +228,7 @@ export const SCREENS = {
   'leaderboard-hunt-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
   'leaderboard-dungeon-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
   'leaderboard-gauntlet-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
-  'profile':             { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '[data-member]:not(.me)'], ['wait', 3]] },
+  'profile':             { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '.u3-lb-row[data-member]:not(.is-me)'], ['wait', 3]] },   // lane 1 v3 Leaderboard rows (UI-66)
   'style-editor':        { id: 'UI-15', safe: true, notOn: ['tiny'], steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5]] },
   // UI-15 opens the Card picker for the Spotlight (D-80 item 16): a defect inside the picker window belongs to UI-64
   'style-picker':        { id: 'UI-64', under: 'UI-15', notOn: ['tiny'], steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5], ['js', '#u3StyleHost [data-sepick]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
@@ -269,13 +300,26 @@ export function ownerOf(screen, where) {
   // The card details (the v2 #viewer) opened from a Card picker: UI-64 owns them there (only the picker detail specs), the screen under the scrim does not.
   // Other screens keep their owner (collection-detail: UI-08 opens the viewer at some sizes and its side panel at others).
   if (/-picker-detail$/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b|\.vr-|#v-[a-z-]+/.test(where)) return 'UI-64';
+  // UI-09: the card viewer opened from the Card Detail (collection-viewer): the viewer and its buttons. UI-10: the celebration's Spend points
+  // button and the inline errors of an Ascend or a stat point save (the Card Detail panel around them is UI-08).
+  // The Card Detail window (UI-08) is the top layer of the Collection specs; the Collection behind its scrim (the v2 grid and Filters, UI-07) owns what is
+  // not in the window. Without this rule a Game chip that the filter panel folds away at 1280x720 (fitChips) was blamed on UI-08.
+  if (/\.asc-spend\b|#pAscFail|#ptsFail|\.u3-fail\b/.test(where)) return 'UI-10';
+  if (/^collection-detail/.test(screen) && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav)\b/.test(where)) return 'UI-08';   // the viewer that opens with the window at some sizes
+  if (/#u3Det|\.u3-det\b|\.u3-det__|#pPts|#pAscend|#pConvert|#pSpot|#pTrade|#pArt|#pClose|#colEffect/.test(where)) return 'UI-08';
+  if (screen === 'collection-viewer' && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav|win)\b|#v-[a-z-]+|#card3d/.test(where)) return 'UI-09';
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';
+  if (/#u3VoiceWin[a-z]*\b|\.u3-vw\b|\.u3-vw[-_]|\.u3-hm-more\b/.test(where)) return 'UI-06';   // the Live in voice window and its "+N" button
+  if (/\.u3-hm-(car|ctl|slide|dots|pip|labels|sb|sart|sinfo|strow|date|stimer|rule|rl|sline|sboard|sbh|sbt|sbl|sbr|sbk|sbn|sbd|sbe|sbc)\b/.test(where)) return 'UI-05';   // the carousel: the slides, the control
   if (/\.u3-hm-board\b|\.u3-hm-br[a-z]*\b/.test(where)) return 'UI-04';   // the Top 3 board in the Home hero (D-58)   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).
   if (screen === 'boons-picker' && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
   if (/#u3Tfx\b|\.u3-tfx\b|\.u3-tfx[-_]/.test(where)) return 'UI-26';   // the trade animation layer
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
+  // UI-28: the confirm window, the owner and refund popups, the play toast and the incoming banners; the Card picker under them stays UI-27's (the Boons form)
+  if (/#u3Fx[A-Za-z]*\b|\.u3-fxw\b|\.u3-fxw[-_]|\.u3-fxn\b|\.u3-fxn[-_]|\.u3-fxb\b|\.u3-fxb[-_]|\.u3-fx-toast\b/.test(where)) return 'UI-28';
+  if (/^fx-/.test(screen) && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
   if (/#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]/.test(where)) return 'UI-64';
   if (/\.u3-ls\b|\.u3-ls[-_]|#lsSlots|#u3LsToast/.test(where)) return 'UI-31';   // List a card (the sheet, its slots, the Undo toast)
   if (/\.u3-au\b|\.u3-au[-_]|#u3Au[A-Za-z]*\b/.test(where)) return 'UI-32';   // Auctions (the views, the Confirm and Close early windows, the Undo toast)
