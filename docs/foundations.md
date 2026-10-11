@@ -267,6 +267,33 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
    database.
 8. **The Arena (later):** a JS copy of the core is allowed only with a test that plays the
    golden fights on both copies and fails on any difference.
+9. **Ascension and stat points (Nathan, 2026-10-11).** Make sure that they do what they
+   say, then balance them with the rest of combat. Audit of the live state (observed
+   2026-10-11):
+   - **Haste does nothing in fights.** Players spent 246 points on it. Only boons and
+     pranks read it. Fix: item 4.
+   - **Attack also raises HP.** `card_combat` calculates HP from CP after Attack is added.
+     So 1 Attack point gives +5% CP and +5% HP, and Vitality gives only +6% HP. Attack is
+     always the better choice (inferred: not intended).
+   - **The power that players see leaves out stat points.** `card_power` (roster, leaderboards,
+     deployable power, the ascend result) does not count them. `card_combat` (fights) does.
+   - **The Gauntlet ignores stars and points.** `dungeon_card_base` uses 0 stars and no
+     points (inferred: a fair-play rule on purpose; Nathan to confirm).
+   - **Ascension only multiplies CP.** It gives no new capability. A 5-star normal (80 CP)
+     is stronger than a 0-star Full Art (75 CP). A 5-star Gold is 224 CP.
+   - **Copies to reach 5 stars:** normal 44, illustrated rare 32, full art 23, gold 15,
+     secret rare 11. Live: 4,029 cards at 0 stars, 809 at 1, 133 at 2, 5 at 3, none above.
+     Most of the curve has no real play data.
+   - Points chosen by players: Potency 664, Attack 463, Haste 246, Vitality 245,
+     Precision 55.
+   Work:
+   - Each stat does exactly what its label says, and nothing more. The labels come from
+     `balance`, not from text in the code.
+   - `combat_sheet` shows each card at 0 to 5 stars and with each stat build, so that the
+     curve can be seen in one place.
+   - The Combat Lab measures the value of one point in each stat and one star for each
+     rarity. A stat that is always the best choice, or never worth a point, is a defect.
+   - A free reset of stat points after the fix, because the Haste and Attack rules change.
 
 ### Acceptance tests
 
@@ -275,6 +302,8 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 3. The auto-pick and the fight give the same team value for the same squad.
 4. An ability with a field outside its limits is refused.
 5. The golden fights are the same before and after each clean-up PR (no change in play).
+6. Each stat changes only the value that its label names. One Attack point does not change HP.
+7. The power on the roster equals the power in a fight for the same card.
 
 ### PR order
 
@@ -285,6 +314,7 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 4. The `combat_sheet` view and the Admin page Combat section.
 5. The Combat Lab, and the golden test for the Dungeon and Gauntlet on the local copy.
 6. One log: move the readers to `combat_actions`, then remove the old logs.
+7. Ascension and stat points: the fixes, one power number everywhere, the free reset, and the Lab measurement.
 
 ---
 
