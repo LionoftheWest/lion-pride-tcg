@@ -290,7 +290,7 @@ async function run(act) {
   if (r?.ok) { const done = d.onDone; closeTradeWindow(); done?.(act, r); return; }
   st.error = true;
   paint();
-  d.onError?.(act);
+  d.onError?.(act, r);
 }
 
 async function onClick(e) {
@@ -332,7 +332,7 @@ async function onClick(e) {
  *   packs(): my pack count, twoStep: boolean, requests: boolean (the server has requests on, D-168),
  *   pick: null | { offerId, want: card } (the owner answers a request: theirs() = the requester's cards),
  *   rarities: [keys], rarityLabel(key), avatar(id, name): html,
- *   send(action, plan) -> { ok } (async), onDone(action, result), onError(action), onClose(),
+ *   send(action, plan) -> { ok } (async), onDone(action, result), onError(action, result), onClose(),
  *   start: { view: 'mine' | 'their', giveId, getId } -> opens on that view with the card chosen, on its page (a Hall listing, UI-31) }
  */
 export function openTradeWindow(d) {

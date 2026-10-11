@@ -94,7 +94,16 @@ export const SCREENS = {
 'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
   // UI-29: the member suggest list (typed "Member": the fixture answers with every member, so the list holds more rows than fit and scrolls). The keyboard variant keeps the text and the list.
   'trades-suggest':      { id: 'UI-29', long: true, under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5], ['type', '#main .u3-mp .u3-search__input', 'Member']], input: '#main .u3-mp .u3-search__input' },
-  'trades-explain':      { id: 'UI-39', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  // UI-39 (explainer carousels, v3): each set opens from its "?" (step 1); a later step for two sets (Next 4 times: Hall step 5, Trades step 5).
+  'trades-explain':      { id: 'UI-39', under: 'UI-25', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  'trades-explain-5':    { id: 'UI-39', under: 'UI-25', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['wait', 1]] },
+  'hall-explain':        { id: 'UI-39', under: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  'hall-explain-5':      { id: 'UI-39', under: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#main [data-explain]'], ['wait', 1.5], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['wait', 1]] },
+  'auctions-explain':    { id: 'UI-39', under: 'UI-32', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="auctions"]'], ['wait', 1.5], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  'boons-explain':       { id: 'UI-39', under: 'UI-27', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  // the v3 Hunt shows its "?" only in the battle view (main.js u3-ft-me), not in the squad stage
+  'hunt-explain':        { id: 'UI-39', under: 'UI-18', long: true, safe: true, notOn: ['tiny'], battle: true, steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9], ['js', '[data-explain="hunt"]'], ['wait', 1.5]] },
+  'collection-explain':  { id: 'UI-39', under: 'UI-07', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['wait', 1], ['js', '#main [data-explain]'], ['wait', 1.5]] },
   // v3 (UI-30): the Trade Hall lists with the listings of other members (cookie ci_hall=many: the recording holds only the signed-in member's own).
   'hall':                { id: 'UI-30', safe: true, long: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5]], input: '#main input[type=search], #main input[type=text]' },
   'hall-fortrade':       { id: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="fortrade"]'], ['wait', 1]], input: '#main input[type=search], #main input[type=text]' },
@@ -268,7 +277,7 @@ export const SCREENS = {
   'report-error':        { id: 'UI-40', safe: true, under: 'UI-03', report: true, cornerWindow: true, notOn: ['tiny'], input: '#u3RpText', steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="feedback"]'], ['wait', 1.5], ['type', '#u3RpText', 'The pack chooser covers the dock.'], ['js', '[data-rp-send]'], ['wait', 1.5]] },
   'help-item5':         { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
-  'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
+  'menu':                { id: 'UI-60', under: 'UI-03', report: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
   // The first-time walkthrough (UI-37): FAQ > Replay tutorial starts it over Home, then Next goes on. walk: true runs checks/walkthrough.js
   // (the check skips #tutLayer everywhere else): the card never covers the spotlighted control or the corner zone, Skip and Next are 44 px.
   // gifts: true = a gift waits in the bell (cookie ci_gifts, serve.mjs): step 1 shows; without it step 1 is skipped ("STEP 1 OF 7").
@@ -325,6 +334,7 @@ export function ownerOf(screen, where) {
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).
   if (screen === 'boons-picker' && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
+  if (/#exLayer\b|\.u3-exl\b|\.u3-ex\b|\.u3-ex[-_]/.test(where)) return 'UI-39';   // the explainer window (its layer, picture, text and buttons); the "?" circle in a host view stays the host's
   if (/#u3Tfx\b|\.u3-tfx\b|\.u3-tfx[-_]/.test(where)) return 'UI-26';   // the trade animation layer
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // UI-28: the confirm window, the owner and refund popups, the play toast and the incoming banners; the Card picker under them stays UI-27's (the Boons form)

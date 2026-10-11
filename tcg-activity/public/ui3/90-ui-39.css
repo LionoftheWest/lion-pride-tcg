@@ -1,0 +1,55 @@
+/* ==== UI-39 Explainer carousels (src/ui3/explain.js, src/ui-v2-explain.js; design repo UI-39/approved, review-1) ====
+   One window for the six sets (Trade Hall, Auctions, Trades, Boons, the Hunt, Collection): the picture (a crop of the approved
+   screen with the control ringed in gold), the eyebrow, the title, the text, Back / "n / N" / Next. Only under body.ui-v3
+   (ui-v2-explain.js gives the layer the class u3-exl). Compact-port: a bottom sheet that ends above the dock. The wider classes:
+   a dialog the width of the library Help (1.55 x the dialog width = 642 px) centered above the dock. No scroll (D-07): when the
+   height is short the picture shrinks. The layer starts below the Discord corner zone (2.3), so the close button never sits in it.
+   The picture files: public/explain/v3/<set>-<n>-c.webp (compact-port) and -w.webp (the wider classes). */
+#exLayer.u3-exl { position: fixed; inset: 0; z-index: var(--z-modal); box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+  padding: var(--corner-h) var(--sp-4) calc(var(--u3-dock-b) + var(--dock-h) + var(--sp-2)); background: var(--scrim); animation: kf-fade var(--dur-base) var(--ease-out); }
+body.ui-v3[data-size="compact-port"] #exLayer.u3-exl { padding-inline: calc(var(--u3-sa-l) + var(--sp-1-5)) calc(var(--u3-sa-r) + var(--sp-1-5)); align-items: flex-end; }
+body.ui-v3[data-size="compact-land"] #exLayer.u3-exl { padding-inline: max(calc(var(--u3-sa-l) + var(--sp-1-5)), var(--corner-w)) max(calc(var(--u3-sa-r) + var(--sp-1-5)), var(--corner-w)); }
+body.ui-v3[data-size="tiny"] #exLayer.u3-exl { display: none; }
+
+.u3-ex { position: relative; width: min(100%, calc(var(--dialog-w) * 1.55)); max-height: 100%; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); color: var(--text-primary);
+  animation: kf-pop var(--dur-slow) var(--ease-out); }
+body.ui-v3[data-size="compact-port"] .u3-ex { width: 100%; border-radius: var(--rad-sheet); animation-name: kf-rise; }
+
+/* the picture: it shrinks (never scrolls) when the height is short; its box does not depend on the image load (F-10) */
+.u3-ex__pic { position: relative; flex: 0 1 auto; min-height: var(--sp-7); overflow: hidden; background: var(--bg-base); border-bottom: var(--bw-1) solid var(--border-strong); aspect-ratio: 1284 / 640; }
+body.ui-v3[data-size="compact-port"] .u3-ex__pic { aspect-ratio: 836 / 520; }
+.u3-ex__img { display: block; width: 100%; height: 100%; object-fit: cover; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.u3-ex__img--c { display: none; }
+body.ui-v3[data-size="compact-port"] .u3-ex__img--c { display: block; }
+body.ui-v3[data-size="compact-port"] .u3-ex__img--w { display: none; }
+/* the gold ring on the control the slide names (the library Help preview recipe: 3 px gold ring, gold glow); percent boxes from explain-rings.js */
+.u3-ex__ring { position: absolute; box-sizing: border-box; border: calc(var(--bw-2) + var(--bw-1)) solid var(--gold); border-radius: var(--rad-md); box-shadow: var(--glow-rarity-gold); pointer-events: none; }
+.u3-ex__ring--c { display: none; }
+body.ui-v3[data-size="compact-port"] .u3-ex__ring--c { display: block; }
+body.ui-v3[data-size="compact-port"] .u3-ex__ring--w { display: none; }
+.u3-ex__pic > .u3-ibtn { position: absolute; top: var(--sp-2); right: var(--sp-2); }
+.u3-ex__pic.is-r .u3-ex__img { animation: kf-ex-r var(--dur-slow) var(--ease-out); }
+.u3-ex__pic.is-l .u3-ex__img { animation: kf-ex-l var(--dur-slow) var(--ease-out); }
+@keyframes kf-ex-r { from { opacity: 0; transform: translateX(var(--sp-3)); } to { opacity: 1; transform: none; } }
+@keyframes kf-ex-l { from { opacity: 0; transform: translateX(calc(var(--sp-3) * -1)); } to { opacity: 1; transform: none; } }
+
+.u3-ex__body { flex: none; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4) var(--sp-5) var(--sp-5); }
+.u3-ex__eye { font-family: var(--font-num); font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label); letter-spacing: var(--ls-label); color: var(--gold); text-transform: uppercase; }
+.u3-ex__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+/* the text keeps room for the longest slide, so Next never moves between slides */
+.u3-ex__text { min-height: calc(var(--fs-small) * var(--lh-body) * 2); font-size: var(--fs-small); line-height: var(--lh-body); color: var(--text-secondary); overflow-wrap: break-word; }
+body.ui-v3[data-size="compact-port"] .u3-ex__text { min-height: calc(var(--fs-small) * var(--lh-body) * 3); }
+body.ui-v3[data-input="coarse"] .u3-ex__text { font-size: var(--fs-body); }
+body.ui-v3[data-input="coarse"][data-size="compact-port"] .u3-ex__text { min-height: calc(var(--fs-body) * var(--lh-body) * 3); }
+
+.u3-ex__nav { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
+.u3-ex__nav > .u3-btn { flex: 1 1 0; min-width: 0; justify-content: center; }
+.u3-ex__nav > .u3-btn--primary .u3-ico { order: 2; }
+.u3-ex__pg { flex: none; font-family: var(--font-num); font-size: var(--fs-body); font-weight: var(--fw-stat); color: var(--text-secondary); }
+body.ui-v3[data-input="coarse"] .u3-ex__nav > .u3-btn { height: var(--hit); }
+
+/* compact-land (report only, D-136): the picture left, the text right, inside the safe frame */
+body.ui-v3[data-size="compact-land"] .u3-ex { flex-direction: row; width: 100%; height: 100%; }
+body.ui-v3[data-size="compact-land"] .u3-ex__pic { flex: 1 1 50%; aspect-ratio: auto; border-bottom: 0; border-right: var(--bw-1) solid var(--border-strong); }
+body.ui-v3[data-size="compact-land"] .u3-ex__body { flex: 1 1 50%; min-width: 0; justify-content: center; padding: var(--sp-3) var(--sp-4); }

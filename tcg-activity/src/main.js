@@ -8,7 +8,7 @@
  * whole session. The old v1 screens were removed on 2026-10-03.
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
-import { openSlots, squadDown, hasAttacker } from './squad-pick.js';
+import { openSlots, squadDown, hasAttacker, noAction } from './squad-pick.js';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 import { mtToday, nextMtMidnightISO } from './mt-time.js';
 installImgFallback();
@@ -2085,6 +2085,7 @@ function paintTeam() {
   const team = (huntState?.roster || []).filter((c) => squad.sel.has(c.id));
   grid.innerHTML = team.length ? team.map((c) => (huntV3() ? `<li>${huntTile(c, 'battle')}</li>` : huntTile(c, 'battle'))).join('') : '<p class="empty">No squad chosen.</p>';
   sizeSquadGrid();
+  if (squad.phase === 'battle') setTimeout(passTurnIfNoAction, 0);   // D-173: no action possible -> the boss acts
 }
 // The lock-in warning (Nathan, 2026-10-02): Continue locks the short squad; Auto-Fill my Squad keeps
 // the member's picks and fills the rest with Auto-pick, then locks. ✕ (or a tap outside) keeps picking.
@@ -2110,11 +2111,12 @@ function huntSelectV3HTML(d) {
   const tier = HUNT_TIER_NUM[h.tier] ? `Tier ${HUNT_TIER_NUM[h.tier]}` : h.tier;
   const stage = `<section class="u3-hs-stage" role="button" tabindex="0" data-boss aria-label="Boss details: ${esc(h.name)}">
     <div class="u3-hs-text">
-      <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span><h1 class="u3-hs-name">${esc(h.name)}</h1></div>
+      <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span>${huntNameRow(h.name)}</div>
       <div class="u3-hs-facts">${atk}${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}</div>
       <div class="u3-hs-hp" role="img" aria-label="${pct}% HP"><i style="--hp:${pct}%"></i><span>${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP</span></div>
       <div class="u3-hs-left">${cdSpan(h.closes_at, 'Beat in', 'closes countdown')}</div>
       <div class="u3-hs-top" id="u3HsTop">${huntTopHTML()}</div>
+      <div class="u3-hs-extra" id="u3HsExtra">${huntExtraHTML(d)}</div>
     </div>
     <div class="u3-hs-boss"><canvas id="bossCanvas"></canvas></div>
   </section>`;
@@ -2143,14 +2145,47 @@ function huntSelectV3HTML(d) {
       <div class="u3-hs-slotbox"><ol class="u3-hs-slots" aria-label="Your squad">${slots}</ol></div>
     </section></div>`;
 }
-// D-166: the Top 3 label row carries the trophy icon button of the Menu grid; it opens the Leaderboard window on the Hunt tab
-function huntTopHead() {
-  return `<div class="u3-hs-toprow"><span class="u3-label">Top 3</span>${ui3IconButton({ icon: 'trophy', label: 'Leaderboard', size: 'md', data: { hboard: '1' } })}</div>`;
+// D-166 + D-172: the trophy icon button of the Menu grid sits beside the boss title (UI-17 squad select, UI-19 resting) and opens the
+// Leaderboard window on the Hunt tab. The Top 3 box keeps only its label.
+function huntNameRow(name) {
+  return `<div class="u3-hs-namerow"><h1 class="u3-hs-name">${esc(name)}</h1>${ui3IconButton({ icon: 'trophy', label: 'Leaderboard', size: 'md', data: { hboard: '1' } })}</div>`;
 }
+function huntTopHead() { return '<span class="u3-label">Top 3</span>'; }
 function wireHuntTopBtn(box) {
   // the squad stage is itself a button (boss details): the trophy button must not reach it
   box?.addEventListener('click', (e) => { if (e.target.closest('[data-hboard]')) { e.stopPropagation(); openLeaderboardWindow('hunt'); } });
   box?.addEventListener('keydown', (e) => { if (e.target.closest('[data-hboard]')) e.stopPropagation(); });
+}
+// D-172, desktop only (CSS shows it on medium and expanded): "Your hunt" and the boss passives under the Top 3.
+// Data: huntState (GET /api/hunt: myDamage, usedToday, dailyCap, hunt.passive) and huntTop (GET /api/hunt/leaderboard: the top 20 and "me").
+// The passive text is the label that the server sends ("Armored: melee attackers deal less"); an older label with no text gets HUNT_PASSIVE_TEXT.
+const HUNT_PASSIVE_TEXT = { armored: 'Melee attackers deal less', shrouded: 'Attacks miss more often', flaming: 'Burns the attacking card', volatile: 'Counterattacks hit harder', regenerating: 'Heals a little every turn', thorns: 'Part of your damage comes back to your card', frenzied: 'Hits harder as it loses HP', plague: 'Heals and cleanse barely work', shatterer: 'Shields and smite barely work', dispeller: 'Empower and expose barely work', juggernaut: 'Weaken and stun barely work' };
+let huntTopMe = null;   // the member id that /api/hunt/leaderboard answers with
+function huntPassiveRows(h) {
+  const p = h && h.passive;
+  const list = Array.isArray(p?.list) && p.list.length ? p.list : p?.kind ? [{ kind: p.kind, label: p.label }] : [];
+  return list.map((x) => {
+    const kind = String(x.kind || '');
+    const m = /^([^:]+):\s*(.+)$/.exec(String(x.label || ''));
+    const name = m ? m[1] : (x.label || kind.charAt(0).toUpperCase() + kind.slice(1));
+    return { name, text: m ? m[2].charAt(0).toUpperCase() + m[2].slice(1) : (HUNT_PASSIVE_TEXT[kind] || '') };
+  });
+}
+function huntExtraHTML(d) {
+  const h = d && d.hunt;
+  if (!h) return '';
+  const mine = Number(d.myDamage) || 0;
+  const leaders = huntTop || [];
+  const idx = leaders.findIndex((x) => String(x.player_id) === String(huntTopMe));
+  let rank = '—', to = '—', toLabel = 'To next rank';
+  if (idx >= 0) {
+    rank = `#${idx + 1}`;
+    if (idx === 0) { to = 'You lead'; toLabel = 'Rank 1'; } else { to = huntNum(Math.max(0, (leaders[idx - 1].damage || 0) - mine)); toLabel = `To #${idx}`; }
+  } else if (leaders.length && mine > 0) { rank = `#${leaders.length + 1}+`; to = huntNum(Math.max(0, (leaders[leaders.length - 1].damage || 0) - mine)); toLabel = `To #${leaders.length}`; }
+  const tile = (k, v) => `<div class="u3-hs-stat"><dt class="u3-label">${k}</dt><dd>${v}</dd></div>`;
+  const pass = huntPassiveRows(h);
+  return `<section class="u3-hs-mine" aria-label="Your hunt"><span class="u3-label">Your hunt</span><dl class="u3-hs-stats">${tile('Rank', rank)}${tile('Damage', huntNum(mine))}${tile(toLabel, to)}${tile('Hits today', `${Number(d.usedToday) || 0} / ${d.dailyCap || 8}`)}</dl></section>`
+    + (pass.length ? `<section class="u3-hs-pass" aria-label="Boss passives"><span class="u3-label">Boss passives</span><ul>${pass.map((x) => `<li>${ui3Icon('skull', { size: 'sm' })}<b>${esc(x.name)}</b>${x.text ? `<span>${esc(x.text)}</span>` : ''}</li>`).join('')}</ul></section>` : '');
 }
 function huntTopHTML() {
   if (!huntTop) return '';
@@ -2170,10 +2205,11 @@ function wireHuntV3() {
     el('main').innerHTML = huntHTML(huntState);
     wireHunt(); mountBossFor(huntState.hunt); paintTeam(); startHuntTicker();
   });
-  wireHuntTopBtn(el('u3HsTop'));
+  wireHuntTopBtn(main.querySelector('.u3-hs-title'));
   fitHuntV3(main);
-  api('/api/hunt/leaderboard').then((r) => { huntTop = r?.leaders || []; const box = el('u3HsTop'); if (box) { box.innerHTML = huntTopHTML(); fitHuntV3(el('main')); } })
-    .catch(() => { huntTop = []; const box = el('u3HsTop'); if (box) { box.innerHTML = huntTopHTML(); fitHuntV3(el('main')); } });
+  const repaintTop = () => { const box = el('u3HsTop'); if (box) { box.innerHTML = huntTopHTML(); const ex = el('u3HsExtra'); if (ex) ex.innerHTML = huntExtraHTML(huntState); fitHuntV3(el('main')); } };
+  api('/api/hunt/leaderboard').then((r) => { huntTop = r?.leaders || []; huntTopMe = r?.me ?? null; repaintTop(); })
+    .catch(() => { huntTop = []; repaintTop(); });
 }
 // No scroll: chips that do not fit fold into "+N"; a stage too short for the Top 3 board shows the one-line form (E7).
 function fitHuntV3(main) {
@@ -2192,6 +2228,20 @@ function fitHuntV3(main) {
     // still too short (a small landscape phone, long names): the tight mode; the Top 3 is one tap away (Menu > Leaderboard, P1)
     if (over()) hunt?.classList.add('is-tight');
   }
+  fitHuntExtra(main);
+}
+// D-172: the desktop blocks fill the room under the Top 3 and shrink; when the room is too small the passives go first, then "Your hunt".
+function fitHuntExtra(main) {
+  const ex = main.querySelector('.u3-hs-extra');
+  const stage = main.querySelector('.u3-hs-stage');
+  if (!ex || !stage) return;
+  stage.classList.remove('is-stack', 'is-nopass', 'is-nomine');
+  if (!ex.offsetParent) return;   // compact sizes: CSS hides the blocks
+  const cut = () => ex.scrollHeight > ex.clientHeight + 1 || [...ex.querySelectorAll('.u3-hs-mine, .u3-hs-pass, .u3-hs-stat > *, .u3-hs-pass li')].some((n) => n.offsetParent && (n.scrollHeight > n.clientHeight + 1 || n.scrollWidth > n.clientWidth + 1));
+  // too narrow for one row: stack the label above the content; then the passives go; then "Your hunt"
+  if (cut()) stage.classList.add('is-stack');
+  if (cut()) stage.classList.add('is-nopass');
+  if (cut()) stage.classList.add('is-nomine');
 }
 // ---- v3: the Hunt with no live boss (UI-19 resting), behind ui_v3 --------------------------------------------------
 // Design repo UI-19/approved (review-2 + review-3, D-61): the boss stage with the last boss, its result directly under the title
@@ -2215,7 +2265,7 @@ function restingV3HTML(d) {
   const feed = (live.attacks || []).slice(0, 6);
   return `<div class="u3-hunt"><section class="u3-hs-stage u3-rest">
     <div class="u3-hs-text">
-      <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span><h1 class="u3-hs-name">${esc(h.name)}</h1></div>
+      <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span>${huntNameRow(h.name)}</div>
       <span class="u3-rest-result${won ? ' is-won' : ''}">${ui3Icon(won ? 'trophy' : 'skull', { size: 'sm' })}${won ? 'Defeated' : 'Escaped'}</span>
       <div class="u3-hs-facts">${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}${passives}</div>
       <div class="u3-hs-hp u3-rest-bar" role="img" aria-label="${won ? 'Defeated' : `${pct}% HP left`}"><i style="--hp:${won ? 0 : pct}%"></i><span>${won ? 'Defeated' : `${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP left`}</span></div>
@@ -2231,7 +2281,7 @@ function mountRestBossV3(d) {
   const h = d && d.lastResult;
   const cv = el('bossCanvas');
   if (!h || !cv) return;
-  wireHuntTopBtn(el('main').querySelector('.u3-rest .u3-hs-top'));
+  wireHuntTopBtn(el('main').querySelector('.u3-rest .u3-hs-title'));
   try { bossHandle = mountBoss(cv, h.name || 'boss', h.tier, { portrait: true }); if (h.status === 'defeated') bossHandle.defeat(); } catch { bossHandle = null; }
   // No scroll: the oldest feed rows go first (as fitFeedRows), then the board takes the one-line form
   const stage = el('main').querySelector('.u3-rest');
@@ -2626,7 +2676,7 @@ async function refreshHuntState() {
   const slot = el('usedSlot'); if (slot) slot.innerHTML = `Cards <b>${d.usedToday || 0}</b>/${d.dailyCap || 8}`;
   if (h.status === 'defeated') { (document.querySelector('.boss') || document.querySelector('.hunt-arena, .u3-ft'))?.classList.add('down'); bossHandle?.defeat(); }
   paintTeam();
-  // The squad is down when every ATTACKER of it is down (a card that has not fought is alive).
+  // D-173: the squad is down when EVERY card of it is down (supports too; a card that has not fought is alive).
   if (squad.phase === 'battle' && h.status !== 'defeated' && squadDown(huntState.roster || [], [...squad.sel])) squadDownSequence();
 }
 
@@ -2963,13 +3013,36 @@ function onBossDefeated() {
   }, 2600);
 }
 
+// D-173: every attacker is down and every standing support is on cooldown: nothing can be played. Say it, then the server
+// advances the round and the boss acts once (POST /api/hunt/pass -> hunt_pass_turn). The arena is locked while it runs. If the
+// server refuses (it still sees an action), the same round is not asked again, so a stale roster cannot loop.
+const NO_ACTION = 'No action can be taken';
+let passingTurn = false, passFailRound = -1;
+async function passTurnIfNoAction() {
+  if (passingTurn || bossActing || squad.phase !== 'battle' || huntState?.hunt?.status !== 'active') return;
+  const round = huntState.round || 0;
+  if (round === passFailRound || !noAction(huntState.roster || [], [...squad.sel], round)) return;
+  passingTurn = true; bossActing = true; lockArena(true);
+  ftTurn(NO_ACTION); showBossTurn(NO_ACTION);
+  await new Promise((done) => setTimeout(done, PACE.afterHit));
+  let r; try { r = await apiPost('/api/hunt/pass', {}); } catch { r = null; }
+  if (!r || !r.ok || !r.boss_action) {
+    passFailRound = round; passingTurn = false; bossActing = false; lockArena(false); ftTurn();
+    if (r?.error === 'squad_down' || r?.error === 'hunt_over' || r?.error === 'no active hunt') refreshHuntState();
+    return;
+  }
+  showBossTurn();
+  setTimeout(() => resolveBossTurn(r.boss_action), 320);
+  setTimeout(() => { passingTurn = false; bossActing = false; lockArena(false); ftTurn(); refreshHuntState(); }, PACE.bossHold);
+}
+
 // A brief "Boss's turn" banner — the player learns the boss is acting, never what is coming.
-function showBossTurn() {
+function showBossTurn(text) {
   const arena = document.querySelector('.hunt-arena') || document.querySelector('.main-body.hunt');
   if (!arena) return;
   const b = document.createElement('div');
   b.className = 'boss-turn-banner';
-  b.textContent = "⚔ Boss's Turn";
+  b.textContent = text || "⚔ Boss's Turn";
   arena.appendChild(b);
   setTimeout(() => b.remove(), 1250);
 }

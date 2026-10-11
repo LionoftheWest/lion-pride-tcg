@@ -5,6 +5,7 @@
 // it paints. The seen sets are saved on the account (players.tutorial.seen, /api/tutorial).
 
 import { v2ctx } from './ui-v2.js';
+import { explainHTML, v3Set, stepTo } from './ui3/explain.js';
 
 const ctx = () => v2ctx();
 const esc = (s) => ctx().esc(s ?? '');
@@ -67,6 +68,9 @@ export const SETS = {
 };
 // Only after the v2 shell is up (v2ctx exists).
 const v2 = () => document.body.classList.contains('ui-v2');
+// UI-39: under the v3 flag the window is the v3 explainer (src/ui3/explain.js, ui3/90-ui-39.css); the logic below is shared.
+const v3 = () => document.body.classList.contains('ui-v3');
+const setOf = (key) => (v3() && v3Set(key)) || SETS[key];
 
 let seen = new Set();
 let cur = null; // { key, i }
@@ -117,16 +121,23 @@ function close() {
   cur = null;
 }
 function go(d) {
-  const n = SETS[cur.key].slides.length;
-  const i = cur.i + d;
-  if (i >= n) return close();
-  if (i < 0) return;
-  cur.i = i;
+  const n = setOf(cur.key).slides.length;
+  const r = stepTo(cur.i, d, n);
+  if (r.done) return close();
+  if (cur.i + d < 0) return;
+  cur.i = r.i;
   paint(d);
 }
 
 function paint(dir = 0) {
   const layer = document.getElementById('exLayer');
+  if (v3() && v3Set(cur.key)) {
+    layer.className = 'u3-exl';
+    layer.innerHTML = explainHTML(cur.key, cur.i, dir);
+    layer.querySelector('[data-a="next"]')?.focus({ preventScroll: true });
+    return;
+  }
+  layer.className = '';
   const set = SETS[cur.key];
   const s = set.slides[cur.i];
   const last = cur.i === set.slides.length - 1;
@@ -166,7 +177,7 @@ function onKey(e) {
 // A swipe on the picture or the text moves one slide. It never closes the carousel (only Got it, X,
 // Esc or a tap outside do).
 function swipeStart(e) {
-  if (!e.target.closest('.ex-card') || e.target.closest('button')) return;
+  if (!e.target.closest('.ex-card, .u3-ex') || e.target.closest('button')) return;
   const x0 = e.clientX, y0 = e.clientY;
   const up = (u) => {
     window.removeEventListener('pointerup', up);
@@ -175,7 +186,7 @@ function swipeStart(e) {
     const dx = u.clientX - x0, dy = u.clientY - y0;
     if (!(Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) && cur)) return;
     swiped = Date.now();
-    if (dx < 0 && cur.i < SETS[cur.key].slides.length - 1) go(1);
+    if (dx < 0 && cur.i < setOf(cur.key).slides.length - 1) go(1);
     else if (dx > 0) go(-1);
   };
   window.addEventListener('pointerup', up);

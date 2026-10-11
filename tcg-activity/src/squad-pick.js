@@ -177,13 +177,23 @@ export function openSlots(cards, selectedIds, { cap = 8 } = {}) {
 // Is the squad down? (Nathan, 2026-10-02: "halfway through my squad, when one of my cards got
 // knocked out, it said my squad was wiped out completely". The old check looked only at the
 // cards that had FOUGHT: the first card downed before the others attacked was 1 of 1 down.)
-// One squad of 8 a day (attackers + supports), locked in (hunt_squads on the server). The squad is
-// down when every ATTACKER of it is down: the boss acts only after an attack, so once the attackers
-// are down nothing can hit the supports or move the rounds their cooldowns wait on (2026-10-02: an
-// every-card rule could never end a squad). A card of the squad that has not fought yet is alive.
+// One squad of 8 a day (attackers + supports), locked in (hunt_squads on the server). D-173 (2026-10-10):
+// the squad is down only when EVERY card of it is down, supports too (the same rule as the SQL
+// hunt_squad_done). When only supports stand and all are on cooldown, noAction() below is true and the
+// server plays the boss turn (hunt_pass_turn). A card of the squad that has not fought yet is alive.
 // Without a locked squad (a member who fought before hunt_squads.sql), the cards that fought count.
 export function squadDown(cards, selIds) {
   const sel = new Set((selIds || []).map(Number));
-  const squad = cards.filter((c) => ATTACKERS.has(c.type) && (sel.has(Number(c.id)) || c.used));
+  const squad = cards.filter((c) => sel.has(Number(c.id)) || c.used);
   return squad.length > 0 && squad.every((c) => c.downed);
+}
+
+// D-173: the member has no action when no attacker of the squad stands, at least one support stands, and
+// every standing support is on cooldown (cdReady > round: the same test as hunt_support and the server
+// hunt_pass_turn). Then the turn shows "No action can be taken" and the boss acts.
+export function noAction(cards, selIds, round) {
+  const sel = new Set((selIds || []).map(Number));
+  const standing = cards.filter((c) => (sel.has(Number(c.id)) || c.used) && !c.downed);
+  if (!standing.length || standing.some((c) => ATTACKERS.has(c.type))) return false;
+  return standing.every((c) => (c.cdReady || 0) > (round || 0));
 }
