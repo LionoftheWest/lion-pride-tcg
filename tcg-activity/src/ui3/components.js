@@ -128,10 +128,10 @@ export const select = ({ value = '', options = [], label, disabled = false, busy
   + `<select${attrs({ class: 'u3-select__input', 'aria-label': label, disabled: disabled || busy })}>${options.map((o) => `<option${attrs({ value: o, selected: o === value })}>${esc(o)}</option>`).join('')}</select>`
   + `${busy ? spinner() : icon('chevron-down')}</span>`;
 /** Stepper: shows its limits (5.2). */
-export function stepper({ value = 1, min = 1, max = 10, busy = false, disabled = false }) {
-  const b = (ic, lbl, off) => `<button${attrs({ type: 'button', class: 'u3-step__btn', 'aria-label': lbl, disabled: disabled || off })}>${icon(ic, { size: 'lg' })}</button>`;
-  return `<div class="${cx('u3-step', disabled && 'is-disabled')}"><div class="u3-step__ctl">${b('minus', 'Decrease', value <= min)}<span class="u3-step__value" aria-live="polite">${busy ? spinner() : esc(value)}</span>${b('plus', 'Increase', value >= max)}</div>`
-    + `<span class="u3-step__limits">${esc(min)} to ${esc(max)}</span></div>`;
+export function stepper({ value = 1, min = 1, max = 10, busy = false, disabled = false, unit = '', name = '', limits = null }) {
+  const b = (ic, lbl, off) => `<button${attrs({ type: 'button', class: 'u3-step__btn', 'aria-label': name ? `${lbl} ${name}` : lbl, disabled: disabled || off })}>${icon(ic, { size: 'lg' })}</button>`;
+  return `<div class="${cx('u3-step', disabled && 'is-disabled')}"><div class="u3-step__ctl">${b('minus', 'Decrease', value <= min)}<span class="u3-step__value" aria-live="polite">${busy ? spinner() : `${esc(value)}${esc(unit)}`}</span>${b('plus', 'Increase', value >= max)}</div>`
+    + `<span class="u3-step__limits">${esc(limits ?? `${min} to ${max}`)}</span></div>`;
 }
 /** Switch (a 44 px row). */
 export const switchControl = ({ on = false, label, disabled = false, busy = false }) => `<label class="${cx('u3-switch', disabled && 'is-disabled')}">`

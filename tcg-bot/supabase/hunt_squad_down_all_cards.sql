@@ -1,0 +1,205 @@
+-- hunt_squad_down_all_cards.sql (2026-10-10). Nathan's decision D-173 (design repo FEEDBACK.md), from a live report:
+-- "My squad went down when the last attacker went down, even though I had a support up ... make sure that a squad is fully down for the
+-- squad to be knocked out and the players round to be done. In this case, if the support is on cooldown, we need to have the players turn
+-- be alerted saying 'No Action can be taken' and then it moves to the boss."
+-- THE CAUSE: hunt_squad_done (hunt_squad_done.sql, 2026-10-02) called a squad done when every ATTACKER of it was down. The reason then:
+-- the boss acts only after an attack (inside hunt_attack), so with no attacker left nothing could hit the supports or move the round that
+-- their cooldowns wait on, and an every-card rule could never end a squad. The client rule squadDown (tcg-activity/src/squad-pick.js)
+-- copied it, so the Activity showed "SQUAD DOWN" at the same moment.
+-- THE RULE (D-173): a squad is down only when EVERY card of the locked squad (attackers and supports) is down.
+-- THE NEW TURN: when every attacker of the squad is down and the standing supports are all on cooldown (cd_until_round > round), the member
+-- has no action. hunt_pass_turn(p_player, p_hunt) is that turn: the round advances by 1 and the boss acts once (so cooldowns tick and the
+-- boss can down the supports, which ends the squad). It refuses ('can_act') while any attacker stands or any standing support is ready, so it
+-- is not a way to skip a turn. The round limit (hunt_round_cap) still ends the squad.
+-- What the pass turn does: the usual boss turn of hunt_attack (combat_enemy_act, the same boss ATK and multipliers: enrage, weaken,
+-- frenzied, Rage Spiral, volatile), the single hit (strike, drain, stun) on a RANDOM standing squad card (D-129 / D-132; here only supports
+-- stand), Slam / Cataclysm on every standing squad card, enrage, boss heal (drain, regenerate, the Regenerating passive), the player_done
+-- post. NOT in the pass turn (the member has no attacker to carry them): the counter moves (hunt_counter_pick / hunt_counter_act), the
+-- damage-over-time ticks (hunt_counter_tick), Phase 2 / Rage Phase and the burn of the Flaming passive. They continue on the next attack.
+-- hunt_attack is NOT changed: its line "v_downed and hunt_squad_done(...)" now means "the last card of the squad went down".
+-- The answer has the shape of hunt_attack's: boss_action = {kind, round, targets}; targets lists the card that was hit (the client reads
+-- targets[0] for the stun mark), plus no_action = true, squad_down (boolean), round, round_cap, boss_heal, hp_remaining.
+-- Built from the LATEST migration file text, not from the live text (the builder cannot read live): hunt_squad_done from
+-- hunt_squad_done.sql (md5 cb77968a4d1aed36125eed7879400508, db/schema/functions/hunt_squad_done.sql). The guard below checks it.
+-- Test: card-studio/scripts/test-hunt-squad-down.mjs. No balance number changes.
+
+-- GUARD (the combat_core.sql rule): the function must be the live text this file was built from, or its result.
+do $g$
+declare m text;
+begin
+  select md5(replace(pg_get_functiondef('public.hunt_squad_done(bigint,text,date,integer)'::regprocedure), chr(13), '')) into strict m;
+  if m not in ('cb77968a4d1aed36125eed7879400508', 'ebe2851b6135efd2a9752a4e85994d55') then
+    raise exception 'hunt_squad_down_all_cards.sql: the live hunt_squad_done changed since this file was built. Rebuild it from the live text.';
+  end if;
+end $g$;
+-- GUARD-END
+
+CREATE OR REPLACE FUNCTION public.hunt_squad_done(p_hunt bigint, p_player text, p_day date, p_cap integer)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+declare sq bigint[];
+begin
+  select card_ids into sq from hunt_squads where hunt_id = p_hunt and player_id = p_player and hit_date = p_day;
+  if sq is not null then
+    -- D-173: EVERY card of the locked squad, supports too. A card that never acted has no row: it stands.
+    return not exists (
+      select 1 from unnest(sq) x
+       where not exists (select 1 from hunt_card_hp h where h.hunt_id = p_hunt and h.player_id = p_player
+                           and h.hit_date = p_day and h.card_id = x and h.downed));
+  end if;
+  return (select count(*) from hunt_card_hp where hunt_id = p_hunt and player_id = p_player and hit_date = p_day) >= p_cap
+     and not exists (select 1 from hunt_card_hp where hunt_id = p_hunt and player_id = p_player and hit_date = p_day and not downed);
+end $function$;
+grant execute on function public.hunt_squad_done(bigint, text, date, integer) to postgres;
+grant execute on function public.hunt_squad_done(bigint, text, date, integer) to service_role;
+
+CREATE OR REPLACE FUNCTION public.hunt_pass_turn(p_player text, p_hunt bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_status text; v_closes timestamptz; v_hpmax bigint; v_hp bigint; v_share bigint; v_tier text; v_stats jsonb; v_passive jsonb; v_plist text[];
+  v_day date; v_squad bigint[]; v_round int; v_rcap int; v_cap int;
+  v_atk numeric; v_lost numeric; v_bmult numeric;
+  v_enrage numeric; v_enr_until int; v_weaken numeric; v_wk_until int; v_stun_until int; v_marks jsonb;
+  v_act jsonb; v_kind text; v_cdmg int; v_area numeric; v_bheal int := 0; v_rtgt bigint; v_hit jsonb; v_targets jsonb := '[]'::jsonb;
+  v_x bigint; v_total bigint; v_used int; v_topcard text; v_topdmg bigint; v_done boolean;
+begin
+  select status, closes_at, tier, hp_max, passive, coalesce(hp_share, hp_max), stats, hp_remaining
+    into v_status, v_closes, v_tier, v_hpmax, v_passive, v_share, v_stats, v_hp
+    from hunts where id = p_hunt for update;
+  if not found then return jsonb_build_object('ok', false, 'error', 'no_hunt'); end if;
+  if v_status <> 'active' or now() >= v_closes then return jsonb_build_object('ok', false, 'error', 'hunt_over'); end if;
+  v_day := (now() at time zone 'America/Denver')::date;
+  select card_ids into v_squad from hunt_squads where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+  if v_squad is null then return jsonb_build_object('ok', false, 'error', 'no_squad'); end if;
+  v_rcap := hunt_round_cap();
+  v_round := hunt_state_round(p_hunt, p_player, v_day);
+  if v_round >= v_rcap then return jsonb_build_object('ok', false, 'error', 'round_cap', 'cap', v_rcap); end if;
+
+  -- The squad must have a standing card, no standing attacker and no standing support that is ready. Otherwise the member can act.
+  if hunt_squad_done(p_hunt, p_player, v_day, 0) then
+    return jsonb_build_object('ok', false, 'error', 'squad_down');
+  end if;
+  if exists (
+       select 1 from unnest(v_squad) x
+         join cards c on c.id = x join subjects s on s.id = c.subject_id
+        where s.type in ('Character', 'Creature')
+          and not exists (select 1 from hunt_card_hp h where h.hunt_id = p_hunt and h.player_id = p_player and h.hit_date = v_day and h.card_id = x and h.downed)) then
+    return jsonb_build_object('ok', false, 'error', 'can_act', 'why', 'attacker', 'round', v_round);
+  end if;
+  if exists (
+       select 1 from unnest(v_squad) x
+        where not exists (select 1 from hunt_card_hp h where h.hunt_id = p_hunt and h.player_id = p_player and h.hit_date = v_day and h.card_id = x and h.downed)
+          and coalesce((select h.cd_until_round from hunt_card_hp h where h.hunt_id = p_hunt and h.player_id = p_player and h.hit_date = v_day and h.card_id = x), 0) <= v_round) then
+    return jsonb_build_object('ok', false, 'error', 'can_act', 'why', 'support', 'round', v_round);
+  end if;
+
+  -- The boss turn (the usual turn of hunt_attack, without an attacking card).
+  select coalesce(array_agg(y->>'kind'), array[v_passive->>'kind']) into v_plist
+    from jsonb_array_elements(coalesce(v_passive->'list', '[]'::jsonb)) y;
+  v_plist := array_remove(v_plist, null);
+  select boss_enrage, enrage_until, boss_weaken, weaken_until, stunned_until, marks
+    into v_enrage, v_enr_until, v_weaken, v_wk_until, v_stun_until, v_marks
+    from hunt_combat_state where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+  update hunt_combat_state set round = round + 1, updated_at = now()
+    where hunt_id = p_hunt and player_id = p_player and hit_date = v_day
+    returning round into v_round;
+  v_atk := coalesce((v_stats->>'atk')::numeric, balance_num('boss_atk', v_tier));
+  v_lost := 1 - v_hp::numeric / greatest(1, v_hpmax);
+  v_bmult := combat_enemy_mult(v_enrage, v_enr_until,
+    case when hunt_mark_on(v_marks, 'block_weaken', v_round) then 0 else v_weaken end,
+    v_wk_until, v_round, 'volatile' = any(v_plist), v_lost, 'frenzied' = any(v_plist));
+  if hunt_mark_on(v_marks, 'spiral', v_round) then
+    v_bmult := v_bmult * (1 + coalesce((v_marks->'spiral'->>'bonus')::numeric, 0));
+  end if;
+  v_act := combat_enemy_act(v_atk, v_bmult, v_round, v_stun_until, v_lost, v_share);
+  v_kind := v_act->>'action'; v_cdmg := (v_act->>'dmg')::int; v_area := (v_act->>'area')::numeric;
+  v_bheal := (v_act->>'heal')::int;
+
+  -- Every standing card of the squad that has no row yet enters with full HP (here only supports stand: the HP rule of hunt_support).
+  if v_kind in ('strike', 'drain', 'stun', 'slam', 'cataclysm') then
+    for v_x in
+      select x from unnest(v_squad) x
+       where not exists (select 1 from hunt_card_hp h where h.hunt_id = p_hunt and h.player_id = p_player and h.hit_date = v_day and h.card_id = x)
+         and exists (select 1 from player_cards pc where pc.player_id = p_player and pc.card_id = x and pc.quantity > 0)
+    loop
+      if not hunt_commit_card(p_hunt, p_player, v_x, v_day, card_max_hp(0)) then   -- refused (the daily card cap): the hit is not lost
+        insert into hunt_card_hp (hunt_id, player_id, card_id, hit_date, hp_remaining, max_hp, downed)
+          values (p_hunt, p_player, v_x, v_day, card_max_hp(0), card_max_hp(0), false)
+          on conflict (hunt_id, player_id, card_id, hit_date) do nothing;
+      end if;
+    end loop;
+  end if;
+
+  if v_kind in ('strike', 'drain', 'stun') then   -- one random standing squad card takes the single hit
+    select h.card_id into v_rtgt from hunt_card_hp h
+      where h.hunt_id = p_hunt and h.player_id = p_player and h.hit_date = v_day and not h.downed and h.card_id = any(v_squad)
+      order by random() limit 1;
+    if v_rtgt is not null then
+      v_hit := hunt_counter_hit(p_hunt, p_player, v_day, v_rtgt, v_cdmg, false);
+      if v_kind = 'stun' then
+        update hunt_card_hp set cd_until_round = greatest(coalesce(cd_until_round, 0), v_round + 1), updated_at = now()
+          where hunt_id = p_hunt and player_id = p_player and hit_date = v_day and card_id = v_rtgt;
+      end if;
+      v_targets := jsonb_build_array(v_hit);
+    end if;
+  elsif v_area > 0 then   -- Slam / Cataclysm: every standing squad card rolls its own hit
+    with tgt as (
+      select h.card_id, greatest(0, h.raw - coalesce(h.shield, 0)) as dmg, greatest(0, coalesce(h.shield, 0) - h.raw) as shleft
+        from (select x.*, combat_area_roll(v_atk, v_area, v_bmult) as raw
+                from hunt_card_hp x
+               where x.hunt_id = p_hunt and x.player_id = p_player and x.hit_date = v_day and not x.downed and x.card_id = any(v_squad)) h
+    ), upd as (
+      update hunt_card_hp h set hp_remaining = greatest(0, h.hp_remaining - t.dmg),
+          shield = t.shleft, downed = (h.hp_remaining - t.dmg) <= 0, updated_at = now()
+        from tgt t where h.hunt_id = p_hunt and h.player_id = p_player and h.hit_date = v_day and h.card_id = t.card_id
+        returning h.card_id, h.hp_remaining, h.max_hp, h.downed, t.dmg
+    )
+    select coalesce(jsonb_agg(jsonb_build_object('card_id', card_id, 'dmg', dmg, 'hp', hp_remaining, 'max_hp', max_hp, 'downed', downed)), '[]'::jsonb)
+      into v_targets from upd;
+  end if;
+  if v_kind = 'enrage' then
+    update hunt_combat_state set boss_enrage = balance_num('boss_moves', 'enrage_x'), enrage_until = v_round + balance_num('boss_moves', 'enrage_rounds')::int, updated_at = now()
+      where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+  end if;
+  if 'regenerating' = any(v_plist) and v_kind <> 'stunned' then v_bheal := v_bheal + combat_regen(v_share); end if;
+  if v_bheal > 0 then
+    update hunts set hp_remaining = least(hp_max, hp_remaining + v_bheal) where id = p_hunt and status = 'active'
+      returning hp_remaining into v_hp;
+  end if;
+
+  -- The end-of-day summary (the same post as hunt_attack): the squad is down (D-173: every card) or the round limit is reached.
+  v_cap := hunt_card_cap();
+  v_done := hunt_squad_done(p_hunt, p_player, v_day, v_cap);
+  if (v_done or v_round >= v_rcap)
+     and not exists (select 1 from hunt_events where hunt_id = p_hunt and kind = 'player_done'
+                       and payload->>'player_id' = p_player and created_at >= (v_day::timestamp at time zone 'America/Denver')) then
+    select coalesce(sum(damage), 0), count(distinct card_id) into v_total, v_used
+      from hunt_hits where hunt_id = p_hunt and player_id = p_player and hit_date = v_day;
+    select c.name, sub.d into v_topcard, v_topdmg
+      from (select card_id, sum(damage) d from hunt_hits where hunt_id = p_hunt and player_id = p_player and hit_date = v_day
+            group by card_id order by d desc limit 1) sub join cards c on c.id = sub.card_id;
+    insert into hunt_events (hunt_id, kind, payload)
+      values (p_hunt, 'player_done', jsonb_build_object('player_id', p_player,
+        'total', v_total, 'cards_used', v_used, 'top_card', v_topcard, 'top_damage', v_topdmg,
+        'boss_hp', v_hp, 'boss_hp_max', v_hpmax));
+  end if;
+
+  return jsonb_build_object('ok', true, 'no_action', true, 'round', v_round, 'round_cap', v_rcap,
+    'hp_remaining', v_hp, 'status', 'active', 'defeated', false, 'boss_heal', coalesce(v_bheal, 0),
+    'squad_down', v_done, 'passives', to_jsonb(v_plist),
+    'boss_action', jsonb_build_object('kind', v_kind, 'round', v_round, 'targets', v_targets));
+end $function$;
+revoke all on function public.hunt_pass_turn(text, bigint) from public, anon, authenticated;
+grant execute on function public.hunt_pass_turn(text, bigint) to postgres;
+grant execute on function public.hunt_pass_turn(text, bigint) to service_role;
+
+comment on function public.hunt_squad_done(bigint,text,date,integer) is $c$[hunt] True when the member's squad is out for today: EVERY card of the locked squad (attackers and supports) is down (D-173), or (no squad) the card cap is used and every card is down. Internal helper of hunt_attack and hunt_pass_turn (the player_done post).$c$;
+comment on function public.hunt_pass_turn(text,bigint) is $c$[hunt] The turn of a member who has no action (D-173): every attacker of the locked squad is down and every standing support is on cooldown. The round advances and the boss acts once on a random standing squad card. Refuses with can_act, squad_down, round_cap, no_squad or hunt_over. Called by /api/hunt/pass.$c$;
+
+notify pgrst, 'reload schema';

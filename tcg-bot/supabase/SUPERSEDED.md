@@ -81,7 +81,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `hunt_rewards.sql` | SUPERSEDED: reverts `public.settle_hunt(bigint)` (live = `balance_economy.sql`); brings back `public.weekly_hunt_rollover(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_schedule.sql` | SUPERSEDED: reverts `public.close_weekly_boss()` (live = `hunt_early_boss.sql`); reverts `public.next_hunt_close()` (live = `hunt_schedule_mt.sql`); reverts `public.next_hunt_spawn()` (live = `hunt_schedule_mt.sql`); reverts `public.spawn_weekly_boss()` (live = `hunt_notifications.sql`) |  |
 | `hunt_schedule_mt.sql` | SUPERSEDED: reverts `public.hunt_mt_slot(text, timestamp with time zone)` (live = `daily_raid_board.sql`) |  |
-| `hunt_squad_done.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`) |  |
+| `hunt_squad_done.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.hunt_squad_done(bigint, text, date, integer)` (live = `hunt_squad_down_all_cards.sql`) |  |
 | `hunt_squads.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.hunt_commit_card(bigint, text, bigint, date, integer)` (live = `balance_table.sql`); reverts `public.hunt_squad_allows(bigint, text, date, bigint)` (live = `adventure_gate.sql`); reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `hunt_counter_balance.sql`); reverts `public.lock_hunt_squad(text, bigint, bigint[])` (live = `balance_table.sql`) |  |
 | `hunt_support_affinity.sql` | SUPERSEDED: reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `hunt_counter_balance.sql`) |  |
 | `hunt_support_percent.sql` | SUPERSEDED: reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `hunt_counter_balance.sql`) |  |
@@ -157,9 +157,9 @@ a one-time grant or a settings value would run again.
 - `special_cards_never_in_packs.sql`: cards
 - `ui_v3_flag.sql`: settings
 
-## No change (22)
+## No change (23)
 
-`achievement_rewards.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_rules_supports_targets.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
+`achievement_rewards.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_rules_supports_targets.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
 
 ## Live functions that no file gives (1)
 

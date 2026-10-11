@@ -66,6 +66,8 @@ test('touch targets count on touch sizes only', () => {
 test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('convert', '#u3ShopDlg > .u3-scrim > .u3-dialog.u3-sdlg.u3-sdlg--convert > .u3-sdlg__main > .u3-scvt'), 'UI-44');
   assert.equal(ownerOf('convert', '#main > .v2-collection > .p-actions'), 'UI-08');
+  assert.equal(ownerOf('hall-explain', '#exLayer.u3-exl > .u3-ex > .u3-ex__body > .u3-ex__nav > .u3-btn'), 'UI-39');
+  assert.equal(ownerOf('hall-explain', '#main > .u3-hl > .u3-hl__sub > .ex-q'), 'UI-30');
   assert.equal(ownerOf('dungeon', '#topbar > #shopBtn'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Shards'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Avatar.v2-avatar'), 'UI-01');
@@ -130,6 +132,10 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('hall-unlisted', 'body > #u3LsToast.u3-ls-toast > .u3-toast'), 'UI-31');
   assert.equal(ownerOf('hall-offer-wanted', '#u3TradeWin > .u3-tw > .u3-tw__bar'), 'UI-63');   // the offer is the Trade window
   assert.equal(ownerOf('hall-offer-wanted', '#main > .u3-hl > .u3-hl__grid'), 'UI-30');   // the Hall behind it
+  assert.equal(ownerOf('auction-bid', '#main > .u3-au > .u3-au__main'), 'UI-32');   // Auctions: the page, the info panel, the windows and the Undo toast
+  assert.equal(ownerOf('auction-confirm', '#main > .u3-au > #u3AuDlgHost > .u3-scrim'), 'UI-32');
+  assert.equal(ownerOf('auction-withdraw', 'body > #u3AuToast.u3-au-toast > .u3-toast'), 'UI-32');
+  assert.equal(ownerOf('auction-bid-picker', '#u3Picker > .u3-scrim > .u3-pk'), 'UI-64');   // the bid picker is the Card picker
   assert.equal(ownerOf('hunt-picker-detail', '#viewer.raid-info > #viewer-closebutton'), 'UI-64');
   assert.equal(ownerOf('hunt-picker-detail', '.vr-stats > .vr-stat > span "Power"'), 'UI-64');
   assert.equal(ownerOf('hunt-picker-detail', '.u3-hs-hp > span'), 'UI-17');

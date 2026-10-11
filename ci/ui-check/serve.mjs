@@ -247,6 +247,53 @@ function derivedHallMode(body, mode) {
   return out;
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/hall' && ['many', 'list', 'offer'].includes(c.ci_hall) && body?.wanted, make: (body, c) => derivedHallMode(body, c.ci_hall) });
+// UI-32 Auctions (cookie ci_auction): the recording holds no auction. open = the open list (40 auctions of other members, one mine, one that waits for my
+// Confirm, one ending soon); seller | seller-bids | seller-accepted = my auction (no bids, 3 bids, one bid accepted); bidder | bidder-bid | bidder-confirm = an
+// auction of another member (no bid, my bid of one card below the minimum, my bid accepted). Cards come from the recorded catalog; names are made up.
+const AU_ME = '100000000000000001';
+function auCards() {
+  const cat = (FIX.routes['/api/catalog']?.body?.cards || []).filter((c) => c.image_url);
+  const by = (r) => cat.filter((c) => c.rarity === r);
+  const slim = (c) => ({ id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, power: c.power });
+  return { slim, normal: (i) => slim(by('normal')[i % by('normal').length]), any: (i) => slim(cat[(i * 37) % cat.length]) };
+}
+function auBase(id, kind) {
+  const { normal, any } = auCards();
+  const t0 = new Date(FIX.recordedAt).getTime();
+  const seller = kind.startsWith('seller');
+  return { id, seller_id: seller ? AU_ME : '100000000000000112', seller: seller ? 'Member A' : 'Member 112', card: normal(id), min: { rarity: 'normal', count: 5, cards: [any(3), any(4), any(5)], mode: 'or' },
+    status: 'live', ends_at: new Date(t0 + (2 * 24 + 22) * 3600e3).toISOString(), mine: seller, myBid: false, bids: 0, any, normal, t0 };
+}
+function derivedAuctions(kind) {
+  const { normal } = auCards();
+  const t0 = new Date(FIX.recordedAt).getTime();
+  const mk = (i, o = {}) => ({ id: i + 1, seller_id: `1000000000000001${String(i + 10)}`, seller: `Member ${String(i + 110)}`, card: normal(i), min: { rarity: 'normal', count: 1, cards: [], mode: 'and' }, status: 'live',
+    ends_at: new Date(t0 + (2 * 24 + 22 - i) * 3600e3).toISOString(), bids: i % 3, mine: false, myBid: false, ...o });
+  if (kind === 'open') {
+    const l = Array.from({ length: 40 }, (_, i) => mk(i));
+    l[1] = { ...l[1], mine: true, seller_id: AU_ME, seller: 'Member A', bids: 2 };
+    l[2] = { ...l[2], status: 'accepted', myBid: true, bids: 1 };
+    l[3] = { ...l[3], ends_at: new Date(t0 + 5 * 3600e3 + 180e3).toISOString() };
+    return l;
+  }
+  return [mk(0, { mine: kind.startsWith('seller'), seller_id: kind.startsWith('seller') ? AU_ME : '100000000000000112', seller: kind.startsWith('seller') ? 'Member A' : 'Member 112', myBid: kind.startsWith('bidder') && kind !== 'bidder', bids: kind === 'seller-bids' ? 3 : kind === 'seller' || kind === 'bidder' ? 0 : 1 })];
+}
+function derivedAuction(kind) {
+  const b = auBase(1, kind), col = FIX.routes['/api/collection']?.body?.cards || [];
+  const one = (c) => ({ id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, power: c.power });
+  const bid = (id, n, o = {}) => ({ id, bidder_id: `10000000000000012${id}`, bidder: `Member 12${id}`, cards: col.slice(id * 6, id * 6 + n).map(one), status: 'open', meets: false, at: new Date(b.t0 - 3600e3).toISOString(), score: n, ...o });
+  const out = { id: b.id, seller_id: b.seller_id, seller: b.seller, card: b.card, min: b.min, status: b.status, ends_at: b.ends_at, accepted_bid_id: null, confirm_by: null,
+    isSeller: kind.startsWith('seller'), bidsCount: 0, myBid: null, best: null };
+  if (kind === 'seller-bids') { out.bids = [bid(1, 1), bid(2, 5, { meets: true }), bid(3, 2)]; out.bidsCount = 3; }
+  if (kind === 'seller-accepted') { out.bids = [bid(1, 1, { status: 'accepted' })]; out.bidsCount = 1; out.status = 'accepted'; out.accepted_bid_id = 1; out.confirm_by = new Date(b.t0 + 24 * 3600e3).toISOString(); }
+  if (kind === 'seller') out.bids = [];
+  if (kind === 'bidder-bid' || kind === 'bidder-confirm') {
+    const my = { ...bid(1, 1), bidder_id: AU_ME, bidder: 'Member A' };
+    out.myBid = my; out.bidsCount = 1; out.best = { cards: my.cards, meets: false, mine: true };
+    if (kind === 'bidder-confirm') { out.status = 'accepted'; out.myBid = { ...my, status: 'accepted' }; out.accepted_bid_id = 1; out.confirm_by = new Date(b.t0 + 24 * 3600e3).toISOString(); }
+  }
+  return out;
+}
 // UI-14: a wishlist with five cards (the recorded one has five empty slots): one name per rarity label, a long name, a plain name.
 function derivedWish(body) {
   const R = [['full_art', 'Full Art'], ['gold', 'Gold'], ['rare', 'Rare'], ['uncommon', 'Uncommon'], ['normal', 'Normal']];
@@ -395,6 +442,8 @@ createServer((req, res) => {
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'set-cookie': `ci_accepted=${id}; Path=/` }); res.end('{"ok":true}'); });
     return undefined;
   }
+  // UI-32: withdrawing a bid answers ok (nothing is written) so the screen shows "Bid withdrawn." with Undo; start, bid, accept, close and confirm stay refused (the error states).
+  if (req.method === 'POST' && p === '/api/auction/withdraw') return send(res, 200, '{"ok":true}');
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)
@@ -408,6 +457,10 @@ createServer((req, res) => {
     if (c.ci_home === 'busy' && p === '/api/hunt') return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(derivedResting()) : derivedResting()));
     if (p === '/api/hunt' && (c.ci_hunt === 'resting' || c.ci_hunt === 'down')) return send(res, 200, JSON.stringify(derivedHunt(c.ci_hunt, c.ci_data === 'long')));
     if (p === '/api/hunt' && c.ci_hunt === 'battle-mix') return send(res, 200, JSON.stringify(derivedBattleMix()));
+    if (c.ci_auction && (p === '/api/auctions' || p === '/api/auction')) {
+      const out = p === '/api/auctions' ? { view: url.searchParams.get('view') || 'open', auctions: derivedAuctions(c.ci_auction) } : derivedAuction(c.ci_auction);
+      return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(out) : out));
+    }
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).
