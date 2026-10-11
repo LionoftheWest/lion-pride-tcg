@@ -26,9 +26,11 @@
 .u3-hl__pager .u3-pager { width: max-content; }
 /* D-175: the cell = the card face + one caption line (the member who wants or lists it, your copies); the caption height is measured (fillV3) */
 .u3-hl-cell { list-style: none; width: var(--hl-tile); min-width: var(--u3-none); display: grid; grid-template-rows: calc(var(--hl-tile) * var(--card-ratio)) minmax(0, 1fr); }
-.u3-hl-cap { display: flex; align-items: center; gap: var(--sp-1); box-sizing: border-box; min-width: var(--u3-none); padding-top: var(--sp-1); overflow: hidden; white-space: nowrap;
+.u3-hl-cap { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-1); box-sizing: border-box; min-width: var(--u3-none); padding-top: var(--sp-1); overflow: hidden; white-space: nowrap;
   font-size: var(--fs-caption); font-weight: var(--fw-caption); line-height: var(--lh-caption); color: var(--text-secondary); }
-.u3-hl-who { flex: 1 1 auto; min-width: var(--u3-none); overflow: hidden; text-overflow: ellipsis; }
+.u3-hl-av { flex: none; display: inline-flex; }
+body.ui-v2 .u3-hl-av .v2-avatar { width: var(--avatar-xs); height: var(--avatar-xs); padding: var(--sp-half); box-sizing: border-box; }
+body.ui-v2 .u3-hl-av .v2-avatar > span { font-size: var(--fs-caption); }
 .u3-hl-n { flex: none; display: inline-flex; align-items: center; gap: var(--sp-1); font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .u3-hl-n .u3-ico { width: var(--icon-sm); height: var(--icon-sm); }
 .u3-hl-n.is-have, .u3-hl-n.is-yours { color: var(--gold); }

@@ -241,7 +241,7 @@ function tileV3(c, idx) {
   const label = `${c.name}, ${it.name}${off ? ', not owned' : ''}${info.yours ? ', yours' : `, you have ${info.n}`}`;
   return `<li class="u3-hl-cell"><div class="u3-hl-card u3-r-${esc3(c.rarity || 'normal')}${off ? ' is-notowned' : ''}"><button type="button" class="u3-hl-card__pick" data-idx="${idx}" aria-label="${esc3(label)}">`
     + `${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${esc3(c.image_url)}" alt="" loading="lazy" draggable="false">` : ''}</button></div>`
-    + `<span class="u3-hl-cap" aria-hidden="true"><span class="u3-hl-who">${esc3(info.who)}</span>${count}</span></li>`;
+    + `<span class="u3-hl-cap"><span class="u3-hl-av" role="img" aria-label="${esc3(info.who)}" title="${esc3(info.who)}">${avatarHTML(it.player_id, info.who, '')}</span>${count}</span></li>`;
 }
 const searchHTML = () => searchField({ value: hall.q, placeholder: 'Search cards, tags…' });
 function paintHallV3() {
@@ -306,7 +306,7 @@ function fillV3() {
   hlItems = hallItemsV3();
   const root = g.closest('.u3-hl');
   // D-175: the caption under each card (member + copies): its height is measured from a probe with the real caption CSS
-  const probe = document.createElement('li'); probe.className = 'u3-hl-probe'; probe.innerHTML = '<span class="u3-hl-cap"><span class="u3-hl-who">Ag</span></span>';
+  const probe = document.createElement('li'); probe.className = 'u3-hl-probe'; probe.innerHTML = `<span class="u3-hl-cap"><span class="u3-hl-av">${avatarHTML(null, 'A', '')}</span><span class="u3-hl-n">Ag</span></span>`;
   g.appendChild(probe); const capH = Math.ceil(probe.querySelector('.u3-hl-cap').getBoundingClientRect().height); probe.remove();
   g.style.setProperty('--hl-cap-h', `${capH}px`);
   const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, parseFloat(getComputedStyle(g).columnGap) || 0, { extra: capH, ...o });
