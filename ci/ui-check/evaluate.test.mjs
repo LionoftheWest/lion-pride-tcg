@@ -300,10 +300,10 @@ test('a bad exception entry stops the gate', () => {
   }
 });
 
-test('UI-66 state exceptions (D-124): the 5 state specs on every touch and pointer size accept only the empty-space rule', async () => {
+test('UI-66 state exceptions (D-124): the 6 state specs on every touch and pointer size accept only the empty-space rule', async () => {
   const { readFileSync } = await import('node:fs');
   const list = checkExceptions(JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8')).filter((e) => e.id === 'UI-66'));
-  const states = ['leaderboard-error', 'leaderboard-hunt-error', 'leaderboard-hunt-empty', 'leaderboard-dungeon-empty', 'leaderboard-gauntlet-empty'];
+  const states = ['leaderboard-error', 'leaderboard-hunt-error', 'leaderboard-hunt-empty', 'leaderboard-hunt-last-empty', 'leaderboard-dungeon-empty', 'leaderboard-gauntlet-empty'];
   assert.equal(list.length, states.length * (SIZES.length - 1), 'every size but tiny (the window is not shown there)');
   assert.ok(list.every((e) => e.decision === 'D-124' && e.rule === 'empty' && states.includes(e.screen)));
   const x = (screen, rule) => ({ owner: 'UI-66', screen, size: '430x932', rule });

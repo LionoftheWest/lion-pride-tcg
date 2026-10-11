@@ -243,3 +243,9 @@ body[data-size="compact-land"] .u3-lb-main--board { grid-template-rows: auto min
 /* a board with few rows (a tall window on a tablet or desktop; a phone has no spare height): the rows share the free height, at most twice their height, so the table has no empty band */
 body[data-size="medium"] .u3-lb-main--board .u3-lb-rows:not(.is-probe) > .u3-lb-row,
 body[data-size="expanded"] .u3-lb-main--board .u3-lb-rows:not(.is-probe) > .u3-lb-row { flex: 1 0 auto; max-height: calc(var(--lb-row) * 2); }
+
+/* ---- D-178: the Hunt tab switch (Current / Last boss) sits above the title in every state; the title is the same box in both views ---- */
+.u3-lb-segrow, .u3-lb-lhead { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.u3-lb-lhead { flex: none; }
+.u3-lb-hseg { min-width: 0; }
+.u3-lb-lh > span { min-width: 0; overflow-wrap: anywhere; }

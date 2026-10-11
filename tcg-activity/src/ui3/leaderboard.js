@@ -29,7 +29,7 @@ export const METRICS = [
 export const TOP = 10;   // "the most it can show is the top 10" (Nathan, 2026-10-01): podium 1-3, table 4-10
 export const TOP_BOARD = 20;   // the Hunt, Dungeon and Gauntlet boards page their top 20 (the server sends 20 on the Hunt board): podium 1-3, table 4-20
 export const ERROR_TEXT = 'The leaderboard is not available.';
-const ENDPOINT = { main: '/api/leaderboard/v2', hunt: '/api/hunt/leaderboard', dungeon: '/api/dungeon/board', gauntlet: '/api/gauntlet/board' };
+const ENDPOINT = { main: '/api/leaderboard/v2', hunt: '/api/hunt/leaderboard', huntLast: '/api/hunt/leaderboard?last=1', dungeon: '/api/dungeon/board', gauntlet: '/api/gauntlet/board' };
 
 // ---- Pure rules (tested in leaderboard.test.js) ----
 /** The rows from best to worst on one board; a tie sorts by name (as the v2 board). */
@@ -103,6 +103,9 @@ const $ = (id) => document.getElementById(id);
 const px = (v) => parseFloat(v) || 0;
 const size = () => document.body.dataset.size || 'expanded';
 const num = (n) => fmtFor(n, size());
+
+// The data key of the open tab: the Hunt tab has two views (D-178), the live boss and the last boss.
+const dk = (tab) => (tab === 'hunt' && st?.hunt === 'last' ? 'huntLast' : tab);
 
 export function initLeaderboardWindow(d) { deps = d; }
 export const isOpen = () => !!$('u3LbHost');
@@ -206,28 +209,37 @@ function boardRowHTML(r, i, tab, d) {
   return `<div class="u3-lb-row${mine ? ' is-me' : ''}" role="button" tabindex="0" data-member="${esc(r.id)}"><span class="u3-lb-i">${i + 1}</span>`
     + `<span class="u3-lb-p">${av(r.id, r.name, '', 'u3-lb-av u3-lb-av--row')}<span class="u3-lb-who"><b class="u3-lb-nm">${deps.nameBadge(r.id, r.name, true)}</b> ${titleChip(r.title)} ${mine ? youChip : ''}</span></span>${cols}</div>`;
 }
+/** The top of a board tab: on the Hunt tab the Current / Last boss switch (UI-00 segmented control) first, then the title. The title of
+ *  the past view names the boss. The switch is in the same place in every state, so nothing moves when the view changes. */
+function boardHead(tab, d) {
+  const last = tab === 'hunt' && st.hunt === 'last';
+  const title = last ? `Last boss${d?.boss?.name ? ` · ${d.boss.name}` : ''}` : BOARD_TITLE[tab];
+  const sw = tab === 'hunt' ? `<div class="u3-lb-hseg" data-lb-hunt>${segmented([{ id: 'current', label: 'Current', active: !last }, { id: 'last', label: 'Last boss', active: last }], { label: 'Hunt board' })}</div>` : '';
+  return `${sw}<h3 class="u3-lb-lh">${icon(tab === 'hunt' ? 'swords' : 'trophy', { size: '2xl' })}<span>${esc(title)}</span></h3>`;
+}
 function boardHTML(tab, d) {
   const rows = boardRows(tab, d, num);
   const cols = BOARD_COLS[tab];
   const th = `<div class="u3-lb-row u3-lb-th"><span class="u3-lb-i">#</span><span class="u3-lb-p">Player</span>${cols.map((c, k) => `<span class="u3-lb-c${k === 0 ? ' is-on' : ''}" data-m="${c.key}">${esc(c.col)}</span>`).join('')}</div>`;
   const meIdx = rows.findIndex((r) => r.id === String(d.me));
   const pin = meIdx >= TOP_BOARD ? `<div class="u3-lb-pin">${boardRowHTML(rows[meIdx], meIdx, tab, d)}</div>` : '';
-  return `<div class="u3-lb-main u3-lb-main--board${st.flat ? ' is-flat' : ''}" data-board="${tab}"><div class="u3-lb-segrow"><h3 class="u3-lb-lh">${icon(tab === 'hunt' ? 'swords' : 'trophy', { size: '2xl' })}<span>${BOARD_TITLE[tab]}</span></h3></div>`
+  return `<div class="u3-lb-main u3-lb-main--board${st.flat ? ' is-flat' : ''}" data-board="${tab}"><div class="u3-lb-segrow">${boardHead(tab, d)}</div>`
     + `${st.flat ? '' : boardPodiumHTML(rows, tab, d)}<div class="u3-lb-table" data-cols="${cols.length}">${th}<div class="u3-lb-rows" data-lb-list></div>${pin}</div><div class="u3-lb-pager" data-lb-pager></div></div>`;
 }
 
 function listTabHTML(tab, d, state) {
-  const head = tab === 'hunt' ? '' : `<h3 class="u3-lb-lh">${icon('trophy', { size: '2xl' })}<span>${gauntlet ? 'This week\'s leaderboard' : 'Today\'s leaderboard'}</span></h3>`;
+  const gauntlet = tab === 'gauntlet';
+  const head = `<div class="u3-lb-lhead">${boardHead(tab, d)}</div>`;
   const body = state === 'error' ? `<div class="u3-lb-msg u3-lb-msg--error">${inlineMessage({ kind: 'error', text: ERROR_TEXT })}</div>`
-    : state === 'empty' ? `<p class="u3-lb-msg u3-lb-none">${tab === 'hunt' ? 'No damage dealt yet.' : gauntlet ? 'No runs yet this week.' : 'No runs yet today.'}</p>`
+    : state === 'empty' ? `<p class="u3-lb-msg u3-lb-none">${tab === 'hunt' ? (st.hunt === 'last' ? 'No finished boss yet.' : 'No damage dealt yet.') : gauntlet ? 'No runs yet this week.' : 'No runs yet today.'}</p>`
       : '';
   return `<div class="u3-lb-lt u3-lb-lt--${tab}">${head}<div class="u3-lb-lbox">${body}</div><div class="u3-lb-pager" data-lb-pager></div></div>`;
 }
 
 function panelHTML() {
   const tab = st.tab;
-  if (st.load[tab] === 'busy') return `<div class="u3-lb-load" aria-busy="true" aria-label="Loading">${'<span class="u3-lb-ph"></span>'.repeat(5)}</div>`;
-  const d = st.data[tab];
+  if (st.load[dk(tab)] === 'busy') return `<div class="u3-lb-load" aria-busy="true" aria-label="Loading">${'<span class="u3-lb-ph"></span>'.repeat(5)}</div>`;
+  const d = st.data[dk(tab)];
   const state = tabState(tab, d);
   if (tab === 'main') return state === 'ok' ? mainHTML(d) : `<p class="u3-lb-merr">${ERROR_TEXT}</p>`;
   return state === 'ok' ? boardHTML(tab, d) : listTabHTML(tab, d, state);
@@ -315,8 +327,8 @@ function fit() {
   const strip = win.querySelector('.u3-subtabs__strip');
   if (strip && strip.scrollWidth > strip.clientWidth + 1) win.classList.add('is-stack');
   const tab = st.tab;
-  if (st.load[tab] === 'busy') return;
-  const d = st.data[tab];
+  if (st.load[dk(tab)] === 'busy') return;
+  const d = st.data[dk(tab)];
   const state = tabState(tab, d);
   if (tab !== 'main' && state !== 'ok') { paintPager(win, 1, false); return; }
   {
@@ -349,7 +361,7 @@ function fit() {
 }
 
 // A resize or a class change starts the measured modes again (the full names, the podium).
-const scheduleFit = () => { clearTimeout(fitT); fitT = setTimeout(() => { if (!isOpen()) return; const w = $('u3Lb').clientWidth; if (st.w !== w) { st.w = w; st.short = false; st.flat = false; if (st.load[st.tab] !== 'busy' && tabState(st.tab, st.data[st.tab]) === 'ok') { paint(); return; } } redrawLabels(); fit(); }, 60); };
+const scheduleFit = () => { clearTimeout(fitT); fitT = setTimeout(() => { if (!isOpen()) return; const w = $('u3Lb').clientWidth; if (st.w !== w) { st.w = w; st.short = false; st.flat = false; if (st.load[dk(st.tab)] !== 'busy' && tabState(st.tab, st.data[dk(st.tab)]) === 'ok') { paint(); return; } } redrawLabels(); fit(); }, 60); };
 // A class change swaps the segment names (a phone says "Power", a tablet "Collection Power").
 function redrawLabels() {
   const win = $('u3Lb');
@@ -360,16 +372,16 @@ function redrawLabels() {
 }
 
 // ---- Data ----
-async function load(tab) {
-  if (st.load[tab] === 'busy') return;
-  st.load[tab] = 'busy';
-  if (st.tab === tab) paint();
+async function load(key) {
+  if (st.load[key] === 'busy') return;
+  st.load[key] = 'busy';
+  if (dk(st.tab) === key) paint();
   let d = null;
-  try { d = await deps.api(ENDPOINT[tab]); } catch { d = null; }
+  try { d = await deps.api(ENDPOINT[key]); } catch { d = null; }
   if (!isOpen()) return;
-  st.data[tab] = d;
-  st.load[tab] = 'done';
-  if (st.tab === tab) paint();
+  st.data[key] = d;
+  st.load[key] = 'done';
+  if (dk(st.tab) === key) paint();
 }
 
 function select(tab) {
@@ -378,7 +390,7 @@ function select(tab) {
   st.tab = tab;
   st.page = 1;
   st.flat = false; st.short = false;   // the measured modes start again on each tab
-  if (!st.data[tab]) load(tab); else paint();
+  if (!st.data[dk(tab)]) load(dk(tab)); else paint();
   if (was !== tab) $('u3Lb')?.querySelector(`.u3-subtabs [data-tab="${tab}"]`)?.focus();
 }
 
@@ -388,6 +400,13 @@ function onClick(e) {
   if (e.target === host || e.target.closest('[data-lb-close]')) { closeLeaderboardWindow(); return; }
   const tab = e.target.closest('.u3-subtabs [data-tab]');
   if (tab) { select(tab.dataset.tab); return; }
+  const hs = e.target.closest('[data-lb-hunt] [data-seg]');
+  if (hs) {   // the Hunt tab: Current or Last boss
+    st.hunt = hs.dataset.seg === 'last' ? 'last' : 'current'; st.page = 1; st.flat = false;
+    if (!st.data[dk('hunt')]) load(dk('hunt')); else paint();
+    host.querySelector(`[data-lb-hunt] [data-seg="${st.hunt}"]`)?.focus();
+    return;
+  }
   const seg = e.target.closest('.u3-seg [data-seg]');
   if (seg) { st.metric = seg.dataset.seg; st.page = 1; paint(); host.querySelector(`.u3-seg [data-seg="${CSS.escape(st.metric)}"]`)?.focus(); return; }
   const pg = e.target.closest('[data-page]');
@@ -413,7 +432,7 @@ export function openLeaderboardWindow(tab = 'main') {
   const t = TABS.some((x) => x.id === tab) ? tab : 'main';
   if (isOpen()) { select(t); return; }
   opener = document.activeElement;
-  st = { tab: t, metric: 'power', page: 1, data: {}, load: {} };
+  st = { tab: t, metric: 'power', page: 1, hunt: 'current', data: {}, load: {} };
   const host = document.createElement('div');
   host.id = 'u3LbHost';
   host.className = 'u3-lbhost';
@@ -427,7 +446,7 @@ export function openLeaderboardWindow(tab = 'main') {
   ro?.observe(win);
   document.fonts?.ready?.then(() => { if (isOpen()) fit(); });
   host.querySelector('[data-lb-close] button')?.focus();
-  load(t);
+  load(dk(t));
 }
 
 export function closeLeaderboardWindow({ restore = true } = {}) {
