@@ -150,13 +150,17 @@ export function auctionsV3(deps) {
     auItems = applyHall(rows, { q: hall.q, filters: hall.f, tagsOf: deps.tagsOf, elementOf: cardElement, owns: deps.owns }).map((x, i) => ({ ...x.card, _a: x, _k: i }));
     const root = g.closest('.u3-hl');
     const gap = parseFloat(getComputedStyle(g).columnGap) || 0;
-    const cap = g._cap || TOKENS['sp-5'];
-    const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, gap, { extra: cap + TOKENS['sp-1'], ...o });
+    // the keyboard is open (body[data-kb]): the captions give way (90-ui-32.css) and the grid fits by card size alone, as the Card picker;
+    // the tile never goes under the tile size, so the pick button stays 44 px or more (fewer cards on the page is fine)
+    const kb = document.body.hasAttribute('data-kb');
+    const cap = kb ? 0 : g._cap || TOKENS['sp-5'];
+    const extra = kb ? 0 : cap + TOKENS['sp-1'];
+    const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, gap, { extra, ...o });
     const solve = () => {
       root.classList.remove('is-tight');
       let r = fit();
       if (r.rows < 2) { root.classList.add('is-tight'); r = fit(); }
-      if (r.rows < 2) { const s = fit({ min: TOKENS['card-mini'] }); if (s.rows >= 2) r = s; }
+      if (!kb && r.rows < 2) { const s = fit({ min: TOKENS['card-mini'] }); if (s.rows >= 2) r = s; }
       return r;
     };
     root.classList.remove('has-pager');
@@ -164,7 +168,7 @@ export function auctionsV3(deps) {
     if (auItems.length > f.cols * f.rows) { root.classList.add('has-pager'); f = solve(); if (auItems.length <= f.cols * f.rows) { root.classList.remove('has-pager'); f = solve(); } }
     // every card on one page: the cards grow to fill the box (up to the largest tile), as the Trade Hall lists
     if (auItems.length && auItems.length <= f.cols * f.rows) {
-      const all = AU.fitAllWithCaption(auItems.length, g.clientWidth, g.clientHeight, gap, { min: f.tile, max: TOKENS['card-tile-max'], ratio: TOKENS['card-ratio'], extra: cap + TOKENS['sp-1'] });
+      const all = AU.fitAllWithCaption(auItems.length, g.clientWidth, g.clientHeight, gap, { min: f.tile, max: TOKENS['card-tile-max'], ratio: TOKENS['card-ratio'], extra });
       if (all) f = { ...f, ...all };
     }
     g.classList.toggle('is-short', f.tile < TOKENS.hit);
@@ -180,7 +184,7 @@ export function auctionsV3(deps) {
     // the caption height as laid out (it can wrap on a small card): fit again once with it
     const hs = [...g.querySelectorAll('.u3-au-cap')].map((e) => Math.ceil(e.getBoundingClientRect().height));
     const need = hs.length ? Math.max(...hs) : cap;
-    if (need !== g._cap && need > 0 && !g._capTry) { g._cap = need; g._capTry = true; g._html = null; fill(g); g._capTry = false; return; }
+    if (!kb && need !== g._cap && need > 0 && !g._capTry) { g._cap = need; g._capTry = true; g._html = null; fill(g); g._capTry = false; return; }
     const pages = pagesOf(auItems.length, per), p = ctx().el('hlPager');
     const ph = pages > 1 ? pager({ page: hall.page + 1, pages }) : '';
     if (p && p._html !== ph) { p._html = ph; p.innerHTML = ph; }
