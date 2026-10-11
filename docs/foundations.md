@@ -68,10 +68,17 @@ a balance change in one place leaves the other places wrong.
    game variables is 30 s. An event starts within about 1 minute.
 8. **Live edits.** A live event can change its end time, variables and theme. It cannot
    change its start or kind. Each change is written to `event_log`.
-9. **The admin calendar.** A week and month view. Nathan creates an event (from a blank or
-   from a template), picks variables from the registry (each shows its base value and
-   limits), sets the theme, and chooses one time or a repeat. Drag moves an event. Drag of
-   the edge changes its length.
+9. **The admin calendar (Nathan, 2026-10-11: "just like a Google Calendar view").**
+   - The default view is the full current month. Every event shows on its days: Hunts,
+     Dungeon and Gauntlet changes, modifiers, and Community Week. A multi-day event is one
+     bar across its days. Each kind has its own color.
+   - Click an event to open its detail panel. The panel shows all details: time, variables
+     (each with its base value and limits), theme, audience, rewards, repeat rule, status,
+     payouts and the change log. Every field that can still change is editable in the panel.
+   - Click an empty day to create an event on that day (from a blank or from a template).
+     Choose one time or a repeat.
+   - Previous and next month buttons and a "Today" button. A week view is optional.
+   - Drag moves an event. Drag of the edge changes its length.
 
 ### Acceptance tests (local copy)
 
