@@ -82,7 +82,7 @@
   }
   // P1: a size class can move content into a tab. A control in a hidden tab panel (role=tabpanel, hidden, id) counts as
   // reachable when the visible tab that controls it (aria-controls) is on the screen. Removed content still counts as missing.
-  for (const p of document.querySelectorAll('[role="tabpanel"][hidden][id]')) {
+  for (const p of document.querySelectorAll('[role="tabpanel"][hidden][id], [data-disclosure][hidden][id]')) {
     const tab = document.querySelector(`[aria-controls~="${CSS.escape(p.id)}"]`);
     if (!tab || !visDeep(tab)) continue;
     for (const e of p.querySelectorAll(ISEL)) { const k = keyOf(e); if (k) keys[k] = { inView: true, inTab: true }; }

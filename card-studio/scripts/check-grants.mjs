@@ -48,7 +48,7 @@ if (!r.ok || !Array.isArray(rows)) { console.error(`FAILED ${r.status}:`, JSON.s
 if (rows.length) {
   console.error(`FAIL: ${rows.length} grant(s) beyond the public catalog:`);
   for (const x of rows) console.error(`  ${x.priv.padEnd(7)} ${x.role.padEnd(13)} ${x.obj}`);
-  console.error('Fix: re-run  node scripts/apply-sql.mjs ../tcg-bot/supabase/lockdown_grants.sql');
+  console.error('Fix: re-run  node scripts/apply-sql.mjs ../tcg-bot/supabase/lockdown_grants.sql --live');
   process.exitCode = 1; // not process.exit(): it trips a libuv assert on Windows after fetch
 } else {
   console.log(`OK: anon + authenticated can only read ${PUBLIC_READ.join(', ')}. RLS is on for every table.`);

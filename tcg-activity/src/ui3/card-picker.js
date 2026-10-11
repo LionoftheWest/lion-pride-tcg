@@ -102,14 +102,16 @@ const shown = () => (cur.opts.apply ? cur.opts.apply(cur.opts.cards, cur.values,
 
 function tileHTML(c, n, why) {
   const badge = cur.opts.badge?.(c) || '';
+  const mark = cur.opts.mark?.(c) || null;   // UI-32: a small icon at the bottom left of the card ({ icon, label }: the heart of the seller's wishlist)
   const name = esc(c.name || 'Card');
   const tag = cur.opts.caption ? 'div' : 'li';   // a caption: the card sits in a cell with its caption under it (<li class="u3-pk-cell">)
   const card = `<${tag} class="u3-pk-card u3-r-${esc(c.rarity || 'normal')}${n ? ' is-sel' : ''}${why ? ' is-off' : ''}" data-card="${c.id}">`
     + `<button type="button" class="u3-pk-card__pick" data-pick="${c.id}" aria-pressed="${n ? 'true' : 'false'}"`
-    + ` aria-label="${name}${badge ? `, ${esc(badge)}` : ''}${n ? (cur.opts.one ? ', selected' : `, number ${n}`) : ''}${why ? `, ${esc(why)}` : ''}"${why && !n ? ' aria-disabled="true"' : ''}>`
+    + ` aria-label="${name}${badge ? `, ${esc(badge)}` : ''}${mark?.label ? `, ${esc(mark.label)}` : ''}${n ? (cur.opts.one ? ', selected' : `, number ${n}`) : ''}${why ? `, ${esc(why)}` : ''}"${why && !n ? ' aria-disabled="true"' : ''}>`
     + `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="" loading="lazy" draggable="false">` : ''}</button>`
     + `${badge ? `<span class="u3-pk-badge" aria-hidden="true">${esc(badge)}</span>` : ''}`
     + `${n ? `<span class="u3-pk-num" aria-hidden="true">${cur.opts.one ? icon('check', { size: 'sm' }) : n}</span>` : ''}`
+    + `${mark ? `<span class="u3-pk-mark" aria-hidden="true">${icon(mark.icon, { size: 'sm' })}</span>` : ''}`
     + `<button type="button" class="u3-pk-card__info" data-info="${c.id}" aria-label="Card details: ${name}">${icon('search')}</button></${tag}>`;
   return cur.opts.caption ? `<li class="u3-pk-cell">${card}<span class="u3-pk-cap">${capHTML(cur.opts.caption(c))}</span></li>` : card;
 }
