@@ -1,0 +1,11 @@
+/* ==== UI-10 Ascension, celebration, stat points: v3 (body.ui-v3) ====
+   Approved 2026-10-05 (UI-10/approved, review-1 and review-2). The celebration is the UI-09 viewer (scrim, IconButton close, --elev-3: 90-ui-09.css).
+   C4: "Spend points" no longer covers the card: centered, one step above it. E1/S2: a failed Ascend or stat point save is an inline error
+   message (7.3) under its block; the button keeps its label (D-80 items 13 and 14). Flag off: none of this applies. */
+body.ui-v2.ui-v3 #viewer.card-only:has(.asc-spend) {   /* room above the card for the button, the same below, so the card stays centered */
+  --uv-cw: min(var(--uv-w), calc((100cqh - 2 * (var(--hit) + var(--sp-3))) / var(--card-ratio)));
+}
+body.ui-v2.ui-v3 #viewer.card-only .asc-spend { top: auto; bottom: calc(50% + var(--uv-ch) / 2 + var(--sp-3)); }
+
+body.ui-v2.ui-v3 :is(#colPanel, #pPts) .u3-fail { order: 100; margin-top: var(--sp-2); min-width: 0; }   /* after the actions row (its order is 99) */
+body.ui-v2.ui-v3 #colPanel .u3-fail .u3-msg { align-items: flex-start; }

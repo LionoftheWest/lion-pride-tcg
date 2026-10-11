@@ -101,6 +101,17 @@ function derivedRoom(body, kind) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['rest', 'path', 'chest', 'floor'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedRoom(body, c.ci_dungeon) });
 
+// UI-10: the Collection with every owned card ready to ascend (ascend) or with 2 free stat points (points) (cookie ci_col=ascend | points). The write calls answer 403,
+// so an Ascend or a Save shows the real error path. The recording has no card with stat points.
+function derivedCol(body, kind) {
+  const hp = (c) => Math.round((c.power || 0) * 3);
+  return { ...body, cards: body.cards.map((c) => {
+    if (!(c.quantity > 0)) return c;
+    if (kind.startsWith('ascend')) return { ...c, quantity: Math.max(c.quantity, 3), can_ascend: c.next_cost != null };
+    return { ...c, stat: { cp: c.power || 0, hp: hp(c), crit: 0, free: 2, points: {} } };   // 'points'
+  }) };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/collection' && ['ascend', 'ascend-ok', 'points'].includes(c.ci_col) && body?.cards, make: (body, c) => derivedCol(body, c.ci_col) });
 // UI-52: the Gauntlet after a run (cookie ci_dungeon = g-over): the run is over (the squad fell on floor 4), as in the approved frame:
 // 4F Room 1, week best 4F R1, rank #1, 62 turns, the next run in 10:27:13. The prizes come from the recorded lobby answer.
 function derivedGauntletOver(body) {
@@ -364,6 +375,8 @@ createServer((req, res) => {
     req.on('end', () => { let count = 1; try { count = Number(JSON.parse(raw || '{}').count) || 1; } catch { /* the default */ } send(res, 200, JSON.stringify(openAnswer(count))); });
     return undefined;
   }
+  // UI-10: with ci_col=ascend-ok the Ascend answers success (the celebration); with ci_col=ascend it is refused (403 below). Writes nothing.
+  if (req.method === 'POST' && p === '/api/ascend' && cookies(req).ci_col === 'ascend-ok') return send(res, 200, JSON.stringify({ ok: true, ascension: 1, quantity: 2, power: 12, next_cost: 2 }));
   // UI-28 (cookie ci_play=ok): a play that works. Nothing is written. Without the cookie the play stays blocked (the error state of the confirm window).
   if (req.method === 'POST' && p === '/api/effects/play' && cookies(req).ci_play === 'ok') { req.resume(); return send(res, 200, JSON.stringify({ ok: true, outcome: 'applied', kind: 'boon', primitive: 'lucky_pull' })); }
   // UI-31: taking a card off the Hall answers ok (nothing is written) so the screen shows the "unlisted" toast with Undo; a list call stays refused (the error state).
