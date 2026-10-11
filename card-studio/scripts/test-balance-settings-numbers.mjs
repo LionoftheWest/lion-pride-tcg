@@ -25,7 +25,7 @@ import { mutation, GATE } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const OLD = process.argv.includes('--old');
-const mig = OLD ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/balance_settings_numbers.sql', import.meta.url)), 'utf8').replace(/notify pgrst[^\n]*\n/g, '').replace(/\r\n/g, '\n');
+const mig = OLD ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/balance_settings_numbers.sql', import.meta.url)), 'utf8').replace(/notify pgrst[^\n]*\n/g, '').replace(/\r\n/g, '\n').replace(/do \$g\$[\s\S]*?end \$g\$;/, ''); // 2026-10-11: the live-version guard is left out (perf_dungeon_view.sql replaced a function this file rebuilds; the rebuilt text is checked inside a rolled-back block)
 if (mig.includes('$m$') || mig.includes('$t$') || mig.includes('$d$')) throw new Error('the migration must not contain $m$, $t$ or $d$');
 
 const GW = `'{"fight":38,"horde":12,"elite":10,"miniboss":7,"treasure":11,"rest":8,"choice":14}'::jsonb`;

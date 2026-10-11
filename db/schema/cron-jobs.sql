@@ -2,6 +2,7 @@
 -- The pg_cron jobs (cron.job): name, schedule, active, command. Read from LIVE (the local copy has no jobs).
 
 -- @cron
+select cron.schedule('dungeon-prepare-day', '2 6,7 * * *', $cron$select public.dungeon_prepare_day()$cron$);
 select cron.schedule('dungeon-prizes', '5 * * * *', $cron$select public.dungeon_prize_tick()$cron$);
 select cron.schedule('dungeon-settle-stale', '20 6 * * *', $cron$select public.dungeon_settle_stale()$cron$);
 select cron.schedule('event-tick', '*/10 * * * *', $cron$select public.event_tick();$cron$);

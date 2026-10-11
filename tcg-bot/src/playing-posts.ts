@@ -1,6 +1,8 @@
 import { AttachmentBuilder, escapeMarkdown, type Client } from 'discord.js';
 import { getSupabase } from './supabase.js';
 import { renderPlayingCard, RARITY } from './playing-card.js';
+import { renderDungeonCard, dungeonLine, type DungeonScene } from './dungeon-card.js';
+import { loadDungeonScene } from './dungeon-scene.js';
 import { launchActivityRow } from './ui/launch.js';
 import { utcToday as utcDay } from './store.js'; // the MT game day
 
@@ -22,9 +24,9 @@ const ACTIVITY = (): string => (process.env.ACTIVITY_INTERNAL_URL || 'http://127
 
 // What the member does now (the Activity sends it on each status change): the banner
 // follows it. An activity older than ACTIVITY_TTL_MS falls back to "is playing".
-export type Activity = { kind: 'opening' | 'fighting' | 'playing' | 'trading' | 'idle'; cards?: number[]; label?: string; image?: string };
+export type Activity = { kind: 'opening' | 'fighting' | 'playing' | 'trading' | 'dungeon' | 'gauntlet' | 'idle'; cards?: number[]; label?: string; image?: string };
 const ACTIVITY_TTL_MS = 180_000;
-const KINDS = new Set(['opening', 'fighting', 'playing', 'trading', 'idle']);
+const KINDS = new Set(['opening', 'fighting', 'playing', 'trading', 'dungeon', 'gauntlet', 'idle']);
 /** Allow-list the activity from the Activity server (the bot trusts nothing else). */
 export function cleanActivity(a: unknown): (Activity & { at: number }) | null {
   if (!a || typeof a !== 'object') return null;
@@ -93,7 +95,7 @@ export async function art(imageUrl: string | null): Promise<Buffer | null> {
 // opening packs -> the best card just pulled; fighting -> the boss; a prank or boon -> the
 // card played (the kind comes from card_plays, not from the app); trading -> the card
 // offered; else (or older than 3 minutes) -> the best pull of the day.
-type Scene = { line: string; tag: string; color: string; url: string | null; pick: string };
+type Scene = { line: string; tag: string; color: string; url: string | null; pick: string; dg?: { scene: DungeonScene; squadUrls: (string | null)[] } };
 type CardRow = { id: number; name: string; rarity: string; image_url: string | null };
 const rarityColor = (r: string): string => (RARITY[r] ?? RARITY.normal!).color;
 async function cardsById(ids: number[]): Promise<CardRow[]> {
@@ -113,6 +115,16 @@ async function sceneFor(j: Job, t: Today): Promise<Scene> {
     const supa = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
     const url = a.image && supa ? `${supa}/storage/v1/object/public/card-art/${a.image}` : null;
     return url ? { line: `is fighting ${who}`, tag: 'RAID BOSS', color: '#FF6B7D', url, pick: `boss:${a.image}:${who}` } : { ...best, line: `is fighting ${who}` };
+  }
+  if (a.kind === 'dungeon' || a.kind === 'gauntlet') {
+    // The run is read from the game's own tables, so the floor is always the real one. No active run: the normal picture.
+    const mode = a.kind === 'gauntlet' ? 'gauntlet' : 'daily';
+    const d = await loadDungeonScene(getSupabase(), j.id, mode, utcDay(), async (ids) => (await cardsById(ids)).map((c) => ({ id: c.id, name: c.name, rarity: c.rarity })));
+    if (!d) return best;
+    const urls = new Map((await cardsById(d.squadIds)).map((c) => [c.id, c.image_url]));
+    const s = d.scene;
+    return { line: dungeonLine(s.mode, s.floor), tag: '', color: '', url: null, pick: `dg:${d.runId}:${s.floor}:${s.room}`,
+      dg: { scene: s, squadUrls: d.squadIds.map((id) => urls.get(id) ?? null) } };
   }
   const cards = await cardsById(a.cards ?? []);
   if (a.kind === 'opening') {
@@ -165,10 +177,13 @@ async function render(client: Client, id: string): Promise<void> {
     buf(t.avatar ? `https://cdn.discordapp.com/avatars/${id}/${t.avatar}.png?size=256` : null),
     scene.url ? art(scene.url) : Promise.resolve(null),
   ]);
-  const png = await renderPlayingCard({
-    name: j.name, line: scene.line, live: j.playing, avatar, tag: scene.tag,
-    frame: scene.url ? { art: frameArt, color: scene.color } : null,
-  });
+  const png = scene.dg
+    ? await renderDungeonCard({ name: j.name, line: scene.line, live: j.playing, avatar, scene: scene.dg.scene,
+      squadArt: await Promise.all(scene.dg.squadUrls.map((u) => art(u))) })
+    : await renderPlayingCard({
+      name: j.name, line: scene.line, live: j.playing, avatar, tag: scene.tag,
+      frame: scene.url ? { art: frameArt, color: scene.color } : null,
+    });
   const body = {
     content: `🦁 **${escapeMarkdown(j.name)}** ${scene.line}`,
     files: [new AttachmentBuilder(png, { name: 'playing.png' })],
