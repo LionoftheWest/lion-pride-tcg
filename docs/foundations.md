@@ -444,6 +444,59 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 
 ---
 
+## Performance and cost budget (all three foundations)
+
+Nathan (2026-10-11): it must scale with the number of players, must not become slow, and
+must not cost anything.
+
+### Measured (2026-10-11)
+
+- **VM:** 4 ARM cores, 24 GB RAM, 1.1 GB used, load 0.00, disk 22% used (observed). This
+  matches the Oracle Always Free limit (inferred). Combat runs in the database, not on the VM.
+- **Database:** 45 MB (observed). The Supabase free plan limit is 500 MB (assumed; the
+  plan is not readable with the current token).
+- **The largest tables are the three fight logs:** `combat_actions` 2.8 MB,
+  `hunt_combat_log` 2.7 MB, `dungeon_log` 2.6 MB (observed).
+- **The slowest calls** since 2026-09-08 (`pg_stat_statements`, mean time):
+  - `card_powers` 173 ms (the largest total: 994 s)
+  - `gauntlet_view` 270 ms, `achievement_view` 264 ms, `dungeon_view` 220 ms
+  - `dungeon_attack` 195 ms, but `hunt_attack` only 48 ms
+  - Many calls have peaks of 6 to 7 s (inferred: the small shared database CPU).
+
+### The effect of the foundations
+
+| Change | Effect on load |
+|---|---|
+| One fight log | Fewer writes on each action. About 5 MB less now, and the gap grows. |
+| Combat Lab and golden fights on the local copy | They no longer run on live, so the live load goes down. Cost 0. |
+| `combat_sheet` view | Only the Admin page reads it. Never in a player path. |
+| `event-tick` every minute | About 35 ms × 1,440 = 50 s of database time each day. Small. |
+| `game_var` | One cached read in the bot (30 s). In SQL, a small table read. |
+| Auto-pick and Team CP in SQL | More database calls than the JS copy today. One call for each screen, cached. |
+| **The effect engine (effects as data)** | **The main risk.** A data-driven engine in SQL is slower than hand-written branches. |
+
+### Rules
+
+1. **A time budget for each fight call.** On the local copy, the mean time of `hunt_attack`,
+   `hunt_support`, `dungeon_attack`, `dungeon_support` and `dungeon_enemy_turn` must not
+   rise above the time before the change plus 10%. The Combat Lab measures it in every
+   effect engine PR, and prints the baseline in the same run.
+2. **Heavy work never runs on live.** The Lab, the golden fights and the simulations run
+   on the local copy only.
+3. **Admin-only reads stay out of player paths** (`combat_sheet`, the Lab reports).
+4. **The logs stay small.** `prune_old_rows` keeps a fixed number of days of
+   `combat_actions`. The number is a `balance` key.
+5. **A separate speed PR** for the slowest calls today (`card_powers`, `dungeon_attack`,
+   `dungeon_view`, `gauntlet_view`, `achievement_view`). These matter more for scale than
+   the new combat code does.
+
+### At 50 daily players
+
+Today is about 15 daily players. The load grows about in line with the number of players
+(inferred), so 50 players is about 3 times today. The VM has a large margin. The database
+size has a large margin. The slow calls in rule 5 are the first limit, so fix them before
+Community Week #1.
+
 ## Decisions recorded (Nathan, 2026-10-11)
 
 1. **Events:** no code for one specific event. Nathan wants the freedom to make any kind of
