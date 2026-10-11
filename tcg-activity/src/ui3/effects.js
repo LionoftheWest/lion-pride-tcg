@@ -14,7 +14,7 @@ export const OWNER_FORBIDDEN = ['nickname', 'title', 'sticker', 'crown', 'body_s
 export const KIND_TEXT = {
   boon: { chip: 'Boon', play: 'Play boon', icon: 'gift' },
   prank: { chip: 'Prank', play: 'Play prank', icon: 'drama' },
-  shield: { chip: 'Shield', play: 'Play shield', icon: 'shield-check' },
+  shield: { chip: 'Neutral', play: 'Play neutral', icon: 'shield-check' },   // D-174: the effect kind is "Neutral" (Shield is the Dungeon reward word, D-125)
 };
 
 /** True when this card cannot be played on this member: the member is the server owner and Discord refuses the effect. Pure. */
@@ -67,6 +67,21 @@ export function bannerOf(p) {
   return { kind, icon: KIND_TEXT[kindName(p?.kind)]?.icon || 'gift', who: `${sender} played`, card, tail: 'on you!' };
 }
 
+/** The duration, cooldown and amount chips of an ability (the confirm window and the Card picker detail, one source). */
+export const abilityChips = (chips) => (chips || []).map((c) => `<span class="u3-fxw__chip">${icon(c.icon)}<span>${esc(c.text)}</span></span>`).join('');
+
+/**
+ * D-174: the ability of the selected card in the Card picker (the Boons form): the kind chip, the name, the effect text and the
+ * chips as the confirm window shows them (same fields as confirmHTML: kind, title, desc, chips). null = nothing selected yet.
+ * Desktop shows all of it; a phone shows the name and the effect text (a strip above Confirm). Pure.
+ */
+export function abilityHTML(o) {
+  if (!o) return '<p class="u3-ab__none">Pick a card to see what it does.</p>';
+  const k = KIND_TEXT[o.kind] ? o.kind : 'shield';
+  return `<div class="u3-ab u3-ab--${k}"><div class="u3-ab__top">${chip({ label: KIND_TEXT[k].chip, kind: 'effect', effect: k })}<b class="u3-ab__name">${esc(o.title)}</b></div>`
+    + `<p class="u3-fxw__desc u3-ab__desc">${esc(o.desc || '')}</p><div class="u3-fxw__chips u3-ab__chips">${abilityChips(o.chips)}</div></div>`;
+}
+
 /** Plays today (the same block as the Boons tab, UI-27): label, bar, "n/cap". */
 export const todayHTML = (used, cap) => (cap
   ? `<div class="u3-bn-today u3-bn-today--win${used >= cap ? ' is-full' : ''}"><span class="u3-bn-today__label">Plays today</span>${progressLinear({ value: used / cap, label: 'Plays today' })}<b class="u3-bn-today__n">${used}/${cap}</b></div>`
@@ -82,7 +97,7 @@ export const todayHTML = (used, cap) => (cap
 export function confirmHTML(o) {
   const k = KIND_TEXT[o.kind] ? o.kind : 'shield';
   const t = KIND_TEXT[k];
-  const chips = (o.chips || []).map((c) => `<span class="u3-fxw__chip">${icon(c.icon)}<span>${esc(c.text)}</span></span>`).join('');
+  const chips = abilityChips(o.chips);
   const on = (o.active || []).length ? (o.active || []).map((a) => `<span class="u3-fxw__chip u3-fxw__chip--plain">${esc(a)}</span>`).join('') : '<span class="u3-fxw__none">Nothing active</span>';
   const polls = (o.polls || []).length
     ? `<div class="u3-fxw__polls"><span class="u3-label">Pick a question</span><div class="u3-fxw__plist" role="radiogroup" aria-label="Pick a question">${o.polls.map((q) => `<button type="button" class="u3-fxw__q${o.choice === q.i ? ' is-on' : ''}" role="radio" aria-checked="${o.choice === q.i ? 'true' : 'false'}" data-fxq="${q.i}">${esc(q.text)}</button>`).join('')}</div></div>`
