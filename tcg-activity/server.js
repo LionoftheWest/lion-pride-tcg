@@ -327,7 +327,8 @@ app.use(express.static(PUBLIC, {
     // Sounds and pictures: 1 day, not a week. Their names are not hashed and a file can change
     // in place (the explain/ captures), so a change shows within a day. no-store reloaded each
     // one on every use.
-    else if (/\.(mp3|png|webp|jpe?g|svg)$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=86400');
+    // The Dungeon monster models and the chest (.glb, 2.7 MB) were no-store: every visit loaded them again. Same day-long cache as the pictures.
+    else if (/\.(mp3|png|webp|jpe?g|svg|glb)$/.test(base)) res.setHeader('Cache-Control', 'public, max-age=86400');
     else res.setHeader('Cache-Control', 'no-store');
   },
 }));

@@ -14,6 +14,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { mergeFightRows } from '../src/hunt-merge.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
@@ -31,7 +32,7 @@ const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const med = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return Math.round(s[Math.floor(s.length / 2)]); };
 
 // ---- the proxy -----------------------------------------------------------------------------------
-const BUNDLE = join(root, 'ci', 'ui-check', '.out', 'bundle');
+const BUNDLE = opt('bundle', join(root, 'ci', 'ui-check', '.out', 'bundle'));   // --bundle <dir>: the bundle of another source tree (a before/after pair)
 const bundleName = readdirSync(BUNDLE).find((f) => /^main\..*\.js$/.test(f));
 const index = readFileSync(join(root, 'tcg-activity', 'public', 'index.html'), 'utf8').replace('__BUNDLE__', bundleName).replace('__CSSV__', 'rig');
 const stats = { reqs: [] };
@@ -45,7 +46,11 @@ const proxy = http.createServer(async (req, res) => {
   if (api && DELAY && /^\/api\/(dungeon|gauntlet|hunt)(\/|$)/.test(url.pathname) && (req.method !== 'GET' || url.pathname === '/api/dungeon')) await sleep(DELAY);   // a live round trip on the fight calls only (the sign-in calls stay fast)
   const headers = { ...req.headers, host: '127.0.0.1:4470' };
   if (headers.authorization) headers.authorization = `Bearer lt:${PLAYER}`;
-  const up = http.request({ host: '127.0.0.1', port: 4470, path: req.url, method: req.method, headers }, (r) => { res.writeHead(r.statusCode, r.headers); r.pipe(res); });
+  const up = http.request({ host: '127.0.0.1', port: 4470, path: req.url, method: req.method, headers }, (r) => {
+    res.writeHead(r.statusCode, r.headers); r.pipe(res);
+    // the rounds an Auto call played (the answer lists them), to count the rounds a minute
+    if (url.pathname === '/api/dungeon/auto') { let b = ''; r.on('data', (d) => { b += d; }); r.on('end', () => { try { stats.reqs.push({ t: Date.now(), m: 'ROUNDS', p: '/api/dungeon/auto', q: '', n: (JSON.parse(b).rounds || []).filter((x) => x.atk).length }); } catch { /* not JSON */ } }); }
+  });
   up.on('error', () => { try { res.writeHead(502); res.end(); } catch { /* closed */ } });
   req.pipe(up);
 });
@@ -58,7 +63,7 @@ const startRun = async () => {
   const { j: d } = await call('GET', '/api/dungeon');
   const rule = d.rule || {};
   const ok = (c) => ['Character', 'Creature'].includes(c.type) && (!rule.types || rule.types.includes(c.type));
-  const squad = d.mine.filter(ok).sort((a, b) => (a.cost - b.cost) || (a.cp - b.cp)).slice(0, d.squad || 5).map((c) => c.id);
+  const squad = d.mine.filter(ok).sort((a, b) => (a.cost - b.cost) || (argv.includes('--strong') ? b.cp - a.cp : a.cp - b.cp)).slice(0, d.squad || 5).map((c) => c.id);
   const r = await call('POST', '/api/dungeon/start', { cards: squad });
   if (!r.j.ok) throw new Error('start failed ' + JSON.stringify(r.j));
   return squad;
@@ -72,6 +77,7 @@ let lastPage = null;
 const newPage = async () => {
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1, hasTouch: W < 700 });
   const page = await ctx.newPage(); lastPage = page;
+  if (argv.includes('--noroster')) await page.addInitScript(() => { globalThis.__dgNoRoster = true; });
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log('CONSOLE', m.type(), m.text().slice(0, 200)); });
   page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
   await page.goto(`http://127.0.0.1:${PORT}/`);
@@ -135,6 +141,68 @@ try {
     const toast = await page.evaluate(() => [...document.querySelectorAll('.toast, #toast, [class*="toast"]')].map((e) => e.textContent.trim()).filter(Boolean).join(' | '));
     const busy = await page.$eval('.dg-fight', (f) => f.classList.contains('busy'));
     log({ lift_during_request: during, lift_after_error: after, toast, fight_busy_after: busy, posts_for_3_taps: posts });
+  } else if (scenario === 'hunt') {
+    // The Hunt fight refresh: GET /api/hunt (full) against GET /api/hunt?fight=1 (light) after a real squad lock and two attacks, on the local stack.
+    // Checks that the roster merged from the light answer equals the roster of the full answer (the fields the fight reads), and times both.
+    const full0 = (await call('GET', '/api/hunt')).j;
+    if (!full0.hunt) throw new Error('no active hunt on the local copy');
+    const squadIds = full0.squad || full0.roster.filter((c) => !c.downed).slice(0, 5).map((c) => c.id);
+    if (!full0.squad) { const l = (await call('POST', '/api/hunt/squad', { cards: squadIds })).j; if (!l.ok) throw new Error('squad: ' + JSON.stringify(l)); }
+    const attackers = full0.roster.filter((c) => squadIds.includes(c.id) && ['Character', 'Creature'].includes(c.type) && !c.downed && !c.used).slice(0, 2);
+    const hits = [];
+    for (const c of attackers) hits.push((await call('POST', '/api/hunt/attack', { cardId: c.id })).j.ok);
+    const full = (await call('GET', '/api/hunt')).j;
+    const lite = (await call('GET', '/api/hunt?fight=1')).j;
+    const merged = mergeFightRows(full0.roster, lite.hp);
+    const pick = (c) => ({ id: c.id, hp: c.hp, max_hp: c.max_hp, downed: c.downed, used: c.used, shield: c.shield, cdReady: c.cdReady });
+    const same = JSON.stringify(full.roster.filter((c) => squadIds.includes(c.id)).map(pick).sort((a, b) => a.id - b.id)) === JSON.stringify(merged.filter((c) => squadIds.includes(c.id)).map(pick).sort((a, b) => a.id - b.id));
+    const time = async (path, k = 8) => { const t = []; for (let i = 0; i < k; i++) { const t0 = performance.now(); await call('GET', path); t.push(performance.now() - t0); } return Math.round(med(t)); };
+    log({ attacks_ok: hits, squad: squadIds.length, lite_keys: Object.keys(lite), lite_bytes: JSON.stringify(lite).length, full_bytes: JSON.stringify(full).length, same_roster_fields: same, round_equal: lite.round === full.round, usedToday_equal: lite.usedToday === full.usedToday,
+      hp_equal: lite.hunt.hp_remaining === full.hunt.hp_remaining, median_ms_full: await time('/api/hunt'), median_ms_light: await time('/api/hunt?fight=1') });
+  } else if (scenario === 'hunt-ui') {
+    // The Hunt fight in the browser: tap an unused attacker of the locked squad and list the /api/hunt calls that follow (run the 'hunt' scenario first: it locks a squad).
+    const { page } = await newPage();
+    await openAdventure(page);
+    await sleep(2500);
+    await page.click('[data-adv="hunt"]').catch(() => {});
+    await page.waitForSelector('.squad-grid .c, .u3-ft-grid .c', { timeout: 30000 });
+    await sleep(2500);
+    const target = await page.evaluate(() => { const c = [...document.querySelectorAll('.squad-grid .c, .u3-ft-grid .c')].find((n) => !n.classList.contains('downed') && n.dataset.used !== '1' && !n.querySelector('.sup-badge')); return c ? c.dataset.id : null; });
+    if (!target) throw new Error('no unused card in the Hunt grid');
+    const s0 = stats.reqs.length;
+    await page.click(`.squad-grid .c[data-id="${target}"], .u3-ft-grid .c[data-id="${target}"]`, { force: true });
+    await sleep(Number(opt('wait', 9000)));
+    const calls = stats.reqs.slice(s0).filter((r) => r.p.startsWith('/api/hunt')).map((r) => `${r.m} ${r.p}${r.q}`);
+    const hp = await page.evaluate(() => document.querySelector('#hpText')?.textContent || document.querySelector('.u3-ft-hp')?.textContent || null);
+    await page.screenshot({ path: join(process.env.TEMP || tmpdir(), 'fr', `hunt-${W}x${H}.png` ) });
+    log({ tapped_card: target, hunt_calls_after_the_tap: calls, boss_hp_text: hp });
+  } else if (scenario === 'next') {
+    // The rooms of one run: after each reward pick, the time from the pick to the next monsters standing.
+    await startRun();
+    const { page } = await newPage();
+    await openAdventure(page);
+    await page.waitForSelector('.dg-fight .dg-unit', { timeout: 30000 });
+    await page.waitForFunction(() => performance.getEntriesByName('dg:room:ready').length > 0, null, { timeout: 30000 });
+    const rows = [];
+    for (let guard = 0; guard < 120 && rows.length < N; guard++) {
+      if (await page.$('[data-choose]')) {
+        await clearMarks(page);
+        await page.click('[data-choose]');
+        await sleep(2500);
+        const m = await marks(page);
+        if (m['room:ready'] != null && m['room:go'] != null) rows.push({ go_to_ready: m['room:ready'] - m['room:go'], enter_to_ready: m['room:ready'] - m['room:enter'] });
+        continue;
+      }
+      if (await page.$('.dg-next, .u3-dgs-next')) { await page.click('.dg-next, .u3-dgs-next'); await sleep(2000); continue; }
+      if (await page.$('.dg-fight .dg-unit:not(.down)')) {
+        await page.waitForFunction(() => document.querySelector('.dg-fight:not(.busy)') || !document.querySelector('.dg-fight'), null, { timeout: 30000 });
+        if (await page.$('.dg-fight:not(.busy) .dg-unit:not(.down)')) await page.click('.dg-fight .dg-unit:not(.down)', { force: true });
+        await sleep(300);
+        continue;
+      }
+      await sleep(500);
+    }
+    log({ transitions: rows.length, go_to_ready_ms: rows.map((r) => r.go_to_ready), enter_to_ready_ms: rows.map((r) => r.enter_to_ready), median_go_to_ready: med(rows.map((r) => r.go_to_ready)), median_enter_to_ready: med(rows.map((r) => r.enter_to_ready)) });
   } else if (scenario === 'room') {
     // The member opens the lobby, waits, picks the squad and starts: from the Start tap to the monsters standing in the room.
     await sql(`delete from dungeon_runs where player_id = '${PLAYER}' and day = dungeon_day()`);
@@ -162,7 +230,9 @@ try {
     const isOn = () => page.$eval('.dg-auto', (b) => b.classList.contains('on'));
     if (!(await isOn())) await page.click('.dg-auto');
     const t0 = Date.now(); const s0 = stats.reqs.length; let steps = 0;
-    while (Date.now() - t0 < SECS * 1000) {
+    const ROUNDS = Number(opt('rounds', 0));   // --rounds N: stop after N rounds (a fixed amount of play), or after --secs
+    const played = () => stats.reqs.slice(s0).reduce((a, r) => a + (r.m === 'ROUNDS' ? r.n : r.m === 'POST' && r.p === '/api/dungeon/attack' ? 1 : 0), 0);
+    while (Date.now() - t0 < SECS * 1000 && !(ROUNDS && played() >= ROUNDS)) {
       // Auto stops at every choice: the rig takes the first reward, descends, and starts again when the run is over.
       if (await page.$('[data-choose]')) { await page.click('[data-choose]'); steps++; await sleep(900); continue; }
       if (await page.$('.dg-next, .u3-dgs-next')) { await page.click('.dg-next, .u3-dgs-next'); steps++; await sleep(900); continue; }
@@ -174,9 +244,12 @@ try {
       }
       await sleep(250);
     }
-    const mine = stats.reqs.slice(s0); const secs = (Date.now() - t0) / 1000;
+    const all = stats.reqs.slice(s0); const secs = (Date.now() - t0) / 1000;
+    const mine = all.filter((r) => r.m !== 'ROUNDS');
     const by = {}; for (const r of mine) by[`${r.m} ${r.p}`] = (by[`${r.m} ${r.p}`] || 0) + 1;
-    log({ secs: Math.round(secs), requests: mine.length, per_minute: Math.round(mine.length / secs * 60), by, steps });
+    const rounds = (by['POST /api/dungeon/attack'] || 0) + all.filter((r) => r.m === 'ROUNDS').reduce((a, r) => a + r.n, 0);
+    const dungeonCalls = mine.filter((r) => r.p.startsWith('/api/dungeon')).length;
+    log({ secs: Math.round(secs), requests: mine.length, per_minute: Math.round(mine.length / secs * 60), rounds, rounds_per_minute: Math.round(rounds / secs * 60), dungeon_requests_per_minute: Math.round(dungeonCalls / secs * 60), requests_per_round: rounds ? +(dungeonCalls / rounds).toFixed(2) : null, by, steps });
   } else throw new Error('scenario: tap | room | auto');
 } catch (e) {
   console.log('RIG ERROR', e.message);

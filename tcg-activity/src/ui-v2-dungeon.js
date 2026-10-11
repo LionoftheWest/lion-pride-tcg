@@ -15,6 +15,7 @@ import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { COIN } from './ui-v2-shop.js';
 import { cardElement } from './elements.js';
 import { foePace } from './dungeon-pace.js';
+import { warmFoes, warmRoster, slowLink } from './dungeon-preload.js';
 import { setMood, stopMusic, toggleMute, musicBtnHTML, paintMusicBtn } from './dungeon-music.js';
 import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
 import { openLeaderboardWindow } from './ui3/leaderboard.js';
@@ -226,9 +227,25 @@ function paint() {
   else if (active()) wireChoose(main);
   else if (run()) wireOver(main);
   else if (!d.closed && d.gate?.ok) (GA() ? (V3() ? wireGaLobbyV3 : wireGaLobby) : V3() ? wireLobbyV3 : wireLobby)(main);
+  warmScreen(d, fight);
   startTick();
 }
 
+// Preload (dungeon-preload.js): what the next room needs, in idle time, a small budget for each screen. The lobby, the reward step and the
+// floor screen each load a few monster models of the roster, the voices and the squad art; the fight does the same once its room stands.
+const warmedArt = new Set();
+const warmArt = (cards) => { for (const c of cards || []) { const u = c?.image_url ? thumb(c.image_url) : ''; if (u && !warmedArt.has(u)) { warmedArt.add(u); const i = new Image(); i.decoding = 'async'; i.src = u; } } };
+const warmedVoice = new Set();
+const warmVoices = () => { if (slowLink()) return; for (const list of Object.values(DSND)) for (const l of Object.values(list)) for (const n of l) if (!warmedVoice.has(n)) { warmedVoice.add(n); fetch(`sfx/dungeon/${n}.mp3`, { priority: 'low' }).catch(() => {}); } };
+function warmScreen(d, fight) {
+  if (!dg.on || d.closed || !d.gate?.ok || dg.view === 'board') return;
+  const R = d.run;
+  if (fight) { warmArt(squadOf(run())); return; }   // the fight warms the roster when its own room stands (wireFight)
+  if (!R) { warmRoster('lobby', `${dg.mode}|${d.day || d.week || ''}`); warmVoices(); return; }
+  if (R.status !== 'active') return;
+  warmArt(squadOf(R)); warmVoices();
+  warmRoster(R.state?.phase === 'floor_done' ? 'floor' : 'reward', `${dg.mode}|${R.id}|${R.floor}|${R.room}|${R.state?.phase}`);
+}
 const cardTile = (c, opts = {}) => {
   const r = c?.rarity || 'normal';
   return `<div class="dg-card r-${r}${opts.cls ? ' ' + opts.cls : ''}" data-id="${c?.id}"${opts.attr || ''} style="--rc:${RCOL[r] || '#9AA3B5'}">
@@ -497,7 +514,9 @@ function wireLobbyV3(main) {
     dg.busy = false;
     if (!r?.ok) { toast(r?.message || 'The run did not start.'); paint(); return; }
     ctx().sfx?.('click');
-    dg.log = []; dg.target = 0; dg.sel = [];
+    dg.log = []; dg.target = 0;
+    const squad = dg.sel.filter((id) => M.has(id)); dg.sel = [];
+    if (enterAt(r, squad)) return;   // the answer holds the first room: paint it at once
     await load(); paint();
   });
 }
@@ -649,7 +668,9 @@ function wireLobby(main) {
     dg.busy = false;
     if (!r?.ok) { toast(r?.message || 'The run did not start.'); paint(); return; }
     ctx().sfx?.('click');
-    dg.log = []; dg.target = 0; dg.sel = [];
+    dg.log = []; dg.target = 0;
+    const squad = dg.sel.filter((id) => M.has(id)); dg.sel = [];
+    if (enterAt(r, squad)) return;   // the answer holds the first room: paint it at once
     await load(); paint();
   });
 }
@@ -911,6 +932,7 @@ async function wireFight(main, keepCanvas) {
       dg.roomKey = roomKey();
       await dg.stage.setFoes(foesOf(R.state));
       mark('room:ready');
+      if (run()) warmRoster('fight', `${dg.mode}|${run().id}|${roomKey()}`);   // the left screen has no run: nothing to warm
       { const fs0 = foesOf(R.state).filter((x) => x.hp > 0); loadVoices(fs0); if (fs0.length && (R.state.round || 0) === 0) snd(voiceOf(fs0[0].key).roar, fs0[0].boss ? 0.75 : 0.45); }
       fightUpdate(main, run().state);
     } catch (e) { console.warn('dungeon stage', e); }
@@ -974,6 +996,13 @@ async function act(kind, body) {
   mark('answer');
   striker?.classList.remove('striking');
   if (!r?.ok) { dg.busy = false; fightUpdate(main, run().state); toast(r?.message || 'That did not work.'); return false; }
+  await playResult(kind, body, r);
+  return settle(main, r, r.kill);
+}
+// The animation of one answer of the server (an attack with the monsters' turn, or a support): the same for a tap and for each round of an
+// Auto batch. At its end the run state is the server's state of that answer (the next round of a batch starts from it).
+async function playResult(kind, body, r) {
+  const main = document.getElementById('main');
   const M = mine();
   const before = clone(run().state);
   const foes = foesOf(before);
@@ -1039,15 +1068,18 @@ async function act(kind, body) {
     await sleep(r.kill ? 900 : 350);
   }
   if (r.loot?.card) toast('A card dropped!');
-  // The truth from the server, then the run totals (Shards, cards) in the background.
-  dg.data.run.state = r.state;
+  dg.data.run.state = r.state;   // the truth from the server
+}
+// After the last answer: the screen follows the state. A step that is not a fight (reward, floor, over) loads the view first; a kill reloads the
+// run totals in the background; Auto continues.
+async function settle(main, r, kill) {
   dg.busy = false;
   const phase = r.state?.phase;
   if (r.status === 'over' || phase !== 'fight') { await load(); if (ctx().currentView() === 'dungeon') paint(); return true; }
   fightUpdate(main, r.state);
   // The run totals come from GET /api/dungeon (dungeon_view: the heaviest call of the fight). Only a kill can change the room,
   // so a hit that kills nothing needs no reload (the answer holds the whole state).
-  if (r.kill) load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
+  if (kill) load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
   autoNext();
   return true;
 }
@@ -1423,6 +1455,20 @@ function wireFlips(main) {
   });
   if (cardBack == null) getBack().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('[data-flip]') && cardBack) main.querySelectorAll('.dg-flip .face.back').forEach((f) => { f.innerHTML = `<img src="${esc(cardBack)}" alt="">`; }); });
 }
+// The answer of start / choose already holds the next fight (state, floor, room). Paint it at once and load its monsters in parallel,
+// instead of waiting for GET /api/dungeon (dungeon_view, the heaviest call of the run). Nothing in the fight reads the rest of the view:
+// the totals and the loot cards are read by the screens that follow (reward, floor, over), and each of them loads the view first.
+// A new floor shows other rooms, so a floor change keeps the old path (the view reloads).
+function enterAt(r, squad) {
+  const st = r?.state; const R = run();
+  if (st?.phase !== 'fight' || !Array.isArray(st.foes) || !st.foes.length || !dg.data || dg.data.closed) return false;
+  const start = !!squad;
+  if (start ? !squad.length || !r.run : (!R || Number(r.floor) !== Number(R.floor) || !(Number(r.room) > 0))) return false;
+  warmFoes(st.foes); loadVoices(foesOf(st));
+  dg.data.run = start ? { id: r.run, status: 'active', floor: 1, room: 1, turns: 0, shards: 0, cards: [], squad, state: st } : { ...R, status: 'active', floor: r.floor, room: r.room, state: st };
+  paint();
+  return true;
+}
 async function choose(pick) {
   if (dg.busy) return;
   dg.busy = true; mark('room:go');
@@ -1433,6 +1479,7 @@ async function choose(pick) {
   ctx().sfx?.('click');
   if (r.door === 'elite') toast('An ambush!');
   dg.log = []; dg.target = 0;
+  if (enterAt(r)) return;   // the answer holds the next fight: paint it at once
   await load(); paint();
 }
 function wireChoose(main) {
