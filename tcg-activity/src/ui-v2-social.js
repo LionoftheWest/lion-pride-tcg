@@ -14,7 +14,7 @@ import { mountMemberPicker, memberLists, breakName } from './ui3/member-picker.j
 import { button as button3, dot as dot3, sheet as sheet3, toast as toast3, counter as counter3, iconButton, inlineMessage, pager as pager3, progressLinear } from './ui3/components.js';
 import { icon as icon3 } from './ui3/icons.js';
 import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
-import { ownerBlocked, ownerBlockText, pollQuestions, playResultText } from './ui3/effects.js';
+import { ownerBlocked, ownerBlockText, pollQuestions, playResultText, abilityHTML } from './ui3/effects.js';
 import { openPlayWindow, openNotice, playToast } from './ui3/play-window.js';
 import { KINDS, kindName, playHistory, memberReason, dayLine, leftPct, pageOf, pickerCards } from './ui3/boons.js';
 import { pendingLists, waiting, sectionsHTML, headHTML, viewHTML, isRequest } from './ui3/pending.js';
@@ -1223,7 +1223,7 @@ function openBoonsSheet() {
   host.querySelector('[data-bnclose]')?.focus({ preventScroll: true });
 }
 
-// The Card picker for one member: only effect cards (D-42), the kind switch All / Boon / Prank / Shield, one card, Confirm plays it.
+// The Card picker for one member: only effect cards (D-42), the kind switch All / Boon / Prank / Neutral, one card, Confirm plays it.
 function openBoonCards(to, { kind: startKind = 'all', returnFocus = null } = {}) {
   const st = effectState();
   let onTarget = [];   // the effects active on the member, for the confirm window (loaded while the picker is open)
@@ -1275,6 +1275,7 @@ function openBoonCards(to, { kind: startKind = 'all', returnFocus = null } = {})
     badge: (c) => (effectReadyIn(c) > 0 ? fmtDur(effectReadyIn(c)) : ''),
     status: (sel) => { const c = find(sel[0]); const why = whyNot(c); const owner = !!c && ownerBlocked(c.effect?.primitive, to.id, st.immune); return { checks: why && c && !owner ? [{ ok: false, label: why }] : [], ready: !!c && !why, reason: c ? null : 'Pick an effect card' }; },   // a picked card that cannot play has its reason in the check line (no second copy under Confirm)
     detail: (c) => ctx().openViewer?.(c),
+    selInfo: (c) => abilityHTML(c ? winView(c) : null),   // D-174: the ability of the picked card (the same view as the confirm window)
     returnFocus: returnFocus || document.querySelector('.u3-mp-tile__pick'),
     // a card the server refuses on the server owner: the popup says why, before the play (nothing is spent)
     onSelect: (c) => { if (ownerBlocked(c.effect?.primitive, to.id, st.immune)) openNotice({ title: 'This card cannot be played', line: ownerBlockText(c.effect.primitive) }); },

@@ -3,12 +3,12 @@
 // or the whole day is blocked, how the lists page, and how the Card picker filters effect cards. The server keeps its
 // own limits (play_card_effect); nothing here changes a rule.
 
-/** The kinds of the Card picker switch (glossary 10.1, D-05: boon, prank, shield; the server kind "neutral" is a shield). */
+/** The kinds of the Card picker switch (glossary 10.1, D-05: boon, prank, neutral; D-174 the tab reads "Neutral"; the id is "shield"). */
 export const KINDS = [
   { id: 'all', label: 'All' },
   { id: 'boon', label: 'Boon' },
   { id: 'prank', label: 'Prank' },
-  { id: 'shield', label: 'Shield' },
+  { id: 'shield', label: 'Neutral' }   // D-174: "Neutral" (the id stays "shield" for the CSS and the tests),
 ];
 
 /** The kind of the server ("boon", "prank", "neutral") as the glossary names it. */

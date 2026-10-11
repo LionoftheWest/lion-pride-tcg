@@ -107,6 +107,8 @@ export const SCREENS = {
   'boons-day':           { id: 'UI-27', notOn: ['tiny'], long: true, fx: 'day', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
   'boons-member':        { id: 'UI-27', notOn: ['tiny'], long: true, fx: 'member', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5]] },
   'boons-onyou':         { id: 'UI-27', notOn: ['tiny'], long: true, safe: true, fx: 'hist', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '.u3-bn-onyou', [['wait', 0]]], ['wait', 1.5]] },
+  // D-174: a card is selected: its ability shows in the left column under the tabs (desktop) or in the strip above Confirm (phone). The tab reads Neutral (a few-card tab leaves the grid under 75% full at 1280x720, so this spec stays on All).
+  'boons-picker-sel':    { id: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1]] },
   'boons-picker':        { id: 'UI-27', long: true, safe: true, fx: 'hist', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main .u3-mp-tile__pick'], ['wait', 1.5], ['js', '#u3Picker .u3-pk-card__pick'], ['wait', 1]], input: '#u3Picker .u3-search__input' },
   // v3 (UI-28): the play flow. The confirm window over the Card picker (boon or prank, a poll card, the error of a play that the check server
   // blocks), the played toast (ci_play=ok answers the play), the owner popup, the refund popup and the banners (derived /api/effects/me), and the profile Prank.
@@ -296,7 +298,7 @@ export function ownerOf(screen, where) {
   if (/\.u3-hm-board\b|\.u3-hm-br[a-z]*\b/.test(where)) return 'UI-04';   // the Top 3 board in the Home hero (D-58)   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).
-  if (screen === 'boons-picker' && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
+  if (/^boons-picker/.test(screen) && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
   if (/#u3Tfx\b|\.u3-tfx\b|\.u3-tfx[-_]/.test(where)) return 'UI-26';   // the trade animation layer
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // UI-28: the confirm window, the owner and refund popups, the play toast and the incoming banners; the Card picker under them stays UI-27's (the Boons form)
