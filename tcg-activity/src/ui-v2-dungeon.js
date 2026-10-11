@@ -14,6 +14,7 @@ import { isPort } from './mobile.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { COIN } from './ui-v2-shop.js';
 import { cardElement } from './elements.js';
+import { foePace } from './dungeon-pace.js';
 import { setMood, stopMusic, toggleMute, musicBtnHTML, paintMusicBtn } from './dungeon-music.js';
 import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
 import { openLeaderboardWindow } from './ui3/leaderboard.js';
@@ -990,15 +991,16 @@ async function act(kind, body) {
       fightUpdate(main, step); await sleep(550);
     }
     // The monsters' turn, one by one: each uses a named move from its pool (item 20).
+    const pace = foePace((r.enemy || []).length);   // dungeon-pace.js: a horde shares the time of 2 monsters
     for (const e of r.enemy || []) {
       dg.acting = e.foe; fightUpdate(main, step);
       const move = e.move || ACT[e.action] || e.action;
       pop(main, e.foe, esc(move), 'act move', -30);
-      await sleep(450);
+      await sleep(450 * pace);
       dg.stage?.foeFx?.(e.foe, e.action);   // item 13: the Raid boss effect of the move
       if (e.action !== 'stunned') mvoice(foes[e.foe], 'atk', 0.55);
       if (['slam', 'cataclysm', 'curse', 'poison', 'enrage', 'charging', 'stunned'].includes(e.action)) snd(MOVE_SND[e.action], 0.4);
-      if (e.action !== 'stunned' && e.action !== 'charging' && (e.dmg || (e.area || []).length)) { dg.stage?.play(e.foe, 'attack'); await sleep(380); }
+      if (e.action !== 'stunned' && e.action !== 'charging' && (e.dmg || (e.area || []).length)) { dg.stage?.play(e.foe, 'attack'); await sleep(380 * pace); }
       hurt(e.card, e.dmg, e.hits > 1 ? ` ×${e.hits}` : '');
       for (const a of e.area || []) hurt(a.card, a.dmg);
       if (e.dot > 0 && e.dmg > 0) popCard(main, e.card, `${I.drop}Poisoned`, 'debuff');
@@ -1010,7 +1012,7 @@ async function act(kind, body) {
       const area = (e.area || []).reduce((a, x) => a + (x.dmg || 0), 0);
       dg.log.push({ kind: 'foe', who: `${ef(foes, e.foe)} · ${move}`, to: e.dmg ? nm(e.card) : area ? 'the squad' : (ACT[e.action] || e.action), txt: e.dmg || area ? `-${fmt((e.dmg || 0) + area)}${area ? ' all' : ''}` : '' });
       fightUpdate(main, step);
-      await sleep(650);
+      await sleep(650 * pace);
     }
     dg.acting = null;
     if (r.burned > 0) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
@@ -1030,7 +1032,9 @@ async function act(kind, body) {
   const phase = r.state?.phase;
   if (r.status === 'over' || phase !== 'fight') { await load(); if (ctx().currentView() === 'dungeon') paint(); return true; }
   fightUpdate(main, r.state);
-  load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
+  // The run totals come from GET /api/dungeon (dungeon_view: the heaviest call of the fight). Only a kill can change the room,
+  // so a hit that kills nothing needs no reload (the answer holds the whole state).
+  if (r.kill) load().then(() => { if (ctx().currentView() === 'dungeon' && main.querySelector('.dg-fight')) fightUpdate(main, run().state); });
   autoNext();
   return true;
 }
