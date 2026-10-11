@@ -69,8 +69,12 @@ app.use('/api/admin/events', eventsRouter({ rpc: (fn, args) => supabase.rpc(fn, 
 // The Admin view editors (Phase 2: preview, test on the LOCAL copy, apply, undo): flag ADMIN_EDIT=1 (src/admin-write.js).
 app.use('/api/admin/edit', adminWriteRouter({ live: supabase }));
 app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
-// The start page is the Admin view when it is on (ADMIN_VIEW=1); the card editor is /index.html.
-app.get('/', (req, res, next) => (process.env.ADMIN_VIEW === '1' ? res.redirect(302, '/admin/') : next()));
+// One page (F-2): the card editor (the old Card Portal) is the Cards section of the Admin page, /admin/#/cards.
+// The start page is the Overview when the Admin data is on (ADMIN_VIEW=1), else the Cards section, which needs no flag.
+// /index.html was the portal: an old bookmark lands on the Cards section.
+const startPage = () => (process.env.ADMIN_VIEW === '1' ? '/admin/' : '/admin/#/cards');
+app.get('/', (req, res) => res.redirect(302, startPage()));
+app.get('/index.html', (req, res) => res.redirect(302, '/admin/#/cards'));
 // Never cache the studio UI, so a browser always loads the latest code.
 app.use(express.static(join(ROOT, 'public'), {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-store'),
@@ -527,5 +531,5 @@ app.get('/api/push-status', (req, res) => {
 // Listen only when run as the program (node src/server.js); a test imports the app.
 if (process.argv[1] && fileURLToPath(import.meta.url).toLowerCase() === resolve(process.argv[1]).toLowerCase()) {
   const PORT = Number(process.env.PORT) || 4321;
-  app.listen(PORT, () => console.log(`Card Studio -> http://localhost:${PORT}  (Admin view: http://localhost:${PORT}/admin/)`));
+  app.listen(PORT, () => console.log(`Card Studio -> http://localhost:${PORT}/admin/  (the cards: /admin/#/cards)`));
 }
