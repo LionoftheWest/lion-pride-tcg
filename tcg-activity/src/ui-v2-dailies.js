@@ -105,7 +105,7 @@ function row(t, paused) {
   if (t.task === 'chat') {
     if (t.packs) title += ` ${chip(t.packs, 'ok sm')}`;
     right = `<span class="dl-auto">${t.packs < t.max ? chip(1) : chip(t.packs, 'ok')}${shc()}<small>AUTO</small></span>`;
-  } else if (t.claimed) right = `<span class="dl-r">${chip(t.reward, 'ok')}${shc('ok')}</span>`;
+  } else if (t.claimed) right = `<span class="dl-r">${(t.paid ?? t.reward) > 0 ? chip(t.paid ?? t.reward, 'ok') : ''}${shc('ok')}</span>`;
   else if (go) right = claimBtn(t.task, pay(t), false);
   else right = `<span class="dl-r">${chip(pay(t))}${shc()}</span>`;
   return `<div class="dl-row k-${esc(t.task)}${go ? ' go' : ''}${t.claimed ? ' claimed' : ''}"><span class="dl-ico">${ICON[t.task] || ''}</span>

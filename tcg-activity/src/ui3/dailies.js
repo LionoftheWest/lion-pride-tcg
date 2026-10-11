@@ -52,6 +52,8 @@ const coin = () => icon('hexagon', { size: 'sm', cls: 'u3-coin' });
 const packChip = (n) => `<span class="u3-dl-chip">${icon('package', { size: 'sm' })}<span>+${fmt(n)}</span></span>`;
 const paidChip = (n, sm = false) => `<span class="u3-dl-chip u3-dl-chip--paid${sm ? ' u3-dl-chip--sm' : ''}">${icon('check', { size: 'sm' })}<span>+${fmt(n)}</span></span>`;
 const shardChip = (v) => (num(v.shards) ? `<span class="u3-dl-chip u3-dl-chip--shards">${coin()}<span>+${fmt(v.shards)}</span></span>` : '');
+/** The packs a claimed daily paid: the server's t.paid (daily_claims.amount, 0 at the pack limit); no field = the reward. */
+export const paidPacks = (t) => (t.paid === undefined || t.paid === null ? num(t.reward) : num(t.paid));
 const bar = (t) => `<span class="u3-dl-bar" aria-hidden="true"><span style="--u3-v:${Math.round(Math.min(1, num(t.have) / (num(t.need) || 1)) * 100)}%"></span></span>`;
 
 function taskRow(v, t) {
@@ -72,7 +74,7 @@ function taskRow(v, t) {
   if (t.task === 'chat') {
     if (num(t.packs)) title += paidChip(t.packs, true);
     end = `<span class="u3-dl-task__auto"><span class="u3-dl-task__chips">${num(t.max) && num(t.packs) >= num(t.max) ? paidChip(t.packs) : num(t.next) ? packChip(t.next) : ''}${shardChip(v)}</span><span class="u3-label">Auto</span></span>`;
-  } else if (t.claimed) end = `<span class="u3-dl-task__chips">${paidChip(t.reward)}${shardChip(v)}</span>`;
+  } else if (t.claimed) end = `<span class="u3-dl-task__chips">${paidPacks(t) > 0 ? paidChip(paidPacks(t)) : ''}${shardChip(v)}</span>`;
   else if (go) {
     const capped = num(v.earned) >= num(v.cap);
     end = button({ label: capped ? 'Claim' : `Claim +${fmt(pay)}`, variant: 'primary', icon: capped ? null : 'package', reward: num(v.shards) ? `+${fmt(v.shards)}` : null, data: { task: t.task } });
