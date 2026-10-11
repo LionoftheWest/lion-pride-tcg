@@ -177,6 +177,12 @@ theme, audience, rewards, and a library of saved events to schedule again.
      cards of each included set. Each pack still draws from one set's pool (D-82 odds).
    - In the Sets section: "Add cards from other sets" (search and select), and "Include a
      whole set".
+   - In the card editor (Nathan, 2026-10-11): a "Sets" dropdown with a checkmark for each
+     set. The home set is marked and locked. Each other checked set puts the card into that
+     set's pull pool. A set that includes a whole set shows as "via <set>".
+   - The Cards list (grid and gallery) is grouped by set in collapsible sections (Nathan,
+     2026-10-11). A card in several sets shows under its home set and, with a "from" mark,
+     under each pool set.
    - `push.js` no longer moves a card to a new set. A push only changes the home set when
      Nathan changes it on purpose.
 6. **Fixes:** `push.js` checks every insert error. `spawn_hunt` and the achievement
