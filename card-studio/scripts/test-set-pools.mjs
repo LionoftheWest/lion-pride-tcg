@@ -53,6 +53,8 @@ const FN_MUT = {
   spawnold: ['public.spawn_hunt(integer,text)', 'exists (select 1 from draw_pool c where c.subject_id = s.id)', 'exists (select 1 from cards c where c.subject_id = s.id and c.in_draw_pool)'],
   savenostale: ['public.admin_set_save(text,jsonb,jsonb,text)', 'if not v_create and admin_set_fields(v_old) is distinct from p_before then', 'if false then'],
   lastpullable: ['public.admin_set_save(text,jsonb,jsonb,text)', 'if not v_new.pullable and not exists (select 1 from card_sets where id <> v_id and pullable) then', 'if false then'],
+  // The old rule of the first amend: any http:// address (a live set could point at http://evil.example).
+  httpany: ['public.admin_set_save(text,jsonb,jsonb,text)', String.raw`'^(https://[^[:space:]/]+(/[^[:space:]]*)?|http://(localhost|127\.0\.0\.1)(:[0-9]{1,5})?/[^[:space:]]*)$'`, String.raw`'^https?://[^[:space:]]+$'`],
   poolnolog: ['public.admin_set_pool(text,text,bigint[],boolean,text)', "v_aid := admin_log_action(p_actor, case when p_add then 'set_pool_add' else 'set_pool_remove' end, 'card_set', p_set,", 'v_aid := 0; perform (null::text, null::text,'],
 };
 let MUT = '';
@@ -179,6 +181,18 @@ ${kase('the last pullable set cannot be turned off (LP400); removing pool cards 
       and w->'includes' = '["S2T"]'::jsonb
       and (select pullable from card_sets where id = 'S1')
       and (select count(*) from admin_actions where id > aid0 and action in ('set_pool_remove', 'set_exclude')) = 2`, ", 'v', v, 'w', w")}`)}
+${kase('pack art: https:// anywhere, http:// only to localhost or 127.0.0.1 (http://evil.example refused)', `
+    perform admin_set_save('tester', '{"id": "S4T", "name": "S4 test", "code": "S4T", "pack_color": "#123456", "season": 4}', null, 'test');
+    n := 0; m := 0;
+    foreach err in array array['http://evil.example/pack.png', 'http://localhost.evil.example/pack.png', 'http://127.0.0.1@evil.example/pack.png', 'ftp://example.com/p.png', 'https://'] loop
+      begin perform admin_set_save('tester', jsonb_build_object('id', 'S4T', 'pack_art_url', err), (select admin_set_fields(s) from card_sets s where id = 'S4T'), 'test');
+      exception when sqlstate 'LP400' then n := n + 1; end;
+    end loop;
+    foreach err in array array['http://127.0.0.1:54321/storage/v1/object/public/card-art/packs/S4T-still.png', 'http://localhost/p.png', 'https://cdn.example.com/packs/s4.webp'] loop
+      perform admin_set_save('tester', jsonb_build_object('id', 'S4T', 'pack_art_url', err), (select admin_set_fields(s) from card_sets s where id = 'S4T'), 'test');
+      if (select pack_art_url from card_sets where id = 'S4T') = err then m := m + 1; end if;
+    end loop;
+    ${got('pack art: https:// anywhere, http:// only to localhost or 127.0.0.1 (http://evil.example refused)', 'n = 5 and m = 3', ", 'refused', n, 'accepted', m")}`)}
   raise exception 'RESULT:%', jsonb_build_object('res', res)::text;
 end $t$;`;
 

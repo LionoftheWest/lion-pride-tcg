@@ -373,9 +373,10 @@ begin
   if v_new.season is null or v_new.season < 1 then raise exception using errcode = 'LP400', message = 'admin: the season is a whole number of 1 or more'; end if;
   if v_new.pullable is null then v_new.pullable := true; end if;
   if v_new.sort is null then v_new.sort := 0; end if;
-  -- http:// too: the local copy serves storage at http://127.0.0.1 (the studio's local test).
-  if v_new.pack_art_url is not null and (v_new.pack_art_url !~ '^https?://[^[:space:]]+$' or length(v_new.pack_art_url) > 500) then
-    raise exception using errcode = 'LP400', message = 'admin: the pack art is an http(s):// address of up to 500 characters';
+  -- https:// only, except http:// to localhost or 127.0.0.1 (the local copy serves storage there: the studio's local test).
+  if v_new.pack_art_url is not null and (length(v_new.pack_art_url) > 500
+      or v_new.pack_art_url !~ '^(https://[^[:space:]/]+(/[^[:space:]]*)?|http://(localhost|127\.0\.0\.1)(:[0-9]{1,5})?/[^[:space:]]*)$') then
+    raise exception using errcode = 'LP400', message = 'admin: the pack art is an https:// address of up to 500 characters (http:// only to localhost or 127.0.0.1)';
   end if;
   if v_new.cover_card_id is not null and not exists (select 1 from cards where id = v_new.cover_card_id and set_id = v_id) then
     raise exception using errcode = 'LP400', message = format('admin: the cover card must be a card of set %s (its home set)', v_id);
