@@ -31,6 +31,11 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 const file = (f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 const mig = file('balance_economy.sql');
 const rerun = ['pack_ledger_strict.sql', 'card_ledger.sql'].map(file);
+// perf_boards_once.sql (2026-10-11) made a newer gauntlet_view, so the guard of balance_economy.sql refuses it (the file is in SUPERSEDED.md).
+// The test puts the text that balance_economy.sql itself makes in place first (inside the rolled-back block), so the file runs as it did
+// on the day it was made and every check below keeps its meaning.
+const GV = mig.match(/CREATE OR REPLACE FUNCTION public\.gauntlet_view\(p_player text\)[\s\S]*?end \$function\$;/)?.[0];
+if (!GV) throw new Error('the gauntlet_view text of balance_economy.sql was not found');
 for (const s of [mig, ...rerun]) if (s.includes('$m$') || s.includes('$t$') || s.includes('$x$')) throw new Error('a migration contains $m$, $t$ or $x$');
 
 // The rewards the Activity SENT before (tcg-activity/src/achievements.js REWARDS, the commit before this change),
@@ -144,7 +149,7 @@ begin
     end;
   end if;
 
-  ${OLD ? '-- --old: no migration' : '-- The migration.\n  execute $m$' + mig + '$m$;'}
+  ${OLD ? '-- --old: no migration' : '-- The migration (after the gauntlet_view text it was built from).\n  execute $m$' + GV + '$m$;\n  execute $m$' + mig + '$m$;'}
   ${MUT ? `-- ECO_MUTATE=${MUT}\n  ${MUTATIONS[MUT]}` : ''}
 
   -- 1b. The NEW answers with today's values: they must be the same.
