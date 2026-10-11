@@ -225,7 +225,7 @@ body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-slim .dg-
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.picking .dg-unit:not(.down) .dg-card { animation: none; }
 
 /* short3 (measured, every layout): 3 or more supports that still do not fit are a compact list: the name with the status under it, no art, rows at least 44 px high (the phone and tablet stack: Squad HP beside the list of two columns, the status under the name) */
-body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sups { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-flow: row; grid-auto-columns: auto; gap: var(--sp-1-5); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sups { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-flow: row; grid-auto-columns: auto; grid-auto-rows: max-content; align-content: start; gap: var(--sp-1-5); }
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-short3 .dg-sups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-short3 .dg-right { grid-template-columns: minmax(0, 2fr) minmax(0, 5fr); gap: var(--sp-2); }
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sups > .k, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sups > .dg-none { grid-column: 1 / -1; }
@@ -233,4 +233,4 @@ body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sups > .dg-sup {
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sup img, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sup > span:first-child { display: none; }
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sup .t { grid-row: 1; grid-column: 1; }
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sup em { grid-row: 2; grid-column: 1; }
-body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-short3 .dg-sup .t small { display: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short3 .dg-sup .t small { display: none; }
