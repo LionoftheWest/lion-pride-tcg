@@ -6,7 +6,7 @@
 import { v2ctx, toast } from './ui-v2.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
 import { every, isIdle } from './poll.js';
-import { payNow } from './dailies-pay.js';
+import { payNow, claimNote } from './dailies-pay.js';
 import { dailiesHTML } from './ui3/dailies.js';
 import { toast as u3Toast } from './ui3/components.js';
 
@@ -137,9 +137,9 @@ async function claim(b, path, body) {
   let r = null;
   try { r = await ctx().apiPost(path, body); } catch { r = null; }
   if (r?.ok) {
-    const parts = [r.packs ? `+${r.packs} pack${r.packs === 1 ? '' : 's'}` : '', r.shards ? `+${r.shards} Shards` : ''].filter(Boolean);
-    if (v3()) v3Toast('success', parts.join(' · ') || 'Claimed');
-    else toast(`🎁 ${parts.join(' · ') || 'Claimed'}`);
+    const note = claimNote(r, view); // the view BEFORE the claim: at the pack limit the line says so
+    if (v3()) v3Toast('success', note);
+    else toast(`🎁 ${note}`);
     view = r.view || view;
     ctx().refreshPacks?.();
     if (r.shards) refreshShards();
