@@ -305,6 +305,76 @@ DERIVED.push({ when: (p, c, body) => p === '/api/notifications' && c.ci_gifts ==
 DERIVED.push({ when: (p, c, body) => p === '/api/wishlist' && c.ci_wish === 'full' && body?.slots, make: (body) => derivedWish(body) });
 // UI-12: two achievements that are done and not claimed (First Pull, First Shine), so the tab shows Claim and Claim all (cookie ci_ach=ready).
 DERIVED.push({ when: (p, c, body) => p === '/api/profile' && c.ci_ach === 'ready' && Array.isArray(body?.claimed), make: (body) => ({ ...body, claimed: body.claimed.filter((k) => k !== 'first' && k !== 'ir1') }) });
+// UI-13 (cookie ci_ach=tracks; the harness addition for the tracks): the recorded answers hold no /api/achievements, so the view and the gallery
+// are made here from the public track table (tcg-bot/supabase/achievement_tracks.sql, the 24 tracks) and the tag set badges. The values give the states
+// of the approved frames: tracks with 3 tiers ready, one tier ready, tiers claimed, a finished track, a track with no tier (Podium), a set badge ready and
+// one not done. Every member number is made up. ci_data=long gives one track a 9-digit value and the gallery a 9-digit member count.
+const ACH_TRACKS = [   // key, name, tiers, step, titles, value, claimed
+  ['collector', 'Collector', [25, 75, 150, 250, 350], null, ['Collector', 'Archivist', 'Living Library'], 161, 0],
+  ['shine', 'Shine', [1, 10, 30, 75, 150], null, ['Shiny Hunter', 'Prism Seeker', 'Radiant'], 35, 0],
+  ['elementalist', 'Elementalist', [10, 30, 60, 110, 167], null, ['Elementalist', 'Element Sage', 'Avatar of the Pride'], 60, 0],
+  ['fullsets', 'Full Sets', [1, 5, 15, 35, 71], null, ['Completionist', 'Set Master', 'Grand Curator'], 4, 0],
+  ['ascension', 'Ascension', [1, 10, 40, 100, 200], null, ['Rising Star', 'Star Forger', 'Ascended'], 69, 3],
+  ['trainer', 'Trainer', [3, 15, 45, 120, 300], null, ['Coach', 'Head Trainer', 'Legendary Trainer'], 57, 3],
+  ['packs', 'Pack Opener', [10, 50, 150, 400, 1000], 250, ['Pack Rat', 'Rip King', 'Pack Legend'], 128, 2],
+  ['generous', 'Generous', [1, 5, 15, 40, 100], 50, ['Generous', 'Big Heart', 'Patron of the Pride'], 8, 2],
+  ['trader', 'Trader', [1, 5, 15, 40, 100], 50, ['Trader', 'Deal Maker', 'Trade Baron'], 17, 0],
+  ['market', 'Market', [1, 5, 15, 40, 100], 50, ['Merchant', 'Auctioneer', 'Market Mogul'], 3, 1],
+  ['wish', 'Wish Granter', [1, 3, 10, 25, 60], 25, ['Wish Granter', 'Genie', 'Fairy Godparent'], 12, 3],
+  ['shards', 'Shard Earner', [500, 2500, 10000, 30000, 75000], 25000, ['Shard Miner', 'Crystal Keeper', 'Shard Tycoon'], 41000, 4],
+  ['shopper', 'Shopper', [1, 10, 30, 75, 150], 50, ['Shopper', 'VIP', 'Big Spender'], 22, 3],
+  ['recycler', 'Recycler', [10, 50, 200, 500, 1500], 500, ['Recycler', 'Copy Smelter', 'Alchemist'], 1900, 5],
+  ['grind', 'Daily Grind', [10, 50, 150, 400, 1000], 250, ['Grinder', 'Clockwork', 'Never Misses'], 160, 3],
+  ['streak', 'On a Roll', [3, 7, 14, 30, 60], 30, ['On a Roll', 'Unbroken', 'Eternal Flame'], 9, 2],
+  ['raider', 'Hunter', [1, 4, 10, 20, 40], 10, ['Hunter', 'Veteran Hunter', 'Warlord'], 11, 3],
+  ['heavy', 'Heavy Hitter', [2500, 10000, 40000, 100000, 250000], 100000, ['Heavy Hitter', 'Wrecking Ball', 'Boss Wrecker'], 52000, 3],
+  ['bighit', 'Big Hit', [400, 900, 1600, 2600, 4000], null, ['Big Hitter', 'One-Shot', 'Meteor'], 1700, 3],
+  ['slayer', 'Boss Slayer', [1, 3, 8, 15, 30], 10, ['Boss Slayer', 'Giant Slayer', "Dragon's Bane"], 4, 2],
+  ['podium', 'Podium', [1, 3, 8, 15, 30], 10, ['Podium Finisher', 'Champion', 'Hall of Famer'], 0, 0],
+  ['prankster', 'Prankster', [5, 25, 75, 200, 500], 100, ['Prankster', 'Menace', 'Agent of Chaos'], 80, 3],
+  ['vibes', 'Good Vibes', [1, 10, 30, 75, 200], 50, ['Good Vibes', 'Ray of Sunshine', 'Heart of the Pride'], 14, 2],
+  ['voice', 'Voice + Chat', [3, 10, 30, 75, 150], 50, ['Chatterbox', 'Life of the Party', 'Voice of the Pride'], 40, 3],
+];
+const ACH_BADGES = [   // tag, label, have, need, packs, claimed
+  ['origin:pokemon', 'Pokemon', 29, 29, 4, false], ['origin:party', 'Party', 20, 20, 3, false], ['origin:minecraft', 'Minecraft', 10, 10, 2, false],
+  ['origin:meme', 'Meme', 9, 9, 2, false], ['type:moment', 'Moment', 56, 56, 7, false], ['type:creature', 'Creature', 21, 21, 4, false],
+  ['origin:smash', 'Smash', 52, 53, 7, false], ['origin:community', 'Community', 5, 6, 2, false], ['type:character', 'Character', 35, 37, 5, false],
+  ['type:item', 'Item', 8, 8, 2, true], ['type:place', 'Place', 6, 6, 2, true],
+];
+const ACH_RETIRED = ['first', 'own10', 'own25', 'own50', 'own100', 'ir1', 'sr1', 'fa1', 'g1', 'ir10', 'sr5', 'fa5', 'g5', 'fire5', 'light5', 'lightning5', 'nature5', 'shadow5',
+  'psychic5', 'water5', 'rainbow', 'fullset', 'double5', 'asc1', 'asc3', 'asc5', 'packs10', 'gift1', 'trade1', 'hunt1', 'hunt4', 'dmg1k', 'hit500', 'slay1', 'slay3', 'boon1', 'prank5'];
+function derivedAchView(long) {
+  const tracks = ACH_TRACKS.map(([key, name, tiers, step, titles, v, claimed]) => {
+    const value = long && key === 'shards' ? 123456789 : v;
+    const need = (n) => (n <= 5 ? tiers[n - 1] : step ? tiers[4] + (n - 5) * step : null);
+    let reached = 0;
+    while (need(reached + 1) != null && value >= need(reached + 1) && reached < 2000) reached += 1;
+    return { key, group: '', name, value, tiers, step, titles, reached, claimed: Math.min(claimed, reached), next: need(reached + 1) };
+  });
+  const badges = ACH_BADGES.map(([tag, label, have, need, packs, claimed]) => ({ key: `tag:S1:${tag}`, season: 'Season 1', short: 'S1', tag, label, title: `${label} Master S1`, need, have, packs, claimed }));
+  const ready = tracks.reduce((s, t) => s + Math.max(0, t.reached - t.claimed), 0) + badges.filter((b) => b.have >= b.need && !b.claimed).length;
+  // `rewards` = the balance achievement_rewards value that the server adds to the answer (made-up numbers)
+  const rewards = { tiers: [{ packs: 1, shards: 50 }, { packs: 1, shards: 150 }, { packs: 2, shards: 200 }, { packs: 3, shards: 400 }, { packs: 5, shards: 800 }], step: { packs: 5, shards: 200 } };
+  return { enabled: true, tracks, badges, ready, retired: ACH_RETIRED, rewards };
+}
+function derivedAchGallery(long) {
+  const view = derivedAchView(false);
+  const items = [];
+  for (const t of view.tracks) {
+    for (let i = 0; i < 3; i += 1) items.push({ kind: 'title', value: t.titles[i], track: t.key, tier: i + 3, need: t.tiers[i + 2], badge: null, owners: i === 1 && t.key === 'collector' ? 28 : 0, mine: i === 1 && t.key === 'collector', plus: null });
+    items.push({ kind: 'frame', value: `diamond:${t.key}`, track: t.key, tier: 4, need: t.tiers[3], badge: null, owners: 0, mine: false, plus: null });
+    items.push({ kind: 'frame', value: `mythic:${t.key}`, track: t.key, tier: 5, need: t.tiers[4], badge: null, owners: 0, mine: false, plus: null });
+  }
+  view.badges.forEach((b, i) => items.push({ kind: 'title', value: b.title, track: null, tier: null, need: b.need, badge: b.key, owners: 3 + i, mine: b.claimed, plus: null }));
+  for (const [value, name, how, mine, owners] of [['silver', 'Collector', 'Own 50 different cards', true, 28], ['gold', 'Archivist', 'Own 100 different cards', true, 28], ['holo', 'Season 1 Complete', 'Own every Season 1 base card', true, 28]]) {
+    items.push({ kind: 'frame', value, track: null, tier: null, need: null, badge: 'old', name, how, retired: true, owners, mine, plus: null });
+  }
+  for (const [value, name, how, mine, owners] of [['Rare Hunter', 'Rare Hunter', 'Own 10 Illustrated Rares', true, 27], ['Secret Keeper', 'Secret Keeper', 'Own 5 Secret Rares', true, 5]]) {
+    items.push({ kind: 'title', value, track: null, tier: null, need: null, badge: 'old', name, how, retired: true, owners, mine, plus: null });
+  }
+  return { members: long ? 123456789 : 29, items };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/profile' && c.ci_ach === 'tracks' && body && typeof body === 'object', make: (body) => ({ ...body, title: 'Secret Keeper', frame: 'silver' }) });
 // UI-64 (Shop stat reset picker, pick one): the recorded collection has 3 cards with stat points; ci_stats=many gives the
 // first 30 cards points (a member who spent points on many cards), so the picker shows a full page.
 const STAT_KEYS = ['attack', 'vitality', 'precision', 'potency', 'haste'];
@@ -461,6 +531,9 @@ createServer((req, res) => {
       const out = p === '/api/auctions' ? { view: url.searchParams.get('view') || 'open', auctions: derivedAuctions(c.ci_auction) } : derivedAuction(c.ci_auction);
       return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(out) : out));
     }
+    if (c.ci_ach === 'tracks' && p === '/api/achievements') return send(res, 200, JSON.stringify(derivedAchView(c.ci_data === 'long')));   // UI-13
+    if (c.ci_ach === 'tracks' && p === '/api/achievements/gallery') return send(res, 200, JSON.stringify(derivedAchGallery(c.ci_data === 'long')));   // UI-13
+    if (p === '/api/achievements') return send(res, 200, JSON.stringify({ enabled: false, rewards: null }));   // tracks off (the live answer of achievement_view + withRewards): the UI-12 list
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
     // The exact request, else the same path with no query, else the same path with another query (another member's
     // wishlist when the long-data variant changes the order of a list: the layout is the same).

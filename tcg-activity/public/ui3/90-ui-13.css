@@ -1,0 +1,76 @@
+/* ==== UI-13 Achievement tracks, badges, titles and frames (src/ui3/tracks-view.js; design repo UI-13/approved; flag ui_v3).
+   Built on the UI-12 list (90-ui-12.css: .u3-ct, .u3-at, .u3-ath): this file only adds the switch row, the track meter, the
+   title and frame tiles and the track window. Every selector is scoped to body.ui-v3. Tokens only (G4): the tier colors are
+   the D-75 tokens (--tier-bronze .. --tier-obsidian). ==== */
+
+/* The head row: the "?" and the switch (Tracks | Badges | Titles | Frames), the claim line at the right. On compact-port the
+   claim line takes its own row under the switch (the approved frame). */
+body.ui-v3 .u3-tr__head { flex-wrap: wrap; row-gap: var(--sp-2); }
+body.ui-v3 .u3-tr__sw { flex: 0 1 auto; min-width: 0; display: flex; }
+body.ui-v3 .u3-tr__sw .u3-seg { max-width: 100%; }
+body.ui-v3[data-size="compact-port"] .u3-tr__sw { flex: 1 1 0; }
+body.ui-v3[data-size="compact-port"] .u3-tr__sw .u3-seg { width: 100%; box-sizing: border-box; }
+body.ui-v3[data-size="compact-port"] .u3-tr__sw .u3-seg__item { flex: 1 1 0; justify-content: center; min-width: 0; padding-inline: var(--sp-1); }
+body.ui-v3[data-size="compact-port"] .u3-tr__head .u3-ct__right { flex: 1 0 100%; justify-content: flex-end; margin-left: 0; }
+
+/* A track tile: the five tier pips, the bar to the next tier and the count on one line. */
+body.ui-v3 .u3-tr__meter { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+body.ui-v3 .u3-tr__pips { flex: none; display: inline-flex; align-items: center; gap: var(--sp-1); }
+body.ui-v3 .u3-tr__meter .u3-bar { flex: 1 1 0; min-width: 0; }
+body.ui-v3 .u3-tr__meter .u3-at__n { flex: none; }
+
+/* A title tile: the title as a gold tag, the state at the right (Equip, Equipped, or the lock), the source and the owners in the foot. */
+body.ui-v3 .u3-tr__title { flex: 0 1 auto; min-width: 0; padding: var(--sp-1) var(--sp-2); border: var(--bw-1) solid var(--gold-a50); border-radius: var(--rad-sm); background: var(--gold-a10);
+  color: var(--gold); font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-small); overflow-wrap: anywhere; margin-right: auto; }
+body.ui-v3 .u3-tr__fname { flex: 1 1 auto; min-width: 0; font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-small); color: var(--text-primary); overflow-wrap: anywhere; }
+body.ui-v3 .u3-tr__on, body.ui-v3 .u3-tr__lock { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-1); }
+body.ui-v3 .u3-tr__on { font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--success); }
+body.ui-v3 .u3-tr__lock { color: var(--text-muted); }
+body.ui-v3 .u3-tr__foot { margin-top: auto; display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-muted); }
+body.ui-v3 .u3-tr__foot > span { min-width: 0; overflow-wrap: anywhere; }
+body.ui-v3 .u3-tr__foot > span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+body.ui-v3 .u3-tr--gal .u3-at__top > .u3-btn { margin-left: auto; }
+body.ui-v3 .u3-tr--gal.u3-at { gap: var(--sp-2); }
+body.ui-v3 .u3-tr__fail { grid-column: 1 / -1; list-style: none; display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); padding: var(--sp-5); }
+
+/* A frame: the avatar inside a ring (the old Silver, Gold and Holo, the tier frames Diamond and Obsidian with the icon of their track). */
+body.ui-v3 .u3-fr { --u3-fr-c: var(--border-strong); position: relative; flex: none; width: var(--ctl-md); height: var(--ctl-md); display: inline-flex; }
+body.ui-v3 .u3-fr__face { width: 100%; height: 100%; box-sizing: border-box; padding: var(--bw-2); border-radius: var(--rad-round); background: var(--u3-fr-c); display: block; }
+body.ui-v3 .u3-fr__face img { display: block; width: 100%; height: 100%; border-radius: var(--rad-round); object-fit: cover; background: var(--surface-3); }
+body.ui-v3 .u3-fr--silver { --u3-fr-c: var(--tier-silver); }
+body.ui-v3 .u3-fr--gold { --u3-fr-c: var(--gold); }
+body.ui-v3 .u3-fr--diamond { --u3-fr-c: var(--tier-diamond); }
+body.ui-v3 .u3-fr--mythic { --u3-fr-c: var(--tier-obsidian); }
+body.ui-v3 .u3-fr--holo .u3-fr__face { background: conic-gradient(var(--tier-bronze), var(--tier-diamond), var(--tier-obsidian), var(--gold), var(--tier-bronze)); }
+body.ui-v3 .u3-fr__ico { position: absolute; right: calc(var(--sp-1) * -1); bottom: calc(var(--sp-1) * -1); box-sizing: border-box; width: calc(var(--icon-md) + var(--sp-1)); height: calc(var(--icon-md) + var(--sp-1));
+  display: inline-flex; align-items: center; justify-content: center; border-radius: var(--rad-round); background: var(--surface-1); border: var(--bw-1) solid var(--u3-fr-c); color: var(--u3-fr-c); }
+body.ui-v3 .u3-fr__ico .u3-ico { width: var(--icon-xs); height: var(--icon-xs); }
+
+/* The track window (the tiers of one track): the UI-12 window frame (.u3-ath) with a list of tier rows. */
+body.ui-v3 .u3-trw__rows { flex: 1 1 0; min-height: 0; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--sp-2); overflow: hidden; }
+body.ui-v3 .u3-trw__row { flex: none; box-sizing: border-box; display: grid; align-items: center; column-gap: var(--sp-3); row-gap: var(--sp-1); padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--rad-md); background: var(--surface-1); border: var(--bw-1) solid var(--border); font-size: var(--fs-body); line-height: var(--lh-small);
+  grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "pip tier need st" ". rw rw rw"; }
+body.ui-v3 .u3-trw__row.is-ready { background: var(--gold-a10); border-color: var(--gold-a50); }
+body.ui-v3 .u3-trw__row.is-claimed { background: var(--gold-a10); border-color: var(--gold-a35); }
+body.ui-v3 .u3-trw__row > .u3-pip { grid-area: pip; }
+body.ui-v3 .u3-trw__tier { grid-area: tier; font-weight: var(--fw-heading); color: var(--text-primary); }
+body.ui-v3 .u3-trw__need { grid-area: need; font-family: var(--font-num); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+body.ui-v3 .u3-trw__rw { grid-area: rw; min-width: 0; color: var(--text-secondary); overflow-wrap: anywhere; }
+body.ui-v3 .u3-trw__st { grid-area: st; justify-self: end; font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; display: inline-flex; align-items: center; gap: var(--sp-1); }
+body.ui-v3 .u3-trw__st.is-ready { font-family: inherit; font-weight: var(--fw-heading); color: var(--gold); }
+body.ui-v3 .u3-trw__st.is-claimed { font-family: inherit; color: var(--success); }
+body.ui-v3:not([data-size="compact-port"]) .u3-trw__row { grid-template-columns: auto calc(var(--sp-7) * 2) calc(var(--sp-7) * 2) minmax(0, 1fr) auto; grid-template-areas: "pip tier need rw st"; }
+body.ui-v3 .u3-trw .u3-ath__line { overflow-wrap: anywhere; }
+
+/* A tile that the fit made taller spreads its lines (the approved frames have air in the tiles). */
+body.ui-v3 .u3-tr.u3-at:not(.u3-tr--gal) { justify-content: space-between; }
+
+/* The window is as tall as its rows (a sheet on compact-port, anchored at the bottom; a dialog on the other classes, anchored at the top). */
+body.ui-v3 .u3-trw { bottom: auto; max-height: calc(100% - var(--u3-sa-t) - var(--u3-bar) - var(--sp-5) - var(--dock-h) - var(--sp-5) - var(--u3-sa-b)); }
+body.ui-v3[data-size="compact-port"] .u3-trw { top: auto; bottom: calc(var(--dock-h) + var(--sp-3) + var(--u3-sa-b)); max-height: calc(100% - var(--u3-sa-t) - var(--sp-1-5) - var(--dock-h) - var(--sp-3) - var(--u3-sa-b)); }
+body.ui-v3 .u3-trw__rows { flex: 0 1 auto; }
+
+/* The tight mode: a window that is short for its rows (a track that goes on past the last tier) takes tighter rows. */
+body.ui-v3 .u3-trw.is-tight .u3-trw__row { padding-block: var(--sp-2); row-gap: 0; }
+body.ui-v3 .u3-trw.is-tight .u3-trw__rows { gap: var(--sp-1); }

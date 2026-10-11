@@ -14,7 +14,7 @@
  */
 import 'dotenv/config';
 import { createTradeRequestProbe } from './src/trade-request-probe.js';
-import { measure as measureAchievements, ACHIEVEMENTS, LEDGER } from './src/achievements.js';
+import { measure as measureAchievements, ACHIEVEMENTS, LEDGER, withRewards } from './src/achievements.js';
 const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
@@ -1218,7 +1218,7 @@ async function achView(id) {
 app.get('/api/achievements', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
-  res.json(await achView(String(me.id)));
+  res.json(withRewards(await achView(String(me.id)), BAL));   // + the tier rewards from the balance table (the cached view is not changed)
 });
 // Tiers + tag badges: the SQL measures and pays (claim_achievement_tiers); null key = all of them.
 async function claimTiers(id, key) {

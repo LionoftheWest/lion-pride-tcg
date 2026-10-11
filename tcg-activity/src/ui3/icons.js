@@ -6,7 +6,7 @@ import {
   Minus, Info, CircleCheck, CircleAlert, TriangleAlert, Timer, SlidersHorizontal, Landmark, PartyPopper, Layers, Award,
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
-  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, Eye, DoorOpen, Gem, BellOff, ChevronUp, Tag, Gavel, ArrowLeft, Sparkles, Drama, Bug, MessageSquare, Lightbulb, Monitor, GitCommitHorizontal, Clock, Send, Shield, Hourglass, User, CircleMinus,
+  Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, Eye, DoorOpen, Gem, BellOff, ChevronUp, Tag, Gavel, ArrowLeft, Sparkles, Drama, Bug, MessageSquare, Lightbulb, Monitor, GitCommitHorizontal, Clock, Send, Shield, Hourglass, User, CircleMinus, Image as ImageIcon, Rainbow, Puzzle, Dumbbell, HandHeart, Handshake, Target, Hammer, ShoppingCart, Recycle, Sun, Mic, Pickaxe, Laugh, PawPrint, Backpack, Map as MapIcon,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -43,6 +43,7 @@ export const ICONS = {
   'sparkles': Sparkles, 'drama': Drama,
   'bug': Bug, 'message-square': MessageSquare, 'lightbulb': Lightbulb, 'monitor': Monitor, 'git-commit-horizontal': GitCommitHorizontal, 'clock': Clock, 'send': Send,
   'hourglass': Hourglass, 'user': User, 'circle-minus': CircleMinus,
+  'image': ImageIcon, 'rainbow': Rainbow, 'puzzle': Puzzle, 'dumbbell': Dumbbell, 'hand-heart': HandHeart, 'handshake': Handshake, 'target': Target, 'hammer': Hammer, 'shopping-cart': ShoppingCart, 'recycle': Recycle, 'sun': Sun, 'mic': Mic, 'pickaxe': Pickaxe, 'laugh': Laugh, 'paw-print': PawPrint, 'backpack': Backpack, 'map': MapIcon,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
