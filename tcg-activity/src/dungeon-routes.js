@@ -23,12 +23,14 @@ const id = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n
 const mode = (v) => (v === 'gauntlet' ? 'gauntlet' : 'daily');
 const idx = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n < 10 ? n : null; };
 
-export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn }) {
+export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun }) {
   const gate = async (req, res, write = false) => {
     const me = await caller(req);
     if (!me) { res.status(401).json({ error: 'not authenticated' }); return null; }
     if (!dungeonOn(me.id)) { res.status(403).json({ error: 'off' }); return null; }
     if (write && !rateLimit(me.id)) { res.status(429).json({ error: 'slow down' }); return null; }
+    // A run action: tell the "is playing" post which mode the member is in, so its floor stays current (server.js dungeonPing).
+    if (write) onRun?.(me, req.path.startsWith('/api/gauntlet') || req.body?.mode === 'gauntlet' ? 'gauntlet' : 'daily');
     return me;
   };
   // The card details for the screen (the stats come from SQL: dungeon_view.mine, card_combat).

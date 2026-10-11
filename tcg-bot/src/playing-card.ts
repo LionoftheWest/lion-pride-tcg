@@ -73,6 +73,49 @@ export function fitText(ctx: SKRSContext2D, text: string, font: (px: number) => 
   while (px > 28 && ctx.measureText(text).width > maxW) { px -= 2; ctx.font = font(px); }
 }
 
+// The left panel the pictures share: the brand chip, the avatar with a gold ring, the name and the line.
+export function drawLeftPanel(ctx: SKRSContext2D, p: { name: string; line: string; live: boolean }, avatar: Image | null, icon: Image | null): void {
+  // The brand chip.
+  if (icon) { ctx.save(); rounded(ctx, 64, 56, 44, 44, 11); ctx.clip(); ctx.drawImage(icon, 64, 56, 44, 44); ctx.restore(); }
+  ctx.fillStyle = '#F4B73C';
+  ctx.font = '800 22px Inter, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10';
+  ctx.fillText('LION PRIDE TCG', 122, 87);
+
+  // The avatar with a gold ring (the initial when there is no picture).
+  const ax = 64, ay = 178, as = 150;
+  const ring = ctx.createLinearGradient(ax, ay, ax + as, ay + as);
+  ring.addColorStop(0, '#FFD66B');
+  ring.addColorStop(1, '#D8901A');
+  ctx.beginPath(); ctx.arc(ax + as / 2, ay + as / 2, as / 2 + 6, 0, Math.PI * 2); ctx.fillStyle = ring; ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(ax + as / 2, ay + as / 2, as / 2, 0, Math.PI * 2); ctx.clip();
+  if (avatar) cover(ctx, avatar, ax, ay, as, as);
+  else {
+    ctx.fillStyle = '#6b4dff'; ctx.fillRect(ax, ay, as, as);
+    ctx.fillStyle = '#fff'; ctx.font = '800 72px Bricolage, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10'; ctx.textAlign = 'center';
+    ctx.fillText((p.name[0] ?? '?').toUpperCase(), ax + as / 2, ay + as / 2 + 26);
+    ctx.textAlign = 'left';
+  }
+  ctx.restore();
+
+  // Name, "is playing", and today's numbers.
+  ctx.fillStyle = '#ffffff';
+  fitText(ctx, p.name, (px) => `800 ${px}px Bricolage, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10`, 68, 560);
+  ctx.fillText(cut(ctx, p.name, 560), 64, 420);
+  ctx.fillStyle = p.live ? '#7CF0B0' : '#b9bdd0';
+  if (p.live) { ctx.beginPath(); ctx.arc(73, 458, 8, 0, Math.PI * 2); ctx.fill(); } // the fonts have no ● glyph
+  fitText(ctx, p.line, (px) => `600 ${px}px Inter, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10`, 30, 560);
+  ctx.fillText(cut(ctx, p.line, p.live ? 532 : 560), p.live ? 92 : 64, 468);
+}
+
+// Text that is still too wide at the smallest size ends with "..." (a very long member name).
+export function cut(ctx: SKRSContext2D, text: string, maxW: number): string {
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(`${t}...`).width > maxW) t = t.slice(0, -1);
+  return `${t.trimEnd()}...`;
+}
+
 export async function renderPlayingCard(p: PlayingCardInput): Promise<Buffer> {
   fonts();
   const canvas = createCanvas(W, H);
@@ -102,37 +145,7 @@ export async function renderPlayingCard(p: PlayingCardInput): Promise<Buffer> {
   ctx.fillStyle = fade;
   ctx.fillRect(0, 0, W, H);
 
-  // The brand chip.
-  if (icon) { ctx.save(); rounded(ctx, 64, 56, 44, 44, 11); ctx.clip(); ctx.drawImage(icon, 64, 56, 44, 44); ctx.restore(); }
-  ctx.fillStyle = '#F4B73C';
-  ctx.font = '800 22px Inter, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10';
-  ctx.fillText('LION PRIDE TCG', 122, 87);
-
-  // The avatar with a gold ring (the initial when there is no picture).
-  const ax = 64, ay = 178, as = 150;
-  const ring = ctx.createLinearGradient(ax, ay, ax + as, ay + as);
-  ring.addColorStop(0, '#FFD66B');
-  ring.addColorStop(1, '#D8901A');
-  ctx.beginPath(); ctx.arc(ax + as / 2, ay + as / 2, as / 2 + 6, 0, Math.PI * 2); ctx.fillStyle = ring; ctx.fill();
-  ctx.save();
-  ctx.beginPath(); ctx.arc(ax + as / 2, ay + as / 2, as / 2, 0, Math.PI * 2); ctx.clip();
-  if (avatar) cover(ctx, avatar, ax, ay, as, as);
-  else {
-    ctx.fillStyle = '#6b4dff'; ctx.fillRect(ax, ay, as, as);
-    ctx.fillStyle = '#fff'; ctx.font = '800 72px Bricolage, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10'; ctx.textAlign = 'center';
-    ctx.fillText((p.name[0] ?? '?').toUpperCase(), ax + as / 2, ay + as / 2 + 26);
-    ctx.textAlign = 'left';
-  }
-  ctx.restore();
-
-  // Name, "is playing", and today's numbers.
-  ctx.fillStyle = '#ffffff';
-  fitText(ctx, p.name, (px) => `800 ${px}px Bricolage, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10`, 68, 560);
-  ctx.fillText(p.name, 64, 420);
-  ctx.fillStyle = p.live ? '#7CF0B0' : '#b9bdd0';
-  if (p.live) { ctx.beginPath(); ctx.arc(73, 458, 8, 0, Math.PI * 2); ctx.fill(); } // the fonts have no ● glyph
-  fitText(ctx, p.line, (px) => `600 ${px}px Inter, NS-latin-ext, NS-cyrillic, NS-cyrillic-ext, NS-greek, NS-greek-ext, NE-0, NE-1, NE-2, NE-3, NE-4, NE-5, NE-6, NE-7, NE-8, NE-9, NE-10`, 30, 560);
-  ctx.fillText(p.line, p.live ? 92 : 64, 468);
+  drawLeftPanel(ctx, p, avatar, icon);
 
   // The best pull of the day, framed in its rarity color (or the brand when none yet).
   const cw = 318, ch = Math.round(cw * 7 / 5), cx = W - cw - 88, cy = (H - ch) / 2 + 12; // just the card (Nathan: no tier or name line)

@@ -118,6 +118,7 @@ async function forwardActivity(me, st) {
   const d = st?.d || {};
   let act = { kind: 'idle' };
   if (st?.kind === 'opening') act = { kind: 'opening', cards: d.c || [] };
+  else if (st?.kind === 'hunt' && (d.s === 'dungeon' || d.s === 'gauntlet')) act = { kind: d.s }; // the Dungeon and Gauntlet views report as 'hunt' with s = the mode
   else if (st?.kind === 'battle' || st?.kind === 'hunt') {
     const h = await activeHunt().catch(() => null);
     const key = h ? bossModelFor(h.name) : null;
@@ -128,6 +129,16 @@ async function forwardActivity(me, st) {
   if (lastActivity.get(me.id) === k) return;
   lastActivity.set(me.id, k);
   notifyPlaying(me, 'update', act);
+}
+// The Dungeon / Gauntlet picture (tcg-bot dungeon-card.ts): a run action refreshes the activity (the bot drops an
+// activity older than 3 minutes) and asks for an update. The bot reads the real floor from the database, edits the
+// post in place, at most once a minute (the same limit as the boss picture). Here: at most one call per member per 20 s.
+const lastDungeonPing = new Map(); // member id -> ms
+function dungeonPing(me, mode) {
+  const now = Date.now();
+  if (now - (lastDungeonPing.get(me.id) || 0) < 20_000) return;
+  lastDungeonPing.set(me.id, now);
+  notifyPlaying(me, 'update', { kind: mode === 'gauntlet' ? 'gauntlet' : 'dungeon' });
 }
 // A bot Card -> the browser shape, with the art routed through the /cdn proxy.
 const cardForClient = (c) => ({
@@ -1793,7 +1804,7 @@ registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg, getBalance 
 registerReportRoutes(app, { supabase, caller, rateLimit, targets: appLogs.on }); // targets: player_reports.target_id (logs_app.sql)
 registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn: hallPostsOn });
 registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn });
-registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn });
+registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing });
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.
