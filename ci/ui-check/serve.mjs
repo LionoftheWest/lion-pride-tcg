@@ -8,7 +8,7 @@
 //   ci_dungeon=choose   /api/dungeon answers a run in the "Choose a reward" step (UI-48), derived from the recorded lobby answer
 //   ci_board=rows|empty|error   the 4 Leaderboard answers (UI-66): rows = a board with many rows, empty = no rows, error = HTTP 500 (derived below)
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
-//   ci_dungeon=fight|fight2   a Dungeon fight with 5 or 2 monsters (UI-47); ci_dungeon=over the run over (UI-50)
+//   ci_dungeon=fight|fight2|fight-2s3|fight-1s4   a Dungeon fight with 5 or 2 monsters (UI-47); ci_dungeon=over the run over (UI-50)
 //   ci_fx=hist|day|member   the Boons tab (UI-27): my play history, the day limit used up, a member at the pair cap
 //   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
 //   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
@@ -132,13 +132,16 @@ DERIVED.push({ when: (p, c, body) => p === '/api/gauntlet' && c.ci_dungeon === '
 const FOES5 = [['skeleton', 'Water Skeleton', 'water', 50, ['caster']], ['squidle', 'Earth Squid', 'earth', 0, ['hero']], ['goleling', 'Water Golem', 'water', 85, ['agile']],
   ['dino', 'Lightning Raptor', 'lightning', 50, ['strong']], ['blue_demon', 'Ice Demon', 'ice', 55, ['strong']]];
 function derivedFight(body, kind) {
+  const mix = /^fight-([0-9])s([0-9])$/.exec(kind);   // fight-2s3, fight-1s4: 2 attackers + 3 supports, 1 + 4 (a hidden card shows as a defect)
+  if (mix) kind = 'fight';
   const base = derivedDungeon(body);
   const mine = body.mine || [];
-  const atk = mine.filter((c) => ['Character', 'Creature'].includes(c.type)).slice(0, 3);
-  const sup = mine.filter((c) => c.ability?.kind === 'support' && ['heal', 'shield', 'empower'].includes(c.ability.effect)).slice(0, 2);
+  const nA = mix ? Number(mix[1]) : 3, nS = mix ? Number(mix[2]) : 2;
+  const atk = mine.filter((c) => ['Character', 'Creature'].includes(c.type)).slice(0, nA);
+  const sup = mine.filter((c) => c.ability?.kind === 'support' && (mix || ['heal', 'shield', 'empower'].includes(c.ability.effect))).slice(0, nS);
   const cards = {};
-  [[48, 72, 14], [119, 128, 1], [52, 72, 14]].forEach(([hp, max, shield], i) => { cards[atk[i].id] = { hp, max, shield, cd: 0 }; });
-  [[51, 60, 12], [50, 60, 12]].forEach(([hp, max, shield], i) => { cards[sup[i].id] = { hp, max, shield, cd: 0 }; });
+  [[48, 72, 14], [119, 128, 1], [52, 72, 14]].slice(0, nA).forEach(([hp, max, shield], i) => { cards[atk[i].id] = { hp, max, shield, cd: 0 }; });
+  [[51, 60, 12], [50, 60, 12], [49, 60, 12], [48, 60, 12]].slice(0, nS).forEach(([hp, max, shield], i) => { cards[sup[i].id] = { hp, max, shield, cd: 0 }; });
   const list = kind === 'fight2' ? FOES5.slice(0, 2) : FOES5;
   const foes = list.map(([key, name, element, max, passives], i) => ({ key, name, element, level: 2, hp: max, max: max || 45, sh: 0, st: 0,
     weak: [{ value: 'lightning' }, { value: `trait:${passives[0]}` }], resist: [{ value: 'fire' }], passives: [] }));
@@ -147,7 +150,7 @@ function derivedFight(body, kind) {
   const st = { phase: 'fight', room_type: 'horde', round: 0, buff: 1.23, cards, foes, pend: { shards: 0, cards: [] }, bank: { shards: 0, cards: [] }, sup_round: -1 };
   return { ...base, name: 'The Hollow Mines', run: { ...R, state: st } };
 }
-DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['fight', 'fight2'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedFight(body, c.ci_dungeon) });
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['fight', 'fight2', 'fight-2s3', 'fight-1s4'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedFight(body, c.ci_dungeon) });
 // UI-52: a Gauntlet fight (cookie ci_dungeon = g-fight): the week's squad (3 attackers, 2 supports) against the 5-monster horde of the
 // approved frames; floor 2, room 4 of 5, week best 4F R1, damage +23%. The squad cards come from the recorded lobby answer.
 function derivedGauntletFight(body) {

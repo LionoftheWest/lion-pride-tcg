@@ -834,12 +834,15 @@ function fitFightV3(F) {
     const tile = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-tile-max')) || 112;
     F.classList.toggle('is-stack', cls3() === 'compact-port' || (cls3() === 'medium' && F.clientHeight > F.clientWidth));
     F.classList.toggle('is-narrow', cls3() === 'compact-port' && F.clientWidth < 3.5 * tile); F.classList.toggle('is-slim', cls3() === 'medium' && F.clientWidth < 6.4 * tile);
-    // is-short3: still too high (3 or more supports): the supports share one row, so no card is ever hidden (D-156).
+    // is-short3: the box or the supports panel is still too high (3 or more supports): the supports are a compact list, name and status, no art. No card is ever hidden (D-156).
     // is-short, is-short2: the fight is taller than its box, or the stage is under 2.2 widest card tiles high: the cards, then Squad HP and the supports, take less room
     const arena = F.querySelector('.dg-arena');
     F.classList.remove('is-short', 'is-short2', 'is-short3');
     const over = () => F.scrollHeight > F.clientHeight + 1 || (arena && arena.clientHeight < 2.2 * tile);
-    if (F.classList.contains('is-stack') && over()) { F.classList.add('is-short'); if (over()) { F.classList.add('is-short2'); if (F.scrollHeight > F.clientHeight + 1) F.classList.add('is-short3'); } }
+    const sups = F.querySelector('.dg-sups');
+    const tall = () => F.scrollHeight > F.clientHeight + 1 || (sups && sups.scrollHeight > sups.clientHeight + 1);
+    if (F.classList.contains('is-stack') && over()) { F.classList.add('is-short'); if (over()) F.classList.add('is-short2'); }
+    if (tall()) F.classList.add('is-short3');
     placeArena(document.getElementById('main'));
   };
   measure();
