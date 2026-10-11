@@ -320,6 +320,20 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
       read it from there. The Gauntlet (0 stars) never has it.
     - `combat_sheet` and the Combat Lab show and test both abilities.
     - Content: every S1 card needs a latent ability, and every Set 2 card has both.
+    - **Decided (Nathan, 2026-10-11):** the latent ability unlocks at 3 stars, the Silver
+      tier (`latent_unlock_star = 3`).
+    - Drafts for S1: written after the Combat Lab exists (item 6), so that each draft is
+      measured. Nathan approves or changes each one in the Card Portal.
+11. **The stat screen (UI-10) (Nathan, 2026-10-11).**
+    - The new stat names (item 9), each with a one-line explainer of what it does, for
+      example "Recharge: supports are ready sooner (−4% cooldown for each point)". The text
+      and the numbers come from `balance`.
+    - Live preview: when a player adds or removes a point, before they confirm, the card shows
+      its stats before and after (attack power, HP, crit, support strength, cooldown).
+    - The preview values come from `card_combat` through one server call, not from JS math
+      (item 3). The same call gives the latent ability state ("unlocks at Silver").
+    - UI-10 has an approved design (2026-10-05). These additions need an updated design in
+      the design repo and Nathan's approval before the build (`docs/design.md` 12.3).
 
 ### Acceptance tests
 
@@ -342,6 +356,7 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 6. One log: move the readers to `combat_actions`, then remove the old logs.
 7. Ascension and stat points: the fixes, the new labels, one power number everywhere, and the Lab measurement.
 8. Latent abilities: `subjects.latent`, `latent_unlock_star`, the fight support, and the Card Portal field.
+9. UI-10 stat screen: the updated design first, then the build (explainers and live preview).
 
 ---
 
@@ -349,7 +364,10 @@ log. v1.1 put the rules in one set of `combat_*` SQL functions, and their number
 
 5. **Stats:** Attack raises only attack power, Vitality only HP. Clearer stat names. No free
    reset for now. The Gauntlet stays equal for all.
-6. **Latent abilities:** each card unlocks a second ability at a set star (F-3 item 10).
+6. **Latent abilities:** each card unlocks a second ability at 3 stars, the Silver tier
+   (F-3 item 10).
+7. **Stat screen:** the new names, an explainer for each stat, and a live preview of the
+   card stats (F-3 item 11).
 
 1. **Events:** no code for one specific event. Nathan wants the freedom to make any kind of
    event and to build a library of events to schedule (F-1 item 0).
