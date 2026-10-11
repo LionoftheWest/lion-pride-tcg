@@ -66,6 +66,8 @@ test('touch targets count on touch sizes only', () => {
 test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('convert', '#u3ShopDlg > .u3-scrim > .u3-dialog.u3-sdlg.u3-sdlg--convert > .u3-sdlg__main > .u3-scvt'), 'UI-44');
   assert.equal(ownerOf('convert', '#main > .v2-collection > .p-actions'), 'UI-08');
+  assert.equal(ownerOf('hall-explain', '#exLayer.u3-exl > .u3-ex > .u3-ex__body > .u3-ex__nav > .u3-btn'), 'UI-39');
+  assert.equal(ownerOf('hall-explain', '#main > .u3-hl > .u3-hl__sub > .ex-q'), 'UI-30');
   assert.equal(ownerOf('dungeon', '#topbar > #shopBtn'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Shards'), 'UI-42');
   assert.equal(ownerOf('dungeon', '#topbarheader > .topright > #v2Avatar.v2-avatar'), 'UI-01');
@@ -169,6 +171,10 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('collection', '#main > .u3-col > .u3-ctile.is-owned'), 'UI-07');
   assert.equal(ownerOf('collection', '.u3-col__bar > .u3-search.u3-col__search > #colSearch.u3-search__input'), 'UI-07');
   assert.equal(ownerOf('achievements', '.v2-collection.ach-mode > .m-colbar > #colSearch.v2-search'), 'UI-12');   // the v2 id is not UI-07
+  assert.equal(ownerOf('tracks', '#main > .u3-ct.u3-ct--tr > .u3-ct__box > ul > .u3-at.u3-tr'), 'UI-13');   // the tracks list (UI-13)
+  assert.equal(ownerOf('tracks-window', '#u3TrHost.u3-athhost > .u3-ath.u3-trw > .u3-trw__rows'), 'UI-13');   // the track window
+  assert.equal(ownerOf('tracks-frames', '.u3-tr--gal > .u3-at__top > .u3-fr.u3-fr--diamond'), 'UI-13');   // a frame tile
+  assert.equal(ownerOf('trades', '#main > .u3-trades > .u3-pd'), 'UI-25', 'the Trades classes are not UI-13 (.u3-trades is not .u3-tr)');
   assert.equal(ownerOf('collection', '.u3-fpanel__foot > button'), 'UI-07');
   assert.equal(ownerOf('collection-detail', '#main > .u3-col > .u3-ctile'), 'UI-07');
   assert.equal(ownerOf('dungeon-path', '#main > .u3-dgs > .u3-dgc-panel'), 'UI-49');   // the room steps (UI-49)
@@ -204,6 +210,7 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
   assert.deepEqual([...enforcedIds('UI-46 Dungeon lobby', REG)].sort(), ['UI-07', 'UI-46'], 'UI-07 is Migrated in REG');
   assert.deepEqual(plan(new Set(['UI-46'])).screens, ['dungeon']);
   assert.deepEqual(plan(new Set(['UI-12'])).screens, ['achievements', 'achievements-detail', 'achievements-ready', 'achievements-claim-error']);
+  assert.deepEqual(plan(new Set(['UI-13'])).screens.sort(), ['tracks', 'tracks-badges', 'tracks-claim-error', 'tracks-equip-error', 'tracks-frames', 'tracks-titles', 'tracks-window']);   // the 7 UI-13 specs
   assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
   assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');
@@ -304,10 +311,10 @@ test('a bad exception entry stops the gate', () => {
   }
 });
 
-test('UI-66 state exceptions (D-124): the 5 state specs on every touch and pointer size accept only the empty-space rule', async () => {
+test('UI-66 state exceptions (D-124): the 6 state specs on every touch and pointer size accept only the empty-space rule', async () => {
   const { readFileSync } = await import('node:fs');
   const list = checkExceptions(JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8')).filter((e) => e.id === 'UI-66'));
-  const states = ['leaderboard-error', 'leaderboard-hunt-error', 'leaderboard-hunt-empty', 'leaderboard-dungeon-empty', 'leaderboard-gauntlet-empty'];
+  const states = ['leaderboard-error', 'leaderboard-hunt-error', 'leaderboard-hunt-empty', 'leaderboard-hunt-last-empty', 'leaderboard-dungeon-empty', 'leaderboard-gauntlet-empty'];
   assert.equal(list.length, states.length * (SIZES.length - 1), 'every size but tiny (the window is not shown there)');
   assert.ok(list.every((e) => e.decision === 'D-124' && e.rule === 'empty' && states.includes(e.screen)));
   const x = (screen, rule) => ({ owner: 'UI-66', screen, size: '430x932', rule });

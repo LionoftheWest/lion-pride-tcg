@@ -14,7 +14,7 @@
  */
 import 'dotenv/config';
 import { createTradeRequestProbe } from './src/trade-request-probe.js';
-import { measure as measureAchievements, ACHIEVEMENTS, LEDGER } from './src/achievements.js';
+import { measure as measureAchievements, ACHIEVEMENTS, LEDGER, withRewards } from './src/achievements.js';
 const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
@@ -30,6 +30,7 @@ import { ui3Css } from './src/ui3/css-parts.js';
 import { bestSquad } from './src/squad-pick.js';
 import { selectAll } from './src/select-all.js';
 import { rankByName } from './src/name-rank.js';
+import { pickLastHunt, FINISHED } from './src/last-hunt.js';
 import { registerHallRoutes, heldCopies } from './src/hall-routes.js';
 import { registerShopRoutes } from './src/shop-routes.js';
 import { registerDungeonRoutes } from './src/dungeon-routes.js';
@@ -1055,6 +1056,15 @@ app.get('/api/hunt/leaderboard', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const hunt = await activeHunt();
+  if (req.query.last) {   // D-178: the final standings of the newest finished boss that is not the live one
+    try {
+      const { data, error } = await supabase.from('hunts').select('id, name, tier, status').in('status', FINISHED).order('id', { ascending: false }).limit(5);
+      if (error) throw new Error(error.message);
+      const last = pickLastHunt(data, hunt?.id ?? null);
+      if (!last) return res.json({ leaders: [], me: me.id, boss: null });
+      return res.json({ leaders: (await huntLeaders(last.id)).slice(0, 20), me: me.id, boss: { name: last.name, tier: last.tier, status: last.status } });
+    } catch (e) { return res.status(500).json({ error: e.message }); }
+  }
   if (!hunt) return res.json({ leaders: [], me: me.id });
   try {
     res.json({ leaders: (await huntLeaders(hunt.id)).slice(0, 20), me: me.id });
@@ -1208,7 +1218,7 @@ async function achView(id) {
 app.get('/api/achievements', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
-  res.json(await achView(String(me.id)));
+  res.json(withRewards(await achView(String(me.id)), BAL));   // + the tier rewards from the balance table (the cached view is not changed)
 });
 // Tiers + tag badges: the SQL measures and pays (claim_achievement_tiers); null key = all of them.
 async function claimTiers(id, key) {

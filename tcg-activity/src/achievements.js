@@ -150,3 +150,12 @@ export const rewardOf = (key) => REWARDS[key] || { packs: 1 };
 export function rewardLabel(r) {
   return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.title ? `"${r.title}" title` : null, r.frame ? FRAMES[r.frame] : null].filter(Boolean).join(' + ');
 }
+
+// The answer of GET /api/achievements: the view of the SQL plus the tier reward numbers from the balance table (key
+// achievement_rewards: { tiers: [5 items], step }, the value ach_tier_reward() reads). The Activity shows these numbers
+// and never holds its own. A view that is not enabled, or a missing balance, gives rewards: null (the client then shows no amounts).
+export function withRewards(view, balance) {
+  const r = balance?.achievement_rewards;
+  const ok = r && Array.isArray(r.tiers) && r.tiers.length === 5 && r.step && typeof r.step === 'object';
+  return { ...(view || { enabled: false }), rewards: ok ? { tiers: r.tiers, step: r.step } : null };
+}

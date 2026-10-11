@@ -68,7 +68,7 @@ export function achTileHTML(a, d) {
   const st = statusOf(a, d.claimed);
   const pct = Math.min(1, a.need > 0 ? a.have / a.need : 0);
   return `<li class="u3-at is-${st}" data-key="${esc(a.key)}">`
-    + `<div class="u3-at__top"><span class="u3-at__ico" aria-hidden="true">${esc(a.icon)}</span>`
+    + `<div class="u3-at__top"><span class="u3-at__ico" aria-hidden="true">${a.iconName ? icon(a.iconName) : esc(a.icon)}</span>`
     + `<button type="button" class="u3-at__name" data-ach="${esc(a.key)}">${esc(a.name)}</button>${statHTML(a, st, d)}</div>`
     + `<p class="u3-at__desc">${esc(a.desc)}</p>${progressLinear({ value: pct })}`
     + `<div class="u3-at__foot"><p class="u3-at__rw">${icon('gift', { size: 'sm' })}<span>${esc(d.rewardText(a))}</span></p>${st === 'claimed' ? '<span class="u3-at__claimed">Claimed ✓</span>' : ''}</div></li>`;
@@ -79,14 +79,14 @@ function headHTML(d, ready) {
     ? `<span class="u3-ct__ready">${icon('gift', { size: 'md' })}<span>${esc(claimLine(ready))}</span></span>`
       + button({ label: S.all === 'error' ? 'Try again' : 'Claim all', busyLabel: 'Claiming…', variant: 'primary', size: 'sm', busy: S.all === 'busy', data: { claimall: '1' } })
     : '';
-  return `<div class="u3-ct__head">${d.help || ''}${right ? `<span class="u3-ct__right">${right}</span>` : ''}</div>`;
+  return `<div class="u3-ct__head${d.switchHTML ? ' u3-tr__head' : ''}">${d.help || ''}${d.switchHTML || ''}${right ?`<span class="u3-ct__right">${right}</span>` : ''}</div>`;
 }
 
 /** Paint the Achievements tab into main (replaces its content). d: see ui-v2.js paintAchievementsV3 call. */
 export function paintAchievementsV3(main, d) {
   document.getElementById('u3BossHost')?.remove(); S.bossOpen = null;   // a boss window never survives a tab change
-  const ready = d.achs.filter((a) => statusOf(a, d.claimed) === 'ready').length;
-  main.innerHTML = `${d.tabBar}<section class="u3-ct u3-ct--ach" aria-label="Achievements">${headHTML(d, ready)}`
+  const ready = d.readyTotal ?? d.achs.filter((a) => statusOf(a, d.claimed) === 'ready').length;   // UI-13: the tracks view counts every reward ready, not only this list
+  main.innerHTML =`${d.tabBar}<section class="u3-ct u3-ct--ach" aria-label="Achievements">${headHTML(d, ready)}`
     + `<div class="u3-ct__box"><ul class="u3-ct__grid" role="list"></ul><div class="u3-ct__pager"></div></div></section>`;
   const root = $(main, '.u3-ct');
   const box = $(root, '.u3-ct__box');
@@ -95,6 +95,8 @@ export function paintAchievementsV3(main, d) {
     const claim = e.target.closest('[data-claim]');
     if (claim) { if (!claim.disabled) doClaim(claim.dataset.claim, root, d); return; }
     if (e.target.closest('[data-claimall]')) { if (S.all !== 'busy') doClaimAll(root, d); return; }
+    const seg = e.target.closest('[data-seg]');   // UI-13: the Tracks / Badges / Titles / Frames switch
+    if (seg) { d.onSeg?.(seg.dataset.seg); return; }
     const pg = e.target.closest('[data-page]');
     if (pg && !pg.disabled) { S.page += pg.dataset.page === 'next' ? 1 : -1; fit(); return; }
     const open = e.target.closest('[data-ach]');
@@ -140,7 +142,14 @@ function fitAchievements(root, d) {
   let r = pass(false);
   // A blank band under the rows (more than a quarter of the box): the tight mode (tighter padding) may fit one more row.
   if (avail > 0 && r.used < avail * 0.75) { const t = pass(true); if (t.rows > r.rows) r = t; else r = pass(false); }
-  grid.style.setProperty('--u3-ct-h', `${r.h}px`);
+  // UI-13 (the Badges list under the tracks switch only): the tiles grow to fill the free height, up to 1.6 times (no blank band, as tracks-view.js does)
+  let tileH = r.h;
+  if (d.switchHTML) {
+    const rowsOnPage = Math.min(r.rows, Math.ceil(d.achs.length / r.cols));
+    const gapPx = px(getComputedStyle(grid).rowGap);
+    tileH = Math.max(r.h, Math.min(Math.floor((avail - (rowsOnPage - 1) * gapPx) / rowsOnPage), Math.floor(r.h * 1.6)));
+  }
+  grid.style.setProperty('--u3-ct-h', `${tileH}px`);
   const s = pageSlice(d.achs.length, r.rows * r.cols, S.page);
   S.page = s.page;
   grid.innerHTML = d.achs.slice(s.start, s.end).map((a) => achTileHTML(a, d)).join('');
@@ -167,7 +176,7 @@ async function doClaimAll(root, d) {
   if (root.isConnected) paintHead(root, d);
 }
 function paintHead(root, d) {
-  const ready = d.achs.filter((a) => statusOf(a, d.claimed) === 'ready').length;
+  const ready = d.readyTotal ?? d.achs.filter((a) => statusOf(a, d.claimed) === 'ready').length;
   const old = $(root, '.u3-ct__head');
   const help = old?.querySelector('.ex-q') || null;   // the "?" may sit in the sub-tab row (D-63): leave it there
   const tmp = document.createElement('div');
@@ -198,7 +207,7 @@ function windowHTML(a, d) {
     ? '<div class="u3-ath__box"><ul class="u3-ath__grid" role="list"></ul><div class="u3-ath__pager"></div></div>'
     : `<div class="u3-ath__stat"><b>${fmtFor(a.have, sizeCls())}</b><span>of ${fmtFor(a.need, sizeCls())}</span></div>`;
   return `<div class="u3-ath" role="dialog" aria-modal="true" aria-labelledby="u3AthT">`
-    + `<header class="u3-ath__head"><span class="u3-ath__ico" aria-hidden="true">${esc(a.icon)}</span><h2 class="u3-ath__title" id="u3AthT">${esc(a.name)}</h2>`
+    + `<header class="u3-ath__head"><span class="u3-ath__ico" aria-hidden="true">${a.iconName ? icon(a.iconName) : esc(a.icon)}</span><h2 class="u3-ath__title" id="u3AthT">${esc(a.name)}</h2>`
     + `${claim}${iconButton({ icon: 'x', label: 'Close', data: { 'ath-close': '1' } })}</header>`
     + `<p class="u3-ath__line">${esc(a.desc)} · ${esc(progress)} · ${icon('gift', { size: 'sm' })} ${esc(d.rewardText(a))}</p>`
     + `${progressLinear({ value: pct })}${body}</div>`;

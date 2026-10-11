@@ -55,6 +55,15 @@ export const SCREENS = {
   'achievements-detail': { id: 'UI-12', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-ach="s1"]'], ['wait', 1.5]] },
   'achievements-ready':  { id: 'UI-12', notOn: ['tiny'], long: true, safe: true, ach: 'ready', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
   'achievements-claim-error': { id: 'UI-12', notOn: ['tiny'], safe: true, ach: 'ready', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-claim]'], ['wait', 1.5]] },
+  // UI-13 (the tracks under the UI-12 Achievements tab; cookie ci_ach=tracks makes the achievement view and the gallery, serve.mjs): the Tracks list, a track
+  // window, the Badges list, the Titles list, the Frames list, a Claim and an Equip that the server refuses (the check server blocks every write).
+  'tracks':              { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]']] },
+  'tracks-window':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-track]'], ['wait', 1]] },
+  'tracks-badges':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="badges"]'], ['wait', 1]] },
+  'tracks-titles':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="titles"]'], ['wait', 1]] },
+  'tracks-frames':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="frames"]'], ['wait', 1]] },
+  'tracks-claim-error':  { id: 'UI-13', notOn: ['tiny'], safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-claim]'], ['wait', 1.5]] },
+  'tracks-equip-error':  { id: 'UI-13', notOn: ['tiny'], safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="titles"]'], ['wait', 1], ['js', '#main [data-equip]'], ['wait', 1.5]] },
   'bosses':              { id: 'UI-11', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
   'boss-detail':         { id: 'UI-11', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]'], ['js', '#main [data-bi]'], ['wait', 2]] },
   'trades':              { id: 'UI-25', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`]], input: '#trFind, #main input[type=search], #main input[type=text]' },
@@ -85,7 +94,16 @@ export const SCREENS = {
 'trades-picker':       { id: 'UI-65', under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5]], input: '#main .u3-mp .u3-search__input' },
   // UI-29: the member suggest list (typed "Member": the fixture answers with every member, so the list holds more rows than fit and scrolls). The keyboard variant keeps the text and the list.
   'trades-suggest':      { id: 'UI-29', long: true, under: 'UI-25', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['wait', 1.5], ['type', '#main .u3-mp .u3-search__input', 'Member']], input: '#main .u3-mp .u3-search__input' },
-  'trades-explain':      { id: 'UI-39', steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  // UI-39 (explainer carousels, v3): each set opens from its "?" (step 1); a later step for two sets (Next 4 times: Hall step 5, Trades step 5).
+  'trades-explain':      { id: 'UI-39', under: 'UI-25', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  'trades-explain-5':    { id: 'UI-39', under: 'UI-25', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="trades"]`], ['js', '#main [data-explain]'], ['wait', 1.5], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['wait', 1]] },
+  'hall-explain':        { id: 'UI-39', under: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  'hall-explain-5':      { id: 'UI-39', under: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '#main [data-explain]'], ['wait', 1.5], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['js', '[data-a="next"]'], ['wait', 1]] },
+  'auctions-explain':    { id: 'UI-39', under: 'UI-32', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="auctions"]'], ['wait', 1.5], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  'boons-explain':       { id: 'UI-39', under: 'UI-27', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="effects"]`], ['wait', 1.5], ['js', '#main [data-explain]'], ['wait', 1.5]] },
+  // the v3 Hunt shows its "?" only in the battle view (main.js u3-ft-me), not in the squad stage
+  'hunt-explain':        { id: 'UI-39', under: 'UI-18', long: true, safe: true, notOn: ['tiny'], battle: true, steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9], ['js', '[data-explain="hunt"]'], ['wait', 1.5]] },
+  'collection-explain':  { id: 'UI-39', under: 'UI-07', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['wait', 1], ['js', '#main [data-explain]'], ['wait', 1.5]] },
   // v3 (UI-30): the Trade Hall lists with the listings of other members (cookie ci_hall=many: the recording holds only the signed-in member's own).
   'hall':                { id: 'UI-30', safe: true, long: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5]], input: '#main input[type=search], #main input[type=text]' },
   'hall-fortrade':       { id: 'UI-30', long: true, safe: true, hall: 'many', notOn: ['tiny'], steps: [['dock', 'trading'], ['js', `${COMM} [data-tab="hall"]`], ['wait', 1.5], ['js', '.u3-hl__sw [data-seg="fortrade"]'], ['wait', 1]], input: '#main input[type=search], #main input[type=text]' },
@@ -220,12 +238,14 @@ export const SCREENS = {
   // The Leaderboard window (UI-66, D-44) opens over Home from the menu: a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
   'leaderboard':         { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
   'leaderboard-hunt':    { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-hunt-last': { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2], ['js', '#u3LbHost [data-lb-hunt] [data-seg="last"]'], ['wait', 2]] },
   'leaderboard-dungeon': { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
   'leaderboard-gauntlet': { safe: true, long: true, id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
   // The states: Main with an error answer, and the Hunt, Dungeon and Gauntlet tabs with no rows or an error answer.
   'leaderboard-error':   { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'error', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
   'leaderboard-hunt-error': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'error', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
   'leaderboard-hunt-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2]] },
+  'leaderboard-hunt-last-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2], ['js', '#u3LbHost [data-lb-hunt] [data-seg="last"]'], ['wait', 2]] },
   'leaderboard-dungeon-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
   'leaderboard-gauntlet-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
   'profile':             { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '.u3-lb-row[data-member]:not(.is-me)'], ['wait', 3]] },   // lane 1 v3 Leaderboard rows (UI-66)
@@ -292,6 +312,7 @@ export const SCREENS = {
 export function ownerOf(screen, where) {
   // A path names an element as id + tag ('#topbarheader', '#docknav'), so the id can run into the tag name.
   if (/#tutLayer[a-z]*\b|\.u3-wt\b|\.u3-wt[-_]/.test(where)) return 'UI-37';
+  if (/#u3TrHost\b|\.u3-trhost\b|\.u3-tr\b|\.u3-tr[-_]|\.u3-trw\b|\.u3-trw[-_]|\.u3-fr\b|\.u3-fr[-_]/.test(where)) return 'UI-13';   // the tracks, the track window, the title and frame tiles (UI-13)
   if (/\.u3-avfx\b|\.u3-avfx[-_]/.test(where)) return 'UI-55';   // the avatar effect overlay (UI-55)
   if (/\.u3-tn\b|\.u3-tn[-_]/.test(where)) return 'UI-59';   // the small live view (tiny class)
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
@@ -315,6 +336,7 @@ export function ownerOf(screen, where) {
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).
   if (screen === 'boons-picker' && /#u3Picker[a-z]*\b|\.u3-pk\b|\.u3-pk[-_]|\.u3-bn-/.test(where)) return 'UI-27';
+  if (/#exLayer\b|\.u3-exl\b|\.u3-ex\b|\.u3-ex[-_]/.test(where)) return 'UI-39';   // the explainer window (its layer, picture, text and buttons); the "?" circle in a host view stays the host's
   if (/#u3Tfx\b|\.u3-tfx\b|\.u3-tfx[-_]/.test(where)) return 'UI-26';   // the trade animation layer
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // UI-28: the confirm window, the owner and refund popups, the play toast and the incoming banners; the Card picker under them stays UI-27's (the Boons form)

@@ -87,3 +87,20 @@ test('fitAll: every card on one page grows to the largest tile that shows them a
   assert.ok(m.tile >= 44 && m.rows * (m.tile * 1.4 + 8) - 8 <= 207 && m.cols * m.rows >= 10);
   assert.equal(fitAll(0, 400, 400, 8, o), null);
 });
+
+test('fitAll: the caption height under each card is counted (D-175)', async () => {
+  const { fitAll } = await import('./hall.js');
+  const a = fitAll(10, 1000, 300, 8, { min: 88, max: 112, ratio: 1.4 });
+  const b = fitAll(10, 1000, 300, 8, { min: 88, max: 112, ratio: 1.4, extra: 20 });
+  assert.ok(b.rows * (b.tile * 1.4 + 20 + 8) - 8 <= 300);
+  assert.ok(b.tile <= a.tile);
+});
+
+test('tileInfo: the member and the copies (D-175)', async () => {
+  const { tileInfo } = await import('./hall.js');
+  assert.deepEqual(tileInfo('wanted', { name: 'Ann', mine: 3 }, 9), { who: 'Ann', yours: false, n: 3 });
+  assert.deepEqual(tileInfo('wanted', { name: 'Me', yours: true, mine: 0 }), { who: 'Me', yours: true, n: null });
+  assert.deepEqual(tileInfo('fortrade', { name: 'Bo', mine: false }, 2), { who: 'Bo', yours: false, n: 2 });
+  assert.deepEqual(tileInfo('fortrade', { name: 'Me', mine: true }, 2), { who: 'Me', yours: true, n: null });
+  assert.equal(tileInfo('fortrade', {}, undefined).n, 0);
+});
