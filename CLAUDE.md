@@ -62,7 +62,7 @@ migrate for him, and the code must be in GitHub. So when Nathan says "deploy" or
 2. Merge the PR to `main` when the checks pass and Nathan approved the change.
 3. Rehearse each new migration on the LOCAL copy first:
    `cd card-studio && node scripts/rehearse-sql.mjs <file.sql>` (it applies the file locally and
-   runs every SQL test there). Then apply it with `node scripts/apply-sql.mjs <file.sql>`.
+   runs every SQL test there). Then apply it with `node scripts/apply-sql.mjs <file.sql> --live`. Without `--live` (and without `LOCALDB=1`) it refuses.
    Apply it BEFORE the code that needs it goes live.
    The local copy is the Supabase CLI native stack in WSL (tools repo `localdb/up.sh`; Windows
    has no native runtime). Run SQL tests locally: `node scripts/test-all-local.mjs [filter]`.

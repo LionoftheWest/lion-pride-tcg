@@ -54,4 +54,4 @@ exception when others then
 end $t$;`;
 const out = await (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: body }) })).text();
 const m = out.match(/RESULTS \[([^\]]*)\]/);
-console.log(m ? (m[1] ? 'FAIL ' + m[1] : 'PASS: a short squad (3 attackers + 1 support) posts ONE end-of-day summary when its attackers are down') : 'NO RESULTS ' + out.slice(0, 400));
+console.log(m ? (m[1] ? 'FAIL ' + m[1] : 'PASS: a short squad (3 attackers + 1 support) posts ONE end-of-day summary (D-173: when the whole squad is down or the round limit ends it)') : 'NO RESULTS ' + out.slice(0, 400));

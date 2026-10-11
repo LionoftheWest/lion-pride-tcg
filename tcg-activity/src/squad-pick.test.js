@@ -104,7 +104,7 @@ test('openSlots: how many more cards can go in today', () => {
 });
 
 // The squad-down check (Nathan + xeno, 2026-10-02: one downed card "wiped" a squad of 8).
-import { squadDown } from './squad-pick.js';
+import { squadDown, noAction } from './squad-pick.js';
 const sq = () => Array.from({ length: 10 }, (_, i) => card(50 + i));
 test('xeno: 8 locked, the first attacker fought and is down, 7 not fought yet: NOT down', () => {
   const cards = sq(); const sel = cards.slice(0, 8).map((c) => c.id);
@@ -121,9 +121,16 @@ test('a squad of 5, all down: down (no fresh cards join later)', () => {
   for (const c of cards.slice(0, 5)) { c.used = true; c.downed = true; }
   assert.equal(squadDown(cards, sel), true);
 });
-test('6 attackers down, 2 supports up: down (supports cannot fight alone, nothing hits them)', () => {
+test('D-173: 6 attackers down, 2 supports up: NOT down (every card of the squad must be down)', () => {
   const cards = [...sq().slice(0, 6), card(10, [], { type: 'Moment' }), card(10, [], { type: 'Item' })];
   for (const c of cards.slice(0, 6)) { c.used = true; c.downed = true; }
+  assert.equal(squadDown(cards, cards.map((c) => c.id)), false);
+});
+test('D-173: 6 attackers and 1 of 2 supports down, 1 support up: NOT down; all 8 down: down', () => {
+  const cards = [...sq().slice(0, 6), card(10, [], { type: 'Moment' }), card(10, [], { type: 'Item' })];
+  for (const c of cards.slice(0, 7)) { c.used = true; c.downed = true; }
+  assert.equal(squadDown(cards, cards.map((c) => c.id)), false);
+  cards[7].used = true; cards[7].downed = true;
   assert.equal(squadDown(cards, cards.map((c) => c.id)), true);
 });
 test('5 attackers down, 1 attacker of the squad not fought yet: NOT down', () => {
@@ -143,4 +150,32 @@ test('a squad of supports only has no attacker; one Character or Creature is eno
   const beast = card(20, [], { type: 'Creature' });
   assert.equal(hasAttacker([...sups, beast], [...ids, beast.id]), true);
   assert.equal(hasAttacker([...sups, beast], ids), false); // owned but not picked
+});
+
+// D-173: "No action can be taken" (every attacker down, every standing support on cooldown) -> the boss acts.
+test('D-173 noAction: attackers down, the only support on cooldown: true', () => {
+  const cards = [card(50), card(50), card(10, [], { type: 'Moment', cdReady: 5 })];
+  cards[0].downed = cards[1].downed = true; cards[0].used = cards[1].used = cards[2].used = true;
+  assert.equal(noAction(cards, cards.map((c) => c.id), 3), true);
+});
+test('D-173 noAction: the support is ready (cdReady <= round): false', () => {
+  const cards = [card(50), card(10, [], { type: 'Moment', cdReady: 3 })];
+  cards[0].downed = true; cards[0].used = cards[1].used = true;
+  assert.equal(noAction(cards, cards.map((c) => c.id), 3), false);
+});
+test('D-173 noAction: an attacker stands: false (even with the support on cooldown)', () => {
+  const cards = [card(50), card(50), card(10, [], { type: 'Moment', cdReady: 9 })];
+  cards[0].downed = true;
+  assert.equal(noAction(cards, cards.map((c) => c.id), 3), false);
+});
+test('D-173 noAction: the whole squad is down (nothing stands): false (the squad is down, not a pass)', () => {
+  const cards = [card(50), card(10, [], { type: 'Moment', cdReady: 9 })];
+  for (const c of cards) { c.downed = true; c.used = true; }
+  assert.equal(noAction(cards, cards.map((c) => c.id), 3), false);
+});
+test('D-173 noAction: one support ready, one on cooldown: false; a card outside the squad is ignored', () => {
+  const cards = [card(50), card(10, [], { type: 'Moment', cdReady: 9 }), card(10, [], { type: 'Item', cdReady: 0 }), card(10, [], { type: 'Item', cdReady: 0 })];
+  cards[0].downed = true;
+  assert.equal(noAction(cards, [cards[0].id, cards[1].id, cards[2].id], 3), false);
+  assert.equal(noAction(cards, [cards[0].id, cards[1].id], 3), true);
 });

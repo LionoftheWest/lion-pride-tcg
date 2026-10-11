@@ -73,7 +73,7 @@ The numbers come from a dump of the local copy (a copy of the live data, 2026-10
 
 1. Apply the role (once). Rehearse on the local copy first:
    `cd card-studio && node scripts/rehearse-sql.mjs ../tcg-bot/supabase/backup_role.sql`,
-   then `node scripts/apply-sql.mjs ../tcg-bot/supabase/backup_role.sql`.
+   then `node scripts/apply-sql.mjs ../tcg-bot/supabase/backup_role.sql --live`.
 2. Set the password (it goes only to the VM): `node scripts/set-backup-password.mjs`.
 3. Deploy the bot (it has the `/admin-alert` route): `ops/deploy.sh bot`.
 4. Install the scripts and the crontab: `ops/deploy.sh backup` (runs `install.sh`; idempotent).
@@ -120,7 +120,7 @@ do it. Use the `postgres` user (Supabase dashboard > Database > reset the databa
      postgres:17-alpine pg_restore -h aws-0-us-east-1.pooler.supabase.com -p 5432 \
      -U postgres.<ref> -d postgres --clean --if-exists --no-owner --no-privileges /d
    ```
-4. Apply `tcg-bot/supabase/lockdown_grants.sql` and `backup_role.sql` again with `apply-sql.mjs`
+4. Apply `tcg-bot/supabase/lockdown_grants.sql` and `backup_role.sql` again with `apply-sql.mjs --live`
    (`--no-privileges` skips the grants), and run `node scripts/check-grants.mjs`.
 5. Schedule the pg_cron jobs again from `<dump>.cron.csv`: one
    `select cron.schedule('<jobname>', '<schedule>', $$<command>$$);` for each line.
