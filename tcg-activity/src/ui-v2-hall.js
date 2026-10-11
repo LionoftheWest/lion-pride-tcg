@@ -9,8 +9,9 @@ import { icon } from './ui3/icons.js';
 import { fitGrid, openCardPicker } from './ui3/card-picker.js';
 import { LIST_MAX, LIST_FULL, slotsOf, listable, listFit, applyListPick, listFilterCount, unlistedText, listError, offerSeed, offerPlan } from './ui3/compose.js';
 import { switchHTML, activeSwitch, switchTarget, applyHall, emptyState, notOwned, clampPage, pagesOf, manageLabel, filterCount, toggleFilter,
-  NO_FILTERS, OWN_OPTIONS, RARITY_CHIPS, TYPE_CHIPS, GAME_CHIPS, fitAll } from './ui3/hall.js';
+  NO_FILTERS, OWN_OPTIONS, RARITY_CHIPS, TYPE_CHIPS, GAME_CHIPS, fitAll, tileInfo } from './ui3/hall.js';
 import { TOKENS } from './tokens.js';
+import { fmtFor } from './ui3/number.js';
 import { cardElement, ELEMENTS, ELEMENT_ORDER } from './elements.js';
 import { elIcon } from './element-icons.js';
 import { thumb } from './thumb.js';
@@ -232,8 +233,15 @@ function hallItemsV3() {
 }
 function tileV3(c, idx) {
   const it = c._it, off = notOwned(hall.view, it);
-  return `<li class="u3-hl-card u3-r-${esc3(c.rarity || 'normal')}${off ? ' is-notowned' : ''}"><button type="button" class="u3-hl-card__pick" data-idx="${idx}" aria-label="${esc3(c.name)}, ${esc3(it.name)}${off ? ', not owned' : ''}">`
-    + `${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${esc3(c.image_url)}" alt="" loading="lazy" draggable="false">` : ''}</button></li>`;
+  const q = mine().find((x) => Number(x.id) === Number(c.id))?.quantity || 0;
+  const info = tileInfo(hall.view, it, q);
+  const cls = document.body.dataset.size;
+  const count = info.yours ? `<span class="u3-hl-n is-yours">Yours</span>`
+    : `<span class="u3-hl-n${info.n ? ' is-have' : ''}" title="${hall.view === 'wanted' ? 'Your free copies' : 'Your copies'}">${icon('layers', { size: 'sm' })}<span>${esc3(fmtFor(info.n, cls))}</span></span>`;
+  const label = `${c.name}, ${it.name}${off ? ', not owned' : ''}${info.yours ? ', yours' : `, you have ${info.n}`}`;
+  return `<li class="u3-hl-cell"><div class="u3-hl-card u3-r-${esc3(c.rarity || 'normal')}${off ? ' is-notowned' : ''}"><button type="button" class="u3-hl-card__pick" data-idx="${idx}" aria-label="${esc3(label)}">`
+    + `${c.image_url ? `<img src="${thumb(c.image_url)}" data-full="${esc3(c.image_url)}" alt="" loading="lazy" draggable="false">` : ''}</button></div>`
+    + `<span class="u3-hl-cap" aria-hidden="true"><span class="u3-hl-who">${esc3(info.who)}</span>${count}</span></li>`;
 }
 const searchHTML = () => searchField({ value: hall.q, placeholder: 'Search cards, tags…' });
 function paintHallV3() {
@@ -297,7 +305,11 @@ function fillV3() {
   const g = el('hlGrid'); if (!g) return;
   hlItems = hallItemsV3();
   const root = g.closest('.u3-hl');
-  const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, parseFloat(getComputedStyle(g).columnGap) || 0, o);
+  // D-175: the caption under each card (member + copies): its height is measured from a probe with the real caption CSS
+  const probe = document.createElement('li'); probe.className = 'u3-hl-probe'; probe.innerHTML = '<span class="u3-hl-cap"><span class="u3-hl-who">Ag</span></span>';
+  g.appendChild(probe); const capH = Math.ceil(probe.querySelector('.u3-hl-cap').getBoundingClientRect().height); probe.remove();
+  g.style.setProperty('--hl-cap-h', `${capH}px`);
+  const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, parseFloat(getComputedStyle(g).columnGap) || 0, { extra: capH, ...o });
   // G-099: two rows at least. A short frame first brings the rows closer (is-tight), then the cards get smaller (D-60 small tiles).
   // The pager takes room only when the cards do not all fit (has-pager), so the fit does not move when it appears.
   const solve = () => {
@@ -312,7 +324,7 @@ function fillV3() {
   if (hlItems.length > f.cols * f.rows) { root.classList.add('has-pager'); f = solve(); if (hlItems.length <= f.cols * f.rows) { root.classList.remove('has-pager'); f = solve(); } }
   // every card on one page: the cards grow to fill the box (up to the largest tile)
   if (hlItems.length && hlItems.length <= f.cols * f.rows) {
-    const all = fitAll(hlItems.length, g.clientWidth, g.clientHeight, parseFloat(getComputedStyle(g).columnGap) || 0, { min: f.tile, max: TOKENS['card-tile-max'], ratio: TOKENS['card-ratio'] });
+    const all = fitAll(hlItems.length, g.clientWidth, g.clientHeight, parseFloat(getComputedStyle(g).columnGap) || 0, { min: f.tile, max: TOKENS['card-tile-max'], ratio: TOKENS['card-ratio'], extra: capH });
     if (all) f = { ...f, ...all };
   }
   // a box under one card of the touch size (the keyboard on a short frame): no room for a card to tap, so the cards wait (the Member picker does the same)

@@ -17,13 +17,22 @@
 .u3-hl__filt { grid-area: filt; min-width: 0; justify-self: end; }
 .u3-hl__manage .u3-btn, .u3-hl__wish .u3-btn, .u3-hl__filt .u3-btn { max-width: 100%; }
 .u3-hl__grid { grid-area: grid; align-self: stretch; min-height: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); justify-content: start; align-content: start;
-  grid-template-columns: repeat(var(--hl-cols, 1), var(--hl-tile, var(--card-tile))); grid-auto-rows: calc(var(--hl-tile, var(--card-tile)) * var(--card-ratio)); }
+  grid-template-columns: repeat(var(--hl-cols, 1), var(--hl-tile, var(--card-tile))); grid-auto-rows: calc(var(--hl-tile, var(--card-tile)) * var(--card-ratio) + var(--hl-cap-h, var(--u3-none))); }
 .u3-hl__grid.is-empty { display: flex; align-items: flex-start; }
 .u3-hl__none { flex: 1 1 auto; min-width: 0; }
 .u3-hl__none .u3-state { align-items: flex-start; text-align: left; padding-inline: var(--sp-2); }
 .u3-hl__pager { grid-area: pager; display: none; justify-content: center; }
 .u3-hl.has-pager .u3-hl__pager { display: flex; }
 .u3-hl__pager .u3-pager { width: max-content; }
+/* D-175: the cell = the card face + one caption line (the member who wants or lists it, your copies); the caption height is measured (fillV3) */
+.u3-hl-cell { list-style: none; width: var(--hl-tile); min-width: var(--u3-none); display: grid; grid-template-rows: calc(var(--hl-tile) * var(--card-ratio)) minmax(0, 1fr); }
+.u3-hl-cap { display: flex; align-items: center; gap: var(--sp-1); box-sizing: border-box; min-width: var(--u3-none); padding-top: var(--sp-1); overflow: hidden; white-space: nowrap;
+  font-size: var(--fs-caption); font-weight: var(--fw-caption); line-height: var(--lh-caption); color: var(--text-secondary); }
+.u3-hl-who { flex: 1 1 auto; min-width: var(--u3-none); overflow: hidden; text-overflow: ellipsis; }
+.u3-hl-n { flex: none; display: inline-flex; align-items: center; gap: var(--sp-1); font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.u3-hl-n .u3-ico { width: var(--icon-sm); height: var(--icon-sm); }
+.u3-hl-n.is-have, .u3-hl-n.is-yours { color: var(--gold); }
+.u3-hl-cell > .u3-hl-card { width: 100%; height: 100%; }
 /* the card face (the rarity frame, the live state Not owned 4.9) */
 .u3-hl-card { position: relative; width: var(--hl-tile); height: calc(var(--hl-tile) * var(--card-ratio)); border-radius: calc(var(--hl-tile) * var(--rad-card-ratio));
   background: var(--surface-1); overflow: hidden; box-sizing: border-box; }
@@ -79,5 +88,5 @@ body[data-size="compact-port"] .u3-hl-fscrim { padding-top: calc(var(--u3-sa-t) 
 .u3-hl-filters.is-tight { padding: var(--sp-3) var(--sp-4); }
 .u3-hl-filters.is-tight .u3-hl-fhead { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "t s x"; gap: var(--sp-2); }
 body[data-input="coarse"] .u3-hl-filters .u3-chip { min-width: var(--hit); }
-body[data-kb] .u3-hl__grid.is-short > .u3-hl-card { display: none; }
+body[data-kb] .u3-hl__grid.is-short > .u3-hl-cell { display: none; }
 body.ui-v2.ui-v3[data-kb] .u3-hl > .ex-q { display: none; }
