@@ -348,7 +348,7 @@ async function main() {
   refreshTradeBadge();
   every(45000, refreshTradeBadge); // show a badge when a trade offer arrives
   // The trade screen open: every 8 s, so an answered offer leaves the list at once.
-  every(8000, () => { if (currentView === 'trading') refreshTradeBadge(); });
+  every(15000, () => { if (currentView === 'trading') refreshTradeBadge(); });
   initEffects({ api, apiPost, el, esc, SFX, status: sendStatus, user: () => meUser, ownedCards: () => cache.collection?.cards || [], statsOn: () => !!cache.collection?.stats?.on, lookup: (id) => (cache.collection?.cards || []).find((c) => c.id === id) || (cache.catalog?.cards || []).find((c) => c.id === id) }); // card boons/pranks (does nothing when the flag is off)
   let flags = null;
   // 3 tries. If all 3 fail, the session still gets the v2 UI, with every other flag off.
@@ -457,7 +457,7 @@ function startV2() {
   }).catch(() => {});
   every(30000, () => { if (currentView === 'home') homeTick(); });
   // The red dot on the Hunt button while a boss is live.
-  const huntDot = () => { if (!features.hunt) return; api('/api/hunt').then((d) => {
+  const huntDot = () => { if (!features.hunt) return; api('/api/hunt?light=1').then((d) => {
     document.querySelector('#dock .dk[data-view="battling"]')?.classList.toggle('live', !!(d?.hunt && d.hunt.status !== 'defeated'));
   }).catch(() => {}); };
   huntDot();

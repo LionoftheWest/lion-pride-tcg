@@ -1181,7 +1181,7 @@ export async function renderHomeV2() {
   // UI-05 (v3 only): the Dungeon and Gauntlet slides read the same routes as their lobbies; a closed or off mode has no slide
   const modes = v3 && document.body.classList.contains('adv-on');
   const [hunt, , , dgd, gad] = await Promise.all([
-    ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null),
+    ctx.features().hunt ? ctx.api('/api/hunt?light=1').catch(() => null) : Promise.resolve(null),   // the boss only: Home reads no roster
     loadMyProfile(true),
     ensureCatalog(),
     modes ? ctx.api('/api/dungeon').catch(() => null) : Promise.resolve(null),
@@ -1410,7 +1410,7 @@ async function renderTinyV3() {
   const { el } = ctx;
   const main = el('main');
   main.innerHTML = '<div class="u3-tn-host" id="homeHero"><div class="v2-loading">Loading…</div></div>';
-  const [d] = await Promise.all([ctx.features().hunt ? ctx.api('/api/hunt').catch(() => null) : Promise.resolve(null), ctx.refreshPacks?.()]);
+  const [d] = await Promise.all([ctx.features().hunt ? ctx.api('/api/hunt?light=1').catch(() => null) : Promise.resolve(null), ctx.refreshPacks?.()]);
   if (ctx.currentView() !== 'home' || !tn3.tinyV3()) return;
   const host = el('homeHero');
   if (!host) return;
