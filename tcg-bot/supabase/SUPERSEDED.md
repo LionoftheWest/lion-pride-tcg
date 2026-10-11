@@ -157,9 +157,9 @@ a one-time grant or a settings value would run again.
 - `special_cards_never_in_packs.sql`: cards
 - `ui_v3_flag.sql`: settings
 
-## No change (26)
+## No change (27)
 
-`achievement_rewards.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_rules_supports_targets.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_card_power_reads.sql`, `perf_collection_power.sql`, `perf_dungeon_view.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
+`achievement_rewards.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_auto_rounds.sql`, `dungeon_rules_supports_targets.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_card_power_reads.sql`, `perf_collection_power.sql`, `perf_dungeon_view.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
 
 ## Live functions that no file gives (1)
 

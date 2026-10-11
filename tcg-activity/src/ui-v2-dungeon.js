@@ -1088,6 +1088,33 @@ async function settle(main, r, kill) {
 // every choice (rewards, chests, doors, the floor screen): those stay the member's. Auto counts on the
 // leaderboard (Nathan). Every rule still runs in SQL; Auto only picks the same actions a tap would.
 let autoT = null;
+// Auto on the server (dungeon_auto_rounds.sql, POST /api/dungeon/auto): one request plays up to 5 rounds with the same rules as the taps (it calls
+// dungeon_support and dungeon_attack); the answer lists them and each one is animated in order by the same code as a tap (playResult). The call
+// stops at a kill, a step that is not a fight, the end of the run, a refused action or the 5th round, and then this code continues from the state.
+const AUTO_ROUNDS = 5;
+async function autoBatch() {
+  const main = document.getElementById('main');
+  dg.busy = true; fightUpdate(main, run().state);
+  let r = null;
+  try { r = await ctx().apiPost('/api/dungeon/auto', { mode: dg.mode, max: AUTO_ROUNDS }); } catch (e) { r = e?.body || null; }
+  if (!r?.ok) {
+    dg.busy = false; fightUpdate(main, run().state);
+    if (r?.error === 'auto_unavailable') { dg.autoServer = false; autoNext(); return; }   // the server code is older than the function: play one request for each action
+    dg.auto = false; localStorage.setItem(AUTO, ''); document.querySelector('.dg-auto')?.classList.remove('on');
+    toast(r?.message || 'That did not work.');
+    return;
+  }
+  let kill = false;
+  for (const rd of r.rounds || []) {
+    if (rd.sup) await playResult('support', { cardId: rd.sup.card, targetCard: rd.sup.target_card, targetFoe: rd.sup.target_foe }, rd.sup);
+    if (rd.atk) { dg.target = rd.atk.target; await playResult('attack', { cardId: rd.atk.card, target: rd.atk.target }, rd.atk); kill = kill || !!rd.atk.kill; }
+    // The member left the fight (another view, a repaint without the fight): the rounds are played on the server, so the state is the final one.
+    if (ctx().currentView() !== 'dungeon' || !document.querySelector('.dg-fight')) { dg.data.run.state = r.state; dg.busy = false; return; }
+  }
+  dg.data.run.state = r.state;
+  if (r.error?.message) { toast(r.error.message); dg.auto = false; localStorage.setItem(AUTO, ''); document.querySelector('.dg-auto')?.classList.remove('on'); }   // a refused attack ends Auto, as before
+  await settle(main, r, kill);
+}
 function autoNext() {
   clearTimeout(autoT);
   if (!dg.auto) return;
@@ -1096,6 +1123,7 @@ function autoNext() {
 async function autoStep() {
   const R = run(); const st = R?.state;
   if (!dg.auto || dg.busy || dg.support || !st || st.phase !== 'fight' || ctx().currentView() !== 'dungeon' || !document.querySelector('.dg-fight')) return;
+  if (dg.autoServer !== false) { await autoBatch(); return; }   // the server plays up to 5 rounds in one request; the code below is the fallback (one request for each action)
   const M = mine(); const round = st.round || 0;
   const foes = foesOf(st);
   const alive = foes.map((f, i) => ({ ...f, i })).filter((f) => f.hp > 0);
