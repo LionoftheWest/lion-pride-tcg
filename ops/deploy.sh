@@ -7,6 +7,9 @@
 # Usage:  ops/deploy.sh <activity|bot|gallery|backup>   (backup: the nightly DB backup scripts, ops/backup)
 # Env:    ALLOW_BRANCH=1     deploy a pushed commit that is not on origin/main yet
 #         FORCE_UNHEALTHY=1  fail the health check on purpose (tests the rollback)
+#         TARGET=backup      deploy to the warm backup VM (BACKUP_IP, default 137.131.48.8) and not to the main VM.
+#                            Same checks. The bot is only built and created STOPPED (a standby): two bots would
+#                            double-post. No slash-command registration. See docs/ops/backup-vm.md.
 set -euo pipefail
 
 SVC="${1:?usage: ops/deploy.sh <activity|bot|gallery|backup>}"
@@ -42,8 +45,16 @@ if ! git merge-base --is-ancestor "$SHA" origin/main; then
   else echo "STOP: $SHORT is not on origin/main. Merge first, or set ALLOW_BRANCH=1 for a test deploy."; exit 1; fi
 fi
 
-IP=$(nslookup "$VM_HOST" 2>/dev/null | awk '/^Address/ {a=$2} END {print a}')
-[ -n "$IP" ] || { echo "STOP: cannot resolve $VM_HOST"; exit 1; }
+STANDBY=""
+case "${TARGET:-}" in
+  "") IP=$(nslookup "$VM_HOST" 2>/dev/null | awk '/^Address/ {a=$2} END {print a}')
+      [ -n "$IP" ] || { echo "STOP: cannot resolve $VM_HOST"; exit 1; } ;;
+  backup) # A fixed IP: after a failover the name points at this box, and the name must never choose the target.
+      [ "$SVC" != backup ] || { echo "STOP: TARGET=backup does not ship the database backup scripts (they run on the main VM)."; exit 2; }
+      IP="${BACKUP_IP:-137.131.48.8}"
+      [ "$SVC" = bot ] && STANDBY=1 ;;
+  *) echo "STOP: unknown TARGET '${TARGET}' (use: backup, or leave it empty for the main VM)"; exit 2 ;;
+esac
 SSH="ssh -i $KEY -o BatchMode=yes -o ConnectTimeout=20 ubuntu@$IP"
 echo "== deploy $SVC @ $SHORT -> $IP:/home/ubuntu/$DIR"
 
@@ -61,15 +72,36 @@ fi
 git archive --format=tar "$SHA:$SRC" $PATHS | $SSH "rm -rf ~/$DIR.new && mkdir ~/$DIR.new && tar -x -C ~/$DIR.new"
 
 # 3. On the VM: build, swap, health check, roll back on failure, lock the secrets.
-$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' FORCE='${FORCE_UNHEALTHY:-}' bash -s" <<'REMOTE'
+$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' FORCE='${FORCE_UNHEALTHY:-}' STANDBY='$STANDBY' bash -s" <<'REMOTE'
 set -euo pipefail
 cd /home/ubuntu
+# Backup VM, bot: a running bot here is a live failover. Do not touch it.
+if [ "${STANDBY:-}" = 1 ] && [ "$(sudo docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null || true)" = true ]; then
+  echo "STOP: $NAME is RUNNING on this box (a failover is active). Run ops/failover/failback.sh first."; exit 1
+fi
 cp -p "$DIR/.env" "$DIR.new/.env"
 echo "$SHA" > "$DIR.new/.deployed-commit"
 
 echo "-- build $NAME:$SHORT (--no-cache: a cached build layer once served a stale bundle)"
 if ! sudo docker build --no-cache -q -t "$NAME:$SHORT" "$DIR.new" > /tmp/deploy-build.log 2>&1; then
   tail -25 /tmp/deploy-build.log; rm -rf "$DIR.new"; echo "BUILD FAILED - nothing changed"; exit 1
+fi
+
+# Backup VM, bot: keep the new image ready and create the container STOPPED (a standby).
+# ops/failover/watch-main.sh runs "docker start tcg-bot" when the main VM is down.
+if [ "${STANDBY:-}" = 1 ]; then
+  sudo docker image inspect "$NAME:latest" >/dev/null 2>&1 && sudo docker tag "$NAME:latest" "$NAME:prev"
+  rm -rf "$DIR.prev"; [ -d "$DIR" ] && mv "$DIR" "$DIR.prev"; mv "$DIR.new" "$DIR"
+  sudo docker rm -f "$NAME" >/dev/null 2>&1 || true
+  sudo docker create --init --name "$NAME" --network host --restart unless-stopped     --log-opt max-size=20m --log-opt max-file=3 --env-file "/home/ubuntu/$DIR/.env" "$NAME:$SHORT" >/dev/null
+  sudo docker tag "$NAME:$SHORT" "$NAME:latest"
+  sudo docker images "$NAME" --format '{{.Tag}}' | grep -vxE "latest|prev|$SHORT" | xargs -r -I{} sudo docker rmi -f "$NAME:{}" >/dev/null || true
+  sudo docker image prune -f >/dev/null || true
+  chmod 600 /home/ubuntu/*/.env 2>/dev/null || true; stat -c '%a %n' /home/ubuntu/*/.env
+  echo "standby state: $(sudo docker inspect -f '{{.State.Status}}' "$NAME") (must be: created)"
+  [ "$(sudo docker inspect -f '{{.State.Status}}' "$NAME")" = created ] || { echo "STANDBY NOT STOPPED - check now"; exit 1; }
+  echo "DEPLOYED $NAME @ $SHORT (STANDBY: built, container created, NOT started)"
+  exit 0
 fi
 
 # The Activity's /api/img disk cache (IMG_CACHE=1) lives on the host, so a deploy does
@@ -122,3 +154,9 @@ lock
 echo "-- last database backup: $(cat /home/ubuntu/backups/last-success 2>/dev/null || echo 'NONE (ops/backup/README.md)')"
 echo "DEPLOYED $NAME @ $SHORT (healthy)"
 REMOTE
+# Main VM only: the backup VM is a separate step, run by hand (the reviewer decides).
+if [ -z "${TARGET:-}" ]; then
+  echo
+  echo "To update the BACKUP VM to the same commit, run:"
+  echo "  ${ALLOW_BRANCH:+ALLOW_BRANCH=1 }TARGET=backup ops/deploy.sh $SVC"
+fi
