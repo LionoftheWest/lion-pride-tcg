@@ -78,4 +78,18 @@ echo "-- case 7: failback.sh stops the bot and prints steps"
 out=$(FAILOVER_DIR="$T/f" DOCKER_CMD="$T/docker" bash "$HERE/failback.sh")
 check "failback: docker stop called" "$(n_calls 'docker stop -t 10 tcg-bot')" 1
 check "failback: prints the steps" "$(echo "$out" | grep -c 'Re-arm')" 1
+echo "-- case 8: duck-guarded.sh (main VM cron)"
+G() { HEALTH_URL="$B/local" HOLD_FILE="$T/hold" LOG_FILE="$T/g.log" DUCK_CMD="$T/duck" bash "$HERE/duck-guarded.sh"; }
+: > "$T/calls"; rm -f "$T/hold"
+G; check "unhealthy (no hunt:true): no update" "$(n_calls duck)" 0
+HEALTH_URL="$B/local-hunt" HOLD_FILE="$T/hold" LOG_FILE="$T/g.log" DUCK_CMD="$T/duck" bash "$HERE/duck-guarded.sh"
+check "healthy: one update" "$(n_calls duck)" 1
+touch "$T/hold"
+HEALTH_URL="$B/local-hunt" HOLD_FILE="$T/hold" LOG_FILE="$T/g.log" DUCK_CMD="$T/duck" bash "$HERE/duck-guarded.sh"
+check "hold file: no update" "$(n_calls duck)" 1
+rm -f "$T/hold"
+setc local-hunt 500
+HEALTH_URL="$B/local-hunt" HOLD_FILE="$T/hold" LOG_FILE="$T/g.log" DUCK_CMD="$T/duck" bash "$HERE/duck-guarded.sh"
+check "server error: no update" "$(n_calls duck)" 1
+check "each decision logged" "$(grep -c -E 'SKIP|UPDATE' "$T/g.log")" 4
 [ "$FAIL" = 0 ] && echo "ALL PASS" || { echo "SOME FAILED"; exit 1; }

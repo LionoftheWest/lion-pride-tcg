@@ -1,4 +1,4 @@
-// Test stub for watch-main.sh: GET /public /direct /control answer the code in <dir>/<name>.code
+// Test stub for watch-main.sh: GET /public /direct /control /local /local-hunt (body has "hunt":true) answer the code in <dir>/<name>.code
 // (default 200). POST /hook records the body to <dir>/hook.log. Usage: node stub-server.mjs <dir> <port-file>
 import http from 'node:http';
 import fs from 'node:fs';
@@ -12,6 +12,6 @@ const srv = http.createServer((req, res) => {
   }
   let code = 200;
   try { code = Number(fs.readFileSync(`${dir}/${name}.code`, 'utf8').trim()); } catch {}
-  res.statusCode = code; res.end('x');
+  res.statusCode = code; res.end(name === 'local-hunt' ? '{"hunt":true}' : 'x');
 });
 srv.listen(0, '127.0.0.1', () => fs.writeFileSync(portFile, String(srv.address().port)));
