@@ -12,7 +12,7 @@ import { elIcon } from './element-icons.js';
 import { thumb } from './thumb.js';
 import { isPort } from './mobile.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
-import { COIN } from './ui-v2-shop.js';
+import { COIN, refreshShards } from './ui-v2-shop.js';
 import { cardElement } from './elements.js';
 import { foePace } from './dungeon-pace.js';
 import { warmFoes, warmRoster, slowLink } from './dungeon-preload.js';
@@ -1106,6 +1106,7 @@ async function playResult(kind, body, r) {
 async function settle(main, r, kill) {
   dg.busy = false;
   const phase = r.state?.phase;
+  if (r.status === 'over') refreshShards();   // the run ended and paid its banked Shards (cleared, fell)
   if (r.status === 'over' || phase !== 'fight') { await load(); if (ctx().currentView() === 'dungeon') paint(); return true; }
   fightUpdate(main, r.state);
   // The run totals come from GET /api/dungeon (dungeon_view: the heaviest call of the fight). Only a kill can change the room,
@@ -1258,9 +1259,23 @@ function confirmBox(title, text, ok) {
 async function retreat() {
   if (!(await (GA() ? confirmBox('End the run here?', 'Your depth counts for this week. Your next Gauntlet run is tomorrow.', 'End the run')
     : confirmBox('Retreat with the loot?', 'The run ends here. You keep your depth and every banked Shard and card.', 'Retreat')))) return;
+  if (dg.busy) return;
+  // The window is gone and the answer takes a moment: show that the request runs (no second tap, no silent wait).
+  dg.busy = true;
+  const bts = [...document.querySelectorAll('#main .dg-leave, #main .u3-dgs-leave, #main .dg-next, #main .u3-dgs-next')];
+  const lab = document.querySelector('#main .dg-leave, #main .u3-dgs-leave')?.querySelector('.u3-btn__label');
+  const was = lab?.textContent;
+  bts.forEach((x) => { x.disabled = true; x.setAttribute('aria-busy', 'true'); });
+  if (lab) lab.textContent = 'Retreating';
   let r = null;
   try { r = await ctx().apiPost('/api/dungeon/retreat', { mode: dg.mode }); } catch (e) { r = e?.body || null; }
-  if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
+  dg.busy = false;
+  if (!r?.ok) {
+    bts.forEach((x) => { x.disabled = false; x.removeAttribute('aria-busy'); });
+    if (lab && was) lab.textContent = was;
+    toast(r?.message || 'That did not work.'); return;
+  }
+  refreshShards();   // the run paid its banked Shards: the top bar pill shows the new balance
   await load(); paint();
 }
 
