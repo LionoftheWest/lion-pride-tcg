@@ -72,6 +72,12 @@ const cardHp = (power) => Math.max(60, Math.round((power || 0) * 1.8)); // = /ap
 const numLabel = (n) => `#${String(n).padStart(3, '0')}`;
 function elemOf(c) { const e = cardElement(c.tags); return e ? { key: e, ...ELEMENTS[e] } : null; }
 
+// UI-15: the Spotlight (and the profile) read the owned cards from the collection. A device that opens the profile before
+// GET /api/collection has answered saw an empty Spotlight, and Save then wrote [] over the saved choice. Wait for it first.
+async function ensureCollection() {
+  if (!ctx.cache.collection) { try { await ctx.refreshOwned?.(); } catch { /* checked below */ } }
+  return !!ctx.cache.collection;
+}
 // The caller's profile (stats for the achievements, the spotlight). Loaded once per view.
 let myProfile = null;
 async function loadMyProfile(force) {
@@ -1511,7 +1517,8 @@ function paintPullsV3(box) {
 const sp = { ids: [], title: null, frame: null, q: '', page: 0 };
 export async function openSpotEditor() {
   const { el } = ctx;
-  await Promise.all([ensureCatalog(), loadMyProfile()]);
+  await Promise.all([ensureCatalog(), loadMyProfile(true), ensureCollection()]);   // fresh from the server: the saved Spotlight, not a copy of an older load
+  if (!ctx.cache.collection) { toast('Could not load your cards. Try again.'); return; }   // never edit (and save) a Spotlight with no cards
   const cards = mergedCards();
   sp.ids = spotlightOf(cards, myProfile?.spotlight).map((c) => Number(c.id));
   sp.title = myProfile?.title || null; sp.frame = myProfile?.frame || null; sp.q = ''; sp.page = 0;
@@ -1702,9 +1709,9 @@ export async function openMember(id) {
   box.innerHTML = '<div class="v2-loading">Loading…</div>';
   box.classList.remove('hidden');
   box.onclick = (e) => { if (e.target.closest('#memBack')) closeMember(); };
-  await ensureCatalog();
   const me = ctx.user();
   const self = String(id) === String(me?.id);
+  await Promise.all([ensureCatalog(), self ? ensureCollection() : null]);
   let p = null;
   try { p = await ctx.api(`/api/profile${self ? '' : `?id=${encodeURIComponent(id)}`}`); } catch { p = null; }
   if (!p || p.error) {

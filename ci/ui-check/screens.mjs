@@ -259,7 +259,7 @@ export const SCREENS = {
   'report-error':        { id: 'UI-40', safe: true, under: 'UI-03', report: true, cornerWindow: true, notOn: ['tiny'], input: '#u3RpText', steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="feedback"]'], ['wait', 1.5], ['type', '#u3RpText', 'The pack chooser covers the dock.'], ['js', '[data-rp-send]'], ['wait', 1.5]] },
   'help-item5':         { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
-  'menu':                { id: 'UI-60', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
+  'menu':                { id: 'UI-60', under: 'UI-03', report: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
   // The first-time walkthrough (UI-37): FAQ > Replay tutorial starts it over Home, then Next goes on. walk: true runs checks/walkthrough.js
   // (the check skips #tutLayer everywhere else): the card never covers the spotlighted control or the corner zone, Skip and Next are 44 px.
   // gifts: true = a gift waits in the bell (cookie ci_gifts, serve.mjs): step 1 shows; without it step 1 is skipped ("STEP 1 OF 7").

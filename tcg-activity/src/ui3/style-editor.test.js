@@ -45,3 +45,17 @@ test('window: dialog, Close, Save; the message shows only when there is one; the
   assert.doesNotMatch(h, /Could not save/);
   assert.match(styleEditorHTML({ ...d, msg: 'Could not save. Try again.' }), /Could not save\. Try again\./);
 });
+
+// UI-15 (Nathan 2026-10-10: the Spotlight "did not save" on another device). A device that opened the profile before the
+// collection answered saw an empty Spotlight, and Save wrote [] over the saved cards. The editor and the own profile must wait.
+import { readFileSync } from 'node:fs';
+test('the own Spotlight editor and profile wait for the collection and never save with no cards (ui-v2.js)', () => {
+  const src = readFileSync(new URL('../ui-v2.js', import.meta.url), 'utf8');
+  const at = src.indexOf('export async function openSpotEditor');
+  const ed = src.slice(at, at + 900);
+  assert.match(ed, /ensureCollection\(\)/);
+  assert.match(ed, /loadMyProfile\(true\)/);
+  assert.match(ed, /if \(!ctx\.cache\.collection\) \{ toast\(.*return; \}/);
+  const mem = src.slice(src.indexOf('export async function openMember'), src.indexOf('export function closeMember'));
+  assert.match(mem, /self \? ensureCollection\(\)/);
+});

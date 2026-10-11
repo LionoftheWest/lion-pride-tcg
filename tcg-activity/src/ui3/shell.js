@@ -49,13 +49,13 @@ function buildTopbar() {
   menu.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
 }
 
-// ---- Menu grid (UI-60): Dailies, Leaderboard, FAQ, Feedback, Settings, Events. Panel on wide classes, sheet on phones. ----
+// ---- Menu grid (UI-60): Dailies, Leaderboard, FAQ, Feedback/Report Bug (D-177: no floating wrench), Settings, Events. Panel on wide classes, sheet on phones. ----
 // Each tile clicks the hidden v2 button of that window. A tile whose window is off today is not shown.
 const TILES = [
   { key: 'dailies', label: 'Dailies', icon: 'calendar-check', target: 'dailyBtn', shown: () => !$('dailyBtn')?.classList.contains('hidden') },
   { key: 'board', label: 'Leaderboard', icon: 'trophy', target: 'boardBtn', shown: () => !$('boardBtn')?.classList.contains('hidden') },
   { key: 'faq', label: 'FAQ', icon: 'circle-help', target: 'helpBtn', shown: () => !$('helpBtn')?.classList.contains('hidden') },
-  { key: 'feedback', label: 'Feedback', icon: 'wrench', target: 'reportBtn', shown: () => !$('reportBtn')?.classList.contains('hidden') },
+  { key: 'feedback', label: 'Feedback/Report Bug', icon: 'bug', target: 'reportBtn', shown: () => !$('reportBtn')?.classList.contains('hidden') },
   { key: 'settings', label: 'Settings', icon: 'settings', target: null, shown: () => !!$('bellBtn') },
   // Events: no events content yet (D-51 keeps the Events slide hidden for the same reason). The tile shows when it exists.
   { key: 'events', label: 'Events', icon: 'scroll-text', target: 'eventsBtn', shown: () => !!$('eventsBtn') },
@@ -63,7 +63,7 @@ const TILES = [
 let menuOpen = false;
 function menuHTML() {
   const tiles = TILES.filter((t) => t.shown()).map((t) => `<button type="button" class="u3-mtile" data-menu="${t.key}">${icon(t.icon, { size: '2xl' })}`
-    + `<span class="u3-mtile__name">${esc(t.label)}</span>${t.key === 'dailies' ? `<span class="u3-mtile__dot">${dot('A daily is ready')}</span>` : ''}</button>`).join('');
+    + `<span class="u3-mtile__name${t.label.includes('/') ? ' u3-mtile__name--two' : ''}">${esc(t.label).replace('/', '/<br>')}</span>${t.key === 'dailies' ? `<span class="u3-mtile__dot">${dot('A daily is ready')}</span>` : ''}</button>`).join('');
   return `<div class="u3-menu" id="u3Menu" role="dialog" aria-modal="false" aria-label="Menu"><header class="u3-menu__head"><h2 class="u3-menu__title">Menu</h2>`
     + `<button type="button" class="u3-ibtn u3-ibtn--md u3-ibtn--panel u3-menu__close" aria-label="Close">${icon('x', { size: 'lg' })}</button></header>`
     + `<div class="u3-menu__grid">${tiles}</div></div>`;
