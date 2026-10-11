@@ -494,5 +494,15 @@
   { "decision": "D-124", "id": "UI-66", "screen": "leaderboard-hunt-last-empty", "size": "1990x830", "rule": "empty",
     "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window." },
   { "decision": "D-124", "id": "UI-66", "screen": "leaderboard-hunt-last-empty", "size": "1280x480", "rule": "empty",
-    "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window." }
+    "why": "The approved state frame is a full-height window with one message and the pager at its fixed place (UI-66 approved/*-empty, *-error); D-124: the empty and error states keep the full-height window." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-chest", "size": "820x1180", "rule": "empty",
+    "why": "The approved closed chest (D-134: the smaller panel with the room picture around it, frame chest-closed) leaves an empty band above and below the panel. The portrait tablet sizes use the compact-port layout (D-181), the same frame as the phones." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-chest", "size": "692x917", "rule": "empty",
+    "why": "The approved closed chest (D-134: the smaller panel with the room picture around it, frame chest-closed) leaves an empty band above and below the panel. The portrait tablet sizes use the compact-port layout (D-181), the same frame as the phones." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-path", "size": "692x917", "rule": "empty",
+    "why": "The approved door choice (D-134: the smaller panel with the room picture around it, frame path-doors) leaves an empty band above and below the panel. The portrait tablet sizes use the compact-port layout (D-181), the same frame as the phones." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-rest", "size": "820x1180", "rule": "empty",
+    "why": "The approved rest room (D-134: the smaller panel with the room picture around it) leaves an empty band above and below the panel. The portrait tablet sizes use the compact-port layout (D-181), the same frame as the phones." },
+  { "decision": "D-134", "id": "UI-49", "screen": "dungeon-rest", "size": "692x917", "rule": "empty",
+    "why": "The approved rest room (D-134: the smaller panel with the room picture around it) leaves an empty band above and below the panel. The portrait tablet sizes use the compact-port layout (D-181), the same frame as the phones." }
 ]

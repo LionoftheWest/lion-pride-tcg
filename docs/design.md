@@ -89,9 +89,9 @@ The UI check (section 12.6) runs every screen and every overlay at these sizes. 
 | 5 | 430x822 | Nathan's iPhone, portrait | compact-port | touch |
 | 6 | 412x915 | Pixel, portrait | compact-port | touch |
 | 7 | 915x412 | Desktop window, short | compact-land | pointer |
-| 8 | 820x1180 | iPad, portrait | medium | touch |
+| 8 | 820x1180 | iPad, portrait | compact-port (D-181) | touch |
 | 9 | 1180x820 | Desktop window, medium | medium | pointer |
-| 10 | 692x917 | Android tablet, portrait | medium | touch |
+| 10 | 692x917 | Android tablet, portrait | compact-port (D-181) | touch |
 | 11 | 917x692 | Desktop window, short | medium + short | pointer |
 | 12 | 1280x720 | Discord desktop, small | expanded | pointer |
 | 13 | 1990x830 | Discord desktop, design target | expanded | pointer |
@@ -985,6 +985,7 @@ Nathan accepted all 22 decisions as recommended on 2026-10-04. D-08 and D-21 hav
 | D-122 | The sub-tab row gives way on compact-port while typing | On compact-port, while the keyboard is open (`body[data-kb]`), the sub-tab row gives way and returns when the keyboard closes, so one row of cards fits above the keyboard. (Nathan, 2026-10-08: chose "Tab row hides while typing"; 375x667: the Collection search left about 96 px, one row needs 123 px) |
 | D-136 | Phones and tablets portrait only | Phones and tablets are locked to portrait; only desktop has landscape. The lock is the Discord Developer Portal setting (no app code). 667x375, 932x430, 915x412, 1180x820 and 917x692 stay in the UI check as desktop windows (no touch, no keyboard and no safe variants); their defects are REPORT ONLY: listed in the G3 summary, never failing the verdict (Nathan, 2026-10-09: "anything that is wrong with landscapes currently don't worry about it"; `REPORT_ONLY_SIZES` in `ci/ui-check/screens.mjs`). Flag OFF keeps its own lock. Conditional on Nathan's Discord poll (Nathan, 2026-10-09: "I'm honestly wondering if we should even make landscape a thing"; chose "Phones portrait only"; then "tablet would be just a bigger version of portrait in my mind") |
 | D-138 | No typing in the tiny window | The UI check drops the keyboard variant at the tiny size (Discord picture-in-picture). Assumed: a tap on the small window opens the full Activity first (not tested on a phone) (Nathan, 2026-10-09, with D-136) |
+| D-181 | Tablets use the phone portrait layout | A portrait window (height > width) narrower than 1000 px is the `compact-port` class, not `medium`. The measured fits give tablets bigger cards and more rows. No screen gets a separate tablet layout. Desktop windows and landscape keep their classes. The approved medium-768x1024 frames are replaced by the compact-port frames for portrait tablets (Nathan, 2026-10-11: "Their layouts shouldn't be that different from the mobile portraits") |
 ## Appendix B. Rules that this file replaces
 Each old rule below is now in this file. Each old place keeps one line that points here. (G-001, G-180)
 
