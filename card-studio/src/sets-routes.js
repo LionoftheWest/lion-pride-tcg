@@ -11,6 +11,7 @@
  */
 import express from 'express';
 import { isSetId } from './cardstore.js';
+import { publicUrl } from './storage-url.js';
 
 const BUCKET = 'card-art';
 const MAX_ART = 20 * 1024 * 1024; // 20 MB, before base64
@@ -103,7 +104,7 @@ export function setsRouter({ db, env = process.env }) {
     if (be && !/exist/i.test(be.message)) return fail(res, `bucket: ${be.message}`);
     const { error: ue } = await db.storage.from(BUCKET).upload(object, buf, { contentType: m[1], upsert: true });
     if (ue) return fail(res, `upload: ${ue.message}`);
-    const url = `${db.storage.from(BUCKET).getPublicUrl(object).data.publicUrl}?v=${Date.now()}`;
+    const url = `${publicUrl(db, BUCKET, object)}?v=${Date.now()}`; // the base that received the upload (local or live)
     if (kind === 'clip') return res.json({ ok: true, kind, url });
     const before = (({ id: i, name, code, pack_color, released_at, pullable, sort, season, pack_art_url, cover_card_id }) =>
       ({ id: i, name, code, pack_color, released_at, pullable, sort, season, pack_art_url, cover_card_id }))(set);

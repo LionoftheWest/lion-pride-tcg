@@ -12,6 +12,7 @@ import { artKeyFor, ANIMATED, inDrawPool, needsPeriod } from './rarity.js';
 import { getFrame } from './frames.js';
 import { makeThumbs, gridObject, revealObject } from './thumbs.js';
 import { getArtist } from './artists.js';
+import { publicUrl } from './storage-url.js';
 import { slotDetails, subjectType, CARD_TYPES, cardSetId } from './cardstore.js';
 
 /**
@@ -161,7 +162,7 @@ export async function pushCard(card, artFor, outDir, onProgress) {
       if (te) throw new Error(`thumbnail ${rarity}: ${te.message}`);
     }
 
-    const url = `${supabase.storage.from(BUCKET).getPublicUrl(object).data.publicUrl}?v=${Date.now()}`;
+    const url = `${publicUrl(supabase, BUCKET, object)}?v=${Date.now()}`; // the base that received the upload (local or live)
 
     // One row per subject and rarity (the subject is this card: key = card.id). A reprint in another set is a
     // set_pool row of that set, not a new row here.
