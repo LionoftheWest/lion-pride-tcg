@@ -1,0 +1,272 @@
+/* ==== UI-32 Auctions (src/ui-v2-auctions.js, src/ui3/auctions.js; design repo UI-32/approved; D-67, D-74) ====
+   Under body.ui-v3. The list (Open auctions, My auctions) is the UI-30 toolbar and grid (90-ui-30.css, .u3-hl) with the My auctions toggle
+   in the wishlist slot and a caption (the time left and the bids) under each card. Start, the seller view and the bidder view are one page
+   (.u3-au): the back button, then a main panel and an info panel. Expanded: side by side. Compact-port and medium: stacked (the main panel
+   takes the free height, the info panel its own). The Card picker and the dialogs are UI-64 and UI-00 parts. */
+
+/* ---- the list: the toolbar of the Hall, the caption under a card ---- */
+.u3-au-list .u3-hl__grid { grid-auto-rows: calc(var(--hl-tile, var(--card-tile)) * var(--card-ratio) + var(--au-cap, var(--sp-5)) + var(--sp-1)); }
+.u3-au-cell { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.u3-au-cell > .u3-hl-card { flex: none; }
+.u3-au-cap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-half) var(--sp-1); min-width: 0; font-size: var(--fs-small); font-weight: var(--fw-small-strong); line-height: var(--lh-small); color: var(--text-secondary);
+  font-variant-numeric: tabular-nums; }
+.u3-au-cap > span { white-space: nowrap; }
+.u3-au-cap > .u3-ico { color: var(--text-muted); }
+.u3-au-cap.is-soon > .u3-ico:first-child, .u3-au-cap.is-soon > span:first-of-type { color: var(--warning); }
+.u3-au-cap.is-confirm { color: var(--gold); }
+.u3-au-mine { max-width: 100%; }
+.u3-au-mine.is-on { color: var(--gold); background: var(--gold-a10); border-color: var(--gold-a50); }
+body[data-size="compact-port"] .u3-au-list { grid-template-areas: "sw help" "manage wish" "find filt" "grid grid" "pager pager"; grid-template-columns: minmax(0, 1fr) auto; }
+body[data-size="compact-port"] .u3-au-list .u3-hl__wish { display: block; }
+body[data-size="compact-port"] .u3-au-list .u3-hl__wish .u3-btn { width: 100%; }
+body[data-kb] .u3-au-list { grid-template-areas: "find filt" "grid grid"; }
+body[data-kb] .u3-au-list :is(.u3-hl__wish, .u3-hl__manage) { display: none; }
+body.ui-v2.ui-v3 .u3-au-list > .ex-q { display: none; }
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-au-list > .ex-q { display: inline-flex; }
+
+/* ---- the page of the start, seller and bidder views ---- */
+.u3-au { box-sizing: border-box; height: 100%; min-height: 0; padding: 0 0 var(--sp-3); display: grid; gap: var(--sp-3); align-content: start; align-items: stretch;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "back ." "main aside"; --text-muted: var(--u3-text-muted); }
+.u3-au.u3-au--one { grid-template-areas: "back ." "main main"; }
+.u3-au > .ex-q { display: none; }
+body:is([data-size="compact-port"], [data-size="medium"]) .u3-au { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "back help" "main main" "aside aside"; }
+body:is([data-size="compact-port"], [data-size="medium"]) .u3-au.u3-au--one { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "back help" "main main"; }
+body.ui-v2.ui-v3:is([data-size="compact-port"], [data-size="medium"]) .u3-au > .ex-q { display: inline-flex; grid-area: help; justify-self: end; width: var(--hit); height: var(--hit); min-width: 0; padding: 0; justify-content: center; align-items: center; }
+.u3-au__back { grid-area: back; min-width: 0; justify-self: start; align-self: center; }
+.u3-au__main, .u3-au__aside { box-sizing: border-box; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-5); border-radius: var(--rad-lg);
+  background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); }
+.u3-au__main { grid-area: main; }
+.u3-au__aside { grid-area: aside; overflow: hidden; }
+body[data-size="compact-port"] .u3-au__main, body[data-size="compact-port"] .u3-au__aside { padding: var(--sp-4); }
+.u3-au :is(.u3-au-face) { position: relative; display: block; box-sizing: border-box; width: 100%; height: 100%; border: var(--bw-2) solid var(--u3-r); border-radius: var(--rad-sm); overflow: hidden; background: var(--surface-2); }
+.u3-au-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.u3-au-dia { display: inline-flex; align-items: center; color: var(--u3-r); }
+.u3-au-none { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); list-style: none; }
+.u3-au-thumbs { display: inline-flex; flex-wrap: wrap; gap: var(--sp-1); min-width: 0; }
+.u3-au-thumbs > * { flex: none; }
+.u3-au-face.is-thumb { width: var(--card-mini); height: calc(var(--card-mini) * var(--card-ratio)); }
+.u3-au-face.is-mini { width: var(--icon-lg); height: calc(var(--icon-lg) * var(--card-ratio)); flex: none; border-width: var(--bw-1); border-radius: var(--rad-sm); }
+.u3-au-sum { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); min-width: 0; }
+.u3-au-tot { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-au-tot { min-width: 0; flex-wrap: wrap; }
+.u3-au-tot > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.u3-au-tot > b { font-family: var(--font-num); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-au-msgs, .u3-au-bid__msg:empty, .u3-au-seller__msg:empty, .u3-au-start__msg:empty { display: none; }
+
+/* ---- the info panel (seller and bidder) ---- */
+.u3-au-info__head { flex: none; display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.u3-au-info__head .u3-mp-av { --mp-av: var(--avatar-sm); }
+.u3-au-info__title { flex: 1 1 auto; min-width: 0; margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-au-info__rar { flex: none; }
+.u3-au-info__top { flex: none; display: flex; align-items: flex-start; gap: var(--sp-4); min-width: 0; }
+.u3-au-info__card { position: relative; flex: none; width: var(--card-thumb); height: calc(var(--card-thumb) * var(--card-ratio)); padding: 0; border: 0; background: none; border-radius: var(--rad-sm); cursor: pointer; }
+.u3-au-info__card:focus-visible { outline: var(--bw-2) solid var(--gold); outline-offset: var(--bw-2); }
+.u3-au-info__mag { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: var(--hit); height: var(--hit); max-width: 100%; max-height: 100%; color: var(--text-primary); }
+.u3-au-info__mag .u3-ico { padding: var(--sp-1); border-radius: var(--rad-round); background: var(--scrim); }
+body:is([data-size="medium"], [data-size="expanded"]) .u3-au-info__card { width: var(--card-tile); height: calc(var(--card-tile) * var(--card-ratio)); }
+.u3-au-info__txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-au-info__name { margin: 0; font-family: var(--font-display); font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-stat); text-transform: uppercase; color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-au-time { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
+.u3-au-time__pill { display: inline-flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-radius: var(--rad-pill); background: var(--bg-raised); border: var(--bw-1) solid var(--border);
+  color: var(--gold); font-family: var(--font-num); font-size: var(--fs-heading); line-height: var(--lh-heading); }
+.u3-au-time__pill > b { font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-au-time.is-soon .u3-au-time__pill { color: var(--warning); }
+.u3-au-time__ends { font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-au-info__facts { flex: none; display: flex; gap: var(--sp-3); min-width: 0; }
+.u3-au-min, .u3-au-nbids { box-sizing: border-box; padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-md); background: var(--surface-2); min-width: 0; }
+.u3-au-min { flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-au-nbids { flex: none; display: flex; flex-direction: column; align-self: flex-start; gap: var(--sp-1); }
+.u3-au-nbids > b { font-family: var(--font-num); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-au-min__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.u3-au-min__line { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-au-min__line > b { font-family: var(--font-num); font-weight: var(--fw-stat); color: var(--text-primary); }
+.u3-au-min__lead { flex: none; min-width: var(--sp-5); color: var(--text-muted); }
+.u3-au-min__name { min-width: 0; color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-au-min__any { font-size: var(--fs-body); color: var(--text-primary); }
+.u3-au-steps { flex: none; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); font-size: var(--fs-body); color: var(--text-muted); }
+.u3-au-steps > li { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-au-steps__n { display: inline-grid; place-items: center; width: var(--ctl-icon); height: var(--ctl-icon); border-radius: var(--rad-round); background: var(--surface-3); color: var(--text-secondary); font-weight: var(--fw-stat); }
+.u3-au-steps > li.is-on { color: var(--text-primary); }
+.u3-au-steps > li.is-on .u3-au-steps__n { background: var(--gold); color: var(--on-gold); }
+.u3-au-steps > li.is-done .u3-au-steps__n { background: var(--success); color: var(--bg-base); }
+.u3-au-steps > li.is-done { color: var(--text-secondary); }
+.u3-au-info__acts { flex: none; display: flex; margin-top: auto; }
+.u3-au-info__acts .u3-btn { flex: 1 1 auto; }
+.u3-au-best { flex: none; display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.u3-au-best__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.u3-au-best__ok { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-small); color: var(--success); }
+.u3-au-best__row { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+
+/* ---- the bidder view: Your bid, five slots ---- */
+.u3-au-bid { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "head acts" "slots slots" "note note"; align-content: stretch; }
+body[data-size="compact-port"] .u3-au-bid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-areas: "head" "slots" "note" "acts"; }
+.u3-au-bid__head { grid-area: head; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-3); min-width: 0; }
+.u3-au-bid__n { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-secondary); }
+.u3-au-bid__state { display: inline-flex; align-items: center; gap: var(--sp-1-5); font-size: var(--fs-body); font-weight: var(--fw-small-strong); color: var(--text-secondary); align-self: center; }
+.u3-au-bid__state.is-below { color: var(--warning); }
+.u3-au-bid__state.is-meets { color: var(--success); }
+.u3-au-bid__acts { grid-area: acts; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-3); min-width: 0; }
+body[data-size="compact-port"] .u3-au-bid__acts .u3-btn { flex: 1 1 0; }
+.u3-au-bid__slots { grid-area: slots; min-height: 0; min-width: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2); justify-content: center; align-content: center; }
+.u3-au-bid__slots > li { flex: none; width: var(--au-tile, var(--card-thumb)); height: calc(var(--au-tile, var(--card-thumb)) * var(--card-ratio)); }
+.u3-au-slot { box-sizing: border-box; position: relative; width: 100%; height: 100%; padding: 0; border-radius: var(--rad-md); border: var(--bw-1) solid var(--border-strong); background: var(--surface-1); color: var(--text-muted);
+  cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); font-size: var(--fs-body); font-family: inherit; }
+.u3-au-slot:hover { color: var(--text-primary); }
+.u3-au-slot:focus-visible { outline: var(--bw-2) solid var(--gold); outline-offset: var(--bw-2); }
+.u3-au-slot.is-full { border: 0; background: none; padding: 0; }
+.u3-au-slot > span:not(.u3-au-face) { min-width: 0; text-align: center; }
+.u3-au-bid__note { grid-area: note; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); min-width: 0; }
+.u3-au-bid__rule { font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-au-bid__msg { min-width: 0; }
+.u3-au-bid__msg .u3-msg { margin: 0; }
+
+/* ---- the seller view: the bids ---- */
+.u3-au-seller__head { flex: none; display: flex; align-items: baseline; gap: var(--sp-3); }
+.u3-au-rows { flex: 1 1 0; min-height: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.u3-au-row { flex: none; box-sizing: border-box; display: grid; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-3) var(--sp-4); border-radius: var(--rad-md); background: var(--surface-2); border: var(--bw-1) solid var(--border);
+  grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: "who body flag act"; }
+.u3-au-row.is-accepted { border-color: var(--gold-a50); background: linear-gradient(var(--gold-a10), var(--gold-a10)), var(--surface-2); }
+.u3-au-row__who { grid-area: who; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-au-row__who .u3-mp-av { --mp-av: var(--avatar-sm); }
+.u3-au-row__name { min-width: 0; font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-stat); color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-au-row__who > i { font-style: normal; font-size: var(--fs-body); color: var(--text-muted); }
+.u3-au-row__body { grid-area: body; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); min-width: 0; }
+.u3-au-row__flag { grid-area: flag; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--sp-1) var(--sp-3); min-width: 0; }
+.u3-au-row__act { grid-area: act; display: flex; justify-content: flex-end; min-width: 0; }
+.u3-au-row__st { display: inline-flex; align-items: center; gap: var(--sp-1-5); font-size: var(--fs-body); font-weight: var(--fw-small-strong); }
+.u3-au-row__st.is-below { color: var(--warning); }
+.u3-au-row__st.is-meets { color: var(--success); }
+.u3-au-row__best { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--gold); }
+.u3-au-row__wait { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; font-size: var(--fs-body); font-weight: var(--fw-small-strong); color: var(--gold); }
+.u3-au-row__wait > span { min-width: 0; overflow-wrap: anywhere; }
+.u3-au-tinfo { padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--rad-sm); }
+.u3-au-tinfo:focus-visible { outline: var(--bw-2) solid var(--gold); outline-offset: var(--bw-2); }
+body[data-input="coarse"] .u3-au-tinfo { position: relative; }
+body:is([data-size="compact-port"], [data-size="medium"]) .u3-au-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who flag" "body act"; }
+body:is([data-size="compact-port"], [data-size="medium"]) .u3-au-row.is-accepted { grid-template-areas: "who flag" "body body" "act act"; }
+.u3-au-row.is-accepted { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "who body flag" "act act act"; }
+body[data-size="expanded"] .u3-au-row.is-accepted { grid-template-areas: "who body flag" "act act act"; }
+.u3-au-row.is-accepted .u3-au-row__act { justify-content: flex-start; }
+.u3-au-seller__msg { flex: none; }
+
+/* ---- Start an auction ---- */
+.u3-au-start { display: grid; gap: var(--sp-3) var(--sp-5); align-content: start; overflow: hidden; grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "head head" "card info" "min min" "len len" "msg msg" "go go"; }
+.u3-au-start__head { grid-area: head; margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.u3-au-start__card { grid-area: card; }
+.u3-au-start__slot { box-sizing: border-box; position: relative; width: calc(var(--card-tile) * 1.4); height: calc(var(--card-tile) * 1.4 * var(--card-ratio)); padding: var(--sp-3); border-radius: var(--rad-md); border: var(--bw-1) solid var(--border-strong);
+  background: none; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); font-size: var(--fs-body); font-family: inherit; text-align: center; }
+.u3-au-start__slot:hover { color: var(--text-primary); }
+.u3-au-start__slot:focus-visible { outline: var(--bw-2) solid var(--gold); outline-offset: var(--bw-2); }
+.u3-au-start__slot.is-full { padding: 0; border: 0; border-radius: var(--rad-sm); }
+.u3-au-start__info { grid-area: info; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.u3-au-start__name { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); overflow-wrap: anywhere; }
+.u3-au-start__bids { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); font-size: var(--fs-body); color: var(--text-primary); }
+.u3-au-start__min { grid-area: min; display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.u3-au-start__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); min-width: 0; }
+.u3-au-start__row .u3-step { flex-direction: row; align-items: center; gap: var(--sp-3); }
+.u3-au-start__row .u3-step__value { min-width: var(--hit); }
+.u3-au-start__row .u3-select { flex: 1 1 0; min-width: 0; }
+.u3-au-start__ask { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.u3-au-start__ask .u3-seg { flex: none; }
+.u3-au-start__find { position: relative; flex: 1 1 auto; min-width: 0; }
+.u3-au-start__find .u3-search { box-sizing: border-box; width: 100%; }
+.u3-au-start__find .u3-search__input::-webkit-search-cancel-button { appearance: none; }
+.u3-au-hits { position: absolute; left: 0; right: 0; bottom: calc(100% + var(--sp-2)); z-index: var(--z-sheet); margin: 0; padding: var(--sp-2); list-style: none; display: flex; flex-direction: column; gap: var(--sp-2);
+  border-radius: var(--rad-lg); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-3); }
+.u3-au-hits[hidden] { display: none; }
+.u3-au-hit { box-sizing: border-box; width: 100%; min-height: var(--hit); padding: var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-2); display: flex; align-items: center; gap: var(--sp-3); border: 0; border-radius: var(--rad-md);
+  background: var(--surface-2); color: var(--text-primary); font-family: inherit; font-size: var(--fs-body); text-align: left; cursor: pointer; }
+.u3-au-hit .u3-au-face { flex: none; width: var(--card-mini); height: calc(var(--card-mini) * var(--card-ratio)); }
+.u3-au-hit__txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }
+.u3-au-hit__txt > b { font-weight: var(--fw-small-strong); overflow-wrap: anywhere; }
+.u3-au-hit__r { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-small); color: var(--u3-r); }
+.u3-au-hit > .u3-ico { flex: none; }
+.u3-au-start__chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
+.u3-au-start__chips:empty { display: none; }
+.u3-au-ask { display: inline-flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-2); border-radius: var(--rad-pill); background: var(--surface-2); border: var(--bw-1) solid var(--border-strong); font-size: var(--fs-small); color: var(--text-primary); min-width: 0; }
+.u3-au-ask .u3-au-face { flex: none; width: var(--icon-md); height: calc(var(--icon-md) * var(--card-ratio)); border-width: var(--bw-1); }
+.u3-au-ask__name { min-width: 0; overflow-wrap: anywhere; }
+.u3-au-start__len { grid-area: len; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-2) var(--sp-3); min-width: 0; }
+.u3-au-start__ends { justify-self: end; font-size: var(--fs-body); color: var(--text-secondary); }
+.u3-au-start__len > .u3-au-start__row { grid-column: 1 / -1; }
+.u3-au-start__msg { grid-area: msg; min-width: 0; }
+.u3-au-start__go { grid-area: go; align-self: end; display: flex; margin-top: auto; }
+.u3-au-start__go .u3-btn { flex: 1 1 auto; }
+body[data-size="expanded"] .u3-au-start { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "card head" "card info" "card min" "card len" "card msg" "card go"; align-content: stretch; }
+body[data-size="expanded"] .u3-au-start__card { align-self: stretch; min-height: 0; display: flex; align-items: center; }
+body[data-size="expanded"] .u3-au-start .u3-au-start__slot { height: 100%; width: auto; max-width: 100%; aspect-ratio: 1 / var(--card-ratio); }
+body[data-size="medium"] .u3-au-start { grid-template-columns: auto minmax(0, 1fr); align-content: stretch; grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto; }
+body[data-size="medium"] .u3-au-start .u3-au-start__slot { width: calc(var(--card-tile) * 2.2); height: calc(var(--card-tile) * 2.2 * var(--card-ratio)); }
+
+/* ---- the windows: Confirm the accepted bid, Close early; the Undo toast ---- */
+#u3AuDlgHost { display: contents; }
+.u3-au-scrim { z-index: var(--z-modal); }
+.u3-au-dlg:focus { outline: none; }
+body[data-size="compact-port"] .u3-au-dlg { gap: var(--sp-3); }
+.u3-au-dlg__title { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-au-dlg__title > span { min-width: 0; overflow-wrap: anywhere; }
+.u3-au-dlg__line { display: flex; align-items: flex-start; gap: var(--sp-2); margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-secondary); }
+.u3-au-dlg__line > .u3-ico { flex: none; color: var(--gold); }
+.u3-au-dlg__msg:empty { display: none; }
+.u3-au-deal { display: flex; align-items: center; justify-content: center; gap: var(--sp-4); min-width: 0; }
+.u3-au-deal__side { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); min-width: 0; }
+.u3-au-deal__cards { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-2); }
+.u3-au-deal__swap { flex: none; color: var(--gold); display: grid; place-items: center; }
+.u3-au-face.is-deal { width: var(--card-squad); height: calc(var(--card-squad) * var(--card-ratio)); flex: none; }
+body[data-size="compact-port"] .u3-au-face.is-deal { width: var(--card-thumb); height: calc(var(--card-thumb) * var(--card-ratio)); }
+.u3-au-toast { position: fixed; z-index: var(--z-toast); left: var(--sp-4); right: var(--sp-4); bottom: calc(var(--dock-h) + var(--sp-4)); display: flex; justify-content: center; pointer-events: none; }
+.u3-au-toast > .u3-toast { pointer-events: auto; }
+
+/* ---- measured modes (ui-v2-auctions.js settle): the page is too short for the frames -> is-tight, then is-tighter.
+   The panels close up, the card in the info panel becomes the mini card, the minimum wraps into a flow, the foot of the seller panel is one row. ---- */
+.u3-au-info__foot { flex: none; display: flex; flex-direction: column; gap: var(--sp-3); margin-top: auto; }
+.u3-au-seller__pager { flex: none; display: flex; justify-content: center; }
+.u3-au-seller__pager:empty { display: none; }
+.u3-au-seller__pager .u3-pager { width: max-content; }
+.u3-au :is(.u3-au-row)[hidden] { display: none; }
+.u3-au.is-tight, .u3-au.is-tighter { gap: var(--sp-2); }
+.u3-au:is(.is-tight, .is-tighter) :is(.u3-au__main, .u3-au__aside) { padding: var(--sp-3); gap: var(--sp-2); }
+.u3-au:is(.is-tight, .is-tighter) .u3-au-info__card { width: var(--card-mini); height: calc(var(--card-mini) * var(--card-ratio)); }
+.u3-au:is(.is-tight, .is-tighter) .u3-au-time__pill { padding: var(--sp-1) var(--sp-3); font-size: var(--fs-stat); line-height: var(--lh-stat); }
+.u3-au:is(.is-tight, .is-tighter) .u3-au-info__top { gap: var(--sp-3); }
+.u3-au:is(.is-tight, .is-tighter) .u3-au-best { flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
+.u3-au:is(.is-tight, .is-tighter) .u3-au-min, .u3-au:is(.is-tight, .is-tighter) .u3-au-nbids { padding: var(--sp-2) var(--sp-3); }
+.u3-au:is(.is-tight, .is-tighter) .u3-au-info__foot { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-4); }
+.u3-au:is(.is-tight, .is-tighter) .u3-au-info__acts { flex: 1 1 auto; min-width: calc(var(--hit) * 3); }
+.u3-au.is-tighter .u3-au-min__list { flex-direction: row; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); }
+.u3-au.is-tighter .u3-au-bid__rule { font-size: var(--fs-small); }
+.u3-au.is-tighter .u3-au-row { padding: var(--sp-2) var(--sp-3); gap: var(--sp-1) var(--sp-3); }
+
+/* ---- the bid picker (UI-64): the wishlist heart at the bottom left of a card (D-67 item 5) ---- */
+.u3-pk-mark { position: absolute; left: var(--sp-1); bottom: var(--sp-1); display: grid; place-items: center; width: var(--ctl-icon); height: var(--ctl-icon); border-radius: var(--rad-round); background: var(--scrim); color: var(--danger-text); pointer-events: none; }
+
+/* touch: the Start controls are 44 px targets (9.1) */
+body[data-input="coarse"] .u3-au-start .u3-select { height: calc(var(--hit) + var(--bw-1) * 2); }
+body[data-input="coarse"] .u3-au-start .u3-seg__item { min-width: var(--hit); justify-content: center; }
+
+/* ---- the Auction Information sheet (is-sheet, compact-port and medium): the approved short-phone frames (375x667) fold the info panel to its handle row;
+   a tap opens it over the main panel. Only the handle row shows while folded; every part of the panel is in it when open. ---- */
+.u3-au-info__toggle { display: none; }
+.u3-au.is-sheet { position: relative; }
+.u3-au.is-sheet .u3-au__aside { padding: 0; gap: 0; align-self: end; }
+.u3-au.is-sheet .u3-au-info__toggle { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: calc(var(--hit) + var(--sp-3)); padding: var(--sp-3) var(--sp-4) var(--sp-1);
+  border: 0; background: none; color: var(--text-primary); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); text-align: left; cursor: pointer; }
+.u3-au.is-sheet .u3-au-info__toggle::before { content: ''; position: absolute; top: var(--sp-1); left: 50%; width: var(--sp-6); height: var(--sp-1); margin-left: calc(var(--sp-6) / -2); border-radius: var(--rad-pill); background: var(--border-strong); }
+.u3-au.is-sheet .u3-au-info__toggle:focus-visible { outline: var(--bw-2) solid var(--gold); outline-offset: calc(var(--bw-2) * -1); }
+.u3-au-info__tname { flex: 1 1 auto; min-width: 0; }
+.u3-au.is-sheet .u3-au-info__toggle .u3-ico:last-child { flex: none; color: var(--text-secondary); }
+.u3-au.is-sheet.is-info-open .u3-au-info__toggle .u3-ico:last-child { transform: rotate(180deg); }
+.u3-au-info__body { display: contents; }
+.u3-au-info__body[hidden] { display: none; }
+.u3-au.is-sheet .u3-au-info__body > * { margin-inline: var(--sp-4); }
+.u3-au.is-sheet .u3-au-info__body > :last-child { margin-bottom: var(--sp-4); }
+.u3-au.is-sheet.is-info-open .u3-au__aside { position: absolute; left: 0; right: 0; bottom: 0; z-index: var(--z-sheet); gap: var(--sp-2); box-shadow: var(--elev-3); }
+.u3-au.is-sheet .u3-au__aside { grid-area: aside; }
+
+/* Start an auction: the measured modes bring the card and the rows closer */
+.u3-au-start.u3-au-start { min-height: 0; }
+body .u3-au:is(.is-tight, .is-tighter) .u3-au-start__slot { width: var(--card-thumb); height: calc(var(--card-thumb) * var(--card-ratio)); padding: var(--sp-1); font-size: var(--fs-small); }
+.u3-au:is(.is-tight, .is-tighter) .u3-au-start__slot > .u3-ico { display: none; }
+.u3-au.is-tighter .u3-au-start { gap: var(--sp-2) var(--sp-4); }
+.u3-au.is-tighter .u3-au-start__min, .u3-au.is-tighter .u3-au-start__row { gap: var(--sp-1) var(--sp-3); }

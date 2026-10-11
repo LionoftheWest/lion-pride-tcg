@@ -5,6 +5,7 @@
 import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { v2ctx, avatarHTML, paintCards, fitChildren, toast, openMember, onSwipe, ensureCatalog } from './ui-v2.js';
 import { esc as esc3, button, iconButton, searchField, pager, chip, segmented, stateEmpty, inlineMessage, toast as toast3 } from './ui3/components.js';
+import { auctionsV3 } from './ui-v2-auctions.js';
 import { icon } from './ui3/icons.js';
 import { fitGrid, openCardPicker } from './ui3/card-picker.js';
 import { LIST_MAX, LIST_FULL, slotsOf, listable, listFit, applyListPick, listFilterCount, unlistedText, listError, offerSeed, offerPlan } from './ui3/compose.js';
@@ -30,6 +31,14 @@ const title = (s) => (isPhone() ? breakable(esc(s)) : esc(s));
 export const hall = { sub: 'hall', view: 'wanted', aview: 'open', page: 0, data: null, held: {}, sel: null, wish: null, give: null, msg: '',
   listing: false, auctions: null, auctionsBy: {}, auction: null, bid: [], start: null, sellerWish: [], q: '', f: { ...NO_FILTERS }, fdraft: null };
 const isV3 = () => document.body.classList.contains('ui-v3');
+// UI-32 Auctions under body.ui-v3 (src/ui-v2-auctions.js, src/ui3/auctions.js): the v3 views over the same state, handlers and API calls
+let AV3 = null;
+const av3 = () => AV3 || (AV3 = auctionsV3({ hall, stopHall: () => { hlRO?.disconnect(); closeLsToast(); }, renderHall: () => renderHall(), paintHall: () => paintHall(),
+  openAuction: (id) => openAuction(id), onSwitch: (e) => onSwitch(e), openHallFilters: () => openHallFilters(), tagsOf: (c) => tagsOf(c), owns: (c) => owns(c) }));
+const paintAuctionsV3 = () => av3().list();
+const fillAuctionsV3 = (g) => av3().fill(g);
+const paintStartV3 = () => av3().paintStart();
+const paintAuctionV3 = () => av3().paintAuction();
 
 // ---- Data -------------------------------------------------------------------------------------
 async function loadHall() {
@@ -295,6 +304,7 @@ function refreshSearch(focus) {
 function fillV3() {
   const { el } = ctx();
   const g = el('hlGrid'); if (!g) return;
+  if (hall.sub === 'auctions') return fillAuctionsV3(g);   // UI-32: the same toolbar, the auction cards under it
   hlItems = hallItemsV3();
   const root = g.closest('.u3-hl');
   const fit = (o) => fitGrid(g.clientWidth, g.clientHeight, parseFloat(getComputedStyle(g).columnGap) || 0, o);
@@ -388,7 +398,7 @@ function onHallFilterClick(e) {
   if (d.hlfok) {
     hall.f = { ...hall.fdraft }; hall.page = 0;
     closeHallFilters();
-    if (ctx().el('hlGrid')) paintHallV3();
+    if (ctx().el('hlGrid')) { if (hall.sub === 'auctions') paintAuctionsV3(); else paintHallV3(); }
   }
 }
 
@@ -579,6 +589,7 @@ function paintListSheet() {
 
 // ---- Auctions: one list (Nathan, 2026-10-02: no Gold section) -----------------------------------
 function paintAuctionGrid() {
+  if (isV3()) return paintAuctionsV3();
   const { el } = ctx();
   const list = hall.auctions || [];
   const items = list.map((a, i) => ({ ...a.card, _a: a, _k: i }));
@@ -616,6 +627,7 @@ function paintAuctionGrid() {
 // ---- Start an auction ---------------------------------------------------------------------------
 const bidRarities = (gold) => (gold ? BID_GOLD : ['normal', 'illustrated_rare', 'secret_rare', 'full_art', 'promo', 'event']);
 function paintStart() {
+  if (isV3()) return paintStartV3();
   const { el } = ctx();
   const st = hall.start;
   const filters = [['all', 'All'], ['gold', 'Gold'], ['full_art', 'Full Art'], ['secret_rare', 'Secret Rare']];
@@ -731,6 +743,7 @@ function auctionPanel(a, extra) {
     ${extra}</aside>`;
 }
 function paintAuction() {
+  if (isV3()) return paintAuctionV3();
   const { el } = ctx();
   const a = hall.auction;
   if (a.isSeller) return paintSeller(a);
