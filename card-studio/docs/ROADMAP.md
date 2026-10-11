@@ -31,7 +31,7 @@ Add an output PNG arg with `--background` for a side-by-side still.
 
 ## How to resume
 - **Studio UI:** `cd C:\Users\vaugh\discord\card-studio && npm run studio`
-  -> open http://localhost:4321 (grid + gallery, per-finish art upload, push).
+  -> open http://localhost:4321/admin/#/cards (the Cards section of the Admin page: grid + gallery, per-finish art upload, push).
 - **Live Blender preview (watch tweaks in real time):**
   `& "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --python blender\live_preview.py -- <facePng> <rarity> [maskPng]`
   Then edit `blender/card_scene.py` and the window rebuilds itself.
