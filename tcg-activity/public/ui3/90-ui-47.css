@@ -223,3 +223,8 @@ body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-short2 { gri
 body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-slim .dg-sups { grid-template-columns: minmax(0, 1fr); }
 /* the picking glow is the static ring: the bounce (a moving transform) made the Details button measure 43.99994 px high on a CI runner (a float error of the animated card), so the card does not move while picking */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.picking .dg-unit:not(.down) .dg-card { animation: none; }
+
+/* short3 (measured): the supports are one row under the Support label, so a squad of 3 or more supports never pushes a card out of the box */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-short3 .dg-sups { display: grid; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-short3 .dg-sups > .k, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-short3 .dg-sups > .dg-none { grid-column: 1 / -1; grid-row: 1; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.is-stack.is-short3 .dg-sups > .dg-sup { grid-row: 2; }
