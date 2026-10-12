@@ -504,5 +504,11 @@
   { "decision": "D-134", "id": "UI-49", "screen": "dungeon-rest", "size": "820x1180", "rule": "empty",
     "why": "The approved rest room (D-134: the smaller panel with the room picture around it) leaves an empty band above and below the panel. The portrait tablet sizes use the compact-port layout (D-181), the same frame as the phones." },
   { "decision": "D-134", "id": "UI-49", "screen": "dungeon-rest", "size": "692x917", "rule": "empty",
-    "why": "The approved rest room (D-134: the smaller panel with the room picture around it) leaves an empty band above and below the panel. The portrait tablet sizes use the compact-port layout (D-181), the same frame as the phones." }
+    "why": "The approved rest room (D-134: the smaller panel with the room picture around it) leaves an empty band above and below the panel. The portrait tablet sizes use the compact-port layout (D-181), the same frame as the phones." },
+  { "decision": "D-179", "id": "UI-32", "screen": "auction-seller-accepted", "size": "820x1180", "rule": "empty",
+    "why": "The approved Auctions frames leave this band (an empty list, a seller view with no bid or one accepted bid, the Start panel); Nathan accepted it for now (D-179, 2026-10-10). The portrait tablet sizes use the compact-port frames (D-181)." },
+  { "decision": "D-179", "id": "UI-32", "screen": "auction-start", "size": "820x1180", "rule": "empty",
+    "why": "The approved Auctions frames leave this band (an empty list, a seller view with no bid or one accepted bid, the Start panel); Nathan accepted it for now (D-179, 2026-10-10). The portrait tablet sizes use the compact-port frames (D-181)." },
+  { "decision": "D-179", "id": "UI-32", "screen": "auction-start-card", "size": "820x1180", "rule": "empty",
+    "why": "The approved Auctions frames leave this band (an empty list, a seller view with no bid or one accepted bid, the Start panel); Nathan accepted it for now (D-179, 2026-10-10). The portrait tablet sizes use the compact-port frames (D-181)." }
 ]

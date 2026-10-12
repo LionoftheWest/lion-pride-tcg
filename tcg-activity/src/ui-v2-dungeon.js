@@ -1437,6 +1437,8 @@ function fitChooseV3(main) {
     // UI-49: a large stage (expanded or medium, never the door choice and never a phone: D-134, the approved frames keep the smaller panel) with a small panel: the panel takes the height of the stage (the doors, the chest and the Continue row grow with it)
     const panel = box.querySelector('.u3-dgc-panel'), hud = box.querySelector('.u3-dgc-hud');
     if (box.classList.contains('u3-dgs') && panel && hud && (cls3() === 'expanded' || cls3() === 'medium') && !box.classList.contains('ph-path') && (box.clientHeight - hud.offsetHeight - panel.offsetHeight) / 2 > 0.2 * box.clientHeight) box.classList.add('is-roomy');
+    // D-181: a portrait tablet (compact-port), the open chest only (D-134: the phone frames keep the smaller panel): when the panel leaves more than a tenth of the stage above and under it (the empty band above and the stage art under it make the 3.4 band)
+    else if (box.classList.contains('u3-dgs') && panel && hud && cls3() === 'compact-port' && panel.querySelector('.u3-dgs-chest.open') && (box.clientHeight - hud.offsetHeight - panel.offsetHeight) / 2 > 0.1 * box.clientHeight) box.classList.add('is-roomy');
     if (over()) { box.classList.add('is-tight'); if (over()) box.classList.add('is-tight2'); }
     // UI-49: a long counter only makes the counters too WIDE: they shrink and wrap (is-wide, is-wide2) and the panel keeps its size
     if (stable && chipsOver()) { box.classList.add('is-wide'); if (chipsOver()) box.classList.add('is-wide2'); }

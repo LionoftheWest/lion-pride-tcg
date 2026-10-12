@@ -1177,7 +1177,8 @@ function fillBoons(root) {
     const fits = (per) => { ul.innerHTML = all.slice(0, per).join(''); return ul.scrollHeight <= ul.clientHeight + 0.5; };
     let per = 1;
     while (per < all.length && fits(per + 1)) per += 1;   // all rows without the pager, else the most that fit
-    if (per < all.length) {
+    // D-181: the Recent plays pager stays on every class, disabled on one page (a tall tablet fits every row; the expanded frame shows the pager)
+    if (per < all.length || key === 'rec') {
       pg.hidden = false; pg.innerHTML = pager3({ page: 1, pages: 2 });   // the pager takes its height; measure again with it
       per = 1;
       while (per < all.length && fits(per + 1)) per += 1;

@@ -157,5 +157,5 @@ body.ui-v3[data-size="compact-port"][data-kb] .u3-col { --u3-pager-gap: var(--u3
 body.ui-v3[data-size="compact-port"][data-kb] .u3-col__pager { display: none; }
 /* D-181: a phone sheet fits its content (3.4). On a portrait tablet the Filters sheet no longer runs full height: it ends under its
    last group, and its body scrolls inside the max height only when the groups need more room. */
-body[data-size="compact-port"] .u3-fpanel { top: auto; max-height: calc(100dvh - var(--u3-sa-t) - var(--sp-1-5) - var(--u3-sa-b) - var(--dock-size-compact) - var(--sp-2) * 2); }
+body[data-size="compact-port"] .u3-fpanel { bottom: auto; max-height: calc(100dvh - var(--u3-sa-t) - var(--sp-1-5) - var(--u3-sa-b) - var(--dock-size-compact) - var(--sp-2) * 2); }
 body[data-size="compact-port"] .u3-fpanel { max-width: var(--sheet-bottom-w); margin-inline: auto; }
