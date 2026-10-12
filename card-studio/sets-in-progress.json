@@ -1,0 +1,4 @@
+{
+  "about": "Sets that are still being made (F-2 item 8, scripts/check-sets.mjs). The check reports their defects but does not fail on them. A set that the database marks pullable is always checked strictly, even if it is listed here. Remove a set from this list when it is finished.",
+  "sets": ["S2"]
+}
