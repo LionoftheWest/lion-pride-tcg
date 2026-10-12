@@ -21,16 +21,19 @@ create table public.hunts (
   resist_points jsonb default '[]'::jsonb not null,
   passive jsonb default '{}'::jsonb not null,
   hp_share bigint,
-  stats jsonb
+  stats jsonb,
+  event_id bigint
 );
 
 -- @constraints
+alter table public.hunts add constraint hunts_event_id_fkey FOREIGN KEY (event_id) REFERENCES events(id);
 alter table public.hunts add constraint hunts_hp_check CHECK (((hp_max > 0) AND (hp_remaining >= 0)));
 alter table public.hunts add constraint hunts_pkey PRIMARY KEY (id);
 alter table public.hunts add constraint hunts_status_check CHECK ((status = ANY (ARRAY['active'::text, 'defeated'::text, 'expired'::text])));
 alter table public.hunts add constraint hunts_tier_check CHECK ((tier = ANY (ARRAY['Normal'::text, 'Heroic'::text, 'Mythic'::text])));
 
 -- @indexes
+CREATE UNIQUE INDEX hunts_event_once ON public.hunts USING btree (event_id) WHERE (event_id IS NOT NULL);
 CREATE UNIQUE INDEX hunts_pkey ON public.hunts USING btree (id);
 
 -- @rls

@@ -17,6 +17,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadTableCatalog, redactRow } from './admin-tables.js';
+import { playerReportsPage, PAGE_MAX } from './admin-player-reports.js';
 
 const DOCS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'data');
 export const TABLE_PAGE = 50;
@@ -131,7 +132,7 @@ export function adminRouter({ rpc, db = null, env = process.env, docsDir = DOCS_
     'GET /api/admin/members?search&sort&limit&offset', 'GET /api/admin/member/:id', 'GET /api/admin/member/:id/timeline?before&before_key&limit&kinds',
     'GET /api/admin/cards?from&to&sort&limit&offset&search', 'GET /api/admin/card/:id', 'GET /api/admin/dungeon?from&to',
     'GET /api/admin/feed?kinds&before&before_key&limit', 'GET /api/admin/hunts?limit&offset', 'GET /api/admin/hunt/:id', 'GET /api/admin/health',
-    'GET /api/admin/reports', 'GET /api/admin/report/:key?<params>', 'GET /api/admin/report/:key.csv?<params>',
+    'GET /api/admin/reports', 'GET /api/admin/player-reports?before&limit', 'GET /api/admin/report/:key?<params>', 'GET /api/admin/report/:key.csv?<params>',
     'GET /api/admin/source', 'GET /api/admin/search?q', 'GET /api/admin/tables', 'GET /api/admin/table/:name?offset&key'] }));
 
   r.get('/source', (req, res) => res.json({ source: env.LOCALDB === '1' ? 'LOCAL' : 'LIVE', login: Boolean(env.STUDIO_PASS) }));
@@ -206,6 +207,19 @@ export function adminRouter({ rpc, db = null, env = process.env, docsDir = DOCS_
   route('/hunt/:id', 'admin_hunt', (q) => ({ p_hunt: int(q.params.id, 'id', 1, Number.MAX_SAFE_INTEGER) }));
   route('/health', 'admin_health', () => ({}));
   route('/reports', 'admin_report_catalog', () => ({}));
+
+  // The player reports with their private screenshots as short signed links (src/admin-player-reports.js).
+  r.get('/player-reports', async (req, res) => {
+    try {
+      if (!db) return res.status(500).json({ error: 'no database client' });
+      const before = int(req.query.before, 'before', 1, Number.MAX_SAFE_INTEGER);
+      const limit = int(req.query.limit, 'limit', 1, PAGE_MAX) ?? 20;
+      return res.json(await playerReportsPage(db, { before, limit }));
+    } catch (e) {
+      if (e instanceof BadRequest) return res.status(400).json({ error: e.message });
+      return res.status(500).json({ error: 'admin route failed' });
+    }
+  });
 
   r.get('/report/:key', async (req, res) => {
     try {

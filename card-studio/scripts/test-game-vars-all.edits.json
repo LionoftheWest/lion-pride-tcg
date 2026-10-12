@@ -1,0 +1,120 @@
+{
+ "claim_daily": [
+  [
+   "sh int := balance_num('daily', 'shards')::int;",
+   "sh int := game_var('daily_shards')::int;"
+  ],
+  [
+   "  cap := balance_num('daily', 'cap')::int;",
+   "  cap := game_var('daily_cap')::int;"
+  ]
+ ],
+ "claim_daily_earn": [
+  [
+   "  cap int := balance_num('daily', 'cap')::int;",
+   "  cap int := game_var('daily_cap')::int;"
+  ],
+  [
+   "then balance_num('daily', 'shards')::int else 0 end;",
+   "then game_var('daily_shards')::int else 0 end;"
+  ]
+ ],
+ "dailies_view": [
+  [
+   "'cap', balance_num('daily', 'cap')::int,",
+   "'cap', game_var('daily_cap')::int,"
+  ],
+  [
+   "'shards', balance_num('daily', 'shards')::int,",
+   "'shards', game_var('daily_shards')::int,"
+  ]
+ ],
+ "dungeon_after_kill": [
+  [
+   "if random() < balance_num('dungeon_rewards', 'loot_chance') then",
+   "if random() < game_var('dungeon_loot_chance') then"
+  ],
+  [
+   "st := dungeon_loot(st, balance_num('dungeon_rewards', 'shards_kill')::int, v_card);",
+   "st := dungeon_loot(st, game_dungeon_shards(balance_num('dungeon_rewards', 'shards_kill')::int), v_card);"
+  ],
+  [
+   "st := dungeon_loot(st, balance_num('dungeon_rewards', 'floor_shards')::int * p_run.floor, null);",
+   "st := dungeon_loot(st, game_dungeon_shards(balance_num('dungeon_rewards', 'floor_shards')::int * p_run.floor), null);"
+  ],
+  [
+   "'shards', case when v_loot then balance_num('dungeon_rewards', 'shards_kill')::int else 0 end,",
+   "'shards', case when v_loot then game_dungeon_shards(balance_num('dungeon_rewards', 'shards_kill')::int) else 0 end,"
+  ]
+ ],
+ "dungeon_enter": [
+  [
+   "v_sh := round(balance_num('dungeon_rewards', 'chest', 'shards', (t - 1)::text) + balance_num('dungeon_rewards', 'chest', 'shards_per_floor') * p_floor);",
+   "v_sh := dungeon_chest_shards(t, p_floor);"
+  ]
+ ],
+ "dungeon_choose": [
+  [
+   "v_sh := round(balance_num('dungeon_rewards', 'chest', 'shards', (v_t - 1)::text) + balance_num('dungeon_rewards', 'chest', 'shards_per_floor') * r.floor);",
+   "v_sh := dungeon_chest_shards(v_t, r.floor);"
+  ]
+ ],
+ "dungeon_offers": [
+  [
+   "amt := case when k = 'shards' then balance_num('dungeon_rewards', 'offers', 'shards', (t - 1)::text) + balance_num('dungeon_rewards', 'offers', 'shards_per_floor') * p_floor\n",
+   "amt := case when k = 'shards' then game_dungeon_shards(balance_num('dungeon_rewards', 'offers', 'shards', (t - 1)::text) + balance_num('dungeon_rewards', 'offers', 'shards_per_floor') * p_floor)\n"
+  ]
+ ],
+ "dungeon_loot": [
+  [
+   "cap int := balance_num('dungeon_rewards', 'run_shards_cap')::int;",
+   "cap int := game_dungeon_shards(balance_num('dungeon_rewards', 'run_shards_cap')::int);"
+  ]
+ ],
+ "dungeon_view_core": [
+  [
+   "'cap', balance_num('dungeon_rewards', 'run_shards_cap')::int,",
+   "'cap', game_dungeon_shards(balance_num('dungeon_rewards', 'run_shards_cap')::int),"
+  ]
+ ],
+ "settle_hunt": [
+  [
+   "  v_cfg := balance_get('hunt_prizes');\n  v_base := balance_num('hunt_prizes', 'base')::int;\n",
+   "  v_cfg := game_hunt_prizes();   -- balance hunt_prizes x the live hunt_prize_mult (game_vars_all.sql)\n  v_base := (v_cfg->>'base')::int;\n"
+  ]
+ ],
+ "shop_today": [
+  [
+   "'pack_price', (cfg->>'pack_price')::int,",
+   "'pack_price', game_shop_price((cfg->>'pack_price')::int),"
+  ],
+  [
+   "'stat_reset_price', (cfg->>'stat_reset_price')::int,",
+   "'stat_reset_price', game_shop_price((cfg->>'stat_reset_price')::int),"
+  ],
+  [
+   "'rarity', s.rarity, 'price', s.price,",
+   "'rarity', s.rarity, 'price', game_shop_price(s.price),"
+  ]
+ ],
+ "buy_shop_item": [
+  [
+   "    v_price := (cfg->>'pack_price')::int * p_qty;",
+   "    v_price := game_shop_price((cfg->>'pack_price')::int) * p_qty;"
+  ],
+  [
+   "    if not found then return jsonb_build_object('ok', false, 'error', 'no_slot'); end if;\n",
+   "    if not found then return jsonb_build_object('ok', false, 'error', 'no_slot'); end if;\n    s.price := game_shop_price(s.price);   -- the stock price x the live shop_price_mult (game_vars_all.sql)\n"
+  ],
+  [
+   "      v_price := (cfg->>'stat_reset_price')::int;",
+   "      v_price := game_shop_price((cfg->>'stat_reset_price')::int);"
+  ]
+ ],
+ "bot_game_vars": [
+  [
+   "'pulls', game_pull_rates(p_now), 'at', p_now);",
+   "'pulls', game_pull_rates(p_now), 'hunt_prizes', game_hunt_prizes(p_now), 'at', p_now);"
+  ]
+ ]
+}

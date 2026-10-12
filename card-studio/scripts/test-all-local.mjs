@@ -18,11 +18,12 @@ const tests = readdirSync(join(root, 'scripts')).filter((f) => /^test-.*\.mjs$/.
 const ARGS = {
   'test-hunt-loop-caps.mjs': ['--live'],
   'test-hunt-squad-done.mjs': ['live'],
-  'test-hunt-schedule-mt.mjs': ['../tcg-bot/supabase/hunt_schedule_mt.sql'],
   'test-prune-old-rows.mjs': ['../tcg-bot/supabase/logs_sql.sql'], // the current prune_old_rows (365 days, 2026-10-07)
   'test-events.mjs': ['../tcg-bot/supabase/events.sql'], // a fresh local copy has no pg_cron jobs: the file makes event-tick inside the test
   'test-achievement-tracks.mjs': ['--live'],
   'test-adventure-dailies.mjs': ['--live'],
+  // f3_one_combat_math.sql replaced combat_squad (SUPERSEDED.md lists card_decisions.sql): the decisions on the CURRENT functions
+  'test-card-decisions.mjs': ['--old'],
 };
 // One-time acceptance tests of a data conversion: they expect the state BEFORE it ran, so they fail
 // afterwards by design (on live too). Skipped, with the reason.

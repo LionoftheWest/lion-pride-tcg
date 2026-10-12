@@ -32,5 +32,7 @@ CREATE TRIGGER balance_check BEFORE INSERT OR DELETE OR UPDATE ON public.balance
 CREATE TRIGGER balance_check_boss_counters BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_boss_counters();
 CREATE TRIGGER balance_check_dungeon BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_dungeon();
 CREATE TRIGGER balance_check_economy BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_economy();
+CREATE TRIGGER balance_check_report_shots BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_report_shots();
+CREATE TRIGGER balance_check_runs BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_runs();
 CREATE TRIGGER balance_check_settings BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_settings();
 CREATE TRIGGER balance_log_write AFTER INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_log_write();

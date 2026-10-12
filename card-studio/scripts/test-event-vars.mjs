@@ -75,6 +75,13 @@ const body = String.raw`do $t$
 declare bad text := ''; T timestamptz := date_trunc('second', now()); r jsonb; r2 jsonb; ev bigint; ev2 bigint; ev3 bigint; up timestamptz; v record;
   base jsonb; rates jsonb; s numeric; tp bigint; tp_before jsonb; e1 bigint; e2 bigint; e2_before jsonb; n int; j record;
 begin
+  -- hunt_calendar.sql (F-1 PR 2) added the kind hunt, which this file does not know (it adds the kinds check again): the Hunt
+  -- events leave inside this test (rolled back).
+  if ${live ? 'false' : 'true'} and to_regclass('public.event_repeats') is not null then
+    execute 'update hunts set event_id = null where event_id is not null';
+    delete from event_log where event_id in (select id from events where kind = 'hunt');
+    delete from events where kind = 'hunt';
+  end if;
   ${live ? '-- the database as it is' : 'execute $m$' + mig + '$m$;\n  execute $m$' + mig + '$m$; -- two times: idempotent'}
   perform set_config('balance.by', '${A}', true);
   -- No other event may change a variable during the test.

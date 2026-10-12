@@ -20,10 +20,12 @@ create table public.dungeon_runs (
   cards bigint[] default '{}'::bigint[] not null,
   started_at timestamp with time zone default now() not null,
   ended_at timestamp with time zone,
-  mode text default 'daily'::text not null
+  mode text default 'daily'::text not null,
+  attempt smallint default 1 not null
 );
 
 -- @constraints
+alter table public.dungeon_runs add constraint dungeon_runs_attempt_check CHECK (((attempt >= 1) AND (attempt <= 100)));
 alter table public.dungeon_runs add constraint dungeon_runs_ended_by_check CHECK ((ended_by = ANY (ARRAY['cleared'::text, 'fell'::text, 'retreat'::text, 'abandoned'::text])));
 alter table public.dungeon_runs add constraint dungeon_runs_mode_check CHECK ((mode = ANY (ARRAY['daily'::text, 'gauntlet'::text])));
 alter table public.dungeon_runs add constraint dungeon_runs_pkey PRIMARY KEY (id);
@@ -32,8 +34,8 @@ alter table public.dungeon_runs add constraint dungeon_runs_shards_check CHECK (
 alter table public.dungeon_runs add constraint dungeon_runs_status_check CHECK ((status = ANY (ARRAY['active'::text, 'over'::text])));
 
 -- @indexes
+CREATE UNIQUE INDEX dungeon_runs_attempt ON public.dungeon_runs USING btree (player_id, day, mode, attempt);
 CREATE INDEX dungeon_runs_board ON public.dungeon_runs USING btree (day, floor DESC, room DESC, turns);
-CREATE UNIQUE INDEX dungeon_runs_one_a_day_mode ON public.dungeon_runs USING btree (player_id, day, mode);
 CREATE UNIQUE INDEX dungeon_runs_pkey ON public.dungeon_runs USING btree (id);
 
 -- @rls
