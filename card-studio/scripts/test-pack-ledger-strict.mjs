@@ -20,6 +20,10 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 const OLD = process.argv.includes('--old');
 const mig = OLD ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/pack_ledger_strict.sql', import.meta.url)), 'utf8').replace(/notify pgrst[^\n]*\n/g, '');
 if (mig.includes('$m$') || mig.includes('$c$')) throw new Error('the migration must not contain $m$ or $c$');
+// perf_five_slow_calls.sql (2026-10-11) made a newer ach_track_values, so the guard of this file refuses it (the file is in SUPERSEDED.md).
+// The test puts the text that this file itself makes in place first (inside the rolled-back block), so the file runs as it did.
+const ATV = OLD ? '' : mig.match(/CREATE OR REPLACE FUNCTION public\.ach_track_values\(p_player text\)[\s\S]*?end \$function\$;/)?.[0];
+if (!OLD && !ATV) throw new Error('the ach_track_values text of pack_ledger_strict.sql was not found');
 
 // Function mutations (fixtures.mjs) and constraint mutations (dropped inside the block).
 const FN_MUT = {
@@ -46,7 +50,7 @@ const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; ok boolean; g bigint; gid bigint; n int; h bigint; c bigint; cs bigint[]; x text; y text;
   d date := (now() at time zone 'America/Denver')::date;
 begin
-  ${mig ? 'execute $m$' + mig + '$m$;' : '-- the database as it is'}
+  ${mig ? 'execute $m$' + ATV + '$m$;\n  execute $m$' + mig + '$m$;' : '-- the database as it is'}
   ${MUT}
   perform set_config('tcg.skip_welcome', 'on', true);
   update settings set value = '1'::jsonb where key = 'pack_earn_multiplier';

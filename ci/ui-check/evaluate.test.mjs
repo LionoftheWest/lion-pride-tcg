@@ -215,7 +215,7 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
   assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');
   assert.deepEqual(plan(new Set(['UI-58'])), { screens: [], uncovered: ['UI-58'] });
-  assert.deepEqual(plan(new Set(['UI-47'])).screens.sort(), ['dungeon-fight', 'dungeon-fight-pick', 'dungeon-fight2']);   // the 3 UI-47 specs
+  assert.deepEqual(plan(new Set(['UI-47'])).screens.sort(), ['dungeon-fight', 'dungeon-fight-1s4', 'dungeon-fight-2s3', 'dungeon-fight-pick', 'dungeon-fight2']);   // the 5 UI-47 specs
   assert.deepEqual(plan(new Set(['UI-50'])).screens.sort(), ['dungeon-over', 'dungeon-over-revealed']);   // the 2 UI-50 specs
   assert.deepEqual(plan(new Set(['UI-49'])).screens.filter((x) => x.startsWith('dungeon-')).sort(), ['dungeon-chest', 'dungeon-chest-flipped', 'dungeon-chest-open', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-path', 'dungeon-rest', 'dungeon-retreat']);   // the 8 UI-49 specs
   assert.deepEqual(plan(new Set()).screens, []);
