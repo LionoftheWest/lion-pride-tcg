@@ -214,7 +214,11 @@ begin
   if b5 is null or (select status from hunts where id = b4) <> 'expired' or (select tier from hunts where id = b5) <> 'Heroic' then raise exception 'RESULT:FAIL 4: boss 5 (%)', bad; end if;
   perform event_tick(T + interval '15 hours');
   if (select count(*) from hunt_events where hunt_id = b5 and kind = 'nudge') <> 0 then bad := bad || '4: a 3-hour Hunt got a nudge; '; end if;
-  if not daily_raid_board('2030-01-02 13:00+00') or not exists (select 1 from hunt_events where hunt_id = b5 and kind = 'leaderboard') then bad := bad || '4: the daily raid board did not post for the event boss; '; end if;
+  -- (the call first: in one OR expression the EXISTS subquery can run before the function writes its row)
+  if not daily_raid_board('2030-01-02 13:00+00') then bad := bad || '4: the daily raid board returned false; '; end if;
+  if not exists (select 1 from hunt_events where hunt_id = b5 and kind = 'leaderboard') then
+    bad := bad || format('4: the daily raid board did not post for the event boss (active %s, b5 %s); ', (select jsonb_agg(id) from hunts where status = 'active'), b5);
+  end if;
 
   -- 5. A repeat (a modifier template): the next 4 weeks; a change to one week; a cancelled week; idempotent.
   insert into event_templates (name, kind, description, vars, default_length, created_by) values ('tst_hc_tpl', 'modifier', 'x', '{"pack_earn_mult": 2}', interval '1 day', '${A}') returning id into tpl;

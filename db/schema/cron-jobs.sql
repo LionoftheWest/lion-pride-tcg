@@ -5,12 +5,9 @@
 select cron.schedule('dungeon-prepare-day', '2 6,7 * * *', $cron$select public.dungeon_prepare_day()$cron$);
 select cron.schedule('dungeon-prizes', '5 * * * *', $cron$select public.dungeon_prize_tick()$cron$);
 select cron.schedule('dungeon-settle-stale', '20 6 * * *', $cron$select public.dungeon_settle_stale()$cron$);
+select cron.schedule('event-repeats', '17 * * * *', $cron$select public.event_repeats_fill();$cron$);
 select cron.schedule('event-tick', '* * * * *', $cron$select public.event_tick();$cron$);
 select cron.schedule('expire-auctions', '*/10 * * * *', $cron$select expire_auctions();$cron$);
 select cron.schedule('hunt-close-due', '*/10 * * * *', $cron$select close_due_hunts();$cron$);
-select cron.schedule('hunt-close-mt-mdt', '0 23 * * 1', $cron$select weekly_boss_tick('close');$cron$);
-select cron.schedule('hunt-close-mt-mst', '0 0 * * 2', $cron$select weekly_boss_tick('close');$cron$);
-select cron.schedule('hunt-nudge-mt', '0 17,18 * * 1', $cron$select weekly_boss_tick('nudge');$cron$);
-select cron.schedule('hunt-spawn-mt', '0 21,22 * * 4', $cron$select weekly_boss_tick('spawn');$cron$);
 select cron.schedule('prune-old-rows', '30 10 * * *', $cron$select prune_old_rows();$cron$);
 select cron.schedule('raid-board-mt', '0 12,13 * * *', $cron$select daily_raid_board();$cron$);
