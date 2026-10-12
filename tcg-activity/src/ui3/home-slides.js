@@ -111,9 +111,9 @@ export function fitSlide(box) {
   const sb = box?.querySelector('.u3-hm-sb');
   const info = sb?.querySelector('.u3-hm-sinfo');
   if (!sb || !info) return;
-  sb.classList.remove('is-line', 'is-tight', 'is-tighter', 'is-nolabel', 'is-noart');
+  sb.classList.remove('is-line', 'is-tight', 'is-tighter', 'is-nolabel', 'is-noart', 'is-noline', 'is-norl');
   const over = () => info.scrollHeight > info.clientHeight + 1 || info.scrollWidth > info.clientWidth + 1 || sb.scrollHeight > sb.clientHeight + 1 || sb.scrollWidth > sb.clientWidth + 1;
   if (topMode(document.body.dataset.size, false) === 'line') sb.classList.add('is-line');
   if (over() && !sb.classList.contains('is-line')) sb.classList.add('is-line');
-  if (over()) { sb.classList.add('is-tight'); if (over()) { sb.classList.add('is-tighter'); if (over()) { sb.classList.add('is-nolabel'); if (over()) sb.classList.add('is-noart'); } } }   // the last steps: the line without its label (aria-label keeps it), then the text column alone (a decorative picture gives its width back)
+  if (over()) { sb.classList.add('is-tight'); if (over()) { sb.classList.add('is-tighter'); if (over()) { sb.classList.add('is-nolabel'); if (over()) { sb.classList.add('is-noart'); if (over()) { sb.classList.add('is-noline'); if (over()) sb.classList.add('is-norl'); } } } } }   // the last steps: the line without its label (aria-label keeps it), then the text column alone (a decorative picture gives its width back), then no Top line: on the smallest phone (375x667) the text still ran over the slide control (Nathan 2026-10-11, "this needs to be fixed")
 }
