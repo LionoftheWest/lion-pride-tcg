@@ -163,7 +163,7 @@ Table. [dungeon] One row per paid board: the Dungeon board of a day or the Gaunt
 
 ### dungeon_runs
 
-Table. [dungeon] One row per run: a member, a game day and a mode (unique). dungeon_start or gauntlet_start writes it, the member actions change state, dungeon_settle ends it. The boards, the views and shard_ledger_reconcile read it.
+Table. [dungeon] One row per run: a member, a game day, a mode and an attempt (unique). dungeon_start or gauntlet_start writes it (one active run at a time, at most game_var dungeon_runs_per_day / gauntlet_runs_per_day runs a day), the member actions change state, dungeon_settle ends it. The boards (the best run of each member), the views and shard_ledger_reconcile read it.
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
@@ -181,12 +181,14 @@ Table. [dungeon] One row per run: a member, a game day and a mode (unique). dung
 | `cards` | bigint[] | not null | `'{}'::bigint[]` | The cards the run paid when it ended (dungeon_settle; empty while active). = its card_ledger 'dungeon_loot' rows (ref dungeon_run, ref_id = this id) for runs ended after card_ledger.sql: shard_ledger_reconcile() checks it. |
 | `started_at` | timestamp with time zone | not null | `now()` | When the run started. |
 | `ended_at` | timestamp with time zone | null |  | When dungeon_settle ended the run (null while active). |
-| `mode` | text | not null | `'daily'::text` | daily (the Dungeon Run) or gauntlet (the weekly Gauntlet), dungeon_runs_mode_check. A member has at most one run of each mode a day. |
+| `mode` | text | not null | `'daily'::text` | daily (the Dungeon Run) or gauntlet (the weekly Gauntlet), dungeon_runs_mode_check. A member has at most game_var dungeon_runs_per_day / gauntlet_runs_per_day runs of each mode a day (1 with no event), numbered by attempt. |
+| `attempt` | smallint | not null | `1` | The run number of the member on that game day and mode: 1, 2, ... (dungeon_start / gauntlet_start: the last attempt + 1). Unique with player_id, day and mode (dungeon_runs_attempt). More than 1 only when game_var dungeon_runs_per_day or gauntlet_runs_per_day is above 1. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Foreign keys: 
   - `dungeon_runs_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
+  - `dungeon_runs_attempt_check`: `CHECK (((attempt >= 1) AND (attempt <= 100)))`
   - `dungeon_runs_ended_by_check`: `CHECK ((ended_by = ANY (ARRAY['cleared'::text, 'fell'::text, 'retreat'::text, 'abandoned'::text])))`
   - `dungeon_runs_mode_check`: `CHECK ((mode = ANY (ARRAY['daily'::text, 'gauntlet'::text])))`
   - `dungeon_runs_shards_check`: `CHECK ((shards >= 0))`
@@ -499,7 +501,7 @@ POST /api/dungeon/auto: plays up to p_max Auto rounds (a useful support, then th
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/dungeon/board, dungeon_view and dungeon_pay: the daily board of a day (default today) ranked by floor, room, turns, end time. Returns a jsonb array with rank, member and depth.
+GET /api/dungeon/board, dungeon_view and dungeon_pay: the daily board of a day (default today): the best run of each member, ranked by floor, room, turns, end time. Returns a jsonb array with rank, member and depth.
 
 <a id="fn-dungeon-card-text-bigint"></a>
 
@@ -839,7 +841,7 @@ Ends every active run of an earlier day as abandoned (dungeon_settle, banked loo
 - Returns: `jsonb`
 - Security definer: no
 
-POST /api/dungeon/start: starts today's daily run with the squad (balance dungeon.squad cards). Checks the flag, adventure_gate, one run a day, the daily rule and the budget (the rule's budget, else balance dungeon.budget; the costs are balance dungeon.cost). Writes dungeon_runs and dungeon_log. Returns ok, run and state.
+POST /api/dungeon/start: starts a daily run with the squad (balance dungeon.squad cards). Checks the flag, adventure_gate, one active run at a time and at most game_var('dungeon_runs_per_day') runs today (else already), the daily rule and the budget (the rule's budget, else balance dungeon.budget; the costs are balance dungeon.cost). Writes dungeon_runs (the next attempt) and dungeon_log. Returns ok, run and state.
 
 <a id="fn-dungeon-support-text-bigint-bigint-integer-text"></a>
 
@@ -959,7 +961,7 @@ Internal helper: picks the seeded squad of a week (3 attackers and 2 supports, d
 - Returns: `jsonb`
 - Security definer: no
 
-POST /api/gauntlet/start: starts today's Gauntlet run with the week's squad. Checks both flags, adventure_gate and one Gauntlet run a day. Writes dungeon_runs (mode gauntlet) and dungeon_log.
+POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks both flags, adventure_gate, one active run at a time and at most game_var('gauntlet_runs_per_day') Gauntlet runs today (else already_gauntlet). Writes dungeon_runs (mode gauntlet, the next attempt) and dungeon_log.
 
 <a id="fn-gauntlet-view-text"></a>
 
@@ -969,7 +971,7 @@ POST /api/gauntlet/start: starts today's Gauntlet run with the week's squad. Che
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad (costs: balance dungeon.cost), the budget (balance gauntlet.budget), today's run, the member's best rank, the rooms, the top 3 and the prizes.
+GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad (costs: balance dungeon.cost), the budget (balance gauntlet.budget), today's newest run (null when it is over and a run is left: runs_left, last_run), the member's best rank, the rooms, the top 3 and the prizes.
 
 <a id="fn-gauntlet-week-date"></a>
 

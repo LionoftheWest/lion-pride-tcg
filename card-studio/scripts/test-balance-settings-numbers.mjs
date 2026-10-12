@@ -155,9 +155,10 @@ begin
 
   -- The golden values of the database BEFORE the file (the old code), on fixed seeds.
   g_rules := dungeon_rules(); g_foes := ${FOES}; g_gen := ${GEN}; g_pool := ${POOL};
-  g_view := dungeon_view('${P}_a');
-  update dungeon_days set rule = bud9 where day = v_day; g_view9 := dungeon_view('${P}_a'); update dungeon_days set rule = every where day = v_day;
-  g_gview := gauntlet_view('${P}_a');
+  -- runs_per_day.sql (F-1 PR 3) added runs_left and last_run to the views; this older file does not know them
+  g_view := dungeon_view('${P}_a') - 'runs_left' - 'last_run';
+  update dungeon_days set rule = bud9 where day = v_day; g_view9 := dungeon_view('${P}_a') - 'runs_left' - 'last_run'; update dungeon_days set rule = every where day = v_day;
+  g_gview := gauntlet_view('${P}_a') - 'runs_left' - 'last_run';
   g_start := pg_temp.start(five, four, golds);
   g_rest := ${REST}; g_after := ${AFTER}; g_loot := ${LOOT}; g_chest := ${CHEST}; g_gates := ${GATES};
 

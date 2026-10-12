@@ -56,10 +56,10 @@ begin
   select value into en from settings where key = 'dungeon';
   update settings set value = value || '{"enabled": true}' where key = 'dungeon';
   for pid in select id from players loop
-    n := n + 1; x := dungeon_view(pid); y := ref_dungeon_view(pid);
+    n := n + 1; x := dungeon_view(pid) - 'runs_left' - 'last_run'; y := ref_dungeon_view(pid);   -- runs_per_day.sql (F-1 PR 3) added runs_left and last_run
     if norm_view(x) is distinct from norm_view(y) then bad := bad + 1; end if;
     if y->'run' is not null and y->'run' <> 'null'::jsonb then withrun := withrun + 1; end if;
-    if dungeon_view_lite(pid) is distinct from (x - 'mine') or (dungeon_view_lite(pid) ? 'mine') then badlite := badlite + 1; end if;
+    if (dungeon_view_lite(pid) - 'runs_left' - 'last_run') is distinct from (x - 'mine') or (dungeon_view_lite(pid) ? 'mine') then badlite := badlite + 1; end if;
     if jsonb_array_length(x->'mine') <> (select count(*) from player_cards where player_id = pid and quantity > 0) then badmine := badmine + 1; end if;
   end loop;
   res := res || jsonb_build_object('case', 'dungeon_view = the old text for ' || n || ' players (' || withrun || ' with a run today)', 'ok', bad = 0 and n > 0, 'bad', bad);

@@ -24,10 +24,10 @@ comment, or when a table or a function is not on these pages.
 |---|---|---|---|---|---|
 | [Cards and trading](cards-and-trading.md) | 19 | 19 (100%) | 184 of 184 (100%) | 74 | 74 (100%) |
 | [Hunt and combat](hunt-and-combat.md) | 14 | 14 (100%) | 151 of 151 (100%) | 74 | 74 (100%) |
-| [Dungeon, Shards and achievements](dungeon-shards-achievements.md) | 12 | 12 (100%) | 82 of 82 (100%) | 76 | 76 (100%) |
-| [Members and platform](members-and-platform.md) | 17 | 17 (100%) | 104 of 104 (100%) | 38 | 38 (100%) |
+| [Dungeon, Shards and achievements](dungeon-shards-achievements.md) | 12 | 12 (100%) | 83 of 83 (100%) | 76 | 76 (100%) |
+| [Members and platform](members-and-platform.md) | 17 | 17 (100%) | 104 of 104 (100%) | 39 | 39 (100%) |
 | [Admin view](admin.md) | 1 | 1 (100%) | 11 of 11 (100%) | 45 | 45 (100%) |
 | [Events](events.md) | 6 | 6 (100%) | 69 of 69 (100%) | 25 | 25 (100%) |
-| **All** | 69 | 69 (100%) | 601 of 601 (100%) | 332 | 332 (100%) |
+| **All** | 69 | 69 (100%) | 602 of 602 (100%) | 333 | 333 (100%) |
 
-[Balance numbers](balance.md): 36 keys with the note, the shape and the current value.
+[Balance numbers](balance.md): 38 keys with the note, the shape and the current value.
