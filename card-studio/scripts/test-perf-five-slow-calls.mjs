@@ -206,10 +206,11 @@ begin
   for pid in select id from players order by id loop
     n := n + 1;
     if card_powers(pid) is distinct from ref_card_powers(pid) then bad_cp := bad_cp + 1; end if;
-    if norm_view(dungeon_view(pid)) is distinct from norm_view(ref_dungeon_view_core(pid, true)) then bad_dv := bad_dv + 1; end if;
-    if dungeon_view(pid) is distinct from ref_dungeon_view_core(pid, true) then raw_dv := raw_dv + 1; end if;
-    if dungeon_view_lite(pid) is distinct from ref_dungeon_view_core(pid, false) then bad_dv := bad_dv + 1; end if;
-    if gauntlet_view(pid) is distinct from ref_gauntlet_view(pid) then bad_gv := bad_gv + 1; end if;
+    -- runs_per_day.sql (F-1 PR 3) added runs_left and last_run to the views (every other key must be the same)
+    if norm_view(dungeon_view(pid) - 'runs_left' - 'last_run') is distinct from norm_view(ref_dungeon_view_core(pid, true)) then bad_dv := bad_dv + 1; end if;
+    if (dungeon_view(pid) - 'runs_left' - 'last_run') is distinct from ref_dungeon_view_core(pid, true) then raw_dv := raw_dv + 1; end if;
+    if (dungeon_view_lite(pid) - 'runs_left' - 'last_run') is distinct from ref_dungeon_view_core(pid, false) then bad_dv := bad_dv + 1; end if;
+    if (gauntlet_view(pid) - 'runs_left' - 'last_run') is distinct from ref_gauntlet_view(pid) then bad_gv := bad_gv + 1; end if;
     if ach_track_values(pid) is distinct from ref_ach_track_values(pid) then bad_av := bad_av + 1; end if;
     if exists (select 1 from dungeon_runs where player_id = pid and day = dungeon_day()) then withrun := withrun + 1; end if;
     if exists (select 1 from player_cards where player_id = pid and quantity > 0 and stat_points is not null and stat_points <> '{}'::jsonb) then withpts := withpts + 1; end if;

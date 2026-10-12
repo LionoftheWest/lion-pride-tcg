@@ -24,11 +24,11 @@ comment, or when a table or a function is not on these pages.
 |---|---|---|---|---|---|
 | [Cards and trading](cards-and-trading.md) | 19 | 19 (100%) | 184 of 184 (100%) | 74 | 74 (100%) |
 | [Hunt and combat](hunt-and-combat.md) | 14 | 14 (100%) | 151 of 151 (100%) | 88 | 88 (100%) |
-| [Dungeon, Shards and achievements](dungeon-shards-achievements.md) | 12 | 12 (100%) | 82 of 82 (100%) | 76 | 76 (100%) |
-| [Members and platform](members-and-platform.md) | 18 | 18 (100%) | 113 of 113 (100%) | 41 | 41 (100%) |
+| [Dungeon, Shards and achievements](dungeon-shards-achievements.md) | 12 | 12 (100%) | 83 of 83 (100%) | 76 | 76 (100%) |
+| [Members and platform](members-and-platform.md) | 18 | 18 (100%) | 113 of 113 (100%) | 42 | 42 (100%) |
 | [Admin view](admin.md) | 1 | 1 (100%) | 11 of 11 (100%) | 49 | 49 (100%) |
 | [Events](events.md) | 6 | 6 (100%) | 69 of 69 (100%) | 25 | 25 (100%) |
 | [Other](other.md) | 3 | 3 (100%) | 17 of 17 (100%) | 2 | 2 (100%) |
-| **All** | 73 | 73 (100%) | 627 of 627 (100%) | 355 | 355 (100%) |
+| **All** | 73 | 73 (100%) | 628 of 628 (100%) | 356 | 356 (100%) |
 
-[Balance numbers](balance.md): 38 keys with the note, the shape and the current value.
+[Balance numbers](balance.md): 40 keys with the note, the shape and the current value.
