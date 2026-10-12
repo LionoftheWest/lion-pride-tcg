@@ -106,14 +106,14 @@ create sequence public.player_effects_id_seq as bigint start 1 increment 1 minva
 grant select on sequence public.player_effects_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.player_effects_id_seq to postgres;
 grant select, update, usage on sequence public.player_effects_id_seq to service_role;
-create sequence public.player_reports_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.player_reports.id;
-grant select on sequence public.player_reports_id_seq to lptcg_backup;
-grant select, update, usage on sequence public.player_reports_id_seq to postgres;
-grant select, update, usage on sequence public.player_reports_id_seq to service_role;
 create sequence public.player_report_shots_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.player_report_shots.id;
 grant select on sequence public.player_report_shots_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.player_report_shots_id_seq to postgres;
 grant select, update, usage on sequence public.player_report_shots_id_seq to service_role;
+create sequence public.player_reports_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.player_reports.id;
+grant select on sequence public.player_reports_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.player_reports_id_seq to postgres;
+grant select, update, usage on sequence public.player_reports_id_seq to service_role;
 create sequence public.profile_log_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.profile_log.id;
 grant select on sequence public.profile_log_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.profile_log_id_seq to postgres;

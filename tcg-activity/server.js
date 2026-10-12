@@ -27,7 +27,6 @@ import { createBalance, ascendCost as costOf, dailyCardCap, publicBalance } from
 import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
 import { ui3Css } from './src/ui3/css-parts.js';
-import { bestSquad } from './src/squad-pick.js';
 import { selectAll } from './src/select-all.js';
 import { rankByName } from './src/name-rank.js';
 import { pickLastHunt, FINISHED } from './src/last-hunt.js';
@@ -914,7 +913,7 @@ app.get('/api/hunt', async (req, res) => {
   }
   const today = mtToday(); // the MT game day (mt_clock.sql)
   // One call (hunt_view.sql) instead of 4: 100 players opening the Hunt at once waited ~6 s.
-  let cards, hpRows, myDamage, round, statCards = null;
+  let cards, hpRows, myDamage, round;
   // The squad of the day, the unlock gate and the boss details do not depend on the view: they run in the same round trip
   // (before, the squad and the gate waited for the view: two database round trips in a row).
   const [{ data: view, error: viewErr }, pw, bossMoves, { data: sqRow }, { data: gate }] = await Promise.all([
@@ -930,7 +929,6 @@ app.get('/api/hunt', async (req, res) => {
   const powers = pw.data || {};
   if (!viewErr && view) {
     cards = view.cards; hpRows = view.hp; myDamage = Number(view.damage) || 0; round = view.round || 0;
-    if (view.stats?.on) statCards = view.stats.cards || {};
   } else { // the function is not live yet: the 4 separate calls
     const [{ data: c }, { data: hp }, { data: contrib }, { data: cstate }] = await Promise.all([
       supabase.from('player_cards')
@@ -945,14 +943,14 @@ app.get('/api/hunt', async (req, res) => {
   const hpMap = new Map((hpRows || []).map((h) => [h.card_id, h]));
   const roster = (cards || []).map((row) => {
     const c = row.card; const type = c?.subject?.type;
-    const sc = statCards?.[String(c?.id)];
     const pc = powers[String(c?.id)] || {};
     const power = pc.cp ?? 0; // card_combat (SQL)
     const st = hpMap.get(c?.id);
     const maxHp = st?.max_hp ?? pc.hp ?? 0; // card_combat hp (SQL), the fight's own row once it fought
     return {
       id: c?.id, name: c?.name, rarity: c?.rarity, image_url: toProxyImg(c?.image_url),
-      ascension: row.ascension || 0, power, critAdd: sc?.crit || 0,
+      ascension: row.ascension || 0, power,
+      crit: view?.crit?.[String(c?.id)] ?? null, // the crit chance on this boss (hunt_view crit = combat_crit_chance, SQL)
       type, matches: matchesWeak(hunt.weak_points, { type, rarity: c?.rarity, season: c?.season }),
       hp: st ? st.hp_remaining : maxHp, max_hp: maxHp, downed: st?.downed || false,
       used: !!st, // this card is committed for today (counts toward the daily cap)
@@ -1042,32 +1040,27 @@ app.get('/api/hunt/autopick', async (req, res) => {
   if (!FEATURE_HUNT) return res.json({ ids: [] });
   const hunt = await activeHunt();
   if (!hunt) return res.json({ ids: [] });
-  const cap = dailyCardCap(bal()); // balance daily_card_cap (= hunt_attack, /api/hunt dailyCap)
-  // The squad with the highest team CP the member can field TODAY (src/squad-pick.js): no card
-  // knocked out today, the daily limit of new cards, the stat points, matchups and synergy.
-  const [{ data }, { data: view }, pw] = await Promise.all([
-    supabase.from('player_cards')
-      .select('ascension, card:cards(id, rarity, season, subject:subjects(type, cp_mod, tag_slugs, ability))')
-      .eq('player_id', me.id),
-    supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: mtToday() }),
-    cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })),
-  ]);
-  if (pw.error) return res.status(500).json({ error: pw.error.message });
-  const powers = pw.data || {};
-  const hp = new Map((view?.hp || []).map((h) => [h.card_id, h]));
-  const stats = view?.stats?.on ? (view.stats.cards || {}) : null;
-  const cards = (data || []).filter((row) => row.card?.id).map((row) => {
-    const c = row.card; const sub = c.subject || {};
-    const st = hp.get(c.id);
-    return { id: c.id, type: sub.type, rarity: c.rarity, season: c.season, slugs: sub.tag_slugs || [],
-      power: powers[String(c.id)]?.cp ?? 0, // card_combat (SQL)
-      used: !!st, downed: !!st?.downed,
-      // a support: its effect, affinity tag and Potency (src/squad-pick.js supportValue)
-      effect: sub.ability?.kind === 'support' ? sub.ability.effect : null, affinity: sub.ability?.affinity || null,
-      potency: Number(powers[String(c.id)]?.potency) || 1 };
-  });
-  const passives = (hunt.passive?.list || (hunt.passive ? [hunt.passive] : [])).map((p) => p.kind);
-  res.json({ ids: bestSquad(cards, { ...hunt, passives }, { cap }) });
+  // The squad with the highest team value the member can field TODAY: no card knocked out today, the daily limit of new
+  // cards (balance daily_card_cap), the stat points, matchups and synergy. F-3: the search and the value are SQL
+  // (hunt_autopick, the fight's own calculation combat_squad_value); the Activity does no combat math.
+  const { data, error } = await supabase.rpc('hunt_autopick', { p_player: String(me.id), p_hunt: hunt.id });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ids: (data || []).map(Number) });
+});
+
+// Team CP and the synergy chips of a squad on the squad screen (hunt_squad_value: the fight's own calculation). The client
+// asks once for each squad it shows (debounced, cached by the card ids): ?cards=1,2,3.
+app.get('/api/hunt/squad-value', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!FEATURE_HUNT) return res.status(403).json({ error: 'hunt disabled' });
+  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  const hunt = await activeHunt();
+  if (!hunt) return res.status(400).json({ error: 'no_hunt' });
+  const cards = [...new Set(String(req.query.cards || '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, dailyCardCap(bal()));
+  const { data, error } = await supabase.rpc('hunt_squad_value', { p_player: String(me.id), p_hunt: hunt.id, p_cards: cards });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // The live attack feed: every recent attack on the active boss (who, damage, card).

@@ -23,7 +23,7 @@ The triggers on `balance` check each change:
 
 ## Keys
 
-[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
+[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
 
 <a id="key-achievement-rewards"></a>
 
@@ -319,6 +319,30 @@ Shape: `object { full_art: array(5) of number, gold: array(5) of number, illustr
     8,
     11
   ]
+}
+```
+
+<a id="key-autopick"></a>
+
+### autopick
+
+The Hunt auto-pick (hunt_autopick). Two supports: the second one counts x repeat_x when it has the same effect as the first, x same_role_x when both keep the squad alive (sustain) or both add damage; effect_x weighs an effect (cleanse helps only against a debuff). candidates: at most this many attackers enter the search (the strongest by their best possible value; the cards that fought today always enter). The fight numbers (synergy, weakness, armored, affinity) come from combat, boss_passives and support.
+
+Shape: `object { candidates: number, effect_x: object { cleanse: number }, repeat_x: number, same_role_x: number, sustain: array(3) of string }`
+
+```json
+{
+  "sustain": [
+    "heal",
+    "shield",
+    "weaken"
+  ],
+  "effect_x": {
+    "cleanse": 0.6
+  },
+  "repeat_x": 0.5,
+  "candidates": 30,
+  "same_role_x": 0.85
 }
 ```
 
@@ -1308,6 +1332,22 @@ Shape: `object { event: number, full_art: number, gold: number, illustrated_rare
 }
 ```
 
+<a id="key-report-shots"></a>
+
+### report_shots
+
+The private screenshots of a player report (player_report_shots, bucket report-shots). keep_days = the days a screenshot is kept (report_shots_expired; the Activity removes the file and the row). per_report = the most screenshots on one report, 1 to 9 (reserve_report_shot). max_bytes = the largest image in bytes, at most 5 MB (reserve_report_shot; the Activity reads at most 5 MB).
+
+Shape: `object { keep_days: number, max_bytes: number, per_report: number }`
+
+```json
+{
+  "keep_days": 90,
+  "max_bytes": 1572864,
+  "per_report": 3
+}
+```
+
 <a id="key-round-cap"></a>
 
 ### round_cap
@@ -1330,22 +1370,6 @@ Shape: `number`
 
 ```json
 1.25
-```
-
-<a id="key-report-shots"></a>
-
-### report_shots
-
-The private screenshots of a player report (player_report_shots, bucket report-shots). keep_days = the days a screenshot is kept (report_shots_expired; the Activity removes the file and the row). per_report = the most screenshots on one report, 1 to 9 (reserve_report_shot). max_bytes = the largest image in bytes, at most 5 MB (reserve_report_shot; the Activity reads at most 5 MB).
-
-Shape: `object { keep_days: number, max_bytes: number, per_report: number }`
-
-```json
-{
-  "keep_days": 90,
-  "max_bytes": 1572864,
-  "per_report": 3
-}
 ```
 
 <a id="key-shards"></a>
