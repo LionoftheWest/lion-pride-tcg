@@ -1,6 +1,9 @@
 # The next update — roadmap
 
-Status: DRAFT for Nathan's review (2026-10-11). Nothing here is built.
+Status (2026-10-12): approved. The three foundations (F-1 events, F-2 sets, F-3 PR 1 combat) are mostly LIVE.
+The live state of each PR, the later decisions (R-08 to R-09 and the findings) and the process: `docs/foundations.md`.
+Next: the player Events page and slide (designs approved), F-2 PR 4 (Season text), F-3 PR 2 and the Combat Lab,
+onboarding, then Community Week #1. Set 2 "Double Team" is in progress (41 cards, art pending).
 
 Nathan's goal: **50 active daily players** in the TCG. The update has five items: daily
 mini-games and events, Community Week, the next card set, a deeper combat system, and the
