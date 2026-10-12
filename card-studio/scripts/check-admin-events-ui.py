@@ -99,7 +99,7 @@ with sync_playwright() as p:
             print(f"{'PASS' if not problems else 'FAIL'} {vname} {name}" + ('' if not problems else '\n    ' + '\n    '.join(problems[:12])))
             errors.clear()
 
-        pg.goto(a.base + '/admin/#/events'); check('list', 'Launch Day event cards')
+        pg.goto(a.base + '/admin/#/events/list'); check('list', 'Launch Day event cards')  # F-1 PR 5: #/events is the month calendar
         if 'locked' in (pg.locator('nav.side').inner_text() if vname == 'desktop' else ''):
             pass
         side = pg.evaluate("() => [...document.querySelectorAll('#side .nav-item.locked')].map(x => x.textContent)")
