@@ -2171,6 +2171,9 @@ function paintHuntV3Stats() {
   const stats = computeSquadStats();
   if (pw) pw.innerHTML = hsPowerHTML(stats);
   if (chips) chips.innerHTML = hsChipsHTML(stats);
+  // the chips change the strip height: fit the stage again (else the passives row stays cut when the answer arrives late)
+  const main = el('main');
+  if (main?.querySelector('.u3-hs-stage')) fitHuntV3(main);
 }
 // D-166 + D-172: the trophy icon button of the Menu grid sits beside the boss title (UI-17 squad select, UI-19 resting) and opens the
 // Leaderboard window on the Hunt tab. The Top 3 box keeps only its label.
@@ -2265,10 +2268,13 @@ function fitHuntExtra(main) {
   stage.classList.remove('is-stack', 'is-nopass', 'is-nomine');
   if (!ex.offsetParent) return;   // compact sizes: CSS hides the blocks
   const cut = () => ex.scrollHeight > ex.clientHeight + 1 || [...ex.querySelectorAll('.u3-hs-mine, .u3-hs-pass, .u3-hs-stat > *, .u3-hs-pass li')].some((n) => n.offsetParent && (n.scrollHeight > n.clientHeight + 1 || n.scrollWidth > n.clientWidth + 1));
-  // too narrow for one row: stack the label above the content; then the passives go; then "Your hunt"
-  if (cut()) stage.classList.add('is-stack');
-  if (cut()) stage.classList.add('is-nopass');
-  if (cut()) stage.classList.add('is-nomine');
+  // the first state that fits: all; the label above the content (too narrow for one row); the passives go (too short; stacking
+  // is not tried first, it makes "Your hunt" taller); the passives go and stack; then "Your hunt" goes too
+  for (const st of [[], ['is-stack'], ['is-nopass'], ['is-nopass', 'is-stack'], ['is-nopass', 'is-nomine']]) {
+    stage.classList.remove('is-stack', 'is-nopass', 'is-nomine');
+    stage.classList.add(...st);
+    if (!cut()) return;
+  }
 }
 // ---- v3: the Hunt with no live boss (UI-19 resting), behind ui_v3 --------------------------------------------------
 // Design repo UI-19/approved (review-2 + review-3, D-61): the boss stage with the last boss, its result directly under the title
