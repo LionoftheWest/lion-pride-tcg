@@ -10,10 +10,9 @@
 --   * ach_track_values reads draw_pool (set_draw_pool: pullable set, its pool rows, in_draw_pool and source 'draw').
 --   * ach_tag_badges groups by the home set (cards.set_id); the season of the badge ('Season N') and its short name ('SN') come from
 --     card_sets.season. The answer has the same columns and, for S1, the same rows (key tag:S1:..., season 'Season 1', short 'S1').
---   * combat_weak(p_weak, p_resist, p_type, p_rarity, p_set, p_tags, p_stack): the 5th argument is the HOME SET id. New weak point kind
+--   * combat_weak: the 5th argument (still named p_season, so that an older file that replaces this function still applies) is now the HOME SET id. New weak point kind
 --     'set' (value = a set id). The kind 'season' keeps working for an older boss: it matches the season text of that set, read from
 --     card_sets (one lookup, only when a weak or resist point has that kind). Nothing writes kind 'season' today (spawn_hunt writes tag).
---     Postgres cannot rename a parameter with CREATE OR REPLACE: the function is dropped and made again (same grants).
 --   * The callers pass the set id: hunt_attack (v_set), hunt_card_crits, hunt_pick_pool, dungeon_attack (info->>'set').
 --   * dungeon_card and dungeon_card_base add the key 'set' to their answer. Every key they had is unchanged.
 -- NOT changed, on purpose (the Activity reads them; a later UI PR moves them): cards.season (the column stays, cards_set_rules keeps it as
@@ -29,8 +28,8 @@ begin
   foreach x slice 1 in array array[
     ['ach_track_values(text)', '8aaca289690d7134433622782013d90e', '14927afaf886b134383f4c72ec987925'],
     ['ach_tag_badges(text)', '56ea953ca6228d9c61103376e9e41225', '7aaa043e73a29381736237fabb96d86c'],
-    ['combat_weak(jsonb, jsonb, text, text, text, text[], integer)', '08f4e644e8adb9f260f27592b8aef9bd', 'c7eaa8a1d735871e39403e70a2b14281'],
-    ['hunt_attack(text, bigint, bigint)', 'db5a58160456e81ee8c66f3200f3a379', '3d3aa72a248f94f6fb8204a02b1d55e0'],
+    ['combat_weak(jsonb, jsonb, text, text, text, text[], integer)', '08f4e644e8adb9f260f27592b8aef9bd', '1069a7ba258f37745c526f4d90c3b497'],
+    ['hunt_attack(text, bigint, bigint)', '8ccc00dfb53f9b0203054a7e00120afb', 'd378bd47d31633c2a0ba4b1e905d895b'],
     ['hunt_card_crits(text, bigint)', '71464d5300b559c26e17e38c635b42e5', '445046bcbee8ea2c4df26651217112b4'],
     ['hunt_pick_pool(text, bigint, bigint[])', '18a0bce68ec6e6a0c106585a0808638f', 'aa33750469536abf8f7ce0c04114427d'],
     ['dungeon_attack(text, bigint, integer, text)', '430e8e22df67fb87044ed5bfc99658ca', 'd2046f0dd57dfaec7612154c25898845'],
@@ -153,9 +152,7 @@ AS $function$
    order by b.sn, b.set_id, b.slug like 'type:%', b.need desc, b.slug;
 $function$;
 
--- combat_weak: the parameter p_season becomes p_set, and Postgres cannot rename a parameter in place: drop, create, grant again.
-drop function if exists public.combat_weak(jsonb, jsonb, text, text, text, text[], integer);
-CREATE OR REPLACE FUNCTION public.combat_weak(p_weak jsonb, p_resist jsonb, p_type text, p_rarity text, p_set text, p_tags text[], p_stack integer)
+CREATE OR REPLACE FUNCTION public.combat_weak(p_weak jsonb, p_resist jsonb, p_type text, p_rarity text, p_season text, p_tags text[], p_stack integer)
  RETURNS jsonb
  LANGUAGE plpgsql
  STABLE
@@ -163,26 +160,24 @@ CREATE OR REPLACE FUNCTION public.combat_weak(p_weak jsonb, p_resist jsonb, p_ty
 AS $function$
 declare v_wm int; v_rm int; v_season text;
 begin
-  -- kind set: the card's home set. kind season (an older boss may hold it): the season of that set, read from card_sets.
+  -- p_season holds the HOME SET id of the card (the name stays: an older file that replaces this function still works). Kind set: that set. kind season (an older boss may hold it): the season of that set, read from card_sets.
   if coalesce(p_weak, '[]'::jsonb) @> '[{"kind": "season"}]' or coalesce(p_resist, '[]'::jsonb) @> '[{"kind": "season"}]' then
-    select 'Season ' || cs.season into v_season from card_sets cs where cs.id = p_set;
+    select 'Season ' || cs.season into v_season from card_sets cs where cs.id = p_season;
   end if;
   select count(*) into v_wm from jsonb_array_elements(coalesce(p_weak, '[]'::jsonb)) w
     where (w->>'kind' = 'type'   and w->>'value' = p_type)
        or (w->>'kind' = 'rarity' and w->>'value' = p_rarity)
-       or (w->>'kind' = 'set'    and w->>'value' = p_set)
+       or (w->>'kind' = 'set'    and w->>'value' = p_season)
        or (w->>'kind' = 'season' and w->>'value' = v_season)
        or (w->>'kind' = 'tag'    and w->>'value' = any(p_tags));
   select count(*) into v_rm from jsonb_array_elements(coalesce(p_resist, '[]'::jsonb)) w
     where (w->>'kind' = 'type'   and w->>'value' = p_type)
        or (w->>'kind' = 'rarity' and w->>'value' = p_rarity)
-       or (w->>'kind' = 'set'    and w->>'value' = p_set)
+       or (w->>'kind' = 'set'    and w->>'value' = p_season)
        or (w->>'kind' = 'season' and w->>'value' = v_season)
        or (w->>'kind' = 'tag'    and w->>'value' = any(p_tags));
   return jsonb_build_object('wm', v_wm, 'rm', v_rm, 'mult', public.combat_weak_mult(v_wm, v_rm, p_stack, public.balance_get('combat')));
 end $function$;
-grant execute on function public.combat_weak(jsonb, jsonb, text, text, text, text[], integer) to postgres;
-grant execute on function public.combat_weak(jsonb, jsonb, text, text, text, text[], integer) to service_role;
 
 CREATE OR REPLACE FUNCTION public.hunt_attack(p_player text, p_hunt bigint, p_card bigint)
  RETURNS jsonb
@@ -503,15 +498,11 @@ begin
     -- Phase 2 below boss_moves.phase2_at HP: the boss gains one more passive (once per hunt).
     v_phase := null;
     if v_hp::numeric / greatest(1, v_hpmax) < balance_num('boss_moves', 'phase2_at') and not coalesce((v_passive->>'phase2')::boolean, false) then
-      select k into v_extra from unnest(array['armored','shrouded','flaming','volatile','regenerating','thorns','frenzied']) k
+      select k into v_extra from unnest(passives_for('phase2')) k
         where k <> all(v_plist) order by random() limit 1;
       update hunts set passive = coalesce(passive, '{}'::jsonb) || jsonb_build_object('phase2', true,
           'list', coalesce(passive->'list', '[]'::jsonb) || case when v_extra is null then '[]'::jsonb
-            else jsonb_build_array(jsonb_build_object('kind', v_extra, 'label', case v_extra
-              when 'armored' then 'Armored: melee attackers deal less' when 'shrouded' then 'Shrouded: attacks miss more often'
-              when 'flaming' then 'Flaming: burns the attacking card' when 'volatile' then 'Volatile: counterattacks hit harder'
-              when 'regenerating' then 'Regenerating: heals a little every turn' when 'thorns' then 'Thorns: part of your damage comes back to your card'
-              else 'Frenzied: hits harder as it loses HP' end)) end)
+            else jsonb_build_array(jsonb_build_object('kind', v_extra, 'label', passive_label(v_extra))) end)
         where id = p_hunt;
       v_phase := coalesce(v_extra, 'phase2');
     elsif (v_hp + v_dmg)::numeric / greatest(1, v_hpmax) >= balance_num('boss_moves', 'rage_at') and v_hp::numeric / greatest(1, v_hpmax) < balance_num('boss_moves', 'rage_at') then

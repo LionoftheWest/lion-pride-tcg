@@ -104,7 +104,7 @@ begin
   -- achievement tag badges (ach_tag_badges) of the member with the most cards.
   select player_id into top from player_cards group by player_id order by count(*) desc, player_id limit 1;
   select jsonb_agg(to_jsonb(b) order by b.key) into badges_before from ach_tag_badges(top) b;
-  select count(*) into weak_before from cards c where (combat_weak('[{"kind": "season", "value": "Season 1"}]', '[]', null, null, c.season, '{}', 1)->>'wm')::int = 1;
+  select count(*) into weak_before from cards c where (combat_weak('[{"kind": "season", "value": "Season 1"}]', '[]', null, null, c.set_id, '{}', 1)->>'wm')::int = 1;
   ${mig && !LIVE ? 'execute $m$' + mig + '$m$;' : '-- the database as it is'}
   ${OLD ? '' : `select jsonb_agg(jsonb_build_object('id', c.id, 'set_id', c.set_id, 'code', s.code, 'n', c.set_number, 'season', c.season) order by c.id) into after
     from cards c join card_sets s on s.id = c.set_id;`}
@@ -123,7 +123,7 @@ ${kase('a second run of the file changes no set, number or season', `
 ${kase('D-102/D-103 S1 = Origins, code ORI, season 1; every existing card keeps season Season 1; Hunt weak points and tag badges unchanged', `
     ${got('D-102/D-103 S1 = Origins, code ORI, season 1; every existing card keeps season Season 1; Hunt weak points and tag badges unchanged', `(select name = 'Origins' and code = 'ORI' and season = 1 from card_sets where id = 'S1')
       and not exists (select 1 from cards where season is distinct from 'Season 1')
-      and (select count(*) from cards c where (combat_weak('[{"kind": "season", "value": "Season 1"}]', '[]', null, null, c.season, '{}', 1)->>'wm')::int = 1) = weak_before
+      and (select count(*) from cards c where (combat_weak('[{"kind": "season", "value": "Season 1"}]', '[]', null, null, c.set_id, '{}', 1)->>'wm')::int = 1) = weak_before
       and weak_before = (select count(*) from cards)
       and (select jsonb_agg(to_jsonb(b) order by b.key) from ach_tag_badges(top) b) is not distinct from badges_before
       and jsonb_array_length(coalesce(badges_before, '[]')) > 0`, ", 'weak_before', weak_before, 'member', top")}`)}
