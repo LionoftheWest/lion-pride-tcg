@@ -227,7 +227,7 @@ The build session will not publish anything until the owner authenticates the
 ## 11. The Card Portal is the single edit surface
 
 The Card Portal is the Card Studio web app at `card-studio` (`src/server.js`,
-`public/app.js`, `public/index.html`). It pushes to Supabase through
+`public/admin/cards.js`: the Cards section of the Admin page, `/admin/#/cards`, since F-2). It pushes to Supabase through
 `src/push.js`.
 
 Rule: every field that appears in the Card Information view must be editable in
