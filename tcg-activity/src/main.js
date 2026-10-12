@@ -375,7 +375,7 @@ async function main() {
   refreshCollectionBadge({ profile: true }).catch(() => {});
   show('home');
   initHelp();
-  if (flags.reports) initReport();
+  if (flags.reports) initReport({ balance: flags.balance, sdkPlatform: () => sdkRef?.platform || '', upload: apiUpload }); // UI-40: the device facts and the screenshots
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
   if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); startAvatarFx({ badgeOf, reduce: reduceEffects }); initLeaderboardWindow({ api, user: () => meUser, avatarHTML, nameBadge, openMember }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
@@ -524,6 +524,20 @@ const apiPost = (path, body) =>
     headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
     body: JSON.stringify(body),
   }).then((r) => r.json());
+
+// One raw upload (UI-40 screenshots: POST /api/feedback/:id/shot takes the image as the body). XHR, for the upload progress.
+// Resolves { status, body } (status 0 = no answer); it never rejects.
+const apiUpload = (path, blob, type, onProgress) => new Promise((resolve) => {
+  const x = new XMLHttpRequest();
+  x.open('POST', path);
+  x.setRequestHeader('authorization', `Bearer ${token}`);
+  x.setRequestHeader('content-type', type);
+  x.timeout = 60000;
+  if (onProgress) x.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+  x.onload = () => { let body = null; try { body = JSON.parse(x.responseText); } catch { /* not JSON */ } resolve({ status: x.status, body }); };
+  x.onerror = x.ontimeout = x.onabort = () => resolve({ status: 0, body: null });
+  x.send(blob);
+});
 
 // ---- Live streams (stay open for the whole session) ------------------------
 
