@@ -77,6 +77,8 @@ const cases = [
   ['POST', '/', { event: ev }, 'admin_event_save', { p_event: ev, p_expected_updated_at: null, p_actor: 'studio:nathan', p_reason: null }],
   ['POST', '/', { event: { id: 42, title: 'Halloween 2' }, expected_updated_at: T, reason: 'typo' }, 'admin_event_save',
     { p_event: { id: 42, title: 'Halloween 2' }, p_expected_updated_at: T, p_actor: 'studio:nathan', p_reason: 'typo' }],
+  ['POST', '/', { event: { id: 42, vars: { pull_rare_mult: 2 }, theme: { name: 'Rare rush' } }, expected_updated_at: T }, 'admin_event_save',   // event_vars.sql: vars and theme
+    { p_event: { id: 42, vars: { pull_rare_mult: 2 }, theme: { name: 'Rare rush' } }, p_expected_updated_at: T, p_actor: 'studio:nathan', p_reason: null }],
   ['POST', '/42/schedule', { expected_updated_at: T }, 'admin_event_schedule', { p_id: 42, p_expected_updated_at: T, p_actor: 'studio:nathan', p_on: true }],
   ['POST', '/42/schedule', { expected_updated_at: T, on: false }, 'admin_event_schedule', { p_id: 42, p_expected_updated_at: T, p_actor: 'studio:nathan', p_on: false }],
   ['POST', '/42/cancel', { expected_updated_at: T, reason: 'wrong date' }, 'admin_event_cancel', { p_id: 42, p_expected_updated_at: T, p_actor: 'studio:nathan', p_reason: 'wrong date' }],
