@@ -28,6 +28,12 @@ const bt = read('balance_table.sql');
 const btSpawn = bt.slice(bt.indexOf('CREATE OR REPLACE FUNCTION "public"."spawn_hunt"'), bt.indexOf('end $$;', bt.indexOf('CREATE OR REPLACE FUNCTION "public"."spawn_hunt"')) + 7);
 for (const s of [src, btSpawn]) if (s.includes('$m$') || s.includes('$b$') || s.includes('$mq$')) throw new Error('a migration text contains $m$, $b$ or $mq$');
 if (!btSpawn.startsWith('CREATE')) throw new Error('balance_table.sql: spawn_hunt not found');
+// set_pools.sql (2026-10-11) made a newer spawn_hunt (draw_pool), so the guard of this file refuses it (the file is in
+// SUPERSEDED.md). The block puts the spawn_hunt that this file itself makes in place first (rolled back), so the file runs
+// as it did. The same fix as test-pack-ledger-strict.mjs / test-ledger-reasons.mjs.
+const ownAt = src.indexOf('CREATE OR REPLACE FUNCTION public.spawn_hunt(');
+const OWN = ownAt < 0 ? '' : src.slice(ownAt, src.indexOf('end $function$;', ownAt) + 'end $function$;'.length);
+if (!OWN) throw new Error('effect_start_spawn_settle.sql: its spawn_hunt text was not found');
 
 // Mutations: 'file' changes the migration text (the guard is opened for the mutated md5); 'fn' changes a live
 // function after the migration ran (settle_hunt is not in this file, but S2 depends on its once-only guard).
@@ -51,7 +57,7 @@ const body = (mig, mut = '') => String.raw`do $t$
 declare res jsonb := '[]'; h bigint; hn bigint; atk bigint[]; r jsonb; r2 jsonb; i int; n int; ok boolean; a numeric; b numeric;
   e1 bigint; e2 bigint; m1 text; m2 text; v_ranks jsonb; v_packs int;
 begin
-  ${mig ? `execute $m$${mig}$m$;` : '-- the database as it is'}
+  ${mig ? `execute $m$${OWN}$m$;\n  execute $m$${mig}$m$;` : '-- the database as it is'}
   ${mut}
   perform set_config('tcg.skip_welcome', 'on', true);
   insert into players (id, username) values ('${P}_a', 'tst esp a'), ('${P}_b', 'tst esp b'), ('${P}_c', 'tst esp c');

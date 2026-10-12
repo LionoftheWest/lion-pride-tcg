@@ -19,6 +19,8 @@ if (process.env.LOCALDB === '1') {
   const env = Object.fromEntries(readFileSync(file, 'utf8').split(/\r?\n/).map((l) => l.match(/^([A-Z_]+)=(.*)$/)).filter(Boolean).map((m) => [m[1], m[2].trim().replace(/^["']|["']$/g, '')]));
   for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'PGMETA_URL']) if (!env[k]) throw new Error(`localdb-preload: ${k} missing in ${file}`);
   const API = env.SUPABASE_URL.replace(/\/+$/, ''), KEY = env.SUPABASE_SERVICE_ROLE_KEY, META = env.PGMETA_URL.replace(/\/+$/, '');
+  // The base URL that receives the requests: src/storage-url.js builds the public storage addresses from it.
+  globalThis.__LOCALDB_API = API;
   const realFetch = globalThis.fetch;
   const LIVE_HOST = /(^|\.)supabase\.(co|com|in)$/i;
   const SQL = /^https:\/\/api\.supabase\.com\/v1\/projects\/[^/]+\/database\/query$/;

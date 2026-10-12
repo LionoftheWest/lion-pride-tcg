@@ -44,6 +44,9 @@ const body = (mig) => String.raw`do $t$
 declare res jsonb := '[]'; got jsonb; r jsonb; ok boolean; n int; n2 int; T timestamptz := date_trunc('second', now()); card bigint; card2 bigint;
   ev bigint; ev2 bigint; ev3 bigint; ev4 bigint; ev5 bigint; ev6 bigint; up timestamptz; g bigint; hb bigint; cnt jsonb; cnt2 jsonb; lid bigint; cfg jsonb;
   launch_before int;
+  -- E12: the local copy gets no pg_cron jobs from the live dump, so a re-run of events.sql in this block creates the
+  -- 10-minute job; live already has the job (every minute since event_vars.sql) and events.sql leaves it alone.
+  had_tick boolean := to_regclass('cron.job') is not null and exists (select 1 from cron.job where jobname = 'event-tick');
 begin
   ${mig ? `drop table if exists event_payouts, event_log, events cascade;
   alter table gift_claims drop column if exists event_id cascade;   -- cascade: the gift_claims_event_link trigger (live since 2026-10-07)
@@ -324,7 +327,8 @@ begin
            and not has_function_privilege('anon', p.oid, 'execute') and not has_function_privilege('authenticated', p.oid, 'execute') and has_function_privilege('service_role', p.oid, 'execute'))) into got
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and (p.proname like 'event\_%' or p.proname like 'admin\_event%' or p.proname in ('events_touch', 'gift_claims_event_link'));
-  res := res || jsonb_build_object('case', 'E12 the 21 functions: invoker, search_path public, a comment, no API execute, service_role execute', 'ok', got = '[21, 21]'::jsonb, 'got', got);
+  -- at least the 21 functions of events.sql (event_vars.sql adds more event_* and admin_event* functions): every one locked down
+  res := res || jsonb_build_object('case', 'E12 the 21 functions: invoker, search_path public, a comment, no API execute, service_role execute', 'ok', (got->>0)::int >= 21 and got->0 = got->1, 'got', got);
   ok := true;
   foreach cnt in array array['"anon"'::jsonb, '"authenticated"'::jsonb] loop
     perform set_config('role', cnt #>> '{}', true);
@@ -334,8 +338,9 @@ begin
     perform set_config('role', 'postgres', true);
   end loop;
   res := res || jsonb_build_object('case', 'E12 anon and authenticated: admin_events, event_tick and the events table are refused', 'ok', ok);
-  res := res || jsonb_build_object('case', 'E12 the pg_cron job event-tick every 10 minutes', 'ok',
-    exists (select 1 from cron.job where jobname = 'event-tick' and schedule = '*/10 * * * *' and command = 'select public.event_tick();'));
+  res := res || jsonb_build_object('case', 'E12 the pg_cron job event-tick every 10 minutes (every minute once event_vars.sql made event_vars)', 'ok',
+    exists (select 1 from cron.job where jobname = 'event-tick' and command = 'select public.event_tick();'
+             and schedule = case when to_regclass('public.event_vars') is null or not had_tick then '*/10 * * * *' else '* * * * *' end));
   raise exception 'RESULTS %', res;
 end $t$;`;
 

@@ -9,7 +9,7 @@ The read only functions of the Admin view in the card studio (admin_read.sql, /a
 
 Tables (1): [admin_actions](#table-admin-actions)
 
-Functions (41): [admin_active_days(date,date)](#fn-admin-active-days-date-date), [admin_balance_set(text,text,text[],jsonb,jsonb,text,bigint)](#fn-admin-balance-set-text-text-text-jsonb-jsonb-text-bigint), [admin_card(bigint)](#fn-admin-card-bigint), [admin_cards(date,date,text,integer,integer,text)](#fn-admin-cards-date-date-text-integer-integer-text), [admin_check_pulls(jsonb)](#fn-admin-check-pulls-jsonb), [admin_dungeon(date,date)](#fn-admin-dungeon-date-date), [admin_economy(date,date,text)](#fn-admin-economy-date-date-text), [admin_event(bigint)](#fn-admin-event-bigint), [admin_event_cancel(bigint,timestamp with time zone,text,text)](#fn-admin-event-cancel-bigint-timestamp-with-time-zone-text-text), [admin_event_end_now(bigint,timestamp with time zone,text,text)](#fn-admin-event-end-now-bigint-timestamp-with-time-zone-text-text), [admin_event_preview(bigint)](#fn-admin-event-preview-bigint), [admin_event_preview_draft(jsonb)](#fn-admin-event-preview-draft-jsonb), [admin_event_save(jsonb,timestamp with time zone,text,text)](#fn-admin-event-save-jsonb-timestamp-with-time-zone-text-text), [admin_event_schedule(bigint,timestamp with time zone,text,boolean)](#fn-admin-event-schedule-bigint-timestamp-with-time-zone-text-boolean), [admin_event_status(bigint,timestamp with time zone,text,text,text)](#fn-admin-event-status-bigint-timestamp-with-time-zone-text-text-text), [admin_events()](#fn-admin-events), [admin_feed(text[],timestamp with time zone,integer,text)](#fn-admin-feed-text-timestamp-with-time-zone-integer-text), [admin_feed_kinds()](#fn-admin-feed-kinds), [admin_growth(date,date)](#fn-admin-growth-date-date), [admin_health()](#fn-admin-health), [admin_hunt(bigint)](#fn-admin-hunt-bigint), [admin_hunts(integer,integer)](#fn-admin-hunts-integer-integer), [admin_is_member_list(text,text[],jsonb)](#fn-admin-is-member-list-text-text-jsonb), [admin_log_action(text,text,text,text,jsonb,jsonb,text,text,bigint)](#fn-admin-log-action-text-text-text-text-jsonb-jsonb-text-text-bigint), [admin_member(text)](#fn-admin-member-text), [admin_member_card(text,text,bigint,integer,integer,text,bigint)](#fn-admin-member-card-text-text-bigint-integer-integer-text-bigint), [admin_member_packs(text,text,integer,integer,text,bigint)](#fn-admin-member-packs-text-text-integer-integer-text-bigint), [admin_member_shards(text,text,integer,integer,text,bigint)](#fn-admin-member-shards-text-text-integer-integer-text-bigint), [admin_member_timeline(text,timestamp with time zone,integer,text,text[])](#fn-admin-member-timeline-text-timestamp-with-time-zone-integer-text-text), [admin_members(text,text,integer,integer)](#fn-admin-members-text-text-integer-integer), [admin_overview(date,date)](#fn-admin-overview-date-date), [admin_period(date,date,integer)](#fn-admin-period-date-date-integer), [admin_report(text,jsonb)](#fn-admin-report-text-jsonb), [admin_report_catalog()](#fn-admin-report-catalog), [admin_setting_member(text,text,text[],text,boolean,text,bigint)](#fn-admin-setting-member-text-text-text-text-boolean-text-bigint), [admin_setting_set(text,text,text[],jsonb,jsonb,text,bigint)](#fn-admin-setting-set-text-text-text-jsonb-jsonb-text-bigint), [admin_stale(text,jsonb,jsonb)](#fn-admin-stale-text-jsonb-jsonb), [admin_timeline_kinds()](#fn-admin-timeline-kinds), [admin_undo(text,bigint,text)](#fn-admin-undo-text-bigint-text), [admin_write_begin(text,text)](#fn-admin-write-begin-text-text), [gift_admin_log()](#fn-gift-admin-log)
+Functions (49): [admin_active_days(date,date)](#fn-admin-active-days-date-date), [admin_balance_set(text,text,text[],jsonb,jsonb,text,bigint)](#fn-admin-balance-set-text-text-text-jsonb-jsonb-text-bigint), [admin_card(bigint)](#fn-admin-card-bigint), [admin_cards(date,date,text,integer,integer,text)](#fn-admin-cards-date-date-text-integer-integer-text), [admin_check_pulls(jsonb)](#fn-admin-check-pulls-jsonb), [admin_dungeon(date,date)](#fn-admin-dungeon-date-date), [admin_economy(date,date,text)](#fn-admin-economy-date-date-text), [admin_event(bigint)](#fn-admin-event-bigint), [admin_event_cancel(bigint,timestamp with time zone,text,text)](#fn-admin-event-cancel-bigint-timestamp-with-time-zone-text-text), [admin_event_end_now(bigint,timestamp with time zone,text,text)](#fn-admin-event-end-now-bigint-timestamp-with-time-zone-text-text), [admin_event_from_template(bigint,text,timestamp with time zone,text,text,text)](#fn-admin-event-from-template-bigint-text-timestamp-with-time-zone-text-text-text), [admin_event_preview(bigint)](#fn-admin-event-preview-bigint), [admin_event_preview_draft(jsonb)](#fn-admin-event-preview-draft-jsonb), [admin_event_save(jsonb,timestamp with time zone,text,text)](#fn-admin-event-save-jsonb-timestamp-with-time-zone-text-text), [admin_event_schedule(bigint,timestamp with time zone,text,boolean)](#fn-admin-event-schedule-bigint-timestamp-with-time-zone-text-boolean), [admin_event_status(bigint,timestamp with time zone,text,text,text)](#fn-admin-event-status-bigint-timestamp-with-time-zone-text-text-text), [admin_event_template_from_event(bigint,text,text,text)](#fn-admin-event-template-from-event-bigint-text-text-text), [admin_event_template_save(jsonb,timestamp with time zone,text,text)](#fn-admin-event-template-save-jsonb-timestamp-with-time-zone-text-text), [admin_event_templates()](#fn-admin-event-templates), [admin_events()](#fn-admin-events), [admin_feed(text[],timestamp with time zone,integer,text)](#fn-admin-feed-text-timestamp-with-time-zone-integer-text), [admin_feed_kinds()](#fn-admin-feed-kinds), [admin_growth(date,date)](#fn-admin-growth-date-date), [admin_health()](#fn-admin-health), [admin_hunt(bigint)](#fn-admin-hunt-bigint), [admin_hunts(integer,integer)](#fn-admin-hunts-integer-integer), [admin_is_member_list(text,text[],jsonb)](#fn-admin-is-member-list-text-text-jsonb), [admin_log_action(text,text,text,text,jsonb,jsonb,text,text,bigint)](#fn-admin-log-action-text-text-text-text-jsonb-jsonb-text-text-bigint), [admin_member(text)](#fn-admin-member-text), [admin_member_card(text,text,bigint,integer,integer,text,bigint)](#fn-admin-member-card-text-text-bigint-integer-integer-text-bigint), [admin_member_packs(text,text,integer,integer,text,bigint)](#fn-admin-member-packs-text-text-integer-integer-text-bigint), [admin_member_shards(text,text,integer,integer,text,bigint)](#fn-admin-member-shards-text-text-integer-integer-text-bigint), [admin_member_timeline(text,timestamp with time zone,integer,text,text[])](#fn-admin-member-timeline-text-timestamp-with-time-zone-integer-text-text), [admin_members(text,text,integer,integer)](#fn-admin-members-text-text-integer-integer), [admin_overview(date,date)](#fn-admin-overview-date-date), [admin_period(date,date,integer)](#fn-admin-period-date-date-integer), [admin_report(text,jsonb)](#fn-admin-report-text-jsonb), [admin_report_catalog()](#fn-admin-report-catalog), [admin_set_fields(card_sets)](#fn-admin-set-fields-card-sets), [admin_set_include(text,text,text,boolean,text)](#fn-admin-set-include-text-text-text-boolean-text), [admin_set_pool(text,text,bigint[],boolean,text)](#fn-admin-set-pool-text-text-bigint-boolean-text), [admin_set_save(text,jsonb,jsonb,text)](#fn-admin-set-save-text-jsonb-jsonb-text), [admin_setting_member(text,text,text[],text,boolean,text,bigint)](#fn-admin-setting-member-text-text-text-text-boolean-text-bigint), [admin_setting_set(text,text,text[],jsonb,jsonb,text,bigint)](#fn-admin-setting-set-text-text-text-jsonb-jsonb-text-bigint), [admin_stale(text,jsonb,jsonb)](#fn-admin-stale-text-jsonb-jsonb), [admin_timeline_kinds()](#fn-admin-timeline-kinds), [admin_undo(text,bigint,text)](#fn-admin-undo-text-bigint-text), [admin_write_begin(text,text)](#fn-admin-write-begin-text-text), [gift_admin_log()](#fn-gift-admin-log)
 
 ## Tables
 
@@ -144,6 +144,16 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 
 [admin] Ends a live event now: the end becomes now and event_step pays the end once. Writes admin_actions and event_log. Service role only.
 
+<a id="fn-admin-event-from-template-bigint-text-timestamp-with-time-zone-text-text-text"></a>
+
+### admin_event_from_template(bigint,text,timestamp with time zone,text,text,text)
+
+- Function: `admin_event_from_template(p_template_id bigint, p_key text, p_starts_at timestamp with time zone, p_actor text, p_title text DEFAULT NULL::text, p_reason text DEFAULT NULL::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] A new draft event from a template (admin_event_save): the key, the start, ends after default_length, title = p_title or the template name, template_id set. A copy: a later change to one does not change the other. Service role only.
+
 <a id="fn-admin-event-preview-bigint"></a>
 
 ### admin_event_preview(bigint)
@@ -172,7 +182,7 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 - Returns: `jsonb`
 - Security definer: no
 
-[admin] Saves a new draft (no id) or an edit with an optimistic check (p_expected_updated_at must be the row's updated_at, else stale). Draft and scheduled: all fields (key and kind in a draft only); live: title, description and a later end. Returns the errors of event_row_errors. Writes admin_actions and event_log. Service role only.
+[admin] Saves a new draft (no id) or an edit with an optimistic check (p_expected_updated_at must be the row's updated_at, else stale). Draft and scheduled: all fields (key and kind in a draft only); live: title, description, a later end, vars and theme (never start, kind, audience, rewards, rules). template_id only on a new event. Returns the errors of event_row_errors. Writes admin_actions and event_log. Service role only.
 
 <a id="fn-admin-event-schedule-bigint-timestamp-with-time-zone-text-boolean"></a>
 
@@ -193,6 +203,36 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 - Security definer: no
 
 [admin] The status change of admin_event_schedule and admin_event_cancel: draft to scheduled (a valid row with a future end), scheduled to draft, draft, scheduled or live to cancelled. Optimistic check; writes admin_actions and event_log. Service role only.
+
+<a id="fn-admin-event-template-from-event-bigint-text-text-text"></a>
+
+### admin_event_template_from_event(bigint,text,text,text)
+
+- Function: `admin_event_template_from_event(p_event_id bigint, p_name text, p_actor text, p_reason text DEFAULT NULL::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Save as template: a new template from an event (kind, description, audience, rewards, rules, vars, theme; default_length = its window; source_event_id). Not the launch event. Service role only.
+
+<a id="fn-admin-event-template-save-jsonb-timestamp-with-time-zone-text-text"></a>
+
+### admin_event_template_save(jsonb,timestamp with time zone,text,text)
+
+- Function: `admin_event_template_save(p_template jsonb, p_expected_updated_at timestamp with time zone, p_actor text, p_reason text DEFAULT NULL::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] Saves a new template (no id) or an edit with an optimistic check on updated_at. Returns the errors of event_template_errors. Writes admin_actions. Service role only.
+
+<a id="fn-admin-event-templates"></a>
+
+### admin_event_templates()
+
+- Function: `admin_event_templates()`
+- Returns: `jsonb`
+- Security definer: no
+
+[admin] The event library for the Admin view: every template by name, with the number of events made from it. Service role only.
 
 <a id="fn-admin-events"></a>
 
@@ -383,6 +423,46 @@ Table. [admin] The admin audit log: one row per admin action (who, what, the tar
 - Security definer: no
 
 [admin] The ready-made Admin reports (the one list): key, title, params with their defaults, the columns in CSV order and the sources. admin_report runs them. Service role only.
+
+<a id="fn-admin-set-fields-card-sets"></a>
+
+### admin_set_fields(card_sets)
+
+- Function: `admin_set_fields(p card_sets)`
+- Returns: `jsonb`
+- Security definer: no
+
+The admin fields of a set as jsonb (id, name, code, pack_color, released_at, pullable, sort, season, pack_art_url, cover_card_id): the p_before of admin_set_save.
+
+<a id="fn-admin-set-include-text-text-text-boolean-text"></a>
+
+### admin_set_include(text,text,text,boolean,text)
+
+- Function: `admin_set_include(p_actor text, p_set text, p_included text, p_add boolean, p_reason text DEFAULT NULL::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+Admin: include a whole set in the pool of a set, or exclude it. A cycle is refused. Logs set_include / set_exclude in admin_actions.
+
+<a id="fn-admin-set-pool-text-text-bigint-boolean-text"></a>
+
+### admin_set_pool(text,text,bigint[],boolean,text)
+
+- Function: `admin_set_pool(p_actor text, p_set text, p_cards bigint[], p_add boolean, p_reason text DEFAULT NULL::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+Admin: add cards of other sets to the pool of a set, or remove them (1 to 500). Logs set_pool_add / set_pool_remove in admin_actions.
+
+<a id="fn-admin-set-save-text-jsonb-jsonb-text"></a>
+
+### admin_set_save(text,jsonb,jsonb,text)
+
+- Function: `admin_set_save(p_actor text, p_set jsonb, p_before jsonb, p_reason text DEFAULT NULL::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+Admin: create a set (p_before null) or edit one (p_before = admin_set_fields as loaded; LP409 when it changed). Checks every field, refuses to turn off the last pullable set, logs set_create / set_edit in admin_actions.
 
 <a id="fn-admin-setting-member-text-text-text-text-boolean-text-bigint"></a>
 

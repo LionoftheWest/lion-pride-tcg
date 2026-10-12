@@ -25,6 +25,11 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 const live = process.argv.includes('--live');
 let mig = readFileSync(process.env.MIG || fileURLToPath(new URL('../../tcg-bot/supabase/perf_boards_once.sql', import.meta.url)), 'utf8')
   .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
+// perf_five_slow_calls.sql (2026-10-11) made a newer dungeon_view_core and gauntlet_view, so the guard of this file refuses them (the file
+// is in SUPERSEDED.md). The test puts the texts that this file itself makes in place first (inside the rolled-back block, before any
+// mutation), so the file runs as it did on the day it was made and every check below keeps its meaning.
+const OWN = [...mig.matchAll(/create or replace function public\.(?:dungeon_view_core|gauntlet_view)\([\s\S]*?end \$function\$;/g)].map((m) => m[0]);
+if (OWN.length !== 2) throw new Error('the dungeon_view_core and gauntlet_view texts of the migration were not found');
 const MUT = {
   top3: ["where o <= 3),\n    'season_best'", "where o <= 4),\n    'season_best'"],
   twice: ["'top', (select coalesce(jsonb_agg(e order by o), '[]'::jsonb) from jsonb_array_elements(v_board) with ordinality t(e, o) where o <= 3),\n    'prizes'", "'top', gauntlet_board(v_week, 3),\n    'prizes'"],
@@ -117,7 +122,7 @@ begin
     'top', gauntlet_board(v_week, 3),
     'prizes', coalesce(dungeon_prizes_cfg()->'weekly', '[]'::jsonb));
 end $rf$;
-  ${live ? '-- the current functions' : 'execute $m$' + mig + '$m$;'}
+  ${live ? '-- the current functions' : OWN.map((s) => 'execute $m$' + s + '$m$;').join('\n  ') + '\n  execute $m$' + mig + '$m$;'}
   update settings set value = value || '{"enabled": true}' where key in ('dungeon', 'gauntlet');
   perform dungeon_generate(d); perform gauntlet_generate(gauntlet_week(d));
   -- a board of 600 members: distinct floor / room / turns, so the order has no ties

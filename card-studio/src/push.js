@@ -12,7 +12,20 @@ import { artKeyFor, ANIMATED, inDrawPool, needsPeriod } from './rarity.js';
 import { getFrame } from './frames.js';
 import { makeThumbs, gridObject, revealObject } from './thumbs.js';
 import { getArtist } from './artists.js';
+import { publicUrl } from './storage-url.js';
 import { slotDetails, subjectType, CARD_TYPES, cardSetId } from './cardstore.js';
+
+/**
+ * F-2: a push never moves a card to another set as a side effect. The live row keeps its home set unless the
+ * card editor's "Change home set" action recorded the move (card.setMoveFrom = the old set). Returns null when
+ * the row may be written with setId, else the reason to stop.
+ */
+export function setMoveProblem(card, liveSetId, setId) {
+  if (!liveSetId || liveSetId === setId) return null;
+  if (card.setMoveFrom === liveSetId) return null; // Nathan changed the home set on purpose
+  return `"${card.name}" is in set ${liveSetId} in the game, but its card says ${setId}. A push does not move a card between sets. `
+    + 'To move it (it gets a new number), use "Change home set" on the card page. To add it to another set, add it to the pool of that set.';
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(here, '..');
@@ -64,7 +77,10 @@ export async function pushCard(card, artFor, outDir, onProgress) {
   // subjects.type is NOT NULL (card_decisions.sql): refuse a card with no type before any render or upload.
   const type = subjectType(card);
   if (!type) throw new Error(`"${card.name}" has no type. Pick one of ${CARD_TYPES.join(', ')} in Card Info, save, then push again.`);
-  const setId = cardSetId(card); // before any upload: a bad set id stops the push here
+  const setId = cardSetId(card); // before any upload: no set or a bad set id stops the push here
+  const { data: set, error: sete } = await supabase.from('card_sets').select('id').eq('id', setId).maybeSingle();
+  if (sete) throw new Error(`set ${setId}: ${sete.message}`);
+  if (!set) throw new Error(`set ${setId} does not exist. Create it in the Sets section first.`);
   await ensureBucket();
 
   // Progress is measured in frame-units: each animated tier is FRAMES frames,
@@ -86,6 +102,15 @@ export async function pushCard(card, artFor, outDir, onProgress) {
     .select('id')
     .single();
   if (se) throw new Error(`subject: ${se.message}`);
+
+  // Before any render or upload: the rows that exist, and the set rule (no move as a side effect).
+  const { data: rows, error: re } = await supabase.from('cards').select('id, rarity, set_id').eq('subject_id', subject.id);
+  if (re) throw new Error(`cards: ${re.message}`);
+  const liveRows = new Map((rows || []).map((r) => [r.rarity, r]));
+  for (const r of liveRows.values()) {
+    const why = setMoveProblem(card, r.set_id, setId);
+    if (why) throw new Error(why);
+  }
 
   const results = [];
   for (const rarity of card.finishes) {
@@ -137,14 +162,11 @@ export async function pushCard(card, artFor, outDir, onProgress) {
       if (te) throw new Error(`thumbnail ${rarity}: ${te.message}`);
     }
 
-    const url = `${supabase.storage.from(BUCKET).getPublicUrl(object).data.publicUrl}?v=${Date.now()}`;
+    const url = `${publicUrl(supabase, BUCKET, object)}?v=${Date.now()}`; // the base that received the upload (local or live)
 
-    const { data: existing } = await supabase
-      .from('cards')
-      .select('id')
-      .eq('subject_id', subject.id)
-      .eq('rarity', rarity)
-      .maybeSingle();
+    // One row per subject and rarity (the subject is this card: key = card.id). A reprint in another set is a
+    // set_pool row of that set, not a new row here.
+    const existing = liveRows.get(rarity) || null;
 
     // This tier's own description / event; the draw-pool rule comes from the tier's flags in rarity.js.
     // The set is per card (cardSetId); the database keeps cards.season = 'Season ' + the set's season (card_sets.sql),
@@ -154,15 +176,18 @@ export async function pushCard(card, artFor, outDir, onProgress) {
     // Tradeability is per tier now (det.tradeable): gold never trades, every
     // other tier follows its own portal toggle.
     const tradeable = det.tradeable !== false;
+    // Every write is checked (F-2 item 6): an error stops the push and shows in the push status.
     if (existing) {
-      await supabase
+      const { error: we } = await supabase
         .from('cards')
         .update({ name: card.name, lore: det.lore, artist_credit: artist || null, set_id: setId, event: rowEvent, image_url: url, in_draw_pool: inPool, tradeable, source: 'draw' })
         .eq('id', existing.id);
+      if (we) throw new Error(`card ${rarity}: ${we.message}`);
     } else {
-      await supabase
+      const { error: we } = await supabase
         .from('cards')
         .insert({ subject_id: subject.id, name: card.name, rarity, lore: det.lore, artist_credit: artist || null, set_id: setId, event: rowEvent, image_url: url, in_draw_pool: inPool, tradeable, source: 'draw' });
+      if (we) throw new Error(`card ${rarity}: ${we.message}`);
     }
     results.push({ rarity, url, animated: ANIMATED.has(rarity) });
   }

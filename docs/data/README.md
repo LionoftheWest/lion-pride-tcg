@@ -26,8 +26,9 @@ comment, or when a table or a function is not on these pages.
 | [Hunt and combat](hunt-and-combat.md) | 14 | 14 (100%) | 150 of 150 (100%) | 76 | 76 (100%) |
 | [Dungeon, Shards and achievements](dungeon-shards-achievements.md) | 12 | 12 (100%) | 82 of 82 (100%) | 76 | 76 (100%) |
 | [Members and platform](members-and-platform.md) | 17 | 17 (100%) | 104 of 104 (100%) | 38 | 38 (100%) |
-| [Admin view](admin.md) | 1 | 1 (100%) | 11 of 11 (100%) | 41 | 41 (100%) |
-| [Events](events.md) | 3 | 3 (100%) | 29 of 29 (100%) | 12 | 12 (100%) |
-| **All** | 66 | 66 (100%) | 560 of 560 (100%) | 317 | 317 (100%) |
+| [Admin view](admin.md) | 1 | 1 (100%) | 11 of 11 (100%) | 49 | 49 (100%) |
+| [Events](events.md) | 5 | 5 (100%) | 57 of 57 (100%) | 21 | 21 (100%) |
+| [Other](other.md) | 3 | 3 (100%) | 17 of 17 (100%) | 2 | 2 (100%) |
+| **All** | 71 | 71 (100%) | 605 of 605 (100%) | 336 | 336 (100%) |
 
 [Balance numbers](balance.md): 36 keys with the note, the shape and the current value.

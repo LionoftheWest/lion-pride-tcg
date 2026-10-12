@@ -112,3 +112,70 @@
   .cs-fstage iframe { transform: scale(.6); }
   .range #cs-search { flex: 1 1 100%; }
 }
+
+/* F-2: the cards grouped by set (collapsible sections), the "from S1" pool mark, the Sets of a card, the Sets section */
+.cs-sets { display: grid; gap: 12px; }
+.cs-setsec { border: 1px solid var(--divider); border-radius: 10px; background: var(--page); }
+.cs-sethead { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; border-radius: 10px; }
+.cs-sethead:hover, .cs-sethead:focus-visible { background: var(--raised); outline: none; }
+.cs-chev { display: inline-flex; width: 16px; height: 16px; color: var(--text-2); transform: rotate(-90deg); transition: transform .15s; }
+.cs-chev.open { transform: none; }
+.cs-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; flex: none; background: var(--raised); border: 1px solid var(--edge); }
+.cs-setname { font-weight: 600; font-size: 15px; }
+.cs-setcode { font-size: 12px; color: var(--text-2); }
+.cs-setcount { margin-left: auto; font-size: 12px; color: var(--text-2); }
+.cs-setsec > .cs-grid, .cs-setsec > .cs-gallery { padding: 4px 14px 14px; }
+.cs-from { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--info); border: 1px solid var(--info); border-radius: 4px; padding: 0 5px; vertical-align: middle; }
+.cs-tile.pooled { border-style: dashed; }
+.cs-warn { color: var(--warning); font-size: 13px; }
+.cs-homeset { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.cs-homeset .lbl { font-size: 13px; color: var(--text-2); }
+.cs-setpill { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.cs-setsdd { position: relative; max-width: 520px; }
+.cs-setsdd > summary { list-style: none; cursor: pointer; display: flex; align-items: center; }
+.cs-setsdd > summary::-webkit-details-marker { display: none; }
+.cs-setlist { margin-top: 6px; padding: 8px; background: var(--raised); border: 1px solid var(--edge); border-radius: 8px; display: grid; gap: 2px; }
+.cs-setopt { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 6px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.cs-setopt:hover { background: var(--selected); }
+.cs-setopt input { width: 18px; height: 18px; accent-color: var(--gold); }
+.cs-setopt.locked { cursor: default; color: var(--text-2); }
+.cs-fgrid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.st-thumb { width: 40px; height: 56px; object-fit: cover; border-radius: 4px; display: block; }
+.st-artrow { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.st-art { width: 160px; height: 224px; border-radius: 10px; border: 1px solid var(--divider); background: var(--page); display: flex; align-items: center; justify-content: center; overflow: hidden; text-align: center; padding: 8px; }
+.st-art img { width: 100%; height: 100%; object-fit: contain; }
+.st-artctl { flex: 1 1 280px; min-width: 0; display: grid; gap: 8px; align-content: start; }
+.st-cards { margin-top: 12px; }
+.st-cards .cs-tile { gap: 4px; }
+.st-find { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 12px; max-height: 320px; overflow: auto; margin-top: 8px; }
+.st-findrow.off { color: var(--muted); }
+.st-inclist { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+.st-inclist li { display: flex; align-items: center; gap: 8px; }
+.st-inclist .btn { margin-left: auto; }
+.st-cards .cs-from { align-self: flex-start; margin-left: 0; }
+
+/* F-2 item 7: the pickers (pickers.js): chips, the library dropdown with counts, "+ Add new" */
+.pk { position: relative; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 34px; padding: 4px; background: var(--raised); border: 1px solid var(--edge); border-radius: 8px; }
+.pk-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.pk-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border-radius: 6px; background: var(--selected); border: 1px solid var(--edge); font-size: 12px; }
+.pk-chip.off { border-style: dashed; border-color: var(--warning); }
+.pk-x { display: inline-flex; width: 18px; height: 18px; padding: 2px; border: 0; background: none; color: var(--text-2); cursor: pointer; border-radius: 4px; }
+.pk-x:hover { background: var(--raised); color: var(--text); }
+.pk-none { font-size: 12px; color: var(--muted); padding: 0 4px; }
+.pk-open { min-height: 26px; padding: 0 8px; font-size: 12px; }
+.pk-pop { position: absolute; z-index: 60; top: calc(100% + 4px); left: 0; width: min(420px, 90vw); padding: 8px; background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45); display: grid; gap: 6px; }
+.pk-filter { width: 100%; }
+.pk-list { max-height: 260px; overflow: auto; display: grid; gap: 1px; }
+.pk-group { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 6px 2px; }
+.pk-opt { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--text); font: 13px var(--ui); text-align: left; cursor: pointer; }
+.pk-opt:hover, .pk-opt:focus-visible { background: var(--raised); outline: none; }
+.pk-opt.on { background: var(--selected); }
+.pk-opt.off .pk-label { color: var(--warning); }
+.pk-check { display: inline-flex; width: 16px; height: 16px; color: var(--gold); flex: none; }
+.pk-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.pk-near { font-size: 11px; color: var(--warning); }
+.pk-count { font-size: 11px; color: var(--text-2); white-space: nowrap; }
+.pk-new { justify-content: flex-start; }
+.pk-msg { margin: 0; font-size: 12px; color: var(--text-2); }
+.pk-msg:empty, .pk-empty:empty { display: none; }
+.pk-empty { font-size: 12px; color: var(--muted); padding: 6px; }

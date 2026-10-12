@@ -59,6 +59,8 @@ const ICONS = {
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/>',
   move: '<path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>',
   trash: '<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  left: '<path d="m15 18-6-6 6-6"/>',
+  right: '<path d="m9 18 6-6-6-6"/>',
   eye: '<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>',
 };
 function icon(name, cls = 'ico') {
@@ -251,6 +253,8 @@ const NAV = [
   { id: 'growth', label: 'Growth', icon: 'trend' },
   // Cards = the card editor (cards.js, the old Card Portal, F-2). Card stats = the read-only numbers of each card (admin_cards).
   { id: 'cards', label: 'Cards', icon: 'palette', match: /^\/cards(\/|$)/ },
+  // Sets (sets.js, F-2 PR 3): create a set, pack art, cover card, the set pools. Like Cards, it uses the studio API (/api/sets).
+  { id: 'sets', label: 'Sets', icon: 'package', match: /^\/sets(\/|$)/ },
   { id: 'card-stats', label: 'Card stats', icon: 'layers', match: /^\/(card-stats$|card\/)/ },
   { id: 'hunt', label: 'Hunt', icon: 'swords', match: /^\/hunts?(\/|$)/ },
   { id: 'dungeon', label: 'Dungeon', icon: 'castle' },
@@ -1221,10 +1225,12 @@ const ROUTES = [
   [/^\/card-stats$/, pageCards], [/^\/card\/(\d+)$/, pageCard], [/^\/hunt$/, pageHunts], [/^\/hunt\/(\d+)$/, pageHunt], [/^\/dungeon$/, pageDungeon],
   [/^\/activity$/, pageActivity], [/^\/reports$/, pageReports],
   [/^\/report\/([a-z0-9_]+)$/, pageReports], [/^\/data$/, pageData], [/^\/data\/([a-z0-9_]+)$/, pageData], [/^\/health$/, pageHealth],
-  [/^\/events(?:\/(new|\d+))?(?:\/(edit))?$/, (main, a, q) => import('./events.js').then((m) => m.pageEvents(main, a, q, {
+  [/^\/events(?:\/(new|\d+|list|library))?(?:\/(edit))?$/, (main, a, q) => import('./events.js').then((m) => m.pageEvents(main, a, q, {
     h, icon, api, panel, table, pageHead, fill, when, N, label, kpi, statusTag, errorState, session, render })).catch((e) => main.replaceChildren(errorState(e)))],
   // The card editor (cards.js, F-2). It uses the studio API (/api/cards ...), not /api/admin, so it works with ADMIN_VIEW off.
   [/^\/cards(?:\/([^/]+))?$/, (main, a, q) => import('./cards.js').then((m) => m.pageCardEditor(main, a, q, { h, icon, pageHead, errorState, render }))
+    .catch((e) => main.replaceChildren(errorState(e)))],
+  [/^\/sets(?:\/([^/]+))?$/, (main, a, q) => import('./sets.js').then((m) => m.pageSets(main, a, q, { h, icon, pageHead, errorState, render }))
     .catch((e) => main.replaceChildren(errorState(e)))],
 ];
 // The start section: Overview when the Admin data is on (ADMIN_VIEW=1), else Cards (the card editor works without it).

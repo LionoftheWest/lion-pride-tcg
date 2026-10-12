@@ -23,7 +23,26 @@
 .ev-tier { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 8px; align-items: end; padding: 8px; border: 1px solid var(--divider); border-radius: 8px; }
 .field:disabled, .btn:disabled { opacity: .55; cursor: not-allowed; }
 input[type=datetime-local].field { color-scheme: dark; font-family: var(--mono); }
+/* The variables (event_vars) and the theme in the editor (F-1 PR 5) */
+.ev-vars { display: grid; gap: 8px; margin-bottom: 12px; }
+.ev-var { border: 1px solid var(--divider); border-radius: 8px; padding: 8px 12px; display: grid; gap: 6px; background: var(--raised); }
+.ev-var-head { display: flex; align-items: center; gap: 8px; }
+.ev-var-head .btn { margin-left: auto; width: 28px; height: 28px; }
+.ev-var-body { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 8px; align-items: center; }
+.ev-var-facts { display: flex; gap: 4px 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
+.ev-var-facts b { color: var(--text); font-weight: 600; }
+.ev-var-result { color: var(--success); }
+.ev-var-note { margin: 0; font-size: 12px; color: var(--muted); }
+.ev-var-err { margin: 0; font-size: 13px; color: var(--danger-text); }
+.ev-var-err:empty { display: none; }
+.ev-var input:invalid { border-color: var(--danger); }
+.ev-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.ev-swatch { width: 32px; height: 32px; border-radius: 8px; border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--edge); cursor: pointer; display: grid; place-items: center; color: var(--text-2); background: var(--raised); }
+.ev-swatch.on { box-shadow: 0 0 0 2px var(--gold); }
+.ev-swatch .ico { width: 14px; height: 14px; }
+
 @media (max-width: 760px) {
+  .ev-var-body { grid-template-columns: minmax(0, 1fr); }
   .ev-grid { grid-template-columns: minmax(0, 1fr); }
   .ev-tier { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ev-tier .btn { grid-column: 1 / -1; justify-content: center; }

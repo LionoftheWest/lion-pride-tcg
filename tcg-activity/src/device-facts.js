@@ -51,14 +51,21 @@ function engineOf(ua, os) {
   return '';
 }
 
-/** Desktop app, Mobile app or Browser. The Discord desktop app is Electron with "discord/<version>" in the agent.
- *  The SDK platform says "desktop" for the desktop app AND for discord.com in a browser, so the agent decides there.
- *  The SDK platform "mobile" is the phone or tablet app (Activities do not run in a mobile browser). */
-function appOf(ua, sdkPlatform) {
-  if (/\bdiscord\/[\d.]+|\bElectron\//i.test(ua)) return 'Desktop app';
+/** A phone or tablet agent: iPhone, iPad, iPod, Android, "Mobile", or a Mac agent with touch points (an iPad that asks
+ *  for the desktop site). The iOS and Android Discord apps put "Discord/<version>" in the agent too, so this wins. */
+const mobileAgent = (ua, touch) => /\b(iPhone|iPad|iPod|Android|Mobile)\b/.test(ua) || (/Macintosh/.test(ua) && touch > 1);
+
+/** Desktop app, Mobile app or Browser. The Discord SDK platform decides first when it is given:
+ *  "mobile" is the phone or tablet app (Activities do not run in a mobile browser); "desktop" is the desktop app AND
+ *  discord.com in a browser, so there the agent tells the two apart (Electron with "discord/<version>" is the app).
+ *  Without the SDK value the agent is the fallback, and a mobile signal wins over "Discord/". */
+function appOf(ua, sdkPlatform, touch) {
+  const mobile = mobileAgent(ua, touch);
+  const electron = /\bdiscord\/[\d.]+|\bElectron\//i.test(ua);
   if (sdkPlatform === 'mobile') return 'Mobile app';
-  if (!sdkPlatform && (/\bDiscord\b/.test(ua) || /; wv\)/.test(ua))) return 'Mobile app';   // no SDK answer: the app web views
-  return 'Browser';
+  if (sdkPlatform === 'desktop') return electron && !mobile ? 'Desktop app' : 'Browser';
+  if (mobile) return /\bDiscord\b/i.test(ua) || /; wv\)/.test(ua) ? 'Mobile app' : 'Browser';   // the app web views
+  return electron ? 'Desktop app' : 'Browser';
 }
 
 /** The layout words: the size class (and its modifier) of the UI standard. layout = a class name ('compact-land'),
@@ -91,7 +98,7 @@ export function deviceFacts(o = {}) {
   const w = Number(o.innerWidth) || 0, h = Number(o.innerHeight) || 0;
   const sdk = o.sdkPlatform === 'desktop' || o.sdkPlatform === 'mobile' ? o.sdkPlatform : '';
   const os = osOf(ua, touch, o.platformVersion);
-  const out = { app: appOf(ua, sdk), device: deviceOf(ua, touch, os, w, h), os, engine: engineOf(ua, os), layout: layoutOf(o.layout, w, h), dpr: dprOf(o.devicePixelRatio) };
+  const out = { app: appOf(ua, sdk, touch), device: deviceOf(ua, touch, os, w, h), os, engine: engineOf(ua, os), layout: layoutOf(o.layout, w, h), dpr: dprOf(o.devicePixelRatio) };
   for (const k of Object.keys(out)) if (!out[k]) delete out[k];
   return out;
 }
