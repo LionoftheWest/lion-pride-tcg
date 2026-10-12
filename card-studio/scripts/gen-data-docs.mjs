@@ -38,9 +38,8 @@ const DOMAINS = [
     prefixes: ['card_', 'cards_', 'trade_', 'auction_', 'wish', 'gift_card', 'gift_packs', 'grant_packs', 'stat_', 'roster_', 'collection_power'] },
   { slug: 'hunt-and-combat', title: 'Hunt and combat', about: 'The weekly Hunt (raid boss), squads, the combat rules, the logs of each fight, pranks, boons and the Discord effects.',
     names: ['hunts', 'combat_actions', 'card_plays', 'card_effect_cooldowns', 'player_effects', 'discord_effects', 'effect_primitives',
-      'adventure_gate', 'arm_on_open', 'arm_player_effects', 'card_combat', 'card_effect_active', 'card_element', 'element_aliases', 'element_of', 'card_max_hp', 'close_due_hunts', 'close_hunt', 'close_weekly_boss', 'daily_raid_board', 'deployable_power', 'effect_preview', 'effect_preview_card', 'lock_hunt_squad',
-      'next_hunt_close', 'next_hunt_spawn', 'nudge_hunt', 'play_card_effect', 'play_card_effect_choice', 'refund_card_play', 'settle_hunt', 'spawn_hunt', 'spawn_weekly_boss', 'take_player_effect', 'use_effect_charge',
-      'weekly_boss_tick'],
+      'adventure_gate', 'arm_on_open', 'arm_player_effects', 'card_combat', 'card_effect_active', 'card_element', 'element_aliases', 'element_of', 'card_max_hp', 'close_due_hunts', 'close_hunt', 'daily_raid_board', 'deployable_power', 'effect_preview', 'effect_preview_card', 'lock_hunt_squad',
+      'next_hunt_close', 'next_hunt_spawn', 'nudge_hunt', 'play_card_effect', 'play_card_effect_choice', 'refund_card_play', 'settle_hunt', 'spawn_hunt', 'spawn_weekly_boss', 'take_player_effect', 'use_effect_charge'],
     prefixes: ['hunt_', 'combat_'] },
   { slug: 'dungeon-shards-achievements', title: 'Dungeon, Shards and achievements', about: 'The daily Dungeon, the weekly Gauntlet, the Shards and the Shop, the achievement tracks.',
     names: ['shard_ledger', 'grant_shards', 'buy_shop_item', 'claim_achievement', 'claim_achievement_tiers', 'give_shards_gift_all'],
@@ -54,8 +53,8 @@ const DOMAINS = [
     prefixes: ['balance_', 'ledger_'] },
   { slug: 'admin', title: 'Admin view', about: 'The read only functions of the Admin view in the card studio (admin_read.sql, /api/admin/*): metrics, the economy, growth, members and their history, cards, Hunts, data health and reports. Only the service role can call them. Also the admin audit log (admin_actions, admin_log_action, the gift_admin_log trigger).',
     names: ['gift_admin_log'], prefixes: ['admin_'] },
-  { slug: 'events', title: 'Events', about: 'The Events system (events.sql): the events with their audience, rewards and rules, the change log, the payouts, the pg_cron job event-tick that starts, pays and ends them through the bell gifts (gift_claims.event_id). The game variables (event_vars.sql): event_vars, game_var, game_vars, game_pull_rates, and the event library event_templates. The Admin view functions (admin_event*) are on the Admin page.',
-    names: ['events', 'events_touch', 'events_vars_check', 'gift_claims_event_link', 'game_var', 'game_vars', 'game_pull_rates'], prefixes: ['event_'] },
+  { slug: 'events', title: 'Events', about: 'The Events system (events.sql): the events with their audience, rewards and rules, the change log, the payouts, the pg_cron job event-tick that starts, pays and ends them through the bell gifts (gift_claims.event_id). The game variables (event_vars.sql): event_vars, game_var, game_vars, game_pull_rates, and the event library event_templates. The Hunt as a calendar event and the repeats (hunt_calendar.sql): event_repeats, event_repeats_fill, event_hunt_step, events_hunt_sync. The Admin view functions (admin_event*) are on the Admin page.',
+    names: ['events', 'events_touch', 'events_vars_check', 'events_hunt_sync', 'gift_claims_event_link', 'game_var', 'game_vars', 'game_pull_rates'], prefixes: ['event_'] },
 ];
 const OTHER = { slug: 'other', title: 'Other', about: 'Tables and functions that the domain map in gen-data-docs.mjs does not place yet. Add each one to a domain.', names: [], prefixes: [] };
 const domainOf = (name) => DOMAINS.find((d) => d.names.includes(name)) || DOMAINS.find((d) => d.prefixes.some((p) => name.startsWith(p))) || OTHER;
