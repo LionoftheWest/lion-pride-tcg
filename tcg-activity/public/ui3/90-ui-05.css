@@ -79,6 +79,7 @@ body[data-input="coarse"] .u3-hm-labels .u3-seg__item { min-height: var(--hit); 
 .u3-hm-sb .u3-hm-sline { display: none; }
 .u3-hm-sb.is-line .u3-hm-sboard { display: none; }
 .u3-hm-sb.is-line .u3-hm-sline { display: inline-flex; }
+.u3-hm-sb.is-noline .u3-hm-sline, .u3-hm-sb.is-noline .u3-hm-sboard { display: none; }   /* the last fit step (fitSlide): the text must not run over the slide control */
 .u3-hm-sinfo { gap: var(--sp-3); }
 body[data-size="compact-land"] .u3-hm-sinfo, body[data-size="compact-port"] .u3-hm-sinfo { gap: var(--sp-2); }
 body[data-size="compact-land"] .u3-hm-sb > .u3-hm-sinfo { padding: var(--sp-2) var(--sp-3); }
