@@ -15,6 +15,7 @@
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
+import { beforeGameVarsAll } from './f1-live-before.mjs';   // game_vars_all.sql (F-1 PR 6): the text this file's guard accepts
 import { fileURLToPath } from 'node:url';
 import { mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
@@ -156,6 +157,7 @@ ${kase('the three reconciles stay ok and report reason_check = true (the foreign
     ${done('the three reconciles stay ok and report reason_check = true (the foreign keys)', `(r->'pack'->>'ok')::boolean and (r->'card'->>'ok')::boolean and (r->'shard'->>'ok')::boolean
       and (r->'pack'->>'reason_check')::boolean and (r->'card'->>'reason_check')::boolean and (r->'shard'->>'reason_check')::boolean`, ", 'r', r")}`)}
 ${kase('a re-run of pack_ledger_strict.sql, card_ledger.sql and shard_ledger_strict.sql keeps the new state', `
+    execute $o$${beforeGameVarsAll(['buy_shop_item', 'settle_hunt'])}$o$;
     execute $o$${DAILY[0]}$o$;
     execute $o$${DAILY[1]}$o$;
     execute $o$${ATV}$o$;

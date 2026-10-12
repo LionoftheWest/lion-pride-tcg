@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BOT_KEYS, balanceInt, createBalance } from './balance.js';
 
-const ROWS = { daily: { chat_bonus_at: 25 }, hunt_prizes: { base: 1, ranks: [7] } };
+const ROWS = { daily: { chat_bonus_at: 25 } };
 
 test('the bot balance cache reads once per minute, keeps the last good values, and fails closed with none', async () => {
   let calls = 0; let fail = false; let t = 0;

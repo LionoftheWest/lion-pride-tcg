@@ -3,6 +3,7 @@
 // the balance base with every live event (game_var); the bot never calculates it again.
 //   vars.pack_earn_mult   the earned-pack factor (store.ts: 0 = earning paused)
 //   pulls                 the pull rates with the live pull_rare_mult applied (draw.ts pullTable checks them)
+//   hunt_prizes           the Hunt prizes with the live hunt_prize_mult (game_hunt_prizes): the prizes settle_hunt pays (hunt-notify.ts)
 // One cache, 30 s (docs/foundations.md F-1 item 7): a live event change reaches the next pack within 30 s.
 // The same fail-closed rule as balance.ts: a failed refresh keeps the last good values; with no values at all the call
 // throws, so a pack never opens with invented rates.
@@ -14,11 +15,12 @@ export interface GameVars {
   vars: Record<string, number>;
   pulls: PullTable;
   packEarnMult: number;
+  huntPrizes: unknown; // checked by hunt-notify.ts huntPrizes() where it is used
 }
 
 /** Checks the answer of bot_game_vars (fail closed: an error, never a guess). */
 export function parseGameVars(v: unknown): GameVars {
-  const o = v as { vars?: Record<string, unknown>; pulls?: unknown } | null;
+  const o = v as { vars?: Record<string, unknown>; pulls?: unknown; hunt_prizes?: unknown } | null;
   if (!o || typeof o.vars !== 'object' || o.vars === null) throw new Error('game vars: no vars');
   const vars: Record<string, number> = {};
   for (const [k, x] of Object.entries(o.vars)) {
@@ -28,7 +30,8 @@ export function parseGameVars(v: unknown): GameVars {
   }
   const mult = vars.pack_earn_mult;
   if (mult === undefined || mult < 0) throw new Error('game vars: pack_earn_mult is missing or below 0');
-  return { vars, pulls: pullTable(o.pulls), packEarnMult: mult };
+  if (o.hunt_prizes === undefined || o.hunt_prizes === null) throw new Error('game vars: no hunt_prizes');
+  return { vars, pulls: pullTable(o.pulls), packEarnMult: mult, huntPrizes: o.hunt_prizes };
 }
 
 export function createGameVars(

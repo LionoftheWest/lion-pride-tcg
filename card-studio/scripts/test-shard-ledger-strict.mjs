@@ -13,6 +13,7 @@
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
+import { beforeGameVarsAll } from './f1-live-before.mjs';   // game_vars_all.sql (F-1 PR 6): the text this file's guard accepts
 import { fileURLToPath } from 'node:url';
 import { mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
@@ -58,7 +59,7 @@ const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; ok boolean; g bigint; n int; c bigint; c2 bigint; run bigint; run2 bigint; pid bigint; x text;
   d date := (now() at time zone 'America/Denver')::date;
 begin
-  ${mig ? 'execute $m$' + DAILY[0] + '$m$;\n  execute $m$' + DAILY[1] + '$m$;\n  execute $m$' + mig + '$m$;' : '-- the database as it is'}
+  ${mig ? 'execute $m$' + beforeGameVarsAll(['buy_shop_item']) + '$m$;\n  execute $m$' + DAILY[0] + '$m$;\n  execute $m$' + DAILY[1] + '$m$;\n  execute $m$' + mig + '$m$;' : '-- the database as it is'}
   ${MUT}
   perform set_config('tcg.skip_welcome', 'on', true);
   update settings set value = '1'::jsonb where key = 'pack_earn_multiplier';

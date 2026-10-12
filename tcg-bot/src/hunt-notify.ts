@@ -7,7 +7,7 @@ import { renderRaidBoard, renderSquadSummary } from './raid-cards.js';
 import { buf, art } from './playing-posts.js';
 import { botWork } from './bot-work.js';
 import { outboxDone } from './outbox.js';
-import { getBalance } from './balance.js';
+import { getGameVars } from './game-vars.js';
 import { utcToday } from './store.js';
 
 // Poll the hunt_events outbox and post each event to the notifications channel. The game
@@ -38,8 +38,8 @@ function topPaid(settle: { paid?: Array<{ player_id: string; packs: number }> } 
     .map((p) => `<@${p.player_id}> (${p.packs})`).join(', ');
 }
 
-// The Raid prizes: balance hunt_prizes (balance_economy.sql), the same key settle_hunt pays from. The same prizes
-// when the boss falls and when it escapes.
+// The Raid prizes: game_hunt_prizes() (balance hunt_prizes x the live hunt_prize_mult, game_vars_all.sql), the same prizes
+// settle_hunt pays, read through the one game-variable cache (game-vars.ts). The same prizes when the boss falls and when it escapes.
 export interface HuntPrizes { base: number; ranks: number[] }
 export function huntPrizes(v: unknown): HuntPrizes {
   const p = v as { base?: unknown; ranks?: unknown } | null;
@@ -190,8 +190,8 @@ async function drain(client: Client): Promise<void> {
       .order('id', { ascending: true })
       .limit(BATCH);
     for (const ev of events ?? []) {
-      // The result posts list the prizes (balance hunt_prizes); a balance error stops here and the event waits.
-      const prizes = ev.kind === 'defeat' || ev.kind === 'expired' ? huntPrizes((await getBalance()).hunt_prizes) : undefined;
+      // The result posts list the prizes (game_hunt_prizes); a read error stops here and the event waits.
+      const prizes = ev.kind === 'defeat' || ev.kind === 'expired' ? huntPrizes((await getGameVars()).huntPrizes) : undefined;
       const post = huntPost(ev as never, prizes);
       let sent = true; // an event with no post has nothing to send: mark it done
       if (post) {
