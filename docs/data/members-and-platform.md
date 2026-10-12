@@ -7,9 +7,9 @@ Members, the Dailies, the bell notes, reports, the app logs (visits, screen view
 
 ## Contents
 
-Tables (17): [app_sessions](#table-app-sessions), [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [page_views](#table-page-views), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [profile_log](#table-profile-log), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [settings_log](#table-settings-log), [tutorial_steps](#table-tutorial-steps), [voice_minutes](#table-voice-minutes)
+Tables (18): [app_sessions](#table-app-sessions), [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [page_views](#table-page-views), [player_report_shots](#table-player-report-shots), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [profile_log](#table-profile-log), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [settings_log](#table-settings-log), [tutorial_steps](#table-tutorial-steps), [voice_minutes](#table-voice-minutes)
 
-Functions (39): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [app_session_touch(text,jsonb)](#fn-app-session-touch-text-jsonb), [balance_check()](#fn-balance-check), [balance_check_boss_counters()](#fn-balance-check-boss-counters), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_check_runs()](#fn-balance-check-runs), [balance_check_settings()](#fn-balance-check-settings), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [game_day(timestamp with time zone)](#fn-game-day-timestamp-with-time-zone), [game_day_start(date)](#fn-game-day-start-date), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [guild_joined(jsonb)](#fn-guild-joined-jsonb), [guild_left(text,timestamp with time zone)](#fn-guild-left-text-timestamp-with-time-zone), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [profile_log_write()](#fn-profile-log-write), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [rls_auto_enable()](#fn-rls-auto-enable), [settings_log_write()](#fn-settings-log-write), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
+Functions (41): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [app_session_touch(text,jsonb)](#fn-app-session-touch-text-jsonb), [balance_check()](#fn-balance-check), [balance_check_boss_counters()](#fn-balance-check-boss-counters), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_check_report_shots()](#fn-balance-check-report-shots), [balance_check_settings()](#fn-balance-check-settings), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [game_day(timestamp with time zone)](#fn-game-day-timestamp-with-time-zone), [game_day_start(date)](#fn-game-day-start-date), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [guild_joined(jsonb)](#fn-guild-joined-jsonb), [guild_left(text,timestamp with time zone)](#fn-guild-left-text-timestamp-with-time-zone), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [profile_log_write()](#fn-profile-log-write), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [report_shots_expired(integer)](#fn-report-shots-expired-integer), [reserve_report_shot(text,bigint,text,integer)](#fn-reserve-report-shot-text-bigint-text-integer), [rls_auto_enable()](#fn-rls-auto-enable), [settings_log_write()](#fn-settings-log-write), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
 
 ## Tables
 
@@ -185,6 +185,34 @@ Table. [logs] Which screens a member opens: one row per member, view and ref per
   - `page_views_view_check`: `CHECK ((view ~ '^[a-z_]{1,30}$'::text))`
 - Row level security: on. Policies: none
 
+<a id="table-player-report-shots"></a>
+
+### player_report_shots
+
+Table. One row per private screenshot of a player report (reserve_report_shot, the Activity POST /api/feedback/:id/shot). The file is in the private storage bucket report-shots at path. It never goes to GitHub: the Issue counts the stored rows. The Activity removes the file and the row after balance report_shots.keep_days (report_shots_expired).
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | not null |  | The screenshot id. |
+| `report_id` | bigint | not null |  | The report (player_reports.id). Only the member who sent the report can add a screenshot. |
+| `n` | smallint | not null |  | 1, 2, 3 ...: the place on the report, at most balance report_shots.per_report. |
+| `path` | text | not null |  | The object path in the bucket report-shots: <report id>/<n>.<webp\|png\|jpg>. |
+| `mime` | text | not null |  | image/webp, image/png or image/jpeg (the Activity checks the first bytes of the file). |
+| `bytes` | integer | not null |  | The file size, at most balance report_shots.max_bytes. |
+| `created_at` | timestamp with time zone | not null | `now()` | When the place was reserved. report_shots_expired counts the keep days from it. |
+| `stored_at` | timestamp with time zone | null |  | When the upload to storage finished. Null: the upload did not finish (the Admin page and the Issue count only stored rows). |
+| `noted_at` | timestamp with time zone | null |  | When the GitHub Issue counted this screenshot (in the Issue text, or in a comment for a screenshot that came after the Issue). |
+
+- Primary key: `PRIMARY KEY (id)`
+- Unique: `player_report_shots_path_key` `UNIQUE (path)`, `player_report_shots_report_id_n_key` `UNIQUE (report_id, n)`
+- Foreign keys: 
+  - `player_report_shots_report_id_fkey` to [player_reports](members-and-platform.md#table-player-reports): `FOREIGN KEY (report_id) REFERENCES player_reports(id) ON DELETE CASCADE`
+- Check constraints: 
+  - `player_report_shots_bytes_check`: `CHECK ((bytes > 0))`
+  - `player_report_shots_mime_check`: `CHECK ((mime = ANY (ARRAY['image/webp'::text, 'image/png'::text, 'image/jpeg'::text])))`
+  - `player_report_shots_n_check`: `CHECK ((n >= 1))`
+- Row level security: on. Policies: none
+
 <a id="table-player-reports"></a>
 
 ### player_reports
@@ -197,7 +225,7 @@ Table. One row per Bug, Feedback or Idea report that a member sent with the wren
 | `player_id` | text | not null |  | The member who sent it (players.id). It stays in the database only. |
 | `kind` | text | not null |  | bug, feedback or idea (player_reports_kind_check). |
 | `body` | text | not null |  | The report text, 5 to 1500 characters (player_reports_body_check), trimmed by submit_report. |
-| `context` | jsonb | not null | `'{}'::jsonb` | Short strings from the client: screen, version, window, error. The Activity (cleanContext) drops all other keys. |
+| `context` | jsonb | not null | `'{}'::jsonb` | Short strings from the client: screen, version, window, error, and the device facts app, device, os, engine, layout, dpr (tcg-activity/src/device-facts.js). The Activity (cleanContext) drops all other keys; the raw user agent is never stored. |
 | `created_at` | timestamp with time zone | not null | `now()` | When the member sent it. submit_report counts the reports of one game day for the per-day limit. |
 | `issue_number` | integer | null |  | The GitHub Issue number. Null until the Activity (reports.js syncOnce) made the Issue. |
 | `issue_url` | text | null |  | The URL of the GitHub Issue. Null until the sync. |
@@ -446,15 +474,15 @@ Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.
 
 Trigger (before insert, update on balance): the pulls rates must add up to 1, pulls pack_size must be a whole number from 1 to 20, daily streak_cycle must be at least 1.
 
-<a id="fn-balance-check-runs"></a>
+<a id="fn-balance-check-report-shots"></a>
 
-### balance_check_runs()
+### balance_check_report_shots()
 
-- Function: `balance_check_runs()`
+- Function: `balance_check_report_shots()`
 - Returns: `trigger`
 - Security definer: no
 
-Trigger (before insert or update on balance): dungeon_runs_per_day and gauntlet_runs_per_day must be whole numbers from 1 to 10.
+Trigger (before insert, update on balance): the shape of the key report_shots (report_shots.sql): keep_days, per_report and max_bytes whole numbers of at least 1, per_report at most 9, max_bytes at most 5242880 (the Activity reads at most 5 MB of an upload).
 
 <a id="fn-balance-check-settings"></a>
 
@@ -735,6 +763,26 @@ Deletes old rows: bell notes after 365 days, posted hunt_events after 365, ended
 - Security definer: no
 
 Adds 1 to the chat message count of a member on a game day (daily_activity) and returns the new count. The bot calls it for each message.
+
+<a id="fn-report-shots-expired-integer"></a>
+
+### report_shots_expired(integer)
+
+- Function: `report_shots_expired(p_limit integer DEFAULT 100)`
+- Returns: `TABLE(id bigint, path text)`
+- Security definer: no
+
+The screenshots older than balance report_shots.keep_days (id, path), oldest first, at most p_limit (1 to 1000). The Activity removes each file through the storage API, then the rows. Service role only.
+
+<a id="fn-reserve-report-shot-text-bigint-text-integer"></a>
+
+### reserve_report_shot(text,bigint,text,integer)
+
+- Function: `reserve_report_shot(p_player text, p_report bigint, p_mime text, p_bytes integer)`
+- Returns: `jsonb`
+- Security definer: no
+
+A place for one screenshot on the member's own report: checks the type, the size (balance report_shots.max_bytes), the owner, the age (keep_days) and the count (per_report, one upload at a time per report). Returns {ok, id, n, path} or {ok:false, error: type|big|report|full}. Service role only.
 
 <a id="fn-rls-auto-enable"></a>
 

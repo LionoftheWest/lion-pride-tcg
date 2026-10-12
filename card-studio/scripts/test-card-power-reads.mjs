@@ -1,7 +1,8 @@
 /**
  * Acceptance test for tcg-bot/supabase/perf_card_power_reads.sql, with NO lasting change:  node scripts/test-card-power-reads.mjs
  * Invariant: card_combat, card_cp_exact, card_max_hp, stat_pt and card_powers answer EXACTLY as the text before the file did.
- * The test builds reference copies of the old texts (ref_*, the bodies of 2026-10-11 from db/schema) inside one DO block,
+ * The test builds reference copies of the old texts (ref_*, the bodies of 2026-10-11 from db/schema; card_combat with the HP rule
+ * of f3_one_combat_math.sql: HP from the CP before the Attack bonus) inside one DO block,
  * compares them with the live functions and RAISEs the results (the exception rolls everything back).
  *   1. stat_pt: 40 point values x 2 limits.
  *   2. card_cp_exact + card_max_hp: every rarity (and one unknown) x stars -1..7 x 6 mods (and null).
@@ -51,7 +52,8 @@ begin
              + ref_stat_pt(pts, 'potency') + ref_stat_pt(pts, 'haste');
     v_cp := round(v_x * (1 + (c->>'attack')::numeric * ref_stat_pt(pts, 'attack')))::int;
     return jsonb_build_object('on', true, 'cp', v_cp,
-      'hp', round(ref_max_hp(v_cp) * (1 + (c->>'vitality')::numeric * ref_stat_pt(pts, 'vitality')))::int,
+      -- F-3 (f3_one_combat_math.sql, Nathan 2026-10-11): the HP of the CP BEFORE the Attack bonus (Attack raises only the CP).
+      'hp', round(ref_max_hp(round(v_x)::int) * (1 + (c->>'vitality')::numeric * ref_stat_pt(pts, 'vitality')))::int,
       'crit', (c->>'precision')::numeric * ref_stat_pt(pts, 'precision'),
       'potency', 1 + (c->>'potency')::numeric * ref_stat_pt(pts, 'potency'),
       'haste', greatest((c->>'haste_floor')::numeric, 1 - (c->>'haste')::numeric * ref_stat_pt(pts, 'haste')),

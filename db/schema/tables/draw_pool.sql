@@ -6,19 +6,20 @@
 
 -- @definition
 create view public.draw_pool as
- SELECT c.id,
-    c.subject_id,
-    c.name,
-    c.rarity,
-    c.source,
-    c.image_url,
-    c.artist_credit,
-    c.lore,
-    c.set_id,
-    c.set_number
+ SELECT id,
+    subject_id,
+    name,
+    rarity,
+    source,
+    image_url,
+    artist_credit,
+    lore,
+    set_id,
+    set_number
    FROM cards c
-     JOIN card_sets s ON s.id = c.set_id
-  WHERE c.in_draw_pool AND c.source::text = 'draw'::text AND s.pullable;
+  WHERE (EXISTS ( SELECT 1
+           FROM set_draw_pool p
+          WHERE p.id = c.id));
 
 -- @columns
 --   id bigint
