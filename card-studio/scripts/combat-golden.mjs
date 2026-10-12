@@ -2,17 +2,25 @@
  * The combat lockdown test (Nathan, 2026-10-03: "the same combat systems for Hunt, Dungeon Run, and
  * Arena ... really lock down across the whole underlying system").
  *
- * It plays many scripted Hunt fights on the LIVE database with fixed random seeds (setseed) and records
+ * It plays many scripted Hunt fights on the LOCAL copy with fixed random seeds (setseed) and records
  * every result of hunt_attack / hunt_support and the full state after each fight (the boss, every card's
  * HP / shield / buffs / cooldown, the combat state, the hits, the combat log). Each fight is undone right
  * after it runs. Then it installs a candidate migration and replays the same fights with the same seeds.
  * The test FAILS on the first difference. Nothing is kept: the final RAISE rolls everything back.
  *
- *   node scripts/combat-golden.mjs                          live vs live (proves the fights are repeatable)
- *   CANDIDATE=../tcg-bot/supabase/x.sql node scripts/combat-golden.mjs   live vs the candidate
- *   MUTATE=1 CANDIDATE=... node scripts/combat-golden.mjs   a 1-point change in the candidate must FAIL
+ * The LOCAL copy only (F-3, docs/foundations.md "Performance and cost budget" rule 2: heavy work never runs on live):
+ *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/combat-golden.mjs     the code vs itself (repeatable)
+ *   CANDIDATE=../tcg-bot/supabase/x.sql LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/combat-golden.mjs
+ *                                                                                        the code vs the candidate
+ *   MUTATE=1 CANDIDATE=... (the same)                                                    a 1-point change must FAIL
+ * The stat points of the stat card (the 2nd attacker) and of every support, to show that a stat moves only what it names:
+ *   GOLDEN_PTS='{"precision": 3}' (default {"attack": 3, "precision": 3}), GOLDEN_SUP_PTS='{"haste": 5}' (default {}).
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
+if (process.env.LOCALDB !== '1') throw new Error('combat-golden.mjs runs on the LOCAL copy only: LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/combat-golden.mjs');
+const PTS = JSON.stringify(JSON.parse(process.env.GOLDEN_PTS || '{"attack": 3, "precision": 3}'));
+const SUP_PTS = JSON.stringify(JSON.parse(process.env.GOLDEN_SUP_PTS || '{}'));
+if ((PTS + SUP_PTS).includes("'")) throw new Error('GOLDEN_PTS / GOLDEN_SUP_PTS: no quotes');
 import { readFileSync } from 'node:fs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 if (ref !== 'kgvdqqehefezbypozvrh') throw new Error(`wrong Supabase project: ${ref}`);
@@ -67,7 +75,7 @@ begin
     begin
       insert into players (id, username) values (v_p, 'golden');
       insert into player_cards (player_id, card_id, quantity, ascension, stat_points)
-        select v_p, c, 1, case when c = p_atk[2] then 2 else 0 end, case when c = p_atk[2] then '{"attack": 3, "precision": 3}'::jsonb else '{}'::jsonb end from unnest(p_squad) c;
+        select v_p, c, 1, case when c = p_atk[2] then 2 else 0 end, case when c = p_atk[2] then '${PTS}'::jsonb when c = any(p_sup) then '${SUP_PTS}'::jsonb else '{}'::jsonb end from unnest(p_squad) c;
       insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, hp_share, opens_at, closes_at, status, passive, stats)
         values ('Golden Boss', p_boss->>'tier', p_boss->'weak', p_boss->'resist', (p_boss->>'hp')::bigint, (p_boss->>'hp')::bigint, (p_boss->>'hp')::bigint,
                 now() - interval '1 hour', now() + interval '1 day', 'active',
