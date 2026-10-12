@@ -1,0 +1,259 @@
+{
+  "about": "The tag library of the card editor (src/tag-vocab.js, F-2 item 7). Seeded from scripts/taxonomy.mjs and the values in cards.json; \"+ Add new\" in the editor adds to it. Combat reads each card's tags (subjects.tag_slugs), not this list.",
+  "facets": {
+    "origin": {
+      "label": "Origin",
+      "multi": true,
+      "note": "The game (franchise).",
+      "values": [
+        {
+          "slug": "smash",
+          "label": "Super Smash Bros"
+        },
+        {
+          "slug": "pokemon",
+          "label": "Pokemon"
+        },
+        {
+          "slug": "minecraft",
+          "label": "Minecraft"
+        },
+        {
+          "slug": "party",
+          "label": "Party Games"
+        },
+        {
+          "slug": "meme",
+          "label": "Memes"
+        },
+        {
+          "slug": "community",
+          "label": "Community"
+        }
+      ]
+    },
+    "genre": {
+      "label": "Genre",
+      "multi": true,
+      "values": [
+        {
+          "slug": "fighting"
+        },
+        {
+          "slug": "crossover"
+        }
+      ]
+    },
+    "realm": {
+      "label": "Realm",
+      "multi": true,
+      "values": [
+        {
+          "slug": "crossover"
+        },
+        {
+          "slug": "super-smash-bros"
+        }
+      ]
+    },
+    "traits": {
+      "label": "Traits",
+      "multi": true,
+      "note": "The element (one per card, the first wins) and the kinds.",
+      "values": [
+        {
+          "slug": "fire",
+          "group": "element"
+        },
+        {
+          "slug": "water",
+          "group": "element"
+        },
+        {
+          "slug": "lightning",
+          "group": "element"
+        },
+        {
+          "slug": "ice",
+          "group": "element"
+        },
+        {
+          "slug": "nature",
+          "group": "element"
+        },
+        {
+          "slug": "earth",
+          "group": "element"
+        },
+        {
+          "slug": "air",
+          "group": "element"
+        },
+        {
+          "slug": "shadow",
+          "group": "element"
+        },
+        {
+          "slug": "light",
+          "group": "element"
+        },
+        {
+          "slug": "arcane",
+          "group": "element"
+        },
+        {
+          "slug": "psychic",
+          "group": "element"
+        },
+        {
+          "slug": "toxic",
+          "group": "element"
+        },
+        {
+          "slug": "metal",
+          "group": "element"
+        },
+        {
+          "slug": "humanoid",
+          "group": "kind"
+        },
+        {
+          "slug": "beast",
+          "group": "kind"
+        },
+        {
+          "slug": "bird",
+          "group": "kind"
+        },
+        {
+          "slug": "monster",
+          "group": "kind"
+        },
+        {
+          "slug": "robot",
+          "group": "kind"
+        },
+        {
+          "slug": "spirit",
+          "group": "kind"
+        },
+        {
+          "slug": "object",
+          "group": "kind"
+        },
+        {
+          "slug": "location",
+          "group": "kind"
+        },
+        {
+          "slug": "melee",
+          "group": "kind"
+        },
+        {
+          "slug": "ranged",
+          "group": "kind"
+        },
+        {
+          "slug": "caster",
+          "group": "kind"
+        },
+        {
+          "slug": "armored",
+          "group": "kind"
+        },
+        {
+          "slug": "strong",
+          "group": "kind"
+        },
+        {
+          "slug": "agile",
+          "group": "kind"
+        },
+        {
+          "slug": "stealth",
+          "group": "kind"
+        },
+        {
+          "slug": "royal",
+          "group": "kind"
+        },
+        {
+          "slug": "hero",
+          "group": "kind"
+        },
+        {
+          "slug": "legendary",
+          "group": "kind"
+        },
+        {
+          "slug": "cute",
+          "group": "kind"
+        },
+        {
+          "slug": "support",
+          "group": "kind"
+        },
+        {
+          "slug": "community",
+          "group": "kind"
+        }
+      ],
+      "aliases": {
+        "flame": "fire",
+        "burning": "fire",
+        "aqua": "water",
+        "ocean": "water",
+        "electric": "lightning",
+        "thunder": "lightning",
+        "frost": "ice",
+        "frozen": "ice",
+        "grass": "nature",
+        "plant": "nature",
+        "wood": "nature",
+        "rock": "earth",
+        "stone": "earth",
+        "ground": "earth",
+        "wind": "air",
+        "flying": "air",
+        "dark": "shadow",
+        "spirit": "shadow",
+        "ghost": "shadow",
+        "holy": "light",
+        "radiant": "light",
+        "magic": "arcane",
+        "fairy": "arcane",
+        "mystic": "arcane",
+        "psi": "psychic",
+        "poison": "toxic",
+        "venom": "toxic",
+        "robot": "metal",
+        "mechanical": "metal",
+        "tech": "metal",
+        "steel": "metal"
+      }
+    },
+    "subject": {
+      "label": "Subject",
+      "multi": false,
+      "kind": "text",
+      "note": "The subject line of a tier (on the card face).",
+      "values": [
+        {
+          "label": "Super Smash Bros"
+        },
+        {
+          "label": "Pokemon Unite"
+        },
+        {
+          "label": "Party Games"
+        },
+        {
+          "label": "Minecraft"
+        },
+        {
+          "label": "Memes"
+        }
+      ]
+    }
+  }
+}
