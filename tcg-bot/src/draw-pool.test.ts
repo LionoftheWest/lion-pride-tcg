@@ -12,7 +12,18 @@ const TABLE = pullTable(JSON.parse(MIGRATION.match(/\('pulls', '(\{[^']*\})',/)!
 const RARITIES: Rarity[] = ['normal', 'illustrated_rare', 'secret_rare', 'full_art', 'gold'];
 
 // S1 and S2 are pullable, S9 is not (the view would not list S9 cards; they are here to prove the set filter).
+// set_draw_pool (set_pools.sql): one row per (pool set, card). The S2 pool has its home cards and the first
+// S1 card of each rarity (a reprint: the same card, home set S1).
 function tables() {
+  const t = baseTables();
+  const s1 = t.draw_pool.filter((c) => c.set_id === 'S1');
+  t.set_draw_pool = [
+    ...t.draw_pool.map((c) => ({ ...c, pool_set_id: c.set_id })),
+    ...s1.filter((c) => c.name.endsWith(' 0')).map((c) => ({ ...c, pool_set_id: 'S2' })),
+  ];
+  return t;
+}
+function baseTables() {
   let id = 0;
   const cards = (set: string) => RARITIES.flatMap((rarity) => Array.from({ length: 4 }, (_, i) => ({
     id: ++id, name: `${set} ${rarity} ${i}`, rarity, source: 'draw', image_url: null, artist_credit: null, lore: null, set_id: set, set_number: i + 1,
@@ -20,18 +31,27 @@ function tables() {
   return {
     card_sets: [{ id: 'S1', pullable: true }, { id: 'S2', pullable: true }, { id: 'S9', pullable: false }],
     draw_pool: [...cards('S1'), ...cards('S2')],
+    set_draw_pool: [] as Record<string, unknown>[],
   };
 }
 let seed = 7;
 const rng = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
 
 describe('loadDrawPool', () => {
-  it('a pack with set S2 contains only S2 cards (2,000 packs, every rarity)', async () => {
+  it('a pack with set S2 contains only cards of the S2 pool (2,000 packs, every rarity)', async () => {
+    const t = tables();
+    const s2pool = new Set(t.set_draw_pool.filter((r) => r.pool_set_id === 'S2').map((r) => r.id));
+    const pool = await loadDrawPool(fakeStore(t) as never, 'S2');
+    const ids = new Set<number>();
+    for (let i = 0; i < 2000; i += 1) for (const c of drawPack(pool, TABLE, rng, i % 50 === 0 ? 100 : null)) ids.add(Number(c.id));
+    assert.ok([...ids].every((id) => s2pool.has(id)));
+    for (const r of RARITIES) assert.equal(pool[r].length, 5, r); // 4 home cards + 1 S1 reprint of each rarity
+  });
+  it('a pool card in an S2 pack keeps its home set and number (S1 #1)', async () => {
     const pool = await loadDrawPool(fakeStore(tables()) as never, 'S2');
-    const sets = new Set<string>();
-    for (let i = 0; i < 2000; i += 1) for (const c of drawPack(pool, TABLE, rng, i % 50 === 0 ? 100 : null)) sets.add(String(c.set_id));
-    assert.deepEqual([...sets], ['S2']);
-    for (const r of RARITIES) assert.ok(pool[r].length > 0 && pool[r].every((c) => c.set_id === 'S2'), r);
+    const reprints = RARITIES.flatMap((r) => pool[r].filter((c) => c.set_id === 'S1'));
+    assert.equal(reprints.length, 5);
+    assert.ok(reprints.every((c) => c.set_number === 1));
   });
   it('no set = every pullable set (the draw_pool rows of S1 and S2)', async () => {
     const pool = await loadDrawPool(fakeStore(tables()) as never);
