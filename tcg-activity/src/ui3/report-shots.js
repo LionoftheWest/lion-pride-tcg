@@ -4,7 +4,7 @@
 //   ready, uploading (POST /api/feedback/:id/shot, after the report is sent), done, or failed (with the stage that failed).
 // - The image size: fitSize and shrinkTo. The byte limit is balance report_shots.max_bytes. It is not in the public
 //   balance, so the client learns it from the server answer 413 { error: 'big', max_bytes } (reports.js) and encodes again.
-// - The device chip and its 6 facts: the words of src/device-facts.js (PR #378), formatted for the window.
+// - The device chip and its 6 facts: the words of src/device-facts.js (server pull request 378), formatted for the window.
 
 /** Approval choice 6: the picker accepts up to 20 MB; above that, "too large". The client shrinks the rest. */
 export const PICK_MAX_BYTES = 20 * 1024 * 1024;
