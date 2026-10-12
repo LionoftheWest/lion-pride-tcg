@@ -1,0 +1,112 @@
+{
+  "ach_track_values": [
+    [
+      "and pc.quantity > 0 and c.in_draw_pool),",
+      "and pc.quantity > 0 and c.id in (select id from draw_pool)),"
+    ],
+    [
+      "     where c.in_draw_pool group by c.subject_id having",
+      "     where c.id in (select id from draw_pool) group by c.subject_id having"
+    ]
+  ],
+  "ach_tag_badges": [
+    [
+      "select coalesce(c.season, 'Season 1') season, c.subject_id, c.id card_id, s.tag_slugs\n      from cards c join subjects s on s.id = c.subject_id\n",
+      "select c.set_id, 'Season ' || cs.season season, cs.season sn, c.subject_id, c.id card_id, s.tag_slugs\n      from cards c join subjects s on s.id = c.subject_id join card_sets cs on cs.id = c.set_id\n"
+    ],
+    [
+      "select p.season, p.subject_id, t.slug",
+      "select p.set_id, p.season, p.sn, p.subject_id, t.slug"
+    ],
+    [
+      "     group by 1, 2, 3),\n  mine as",
+      "     group by 1, 2, 3, 4, 5),\n  mine as"
+    ],
+    [
+      "select distinct p.season, p.subject_id from pool p",
+      "select distinct p.set_id, p.subject_id from pool p"
+    ],
+    [
+      "select s.season, s.slug, count(*)::int need, count(m.subject_id)::int have\n      from subj s left join mine m on m.season = s.season and m.subject_id = s.subject_id\n     group by 1, 2)",
+      "select s.set_id, s.season, s.sn, s.slug, count(*)::int need, count(m.subject_id)::int have\n      from subj s left join mine m on m.set_id = s.set_id and m.subject_id = s.subject_id\n     group by 1, 2, 3, 4)"
+    ],
+    [
+      "select coalesce('S' || substring(b.season from '(\\d+)'), b.season) short",
+      "select 'S' || b.sn short"
+    ],
+    [
+      "order by b.season, b.slug like",
+      "order by b.sn, b.set_id, b.slug like"
+    ]
+  ],
+  "combat_weak": [
+    [
+      "declare v_wm int; v_rm int;\nbegin\n",
+      "declare v_wm int; v_rm int; v_season text;\nbegin\n  -- p_season holds the HOME SET id of the card (the name stays: an older file that replaces this function still works). Kind set: that set. kind season (an older boss may hold it): the season of that set, read from card_sets.\n  if coalesce(p_weak, '[]'::jsonb) @> '[{\"kind\": \"season\"}]' or coalesce(p_resist, '[]'::jsonb) @> '[{\"kind\": \"season\"}]' then\n    select 'Season ' || cs.season into v_season from card_sets cs where cs.id = p_season;\n  end if;\n"
+    ],
+    [
+      "       or (w->>'kind' = 'season' and w->>'value' = p_season)",
+      "       or (w->>'kind' = 'set'    and w->>'value' = p_season)\n       or (w->>'kind' = 'season' and w->>'value' = v_season)"
+    ]
+  ],
+  "hunt_attack": [
+    [
+      "v_rarity text; v_season text;",
+      "v_rarity text; v_set text;"
+    ],
+    [
+      "c.rarity::text, c.season, s.type",
+      "c.rarity::text, c.set_id, s.type"
+    ],
+    [
+      "v_rarity, v_season, v_type",
+      "v_rarity, v_set, v_type"
+    ],
+    [
+      "v_type, v_rarity, v_season, v_tags",
+      "v_type, v_rarity, v_set, v_tags"
+    ]
+  ],
+  "hunt_card_crits": [
+    [
+      "c.rarity::text rar, c.season,",
+      "c.rarity::text rar, c.set_id,"
+    ],
+    [
+      "d.rar, d.season, d.wtags",
+      "d.rar, d.set_id, d.wtags"
+    ],
+    [
+      "select distinct type, rar, season, wtags",
+      "select distinct type, rar, set_id, wtags"
+    ],
+    [
+      "wk.season is not distinct from k.season",
+      "wk.set_id is not distinct from k.set_id"
+    ]
+  ],
+  "hunt_pick_pool": [
+    [
+      "c.rarity::text, c.season, s.tag_slugs",
+      "c.rarity::text, c.set_id, s.tag_slugs"
+    ]
+  ],
+  "dungeon_attack": [
+    [
+      "info->>'rarity', info->>'season', v_tags",
+      "info->>'rarity', info->>'set', v_tags"
+    ]
+  ],
+  "dungeon_card": [
+    [
+      "'season', c.season,\n",
+      "'season', c.season, 'set', c.set_id,\n"
+    ]
+  ],
+  "dungeon_card_base": [
+    [
+      "'season', c.season,\n",
+      "'season', c.season, 'set', c.set_id,\n"
+    ]
+  ]
+}

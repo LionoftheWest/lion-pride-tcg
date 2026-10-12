@@ -28,7 +28,7 @@ comment, or when a table or a function is not on these pages.
 | [Members and platform](members-and-platform.md) | 18 | 18 (100%) | 113 of 113 (100%) | 42 | 42 (100%) |
 | [Admin view](admin.md) | 1 | 1 (100%) | 11 of 11 (100%) | 50 | 50 (100%) |
 | [Events](events.md) | 6 | 6 (100%) | 69 of 69 (100%) | 29 | 29 (100%) |
-| [Other](other.md) | 7 | 7 (100%) | 42 of 42 (100%) | 12 | 12 (100%) |
-| **All** | 77 | 77 (100%) | 653 of 653 (100%) | 373 | 373 (100%) |
+| [Other](other.md) | 6 | 6 (100%) | 39 of 39 (100%) | 11 | 11 (100%) |
+| **All** | 76 | 76 (100%) | 650 of 650 (100%) | 372 | 372 (100%) |
 
 [Balance numbers](balance.md): 40 keys with the note, the shape and the current value.
