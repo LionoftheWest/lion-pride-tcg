@@ -55,6 +55,10 @@ const ICONS = {
   zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
   star: '<path d="M11.52 2.3a.53.53 0 0 1 .95 0l2.31 4.68a2.12 2.12 0 0 0 1.6 1.16l5.16.76a.53.53 0 0 1 .3.9l-3.74 3.64a2.12 2.12 0 0 0-.61 1.88l.88 5.14a.53.53 0 0 1-.77.56l-4.62-2.43a2.12 2.12 0 0 0-1.97 0L6.4 21.01a.53.53 0 0 1-.77-.56l.88-5.14a2.12 2.12 0 0 0-.61-1.88L2.16 9.8a.53.53 0 0 1 .3-.9l5.16-.76a2.12 2.12 0 0 0 1.6-1.16z"/>',
   back: '<path d="m12 19-7-7 7-7M19 12H5"/>',
+  plus: '<path d="M5 12h14M12 5v14"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/>',
+  move: '<path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>',
+  trash: '<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
   eye: '<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>',
 };
 function icon(name, cls = 'ico') {
@@ -245,7 +249,9 @@ const NAV = [
   { id: 'members', label: 'Members', icon: 'users', match: /^\/members?(\/|$)/ },
   { id: 'economy', label: 'Economy', icon: 'coins' },
   { id: 'growth', label: 'Growth', icon: 'trend' },
-  { id: 'cards', label: 'Cards', icon: 'layers', match: /^\/cards?(\/|$)/ },
+  // Cards = the card editor (cards.js, the old Card Portal, F-2). Card stats = the read-only numbers of each card (admin_cards).
+  { id: 'cards', label: 'Cards', icon: 'palette', match: /^\/cards(\/|$)/ },
+  { id: 'card-stats', label: 'Card stats', icon: 'layers', match: /^\/(card-stats$|card\/)/ },
   { id: 'hunt', label: 'Hunt', icon: 'swords', match: /^\/hunts?(\/|$)/ },
   { id: 'dungeon', label: 'Dungeon', icon: 'castle' },
   { id: 'activity', label: 'Activity', icon: 'zap' },
@@ -272,11 +278,10 @@ function navItems(path, { onPick } = {}) {
       h('div', { class: 'nav-sep' })] : []),
     h('div', { class: 'nav-head' }, ED.state.on ? 'Coming' : 'Phase 2 / 3 - Coming'),
     navLocked().map(([t, ic, ph]) => h('span', { class: 'nav-item locked', 'aria-disabled': 'true' }, icon(ic), t, h('span', { class: 'tag' }, icon('lock'), ph))),
-    h('div', { class: 'nav-tools' },
-      h('div', { class: 'nav-head' }, 'Tools'),
-      h('a', { class: 'nav-item', href: '/index.html', target: '_blank', rel: 'noopener' }, icon('palette'), 'Card Studio', h('span', { class: 'tag', style: 'border:0' }, icon('external'))),
-      session.login ? h('form', { method: 'post', action: '/logout', style: 'margin:0' },
-        h('button', { class: 'nav-item', type: 'submit', style: 'width:100%;border:0;background:none;cursor:pointer;font:inherit' }, icon('logout'), 'Log out')) : null),
+    // The Card Studio link was here. The card editor is the Cards section now (F-2).
+    ...(session.login ? [h('div', { class: 'nav-tools' },
+      h('form', { method: 'post', action: '/logout', style: 'margin:0' },
+        h('button', { class: 'nav-item', type: 'submit', style: 'width:100%;border:0;background:none;cursor:pointer;font:inherit' }, icon('logout'), 'Log out')))] : []),
   ];
 }
 function drawNav(path) {
@@ -763,12 +768,12 @@ const CARD_SORTS = ['copies', 'owners', 'pulls', 'trades', 'attacks', 'damage', 
 async function pageCards(main, _, q) {
   const r = rangeDates(), sort = CARD_SORTS.includes(q.get('sort')) ? q.get('sort') : 'copies', page = Math.max(0, Number(q.get('page')) || 0);
   const search = q.get('q') || '';
-  const setQ = (o) => { location.hash = `#/cards?${qs({ q: search, sort, page: 0, ...o })}`; };
+  const setQ = (o) => { location.hash = `#/card-stats?${qs({ q: search, sort, page: 0, ...o })}`; };
   const input = h('input', { class: 'field', type: 'search', value: search, placeholder: 'Card name or id', 'aria-label': 'Search cards', style: 'min-width:200px' });
   let t = 0;
   input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => setQ({ q: input.value.trim() }), 400); });
   const sel = h('select', { class: 'field', 'aria-label': 'Sort', onchange: (e) => setQ({ sort: e.target.value }) }, CARD_SORTS.map((k) => h('option', { value: k, selected: k === sort }, `Sort: ${label(k)}`)));
-  main.append(pageHead('Cards', `Each card: copies and owners now; pulls, trades and Hunt use in ${dayShort(r.from)} - ${day(r.to)}`, h('div', { class: 'range' }, input, sel, rangeControl())));
+  main.append(pageHead('Card stats', `Each card: copies and owners now; pulls, trades and Hunt use in ${dayShort(r.from)} - ${day(r.to)}`, h('div', { class: 'range' }, input, sel, rangeControl())));
   const p = panel(null);
   main.append(p.el);
   fill(p.body, async () => {
@@ -791,14 +796,14 @@ async function pageCards(main, _, q) {
         { key: 'plays', label: 'Plays', r: true, fmt: (c) => N(c.plays) },
         { key: 'in_draw_pool', label: 'In packs', fmt: (c) => (c.in_draw_pool ? 'yes' : 'no') },
       ] }),
-      pager(d.offset, d.rows.length, d.total, (pg) => { location.hash = `#/cards?${qs({ q: search, sort, page: pg })}`; }, 50),
+      pager(d.offset, d.rows.length, d.total, (pg) => { location.hash = `#/card-stats?${qs({ q: search, sort, page: pg })}`; }, 50),
     ];
   });
 }
 
 /* ----- One card (admin_card) ----- */
 async function pageCard(main, [id]) {
-  const head = pageHead('Card', h('span', { class: 'crumb' }, h('a', { href: '#/cards' }, 'Cards'), ' / ', h('span', { id: 'crumb-card' }, id)));
+  const head = pageHead('Card', h('span', { class: 'crumb' }, h('a', { href: '#/card-stats' }, 'Card stats'), ' / ', h('span', { id: 'crumb-card' }, id)));
   main.append(head);
   const box = h('div');
   main.append(box);
@@ -1210,14 +1215,20 @@ async function pageHealth(main) {
 /* ---------- router ---------- */
 const ROUTES = [
   [/^\/overview$/, pageOverview], [/^\/members$/, pageMembers], [/^\/member\/([^/]+)$/, pageMember], [/^\/economy$/, pageEconomy], [/^\/growth$/, pageGrowth],
-  [/^\/cards$/, pageCards], [/^\/card\/(\d+)$/, pageCard], [/^\/hunt$/, pageHunts], [/^\/hunt\/(\d+)$/, pageHunt], [/^\/dungeon$/, pageDungeon],
+  [/^\/card-stats$/, pageCards], [/^\/card\/(\d+)$/, pageCard], [/^\/hunt$/, pageHunts], [/^\/hunt\/(\d+)$/, pageHunt], [/^\/dungeon$/, pageDungeon],
   [/^\/activity$/, pageActivity], [/^\/reports$/, pageReports],
   [/^\/report\/([a-z0-9_]+)$/, pageReports], [/^\/data$/, pageData], [/^\/data\/([a-z0-9_]+)$/, pageData], [/^\/health$/, pageHealth],
   [/^\/events(?:\/(new|\d+))?(?:\/(edit))?$/, (main, a, q) => import('./events.js').then((m) => m.pageEvents(main, a, q, {
     h, icon, api, panel, table, pageHead, fill, when, N, label, kpi, statusTag, errorState, session, render })).catch((e) => main.replaceChildren(errorState(e)))],
+  // The card editor (cards.js, F-2). It uses the studio API (/api/cards ...), not /api/admin, so it works with ADMIN_VIEW off.
+  [/^\/cards(?:\/([^/]+))?$/, (main, a, q) => import('./cards.js').then((m) => m.pageCardEditor(main, a, q, { h, icon, pageHead, errorState, render }))
+    .catch((e) => main.replaceChildren(errorState(e)))],
 ];
+// The start section: Overview when the Admin data is on (ADMIN_VIEW=1), else Cards (the card editor works without it).
+const home = () => (session.error ? '/cards' : '/overview');
 function render() {
-  const raw = location.hash.replace(/^#/, '') || '/overview';
+  if (!location.hash.replace(/^#/, '')) history.replaceState(null, '', `#${home()}`);
+  const raw = location.hash.replace(/^#/, '');
   const [path, query] = raw.split('?');
   const main = document.getElementById('main');
   drawNav(path);
@@ -1234,7 +1245,7 @@ function render() {
       return;
     }
   }
-  location.replace('#/overview');
+  location.replace(`#${home()}`);
 }
 
 async function start() {

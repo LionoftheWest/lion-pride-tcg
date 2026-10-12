@@ -25,6 +25,11 @@ const mig = OLD ? '' : file('ledger_reasons.sql');
 // The three older files, run again inside the block (their re-run must keep the new state).
 const OLDFILES = ['pack_ledger_strict.sql', 'card_ledger.sql', 'shard_ledger_strict.sql'].map(file);
 for (const s of [mig, ...OLDFILES]) if (/\$(m|c|o)\$/.test(s)) throw new Error('a migration file must not contain $m$, $c$ or $o$');
+// perf_five_slow_calls.sql (2026-10-11) made a newer ach_track_values, so the guard of pack_ledger_strict.sql refuses it
+// (the file is in SUPERSEDED.md). The re-run puts the text that file itself makes in place first (inside the rolled-back
+// block), so the file runs as it did. The same fix as test-pack-ledger-strict.mjs.
+const ATV = OLDFILES[0].match(/CREATE OR REPLACE FUNCTION public\.ach_track_values\(p_player text\)[\s\S]*?end \$function\$;/)?.[0];
+if (!ATV) throw new Error('the ach_track_values text of pack_ledger_strict.sql was not found');
 
 const PACK_LIST = "'opened', 'gift_sent', 'gift_received', 'welcome', 'launch_gift', 'raid_makeup_oct1', 'bug_reward', 'admin', 'event', 'tutorial', 'achievement', 'shop', 'hunt_reward', 'dungeon_prize', 'boon', 'earned_checkin', 'earned_streak', 'earned_hunt', 'earned_voice', 'earned_social', 'earned_dungeon', 'earned_gauntlet', 'earned_daily', 'earned_bonus'";
 // Function mutations (fixtures.mjs) and SQL mutations (run inside the block after the migration).
@@ -146,6 +151,7 @@ ${kase('the three reconciles stay ok and report reason_check = true (the foreign
     ${done('the three reconciles stay ok and report reason_check = true (the foreign keys)', `(r->'pack'->>'ok')::boolean and (r->'card'->>'ok')::boolean and (r->'shard'->>'ok')::boolean
       and (r->'pack'->>'reason_check')::boolean and (r->'card'->>'reason_check')::boolean and (r->'shard'->>'reason_check')::boolean`, ", 'r', r")}`)}
 ${kase('a re-run of pack_ledger_strict.sql, card_ledger.sql and shard_ledger_strict.sql keeps the new state', `
+    execute $o$${ATV}$o$;
     execute $o$${OLDFILES[0]}$o$;
     execute $o$${OLDFILES[1]}$o$;
     execute $o$${OLDFILES[2]}$o$;
