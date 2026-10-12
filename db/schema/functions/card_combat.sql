@@ -16,7 +16,7 @@ grant execute on function public.card_combat(text, integer, numeric, jsonb) to p
 grant execute on function public.card_combat(text, integer, numeric, jsonb) to service_role;
 
 -- @function public.card_combat(text, integer, numeric, jsonb, jsonb)
--- md5: ef946d0ed4e109d6ab85b3219d9f417e   (md5(replace(pg_get_functiondef('public.card_combat(text, integer, numeric, jsonb, jsonb)'::regprocedure), chr(13), '')))
+-- md5: c213fbf8f94214b5d2b316b6b21efd7b   (md5(replace(pg_get_functiondef('public.card_combat(text, integer, numeric, jsonb, jsonb)'::regprocedure), chr(13), '')))
 -- owner: postgres
 CREATE OR REPLACE FUNCTION public.card_combat(p_rarity text, p_asc integer, p_mod numeric, p_pts jsonb, p_b jsonb)
  RETURNS jsonb
@@ -46,7 +46,8 @@ begin
   v_spent := sa + sv + sp + sq + sh;
   v_cp := round(v_x * (1 + (c->>'attack')::numeric * sa))::int;
   return jsonb_build_object('on', true, 'cp', v_cp,
-    'hp', round(card_max_hp(v_cp, fl, per) * (1 + (c->>'vitality')::numeric * sv))::int,
+    -- F-3 (Nathan, 2026-10-11): the HP of the CP BEFORE the Attack bonus (round(v_x)), so an Attack point does not raise HP.
+    'hp', round(card_max_hp(round(v_x)::int, fl, per) * (1 + (c->>'vitality')::numeric * sv))::int,
     'crit', (c->>'precision')::numeric * sp,
     'potency', 1 + (c->>'potency')::numeric * sq,
     'haste', greatest((c->>'haste_floor')::numeric, 1 - (c->>'haste')::numeric * sh),

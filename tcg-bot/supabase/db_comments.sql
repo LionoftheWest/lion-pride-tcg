@@ -694,7 +694,7 @@ comment on column public.player_reports.id is $c$The report id. The GitHub Issue
 comment on column public.player_reports.player_id is $c$The member who sent it (players.id). It stays in the database only.$c$;
 comment on column public.player_reports.kind is $c$bug, feedback or idea (player_reports_kind_check).$c$;
 comment on column public.player_reports.body is $c$The report text, 5 to 1500 characters (player_reports_body_check), trimmed by submit_report.$c$;
-comment on column public.player_reports.context is $c$Short strings from the client: screen, version, window, error. The Activity (cleanContext) drops all other keys.$c$;
+comment on column public.player_reports.context is $c$Short strings from the client: screen, version, window, error, and the device facts app, device, os, engine, layout, dpr (tcg-activity/src/device-facts.js). The Activity (cleanContext) drops all other keys; the raw user agent is never stored.$c$;
 comment on column public.player_reports.created_at is $c$When the member sent it. submit_report counts the reports of one game day for the per-day limit.$c$;
 comment on column public.player_reports.issue_number is $c$The GitHub Issue number. Null until the Activity (reports.js syncOnce) made the Issue.$c$;
 comment on column public.player_reports.issue_url is $c$The URL of the GitHub Issue. Null until the sync.$c$;
@@ -990,5 +990,25 @@ do $admw$ begin
     comment on function public.admin_undo(text, bigint, text) is $c$[admin] Undoes one Admin view action (balance_set, setting_set, setting_member, member_packs, member_shards, member_card from the studio): calls the same write function with the stored after value as the before value and the stored before value as the new value, undo_of = the action. Refuses (LP409) a second undo and a value that changed again since the action, (LP400) an unknown action and an action of another kind or source (for example a bot gift). Service role only.$c$;
   end if;
 end $admw$;
+
+-- ===== player report screenshots =====
+-- The private screenshots of a player report (report_shots.sql): the same notes as in that file. Only when report_shots.sql is applied.
+do $shots$ begin
+  if to_regclass('public.player_report_shots') is not null then
+    comment on table public.player_report_shots is $c$One row per private screenshot of a player report (reserve_report_shot, the Activity POST /api/feedback/:id/shot). The file is in the private storage bucket report-shots at path. It never goes to GitHub: the Issue counts the stored rows. The Activity removes the file and the row after balance report_shots.keep_days (report_shots_expired).$c$;
+    comment on column public.player_report_shots.id is $c$The screenshot id.$c$;
+    comment on column public.player_report_shots.report_id is $c$The report (player_reports.id). Only the member who sent the report can add a screenshot.$c$;
+    comment on column public.player_report_shots.n is $c$1, 2, 3 ...: the place on the report, at most balance report_shots.per_report.$c$;
+    comment on column public.player_report_shots.path is $c$The object path in the bucket report-shots: <report id>/<n>.<webp|png|jpg>.$c$;
+    comment on column public.player_report_shots.mime is $c$image/webp, image/png or image/jpeg (the Activity checks the first bytes of the file).$c$;
+    comment on column public.player_report_shots.bytes is $c$The file size, at most balance report_shots.max_bytes.$c$;
+    comment on column public.player_report_shots.created_at is $c$When the place was reserved. report_shots_expired counts the keep days from it.$c$;
+    comment on column public.player_report_shots.stored_at is $c$When the upload to storage finished. Null: the upload did not finish (the Admin page and the Issue count only stored rows).$c$;
+    comment on column public.player_report_shots.noted_at is $c$When the GitHub Issue counted this screenshot (in the Issue text, or in a comment for a screenshot that came after the Issue).$c$;
+    comment on function public.reserve_report_shot(text, bigint, text, int) is $c$A place for one screenshot on the member's own report: checks the type, the size (balance report_shots.max_bytes), the owner, the age (keep_days) and the count (per_report, one upload at a time per report). Returns {ok, id, n, path} or {ok:false, error: type|big|report|full}. Service role only.$c$;
+    comment on function public.balance_check_report_shots() is $c$Trigger (before insert, update on balance): the shape of the key report_shots (report_shots.sql): keep_days, per_report and max_bytes whole numbers of at least 1, per_report at most 9, max_bytes at most 5242880 (the Activity reads at most 5 MB of an upload).$c$;
+    comment on function public.report_shots_expired(int) is $c$The screenshots older than balance report_shots.keep_days (id, path), oldest first, at most p_limit (1 to 1000). The Activity removes each file through the storage API, then the rows. Service role only.$c$;
+  end if;
+end $shots$;
 
 notify pgrst, 'reload schema';
