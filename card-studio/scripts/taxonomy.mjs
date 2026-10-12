@@ -45,7 +45,7 @@ export const ELEMENT_ALIAS = {
   nature: 'nature', grass: 'nature', plant: 'nature', wood: 'nature',
   earth: 'earth', rock: 'earth', stone: 'earth', ground: 'earth',
   air: 'air', wind: 'air', flying: 'air',
-  shadow: 'shadow', dark: 'shadow', spirit: 'shadow', ghost: 'shadow',
+  shadow: 'shadow', dark: 'shadow', ghost: 'shadow',
   light: 'light', holy: 'light', radiant: 'light',
   arcane: 'arcane', magic: 'arcane', fairy: 'arcane', mystic: 'arcane',
   psychic: 'psychic', psi: 'psychic',

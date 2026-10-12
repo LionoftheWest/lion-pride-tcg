@@ -141,7 +141,7 @@ These files have a statement that cannot run in a rolled-back transaction. Read 
 
 A file runs as one transaction, so an error rolls the whole file back.
 
-## No structure change, but a re-run writes rows (26)
+## No structure change, but a re-run writes rows (27)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -157,6 +157,7 @@ a one-time grant or a settings value would run again.
 - `discord_effects_on.sql`: effect_primitives
 - `dungeon_prizes_daily.sql`: settings
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
+- `f3_elements_decisions.sql`: elements (DO block)
 - `f3_elements_passives.sql`: elements (DO block), elements_cache_rebuild(), passives (DO block)
 - `game_vars_all.sql`: event_vars
 - `gift_pack_off.sql`: effect_primitives
