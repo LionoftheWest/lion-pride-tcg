@@ -29,8 +29,10 @@ let mig = OLD || LIVE ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/s
 if (mig.includes('$m$') || mig.includes('$c$')) throw new Error('the migration must not contain $m$ or $c$');
 // f3_elements_passives.sql (F-3 PR 2) made a newer spawn_hunt, so the guard of this file refuses it (the file is in SUPERSEDED.md).
 // The test puts the spawn_hunt text that this file itself makes in place first (inside the rolled-back block), so the file runs as it did.
-const SPAWN = mig ? (() => { const a = mig.indexOf('CREATE OR REPLACE FUNCTION public.spawn_hunt('); if (a < 0) throw new Error('no spawn_hunt in set_pools.sql'); return mig.slice(a, mig.indexOf('$function$;', mig.indexOf('AS $function$', a)) + 11); })() : '';
-if (SPAWN.includes('$p$')) throw new Error('spawn_hunt text contains $p$');
+// f2_set_not_season.sql (F-2 PR 4) made a newer ach_tag_badges too: this file's own text of it goes in first, as for spawn_hunt.
+const own = (name) => { const a = mig.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`); if (a < 0) throw new Error(`no ${name} in set_pools.sql`); return mig.slice(a, mig.indexOf('$function$;', mig.indexOf('AS $function$', a)) + 11); };
+const SPAWN = mig ? own('spawn_hunt') + String.fromCharCode(10) + own('ach_tag_badges') : '';
+if (SPAWN.includes('$p$')) throw new Error('the function text contains $p$');
 
 // The set_draw_pool text with one part removed (SQL_MUT below).
 const POOL = (members) => `create or replace view public.set_draw_pool with (security_invoker = true) as
