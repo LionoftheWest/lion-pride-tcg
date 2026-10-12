@@ -64,7 +64,7 @@ export const app = express();
 app.use(studioAuth({ secret: loadSecret(join(ROOT, '.studio-secret')) }));
 app.use(express.json({ limit: '30mb' }));
 // The Events editor (writes; src/admin-events-routes.js): mounted before the read-only router, which refuses POST.
-app.use('/api/admin/events', eventsRouter({ rpc: (fn, args) => supabase.rpc(fn, args) }));
+app.use('/api/admin/events', eventsRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
 // The Admin view data (read only): flag ADMIN_VIEW=1 (src/admin-routes.js). The pages: public/admin/ (/admin/).
 // The Admin view editors (Phase 2: preview, test on the LOCAL copy, apply, undo): flag ADMIN_EDIT=1 (src/admin-write.js).
 app.use('/api/admin/edit', adminWriteRouter({ live: supabase }));
