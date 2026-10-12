@@ -1,6 +1,30 @@
 # The three foundations — design
 
-Status: DRAFT for Nathan's review (2026-10-11). Nothing here is built.
+Status (2026-10-12): approved by Nathan (2026-10-11). Most of F-1 and F-2 and F-3 PR 1 are LIVE.
+Each row below was rehearsed on a fresh copy of live, applied with `apply-sql.mjs --live`, and the
+drift check showed 0 differences. The process: section "How these PRs went live" at the end.
+
+| Item | PR | State |
+|---|---|---|
+| Speed: card_powers, Dungeon, Gauntlet, Achievement views | #370 | LIVE (`perf_five_slow_calls.sql`) |
+| F-1 PR 1: event_vars, game_var, event library, live edits, 1-minute tick | #371 | LIVE (`event_vars.sql`) |
+| F-1 PR 2: the Hunt as a calendar event, `event_repeats` (weekly Thu 15:00 to Mon 17:00 MT) | #383 | LIVE (`hunt_calendar.sql`) |
+| F-1 PR 3: runs each day (`dungeon_runs_per_day`, `gauntlet_runs_per_day`) | #384 | LIVE (`runs_per_day.sql`) |
+| F-1 PR 4: the bot and the earned-pack functions read the variables | #386 | LIVE (`game_vars_readers.sql`, bot `cd612a8`) |
+| F-1 PR 5: the Admin month calendar, event panel, library | #382 | MERGED (Card Studio, local tool) |
+| F-1 PR 6: every variable has a reader (10 variables) | #387 | LIVE (`game_vars_all.sql`) |
+| F-1 item 10: the player side (`/api/events`, UI-62 Events page, UI-05 Events slide) | - | Designs APPROVED (UI-62 review-2, UI-05 review-5 with condition A). Not built |
+| F-2 PR 1: the Card Portal is the Admin Cards section | #368 | MERGED |
+| F-2 PR 2: `set_pool`, `set_includes`, `set_draw_pool`, set admin functions | #372 | LIVE (`set_pools.sql`) |
+| F-2 PR 3: Sets section, pack art, required set, cards grouped by set, set checkmarks | #374 | MERGED |
+| F-2: tag pickers with "+ Add new" (`card-studio/tag-vocab.json`) | #377 | MERGED |
+| F-2: one set per season (decision R-09) | #389 | LIVE (`set_season_one_set.sql`) |
+| F-2 PR 4: remove the "Season" text reads (about 40) | - | NOT STARTED |
+| F-3 PR 1: one combat math, Haste works, Attack raises only attack power | #376 | LIVE (`f3_one_combat_math.sql`, Activity `de447a2`) |
+| F-3 PR 2-10 (elements and passives, Combat Lab, effect engine, ...) | - | NOT STARTED. The Combat Lab comes before the effect engine |
+| Reports: device facts, private screenshots, Player reports section (UI-40 review-2) | #378, #385 | LIVE (`report_shots.sql`, Activity `bd8aa42`) |
+| UI-05 fix: the slide text never runs over the slide control (375x667) | #381 | LIVE |
+| Set 2 "Double Team" (S2, season 2, not pullable) | - | 41 cards in `cards.json` with 5 tiers, art in progress |
 Roadmap and success tests: `docs/roadmap-next-update.md` (F-1, F-2, F-3).
 
 The facts below come from the schema snapshot `db/schema/` at `origin/main` 2e85253.
@@ -555,3 +579,53 @@ Community Week #1.
    blocks, with one interpreter for every mode (F-3 item 12).
 9. **New layers:** the design must allow new combat layers later. Triggers and one fight
    state shape make this possible (F-3 item 13).
+
+## Decisions and findings after the approval (2026-10-11 and 2026-10-12)
+
+1. **Admin calendar (R-08):** a month view "just like a Google Calendar": click an event to edit it, click a day
+   to create one, drag to move, drag the edge to change the length (built in #382).
+2. **One set per season (R-09, replaces D-103):** Nathan, 2026-10-12: option A ("Yes lets do it"). A card insert
+   with no `set_id` takes the one set of its season (`cards_set_rules`). A rename in the studio changed S2 to
+   season 1 (inferred cause: the mouse wheel over the number field), and every insert without a set failed on live.
+   `admin_set_save` now refuses a used season. A future mega set gets its own season number. No unique index yet.
+3. **Gauntlet runs are counted per DAY, not per week (observed in `gauntlet_start`).** The variable is
+   `gauntlet_runs_per_day` (#384). A per-week variable would have cut players from 7 runs a week to 1.
+4. **One Hunt boss at a time:** the game supports one active boss. A "Boss Rush" week is several Hunt events one
+   after another. The calendar refuses an overlap (#383).
+5. **Set 2:** named "Double Team" (code TEAM, season 2): a Discord member plus a favorite character or object,
+   "<Member> & <Thing>". Cards are added through the studio API (`POST /api/cards` with `set`, then
+   `POST /api/tags/:id`). Private idea reports (member research) live outside the repo, in
+   `C:\Users\vaugh\discord-card-ideas\`. The repo is public, so they are never committed.
+6. **UI-62, UI-05 Events slide, UI-40 review-2:** design approvals recorded in the design repo
+   (`<ID>/approval.md`) and in `docs/ui-register.md` (PR #379).
+
+## How these PRs went live (the process for every session)
+
+The order for a migration PR, under Nathan's standing "go":
+1. Merge `origin/main` into the PR branch (no force push: other branches may be stacked on it). In generated files
+   (`tcg-bot/supabase/SUPERSEDED.md`, `docs/data/*`, `db/schema/*`), take main's version, then generate them again
+   in step 3. Never hand-merge them.
+2. Take the shared local database lock (below), refresh the local copy from live (`localdb/refresh.sh` in the tools
+   repo `C:\Users\vaugh\discord-ui-preview`), and run `node scripts/rehearse-sql.mjs <file.sql>` from the PR worktree.
+3. With the same copy, run `gen-schema-snapshot.mjs`, `find-superseded.mjs` and `gen-data-docs.mjs`
+   (`LOCALDB=1 node --import ./scripts/localdb-preload.mjs ...`). Commit the result in the PR.
+4. Compare the failures with the baseline on main (a fresh copy, main code). Baseline of 2026-10-12:
+   test-achievement-claims, test-balance-economy, test-boards-once, test-dungeon, and test-hunt-damage-trace (random).
+   A failure outside the baseline is investigated before anything goes live. Three kinds were found: a test that
+   re-runs an old migration whose md5 guard refuses a newer function (fix: put the file's own function text first,
+   as in test-pack-ledger-strict.mjs), a test that assumes data that live no longer has (for example a free season),
+   and real live problems (the S2 season above).
+5. Wait for CI on the NEW head, merge, `apply-sql.mjs --live` from a worktree at `origin/main`, then
+   `check-schema-drift.mjs --live` (0 differences). Deploy the Activity or the bot only after the SQL they need.
+6. Apply live migrations one at a time, in the order of the PR stack. Not on Thursday 14:00-15:00 MT or Monday
+   16:00-17:00 MT for Hunt changes.
+
+**The shared local database lock.** Several sessions and agents use the one local copy. Before any local DB step:
+`mkdir C:/Users/vaugh/.localdb.lock` (atomic; if it exists, wait and retry), write your name into
+`C:/Users/vaugh/.localdb.lock/owner`, and remove the folder after the step. Never remove a lock that you do not
+own. Never commit changes to the local copy from a scratch script (use rolled-back transactions). A refresh removes
+every migration that another session applied, so tell the running sessions after a refresh.
+
+**Git safety in worktrees.** Agents remove their worktrees when they finish. Before a git write, check that the
+worktree exists, run `pwd` and `git branch --show-current`, and chain the commands with `&&`. On 2026-10-11 a failed
+`cd` ran a merge in the shared main tree (the push was refused; fixed with `git reset --keep`).

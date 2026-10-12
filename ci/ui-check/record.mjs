@@ -43,8 +43,14 @@ const feed = { feed: [
   { id: 1, player: 'Member 103', card: 'Frost Owl', rarity: 'secret_rare', outcome: 'hit', damage: 1104, countered: true, counterDmg: 22 }],
   hp_remaining: 1284000, hp_max: 2070000, status: 'active', fighters: 5 };
 const lb = { leaders: [{ player_id: 'a', username: 'Member 101', damage: 90000 }, { player_id: ME, username: 'Member A', damage: 41230 }], me: ME };
-const FIXED = { '/api/hunt': hunt(false), '/api/hunt#battle': hunt(true), '/api/hunt/feed': feed, '/api/hunt/leaderboard': lb, '/api/pack-status': { packs: 12 } };
 const teamIds = roster.slice(0, 8).map((c) => c.id);
+// F-3 (#376): Team CP comes from GET /api/hunt/squad-value (hunt_squad_value). The fixture Hunt 999 is not in the database,
+// so the answer is fixed too (the shape of hunt_squad_value): the 8 team cards, one synergy on (origin Pokemon, 3 of the 8 cards).
+const teamCp = roster.slice(0, 8).reduce((t, c) => t + (c.power || 0), 0);
+const squadValue = { cp: teamCp, team_cp: Math.round(teamCp * 1.12), value: teamCp, cards: [],
+  groups: [{ kind: 'origin', key: 'origin:pokemon', n: 3, on: true, max: 5 }] };
+const FIXED = { '/api/hunt': hunt(false), '/api/hunt#battle': hunt(true), '/api/hunt/feed': feed, '/api/hunt/leaderboard': lb, '/api/pack-status': { packs: 12 },
+  '/api/hunt/squad-value': squadValue };
 
 const browser = await chromium.launch();
 const jobs = SIZES.flatMap(([W, H, touch]) => Object.entries(SCREENS).map(([screen, spec]) => ({ W, H, touch, screen, spec })));

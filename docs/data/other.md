@@ -7,11 +7,98 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 ## Contents
 
-Tables (3): [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
+Tables (6): [elements](#table-elements), [elements_cache](#table-elements-cache), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (2): [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
+Functions (11): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
 
 ## Tables
+
+<a id="table-elements"></a>
+
+### elements
+
+Table. [combat] The one list of elements (f3_elements_passives.sql, F-3): key, name, ord (the priority when a card has several element words), aliases (the trait words that mean the element), glyph, color and color2 (the look), weak_to (the element that beats a Dungeon foe of this element), dungeon_foe and dungeon_ord (the Dungeon foe pool and its draw order). element_aliases, card_element, element_of and dungeon_make_foe read it. GET /api/elements returns it. A word that another element has is refused. Server only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `key` | text | not null |  | The element key (lower case letters), for example fire. The trait words and the tags use it. |
+| `name` | text | not null |  | The name shown to players, for example Fire. |
+| `ord` | integer | not null |  | The priority when a card has several element words: the lowest ord wins (card_element). Unique. |
+| `aliases` | text[] | not null |  | The trait words that mean this element (lower case, no repeat, the key is one of them). A word of another element is refused. |
+| `glyph` | text | not null |  | The emoji shown on the attack effect and on the card (the look of elements.js). |
+| `color` | text | not null |  | The core color of the element, as #rrggbb (the look of elements.js). |
+| `color2` | text | not null |  | The second color of the element (trail), as #rrggbb. |
+| `weak_to` | text | null |  | The element that beats a Dungeon foe of this element (the foe gets this weakness). NULL: none. Required when dungeon_foe is true. |
+| `dungeon_foe` | boolean | not null | `false` | True when a Dungeon foe can have this element (dungeon_make_foe). |
+| `dungeon_ord` | integer | null |  | The draw order in the Dungeon foe pool (dungeon_make_foe picks by index: a change of order changes the foes). Set exactly when dungeon_foe is true. |
+| `updated_at` | timestamp with time zone | not null | `now()` | The last change of the row. |
+
+- Primary key: `PRIMARY KEY (key)`
+- Unique: `elements_dungeon_ord_key` `UNIQUE (dungeon_ord)`, `elements_ord_key` `UNIQUE (ord)`
+- Foreign keys: 
+  - `elements_weak_to_fkey` to [elements](other.md#table-elements): `FOREIGN KEY (weak_to) REFERENCES elements(key)`
+- Check constraints: 
+  - `elements_aliases_check`: `CHECK (alias_list_ok(aliases))`
+  - `elements_check`: `CHECK ((key = ANY (aliases)))`
+  - `elements_check1`: `CHECK ((weak_to IS DISTINCT FROM key))`
+  - `elements_check2`: `CHECK ((dungeon_foe = (dungeon_ord IS NOT NULL)))`
+  - `elements_check3`: `CHECK (((NOT dungeon_foe) OR (weak_to IS NOT NULL)))`
+  - `elements_color2_check`: `CHECK ((color2 ~ '^#[0-9a-f]{6}$'::text))`
+  - `elements_color_check`: `CHECK ((color ~ '^#[0-9a-f]{6}$'::text))`
+  - `elements_dungeon_ord_check`: `CHECK ((dungeon_ord >= 1))`
+  - `elements_glyph_check`: `CHECK ((glyph <> ''::text))`
+  - `elements_key_check`: `CHECK ((key ~ '^[a-z]+$'::text))`
+  - `elements_name_check`: `CHECK (((name <> ''::text) AND (name = TRIM(BOTH FROM name))))`
+  - `elements_ord_check`: `CHECK ((ord >= 1))`
+- Row level security: on. Policies: none
+
+<a id="table-elements-cache"></a>
+
+### elements_cache
+
+Table. [combat] One row (id 1): the alias map and the canonical element list that combat_element_map() returns. A statement trigger on elements rebuilds it (elements_cache_rebuild). It exists because combat_card_facts reads the map for every card of every Hunt fight and auto-pick. Server only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | integer | not null |  | Always 1: one row. |
+| `map` | jsonb | not null |  | The jsonb of combat_element_map(): alias (word to [element, ord]) and canon (the list of elements). |
+
+- Primary key: `PRIMARY KEY (id)`
+- Foreign keys: none
+- Check constraints: 
+  - `elements_cache_id_check`: `CHECK ((id = 1))`
+- Row level security: on. Policies: none
+
+<a id="table-passives"></a>
+
+### passives
+
+Table. [combat] The one list of boss and foe passives (f3_elements_passives.sql, F-3): key, label, ord (the order in the pools), on_boss, on_foe, counter (a boss gets at most one, at random), phase2 (a boss can gain it in phase 2) and params (the balance keys that the passive reads, checked on write). passives_for and passive_label read it: spawn_hunt, hunt_attack and dungeon_make_foe. The code that does the effect of a passive is still in the fight functions. Server only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `key` | text | not null |  | The passive key (lower case): the name that the fight functions test, for example armored. |
+| `label` | text | not null |  | The text shown to players, for example Armored: melee attackers deal less. |
+| `ord` | integer | not null |  | The order in the pools (passives_for). A change of order changes the random draw. Unique. |
+| `on_boss` | boolean | not null | `false` | True when a Hunt boss can have it (spawn_hunt, hunt_attack phase 2). |
+| `on_foe` | boolean | not null | `false` | True when a Dungeon foe can have it (dungeon_make_foe). |
+| `counter` | boolean | not null | `false` | True for a counter passive: a boss gets at most one, chosen at random after the main passives. |
+| `phase2` | boolean | not null | `false` | True when a boss can gain it in phase 2 (below boss_moves.phase2_at HP). |
+| `params` | jsonb | not null | `'{}'::jsonb` | {"balance": "<balance key>", "keys": [...]}: the balance numbers that the passive reads. The trigger checks that each one exists. |
+| `updated_at` | timestamp with time zone | not null | `now()` | The last change of the row. |
+
+- Primary key: `PRIMARY KEY (key)`
+- Unique: `passives_ord_key` `UNIQUE (ord)`
+- Foreign keys: none
+- Check constraints: 
+  - `passives_check`: `CHECK ((on_boss OR on_foe))`
+  - `passives_check1`: `CHECK (((NOT counter) OR (on_boss AND (NOT on_foe))))`
+  - `passives_check2`: `CHECK (((NOT phase2) OR (on_boss AND (NOT counter))))`
+  - `passives_key_check`: `CHECK ((key ~ '^[a-z_]+$'::text))`
+  - `passives_label_check`: `CHECK (((label <> ''::text) AND (label = TRIM(BOTH FROM label))))`
+  - `passives_ord_check`: `CHECK ((ord >= 1))`
+  - `passives_params_check`: `CHECK ((jsonb_typeof(params) = 'object'::text))`
+- Row level security: on. Policies: none
 
 <a id="table-set-draw-pool"></a>
 
@@ -78,6 +165,96 @@ Table. [cards] F-2 set pools: a card of another set added to the pull pool of se
 - Row level security: on. Policies: none
 
 ## Functions
+
+<a id="fn-alias-list-ok-text"></a>
+
+### alias_list_ok(text[])
+
+- Function: `alias_list_ok(p_aliases text[])`
+- Returns: `boolean`
+- Security definer: no
+
+F-3: true when a list of element words is not empty and has only lower case, trimmed words with no repeat (the check of elements.aliases).
+
+<a id="fn-element-weak-to-text"></a>
+
+### element_weak_to(text)
+
+- Function: `element_weak_to(p_key text)`
+- Returns: `text`
+- Security definer: no
+
+F-3: the element that beats a Dungeon foe of this element (elements.weak_to), or NULL.
+
+<a id="fn-elements-cache-rebuild"></a>
+
+### elements_cache_rebuild()
+
+- Function: `elements_cache_rebuild()`
+- Returns: `void`
+- Security definer: no
+
+F-3: rebuilds the one row of elements_cache from the elements table.
+
+<a id="fn-elements-cache-refresh"></a>
+
+### elements_cache_refresh()
+
+- Function: `elements_cache_refresh()`
+- Returns: `trigger`
+- Security definer: no
+
+F-3: the statement trigger of elements: calls elements_cache_rebuild after each change.
+
+<a id="fn-elements-check"></a>
+
+### elements_check()
+
+- Function: `elements_check()`
+- Returns: `trigger`
+- Security definer: no
+
+F-3: the trigger of elements: refuses a word that another element has, and sets updated_at.
+
+<a id="fn-elements-list"></a>
+
+### elements_list()
+
+- Function: `elements_list()`
+- Returns: `jsonb`
+- Security definer: no
+
+F-3: the elements as jsonb for the server route GET /api/elements.
+
+<a id="fn-passive-label-text"></a>
+
+### passive_label(text)
+
+- Function: `passive_label(p_key text)`
+- Returns: `text`
+- Security definer: no
+
+F-3: the label of a passive (passives.label).
+
+<a id="fn-passives-check"></a>
+
+### passives_check()
+
+- Function: `passives_check()`
+- Returns: `trigger`
+- Security definer: no
+
+F-3: the trigger of passives: checks that params names numbers that balance has, and sets updated_at.
+
+<a id="fn-passives-for-text"></a>
+
+### passives_for(text)
+
+- Function: `passives_for(p_pool text)`
+- Returns: `text[]`
+- Security definer: no
+
+F-3: the passive keys of a pool in table order: boss, counter, phase2 or foe (passives).
 
 <a id="fn-set-includes-rules"></a>
 

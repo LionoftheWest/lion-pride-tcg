@@ -13,6 +13,8 @@
  *   CANDIDATE=../tcg-bot/supabase/x.sql LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/combat-golden.mjs
  *                                                                                        the code vs the candidate
  *   MUTATE=1 CANDIDATE=... (the same)                                                    a 1-point change must FAIL
+ *   BASE=<file.sql> CANDIDATE=<file.sql> ...   the BASE text is installed first (inside the rolled-back block) and plays the "live" fights, so a
+ *                                        migration that is already applied on the local copy is still compared with the text before it
  * The stat points of the stat card (the 2nd attacker) and of every support, to show that a stat moves only what it names:
  *   GOLDEN_PTS='{"precision": 3}' (default {"attack": 3, "precision": 3}), GOLDEN_SUP_PTS='{"haste": 5}' (default {}).
  */
@@ -33,6 +35,8 @@ if (process.env.MUTATE && cand) {
   if (!cand.includes(a)) throw new Error('MUTATE: the candidate has no hit rounding line to change');
   cand = cand.replace(a, 'v_dmg := greatest(1, round(v_base)) + 1;');
 }
+let baseSql = process.env.BASE ? readFileSync(process.env.BASE, 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '') : '';
+if (baseSql.includes('$b$')) throw new Error('the BASE file must not contain $b$');
 if (cand.includes('$c$')) throw new Error('the candidate must not contain $c$');
 
 // The cards: 5 attackers (execute, focus, lifesteal, pierce, rampage) and 8 supports.
@@ -114,6 +118,7 @@ begin
     return v_out;
   end $g$;
   $f$;
+  ${baseSql ? 'execute $b$' + baseSql + '$b$;' : ''}
   for i in 1..n loop base := base || ${'(case i ' + runs.map((r, k) => `when ${k + 1} then ${r}`).join(' ') + ' end)'}; end loop;
   for i in 1..n loop again := again || ${'(case i ' + runs.map((r, k) => `when ${k + 1} then ${r}`).join(' ') + ' end)'}; end loop;
   for i in 1..n loop
