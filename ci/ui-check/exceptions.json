@@ -522,5 +522,21 @@
   { "decision": "D-179", "id": "UI-32", "screen": "auction-start", "size": "820x1180", "rule": "empty",
     "why": "The approved Auctions frames leave this band (an empty list, a seller view with no bid or one accepted bid, the Start panel); Nathan accepted it for now (D-179, 2026-10-10). The portrait tablet sizes use the compact-port frames (D-181)." },
   { "decision": "D-179", "id": "UI-32", "screen": "auction-start-card", "size": "820x1180", "rule": "empty",
-    "why": "The approved Auctions frames leave this band (an empty list, a seller view with no bid or one accepted bid, the Start panel); Nathan accepted it for now (D-179, 2026-10-10). The portrait tablet sizes use the compact-port frames (D-181)." }
+    "why": "The approved Auctions frames leave this band (an empty list, a seller view with no bid or one accepted bid, the Start panel); Nathan accepted it for now (D-179, 2026-10-10). The portrait tablet sizes use the compact-port frames (D-181)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "boons-day", "size": "692x917", "rule": "missing",
+    "why": "On compact sizes the On you and Recent plays lists, with their Pagers, are in the sheet behind the \"On you\" button, as the approved frame drawn for UI-27 (UI-27/approved/compact-port-430x932-on-you-open and compact-port-375x667-on-you-open); Nathan accepted it (D-152). Portrait tablets use the compact-port layout (D-181)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "boons-day", "size": "820x1180", "rule": "missing",
+    "why": "On compact sizes the On you and Recent plays lists, with their Pagers, are in the sheet behind the \"On you\" button, as the approved frame drawn for UI-27 (UI-27/approved/compact-port-430x932-on-you-open and compact-port-375x667-on-you-open); Nathan accepted it (D-152). Portrait tablets use the compact-port layout (D-181)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "boons-hist", "size": "692x917", "rule": "missing",
+    "why": "On compact sizes the On you and Recent plays lists, with their Pagers, are in the sheet behind the \"On you\" button, as the approved frame drawn for UI-27 (UI-27/approved/compact-port-430x932-on-you-open and compact-port-375x667-on-you-open); Nathan accepted it (D-152). Portrait tablets use the compact-port layout (D-181)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "boons-hist", "size": "820x1180", "rule": "missing",
+    "why": "On compact sizes the On you and Recent plays lists, with their Pagers, are in the sheet behind the \"On you\" button, as the approved frame drawn for UI-27 (UI-27/approved/compact-port-430x932-on-you-open and compact-port-375x667-on-you-open); Nathan accepted it (D-152). Portrait tablets use the compact-port layout (D-181)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "boons-member", "size": "692x917", "rule": "missing",
+    "why": "On compact sizes the On you and Recent plays lists, with their Pagers, are in the sheet behind the \"On you\" button, as the approved frame drawn for UI-27 (UI-27/approved/compact-port-430x932-on-you-open and compact-port-375x667-on-you-open); Nathan accepted it (D-152). Portrait tablets use the compact-port layout (D-181)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "boons-member", "size": "820x1180", "rule": "missing",
+    "why": "On compact sizes the On you and Recent plays lists, with their Pagers, are in the sheet behind the \"On you\" button, as the approved frame drawn for UI-27 (UI-27/approved/compact-port-430x932-on-you-open and compact-port-375x667-on-you-open); Nathan accepted it (D-152). Portrait tablets use the compact-port layout (D-181)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "fx-played", "size": "692x917", "rule": "missing",
+    "why": "On compact sizes the On you and Recent plays lists, with their Pagers, are in the sheet behind the \"On you\" button, as the approved frame drawn for UI-27 (UI-27/approved/compact-port-430x932-on-you-open and compact-port-375x667-on-you-open); Nathan accepted it (D-152). Portrait tablets use the compact-port layout (D-181)." },
+  { "decision": "D-152", "id": "UI-27", "screen": "fx-played", "size": "820x1180", "rule": "missing",
+    "why": "On compact sizes the On you and Recent plays lists, with their Pagers, are in the sheet behind the \"On you\" button, as the approved frame drawn for UI-27 (UI-27/approved/compact-port-430x932-on-you-open and compact-port-375x667-on-you-open); Nathan accepted it (D-152). Portrait tablets use the compact-port layout (D-181)." }
 ]
