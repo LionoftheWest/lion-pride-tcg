@@ -9,7 +9,7 @@ The Events system (events.sql): the events with their audience, rewards and rule
 
 Tables (6): [event_log](#table-event-log), [event_payouts](#table-event-payouts), [event_repeats](#table-event-repeats), [event_templates](#table-event-templates), [event_vars](#table-event-vars), [events](#table-events)
 
-Functions (26): [bot_game_vars(timestamp with time zone)](#fn-bot-game-vars-timestamp-with-time-zone), [event_audience(jsonb,timestamp with time zone)](#fn-event-audience-jsonb-timestamp-with-time-zone), [event_hunt_step(events,timestamp with time zone)](#fn-event-hunt-step-events-timestamp-with-time-zone), [event_log_write()](#fn-event-log-write), [event_pay(bigint,text,timestamp with time zone)](#fn-event-pay-bigint-text-timestamp-with-time-zone), [event_preview(events,timestamp with time zone)](#fn-event-preview-events-timestamp-with-time-zone), [event_recipients(events,timestamp with time zone)](#fn-event-recipients-events-timestamp-with-time-zone), [event_repeats_check()](#fn-event-repeats-check), [event_repeats_fill(timestamp with time zone)](#fn-event-repeats-fill-timestamp-with-time-zone), [event_reward_errors(jsonb,text,boolean)](#fn-event-reward-errors-jsonb-text-boolean), [event_row_errors(events)](#fn-event-row-errors-events), [event_shape_errors(text,jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-event-shape-errors-text-jsonb-jsonb-jsonb-jsonb-jsonb), [event_shape_errors(text,jsonb,jsonb,jsonb)](#fn-event-shape-errors-text-jsonb-jsonb-jsonb), [event_step(bigint,timestamp with time zone)](#fn-event-step-bigint-timestamp-with-time-zone), [event_template_errors(event_templates)](#fn-event-template-errors-event-templates), [event_theme_errors(jsonb)](#fn-event-theme-errors-jsonb), [event_tick(timestamp with time zone)](#fn-event-tick-timestamp-with-time-zone), [event_vars_base_check()](#fn-event-vars-base-check), [event_vars_errors(text,jsonb)](#fn-event-vars-errors-text-jsonb), [events_hunt_sync()](#fn-events-hunt-sync), [events_touch()](#fn-events-touch), [events_vars_check()](#fn-events-vars-check), [game_pull_rates(timestamp with time zone)](#fn-game-pull-rates-timestamp-with-time-zone), [game_var(text,timestamp with time zone)](#fn-game-var-text-timestamp-with-time-zone), [game_vars(timestamp with time zone)](#fn-game-vars-timestamp-with-time-zone), [gift_claims_event_link()](#fn-gift-claims-event-link)
+Functions (29): [bot_game_vars(timestamp with time zone)](#fn-bot-game-vars-timestamp-with-time-zone), [event_audience(jsonb,timestamp with time zone)](#fn-event-audience-jsonb-timestamp-with-time-zone), [event_hunt_step(events,timestamp with time zone)](#fn-event-hunt-step-events-timestamp-with-time-zone), [event_log_write()](#fn-event-log-write), [event_pay(bigint,text,timestamp with time zone)](#fn-event-pay-bigint-text-timestamp-with-time-zone), [event_preview(events,timestamp with time zone)](#fn-event-preview-events-timestamp-with-time-zone), [event_recipients(events,timestamp with time zone)](#fn-event-recipients-events-timestamp-with-time-zone), [event_repeats_check()](#fn-event-repeats-check), [event_repeats_fill(timestamp with time zone)](#fn-event-repeats-fill-timestamp-with-time-zone), [event_reward_errors(jsonb,text,boolean)](#fn-event-reward-errors-jsonb-text-boolean), [event_row_errors(events)](#fn-event-row-errors-events), [event_shape_errors(text,jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-event-shape-errors-text-jsonb-jsonb-jsonb-jsonb-jsonb), [event_shape_errors(text,jsonb,jsonb,jsonb)](#fn-event-shape-errors-text-jsonb-jsonb-jsonb), [event_step(bigint,timestamp with time zone)](#fn-event-step-bigint-timestamp-with-time-zone), [event_template_errors(event_templates)](#fn-event-template-errors-event-templates), [event_theme_errors(jsonb)](#fn-event-theme-errors-jsonb), [event_tick(timestamp with time zone)](#fn-event-tick-timestamp-with-time-zone), [event_vars_base_check()](#fn-event-vars-base-check), [event_vars_errors(text,jsonb)](#fn-event-vars-errors-text-jsonb), [events_hunt_sync()](#fn-events-hunt-sync), [events_touch()](#fn-events-touch), [events_vars_check()](#fn-events-vars-check), [game_dungeon_shards(numeric,timestamp with time zone)](#fn-game-dungeon-shards-numeric-timestamp-with-time-zone), [game_hunt_prizes(timestamp with time zone)](#fn-game-hunt-prizes-timestamp-with-time-zone), [game_pull_rates(timestamp with time zone)](#fn-game-pull-rates-timestamp-with-time-zone), [game_shop_price(integer,timestamp with time zone)](#fn-game-shop-price-integer-timestamp-with-time-zone), [game_var(text,timestamp with time zone)](#fn-game-var-text-timestamp-with-time-zone), [game_vars(timestamp with time zone)](#fn-game-vars-timestamp-with-time-zone), [gift_claims_event_link()](#fn-gift-claims-event-link)
 
 ## Tables
 
@@ -222,7 +222,7 @@ Table. [events] One row per event (events.sql, event_vars.sql, hunt_calendar.sql
 - Returns: `jsonb`
 - Security definer: no
 
-[events] The one call of the bot (cached 30 s, tcg-bot/src/game-vars.ts): {vars: game_vars(), pulls: game_pull_rates(), at}. The pull rates have the live pull_rare_mult; vars.pack_earn_mult is the earned-pack factor. Service role only.
+[events] The one call of the bot (cached 30 s, tcg-bot/src/game-vars.ts): {vars: game_vars(), pulls: game_pull_rates(), hunt_prizes: game_hunt_prizes(), at}. The pull rates have the live pull_rare_mult; vars.pack_earn_mult is the earned-pack factor; hunt_prizes are the prizes that settle_hunt pays. Service role only.
 
 <a id="fn-event-audience-jsonb-timestamp-with-time-zone"></a>
 
@@ -434,6 +434,26 @@ Table. [events] One row per event (events.sql, event_vars.sql, hunt_calendar.sql
 
 [events] Trigger (before insert or update of kind or vars on events and event_templates): refuses vars that event_vars_errors rejects (an unknown key, a value outside the limits). A trigger, not a CHECK: it reads event_vars.
 
+<a id="fn-game-dungeon-shards-numeric-timestamp-with-time-zone"></a>
+
+### game_dungeon_shards(numeric,timestamp with time zone)
+
+- Function: `game_dungeon_shards(p_base numeric, p_now timestamp with time zone DEFAULT now())`
+- Returns: `integer`
+- Security definer: no
+
+[events] A Dungeon Shards amount x the live dungeon_shards_mult (game_var), rounded, at least 0. The one formula of every Dungeon Shards reward: the kill and floor loot, the chest, the Shards offer and the run cap.
+
+<a id="fn-game-hunt-prizes-timestamp-with-time-zone"></a>
+
+### game_hunt_prizes(timestamp with time zone)
+
+- Function: `game_hunt_prizes(p_now timestamp with time zone DEFAULT now())`
+- Returns: `jsonb`
+- Security definer: no
+
+[events] balance hunt_prizes with base and every rank x the live hunt_prize_mult (game_var), rounded to whole packs. settle_hunt pays from it; bot_game_vars returns it for the result post.
+
 <a id="fn-game-pull-rates-timestamp-with-time-zone"></a>
 
 ### game_pull_rates(timestamp with time zone)
@@ -443,6 +463,16 @@ Table. [events] One row per event (events.sql, event_vars.sql, hunt_calendar.sql
 - Security definer: no
 
 [events] balance pulls with the live pull_rare_mult: every rate that is not normal x the factor, normal = 1 - their sum (scaled to add up to 1 if they would pass 1). Returns pack_size, rare_mult and rates.
+
+<a id="fn-game-shop-price-integer-timestamp-with-time-zone"></a>
+
+### game_shop_price(integer,timestamp with time zone)
+
+- Function: `game_shop_price(p_base integer, p_now timestamp with time zone DEFAULT now())`
+- Returns: `integer`
+- Security definer: no
+
+[events] A Shop price in Shards x the live shop_price_mult (game_var), rounded, at least 0. shop_today shows and buy_shop_item charges the pack, stat reset and stock prices through it.
 
 <a id="fn-game-var-text-timestamp-with-time-zone"></a>
 

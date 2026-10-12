@@ -15,6 +15,7 @@
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
+import { beforeGameVarsAll } from './f1-live-before.mjs';   // game_vars_all.sql (F-1 PR 6): the text this file's guard accepts
 import { fileURLToPath } from 'node:url';
 import { mutation } from './fixtures.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
@@ -50,7 +51,7 @@ const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; ok boolean; g bigint; o bigint; n int; cs bigint[]; v text; w text; aid bigint; bid bigint; run bigint;
   sd date; ss int; sc bigint; sp int; before int;
 begin
-  ${mig ? 'execute $m$' + mig + '$m$;' : '-- the database as it is'}
+  ${mig ? 'execute $m$' + beforeGameVarsAll(['buy_shop_item']) + '$m$;\n  execute $m$' + mig + '$m$;' : '-- the database as it is'}
   ${MUT}
   perform set_config('tcg.skip_welcome', 'on', true);
   update settings set value = value || '{"enabled": true}' where key = 'shards';
