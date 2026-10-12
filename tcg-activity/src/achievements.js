@@ -1,4 +1,4 @@
-// The 50 Season 1 achievements (Nathan, 2026-09-27: "more achievable and more unique").
+// The achievements: 49 fixed ones + one "<set name> Set Complete" for each released set (Nathan, 2026-09-27: "more achievable and more unique").
 // Each rule reads the merged catalog (cards with owned/quantity/ascension) and the
 // profile stats from /api/profile. A rule returns { have, need, set }: `set` is the
 // cards the achievement is about (the detail view shows them), or null for a stat.
@@ -28,16 +28,13 @@ function versions(cards) {
 // card-studio/scripts/test-gift-packs.mjs checks gift_packs against this table.
 export const LEDGER = { opened: 'opened', giftSent: 'gift_sent' };
 
-export const ACHIEVEMENTS = [
+export const BASE_ACHIEVEMENTS = [
   // Collection size
   { key: 'first', group: 'Collection', icon: '🎴', name: 'First Pull', desc: 'Own your first card', rule: ownN(() => true, 1) },
   { key: 'own10', group: 'Collection', icon: '📦', name: 'Getting Started', desc: 'Own 10 different cards', rule: ownN(() => true, 10) },
   { key: 'own25', group: 'Collection', icon: '📚', name: 'Growing Pride', desc: 'Own 25 different cards', rule: ownN(() => true, 25) },
   { key: 'own50', group: 'Collection', icon: '🗃', name: 'Collector', desc: 'Own 50 different cards', rule: ownN(() => true, 50) },
   { key: 'own100', group: 'Collection', icon: '🏛', name: 'Archivist', desc: 'Own 100 different cards', rule: ownN(() => true, 100) },
-  { key: 's1', group: 'Collection', icon: '🏆', name: 'Season 1 Complete', desc: 'Own every Season 1 base card',
-    // Base (normal) cards only (Nathan, 2026-10-03): no IR, SR, Full Art, Gold or Event card.
-    rule: (cards) => { const set = cards.filter((c) => (c.season || 'Season 1') === 'Season 1' && c.rarity === 'normal'); return { have: owned(set), need: set.length, set }; } },
 
   // Rarity
   { key: 'ir1', group: 'Rarity', icon: '🔷', name: 'First Shine', desc: 'Own an Illustrated Rare', rule: ownN((c) => c.rarity === 'illustrated_rare', 1) },
@@ -114,9 +111,29 @@ export const ACHIEVEMENTS = [
   { key: 'trade1', group: 'Social', icon: '🤝', name: 'Trader', desc: 'Complete a trade', rule: stat('tradesDone', 1) },
 ];
 
+// ---- "<set name> Set Complete" (D-190, Nathan 2026-10-12): one achievement for each RELEASED (pullable) set ----
+// Own every base (normal) card of the set (Nathan, 2026-10-03: no IR, SR, Full Art, Gold or Event card), by cards.set_id.
+// The KEY is what a member claimed and was paid under: the set S1 keeps the old key 's1' (claims already exist), every other
+// set is 'set:<id>'. The NAME is the set name from card_sets (GET /api/catalog sets). A set that is not pullable has no
+// achievement; it appears by itself when the set becomes pullable. The reward is NOT here: see REWARDS / balance below.
+export const setKey = (id) => (id === 'S1' ? 's1' : `set:${id}`);
+export const isSetKey = (key) => key === 's1' || String(key).startsWith('set:');
+// When the sets could not be read (no answer yet), the one set that members already claimed stays: it keeps its key.
+const FALLBACK_SETS = [{ id: 'S1', name: 'Season 1' }];
+export const setAchievement = (s) => ({
+  key: setKey(s.id), group: 'Collection', icon: '🏆', name: `${s.name} Set Complete`, desc: `Own every ${s.name} base card`,
+  rule: (cards) => { const set = cards.filter((c) => c.set_id === s.id && c.rarity === 'normal'); return { have: owned(set), need: set.length, set }; },
+});
+/** The list for the released sets (the rows of card_sets where pullable, in order). The set achievements follow Archivist. */
+export function achievementList(sets) {
+  const rel = (Array.isArray(sets) && sets.length ? sets : FALLBACK_SETS).map(setAchievement);
+  const at = BASE_ACHIEVEMENTS.findIndex((a) => a.key === 'own100') + 1;
+  return [...BASE_ACHIEVEMENTS.slice(0, at), ...rel, ...BASE_ACHIEVEMENTS.slice(at)];
+}
+
 /** Every achievement with its progress. Nearest to done first, finished ones last. */
-export function measure(cards, stats) {
-  return ACHIEVEMENTS.map((a) => {
+export function measure(cards, stats, sets) {
+  return achievementList(sets).map((a) => {
     const r = a.rule(cards, stats || {});
     return { ...a, have: r.have, need: Math.max(1, r.need), set: r.set, done: r.have >= Math.max(1, r.need) };
   }).sort((a, b) => (a.done - b.done) || (b.have / b.need - a.have / a.need));
@@ -146,7 +163,8 @@ export const REWARDS = {
   slay1: { packs: 2 }, slay3: { packs: 3, title: 'Boss Breaker', frame: 'silver' },
   boon1: { packs: 1 }, prank5: { packs: 2, title: 'Prankster' }, trade1: { packs: 1, title: 'Trader' },
 };
-export const rewardOf = (key) => REWARDS[key] || { packs: 1 };
+// A set achievement of a set after Season 1 has NO reward until Nathan decides (D-190 open question): {} pays nothing.
+export const rewardOf = (key) => REWARDS[key] || (isSetKey(key) ? {} : { packs: 1 });
 export function rewardLabel(r) {
   return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.title ? `"${r.title}" title` : null, r.frame ? FRAMES[r.frame] : null].filter(Boolean).join(' + ');
 }
