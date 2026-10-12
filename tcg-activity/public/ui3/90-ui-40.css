@@ -60,7 +60,15 @@ body[data-kb]:has(#v2Report.u3-rp) #main { visibility: hidden; }
 .u3-rp__with { position: relative; }
 .u3-rp__dev { border-color: var(--border-strong); cursor: pointer; }
 .u3-rp__dev > .u3-ico:last-child { color: var(--text-secondary); }
-body[data-input="coarse"] .u3-rp__dev::after { content: ''; }
+/* touch: a 44 box (9.1; the G3 tap check measures the box) that keeps the 28 pill and the row height: the pill is ::before */
+body[data-input="coarse"] .u3-rp__dev { height: var(--hit); margin-block: calc((var(--chip-md) - var(--hit)) / 2); background: none; border-color: transparent; }
+body[data-input="coarse"] .u3-rp__dev::before { content: ''; position: absolute; left: 0; right: 0; top: calc((var(--hit) - var(--chip-md)) / 2); height: var(--chip-md);
+  box-sizing: border-box; border-radius: var(--rad-pill); background: var(--surface-2); border: var(--bw-1) solid var(--border-strong); }
+body[data-input="coarse"] .u3-rp__dev > * { position: relative; }
+/* the chip is the last fact: its lower 8 of hit box sits in the padding of the facts row, and the block gives that space back,
+   so the row holds its chip and nothing below moves */
+body[data-input="coarse"] .u3-rp__with:has(.u3-rp__dev) { margin-bottom: calc((var(--chip-md) - var(--hit)) / 2); }
+body[data-input="coarse"] .u3-rp__with:has(.u3-rp__dev) > .u3-rp__facts { padding-bottom: calc((var(--hit) - var(--chip-md)) / 2); }
 .u3-rp__pop { position: absolute; left: 0; bottom: var(--rp-pop-b, 100%); display: flex; flex-direction: column; gap: var(--sp-1-5);
   min-width: calc(var(--sheet-side-w) * 2 / 3); max-width: 100%; box-sizing: border-box; padding: var(--sp-3) var(--sp-3);
   border-radius: var(--rad-lg); background: var(--surface-2); border: var(--bw-1) solid var(--border-strong); box-shadow: var(--elev-2); }
@@ -111,3 +119,18 @@ body.ui-v3 .u3-rp.is-short { --rp-gap: var(--sp-2); padding: var(--sp-3); }
 .u3-rp.is-short .u3-rp__area, .u3-rp.is-short .u3-rp__area > .u3-textarea { min-height: calc(var(--hit) + var(--sp-5) + var(--sp-1)); }
 body.ui-v3 .u3-rp.is-short .u3-rp__slot { height: var(--hit); }
 .u3-rp.is-short .u3-rp__foot { gap: var(--sp-1); }
+/* touch: the slot controls get a 44 box (9.1) and keep their drawn circle (::before) */
+body[data-input="coarse"] .u3-rp__slot .u3-ibtn { width: var(--hit); height: var(--hit); background: none; border-color: transparent; }
+body[data-input="coarse"] .u3-rp__slot .u3-ibtn::before { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); box-sizing: border-box;
+  width: calc(var(--icon-lg) + var(--sp-1-5)); height: calc(var(--icon-lg) + var(--sp-1-5)); border-radius: var(--rad-round); background: var(--surface-1); border: var(--bw-1) solid var(--border-strong); }
+body[data-input="coarse"] .u3-rp__slot [data-rp-retry]::before { width: var(--ctl-sm); height: var(--ctl-sm); border-color: var(--danger); }
+body[data-input="coarse"] .u3-rp__slot .u3-ibtn > svg { position: relative; }
+body[data-input="coarse"] .u3-rp__slot [data-rp-remove] { top: 0; right: 0; }
+body[data-input="coarse"] .u3-rp__slot [data-rp-remove] { align-items: flex-start; justify-content: flex-end; padding: var(--sp-1); box-sizing: border-box; }
+body[data-input="coarse"] .u3-rp__slot [data-rp-remove]::before { left: auto; top: var(--sp-1); right: var(--sp-1); transform: none; }
+body[data-input="coarse"] .u3-rp__slot [data-rp-remove] > svg { margin: var(--sp-1-5); }
+body[data-input="coarse"] .u3-rp__slot [data-rp-retry] { width: var(--hit); height: var(--hit); }
+
+/* compact-land: the two-column window of the review-2 frames is not built (D-136, D-181: desktop and portrait). The device chip and
+   the Screenshots block are hidden there, so the window stays the live review-1 window and Send stays in it. */
+body.ui-v3[data-size="compact-land"] .u3-rp__shots, body.ui-v3[data-size="compact-land"] .u3-rp__dev { display: none; }
