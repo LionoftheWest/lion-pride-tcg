@@ -33978,6 +33978,24 @@
    "body": {
     "prefs": {}
    }
+  },
+  "/api/hunt/squad-value": {
+   "status": 200,
+   "body": {
+    "cp": 386,
+    "team_cp": 432,
+    "value": 386,
+    "cards": [],
+    "groups": [
+     {
+      "kind": "origin",
+      "key": "origin:pokemon",
+      "n": 3,
+      "on": true,
+      "max": 5
+     }
+    ]
+   }
   }
  }
 }
