@@ -1256,7 +1256,7 @@ Shape: `object { base: number, ranks: array(10) of number }`
 
 ### pack_earn_multiplier
 
-The earn dial: every earned pack (the dailies and the chat packs) x this, rounded. 0 = earning paused (the launch reset, 2026-09-30). The bot /packrate command sets it.
+The earn dial (the base): every earned pack (the dailies and the chat packs) x this, rounded. 0 = earning paused (the launch reset, 2026-09-30). The game reads it through game_var('pack_earn_mult'), so a live modifier event multiplies it; the bot /packrate command makes that event (admin_packrate) and does not change this value.
 
 Shape: `number`
 

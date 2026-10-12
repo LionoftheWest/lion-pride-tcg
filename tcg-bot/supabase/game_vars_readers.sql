@@ -202,6 +202,9 @@ begin
   return jsonb_build_object('ok', true, 'event', (select to_jsonb(x) from events x where x.id = v_id));
 end $$;
 
+-- The note of the base value: /packrate no longer changes it.
+update public.balance set note = $n$The earn dial (the base): every earned pack (the dailies and the chat packs) x this, rounded. 0 = earning paused (the launch reset, 2026-09-30). The game reads it through game_var('pack_earn_mult'), so a live modifier event multiplies it; the bot /packrate command makes that event (admin_packrate) and does not change this value.$n$ where key = 'pack_earn_multiplier' and note is distinct from $n$The earn dial (the base): every earned pack (the dailies and the chat packs) x this, rounded. 0 = earning paused (the launch reset, 2026-09-30). The game reads it through game_var('pack_earn_mult'), so a live modifier event multiplies it; the bot /packrate command makes that event (admin_packrate) and does not change this value.$n$;
+
 -- ============================================================ 4. the lockdown (lockdown_grants.sql pattern)
 revoke all on function public.bot_game_vars(timestamptz), public.admin_packrate(numeric, numeric, text) from public, anon, authenticated;
 grant execute on function public.bot_game_vars(timestamptz), public.admin_packrate(numeric, numeric, text) to service_role;
