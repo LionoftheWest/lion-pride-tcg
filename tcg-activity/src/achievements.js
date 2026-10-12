@@ -119,7 +119,7 @@ export const BASE_ACHIEVEMENTS = [
 export const setKey = (id) => (id === 'S1' ? 's1' : `set:${id}`);
 export const isSetKey = (key) => key === 's1' || String(key).startsWith('set:');
 // When the sets could not be read (no answer yet), the one set that members already claimed stays: it keeps its key.
-const FALLBACK_SETS = [{ id: 'S1', name: 'Season 1' }];
+const FALLBACK_SETS = [{ id: 'S1', name: 'Origins' }];
 export const setAchievement = (s) => ({
   key: setKey(s.id), group: 'Collection', icon: '🏆', name: `${s.name} Set Complete`, desc: `Own every ${s.name} base card`,
   rule: (cards) => { const set = cards.filter((c) => c.set_id === s.id && c.rarity === 'normal'); return { have: owned(set), need: set.length, set }; },
