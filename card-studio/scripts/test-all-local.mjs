@@ -23,6 +23,8 @@ const ARGS = {
   'test-events.mjs': ['../tcg-bot/supabase/events.sql'], // a fresh local copy has no pg_cron jobs: the file makes event-tick inside the test
   'test-achievement-tracks.mjs': ['--live'],
   'test-adventure-dailies.mjs': ['--live'],
+  // f3_one_combat_math.sql replaced combat_squad (SUPERSEDED.md lists card_decisions.sql): the decisions on the CURRENT functions
+  'test-card-decisions.mjs': ['--old'],
 };
 // One-time acceptance tests of a data conversion: they expect the state BEFORE it ran, so they fail
 // afterwards by design (on live too). Skipped, with the reason.

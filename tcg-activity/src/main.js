@@ -31,7 +31,7 @@ import { every, isIdle } from './poll.js';
 import { watchSizeClass } from './ui3/size-class.js';
 import { createLoader, paintLoader, writeHint } from './ui3/loader.js';
 import { startShell } from './ui3/shell.js';
-import { openCardPicker } from './ui3/card-picker.js';
+import { openCardPicker, repaintCardPicker } from './ui3/card-picker.js';
 import { fitViewer, watchViewerFit } from './ui3/viewer-fit.js';
 import { styleViewerButtons, spendClasses } from './ui3/viewer.js';
 import { fmtFor } from './ui3/number.js';
@@ -1713,46 +1713,43 @@ function selectPhaseHTML(d) {
 }
 
 // The live synergy readout + the 8 squad slots, recomputed as the player picks.
-const SYN_MAX = 5, SYN_MIN = 3; // a synergy is ACTIVE at 3 cards and maxes out at 5 (GAME_LABELS defined below, shared with the card viewer)
+// F-3 (docs/foundations.md, 2026-10-11): Team CP and the synergy groups come from the server (GET /api/hunt/squad-value =
+// hunt_squad_value, the fight's own calculation): the Activity does no combat math. One call for each squad shown (debounced),
+// cached by the hunt and the card ids; the last numbers stay on screen while the next ones load.
 const titleCase = (s) => String(s || '').replace(/[-_]/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
-function computeSquadStats() {
+const squadValues = new Map();   // "hunt:ids" -> the hunt_squad_value answer
+let squadValueLast = null, squadValueWant = '', squadValueTimer = 0;
+function squadValueOf(ids, onReady) {
+  const key = ids.length ? `${huntState?.hunt?.id || 0}:${ids.map(Number).sort((x, y) => x - y).join(',')}` : '';
+  if (!key) return null;
+  const hit = squadValues.get(key);
+  if (hit) { squadValueLast = hit; return hit; }
+  squadValueWant = key;
+  clearTimeout(squadValueTimer);
+  squadValueTimer = setTimeout(async () => {
+    const v = await api(`/api/hunt/squad-value?cards=${key.split(':')[1]}`).catch(() => null);
+    if (!v || v.team_cp == null) return;   // keep the last numbers
+    squadValues.set(key, v);
+    if (squadValueWant === key) { squadValueLast = v; onReady?.(); }
+  }, 120);
+  return squadValueLast;
+}
+const synLabel = (g) => (g.kind === 'element' ? `${ELEMENTS[g.key]?.glyph || ''} ${titleCase(g.key)}`.trim()
+  : g.kind === 'origin' ? (GAME_LABELS[g.key.replace(/^origin:/, '')] || titleCase(g.key.replace(/^origin:/, ''))) : titleCase(g.key.replace(/^trait:/, '')));
+// onReady: called when the server answer for this squad arrives (repaint the numbers).
+function computeSquadStats(onReady) {
   const roster = huntState?.roster || [];
   const sel = [...squad.sel].map((id) => roster.find((c) => c.id === id)).filter(Boolean);
-  const attackers = sel.filter((c) => ATTACKER_TYPES.includes(c.type));
-  const cp = attackers.reduce((s, c) => s + (c.power || 0), 0);
-  const elem = {}, origin = {}, kind = {};
-  for (const c of attackers) {
-    const t = c.tags || {};
-    const e = cardElement(t); if (e) elem[e] = (elem[e] || 0) + 1;
-    if (t.origin) origin[t.origin] = (origin[t.origin] || 0) + 1;
-    for (const tr of (Array.isArray(t.traits) ? t.traits : [])) {
-      if (!cardElement([tr])) { const k = String(tr).toLowerCase(); kind[k] = (kind[k] || 0) + 1; } // element traits handled above
-    }
-  }
-  const syn = [];
-  for (const [e, n] of Object.entries(elem)) syn.push({ key: 'element', label: `${ELEMENTS[e]?.glyph || ''} ${titleCase(e)}`.trim(), n });
-  for (const [o, n] of Object.entries(origin)) syn.push({ key: 'origin', label: GAME_LABELS[o] || titleCase(o), n });
-  for (const [k, n] of Object.entries(kind)) syn.push({ key: 'trait', label: titleCase(k), n });
-  syn.sort((a, b) => b.n - a.n);
-  // Effective CP = raw power scaled by each card's synergy multiplier (mirrors the engine).
-  const em = (n) => (n >= 5 ? 1.20 : n >= 3 ? 1.12 : 1);
-  const om = (n) => (n >= 5 ? 1.18 : n >= 3 ? 1.10 : 1);
-  const km = (n) => (n >= 5 ? 1.14 : n >= 3 ? 1.08 : 1);
-  let effCp = 0;
-  for (const c of attackers) {
-    const t = c.tags || {};
-    const e = cardElement(t);
-    let kBest = 0;
-    for (const tr of (Array.isArray(t.traits) ? t.traits : [])) { if (!cardElement([tr])) { const k = String(tr).toLowerCase(); if ((kind[k] || 0) > kBest) kBest = kind[k]; } }
-    const mult = Math.min(1.6, em(e ? (elem[e] || 0) : 0) * om(t.origin ? (origin[t.origin] || 0) : 0) * km(kBest));
-    effCp += (c.power || 0) * mult;
-  }
+  const v = squadValueOf(sel.map((c) => c.id), onReady);
+  // Before the first answer: the sum of the attackers' power (no synergy).
+  const cp = v ? Number(v.cp) : sel.filter((c) => ATTACKER_TYPES.includes(c.type)).reduce((t, c) => t + (c.power || 0), 0);
+  const syn = (v?.groups || []).map((g) => ({ key: g.kind, label: synLabel(g), n: g.n, on: g.on, max: g.max }));
   const weakHits = sel.filter((c) => c.matches).length;
-  return { sel, cp, effCp: Math.round(effCp), syn, weakHits };
+  return { sel, cp, effCp: v ? Number(v.team_cp) : cp, syn, weakHits };
 }
 function paintSquadPanel(cap) {
   cap = cap || huntState?.dailyCap || 8;
-  const st = computeSquadStats();
+  const st = computeSquadStats(() => paintSquadPanel(cap));
   const cpEl = el('cpBig');
   if (cpEl) {
     const boost = st.effCp > st.cp ? ` <span class="cp-boost">+${(st.effCp - st.cp).toLocaleString()}</span>` : '';
@@ -1761,10 +1758,9 @@ function paintSquadPanel(cap) {
   const synEl = el('squadSynergy');
   if (synEl) {
     const shown = st.syn.filter((s) => s.n >= 2);
-    shown.sort((a, b) => ((b.n >= SYN_MIN) - (a.n >= SYN_MIN)) || (b.n - a.n)); // active first: the first row is the one that fits
+    shown.sort((a, b) => (b.on - a.on) || (b.n - a.n)); // active first: the first row is the one that fits
     const chips = shown.map((s) => {
-      const on = s.n >= SYN_MIN;
-      return `<span class="syn-chip syn-${s.key}${on ? ' on' : ''}">${s.label} <b>${Math.min(s.n, SYN_MAX)}/${SYN_MAX}</b></span>`;
+      return `<span class="syn-chip syn-${s.key}${s.on ? ' on' : ''}">${s.label} <b>${Math.min(s.n, s.max)}/${s.max}</b></span>`;
     }).join('');
     const weak = st.weakHits ? `<span class="syn-chip weakhit">×1.5 weakness · ${st.weakHits}</span>` : '';
     synEl.innerHTML = `${chips || '<span class="syn-none">Group cards by element, game, or trait for a synergy</span>'}${weak}`;
@@ -2109,7 +2105,7 @@ let huntTop = null;   // the Top 3 (GET /api/hunt/leaderboard), loaded once per 
 function huntSelectV3HTML(d) {
   const h = d.hunt;
   const cap = d.dailyCap || 8;
-  const stats = computeSquadStats();
+  const stats = computeSquadStats(paintHuntV3Stats);
   const roster = d.roster || [];
   const picks = [...squad.sel].map((id) => roster.find((c) => Number(c.id) === Number(id))).filter(Boolean);
   const pct = Math.max(0, Math.min(100, Math.round((100 * h.hp_remaining) / h.hp_max)));
@@ -2133,9 +2129,6 @@ function huntSelectV3HTML(d) {
       ? `${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name || '')}${c.downed ? ' (down)' : ''}" draggable="false">` : ''}${c.downed ? '<span class="u3-hs-down" aria-hidden="true">Down</span>' : ''}`
       : `<span aria-hidden="true">${i + 1}</span>`}</li>`;
   }).join('');
-  const syn = stats.syn.filter((s) => s.n >= 2);
-  const chips = syn.map((s) => `<span class="u3-hs-chip">${esc(s.label)} <b>${s.n}/5</b></span>`).join('');
-  const bonus = stats.effCp - stats.cp;
   let act;
   if (squad.ko) act = `<button type="button" class="u3-btn u3-btn--secondary u3-btn--md" disabled aria-describedby="u3HsKo">${ui3Icon('lock', { size: 'sm' })}<span class="u3-btn__label">Edit</span></button>`
     + `<p class="u3-hs-ko" id="u3HsKo"><span>Squad locked until tomorrow</span><span>${ui3Icon('skull', { size: 'sm' })}Your squad is down for today.</span></p>`;
@@ -2145,12 +2138,25 @@ function huntSelectV3HTML(d) {
     <section class="u3-hs-squad">
       <div class="u3-hs-info">
         <div class="u3-hs-head"><div class="u3-hs-count"><h2>Squad</h2><b>${picks.length}</b><span>/ ${cap}</span></div>
-        <div class="u3-hs-power">${ui3Icon('zap', { size: 'lg' })}<b>${stats.effCp.toLocaleString('en-US')}</b><span class="u3-label">Squad Power</span>${bonus > 0 ? `<em>+${bonus.toLocaleString('en-US')}</em>` : ''}</div></div>
-        <div class="u3-hs-syn"><span class="u3-label">Synergies</span><div class="u3-hs-chips" id="u3HsChips">${chips}</div></div>
+        <div class="u3-hs-power">${hsPowerHTML(stats)}</div></div>
+        <div class="u3-hs-syn"><span class="u3-label">Synergies</span><div class="u3-hs-chips" id="u3HsChips">${hsChipsHTML(stats)}</div></div>
         <div class="u3-hs-act">${act}</div>
       </div>
       <div class="u3-hs-slotbox"><ol class="u3-hs-slots" aria-label="Your squad">${slots}</ol></div>
     </section></div>`;
+}
+// The Squad Power and the synergy chips of the v3 strip (F-3: the numbers of hunt_squad_value), and their repaint when the answer arrives.
+function hsPowerHTML(stats) {
+  const bonus = stats.effCp - stats.cp;
+  return `${ui3Icon('zap', { size: 'lg' })}<b>${stats.effCp.toLocaleString('en-US')}</b><span class="u3-label">Squad Power</span>${bonus > 0 ? `<em>+${bonus.toLocaleString('en-US')}</em>` : ''}`;
+}
+const hsChipsHTML = (stats) => stats.syn.filter((s) => s.n >= 2).map((s) => `<span class="u3-hs-chip">${esc(s.label)} <b>${s.n}/${s.max}</b></span>`).join('');
+function paintHuntV3Stats() {
+  const pw = document.querySelector('.u3-hs-power'), chips = el('u3HsChips');
+  if (!pw && !chips) return;
+  const stats = computeSquadStats();
+  if (pw) pw.innerHTML = hsPowerHTML(stats);
+  if (chips) chips.innerHTML = hsChipsHTML(stats);
 }
 // D-166 + D-172: the trophy icon button of the Menu grid sits beside the boss title (UI-17 squad select, UI-19 resting) and opens the
 // Leaderboard window on the Hunt tab. The Top 3 box keeps only its label.
@@ -2312,7 +2318,7 @@ function openHuntPicker(from) {
   const roster = d.roster || [];
   const byId = new Map(roster.map((c) => [Number(c.id), c]));
   const used = roster.filter((c) => c.used).map((c) => Number(c.id));
-  const statsOf = (sel) => { const keep = squad.sel; squad.sel = new Set(sel); const s = computeSquadStats(); squad.sel = keep; return s; };
+  const statsOf = (sel) => { const keep = squad.sel; squad.sel = new Set(sel); const s = computeSquadStats(repaintCardPicker); squad.sel = keep; return s; };
   const fill = async (sel) => {
     let ids = [];
     try { ids = (await api('/api/hunt/autopick')).ids || []; } catch { ids = []; }
@@ -3284,8 +3290,8 @@ function fillSquadInfo(c) {
   box.classList.remove('hidden');
 }
 
-// The raid numbers of a squad card: the same values the fight uses (hunt_synergy_passives
-// crit 10%, 20% on a weakness; HP from /api/hunt).
+// The raid numbers of a squad card: the same values the fight uses (the crit chance and the HP from /api/hunt: SQL
+// combat_crit_chance and card_combat; F-3: no crit number in the Activity).
 function fillRaidInfo(c) {
   const box = el('v-raid');
   if (!box) return;
@@ -3303,7 +3309,7 @@ function fillRaidInfo(c) {
     <div class="vr-stats">
       ${stat(support ? '—' : `⚡ ${c.power ?? 0}`, 'Power')}
       ${stat(max ? `${hp}/${max}` : '—', 'HP', max && hp / max < 0.35 ? 'low' : '')}
-      ${stat(support ? '—' : `${Math.round(Math.min(c.critAdd ? 0.6 : 1, (c.matches ? 0.2 : 0.1) + (c.critAdd || 0)) * 100)}%`, 'Crit')}
+      ${stat(support || c.crit == null ? '—' : `${Math.round(c.crit * 100)}%`, 'Crit')}
       ${stat(look ? `${look.glyph} ${look.name}` : '—', 'Element')}
     </div>
     ${max ? `<i class="vr-hpbar"><i style="width:${Math.max(0, Math.round((100 * hp) / max))}%"></i></i>` : ''}

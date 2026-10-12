@@ -86,6 +86,9 @@ export function openCardPicker(opts) {
   else host.querySelector('.u3-pk')?.focus({ preventScroll: true });
 }
 
+// Paint the open picker again (F-3: the Squad Power status arrives from the server after the click).
+export function repaintCardPicker() { if (cur) paint(); }
+
 export function closeCardPicker() {
   if (!cur) return;
   document.getElementById('u3Picker')?.remove();
