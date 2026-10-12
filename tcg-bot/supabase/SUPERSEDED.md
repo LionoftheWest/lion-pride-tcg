@@ -132,7 +132,7 @@ These files have a statement that cannot run in a rolled-back transaction. Read 
 
 A file runs as one transaction, so an error rolls the whole file back.
 
-## No structure change, but a re-run writes rows (26)
+## No structure change, but a re-run writes rows (27)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -159,6 +159,7 @@ a one-time grant or a settings value would run again.
 - `perf_prepare_day.sql`: cron.job
 - `player_reports.sql`: settings
 - `raid_makeup_oct1.sql`: give_gift(), hunt_adjustments
+- `report_shots.sql`: balance, storage.buckets
 - `screen_pranks_short.sql`: effect_primitives, player_effects, subjects
 - `shard_ledger_strict.sql`: shard_ledger
 - `special_cards_never_in_packs.sql`: cards
