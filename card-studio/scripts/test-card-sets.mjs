@@ -21,6 +21,9 @@
  *   - D-86 a set's cover is a card of that set (another set's card is refused; the cover cannot move set);
  *   - D-89 is_new only on the newest pullable set, and only when there are 2 or more;
  *   - D-90 pack_color is required and #rrggbb (S1 = #ff8d4d), pack_art_url is returned.
+ * The test sets use free seasons above max(card_sets.season) (sb, read in the block), and the pullable_sets and
+ * draw_pool checks read only the rows of S1 and the test sets: a real set (for example S2 'Crew Battle', season 2,
+ * 2026-10-12) does not change the result.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
@@ -93,7 +96,7 @@ const got = (name, cond, extra = '') => `res := res || jsonb_build_object('case'
 
 const body = String.raw`do $t$
 declare res jsonb := '[]'; ok boolean; n int; m int; x bigint; y bigint; cs bigint[]; s1 bigint[]; v jsonb; w jsonb; subj bigint;
-  before jsonb; after jsonb; again jsonb; seen text[]; d date; s1_alone_new boolean; badges_before jsonb; weak_before int; top text;
+  before jsonb; after jsonb; again jsonb; seen text[]; d date; s1_alone_new boolean; badges_before jsonb; weak_before int; top text; sb int;
 begin
   -- The catalog as /api/catalog gives it to the browser today (every card, ordered by id, season || 'Season 1').
   select jsonb_agg(jsonb_build_object('id', id, 'season', coalesce(nullif(season, ''), 'Season 1')) order by id) into before from cards;
@@ -130,8 +133,11 @@ ${kase('D-102/D-103 S1 = Origins, code ORI, season 1; every existing card keeps 
   begin s1_alone_new := coalesce((select bool_or((e->>'is_new')::boolean) from jsonb_array_elements(pullable_sets('${P}_c')->'sets') e), true);
   exception when others then s1_alone_new := null; end;
   -- Test sets: TS2 pullable, TS9 not pullable; 60 cards each (40 normal, 10 illustrated rare, 10 secret rare).
+  -- Free seasons: sb = the highest season of the real sets. TS2 and TS4 in sb + 1, TS3 in sb + 2, TS9 in sb + 3,
+  -- sb + 4 has no set.
+  select coalesce(max(season), 1) into sb from card_sets;
   insert into subjects (key, name, type) values ('${P}_subj', 'Test set subject', 'Item') returning id into subj;
-  insert into card_sets (id, name, code, season, pullable, sort, released_at, pack_color) values ('TS2', 'Test Set 2', 'TS2', 2, true, 2, now(), '#22aa66'), ('TS9', 'Test Set 9', 'TS9', 9, false, 9, now(), '#999999');
+  insert into card_sets (id, name, code, season, pullable, sort, released_at, pack_color) values ('TS2', 'Test Set 2', 'TS2', sb + 1, true, 2, now(), '#22aa66'), ('TS9', 'Test Set 9', 'TS9', sb + 3, false, 9, now(), '#999999');
   insert into cards (subject_id, name, rarity, set_id)
     select subj, 'tst ' || st || ' ' || i, (case when i <= 40 then 'normal' when i <= 50 then 'illustrated_rare' else 'secret_rare' end)::card_rarity, st
       from unnest(array['TS2', 'TS9']) st, generate_series(1, 60) i order by st, i;
@@ -147,18 +153,18 @@ ${kase('a new S1 card gets the next S1 number; a deleted number is never given a
     insert into cards (subject_id, name, rarity, set_id) values (subj, 'tst new s1 b', 'normal', 'S1') returning id into y;
     ${got('a new S1 card gets the next S1 number; a deleted number is never given again', `(select set_number from cards where id = y) = n + 2`, ", 'max_before', n, 'got', (select set_number from cards where id = y)")}`)}
 ${kase('an insert with only a season gets the one set of that season; an unknown season or a season with no set is refused', `
-    insert into cards (subject_id, name, rarity, season) values (subj, 'tst by season', 'normal', 'Season 2') returning id into x;
+    insert into cards (subject_id, name, rarity, season) values (subj, 'tst by season', 'normal', 'Season ' || (sb + 1)) returning id into x;
     begin insert into cards (subject_id, name, rarity, season) values (subj, 'tst bad season', 'normal', 'Nope Season'); ok := false;
     exception when check_violation then ok := true; end;
-    if ok then begin insert into cards (subject_id, name, rarity, season) values (subj, 'tst no set season', 'normal', 'Season 7'); ok := false;
+    if ok then begin insert into cards (subject_id, name, rarity, season) values (subj, 'tst no set season', 'normal', 'Season ' || (sb + 4)); ok := false;
     exception when check_violation then ok := true; end; end if;
-    ${got('an insert with only a season gets the one set of that season; an unknown season or a season with no set is refused', `ok and (select set_id = 'TS2' and set_number = 61 and season = 'Season 2' from cards where id = x)`)}`)}
-${kase('D-103 a season holds several sets: a second set in season 2 is allowed, its cards say Season 2, a season-only insert is then refused', `
-    insert into card_sets (id, name, code, season, pullable, sort, pack_color) values ('TS4', 'Test Set 4', 'TS4', 2, true, 4, '#445566');
+    ${got('an insert with only a season gets the one set of that season; an unknown season or a season with no set is refused', `ok and (select set_id = 'TS2' and set_number = 61 and season = 'Season ' || (sb + 1) from cards where id = x)`)}`)}
+${kase('D-103 a season holds several sets: a second set in the season of TS2 is allowed, its cards say that season, a season-only insert is then refused', `
+    insert into card_sets (id, name, code, season, pullable, sort, pack_color) values ('TS4', 'Test Set 4', 'TS4', sb + 1, true, 4, '#445566');
     insert into cards (subject_id, name, rarity, set_id) values (subj, 'tst ts4', 'normal', 'TS4') returning id into y;
-    begin insert into cards (subject_id, name, rarity, season) values (subj, 'tst ambiguous', 'normal', 'Season 2'); ok := false;
+    begin insert into cards (subject_id, name, rarity, season) values (subj, 'tst ambiguous', 'normal', 'Season ' || (sb + 1)); ok := false;
     exception when check_violation then ok := true; end;
-    ${got('D-103 a season holds several sets: a second set in season 2 is allowed, its cards say Season 2, a season-only insert is then refused', `ok and (select season = 'Season 2' and set_number = 1 from cards where id = y)`)}
+    ${got('D-103 a season holds several sets: a second set in the season of TS2 is allowed, its cards say that season, a season-only insert is then refused', `ok and (select season = 'Season ' || (sb + 1) and set_number = 1 from cards where id = y)`)}
     delete from cards where id = y; delete from card_sets where id = 'TS4';`)}
 ${kase('D-103 a set code is unique; a season must be 1 or more', `
     begin insert into card_sets (id, name, code, season, pack_color) values ('TSC', 'Test C', 'ORI', 3, '#123456'); ok := false; exception when unique_violation then ok := true; end;
@@ -226,7 +232,7 @@ ${kase('pullable_sets: S1 and TS2 (not TS9), the card counts of the draw pool, t
 ${kase('D-85 last_set: the set the member opened last; first visit = the newest pullable set; a set no longer pullable falls back to the newest', `
     -- a opened TS2 (above), then with no set (3 arguments: last_open_set unchanged). c never opened with a set.
     -- TS3 is released after TS2, so TS3 is the newest pullable set.
-    insert into card_sets (id, name, code, season, pullable, sort, released_at, pack_color) values ('TS3', 'Test Set 3', 'TS3', 3, true, 3, now() + interval '1 day', '#3366cc');
+    insert into card_sets (id, name, code, season, pullable, sort, released_at, pack_color) values ('TS3', 'Test Set 3', 'TS3', sb + 2, true, 3, now() + interval '1 day', '#3366cc');
     ok := pullable_sets('${P}_a')->>'last_set' = 'TS2' and pullable_sets('${P}_c')->>'last_set' = 'TS3'
       and (select last_open_set from players where id = '${P}_a') = 'TS2';
     update card_sets set pullable = false where id = 'TS2';
@@ -259,10 +265,11 @@ ${kase('D-90 pack color: S1 = #ff8d4d (pack_still.png); a bad color or no color 
       and (select e->>'pack_color' = '#ff8d4d' and e->'pack_art_url' = 'null'::jsonb from jsonb_array_elements(v) e where e->>'id' = 'S1')
       and (select e->>'pack_color' = '#3366cc' and e->>'pack_art_url' = 'https://example.test/ts3-pack.webp' from jsonb_array_elements(v) e where e->>'id' = 'TS3')`, ", 'v', v")}`)}
 ${kase('D-90 many sets: one SQL statement (no loop per set) lists 300 more sets', `
+    m := jsonb_array_length(pullable_sets('${P}_c')->'sets'); select count(*) into x from card_sets where pullable;
     insert into card_sets (id, name, code, season, pack_color, sort) select 'M' || i, 'Many ' || i, 'M' || i, 1, '#112233', 100 + i from generate_series(1, 300) i;
     n := jsonb_array_length(pullable_sets('${P}_c')->'sets');
-    ${got('D-90 many sets: one SQL statement (no loop per set) lists 300 more sets', `n = 303
-      and (select l.lanname from pg_proc p join pg_language l on l.oid = p.prolang where p.oid = 'public.pullable_sets(text)'::regprocedure) = 'sql'`, ", 'n', n")}`)}
+    ${got('D-90 many sets: one SQL statement (no loop per set) lists 300 more sets', `n = m + 300 and m = x and m >= 3
+      and (select l.lanname from pg_proc p join pg_language l on l.oid = p.prolang where p.oid = 'public.pullable_sets(text)'::regprocedure) = 'sql'`, ", 'n', n, 'before', m")}`)}
   raise exception 'RESULT:%', jsonb_build_object('res', res, 'before', before, 'after', after)::text;
 end $t$;`;
 
