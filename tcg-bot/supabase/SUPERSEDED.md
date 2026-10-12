@@ -159,7 +159,7 @@ a one-time grant or a settings value would run again.
 - `discord_effects_on.sql`: effect_primitives
 - `dungeon_prizes_daily.sql`: settings
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
-- `f3_elements_decisions.sql`: element_counters (DO block), elements (DO block)
+- `f3_elements_decisions.sql`: element_counters, element_counters (DO block), elements (DO block)
 - `game_vars_all.sql`: event_vars
 - `gift_pack_off.sql`: effect_primitives
 - `hunt_abilities.sql`: subjects

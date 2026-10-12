@@ -17,7 +17,7 @@ Functions (12): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_counte
 
 ### element_counters
 
-Table. [combat] The full list of which element beats which (f3_elements_decisions.sql, F-3): one row for each pair beater > target. Every element is beaten by at least one and beats at least one (element_counter_gaps lists any gap). elements.weak_to is the primary counter, the one weakness that a Dungeon foe gets. proposal = true: a pair that the owner has not approved yet. Nothing in the fights reads this table yet. Server only.
+Table. [combat] The full list of which element beats which (f3_elements_decisions.sql, F-3): one row for each pair beater > target. Every element is beaten by at least one and beats at least one (element_counter_gaps lists any gap). elements.weak_to is the primary counter, the one weakness that a Dungeon foe gets. proposal = true: a pair that the owner has not approved yet (none now: Nathan approved the last 6 on 2026-10-12). Nothing in the fights reads this table yet. Server only.
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|

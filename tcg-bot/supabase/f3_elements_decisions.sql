@@ -8,8 +8,10 @@
 --      foe pool. A card with the trait "physical" now has the element physical, with the lowest priority.
 --   4. "We should have everything counter each other": element_counters is the full list of who beats whom. Every one of the 14 elements is beaten
 --      by at least one element and beats at least one element. elements.weak_to stays the PRIMARY counter (the one weakness that a Dungeon foe
---      gets): it is unchanged for the old 8 and the owner's 5. The rows marked PROPOSAL below (the 6 new pairs, one of them the counter of physical) are
---      proposals: they go to the owner for approval. They change no Dungeon foe and no Hunt fight (nothing reads element_counters yet except the test).
+--      gets): it is unchanged for the old 8 and the owner's 5. The 6 new pairs (one of them the counter of physical) change no Dungeon foe and no
+--      Hunt fight (nothing reads element_counters yet except the test).
+--      Nathan approved the 6 pairs, 2026-10-12 ("I approve the 6 counter pairs"): they are final (proposal = false). The column proposal stays, so
+--      that a later pair can be proposed first.
 -- Only into the rows that are not set yet: a re-run never undoes an edit. Test: card-studio/scripts/test-elements-decisions.mjs.
 
 do $s$
@@ -21,7 +23,7 @@ begin
   update public.elements e set dungeon_foe = true, dungeon_ord = v.o, weak_to = v.w
     from (values ('air', 9, 'lightning'), ('arcane', 10, 'metal'), ('psychic', 11, 'shadow'), ('toxic', 12, 'earth'), ('metal', 13, 'fire')) v(k, o, w)
    where e.key = v.k and not e.dungeon_foe and e.weak_to is null;
-  -- PROPOSAL: physical is beaten by psychic (mind over matter). Not a foe element, so this changes no foe.
+  -- Approved (Nathan, 2026-10-12): physical is beaten by psychic (mind over matter). Not a foe element, so this changes no foe.
   update public.elements set weak_to = 'psychic' where key = 'physical' and weak_to is null;
 end $s$;
 
@@ -37,8 +39,8 @@ alter table public.element_counters enable row level security;
 revoke all on public.element_counters from anon, authenticated;
 
 -- A row beater > target is the same as "target is beaten by beater". The first 13 rows are every weak_to of the old 8 and the owner's 5 (approved).
--- The last 6 rows are PROPOSALS (proposal = true): the pairs that close the gaps (ice, air, arcane, psychic, toxic and physical beat nobody before,
--- and physical was beaten by nobody). psychic > physical is also the primary counter of physical (weak_to).
+-- The last 6 rows are the pairs that close the gaps (ice, air, arcane, psychic, toxic and physical beat nobody before, and physical was beaten by
+-- nobody). Nathan approved them on 2026-10-12, so they are proposal = false too. psychic > physical is also the primary counter of physical (weak_to).
 do $s$
 begin
   if exists (select 1 from public.element_counters) then return; end if;
@@ -46,8 +48,12 @@ begin
     ('water', 'fire', false), ('lightning', 'water', false), ('earth', 'lightning', false), ('nature', 'earth', false), ('fire', 'nature', false),
     ('fire', 'ice', false), ('light', 'shadow', false), ('shadow', 'light', false),
     ('lightning', 'air', false), ('metal', 'arcane', false), ('shadow', 'psychic', false), ('earth', 'toxic', false), ('fire', 'metal', false),
-    ('ice', 'nature', true), ('air', 'toxic', true), ('arcane', 'psychic', true), ('psychic', 'physical', true), ('toxic', 'water', true), ('physical', 'arcane', true);
+    ('ice', 'nature', false), ('air', 'toxic', false), ('arcane', 'psychic', false), ('psychic', 'physical', false), ('toxic', 'water', false), ('physical', 'arcane', false);
 end $s$;
+
+-- A copy that has the earlier version of this file (the 6 pairs as proposals): the approval of Nathan, 2026-10-12, for exactly these 6 pairs. Any other proposal stays.
+update public.element_counters set proposal = false
+ where proposal and (beater, target) in (('ice', 'nature'), ('air', 'toxic'), ('arcane', 'psychic'), ('psychic', 'physical'), ('toxic', 'water'), ('physical', 'arcane'));
 
 -- The elements that are beaten by no element, or that beat no element (the rule of the owner: none). Empty when the table is complete.
 create or replace function public.element_counter_gaps()
@@ -60,7 +66,7 @@ returns table(element text, problem text) language sql stable set search_path = 
    where e.weak_to is not null and not exists (select 1 from public.element_counters c where c.target = e.key and c.beater = e.weak_to);
 $$;
 
-comment on table public.element_counters is $doc$[combat] The full list of which element beats which (f3_elements_decisions.sql, F-3): one row for each pair beater > target. Every element is beaten by at least one and beats at least one (element_counter_gaps lists any gap). elements.weak_to is the primary counter, the one weakness that a Dungeon foe gets. proposal = true: a pair that the owner has not approved yet. Nothing in the fights reads this table yet. Server only.$doc$;
+comment on table public.element_counters is $doc$[combat] The full list of which element beats which (f3_elements_decisions.sql, F-3): one row for each pair beater > target. Every element is beaten by at least one and beats at least one (element_counter_gaps lists any gap). elements.weak_to is the primary counter, the one weakness that a Dungeon foe gets. proposal = true: a pair that the owner has not approved yet (none now: Nathan approved the last 6 on 2026-10-12). Nothing in the fights reads this table yet. Server only.$doc$;
 comment on column public.element_counters.beater is 'The element that is strong against the target.';
 comment on column public.element_counters.target is 'The element that is beaten.';
 comment on column public.element_counters.proposal is 'True while the owner has not approved the pair.';
