@@ -1,0 +1,48 @@
+{
+ "spawn_hunt": [
+  [
+   "  v_plabels jsonb := jsonb_build_object(\n    'armored',      'Armored: melee attackers deal less',\n    'shrouded',     'Shrouded: attacks miss more often',\n    'flaming',      'Flaming: burns the attacking card',\n    'volatile',     'Volatile: counterattacks hit harder',\n    'regenerating', 'Regenerating: heals a little every turn',\n    'thorns',       'Thorns: part of your damage comes back to your card',\n    'frenzied',     'Frenzied: hits harder as it loses HP',\n    -- The counter passives (hunt_boss_moves.sql): at most one on a boss.\n    'plague',       'Plague: heals and cleanse barely work',\n    'shatterer',    'Shatterer: shields and smite barely work',\n    'dispeller',    'Dispeller: empower and expose barely work',\n    'juggernaut',   'Juggernaut: weaken and stun barely work');\n",
+   "  v_main text[]; v_ctr text[];\n"
+  ],
+  [
+   "  select coalesce(jsonb_agg(jsonb_build_object('kind', k, 'label', v_plabels->>k)), '[]'::jsonb) into v_plist\n    from (select k from unnest(array['armored','shrouded','flaming','volatile','regenerating','thorns','frenzied',\n                               (array['plague','shatterer','dispeller','juggernaut'])[1 + floor(random() * 4)::int]]) k\n",
+   "  v_main := passives_for('boss'); v_ctr := passives_for('counter');   -- the passives table (passives.sql): the main ones, then one random counter passive\n  select coalesce(jsonb_agg(jsonb_build_object('kind', k, 'label', passive_label(k))), '[]'::jsonb) into v_plist\n    from (select k from unnest(v_main || case when cardinality(v_ctr) = 0 then '{}'::text[]\n                                              else array[v_ctr[1 + floor(random() * cardinality(v_ctr))::int]] end) k\n"
+  ]
+ ],
+ "hunt_attack": [
+  [
+   "unnest(array['armored','shrouded','flaming','volatile','regenerating','thorns','frenzied']) k",
+   "unnest(passives_for('phase2')) k"
+  ],
+  [
+   "case v_extra\n              when 'armored' then 'Armored: melee attackers deal less' when 'shrouded' then 'Shrouded: attacks miss more often'\n              when 'flaming' then 'Flaming: burns the attacking card' when 'volatile' then 'Volatile: counterattacks hit harder'\n              when 'regenerating' then 'Regenerating: heals a little every turn' when 'thorns' then 'Thorns: part of your damage comes back to your card'\n              else 'Frenzied: hits harder as it loses HP' end",
+   "passive_label(v_extra)"
+  ]
+ ],
+ "dungeon_make_foe": [
+  [
+   "  els text[] := array['fire','water','lightning','earth','nature','ice','shadow','light'];\n  counter jsonb := '{\"fire\":\"water\",\"water\":\"lightning\",\"lightning\":\"earth\",\"earth\":\"nature\",\"nature\":\"fire\",\"ice\":\"fire\",\"shadow\":\"light\",\"light\":\"shadow\"}';\n",
+   "  els text[] := public.dungeon_foe_elements();   -- the elements table (dungeon_foe, dungeon_ord)\n"
+  ],
+  [
+   "  passives text[] := array['armored','shrouded','flaming','volatile','regenerating','thorns','frenzied'];\nbegin\n",
+   "  passives text[] := public.passives_for('foe');   -- the passives table (on_foe)\nbegin\n  if cardinality(els) = 0 or cardinality(passives) = 0 then raise exception 'dungeon_make_foe: the elements table has no foe element or the passives table has no foe passive'; end if;\n"
+  ],
+  [
+   "floor(dungeon_rand(p_k || '|e') * 8)::int",
+   "floor(dungeon_rand(p_k || '|e') * cardinality(els))::int"
+  ],
+  [
+   "v_pass := jsonb_build_array(passives[1 + floor(dungeon_rand(p_k || '|p') * 7)::int]);",
+   "v_pass := jsonb_build_array(passives[1 + floor(dungeon_rand(p_k || '|p') * cardinality(passives))::int]);"
+  ],
+  [
+   "jsonb_build_array(passives[1 + floor(dungeon_rand(p_k || '|p') * 7)::int], passives[1 + floor(dungeon_rand(p_k || '|q') * 7)::int]);",
+   "jsonb_build_array(passives[1 + floor(dungeon_rand(p_k || '|p') * cardinality(passives))::int], passives[1 + floor(dungeon_rand(p_k || '|q') * cardinality(passives))::int]);"
+  ],
+  [
+   "(counter->>v_el)",
+   "public.element_weak_to(v_el)"
+  ]
+ ]
+}
