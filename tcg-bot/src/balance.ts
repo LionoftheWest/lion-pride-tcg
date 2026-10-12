@@ -1,16 +1,15 @@
 // The balance table (tcg-bot/supabase/balance_table.sql + balance_economy.sql): every number that changes card power
 // or a reward lives in public.balance. The bot reads the keys it needs through ONE cache (60 s), the same rule as the
 // Activity (tcg-activity/balance.js):
-//   pulls                 the pull rates and the pack size (draw.ts)
 //   daily                 chat_bonus_at: the message count of the chat bonus pack (store.ts, first-pack.ts)
-//   pack_earn_multiplier  the earn dial (store.ts; /packrate sets it)
 //   hunt_prizes           the Raid prizes the result post lists (hunt-notify.ts)
+// The values that an event can change (the pull rates, the earned-pack factor) come from game-vars.ts (bot_game_vars, 30 s).
 // A failed refresh keeps the last good values. With no values at all the call throws (fail closed: no number is better
 // than an invented one), so a pack never opens with made-up rates.
 import { getSupabase } from './supabase.js';
 
 export const BALANCE_TTL_MS = 60_000;
-export const BOT_KEYS = ['pulls', 'daily', 'pack_earn_multiplier', 'hunt_prizes'] as const;
+export const BOT_KEYS = ['daily', 'hunt_prizes'] as const;
 export type BotKey = (typeof BOT_KEYS)[number];
 export type BalanceValues = Record<BotKey, unknown>;
 

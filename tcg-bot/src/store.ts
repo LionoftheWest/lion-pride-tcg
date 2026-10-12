@@ -1,11 +1,11 @@
 import { getSupabase } from './supabase.js';
 import { balanceInt, getBalance } from './balance.js';
+import { getGameVars } from './game-vars.js';
 import {
   type PackAward,
   type PullTable,
   type Rarity,
   drawPack,
-  pullTable,
 } from './draw.js';
 import { loadDrawPool, openPacksArgs } from './draw-pool.js';
 
@@ -57,21 +57,21 @@ export async function ensurePlayer(id: string, username: string, avatar?: string
   knownPlayers.set(id, avatar === undefined ? knownPlayers.get(id) : avatar);
 }
 
-// The earn dial (balance pack_earn_multiplier, balance_economy.sql), through the balance cache (60 s) so a
-// message burst does not hammer the table. An event week just changes this value (/packrate).
+// The earn factor: game_var('pack_earn_mult') = balance pack_earn_multiplier x the live events (F-1), through the one
+// game-variable cache (30 s, game-vars.ts) so a message burst does not hammer the database. claim_daily_earn reads the
+// same game_var. An event week is a modifier event (/packrate makes one).
 async function earnMultiplier(): Promise<number> {
-  const v = Number((await getBalance()).pack_earn_multiplier);
-  if (!Number.isFinite(v) || v < 0) throw new Error('balance: pack_earn_multiplier is not a number');
-  return v;
+  return (await getGameVars()).packEarnMult;
 }
 // The message count of the chat bonus pack (balance daily.chat_bonus_at; claim_daily_earn reads the same key).
 export async function chatBonusAt(): Promise<number> {
   const d = (await getBalance()).daily as { chat_bonus_at?: unknown } | null;
   return balanceInt(d?.chat_bonus_at, 'daily.chat_bonus_at');
 }
-// The pull rates and the pack size (balance pulls), checked (draw.ts pullTable).
-async function pulls(): Promise<PullTable> {
-  return pullTable((await getBalance()).pulls);
+// The pull rates and the pack size: game_pull_rates() (balance pulls with the live pull_rare_mult), checked by draw.ts
+// pullTable in game-vars.ts. Exported for the test that a live event changes the rates the bot rolls.
+export async function pulls(): Promise<PullTable> {
+  return (await getGameVars()).pulls;
 }
 
 /**
@@ -147,22 +147,13 @@ export async function notifyPlayer(playerId: string, kind: string, message: stri
   if (error) throw new Error(`notifyPlayer failed: ${error.message}`);
 }
 
-/** Read / set the pack-earn multiplier dial (balance pack_earn_multiplier; balance_log records each change). */
-export async function getMultiplierValue(): Promise<number> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase.from('balance').select('value').eq('key', 'pack_earn_multiplier').maybeSingle();
-  if (error) throw new Error(`getMultiplierValue failed: ${error.message}`);
-  return Number(data?.value);
-}
-export async function setMultiplier(value: number): Promise<void> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('balance')
-    .update({ value })
-    .eq('key', 'pack_earn_multiplier')
-    .select('key');
-  if (error) throw new Error(`setMultiplier failed: ${error.message}`);
-  if (!data?.length) throw new Error('setMultiplier failed: no balance key pack_earn_multiplier');
+/** /packrate: make or edit the live modifier event {pack_earn_mult: factor} for `hours`, or end it (factor 1)
+ * (admin_packrate, game_vars_readers.sql). Returns the SQL answer: ok, event or errors. */
+export interface PackRateResult { ok: boolean; note?: string; ended?: boolean; error?: string; errors?: string[]; event?: { key: string; ends_at: string; vars: Record<string, number> } }
+export async function setPackRate(factor: number, hours: number, actor: string): Promise<PackRateResult> {
+  const { data, error } = await getSupabase().rpc('admin_packrate', { p_mult: factor, p_hours: hours, p_actor: actor });
+  if (error) throw new Error(`admin_packrate failed: ${error.message}`);
+  return data as PackRateResult;
 }
 
 /** Move packs from one player's balance to another (player-to-player gift). */

@@ -24,6 +24,12 @@ if (mig.includes('$m$') || mig.includes('$c$')) throw new Error('the migration m
 // The test puts the text that this file itself makes in place first (inside the rolled-back block), so the file runs as it did.
 const ATV = OLD ? '' : mig.match(/CREATE OR REPLACE FUNCTION public\.ach_track_values\(p_player text\)[\s\S]*?end \$function\$;/)?.[0];
 if (!OLD && !ATV) throw new Error('the ach_track_values text of pack_ledger_strict.sql was not found');
+// game_vars_readers.sql (F-1 PR 4) made a newer claim_daily and claim_daily_earn, so the guard of this file refuses them. The block
+// puts the text that shard_ledger_strict.sql makes (the text this guard accepts) in place first.
+const SHARD = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/shard_ledger_strict.sql', import.meta.url)), 'utf8');
+const DAILY = [/CREATE OR REPLACE FUNCTION public\.claim_daily\(p_player text[\s\S]*?end \$function\$;/, /CREATE OR REPLACE FUNCTION public\.claim_daily_earn\(p_player_id text[\s\S]*?end \$function\$;/]
+  .map((re) => SHARD.match(re)?.[0]);
+if (DAILY.some((x) => !x)) throw new Error('the claim_daily texts of shard_ledger_strict.sql were not found');
 
 // Function mutations (fixtures.mjs) and constraint mutations (dropped inside the block).
 const FN_MUT = {
@@ -50,7 +56,7 @@ const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; ok boolean; g bigint; gid bigint; n int; h bigint; c bigint; cs bigint[]; x text; y text;
   d date := (now() at time zone 'America/Denver')::date;
 begin
-  ${mig ? 'execute $m$' + ATV + '$m$;\n  execute $m$' + mig + '$m$;' : '-- the database as it is'}
+  ${mig ? 'execute $m$' + DAILY[0] + '$m$;\n  execute $m$' + DAILY[1] + '$m$;\n  execute $m$' + ATV + '$m$;\n  execute $m$' + mig + '$m$;' : '-- the database as it is'}
   ${MUT}
   perform set_config('tcg.skip_welcome', 'on', true);
   update settings set value = '1'::jsonb where key = 'pack_earn_multiplier';
