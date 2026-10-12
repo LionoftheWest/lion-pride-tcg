@@ -26,7 +26,7 @@ create table public.event_templates (
 alter table public.event_templates add constraint event_templates_created_by_check CHECK ((length(TRIM(BOTH FROM created_by)) > 0));
 alter table public.event_templates add constraint event_templates_default_length_check CHECK (((default_length > '00:00:00'::interval) AND (default_length <= '62 days'::interval)));
 alter table public.event_templates add constraint event_templates_description_check CHECK ((length(description) <= 1000));
-alter table public.event_templates add constraint event_templates_kind_check CHECK ((kind = ANY (ARRAY['drop'::text, 'trigger'::text, 'rank'::text, 'modifier'::text])));
+alter table public.event_templates add constraint event_templates_kind_check CHECK ((kind = ANY (ARRAY['drop'::text, 'trigger'::text, 'rank'::text, 'modifier'::text, 'hunt'::text])));
 alter table public.event_templates add constraint event_templates_name_check CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 80)));
 alter table public.event_templates add constraint event_templates_name_key UNIQUE (name);
 alter table public.event_templates add constraint event_templates_pkey PRIMARY KEY (id);

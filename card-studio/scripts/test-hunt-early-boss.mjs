@@ -25,12 +25,13 @@ begin
     select tier in ('Normal', 'Heroic', 'Mythic') into ok from hunts where id = h2;
     res := res || jsonb_build_object('case', 'spawn_hunt(7) still spawns a random tier', 'ok', coalesce(ok, false));
   exception when others then res := res || jsonb_build_object('case', 'spawn_hunt(7) still spawns a random tier', 'ok', false, 'err', sqlerrm); end;
-  -- 3. The Monday job does not close a boss that closes later in the week.
+  -- 3. The close job does not close a boss that closes later in the week (hunt_calendar.sql removed the Monday job
+  --    close_weekly_boss, which closed a boss due within 1 hour; close_due_hunts closes only a boss whose time has passed).
   update hunts set status = 'active', closes_at = now() + interval '2 days', settled_at = null where id = h2;
   update hunts set status = 'expired' where id <> h2 and status = 'active';
-  r := close_weekly_boss();
+  r := close_due_hunts();
   select status = 'active' into ok from hunts where id = h2;
-  res := res || jsonb_build_object('case', 'the Monday close leaves a boss that is not due', 'ok', coalesce(ok, false));
+  res := res || jsonb_build_object('case', 'the close job leaves a boss that is not due', 'ok', coalesce(ok, false));
   -- 4. The 10-minute job closes AND pays a boss whose closing time has passed.
   insert into players (id, username) values ('tst_eb_1', 'eb') on conflict do nothing;
   insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage)

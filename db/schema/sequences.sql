@@ -58,6 +58,10 @@ create sequence public.event_log_id_seq as bigint start 1 increment 1 minvalue 1
 grant select on sequence public.event_log_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.event_log_id_seq to postgres;
 grant select, update, usage on sequence public.event_log_id_seq to service_role;
+create sequence public.event_repeats_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.event_repeats.id;
+grant select on sequence public.event_repeats_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.event_repeats_id_seq to postgres;
+grant select, update, usage on sequence public.event_repeats_id_seq to service_role;
 create sequence public.event_templates_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.event_templates.id;
 grant select on sequence public.event_templates_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.event_templates_id_seq to postgres;

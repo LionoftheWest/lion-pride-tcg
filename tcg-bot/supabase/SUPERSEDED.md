@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (106)
+## Superseded files (107)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -54,7 +54,8 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `effects_cleanup.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.take_player_effect(text, text)` (live = `effect_start_spawn_settle.sql`) |  |
 | `effects_outside.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`) |  |
 | `event_cards.sql` | SUPERSEDED: reverts `public.card_power(text, integer, numeric)` (live = `balance_table.sql`); reverts `public.cards_event_rules()` (live = `special_cards_never_in_packs.sql`) |  |
-| `events.sql` | SUPERSEDED: reverts `public.admin_event_save(jsonb, timestamp with time zone, text, text)` (live = `event_vars.sql`); reverts `public.event_pay(bigint, text, timestamp with time zone)` (live = `event_vars.sql`); reverts `public.event_row_errors(events)` (live = `event_vars.sql`); reverts `public.event_shape_errors(text, jsonb, jsonb, jsonb)` (live = `event_vars.sql`); reverts cron job `event-tick` (schedule '*/10 * * * *', live '* * * * *') (live = `event_vars.sql`) |  |
+| `event_vars.sql` | SUPERSEDED: reverts `public.event_pay(bigint, text, timestamp with time zone)` (live = `hunt_calendar.sql`); reverts `public.event_row_errors(events)` (live = `hunt_calendar.sql`); reverts `public.event_shape_errors(text, jsonb, jsonb, jsonb)` (live = `hunt_calendar.sql`); reverts `public.event_template_errors(event_templates)` (live = `hunt_calendar.sql`) | a re-run stops at an error today: event_vars.sql: the live public.event_shape_errors(text, jsonb, jsonb, jsonb) changed since this file was built. Rebuild it from the live text. |
+| `events.sql` | SUPERSEDED: reverts `public.admin_event_save(jsonb, timestamp with time zone, text, text)` (live = `event_vars.sql`); reverts `public.event_pay(bigint, text, timestamp with time zone)` (live = `hunt_calendar.sql`); reverts `public.event_row_errors(events)` (live = `hunt_calendar.sql`); reverts `public.event_shape_errors(text, jsonb, jsonb, jsonb)` (live = `hunt_calendar.sql`); reverts `public.event_step(bigint, timestamp with time zone)` (live = `hunt_calendar.sql`); reverts cron job `event-tick` (schedule '*/10 * * * *', live '* * * * *') (live = `event_vars.sql`) |  |
 | `fix_last_copy_remove.sql` | SUPERSEDED: reverts `public.remove_card_from_player(text, bigint)` (live = `card_ledger.sql`) |  |
 | `gauntlet.sql` | SUPERSEDED: reverts `public.dungeon_attack(text, bigint, integer, text)` (live = `dungeon_stun_pass.sql`); reverts `public.dungeon_support(text, bigint, bigint, integer, text)` (live = `f3_one_combat_math.sql`); reverts `public.dungeon_view(text)` (live = `perf_dungeon_view.sql`); reverts `public.gauntlet_view(text)` (live = `perf_five_slow_calls.sql`) | a re-run stops at an error today: gauntlet.sql: the live dungeon_attack changed since this file was built. Rebuild from the live text. |
 | `gift_all_members.sql` | SUPERSEDED: reverts `public.gift_all_members(jsonb, integer, text)` (live = `gift_claims.sql`); reverts `public.welcome_packs()` (live = `balance_economy.sql`) |  |
@@ -75,7 +76,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `hunt_combat_v2.sql` | SUPERSEDED: reverts `public.card_max_hp(integer)` (live = `perf_card_power_reads.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`) |  |
 | `hunt_counter_balance.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `f3_one_combat_math.sql`) | a re-run stops at an error today: hunt_counter_balance.sql: the live hunt_attack(text,bigint,bigint) changed since this file was built. Rebuild it from the live text. |
 | `hunt_cron.sql` | SUPERSEDED: schedules cron job `spawn-weekly-boss`, which live does not have; schedules cron job `nudge-weekly-boss`, which live does not have; schedules cron job `close-weekly-boss`, which live does not have | a re-run stops at an error today: dependent privileges exist |
-| `hunt_early_boss.sql` | SUPERSEDED: reverts `public.spawn_hunt(integer, text)` (live = `set_pools.sql`) |  |
+| `hunt_early_boss.sql` | SUPERSEDED: brings back `public.close_weekly_boss()`, which live does not have; reverts `public.spawn_hunt(integer, text)` (live = `set_pools.sql`) | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_hp_deployable.sql` | SUPERSEDED: reverts `public.deployable_power(integer)` (live = `balance_table.sql`); reverts `public.roster_snapshot()` (live = `balance_dungeon_numbers.sql`); reverts `public.roster_stats()` (live = `balance_dungeon_numbers.sql`); brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_hp_roster_power.sql` | SUPERSEDED: brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_kerrigan_boss.sql` | SUPERSEDED: brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
@@ -83,11 +84,11 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `hunt_loop_caps.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.hunt_round_cap()` (live = `balance_table.sql`); reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `f3_one_combat_math.sql`) |  |
 | `hunt_model_boss_names.sql` | SUPERSEDED: brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_model_bosses_only.sql` | SUPERSEDED: brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
-| `hunt_notifications.sql` | SUPERSEDED: reverts `public.close_weekly_boss()` (live = `hunt_early_boss.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`) |  |
+| `hunt_notifications.sql` | SUPERSEDED: brings back `public.close_weekly_boss()`, which live does not have; reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); brings back `public.nudge_hunt()`, which live does not have; brings back `public.spawn_weekly_boss()`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_prizes_fixed.sql` | SUPERSEDED: reverts `public.settle_hunt(bigint)` (live = `balance_economy.sql`) |  |
 | `hunt_rewards.sql` | SUPERSEDED: reverts `public.settle_hunt(bigint)` (live = `balance_economy.sql`); brings back `public.weekly_hunt_rollover(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
-| `hunt_schedule.sql` | SUPERSEDED: reverts `public.close_weekly_boss()` (live = `hunt_early_boss.sql`); reverts `public.next_hunt_close()` (live = `hunt_schedule_mt.sql`); reverts `public.next_hunt_spawn()` (live = `hunt_schedule_mt.sql`); reverts `public.spawn_weekly_boss()` (live = `hunt_notifications.sql`) |  |
-| `hunt_schedule_mt.sql` | SUPERSEDED: reverts `public.hunt_mt_slot(text, timestamp with time zone)` (live = `daily_raid_board.sql`) |  |
+| `hunt_schedule.sql` | SUPERSEDED: brings back `public.close_weekly_boss()`, which live does not have; reverts `public.next_hunt_close()` (live = `hunt_schedule_mt.sql`); reverts `public.next_hunt_spawn()` (live = `hunt_calendar.sql`); brings back `public.spawn_weekly_boss()`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
+| `hunt_schedule_mt.sql` | SUPERSEDED: reverts `public.hunt_mt_slot(text, timestamp with time zone)` (live = `daily_raid_board.sql`); reverts `public.next_hunt_spawn()` (live = `hunt_calendar.sql`); brings back `public.weekly_boss_tick(text)`, which live does not have; schedules cron job `hunt-spawn-mt`, which live does not have; schedules cron job `hunt-nudge-mt`, which live does not have; schedules cron job `hunt-close-mt-mdt`, which live does not have; schedules cron job `hunt-close-mt-mst`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `hunt_squad_done.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.hunt_squad_done(bigint, text, date, integer)` (live = `hunt_squad_down_all_cards.sql`) |  |
 | `hunt_squads.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.hunt_commit_card(bigint, text, bigint, date, integer)` (live = `balance_table.sql`); reverts `public.hunt_squad_allows(bigint, text, date, bigint)` (live = `adventure_gate.sql`); reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `f3_one_combat_math.sql`); reverts `public.lock_hunt_squad(text, bigint, bigint[])` (live = `balance_table.sql`) |  |
 | `hunt_support_affinity.sql` | SUPERSEDED: reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `f3_one_combat_math.sql`) |  |
@@ -149,10 +150,10 @@ a one-time grant or a settings value would run again.
 - `discord_effects_on.sql`: effect_primitives
 - `dungeon_prizes_daily.sql`: settings
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
-- `event_vars.sql`: cron.job, event_vars
 - `f3_one_combat_math.sql`: balance
 - `gift_pack_off.sql`: effect_primitives
 - `hunt_abilities.sql`: subjects
+- `hunt_calendar.sql`: cron.job, event_repeats, event_templates, events, hunts (DO block)
 - `hunt_damage_trace.sql`: hunt_adjustments (DO block)
 - `ledger_reasons.sql`: ledger_reasons
 - `logs_sql.sql`: cron.job
