@@ -251,6 +251,8 @@ const NAV = [
   { id: 'growth', label: 'Growth', icon: 'trend' },
   // Cards = the card editor (cards.js, the old Card Portal, F-2). Card stats = the read-only numbers of each card (admin_cards).
   { id: 'cards', label: 'Cards', icon: 'palette', match: /^\/cards(\/|$)/ },
+  // Sets (sets.js, F-2 PR 3): create a set, pack art, cover card, the set pools. Like Cards, it uses the studio API (/api/sets).
+  { id: 'sets', label: 'Sets', icon: 'package', match: /^\/sets(\/|$)/ },
   { id: 'card-stats', label: 'Card stats', icon: 'layers', match: /^\/(card-stats$|card\/)/ },
   { id: 'hunt', label: 'Hunt', icon: 'swords', match: /^\/hunts?(\/|$)/ },
   { id: 'dungeon', label: 'Dungeon', icon: 'castle' },
@@ -1222,6 +1224,8 @@ const ROUTES = [
     h, icon, api, panel, table, pageHead, fill, when, N, label, kpi, statusTag, errorState, session, render })).catch((e) => main.replaceChildren(errorState(e)))],
   // The card editor (cards.js, F-2). It uses the studio API (/api/cards ...), not /api/admin, so it works with ADMIN_VIEW off.
   [/^\/cards(?:\/([^/]+))?$/, (main, a, q) => import('./cards.js').then((m) => m.pageCardEditor(main, a, q, { h, icon, pageHead, errorState, render }))
+    .catch((e) => main.replaceChildren(errorState(e)))],
+  [/^\/sets(?:\/([^/]+))?$/, (main, a, q) => import('./sets.js').then((m) => m.pageSets(main, a, q, { h, icon, pageHead, errorState, render }))
     .catch((e) => main.replaceChildren(errorState(e)))],
 ];
 // The start section: Overview when the Admin data is on (ADMIN_VIEW=1), else Cards (the card editor works without it).
