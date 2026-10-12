@@ -128,6 +128,13 @@ node ci/ui-check/run.mjs --browser chromium --sizes 430x932 --screens home,dunge
 node ci/ui-check/evaluate.mjs --browsers chromium --sizes 430x932 --screens home,dungeon
 ```
 
+## The job-slot limit
+
+A free GitHub account runs at most 20 jobs at once. G3 has 24 shards (2 browsers x 12). On 2026-10-11 one UI PR held all 20 slots
+for over 35 minutes, and the G1 and G4 jobs of every other PR stayed queued. The rule: a matrix job with more than 8 cells sets
+`max-parallel`, and the value is 12 or less (20 slots minus 8 kept free). `ci/gates/slot-guard.test.mjs` enforces the rule. It reads
+`.github/workflows/ui-gates.yml` and fails when `max-parallel` is missing or above 12. The `G1 Register` job runs it on every PR.
+
 ## Making the gates required
 
 Done on 2026-10-05: `main` requires `G1 Register`, `G3 UI check` and `G4 Literal counter`, for admins too (design.md

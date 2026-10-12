@@ -27,7 +27,7 @@ grant execute on function public.open_packs(text, bigint[], integer) to postgres
 grant execute on function public.open_packs(text, bigint[], integer) to service_role;
 
 -- @function public.open_packs(text, bigint[], integer, text)
--- md5: 27536bef052197d6d509fa7ba49f4ee5   (md5(replace(pg_get_functiondef('public.open_packs(text, bigint[], integer, text)'::regprocedure), chr(13), '')))
+-- md5: b99eae6d7c99c82a567e4c1d875e985f   (md5(replace(pg_get_functiondef('public.open_packs(text, bigint[], integer, text)'::regprocedure), chr(13), '')))
 -- owner: postgres
 CREATE OR REPLACE FUNCTION public.open_packs(p_player_id text, p_cards bigint[], p_size integer, p_set text)
  RETURNS integer
@@ -39,7 +39,8 @@ begin
   if not exists (select 1 from card_sets where id = p_set and pullable) then
     raise exception 'set_not_pullable: %', coalesce(p_set, 'null') using errcode = 'P0001';
   end if;
-  if exists (select 1 from unnest(p_cards) x(id) where not exists (select 1 from draw_pool d where d.id = x.id and d.set_id = p_set)) then
+  -- set_pools.sql: the pool of the set (set_draw_pool.pool_set_id), not the home set of the card.
+  if exists (select 1 from unnest(p_cards) x(id) where not exists (select 1 from set_draw_pool d where d.id = x.id and d.pool_set_id = p_set)) then
     raise exception 'open_packs: a card is not in the draw pool of set %', p_set using errcode = 'P0001';
   end if;
   v_want := coalesce(array_length(p_cards, 1), 0) / greatest(1, p_size);

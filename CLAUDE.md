@@ -32,6 +32,7 @@ ad-hoc values, so new screen sizes kept breaking.
 - Use only the tokens and components of UI-00. Do not add new `m-land` / `m-port` selectors, raw
   `z-index` numbers, or new color, size, or font literals (gate G4 counts them).
 - A fix for a defect that a member reported: the smallest change, and only when Nathan asks for it.
+- G3 never takes more than 12 of the 20 CI job slots (`max-parallel: 12`, enforced by `ci/gates/slot-guard.test.mjs`). The reason: one UI PR held every slot and blocked all other PRs (2026-10-11).
 - Server, SQL, and bot work that does not change the UI needs no design.
 
 ## Design v2 work (read before any design or UI task)

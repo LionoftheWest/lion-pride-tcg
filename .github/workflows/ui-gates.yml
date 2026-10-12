@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 24
       - name: Test the gate scripts
-        run: node --test ci/gates/gates.test.mjs ci/ui-check/evaluate.test.mjs ci/ui-check/fixture-lib.test.mjs ci/gates/source-bytes.test.mjs
+        run: node --test ci/gates/gates.test.mjs ci/ui-check/evaluate.test.mjs ci/ui-check/fixture-lib.test.mjs ci/gates/source-bytes.test.mjs ci/gates/slot-guard.test.mjs
       - name: G1 Register
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -90,6 +90,9 @@ jobs:
       options: --ipc=host
     strategy:
       fail-fast: false
+      # A free account runs at most 20 jobs at once. On 2026-10-11 one PR's 24 shards held all 20 for over
+      # 35 min, and the G1/G4 jobs of every other PR stayed queued. 12 leaves 8 slots for other PRs.
+      max-parallel: 12
       matrix:
         browser: [chromium, webkit]
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]

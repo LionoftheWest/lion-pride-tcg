@@ -48,6 +48,7 @@ const DOMAINS = [
     names: ['players', 'daily_activity', 'daily_claims', 'voice_minutes', 'notifications', 'playing_posts', 'player_reports', 'settings', 'balance', 'balance_log', 'schema_migrations',
       'add_voice_minutes', 'bot_work', 'checkin_streak', 'claim_daily', 'claim_daily_earn', 'claim_first_pack_ping', 'claim_tutorial_reward', 'dailies_tasks', 'dailies_view', 'earned_today', 'game_day', 'game_day_start', 'gift_all_members', 'give_gift', 'give_gift_all',
       'notify_player', 'playing_today', 'prune_old_rows', 'record_activity', 'rls_auto_enable', 'streak_shield_waiting', 'submit_report',
+      'player_report_shots', 'reserve_report_shot', 'report_shots_expired',
       'app_sessions', 'app_session_touch', 'tutorial_steps', 'page_views', 'guild_joined', 'guild_left',
       'settings_log', 'settings_log_write', 'profile_log', 'profile_log_write'],
     prefixes: ['balance_', 'ledger_'] },

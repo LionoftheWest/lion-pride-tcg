@@ -2,7 +2,8 @@
  * Acceptance test for tcg-bot/supabase/card_decisions.sql (Nathan's decisions, 2026-10-07). Rolled back (the result
  * comes back in the exception), test members only, on a PRIVATE test boss row (never the live boss):
  *   node scripts/test-card-decisions.mjs              the migration file, executed inside the block
- *   node scripts/test-card-decisions.mjs --old        the database as it is (the baseline: it must FAIL before the file)
+ *   node scripts/test-card-decisions.mjs --old        the database as it is (before the file: it must FAIL; after f3_one_combat_math.sql,
+ *                                                     which supersedes the file, test-all-local.mjs runs this mode on the current functions)
  *   node scripts/test-card-decisions.mjs --mutations  each mutation of the file must make at least one case FAIL
  * Invariants:
  *   T1 every subject has a type (252 = Item), a subject with no type is refused, and a no-type card cannot attack
