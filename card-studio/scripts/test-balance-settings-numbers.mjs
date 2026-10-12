@@ -153,6 +153,9 @@ begin
     return v;
   end $d$;
 
+  -- f3_elements_decisions.sql (the Dungeon pool of 13 elements) changed the foes on purpose. This file's own dungeon_make_foe has the old 8 elements, so the
+  -- golden values are taken with the pool of 8 (rolled back with the block): the test proves the balance numbers, not the pool.
+  if to_regclass('public.elements') is not null then update public.elements set dungeon_foe = false, dungeon_ord = null where key in ('air', 'arcane', 'psychic', 'toxic', 'metal'); end if;
   -- The golden values of the database BEFORE the file (the old code), on fixed seeds.
   g_rules := dungeon_rules(); g_foes := ${FOES}; g_gen := ${GEN}; g_pool := ${POOL};
   -- runs_per_day.sql (F-1 PR 3) added runs_left and last_run to the views; this older file does not know them

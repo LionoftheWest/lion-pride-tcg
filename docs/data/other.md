@@ -7,17 +7,37 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 ## Contents
 
-Tables (6): [elements](#table-elements), [elements_cache](#table-elements-cache), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
+Tables (7): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (11): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
+Functions (12): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
 
 ## Tables
+
+<a id="table-element-counters"></a>
+
+### element_counters
+
+Table. [combat] The full list of which element beats which (f3_elements_decisions.sql, F-3): one row for each pair beater > target. Every element is beaten by at least one and beats at least one (element_counter_gaps lists any gap). elements.weak_to is the primary counter, the one weakness that a Dungeon foe gets. proposal = true: a pair that the owner has not approved yet (none now: Nathan approved the last 6 on 2026-10-12). Nothing in the fights reads this table yet. Server only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `beater` | text | not null |  | The element that is strong against the target. |
+| `target` | text | not null |  | The element that is beaten. |
+| `proposal` | boolean | not null | `false` | True while the owner has not approved the pair. |
+
+- Primary key: `PRIMARY KEY (beater, target)`
+- Foreign keys: 
+  - `element_counters_beater_fkey` to [elements](other.md#table-elements): `FOREIGN KEY (beater) REFERENCES elements(key)`
+  - `element_counters_target_fkey` to [elements](other.md#table-elements): `FOREIGN KEY (target) REFERENCES elements(key)`
+- Check constraints: 
+  - `element_counters_check`: `CHECK ((beater <> target))`
+- Row level security: on. Policies: none
 
 <a id="table-elements"></a>
 
 ### elements
 
-Table. [combat] The one list of elements (f3_elements_passives.sql, F-3): key, name, ord (the priority when a card has several element words), aliases (the trait words that mean the element), glyph, color and color2 (the look), weak_to (the element that beats a Dungeon foe of this element), dungeon_foe and dungeon_ord (the Dungeon foe pool and its draw order). element_aliases, card_element, element_of and dungeon_make_foe read it. GET /api/elements returns it. A word that another element has is refused. Server only.
+Table. [combat] The one list of elements (f3_elements_passives.sql, F-3): key, name, ord (the priority when a card has several element words), aliases (the trait words that mean the element), glyph, color and color2 (the look), weak_to (the primary counter: the element that beats a Dungeon foe of this element), dungeon_foe and dungeon_ord (the Dungeon foe pool and its draw order: the 13 real elements, not physical). physical (f3_elements_decisions.sql) has the word "physical" and is not a foe. element_counters has every pair. element_aliases, card_element, element_of and dungeon_make_foe read it. GET /api/elements returns it. A word that another element has is refused. Server only.
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
@@ -175,6 +195,16 @@ Table. [cards] F-2 set pools: a card of another set added to the pull pool of se
 - Security definer: no
 
 F-3: true when a list of element words is not empty and has only lower case, trimmed words with no repeat (the check of elements.aliases).
+
+<a id="fn-element-counter-gaps"></a>
+
+### element_counter_gaps()
+
+- Function: `element_counter_gaps()`
+- Returns: `TABLE(element text, problem text)`
+- Security definer: no
+
+F-3: the elements that are beaten by no element, beat no element, or whose primary counter (weak_to) is missing from element_counters. Empty when complete.
 
 <a id="fn-element-weak-to-text"></a>
 

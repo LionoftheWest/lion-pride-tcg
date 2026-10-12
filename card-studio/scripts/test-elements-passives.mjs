@@ -12,7 +12,7 @@
  *      card_element, element_of and combat_element_map give the old answers for every word, every pair of words, with the
  *      "trait:" prefix, upper case and spaces; the table equals the client copy tcg-activity/src/elements.js (the look, the order and
  *      the words: transitional, until the Activity reads GET /api/elements) and the card studio taxonomy (one recorded
- *      disagreement: the word "spirit").
+ *      disagreement: none: the owner kept "spirit" out of the element words).
  *   2. Dungeon: the foe pool is the old 8 in the old order, element_weak_to is the old counter map (and NULL for the other 5);
  *      dungeon_make_foe gives the old foe (the same JSON) for 4 kinds x 5 floors x 3 rooms x 40 keys, and every foe element and
  *      every foe passive occurs.
@@ -115,6 +115,12 @@ begin
   execute $m$${mig}$m$;
   execute $m$${mig}$m$; -- two times: idempotent (the seed runs only into an empty table)
   execute $m$${refs}$m$;
+  -- The owner's decisions (f3_elements_decisions.sql) came later: put the data back to the state of this refactor, so that this test still proves the
+  -- refactor (no change in play) and does not depend on which of the two files is applied.
+  update elements set dungeon_foe = false, dungeon_ord = null, weak_to = null where key in ('air', 'arcane', 'psychic', 'toxic', 'metal');
+  if to_regclass('public.element_counters') is not null then delete from element_counters; end if;
+  update elements set weak_to = null where key = 'physical';
+  delete from elements where key = 'physical';
   -- the oracle as tables
   create temp table old_alias (alias text, element text, ord int) on commit drop;
   insert into old_alias select (v->>0), (v->>1), (v->>2)::int from jsonb_array_elements(${lit(OLD_ALIASES)}) v;
@@ -176,8 +182,8 @@ begin
      or (select count(*) from jsonb_object_keys(r)) <> (select count(*) from element_aliases()) then bad := bad || '1: the words of elements.js differ from the table; '; end if;
   -- the card studio taxonomy: the table plus the one recorded disagreement
   r := ${lit(JSON.parse(TAX_J))};
-  if (select jsonb_object_agg(a.alias, a.element) from element_aliases() a) || '{"spirit": "shadow"}'::jsonb is distinct from r then
-    bad := bad || '1: card-studio/scripts/taxonomy.mjs ELEMENT_ALIAS is not the table plus the word "spirit": ' || r::text || '; ';
+  if (select jsonb_object_agg(a.alias, a.element) from element_aliases() a) is distinct from r then
+    bad := bad || '1: card-studio/scripts/taxonomy.mjs ELEMENT_ALIAS is not the table: ' || r::text || '; ';
   end if;
 
   -- ===== 2. The Dungeon: the pool, the counter map and the foes.
