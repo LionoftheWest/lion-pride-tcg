@@ -42,7 +42,7 @@ test('Android tablet (no "Mobile" in the agent): Tablet, Android 14', () => {
   assert.equal(f.device, 'Tablet');
   assert.equal(f.os, 'Android 14');
   assert.equal(f.engine, 'Chromium');
-  assert.equal(f.layout, 'medium', 'no class given: the class of the window size (size-class.js)');
+  assert.equal(f.layout, 'compact portrait', 'no class given: the class of the window size (size-class.js; D-181: a portrait tablet uses the phone portrait layout)');
 });
 
 test('Windows Chrome (discord.com in a browser): Browser, Desktop, Windows, Chromium, expanded short', () => {
