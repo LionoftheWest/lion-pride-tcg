@@ -22,9 +22,12 @@ export async function loadDrawPool(sb: SupabaseClient, setId?: string): Promise<
     if (se) throw new Error(`loadDrawPool failed: ${se.message}`);
     if (!set || (set as { pullable?: boolean }).pullable !== true) throw new Error(SET_NOT_PULLABLE);
   }
-  let q = sb.from('draw_pool').select(COLS);
-  if (setId !== undefined) q = q.eq('set_id', setId);
-  const { data, error } = await q;
+  // set_pools.sql: a pack of one set reads the POOL of the set (set_draw_pool, pool_set_id = the set: its home cards,
+  // its set_pool cards and the pools of the sets it includes). A pool card keeps its home set_id and set_number.
+  // With no set: draw_pool, every pullable set, each card once.
+  const { data, error } = setId === undefined
+    ? await sb.from('draw_pool').select(COLS)
+    : await sb.from('set_draw_pool').select(COLS).eq('pool_set_id', setId);
   if (error) throw new Error(`getDrawPool failed: ${error.message}`);
   return groupByRarity((data ?? []) as Card[]);
 }
