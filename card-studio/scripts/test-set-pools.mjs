@@ -27,6 +27,10 @@ const OLD = process.argv.includes('--old'), LIVE = process.argv.includes('--live
 
 let mig = OLD || LIVE ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/set_pools.sql', import.meta.url)), 'utf8').replace(/notify pgrst[^\n]*\n/g, '');
 if (mig.includes('$m$') || mig.includes('$c$')) throw new Error('the migration must not contain $m$ or $c$');
+// f3_elements_passives.sql (F-3 PR 2) made a newer spawn_hunt, so the guard of this file refuses it (the file is in SUPERSEDED.md).
+// The test puts the spawn_hunt text that this file itself makes in place first (inside the rolled-back block), so the file runs as it did.
+const SPAWN = mig ? (() => { const a = mig.indexOf('CREATE OR REPLACE FUNCTION public.spawn_hunt('); if (a < 0) throw new Error('no spawn_hunt in set_pools.sql'); return mig.slice(a, mig.indexOf('$function$;', mig.indexOf('AS $function$', a)) + 11); })() : '';
+if (SPAWN.includes('$p$')) throw new Error('spawn_hunt text contains $p$');
 
 // The set_draw_pool text with one part removed (SQL_MUT below).
 const POOL = (members) => `create or replace view public.set_draw_pool with (security_invoker = true) as
@@ -84,7 +88,7 @@ begin
   psets_before := pullable_sets(top);
   select jsonb_agg(to_jsonb(b) order by b.key) into badges_before from ach_tag_badges(top) b;
   ${spawn('spawn_before')}
-  ${mig ? 'execute $m$' + mig + '$m$;' : '-- the database as it is'}
+  ${mig ? 'execute $p$' + SPAWN + '$p$; execute $m$' + mig + '$m$;' : '-- the database as it is'}
   ${MUT}
   select coalesce(max(id), 0) into aid0 from admin_actions;
   perform set_config('tcg.skip_welcome', 'on', true);

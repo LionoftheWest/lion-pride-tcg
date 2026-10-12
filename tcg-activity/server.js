@@ -1768,6 +1768,21 @@ app.get('/api/sets', async (req, res) => {
   res.json({ sets, last_set: data?.last_set ?? null });
 });
 
+// The one list of elements (f3_elements_passives.sql, F-3): key, name, ord, aliases, glyph, color, color2, weak_to, dungeon_foe.
+// Read-only. The Activity still has its own copy (src/elements.js); a later UI PR switches it to this list. The table changes
+// only when the owner edits it, so a 60 s cache serves every caller with one database read.
+let elementsCache = null; // { at, list }
+app.get('/api/elements', async (req, res) => {
+  const me = await caller(req);
+  if (!me) return res.status(401).json({ error: 'not authenticated' });
+  if (!elementsCache || Date.now() - elementsCache.at > 60_000) {
+    const { data, error } = await supabase.rpc('elements_list');
+    if (error) return res.status(500).json({ error: error.message });
+    elementsCache = { at: Date.now(), list: Array.isArray(data) ? data : [] };
+  }
+  res.json({ elements: elementsCache.list });
+});
+
 // How many packs the caller has waiting — so the UI shows Open Pack only when
 // there is something to open. Read-only relay to the bot.
 app.get('/api/pack-status', async (req, res) => {

@@ -35,7 +35,10 @@ const oldText = (() => {
   const a = s.indexOf('CREATE OR REPLACE FUNCTION'), b = s.indexOf('$function$;', a);
   return s.slice(a, b + '$function$;'.length);
 })();
-for (const s of [src, oldText]) if (s.includes('$m$') || s.includes('$t$') || s.includes('$f$')) throw new Error('a file contains $m$, $t$ or $f$');
+// f3_elements_passives.sql (F-3 PR 2) made a newer hunt_attack, so the guard of this file refuses it. The test puts the hunt_attack
+// text that this file itself makes in place first (inside the rolled-back block), so the file runs as it did.
+const ownText = (() => { const a = src.indexOf('CREATE OR REPLACE FUNCTION public.hunt_attack('); if (a < 0) throw new Error('no hunt_attack in hunt_random_target.sql'); return src.slice(a, src.indexOf('$function$;', src.indexOf('AS $function$', a)) + 11); })();
+for (const s of [src, oldText, ownText]) if (s.includes('$m$') || s.includes('$t$') || s.includes('$f$')) throw new Error('a file contains $m$, $t$ or $f$');
 
 const MUTATIONS = {
   'the single hit goes to the attacking card again': ['order by random() limit 1;\n    end if;\n    if v_rtgt is not null', 'order by (t.cid = p_card) desc limit 1;\n    end if;\n    if v_rtgt is not null'],
@@ -60,7 +63,7 @@ const body = (mig) => String.raw`do $t$ declare
 begin
   perform set_config('tcg.skip_welcome', 'on', true);
   -- 0. the function under test: the file, or the text before it (--old).
-  ${mig ? `execute $m$${mig}$m$;` : `execute $m$${oldText}$m$;`}
+  ${mig ? `execute $m$${ownText}$m$; execute $m$${mig}$m$;` : `execute $m$${oldText}$m$;`}
   select min(c.id) into a1 from cards c join subjects s on s.id = c.subject_id where s.type in ('Character', 'Creature') and c.rarity = 'gold';
   select min(c.id) into a2 from cards c join subjects s on s.id = c.subject_id where s.type in ('Character', 'Creature') and c.rarity = 'gold' and c.id > a1;
   select min(c.id) into kh from cards c join subjects s on s.id = c.subject_id where s.ability->>'effect' = 'heal' and s.ability->>'target' = 'ally';
