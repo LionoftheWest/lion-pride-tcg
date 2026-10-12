@@ -118,6 +118,8 @@ begin
   -- The owner's decisions (f3_elements_decisions.sql) came later: put the data back to the state of this refactor, so that this test still proves the
   -- refactor (no change in play) and does not depend on which of the two files is applied.
   update elements set dungeon_foe = false, dungeon_ord = null, weak_to = null where key in ('air', 'arcane', 'psychic', 'toxic', 'metal');
+  if to_regclass('public.element_counters') is not null then delete from element_counters; end if;
+  update elements set weak_to = null where key = 'physical';
   delete from elements where key = 'physical';
   -- the oracle as tables
   create temp table old_alias (alias text, element text, ord int) on commit drop;

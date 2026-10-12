@@ -179,11 +179,13 @@ async function run(mig, rerun) {
   if (d.error || !d.aliases) {
     results.push({ case: 'T3 the SQL element list exists', ok: false, err: d.error });
   } else {
-    const sqlMap = Object.fromEntries(d.aliases.map(([a, e]) => [a, e]));
+    // physical (f3_elements_decisions.sql) is an element row, but the client copy (elements.js) does not have it until the Activity reads GET /api/elements.
+    const sqlAliases = d.aliases.filter(([, e]) => e !== 'physical');
+    const sqlMap = Object.fromEntries(sqlAliases.map(([a, e]) => [a, e]));
     const badAlias = Object.entries(CLIENT_ALIAS).filter(([a, e]) => sqlMap[a] !== e || d.of[a] !== e || cardElement([a]) !== e);
     const extra = Object.keys(sqlMap).filter((a) => !(a in CLIENT_ALIAS));
     results.push({ case: `T3 every client alias (${Object.keys(CLIENT_ALIAS).length}) maps to the same element in SQL, and SQL has no other alias`, ok: badAlias.length === 0 && extra.length === 0 && Object.keys(CLIENT_ALIAS).length >= 43, badAlias, extra });
-    const sqlOrder = [...new Map(d.aliases.map(([, e, o]) => [e, o])).entries()].sort((x, y) => x[1] - y[1]).map(([e]) => e);
+    const sqlOrder = [...new Map(sqlAliases.map(([, e, o]) => [e, o])).entries()].sort((x, y) => x[1] - y[1]).map(([e]) => e);
     results.push({ case: 'T3 the element order is the client ELEMENT_ORDER', ok: JSON.stringify(sqlOrder) === JSON.stringify(ELEMENT_ORDER), sqlOrder });
     results.push({ case: 'T3 element_of reads trait slugs and bare traits, and no other facet', ok: d.slug['trait:robot'] === 'metal' && d.slug['origin:fire'] === null && d.slug.Robot === 'metal', slug: d.slug });
     const badSub = d.subjects.filter(([, tags, el, ach]) => (cardElement(tags) ?? null) !== el || (cardElement(tags) !== null) !== ach);
