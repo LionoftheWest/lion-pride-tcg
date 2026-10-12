@@ -30,6 +30,11 @@ for (const s of [mig, ...OLDFILES]) if (/\$(m|c|o)\$/.test(s)) throw new Error('
 // block), so the file runs as it did. The same fix as test-pack-ledger-strict.mjs.
 const ATV = OLDFILES[0].match(/CREATE OR REPLACE FUNCTION public\.ach_track_values\(p_player text\)[\s\S]*?end \$function\$;/)?.[0];
 if (!ATV) throw new Error('the ach_track_values text of pack_ledger_strict.sql was not found');
+// game_vars_readers.sql (F-1 PR 4) made a newer claim_daily and claim_daily_earn, so the guards of the older files refuse them.
+// The re-run puts the text that shard_ledger_strict.sql makes (the text those guards accept) in place first.
+const DAILY = [/CREATE OR REPLACE FUNCTION public\.claim_daily\(p_player text[\s\S]*?end \$function\$;/, /CREATE OR REPLACE FUNCTION public\.claim_daily_earn\(p_player_id text[\s\S]*?end \$function\$;/]
+  .map((re) => OLDFILES[2].match(re)?.[0]);
+if (DAILY.some((x) => !x)) throw new Error('the claim_daily texts of shard_ledger_strict.sql were not found');
 
 const PACK_LIST = "'opened', 'gift_sent', 'gift_received', 'welcome', 'launch_gift', 'raid_makeup_oct1', 'bug_reward', 'admin', 'event', 'tutorial', 'achievement', 'shop', 'hunt_reward', 'dungeon_prize', 'boon', 'earned_checkin', 'earned_streak', 'earned_hunt', 'earned_voice', 'earned_social', 'earned_dungeon', 'earned_gauntlet', 'earned_daily', 'earned_bonus'";
 // Function mutations (fixtures.mjs) and SQL mutations (run inside the block after the migration).
@@ -151,6 +156,8 @@ ${kase('the three reconciles stay ok and report reason_check = true (the foreign
     ${done('the three reconciles stay ok and report reason_check = true (the foreign keys)', `(r->'pack'->>'ok')::boolean and (r->'card'->>'ok')::boolean and (r->'shard'->>'ok')::boolean
       and (r->'pack'->>'reason_check')::boolean and (r->'card'->>'reason_check')::boolean and (r->'shard'->>'reason_check')::boolean`, ", 'r', r")}`)}
 ${kase('a re-run of pack_ledger_strict.sql, card_ledger.sql and shard_ledger_strict.sql keeps the new state', `
+    execute $o$${DAILY[0]}$o$;
+    execute $o$${DAILY[1]}$o$;
     execute $o$${ATV}$o$;
     execute $o$${OLDFILES[0]}$o$;
     execute $o$${OLDFILES[1]}$o$;
