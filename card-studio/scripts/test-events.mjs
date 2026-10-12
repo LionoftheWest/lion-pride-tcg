@@ -44,6 +44,9 @@ const body = (mig) => String.raw`do $t$
 declare res jsonb := '[]'; got jsonb; r jsonb; ok boolean; n int; n2 int; T timestamptz := date_trunc('second', now()); card bigint; card2 bigint;
   ev bigint; ev2 bigint; ev3 bigint; ev4 bigint; ev5 bigint; ev6 bigint; up timestamptz; g bigint; hb bigint; cnt jsonb; cnt2 jsonb; lid bigint; cfg jsonb;
   launch_before int;
+  -- E12: the local copy gets no pg_cron jobs from the live dump, so a re-run of events.sql in this block creates the
+  -- 10-minute job; live already has the job (every minute since event_vars.sql) and events.sql leaves it alone.
+  had_tick boolean := to_regclass('cron.job') is not null and exists (select 1 from cron.job where jobname = 'event-tick');
 begin
   ${mig ? `drop table if exists event_payouts, event_log, events cascade;
   alter table gift_claims drop column if exists event_id cascade;   -- cascade: the gift_claims_event_link trigger (live since 2026-10-07)
@@ -337,7 +340,7 @@ begin
   res := res || jsonb_build_object('case', 'E12 anon and authenticated: admin_events, event_tick and the events table are refused', 'ok', ok);
   res := res || jsonb_build_object('case', 'E12 the pg_cron job event-tick every 10 minutes (every minute once event_vars.sql made event_vars)', 'ok',
     exists (select 1 from cron.job where jobname = 'event-tick' and command = 'select public.event_tick();'
-             and schedule = case when to_regclass('public.event_vars') is null then '*/10 * * * *' else '* * * * *' end));
+             and schedule = case when to_regclass('public.event_vars') is null or not had_tick then '*/10 * * * *' else '* * * * *' end));
   raise exception 'RESULTS %', res;
 end $t$;`;
 

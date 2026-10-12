@@ -10,12 +10,14 @@ import { supabase } from './supabase.js';
 import { adminRouter } from './admin-routes.js';
 import { eventsRouter } from './admin-events-routes.js';
 import { adminWriteRouter } from './admin-write.js';
+import { setsRouter } from './sets-routes.js';
+import { loadVocab, saveVocab, vocabView, addValue } from './tag-vocab.js';
 import { studioAuth, loadSecret } from './studio-auth.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic } from './rarity.js';
 import { getFrame, setFrame } from './frames.js';
 import { getArtist, setArtist } from './artists.js';
 import { getSource, setSource } from './artsources.js';
-import { getCards, getCard, addCard, updateCard, deleteCard, slotDetails, setSlotDetails, subjectType } from './cardstore.js';
+import { getCards, getCard, addCard, updateCard, deleteCard, slotDetails, setSlotDetails, subjectType, isSetId } from './cardstore.js';
 
 // Injected into a card render when ?edit=1: drag to pan, scroll to zoom, and
 // report the framing back to the studio window.
@@ -64,10 +66,12 @@ export const app = express();
 app.use(studioAuth({ secret: loadSecret(join(ROOT, '.studio-secret')) }));
 app.use(express.json({ limit: '30mb' }));
 // The Events editor (writes; src/admin-events-routes.js): mounted before the read-only router, which refuses POST.
-app.use('/api/admin/events', eventsRouter({ rpc: (fn, args) => supabase.rpc(fn, args) }));
+app.use('/api/admin/events', eventsRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
 // The Admin view data (read only): flag ADMIN_VIEW=1 (src/admin-routes.js). The pages: public/admin/ (/admin/).
 // The Admin view editors (Phase 2: preview, test on the LOCAL copy, apply, undo): flag ADMIN_EDIT=1 (src/admin-write.js).
 app.use('/api/admin/edit', adminWriteRouter({ live: supabase }));
+// The Sets section (F-2 PR 3, src/sets-routes.js): the sets, pack art, set pools. No flag, like the Cards section.
+app.use('/api/sets', setsRouter({ db: supabase }));
 app.use('/api/admin', adminRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
 // One page (F-2): the card editor (the old Card Portal) is the Cards section of the Admin page, /admin/#/cards.
 // The start page is the Overview when the Admin data is on (ADMIN_VIEW=1), else the Cards section, which needs no flag.
@@ -106,16 +110,22 @@ app.get('/api/cards', async (req, res) => {
   const { data: subs } = await supabase.from('subjects').select('key');
   const pushed = new Set((subs || []).map((s) => s.key));
 
-  // live image URLs per pushed card, so the gallery can show real (animated) faces
+  // live image URLs per pushed card, so the gallery can show real (animated) faces; and the live home set of each card
+  // (F-2: cards.set_id of its rows) and the sets whose pool holds it (set_pool, set_pools.sql).
   const { data: dbCards } = await supabase
     .from('cards')
-    .select('rarity, image_url, subject:subjects(key)');
+    .select('rarity, image_url, set_id, set_number, subject:subjects(key)');
   const live = {};
+  const liveSet = {};
   for (const row of dbCards || []) {
     const key = row.subject?.key;
     if (!key) continue;
     (live[key] ||= {})[row.rarity] = row.image_url;
+    (liveSet[key] ||= {})[row.rarity] = { set: row.set_id, number: row.set_number };
   }
+  const pools = {};
+  const { data: poolRows, error: poolErr } = await supabase.from('set_pool').select('set_id, card:cards(subject:subjects(key))');
+  if (!poolErr) for (const p of poolRows || []) { const key = p.card?.subject?.key; if (key) (pools[key] ||= new Set()).add(p.set_id); }
 
   res.json(
     cards.map((c) => {
@@ -141,6 +151,8 @@ app.get('/api/cards', async (req, res) => {
         total: slots.length,
         pushed: isLive,
         live: live[c.id] || {},
+        liveSet: liveSet[c.id] || {},
+        pools: [...(pools[c.id] || [])].sort(),
         manual: true, // every card lives in the portal store now (editable + deletable)
         dirty: Boolean(dirty),
       };
@@ -150,9 +162,11 @@ app.get('/api/cards', async (req, res) => {
 
 // Create a new card in the portal (the portal is the source of truth).
 app.post('/api/cards', (req, res) => {
-  const { name, genre, lore, season, event, finishes } = req.body || {};
+  const { name, genre, lore, season, event, finishes, set } = req.body || {};
   const cleanName = (name || '').trim();
   if (!cleanName) return res.status(400).json({ error: 'A card name is required.' });
+  // F-2: every new card has its home set (no default: a card never lands in S1 by accident).
+  if (!isSetId(set)) return res.status(400).json({ error: 'Choose the set of the card.' });
   if (!(season || '').trim()) return res.status(400).json({ error: 'A season / origin is required.' });
   // A new card starts with zero tiers — they are added on the card screen.
   const validFinishes = [...new Set((finishes || []).filter((f) => ORDER.includes(f)))]
@@ -173,6 +187,7 @@ app.post('/api/cards', (req, res) => {
     genre: (genre || '').trim(),
     lore: (lore || '').trim(),
     season: (season || '').trim(),
+    set,
     event: (event || '').trim(),
     finishes: validFinishes,
     updatedAt: Date.now(),
@@ -241,6 +256,29 @@ app.put('/api/cards/:id', async (req, res) => {
     }
   }
   res.json({ ok: true, card, sync });
+});
+
+// Change the HOME set of a card (F-2): the card is printed and numbered in that set. A live card gets a NEW number in
+// the new set at its next push; push.js allows the move only when it was recorded here (setMoveFrom = the live set).
+// Adding a card to another set's pull pool is NOT this: that is POST /api/sets/:id/pool.
+app.put('/api/cards/:id/set', async (req, res) => {
+  const c = cardById(req.params.id);
+  if (!c) return res.status(404).json({ error: 'no card' });
+  const set = (req.body || {}).set;
+  if (!isSetId(set)) return res.status(400).json({ error: 'Choose a set.' });
+  const { data: s, error: se } = await supabase.from('card_sets').select('id, season').eq('id', set).maybeSingle();
+  if (se) return res.status(502).json({ error: 'Could not reach the game database: ' + se.message });
+  if (!s) return res.status(400).json({ error: `No set ${set}.` });
+  const { data: subject } = await supabase.from('subjects').select('id').eq('key', c.id).maybeSingle();
+  let liveSet = null;
+  if (subject) {
+    const { data: rows, error: re } = await supabase.from('cards').select('set_id').eq('subject_id', subject.id).limit(1);
+    if (re) return res.status(502).json({ error: 'Could not reach the game database: ' + re.message });
+    liveSet = rows?.[0]?.set_id || null;
+  }
+  // setMoveFrom: the live set the card leaves (cleared when it goes back, or after the push that moves it).
+  const card = updateCard(c.id, { set, setMoveFrom: liveSet && liveSet !== set ? liveSet : undefined, updatedAt: Date.now() });
+  res.json({ ok: true, card, moving: Boolean(card.setMoveFrom), liveSet });
 });
 
 // Remove a card from the portal store.
@@ -367,6 +405,21 @@ app.post('/api/tradeable/:id', async (req, res) => {
     if (subject) await supabase.from('cards').update({ tradeable }).eq('subject_id', subject.id);
   } catch { /* live sync is best-effort */ }
   res.json({ ok: true, tradeable });
+});
+
+// The tag library of the pickers (F-2 item 7, src/tag-vocab.js): each facet with its values and how many cards use each.
+app.get('/api/tag-vocab', (req, res) => {
+  try { res.json({ ok: true, facets: vocabView(loadVocab(), allCards()) }); } catch (e) { res.status(500).json({ ok: false, error: e.message || String(e) }); }
+});
+// "+ Add new": checked against the library first (the same value, or a near duplicate = refused with a suggestion).
+app.post('/api/tag-vocab', (req, res) => {
+  const { facet, value } = req.body || {};
+  let vocab;
+  try { vocab = loadVocab(); } catch (e) { return res.status(500).json({ ok: false, error: e.message || String(e) }); }
+  const r = addValue(vocab, String(facet || ''), value);
+  if (!r.ok) return res.status(r.suggest ? 409 : 400).json(r);
+  if (!r.existed) saveVocab(vocab);
+  res.json({ ...r, facets: vocabView(vocab, allCards()) });
 });
 
 // Set the faceted tags for a card (subject-level: class, type, origin, genre,
@@ -497,7 +550,7 @@ async function runPush(id) {
     });
     pushStatus.set(id, 'done');
     pushProgress.set(id, 1);
-    updateCard(id, { pushedAt: Date.now() }); // now live + up to date (clears "dirty")
+    updateCard(id, { pushedAt: Date.now(), setMoveFrom: undefined }); // now live + up to date (clears "dirty"; a home set move is done)
   } catch (e) {
     pushStatus.set(id, `error: ${e.message || e}`);
   } finally {

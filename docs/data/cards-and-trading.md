@@ -227,7 +227,7 @@ Table. [cards] One row per card: one subject in one rarity. The card studio (car
 
 ### draw_pool
 
-View. The cards a draw can give: in the draw pool, source draw, and the set is pullable. The bot pack draw, dungeon_card_of (Dungeon chests and loot, Dungeon / Gauntlet prizes) and shop_pick_stock read it.
+View. The cards any draw can give, one row per card: every card of set_draw_pool (a pullable set gives it from its home cards, its pool or an included set). The bot pack with no set, dungeon_card_of (Dungeon chests and loot, Dungeon / Gauntlet prizes), shop_pick_stock, spawn_hunt and the achievement functions read it.
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
@@ -239,7 +239,7 @@ View. The cards a draw can give: in the draw pool, source draw, and the set is p
 | `image_url` | text | null |  | The card image (cards.image_url). |
 | `artist_credit` | text | null |  | The artist (cards.artist_credit). |
 | `lore` | text | null |  | The card text (cards.lore). |
-| `set_id` | text | null |  | The set of the card (cards.set_id); a pack from a set filters on it. |
+| `set_id` | text | null |  | The HOME set of the card (cards.set_id). A pack of one set reads set_draw_pool (pool_set_id), not this. |
 | `set_number` | integer | null |  | The number of the card in its set (cards.set_number). |
 
 - Primary key: none
@@ -962,7 +962,7 @@ Makes a trade offer on a Trading Hall listing (create_trade, then sets listing_i
 - Returns: `integer`
 - Security definer: no
 
-Opens up to 10 packs from one set: the set must be pullable and each card in its draw pool (else an error). Then the same as open_packs(text, bigint[], integer), with the set on the pack_ledger rows. Returns the packs opened.
+Opens up to 10 packs from one set: the set must be pullable and each card in its pool (set_draw_pool.pool_set_id; else an error). Then the same as open_packs(text, bigint[], integer), with the set on the pack_ledger rows. Returns the packs opened.
 
 <a id="fn-open-packs-text-bigint-integer"></a>
 
@@ -1002,7 +1002,7 @@ Places a bid of 1 to 5 free cards on a live auction and withdraws the member's o
 - Returns: `jsonb`
 - Security definer: no
 
-The Open screen in one statement: {sets: [id, name, code, season, released_at, is_new, cards (a pack of the set can give), owned (of those, by the member), cover_card_id, cover_image_url, pack_color, pack_art_url], last_set (D-85)}.
+The Open screen in one statement: {sets: [id, name, code, season, released_at, is_new, cards (a pack of the set can give: set_draw_pool), owned (of those, by the member), cover_card_id, cover_image_url, pack_color, pack_art_url], last_set (D-85)}.
 
 <a id="fn-rarity-rank-text"></a>
 

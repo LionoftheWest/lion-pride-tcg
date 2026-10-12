@@ -61,14 +61,19 @@ export function slotDetails(card, slot) {
   };
 }
 
+/** A set id as card_sets.id allows it (1 to 8 capitals or digits). */
+export const isSetId = (v) => typeof v === 'string' && /^[A-Z0-9]{1,8}$/.test(v);
+
 /**
- * The set of a card (tcg-bot/supabase/card_sets.sql): cards.json `set`, for example "S2"; no `set` = "S1".
- * One set for every tier of the card. push.js writes it to cards.set_id; the database then sets the
- * season (the set name) and gives the card its number in the set. A bad id stops the push.
+ * The HOME set of a card (tcg-bot/supabase/card_sets.sql, F-2): cards.json `set`, for example "S2", REQUIRED.
+ * There is no default (F-2 PR 3): a card with no set never lands in S1 by accident. One home set for every
+ * tier of the card; push.js writes it to cards.set_id and the database gives the number in the set.
+ * Other sets add the card to their pull pool (set_pool), not here. A missing or bad id stops the push.
  */
 export function cardSetId(card) {
-  const id = card?.set ?? 'S1';
-  if (typeof id !== 'string' || !/^[A-Z0-9]{1,8}$/.test(id)) throw new Error(`card ${card?.id}: bad set id ${JSON.stringify(id)} (for example "S1")`);
+  const id = card?.set;
+  if (id == null || id === '') throw new Error(`"${card?.name ?? card?.id}" has no set. Choose its set on the card page (Sets), then push again.`);
+  if (!isSetId(id)) throw new Error(`card ${card?.id}: bad set id ${JSON.stringify(id)} (for example "S1")`);
   return id;
 }
 
