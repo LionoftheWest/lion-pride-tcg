@@ -98,7 +98,9 @@ Nathan's decision (2026-10-03): one source of truth for each number and each cal
 - The VM `.env` is the source of truth. Never copy a local `.env` to the VM.
 - The Activity needs `FEATURE_HUNT=1`. The deploy health check requires `"hunt":true`.
 - All containers run with `--network host`. The Activity calls the bot at `127.0.0.1:4451`.
-- The weekly hunt runs in pg_cron. Never add a host cron for `hunt-rollover.sh` again.
+- The weekly Hunt is a calendar event (`events` kind `hunt`, `event_repeats`, since 2026-10-12). Change Hunt times in the Admin calendar, not in pg_cron. Never add a host cron for `hunt-rollover.sh` again.
+- The local database is shared by every session. Take the lock `C:/Users/vaugh/.localdb.lock` before any local DB step, and never remove a lock that you do not own. The full go-live process (fresh-copy rehearsal, baseline compare, generated files): `docs/foundations.md`, "How these PRs went live".
+- One set per season (`admin_set_save` refuses a used season, R-09). The current plan, live state and decisions: `docs/roadmap-next-update.md` and `docs/foundations.md`.
 - Do not commit `card-studio/ml/` (except `*.py`) or anything in `out/`.
 - Activity screens never scroll, never bleed, and never move when a status changes. Read the UI standard in `docs/design.md` before a UI change.
 - `ops/caddy/Caddyfile` is a copy of the live file. After you change the live file, update this copy.
