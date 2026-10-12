@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (112)
+## Superseded files (113)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -117,6 +117,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `roster_stats.sql` | SUPERSEDED: reverts `public.roster_snapshot()` (live = `balance_dungeon_numbers.sql`); reverts `public.roster_stats()` (live = `balance_dungeon_numbers.sql`) |  |
 | `runs_per_day.sql` | SUPERSEDED: reverts `public.dungeon_view_core(text, boolean)` (live = `game_vars_all.sql`) | a re-run stops at an error today: runs_per_day.sql: the live public.dungeon_view_core(text, boolean) changed since this file was built. Rebuild it from the live text. |
 | `schema.sql` | SUPERSEDED: brings back `public.add_card_to_player(text, bigint)`, which live does not have | a re-run stops at an error today: type "card_rarity" already exists; alone, `create or replace function record_activity(p_playe...` fails: cannot change return type of existing function |
+| `set_pools.sql` | SUPERSEDED: reverts `public.admin_set_save(text, jsonb, jsonb, text)` (live = `set_season_one_set.sql`) |  |
 | `shard_ledger_strict.sql` | SUPERSEDED: reverts `public.buy_shop_item(text, text, integer, bigint, integer)` (live = `game_vars_all.sql`); reverts `public.claim_daily(text, text)` (live = `game_vars_all.sql`); reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `game_vars_all.sql`) | a re-run stops at an error today: shard_ledger_strict.sql: the live claim_daily(text,text) changed since this file was built. Rebuild it from the live text. |
 | `shards_dailies_gifts.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `game_vars_all.sql`); reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `game_vars_all.sql`); reverts `public.claim_gift(text, bigint)` (live = `pack_ledger_strict.sql`); reverts `public.dailies_view(text)` (live = `game_vars_all.sql`); changes table `shard_ledger`: constraints |  |
 | `shards_shop.sql` | SUPERSEDED: reverts `public.buy_shop_item(text, text, integer, bigint, integer)` (live = `game_vars_all.sql`); reverts `public.convert_dupes(text, bigint, integer)` (live = `card_ledger.sql`); reverts `public.convertible_copies(text, bigint)` (live = `shards_convert_keep_one.sql`); reverts `public.shard_cfg()` (live = `balance_economy.sql`); reverts `public.shop_day()` (live = `one_source_rules.sql`); reverts `public.shop_pick_stock(date)` (live = `card_sets.sql`); reverts `public.shop_today(text)` (live = `game_vars_all.sql`) |  |
@@ -172,7 +173,7 @@ a one-time grant or a settings value would run again.
 
 ## No change (27)
 
-`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_auto_rounds.sql`, `dungeon_rules_supports_targets.sql`, `dungeon_stun_pass.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_collection_power.sql`, `profile_spotlight_avatar.sql`, `set_pools.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
+`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_auto_rounds.sql`, `dungeon_rules_supports_targets.sql`, `dungeon_stun_pass.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_collection_power.sql`, `profile_spotlight_avatar.sql`, `set_season_one_set.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
 
 ## Live functions that no file gives (1)
 

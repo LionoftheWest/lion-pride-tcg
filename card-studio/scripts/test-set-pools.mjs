@@ -103,7 +103,7 @@ ${kase('S1 only, no pool rows: draw_pool, the S1 pool, pullable_sets, tag badges
   insert into subjects (key, name, type, tags) select '${P}_subj' || i, 'Set pool test subject ' || i, 'Item', '{"class": "attacker"}' from generate_series(1, 30) i;
   update subjects set tag_slugs = array['origin:tstpoolorigin', 'trait:tstpooltrait', 'type:tstpooltype'] where key like '${P}_subj%';
 ${kase('admin_set_save creates S2T (logged set_create) and an edit with a stale before value is refused (LP409)', `
-    v := admin_set_save('tester', '{"id": "S2T", "name": "S2 test", "code": "S2T", "pack_color": "#22AA66", "season": 2, "pullable": false, "sort": 2}', null, 'test');
+    v := admin_set_save('tester', '{"id": "S2T", "name": "S2 test", "code": "S2T", "pack_color": "#22AA66", "season": 92, "pullable": false, "sort": 2}', null, 'test');
     fields := v->'set';
     begin perform admin_set_save('tester', '{"id": "S2T", "name": "S2 test b"}', fields || '{"name": "old"}', 'test'); ok := false;
     exception when sqlstate 'LP409' then ok := true; end;
@@ -148,7 +148,7 @@ ${kase('draw_pool (every pullable set) has each card once: the S1 pool plus the 
     ${got('draw_pool (every pullable set) has each card once: the S1 pool plus the S2T cards', `(select count(*) from draw_pool) = (select count(distinct id) from draw_pool)
       and (select array_agg(id order by id) from draw_pool) = (select array_agg(i order by i) from unnest(pool_before || s2) i)`)}`)}
 ${kase('a set that includes S1 and S2T gives every card of both, each once (and the S2T pool through S2T)', `
-    perform admin_set_save('tester', '{"id": "S12T", "name": "S1 and S2 test", "code": "S12T", "pack_color": "#3366cc", "season": 2}', null, 'test');
+    perform admin_set_save('tester', '{"id": "S12T", "name": "S1 and S2 test", "code": "S12T", "pack_color": "#3366cc", "season": 93}', null, 'test');
     perform admin_set_include('tester', 'S12T', 'S1', true, 'test');
     perform admin_set_include('tester', 'S12T', 'S2T', true, 'test');
     ${got('a set that includes S1 and S2T gives every card of both, each once (and the S2T pool through S2T)', `
@@ -159,7 +159,7 @@ ${kase('cycles are refused: a set cannot include itself, S2T cannot include S12T
     begin insert into set_includes values ('S2T', 'S2T'); exception when check_violation then n := n + 1; end;
     begin insert into set_includes (set_id, included_set_id) values ('S2T', 'S12T'); exception when check_violation then n := n + 1; end;
     begin perform admin_set_include('tester', 'S2T', 'S12T', true, 'test'); exception when sqlstate 'LP400' then n := n + 1; end;
-    perform admin_set_save('tester', '{"id": "S3T", "name": "S3 test", "code": "S3T", "pack_color": "#aa3366", "season": 3}', null, 'test');
+    perform admin_set_save('tester', '{"id": "S3T", "name": "S3 test", "code": "S3T", "pack_color": "#aa3366", "season": 94}', null, 'test');
     insert into set_includes (set_id, included_set_id) values ('S3T', 'S12T');
     begin insert into set_includes (set_id, included_set_id) values ('S1', 'S3T'); exception when check_violation then n := n + 1; end;
     ${got('cycles are refused: a set cannot include itself, S2T cannot include S12T (S12T includes S2T), nor through a third set', 'n = 4', ", 'refused', n")}`)}
@@ -182,7 +182,7 @@ ${kase('the last pullable set cannot be turned off (LP400); removing pool cards 
       and (select pullable from card_sets where id = 'S1')
       and (select count(*) from admin_actions where id > aid0 and action in ('set_pool_remove', 'set_exclude')) = 2`, ", 'v', v, 'w', w")}`)}
 ${kase('pack art: https:// anywhere, http:// only to localhost or 127.0.0.1 (http://evil.example refused)', `
-    perform admin_set_save('tester', '{"id": "S4T", "name": "S4 test", "code": "S4T", "pack_color": "#123456", "season": 4}', null, 'test');
+    perform admin_set_save('tester', '{"id": "S4T", "name": "S4 test", "code": "S4T", "pack_color": "#123456", "season": 95}', null, 'test');
     n := 0; m := 0;
     foreach err in array array['http://evil.example/pack.png', 'http://localhost.evil.example/pack.png', 'http://127.0.0.1@evil.example/pack.png', 'ftp://example.com/p.png', 'https://'] loop
       begin perform admin_set_save('tester', jsonb_build_object('id', 'S4T', 'pack_art_url', err), (select admin_set_fields(s) from card_sets s where id = 'S4T'), 'test');

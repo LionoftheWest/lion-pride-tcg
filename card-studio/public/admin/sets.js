@@ -52,6 +52,17 @@ const field = (lbl, input, note) => h('label', { class: 'cs-field' }, h('span', 
 const toLocal = (iso) => { if (!iso) return ''; const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
 const fromLocal = (v) => (v ? new Date(v).toISOString() : null);
 const homeCards = (id) => cards.filter((c) => c.set === id);
+// One set per season (set_season_one_set.sql): cards_set_rules gives a card with no set the ONE set of its season.
+const nextSeason = () => Math.max(0, ...data.sets.map((s) => s.season)) + 1;
+const seasonOwner = (season, self) => data.sets.find((s) => s.season === season && s.id !== self) || null;
+// The Season field: a whole number. The mouse wheel does not change it (a focused number field steps on each wheel turn).
+const seasonInput = (id, value) => h('input', { class: 'field', id, type: 'number', min: '1', step: '1', value: String(value), onwheel: (e) => e.currentTarget.blur() });
+// A refused season, before the request: the same words as the server.
+const seasonError = (season, self) => {
+  if (!Number.isInteger(season) || season < 1) return 'the season is a whole number of 1 or more';
+  const o = seasonOwner(season, self);
+  return o ? `season ${season} is already used by set ${o.id} (${o.name}). Each season has one set. The next free season is ${nextSeason()}.` : null;
+};
 const poolKeys = (id) => [...new Set(data.pool.filter((p) => p.set_id === id).map((p) => p.key).filter(Boolean))];
 
 /* ================= every set ================= */
@@ -87,7 +98,7 @@ function newDialog() {
         field('Id', h('input', { class: 'field', id: 'st-n-id', placeholder: 'S2', maxlength: '8' }), '(fixed)'),
         field('Code', h('input', { class: 'field', id: 'st-n-code', placeholder: 'e.g. RIS', maxlength: '8' }), '(on the card)'),
         h('div', { class: 'cs-wide' }, field('Name', h('input', { class: 'field', id: 'st-n-name', placeholder: 'e.g. Rising' }))),
-        field('Season', h('input', { class: 'field', id: 'st-n-season', type: 'number', min: '1', step: '1', value: '2' })),
+        field('Season', seasonInput('st-n-season', nextSeason()), '(one set per season)'),
         field('Order', h('input', { class: 'field', id: 'st-n-sort', type: 'number', step: '1', value: String(Math.max(0, ...data.sets.map((s) => s.sort)) + 1) })),
         field('Pack color', h('input', { class: 'field', id: 'st-n-color', type: 'color', value: '#3366cc' })),
         field('Release date', h('input', { class: 'field', id: 'st-n-released', type: 'datetime-local' }), '(optional)')),
@@ -99,7 +110,8 @@ function newDialog() {
 function openNew() {
   for (const x of ['st-n-id', 'st-n-code', 'st-n-name', 'st-n-released']) $(x).value = '';
   $('st-n-pullable').checked = false;
-  $('st-n-status').textContent = '';
+  $('st-n-season').value = String(nextSeason());
+  say('st-n-status', '');
   $('st-newdlg').hidden = false;
   $('st-n-id').focus();
 }
@@ -109,10 +121,12 @@ async function createSet() {
     season: Number($('st-n-season').value), sort: Number($('st-n-sort').value), pack_color: $('st-n-color').value.toLowerCase(),
     pullable: $('st-n-pullable').checked, released_at: fromLocal($('st-n-released').value),
   };
+  const bad = seasonError(set.season, set.id);
+  if (bad) return say('st-n-status', `Error: ${bad}`, true);
   $('st-n-save').disabled = true;
   const r = await post('/api/sets', { set, before: null, reason: 'new set' });
   $('st-n-save').disabled = false;
-  if (!r.ok) return ($('st-n-status').textContent = `Error: ${r.error}`);
+  if (!r.ok) return say('st-n-status', `Error: ${r.error}`, true);
   location.hash = `#/sets/${encodeURIComponent(r.set.id)}`;
 }
 
@@ -124,7 +138,8 @@ function panel(title, sub, id) {
   const el = h('section', { class: 'panel cs-panel', id }, h('div', { class: 'phead' }, h('div', { class: 'ptitles' }, h('h2', { text: title }), sub ? h('p', { class: 'subtitle', text: sub }) : null)), body);
   return { el, body };
 }
-const say = (id, t) => { if ($(id)) $(id).textContent = t; };
+// A status line; bad = an error (the .err color), so a refusal does not look like a normal note.
+const say = (id, t, bad = false) => { const el = $(id); if (!el) return; el.textContent = t; el.classList.toggle('err', bad); };
 
 function setPage(main, id) {
   cur = setOf(id);
@@ -138,7 +153,7 @@ function setPage(main, id) {
   f.body.append(h('div', { class: 'cs-fgrid' },
     field('Name', h('input', { class: 'field', id: 'st-name', value: cur.name })),
     field('Code', h('input', { class: 'field', id: 'st-code', value: cur.code, maxlength: '8' })),
-    field('Season', h('input', { class: 'field', id: 'st-season', type: 'number', min: '1', step: '1', value: String(cur.season) })),
+    field('Season', seasonInput('st-season', cur.season), '(one set per season)'),
     field('Pack color', h('input', { class: 'field', id: 'st-color', type: 'color', value: cur.pack_color })),
     field('Release date', h('input', { class: 'field', id: 'st-released', type: 'datetime-local', value: toLocal(cur.released_at) })),
     field('Order', h('input', { class: 'field', id: 'st-sort', type: 'number', step: '1', value: String(cur.sort) }))),
@@ -228,19 +243,24 @@ async function after(msgId, msg) {
 async function saveFields() {
   const set = { id: cur.id, name: $('st-name').value.trim(), code: $('st-code').value.trim().toUpperCase(), season: Number($('st-season').value),
     pack_color: $('st-color').value.toLowerCase(), released_at: fromLocal($('st-released').value), sort: Number($('st-sort').value), pullable: $('st-pullable').checked };
+  if (set.season !== cur.season) {
+    const bad = seasonError(set.season, cur.id);
+    if (bad) return say('st-status', `Error: ${bad}`, true);
+    if (!window.confirm(`Change the season of ${cur.name} from ${cur.season} to ${set.season}? Its cards will say Season ${set.season}.`)) return;
+  }
   if (set.pullable !== cur.pullable && !window.confirm(set.pullable
     ? `Make ${cur.name} pullable? Packs and rewards start to give its cards now.`
     : `Stop ${cur.name}? Packs of this set close, and rewards stop giving its cards.`)) return;
   say('st-status', 'Saving');
   const r = await post('/api/sets', { set, before: fieldsOf(cur), reason: 'set edit' });
-  if (!r.ok) return say('st-status', `Error: ${r.error}`);
+  if (!r.ok) return say('st-status', `Error: ${r.error}`, true);
   await after('st-status', 'Saved.');
 }
 
 async function saveCover() {
   const v = $('st-cover').value;
   const r = await post('/api/sets', { set: { id: cur.id, cover_card_id: v ? Number(v) : null }, before: fieldsOf(cur), reason: 'cover card' });
-  if (!r.ok) return say('st-art-status', `Error: ${r.error}`);
+  if (!r.ok) return say('st-art-status', `Error: ${r.error}`, true);
   await after('st-art-status', 'Cover saved.');
 }
 
@@ -255,7 +275,7 @@ export async function uploadArt(kind, file) {
   say('st-art-status', `Uploading the ${kind}`);
   const dataUrl = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(file); });
   const r = await post(`/api/sets/${encodeURIComponent(cur.id)}/pack-art`, { kind, dataUrl });
-  if (!r.ok) return say('st-art-status', `Error: ${r.error}`);
+  if (!r.ok) return say('st-art-status', `Error: ${r.error}`, true);
   if (kind === 'clip') return say('st-art-status', `Clip stored: ${r.url}`);
   await after('st-art-status', 'Pack art saved.');
 }
@@ -265,17 +285,17 @@ async function addPool() {
   if (!keys.length) return say('st-pool-status', 'Select one or more cards.');
   say('st-pool-status', 'Adding');
   const r = await post(`/api/sets/${encodeURIComponent(cur.id)}/pool`, { keys, add: true, reason: 'set page: add cards' });
-  if (!r.ok) return say('st-pool-status', `Error: ${r.error}`);
+  if (!r.ok) return say('st-pool-status', `Error: ${r.error}`, true);
   await after('st-pool-status', `Added ${keys.length} card${keys.length === 1 ? '' : 's'} (${r.changed} tiers). The pool has ${r.pool} tiers.`);
 }
 async function removePool(key) {
   const r = await post(`/api/sets/${encodeURIComponent(cur.id)}/pool`, { keys: [key], add: false, reason: 'set page: remove a card' });
-  if (!r.ok) return say('st-pool-status', `Error: ${r.error}`);
+  if (!r.ok) return say('st-pool-status', `Error: ${r.error}`, true);
   await after('st-pool-status', `Removed (${r.changed} tiers).`);
 }
 async function include(other, add) {
   if (!other) return say('st-inc-status', 'Choose a set.');
   const r = await post(`/api/sets/${encodeURIComponent(cur.id)}/include`, { set: other, add, reason: add ? 'include a set' : 'exclude a set' });
-  if (!r.ok) return say('st-inc-status', `Error: ${r.error}`);
+  if (!r.ok) return say('st-inc-status', `Error: ${r.error}`, true);
   await after('st-inc-status', add ? `Included ${other}.` : `Excluded ${other}.`);
 }
