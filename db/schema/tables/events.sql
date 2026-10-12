@@ -20,7 +20,11 @@ create table public.events (
   created_by text not null,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
-  ended_at timestamp with time zone
+  ended_at timestamp with time zone,
+  vars jsonb default '{}'::jsonb not null,
+  theme jsonb default '{}'::jsonb not null,
+  template_id bigint,
+  repeat_id bigint
 );
 
 -- @constraints
@@ -29,16 +33,19 @@ alter table public.events add constraint events_description_check CHECK ((length
 alter table public.events add constraint events_ended_at CHECK (((status = ANY (ARRAY['ended'::text, 'cancelled'::text])) = (ended_at IS NOT NULL)));
 alter table public.events add constraint events_key_check CHECK ((key ~ '^[a-z0-9][a-z0-9_]{2,47}$'::text));
 alter table public.events add constraint events_key_key UNIQUE (key);
-alter table public.events add constraint events_kind_check CHECK ((kind = ANY (ARRAY['drop'::text, 'trigger'::text, 'rank'::text, 'launch_cards'::text])));
+alter table public.events add constraint events_kind_check CHECK ((kind = ANY (ARRAY['drop'::text, 'trigger'::text, 'rank'::text, 'modifier'::text, 'launch_cards'::text])));
 alter table public.events add constraint events_pkey PRIMARY KEY (id);
 alter table public.events add constraint events_shape CHECK ((cardinality(event_shape_errors(kind, audience, rewards, rules)) = 0));
 alter table public.events add constraint events_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'scheduled'::text, 'live'::text, 'ended'::text, 'cancelled'::text])));
+alter table public.events add constraint events_template_id_fkey FOREIGN KEY (template_id) REFERENCES event_templates(id);
+alter table public.events add constraint events_theme CHECK ((cardinality(event_theme_errors(theme)) = 0));
 alter table public.events add constraint events_time_order CHECK ((ends_at > starts_at));
 alter table public.events add constraint events_title_check CHECK (((length(TRIM(BOTH FROM title)) >= 1) AND (length(TRIM(BOTH FROM title)) <= 80)));
 
 -- @indexes
 CREATE INDEX events_due ON public.events USING btree (starts_at) WHERE (status = ANY (ARRAY['scheduled'::text, 'live'::text]));
 CREATE UNIQUE INDEX events_key_key ON public.events USING btree (key);
+CREATE INDEX events_live_vars ON public.events USING btree (starts_at) WHERE ((status = 'live'::text) AND (vars <> '{}'::jsonb));
 CREATE UNIQUE INDEX events_pkey ON public.events USING btree (id);
 
 -- @rls
@@ -52,3 +59,4 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 -- @triggers
 CREATE TRIGGER event_log_write AFTER INSERT OR UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION event_log_write();
 CREATE TRIGGER events_touch BEFORE UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION events_touch();
+CREATE TRIGGER events_vars_check BEFORE INSERT OR UPDATE OF kind, vars ON public.events FOR EACH ROW EXECUTE FUNCTION events_vars_check();

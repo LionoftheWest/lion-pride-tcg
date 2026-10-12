@@ -13,19 +13,19 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (99)
+## Superseded files (103)
 
 | File | Reasons | Notes |
 |---|---|---|
-| `achievement_tracks.sql` | SUPERSEDED: reverts `public.ach_has_element(jsonb)` (live = `card_decisions.sql`); reverts `public.ach_track_values(text)` (live = `pack_ledger_strict.sql`); reverts `public.claim_achievement_tiers(text, text)` (live = `pack_ledger_strict.sql`) | a re-run stops at an error today: achievement_tracks.sql: the live claim_achievement changed since this file was built. Rebuild from the live text.; alone, `create or replace function public.claim_achievemen...` fails: cannot remove parameter defaults from existing function |
+| `achievement_tracks.sql` | SUPERSEDED: reverts `public.ach_has_element(jsonb)` (live = `card_decisions.sql`); reverts `public.ach_track_values(text)` (live = `perf_five_slow_calls.sql`); reverts `public.achievement_view(text)` (live = `achievement_view_old_paid.sql`); reverts `public.claim_achievement_tiers(text, text)` (live = `pack_ledger_strict.sql`) | a re-run stops at an error today: achievement_tracks.sql: the live claim_achievement changed since this file was built. Rebuild from the live text.; alone, `create or replace function public.claim_achievemen...` fails: cannot remove parameter defaults from existing function |
 | `ascend_guard.sql` | SUPERSEDED: reverts `public.ascend_card(text, bigint)` (live = `card_ledger.sql`) |  |
 | `ascension.sql` | SUPERSEDED: reverts `public.ascend_card(text, bigint)` (live = `card_ledger.sql`); reverts `public.ascend_cost(text, integer)` (live = `balance_table.sql`); brings back `public.card_power(text, integer)`, which live does not have; reverts `public.my_collection_power(text)` (live = `perf_collection_power.sql`); reverts `public.top_collection_power(integer)` (live = `perf_collection_power.sql`) | a re-run stops at an error today: function card_power(text, integer) is not unique |
 | `ascension_cost_v3.sql` | SUPERSEDED: reverts `public.ascend_cost(text, integer)` (live = `balance_table.sql`) |  |
 | `ascension_cp_v2.sql` | SUPERSEDED: reverts `public.ascend_card(text, bigint)` (live = `card_ledger.sql`); reverts `public.card_power(text, integer, numeric)` (live = `balance_table.sql`); reverts `public.my_collection_power(text)` (live = `perf_collection_power.sql`); reverts `public.top_collection_power(integer)` (live = `perf_collection_power.sql`) |  |
 | `audit_fixes_2026_10_03.sql` | SUPERSEDED: reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `hunt_counter_balance.sql`) |  |
-| `balance_economy.sql` | SUPERSEDED: reverts `public.gauntlet_view(text)` (live = `perf_boards_once.sql`) | a re-run stops at an error today: balance_economy.sql: the live gauntlet_view(text) changed since this file was built. Rebuild it from the live text. |
-| `balance_settings_numbers.sql` | SUPERSEDED: reverts `public.dungeon_attack(text, bigint, integer, text)` (live = `dungeon_stun_pass.sql`); reverts `public.dungeon_view(text)` (live = `perf_dungeon_view.sql`); reverts `public.gauntlet_view(text)` (live = `perf_boards_once.sql`) | a re-run stops at an error today: balance_settings_numbers.sql: the live dungeon_view(text) changed since this file was built. Rebuild it from the live text. |
-| `balance_table.sql` | SUPERSEDED: reverts `public.card_combat(text, integer, numeric, jsonb)` (live = `perf_card_power_reads.sql`); reverts `public.card_cp_exact(text, integer, numeric)` (live = `perf_card_power_reads.sql`); reverts `public.card_max_hp(integer)` (live = `perf_card_power_reads.sql`); reverts `public.card_powers(text)` (live = `perf_card_power_reads.sql`); reverts `public.collection_power_all()` (live = `perf_collection_power.sql`); reverts `public.dungeon_attack(text, bigint, integer, text)` (live = `dungeon_stun_pass.sql`); reverts `public.dungeon_enemy_turn(jsonb, bigint, integer, integer)` (live = `dungeon_rules_supports_targets.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.my_collection_power(text)` (live = `perf_collection_power.sql`); reverts `public.stat_pt(jsonb, text)` (live = `perf_card_power_reads.sql`); reverts `public.top_collection_power(integer)` (live = `perf_collection_power.sql`) | a re-run stops at an error today: balance_table.sql: the live hunt_attack changed since this file was built. Rebuild it from the live text. |
+| `balance_economy.sql` | SUPERSEDED: reverts `public.gauntlet_view(text)` (live = `perf_five_slow_calls.sql`) | a re-run stops at an error today: balance_economy.sql: the live gauntlet_view(text) changed since this file was built. Rebuild it from the live text. |
+| `balance_settings_numbers.sql` | SUPERSEDED: reverts `public.dungeon_attack(text, bigint, integer, text)` (live = `dungeon_stun_pass.sql`); reverts `public.dungeon_view(text)` (live = `perf_dungeon_view.sql`); reverts `public.gauntlet_view(text)` (live = `perf_five_slow_calls.sql`) | a re-run stops at an error today: balance_settings_numbers.sql: the live dungeon_view(text) changed since this file was built. Rebuild it from the live text. |
+| `balance_table.sql` | SUPERSEDED: reverts `public.card_combat(text, integer, numeric, jsonb)` (live = `perf_card_power_reads.sql`); reverts `public.card_cp_exact(text, integer, numeric)` (live = `perf_card_power_reads.sql`); reverts `public.card_max_hp(integer)` (live = `perf_card_power_reads.sql`); reverts `public.card_powers(text)` (live = `perf_five_slow_calls.sql`); reverts `public.collection_power_all()` (live = `perf_collection_power.sql`); reverts `public.dungeon_attack(text, bigint, integer, text)` (live = `dungeon_stun_pass.sql`); reverts `public.dungeon_enemy_turn(jsonb, bigint, integer, integer)` (live = `dungeon_rules_supports_targets.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.my_collection_power(text)` (live = `perf_collection_power.sql`); reverts `public.stat_pt(jsonb, text)` (live = `perf_card_power_reads.sql`); reverts `public.top_collection_power(integer)` (live = `perf_collection_power.sql`) | a re-run stops at an error today: balance_table.sql: the live hunt_attack changed since this file was built. Rebuild it from the live text. |
 | `boss_hp_heal_share.sql` | SUPERSEDED: reverts `public.spawn_hunt(integer, text)` (live = `effect_start_spawn_settle.sql`) | a re-run stops at an error today: boss_hp_heal_share.sql: the live spawn_hunt changed since this file was built. Rebuild from the live text. |
 | `bot_work.sql` | SUPERSEDED: reverts `public.bot_work()` (live = `effects_outside.sql`) |  |
 | `bot_work_waits.sql` | SUPERSEDED: reverts `public.bot_work()` (live = `effects_outside.sql`) |  |
@@ -51,8 +51,9 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `effects_cleanup.sql` | SUPERSEDED: reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`); reverts `public.take_player_effect(text, text)` (live = `effect_start_spawn_settle.sql`) |  |
 | `effects_outside.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `shard_ledger_strict.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_random_target.sql`) |  |
 | `event_cards.sql` | SUPERSEDED: reverts `public.card_power(text, integer, numeric)` (live = `balance_table.sql`); reverts `public.cards_event_rules()` (live = `special_cards_never_in_packs.sql`) |  |
+| `events.sql` | SUPERSEDED: reverts `public.admin_event_save(jsonb, timestamp with time zone, text, text)` (live = `event_vars.sql`); reverts `public.event_pay(bigint, text, timestamp with time zone)` (live = `event_vars.sql`); reverts `public.event_row_errors(events)` (live = `event_vars.sql`); reverts `public.event_shape_errors(text, jsonb, jsonb, jsonb)` (live = `event_vars.sql`); reverts cron job `event-tick` (schedule '*/10 * * * *', live '* * * * *') (live = `event_vars.sql`) |  |
 | `fix_last_copy_remove.sql` | SUPERSEDED: reverts `public.remove_card_from_player(text, bigint)` (live = `card_ledger.sql`) |  |
-| `gauntlet.sql` | SUPERSEDED: reverts `public.dungeon_attack(text, bigint, integer, text)` (live = `dungeon_stun_pass.sql`); reverts `public.dungeon_view(text)` (live = `perf_dungeon_view.sql`); reverts `public.gauntlet_view(text)` (live = `perf_boards_once.sql`) | a re-run stops at an error today: gauntlet.sql: the live dungeon_attack changed since this file was built. Rebuild from the live text. |
+| `gauntlet.sql` | SUPERSEDED: reverts `public.dungeon_attack(text, bigint, integer, text)` (live = `dungeon_stun_pass.sql`); reverts `public.dungeon_view(text)` (live = `perf_dungeon_view.sql`); reverts `public.gauntlet_view(text)` (live = `perf_five_slow_calls.sql`) | a re-run stops at an error today: gauntlet.sql: the live dungeon_attack changed since this file was built. Rebuild from the live text. |
 | `gift_all_members.sql` | SUPERSEDED: reverts `public.gift_all_members(jsonb, integer, text)` (live = `gift_claims.sql`); reverts `public.welcome_packs()` (live = `balance_economy.sql`) |  |
 | `gift_claims.sql` | SUPERSEDED: reverts `public.claim_gift(text, bigint)` (live = `pack_ledger_strict.sql`); reverts `public.gift_packs(text, text, integer)` (live = `pack_ledger_strict.sql`); reverts `public.welcome_packs()` (live = `balance_economy.sql`) |  |
 | `gift_packs.sql` | SUPERSEDED: reverts `public.gift_packs(text, text, integer)` (live = `pack_ledger_strict.sql`) |  |
@@ -98,8 +99,11 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `notifications.sql` | SUPERSEDED: brings back `public.notify_all(text, text)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `open_packs_batch.sql` | SUPERSEDED: reverts `public.open_packs(text, bigint[], integer)` (live = `card_sets.sql`) |  |
 | `pack_economy.sql` | SUPERSEDED: reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `shard_ledger_strict.sql`); brings back `public.grant_packs(text, integer, text, text)`, which live does not have; brings back `public.grant_packs_all(integer, text, text)`, which live does not have; reverts `public.spend_pack(text)` (live = `pack_ledger_strict.sql`) | changes function grants that lockdown_grants.sql does not put back |
+| `pack_ledger_strict.sql` | SUPERSEDED: reverts `public.ach_track_values(text)` (live = `perf_five_slow_calls.sql`) | a re-run stops at an error today: pack_ledger_strict.sql: the live ach_track_values(text) changed since this file was built. Rebuild it from the live text. |
 | `pack_open_batch.sql` | SUPERSEDED: reverts `public.add_cards_to_player(text, bigint[])` (live = `card_ledger.sql`) |  |
-| `perf_dungeon_view.sql` | SUPERSEDED: reverts `public.dungeon_view_core(text, boolean)` (live = `perf_boards_once.sql`) |  |
+| `perf_boards_once.sql` | SUPERSEDED: reverts `public.dungeon_view_core(text, boolean)` (live = `perf_five_slow_calls.sql`); reverts `public.gauntlet_view(text)` (live = `perf_five_slow_calls.sql`) | a re-run stops at an error today: perf_boards_once.sql: the live dungeon_view_core changed since this file was built. Rebuild it from the live text. |
+| `perf_card_power_reads.sql` | SUPERSEDED: reverts `public.card_powers(text)` (live = `perf_five_slow_calls.sql`) | a re-run stops at an error today: perf_card_power_reads.sql: the live public.card_powers(text) changed since this file was built. Rebuild it from the live text. |
+| `perf_dungeon_view.sql` | SUPERSEDED: reverts `public.dungeon_view_core(text, boolean)` (live = `perf_five_slow_calls.sql`) |  |
 | `playing_posts.sql` | SUPERSEDED: reverts `public.playing_today(text)` (live = `card_decisions.sql`) |  |
 | `prune_old_rows.sql` | SUPERSEDED: reverts `public.prune_old_rows()` (live = `logs_sql.sql`) |  |
 | `pull_feed_source.sql` | SUPERSEDED: reverts `public.accept_trade(bigint, text)` (live = `trade_request.sql`); reverts `public.add_card_to_player(text, bigint, text)` (live = `card_ledger.sql`); reverts `public.gift_card(text, text, bigint)` (live = `card_ledger.sql`) |  |
@@ -125,7 +129,7 @@ These files have a statement that cannot run in a rolled-back transaction. Read 
 
 A file runs as one transaction, so an error rolls the whole file back.
 
-## No structure change, but a re-run writes rows (28)
+## No structure change, but a re-run writes rows (27)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -144,13 +148,12 @@ a one-time grant or a settings value would run again.
 - `discord_effects_on.sql`: effect_primitives
 - `dungeon_prizes_daily.sql`: settings
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
-- `events.sql`: cards, events, gift_claims (DO block), cron.job
+- `event_vars.sql`: cron.job, event_vars
 - `gift_pack_off.sql`: effect_primitives
 - `hunt_abilities.sql`: subjects
 - `hunt_damage_trace.sql`: hunt_adjustments (DO block)
 - `ledger_reasons.sql`: ledger_reasons
 - `logs_sql.sql`: cron.job
-- `pack_ledger_strict.sql`: daily_claims, pack_ledger
 - `perf_prepare_day.sql`: cron.job
 - `player_reports.sql`: settings
 - `raid_makeup_oct1.sql`: give_gift(), hunt_adjustments
@@ -161,7 +164,7 @@ a one-time grant or a settings value would run again.
 
 ## No change (28)
 
-`achievement_rewards.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_auto_rounds.sql`, `dungeon_rules_supports_targets.sql`, `dungeon_stun_pass.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_boards_once.sql`, `perf_card_power_reads.sql`, `perf_collection_power.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
+`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_auto_rounds.sql`, `dungeon_rules_supports_targets.sql`, `dungeon_stun_pass.sql`, `effect_start_spawn_settle.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_random_target.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_collection_power.sql`, `perf_five_slow_calls.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
 
 ## Live functions that no file gives (1)
 

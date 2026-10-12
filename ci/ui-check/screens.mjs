@@ -198,6 +198,8 @@ export const SCREENS = {
   // v3: a Dungeon fight (UI-47, a horde of 5 and a room of 2; D-70 the support picking) and the run over (UI-50): derived runs of the check server.
   'dungeon-fight':       { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   'dungeon-fight2':      { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight2', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-fight-2s3':    { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight-2s3', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-fight-1s4':    { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight-1s4', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   'dungeon-fight-pick':  { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['js', '.dg-sup'], ['wait', 1]] },
   'dungeon-over':        { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over-revealed': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-reveal, .dg-reveal'], ['wait', 3]] },

@@ -59,11 +59,16 @@ export const badgeIcon = (key, tag) => TAG_ICON[tag] || BADGE_ICON[key] || 'awar
 const amount = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.floor(Number(v)) : 0);
 const pick = (o) => (o && typeof o === 'object' ? { packs: amount(o.packs), shards: amount(o.shards) } : { packs: 0, shards: 0 });
 const goodRewards = (r) => !!r && Array.isArray(r.tiers) && r.tiers.length === 5 && !!r.step && typeof r.step === 'object';
-/** The reward of tier n for a track (titles = the track's 3 titles): Platinum a title, Diamond a title and a frame, Obsidian a title and a frame. */
-export function tierReward(n, titles = [], rewards = null) {
+/** The note of a tier that an old achievement already paid (D-183): its packs were paid by that achievement, the Shards, title and frame are still paid. */
+export const OLD_PAID_NOTE = 'Pack paid by an old achievement';
+/** True when tier n of the track is one that an old achievement already paid (achievement_view old_paid; a missing field = 0 = none). */
+export const tierOldPaid = (t, n) => n >= 1 && n <= (Number(t?.old_paid) > 0 ? Math.min(5, Math.floor(Number(t.old_paid))) : 0);
+/** The reward of tier n for a track (titles = the track's 3 titles): Platinum a title, Diamond a title and a frame, Obsidian a title and a frame.  oldPaid = true: no packs (D-183). */
+export function tierReward(n, titles = [], rewards = null, oldPaid = false) {
   if (n < 1) return null;
   const ok = goodRewards(rewards);
   const base = ok ? pick(n <= 5 ? rewards.tiers[n - 1] : rewards.step) : { packs: 0, shards: 0 };
+  if (oldPaid) base.packs = 0;
   if (n === 3) return { ...base, title: titles[0] };
   if (n === 4) return { ...base, title: titles[1], frame: 'diamond' };
   if (n === 5) return { ...base, title: titles[2], frame: 'mythic' };
@@ -81,8 +86,8 @@ export function rewardText(r) {
   return [r.packs ? plural(r.packs, 'pack') : null, r.shards ? `${r.shards} Shards` : null, r.title ? `"${r.title}"` : null, r.frame ? frameLabel(r.frame) : null].filter(Boolean).join(' + ');
 }
 /** "Diamond · 3 packs · 400 Shards · title · frame" (the foot of a track tile). */
-export function rewardShort(n, titles = [], rewards = null) {
-  const r = tierReward(n, titles, rewards);
+export function rewardShort(n, titles = [], rewards = null, oldPaid = false) {
+  const r = tierReward(n, titles, rewards, oldPaid);
   return [tierName(n), r.packs ? plural(r.packs, 'pack') : null, r.shards ? `${r.shards} Shards` : null, r.title ? 'title' : null, r.frame ? 'frame' : null].filter(Boolean).join(' · ');
 }
 
@@ -121,7 +126,7 @@ export const claimLine = (n) => `${Math.max(0, n | 0)} to claim`;
 export function trackRows(t, rewards = null) {
   const rows = [];
   for (let n = 1; n <= shownTiers(t); n += 1) {
-    rows.push({ n, name: tierName(n), key: tierKey(n), need: tierNeed(t, n), reward: rewardText(tierReward(n, t.titles, rewards)), state: tierState(t, n) });
+    rows.push({ n, name: tierName(n), key: tierKey(n), need: tierNeed(t, n), oldPaid: tierOldPaid(t, n), reward: rewardText(tierReward(n, t.titles, rewards, tierOldPaid(t, n))), state: tierState(t, n) });
   }
   return rows;
 }

@@ -37,7 +37,7 @@ const reason = (v) => {
   if (typeof v !== 'string' || v.length > 300) throw new BadRequest('reason must be a text of at most 300 characters');
   return v;
 };
-const EVENT_KEYS = new Set(['id', 'key', 'kind', 'title', 'description', 'starts_at', 'ends_at', 'audience', 'rewards', 'rules']);
+const EVENT_KEYS = new Set(['id', 'key', 'kind', 'title', 'description', 'starts_at', 'ends_at', 'audience', 'rewards', 'rules', 'vars', 'theme', 'template_id']);
 const eventBody = (ev) => {
   if (!ev || typeof ev !== 'object' || Array.isArray(ev)) throw new BadRequest('event must be an object');
   for (const k of Object.keys(ev)) if (!EVENT_KEYS.has(k)) throw new BadRequest(`event.${k} is not allowed`);

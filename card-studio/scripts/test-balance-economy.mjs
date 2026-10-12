@@ -36,6 +36,10 @@ const rerun = ['pack_ledger_strict.sql', 'card_ledger.sql'].map(file);
 // on the day it was made and every check below keeps its meaning.
 const GV = mig.match(/CREATE OR REPLACE FUNCTION public\.gauntlet_view\(p_player text\)[\s\S]*?end \$function\$;/)?.[0];
 if (!GV) throw new Error('the gauntlet_view text of balance_economy.sql was not found');
+// perf_five_slow_calls.sql (2026-10-11) made a newer ach_track_values, so the guard of pack_ledger_strict.sql refuses the re-run. The same
+// way: the text that pack_ledger_strict.sql makes goes in place first.
+const ATV = rerun[0].match(/CREATE OR REPLACE FUNCTION public\.ach_track_values\(p_player text\)[\s\S]*?end \$function\$;/)?.[0];
+if (!ATV) throw new Error('the ach_track_values text of pack_ledger_strict.sql was not found');
 for (const s of [mig, ...rerun]) if (s.includes('$m$') || s.includes('$t$') || s.includes('$x$')) throw new Error('a migration contains $m$, $t$ or $x$');
 
 // The rewards the Activity SENT before (tcg-activity/src/achievements.js REWARDS, the commit before this change),
@@ -306,7 +310,7 @@ begin
      where p.pronamespace = 'public'::regnamespace and p.proname in ('claim_daily', 'claim_daily_earn', 'dailies_view', 'dailies_tasks', 'add_voice_minutes',
        'claim_achievement', 'settle_hunt', 'play_card_effect', 'dungeon_pay', 'dungeon_prize_tick', 'gauntlet_view', 'welcome_packs', 'shard_cfg', 'dungeon_cfg');
     ${OLD ? '' : 'execute $m$' + mig + '$m$;'}
-    ${OLD ? '' : rerun.map((s) => 'execute $m$' + s + '$m$;').join('\n    ')}
+    ${OLD ? '' : 'execute $m$' + ATV + '$m$;\n    ' + rerun.map((s) => 'execute $m$' + s + '$m$;').join('\n    ')}
     select jsonb_object_agg(p.oid::regprocedure::text, md5(replace(pg_get_functiondef(p.oid), chr(13), ''))) into m2 from pg_proc p
      where p.pronamespace = 'public'::regnamespace and p.proname in ('claim_daily', 'claim_daily_earn', 'dailies_view', 'dailies_tasks', 'add_voice_minutes',
        'claim_achievement', 'settle_hunt', 'play_card_effect', 'dungeon_pay', 'dungeon_prize_tick', 'gauntlet_view', 'welcome_packs', 'shard_cfg', 'dungeon_cfg');

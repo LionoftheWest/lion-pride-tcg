@@ -130,3 +130,30 @@ test('the gallery rows: titles and frames, owned first, D-74 words', () => {
   assert.deepEqual(frames.map((r) => r.label), ['Silver frame', 'Diamond frame', 'Obsidian frame']);
   assert.equal(frames[2].desc, 'Obsidian Collector: Own different cards (350)');
 });
+
+// D-183: tiers 1..old_paid were paid by an old achievement: no packs, the Shards, title and frame stay, the row says why
+test('old_paid 0, 2, 5 and missing: no packs only on the tiers 1..old_paid, in the rows and the tile foot', () => {
+  const rowsOf = (op) => T.trackRows({ ...track, ...(op === undefined ? {} : { old_paid: op }) }, rewards);
+  const missing = rowsOf(undefined);
+  assert.deepEqual(rowsOf(0).map((r) => r.reward), missing.map((r) => r.reward));
+  assert.equal(missing[0].reward, '7 packs + 11 Shards');
+  assert.ok(missing.every((r) => !r.oldPaid));
+  const two = rowsOf(2);
+  assert.deepEqual(two.map((r) => r.oldPaid), [true, true, false, false, false]);
+  assert.equal(two[0].reward, '11 Shards');
+  assert.equal(two[1].reward, '22 Shards');
+  assert.equal(two[2].reward, '2 packs + 33 Shards + "Collector"');
+  const five = rowsOf(5);
+  assert.equal(five[3].reward, '44 Shards + "Archivist" + Diamond frame');
+  assert.equal(five[4].reward, '55 Shards + "Living Library" + Obsidian frame');
+  assert.ok(five.every((r) => r.oldPaid));
+  assert.equal(T.OLD_PAID_NOTE, 'Pack paid by an old achievement');
+  // claimed and unclaimed rows alike
+  assert.equal(T.trackRows({ ...track, old_paid: 2, claimed: 2, reached: 3 }, rewards)[0].oldPaid, true);
+  // the tile foot
+  assert.equal(T.rewardShort(2, track.titles, rewards, T.tierOldPaid({ old_paid: 2 }, 2)), 'Silver · 22 Shards');
+  assert.equal(T.rewardShort(2, track.titles, rewards, T.tierOldPaid({ old_paid: 1 }, 2)), 'Silver · 1 pack · 22 Shards');
+  assert.equal(T.rewardShort(2, track.titles, rewards, T.tierOldPaid({}, 2)), 'Silver · 1 pack · 22 Shards');
+  // a step tier (n > 5) is never an old-paid tier
+  assert.equal(T.tierOldPaid({ old_paid: 9 }, 6), false);
+});
