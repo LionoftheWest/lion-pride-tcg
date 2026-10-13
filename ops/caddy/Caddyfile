@@ -10,7 +10,7 @@
     }
 }
 
-lionpridetcg.duckdns.org {
+lionpridetcg.duckdns.org, 129-146-118-111.sslip.io {
     encode zstd gzip
     route {
         redir /app /app/
