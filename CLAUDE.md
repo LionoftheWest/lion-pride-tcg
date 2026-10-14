@@ -104,3 +104,4 @@ Nathan's decision (2026-10-03): one source of truth for each number and each cal
 - Do not commit `card-studio/ml/` (except `*.py`) or anything in `out/`.
 - Activity screens never scroll, never bleed, and never move when a status changes. Read the UI standard in `docs/design.md` before a UI change.
 - `ops/caddy/Caddyfile` is a copy of the live file. After you change the live file, update this copy.
+- The Discord Activity reaches the VM through the Cloudflare tunnel `play.lionpridetcg.com` (container `cf-named`), not through DuckDNS. Read `ops/cloudflared/README.md`. The reason: the Discord proxy could not resolve our Oracle IPs (2026-10-13).
