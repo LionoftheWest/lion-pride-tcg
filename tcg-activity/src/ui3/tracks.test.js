@@ -157,3 +157,17 @@ test('old_paid 0, 2, 5 and missing: no packs only on the tiers 1..old_paid, in t
   // a step tier (n > 5) is never an old-paid tier
   assert.equal(T.tierOldPaid({ old_paid: 9 }, 6), false);
 });
+
+import { setRewardsFrom } from '../achievements.js';
+test('the frame label of a set frame is "<set name> Frame" (D-191); the old labels are unchanged; an unknown set is "Holo frame"', () => {
+  setRewardsFrom([{ id: 'S1', name: 'Origins', pack_color: '#ff8d4d' }, { id: 'S2', name: 'Double Team', pack_color: '#3366cc' }]);
+  assert.equal(T.frameLabel('holo:S1'), 'Origins Frame');
+  assert.equal(T.frameLabel('holo:S2'), 'Double Team Frame');
+  assert.equal(T.frameLabel('holo:S9'), 'Holo frame');
+  assert.equal(T.frameLabel('holo'), 'Holo frame');
+  assert.equal(T.frameLabel('diamond:collector'), 'Diamond frame');
+  assert.equal(T.rewardText({ packs: 5, title: 'Origins Champion', frame: 'holo:S1' }), '5 packs + "Origins Champion" + Origins Frame');
+  const rows = T.galleryRows({ items: [{ kind: 'frame', value: 'holo:S1', badge: 's1', how: 'Origins Set Complete', name: 'Origins Set Complete' }] }, { tracks: [], badges: [] }, 'frame');
+  assert.equal(rows[0].label, 'Origins Frame');
+  setRewardsFrom([]);
+});

@@ -4,6 +4,8 @@
 // Data: the studio API (src/sets-routes.js: /api/sets ...; src/server.js: /api/cards). Every write goes through the admin
 // functions of set_pools.sql (checked input, a stale edit refused, an admin_actions row). Every text goes in as textContent.
 
+import { packColorError } from './pack-color.js';
+
 const $ = (id) => document.getElementById(id);
 const JSON_HEAD = { 'content-type': 'application/json' };
 const post = async (url, body) => (await fetch(url, { method: 'POST', headers: JSON_HEAD, body: JSON.stringify(body) })).json();
@@ -121,7 +123,7 @@ async function createSet() {
     season: Number($('st-n-season').value), sort: Number($('st-n-sort').value), pack_color: $('st-n-color').value.toLowerCase(),
     pullable: $('st-n-pullable').checked, released_at: fromLocal($('st-n-released').value),
   };
-  const bad = seasonError(set.season, set.id);
+  const bad = seasonError(set.season, set.id) || packColorError(set.pack_color);
   if (bad) return say('st-n-status', `Error: ${bad}`, true);
   $('st-n-save').disabled = true;
   const r = await post('/api/sets', { set, before: null, reason: 'new set' });
@@ -243,6 +245,8 @@ async function after(msgId, msg) {
 async function saveFields() {
   const set = { id: cur.id, name: $('st-name').value.trim(), code: $('st-code').value.trim().toUpperCase(), season: Number($('st-season').value),
     pack_color: $('st-color').value.toLowerCase(), released_at: fromLocal($('st-released').value), sort: Number($('st-sort').value), pullable: $('st-pullable').checked };
+  const badColor = set.pack_color !== cur.pack_color ? packColorError(set.pack_color) : null;   // as the server: checked when the color changes
+  if (badColor) return say('st-status', `Error: ${badColor}`, true);
   if (set.season !== cur.season) {
     const bad = seasonError(set.season, cur.id);
     if (bad) return say('st-status', `Error: ${bad}`, true);
