@@ -12,7 +12,7 @@ import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { flairHTML } from './flair.js';
 import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
-import { measure, rewardOf, rewardLabel, FRAMES, frameBase, setRewardsFrom } from './achievements.js';
+import { measure, rewardOf, rewardLabel, FRAMES, frameBase, frameLook, frameName, frameRingHTML, setRewardsFrom } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
@@ -51,8 +51,8 @@ const fmt = (n) => Number(n || 0).toLocaleString();
 /** A round Discord avatar: the picture from /api/avatar, the initial when there is none. */
 export function avatarHTML(id, name, cls = '', frame = null) {
   const img = id ? `<img src="/api/avatar/${esc(id)}" alt="" data-err="remove">` : '';
-  const f = frame && FRAMES[frameBase(frame)] ? ` frame-${frameBase(frame)}` : '';
-  return `<span class="v2-avatar ${cls}${f}"><span>${initial(name)}</span>${img}</span>`;
+  const { cls: f, style } = frameLook(frame);
+  return `<span class="v2-avatar ${cls}${f}"${style}><span>${initial(name)}</span>${img}</span>`;
 }
 /** A title tag (an achievement reward) for a name. */
 export const titleHTML = (t) => (t ? `<span class="v2-title">${esc(t)}</span>` : '');
@@ -372,9 +372,10 @@ async function equipTracksV3(kind, value) {
 /** A frame ring around the member's avatar (a tier frame also shows the icon of its track). */
 function frameAvatarV3(value, track) {
   const me = ctx.user();
+  const { cls, style } = frameLook(value);
   const kind = String(value || '').split(':')[0];
   const mark = track ? `<span class="u3-fr__ico">${icon(tk3.trackIcon(track), { size: 'sm' })}</span>` : '';
-  return `<span class="u3-fr u3-fr--${esc(kind)}" aria-hidden="true"><span class="u3-fr__face"><img src="/api/avatar/${esc(me?.id || '')}" alt="" data-err="remove"></span>${mark}</span>`;
+  return `<span class="u3-fr u3-fr--${esc(cls ? cls.trim().replace('frame-', '') : kind)}"${style} aria-hidden="true"><span class="u3-fr__face"><img src="/api/avatar/${esc(me?.id || '')}" alt="" data-err="remove"></span>${mark}</span>`;
 }
 function paintTracksTabV3(main, achs, tabBar, help) {
   const seg = col.achSeg;
@@ -1644,7 +1645,7 @@ function paintSpotEditor() {
         ${lockedTitles.length ? `<optgroup label="Locked">${lockedTitles.map((t) => `<option disabled>🔒 ${esc(t)} · ${esc(unlockBy('title', t).join(' or '))}</option>`).join('')}</optgroup>` : ''}
       </select>
       <div class="side-h">Frame</div>
-      <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, `<i class="se-ring frame-${frameBase(f)}"></i>${esc(FRAMES[frameBase(f)])}`, sp.frame === f)).join('')}${lockedFrames.map((f) => locked(`<i class="se-ring frame-${frameBase(f)}"></i>${esc(FRAMES[frameBase(f)])}`, unlockBy('frame', f))).join('')}</div>
+      <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, `${frameRingHTML(f)}${esc(frameName(f))}`, sp.frame === f)).join('')}${lockedFrames.map((f) => locked(`${frameRingHTML(f)}${esc(frameName(f))}`, unlockBy('frame', f))).join('')}</div>
       <div class="se-foot"><span class="tr-msg" id="seMsg"></span><button class="v2-btn gold" id="seSave">Save</button></div>
     </aside>
     <section class="se-main">
@@ -1687,7 +1688,7 @@ function paintSpotEditor() {
 // The titles and frames the member owns are the ones the server sends (GET /api/profile: titles, frames, from
 // achievement_claims: the same list POST /api/cosmetics accepts); the locked ones show what exists and how to get it.
 const TIER_FRAME = { diamond: 'Diamond frame', mythic: 'Obsidian frame' };   // the tier frames 'diamond:<track>', 'mythic:<track>' (D-74)
-const frameLabel = (f) => FRAMES[frameBase(f)] || TIER_FRAME[String(f).split(':')[0]] || String(f);
+const frameLabel = (f) => frameName(f) || TIER_FRAME[String(f).split(':')[0]] || String(f);
 function styleLists() {
   const achs = measure(mergedCards(), myProfile?.stats, relSets());
   const claimed = achs.filter((a) => claimedSet().has(a.key));

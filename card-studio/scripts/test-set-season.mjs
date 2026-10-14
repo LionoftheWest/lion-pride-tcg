@@ -22,7 +22,7 @@ const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.matc
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const OLD = process.argv.includes('--old'), LIVE = process.argv.includes('--live');
 
-const mig = OLD || LIVE ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/set_season_one_set.sql', import.meta.url)), 'utf8').replace(/notify pgrst[^\n]*\n/g, '');
+const mig = OLD || LIVE ? '' : readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/set_season_one_set.sql', import.meta.url)), 'utf8').replace(/notify pgrst[^\n]*\n/g, '').replace(/-- GUARD \([^)]*\)[\s\S]*?-- GUARD-END\r?\n/, '');   // the guard checks the live text: a later file (d191_pack_color_check.sql) changed it
 if (mig.includes('$m$') || mig.includes('$c$')) throw new Error('the migration must not contain $m$ or $c$');
 
 const FN = 'public.admin_set_save(text,jsonb,jsonb,text)';

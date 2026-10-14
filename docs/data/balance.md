@@ -72,7 +72,7 @@ Shape: `object { badges: object { asc1: object { packs: number }, asc3: object {
       "title": "Golden Touch"
     },
     "s1": {
-      "frame": "holo",
+      "frame": "holo:S1",
       "packs": 5,
       "title": "Origins Champion"
     },

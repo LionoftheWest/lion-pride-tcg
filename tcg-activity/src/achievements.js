@@ -167,9 +167,15 @@ export const REWARDS = {
 // from balance achievement_rewards: badges.s1 and the rule set_complete, D-191 / D-192). setRewardsFrom keeps that answer.
 // Until the answer is there, a set achievement shows no reward and the server pays only what balance says.
 let SET_REWARDS = {};
+let SET_LOOK = {}; // set id -> { name, color }: the name and the pack color (card_sets.pack_color) of each released set, for the set holo frames (D-191)
+const HEX = /^#[0-9a-f]{6}$/i;
 export function setRewardsFrom(sets) {
-  SET_REWARDS = {};
-  for (const s of Array.isArray(sets) ? sets : []) if (s && s.reward && typeof s.reward === 'object') SET_REWARDS[setKey(s.id)] = s.reward;
+  SET_REWARDS = {}; SET_LOOK = {};
+  for (const s of Array.isArray(sets) ? sets : []) {
+    if (!s) continue;
+    if (s.reward && typeof s.reward === 'object') SET_REWARDS[setKey(s.id)] = s.reward;
+    if (s.id != null) SET_LOOK[String(s.id)] = { name: String(s.name || ''), color: HEX.test(s.pack_color || '') ? String(s.pack_color).toLowerCase() : null };
+  }
 }
 export const rewardOf = (key) => (isSetKey(key) ? SET_REWARDS[key] || {} : REWARDS[key] || { packs: 1 });
 /**
@@ -188,10 +194,35 @@ export function setRewardFor(rewards, set) {
   if (c.frame) out.frame = fill(c.frame);
   return out;
 }
-/** A frame key 'holo:<set id>' (the set frames, D-191) has no design yet: it takes the look of its base frame 'holo'. */
 export const frameBase = (f) => String(f || '').split(':')[0];
+/**
+ * A set holo frame: the frame key 'holo:<set id>' (D-191). Its ring is the holo ring in the pack color of the set (card_sets.pack_color),
+ * so a later set needs no code. Returns { id, name, color } when the set is known (released, with a real color), else null: the frame
+ * then takes the look of the plain Holo frame (fail closed, nothing breaks).
+ */
+export function setFrameOf(f) {
+  const [base, id] = String(f || '').split(':');
+  const l = base === 'holo' && id ? SET_LOOK[id] : null;
+  return l && l.color ? { id, name: l.name, color: l.color } : null;
+}
+/** The look of a frame on an element: { cls: 'frame-set' | 'frame-<base>' | '', style: ' style="--set-c:#rrggbb"' | '' }. */
+export function frameLook(f) {
+  const set = setFrameOf(f);
+  if (set) return { cls: ' frame-set', style: ` style="--set-c:${set.color}"` };
+  return { cls: f && FRAMES[frameBase(f)] ? ` frame-${frameBase(f)}` : '', style: '' };
+}
+/** The shown name of a frame: "Origins Frame" for a set frame, else the old name ("Holo frame"). */
+export function frameName(f) {
+  const set = setFrameOf(f);
+  return set && set.name ? `${set.name} Frame` : FRAMES[frameBase(f)];
+}
+/** The small ring of a frame chip (the style editor): <i class="se-ring frame-..."></i>. */
+export function frameRingHTML(f) {
+  const { cls, style } = frameLook(f);
+  return f ? `<i class="se-ring${cls}"${style} aria-hidden="true"></i>` : '';
+}
 export function rewardLabel(r) {
-  return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.title ? `"${r.title}" title` : null, r.frame ? FRAMES[frameBase(r.frame)] : null].filter(Boolean).join(' + ');
+  return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.title ? `"${r.title}" title` : null, r.frame ? frameName(r.frame) : null].filter(Boolean).join(' + ');
 }
 
 // The answer of GET /api/achievements: the view of the SQL plus the tier reward numbers from the balance table (key

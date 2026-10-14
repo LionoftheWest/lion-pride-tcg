@@ -5,6 +5,7 @@
 import { esc, button, iconButton, chip, inlineMessage } from './components.js';
 import { icon } from './icons.js';
 import { thumb } from '../thumb.js';
+import { frameRingHTML } from '../achievements.js';
 
 export const SPOT_CAP = 3;
 
@@ -30,7 +31,7 @@ export function titleSelectHTML(owned, locked, value) {
 
 /** The frame chips: None, the frames the member owns, then the locked ones (greyed, the lock and how to get in the title). */
 export function frameChipsHTML(owned, locked, value) {
-  const ring = (f) => (f ? `<i class="se-ring frame-${esc(f.split(':')[0])}" aria-hidden="true"></i>` : '');
+  const ring = (f) => frameRingHTML(f);
   const one = (f, label, on) => chip({ label, on, data: { seframe: f } }).replace('<span>', `${ring(f)}<span>`);
   return `<div class="u3-se-frames">${one('', 'None', !value)}${owned.map((f) => one(f.value, f.label, f.value === value)).join('')}`
     + locked.map((f) => chip({ label: f.label, disabled: true }).replace('<button', `<button title="Unlock: ${esc(f.by)}"`).replace('<span>', `${icon('lock', { size: 'sm' })}${ring(f.value)}<span>`)).join('')

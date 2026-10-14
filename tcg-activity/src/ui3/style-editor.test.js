@@ -59,3 +59,12 @@ test('the own Spotlight editor and profile wait for the collection and never sav
   const mem = src.slice(src.indexOf('export async function openMember'), src.indexOf('export function closeMember'));
   assert.match(mem, /self \? ensureCollection\(\)/);
 });
+
+import { setRewardsFrom } from '../achievements.js';
+test('the frame chip of a set frame carries the pack color and the name of its set (D-191)', () => {
+  setRewardsFrom([{ id: 'S1', name: 'Origins', pack_color: '#ff8d4d' }]);
+  const h = frameChipsHTML([{ value: 'holo:S1', label: 'Origins Frame' }, { value: 'holo', label: 'Holo frame' }], [], 'holo:S1');
+  assert.match(h, /<i class="se-ring frame-set" style="--set-c:#ff8d4d" aria-hidden="true"><\/i><span>Origins Frame/);
+  assert.match(h, /<i class="se-ring frame-holo" aria-hidden="true"><\/i><span>Holo frame/);
+  setRewardsFrom([]);
+});

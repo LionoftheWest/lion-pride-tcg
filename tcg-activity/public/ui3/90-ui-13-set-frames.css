@@ -1,0 +1,20 @@
+/* UI-13 D-191: the set holo frame ('holo:<set id>'). ONE recipe for every set: the element carries --set-c = card_sets.pack_color
+   (a data value set on the element by src/achievements.js frameLook, never a CSS literal). The recipe is the Holo frame (a conic ring of
+   several stops, a soft glow, slow motion) with the stops taken from the pack color: the pack color, the pack color turned 35 degrees of hue
+   each way, and a light glint. A later set gets its frame from its pack color with no new art and no new CSS. Approved: UI-13/approved/set-frames. */
+@property --set-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.frame-set, .u3-fr--set {
+  --set-h1: oklch(from var(--set-c) calc(l + 0.12) c calc(h + 35));
+  --set-h2: oklch(from var(--set-c) calc(l - 0.08) c calc(h - 35));
+  --set-hi: oklch(from var(--set-c) 0.96 calc(c * 0.35) h);
+  --set-ring: conic-gradient(from var(--set-a), var(--set-c), var(--set-h1), var(--set-hi), var(--set-c), var(--set-h2), var(--set-c), var(--set-h1), var(--set-c));
+}
+/* the avatar ring (profile, Leaderboard rows and podium, the style editor head): the same place as .frame-holo */
+body.ui-v2 .v2-avatar.frame-set { background: var(--set-ring); box-shadow: 0 0 var(--sp-3) color-mix(in oklab, var(--set-c) 50%, transparent);
+  animation: kf-set-holo calc(var(--dur-celebrate) * 4) linear infinite; }
+/* the Frames list ring (UI-13) and the frame chip ring (the style editor) */
+body.ui-v3 .u3-fr--set { --u3-fr-c: var(--set-c); }
+body.ui-v3 .u3-fr--set .u3-fr__face { background: var(--set-ring); animation: kf-set-holo calc(var(--dur-celebrate) * 4) linear infinite; }
+body.ui-v2 .se-ring.frame-set { background: var(--set-ring); }
+@keyframes kf-set-holo { to { --set-a: 360deg; } }
+@media (prefers-reduced-motion: reduce) { body.ui-v2 .v2-avatar.frame-set, body.ui-v3 .u3-fr--set .u3-fr__face { animation: none; } }

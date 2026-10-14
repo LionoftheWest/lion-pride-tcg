@@ -472,7 +472,7 @@ Admin: add cards of other sets to the pool of a set, or remove them (1 to 500). 
 - Returns: `jsonb`
 - Security definer: no
 
-Admin: create a set (p_before null) or edit one (p_before = admin_set_fields as loaded; LP409 when it changed). Checks every field, refuses a season that another set uses (one set per season: cards_set_rules), refuses to turn off the last pullable set, logs set_create / set_edit in admin_actions.
+Admin: create a set (p_before null) or edit one (p_before = admin_set_fields as loaded; LP409 when it changed). Checks every field, refuses a season that another set uses (one set per season: cards_set_rules), refuses a pack color with too little color (pack_color_ok), refuses to turn off the last pullable set, logs set_create / set_edit in admin_actions.
 
 <a id="fn-admin-setting-member-text-text-text-text-boolean-text-bigint"></a>
 

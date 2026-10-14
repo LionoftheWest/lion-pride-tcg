@@ -9,7 +9,7 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 Tables (7): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (12): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
+Functions (13): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
 
 ## Tables
 
@@ -255,6 +255,16 @@ F-3: the trigger of elements: refuses a word that another element has, and sets 
 - Security definer: no
 
 F-3: the elements as jsonb for the server route GET /api/elements.
+
+<a id="fn-pack-color-ok-text"></a>
+
+### pack_color_ok(text)
+
+- Function: `pack_color_ok(p_color text)`
+- Returns: `boolean`
+- Security definer: no
+
+True when a #rrggbb pack color has enough color for a set holo frame: HSL saturation >= 0.35 and lightness between 0.25 and 0.75 (D-191). admin_set_save refuses any other color.
 
 <a id="fn-passive-label-text"></a>
 
