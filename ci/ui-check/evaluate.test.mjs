@@ -166,6 +166,9 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('dungeon', '#main > .dg-lobby'), 'UI-46');
   assert.equal(ownerOf('leaderboard', '#u3LbHost > #u3Lb.u3-lb > .u3-lb__panel .u3-lb-row'), 'UI-66');   // the Leaderboard window (UI-66)
   assert.equal(ownerOf('leaderboard', '#u3Lb > header.u3-lb__top'), 'UI-66');
+  assert.equal(ownerOf('events', '#u3EvHost > #u3Ev.u3-lb.ev-win > div.ev-body .ev-week .ev-bar'), 'UI-62');   // the player Events page (UI-62), not the Leaderboard frame it shares
+  assert.equal(ownerOf('events', '#u3Ev > header.ev-top'), 'UI-62');
+  assert.equal(ownerOf('events', 'text:Community Week, Community'), 'UI-62');   // a bar name (missing vs expanded) is the Events page, not Home under it
   assert.equal(ownerOf('dungeon-board', '#main > .dg-lobby'), 'UI-46', 'a defect behind the window is the lobby');
   assert.equal(ownerOf('leaderboard', '#main > .home-hero'), 'UI-03', 'a defect behind the window is Home');
   assert.equal(ownerOf('collection', '#main > .u3-col > .u3-ctile.is-owned'), 'UI-07');

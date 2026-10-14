@@ -1,0 +1,132 @@
+/* ==== UI-62 Events page (src/ui3/events.js; design repo UI-62/approved, review-2; D-184 to D-188; flag events, default OFF) ====
+   Every selector starts with .ev-, so no other screen changes. The frame is the UI-66 window (.u3-lbhost, .u3-lb). Every value is a UI-00 token (4.1);
+   color-mix percents are the only numbers (kind color over the surface). */
+
+/* ---- the window ---- */
+.ev-win { --ev-bar: var(--counter); --ev-gap: var(--sp-half); }
+.ev-top { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "t m x"; align-items: center; gap: var(--sp-3); }
+.ev-top > .u3-lb__title { grid-area: t; }
+.ev-top > .ev-month { grid-area: m; }
+.ev-top > .u3-lb__x { grid-area: x; }
+.ev-month { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-width: 0; }
+.ev-month__n { min-width: calc(var(--menu-tile) * 2); text-align: center; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+/* tall: the month row under the title, the arrows at its ends (one row, full width) */
+.ev-win[data-lay="tall"] .ev-top { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "t x" "m m"; }
+.ev-win[data-lay="tall"] .ev-top > .u3-lb__title { grid-area: t; }
+.ev-win[data-lay="tall"] .ev-top > .u3-lb__x { grid-area: x; }
+.ev-win[data-lay="tall"] .ev-month { grid-area: m; justify-content: space-between; }
+body[data-size="compact-land"] .ev-top { padding-right: max(var(--u3-none), calc(var(--corner-w) - var(--u3-sa-r) - var(--lb-mx) - var(--lb-pad))); }   /* Close left of the Discord corner zone (2.3), as UI-66 */
+
+.ev-body { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--lb-gap); grid-template-columns: minmax(0, 1fr) var(--lb-side); }
+.ev-win[data-lay="tall"] .ev-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.ev-win[data-lay="tall"] .ev-body.is-detail { grid-template-rows: minmax(0, 1fr); }
+.ev-body--error { display: grid; place-items: center; grid-template-columns: minmax(0, 1fr); }
+
+/* ---- the calendar ---- */
+.ev-cal { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ev-wd, .ev-week, .ev-lanes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); column-gap: var(--sp-1); }
+.ev-wd > span { text-align: center; }
+.ev-grid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-rows: repeat(6, minmax(0, 1fr)); row-gap: var(--sp-1); }
+.ev-week { position: relative; isolation: isolate; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+/* the lanes: the bars lie over the day cells in their own absolute layer (not siblings of the days, G3 overlap), same 7 columns */
+.ev-lanes { position: absolute; inset: var(--u3-none); pointer-events: none; grid-template-rows: calc(var(--counter) + var(--sp-half)) repeat(3, var(--ev-bar)) minmax(0, 1fr); row-gap: var(--ev-gap); }
+.ev-cal:not(.is-thin) .ev-day { padding-top: var(--sp-half); }
+.ev-day { grid-row: 1 / -1; min-width: 0; min-height: 0; margin: 0; padding: var(--sp-1) var(--sp-1-5); display: flex; align-items: flex-start; justify-content: flex-start;
+  border: 0; border-radius: var(--rad-sm); background: var(--surface-2); color: var(--text-secondary); font: inherit; cursor: pointer; }
+.ev-day__n { min-width: var(--counter); height: var(--counter); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--rad-pill);
+  font-family: var(--font-num); font-size: var(--fs-small); font-weight: var(--fw-small-strong); line-height: var(--lh-small); font-variant-numeric: tabular-nums; }
+.ev-day.is-out { background: transparent; color: var(--text-muted); box-shadow: inset 0 0 0 var(--bw-1) var(--border); }
+.ev-day.is-today .ev-day__n { background: var(--gold); color: var(--on-gold); padding: 0 var(--sp-1); }
+.ev-day.is-sel { background: var(--surface-3); box-shadow: inset 0 0 0 var(--bw-2) var(--border-strong); }
+.ev-lanes > .ev-bar { align-self: stretch; min-width: 0; margin: 0 var(--sp-1); padding: 0 var(--sp-1-5); display: flex; align-items: center; gap: var(--sp-1);
+  border: 0; border-left: var(--bw-2) solid var(--k); border-radius: var(--rad-sm); background: color-mix(in srgb, var(--k) 24%, var(--surface-2)); color: var(--text-primary);
+  font-family: var(--font-ui); font-size: var(--fs-caption); font-weight: var(--fw-caption); line-height: var(--lh-caption); white-space: nowrap; overflow: hidden; cursor: pointer; }
+.ev-lanes > .ev-bar > svg { flex: none; color: var(--k); }
+.ev-bar__t { min-width: 0; }
+.ev-lanes > .ev-bar.is-from { margin-left: 0; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.ev-lanes > .ev-bar.is-to { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.ev-lanes > .ev-bar.is-sel { background: color-mix(in srgb, var(--k) 45%, var(--surface-2)); box-shadow: inset 0 0 0 var(--bw-1) var(--k); }
+/* a name that does not fit its bar: the icon only; the name is in the details (10.4: names never cut with "…") */
+.ev-lanes > .ev-bar.is-icon .ev-bar__t { display: none; }
+/* thin (a day cell narrower than the label needs, measured on the container): 4 px bars, no label, at the cell bottom */
+.ev-cal.is-thin .ev-lanes { grid-template-rows: minmax(0, 1fr) repeat(3, var(--bar-sm)) var(--sp-1); row-gap: var(--sp-half); }
+.ev-cal.is-thin .ev-lanes > .ev-bar { padding: 0; border-left: 0; border-radius: var(--rad-pill); background: var(--k); font-size: 0; margin: 0 var(--sp-1); pointer-events: none; }
+.ev-cal.is-thin .ev-lanes > .ev-bar.is-from { margin-left: 0; border-radius: 0 var(--rad-pill) var(--rad-pill) 0; }
+.ev-cal.is-thin .ev-lanes > .ev-bar.is-to { margin-right: 0; border-radius: var(--rad-pill) 0 0 var(--rad-pill); }
+.ev-cal.is-thin .ev-lanes > .ev-bar.is-from.is-to { border-radius: 0; }
+.ev-cal.is-thin .ev-lanes > .ev-bar > * { display: none; }
+.ev-cal.is-thin .ev-day { justify-content: center; }
+.ev-win[data-lay="tall"] .ev-grid { flex: 1 1 auto; grid-template-rows: repeat(6, minmax(var(--hit), 1fr)); }
+.ev-win[data-lay="tall"] .ev-body:not(.is-detail) { grid-template-rows: minmax(0, 1fr) auto; }
+.ev-win[data-lay="tall"] .ev-body:not(.is-detail) > .ev-side { height: var(--ev-list-h, auto); }
+
+/* ---- the side: details, the day list, the states ---- */
+.ev-side { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ev-side--state { display: grid; place-items: center; border-radius: var(--rad-lg); background: var(--surface-2); }
+.ev-win[data-lay="wide"] .ev-side { border-radius: var(--rad-lg); background: var(--surface-2); padding: var(--sp-4); box-sizing: border-box; }
+.ev-ph { display: block; min-height: 0; border-radius: var(--rad-sm); background: var(--surface-2); animation: kf-pulse var(--dur-celebrate) var(--ease-in-out) infinite; grid-row: 1 / -1; }
+.ev-ph--side { flex: 1 1 auto; border-radius: var(--rad-lg); }
+
+.ev-det { min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ev-det__back { margin-left: calc(var(--sp-2) * -1); }
+.ev-art { flex: none; aspect-ratio: 16 / 9; max-height: calc(var(--menu-tile) * 2); box-sizing: border-box; border-radius: var(--rad-lg); border: var(--bw-2) solid var(--t);
+  background: var(--bg-base) 50% 50% / cover no-repeat; display: grid; place-items: center; }
+.ev-art.is-img { background-repeat: no-repeat; background-position: 50% 50%; background-size: cover; }
+.ev-art.is-none { background: color-mix(in srgb, var(--t) 24%, var(--surface-2)); }
+.ev-art__ico { width: var(--avatar-lg); height: var(--avatar-lg); display: grid; place-items: center; border-radius: var(--rad-round); background: var(--surface-1); color: var(--t); }
+.ev-det__kind { display: flex; align-items: center; gap: var(--sp-1-5); color: var(--k); }
+.ev-det__kind .u3-label { color: var(--text-secondary); }
+.ev-det__d { margin: 0; font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-secondary); }
+.ev-det__t { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); font-weight: var(--fw-heading); line-height: var(--lh-heading); color: var(--text-primary); }
+.ev-det__st { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); min-height: var(--chip-md); }
+.ev-cd { display: inline-flex; align-items: center; gap: var(--sp-1-5); font-size: var(--fs-small); color: var(--text-secondary); }
+.ev-cd > svg { color: var(--gold); }
+.ev-cd b { font-family: var(--font-num); font-size: var(--fs-stat); font-weight: var(--fw-stat); color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.ev-det__when { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-1) var(--sp-3); align-items: baseline; }
+.ev-det__when > div { display: contents; }
+.ev-det__when dd { margin: 0; font-size: var(--fs-small); font-weight: var(--fw-small-strong); color: var(--text-primary); }
+.ev-det__ch { display: flex; flex-direction: column; gap: var(--sp-1); }
+.ev-det__ch ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--sp-1); }
+.ev-det__ch li { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-body); font-weight: var(--fw-small-strong); line-height: var(--lh-small); color: var(--text-primary); }
+.ev-det__ch li > i { flex: none; width: var(--dot); height: var(--dot); border-radius: var(--rad-round); background: var(--k); }
+.ev-win[data-lay="tall"] .ev-det { flex: 1 1 auto; }
+.ev-win[data-lay="tall"] .ev-art { max-height: none; flex: 1 1 auto; min-height: calc(var(--menu-tile) * 2); aspect-ratio: auto; }
+
+.ev-list { min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ev-list__rows { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ev-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); min-height: var(--hit); padding: var(--sp-2) var(--sp-3);
+  border: 0; border-radius: var(--rad-lg); background: var(--surface-2); color: var(--text-muted); text-align: left; font: inherit; cursor: pointer; }
+.ev-row__ico { width: var(--ctl-icon); height: var(--ctl-icon); display: grid; place-items: center; border-radius: var(--rad-md); color: var(--k); background: color-mix(in srgb, var(--k) 18%, var(--surface-1)); }
+.ev-row__main { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-half); }
+.ev-row__t { font-size: var(--fs-body); font-weight: var(--fw-small-strong); line-height: var(--lh-small); color: var(--text-primary); }
+.ev-row__s { display: inline-flex; align-items: center; gap: var(--sp-1-5); font-size: var(--fs-small); color: var(--text-secondary); }
+.ev-list__none { margin: 0; font-size: var(--fs-body); color: var(--text-secondary); }
+.ev-list__pg { display: flex; justify-content: center; margin-top: auto; }
+.ev-win[data-lay="short"] .ev-side { border-radius: var(--rad-lg); background: var(--surface-2); padding: var(--sp-2); box-sizing: border-box; }
+.ev-win[data-lay="short"] .ev-row { background: var(--surface-1); }
+.ev-win[data-lay="short"] .ev-row { padding: var(--sp-1) var(--sp-2); }
+.ev-win[data-lay="short"] .ev-det { gap: var(--sp-1-5); }
+.ev-win[data-lay="short"] .ev-art { max-height: var(--menu-tile); }
+
+/* ---- review-2 (coordinator fixes A and B) ---- */
+/* A: a week row shows only the lanes that fit its height (measured); the last lane that fits becomes "+N more" for each day that
+   has more events. A tap opens the list of that day (the side on wide windows). Thin bars: 3 lanes, then "+N" by the day number. */
+.ev-lanes > .ev-more { align-self: stretch; min-width: 0; margin: 0 var(--sp-1); padding: 0 var(--sp-1-5); display: flex; align-items: center;
+  border: 0; border-radius: var(--rad-sm); background: transparent; color: var(--text-secondary); font-family: var(--font-ui); font-size: var(--fs-caption);
+  font-weight: var(--fw-caption); line-height: var(--lh-caption); white-space: nowrap; cursor: pointer; box-shadow: inset 0 0 0 var(--bw-1) var(--border-strong); }
+.ev-day__more { margin-left: var(--sp-half); font-family: var(--font-ui); font-size: var(--fs-label); font-weight: var(--fw-label); line-height: var(--lh-label); color: var(--text-secondary); }
+.ev-cal.is-thin .ev-day:has(.ev-day__more) { gap: var(--sp-half); align-items: flex-start; }
+/* B: a bar that goes on from the week before keeps its name (no icon first, then 11 px, the 10.4 minimum); only when no text fits,
+   the icon alone. The flat left end marks the continuation. Every bar is a button that opens its event. */
+.ev-lanes > .ev-bar.is-noico > svg { display: none; }
+.ev-lanes > .ev-bar.is-small { font-size: var(--fs-label); line-height: var(--lh-label); }
+.ev-lanes > .ev-bar.is-icon > svg { display: block; }
+.ev-lanes > .ev-bar.is-hidden { display: none; }
+
+/* ---- build ---- */
+/* a row or pager that the page fit hides (the display of .ev-row would override the hidden attribute) */
+.ev-row[hidden], .ev-list__pg[hidden] { display: none; }
+/* the small buttons of the window (Back, Back to today, Try again): 44 px on touch (9.1), as the other windows */
+body[data-input="coarse"] .ev-win .u3-btn--sm { height: var(--hit); }
+.ev-lanes > :is(.ev-bar, .ev-more) { pointer-events: auto; }
+.ev-cal.is-thin .ev-lanes > .ev-bar { pointer-events: none; }

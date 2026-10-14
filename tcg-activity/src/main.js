@@ -42,6 +42,7 @@ import { button as u3Button, iconButton as u3IconButton } from './ui3/components
 import { initSettingsWindow, reduceEffects } from './ui3/settings.js';
 import { startAvatarFx } from './ui3/avatarfx.js';
 import { initLeaderboardWindow, openLeaderboardWindow } from './ui3/leaderboard.js';
+import { initEventsWindow } from './ui3/events.js';
 import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
 import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, rarePacks, newMark, PACK_RATIO, PACK_GAP_MS, STACK_LAYERS, stackTimeline, stackDepth } from './ui3/pack-reveal.js';
 import { counter as u3Counter } from './ui3/components.js';
@@ -379,6 +380,7 @@ async function main() {
   if (flags.tutorial) initTutorial(flags.tutorial); // no flags: no walkthrough (the member may have finished it)
   initExplain(flags.tutorial);
   if (flags?.uiV3) { startShell(); initSettingsWindow({ api, apiPost }); startAvatarFx({ badgeOf, reduce: reduceEffects }); initLeaderboardWindow({ api, user: () => meUser, avatarHTML, nameBadge, openMember }); } // the v3 shell (src/ui3/shell.js): after the v2 wiring above, which it keeps; the Settings window (UI-61)
+  if (flags?.uiV3 && flags?.events) initEventsWindow({ api }); // UI-62 the Events page: the flag FEATURE_EVENTS / EVENTS_USERS (default OFF) adds the hidden #eventsBtn that the Menu Events tile clicks
 }
 
 // The v3 foundation (UI-00): only for the members in settings.ui_v3 (flags.uiV3). It loads the component CSS and writes
