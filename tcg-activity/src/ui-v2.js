@@ -207,6 +207,7 @@ export function paintCards(grid, pager, items, state, onPick, selId, dir, refit)
 // ---- Achievements ------------------------------------------------------------
 
 const claimedSet = () => new Set(myProfile?.claimed || []);
+const relSets = () => ctx.cache.catalog?.sets; // the released sets (GET /api/catalog): one "<set name> Set Complete" each (D-190)
 function achHTML(a, big, mini) {
   const pct = Math.round((100 * a.have) / a.need);
   const claimed = claimedSet().has(a.key);
@@ -265,7 +266,7 @@ export async function refreshCollectionBadge({ profile = false } = {}) {
   await Promise.all([ensureCatalog(), loadMyProfile(profile)]);
   const asc = (ctx.cache.collection?.cards || []).filter((c) => c.can_ascend).length;
   const tv = await achViewV3(profile);   // v3 with the tracks on (UI-13): the rewards ready are the view's count
-  const ach = tv ? tv.ready | 0 : measure(mergedCards(), myProfile?.stats).filter((a) => a.done && !claimedSet().has(a.key)).length;
+  const ach = tv ? tv.ready | 0 : measure(mergedCards(), myProfile?.stats, relSets()).filter((a) => a.done && !claimedSet().has(a.key)).length;
   const btn = document.querySelector('#dock .dk[data-view="collection"]');
   if (!btn) return;
   let b = btn.querySelector('.cnt');
@@ -455,7 +456,7 @@ export async function renderCollectionV2() {
   const seasons = [...new Set(cards.map((c) => c.season || 'Season 1'))];
   if (!seasons.includes(col.season)) col.season = seasons[0] || 'Season 1';
   const inSeason = cards.filter((c) => (c.season || 'Season 1') === col.season);
-  const achs = measure(cards, myProfile?.stats);
+  const achs = measure(cards, myProfile?.stats, relSets());
   const achDone = achs.filter((a) => a.done).length;
   // v3 (UI-13): with the tracks on, the rewards ready are the view's count (tiers + set badges + the one-time badges), not the 50 old achievements
   const tv = await achViewV3(col.view === 'ach');
@@ -1268,7 +1269,7 @@ export function fitChildren(box) {
 function profileStats(p, cards) {
   const total = ctx.cache.catalog?.cards?.length || 0;
   const ownedN = cards.filter((c) => c.owned).length;
-  const achs = total ? measure(cards, p?.stats) : [];
+  const achs = total ? measure(cards, p?.stats, relSets()) : [];
   const stat = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
   return `<div class="prof-stats">
       ${stat(total ? `${ownedN}/${total}` : ownedN, 'Cards')}
@@ -1608,7 +1609,7 @@ function paintSpotEditor() {
   const cards = mergedCards();
   const owned = cards.filter((c) => c.owned);
   const byId = new Map(owned.map((c) => [Number(c.id), c]));
-  const achs = measure(cards, myProfile?.stats);
+  const achs = measure(cards, myProfile?.stats, relSets());
   const claimed = achs.filter((a) => claimedSet().has(a.key));
   const titles = [...new Set(claimed.map((a) => rewardOf(a.key).title).filter(Boolean))];
   const frames = [...new Set(claimed.map((a) => rewardOf(a.key).frame).filter(Boolean))];
@@ -1688,7 +1689,7 @@ function paintSpotEditor() {
 const TIER_FRAME = { diamond: 'Diamond frame', mythic: 'Obsidian frame' };   // the tier frames 'diamond:<track>', 'mythic:<track>' (D-74)
 const frameLabel = (f) => FRAMES[f] || TIER_FRAME[String(f).split(':')[0]] || String(f);
 function styleLists() {
-  const achs = measure(mergedCards(), myProfile?.stats);
+  const achs = measure(mergedCards(), myProfile?.stats, relSets());
   const claimed = achs.filter((a) => claimedSet().has(a.key));
   const by = (kind, v) => achs.filter((a) => rewardOf(a.key)[kind] === v).map((a) => a.name).join(' or ');
   const all = (kind) => [...new Set(achs.map((a) => rewardOf(a.key)[kind]).filter(Boolean))];
@@ -1814,7 +1815,7 @@ function paintMember() {
   const box = el('memberModal');
   const { p, self, cards } = memData;
   const s = p.stats || {};
-  const achs = measure(cards, s);
+  const achs = measure(cards, s, relSets());
   const done = achs.filter((a) => a.done);
   const pres = (ctx.live.presence || []).find((x) => String(x.id) === String(p.id));
   const [sIco, sTxt] = STATUS_TEXT[pres?.status?.kind] || [];

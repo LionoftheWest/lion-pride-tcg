@@ -14,8 +14,16 @@
  */
 import 'dotenv/config';
 import { createTradeRequestProbe } from './src/trade-request-probe.js';
-import { measure as measureAchievements, ACHIEVEMENTS, LEDGER, withRewards } from './src/achievements.js';
-const ACHIEVEMENT_COUNT = ACHIEVEMENTS.length;
+import { measure as measureAchievements, achievementList, LEDGER, withRewards } from './src/achievements.js';
+// The released (pullable) sets: each has a "<set name> Set Complete" achievement (src/achievements.js, D-190). card_sets changes
+// only when the owner edits it: a 60 s cache. A failed read keeps the last list (none yet: the achievements fall back to S1 only).
+let releasedSetsCache = null; // { at, sets: [{ id, name }] }
+async function getReleasedSets() {
+  if (releasedSetsCache && Date.now() - releasedSetsCache.at < 60_000) return releasedSetsCache.sets;
+  const { data, error } = await supabase.from('card_sets').select('id, name').eq('pullable', true).order('sort').order('id');
+  if (!error && Array.isArray(data)) releasedSetsCache = { at: Date.now(), sets: data.map((r) => ({ id: r.id, name: r.name })) };
+  return releasedSetsCache?.sets;
+}
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
@@ -740,7 +748,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
   const rebuildBoard = () => singleFlight('boardV2', async () => {
-      const [players, owned, hits, fought, hunts, opened, gifted, plays, trades, catalog, collPow] = await Promise.all([
+      const [players, owned, hits, fought, hunts, opened, gifted, plays, trades, catalog, collPow, relSets] = await Promise.all([
         // Whole tables, every row (selectAll: a plain read stopped at 1,000 rows, 2026-10-02).
         selectAll(() => supabase.from('players').select('id, username, avatar, title, frame'), ['id']),
         selectAll(() => supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1), ['player_id', 'card_id']),
@@ -754,6 +762,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         selectAll(() => supabase.from('card_trades').select('from_id, to_id'), ['id']), // the trade ledger: offers + auctions
         getCatalogBase(),
         supabase.rpc('collection_power_all'), // each member's collection power (SQL: the same as my_collection_power)
+        getReleasedSets(), // the set achievements (D-190)
       ]);
       if (collPow.error) throw new Error(collPow.error.message);
       const powerOf = new Map((collPow.data || []).map((r) => [String(r.player_id), Number(r.power)]));
@@ -790,7 +799,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
           id, name: names.get(String(id))?.username || 'Someone', hasAvatar: !!names.get(String(id))?.avatar,
           title: names.get(String(id))?.title || null, frame: names.get(String(id))?.frame || null,
           power, huntDamage: stats.totalDamage, bosses: stats.bossesDefeated, cards: x.cards.length,
-          achievements: measureAchievements(merged, stats).filter((a) => a.done).length,
+          achievements: measureAchievements(merged, stats, relSets).filter((a) => a.done).length,
         });
       }
       boardV2Cache = { at: Date.now(), rows, totalCards: catalog.length };
@@ -805,7 +814,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
     const leaders = await huntLeaders(hunt.id).catch(() => []);
     live = { name: hunt.name, tier: hunt.tier, share: hunt.hp_max ? Math.round((100 * (hunt.hp_max - hunt.hp_remaining)) / hunt.hp_max) : 0, leaders };
   }
-  res.json({ me: String(me.id), rows: boardV2Cache.rows, totalCards: boardV2Cache.totalCards, achievementCount: ACHIEVEMENT_COUNT, live });
+  res.json({ me: String(me.id), rows: boardV2Cache.rows, totalCards: boardV2Cache.totalCards, achievementCount: achievementList(await getReleasedSets()).length, live });
 });
 
 // The active boss, shared for 1 s (100 viewers polled it 33 times a second). An attack
@@ -1245,7 +1254,8 @@ async function measureFor(id) {
   const catalog = await getCatalogBase();
   const mine = new Map(p.cards.map((c) => [c.id, c]));
   const merged = catalog.map((c) => { const m = mine.get(c.id); return m ? { ...c, owned: true, quantity: m.quantity, ascension: m.ascension } : { ...c, owned: false, quantity: 0, ascension: 0 }; });
-  return { p, achs: measureAchievements(merged, p.stats) };
+  const sets = await getReleasedSets();
+  return { p, achs: measureAchievements(merged, p.stats, sets), sets };
 }
 // The reward of a one-time achievement is balance achievement_rewards.badges (balance_economy.sql). The SQL
 // decides and pays it: the server sends only the key. The answer names what was paid (or, when nothing was
@@ -1306,7 +1316,7 @@ app.get('/api/achievements/gallery', async (req, res) => {
   const owned = data?.owned || { titles: {}, frames: {} };
   const seen = new Set(items.map((i) => `${i.kind}:${i.value}`));
   const retired = await retiredKeys();
-  for (const a of ACHIEVEMENTS) {
+  for (const a of achievementList(await getReleasedSets())) {
     const r = badgeReward(a.key);
     for (const [kind, value] of [['title', r.title], ['frame', r.frame]]) {
       if (!value || seen.has(`${kind}:${value}`)) continue;
@@ -1362,10 +1372,9 @@ app.post('/api/achievements/claim', async (req, res) => {
     profileCache.delete(String(me.id)); bustUser(me.id); boardV2Cache = null;
     return res.json({ ...out, key });
   }
-  const def = ACHIEVEMENTS.find((a) => a.key === key);
-  if (!def) return res.status(400).json({ error: 'unknown achievement' });
   const m = await measureFor(String(me.id));
   if (!m) return res.status(404).json({ error: 'no such player' });
+  if (!achievementList(m.sets).some((a) => a.key === key)) return res.status(400).json({ error: 'unknown achievement' });
   if (m.p.claimed.includes(key)) return res.json({ ok: false, error: 'claimed' });
   const a = m.achs.find((x) => x.key === key);
   if (!a?.done) return res.status(400).json({ error: 'not_done', have: a?.have, need: a?.need });
@@ -1531,7 +1540,7 @@ app.get('/api/catalog', async (req, res) => {
     owned = new Set((ownedRows || []).map((r) => r.card_id));
     ownedCache.set(me.id, { at: Date.now(), owned });
   }
-  res.json({ cards: base.map((c) => ({ ...c, owned: owned.has(c.id) })) });
+  res.json({ cards: base.map((c) => ({ ...c, owned: owned.has(c.id) })), sets: (await getReleasedSets()) || [] });
 });
 
 // Community Pulls: the newest cards anyone obtained for the first time, across

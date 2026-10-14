@@ -444,6 +444,10 @@ function derivedAvatarFx(body) {
 DERIVED.push({ when: (p, c) => p === '/api/effects/badges' && c.ci_avfx === 'on', make: (body) => derivedAvatarFx(body) });
 // UI-40: the recorded /api/flags has the report flag off; ci_report=on turns it on (the send stays blocked, so a send shows the error)
 DERIVED.push({ when: (p, c, body) => p === '/api/flags' && c.ci_report === 'on' && body, make: (body) => ({ ...body, reports: true }) });
+// D-190 / F-2: the recorded catalog (2026-10-05) is older than the set fields. The live /api/catalog gives each card its set_id and the released
+// sets (id, name: the "<set name> Set Complete" achievement). The recorded /api/sets says that every card is in the one set S1 (cards = the whole catalog).
+DERIVED.push({ when: (p, c, body) => p === '/api/catalog' && Array.isArray(body?.cards) && !body.sets, make: (body) => ({
+  ...body, cards: body.cards.map((x) => ({ set_id: 'S1', ...x })), sets: (FIX.routes['/api/sets']?.body?.sets || []).map((s) => ({ id: s.id, name: s.name })) }) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
