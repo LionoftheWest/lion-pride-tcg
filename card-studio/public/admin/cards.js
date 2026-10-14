@@ -354,6 +354,7 @@ function cardPage(main, id) {
       field('Cooldown', inp('cs-a-cooldown', 'rounds', { type: 'number', step: '1' })),
       h('div', { class: 'cs-wide' }, field('What it does', h('textarea', { class: 'field', id: 'cs-a-desc', rows: '2', placeholder: 'What it does (shown to players)' })))),
     h('div', { class: 'cs-dfoot start' }, h('button', { class: 'btn primary', id: 'cs-ci-save', type: 'button', onclick: saveCardInfo }, 'Save card info'),
+      h('button', { class: 'btn cs-danger', id: 'cs-card-delete', type: 'button', onclick: deleteCardWhole }, icon('trash'), 'Delete card'),
       h('span', { class: 'subtitle', id: 'cs-ci-status', role: 'status' })));
 
   const tiers = panel('Tiers', 'Select a tier to upload its art, frame it, and edit its details.');
@@ -746,6 +747,31 @@ async function deleteTier() {
   const c = cards.find((x) => x.id === current.id);
   if (c) current = c;
   renderPreviews();
+}
+
+// Delete the whole card (DELETE /api/cards/:id, src/card-delete.js). A live card with history is refused with the
+// reason (409) and nothing changes. After success the page returns to the Cards list.
+async function deleteCardWhole() {
+  const c = current;
+  if (!c) return;
+  if (!window.confirm(`Delete the card "${c.name}" with all its tiers?`)) return;
+  const where = c.pushed
+    ? 'It is LIVE: this deletes it from the live game too (and anyone who owns it)'
+    : 'It is not live: this deletes it from this studio only';
+  if (!window.confirm(`Final check: "${c.name}". ${where}, with its art. This cannot be undone. Delete for good?`)) return;
+  const btn = $('cs-card-delete');
+  if (btn) btn.disabled = true;
+  let r;
+  try { r = await (await fetch('/api/cards/' + encodeURIComponent(c.id), { method: 'DELETE' })).json(); } catch (e) { r = { ok: false, error: String(e.message || e) }; }
+  if (!r.ok) {
+    if (btn) btn.disabled = false;
+    setStatus('Error: ' + (r.error || 'the card was not deleted'));
+    window.alert('The card was not deleted. ' + (r.error || ''));
+    return;
+  }
+  if (r.warning) window.alert('The card is deleted, with a warning: ' + r.warning);
+  current = null;
+  location.hash = '#/cards';
 }
 
 function pickFile(slot) {

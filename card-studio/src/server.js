@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, writeFileSync, readdirSync, unlinkSync, statSync
 import { fillHtml, renderPng } from './render.js';
 import { pushCard } from './push.js';
 import { removeTiers } from './tier-delete.js';
+import { deleteWholeCard, removeLocalFiles } from './card-delete.js';
 import { supabase } from './supabase.js';
 import { adminRouter } from './admin-routes.js';
 import { eventsRouter } from './admin-events-routes.js';
@@ -281,11 +282,23 @@ app.put('/api/cards/:id/set', async (req, res) => {
   res.json({ ok: true, card, moving: Boolean(card.setMoveFrom), liveSet });
 });
 
-// Remove a card from the portal store.
-app.delete('/api/cards/:id', (req, res) => {
-  const ok = deleteCard(req.params.id);
-  if (!ok) return res.status(404).json({ error: 'No such card.' });
-  res.json({ ok: true });
+// Delete a whole card (src/card-delete.js). A card that is not live goes with its local files. A live card is deleted
+// from the live game first (rows, subject, images); a card with history is refused (409) and nothing changes.
+app.delete('/api/cards/:id', async (req, res) => {
+  const card = cardById(req.params.id);
+  if (!card) return res.status(404).json({ error: 'No such card.' });
+  const id = card.id;
+  let r;
+  try {
+    r = await deleteWholeCard({
+      db: supabase, bucket: BUCKET, card, actor: `studio:${process.env.STUDIO_USER || 'studio'}`,
+      removeLocal: () => { const l = removeLocalFiles({ id, artDir: ART, outDir: OUT }); deleteCard(id); return l; },
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'The delete failed: ' + (e.message || e) });
+  }
+  if (!r.ok) return res.status(r.status).json({ ok: false, error: r.error });
+  res.json({ ok: true, live: r.live, warning: r.warnings.length ? r.warnings.join('; ') : undefined });
 });
 
 // Serve a card's uploaded art for a slot.
