@@ -8,6 +8,7 @@ import dotenv from 'dotenv'; dotenv.config({ override: true });
 // One command: with LOCALDB=1 the preload (it sends every SQL request to the local copy and refuses the live project) loads here,
 // so 'LOCALDB=1 node scripts/combat-lab.mjs' works with no --import. A run that already has the preload does not load it twice.
 if (process.env.LOCALDB === '1' && !globalThis.__LOCALDB_API) await import('./localdb-preload.mjs');
+if (process.env.LOCALDB === '1' && !globalThis.__LOCALDB_API) { console.error('lab-lib: the localdb preload did not load; LOCALDB=1 without it would use the LIVE project'); process.exit(2); } // the shared guard (localdb-guard.mjs), inline
 
 export function assertLocal(name) {
   if (process.env.LOCALDB !== '1') throw new Error(`${name} runs on the LOCAL copy only: LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/${name}`);

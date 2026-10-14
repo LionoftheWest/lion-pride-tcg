@@ -7,6 +7,7 @@
  * OLD=<file> (the function texts before the file): each phase first runs its own texts (the baseline OLD, the change the file),
  * and the even rounds time the change first, so the order and the plan cache do not favor one side.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 if (process.env.LOCALDB !== '1') throw new Error('time-f3-support.mjs runs on the LOCAL copy only');

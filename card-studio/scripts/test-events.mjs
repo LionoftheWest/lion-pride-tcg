@@ -42,7 +42,7 @@ const md5Json = JSON.stringify(LAUNCH_MD5);
 const A = 'tst_ev_a', B = 'tst_ev_b', C = 'tst_ev_c', D = 'tst_ev_d', E = 'tst_ev_e', ADMIN = 'tst_ev_admin';
 const body = (mig) => String.raw`do $t$
 declare res jsonb := '[]'; got jsonb; r jsonb; ok boolean; n int; n2 int; T timestamptz := date_trunc('second', now()); card bigint; card2 bigint;
-  ev bigint; ev2 bigint; ev3 bigint; ev4 bigint; ev5 bigint; ev6 bigint; up timestamptz; g bigint; hb bigint; cnt jsonb; cnt2 jsonb; lid bigint; cfg jsonb;
+  ev bigint; ev2 bigint; ev3 bigint; ev4 bigint; ev5 bigint; ev6 bigint; up timestamptz; g bigint; hb bigint; cnt jsonb; cnt2 jsonb; lid bigint; cfg jsonb; launch0 jsonb;
   launch_before int;
   -- E12: the local copy gets no pg_cron jobs from the live dump, so a re-run of events.sql in this block creates the
   -- 10-minute job; live already has the job (every minute since event_vars.sql) and events.sql leaves it alone.
@@ -62,6 +62,9 @@ begin
   select id into card2 from cards where rarity = 'normal' order by id offset 1 limit 1;
   cfg := (select value from settings where key = 'launch_event_cards');
   select count(*) into launch_before from gift_claims where reason in ('event:launch_player', 'event:launch_raider');
+  -- The launch row as the file made it, BEFORE this block ticks the clock ahead (E2 to E10 call event_tick up to T + 13 hours: a run within 13 hours
+  -- before player_until would end the row, and a run after it finds the row ended). E11 compares this row with the stored dates.
+  select to_jsonb(e) - 'id' - 'created_at' - 'updated_at' into launch0 from events e where key = 'launch_2026';
 
   -- E1 the shapes ------------------------------------------------------------------------------------------
   select jsonb_agg(to_jsonb(event_shape_errors(x.k, x.a::jsonb, x.w::jsonb, x.u::jsonb)) order by x.i) into got from (values
@@ -280,13 +283,15 @@ begin
     res := res || jsonb_build_object('case', 'E11 the launch event: settings.launch_event_cards exists in this database', 'ok', false);
   else
     select id into lid from events where key = 'launch_2026';
-    select to_jsonb(e) - 'id' - 'created_at' - 'updated_at' into got from events e where key = 'launch_2026';
-    res := res || jsonb_build_object('case', 'E11 one launch row: kind launch_cards, the settings window, live until player_until', 'ok', got = jsonb_build_object(
-      'key', 'launch_2026', 'kind', 'launch_cards', 'title', 'Launch Day event cards', 'status', case when now() < (cfg->>'player_until')::timestamptz then 'live' else 'ended' end,
+    got := launch0;
+    -- the status depends on now() against player_until (the window in the settings), not on a fixed date
+    res := res || jsonb_build_object('case', 'E11 one launch row: kind launch_cards, the settings window, live until player_until', 'ok', got @> jsonb_build_object(
+      'key', 'launch_2026', 'kind', 'launch_cards', 'title', 'Launch Day event cards',
       'starts_at', (cfg->>'player_from')::timestamptz, 'ends_at', (cfg->>'player_until')::timestamptz, 'audience', '{"all": true}'::jsonb, 'rewards', '{}'::jsonb,
       'rules', '{"settings_key": "launch_event_cards", "gift_reasons": ["event:launch_player", "event:launch_raider"]}'::jsonb, 'created_by', 'events.sql',
-      'ended_at', case when now() < (cfg->>'player_until')::timestamptz then null else (cfg->>'player_until')::timestamptz end,
-      'description', got->>'description'), 'got', got);
+      'description', got->>'description')
+      and case when now() < (cfg->>'player_until')::timestamptz then got->>'status' = 'live' and got->'ended_at' = 'null'::jsonb
+               else got->>'status' = 'ended' and (got->>'ended_at')::timestamptz ${mig ? '=' : '>='} (cfg->>'player_until')::timestamptz end, 'got', got);
     res := res || jsonb_build_object('case', 'E11 the old launch gifts and the two cards point at the launch row', 'ok',
       (select count(*) from gift_claims where reason in ('event:launch_player', 'event:launch_raider') and event_id is distinct from lid) = 0
       and (select count(*) from gift_claims where event_id = lid) = launch_before

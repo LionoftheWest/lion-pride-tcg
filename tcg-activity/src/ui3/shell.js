@@ -7,6 +7,7 @@
 import { icon } from './icons.js';
 import { esc, dot } from './components.js';
 import { openSettingsWindow } from './settings.js';
+import { eventsDotOn, DOT_EVENT } from './events-dot.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -63,7 +64,7 @@ const TILES = [
 let menuOpen = false;
 function menuHTML() {
   const tiles = TILES.filter((t) => t.shown()).map((t) => `<button type="button" class="u3-mtile" data-menu="${t.key}">${icon(t.icon, { size: '2xl' })}`
-    + `<span class="u3-mtile__name${t.label.includes('/') ? ' u3-mtile__name--two' : ''}">${esc(t.label).replace('/', '/<br>')}</span>${t.key === 'dailies' ? `<span class="u3-mtile__dot">${dot('A daily is ready')}</span>` : ''}</button>`).join('');
+    + `<span class="u3-mtile__name${t.label.includes('/') ? ' u3-mtile__name--two' : ''}">${esc(t.label).replace('/', '/<br>')}</span>${t.key === 'dailies' ? `<span class="u3-mtile__dot">${dot('A daily is ready')}</span>` : t.key === 'events' ? `<span class="u3-mtile__dot">${dot('A live event')}</span>` : ''}</button>`).join('');
   return `<div class="u3-menu" id="u3Menu" role="dialog" aria-modal="false" aria-label="Menu"><header class="u3-menu__head"><h2 class="u3-menu__title">Menu</h2>`
     + `<button type="button" class="u3-ibtn u3-ibtn--md u3-ibtn--panel u3-menu__close" aria-label="Close">${icon('x', { size: 'lg' })}</button></header>`
     + `<div class="u3-menu__grid">${tiles}</div></div>`;
@@ -104,9 +105,12 @@ document.addEventListener('click', (e) => { if (menuOpen && !e.target.closest('#
 function syncDots() {
   const d = $('dailyBtn');
   const waiting = !!d && !d.classList.contains('hidden') && (d.classList.contains('dl-hot') || !!d.querySelector('.navbadge'));
-  $('menuBtn')?.classList.toggle('has-dot', waiting);
+  const ev = eventsDotOn();   // the daily Events Dot (D-198): the Events tile, and so the Menu button (6.4)
+  $('menuBtn')?.classList.toggle('has-dot', waiting || ev);
   document.querySelector('#u3Menu [data-menu="dailies"]')?.classList.toggle('has-dot', waiting);
+  document.querySelector('#u3Menu [data-menu="events"]')?.classList.toggle('has-dot', ev);
 }
+document.addEventListener(DOT_EVENT, () => syncDots());
 
 // ---- Dock (UI-01): Home, Collection, OPEN, Adventure, Community; the one icon set. ----
 const DOCK_ICON = { home: 'house', collection: 'layers', battling: 'swords', trading: 'users' };

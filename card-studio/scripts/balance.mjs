@@ -13,6 +13,7 @@
  * --set / --undo change the database the .env points to (the LIVE project). Measure first with --sim on the
  * local copy (LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/balance.mjs --sim ...).
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = (process.env.SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)/)?.[1];

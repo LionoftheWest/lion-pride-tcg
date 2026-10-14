@@ -13,6 +13,7 @@
  *   4. The job 'dungeon-prepare-day' exists (06:02 and 07:02 UTC = 00:02 Denver in summer and winter time) and calls the function.
  *   5. anon and authenticated cannot run the function; service_role can.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

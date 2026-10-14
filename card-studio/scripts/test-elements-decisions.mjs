@@ -18,6 +18,7 @@
  *   5. Everything counters each other: element_counters has the 19 approved pairs (the 6 last ones approved by Nathan, 2026-10-12); every one of the 14 elements is beaten by
  *      and beats at least one element (element_counter_gaps is empty); the primary counters (weak_to) are in the table; a bad pair is refused.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

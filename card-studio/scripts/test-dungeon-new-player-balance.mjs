@@ -4,13 +4,15 @@
  *   MUTATE=<name> ...                                                                                      must FAIL, for every name in MUT below
  *   MUTATE=all ...                                                                                         runs every mutation and prints one line each
  * Invariants:
- *   1. Today's values: the 8 new keys of balance dungeon have the values of the code before the file (nothing changes in play).
+ *   1. Defaults: on a balance row WITHOUT the 8 new keys the file adds the values of the code before it (nothing changes in play). On a row WITH
+ *      the keys (Nathan's later pick) a re-run keeps them, and with some keys lost only those come back. The test does not read the live values.
  *   2. The limits: each key refuses a value outside its limits (whole numbers, ranges) and a lost key; a value inside is accepted.
  *   3. The keys change the behavior: the number of foes of a fight and a horde (dungeon_room_foes), the early floors (dungeon_make_foe:
  *      HP and attack of the first early_floors floors only), and the heal cap (dungeon_enemy_turn: the foes together heal back at most
  *      cap x the damage of the round; 0 = no cap; a pass of the turn with 0 damage heals 0 under a cap).
  * The golden tests (dungeon-golden.mjs, combat-golden.mjs) prove that today's values play exactly as the old code.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +38,7 @@ const MUT = {
   earlyfloors: ["if p_floor <= balance_num('dungeon', 'early_floors')::int", "if p_floor < balance_num('dungeon', 'early_floors')::int"],
   defaultcap: ["'foe_heal_cap', 0)", "'foe_heal_cap', 0.5)"],
   defaulthorde: ["'horde_min', 4,", "'horde_min', 3,"],
+  overwrite: ["'foe_heal_cap', 0) || value", "'foe_heal_cap', 0) || (value - 'horde_min')"],
   limminfoes: ['not between 1 and 8', 'not between 1 and 80'],
   limspread: ['not between 1 and 4', 'not between 1 and 40'],
   limfloors: ['not between 0 and 30', 'not between 0 and 300'],
@@ -68,15 +71,36 @@ declare bad text := ''; k text; v jsonb; f jsonb; f1 jsonb; st jsonb; et jsonb; 
 begin
   perform set_config('tcg.skip_welcome', 'on', true);
   perform set_config('balance.by', 'tst_dnpb', true);
+  -- 0. The migration on a row WITHOUT the keys (the state before it ran), whatever the live row holds now (Nathan's pick, a later balance update).
+  -- The check triggers refuse a lost key, so they are off for this set-up only (the block is rolled back; they are on again before the limits are tested).
+  alter table balance disable trigger user;
+  update balance set value = value - array['fight_min', 'fight_spread', 'horde_min', 'horde_spread', 'early_floors', 'early_hp', 'early_atk', 'foe_heal_cap'] where key = 'dungeon';
+  update balance set note = replace(note, 'early_floors', 'early_x') where key = 'dungeon';
   execute $m$${mig}$m$;
   execute $m$${mig}$m$; -- two times: idempotent
+  alter table balance enable trigger user;
 
-  -- 1. Today's values (all 8 keys, the old ones stay).
+  -- 1. The defaults (all 8 keys, the old ones stay).
   for k, v in select e.key, e.value from jsonb_each(want) e loop
     if (select value->k from balance where key = 'dungeon') is distinct from v then bad := bad || '1: ' || k || ' is ' || coalesce((select (value->k)::text from balance where key = 'dungeon'), 'missing') || ', want ' || v::text || '; '; end if;
   end loop;
   if (select value->'foe_mult'->'horde'->>'atk' from balance where key = 'dungeon') <> '0.75' or (select value->>'hp_growth' from balance where key = 'dungeon') <> '1.42' then bad := bad || '1: an old key changed; '; end if;
   if (select note from balance where key = 'dungeon') not like '%early_floors%' then bad := bad || '1: the note does not name the new keys; '; end if;
+  -- 1b. A re-run keeps existing values: all 8 keys with other values stay; with some keys lost only the lost ones come back as defaults.
+  update balance set value = value || '{"fight_min": 2, "fight_spread": 2, "horde_min": 3, "horde_spread": 3, "early_floors": 2, "early_hp": 0.5, "early_atk": 0.6, "foe_heal_cap": 0.5}' where key = 'dungeon';
+  execute $m$${mig}$m$;
+  for k, v in select e.key, e.value from jsonb_each('{"fight_min": 2, "fight_spread": 2, "horde_min": 3, "horde_spread": 3, "early_floors": 2, "early_hp": 0.5, "early_atk": 0.6, "foe_heal_cap": 0.5}'::jsonb) e loop
+    if (select value->k from balance where key = 'dungeon') is distinct from v then bad := bad || '1b: a re-run changed ' || k || ' to ' || coalesce((select (value->k)::text from balance where key = 'dungeon'), 'missing') || ', want ' || v::text || '; '; end if;
+  end loop;
+  alter table balance disable trigger user;
+  update balance set value = value - array['foe_heal_cap', 'early_hp'] where key = 'dungeon';
+  execute $m$${mig}$m$;
+  alter table balance enable trigger user;
+  if (select value->'horde_min' from balance where key = 'dungeon') is distinct from '3'::jsonb or (select value->'early_atk' from balance where key = 'dungeon') is distinct from '0.6'::jsonb
+     or (select value->'foe_heal_cap' from balance where key = 'dungeon') is distinct from '0'::jsonb or (select value->'early_hp' from balance where key = 'dungeon') is distinct from '1'::jsonb
+     then bad := bad || '1b: with 2 keys lost, a re-run did not keep the others and add the defaults: ' || (select value::text from balance where key = 'dungeon') || '; '; end if;
+  update balance set value = value || want where key = 'dungeon';
+
   -- balance_log: a change of one of the new keys is recorded (who, old, new).
   select count(*) into n from balance_log where key = 'dungeon';
   update balance set value = jsonb_set(value, '{foe_heal_cap}', '0.5') where key = 'dungeon';

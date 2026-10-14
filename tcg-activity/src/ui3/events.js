@@ -9,6 +9,7 @@
 //   a hex, the page finds the token with the same value (no color literal here).
 import { esc, iconButton, button, pager, stateEmpty, stateError } from './components.js';
 import { icon } from './icons.js';
+import { markEventsSeen } from './events-dot.js';
 
 export const KINDS = {
   hunt: { label: 'Hunt', icon: 'swords', color: 'var(--hunt)' },
@@ -91,7 +92,7 @@ const kindVar = (e) => `--k:${KINDS[e.k].color}`;
 const kindIcon = (e, size = 'sm') => icon(KINDS[e.k].icon, { size });
 
 /** The theme color token: the server hex equals one of the 8 --name-color-* tokens (D-185); else the kind color. */
-function themeVar(e) {
+export function themeVar(e) {
   const hex = String(e.theme.color || '').toLowerCase();
   if (hex && document?.documentElement) {
     const cs = getComputedStyle(document.documentElement);
@@ -99,7 +100,7 @@ function themeVar(e) {
   }
   return KINDS[e.k].color;
 }
-const artURL = (e) => (e.theme.art && /^\/[^/]/.test(e.theme.art) ? e.theme.art : null);
+export const artURL = (e) => (e.theme.art && /^\/[^/]/.test(e.theme.art) ? e.theme.art : null);
 
 // ---- Markup ----
 function gridHTML(thin) {
@@ -270,7 +271,10 @@ async function load() {
   st.events = d.events.map(norm).filter((e) => Number.isFinite(e.start) && Number.isFinite(e.end));
   st.load = 'done';
   const now = Date.now();
-  if (layout() === 'wide') { const f = firstEvent(st.events, now); st.selId = f ? f.id : null; }
+  const asked = st.openId != null ? st.events.find((e) => String(e.id) === String(st.openId)) : null;   // opened from an Events slide (View event, D-196): that event
+  st.openId = null;
+  if (asked) { st.selId = asked.id; st.detail = layout() !== 'wide'; if (isLive(asked, now)) { st.y = new Date(now).getFullYear(); st.m = new Date(now).getMonth() + 1; st.selKey = dayKey(now); } }
+  else if (layout() === 'wide') { const f = firstEvent(st.events, now); st.selId = f ? f.id : null; }
   paint();
 }
 
@@ -301,12 +305,13 @@ function onKey(e) {
 }
 const scheduleFit = () => { clearTimeout(fitT); fitT = setTimeout(() => { if (isOpen()) paint(); }, 60); };
 
-/** Open the page on the month of today. */
-export function openEventsWindow() {
+/** Open the page on the month of today. opts.id = an event id: the page opens on that event (the Events slide of Home, D-196). Opening the page ends the daily Dot (D-198). */
+export function openEventsWindow(opts = {}) {
   if (!deps || isOpen()) return;
+  markEventsSeen();
   opener = document.activeElement;
   const t = new Date();
-  st = { y: t.getFullYear(), m: t.getMonth() + 1, events: [], load: 'busy', selKey: dayKey(t), selId: null, detail: false, dayList: null, page: 1, pages: 1, per: 3 };
+  st = { y: t.getFullYear(), m: t.getMonth() + 1, events: [], load: 'busy', selKey: dayKey(t), selId: null, detail: false, dayList: null, page: 1, pages: 1, per: 3, openId: opts.id ?? null };
   const host = document.createElement('div');
   host.id = 'u3EvHost'; host.className = 'u3-lbhost ev-host';
   host.innerHTML = '<section class="u3-lb ev-win" id="u3Ev" role="dialog" aria-modal="true" aria-labelledby="evT"></section>';
@@ -337,6 +342,6 @@ export function initEventsWindow(d) {
   if ($('eventsBtn')) return;
   const b = document.createElement('button');
   b.id = 'eventsBtn'; b.type = 'button'; b.className = 'hidden'; b.tabIndex = -1; b.setAttribute('aria-hidden', 'true');
-  b.addEventListener('click', () => openEventsWindow());
+  b.addEventListener('click', () => { const id = b.dataset.ev; delete b.dataset.ev; openEventsWindow(id ? { id } : {}); });   // data-ev: the event a slide asks for (ui-v2.js openMode)
   document.body.appendChild(b);
 }

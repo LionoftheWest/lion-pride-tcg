@@ -17,6 +17,7 @@
  *      template_id is set; a template edit leaves the events the same.
  *   7. The job event-tick runs every minute and calls event_tick. 8. RLS and the grants (anon / authenticated get nothing).
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

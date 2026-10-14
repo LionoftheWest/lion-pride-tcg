@@ -119,6 +119,8 @@ test('owners: the shell and the sub-tabs have their own IDs', () => {
   assert.equal(ownerOf('home-dungeon', '#homeHero > .u3-hm-car > .u3-hm-ctl'), 'UI-05');   // UI-05: the carousel control
   assert.equal(ownerOf('home-dungeon-top', '.u3-hm-sb > .u3-hm-sinfo > .u3-hm-sboard'), 'UI-05');   // the Dungeon slide Top 3 (not the UI-04 board classes)
   assert.equal(ownerOf('home-gauntlet', '.u3-hm-slide > .u3-hm-sb > .u3-hm-sart'), 'UI-05');
+  assert.equal(ownerOf('home-events-five', '.u3-hm-sb.is-events > .u3-hm-sinfo > .u3-hm-evline'), 'UI-05');   // the Events slide line (review-6)
+  assert.equal(ownerOf('home-events', '.u3-hm-simg.u3-hm-eimg.has-art > img'), 'UI-05');   // the Events slide picture
   assert.equal(ownerOf('home-voice-all', '#u3VoiceWin > .u3-scrim > .u3-sheet'), 'UI-06');   // UI-06: the Live in voice window
   assert.equal(ownerOf('home-voice-all', '#homeVoice > .u3-hm-vrow > .u3-hm-more'), 'UI-06');   // its "+N" button
   assert.equal(ownerOf('home-dungeon', '#homeVoice > .u3-hm-vrow > .u3-hm-cell'), 'UI-03');   // the rest of Home stays UI-03

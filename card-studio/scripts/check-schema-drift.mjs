@@ -9,6 +9,7 @@
  * The local copy has no real pg_cron jobs (the dump does not carry them): the local check always skips
  * cron-jobs.sql. --live always checks it.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { makeQ, readCatalog, renderSnapshot, renderCron, readSnapshotDir, compareSnapshots, printDiffs, CRON_FILE } from './schema-snapshot-lib.mjs';
 

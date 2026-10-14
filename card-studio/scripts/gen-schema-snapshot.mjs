@@ -17,6 +17,7 @@
  * It reads only the catalog: no row, no settings or balance value, no sequence value. It refuses to write a
  * file that looks like it holds a secret.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { mkdirSync, readdirSync, unlinkSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

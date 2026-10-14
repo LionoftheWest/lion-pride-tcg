@@ -15,6 +15,7 @@
  *
  *   LOCALDB=1 node scripts/test-combat-lab.mjs [name ...]      (names: run only these mutations)
  */
+import './localdb-guard.mjs';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';

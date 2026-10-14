@@ -32,6 +32,16 @@ export const SCREENS = {
   'home-dungeon-top':    { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', dungeon: 'top', notOn: ['tiny'], steps: [] },
   'home-gauntlet':       { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-slide-go="gauntlet"]'], ['wait', 0.5]] },
   'home-gauntlet-top':   { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', dungeon: 'top', notOn: ['tiny'], steps: [['js', '[data-slide-go="gauntlet"]'], ['wait', 0.5]] },
+  // UI-05 Events slide (flag events: cookie ci_events, serve.mjs). The last slide (D-188): review-6 (D-194 to D-199): one slide for each live event, none (no slide, D-45), a Hunt event alone (no slide), a system event, the daily Dot.
+  'home-events':         { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'on', notOn: ['tiny'], steps: [['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['wait', 0.5]] },   // two live events (the Hunt event has no slide): slide 1 of 2
+  'home-events-one':     { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'one', notOn: ['tiny'], steps: [['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['wait', 0.5]] },
+  'home-events-two':     { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'two', notOn: ['tiny'], steps: [['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['wait', 0.5]] },   // slide 2 of 2: no art (the kind picture), a tagline
+  'home-events-five':    { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'five', notOn: ['tiny'], steps: [['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['wait', 0.5]] },   // slide 4 of the 5 event slides (Gauntlet Encore): no art, no tagline (the change line); the 4-dot window moves
+  'home-events-system':  { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'system', notOn: ['tiny'], steps: [['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['wait', 0.5]] },   // a system kind: title and countdown only
+  'home-events-hunt':    { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'hunt', notOn: ['tiny'], steps: [['wait', 0.5]] },   // a Hunt event alone: no slide
+  'home-events-dot':     { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'five', notOn: ['tiny'], steps: [['wait', 0.5]] },   // the daily Dot (D-198) is on: the slide control and the Menu button (localStorage is empty)
+  'home-events-view':    { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'one', notOn: ['tiny'], steps: [['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['js', '[data-slidedir="next"]'], ['js', '[data-evview]'], ['wait', 2]] },   // "View event" opens the Events page on that event
+  'home-events-none':    { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'empty', notOn: ['tiny'], steps: [['wait', 0.5]] },
   'home-hunt-rest':      { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-slide-go="hunt"]'], ['wait', 0.5]] },
   'home-voice-all':      { id: 'UI-06', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-voice-all]', [['wait', 0]]], ['wait', 1]] },
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
@@ -295,6 +305,8 @@ export const SCREENS = {
   'help-item5':         { id: 'UI-38', safe: true, under: 'UI-03', cornerWindow: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1.5], ['js', '[data-q="4"]'], ['wait', 0.5]] },
   // The menu (UI-60) opens over Home: a defect outside the menu belongs to Home ('under'). tiny has no menu (D-06).
   'menu':                { id: 'UI-60', under: 'UI-03', report: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
+  // UI-60 + UI-05 review-6 (D-198): the Events tile carries the daily Dot on the first visit of the day, and so does the Menu button
+  'menu-events':         { events: 'on', id: 'UI-60', under: 'UI-03', report: true, notOn: ['tiny'], steps: [['wait', 2], ['js', '#menuBtn'], ['wait', 1]] },
   // The first-time walkthrough (UI-37): FAQ > Replay tutorial starts it over Home, then Next goes on. walk: true runs checks/walkthrough.js
   // (the check skips #tutLayer everywhere else): the card never covers the spotlighted control or the corner zone, Skip and Next are 44 px.
   // gifts: true = a gift waits in the bell (cookie ci_gifts, serve.mjs): step 1 shows; without it step 1 is skipped ("STEP 1 OF 7").
@@ -348,7 +360,7 @@ export function ownerOf(screen, where) {
   if (screen === 'collection-viewer' && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav|win)\b|#v-[a-z-]+|#card3d/.test(where)) return 'UI-09';
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';
   if (/#u3VoiceWin[a-z]*\b|\.u3-vw\b|\.u3-vw[-_]|\.u3-hm-more\b/.test(where)) return 'UI-06';   // the Live in voice window and its "+N" button
-  if (/\.u3-hm-(car|ctl|slide|dots|pip|labels|sb|sart|sinfo|strow|date|stimer|rule|rl|sline|sboard|sbh|sbt|sbl|sbr|sbk|sbn|sbd|sbe|sbc)\b/.test(where)) return 'UI-05';   // the carousel: the slides, the control
+  if (/\.u3-hm-(car|ctl|slide|dots|pip|labels|sb|sart|sinfo|strow|date|stimer|rule|rl|sline|sboard|sbh|sbt|sbl|sbr|sbk|sbn|sbd|sbe|sbc|eimg|eico|evline)\b/.test(where)) return 'UI-05';   // the carousel: the slides, the control
   if (/\.u3-hm-board\b|\.u3-hm-br[a-z]*\b/.test(where)) return 'UI-04';   // the Top 3 board in the Home hero (D-58)   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).
