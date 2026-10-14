@@ -113,3 +113,15 @@ win rate of one room by foe kind on floors 1 and 2, whole runs on generated days
 fights on floors 1 to 5 (LOCK, LOOP, the heal as a share of the damage dealt) and the LOCK and LOOP counts. `--big` = 40 fights a cell, 90 runs a level,
 60 Guardian fights a row (about 3 minutes for each option). The report goes to `out/dungeon-balance/report.md`.
 Test of the migration: `scripts/test-dungeon-new-player-balance.mjs` (`MUTATE=all` plants 17 changes, each must make it fail).
+
+## The element chart rule, "rule A" (F-3 PR 2b, 2026-10-14)
+
+`f3_elements_beats.sql`: `elements_list()` (and `GET /api/elements`) returns `beats` and `beaten_by` for each element, from `element_counters` (approved pairs only).
+`f3_element_bonus.sql`: the fight rule. The attacker's element beats the target's element = damage x `balance combat.element_bonus` (1 to 2).
+The target's element beats the attacker's = x `element_penalty` (0.5 to 1). Both = both. Today's values are 1 and 1 (no change in play). Nathan picks the values after the Lab report.
+- One place: `combat_element(att, def)` finds the pair and the multiplier. `combat_hit_elem` (`combat_hit` + the two elements) multiplies it into the weakness multiplier. `combat_hit` is not changed. The callers pass the two elements.
+- Dungeon and Gauntlet: `dungeon_attack` calls `combat_hit_elem` and passes `card_element(card tags)` and the foe's `element`. The Hunt is NOT changed: a Hunt boss has no element (its weak points are tags).
+- The answer: `elem` (`bonus`, `penalty` or `both`) and `elem_mult` are in the answer of `dungeon_attack` and in the `combat_actions` result of the attack, only when the chart changed the hit.
+- It stacks with the weakness: a Dungeon foe already has the weak tag of its primary counter, so the primary pair gets the weakness and the bonus.
+- Tests: `scripts/test-elements-beats.mjs`, `scripts/test-element-bonus.mjs` (both with `MUTATE=all`). Golden proof: `dungeon-golden.mjs` and `combat-golden.mjs` with the file as CANDIDATE match the live code; with the bonus at 1.25 the Dungeon golden shows a DIFF.
+- Measuring tool: `LAB_LOCK_OWNER=<name> LOCALDB=1 node scripts/element-bonus-balance.mjs --candidate ../tcg-bot/supabase/f3_element_bonus.sql` (squad shapes stack, mixed, control and matched; whole runs).

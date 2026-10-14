@@ -13,6 +13,7 @@ The triggers on `balance` check each change:
 
 - `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
 - `balance_check_boss_counters` (`balance_check_boss_counters()`): Trigger (before insert, update on balance): boss_counters must hold only numbers; share, boss_share and the move shares (heal, shield, empower, expose, smite, share, keep, curse, back) from 0 to 1; rounds, wait, plays, cards and hits whole numbers (plays and hits at least 1); hit sizes and multipliers above 0; the weights add up to more than 0. boss_passives: the counter passive numbers (plague_x, shatterer_x, dispeller_x, juggernaut_x, juggernaut_stun_fail, plague_cleanse) from 0 to 1.
+- `balance_check_combat` (`balance_check_combat()`): Trigger (before insert, update on balance): combat.element_bonus must be a number from 1 to 2 and combat.element_penalty a number from 0.5 to 1 (f3_element_bonus.sql). A key that is absent is not checked.
 - `balance_check_dungeon` (`balance_check_dungeon()`): Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.shards, chest.card_chance and offers heal / buff / shards / ward / revive must be 5 numbers (tier 1 to 5), tier_weights must add up to more than 0, the Shards whole numbers, chest.card_chance and door.gamble_rare at most 1, door.rare_tier and offers.min_tier whole numbers from 1 to 5. (balance_check keeps every leaf and its type, so boss_hp_estimate keeps its 4 numbers.)
 - `balance_check_economy` (`balance_check_economy()`): Trigger (before insert, update on balance): the pulls rates must add up to 1, pulls pack_size must be a whole number from 1 to 20, daily streak_cycle must be at least 1.
 - `balance_check_report_shots` (`balance_check_report_shots()`): Trigger (before insert, update on balance): the shape of the key report_shots (report_shots.sql): keep_days, per_report and max_bytes whole numbers of at least 1, per_report at most 9, max_bytes at most 5242880 (the Activity reads at most 5 MB of an upload).
@@ -767,9 +768,9 @@ Shape: `object { floor: number, per_cp: number }`
 
 ### combat
 
-A card hit (hunt_attack). Chances: miss, block, crit (crit_weak on a weak tag; Precision adds, under stat_points.crit_cap). Damage = combat power x weakness x (roll_min + random x roll_span) x buffs x synergy x passives; crit x crit_x, block x block_x. Weakness = 1 + (1 - weak_step^weak hits) (halved per weak-tag card after weak_stack_free) - resist_step x (1 - resist_decay^resists), between weak_min and weak_max. Synergy: syn_small_at / syn_big_at cards of one element, origin or trait give element_/origin_/trait_ small / big, all together at most syn_cap. Lifesteal heals at most lifesteal_cap of max HP. Rally, Butterfingers, Launch Party, Raid Crasher: at most effect_cap_pct %. The per-card ability amounts are in subjects.ability.
+A card hit (hunt_attack). Chances: miss, block, crit (crit_weak on a weak tag; Precision adds, under stat_points.crit_cap). Damage = combat power x weakness x (roll_min + random x roll_span) x buffs x synergy x passives; crit x crit_x, block x block_x. Weakness = 1 + (1 - weak_step^weak hits) (halved per weak-tag card after weak_stack_free) - resist_step x (1 - resist_decay^resists), between weak_min and weak_max. Synergy: syn_small_at / syn_big_at cards of one element, origin or trait give element_/origin_/trait_ small / big, all together at most syn_cap. Lifesteal heals at most lifesteal_cap of max HP. Rally, Butterfingers, Launch Party, Raid Crasher: at most effect_cap_pct %. The per-card ability amounts are in subjects.ability. Element chart (f3_element_bonus.sql, rule A): element_bonus = the damage multiplier when the attacker's element beats the target's element (element_counters, approved pairs only; from 1 to 2; 1 = no bonus). element_penalty = the multiplier when the target's element beats the attacker's element (from 0.5 to 1; 1 = no penalty). Both apply when two elements beat each other. A separate factor after the synergy: it stacks with the weakness. Dungeon and Gauntlet only (a Hunt boss has no element). Limits: balance_check_combat.
 
-Shape: `object { block: number, block_x: number, crit: number, crit_weak: number, crit_x: number, effect_cap_pct: number, element_big: number, element_small: number, lifesteal_cap: number, miss: number, origin_big: number, origin_small: number, resist_decay: number, resist_step: number, roll_min: number, roll_span: number, syn_big_at: number, syn_cap: number, syn_small_at: number, trait_big: number, trait_small: number, weak_max: number, weak_min: number, weak_stack_free: number, weak_step: number }`
+Shape: `object { block: number, block_x: number, crit: number, crit_weak: number, crit_x: number, effect_cap_pct: number, element_big: number, element_bonus: number, element_penalty: number, element_small: number, lifesteal_cap: number, miss: number, origin_big: number, origin_small: number, resist_decay: number, resist_step: number, roll_min: number, roll_span: number, syn_big_at: number, syn_cap: number, syn_small_at: number, trait_big: number, trait_small: number, weak_max: number, weak_min: number, weak_stack_free: number, weak_step: number }`
 
 ```json
 {
@@ -794,9 +795,11 @@ Shape: `object { block: number, block_x: number, crit: number, crit_weak: number
   "origin_small": 1.1,
   "resist_decay": 0.5,
   "syn_small_at": 3,
+  "element_bonus": 1,
   "element_small": 1.12,
   "lifesteal_cap": 0.06,
   "effect_cap_pct": 100,
+  "element_penalty": 1,
   "weak_stack_free": 3
 }
 ```
@@ -927,18 +930,21 @@ Shape: `object { atk_growth: number, budget: number, cost: object { event: numbe
 
 Dungeon and Gauntlet prizes (dungeon_pay, dungeon_prize_tick, gauntlet_view through dungeon_prizes_cfg): daily = the Dungeon day board by place, weekly = the Gauntlet week board by place (packs, Shards, cards; odds = the card rarity odds in %). The flags (enabled, from) stay in settings.dungeon_prizes.
 
-Shape: `object { daily: array(10) of object { shards: number }, weekly: array(10) of object { cards: number, odds: object { illustrated_rare: number, secret_rare: number }, packs: number, shards: number } | object { cards: number, odds: object { illustrated_rare: number, normal: number, secret_rare: number }, packs: number, shards: number } | object { cards: number, odds: object { illustrated_rare: number, normal: number }, packs: number, shards: number } | object { packs: number } }`
+Shape: `object { daily: array(10) of object { packs: number, shards: number } | object { shards: number }, weekly: array(10) of object { cards: number, odds: object { illustrated_rare: number, secret_rare: number }, packs: number, shards: number } | object { cards: number, odds: object { illustrated_rare: number, normal: number, secret_rare: number }, packs: number, shards: number } | object { cards: number, odds: object { illustrated_rare: number, normal: number }, packs: number, shards: number } | object { packs: number } }`
 
 ```json
 {
   "daily": [
     {
+      "packs": 3,
       "shards": 300
     },
     {
+      "packs": 2,
       "shards": 200
     },
     {
+      "packs": 1,
       "shards": 150
     },
     {
@@ -969,9 +975,9 @@ Shape: `object { daily: array(10) of object { shards: number }, weekly: array(10
         "secret_rare": 30,
         "illustrated_rare": 70
       },
-      "cards": 3,
-      "packs": 5,
-      "shards": 500
+      "cards": 6,
+      "packs": 10,
+      "shards": 1000
     },
     {
       "odds": {
@@ -979,18 +985,18 @@ Shape: `object { daily: array(10) of object { shards: number }, weekly: array(10
         "secret_rare": 8,
         "illustrated_rare": 32
       },
-      "cards": 2,
-      "packs": 3,
-      "shards": 300
+      "cards": 4,
+      "packs": 6,
+      "shards": 600
     },
     {
       "odds": {
         "normal": 75,
         "illustrated_rare": 25
       },
-      "cards": 1,
-      "packs": 2,
-      "shards": 200
+      "cards": 2,
+      "packs": 4,
+      "shards": 400
     },
     {
       "packs": 1

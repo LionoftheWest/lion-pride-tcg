@@ -22,6 +22,7 @@ drift check showed 0 differences. The process: section "How these PRs went live"
 | F-2 PR 4: remove the "Season" text reads (about 40) | - | NOT STARTED |
 | F-3 PR 1: one combat math, Haste works, Attack raises only attack power | #376 | LIVE (`f3_one_combat_math.sql`, Activity `de447a2`) |
 | F-3 PR 3: the Combat Lab and the golden test of the Dungeon and the Gauntlet (`docs/combat-lab.md`) | - | BUILT, local tools only (no SQL change). Not merged yet |
+| F-3 PR 2b: the element chart gets a fight rule (rule A, D-189): `elements_list` returns the pairs, `combat.element_bonus` / `element_penalty` (today 1 and 1) | - | BUILT locally, not merged. Nathan picks the values (`docs/combat-lab.md`) |
 | F-3 PR 2, 4-10 (elements and passives, effect engine, ...) | - | NOT STARTED. The Combat Lab comes before the effect engine |
 | Reports: device facts, private screenshots, Player reports section (UI-40 review-2) | #378, #385 | LIVE (`report_shots.sql`, Activity `bd8aa42`) |
 | UI-05 fix: the slide text never runs over the slide control (375x667) | #381 | LIVE |
