@@ -4,19 +4,22 @@
 // shows (its header, the timer, the rule or the theme, the Top 3), read from the same routes. No window size is read here (F-1):
 // the control swaps by body[data-size] in CSS, and the fit is measured on the elements. All styles: public/ui3/90-ui-05.css.
 import { icon } from './icons.js';
-import { iconButton, dot, esc } from './components.js';
+import { iconButton, button, dot, esc } from './components.js';
 import { breakable } from '../effects-ui.js';
 import { topMode } from './home-boss.js';
 import { KINDS, norm, isLive, left, themeVar, artURL } from './events.js';
 
 export const SLIDES = { hunt: 'Hunt', dungeon: 'Dungeon', gauntlet: 'Gauntlet', events: 'Events' };
 
+/** An event slide key: one slide for each live event (D-197). */
+export const evKey = (e) => `events:${e.id}`;
+export const isEvKey = (k) => typeof k === 'string' && k.startsWith('events:');
 /** The slides in order: the Hunt first when it is live, else the next active mode first (D-14, D-45). A mode with no data (closed, off) has no slide.
- *  The Events slide is the LAST slide (D-188), and only when an event is live (D-45) and the flag shows it (`events`). */
+ *  The event slides are the LAST slides (D-188), one for each live event (D-197, no limit), and only when the flag shows them (`events`: the list from liveEvents). */
 export function slideOrder({ huntLive, dungeon, gauntlet, events }) {
   const modes = [dungeon ? 'dungeon' : null, gauntlet ? 'gauntlet' : null].filter(Boolean);
   const base = huntLive ? ['hunt', ...modes] : dungeon ? ['dungeon', 'hunt', ...(gauntlet ? ['gauntlet'] : [])] : ['hunt', ...modes];
-  return events ? [...base, 'events'] : base;
+  return Array.isArray(events) && events.length ? [...base, ...events.map(evKey)] : base;
 }
 
 /** The news Dot (D-45, D-55): the Dungeon has news while today's run is not used yet. Nothing else is drawn as news (UI-05 frames). */
@@ -92,21 +95,38 @@ export function gauntletSlideHTML(d) {
     + line('Top this week', rows, 'No runs yet this week', 'gauntlet'));
 }
 
+/** The dots shown (D-199): at most `max`; with more slides the window moves with the current slide (no "n / N" text). */
+export function dotWindow(order, key, max = 4) {
+  if (order.length <= max) return order;
+  const at = Math.max(0, order.indexOf(key));
+  const start = Math.min(Math.max(at - 1, 0), order.length - max);
+  return order.slice(start, start + max);
+}
 /** The slide control. Dots on the compact classes and labels on the larger ones are both in the page; CSS shows one by body[data-size] (D-57).
- *  order = the keys, key = the active one, news = { key: true }. */
-export function controlHTML(order, key, news = {}) {
+ *  order = the keys, key = the active one, news = { key: true }, opts = { titles: { key: name }, eventsDot } (the daily Dot of D-198:
+ *  on the first event dot shown and on the one "Events" label). The labels hold the modes and ONE "Events" item. */
+export function controlHTML(order, key, news = {}, opts = {}) {
+  const titles = opts.titles || {};
   const arrows = (ic, label, dir) => iconButton({ icon: ic, label, variant: 'panel', data: { slidedir: dir } });
-  const pip = (k) => `<button type="button" role="tab" class="u3-hm-pip${k === key ? ' is-on' : ''}" aria-selected="${k === key}" aria-label="${SLIDES[k]}" data-slide-go="${k}">${news[k] ? dot('New') : ''}</button>`;
-  const lab = (k) => `<button type="button" role="tab" class="u3-seg__item${k === key ? ' is-active' : ''}" aria-selected="${k === key}" data-slide-go="${k}"><span>${SLIDES[k]}</span>${news[k] ? dot('New') : ''}</button>`;
+  const shown = dotWindow(order, key);
+  const firstEv = shown.find(isEvKey);
+  const name = (k) => titles[k] || (isEvKey(k) ? SLIDES.events : SLIDES[k]);
+  const pip = (k) => `<button type="button" role="tab" class="u3-hm-pip${k === key ? ' is-on' : ''}" aria-selected="${k === key}" aria-label="${esc(name(k))}" data-slide-go="${esc(k)}">${news[k] || (opts.eventsDot && k === firstEv) ? dot('New') : ''}</button>`;
+  const firstAll = order.find(isEvKey);
+  const labels = order.filter((k) => !isEvKey(k) || k === firstAll);
+  const lab = (k) => {
+    const ev = isEvKey(k); const on = ev ? isEvKey(key) : k === key;
+    return `<button type="button" role="tab" class="u3-seg__item${on ? ' is-active' : ''}" aria-selected="${on}" data-slide-go="${esc(ev && isEvKey(key) ? key : k)}"><span>${ev ? SLIDES.events : SLIDES[k]}</span>${news[k] || (ev && opts.eventsDot) ? dot('New') : ''}</button>`;
+  };
   return `<div class="u3-hm-ctl">${arrows('chevron-left', 'Previous slide', 'prev')}`
-    + `<div class="u3-hm-dots" role="tablist" aria-label="Slides">${order.map(pip).join('')}</div>`
-    + `<div class="u3-seg u3-hm-labels" role="tablist" aria-label="Slides">${order.map(lab).join('')}</div>`
+    + `<div class="u3-hm-dots" role="tablist" aria-label="Slides">${shown.map(pip).join('')}</div>`
+    + `<div class="u3-seg u3-hm-labels" role="tablist" aria-label="Slides">${labels.map(lab).join('')}</div>`
     + `${arrows('chevron-right', 'Next slide', 'next')}</div>`;
 }
 
 /** The hero with its control: one slide and, when there is more than one, the control under it. */
-export function carouselHTML(order, key, slideHTML, news) {
-  return `<div class="u3-hm-car" data-slide="${key}"><div class="u3-hm-slide">${slideHTML}</div>${order.length > 1 ? controlHTML(order, key, news) : ''}</div>`;
+export function carouselHTML(order, key, slideHTML, news, opts) {
+  return `<div class="u3-hm-car" data-slide="${esc(key)}"><div class="u3-hm-slide">${slideHTML}</div>${order.length > 1 ? controlHTML(order, key, news, opts) : ''}</div>`;
 }
 
 /** Keep a Dungeon or Gauntlet slide inside its tile: the one line instead of the Top 3 (compact-land, or cut), then smaller type (is-tight), then once more. */
@@ -114,6 +134,7 @@ export function fitSlide(box) {
   const sb = box?.querySelector('.u3-hm-sb');
   const info = sb?.querySelector('.u3-hm-sinfo');
   if (!sb || !info) return;
+  if (sb.classList.contains('is-events')) { fitEventSlide(sb, info); return; }   // the Events slides have their own steps (the picture stays)
   sb.classList.remove('is-line', 'is-tight', 'is-tighter', 'is-nolabel', 'is-noart', 'is-noline', 'is-norl');
   const over = () => info.scrollHeight > info.clientHeight + 1 || info.scrollWidth > info.clientWidth + 1 || sb.scrollHeight > sb.clientHeight + 1 || sb.scrollWidth > sb.clientWidth + 1;
   if (topMode(document.body.dataset.size, false) === 'line') sb.classList.add('is-line');
@@ -121,36 +142,52 @@ export function fitSlide(box) {
   if (over()) { sb.classList.add('is-tight'); if (over()) { sb.classList.add('is-tighter'); if (over()) { sb.classList.add('is-nolabel'); if (over()) { sb.classList.add('is-noart'); if (over()) { sb.classList.add('is-noline'); if (over()) sb.classList.add('is-norl'); } } } } }   // the last steps: the line without its label (aria-label keeps it), then the text column alone (a decorative picture gives its width back), then no Top line: on the smallest phone (375x667) the text still ran over the slide control (Nathan 2026-10-11, "this needs to be fixed")
 }
 
-// ---- The Events slide (UI-05 review-5, D-184 to D-188, condition A; flag `events`) ----
-/** The live events from /api/events, the one that ends first first (D-187). A scheduled event (not started) is not live. */
+// ---- The Events slides (UI-05 review-6, D-194 to D-199; flag `events`): one slide for each live event ----
+/** The live events from /api/events, the one that ends first first (D-187). A scheduled event (not started) is not live.
+ *  A Hunt event has no slide: the Hunt slide is its card (one slide for one thing, condition 2). System kinds (launch_cards) show (condition 1). */
 export function liveEvents(list, now = Date.now()) {
-  return (Array.isArray(list) ? list : []).map(norm).filter((e) => e.k && Number.isFinite(e.start) && Number.isFinite(e.end) && isLive(e, now)).sort((a, b) => a.end - b.end || a.start - b.start);
+  return (Array.isArray(list) ? list : []).map(norm).filter((e) => e.k && e.k !== 'hunt' && Number.isFinite(e.start) && Number.isFinite(e.end) && isLive(e, now)).sort((a, b) => a.end - b.end || a.start - b.start);
 }
-const evRow = (e, now) => `<li class="u3-hm-evr" style="--k:${KINDS[e.k].color}">${icon(KINDS[e.k].icon)}<b class="u3-hm-evn">${breakable(esc(e.title))}</b><em class="u3-hm-evd">Ends in ${esc(left(e.end - now))}</em></li>`;
-/** The Events slide. list = liveEvents(...) (not empty). The "Also live" place is ALWAYS kept, empty with one live event (condition A, D-165). */
-export function eventsSlideHTML(list, now = Date.now()) {
-  const e = list[0]; const more = list.slice(1);
+/** Every live event, a Hunt event too: the count for the daily Dot (D-198, the Events page lists them all). */
+export const liveCount = (list, now = Date.now()) => (Array.isArray(list) ? list : []).map(norm).filter((e) => Number.isFinite(e.start) && Number.isFinite(e.end) && isLive(e, now)).length;
+/** The tagline limit (condition 3): the Banner field, 40 characters at most. */
+export const TAGLINE_MAX = 40;
+/** The one line (D-195): the tagline (theme.banner, at most 40 characters), else the first plain-word change, else none. Never the description.
+ *  A banner over 40 characters is not cut (no half words): the change line shows until an admin shortens it. */
+export function eventLine(e) {
+  const t = String(e.theme?.banner || '').trim();
+  if (t && [...t].length <= TAGLINE_MAX) return t;
+  return e.changes?.[0]?.text ? String(e.changes[0].text) : '';
+}
+/** The countdown (design.md 10.5): "2d 2h" from 24 hours, else the clock "02:24:22". */
+export function evCountdown(iso, now = Date.now()) {
+  const ms = new Date(iso).getTime() - now;
+  return ms >= 86400000 ? left(ms) : hms(iso, now);
+}
+/** One Events slide. e = one item of liveEvents(...). The picture fills the box of the Dungeon slide (D-194): the art with the theme color edge;
+ *  with no art the kind picture (the Dungeon kind: the Dungeon room, the others: the kind icon on a theme color glow). */
+export function eventSlideHTML(e, now = Date.now()) {
   const k = KINDS[e.k];
   const url = artURL(e);
-  const art2 = `<div class="u3-hm-sart"><div class="u3-hm-simg u3-hm-eimg" style="--t:${themeVar(e)}${url ? '' : `;--k:${k.color}`}" aria-hidden="true">`
-    + (url ? `<img src="${esc(url)}" alt="">` : `<span class="u3-hm-eico">${icon(k.icon, { size: '2xl' })}</span>`) + '</div></div>';
+  const cls = url ? 'has-art' : e.k === 'dungeon' ? 'is-room' : 'is-glow';
+  const art2 = `<div class="u3-hm-sart"><div class="u3-hm-simg u3-hm-eimg ${cls}" style="--t:${themeVar(e)};--k:${k.color}" aria-hidden="true">`
+    + (url ? `<img src="${esc(url)}" alt="">` : e.k === 'dungeon' ? '' : `<span class="u3-hm-eico">${icon(k.icon, { size: '2xl' })}</span>`) + '</div></div>';
+  const line = eventLine(e);
   const body = `<div class="u3-hm-i1"><span class="u3-hm-chip is-live"><i class="u3-hm-livedot"></i>Event · Live now</span>`
     + `<div class="u3-hm-strow"><h2 class="u3-hm-title" style="--k:${k.color}">${icon(k.icon, { size: 'lg' })}<span>${breakable(esc(e.title))}</span></h2></div></div>`
-    + `<div class="u3-hm-next u3-hm-stimer">${icon('timer')}<span>Ends in</span><b data-hms="${esc(e.ends_at)}">${hms(e.ends_at, now)}</b></div>`
-    + `<div class="u3-hm-rule"><span class="u3-hm-rl">What changes</span><b>${breakable(esc(e.changes.length ? e.changes.map((c) => c.text).join(', ') : (e.description || k.label)))}</b></div>`
-    + alsoLive(more, now) + alsoLine(more, now);
-  return slide('events', art2, body);
+    + (line ? `<p class="u3-hm-evline">${breakable(esc(line))}</p>` : '')
+    + `<div class="u3-hm-next u3-hm-stimer">${icon('timer')}<span>Ends in</span><b data-evend="${esc(e.ends_at)}">${evCountdown(e.ends_at, now)}</b>`
+    + button({ label: 'View event', icon: 'scroll-text', variant: 'primary', data: { evview: '1' } }) + '</div>';
+  return `<div class="u3-hm-sb is-events is-${e.k}" data-slide-open="events" data-ev-id="${esc(e.id)}">${art2}<div class="u3-hm-info u3-hm-sinfo">${body}</div></div>`;
 }
-/** The Also live box (rows: at most 2, then "+N more", D-187). With no other event it holds its place, hidden. */
-function alsoLive(more, now) {
-  if (!more.length) return `<div class="u3-hm-sboard is-held" aria-hidden="true"><span class="u3-hm-sbt">Also live</span><ul class="u3-hm-sbl"><li class="u3-hm-evr"><b class="u3-hm-evn">&nbsp;</b></li></ul></div>`;
-  const n = more.length - 2;
-  return `<button type="button" class="u3-hm-sboard" data-slide-open="events" aria-label="${esc(`Also live: ${more.map((e) => e.title).join(', ')}`)}"><span class="u3-hm-sbt">Also live</span>`
-    + `<ul class="u3-hm-sbl">${more.slice(0, 2).map((e) => evRow(e, now)).join('')}</ul>${n > 0 ? `<span class="u3-hm-evm">+${n} more</span>` : ''}</button>`;
-}
-/** The one line of the compact classes: "Also live: <next> · <ends in or +N more>". */
-function alsoLine(more, now) {
-  if (!more.length) return '<span class="u3-hm-top u3-hm-sline is-held" aria-hidden="true"><span class="u3-hm-topt">&nbsp;</span></span>';
-  const e = more[0];
-  return `<button type="button" class="u3-hm-top u3-hm-sline" data-slide-open="events" aria-label="${esc(`Also live: ${more.map((x) => x.title).join(', ')}`)}"><span class="u3-hm-topt"><span class="u3-hm-topl">Also live:</span> <b>${breakable(esc(e.title))}</b> <i>·</i> <em>${more.length > 1 ? `+${more.length - 1} more` : `Ends in ${esc(left(e.end - now))}`}</em></span></button>`;
+/** Keep an Events slide inside its tile (condition 4): the live steps (is-tight, is-tighter), no chip, then (the smallest phone)
+ *  no line, then no button. The button keeps its touch size (9.1): it never shrinks, it drops last. The picture, the title and the countdown always stay; the tap on the slide still opens the event. */
+export function fitEventSlide(sb, info) {
+  const steps = ['is-tight', 'is-tighter', 'is-nochip', 'is-noline', 'is-nobtn'];
+  sb.classList.remove(...steps);
+  const over = () => info.scrollHeight > info.clientHeight + 1 || info.scrollWidth > info.clientWidth + 1 || sb.scrollHeight > sb.clientHeight + 1 || sb.scrollWidth > sb.clientWidth + 1;
+  for (const c of steps) {
+    if (!over()) break;
+    sb.classList.add(c);
+  }
 }

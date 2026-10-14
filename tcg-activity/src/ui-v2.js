@@ -33,6 +33,7 @@ import * as hm3 from './ui3/home.js';
 import { boardRows, boardHTML } from './ui3/home-boss.js';
 import * as tn3 from './ui3/tiny.js';
 import * as hs3 from './ui3/home-slides.js';
+import { setEventsLive, eventsDotOn, markEventsSeen } from './ui3/events-dot.js';
 import * as vw3 from './ui3/voice.js';
 
 let ctx = null; // { api, apiPost, el, esc, cache, live, show, openViewer, RARITY_LABEL, ago, features, user, currentView, refreshOwned }
@@ -1196,7 +1197,8 @@ export async function renderHomeV2() {
   homeSlides.key = null;
   homeSlides.dungeon = dgd?.ok && !dgd.closed ? dgd : null;
   homeSlides.gauntlet = gad?.ok && !gad.closed ? gad : null;
-  homeSlides.events = evOn && Array.isArray(evd?.events) ? hs3.liveEvents(evd.events) : [];   // an error answer or none live = no slide (D-45)
+  homeSlides.events = evOn && Array.isArray(evd?.events) ? hs3.liveEvents(evd.events) : [];   // an error answer or none live = no slide (D-45); a Hunt event has none (D-197)
+  setEventsLive(evOn && Array.isArray(evd?.events) ? hs3.liveCount(evd.events) : 0);   // the daily Dot (D-198): flag on and at least one live event
   paintHero(hunt);
   paintVoice(); // the catalog is loaded now: the tiles can show card pictures
 }
@@ -1470,13 +1472,19 @@ function fitHomeV3() {
   run();
 }
 // UI-05: the hero is a carousel (Hunt, Dungeon, Gauntlet) when a mode is open; the Hunt slide is the UI-03 / UI-04 hero below.
-const slideOrder = () => hs3.slideOrder({ huntLive: !!homeSlides.hunt?.h, dungeon: !!homeSlides.dungeon, gauntlet: !!homeSlides.gauntlet, events: homeSlides.events.length > 0 });
+const slideOrder = () => hs3.slideOrder({ huntLive: !!homeSlides.hunt?.h, dungeon: !!homeSlides.dungeon, gauntlet: !!homeSlides.gauntlet, events: homeSlides.events });
 function tickSlides() {
   document.querySelectorAll('[data-hms]').forEach((n) => { n.textContent = hs3.hms(n.dataset.hms); });
   document.querySelectorAll('[data-dhm]').forEach((n) => { n.textContent = hs3.dhm(n.dataset.dhm); });
+  document.querySelectorAll('[data-evend]').forEach((n) => { n.textContent = hs3.evCountdown(n.dataset.evend); });
 }
-function openMode(kind) {
-  if (kind === 'events') { document.getElementById('eventsBtn')?.click(); return; }   // the Events slide opens the UI-62 Events page
+function openMode(kind, evId) {
+  if (kind === 'events') {   // an Events slide opens the UI-62 Events page on that event (the hidden #eventsBtn reads data-ev)
+    const b = document.getElementById('eventsBtn');
+    if (b && evId) b.dataset.ev = String(evId);
+    b?.click();
+    return;
+  }
   // the Adventure button opens the last tab (ui-v2-dungeon.js initDungeon): set it, then press it
   try { localStorage.setItem('lp.adventure.tab', kind); } catch { /* storage off */ }
   document.querySelector('#dock .dk[data-view="battling"]')?.click();
@@ -1492,15 +1500,17 @@ function paintHeroV3(box, d, h) {
   if (!order.includes(homeSlides.key)) homeSlides.key = order[0];
   const key = homeSlides.key;
   if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
-  const html = key === 'dungeon' ? hs3.dungeonSlideHTML(homeSlides.dungeon) : key === 'gauntlet' ? hs3.gauntletSlideHTML(homeSlides.gauntlet) : key === 'events' ? hs3.eventsSlideHTML(homeSlides.events) : '';
-  box.innerHTML = hs3.carouselHTML(order, key, html, { dungeon: hs3.slideNews('dungeon', homeSlides.dungeon) });
+  const html = key === 'dungeon' ? hs3.dungeonSlideHTML(homeSlides.dungeon) : key === 'gauntlet' ? hs3.gauntletSlideHTML(homeSlides.gauntlet) : hs3.isEvKey(key) ? hs3.eventSlideHTML(homeSlides.events.find((e) => hs3.evKey(e) === key)) : '';
+  if (hs3.isEvKey(key)) markEventsSeen();   // the member sees an event slide: the daily Dot goes (D-198)
+  const titles = Object.fromEntries(homeSlides.events.map((e) => [hs3.evKey(e), e.title]));
+  box.innerHTML = hs3.carouselHTML(order, key, html, { dungeon: hs3.slideNews('dungeon', homeSlides.dungeon) }, { titles, eventsDot: eventsDotOn() });
   box.onclick = (e) => {
     const go = e.target.closest('[data-slide-go]');
     if (go) { goSlide(box, go.dataset.slideGo); return; }
     const dir = e.target.closest('[data-slidedir]');
     if (dir) { goSlide(box, hs3.slideStep(order, key, dir.dataset.slidedir === 'prev' ? -1 : 1)); return; }
     const open = e.target.closest('[data-slide-open]');
-    if (open) openMode(open.dataset.slideOpen);
+    if (open) openMode(open.dataset.slideOpen, open.dataset.evId);
   };
   let x0 = null;   // a swipe on the slide moves one slide (no automatic sliding, D-45)
   box.ontouchstart = (e) => { x0 = e.touches[0]?.clientX ?? null; };

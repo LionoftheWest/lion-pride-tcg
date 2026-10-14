@@ -17,7 +17,7 @@
 //   ci_frames=sets   the set holo frames (UI-13 D-191): /api/catalog sets carry pack_color (S1 #ff8d4d, S2 #3366cc), the signed-in member wears holo:S1, a profile and
 //                    some Leaderboard rows wear holo:S2 / holo:S1 / holo, and the gallery lists the Origins and Double Team frames (derived below)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
-//   ci_events=on|four|one|empty|error   the player Events page (UI-62): the flag on, and /api/events answers fixture events (derived below)
+//   ci_events=on|four|one|two|five|hunt|system|empty|error   the player Events page (UI-62) and the Home Events slides (UI-05): the flag on, and /api/events answers fixture events (derived below)
 //   ci_report=on     /api/flags answers reports: true (the Feedback window, UI-40); the send stays blocked (403), so a send shows the error state
 //   ci_data=long    every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
@@ -473,12 +473,23 @@ function derivedEvents(mode) {
   const list = [
     evRow(101, 'trigger', 'Community Week', evAt(10, 1), evAt(10, 8), [], { name: 'Community', color: '#5BE38A' }, 'live', 'Invite a friend and both of you earn more.'),
     evRow(102, 'hunt', 'The Ranked Nightshade', evAt(10, 1, 15), evAt(10, 5, 17), [], { color: '#B45AD8' }, 'live'),
-    evRow('m1', 'modifier', 'Double Pull Weekend', evAt(10, 2), evAt(10, 5), [{ key: 'pull_rare_mult', label: 'Rare pull odds', text: '2x rare pull odds' }], { name: 'Gold Rush', color: '#FF9A3C', art: '/pack_still.png' }, 'live'),
+    evRow('m1', 'modifier', 'Double Pull Weekend', evAt(10, 2), evAt(10, 5), [{ key: 'pull_rare_mult', label: 'Rare pull odds', text: '2x rare pull odds' }], { name: 'Gold Rush', color: '#FF9A3C', art: '/pack_still.png', banner: '2x rare pulls all weekend' }, 'live'),
     weekly(103, 8), weekly(104, 15), weekly(105, 22), weekly(106, 29),
     evRow(107, 'modifier', 'Dungeon Rush', evAt(10, 17), evAt(10, 19), [{ key: 'dungeon_runs_per_day', label: 'Dungeon runs a day', text: 'Dungeon runs a day: up to 2' }], { color: '#5B8CFF', art: '/dungeon/room.webp' }),
   ];
   if (mode === 'four') list.push(evRow(108, 'modifier', 'Gauntlet Encore', evAt(10, 2), evAt(10, 5), [{ key: 'gauntlet_runs_per_day', label: 'Gauntlet runs a day', text: 'Gauntlet runs a day: up to 2' }], { color: '#FF5A5A' }, 'live'));
-  if (mode === 'one') return { events: list.filter((e) => e.id === 'm1') };   // UI-05: one live event (the Events slide holds its Also live place)
+  // UI-05 review-6: one slide for each live event (D-197), a Hunt event has none, a system kind shows. one = Double Pull Weekend (art, tagline);
+  // two = + Community Week (no art, tagline "Invite a friend, earn more"); five = + Gauntlet Encore (no art, no tagline: the change line), Dungeon Rush
+  // (art, no tagline) and the system event (title, countdown only), always with the live Hunt event; hunt = the live Hunt event alone; system = the system event alone.
+  const community = list.find((e) => e.id === 101); community.theme = { ...community.theme, banner: 'Invite a friend, earn more' };
+  const gauntlet = evRow(108, 'modifier', 'Gauntlet Encore', evAt(10, 2), evAt(10, 7), [{ key: 'gauntlet_runs_per_day', label: 'Gauntlet runs a day', text: 'Gauntlet runs a day: up to 2' }], { color: '#FF5A5A' }, 'live');
+  const rush = evRow(107, 'modifier', 'Dungeon Rush', evAt(10, 3), evAt(10, 9), [{ key: 'dungeon_runs_per_day', label: 'Dungeon runs a day', text: 'Dungeon runs a day: up to 2' }], { color: '#5B8CFF', art: '/dungeon/room.webp' }, 'live');
+  const system = evRow(109, 'launch_cards', 'Launch Day event cards', evAt(10, 1), evAt(10, 10), [], { color: '#FFD84D' }, 'live', 'Internal: cards.set_id S2, drop_rule launch_cards. Not for players.');
+  if (mode === 'one') return { events: list.filter((e) => e.id === 'm1') };
+  if (mode === 'two') return { events: list.filter((e) => e.id === 'm1' || e.id === 101) };
+  if (mode === 'five') return { events: [list.find((e) => e.id === 'm1'), community, gauntlet, rush, system, list.find((e) => e.id === 102)] };
+  if (mode === 'hunt') return { events: list.filter((e) => e.id === 102) };
+  if (mode === 'system') return { events: [system] };
   return { events: list };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/flags' && !!c.ci_events && body, make: (body) => ({ ...body, events: true }) });
