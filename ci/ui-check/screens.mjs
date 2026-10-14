@@ -252,6 +252,12 @@ export const SCREENS = {
   'leaderboard-hunt-last-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="hunt"]'], ['wait', 2], ['js', '#u3LbHost [data-lb-hunt] [data-seg="last"]'], ['wait', 2]] },
   'leaderboard-dungeon-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="dungeon"]'], ['wait', 2]] },
   'leaderboard-gauntlet-empty': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'empty', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '#u3LbHost [data-tab="gauntlet"]'], ['wait', 2]] },
+  // The player Events page (UI-62, F-1 item 10) opens over Home from the Menu Events tile (flag events: cookie ci_events, serve.mjs): a defect outside the window belongs to Home ('under'). tiny has no menu (D-06).
+  'events':              { safe: true, id: 'UI-62', under: 'UI-03', events: 'on', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="events"]'], ['wait', 2]] },
+  'events-detail':       { safe: true, id: 'UI-62', under: 'UI-03', events: 'on', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="events"]'], ['wait', 2], ['js', '.ev-row[data-ev="m1"]', [['js', '.ev-bar[data-ev="m1"]']]], ['wait', 1.5]] },
+  'events-four':         { safe: true, id: 'UI-62', under: 'UI-03', events: 'four', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="events"]'], ['wait', 2]] },
+  'events-empty':        { id: 'UI-62', under: 'UI-03', events: 'empty', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="events"]'], ['wait', 2]] },
+  'events-error':        { id: 'UI-62', under: 'UI-03', events: 'error', notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="events"]'], ['wait', 2]] },
   'profile':             { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '.u3-lb-row[data-member]:not(.is-me)'], ['wait', 3]] },   // lane 1 v3 Leaderboard rows (UI-66)
   'style-editor':        { id: 'UI-15', safe: true, notOn: ['tiny'], steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5]] },
   // UI-15 opens the Card picker for the Spotlight (D-80 item 16): a defect inside the picker window belongs to UI-64
@@ -321,6 +327,8 @@ export function ownerOf(screen, where) {
   if (/\.u3-tn\b|\.u3-tn[-_]/.test(where)) return 'UI-59';   // the small live view (tiny class)
   if (/#u3Menu(Host)?[a-z]*\b|\.u3-menu|\.u3-mtile/.test(where)) return 'UI-60';
   if (/#u3OpenHost[a-z]*\b|\.u3-open\b|\.u3-set\b|\.u3-count\b/.test(where)) return 'UI-33';
+  if (/^events/.test(screen) && /^text:/.test(where)) return 'UI-62';   // a name that the Events page shows on one size class only (the bars: thin on phones, D-184)
+  if (/#u3Ev(Host)?[a-z]*\b|\.ev-[a-z]/.test(where)) return 'UI-62';   // the player Events page (window, grid, bars, day list, details)
   if (/#u3Lb(Host)?[a-z]*\b|\.u3-lb\b|\.u3-lb[-_]|\.u3-lbhost\b/.test(where)) return 'UI-66';
   // The card details (the v2 #viewer) opened from a Card picker: UI-64 owns them there (only the picker detail specs), the screen under the scrim does not.
   // Other screens keep their owner (collection-detail: UI-08 opens the viewer at some sizes and its side panel at others).
