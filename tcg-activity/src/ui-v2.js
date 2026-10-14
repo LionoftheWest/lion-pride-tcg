@@ -12,7 +12,7 @@ import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { flairHTML } from './flair.js';
 import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
-import { measure, rewardOf, rewardLabel, FRAMES } from './achievements.js';
+import { measure, rewardOf, rewardLabel, FRAMES, frameBase, setRewardsFrom } from './achievements.js';
 import { elIcon } from './element-icons.js';
 import { modelFor as modelKey } from './boss-models.js';
 import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
@@ -51,7 +51,7 @@ const fmt = (n) => Number(n || 0).toLocaleString();
 /** A round Discord avatar: the picture from /api/avatar, the initial when there is none. */
 export function avatarHTML(id, name, cls = '', frame = null) {
   const img = id ? `<img src="/api/avatar/${esc(id)}" alt="" data-err="remove">` : '';
-  const f = frame && FRAMES[frame] ? ` frame-${frame}` : '';
+  const f = frame && FRAMES[frameBase(frame)] ? ` frame-${frameBase(frame)}` : '';
   return `<span class="v2-avatar ${cls}${f}"><span>${initial(name)}</span>${img}</span>`;
 }
 /** A title tag (an achievement reward) for a name. */
@@ -91,7 +91,7 @@ async function loadMyProfile(force) {
 export async function ensureCatalog() {
   if (ctx.cache.catalog) return;
   // A failed load stays null (every reader uses catalog?.cards || []), so the next screen asks again.
-  try { ctx.cache.catalog = await ctx.apiData('/api/catalog'); } catch { /* not cached */ }
+  try { ctx.cache.catalog = await ctx.apiData('/api/catalog'); setRewardsFrom(ctx.cache.catalog?.sets); } catch { /* not cached */ }
 }
 
 // One card cell: the card image exactly as it is printed (500x700, its own frame),
@@ -1644,7 +1644,7 @@ function paintSpotEditor() {
         ${lockedTitles.length ? `<optgroup label="Locked">${lockedTitles.map((t) => `<option disabled>🔒 ${esc(t)} · ${esc(unlockBy('title', t).join(' or '))}</option>`).join('')}</optgroup>` : ''}
       </select>
       <div class="side-h">Frame</div>
-      <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, `<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, sp.frame === f)).join('')}${lockedFrames.map((f) => locked(`<i class="se-ring frame-${f}"></i>${esc(FRAMES[f])}`, unlockBy('frame', f))).join('')}</div>
+      <div class="f-chips">${pill('frame', '', 'None', !sp.frame)}${frames.map((f) => pill('frame', f, `<i class="se-ring frame-${frameBase(f)}"></i>${esc(FRAMES[frameBase(f)])}`, sp.frame === f)).join('')}${lockedFrames.map((f) => locked(`<i class="se-ring frame-${frameBase(f)}"></i>${esc(FRAMES[frameBase(f)])}`, unlockBy('frame', f))).join('')}</div>
       <div class="se-foot"><span class="tr-msg" id="seMsg"></span><button class="v2-btn gold" id="seSave">Save</button></div>
     </aside>
     <section class="se-main">
@@ -1687,7 +1687,7 @@ function paintSpotEditor() {
 // The titles and frames the member owns are the ones the server sends (GET /api/profile: titles, frames, from
 // achievement_claims: the same list POST /api/cosmetics accepts); the locked ones show what exists and how to get it.
 const TIER_FRAME = { diamond: 'Diamond frame', mythic: 'Obsidian frame' };   // the tier frames 'diamond:<track>', 'mythic:<track>' (D-74)
-const frameLabel = (f) => FRAMES[f] || TIER_FRAME[String(f).split(':')[0]] || String(f);
+const frameLabel = (f) => FRAMES[frameBase(f)] || TIER_FRAME[String(f).split(':')[0]] || String(f);
 function styleLists() {
   const achs = measure(mergedCards(), myProfile?.stats, relSets());
   const claimed = achs.filter((a) => claimedSet().has(a.key));

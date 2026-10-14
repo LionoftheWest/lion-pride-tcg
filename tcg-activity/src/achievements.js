@@ -115,13 +115,13 @@ export const BASE_ACHIEVEMENTS = [
 // Own every base (normal) card of the set (Nathan, 2026-10-03: no IR, SR, Full Art, Gold or Event card), by cards.set_id.
 // The KEY is what a member claimed and was paid under: the set S1 keeps the old key 's1' (claims already exist), every other
 // set is 'set:<id>'. The NAME is the set name from card_sets (GET /api/catalog sets). A set that is not pullable has no
-// achievement; it appears by itself when the set becomes pullable. The reward is NOT here: see REWARDS / balance below.
+// achievement; it appears by itself when the set becomes pullable. The reward is NOT here: see rewardOf / balance below.
 export const setKey = (id) => (id === 'S1' ? 's1' : `set:${id}`);
 export const isSetKey = (key) => key === 's1' || String(key).startsWith('set:');
 // When the sets could not be read (no answer yet), the one set that members already claimed stays: it keeps its key.
 const FALLBACK_SETS = [{ id: 'S1', name: 'Origins' }];
 export const setAchievement = (s) => ({
-  key: setKey(s.id), group: 'Collection', icon: '🏆', name: `${s.name} Set Complete`, desc: `Own every ${s.name} base card`,
+  key: setKey(s.id), setId: s.id, setName: s.name, group: 'Collection', icon: '🏆', name: `${s.name} Set Complete`, desc: `Own every ${s.name} base card`,
   rule: (cards) => { const set = cards.filter((c) => c.set_id === s.id && c.rarity === 'normal'); return { have: owned(set), need: set.length, set }; },
 });
 /** The list for the released sets (the rows of card_sets where pullable, in order). The set achievements follow Archivist. */
@@ -145,7 +145,7 @@ export function measure(cards, stats, sets) {
 export const FRAMES = { silver: 'Silver frame', gold: 'Gold frame', holo: 'Holo frame' };
 export const REWARDS = {
   first: { packs: 1 }, own10: { packs: 1 }, own25: { packs: 2 }, own50: { packs: 2, frame: 'silver' },
-  own100: { packs: 3, title: 'Archivist', frame: 'gold' }, s1: { packs: 5, title: 'Season 1 Champion', frame: 'holo' },
+  own100: { packs: 3, title: 'Archivist', frame: 'gold' },
   ir1: { packs: 1 }, sr1: { packs: 1 }, fa1: { packs: 1 }, g1: { packs: 1 },
   ir10: { packs: 2, title: 'Rare Hunter' }, sr5: { packs: 3, title: 'Secret Keeper' }, fa5: { packs: 3, title: 'Full House' },
   g5: { packs: 3, title: 'Golden Touch', frame: 'gold' },
@@ -163,10 +163,35 @@ export const REWARDS = {
   slay1: { packs: 2 }, slay3: { packs: 3, title: 'Boss Breaker', frame: 'silver' },
   boon1: { packs: 1 }, prank5: { packs: 2, title: 'Prankster' }, trade1: { packs: 1, title: 'Trader' },
 };
-// A set achievement of a set after Season 1 has NO reward until Nathan decides (D-190 open question): {} pays nothing.
-export const rewardOf = (key) => REWARDS[key] || (isSetKey(key) ? {} : { packs: 1 });
+// A set achievement (s1, set:<id>) has NO reward here: the server sends it with each released set (GET /api/catalog sets[].reward,
+// from balance achievement_rewards: badges.s1 and the rule set_complete, D-191 / D-192). setRewardsFrom keeps that answer.
+// Until the answer is there, a set achievement shows no reward and the server pays only what balance says.
+let SET_REWARDS = {};
+export function setRewardsFrom(sets) {
+  SET_REWARDS = {};
+  for (const s of Array.isArray(sets) ? sets : []) if (s && s.reward && typeof s.reward === 'object') SET_REWARDS[setKey(s.id)] = s.reward;
+}
+export const rewardOf = (key) => (isSetKey(key) ? SET_REWARDS[key] || {} : REWARDS[key] || { packs: 1 });
+/**
+ * The reward of one set, from the balance value achievement_rewards (the server uses it; the SQL claim_achievement does the same):
+ * a row of its own in badges (s1, or set:<id>) wins, else the rule set_complete with {name} and {id} filled in. No rule: {} (fail closed).
+ */
+export function setRewardFor(rewards, set) {
+  const own = rewards?.badges?.[setKey(set.id)];
+  if (own) return own;
+  const c = rewards?.set_complete;
+  if (!c || set.id === 'S1') return {};
+  const fill = (t) => (typeof t === 'string' ? t.split('{name}').join(set.name).split('{id}').join(set.id) : undefined);
+  const out = {};
+  if (c.packs) out.packs = c.packs;
+  if (c.title) out.title = fill(c.title);
+  if (c.frame) out.frame = fill(c.frame);
+  return out;
+}
+/** A frame key 'holo:<set id>' (the set frames, D-191) has no design yet: it takes the look of its base frame 'holo'. */
+export const frameBase = (f) => String(f || '').split(':')[0];
 export function rewardLabel(r) {
-  return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.title ? `"${r.title}" title` : null, r.frame ? FRAMES[r.frame] : null].filter(Boolean).join(' + ');
+  return [r.packs ? `${r.packs} pack${r.packs === 1 ? '' : 's'}` : null, r.title ? `"${r.title}" title` : null, r.frame ? FRAMES[frameBase(r.frame)] : null].filter(Boolean).join(' + ');
 }
 
 // The answer of GET /api/achievements: the view of the SQL plus the tier reward numbers from the balance table (key

@@ -45,7 +45,7 @@ test('mini grid: whole rows of card-mini or wider cards (C14)', () => {
 });
 
 const base = {
-  p: { id: '1' }, self: false, lay: 'col3', all: false, effects: true, avatar: '<span class="v2-avatar"></span>', name: 'Member B', title: 'Season 1 Champion',
+  p: { id: '1' }, self: false, lay: 'col3', all: false, effects: true, avatar: '<span class="v2-avatar"></span>', name: 'Member B', title: 'Origins Champion',
   pres: null, stats: [['1/2', 'Cards'], ['—', 'Hunt rank'], ['3/50', 'Achievements'], ['9', 'Packs opened'], ['10', 'Power'], ['0', 'Full Arts']],
   done: [{ key: 'a', icon: 'x', name: 'A' }], total: 50, spot: [], season: { name: 'Season 1', owned: 1, total: 2, pct: 50 },
   rarities: [{ r: 'normal', label: 'Normal', n: 1 }], wish: true, huntHTML: huntHTML(null),

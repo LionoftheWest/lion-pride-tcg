@@ -24,7 +24,7 @@ test('withRewards gives rewards: null for a missing or malformed balance value',
 });
 
 // ---- "<set name> Set Complete" (D-190) ----
-import { achievementList, measure, setKey, rewardOf, BASE_ACHIEVEMENTS } from './achievements.js';
+import { achievementList, measure, setKey, rewardOf, BASE_ACHIEVEMENTS, setRewardFor, setRewardsFrom, frameBase, rewardLabel, REWARDS } from './achievements.js';
 
 const S1 = { id: 'S1', name: 'Origins' };
 const S2 = { id: 'S2', name: 'Double Team' };
@@ -67,10 +67,29 @@ test('the rule: every base (normal) card of the set by set_id; other rarities an
   assert.equal(find(season, 's1').done, true);
 });
 
-test('the reward: S1 unchanged, a later set has none (an open question for Nathan), the other keys unchanged', () => {
-  assert.deepEqual(rewardOf('s1'), { packs: 5, title: 'Season 1 Champion', frame: 'holo' });
+const RW = { badges: { s1: { packs: 5, title: 'Origins Champion', frame: 'holo' } }, set_complete: { packs: 5, title: '{name} Champion', frame: 'holo:{id}' } };
+test('the reward of a set: S1 from its own row, a later set from the rule set_complete (D-191, D-192), no rule = nothing', () => {
+  assert.deepEqual(setRewardFor(RW, { id: 'S1', name: 'Origins' }), { packs: 5, title: 'Origins Champion', frame: 'holo' });
+  assert.deepEqual(setRewardFor(RW, { id: 'S2', name: 'Double Team' }), { packs: 5, title: 'Double Team Champion', frame: 'holo:S2' });
+  assert.deepEqual(setRewardFor({ ...RW, badges: { ...RW.badges, 'set:S2': { packs: 9 } } }, { id: 'S2', name: 'Double Team' }), { packs: 9 }, 'a row of its own wins');
+  assert.deepEqual(setRewardFor({ badges: {} }, { id: 'S2', name: 'Double Team' }), {});
+  assert.deepEqual(setRewardFor(null, { id: 'S1', name: 'Origins' }), {});
+});
+test('the client holds no set reward: rewardOf reads what the server sent (setRewardsFrom), the other keys are unchanged', () => {
+  setRewardsFrom([]);
+  assert.deepEqual(rewardOf('s1'), {}, 'nothing sent: nothing shown');
   assert.deepEqual(rewardOf('set:S2'), {});
+  setRewardsFrom([{ id: 'S1', name: 'Origins', reward: RW.badges.s1 }, { id: 'S2', name: 'Double Team', reward: setRewardFor(RW, { id: 'S2', name: 'Double Team' }) }]);
+  assert.deepEqual(rewardOf('s1'), { packs: 5, title: 'Origins Champion', frame: 'holo' });
+  assert.deepEqual(rewardOf('set:S2'), { packs: 5, title: 'Double Team Champion', frame: 'holo:S2' });
   assert.deepEqual(rewardOf('first'), { packs: 1 });
+  assert.equal(REWARDS.s1, undefined);
+  setRewardsFrom([]);
+});
+test('a set frame key falls back to the holo look and label (no design yet)', () => {
+  assert.equal(frameBase('holo:S2'), 'holo');
+  assert.equal(frameBase('holo'), 'holo');
+  assert.equal(rewardLabel({ packs: 5, title: 'Double Team Champion', frame: 'holo:S2' }), '5 packs + "Double Team Champion" title + Holo frame');
 });
 
 test('without a set list the one claimed set keeps its key (no answer yet, never a lost achievement)', () => {

@@ -39,9 +39,9 @@ console.log(bad ? `${bad} FAILED` : `PASS ${ACHIEVEMENTS.length} achievements, a
 if (bad) process.exit(1);
 
 // Every achievement has a reward, and no reward key is unknown.
-const { REWARDS } = await import('../src/achievements.js');
+const { REWARDS, isSetKey } = await import('../src/achievements.js');   // the set achievements (s1, set:<id>) are paid from balance, not from here
 let rbad = 0;
-for (const a of ACHIEVEMENTS) if (!REWARDS[a.key]) { console.log('FAIL no reward for', a.key); rbad++; }
+for (const a of ACHIEVEMENTS) if (!REWARDS[a.key] && !isSetKey(a.key)) { console.log('FAIL no reward for', a.key); rbad++; }
 for (const k of Object.keys(REWARDS)) if (!ACHIEVEMENTS.some((a) => a.key === k)) { console.log('FAIL reward for unknown', k); rbad++; }
 const total = Object.values(REWARDS).reduce((t, r) => t + (r.packs || 0), 0);
 console.log(rbad ? `${rbad} REWARD FAILS` : `PASS rewards: ${Object.keys(REWARDS).length}, ${total} packs in total`);

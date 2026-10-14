@@ -14,7 +14,7 @@
  */
 import 'dotenv/config';
 import { createTradeRequestProbe } from './src/trade-request-probe.js';
-import { measure as measureAchievements, achievementList, LEDGER, withRewards } from './src/achievements.js';
+import { measure as measureAchievements, achievementList, LEDGER, withRewards, setRewardFor, isSetKey } from './src/achievements.js';
 // The released (pullable) sets: each has a "<set name> Set Complete" achievement (src/achievements.js, D-190). card_sets changes
 // only when the owner edits it: a 60 s cache. A failed read keeps the last list (none yet: the achievements fall back to S1 only).
 let releasedSetsCache = null; // { at, sets: [{ id, name }] }
@@ -1260,7 +1260,13 @@ async function measureFor(id) {
 // The reward of a one-time achievement is balance achievement_rewards.badges (balance_economy.sql). The SQL
 // decides and pays it: the server sends only the key. The answer names what was paid (or, when nothing was
 // paid, the reward from the same table through the balance cache).
-const badgeReward = (key) => bal().achievement_rewards?.badges?.[key] || {};
+// A set achievement without a row of its own is paid by the rule balance achievement_rewards.set_complete (d191_set_rewards.sql).
+const badgeReward = (key) => {
+  const r = bal().achievement_rewards;
+  if (r?.badges?.[key]) return r.badges[key];
+  const set = isSetKey(key) ? (releasedSetsCache?.sets || []).find((s) => (s.id === 'S1' ? 's1' : `set:${s.id}`) === key) : null;
+  return set ? setRewardFor(r, set) : {};
+};
 const paidReward = (d) => ({ packs: Number(d.packs) || 0, ...(d.title ? { title: d.title } : {}), ...(d.frame ? { frame: d.frame } : {}) });
 async function claimOne(id, key) {
   const { data, error } = await supabase.rpc('claim_achievement', { p_player: id, p_key: key });
@@ -1316,6 +1322,7 @@ app.get('/api/achievements/gallery', async (req, res) => {
   const owned = data?.owned || { titles: {}, frames: {} };
   const seen = new Set(items.map((i) => `${i.kind}:${i.value}`));
   const retired = await retiredKeys();
+  await getReleasedSets();
   for (const a of achievementList(await getReleasedSets())) {
     const r = badgeReward(a.key);
     for (const [kind, value] of [['title', r.title], ['frame', r.frame]]) {
@@ -1540,7 +1547,7 @@ app.get('/api/catalog', async (req, res) => {
     owned = new Set((ownedRows || []).map((r) => r.card_id));
     ownedCache.set(me.id, { at: Date.now(), owned });
   }
-  res.json({ cards: base.map((c) => ({ ...c, owned: owned.has(c.id) })), sets: (await getReleasedSets()) || [] });
+  res.json({ cards: base.map((c) => ({ ...c, owned: owned.has(c.id) })), sets: ((await getReleasedSets()) || []).map((s) => ({ ...s, reward: setRewardFor(bal().achievement_rewards, s) })) });
 });
 
 // Community Pulls: the newest cards anyone obtained for the first time, across

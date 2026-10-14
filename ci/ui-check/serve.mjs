@@ -75,7 +75,7 @@ function derivedBoard(p, mode, me, last = false) {
 }
 const TITLE = 'the Unbreakable Champion of the Realm';
 function withTitles(p, body, FIX) {
-  if (p === '/api/leaderboard/v2' && Array.isArray(body?.rows)) return { ...body, rows: body.rows.map((r) => ({ ...r, title: 'Season 1 Champion' })) };
+  if (p === '/api/leaderboard/v2' && Array.isArray(body?.rows)) return { ...body, rows: body.rows.map((r) => ({ ...r, title: 'Origins Champion' })) };
   if (p === '/api/effects/badges') {
     const ids = [...(FIX.routes['/api/leaderboard/v2']?.body?.rows || []).map((r) => r.id), ...Array.from({ length: 40 }, (_, i) => String(100000000000000100n + BigInt(i)))];
     // the signed-in member is left out: Home (behind the window) shows that name too, and its own layout is not under test here
@@ -447,7 +447,7 @@ DERIVED.push({ when: (p, c, body) => p === '/api/flags' && c.ci_report === 'on' 
 // D-190 / F-2: the recorded catalog (2026-10-05) is older than the set fields. The live /api/catalog gives each card its set_id and the released
 // sets (id, name: the "<set name> Set Complete" achievement). The recorded /api/sets says that every card is in the one set S1 (cards = the whole catalog).
 DERIVED.push({ when: (p, c, body) => p === '/api/catalog' && Array.isArray(body?.cards) && !body.sets, make: (body) => ({
-  ...body, cards: body.cards.map((x) => ({ set_id: 'S1', ...x })), sets: (FIX.routes['/api/sets']?.body?.sets || []).map((s) => ({ id: s.id, name: s.name })) }) });
+  ...body, cards: body.cards.map((x) => ({ set_id: 'S1', ...x })), sets: (FIX.routes['/api/sets']?.body?.sets || []).map((s) => ({ id: s.id, name: s.name, ...(s.id === 'S1' ? { reward: { packs: 5, title: 'Origins Champion', frame: 'holo' } } : {}) })) }) });   // D-191: the server sends each set's reward (balance achievement_rewards)
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
