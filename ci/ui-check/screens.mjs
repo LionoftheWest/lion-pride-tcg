@@ -32,6 +32,10 @@ export const SCREENS = {
   'home-dungeon-top':    { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', dungeon: 'top', notOn: ['tiny'], steps: [] },
   'home-gauntlet':       { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-slide-go="gauntlet"]'], ['wait', 0.5]] },
   'home-gauntlet-top':   { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', dungeon: 'top', notOn: ['tiny'], steps: [['js', '[data-slide-go="gauntlet"]'], ['wait', 0.5]] },
+  // UI-05 Events slide (flag events: cookie ci_events, serve.mjs). The last slide (D-188): three live events (the one that ends first + 2 Also live rows), one live event (the held Also live place, condition A), none (no slide, D-45).
+  'home-events':         { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'on', notOn: ['tiny'], steps: [['js', '[data-slide-go="events"]'], ['wait', 0.5]] },
+  'home-events-one':     { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'one', notOn: ['tiny'], steps: [['js', '[data-slide-go="events"]'], ['wait', 0.5]] },
+  'home-events-none':    { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', events: 'empty', notOn: ['tiny'], steps: [['wait', 0.5]] },
   'home-hunt-rest':      { id: 'UI-05', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-slide-go="hunt"]'], ['wait', 0.5]] },
   'home-voice-all':      { id: 'UI-06', under: 'UI-03', long: true, safe: true, home: 'busy', notOn: ['tiny'], steps: [['js', '[data-voice-all]', [['wait', 0]]], ['wait', 1]] },
   'collection':          { id: 'UI-07', long: true, steps: [['dock', 'collection']], input: '#colSearch' },
@@ -348,7 +352,7 @@ export function ownerOf(screen, where) {
   if (screen === 'collection-viewer' && /#viewer[a-z-]*\b|\.viewer-(info|stage|nav|win)\b|#v-[a-z-]+|#card3d/.test(where)) return 'UI-09';
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';
   if (/#u3VoiceWin[a-z]*\b|\.u3-vw\b|\.u3-vw[-_]|\.u3-hm-more\b/.test(where)) return 'UI-06';   // the Live in voice window and its "+N" button
-  if (/\.u3-hm-(car|ctl|slide|dots|pip|labels|sb|sart|sinfo|strow|date|stimer|rule|rl|sline|sboard|sbh|sbt|sbl|sbr|sbk|sbn|sbd|sbe|sbc)\b/.test(where)) return 'UI-05';   // the carousel: the slides, the control
+  if (/\.u3-hm-(car|ctl|slide|dots|pip|labels|sb|sart|sinfo|strow|date|stimer|rule|rl|sline|sboard|sbh|sbt|sbl|sbr|sbk|sbn|sbd|sbe|sbc|evr|evn|evd|evm|eimg|eico)\b/.test(where)) return 'UI-05';   // the carousel: the slides, the control
   if (/\.u3-hm-board\b|\.u3-hm-br[a-z]*\b/.test(where)) return 'UI-04';   // the Top 3 board in the Home hero (D-58)   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   if (/#u3TradeWin[a-z]*\b|\.u3-tw\b|\.u3-tw[-_]/.test(where)) return 'UI-63';   // the Trade window; its card tiles are UI-64 classes inside .u3-tw__grid
   // The Card picker (UI-64) opened from the Boons tab (UI-27): the window of that spec is UI-27's (its head, kind switch and foot are the Boons form).
