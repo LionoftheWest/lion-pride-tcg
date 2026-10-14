@@ -254,7 +254,7 @@ F-3: the trigger of elements: refuses a word that another element has, and sets 
 - Returns: `jsonb`
 - Security definer: no
 
-F-3: the elements as jsonb for the server route GET /api/elements.
+[combat] The one list of elements for GET /api/elements: key, name, ord, aliases, glyph, color, color2, weak_to (the primary counter), dungeon_foe, and the approved counter pairs: beats (the keys this element beats) and beaten_by (the keys that beat it), both in the order of elements.ord. A pair with proposal = true is not returned. The client never works the pairs out.
 
 <a id="fn-pack-color-ok-text"></a>
 

@@ -873,7 +873,7 @@ Shape: `object { atk_growth: number, budget: number, cost: object { event: numbe
   "squad": 5,
   "budget": 12,
   "floors": 30,
-  "early_hp": 1,
+  "early_hp": 0.5,
   "foe_mult": {
     "elite": {
       "hp": 1.9,
@@ -896,9 +896,9 @@ Shape: `object { atk_growth: number, budget: number, cost: object { event: numbe
       "atk": 1.45
     }
   },
-  "early_atk": 1,
+  "early_atk": 0.5,
   "fight_min": 1,
-  "horde_min": 4,
+  "horde_min": 3,
   "hp_growth": 1.42,
   "rest_heal": 0.4,
   "round_cap": 40,
@@ -907,7 +907,7 @@ Shape: `object { atk_growth: number, budget: number, cost: object { event: numbe
   "room_growth": 0.06,
   "early_floors": 1,
   "fight_spread": 3,
-  "foe_heal_cap": 0,
+  "foe_heal_cap": 0.5,
   "horde_spread": 2,
   "room_weights": {
     "rest": 8,

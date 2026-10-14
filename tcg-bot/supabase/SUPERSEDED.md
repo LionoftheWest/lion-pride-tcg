@@ -59,7 +59,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `event_cards.sql` | SUPERSEDED: reverts `public.card_power(text, integer, numeric)` (live = `balance_table.sql`); reverts `public.cards_event_rules()` (live = `special_cards_never_in_packs.sql`) |  |
 | `event_vars.sql` | SUPERSEDED: reverts `public.event_pay(bigint, text, timestamp with time zone)` (live = `hunt_calendar.sql`); reverts `public.event_row_errors(events)` (live = `hunt_calendar.sql`); reverts `public.event_shape_errors(text, jsonb, jsonb, jsonb)` (live = `hunt_calendar.sql`); reverts `public.event_template_errors(event_templates)` (live = `hunt_calendar.sql`) | a re-run stops at an error today: event_vars.sql: the live public.event_shape_errors(text, jsonb, jsonb, jsonb) changed since this file was built. Rebuild it from the live text. |
 | `events.sql` | SUPERSEDED: reverts `public.admin_event_save(jsonb, timestamp with time zone, text, text)` (live = `event_vars.sql`); reverts `public.event_pay(bigint, text, timestamp with time zone)` (live = `hunt_calendar.sql`); reverts `public.event_row_errors(events)` (live = `hunt_calendar.sql`); reverts `public.event_shape_errors(text, jsonb, jsonb, jsonb)` (live = `hunt_calendar.sql`); reverts `public.event_step(bigint, timestamp with time zone)` (live = `hunt_calendar.sql`); reverts cron job `event-tick` (schedule '*/10 * * * *', live '* * * * *') (live = `event_vars.sql`) |  |
-| `f3_elements_passives.sql` | SUPERSEDED: reverts `public.dungeon_make_foe(text, integer, integer, text)` (live = `dungeon_new_player_balance.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `f2_set_not_season.sql`) | a re-run stops at an error today: f3_elements_passives.sql: the live public.dungeon_make_foe(text, integer, integer, text) changed since this file was built. Rebuild it from the live text. |
+| `f3_elements_passives.sql` | SUPERSEDED: reverts `public.dungeon_make_foe(text, integer, integer, text)` (live = `dungeon_new_player_balance.sql`); reverts `public.elements_list()` (live = `f3_elements_beats.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `f2_set_not_season.sql`) | a re-run stops at an error today: f3_elements_passives.sql: the live public.dungeon_make_foe(text, integer, integer, text) changed since this file was built. Rebuild it from the live text. |
 | `f3_one_combat_math.sql` | SUPERSEDED: reverts `public.combat_card_facts(text[], text[])` (live = `f3_elements_passives.sql`); reverts `public.combat_element_map()` (live = `f3_elements_passives.sql`); reverts `public.combat_weak(jsonb, jsonb, text, text, text, text[], integer)` (live = `f2_set_not_season.sql`); reverts `public.hunt_card_crits(text, bigint)` (live = `f2_set_not_season.sql`); reverts `public.hunt_pick_pool(text, bigint, bigint[])` (live = `f2_set_not_season.sql`) | a re-run stops at an error today: f3_one_combat_math.sql: the live public.combat_weak(jsonb, jsonb, text, text, text, text[], integer) changed since this file was built (md5 1069a7ba258f37745c526f4d90c3b497). Rebuild it from the live  |
 | `fix_last_copy_remove.sql` | SUPERSEDED: reverts `public.remove_card_from_player(text, bigint)` (live = `card_ledger.sql`) |  |
 | `game_vars_readers.sql` | SUPERSEDED: reverts `public.bot_game_vars(timestamp with time zone)` (live = `game_vars_all.sql`); reverts `public.claim_daily(text, text)` (live = `game_vars_all.sql`); reverts `public.claim_daily_earn(text, date, integer, integer, integer)` (live = `game_vars_all.sql`); reverts `public.dailies_view(text)` (live = `game_vars_all.sql`) | a re-run stops at an error today: game_vars_readers.sql: the live public.claim_daily_earn(text, date, integer, integer, integer) changed since this file was built. Rebuild it from the live text. |
@@ -145,7 +145,7 @@ These files have a statement that cannot run in a rolled-back transaction. Read 
 
 A file runs as one transaction, so an error rolls the whole file back.
 
-## No structure change, but a re-run writes rows (29)
+## No structure change, but a re-run writes rows (31)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -156,11 +156,13 @@ a one-time grant or a settings value would run again.
 - `auction_confirm_24h.sql`: auctions
 - `card_effects_enable_a1.sql`: effect_primitives
 - `card_ledger.sql`: card_ledger (DO block)
+- `d191_s1_frame_grant.sql`: achievement_claims
 - `d191_s1_origins_frame.sql`: balance
 - `d191_set_rewards.sql`: achievement_claims, balance, players
 - `daily_raid_board.sql`: cron.job
 - `db_comments.sql`: a DO block
 - `discord_effects_on.sql`: effect_primitives
+- `dungeon_balance_medium.sql`: balance, set_config()
 - `dungeon_new_player_balance.sql`: balance
 - `dungeon_prizes_daily.sql`: settings
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
@@ -180,9 +182,9 @@ a one-time grant or a settings value would run again.
 - `special_cards_never_in_packs.sql`: cards
 - `ui_v3_flag.sql`: settings
 
-## No change (25)
+## No change (26)
 
-`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `d191_pack_color_check.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_auto_rounds.sql`, `f2_set_not_season.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_collection_power.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
+`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `d191_pack_color_check.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_auto_rounds.sql`, `f2_set_not_season.sql`, `f3_elements_beats.sql`, `first_pack_ping.sql`, `fix_search_path.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `perf_collection_power.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
 
 ## Live functions that no file gives (1)
 
