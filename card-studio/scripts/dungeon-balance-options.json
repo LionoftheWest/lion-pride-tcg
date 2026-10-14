@@ -1,0 +1,142 @@
+[
+ {
+  "name": "today",
+  "finding": "both",
+  "note": "The code and the balance today.",
+  "patch": []
+ },
+ {
+  "name": "F1-gentle",
+  "finding": "1",
+  "note": "First floor: foes have x0.6 HP and x0.6 attack. A horde has 3 to 4 foes (4 to 5 today).",
+  "patch": [
+   [
+    "dungeon",
+    "{early_hp}",
+    0.6
+   ],
+   [
+    "dungeon",
+    "{early_atk}",
+    0.6
+   ],
+   [
+    "dungeon",
+    "{horde_min}",
+    3
+   ]
+  ]
+ },
+ {
+  "name": "F1-medium",
+  "finding": "1",
+  "note": "First floor: foes have x0.5 HP and x0.5 attack. A horde has 3 to 4 foes.",
+  "patch": [
+   [
+    "dungeon",
+    "{early_hp}",
+    0.5
+   ],
+   [
+    "dungeon",
+    "{early_atk}",
+    0.5
+   ],
+   [
+    "dungeon",
+    "{horde_min}",
+    3
+   ]
+  ]
+ },
+ {
+  "name": "F1-strong",
+  "finding": "1",
+  "note": "First TWO floors: foes have x0.5 HP and x0.5 attack. A horde has 3 to 4 foes.",
+  "patch": [
+   [
+    "dungeon",
+    "{early_floors}",
+    2
+   ],
+   [
+    "dungeon",
+    "{early_hp}",
+    0.5
+   ],
+   [
+    "dungeon",
+    "{early_atk}",
+    0.5
+   ],
+   [
+    "dungeon",
+    "{horde_min}",
+    3
+   ]
+  ]
+ },
+ {
+  "name": "F2-gentle",
+  "finding": "2",
+  "note": "Guardian heal cap 0.75: the foes together heal back at most 75% of the damage the squad dealt in the same round.",
+  "patch": [
+   [
+    "dungeon",
+    "{foe_heal_cap}",
+    0.75
+   ]
+  ]
+ },
+ {
+  "name": "F2-medium",
+  "finding": "2",
+  "note": "Guardian heal cap 0.5.",
+  "patch": [
+   [
+    "dungeon",
+    "{foe_heal_cap}",
+    0.5
+   ]
+  ]
+ },
+ {
+  "name": "F2-strong",
+  "finding": "2",
+  "note": "Guardian heal cap 0.25.",
+  "patch": [
+   [
+    "dungeon",
+    "{foe_heal_cap}",
+    0.25
+   ]
+  ]
+ },
+ {
+  "name": "both",
+  "finding": "both",
+  "note": "F1-medium and F2-medium together.",
+  "patch": [
+   [
+    "dungeon",
+    "{early_hp}",
+    0.5
+   ],
+   [
+    "dungeon",
+    "{early_atk}",
+    0.5
+   ],
+   [
+    "dungeon",
+    "{horde_min}",
+    3
+   ],
+   [
+    "dungeon",
+    "{foe_heal_cap}",
+    0.5
+   ]
+  ]
+ }
+]

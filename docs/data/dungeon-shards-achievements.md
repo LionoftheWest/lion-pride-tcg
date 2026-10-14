@@ -621,7 +621,7 @@ Internal helper: rolls the rarity of a kill drop by floor (balance key dungeon_r
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: the foes' turn after an attack: poison ticks, each living foe acts (combat_pool_act), then thorns and burn hit the attacker. Returns the new state, the actions and hp_log (one event per HP change; dungeon_attack writes them to combat_actions).
+The foes' turn after a card acts: poison, each foe acts (hit, area, heal, guard), thorns and burn. The foes together heal back at most balance dungeon.foe_heal_cap x the damage that the squad dealt this round (p_dmg; 0 = no cap). Returns the new state, the actions and the HP log.
 
 <a id="fn-dungeon-enter-jsonb-jsonb-integer-integer"></a>
 
@@ -701,7 +701,7 @@ Internal helper: adds Shards and a card to the at-risk loot (state pend). The Sh
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: builds one foe from a seeded dungeon_monsters row: element, HP and attack scaled by floor and room (balance dungeon hp_growth, atk_growth, room_growth) and by kind (balance dungeon.foe_mult), weakness, resistance, passives. Returns the foe as jsonb.
+A Dungeon foe (hp, atk, moves, passives, weaknesses) from a key, a floor, a room and a kind. Balance dungeon: hp_growth, atk_growth, room_growth, foe_mult by kind, and the early floors (early_floors, early_hp, early_atk: 1 = no change). Used by dungeon_room_foes and the Gauntlet.
 
 <a id="fn-dungeon-offers-jsonb-integer"></a>
 
@@ -801,7 +801,7 @@ POST /api/dungeon/retreat: ends the run between floors and pays the banked loot 
 - Returns: `jsonb`
 - Security definer: no
 
-Internal helper: the foes of one room (1-3 for a fight, 4-5 for a horde, else 1), seeded by the room key. Returns a jsonb array of foes.
+The foes of one room: a fight has fight_min to fight_min + fight_spread - 1 foes, a horde has horde_min to horde_min + horde_spread - 1 (balance dungeon), any other room has 1.
 
 <a id="fn-dungeon-rules"></a>
 
