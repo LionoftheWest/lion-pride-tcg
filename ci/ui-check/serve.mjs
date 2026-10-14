@@ -17,7 +17,7 @@
 //   ci_frames=sets   the set holo frames (UI-13 D-191): /api/catalog sets carry pack_color (S1 #ff8d4d, S2 #3366cc), the signed-in member wears holo:S1, a profile and
 //                    some Leaderboard rows wear holo:S2 / holo:S1 / holo, and the gallery lists the Origins and Double Team frames (derived below)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
-//   ci_events=on|four|empty|error   the player Events page (UI-62): the flag on, and /api/events answers fixture events (derived below)
+//   ci_events=on|four|one|empty|error   the player Events page (UI-62): the flag on, and /api/events answers fixture events (derived below)
 //   ci_report=on     /api/flags answers reports: true (the Feedback window, UI-40); the send stays blocked (403), so a send shows the error state
 //   ci_data=long    every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
@@ -478,6 +478,7 @@ function derivedEvents(mode) {
     evRow(107, 'modifier', 'Dungeon Rush', evAt(10, 17), evAt(10, 19), [{ key: 'dungeon_runs_per_day', label: 'Dungeon runs a day', text: 'Dungeon runs a day: up to 2' }], { color: '#5B8CFF', art: '/dungeon/room.webp' }),
   ];
   if (mode === 'four') list.push(evRow(108, 'modifier', 'Gauntlet Encore', evAt(10, 2), evAt(10, 5), [{ key: 'gauntlet_runs_per_day', label: 'Gauntlet runs a day', text: 'Gauntlet runs a day: up to 2' }], { color: '#FF5A5A' }, 'live'));
+  if (mode === 'one') return { events: list.filter((e) => e.id === 'm1') };   // UI-05: one live event (the Events slide holds its Also live place)
   return { events: list };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/flags' && !!c.ci_events && body, make: (body) => ({ ...body, events: true }) });

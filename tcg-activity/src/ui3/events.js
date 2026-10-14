@@ -91,7 +91,7 @@ const kindVar = (e) => `--k:${KINDS[e.k].color}`;
 const kindIcon = (e, size = 'sm') => icon(KINDS[e.k].icon, { size });
 
 /** The theme color token: the server hex equals one of the 8 --name-color-* tokens (D-185); else the kind color. */
-function themeVar(e) {
+export function themeVar(e) {
   const hex = String(e.theme.color || '').toLowerCase();
   if (hex && document?.documentElement) {
     const cs = getComputedStyle(document.documentElement);
@@ -99,7 +99,7 @@ function themeVar(e) {
   }
   return KINDS[e.k].color;
 }
-const artURL = (e) => (e.theme.art && /^\/[^/]/.test(e.theme.art) ? e.theme.art : null);
+export const artURL = (e) => (e.theme.art && /^\/[^/]/.test(e.theme.art) ? e.theme.art : null);
 
 // ---- Markup ----
 function gridHTML(thin) {

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { slideOrder, slideNews, slideStep, hms, dhm, dayLabel, weekLabel, themeName, topRows, dungeonSlideHTML, gauntletSlideHTML, controlHTML, carouselHTML } from './home-slides.js';
+import { slideOrder, slideNews, slideStep, hms, dhm, dayLabel, weekLabel, themeName, topRows, dungeonSlideHTML, gauntletSlideHTML, controlHTML, carouselHTML, liveEvents, eventsSlideHTML } from './home-slides.js';
 
 test('order: the Hunt first when it is live, else the next active mode first (D-14, D-45)', () => {
   assert.deepEqual(slideOrder({ huntLive: true, dungeon: true, gauntlet: true }), ['hunt', 'dungeon', 'gauntlet']);
@@ -99,4 +99,42 @@ test('no window size is read, no literal px or color in the slide file (F-1, G4)
   const src = readFileSync(new URL('./home-slides.js', import.meta.url), 'utf8');
   assert.doesNotMatch(src, /innerWidth|innerHeight|matchMedia|screen\./);
   assert.doesNotMatch(src, /\d\s*px\b|#[0-9a-fA-F]{3,8}\b/);
+});
+
+const NOW = Date.parse('2026-10-05T03:35:00Z');
+const ev = (id, title, s, e, extra = {}) => ({ id, kind: 'modifier', title, starts_at: s, ends_at: e, status: 'live', theme: {}, changes: [{ key: 'pull_rare_mult', label: 'x', text: '2x rare pull odds' }], ...extra });
+const A = ev(1, 'Double Pull Weekend', '2026-10-02T06:00:00Z', '2026-10-05T06:00:00Z');
+const B = ev(2, 'Community Week', '2026-10-01T06:00:00Z', '2026-10-08T06:00:00Z', { kind: 'trigger', changes: [] });
+const C = ev(3, 'Gauntlet Encore', '2026-10-02T06:00:00Z', '2026-10-05T05:00:00Z', { changes: [{ key: 'gauntlet_runs_per_day', text: 'x' }] });
+const F = ev(4, 'Later', '2026-10-09T06:00:00Z', '2026-10-10T06:00:00Z', { status: 'scheduled' });
+
+test('events slide: last (D-188), only with a live event; the first slide rule stays (D-14)', () => {
+  assert.deepEqual(slideOrder({ huntLive: true, dungeon: true, gauntlet: true, events: true }), ['hunt', 'dungeon', 'gauntlet', 'events']);
+  assert.deepEqual(slideOrder({ huntLive: false, dungeon: true, gauntlet: true, events: true }), ['dungeon', 'hunt', 'gauntlet', 'events']);
+  assert.deepEqual(slideOrder({ huntLive: false, dungeon: false, gauntlet: false, events: true }), ['hunt', 'events']);
+  assert.deepEqual(slideOrder({ huntLive: false, dungeon: true, gauntlet: false, events: false }), ['dungeon', 'hunt'], 'flag off or none live: no slide');
+});
+test('liveEvents: only live ones, the one that ends first first (D-187); bad input = none', () => {
+  assert.deepEqual(liveEvents([B, F, A, C], NOW).map((e) => e.id), [3, 1, 2]);
+  assert.deepEqual(liveEvents([F], NOW), []);
+  assert.deepEqual(liveEvents(undefined, NOW), []);
+});
+test('events slide: the first event, its changes, Also live rows (max 2, then +N more), the place held with one event (condition A)', () => {
+  const three = eventsSlideHTML(liveEvents([A, B, C], NOW), NOW);
+  assert.match(three, /Event · Live now/);
+  assert.match(three, /Gauntlet Encore/);
+  assert.match(three, /2x rare pull odds|What changes/);
+  assert.equal((three.match(/class="u3-hm-evr"/g) || []).length, 2);
+  assert.match(three, /data-slide-open="events"/);
+  assert.doesNotMatch(three, /is-held/);
+  const many = eventsSlideHTML(liveEvents([A, B, C, ev(5, 'Four', '2026-10-01T06:00:00Z', '2026-10-09T06:00:00Z'), ev(6, 'Five', '2026-10-01T06:00:00Z', '2026-10-09T06:00:00Z')], NOW), NOW);
+  assert.match(many, /\+2 more/);
+  const one = eventsSlideHTML(liveEvents([A], NOW), NOW);
+  assert.equal((one.match(/is-held/g) || []).length, 2, 'the box and the line hold their place, hidden');
+  assert.match(one, /aria-hidden="true"/);
+  assert.doesNotMatch(one, /Also live:/);
+});
+test('events slide: the compact line names the next event with its countdown', () => {
+  assert.match(eventsSlideHTML(liveEvents([A, B], NOW), NOW), /Also live:<\/span> <b>Community Week<\/b> <i>·<\/i> <em>Ends in 3d 2h<\/em>/);
+  assert.match(eventsSlideHTML(liveEvents([A, B, C], NOW), NOW), /\+1 more/);
 });
