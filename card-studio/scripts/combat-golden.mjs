@@ -20,6 +20,11 @@
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 if (process.env.LOCALDB !== '1') throw new Error('combat-golden.mjs runs on the LOCAL copy only: LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/combat-golden.mjs');
+// The same rule as lab-lib.mjs: with LOCALDB=1 the preload loads here when the caller did not load it (test-golden-mutations.mjs starts this
+// file with plain node: with no preload the SQL went to the LIVE project with the live token, and a live change in the middle of a run
+// gave "NOT REPEATABLE ... two answers"). Fail closed: no preload, no run.
+if (!globalThis.__LOCALDB_API) await import('./localdb-preload.mjs');
+if (!globalThis.__LOCALDB_API) throw new Error('combat-golden.mjs: the localdb preload is not active, so it would use the LIVE project');
 const PTS = JSON.stringify(JSON.parse(process.env.GOLDEN_PTS || '{"attack": 3, "precision": 3}'));
 const SUP_PTS = JSON.stringify(JSON.parse(process.env.GOLDEN_SUP_PTS || '{}'));
 if ((PTS + SUP_PTS).includes("'")) throw new Error('GOLDEN_PTS / GOLDEN_SUP_PTS: no quotes');
