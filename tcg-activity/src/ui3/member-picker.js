@@ -169,6 +169,15 @@ export function mountMemberPicker(host, opts) {
     const first = secs[0]?.querySelector('.u3-mp-sec__tiles');
     while (over() && first?.children.length) first.lastElementChild.remove();
     if (over() || (first && !first.children.length)) secs[0]?.remove();
+    // D-181: a short list on a tall frame (all members on one page, a portrait tablet): when the room under the list is over a quarter of the area (the 3.4 limit), the rows grow evenly
+    // to fill it, up to twice their height. A page that is already full keeps its rows.
+    const pg = body.querySelector('.u3-mp-sec.is-paged .u3-mp-sec__tiles'), sec = pg?.closest('.u3-mp-sec');
+    pg?.style.removeProperty('--mp-row');
+    if (pg && sec && pg.children.length && !over()) {
+      const cols = getComputedStyle(pg).gridTemplateColumns.split(' ').filter(Boolean).length || 1, rows = Math.ceil(pg.children.length / cols);
+      const h = pg.firstElementChild.getBoundingClientRect().height, room = body.getBoundingClientRect().bottom - (parseFloat(getComputedStyle(body).paddingBottom) || 0) - sec.getBoundingClientRect().bottom;
+      if (h && room > 0.25 * body.clientHeight) { pg.style.setProperty('--mp-row', `${Math.min(2 * h, h + room / rows)}px`); if (over()) pg.style.removeProperty('--mp-row'); }
+    }
   }
 
   // ---- the search and its suggest list (UI-29, unchanged look: avatar, name with the match in gold) ----

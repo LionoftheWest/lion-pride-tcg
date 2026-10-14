@@ -71,9 +71,12 @@ function fitTradePass(width, height, gap, { min, max = TOKENS['card-tile-max'], 
  */
 export function fitCols(width, height, gap, cols = 4, ratio = TOKENS['card-ratio']) {
   if (!(width > 0 && height > 0)) return { cols, rows: 1, tile: TOKENS['card-mini'] };
-  const tile = Math.floor((width - gap * (cols - 1)) / cols);
-  const rows = Math.max(1, Math.floor((height + gap) / (tile * ratio + gap)));
-  return { cols, rows, tile };
+  const one = (c) => { const tile = Math.floor((width - gap * (c - 1)) / c); return { cols: c, rows: Math.max(1, Math.floor((height + gap) / (tile * ratio + gap))), tile }; };
+  const free = (f) => height - (f.rows * (f.tile * ratio + gap) - gap);   // the height under the last row
+  let best = one(cols);
+  // D-181: a wide frame (a portrait tablet) with more than 0.15 of the height left under the last row: the column count that leaves the least room (up to cols + 2)
+  if (free(best) > 0.15 * height) for (let c = cols + 1; c <= cols + 2; c++) { const f = one(c); if (f.tile >= TOKENS['card-mini'] && free(f) < free(best)) best = f; }
+  return best;
 }
 
 /** The cards the owner of a request may pick (D-168, counter_trade_request): the requester's tradeable cards of the same

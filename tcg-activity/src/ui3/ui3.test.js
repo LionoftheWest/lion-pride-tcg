@@ -17,7 +17,7 @@ test('size class: the design.md 2.1 rules in their order, every size one class',
     [[359, 800], 'tiny'], [[800, 299], 'tiny'], [[400, 225], 'tiny'],
     [[667, 375], 'compact-land'], [[932, 430], 'compact-land'], [[1280, 480], 'compact-land'], [[915, 412], 'compact-land'],
     [[375, 667], 'compact-port'], [[430, 932], 'compact-port'], [[599, 900], 'compact-port'],
-    [[600, 900], 'medium'], [[820, 1180], 'medium'], [[917, 692], 'medium'], [[1180, 820], 'medium'], [[1199, 800], 'medium'],
+    [[600, 900], 'compact-port'], [[820, 1180], 'compact-port'], [[692, 917], 'compact-port'], [[999, 1300], 'compact-port'], [[1000, 1300], 'medium'], [[917, 692], 'medium'], [[1180, 820], 'medium'], [[1199, 800], 'medium'],
     [[1200, 800], 'expanded'], [[1280, 720], 'expanded'], [[1990, 830], 'expanded'],
     [[480, 490], 'compact-port'],   // height < 500 but not landscape: rule 2 does not match, rule 3 does
   ];

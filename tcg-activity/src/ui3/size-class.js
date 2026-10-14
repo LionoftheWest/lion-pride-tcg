@@ -8,6 +8,7 @@ export function sizeClass(width, height) {
   if (height < 300 || width < 360) return 'tiny';
   if (height < 500 && width > height) return 'compact-land';
   if (width < 600) return 'compact-port';
+  if (height > width && width < 1000) return 'compact-port';   // D-181: a portrait tablet uses the phone portrait layout
   if (width < 1200) return 'medium';
   return 'expanded';
 }

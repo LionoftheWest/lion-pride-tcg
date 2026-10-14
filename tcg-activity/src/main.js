@@ -1141,7 +1141,10 @@ function fitPacksV3() {
   const step = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-2')) || 8;
   const depth = Math.min(btns.length - 1, STACK_LAYERS) * step;
   const single = Math.min(innerHeight * 0.6, innerWidth * 1.02) * PACK_RATIO;
-  const pw = Math.floor(Math.min(single, area.clientWidth, (area.clientHeight - (hint?.offsetHeight || 0) - gap - depth) * PACK_RATIO));
+  const byHeight = (area.clientHeight - (hint?.offsetHeight || 0) - gap - depth) * PACK_RATIO;
+  // D-181: a portrait tablet: the single pack size leaves more than a quarter of the width empty on each side (the 3.4 limit), so the stack grows (to 0.56 of the width) as far as the height lets it
+  const wide = document.body.dataset.size === 'compact-port' && single < area.clientWidth * 0.5 ? Math.min(area.clientWidth * 0.56, byHeight) : 0;
+  const pw = Math.floor(Math.max(Math.min(single, area.clientWidth, byHeight), wide));
   area.style.setProperty('--u3-pw', `${pw}px`);
   area.style.setProperty('--u3-depth', `${depth}px`);
   if (area.querySelector('.u3-mstack')) return;

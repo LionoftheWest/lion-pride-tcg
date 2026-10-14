@@ -4,8 +4,8 @@
 
 export const SIZES = [   // docs/design.md 2.2 (D-18): [width, height, class, touch]. D-136: 667x375, 932x430, 915x412, 1180x820 and 917x692 are DESKTOP windows (phones and tablets are locked to portrait in the Developer Portal): no touch, so no safe and no keyboard variant.
   [375, 667, 'compact-port', true], [667, 375, 'compact-land', false], [430, 932, 'compact-port', true], [932, 430, 'compact-land', false],
-  [430, 822, 'compact-port', true], [412, 915, 'compact-port', true], [915, 412, 'compact-land', false], [820, 1180, 'medium', true],
-  [1180, 820, 'medium', false], [692, 917, 'medium', true], [917, 692, 'medium-short', false], [1280, 720, 'expanded', false],
+  [430, 822, 'compact-port', true], [412, 915, 'compact-port', true], [915, 412, 'compact-land', false], [820, 1180, 'compact-port', true],
+  [1180, 820, 'medium', false], [692, 917, 'compact-port', true], [917, 692, 'medium-short', false], [1280, 720, 'expanded', false],
   [1990, 830, 'expanded', false], [1280, 480, 'compact-land', false], [400, 225, 'tiny', true],
 ];
 export const sizeKey = (s) => `${s[0]}x${s[1]}`;
