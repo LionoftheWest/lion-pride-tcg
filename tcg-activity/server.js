@@ -16,12 +16,12 @@ import 'dotenv/config';
 import { createTradeRequestProbe } from './src/trade-request-probe.js';
 import { measure as measureAchievements, achievementList, LEDGER, withRewards, setRewardFor, isSetKey } from './src/achievements.js';
 // The released (pullable) sets: each has a "<set name> Set Complete" achievement (src/achievements.js, D-190). card_sets changes
-// only when the owner edits it: a 60 s cache. A failed read keeps the last list (none yet: the achievements fall back to S1 only).
+// only when the owner edits it (pack_color: the set holo frames, D-191): a 60 s cache. A failed read keeps the last list (none yet: the achievements fall back to S1 only).
 let releasedSetsCache = null; // { at, sets: [{ id, name }] }
 async function getReleasedSets() {
   if (releasedSetsCache && Date.now() - releasedSetsCache.at < 60_000) return releasedSetsCache.sets;
-  const { data, error } = await supabase.from('card_sets').select('id, name').eq('pullable', true).order('sort').order('id');
-  if (!error && Array.isArray(data)) releasedSetsCache = { at: Date.now(), sets: data.map((r) => ({ id: r.id, name: r.name })) };
+  const { data, error } = await supabase.from('card_sets').select('id, name, pack_color').eq('pullable', true).order('sort').order('id');
+  if (!error && Array.isArray(data)) releasedSetsCache = { at: Date.now(), sets: data.map((r) => ({ id: r.id, name: r.name, pack_color: r.pack_color })) };
   return releasedSetsCache?.sets;
 }
 import express from 'express';

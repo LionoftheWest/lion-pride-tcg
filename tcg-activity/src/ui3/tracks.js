@@ -5,6 +5,8 @@
 // The frame ids in the data stay 'diamond:<track>' and 'mythic:<track>' (internal keys, never shown): the label is
 // "Diamond frame" and "Obsidian frame" (D-74).
 
+import { setFrameOf } from '../achievements.js';
+
 export const TIER_NAMES = ['Bronze', 'Silver', 'Platinum', 'Diamond', 'Obsidian'];
 export const TIER_KEYS = ['bronze', 'silver', 'platinum', 'diamond', 'obsidian'];
 export const SEGMENTS = [['tracks', 'Tracks'], ['badges', 'Badges'], ['titles', 'Titles'], ['frames', 'Frames']];
@@ -77,6 +79,8 @@ export function tierReward(n, titles = [], rewards = null, oldPaid = false) {
 }
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 export const frameLabel = (value) => {
+  const set = setFrameOf(value);
+  if (set && set.name) return `${set.name} Frame`;
   const kind = String(value || '').split(':')[0];
   return { diamond: 'Diamond frame', mythic: 'Obsidian frame', silver: 'Silver frame', gold: 'Gold frame', holo: 'Holo frame' }[kind] || 'Frame';
 };

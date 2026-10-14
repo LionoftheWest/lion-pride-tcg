@@ -62,6 +62,8 @@ export const SCREENS = {
   'tracks-badges':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="badges"]'], ['wait', 1]] },
   'tracks-titles':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="titles"]'], ['wait', 1]] },
   'tracks-frames':       { id: 'UI-13', notOn: ['tiny'], long: true, safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="frames"]'], ['wait', 1]] },
+  // UI-13 D-191 (cookie ci_frames=sets, serve.mjs): the set holo frames in every place (the Frames list, the Leaderboard, a profile, the style editor)
+  'tracks-set-frames':   { id: 'UI-13', notOn: ['tiny'], ach: 'tracks', frames: 'sets', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="frames"]'], ['wait', 1]] },
   'tracks-claim-error':  { id: 'UI-13', notOn: ['tiny'], safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-claim]'], ['wait', 1.5]] },
   'tracks-equip-error':  { id: 'UI-13', notOn: ['tiny'], safe: true, ach: 'tracks', steps: [['dock', 'collection'], ['js', '[data-tab="ach"]'], ['js', '#main [data-seg="titles"]'], ['wait', 1], ['js', '#main [data-equip]'], ['wait', 1.5]] },
   'bosses':              { id: 'UI-11', notOn: ['tiny'], long: true, safe: true, steps: [['dock', 'collection'], ['js', '[data-tab="bosses"]']] },
@@ -269,6 +271,9 @@ export const SCREENS = {
   'wishlist-drawer':     { id: 'UI-16', long: true, safe: true, under: 'UI-14', wish: 'full', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '#wlHandle'], ['wait', 1.5]] },
   'wish-picker':         { id: 'UI-16', safe: true, under: 'UI-14', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['js', '#wlHandle'], ['wait', 1.5], ['js', '#u3Wish [data-wlset]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
   // The own profile (the avatar in the top bar): the Spotlight Edit, Title & frame and the editable wishlist show only here.
+  'leaderboard-set-frames': { id: 'UI-66', under: 'UI-03', notOn: ['tiny'], board: 'rows', frames: 'sets', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2]] },
+  'profile-set-frames':  { id: 'UI-14', notOn: ['tiny'], board: 'rows', frames: 'sets', steps: [['wait', 4], ['js', '#menuBtn'], ['js', '[data-menu="board"]'], ['wait', 2], ['js', '.u3-lb-row[data-member]:not(.is-me)'], ['wait', 3]] },
+  'style-editor-set-frames': { id: 'UI-15', notOn: ['tiny'], frames: 'sets', steps: [['wait', 3], ['js', '#v2Avatar'], ['wait', 3], ['js', '#memCos'], ['wait', 1.5]] },
   'profile-own':         { id: 'UI-14', safe: true, long: true, notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3]] },
   // The same with all five wishlist slots filled (the handle strip shows 5/5; the Spotlight and the Season are tabs on the smallest phones, D-113; the Wishlist never is, D-128).
   'profile-own-wish':    { id: 'UI-14', safe: true, long: true, wish: 'full', notOn: ['tiny'], steps: [['wait', 4], ['js', '#v2Avatar'], ['wait', 3], ['wait', 2]] },

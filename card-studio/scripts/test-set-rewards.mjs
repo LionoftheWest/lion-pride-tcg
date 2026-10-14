@@ -66,6 +66,7 @@ begin
   -- The state of the live database before the file: the old S1 title, no rule. (balance_check refuses to remove a key: off for the set-up only.)
   alter table balance disable trigger balance_check;
   update balance set value = (value - 'set_complete') || jsonb_build_object('badges', jsonb_set(value->'badges', '{s1,title}', '"Season 1 Champion"')) where key = 'achievement_rewards';
+  update balance set value = jsonb_set(value, '{badges,s1,frame}', '"holo"') where key = 'achievement_rewards';   -- d191_s1_origins_frame.sql came later: the state before it
   alter table balance enable trigger balance_check;
   insert into players (id, username, pack_balance, title) values ('${P}1', '${P}1', 0, null), ('${P}2', '${P}2', 0, 'Season 1 Champion'), ('${P}3', '${P}3', 0, 'Archivist');
   insert into achievement_claims (player_id, key, packs, title, frame) values ('${P}2', 's1', 5, 'Season 1 Champion', 'holo'), ('${P}3', 'own100', 3, 'Archivist', 'gold');

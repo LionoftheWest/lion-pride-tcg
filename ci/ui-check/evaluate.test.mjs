@@ -213,7 +213,7 @@ test('plan: the title IDs and the Migrated rows; the shell checks every screen; 
   assert.deepEqual([...enforcedIds('UI-46 Dungeon lobby', REG)].sort(), ['UI-07', 'UI-46'], 'UI-07 is Migrated in REG');
   assert.deepEqual(plan(new Set(['UI-46'])).screens, ['dungeon']);
   assert.deepEqual(plan(new Set(['UI-12'])).screens, ['achievements', 'achievements-detail', 'achievements-ready', 'achievements-claim-error']);
-  assert.deepEqual(plan(new Set(['UI-13'])).screens.sort(), ['tracks', 'tracks-badges', 'tracks-claim-error', 'tracks-equip-error', 'tracks-frames', 'tracks-titles', 'tracks-window']);   // the 7 UI-13 specs
+  assert.deepEqual(plan(new Set(['UI-13'])).screens.sort(), ['tracks', 'tracks-badges', 'tracks-claim-error', 'tracks-equip-error', 'tracks-frames', 'tracks-set-frames', 'tracks-titles', 'tracks-window']);   // the 8 UI-13 specs
   assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
   assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');

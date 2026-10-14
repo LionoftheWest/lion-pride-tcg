@@ -24,7 +24,7 @@ test('withRewards gives rewards: null for a missing or malformed balance value',
 });
 
 // ---- "<set name> Set Complete" (D-190) ----
-import { achievementList, measure, setKey, rewardOf, BASE_ACHIEVEMENTS, setRewardFor, setRewardsFrom, frameBase, rewardLabel, REWARDS } from './achievements.js';
+import { achievementList, measure, setKey, rewardOf, BASE_ACHIEVEMENTS, setRewardFor, setRewardsFrom, frameBase, rewardLabel, REWARDS, setFrameOf, frameLook, frameName, frameRingHTML } from './achievements.js';
 
 const S1 = { id: 'S1', name: 'Origins' };
 const S2 = { id: 'S2', name: 'Double Team' };
@@ -67,9 +67,9 @@ test('the rule: every base (normal) card of the set by set_id; other rarities an
   assert.equal(find(season, 's1').done, true);
 });
 
-const RW = { badges: { s1: { packs: 5, title: 'Origins Champion', frame: 'holo' } }, set_complete: { packs: 5, title: '{name} Champion', frame: 'holo:{id}' } };
+const RW = { badges: { s1: { packs: 5, title: 'Origins Champion', frame: 'holo:S1' } }, set_complete: { packs: 5, title: '{name} Champion', frame: 'holo:{id}' } };
 test('the reward of a set: S1 from its own row, a later set from the rule set_complete (D-191, D-192), no rule = nothing', () => {
-  assert.deepEqual(setRewardFor(RW, { id: 'S1', name: 'Origins' }), { packs: 5, title: 'Origins Champion', frame: 'holo' });
+  assert.deepEqual(setRewardFor(RW, { id: 'S1', name: 'Origins' }), { packs: 5, title: 'Origins Champion', frame: 'holo:S1' });
   assert.deepEqual(setRewardFor(RW, { id: 'S2', name: 'Double Team' }), { packs: 5, title: 'Double Team Champion', frame: 'holo:S2' });
   assert.deepEqual(setRewardFor({ ...RW, badges: { ...RW.badges, 'set:S2': { packs: 9 } } }, { id: 'S2', name: 'Double Team' }), { packs: 9 }, 'a row of its own wins');
   assert.deepEqual(setRewardFor({ badges: {} }, { id: 'S2', name: 'Double Team' }), {});
@@ -80,13 +80,14 @@ test('the client holds no set reward: rewardOf reads what the server sent (setRe
   assert.deepEqual(rewardOf('s1'), {}, 'nothing sent: nothing shown');
   assert.deepEqual(rewardOf('set:S2'), {});
   setRewardsFrom([{ id: 'S1', name: 'Origins', reward: RW.badges.s1 }, { id: 'S2', name: 'Double Team', reward: setRewardFor(RW, { id: 'S2', name: 'Double Team' }) }]);
-  assert.deepEqual(rewardOf('s1'), { packs: 5, title: 'Origins Champion', frame: 'holo' });
+  assert.deepEqual(rewardOf('s1'), { packs: 5, title: 'Origins Champion', frame: 'holo:S1' });
   assert.deepEqual(rewardOf('set:S2'), { packs: 5, title: 'Double Team Champion', frame: 'holo:S2' });
   assert.deepEqual(rewardOf('first'), { packs: 1 });
   assert.equal(REWARDS.s1, undefined);
   setRewardsFrom([]);
 });
-test('a set frame key falls back to the holo look and label (no design yet)', () => {
+test('a set frame key of an UNKNOWN set (no pack color sent) keeps the plain holo look and label (fails closed)', () => {
+  setRewardsFrom([]);
   assert.equal(frameBase('holo:S2'), 'holo');
   assert.equal(frameBase('holo'), 'holo');
   assert.equal(rewardLabel({ packs: 5, title: 'Double Team Champion', frame: 'holo:S2' }), '5 packs + "Double Team Champion" title + Holo frame');
@@ -95,4 +96,40 @@ test('a set frame key falls back to the holo look and label (no design yet)', ()
 test('without a set list the one claimed set keeps its key (no answer yet, never a lost achievement)', () => {
   for (const none of [undefined, null, []]) assert.ok(find(achievementList(none), 's1'));
   assert.equal(BASE_ACHIEVEMENTS.length, 49);
+});
+
+const SETS = [{ id: 'S1', name: 'Origins', pack_color: '#ff8d4d' }, { id: 'S2', name: 'Double Team', pack_color: '#3366cc' }, { id: 'S3', name: 'Grey', pack_color: 'url(x)' }];
+test('a set frame (holo:<set id>) takes the pack color of its set and the name "<set name> Frame" (D-191)', () => {
+  setRewardsFrom(SETS);
+  assert.deepEqual(setFrameOf('holo:S1'), { id: 'S1', name: 'Origins', color: '#ff8d4d' });
+  assert.deepEqual(frameLook('holo:S1'), { cls: ' frame-set', style: ' style="--set-c:#ff8d4d"' });
+  assert.deepEqual(frameLook('holo:S2'), { cls: ' frame-set', style: ' style="--set-c:#3366cc"' });
+  assert.equal(frameName('holo:S1'), 'Origins Frame');
+  assert.equal(frameName('holo:S2'), 'Double Team Frame');
+  assert.equal(rewardLabel({ packs: 5, title: 'Origins Champion', frame: 'holo:S1' }), '5 packs + "Origins Champion" title + Origins Frame');
+  assert.match(frameRingHTML('holo:S2'), /^<i class="se-ring frame-set" style="--set-c:#3366cc" aria-hidden="true"><\/i>$/);
+  setRewardsFrom([]);
+});
+test('the plain holo, silver and gold frames and no frame are as before', () => {
+  setRewardsFrom(SETS);
+  assert.deepEqual(frameLook('holo'), { cls: ' frame-holo', style: '' });
+  assert.deepEqual(frameLook('silver'), { cls: ' frame-silver', style: '' });
+  assert.deepEqual(frameLook(null), { cls: '', style: '' });
+  assert.equal(frameName('holo'), 'Holo frame');
+  assert.equal(frameRingHTML(null), '');
+  setRewardsFrom([]);
+});
+test('a set frame of an unknown set, or of a set with a bad color, takes the plain holo look (a color is only #rrggbb)', () => {
+  setRewardsFrom(SETS);
+  assert.deepEqual(frameLook('holo:S9'), { cls: ' frame-holo', style: '' });
+  assert.deepEqual(frameLook('holo:S3'), { cls: ' frame-holo', style: '' }, 'a value that is not #rrggbb never goes into a style attribute');
+  assert.equal(frameName('holo:S3'), 'Holo frame');
+  assert.equal(setFrameOf('gold:S1'), null, 'only the holo frame has set frames');
+  setRewardsFrom([]);
+});
+test('a later set needs no code: its frame comes from its pack color', () => {
+  setRewardsFrom([{ id: 'T7', name: 'New Set', pack_color: '#22aa66' }]);
+  assert.deepEqual(frameLook('holo:T7'), { cls: ' frame-set', style: ' style="--set-c:#22aa66"' });
+  assert.equal(frameName('holo:T7'), 'New Set Frame');
+  setRewardsFrom([]);
 });
