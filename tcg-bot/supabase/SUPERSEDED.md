@@ -145,7 +145,7 @@ These files have a statement that cannot run in a rolled-back transaction. Read 
 
 A file runs as one transaction, so an error rolls the whole file back.
 
-## No structure change, but a re-run writes rows (29)
+## No structure change, but a re-run writes rows (31)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -156,11 +156,13 @@ a one-time grant or a settings value would run again.
 - `auction_confirm_24h.sql`: auctions
 - `card_effects_enable_a1.sql`: effect_primitives
 - `card_ledger.sql`: card_ledger (DO block)
+- `d191_s1_frame_grant.sql`: achievement_claims
 - `d191_s1_origins_frame.sql`: balance
 - `d191_set_rewards.sql`: achievement_claims, balance, players
 - `daily_raid_board.sql`: cron.job
 - `db_comments.sql`: a DO block
 - `discord_effects_on.sql`: effect_primitives
+- `dungeon_balance_medium.sql`: balance, set_config()
 - `dungeon_new_player_balance.sql`: balance
 - `dungeon_prizes_daily.sql`: settings
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
