@@ -95,7 +95,9 @@ begin
       for v_r in 1..30 loop
         if v_r % 3 = 1 or coalesce((p_boss->>'every')::boolean, false) then
           v_card := p_sup[(v_si % array_length(p_sup, 1)) + 1]; v_si := v_si + 1;
-          select a into v_tgt from unnest(p_atk) a where not exists (select 1 from hunt_card_hp x where x.hunt_id = v_h and x.player_id = v_p and x.card_id = a and x.downed) limit 1;
+          -- ORDER BY the array position: without it the planner may build a hash anti join and return the first free attacker in any order
+          -- (the plan follows the table statistics left by the tests that ran before: target 24 in one run and 34 in the next, 2026-10-14).
+          select u.a into v_tgt from unnest(p_atk) with ordinality u(a, o) where not exists (select 1 from hunt_card_hp x where x.hunt_id = v_h and x.player_id = v_p and x.card_id = u.a and x.downed) order by u.o limit 1;
           r := hunt_support(v_p, v_h, v_card, v_tgt);
           v_out := v_out || 'S' || v_card || ' ' || r::text || E'\n';
         end if;

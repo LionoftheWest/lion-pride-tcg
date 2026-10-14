@@ -40,9 +40,11 @@ for (const g of [['hunt', 'combat-golden.mjs', {}], ['dungeon', 'dungeon-golden.
   if (which && which !== name) continue;
   const b = run(script, env);
   check(b.code === 0 && /^PASS|\nPASS|PASS \d+ fights/.test(b.out), `${name} golden, baseline (the live code twice with the same seeds): ${b.last} (${b.s} s)`);
+  if (b.code !== 0) console.log(b.out.slice(0, 6000)); // the whole answer: which line differs, and how
   if (b.code !== 0) { console.log(`the ${name} baseline is red: its mutation results are not valid`); continue; }
   const id = run(script, { ...env, CANDIDATE: live(name === 'hunt' ? 'hunt_attack' : 'dungeon_attack') });
   check(id.code === 0 && /matches the live code exactly/.test(id.out), `${name} golden, the live text of ${name === 'hunt' ? 'hunt_attack' : 'dungeon_attack'} as a candidate matches: ${id.last} (${id.s} s)`);
+  if (id.code !== 0) console.log(id.out.slice(0, 6000));
   for (const m of GOLDEN_MUTATIONS.filter((x) => x.golden === name)) {
     const f = mutationFile(m.name, m.file, m.from, m.to);
     const r = run(script, { ...env, CANDIDATE: f });
