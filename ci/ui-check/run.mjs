@@ -89,6 +89,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
         if (spec.board) cookies.push({ name: 'ci_board', value: spec.board, url: BASE });   // UI-66: the Leaderboard board states (rows | empty | error)
         if (spec.ach) cookies.push({ name: 'ci_ach', value: spec.ach, url: BASE });
+        if (spec.frames) cookies.push({ name: 'ci_frames', value: spec.frames, url: BASE });   // UI-13 D-191: the set holo frames (sets)
         if (spec.stats) cookies.push({ name: 'ci_stats', value: spec.stats, url: BASE });
         if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)
           cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });

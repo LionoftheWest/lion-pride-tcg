@@ -14,6 +14,8 @@
 //   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
 //   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
 //                       busy = a resting hunt with a last result, live = the recorded live hunt
+//   ci_frames=sets   the set holo frames (UI-13 D-191): /api/catalog sets carry pack_color (S1 #ff8d4d, S2 #3366cc), the signed-in member wears holo:S1, a profile and
+//                    some Leaderboard rows wear holo:S2 / holo:S1 / holo, and the gallery lists the Origins and Double Team frames (derived below)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 //   ci_report=on     /api/flags answers reports: true (the Feedback window, UI-40); the send stays blocked (403), so a send shows the error state
 //   ci_data=long    every member name becomes a 32-character name and every count a 9-digit number (12.6)
@@ -361,7 +363,7 @@ function derivedAchView(long) {
   const rewards = { tiers: [{ packs: 1, shards: 50 }, { packs: 1, shards: 150 }, { packs: 2, shards: 200 }, { packs: 3, shards: 400 }, { packs: 5, shards: 800 }], step: { packs: 5, shards: 200 } };
   return { enabled: true, tracks, badges, ready, retired: ACH_RETIRED, rewards };
 }
-function derivedAchGallery(long) {
+function derivedAchGallery(long, sets = false) {
   const view = derivedAchView(false);
   const items = [];
   for (const t of view.tracks) {
@@ -370,8 +372,14 @@ function derivedAchGallery(long) {
     items.push({ kind: 'frame', value: `mythic:${t.key}`, track: t.key, tier: 5, need: t.tiers[4], badge: null, owners: 0, mine: false, plus: null });
   }
   view.badges.forEach((b, i) => items.push({ kind: 'title', value: b.title, track: null, tier: null, need: b.need, badge: b.key, owners: 3 + i, mine: b.claimed, plus: null }));
-  for (const [value, name, how, mine, owners] of [['silver', 'Collector', 'Own 50 different cards', true, 28], ['gold', 'Archivist', 'Own 100 different cards', true, 28], ['holo', 'Season 1 Complete', 'Own every Season 1 base card', true, 28]]) {
+  // D-191 option A (ci_frames=sets): the Holo frame is the reward of Rainbow Pride; the S1 reward is the Origins set frame, Double Team is not released yet for this member
+  for (const [value, name, how, mine, owners] of [['silver', 'Collector', 'Own 50 different cards', true, 28], ['gold', 'Archivist', 'Own 100 different cards', true, 28],
+    sets ? ['holo', 'Rainbow Pride', 'Own cards of 8 different elements', true, 28] : ['holo', 'Season 1 Complete', 'Own every Season 1 base card', true, 28]]) {
     items.push({ kind: 'frame', value, track: null, tier: null, need: null, badge: 'old', name, how, retired: true, owners, mine, plus: null });
+  }
+  if (sets) {
+    items.push({ kind: 'frame', value: 'holo:S1', track: null, tier: null, need: null, badge: 's1', name: 'Origins Set Complete', how: 'Own every Origins base card', retired: false, owners: 28, mine: true, plus: null });
+    items.push({ kind: 'frame', value: 'holo:S2', track: null, tier: null, need: null, badge: 'set:S2', name: 'Double Team Set Complete', how: 'Own every Double Team base card', retired: false, owners: 1, mine: false, plus: null });
   }
   for (const [value, name, how, mine, owners] of [['Rare Hunter', 'Rare Hunter', 'Own 10 Illustrated Rares', true, 27], ['Secret Keeper', 'Secret Keeper', 'Own 5 Secret Rares', true, 5]]) {
     items.push({ kind: 'title', value, track: null, tier: null, need: null, badge: 'old', name, how, retired: true, owners, mine, plus: null });
@@ -379,6 +387,15 @@ function derivedAchGallery(long) {
   return { members: long ? 123456789 : 29, items };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/profile' && c.ci_ach === 'tracks' && body && typeof body === 'object', make: (body) => ({ ...body, title: 'Secret Keeper', frame: 'silver' }) });
+// UI-13 D-191 (cookie ci_frames=sets): the set holo frames. The recorded catalog has no sets, so the pack colors of the 2 live sets (card_sets, 2026-10-14) come here, with the
+// reward of each (the answer of GET /api/catalog sets[].reward). The signed-in member wears the Origins frame and owns both set frames; another member's profile wears the Double
+// Team frame; four Leaderboard rows wear Origins, Double Team, the plain Holo frame and none, so the family shows in every place.
+const SET_ROWS = [['S1', 'Origins', '#ff8d4d', { packs: 5, title: 'Origins Champion', frame: 'holo:S1' }], ['S2', 'Double Team', '#3366cc', { packs: 5, title: 'Double Team Champion', frame: 'holo:S2' }]];
+DERIVED.push({ when: (p, c, body) => p === '/api/catalog' && c.ci_frames === 'sets' && body && typeof body === 'object', make: (body) => ({ ...body, sets: SET_ROWS.map(([id, name, pack_color, reward]) => ({ id, name, pack_color, reward })) }) });
+DERIVED.push({ when: (p, c, body) => p === '/api/profile' && c.ci_frames === 'sets' && body && typeof body === 'object', make: (body) => (body.id === '100000000000000001'
+  ? { ...body, title: 'Origins Champion', frame: 'holo:S1', titles: ['Origins Champion', 'Double Team Champion'], frames: ['silver', 'holo', 'holo:S1', 'holo:S2'] }
+  : { ...body, title: 'Double Team Champion', frame: 'holo:S2' }) });
+DERIVED.push({ when: (p, c, body) => p === '/api/leaderboard/v2' && c.ci_frames === 'sets' && Array.isArray(body?.rows), make: (body) => ({ ...body, rows: body.rows.map((r, i) => ({ ...r, frame: ['holo:S1', 'holo:S2', 'holo', null][i % 4] })) }) });
 // UI-64 (Shop stat reset picker, pick one): the recorded collection has 3 cards with stat points; ci_stats=many gives the
 // first 30 cards points (a member who spent points on many cards), so the picker shows a full page.
 const STAT_KEYS = ['attack', 'vitality', 'precision', 'potency', 'haste'];
@@ -540,7 +557,7 @@ createServer((req, res) => {
       return send(res, 200, JSON.stringify(c.ci_data === 'long' ? longData(out) : out));
     }
     if (c.ci_ach === 'tracks' && p === '/api/achievements') return send(res, 200, JSON.stringify(derivedAchView(c.ci_data === 'long')));   // UI-13
-    if (c.ci_ach === 'tracks' && p === '/api/achievements/gallery') return send(res, 200, JSON.stringify(derivedAchGallery(c.ci_data === 'long')));   // UI-13
+    if (c.ci_ach === 'tracks' && p === '/api/achievements/gallery') return send(res, 200, JSON.stringify(derivedAchGallery(c.ci_data === 'long', c.ci_frames === 'sets')));   // UI-13
     if (p === '/api/achievements') return send(res, 200, JSON.stringify({ enabled: false, rewards: null }));   // tracks off (the live answer of achievement_view + withRewards): the UI-12 list
     const key = keyOf(p, url.search) + (p === '/api/hunt' && c.ci_hunt ? `#${c.ci_hunt}` : '');
     // The exact request, else the same path with no query, else the same path with another query (another member's
