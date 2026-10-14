@@ -354,6 +354,7 @@ function cardPage(main, id) {
       field('Cooldown', inp('cs-a-cooldown', 'rounds', { type: 'number', step: '1' })),
       h('div', { class: 'cs-wide' }, field('What it does', h('textarea', { class: 'field', id: 'cs-a-desc', rows: '2', placeholder: 'What it does (shown to players)' })))),
     h('div', { class: 'cs-dfoot start' }, h('button', { class: 'btn primary', id: 'cs-ci-save', type: 'button', onclick: saveCardInfo }, 'Save card info'),
+      h('button', { class: 'btn cs-danger', id: 'cs-card-delete', type: 'button', onclick: deleteCardWhole }, icon('trash'), 'Delete card'),
       h('span', { class: 'subtitle', id: 'cs-ci-status', role: 'status' })));
 
   const tiers = panel('Tiers', 'Select a tier to upload its art, frame it, and edit its details.');
@@ -363,10 +364,7 @@ function cardPage(main, id) {
   const setsPanel = panel('Sets', 'The home set prints and numbers the card. Other sets can add it to their pull pool: the player gets the same card.');
   setsPanel.body.append(h('div', { id: 'cs-sets-box' }));
 
-  const del = panel('Delete card', 'Delete the whole card: every tier, its art and, if it is live, its rows in the live game.');
-  del.body.append(h('button', { class: 'btn cs-danger', id: 'cs-card-delete', type: 'button', onclick: deleteCardWhole }, icon('trash'), 'Delete card'));
-
-  main.append(name.el, setsPanel.el, info.el, tiers.el, del.el, tierDialog(), framerDialog(), addTierDialog());
+  main.append(name.el, setsPanel.el, info.el, tiers.el, tierDialog(), framerDialog(), addTierDialog());
   $('cs-name').addEventListener('change', saveCardDetails);
   ['cs-d-lore', 'cs-d-season', 'cs-d-event'].forEach((x) => $(x).addEventListener('change', saveTierDetails));
   setupHolo();
