@@ -33,6 +33,8 @@ const ATV = OLDFILES[0].match(/CREATE OR REPLACE FUNCTION public\.ach_track_valu
 if (!ATV) throw new Error('the ach_track_values text of pack_ledger_strict.sql was not found');
 // game_vars_readers.sql (F-1 PR 4) made a newer claim_daily and claim_daily_earn, so the guards of the older files refuse them.
 // The re-run puts the text that shard_ledger_strict.sql makes (the text those guards accept) in place first.
+const CLA = OLDFILES[0].match(/CREATE OR REPLACE FUNCTION public\.claim_achievement\(p_player text[\s\S]*?end \$function\$;/)?.[0];   // d191_set_rewards.sql made a newer claim_achievement: put the text of this file in place first
+if (!CLA) throw new Error('the claim_achievement text of pack_ledger_strict.sql was not found');
 const DAILY = [/CREATE OR REPLACE FUNCTION public\.claim_daily\(p_player text[\s\S]*?end \$function\$;/, /CREATE OR REPLACE FUNCTION public\.claim_daily_earn\(p_player_id text[\s\S]*?end \$function\$;/]
   .map((re) => OLDFILES[2].match(re)?.[0]);
 if (DAILY.some((x) => !x)) throw new Error('the claim_daily texts of shard_ledger_strict.sql were not found');
@@ -161,6 +163,7 @@ ${kase('a re-run of pack_ledger_strict.sql, card_ledger.sql and shard_ledger_str
     execute $o$${DAILY[0]}$o$;
     execute $o$${DAILY[1]}$o$;
     execute $o$${ATV}$o$;
+    execute $o$${CLA}$o$;
     execute $o$${OLDFILES[0]}$o$;
     execute $o$${OLDFILES[1]}$o$;
     execute $o$${OLDFILES[2]}$o$;

@@ -9,6 +9,7 @@
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { openSlots, squadDown, hasAttacker, noAction } from './squad-pick.js';
+import { setRewardsFrom } from './achievements.js';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 import { mtToday, nextMtMidnightISO } from './mt-time.js';
 installImgFallback();
@@ -452,7 +453,7 @@ function startV2() {
     else openPacks(1);
   });
   apiData('/api/catalog').then((d) => {
-    cache.catalog = d;
+    cache.catalog = d; setRewardsFrom(d.sets);
     const seasons = [...new Set((d.cards || []).map((c) => c.season || 'Season 1'))];
     el('v2Season').textContent = seasons[seasons.length - 1] || 'Season 1';
   }).catch(() => {});
