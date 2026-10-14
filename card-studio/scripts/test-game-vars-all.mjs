@@ -16,6 +16,7 @@
  *      offer, run cap and the cap shown); every kill drops a card; the Hunt prizes x 2 (settle_hunt and bot_game_vars); the Shop
  *      shows and charges half (pack, card, stat reset). The grants are ledger rows (shard_ledger, pack_ledger).
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

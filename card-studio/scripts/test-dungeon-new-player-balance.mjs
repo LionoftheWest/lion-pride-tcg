@@ -12,6 +12,7 @@
  *      cap x the damage of the round; 0 = no cap; a pass of the turn with 0 damage heals 0 under a cap).
  * The golden tests (dungeon-golden.mjs, combat-golden.mjs) prove that today's values play exactly as the old code.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

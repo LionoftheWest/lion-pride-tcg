@@ -13,6 +13,7 @@
  *   4. The balance keys are whole numbers from 1 to 10; an event value above 10 is refused; the unique index is
  *      (player_id, day, mode, attempt) and the old one-a-day index is gone.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

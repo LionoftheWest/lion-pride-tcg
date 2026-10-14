@@ -9,6 +9,7 @@
  * The baseline of each golden test runs in this run first (a mutation result is not valid when the baseline is red).
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-golden-mutations.mjs [hunt|dungeon]
  */
+import './localdb-guard.mjs';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

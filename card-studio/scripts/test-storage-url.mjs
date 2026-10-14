@@ -8,6 +8,7 @@
  *   - with no base (live), the address is the client's own (the live project);
  *   - under the preload (test-all-local.mjs runs it so), the default base is the local API of localdb.env.
  */
+import './localdb-guard.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { publicUrl } from '../src/storage-url.js';
 
