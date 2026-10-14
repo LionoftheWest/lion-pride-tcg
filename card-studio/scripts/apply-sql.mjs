@@ -33,6 +33,12 @@ if (process.env.LOCALDB !== '1' && !process.argv.includes('--live')) {
   console.error('apply-sql: refusing to write to LIVE without --live; use LOCALDB=1 for the local copy');
   process.exit(2);
 }
+// LOCALDB=1 means the local copy only when the preload sends the requests there. Without it the token in .env is the live
+// one, and the file went to LIVE (2026-10-14: `LOCALDB=1 node scripts/apply-sql.mjs` with no --import applied a migration live).
+if (process.env.LOCALDB === '1' && !globalThis.__LOCALDB_API) {
+  console.error('apply-sql: LOCALDB=1 without the preload would write to LIVE; run: LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/apply-sql.mjs <file.sql>');
+  process.exit(2);
+}
 
 if (!token) { console.error('Missing SUPABASE_ACCESS_TOKEN in .env'); process.exit(1); }
 if (!ref) { console.error('Could not read the project ref from SUPABASE_URL'); process.exit(1); }
