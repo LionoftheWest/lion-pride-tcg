@@ -92,3 +92,24 @@ The run id is part of the random key of a door room (`dungeon_choose`). The test
 
 The planted changes are in `scripts/lab-mutations.mjs`. Each one is a text replace in the live function text from `db/schema/functions`. A replace that finds nothing is an error.
 Known gap, found by this test: `combat-golden.mjs` does not see a heal that is 1 HP larger. No Hunt fight heals a card that has lost HP. The mutation that the test uses is a shield.
+
+## Cards that cannot be pulled (2026-10-14)
+
+A card that is in no pullable set's draw pool (the view `draw_pool`: Event and Promo cards such as the two Launch Day cards, and cards of a set that is not
+pullable) gets its own report section "Cards that cannot be pulled". The Lab still measures it, but it is never an attacker or support outlier, never in the
+median and never in a reference squad. The test is the draw pool, not the rarity name.
+
+## The Dungeon balance tool (2026-10-14)
+
+```
+LAB_LOCK_OWNER=<name> LOCALDB=1 node scripts/dungeon-balance.mjs [--options today,F1-medium,...] [--quick|--big] [--candidate file.sql]
+```
+
+It measures candidate values for the new member rules and the Guardian heal (`dungeon_new_player_balance.sql`, balance dungeon: `early_floors`, `early_hp`,
+`early_atk`, `horde_min`, `horde_spread`, `fight_min`, `fight_spread`, `foe_heal_cap`). The options are in `scripts/dungeon-balance-options.json`
+(`name`, `note`, `patch`: `[key, "{path}", json]`). Each request is an undone block: the candidate migration, then the option's patch (through the real balance
+triggers, so a value outside the limits is refused), then the fights. For squads of NORMAL cards (what a new member owns) at 0, 1 and 3 stars it reports the
+win rate of one room by foe kind on floors 1 and 2, whole runs on generated days (floor reached, share that passes floor 1 and 2, Shards a run), the Guardian
+fights on floors 1 to 5 (LOCK, LOOP, the heal as a share of the damage dealt) and the LOCK and LOOP counts. `--big` = 40 fights a cell, 90 runs a level,
+60 Guardian fights a row (about 3 minutes for each option). The report goes to `out/dungeon-balance/report.md`.
+Test of the migration: `scripts/test-dungeon-new-player-balance.mjs` (`MUTATE=all` plants 17 changes, each must make it fail).
