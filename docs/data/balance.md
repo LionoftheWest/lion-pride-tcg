@@ -17,7 +17,7 @@ The triggers on `balance` check each change:
 - `balance_check_economy` (`balance_check_economy()`): Trigger (before insert, update on balance): the pulls rates must add up to 1, pulls pack_size must be a whole number from 1 to 20, daily streak_cycle must be at least 1.
 - `balance_check_report_shots` (`balance_check_report_shots()`): Trigger (before insert, update on balance): the shape of the key report_shots (report_shots.sql): keep_days, per_report and max_bytes whole numbers of at least 1, per_report at most 9, max_bytes at most 5242880 (the Activity reads at most 5 MB of an upload).
 - `balance_check_runs` (`balance_check_runs()`): Trigger (before insert or update on balance): dungeon_runs_per_day and gauntlet_runs_per_day must be whole numbers from 1 to 10.
-- `balance_check_settings` (`balance_check_settings()`): Trigger (before insert, update on balance): the shapes of the keys dungeon, gauntlet and adventure_gate (balance_settings_numbers.sql) and dungeon_rewards.chest_rarity. dungeon: squad, budget, floors, round_cap and rules.budget whole numbers of at least 1; a cost (a whole number of at least 1) for every card rarity; hp_growth, atk_growth, foe_mult hp / atk above 0 for fight, horde, elite, miniboss, guardian; rest_heal and rest_revive shares from 0 to 1 (rest_revive above 0); rules.boost a number; room_weights numbers for the room types that add up to more than 0. gauntlet: budget a whole number of at least 1; room_weights the same, without treasure (no loot). adventure_gate: attackers a whole number. dungeon_rewards.chest_rarity: tiers 1 to 5, each 3 numbers that add up to more than 0.
+- `balance_check_settings` (`balance_check_settings()`): Trigger (before insert, update on balance): the shapes of the keys dungeon, gauntlet and adventure_gate (balance_settings_numbers.sql) and dungeon_rewards.chest_rarity. dungeon: squad, budget, floors, round_cap and rules.budget whole numbers of at least 1; a cost for every card rarity; hp_growth, atk_growth, foe_mult hp / atk above 0; rest_heal and rest_revive shares from 0 to 1; fight_min and horde_min whole numbers 1 to 8; fight_spread and horde_spread whole numbers 1 to 4; early_floors a whole number 0 to 30; early_hp and early_atk from 0.1 to 1; foe_heal_cap from 0 to 5; room_weights numbers that add up to more than 0. gauntlet: budget a whole number of at least 1; room_weights the same, without treasure. adventure_gate: attackers a whole number. dungeon_rewards.chest_rarity: tiers 1 to 5, each 3 numbers that add up to more than 0.
 - `balance_log_write` (`balance_log_write()`): Trigger (after insert, update on balance): writes a balance_log row with the old value, the new value and balance_who. Writes nothing when the value and the note did not change.
 
 - The shape of a value stays the same: an update cannot remove a leaf or change its type (see `balance_check`).
@@ -851,9 +851,9 @@ Shape: `number`
 
 ### dungeon
 
-The Dungeon fight and run rules (settings.dungeon keeps only the flag and the seed salt). squad = the cards in a run (dungeon_start), budget = the squad points (a day's rule can set a smaller one), cost = the points of a card by rarity (every rarity; dungeon_start, dungeon_view, gauntlet_pool). floors = the floors of a dungeon and of a Gauntlet week (5 rooms each). round_cap = the most rounds of one fight (dungeon_attack; the run falls). A foe (dungeon_make_foe): base HP x hp_growth ^ (floor - 1) x (1 + room_growth x (room - 1)), base attack x atk_growth ^ (floor - 1), then x foe_mult of its kind (fight, horde, elite, miniboss, guardian: hp and atk). rest_heal / rest_revive = the share of max HP a rest room heals / gives back to a downed card (dungeon_enter). room_weights = the odds of each room type in rooms 2 to 4 (dungeon_generate). rules = the daily rule numbers (dungeon_rules): boost = the extra damage of the tag rules (0.25 = +25%), budget = the small-budget rule. A day keeps the rule it drew. Shapes: balance_check_settings.
+The Dungeon fight and run rules (settings.dungeon keeps only the flag and the seed salt). squad = the cards in a run (dungeon_start), budget = the squad points (a day's rule can set a smaller one), cost = the points of a card by rarity (every rarity; dungeon_start, dungeon_view, gauntlet_pool). floors = the floors of a dungeon and of a Gauntlet week (5 rooms each). round_cap = the most rounds of one fight (dungeon_attack; the run falls). A foe (dungeon_make_foe): base HP x hp_growth ^ (floor - 1) x (1 + room_growth x (room - 1)), base attack x atk_growth ^ (floor - 1), then x foe_mult of its kind (fight, horde, elite, miniboss, guardian: hp and atk). rest_heal / rest_revive = the share of max HP a rest room heals / gives back to a downed card (dungeon_enter). room_weights = the odds of each room type in rooms 2 to 4 (dungeon_generate). rules = the daily rule numbers (dungeon_rules): boost = the extra damage of the tag rules (0.25 = +25%), budget = the small-budget rule. A day keeps the rule it drew. Shapes: balance_check_settings. New member rules: fight_min / fight_spread and horde_min / horde_spread = the number of foes of a fight (1 to 3 today) and of a horde (4 to 5 today): min to min + spread - 1 (dungeon_room_foes). early_floors, early_hp, early_atk = the first early_floors floors give foes x early_hp HP and x early_atk attack (1 = no change; from 0.1 to 1; dungeon_make_foe). foe_heal_cap = the foes together heal back at most this share of the damage that the squad dealt in the same round (0 = no cap; below 1 a Guardian never heals as much as the squad deals; dungeon_enemy_turn). The Gauntlet uses the same foes. Limits: balance_check_settings.
 
-Shape: `object { atk_growth: number, budget: number, cost: object { event: number, full_art: number, gold: number, illustrated_rare: number, normal: number, promo: number, secret_rare: number }, floors: number, foe_mult: object { elite: object { atk: number, hp: number }, fight: object { atk: number, hp: number }, guardian: object { atk: number, hp: number }, horde: object { atk: number, hp: number }, miniboss: object { atk: number, hp: number } }, hp_growth: number, rest_heal: number, rest_revive: number, room_growth: number, room_weights: object { choice: number, elite: number, fight: number, horde: number, miniboss: number, rest: number, treasure: number }, round_cap: number, rules: object { boost: number, budget: number }, squad: number }`
+Shape: `object { atk_growth: number, budget: number, cost: object { event: number, full_art: number, gold: number, illustrated_rare: number, normal: number, promo: number, secret_rare: number }, early_atk: number, early_floors: number, early_hp: number, fight_min: number, fight_spread: number, floors: number, foe_heal_cap: number, foe_mult: object { elite: object { atk: number, hp: number }, fight: object { atk: number, hp: number }, guardian: object { atk: number, hp: number }, horde: object { atk: number, hp: number }, miniboss: object { atk: number, hp: number } }, horde_min: number, horde_spread: number, hp_growth: number, rest_heal: number, rest_revive: number, room_growth: number, room_weights: object { choice: number, elite: number, fight: number, horde: number, miniboss: number, rest: number, treasure: number }, round_cap: number, rules: object { boost: number, budget: number }, squad: number }`
 
 ```json
 {
@@ -873,6 +873,7 @@ Shape: `object { atk_growth: number, budget: number, cost: object { event: numbe
   "squad": 5,
   "budget": 12,
   "floors": 30,
+  "early_hp": 1,
   "foe_mult": {
     "elite": {
       "hp": 1.9,
@@ -895,12 +896,19 @@ Shape: `object { atk_growth: number, budget: number, cost: object { event: numbe
       "atk": 1.45
     }
   },
+  "early_atk": 1,
+  "fight_min": 1,
+  "horde_min": 4,
   "hp_growth": 1.42,
   "rest_heal": 0.4,
   "round_cap": 40,
   "atk_growth": 1.22,
   "rest_revive": 0.25,
   "room_growth": 0.06,
+  "early_floors": 1,
+  "fight_spread": 3,
+  "foe_heal_cap": 0,
+  "horde_spread": 2,
   "room_weights": {
     "rest": 8,
     "elite": 10,

@@ -28,7 +28,9 @@ if (ref !== 'kgvdqqehefezbypozvrh') throw new Error(`wrong Supabase project: ${r
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).text();
 const old = process.argv.includes('--old');
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const strip = (s) => s.replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
+// The file's md5 guard names the live function text of its day. The test runs the file body on its own, so the guard is cut
+// (dungeon_new_player_balance.sql changed dungeon_enemy_turn).
+const strip = (s) => s.replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '').replace(/-- GUARD \(the combat_core[\s\S]*?-- GUARD-END\n/, '');
 const src = strip(readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/dungeon_rules_supports_targets.sql', import.meta.url)), 'utf8'));
 // The function BEFORE the file: the live text of 2026-10-08 (the schema snapshot at git 19cb666).
 const oldText = (() => {
