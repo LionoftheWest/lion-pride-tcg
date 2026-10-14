@@ -39,6 +39,6 @@ Check: `sudo docker logs cf-named | grep "Registered tunnel connection"` (4 line
 `curl https://1546979011140395098.discordsays.com/api/config` must return the config JSON.
 A Cloudflare error page has the cause in its `<title>`.
 
-## Limit
+## Backup VM
 
-The backup VM failover changes only the DuckDNS record. It does not move this tunnel.
+The backup VM has a stopped `cf-named` (same tunnel). The failover watcher starts it. `failback.sh` stops it.
