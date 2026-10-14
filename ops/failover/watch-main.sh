@@ -2,7 +2,8 @@
 # Runs on the BACKUP VM from cron, every minute. Watches the main VM.
 # After FAIL_LIMIT (3) failures in a row it fails over ONCE:
 #   (a) points the DuckDNS name at this box, (b) starts the stopped tcg-bot container,
-#   (c) writes the state file, (d) posts one Discord notice.
+#   (c) starts the stopped cf-named container (the Cloudflare tunnel for the Discord Activity),
+#   (d) writes the state file, (e) posts one Discord notice.
 # It NEVER fails back by itself (ops/failover/failback.sh, by hand).
 # Secrets are files on this box (never in the repo): see ops/failover/README.md.
 #
@@ -31,6 +32,7 @@ WEBHOOK_FILE="${WEBHOOK_FILE:-$DIR/discord-webhook.url}"
 DOCKER_CMD="${DOCKER_CMD:-sudo docker}"                 # tests replace it
 DUCK_CMD="${DUCK_CMD:-}"                                # tests replace it; empty = the real DuckDNS call
 BOT="${BOT_CONTAINER:-tcg-bot}"
+TUNNEL="${TUNNEL_CONTAINER:-cf-named}"
 LOG="${LOG_FILE:-$DIR/watch.log}"
 
 mkdir -p "$STATE_DIR"
@@ -82,7 +84,7 @@ if [ -f "$FAILED_OVER" ]; then
   check_main
   if [ "$DIRECT_OK" = 1 ] && [ ! -f "$BACK_FILE" ]; then
     date -u +%FT%TZ > "$BACK_FILE"
-    notify "Lion Pride backup VM: the main VM answers again. Its bot may have started by itself, so TWO bots may run (the hold file on the main VM stops only its DuckDNS cron). Run ops/failover/failback.sh on the backup VM now."
+    notify "Lion Pride backup VM: the main VM answers again. Its bot may have started by itself, so TWO bots may run (the hold file on the main VM stops only its DuckDNS cron). The backup bot AND the backup tunnel still run. Run ops/failover/failback.sh on the backup VM now."
   fi
   exit 0
 fi
@@ -104,11 +106,13 @@ log "main VM check failed ($N of $FAIL_LIMIT)"
 # ---- FAIL OVER (once). The state file comes first, so a half-done failover is never repeated.
 { date -u +%FT%TZ; echo "after $N failures"; } > "$FAILED_OVER"
 log "FAILOVER START"
-R_DNS=FAILED; R_BOT=FAILED
+R_DNS=FAILED; R_BOT=FAILED; R_TUNNEL=FAILED
 duck_update && R_DNS=ok
 log "dns: $R_DNS"
 if $DOCKER_CMD start "$BOT" >/dev/null 2>&1; then R_BOT=ok; fi
 log "bot start: $R_BOT"
-echo "dns=$R_DNS bot=$R_BOT" >> "$FAILED_OVER"
-notify "Lion Pride FAILOVER: the main VM did not answer $N times in a row. The backup VM took over. DuckDNS update: $R_DNS. Bot start: $R_BOT. Check the Activity. If the main VM is reachable, set the hold on it now: touch /home/ubuntu/failover/hold. Failback: docs/ops/backup-vm.md."
+if $DOCKER_CMD start "$TUNNEL" >/dev/null 2>&1; then R_TUNNEL=ok; fi
+log "tunnel start: $R_TUNNEL"
+echo "dns=$R_DNS bot=$R_BOT tunnel=$R_TUNNEL" >> "$FAILED_OVER"
+notify "Lion Pride FAILOVER: the main VM did not answer $N times in a row. The backup VM took over. DuckDNS update: $R_DNS. Bot start: $R_BOT. Tunnel start: $R_TUNNEL. Check the Activity. If the main VM is reachable, set the hold AND stop its tunnel now: touch /home/ubuntu/failover/hold; sudo docker stop cf-named. Failback: docs/ops/backup-vm.md."
 exit 0
