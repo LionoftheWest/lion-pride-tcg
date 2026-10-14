@@ -131,7 +131,7 @@ const sqlRows = async (sql) => JSON.parse(await runBlock(`do $t$ begin ${MUTATE 
 const RAR_ORDER = ['normal', 'illustrated_rare', 'full_art', 'secret_rare', 'gold', 'event', 'promo'];
 async function loadFacts() {
   const cards = await sqlRows(`select c.id, c.name, c.rarity::text rarity, c.subject_id sid, s.type, s.ability, coalesce(s.tag_slugs, '{}') tags, s.cp_mod,
-      card_combat(c.rarity::text, 0, s.cp_mod, '{}'::jsonb) cmb from cards c join subjects s on s.id = c.subject_id order by c.id`);
+      c.id in (select id from draw_pool) pullable, card_combat(c.rarity::text, 0, s.cp_mod, '{}'::jsonb) cmb from cards c join subjects s on s.id = c.subject_id order by c.id`);
   const bal = (await sqlRows(`select key, value from balance where key in ('boss_atk', 'boss_hp', 'boss_tiers', 'round_cap', 'daily_card_cap', 'stars', 'rarity_cp', 'stat_points', 'dungeon', 'support', 'combat')`))
     .reduce((a, r) => ({ ...a, [r.key]: r.value }), {});
   const passives = (await sqlRows(`select passives_for('boss') b, passives_for('counter') c, passives_for('foe') f, dungeon_foe_elements() e`))[0];
@@ -140,7 +140,10 @@ async function loadFacts() {
   const isAtk = (c) => ['Character', 'Creature'].includes(c.type);
   // one card for each subject: the lowest rarity (the card facts, not a member's copy)
   const bySubject = new Map();
-  for (const c of cards) { const o = bySubject.get(c.sid); if (!o || RAR_ORDER.indexOf(c.rarity) < RAR_ORDER.indexOf(o.rarity)) bySubject.set(c.sid, c); }
+  // A card that is not in any pullable set's draw pool (an Event or a Promo card, a card of a set that is not pullable) cannot be pulled:
+  // it is reported in its own section and never counts as an outlier (Nathan, 2026-10-14). A subject takes its lowest PULLABLE card when it has one.
+  const better = (c, o) => !o || (c.pullable && !o.pullable) || (c.pullable === o.pullable && RAR_ORDER.indexOf(c.rarity) < RAR_ORDER.indexOf(o.rarity));
+  for (const c of cards) { if (better(c, bySubject.get(c.sid))) bySubject.set(c.sid, c); }
   const subjects = [...bySubject.values()].map((c) => ({ ...c, atk: isAtk(c), eff: c.ability?.effect ?? (c.ability?.kind ?? 'none') }));
   return { cards, subjects, bal, passives, bosses, monsters, isAtk };
 }
@@ -206,26 +209,27 @@ async function hunt() {
     for (const r of [full, low]) checkResult('hunt-duel', r, s.name);
     const one = (r) => { const dm = r.dmg_sum / Math.max(1, r.n), loss = Math.max(1, r.loss_sum / Math.max(1, r.n)); return { dmg: dm, loss, life: dm * r.hp / loss, crit: r.crit / Math.max(1, r.n), miss: r.miss / Math.max(1, r.n), cp: r.cp, hp: r.hp, n: r.n }; };
     const a = one(full), b = one(low);
-    return { id: s.id, sid: s.sid, name: s.name, rarity: s.rarity, effect: s.eff, tags: s.tags, cp: a.cp, hp: a.hp, dmg: a.dmg, dmg_low: b.dmg, loss: a.loss, crit: a.crit, life_full: a.life, life_low: b.life, value: 0.75 * a.life + 0.25 * b.life };
+    return { id: s.id, sid: s.sid, name: s.name, rarity: s.rarity, pullable: s.pullable, effect: s.eff, tags: s.tags, cp: a.cp, hp: a.hp, dmg: a.dmg, dmg_low: b.dmg, loss: a.loss, crit: a.crit, life_full: a.life, life_low: b.life, value: 0.75 * a.life + 0.25 * b.life };
   }).filter((a) => a.cp);
   if (A.length < 5) { find('LOOP', 'hunt:no_attackers', `the attacker sweep gave no result (${res.filter((r) => r && r.timeout).length} calls did not end)`); throw new Abort('the attacker sweep gave no result'); }
   A.sort((x, y) => y.value - x.value);
-  const med = median(A.filter((a) => !['event', 'promo'].includes(a.rarity)).map((a) => a.value));
+  const med = median(A.filter((a) => a.pullable).map((a) => a.value));
   A.forEach((a) => { a.ratio = a.value / med; });
-  rep.attackers = A;
-  rep.attacker_effects = Object.entries(A.reduce((o, a) => ({ ...o, [a.effect]: [...(o[a.effect] || []), a.ratio] }), {})).map(([e, v]) => ({ effect: e, n: v.length, mean_ratio: r2(mean(v)) })).sort((x, y) => y.mean_ratio - x.mean_ratio);
+  rep.attackers = A.filter((a) => a.pullable);
+  rep.special = { attackers: A.filter((a) => !a.pullable), supports: [] };   // cards that cannot be pulled: listed, never an outlier
+  rep.attacker_effects = Object.entries(rep.attackers.reduce((o, a) => ({ ...o, [a.effect]: [...(o[a.effect] || []), a.ratio] }), {})).map(([e, v]) => ({ effect: e, n: v.length, mean_ratio: r2(mean(v)) })).sort((x, y) => y.mean_ratio - x.mean_ratio);
   for (const a of A) {
-    if (['event', 'promo'].includes(a.rarity)) continue;   // the event cards are a special rarity: listed, not an outlier
+    if (!a.pullable) continue;   // a card that cannot be pulled: listed in its own section, not an outlier
     if (a.ratio > 2.5) find('BALANCE', `hunt:atk-high:${a.id}`, `attacker ${a.name} is worth ${r2(a.ratio)} times the median attacker`);
     if (a.ratio < 0.35) find('BALANCE', `hunt:atk-low:${a.id}`, `attacker ${a.name} is worth ${r2(a.ratio)} times the median attacker`);
   }
   for (const e of rep.attacker_effects) if (e.n >= 3 && (e.mean_ratio > 1.6 || e.mean_ratio < 0.6)) find('BALANCE', `hunt:atk-effect:${e.effect}`, `the attack effect ${e.effect} is ${e.mean_ratio} times the median (${e.n} cards)`);
   // the reference squad: the three attackers around the median
-  const pool = A.filter((a) => !['event', 'promo'].includes(a.rarity));
+  const pool = A.filter((a) => a.pullable);
   const m = Math.floor(pool.length / 2);
   const refAtk = [pool[m - 1], pool[m], pool[m + 1]];
   ctx.A = pool; ctx.refAtk = refAtk;
-  log(`attackers: median value ${r2(med)}, top ${A[0].name} ${r2(A[0].ratio)}x, bottom ${A.at(-1).name} ${r2(A.at(-1).ratio)}x`);
+  log(`attackers: median value ${r2(med)}, top ${pool[0].name} ${r2(pool[0].ratio)}x, bottom ${pool.at(-1).name} ${r2(pool.at(-1).ratio)}x; ${rep.special.attackers.length} attackers cannot be pulled`);
 
   // --- supports: the same 3 attackers fight with and without the support card (the same seeds); the value = the extra squad damage
   const SS = seeds(N.supSeeds, 1);
@@ -233,7 +237,7 @@ async function hunt() {
   const squads = new Map();   // the base squads: the reference one and one for each affinity tag (3 attackers that carry the tag)
   const refIds = refAtk.map((a) => a.id);
   const matchedSquad = (tag) => {
-    const withTag = A.filter((a) => a.tags.includes(tag));
+    const withTag = A.filter((a) => a.pullable && a.tags.includes(tag));
     if (withTag.length < 2) return null;
     const pick = [...withTag].sort((x, y) => Math.abs(x.value - med) - Math.abs(y.value - med)).slice(0, 3).map((a) => a.id);
     for (const id of refIds) if (pick.length < 3 && !pick.includes(id)) pick.push(id);
@@ -264,13 +268,14 @@ async function hunt() {
     const o = { value: mean(d), se: sd(d) / Math.sqrt(d.length), pct: b0 ? mean(d) / b0 : 0, hp_lost: mean(hl), downs: mean(dw), plays: mean(rs.map((r) => r.supports)), base_dmg: b0, per_seed: d };
     supVal.set(`${x.s.id}:${x.kind}`, o);
   });
-  const S2 = sup.slice(0, N.supCount).map((s) => {
+  const S2all = sup.slice(0, N.supCount).map((s) => {
     const r = supVal.get(`${s.id}:ref`), mt = supVal.get(`${s.id}:matched`);
-    return { id: s.id, sid: s.sid, name: s.name, rarity: s.rarity, effect: s.eff, target: s.ability.target ?? 'boss', affinity: s.ability.affinity, cooldown: s.ability.cooldown, amount: s.ability.amount,
-      value: r.value, se: r.se, pct: r.pct, hp_lost: r.hp_lost, downs: r.downs, plays: r.plays, value_matched: mt ? mt.value : null, pct_matched: mt ? mt.pct : null, best: Math.max(r.value, mt ? mt.value : -1e9) };
+    return { id: s.id, sid: s.sid, name: s.name, rarity: s.rarity, pullable: s.pullable, effect: s.eff, target: s.ability.target ?? 'boss', affinity: s.ability.affinity, cooldown: s.ability.cooldown, amount: s.ability.amount,
+      pullable: s.pullable, value: r.value, se: r.se, pct: r.pct, hp_lost: r.hp_lost, downs: r.downs, plays: r.plays, value_matched: mt ? mt.value : null, pct_matched: mt ? mt.pct : null, best: Math.max(r.value, mt ? mt.value : -1e9) };
   });
-  S2.sort((x, y) => y.best - x.best);
-  rep.supports = S2;
+  S2all.sort((x, y) => y.best - x.best);
+  const S2 = S2all.filter((x) => x.pullable);
+  rep.supports = S2; rep.special.supports = S2all.filter((x) => !x.pullable);
   ctx.S2 = S2; ctx.supVal = supVal; ctx.SS = SS; ctx.baseSquad = refIds; ctx.refBase = mean(base.get('ref').map((b) => b.dmg_gross)); ctx.fight = fight;
   const bestPct = S2.map((x) => Math.max(x.pct, x.pct_matched ?? -9));
   rep.support_effects = Object.entries(S2.reduce((o, x) => ({ ...o, [x.effect]: [...(o[x.effect] || []), Math.max(x.pct, x.pct_matched ?? -9)] }), {})).map(([e, v]) => ({ effect: e, n: v.length, mean_pct: r2(mean(v)) })).sort((x, y) => y.mean_pct - x.mean_pct);
@@ -637,6 +642,11 @@ if (rep.attackers) {
     'Top 5:', table(A.slice(0, 5), [['Card', (a) => a.name], ['Rarity', (a) => a.rarity], ['Effect', (a) => a.effect], ['CP', (a) => a.cp], ['HP', (a) => a.hp], ['Value', (a) => r2(a.value)], ['x median', (a) => r2(a.ratio)]]), '',
     'Bottom 5:', table(A.slice(-5), [['Card', (a) => a.name], ['Rarity', (a) => a.rarity], ['Effect', (a) => a.effect], ['CP', (a) => a.cp], ['HP', (a) => a.hp], ['Value', (a) => r2(a.value)], ['x median', (a) => r2(a.ratio)]]), '',
     'By attack effect:', table(rep.attacker_effects, [['Effect', (e) => e.effect], ['Cards', (e) => e.n], ['Mean x median', (e) => e.mean_ratio]]), '');
+}
+if (rep.special && (rep.special.attackers.length || rep.special.supports.length)) {
+  const sp = [...rep.special.attackers.map((a) => ({ ...a, kind: 'attacker' })), ...rep.special.supports.map((a) => ({ ...a, kind: 'support' }))];
+  md.push('## Cards that cannot be pulled', '', 'These cards are in no pullable set\'s draw pool (Event and Promo cards, and cards of a set that is not pullable). They are measured the same way, but they are never an outlier and never in a reference squad.', '',
+    table(sp, [['Card', (a) => a.name], ['Kind', (a) => a.kind], ['Rarity', (a) => a.rarity], ['Effect', (a) => a.effect], ['Value', (a) => (a.kind === 'attacker' ? r2(a.value) : r2(a.value))], ['x median (attackers) / % of squad damage (supports)', (a) => (a.kind === 'attacker' ? `${r2(a.ratio)}x` : pct(a.pct))]]), '');
 }
 if (rep.supports) {
   const S = rep.supports;
