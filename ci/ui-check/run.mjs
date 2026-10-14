@@ -87,6 +87,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.gifts) cookies.push({ name: 'ci_gifts', value: '1', url: BASE });
         if (spec.report) cookies.push({ name: 'ci_report', value: 'on', url: BASE });
         if (spec.wish) cookies.push({ name: 'ci_wish', value: spec.wish, url: BASE });
+        if (spec.events) cookies.push({ name: 'ci_events', value: spec.events, url: BASE });   // UI-62: the Events page flag and its fixture events (serve.mjs)
         if (spec.board) cookies.push({ name: 'ci_board', value: spec.board, url: BASE });   // UI-66: the Leaderboard board states (rows | empty | error)
         if (spec.ach) cookies.push({ name: 'ci_ach', value: spec.ach, url: BASE });
         if (spec.frames) cookies.push({ name: 'ci_frames', value: spec.frames, url: BASE });   // UI-13 D-191: the set holo frames (sets)

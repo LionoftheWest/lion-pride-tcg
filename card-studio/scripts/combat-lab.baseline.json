@@ -1,0 +1,8 @@
+{
+  "_note": "LOOP and LOCK findings that the Combat Lab shows on the live data and that are design questions for Nathan. A NEW LOOP or LOCK fails the Lab. INVARIANT, REWARD and COOLDOWN findings are never listed here.",
+  "known": {
+    "dungeon-foe:ice:guardian:median 3+2:foe_heal": "a Guardian (2 passives, for example regenerating) heals back all the damage that a weak squad deals in 12 or more rounds",
+    "dungeon-foe:shadow:guardian:strong 3+2:foe_heal": "the same, with a strong squad",
+    "dungeon-foe:metal:guardian:median 3+2:foe_heal": "the same"
+  }
+}

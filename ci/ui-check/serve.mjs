@@ -17,6 +17,7 @@
 //   ci_frames=sets   the set holo frames (UI-13 D-191): /api/catalog sets carry pack_color (S1 #ff8d4d, S2 #3366cc), the signed-in member wears holo:S1, a profile and
 //                    some Leaderboard rows wear holo:S2 / holo:S1 / holo, and the gallery lists the Origins and Double Team frames (derived below)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
+//   ci_events=on|four|empty|error   the player Events page (UI-62): the flag on, and /api/events answers fixture events (derived below)
 //   ci_report=on     /api/flags answers reports: true (the Feedback window, UI-40); the send stays blocked (403), so a send shows the error state
 //   ci_data=long    every member name becomes a 32-character name and every count a 9-digit number (12.6)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
@@ -459,6 +460,28 @@ function derivedAvatarFx(body) {
   return { ...body, badges: { ...(body?.badges || {}), ...Object.fromEntries([...ids].map((id) => [id, { mustache: true }])) } };
 }
 DERIVED.push({ when: (p, c) => p === '/api/effects/badges' && c.ci_avfx === 'on', make: (body) => derivedAvatarFx(body) });
+// UI-62 the Events page: cookie ci_events=on|four|empty|error makes /api/flags carry events (the flag, default OFF in production) and
+// /api/events answer a month of FIXTURE events (example content from the approved frames: a live modifier, a multi-day Hunt, a scheduled
+// Community week, the weekly Hunts, a Dungeon change; four = one more in the same week for "+N more"; empty = none; error = an error answer).
+// The times are fixed MDT days of the recording month (the clock of the check is 2026-10-04 21:35 MDT).
+const evAt = (mo, day, h = 0) => new Date(Date.UTC(2026, mo - 1, day, h + 6)).toISOString();
+const evRow = (id, kind, title, s, e, changes, theme = {}, status = 'scheduled', description = '') => ({ id, kind, title, description, starts_at: s, ends_at: e, status, theme, changes });
+function derivedEvents(mode) {
+  if (mode === 'error') return { error: 'ui-check: events error' };
+  if (mode === 'empty') return { events: [] };
+  const weekly = (id, day) => evRow(id, 'hunt', 'Weekly Hunt', evAt(10, day, 15), day + 4 > 31 ? evAt(11, day + 4 - 31, 17) : evAt(10, day + 4, 17), [], { color: '#B45AD8' });
+  const list = [
+    evRow(101, 'trigger', 'Community Week', evAt(10, 1), evAt(10, 8), [], { name: 'Community', color: '#5BE38A' }, 'live', 'Invite a friend and both of you earn more.'),
+    evRow(102, 'hunt', 'The Ranked Nightshade', evAt(10, 1, 15), evAt(10, 5, 17), [], { color: '#B45AD8' }, 'live'),
+    evRow('m1', 'modifier', 'Double Pull Weekend', evAt(10, 2), evAt(10, 5), [{ key: 'pull_rare_mult', label: 'Rare pull odds', text: '2x rare pull odds' }], { name: 'Gold Rush', color: '#FF9A3C', art: '/pack_still.png' }, 'live'),
+    weekly(103, 8), weekly(104, 15), weekly(105, 22), weekly(106, 29),
+    evRow(107, 'modifier', 'Dungeon Rush', evAt(10, 17), evAt(10, 19), [{ key: 'dungeon_runs_per_day', label: 'Dungeon runs a day', text: 'Dungeon runs a day: up to 2' }], { color: '#5B8CFF', art: '/dungeon/room.webp' }),
+  ];
+  if (mode === 'four') list.push(evRow(108, 'modifier', 'Gauntlet Encore', evAt(10, 2), evAt(10, 5), [{ key: 'gauntlet_runs_per_day', label: 'Gauntlet runs a day', text: 'Gauntlet runs a day: up to 2' }], { color: '#FF5A5A' }, 'live'));
+  return { events: list };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/flags' && !!c.ci_events && body, make: (body) => ({ ...body, events: true }) });
+DERIVED.push({ when: (p, c) => p === '/api/events' && !!c.ci_events, make: (body, c) => derivedEvents(c.ci_events) });
 // UI-40: the recorded /api/flags has the report flag off; ci_report=on turns it on (the send stays blocked, so a send shows the error)
 DERIVED.push({ when: (p, c, body) => p === '/api/flags' && c.ci_report === 'on' && body, make: (body) => ({ ...body, reports: true }) });
 // D-190 / F-2: the recorded catalog (2026-10-05) is older than the set fields. The live /api/catalog gives each card its set_id and the released
