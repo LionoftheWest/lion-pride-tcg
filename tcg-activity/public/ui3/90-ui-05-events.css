@@ -1,13 +1,17 @@
-/* ==== UI-05 Home carousel: the Events slide (design repo UI-05/approved *-events-*, D-184 to D-188, condition A; flag events) ====
-   It reuses the Dungeon and Gauntlet slide layout (90-ui-05.css: .u3-hm-sb, the fit steps of fitSlide). The theme color is one of the
-   --name-color-* tokens (--t, D-185), the kind color one of the D-186 tokens (--k). The Also live box holds its place with one live event (condition A). Tokens only. */
+/* ==== UI-05 Home carousel: the Events slides (design repo UI-05/approved/events-r6, review-6, D-194 to D-199; flag events) ====
+   One slide for each live event (no Hunt event). It reuses the Dungeon and Gauntlet slide layout (90-ui-05.css: .u3-hm-sb and the fit steps).
+   The picture fills the same picture box as the Dungeon slide (D-194), the theme color is its edge (--t, one of the --name-color-* tokens, D-185);
+   the kind color is --k (D-186). Text (D-195): the chip, the title, ONE line, the countdown with the "View event" button. Tokens only. */
 .u3-hm-sb.is-events .u3-hm-title > .u3-ico { color: var(--k); }
-.u3-hm-simg.u3-hm-eimg { display: grid; place-items: center; overflow: hidden; border-color: var(--t, var(--border-strong)); border-width: var(--bw-2); background: var(--bg-base); }
-.u3-hm-simg.u3-hm-eimg > img { display: block; max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; }
+.u3-hm-simg.u3-hm-eimg { display: grid; place-items: center; overflow: hidden; border-color: var(--t, var(--border-strong)); border-width: var(--bw-2); }
+.u3-hm-simg.u3-hm-eimg.has-art { background: var(--bg-base); }
+.u3-hm-simg.u3-hm-eimg.is-glow { background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--t) 38%, transparent), transparent 70%), var(--bg-base); }   /* no art: the kind icon on a glow of the theme color */
+.u3-hm-simg.u3-hm-eimg > img { display: block; width: 100%; height: 100%; object-fit: cover; }   /* the art fills the box (D-194) */
 .u3-hm-eico { color: var(--k); }
-/* Also live: the rows, then "+N more" (D-187); the held box (one live event) is invisible but keeps its height */
-.u3-hm-evr { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); color: var(--k); }
-.u3-hm-evn { min-width: 0; color: var(--text-primary); font-size: var(--fs-small); font-weight: var(--fw-small-strong); overflow-wrap: break-word; }
-.u3-hm-evd { font-style: normal; font-family: var(--font-num); font-size: var(--fs-small); color: var(--gold); white-space: nowrap; }
-.u3-hm-evm { color: var(--text-secondary); font-size: var(--fs-small); font-family: var(--font-num); }
-.u3-hm-sb .u3-hm-sboard.is-held, .u3-hm-sb .u3-hm-sline.is-held { visibility: hidden; pointer-events: none; }
+/* the one line: the tagline, else the first plain-word change (D-195) */
+.u3-hm-evline { margin: var(--u3-none); min-width: 0; color: var(--text-primary); font-size: var(--fs-stat); font-weight: var(--fw-stat); line-height: var(--lh-stat); overflow-wrap: break-word; }
+.u3-hm-sb.is-events .u3-hm-stimer { flex-wrap: wrap; row-gap: var(--sp-2); }
+/* fit steps of fitEventSlide: no chip, no line, no button (the tap on the slide still opens the event) */
+.u3-hm-sb.is-nochip .u3-hm-chip { display: none; }
+.u3-hm-sb.is-noline .u3-hm-evline { display: none; }
+.u3-hm-sb.is-nobtn .u3-btn { display: none; }
