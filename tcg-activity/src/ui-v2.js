@@ -1157,7 +1157,7 @@ const pullsTab = { v: 'all' };
 
 let homeRO = null;
 let slideTimer = null;   // UI-05: the one second tick of the Dungeon and Gauntlet slide timers (v3 only)
-const homeSlides = { hunt: null, dungeon: null, gauntlet: null, key: null };   // UI-05: the carousel data and the slide shown (v3 only)
+const homeSlides = { hunt: null, dungeon: null, gauntlet: null, events: [], key: null };   // UI-05: the carousel data and the slide shown (v3 only)
 export function disposeHomeV2() {
   disposeGalBoss();
   if (homeRO) { homeRO.disconnect(); homeRO = null; }
@@ -1182,17 +1182,21 @@ export async function renderHomeV2() {
   if (v3) watchHomeV3();
   // UI-05 (v3 only): the Dungeon and Gauntlet slides read the same routes as their lobbies; a closed or off mode has no slide
   const modes = v3 && document.body.classList.contains('adv-on');
-  const [hunt, , , dgd, gad] = await Promise.all([
+  // UI-05 Events slide: only with the flag `events` (ctx.eventsOn: FEATURE_EVENTS / EVENTS_USERS, default OFF); /api/events = the live events
+  const evOn = v3 && !!ctx.eventsOn?.();
+  const [hunt, , , dgd, gad, evd] = await Promise.all([
     ctx.features().hunt ? ctx.api('/api/hunt?light=1').catch(() => null) : Promise.resolve(null),   // the boss only: Home reads no roster
     loadMyProfile(true),
     ensureCatalog(),
     modes ? ctx.api('/api/dungeon?lite=1').catch(() => null) : Promise.resolve(null),   // the slide reads no collection
     modes ? ctx.api('/api/gauntlet').catch(() => null) : Promise.resolve(null),
+    evOn ? ctx.api('/api/events').catch(() => null) : Promise.resolve(null),
   ]);
   if (ctx.currentView() !== 'home') return;
   homeSlides.key = null;
   homeSlides.dungeon = dgd?.ok && !dgd.closed ? dgd : null;
   homeSlides.gauntlet = gad?.ok && !gad.closed ? gad : null;
+  homeSlides.events = evOn && Array.isArray(evd?.events) ? hs3.liveEvents(evd.events) : [];   // an error answer or none live = no slide (D-45)
   paintHero(hunt);
   paintVoice(); // the catalog is loaded now: the tiles can show card pictures
 }
@@ -1466,12 +1470,14 @@ function fitHomeV3() {
   run();
 }
 // UI-05: the hero is a carousel (Hunt, Dungeon, Gauntlet) when a mode is open; the Hunt slide is the UI-03 / UI-04 hero below.
-const slideOrder = () => hs3.slideOrder({ huntLive: !!homeSlides.hunt?.h, dungeon: !!homeSlides.dungeon, gauntlet: !!homeSlides.gauntlet });
+const slideOrder = () => hs3.slideOrder({ huntLive: !!homeSlides.hunt?.h, dungeon: !!homeSlides.dungeon, gauntlet: !!homeSlides.gauntlet, events: homeSlides.events.length > 0 });
 function tickSlides() {
   document.querySelectorAll('[data-hms]').forEach((n) => { n.textContent = hs3.hms(n.dataset.hms); });
   document.querySelectorAll('[data-dhm]').forEach((n) => { n.textContent = hs3.dhm(n.dataset.dhm); });
 }
-function openMode(kind) {   // the Adventure button opens the last tab (ui-v2-dungeon.js initDungeon): set it, then press it
+function openMode(kind) {
+  if (kind === 'events') { document.getElementById('eventsBtn')?.click(); return; }   // the Events slide opens the UI-62 Events page
+  // the Adventure button opens the last tab (ui-v2-dungeon.js initDungeon): set it, then press it
   try { localStorage.setItem('lp.adventure.tab', kind); } catch { /* storage off */ }
   document.querySelector('#dock .dk[data-view="battling"]')?.click();
 }
@@ -1486,7 +1492,7 @@ function paintHeroV3(box, d, h) {
   if (!order.includes(homeSlides.key)) homeSlides.key = order[0];
   const key = homeSlides.key;
   if (heroBoss) { try { heroBoss.dispose(); } catch { /* ignore */ } heroBoss = null; }
-  const html = key === 'dungeon' ? hs3.dungeonSlideHTML(homeSlides.dungeon) : key === 'gauntlet' ? hs3.gauntletSlideHTML(homeSlides.gauntlet) : '';
+  const html = key === 'dungeon' ? hs3.dungeonSlideHTML(homeSlides.dungeon) : key === 'gauntlet' ? hs3.gauntletSlideHTML(homeSlides.gauntlet) : key === 'events' ? hs3.eventsSlideHTML(homeSlides.events) : '';
   box.innerHTML = hs3.carouselHTML(order, key, html, { dungeon: hs3.slideNews('dungeon', homeSlides.dungeon) });
   box.onclick = (e) => {
     const go = e.target.closest('[data-slide-go]');

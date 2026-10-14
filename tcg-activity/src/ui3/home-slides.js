@@ -7,13 +7,16 @@ import { icon } from './icons.js';
 import { iconButton, dot, esc } from './components.js';
 import { breakable } from '../effects-ui.js';
 import { topMode } from './home-boss.js';
+import { KINDS, norm, isLive, left, themeVar, artURL } from './events.js';
 
-export const SLIDES = { hunt: 'Hunt', dungeon: 'Dungeon', gauntlet: 'Gauntlet' };
+export const SLIDES = { hunt: 'Hunt', dungeon: 'Dungeon', gauntlet: 'Gauntlet', events: 'Events' };
 
-/** The slides in order: the Hunt first when it is live, else the next active mode first (D-14, D-45). A mode with no data (closed, off) has no slide. */
-export function slideOrder({ huntLive, dungeon, gauntlet }) {
+/** The slides in order: the Hunt first when it is live, else the next active mode first (D-14, D-45). A mode with no data (closed, off) has no slide.
+ *  The Events slide is the LAST slide (D-188), and only when an event is live (D-45) and the flag shows it (`events`). */
+export function slideOrder({ huntLive, dungeon, gauntlet, events }) {
   const modes = [dungeon ? 'dungeon' : null, gauntlet ? 'gauntlet' : null].filter(Boolean);
-  return huntLive ? ['hunt', ...modes] : dungeon ? ['dungeon', 'hunt', ...(gauntlet ? ['gauntlet'] : [])] : ['hunt', ...modes];
+  const base = huntLive ? ['hunt', ...modes] : dungeon ? ['dungeon', 'hunt', ...(gauntlet ? ['gauntlet'] : [])] : ['hunt', ...modes];
+  return events ? [...base, 'events'] : base;
 }
 
 /** The news Dot (D-45, D-55): the Dungeon has news while today's run is not used yet. Nothing else is drawn as news (UI-05 frames). */
@@ -116,4 +119,38 @@ export function fitSlide(box) {
   if (topMode(document.body.dataset.size, false) === 'line') sb.classList.add('is-line');
   if (over() && !sb.classList.contains('is-line')) sb.classList.add('is-line');
   if (over()) { sb.classList.add('is-tight'); if (over()) { sb.classList.add('is-tighter'); if (over()) { sb.classList.add('is-nolabel'); if (over()) { sb.classList.add('is-noart'); if (over()) { sb.classList.add('is-noline'); if (over()) sb.classList.add('is-norl'); } } } } }   // the last steps: the line without its label (aria-label keeps it), then the text column alone (a decorative picture gives its width back), then no Top line: on the smallest phone (375x667) the text still ran over the slide control (Nathan 2026-10-11, "this needs to be fixed")
+}
+
+// ---- The Events slide (UI-05 review-5, D-184 to D-188, condition A; flag `events`) ----
+/** The live events from /api/events, the one that ends first first (D-187). A scheduled event (not started) is not live. */
+export function liveEvents(list, now = Date.now()) {
+  return (Array.isArray(list) ? list : []).map(norm).filter((e) => e.k && Number.isFinite(e.start) && Number.isFinite(e.end) && isLive(e, now)).sort((a, b) => a.end - b.end || a.start - b.start);
+}
+const evRow = (e, now) => `<li class="u3-hm-evr" style="--k:${KINDS[e.k].color}">${icon(KINDS[e.k].icon)}<b class="u3-hm-evn">${breakable(esc(e.title))}</b><em class="u3-hm-evd">Ends in ${esc(left(e.end - now))}</em></li>`;
+/** The Events slide. list = liveEvents(...) (not empty). The "Also live" place is ALWAYS kept, empty with one live event (condition A, D-165). */
+export function eventsSlideHTML(list, now = Date.now()) {
+  const e = list[0]; const more = list.slice(1);
+  const k = KINDS[e.k];
+  const url = artURL(e);
+  const art2 = `<div class="u3-hm-sart"><div class="u3-hm-simg u3-hm-eimg" style="--t:${themeVar(e)}${url ? '' : `;--k:${k.color}`}" aria-hidden="true">`
+    + (url ? `<img src="${esc(url)}" alt="">` : `<span class="u3-hm-eico">${icon(k.icon, { size: '2xl' })}</span>`) + '</div></div>';
+  const body = `<div class="u3-hm-i1"><span class="u3-hm-chip is-live"><i class="u3-hm-livedot"></i>Event · Live now</span>`
+    + `<div class="u3-hm-strow"><h2 class="u3-hm-title" style="--k:${k.color}">${icon(k.icon, { size: 'lg' })}<span>${breakable(esc(e.title))}</span></h2></div></div>`
+    + `<div class="u3-hm-next u3-hm-stimer">${icon('timer')}<span>Ends in</span><b data-hms="${esc(e.ends_at)}">${hms(e.ends_at, now)}</b></div>`
+    + `<div class="u3-hm-rule"><span class="u3-hm-rl">What changes</span><b>${breakable(esc(e.changes.length ? e.changes.map((c) => c.text).join(', ') : (e.description || k.label)))}</b></div>`
+    + alsoLive(more, now) + alsoLine(more, now);
+  return slide('events', art2, body);
+}
+/** The Also live box (rows: at most 2, then "+N more", D-187). With no other event it holds its place, hidden. */
+function alsoLive(more, now) {
+  if (!more.length) return `<div class="u3-hm-sboard is-held" aria-hidden="true"><span class="u3-hm-sbt">Also live</span><ul class="u3-hm-sbl"><li class="u3-hm-evr"><b class="u3-hm-evn">&nbsp;</b></li></ul></div>`;
+  const n = more.length - 2;
+  return `<button type="button" class="u3-hm-sboard" data-slide-open="events" aria-label="${esc(`Also live: ${more.map((e) => e.title).join(', ')}`)}"><span class="u3-hm-sbt">Also live</span>`
+    + `<ul class="u3-hm-sbl">${more.slice(0, 2).map((e) => evRow(e, now)).join('')}</ul>${n > 0 ? `<span class="u3-hm-evm">+${n} more</span>` : ''}</button>`;
+}
+/** The one line of the compact classes: "Also live: <next> · <ends in or +N more>". */
+function alsoLine(more, now) {
+  if (!more.length) return '<span class="u3-hm-top u3-hm-sline is-held" aria-hidden="true"><span class="u3-hm-topt">&nbsp;</span></span>';
+  const e = more[0];
+  return `<button type="button" class="u3-hm-top u3-hm-sline" data-slide-open="events" aria-label="${esc(`Also live: ${more.map((x) => x.title).join(', ')}`)}"><span class="u3-hm-topt"><span class="u3-hm-topl">Also live:</span> <b>${breakable(esc(e.title))}</b> <i>·</i> <em>${more.length > 1 ? `+${more.length - 1} more` : `Ends in ${esc(left(e.end - now))}`}</em></span></button>`;
 }
