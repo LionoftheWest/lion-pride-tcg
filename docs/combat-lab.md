@@ -1,0 +1,94 @@
+# The Combat Lab and the golden tests (F-3 PR 3)
+
+Status: built 2026-10-14. These are local tools in `card-studio/scripts`. No migration. No change to the game.
+The Lab comes before the effect engine (F-3 item 6). The effect engine PR must show the same Lab report and the same golden transcripts.
+
+## Rules
+
+- The tools run on the LOCAL copy only. `LOCALDB=1` is required. The preload refuses the live project.
+- The tools do not calculate combat. Each number comes from the same SQL functions as a real fight.
+  The tools only set up a member and a fight, choose the next action, and read what the fight wrote.
+- Each fight runs in an undone block with a fixed seed. Nothing stays on the local copy.
+- The helper SQL (`scripts/lab-sql.mjs`) is temporary (`pg_temp`). It lives only inside one request.
+- The local database lock applies (`docs/foundations.md`, "How these PRs went live").
+  With `LAB_LOCK_OWNER=<name>` each request takes the lock and releases it. Without it, hold the lock yourself.
+- One request must end in less than 55 seconds. The tools cut work into small requests and set a request limit (`LAB_LIMIT_S`, 45 s).
+
+## The Combat Lab
+
+```
+LOCALDB=1 node scripts/combat-lab.mjs [--quick] [--sections data,hunt,dungeon,gauntlet,stats,rewards,smoke] [--out dir]
+```
+
+The report goes to `card-studio/out/combat-lab/report.md` and `report.json`. The folder `out/` is not committed.
+The Lab uses only synthetic members, so the report has no member data. The method is the only part that is committed.
+
+### Time budget
+
+| Run | Budget | Measured (2026-10-14, local copy) |
+|---|---|---|
+| Full | 15 minutes | 690 s (11.5 minutes) |
+| `--quick` (samples) | 3 minutes | 110 s |
+| `--tiny` (the acceptance test) | 1 minute | 8 to 40 s |
+
+The full run: 60 attackers and 69 supports, 16 seeds each. 36 bosses. 390 Dungeon room fights. 68 Dungeon runs. 6 Gauntlet runs. 352 cards.
+The effect engine PR must keep the time of the same run within 10 percent (`docs/foundations.md`, "Performance and cost budget").
+
+### What each section does
+
+| Section | What it plays | What it reports |
+|---|---|---|
+| `data` | each card at 0 to 5 stars, each ability | NaN, NULL, zero HP, a support cooldown below 1, `combat_cooldown` for every Haste value |
+| `hunt` | a duel for each attacker. The same squad with and without each support. Squads of 8 cards. 12 bosses in 3 tiers with all passives | damage and support value for each card (subject level: lowest rarity, 0 stars, no points), top and bottom outliers, the strongest squads and shapes, each boss against a best and a median squad |
+| `dungeon` | 13 elements and 5 foe kinds with 3 squads. Whole runs with random squads on the real generated day | win rate by element and kind, floor reached by squad shape, loops and locks |
+| `gauntlet` | the real weekly squad | no loot, and the 0-star rule: a member with 5 stars and stat points plays the same fight as a member with none |
+| `stats` | one stat point in each stat, 0 to 5 stars in each rarity | value of a point, the best attacker stat, the Haste table, a matrix of life by rarity and star |
+| `rewards` | a Hunt boss with low HP, defeated and settled twice. Every Dungeon and Gauntlet run | each reward pays once, and the ledger equals the run |
+| `smoke` | every card in a Hunt fight | no broken limit |
+
+Measure for an attacker: the damage of one attack times the HP, divided by the HP that the boss counter takes in that round.
+That is the expected damage before the card falls. It uses `hunt_attack` with the Normal tier boss.
+Measure for a support: the extra damage of a squad of 3 median attackers in a fight of 40 attacks, against the same squad without the card. The seeds are the same.
+
+### Findings and the exit code
+
+| Class | Meaning | Fails the Lab |
+|---|---|---|
+| INVARIANT | HP below 0 or above the maximum, NaN, NULL, a negative shield, an SQL error in a fight | Yes |
+| REWARD | a reward that paid twice, or the ledger is not equal to the run, or the Gauntlet paid loot | Yes |
+| COOLDOWN | a support with a cooldown of 0 | Yes |
+| LOOP | a request that does not end, a fight that reaches the round limit or the call limit | Yes, when new |
+| LOCK | foes heal as much as all damage, a squad heals as much as all damage, a stun chain of 3 rounds | Yes, when new |
+| BALANCE | an outlier: a card, a stat, a boss, a squad shape | No (information) |
+
+`scripts/combat-lab.baseline.json` lists the LOOP and LOCK findings that Nathan has seen. A new LOOP or LOCK fails the Lab.
+INVARIANT, REWARD and COOLDOWN are never in the baseline. `--no-baseline` ignores the file.
+
+## The golden test of the Dungeon and the Gauntlet
+
+```
+LOCALDB=1 node scripts/dungeon-golden.mjs                       the code against itself (each fight runs twice with the same seed)
+CANDIDATE=<file.sql> LOCALDB=1 node scripts/dungeon-golden.mjs   the code against a candidate migration
+BASE=<file.sql> CANDIDATE=<file.sql> ...                         a migration that is already applied: the text before it plays the "live" fights
+```
+
+It is the twin of `combat-golden.mjs` (the Hunt, 84 fights). It plays 189 fights (63 scenarios, 3 seeds). Each fight starts with the real
+`dungeon_start` or `gauntlet_start`. The transcript has every result, a digest of the state after each action, the end of the run and the ledgers.
+The test fails on the first difference and prints the fight and the line.
+Time: 106 s for the two base runs, 54 s more for a candidate (2 minutes 42 s in all). `GOLDEN_SEEDS=1` makes it three times faster.
+
+The scenarios cover: 13 elements, 5 foe kinds, 10 monsters (all move pools), 7 foe passives, 8 support effects, 5 attack effects,
+the refusals (cooldown, stunned, stun immunity), the pass of a turn, a whole run with doors, chests, rest rooms, the guardian pay-out and the retreat,
+the Auto button, the real generated day and week, and the 0-star pair of the Gauntlet. The test fails when a marker is missing from the transcripts.
+
+The run id is part of the random key of a door room (`dungeon_choose`). The test restarts the id sequence inside each undone fight, so a seed gives the same fight.
+
+## Acceptance tests
+
+| Test | What it proves | Time |
+|---|---|---|
+| `scripts/test-combat-lab.mjs` | The baseline Lab is green. Six planted changes make the Lab exit 1: cooldown 0, an infinite loop, foes that heal everything, HP below 0 (Dungeon and Hunt), a prize that pays twice | 84 s |
+| `scripts/test-golden-mutations.mjs` | Both golden tests pass on the live text. Each planted change (1 HP, 1 round, one Shard, the 0-star rule) makes a golden test fail | 220 s |
+
+The planted changes are in `scripts/lab-mutations.mjs`. Each one is a text replace in the live function text from `db/schema/functions`. A replace that finds nothing is an error.
+Known gap, found by this test: `combat-golden.mjs` does not see a heal that is 1 HP larger. No Hunt fight heals a card that has lost HP. The mutation that the test uses is a shield.
