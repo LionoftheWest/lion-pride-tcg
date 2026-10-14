@@ -14,6 +14,7 @@
  *   3. A closed mode answers {ok:false, error:disabled}; the file runs again on its own result; a changed live function stops it.
  * The timing (old text and new text over 30 calls on the 600-member board) is printed, not asserted.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

@@ -18,6 +18,7 @@
  *      cancelled week is not made again; a later fill adds the next week only. An unknown time zone is refused.
  *   6. A Hunt event with rewards, another audience or a bad tier is refused; event_pay never pays a Hunt. 7. RLS and grants.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

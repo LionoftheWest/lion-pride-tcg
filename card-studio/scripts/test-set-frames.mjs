@@ -12,6 +12,7 @@
  *   E. The two live colors (S1, S2) and other colors with enough color pass; an edit of another field of a set with an old weak color still works.
  *   F. pack_color_ok: saturation >= 0.35 and lightness 0.25 to 0.75 (the edges).
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

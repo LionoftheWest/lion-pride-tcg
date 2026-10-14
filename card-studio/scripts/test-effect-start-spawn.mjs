@@ -14,6 +14,7 @@
  *   S2 a second settle_hunt and close_due_hunts pay nothing more; the new boss is the only active Hunt
  *   G1 balance_table.sql builds the same spawn_hunt (same md5), and a re-run of this file changes nothing
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

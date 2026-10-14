@@ -25,6 +25,7 @@
  *      on no one, a counter passive on a foe, a phase 2 counter passive, params with no number in balance or a wrong shape).
  * The Hunt fights (hunt_attack phase 2 pool and labels) are covered by combat-golden.mjs (CANDIDATE=the file).
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

@@ -14,6 +14,7 @@
  *   4. admin_packrate: 2 makes ONE live modifier event (game_var = base x 2); 3 edits the same event (event_log records it); 1 ends
  *      it (back to the base); 1 again = none; 9, 0 hours and more than 62 days are refused.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

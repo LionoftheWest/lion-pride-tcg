@@ -5,6 +5,7 @@
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-db-comments-file.mjs
  *   ... scripts/test-db-comments-file.mjs --old   must FAIL on a copy of the file with a cut DO block (the mutation)
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

@@ -13,6 +13,7 @@
  *   D. An equipped and an earned "Season 1 Champion" show "Origins Champion" afterwards; another title is not changed.
  *   E. Applying the file a second time changes nothing (idempotent).
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

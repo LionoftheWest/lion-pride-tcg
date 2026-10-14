@@ -14,6 +14,7 @@
  *      kind 'set' (and the older kind 'season') hits a card of that set in combat_weak, hunt_card_crits, hunt_pick_pool, hunt_attack and
  *      dungeon_attack; the dungeon card info has the key 'set'.
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

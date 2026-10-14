@@ -5,6 +5,7 @@
  * docs/data/). It FAILS on each difference and prints the object and the kind (check-schema-drift.mjs does the work).
  * It reads only the catalog of the local copy, never a row.
  */
+import './localdb-guard.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
