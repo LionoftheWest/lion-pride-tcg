@@ -21,24 +21,25 @@ const body = String.raw`
 do $test$
 declare r1 jsonb; r2 jsonb; r3 jsonb; bal int; led int; rows int; ghost text := 'none'; want jsonb;
 begin
-  -- The reward of own10, as balance has it (a fixed test value, so the check does not depend on a tuned number).
-  update balance set value = jsonb_set(value, '{badges,own10}', '{"packs": 3, "title": "Balance Title"}') where key = 'achievement_rewards';
-  want := balance_get('achievement_rewards')->'badges'->'own10';
+  -- The reward of a test key, as balance has it (a fixed test value, so the check does not depend on a tuned number). The key is a
+  -- NEW one, not own10: once the achievement tracks are on, claim_achievement refuses the 38 old keys as 'retired' (achievement_tracks.sql).
+  update balance set value = jsonb_set(value, '{badges,tst_claim_key}', '{"packs": 3, "title": "Balance Title"}') where key = 'achievement_rewards';
+  want := balance_get('achievement_rewards')->'badges'->'tst_claim_key';
   insert into players (id, username, pack_balance) values ('test_claim_1', 'test_claim_1', 0);
-  r1 := claim_achievement('test_claim_1', 'own10', 2, 'Tester', 'silver');
-  r2 := claim_achievement('test_claim_1', 'own10', 2, 'Tester', 'silver');
+  r1 := claim_achievement('test_claim_1', 'tst_claim_key', 2, 'Tester', 'silver');
+  r2 := claim_achievement('test_claim_1', 'tst_claim_key', 2, 'Tester', 'silver');
   r3 := claim_achievement('test_claim_1', 'big', 99, null, null);
   select pack_balance into bal from players where id = 'test_claim_1';
   select count(*) into led from pack_ledger where player_id = 'test_claim_1' and reason = 'achievement';
   select count(*) into rows from achievement_claims where player_id = 'test_claim_1';
   begin
-    perform claim_achievement('no_such_player', 'own10', 1, null, null);
+    perform claim_achievement('no_such_player', 'tst_claim_key', 1, null, null);
     ghost := 'claimed';
   exception when others then
     ghost := (select case when exists (select 1 from achievement_claims where player_id = 'no_such_player') then 'left a row' else 'rolled back' end);
   end;
   raise exception 'RESULT %', jsonb_build_object('r1', r1, 'r2', r2, 'r3', r3, 'balance', bal, 'ledger', led, 'claims', rows, 'ghost', ghost,
-    'row', (select jsonb_build_array(packs, title, frame) from achievement_claims where player_id = 'test_claim_1' and key = 'own10'));
+    'row', (select jsonb_build_array(packs, title, frame) from achievement_claims where player_id = 'test_claim_1' and key = 'tst_claim_key'));
 end $test$;`;
 
 const r = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
