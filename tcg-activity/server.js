@@ -53,6 +53,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { finishEnabled } from './src/dungeon-finish.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(here, 'public');
@@ -405,6 +406,8 @@ const dungeonOn = (id) => DUNGEON_ALL || DUNGEON_USERS.has(String(id));
 const EVENTS_ALL = process.env.FEATURE_EVENTS === '1';
 const EVENTS_USERS = new Set((process.env.EVENTS_USERS || '').split(',').map((x) => x.trim()).filter(Boolean));
 const eventsOn = (id) => EVENTS_ALL || EVENTS_USERS.has(String(id));
+// Finish Room (D-201, UI-47, UI-52). Default OFF: FINISH_USERS=id,id first, FEATURE_FINISH=1 = everyone. /api/flags finish:true only then; the client shows the button only then.
+const finishOn = (id) => finishEnabled(process.env, id);
 // A member who opens the Activity before they ever chat has no players row, so the
 // first login creates it. The welcome_packs trigger (welcome_packs.sql) then gives a
 // NEW member their free packs. ON CONFLICT DO NOTHING: an existing member is untouched.
@@ -474,7 +477,7 @@ app.get('/api/flags', async (req, res) => {
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
   const [{ data: tut }, uiV3, tradeRequest] = await Promise.all([supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle(), uiV3On(me.id), tradeRequestOn()]);
-  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, uiV3, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), tradeRequest, hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), events: eventsOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, uiV3, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), tradeRequest, hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), events: eventsOn(me.id), finish: finishOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,

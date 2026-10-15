@@ -15,6 +15,7 @@ import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
 import { cardElement } from './elements.js';
 import { foePace, AUTO_ROUNDS, skippedRounds } from './dungeon-pace.js';
+import { finishButton, finishAnswer, finishNotice, waitMs, autoDisabled, FINISH_LABEL_ROW } from './dungeon-finish.js';
 import { warmFoes, warmRoster, slowLink } from './dungeon-preload.js';
 import { setMood, stopMusic, toggleMute, musicBtnHTML, paintMusicBtn } from './dungeon-music.js';
 import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
@@ -719,6 +720,8 @@ const supDesc = (c) => { const a = c.ability || {}; return (EFFECT[a.effect] || 
 
 // The plate name: the element word is its own span (landscape hides it: the icon shows the element).
 const plateName = (f) => { const n = String(f.name || ''); const w = n.split(' ')[0]; return f.element && w.toLowerCase() === String(f.element).toLowerCase() ? `<i class="pre">${esc(w)} </i>${esc(n.slice(w.length + 1))}` : esc(n); };
+// Finish Room (D-201): the pill left of Auto. Both labels and both icons are in it (the label with the longer word keeps the width, so Skip does not move anything).
+const finishHTML = () => !ctx().finishOn?.() ? '' : `<button class="dg-finish" type="button" aria-label="Finish Room"><span class="ic ic-ff">${icon3('fast-forward')}</span><span class="ic ic-skip">${icon3('skip-forward')}</span><span class="lb" aria-hidden="true"><b>Finish Room</b><b>Skip</b></span></button>`;
 const ctlHTML = () => `${musicBtnHTML()}<button class="dg-auto${dg.auto ? " on" : ""}" aria-pressed="${!!dg.auto}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button>`;
 function fightHTML() {
   const R = run(); const st = R.state;
@@ -750,7 +753,7 @@ function fightHTML() {
       <div class="dg-pops"></div>
       ${V3() ? '' : ctlHTML()}
     </div>
-    ${V3() ? `<div class="dg-ctl">${musicBtnHTML()}<div class="dg-hint"></div><button class="dg-auto${dg.auto ? ' on' : ''}" aria-pressed="${!!dg.auto}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button></div>` : '<div class="dg-hint"></div>'}
+    ${V3() ? `<div class="dg-ctl">${musicBtnHTML()}<div class="dg-hint"></div>${finishHTML()}<button class="dg-auto${dg.auto ? ' on' : ''}" aria-pressed="${!!dg.auto}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button></div>` : '<div class="dg-hint"></div>'}
     <div class="dg-units">${atk.map(unit).join('')}</div>
     <aside class="dg-right"><section class="dg-panel dg-shp"><span class="k">Squad HP</span><b class="v"></b><span class="dg-hp big"><i></i></span></section>
       <section class="dg-panel dg-sups"><span class="k">Support</span>${sup.map(supB).join('') || '<p class="dg-none">No support cards in this squad.</p>'}</section></aside>
@@ -841,9 +844,31 @@ function fightUpdate(main, st) {
   F.querySelector('.dg-hint').innerHTML = dg.notice ? `${I.timer}${dg.notice}` : sc ? `${I.hand}Choose a card for <b>${esc(sc.name)}</b><button class="dg-cancel">Cancel</button>`
     : dg.busy ? `${I.timer}The monsters are acting…` : Number(st.sup_round ?? -1) === round ? `${I.hand}Support used · tap a card to attack` : `${I.hand}${foes.filter((f) => f.hp > 0).length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
   F.classList.toggle('picking', !!sc);
+  const fbs = finishButton({ busy: dg.busy, finishing: dg.finishing, picking: !!sc, unavailable: dg.finishServer === false });
+  const fb = F.querySelector('.dg-finish');
+  if (fb) { fb.hidden = fbs.hidden; fb.disabled = fbs.disabled; fb.classList.toggle('is-skip', fbs.skip); fb.setAttribute('aria-label', fbs.label); fb.title = fbs.label; }
+  const ab = F.querySelector('.dg-auto'); if (ab) ab.disabled = autoDisabled(dg.finishing);
   F.classList.toggle('busy', !!dg.busy);
   const sb = F.querySelector('.dg-stats'); if (sb) sb.outerHTML = statsHTML();
+  trimLog(F);
   placeArena(main);
+}
+// Short desktop (the room log is at the bottom of the Support column): the log shows the newest entries that fit whole, never a cut entry (the oldest leave first).
+function trimLog(F) {
+  const lc = F.querySelector('.dg-right > .dg-left-col'), ol = lc?.querySelector('.dg-log');
+  if (!ol) return;
+  while (ol.children.length > 1 && lc.scrollHeight > lc.clientHeight + 1) ol.lastElementChild.remove();
+}
+// The hint has one fixed height (UI-47 review-3 3): the height of the tallest hint text in the width the row gives it, measured on a hidden copy of the hint.
+const HINT_LONGEST = 'Tap a monster to target it · tap a card to attack';
+function fitHint(F) {
+  const ctl = F.querySelector('.dg-ctl'), hint = ctl?.querySelector('.dg-hint:not(.is-probe)');
+  if (!hint) return;
+  ctl.querySelector('.dg-hint.is-probe')?.remove();
+  const p = hint.cloneNode(false); p.className = 'dg-hint is-probe'; p.style.width = `${hint.offsetWidth}px`; p.textContent = HINT_LONGEST;
+  ctl.appendChild(p);
+  const h = Math.ceil(p.getBoundingClientRect().height); p.remove();
+  if (h > 0) F.style.setProperty('--dg-hint-h', `${h}px`);
 }
 // v3 (UI-47): the fight stacks (the phone layout of the approved frames) on a compact-port phone and on a tall tablet. The tall tablet is
 // measured on the fight box itself (F-1): the box is taller than wide. The class is read again after a resize.
@@ -855,6 +880,10 @@ function fitFightV3(F) {
     if (!F.isConnected) return;
     const tile = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-tile-max')) || 112;
     F.classList.toggle('is-stack', cls3() === 'compact-port' || (cls3() === 'medium' && F.clientHeight > F.clientWidth));
+    // The short desktop (UI-47 review-3 addendum, option 1): two columns, the room log at the bottom of the Support column. The log panel moves into the right column there (and back).
+    { const lc = F.querySelector('.dg-left-col'), rt = F.querySelector('.dg-right'), two = cls3() === 'medium' && !F.classList.contains('is-stack');
+      if (lc && rt) { if (two && lc.parentNode !== rt) rt.appendChild(lc); else if (!two && lc.parentNode === rt) rt.after(lc); } }
+    { const ctl = F.querySelector('.dg-ctl'); F.classList.toggle('has-fin-label', !!ctl && ctl.clientWidth >= FINISH_LABEL_ROW); }   // the row decides, not the device (UI-47 review-3 1): the label shows in a row of 700 px or more
     F.classList.toggle('is-narrow', cls3() === 'compact-port' && F.clientWidth < 3.5 * tile); F.classList.toggle('is-slim', cls3() === 'medium' && F.clientWidth < 6.4 * tile);
     // is-short3: the box or the supports panel is still too high (3 or more supports): the supports are a compact list, name and status, no art. No card is ever hidden (D-156).
     // is-short, is-short2: the fight is taller than its box, or the stage is under 2.2 widest card tiles high: the cards, then Squad HP and the supports, take less room
@@ -865,6 +894,8 @@ function fitFightV3(F) {
     const tall = () => F.scrollHeight > F.clientHeight + 1 || (sups && sups.scrollHeight > sups.clientHeight + 1);
     if (F.classList.contains('is-stack') && over()) { F.classList.add('is-short'); if (over()) F.classList.add('is-short2'); }
     if (tall()) F.classList.add('is-short3');
+    fitHint(F);
+    trimLog(F);
     placeArena(document.getElementById('main'));
   };
   measure();
@@ -944,6 +975,7 @@ async function wireFight(main, keepCanvas) {
   requestAnimationFrame(() => placeArena(main));
   fitFightV3(F);
   F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); dg.auto = !dg.auto; localStorage.setItem(AUTO, dg.auto ? '1' : ''); e.currentTarget.classList.toggle('on', dg.auto); e.currentTarget.setAttribute('aria-pressed', String(!!dg.auto)); ctx().sfx?.('click'); autoNext(true); });
+  F.querySelector('.dg-finish')?.addEventListener('click', (e) => { e.stopPropagation(); finishRoom(); });
   autoNext();
   passIfNoAction();   // D-182: the fight opens with nothing to play (every attacker stunned, no support ready)
   F.addEventListener('click', (e) => {
@@ -980,6 +1012,8 @@ function target(main, i) {
   dg.target = i; ctx().sfx?.('click'); fightUpdate(main, run().state);
 }
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+// One wait of the animation: a tapped round keeps its time; the replay of Finish Room takes 1/FINISH_SPEED of it (dungeon-finish.js, the one place of the factor); Skip takes none.
+const nap = (ms) => sleep(waitMs(ms, { finishing: dg.finishing, skip: dg.skip }));
 // No action can be taken (D-182, as the Hunt since D-173): every standing attacker is stunned and no support is ready (or the support turn of this round
 // is used). The notice shows, the server passes the turn (POST /api/dungeon/pass, dungeon_pass_turn: the monsters act) and the monsters' turn plays.
 const NO_ACTION = 'No action can be taken';
@@ -1046,7 +1080,7 @@ async function playResult(kind, body, r) {
     const t = r.target ?? body.target;
     const f = foes[t];
     // Item 13: the card's element effect from the Raid flies to the monster, then the hit lands.
-    if (dg.stage?.cast) { const elx = cardElement(M.get(Number(body.cardId))?.tags) || 'physical'; snd(elx, 0.6); dg.stage.cast(t, elx); await sleep(dg.auto ? 300 : 480); }
+    if (dg.stage?.cast) { const elx = cardElement(M.get(Number(body.cardId))?.tags) || 'physical'; snd(elx, 0.6); dg.stage.cast(t, elx); await nap(dg.finishing ? 480 : dg.auto ? 300 : 480); }
     ctx().sfx?.(r.damage > 0 ? 'hit' : 'click');
     dg.stage?.play(t, r.kill ? 'death' : 'hit');
     if (r.kill) { mvoice(f, 'die', 0.6); if (f?.boss) snd('boss:defeat', 0.6); } else if (r.damage > 0) mvoice(f, 'hurt', 0.45);
@@ -1058,14 +1092,14 @@ async function playResult(kind, body, r) {
     dg.log.push({ kind: 'me', who: nm(body.cardId), to: f?.name || 'Monster', txt: r.damage > 0 ? `-${fmt(r.damage)}${r.crit ? ' <i>CRIT</i>' : ''}` : 'miss' });
     if (r.kill) { dg.log.push({ kind: 'kill', who: f?.name || 'Monster', to: 'defeated', txt: GA() ? '' : `${COIN}+${fmt(r.loot?.shards)}` }); if (!GA()) lootDrop(main, t, r.loot); }
     fightUpdate(main, step);
-    await sleep(r.kill ? 1100 : 750);
+    await nap(r.kill ? 1100 : 750);
     }
     const hurt = (id, d, label = '') => { const k = String(id); if (!step.cards[k] || !d) return; step.cards[k].hp = Math.max(0, step.cards[k].hp - d); popCard(main, id, `-${fmt(d)}${label}`, 'hurt'); };
     // Poison ticks first (item 20: Acid Spit, Infect).
     if ((r.poison || []).length) {
       for (const p of r.poison) hurt(p.card, p.dmg, ' poison');
       dg.log.push({ kind: 'foe', who: 'Poison', to: r.poison.map((p) => nm(p.card)).join(', '), txt: `-${fmt(r.poison.reduce((a, p) => a + (p.dmg || 0), 0))}` });
-      fightUpdate(main, step); await sleep(550);
+      fightUpdate(main, step); await nap(550);
     }
     // The monsters' turn, one by one: each uses a named move from its pool (item 20).
     const pace = foePace((r.enemy || []).length);   // dungeon-pace.js: a horde shares the time of 2 monsters
@@ -1073,11 +1107,11 @@ async function playResult(kind, body, r) {
       dg.acting = e.foe; fightUpdate(main, step);
       const move = e.move || ACT[e.action] || e.action;
       pop(main, e.foe, esc(move), 'act move', -30);
-      await sleep(450 * pace);
+      await nap(450 * pace);
       dg.stage?.foeFx?.(e.foe, e.action);   // item 13: the Raid boss effect of the move
       if (e.action !== 'stunned') mvoice(foes[e.foe], 'atk', 0.55);
       if (['slam', 'cataclysm', 'curse', 'poison', 'enrage', 'charging', 'stunned'].includes(e.action)) snd(MOVE_SND[e.action], 0.4);
-      if (e.action !== 'stunned' && e.action !== 'charging' && (e.dmg || (e.area || []).length)) { dg.stage?.play(e.foe, 'attack'); await sleep(380 * pace); }
+      if (e.action !== 'stunned' && e.action !== 'charging' && (e.dmg || (e.area || []).length)) { dg.stage?.play(e.foe, 'attack'); await nap(380 * pace); }
       hurt(e.card, e.dmg, e.hits > 1 ? ` ×${e.hits}` : '');
       for (const a of e.area || []) hurt(a.card, a.dmg);
       if (e.dot > 0 && e.dmg > 0) popCard(main, e.card, `${I.drop}Poisoned`, 'debuff');
@@ -1089,7 +1123,7 @@ async function playResult(kind, body, r) {
       const area = (e.area || []).reduce((a, x) => a + (x.dmg || 0), 0);
       dg.log.push({ kind: 'foe', who: `${ef(foes, e.foe)} · ${move}`, to: e.dmg ? nm(e.card) : area ? 'the squad' : (ACT[e.action] || e.action), txt: e.dmg || area ? `-${fmt((e.dmg || 0) + area)}${area ? ' all' : ''}` : '' });
       fightUpdate(main, step);
-      await sleep(650 * pace);
+      await nap(650 * pace);
     }
     dg.acting = null;
     if (r.burned > 0 && body.cardId) popCard(main, body.cardId, `-${fmt(r.burned)} burn`, 'hurt');
@@ -1100,7 +1134,7 @@ async function playResult(kind, body, r) {
     if (body.targetCard) popCard(main, body.targetCard, esc((r.effect || '').toUpperCase()), 'heal');
     else pop(main, body.targetFoe, esc((r.effect || '').toUpperCase()), 'act');
     if (r.kill) { dg.stage?.play(body.targetFoe, 'death'); lootDrop(main, body.targetFoe, null); }
-    await sleep(r.kill ? 900 : 350);
+    await nap(r.kill ? 900 : 350);
   }
   if (r.loot?.card) toast('A card dropped!');
   dg.data.run.state = r.state;   // the truth from the server
@@ -1128,6 +1162,49 @@ let autoT = null;
 // Auto on the server (dungeon_auto_rounds.sql, POST /api/dungeon/auto): one request plays up to AUTO_ROUNDS (2) rounds with the same rules as the taps (it calls
 // dungeon_support and dungeon_attack); the answer lists them and each one is animated in order by the same code as a tap (playResult). The call
 // stops at a kill, a step that is not a fight, the end of the run, a refused action or the last round, and then this code continues from the state.
+// One round of a server answer (Auto batch, Finish Room): the same animation as a tap. Returns true when it killed a monster.
+async function playRound(main, rd) {
+  let kill = false;
+  if (rd.sup) await playResult('support', { cardId: rd.sup.card, targetCard: rd.sup.target_card, targetFoe: rd.sup.target_foe }, rd.sup);
+  if (rd.pass) { dg.notice = NO_ACTION; fightUpdate(main, run().state); await nap(700); await playResult('pass', {}, rd.pass); dg.notice = dg.finishing ? finishNotice(run()?.state?.round) : ''; }
+  if (rd.atk) { dg.target = rd.atk.target; await playResult('attack', { cardId: rd.atk.card, target: rd.atk.target }, rd.atk); kill = !!rd.atk.kill; }
+  return kill;
+}
+// Finish Room (dungeon_finish_room.sql, POST /api/dungeon/finish; D-200, D-201): the server plays the whole fight of the room and answers with every round. The rounds replay on the
+// same stage at FINISH_SPEED times the speed of a tap (nap). The button is Skip while this runs: the rounds that are left are applied at once (they are played on the server).
+// Auto is greyed meanwhile and keeps its state. The end is as after a tap: a won room opens the next step, a lost room or the round limit opens the run-over screen (settle).
+async function finishRoom() {
+  const main = document.getElementById('main');
+  if (dg.finishing) { dg.skip = true; ctx().sfx?.('click'); return; }
+  if (dg.busy || dg.support || dg.finishServer === false || run()?.state?.phase !== 'fight' || !main?.querySelector('.dg-fight')) return;
+  clearTimeout(autoT);
+  dg.busy = true; dg.finishing = true; dg.skip = false; dg.notice = finishNotice(run().state.round);
+  ctx().sfx?.('click'); fightUpdate(main, run().state);
+  let r = null;
+  try { r = await ctx().apiPost('/api/dungeon/finish', { mode: dg.mode }); } catch (e) { r = e?.body || null; }
+  const a = finishAnswer(r);
+  const done = () => { dg.finishing = false; dg.skip = false; dg.notice = ''; };
+  if (a.kind === 'unavailable' || a.kind === 'error') {
+    done(); dg.busy = false;
+    if (a.kind === 'unavailable') dg.finishServer = false;   // the server code is older than the route: the button is hidden
+    else toast(a.message);
+    fightUpdate(main, run().state);
+    return;
+  }
+  let kill = false, left = false;
+  for (let i = 0; i < a.rounds.length; i++) {
+    if (dg.skip) { const sk = skippedRounds(a.rounds, i); kill = kill || sk.kill; if (sk.loot) toast('A card dropped!'); break; }
+    dg.notice = finishNotice(run().state.round); fightUpdate(main, run().state);
+    kill = (await playRound(main, a.rounds[i])) || kill;
+    // The member left the fight (another view, a repaint without the fight): the rounds are played on the server, so the state is the final one.
+    if (ctx().currentView() !== 'dungeon' || !document.querySelector('.dg-fight')) { left = true; break; }
+  }
+  done();
+  dg.data.run.state = r.state;
+  if (left) { dg.busy = false; return; }
+  if (a.message) toast(a.message);
+  await settle(main, r, kill);
+}
 async function autoBatch() {
   const main = document.getElementById('main');
   dg.busy = true; fightUpdate(main, run().state);
@@ -1143,10 +1220,7 @@ async function autoBatch() {
   let kill = false;
   const rounds = r.rounds || [];
   for (let i = 0; i < rounds.length; i++) {
-    const rd = rounds[i];
-    if (rd.sup) await playResult('support', { cardId: rd.sup.card, targetCard: rd.sup.target_card, targetFoe: rd.sup.target_foe }, rd.sup);
-    if (rd.pass) { dg.notice = NO_ACTION; fightUpdate(main, run().state); await sleep(700); await playResult('pass', {}, rd.pass); dg.notice = ''; }
-    if (rd.atk) { dg.target = rd.atk.target; await playResult('attack', { cardId: rd.atk.card, target: rd.atk.target }, rd.atk); kill = kill || !!rd.atk.kill; }
+    kill = (await playRound(main, rounds[i])) || kill;
     // The member left the fight (another view, a repaint without the fight): the rounds are played on the server, so the state is the final one.
     if (ctx().currentView() !== 'dungeon' || !document.querySelector('.dg-fight')) { dg.data.run.state = r.state; dg.busy = false; return; }
     // Auto went OFF: the rounds that are left are already played on the server, so show the final state at once.

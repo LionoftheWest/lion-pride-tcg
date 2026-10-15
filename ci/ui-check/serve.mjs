@@ -20,6 +20,7 @@
 //   ci_events=on|four|one|two|five|hunt|system|empty|error   the player Events page (UI-62) and the Home Events slides (UI-05): the flag on, and /api/events answers fixture events (derived below)
 //   ci_report=on     /api/flags answers reports: true (the Feedback window, UI-40); the send stays blocked (403), so a send shows the error state
 //   ci_data=long    every member name becomes a 32-character name and every count a 9-digit number (12.6)
+//   ci_finish=idle|ok|pass|404|off   /api/flags answers finish: true (the Finish Room flag, default OFF in production) for every value but off; the value then picks the answer of   POST /api/dungeon/finish (Finish Room, UI-47, UI-52): ok = 30 rounds, pass = 30 no-action rounds, 404 = the old server (finish_unavailable)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
 import { createServer } from 'node:http';
@@ -494,6 +495,8 @@ function derivedEvents(mode) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/flags' && !!c.ci_events && body, make: (body) => ({ ...body, events: true }) });
 DERIVED.push({ when: (p, c) => p === '/api/events' && !!c.ci_events, make: (body, c) => derivedEvents(c.ci_events) });
+// UI-47, UI-52: the Finish Room flag (FEATURE_FINISH / FINISH_USERS, default OFF): any ci_finish value but off turns it on; off and no cookie leave it off (the recorded answer has no finish).
+DERIVED.push({ when: (p, c, body) => p === '/api/flags' && !!c.ci_finish && c.ci_finish !== 'off' && body, make: (body) => ({ ...body, finish: true }) });
 // UI-40: the recorded /api/flags has the report flag off; ci_report=on turns it on (the send stays blocked, so a send shows the error)
 DERIVED.push({ when: (p, c, body) => p === '/api/flags' && c.ci_report === 'on' && body, make: (body) => ({ ...body, reports: true }) });
 // D-190 / F-2: the recorded catalog (2026-10-05) is older than the set fields. The live /api/catalog gives each card its set_id and the released
@@ -550,6 +553,24 @@ export function openAnswer(count) {
   return { award: null, packs, cards: packs.flat() };
 }
 
+// The answer of POST /api/dungeon/finish from the derived fight (the same squad and horde as the fight screens): 30 rounds, the squad attacks monster 0 (pass: every round is a no-action round), every monster acts.
+function finishFixture(gauntlet, kind) {
+  const d = gauntlet ? derivedGauntletFight(BY_PATH['/api/gauntlet'].body) : derivedFight(BY_PATH['/api/dungeon'].body, 'fight');
+  const squad = d.run.squad, st0 = d.run.state;
+  const alive = st0.foes.map((f, i) => ({ f, i })).filter((x) => x.f.hp > 0).map((x) => x.i);
+  const rounds = []; let st = JSON.parse(JSON.stringify(st0));
+  for (let k = 0; k < 30; k += 1) {   // 30 rounds: the replay lasts longer than a G3 cell, so the cell reads the page in the middle of it
+    const hurtFoe = kind === 'pass' ? null : 0;
+    st = JSON.parse(JSON.stringify(st)); st.round = k + 1;
+    if (hurtFoe !== null) st.foes[0].hp = Math.max(1, st.foes[0].hp - 6);
+    const enemy = alive.map((fi, j) => ({ foe: fi, action: 'strike', move: 'Strike', card: squad[j % 3], dmg: 2 }));
+    for (const e of enemy) { const c = st.cards[String(e.card)]; if (c) c.hp = Math.max(1, c.hp - e.dmg); }
+    const state = JSON.parse(JSON.stringify(st));
+    rounds.push(hurtFoe === null ? { pass: { ok: true, enemy, state } } : { atk: { card: squad[k % 3], target: 0, damage: 6, kill: false, enemy, state } });
+  }
+  return { ok: true, rounds, played: rounds.length, stopped: 'guard', error: null, state: st, status: 'active', ended: false, outcome: null, calls: 1 };
+}
+
 createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname.replace(/^\/app(?=\/)/, '');   // production serves under /app (Caddy strips it); the legal pages (UI-57) link /app/...
@@ -570,6 +591,17 @@ createServer((req, res) => {
     req.on('data', (d) => { raw += d; });
     req.on('end', () => { let id = 0; try { id = Number(JSON.parse(raw || '{}').offerId) || 0; } catch { /* no id */ }
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'set-cookie': `ci_accepted=${id}; Path=/` }); res.end('{"ok":true}'); });
+    return undefined;
+  }
+  // UI-47, UI-52: Finish Room (cookie ci_finish = ok | pass | 404). Nothing is written. ok: the rounds of the room; pass: one round is a no-action round (D-182);
+  // 404: the server code before the route (finish_unavailable: the client hides the button). Without the cookie the call stays refused (403 below).
+  if (req.method === 'POST' && p === '/api/dungeon/finish' && cookies(req).ci_finish && cookies(req).ci_finish !== 'off') {
+    let raw = '';
+    req.on('data', (d) => { raw += d; });
+    req.on('end', () => { let m = 'daily'; try { m = JSON.parse(raw || '{}').mode; } catch { /* the default */ }
+      const kind = cookies(req).ci_finish;
+      if (kind === '404') return send(res, 404, '{"ok":false,"error":"finish_unavailable","message":"Finish room is not available."}');
+      send(res, 200, JSON.stringify(finishFixture(m === 'gauntlet', kind))); });
     return undefined;
   }
   // UI-32: withdrawing a bid answers ok (nothing is written) so the screen shows "Bid withdrawn." with Undo; start, bid, accept, close and confirm stay refused (the error states).

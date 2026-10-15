@@ -258,6 +258,7 @@ let hall = false;    // wishlists + the Trading Hall + auctions, from /api/flags
 let trade2 = false;   // two-step trades, from /api/flags (flag OFF = the sender picks both cards)
 let tradeRequest = false; // trade requests + full proposals (trade_request.sql, FEATURE_TRADE_REQUEST), from /api/flags (OFF = no change)
 let eventsFlag = false; // the player Events flag (FEATURE_EVENTS / EVENTS_USERS, default OFF), from /api/flags: the Home Events slide (UI-05) reads it
+let finishFlag = false; // Finish Room (FEATURE_FINISH / FINISH_USERS, default OFF), from /api/flags: the Dungeon and Gauntlet fight show the button only then
 let uiV3 = false;     // the v3 screens (settings.ui_v3, Nathan only), from /api/flags (flag OFF = the v2 screens)
 let mobileUi = false; // the phone layouts (designs 24 + 25), from /api/flags (flag OFF = the desktop layout everywhere)
 let meUser = null;  // { id, name } of the signed-in member
@@ -370,6 +371,7 @@ async function main() {
   dungeon = !!flags?.dungeon;
   uiV3 = !!flags?.uiV3;
   eventsFlag = !!flags?.events;
+  finishFlag = !!flags?.finish;
   if (flags?.uiV3 !== undefined) writeHint(localStorage, uiV3); // UI-56: the next start draws the v3 loader. No answer (3 failed tries) keeps the old hint.
   if (uiV3) startV3();
   releaseEffects();   // the incoming banners of the effects (v2 or v3 kind, UI-28)
@@ -432,7 +434,7 @@ function startV2() {
     api, apiPost, apiData, el, esc, cache, live, show, openViewer, openPacks, RARITY_LABEL, ago, refreshOwned, celebrateAscend, status: sendStatus,
     playOnMember, effectsEnabled, trade2: () => trade2, tradeRequest: () => tradeRequest, hallOn: () => hall, openTrade: openTradeWith,
     updateNotifBadge, updateTradeBadge, packs: () => packsAvailable, refreshPacks: refreshPackStatus,
-    features: () => features, eventsOn: () => eventsFlag, user: () => meUser, currentView: () => currentView,
+    features: () => features, eventsOn: () => eventsFlag, finishOn: () => finishFlag, user: () => meUser, currentView: () => currentView,
     watchable: (id) => Boolean(watchableOpen(id)), watchOpen, sfx: (n) => SFX.play(n),
     sfxSample: (k, peak) => SFX.sample(k, peak),
     sfxLoad: (k, url) => SFX.load(k, url),   // the Raid samples (element, boss move, monster voice) for the Dungeon

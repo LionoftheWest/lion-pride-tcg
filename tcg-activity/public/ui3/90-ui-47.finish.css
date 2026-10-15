@@ -1,0 +1,43 @@
+/* ==== UI-47 / UI-52 Finish Room (ui-v2-dungeon.js finishHTML, finishRoom; design repo UI-47/approved/finish-room and UI-52/approved/finish-room; D-200, D-201) ====
+   The Finish Room pill sits left of Auto in the fight control row (the same pill, 44 px). The row decides the label (measured, JS class has-fin-label: the row is
+   700 px or wider): a narrower row shows the icon only. While it finishes the pill is Skip, in the same place and width. The hint has one fixed height (measured:
+   --dg-hint-h, the tallest hint text in this row), so nothing moves when it changes; in a narrow row it is 12 px text without its icon.
+   The short desktop (917x692, 1180x820: the medium class, not stacked) uses option 1: two columns, the room log at the bottom of the Support column.
+   Selectors start with the fight prefix. Tokens only. */
+
+/* ---- the pill ---- */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish { box-sizing: border-box; position: static; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); height: var(--hit); min-width: var(--hit); padding: var(--u3-none) var(--sp-3); border-radius: var(--rad-pill); background: color-mix(in srgb, var(--surface-1) 90%, transparent); border: var(--bw-1) solid var(--border-strong); color: var(--text-primary); font-size: var(--fs-small); font-weight: var(--fw-small-strong); cursor: pointer; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish[hidden] { display: none; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish .ic { display: inline-flex; color: var(--gold); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish .ic svg { width: var(--icon-lg); height: var(--icon-lg); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish .ic-skip, body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish.is-skip .ic-ff { display: none; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish.is-skip .ic-skip { display: inline-flex; }
+/* the label: both words are in the same cell, the longer one holds the width, so Skip never moves the pill or Auto */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish .lb { display: grid; justify-items: center; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish .lb b { grid-area: 1 / 1; font-weight: inherit; white-space: nowrap; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish .lb b:last-child, body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish.is-skip .lb b:first-child { visibility: hidden; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish.is-skip .lb b:last-child { visibility: visible; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish.is-skip { border-color: var(--gold); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.has-fin-label) .dg-finish { padding: var(--u3-none); width: var(--hit); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.has-fin-label) .dg-finish .lb { display: none; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish:disabled, body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-ctl .dg-auto:disabled { opacity: var(--item-disabled); cursor: not-allowed; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-finish:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+/* D-155: a phone hides it with Music and Auto while a support picks a target (a wider screen greys it) */
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.picking .dg-finish { display: none; }
+
+/* ---- the hint: one fixed height, the free part of the row ---- */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-ctl .dg-hint { flex: 1 1 0; display: flex; align-items: center; justify-content: center; height: var(--dg-hint-h, var(--hit)); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.picking .dg-ctl .dg-hint { flex: 1 1 0; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.has-fin-label) .dg-ctl .dg-hint { font-size: var(--fs-caption); padding: var(--sp-1) var(--sp-3); gap: var(--sp-2); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.has-fin-label) .dg-ctl .dg-hint svg { display: none; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight .dg-ctl .dg-hint.is-probe { position: absolute; visibility: hidden; pointer-events: none; height: auto; flex: none; }
+
+/* ---- the short desktop, option 1 (917x692, 1180x820): two columns, the room log at the bottom of the Support column, the row is one line ---- */
+body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.is-stack) { grid-template-columns: minmax(0, 1fr) calc(var(--sheet-side-w) * 2 / 3); grid-template-rows: auto auto minmax(0, 1fr) auto auto; grid-template-areas: "top top" "turn side" "arena side" "hint side" "units side"; }
+body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.is-stack) .dg-right { grid-area: side; display: flex; flex-direction: column; gap: var(--sp-2); min-height: 0; align-self: stretch; }
+body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.is-stack) .dg-right > .dg-left-col { flex: 0 1 auto; min-height: 0; margin-top: auto; grid-area: auto; align-self: stretch; }
+body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.is-stack) .dg-right > .dg-panel { flex: none; }
+/* the supports take the compact form (name and status) so that Squad HP, Support and the room log share the column (frame 27) */
+body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.is-stack) .dg-sup .t small { display: none; }
+body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.is-stack) .dg-sup { padding: var(--sp-1-5) var(--sp-2); }
+body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.is-stack) .dg-sups { padding: var(--sp-2); gap: var(--sp-1-5); }
