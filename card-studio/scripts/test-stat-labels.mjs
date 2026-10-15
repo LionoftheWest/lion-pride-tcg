@@ -70,6 +70,9 @@ begin
   alter table public.balance enable trigger user;
   execute $m$${mig}$m$;
   select value into raw from balance where key = 'stat_labels';
+  -- The per-point values of 2026-09-29 are put back inside this rolled-back block: the test checks the keys and the texts, not the live tuning
+  -- (stat_points_r_stars_s1.sql changes them).
+  update balance set value = value || '{"attack": 0.05, "vitality": 0.06, "precision": 0.03, "potency": 0.05, "haste": 0.04}'::jsonb where key = 'stat_points';
   select value into sp from balance where key = 'stat_points';
 
   -- 1. the names, the shorts, the stored keys, card_combat
