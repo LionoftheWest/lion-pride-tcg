@@ -12,6 +12,7 @@
  *   stack     2 random attackers + 3 random supports (support stacking)
  *   mixed     3 random attackers + 2 random supports
  *   control   4 random attackers + 1 random support
+ *   covered   4 attackers of 4 DIFFERENT elements, chosen one by one to beat the foes of the day that the squad does not beat yet (the Auto pick has a choice)
  *   matched   4 attackers chosen FOR THE DAY (the 4 attackers whose element beats the most foes of floors 1 to 8 of that day, less the foes that beat it)
  *             + the same support as "control". Control and matched have the same shape: the difference is only the element choice.
  * The Hunt is not measured: the rule does not apply to it (a Hunt boss has no element), so its damage is the same for every option
@@ -30,14 +31,17 @@ const opt = (n, d) => { const i = argv.indexOf(`--${n}`); return i >= 0 && argv[
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = opt('out', join(HERE, '..', 'out', 'element-bonus'));
 const CANDIDATE = opt('candidate', process.env.CANDIDATE || '');
-if (!CANDIDATE) throw new Error('--candidate <f3_element_bonus.sql> is required (the migration is not applied on the local copy)');
-const CAND = readFileSync(CANDIDATE, 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '').replace(/-- GUARD \(the combat_core[\s\S]*?-- GUARD-END\n/, '');
+if (!CANDIDATE) throw new Error('--candidate <f3_element_bonus.sql[,f3_auto_elements.sql]> is required (the migration is not applied on the local copy)');
+// --candidate may list several files (comma): they run in that order, inside every undone request.
+const strip1 = (f) => readFileSync(f, 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '').replace(/-- GUARD \(the combat_core[\s\S]*?-- GUARD-END\n/, '');
+const CAND = CANDIDATE.split(',').map(strip1).join('\n');
 if (CAND.includes('$m$')) throw new Error('the candidate file must not contain $m$');
 const OPTIONS = [
   { name: 'today',     bonus: 1,    penalty: 1,    note: 'Bonus 1, penalty 1: no change (today).' },
   { name: 'b115',      bonus: 1.15, penalty: 1,    note: 'Bonus x1.15.' },
   { name: 'b125',      bonus: 1.25, penalty: 1,    note: 'Bonus x1.25.' },
   { name: 'b150',      bonus: 1.5,  penalty: 1,    note: 'Bonus x1.5.' },
+  { name: 'b125-auto', bonus: 1.25, penalty: 1, auto: true, note: 'Bonus x1.25 and the Auto button picks the attacker by element (combat.auto_elements = true).' },
   { name: 'p085',      bonus: 1,    penalty: 0.85, note: 'Penalty x0.85 only (the target beats the attacker).' },
   { name: 'b125-p085', bonus: 1.25, penalty: 0.85, note: 'Bonus x1.25 and penalty x0.85.' },
 ];
@@ -46,7 +50,7 @@ const LIMIT_S = Number(process.env.LAB_LIMIT_S || 45);
 const QUICK = flag('quick');
 const DAYS = Number(opt('runs', QUICK ? 4 : 14));
 const STARS = [0, 1, 3];
-const SHAPES = ['stack', 'mixed', 'control', 'matched'];
+const SHAPES = ['stack', 'mixed', 'control', 'matched', 'covered'];
 const T0 = Date.now();
 const log = (m) => console.error(`[el ${((Date.now() - T0) / 1000).toFixed(0).padStart(4)} s] ${m}`);
 const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
@@ -54,7 +58,7 @@ const r2 = (x) => Math.round(x * 100) / 100;
 const pct = (x) => `${(x * 100).toFixed(0)}%`;
 
 const prelude = (o) => `execute $m$${CAND}$m$;
-  execute $p$update public.balance set value = value || '${JSON.stringify({ element_bonus: o.bonus, element_penalty: o.penalty })}'::jsonb where key = 'combat';$p$;`;
+  execute $p$update public.balance set value = value || '${JSON.stringify({ element_bonus: o.bonus, element_penalty: o.penalty, ...(CAND.includes('auto_elements') ? { auto_elements: !!o.auto } : {}) })}'::jsonb where key = 'combat';$p$;`;
 async function request(o, exprs, timeoutS = LIMIT_S) {
   const body = `${PLAN} set local statement_timeout = '${timeoutS}s';
 do $t$
@@ -115,7 +119,11 @@ for (let d = 0; d < DAYS; d++) {
   // the matched attackers: the net count of foes that the card's element beats, less the foes that beat it (the squad shape is chosen, not the fight)
   const score = (c) => (c.el ? foes.reduce((s, f) => s + (beats(c.el, f) ? 1 : 0) - (beats(f, c.el) ? 1 : 0), 0) : -99);
   const matched = [...[...atk].sort((a, b) => score(b) - score(a) || a.id - b.id).slice(0, 4), ...oneSup].map((c) => c.id);
-  squads.push({ stack, mixed, control, matched, foes: foes.length });
+  // covered: 4 attackers of 4 DIFFERENT elements, chosen one by one for the foes of the day: each step takes the element that beats the most foes not yet beaten by the squad (so the Auto button has a choice for each foe)
+  const els = [...new Set(atk.map((c) => c.el).filter(Boolean))]; const beaten = new Set(); const pickedEls = [];
+  for (let k = 0; k < 4; k++) { let best = null, bs = -1; for (const e of els) { if (pickedEls.includes(e)) continue; const s = foes.reduce((n, f) => n + (!beaten.has(f) && beats(e, f) ? 1 : 0), 0); if (s > bs) { bs = s; best = e; } } if (!best) break; pickedEls.push(best); foes.forEach((f) => { if (beats(best, f)) beaten.add(f); }); }
+  const covered = [...pickedEls.map((e) => atk.find((c) => c.el === e)), ...oneSup].map((c) => c.id);
+  squads.push({ stack, mixed, control, matched, covered, foes: foes.length });
 }
 
 async function measure(o) {
@@ -147,11 +155,14 @@ for (const name of wanted) {
   writeFileSync(join(OUT, `${name}.json`), JSON.stringify(m, null, 1));
 }
 const md = [`# Element bonus options (${new Date().toISOString().slice(0, 10)}, local copy; ${DAYS} generated days, the same squads and seeds for every option; normal cards)`, '',
-  'Win = the run passes floor 1 (reaches floor 2). Deep = the run reaches floor 4 or deeper. Squad shapes: stack 2A+3S, mixed 3A+2S, control 4A+1S (random attackers), matched 4A+1S (attackers chosen for the foes of the day, the same support as control).', ''];
+  'Win = the run passes floor 1 (reaches floor 2). Deep = the run reaches floor 4 or deeper. Squad shapes: stack 2A+3S, mixed 3A+2S, control 4A+1S (random attackers), covered 4A+1S (4 attackers of 4 different elements chosen to beat the foes of the day), matched 4A+1S (attackers chosen for the foes of the day, the same support as control).', ''];
 for (const stars of STARS) {
   md.push(`### ${stars}-star squads`, '', '| Option | Shape | Mean floor | Best | Win | Deep | Shards a run |', '|---|---|---|---|---|---|---|');
   for (const m of all) for (const r of m.rows.filter((x) => x.stars === stars)) md.push(`| ${m.name} | ${r.shape} | ${r.floor_mean} | ${r.floor_max} | ${pct(r.past1)} | ${pct(r.past3)} | ${r.shards_mean} |`);
   md.push('');
 }
+md.push('### Matched minus control (same shape, 4A+1S): the value of choosing the attackers for the foes', '', '| Option | Stars | Mean floor spread | Win spread | Shards spread |', '|---|---|---|---|---|');
+for (const m of all) for (const stars of STARS) for (const sh of ['matched', 'covered']) { const a = m.rows.find((x) => x.stars === stars && x.shape === sh), b = m.rows.find((x) => x.stars === stars && x.shape === 'control'); if (a && b) md.push(`| ${m.name} ${sh} | ${stars} | ${r2(a.floor_mean - b.floor_mean)} | ${r2((a.past1 - b.past1) * 100)} points | ${r2(a.shards_mean - b.shards_mean)} |`); }
+md.push('');
 writeFileSync(join(OUT, 'report.md'), md.join('\n')); writeFileSync(join(OUT, 'report.json'), JSON.stringify(all, null, 1));
 console.log(md.join('\n'));

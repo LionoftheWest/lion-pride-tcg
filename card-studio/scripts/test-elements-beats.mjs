@@ -1,3 +1,4 @@
+import './localdb-guard.mjs';
 /**
  * Acceptance test for tcg-bot/supabase/f3_elements_beats.sql (elements_list returns the counter pairs), NO lasting change (one DO block; the final RAISE rolls it back):
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-elements-beats.mjs      must PASS (the file is applied twice: idempotent)

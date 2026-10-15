@@ -1,3 +1,4 @@
+import './localdb-guard.mjs';
 /**
  * Acceptance test for tcg-bot/supabase/f3_element_bonus.sql (the element chart fight rule, "rule A"), NO lasting change (one DO block; the final RAISE rolls it back):
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-element-bonus.mjs      must PASS (the file is applied twice: idempotent)

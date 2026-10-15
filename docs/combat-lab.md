@@ -125,3 +125,11 @@ The target's element beats the attacker's = x `element_penalty` (0.5 to 1). Both
 - It stacks with the weakness: a Dungeon foe already has the weak tag of its primary counter, so the primary pair gets the weakness and the bonus.
 - Tests: `scripts/test-elements-beats.mjs`, `scripts/test-element-bonus.mjs` (both with `MUTATE=all`). Golden proof: `dungeon-golden.mjs` and `combat-golden.mjs` with the file as CANDIDATE match the live code; with the bonus at 1.25 the Dungeon golden shows a DIFF.
 - Measuring tool: `LAB_LOCK_OWNER=<name> LOCALDB=1 node scripts/element-bonus-balance.mjs --candidate ../tcg-bot/supabase/f3_element_bonus.sql` (squad shapes stack, mixed, control and matched; whole runs).
+
+### Auto picks by element (flag, ships OFF) and the bonus value (2026-10-14)
+
+- Nathan approved `element_bonus` 1.25, no penalty (`f3_element_bonus_125.sql`, a data change with a self-check).
+- `f3_auto_elements.sql`: `balance combat.auto_elements` (boolean, default false = today's rule exactly). When true, the Auto button of the Dungeon and the Gauntlet (`dungeon_auto_action`)
+  picks first, among the ready attackers, the card whose element beats the target foe's element (`element_beats`), then today's order (weakness, CP, squad order). Test: `scripts/test-auto-elements.mjs`.
+- Measured (`scripts/element-bonus-balance.mjs --candidate ..f3_element_bonus.sql,..f3_auto_elements.sql --options today,b125,b125-auto`, 40 days): bonus 1.25 raises the Shards of squads that
+  cover the foes by 5 to 15 percent. The Auto pick by element adds nothing measurable (within noise), so the flag stays OFF.
