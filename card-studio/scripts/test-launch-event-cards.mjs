@@ -12,7 +12,7 @@ const mig = process.argv.includes('--old') ? '' : readFileSync(fileURLToPath(new
 if (mig.includes('$m$')) throw new Error('the migration must not contain $m$');
 const body = String.raw`do $t$
 declare bad text := ''; h bigint := 101698; hb bigint; att bigint; sid bigint; pc bigint; r jsonb; g bigint; n int;
-  d date := (now() at time zone 'America/Denver')::date; crash int; credit bigint; i int;
+  d date := (now() at time zone 'America/Denver')::date; crash int; credit bigint; i int; cfgw jsonb;
 begin
   ${mig ? KEEP_LIVE(['claim_gift', 'claim_tutorial_reward', 'play_card_effect'], mig) : ''}
   insert into players (id, username) values ('tst_lc_a', 'tst a'), ('tst_lc_b', 'tst b'), ('tst_lc_c', 'tst c');
@@ -38,8 +38,16 @@ begin
   insert into subjects (key, name, type) values ('tst-launch-player', 'tst launch player', 'Moment') returning id into sid;   -- type: NOT NULL (card_decisions.sql)
   insert into cards (subject_id, name, rarity) values (sid, 'tst Launch Day Player', 'event') returning id into pc;
   insert into pack_ledger (player_id, amount, reason, ref_kind, ref_id) values ('tst_lc_c', 1, 'tutorial', 'tutorial', 'complete');
+  -- The backfill follows the stored window (settings.launch_event_cards.player_until), not today's date. The block sets the window itself
+  -- (rolled back): after it ends no gift is given, inside it the gift is given. The real window is put back before the checks below.
+  cfgw := (select value from settings where key = 'launch_event_cards');
+  update settings set value = value || jsonb_build_object('player_until', to_jsonb(to_char(now() - interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))) where key = 'launch_event_cards';
   n := set_launch_player_card(pc);
-  if not exists (select 1 from gift_claims where player_id = 'tst_lc_c' and reason = 'event:launch_player' and card_id = pc) then bad := bad || 'player backfill; '; end if;
+  if n <> 0 or exists (select 1 from gift_claims where player_id = 'tst_lc_c' and reason = 'event:launch_player' and card_id = pc) then bad := bad || 'player backfill after the window; '; end if;
+  update settings set value = value || jsonb_build_object('player_until', to_jsonb(to_char(now() + interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))) where key = 'launch_event_cards';
+  n := set_launch_player_card(pc);
+  if n < 1 or not exists (select 1 from gift_claims where player_id = 'tst_lc_c' and reason = 'event:launch_player' and card_id = pc) then bad := bad || 'player backfill; '; end if;
+  update settings set value = value || jsonb_build_object('player_until', cfgw->'player_until') where key = 'launch_event_cards';
   if (select effect->>'primitive' from subjects where id = sid) is distinct from 'launch_party' then bad := bad || 'player effect; '; end if;
   -- 5. Raid Crasher: B pranks A; A's next 3 hits push extra damage to the boss, credited to B; hit 4 none.
   insert into player_cards (player_id, card_id, quantity) values ('tst_lc_b', 378, 1) on conflict do nothing;
