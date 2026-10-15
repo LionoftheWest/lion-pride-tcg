@@ -7,3 +7,10 @@ export const TURN_MS = 2500;
 export const MIN_PACE = 0.3;
 export const foePace = (n) => (n > 0 ? Math.max(MIN_PACE, Math.min(1, TURN_MS / (n * FOE_MS))) : 1);
 export const turnMs = (n) => Math.round(n * FOE_MS * foePace(n));
+// Auto on the server plays AUTO_ROUNDS rounds in one request. After OFF the rounds that are not shown yet are skipped (they stay played on the
+// server): this gives what the skipped rounds hold, so that the screen settles as after a full batch.
+export const AUTO_ROUNDS = 2;
+export const skippedRounds = (rounds, from) => {
+  const rest = (rounds || []).slice(from);
+  return { kill: rest.some((rd) => !!rd?.atk?.kill), loot: rest.some((rd) => !!(rd?.atk?.loot?.card || rd?.sup?.loot?.card)) };
+};
