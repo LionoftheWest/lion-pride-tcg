@@ -465,6 +465,16 @@ async function dungeon() {
   for (let i = 0; i < N.runs; i++) { const k = 1 + Math.floor(rnd() * 4); runs.push({ k, ids: [...pickN(atkP, k), ...pickN(supP, 5 - k)], sd: seeds(1, 10 + i)[0], how: 'random' }); }
   for (const stars of [0, 3]) for (let k = 1; k <= 4; k++) for (let j = 0; j < N.shapeRuns; j++) runs.push({ k, ids: pickSq(A, S, k), sd: seeds(1, 40 + j)[0], how: `best ${stars}-star`, stars });
   const rres = await timeIt('dungeon:runs', () => calls('dungeon-run', runs.map((r) => runExpr(r.sd, r.ids, null, 'auto', { max_calls: 120 }, 'daily', r.stars ? Object.fromEntries(r.ids.map((id) => [id, { asc: r.stars, pts: {} }])) : {}))));
+  // Finish room (dungeon_finish_room): the same kind of runs with ONE call for each fight room. It must never loop: a room takes at most round_cap / 10 + 2 calls of Auto inside
+  // (finish_calls_max), no run reaches the call limit or gets stuck, and the run ends as it does with Auto (the squad can lose; the round limit ends the run).
+  const FINISH_CALLS = Math.ceil(N.rounds / 10) + 2, fr = runs.filter((_, i) => i % 2 === 0).slice(0, 16);
+  const fres = await timeIt('dungeon:finish', () => calls('dungeon-finish', fr.map((r) => runExpr(r.sd, r.ids, null, 'finish', { max_calls: 400 }, 'daily', r.stars ? Object.fromEntries(r.ids.map((id) => [id, { asc: r.stars, pts: {} }])) : {}))));
+  fres.forEach((x, i) => {
+    checkRun(`dungeon-finish:${i}`, x);
+    if (x && !x.timeout && !x.start_error && x.finish_calls_max > FINISH_CALLS) find('LOOP', `dungeon-finish:calls:${i}`, `Finish room took ${x.finish_calls_max} calls of Auto for one room (the most is ${FINISH_CALLS})`);
+  });
+  const fok = fres.filter((x) => x && !x.timeout && !x.start_error);
+  rep.dungeon.finish = { runs: fok.length, rooms: fok.reduce((a, x) => a + x.finish_rooms, 0), calls_mean: r2(mean(fok.map((x) => x.calls))), room_calls_max: Math.max(0, ...fok.map((x) => x.finish_calls_max)), round_limits: fok.reduce((a, x) => a + x.finish_limits, 0) };
   const byShape = {};
   runs.forEach((r, i) => {
     const x = rres[i]; checkRun(`dungeon-run:${r.how}:${r.k}A:${i}`, x);
@@ -481,10 +491,15 @@ async function dungeon() {
 async function gauntlet() {
   const SD = seeds(N.gauntRuns, 6);
   const mk = (sd, rich, log_) => runExpr(sd, [], null, 'auto', { max_calls: 120, rich, log: log_ }, 'gauntlet');
-  const exprs = [...SD.map((sd) => mk(sd, false, false)), ...SD.slice(0, 2).flatMap((sd) => [mk(sd, true, true), mk(sd, false, true)])];
+  const exprs = [...SD.map((sd) => mk(sd, false, false)), ...SD.slice(0, 2).flatMap((sd) => [mk(sd, true, true), mk(sd, false, true)]), ...SD.slice(0, 2).map((sd) => runExpr(sd, [], null, 'finish', { max_calls: 400 }, 'gauntlet'))];
   const res = await timeIt('gauntlet:runs', () => calls('gauntlet', exprs));
   const runs = res.slice(0, SD.length);
   runs.forEach((r, i) => checkRun(`gauntlet:run:${i}`, r, { gauntlet: true }));
+  // Finish room in the Gauntlet: no loop, no loot (checkRun), a room takes at most round_cap / 10 + 2 calls of Auto
+  res.slice(SD.length + 2 * Math.min(2, SD.length)).forEach((r, i) => {
+    checkRun(`gauntlet:finish:${i}`, r, { gauntlet: true });
+    if (r && !r.timeout && !r.start_error && r.finish_calls_max > Math.ceil(N.rounds / 10) + 2) find('LOOP', `gauntlet:finish:calls:${i}`, `Finish room (Gauntlet) took ${r.finish_calls_max} calls of Auto for one room`);
+  });
   // the 0-star rule: a member with 5 stars and stat points plays the same fight as a member with none
   const pairs = [];
   for (let i = 0; i < 2 && SD.length + 2 * i + 1 < res.length; i++) {

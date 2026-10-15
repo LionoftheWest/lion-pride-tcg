@@ -132,6 +132,18 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
     if (data.error) data.error = { ...data.error, message: ERR[data.error.error] || data.error.error };   // a refused action that ended the call after some rounds
     res.json(await withCards(data));
   });
+  // Finish room (dungeon_finish_room.sql, D-200 / D-201): the whole fight of the room in ONE call, every round in the answer in order (the client replays them
+  // fast, with Skip). The rules are the Auto rules (it calls dungeon_auto_rounds again and again). The member comes from the token, the rate limit is the one of Auto.
+  app.post('/api/dungeon/finish', async (req, res) => {
+    const me = await gate(req, res, true); if (!me) return;
+    const { data, error } = await supabase.rpc('dungeon_finish_room', { p_player: String(me.id), p_mode: mode(req.body?.mode) });
+    // The code before the migration: the client keeps playing the room action by action (it reads error finish_unavailable).
+    if (error?.code === 'PGRST202') return res.status(404).json({ ok: false, error: 'finish_unavailable', message: 'Finish room is not available.' });
+    if (error) return res.status(500).json({ error: error.message });
+    if (!data?.ok) return fail(res, data);
+    if (data.error) data.error = { ...data.error, message: ERR[data.error.error] || data.error.error };
+    res.json(await withCards(data));
+  });
   // D-182: no action can be taken (every standing attacker stunned, no support ready): the round advances and the monsters act once (dungeon_pass_turn).
   app.post('/api/dungeon/pass', async (req, res) => {
     const me = await gate(req, res, true); if (!me) return;

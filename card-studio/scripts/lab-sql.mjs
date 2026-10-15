@@ -92,7 +92,7 @@ $g$;`);
 // ---------------------------------------------------------------------------------------------------------------------
 // Play a Dungeon or Gauntlet run that is already started (dungeon_start / gauntlet_start made it) until it ends.
 // p_policy: 'script' (one call for each action: dungeon_support, dungeon_attack, dungeon_pass_turn, dungeon_choose) or
-// 'auto' (dungeon_auto_rounds, the call that the Auto button makes). p_opts: log (true = a transcript), max_calls,
+// 'auto' (dungeon_auto_rounds, the call that the Auto button makes), 'finish' (dungeon_finish_room, the Finish room button: a whole fight in one call). p_opts: log (true = a transcript), max_calls,
 // retreat_floor (retreat on this floor when the floor is done; 0 = never).
 // Returns {log, calls, stop, viol, err, ...metrics}. Every rule that the Lab reports is read from the real log table
 // (combat_actions) and the real run row, never calculated here.
@@ -103,7 +103,7 @@ declare
   v_out text := ''; v_calls int := 0; r dungeon_runs; st jsonb; res jsonb; v_round int; x bigint; ab jsonb; eff text; tg text; v_t bigint; v_stop text := 'ended';
   v_viol text[] := '{}'; v_err jsonb := '{}'::jsonb; v_pass int := 0; v_passrun int := 0; v_passmax int := 0; v_rr int := 0; v_try int; v_n int; v_ok boolean; v_code text;
   v_att int := 0; v_sup int := 0; v_dmg bigint := 0; v_kills int := 0; v_rmax int := 0; v_mode text := case when p_mode = 'gauntlet' then 'gauntlet' else 'dungeon' end;
-  v_atks bigint[]; v_runid bigint; v_pick int; v_fst int := 0; v_fstmax int := 0;
+  v_atks bigint[]; v_runid bigint; v_pick int; v_fst int := 0; v_fstmax int := 0; v_fcmax int := 0; v_flim int := 0; v_frooms int := 0;
 begin
   loop
     select * into r from dungeon_runs where player_id = p_player and mode = p_mode and status = 'active' order by id desc limit 1;
@@ -114,15 +114,16 @@ begin
     v_viol := v_viol || pg_temp.lab_viol_state(st);
     v_rmax := greatest(v_rmax, coalesce((st->>'round')::int, 0));
     if st->>'phase' = 'fight' then
-      if p_policy = 'auto' then
+      if p_policy in ('auto', 'finish') then
         v_calls := v_calls + 1;
-        begin res := dungeon_auto_rounds(p_player, p_mode, 10);
+        begin res := case when p_policy = 'finish' then dungeon_finish_room(p_player, p_mode) else dungeon_auto_rounds(p_player, p_mode, 10) end;
         exception when others then res := jsonb_build_object('ok', false, 'error', 'SQL ' || sqlstate || ' ' || sqlerrm); end;
-        if v_log then v_out := v_out || 'AUTO ' || pg_temp.lab_strip(res)::text || E'\n'; end if;
+        if v_log then v_out := v_out || case when p_policy = 'finish' then 'FINISH ' else 'AUTO ' end || pg_temp.lab_strip(res)::text || E'\n'; end if;
         v_ok := coalesce((res->>'ok')::boolean, false);
+        if p_policy = 'finish' and v_ok then v_frooms := v_frooms + 1; v_fcmax := greatest(v_fcmax, coalesce((res->>'calls')::int, 0)); if res->>'outcome' = 'limit' then v_flim := v_flim + 1; end if; end if;
         if not v_ok then v_err := jsonb_set(v_err, array[coalesce(res->>'error', '?')], to_jsonb(coalesce((v_err->>coalesce(res->>'error', '?'))::int, 0) + 1)); v_stop := 'error:' || coalesce(res->>'error', '?'); exit; end if;
         v_att := v_att + coalesce((res->>'played')::int, 0);
-        if res->>'stopped' = 'kill' then v_kills := v_kills + 1; end if;
+        if p_policy = 'finish' then v_kills := v_kills + (select count(*) from jsonb_array_elements(res->'rounds') e where (e->'atk'->>'kill')::boolean)::int; elsif res->>'stopped' = 'kill' then v_kills := v_kills + 1; end if;
       else
         v_round := (st->>'round')::int;
         -- the support of this round: each support card in squad order, until one works
@@ -214,7 +215,8 @@ begin
     'attacks', v_att, 'supports', v_sup, 'dmg', v_dmg, 'kills', v_kills, 'rounds_max', v_rmax, 'passes', v_pass, 'pass_run_max', v_passmax, 'foe_stun_run_max', v_fstmax,
     'run', v_runid, 'status', r.status, 'ended_by', r.ended_by, 'floor', r.floor, 'room', r.room, 'turns', r.turns, 'shards', r.shards, 'cards', to_jsonb(r.cards), 'phase', r.state->>'phase',
     'hp_end', (select coalesce(sum((e.value->>'hp')::numeric), 0) from jsonb_each(r.state->'cards') e), 'hp_max', (select coalesce(sum((e.value->>'max')::numeric), 0) from jsonb_each(r.state->'cards') e),
-    'downs', (select count(*) from jsonb_each(r.state->'cards') e where (e.value->>'down')::boolean), 'mode', v_mode);
+    'downs', (select count(*) from jsonb_each(r.state->'cards') e where (e.value->>'down')::boolean), 'mode', v_mode,
+    'finish_rooms', v_frooms, 'finish_calls_max', v_fcmax, 'finish_limits', v_flim);
 end $g$;`);
 
 // What the run paid and what the fight wrote, read from the real tables. Used by the Lab (the reward and loop checks) and
