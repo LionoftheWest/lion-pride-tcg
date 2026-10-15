@@ -47,9 +47,9 @@ if (MUTATE === 'guard-open') {
   writeFileSync(guardTarget, readFileSync(join(HERE, 'localdb-guard.mjs'), 'utf8').replace("process.env.LOCALDB === '1' &&", 'false &&'));
 }
 
-// A cwd with no .env and an environment with no SUPABASE_*: a broken guard still cannot reach a project.
+// A cwd with no .env and an environment with no SUPABASE_* and no LOCALDB*: a broken guard still cannot reach a project.
 const cwd = mkdtempSync(join(tmpdir(), 'lg-cwd-'));
-const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^SUPABASE_|^NODE_OPTIONS$/.test(k)));
+const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^SUPABASE_|^LOCALDB|^NODE_OPTIONS$/.test(k)));   // no LOCALDB* either: the runner (test-all-local.mjs) sets LOCALDB=1, and each child below sets what it needs
 const run = (args, e = {}) => spawnSync(process.execPath, args, { cwd, env: { ...env, ...e }, encoding: 'utf8', timeout: 30000 });
 
 // 1. the guard itself
