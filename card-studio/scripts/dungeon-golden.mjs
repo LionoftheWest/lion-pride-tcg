@@ -27,6 +27,7 @@
 import { runBlock, sqlLit, assertLocal } from './lab-lib.mjs';
 import { installHelpers, PLAN } from './lab-sql.mjs';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 assertLocal('dungeon-golden.mjs');
 
 const strip = (s) => s.replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
@@ -34,6 +35,11 @@ const cand = process.env.CANDIDATE ? strip(readFileSync(process.env.CANDIDATE, '
 const baseSql = process.env.BASE ? strip(readFileSync(process.env.BASE, 'utf8')) : '';
 if (baseSql.includes('$b$')) throw new Error('the BASE file must not contain $b$');
 if (cand.includes('$c$')) throw new Error('the candidate must not contain $c$');
+// Finish room (dungeon_finish_room.sql, D-200): a NEW function. The fights with the 'finish' policy call it, so every request installs it after the base text (the base
+// code has no such function, and it replaces no live function, so the transcripts of all other fights are not affected).
+const FINISH_FILE = process.env.FINISH_SQL || fileURLToPath(new URL('../../tcg-bot/supabase/dungeon_finish_room.sql', import.meta.url));
+const finishSql = strip(readFileSync(FINISH_FILE, 'utf8'));
+if (finishSql.includes('$q$')) throw new Error('the Finish room file must not contain $q$');
 const SEEDS_N = Number(process.env.GOLDEN_SEEDS || 3);
 const SEEDS = [0.11, 0.53, -0.37, 0.77, -0.91].slice(0, SEEDS_N);
 
@@ -93,6 +99,17 @@ M.forEach((m, i) => scen.push({ id: `monster ${m}`, mode: 'daily', sq: SQUADS[i 
 // Four fights with the Auto button (dungeon_auto_rounds).
 [0, 4, 8, 12].forEach((i, k) => scen.push({ id: `auto element ${E[i]}`, mode: 'daily', sq: SQUADS[k], policy: 'auto',
   floors: one(room('fight', arr([foe('fight', 1, 1, E[i], M[k], null, `au${k}a`), foe('fight', 1, 1, E[(i + 5) % 13], M[(k + 4) % M.length], null, `au${k}b`)]))) }));
+// Finish room (dungeon_finish_room): the same kind of fights with ONE call for each fight room (a horde, a guardian, a pass inside the room, the real day and week included).
+[0, 4, 8, 12].forEach((i, k) => scen.push({ id: `finish element ${E[i]}`, mode: 'daily', sq: SQUADS[k], policy: 'finish',
+  floors: one(room('fight', arr([foe('fight', 1, 1, E[i], M[k], null, `fi${k}a`), foe('fight', 1, 1, E[(i + 5) % 13], M[(k + 4) % M.length], null, `fi${k}b`)]))) }));
+scen.push({ id: 'finish horde of 4', mode: 'daily', sq: SQUADS[2], policy: 'finish', floors: one(room('horde', arr([0, 1, 2, 3].map((k) => foe('horde', 2, 1, E[k * 3 % E.length], null, null, `fh${k}`))))) });
+scen.push({ id: 'finish guardian', mode: 'daily', sq: SQUADS[0], policy: 'finish', floors: one(room('guardian', arr([foe('guardian', 3, 5, E[2], null, null, 'fg0')]))) });
+scen.push({ id: 'finish lone attacker vs squid (a pass inside the room)', mode: 'daily', sq: SQUADS[4], policy: 'finish',
+  floors: one(room('horde', arr([0, 1, 2].map((j) => foe('horde', 1, 1, null, 'squid', null, `fs${j}`))))) });
+// A room that the squad loses (a monster with 100000 attack) and a room that cannot end (a monster with 100 million HP and 1 attack: the round limit, balance dungeon.round_cap).
+const strong = (kind, floor, roomNo, tag, patch) => `(${foe(kind, floor, roomNo, null, null, null, tag)} || '${patch}'::jsonb)`;
+scen.push({ id: 'finish lost room', mode: 'daily', sq: SQUADS[1], policy: 'finish', floors: one(room('fight', arr([strong('fight', 1, 1, 'fl0', '{"atk": 100000}')]))) });
+scen.push({ id: 'finish round limit', mode: 'daily', sq: SQUADS[2], policy: 'finish', floors: one(room('fight', arr([strong('fight', 1, 1, 'fr0', '{"hp": 100000000, "max": 100000000, "atk": 1}')]))) });
 // A journey: two floors, all room types (the doors, the chests, the rest room, the guardian pay-out, the next floor, the retreat).
 const journey = (k) => arr([
   arr([room('fight', arr([foe('fight', 1, 1, E[k], null, null, `j${k}a`)])), room('choice', none), room('rest', none), room('treasure', none), room('guardian', arr([foe('guardian', 1, 5, null, null, null, `j${k}g`)]))]),
@@ -100,6 +117,7 @@ const journey = (k) => arr([
        room('elite', arr([foe('elite', 2, 3, null, null, null, `j${k}e`)])), room('rest', none), room('guardian', arr([foe('guardian', 2, 5, null, null, null, `j${k}g2`)]))]),
 ]);
 SQUADS.slice(0, 4).forEach((sq, k) => {
+  scen.push({ id: `journey ${sq.name} finish, retreat at floor 1`, mode: 'daily', sq, policy: 'finish', floors: journey(k + 3), opts: { max_calls: 200, retreat_floor: 1 } });
   scen.push({ id: `journey ${sq.name} script`, mode: 'daily', sq, policy: 'script', floors: journey(k), opts: { max_calls: 400, retreat_floor: 0 } });
   scen.push({ id: `journey ${sq.name} auto, retreat at floor 1`, mode: 'daily', sq, policy: 'auto', floors: journey(k + 6), opts: { max_calls: 200, retreat_floor: 1 } });
 });
@@ -113,7 +131,10 @@ SQUADS.slice(0, 4).forEach((sq, k) => {
   scen.push({ id: `gauntlet ${sq.name} auto (0-star pair)`, mode: 'gauntlet', sq, policy: 'auto', floors: gfloor(k + 5), opts: { max_calls: 150 }, pair: true });
 });
 // The real week of the Gauntlet (the weekly squad of gauntlet_squad, the week's floors).
+SQUADS.slice(0, 2).forEach((sq, k) => scen.push({ id: `gauntlet ${sq.name} finish (0-star pair)`, mode: 'gauntlet', sq, policy: 'finish', floors: gfloor(k + 7), opts: { max_calls: 150 }, pair: true }));
 scen.push({ id: 'real week script', mode: 'gauntlet', sq: null, policy: 'script', floors: null, opts: { max_calls: 250 } });
+scen.push({ id: 'real week finish', mode: 'gauntlet', sq: null, policy: 'finish', floors: null, opts: { max_calls: 120 } });
+scen.push({ id: 'real day finish A', mode: 'daily', sq: SQUADS[0], policy: 'finish', floors: null, opts: { max_calls: 200 } });
 scen.push({ id: 'real week auto', mode: 'gauntlet', sq: null, policy: 'auto', floors: null, opts: { max_calls: 120 } });
 
 // One SQL expression for each fight. fl[k] holds the floors of scenario k (built inside the request, after the code under test is installed).
@@ -138,7 +159,7 @@ for (const m of facts.monsters) COVERAGE.push(new RegExp(`,${m},`));
 for (const e of ['stun', 'heal', 'weaken', 'expose', 'shield', 'empower', 'smite', 'cleanse']) COVERAGE.push(new RegExp(`"effect": "${e}"`));
 for (const k of ['strike', 'slam', 'drain', 'stun', 'heavy', 'flurry', 'poison', 'regenerate', 'guard', 'enrage', 'curse', 'cataclysm', 'charging', 'stunned']) COVERAGE.push(new RegExp(`"action": "${k}"`));
 for (const m of ['"error": "cooldown"', '"error": "stunned"', '"error": "boss_stun_immune"', '"outcome": "crit"', '"outcome": "miss"', '"outcome": "blocked"', '"double": true', '"kill": true', '"heal": [1-9]',
-  '^P0 ', '^CHOOSE0 ', '^CHOOSE1 ', '^AUTO ', '^RETREAT ', 'ZEROSTAR same', 'RUN over cleared', 'RUN over fell', 'RUN over retreat', 'RUN active']) COVERAGE.push(new RegExp(m, 'm'));
+  '^P0 ', '^CHOOSE0 ', '^CHOOSE1 ', '^AUTO ', '^FINISH ', '"outcome": "won"', '"outcome": "lost"', '"outcome": "limit"', '^RETREAT ', 'ZEROSTAR same', 'RUN over cleared', 'RUN over fell', 'RUN over retreat', 'RUN active']) COVERAGE.push(new RegExp(m, 'm'));
 
 /** Play some fights (indexes into `fights`) on the code that the request installs first. Returns their transcripts. */
 async function play(idxs, installSql) {
@@ -150,6 +171,7 @@ declare fl jsonb[] := array_fill(null::jsonb, array[${scen.length}]); o text[] :
 begin
   ${installHelpers()}
   ${installSql ? 'execute $p$' + installSql + '$p$;' : ''}
+  execute $q$${finishSql}$q$;
   ${floors}
   for i in 1..${idxs.length} loop o := o || (case i
       ${idxs.map((fi, i) => `when ${i + 1} then ${fightExpr(fights[fi])}`).join('\n      ')}
