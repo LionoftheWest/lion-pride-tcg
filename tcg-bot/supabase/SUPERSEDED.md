@@ -150,7 +150,7 @@ A file runs as one transaction, so an error rolls the whole file back.
 
 - `dungeon_guardian_hp.sql`: a re-run stops at an error today: dungeon_guardian_hp: balance.dungeon.foe_mult.guardian.hp is not 2.5
 
-## No structure change, but a re-run writes rows (35)
+## No structure change, but a re-run writes rows (36)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -173,6 +173,7 @@ a one-time grant or a settings value would run again.
 - `dungeon_new_player_balance.sql`: balance
 - `dungeon_prizes_daily.sql`: settings
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
+- `f3_ability_kinds.sql`: ability_kinds (DO block)
 - `f3_auto_elements.sql`: balance
 - `f3_element_bonus_125.sql`: balance, set_config()
 - `f3_elements_decisions.sql`: element_counters, element_counters (DO block), elements (DO block)

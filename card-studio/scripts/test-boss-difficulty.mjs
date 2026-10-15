@@ -189,7 +189,7 @@ begin
   strikes := '{}';
   for n in 1..2 loop
     if n = 1 then update subjects set ability = null where id = i;
-    else update subjects set ability = '{"kind": "attack", "effect": "execute", "amount": 1.0, "threshold": 0.5}' where id = i; end if;
+    else update subjects set ability = '{"name": "Test Execute", "kind": "attack", "effect": "execute", "amount": 1.0, "threshold": 0.5}' where id = i; end if;
     for v in 1..24 loop
       delete from hunt_card_hp where hunt_id = h and player_id = 'tst_boss';
       delete from hunt_combat_state where hunt_id = h and player_id = 'tst_boss';

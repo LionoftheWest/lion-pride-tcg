@@ -44,4 +44,5 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.subjects to service_role;
 
 -- @triggers
+CREATE TRIGGER subjects_ability_check BEFORE INSERT OR UPDATE OF ability ON public.subjects FOR EACH ROW EXECUTE FUNCTION subjects_ability_check();
 CREATE TRIGGER subjects_flatten_tags_trg BEFORE INSERT OR UPDATE OF tags ON public.subjects FOR EACH ROW EXECUTE FUNCTION subjects_flatten_tags();
