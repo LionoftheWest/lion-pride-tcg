@@ -38,3 +38,13 @@ test('answer: old server 404 finish_unavailable, other errors, no answer', () =>
   assert.equal(e.kind, 'error'); assert.equal(e.message, 'Not in a fight.');
   assert.equal(finishAnswer(null).kind, 'error');
 });
+import { finishEnabled } from './dungeon-finish.js';
+test('the flag: OFF by default, FEATURE_FINISH=1 is everyone, FINISH_USERS is the listed members only', () => {
+  assert.equal(finishEnabled({}, '1'), false);
+  assert.equal(finishEnabled({ FEATURE_FINISH: '0', FINISH_USERS: '' }, '1'), false);
+  assert.equal(finishEnabled({ FEATURE_FINISH: 'true' }, '1'), false);
+  assert.equal(finishEnabled({ FEATURE_FINISH: '1' }, '9'), true);
+  assert.equal(finishEnabled({ FINISH_USERS: '1, 2' }, '2'), true);
+  assert.equal(finishEnabled({ FINISH_USERS: '1,2' }, '3'), false);
+  assert.equal(finishEnabled(undefined, '3'), false);
+});

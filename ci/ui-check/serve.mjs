@@ -20,7 +20,7 @@
 //   ci_events=on|four|one|two|five|hunt|system|empty|error   the player Events page (UI-62) and the Home Events slides (UI-05): the flag on, and /api/events answers fixture events (derived below)
 //   ci_report=on     /api/flags answers reports: true (the Feedback window, UI-40); the send stays blocked (403), so a send shows the error state
 //   ci_data=long    every member name becomes a 32-character name and every count a 9-digit number (12.6)
-//   ci_finish=ok|pass|404   POST /api/dungeon/finish (Finish Room, UI-47, UI-52): ok = 30 rounds, pass = 30 no-action rounds, 404 = the old server (finish_unavailable)
+//   ci_finish=idle|ok|pass|404|off   /api/flags answers finish: true (the Finish Room flag, default OFF in production) for every value but off; the value then picks the answer of   POST /api/dungeon/finish (Finish Room, UI-47, UI-52): ok = 30 rounds, pass = 30 no-action rounds, 404 = the old server (finish_unavailable)
 // Every non-GET request answers 403 (as the audit walkthrough): the check never writes. One exception: POST /api/open
 // answers a fixed pack open from the fixture catalog (openAnswer below), for the reveal screens; it writes nothing.
 import { createServer } from 'node:http';
@@ -495,6 +495,8 @@ function derivedEvents(mode) {
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/flags' && !!c.ci_events && body, make: (body) => ({ ...body, events: true }) });
 DERIVED.push({ when: (p, c) => p === '/api/events' && !!c.ci_events, make: (body, c) => derivedEvents(c.ci_events) });
+// UI-47, UI-52: the Finish Room flag (FEATURE_FINISH / FINISH_USERS, default OFF): any ci_finish value but off turns it on; off and no cookie leave it off (the recorded answer has no finish).
+DERIVED.push({ when: (p, c, body) => p === '/api/flags' && !!c.ci_finish && c.ci_finish !== 'off' && body, make: (body) => ({ ...body, finish: true }) });
 // UI-40: the recorded /api/flags has the report flag off; ci_report=on turns it on (the send stays blocked, so a send shows the error)
 DERIVED.push({ when: (p, c, body) => p === '/api/flags' && c.ci_report === 'on' && body, make: (body) => ({ ...body, reports: true }) });
 // D-190 / F-2: the recorded catalog (2026-10-05) is older than the set fields. The live /api/catalog gives each card its set_id and the released
@@ -593,7 +595,7 @@ createServer((req, res) => {
   }
   // UI-47, UI-52: Finish Room (cookie ci_finish = ok | pass | 404). Nothing is written. ok: the rounds of the room; pass: one round is a no-action round (D-182);
   // 404: the server code before the route (finish_unavailable: the client hides the button). Without the cookie the call stays refused (403 below).
-  if (req.method === 'POST' && p === '/api/dungeon/finish' && cookies(req).ci_finish) {
+  if (req.method === 'POST' && p === '/api/dungeon/finish' && cookies(req).ci_finish && cookies(req).ci_finish !== 'off') {
     let raw = '';
     req.on('data', (d) => { raw += d; });
     req.on('end', () => { let m = 'daily'; try { m = JSON.parse(raw || '{}').mode; } catch { /* the default */ }

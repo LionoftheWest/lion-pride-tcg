@@ -27,3 +27,5 @@ export function finishAnswer(r) {
   const kind = r.status === 'over' || r.ended ? 'over' : r.state?.phase && r.state.phase !== 'fight' ? 'next' : 'fight';
   return { kind, outcome: r.outcome ?? null, rounds, message: r.error?.message || '' };
 }
+// The flag (default OFF, as the events flag): FEATURE_FINISH=1 is everyone, FINISH_USERS=id,id is those members. /api/flags returns finish:true only then.
+export const finishEnabled = (env, id) => env?.FEATURE_FINISH === '1' || String(env?.FINISH_USERS || '').split(',').map((x) => x.trim()).filter(Boolean).includes(String(id));

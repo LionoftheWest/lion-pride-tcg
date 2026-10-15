@@ -213,6 +213,11 @@ export const SCREENS = {
   'dungeon-fight-2s3':    { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight-2s3', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   'dungeon-fight-1s4':    { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight-1s4', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   'dungeon-fight-pick':  { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['js', '.dg-sup'], ['wait', 1]] },
+  // Finish Room is behind a flag (default OFF): dungeon-fight and gauntlet-fight are the flag-OFF fight (no button, the row as before); the specs below set the flag (cookie ci_finish) so the button shows.
+  // -finish-idle: the flag on, nothing pressed; -finish-off: the cookie says off (the flag stays off: no button).
+  'dungeon-fight-finish-idle':    { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-fight-finish-off':     { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: 'off', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'gauntlet-fight-finish-idle':   { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 12]] },
   // Finish Room (D-201, UI-47, UI-52): the press plays the rounds of the fixture answer (cookie ci_finish) at 3x speed: the pill is Skip with the hint "Finishing the room · Round N";
   // -pass: a round with no action (D-182); -skipped: Skip pressed (the final state at once); -old: the server code before the route (404): the pill is hidden.
   'dungeon-fight-finishing':      { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: 'ok', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 2]] },

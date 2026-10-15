@@ -721,7 +721,7 @@ const supDesc = (c) => { const a = c.ability || {}; return (EFFECT[a.effect] || 
 // The plate name: the element word is its own span (landscape hides it: the icon shows the element).
 const plateName = (f) => { const n = String(f.name || ''); const w = n.split(' ')[0]; return f.element && w.toLowerCase() === String(f.element).toLowerCase() ? `<i class="pre">${esc(w)} </i>${esc(n.slice(w.length + 1))}` : esc(n); };
 // Finish Room (D-201): the pill left of Auto. Both labels and both icons are in it (the label with the longer word keeps the width, so Skip does not move anything).
-const finishHTML = () => `<button class="dg-finish" type="button" aria-label="Finish Room"><span class="ic ic-ff">${icon3('fast-forward')}</span><span class="ic ic-skip">${icon3('skip-forward')}</span><span class="lb" aria-hidden="true"><b>Finish Room</b><b>Skip</b></span></button>`;
+const finishHTML = () => !ctx().finishOn?.() ? '' : `<button class="dg-finish" type="button" aria-label="Finish Room"><span class="ic ic-ff">${icon3('fast-forward')}</span><span class="ic ic-skip">${icon3('skip-forward')}</span><span class="lb" aria-hidden="true"><b>Finish Room</b><b>Skip</b></span></button>`;
 const ctlHTML = () => `${musicBtnHTML()}<button class="dg-auto${dg.auto ? " on" : ""}" aria-pressed="${!!dg.auto}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button>`;
 function fightHTML() {
   const R = run(); const st = R.state;
