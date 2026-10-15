@@ -14,7 +14,7 @@ import { isPort } from './mobile.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { COIN, refreshShards } from './ui-v2-shop.js';
 import { cardElement } from './elements.js';
-import { foePace } from './dungeon-pace.js';
+import { foePace, AUTO_ROUNDS, skippedRounds } from './dungeon-pace.js';
 import { warmFoes, warmRoster, slowLink } from './dungeon-preload.js';
 import { setMood, stopMusic, toggleMute, musicBtnHTML, paintMusicBtn } from './dungeon-music.js';
 import { openCardPicker, closeCardPicker } from './ui3/card-picker.js';
@@ -719,7 +719,7 @@ const supDesc = (c) => { const a = c.ability || {}; return (EFFECT[a.effect] || 
 
 // The plate name: the element word is its own span (landscape hides it: the icon shows the element).
 const plateName = (f) => { const n = String(f.name || ''); const w = n.split(' ')[0]; return f.element && w.toLowerCase() === String(f.element).toLowerCase() ? `<i class="pre">${esc(w)} </i>${esc(n.slice(w.length + 1))}` : esc(n); };
-const ctlHTML = () => `${musicBtnHTML()}<button class="dg-auto${dg.auto ? " on" : ""}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button>`;
+const ctlHTML = () => `${musicBtnHTML()}<button class="dg-auto${dg.auto ? " on" : ""}" aria-pressed="${!!dg.auto}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button>`;
 function fightHTML() {
   const R = run(); const st = R.state;
   const foes = foesOf(st);
@@ -750,7 +750,7 @@ function fightHTML() {
       <div class="dg-pops"></div>
       ${V3() ? '' : ctlHTML()}
     </div>
-    ${V3() ? `<div class="dg-ctl">${musicBtnHTML()}<div class="dg-hint"></div><button class="dg-auto${dg.auto ? ' on' : ''}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button></div>` : '<div class="dg-hint"></div>'}
+    ${V3() ? `<div class="dg-ctl">${musicBtnHTML()}<div class="dg-hint"></div><button class="dg-auto${dg.auto ? ' on' : ''}" aria-pressed="${!!dg.auto}" title="Auto: the squad fights by itself. It stops at every choice."><i></i>Auto</button></div>` : '<div class="dg-hint"></div>'}
     <div class="dg-units">${atk.map(unit).join('')}</div>
     <aside class="dg-right"><section class="dg-panel dg-shp"><span class="k">Squad HP</span><b class="v"></b><span class="dg-hp big"><i></i></span></section>
       <section class="dg-panel dg-sups"><span class="k">Support</span>${sup.map(supB).join('') || '<p class="dg-none">No support cards in this squad.</p>'}</section></aside>
@@ -943,7 +943,7 @@ async function wireFight(main, keepCanvas) {
   }
   requestAnimationFrame(() => placeArena(main));
   fitFightV3(F);
-  F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); dg.auto = !dg.auto; localStorage.setItem(AUTO, dg.auto ? '1' : ''); e.currentTarget.classList.toggle('on', dg.auto); ctx().sfx?.('click'); autoNext(); });
+  F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); dg.auto = !dg.auto; localStorage.setItem(AUTO, dg.auto ? '1' : ''); e.currentTarget.classList.toggle('on', dg.auto); e.currentTarget.setAttribute('aria-pressed', String(!!dg.auto)); ctx().sfx?.('click'); autoNext(true); });
   autoNext();
   passIfNoAction();   // D-182: the fight opens with nothing to play (every attacker stunned, no support ready)
   F.addEventListener('click', (e) => {
@@ -1125,10 +1125,9 @@ async function settle(main, r, kill) {
 // every choice (rewards, chests, doors, the floor screen): those stay the member's. Auto counts on the
 // leaderboard (Nathan). Every rule still runs in SQL; Auto only picks the same actions a tap would.
 let autoT = null;
-// Auto on the server (dungeon_auto_rounds.sql, POST /api/dungeon/auto): one request plays up to 5 rounds with the same rules as the taps (it calls
+// Auto on the server (dungeon_auto_rounds.sql, POST /api/dungeon/auto): one request plays up to AUTO_ROUNDS (2) rounds with the same rules as the taps (it calls
 // dungeon_support and dungeon_attack); the answer lists them and each one is animated in order by the same code as a tap (playResult). The call
-// stops at a kill, a step that is not a fight, the end of the run, a refused action or the 5th round, and then this code continues from the state.
-const AUTO_ROUNDS = 5;
+// stops at a kill, a step that is not a fight, the end of the run, a refused action or the last round, and then this code continues from the state.
 async function autoBatch() {
   const main = document.getElementById('main');
   dg.busy = true; fightUpdate(main, run().state);
@@ -1142,20 +1141,25 @@ async function autoBatch() {
     return;
   }
   let kill = false;
-  for (const rd of r.rounds || []) {
+  const rounds = r.rounds || [];
+  for (let i = 0; i < rounds.length; i++) {
+    const rd = rounds[i];
     if (rd.sup) await playResult('support', { cardId: rd.sup.card, targetCard: rd.sup.target_card, targetFoe: rd.sup.target_foe }, rd.sup);
     if (rd.pass) { dg.notice = NO_ACTION; fightUpdate(main, run().state); await sleep(700); await playResult('pass', {}, rd.pass); dg.notice = ''; }
     if (rd.atk) { dg.target = rd.atk.target; await playResult('attack', { cardId: rd.atk.card, target: rd.atk.target }, rd.atk); kill = kill || !!rd.atk.kill; }
     // The member left the fight (another view, a repaint without the fight): the rounds are played on the server, so the state is the final one.
     if (ctx().currentView() !== 'dungeon' || !document.querySelector('.dg-fight')) { dg.data.run.state = r.state; dg.busy = false; return; }
+    // Auto went OFF: the rounds that are left are already played on the server, so show the final state at once.
+    if (!dg.auto && i < rounds.length - 1) { const sk = skippedRounds(rounds, i + 1); kill = kill || sk.kill; if (sk.loot) toast('A card dropped!'); break; }
   }
   dg.data.run.state = r.state;
   if (r.error?.message) { toast(r.error.message); dg.auto = false; localStorage.setItem(AUTO, ''); document.querySelector('.dg-auto')?.classList.remove('on'); }   // a refused attack ends Auto, as before
   await settle(main, r, kill);
 }
-function autoNext() {
+function autoNext(now) {
   clearTimeout(autoT);
   if (!dg.auto) return;
+  if (now) { if (!dg.busy) autoStep(); return; }   // ON: the first step starts at once; while an animation plays, its settle()/act() calls autoNext() when it ends
   autoT = setTimeout(autoStep, 550);
 }
 async function autoStep() {

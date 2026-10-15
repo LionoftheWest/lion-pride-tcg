@@ -11,3 +11,13 @@ test('2 to 5 monsters take at most the turn budget (and never run below the mini
   assert.ok(foePace(50) >= 0.3);
 });
 test('no monster acts: pace 1', () => assert.equal(foePace(0), 1));
+
+import { AUTO_ROUNDS, skippedRounds } from './dungeon-pace.js';
+test('Auto batch: 2 rounds; the skipped rounds report their kill and loot', () => {
+  assert.equal(AUTO_ROUNDS, 2);
+  const rounds = [{ atk: { kill: false } }, { atk: { kill: true, loot: { card: 7 } } }];
+  assert.deepEqual(skippedRounds(rounds, 0), { kill: true, loot: true });
+  assert.deepEqual(skippedRounds(rounds, 1), { kill: true, loot: true });
+  assert.deepEqual(skippedRounds(rounds, 2), { kill: false, loot: false });
+  assert.deepEqual(skippedRounds(undefined, 0), { kill: false, loot: false });
+});
