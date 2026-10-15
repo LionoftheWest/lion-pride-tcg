@@ -66,7 +66,7 @@ AS $function$
       from b, cards c left join subjects s on s.id = c.subject_id where p_player is null
     union all
     select c.id, card_combat(c.rarity::text, pc.ascension, s.cp_mod, pc.stat_points, b.v)
-                 || jsonb_build_object('power', round(card_cp_exact(c.rarity::text, pc.ascension, s.cp_mod, b.v->'rarity_cp', b.v->'stars'))::int)
+                 || jsonb_build_object('power', (card_combat(c.rarity::text, pc.ascension, s.cp_mod, pc.stat_points, b.v)->>'cp')::int)   -- f3_one_power_number.sql (2026-10-15): the shown power of a copy = the cp that the fights use
       from b, player_cards pc join cards c on c.id = pc.card_id left join subjects s on s.id = c.subject_id
      where p_player is not null and pc.player_id = p_player and pc.quantity > 0) x;
 $function$

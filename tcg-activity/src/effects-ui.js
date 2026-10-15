@@ -1,4 +1,5 @@
 import { thumb } from './thumb.js';
+import { statLabel } from './stat-labels.js';
 import { every } from './poll.js';
 import { reduceEffects } from './ui3/settings.js';
 import { bannerOf, refundText } from './ui3/effects.js';
@@ -167,7 +168,7 @@ function paintViewerEffect(card, boxId) {
   if (s.amount != null) meta.push(`Power ${s.amount}`);
   if (s.dur) meta.push(`Lasts ${fmtDur(s.dur)}`);
   meta.push(`Cooldown ${fmtDur(s.cooldownH * 3600)}`);
-  if (s.starBonus?.points) meta.push([s.starBonus.power ? `Potency +${s.starBonus.power}% effect` : '', s.starBonus.cd ? `Haste −${s.starBonus.cd}% cooldown` : ''].filter(Boolean).join(', '));
+  if (s.starBonus?.points) meta.push([s.starBonus.power ? `${statLabel('potency')} +${s.starBonus.power}% effect` : '', s.starBonus.cd ? `${statLabel('haste')} −${s.starBonus.cd}% cooldown` : ''].filter(Boolean).join(', '));
   else if (s.starBonus) meta.push(`★${s.stars}: +${s.starBonus.power}% effect, −${s.starBonus.cd}% cooldown`);
   const wait = readyIn(card);
   let btn = '';

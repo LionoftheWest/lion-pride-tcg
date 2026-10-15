@@ -19,13 +19,14 @@ The triggers on `balance` check each change:
 - `balance_check_report_shots` (`balance_check_report_shots()`): Trigger (before insert, update on balance): the shape of the key report_shots (report_shots.sql): keep_days, per_report and max_bytes whole numbers of at least 1, per_report at most 9, max_bytes at most 5242880 (the Activity reads at most 5 MB of an upload).
 - `balance_check_runs` (`balance_check_runs()`): Trigger (before insert or update on balance): dungeon_runs_per_day and gauntlet_runs_per_day must be whole numbers from 1 to 10.
 - `balance_check_settings` (`balance_check_settings()`): Trigger (before insert, update on balance): the shapes of the keys dungeon, gauntlet and adventure_gate (balance_settings_numbers.sql) and dungeon_rewards.chest_rarity. dungeon: squad, budget, floors, round_cap and rules.budget whole numbers of at least 1; a cost for every card rarity; hp_growth, atk_growth, foe_mult hp / atk above 0; rest_heal and rest_revive shares from 0 to 1; fight_min and horde_min whole numbers 1 to 8; fight_spread and horde_spread whole numbers 1 to 4; early_floors a whole number 0 to 30; early_hp and early_atk from 0.1 to 1; foe_heal_cap from 0 to 5; room_weights numbers that add up to more than 0. gauntlet: budget a whole number of at least 1; room_weights the same, without treasure. adventure_gate: attackers a whole number. dungeon_rewards.chest_rarity: tiers 1 to 5, each 3 numbers that add up to more than 0.
+- `balance_check_stat_labels` (`balance_check_stat_labels()`): Trigger (before insert, update on balance): stat_labels must have the five stats, each with a label (1 to 12 characters), a short (1 to 4) and a text with {n} exactly once (f3_stat_labels.sql).
 - `balance_log_write` (`balance_log_write()`): Trigger (after insert, update on balance): writes a balance_log row with the old value, the new value and balance_who. Writes nothing when the value and the note did not change.
 
 - The shape of a value stays the same: an update cannot remove a leaf or change its type (see `balance_check`).
 
 ## Keys
 
-[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
+[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
 
 <a id="key-achievement-rewards"></a>
 
@@ -768,7 +769,7 @@ Shape: `object { floor: number, per_cp: number }`
 
 ### combat
 
-A card hit (hunt_attack). Chances: miss, block, crit (crit_weak on a weak tag; Precision adds, under stat_points.crit_cap). Damage = combat power x weakness x (roll_min + random x roll_span) x buffs x synergy x passives; crit x crit_x, block x block_x. Weakness = 1 + (1 - weak_step^weak hits) (halved per weak-tag card after weak_stack_free) - resist_step x (1 - resist_decay^resists), between weak_min and weak_max. Synergy: syn_small_at / syn_big_at cards of one element, origin or trait give element_/origin_/trait_ small / big, all together at most syn_cap. Lifesteal heals at most lifesteal_cap of max HP. Rally, Butterfingers, Launch Party, Raid Crasher: at most effect_cap_pct %. The per-card ability amounts are in subjects.ability. Element chart (f3_element_bonus.sql, rule A): element_bonus = the damage multiplier when the attacker's element beats the target's element (element_counters, approved pairs only; from 1 to 2; 1 = no bonus). element_penalty = the multiplier when the target's element beats the attacker's element (from 0.5 to 1; 1 = no penalty). Both apply when two elements beat each other. A separate factor after the synergy: it stacks with the weakness. Dungeon and Gauntlet only (a Hunt boss has no element). Limits: balance_check_combat. auto_elements (f3_auto_elements.sql): true = the Auto button of the Dungeon and the Gauntlet picks, among the ready attackers, the card whose element beats the target foe's element first (then the weakness, the CP, the squad order). false = the old order. Boolean.
+A card hit (hunt_attack). Chances: miss, block, crit (crit_weak on a weak tag; Precision adds, under stat_points.crit_cap). Damage = combat power x weakness x (roll_min + random x roll_span) x buffs x synergy x passives; crit x crit_x, block x block_x. Weakness = 1 + (1 - weak_step^weak hits) (halved per weak-tag card after weak_stack_free) - resist_step x (1 - resist_decay^resists), between weak_min and weak_max. Synergy: syn_small_at / syn_big_at cards of one element, origin or trait give element_/origin_/trait_ small / big, all together at most syn_cap. Lifesteal heals at most lifesteal_cap of max HP. Rally, Butterfingers, Launch Party, Raid Crasher: at most effect_cap_pct %. The per-card ability amounts are in subjects.ability. Element chart (f3_element_bonus.sql, rule A): element_bonus = the damage multiplier when the attacker's element beats the target's element (element_counters, approved pairs only; from 1 to 2; 1 = no bonus). element_penalty = the multiplier when the target's element beats the attacker's element (from 0.5 to 1; 1 = no penalty). Both apply when two elements beat each other. A separate factor: it stacks with the weakness. Dungeon and Gauntlet only (a Hunt boss has no element). Limits: balance_check_combat. auto_elements (f3_auto_elements.sql): true = the Auto button of the Dungeon and the Gauntlet picks, among the ready attackers, the card whose element beats the target foe's element first (then the weakness, the CP, the squad order). false = the old order. Boolean.
 
 Shape: `object { auto_elements: boolean, block: number, block_x: number, crit: number, crit_weak: number, crit_x: number, effect_cap_pct: number, element_big: number, element_bonus: number, element_penalty: number, element_small: number, lifesteal_cap: number, miss: number, origin_big: number, origin_small: number, resist_decay: number, resist_step: number, roll_min: number, roll_span: number, syn_big_at: number, syn_cap: number, syn_small_at: number, trait_big: number, trait_small: number, weak_max: number, weak_min: number, weak_stack_free: number, weak_step: number }`
 
@@ -892,7 +893,7 @@ Shape: `object { atk_growth: number, budget: number, cost: object { event: numbe
       "atk": 0.75
     },
     "guardian": {
-      "hp": 4,
+      "hp": 2.5,
       "atk": 1.7
     },
     "miniboss": {
@@ -1517,6 +1518,44 @@ Shape: `object { event: array(6) of number, full_art: array(6) of number, gold: 
     4.8,
     5.5
   ]
+}
+```
+
+<a id="key-stat-labels"></a>
+
+### stat_labels
+
+The names of the five stat points as a player reads them (Nathan, 2026-10-11; f3_stat_labels.sql). The key is the stored stat (attack, vitality, precision, potency, haste) and does not change; label = the name (Attack, Health, Crit, Support, Recharge), short = the chip form (at most 4 letters), text = the one-line explainer shown after "<label>: ". {n} in the text = the percent of balance stat_points for that stat (attack 0.05 = 5, vitality 0.06 = 6, precision 0.03 = 3, potency 0.05 = 5, haste 0.04 = 4), so the numbers in the texts always follow stat_points. Read by the Activity stat screens through the public balance; stat_labels() gives the texts with the numbers in. No fight reads this key. Limits: balance_check_stat_labels (all five stats, a label of 1 to 12 characters, a short of 1 to 4, a text with {n} once).
+
+Shape: `object { attack: object { label: string, short: string, text: string }, haste: object { label: string, short: string, text: string }, potency: object { label: string, short: string, text: string }, precision: object { label: string, short: string, text: string }, vitality: object { label: string, short: string, text: string } }`
+
+```json
+{
+  "haste": {
+    "text": "supports are ready sooner (-{n}% cooldown for each point)",
+    "label": "Recharge",
+    "short": "RCH"
+  },
+  "attack": {
+    "text": "your card hits harder (+{n}% attack power for each point)",
+    "label": "Attack",
+    "short": "ATK"
+  },
+  "potency": {
+    "text": "the support of your card is stronger (+{n}% heal, shield or empower for each point)",
+    "label": "Support",
+    "short": "SUP"
+  },
+  "vitality": {
+    "text": "your card has more HP (+{n}% HP for each point)",
+    "label": "Health",
+    "short": "HP"
+  },
+  "precision": {
+    "text": "your card lands critical hits more often (+{n}% chance for each point)",
+    "label": "Crit",
+    "short": "CRT"
+  }
 }
 ```
 

@@ -36,4 +36,5 @@ CREATE TRIGGER balance_check_economy BEFORE INSERT OR UPDATE ON public.balance F
 CREATE TRIGGER balance_check_report_shots BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_report_shots();
 CREATE TRIGGER balance_check_runs BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_runs();
 CREATE TRIGGER balance_check_settings BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_settings();
+CREATE TRIGGER balance_check_stat_labels BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_stat_labels();
 CREATE TRIGGER balance_log_write AFTER INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_log_write();

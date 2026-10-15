@@ -2,6 +2,7 @@
  * Acceptance test for tcg-bot/supabase/perf_collection_power.sql, with NO lasting change:  node scripts/test-collection-power-reads.mjs
  * Invariant: my_collection_power, collection_power_all and top_collection_power answer EXACTLY as the text before the file did
  * (reference copies ref_* of the live text of 2026-10-11, db/schema), for EVERY player of the database, and after a card change.
+ * (2026-10-15, f3_one_power_number.sql: the power of a copy counts its stat points, so the reference sums the cp of card_combat, not card_power.)
  *   1. my_collection_power(player) = the old text, every player.
  *   2. collection_power_all() = the old text (the same rows) and = my_collection_power for each player.
  *   3. top_collection_power(100) = the old text (same players and powers, ordered by power).
@@ -19,7 +20,7 @@ begin
   create function ref_my_cp(p_player_id text) returns bigint language sql stable as $f$
     with subj_totals as (select subject_id, count(*) tv from cards group by subject_id),
     ps as (
-      select c.subject_id, sum(card_power(c.rarity::text, pc.ascension, s.cp_mod)) base_cp, count(*) ov
+      select c.subject_id, sum((card_combat(c.rarity::text, pc.ascension, s.cp_mod, pc.stat_points)->>'cp')::int) base_cp, count(*) ov
       from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
       where pc.player_id = p_player_id and pc.quantity >= 1 group by c.subject_id)
     select coalesce(sum(case when ps.ov = st.tv then round(ps.base_cp * (balance_get('set_bonus') #>> '{}')::numeric) else ps.base_cp end), 0)::bigint
@@ -27,7 +28,7 @@ begin
   create function ref_cp_all() returns table(player_id text, power bigint) language sql stable as $f$
     with subj_totals as (select subject_id, count(*) tv from cards group by subject_id),
     ps as (
-      select pc.player_id, c.subject_id, sum(card_power(c.rarity::text, pc.ascension, s.cp_mod)) base_cp, count(*) ov
+      select pc.player_id, c.subject_id, sum((card_combat(c.rarity::text, pc.ascension, s.cp_mod, pc.stat_points)->>'cp')::int) base_cp, count(*) ov
         from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
        where pc.quantity >= 1 group by pc.player_id, c.subject_id)
     select ps.player_id, sum(case when ps.ov = st.tv then round(ps.base_cp * (balance_get('set_bonus') #>> '{}')::numeric) else ps.base_cp end)::bigint

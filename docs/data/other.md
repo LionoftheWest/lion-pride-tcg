@@ -9,7 +9,7 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 Tables (7): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (14): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
+Functions (15): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
 
 ## Tables
 
@@ -265,6 +265,16 @@ F-3: the trigger of elements: refuses a word that another element has, and sets 
 - Security definer: no
 
 [combat] The one list of elements for GET /api/elements: key, name, ord, aliases, glyph, color, color2, weak_to (the primary counter), dungeon_foe, and the approved counter pairs: beats (the keys this element beats) and beaten_by (the keys that beat it), both in the order of elements.ord. A pair with proposal = true is not returned. The client never works the pairs out.
+
+<a id="fn-owned-card-power-text"></a>
+
+### owned_card_power(text)
+
+- Function: `owned_card_power(p_player text DEFAULT NULL::text)`
+- Returns: `TABLE(player_id text, card_id bigint, subject_id bigint, rarity text, ascension integer, cp_mod numeric, type text, power integer)`
+- Security definer: no
+
+[cards] One row for each owned copy (quantity >= 1) with its power = card_power_pts (card_combat run once for each different input). p_player null = every player. Read by the roster, the leaderboards, the deployable power and the collection power.
 
 <a id="fn-pack-color-ok-text"></a>
 
