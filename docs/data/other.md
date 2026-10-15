@@ -9,7 +9,7 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 Tables (7): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (13): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
+Functions (14): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
 
 ## Tables
 
@@ -196,6 +196,16 @@ Table. [cards] F-2 set pools: a card of another set added to the pull pool of se
 
 F-3: true when a list of element words is not empty and has only lower case, trimmed words with no repeat (the check of elements.aliases).
 
+<a id="fn-element-beats-text-text"></a>
+
+### element_beats(text,text)
+
+- Function: `element_beats(p_att text, p_def text)`
+- Returns: `boolean`
+- Security definer: no
+
+[combat] True when the first element beats the second (element_counters, approved pairs). False when an element is missing. Used by the Auto pick of the Dungeon and the Gauntlet.
+
 <a id="fn-element-counter-gaps"></a>
 
 ### element_counter_gaps()
@@ -254,7 +264,7 @@ F-3: the trigger of elements: refuses a word that another element has, and sets 
 - Returns: `jsonb`
 - Security definer: no
 
-F-3: the elements as jsonb for the server route GET /api/elements.
+[combat] The one list of elements for GET /api/elements: key, name, ord, aliases, glyph, color, color2, weak_to (the primary counter), dungeon_foe, and the approved counter pairs: beats (the keys this element beats) and beaten_by (the keys that beat it), both in the order of elements.ord. A pair with proposal = true is not returned. The client never works the pairs out.
 
 <a id="fn-pack-color-ok-text"></a>
 
