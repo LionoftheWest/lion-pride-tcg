@@ -87,6 +87,8 @@ const body = String.raw`do $t$
 declare
   vk text; vh text; va jsonb; vh_a jsonb; vk_key text; vh_key text; n int; m text;
 begin
+  -- a fresh start inside the block: when the file is already applied the seed would be skipped (a seed mutation would pass)
+  drop trigger if exists subjects_ability_check on subjects; drop table if exists ability_kinds cascade;
   execute $m$${mig}$m$;
   execute $m$${mig}$m$;   -- two times: idempotent (the seed runs only into an empty table)
   create temp table res (c text, ok boolean, d text);
