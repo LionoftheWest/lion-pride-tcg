@@ -628,6 +628,25 @@ The order for a migration PR, under Nathan's standing "go":
 own. Never commit changes to the local copy from a scratch script (use rolled-back transactions). A refresh removes
 every migration that another session applied, so tell the running sessions after a refresh.
 
+**Always the preload.** `LOCALDB=1` alone does not reach the local copy: without `--import ./scripts/localdb-preload.mjs`
+the token in `card-studio/.env` is the LIVE one. `apply-sql.mjs` and `scripts/localdb-guard.mjs` refuse that case
+(2026-10-14: a migration went live by this mistake).
+
+**A second local copy (2026-10-15).** Copy 1 serves the go-live rehearsals and short steps. Copy 2 serves the long
+Lab, golden and options runs, so they do not wait for copy 1 and do not see other builders' unmerged migrations.
+Each copy has its own WSL folder, connection file and lock:
+
+| | Copy 1 | Copy 2 |
+|---|---|---|
+| WSL folder (`LOCALDB_DIR`) | `~/lptcg-local` (default) | `~/lptcg-local2` |
+| Connection file (`LOCALDB_ENVFILE` for the tools, `LOCALDB_ENV` for the scripts) | `%TEMP%/localdb.env` (default) | `%TEMP%/localdb2.env` |
+| Lock (`LOCALDB_LOCK_DIR` for the Lab scripts; `mkdir` by hand for other steps) | `C:/Users/vaugh/.localdb.lock` | `C:/Users/vaugh/.localdb2.lock` |
+
+Start or refresh copy 2 (Git Bash): `MSYS_NO_PATHCONV=1 wsl.exe -d Ubuntu -e bash -c 'export LOCALDB_DIR=$HOME/lptcg-local2
+LOCALDB_ENVFILE=localdb2.env; bash /mnt/c/Users/vaugh/discord-ui-preview/localdb/refresh.sh'` (`up.sh` to start only).
+Run a script on copy 2: `LOCALDB=1 LOCALDB_ENV="$TEMP/localdb2.env" LOCALDB_LOCK_DIR=C:/Users/vaugh/.localdb2.lock
+node --import ./scripts/localdb-preload.mjs scripts/<x>.mjs`. A go-live rehearsal stays on copy 1.
+
 **Git safety in worktrees.** Agents remove their worktrees when they finish. Before a git write, check that the
 worktree exists, run `pwd` and `git branch --show-current`, and chain the commands with `&&`. On 2026-10-11 a failed
 `cd` ran a merge in the shared main tree (the push was refused; fixed with `git reset --keep`).
