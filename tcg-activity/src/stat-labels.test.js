@@ -53,7 +53,8 @@ test('with no balance a stat shows its stored key with a capital (the old name) 
   setStatBalance(null);
   assert.equal(statLabel('haste'), 'Haste');
   assert.equal(statLabel('vitality'), 'Vitality');
-  assert.equal(statShort('haste'), 'HAS');
+  assert.equal(statShort('haste'), 'HST');
+  assert.equal(statShort('attack'), 'ATK');
   assert.equal(statNames(), 'Attack, Vitality, Precision, Potency and Haste');
   assert.equal(statText('haste'), '');
   assert.equal(statSummary(), 'Each star gives points to this card.');

@@ -32,7 +32,9 @@ const all = () => statLabelsFrom(bal);
 /** The name of a stat (Attack, Health, Crit, Support, Recharge). */
 export const statLabel = (k) => all()[k]?.label ?? (k ? k[0].toUpperCase() + k.slice(1) : '');
 /** The chip form (ATK, HP, CRT, SUP, RCH). */
-export const statShort = (k) => all()[k]?.short ?? String(k).slice(0, 3).toUpperCase();
+// The fallback is the chip of before the change (a 3-letter cut of the key was one letter wider: ATT, HAS clipped a caption in WebKit at 412x915).
+const OLD_SHORT = { attack: 'ATK', vitality: 'VIT', precision: 'PRE', potency: 'POT', haste: 'HST' };
+export const statShort = (k) => all()[k]?.short ?? OLD_SHORT[k] ?? String(k).slice(0, 3).toUpperCase();
 /** The one-line explainer, for example "supports are ready sooner (-4% cooldown for each point)". */
 export const statText = (k) => all()[k]?.text ?? '';
 /** [[key, label], ...] in the stored order: the rows of the stat screens. */
