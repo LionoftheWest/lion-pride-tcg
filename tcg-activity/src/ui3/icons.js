@@ -7,7 +7,7 @@ import {
   Trophy, Skull, Swords, Castle, Crown, House, Store, Bell, Menu, Gift, Users, Settings, Package, Undo2, Pencil, Trash2,
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
   Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, Eye, DoorOpen, Gem, BellOff, ChevronUp, Tag, Gavel, ArrowLeft, Sparkles, Drama, Bug, MessageSquare, Lightbulb, Monitor, GitCommitHorizontal, Clock, Send, Shield, Hourglass, User, CircleMinus, Image as ImageIcon, Rainbow, Puzzle, Dumbbell, HandHeart, Handshake, Target, Hammer, ShoppingCart, Recycle, Sun, Mic, Pickaxe, Laugh, PawPrint, Backpack, Map as MapIcon,
-  Camera, ImageUp, Smartphone, Tablet, Laptop,
+  FastForward, SkipForward, Camera, ImageUp, Smartphone, Tablet, Laptop,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -24,6 +24,8 @@ export const ICONS = {
   'package': Package, 'undo-2': Undo2, 'pencil': Pencil, 'trash-2': Trash2, 'hexagon': Hexagon, 'zap': Zap,
   // the 14th element: element-icons.js has no physical icon (13 icons)
   'hand-fist': HandFist,
+  // Finish Room (D-201, UI-47, UI-52): the button and its Skip state
+  'fast-forward': FastForward, 'skip-forward': SkipForward,
   // the menu grid (UI-60)
   'calendar-check': CalendarCheck, 'circle-help': CircleHelp, 'wrench': Wrench, 'scroll-text': ScrollText,
   // the Card picker and the squad views (UI-64, UI-46): Filters, an open check, a card not allowed today, a link onward

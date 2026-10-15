@@ -82,6 +82,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.col) cookies.push({ name: 'ci_col', value: spec.col, url: BASE });
         if (spec.trades) cookies.push({ name: 'ci_trades', value: spec.trades, url: BASE });
         if (spec.dungeon) cookies.push({ name: 'ci_dungeon', value: spec.dungeon, url: BASE });
+        if (spec.finish) cookies.push({ name: 'ci_finish', value: spec.finish, url: BASE });   // UI-47, UI-52: the answer of POST /api/dungeon/finish (serve.mjs)
         if (spec.notes) cookies.push({ name: 'ci_notes', value: spec.notes, url: BASE });
         if (spec.home) cookies.push({ name: 'ci_home', value: spec.home, url: BASE });
         if (spec.gifts) cookies.push({ name: 'ci_gifts', value: '1', url: BASE });
@@ -113,7 +114,7 @@ async function runCell([s, screen, variant], ref = {}) {
         pg.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
         pg.on('response', (r) => { if (r.status() === 403 && r.request().method() !== 'GET') blocked.push(r.request().method() + ' ' + new URL(r.url()).pathname); });
         const noFixture = new Set();   // a GET /api call with no recorded answer (the screen may show an error state)
-        pg.on('response', (r) => { const u = new URL(r.url()); if (r.status() === 404 && u.pathname.startsWith('/api/')) noFixture.add(u.pathname); });
+        pg.on('response', (r) => { const u = new URL(r.url()); if (r.status() === 404 && u.pathname.startsWith('/api/') && !(spec.finish === '404' && u.pathname === '/api/dungeon/finish')) noFixture.add(u.pathname); });   // UI-47: the 404 of the old server is the state under test
         const res = { browser: BROWSER, size, class: cls, touch, screen, id: spec.id, variant }; let shotRetry = false;
         try {
           if (spec.loader) {

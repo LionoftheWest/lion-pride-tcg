@@ -213,6 +213,12 @@ export const SCREENS = {
   'dungeon-fight-2s3':    { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight-2s3', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   'dungeon-fight-1s4':    { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight-1s4', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   'dungeon-fight-pick':  { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['js', '.dg-sup'], ['wait', 1]] },
+  // Finish Room (D-201, UI-47, UI-52): the press plays the rounds of the fixture answer (cookie ci_finish) at 3x speed: the pill is Skip with the hint "Finishing the room · Round N";
+  // -pass: a round with no action (D-182); -skipped: Skip pressed (the final state at once); -old: the server code before the route (404): the pill is hidden.
+  'dungeon-fight-finishing':      { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: 'ok', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 2]] },
+  'dungeon-fight-finishing-pass': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: 'pass', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 0.7]] },
+  'dungeon-fight-skipped':        { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: 'ok', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 1], ['js', '.dg-finish']] },
+  'dungeon-fight-finish-old':     { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: '404', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['js', '.dg-finish']] },
   'dungeon-over':        { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over-revealed': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-reveal, .dg-reveal'], ['wait', 3]] },
   // v3: the loader and the sign-in retry (UI-56). `loader` = the sign-in state (sdk-stub.js reads the cookie ci_loader): wait = never answers
@@ -231,6 +237,7 @@ export const SCREENS = {
   'gauntlet-over':       { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   // The Gauntlet fight (UI-52, a delta on the UI-47 fight) and a support picking a target (D-70): the derived run of the check server (cookie ci_dungeon = g-fight).
   'gauntlet-fight':      { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 12]] },
+  'gauntlet-fight-finishing':     { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-fight', finish: 'ok', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 2]] },
   'gauntlet-fight-pick': { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 5], ['js', '.dg-sup'], ['wait', 1]] },
   'gauntlet-prizes':     { id: 'UI-52', long: true, safe: true, notOn: ['tiny', 'medium', 'expanded', 'compact-land'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '[data-seg="pane:prizes"]', [['wait', 0]]], ['wait', 1]] },
   'gauntlet-top':        { id: 'UI-52', long: true, safe: true, notOn: ['tiny', 'medium', 'expanded', 'compact-land'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '[data-seg="pane:top"]', [['wait', 0]]], ['wait', 1]] },
@@ -475,6 +482,14 @@ export async function runSteps(pg, steps) {
       if (st[3] === 'gone') { await pg.waitForSelector('#u3Tfx', { state: 'detached', timeout: 10000 }).catch(() => miss.push('#u3Tfx stays')); await pg.clock.resume(); await settle(pg); }
       else await sleep(1.5);   // the CSS transitions of the phase finish in real time
     }
+    // UI-47, UI-52: a state that exists only while an animation plays (the Finish Room replay). ['click', sel] clicks and returns at once (no wait for a stable page);
+    // ['pause', s] is an exact real-time wait. The cell then reads the page in the middle of the animation.
+    else if (st[0] === 'click') {
+      let ok = false;
+      for (let i = 0; i < 40 && !ok; i++) { ok = await pg.evaluate((q) => { const e = [...document.querySelectorAll(q)].find((x) => x.getClientRects().length); if (!e) return false; e.click(); return true; }, st[1]); if (!ok) await sleep(0.5); }
+      if (!ok) miss.push(st[1]);
+    }
+    else if (st[0] === 'pause') await sleep(st[1]);
     else if (st[0] === 'js') {
       if (st[2] && !(await pg.evaluate((s) => [...document.querySelectorAll(s)].some((x) => x.getClientRects().length), st[1]))) {
         miss.push(`${st[1]} (fallback used)`); miss.push(...(await runSteps(pg, st[2]))); continue;
