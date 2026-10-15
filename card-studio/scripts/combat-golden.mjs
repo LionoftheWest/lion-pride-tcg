@@ -29,9 +29,9 @@ const PTS = JSON.stringify(JSON.parse(process.env.GOLDEN_PTS || '{"attack": 3, "
 const SUP_PTS = JSON.stringify(JSON.parse(process.env.GOLDEN_SUP_PTS || '{}'));
 if ((PTS + SUP_PTS).includes("'")) throw new Error('GOLDEN_PTS / GOLDEN_SUP_PTS: no quotes');
 import { readFileSync } from 'node:fs';
+import { runBlock } from './lab-lib.mjs';
 const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.match(/https:\/\/([a-z0-9]+)/)[1];
 if (ref !== 'kgvdqqehefezbypozvrh') throw new Error(`wrong Supabase project: ${ref}`);
-const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 
 let cand = process.env.CANDIDATE ? readFileSync(process.env.CANDIDATE, 'utf8').replace(/notify pgrst[^\n]*\n/g, '') : '';
 if (process.env.MUTATE && cand) {
@@ -46,7 +46,10 @@ if (cand.includes('$c$')) throw new Error('the candidate must not contain $c$');
 
 // The cards: 5 attackers (execute, focus, lifesteal, pierce, rampage) and 8 supports.
 const ATK = [24, 29, 44, 34, 49];
-const SUPS = [[64, 79, 82], [91, 92, 93], [96, 97, 64], [93, 103]]; // two stun cards: the stun immunity (one card hits its own cooldown first)
+const SUPS = [[64, 79, 82], [91, 92, 93], [96, 97, 64], [93, 103], [254, 82, 100]]; // two weaken cards: the stun immunity (one card hits its own cooldown first); 254 is a stun card (juggernaut can make it fail)
+// Heal cards for the fights where the heal target is the MOST HURT living attacker (hurt: true). In the other fights a heal goes to the first attacker, who is at full HP
+// early on, so a heal of +1 HP changed nothing (the gap that the mutation hunt-heal-plus-1 of test-golden-mutations.mjs closes, F-3 PR 4.0).
+const HEALSUPS = [[82, 100, 253], [82, 79, 64]];
 // The bosses: every passive, the three tiers, weaknesses and resistances, small HP for a defeat.
 const BOSSES = [
   { tier: 'Normal', hp: 4000, passive: [], weak: [{ kind: 'type', value: 'Creature' }], resist: [] },
@@ -58,10 +61,21 @@ const BOSSES = [
   { tier: 'Heroic', hp: 520, passive: ['regenerating'], weak: [], resist: [] },
   // A support every round: the cooldown refusals and the stun immunity.
   { tier: 'Mythic', hp: 3000, passive: ['volatile'], weak: [], resist: [], every: true },
+  // The four counter passives (hunt_support: plague halves a heal, shatterer a shield and a smite, dispeller an empower and an expose, juggernaut a weaken and fails a stun).
+  { tier: 'Heroic', hp: 4000, passive: ['plague'], weak: [], resist: [] },
+  { tier: 'Heroic', hp: 4000, passive: ['shatterer'], weak: [], resist: [] },
+  { tier: 'Heroic', hp: 4000, passive: ['dispeller'], weak: [], resist: [] },
+  { tier: 'Heroic', hp: 4000, passive: ['juggernaut'], weak: [], resist: [] },
+  // A heal on a HURT card: a support every round, the heal goes to the most hurt living attacker (with the plague, the heal is halved).
+  { tier: 'Heroic', hp: 6000, passive: [], weak: [], resist: [], every: true, hurt: true, sups: HEALSUPS },
+  { tier: 'Mythic', hp: 6000, passive: ['plague'], weak: [], resist: [], every: true, hurt: true, sups: HEALSUPS },
+  { tier: 'Normal', hp: 6000, passive: ['regenerating', 'frenzied'], weak: [], resist: [], hurt: true, sups: HEALSUPS },
 ];
 const SEEDS = [0.11, 0.53, -0.37];
+// What the transcripts must contain (regular expressions of PostgreSQL): a heal that gained HP on a hurt card, and each counter passive at work.
+const COVER = ['"gained": [1-9]', ...['plague', 'shatterer', 'dispeller', 'juggernaut'].map((k) => String.raw`"countered": \[[^\]]*"${k}"`), '"effect": "stun"'];
 const scen = [];
-for (const b of BOSSES) for (const s of SUPS) for (const seed of SEEDS) scen.push({ b, s, seed });
+for (const b of BOSSES) for (const s of (b.sups || SUPS)) for (const seed of SEEDS) scen.push({ b: { ...b, sups: undefined }, s, seed });
 
 const lit = (v) => `'${JSON.stringify(v).replace(/'/g, "''")}'`;
 const runs = scen.map((x, i) => `pg_temp.golden_run(${x.seed}, array[${[...ATK, ...x.s].join(',')}]::bigint[], array[${ATK.join(',')}]::bigint[], array[${x.s.join(',')}]::bigint[], ${lit(x.b)}::jsonb)`);
@@ -97,7 +111,12 @@ begin
           v_card := p_sup[(v_si % array_length(p_sup, 1)) + 1]; v_si := v_si + 1;
           -- ORDER BY the array position: without it the planner may build a hash anti join and return the first free attacker in any order
           -- (the plan follows the table statistics left by the tests that ran before: target 24 in one run and 34 in the next, 2026-10-14).
+          if coalesce((p_boss->>'hurt')::boolean, false) then   -- the most hurt living attacker (a heal on a hurt card)
+            select u.a into v_tgt from unnest(p_atk) with ordinality u(a, o) left join hunt_card_hp x on x.hunt_id = v_h and x.player_id = v_p and x.card_id = u.a
+              where not coalesce(x.downed, false) order by coalesce(x.hp_remaining::numeric / greatest(1, x.max_hp), 1), u.o limit 1;
+          else
           select u.a into v_tgt from unnest(p_atk) with ordinality u(a, o) where not exists (select 1 from hunt_card_hp x where x.hunt_id = v_h and x.player_id = v_p and x.card_id = u.a and x.downed) order by u.o limit 1;
+          end if;
           r := hunt_support(v_p, v_h, v_card, v_tgt);
           v_out := v_out || 'S' || v_card || ' ' || r::text || E'\n';
         end if;
@@ -118,6 +137,8 @@ begin
         || 'STATE ' || coalesce((select jsonb_build_object('r', round, 'en', boss_enrage, 'enu', enrage_until, 'wk', boss_weaken, 'wku', weaken_until, 'ex', boss_expose, 'exu', expose_until, 'st', stunned_until)::text from hunt_combat_state where hunt_id = v_h), '') || E'\n'
         || 'HITS ' || coalesce((select jsonb_agg(jsonb_build_object('c', card_id, 'd', damage) order by card_id)::text from hunt_hits where hunt_id = v_h), '') || E'\n'
         || 'LOG ' || coalesce((select jsonb_agg(jsonb_build_object('c', card_id, 'cp', cp, 'o', outcome, 'b', bonus, 'cr', crit, 'bl', block, 'd', damage, 'co', countered, 'cd', counter_dmg, 'hp', card_hp_after, 'dn', card_downed, 'bh', boss_hp_after) order by id)::text from hunt_combat_log where hunt_id = v_h), '') || E'\n'
+        || 'ACTIONS ' || coalesce((select jsonb_agg(jsonb_build_object('c', card_id, 'k', kind, 'r', round, 'e', effect, 'a', amount, 't', target_card, 'f', target_foe, 'res', result) order by id)::text from combat_actions where mode = 'hunt' and ref_id = v_h), '') || E'
+'
         || 'EVENTS ' || coalesce((select string_agg(kind, ',' order by id) from hunt_events where hunt_id = v_h), '');
       raise exception using errcode = 'U0001', message = 'undo';
     exception when sqlstate 'U0001' then null;
@@ -139,6 +160,11 @@ begin
         || E'\nRUN1: ' || left(coalesce(l1[j], ''), 2500) || E'\nRUN2: ' || left(coalesce(l2[j], ''), 2500); exit;
     end if;
   end loop;
+  -- The transcripts must show what this test is for (a test that never meets a counter or a hurt heal proves nothing about them).
+  if bad = '' then
+    select string_agg(k, ', ') into bad from unnest(array[${COVER.map((c) => `'${c.replace(/'/g, "''")}'`).join(', ')}]) k where array_to_string(base, E'\n') !~ k;
+    if bad is not null then bad := 'COVERAGE GAP, no fight shows: ' || bad; else bad := ''; end if;
+  end if;
   -- DUMP=1: what the fights cover (counted here: a long message is cut by the API).
   if ${process.env.DUMP ? 'true' : 'false'} then
     raise exception 'RESULT:%', (select jsonb_object_agg(k, (select count(*) from regexp_matches(array_to_string(base, E'\n'), k, 'g')))::text
@@ -171,12 +197,11 @@ begin
       || case when length($c$${cand}$c$) > 0 then ', the candidate matches the live code exactly' else ', the live code is repeatable' end end;
 end $t$;`;
 
-const res = await q(body);
-const msg = JSON.stringify(res);
-const m = msg.match(/RESULT:(.*?)(\\n\\nCONTEXT|"\})/s);
-if (!m) { console.error('NO RESULT:', msg.slice(0, 2500)); process.exitCode = 1; }
-else {
-  const out = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+// runBlock (lab-lib.mjs) takes the shared local database lock for this one request when LAB_LOCK_OWNER=<name> is set (a deadlock with another session's
+// request gave "NO RESULT" on 2026-10-15).
+let out = null;
+try { out = await runBlock(body); } catch (e) { console.error(String(e.message).slice(0, 2500)); process.exitCode = 1; }
+if (out !== null) {
   console.log(process.env.DUMP ? out : out.slice(0, 4000));
   if (!out.startsWith('PASS')) process.exitCode = 1;
 }
