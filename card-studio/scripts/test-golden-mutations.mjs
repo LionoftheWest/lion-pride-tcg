@@ -3,7 +3,7 @@
  * clean-up PR"). A golden test that no change can fail proves nothing, so this test changes one function a little (scripts/lab-mutations.mjs)
  * and checks that the golden test FAILS, and that it passes on the unchanged live text.
  *
- *   Hunt golden (scripts/combat-golden.mjs, 84 fights):       baseline PASS, the live text as a candidate PASS, each Hunt mutation FAIL
+ *   Hunt golden (scripts/combat-golden.mjs, 183 fights):       baseline PASS, the live text as a candidate PASS, each Hunt mutation FAIL
  *   Dungeon / Gauntlet golden (scripts/dungeon-golden.mjs):   the same (1 seed for each scenario: GOLDEN_SEEDS=1; the base transcripts are made once)
  *
  * The baseline of each golden test runs in this run first (a mutation result is not valid when the baseline is red).

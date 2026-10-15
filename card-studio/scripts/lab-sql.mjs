@@ -252,7 +252,7 @@ end $g$;`);
 // Returns the result of lab_play with the facts of the run.
 def(String.raw`
 create function pg_temp.lab_dungeon_run(p_seed float, p_mode text, p_squad bigint[], p_builds jsonb, p_floors jsonb, p_policy text, p_opts jsonb) returns jsonb language plpgsql as $g$
-declare v_p text := 'tst_lab'; v_day date := dungeon_day(); res jsonb; v_play jsonb; v_out jsonb; v_pre text := ''; v_facts jsonb; v_floors jsonb := p_floors; v_squad bigint[] := p_squad; v_builds jsonb := p_builds;
+declare v_p text := 'tst_lab'; v_day date := dungeon_day(); res jsonb; v_play jsonb; v_out jsonb; v_pre text := ''; v_facts jsonb; v_logon boolean := coalesce((p_opts->>'log')::boolean, false); v_floors jsonb := p_floors; v_squad bigint[] := p_squad; v_builds jsonb := p_builds;
 begin
   begin
     -- A door room is made from the run id (dungeon_choose: rk = 'door|' || run id), so the same seed gave other foes after other runs. The id
@@ -294,7 +294,10 @@ begin
       v_out := v_play || jsonb_build_object('log', v_pre || (v_play->>'log') || 'RUN ' || (v_play->>'status') || ' ' || coalesce(v_play->>'ended_by', '-') || ' floor=' || (v_play->>'floor') || ' room=' || (v_play->>'room')
         || ' turns=' || (v_play->>'turns') || ' shards=' || (v_play->>'shards') || ' cards=' || (v_play->>'cards') || ' stop=' || (v_play->>'stop')
         || ' ledger=' || (select coalesce(string_agg(reason || ':' || amount, ',' order by reason, amount), '') from shard_ledger where player_id = v_p)
-        || '/' || (select count(*) from card_ledger where player_id = v_p and reason = 'dungeon_loot') || E'\n', 'facts', v_facts);
+        || '/' || (select count(*) from card_ledger where player_id = v_p and reason = 'dungeon_loot') || E'\n'
+        -- The combat_actions rows of the run (F-3 PR 4.0: the shared action log must be the same after a change of the fight functions). With the transcript only; no id, no time, no day.
+        || case when v_logon then coalesce((select string_agg('ACTION ' || jsonb_build_object('c', card_id, 'k', kind, 'r', round, 'e', effect, 'a', amount, 't', target_card, 'f', target_foe, 'res', result)::text, E'\n' order by id) || E'\n'
+          from combat_actions where mode = case when p_mode = 'gauntlet' then 'gauntlet' else 'dungeon' end and ref_id = (v_play->>'run')::bigint), '') else '' end, 'facts', v_facts);
     end if;
     raise exception using errcode = 'U0001', message = 'undo';
   exception when sqlstate 'U0001' then null;

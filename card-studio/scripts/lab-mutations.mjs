@@ -10,14 +10,15 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-export function mutationFile(name, file, from, to) {
+export function mutationFile(name, file, from, to, pre = '') {   // pre: SQL run before the function text (undone with the request)
   const src = readFileSync(join(ROOT, 'db', 'schema', 'functions', `${file}.sql`), 'utf8').replace(/\r/g, '');
   if (!src.includes(from)) throw new Error(`mutation ${name}: the text is not in ${file}.sql:\n${from}`);
   const out = src.split(from).join(to);   // every place
   if (out === src) throw new Error(`mutation ${name}: nothing changed`);
   const dir = join(tmpdir(), 'lab-mutations'); mkdirSync(dir, { recursive: true });
   const f = join(dir, `${name}.sql`);
-  writeFileSync(f, out);
+  writeFileSync(f, pre ? `${pre}
+${out}` : out);
   return f;
 }
 
@@ -29,6 +30,9 @@ export const LAB_MUTATIONS = [
     file: 'dungeon_attack', from: "begin\n  if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;\n  select * into r from dungeon_runs",
     to: "begin\n  loop null; end loop;\n  if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;\n  select * into r from dungeon_runs" },
   { name: 'foes-heal-everything', sections: 'dungeon', expect: ['LOOP', 'LOCK'], what: 'every foe heals to full HP each round: a fight that cannot end, a heal larger than all damage',
+    // pre: live has a foe heal cap (balance dungeon.foe_heal_cap, a pick of Nathan) that limits this very heal; the mutation puts the no-cap value (0) in
+    // the request, so it proves the Lab catches a heal larger than all damage whatever the live pick is.
+    pre: `update public.balance set value = value || '{"foe_heal_cap": 0}'::jsonb where key = 'dungeon';`,
     file: 'dungeon_enemy_turn', from: "v_heal := (act->>'heal')::int;", to: "v_heal := (f->>'max')::int;" },
   { name: 'negative-hp', sections: 'dungeon', expect: ['INVARIANT'], what: 'the HP of a card can go below 0 (the floor is removed from the enemy turn)',
     file: 'dungeon_enemy_turn', from: "'hp', greatest(0, (c->>'hp')::int - v_d));", to: "'hp', (c->>'hp')::int - v_d);" },
@@ -49,6 +53,7 @@ export const GOLDEN_MUTATIONS = [
   { name: 'dg-guardian-pay', golden: 'dungeon', what: 'a run pays 1 Shard less', file: 'dungeon_settle', from: "if v_sh > 0 then perform grant_shards(r.player_id, v_sh, 'dungeon', 'run', r.id::text); end if;", to: "if v_sh > 1 then perform grant_shards(r.player_id, v_sh - 1, 'dungeon', 'run', r.id::text); end if;" },
   { name: 'hunt-hit-plus-1', golden: 'hunt', what: 'a Hunt hit does 1 more damage', file: 'combat_hit', from: 'v_dmg := greatest(1, round(v_base));', to: 'v_dmg := greatest(1, round(v_base)) + 1;' },
   { name: 'hunt-cooldown', golden: 'hunt', what: 'combat_cooldown adds 1 round', file: 'combat_cooldown', from: 'greatest(1, round(coalesce(p_raw, 1) * coalesce(p_haste, 1)))::int', to: '1 + greatest(1, round(coalesce(p_raw, 1) * coalesce(p_haste, 1)))::int' },
-  // (A heal that is 1 HP larger is NOT caught by combat-golden.mjs: no fight heals a damaged card. A gap found by this test, 2026-10-14: see docs/combat-lab.md.)
+  // A heal that is 1 HP larger: caught since F-3 PR 4.0 (combat-golden.mjs has fights where the heal goes to the most hurt card; before, no fight healed a damaged card: the gap found 2026-10-14).
+  { name: 'hunt-heal-plus-1', golden: 'hunt', what: 'a heal is 1 HP larger', file: 'combat_support_value', from: "when 'heal'    then greatest(1, round(p_target_maxhp * least(p_amt, public.balance_num('support', 'heal_cap'))))", to: "when 'heal'    then 1 + greatest(1, round(p_target_maxhp * least(p_amt, public.balance_num('support', 'heal_cap'))))" },
   { name: 'hunt-shield-value', golden: 'hunt', what: 'a shield is 1 HP larger', file: 'combat_support_value', from: "when 'shield'  then greatest(1, round(p_target_maxhp * least(p_amt, public.balance_num('support', 'heal_cap'))))", to: "when 'shield'  then 1 + greatest(1, round(p_target_maxhp * least(p_amt, public.balance_num('support', 'heal_cap'))))" },
 ];

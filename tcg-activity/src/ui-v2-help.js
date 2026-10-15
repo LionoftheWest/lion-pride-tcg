@@ -2,6 +2,7 @@
 // are the live game rules (docs/tutorial-faq-draft.md in discord-design); edit them here.
 
 import { v2ctx } from './ui-v2.js';
+import { statNames } from './stat-labels.js';
 import { replayTutorial } from './ui-v2-tutorial.js';
 import { helpHTML, showOpen, syncRail } from './ui3/help.js';
 
@@ -16,7 +17,8 @@ export const FAQ = [
     a3: 'Play. Your first message of the day earns 1 pack, and 25 messages earn 1 more. The Dailies add more: check in, fight the boss, spend 30 minutes in voice with someone, and trade or play a boon.', chips: ['Up to 5 a day', 'Gifts and rewards are extra'] },
   { icon: '🕛', q: 'When does the day reset?', a: 'At midnight Mountain Time (MT).' },
   { icon: '💎', q: 'What are the rarities?', a: 'Normal, Illustrated Rare, Secret Rare, Full Art and Gold. Per card: Normal 93.98%, Illustrated Rare 5%, Secret Rare 0.6%, Full Art 0.4%, Gold 0.02%.' },
-  { icon: '⭐', q: 'What do duplicates do?', q3: 'What do extra copies do?', a: 'Keep them! Open the card in your Collection and tap Ascend: it spends spare copies to add a star, up to 5 stars (you always keep 1 copy). Each star gives 3 stat points: Attack, Vitality, Precision, Potency and Haste. You can reset the points of one card for free once a week.' },
+  { icon: '⭐', q: 'What do duplicates do?', q3: 'What do extra copies do?',
+    get a() { return `Keep them! Open the card in your Collection and tap Ascend: it spends spare copies to add a star, up to 5 stars (you always keep 1 copy). Each star gives 3 stat points: ${statNames()}. You can reset the points of one card for free once a week.`; } },   // the stat names come from balance (stat-labels.js)
   { icon: '⚔', q: 'When is the Raid Boss?', q3: 'When is the Hunt?', a: 'A new boss appears every Thursday at 3 PM MT and stays until Monday at 5 PM MT. Each day you pick a squad of up to 8 cards. Everyone who fights earns packs, if the boss falls or escapes. The top 10 by damage earn more: 1st 7 packs, 2nd 5, 3rd 4, 4th to 10th 3. Every other hunter earns 1.',
     a3: 'A new boss appears every Thursday at 3 PM MT and stays until Monday at 5 PM MT. Each day you pick a squad of up to 8 cards. Everyone who fights earns packs, if the boss falls or escapes. The top 10 by damage earn more: 1st 7 packs, 2nd 5, 3rd 4, 4th to 10th 3. Every other member earns 1.' },
   { icon: '📅', q: 'How do Dailies work?', a: 'Open the calendar button. Each daily you finish shows a Claim button, and the red number shows how many you can claim. Check in every day to build a streak: day 3 and day 7 give a bonus pack.',

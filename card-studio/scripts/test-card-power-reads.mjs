@@ -1,5 +1,6 @@
 /**
  * Acceptance test for tcg-bot/supabase/perf_card_power_reads.sql, with NO lasting change:  node scripts/test-card-power-reads.mjs
+ * (2026-10-15, f3_one_power_number.sql: card_powers.power of an OWNED copy is now the cp of card_combat, so the reference below uses it.)
  * Invariant: card_combat, card_cp_exact, card_max_hp, stat_pt and card_powers answer EXACTLY as the text before the file did.
  * The test builds reference copies of the old texts (ref_*, the bodies of 2026-10-11 from db/schema; card_combat with the HP rule
  * of f3_one_combat_math.sql: HP from the CP before the Attack bonus) inside one DO block,
@@ -66,7 +67,7 @@ begin
         from cards c left join subjects s on s.id = c.subject_id where p_player is null
       union all
       select c.id, ref_card_combat(c.rarity::text, pc.ascension, s.cp_mod, pc.stat_points)
-                   || jsonb_build_object('power', ref_card_power(c.rarity::text, pc.ascension, s.cp_mod))
+                   || jsonb_build_object('power', (ref_card_combat(c.rarity::text, pc.ascension, s.cp_mod, pc.stat_points)->>'cp')::int)   -- f3_one_power_number.sql: the shown power of a copy = the fight cp (stars AND points)
         from player_cards pc join cards c on c.id = pc.card_id left join subjects s on s.id = c.subject_id
        where p_player is not null and pc.player_id = p_player and pc.quantity > 0) x; $f$;
 

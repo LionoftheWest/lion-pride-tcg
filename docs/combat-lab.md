@@ -91,7 +91,32 @@ The run id is part of the random key of a door room (`dungeon_choose`). The test
 | `scripts/test-golden-mutations.mjs` | Both golden tests pass on the live text. Each planted change (1 HP, 1 round, one Shard, the 0-star rule) makes a golden test fail | 220 s |
 
 The planted changes are in `scripts/lab-mutations.mjs`. Each one is a text replace in the live function text from `db/schema/functions`. A replace that finds nothing is an error.
-Known gap, found by this test: `combat-golden.mjs` does not see a heal that is 1 HP larger. No Hunt fight heals a card that has lost HP. The mutation that the test uses is a shield.
+The heal gap (found 2026-10-14) is closed (F-3 PR 4.0): `combat-golden.mjs` has 183 fights (was 84). They include the four counter passives (plague, shatterer, dispeller, juggernaut), a stun card, and three bosses with `hurt: true` where the heal goes to the most hurt living attacker. The test fails with COVERAGE GAP when no fight shows a heal that gained HP or one of the four counters. The mutation `hunt-heal-plus-1` is caught (the old golden passed it). Both goldens add the `combat_actions` rows of each fight to the transcript (`ACTIONS` in the Hunt, `ACTION` lines in the Dungeon and the Gauntlet), so a later PR can prove that the log stays the same. The Hunt golden takes the shared lock for each request when `LAB_LOCK_OWNER` is set.
+
+## The time check: `scripts/fight-timing.mjs` (F-3 PR 4.0)
+
+`scripts/fight-timing.mjs` measures 300 calls of each of the 10 fight calls on the BASE text and 300 on the CANDIDATE text (`CANDIDATE=<file.sql>`). The two texts take turns in the same request (batches of 30, the order flips in each request). Each call runs in an undone sub-block after `setseed(0.42)`. The script exits 1 when a CANDIDATE mean is above 1.10 x the BASE mean, or when a measured call returns an error. Each request takes the shared lock when `LAB_LOCK_OWNER` is set.
+
+```
+LAB_LOCK_OWNER=<name> LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/fight-timing.mjs
+CANDIDATE=../tcg-bot/supabase/x.sql LAB_LOCK_OWNER=<name> LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/fight-timing.mjs [call ...]
+```
+The baseline on 2026-10-15 (the local copy, other sessions were working on it; with no candidate the second column is the BASE text again, so the ratio is the noise of the measure):
+
+| Call | BASE mean ms | BASE p95 ms | BASE again mean ms | BASE again p95 ms | Ratio (noise) |
+|---|---|---|---|---|---|
+| hunt_attack | 1.85 | 3.01 | 1.74 | 2.76 | 0.938 |
+| hunt_support | 1.18 | 1.93 | 1.18 | 1.90 | 1.008 |
+| hunt_card_crits | 0.55 | 0.79 | 0.54 | 0.79 | 0.983 |
+| hunt_autopick | 155.78 | 184.30 | 183.90 | 274.27 | 1.181 |
+| dungeon_attack | 3.78 | 7.62 | 3.90 | 7.83 | 1.033 |
+| dungeon_support | 2.06 | 4.78 | 2.18 | 5.13 | 1.058 |
+| dungeon_enemy_turn | 0.55 | 1.14 | 0.52 | 0.96 | 0.937 |
+| dungeon_auto_rounds (10 rounds) | 9.16 | 15.64 | 9.33 | 16.20 | 1.018 |
+| dungeon_finish_room | 16.19 | 21.33 | 17.92 | 30.48 | 1.106 |
+| dungeon_pass_turn | 1.00 | 1.71 | 1.31 | 1.57 | 1.309 |
+
+The noise reaches 1.31 on the two fastest and the slowest calls (a machine with other sessions on it). Read a failing ratio of a call below 2 ms or of `hunt_autopick` again before you act on it. Earlier runs the same day gave 0.81 to 1.15 for the same text.
 
 ## Cards that cannot be pulled (2026-10-14)
 

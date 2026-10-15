@@ -10,6 +10,7 @@ import { thumb } from './thumb.js';
 import { mtToday } from './mt-time.js';
 import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { flairHTML } from './flair.js';
+import { statDefs } from './stat-labels.js';
 import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
 import { measure, rewardOf, rewardLabel, FRAMES, frameBase, frameLook, frameName, frameRingHTML, setRewardsFrom } from './achievements.js';
@@ -791,7 +792,7 @@ function paintDetail(c, v) {
     if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; pend.open = false; }
     const picked = Object.values(pend.add).reduce((t, n) => t + n, 0);
     const spent = Object.values(v.sp.points || {}).reduce((t, n) => t + (Number(n) || 0), 0);
-    points = pointsV3({ keys: STAT_DEFS.filter(([k]) => keys.includes(k)), pts: v.sp.points || {}, add: pend.add, free: v.sp.free || 0, picked,
+    points = pointsV3({ keys: statDefs().filter(([k]) => keys.includes(k)), pts: v.sp.points || {}, add: pend.add, free: v.sp.free || 0, picked,
       canReset: spent > 0 && !picked && !ctx.cache.collection?.stats?.resetUsed, open: pend.open });
   }
   const spare = Math.max(0, (c.quantity || 0) - 1);
@@ -970,7 +971,7 @@ function paintBossPanel() {
 }
 
 // ---- Stat points: each star gives 3 points for this copy (docs/card-stats.md) ----------
-const STAT_DEFS = [['attack', 'Attack'], ['vitality', 'Vitality'], ['precision', 'Precision'], ['potency', 'Potency'], ['haste', 'Haste']];
+// The names come from balance stat_labels (stat-labels.js, f3_stat_labels.sql): none is typed here.
 // open: the phone stat editor is open (a phone shows one line until Assign, 2026-10-01).
 const pend = { id: null, add: {}, open: false }; // points picked but not saved yet (one card at a time)
 // Only the stats that do something for this card: attackers fight, effects and supports cast.
@@ -989,14 +990,14 @@ function pointsHTML(c, sp) {
   const left = (sp.free || 0) - picked;
   const pts = sp.points || {};
   const spent = Object.values(pts).reduce((t, n) => t + (Number(n) || 0), 0);
-  const rows = STAT_DEFS.filter(([k]) => keys.includes(k)).map(([k, label]) => `<div class="pts-row">
-      <span>${label}</span><b>${Number(pts[k]) || 0}${pend.add[k] ? `<i>+${pend.add[k]}</i>` : ''}</b>
+  const rows = statDefs().filter(([k]) => keys.includes(k)).map(([k, label]) => `<div class="pts-row">
+      <span>${esc(label)}</span><b>${Number(pts[k]) || 0}${pend.add[k] ? `<i>+${pend.add[k]}</i>` : ''}</b>
       <button class="pts-add" data-add="${k}"${left > 0 ? '' : ' disabled'}>+</button></div>`).join('');
   const canReset = spent > 0 && !picked && !ctx.cache.collection?.stats?.resetUsed;
   // A phone has no room for five rows in the card view (Nathan, 2026-10-01: cut off in landscape):
   // one line with the free points and what is spent; Assign opens the rows over the card view.
   if (isPhone() && !pend.open) {
-    const sum = STAT_DEFS.filter(([k]) => keys.includes(k) && Number(pts[k])).map(([k, label]) => `<i>${label} ${Number(pts[k])}</i>`).join('');
+    const sum = statDefs().filter(([k]) => keys.includes(k) && Number(pts[k])).map(([k, label]) => `<i>${esc(label)} ${Number(pts[k])}</i>`).join('');
     const btn = left > 0 ? `<button class="v2-btn gold" id="ptsOpen" data-n="${left}">Assign</button>` : canReset ? '<button class="v2-btn" id="ptsOpen">Edit</button>' : '';
     return `<div class="pts pts-compact${left > 0 ? ' has-free' : ''}" id="pPts">
     <div class="pb-h"><span class="side-h">Stat points</span><span class="mono">${left} free</span></div>

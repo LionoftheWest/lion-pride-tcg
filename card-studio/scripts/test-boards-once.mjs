@@ -126,6 +126,9 @@ end $rf$;
   ${live ? '-- the current functions' : OWN.map((s) => 'execute $m$' + s + '$m$;').join('\n  ') + '\n  execute $m$' + mig + '$m$;'}
   update settings set value = value || '{"enabled": true}' where key in ('dungeon', 'gauntlet');
   perform dungeon_generate(d); perform gauntlet_generate(gauntlet_week(d));
+  -- The boards of today and of this week hold only the test members: a copy with real runs of this day and week (a refreshed copy) would put real
+  -- members above the tied ones (the test needs the 8 tied members in the top 3). Rolled back with the block.
+  delete from dungeon_runs where day between gauntlet_week(d) and gauntlet_week(d) + 6 and player_id not like 'tst\_%';
   -- a board of 600 members: distinct floor / room / turns, so the order has no ties
   insert into players (id, username) select 'tst_bo_' || i, 'bo ' || i from generate_series(1, 600) i;
   insert into dungeon_runs (player_id, day, squad, state, mode, status, floor, room, turns)

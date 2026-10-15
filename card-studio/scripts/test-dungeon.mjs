@@ -148,6 +148,9 @@ begin
   execute $m$${mig7}$m$;
   ${M && BMUT[M] ? `execute $m$${BMUT[M]}$m$;   -- the balance mutation ${M}` : '-- (no balance mutation)'}
   v_day := dungeon_day();
+  -- The boards and the prizes below expect only the test members. A copy with real runs of this day and week (a restored or refreshed copy) would put
+  -- real members above them: the block removes those runs (rolled back with the block; the test members all start with tst_).
+  delete from dungeon_runs where day between gauntlet_week(v_day) and gauntlet_week(v_day) + 6 and player_id not like 'tst\_%';
   -- The stun card (it was card 93; card abilities change, so it is looked up).
   select min(c.id) into stn from cards c join subjects s on s.id = c.subject_id where c.rarity = 'normal' and s.ability->>'effect' = 'stun';
   select array_agg(id order by id) into atk from (select c.id from cards c join subjects s on s.id = c.subject_id
@@ -586,6 +589,8 @@ begin
     if (dungeon_view('tst_dg_c')->'run'->>'id')::bigint is distinct from dr.id then bad := bad || 'the Dungeon view shows the Gauntlet run; '; end if;
     -- 16g. The prizes: off by the flag; the week pays the podium (Shards, packs, cards on the place's odds) and 4-10;
     -- a period pays once; the day pays the Dungeon board.
+    -- The prize numbers of this test are its own (rolled back): the first values of balance dungeon_prizes (balance_economy.sql), not the picks that live has now.
+    update balance set value = '{"daily":[{"shards":300,"packs":0},{"shards":200,"packs":0},{"shards":150,"packs":0},{"shards":50},{"shards":50},{"shards":50},{"shards":50},{"shards":50},{"shards":50},{"shards":50}],"weekly":[{"odds":{"secret_rare":30,"illustrated_rare":70},"cards":3,"packs":5,"shards":500},{"odds":{"normal":60,"secret_rare":8,"illustrated_rare":32},"cards":2,"packs":3,"shards":300},{"odds":{"normal":75,"illustrated_rare":25},"cards":1,"packs":2,"shards":200},{"packs":1},{"packs":1},{"packs":1},{"packs":1},{"packs":1},{"packs":1},{"packs":1}]}'::jsonb where key = 'dungeon_prizes';
     update settings set value = value || '{"enabled": false}' where key = 'dungeon_prizes';
     if (dungeon_prize_tick()->>'error') is distinct from 'disabled' then bad := bad || 'prize tick while off; '; end if;
     select shard_balance, pack_balance into b0, p0 from players where id = 'tst_dg_b';

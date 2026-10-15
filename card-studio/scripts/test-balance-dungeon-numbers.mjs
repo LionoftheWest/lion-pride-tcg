@@ -17,6 +17,7 @@
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
+import { beforeOnePowerNumber } from './f3-power-before.mjs';   // f3_one_power_number.sql: the roster_stats / roster_snapshot text that this file's guard accepts
 import { beforeGameVarsAll } from './f1-live-before.mjs';   // game_vars_all.sql (F-1 PR 6): the text this file's guard accepts
 import { fileURLToPath } from 'node:url';
 import { mutation } from './fixtures.mjs';
@@ -96,7 +97,7 @@ begin
   end loop; end loop;
   g_est := roster_stats()->'boss_hp';
 
-  ${mig ? 'execute $m$' + beforeGameVarsAll(['dungeon_choose', 'dungeon_enter', 'dungeon_offers']) + '$m$;\n  execute $m$' + mig + '$m$;' : '-- the database as it is'}
+  ${mig ? 'execute $m$' + beforeGameVarsAll(['dungeon_choose', 'dungeon_enter', 'dungeon_offers']) + '\n\n' + beforeOnePowerNumber(['roster_stats', 'roster_snapshot']) + '$m$;\n  execute $m$' + mig + '$m$;' : '-- the database as it is'}
   ${MUT}
 
 ${kase('(b) dungeon_tier: the same tier for 1001 numbers from 0 to 1', `

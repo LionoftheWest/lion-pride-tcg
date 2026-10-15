@@ -52,6 +52,7 @@ import { initHelp } from './ui-v2-help.js';
 import { initReport } from './ui-v2-report.js';
 import { initMobile, isPhone } from './mobile.js';
 import { mergeFightRows } from './hunt-merge.js';
+import { setStatBalance } from './stat-labels.js';
 
 const el = (id) => document.getElementById(id);
 const setStatus = (t) => { el('status').textContent = t; };
@@ -363,6 +364,7 @@ async function main() {
     if (!flags && i < 2) await new Promise((r) => setTimeout(r, 1500));
   }
   flags = flags || {};
+  setStatBalance(flags.balance); // the stat names + explainers (balance stat_labels, f3_stat_labels.sql)
   mobileUi = !!flags?.mobile;
   trade2 = !!flags?.trade2;
   tradeRequest = !!flags?.tradeRequest;

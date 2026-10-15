@@ -42,7 +42,7 @@ export const roundCap = (b) => Number(b.round_cap);
 // daily, pulls and hunt_prizes (balance_economy.sql): the numbers the help texts state (the pack cap, the chat bonus,
 // the streak days, the pull rates, the Raid prizes), so the client can read them instead of a copy.
 export const PUBLIC_KEYS = ['rarity_cp', 'stars', 'card_hp', 'stat_points', 'combat', 'support', 'boss_passives', 'boss_moves',
-  'round_cap', 'daily_card_cap', 'set_bonus', 'ascend_cost', 'daily', 'pulls', 'hunt_prizes'];
+  'stat_labels', 'round_cap', 'daily_card_cap', 'set_bonus', 'ascend_cost', 'daily', 'pulls', 'hunt_prizes'];
 export function publicBalance(b) {
   return Object.fromEntries(PUBLIC_KEYS.filter((k) => b[k] !== undefined).map((k) => [k, b[k]]));
 }
