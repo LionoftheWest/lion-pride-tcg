@@ -87,6 +87,10 @@ declare res jsonb := '[]'; r jsonb; r2 jsonb; ok boolean; n int; i int; s int; x
 begin
   perform set_config('tcg.skip_welcome', 'on', true);
   update settings set value = value || '{"enabled": true}' where key in ('dungeon', 'gauntlet');
+  -- The block sets its own Dungeon numbers (rolled back), so it does not depend on the picks that live has now: this file is the OLD code, which knows
+  -- none of the new member keys (dungeon_new_player_balance.sql: early floors, horde size, heal cap) and a Guardian of 4.0 HP. A live pick would change
+  -- the foes and the days of the old text against the file's text, and that is not what this test proves (the NEUTRAL values = no change from the old code).
+  update balance set value = jsonb_set(value || '{"early_hp": 1, "early_atk": 1, "horde_min": 4, "foe_heal_cap": 0}'::jsonb, '{foe_mult,guardian,hp}', '4.0'::jsonb) where key = 'dungeon';
   -- The values: settings.dungeon before the file (the proof that the file copies them), else the live values of
   -- 2026-10-07 (after the file the settings row has none; a later tune of balance dungeon must update these).
   s0 := '{"cost":{"gold":5,"event":4,"promo":3,"normal":1,"full_art":4,"secret_rare":3,"illustrated_rare":2},"squad":5,"budget":12,"floors":30,
