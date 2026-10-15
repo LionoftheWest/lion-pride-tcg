@@ -58,6 +58,17 @@ esac
 SSH="ssh -i $KEY -o BatchMode=yes -o ConnectTimeout=20 ubuntu@$IP"
 echo "== deploy $SVC @ $SHORT -> $IP:/home/ubuntu/$DIR"
 
+# One deploy of a target at a time (2026-10-15: two deploys of the Activity ran at once; each moved the folders, the
+# container started with no .env, and the Activity was down for 84 s). mkdir is atomic: the second deploy stops here.
+# A lock with no deploy running (a killed run): read the owner line, then remove it by hand.
+LOCKD="/home/ubuntu/.deploy-$DIR.lock"
+if ! $SSH "mkdir '$LOCKD' 2>/dev/null && echo '$SHORT $(date -u +%FT%TZ)' > '$LOCKD/owner'"; then
+  echo "STOP: another deploy of $DIR is running on $IP (lock: $($SSH "cat '$LOCKD/owner' 2>/dev/null" || true))."
+  echo "If no deploy runs (a killed run), remove the lock: ssh ubuntu@$IP rm -rf $LOCKD"
+  exit 1
+fi
+trap '$SSH "rm -rf $LOCKD" >/dev/null 2>&1 || true' EXIT
+
 # The backup scripts: ship the committed tree and run its installer (ops/backup/install.sh).
 if [ "$SVC" = backup ]; then
   # autocrlf=false: an archive of a sub-tree does not see the root .gitattributes (*.sh eol=lf),
