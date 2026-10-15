@@ -151,6 +151,14 @@ body[data-size="compact-port"] .u3-go-next > span { display: none; }
 
 /* ---- the Top 3 pane on a phone: the best and the Top 3 panels share the height, their text centered ---- */
 #u3GaPane-top.u3-dg-tabpanel > .u3-dg-panel { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+/* D-181: on a portrait tablet (the box is 40rem wide and more; the phones keep their layout) the parts of the screen share the tall height, so no empty band is left:
+   the two Top 3 panels spread their parts, the prize rows share the height, and the label of a depth tile takes the free height of its tile (the text stays at the top). */
+#u3GaPane-top.u3-dg-tabpanel { container-type: inline-size; }
+@container (min-width: 40rem) {
+  body[data-size="compact-port"] #u3GaPane-top.u3-dg-tabpanel > .u3-dg-panel { justify-content: space-evenly; }
+  body[data-size="compact-port"] .u3-go-prizes .u3-ga-plist { grid-auto-rows: minmax(min-content, 1fr); align-content: stretch; }
+  body[data-size="compact-port"] .u3-go-stat span { flex: 1 1 auto; }
+}
 .u3-ga.is-tight .u3-dg-tabpanel > .u3-dg-panel { padding: var(--sp-2) var(--sp-3); }
 .u3-ga.is-tight .u3-dg-mini { margin-top: var(--sp-1); }
 .u3-ga.is-tight .u3-dg-top { margin: var(--sp-1) 0; }
