@@ -2015,7 +2015,7 @@
       "cooldown": 2,
       "duration": 1
     },
-    "pushedAt": 1789681426137,
+    "pushedAt": 1792023982767,
     "effect": {
       "primitive": "nickname",
       "name": "MY SWAMP",
@@ -5587,7 +5587,7 @@
         "event": ""
       }
     },
-    "pushedAt": 1790307162071,
+    "pushedAt": 1792024456516,
     "type": "Creature"
   },
   {
@@ -6026,7 +6026,7 @@
       ]
     },
     "ability": null,
-    "pushedAt": 1790872263690
+    "pushedAt": 1792024480845
   },
   {
     "id": "launch-day-raider",
@@ -6059,7 +6059,7 @@
       "traits": []
     },
     "ability": null,
-    "pushedAt": 1790896604557,
+    "pushedAt": 1792024611887,
     "effect": {
       "primitive": "raid_crasher",
       "name": "Hunt Crasher",
@@ -6092,7 +6092,7 @@
         "event": ""
       }
     },
-    "pushedAt": 1790897106538,
+    "pushedAt": 1792024628800,
     "effect": {
       "primitive": "launch_party",
       "name": "Launch Party",
@@ -6126,11 +6126,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791777455196,
+    "updatedAt": 1792022937489,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6155,11 +6153,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791777498779,
+    "updatedAt": 1792022919851,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6183,11 +6179,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791777551924,
+    "updatedAt": 1792022874399,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6212,11 +6206,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791777588430,
+    "updatedAt": 1792022852930,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6227,11 +6219,12 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": null
   },
   {
     "id": "blastninja-boat",
-    "name": "Blastninja & Boat",
+    "name": "Blastninja & Art",
     "genre": "Pokemon Unite",
     "lore": "",
     "season": "Season 2",
@@ -6240,11 +6233,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791777645485,
+    "updatedAt": 1792022960442,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6255,7 +6246,8 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": null
   },
   {
     "id": "alydoor-golden-retriever",
@@ -6268,11 +6260,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791777685584,
+    "updatedAt": 1792022982216,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6283,36 +6273,8 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
-  },
-  {
-    "id": "wiifu-trading-cards",
-    "name": "Wiifu & Trading Cards",
-    "genre": "Super Smash Bros",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791777726209,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "smash",
-        "pokemon"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
+    "type": "Character",
+    "ability": null
   },
   {
     "id": "kobe-dunks-corvette",
@@ -6325,11 +6287,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791778073726,
+    "updatedAt": 1792022997748,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6353,11 +6313,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791778073916,
+    "updatedAt": 1792023015217,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6381,11 +6339,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791778074084,
+    "updatedAt": 1792022902474,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6396,11 +6352,12 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": null
   },
   {
     "id": "foxtrot-oreos",
-    "name": "Foxtrot & Oreos",
+    "name": "Foxtrot's Gambit",
     "genre": "",
     "lore": "",
     "season": "Season 2",
@@ -6413,7 +6370,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1791778074202,
+    "updatedAt": 1792023144398,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6424,35 +6381,22 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
-  },
-  {
-    "id": "kaminari-snacks",
-    "name": "Kaminari & Snacks",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778074317,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
+    "type": "Character",
+    "tierDetails": {
+      "full_art": {
+        "genre": "Party Games",
+        "lore": "Must be that youngest kid energy",
+        "season": "Season 2",
+        "event": ""
+      },
+      "gold": {
+        "genre": "Party Games",
+        "lore": "Must be that youngest kid energy",
+        "season": "Season 2",
+        "event": ""
+      }
     },
-    "type": "Character"
+    "ability": null
   },
   {
     "id": "zeoic-server-rack",
@@ -6539,62 +6483,6 @@
     "type": "Character"
   },
   {
-    "id": "rad-dad-cloud-sword",
-    "name": "RAD-Dad & Cloud Sword",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778074779,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "xeno-airship",
-    "name": "Xeno & Airship",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778746160,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
     "id": "jelly-shiny-mew",
     "name": "Jelly & Shiny Mew",
     "genre": "",
@@ -6652,7 +6540,7 @@
   },
   {
     "id": "chevynova-starcraft",
-    "name": "ChevyNova & StarCraft",
+    "name": "ChevyNova's Controllers",
     "genre": "",
     "lore": "",
     "season": "Season 2",
@@ -6665,7 +6553,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1791778746936,
+    "updatedAt": 1792022362392,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6676,7 +6564,8 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": null
   },
   {
     "id": "nugleo-jigglypuff",
@@ -6694,146 +6583,6 @@
       "gold"
     ],
     "updatedAt": 1791778747070,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "swoop-pickle",
-    "name": "Swoop & Pickle",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778747197,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "mztaken-sailor-moon-wand",
-    "name": "MzTaken & Sailor Moon Wand",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778747348,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "blade-latias",
-    "name": "Blade & Latias",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778747453,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "r2vq-marvel-multiverse",
-    "name": "R2VQ & Marvel Multiverse",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778747572,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "vioarr-joy-cons",
-    "name": "Vioarr & Joy-Cons",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778747701,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6875,62 +6624,6 @@
     "type": "Character"
   },
   {
-    "id": "xokrissie-koda-bear",
-    "name": "xoKrissie & Koda Bear",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778747972,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "highflyingpenguin-bengals",
-    "name": "HighFlyingPenguin & Bengals",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778748073,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
     "id": "mephiles029-little-mac",
     "name": "Mephiles029 & Little Mac",
     "genre": "",
@@ -6946,62 +6639,6 @@
       "gold"
     ],
     "updatedAt": 1791779583873,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "pointguardx-wolf",
-    "name": "Pointguardx & Wolf",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791779584146,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "lotteaux-zoro",
-    "name": "lotteaux & Zoro",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791779584281,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -7043,144 +6680,8 @@
     "type": "Character"
   },
   {
-    "id": "deathpappy-bingo-card",
-    "name": "DeathPappy & Bingo Card",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791779584516,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "malfurious-monster-hunter-hammer",
-    "name": "Malfurious & Monster Hunter Hammer",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal"
-    ],
-    "updatedAt": 1792018937331,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "big-chey-fox",
-    "name": "BiG CHEY & Fox",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791779584773,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "bookwyrm-book-dragon",
-    "name": "Bookwyrm & Book Dragon",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791779584877,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "swanee-diamond-art",
-    "name": "Swanee & Diamond Art",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791779584992,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
     "id": "thetraveler-ender-dragon",
-    "name": "TheTraveler & Ender Dragon",
+    "name": "TheTraveler's Create Machine",
     "genre": "",
     "lore": "",
     "season": "Season 2",
@@ -7193,7 +6694,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1791779585113,
+    "updatedAt": 1792022448146,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -7204,63 +6705,8 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
-  },
-  {
-    "id": "trizooka-falco",
-    "name": "Trizooka & Falco",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791779585213,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "catburp-dukey",
-    "name": "catburp & Dukey",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791779585358,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
+    "type": "Character",
+    "ability": null
   },
   {
     "id": "xokrissie-blissey",
@@ -7632,9 +7078,9 @@
     "event": "",
     "finishes": [
       "normal",
-      "secret_rare"
+      "illustrated_rare"
     ],
-    "updatedAt": 1792012847019,
+    "updatedAt": 1792022757855,
     "tags": {
       "class": "support",
       "type": "moment",
@@ -7657,9 +7103,9 @@
     "event": "",
     "finishes": [
       "normal",
-      "secret_rare"
+      "illustrated_rare"
     ],
-    "updatedAt": 1792012844725,
+    "updatedAt": 1792022741085,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -7682,9 +7128,9 @@
     "event": "",
     "finishes": [
       "normal",
-      "secret_rare"
+      "illustrated_rare"
     ],
-    "updatedAt": 1792012847270,
+    "updatedAt": 1792022705640,
     "tags": {
       "class": "support",
       "type": "moment",
@@ -7695,7 +7141,8 @@
       "realm": [],
       "traits": []
     },
-    "type": "Moment"
+    "type": "Moment",
+    "ability": null
   },
   {
     "id": "sushi-ohtani",
@@ -7707,9 +7154,9 @@
     "event": "",
     "finishes": [
       "normal",
-      "secret_rare"
+      "illustrated_rare"
     ],
-    "updatedAt": 1792012845050,
+    "updatedAt": 1792022775105,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -8008,10 +7455,35 @@
     "event": "",
     "finishes": [
       "normal",
-      "illustrated_rare",
-      "secret_rare"
+      "illustrated_rare"
     ],
-    "updatedAt": 1792019287732,
+    "updatedAt": 1792022800603,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Moment",
+    "ability": null
+  },
+  {
+    "id": "skill-issue",
+    "name": "Skill Issue",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "updatedAt": 1792022722842,
     "tags": {
       "class": "support",
       "type": "moment",
@@ -8025,8 +7497,8 @@
     "type": "Moment"
   },
   {
-    "id": "skill-issue",
-    "name": "Skill Issue",
+    "id": "ottozone-s-head",
+    "name": "Ottozone's Head",
     "genre": "",
     "lore": "",
     "season": "Season 2",
@@ -8034,19 +7506,190 @@
     "event": "",
     "finishes": [
       "normal",
-      "secret_rare"
+      "full_art",
+      "gold"
     ],
-    "updatedAt": 1792019287877,
+    "updatedAt": 1792029669712,
     "tags": {
-      "class": "support",
-      "type": "moment",
+      "class": "attacker",
+      "type": "item",
       "origin": [
         "community"
       ],
       "genre": [],
       "realm": [],
-      "traits": []
+      "traits": [
+        "forbidden-pride"
+      ]
     },
-    "type": "Moment"
+    "type": "Item"
+  },
+  {
+    "id": "blastninja-s-feet",
+    "name": "BlastNinja's Feet",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "full_art",
+      "gold"
+    ],
+    "updatedAt": 1792029670151,
+    "tags": {
+      "class": "attacker",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "forbidden-pride"
+      ]
+    },
+    "type": "Item"
+  },
+  {
+    "id": "heero-s-elbows",
+    "name": "Heero's Elbows",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "full_art",
+      "gold"
+    ],
+    "updatedAt": 1792029670624,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "forbidden-pride"
+      ]
+    },
+    "type": "Item"
+  },
+  {
+    "id": "lion-s-legs",
+    "name": "Lion's Legs",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "full_art",
+      "gold"
+    ],
+    "updatedAt": 1792029670813,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "forbidden-pride"
+      ]
+    },
+    "type": "Item"
+  },
+  {
+    "id": "mobs-dirty-gloves",
+    "name": "Mobs Dirty Gloves",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "full_art",
+      "gold"
+    ],
+    "updatedAt": 1792029670362,
+    "tags": {
+      "class": "attacker",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "forbidden-pride"
+      ]
+    },
+    "type": "Item"
+  },
+  {
+    "id": "noobeth-s-tanktop",
+    "name": "Noobeth's Tanktop",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "full_art",
+      "gold"
+    ],
+    "updatedAt": 1792029671042,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "forbidden-pride"
+      ]
+    },
+    "type": "Item"
+  },
+  {
+    "id": "broken-warden-s-butt",
+    "name": "Broken Warden's Butt",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "full_art",
+      "gold"
+    ],
+    "updatedAt": 1792029671228,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "forbidden-pride"
+      ]
+    },
+    "type": "Item"
   }
 ]
