@@ -196,6 +196,9 @@
         {
           "slug": "community",
           "group": "kind"
+        },
+        {
+          "slug": "forbidden-pride"
         }
       ],
       "aliases": {
