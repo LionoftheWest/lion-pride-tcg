@@ -510,6 +510,8 @@ async function saveCardInfo() {
   $('cs-ci-status').textContent = 'Saving';
   try {
     const [r1, r2] = await Promise.all([post(`/api/tags/${current.id}`, tags).then((r) => r.json()), post(`/api/ability/${current.id}`, ability).then((r) => r.json())]);
+    // The database refuses an ability that does not fit its kind: show the reason (the tags above were saved).
+    if (r2.error) { $('cs-ci-status').textContent = 'Ability not saved: ' + r2.error; return; }
     current.tags = r1.tags; current.ability = r2.ability;
     $('cs-ci-status').textContent = 'Saved';
     load();

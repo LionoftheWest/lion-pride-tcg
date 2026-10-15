@@ -8,6 +8,7 @@ import { pushCard } from './push.js';
 import { removeTiers } from './tier-delete.js';
 import { deleteWholeCard, removeLocalFiles } from './card-delete.js';
 import { supabase } from './supabase.js';
+import { syncAbilityLive } from './ability-sync.js';
 import { adminRouter } from './admin-routes.js';
 import { eventsRouter } from './admin-events-routes.js';
 import { adminWriteRouter } from './admin-write.js';
@@ -481,12 +482,12 @@ app.post('/api/ability/:id', async (req, res) => {
     cooldown: num(b.cooldown),
     desc: String(b.desc || '').trim(),
   } : null;
+  // The database checks the ability against its kind (f3_ability_kinds.sql). Live first: a refusal reaches the owner with the reason
+  // and nothing is saved in the card file (cards.json must stay valid). A network failure stays best-effort.
+  const live = await syncAbilityLive(supabase, c.id, ability);
+  if (live.refused) return res.status(400).json({ ok: false, error: live.refused });
   updateCard(c.id, { ability });
   touch(c.id);
-  try {
-    const { data: subject } = await supabase.from('subjects').select('id').eq('key', c.id).maybeSingle();
-    if (subject) await supabase.from('subjects').update({ ability }).eq('id', subject.id);
-  } catch { /* live sync is best-effort */ }
   res.json({ ok: true, ability });
 });
 
