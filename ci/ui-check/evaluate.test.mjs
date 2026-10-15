@@ -289,8 +289,8 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   const pts = list.filter((e) => e.id === 'UI-08');   // D-171: the open stat points editor on a phone sheet
   assert.equal(pts.length, 6);   // the enforced phone sizes (375x667 is report-only, D-136)
   assert.ok(pts.every((e) => e.decision === 'D-171' && e.rule === 'missing' && ['collection-detail-points', 'stat-points-error'].includes(e.screen) && ['412x915', '430x822', '430x932'].includes(e.size) && /stat-points-open/.test(e.why)));
-  const fight = list.filter((e) => e.id === 'UI-47');   // D-155: the phone controls of the fight
-  assert.ok(fight.length > 0 && fight.every((e) => e.decision === 'D-155' && e.rule === 'missing' && /^dungeon-fight/.test(e.screen) && ['430x932', '430x822', '412x915'].includes(e.size)));
+  const fight = list.filter((e) => e.id === 'UI-47');   // D-155: the phone controls of the fight; D-181: the portrait tablets use the phone layout (692x917, 820x1180)
+  assert.ok(fight.length > 0 && fight.every((e) => e.decision === 'D-155' && e.rule === 'missing' && /^dungeon-fight/.test(e.screen) && ['430x932', '430x822', '412x915', '692x917', '820x1180'].includes(e.size)));
 });
 
 test('D-136: a defect at a report-only landscape size is listed but does not fail; the same defect at a portrait size fails', () => {
