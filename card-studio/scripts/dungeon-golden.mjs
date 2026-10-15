@@ -224,6 +224,15 @@ if (CACHE && !cached) writeFileSync(CACHE, JSON.stringify(base));
 if (cand) {
   const c = await playAll(cand);
   console.error(`[golden] with the candidate: ${((Date.now() - t0) / 1000).toFixed(0)} s in all`);
+  if (process.env.GOLDEN_LIST === '1') {
+    // GOLDEN_LIST=1: do not stop at the first difference. Count the different fights by mode and say whether the candidate breaks the 0-star rule.
+    const by = {}; let any = 0;
+    fights.forEach((f, i) => { const m = f.s.mode + (f.s.pair ? ' (0-star pair)' : ''); by[m] ??= [0, 0]; by[m][1]++; if (base[i] !== c[i]) { by[m][0]++; any++; } });
+    console.log(`DIFFERENT FIGHTS: ${any} of ${fights.length}; by mode: ${Object.entries(by).map(([m, [d, n]]) => `${m} ${d}/${n}`).join(', ')}`);
+    console.log(`candidate ZEROSTAR DIFF lines: ${c.filter((t) => /ZEROSTAR DIFF/.test(t)).length}`);
+    process.exitCode = any ? 1 : 0;
+    process.exit();
+  }
   for (let i = 0; i < fights.length; i++) if (base[i] !== c[i]) {
     const d = firstDiff(base[i], c[i]);
     fail(`DIFF at fight ${i + 1} (${name(i)}) line ${d.j}\nPREV: ${d.prev.slice(0, 500)}\nLIVE: ${d.one.slice(0, 2500)}\nCAND: ${d.two.slice(0, 2500)}`);

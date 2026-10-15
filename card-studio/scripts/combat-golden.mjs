@@ -27,6 +27,11 @@ if (!globalThis.__LOCALDB_API) await import('./localdb-preload.mjs');
 if (!globalThis.__LOCALDB_API) throw new Error('combat-golden.mjs: the localdb preload is not active, so it would use the LIVE project');
 const PTS = JSON.stringify(JSON.parse(process.env.GOLDEN_PTS || '{"attack": 3, "precision": 3}'));
 const SUP_PTS = JSON.stringify(JSON.parse(process.env.GOLDEN_SUP_PTS || '{}'));
+// The stars of the stat card (the 2nd attacker), default 2. GOLDEN_ASC=0 with GOLDEN_PTS='{}' plays every card at 0 stars and 0 points.
+const ASC = Number(process.env.GOLDEN_ASC ?? 2);
+if (!Number.isInteger(ASC) || ASC < 0 || ASC > 5) throw new Error('GOLDEN_ASC: a whole number from 0 to 5');
+// GOLDEN_LIST=1: with a candidate, do not stop at the first different fight: count them all (still exit 1 on a difference).
+const LIST = process.env.GOLDEN_LIST === '1';
 if ((PTS + SUP_PTS).includes("'")) throw new Error('GOLDEN_PTS / GOLDEN_SUP_PTS: no quotes');
 import { readFileSync } from 'node:fs';
 import { runBlock } from './lab-lib.mjs';
@@ -88,7 +93,7 @@ const runs = scen.map((x, i) => `pg_temp.golden_run(${x.seed}, array[${[...ATK, 
 const PLAN = process.env.NO_PLAN ? '' : 'set local enable_seqscan = off; set local enable_bitmapscan = off;';
 const body = String.raw`${process.env.NO_RR ? '' : 'set transaction isolation level repeatable read;'}${PLAN}
 do $t$
-declare base text[] := '{}'; again text[] := '{}'; cand text[] := '{}'; i int; j int; l1 text[]; l2 text[]; bad text := ''; n int := ${runs.length};
+declare base text[] := '{}'; again text[] := '{}'; cand text[] := '{}'; i int; j int; l1 text[]; l2 text[]; bad text := ''; diffs text := ''; ndiff int := 0; n int := ${runs.length};
 begin
   execute $f$
   create function pg_temp.golden_run(p_seed float, p_squad bigint[], p_atk bigint[], p_sup bigint[], p_boss jsonb) returns text
@@ -98,7 +103,7 @@ begin
     begin
       insert into players (id, username) values (v_p, 'golden');
       insert into player_cards (player_id, card_id, quantity, ascension, stat_points)
-        select v_p, c, 1, case when c = p_atk[2] then 2 else 0 end, case when c = p_atk[2] then '${PTS}'::jsonb when c = any(p_sup) then '${SUP_PTS}'::jsonb else '{}'::jsonb end from unnest(p_squad) c;
+        select v_p, c, 1, case when c = p_atk[2] then ${ASC} else 0 end, case when c = p_atk[2] then '${PTS}'::jsonb when c = any(p_sup) then '${SUP_PTS}'::jsonb else '{}'::jsonb end from unnest(p_squad) c;
       insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, hp_share, opens_at, closes_at, status, passive, stats)
         values ('Golden Boss', p_boss->>'tier', p_boss->'weak', p_boss->'resist', (p_boss->>'hp')::bigint, (p_boss->>'hp')::bigint, (p_boss->>'hp')::bigint,
                 now() - interval '1 hour', now() + interval '1 day', 'active',
@@ -185,10 +190,15 @@ begin
         l1 := regexp_split_to_array(base[i], E'\n'); l2 := regexp_split_to_array(cand[i], E'\n');
         j := 1;
         while j < greatest(array_length(l1, 1), array_length(l2, 1)) and l1[j] is not distinct from l2[j] loop j := j + 1; end loop;
-        bad := 'DIFF at fight ' || i || ' line ' || j || E'\nPREV: ' || left(coalesce(l1[j - 1], ''), 500)
-          || E'\nLIVE: ' || left(coalesce(l1[j], ''), 2500) || E'\nCAND: ' || left(coalesce(l2[j], ''), 2500); exit;
+        ndiff := ndiff + 1; diffs := diffs || i || ' ';
+        if bad = '' then
+          bad := 'DIFF at fight ' || i || ' line ' || j || E'\nPREV: ' || left(coalesce(l1[j - 1], ''), 500)
+            || E'\nLIVE: ' || left(coalesce(l1[j], ''), 2500) || E'\nCAND: ' || left(coalesce(l2[j], ''), 2500);
+        end if;
+        ${LIST ? '' : 'exit;'}
       end if;
     end loop;
+    if ndiff > 0 then bad := bad || E'\nDIFFERENT FIGHTS: ' || ndiff || ' of ' || n || E' (fight numbers: ' || diffs || ')'; end if;
   end if;
   -- A NULL message is a failure, never a pass.
   if bad is null then bad := 'FAIL: the failure message became NULL (a bug in this test)'; end if;
