@@ -211,5 +211,11 @@ begin
   raise notice 'stat_reset_gift: % players, % new gifts, % gifts (% open)', n_players, n_new, n_gifts, n_open;
 end $c$;
 
+comment on column public.stat_reset_gifts.player_id is 'The player who owns the gift (players.id).';
+comment on column public.stat_reset_gifts.gift is 'The name of the gift. r_s1_2026_10 = the free reset for the stat points option R and the star curve S1.';
+comment on column public.stat_reset_gifts.granted_at is 'When the gift was granted.';
+comment on column public.stat_reset_gifts.expires_at is 'The deadline: after it the gift is never used.';
+comment on column public.stat_reset_gifts.used_at is 'When the gift was used for a reset (null = still open).';
+comment on column public.stat_reset_gifts.used_card is 'The card (cards.id) whose points the gift reset (null = not used).';
 comment on function public.stat_reset_gift_use(text, bigint) is 'Uses the next gift reset of a player (stat_reset_gifts, the earliest deadline first): true = used. Called by reset_stat_points and buy_shop_item after the weekly free reset.';
 notify pgrst, 'reload schema';

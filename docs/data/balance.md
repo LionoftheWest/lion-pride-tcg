@@ -1456,7 +1456,7 @@ Shape: `object { cooldown_days: number, dupe_values: object { full_art: number, 
 
 ### stars
 
-Option C (Nathan 2026-10-03): the power multiplier for 0 to 5 stars, by rarity. Used by the collection power, the leaderboard AND the raid. Event and promo cards cannot ascend (ascend_card), so only their 0-star value counts.
+Star curve S1 (Nathan 2026-10-15; before: Option C 2026-10-03): the power multiplier for 0 to 5 stars, by rarity. A 5-star normal = 7.5x (75 CP, a 0-star Full Art), a 5-star illustrated rare = 7.0x (140 CP, a 0-star Gold). Used by the collection power, the leaderboard AND the raid. Event and promo cards cannot ascend (ascend_card), so only their 0-star value counts.
 
 Shape: `object { event: array(6) of number, full_art: array(6) of number, gold: array(6) of number, illustrated_rare: array(6) of number, normal: array(6) of number, promo: array(6) of number, secret_rare: array(6) of number }`
 
@@ -1480,19 +1480,19 @@ Shape: `object { event: array(6) of number, full_art: array(6) of number, gold: 
   ],
   "promo": [
     1,
-    3,
-    4.5,
-    5.75,
-    7,
-    8
+    2.86,
+    4.25,
+    5.41,
+    6.57,
+    7.5
   ],
   "normal": [
     1,
-    3,
-    4.5,
-    5.75,
-    7,
-    8
+    2.86,
+    4.25,
+    5.41,
+    6.57,
+    7.5
   ],
   "full_art": [
     1,
@@ -1512,11 +1512,11 @@ Shape: `object { event: array(6) of number, full_art: array(6) of number, gold: 
   ],
   "illustrated_rare": [
     1,
-    2.2,
-    3.2,
-    4,
-    4.8,
-    5.5
+    2.6,
+    3.93,
+    5,
+    6.07,
+    7
   ]
 }
 ```
@@ -1569,14 +1569,14 @@ Shape: `object { attack: number, crit_cap: number, enabled: boolean, haste: numb
 
 ```json
 {
-  "haste": 0.04,
-  "attack": 0.05,
+  "haste": 0.1,
+  "attack": 0.06,
   "enabled": true,
-  "potency": 0.05,
+  "potency": 0.12,
   "crit_cap": 0.6,
   "per_star": 3,
-  "vitality": 0.06,
-  "precision": 0.03,
+  "vitality": 0.05,
+  "precision": 0.05,
   "haste_floor": 0.2,
   "max_per_stat": 15
 }

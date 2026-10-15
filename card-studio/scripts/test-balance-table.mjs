@@ -190,6 +190,10 @@ begin
     res := res || jsonb_build_object('case', 'no change: SKIPPED (the migration is already applied here; run on a fresh copy)', 'ok', true, 'skipped', true);
   end if;
 
+  -- The tuning of 2026-10-03 (Option C) is put back inside this rolled-back block: the test checks the table and the formulas, not the live tuning
+  -- (stat_points_r_stars_s1.sql changes the stars of normal and illustrated_rare).
+  update balance set value = '{"gold":[1,1.15,1.27,1.38,1.49,1.6],"event":[1,1.4,1.7,2,2.25,2.5],"promo":[1,3,4.5,5.75,7,8],"normal":[1,3,4.5,5.75,7,8],"full_art":[1,1.4,1.7,2,2.25,2.5],"secret_rare":[1,1.7,2.2,2.7,3.1,3.5],"illustrated_rare":[1,2.2,3.2,4,4.8,5.5]}'::jsonb where key = 'stars';
+  update balance set value = value || '{"attack": 0.05, "vitality": 0.06, "precision": 0.03, "potency": 0.05, "haste": 0.04}'::jsonb where key = 'stat_points';
   -- 1. Option C.
   begin
     ok := true; bad := '';
