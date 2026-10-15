@@ -28,6 +28,7 @@ const ARGS = {
 // One-time acceptance tests of a data conversion: they expect the state BEFORE it ran, so they fail
 // afterwards by design (on live too). Skipped, with the reason.
 const ONE_TIME = {
+  'test-balance-economy.mjs': 'the acceptance test of balance_economy.sql: it applies that file and compares old with new. The file is SUPERSEDED (SUPERSEDED.md: 7 of its functions were replaced by later files), so its guard refuses a re-run; --old has the no-change case that must fail by design. Its numbers are read by the later tests',
   'test-gift-claims.mjs': 'the launch-day conversion of the 211 x 20 grants (gift_claims.sql refuses it now: done on 2026-10-01)',
 };
 const logDir = join(root, 'out', 'localdb-tests'); mkdirSync(logDir, { recursive: true });

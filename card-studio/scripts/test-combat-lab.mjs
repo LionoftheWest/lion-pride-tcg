@@ -55,7 +55,7 @@ check(base2.code === 0, `baseline: with the ${soft.length} known LOOP/LOCK findi
 // --- 2. the mutations ------------------------------------------------------------------------------------------------
 for (const m of LAB_MUTATIONS) {
   if (only.length && !only.includes(m.name)) continue;
-  const file = mutationFile(m.name, m.file, m.from, m.to);
+  const file = mutationFile(m.name, m.file, m.from, m.to, m.pre);
   const r = run(['--sections', m.sections, '--baseline', baselineFile, '--out', join(dir, m.name)], { LAB_MUTATE: file });
   const rep = existsSync(join(dir, m.name, 'report.json')) ? report(m.name) : { findings: [] };
   const hit = rep.findings.filter((f) => m.expect.includes(f.cls) && !f.known);

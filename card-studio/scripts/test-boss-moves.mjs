@@ -112,6 +112,7 @@ const caseSQL = CASES.map(([key, setup, check]) => `
   -- ${key}
   h := pg_temp.mk('${key}', '[]'); r2 := null; r3 := null; r4 := null;
   ${setup}
+  perform setseed(0.42);   -- a fixed seed for each case: the roll of a hit decides some checks (2 of 20 unseeded runs failed on a different case each time, 2026-10-15)
   r := hunt_attack(P, h, a1); rnd := (r->>'round')::int;
   select * into st from hunt_combat_state where hunt_id = h;
   if r->'boss_action'->>'counter' is distinct from '${key}' then bad := bad || '${key}: no counter move: ' || left(coalesce(r::text, 'null'), 300) || '; ';

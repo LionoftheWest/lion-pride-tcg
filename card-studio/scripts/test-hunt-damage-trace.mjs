@@ -45,6 +45,8 @@ begin
     coalesce(rec.hits > 0 and rec.hits = rec.logged and rec.unexplained = 0, false), 'row', to_jsonb(rec));
 
   -- 2. A Smite (its combat_actions row): counted as smite, unexplained still 0.
+  -- The boss hits back in the 9 attacks above and can down the support card (random: error support_downed, a flaky run): heal the squad first.
+  update hunt_card_hp set hp_remaining = max_hp, downed = false where hunt_id = h and player_id = '${P}';
   r := hunt_support('${P}', h, sm);
   select * into rec from hunt_damage_reconcile(h) where player_id = '${P}';
   res := res || jsonb_build_object('case', 'a Smite is counted as smite, unexplained 0', 'ok',

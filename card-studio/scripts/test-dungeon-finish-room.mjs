@@ -13,6 +13,7 @@
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-dungeon-finish-room.mjs              the migration file (must PASS)
  *   ... --mutations                                                           each mutation of the file must make a case FAIL
  */
+import './localdb-guard.mjs';
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
