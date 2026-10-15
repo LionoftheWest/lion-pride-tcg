@@ -5,6 +5,7 @@
 // A picture is a crop of an approved screen with the control ringed in gold (public/explain/v3/<set>-<n>-c.webp for compact-port,
 // -w.webp for the wider classes). Which one shows is a CSS rule on body[data-size] (90-ui-39.css), not a window size test.
 import { esc, button, iconButton } from './components.js';
+import { statSummary } from '../stat-labels.js';
 import { RINGS } from './explain-rings.js';
 
 // The texts are the approved frames (UI-39/source/slides.js: the captured texts with the glossary fixes of design.md 10.1),
@@ -61,7 +62,7 @@ export const V3_SETS = {
     { title: 'See it up close', text: 'Tap a card to open its details. Tap the card art to turn it in 3D.' },
     { title: 'Card stats', text: 'Power is the damage it deals in the Hunt. HP is the damage it takes before it is down.' },
     { title: 'Ascend', text: 'Spend extra copies to add a star, up to 5. You always keep 1 copy.' },
-    { title: 'Stat points', text: 'Each star gives 3 points to this card. Attack adds 5% power, Vitality 6% HP, Precision 3% crit.' },
+    { title: 'Stat points', get text() { return statSummary(); } },   // the names and numbers come from balance (stat-labels.js)
     { title: 'Bosses', text: 'See every boss that the Hunt can bring. Tap one to see it move.' },
   ] },
 };

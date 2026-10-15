@@ -5,6 +5,7 @@
 // it paints. The seen sets are saved on the account (players.tutorial.seen, /api/tutorial).
 
 import { v2ctx } from './ui-v2.js';
+import { statSummary } from './stat-labels.js';
 import { explainHTML, v3Set, stepTo } from './ui3/explain.js';
 
 const ctx = () => v2ctx();
@@ -62,7 +63,7 @@ export const SETS = {
     { img: 'col-viewer', title: 'See it up close', text: 'Tap a card to open it. Drag the card to turn it in 3D.' },
     { img: 'col-stats', title: 'Card stats', text: 'Power is the damage it deals in the Raid. HP is the damage it takes before it is down.' },
     { img: 'col-ascend', title: 'Ascend', text: 'Spend spare copies to add a star, up to 5. You always keep 1 copy.' },
-    { img: 'col-points', title: 'Stat points', text: 'Each star gives 3 points to this card. Attack adds 5% power, Vitality 6% HP, Precision 3% crit.' },
+    { img: 'col-points', title: 'Stat points', get text() { return statSummary(); } },   // the names and numbers come from balance (stat-labels.js)
     { img: 'col-bosses', title: 'Raid Bosses', text: 'See every boss that the Raid can bring. Tap one to see it move.' },
   ] },
 };

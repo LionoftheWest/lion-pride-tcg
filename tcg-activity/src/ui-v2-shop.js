@@ -9,6 +9,7 @@ import { thumb } from './thumb.js';
 import { isPort, isLand } from './mobile.js';
 import { every } from './poll.js';
 import { fmtFor } from './ui3/number.js';
+import { statLabel, statShort } from './stat-labels.js';
 import { shopHTML, stockBlocks, fitStock, confirmHTML } from './ui3/shop.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import { stepCount, convertTotals, keepNote, convertControl, convertState } from './ui3/convert.js';
@@ -346,7 +347,7 @@ function paintModal() {
     art = cardImg(c, 'big'); kick = 'Stat reset'; title = `Reset ${esc(c.name)}?`;
     sub = `<span class="sh-rar" style="color:var(--r-${c.rarity})">◆ ${esc(RL(c.rarity))}</span><span class="sh-chip ${free ? 'ok' : ''}">${free ? 'Free weekly reset' : `Free reset used · back ${esc(nextDay(d.free_reset_next))}`}</span>`;
     note = `<div class="sh-pts"><div class="sh-pts-h"><span>Stat points</span><span>Now</span><span>After</span></div>${Object.entries(pts).filter(([, v]) => Number(v) > 0)
-      .map(([k, v]) => `<div><span>${esc(STAT_NAME[k] || k)}</span><b>${v}</b><b class="z">0</b></div>`).join('')}<p>${total} points ready to place again.</p></div>`;
+      .map(([k, v]) => `<div><span>${esc(statLabel(k))}</span><b>${v}</b><b class="z">0</b></div>`).join('')}<p>${total} points ready to place again.</p></div>`;
     cost = free ? 0 : d.stat_reset_price; freeText = free ? 'Free · weekly reset' : '';
     go = free ? `${ICON.reset}Reset` : `${ICON.reset}Reset ${COIN}<b>${fmt(cost)}</b>`;
   }
@@ -453,7 +454,7 @@ function paintModalV3() {
     const total = Object.values(pts).reduce((a, b) => a + Number(b || 0), 0);
     const free = !!d.free_reset;
     const table = `<div class="u3-spts"><div class="u3-spts__h"><span>Stat points</span><span>Now</span><span>After</span></div>${Object.entries(pts).filter(([, v]) => Number(v) > 0)
-      .map(([k, v]) => `<div class="u3-spts__r"><span>${esc(STAT_NAME[k] || k)}</span><b>${v}</b><b class="u3-spts__z">0</b></div>`).join('')}<p class="u3-spts__note">${total} points ready to place again.</p></div>`;
+      .map(([k, v]) => `<div class="u3-spts__r"><span>${esc(statLabel(k))}</span><b>${v}</b><b class="u3-spts__z">0</b></div>`).join('')}<p class="u3-spts__note">${total} points ready to place again.</p></div>`;
     c = { kind: 'reset', art: art(card), eyebrow: 'Stat reset', title: `Reset ${card.name}?`, table,
       sub: `${rar(card.rarity)}${chip(free ? 'Free weekly reset' : `Free reset used · back ${nextDay(d.free_reset_next)}`)}`, cost: free ? 0 : d.stat_reset_price, priceLabel: 'Price',
       freeText: free ? 'Free · weekly reset' : '', go: { label: 'Reset', icon: 'rotate-ccw', variant: 'danger', reward: free ? null : fmt(d.stat_reset_price) } };
@@ -506,7 +507,7 @@ async function openPicker() {
   if (!list.length) return;
   const grid = box.querySelector('.sh-pk-grid');
   const state = { page: 0, tile: (c, idx) => `<div class="v2-cell" data-idx="${idx}"><div class="v2-card r-${c.rarity}">${c.image_url ? `<img src="${thumb(c.image_url)}" alt="${esc(c.name)}" loading="lazy">` : ''}</div>
-      <div class="v2-cap sh-pts-cap">${Object.entries(c.stat.points).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${STAT_SHORT[k] || k} ${v}`).join(' · ')}</div></div>` };
+      <div class="v2-cap sh-pts-cap">${Object.entries(c.stat.points).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${statShort(k)} ${v}`).join(' · ')}</div></div>` };
   requestAnimationFrame(() => paintCards(grid, box.querySelector('.sh-pk-pager'), list, state, (c) => openConfirm({ kind: 'reset', card: c })));
 }
 
@@ -519,7 +520,7 @@ async function openPickerV3() {
   const line = `${free ? 'Your free weekly reset is available' : `Free reset used · back ${nextDay(d.free_reset_next)}`} · This reset costs ${fmt(free ? 0 : d.stat_reset_price)} Shards`;
   openCardPicker({
     title: 'Choose a card', one: true, cap: 1, cards: list, selected: [],
-    caption: (c) => Object.entries(c.stat?.points || {}).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${STAT_SHORT[k] || k} ${v}`),
+    caption: (c) => Object.entries(c.stat?.points || {}).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${statShort(k)} ${v}`),
     status: (sel) => ({ checks: [{ ok: free, label: line }], ready: sel.length === 1, reason: 'Choose a card' }),
     detail: (c) => ctx().openViewer?.(c),
     returnFocus: document.querySelector('[data-choose]'),
