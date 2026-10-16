@@ -29,7 +29,7 @@ Table. [combat] The one list of ability kinds (f3_ability_kinds.sql, F-3 PR 4a):
 | `latent` | jsonb | not null | `'[]'::jsonb` | The number fields that the latent (Silver) upgrade can change, a list of field names (docs/foundations.md item 10). Nothing reads it yet. |
 | `power` | jsonb | not null | `'{}'::jsonb` | {"base": number, "weights": {"<number field>": number}}: the power cost of an ability of this kind (ability_power). A placeholder that the Combat Lab has not tuned. Reported only: no fight reads it. |
 | `counter_key` | text | null |  | The boss mark family that weakens this kind in the Hunt: block_<key> and half_<key> (hunt_support). NULL for an attack kind. |
-| `auto` | jsonb | null |  | The Auto pick rule of today (dungeon_auto_action) as data, for example {"who": "hurt_ally", "hp_below": 0.5}. Data only: dungeon_auto_action still has its own code. |
+| `auto` | jsonb | null |  | The Auto pick rule of the kind (dungeon_auto_action reads it, f3_engine_dungeon.sql): {"who": "hurt_ally", "hp_below": "balance:dungeon.auto_heal_below"} (the most hurt attacker below that share of its max HP), {"who": "best_attacker"}, {"who": "enemy"}, {"when": "debuffed"} (a card has a curse or poison), {"when": "foe_not_stunned"}. NULL for an attack kind. |
 | `enabled` | boolean | not null | `true` | False: a card cannot get this kind (an ability that has it is refused). |
 | `note` | text | null |  | What the effect does, in plain words. |
 | `updated_at` | timestamp with time zone | not null | `now()` | The last change of the row. |
@@ -749,7 +749,7 @@ F-3 4b: the crit chance of combat_crit_chance with the crit_add mod of combat_ef
 - Returns: `jsonb`
 - Security definer: no
 
-F-3 4b: THE effect engine (docs/f3-effect-engine.md 2.7). combat_effect(fight state, card, trigger use|before_hit|on_hit|after_attack, ctx {target_card, target_foe, dealt}) returns {ok, effect, changes[], mods{}, log{}} or the refusal answer {ok: false, error, ...}. Reads ability_kinds (steps) and passives.params.counters. VOLATILE (a use draws random() only for a stun fail). No fight calls it yet (PR 4c, 4d).
+F-3: THE effect engine (docs/f3-effect-engine.md 2.7). combat_effect(fight state, card, trigger use|before_hit|on_hit|after_attack, ctx {target_card, target_foe, dealt}) returns {ok, effect, changes[], mods{}, log{}} or the refusal answer {ok: false, error, ...}. Reads ability_kinds (steps) and passives.params.counters. VOLATILE (a use draws random() only for a stun fail). The Dungeon and the Gauntlet play through it (f3_engine_dungeon.sql, PR 4c); the Hunt in PR 4d.
 
 <a id="fn-combat-effect-changes-jsonb-jsonb-jsonb"></a>
 
@@ -779,7 +779,7 @@ F-3 4b: the count of a count_tag condition: the squad cards with the tag, distin
 - Returns: `jsonb`
 - Security definer: no
 
-F-3 4b: the attack triggers of combat_effect: before_hit (the hit mods of the kind and of the enabled squad rows, no random()), on_hit (lifesteal, only when the hit dealt damage), after_attack (a buff until next_attack ends).
+F-3 4b: the attack triggers of combat_effect: before_hit (the hit mods of the kind and of the enabled squad rows, no random()), on_hit (lifesteal, only when the hit dealt damage), after_attack (a buff until next_attack ends). With facts hit_on (f3_engine_dungeon.sql) a trigger with no step skips the step loop.
 
 <a id="fn-combat-effect-mark-jsonb-text-jsonb"></a>
 
@@ -909,7 +909,7 @@ F-3 4b: the hit of combat_hit with the hit mods of combat_effect (no_block, dmg_
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] combat_hit with the element chart: the same 14 arguments and the attacker's and the target's element. The element multiplier is multiplied into the weakness multiplier. Returns the answer of combat_hit and, only when the chart changed the hit, elem (bonus, penalty or both) and elem_mult. Internal helper of dungeon_attack.
+The hit of the Dungeon and the Gauntlet with the element chart (f3_element_bonus.sql). Since f3_engine_dungeon.sql: the hit mods come from combat_effect before_hit (no effect name) and the hit from combat_hit_core. dungeon_attack calls combat_hit_core itself; the old tests call this function.
 
 <a id="fn-combat-lifesteal-integer-numeric-integer"></a>
 

@@ -243,3 +243,49 @@ Findings for 4c and 4d:
 3. No living foe. Today `dungeon_support` fails with an SQL error (a NULL state) when no foe is alive in a fight. The engine raises an error there too.
 4. A Hunt refusal after the commit (`bad_ally_effect`) keeps the committed row today. The engine refusal has no commit. A valid ability cannot reach it
    (`ability_ok`).
+
+## 8. PR 4c as built (2026-10-16, local copy 2 only)
+
+- `tcg-bot/supabase/f3_stun_limit_1.sql` (the first commit): the `stun` row allows duration 1 only (Nathan, 2026-10-16, finding 2 of section 7).
+  Test: `test-stun-limit-1.mjs`.
+- `tcg-bot/supabase/f3_engine_dungeon.sql`: `dungeon_support` and `dungeon_attack` play through `combat_effect`; `combat_hit_elem` gets its hit mods
+  from the engine and calls `combat_hit_core`; `dungeon_auto_action` reads `ability_kinds.auto`; balance `dungeon.auto_heal_below` (0.5) and
+  `dungeon.auto_shield_below` (0.6), checked by `balance_check_settings`. md5 guards on the 12 functions it replaces (the live text or its own text).
+- The speed work (Nathan, 2026-10-16, option A). The same answers, measured one change at a time (`fight-timing.mjs`, CANDIDATE / BASE mean):
+
+  | Step | dungeon_attack | dungeon_support |
+  |---|---|---|
+  | The 4b switch text (`SHADOW_WRITE_VARIANTS`) | 1.29 | 1.52 |
+  | Small working objects in `combat_effect_use` / `_hit` (no copy of the whole state for each change), `hit_on` (skip a trigger with no step), the state from the rows the mode read (`dungeon_fight_state_info`: no second `dungeon_run_card` of the actor) | 1.15 | 1.32 |
+  | One primary key lookup for each squad card (a join over the squad array is planned again on every call: its generic plan reads every card) | 1.07 to 1.17 | 1.11 to 1.12 |
+  | Index loops in place of `jsonb_array_elements` / `jsonb_each` queries; `fight_change_check` with a jsonpath first test | 0.94 to 1.27 (noise) | 1.08 to 1.22 (noise) |
+  | The ally target tags from the squad facts and one ownership lookup (no `card_combat` of the target) | 1.04 to 1.07 | 0.92 to 0.97 |
+  | `dungeon_auto_action`: the share is read once, one lookup for each support it reaches (no join over the squad array) | `dungeon_auto_rounds` 1.14 to 1.02 | |
+
+- The final time table (BASE = live after 4b, CANDIDATE = the file; `TIMING_REQUESTS=20` (600 calls) for runs 1 to 3, 40 (1200 calls) for runs 4 to 6;
+  `dungeon_enemy_turn` does not change in 4c and shows the noise):
+
+  | Call | run 1 | run 2 | run 3 | run 4 | run 5 | run 6 |
+  |---|---|---|---|---|---|---|
+  | dungeon_attack | 0.928 | 1.087 | 1.101 | 1.104 | 1.094 | 1.105 |
+  | dungeon_support | 1.047 | 0.623 | 1.012 | 0.926 | | |
+  | dungeon_enemy_turn (no change) | 0.908 | 1.118 | 0.962 | 0.896 | 0.973 | 0.970 |
+  | dungeon_auto_rounds | 1.029 | 1.062 | 1.143 | 1.106 | 1.100 | 1.083 |
+  | dungeon_finish_room | 1.041 | 1.152 | 1.078 | 1.041 | | |
+  | dungeon_pass_turn | 0.998 | 0.863 | 0.872 | | | |
+
+  `dungeon_attack` stays near the limit: the fight state (one lookup for each squad card and the `hit_on` query), before_hit and after_attack cost
+  about 0.1 to 0.4 ms for each attack (with no engine call the new text is faster than the old one: `combat_hit_core` and the squad tags from the facts).
+- `test-effect-shadow.mjs`: the Dungeon OLD side is the text before 4c (`test-effect-shadow.base.sql`), the NEW side is the public function after the 4c
+  file ran in the request, so the test is the same before and after 4c is live. A mutation changes the last file that has its anchor. New mutations for the
+  fast paths. A grid compares the old and the new `combat_hit_elem` (1920 calls).
+
+Findings:
+
+1. `combat_hit_elem` with `execute`, a NULL amount and the target below the threshold: the old text gives damage 1 (`v_base x (1 + NULL)`), the new text
+   reads the missing amount as 0 (the engine rule `field:` = the value, else the default, else 0). No function calls `combat_hit_elem` after 4c, and its
+   only caller before (`dungeon_attack`) passed `coalesce(amount, 0)`. The shadow grid counts these 32 calls on their own line; every other call is equal.
+2. The time rule is sensitive to the load of the machine (BASE means from 2.4 to 7.8 ms for the same call in one day). Use `TIMING_REQUESTS=20` and
+   several runs.
+3. A query over `unnest(<array parameter>)` joined to a table gets a generic plan that reads the whole table (352 cards), so PostgreSQL plans it again
+   on every call. The old fight functions have several (for example the affinity count and the squad tags). 4d can use the same fix.
