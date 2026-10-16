@@ -13,10 +13,17 @@ const t = process.env.SUPABASE_ACCESS_TOKEN, ref = process.env.SUPABASE_URL.matc
 const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })).json();
 const mig = process.argv[2] ? readFileSync(process.argv[2], 'utf8') : '';
 const SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
-const MUT = mutation({
+// F-3 4d (f3_engine_hunt.sql): the CURRENT Hunt plays its supports through the engine (combat_effect_use), so the mutations of the current functions
+// change the engine text; an old file (the acceptance run) keeps its own text.
+const ENG = 'public.combat_effect_use(jsonb,bigint,jsonb)';
+const MUT = mutation(process.argv[2] ? {
   revive: [SUP, 'and card_id = p_target and hit_date = v_day and downed) then', 'and false) then'],
   fullheal: [SUP, "least(max_hp, hp_remaining + combat_support_value('heal', v_amt, 1, max_hp)::int)", 'max_hp'],
   shield: [SUP, "shield + combat_support_value('shield', v_amt, 1, max_hp)::int", 'shield + 60'],
+} : {
+  revive: [ENG, "if v_tc is not null and coalesce((v_tc->>'down')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'target_downed'); end if;", 'null;'],
+  fullheal: [ENG, "v_new := least((v_tc->>'max')::int, (v_tc->>'hp')::int + v_val::int);", "v_new := (v_tc->>'max')::int;"],
+  shield: [ENG, "v_set1 := jsonb_build_object('shield', (v_tc->>'shield')::int + v_val::int);", "v_set1 := jsonb_build_object('shield', (v_tc->>'shield')::int + 60);"],
 });
 const body = String.raw`do $t$ declare h bigint; heal bigint; shl bigint; tgt bigint; pk bigint; r jsonb; res jsonb := '[]'; v int;
 begin

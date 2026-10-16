@@ -23,7 +23,8 @@ if (!FILE && ['guard', 'settings'].includes(M)) throw new Error(`MUTATE=${M} cha
 const MUT = M === 'guard' ? '' : mutation({
   noinsert: [SUP, 'insert into combat_actions (mode, ref_id', 'insert into pg_temp.ca_sink (mode, ref_id'],   // the rows go to a temp table
   bosstarget: [SUP, "    case when v_tgt in ('ally', 'self') then p_target end,", '    p_target,'],
-  novalue: [SUP, "      'value', case", "      'value_x', case"],
+  // F-3 4d (f3_engine_hunt.sql): the current hunt_support logs the value of the engine log; a file keeps its own text
+  novalue: FILE ? [SUP, "      'value', case", "      'value_x', case"] : [SUP, "      'value', v_l->'value',", "      'value_x', v_l->'value',"],
 });
 const GUARD_MUT = M === 'guard' ? ["not in ('beb6c2738ef2b0966054234c13fa1085',", "is null and 'x' not in ('beb6c2738ef2b0966054234c13fa1085',"] : null;
 if (GUARD_MUT) { if (!mig.includes(GUARD_MUT[0])) throw new Error('bad guard mutation'); mig = mig.replace(GUARD_MUT[0], GUARD_MUT[1]); }

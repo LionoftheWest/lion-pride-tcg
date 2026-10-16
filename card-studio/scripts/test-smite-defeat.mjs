@@ -16,7 +16,9 @@ const P = '999999999999999971';
 // MUTATE=nodefeat|noguard node scripts/test-smite-defeat.mjs   must FAIL.
 const SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
 const MUT = mutation({
-  nodefeat: [SUP, "    if v_status = 'defeated' then\n      v_settle := settle_hunt(p_hunt);", '    if false then\n      v_settle := settle_hunt(p_hunt);'],
+  // F-3 4d (f3_engine_hunt.sql): the current hunt_support settles on the kill flag of the engine; an old file has its own text
+  nodefeat: mig ? [SUP, "    if v_status = 'defeated' then\n      v_settle := settle_hunt(p_hunt);", '    if false then\n      v_settle := settle_hunt(p_hunt);']
+    : [SUP, "  if coalesce((v_l->>'kill')::boolean, false) then\n    v_settle := settle_hunt(p_hunt);", '  if false then\n    v_settle := settle_hunt(p_hunt);'],
   noguard: [SUP, "  if v_status <> 'active' or now() >= v_closes then return", '  if false then return'],
 });
 const body = String.raw`do $t$
