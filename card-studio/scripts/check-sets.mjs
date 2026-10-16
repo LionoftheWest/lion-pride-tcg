@@ -8,6 +8,8 @@
  * "in progress": its defects are shown but do not fail. Read only: it never writes a file or a row.
  *
  * Rules (the rule name is in the report):
+ *   a tier may have its own set (cards.json tierDetails[finish].set, src/tier-set.js): the tier counts for THAT set (its row, its
+ *            number, its art), and the home set of the card does not require it
  *   set      each subject in cards.json has a "set" (no set key = a defect)
  *   set-db   (DB mode) the set exists in card_sets, and each finish has a cards row in that home set
  *   art      each finish has art: an art file (art/<id>-<finish>.*, or the file of its "pull art from" source) or, in DB mode,
@@ -23,6 +25,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CLASSES = ['attacker', 'support'];
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/[\s_-]+/g, '-');
+// The set a finish is printed in: its own set (tierDetails[finish].set), else the home set of the card.
+const finishSet = (c, f) => c.tierDetails?.[f]?.set || c.set;
 const list = (v) => (Array.isArray(v) ? v : v == null || v === '' ? [] : [v]);
 
 /**
@@ -44,14 +48,18 @@ export function checkSets({ cards, vocab, inProgress = [], art = null, only = nu
     if (!c.set) add(set, c.id, 'set', 'the card has no set');
     else if (dbSets && !dbSets.has(c.set)) add(set, c.id, 'set-db', `the set ${c.set} is not in card_sets`);
     for (const f of c.finishes || []) {
+      const fs = finishSet(c, f);
+      const fset = fs || '(none)';
+      // a tier of another set: that set must exist too (the home set was checked above)
+      if (fs && fs !== c.set && dbSets && !dbSets.has(fs)) add(fset, c.id, 'set-db', `the set ${fs} of the ${f} tier is not in card_sets`);
       const row = rows.get(`${c.id}|${f}`);
-      if (db && c.set && dbSets.has(c.set)) {
-        if (!row) add(set, c.id, 'set-db', `finish ${f} has no cards row (not pushed)`);
-        else if (row.set_id !== c.set) add(set, c.id, 'set-db', `finish ${f} is in set ${row.set_id} in the database, not ${c.set}`);
+      if (db && fs && dbSets.has(fs)) {
+        if (!row) add(fset, c.id, 'set-db', `finish ${f} has no cards row (not pushed)`);
+        else if (row.set_id !== fs) add(fset, c.id, 'set-db', `finish ${f} is in set ${row.set_id} in the database, not ${fs}`);
       }
       if (art || db) {
         const has = (art && art(c.id, f)) || Boolean(row && row.image_url);
-        if (!has) add(set, c.id, 'art', `finish ${f} has no art`);
+        if (!has) add(fset, c.id, 'art', `finish ${f} has no art`);
       }
     }
     // tags
@@ -85,7 +93,8 @@ export function checkSets({ cards, vocab, inProgress = [], art = null, only = nu
     }
   }
 
-  const ids = [...new Set([...cards.map((c) => c.set || '(none)'), ...findings.map((f) => f.set)])].sort();
+  const setsOf = (c) => [...new Set([c.set || '(none)', ...(c.finishes || []).map((f) => finishSet(c, f) || '(none)')])];
+  const ids = [...new Set([...cards.flatMap(setsOf), ...findings.map((f) => f.set)])].sort();
   const sets = ids.filter((id) => !only || id === only).map((id) => {
     const mine = findings.filter((f) => f.set === id);
     const counts = { set: 0, 'set-db': 0, art: 0, tag: 0, number: 0 };
@@ -93,7 +102,7 @@ export function checkSets({ cards, vocab, inProgress = [], art = null, only = nu
     const pullable = Boolean(dbSets && dbSets.get(id)?.pullable);
     const strict = Boolean(only) || strictAll || pullable || !inProgress.includes(id);
     const status = mine.length === 0 ? 'OK' : strict ? 'DEFECT' : 'IN PROGRESS';
-    return { id, cards: cards.filter((c) => (c.set || '(none)') === id).length, strict, status, counts, findings: mine };
+    return { id, cards: cards.filter((c) => setsOf(c).includes(id)).length, strict, status, counts, findings: mine };
   });
   const defects = sets.reduce((n, s) => n + s.findings.length, 0);
   return { sets, defects, failing: sets.some((s) => s.status === 'DEFECT'), artChecked: Boolean(art || db) };
