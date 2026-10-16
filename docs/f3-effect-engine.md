@@ -310,7 +310,28 @@ Findings:
   4. `plan_cache_mode = force_generic_plan` on `hunt_fight_state_info` and `hunt_card_crits`. Each request of `fight-timing.mjs` is a new session, and
      plpgsql makes custom plans for the first calls of each statement. All queries of these two functions are key lookups. `hunt_attack` went from
      1.12 to 0.98 with it. `hunt_card_crits`: the old text planned its large query again on most calls even when warm (0.71 ms a call; 0.33 ms with
-     one plan).
+     one plan). The review after decision A (copy 2 refreshed, the same file with one setting removed, CANDIDATE / BASE mean):
+
+     | Variant | hunt_attack | hunt_card_crits |
+     |---|---|---|
+     | both settings (the file) | 1.126, 1.088 (600 calls); 1.115 (loaded machine), 1.013, 0.974 (1200 calls) | 1.025, 0.586 |
+     | without the setting on `hunt_fight_state_info` | 1.105, 0.992 (600 calls); 1.109 (loaded machine), 1.179, 1.100 (1200 calls) | 1.089, 0.574 |
+     | without the setting on `hunt_card_crits` | 1.139, 1.104 | 1.202, 1.140 |
+
+     Both settings stay: without them the calls go above the 1.10 rule more often.
+- The final time table (BASE = live before 4d, CANDIDATE = the file, `TIMING_REQUESTS=20`, 600 calls; `hunt_autopick`, `dungeon_enemy_turn` and
+  `dungeon_attack` do not change in 4d and show the noise):
+
+  | Call | run 1 | run 2 | run 3 |
+  |---|---|---|---|
+  | hunt_attack | 1.089 | 1.110 | 1.013 |
+  | hunt_support | 0.781 | 0.803 | 0.839 |
+  | hunt_card_crits | 0.599 | 0.612 | 0.611 |
+  | hunt_autopick (no change) | 1.095 | 1.005 | 1.000 |
+  | dungeon_enemy_turn (no change) | 1.007 | 0.972 | 1.028 |
+  | dungeon_attack (no change) | 0.973 | 0.980 | 0.967 |
+
+  `hunt_attack` stays near the limit (about +0.1 ms for each attack: the three engine calls).
   5. `hunt_card_crits` runs the engine only for an attack kind with a before_hit `crit_add` step (a query with no parameter: one plan), or for every
      ability when an enabled squad row has one.
 - Tests: `test-effect-shadow.mjs` (the Hunt OLD side is the text before 4d in `test-effect-shadow.base.sql`; the 4b `VARIANTS` and
@@ -327,9 +348,11 @@ Findings:
    line (8 and 4); every other call is equal.
 2. The time rule counts the planning of new statements in a fresh session. A new statement in a fight function costs about 0.02 to 0.06 ms in
    `fight-timing.mjs` even when it is cheap to run. Fewer statements, or one plan for key lookups, is the fix.
-3. OPEN (a shadow difference, not decided): an attacker with NO attack ability (today only the event cards Launch Day Raider 378 and Launch Day
-   Player 383). The old `combat_hit` tests `p_aeff = 'rampage' and random() < p_aamt`; with a NULL effect SQL must evaluate `random()`, so the old
-   code draws one extra number after each hit that is not a miss. The engine draws none. The hit is the same; the boss turn after it uses other random
-   numbers. The shadow cases "attack no ability" show it: Hunt 9 of 10 different, Dungeon 5 of 5, Gauntlet 5 of 5 (so the live 4c already plays the
-   Dungeon and the Gauntlet this way). The quick Lab shows it too (the two cards: 608.77 before, 303.92 after; 4 seeds). Nathan decides: keep the old
-   extra draw for a card with no attack ability (Hunt and Dungeon), or accept the new random order for these two cards.
+3. DECIDED (Nathan, 2026-10-16, decision A: accept the new random order): an attacker with NO attack ability (today only the event cards Launch
+   Day Raider 378 and Launch Day Player 383). The old `combat_hit` tests `p_aeff = 'rampage' and random() < p_aamt`; with a NULL effect SQL must
+   evaluate `random()`, so the old code drew one extra number after each hit that is not a miss. The engine draws none, and 4d does not copy that
+   draw. The hit is the same; the boss turn after it uses other random numbers. The reason: the extra draw was an accident of the SQL text, not a rule;
+   every draw is fair, so both orders are fair; the live 4c Dungeon and Gauntlet already play this order. The shadow test keeps these cases: for an
+   attacker with no ability the hit (the answer keys of the hit) must be equal and the later random stream may differ; every other case must stay equal
+   as text (`test-effect-shadow.mjs`, the `noab` cases and the mutation `hunt_noab_hit_changed`). Before the decision the quick Lab showed the two cards
+   at 608.77 and then 303.92 (4 seeds: the other random stream, not another rule).

@@ -61,6 +61,7 @@ const MUT = {
   hunt_undying_dead: ['create or replace function public.hunt_effect_apply', 'least(hp_max, hp_remaining + v_d)', 'least(hp_max, hp_remaining)'],
   hunt_lifesteal_skipped: ['CREATE OR REPLACE FUNCTION public.hunt_attack(', "if v_dmg > 0 and v_hiton ? 'on_hit' then", 'if false then'],
   hunt_crit_kinds_lost: ['CREATE OR REPLACE FUNCTION public.hunt_card_crits(', 'case when v_sq or d.aeff = any(v_ck)', 'case when v_sq'],
+  hunt_noab_hit_changed: ['CREATE OR REPLACE FUNCTION public.hunt_attack(', 'v_hit := combat_hit_core(v_cp,', 'v_hit := combat_hit_core(v_cp + case when v_ability is null then 1 else 0 end,'],
   hunt_others_tags_lost: ['CREATE OR REPLACE FUNCTION public.hunt_attack(', "v_others := v_others || jsonb_build_array(v_facts->v_x->'tags');", "v_others := v_others || '[[]]'::jsonb;"],
 };
 if (process.env.MUTATE === 'all') {
@@ -406,23 +407,31 @@ for (const kind of Object.keys(ATK)) {
   }
 }
 
-// ---------------- an attacker with NO ability (4d review: the event cards Launch Day Raider / Player). The old combat_hit evaluates
-// "p_aeff = 'rampage' and random() < p_aamt" with a NULL effect, so it draws one random() after each hit that is not a miss; the boss turn after it
-// uses the next numbers. These cases show the old and the new text on such a card.
+// ---------------- an attacker with NO ability (4d, the event cards Launch Day Raider / Player). The old combat_hit evaluates
+// "p_aeff = 'rampage' and random() < p_aamt" with a NULL effect, so it draws one random() after each hit that is not a miss; the engine draws none.
+// Decision A (Nathan, 2026-10-16, docs/f3-effect-engine.md 9): the new random order is accepted. So for these cases (noab) only THE HIT must be equal
+// (the answer keys of the hit, HIT_KEYS below, and the case must answer ok); the boss turn after it may use other random numbers. Every other case must
+// stay equal as text. The count of noab cases whose later stream differs is printed (expected above 0).
 {
   const NOAB = 378; const mates = Object.values(ATK).slice(0, 2);
   const hunt = (o = {}) => ({ m: 'hunt', fn: 'attack', card: NOAB, round: ROUND, hp: 40000, hpmax: 50000, tier: 'Heroic', passive: o.passive || [], marks: {},
     st: 0, wk: '0', wku: 0, ex: '0', exu: 0, weak: [], rows: [[NOAB, 1, false, 0, '1', '1', 0], ...mates.map((x) => [x, 1, false, 0, '1', '1', 0])],
     locked: [NOAB, ...mates], pts: {}, asc: 0, seeds: SEEDS_RANDOM });
-  add(hunt(), 'hunt attack no ability');
-  add(hunt({ passive: ['shrouded'] }), 'hunt attack no ability, shrouded');
-  for (const m of ['dungeon', 'gauntlet']) add({ m, fn: 'attack', card: NOAB, target_foe: 0, squad: [NOAB, ...mates], round: ROUND, cards: {}, pts: {}, asc: 0, seeds: SEEDS_RANDOM },
-    `${m} attack no ability`);
+  add({ ...hunt(), noab: true }, 'hunt attack no ability');
+  add({ ...hunt({ passive: ['shrouded'] }), noab: true }, 'hunt attack no ability, shrouded');
+  add({ ...hunt({ passive: ['armored', 'thorns'] }), weak: [{ kind: 'type', value: 'Character' }], noab: true }, 'hunt attack no ability, armored, weak to Character');
+  for (const m of ['dungeon', 'gauntlet']) {
+    add({ m, fn: 'attack', card: NOAB, target_foe: 0, squad: [NOAB, ...mates], round: ROUND, cards: {}, pts: {}, asc: 0, seeds: SEEDS_RANDOM, noab: true }, `${m} attack no ability`);
+    add({ m, fn: 'attack', card: NOAB, target_foe: 0, squad: [NOAB, ...mates], round: ROUND, foes: [{ base: 2 }, { base: 1 }], cards: {}, pts: {}, asc: 0, seeds: SEEDS_RANDOM, noab: true },
+      `${m} attack no ability, water foe`);
+  }
 }
 
 // ------------------------------------------------------------------------------------------------ run
 const ids = [...new Set(cases.flatMap((c) => [c.card, c.target, ...(c.rows || []).map((r) => r[0]), ...(c.squad || []), ...(c.locked || [])]).filter((x) => x != null))];
 const BATCH = Number(process.env.SHADOW_BATCH || 600);
+// The keys of the hit in the answer of hunt_attack / dungeon_attack (the noab cases compare only these: decision A)
+const HIT_KEYS = "array['ok', 'damage', 'outcome', 'crit', 'double', 'bonus', 'resisted', 'cp', 'heal', 'ability', 'guarded', 'target', 'elem', 'elem_mult']";
 // What the OLD transcripts must show (PostgreSQL regular expressions): a case set that never meets a reaction proves nothing about it (COVERAGE GAP).
 const COVER = ['"gained": [1-9]', '"effect": "stun".*"countered": [[]"juggernaut"]', '"error": "boss_stun_immune"', '"nullified": true', '"mirrored": true', '"defeated": true',
   '"undying"', '"spiral"', '"desync"', '"hotfix"', '"rot"', '"bloodrot"', '"countered": [[]"plague"]', '"shatterer"', '"dispeller"', '"block_', '"half_',
@@ -431,7 +440,7 @@ const COVER = ['"gained": [1-9]', '"effect": "stun".*"countered": [[]"juggernaut
 const lit = (v) => `'${JSON.stringify(v).replace(/'/g, "''")}'::jsonb`;
 const request = (batch) => `${PLAN}
 do $t$
-declare v_p text := 'tst_shadow'; cs jsonb := ${lit(batch)}; c jsonb; o text[]; v_foes jsonb; nfail int := 0; nerr int := 0; n int := 0; fails jsonb := '[]'; l1 text[]; l2 text[]; j int;
+declare v_p text := 'tst_shadow'; cs jsonb := ${lit(batch)}; c jsonb; o text[]; v_foes jsonb; nfail int := 0; nerr int := 0; n int := 0; fails jsonb := '[]'; l1 text[]; l2 text[]; j int; h1 jsonb; h2 jsonb; nnoab int := 0; nnoabdiff int := 0;
   k text; v_cov jsonb := '{}';
 begin
   ${installHelpers()}
@@ -454,6 +463,15 @@ begin
       nerr := nerr + 1;
       if jsonb_array_length(fails) < 3 then fails := fails || jsonb_build_object('case', c, 'error', case when o[2] like 'SQLERR %' and o[1] not like 'SQLERR %'   -- the NEW side failed: its error first
         then left(o[2], 1500) || ' | OLD ' || left(coalesce(o[1], ''), 500) else left(coalesce(o[1], '') || ' | ' || coalesce(o[2], ''), 1500) end); end if;
+    elsif c->>'noab' = 'true' then
+      -- decision A: the hit of a card with no ability must be equal; the later random stream may differ
+      nnoab := nnoab + 1;
+      h1 := substr(split_part(o[1], chr(10), 1), 3)::jsonb; h2 := substr(split_part(o[2], chr(10), 1), 3)::jsonb;
+      if not coalesce((h1->>'ok')::boolean, false) or (select jsonb_object_agg(hk, h1->hk) from unnest(${HIT_KEYS}) hk) is distinct from (select jsonb_object_agg(hk, h2->hk) from unnest(${HIT_KEYS}) hk) then
+        nfail := nfail + 1;
+        if jsonb_array_length(fails) < 3 then fails := fails || jsonb_build_object('case', c, 'line', 1, 'old', left(h1::text, 2500), 'new', left(h2::text, 2500)); end if;
+      elsif o[1] is distinct from o[2] then nnoabdiff := nnoabdiff + 1;
+      end if;
     elsif o[1] is distinct from o[2] then
       nfail := nfail + 1;
       if jsonb_array_length(fails) < 3 then
@@ -463,20 +481,20 @@ begin
       end if;
     end if;
   end loop;
-  raise exception 'RESULT:%', jsonb_build_object('n', n, 'fail', nfail, 'err', nerr, 'fails', fails, 'cov', v_cov${process.env.SHADOW_DUMP ? ", 'first', (select o[1])" : ''})::text;
+  raise exception 'RESULT:%', jsonb_build_object('n', n, 'fail', nfail, 'err', nerr, 'noab', nnoab, 'noabdiff', nnoabdiff, 'fails', fails, 'cov', v_cov${process.env.SHADOW_DUMP ? ", 'first', (select o[1])" : ''})::text;
 end $t$;`;
 
 if (process.env.SHADOW_ONLY) { const re = new RegExp(process.env.SHADOW_ONLY); cases.splice(0, cases.length, ...cases.filter((c) => re.test(c.tag))); }   // development: only the cases whose tag matches
 if (process.env.SHADOW_LIST) { for (const c of cases) console.log(c.tag, c.seed); process.exit(0); }
 console.log(`shadow cases: ${cases.length} (Hunt support ${cases.filter((c) => c.m === 'hunt' && c.fn === 'support').length}, Dungeon support ${cases.filter((c) => c.m === 'dungeon' && c.fn === 'support').length}, Gauntlet support ${cases.filter((c) => c.m === 'gauntlet' && c.fn === 'support').length}, attacks ${cases.filter((c) => c.fn === 'attack').length}), ${BATCH} a request`);
-let total = 0, fail = 0, err = 0; const shown = []; const t0 = Date.now(); let slowest = 0; const cov = {};
+let total = 0, fail = 0, err = 0, noab = 0, noabdiff = 0; const shown = []; const t0 = Date.now(); let slowest = 0; const cov = {};
 for (let i = 0; i < cases.length; i += BATCH) {
   const t1 = Date.now();
   const out = JSON.parse(await runBlock(request(cases.slice(i, i + BATCH))));
   slowest = Math.max(slowest, Date.now() - t1);
   if (out.fatal) { console.log(`FAIL ${out.fatal}`); process.exit(1); }
   if (out.first) console.log(out.first);   // SHADOW_DUMP=1: the OLD transcript of the last case of the request
-  total += out.n; fail += out.fail; err += out.err; shown.push(...out.fails);
+  total += out.n; fail += out.fail; err += out.err; noab += out.noab || 0; noabdiff += out.noabdiff || 0; shown.push(...out.fails);
   for (const [k, v] of Object.entries(out.cov || {})) cov[k] = (cov[k] || 0) + v;
   if ((out.fail || out.err) && process.env.MUTATE) break;   // a mutation run stops at the first difference
 }
@@ -579,6 +597,8 @@ for (const f of shown.slice(0, 3)) {
   else console.log(`  line ${f.line}\n  OLD ${f.old}\n  NEW ${f.new}`);
 }
 const gap = process.env.MUTATE || process.env.SHADOW_ONLY ? [] : COVER.filter((k) => !cov[k]);
+if (noab || !process.env.SHADOW_ONLY) console.log(`\nno ability (decision A): ${noab} cases with the same hit, ${noabdiff} of them with another random stream after the hit (expected: above 0)`);
+if (!noab && !process.env.SHADOW_ONLY && !process.env.MUTATE) { console.log('FAIL no case of an attacker with no ability ran'); fail += 1; }
 console.log(`\ncoverage (the cases whose OLD transcript shows it): ${COVER.map((k) => `${k} ${cov[k] || 0}`).join(' | ')}`);
 if (gap.length) console.log(`FAIL COVERAGE GAP, no case shows: ${gap.join(', ')}`);
 const bad = fail || err || gap.length;
