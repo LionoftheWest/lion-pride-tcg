@@ -218,3 +218,28 @@ Facts that change the design:
 6. Forbidden Pride: the values after the Lab report.
 7. The 3 "attacker" Items: should they become able to attack?
 8. The limits in `ability_kinds.fields`: about 2 x the largest live value; Nathan approves before 4a.
+
+## 7. PR 4b as built (2026-10-15, local copy only)
+
+- `tcg-bot/supabase/f3_effect_engine.sql`: `combat_effect` (with `combat_effect_use`, `combat_effect_hit` and 8 helpers), `combat_hit_core`,
+  `combat_crit_chance_mods`, `hunt_fight_state`, `dungeon_fight_state`, `fight_state_check`, `fight_change_check`, `dungeon_effect_apply`,
+  `hunt_effect_apply`, `passives.params.counters` (4 rows) and the extended `passives_check` (md5 guard). No fight function calls the engine.
+- `card-studio/scripts/test-effect-shadow.mjs`: the old functions against the engine (same `setseed`, text equal) over 3457 cases, with a coverage
+  check (every reaction of 2.6 and every refusal must appear). The NEW functions are the live text with only the effect lines replaced
+  (`VARIANTS` in the script). They are the starting text of 4c and 4d: `SHADOW_WRITE_VARIANTS=out/x.sql` writes them as a candidate file.
+- `card-studio/scripts/test-effect-engine.mjs`: the engine alone (76 checks, with a Forbidden-Pride-shaped squad row as data).
+- `scripts/fight-timing.mjs`: opt-in calls `combat_effect`, `combat_effect_hit`, `hunt_fight_state`, `dungeon_fight_state`.
+
+Findings for 4c and 4d:
+
+1. Time. The engine alone: `combat_effect` (use) 0.32 ms, `before_hit` 0.15 ms, `hunt_fight_state` 0.37 ms, `dungeon_fight_state` 0.12 ms.
+   The switch text of the shadow test (`SHADOW_WRITE_VARIANTS`) measured 1.3 to 1.5 x the BASE mean for `hunt_attack`, `hunt_support`,
+   `dungeon_attack` and `dungeon_support`. The 1.10 rule of section 3 does not hold with that text. 4c and 4d must make the calls cheaper
+   (for example, build the state once from the rows that the mode already reads, and skip a trigger that has no step), or Nathan must approve
+   another budget.
+2. Stun rounds. Today a stun lasts 1 round in both modes (`hunt_support.sql:174`, `dungeon_support.sql:70`). The `stun` row has
+   `rounds field:duration`, and its limit allows 2. The engine follows the row. Every live stun has duration 1, so play is the same. A stun card with
+   duration 2 will last 2 rounds after the switch. Decide this before such a card exists (or set the limit to 1).
+3. No living foe. Today `dungeon_support` fails with an SQL error (a NULL state) when no foe is alive in a fight. The engine raises an error there too.
+4. A Hunt refusal after the commit (`bad_ally_effect`) keeps the committed row today. The engine refusal has no commit. A valid ability cannot reach it
+   (`ability_ok`).

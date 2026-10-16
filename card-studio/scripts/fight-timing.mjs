@@ -13,6 +13,7 @@
  *
  *   LAB_LOCK_OWNER=<name> LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/fight-timing.mjs
  *   CANDIDATE=../tcg-bot/supabase/x.sql LAB_LOCK_OWNER=<name> LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/fight-timing.mjs [call ...]
+ *   ... fight-timing.mjs combat_effect combat_effect_hit hunt_fight_state dungeon_fight_state    the effect engine alone (opt-in, F-3 PR 4b: after the file is applied)
  *   TIMING_BATCH=30 TIMING_REQUESTS=10    the size of a batch and the number of requests (default 30 and 10 = 300 calls)
  * LOCAL copy only (docs/foundations.md "Performance and cost budget" rule 2). Each request takes the shared lock when LAB_LOCK_OWNER is set (lab-lib.mjs).
  */
@@ -70,6 +71,18 @@ const CALLS = {
   dungeon_finish_room: [DUNGEON, "dungeon_finish_room(v_p, 'daily')"],
   dungeon_pass_turn: [DUNGEON_STUNNED, "dungeon_pass_turn(v_p, 'daily', true)"],
 };
+// The effect engine alone (F-3 PR 4b, f3_effect_engine.sql). OPT-IN: name them on the command line; they exist only after the file is applied
+// (the BASE turn of a request reads the installed text). The fight state of a combat_effect call is built in the fixture, so the call is timed alone.
+const ENGINE_CALLS = {
+  combat_effect: [`${HUNT}
+  st := hunt_fight_state(v_h, v_p, (now() at time zone 'America/Denver')::date, 82, 24);`, `combat_effect(st, 82, 'use', '{"target_card": 24}'::jsonb)`],
+  combat_effect_hit: [`${DUNGEON}
+  st := dungeon_fight_state((select x from dungeon_runs x where x.player_id = v_p and x.status = 'active'), 24, null);`, `combat_effect(st, 24, 'before_hit', '{"target_foe": 0}'::jsonb)`],
+  hunt_fight_state: [HUNT, "hunt_fight_state(v_h, v_p, (now() at time zone 'America/Denver')::date, 82, 24)"],
+  dungeon_fight_state: [DUNGEON, "dungeon_fight_state((select x from dungeon_runs x where x.player_id = v_p and x.status = 'active'), 24, null)"],
+};
+const DEFAULT_CALLS = Object.keys(CALLS);
+Object.assign(CALLS, ENGINE_CALLS);
 
 const request = (call, parity) => {
   const [fixture, expr] = CALLS[call];
@@ -112,7 +125,7 @@ end $t$;`;
 
 const stats = (a) => { const s = [...a].sort((x, y) => x - y); return { n: s.length, mean: s.reduce((x, y) => x + y, 0) / s.length, p95: s[Math.min(s.length - 1, Math.ceil(s.length * 0.95) - 1)] }; };
 const which = process.argv.slice(2).filter((a) => CALLS[a]);
-const run = which.length ? which : Object.keys(CALLS);
+const run = which.length ? which : DEFAULT_CALLS;
 const rows = []; let fails = 0;
 for (const call of run) {
   const b = [], c = [], bad = [];
