@@ -2,9 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, unlinkSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, unlinkSync, statSync } from 'node:fs';
 import { fillHtml, renderPng } from './render.js';
-import { pushCard } from './push.js';
+import { pushCard, renderTier } from './push.js';
 import { removeTiers } from './tier-delete.js';
 import { deleteWholeCard, removeLocalFiles } from './card-delete.js';
 import { supabase } from './supabase.js';
@@ -15,7 +15,7 @@ import { adminWriteRouter } from './admin-write.js';
 import { setsRouter } from './sets-routes.js';
 import { loadVocab, saveVocab, vocabView, addValue } from './tag-vocab.js';
 import { studioAuth, loadSecret } from './studio-auth.js';
-import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic } from './rarity.js';
+import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic, ANIMATED } from './rarity.js';
 import { getFrame, setFrame } from './frames.js';
 import { getArtist, setArtist } from './artists.js';
 import { getSource, setSource } from './artsources.js';
@@ -602,6 +602,53 @@ app.get('/api/push-status', (req, res) => {
     progress: Object.fromEntries(pushProgress),
     busy: active > 0,
   });
+});
+
+// "Render real look" (the tier editor): render one animated tier exactly as a push does (renderTier), with NO
+// upload, so the real foil / Full Art / Gold look shows before a push. One render at a time (Blender is slow, ~1 min).
+// The result stays in out/preview/; GET answers it while it is newer than the card's last edit and its art.
+const PREVIEW = join(OUT, 'preview');
+mkdirSync(PREVIEW, { recursive: true });
+let previewBusy = null; // "<id>/<rarity>" while a render runs
+const previewFile = (id, rarity) => join(PREVIEW, `${id}-${rarity}.webp`);
+const previewFresh = (c, rarity) => {
+  const f = previewFile(c.id, rarity);
+  if (!existsSync(f)) return false;
+  const at = statSync(f).mtimeMs;
+  const art = resolveArtFile(c.id, artKeyFor(rarity));
+  return at > (c.updatedAt || 0) && (!art || at > statSync(art).mtimeMs);
+};
+const previewUrl = (id, rarity) => `/api/preview/${encodeURIComponent(id)}/${rarity}/image?t=${Math.round(statSync(previewFile(id, rarity)).mtimeMs)}`;
+app.get('/api/preview/:id/:rarity', (req, res) => {
+  const c = cardById(req.params.id);
+  if (!c || !c.finishes.includes(req.params.rarity)) return res.status(404).json({ ok: false, error: 'no such tier' });
+  const fresh = previewFresh(c, req.params.rarity);
+  res.json({ ok: true, fresh, url: fresh ? previewUrl(c.id, req.params.rarity) : null, busy: previewBusy });
+});
+app.get('/api/preview/:id/:rarity/image', (req, res) => {
+  const c = cardById(req.params.id);
+  if (!c || !existsSync(previewFile(c.id, req.params.rarity))) return res.status(404).end();
+  res.type('image/webp').sendFile(previewFile(c.id, req.params.rarity));
+});
+app.post('/api/preview/:id/:rarity', async (req, res) => {
+  const c = cardById(req.params.id);
+  const { rarity } = req.params;
+  if (!c || !c.finishes.includes(rarity)) return res.status(404).json({ ok: false, error: 'no such tier' });
+  if (!ANIMATED.has(rarity)) return res.status(400).json({ ok: false, error: 'This tier is not animated: the preview is already its real look.' });
+  if (!resolveArtFile(c.id, artKeyFor(rarity))) return res.status(400).json({ ok: false, error: 'Add art to this tier first.' });
+  if (previewBusy) return res.status(409).json({ ok: false, error: `Another render runs (${previewBusy}). Try again in a minute.` });
+  previewBusy = `${c.id}/${rarity}`;
+  const work = join(PREVIEW, 'work');
+  try {
+    mkdirSync(work, { recursive: true });
+    const { file } = await renderTier(c, rarity, (r) => resolveArtFile(c.id, artKeyFor(r)), work);
+    writeFileSync(previewFile(c.id, rarity), readFileSync(file));
+    res.json({ ok: true, url: previewUrl(c.id, rarity) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'The render failed: ' + (e.message || e) });
+  } finally {
+    previewBusy = null;
+  }
 });
 
 // Listen only when run as the program (node src/server.js); a test imports the app.

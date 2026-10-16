@@ -61,6 +61,32 @@ function animate(facePng, rarity, framesDir, webpOut, maskPng, onFrame) {
 }
 
 /**
+ * Render one tier exactly as a push does, with no upload: { file, contentType }.
+ * A still tier is its 500x700 PNG; an animated tier (rarity.js) is the Blender WebP.
+ * The push and the studio's "Render real look" preview both use this, so the preview is the pushed image.
+ */
+export async function renderTier(card, rarity, artFor, outDir, onFrame) {
+  const slot = artKeyFor(rarity);
+  const facePng = join(outDir, `${card.id}-${rarity}.png`);
+  const eff = { ...card, ...slotDetails(card, slot) };
+  // Animated tiers use this PNG only as a Blender texture (keep it crisp at
+  // 2x). Normal uploads this PNG directly, so render it at 500x700 (scale 1)
+  // to match every other tier's display size in Discord.
+  await renderPng(eff, rarity, artFor(rarity), facePng, ANIMATED.has(rarity) ? 2 : 1, false, getFrame(card.id, slot), getArtist(card.id, slot));
+  if (!ANIMATED.has(rarity)) return { file: facePng, contentType: 'image/png' };
+  const framesDir = join(outDir, `frames-${card.id}-${rarity}`);
+  const webp = join(outDir, `${card.id}-${rarity}.webp`);
+  // Holo tiers get a rounded-corner artwork mask; Gold plates the whole card.
+  let maskPng = null;
+  if (rarity !== 'gold') {
+    maskPng = join(outDir, `${card.id}-${rarity}-mask.png`);
+    await renderPng(card, rarity, artFor(rarity), maskPng, 2, true);
+  }
+  await animate(facePng, rarity, framesDir, webp, maskPng, onFrame);
+  return { file: webp, contentType: 'image/webp' };
+}
+
+/**
  * Render every finish of a card, upload each face (animated for the special
  * tiers), and upsert the subject + card rows so it goes live in the bot.
  */
@@ -106,41 +132,15 @@ export async function pushCard(card, artFor, outDir, onProgress) {
 
   const results = [];
   for (const rarity of card.finishes) {
-    const facePng = join(outDir, `${card.id}-${rarity}.png`);
     const slot = artKeyFor(rarity);
-    const frame = getFrame(card.id, slot);
     const artist = getArtist(card.id, slot);
     // This tier's own subject / description / season / event (merged over the
     // card so the Title stays card-wide).
     const det = slotDetails(card, slot);
-    const eff = { ...card, ...det };
-    // Animated tiers use this PNG only as a Blender texture (keep it crisp at
-    // 2x). Normal uploads this PNG directly, so render it at 500x700 (scale 1)
-    // to match every other tier's display size in Discord.
-    await renderPng(eff, rarity, artFor(rarity), facePng, ANIMATED.has(rarity) ? 2 : 1, false, frame, artist);
-
-    let object;
-    let contentType;
-    let buffer;
-    if (ANIMATED.has(rarity)) {
-      const framesDir = join(outDir, `frames-${card.id}-${rarity}`);
-      const webp = join(outDir, `${card.id}-${rarity}.webp`);
-      // Holo tiers get a rounded-corner artwork mask; Gold plates the whole card.
-      let maskPng = null;
-      if (rarity !== 'gold') {
-        maskPng = join(outDir, `${card.id}-${rarity}-mask.png`);
-        await renderPng(card, rarity, artFor(rarity), maskPng, 2, true);
-      }
-      await animate(facePng, rarity, framesDir, webp, maskPng, () => bump(1, rarity));
-      object = `cards/${card.id}-${rarity}.webp`;
-      contentType = 'image/webp';
-      buffer = readFileSync(webp);
-    } else {
-      object = `cards/${card.id}-${rarity}.png`;
-      contentType = 'image/png';
-      buffer = readFileSync(facePng);
-      bump(4, rarity);
-    }
+    const { file, contentType } = await renderTier(card, rarity, artFor, outDir, () => bump(1, rarity));
+    if (!ANIMATED.has(rarity)) bump(4, rarity);
+    const object = `cards/${card.id}-${rarity}.${file.endsWith('.webp') ? 'webp' : 'png'}`;
+    const buffer = readFileSync(file);
 
     const { error: ue } = await supabase.storage
       .from(BUCKET)

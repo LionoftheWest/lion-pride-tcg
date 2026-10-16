@@ -601,7 +601,10 @@ function tierDialog() {
       drop,
       h('div', { class: 'cs-row center' },
         h('button', { class: 'btn primary', id: 'cs-tier-upload', type: 'button', onclick: () => pickFile(tierSlot) }, icon('upload'), 'Upload art'),
-        h('button', { class: 'btn', id: 'cs-tier-framebtn', type: 'button', onclick: () => openFramer(tierSlot) }, icon('move'), 'Frame'))),
+        h('button', { class: 'btn', id: 'cs-tier-framebtn', type: 'button', onclick: () => openFramer(tierSlot) }, icon('move'), 'Frame')),
+      h('div', { class: 'cs-row center', id: 'cs-tier-renderrow' },
+        h('button', { class: 'btn', id: 'cs-tier-render', type: 'button', onclick: renderRealLook }, icon('eye'), 'Render real look'),
+        h('span', { class: 'cs-note', id: 'cs-tier-render-status', role: 'status' }))),
     h('div', { class: 'cs-tierright' },
       h('label', { class: 'cs-check', title: 'Lock this tier from trading and gifting. Gold never trades.' }, trade, 'Tradeable', h('span', { class: 'cs-note', id: 'cs-t-trade-note' })),
       field('Artist credit', artist, '(optional, blank if none)'),
@@ -641,8 +644,45 @@ function openTier(rarity) {
   $('cs-d-event-wrap').hidden = !SPECIAL_TIERS.includes(rarity);
   populateSource(slot);
   populateDetailSource();
+  // "Render real look": only an animated tier (the flat preview of a still tier is already its pushed image).
+  tierPreview = null;
+  $('cs-tier-renderrow').hidden = !HOLO_TIERS.has(rarity);
+  $('cs-tier-render-status').textContent = '';
   refreshTierFrame();
   $('cs-tier').hidden = false;
+  if (HOLO_TIERS.has(rarity)) loadTierPreview(current.id, rarity);
+}
+
+// The real look of an animated tier, rendered on this PC by the same code as a push, with no upload
+// (server.js /api/preview). A render newer than the last edit is shown first; an edit makes it old.
+let tierPreview = null;
+async function loadTierPreview(id, rarity) {
+  try {
+    const r = await (await fetch(`/api/preview/${encodeURIComponent(id)}/${rarity}`)).json();
+    if (tierRarity !== rarity || current.id !== id) return;
+    tierPreview = r.fresh ? r.url : null;
+    if (tierPreview) refreshTierFrame();
+  } catch { /* no preview */ }
+}
+async function renderRealLook() {
+  const id = current.id, rarity = tierRarity;
+  const btn = $('cs-tier-render'), st = $('cs-tier-render-status');
+  btn.disabled = true;
+  const t0 = Date.now();
+  st.textContent = 'Rendering… 0 s';
+  const tick = setInterval(() => { st.textContent = `Rendering… ${Math.round((Date.now() - t0) / 1000)} s`; }, 1000);
+  try {
+    const r = await (await post(`/api/preview/${encodeURIComponent(id)}/${rarity}`, {})).json();
+    clearInterval(tick);
+    if (!r.ok) { st.textContent = r.error; return; }
+    st.textContent = '';
+    if (tierRarity === rarity && current.id === id) { tierPreview = r.url; refreshTierFrame(); }
+  } catch (e) {
+    clearInterval(tick);
+    st.textContent = 'Error: ' + (e.message || e);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // The main preview shows the live render for a pushed tier. After an edit (upload / frame / details) preferLive=false
@@ -650,6 +690,15 @@ function openTier(rarity) {
 function refreshTierFrame(preferLive = true) {
   const stage = $('cs-tier-stage');
   if (!stage) return;
+  if (!preferLive) tierPreview = null; // an edit: the rendered look is old now
+  if (tierPreview) {
+    // The animation plays once (like in Discord); a click on it plays it again.
+    const img = h('img', { class: 'cs-live cs-real', src: tierPreview, alt: 'Real look', title: 'Real look' });
+    img.addEventListener('click', () => { img.src = tierPreview.replace(/([?&])t=\d+/, `$1t=${Date.now()}`); });
+    stage.classList.remove('holo-on');
+    stage.replaceChildren(img);
+    return;
+  }
   const liveUrl = preferLive && current.live && current.live[tierRarity];
   if (liveUrl) {
     const foil = HOLO_TIERS.has(tierRarity);
