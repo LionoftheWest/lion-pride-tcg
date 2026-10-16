@@ -185,10 +185,13 @@ function setGroups() {
   for (const c of cards) if (c.set && !groups.some((g) => g.id === c.set)) groups.push({ id: c.set, name: `Set ${c.set}`, code: c.set, color: null, unknown: true });
   if (cards.some((c) => !c.set)) groups.push({ id: '', name: 'No set', code: '-', color: null, unknown: true });
   for (const g of groups) {
-    g.items = [
-      ...cards.filter((c) => (c.set || '') === g.id).map((c) => ({ c, from: null })),
-      ...(g.id ? cards.filter((c) => c.set !== g.id && (c.pools || []).includes(g.id)).map((c) => ({ c, from: c.set })) : []),
-    ];
+    // A card with a tier of its own set (src/tier-set.js) is listed under that set too, with only those tiers, marked
+    // "from <home set>". Its home section lists the tiers that follow the home set.
+    const tiersIn = (c) => (c.finishes || []).filter((f) => tierSetOf(c, f) === g.id);
+    const homeItems = cards.filter((c) => (c.set || '') === g.id).map((c) => ({ c, from: null, tiers: tiersIn(c) }));
+    const tierItems = g.id ? cards.filter((c) => c.set !== g.id && tiersIn(c).length).map((c) => ({ c, from: c.set, tiers: tiersIn(c) })) : [];
+    const poolItems = g.id ? cards.filter((c) => c.set !== g.id && (c.pools || []).includes(g.id) && !tiersIn(c).length).map((c) => ({ c, from: c.set, tiers: c.finishes })) : [];
+    g.items = [...homeItems, ...tierItems, ...poolItems];
     g.includes = sets.includes.filter((r) => r.set_id === g.id).map((r) => r.included_set_id);
   }
   return groups;
@@ -220,15 +223,20 @@ function renderList() {
   $('cs-list').replaceChildren(...(sections.length ? sections : [h('div', { class: 'empty' }, 'No card')]));
 }
 
+// The set a tier is printed in: the set the server reports for the slot (its own set, else the home set).
+const tierSetOf = (c, f) => ((c.slots || []).find((x) => x.slot === f) || {}).set || c.set || '';
+// A small mark on a tier that is in another set than the home set of its card.
+const tierSetMark = (c, f) => { const t = tierSetOf(c, f); return t && t !== c.set ? h('span', { class: 'cs-from', title: `This tier is in set ${setLabel(t)}` }, t) : null; };
+
 // "from S1": a card of another set in this set's pool.
 const fromMark = (from) => (from ? h('span', { class: 'cs-from', title: `In this pool from ${setLabel(from)}` }, `from ${from}`) : null);
 
 function renderGrid(box, shown) {
-  box.replaceChildren(...(shown.length ? shown.map(({ c, from }) => {
+  box.replaceChildren(...(shown.length ? shown.map(({ c, from, tiers }) => {
     const tile = h('a', { class: `cs-tile${c.pushed ? ' live' : ''}${from ? ' pooled' : ''}`, href: `#/cards/${encodeURIComponent(c.id)}` },
       h('span', { class: 'cs-tname' }, c.name, fromMark(from)),
       h('span', { class: 'cs-tgenre' }, c.genre || ''),
-      h('span', { class: 'cs-dots' }, c.finishes.map((f) => h('span', { class: `cs-dot ${f}`, title: FINISH_LABEL[f] || f }))),
+      h('span', { class: 'cs-dots' }, (tiers || c.finishes).map((f) => h('span', { class: `cs-dot ${f}`, title: FINISH_LABEL[f] || f }))),
       h('span', { class: 'cs-tstatus' }, h('span', { class: 'num' }, `${c.filled}/${c.total}`), ' art', c.pushed ? h('span', { class: 'cs-live' }, 'Live') : null));
     return tile;
   }) : [h('div', { class: 'empty' }, 'No card in this set')]));
@@ -236,8 +244,8 @@ function renderGrid(box, shown) {
 
 function renderGallery(box, shown) {
   const items = [];
-  for (const { c, from } of shown) {
-    for (const f of c.finishes) {
+  for (const { c, from, tiers } of shown) {
+    for (const f of tiers || c.finishes) {
       // A pushed finish uses the live Supabase file; any other finish renders on demand from /face.
       const liveUrl = c.pushed && c.live && c.live[f];
       // The grid copy, not the full image: one studio open downloaded the whole catalog at full
@@ -392,7 +400,8 @@ function renderSetsBox() {
   const box = $('cs-sets-box');
   if (!box || !current) return;
   const c = current;
-  const live = Object.values(c.liveSet || {});
+  // The home tiers only: a tier with its own set is numbered in another set (src/tier-set.js).
+  const live = Object.entries(c.liveSet || {}).filter(([r]) => tierSetOf(c, r) === c.set).map(([, x]) => x);
   const liveHome = live[0] ? live[0].set : null;
   const nums = [...new Set(live.map((x) => x.number))].sort((a, b) => a - b);
   const pool = new Set(c.pools || []);
@@ -431,7 +440,7 @@ function renderSetsBox() {
 async function changeHomeSet() {
   const to = $('cs-home-sel').value;
   if (!to) return ($('cs-sets-status').textContent = 'Choose the new home set.');
-  const liveRows = Object.values(current.liveSet || {});
+  const liveRows = Object.entries(current.liveSet || {}).filter(([r]) => tierSetOf(current, r) === current.set).map(([, x]) => x);
   const live = liveRows.length > 0;
   const liveHome = live ? liveRows[0].set : null;
   const msg = live && to === liveHome
@@ -533,7 +542,7 @@ function renderPreviews() {
       ? h('div', { class: 'cs-pframe' }, h('canvas', { class: 'thumb', 'data-src': liveUrl }))
       : h('div', { class: 'cs-pframe' }, h('iframe', { src: `/card/${current.id}/${f}?t=${Date.now()}`, tabindex: '-1', title: tierName(f) }),
         hasArt ? null : h('div', { class: 'cs-pempty' }, 'Add art'));
-    return h('button', { class: `cs-pv${hasArt ? '' : ' empty'}`, type: 'button', 'data-tier': f, onclick: () => openTier(f) }, frame, h('span', { class: 'cs-pvlabel' }, tierName(f)));
+    return h('button', { class: `cs-pv${hasArt ? '' : ' empty'}`, type: 'button', 'data-tier': f, onclick: () => openTier(f) }, frame, h('span', { class: 'cs-pvlabel' }, tierName(f), tierSetMark(current, f)));
   });
   // "Add tier" at the end of the row (if a tier is not on the card yet).
   if (RARITY_ORDER.some((r) => !current.finishes.includes(r))) {
@@ -582,6 +591,8 @@ function tierDialog() {
   artist.addEventListener('change', saveArtist);
   const source = h('select', { class: 'field', id: 'cs-tier-source' });
   source.addEventListener('change', saveArtSource);
+  const tset = h('select', { class: 'field', id: 'cs-d-set', 'aria-label': 'Set of this tier' });
+  tset.addEventListener('change', changeTierSet);
   const dsource = h('select', { class: 'field', id: 'cs-cd-source' });
   dsource.addEventListener('change', copyDetails);
   return dialog('cs-tier', 'Tier', h('div', { class: 'cs-tiercols' },
@@ -601,6 +612,7 @@ function tierDialog() {
       h('div', { class: 'cs-row' },
         field('Season / origin', h('input', { class: 'field', id: 'cs-d-season', placeholder: 'Season / origin' })),
         h('div', { id: 'cs-d-event-wrap', class: 'cs-grow' }, field('Event / Promo period', h('input', { class: 'field', id: 'cs-d-event', placeholder: 'Event / Promo period' })))),
+      field('Set', tset, '(this tier only, the other tiers keep the home set)'),
       field('Or pull details from another tier', dsource),
       h('button', { class: 'btn cs-danger', id: 'cs-tier-delete', type: 'button', onclick: deleteTier }, icon('trash'), 'Delete this tier'))), { cls: 'wide' });
 }
@@ -616,6 +628,10 @@ function openTier(rarity) {
   $('cs-d-lore').value = det.lore || '';
   $('cs-d-season').value = det.season || '';
   $('cs-d-event').value = det.event || '';
+  // The set of this tier: every set of card_sets, the tier's own set (else the home set) chosen.
+  $('cs-d-set').replaceChildren(...sets.sets.map((x) => h('option', { value: x.id }, setLabel(x.id) + (x.id === current.set ? ' (home)' : ''))));
+  $('cs-d-set').value = (slot && slot.set) || current.set || '';
+  $('cs-d-set').dataset.prev = $('cs-d-set').value;
   // Per-tier trade lock. Gold never trades, so it is locked and cannot be changed.
   const isGold = rarity === 'gold';
   $('cs-t-tradeable').checked = isGold ? false : (det.tradeable !== false);
@@ -668,13 +684,33 @@ function setupHolo() {
 async function saveTierDetails() {
   if (!current || !tierSlot) return;
   const body = { genre: pk['cs-d-genre'].get(), lore: $('cs-d-lore').value.trim(), season: $('cs-d-season').value.trim(), event: $('cs-d-event').value.trim() };
+  return postTierDetails(body);
+}
+async function postTierDetails(body) {
   const r = await (await post(`/api/details/${current.id}/${tierSlot}`, body)).json();
   if (!r.ok) { setStatus('Error: ' + r.error); return; }
   const s = current.slots.find((x) => x.slot === tierSlot);
-  if (s) s.details = r.details;
+  if (s) { s.details = r.details; s.set = r.details.tierSet || current.set; }
   refreshTierFrame(false);
   renderPreviews();
   refreshBadge();
+}
+
+// The Set field of the tier: saved at once through the tier details route. The home set clears the tier's own set. A tier that
+// is live in another set is refused by the server (a push does not move it): the field goes back and the reason shows.
+async function changeTierSet() {
+  const sel = $('cs-d-set');
+  const to = sel.value;
+  const r = await (await post(`/api/details/${current.id}/${tierSlot}`, { set: to })).json();
+  if (!r.ok) { sel.value = sel.dataset.prev; setStatus('Error: ' + r.error); return; }
+  sel.dataset.prev = to;
+  const s = current.slots.find((x) => x.slot === tierSlot);
+  if (s) { s.details = r.details; s.set = r.details.tierSet || current.set; }
+  const season = setById(to)?.season;
+  if (season && to !== current.set) { $('cs-d-season').value = `Season ${season}`; await saveTierDetails(); }
+  renderPreviews();
+  refreshBadge();
+  setStatus(to === current.set ? `This tier follows the home set ${to}.` : `This tier is in set ${to}. Push the card to add it there with its own number.`);
 }
 
 // "Pull details from another tier": the OTHER tiers of this card. A choice copies its details into this tier.

@@ -12,8 +12,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const MUTANTS = {
   set: ["if (!c.set) add(set, c.id, 'set', 'the card has no set');", 'if (false) 0;'],
   'set-db': ["else if (dbSets && !dbSets.has(c.set)) add(set, c.id, 'set-db'", 'else if (false) add(set, c.id, \'set-db\''],
-  'set-db-row': ["if (!row) add(set, c.id, 'set-db'", "if (false) add(set, c.id, 'set-db'"],
-  art: ["if (!has) add(set, c.id, 'art'", "if (false) add(set, c.id, 'art'"],
+  'set-db-row': ["if (!row) add(fset, c.id, 'set-db'", "if (false) add(fset, c.id, 'set-db'"],
+  art: ["if (!has) add(fset, c.id, 'art'", "if (false) add(fset, c.id, 'art'"],
+  'tier-set': ["const finishSet = (c, f) => c.tierDetails?.[f]?.set || c.set;", 'const finishSet = (c, f) => c.set;'],
+  'tier-set-count': ["cards.filter((c) => setsOf(c).includes(id)).length", "cards.filter((c) => (c.set || '(none)') === id).length"],
+  'tier-set-exists': ["if (fs && fs !== c.set && dbSets && !dbSets.has(fs))", 'if (false)'],
   class: ["if (!CLASSES.includes(t.class)) add(", 'if (false) add('],
   origin: ["if (list(t.origin).length === 0) add(", 'if (false) add('],
   vocab: ["if (!have.has(String(v))) add(", 'if (false) add('],
@@ -143,4 +146,53 @@ test('in progress: --set and strictAll check the set strictly; a pullable set in
   assert.equal(run(cards, { inProgress: ['T2'], strictAll: true }).failing, true);
   const db = { sets: [{ id: 'T2', pullable: true }], cards: dbRows('w', 'T2', 1) };
   assert.equal(checkSets({ cards, vocab, inProgress: ['T2'], db }).failing, true);
+});
+
+// ---- a set for each tier (cards.json tierDetails[finish].set) ----
+const s1Card = () => card('old', { set: 'T1', finishes: ['normal', 'illustrated_rare'], tierDetails: { illustrated_rare: { set: 'T2' } } });
+const twoSets = [{ id: 'T1', pullable: false }, { id: 'T2', pullable: false }];
+
+test('tier set: a tier in another set counts for THAT set, the home set does not require its row', () => {
+  const db = { sets: twoSets, cards: [
+    { key: 'old', rarity: 'normal', set_id: 'T1', set_number: 1, image_url: 'u' },
+    { key: 'old', rarity: 'illustrated_rare', set_id: 'T2', set_number: 1, image_url: 'u' }] };
+  const res = checkSets({ cards: [s1Card()], vocab, db });
+  assert.equal(res.defects, 0, JSON.stringify(res.sets.map((x) => x.findings)));
+  assert.equal(res.sets.find((x) => x.id === 'T2').cards, 1, 'the card counts in T2');
+  assert.equal(res.sets.find((x) => x.id === 'T1').cards, 1, 'and in its home set T1');
+});
+
+test('tier set: the tier row is missing = a defect of T2 (not of the home set T1); a row in the wrong set too', () => {
+  const only = { sets: twoSets, cards: [{ key: 'old', rarity: 'normal', set_id: 'T1', set_number: 1, image_url: 'u' }] };
+  const res = checkSets({ cards: [s1Card()], vocab, db: only });
+  assert.deepEqual(rules(res, 'T2'), ['set-db', 'art']); // no row = no art either
+  assert.match(res.sets.find((x) => x.id === 'T2').findings[0].msg, /illustrated_rare/);
+  assert.deepEqual(rules(res, 'T1'), []);
+  const wrong = { sets: twoSets, cards: [
+    { key: 'old', rarity: 'normal', set_id: 'T1', set_number: 1, image_url: 'u' },
+    { key: 'old', rarity: 'illustrated_rare', set_id: 'T1', set_number: 2, image_url: 'u' }] };
+  const w = checkSets({ cards: [s1Card()], vocab, db: wrong });
+  assert.match(w.sets.find((x) => x.id === 'T2').findings[0].msg, /is in set T1 in the database, not T2/);
+});
+
+test('tier set: a tier with no art is a defect of ITS set', () => {
+  const res = run([s1Card()], { art: (id, f) => f !== 'illustrated_rare' });
+  assert.deepEqual(rules(res, 'T2'), ['art']);
+  assert.deepEqual(rules(res, 'T1'), []);
+});
+
+test('tier set: a tier set that is not in card_sets is a defect of that set; a card with no tier set is unchanged', () => {
+  const db = { sets: [{ id: 'T1', pullable: false }], cards: [
+    { key: 'old', rarity: 'normal', set_id: 'T1', set_number: 1, image_url: 'u' },
+    { key: 'old', rarity: 'illustrated_rare', set_id: 'T1', set_number: 2, image_url: 'u' }] };
+  assert.ok(rules(checkSets({ cards: [s1Card()], vocab, db }), 'T2').includes('set-db'));
+  const plain = checkSets({ cards: [card('a'), card('b')], vocab, db: dbOk() });
+  assert.deepEqual(plain.sets.map((x) => [x.id, x.cards, x.defects ?? x.findings.length]), [['T1', 2, 0]]);
+});
+
+test('tier set: a tier set equal to the home set is the home set', () => {
+  const c = card('a', { tierDetails: { gold: { set: 'T1' } } });
+  const res = checkSets({ cards: [c], vocab, db: dbOk() });
+  assert.deepEqual(res.sets.map((x) => x.id), ['T1']);
+  assert.equal(res.defects, 0);
 });

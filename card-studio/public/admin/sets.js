@@ -53,7 +53,10 @@ const field = (lbl, input, note) => h('label', { class: 'cs-field' }, h('span', 
 // datetime-local <-> the ISO time of the database (the admin's own time zone in the field).
 const toLocal = (iso) => { if (!iso) return ''; const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
 const fromLocal = (v) => (v ? new Date(v).toISOString() : null);
-const homeCards = (id) => cards.filter((c) => c.set === id);
+// The tiers of a card that are printed in set `id` (a tier has its own set, or the home set: src/tier-set.js).
+const tiersInSet = (c, id) => (c.finishes || []).filter((f) => (((c.slots || []).find((x) => x.slot === f) || {}).set || c.set) === id);
+// The cards of a set: the cards whose home set it is, and the cards of another set that have a tier of their own in it.
+const homeCards = (id) => cards.filter((c) => c.set === id || tiersInSet(c, id).length > 0);
 // One set per season (set_season_one_set.sql): cards_set_rules gives a card with no set the ONE set of its season.
 const nextSeason = () => Math.max(0, ...data.sets.map((s) => s.season)) + 1;
 const seasonOwner = (season, self) => data.sets.find((s) => s.season === season && s.id !== self) || null;
@@ -181,9 +184,9 @@ function setPage(main, id) {
 
   // Home cards
   const home = homeCards(id);
-  const hc = panel(`Home cards (${home.length})`, 'Printed and numbered in this set (cards.json "set").', 'st-home');
+  const hc = panel(`Home cards (${home.length})`, 'Printed and numbered in this set: cards of this home set, and cards of other sets that have a tier of their own here (marked "from").', 'st-home');
   hc.body.append(h('div', { class: 'cs-row' }, h('a', { class: 'btn primary', id: 'st-newcard', href: `#/cards?new=${encodeURIComponent(id)}` }, icon('plus'), 'New card in this set')),
-    home.length ? h('div', { class: 'cs-grid st-cards' }, ...home.map((c) => cardTile(c))) : h('p', { class: 'empty' }, 'No card in this set yet.'));
+    home.length ? h('div', { class: 'cs-grid st-cards' }, ...home.map((c) => cardTile(c, null, tiersInSet(c, id)))) : h('p', { class: 'empty' }, 'No card in this set yet.'));
 
   // The pool
   const keys = poolKeys(id);
@@ -214,11 +217,11 @@ function setPage(main, id) {
   renderFind();
 }
 
-function cardTile(c, extra) {
+function cardTile(c, extra, tiers = c.finishes || []) {
   return h('div', { class: `cs-tile${c.pushed ? ' live' : ''}` },
     h('a', { class: 'cs-tname', href: `#/cards/${encodeURIComponent(c.id)}` }, c.name),
     c.set && c.set !== cur.id ? h('span', { class: 'cs-from' }, `from ${c.set}`) : null,
-    h('span', { class: 'cs-tstatus' }, `${(c.finishes || []).length} tier${(c.finishes || []).length === 1 ? '' : 's'}`, c.pushed ? h('span', { class: 'cs-live' }, 'Live') : h('span', { class: 'cs-note' }, 'not live')),
+    h('span', { class: 'cs-tstatus' }, `${tiers.length} tier${tiers.length === 1 ? '' : 's'}`, c.pushed ? h('span', { class: 'cs-live' }, 'Live') : h('span', { class: 'cs-note' }, 'not live')),
     extra || null);
 }
 
