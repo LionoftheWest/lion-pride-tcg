@@ -93,7 +93,7 @@ Table. [combat] One row (id 1): the alias map and the canonical element list tha
 
 ### passives
 
-Table. [combat] The one list of boss and foe passives (f3_elements_passives.sql, F-3): key, label, ord (the order in the pools), on_boss, on_foe, counter (a boss gets at most one, at random), phase2 (a boss can gain it in phase 2) and params (the balance keys that the passive reads, checked on write). passives_for and passive_label read it: spawn_hunt, hunt_attack and dungeon_make_foe. The code that does the effect of a passive is still in the fight functions. Server only.
+Table. [combat] The one list of boss and foe passives (f3_elements_passives.sql, F-3): key, label, ord (the order in the pools), on_boss, on_foe, counter (a boss gets at most one, at random), phase2 (a boss can gain it in phase 2) and params (the balance keys that the passive reads, checked on write; for a counter passive also its counters, read by combat_effect: f3_effect_engine.sql). passives_for and passive_label read it: spawn_hunt, hunt_attack and dungeon_make_foe. The code of the other passives is still in the fight functions. Server only.
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
@@ -104,7 +104,7 @@ Table. [combat] The one list of boss and foe passives (f3_elements_passives.sql,
 | `on_foe` | boolean | not null | `false` | True when a Dungeon foe can have it (dungeon_make_foe). |
 | `counter` | boolean | not null | `false` | True for a counter passive: a boss gets at most one, chosen at random after the main passives. |
 | `phase2` | boolean | not null | `false` | True when a boss can gain it in phase 2 (below boss_moves.phase2_at HP). |
-| `params` | jsonb | not null | `'{}'::jsonb` | {"balance": "<balance key>", "keys": [...]}: the balance numbers that the passive reads. The trigger checks that each one exists. |
+| `params` | jsonb | not null | `'{}'::jsonb` | {"balance": "<balance key>", "keys": [...], "counters"?: {...}}: the balance numbers that the passive reads (the trigger checks that each one exists). counters (a counter passive only, f3_effect_engine.sql): mult {"<ability_kinds.counter_key>": "<leaf>"} (a support of that kind works at x the number), remove_part "<leaf>" (remove_status removes only that share of a curse), status_fail {"stun": "<leaf>"} (the stun fails with that chance). combat_effect reads them. |
 | `updated_at` | timestamp with time zone | not null | `now()` | The last change of the row. |
 
 - Primary key: `PRIMARY KEY (key)`
@@ -304,7 +304,7 @@ F-3: the label of a passive (passives.label).
 - Returns: `trigger`
 - Security definer: no
 
-F-3: the trigger of passives: checks that params names numbers that balance has, and sets updated_at.
+The trigger of passives: params is {} or {"balance": "<key>", "keys": [...], "counters"?: {...}}; each key is a number of that balance key. counters (a counter passive only, f3_effect_engine.sql): mult {"<ability_kinds.counter_key>": "<leaf>"}, remove_part "<leaf>", status_fail {"stun": "<leaf>"}, each leaf one of keys.
 
 <a id="fn-passives-for-text"></a>
 

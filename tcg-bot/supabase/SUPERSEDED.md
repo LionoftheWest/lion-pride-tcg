@@ -63,7 +63,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `events.sql` | SUPERSEDED: reverts `public.admin_event_save(jsonb, timestamp with time zone, text, text)` (live = `event_vars.sql`); reverts `public.event_pay(bigint, text, timestamp with time zone)` (live = `hunt_calendar.sql`); reverts `public.event_row_errors(events)` (live = `hunt_calendar.sql`); reverts `public.event_shape_errors(text, jsonb, jsonb, jsonb)` (live = `hunt_calendar.sql`); reverts `public.event_step(bigint, timestamp with time zone)` (live = `hunt_calendar.sql`); reverts cron job `event-tick` (schedule '*/10 * * * *', live '* * * * *') (live = `event_vars.sql`) |  |
 | `f2_set_not_season.sql` | SUPERSEDED: reverts `public.dungeon_attack(text, bigint, integer, text)` (live = `f3_element_bonus.sql`) | a re-run stops at an error today: f2_set_not_season.sql: the live dungeon_attack(text, bigint, integer, text) changed since this file was built. Rebuild it from the live text. |
 | `f3_element_bonus.sql` | SUPERSEDED: reverts `public.balance_check_combat()` (live = `f3_auto_elements.sql`) |  |
-| `f3_elements_passives.sql` | SUPERSEDED: reverts `public.dungeon_make_foe(text, integer, integer, text)` (live = `dungeon_new_player_balance.sql`); reverts `public.elements_list()` (live = `f3_elements_beats.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `f2_set_not_season.sql`) | a re-run stops at an error today: f3_elements_passives.sql: the live public.dungeon_make_foe(text, integer, integer, text) changed since this file was built. Rebuild it from the live text. |
+| `f3_elements_passives.sql` | SUPERSEDED: reverts `public.dungeon_make_foe(text, integer, integer, text)` (live = `dungeon_new_player_balance.sql`); reverts `public.elements_list()` (live = `f3_elements_beats.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `f2_set_not_season.sql`); reverts `public.passives_check()` (live = `f3_effect_engine.sql`) | a re-run stops at an error today: f3_elements_passives.sql: the live public.dungeon_make_foe(text, integer, integer, text) changed since this file was built. Rebuild it from the live text. |
 | `f3_one_combat_math.sql` | SUPERSEDED: reverts `public.combat_card_facts(text[], text[])` (live = `f3_elements_passives.sql`); reverts `public.combat_element_map()` (live = `f3_elements_passives.sql`); reverts `public.combat_weak(jsonb, jsonb, text, text, text, text[], integer)` (live = `f2_set_not_season.sql`); reverts `public.hunt_card_crits(text, bigint)` (live = `f2_set_not_season.sql`); reverts `public.hunt_pick_pool(text, bigint, bigint[])` (live = `f2_set_not_season.sql`) | a re-run stops at an error today: f3_one_combat_math.sql: the live public.combat_weak(jsonb, jsonb, text, text, text, text[], integer) changed since this file was built (md5 1069a7ba258f37745c526f4d90c3b497). Rebuild it from the live  |
 | `fix_last_copy_remove.sql` | SUPERSEDED: reverts `public.remove_card_from_player(text, bigint)` (live = `card_ledger.sql`) |  |
 | `game_vars_all.sql` | SUPERSEDED: reverts `public.buy_shop_item(text, text, integer, bigint, integer)` (live = `stat_reset_gift.sql`); reverts `public.shop_today(text)` (live = `stat_reset_gift.sql`) | a re-run stops at an error today: game_vars_all.sql: the live public.shop_today(text) changed since this file was built. Rebuild it from the live text. |
@@ -151,7 +151,7 @@ These files have a statement that cannot run in a rolled-back transaction. Read 
 
 A file runs as one transaction, so an error rolls the whole file back.
 
-## No structure change, but a re-run writes rows (37)
+## No structure change, but a re-run writes rows (38)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -175,6 +175,7 @@ a one-time grant or a settings value would run again.
 - `effects_spread.sql`: effect_primitives, subjects (DO block)
 - `f3_ability_kinds.sql`: ability_kinds (DO block)
 - `f3_auto_elements.sql`: balance
+- `f3_effect_engine.sql`: passives
 - `f3_element_bonus_125.sql`: balance, set_config()
 - `f3_elements_decisions.sql`: element_counters, element_counters (DO block), elements (DO block)
 - `f3_stat_labels.sql`: balance
