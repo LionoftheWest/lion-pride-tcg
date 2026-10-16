@@ -10,15 +10,20 @@
  *      dungeon_fight_state), combat_effect, the apply function (hunt_effect_apply / dungeon_effect_apply), and for an attack combat_crit_chance_mods +
  *      combat_hit_core; keep the same three things; undo;
  *   4. compare the two as TEXT. Every case must be equal.
- * The NEW function is the LIVE text of the old function (db/schema/functions/<name>.sql, its md5 checked against the database) with only the effect
- * lines replaced (VARIANTS below; a replace that finds nothing is an error). It lives in pg_temp, inside the rolled-back block: nothing calls the engine.
- * The migration text is executed in each request (so the test passes before and after the file is applied).
+ * The Hunt: the NEW function is the LIVE text of the old function (db/schema/functions/<name>.sql, its md5 checked against the database) with only the
+ * effect lines replaced (VARIANTS below; a replace that finds nothing is an error). It lives in pg_temp, inside the rolled-back block.
+ * The Dungeon and the Gauntlet (PR 4c, f3_engine_dungeon.sql): the NEW function is the public function after the 4c file ran in the request (the switch);
+ * the OLD function is the text before 4c (test-effect-shadow.base.sql, as pg_temp.o_<name>). So BASE = the live text before 4c and CANDIDATE = the 4c
+ * file, before and after the 4c file is applied.
+ * The migration texts (the 4b file, then the 4c file) are executed in each request (so the test passes before and after the files are applied).
+ * A mutation changes the last of the two texts that has its anchor (the engine function that the request installs at the end).
  *
  * LOCAL copy only:
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-effect-shadow.mjs            must PASS (prints the case count)
  *   MUTATE=<name> ...                                                                             must FAIL (a planted engine change)
  *   MUTATE=all ...                                                                                the baseline, then every mutation (one line each)
- *   MIG=<file.sql>  another migration text. SHADOW_BATCH=<n> cases in one request (default 600; each request stays under 55 s).
+ *   MIG=<file.sql>  another 4b text. MIG2=<file.sql> another 4c text (MIG2= with no file: no 4c text, the Dungeon compares the old text with the live
+ *   one). SHADOW_BATCH=<n> cases in one request (default 600; each request stays under 55 s).
  * Each request takes the shared lock when LAB_LOCK_OWNER is set (lab-lib.mjs).
  */
 import { runBlock, rawQuery, assertLocal } from './lab-lib.mjs';
@@ -38,6 +43,12 @@ const MUT = {
   stun_plus_1: ['      if not v_fail then', "v_until := v_round + public.combat_effect_value(v_step->'rounds', v_env)::int;", "v_until := v_round + public.combat_effect_value(v_step->'rounds', v_env)::int + 1;"],
   cleanse_keeps_poison: ['-- the Dungeon and the Gauntlet (1.4 item 5)', `'{"psn": 0, "psnu": -1}'::jsonb`, "'{}'::jsonb"],
   matched_skipped: ["elsif r = 'matched_x' then", "continue when not coalesce((p_env->>'matched')::boolean, false);", 'continue;'],
+  // 4c (f3_engine_dungeon.sql): the fast paths
+  lifesteal_skipped: ['  -- on_hit (lifesteal as data)', "coalesce(v_facts->(p_card::text)->'hit_on' ? 'on_hit', true)", 'false'],
+  empower_kept: ["  if p_on = 'after_attack' then", `v_cset := coalesce(v_cset, '{}'::jsonb) || '{"buff": 1}'::jsonb;`, 'null;'],
+  target_tags_lost: ['create or replace function public.dungeon_fight_state_info', "then v_facts->v_t->'tags'", "then '[]'::jsonb"],
+  target_owner_skipped: ['create or replace function public.dungeon_fight_state_info', 'and pc.quantity > 0) end)', 'or true) end)'],
+  hit_on_wrong: ['create or replace function public.dungeon_fight_state_info', "st2->>'on' in ('before_hit', 'on_hit', 'after_attack')", "st2->>'on' in ('on_hit', 'after_attack')"],
 };
 if (process.env.MUTATE === 'all') {
   let ok = true;
@@ -55,13 +66,19 @@ if (process.env.MUTATE === 'all') {
   console.log(ok ? 'mutations: baseline PASS, all caught' : 'mutations: FAIL');
   process.exit(ok ? 0 : 1);
 }
+// The 4c file (f3_engine_dungeon.sql; MIG2=<file.sql> for another text) runs after the 4b file in each request: it replaces engine functions of 4b and
+// switches the Dungeon. A mutation changes the LAST of the two texts that has its anchor (the engine function that is installed at the end).
+let mig2 = process.env.MIG2 === '' ? '' : readFileSync(process.env.MIG2 || here('../../tcg-bot/supabase/f3_engine_dungeon.sql'), 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
 if (process.env.MUTATE) {
   const m = MUT[process.env.MUTATE];
-  const s = m && mig.indexOf(m[0]); const i = s >= 0 ? mig.indexOf(m[1], s) : -1;
-  if (!m || s < 0 || i < 0) throw new Error(`the mutation ${process.env.MUTATE} does not match the migration`);
-  mig = mig.slice(0, i) + m[2] + mig.slice(i + m[1].length);
+  if (!m) throw new Error(`no mutation ${process.env.MUTATE}`);
+  const at = (t) => { const s = t.indexOf(m[0]); const i = s >= 0 ? t.indexOf(m[1], s) : -1; return i; };
+  const put = (t, i) => t.slice(0, i) + m[2] + t.slice(i + m[1].length);
+  if (mig2 && at(mig2) >= 0) mig2 = put(mig2, at(mig2));
+  else if (at(mig) >= 0) mig = put(mig, at(mig));
+  else throw new Error(`the mutation ${process.env.MUTATE} does not match the migrations`);
 }
-for (const d of ['$m$', '$v$', '$t$', '$g$x']) if (mig.includes(d)) throw new Error(`the migration must not contain ${d}`);
+for (const d of ['$m$', '$v$', '$t$', '$g$x']) if (mig.includes(d) || mig2.includes(d)) throw new Error(`the migrations must not contain ${d}`);
 
 // ------------------------------------------------------------------------------------------------ the NEW functions (the live text + the engine)
 const live = (name) => {
@@ -148,51 +165,26 @@ const VARIANTS = [
   v_buff := coalesce((select (c->'set'->>'buff')::numeric from jsonb_array_elements(v_eng->'changes') c where c->>'op' = 'card' and (c->>'id')::bigint = p_card), v_buff);
 `, 'hunt_attack');
   }),
-  variant('dungeon_support', (t) => replaceRegion(t, '  if v_aff is not null then\n    select count(*) into v_affc', "  st := jsonb_set(st, array['cards', p_card::text, 'cd'], to_jsonb(v_round + v_cd));\n", String.raw`  v_fight := dungeon_fight_state(r, p_card, p_target_card);
-  v_eng := combat_effect(v_fight, p_card, 'use', jsonb_build_object('target_card', p_target_card, 'target_foe', p_target_foe));
-  if not (v_eng->>'ok')::boolean then return v_eng; end if;
-  v_l := v_eng->'log';
-  v_amt := (v_l->>'amount')::numeric; v_matched := (v_l->>'matched')::boolean; v_affc := (v_l->>'aff_count')::int; v_scale := (v_l->>'scale')::numeric;
-  v_t := (v_l->>'target_foe')::int;
-  v_st0 := st;
-  st := dungeon_effect_apply(st, v_eng->'changes');
-  if v_l->>'side' = 'card' then
-    tc := st->'cards'->p_target_card::text;
-    v_log := dungeon_hp_event('support', v_eff, p_card, p_target_card, null, v_round, 'card', v_l->>'dir',
-      (tc->>'hp')::int - (v_st0->'cards'->p_target_card::text->>'hp')::int, tc, jsonb_build_object('applied', v_l->'applied'));
-  elsif v_l->>'side' = 'foe' then
-    f := st->'foes'->v_t;
-    v_log := dungeon_hp_event('support', v_eff, p_card, null, v_t, v_round, 'foe', v_l->>'dir',
-      (v_st0->'foes'->v_t->>'hp')::int - (f->>'hp')::int, f, jsonb_build_object('applied', v_l->'applied', 'until', v_l->'until'));
-    if (f->>'hp')::int <= 0 then kill := dungeon_after_kill(r, st); st := kill->'state'; end if;
-  else
-    v_log := dungeon_hp_event('support', v_eff, p_card, null, null, v_round, null, null, 0, null, null);
-  end if;
-`, 'dungeon_support', { keepEnd: true })),
-  variant('dungeon_attack', (t) => {
-    t = replaceRegion(t, "  v_crit := combat_crit_chance((wk->>'wm')::int > 0, v_aeff, v_aamt, v_cmb);\n",
-      "card_element(v_tags), f->>'element');   -- f3_element_bonus.sql: the element chart (the Gauntlet plays through this function too)\n", String.raw`  v_fight := dungeon_fight_state(r, p_card, null);
-  v_eng := combat_effect(v_fight, p_card, 'before_hit', jsonb_build_object('target_foe', v_t));
-  v_crit := combat_crit_chance_mods((wk->>'wm')::int > 0, v_eng->'mods', v_cmb);
-  hit := combat_hit_core((v_cmb->>'cp')::int, (wk->>'mult')::numeric, (c->>'buff')::numeric, (c->>'debuff')::numeric, (sq->>'synmult')::numeric,
-    v_crit, combat_miss('shrouded' = any(v_pl)), 'armored' = any(v_pl) and 'trait:melee' = any(v_tags),
-    case when (f->>'exu')::int >= v_round and (f->>'ex')::numeric > 0 then (f->>'ex')::numeric else 0 end,
-    v_eng->'mods', combat_element(card_element(v_tags), f->>'element'));
-`, 'dungeon_attack');
-    return replaceRegion(t, "  if v_aeff = 'lifesteal' and v_dmg > 0 then\n", "  st := jsonb_set(st, array['cards', p_card::text, 'buff'], '1');\n", String.raw`  v_eng := combat_effect(v_fight || jsonb_build_object('cards', st->'cards', 'enemies', st->'foes'), p_card, 'on_hit', jsonb_build_object('dealt', v_dmg, 'target_foe', v_t));
-  if v_eng->'log'->>'heal' is not null then
-    v_heal := (v_eng->'log'->>'heal')::int;
-    st := dungeon_effect_apply(st, v_eng->'changes');
-    v_log := v_log || dungeon_hp_event('effect', v_eng->'log'->>'effect', p_card, p_card, v_t, v_round, 'card', 'heal',
-      (st->'cards'->p_card::text->>'hp')::int - (c->>'hp')::int, st->'cards'->p_card::text, jsonb_build_object('raw', v_heal));
-  end if;
-  v_eng := combat_effect(v_fight, p_card, 'after_attack', '{}'::jsonb);
-  st := dungeon_effect_apply(st, v_eng->'changes');
-`, 'dungeon_attack');
-  }),
+  // The Dungeon and the Gauntlet (PR 4c): the NEW side is the live function after the 4c file ran in the request (public.dungeon_support,
+  // public.dungeon_attack); the OLD side is the text before 4c (test-effect-shadow.base.sql, in pg_temp as o_<name>). See OLD_BASE below.
 ];
 
-// SHADOW_WRITE_VARIANTS=<file.sql>: write the four NEW functions as public replacements (a preview of the 4c / 4d switch for fight-timing.mjs
+// OLD_BASE: the Dungeon functions before 4c (test-effect-shadow.base.sql) as pg_temp.o_<name>. The old dungeon_attack calls the old combat_hit_elem
+// (the 4c file replaces the public one), so that call goes to pg_temp.o_combat_hit_elem.
+const OLD_BASE = (() => {
+  const t = readFileSync(here('test-effect-shadow.base.sql'), 'utf8').replace(/\r/g, '');
+  const out = [];
+  for (const m of t.matchAll(/^-- @function (\w+) md5 [0-9a-f]{32}\n(CREATE OR REPLACE FUNCTION public\.\w+\([\s\S]*?\$function\$;)/gm)) {
+    let f = replaceOnce(m[2], `CREATE OR REPLACE FUNCTION public.${m[1]}(`, `CREATE FUNCTION pg_temp.o_${m[1]}(`, `o_${m[1]}`);
+    if (m[1] === 'dungeon_attack') f = replaceOnce(f, 'hit := combat_hit_elem(', 'hit := pg_temp.o_combat_hit_elem(', 'o_dungeon_attack');
+    if (f.includes('$v$')) throw new Error(`o_${m[1]}: contains $v$`);
+    out.push(f);
+  }
+  if (out.length !== 3) throw new Error(`test-effect-shadow.base.sql: 3 functions expected, ${out.length} found`);
+  return out;
+})();
+
+// SHADOW_WRITE_VARIANTS=<file.sql>: write the NEW Hunt functions as public replacements (a preview of the 4d switch for fight-timing.mjs
 // CANDIDATE=...; never applied) and stop.
 if (process.env.SHADOW_WRITE_VARIANTS) {
   const { writeFileSync } = await import('node:fs');
@@ -269,8 +261,8 @@ begin
     if c->>'fn' = 'support' then return case when eng then pg_temp.e_hunt_support(p, ref, v_card, v_tgt) else hunt_support(p, ref, v_card, v_tgt) end; end if;
     return case when eng then pg_temp.e_hunt_attack(p, ref, v_card) else hunt_attack(p, ref, v_card) end;
   end if;
-  if c->>'fn' = 'support' then return case when eng then pg_temp.e_dungeon_support(p, v_card, v_tgt, v_foe, v_mode) else dungeon_support(p, v_card, v_tgt, v_foe, v_mode) end; end if;
-  return case when eng then pg_temp.e_dungeon_attack(p, v_card, v_foe, v_mode) else dungeon_attack(p, v_card, v_foe, v_mode) end;
+  if c->>'fn' = 'support' then return case when eng then dungeon_support(p, v_card, v_tgt, v_foe, v_mode) else pg_temp.o_dungeon_support(p, v_card, v_tgt, v_foe, v_mode) end; end if;
+  return case when eng then dungeon_attack(p, v_card, v_foe, v_mode) else pg_temp.o_dungeon_attack(p, v_card, v_foe, v_mode) end;
 end $g$;
 
 -- What a call changed: the answer, the rows of the fight, the log rows (no id, no sequence value).
@@ -493,6 +485,8 @@ begin
   ${md5Checks}
   ${installHelpers()}
   execute $m$${mig}$m$;
+  ${mig2 ? `execute $m$${mig2}$m$;` : ''}
+  ${OLD_BASE.map((f) => `execute $v$${f}$v$;`).join('\n  ')}
   ${VARIANTS.map((v) => `execute $v$${v.text}$v$;`).join('\n  ')}
   ${CASE_SQL}
   perform pg_temp.lab_member(v_p, array[${ids.join(',')}]::bigint[], '{}'::jsonb, false);
@@ -533,6 +527,35 @@ for (let i = 0; i < cases.length; i += BATCH) {
   total += out.n; fail += out.fail; err += out.err; shown.push(...out.fails);
   for (const [k, v] of Object.entries(out.cov || {})) cov[k] = (cov[k] || 0) + v;
   if ((out.fail || out.err) && process.env.MUTATE) break;   // a mutation run stops at the first difference
+}
+// combat_hit_elem (4c: the hit mods from the engine): the old text against the new one over a grid (every attack effect, an unknown one and none;
+// the target HP below and above the execute threshold; the element chart; a NULL amount; several seeds), compared as text.
+if (mig2 && !process.env.SHADOW_ONLY) {
+  const he = JSON.parse(await runBlock(`${PLAN}
+do $t$
+declare n int := 0; nd int := 0; nnull int := 0; a text; o jsonb; w jsonb; sd float8; hp bigint; el text[]; amt numeric; first text;
+begin
+  execute $m$${mig}$m$;
+  execute $m$${mig2}$m$;
+  ${OLD_BASE.map((f) => `execute $v$${f}$v$;`).join('\n  ')}
+  foreach a in array array['', 'focus', 'pierce', 'execute', 'rampage', 'lifesteal', 'smite', 'nothing'] loop
+    foreach hp in array array[10, 49, 51, 100]::bigint[] loop
+      foreach amt in array array[0.3, 1, null]::numeric[] loop
+        for el in select x from (values (array[null, null]::text[]), (array['lightning', 'water']), (array['water', 'lightning']), (array['fire', 'fire'])) v(x) loop
+          foreach sd in array array[0.11, -0.42, 0.77, 0.3, -0.9]::float8[] loop
+            perform setseed(sd); o := pg_temp.o_combat_hit_elem(100, 1.2, 1.1, 0.9, 1.05, 0.3, 0.1, nullif(a, ''), amt, 0.5, a = 'pierce', 0.2, hp, 100, el[1], el[2]);
+            perform setseed(sd); w := public.combat_hit_elem(100, 1.2, 1.1, 0.9, 1.05, 0.3, 0.1, nullif(a, ''), amt, 0.5, a = 'pierce', 0.2, hp, 100, el[1], el[2]);
+            n := n + 1;
+            if o::text is distinct from w::text then if amt is null and a = 'execute' and hp < 50 then nnull := nnull + 1; else nd := nd + 1; if first is null then first := format('%s hp %s amt %s el %s seed %s: OLD %s NEW %s', a, hp, amt, el, sd, o, w); end if; end if; end if;
+          end loop;
+        end loop;
+      end loop;
+    end loop;
+  end loop;
+  raise exception 'RESULT:%', jsonb_build_object('n', n, 'diff', nd, 'nnull', nnull, 'first', first)::text;
+end $t$;`));
+  console.log(`combat_hit_elem old vs new: ${he.n} calls, ${he.diff} different, ${he.nnull} with execute + a NULL amount below the threshold${he.first ? `\n  ${he.first}` : ''}`);
+  if (he.diff || !he.n) fail += 1;
 }
 for (const f of shown.slice(0, 3)) {
   console.log(`\nCASE ${f.case.tag} seed ${f.case.seed}\n  ${JSON.stringify(f.case).slice(0, 600)}`);
