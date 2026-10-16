@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const FILE = join(here, '..', 'cards.json');
+const FILE = process.env.CARDS_FILE || join(here, '..', 'cards.json'); // CARDS_FILE: a test uses its own file
 
 // The PVE type of a card (subjects.type, NOT NULL since card_decisions.sql). card.type wins; a card made in
 // the portal has only tags.type (lower case, set by Card Info), so that one counts too. Anything else = null.
@@ -58,6 +58,9 @@ export function slotDetails(card, slot) {
     season: d.season ?? card.season ?? 'Season 1',
     event: d.event ?? card.event ?? '',
     tradeable,
+    // The tier's OWN set (card.tierDetails[slot].set), or null = the card's home set. Named tierSet, not set, so
+    // that { ...card, ...slotDetails() } never replaces the home set of the card (src/tier-set.js).
+    tierSet: d.set || null,
   };
 }
 

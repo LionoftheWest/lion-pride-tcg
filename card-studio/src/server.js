@@ -19,6 +19,7 @@ import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPubl
 import { getFrame, setFrame } from './frames.js';
 import { getArtist, setArtist } from './artists.js';
 import { getSource, setSource } from './artsources.js';
+import { checkTierSetChange, homeLiveSet, tierSetOrNull } from './tier-set.js';
 import { getCards, getCard, addCard, updateCard, deleteCard, slotDetails, setSlotDetails, subjectType, isSetId } from './cardstore.js';
 
 // Injected into a card render when ?edit=1: drag to pan, scroll to zoom, and
@@ -137,7 +138,8 @@ app.get('/api/cards', async (req, res) => {
         hasArt: Boolean(resolveArtFile(c.id, slot)),
         artist: getArtist(c.id, slot),
         source: getSource(c.id, slot),
-        details: slotDetails(c, slot), // per-tier subject / description / season / event
+        details: slotDetails(c, slot), // per-tier subject / description / season / event / own set (tierSet)
+        set: tierSetOrNull(c, slot), // the set this tier is printed in: its own set, else the home set
       }));
       const arted = slots.filter((s) => s.hasArt).length;
       const isLive = pushed.has(c.id);
@@ -274,9 +276,9 @@ app.put('/api/cards/:id/set', async (req, res) => {
   const { data: subject } = await supabase.from('subjects').select('id').eq('key', c.id).maybeSingle();
   let liveSet = null;
   if (subject) {
-    const { data: rows, error: re } = await supabase.from('cards').select('set_id').eq('subject_id', subject.id).limit(1);
+    const { data: rows, error: re } = await supabase.from('cards').select('rarity, set_id').eq('subject_id', subject.id);
     if (re) return res.status(502).json({ error: 'Could not reach the game database: ' + re.message });
-    liveSet = rows?.[0]?.set_id || null;
+    liveSet = homeLiveSet(c, rows); // the tiers with their own set do not count (a tier in another set is not the home set)
   }
   // setMoveFrom: the live set the card leaves (cleared when it goes back, or after the push that moves it).
   const card = updateCard(c.id, { set, setMoveFrom: liveSet && liveSet !== set ? liveSet : undefined, updatedAt: Date.now() });
@@ -381,8 +383,15 @@ app.post('/api/details/:id/:slot', async (req, res) => {
   const c = cardById(req.params.id);
   if (!c) return res.status(404).json({ error: 'no card' });
   const slot = req.params.slot;
-  const { genre, lore, season, event } = req.body || {};
+  const { genre, lore, season, event, set } = req.body || {};
   const patch = {};
+  // A set for this tier (src/tier-set.js): '' or the home set clears it (the tier follows the card). A tier that is live in
+  // another set is refused: a push does not move it.
+  if (set !== undefined) {
+    const chk = await checkTierSetChange({ db: supabase, card: c, slot, set });
+    if (!chk.ok) return res.status(chk.status).json({ ok: false, error: chk.error });
+    patch.set = chk.value ?? undefined; // undefined: the key is not written to cards.json
+  }
   if (genre !== undefined) patch.genre = String(genre).trim();
   if (lore !== undefined) patch.lore = String(lore).trim();
   if (season !== undefined) patch.season = String(season).trim();
