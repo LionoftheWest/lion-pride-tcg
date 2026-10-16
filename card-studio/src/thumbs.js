@@ -18,6 +18,13 @@ export const gridObject = (object) => `grid/${base(object)}.webp`;
 /** cards/<name>.<ext> -> reveal/cards/<name>.webp (animated cards only) */
 export const revealObject = (object) => `reveal/${base(object)}.webp`;
 
+// The sharp WebAssembly build (the one this Windows install loads) returns a view of its
+// SharedArrayBuffer memory. fetch() does not send that as bytes: it sends String(buffer), the
+// bytes read as UTF-8 text, so every thumbnail uploaded since the build changed was broken
+// (2026-10-16: 22 thumbnails of the cards pushed on 2026-10-15). own() copies the bytes into
+// normal memory.
+const own = (b) => (b && b.buffer instanceof SharedArrayBuffer ? Buffer.from(b) : b);
+
 /** The thumbnails for one card image: { grid, reveal (null for a still card), animated }. */
 export async function makeThumbs(buffer) {
   const pages = (await sharp(buffer, { animated: true }).metadata()).pages || 1;
@@ -27,5 +34,5 @@ export async function makeThumbs(buffer) {
   const reveal = animated
     ? await sharp(buffer, { animated: true }).resize({ width: REVEAL.width, withoutEnlargement: true }).webp({ quality: REVEAL.quality, effort: 5 }).toBuffer()
     : null;
-  return { grid, reveal, animated };
+  return { grid: own(grid), reveal: own(reveal), animated };
 }
