@@ -289,3 +289,47 @@ Findings:
    several runs.
 3. A query over `unnest(<array parameter>)` joined to a table gets a generic plan that reads the whole table (352 cards), so PostgreSQL plans it again
    on every call. The old fight functions have several (for example the affinity count and the squad tags). 4d can use the same fix.
+
+## 9. PR 4d as built (2026-10-16, local copy 2 only)
+
+- `tcg-bot/supabase/f3_engine_hunt.sql`: `hunt_support` plays through `combat_effect` (use) and `hunt_effect_apply`; `hunt_attack` through
+  `combat_effect` (before_hit, on_hit, after_attack), `combat_crit_chance_mods` and `combat_hit_core`; `combat_hit` (14 args) and `combat_crit_chance`
+  (4 args) keep their signatures and get their hit mods from the engine (`hunt_hit_mods`); `hunt_card_crits` takes the crit_add mod of the engine. New:
+  `hunt_fight_state_info` (the Hunt state from the rows the caller read and one statement over the committed cards; `hunt_fight_state` calls it) and
+  `hunt_hit_mods`. `hunt_effect_apply` takes `dhp`: the boss HP as a delta of the locked `hunts` row (a loss never below 0, a gain never above `hp_max`).
+  md5 guards on the 7 functions it replaces (the live text or its own text).
+- The Hunt rules that stay: the ally target committed first with full HP, after Packet Loss (over the daily cap it gets no row); the boss row locked
+  `FOR UPDATE`; support damage credited to `hunt_hits`; `settle_hunt` and the `defeat` event on a kill; every counter passive and mark; the refusals in
+  the old order; the boons that touch the hit (rally, butterfingers, mend, launch_party, raid_crasher) as before (4g).
+- The speed work (the same answers; `fight-timing.mjs`, CANDIDATE / BASE mean):
+  1. `hunt_attack` builds the state once, after `hunt_state_round`, and reads from it what three old queries read (the cooldown of the card, the
+     stunned-card test, the combat state row). The squad tags for `combat_squad` come from the state facts (the old tags query is gone).
+  2. The facts of the committed cards: one primary key lookup for each row (a join to `cards` got a generic plan that reads every card, 8 finding 3).
+  3. `hit_on` of the attacking card is a column of the card select that `hunt_attack` already runs: `on_hit` runs only for a card with that step,
+     `after_attack` skips its loop.
+  4. `plan_cache_mode = force_generic_plan` on `hunt_fight_state_info` and `hunt_card_crits`. Each request of `fight-timing.mjs` is a new session, and
+     plpgsql makes custom plans for the first calls of each statement. All queries of these two functions are key lookups. `hunt_attack` went from
+     1.12 to 0.98 with it. `hunt_card_crits`: the old text planned its large query again on most calls even when warm (0.71 ms a call; 0.33 ms with
+     one plan).
+  5. `hunt_card_crits` runs the engine only for an attack kind with a before_hit `crit_add` step (a query with no parameter: one plan), or for every
+     ability when an enabled squad row has one.
+- Tests: `test-effect-shadow.mjs` (the Hunt OLD side is the text before 4d in `test-effect-shadow.base.sql`; the 4b `VARIANTS` and
+  `SHADOW_WRITE_VARIANTS` are gone; new cases: the stunned-card refusal, a target with a row that the member does not own; a grid compares the old and
+  the new `combat_hit`, `combat_crit_chance` and `hunt_card_crits`); `test-boss-counters-golden.mjs CANDIDATE=<file>` (the live code against the live
+  code + the file over the 128 counter fights; `--old` plants a Groan change in the candidate run); the mutations of `lab-mutations.mjs` (hunt-hit-plus-1
+  on `combat_hit_core`, the heal and shield on `combat_effect_use`) and of `test-hunt-support`, `test-smite-defeat`, `test-hunt-loop-caps`,
+  `test-boss-moves`, `test-combat-actions` follow the new text (an old file keeps its own text).
+
+Findings:
+
+1. `combat_hit` and `combat_crit_chance` with a NULL amount: the old text gives damage 1 (execute below the threshold) and a NULL crit chance (focus);
+   the engine reads the missing amount as 0 (the same as 8 finding 1). No fight function calls them after 4d. The grid counts these calls on their own
+   line (8 and 4); every other call is equal.
+2. The time rule counts the planning of new statements in a fresh session. A new statement in a fight function costs about 0.02 to 0.06 ms in
+   `fight-timing.mjs` even when it is cheap to run. Fewer statements, or one plan for key lookups, is the fix.
+3. OPEN (a shadow difference, not decided): an attacker with NO attack ability (today only the event cards Launch Day Raider 378 and Launch Day
+   Player 383). The old `combat_hit` tests `p_aeff = 'rampage' and random() < p_aamt`; with a NULL effect SQL must evaluate `random()`, so the old
+   code draws one extra number after each hit that is not a miss. The engine draws none. The hit is the same; the boss turn after it uses other random
+   numbers. The shadow cases "attack no ability" show it: Hunt 9 of 10 different, Dungeon 5 of 5, Gauntlet 5 of 5 (so the live 4c already plays the
+   Dungeon and the Gauntlet this way). The quick Lab shows it too (the two cards: 608.77 before, 303.92 after; 4 seeds). Nathan decides: keep the old
+   extra draw for a card with no attack ability (Hunt and Dungeon), or accept the new random order for these two cards.

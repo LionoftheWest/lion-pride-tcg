@@ -20,7 +20,8 @@ const mig = baseline || live ? 'select 1' : readFileSync(process.argv[2] || new 
 const ATK = 'public.hunt_attack(text,bigint,bigint)', SUP = 'public.hunt_support(text,bigint,bigint,bigint)';
 const MUT = mutation({
   downheal: [SUP, "  if coalesce(v_sdown, false) then return", '  if false then return'],
-  stunimm: [SUP, '    if combat_stun_immune(v_stun_until, v_round) then', '    if false then'],
+  // F-3 4d (f3_engine_hunt.sql): with --live the stun immunity is a step rule of the engine (combat_effect_use); a file keeps its own text
+  stunimm: live ? ['public.combat_effect_use(jsonb,bigint,jsonb)', "      if public.combat_stun_immune((v_fe->>'st')::int, v_round) then", '      if false then'] : [SUP, '    if combat_stun_immune(v_stun_until, v_round) then', '    if false then'],
   roundcap: [ATK, 'and hit_date = v_day), 0) >= v_rcap then', 'and hit_date = v_day), 0) >= v_rcap + 100 then'],
   supcap: [SUP, '  if v_round >= v_rcap then return', '  if false then return'],
 });

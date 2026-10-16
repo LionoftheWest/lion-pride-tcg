@@ -10,6 +10,12 @@
  *                                                           fights that use it must change
  *   node scripts/test-boss-counters-golden.mjs --old        the baseline: the old code against itself with ONE number
  *                                                           changed in code (Groan waits 5, not 4): must FAIL
+ *   CANDIDATE=<file.sql> node scripts/test-boss-counters-golden.mjs
+ *                                                           the LIVE code (the installed functions and balance) against the
+ *                                                           live code + the file (F-3 PR 4d: f3_engine_hunt.sql), the same
+ *                                                           fights; the live code also plays twice (repeatable). With a
+ *                                                           candidate, --old plants the Groan change in the candidate run
+ *                                                           (hunt_counter_act of the live text): must FAIL
  * The fights (24 rounds each, a fixed seed, every support plays in turn, then an attack):
  *   real     the 12 model bosses with their real pools, shares and weights (2 seeds each)
  *   move     one private boss whose pool is one move (Crush: + Shatter, Nightshade: + Desync) at share 1 (2 seeds, 48 moves)
@@ -174,6 +180,52 @@ const parse = (txt) => {
 };
 
 const all = FIGHTS.map((_, i) => i + 1);
+// CANDIDATE=<file.sql> (F-3 PR 4d): the live code against the live code + the file. The fights use the new code path (the test pools in balance
+// boss_counters). --old with a candidate: the Groan wait of the live hunt_counter_act is changed in the candidate run (must FAIL).
+let candSql = process.env.CANDIDATE ? readFileSync(process.env.CANDIDATE, 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '') : '';
+if (candSql && OLDRUN) {
+  const s = readFileSync(fileURLToPath(new URL('../../db/schema/functions/hunt_counter_act.sql', import.meta.url)), 'utf8').replace(/\r/g, '');
+  const f = s.slice(s.indexOf('CREATE OR REPLACE FUNCTION'), s.indexOf('$function$;') + 11);
+  const a = "perform hunt_counter_cd(p_hunt, p_player, p_day, 'heal', hunt_counter_num('groan', 'wait')::int, p_round);";
+  if (f.split(a).length !== 2) throw new Error('--old: the Groan line is not in the live hunt_counter_act');
+  candSql += '\n' + f.replace(a, a.replace("::int, p_round", '::int + 1, p_round'));
+}
+if (/\$(m|t|f|o)\$/.test(candSql)) throw new Error('the candidate contains $m$, $t$, $f$ or $o$');
+if (candSql && !MUTS && !process.env.DUMP) {
+  const t0 = Date.now();
+  const sums = async (inst, arr) => {
+    const r = parse(await q(block(String.raw`${inst}
+${runAll(arr, all, true)}
+  raise exception 'RESULT:%', jsonb_build_object('md5', (select jsonb_agg(md5(x) order by o) from unnest(${arr}) with ordinality u(x, o)),
+    'lines', (select sum(array_length(regexp_split_to_array(x, E'\n'), 1)) from unnest(${arr}) x),
+    'counters', (select count(*) from unnest(${arr}) x, regexp_matches(x, '"counter": "', 'g')),
+    'countered', (select count(*) from unnest(${arr}) x, regexp_matches(x, '"countered": \[', 'g')))::text;`)));
+    try { return JSON.parse(r); } catch { throw new Error('NO RESULT: ' + String(r).slice(0, 2000)); }
+  };
+  const installCand = `\n  execute $m$${candSql}$m$;`;
+  const base = await sums('', 'base');
+  const again = await sums('', 'res');
+  const cand = await sums(installCand, 'cand');
+  const firstDiff = (a, b) => a.md5.findIndex((m, k) => m !== b.md5[k]) + 1;
+  let bad = '';
+  const rep = firstDiff(base, again);
+  if (rep) bad = 'NOT REPEATABLE: the live code gives two answers at fight ' + rep + ' ' + JSON.stringify(FIGHTS[rep - 1]);
+  else {
+    const d = firstDiff(base, cand);
+    if (d) {
+      bad = 'DIFF ' + JSON.stringify(FIGHTS[d - 1]) + ': ' + parse(await q(block(String.raw`
+${runAll('base', [d], true)}
+${installCand}
+${runAll('cand', [d], true)}
+${cmp('base', 'cand', 'DIFF')}
+  raise exception 'RESULT:%', coalesce(nullif(bad, ''), 'no difference when played alone');`)));
+    }
+  }
+  console.log(bad ? 'FAIL ' + bad.slice(0, 4000) : 'PASS ' + FIGHTS.length + ' fights (' + base.lines + ' lines, ' + base.counters + ' counter moves, '
+    + base.countered + ' countered supports): the candidate gives the same fights as the live code, and the live code is repeatable');
+  console.log('(' + ((Date.now() - t0) / 1000).toFixed(0) + ' s)');
+  process.exit(bad ? 1 : 0);
+}
 if (process.env.DUMP) {   // DUMP=<fight number>: print that fight of the new code (to read what a fight covers)
   const i = Number(process.env.DUMP);
   console.log(`fight ${i}: ${JSON.stringify(FIGHTS[i - 1])}`);

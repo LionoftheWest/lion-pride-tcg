@@ -27,8 +27,12 @@ const MUT = M === 'guard' ? '' : M === 'noshape' ? 'drop trigger balance_check_b
   nopick: ['public.hunt_counter_pick(bigint,text,date,text,text)', "if random() >= coalesce((v_bal->'boss_share'->>p_boss)::numeric, balance_num('boss_counters', 'share')) then return null; end if;", 'return null;'],
   shatter: ['public.hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)',
     "update hunt_card_hp set shield = 0, updated_at = now() where hunt_id = p_hunt and player_id = p_player and hit_date = p_day and card_id = r.card_id;", 'null;'],
-  plague: [SUP, "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * balance_num('boss_passives', 'plague_x');", "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 1;"],
-  d70: [SUP, "if v_tkind = 'support' then v_tmaxhp := card_max_hp(0); end if;", 'null;'],
+  // F-3 4d (f3_engine_hunt.sql): with no file the counter passives are data of the engine (combat_effect_use) and the support target HP is in
+  // hunt_fight_state_info; a file keeps its own text
+  plague: FILE ? [SUP, "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * balance_num('boss_passives', 'plague_x');", "if v_eff = 'heal' and 'plague' = any(v_plist) then v_f := v_f * 1;"]
+    : ['public.combat_effect_use(jsonb,bigint,jsonb)', "if v_leaf is not null then v_f := v_f * public.balance_num(v_pass.params->>'balance', v_leaf);", "if v_leaf is not null then v_f := v_f * 1;"],
+  d70: FILE ? [SUP, "if v_tkind = 'support' then v_tmaxhp := card_max_hp(0); end if;", 'null;']
+    : ['public.hunt_fight_state_info(bigint,text,date,jsonb,jsonb,bigint,jsonb,bigint)', "else jsonb_build_object('commit_max', case when s.ability->>'kind' = 'support' then public.card_max_hp(0)", "else jsonb_build_object('commit_max', case when false then public.card_max_hp(0)"],
   notext: ['public.hunt_counter_text(text)', 'v := hunt_counter_num(m[2], m[3]);', "v := case m[2] when 'groan' then 4 else hunt_counter_num(m[2], m[3]) end;"],
 });
 if (M === 'guard' && !FILE) throw new Error('MUTATE=guard changes the migration text: pass the file');
