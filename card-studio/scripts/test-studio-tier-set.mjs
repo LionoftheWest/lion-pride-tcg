@@ -158,6 +158,20 @@ function mockCards({ insertErr = null, updateErr = null } = {}) {
   check('T5/T1 a card with no tier set: a live row in another set still stops the push before any write', /does not move a card between sets/.test(msg || '') && writesTo(/\/rest\/v1\/cards/).length === 0, msg);
 }
 
+// the full push (headless Edge renders the two still tiers; the database is the mock): the rows that are written
+{
+  world.log.length = 0; world.sets = ['S1', 'S2']; world.cards = [{ id: 1, rarity: 'normal', set_id: 'S1' }];
+  const err = await pushCard({ ...ir(), finishes: ['normal', 'illustrated_rare'] }, () => null, dir, null).then(() => null, (e) => e.message);
+  const rows = world.log.filter((l) => l.method !== 'GET' && /\/rest\/v1\/cards/.test(l.path)).map((l) => ({ method: l.method, search: l.search, body: JSON.parse(l.body) }));
+  const upd = rows.find((x) => x.method === 'PATCH'), ins = rows.find((x) => x.method === 'POST');
+  check('T2 the real push: the live home tier is UPDATED in S1, the new IR tier is INSERTED in S2 with the subject', !err && rows.length === 2 && upd.body.set_id === 'S1' && /id=eq\.1/.test(upd.search) && ins.body.set_id === 'S2' && ins.body.subject_id === 7 && ins.body.rarity === 'illustrated_rare', { err, rows });
+  world.log.length = 0; world.cards = [];
+  const err2 = await pushCard({ ...seed(), finishes: ['normal', 'illustrated_rare'] }, () => null, dir, null).then(() => null, (e) => e.message);
+  const rows2 = world.log.filter((l) => l.method === 'POST' && /\/rest\/v1\/cards/.test(l.path)).map((l) => JSON.parse(l.body));
+  const keys = ['artist_credit', 'event', 'image_url', 'in_draw_pool', 'lore', 'name', 'rarity', 'set_id', 'source', 'subject_id', 'tradeable'];
+  check('T1 snapshot of the real push: a card with no tier sets inserts every tier in the home set, with the same columns as before', !err2 && rows2.length === 2 && rows2.every((x) => x.set_id === 'S1' && JSON.stringify(Object.keys(x).sort()) === JSON.stringify(keys)), { err2, rows2 });
+}
+
 // ---- T6 / T7 the studio routes ------------------------------------------------------------------------------------------------
 const srv = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
 const base = `http://127.0.0.1:${srv.address().port}`;
