@@ -11,6 +11,7 @@ node --test card-studio/v2sim/*.test.mjs
 ```
 
 Experiments: `fairness`, `shapes`, `survival`, `stat-weights`, `speed`, `statuses`, `archetypes`, `pp` (the PP table).
+`targets` (in `targets.mjs`) measures every tuning target of 2026-10-18 in about 10 s and writes a PASS/FAIL table plus a JSON file. `--tag name` adds a suffix to the report names (for before/after).
 Each report goes to `card-studio/out/v2sim/<experiment>.md` (the `out/` folder is not committed). The seeds are fixed, so a run repeats.
 On a laptop, `all` takes about 35 s. The slowest experiment (`stat-weights`) takes about 17 s.
 
@@ -64,5 +65,9 @@ An attacker scales through CP. The role of a card comes from today's ability kin
 
 ## Values tuned in this prototype
 
-- Support base speeds: the 8-stat study start values (about 40) made 1A+7S and 2A+6S the best Hunt shapes. v2sim uses 18 to 22 (experiment 2).
+- Support base speeds: the 8-stat study start values (about 40) made 1A+7S and 2A+6S the best Hunt shapes. v2sim uses 20 to 24.
 - Dungeon foe speeds: 50 (not 100), so that a 5-card squad makes about one attack for each foe action, as today.
+- The tuning pass of 2026-10-18 (Nathan approved the 6 recommendations): convergence D 0.22, support power_exp 0.1, ABL 5% a point,
+  boss control immunity 2, Cleaver Hunt area 0.2 and splash 0.6, Artillery basic 0.25 and smite 5 PP per 1.0 CP, Flurry speed 18,
+  Medic heal 0.6 / after-action heal 5%, Spotter Expose 0.4 / basic 15%, Envenom Weaken 0.09, Stun charge 1, Hunt Poison reference 700.
+  Before/after tables: `discord-card-ideas/v2sim-tuning-2026-10-18.md` (local design notes) and `node run.mjs targets`.

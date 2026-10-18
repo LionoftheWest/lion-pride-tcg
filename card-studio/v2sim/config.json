@@ -14,7 +14,8 @@
       "v2_hit.roll_min",
       "v2_hit.roll_span"
     ],
-    "sources": "combat-stats-8-model, combat-effects-library, combat-roles-draft, combat-audit (2026-10-18), Nathan's v2 decisions (2026-10-18)"
+    "sources": "combat-stats-8-model, combat-effects-library, combat-roles-draft, combat-audit (2026-10-18), Nathan's v2 decisions (2026-10-18)",
+    "tuning": "Tuning pass 2026-10-18 (Nathan approved the 6 recommendations): see discord-card-ideas/v2sim-tuning-2026-10-18.md. node run.mjs targets measures every target."
   },
   "v2_stats": {
     "max_per_stat": 10,
@@ -38,7 +39,7 @@
       "cap": 0.6
     },
     "abl": {
-      "pct": 0.08
+      "pct": 0.05
     },
     "ddg": {
       "pct": 0.03,
@@ -89,14 +90,14 @@
     "_rule": "1 point per level. Convergence D: CP' = CP + D x (level / max_level) x (target_cp - CP). D = 0 is off.",
     "max_level": 30,
     "points_per_level": 1,
-    "converge_d": 0,
+    "converge_d": 0.22,
     "target_cp": 260
   },
   "v2_support": {
     "_rule": "support amounts x F, F = (CP_base / power_ref) ^ power_exp (rarity and stars scale the numbers). Basic attack = basic_x x CP.",
     "basic_x": 0.18,
     "power_ref": 25,
-    "power_exp": 0.2,
+    "power_exp": 0.1,
     "enabler_extra_stack": [
       "full_art",
       "event",
@@ -108,21 +109,21 @@
     "role_base": {
       "breaker": 16,
       "striker": 17,
-      "flurry": 20,
+      "flurry": 18,
       "finisher": 17,
       "survivor": 15,
       "cleaver": 15,
-      "warden": 22,
-      "medic": 22,
-      "controller": 18,
-      "spotter": 21,
-      "herald": 22,
-      "artillery": 18
+      "warden": 24,
+      "medic": 24,
+      "controller": 20,
+      "spotter": 23,
+      "herald": 24,
+      "artillery": 20
     },
     "status_min_x": 0.4,
     "safety_max_x": 1.6,
     "max_actions_per_step": 4,
-    "_tuning": "Start values (8-stat study: supports 50/cd ~ 40) made 1A+7S and 2A+6S the best Hunt shapes (experiment 2). Tuned 2026-10-18 to supports 18-22 and basic_x 0.18."
+    "_tuning": "Supports 20-24 (8-stat study start ~40 made 1A+7S best). Flurry 18 (was 20: role value x1.16). Tuned 2026-10-18."
   },
   "v2_charge": {
     "_rule": "the active is ready after N own turns that did not use it (a cycle of N + 1 turns). Charge resets at the start of each fight.",
@@ -152,7 +153,7 @@
     },
     "flurry": {
       "class": "attacker",
-      "extra_chance": 0.25,
+      "extra_chance": 0.2,
       "extra_x": 0.5,
       "text": "Each basic attack has a 25% chance of a second strike at 50%."
     },
@@ -170,9 +171,10 @@
     },
     "cleaver": {
       "class": "attacker",
-      "splash": 0.3,
+      "splash": 0.6,
       "hunt_bonus": 0.1,
-      "text": "Basic attacks also hit every other foe for 30%. Hunt: +10% damage."
+      "text": "Basic attacks also hit every other foe for 60%. Hunt (one boss): +10% damage, and an area active adds 20% of its area value.",
+      "hunt_area_x": 0.2
     },
     "warden": {
       "class": "support",
@@ -182,8 +184,8 @@
     },
     "medic": {
       "class": "support",
-      "heal_after": 0.04,
-      "text": "After each of its actions, heals the most hurt ally for 4% of its max HP."
+      "heal_after": 0.05,
+      "text": "After each of its actions, heals the most hurt ally for 5% of its max HP."
     },
     "controller": {
       "class": "support",
@@ -193,9 +195,9 @@
     },
     "spotter": {
       "class": "support",
-      "basic_expose": 0.1,
+      "basic_expose": 0.15,
       "basic_expose_dur": 2,
-      "text": "Its basic attack Exposes the target 10% for 2 steps."
+      "text": "Its basic attack Exposes the target 15% for 2 steps."
     },
     "herald": {
       "class": "support",
@@ -204,9 +206,9 @@
     },
     "artillery": {
       "class": "support",
-      "basic_x": 0.4,
+      "basic_x": 0.25,
       "true_strike": true,
-      "text": "Its basic attack deals 40% (not 18%) and cannot miss."
+      "text": "Its basic attack deals 25% (not 18%) and cannot miss."
     }
   },
   "v2_role_map": {
@@ -345,7 +347,7 @@
       "x": 1.4,
       "dur": 2
     },
-    "hunt_ref_hp": 1000,
+    "hunt_ref_hp": 700,
     "negative": [
       "poison",
       "burn",
@@ -366,7 +368,7 @@
     "_rule": "ONE immunity for the whole control family (stunned, frozen, sleep, paralyzed). It starts when a control status ends.",
     "immune": 2,
     "immune_card": 8,
-    "boss_immune": 3,
+    "boss_immune": 2,
     "boss_max_dur": 1
   },
   "v2_enemy": {
@@ -986,11 +988,11 @@
       "heal_value": 0.4
     },
     "status_pp": {
-      "poison": 3,
+      "poison": 4,
       "burn": 1.5,
       "chill": 2,
       "mark": 16,
-      "exposed": 30,
+      "exposed": 25,
       "weakened": 23.3,
       "stunned": 8,
       "frozen": 8,
@@ -1005,14 +1007,14 @@
     "support_pp": {
       "shield": 25,
       "shield_all": 75,
-      "heal": 20,
+      "heal": 16.7,
       "heal_all": 60,
       "empower": 20,
       "rally": 50,
       "quicken": 13.3,
       "focus_crit": 20,
       "focus_crd": 5,
-      "smite": 3,
+      "smite": 5,
       "cleanse": 4,
       "dispel": 4,
       "consume": 4
@@ -1413,7 +1415,7 @@
       "blocks": [
         {
           "k": "heal",
-          "v": 0.5
+          "v": 0.6
         }
       ]
     },
@@ -1423,7 +1425,7 @@
       "blocks": [
         {
           "k": "heal",
-          "v": 0.3
+          "v": 0.36
         },
         {
           "k": "cleanse"
@@ -1432,7 +1434,7 @@
     },
     "controller.stun": {
       "role": "controller",
-      "charge": 2,
+      "charge": 1,
       "name": "Stun",
       "blocks": [
         {
@@ -1443,7 +1445,7 @@
         {
           "k": "apply",
           "status": "weakened",
-          "value": 0.3,
+          "value": 0.086,
           "chance": 1
         }
       ]
@@ -1461,7 +1463,7 @@
         {
           "k": "apply",
           "status": "weakened",
-          "value": 0.15,
+          "value": 0.09,
           "chance": 1
         }
       ]
@@ -1568,7 +1570,7 @@
         {
           "k": "apply",
           "status": "exposed",
-          "value": 0.33,
+          "value": 0.4,
           "chance": 1
         }
       ]
@@ -1586,7 +1588,7 @@
         {
           "k": "apply",
           "status": "exposed",
-          "value": 0.09,
+          "value": 0.11,
           "chance": 1
         }
       ]
@@ -1601,7 +1603,7 @@
         {
           "k": "apply",
           "status": "exposed",
-          "value": 0.2,
+          "value": 0.24,
           "chance": 1
         }
       ]
@@ -1663,7 +1665,7 @@
       "blocks": [
         {
           "k": "smite",
-          "x": 3.3
+          "x": 2
         }
       ]
     },
@@ -1673,7 +1675,7 @@
       "blocks": [
         {
           "k": "smite",
-          "x": 1.8
+          "x": 1.1
         },
         {
           "k": "apply",
@@ -1689,7 +1691,7 @@
       "blocks": [
         {
           "k": "smite",
-          "x": 0.75
+          "x": 0.44
         },
         {
           "k": "consume",
@@ -1710,7 +1712,7 @@
       "blocks": [
         {
           "k": "smite",
-          "x": 2.5
+          "x": 1.52
         },
         {
           "k": "vs_status",

@@ -328,7 +328,7 @@ export class Battle {
         case 'on_crit': onCrit.push(b); break;
         default: throw new Error(`doActive: block ${b.k} not for attackers`);
       }
-      if (this.alive('enemy').length === 1 && area) { o.bonus += area * 0.5; area = 0; }
+      if (this.alive('enemy').length === 1 && area) { o.bonus += area * cfg.v2_roles.cleaver.hunt_area_x; area = 0; }
       let dealt = 0, anyCrit = false;
       const ridersOn = (t, all) => { for (const b of rid) if ((!all || b.all) && u.rng() < Math.min(1, b.chance * (b.chance < 1 ? ab : 1))) this.apply(u, t, b.status, b); };
       for (let i = 0; i < o.n && !tgt.down; i++) {

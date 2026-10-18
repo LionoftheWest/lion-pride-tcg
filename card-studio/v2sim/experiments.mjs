@@ -371,3 +371,5 @@ export function ppTable(cfg) {
 }
 
 export const EXPERIMENTS = { fairness, shapes, survival, 'stat-weights': statWeights, speed, statuses, archetypes, pp: ppTable };
+
+export { huntMany, dungeonMany, clearRate, randRoles, strength, dngPick, HUNT_ROLES, DNG_ROLES, PROTO };
