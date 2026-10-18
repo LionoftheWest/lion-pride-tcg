@@ -13,7 +13,7 @@
  *   - cards.season always equals 'Season ' || the season of the set: 'Season 1' for every existing card, so
  *     the Hunt weak points (combat_weak) and the achievement tag badges (ach_tag_badges) see no change;
  *   - an open with a set takes only cards of that set, only from a pullable set, and the ledger records it;
- *   - an open with no set is unchanged (3-argument open_packs; draw_pool = the old pool while S1 is the only set);
+ *   - an open with no set is unchanged (3-argument open_packs; draw_pool = the old pool while S1 is the only pullable set);
  *   - the reward draws (dungeon_card_of, shop_pick_stock) give cards of every pullable
  *     set and never of a set that is not pullable;
  *   - pullable_sets() lists the pullable sets with their counts, in one SQL statement for any number of sets;
@@ -110,21 +110,22 @@ begin
     from cards c join card_sets s on s.id = c.set_id;`}
   perform set_config('tcg.skip_welcome', 'on', true);
   insert into players (id, username) values ('${P}_a', 'tst a'), ('${P}_b', 'tst b'), ('${P}_c', 'tst c');
-  -- Before any test set: with S1 the only set, draw_pool is exactly the old pool (the no-set state is unchanged).
-${kase('no set: draw_pool = the old pool (in_draw_pool and source draw) while S1 is the only set', `
-    select count(*) into n from (select id from cards where in_draw_pool and source::text = 'draw' except select id from draw_pool) z;
-    select count(*) into m from (select id from draw_pool except select id from cards where in_draw_pool and source::text = 'draw') z;
-    ${got('no set: draw_pool = the old pool (in_draw_pool and source draw) while S1 is the only set', 'n = 0 and m = 0 and (select count(*) from draw_pool) > 0', ", 'missing', n, 'extra', m")}`)}
+  -- Before any test set: with S1 the only pullable set, draw_pool is exactly the old pool of the pullable sets (the no-set state is
+  -- unchanged). A real set that is not pullable (S2 'Double Team', 10 cards on live 2026-10-16) is never in draw_pool.
+${kase('no set: draw_pool = the old pool (in_draw_pool and source draw) while S1 is the only pullable set', `
+    select count(*) into n from (select id from cards where in_draw_pool and source::text = 'draw' and set_id in (select id from card_sets where pullable) except select id from draw_pool) z;
+    select count(*) into m from (select id from draw_pool except select id from cards where in_draw_pool and source::text = 'draw' and set_id in (select id from card_sets where pullable)) z;
+    ${got('no set: draw_pool = the old pool (in_draw_pool and source draw) while S1 is the only pullable set', 'n = 0 and m = 0 and (select count(*) from draw_pool) > 0', ", 'missing', n, 'extra', m")}`)}
 ${kase('a second run of the file changes no set, number or season', `
     ${mig ? 'execute $m$' + mig + '$m$;' : ''}
     select jsonb_agg(jsonb_build_object('id', c.id, 'set_id', c.set_id, 'code', s.code, 'n', c.set_number, 'season', c.season) order by c.id) into again
       from cards c join card_sets s on s.id = c.set_id;
     ${got('a second run of the file changes no set, number or season', 'again = after')}`)}
-${kase('D-102/D-103 S1 = Origins, code ORI, season 1; every existing card keeps season Season 1; Hunt weak points and tag badges unchanged', `
-    ${got('D-102/D-103 S1 = Origins, code ORI, season 1; every existing card keeps season Season 1; Hunt weak points and tag badges unchanged', `(select name = 'Origins' and code = 'ORI' and season = 1 from card_sets where id = 'S1')
-      and not exists (select 1 from cards where season is distinct from 'Season 1')
+${kase('D-102/D-103 S1 = Origins, code ORI, season 1; every S1 card keeps season Season 1; Hunt weak points and tag badges unchanged', `
+    ${got('D-102/D-103 S1 = Origins, code ORI, season 1; every S1 card keeps season Season 1; Hunt weak points and tag badges unchanged', `(select name = 'Origins' and code = 'ORI' and season = 1 from card_sets where id = 'S1')
+      and not exists (select 1 from cards where set_id = 'S1' and season is distinct from 'Season 1')
       and (select count(*) from cards c where (combat_weak('[{"kind": "season", "value": "Season 1"}]', '[]', null, null, c.set_id, '{}', 1)->>'wm')::int = 1) = weak_before
-      and weak_before = (select count(*) from cards)
+      and weak_before = (select count(*) from cards where set_id = 'S1')
       and (select jsonb_agg(to_jsonb(b) order by b.key) from ach_tag_badges(top) b) is not distinct from badges_before
       and jsonb_array_length(coalesce(badges_before, '[]')) > 0`, ", 'weak_before', weak_before, 'member', top")}`)}
   -- The mutation goes in after the second run (that run would put the file's functions back).
