@@ -25,8 +25,8 @@ That is two engines that can drift apart. Nathan's decision replaces it:
   origin and trait synergies), `combat_crit_chance`, `combat_hit` (miss, crit, block, damage,
   Execute, Rampage), `combat_lifesteal`, `combat_enemy_mult`, `combat_enemy_act` (the enemy
   action), `combat_area_roll` (Slam / Cataclysm on each other card), `combat_absorb` (shields),
-  `combat_burn`, `combat_thorns`, `combat_regen`, `combat_aff_scale`, `combat_support_value`,
-  `combat_stun_immune`.
+  `combat_burn`, `combat_thorns`, `combat_regen`, `combat_aff_scale`, `combat_support_value`
+  (dropped in F-3 PR 4e: the effect engine `combat_effect` has the support values), `combat_stun_immune`.
 - **A mode keeps only its storage.** The Hunt keeps its tables (`hunt_card_hp`,
   `hunt_combat_state`); the Dungeon keeps its run state; the Arena keeps its fights. Each mode
   calls the same core functions, so a rule change applies to all of them at once.

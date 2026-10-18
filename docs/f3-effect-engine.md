@@ -356,3 +356,50 @@ Findings:
    attacker with no ability the hit (the answer keys of the hit) must be equal and the later random stream may differ; every other case must stay equal
    as text (`test-effect-shadow.mjs`, the `noab` cases and the mutation `hunt_noab_hit_changed`). Before the decision the quick Lab showed the two cards
    at 608.77 and then 303.92 (4 seeds: the other random stream, not another rule).
+
+## 10. PR 4e as built (2026-10-18, local copy 2 only)
+
+- `tcg-bot/supabase/f3_engine_cleanup.sql`:
+  - drops `combat_support_value` (the old value of a support effect, typed by the effect name). A guard refuses the drop when a function, a view or a policy
+    still names it. Since 4d no fight function called it.
+  - balance `pool_moves.flurry_hits` (2) and `pool_moves.poison_rounds` (3), with their limits in `balance_check_combat` (whole numbers, 1 to 5 and 1 to 10).
+    `combat_pool_act` reads `flurry_hits` (was `2 *` and `v_hits := 2`), `dungeon_enemy_turn` reads `poison_rounds` (was `v_round + 3`). The same values.
+  - md5 guards on the 3 functions it replaces (the live text or its own text). Idempotent.
+- Kept as wrappers (tests and old files call them, traps 2 and 3): `combat_hit` (14 arguments), `combat_crit_chance` (4 arguments), `combat_hit_elem`,
+  `combat_lifesteal` (no fight calls it; `test-element-bonus`, `test-search-path` and the shadow OLD side do).
+- Tests that used `combat_support_value`: the shadow OLD side installs its own copy (`pg_temp.o_combat_support_value`, in `test-effect-shadow.base.sql`);
+  `test-dungeon.mjs` checks the row rules (empower `1 + amount`, smite `greatest(1, round(amount x scale))`); `test-search-path.mjs` runs
+  `fix_search_path.sql` without the line of the dropped function and checks the other 15. An old `hunt_support` file in `test-hunt-support.mjs` (an
+  acceptance mode that `test-all-local` does not run) needs a database before 4e.
+- `lab-mutations.mjs`: two new golden mutations, `dg-flurry-hits` and `dg-poison-rounds` (the new balance reads must matter).
+- The three CI checks: `ci/combat/` (C1 `c1-numbers.mjs`, C2 `c2-effect-names.mjs`, C3 `c3-client-math.mjs`), the workflow
+  `.github/workflows/combat-checks.yml` (one job, `Combat checks`), `ci/README.md` "The combat checks". Each allowlist entry has a reason, and the
+  allowlists are a ratchet. What they allow today:
+  - C1: string positions and array slices of the engine refs, the identity buff 1.0, the request limits of Auto (5, 10), the Hunt notification top 3,
+    percent to share (100.0), the Ascension star cap 5, the counter mark sentinel 999, the auto-pick search limits (2 supports, 20 passes, 1e-9), the
+    number of doors (2 + random x 2: a map rule; a move to balance changes nothing but needs its own golden run), and display text.
+  - C2: `hunt_counter_act` (6: the boss counter moves that react to one support kind) and `hunt_damage_reconcile` (2: a report over the action log).
+    The boss counter moves can name their target kind in `boss_counters` in a later PR (plan 2.6).
+  - C3: `stat-labels.js` shows `stat_points.per_star` that the server sends (display).
+- Proof (copy 2, refreshed from live; BASE = live, CANDIDATE = the file):
+  - `dungeon-golden.mjs` 240 fights, `combat-golden.mjs` 183 fights, `test-boss-counters-golden.mjs` 128 fights: the candidate matches the live code.
+  - `test-effect-shadow.mjs`: 3623 cases, 0 different; `MUTATE=all`: baseline PASS, the 23 mutations caught. After the apply: 3623 cases, 0 different.
+  - `test-golden-mutations.mjs` after the apply: both baselines PASS, the 4 Hunt and 7 Dungeon mutations (with `dg-flurry-hits`, `dg-poison-rounds`) caught.
+  - `test-all-local.mjs`: 140/140 before (main) and after (the file applied). Two tests needed the old text of the dropped function
+    (`test-dungeon-combat-log`, `test-boss-counters-golden`: they install the old code; trap 5).
+  - `fight-timing.mjs` (`TIMING_REQUESTS=20`, 600 calls, CANDIDATE / BASE mean):
+
+    | Call | run 1 | run 2 | run 3 |
+    |---|---|---|---|
+    | hunt_attack | 0.886 | 0.910 | 0.924 |
+    | hunt_support | 0.943 | 0.935 | 0.992 |
+    | hunt_card_crits (no change) | 1.006 | 1.112 | 1.028 |
+    | hunt_autopick (no change) | 1.002 | 1.000 | 1.012 |
+    | dungeon_attack | 1.030 | 0.986 | 0.972 |
+    | dungeon_support | 0.970 | 0.993 | 0.985 |
+    | dungeon_enemy_turn | 0.986 | 0.924 | 0.992 |
+    | dungeon_auto_rounds | 1.047 | 1.011 | 1.010 |
+    | dungeon_finish_room | 0.983 | 0.969 | 1.021 |
+    | dungeon_pass_turn | 0.976 | 0.999 | 0.990 |
+
+    `hunt_card_crits` does not change in 4e. Measured alone: BASE against BASE 0.995, 0.901, 1.007; CANDIDATE 0.987, 1.051, 0.937 (noise).

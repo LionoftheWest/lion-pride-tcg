@@ -274,10 +274,11 @@ begin
   if (select count(*) from jsonb_each(r->'state'->'cards') e where e.key <> '34' and (e.value->>'hp')::int < (e.value->>'max')::int) <> 4 then
     bad := bad || 'area hit: ' || coalesce(r->>'state', '') || '; '; end if;
 
-  -- 7. Supports: Empower (the core value); ONE support per turn (item 17); the cooldown; Stun; Smite.
+  -- 7. Supports: Empower (the core value); ONE support per turn (item 17); the cooldown; Stun; Smite. The expected values are the rules of the
+  -- ability_kinds rows empower (1 + amount) and smite (greatest(1, round(amount x scale))): combat_support_value is dropped (f3_engine_cleanup.sql).
   update dungeon_runs set state = run.state || jsonb_build_object('round', 0, 'buff', 1, 'sup_round', -1, 'foes', jsonb_build_array(foe)) where id = run.id;
   r := dungeon_support('tst_dg_a', 64, 34, null);
-  if not (r->>'ok')::boolean or (r->'state'->'cards'->'34'->>'buff')::numeric <> combat_support_value('empower', (r->>'amount')::numeric, 1, null) then
+  if not (r->>'ok')::boolean or (r->'state'->'cards'->'34'->>'buff')::numeric <> 1 + (r->>'amount')::numeric then
     bad := bad || 'empower: ' || r::text || '; '; end if;
   if (dungeon_support('tst_dg_a', stn, null, 0)->>'error') is distinct from 'one_support' then bad := bad || 'two supports in one turn; '; end if;
   r := dungeon_attack('tst_dg_a', 34, 0);
@@ -289,7 +290,7 @@ begin
   if r->'enemy'->0->>'action' <> 'stunned' then bad := bad || 'stunned foe acted: ' || coalesce(r->>'enemy', r::text) || '; '; end if;
   select (state->'foes'->0->>'hp')::int into n from dungeon_runs where id = run.id;
   r := dungeon_support('tst_dg_a', 97, null, 0);
-  if not (r->>'ok')::boolean or (r->'state'->'foes'->0->>'hp')::int <> n - combat_support_value('smite', (r->>'amount')::numeric, combat_aff_scale((r->>'aff_count')::int), null)::int then
+  if not (r->>'ok')::boolean or (r->'state'->'foes'->0->>'hp')::int <> n - greatest(1, round((r->>'amount')::numeric * combat_aff_scale((r->>'aff_count')::int)))::int then
     bad := bad || 'smite: ' || r::text || '; '; end if;
   if (dungeon_support('tst_dg_a', 34, null, 0)->>'error') is distinct from 'not_support' then bad := bad || 'attacker as support; '; end if;
   if (dungeon_attack('tst_dg_a', 64, 0)->>'error') is distinct from 'not_attacker' then bad := bad || 'support as attacker; '; end if;

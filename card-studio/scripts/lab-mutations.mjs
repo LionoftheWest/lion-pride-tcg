@@ -50,9 +50,12 @@ export const GOLDEN_MUTATIONS = [
   { name: 'dg-gauntlet-stars', golden: 'dungeon', what: 'the Gauntlet uses the stars and stat points of the member (the 0-star rule is broken)',
     file: 'dungeon_run_card', from: "case when p_card = any(p_run.squad) then dungeon_card_base(p_card) end", to: "case when p_card = any(p_run.squad) then dungeon_card(p_run.player_id, p_card) end" },
   { name: 'dg-poison', golden: 'dungeon', what: 'poison deals 1 more damage', file: 'dungeon_enemy_turn', from: "c := c || jsonb_build_object('hp', greatest(0, (c->>'hp')::int - p));", to: "c := c || jsonb_build_object('hp', greatest(0, (c->>'hp')::int - p - 1));" },
+  // F-3 4e (f3_engine_cleanup.sql): the hits of a Flurry and the rounds of a poison are balance pool_moves numbers now; the reads must matter.
+  { name: 'dg-flurry-hits', golden: 'dungeon', what: 'a Flurry hits 1 more time', file: 'combat_pool_act', from: "v_hits := (m2->>'flurry_hits')::int;", to: "v_hits := (m2->>'flurry_hits')::int + 1;" },
+  { name: 'dg-poison-rounds', golden: 'dungeon', what: 'a poison lasts 1 round less', file: 'dungeon_enemy_turn', from: "v_round + balance_num('pool_moves', 'poison_rounds')::int)", to: "v_round + balance_num('pool_moves', 'poison_rounds')::int - 1)" },
   { name: 'dg-guardian-pay', golden: 'dungeon', what: 'a run pays 1 Shard less', file: 'dungeon_settle', from: "if v_sh > 0 then perform grant_shards(r.player_id, v_sh, 'dungeon', 'run', r.id::text); end if;", to: "if v_sh > 1 then perform grant_shards(r.player_id, v_sh - 1, 'dungeon', 'run', r.id::text); end if;" },
   // F-3 4d (f3_engine_hunt.sql): the Hunt hit is combat_hit_core (combat_hit is a wrapper that no fight calls), and the heal and the shield are steps of the
-  // engine (combat_effect_use; combat_support_value is no longer called by a fight).
+  // engine (combat_effect_use; f3_engine_cleanup.sql dropped the old combat_support_value).
   { name: 'hunt-hit-plus-1', golden: 'hunt', what: 'a Hunt hit does 1 more damage', file: 'combat_hit_core', from: 'v_dmg := greatest(1, round(v_base));', to: 'v_dmg := greatest(1, round(v_base)) + 1;' },
   { name: 'hunt-cooldown', golden: 'hunt', what: 'combat_cooldown adds 1 round', file: 'combat_cooldown', from: 'greatest(1, round(coalesce(p_raw, 1) * coalesce(p_haste, 1)))::int', to: '1 + greatest(1, round(coalesce(p_raw, 1) * coalesce(p_haste, 1)))::int' },
   // A heal that is 1 HP larger: caught since F-3 PR 4.0 (combat-golden.mjs has fights where the heal goes to the most hurt card; before, no fight healed a damaged card: the gap found 2026-10-14).

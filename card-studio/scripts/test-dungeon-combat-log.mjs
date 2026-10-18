@@ -47,7 +47,14 @@ const OLD = ['dungeon_attack', 'dungeon_support', 'dungeon_enemy_turn', 'dungeon
   const a = s.indexOf('CREATE OR REPLACE FUNCTION'), b = s.indexOf('$function$;', a);
   return s.slice(a, b + '$function$;'.length);
 }).join('\n');
-for (const s of [src, adminSrc, OLD, ...RERUN]) if (s.includes('$m$') || s.includes('$t$') || s.includes('$f$')) throw new Error('a file contains $m$, $t$ or $f$');
+// f3_engine_cleanup.sql (F-3 PR 4e) dropped combat_support_value. The old dungeon_support texts of this test (OLD and the file) call it, so the block
+// installs its last live text first (the schema snapshot at git 92cdcddb; rolled back with the block).
+const HELPER = (() => {
+  const s = execFileSync('git', ['show', '92cdcddb:db/schema/functions/combat_support_value.sql'], { cwd: repo, encoding: 'utf8' }).replace(/\r/g, '');
+  const a = s.indexOf('CREATE OR REPLACE FUNCTION'), b = s.indexOf('$function$;', a);
+  return s.slice(a, b + '$function$;'.length);
+})();
+for (const s of [src, adminSrc, OLD, HELPER, ...RERUN]) if (s.includes('$m$') || s.includes('$t$') || s.includes('$f$')) throw new Error('a file contains $m$, $t$ or $f$');
 
 // One mutation per mechanism. [file, text, replacement]: 'mig' = dungeon_combat_log.sql, 'admin' = admin_read.sql, 'both' = the two (admin_health).
 const MUTATIONS = {
@@ -154,6 +161,8 @@ begin
     return out || jsonb_build_array((select to_jsonb(d) from dungeon_runs d where d.id = v_run),
       (select jsonb_agg(jsonb_build_array(l.n, l.action, l.result) order by l.n) from dungeon_log l where l.run_id = v_run));
   end $f$;
+
+  execute $m$${HELPER}$m$;   -- the dropped combat_support_value (f3_engine_cleanup.sql), for the old texts below
 
   -- 1. GOLDEN base: the functions BEFORE this file, on the same seeds and the same run ids. Rolled back (the sub-block).
   ${mig ? `begin

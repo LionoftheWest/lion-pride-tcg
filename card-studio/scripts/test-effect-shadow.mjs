@@ -104,7 +104,8 @@ const replaceOnce = (text, from, to, what) => {
 };
 // OLD_BASE: the functions before the switch (test-effect-shadow.base.sql) as pg_temp.o_<name>: the Dungeon before 4c, the Hunt, combat_hit,
 // combat_crit_chance and hunt_card_crits before 4d. The 4c and 4d files replace the public functions that the old texts call (combat_hit_elem,
-// combat_hit, combat_crit_chance), so those calls go to the old texts in pg_temp too.
+// combat_hit, combat_crit_chance), so those calls go to the old texts in pg_temp too. f3_engine_cleanup.sql (4e) drops combat_support_value, so the
+// old dungeon_support and hunt_support call their own copy (pg_temp.o_combat_support_value, every call: CALLS_ALL).
 const OLD_BASE = (() => {
   const t = readFileSync(here('test-effect-shadow.base.sql'), 'utf8').replace(/\r/g, '');
   const out = [];
@@ -114,13 +115,23 @@ const OLD_BASE = (() => {
     hunt_attack: [['v_critchance := combat_crit_chance(', 'v_critchance := pg_temp.o_combat_crit_chance('], ['v_hit := combat_hit(', 'v_hit := pg_temp.o_combat_hit(']],
     hunt_card_crits: [['combat_crit_chance(d.bonus', 'pg_temp.o_combat_crit_chance(d.bonus']],
   };
+  // [the text, the new text, the number of places]: every place must change (a count that differs is an error).
+  const CALLS_ALL = {
+    dungeon_support: [['combat_support_value(', 'pg_temp.o_combat_support_value(', 6]],
+    hunt_support: [['combat_support_value(', 'pg_temp.o_combat_support_value(', 9]],
+  };
   for (const m of t.matchAll(/^-- @function (\w+) md5 [0-9a-f]{32}\n(CREATE OR REPLACE FUNCTION public\.\w+\([\s\S]*?\$function\$;)/gm)) {
     let f = replaceOnce(m[2], `CREATE OR REPLACE FUNCTION public.${m[1]}(`, `CREATE FUNCTION pg_temp.o_${m[1]}(`, `o_${m[1]}`);
     for (const [from, to] of CALLS[m[1]] || []) f = replaceOnce(f, from, to, `o_${m[1]}`);
+    for (const [from, to, n] of CALLS_ALL[m[1]] || []) {
+      const k = f.split(from).length - 1;
+      if (k !== n) throw new Error(`variant o_${m[1]}: ${from} found ${k} times, ${n} expected`);
+      f = f.split(from).join(to);
+    }
     if (f.includes('$v$')) throw new Error(`o_${m[1]}: contains $v$`);
     out.push(f);
   }
-  if (out.length !== 8) throw new Error(`test-effect-shadow.base.sql: 8 functions expected, ${out.length} found`);
+  if (out.length !== 9) throw new Error(`test-effect-shadow.base.sql: 9 functions expected, ${out.length} found`);
   return out;
 })();
 

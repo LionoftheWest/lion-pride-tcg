@@ -140,3 +140,25 @@ for over 35 minutes, and the G1 and G4 jobs of every other PR stayed queued. The
 Done on 2026-10-05: `main` requires `G1 Register`, `G3 UI check` and `G4 Literal counter`, for admins too (design.md
 12.5 G7, 12.9 item 4). The job names must not change: branch protection matches them by name.
 
+
+## The combat checks C1, C2 and C3
+
+The effect engine plan (`docs/f3-effect-engine.md` section 3, row "4e") names three checks. They have no database and no secret, and they
+take about 1 s. The workflow is `.github/workflows/combat-checks.yml`: one job, `Combat checks`, on every PR (one job slot, no matrix).
+The scripts and their allowlists are in `ci/combat/`.
+
+| Check | Script | Reads | Fails when |
+|---|---|---|---|
+| C1 No combat number outside `balance` | `combat/c1-numbers.mjs` | The fight functions (`scope` in `c1-numbers.json`) of the snapshot `db/schema/functions` and of the migrations that the PR adds or changes | A numeric literal (not 0 or 1, not in a comment or a string) appears more often than `c1-numbers.json` allows |
+| C2 No effect-name comparison outside `combat_effect*` | `combat/c2-effect-names.mjs` | Every function of the snapshot and of the changed migrations (the old migrations keep their old branches: not read) | An operand that names an ability effect (`v_eff`, `r.eff`, `a.effect`, `->>'effect'`) is compared with an ability kind name (`=`, `<>`, `in (...)`, `case ... when`) more often than `c2-effect-names.json` allows |
+| C3 No combat math in the client | `combat/c3-client-math.mjs` | The tracked `.js`, `.mjs`, `.ts` files of `tcg-activity/src` and `tcg-bot/src` (not tests) | A combat balance leaf name (from `docs/data/balance.md`), an old constant of the JS fight math in a squad/team/crit/combat file, or an old formula shape appears more often than `c3-client-math.json` allows |
+
+- Each allowlist entry has a count and a reason. The allowlists are a RATCHET: a check also fails when the real count is below the entry
+  (lower the count, or remove the entry at 0), so a removed number or branch cannot come back.
+- C2 does not flag the boons and pranks: `play_card_effect` compares a primitive (`v_prim.primitive = 'cleanse'`), not an ability effect (trap 12).
+  It does not see an effect name that is passed as an argument (for example `hunt_counter_cd(..., 'heal', ...)`).
+- The changed migrations come from `git diff` against the merge base with `main` (`BASE_SHA`, `HEAD_SHA`). A PR that adds a migration is
+  checked before its snapshot is generated again.
+- `combat/combat-checks.test.mjs` plants a violation for each check and shows that it fails (and that the real repository passes).
+  Run all of it locally: `node --test ci/combat/combat-checks.test.mjs && node ci/combat/c1-numbers.mjs && node ci/combat/c2-effect-names.mjs && node ci/combat/c3-client-math.mjs`.
+- `Combat checks` is not a required check yet. Nathan decides when `main` requires it (Settings, Branches).

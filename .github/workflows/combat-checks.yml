@@ -1,0 +1,44 @@
+# The three combat checks of the effect engine (docs/f3-effect-engine.md section 3, row "4e"). Scripts and allowlists: ci/combat/, ci/README.md.
+# No database and no secret: they read the schema snapshot (db/schema), the changed migrations, docs/data/balance.md and the client code (about 10 s).
+# One job, no matrix: one of the 20 job slots (the slot guard, ci/gates/slot-guard.test.mjs, reads every workflow).
+name: Combat checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: combat-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  combat:
+    name: Combat checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Test the checks (each one fails on a planted violation)
+        run: node --test ci/combat/combat-checks.test.mjs
+      - name: C1 no combat number outside balance
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node ci/combat/c1-numbers.mjs
+      - name: C2 no effect-name comparison outside combat_effect*
+        if: success() || failure()
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node ci/combat/c2-effect-names.mjs
+      - name: C3 no combat math in tcg-activity/src and tcg-bot/src
+        if: success() || failure()
+        run: node ci/combat/c3-client-math.mjs

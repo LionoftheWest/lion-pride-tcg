@@ -3,7 +3,7 @@
 // all 20 slots for 35 min and blocked the other PRs). Runs in the g1 job, so it runs on every PR.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 export const SLOTS = 20; // the job limit of the free plan
 export const KEEP_FREE = 8; // slots kept for the G1/G4 jobs of other PRs
@@ -75,4 +75,11 @@ test('G3 slot guard: fails when max-parallel is removed or above the limit', () 
   const thirteen = text.replace(/^( {6}max-parallel:).*$/m, '$1 13');
   assert.equal(slotProblems(thirteen).length, 1);
   assert.deepEqual(slotProblems(text.replace(/^( {6}max-parallel:).*$/m, '$1 12')), []);
+});
+
+test('slot guard: every workflow obeys the limit (ui-gates, ui-report, combat-checks, ...)', () => {
+  const dir = new URL('../../.github/workflows/', import.meta.url);
+  const files = readdirSync(dir).filter((f) => /.ya?ml$/.test(f));
+  assert.ok(files.includes('ui-gates.yml') && files.includes('combat-checks.yml'), files.join(', '));
+  for (const f of files) assert.deepEqual(slotProblems(readFileSync(new URL(f, dir), 'utf8')), [], f);
 });
