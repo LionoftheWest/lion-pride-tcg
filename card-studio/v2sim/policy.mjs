@@ -29,9 +29,18 @@ function supportUseful(b, u, tgt) {
 export const auto = {
   name: 'auto',
   target(b, u) { return b.mode === 'hunt' ? b.enemies[0] : front(b); },
-  useActive(b, u) { if (u.cls === 'attacker') return true; return supportUseful(b, u, this.target(b, u)); },
-  allyFor(b, u, kind) {
+  useActive(b, u) {
+    if (u.cls === 'attacker') return true;
+    const tgt = this.target(b, u), A = b.cfg.v2_auto;
+    // Lab item (config v2_auto, default OFF): hold a control active for a Charging enemy (a Stun on the Charging turn cancels the Cataclysm).
+    if (A?.hold_control_for_charging && CONTROL.includes(MAIN_STATUS(u.active.blocks)) && (b.isBoss(tgt) || tgt.cataclysm) && !tgt.charging && u.held < A.hold_max && b.step >= tgt.immUntil) return false;
+    return supportUseful(b, u, tgt);
+  },
+  allyFor(b, u, kind, list) {
     const cards = b.alive('card');
+    if (kind === 'cure') { // the ally with the most of the listed statuses (not locked), else the most hurt ally
+      const n = c => list.filter(s => c.st[s] && !c.st[s].locked).length; const t = cards.reduce((m, c) => (!m || n(c) > n(m) ? c : m), null);
+      return t && n(t) > 0 ? t : (b.mostHurt() || cards[0]); }
     if (kind === 'shield') return cards.reduce((m, c) => (!m || (c.hp + c.shield) / c.maxHp < (m.hp + m.shield) / m.maxHp ? c : m), null);
     if (kind === 'heal') return b.mostHurt() || cards[0];
     const a = cards.filter(c => c.cls === 'attacker' && !c.st.empowered); return (a.length ? a : cards.filter(c => c.cls === 'attacker')).reduce((m, c) => (!m || c.cp > m.cp ? c : m), null);
@@ -52,7 +61,7 @@ export const best = {
     const tgt = this.target(b, u, true);
     if (u.cls === 'support') {
       const s = MAIN_STATUS(u.active.blocks);
-      if (CONTROL.includes(s) && b.mode === 'hunt' && !b.enemies[0].charging && u.held < 2 && b.step >= tgt.immUntil) return false;
+      if (b.cfg.v2_auto?.best_holds_control !== false && CONTROL.includes(s) && b.mode === 'hunt' && !b.enemies[0].charging && u.held < 2 && b.step >= tgt.immUntil) return false;
       return supportUseful(b, u, tgt);
     }
     if (u.held >= 2) return true;
@@ -65,10 +74,10 @@ export const best = {
     if (id === 'finisher.pileon') return b.negKinds(tgt) >= 2;
     return true;
   },
-  allyFor(b, u, kind) {
+  allyFor(b, u, kind, list) {
     if (kind === 'empower') { const a = b.alive('card').filter(c => c.cls === 'attacker' && !c.st.empowered);
       if (a.length) return a.reduce((m, c) => { const sc = c.cp * (c.charge >= c.active.charge ? 1.6 : 1) * (c.meter + 1); const sm = m ? m.cp * (m.charge >= m.active.charge ? 1.6 : 1) * (m.meter + 1) : -1; return sc > sm ? c : m; }, null); }
-    return auto.allyFor(b, u, kind);
+    return auto.allyFor(b, u, kind, list);
   },
 };
 export const POLICIES = { auto, best };
