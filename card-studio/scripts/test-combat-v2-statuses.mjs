@@ -391,7 +391,7 @@ function checkStatuses(rows) {
     if ((r.max_stacks || null) !== (MAXSTACKS[r.key] || null)) p.push(`${r.key}: max_stacks ${r.max_stacks}`);
     if (r.key !== 'guarded') {
       if (r.numbers !== `v2_status.${r.key}`) p.push(`${r.key}: numbers ${r.numbers}`);
-      const want = Object.fromEntries(Object.entries(c).filter(([k]) => k !== 'family'));
+      const want = Object.fromEntries(Object.entries(c).filter(([k]) => k !== 'family' && !k.startsWith('_')));   // a key that starts with _ is a comment of config.json
       for (const [k, v] of Object.entries(want)) if (k !== 'family' && JSON.stringify(r.numbers_value[k]) !== JSON.stringify(v)) p.push(`${r.key}.${k}: balance ${JSON.stringify(r.numbers_value[k])}, config ${JSON.stringify(v)}`);
     } else if (r.numbers !== null) p.push('guarded: numbers must be NULL (the v1 foe Guard move)');
     if (r.max_stacks && !Number.isInteger(r.max_stacks_value)) p.push(`${r.key}: max_stacks value ${r.max_stacks_value}`);
@@ -410,7 +410,7 @@ function checkRoles(rows) {
     const c = cfg[r.key]; if (!c) continue;
     if (r.class !== c.class) p.push(`${r.key}: class ${r.class}, config ${c.class}`);
     if (r.speed !== `v2_speed.role_base.${r.key}` || r.speed_value !== CONFIG.v2_speed.role_base[r.key]) p.push(`${r.key}: speed ${r.speed} = ${r.speed_value}, config ${CONFIG.v2_speed.role_base[r.key]}`);
-    const want = Object.fromEntries(Object.entries(c).filter(([k]) => k !== 'class' && k !== 'text'));
+    const want = Object.fromEntries(Object.entries(c).filter(([k]) => k !== 'class' && k !== 'text' && !k.startsWith('_')));   // a key that starts with _ is a comment of config.json
     if (r.numbers !== `v2_roles.${r.key}` || JSON.stringify(r.numbers_value, Object.keys(want).sort()) !== JSON.stringify(want, Object.keys(want).sort())) p.push(`${r.key}: numbers ${JSON.stringify(r.numbers_value)}, config ${JSON.stringify(want)}`);
     if (JSON.stringify(r.stat_priority) !== JSON.stringify(STATS[r.key])) p.push(`${r.key}: stat priority ${r.stat_priority}, plan ${STATS[r.key]}`);
     const target = ['warden', 'medic', 'herald'].includes(r.key) ? 'ally' : 'enemy';
