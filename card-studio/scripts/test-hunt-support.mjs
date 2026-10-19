@@ -2,6 +2,7 @@
  * Test a hunt_support definition against the live DB with NO lasting change:
  *   node scripts/test-hunt-support.mjs [file-with-CREATE-hunt_support.sql]
  *   Without a file it tests the CURRENT hunt_support (test-all-local.mjs runs this mode).
+ *   A file from before F-3 4d calls combat_support_value, which f3_engine_cleanup.sql (4e) dropped: that acceptance mode needs a database before 4e.
  *   MUTATE=revive|fullheal|shield node scripts/test-hunt-support.mjs   must FAIL.
  * One DO block: apply it, make a test boss + member, check heal/shield sizes and that a
  * heal never revives a downed card, then RAISE the results (everything rolls back).

@@ -450,7 +450,6 @@ comment on function public.combat_area_roll(numeric,numeric,numeric) is $c$[comb
 comment on function public.combat_burn(numeric) is $c$[combat] The Flaming passive: a chance that the attacking card takes burn damage, else 0. The numbers are in balance key boss_passives. Internal helper of hunt_attack and dungeon_enemy_turn.$c$;
 comment on function public.combat_thorns(integer) is $c$[combat] The Thorns passive: the damage that comes back to the attacking card, a share of its damage (balance key boss_passives). Internal helper of hunt_attack and dungeon_enemy_turn.$c$;
 comment on function public.combat_regen(bigint) is $c$[combat] The Regenerating passive: the boss heal per turn, a share of the heal base (balance key boss_passives). Internal helper of hunt_attack.$c$;
-comment on function public.combat_support_value(text,numeric,numeric,integer) is $c$[combat] The value of a support effect (empower multiplier, shield or heal HP, weaken or expose share, smite damage), with the caps in balance key support. Internal helper of hunt_support and dungeon_support.$c$;
 comment on function public.combat_aff_scale(integer) is $c$[combat] The affinity scale of a support: 1 + a step per matching squad card, up to a cap (balance key support). Internal helper of hunt_support and dungeon_support.$c$;
 comment on function public.combat_stun_immune(integer,integer) is $c$[combat] True when the enemy cannot be stunned in this round (it was stunned in the last rounds of balance key support, stun_immune_rounds). Internal helper of hunt_support and dungeon_support.$c$;
 

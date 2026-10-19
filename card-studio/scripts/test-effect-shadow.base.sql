@@ -944,3 +944,22 @@ begin
       else jsonb_build_object('kind', case when v_bossact = 'counter' then v_ctr->>'anim' else v_bossact end, 'round', v_round, 'targets', v_targets)
         || case when v_ctr is null then '{}'::jsonb else jsonb_build_object('move', v_ctr->>'move', 'counter', v_ctr->>'key') end end);
 end $function$;
+
+-- combat_support_value: the old value of a support effect, called by the old dungeon_support and hunt_support above. f3_engine_cleanup.sql
+-- (F-3 PR 4e) drops it from the database, so the OLD side keeps its own copy. Copied from db/schema/functions at origin/main 92cdcddb.
+-- @function combat_support_value md5 f8b766f0d269be74fa0add3f84078533
+CREATE OR REPLACE FUNCTION public.combat_support_value(p_eff text, p_amt numeric, p_scale numeric, p_target_maxhp integer)
+ RETURNS numeric
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+  select case p_eff
+    when 'empower' then 1 + p_amt
+    when 'shield'  then greatest(1, round(p_target_maxhp * least(p_amt, public.balance_num('support', 'heal_cap'))))
+    when 'heal'    then greatest(1, round(p_target_maxhp * least(p_amt, public.balance_num('support', 'heal_cap'))))
+    when 'weaken'  then least(public.balance_num('support', 'weaken_cap'), p_amt * p_scale)
+    when 'expose'  then least(public.balance_num('support', 'expose_cap'), p_amt * p_scale)
+    when 'smite'   then greatest(1, round(p_amt * p_scale))
+  end;
+$function$;

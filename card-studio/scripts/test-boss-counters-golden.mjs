@@ -38,7 +38,8 @@ const MUTS = process.argv.includes('--mutations'), OLDRUN = process.argv.include
 const BASE = '514e1f0';
 const show = (p) => execFileSync('git', ['show', `${BASE}:${p}`], { cwd: repo, encoding: 'utf8' }).replace(/\r/g, '');
 const fnText = (n) => { const s = show(`db/schema/functions/${n}.sql`); const i = s.indexOf('CREATE OR REPLACE FUNCTION'); return s.slice(i, s.indexOf('$function$;', i) + 11); };
-const FNS = ['hunt_counter_act', 'hunt_counter_pick', 'hunt_attack', 'hunt_support'];
+// combat_support_value: the old hunt_support calls it, and f3_engine_cleanup.sql (F-3 PR 4e) dropped it, so the old code brings its own text (the same md5).
+const FNS = ['combat_support_value', 'hunt_counter_act', 'hunt_counter_pick', 'hunt_attack', 'hunt_support'];
 const oldClean = FNS.map(fnText).join('\n');
 let oldFns = oldClean;
 const oldCfg = show('tcg-bot/supabase/hunt_boss_moves.sql').match(/\$j\$(\{[\s\S]*?\})\$j\$/)[1];

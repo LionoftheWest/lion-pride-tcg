@@ -1,0 +1,177 @@
+{
+  "note": "Combat check 1 (c1-numbers.mjs, docs/f3-effect-engine.md section 3). scope: the fight functions (regular expressions on the function name). always: literals that are never a combat number. allow: { function: { literal: { count, reason } } }. A RATCHET: a count may only go down (the check fails when the live snapshot has fewer). A new combat number goes into balance; it is allowed here only with a reason why it is not a balance number. f3_engine_cleanup.sql (4e) moved the Flurry hits (combat_pool_act 2) and the poison rounds (dungeon_enemy_turn 3) to balance pool_moves.",
+  "scope": [
+    "^combat_",
+    "^card_combat$",
+    "^card_max_hp$",
+    "^fight_",
+    "^hunt_(attack|support|pass_turn|counter_|card_crits|autopick|squad_value|effect_apply|fight_state|hit_mods|state_round|commit_card|boss_move_list|marks_patch|mark_on)",
+    "^dungeon_(attack|support|enemy_turn|auto_|pass_turn|effect_apply|fight_state|make_foe|after_kill|finish_room|run_card|card$|card_base|enter|room_foes)"
+  ],
+  "always": [
+    "0",
+    "1"
+  ],
+  "allow": {
+    "card_combat": {
+      "5": {
+        "count": 1,
+        "reason": "least(5, stars): a card has at most 5 Ascension stars (the star table of balance stars has 6 values, 0 to 5). A game rule, not a tuning value."
+      }
+    },
+    "combat_card_facts": {
+      "7": {
+        "count": 1,
+        "reason": "substr(tag, 7): the text after the prefix 'trait:' (6 characters). A string position."
+      }
+    },
+    "combat_effect_num": {
+      "2": {
+        "count": 1,
+        "reason": "v_path[2:...]: the balance path after its key (an array slice)."
+      },
+      "9": {
+        "count": 1,
+        "reason": "substr(ref, 9): the text after the prefix 'balance:' (8 characters). A string position."
+      }
+    },
+    "combat_effect_value": {
+      "2": {
+        "count": 1,
+        "reason": "v_path[2:...]: the balance path after its key (an array slice)."
+      },
+      "7": {
+        "count": 2,
+        "reason": "substr(ref, 7): the text after the prefix 'field:' (6 characters). A string position."
+      },
+      "9": {
+        "count": 1,
+        "reason": "substr(ref, 9): the text after the prefix 'balance:' (8 characters). A string position."
+      }
+    },
+    "combat_effect_when": {
+      "2": {
+        "count": 1,
+        "reason": "v_path[2:...]: the balance path after its key (an array slice)."
+      },
+      "9": {
+        "count": 1,
+        "reason": "substr(ref, 9): the text after the prefix 'balance:' (8 characters). A string position."
+      }
+    },
+    "combat_effect_use": {
+      "1.0": {
+        "count": 2,
+        "reason": "buff 1.0 and debuff 1.0 of a new card row: the identity multiplier (no buff), the same as 1."
+      }
+    },
+    "combat_enemy_mult": {
+      "10": {
+        "count": 1,
+        "reason": "floor(lost x 10): the unit of balance boss_passives.frenzied_per_10pct (a step for each 10 % of HP lost). The value is in balance."
+      }
+    },
+    "dungeon_auto_rounds": {
+      "5": {
+        "count": 2,
+        "reason": "The default number of rounds of one Auto call and the default squad size of the loop bound: the limits of one request, not a fight value."
+      },
+      "10": {
+        "count": 1,
+        "reason": "At most 10 rounds in one Auto call: the limit of one request (the fight round cap is balance dungeon.round_cap)."
+      }
+    },
+    "dungeon_finish_room": {
+      "2": {
+        "count": 1,
+        "reason": "v_cap + 2: a safety stop for a loop that the rules never reach (the comment in the function). Not a fight value."
+      },
+      "10": {
+        "count": 1,
+        "reason": "dungeon_auto_rounds(..., 10): 10 rounds for each call, the limit of one request."
+      }
+    },
+    "dungeon_enter": {
+      "2": {
+        "count": 2,
+        "reason": "limit 2 + floor(random() x 2): 2 or 3 doors after a room. A map rule of the Dungeon, not a fight value (a later PR can move it to balance dungeon; a move changes the random draws)."
+      }
+    },
+    "dungeon_make_foe": {
+      "7": {
+        "count": 1,
+        "reason": "floor(rand x 7): an index into the 7 kinds of the kinds array of the same function (its length)."
+      }
+    },
+    "hunt_attack": {
+      "2": {
+        "count": 1,
+        "reason": "ready_round = round + 2 in the 'stunned' refusal: a boss stun lasts 1 round (the card acts again 2 rounds later). The answer to the client, not a fight value."
+      },
+      "3": {
+        "count": 1,
+        "reason": "limit 3: the top 3 members of the 'defeat' notification. Not a fight value."
+      },
+      "100.0": {
+        "count": 4,
+        "reason": "x / 100.0: a percent (balance combat.effect_cap_pct and the boon amounts) to a share."
+      }
+    },
+    "hunt_support": {
+      "3": {
+        "count": 1,
+        "reason": "limit 3: the top 3 members of the 'defeat' notification. Not a fight value."
+      }
+    },
+    "hunt_autopick_pool": {
+      "2": {
+        "count": 1,
+        "reason": "At most 2 supports in an auto-picked squad: a rule of the search (the search weights are balance autopick). Not a fight value."
+      },
+      "20": {
+        "count": 1,
+        "reason": "At most 20 passes of the swap search: the limit of the search, not a fight value."
+      },
+      "1e-9": {
+        "count": 1,
+        "reason": "A gain must be above 1e-9: a tie limit for numeric noise in the search."
+      }
+    },
+    "hunt_autopick_sups": {
+      "2": {
+        "count": 1,
+        "reason": "p_k >= 2: the search for a pair of supports (at most 2 supports, hunt_autopick_pool)."
+      },
+      "1e-9": {
+        "count": 2,
+        "reason": "A value must be above the best + 1e-9: a tie limit for numeric noise in the search."
+      }
+    },
+    "hunt_counter_act": {
+      "999": {
+        "count": 21,
+        "reason": "until 999: a counter mark that lasts for the rest of the day (a round number that a day never reaches, hunt_round_cap is below it). Not a tuning value."
+      }
+    },
+    "hunt_counter_text": {
+      "2": {
+        "count": 3,
+        "reason": "The text of a counter move: the regexp groups m[2] (2 places) and 'twice' for the value 2. Display only."
+      },
+      "3": {
+        "count": 2,
+        "reason": "The text of a counter move: the regexp group m[3] (2 places). Display only."
+      },
+      "100": {
+        "count": 1,
+        "reason": "The text of a counter move: a share x 100 shown as a percent. Display only."
+      }
+    },
+    "hunt_squad_value": {
+      "2": {
+        "count": 3,
+        "reason": "group by 2: the second column of the select list (SQL syntax)."
+      }
+    }
+  }
+}

@@ -4,7 +4,9 @@
  *   node scripts/test-search-path.mjs --old        the database as it is (the baseline: it must FAIL before the migration)
  *   node scripts/test-search-path.mjs --mutations  each mutation must make at least one case FAIL
  * Invariants:
- *   P1 after the file, no public function is without a fixed search_path; the 16 have search_path=public
+ * f3_engine_cleanup.sql (F-3 PR 4e, 2026-10-18) dropped combat_support_value, one of the 16: the test runs the file without its ALTER line for that
+ * function and checks the other 15 (the same before and after 4e is live).
+ *   P1 after the file, no public function is without a fixed search_path; the 15 have search_path=public
  *   P2 each of the 16 gives the same result as before the file (same seeded random()), and the same result when the
  *      caller has an empty search_path
  *   P3 a re-run of the file changes nothing (same md5 of each function)
@@ -20,7 +22,10 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 const OLD = process.argv.includes('--old');
 const DIR = fileURLToPath(new URL('../../tcg-bot/supabase/', import.meta.url));
 const read = (f) => readFileSync(DIR + f, 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
-const src = read('fix_search_path.sql');
+const DROPPED = 'alter function public.combat_support_value(text, numeric, numeric, integer) set search_path = public;\n';   // f3_engine_cleanup.sql
+const src0 = read('fix_search_path.sql');
+if (!src0.includes(DROPPED)) throw new Error('fix_search_path.sql: the combat_support_value line is not found');
+const src = src0.replace(DROPPED, '');
 // The files that create one of the 16 (P4), and the 5 of audit_fixes_2026_10_03.sql.
 const RERUN = ['balance_table.sql', 'combat_core.sql', 'dungeon.sql', 'dungeon_v2.sql', 'gauntlet.sql', 'hunt_boss_moves.sql',
   'one_source_rules.sql', 'ascension.sql', 'ascension_cost_v3.sql', 'ascension_cp_v2.sql', 'card_power_fix.sql', 'card_tags.sql',
@@ -59,8 +64,6 @@ const CALLS = {
   combat_lifesteal: 'combat_lifesteal(100, 0.2, 500)',
   combat_regen: 'combat_regen(1000)',
   combat_stun_immune: 'combat_stun_immune(5, 3)',
-  combat_support_value: "combat_support_value('empower', 0.2, 1, 500)",
-  combat_support_value2: "combat_support_value('heal', 40, 1.2, 500)",
   combat_thorns: 'combat_thorns(100)',
   dungeon_day: 'dungeon_day()',
   dungeon_pick: `dungeon_pick('{"a":1,"b":3}', 0.5)`,
@@ -73,7 +76,7 @@ const CALLS = {
 const callAll = (into) => Object.entries(CALLS).map(([k, c]) =>
   `perform setseed(0.42); ${into} := ${into} || jsonb_build_object('${k}', to_jsonb(public.${c}));`).join('\n  ');
 const SIXTEEN = ['combat_absorb', 'combat_aff_scale', 'combat_area_roll', 'combat_burn', 'combat_lifesteal', 'combat_regen',
-  'combat_stun_immune', 'combat_support_value', 'combat_thorns', 'dungeon_day', 'dungeon_pick', 'dungeon_rand', 'dungeon_rules',
+  'combat_stun_immune', 'combat_thorns', 'dungeon_day', 'dungeon_pick', 'dungeon_rand', 'dungeon_rules',
   'dungeon_txt', 'gauntlet_week', 'hunt_mark_on'];
 const NAMES = `array['${SIXTEEN.join("','")}']`;
 
@@ -92,7 +95,7 @@ begin
   res := res || jsonb_build_object('case', 'P1 no public function without a fixed search_path', 'ok', n = 0, 'missing', v);
   select count(*) into n from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any(${NAMES})
      and p.proconfig = array['search_path=public'];
-  res := res || jsonb_build_object('case', 'P1 the 16 functions have search_path=public', 'ok', n = 16, 'n', n);
+  res := res || jsonb_build_object('case', 'P1 the ' || ${SIXTEEN.length} || ' functions have search_path=public', 'ok', n = ${SIXTEEN.length}, 'n', n);
 
   -- P2
   ${callAll('after')}

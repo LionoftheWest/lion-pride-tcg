@@ -1,0 +1,40 @@
+{
+  "note": "Combat check 3 (c3-client-math.mjs, docs/f3-effect-engine.md section 3). keys: the balance keys of the fight (their leaf names come from docs/data/balance.md). oldFiles: the file names of rule B. oldConstants: the constants of the old JS fight math that F-3 PR 1 (f0b4265b) removed from squad-pick.js and main.js. oldFormulas: regular expressions of its formula shapes. allow: { file: { count, reason } }, a ratchet.",
+  "keys": [
+    "combat",
+    "support",
+    "boss_moves",
+    "pool_moves",
+    "boss_passives",
+    "boss_counters",
+    "stat_points",
+    "card_hp",
+    "autopick"
+  ],
+  "oldFiles": "(squad|team|crit|combat)",
+  "oldConstants": [
+    "1.08",
+    "1.10",
+    "1.12",
+    "1.14",
+    "1.18",
+    "1.20",
+    "1.6",
+    "0.72",
+    "0.15",
+    "0.85",
+    "0.6"
+  ],
+  "oldFormulas": [
+    "Math\\.min\\(\\s*1\\.6\\b",
+    "\\b0\\.5\\s*\\*\\*",
+    "\\b0\\.8\\s*\\*\\s*\\(\\s*1\\s*-",
+    "\\bn\\s*>=\\s*5\\s*\\?\\s*1\\.2"
+  ],
+  "allow": {
+    "tcg-activity/src/stat-labels.js": {
+      "count": 1,
+      "reason": "Display only: the help text shows stat_points.per_star from the stat_points object that the server sends (no calculation with it)."
+    }
+  }
+}

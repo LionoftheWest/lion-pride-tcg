@@ -1318,7 +1318,7 @@ Shape: `number`
 
 The Dungeon monster moves (combat_pool_act; each monster has its own move list and weights in dungeon_monsters). A guardian charges a Cataclysm every cycle rounds (ATK x cataclysm_x, the other cards x cataclysm_area). _x = ATK multiplier; flurry hits twice; drain heals drain_heal of max HP; poison adds poison_dot x ATK; regenerate heals regenerate_heal of max HP (regenerate_heal_rage below boss_moves.rage_at); guard gives a shield of guard x max HP.
 
-Shape: `object { cataclysm_area: number, cataclysm_x: number, cycle: number, drain_heal: number, drain_x: number, flurry_x: number, guard: number, heavy_x: number, poison_dot: number, poison_x: number, regenerate_heal: number, regenerate_heal_rage: number, slam_x: number, stun_x: number }`
+Shape: `object { cataclysm_area: number, cataclysm_x: number, cycle: number, drain_heal: number, drain_x: number, flurry_hits: number, flurry_x: number, guard: number, heavy_x: number, poison_dot: number, poison_rounds: number, poison_x: number, regenerate_heal: number, regenerate_heal_rage: number, slam_x: number, stun_x: number }`
 
 ```json
 {
@@ -1333,6 +1333,8 @@ Shape: `object { cataclysm_area: number, cataclysm_x: number, cycle: number, dra
   "drain_heal": 0.08,
   "poison_dot": 0.25,
   "cataclysm_x": 0.9,
+  "flurry_hits": 2,
+  "poison_rounds": 3,
   "cataclysm_area": 0.75,
   "regenerate_heal": 0.1,
   "regenerate_heal_rage": 0.14

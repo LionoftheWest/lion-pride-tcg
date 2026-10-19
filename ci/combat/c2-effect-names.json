@@ -1,0 +1,29 @@
+{
+  "note": "Combat check 2 (c2-effect-names.mjs, docs/f3-effect-engine.md section 3). effects: the ability kinds (the keys of ability_kinds, f3_ability_kinds.sql). engine: the functions that may branch on a kind (the effect engine). allow: { function: { count, reason } }, a RATCHET: a count may only go down.",
+  "effects": [
+    "focus",
+    "pierce",
+    "execute",
+    "rampage",
+    "lifesteal",
+    "empower",
+    "shield",
+    "heal",
+    "weaken",
+    "expose",
+    "stun",
+    "smite",
+    "cleanse"
+  ],
+  "engine": "^combat_effect",
+  "allow": {
+    "hunt_counter_act": {
+      "count": 6,
+      "reason": "The Hunt boss counter moves (balance boss_counters, hunt_boss_moves.sql) react to one support kind: Siphon and Decay read the heals of the action log, Anemia hits the healers harder, Flame the weaken cards, Nightshade the expose cards, Rollback reads the smites. The engine does not play boss moves; a later PR can name the kind in boss_counters (plan 2.6)."
+    },
+    "hunt_damage_reconcile": {
+      "count": 2,
+      "reason": "A report, not a fight rule: it sums the Smite and Raid Crasher damage of the action log (combat_actions.effect) to check the Hunt damage totals."
+    }
+  }
+}
