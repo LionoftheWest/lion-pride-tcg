@@ -6753,7 +6753,7 @@
     ],
     "updatedAt": 1792012839374,
     "tags": {
-      "class": "support",
+      "class": "attacker",
       "type": "creature",
       "origin": [
         "pokemon"
@@ -6837,7 +6837,7 @@
     ],
     "updatedAt": 1792012841137,
     "tags": {
-      "class": "attacker",
+      "class": "support",
       "type": "item",
       "origin": [
         "minecraft"
@@ -7412,7 +7412,7 @@
     ],
     "updatedAt": 1792019287216,
     "tags": {
-      "class": "support",
+      "class": "attacker",
       "type": "character",
       "origin": [
         "community"
@@ -7462,7 +7462,7 @@
     ],
     "updatedAt": 1792019287581,
     "tags": {
-      "class": "attacker",
+      "class": "support",
       "type": "item",
       "origin": [
         "party"
@@ -7538,7 +7538,7 @@
     ],
     "updatedAt": 1792185046146,
     "tags": {
-      "class": "attacker",
+      "class": "support",
       "type": "item",
       "origin": [
         "community"
@@ -7565,7 +7565,7 @@
     ],
     "updatedAt": 1792185057318,
     "tags": {
-      "class": "attacker",
+      "class": "support",
       "type": "item",
       "origin": [
         "community"
@@ -7619,7 +7619,7 @@
     ],
     "updatedAt": 1792185105004,
     "tags": {
-      "class": "attacker",
+      "class": "support",
       "type": "item",
       "origin": [
         "community"
