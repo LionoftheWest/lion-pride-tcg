@@ -102,7 +102,9 @@
       "full_art",
       "event",
       "gold"
-    ]
+    ],
+    "area_one_foe_x": 0.2,
+    "_area": "Support area smite (P3, Lab item): the smite hits the target, the area value hits every other foe (true strike). With one foe (the Hunt) the area adds area_one_foe_x of its value to the smite (the plan rule for an area active, the same as cleaver.hunt_area_x)."
   },
   "v2_speed": {
     "_rule": "every unit adds speed to its meter each clock step and acts at 100. speed = base x (1 + 0.03 x SPD points) x statuses. Enemy speed 100 = one action a step.",
@@ -155,7 +157,7 @@
       "class": "attacker",
       "extra_chance": 0.2,
       "extra_x": 0.5,
-      "text": "Each basic attack has a 25% chance of a second strike at 50%."
+      "text": "Each basic attack has a 20% chance of a second strike at 50%."
     },
     "finisher": {
       "class": "attacker",
@@ -339,7 +341,8 @@
       "family": "boon",
       "cap": 1.5,
       "stack": false,
-      "_stack": "false = a new Empower replaces a lower one (today's rule). true = Empowers add up to the cap: the P4 what-if of the teams test (a Combat Lab item)"
+      "_stack": "false = a new Empower replaces a lower one (today's rule). true = Empowers add up to stack_cap (+50% = x1.5): the P4 what-if of the teams test (a Combat Lab item). Default false.",
+      "stack_cap": 0.5
     },
     "focused": {
       "family": "boon",
@@ -473,8 +476,10 @@
       },
       "regrowth": {
         "heal": 0.01,
-        "below_half_x": 2,
-        "text": "Heals 1% of its reference HP each step (x2 below half). Burn halves it."
+        "below_half_x": 1,
+        "text": "Hunt boss: heals 0.4% of the reference HP each step. Dungeon foe: 1% of its max HP each step. No x2 below half. Burn halves it.",
+        "boss_heal": 0.004,
+        "_tuning": "Nathan approved 2026-10-19 (monsters-v2.md 9.4): boss 1% x2 below half -> 0.4% flat, foes 1% flat."
       },
       "frost_aura": {
         "chill": 1,
@@ -534,7 +539,23 @@
         "x": 0.1,
         "text": "Empowered and Exposed work at 10% against it."
       }
-    }
+    },
+    "asc3_hp_x": 1.7,
+    "weak_role_x": 0.3,
+    "counter_cut_min": 0.65,
+    "_boss_hp": "Hunt boss HP = tier HP x asc3_hp_x x the boss hp_factor (Nathan approved 2026-10-19, 9.3). asc3_hp_x 1.7 is a first proposal. hp_factor = the measured median Hunt damage vs the neutral boss (mean of casual and active, run.mjs monsters, 2026-10-19, with the counter moves; Nathan approved). weak_role_x: a \"Weak to: role\" week, cards of that role deal +30% (9.6). counter_cut_min: a Normal or Heroic boss may cut a team to x0.65 at most (9.2), a check in run.mjs monsters.",
+    "weak_role_rules": {
+      "controller": {
+        "damage_x": 0,
+        "control_add": 1
+      }
+    },
+    "_weak_role": "A \"Weak to: role\" week: cards of that role deal +weak_role_x. weak_role_rules overrides a role: a Controller week boosts control, not damage (Nathan 2026-10-19): damage_x 0, and each control of a Controller on the boss lasts control_add more boss action.",
+    "counter_cap_accepted": [
+      "field-hospital/hydra",
+      "open-season/warlord"
+    ],
+    "_counter_cap": "The counter cap (counter_cut_min x0.65) applies to the Normal and Heroic Hunt boss only (Nathan 2026-10-19). The Dungeon guardian is the hard final room, so the cap does not apply to it. counter_cap_accepted = team/boss Hunt pairs that Nathan accepted as edge cases: Field Hospital vs the Patch-Note Hydra (x0.62, its designed weakness) and Open Season vs the Rage-Quit Warlord (x0.65, on the line)."
   },
   "v2_hunt": {
     "round_cap": 40,
@@ -872,14 +893,155 @@
         ]
       }
     },
-    "_tuning": "Foe speeds 50 (not the 8-stat study 100): a 5-card squad then makes about one attack for each foe action, as today."
+    "_tuning": "Foe speeds 50 (not the 8-stat study 100): a 5-card squad then makes about one attack for each foe action, as today.",
+    "moves_v2": {
+      "_rule": "monsters-v2.md 3.1 (plan 8.3): the status moves of the 10 monsters. on = the renamed moves replace the old ones (Nathan approved the monsters, 2026-10-19). Ooze Acid Spit (poison) and squid Ink Blast (curse) already apply their status.",
+      "on": true,
+      "rename": {
+        "demon": {
+          "heavy": "hellfire"
+        },
+        "yeti": {
+          "stun": "frost_punch"
+        },
+        "squid": {
+          "stun": "squeeze"
+        },
+        "skeleton": {
+          "curse": "rattle"
+        },
+        "zombie": {
+          "poison": "infect"
+        }
+      },
+      "hellfire": {
+        "x": 1.5,
+        "burn": 2,
+        "text": "Hellfire: a heavy hit (1.5) and Burn 2 on the hit card."
+      },
+      "frost_punch": {
+        "x": 0.45,
+        "chill": 2,
+        "text": "Frost Punch: 0.45 ATK and Chill 2 on the hit card."
+      },
+      "squeeze": {
+        "x": 0.45,
+        "status": "blinded",
+        "text": "Squeeze: 0.45 ATK and Blinded on the hit card."
+      },
+      "rattle": {
+        "exposed": 0.2,
+        "text": "Rattle (Sunder): Exposed +20% on a card."
+      },
+      "infect": {
+        "x": 0.35,
+        "poison": 1,
+        "no_heal": 4,
+        "text": "Infect: 0.35 ATK, Poison 1 and no heal for 4 steps on the hit card."
+      }
+    },
+    "monster_passives": {
+      "_rule": "monsters-v2.md 3.1 \"Passive at elite+\": the monster's own passive takes the first passive slot of an elite, miniboss or guardian (the other slots stay random). kinds = where it appears. pack = the raptor Swarm aura in hordes. on = true (approved 2026-10-19).",
+      "on": true,
+      "list": {
+        "golem": {
+          "mech": "bulwark",
+          "kinds": [
+            "guardian"
+          ]
+        },
+        "ooze": {
+          "mech": "plaguebearer"
+        },
+        "demon": {
+          "mech": "burning"
+        },
+        "yeti": {
+          "mech": "frost_aura"
+        },
+        "squid": {
+          "mech": "elusive"
+        },
+        "skeleton": {
+          "mech": "sunder"
+        },
+        "raptor": {
+          "mech": "shatter"
+        },
+        "slime": {
+          "mech": "regrowth"
+        },
+        "zombie": {
+          "mech": "undying",
+          "kinds": [
+            "miniboss",
+            "guardian"
+          ]
+        },
+        "giant": {
+          "mech": "volatile_core"
+        }
+      },
+      "kinds": [
+        "elite",
+        "miniboss",
+        "guardian"
+      ],
+      "pack": {
+        "monster": "raptor",
+        "kinds": [
+          "horde"
+        ],
+        "atk_per_foe": 0.05
+      }
+    },
+    "passive_params": {
+      "_rule": "Numbers of the new Dungeon passives (not counter mechanics of the teams test, so they are not in v2_enemy.mechanics).",
+      "bulwark": {
+        "every": 2,
+        "guard": 0.2,
+        "text": "Every 2nd action is a Guard (20% of its max HP)."
+      },
+      "plaguebearer": {
+        "poison": 1,
+        "text": "Each Poison tick on it puts Poison 1 on a random card."
+      },
+      "undying": {
+        "hp": 0.25,
+        "text": "Revives once at 25% HP, unless Burning or Poisoned."
+      },
+      "volatile_core": {
+        "x": 0.5,
+        "text": "On death: 0.5 ATK to every card, unless it is Stunned or Frozen."
+      },
+      "pack": {
+        "atk_per_foe": 0.05,
+        "text": "Pack: +5% ATK per living foe."
+      }
+    }
   },
   "v2_gauntlet": {
     "attackers": 3,
     "supports": 2,
-    "floors": 12,
+    "floors": 10,
     "stars": 0,
-    "level": 0
+    "level": 0,
+    "foe_x": {
+      "hp": 0.4,
+      "atk": 0.4
+    },
+    "growth": {
+      "hp": 1.15,
+      "atk": 1.07
+    },
+    "rest_heal": 0.8,
+    "rest_revive": 0.5,
+    "choice_heal": 0.6,
+    "room_weights": {
+      "rest": 20,
+      "choice": 20
+    },
+    "_tuning": "Nathan approved 2026-10-19 (monsters-v2.md 9.4): foes x0.4, growth HP x1.15 / ATK x1.07 a floor, rest heal 80% / revive 50%, choice heal 60%, rest and choice weight 20, 10 floors (was 12). Other room weights: the Dungeon values."
   },
   "v2_investment": {
     "new": {
@@ -1020,8 +1182,10 @@
       "smite": 5,
       "cleanse": 4,
       "dispel": 4,
-      "consume": 4
-    }
+      "consume": 4,
+      "cure": 0
+    },
+    "_cure": "cure = 0 PP: the cure and its immunity are free (Revision 5, Nathan approved 2026-10-18). A support area block costs smite x area x ref.foes_other."
   },
   "v2_templates": {
     "_rule": "the placeholder UNIQUE ACTIVE of a card = one template of its role, chosen by hash(subject key) mod the role's template count. Numbers fill the 10 PP budget (check: node run.mjs pp).",
@@ -1729,6 +1893,790 @@
           "chance": 1
         }
       ]
+    }
+  },
+  "v2_auto": {
+    "_rule": "The Auto button (policy auto). hold_control_for_charging: a support whose main status is a control waits for a Charging enemy (a Hunt boss, or a Dungeon foe with a Cataclysm), for at most hold_max ready turns. Default false (today's Auto).",
+    "hold_control_for_charging": false,
+    "hold_max": 2,
+    "best_holds_control": true,
+    "_best": "best_holds_control: the policy best (the teams test) holds a control active in the Hunt until the boss is Charging (today's rule, true). false = it uses control at once (a measurement switch)."
+  },
+  "v2_bosses": {
+    "_rule": "The 16 Hunt bosses of monsters-v2.md (2.1, 2.2; names of 9.7). A boss = Resists (immune statuses) + signature rules (sig) + Mythic rules + counter moves (counter_share of its normal turns, the rest is the base table) + hp_factor. The Dungeon guardian \"with the same mechanics\" uses resists, rules, params and stats, not the counter moves. Rule numbers: v2_boss_rules. _approx = what the simulator runs instead of the design.",
+    "warlord": {
+      "name": "Rage-Quit Warlord",
+      "resists": [
+        "exposed",
+        "weakened",
+        "mark"
+      ],
+      "sig": [
+        "ironhide"
+      ],
+      "mythic": [
+        "tilt"
+      ],
+      "hp_factor": 0.71,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "tilt",
+          "k": "enrage",
+          "x": 1.4,
+          "dur": 2
+        },
+        {
+          "id": "alt_f4",
+          "k": "cleanse_self"
+        },
+        {
+          "id": "rage_spiral",
+          "k": "spiral",
+          "per": 0.2,
+          "max": 3,
+          "dur": 2
+        },
+        {
+          "id": "flame",
+          "k": "area",
+          "x": 0.35,
+          "vs_last_debuffer": 2
+        }
+      ]
+    },
+    "nightshade": {
+      "name": "Ranked Nightshade",
+      "resists": [
+        "mark"
+      ],
+      "sig": [
+        "fade"
+      ],
+      "mythic": [
+        "elusive"
+      ],
+      "hp_factor": 0.73,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "fade",
+          "k": "evade",
+          "v": 0.1,
+          "dur": 4
+        },
+        {
+          "id": "veil",
+          "k": "cleanse_self",
+          "statuses": [
+            "mark",
+            "exposed"
+          ]
+        },
+        {
+          "id": "demotion",
+          "k": "hit",
+          "x": 1,
+          "tgt": "random",
+          "apply": {
+            "status": "exposed",
+            "value": 0.2
+          }
+        },
+        {
+          "id": "nightshade",
+          "k": "hit",
+          "x": 1,
+          "tgt": "random",
+          "apply": {
+            "status": "poison",
+            "stacks": 1
+          }
+        }
+      ]
+    },
+    "netcode": {
+      "name": "Netcode Mutant",
+      "resists": [
+        "paralyzed"
+      ],
+      "sig": [
+        "rollback"
+      ],
+      "mythic": [
+        "ironhide"
+      ],
+      "mythic_resists": [
+        "mark"
+      ],
+      "hp_factor": 0.87,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "lag_hit",
+          "k": "hit",
+          "x": 1,
+          "tgt": "random"
+        },
+        {
+          "id": "packet_storm",
+          "k": "area",
+          "x": 0.35
+        },
+        {
+          "id": "lag_spike",
+          "k": "hit",
+          "x": 1.5,
+          "tgt": "random"
+        }
+      ],
+      "_approx": "Nathan 2026-10-19: its rule alone counters Artillery. The counter moves are generic (a hit, an area hit, a heavy hit): the smite moves (Rollback heal, Hitbox Desync, Mirror) and Ping Spike took Party Games to x0.44. hp_factor 0.87 measured with these moves."
+    },
+    "vampire": {
+      "name": "Grind Vampire",
+      "resists": [],
+      "sig": [
+        "bloodrot",
+        "regrowth"
+      ],
+      "mythic": [
+        "siphon"
+      ],
+      "hp_factor": 0.92,
+      "counter_share": 0.55,
+      "moves": [
+        {
+          "id": "bloodrot",
+          "k": "hit",
+          "x": 1,
+          "tgt": "random",
+          "heal_cut": {
+            "x": 0.4,
+            "dur": 4
+          }
+        },
+        {
+          "id": "siphon",
+          "k": "siphon"
+        },
+        {
+          "id": "feast",
+          "k": "hit",
+          "x": 1,
+          "tgt": "lowest"
+        },
+        {
+          "id": "anemia",
+          "k": "area",
+          "x": 0.35,
+          "vs_role": {
+            "medic": 2
+          }
+        }
+      ]
+    },
+    "warzombie": {
+      "name": "AFK Warzombie",
+      "resists": [
+        "poison"
+      ],
+      "sig": [
+        "regrowth"
+      ],
+      "mythic": [
+        "undying"
+      ],
+      "hp_factor": 1.08,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "decay",
+          "k": "hit",
+          "x": 1,
+          "tgt": "random",
+          "decay": true
+        },
+        {
+          "id": "infect",
+          "k": "hit",
+          "x": 0.35,
+          "tgt": "random",
+          "apply": {
+            "status": "poison",
+            "stacks": 2
+          },
+          "heal_cut": {
+            "x": 0,
+            "dur": 4
+          }
+        },
+        {
+          "id": "groan",
+          "k": "charge",
+          "role": "medic",
+          "n": 1
+        },
+        {
+          "id": "undying",
+          "k": "state",
+          "key": "heal_mirror",
+          "v": 0.1,
+          "dur": 8
+        }
+      ],
+      "_approx": "Undying (Mythic: revive once at 25% unless Burning or Poisoned) never fires in a Hunt day (the boss does not fall). Its counter move Undying runs as: for 8 steps, each card heal also heals it 10% of that heal."
+    },
+    "maw": {
+      "name": "Maw of the Meta",
+      "resists": [],
+      "sig": [
+        "dispeller"
+      ],
+      "params": {
+        "dispeller": {
+          "x": 0
+        }
+      },
+      "mythic": [
+        "ironhide"
+      ],
+      "hp_factor": 1.1,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "nerf",
+          "k": "strip",
+          "status": "empowered"
+        },
+        {
+          "id": "patch_notes",
+          "k": "state",
+          "key": "emp_x",
+          "v": 0.5,
+          "dur": 999
+        },
+        {
+          "id": "tier_list",
+          "k": "hit",
+          "x": 2,
+          "tgt": "empowered"
+        },
+        {
+          "id": "counter_pick",
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.2,
+          "tgt": "strongest_attacker"
+        }
+      ]
+    },
+    "smurf": {
+      "name": "Smurf Brute",
+      "resists": [
+        "slowed"
+      ],
+      "sig": [
+        "shatter",
+        "brittle"
+      ],
+      "mythic": [
+        "crush"
+      ],
+      "hp_factor": 1.26,
+      "counter_share": 0.55,
+      "moves": [
+        {
+          "id": "shatter",
+          "k": "strip_shields"
+        },
+        {
+          "id": "crush",
+          "k": "strip_shields",
+          "crush": 0.5
+        },
+        {
+          "id": "bully",
+          "k": "hit",
+          "x": 1,
+          "tgt": "biggest_shield",
+          "ignore_shield": true
+        },
+        {
+          "id": "fake_rank",
+          "k": "hit",
+          "x": 1,
+          "tgt": "shielded",
+          "vs_shielded": 2
+        }
+      ]
+    },
+    "skeleton": {
+      "name": "Hardstuck Skeleton",
+      "resists": [],
+      "sig": [
+        "plated"
+      ],
+      "mythic": [
+        "mirror_hide"
+      ],
+      "hp_factor": 0.79,
+      "counter_share": 0.55,
+      "moves": [
+        {
+          "id": "bone_pierce",
+          "k": "hit",
+          "x": 1,
+          "tgt": "random",
+          "ignore_shield": true
+        },
+        {
+          "id": "rattle",
+          "k": "guard",
+          "v": 0.1
+        },
+        {
+          "id": "calcify",
+          "k": "state",
+          "key": "card_shield_x",
+          "v": 0.5,
+          "dur": 8
+        },
+        {
+          "id": "stuck",
+          "k": "hit",
+          "x": 1,
+          "tgt": "random",
+          "apply": {
+            "status": "slowed"
+          }
+        }
+      ]
+    },
+    "pumpkin": {
+      "name": "Patch-Day Pumpkin",
+      "resists": [
+        "blinded",
+        "confused"
+      ],
+      "sig": [
+        "purify"
+      ],
+      "params": {
+        "purify": {
+          "every": 2
+        }
+      },
+      "mythic": [
+        "rollout"
+      ],
+      "hp_factor": 0.95,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "hotfix",
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.3,
+          "locked": true
+        },
+        {
+          "id": "rollout",
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.3,
+          "tgt": "all"
+        },
+        {
+          "id": "rot",
+          "k": "state",
+          "key": "rot",
+          "v": 1,
+          "dur": 999
+        },
+        {
+          "id": "patch",
+          "k": "charge",
+          "role": "medic",
+          "n": 1
+        }
+      ],
+      "_approx": "Rollout (Mythic add) runs as Weakened 30% on every card at each Cataclysm. Hotfix: a cure cannot remove that Weakened."
+    },
+    "lagspike": {
+      "name": "Lagspike Parasite",
+      "resists": [
+        "stunned",
+        "frozen",
+        "sleep",
+        "paralyzed",
+        "chill"
+      ],
+      "sig": [
+        "steadfast"
+      ],
+      "mythic": [
+        "rubberband"
+      ],
+      "hp_factor": 0.88,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "desync",
+          "k": "state",
+          "key": "desync_control",
+          "v": 1,
+          "dur": 999
+        },
+        {
+          "id": "rubberband",
+          "k": "state",
+          "key": "rubberband",
+          "v": 1,
+          "dur": 8
+        },
+        {
+          "id": "lag_spike",
+          "k": "charge",
+          "role": "controller",
+          "n": 1
+        },
+        {
+          "id": "packet_loss",
+          "k": "apply",
+          "status": "confused",
+          "tgt": "support"
+        }
+      ],
+      "_approx": "It resists every control, so Desync and Rubberband rarely matter. Rubberband: after a blocked control it acts again (once a step)."
+    },
+    "banwave": {
+      "name": "Ban-Wave Demon",
+      "resists": [],
+      "sig": [
+        "time_lock"
+      ],
+      "mythic": [
+        "mirror_hide"
+      ],
+      "hp_factor": 1.02,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "ban",
+          "k": "skip",
+          "n": 2
+        },
+        {
+          "id": "wave",
+          "k": "charge",
+          "cls": "support",
+          "n": 1
+        },
+        {
+          "id": "appeal_denied",
+          "k": "hit",
+          "x": 2,
+          "tgt": "last_support"
+        },
+        {
+          "id": "shadow_ban",
+          "k": "strip",
+          "status": "quickened"
+        }
+      ]
+    },
+    "zerg": {
+      "name": "Zerg-Rush Queen",
+      "resists": [],
+      "sig": [
+        "brood"
+      ],
+      "mythic": [
+        "swarm"
+      ],
+      "hp_factor": 0.64,
+      "counter_share": 0.55,
+      "moves": [
+        {
+          "id": "swarm",
+          "k": "area",
+          "x": 0.35,
+          "vs_cls": {
+            "support": 3
+          }
+        },
+        {
+          "id": "brood",
+          "k": "brood",
+          "n": 1
+        },
+        {
+          "id": "rush",
+          "k": "hit",
+          "x": 1,
+          "tgt": "weakest_support",
+          "n": 2
+        },
+        {
+          "id": "overrun",
+          "k": "hit",
+          "x": 1,
+          "tgt": "weakest_support",
+          "enrage_on_kill": true
+        }
+      ],
+      "_approx": "Brood starts at 5 stacks a day (5 is also the cap). A hit by a Cleaver card or a Burn tick removes 1. The Brood move adds 1. hp_factor 0.57 is the proxy value (Brood was not built when it was measured)."
+    },
+    "salt_miner": {
+      "name": "The Salt Miner",
+      "resists": [
+        "poison",
+        "burn"
+      ],
+      "sig": [
+        "purify"
+      ],
+      "params": {
+        "purify": {
+          "every": 2
+        }
+      },
+      "mythic": [
+        "thick_hide"
+      ],
+      "hp_factor": 1.03,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "salt_spray",
+          "k": "cleanse_self",
+          "statuses": [
+            "poison",
+            "burn"
+          ]
+        },
+        {
+          "id": "grind",
+          "k": "area",
+          "x": 0.35
+        },
+        {
+          "id": "dig_in",
+          "k": "guard",
+          "v": 0.1
+        },
+        {
+          "id": "cash_out",
+          "k": "cash_out",
+          "per": 0.02,
+          "max": 0.06
+        }
+      ]
+    },
+    "frost_lich": {
+      "name": "The Frame-Freeze Lich",
+      "resists": [
+        "chill",
+        "frozen"
+      ],
+      "sig": [
+        "frost_aura",
+        "permafrost_heart"
+      ],
+      "params": {
+        "frost_aura": {
+          "chill": 2
+        }
+      },
+      "mythic": [
+        "thick_hide"
+      ],
+      "hp_factor": 0.93,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "frost_nova",
+          "k": "apply",
+          "status": "chill",
+          "stacks": 1,
+          "tgt": "all"
+        },
+        {
+          "id": "ice_wall",
+          "k": "guard",
+          "v": 0.1
+        },
+        {
+          "id": "glacial",
+          "k": "apply",
+          "status": "slowed",
+          "tgt": "n",
+          "n": 2
+        },
+        {
+          "id": "shatter_bones",
+          "k": "hit",
+          "x": 1,
+          "tgt": "frozen",
+          "vs_frozen": 2
+        }
+      ]
+    },
+    "camper_colossus": {
+      "name": "The Camper Colossus",
+      "resists": [],
+      "sig": [
+        "steadfast"
+      ],
+      "params": {
+        "steadfast": {
+          "dr": 0.5
+        }
+      },
+      "mythic": [
+        "shatter",
+        "brittle"
+      ],
+      "hp_factor": 0.57,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "hold",
+          "k": "guard",
+          "v": 0.1
+        },
+        {
+          "id": "bash",
+          "k": "hit",
+          "x": 1,
+          "tgt": "shielded",
+          "vs_shielded": 2
+        },
+        {
+          "id": "stand_firm",
+          "k": "state",
+          "key": "steadfast_kinds",
+          "v": 4,
+          "dur": 4
+        },
+        {
+          "id": "push",
+          "k": "area",
+          "x": 0.35
+        }
+      ]
+    },
+    "hydra": {
+      "name": "The Patch-Note Hydra",
+      "resists": [],
+      "sig": [
+        "regrowth"
+      ],
+      "params": {
+        "regrowth": {
+          "boss_heal": 0.004
+        }
+      },
+      "mythic": [
+        "thick_hide"
+      ],
+      "hp_factor": 0.9,
+      "counter_share": 0.4,
+      "moves": [
+        {
+          "id": "regrow",
+          "k": "heal",
+          "v": 0.015
+        },
+        {
+          "id": "new_head",
+          "k": "extra_action"
+        },
+        {
+          "id": "bite",
+          "k": "hit",
+          "x": 1,
+          "tgt": "random",
+          "apply": {
+            "status": "poison",
+            "stacks": 1
+          }
+        }
+      ],
+      "_approx": "Cauterize risk is a display rule (Burn halves its heal, as for every heal), so the Hydra has 3 counter moves."
+    },
+    "_guard": "A boss Guard (Rattle, Dig In, Ice Wall, Hold: \"Guard 10%\") is 10% of boss_heal_ref (300), not of the boss max HP: the Hunt heals use the same reference (a guard of 10% of 136,000 HP would block a whole day).",
+    "_tuning": "Nathan approved 2026-10-19 (the counter cap x0.65): Hydra Regrow 3% -> 1.5% and Regrowth 0.6% -> 0.4%; Netcode loses its Rollback heal move; Grind Vampire Bloodrot rule 40% -> 60% and its Bloodrot move 10% for 8 steps -> 40% for 4 steps; AFK Warzombie Infect no-heal 8 -> 4 steps and its Undying echo 25% -> 10%. Netcode: all 3 counter moves are generic (Nathan 2026-10-19)."
+  },
+  "v2_boss_rules": {
+    "_rule": "Numbers of the boss rules (signatures, Mythic adds). A rule that changes the cards (bloodrot, brittle, time_lock) works while a unit with it stands. A rule that changes hits on the unit (rollback, mirror_hide, plated, fade) works on that unit.",
+    "fade": {
+      "evasion_add": 0.3,
+      "text": "Evasion +30%."
+    },
+    "plated": {
+      "def": 0.5,
+      "text": "Defense 50%."
+    },
+    "rollback": {
+      "smite_x": 0.5,
+      "artillery_basic_x": 0.18,
+      "artillery_true_strike": false,
+      "text": "Smites on it deal 50%. Artillery basics on it deal 18% and can miss."
+    },
+    "bloodrot": {
+      "card_heal_x": 0.6,
+      "text": "Card heals and lifesteal work at 60% while it stands."
+    },
+    "brittle": {
+      "card_shield_x": 0.4,
+      "text": "Card shields work at 40% while it stands."
+    },
+    "time_lock": {
+      "text": "Quickened does nothing while it stands."
+    },
+    "mirror_hide": {
+      "extra_x": 0,
+      "splash_x": 0,
+      "strikes_x": 0.7,
+      "text": "Second strikes (Flurry) and splash or area hits on it do nothing. Multi-strike actives deal x0.7. The reflect is not modelled."
+    },
+    "tilt": {
+      "x": 1.4,
+      "dur": 2,
+      "text": "A debuff that it blocks (immune or resisted) Enrages it x1.4 for 2 steps."
+    },
+    "siphon": {
+      "x": 1,
+      "text": "At the end of each step it heals the HP that the squad healed in that step."
+    },
+    "crush": {
+      "x": 0.5,
+      "text": "A hit card also takes 50% of the shield that the hit removed."
+    },
+    "rubberband": {
+      "text": "After a control on it is blocked, it acts again (once a step)."
+    },
+    "undying": {
+      "hp": 0.25,
+      "text": "Revives once at 25% HP, unless Burning or Poisoned."
+    },
+    "rollout": {
+      "weaken": 0.3,
+      "text": "At each Cataclysm, Weakened 30% on every card."
+    },
+    "swarm": {
+      "x": 2,
+      "text": "Its area hits deal x2 to support cards."
+    },
+    "brood": {
+      "dr": 0.06,
+      "start": 5,
+      "max": 5,
+      "text": "Takes 6% less per Brood stack. A hit by a Cleaver card or a Burn tick removes 1."
+    },
+    "permafrost_heart": {
+      "text": "A Chill applied to it comes back to the card that applied it (the same stacks)."
     }
   }
 }

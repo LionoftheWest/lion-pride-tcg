@@ -166,7 +166,9 @@ Power              = Offense x Survival x k[role]
 
 ### 3.2 What the player sees
 
-- A **turn-order strip**: the next 5 to 6 actors (cards and enemies) from the clock. The clock itself stays hidden.
+- A **turn-order strip** across the full width: as many projected actors (cards and enemies) as fit, 10 at 430 px, 33 at 1280 px,
+  52 at 1990 px (UI-67, Nathan 2026-10-19). The projection draws no random number. When a speed or control status changes the order,
+  the chips redraw in place. Enemy turns and the turn on which a card's active is charged are marked. The clock itself stays hidden.
 - On a card's turn: the basic attack, or the active when it is charged, and the target (an ally for most supports). Auto plays for the player.
 - A charge mark on each card (for example 2 pips). The "Charging" warning before a Cataclysm stays.
 - Status icons on every unit (section 6). One line on tap.
@@ -312,15 +314,16 @@ Durations are clock steps: enemy / card [T]. "Ref HP" = the foe max HP in the Du
 | Accuracy | Blinded | +25% miss chance | no stacks | 2 / 8 | closed eye |
 | | Confused | 30% of its single attacks hit a wrong target | no stacks | 2 / 8 | swirl |
 | Tempo | Slowed | Speed x0.7 | no stacks | 3 / 10 | snail |
-| | Quickened | Speed x1.3 | no stacks | 3 / 10 | wing |
 | Vulnerability | Exposed | Takes +X% damage from every source, ticks included | adds, cap +100% | 2 / 8 | cracked eye |
 | | Weakened | Deals X% less damage. Replaces the card "Curse" | adds, cap 60% | 2 / 10 | down arrow |
 | | Mark | The next attack on it deals +X%, cannot miss, and can crit an Ironhide enemy. Then it ends | the higher X stays | 4, or 1 attack | target |
 | Boons | Shielded | Absorbs damage before HP | adds, cap 1.0 x max HP | until used | shield |
 | | Empowered | The next attack deals +X% | the higher X stays [P] | 1 attack | up arrow |
 | | Focused | +crit chance | no stacks | 10 | crosshair |
+| | Quickened | Speed x1.3 | no stacks | 3 / 10 | rabbit |
 
-Chill and Frozen count as one status (Frozen is the end state of Chill). Two enemy states are also shown with an icon:
+Quickened is a Boon (Nathan 2026-10-19, UI-67): every Boons status is good for its holder. The approved icons are in UI-67
+(the icon ideas above are the first proposals). Chill and Frozen count as one status (Frozen is the end state of Chill). Two enemy states are also shown with an icon:
 **Guarded** (a foe shield) and **Enraged** (x1.4 for 2 steps) [L].
 
 ### 6.2 Shared rules

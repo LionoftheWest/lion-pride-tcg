@@ -132,6 +132,22 @@ test('planted fault: one team is weak everywhere -> (a) and (d) go red for it', 
   const r = synth(S => { for (const k of Object.keys(S.t6)) S.t6[k].score *= 0.5; }); const f = fails(r);
   assert.ok(f.a.includes('t6')); assert.ok(f.d.includes('t6'));
 });
+test('specialists: check d skips a designed specialist only (a weak-everywhere specialist still fails a)', () => {
+  const weak = S => { for (const k of Object.keys(S.t6)) S.t6[k].score *= 0.5; };
+  const modes = ['hunt', 'hunt', 'hunt', 'dungeon', 'dungeon', 'dungeon', 'gauntlet', 'gauntlet'];
+  const head = modes.map((mode, j) => ({ id: `h${j}`, mode, inv: 'x', label: `h${j}` })), C = { head, counter: [], mechs: [] }, S = {};
+  for (let i = 0; i < 8; i++) { S[`t${i}`] = {}; for (let j = 0; j < 8; j++) S[`t${i}`][`h${j}`] = { score: 100 * (1 + (i === j ? 0.3 : 0) - ((i + 1) % 8 === j ? 0.25 : 0)) }; }
+  weak(S); for (const k of Object.keys(S.t2)) S.t2[k].score *= 1.6;
+  const off = fails(noMetaChecks(S, C)), on = fails(noMetaChecks(S, C, { specialists: ['t6'] }));
+  console.log(`  t6 weak + t2 x1.6: d without specialists ${off.d.join(',')}, with t6 specialist ${on.d.join(',')}; a ${on.a.join(',')}`);
+  assert.ok(off.d.includes('t6') && off.d.includes('t2'));
+  assert.ok(!on.d.includes('t6') && on.d.includes('t2'), 'd must skip the specialist only');
+  assert.ok(on.a.includes('t6'), 'a still applies to a specialist');
+});
+test('teams.json: a specialist team has a reason, and at most 2 teams are specialists', () => {
+  const sp = TM.filter(t => t.specialist); assert.ok(sp.length <= 2);
+  for (const t of sp) assert.ok(t.specialist_note && t.specialist_note.length > 20, `${t.id}: specialist_note missing`);
+});
 test('planted fault: a casual team below the floor-3 clear rate -> (e) goes red', () => {
   const f = fails(synth(() => {}, { t0: 0.5 })); console.log(`  t0 clears floor 3 in 50%: e ${f.e.join(',') || '-'}`);
   assert.deepEqual(f.e, ['t0']);
