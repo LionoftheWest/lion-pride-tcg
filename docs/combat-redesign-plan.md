@@ -145,7 +145,7 @@ Power              = Offense x Survival x k[role]
 - Rank correlation with simulated strength (Spearman, 144 random cards): 0.82 overall, 0.97 attackers, 0.68 supports [T].
   Naive CP x HP: 0.51 [T].
 - Today k is 0.87 (Medic) to 1.44 (Artillery) [T]. The support Offense term does not count smite, Poison or control.
-  The fix is formula work, not balance work (open decision 3).
+  The fix is formula work, not balance work (decision 3, section 15).
 - Refit k after each balance change (a Lab step, section 10).
 
 ---
@@ -508,18 +508,18 @@ and the flag key `combat_v2` (section 14.2).
 | # | Target | Goal | Simulator result after tuning |
 |---|---|---|---|
 | 1 | Hunt damage a day, Gold / Normal, fully built (5 stars, level 30) | x2.0 to x2.5 [D] | x2.14 [T] PASS |
-| 1b | Dungeon depth, Gold vs Normal, fully built | see open decision 1 | x1.37 floors, +2.1 floors [T] |
+| 1b | Dungeon depth, Gold vs Normal, fully built | Gold 2-3 floors deeper (decision 1) | x1.37 floors, +2.1 floors [T] |
 | 2 | Normal squad, active (5 stars, level 30), clears Dungeon floor 5 | 70% of runs or more [D] | 95% [T] PASS |
 | 2b | Normal squad, casual (2 stars, level 10), clears floor 3 | 70% or more [D] | 89% [T] PASS |
 | 3 | Hunt shapes 6A+2S to 3A+5S within 15% of the best (casual and active) | x0.85 or more [D] | x0.87 and x0.87 [T] PASS |
 | 3b | Dungeon shapes 5A to 2A+3S within 15% of the best | x0.85 or more [D] | x0.95 and x0.91 [T] PASS |
-| 4 | Lockdown in the Hunt | toward x1.0, no lock | x0.77, no lock [T] (open decision 2) |
+| 4 | Lockdown in the Hunt | about x0.76, no lock (decision 2) | x0.77, no lock [T] (decision 2, section 15) |
 | 5 | Cleave in the Hunt (reduced bonus [D]) | x1.15 or less | x1.07 [T] PASS. Hordes: floor 7 wins 26% vs 19% [T] |
 | 6 | Every role value | 0.85 to 1.15 of the mean | 0.87 to 1.11 [T] PASS |
 | 7 | No silver bullet. every counter boss cuts its archetype. Speed best for at most 2 of 8 roles | all | all PASS [T] |
 
 The simulator result: **20 PASS, 2 FAIL, 1 CHECK**, the same on seeds 1, 2 and 3 [T]. The 2 FAILs are the Dungeon floor ratio
-(open decision 1) and the role scale k (a formula item, open decision 3). The CHECK is Lockdown (open decision 2).
+(decision 1, section 15) and the role scale k (a formula item, open decision 3). The CHECK is Lockdown (decision 2, section 15).
 
 ### 10.2 Step 1: the simulator (before any build)
 
@@ -560,7 +560,7 @@ held by 13 players, and 215 open reset gifts that expire 2026-10-29 [L].
 | 7. Free reset | One new `stat_reset_gifts` row per player at go-live, valid 30 days | every player can choose again |
 
 **Timing** [P]: the progress switch (ASC-3, levels, 9 stats) goes live with the Dungeon v2 switch. Until the Hunt switches, the v1 Hunt
-keeps reading the old point columns (frozen, no new spending). The refunds and the reset gifts run at the Hunt switch (open decision 5).
+keeps reading the old point columns (frozen, no new spending). The refunds and the reset gifts run at the Hunt switch (decision 5, section 15).
 A dry run on the local copy prints the before / after table of the 952 rows (aggregates only) before the live run.
 
 ---
@@ -587,7 +587,7 @@ The batches need one tool, so that every proposal is valid data:
 | S2-1 to S2-4 | Set 2: attackers, supports, the Forbidden Pride pieces, the cards with an open role | about 15 to 20 cards each |
 
 - Role mix rule [P]: fill the thin roles in Set 2 (Warden, Spotter, Artillery, Cleaver). Keep stun sources rare.
-- Each batch also fixes the Set 2 class mismatches: 5 Items tagged attacker, 1 Creature and 1 Character tagged support [L] (open decision 6).
+- Each batch also fixes the Set 2 class mismatches: 5 Items tagged attacker, 1 Creature and 1 Character tagged support [L] (decision 6, section 15).
 
 ### 12.3 The review format for Nathan
 
@@ -691,27 +691,27 @@ because every later part reads them.
 
 ---
 
-## 15. Open decisions for Nathan
+## 15. Decisions (Nathan, 2026-10-18: all 8 recommendations approved)
 
 1. **Dungeon fairness target.** A x2 floor ratio is not possible together with a x2-2.5 Hunt gap: floors grow with the log of power.
    Measured: x1.38 floors, Gold 7.9 vs Normal 5.7 = +2.1 floors [T].
-   **Recommendation:** restate the target as "Gold goes 2 to 3 floors deeper than Normal at the same investment".
+   **Decided (the recommendation):** restate the target as "Gold goes 2 to 3 floors deeper than Normal at the same investment".
 2. **Lockdown in the Hunt at about x0.76 to x0.77 of the median.** More control value moves toward a boss lock (bound 1/3 of the boss turns).
-   **Recommendation:** accept it. Lockdown is a Dungeon archetype (4 controllers skip 31.6% of a floor 5 guardian's turns [T]).
+   **Decided (the recommendation):** accept it. Lockdown is a Dungeon archetype (4 controllers skip 31.6% of a floor 5 guardian's turns [T]).
    Give the Hunt a "Stun on Charging cancels the Cataclysm" reward later.
 3. **The Power formula must count smite, Poison and control.** Today k is 0.87 to 1.44 because the analytic support term misses them.
-   **Recommendation:** add the smite, status and control value of the active to the Offense term in E9, then refit k (target 0.85-1.15).
+   **Decided (the recommendation):** add the smite, status and control value of the active to the Offense term in E9, then refit k (target 0.85-1.15).
 4. **The Dungeon support cost** (you said "after the math"). With v2 a Gold support still costs 5 budget for support amounts only x1.1 to x1.2 of a Normal at the same stars [I from F].
-   **Recommendation:** measure 3 squads at the same budget in the Lab (R2), then decide a separate support cost table.
+   **Decided (the recommendation):** measure 3 squads at the same budget in the Lab (R2), then decide a separate support cost table.
 5. **Progress timing.** The 9 stats and levels must exist when the Dungeon switches, but the v1 Hunt still uses the old points.
-   **Recommendation:** freeze the old points for the v1 Hunt (no new spending), switch the progress with the Dungeon, and run the
+   **Decided (the recommendation):** freeze the old points for the v1 Hunt (no new spending), switch the progress with the Dungeon, and run the
    refunds and reset gifts at the Hunt switch.
 6. **Set 2 class mismatches.** 5 Items are tagged attacker (they cannot attack) and 1 Creature + 1 Character are tagged support.
-   **Recommendation:** the type decides the class. The Items become supports (the Airship-type card as Artillery). The Creature and
+   **Decided (the recommendation):** the type decides the class. The Items become supports (the Airship-type card as Artillery). The Creature and
    the Character become attackers (Survivor), or you change their type.
 7. **The family tag in Set 2.** 70 of 73 Set 2 subjects are `origin:community`, so the family synergy becomes automatic.
-   **Recommendation:** split the family into 2 to 3 values by game, before the Set 2 batches.
-8. **The Hunt daily cap unit.** **Recommendation:** keep 40 steps a day (not a number of card actions), so Speed keeps its value inside a fixed cap.
+   **Decided (the recommendation):** split the family into 2 to 3 values by game, before the Set 2 batches.
+8. **The Hunt daily cap unit.** **Decided (the recommendation):** keep 40 steps a day (not a number of card actions), so Speed keeps its value inside a fixed cap.
 
 ---
 
