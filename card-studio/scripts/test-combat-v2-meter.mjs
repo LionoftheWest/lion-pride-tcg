@@ -194,6 +194,14 @@ const SETUP = String.raw`
   perform set_config('balance.by', 'test', true);
   execute $m$${V1}$m$;
   execute $m$${E1}$m$;
+  -- the state before the file, also when the file is already applied on this copy: the 5 functions are dropped, so the checks below (comments,
+  -- grants, volatility, no other overload) see what the file makes, not what an earlier run left (2026-10-19: comment_missing was NOT CAUGHT
+  -- on a copy with the file applied)
+  execute $d$do $x$ declare f text; begin
+    for f in select p.oid::regprocedure::text from pg_proc p where p.pronamespace = 'public'::regnamespace
+               and p.proname in ('combat_v2_speed', 'combat_v2_advance', 'combat_v2_turn_order', 'combat_v2_numbers') loop
+      execute 'drop function ' || f;
+    end loop; end $x$$d$;
   execute $m$${mig}$m$;
   -- the runner: advance until the cap (or none); the actor sequence "side:id@clock" and the first problem of fight_state_check_v2
   execute $q$create function pg_temp.v2run(p jsonb, p_cap int) returns jsonb language plpgsql as $r$
