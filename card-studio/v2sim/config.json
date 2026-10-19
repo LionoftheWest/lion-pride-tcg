@@ -1,0 +1,1731 @@
+{
+  "_note": "combat v2 prototype numbers. Each top-level key is shaped like a future balance key. Live values (2026-10-18 snapshot) are marked in v2_meta.live_keys; every other number is a PROPOSAL to tune. Change numbers here, not in code.",
+  "v2_meta": {
+    "live_keys": [
+      "v2_asc.top",
+      "v2_enemy.hunt.*.hp",
+      "v2_enemy.hunt.*.atk",
+      "v2_enemy.boss_moves",
+      "v2_dungeon.monsters",
+      "v2_dungeon.growth",
+      "v2_dungeon.kinds",
+      "v2_dungeon.room_weights",
+      "v2_hit.miss",
+      "v2_hit.roll_min",
+      "v2_hit.roll_span"
+    ],
+    "sources": "combat-stats-8-model, combat-effects-library, combat-roles-draft, combat-audit (2026-10-18), Nathan's v2 decisions (2026-10-18)",
+    "tuning": "Tuning pass 2026-10-18 (Nathan approved the 6 recommendations): see discord-card-ideas/v2sim-tuning-2026-10-18.md. node run.mjs targets measures every target."
+  },
+  "v2_stats": {
+    "max_per_stat": 10,
+    "atk": {
+      "flat": 3
+    },
+    "def": {
+      "pct": 0.03,
+      "cap": 0.3
+    },
+    "hp": {
+      "flat": 8
+    },
+    "crd": {
+      "base": 2,
+      "pct": 0.1
+    },
+    "crt": {
+      "base": 0.1,
+      "pct": 0.04,
+      "cap": 0.6
+    },
+    "abl": {
+      "pct": 0.05
+    },
+    "ddg": {
+      "pct": 0.03,
+      "cap": 0.3,
+      "area_x": 0.5
+    },
+    "acc": {
+      "pct": 0.02
+    },
+    "spd": {
+      "pct": 0.03
+    }
+  },
+  "v2_card_hp": {
+    "base": 50,
+    "per_cp": 1.5
+  },
+  "v2_asc": {
+    "_rule": "ASC-3: CP = base[r] x (1 + (top[r] / base[r] - 1) x curve[stars]) x cp_mod",
+    "base": {
+      "normal": 25,
+      "illustrated_rare": 40,
+      "secret_rare": 60,
+      "full_art": 100,
+      "gold": 149.333
+    },
+    "top": {
+      "normal": 75,
+      "illustrated_rare": 140,
+      "secret_rare": 140,
+      "full_art": 187.5,
+      "gold": 224
+    },
+    "curve": [
+      0,
+      0.286,
+      0.5,
+      0.678,
+      0.857,
+      1
+    ],
+    "alias": {
+      "promo": "normal",
+      "event": "full_art"
+    }
+  },
+  "v2_level": {
+    "_rule": "1 point per level. Convergence D: CP' = CP + D x (level / max_level) x (target_cp - CP). D = 0 is off.",
+    "max_level": 30,
+    "points_per_level": 1,
+    "converge_d": 0.22,
+    "target_cp": 260
+  },
+  "v2_support": {
+    "_rule": "support amounts x F, F = (CP_base / power_ref) ^ power_exp (rarity and stars scale the numbers). Basic attack = basic_x x CP.",
+    "basic_x": 0.18,
+    "power_ref": 25,
+    "power_exp": 0.1,
+    "enabler_extra_stack": [
+      "full_art",
+      "event",
+      "gold"
+    ]
+  },
+  "v2_speed": {
+    "_rule": "every unit adds speed to its meter each clock step and acts at 100. speed = base x (1 + 0.03 x SPD points) x statuses. Enemy speed 100 = one action a step.",
+    "role_base": {
+      "breaker": 16,
+      "striker": 17,
+      "flurry": 18,
+      "finisher": 17,
+      "survivor": 15,
+      "cleaver": 15,
+      "warden": 24,
+      "medic": 24,
+      "controller": 20,
+      "spotter": 23,
+      "herald": 24,
+      "artillery": 20
+    },
+    "status_min_x": 0.4,
+    "safety_max_x": 1.6,
+    "max_actions_per_step": 4,
+    "_tuning": "Supports 20-24 (8-stat study start ~40 made 1A+7S best). Flurry 18 (was 20: role value x1.16). Tuned 2026-10-18."
+  },
+  "v2_charge": {
+    "_rule": "the active is ready after N own turns that did not use it (a cycle of N + 1 turns). Charge resets at the start of each fight.",
+    "attacker": 2,
+    "support": 1,
+    "start": 0
+  },
+  "v2_hit": {
+    "miss": 0.08,
+    "roll_min": 0.85,
+    "roll_span": 0.3,
+    "resolve_acc": 0.02,
+    "min_dmg": 1
+  },
+  "v2_roles": {
+    "breaker": {
+      "class": "attacker",
+      "pierce": 0.3,
+      "shield_x": 1.5,
+      "text": "Hits ignore 30% of Defense and deal x1.5 to shields."
+    },
+    "striker": {
+      "class": "attacker",
+      "crit_add": 0.08,
+      "critx_add": 0.2,
+      "text": "+8% crit chance and +0.2 crit damage."
+    },
+    "flurry": {
+      "class": "attacker",
+      "extra_chance": 0.2,
+      "extra_x": 0.5,
+      "text": "Each basic attack has a 25% chance of a second strike at 50%."
+    },
+    "finisher": {
+      "class": "attacker",
+      "line": 0.3,
+      "bonus": 0.4,
+      "text": "+40% damage to a target below 30% HP."
+    },
+    "survivor": {
+      "class": "attacker",
+      "lifesteal": 0.15,
+      "cap_maxhp": 0.08,
+      "text": "Heals 15% of the damage it deals (max 8% of its max HP a hit)."
+    },
+    "cleaver": {
+      "class": "attacker",
+      "splash": 0.6,
+      "hunt_bonus": 0.1,
+      "text": "Basic attacks also hit every other foe for 60%. Hunt (one boss): +10% damage, and an area active adds 20% of its area value.",
+      "hunt_area_x": 0.2
+    },
+    "warden": {
+      "class": "support",
+      "ally_dr": 0.08,
+      "taunt_w": 2,
+      "text": "Allies take 8% less damage while it stands. Enemies pick it twice as often."
+    },
+    "medic": {
+      "class": "support",
+      "heal_after": 0.05,
+      "text": "After each of its actions, heals the most hurt ally for 5% of its max HP."
+    },
+    "controller": {
+      "class": "support",
+      "resolve_ignore": 0.5,
+      "dur_add": 1,
+      "text": "Its debuffs ignore 50% of enemy resolve and last 1 step longer."
+    },
+    "spotter": {
+      "class": "support",
+      "basic_expose": 0.15,
+      "basic_expose_dur": 2,
+      "text": "Its basic attack Exposes the target 15% for 2 steps."
+    },
+    "herald": {
+      "class": "support",
+      "basic_empower": 0.15,
+      "text": "Its basic attack also Empowers the strongest attacker +15%."
+    },
+    "artillery": {
+      "class": "support",
+      "basic_x": 0.25,
+      "true_strike": true,
+      "text": "Its basic attack deals 25% (not 18%) and cannot miss."
+    }
+  },
+  "v2_role_map": {
+    "_rule": "role from today's ability kind (roles draft). Overrides: no-ability cards (roles draft table) and 3 Cleavers (effect library 5.1: Talonflame).",
+    "effect": {
+      "pierce": "breaker",
+      "focus": "striker",
+      "rampage": "flurry",
+      "execute": "finisher",
+      "lifesteal": "survivor",
+      "shield": "warden",
+      "heal": "medic",
+      "cleanse": "medic",
+      "weaken": "controller",
+      "stun": "controller",
+      "expose": "spotter",
+      "empower": "herald",
+      "smite": "artillery"
+    },
+    "overrides": {
+      "draw-me-like-one-of-your-french-girls": "striker",
+      "foxtrot-oreos": "striker",
+      "launch-day-player": "striker",
+      "launch-day-raider": "flurry",
+      "nugleo-jigglypuff": "survivor",
+      "deez-nutz": "artillery",
+      "r2vq-s-talonflame": "cleaver",
+      "ling-ling-s-talonflame": "cleaver",
+      "blastninja-s-blastoise": "cleaver"
+    }
+  },
+  "v2_status": {
+    "_rule": "durations in clock steps. dur = on an enemy, dur_card = on a card (cards act less often). Ticks happen at the end of each step and pass Defense and Exposed.",
+    "poison": {
+      "family": "dot",
+      "tick": 0.02,
+      "burst_at": 3,
+      "burst": 0.12,
+      "dur": 4,
+      "dur_card": 8,
+      "ignore_shield": true
+    },
+    "burn": {
+      "family": "dot",
+      "tick_x": 1.5,
+      "max": 5,
+      "decay": 1,
+      "heal_x": 0.5,
+      "vs_healer_x": 1.5,
+      "ignore_shield": true
+    },
+    "stunned": {
+      "family": "control",
+      "max_life": 4,
+      "max_life_card": 12
+    },
+    "frozen": {
+      "family": "control",
+      "max_life": 4,
+      "max_life_card": 12
+    },
+    "sleep": {
+      "family": "control",
+      "dur": 3,
+      "dur_card": 10
+    },
+    "paralyzed": {
+      "family": "control",
+      "dur": 3,
+      "dur_card": 10,
+      "fail": 0.5
+    },
+    "blinded": {
+      "family": "accuracy",
+      "miss": 0.25,
+      "dur": 2,
+      "dur_card": 8
+    },
+    "confused": {
+      "family": "accuracy",
+      "chance": 0.3,
+      "self_x": 0.5,
+      "dur": 2,
+      "dur_card": 8
+    },
+    "slowed": {
+      "family": "tempo",
+      "x": 0.7,
+      "dur": 3,
+      "dur_card": 10
+    },
+    "quickened": {
+      "family": "tempo",
+      "x": 1.3,
+      "dur": 3,
+      "dur_card": 10
+    },
+    "chill": {
+      "family": "tempo",
+      "dmg": 0.08,
+      "spd": 0.08,
+      "freeze_at": 3,
+      "dur": 3,
+      "dur_card": 10
+    },
+    "exposed": {
+      "family": "vuln",
+      "cap": 1,
+      "dur": 2,
+      "dur_card": 8
+    },
+    "weakened": {
+      "family": "vuln",
+      "cap": 0.6,
+      "dur": 2,
+      "dur_card": 10
+    },
+    "mark": {
+      "family": "vuln",
+      "dur": 4
+    },
+    "shielded": {
+      "family": "boon",
+      "cap_maxhp": 1
+    },
+    "empowered": {
+      "family": "boon",
+      "cap": 1.5
+    },
+    "focused": {
+      "family": "boon",
+      "dur": 10
+    },
+    "enraged": {
+      "family": "boon",
+      "x": 1.4,
+      "dur": 2
+    },
+    "hunt_ref_hp": 700,
+    "negative": [
+      "poison",
+      "burn",
+      "stunned",
+      "frozen",
+      "sleep",
+      "paralyzed",
+      "blinded",
+      "confused",
+      "slowed",
+      "chill",
+      "exposed",
+      "weakened",
+      "mark"
+    ]
+  },
+  "v2_control": {
+    "_rule": "ONE immunity for the whole control family (stunned, frozen, sleep, paralyzed). It starts when a control status ends.",
+    "immune": 2,
+    "immune_card": 8,
+    "boss_immune": 2,
+    "boss_max_dur": 1
+  },
+  "v2_enemy": {
+    "_rule": "Hunt boss per tier: HP and ATK live. def/evasion/resolve/keen/speed proposed (8-stat study section 4). Mythic speed 110 with ATK x0.91.",
+    "hunt": {
+      "Normal": {
+        "hp": 70000,
+        "atk": 58,
+        "def": 0.1,
+        "evasion": 0,
+        "resolve": 0,
+        "keen": 0,
+        "speed": 100,
+        "atk_x": 1,
+        "signatures": 1
+      },
+      "Heroic": {
+        "hp": 80000,
+        "atk": 73,
+        "def": 0.15,
+        "evasion": 0.04,
+        "resolve": 0.1,
+        "keen": 0,
+        "speed": 100,
+        "atk_x": 1,
+        "signatures": 1
+      },
+      "Mythic": {
+        "hp": 80000,
+        "atk": 93,
+        "def": 0.2,
+        "evasion": 0.08,
+        "resolve": 0.2,
+        "keen": 0.25,
+        "speed": 110,
+        "atk_x": 0.91,
+        "signatures": 2
+      }
+    },
+    "hunt_atk_scale": 1,
+    "boss_heal_ref": 3000,
+    "boss_moves": {
+      "strike": 0.4,
+      "strike_x": 1,
+      "slam": 0.22,
+      "slam_x": 0.35,
+      "drain": 0.1,
+      "drain_x": 0.8,
+      "drain_heal": 0.015,
+      "stun": 0.08,
+      "stun_x": 0.45,
+      "enrage": 0.07,
+      "enrage_x": 1.4,
+      "enrage_dur": 2,
+      "curse": 0.06,
+      "curse_weaken": 0.3,
+      "curse_dur": 10,
+      "regenerate": 0.07,
+      "regenerate_heal": 0.03,
+      "regenerate_heal_rage": 0.05,
+      "cycle": 8,
+      "cataclysm_x": 0.75,
+      "rage_at": 0.5,
+      "rage_x": 1.3
+    },
+    "start_hp_frac": [
+      0.05,
+      1
+    ],
+    "signature_pool": [
+      "purify",
+      "ironhide",
+      "true_strike",
+      "shatter",
+      "regrowth",
+      "frost_aura",
+      "thick_hide",
+      "unstoppable",
+      "venom",
+      "sunder",
+      "slowing",
+      "elusive",
+      "dispeller"
+    ],
+    "mechanics": {
+      "purify": {
+        "every": 3,
+        "text": "Every 3rd action it removes all its negative statuses."
+      },
+      "ironhide": {
+        "text": "Cannot be crit unless Marked."
+      },
+      "true_strike": {
+        "text": "Its hits cannot be dodged."
+      },
+      "shatter": {
+        "shield_x": 2,
+        "text": "Its hits deal x2 to shields."
+      },
+      "regrowth": {
+        "heal": 0.01,
+        "below_half_x": 2,
+        "text": "Heals 1% of its reference HP each step (x2 below half). Burn halves it."
+      },
+      "frost_aura": {
+        "chill": 1,
+        "text": "Its single hits Chill the card 1."
+      },
+      "thick_hide": {
+        "expose_cap": 0.15,
+        "text": "Exposed on it caps at 15%."
+      },
+      "unstoppable": {
+        "control_fail": 0.9,
+        "text": "Control on it fails 90% of the time."
+      },
+      "venom": {
+        "poison": 1,
+        "text": "Its single hits Poison the card 1."
+      },
+      "burning": {
+        "burn": 2,
+        "text": "Its single hits Burn the card 2."
+      },
+      "sunder": {
+        "pierce": 0.5,
+        "text": "Its hits ignore 50% of card Defense."
+      },
+      "slowing": {
+        "text": "Its area hits Slow every card hit."
+      },
+      "elusive": {
+        "text": "Marks on it fall off at its turn."
+      },
+      "toxic_born": {
+        "immune": [
+          "poison"
+        ],
+        "text": "Immune to Poison."
+      },
+      "fireborn": {
+        "immune": [
+          "burn"
+        ],
+        "text": "Immune to Burn."
+      },
+      "frostborn": {
+        "immune": [
+          "chill",
+          "frozen"
+        ],
+        "text": "Immune to Chill and Frozen."
+      },
+      "steadfast": {
+        "dr": 0.4,
+        "kinds": 3,
+        "text": "Takes 40% less until it has 3 different negative statuses."
+      },
+      "dispeller": {
+        "x": 0.1,
+        "text": "Empowered and Exposed work at 10% against it."
+      }
+    }
+  },
+  "v2_hunt": {
+    "round_cap": 40,
+    "squad": 8
+  },
+  "v2_dungeon": {
+    "_rule": "live floor plan: 5 rooms, room 1 fight, room 5 guardian, rooms 2-4 by room_weights. Foe stats = monster x growth x kind x hp_x/atk_x (v2 tuning).",
+    "squad": 5,
+    "floors": 30,
+    "rooms": 5,
+    "round_cap": 40,
+    "hp_x": 1,
+    "atk_x": 1,
+    "growth": {
+      "hp": 1.42,
+      "atk": 1.22,
+      "room": 0.06,
+      "early_floors": 1,
+      "early_hp": 0.5,
+      "early_atk": 0.5
+    },
+    "room_weights": {
+      "rest": 8,
+      "elite": 10,
+      "fight": 38,
+      "horde": 12,
+      "choice": 14,
+      "miniboss": 7,
+      "treasure": 11
+    },
+    "counts": {
+      "fight_min": 1,
+      "fight_spread": 3,
+      "horde_min": 3,
+      "horde_spread": 2
+    },
+    "kinds": {
+      "fight": {
+        "hp": 1,
+        "atk": 1,
+        "def": 0.05,
+        "speed": 50,
+        "passives": 0
+      },
+      "horde": {
+        "hp": 0.6,
+        "atk": 0.75,
+        "def": 0,
+        "speed": 55,
+        "passives": 0
+      },
+      "elite": {
+        "hp": 1.9,
+        "atk": 1.3,
+        "def": 0.1,
+        "speed": 50,
+        "passives": 1
+      },
+      "miniboss": {
+        "hp": 2.6,
+        "atk": 1.45,
+        "def": 0.15,
+        "speed": 48,
+        "passives": 1,
+        "charge": true
+      },
+      "guardian": {
+        "hp": 2.5,
+        "atk": 1.7,
+        "def": 0.2,
+        "speed": 45,
+        "passives": 2,
+        "charge": true
+      }
+    },
+    "foe_resolve": {
+      "fight": 0,
+      "horde": 0,
+      "elite": 0.1,
+      "miniboss": 0.1,
+      "guardian": 0.2
+    },
+    "foe_evasion_per_floor": 0.01,
+    "foe_evasion_max": 0.08,
+    "pool_moves": {
+      "cycle": 6,
+      "cataclysm_x": 0.75,
+      "heavy_x": 1.5,
+      "flurry_x": 0.55,
+      "slam_x": 0.35,
+      "stun_x": 0.45,
+      "drain_x": 0.8,
+      "drain_heal": 0.08,
+      "poison_x": 0.35,
+      "regenerate_heal": 0.1,
+      "regenerate_heal_rage": 0.14,
+      "guard": 0.2,
+      "curse_weaken": 0.3
+    },
+    "passive_pool": [
+      "purify",
+      "ironhide",
+      "thick_hide",
+      "regrowth",
+      "unstoppable",
+      "frost_aura",
+      "venom",
+      "burning",
+      "true_strike",
+      "shatter",
+      "toxic_born",
+      "fireborn",
+      "frostborn",
+      "sunder"
+    ],
+    "rest_heal": 0.4,
+    "rest_revive": 0.25,
+    "choice_heal": 0.25,
+    "main_floor": 5,
+    "monsters": {
+      "demon": {
+        "hp": 55,
+        "atk": 14,
+        "moves": [
+          [
+            "strike",
+            3
+          ],
+          [
+            "curse",
+            3
+          ],
+          [
+            "heavy",
+            2
+          ],
+          [
+            "regenerate",
+            1
+          ]
+        ]
+      },
+      "giant": {
+        "hp": 75,
+        "atk": 15,
+        "moves": [
+          [
+            "strike",
+            3
+          ],
+          [
+            "heavy",
+            3
+          ],
+          [
+            "slam",
+            3
+          ],
+          [
+            "enrage",
+            1
+          ]
+        ]
+      },
+      "golem": {
+        "hp": 85,
+        "atk": 12,
+        "moves": [
+          [
+            "strike",
+            2
+          ],
+          [
+            "heavy",
+            3
+          ],
+          [
+            "slam",
+            3
+          ],
+          [
+            "guard",
+            2
+          ]
+        ]
+      },
+      "ooze": {
+        "hp": 45,
+        "atk": 10,
+        "moves": [
+          [
+            "poison",
+            4
+          ],
+          [
+            "strike",
+            3
+          ],
+          [
+            "slam",
+            2
+          ],
+          [
+            "guard",
+            1
+          ]
+        ]
+      },
+      "raptor": {
+        "hp": 50,
+        "atk": 14,
+        "moves": [
+          [
+            "strike",
+            3
+          ],
+          [
+            "flurry",
+            4
+          ],
+          [
+            "heavy",
+            2
+          ],
+          [
+            "enrage",
+            1
+          ]
+        ]
+      },
+      "skeleton": {
+        "hp": 50,
+        "atk": 13,
+        "moves": [
+          [
+            "strike",
+            4
+          ],
+          [
+            "heavy",
+            2
+          ],
+          [
+            "curse",
+            2
+          ],
+          [
+            "guard",
+            1
+          ]
+        ]
+      },
+      "slime": {
+        "hp": 40,
+        "atk": 10,
+        "moves": [
+          [
+            "strike",
+            4
+          ],
+          [
+            "slam",
+            3
+          ],
+          [
+            "drain",
+            3
+          ]
+        ]
+      },
+      "squid": {
+        "hp": 45,
+        "atk": 12,
+        "moves": [
+          [
+            "strike",
+            2
+          ],
+          [
+            "flurry",
+            4
+          ],
+          [
+            "stun",
+            2
+          ],
+          [
+            "curse",
+            2
+          ]
+        ]
+      },
+      "yeti": {
+        "hp": 70,
+        "atk": 13,
+        "moves": [
+          [
+            "strike",
+            4
+          ],
+          [
+            "slam",
+            3
+          ],
+          [
+            "stun",
+            2
+          ],
+          [
+            "enrage",
+            1
+          ]
+        ]
+      },
+      "zombie": {
+        "hp": 60,
+        "atk": 11,
+        "moves": [
+          [
+            "strike",
+            4
+          ],
+          [
+            "drain",
+            3
+          ],
+          [
+            "poison",
+            2
+          ],
+          [
+            "enrage",
+            1
+          ]
+        ]
+      }
+    },
+    "_tuning": "Foe speeds 50 (not the 8-stat study 100): a 5-card squad then makes about one attack for each foe action, as today."
+  },
+  "v2_gauntlet": {
+    "attackers": 3,
+    "supports": 2,
+    "floors": 12,
+    "stars": 0,
+    "level": 0
+  },
+  "v2_investment": {
+    "new": {
+      "stars": 0,
+      "level": 0
+    },
+    "casual": {
+      "stars": 2,
+      "level": 10
+    },
+    "active": {
+      "stars": 5,
+      "level": 30
+    }
+  },
+  "v2_builds": {
+    "_rule": "weights for spending level points (largest remainder, max 10 a stat). Used for the fixed-build experiments.",
+    "breaker": {
+      "atk": 4,
+      "hp": 2,
+      "def": 2,
+      "crt": 1,
+      "spd": 1
+    },
+    "striker": {
+      "atk": 3,
+      "crt": 3,
+      "crd": 2,
+      "hp": 1,
+      "def": 1
+    },
+    "flurry": {
+      "atk": 4,
+      "spd": 2,
+      "crt": 2,
+      "hp": 1,
+      "def": 1
+    },
+    "finisher": {
+      "atk": 4,
+      "crt": 2,
+      "crd": 2,
+      "hp": 1,
+      "def": 1
+    },
+    "survivor": {
+      "atk": 3,
+      "hp": 3,
+      "def": 2,
+      "abl": 2
+    },
+    "cleaver": {
+      "atk": 4,
+      "hp": 2,
+      "def": 2,
+      "spd": 2
+    },
+    "warden": {
+      "abl": 3,
+      "hp": 3,
+      "def": 2,
+      "spd": 2
+    },
+    "medic": {
+      "abl": 3,
+      "hp": 3,
+      "def": 2,
+      "spd": 2
+    },
+    "controller": {
+      "spd": 3,
+      "acc": 2,
+      "hp": 3,
+      "def": 2
+    },
+    "spotter": {
+      "abl": 3,
+      "spd": 2,
+      "hp": 3,
+      "def": 2
+    },
+    "herald": {
+      "abl": 3,
+      "spd": 2,
+      "hp": 3,
+      "def": 2
+    },
+    "artillery": {
+      "atk": 3,
+      "abl": 2,
+      "hp": 3,
+      "def": 2
+    }
+  },
+  "v2_pp": {
+    "_rule": "1 PP = +2.5% of the card's expected damage per own turn (effect library 2.1). An attacker active that fires once per cycle C turns and adds V basic hits costs 40 x V / C. Support mains use the library prices at a cycle of 2 (x 2 / C). Rider value = status_pp x chance x strikes / C (attackers) or x 2 / C (supports).",
+    "budget": 10,
+    "tolerance": 0.6,
+    "ref": {
+      "enemy_def": 0.15,
+      "miss": 0.1,
+      "foes_other": 0.75,
+      "crit_share": 0.3,
+      "frozen_share": 0.2,
+      "shield_share": 0.15,
+      "stacks": 1.5,
+      "kinds": 1.5,
+      "payoff": 0.6,
+      "heal_value": 0.4
+    },
+    "status_pp": {
+      "poison": 4,
+      "burn": 1.5,
+      "chill": 2,
+      "mark": 16,
+      "exposed": 25,
+      "weakened": 23.3,
+      "stunned": 8,
+      "frozen": 8,
+      "sleep": 5,
+      "paralyzed": 5,
+      "blinded": 3,
+      "confused": 4,
+      "slowed": 3,
+      "shield_self": 20,
+      "empower_ally": 10
+    },
+    "support_pp": {
+      "shield": 25,
+      "shield_all": 75,
+      "heal": 16.7,
+      "heal_all": 60,
+      "empower": 20,
+      "rally": 50,
+      "quicken": 13.3,
+      "focus_crit": 20,
+      "focus_crd": 5,
+      "smite": 5,
+      "cleanse": 4,
+      "dispel": 4,
+      "consume": 4
+    }
+  },
+  "v2_templates": {
+    "_rule": "the placeholder UNIQUE ACTIVE of a card = one template of its role, chosen by hash(subject key) mod the role's template count. Numbers fill the 10 PP budget (check: node run.mjs pp).",
+    "breaker.crush": {
+      "role": "breaker",
+      "name": "Crushing Blow",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.53
+        },
+        {
+          "k": "pierce",
+          "v": 1
+        },
+        {
+          "k": "apply",
+          "status": "exposed",
+          "value": 0.1,
+          "chance": 0.6
+        }
+      ]
+    },
+    "breaker.shatter": {
+      "role": "breaker",
+      "name": "Shatter",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.4
+        },
+        {
+          "k": "per_stack",
+          "status": "chill",
+          "v": 0.2
+        },
+        {
+          "k": "vs_status",
+          "status": "frozen",
+          "x": 2
+        },
+        {
+          "k": "apply",
+          "status": "chill",
+          "stacks": 1,
+          "chance": 1
+        }
+      ]
+    },
+    "breaker.bash": {
+      "role": "breaker",
+      "name": "Shield Bash",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.4
+        },
+        {
+          "k": "shield_break",
+          "x": 3
+        },
+        {
+          "k": "pierce",
+          "v": 0.5
+        },
+        {
+          "k": "guard_up",
+          "v": 0.2
+        }
+      ]
+    },
+    "striker.lockon": {
+      "role": "striker",
+      "name": "Lock On",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.45
+        },
+        {
+          "k": "crit_add",
+          "v": 0.3
+        }
+      ]
+    },
+    "striker.bloom": {
+      "role": "striker",
+      "name": "Toxic Bloom",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.3
+        },
+        {
+          "k": "payoff_dmg",
+          "status": "poison",
+          "v": 0.5
+        },
+        {
+          "k": "payoff_crit",
+          "status": "poison",
+          "v": 0.25
+        }
+      ]
+    },
+    "striker.thunder": {
+      "role": "striker",
+      "name": "Thunderclap",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.5
+        },
+        {
+          "k": "crit_add",
+          "v": 0.2
+        },
+        {
+          "k": "on_crit",
+          "status": "stunned",
+          "chance": 0.5
+        }
+      ]
+    },
+    "striker.trueaim": {
+      "role": "striker",
+      "name": "True Aim",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.45
+        },
+        {
+          "k": "true_strike"
+        },
+        {
+          "k": "crit_add",
+          "v": 0.15
+        },
+        {
+          "k": "on_crit",
+          "status": "mark",
+          "value": 0.25,
+          "chance": 1
+        }
+      ]
+    },
+    "flurry.storm": {
+      "role": "flurry",
+      "name": "Blade Storm",
+      "blocks": [
+        {
+          "k": "strikes",
+          "n": 3,
+          "x": 0.565
+        },
+        {
+          "k": "apply",
+          "status": "poison",
+          "stacks": 1,
+          "chance": 0.25
+        }
+      ]
+    },
+    "flurry.frost": {
+      "role": "flurry",
+      "name": "Frost Flurry",
+      "blocks": [
+        {
+          "k": "strikes",
+          "n": 3,
+          "x": 0.565
+        },
+        {
+          "k": "apply",
+          "status": "chill",
+          "stacks": 1,
+          "chance": 0.35
+        }
+      ]
+    },
+    "flurry.frenzy": {
+      "role": "flurry",
+      "name": "Frenzy",
+      "blocks": [
+        {
+          "k": "strikes",
+          "n": 3,
+          "x": 0.51
+        },
+        {
+          "k": "payoff_dmg",
+          "status": "exposed",
+          "v": 0.35
+        }
+      ]
+    },
+    "finisher.execute": {
+      "role": "finisher",
+      "name": "Execute",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.3
+        },
+        {
+          "k": "execute",
+          "line": 0.3,
+          "v": 1.5
+        }
+      ]
+    },
+    "finisher.ko": {
+      "role": "finisher",
+      "name": "KO Punch",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.4
+        },
+        {
+          "k": "execute",
+          "line": 0.25,
+          "v": 0.8
+        },
+        {
+          "k": "line_status",
+          "statuses": [
+            "stunned",
+            "frozen",
+            "sleep",
+            "mark"
+          ]
+        }
+      ]
+    },
+    "finisher.pileon": {
+      "role": "finisher",
+      "name": "Pile On",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.4
+        },
+        {
+          "k": "per_kind",
+          "v": 0.4
+        }
+      ]
+    },
+    "survivor.leech": {
+      "role": "survivor",
+      "name": "Leech",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.5
+        },
+        {
+          "k": "lifesteal",
+          "v": 0.6
+        }
+      ]
+    },
+    "survivor.guardup": {
+      "role": "survivor",
+      "name": "Guard Up",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.5
+        },
+        {
+          "k": "guard_up",
+          "v": 0.6
+        }
+      ]
+    },
+    "survivor.sap": {
+      "role": "survivor",
+      "name": "Sap",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.5
+        },
+        {
+          "k": "lifesteal",
+          "v": 0.3
+        },
+        {
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.2,
+          "chance": 1
+        }
+      ]
+    },
+    "cleaver.cleave": {
+      "role": "cleaver",
+      "name": "Cleave",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.2
+        },
+        {
+          "k": "area",
+          "x": 0.75
+        }
+      ]
+    },
+    "cleaver.wildfire": {
+      "role": "cleaver",
+      "name": "Wildfire",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.15
+        },
+        {
+          "k": "area",
+          "x": 0.6
+        },
+        {
+          "k": "apply",
+          "status": "burn",
+          "stacks": 2,
+          "chance": 1,
+          "all": true
+        }
+      ]
+    },
+    "cleaver.plague": {
+      "role": "cleaver",
+      "name": "Plague Swing",
+      "blocks": [
+        {
+          "k": "hit",
+          "x": 1.15
+        },
+        {
+          "k": "area",
+          "x": 0.6
+        },
+        {
+          "k": "apply",
+          "status": "poison",
+          "stacks": 1,
+          "chance": 1,
+          "all": true
+        }
+      ]
+    },
+    "warden.shield": {
+      "role": "warden",
+      "name": "Guard",
+      "blocks": [
+        {
+          "k": "shield",
+          "v": 0.4
+        }
+      ]
+    },
+    "warden.bulwark": {
+      "role": "warden",
+      "name": "Bulwark",
+      "blocks": [
+        {
+          "k": "shield_all",
+          "v": 0.133
+        }
+      ]
+    },
+    "warden.icefort": {
+      "role": "warden",
+      "name": "Ice Fortress",
+      "blocks": [
+        {
+          "k": "shield",
+          "v": 0.32
+        },
+        {
+          "k": "apply",
+          "status": "chill",
+          "stacks": 1,
+          "chance": 1
+        }
+      ]
+    },
+    "medic.heal": {
+      "role": "medic",
+      "name": "Patch Up",
+      "blocks": [
+        {
+          "k": "heal",
+          "v": 0.6
+        }
+      ]
+    },
+    "medic.mend": {
+      "role": "medic",
+      "name": "Mend",
+      "blocks": [
+        {
+          "k": "heal",
+          "v": 0.36
+        },
+        {
+          "k": "cleanse"
+        }
+      ]
+    },
+    "controller.stun": {
+      "role": "controller",
+      "charge": 1,
+      "name": "Stun",
+      "blocks": [
+        {
+          "k": "apply",
+          "status": "stunned",
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.086,
+          "chance": 1
+        }
+      ]
+    },
+    "controller.envenom": {
+      "role": "controller",
+      "name": "Envenom",
+      "blocks": [
+        {
+          "k": "apply",
+          "status": "poison",
+          "stacks": 2,
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.09,
+          "chance": 1
+        }
+      ]
+    },
+    "controller.coldsnap": {
+      "role": "controller",
+      "name": "Cold Snap",
+      "blocks": [
+        {
+          "k": "apply",
+          "status": "chill",
+          "stacks": 2,
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "slowed",
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "blinded",
+          "chance": 1
+        }
+      ]
+    },
+    "controller.weaken": {
+      "role": "controller",
+      "name": "Taunt",
+      "blocks": [
+        {
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.38,
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "slowed",
+          "chance": 0.4
+        }
+      ]
+    },
+    "controller.lull": {
+      "role": "controller",
+      "name": "Lullaby",
+      "blocks": [
+        {
+          "k": "apply",
+          "status": "sleep",
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.2,
+          "chance": 1
+        }
+      ]
+    },
+    "controller.paralyze": {
+      "role": "controller",
+      "name": "Static",
+      "blocks": [
+        {
+          "k": "apply",
+          "status": "paralyzed",
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.2,
+          "chance": 1
+        }
+      ]
+    },
+    "controller.haze": {
+      "role": "controller",
+      "name": "Haze",
+      "blocks": [
+        {
+          "k": "apply",
+          "status": "blinded",
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "confused",
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "weakened",
+          "value": 0.13,
+          "chance": 1
+        }
+      ]
+    },
+    "spotter.expose": {
+      "role": "spotter",
+      "name": "Look Out",
+      "blocks": [
+        {
+          "k": "apply",
+          "status": "exposed",
+          "value": 0.4,
+          "chance": 1
+        }
+      ]
+    },
+    "spotter.mark": {
+      "role": "spotter",
+      "name": "Tag",
+      "blocks": [
+        {
+          "k": "apply",
+          "status": "mark",
+          "value": 0.45,
+          "chance": 1
+        },
+        {
+          "k": "apply",
+          "status": "exposed",
+          "value": 0.11,
+          "chance": 1
+        }
+      ]
+    },
+    "spotter.dispel": {
+      "role": "spotter",
+      "name": "Dispel",
+      "blocks": [
+        {
+          "k": "dispel"
+        },
+        {
+          "k": "apply",
+          "status": "exposed",
+          "value": 0.24,
+          "chance": 1
+        }
+      ]
+    },
+    "herald.empower": {
+      "role": "herald",
+      "name": "Royal Decree",
+      "blocks": [
+        {
+          "k": "empower",
+          "v": 0.5
+        }
+      ]
+    },
+    "herald.rally": {
+      "role": "herald",
+      "name": "Rally",
+      "blocks": [
+        {
+          "k": "rally",
+          "v": 0.2
+        }
+      ]
+    },
+    "herald.focus": {
+      "role": "herald",
+      "name": "Focus Up",
+      "blocks": [
+        {
+          "k": "focus",
+          "crit": 0.25,
+          "crd": 0.5,
+          "target": "best"
+        },
+        {
+          "k": "empower",
+          "v": 0.125
+        }
+      ]
+    },
+    "herald.quicken": {
+      "role": "herald",
+      "name": "Quicken",
+      "blocks": [
+        {
+          "k": "quicken",
+          "v": 0.3,
+          "all": true
+        },
+        {
+          "k": "empower",
+          "v": 0.2
+        }
+      ]
+    },
+    "artillery.smite": {
+      "role": "artillery",
+      "name": "Barrage",
+      "blocks": [
+        {
+          "k": "smite",
+          "x": 2
+        }
+      ]
+    },
+    "artillery.ignite": {
+      "role": "artillery",
+      "name": "Ignite",
+      "blocks": [
+        {
+          "k": "smite",
+          "x": 1.1
+        },
+        {
+          "k": "apply",
+          "status": "burn",
+          "stacks": 3,
+          "chance": 1
+        }
+      ]
+    },
+    "artillery.detonate": {
+      "role": "artillery",
+      "name": "Detonate",
+      "blocks": [
+        {
+          "k": "smite",
+          "x": 0.44
+        },
+        {
+          "k": "consume",
+          "status": "burn",
+          "x": 1.2
+        },
+        {
+          "k": "apply",
+          "status": "burn",
+          "stacks": 2,
+          "chance": 1
+        }
+      ]
+    },
+    "artillery.frostshell": {
+      "role": "artillery",
+      "name": "Frost Shell",
+      "blocks": [
+        {
+          "k": "smite",
+          "x": 1.52
+        },
+        {
+          "k": "vs_status",
+          "status": "frozen",
+          "x": 2
+        },
+        {
+          "k": "apply",
+          "status": "chill",
+          "stacks": 1,
+          "chance": 1
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,4544 @@
+{
+ "_note": "Public card data snapshot (live, read-only) of 2026-10-18: subjects, their finishes, and the balance values that v2sim starts from. No player data.",
+ "snapshot_date": "2026-10-18",
+ "subjects": [
+  {
+   "key": "2-week-game-fever",
+   "name": "2 - Week Game Fever",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Fever Pitch",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "30-dantucker-pings",
+   "name": "30 DanTucker Pings",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Ping Storm",
+    "effect": "stun",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "4-in-the-pink",
+   "name": "4 In the Pink",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Pink Power",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "alydoor-s-cafe",
+   "name": "Alydoor's Cafe",
+   "type": "Place",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [
+    "location"
+   ],
+   "ability": {
+    "name": "Metal Expose",
+    "effect": "expose",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "australian-connections",
+   "name": "Australian Connections",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Lag Spike",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "b-button-spam",
+   "name": "B Button Spam",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Projectile Wall",
+    "effect": "shield",
+    "amount": 0.4,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "bad-news-bears",
+   "name": "Bad News Bears",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "earth",
+    "beast",
+    "strong"
+   ],
+   "ability": {
+    "name": "Rally Cap",
+    "effect": "execute",
+    "amount": 0.4,
+    "threshold": 0.3
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "baego",
+   "name": "Baego",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid",
+    "community"
+   ],
+   "ability": {
+    "name": "Better Side",
+    "effect": "focus",
+    "amount": 0.12,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "beetle-s-cloud",
+   "name": "Beetle's Cloud",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid",
+    "melee"
+   ],
+   "ability": {
+    "name": "Limit Break",
+    "effect": "execute",
+    "amount": 0.4,
+    "threshold": 0.3
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "better-in-cancun",
+   "name": "Better in Cancun",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Vacation Mode",
+    "effect": "heal",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "blade-s-beans-on-toast",
+   "name": "Blade's Beans on Toast",
+   "type": "Item",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [
+    "object"
+   ],
+   "ability": {
+    "name": "Why",
+    "effect": "cleanse",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "blastninja-s-blastoise",
+   "name": "Blastninja's Blastoise",
+   "type": "Creature",
+   "cp_mod": 0.95,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "water",
+    "armored",
+    "beast"
+   ],
+   "ability": {
+    "name": "Hydro Cannon",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "bonzan-s-donkey-kong",
+   "name": "Bonzan's Donkey Kong",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "beast",
+    "strong",
+    "melee"
+   ],
+   "ability": {
+    "name": "Giant Punch",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "brego-s-link",
+   "name": "Brego's Link",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "light",
+    "hero",
+    "royal",
+    "melee"
+   ],
+   "ability": {
+    "name": "Spin Attack",
+    "effect": "rampage",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "broken-warden-s-umbreon",
+   "name": "Broken Warden's Umbreon",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "shadow",
+    "beast"
+   ],
+   "ability": {
+    "name": "Moonlight",
+    "effect": "lifesteal",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "build-a-house-mime",
+   "name": "Building a House",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Two Walls",
+    "effect": "shield",
+    "amount": 0.4,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "call-hr",
+   "name": "Call HR!",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Caster Mend",
+    "effect": "heal",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "call-of-dragons",
+   "name": "Call of Dragons",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "World Chat War",
+    "effect": "expose",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "chevynova-s-bowser",
+   "name": "ChevyNova's Bowser",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "monster",
+    "royal",
+    "fire"
+   ],
+   "ability": {
+    "name": "Tried and True",
+    "effect": "focus",
+    "amount": 0.14,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "cockroachs-never-die",
+   "name": "Cockroachs Never Die",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Never Die",
+    "effect": "heal",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "cocky-little-freak",
+   "name": "Cocky little Freak!",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Taunt",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "create-a-colony",
+   "name": "Create-a-Colony",
+   "type": "Place",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [
+    "location"
+   ],
+   "ability": {
+    "name": "Potato Cannon",
+    "effect": "expose",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "crew-battle",
+   "name": "Crew Battle!",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Team Name",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "deez-nutz",
+   "name": "DEEZ NUTZ",
+   "type": "Item",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [
+    "object"
+   ],
+   "ability": null,
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "discord-pizza-party",
+   "name": "Discord Pizza Party",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [
+    "community"
+   ],
+   "ability": {
+    "name": "Pizza Party",
+    "effect": "heal",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "draw-me-like-one-of-your-french-girls",
+   "name": "Draw Me Like One of Your French Girls",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [],
+   "traits": [],
+   "ability": null,
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "e-mandarkstar-s-ganondorf",
+   "name": "E-Mandarkstar's Ganondorf",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "shadow",
+    "royal",
+    "melee"
+   ],
+   "ability": {
+    "name": "Warlock Punch",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "el-rey-s-pirahna-plant",
+   "name": "El Rey's Pirahna Plant",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "nature",
+    "toxic",
+    "monster"
+   ],
+   "ability": {
+    "name": "Chomp",
+    "effect": "lifesteal",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "enter-foxtrot",
+   "name": "Enter Foxtrot",
+   "type": "Moment",
+   "cp_mod": 0.99,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Meme Empower",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "failed-wordle",
+   "name": "Failed Wordle",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Stupid Word",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "fluffy-s-repo",
+   "name": "Fluffy's REPO",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Nature Cleanse",
+    "effect": "cleanse",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "fluffy-s-repo-clutch",
+   "name": "Fluffy's REPO Clutch",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Last One Alive",
+    "effect": "shield",
+    "amount": 0.4,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "foxtrot-oreos",
+   "name": "Foxtrot's Gambit",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [],
+   "ability": null,
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "foxtrot-s-krool",
+   "name": "Foxtrot's King K. Rool",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "monster",
+    "royal",
+    "armored"
+   ],
+   "ability": {
+    "name": "Crownerang",
+    "effect": "rampage",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "foxtrots-one-weakness",
+   "name": "Foxtrots One Weakness",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "She's Here",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "frick",
+   "name": "FRICK",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Hero Smite",
+    "effect": "smite",
+    "amount": 200,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "geats",
+   "name": "Geats",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Arcane Cleanse",
+    "effect": "cleanse",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "geno-s-megaman",
+   "name": "Geno's Megaman",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "metal",
+    "robot",
+    "ranged"
+   ],
+   "ability": {
+    "name": "Doubles Clutch",
+    "effect": "execute",
+    "amount": 0.4,
+    "threshold": 0.25
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "gerudo-fight-club",
+   "name": "Gerudo Fight Club",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Suavemente",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "gordo-s-min-min",
+   "name": "Gordo's Min Min",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid",
+    "agile",
+    "ranged"
+   ],
+   "ability": {
+    "name": "ARMS Reach",
+    "effect": "focus",
+    "amount": 0.12,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "grim-s-jigglypuff",
+   "name": "Grim's Jigglypuff",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "arcane",
+    "cute"
+   ],
+   "ability": {
+    "name": "Rest Confirm",
+    "effect": "execute",
+    "amount": 0.5,
+    "threshold": 0.25
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "grim-s-pokemon-trainer",
+   "name": "Grim's Pokemon Trainer",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid"
+   ],
+   "ability": {
+    "name": "Swap Out",
+    "effect": "lifesteal",
+    "amount": 0.15,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "grudge-match",
+   "name": "Grudge Match",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Settle This",
+    "effect": "smite",
+    "amount": 200,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "grumpyteadbear-s-last-stand",
+   "name": "AGrumpyTeddyBear's Last Stand",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Last Stand",
+    "effect": "shield",
+    "amount": 0.4,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "gsnipes-cinderrace",
+   "name": "GSnipes Cinderrace",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "fire",
+    "beast",
+    "ranged"
+   ],
+   "ability": {
+    "name": "Pyro Ball",
+    "effect": "focus",
+    "amount": 0.12,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "gym-rat-lion",
+   "name": "Gym Rat Lion",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid",
+    "strong",
+    "community"
+   ],
+   "ability": {
+    "name": "Chocolate Milk",
+    "effect": "lifesteal",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "heero-s-meowscarada",
+   "name": "Heero's Meowscarada",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "nature",
+    "shadow",
+    "stealth"
+   ],
+   "ability": {
+    "name": "Double Slash",
+    "effect": "rampage",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "highflyingpenguin-s-king-dedede",
+   "name": "HighFlyingPenguin's King Dedede",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "royal",
+    "armored",
+    "strong"
+   ],
+   "ability": {
+    "name": "Jet Hammer",
+    "effect": "execute",
+    "amount": 0.45,
+    "threshold": 0.25
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "hole-in-one",
+   "name": "Hole in One!",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Skill Shot",
+    "effect": "smite",
+    "amount": 200,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "i-ll-get-it-back-don-t-worry",
+   "name": "I'll get it back, don't worry",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Comeback",
+    "effect": "heal",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "i-m-a-tree",
+   "name": "I'm a Tree!",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Throw Everything",
+    "effect": "expose",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "jelly-s-urshifu",
+   "name": "Jelly's Urshifu",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "water",
+    "melee",
+    "strong"
+   ],
+   "ability": {
+    "name": "Button Mash",
+    "effect": "rampage",
+    "amount": 0.25,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "kaminari-s-incineroar",
+   "name": "Kaminari's Incineroar",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "fire",
+    "beast",
+    "melee"
+   ],
+   "ability": {
+    "name": "Free Hugs",
+    "effect": "lifesteal",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "kaminari-s-krool",
+   "name": "Kaminari's King K. Rool",
+   "type": "Character",
+   "cp_mod": 0.97,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "monster",
+    "royal",
+    "armored"
+   ],
+   "ability": {
+    "name": "MY SWAMP",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "keeb-s-mii-gunner",
+   "name": "Keeb's Mii Gunner",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "metal",
+    "armored",
+    "ranged"
+   ],
+   "ability": {
+    "name": "B...B...B...",
+    "effect": "rampage",
+    "amount": 0.25,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "ketchup-on-hotdogs",
+   "name": "Ketchup on Hotdogs",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Earth Weaken",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "king-of-the-swamp",
+   "name": "King of the Swamp",
+   "type": "Place",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "location",
+    "nature"
+   ],
+   "ability": {
+    "name": "Lightning Mend",
+    "effect": "heal",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "kobedunk-s-lumberjack",
+   "name": "KobeDunk's Hole-in-One",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [
+    "humanoid",
+    "melee",
+    "strong"
+   ],
+   "ability": {
+    "name": "Timber!",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "kroc-bot",
+   "name": "Kroc Bot",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "metal",
+    "robot",
+    "community"
+   ],
+   "ability": {
+    "name": "Peaches Beam",
+    "effect": "focus",
+    "amount": 0.12,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "krool-name-swap",
+   "name": "Krool Name Swap",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Party Shield",
+    "effect": "shield",
+    "amount": 0.4,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "launch-day-player",
+   "name": "Launch Day Player",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [],
+   "ability": null,
+   "finishes": [
+    {
+     "rarity": "event",
+     "pool": false
+    }
+   ]
+  },
+  {
+   "key": "launch-day-raider",
+   "name": "Launch Day Raider",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [],
+   "ability": null,
+   "finishes": [
+    {
+     "rarity": "event",
+     "pool": false
+    }
+   ]
+  },
+  {
+   "key": "lazy-sd",
+   "name": "Lazy SD",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Inevitable",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "lazypie-s-zero-suit-samus",
+   "name": "Lazypie's Zero Suit Samus",
+   "type": "Character",
+   "cp_mod": 0.92,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "lightning",
+    "agile",
+    "ranged"
+   ],
+   "ability": {
+    "name": "Rapid Fire",
+    "effect": "rampage",
+    "amount": 0.25,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "ling-ling-s-talonflame",
+   "name": "Ling Ling's Talonflame",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "fire",
+    "air",
+    "bird"
+   ],
+   "ability": {
+    "name": "Haunting Dive",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "lionofthewest-s-dodrio",
+   "name": "LionoftheWest's Dodrio",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "air",
+    "bird",
+    "beast"
+   ],
+   "ability": {
+    "name": "Triple Peck",
+    "effect": "rampage",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "lionofthewest-s-pichu",
+   "name": "LionoftheWest's Pichu",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "lightning",
+    "cute"
+   ],
+   "ability": {
+    "name": "Glass Cannon",
+    "effect": "focus",
+    "amount": 0.15,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "lionofthewest-s-pikachu",
+   "name": "LionoftheWest's Pikachu",
+   "type": "Creature",
+   "cp_mod": 1.06,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "lightning",
+    "cute"
+   ],
+   "ability": {
+    "name": "Thunderbolt",
+    "effect": "focus",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "lionofthewest-s-tsareena",
+   "name": "LionoftheWest's Tsareena",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "nature",
+    "royal",
+    "melee"
+   ],
+   "ability": {
+    "name": "Stack Up",
+    "effect": "execute",
+    "amount": 0.35,
+    "threshold": 0.3
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "long-live-the-king",
+   "name": "\"Long live the King\"",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Royal Decree",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "lorcana-prices",
+   "name": "Lorcana Prices",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Go Back",
+    "effect": "cleanse",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "madbombchu-s-pikachu",
+   "name": "MadBombChu's Pikachu",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "lightning",
+    "cute"
+   ],
+   "ability": {
+    "name": "Thunder Jolt",
+    "effect": "rampage",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "madbombchu-s-pirahna-plant",
+   "name": "MadBombChu's Piranha Plant",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "nature",
+    "toxic",
+    "monster"
+   ],
+   "ability": {
+    "name": "Poison Breath",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "maddawg-s-wolf",
+   "name": "Maddawg's Wolf",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "beast",
+    "ranged"
+   ],
+   "ability": {
+    "name": "Blaster Ledge",
+    "effect": "focus",
+    "amount": 0.15,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "memelord-lion",
+   "name": "Memelord Lion",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [
+    "humanoid",
+    "community"
+   ],
+   "ability": {
+    "name": "Meme Warfare",
+    "effect": "focus",
+    "amount": 0.12,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "meta-abuser",
+   "name": "Meta-Abuser",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Carried",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "mob-s-hiding-spot-meccha",
+   "name": "Mob's \"Hiding\" Spot",
+   "type": "Place",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [
+    "location"
+   ],
+   "ability": {
+    "name": "Agile Expose",
+    "effect": "expose",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "modded-vs-vanilla",
+   "name": "Modded vs Vanilla",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Mod Pack",
+    "effect": "expose",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "mr-mob-s-mr-mime",
+   "name": "Mr. Mob's Mime",
+   "type": "Creature",
+   "cp_mod": 0.94,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "psychic",
+    "caster"
+   ],
+   "ability": {
+    "name": "Final Act",
+    "effect": "execute",
+    "amount": 0.5,
+    "threshold": 0.25
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "mr-mobs-dirt-house",
+   "name": "Mr. Mobs Dirt House",
+   "type": "Place",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [
+    "location"
+   ],
+   "ability": {
+    "name": "Monster Weaken",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "mr-mobs-mew",
+   "name": "Mr. Mobs Mew",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "psychic",
+    "legendary"
+   ],
+   "ability": {
+    "name": "Too Many Buttons",
+    "effect": "focus",
+    "amount": 0.12,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "mr-worldwide",
+   "name": "Mr. Worldwide",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "humanoid"
+   ],
+   "ability": {
+    "name": "Exclusive",
+    "effect": "execute",
+    "amount": 0.3,
+    "threshold": 0.3
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "mrs-lionofthewest",
+   "name": "Mrs. LionoftheWest",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [
+    "humanoid",
+    "community"
+   ],
+   "ability": {
+    "name": "Blind Spot",
+    "effect": "focus",
+    "amount": 0.1,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "mztaken-s-kirby",
+   "name": "MzTaken's Kirby",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "arcane",
+    "cute",
+    "caster"
+   ],
+   "ability": {
+    "name": "Inhale",
+    "effect": "lifesteal",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "noobeth-s-venusaur",
+   "name": "Noobeth's Venusaur",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "nature",
+    "toxic",
+    "beast"
+   ],
+   "ability": {
+    "name": "Leech Seed",
+    "effect": "lifesteal",
+    "amount": 0.25,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "notjosh-s-random-pick",
+   "name": "NotJosh's Random Pick",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "King of Randoms",
+    "effect": "smite",
+    "amount": 200,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "notjosh-s-waluigi",
+   "name": "NotJosh's Waluigi",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid"
+   ],
+   "ability": {
+    "name": "Waited Long Enough",
+    "effect": "execute",
+    "amount": 0.35,
+    "threshold": 0.25
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "nugleo-jigglypuff",
+   "name": "Nugleo & Jigglypuff",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [],
+   "ability": null,
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "oh-naur",
+   "name": "Oh Naur",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Oh Naur",
+    "effect": "cleanse",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "onyen-tutoring",
+   "name": "Onyen Tutoring",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "$150 an Hour",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "ooblah-s-bowser",
+   "name": "Ooblah's Bowser",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "monster",
+    "royal",
+    "fire"
+   ],
+   "ability": {
+    "name": "Fire Breath",
+    "effect": "focus",
+    "amount": 0.12,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "otto-the-electoral-college",
+   "name": "Otto & The Electoral College",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [
+    "community"
+   ],
+   "ability": {
+    "name": "Beast Empower",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "ottozone-s-rob",
+   "name": "Ottozone's Rob",
+   "type": "Character",
+   "cp_mod": 1.06,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "metal",
+    "robot",
+    "ranged"
+   ],
+   "ability": {
+    "name": "Lock On",
+    "effect": "focus",
+    "amount": 0.15,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "palworld-mountain-base",
+   "name": "Palworld Mountain Base",
+   "type": "Place",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [
+    "location"
+   ],
+   "ability": {
+    "name": "Light Shield",
+    "effect": "shield",
+    "amount": 0.4,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "panda-express-run",
+   "name": "Panda Express Run",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Bird Shield",
+    "effect": "shield",
+    "amount": 0.4,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "patooie",
+   "name": "Patooie!",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Humanoid Empower",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "pineapple-on-pizza",
+   "name": "Pineapple on Pizza",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Wrong Way",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "piotr-s-little-mac",
+   "name": "Piotr's Little Mac",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid",
+    "melee"
+   ],
+   "ability": {
+    "name": "KO Punch",
+    "effect": "execute",
+    "amount": 0.5,
+    "threshold": 0.2
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "pk-austin-s-ganondorf",
+   "name": "PK Austin's Ganondorf",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "shadow",
+    "royal",
+    "melee"
+   ],
+   "ability": {
+    "name": "Flame Choke",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "polar-bear-build",
+   "name": "Polar Bear Build",
+   "type": "Place",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [
+    "location",
+    "ice"
+   ],
+   "ability": {
+    "name": "Ice Fortress",
+    "effect": "shield",
+    "amount": 0.4,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "post-it-note-tournament",
+   "name": "Post-it Note Tournament",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Air Weaken",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "pringle-s-banjo-kazooie",
+   "name": "Pringle's Banjo & Kazooie",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "beast",
+    "bird"
+   ],
+   "ability": {
+    "name": "Wonderwing",
+    "effect": "rampage",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "r2vq-s-talonflame",
+   "name": "R2VQ's Talonflame",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "fire",
+    "air",
+    "bird"
+   ],
+   "ability": {
+    "name": "Original Flame",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "rad-dad-s-ness",
+   "name": "Rad Dad's Ness",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "psychic",
+    "caster"
+   ],
+   "ability": {
+    "name": "PSI Magnet",
+    "effect": "lifesteal",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "rotom-washed",
+   "name": "Rotom Washed",
+   "type": "Creature",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [
+    "water",
+    "lightning",
+    "spirit"
+   ],
+   "ability": {
+    "name": "Spin Cycle",
+    "effect": "lifesteal",
+    "amount": 0.15,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "shave-your-head",
+   "name": "Shave your Head",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "24 Hour Stream",
+    "effect": "heal",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "smash-server-hamster-wheel",
+   "name": "Smash Server Hamster Wheel",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Communication Error",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "smash-tag-check",
+   "name": "Smash Tag Check!",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [
+    "community"
+   ],
+   "ability": {
+    "name": "Tag Check",
+    "effect": "expose",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "soggy-bread",
+   "name": "Soggy Bread",
+   "type": "Item",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [
+    "object",
+    "community"
+   ],
+   "ability": {
+    "name": "Soup or Water",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "sunny-s-duck-feet",
+   "name": "Sunny's Duck Feet",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Quack",
+    "effect": "cleanse",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "super-battle-golf-flash-bang",
+   "name": "Super Battle Golf Flash Bang",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Flash Bang",
+    "effect": "stun",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "tantaco-s-mythra-pyra",
+   "name": "TanTaco's Mythra/Pyra",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "fire",
+    "light",
+    "hero",
+    "melee"
+   ],
+   "ability": {
+    "name": "Blade Swap",
+    "effect": "rampage",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "tasty-little-morsel",
+   "name": "Tasty Little Morsel",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Look Out",
+    "effect": "expose",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "texafornia-s-richter",
+   "name": "Texafornia's Richter",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid",
+    "light",
+    "melee"
+   ],
+   "ability": {
+    "name": "Taek Dis!",
+    "effect": "focus",
+    "amount": 0.15,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "the-best-sauce-is",
+   "name": "The Best Sauce is…?",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Secret Sauce",
+    "effect": "empower",
+    "amount": 0.5,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "the-dad-gaming",
+   "name": "The Dad Gaming",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid",
+    "community"
+   ],
+   "ability": {
+    "name": "TDG Crew",
+    "effect": "rampage",
+    "amount": 0.15,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "the-server-crashed",
+   "name": "The Server Crashed!",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Crash",
+    "effect": "stun",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "the-timezone-chart",
+   "name": "The Timezone Chart",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "party"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Armored Smite",
+    "effect": "smite",
+    "amount": 200,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "the-weekly-poll",
+   "name": "The Weekly Poll",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Feud",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "thechamp",
+   "name": "TheChamp",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [
+    "humanoid",
+    "community"
+   ],
+   "ability": {
+    "name": "Next Year",
+    "effect": "execute",
+    "amount": 0.4,
+    "threshold": 0.25
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "tuesday-shenanigans",
+   "name": "Tuesday Shenanigans",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "community"
+   ],
+   "traits": [
+    "community"
+   ],
+   "ability": {
+    "name": "Community Weaken",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "up-b-oos",
+   "name": "UP B OOS",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "UP B OOS",
+    "effect": "smite",
+    "amount": 200,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "vioarr-s-link",
+   "name": "Vioarr's Link",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "light",
+    "hero",
+    "royal",
+    "melee"
+   ],
+   "ability": {
+    "name": "50/50",
+    "effect": "focus",
+    "amount": 0.15,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "well-well-well",
+   "name": "Well, well, well...",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "pokemon"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "VC Greeting",
+    "effect": "shield",
+    "amount": 0.4,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "whats-a-c3",
+   "name": "Whats a C3?",
+   "type": "Moment",
+   "cp_mod": 1,
+   "origin": [
+    "meme"
+   ],
+   "traits": [],
+   "ability": {
+    "name": "Smash Weaken",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "wiifu-s-bowling-ball",
+   "name": "Wiifu's Bowling Ball",
+   "type": "Item",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "object"
+   ],
+   "ability": {
+    "name": "Strike",
+    "effect": "smite",
+    "amount": 200,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "wiifu-s-sora",
+   "name": "Wiifu's Sora",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "light",
+    "melee",
+    "hero"
+   ],
+   "ability": {
+    "name": "Kingdom Key",
+    "effect": "pierce",
+    "amount": null,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "wiifu-s-wiifit-trainer",
+   "name": "Wiifu's Wiifit Trainer",
+   "type": "Character",
+   "cp_mod": 1.05,
+   "origin": [
+    "smash"
+   ],
+   "traits": [
+    "humanoid",
+    "support"
+   ],
+   "ability": {
+    "name": "Sun Salutation",
+    "effect": "lifesteal",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "xeno-s-blueprint",
+   "name": "Xeno's Blueprint",
+   "type": "Item",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [
+    "object"
+   ],
+   "ability": {
+    "name": "Melee Weaken",
+    "effect": "weaken",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "xeno-s-stone-shovel",
+   "name": "Xeno's Stone Shovel",
+   "type": "Item",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [
+    "object"
+   ],
+   "ability": {
+    "name": "Fire Cleanse",
+    "effect": "cleanse",
+    "amount": 0,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "xeno-s-unfinished-project",
+   "name": "Xeno's Unfinished Project",
+   "type": "Item",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [
+    "object"
+   ],
+   "ability": {
+    "name": "Cute Expose",
+    "effect": "expose",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "normal",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "zeoic-s-redstone-machine",
+   "name": "Zeoic's Redstone Machine",
+   "type": "Item",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [
+    "object",
+    "robot"
+   ],
+   "ability": {
+    "name": "Pokemon Mend",
+    "effect": "heal",
+    "amount": 0.3,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "full_art",
+     "pool": true
+    },
+    {
+     "rarity": "gold",
+     "pool": true
+    },
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  },
+  {
+   "key": "zeoic-the-server-master",
+   "name": "Zeoic, the Server Master",
+   "type": "Character",
+   "cp_mod": 1,
+   "origin": [
+    "minecraft"
+   ],
+   "traits": [
+    "humanoid",
+    "object",
+    "community"
+   ],
+   "ability": {
+    "name": "Host Migration",
+    "effect": "lifesteal",
+    "amount": 0.2,
+    "threshold": null
+   },
+   "finishes": [
+    {
+     "rarity": "illustrated_rare",
+     "pool": true
+    },
+    {
+     "rarity": "normal",
+     "pool": true
+    },
+    {
+     "rarity": "secret_rare",
+     "pool": true
+    }
+   ]
+  }
+ ],
+ "balance_live": {
+  "rarity_cp": {
+   "gold": 140,
+   "event": 75,
+   "promo": 10,
+   "normal": 10,
+   "full_art": 75,
+   "secret_rare": 40,
+   "illustrated_rare": 20
+  },
+  "stat_points": {
+   "haste": 0.1,
+   "attack": 0.06,
+   "enabled": true,
+   "potency": 0.12,
+   "crit_cap": 0.6,
+   "per_star": 3,
+   "vitality": 0.05,
+   "precision": 0.05,
+   "haste_floor": 0.2,
+   "max_per_stat": 15
+  },
+  "card_hp": {
+   "floor": 60,
+   "per_cp": 1.8
+  },
+  "boss_atk": {
+   "Heroic": 73,
+   "Mythic": 93,
+   "Normal": 58
+  },
+  "boss_stats": {},
+  "boss_hp": {
+   "crew": 10,
+   "floor": 500,
+   "Heroic": 80000,
+   "Mythic": 80000,
+   "Normal": 70000,
+   "heal_share": 3000
+  },
+  "boss_tiers": {
+   "Heroic": {
+    "weak": 2,
+    "resist": 1,
+    "passives": 2
+   },
+   "Mythic": {
+    "weak": 3,
+    "resist": 2,
+    "passives": 3
+   },
+   "Normal": {
+    "weak": 1,
+    "resist": 0,
+    "passives": 1
+   }
+  },
+  "round_cap": 40,
+  "daily_card_cap": 8,
+  "boss_moves": {
+   "slam": 0.22,
+   "stun": 0.08,
+   "curse": 0.06,
+   "cycle": 8,
+   "drain": 0.1,
+   "enrage": 0.07,
+   "rage_x": 1.3,
+   "slam_x": 0.35,
+   "strike": 0.4,
+   "stun_x": 0.45,
+   "curse_x": 0.7,
+   "drain_x": 0.8,
+   "rage_at": 0.5,
+   "enrage_x": 1.4,
+   "strike_x": 1,
+   "phase2_at": 0.25,
+   "drain_heal": 0.015,
+   "cataclysm_x": 0.75,
+   "enrage_rounds": 2,
+   "regenerate_heal": 0.03,
+   "regenerate_heal_rage": 0.05
+  },
+  "pool_moves": {
+   "cycle": 6,
+   "guard": 0.2,
+   "slam_x": 0.35,
+   "stun_x": 0.45,
+   "drain_x": 0.8,
+   "heavy_x": 1.5,
+   "flurry_x": 0.55,
+   "poison_x": 0.35,
+   "drain_heal": 0.08,
+   "poison_dot": 0.25,
+   "cataclysm_x": 0.9,
+   "cataclysm_area": 0.75,
+   "regenerate_heal": 0.1,
+   "regenerate_heal_rage": 0.14
+  },
+  "support": {
+   "heal_cap": 1,
+   "matched_x": 1.8,
+   "expose_cap": 1,
+   "weaken_cap": 0.6,
+   "affinity_cap": 2,
+   "affinity_step": 0.15,
+   "stun_immune_rounds": 2
+  },
+  "boss_passives": {
+   "thorns": 0.1,
+   "plague_x": 0.1,
+   "armored_x": 0.72,
+   "flaming_x": 0.4,
+   "volatile_x": 1.25,
+   "dispeller_x": 0.1,
+   "shatterer_x": 0.1,
+   "juggernaut_x": 0.1,
+   "shrouded_miss": 0.1,
+   "flaming_chance": 0.3,
+   "plague_cleanse": 0.1,
+   "regenerating_heal": 0.005,
+   "frenzied_per_10pct": 0.05,
+   "juggernaut_stun_fail": 0.9,
+   "regenerating_heal_foe": 0.03
+  },
+  "boss_counters": {
+   "moves": {
+    "ban": {
+     "cards": 2
+    },
+    "fade": {
+     "expose": 0.5
+    },
+    "nerf": {
+     "empower": 0.25
+    },
+    "rush": {
+     "hits": 2,
+     "hit_x": 0.8
+    },
+    "tilt": {
+     "enrage": 1.4,
+     "rounds": 2
+    },
+    "wave": {
+     "wait": 5
+    },
+    "brood": {
+     "hit_x": 0.8
+    },
+    "bully": {
+     "hit_x": 1
+    },
+    "crush": {
+     "share": 0.5
+    },
+    "decay": {
+     "heal": 0.5
+    },
+    "feast": {
+     "hit_x": 1
+    },
+    "flame": {
+     "hit_x": 0.35,
+     "weaken_x": 2
+    },
+    "groan": {
+     "wait": 4
+    },
+    "patch": {
+     "wait": 4
+    },
+    "stuck": {
+     "wait": 6
+    },
+    "swarm": {
+     "hit_x": 0.35,
+     "support_x": 3
+    },
+    "anemia": {
+     "hit_x": 0.35,
+     "heal_x": 2
+    },
+    "appeal": {
+     "hit_x": 2
+    },
+    "hitbox": {
+     "smite": 0.1
+    },
+    "hotfix": {
+     "curse": 0.7
+    },
+    "infect": {
+     "dot_x": 0.25,
+     "hit_x": 0.35,
+     "rounds": 3
+    },
+    "rattle": {
+     "keep": 0.5,
+     "shield": 0.25
+    },
+    "spiral": {
+     "step": 0.2
+    },
+    "calcify": {
+     "shield": 0.1
+    },
+    "overrun": {
+     "hit_x": 1,
+     "enrage": 1.4,
+     "rounds": 2
+    },
+    "rollout": {
+     "curse": 0.7
+    },
+    "shatter": {
+     "shield": 0.1
+    },
+    "bloodrot": {
+     "heal": 0.1
+    },
+    "demotion": {
+     "back": 0.2
+    },
+    "fakerank": {
+     "hit_x": 1,
+     "times": 2
+    },
+    "lagspike": {
+     "wait": 4
+    },
+    "rollback": {
+     "smite": 0.5
+    },
+    "tierlist": {
+     "hit_x": 2
+    },
+    "pingspike": {
+     "wait": 4
+    },
+    "shadowban": {
+     "plays": 3
+    },
+    "bonepierce": {
+     "hit_x": 1
+    },
+    "nightshade": {
+     "dot_x": 0.25,
+     "rounds": 3
+    },
+    "packetloss": {
+     "plays": 1
+    },
+    "patchnotes": {
+     "empower": 0.1
+    },
+    "rubberband": {
+     "hits": 2,
+     "hit_x": 1
+    },
+    "counterpick": {
+     "x": 2
+    }
+   },
+   "share": 0.4,
+   "weights": {
+    "ban": 1,
+    "rot": 1,
+    "fade": 1,
+    "nerf": 1,
+    "rush": 1,
+    "tilt": 1,
+    "veil": 1,
+    "wave": 1,
+    "altf4": 1,
+    "brood": 1,
+    "bully": 1,
+    "crush": 1,
+    "decay": 1,
+    "feast": 1,
+    "flame": 1,
+    "groan": 1,
+    "patch": 1,
+    "stuck": 1,
+    "swarm": 1,
+    "anemia": 1,
+    "appeal": 1,
+    "desync": 1,
+    "hitbox": 1,
+    "hotfix": 1,
+    "infect": 1,
+    "mirror": 1,
+    "rattle": 1,
+    "siphon": 1,
+    "spiral": 1,
+    "calcify": 1,
+    "overrun": 1,
+    "rollout": 1,
+    "shatter": 1,
+    "undying": 1,
+    "bloodrot": 1,
+    "demotion": 1,
+    "fakerank": 1,
+    "lagspike": 1,
+    "rollback": 1,
+    "tierlist": 1,
+    "pingspike": 1,
+    "shadowban": 1,
+    "bonepierce": 1,
+    "nightshade": 1,
+    "packetloss": 1,
+    "patchnotes": 1,
+    "rubberband": 1,
+    "counterpick": 1
+   },
+   "boss_share": {
+    "The Smurf Brute": 0.6,
+    "The Grind Vampire": 0.5,
+    "The Zerg-Rush Queen": 0.5,
+    "The Hardstuck Skeleton": 0.6
+   }
+  },
+  "combat": {
+   "crit": 0.1,
+   "miss": 0.08,
+   "block": 0.12,
+   "crit_x": 2,
+   "block_x": 0.5,
+   "syn_cap": 1.6,
+   "roll_min": 0.85,
+   "weak_max": 2.5,
+   "weak_min": 0.25,
+   "crit_weak": 0.2,
+   "roll_span": 0.3,
+   "trait_big": 1.14,
+   "weak_step": 0.5,
+   "origin_big": 1.18,
+   "syn_big_at": 5,
+   "element_big": 1.2,
+   "resist_step": 0.8,
+   "trait_small": 1.08,
+   "origin_small": 1.1,
+   "resist_decay": 0.5,
+   "syn_small_at": 3,
+   "auto_elements": false,
+   "element_bonus": 1.25,
+   "element_small": 1.12,
+   "lifesteal_cap": 0.06,
+   "effect_cap_pct": 100,
+   "element_penalty": 1,
+   "weak_stack_free": 3
+  },
+  "stars": {
+   "gold": [
+    1,
+    1.15,
+    1.27,
+    1.38,
+    1.49,
+    1.6
+   ],
+   "event": [
+    1,
+    1.4,
+    1.7,
+    2,
+    2.25,
+    2.5
+   ],
+   "promo": [
+    1,
+    2.86,
+    4.25,
+    5.41,
+    6.57,
+    7.5
+   ],
+   "normal": [
+    1,
+    2.86,
+    4.25,
+    5.41,
+    6.57,
+    7.5
+   ],
+   "full_art": [
+    1,
+    1.4,
+    1.7,
+    2,
+    2.25,
+    2.5
+   ],
+   "secret_rare": [
+    1,
+    1.7,
+    2.2,
+    2.7,
+    3.1,
+    3.5
+   ],
+   "illustrated_rare": [
+    1,
+    2.6,
+    3.93,
+    5,
+    6.07,
+    7
+   ]
+  },
+  "dungeon": {
+   "cost": {
+    "gold": 5,
+    "event": 4,
+    "promo": 3,
+    "normal": 1,
+    "full_art": 4,
+    "secret_rare": 3,
+    "illustrated_rare": 2
+   },
+   "rules": {
+    "boost": 0.25,
+    "budget": 9
+   },
+   "squad": 5,
+   "budget": 12,
+   "floors": 30,
+   "early_hp": 0.5,
+   "foe_mult": {
+    "elite": {
+     "hp": 1.9,
+     "atk": 1.3
+    },
+    "fight": {
+     "hp": 1,
+     "atk": 1
+    },
+    "horde": {
+     "hp": 0.6,
+     "atk": 0.75
+    },
+    "guardian": {
+     "hp": 2.5,
+     "atk": 1.7
+    },
+    "miniboss": {
+     "hp": 2.6,
+     "atk": 1.45
+    }
+   },
+   "early_atk": 0.5,
+   "fight_min": 1,
+   "horde_min": 3,
+   "hp_growth": 1.42,
+   "rest_heal": 0.4,
+   "round_cap": 40,
+   "atk_growth": 1.22,
+   "rest_revive": 0.25,
+   "room_growth": 0.06,
+   "early_floors": 1,
+   "fight_spread": 3,
+   "foe_heal_cap": 0.5,
+   "horde_spread": 2,
+   "room_weights": {
+    "rest": 8,
+    "elite": 10,
+    "fight": 38,
+    "horde": 12,
+    "choice": 14,
+    "miniboss": 7,
+    "treasure": 11
+   },
+   "auto_heal_below": 0.5,
+   "auto_shield_below": 0.6
+  }
+ }
+}
