@@ -9,7 +9,7 @@ Members, the Dailies, the bell notes, reports, the app logs (visits, screen view
 
 Tables (18): [app_sessions](#table-app-sessions), [balance](#table-balance), [balance_log](#table-balance-log), [daily_activity](#table-daily-activity), [daily_claims](#table-daily-claims), [ledger_reasons](#table-ledger-reasons), [notifications](#table-notifications), [page_views](#table-page-views), [player_report_shots](#table-player-report-shots), [player_reports](#table-player-reports), [players](#table-players), [playing_posts](#table-playing-posts), [profile_log](#table-profile-log), [schema_migrations](#table-schema-migrations), [settings](#table-settings), [settings_log](#table-settings-log), [tutorial_steps](#table-tutorial-steps), [voice_minutes](#table-voice-minutes)
 
-Functions (47): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [app_session_touch(text,jsonb)](#fn-app-session-touch-text-jsonb), [balance_check()](#fn-balance-check), [balance_check_boss_counters()](#fn-balance-check-boss-counters), [balance_check_combat()](#fn-balance-check-combat), [balance_check_combat_v2()](#fn-balance-check-combat-v2), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_check_report_shots()](#fn-balance-check-report-shots), [balance_check_runs()](#fn-balance-check-runs), [balance_check_settings()](#fn-balance-check-settings), [balance_check_stat_labels()](#fn-balance-check-stat-labels), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_shape_errors(jsonb,jsonb,text)](#fn-balance-shape-errors-jsonb-jsonb-text), [balance_v2_spec(text)](#fn-balance-v2-spec-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [game_day(timestamp with time zone)](#fn-game-day-timestamp-with-time-zone), [game_day_start(date)](#fn-game-day-start-date), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [guild_joined(jsonb)](#fn-guild-joined-jsonb), [guild_left(text,timestamp with time zone)](#fn-guild-left-text-timestamp-with-time-zone), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [profile_log_write()](#fn-profile-log-write), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [report_shots_expired(integer)](#fn-report-shots-expired-integer), [reserve_report_shot(text,bigint,text,integer)](#fn-reserve-report-shot-text-bigint-text-integer), [rls_auto_enable()](#fn-rls-auto-enable), [settings_log_write()](#fn-settings-log-write), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
+Functions (49): [add_voice_minutes(text[])](#fn-add-voice-minutes-text), [app_session_touch(text,jsonb)](#fn-app-session-touch-text-jsonb), [balance_check()](#fn-balance-check), [balance_check_boss_counters()](#fn-balance-check-boss-counters), [balance_check_combat()](#fn-balance-check-combat), [balance_check_combat_v2()](#fn-balance-check-combat-v2), [balance_check_dungeon()](#fn-balance-check-dungeon), [balance_check_economy()](#fn-balance-check-economy), [balance_check_report_shots()](#fn-balance-check-report-shots), [balance_check_runs()](#fn-balance-check-runs), [balance_check_settings()](#fn-balance-check-settings), [balance_check_stat_labels()](#fn-balance-check-stat-labels), [balance_get(text)](#fn-balance-get-text), [balance_leaves(jsonb)](#fn-balance-leaves-jsonb), [balance_log_write()](#fn-balance-log-write), [balance_num(text,text[])](#fn-balance-num-text-text), [balance_path(text)](#fn-balance-path-text), [balance_shape_errors(jsonb,jsonb,text)](#fn-balance-shape-errors-jsonb-jsonb-text), [balance_text_errors(text,text)](#fn-balance-text-errors-text-text), [balance_v2_spec(text)](#fn-balance-v2-spec-text), [balance_who()](#fn-balance-who), [bot_work()](#fn-bot-work), [checkin_streak(text,date)](#fn-checkin-streak-text-date), [claim_daily(text,text)](#fn-claim-daily-text-text), [claim_daily_earn(text,date,integer,integer,integer)](#fn-claim-daily-earn-text-date-integer-integer-integer), [claim_first_pack_ping(text)](#fn-claim-first-pack-ping-text), [claim_tutorial_reward(text)](#fn-claim-tutorial-reward-text), [dailies_tasks(text)](#fn-dailies-tasks-text), [dailies_view(text)](#fn-dailies-view-text), [earned_today(text)](#fn-earned-today-text), [game_day(timestamp with time zone)](#fn-game-day-timestamp-with-time-zone), [game_day_start(date)](#fn-game-day-start-date), [gift_all_members(jsonb,integer,text)](#fn-gift-all-members-jsonb-integer-text), [give_gift(text,text,text,integer,text,text)](#fn-give-gift-text-text-text-integer-text-text), [give_gift_all(text,text,integer,text,text)](#fn-give-gift-all-text-text-integer-text-text), [guild_joined(jsonb)](#fn-guild-joined-jsonb), [guild_left(text,timestamp with time zone)](#fn-guild-left-text-timestamp-with-time-zone), [ledger_reason_guard()](#fn-ledger-reason-guard), [notify_player(text,text,text)](#fn-notify-player-text-text-text), [playing_today(text)](#fn-playing-today-text), [profile_log_write()](#fn-profile-log-write), [prune_old_rows()](#fn-prune-old-rows), [record_activity(text,date)](#fn-record-activity-text-date), [report_shots_expired(integer)](#fn-report-shots-expired-integer), [reserve_report_shot(text,bigint,text,integer)](#fn-reserve-report-shot-text-bigint-text-integer), [rls_auto_enable()](#fn-rls-auto-enable), [settings_log_write()](#fn-settings-log-write), [streak_shield_waiting(text,date)](#fn-streak-shield-waiting-text-date), [submit_report(text,text,text,jsonb)](#fn-submit-report-text-text-text-jsonb)
 
 ## Tables
 
@@ -574,6 +574,16 @@ Trigger (after insert, update on balance): writes a balance_log row with the old
 
 Returns the number at a path in a balance value, for example balance_num('daily', 'cap'). Raises an error when there is no number. Internal helper: many SQL functions use it.
 
+<a id="fn-balance-path-text"></a>
+
+### balance_path(text)
+
+- Function: `balance_path(p_path text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] The JSON at a balance path ('<key>.<leaf>.<leaf>'), NULL when the key or the path does not exist. combat_v2_statuses_roles.sql.
+
 <a id="fn-balance-shape-errors-jsonb-jsonb-text"></a>
 
 ### balance_shape_errors(jsonb,jsonb,text)
@@ -583,6 +593,16 @@ Returns the number at a path in a balance value, for example balance_num('daily'
 - Security definer: no
 
 [combat] The shape walker of the combat v2 balance keys (combat_v2_flags_balance.sql): the list of problems of a value against a spec ("num lo hi", "int lo hi", "bool", "enum a|b", an object with exactly its keys, ["list"|"set", spec, min, max]); empty = fine.
+
+<a id="fn-balance-text-errors-text-text"></a>
+
+### balance_text_errors(text,text)
+
+- Function: `balance_text_errors(p_text text, p_numbers text)`
+- Returns: `text[]`
+- Security definer: no
+
+[combat] The problems of a display text whose numbers come from balance: each {leaf} must be a number or a boolean of the balance object p_numbers, and the text has no digit of its own. Empty = fine.
 
 <a id="fn-balance-v2-spec-text"></a>
 

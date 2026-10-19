@@ -754,3 +754,22 @@ because every later part reads them.
   so the Lab sets them again for v2, and a v2 change must never move v1 (P6).
 - Found in config.json: the Flurry text says "25% chance", the number `v2_roles.flurry.extra_chance` is 0.2 (the plan says 20%). The text is not
   copied (the E1 passive text names the number as `{extra_chance}`).
+
+### 17.2 E1: statuses, roles and the fight state v = 2 (`tcg-bot/supabase/combat_v2_statuses_roles.sql`)
+
+- Needs `combat_v2_flags_balance.sql` first (the rows point to `v2_status`, `v2_roles` and `v2_speed`). No v1 function reads the new objects.
+- `statuses`: 18 rows. The 16 statuses of 6.1 (kind `status`) and the 2 enemy states that also have an icon (kind `enemy_state`: `enraged`,
+  `guarded`). Columns: family, negative, stacking rule, `max_stacks` (a balance leaf), duration rule, the one control immunity group, `end_state`
+  (Chill ends in Frozen), icon key, `on_enemy` / `on_card`, `numbers` (the balance object) and the one-line `rule`.
+- `roles`: 12 rows. Class, label, purpose, the `passive` text, `numbers` (`v2_roles.<key>`), `speed` (`v2_speed.role_base.<key>`), icon key,
+  `stat_priority` (3 of the 9 stats, plan 4), `answers` (the enemy problems of plan 4) and `auto` hints (`target`, `hold_for: charging`).
+- No number is in a row. A text names each number as `{leaf}` of its balance object. The triggers `statuses_check` and `roles_check` refuse a digit in
+  a text, an unknown `{leaf}` and a balance path that does not exist (`balance_path`, `balance_text_errors`). RLS on, no policy, service role only.
+- Chill / Frozen is one row with the family Control (the plan table). config.json gives Chill the family tempo and Frozen the family control.
+- `fight_state_check_v2(state)`: the v1 rules plus `clock`, and `meter`, `charge` and `status{}` on each card and enemy (known statuses that apply
+  to that side, with `stacks`, `value`, `until` only). The v1 status keys are refused in a v2 state (one home for each fact).
+- `fight_state_v2_from_v1(state)`: a pure, read-only view of a v1 state. Enemy `wk`, `ex`, `st`, `enr`, `sh` and card `shield`, `buff`, `debuff`,
+  `psn` become `weakened`, `exposed`, `stunned`, `enraged`, `guarded`, `shielded`, `empowered`, `weakened`, `poison` while they are active (the v1
+  value rule, and `until` not below the round). `clock` = round, `meter` and `charge` start at 0. `cd` stays (v2 replaces it by `charge`).
+- Found: Dungeon foes already have a v1 key `charge` (a boolean: the foe charges a Cataclysm). The plan's v2 `charge` is the active charge count, so
+  the view moves the boolean to `cataclysm` (one word, one meaning). E2 must use these names.
