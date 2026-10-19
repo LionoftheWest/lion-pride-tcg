@@ -53,6 +53,11 @@ const MUT = {
   value_dropped: [',"min_dmg":1}', '}'],
   overwrite: ['on conflict (key) do nothing;', 'on conflict (key) do update set value = excluded.value;'],
   grant_anon: ['comment on function public.combat_v2_on(text) is', 'grant execute on function public.combat_v2_on(text) to anon;\ncomment on function public.combat_v2_on(text) is'],
+  // the values that config.json changed after PR #440 (the teams test): P2 hunt_bonus 0.05 and the P4 switch empowered.stack (default false)
+  hunt_bonus_old: ['"hunt_bonus":0.05', '"hunt_bonus":0.1'],
+  stack_on: ['"empowered":{"cap":1.5,"stack":false}', '"empowered":{"cap":1.5,"stack":true}'],
+  stack_dropped: ['"empowered":{"cap":1.5,"stack":false}', '"empowered":{"cap":1.5}'],
+  stack_no_shape: ['"empowered": {"cap": "num 0 5", "stack": "bool"}', '"empowered": {"cap": "num 0 5"}'],
 };
 if (process.env.MUTATE === 'all') {
   let ok = true;
