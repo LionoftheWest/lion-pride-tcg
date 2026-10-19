@@ -24,7 +24,7 @@
 --   {"k": spec, ...}  an object with EXACTLY these keys (a missing or an extra key is refused)
 --   ["list", spec, min, max]   a list of min to max items        ["set", spec, min, max]   the same, with no item twice
 create or replace function public.balance_shape_errors(p_val jsonb, p_spec jsonb, p_path text default '')
-returns text[] language plpgsql immutable set search_path = public as $f$
+returns text[] language plpgsql immutable set search_path = public as $fn$
 declare e text[] := '{}'; k text; w text[]; n numeric; i int; at text := coalesce(nullif(p_path, ''), 'the value');
 begin
   if jsonb_typeof(p_spec) = 'object' then
@@ -69,12 +69,12 @@ begin
     else raise exception 'balance_shape_errors: unknown spec %', p_spec;
   end case;
   return e;
-end $f$;
+end $fn$;
 
 -- ============================================================ 2. the shapes and limits of the v2 keys (NULL = not a v2 key)
 -- The limits are about 2 x the tuned value or the natural range of a share (0 to 1); a whole-number count is "int".
 create or replace function public.balance_v2_spec(p_key text)
-returns jsonb language sql immutable set search_path = public as $f$
+returns jsonb language sql immutable set search_path = public as $fn$
   select case p_key
   when 'combat_v2' then '{"gauntlet": "bool", "dungeon": "bool", "hunt": "bool", "progress": "bool"}'::jsonb
   when 'v2_stats' then '{
@@ -190,10 +190,10 @@ returns jsonb language sql immutable set search_path = public as $f$
           "warden": "num 0.2 5", "medic": "num 0.2 5", "controller": "num 0.2 5", "spotter": "num 0.2 5", "herald": "num 0.2 5", "artillery": "num 0.2 5"},
     "abl_x": "num 0 1", "support_abl_ref": "num 0 100", "ddg_x": "num 0 1"}'::jsonb
   end;
-$f$;
+$fn$;
 
 -- ============================================================ 3. the trigger: the shape, the limits and the rules that join two leaves
-create or replace function public.balance_check_combat_v2() returns trigger language plpgsql set search_path = public as $f$
+create or replace function public.balance_check_combat_v2() returns trigger language plpgsql set search_path = public as $fn$
 declare spec jsonb := balance_v2_spec(new.key); errs text[]; v jsonb := new.value; r text; i int;
 begin
   if spec is null then
@@ -224,7 +224,7 @@ begin
   end if;
   if cardinality(errs) > 0 then raise exception 'balance %: %', new.key, array_to_string(errs, '; '); end if;
   return new;
-end $f$;
+end $fn$;
 drop trigger if exists balance_check_combat_v2 on public.balance;
 create trigger balance_check_combat_v2 before insert or update on public.balance
   for each row execute function public.balance_check_combat_v2();
@@ -271,7 +271,7 @@ insert into public.balance (key, value, note) values
 on conflict (key) do nothing;
 
 -- ============================================================ 5. the one reader of the flag (fails closed)
-create or replace function public.combat_v2_on(p_mode text) returns boolean language plpgsql stable set search_path = public as $f$
+create or replace function public.combat_v2_on(p_mode text) returns boolean language plpgsql stable set search_path = public as $fn$
 declare v jsonb;
 begin
   -- only the four capabilities of the fixed shape (an unknown name is OFF even when a value has it)
@@ -280,7 +280,7 @@ begin
   return coalesce(v = 'true'::jsonb, false);
 exception when others then
   return false;
-end $f$;
+end $fn$;
 
 -- ============================================================ 6. server only, and the comments of the generated docs
 do $g$
@@ -292,9 +292,9 @@ begin
   end loop;
 end $g$;
 
-comment on function public.balance_shape_errors(jsonb, jsonb, text) is $c$[combat] The shape walker of the combat v2 balance keys (combat_v2_flags_balance.sql): the list of problems of a value against a spec ("num lo hi", "int lo hi", "bool", "enum a|b", an object with exactly its keys, ["list"|"set", spec, min, max]); empty = fine.$c$;
-comment on function public.balance_v2_spec(text) is $c$[combat] The fixed shape with the limits of each combat v2 balance key (combat_v2, v2_stats, v2_card_hp, v2_asc, v2_level, card_level, v2_support, v2_speed, v2_charge, v2_hit, v2_roles, v2_status, v2_control, v2_enemy, v2_dungeon, v2_hunt, v2_pp, v2_power); NULL for every other key. A new v2 leaf needs a new spec in this function.$c$;
-comment on function public.balance_check_combat_v2() is $c$Trigger (before insert, update on balance): every combat v2 key must match its fixed shape and limits (balance_v2_spec): no missing, extra or wrong leaf. A key named v2_* with no shape is refused. Extra rules: v2_asc (the curve from 0 to 1, never falling; base not above top; every card rarity has a base or an alias), v2_enemy (the boss move chances add up to 1). The limits of v2_speed keep status_min_x at or below 1 and safety_max_x at or above 1. combat_v2_flags_balance.sql.$c$;
-comment on function public.combat_v2_on(text) is $c$[combat] The ONE reader of the combat v2 switch (balance combat_v2, plan 14.2): true only when combat_v2.<p_mode> is the JSON boolean true (p_mode = gauntlet, dungeon, hunt or progress). Fails closed: a missing key, another type, a name that is not one of the four capabilities or any error gives false. No v1 function calls it.$c$;
+comment on function public.balance_shape_errors(jsonb, jsonb, text) is $cm$[combat] The shape walker of the combat v2 balance keys (combat_v2_flags_balance.sql): the list of problems of a value against a spec ("num lo hi", "int lo hi", "bool", "enum a|b", an object with exactly its keys, ["list"|"set", spec, min, max]); empty = fine.$cm$;
+comment on function public.balance_v2_spec(text) is $cm$[combat] The fixed shape with the limits of each combat v2 balance key (combat_v2, v2_stats, v2_card_hp, v2_asc, v2_level, card_level, v2_support, v2_speed, v2_charge, v2_hit, v2_roles, v2_status, v2_control, v2_enemy, v2_dungeon, v2_hunt, v2_pp, v2_power); NULL for every other key. A new v2 leaf needs a new spec in this function.$cm$;
+comment on function public.balance_check_combat_v2() is $cm$Trigger (before insert, update on balance): every combat v2 key must match its fixed shape and limits (balance_v2_spec): no missing, extra or wrong leaf. A key named v2_* with no shape is refused. Extra rules: v2_asc (the curve from 0 to 1, never falling; base not above top; every card rarity has a base or an alias), v2_enemy (the boss move chances add up to 1). The limits of v2_speed keep status_min_x at or below 1 and safety_max_x at or above 1. combat_v2_flags_balance.sql.$cm$;
+comment on function public.combat_v2_on(text) is $cm$[combat] The ONE reader of the combat v2 switch (balance combat_v2, plan 14.2): true only when combat_v2.<p_mode> is the JSON boolean true (p_mode = gauntlet, dungeon, hunt or progress). Fails closed: a missing key, another type, a name that is not one of the four capabilities or any error gives false. No v1 function calls it.$cm$;
 
 notify pgrst, 'reload schema';
