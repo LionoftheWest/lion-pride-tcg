@@ -91,7 +91,8 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'fight_state_check_v2', 'fight_state_v2_from_v1',
   // the combat v2 functions of the later PRs, which read the keys on purpose (v2 objects beside v1; every reader is named here)
   'combat_v2_numbers', 'combat_v2_speed', 'combat_v2_advance', 'combat_v2_turn_order',   // E2 combat_v2_turn_meter.sql
-  'combat_v2_stats', 'card_combat_v2'];   // E3 combat_v2_stats.sql
+  'combat_v2_stats', 'card_combat_v2',   // E3 combat_v2_stats.sql
+  'combat_v2_status_on', 'combat_v2_draw', 'combat_v2_hit'];   // E4 combat_v2_hit.sql
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
 const body = String.raw`do $t$
