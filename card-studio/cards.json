@@ -6142,7 +6142,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -6169,7 +6169,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "pokemon"
+        "community"
       ],
       "genre": [],
       "realm": [],
@@ -6195,8 +6195,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "meme",
-        "community"
+        "meme"
       ],
       "genre": [],
       "realm": [],
@@ -6222,7 +6221,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "meme"
       ],
       "genre": [],
       "realm": [],
@@ -6249,7 +6248,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "pokemon"
       ],
       "genre": [],
       "realm": [],
@@ -6384,7 +6383,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -6437,7 +6436,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "minecraft"
       ],
       "genre": [],
       "realm": [],
@@ -6491,7 +6490,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "pokemon"
       ],
       "genre": [],
       "realm": [],
@@ -6517,7 +6516,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "meme"
       ],
       "genre": [],
       "realm": [],
@@ -6543,7 +6542,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "smash"
       ],
       "genre": [],
       "realm": [],
@@ -6572,7 +6571,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "pokemon"
       ],
       "genre": [],
       "realm": [],
@@ -6635,7 +6634,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -6672,7 +6671,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "smash"
       ],
       "genre": [],
       "realm": [],
@@ -6700,7 +6699,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "pokemon"
       ],
       "genre": [],
       "realm": [],
@@ -6728,7 +6727,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "minecraft"
       ],
       "genre": [],
       "realm": [],
@@ -6757,7 +6756,7 @@
       "class": "support",
       "type": "creature",
       "origin": [
-        "community"
+        "pokemon"
       ],
       "genre": [],
       "realm": [],
@@ -6785,7 +6784,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -6813,7 +6812,7 @@
       "class": "support",
       "type": "item",
       "origin": [
-        "community"
+        "minecraft"
       ],
       "genre": [],
       "realm": [],
@@ -6841,7 +6840,7 @@
       "class": "attacker",
       "type": "item",
       "origin": [
-        "community"
+        "minecraft"
       ],
       "genre": [],
       "realm": [],
@@ -6869,7 +6868,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -6897,7 +6896,7 @@
       "class": "attacker",
       "type": "creature",
       "origin": [
-        "community"
+        "pokemon"
       ],
       "genre": [],
       "realm": [],
@@ -6981,7 +6980,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7009,7 +7008,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "smash"
       ],
       "genre": [],
       "realm": [],
@@ -7037,7 +7036,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "smash"
       ],
       "genre": [],
       "realm": [],
@@ -7063,7 +7062,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "meme"
       ],
       "genre": [],
       "realm": [],
@@ -7089,7 +7088,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7114,7 +7113,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7139,7 +7138,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "smash"
       ],
       "genre": [],
       "realm": [],
@@ -7164,7 +7163,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7190,7 +7189,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "meme"
       ],
       "genre": [],
       "realm": [],
@@ -7214,7 +7213,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7238,7 +7237,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "meme"
       ],
       "genre": [],
       "realm": [],
@@ -7262,7 +7261,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7286,7 +7285,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7310,7 +7309,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7362,7 +7361,7 @@
       "class": "attacker",
       "type": "creature",
       "origin": [
-        "community"
+        "pokemon"
       ],
       "genre": [],
       "realm": [],
@@ -7442,7 +7441,7 @@
       "class": "attacker",
       "type": "creature",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7466,7 +7465,7 @@
       "class": "attacker",
       "type": "item",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7491,7 +7490,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7517,7 +7516,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "meme"
       ],
       "genre": [],
       "realm": [],
@@ -7706,7 +7705,7 @@
       "class": "support",
       "type": "item",
       "origin": [
-        "community"
+        "minecraft"
       ],
       "genre": [],
       "realm": [],
@@ -7732,7 +7731,7 @@
       "class": "support",
       "type": "item",
       "origin": [
-        "community"
+        "minecraft"
       ],
       "genre": [],
       "realm": [],
@@ -7758,7 +7757,7 @@
       "class": "support",
       "type": "item",
       "origin": [
-        "community"
+        "minecraft"
       ],
       "genre": [],
       "realm": [],
@@ -7786,7 +7785,7 @@
       "class": "support",
       "type": "item",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7812,7 +7811,7 @@
       "class": "attacker",
       "type": "creature",
       "origin": [
-        "community"
+        "pokemon"
       ],
       "genre": [],
       "realm": [],
@@ -7840,7 +7839,7 @@
       "class": "attacker",
       "type": "creature",
       "origin": [
-        "community"
+        "pokemon"
       ],
       "genre": [],
       "realm": [],
@@ -7868,7 +7867,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7918,7 +7917,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "meme"
       ],
       "genre": [],
       "realm": [],
@@ -7943,7 +7942,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7969,7 +7968,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -7993,7 +7992,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -8017,7 +8016,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -8041,7 +8040,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "meme"
       ],
       "genre": [],
       "realm": [],
@@ -8065,7 +8064,7 @@
       "class": "support",
       "type": "moment",
       "origin": [
-        "community"
+        "party"
       ],
       "genre": [],
       "realm": [],
@@ -8091,7 +8090,7 @@
       "class": "attacker",
       "type": "character",
       "origin": [
-        "community"
+        "smash"
       ],
       "genre": [],
       "realm": [],
@@ -8115,7 +8114,9 @@
     "tags": {
       "class": "attacker",
       "type": "character",
-      "origin": [],
+      "origin": [
+        "meme"
+      ],
       "genre": [],
       "realm": [],
       "traits": []
@@ -8131,5 +8132,32 @@
     },
     "ability": null,
     "pushedAt": 1792186620288
+  },
+  {
+    "id": "heero-s-elbows",
+    "name": "Heero's Elbows",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "full_art"
+    ],
+    "updatedAt": 1792424446114,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "forbidden-pride"
+      ]
+    },
+    "type": "Item"
   }
 ]
