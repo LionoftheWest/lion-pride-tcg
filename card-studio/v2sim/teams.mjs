@@ -2,8 +2,8 @@
 // node card-studio/v2sim/run.mjs teams [--runs N] [--seed S] [--patch json] [--tag name]
 //
 // 20 fixed teams (teams.json: card keys only) play with the 130 approved Set 1 actives (the PRIVATE file set1-actives.json, see ACTIVES_PATH) at Normal rarity:
-//   Hunt (8 cards, Heroic, a neutral boss and one counter boss for each of the 18 mechanics), the Dungeon (5 cards: a full run,
-//   a horde room, a guardian room, and the guardian with each of the 18 mechanics), at the casual and active investment,
+//   Hunt (8 cards, Heroic, a neutral boss and each of the 16 named bosses of v2_bosses), the Dungeon (5 cards: a full run,
+//   a horde room, a guardian room, and the guardian with the mechanics of each named boss), at the casual and active investment,
 //   and the Gauntlet (the 5 cards at 0 stars, level 0). Every team meets the same seeds (common random numbers).
 // Score of a content: Hunt = net damage a day. Run = floors cleared. Gauntlet = floors cleared.
 //   Room = 1 + share of the step cap left when the squad wins, else the share of foe HP removed (0..2, higher is better).
@@ -13,7 +13,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeCard, classOf, ROLES } from './cards.mjs';
-import { huntDay, dungeonRun, gauntletRun, makeFoe } from './modes.mjs';
+import { huntDay, dungeonRun, gauntletRun, makeFoe, setFoeMech, bossKeys, bossMechs } from './modes.mjs';
 import { Battle } from './engine.mjs';
 import { POLICIES } from './policy.mjs';
 import { HERE, loadFixture, mkRng, hash, mean, median, table, fmt, pct, ratio } from './util.mjs';
@@ -62,24 +62,27 @@ export const isCommon = s => !s.finishes.some(f => ['full_art', 'gold', 'event']
 
 // ---------- contents ----------
 export function contents(cfg) {
-  const M = Object.keys(cfg.v2_enemy.mechanics), head = [], counter = [];
+  // The counter contents are the 16 named Hunt bosses (Nathan 2026-10-19): the Hunt day vs the boss, and the Dungeon guardian with its mechanics.
+  const M = bossKeys(cfg), head = [], counter = [];
   for (const inv of INVS) head.push({ id: `hunt|${inv}`, mode: 'hunt', inv, label: `Hunt ${inv}` });
   for (const inv of INVS) head.push({ id: `run|${inv}`, mode: 'dungeon', inv, label: `Dungeon run ${inv}` });
   for (const inv of INVS) head.push({ id: `horde|${inv}`, mode: 'dungeon', inv, label: `Horde F${ROOMS[inv].horde} ${inv}` });
   for (const inv of INVS) head.push({ id: `guard|${inv}`, mode: 'dungeon', inv, label: `Guardian F${ROOMS[inv].guardian} ${inv}` });
   head.push({ id: 'gauntlet', mode: 'gauntlet', inv: 'none', label: 'Gauntlet' });
   for (const inv of INVS) for (const m of M) {
-    counter.push({ id: `hunt|${inv}|${m}`, mode: 'hunt', inv, mech: m, base: `hunt|${inv}`, label: `Hunt ${inv} vs ${m}` });
-    counter.push({ id: `guard|${inv}|${m}`, mode: 'dungeon', inv, mech: m, base: `guard|${inv}`, label: `Guardian ${inv} vs ${m}` });
+    const nm = cfg.v2_bosses[m].name.replace(/^The /, '');
+    counter.push({ id: `hunt|${inv}|${m}`, mode: 'hunt', inv, mech: m, base: `hunt|${inv}`, label: `Hunt ${inv} vs ${nm}` });
+    counter.push({ id: `guard|${inv}|${m}`, mode: 'dungeon', inv, mech: m, base: `guard|${inv}`, label: `Guardian ${inv} vs ${nm}` });
   }
   return { head, counter, mechs: M };
 }
 
-export function room(cfg, squad, kind, floor, mech, runs, seed) {
+// N = null (no mechanic) or bossMechs(...) (the mechanics, resists and params of a named boss).
+export function room(cfg, squad, kind, floor, N, runs, seed) {
   const n = kind === 'horde' ? 4 : 1; let s = 0, won = 0;
   for (let i = 0; i < runs; i++) {
     const rng = mkRng(hash(seed, 'room', kind, floor, i));
-    const foes = Array.from({ length: n }, () => { const f = makeFoe(cfg, floor, kind === 'horde' ? 3 : 5, kind, rng); f.mech = mech ? [mech] : []; f.healer = f.mech.includes('regrowth') || f.moves.some(([mv]) => mv === 'regenerate' || mv === 'drain'); return f; });
+    const foes = Array.from({ length: n }, () => setFoeMech(makeFoe(cfg, floor, kind === 'horde' ? 3 : 5, kind, rng), N ? N.mech : [], N ? { resists: N.resists, params: N.params } : {}));
     const tot = foes.reduce((a, f) => a + f.maxHp, 0);
     const b = new Battle(cfg, { cards: squad.map(c => ({ ...c, hp: c.maxHp, shield: 0 })), enemies: foes, mode: 'dungeon', policy: POLICIES.best, seed: hash(seed, 'room', kind, i) }).run();
     if (b.ended === 'won') { won++; s += 1 + (b.cap - b.step) / b.cap; }
@@ -94,14 +97,14 @@ export function measureTeam(cfg, team, C, { runs = 200, seed = 1 } = {}) {
   for (const inv of INVS) {
     const I = cfg.v2_investment[inv];
     const hSq = teamSpecs(cfg, team.hunt, I).map(s => makeCard(cfg, s)), dSq = teamSpecs(cfg, team.dungeon, I).map(s => makeCard(cfg, s));
-    const hunt = mech => { const v = []; for (let i = 0; i < runs; i++) v.push(huntDay(cfg, hSq, { tier: 'Heroic', sigs: mech ? [mech] : [], seed: hash(seed, 'teams-hunt', inv, i) }).net); return { score: mean(v) }; };
+    const hunt = boss => { const v = []; for (let i = 0; i < runs; i++) v.push(huntDay(cfg, hSq, { tier: 'Heroic', sigs: [], boss: boss || undefined, seed: hash(seed, 'teams-hunt', inv, i) }).net); return { score: mean(v) }; };
     out[`hunt|${inv}`] = hunt(null);
     for (const m of C.mechs) out[`hunt|${inv}|${m}`] = hunt(m);
     const fl = []; for (let i = 0; i < runs; i++) fl.push(dungeonRun(cfg, dSq, { seed: hash(seed, 'teams-run', inv, i) }).floor);
     out[`run|${inv}`] = { score: mean(fl), clear3: fl.filter(f => f >= 3).length / runs, clear5: fl.filter(f => f >= 5).length / runs };
     out[`horde|${inv}`] = room(cfg, dSq, 'horde', ROOMS[inv].horde, null, runs, hash(seed, inv));
     out[`guard|${inv}`] = room(cfg, dSq, 'guardian', ROOMS[inv].guardian, null, runs, hash(seed, inv));
-    for (const m of C.mechs) out[`guard|${inv}|${m}`] = room(cfg, dSq, 'guardian', ROOMS[inv].guardian, m, runs, hash(seed, inv));
+    for (const m of C.mechs) out[`guard|${inv}|${m}`] = room(cfg, dSq, 'guardian', ROOMS[inv].guardian, bossMechs(cfg, m, 'Heroic'), runs, hash(seed, inv));
   }
   const gs = teamSpecs(cfg, team.dungeon); const gf = [];
   for (let i = 0; i < runs; i++) gf.push(gauntletRun(cfg, gs, {}, { seed: hash(seed, 'teams-gauntlet', i) }).floor);
@@ -111,7 +114,8 @@ export function measureTeam(cfg, team, C, { runs = 200, seed = 1 } = {}) {
 
 // ---------- the no-meta checks (pure: they read only the score matrix) ----------
 // S = { [team id]: { [content id]: { score } } }, C = contents(cfg), casual = [team ids], clear3 = { [team id]: share }.
-export function noMetaChecks(S, C, { casual = [], clear3 = {} } = {}) {
+// specialists = designed specialist teams (teams.json "specialist"): check d skips them (Nathan 2026-10-19, Field Hospital).
+export function noMetaChecks(S, C, { casual = [], clear3 = {}, specialists = [] } = {}) {
   const T = Object.keys(S), all = [...C.head, ...C.counter];
   const rel = {}; for (const t of T) rel[t] = {};
   const rank = {}; for (const t of T) rank[t] = {};
@@ -141,7 +145,7 @@ export function noMetaChecks(S, C, { casual = [], clear3 = {} } = {}) {
     res('a', `strong somewhere: every team is in the top ${TOP_N} of at least one content (mode or enemy type)`, T.filter(t => per[t].bestRank > TOP_N), T.map(t => `${t} #${per[t].bestRank} ${per[t].best.id}`)),
     res('b', `has a weakness: every team has a content (a mode, a room kind or a counter) where its relative score is below x${WEAK_X} of its own overall average`, T.filter(t => per[t].low.x >= WEAK_X), T.map(t => `${t} ${ratio(per[t].low.x)} ${per[t].low.c.id}`)),
     res('c', `not best everywhere: no team is #1 in more than ${MAX_FIRSTS} of the ${C.head.length} headline contents`, T.filter(t => per[t].firsts.length > MAX_FIRSTS), T.filter(t => per[t].firsts.length).map(t => `${t} ${per[t].firsts.length}`)),
-    res('d', `balanced: every overall average within x${BAND[0]}-x${BAND[1]} of the median team`, T.filter(t => per[t].vsMedian < BAND[0] || per[t].vsMedian > BAND[1]), T.map(t => `${t} ${ratio(per[t].vsMedian)}`)),
+    res('d', `balanced: every overall average within x${BAND[0]}-x${BAND[1]} of the median team (designed specialists skipped)`, T.filter(t => !specialists.includes(t) && (per[t].vsMedian < BAND[0] || per[t].vsMedian > BAND[1])), T.map(t => `${t} ${ratio(per[t].vsMedian)}${specialists.includes(t) ? ' (specialist, skipped)' : ''}`)),
     res('e', `casual-friendly teams clear Dungeon floor 3 at casual investment in ${pct(CLEAR_THRESHOLD, 0)} of runs`, casual.filter(t => !(clear3[t] >= CLEAR_THRESHOLD)), casual.map(t => `${t} ${pct(clear3[t] ?? NaN, 0)}`)),
   ];
   return { rel, rank, per, checks, medianOverall: medO, walls };
@@ -158,7 +162,8 @@ export function teams(cfg0, { runs = 200, seed = 1, teamList, actives } = {}) {
       for (let i = 0; i < runs; i++) if (dungeonRun(cfg, sq, { seed: hash(seed, 'teams-run', 'casual', i), policy: 'auto' }).floor >= 3) n++; autoClear3[t.id] = n / runs; }
   }
   const casual = TM.filter(t => t.casual).map(t => t.id);
-  const R = noMetaChecks(S, C, { casual, clear3 });
+  const specialists = TM.filter(t => t.specialist).map(t => t.id);
+  const R = noMetaChecks(S, C, { casual, clear3, specialists });
   const nm = k => subj.get(k)?.name ?? k, byId = Object.fromEntries(TM.map(t => [t.id, t]));
   const shape = keys => { const a = keys.filter(k => classOf(cfg.v2_templates[`s1.${k}`].role) === 'attacker').length; return `${a}A+${keys.length - a}S`; };
 
@@ -171,7 +176,7 @@ export function teams(cfg0, { runs = 200, seed = 1, teamList, actives } = {}) {
   let md = `# Team test: 20 teams, no meta\n\n**Prototype estimates** from a simplified model (no weakness, element, set synergy, block or boons). Use them for direction. Verify each decision in the Combat Lab.\n\n`;
   md += `${TM.length} teams (teams.json) with the approved Set 1 actives (private file, ${Object.keys(A).length} cards), Normal rarity, policy best. ${runs} runs a cell, seed ${seed}, the same seeds for every team.\n`;
   md += `Investment: casual ${cfg.v2_investment.casual.stars}* level ${cfg.v2_investment.casual.level}, active ${cfg.v2_investment.active.stars}* level ${cfg.v2_investment.active.level}. Gauntlet: the 5 Dungeon cards at 0 stars, level 0, ${cfg.v2_gauntlet.floors} floors.\n`;
-  md += `Hunt = Heroic boss, net damage a day. Run = floors cleared (of ${cfg.v2_dungeon.floors}). Room = 1 + share of the step cap left on a win, else the share of foe HP removed. Horde = 4 foes, guardian = 1 foe, no random passive (a counter content adds one mechanic).\n`;
+  md += `Hunt = Heroic boss, net damage a day. Run = floors cleared (of ${cfg.v2_dungeon.floors}). Room = 1 + share of the step cap left on a win, else the share of foe HP removed. Horde = 4 foes, guardian = 1 foe, no random passive. A counter content = one of the ${C.mechs.length} named Hunt bosses (Heroic): the Hunt day vs that boss, and the guardian with its resists and rules.\n`;
   md += `Relative score = the team / the median of the ${TM.length} teams in that content.\n\n`;
 
   md += `## The no-meta checks\n\n` + table(['check', 'what', 'result', 'failing teams'], R.checks.map(c => [c.id, c.what, c.ok ? 'PASS' : 'FAIL', c.fails.join(', ') || '-']));
@@ -187,10 +192,11 @@ export function teams(cfg0, { runs = 200, seed = 1, teamList, actives } = {}) {
   md += `\n## Weaknesses (check b): the 3 lowest contents of each team (relative score / the team's own overall average)\n\n`;
   md += table(['team', 'overall', 'lowest', 'second', 'third'], TM.map(t => { const p = R.per[t.id]; const f = x => `${x.c.label} ${ratio(x.x)}`;
     return [t.name, ratio(p.vsMedian), f(p.lowList[0]), f(p.lowList[1]), f(p.lowList[2])]; }));
-  md += `\n## Counters: the 3 counter mechanics that cut each team most (field-relative: rel with the counter / rel in the same content without it; raw = score with / without)\n\n`;
-  md += table(['team', 'designed counters', 'worst', 'second', 'third', 'designed counters measured (worst level, Hunt + guardian)'], TM.map(t => {
+  md += `\n## Counters: the 3 named bosses that cut each team most (field-relative: rel with the counter / rel in the same content without it; raw = score with / without)\n\n`;
+  md += table(['team', 'designed counters', 'worst', 'second', 'third', 'designed counters: the bosses that carry them (worst cut, Hunt + guardian)'], TM.map(t => {
     const p = R.per[t.id]; const f = x => `${x.c.label.replace(' vs ', ': ')} ${ratio(x.w)} (raw ${ratio(x.raw)})`;
-    const des = (t.counters || []).map(m => { const ws = C.counter.filter(c => c.mech === m && !R.walls.includes(c)).map(c => R.rel[t.id][c.id] / R.rel[t.id][c.base]); return `${m} ${ratio(Math.min(...ws))}`; }).join(', ');
+    const carries = (b, m) => { const N = bossMechs(cfg, b, 'Heroic'), im = cfg.v2_enemy.mechanics[m]?.immune || []; return N.mech.includes(m) || (im.length > 0 && im.every(s => N.resists.includes(s))); };
+    const des = (t.counters || []).map(m => { const ws = C.counter.filter(c => carries(c.mech, m) && !R.walls.includes(c)).map(c => R.rel[t.id][c.id] / R.rel[t.id][c.base]); return ws.length ? `${m} ${ratio(Math.min(...ws))}` : `${m}: no boss`; }).join(', ');
     return [t.name, (t.counters || []).join(', '), f(p.weakList[0]), f(p.weakList[1]), f(p.weakList[2]), des];
   }));
   md += `\n## Strong somewhere: the best rank of each team\n\n` + table(['team', 'best content (all)', 'rank', 'best headline content', 'rank', '#1 in (headline)'], TM.map(t => { const p = R.per[t.id];

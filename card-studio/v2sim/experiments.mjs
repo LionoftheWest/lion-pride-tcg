@@ -1,7 +1,7 @@
 // experiments.mjs - the 7 v2sim experiments. Each returns { md, head } (the report and the headline lines).
 // All results are PROTOTYPE ESTIMATES from a simplified model, not Combat Lab numbers.
 import { cardPool, pickCards, makeCard, buildFor, templatesOf, templatePP, blockPP, classOf, ATTACKER_ROLES, SUPPORT_ROLES, ROLES, STATS, allocate } from './cards.mjs';
-import { buildSquad, huntDay, dungeonRun, gauntletRun, gauntletSquadSpecs, makeBoss, makeFoe } from './modes.mjs';
+import { buildSquad, huntDay, dungeonRun, gauntletRun, gauntletSquadSpecs, makeBoss, makeFoe, setFoeMech } from './modes.mjs';
 import { Battle } from './engine.mjs';
 import { POLICIES } from './policy.mjs';
 import { allChecks } from './checks.mjs';
@@ -344,7 +344,7 @@ export function archetypes(cfg, { runs = 400, seed = 1 } = {}) {
   // horde vs single big foe for Cleave
   const cl = ARCHETYPES.Cleave.hunt, ne = ARCHETYPES['Neutral (control)'].hunt; const roomT = [];
   for (const [nm, list] of [['Cleave', cl], ['Neutral', ne]]) for (const [kind, n] of [['horde', 4], ['guardian', 1]]) {
-    let won = 0, steps = 0; for (let i = 0; i < runs; i++) { const rng = mkRng(hash(seed, 'room', nm, kind, i)); const foes = Array.from({ length: n }, () => { const f = makeFoe(cfg, 5, 3, kind, rng); f.mech = []; return f; });
+    let won = 0, steps = 0; for (let i = 0; i < runs; i++) { const rng = mkRng(hash(seed, 'room', nm, kind, i)); const foes = Array.from({ length: n }, () => { return setFoeMech(makeFoe(cfg, 5, 3, kind, rng), []); });
       const b = new Battle(cfg, { cards: dngPick(list).map(mk), enemies: foes, mode: 'dungeon', policy: POLICIES.best, seed: hash(seed, 'room', i) }).run(); if (b.ended === 'won') { won++; steps += b.step; } }
     roomT.push([nm, `${kind} x${n} (floor 5)`, pct(won / runs, 0), fmt(won ? steps / won : NaN)]);
   }
