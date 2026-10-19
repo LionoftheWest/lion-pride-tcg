@@ -55,9 +55,24 @@ const MUT = {
   grant_anon: ['comment on function public.combat_v2_on(text) is', 'grant execute on function public.combat_v2_on(text) to anon;\ncomment on function public.combat_v2_on(text) is'],
   // the values that config.json changed after PR #440 (the teams test): P2 hunt_bonus 0.05 and the P4 switch empowered.stack (default false)
   hunt_bonus_old: ['"hunt_bonus":0.05', '"hunt_bonus":0.1'],
-  stack_on: ['"empowered":{"cap":1.5,"stack":false}', '"empowered":{"cap":1.5,"stack":true}'],
-  stack_dropped: ['"empowered":{"cap":1.5,"stack":false}', '"empowered":{"cap":1.5}'],
-  stack_no_shape: ['"empowered": {"cap": "num 0 5", "stack": "bool"}', '"empowered": {"cap": "num 0 5"}'],
+  stack_on: ['"empowered":{"cap":1.5,"stack":false,"stack_cap":0.5}', '"empowered":{"cap":1.5,"stack":true,"stack_cap":0.5}'],
+  stack_dropped: ['"empowered":{"cap":1.5,"stack":false,"stack_cap":0.5}', '"empowered":{"cap":1.5,"stack_cap":0.5}'],
+  stack_no_shape: ['"empowered": {"cap": "num 0 5", "stack": "bool", "stack_cap": "num 0 5"}', '"empowered": {"cap": "num 0 5", "stack_cap": "num 0 5"}'],
+  // the values that config.json changed in PR #449 (the Combat Lab items of 2026-10-19, Nathan's answers)
+  regrowth_x2: ['"below_half_x":1,', '"below_half_x":2,'],
+  boss_heal_old: ['"boss_heal":0.004', '"boss_heal":0.01'],
+  asc3_hp_x_typo: ['"asc3_hp_x":1.7', '"asc3_hp_x":1'],
+  weak_role_x_typo: ['"weak_role_x":0.3', '"weak_role_x":0.2'],
+  controller_week_dmg: ['"controller":{"damage_x":0,"control_add":1}', '"controller":{"damage_x":0.3,"control_add":1}'],
+  weak_rules_no_shape: ['"weak_role_rules": {"controller": {"damage_x": "num 0 1", "control_add": "int 0 5"}}', '"weak_role_rules": {}'],
+  area_x_typo: ['"area_one_foe_x":0.2', '"area_one_foe_x":0.35'],
+  stack_cap_typo: ['"stack_cap":0.5', '"stack_cap":1'],
+  cure_priced: ['"consume":4,"cure":0', '"consume":4,"cure":4'],
+  hellfire_burn: ['"hellfire":{"x":1.5,"burn":2}', '"hellfire":{"x":1.5,"burn":3}'],
+  squeeze_enum_wide: ['"status": "enum poison|burn|stunned|frozen|sleep|paralyzed|blinded|confused|slowed|chill|exposed|weakened|mark"', '"status": "enum poison|burn|stunned|frozen|sleep|paralyzed|blinded|confused|slowed|chill|exposed|weakened|mark|zz_nope"'],
+  pack_kinds: ['"pack":{"kinds":["horde"]}', '"pack":{"kinds":["horde","fight"]}'],
+  undying_hp: ['"undying":{"hp":0.25}', '"undying":{"hp":0.5}'],
+  passive_params_no_shape: ['"volatile_core": {"x": "num 0 5"}, "pack": {"atk_per_foe": "num 0 0.5"}}', '"volatile_core": {"x": "num 0 5"}}'],
 };
 if (process.env.MUTATE === 'all') {
   let ok = true;
@@ -243,14 +258,18 @@ begin
       ('v2_speed', '{status_min_x}', '0'), ('v2_speed', '{role_base,breaker}', '0'), ('v2_roles', '{warden,ally_dr}', '0.9'), ('v2_roles', '{breaker,pierce}', '2'),
       ('v2_enemy', '{hunt,Mythic,def}', '0.9'), ('v2_enemy', '{hunt,Normal,signatures}', '9'), ('v2_dungeon', '{kinds,guardian,def}', '0.95'),
       ('v2_dungeon', '{foe_evasion_max}', '0.9'), ('v2_pp', '{budget}', '0'), ('v2_power', '{k,medic}', '0'), ('v2_support', '{power_exp}', '2'),
-      ('v2_asc', '{curve,2}', '1.5'), ('card_level', '{catchup_x}', '0.5'), ('v2_hunt', '{round_cap}', '0')) x(k, w, plant) loop
+      ('v2_asc', '{curve,2}', '1.5'), ('card_level', '{catchup_x}', '0.5'), ('v2_hunt', '{round_cap}', '0'),
+      ('v2_enemy', '{asc3_hp_x}', '9'), ('v2_enemy', '{weak_role_x}', '2'), ('v2_enemy', '{mechanics,regrowth,boss_heal}', '0.5'),
+      ('v2_enemy', '{weak_role_rules,controller,control_add}', '50'), ('v2_support', '{area_one_foe_x}', '2'), ('v2_status', '{empowered,stack_cap}', '50'),
+      ('v2_dungeon', '{passive_params,undying,hp}', '2'), ('v2_dungeon', '{passive_params,bulwark,every}', '1'), ('v2_dungeon', '{moves_v2,infect,no_heal}', '500'),
+      ('v2_pp', '{support_pp,cure}', '-1')) x(k, w, plant) loop
     begin
       update public.balance set value = jsonb_set(value, pth, plant) where key = k;
       bad := bad || format('%s.%s = %s', k, array_to_string(pth, '.'), plant);
     exception when others then null;
     end;
   end loop;
-  res := res || jsonb_build_object('case', 'the limits refuse 30 absurd values that the test owns (a widened limit fails here)', 'ok', cardinality(bad) = 0, 'accepted', bad);
+  res := res || jsonb_build_object('case', 'the limits refuse 40 absurd values that the test owns (a widened limit fails here)', 'ok', cardinality(bad) = 0, 'accepted', bad);
   ok := false;
   begin insert into public.balance (key, value, note) values ('v2_foo', '{"a": 1}', 'a test key with no shape'); exception when others then ok := sqlerrm like '%needs a shape%'; end;
   res := res || jsonb_build_object('case', 'a key named v2_* with no shape is refused', 'ok', ok);
@@ -298,6 +317,17 @@ const LEFT_OUT = {
   'v2_dungeon.main_floor': 'a measurement target of the simulator, not a game number',
   'v2_dungeon.monsters': 'the monster rows are the dungeon_monsters table (plan 8.3, PR E7)',
   'v2_hunt.squad': 'a live v1 rule that v2 keeps (the Hunt daily cap of 8)',
+  // PR #449 (the Combat Lab items of 2026-10-19)
+  'v2_enemy.counter_cut_min': 'a check line of the simulator (run.mjs monsters: a Normal or Heroic boss cuts a team to x0.65 at most), not a game number',
+  'v2_enemy.counter_cap_accepted': 'report only: the team/boss pairs that Nathan accepted as edge cases of that check',
+  'v2_dungeon.moves_v2.on': 'a simulator switch (the old or the new monster moves); in the game the flag combat_v2 is the one switch',
+  'v2_dungeon.moves_v2.rename': 'which monster has which move = the dungeon_monsters rows (plan 8.3, PR E7)',
+  'v2_dungeon.moves_v2.*.text': 'the move texts come with the monster rows (PR E7); a typed number goes wrong when balance changes',
+  'v2_dungeon.monster_passives.on': 'a simulator switch (the monster passives or none); in the game the flag combat_v2 is the one switch',
+  'v2_dungeon.monster_passives.list': 'which monster has which own passive = the dungeon_monsters rows (plan 8.3, PR E7)',
+  'v2_dungeon.monster_passives.pack.monster': 'the monster of the Pack aura = a dungeon_monsters row (PR E7)',
+  'v2_dungeon.monster_passives.pack.atk_per_foe': 'an unread copy: the simulator reads passive_params.pack.atk_per_foe (one number, one home)',
+  'v2_dungeon.passive_params.*.text': 'the passive texts come with the passives rows (PR E7)',
 };
 // The leaves in balance that config.json does not have, with their source.
 const ADDED = {

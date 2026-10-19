@@ -64,7 +64,8 @@ const MUT = {
                        "'Frozen',      'tempo',    true,  'none',      null,                        'next_action',     null,     "],   // Frozen loses the control immunity
   frozen_status: ["( 5, 'frozen',    'end_state',", "( 5, 'frozen',    'status',"],   // Frozen as a 17th status
   chill_no_end: ["'steps',           null,      'frozen', 'snowflake',", "'steps',           null,      null,     'snowflake',"],
-  row_negative: ["'Quickened',      'tempo',    false,", "'Quickened',      'tempo',    true, "],
+  row_negative: ["'Quickened',      'boon',     false,", "'Quickened',      'boon',     true, "],
+  quickened_tempo: ["'Quickened',      'boon',     false,", "'Quickened',      'tempo',    false,"],   // Nathan 2026-10-19 (UI-67): Quickened is a Boon
   role_class: ["( 7, 'warden',     'support',", "( 7, 'warden',     'attacker',"],
   role_speed: ["'v2_speed.role_base.striker'", "'v2_speed.role_base.flurry'"],
   comment_missing: ["comment on column public.roles.icon is 'The icon key of the visual language set (plan 13.1; the icons are designed later).';\n", ''],
@@ -359,7 +360,9 @@ end $t$;`;
 const PLAN16 = ['poison', 'burn', 'stunned', 'chill', 'sleep', 'paralyzed', 'blinded', 'confused', 'slowed', 'quickened', 'exposed', 'weakened', 'mark', 'shielded', 'empowered', 'focused'];
 const CONTROL = ['stunned', 'frozen', 'sleep', 'paralyzed'];   // card-studio/v2sim/engine.mjs CONTROL: the one control immunity
 // Nathan 2026-10-18 (fixed here, not read from config.json, so a change of config.json alone cannot move it): Chill is Tempo, Frozen is Control.
-const DECIDED = { chill: { family: 'tempo', immunity: null, kind: 'status' }, frozen: { family: 'control', immunity: 'control', kind: 'end_state' } };
+// Nathan 2026-10-19 (UI-67, plan 6.1): Quickened is a Boon (config.json of the simulator still says tempo; the family does not change a number).
+const DECIDED = { chill: { family: 'tempo', immunity: null, kind: 'status' }, frozen: { family: 'control', immunity: 'control', kind: 'end_state' },
+  quickened: { family: 'boon', immunity: null, kind: 'status' } };
 const cfgOf = (k) => CONFIG.v2_status[k];
 // Where each status applies (plan 6.1: a status with an enemy and a card duration applies to both; Mark only on an enemy; the boons on cards; the
 // enemy states on enemies).
@@ -381,7 +384,7 @@ function checkStatuses(rows) {
   }
   for (const r of rows) {
     const c = cfgOf(r.key);
-    const fam = c ? c.family : 'boon';
+    const fam = DECIDED[r.key] ? DECIDED[r.key].family : c ? c.family : 'boon';
     if (r.family !== fam) p.push(`${r.key}: family ${r.family}, expected ${fam}`);
     const neg = CONFIG.v2_status.negative.includes(r.key);
     if (r.negative !== neg) p.push(`${r.key}: negative ${r.negative}, expected ${neg}`);

@@ -166,7 +166,9 @@ Power              = Offense x Survival x k[role]
 
 ### 3.2 What the player sees
 
-- A **turn-order strip**: the next 5 to 6 actors (cards and enemies) from the clock. The clock itself stays hidden.
+- A **turn-order strip** across the full width: as many projected actors (cards and enemies) as fit, 10 at 430 px, 33 at 1280 px,
+  52 at 1990 px (UI-67, Nathan 2026-10-19). The projection draws no random number. When a speed or control status changes the order,
+  the chips redraw in place. Enemy turns and the turn on which a card's active is charged are marked. The clock itself stays hidden.
 - On a card's turn: the basic attack, or the active when it is charged, and the target (an ally for most supports). Auto plays for the player.
 - A charge mark on each card (for example 2 pips). The "Charging" warning before a Cataclysm stays.
 - Status icons on every unit (section 6). One line on tap.
@@ -312,7 +314,6 @@ Durations are clock steps: enemy / card [T]. "Ref HP" = the foe max HP in the Du
 | Accuracy | Blinded | +25% miss chance | no stacks | 2 / 8 | closed eye |
 | | Confused | 30% of its single attacks hit a wrong target | no stacks | 2 / 8 | swirl |
 | Tempo | Slowed | Speed x0.7 | no stacks | 3 / 10 | snail |
-| | Quickened | Speed x1.3 | no stacks | 3 / 10 | wing |
 | | Chill | Each Chill stack: -8% damage and -8% speed. At 3 stacks: Frozen, then Chill clears. No control immunity while it stacks | adds, max 3 | 3 / 10 | snowflake |
 | Vulnerability | Exposed | Takes +X% damage from every source, ticks included | adds, cap +100% | 2 / 8 | cracked eye |
 | | Weakened | Deals X% less damage. Replaces the card "Curse" | adds, cap 60% | 2 / 10 | down arrow |
@@ -320,9 +321,12 @@ Durations are clock steps: enemy / card [T]. "Ref HP" = the foe max HP in the Du
 | Boons | Shielded | Absorbs damage before HP | adds, cap 1.0 x max HP | until used | shield |
 | | Empowered | The next attack deals +X% | the higher X stays [P] | 1 attack | up arrow |
 | | Focused | +crit chance | no stacks | 10 | crosshair |
+| | Quickened | Speed x1.3 | no stacks | 3 / 10 | rabbit |
 
-Chill and Frozen count as one status of the 16 (Frozen is the end state of Chill). Chill is Tempo: a slow that stacks freely and starts no
-control immunity. Only Frozen is Control: it starts the one shared control immunity [D Nathan 2026-10-18]. Two enemy states are also shown with an icon:
+Quickened is a Boon (Nathan 2026-10-19, UI-67): every Boons status is good for its holder. The approved icons are in UI-67
+(the icon ideas above are the first proposals). Chill and Frozen count as one status of the 16 (Frozen is the end state of Chill). Chill is Tempo: a
+slow that stacks freely and starts no control immunity. Only Frozen is Control: it starts the one shared control immunity [D Nathan 2026-10-18].
+Two enemy states are also shown with an icon:
 **Guarded** (a foe shield) and **Enraged** (x1.4 for 2 steps) [L].
 
 ### 6.2 Shared rules
@@ -768,6 +772,13 @@ because every later part reads them.
   so the Lab sets them again for v2, and a v2 change must never move v1 (P6).
 - Found in config.json: the Flurry text says "25% chance", the number `v2_roles.flurry.extra_chance` is 0.2 (the plan says 20%). The text is not
   copied (the E1 passive text names the number as `{extra_chance}`).
+- 2026-10-19 (after PR #449, the Combat Lab items; Nathan approved): Regrowth `below_half_x` 1 (no x2 below half) and `boss_heal` 0.004, the
+  boss HP factor `v2_enemy.asc3_hp_x` (1.7, a first proposal), the "Weak to: role" week (`weak_role_x` 0.3, `weak_role_rules.controller`: no damage,
+  control +1 boss action), the support area smite (`v2_support.area_one_foe_x` 0.2), the Empower stack cap (`v2_status.empowered.stack_cap` 0.5,
+  the switch stays false), the free cure (`v2_pp.support_pp.cure` 0), the monster status moves (`v2_dungeon.moves_v2`) and the monster passive
+  numbers (`v2_dungeon.monster_passives` kinds, `v2_dungeon.passive_params`). Left out: the counter cap check line and its accepted pairs
+  (simulator checks), the two simulator switches `on`, the monster move names and own passives (`dungeon_monsters` rows, PR E7), the texts, and
+  an unread copy of the Pack number.
 
 ### 17.2 E1: statuses, roles and the fight state v = 2 (`tcg-bot/supabase/combat_v2_statuses_roles.sql`)
 
@@ -783,6 +794,8 @@ because every later part reads them.
 - Chill is Tempo with no immunity, and its end state Frozen is its own row in Control with the one control immunity (Nathan 2026-10-18, the same
   as config.json). The table checks hold it: `immunity` = control exactly for the family control, and `end_state` points to a row of kind
   `end_state` (a foreign key and the trigger). A v2 fight state may hold `chill` and `frozen` (the simulator keys).
+- Quickened is family `boon` with the icon key `rabbit` (Nathan 2026-10-19, UI-67, 6.1). config.json of the simulator still says `tempo`; the
+  family changes no number, and the test holds the decision (`DECIDED`).
 - `fight_state_check_v2(state)`: the v1 rules plus `clock`, and `meter`, `charge` and `status{}` on each card and enemy (known statuses that apply
   to that side, with `stacks`, `value`, `until` only). The v1 status keys are refused in a v2 state (one home for each fact).
 - `fight_state_v2_from_v1(state)`: a pure, read-only view of a v1 state. Enemy `wk`, `ex`, `st`, `enr`, `sh` and card `shield`, `buff`, `debuff`,

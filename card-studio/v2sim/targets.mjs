@@ -2,7 +2,7 @@
 // One command measures every target: node card-studio/v2sim/run.mjs targets [--runs N] [--tag name]
 // Returns { md, head, data } (data = the numbers, for before/after tables). PROTOTYPE ESTIMATES.
 import { cardPool, pickCards, makeCard, templatesOf, ATTACKER_ROLES, SUPPORT_ROLES, ROLES } from './cards.mjs';
-import { buildSquad, huntDay, makeFoe } from './modes.mjs';
+import { buildSquad, huntDay, makeFoe, setFoeMech } from './modes.mjs';
 import { Battle } from './engine.mjs';
 import { POLICIES } from './policy.mjs';
 import { allChecks } from './checks.mjs';
@@ -68,7 +68,7 @@ export function targets(cfg, { runs = 200, seed = 1 } = {}) {
   rows.push(['5 Cleave vs the median archetype (Hunt)', '<= x1.15', ratio(D.arch.Cleave.vsMedian), ok(D.arch.Cleave.vsMedian <= 1.15)]);
   // Cleaver horde edge: the same 5-card Neutral Dungeon squad, with a Cleaver (Cleave) in place of its Striker.
   const room = (list, kind, n, fl) => { let won = 0, steps = 0, hp = 0;
-    for (let i = 0; i < runs; i++) { const rng = mkRng(hash(seed, 'room', kind, fl, i)); const foes = Array.from({ length: n }, () => { const f = makeFoe(cfg, fl, 3, kind, rng); f.mech = []; return f; });
+    for (let i = 0; i < runs; i++) { const rng = mkRng(hash(seed, 'room', kind, fl, i)); const foes = Array.from({ length: n }, () => { return setFoeMech(makeFoe(cfg, fl, 3, kind, rng), []); });
       const b = new Battle(cfg, { cards: list.map(mk), enemies: foes, mode: 'dungeon', policy: POLICIES.best, seed: hash(seed, 'room', i) }).run();
       if (b.ended === 'won') { won++; steps += b.step; } hp += b.cards.reduce((s, c) => s + c.hp / c.maxHp, 0) / b.cards.length; }
     return { win: won / runs, steps: won ? steps / won : NaN, hp: hp / runs }; };
