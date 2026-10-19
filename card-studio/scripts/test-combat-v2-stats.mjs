@@ -99,7 +99,14 @@ const SETUP = String.raw`
   perform set_config('balance.by', 'test', true);
   execute $m$${V1}$m$;
   execute $m$${E1}$m$;
-  execute $m$${E2}$m$;`;
+  execute $m$${E2}$m$;
+  -- the state before the file, also when the file is already applied on this copy: its functions are dropped, so the checks (comments, grants,
+  -- volatility) see what the file makes, not what an earlier run left (2026-10-19: comment_missing was NOT CAUGHT on a copy with the file applied)
+  execute $d$do $x$ declare f text; begin
+    for f in select p.oid::regprocedure::text from pg_proc p where p.pronamespace = 'public'::regnamespace
+               and p.proname in ('combat_v2_stats', 'card_combat_v2') loop
+      execute 'drop function ' || f;
+    end loop; end $x$$d$;`;
 const V1FNS = ['card_combat(text,integer,numeric,jsonb)', 'card_combat(text,integer,numeric,jsonb,jsonb)', 'card_cp_exact(text,integer,numeric)', 'card_cp_exact(text,integer,numeric,jsonb,jsonb)', 'card_max_hp(integer)', 'card_max_hp(integer,numeric,numeric)'];
 const md5s = String.raw`(select jsonb_object_agg(p.oid::regprocedure::text, md5(pg_get_functiondef(p.oid))) from pg_proc p
    where p.pronamespace = 'public'::regnamespace and p.proname in ('card_combat', 'card_cp_exact', 'card_max_hp'))`;
