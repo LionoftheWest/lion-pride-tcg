@@ -85,7 +85,8 @@ const CAPS = ['gauntlet', 'dungeon', 'hunt', 'progress'];
 const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_combat_v2', 'combat_v2_on', 'balance_path', 'balance_text_errors', 'statuses_check', 'roles_check',
   'fight_state_check_v2', 'fight_state_v2_from_v1',
   // the combat v2 functions of the later PRs, which read the keys on purpose (v2 objects beside v1; every reader is named here)
-  'combat_v2_numbers', 'combat_v2_speed', 'combat_v2_advance', 'combat_v2_turn_order'];   // E2 combat_v2_turn_meter.sql
+  'combat_v2_numbers', 'combat_v2_speed', 'combat_v2_advance', 'combat_v2_turn_order',   // E2 combat_v2_turn_meter.sql
+  'combat_v2_stats', 'card_combat_v2'];   // E3 combat_v2_stats.sql
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
 const body = String.raw`do $t$
