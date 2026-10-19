@@ -493,21 +493,21 @@ Table. [combat] Combat v2: the 12 roles of plan 4 (6 attacker, 6 support), one r
 
 ### statuses
 
-Table. [combat] Combat v2: the 16 statuses of plan 6.1 (kind status) and the 2 enemy states shown with an icon (kind enemy_state: enraged, guarded), one row each (combat_v2_statuses_roles.sql). The numbers are in balance (numbers, max_stacks), never in the row: the rule text names them as {leaf}. The trigger statuses_check refuses a balance path that does not exist and a digit in the rule. No v1 fight reads it; fight_state_check_v2 reads the keys and where each applies. Server only.
+Table. [combat] Combat v2: the 16 statuses of plan 6.1 (kind status), the end state Frozen of Chill (kind end_state; Chill and Frozen count as one of the 16) and the 2 enemy states shown with an icon (kind enemy_state: enraged, guarded), one row each (combat_v2_statuses_roles.sql). The numbers are in balance (numbers, max_stacks), never in the row: the rule text names them as {leaf}. The trigger statuses_check refuses a balance path that does not exist and a digit in the rule. No v1 fight reads it; fight_state_check_v2 reads the keys and where each applies. Server only.
 
 | Column | Type | Null | Default | Comment |
 |---|---|---|---|---|
 | `key` | text | not null |  | The status key in a v2 fight state (status{} of a card or an enemy), lower case, for example poison. |
 | `ord` | smallint | not null |  | The fixed display order (the icon slots never move on a status change, plan 6.2). |
-| `kind` | text | not null |  | status (one of the 16 statuses of plan 6.1) or enemy_state (Enraged and Guarded: enemy states also shown with an icon). |
-| `label` | text | not null |  | The name shown to players, for example Poison. Chill and Frozen are one status: Chill / Frozen. |
+| `kind` | text | not null |  | status (one of the 16 statuses of plan 6.1), end_state (Frozen: the end state of Chill, counted with Chill as one of the 16) or enemy_state (Enraged and Guarded: enemy states also shown with an icon). |
+| `label` | text | not null |  | The name shown to players, for example Poison. |
 | `family` | text | not null |  | The family (plan 6.1): dot (damage over time), control, accuracy, tempo, vuln (vulnerability) or boon. |
 | `negative` | boolean | not null |  | True for a harmful status (Medic cleanse and Purify remove these; v2_status.negative of the simulator). |
 | `stacking` | text | not null |  | none (no stacks), add (stacks add), add_cap (values add up to a cap in balance), add_decay (stacks add and fall each step), higher (the higher value stays). |
 | `max_stacks` | text | null |  | The balance leaf that limits the stacks of an add / add_decay status, for example v2_status.burn.max (Poison bursts and Chill freezes at that count). NULL with no stack limit. |
 | `duration` | text | not null |  | How it ends: steps (dur / dur_card clock steps), next_action, until_damaged, until_zero (stacks fall to 0), until_used (a shield), next_attack, steps_or_attack. |
-| `immunity` | text | null |  | control: Stunned, Chill / Frozen, Sleep and Paralyzed share ONE control immunity after they end (balance v2_control). NULL for the others. |
-| `end_state` | text | null |  | The state a status turns into at its max stacks: frozen for Chill (numbers in balance v2_status.frozen). NULL for the others. |
+| `immunity` | text | null |  | control: Stunned, Frozen, Sleep and Paralyzed (the family control) share ONE control immunity after they end (balance v2_control). NULL for the others: Chill is Tempo and starts no immunity while it stacks (Nathan 2026-10-18). |
+| `end_state` | text | null |  | The row (kind end_state) that a status turns into at its max stacks: frozen for Chill. NULL for the others. |
 | `icon` | text | not null |  | The icon key of the visual language set (plan 13.1; the icons are designed later). |
 | `on_enemy` | boolean | not null |  | True when an enemy can have it. |
 | `on_card` | boolean | not null |  | True when a card can have it. |
@@ -518,19 +518,21 @@ Table. [combat] Combat v2: the 16 statuses of plan 6.1 (kind status) and the 2 e
 
 - Primary key: `PRIMARY KEY (key)`
 - Unique: `statuses_ord_key` `UNIQUE (ord)`
-- Foreign keys: none
+- Foreign keys: 
+  - `statuses_end_state_fkey` to [statuses](hunt-and-combat.md#table-statuses): `FOREIGN KEY (end_state) REFERENCES statuses(key)`
 - Check constraints: 
-  - `statuses_check`: `CHECK ((on_enemy OR on_card))`
-  - `statuses_check1`: `CHECK ((((stacking = ANY (ARRAY['add'::text, 'add_decay'::text])) = (max_stacks IS NOT NULL)) OR (kind = 'enemy_state'::text)))`
-  - `statuses_check2`: `CHECK (((immunity IS NOT NULL) = (family = 'control'::text)))`
-  - `statuses_check3`: `CHECK (((end_state IS NULL) OR (stacking = 'add'::text)))`
+  - `statuses_check`: `CHECK (((end_state ~ '^[a-z_]+$'::text) AND (end_state <> key)))`
+  - `statuses_check1`: `CHECK ((on_enemy OR on_card))`
+  - `statuses_check2`: `CHECK ((((stacking = ANY (ARRAY['add'::text, 'add_decay'::text])) = (max_stacks IS NOT NULL)) OR (kind = 'enemy_state'::text)))`
+  - `statuses_check3`: `CHECK (((immunity IS NOT NULL) = (family = 'control'::text)))`
+  - `statuses_check4`: `CHECK (((end_state IS NULL) OR (stacking = 'add'::text)))`
+  - `statuses_check5`: `CHECK (((kind <> 'end_state'::text) OR (end_state IS NULL)))`
   - `statuses_duration_check`: `CHECK ((duration = ANY (ARRAY['steps'::text, 'next_action'::text, 'until_damaged'::text, 'until_zero'::text, 'until_used'::text, 'next_attack'::text, 'steps_or_attack'::text])))`
-  - `statuses_end_state_check`: `CHECK ((end_state ~ '^[a-z_]+$'::text))`
   - `statuses_family_check`: `CHECK ((family = ANY (ARRAY['dot'::text, 'control'::text, 'accuracy'::text, 'tempo'::text, 'vuln'::text, 'boon'::text])))`
   - `statuses_icon_check`: `CHECK ((icon ~ '^[a-z_]+$'::text))`
   - `statuses_immunity_check`: `CHECK ((immunity = 'control'::text))`
   - `statuses_key_check`: `CHECK ((key ~ '^[a-z_]+$'::text))`
-  - `statuses_kind_check`: `CHECK ((kind = ANY (ARRAY['status'::text, 'enemy_state'::text])))`
+  - `statuses_kind_check`: `CHECK ((kind = ANY (ARRAY['status'::text, 'end_state'::text, 'enemy_state'::text])))`
   - `statuses_label_check`: `CHECK (((label <> ''::text) AND (label = btrim(label))))`
   - `statuses_max_stacks_check`: `CHECK ((max_stacks ~ '^[a-z0-9_]+(\.[a-z0-9_]+)+$'::text))`
   - `statuses_numbers_check`: `CHECK ((numbers ~ '^[a-z0-9_]+(\.[a-z0-9_]+)*$'::text))`
@@ -1738,7 +1740,7 @@ Pays the prizes of an ended Hunt once: packs by damage rank (ref ('hunt', hunt i
 - Returns: `trigger`
 - Security definer: no
 
-Trigger (before insert, update on statuses): numbers is a balance object, max_stacks a whole number in balance, a timed status has dur or dur_card, the rule passes balance_text_errors; sets updated_at.
+Trigger (before insert, update on statuses): numbers is a balance object, max_stacks a whole number in balance, a timed status has dur or dur_card, an end_state points to a row of kind end_state (and a row that another status ends in is kind end_state), the rule passes balance_text_errors; sets updated_at.
 
 <a id="fn-subjects-ability-check"></a>
 

@@ -27,17 +27,19 @@ create table public.statuses (
 );
 
 -- @constraints
-alter table public.statuses add constraint statuses_check CHECK ((on_enemy OR on_card));
-alter table public.statuses add constraint statuses_check1 CHECK ((((stacking = ANY (ARRAY['add'::text, 'add_decay'::text])) = (max_stacks IS NOT NULL)) OR (kind = 'enemy_state'::text)));
-alter table public.statuses add constraint statuses_check2 CHECK (((immunity IS NOT NULL) = (family = 'control'::text)));
-alter table public.statuses add constraint statuses_check3 CHECK (((end_state IS NULL) OR (stacking = 'add'::text)));
+alter table public.statuses add constraint statuses_check CHECK (((end_state ~ '^[a-z_]+$'::text) AND (end_state <> key)));
+alter table public.statuses add constraint statuses_check1 CHECK ((on_enemy OR on_card));
+alter table public.statuses add constraint statuses_check2 CHECK ((((stacking = ANY (ARRAY['add'::text, 'add_decay'::text])) = (max_stacks IS NOT NULL)) OR (kind = 'enemy_state'::text)));
+alter table public.statuses add constraint statuses_check3 CHECK (((immunity IS NOT NULL) = (family = 'control'::text)));
+alter table public.statuses add constraint statuses_check4 CHECK (((end_state IS NULL) OR (stacking = 'add'::text)));
+alter table public.statuses add constraint statuses_check5 CHECK (((kind <> 'end_state'::text) OR (end_state IS NULL)));
 alter table public.statuses add constraint statuses_duration_check CHECK ((duration = ANY (ARRAY['steps'::text, 'next_action'::text, 'until_damaged'::text, 'until_zero'::text, 'until_used'::text, 'next_attack'::text, 'steps_or_attack'::text])));
-alter table public.statuses add constraint statuses_end_state_check CHECK ((end_state ~ '^[a-z_]+$'::text));
+alter table public.statuses add constraint statuses_end_state_fkey FOREIGN KEY (end_state) REFERENCES statuses(key);
 alter table public.statuses add constraint statuses_family_check CHECK ((family = ANY (ARRAY['dot'::text, 'control'::text, 'accuracy'::text, 'tempo'::text, 'vuln'::text, 'boon'::text])));
 alter table public.statuses add constraint statuses_icon_check CHECK ((icon ~ '^[a-z_]+$'::text));
 alter table public.statuses add constraint statuses_immunity_check CHECK ((immunity = 'control'::text));
 alter table public.statuses add constraint statuses_key_check CHECK ((key ~ '^[a-z_]+$'::text));
-alter table public.statuses add constraint statuses_kind_check CHECK ((kind = ANY (ARRAY['status'::text, 'enemy_state'::text])));
+alter table public.statuses add constraint statuses_kind_check CHECK ((kind = ANY (ARRAY['status'::text, 'end_state'::text, 'enemy_state'::text])));
 alter table public.statuses add constraint statuses_label_check CHECK (((label <> ''::text) AND (label = btrim(label))));
 alter table public.statuses add constraint statuses_max_stacks_check CHECK ((max_stacks ~ '^[a-z0-9_]+(\.[a-z0-9_]+)+$'::text));
 alter table public.statuses add constraint statuses_numbers_check CHECK ((numbers ~ '^[a-z0-9_]+(\.[a-z0-9_]+)*$'::text));

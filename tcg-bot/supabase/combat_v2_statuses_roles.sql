@@ -3,10 +3,13 @@
 -- Before: the fight statuses are ad-hoc keys of the v1 fight state (cards: shield, buff, debuff, psn/psnu; enemies: wk/wku, ex/exu, st, enr/enru, sh).
 -- No table names a status or a role.
 -- After this file:
---   statuses: the 16 statuses of plan 6.1 (kind 'status') and the 2 enemy states that are also shown with an icon (kind 'enemy_state': enraged,
---     guarded). One row = key, label, family, negative, stacking rule, the balance leaf of its max stacks, the duration rule, the control immunity
---     group, the end state (Chill ends in Frozen), the icon key, where it applies (enemy, card), the balance object of its numbers and its one-line
---     rule. The rule text has NO number: each number is a {leaf} of its balance object (the statuses_check trigger refuses a digit or an unknown leaf).
+--   statuses: the 16 statuses of plan 6.1 (kind 'status'), the end state Frozen of Chill (kind 'end_state': Chill and Frozen count as ONE of
+--     the 16) and the 2 enemy states that are also shown with an icon (kind 'enemy_state': enraged, guarded). 19 rows. One row = key, label, family,
+--     negative, stacking rule, the balance leaf of its max stacks, the duration rule, the control immunity group, the end state (Chill ends in
+--     Frozen: a row of its own), the icon key, where it applies (enemy, card), the balance object of its numbers and its one-line rule.
+--     Nathan 2026-10-18: Chill is Tempo (a slow that stacks freely, no control immunity while it stacks); only its end state Frozen is Control and
+--     starts the ONE shared control immunity (with Stunned, Sleep and Paralyzed). The checks hold it: immunity = control exactly for the family
+--     control, and end_state points to a row of kind end_state. The rule text has NO number: each number is a {leaf} of its balance object (the statuses_check trigger refuses a digit or an unknown leaf).
 --   roles: the 12 roles of plan 4 (6 attacker, 6 support). key, class, label, purpose, the passive text ({leaf} of balance v2_roles.<key>), the
 --     balance object of the passive numbers, the balance leaf of the base speed (v2_speed.role_base.<key>), the icon key, the stat priority (3 of the
 --     9 stats), the enemy problems it answers and the Auto hints. No number in the table either.
@@ -47,7 +50,7 @@ end $fn$;
 create table if not exists public.statuses (
   key text primary key check (key ~ '^[a-z_]+$'),
   ord smallint not null unique check (ord >= 1),
-  kind text not null check (kind in ('status', 'enemy_state')),
+  kind text not null check (kind in ('status', 'end_state', 'enemy_state')),
   label text not null check (label <> '' and label = btrim(label)),
   family text not null check (family in ('dot', 'control', 'accuracy', 'tempo', 'vuln', 'boon')),
   negative boolean not null,
@@ -55,7 +58,7 @@ create table if not exists public.statuses (
   max_stacks text check (max_stacks ~ '^[a-z0-9_]+(\.[a-z0-9_]+)+$'),
   duration text not null check (duration in ('steps', 'next_action', 'until_damaged', 'until_zero', 'until_used', 'next_attack', 'steps_or_attack')),
   immunity text check (immunity in ('control')),
-  end_state text check (end_state ~ '^[a-z_]+$'),
+  end_state text references public.statuses (key) check (end_state ~ '^[a-z_]+$' and end_state <> key),
   icon text not null check (icon ~ '^[a-z_]+$'),
   on_enemy boolean not null,
   on_card boolean not null,
@@ -66,7 +69,8 @@ create table if not exists public.statuses (
   check (on_enemy or on_card),
   check ((stacking in ('add', 'add_decay')) = (max_stacks is not null) or kind = 'enemy_state'),
   check ((immunity is not null) = (family = 'control')),
-  check (end_state is null or stacking = 'add')
+  check (end_state is null or stacking = 'add'),
+  check (kind <> 'end_state' or end_state is null)
 );
 
 create or replace function public.statuses_check() returns trigger language plpgsql set search_path = public as $fn$
@@ -80,6 +84,12 @@ begin
   end if;
   if new.duration in ('steps', 'until_damaged', 'steps_or_attack') and not coalesce(balance_path(new.numbers) ? 'dur' or balance_path(new.numbers) ? 'dur_card', false) then
     raise exception 'statuses %: a % duration needs dur or dur_card in %', new.key, new.duration, coalesce(new.numbers, '(no numbers)');
+  end if;
+  if new.end_state is not null and exists (select 1 from public.statuses t where t.key = new.end_state and t.kind <> 'end_state') then
+    raise exception 'statuses %: the end state % is not a row of kind end_state', new.key, new.end_state;
+  end if;
+  if new.kind <> 'end_state' and exists (select 1 from public.statuses t where t.end_state = new.key and t.key <> new.key) then
+    raise exception 'statuses %: another status ends in this row, so its kind must be end_state', new.key;
   end if;
   e := balance_text_errors(new.rule, new.numbers);
   if cardinality(e) > 0 then raise exception 'statuses %: rule: %', new.key, array_to_string(e, '; '); end if;
@@ -100,35 +110,37 @@ insert into public.statuses (ord, key, kind, label, family, negative, stacking, 
   'Each stack ticks {tick_x} x the Poison tick, then loses {decay} stack. A Burning unit heals x{heal_x}. x{vs_healer_x} vs a healer. Ignores shields.', 'Wildfire. The anti-heal counter.'),
 ( 3, 'stunned',   'status', 'Stunned',        'control',  true,  'none',      null,                        'next_action',     'control', null,     'spiral',      true,  true,  'v2_status.stunned',
   'Skips its next action.', 'max_life / max_life_card = the safety limit in steps. Shares the one control immunity (v2_control).'),
-( 4, 'chill',     'status', 'Chill / Frozen', 'control',  true,  'add',       'v2_status.chill.freeze_at', 'steps',           'control', 'frozen', 'snowflake',   true,  true,  'v2_status.chill',
-  'Each stack: -{dmg} damage and -{spd} speed. At {freeze_at} stacks: Frozen (skips its next action), then Chill clears.', 'Chill and Frozen count as one status (plan 6.1); Frozen is its end state (numbers v2_status.frozen) and shares the control immunity. config.json gives Chill the family tempo and Frozen the family control: the row follows the plan (Control).'),
-( 5, 'sleep',     'status', 'Sleep',          'control',  true,  'none',      null,                        'until_damaged',   'control', null,     'moon',        true,  true,  'v2_status.sleep',
+( 4, 'chill',     'status', 'Chill',          'tempo',    true,  'add',       'v2_status.chill.freeze_at', 'steps',           null,      'frozen', 'snowflake',   true,  true,  'v2_status.chill',
+  'Each stack: -{dmg} damage and -{spd} speed. At {freeze_at} stacks: Frozen (skips its next action), then Chill clears.', 'Tempo (Nathan 2026-10-18): it stacks freely and starts no control immunity. Its end state is the row frozen (Control). Chill and Frozen count as one of the 16 statuses.'),
+( 5, 'frozen',    'end_state', 'Frozen',      'control',  true,  'none',      null,                        'next_action',     'control', null,     'ice_block',   true,  true,  'v2_status.frozen',
+  'Skips its next action.', 'The end state of Chill (Nathan 2026-10-18: Control). It shares the ONE control immunity (v2_control) with Stunned, Sleep and Paralyzed. max_life / max_life_card = the safety limit in steps.'),
+( 6, 'sleep',     'status', 'Sleep',          'control',  true,  'none',      null,                        'until_damaged',   'control', null,     'moon',        true,  true,  'v2_status.sleep',
   'Skips actions until it takes damage.', 'dur / dur_card = the most steps it can last.'),
-( 6, 'paralyzed', 'status', 'Paralyzed',      'control',  true,  'none',      null,                        'steps',           'control', null,     'bolt',        true,  true,  'v2_status.paralyzed',
+( 7, 'paralyzed', 'status', 'Paralyzed',      'control',  true,  'none',      null,                        'steps',           'control', null,     'bolt',        true,  true,  'v2_status.paralyzed',
   'Each action fails with chance {fail}.', 'Electric sources.'),
-( 7, 'blinded',   'status', 'Blinded',        'accuracy', true,  'none',      null,                        'steps',           null,      null,     'closed_eye',  true,  true,  'v2_status.blinded',
+( 8, 'blinded',   'status', 'Blinded',        'accuracy', true,  'none',      null,                        'steps',           null,      null,     'closed_eye',  true,  true,  'v2_status.blinded',
   '+{miss} miss chance.', null),
-( 8, 'confused',  'status', 'Confused',       'accuracy', true,  'none',      null,                        'steps',           null,      null,     'swirl',       true,  true,  'v2_status.confused',
+( 9, 'confused',  'status', 'Confused',       'accuracy', true,  'none',      null,                        'steps',           null,      null,     'swirl',       true,  true,  'v2_status.confused',
   'A share of {chance} of its single attacks hit a wrong target.', null),
-( 9, 'slowed',    'status', 'Slowed',         'tempo',    true,  'none',      null,                        'steps',           null,      null,     'snail',       true,  true,  'v2_status.slowed',
+(10, 'slowed',    'status', 'Slowed',         'tempo',    true,  'none',      null,                        'steps',           null,      null,     'snail',       true,  true,  'v2_status.slowed',
   'Speed x{x}.', 'Counters Speed.'),
-(10, 'quickened', 'status', 'Quickened',      'tempo',    false, 'none',      null,                        'steps',           null,      null,     'wing',        true,  true,  'v2_status.quickened',
+(11, 'quickened', 'status', 'Quickened',      'tempo',    false, 'none',      null,                        'steps',           null,      null,     'wing',        true,  true,  'v2_status.quickened',
   'Speed x{x}.', null),
-(11, 'exposed',   'status', 'Exposed',        'vuln',     true,  'add_cap',   null,                        'steps',           null,      null,     'cracked_eye', true,  true,  'v2_status.exposed',
+(12, 'exposed',   'status', 'Exposed',        'vuln',     true,  'add_cap',   null,                        'steps',           null,      null,     'cracked_eye', true,  true,  'v2_status.exposed',
   'Takes more damage from every source, ticks included, up to +{cap}.', null),
-(12, 'weakened',  'status', 'Weakened',       'vuln',     true,  'add_cap',   null,                        'steps',           null,      null,     'down_arrow',  true,  true,  'v2_status.weakened',
+(13, 'weakened',  'status', 'Weakened',       'vuln',     true,  'add_cap',   null,                        'steps',           null,      null,     'down_arrow',  true,  true,  'v2_status.weakened',
   'Deals less damage, up to -{cap}. Replaces the card Curse.', 'The enemy weaken and the card curse of v1 are this one status.'),
-(13, 'mark',      'status', 'Mark',           'vuln',     true,  'higher',    null,                        'steps_or_attack', null,      null,     'target',      true,  false, 'v2_status.mark',
+(14, 'mark',      'status', 'Mark',           'vuln',     true,  'higher',    null,                        'steps_or_attack', null,      null,     'target',      true,  false, 'v2_status.mark',
   'The next attack on it deals more, cannot miss and can crit an Ironhide enemy. Then it ends.', 'The higher value stays.'),
-(14, 'shielded',  'status', 'Shielded',       'boon',     false, 'add_cap',   null,                        'until_used',      null,      null,     'shield',      false, true,  'v2_status.shielded',
+(15, 'shielded',  'status', 'Shielded',       'boon',     false, 'add_cap',   null,                        'until_used',      null,      null,     'shield',      false, true,  'v2_status.shielded',
   'Absorbs damage before HP, up to {cap_maxhp} x max HP.', 'A foe shield is the enemy state guarded.'),
-(15, 'empowered', 'status', 'Empowered',      'boon',     false, 'higher',    null,                        'next_attack',     null,      null,     'up_arrow',    false, true,  'v2_status.empowered',
+(16, 'empowered', 'status', 'Empowered',      'boon',     false, 'higher',    null,                        'next_attack',     null,      null,     'up_arrow',    false, true,  'v2_status.empowered',
   'The next attack deals more, up to +{cap}.', 'The higher value stays (a proposal).'),
-(16, 'focused',   'status', 'Focused',        'boon',     false, 'none',      null,                        'steps',           null,      null,     'crosshair',   false, true,  'v2_status.focused',
+(17, 'focused',   'status', 'Focused',        'boon',     false, 'none',      null,                        'steps',           null,      null,     'crosshair',   false, true,  'v2_status.focused',
   'More crit chance for {dur} steps.', null),
-(17, 'enraged',   'enemy_state', 'Enraged',   'boon',     false, 'none',      null,                        'steps',           null,      null,     'enraged',     true,  false, 'v2_status.enraged',
+(18, 'enraged',   'enemy_state', 'Enraged',   'boon',     false, 'none',      null,                        'steps',           null,      null,     'enraged',     true,  false, 'v2_status.enraged',
   'Deals x{x} damage for {dur} steps.', 'An enemy state shown with an icon (plan 6.1), not one of the 16 statuses. Volatile shows as a permanent Enraged mark.'),
-(18, 'guarded',   'enemy_state', 'Guarded',   'boon',     false, 'add',       null,                        'until_used',      null,      null,     'guarded',     true,  false, null,
+(19, 'guarded',   'enemy_state', 'Guarded',   'boon',     false, 'add',       null,                        'until_used',      null,      null,     'guarded',     true,  false, null,
   'A foe shield: absorbs damage before HP.', 'An enemy state shown with an icon (plan 6.1), not one of the 16 statuses. Its amount comes from the foe Guard move (balance pool_moves.guard).')
 on conflict (key) do nothing;
 
@@ -324,18 +336,18 @@ begin
   end loop;
 end $g$;
 
-comment on table public.statuses is $cm$[combat] Combat v2: the 16 statuses of plan 6.1 (kind status) and the 2 enemy states shown with an icon (kind enemy_state: enraged, guarded), one row each (combat_v2_statuses_roles.sql). The numbers are in balance (numbers, max_stacks), never in the row: the rule text names them as {leaf}. The trigger statuses_check refuses a balance path that does not exist and a digit in the rule. No v1 fight reads it; fight_state_check_v2 reads the keys and where each applies. Server only.$cm$;
+comment on table public.statuses is $cm$[combat] Combat v2: the 16 statuses of plan 6.1 (kind status), the end state Frozen of Chill (kind end_state; Chill and Frozen count as one of the 16) and the 2 enemy states shown with an icon (kind enemy_state: enraged, guarded), one row each (combat_v2_statuses_roles.sql). The numbers are in balance (numbers, max_stacks), never in the row: the rule text names them as {leaf}. The trigger statuses_check refuses a balance path that does not exist and a digit in the rule. No v1 fight reads it; fight_state_check_v2 reads the keys and where each applies. Server only.$cm$;
 comment on column public.statuses.key is 'The status key in a v2 fight state (status{} of a card or an enemy), lower case, for example poison.';
 comment on column public.statuses.ord is 'The fixed display order (the icon slots never move on a status change, plan 6.2).';
-comment on column public.statuses.kind is 'status (one of the 16 statuses of plan 6.1) or enemy_state (Enraged and Guarded: enemy states also shown with an icon).';
-comment on column public.statuses.label is 'The name shown to players, for example Poison. Chill and Frozen are one status: Chill / Frozen.';
+comment on column public.statuses.kind is 'status (one of the 16 statuses of plan 6.1), end_state (Frozen: the end state of Chill, counted with Chill as one of the 16) or enemy_state (Enraged and Guarded: enemy states also shown with an icon).';
+comment on column public.statuses.label is 'The name shown to players, for example Poison.';
 comment on column public.statuses.family is 'The family (plan 6.1): dot (damage over time), control, accuracy, tempo, vuln (vulnerability) or boon.';
 comment on column public.statuses.negative is 'True for a harmful status (Medic cleanse and Purify remove these; v2_status.negative of the simulator).';
 comment on column public.statuses.stacking is 'none (no stacks), add (stacks add), add_cap (values add up to a cap in balance), add_decay (stacks add and fall each step), higher (the higher value stays).';
 comment on column public.statuses.max_stacks is 'The balance leaf that limits the stacks of an add / add_decay status, for example v2_status.burn.max (Poison bursts and Chill freezes at that count). NULL with no stack limit.';
 comment on column public.statuses.duration is 'How it ends: steps (dur / dur_card clock steps), next_action, until_damaged, until_zero (stacks fall to 0), until_used (a shield), next_attack, steps_or_attack.';
-comment on column public.statuses.immunity is 'control: Stunned, Chill / Frozen, Sleep and Paralyzed share ONE control immunity after they end (balance v2_control). NULL for the others.';
-comment on column public.statuses.end_state is 'The state a status turns into at its max stacks: frozen for Chill (numbers in balance v2_status.frozen). NULL for the others.';
+comment on column public.statuses.immunity is 'control: Stunned, Frozen, Sleep and Paralyzed (the family control) share ONE control immunity after they end (balance v2_control). NULL for the others: Chill is Tempo and starts no immunity while it stacks (Nathan 2026-10-18).';
+comment on column public.statuses.end_state is 'The row (kind end_state) that a status turns into at its max stacks: frozen for Chill. NULL for the others.';
 comment on column public.statuses.icon is 'The icon key of the visual language set (plan 13.1; the icons are designed later).';
 comment on column public.statuses.on_enemy is 'True when an enemy can have it.';
 comment on column public.statuses.on_card is 'True when a card can have it.';
@@ -360,7 +372,7 @@ comment on column public.roles.note is 'A note for the designers.';
 comment on column public.roles.updated_at is 'The last change of the row.';
 comment on function public.balance_path(text) is $cm$[combat] The JSON at a balance path ('<key>.<leaf>.<leaf>'), NULL when the key or the path does not exist. combat_v2_statuses_roles.sql.$cm$;
 comment on function public.balance_text_errors(text, text) is $cm$[combat] The problems of a display text whose numbers come from balance: each {leaf} must be a number or a boolean of the balance object p_numbers, and the text has no digit of its own. Empty = fine.$cm$;
-comment on function public.statuses_check() is $cm$Trigger (before insert, update on statuses): numbers is a balance object, max_stacks a whole number in balance, a timed status has dur or dur_card, the rule passes balance_text_errors; sets updated_at.$cm$;
+comment on function public.statuses_check() is $cm$Trigger (before insert, update on statuses): numbers is a balance object, max_stacks a whole number in balance, a timed status has dur or dur_card, an end_state points to a row of kind end_state (and a row that another status ends in is kind end_state), the rule passes balance_text_errors; sets updated_at.$cm$;
 comment on function public.roles_check() is $cm$Trigger (before insert, update on roles): numbers is a balance object, speed a balance number, stat_priority has 3 different stats of v2_stats, answers are words, auto is {target, hold_for?}, the passive passes balance_text_errors; sets updated_at.$cm$;
 comment on function public.fight_state_check_v2(jsonb) is $cm$[combat] The shape check of a fight state v = 2 (plan 9.1): the v1 rules plus clock, and meter, charge and status{} on each card and enemy (known statuses that apply to that side; stacks, value, until only). The v1 status keys are refused in a v2 state. The list of problems (empty = fine). Used by the tests; v2 later.$cm$;
 comment on function public.fight_state_v2_from_v1(jsonb) is $cm$[combat] A pure read-only view of a v1 fight state as v = 2: enemy wk, ex, st, enr, sh and card shield, buff, debuff, psn become statuses (weakened, exposed, stunned, enraged, guarded, shielded, empowered, weakened, poison) while active; the foe boolean charge becomes cataclysm (charge is the v2 charge count); clock = round; meter and charge 0. No fight calls it.$cm$;

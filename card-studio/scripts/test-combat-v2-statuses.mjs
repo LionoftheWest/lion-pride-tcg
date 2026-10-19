@@ -7,8 +7,9 @@ import './localdb-guard.mjs';
  *   MUTATE=<name> ...                                                                             must FAIL, for every name in MUT below
  *   MUTATE=all ...                                                                                the baseline (must PASS), then every mutation, one line each
  * Invariants:
- *   1. statuses has the 16 statuses of plan 6.1 and the 2 enemy states (enraged, guarded); family, negative, stacking, max stacks, duration, immunity,
- *      sides and numbers match the plan and card-studio/v2sim/config.json. roles has the 12 roles of plan 4: class, base speed and the passive numbers
+ *   1. statuses has the 16 statuses of plan 6.1, the end state frozen of chill and the 2 enemy states (enraged, guarded); family, negative, stacking,
+ *      max stacks, duration, immunity, sides and numbers match the plan and card-studio/v2sim/config.json. Nathan 2026-10-18: Chill is Tempo with no
+ *      immunity, its end state Frozen is Control with the one control immunity (checked against the decision, not only against config.json). roles has the 12 roles of plan 4: class, base speed and the passive numbers
  *      match config.json, the stat priority matches plan 4. Every {leaf} of a rule or a passive renders to a number of balance.
  *   2. The triggers and checks refuse planted bad rows (a digit in a text, an unknown {leaf}, a balance path that does not exist, a stat that is not a
  *      stat, a bad auto hint, a status with no side ...): 26 plants, each refused.
@@ -57,7 +58,12 @@ const MUT = {
   role_path: ["if jsonb_typeof(balance_path(new.numbers)) is distinct from 'object' then raise exception 'roles %: numbers", "if false then raise exception 'roles %: numbers"],
   rls_off: ['alter table public.statuses enable row level security;', 'select 1;'],
   grant_anon: ['grant all on public.roles to service_role;', 'grant all on public.roles to service_role;\ngrant select on public.roles to anon;'],
-  row_family: ["'Chill / Frozen', 'control',", "'Chill / Frozen', 'tempo',"],
+  chill_control: ["'Chill',          'tempo',    true,  'add',       'v2_status.chill.freeze_at', 'steps',           null,",
+                  "'Chill',          'control',  true,  'add',       'v2_status.chill.freeze_at', 'steps',           'control',"],   // Chill back in Control
+  frozen_no_immunity: ["'Frozen',      'control',  true,  'none',      null,                        'next_action',     'control',",
+                       "'Frozen',      'tempo',    true,  'none',      null,                        'next_action',     null,     "],   // Frozen loses the control immunity
+  frozen_status: ["( 5, 'frozen',    'end_state',", "( 5, 'frozen',    'status',"],   // Frozen as a 17th status
+  chill_no_end: ["'steps',           null,      'frozen', 'snowflake',", "'steps',           null,      null,     'snowflake',"],
   row_negative: ["'Quickened',      'tempo',    false,", "'Quickened',      'tempo',    true, "],
   role_class: ["( 7, 'warden',     'support',", "( 7, 'warden',     'attacker',"],
   role_speed: ["'v2_speed.role_base.striker'", "'v2_speed.role_base.flurry'"],
@@ -104,10 +110,10 @@ const SETUP = String.raw`
 
 // ---------------------------------------------------------------------------------------------------------------- request 1: the tables and the functions
 const VALID = { v: 2, mode: 'dungeon', round: 3, clock: 3, squad: [1, 2],
-  cards: { 1: { hp: 10, max: 20, down: false, cd: 0, meter: 40, charge: 1, status: { poison: { stacks: 2, until: 7 }, shielded: { value: 5 } } },
+  cards: { 1: { hp: 10, max: 20, down: false, cd: 0, meter: 40, charge: 1, status: { poison: { stacks: 2, until: 7 }, shielded: { value: 5 }, chill: { stacks: 2, until: 6 } } },
            2: { hp: 0, max: 20, down: true, meter: 0, charge: 0, status: {} } },
-  enemies: [{ hp: 50, max: 60, atk: 9, meter: 10, charge: 0, status: { mark: { value: 0.45, until: 9 }, enraged: { value: 1.4, until: 5 }, guarded: { value: 4 } } }],
-  marks: {}, facts: { passives: [], cards: {} }, ext: {} };
+  enemies: [{ hp: 50, max: 60, atk: 9, meter: 10, charge: 0, status: { mark: { value: 0.45, until: 9 }, enraged: { value: 1.4, until: 5 }, guarded: { value: 4 }, frozen: { until: 4 } } }],
+  marks: {}, facts: { passives: [], cards: {} }, ext: {} };   // chill and frozen: the v2 simulator keys (card-studio/v2sim/engine.mjs st.chill, st.frozen)
 const put = (o, path, v) => { const c = structuredClone(o); let x = c; for (const k of path.slice(0, -1)) x = x[k]; if (v === undefined) delete x[path.at(-1)]; else x[path.at(-1)] = v; return c; };
 const FAULTS = [
   ['v is 1', put(VALID, ['v'], 1)], ['v is a string', put(VALID, ['v'], '2')], ['no clock', put(VALID, ['clock'], undefined)], ['clock -1', put(VALID, ['clock'], -1)],
@@ -153,7 +159,8 @@ const STATUS_PLANTS = [
   ['max_stacks not in balance', { max_stacks: 'v2_status.poison.nope' }], ['a steps duration with no dur', { numbers: 'v2_status.burn', rule: 'Ticks {tick_x}.' }],
   ['an unknown family', { family: 'magic' }], ['an immunity outside control', { immunity: 'control' }], ['no side', { on_enemy: false, on_card: false }],
   ['add stacks with no max_stacks', { max_stacks: null }], ['an end state on a status with no stacks', { stacking: 'none', max_stacks: null, end_state: 'frozen' }],
-  ['the ord of another row', { ord: 1 }], ['an unknown duration', { duration: 'forever' }], ['an icon with a space', { icon: 'skull drop' }],
+  ['the ord of another row', { ord: 1 }], ['an end state that is not a row', { end_state: 'nope' }], ['an end state of kind status', { end_state: 'poison' }],
+  ['an end state row with an end state', { kind: 'end_state', end_state: 'frozen' }], ['an unknown duration', { duration: 'forever' }], ['an icon with a space', { icon: 'skull drop' }],
 ];
 const rolePlant = (over) => ({ ord: 99, key: 'zz_test', class: 'attacker', label: 'Test', purpose: 'Hit through defenses.', passive: 'Hits ignore {pierce} of Defense.',
   numbers: 'v2_roles.breaker', speed: 'v2_speed.role_base.breaker', icon: 'breaker', stat_priority: ['atk', 'crt', 'hp'], answers: ['defense'], auto: { target: 'enemy' }, ...over });
@@ -187,7 +194,7 @@ begin
     end loop;
     if txt ~ '[{}]' or txt like '%<NULL>%' then bad := bad || (r.k || ': ' || txt); end if;
   end loop;
-  res := res || jsonb_build_object('case', 'every {leaf} of the 18 rules and the 12 passives renders to a balance number', 'ok', cardinality(bad) = 0, 'bad', bad);
+  res := res || jsonb_build_object('case', 'every {leaf} of the 19 rules and the 12 passives renders to a balance number', 'ok', cardinality(bad) = 0, 'bad', bad);
 
   -- 2. the planted bad rows
   bad := '{}';
@@ -243,7 +250,7 @@ begin
   update public.statuses set icon = 'zz_changed' where key = 'poison';
   execute $m$${mig}$m$;
   res := res || jsonb_build_object('case', 'a second run keeps a changed row', 'ok', (select icon = 'zz_changed' from public.statuses where key = 'poison')
-    and (select count(*) from public.statuses) = 18 and (select count(*) from public.roles) = 12);
+    and (select count(*) from public.statuses) = 19 and (select count(*) from public.roles) = 12);
   raise exception 'RESULT:%', res::text;
 end $t$;`;
 
@@ -350,8 +357,10 @@ end $t$;`;
 
 // ---------------------------------------------------------------------------------------------------------------- the checks of the answers
 const PLAN16 = ['poison', 'burn', 'stunned', 'chill', 'sleep', 'paralyzed', 'blinded', 'confused', 'slowed', 'quickened', 'exposed', 'weakened', 'mark', 'shielded', 'empowered', 'focused'];
-const CONTROL = ['stunned', 'frozen', 'sleep', 'paralyzed'];   // card-studio/v2sim/engine.mjs CONTROL (chill = the row of Chill / Frozen)
-const cfgOf = (k) => (k === 'chill' ? { ...CONFIG.v2_status.chill, family: CONFIG.v2_status.frozen.family } : CONFIG.v2_status[k]);   // the row follows the plan: Chill / Frozen is Control
+const CONTROL = ['stunned', 'frozen', 'sleep', 'paralyzed'];   // card-studio/v2sim/engine.mjs CONTROL: the one control immunity
+// Nathan 2026-10-18 (fixed here, not read from config.json, so a change of config.json alone cannot move it): Chill is Tempo, Frozen is Control.
+const DECIDED = { chill: { family: 'tempo', immunity: null, kind: 'status' }, frozen: { family: 'control', immunity: 'control', kind: 'end_state' } };
+const cfgOf = (k) => CONFIG.v2_status[k];
 // Where each status applies (plan 6.1: a status with an enemy and a card duration applies to both; Mark only on an enemy; the boons on cards; the
 // enemy states on enemies).
 const SIDES = { mark: [true, false], shielded: [false, true], empowered: [false, true], focused: [false, true], enraged: [true, false], guarded: [true, false] };
@@ -361,29 +370,36 @@ const STATS = { breaker: ['atk', 'crt', 'hp'], striker: ['atk', 'hp', 'crt'], fl
 
 function checkStatuses(rows) {
   const p = [];
-  const st = rows.filter((r) => r.kind === 'status'), es = rows.filter((r) => r.kind === 'enemy_state');
+  const st = rows.filter((r) => r.kind === 'status'), es = rows.filter((r) => r.kind === 'enemy_state'), ends = rows.filter((r) => r.kind === 'end_state');
   if (JSON.stringify(st.map((r) => r.key).sort()) !== JSON.stringify([...PLAN16].sort())) p.push(`the 16 statuses: ${st.map((r) => r.key)}`);
   if (JSON.stringify(es.map((r) => r.key).sort()) !== '["enraged","guarded"]') p.push(`the enemy states: ${es.map((r) => r.key)}`);
+  if (JSON.stringify(ends.map((r) => r.key)) !== '["frozen"]') p.push(`the end states: ${ends.map((r) => r.key)}`);
+  if (rows.length !== 19) p.push(`${rows.length} rows, expected 19`);
+  for (const [k, d] of Object.entries(DECIDED)) {
+    const r = rows.find((x) => x.key === k);
+    if (!r || r.family !== d.family || r.immunity !== d.immunity || r.kind !== d.kind) p.push(`${k}: ${r && r.kind}/${r && r.family}/${r && r.immunity}, decided ${d.kind}/${d.family}/${d.immunity} (Nathan 2026-10-18)`);
+  }
   for (const r of rows) {
     const c = cfgOf(r.key);
     const fam = c ? c.family : 'boon';
     if (r.family !== fam) p.push(`${r.key}: family ${r.family}, expected ${fam}`);
     const neg = CONFIG.v2_status.negative.includes(r.key);
     if (r.negative !== neg) p.push(`${r.key}: negative ${r.negative}, expected ${neg}`);
-    if ((r.immunity === 'control') !== (CONTROL.includes(r.key) || r.key === 'chill')) p.push(`${r.key}: immunity ${r.immunity}`);
+    if ((r.immunity === 'control') !== CONTROL.includes(r.key)) p.push(`${r.key}: immunity ${r.immunity}`);
     const sides = SIDES[r.key] || [true, true];
     if (r.on_enemy !== sides[0] || r.on_card !== sides[1]) p.push(`${r.key}: sides ${r.on_enemy}/${r.on_card}, expected ${sides}`);
     if ((r.max_stacks || null) !== (MAXSTACKS[r.key] || null)) p.push(`${r.key}: max_stacks ${r.max_stacks}`);
     if (r.key !== 'guarded') {
       if (r.numbers !== `v2_status.${r.key}`) p.push(`${r.key}: numbers ${r.numbers}`);
       const want = Object.fromEntries(Object.entries(c).filter(([k]) => k !== 'family'));
-      const cmp = r.key === 'chill' ? CONFIG.v2_status.chill : want;
-      for (const [k, v] of Object.entries(cmp)) if (k !== 'family' && JSON.stringify(r.numbers_value[k]) !== JSON.stringify(v)) p.push(`${r.key}.${k}: balance ${JSON.stringify(r.numbers_value[k])}, config ${JSON.stringify(v)}`);
+      for (const [k, v] of Object.entries(want)) if (k !== 'family' && JSON.stringify(r.numbers_value[k]) !== JSON.stringify(v)) p.push(`${r.key}.${k}: balance ${JSON.stringify(r.numbers_value[k])}, config ${JSON.stringify(v)}`);
     } else if (r.numbers !== null) p.push('guarded: numbers must be NULL (the v1 foe Guard move)');
     if (r.max_stacks && !Number.isInteger(r.max_stacks_value)) p.push(`${r.key}: max_stacks value ${r.max_stacks_value}`);
   }
   if (rows.find((r) => r.key === 'chill')?.end_state !== 'frozen') p.push('chill: end_state must be frozen');
   if (rows.some((r) => r.key !== 'chill' && r.end_state)) p.push('only chill has an end state');
+  const ch = rows.find((r) => r.key === 'chill'), fr = rows.find((r) => r.key === 'frozen');
+  if (ch && fr && (ch.on_enemy !== fr.on_enemy || ch.on_card !== fr.on_card)) p.push('frozen must apply where chill applies');
   return p;
 }
 function checkRoles(rows) {
@@ -410,7 +426,7 @@ try {
   const results = JSON.parse(await runBlock(body1));
   for (const r of results) {
     const { case: name, ok, ...rest } = r;
-    if (name === 'STATUSES') { const p = checkStatuses(rest.rows); say(!p.length, `statuses: 16 statuses + 2 enemy states match plan 6.1 and config.json (family, negative, immunity, sides, max stacks, numbers)`, JSON.stringify(p).slice(0, 900)); continue; }
+    if (name === 'STATUSES') { const p = checkStatuses(rest.rows); say(!p.length, `statuses: 16 statuses + the end state frozen + 2 enemy states match plan 6.1 and config.json (family, negative, immunity, sides, max stacks, numbers; Chill Tempo, Frozen Control)`, JSON.stringify(p).slice(0, 900)); continue; }
     if (name === 'ROLES') { const p = checkRoles(rest.rows); say(!p.length, 'roles: 12 roles match plan 4 and config.json (class, base speed, passive numbers, stat priority, auto target)', JSON.stringify(p).slice(0, 900)); continue; }
     say(ok, name, JSON.stringify(rest).slice(0, 900));
   }

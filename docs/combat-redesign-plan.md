@@ -306,13 +306,14 @@ Durations are clock steps: enemy / card [T]. "Ref HP" = the foe max HP in the Du
 | Damage over time | Poison | Each stack ticks 2% of ref HP at step end. The 3rd stack bursts for 12% of ref HP, then Poison resets. Ignores shields | adds | 4 / 8 | skull drop |
 | | Burn | Each stack ticks 1.5 x the Poison tick, then loses 1 stack. A Burning unit heals half. x1.5 vs a healer. Ignores shields | adds, max 5, decays 1 a step | until 0 | flame |
 | Control | Stunned | Skips its next action | no stacks | 1 action | spiral |
-| | Chill / Frozen | Each Chill stack: -8% damage and -8% speed. At 3 stacks: Frozen (skips its next action), then Chill clears | adds, max 3 | Chill 3 / 10 | snowflake / ice block |
+| | Frozen (the end state of Chill) | Skips its next action. Shares the one control immunity | no stacks | 1 action | ice block |
 | | Sleep | Skips actions until it takes damage | no stacks | 3 / 10 | moon |
 | | Paralyzed | Each action fails 50% (electric sources) | no stacks | 3 / 10 | bolt |
 | Accuracy | Blinded | +25% miss chance | no stacks | 2 / 8 | closed eye |
 | | Confused | 30% of its single attacks hit a wrong target | no stacks | 2 / 8 | swirl |
 | Tempo | Slowed | Speed x0.7 | no stacks | 3 / 10 | snail |
 | | Quickened | Speed x1.3 | no stacks | 3 / 10 | wing |
+| | Chill | Each Chill stack: -8% damage and -8% speed. At 3 stacks: Frozen, then Chill clears. No control immunity while it stacks | adds, max 3 | 3 / 10 | snowflake |
 | Vulnerability | Exposed | Takes +X% damage from every source, ticks included | adds, cap +100% | 2 / 8 | cracked eye |
 | | Weakened | Deals X% less damage. Replaces the card "Curse" | adds, cap 60% | 2 / 10 | down arrow |
 | | Mark | The next attack on it deals +X%, cannot miss, and can crit an Ironhide enemy. Then it ends | the higher X stays | 4, or 1 attack | target |
@@ -320,7 +321,8 @@ Durations are clock steps: enemy / card [T]. "Ref HP" = the foe max HP in the Du
 | | Empowered | The next attack deals +X% | the higher X stays [P] | 1 attack | up arrow |
 | | Focused | +crit chance | no stacks | 10 | crosshair |
 
-Chill and Frozen count as one status (Frozen is the end state of Chill). Two enemy states are also shown with an icon:
+Chill and Frozen count as one status of the 16 (Frozen is the end state of Chill). Chill is Tempo: a slow that stacks freely and starts no
+control immunity. Only Frozen is Control: it starts the one shared control immunity [D Nathan 2026-10-18]. Two enemy states are also shown with an icon:
 **Guarded** (a foe shield) and **Enraged** (x1.4 for 2 steps) [L].
 
 ### 6.2 Shared rules
@@ -758,14 +760,17 @@ because every later part reads them.
 ### 17.2 E1: statuses, roles and the fight state v = 2 (`tcg-bot/supabase/combat_v2_statuses_roles.sql`)
 
 - Needs `combat_v2_flags_balance.sql` first (the rows point to `v2_status`, `v2_roles` and `v2_speed`). No v1 function reads the new objects.
-- `statuses`: 18 rows. The 16 statuses of 6.1 (kind `status`) and the 2 enemy states that also have an icon (kind `enemy_state`: `enraged`,
+- `statuses`: 19 rows. The 16 statuses of 6.1 (kind `status`), the end state `frozen` of Chill (kind `end_state`: Chill and Frozen count as
+  one of the 16) and the 2 enemy states that also have an icon (kind `enemy_state`: `enraged`,
   `guarded`). Columns: family, negative, stacking rule, `max_stacks` (a balance leaf), duration rule, the one control immunity group, `end_state`
-  (Chill ends in Frozen), icon key, `on_enemy` / `on_card`, `numbers` (the balance object) and the one-line `rule`.
+  (Chill ends in the row `frozen`), icon key, `on_enemy` / `on_card`, `numbers` (the balance object) and the one-line `rule`.
 - `roles`: 12 rows. Class, label, purpose, the `passive` text, `numbers` (`v2_roles.<key>`), `speed` (`v2_speed.role_base.<key>`), icon key,
   `stat_priority` (3 of the 9 stats, plan 4), `answers` (the enemy problems of plan 4) and `auto` hints (`target`, `hold_for: charging`).
 - No number is in a row. A text names each number as `{leaf}` of its balance object. The triggers `statuses_check` and `roles_check` refuse a digit in
   a text, an unknown `{leaf}` and a balance path that does not exist (`balance_path`, `balance_text_errors`). RLS on, no policy, service role only.
-- Chill / Frozen is one row with the family Control (the plan table). config.json gives Chill the family tempo and Frozen the family control.
+- Chill is Tempo with no immunity, and its end state Frozen is its own row in Control with the one control immunity (Nathan 2026-10-18, the same
+  as config.json). The table checks hold it: `immunity` = control exactly for the family control, and `end_state` points to a row of kind
+  `end_state` (a foreign key and the trigger). A v2 fight state may hold `chill` and `frozen` (the simulator keys).
 - `fight_state_check_v2(state)`: the v1 rules plus `clock`, and `meter`, `charge` and `status{}` on each card and enemy (known statuses that apply
   to that side, with `stacks`, `value`, `until` only). The v1 status keys are refused in a v2 state (one home for each fact).
 - `fight_state_v2_from_v1(state)`: a pure, read-only view of a v1 state. Enemy `wk`, `ex`, `st`, `enr`, `sh` and card `shield`, `buff`, `debuff`,
