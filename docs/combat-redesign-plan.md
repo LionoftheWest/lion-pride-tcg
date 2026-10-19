@@ -778,3 +778,29 @@ because every later part reads them.
   value rule, and `until` not below the round). `clock` = round, `meter` and `charge` start at 0. `cd` stays (v2 replaces it by `charge`).
 - Found: Dungeon foes already have a v1 key `charge` (a boolean: the foe charges a Cataclysm). The plan's v2 `charge` is the active charge count, so
   the view moves the boolean to `cataclysm` (one word, one meaning). E2 must use these names.
+
+## 18. Phase 2 as built (local copy 2 only)
+
+### 18.1 E2: the turn meter (`tcg-bot/supabase/combat_v2_turn_meter.sql`)
+
+- Needs `combat_v2_statuses_roles.sql` (E1) first. No v1 function calls the new functions, and they write nothing.
+- `combat_v2_numbers(keys)`: the balance values of the given keys in one read. A missing key raises.
+- `combat_v2_speed(unit, clock, numbers)` (IMMUTABLE): the one speed formula. Base = `unit.speed` (an enemy: the state builder puts the
+  `v2_enemy` / `v2_dungeon` speed there), else `v2_speed.role_base[unit.role]`. Points = `unit.spd`, at most `v2_stats.max_per_stat`.
+  Speed = base x min(`safety_max_x`, max(`status_min_x`, (1 + `spd.pct` x points) x Slowed x Quickened x (1 - `chill.spd` x stacks))).
+  A status counts while its `until` is not below the step (it ends at the end of its `until` step, as in the simulator).
+- `combat_v2_advance(state)`: runs the clock to the next actor. A standing unit at `act_at` acts and loses `act_at`. The highest meter acts
+  first. A tie goes to the squad order, then the other cards by id, then the enemies by index. When nobody can act, a new step adds each
+  speed to its meter, up to the step cap of the mode (`v2_hunt.round_cap`, `v2_dungeon.round_cap` for the Dungeon and the Gauntlet).
+  The answer is `{state, event: act | cap | none, actor: {side, id}, steps}`. A unit that acted in the current step has `acts`.
+- `combat_v2_turn_order(state, n)`: the next n actors for the turn-order strip (plan 3.2).
+- One difference from the simulator, on purpose: the simulator limits the actions of all units in a step together. This file limits each
+  unit to `max_actions_per_step` (the plan 3.1 rule). The two are the same below a speed of `max_actions_per_step` x `act_at`.
+- Found: the simulator uses float numbers. A speed of 24 x 1.6 is 38.400000000000006 there, so an exact tie can break the other way.
+  SQL uses exact numeric and follows the written tie rule. The test shows it on 2 of 71 fights (an exact replay agrees with SQL).
+- Step-end ticks (E5) and the active charge (E6) are not in this file.
+- Proof (copy 2, refreshed from live; 4e, V1, E1 applied): the goldens with CANDIDATE = this file (Hunt 183, Dungeon 240, boss counters
+  128 fights: no difference); `test-effect-shadow.mjs` after the apply 3623 cases, 0 different, MUTATE=all baseline PASS and 23 caught;
+  `fight-timing.mjs` 3 runs, the highest v1 ratio 1.024. The new functions alone (`fight-timing.mjs combat_v2_advance combat_v2_turn_order`,
+  a Hunt-sized state of 8 cards and a boss): `combat_v2_advance` 0.27 to 0.31 ms, `combat_v2_turn_order(state, 6)` 0.96 to 1.02 ms.
+- Test: `card-studio/scripts/test-combat-v2-meter.mjs` (42 checks; MUTATE=all: 25 planted faults caught).
