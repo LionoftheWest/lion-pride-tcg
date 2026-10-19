@@ -519,7 +519,7 @@ and the flag key `combat_v2` (section 14.2).
 | 7 | No silver bullet. every counter boss cuts its archetype. Speed best for at most 2 of 8 roles | all | all PASS [T] |
 
 The simulator result: **20 PASS, 2 FAIL, 1 CHECK**, the same on seeds 1, 2 and 3 [T]. The 2 FAILs are the Dungeon floor ratio
-(decision 1, section 15) and the role scale k (a formula item, open decision 3). The CHECK is Lockdown (decision 2, section 15).
+(decision 1, section 15) and the role scale k (a formula item, decision 3). The CHECK is Lockdown (decision 2, section 15).
 
 ### 10.2 Step 1: the simulator (before any build)
 
