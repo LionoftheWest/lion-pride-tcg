@@ -1734,9 +1734,9 @@ Shape: `object { boss_immune: number, boss_max_dur: number, immune: number, immu
 
 ### v2_dungeon
 
-Combat v2: Dungeon and Gauntlet foes (plan 3.3, 8.3). round_cap = clock steps a fight. Foe stats = monster x growth x kinds.<room kind> x hp_x / atk_x (hp_x and atk_x are the v2 tuning dials, 1 = none). growth, kinds.hp and kinds.atk equal the live v1 numbers today (balance dungeon); v2 has its own copy because ASC-3 raises card CP and the Lab must set the foe growth again (plan 2.3). kinds.<kind>: def (Defense), speed (act_at = one action a step), passives (mechanics drawn from passive_pool), charge (the kind charges a Cataclysm). foe_resolve.<kind> = the chance a debuff fails. Foe evasion grows foe_evasion_per_floor a floor up to foe_evasion_max. pool_moves = the v2 monster move numbers (x ATK, heal shares). The floor plan (rooms, room weights, foe counts, rest rooms) and the monster rows stay v1 data (balance dungeon, dungeon_monsters). Nothing reads this key until combat_v2 dungeon or gauntlet is on.
+Combat v2: Dungeon and Gauntlet foes (plan 3.3, 8.3). round_cap = clock steps a fight. Foe stats = monster x growth x kinds.<room kind> x hp_x / atk_x (hp_x and atk_x are the v2 tuning dials, 1 = none). growth, kinds.hp and kinds.atk equal the live v1 numbers today (balance dungeon); v2 has its own copy because ASC-3 raises card CP and the Lab must set the foe growth again (plan 2.3). kinds.<kind>: def (Defense), speed (act_at = one action a step), passives (mechanics drawn from passive_pool), charge (the kind charges a Cataclysm). foe_resolve.<kind> = the chance a debuff fails. Foe evasion grows foe_evasion_per_floor a floor up to foe_evasion_max. pool_moves = the v2 monster move numbers (x ATK, heal shares). moves_v2 = the monster status moves (monsters-v2.md 3.1, approved 2026-10-19): hellfire x ATK and Burn burn; frost_punch x ATK and Chill chill; squeeze x ATK and the status; rattle Exposed +exposed; infect x ATK, Poison poison and no heal for no_heal steps. monster_passives.kinds = the room kinds in which a monster's own passive takes the first passive slot; monster_passives.pack.kinds = the room kinds of the Pack aura. passive_params = the numbers of the monster passives: bulwark (every every-th action is a Guard of guard x max HP), plaguebearer (each Poison tick on it puts poison stacks on a random card), undying (revives once at hp x max HP, not when Burning or Poisoned), volatile_core (on death x ATK to every card, not when Stunned or Frozen), pack (+atk_per_foe ATK for each living foe). The floor plan (rooms, room weights, foe counts, rest rooms) and the monster rows (which monster has which move and passive) stay v1 data (balance dungeon, dungeon_monsters; PR E7). Nothing reads this key until combat_v2 dungeon or gauntlet is on.
 
-Shape: `object { atk_x: number, foe_evasion_max: number, foe_evasion_per_floor: number, foe_resolve: object { elite: number, fight: number, guardian: number, horde: number, miniboss: number }, growth: object { atk: number, early_atk: number, early_floors: number, early_hp: number, hp: number, room: number }, hp_x: number, kinds: object { elite: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, fight: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, guardian: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, horde: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, miniboss: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number } }, passive_pool: array(14) of string, pool_moves: object { cataclysm_x: number, curse_weaken: number, cycle: number, drain_heal: number, drain_x: number, flurry_x: number, guard: number, heavy_x: number, poison_x: number, regenerate_heal: number, regenerate_heal_rage: number, slam_x: number, stun_x: number }, round_cap: number }`
+Shape: `object { atk_x: number, foe_evasion_max: number, foe_evasion_per_floor: number, foe_resolve: object { elite: number, fight: number, guardian: number, horde: number, miniboss: number }, growth: object { atk: number, early_atk: number, early_floors: number, early_hp: number, hp: number, room: number }, hp_x: number, kinds: object { elite: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, fight: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, guardian: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, horde: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, miniboss: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number } }, monster_passives: object { kinds: array(3) of string, pack: object { kinds: array(1) of string } }, moves_v2: object { frost_punch: object { chill: number, x: number }, hellfire: object { burn: number, x: number }, infect: object { no_heal: number, poison: number, x: number }, rattle: object { exposed: number }, squeeze: object { status: string, x: number } }, passive_params: object { bulwark: object { every: number, guard: number }, pack: object { atk_per_foe: number }, plaguebearer: object { poison: number }, undying: object { hp: number }, volatile_core: object { x: number } }, passive_pool: array(14) of string, pool_moves: object { cataclysm_x: number, curse_weaken: number, cycle: number, drain_heal: number, drain_x: number, flurry_x: number, guard: number, heavy_x: number, poison_x: number, regenerate_heal: number, regenerate_heal_rage: number, slam_x: number, stun_x: number }, round_cap: number }`
 
 ```json
 {
@@ -1792,6 +1792,28 @@ Shape: `object { atk_x: number, foe_evasion_max: number, foe_evasion_per_floor: 
     "early_atk": 0.5,
     "early_floors": 1
   },
+  "moves_v2": {
+    "infect": {
+      "x": 0.35,
+      "poison": 1,
+      "no_heal": 4
+    },
+    "rattle": {
+      "exposed": 0.2
+    },
+    "squeeze": {
+      "x": 0.45,
+      "status": "blinded"
+    },
+    "hellfire": {
+      "x": 1.5,
+      "burn": 2
+    },
+    "frost_punch": {
+      "x": 0.45,
+      "chill": 2
+    }
+  },
   "round_cap": 40,
   "pool_moves": {
     "cycle": 6,
@@ -1831,7 +1853,37 @@ Shape: `object { atk_x: number, foe_evasion_max: number, foe_evasion_per_floor: 
     "frostborn",
     "sunder"
   ],
+  "passive_params": {
+    "pack": {
+      "atk_per_foe": 0.05
+    },
+    "bulwark": {
+      "every": 2,
+      "guard": 0.2
+    },
+    "undying": {
+      "hp": 0.25
+    },
+    "plaguebearer": {
+      "poison": 1
+    },
+    "volatile_core": {
+      "x": 0.5
+    }
+  },
   "foe_evasion_max": 0.08,
+  "monster_passives": {
+    "pack": {
+      "kinds": [
+        "horde"
+      ]
+    },
+    "kinds": [
+      "elite",
+      "miniboss",
+      "guardian"
+    ]
+  },
   "foe_evasion_per_floor": 0.01
 }
 ```
@@ -1840,9 +1892,9 @@ Shape: `object { atk_x: number, foe_evasion_max: number, foe_evasion_per_floor: 
 
 ### v2_enemy
 
-Combat v2: the Hunt boss and the enemy mechanics (plan 3.3, 8). hunt.<tier>: hp and atk (the live v1 values of 2026-10-18; v2 has its own copy because ASC-3 raises card CP and the Lab must set them again, plan 2.3), def (Defense), evasion, resolve (a debuff fails with this chance), keen (cuts card Dodge), speed (act_at = one action a step; Mythic 110 with atk_x 0.91), signatures (the number of signature mechanics). boss_heal_ref = the HP that boss heals are measured on (drain_heal, regenerate_heal). boss_moves = the v2 move table: the chances strike, slam, drain, stun, enrage, curse and regenerate add up to 1 (balance_check_combat_v2); *_x = x ATK; enrage_dur and curse_dur in steps; the Cataclysm every cycle-th boss turn after one Charging turn; rage below rage_at HP gives rage_x. signature_pool = the mechanics a boss can draw. mechanics.<name> = the numbers of each enemy mechanic (purify every Nth action; shatter x to shields; regrowth heal a step, x below half; frost_aura / venom / burning stacks a single hit applies; thick_hide caps Exposed; unstoppable control fail chance; sunder card Defense ignored; steadfast less damage until N different negative statuses; dispeller Empowered and Exposed at x; *_born immune lists). Their texts come with the passives rows (PR E7). Nothing reads this key until combat_v2 hunt is on.
+Combat v2: the Hunt boss and the enemy mechanics (plan 3.3, 8). hunt.<tier>: hp and atk (the live v1 values of 2026-10-18; v2 has its own copy because ASC-3 raises card CP and the Lab must set them again, plan 2.3), def (Defense), evasion, resolve (a debuff fails with this chance), keen (cuts card Dodge), speed (act_at = one action a step; Mythic 110 with atk_x 0.91), signatures (the number of signature mechanics). boss_heal_ref = the HP that boss heals are measured on (drain_heal, regenerate_heal, mechanics.regrowth.boss_heal). boss_moves = the v2 move table: the chances strike, slam, drain, stun, enrage, curse and regenerate add up to 1 (balance_check_combat_v2); *_x = x ATK; enrage_dur and curse_dur in steps; the Cataclysm every cycle-th boss turn after one Charging turn; rage below rage_at HP gives rage_x. signature_pool = the mechanics a boss can draw. mechanics.<name> = the numbers of each enemy mechanic (purify every Nth action; shatter x to shields; regrowth: a Dungeon foe heals heal x its max HP each step, the Hunt boss heals boss_heal x boss_heal_ref each step, x below_half_x below half HP (1 = no x2: Nathan approved 0.4% flat for the boss and 1% for foes, monsters-v2.md 9.4, 2026-10-19); frost_aura / venom / burning stacks a single hit applies; thick_hide caps Exposed; unstoppable control fail chance; sunder card Defense ignored; steadfast less damage until N different negative statuses; dispeller Empowered and Exposed at x; *_born immune lists). Their texts come with the passives rows (PR E7). asc3_hp_x: Hunt boss HP = hunt.<tier>.hp x asc3_hp_x x the hp_factor of the boss (the rule approved 2026-10-19, monsters-v2.md 9.3; 1.7 is a first proposal; hp_factor comes with the boss rows). weak_role_x: in a "Weak to: role" week the cards of that role deal +weak_role_x damage (approved, 9.6). weak_role_rules.<role> replaces that rule for one role: a Controller week gives damage_x more damage (0) and each control of a Controller on the boss lasts control_add more boss actions (Nathan 2026-10-19). Nothing reads this key until combat_v2 hunt is on.
 
-Shape: `object { boss_heal_ref: number, boss_moves: object { cataclysm_x: number, curse: number, curse_dur: number, curse_weaken: number, cycle: number, drain: number, drain_heal: number, drain_x: number, enrage: number, enrage_dur: number, enrage_x: number, rage_at: number, rage_x: number, regenerate: number, regenerate_heal: number, regenerate_heal_rage: number, slam: number, slam_x: number, strike: number, strike_x: number, stun: number, stun_x: number }, hunt: object { Heroic: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number }, Mythic: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number }, Normal: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number } }, mechanics: object { burning: object { burn: number }, dispeller: object { x: number }, elusive: object {  }, fireborn: object { immune: array(1) of string }, frost_aura: object { chill: number }, frostborn: object { immune: array(2) of string }, ironhide: object {  }, purify: object { every: number }, regrowth: object { below_half_x: number, heal: number }, shatter: object { shield_x: number }, slowing: object {  }, steadfast: object { dr: number, kinds: number }, sunder: object { pierce: number }, thick_hide: object { expose_cap: number }, toxic_born: object { immune: array(1) of string }, true_strike: object {  }, unstoppable: object { control_fail: number }, venom: object { poison: number } }, signature_pool: array(13) of string }`
+Shape: `object { asc3_hp_x: number, boss_heal_ref: number, boss_moves: object { cataclysm_x: number, curse: number, curse_dur: number, curse_weaken: number, cycle: number, drain: number, drain_heal: number, drain_x: number, enrage: number, enrage_dur: number, enrage_x: number, rage_at: number, rage_x: number, regenerate: number, regenerate_heal: number, regenerate_heal_rage: number, slam: number, slam_x: number, strike: number, strike_x: number, stun: number, stun_x: number }, hunt: object { Heroic: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number }, Mythic: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number }, Normal: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number } }, mechanics: object { burning: object { burn: number }, dispeller: object { x: number }, elusive: object {  }, fireborn: object { immune: array(1) of string }, frost_aura: object { chill: number }, frostborn: object { immune: array(2) of string }, ironhide: object {  }, purify: object { every: number }, regrowth: object { below_half_x: number, boss_heal: number, heal: number }, shatter: object { shield_x: number }, slowing: object {  }, steadfast: object { dr: number, kinds: number }, sunder: object { pierce: number }, thick_hide: object { expose_cap: number }, toxic_born: object { immune: array(1) of string }, true_strike: object {  }, unstoppable: object { control_fail: number }, venom: object { poison: number } }, signature_pool: array(13) of string, weak_role_rules: object { controller: object { control_add: number, damage_x: number } }, weak_role_x: number }`
 
 ```json
 {
@@ -1881,6 +1933,7 @@ Shape: `object { boss_heal_ref: number, boss_moves: object { cataclysm_x: number
       "signatures": 1
     }
   },
+  "asc3_hp_x": 1.7,
   "mechanics": {
     "venom": {
       "poison": 1
@@ -1907,7 +1960,8 @@ Shape: `object { boss_heal_ref: number, boss_moves: object { cataclysm_x: number
     "ironhide": {},
     "regrowth": {
       "heal": 0.01,
-      "below_half_x": 2
+      "boss_heal": 0.004,
+      "below_half_x": 1
     },
     "dispeller": {
       "x": 0.1
@@ -1962,6 +2016,7 @@ Shape: `object { boss_heal_ref: number, boss_moves: object { cataclysm_x: number
     "regenerate_heal": 0.03,
     "regenerate_heal_rage": 0.05
   },
+  "weak_role_x": 0.3,
   "boss_heal_ref": 3000,
   "signature_pool": [
     "purify",
@@ -1977,7 +2032,13 @@ Shape: `object { boss_heal_ref: number, boss_moves: object { cataclysm_x: number
     "slowing",
     "elusive",
     "dispeller"
-  ]
+  ],
+  "weak_role_rules": {
+    "controller": {
+      "damage_x": 0,
+      "control_add": 1
+    }
+  }
 }
 ```
 
@@ -2064,9 +2125,9 @@ Shape: `object { abl_x: number, ddg_x: number, k: object { artillery: number, br
 
 ### v2_pp
 
-Combat v2: power points (PP), the price list of the ability blocks (plan 5.2). 1 PP = +2.5% of the card's expected damage per own turn. Every subject's active costs budget PP, plus or minus tolerance. ref = the reference fight that the prices assume (enemy Defense, miss, other foes, the shares of crits, Frozen and shields, mean stacks and status kinds, payoff = the price share of a payoff block, heal_value). status_pp = PP for each 1.0 of value or each stack of a status a block applies; support_pp = PP of each support main block. Read by the ability validator (PR E6) and the studio builder (PR T1); no fight reads it.
+Combat v2: power points (PP), the price list of the ability blocks (plan 5.2). 1 PP = +2.5% of the card's expected damage per own turn. Every subject's active costs budget PP, plus or minus tolerance. ref = the reference fight that the prices assume (enemy Defense, miss, other foes, the shares of crits, Frozen and shields, mean stacks and status kinds, payoff = the price share of a payoff block, heal_value). status_pp = PP for each 1.0 of value or each stack of a status a block applies; support_pp = PP of each support main block (cure 0: the cure of one ally and its immunity are free, Combat Lab 2026-10-19). Read by the ability validator (PR E6) and the studio builder (PR T1); no fight reads it.
 
-Shape: `object { budget: number, ref: object { crit_share: number, enemy_def: number, foes_other: number, frozen_share: number, heal_value: number, kinds: number, miss: number, payoff: number, shield_share: number, stacks: number }, status_pp: object { blinded: number, burn: number, chill: number, confused: number, empower_ally: number, exposed: number, frozen: number, mark: number, paralyzed: number, poison: number, shield_self: number, sleep: number, slowed: number, stunned: number, weakened: number }, support_pp: object { cleanse: number, consume: number, dispel: number, empower: number, focus_crd: number, focus_crit: number, heal: number, heal_all: number, quicken: number, rally: number, shield: number, shield_all: number, smite: number }, tolerance: number }`
+Shape: `object { budget: number, ref: object { crit_share: number, enemy_def: number, foes_other: number, frozen_share: number, heal_value: number, kinds: number, miss: number, payoff: number, shield_share: number, stacks: number }, status_pp: object { blinded: number, burn: number, chill: number, confused: number, empower_ally: number, exposed: number, frozen: number, mark: number, paralyzed: number, poison: number, shield_self: number, sleep: number, slowed: number, stunned: number, weakened: number }, support_pp: object { cleanse: number, consume: number, cure: number, dispel: number, empower: number, focus_crd: number, focus_crit: number, heal: number, heal_all: number, quicken: number, rally: number, shield: number, shield_all: number, smite: number }, tolerance: number }`
 
 ```json
 {
@@ -2102,6 +2163,7 @@ Shape: `object { budget: number, ref: object { crit_share: number, enemy_def: nu
   },
   "tolerance": 0.6,
   "support_pp": {
+    "cure": 0,
     "heal": 16.7,
     "rally": 50,
     "smite": 5,
@@ -2261,9 +2323,9 @@ Shape: `object { abl: object { pct: number }, acc: object { pct: number }, atk: 
 
 ### v2_status
 
-Combat v2: the numbers of the 16 statuses and the enemy state Enraged (plan 6). Durations count clock steps: dur on an enemy, dur_card on a card (cards act less often). Poison: each stack ticks tick x ref HP at step end; stack burst_at bursts for burst x ref HP, then Poison resets. Burn: each stack ticks tick_x x the Poison tick then loses decay stacks, max stacks max; a Burning unit heals heal_x; x vs_healer_x vs a healer. Stunned / Frozen: skip the next action (max_life = the safety limit of steps). Paralyzed: each action fails with fail. Blinded: +miss. Confused: chance that a single attack hits a wrong target (self_x of its attack). Slowed / Quickened: speed x x. Chill: each stack -dmg damage and -spd speed; at freeze_at stacks Frozen. Exposed / Weakened: value caps cap. Shielded: at most cap_maxhp x max HP. Empowered: at most cap. Empowered stack: false = a new Empower replaces a lower one (today), true = Empowers add up to the cap (the P4 what-if of the teams test, a Combat Lab item). Enraged: x x for dur steps. hunt_ref_hp = the ref HP of the Hunt boss (the Dungeon uses the foe max HP). The family, the stacking rule, the icon and the rule text of each status are in the statuses table. Nothing reads this key until combat_v2 is on.
+Combat v2: the numbers of the 16 statuses and the enemy state Enraged (plan 6). Durations count clock steps: dur on an enemy, dur_card on a card (cards act less often). Poison: each stack ticks tick x ref HP at step end; stack burst_at bursts for burst x ref HP, then Poison resets. Burn: each stack ticks tick_x x the Poison tick then loses decay stacks, max stacks max; a Burning unit heals heal_x; x vs_healer_x vs a healer. Stunned / Frozen: skip the next action (max_life = the safety limit of steps). Paralyzed: each action fails with fail. Blinded: +miss. Confused: chance that a single attack hits a wrong target (self_x of its attack). Slowed / Quickened: speed x x. Chill: each stack -dmg damage and -spd speed; at freeze_at stacks Frozen. Exposed / Weakened: value caps cap. Shielded: at most cap_maxhp x max HP. Empowered: at most cap. Empowered stack: false = a new Empower replaces a lower one (today, the default), true = Empowers add up to stack_cap (0.5 = x1.5; the P4 what-if of the teams test, a Combat Lab item that stays OFF). Enraged: x x for dur steps. hunt_ref_hp = the ref HP of the Hunt boss (the Dungeon uses the foe max HP). The family, the stacking rule, the icon and the rule text of each status are in the statuses table. Nothing reads this key until combat_v2 is on.
 
-Shape: `object { blinded: object { dur: number, dur_card: number, miss: number }, burn: object { decay: number, heal_x: number, ignore_shield: boolean, max: number, tick_x: number, vs_healer_x: number }, chill: object { dmg: number, dur: number, dur_card: number, freeze_at: number, spd: number }, confused: object { chance: number, dur: number, dur_card: number, self_x: number }, empowered: object { cap: number, stack: boolean }, enraged: object { dur: number, x: number }, exposed: object { cap: number, dur: number, dur_card: number }, focused: object { dur: number }, frozen: object { max_life: number, max_life_card: number }, hunt_ref_hp: number, mark: object { dur: number }, paralyzed: object { dur: number, dur_card: number, fail: number }, poison: object { burst: number, burst_at: number, dur: number, dur_card: number, ignore_shield: boolean, tick: number }, quickened: object { dur: number, dur_card: number, x: number }, shielded: object { cap_maxhp: number }, sleep: object { dur: number, dur_card: number }, slowed: object { dur: number, dur_card: number, x: number }, stunned: object { max_life: number, max_life_card: number }, weakened: object { cap: number, dur: number, dur_card: number } }`
+Shape: `object { blinded: object { dur: number, dur_card: number, miss: number }, burn: object { decay: number, heal_x: number, ignore_shield: boolean, max: number, tick_x: number, vs_healer_x: number }, chill: object { dmg: number, dur: number, dur_card: number, freeze_at: number, spd: number }, confused: object { chance: number, dur: number, dur_card: number, self_x: number }, empowered: object { cap: number, stack: boolean, stack_cap: number }, enraged: object { dur: number, x: number }, exposed: object { cap: number, dur: number, dur_card: number }, focused: object { dur: number }, frozen: object { max_life: number, max_life_card: number }, hunt_ref_hp: number, mark: object { dur: number }, paralyzed: object { dur: number, dur_card: number, fail: number }, poison: object { burst: number, burst_at: number, dur: number, dur_card: number, ignore_shield: boolean, tick: number }, quickened: object { dur: number, dur_card: number, x: number }, shielded: object { cap_maxhp: number }, sleep: object { dur: number, dur_card: number }, slowed: object { dur: number, dur_card: number, x: number }, stunned: object { max_life: number, max_life_card: number }, weakened: object { cap: number, dur: number, dur_card: number } }`
 
 ```json
 {
@@ -2343,7 +2405,8 @@ Shape: `object { blinded: object { dur: number, dur_card: number, miss: number }
   },
   "empowered": {
     "cap": 1.5,
-    "stack": false
+    "stack": false,
+    "stack_cap": 0.5
   },
   "paralyzed": {
     "dur": 3,
@@ -2363,15 +2426,16 @@ Shape: `object { blinded: object { dur: number, dur_card: number, miss: number }
 
 ### v2_support
 
-Combat v2: supports (plan 2.1). A support's basic attack hits for basic_x x CP (Artillery: v2_roles.artillery.basic_x). Support amounts scale by F = (CP_base / power_ref) ^ power_exp, so rarity and stars scale the numbers, not the blocks. An enabler of a rarity in enabler_extra_stack applies one more stack (a proposal). Nothing reads this key until combat_v2 is on.
+Combat v2: supports (plan 2.1). A support's basic attack hits for basic_x x CP (Artillery: v2_roles.artillery.basic_x). Support amounts scale by F = (CP_base / power_ref) ^ power_exp, so rarity and stars scale the numbers, not the blocks. An enabler of a rarity in enabler_extra_stack applies one more stack (a proposal). area_one_foe_x: a support area smite hits the target and its area value hits every other foe; with one foe (the Hunt) it adds area_one_foe_x of the area value to the smite (P3, Combat Lab 2026-10-19, approved; the same rule as v2_roles.cleaver.hunt_area_x). Nothing reads this key until combat_v2 is on.
 
-Shape: `object { basic_x: number, enabler_extra_stack: array(3) of string, power_exp: number, power_ref: number }`
+Shape: `object { area_one_foe_x: number, basic_x: number, enabler_extra_stack: array(3) of string, power_exp: number, power_ref: number }`
 
 ```json
 {
   "basic_x": 0.18,
   "power_exp": 0.1,
   "power_ref": 25,
+  "area_one_foe_x": 0.2,
   "enabler_extra_stack": [
     "full_art",
     "event",

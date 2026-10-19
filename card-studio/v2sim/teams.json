@@ -172,6 +172,8 @@
   {
    "id": "field-hospital",
    "name": "Field Hospital",
+   "specialist": true,
+   "specialist_note": "A designed specialist (Nathan 2026-10-19): its home is the casual Dungeon run. The approved Gauntlet fix removed its Gauntlet home, so check d (balanced) skips it. Checks a, b and c still apply.",
    "theme": "A Discord pizza party, 120 shovels and a 24-hour stream: Zeoic hosts, the medics keep everyone alive.",
    "plan": ["Five Medics heal every turn, so the three attackers never fall.","It wins the long fight: the most HP left at the end of a room and the deepest casual Dungeon runs."],
    "combo": {"enablers":["discord-pizza-party","xeno-s-stone-shovel","shave-your-head","blade-s-beans-on-toast","i-ll-get-it-back-don-t-worry"],"payoffs":["zeoic-the-server-master","rotom-washed","mztaken-s-kirby"]},
