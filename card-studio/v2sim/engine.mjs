@@ -95,7 +95,7 @@ export class Battle {
     } else if (name === 'blinded' || name === 'confused' || name === 'enraged' || name === 'focused') {
       tgt.st[name] = { v: o.value ?? 1, crd: o.crd, until: this.step + (o.dur ?? this.dur(tgt, name, src)) };
     } else if (name === 'empowered') {
-      const cur = tgt.st.empowered ? tgt.st.empowered.v : 0; tgt.st.empowered = { v: Math.min(S.empowered.cap, Math.max(cur, o.value)) };
+      const cur = tgt.st.empowered ? tgt.st.empowered.v : 0; tgt.st.empowered = { v: Math.min(S.empowered.cap, S.empowered.stack ? cur + o.value : Math.max(cur, o.value)) }; // stack: P4 what-if (Lab item), default OFF
     } else throw new Error(`apply: unknown status ${name}`);
     this.S.applied[name] = (this.S.applied[name] || 0) + 1;
     return true;

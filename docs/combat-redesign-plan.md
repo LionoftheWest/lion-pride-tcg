@@ -638,6 +638,18 @@ New IDs are reserved at request time (the next free ID on `main` today is UI-67)
 | Card picker | UI-64 | role filter |
 | Help, explainers, walkthrough | UI-38, UI-39, UI-37 | new texts ("Each star gives 3 stat points" becomes false [L]). A Dungeon and Gauntlet explainer |
 | Status tap line (one-line tooltip) | new ID | new |
+| **Glossary** (roles, statuses by family, stats, keywords, element chart; role entries show example cards from the player's collection) | new ID | new [D Nathan 2026-10-18] |
+
+### 13.2a The Glossary [D Nathan 2026-10-18]
+
+v2 adds many words (12 roles, 16 statuses, 9 stats, keywords such as Pierce, True strike, Cleave). Players need one place to look them up.
+- One Glossary screen with sections: roles (icon, purpose, role passive), statuses by family (icon, rule, stacking), stats (one line each),
+  keywords, and the element chart (approved for the FAQ, UI-38 / UI-39).
+- Tap a status icon or a keyword on a card or in a fight: its Glossary entry opens. The status tap line (above) is the short form.
+- One source: the Glossary reads its texts and icons from the `roles` and `statuses` tables and the `balance` keys that the fights use.
+  A number changed in `balance` shows in the Glossary with no other change. No text is written twice.
+- A role entry can show example cards of that role from the player's own collection (the "Gallery" view).
+- It needs a reserved ID and an approved design, after the visual language (13.1), because it shows every icon.
 
 ### 13.3 The process (`docs/design.md` section 12.3)
 
