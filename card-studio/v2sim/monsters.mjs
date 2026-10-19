@@ -9,7 +9,7 @@
 // at least 2 enemies at x0.80 or lower), rule B (every team is top 5 against at least 2 enemies). H and D count as 2 enemies.
 // "Weak to: role" weeks: the neutral boss with each role tag (+v2_enemy.weak_role_x for that role).
 import { makeCard, ROLES } from './cards.mjs';
-import { huntDay, makeFoe, bossMechs, setFoeMech } from './modes.mjs';
+import { huntDay, makeFoe, bossMechs, setFoeMech, bossKeys } from './modes.mjs';
 import { Battle } from './engine.mjs';
 import { POLICIES } from './policy.mjs';
 import { mkRng, hash, mean, median, table, fmt, ratio } from './util.mjs';
@@ -17,7 +17,7 @@ import { withSet1, loadSet1, loadTeams, teamSpecs, ROOMS } from './teams.mjs';
 
 const INVS = ['casual', 'active'];
 export const RULE_A = 0.80, TOP = 5;
-export const bossKeys = cfg => Object.keys(cfg.v2_bosses).filter(k => !k.startsWith('_'));
+export { bossKeys };
 
 // one guardian room with a fixed mechanic set; score as in the teams test (0..2)
 export function guardRoom(cfg, squad, floor, N, runs, seed) {

@@ -61,6 +61,8 @@ const FAULTS = [
   ['boss.siphon', 'the engine loses Siphon', dropMech('siphon')],
   ['boss.crush', 'the engine loses Crush', dropMech('crush')],
   ['boss.weak_role', 'the weak-to-role bonus is 0', cfgFault({ v2_enemy: { weak_role_x: 0 } })],
+  ['boss.weak_controller', 'a Controller week gives control no extra action', cfgFault({ v2_enemy: { weak_role_rules: { controller: { control_add: 0 } } } })],
+  ['boss.cap_numbers', 'the Hydra keeps its old Regrow', cfgFault({ v2_bosses: { hydra: { moves: [{ id: 'regrow', k: 'heal', v: 0.03 }, { id: 'new_head', k: 'extra_action' }, { id: 'bite', k: 'hit', x: 1, tgt: 'random', apply: { status: 'poison', stacks: 1 } }] } } })],
   ['boss.moves', 'one counter move kind has no handler', swap('bossMove', o => function (e, m) { if (m.k === 'charge') throw new Error('no handler: charge'); return o.call(this, e, m); })],
   ['dungeon.cataclysm', 'the old defect: the foe Cataclysm flag is overwritten', afterUnit(u => { u.cataclysm = 0; })],
   ['gauntlet.cfg', 'the Gauntlet keeps 12 floors', cfgFault({ v2_gauntlet: { floors: 12 } })],

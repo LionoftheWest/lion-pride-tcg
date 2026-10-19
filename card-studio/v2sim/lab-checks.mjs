@@ -108,7 +108,7 @@ export function labChecks(cfg0) {
     const r = dmg('netcode', 'lab.smite') / dmg(null, 'lab.smite');
     out.push(C('boss.rollback', 'Rollback (Netcode Mutant): smites on it deal 50%', 0.5, +r.toFixed(4), near(r, 0.5, 1e-6))); }
   { const healed = bk => { const b = fight(cfg, [tank(cfg, { hp: 1000, maxHp: 2000 })], [bk ? makeBoss(cfg, 'Heroic', { boss: bk, startFrac: 1 }) : big()], { mode: 'hunt' }); return b.heal(b.cards[0], 100); };
-    const r = healed('vampire') / healed(null); out.push(C('boss.bloodrot', 'Bloodrot (Grind Vampire): card heals work at 40% while it stands', 0.4, +r.toFixed(4), near(r, 0.4, 1e-9))); }
+    const r = healed('vampire') / healed(null); out.push(C('boss.bloodrot', 'Bloodrot (Grind Vampire): card heals work at 60% while it stands (approved 2026-10-19, was 40%)', 0.6, +r.toFixed(4), near(r, 0.6, 1e-9))); }
   { const sh = bk => { const b = fight(cfg, [tank(cfg)], [bk ? makeBoss(cfg, 'Heroic', { boss: bk, startFrac: 1 }) : big()], { mode: 'hunt' }); b.addShield(b.cards[0], 100); return b.cards[0].shield; };
     const r = sh('smurf') / sh(null); out.push(C('boss.brittle', 'Smurf Brute: card shields work at 40% while it stands', 0.4, +r.toFixed(4), near(r, 0.4, 1e-9))); }
   { const sp = bk => { const b = fight(cfg, [tank(cfg)], [bk ? makeBoss(cfg, 'Heroic', { boss: bk, startFrac: 1 }) : big()], { mode: 'hunt' }); b.apply(null, b.cards[0], 'quickened', {}); return b.speedOf(b.cards[0]) / b.cards[0].speedBase; };
@@ -125,12 +125,21 @@ export function labChecks(cfg0) {
     out.push(C('boss.permafrost_heart', 'Permafrost Heart (Frame-Freeze Lich): a Chill on it is blocked and comes back to the card', 'blocked, card Chill 1', `${r ? 'landed' : 'blocked'}, card Chill ${b.cards[0].st.chill?.stacks || 0}`, !r && b.cards[0].st.chill?.stacks === 1)); }
   { const b = fight(cfg, [tank(cfg, { hp: 1000, maxHp: 2000 })], [makeBoss(cfg, 'Mythic', { boss: 'vampire', startFrac: 0.5 })], { mode: 'hunt' }); const v = b.enemies[0]; b.step = 1;
     b.heal(b.cards[0], 100); const hv = v.hp; b.endStep(); const reg = cfg.v2_enemy.boss_heal_ref * cfg.v2_enemy.mechanics.regrowth.boss_heal, gain = v.hp - hv - reg;
-    out.push(C('boss.siphon', 'Siphon (Mythic Grind Vampire): it heals what the squad healed in the step (40 after Bloodrot)', 40, +gain.toFixed(3), near(gain, 40, 1e-6))); }
+    out.push(C('boss.siphon', 'Siphon (Mythic Grind Vampire): it heals what the squad healed in the step (60 after Bloodrot)', 60, +gain.toFixed(3), near(gain, 60, 1e-6))); }
   { const run = mech => { const e = big({ atk: 100, mech }); const b = fight(F0, [tank(F0)], [e]); b.cards[0].shield = 30; const h0 = b.cards[0].hp; b.enemyHit(b.enemies[0], b.cards[0], 0.2); return h0 - b.cards[0].hp; };
     const a = run([]), c = run(['crush']); out.push(C('boss.crush', 'Crush: the hit card also takes 50% of the shield the hit removed', '0, 10', `${a.toFixed(1)}, ${c.toFixed(1)}`, near(a, 0, 1e-6) && near(c, 10, 1e-6))); }
   { const hit = (role, weak) => { const e = big(); e.weakRole = weak; const b = fight(F0, [{ ...dummyCard(F0, { role }), role, crit: 0, acc: 1 }], [e]); return b.cardHit(b.cards[0], b.enemies[0], { x: 1, trueStrike: true }).dealt; };
     const r = hit('spotter', 'spotter') / hit('spotter', null), o = hit('spotter', 'herald') / hit('spotter', null);
     out.push(C('boss.weak_role', '"Weak to: role" week: that role deals +30%, the other roles do not', '1.30, 1.00', `${r.toFixed(3)}, ${o.toFixed(3)}`, near(r, 1.3, 1e-6) && near(o, 1, 1e-6))); }
+  { const skips = weak => { const boss = { ...makeBoss(cfg, 'Heroic', { boss: undefined, sigs: [], startFrac: 1, weakRole: weak }), resolve: 0 }; const b = fight(cfg, [{ ...tank(cfg, { role: 'controller', speedBase: 1 }), role: 'controller' }], [boss], { mode: 'hunt' });
+      const e = b.enemies[0]; e.meter = 0; b.apply(b.cards[0], e, 'stunned'); for (let i = 0; i < 4; i++) b.tickStep(); return b.S.controlSkips; };
+    const hit = weak => { const e = big(); e.weakRole = weak; const b = fight(F0, [{ ...dummyCard(F0, { role: 'controller' }), role: 'controller', crit: 0 }], [e]); return b.cardHit(b.cards[0], b.enemies[0], { x: 1, trueStrike: true }).dealt; };
+    const s0 = skips(null), s1 = skips('controller'), dmg = hit('controller') / hit(null);
+    out.push(C('boss.weak_controller', 'a Controller week boosts control, not damage: a Stun skips 2 boss actions (1 normally), Controller hits x1.00', '1, 2, 1.00', `${s0}, ${s1}, ${dmg.toFixed(2)}`, s0 === 1 && s1 === 2 && near(dmg, 1, 1e-9))); }
+  { const B = cfg.v2_bosses, mv = (b, id) => (B[b].moves || []).find(m => m.id === id);
+    const got = { hydra_regrow: mv('hydra', 'regrow')?.v, hydra_regrowth: B.hydra.params?.regrowth?.boss_heal, netcode_heal_move: !!mv('netcode', 'rollback'), vampire_cut: mv('vampire', 'bloodrot')?.heal_cut, warzombie_infect: mv('warzombie', 'infect')?.heal_cut?.dur, warzombie_echo: mv('warzombie', 'undying')?.v };
+    const ok = got.hydra_regrow === 0.015 && got.hydra_regrowth === 0.004 && !got.netcode_heal_move && got.vampire_cut?.x === 0.4 && got.vampire_cut?.dur === 4 && got.warzombie_infect === 4 && got.warzombie_echo === 0.1;
+    out.push(C('boss.cap_numbers', 'the approved counter-cap numbers: Hydra Regrow 1.5% + Regrowth 0.4%, Netcode without its Rollback heal, Vampire cut 40%/4, Warzombie no-heal 4 + echo 10%', 'all', ok ? 'all' : JSON.stringify(got), ok)); }
   { let bad = 0, err = '', used = new Set(); const all = new Set(bossKeys(cfg).flatMap(k => cfg.v2_bosses[k].moves.map(m => `${k}.${m.id}`)));
     for (const k of bossKeys(cfg)) for (const tier of ['Heroic', 'Mythic']) for (let s = 1; s <= 6; s++) {
       const roles = ['striker', 'warden', 'medic', 'controller', 'artillery', 'herald', 'cleaver', 'flurry'];

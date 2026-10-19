@@ -104,6 +104,9 @@ export class Battle {
       if (CONTROL.some(c => tgt.st[c]) || this.step < tgt.immUntil) return this.blocked(src, tgt, name, 'immuneBlocked');
       const life = name === 'stunned' || name === 'frozen' ? (tgt.side === 'card' ? S[name].max_life_card : S[name].max_life) : this.dur(tgt, name, src);
       tgt.st[name] = { until: this.step + (this.isBoss(tgt) && name !== 'stunned' && name !== 'frozen' ? cfg.v2_control.boss_max_dur : life) };
+      // a "Weak to: Controllers" week (weak_role_rules.controller.control_add): the control lasts N more actions of the target
+      const add = src && tgt.weakRole && src.role === tgt.weakRole ? cfg.v2_enemy.weak_role_rules?.[src.role]?.control_add || 0 : 0;
+      if (add) { if (name === 'stunned' || name === 'frozen') tgt.st[name].extra = add; else tgt.st[name].until += add; }
       if (name === 'frozen') { delete tgt.st.chill; this.S.freezes++; }
     } else if (name === 'poison') {
       const cur = tgt.st.poison ? tgt.st.poison.stacks : 0; const n = cur + (o.stacks || 1);
@@ -243,7 +246,7 @@ export class Battle {
     let bonus = o.bonus || 0;
     if (src.role === 'finisher' && tgt.hp / tgt.maxHp < R.finisher.line) bonus += R.finisher.bonus * ab;
     if (src.role === 'cleaver' && this.alive('enemy').length === 1) bonus += R.cleaver.hunt_bonus * ab;
-    if (tgt.weakRole && src.role === tgt.weakRole) bonus += cfg.v2_enemy.weak_role_x;
+    if (tgt.weakRole && src.role === tgt.weakRole) bonus += cfg.v2_enemy.weak_role_rules?.[src.role]?.damage_x ?? cfg.v2_enemy.weak_role_x;
     mult *= 1 + bonus;
     if (o.vsX) mult *= o.vsX;
     const pierce = Math.max(o.pierce || 0, src.role === 'breaker' ? R.breaker.pierce : 0);
@@ -341,7 +344,7 @@ export class Battle {
       if (u.mech.has('purify') && u.turn % u.P.purify.every === 0) this.cleanseNeg(u);
       if (u.mech.has('elusive')) delete u.st.mark;
     }
-    if (u.st.stunned || u.st.frozen) { this.remove(u, u.st.stunned ? 'stunned' : 'frozen'); this.S.controlSkips++; if (u.side === 'enemy') u.charging = false; return; }
+    if (u.st.stunned || u.st.frozen) { const k = u.st.stunned ? 'stunned' : 'frozen'; if (u.st[k].extra > 0) u.st[k].extra--; else this.remove(u, k); this.S.controlSkips++; if (u.side === 'enemy') u.charging = false; return; }
     if (u.st.sleep) { this.S.controlSkips++; if (u.side === 'enemy') u.charging = false; return; }
     if (u.st.paralyzed && u.rng() < this.cfg.v2_status.paralyzed.fail) { this.S.controlSkips++; this.S.paraFail++; if (u.side === 'enemy') u.charging = false; return; }
     if (u.side === 'card' && u.banned > 0) { u.banned--; this.S.bans++; return; }

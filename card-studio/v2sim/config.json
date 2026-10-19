@@ -543,7 +543,14 @@
     "asc3_hp_x": 1.7,
     "weak_role_x": 0.3,
     "counter_cut_min": 0.65,
-    "_boss_hp": "Hunt boss HP = tier HP x asc3_hp_x x the boss hp_factor (Nathan approved 2026-10-19, 9.3). asc3_hp_x 1.7 and the hp_factor values are first proposals (monsters-v2.md 1.1 and the median damage column of 2.1): the Lab measures them (run.mjs monsters prints the measured factor). weak_role_x: a \"Weak to: role\" week, cards of that role deal +30% (9.6). counter_cut_min: a Normal or Heroic boss may cut a team to x0.65 at most (9.2), a check in run.mjs monsters."
+    "_boss_hp": "Hunt boss HP = tier HP x asc3_hp_x x the boss hp_factor (Nathan approved 2026-10-19, 9.3). asc3_hp_x 1.7 is a first proposal. hp_factor = the measured median Hunt damage vs the neutral boss (mean of casual and active, run.mjs monsters, 2026-10-19, with the counter moves; Nathan approved). weak_role_x: a \"Weak to: role\" week, cards of that role deal +30% (9.6). counter_cut_min: a Normal or Heroic boss may cut a team to x0.65 at most (9.2), a check in run.mjs monsters.",
+    "weak_role_rules": {
+      "controller": {
+        "damage_x": 0,
+        "control_add": 1
+      }
+    },
+    "_weak_role": "A \"Weak to: role\" week: cards of that role deal +weak_role_x. weak_role_rules overrides a role: a Controller week boosts control, not damage (Nathan 2026-10-19): damage_x 0, and each control of a Controller on the boss lasts control_add more boss action."
   },
   "v2_hunt": {
     "round_cap": 40,
@@ -1905,7 +1912,7 @@
       "mythic": [
         "tilt"
       ],
-      "hp_factor": 0.58,
+      "hp_factor": 0.71,
       "counter_share": 0.4,
       "moves": [
         {
@@ -1944,7 +1951,7 @@
       "mythic": [
         "elusive"
       ],
-      "hp_factor": 0.66,
+      "hp_factor": 0.73,
       "counter_share": 0.4,
       "moves": [
         {
@@ -1997,13 +2004,9 @@
       "mythic_resists": [
         "mark"
       ],
-      "hp_factor": 0.94,
+      "hp_factor": 1.35,
       "counter_share": 0.4,
       "moves": [
-        {
-          "id": "rollback",
-          "k": "undo_smite"
-        },
         {
           "id": "hitbox_desync",
           "k": "desync_smite"
@@ -2030,7 +2033,7 @@
       "mythic": [
         "siphon"
       ],
-      "hp_factor": 0.84,
+      "hp_factor": 0.92,
       "counter_share": 0.55,
       "moves": [
         {
@@ -2039,8 +2042,8 @@
           "x": 1,
           "tgt": "random",
           "heal_cut": {
-            "x": 0.1,
-            "dur": 8
+            "x": 0.4,
+            "dur": 4
           }
         },
         {
@@ -2074,7 +2077,7 @@
       "mythic": [
         "undying"
       ],
-      "hp_factor": 0.84,
+      "hp_factor": 1.08,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2095,7 +2098,7 @@
           },
           "heal_cut": {
             "x": 0,
-            "dur": 8
+            "dur": 4
           }
         },
         {
@@ -2108,11 +2111,11 @@
           "id": "undying",
           "k": "state",
           "key": "heal_mirror",
-          "v": 0.25,
+          "v": 0.1,
           "dur": 8
         }
       ],
-      "_approx": "Undying (Mythic: revive once at 25% unless Burning or Poisoned) never fires in a Hunt day (the boss does not fall). Its counter move Undying runs as: for 8 steps, each card heal also heals it 25% of that heal."
+      "_approx": "Undying (Mythic: revive once at 25% unless Burning or Poisoned) never fires in a Hunt day (the boss does not fall). Its counter move Undying runs as: for 8 steps, each card heal also heals it 10% of that heal."
     },
     "maw": {
       "name": "Maw of the Meta",
@@ -2128,7 +2131,7 @@
       "mythic": [
         "ironhide"
       ],
-      "hp_factor": 0.66,
+      "hp_factor": 1.1,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2170,7 +2173,7 @@
       "mythic": [
         "crush"
       ],
-      "hp_factor": 0.92,
+      "hp_factor": 1.26,
       "counter_share": 0.55,
       "moves": [
         {
@@ -2207,7 +2210,7 @@
       "mythic": [
         "mirror_hide"
       ],
-      "hp_factor": 0.535,
+      "hp_factor": 0.79,
       "counter_share": 0.55,
       "moves": [
         {
@@ -2257,7 +2260,7 @@
       "mythic": [
         "rollout"
       ],
-      "hp_factor": 0.825,
+      "hp_factor": 0.95,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2305,7 +2308,7 @@
       "mythic": [
         "rubberband"
       ],
-      "hp_factor": 0.565,
+      "hp_factor": 0.88,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2346,7 +2349,7 @@
       "mythic": [
         "mirror_hide"
       ],
-      "hp_factor": 0.945,
+      "hp_factor": 1.02,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2382,7 +2385,7 @@
       "mythic": [
         "swarm"
       ],
-      "hp_factor": 0.57,
+      "hp_factor": 0.64,
       "counter_share": 0.55,
       "moves": [
         {
@@ -2432,7 +2435,7 @@
       "mythic": [
         "thick_hide"
       ],
-      "hp_factor": 0.785,
+      "hp_factor": 1.03,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2479,7 +2482,7 @@
       "mythic": [
         "thick_hide"
       ],
-      "hp_factor": 0.895,
+      "hp_factor": 0.93,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2525,7 +2528,7 @@
         "shatter",
         "brittle"
       ],
-      "hp_factor": 0.45,
+      "hp_factor": 0.57,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2562,19 +2565,19 @@
       ],
       "params": {
         "regrowth": {
-          "boss_heal": 0.006
+          "boss_heal": 0.004
         }
       },
       "mythic": [
         "thick_hide"
       ],
-      "hp_factor": 0.73,
+      "hp_factor": 0.9,
       "counter_share": 0.4,
       "moves": [
         {
           "id": "regrow",
           "k": "heal",
-          "v": 0.03
+          "v": 0.015
         },
         {
           "id": "new_head",
@@ -2593,7 +2596,8 @@
       ],
       "_approx": "Cauterize risk is a display rule (Burn halves its heal, as for every heal), so the Hydra has 3 counter moves."
     },
-    "_guard": "A boss Guard (Rattle, Dig In, Ice Wall, Hold: \"Guard 10%\") is 10% of boss_heal_ref (300), not of the boss max HP: the Hunt heals use the same reference (a guard of 10% of 136,000 HP would block a whole day)."
+    "_guard": "A boss Guard (Rattle, Dig In, Ice Wall, Hold: \"Guard 10%\") is 10% of boss_heal_ref (300), not of the boss max HP: the Hunt heals use the same reference (a guard of 10% of 136,000 HP would block a whole day).",
+    "_tuning": "Nathan approved 2026-10-19 (the counter cap x0.65): Hydra Regrow 3% -> 1.5% and Regrowth 0.6% -> 0.4%; Netcode loses its Rollback heal move; Grind Vampire Bloodrot rule 40% -> 60% and its Bloodrot move 10% for 8 steps -> 40% for 4 steps; AFK Warzombie Infect no-heal 8 -> 4 steps and its Undying echo 25% -> 10%."
   },
   "v2_boss_rules": {
     "_rule": "Numbers of the boss rules (signatures, Mythic adds). A rule that changes the cards (bloodrot, brittle, time_lock) works while a unit with it stands. A rule that changes hits on the unit (rollback, mirror_hide, plated, fade) works on that unit.",
@@ -2612,8 +2616,8 @@
       "text": "Smites on it deal 50%. Artillery basics on it deal 18% and can miss."
     },
     "bloodrot": {
-      "card_heal_x": 0.4,
-      "text": "Card heals and lifesteal work at 40% while it stands."
+      "card_heal_x": 0.6,
+      "text": "Card heals and lifesteal work at 60% while it stands."
     },
     "brittle": {
       "card_shield_x": 0.4,

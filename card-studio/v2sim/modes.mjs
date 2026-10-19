@@ -11,6 +11,7 @@ const sample = (rng, arr, n) => { const a = [...arr], o = []; while (o.length < 
 // boss = a key of v2_bosses (a named boss: resists, signature rules, Mythic rules, counter moves, hp_factor), else the
 // tier boss with `sigs` (or random signatures). HP = tier HP x asc3_hp_x x hp_factor (Nathan approved 2026-10-19).
 // weakRole = a "Weak to: role" week: cards of that role deal +weak_role_x.
+export const bossKeys = cfg => Object.keys(cfg.v2_bosses).filter(k => !k.startsWith('_'));
 export function bossMechs(cfg, boss, tier) {
   const B = cfg.v2_bosses[boss]; if (!B) throw new Error(`unknown boss ${boss}`);
   const my = tier === 'Mythic';
