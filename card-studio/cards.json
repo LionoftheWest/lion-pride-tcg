@@ -1806,7 +1806,8 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare"
+      "secret_rare",
+      "full_art"
     ],
     "season": "Season 1",
     "set": "S1",
@@ -1823,7 +1824,7 @@
         "community"
       ]
     },
-    "updatedAt": 1790278954081,
+    "updatedAt": 1792184956979,
     "pushedAt": 1790279944054,
     "ability": {
       "desc": "+12% critical chance on this attack.",
@@ -1840,6 +1841,14 @@
         "duration_s": 86400
       },
       "cooldown_h": 24
+    },
+    "tierDetails": {
+      "full_art": {
+        "genre": "Super Smash Bros",
+        "lore": "Dark Side? No this is definitely the better side",
+        "season": "Season 2",
+        "event": ""
+      }
     }
   },
   {
@@ -6370,7 +6379,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1792023144398,
+    "updatedAt": 1792186908789,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6394,6 +6403,18 @@
         "lore": "Must be that youngest kid energy",
         "season": "Season 2",
         "event": ""
+      },
+      "normal": {
+        "genre": "Party Games",
+        "lore": "Must be that youngest kid energy",
+        "season": "Season 2",
+        "event": ""
+      },
+      "secret_rare": {
+        "genre": "Party Games",
+        "lore": "Must be that youngest kid energy",
+        "season": "Season 2",
+        "event": ""
       }
     },
     "ability": null
@@ -6409,39 +6430,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791778074422,
-    "tags": {
-      "class": "attacker",
-      "type": "character",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
-    },
-    "type": "Character"
-  },
-  {
-    "id": "brego-brego-horse",
-    "name": "Brego & Brego (Horse)",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1791778074528,
+    "updatedAt": 1792184900735,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6465,11 +6456,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791778074634,
+    "updatedAt": 1792185001170,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6521,11 +6510,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1791778746786,
+    "updatedAt": 1792184989895,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6549,11 +6536,9 @@
     "finishes": [
       "normal",
       "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
+      "secret_rare"
     ],
-    "updatedAt": 1792022362392,
+    "updatedAt": 1792185017598,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6582,7 +6567,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1791778747070,
+    "updatedAt": 1792185735377,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6593,11 +6578,46 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "tierDetails": {
+      "normal": {
+        "genre": "Super Smash Bros",
+        "lore": "It's actually a Jigglypuff from above!",
+        "season": "Season 2",
+        "event": ""
+      },
+      "secret_rare": {
+        "genre": "Super Smash Bros",
+        "lore": "It's actually a Jigglypuff from above!",
+        "season": "Season 2",
+        "event": ""
+      },
+      "illustrated_rare": {
+        "genre": "Super Smash Bros",
+        "lore": "It's actually a Jigglypuff from above!",
+        "season": "Season 2",
+        "event": "",
+        "tradeable": false
+      },
+      "full_art": {
+        "genre": "Super Smash Bros",
+        "lore": "It's actually a Jigglypuff from above!",
+        "season": "Season 2",
+        "event": ""
+      },
+      "gold": {
+        "genre": "Super Smash Bros",
+        "lore": "It's actually a Jigglypuff from above!",
+        "season": "Season 2",
+        "event": ""
+      }
+    },
+    "ability": null,
+    "pushedAt": 1792186935167
   },
   {
     "id": "peltvs-oakley",
-    "name": "PELTvs Rocket League Training",
+    "name": "PELT's Rocket League Training",
     "genre": "",
     "lore": "",
     "season": "Season 2",
@@ -6610,7 +6630,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1792018801579,
+    "updatedAt": 1792187214468,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6621,7 +6641,16 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "tierDetails": {
+      "normal": {
+        "genre": "",
+        "lore": "Wait how is he DOING that?!",
+        "season": "Season 2",
+        "event": ""
+      }
+    },
+    "ability": null
   },
   {
     "id": "mephiles029-little-mac",
@@ -7506,10 +7535,9 @@
     "event": "",
     "finishes": [
       "normal",
-      "full_art",
-      "gold"
+      "full_art"
     ],
-    "updatedAt": 1792029669712,
+    "updatedAt": 1792185046146,
     "tags": {
       "class": "attacker",
       "type": "item",
@@ -7534,40 +7562,11 @@
     "event": "",
     "finishes": [
       "normal",
-      "full_art",
-      "gold"
+      "full_art"
     ],
-    "updatedAt": 1792029670151,
+    "updatedAt": 1792185057318,
     "tags": {
       "class": "attacker",
-      "type": "item",
-      "origin": [
-        "community"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": [
-        "forbidden-pride"
-      ]
-    },
-    "type": "Item"
-  },
-  {
-    "id": "heero-s-elbows",
-    "name": "Heero's Elbows",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1792029670624,
-    "tags": {
-      "class": "support",
       "type": "item",
       "origin": [
         "community"
@@ -7590,10 +7589,9 @@
     "event": "",
     "finishes": [
       "normal",
-      "full_art",
-      "gold"
+      "full_art"
     ],
-    "updatedAt": 1792029670813,
+    "updatedAt": 1792185080963,
     "tags": {
       "class": "support",
       "type": "item",
@@ -7610,7 +7608,7 @@
   },
   {
     "id": "mobs-dirty-gloves",
-    "name": "Mobs Dirty Gloves",
+    "name": "Mr. Mobs Hands",
     "genre": "",
     "lore": "",
     "season": "Season 2",
@@ -7618,10 +7616,9 @@
     "event": "",
     "finishes": [
       "normal",
-      "full_art",
-      "gold"
+      "full_art"
     ],
-    "updatedAt": 1792029670362,
+    "updatedAt": 1792185105004,
     "tags": {
       "class": "attacker",
       "type": "item",
@@ -7634,7 +7631,8 @@
         "forbidden-pride"
       ]
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": null
   },
   {
     "id": "noobeth-s-tanktop",
@@ -7646,10 +7644,9 @@
     "event": "",
     "finishes": [
       "normal",
-      "full_art",
-      "gold"
+      "full_art"
     ],
-    "updatedAt": 1792029671042,
+    "updatedAt": 1792185116995,
     "tags": {
       "class": "support",
       "type": "item",
@@ -7674,10 +7671,9 @@
     "event": "",
     "finishes": [
       "normal",
-      "full_art",
-      "gold"
+      "full_art"
     ],
-    "updatedAt": 1792029671228,
+    "updatedAt": 1792185129531,
     "tags": {
       "class": "support",
       "type": "item",
@@ -7691,5 +7687,449 @@
       ]
     },
     "type": "Item"
+  },
+  {
+    "id": "shugameat-s-modpack",
+    "name": "ShugaMeat's Modpack",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "updatedAt": 1792170455882,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Item"
+  },
+  {
+    "id": "samhenrygaming-s-schematicannon",
+    "name": "SamHenryGaming's Schematicannon",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "updatedAt": 1792170456443,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Item"
+  },
+  {
+    "id": "jerichojack-s-steam-powered-armor",
+    "name": "JerichoJack's Steam Powered Armor",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "updatedAt": 1792170457869,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "metal"
+      ]
+    },
+    "type": "Item"
+  },
+  {
+    "id": "cknbromein-s-racing-rig",
+    "name": "CknBromein's Racing Rig",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "updatedAt": 1792170458045,
+    "tags": {
+      "class": "support",
+      "type": "item",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Item"
+  },
+  {
+    "id": "xarnexe-s-tsareena",
+    "name": "Xarnexe's Tsareena",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "updatedAt": 1792170458216,
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "nature"
+      ]
+    },
+    "type": "Creature"
+  },
+  {
+    "id": "ezoun-s-delphox",
+    "name": "Ezoun's Delphox",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "updatedAt": 1792170458395,
+    "tags": {
+      "class": "attacker",
+      "type": "creature",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "fire"
+      ]
+    },
+    "type": "Creature"
+  },
+  {
+    "id": "boog-s-alliance",
+    "name": "Boog's Alliance",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "updatedAt": 1792170458723,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Moment"
+  },
+  {
+    "id": "kozykanto-s-stream",
+    "name": "KozyKanto's Stream",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "updatedAt": 1792170458901,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Moment"
+  },
+  {
+    "id": "meme-warfare",
+    "name": "Meme Warfare",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "updatedAt": 1792170459098,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Moment"
+  },
+  {
+    "id": "heero-s-gundam-suit",
+    "name": "Heero's Gundam Suit",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare"
+    ],
+    "updatedAt": 1792170458551,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": [
+        "metal"
+      ]
+    },
+    "type": "Character"
+  },
+  {
+    "id": "marvel-rival-or-overwatch",
+    "name": "Marvel Rival or Overwatch?",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal"
+    ],
+    "updatedAt": 1792170459244,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Moment"
+  },
+  {
+    "id": "path-of-exile-tech-tree",
+    "name": "Path of Exile Tech Tree",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal"
+    ],
+    "updatedAt": 1792170459441,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Moment"
+  },
+  {
+    "id": "mario-party-super-battle-golf",
+    "name": "\"Mario Party\" Super Battle Golf",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal"
+    ],
+    "updatedAt": 1792170459629,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Moment"
+  },
+  {
+    "id": "pineapple-pizza-dox",
+    "name": "Pineapple Pizza Dox",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal"
+    ],
+    "updatedAt": 1792170459826,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Moment"
+  },
+  {
+    "id": "30-year-old-gamer",
+    "name": "30 Year old Gamer",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal"
+    ],
+    "updatedAt": 1792170459989,
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Moment"
+  },
+  {
+    "id": "the-fox-the-lion",
+    "name": "The Fox & the Lion",
+    "genre": "Super Smash Bros",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal",
+      "illustrated_rare",
+      "secret_rare"
+    ],
+    "updatedAt": 1792186441770,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [
+        "community"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Character",
+    "ability": null
+  },
+  {
+    "id": "draw-me-like-one-of-your-french-girls",
+    "name": "Draw Me Like One of Your French Girls",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "normal"
+    ],
+    "updatedAt": 1792186611025,
+    "tags": {
+      "class": "attacker",
+      "type": "character",
+      "origin": [],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "type": "Character",
+    "tierDetails": {
+      "normal": {
+        "genre": "",
+        "lore": "It's beautiful!! -Squidward",
+        "season": "Season 2",
+        "event": ""
+      }
+    },
+    "ability": null,
+    "pushedAt": 1792186620288
   }
 ]
