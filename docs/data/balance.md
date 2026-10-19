@@ -14,6 +14,7 @@ The triggers on `balance` check each change:
 - `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
 - `balance_check_boss_counters` (`balance_check_boss_counters()`): Trigger (before insert, update on balance): boss_counters must hold only numbers; share, boss_share and the move shares (heal, shield, empower, expose, smite, share, keep, curse, back) from 0 to 1; rounds, wait, plays, cards and hits whole numbers (plays and hits at least 1); hit sizes and multipliers above 0; the weights add up to more than 0. boss_passives: the counter passive numbers (plague_x, shatterer_x, dispeller_x, juggernaut_x, juggernaut_stun_fail, plague_cleanse) from 0 to 1.
 - `balance_check_combat` (`balance_check_combat()`): Trigger (before insert, update on balance): combat.element_bonus must be a number from 1 to 2, combat.element_penalty a number from 0.5 to 1 and combat.auto_elements true or false (f3_element_bonus.sql, f3_auto_elements.sql). A key that is absent is not checked.
+- `balance_check_combat_v2` (`balance_check_combat_v2()`): Trigger (before insert, update on balance): every combat v2 key must match its fixed shape and limits (balance_v2_spec): no missing, extra or wrong leaf. A key named v2_* with no shape is refused. Extra rules: v2_asc (the curve from 0 to 1, never falling; base not above top; every card rarity has a base or an alias), v2_enemy (the boss move chances add up to 1). The limits of v2_speed keep status_min_x at or below 1 and safety_max_x at or above 1. combat_v2_flags_balance.sql.
 - `balance_check_dungeon` (`balance_check_dungeon()`): Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.shards, chest.card_chance and offers heal / buff / shards / ward / revive must be 5 numbers (tier 1 to 5), tier_weights must add up to more than 0, the Shards whole numbers, chest.card_chance and door.gamble_rare at most 1, door.rare_tier and offers.min_tier whole numbers from 1 to 5. (balance_check keeps every leaf and its type, so boss_hp_estimate keeps its 4 numbers.)
 - `balance_check_economy` (`balance_check_economy()`): Trigger (before insert, update on balance): the pulls rates must add up to 1, pulls pack_size must be a whole number from 1 to 20, daily streak_cycle must be at least 1.
 - `balance_check_report_shots` (`balance_check_report_shots()`): Trigger (before insert, update on balance): the shape of the key report_shots (report_shots.sql): keep_days, per_report and max_bytes whole numbers of at least 1, per_report at most 9, max_bytes at most 5242880 (the Activity reads at most 5 MB of an upload).
@@ -26,7 +27,7 @@ The triggers on `balance` check each change:
 
 ## Keys
 
-[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [combat](#key-combat), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [welcome_packs](#key-welcome-packs)
+[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [welcome_packs](#key-welcome-packs)
 
 <a id="key-achievement-rewards"></a>
 
@@ -765,6 +766,25 @@ Shape: `object { floor: number, per_cp: number }`
 }
 ```
 
+<a id="key-card-level"></a>
+
+### card_level
+
+Combat v2: the XP rules of card levels (plan 2.4, a PROPOSAL, not tuned). A card gets xp_hunt_day XP for each Hunt day in which it acts or is hit, and xp_dungeon_run for each Dungeon run (the Gauntlet gives no XP: its cards are not the player's cards). Level L to L+1 costs cost_base + cost_per_level x L XP (level 30 = 585 XP). Catch-up: a card below the mean level of the player's catchup_top best cards gets catchup_x XP. Nothing reads this key until combat_v2 progress is on (PR M1).
+
+Shape: `object { catchup_top: number, catchup_x: number, cost_base: number, cost_per_level: number, xp_dungeon_run: number, xp_hunt_day: number }`
+
+```json
+{
+  "catchup_x": 2,
+  "cost_base": 5,
+  "catchup_top": 8,
+  "xp_hunt_day": 10,
+  "cost_per_level": 1,
+  "xp_dungeon_run": 10
+}
+```
+
 <a id="key-combat"></a>
 
 ### combat
@@ -803,6 +823,23 @@ Shape: `object { auto_elements: boolean, block: number, block_x: number, crit: n
   "effect_cap_pct": 100,
   "element_penalty": 1,
   "weak_stack_free": 3
+}
+```
+
+<a id="key-combat-v2"></a>
+
+### combat_v2
+
+The combat v2 switch (docs/combat-redesign-plan.md 14.2; combat_v2_flags_balance.sql). One boolean for each capability: gauntlet, dungeon, hunt (the fights of that mode play combat v2) and progress (card levels, the 9 stats and ASC-3). All false = combat v1 everywhere, exactly as before. Read ONLY through combat_v2_on(mode), which fails closed (a missing key, a value that is not true or false, an unknown capability or an error = false). The order to go live: Gauntlet, then Dungeon (with progress), then Hunt, each mode at least one full week; the Hunt only between two Hunts. Rollback: set the mode false. Shape: exactly these four booleans (balance_check_combat_v2).
+
+Shape: `object { dungeon: boolean, gauntlet: boolean, hunt: boolean, progress: boolean }`
+
+```json
+{
+  "hunt": false,
+  "dungeon": false,
+  "gauntlet": false,
+  "progress": false
 }
 ```
 
@@ -1603,6 +1640,742 @@ Shape: `object { affinity_cap: number, affinity_step: number, expose_cap: number
   "affinity_cap": 2,
   "affinity_step": 0.15,
   "stun_immune_rounds": 2
+}
+```
+
+<a id="key-v2-asc"></a>
+
+### v2_asc
+
+Combat v2: ascension ASC-3 (plan 2.3, decided 2026-10-18). CP = base[r] x (1 + (top[r] / base[r] - 1) x curve[stars]) x cp_mod. curve = the share of the way from the 0-star base to the 5-star top for 0 to 5 stars (starts at 0, ends at 1, never falls). top = the 5-star value of today (no live card loses CP). alias: promo uses normal, event uses full_art. Stars give no stat points in v2. Rules: every card rarity has a base or an alias; base is never above top (balance_check_combat_v2). Nothing reads this key until combat_v2 progress is on.
+
+Shape: `object { alias: object { event: string, promo: string }, base: object { full_art: number, gold: number, illustrated_rare: number, normal: number, secret_rare: number }, curve: array(6) of number, top: object { full_art: number, gold: number, illustrated_rare: number, normal: number, secret_rare: number } }`
+
+```json
+{
+  "top": {
+    "gold": 224,
+    "normal": 75,
+    "full_art": 187.5,
+    "secret_rare": 140,
+    "illustrated_rare": 140
+  },
+  "base": {
+    "gold": 149.333,
+    "normal": 25,
+    "full_art": 100,
+    "secret_rare": 60,
+    "illustrated_rare": 40
+  },
+  "alias": {
+    "event": "full_art",
+    "promo": "normal"
+  },
+  "curve": [
+    0,
+    0.286,
+    0.5,
+    0.678,
+    0.857,
+    1
+  ]
+}
+```
+
+<a id="key-v2-card-hp"></a>
+
+### v2_card_hp
+
+Combat v2: card max HP = base + per_cp x CP_base + v2_stats.hp.flat x HP points (plan 2.2). Supports have HP in v2 (enemies can hit them). Nothing reads this key until combat_v2 is on.
+
+Shape: `object { base: number, per_cp: number }`
+
+```json
+{
+  "base": 50,
+  "per_cp": 1.5
+}
+```
+
+<a id="key-v2-charge"></a>
+
+### v2_charge
+
+Combat v2: the active ability charges over the card's own turns (plan 2.1). It is ready after attacker (or support) own turns that did not use it. The charge is start at the beginning of each fight (each Hunt day). Speed replaces cooldowns in v2. Nothing reads this key until combat_v2 is on.
+
+Shape: `object { attacker: number, start: number, support: number }`
+
+```json
+{
+  "start": 0,
+  "support": 1,
+  "attacker": 2
+}
+```
+
+<a id="key-v2-control"></a>
+
+### v2_control
+
+Combat v2: ONE control immunity (plan 6.2, decided). Stunned, Frozen, Sleep and Paralyzed share it; it starts when a control status ends and lasts immune steps on a foe, immune_card on a card, boss_immune on the Hunt boss. On the Hunt boss a control lasts at most boss_max_dur steps (the no-lock bound: the boss loses at most 1 action in 1 + boss_immune). Nothing reads this key until combat_v2 is on.
+
+Shape: `object { boss_immune: number, boss_max_dur: number, immune: number, immune_card: number }`
+
+```json
+{
+  "immune": 2,
+  "boss_immune": 2,
+  "immune_card": 8,
+  "boss_max_dur": 1
+}
+```
+
+<a id="key-v2-dungeon"></a>
+
+### v2_dungeon
+
+Combat v2: Dungeon and Gauntlet foes (plan 3.3, 8.3). round_cap = clock steps a fight. Foe stats = monster x growth x kinds.<room kind> x hp_x / atk_x (hp_x and atk_x are the v2 tuning dials, 1 = none). growth, kinds.hp and kinds.atk equal the live v1 numbers today (balance dungeon); v2 has its own copy because ASC-3 raises card CP and the Lab must set the foe growth again (plan 2.3). kinds.<kind>: def (Defense), speed (act_at = one action a step), passives (mechanics drawn from passive_pool), charge (the kind charges a Cataclysm). foe_resolve.<kind> = the chance a debuff fails. Foe evasion grows foe_evasion_per_floor a floor up to foe_evasion_max. pool_moves = the v2 monster move numbers (x ATK, heal shares). The floor plan (rooms, room weights, foe counts, rest rooms) and the monster rows stay v1 data (balance dungeon, dungeon_monsters). Nothing reads this key until combat_v2 dungeon or gauntlet is on.
+
+Shape: `object { atk_x: number, foe_evasion_max: number, foe_evasion_per_floor: number, foe_resolve: object { elite: number, fight: number, guardian: number, horde: number, miniboss: number }, growth: object { atk: number, early_atk: number, early_floors: number, early_hp: number, hp: number, room: number }, hp_x: number, kinds: object { elite: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, fight: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, guardian: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, horde: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number }, miniboss: object { atk: number, charge: boolean, def: number, hp: number, passives: number, speed: number } }, passive_pool: array(14) of string, pool_moves: object { cataclysm_x: number, curse_weaken: number, cycle: number, drain_heal: number, drain_x: number, flurry_x: number, guard: number, heavy_x: number, poison_x: number, regenerate_heal: number, regenerate_heal_rage: number, slam_x: number, stun_x: number }, round_cap: number }`
+
+```json
+{
+  "hp_x": 1,
+  "atk_x": 1,
+  "kinds": {
+    "elite": {
+      "hp": 1.9,
+      "atk": 1.3,
+      "def": 0.1,
+      "speed": 50,
+      "charge": false,
+      "passives": 1
+    },
+    "fight": {
+      "hp": 1,
+      "atk": 1,
+      "def": 0.05,
+      "speed": 50,
+      "charge": false,
+      "passives": 0
+    },
+    "horde": {
+      "hp": 0.6,
+      "atk": 0.75,
+      "def": 0,
+      "speed": 55,
+      "charge": false,
+      "passives": 0
+    },
+    "guardian": {
+      "hp": 2.5,
+      "atk": 1.7,
+      "def": 0.2,
+      "speed": 45,
+      "charge": true,
+      "passives": 2
+    },
+    "miniboss": {
+      "hp": 2.6,
+      "atk": 1.45,
+      "def": 0.15,
+      "speed": 48,
+      "charge": true,
+      "passives": 1
+    }
+  },
+  "growth": {
+    "hp": 1.42,
+    "atk": 1.22,
+    "room": 0.06,
+    "early_hp": 0.5,
+    "early_atk": 0.5,
+    "early_floors": 1
+  },
+  "round_cap": 40,
+  "pool_moves": {
+    "cycle": 6,
+    "guard": 0.2,
+    "slam_x": 0.35,
+    "stun_x": 0.45,
+    "drain_x": 0.8,
+    "heavy_x": 1.5,
+    "flurry_x": 0.55,
+    "poison_x": 0.35,
+    "drain_heal": 0.08,
+    "cataclysm_x": 0.75,
+    "curse_weaken": 0.3,
+    "regenerate_heal": 0.1,
+    "regenerate_heal_rage": 0.14
+  },
+  "foe_resolve": {
+    "elite": 0.1,
+    "fight": 0,
+    "horde": 0,
+    "guardian": 0.2,
+    "miniboss": 0.1
+  },
+  "passive_pool": [
+    "purify",
+    "ironhide",
+    "thick_hide",
+    "regrowth",
+    "unstoppable",
+    "frost_aura",
+    "venom",
+    "burning",
+    "true_strike",
+    "shatter",
+    "toxic_born",
+    "fireborn",
+    "frostborn",
+    "sunder"
+  ],
+  "foe_evasion_max": 0.08,
+  "foe_evasion_per_floor": 0.01
+}
+```
+
+<a id="key-v2-enemy"></a>
+
+### v2_enemy
+
+Combat v2: the Hunt boss and the enemy mechanics (plan 3.3, 8). hunt.<tier>: hp and atk (the live v1 values of 2026-10-18; v2 has its own copy because ASC-3 raises card CP and the Lab must set them again, plan 2.3), def (Defense), evasion, resolve (a debuff fails with this chance), keen (cuts card Dodge), speed (act_at = one action a step; Mythic 110 with atk_x 0.91), signatures (the number of signature mechanics). boss_heal_ref = the HP that boss heals are measured on (drain_heal, regenerate_heal). boss_moves = the v2 move table: the chances strike, slam, drain, stun, enrage, curse and regenerate add up to 1 (balance_check_combat_v2); *_x = x ATK; enrage_dur and curse_dur in steps; the Cataclysm every cycle-th boss turn after one Charging turn; rage below rage_at HP gives rage_x. signature_pool = the mechanics a boss can draw. mechanics.<name> = the numbers of each enemy mechanic (purify every Nth action; shatter x to shields; regrowth heal a step, x below half; frost_aura / venom / burning stacks a single hit applies; thick_hide caps Exposed; unstoppable control fail chance; sunder card Defense ignored; steadfast less damage until N different negative statuses; dispeller Empowered and Exposed at x; *_born immune lists). Their texts come with the passives rows (PR E7). Nothing reads this key until combat_v2 hunt is on.
+
+Shape: `object { boss_heal_ref: number, boss_moves: object { cataclysm_x: number, curse: number, curse_dur: number, curse_weaken: number, cycle: number, drain: number, drain_heal: number, drain_x: number, enrage: number, enrage_dur: number, enrage_x: number, rage_at: number, rage_x: number, regenerate: number, regenerate_heal: number, regenerate_heal_rage: number, slam: number, slam_x: number, strike: number, strike_x: number, stun: number, stun_x: number }, hunt: object { Heroic: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number }, Mythic: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number }, Normal: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number } }, mechanics: object { burning: object { burn: number }, dispeller: object { x: number }, elusive: object {  }, fireborn: object { immune: array(1) of string }, frost_aura: object { chill: number }, frostborn: object { immune: array(2) of string }, ironhide: object {  }, purify: object { every: number }, regrowth: object { below_half_x: number, heal: number }, shatter: object { shield_x: number }, slowing: object {  }, steadfast: object { dr: number, kinds: number }, sunder: object { pierce: number }, thick_hide: object { expose_cap: number }, toxic_born: object { immune: array(1) of string }, true_strike: object {  }, unstoppable: object { control_fail: number }, venom: object { poison: number } }, signature_pool: array(13) of string }`
+
+```json
+{
+  "hunt": {
+    "Heroic": {
+      "hp": 80000,
+      "atk": 73,
+      "def": 0.15,
+      "keen": 0,
+      "atk_x": 1,
+      "speed": 100,
+      "evasion": 0.04,
+      "resolve": 0.1,
+      "signatures": 1
+    },
+    "Mythic": {
+      "hp": 80000,
+      "atk": 93,
+      "def": 0.2,
+      "keen": 0.25,
+      "atk_x": 0.91,
+      "speed": 110,
+      "evasion": 0.08,
+      "resolve": 0.2,
+      "signatures": 2
+    },
+    "Normal": {
+      "hp": 70000,
+      "atk": 58,
+      "def": 0.1,
+      "keen": 0,
+      "atk_x": 1,
+      "speed": 100,
+      "evasion": 0,
+      "resolve": 0,
+      "signatures": 1
+    }
+  },
+  "mechanics": {
+    "venom": {
+      "poison": 1
+    },
+    "purify": {
+      "every": 3
+    },
+    "sunder": {
+      "pierce": 0.5
+    },
+    "burning": {
+      "burn": 2
+    },
+    "elusive": {},
+    "shatter": {
+      "shield_x": 2
+    },
+    "slowing": {},
+    "fireborn": {
+      "immune": [
+        "burn"
+      ]
+    },
+    "ironhide": {},
+    "regrowth": {
+      "heal": 0.01,
+      "below_half_x": 2
+    },
+    "dispeller": {
+      "x": 0.1
+    },
+    "frostborn": {
+      "immune": [
+        "chill",
+        "frozen"
+      ]
+    },
+    "steadfast": {
+      "dr": 0.4,
+      "kinds": 3
+    },
+    "frost_aura": {
+      "chill": 1
+    },
+    "thick_hide": {
+      "expose_cap": 0.15
+    },
+    "toxic_born": {
+      "immune": [
+        "poison"
+      ]
+    },
+    "true_strike": {},
+    "unstoppable": {
+      "control_fail": 0.9
+    }
+  },
+  "boss_moves": {
+    "slam": 0.22,
+    "stun": 0.08,
+    "curse": 0.06,
+    "cycle": 8,
+    "drain": 0.1,
+    "enrage": 0.07,
+    "rage_x": 1.3,
+    "slam_x": 0.35,
+    "strike": 0.4,
+    "stun_x": 0.45,
+    "drain_x": 0.8,
+    "rage_at": 0.5,
+    "enrage_x": 1.4,
+    "strike_x": 1,
+    "curse_dur": 10,
+    "drain_heal": 0.015,
+    "enrage_dur": 2,
+    "regenerate": 0.07,
+    "cataclysm_x": 0.75,
+    "curse_weaken": 0.3,
+    "regenerate_heal": 0.03,
+    "regenerate_heal_rage": 0.05
+  },
+  "boss_heal_ref": 3000,
+  "signature_pool": [
+    "purify",
+    "ironhide",
+    "true_strike",
+    "shatter",
+    "regrowth",
+    "frost_aura",
+    "thick_hide",
+    "unstoppable",
+    "venom",
+    "sunder",
+    "slowing",
+    "elusive",
+    "dispeller"
+  ]
+}
+```
+
+<a id="key-v2-hit"></a>
+
+### v2_hit
+
+Combat v2: the hit core (plan 2.2, 6.2). miss = the base miss chance (own miss = max(0, miss + evasion + blind - v2_stats.acc.pct x ACC)); the damage roll is roll_min + random x roll_span; resolve_acc = enemy resolve removed for each Accuracy point; a hit deals at least min_dmg (ticks excepted). miss, roll_min and roll_span equal the live v1 numbers of balance combat today: v2 has its own copy so that a Lab change for v2 never moves v1 (plan P6). Nothing reads this key until combat_v2 is on.
+
+Shape: `object { min_dmg: number, miss: number, resolve_acc: number, roll_min: number, roll_span: number }`
+
+```json
+{
+  "miss": 0.08,
+  "min_dmg": 1,
+  "roll_min": 0.85,
+  "roll_span": 0.3,
+  "resolve_acc": 0.02
+}
+```
+
+<a id="key-v2-hunt"></a>
+
+### v2_hunt
+
+Combat v2: the Hunt day cap is round_cap clock STEPS (not card actions; plan 3.3 and decision 8), so Speed gives more actions inside a fixed cap. Nothing reads this key until combat_v2 hunt is on.
+
+Shape: `object { round_cap: number }`
+
+```json
+{
+  "round_cap": 40
+}
+```
+
+<a id="key-v2-level"></a>
+
+### v2_level
+
+Combat v2: card levels (plan 2.4). points_per_level stat points for each level up to max_level. The catch-up dial: CP' = CP + converge_d x (level / max_level) x (target_cp - CP); HP and the support factor use CP'. converge_d 0 turns it off; 0.22 gives the decided end gap Gold / Normal x2.14 Hunt damage (v2sim). The XP rules are in card_level. Nothing reads this key until combat_v2 progress is on.
+
+Shape: `object { converge_d: number, max_level: number, points_per_level: number, target_cp: number }`
+
+```json
+{
+  "max_level": 30,
+  "target_cp": 260,
+  "converge_d": 0.22,
+  "points_per_level": 1
+}
+```
+
+<a id="key-v2-power"></a>
+
+### v2_power
+
+Combat v2: the Power number of a card (plan 2.5). Offense (attacker) = CP x (1 + crit x (critdmg - 1)) x hit chance x speed x (1 + abl_x x (ABL - 1)); Offense (support) = (basic hit + support_abl_ref x F x ABL) x the crit term x speed; Survival = HP / (1 - DEF) / (1 - ddg_x x DDG); Power = Offense x Survival x k[role]. k is 1 for every role here = NOT FITTED YET: E9 adds the smite, status and control value to the Offense term (decision 3) and fits k on the Lab (target 0.85 to 1.15). Read by card_power_v2 (PR E9); no fight reads it.
+
+Shape: `object { abl_x: number, ddg_x: number, k: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, support_abl_ref: number }`
+
+```json
+{
+  "k": {
+    "medic": 1,
+    "flurry": 1,
+    "herald": 1,
+    "warden": 1,
+    "breaker": 1,
+    "cleaver": 1,
+    "spotter": 1,
+    "striker": 1,
+    "finisher": 1,
+    "survivor": 1,
+    "artillery": 1,
+    "controller": 1
+  },
+  "abl_x": 0.25,
+  "ddg_x": 0.7,
+  "support_abl_ref": 25
+}
+```
+
+<a id="key-v2-pp"></a>
+
+### v2_pp
+
+Combat v2: power points (PP), the price list of the ability blocks (plan 5.2). 1 PP = +2.5% of the card's expected damage per own turn. Every subject's active costs budget PP, plus or minus tolerance. ref = the reference fight that the prices assume (enemy Defense, miss, other foes, the shares of crits, Frozen and shields, mean stacks and status kinds, payoff = the price share of a payoff block, heal_value). status_pp = PP for each 1.0 of value or each stack of a status a block applies; support_pp = PP of each support main block. Read by the ability validator (PR E6) and the studio builder (PR T1); no fight reads it.
+
+Shape: `object { budget: number, ref: object { crit_share: number, enemy_def: number, foes_other: number, frozen_share: number, heal_value: number, kinds: number, miss: number, payoff: number, shield_share: number, stacks: number }, status_pp: object { blinded: number, burn: number, chill: number, confused: number, empower_ally: number, exposed: number, frozen: number, mark: number, paralyzed: number, poison: number, shield_self: number, sleep: number, slowed: number, stunned: number, weakened: number }, support_pp: object { cleanse: number, consume: number, dispel: number, empower: number, focus_crd: number, focus_crit: number, heal: number, heal_all: number, quicken: number, rally: number, shield: number, shield_all: number, smite: number }, tolerance: number }`
+
+```json
+{
+  "ref": {
+    "miss": 0.1,
+    "kinds": 1.5,
+    "payoff": 0.6,
+    "stacks": 1.5,
+    "enemy_def": 0.15,
+    "crit_share": 0.3,
+    "foes_other": 0.75,
+    "heal_value": 0.4,
+    "frozen_share": 0.2,
+    "shield_share": 0.15
+  },
+  "budget": 10,
+  "status_pp": {
+    "burn": 1.5,
+    "mark": 16,
+    "chill": 2,
+    "sleep": 5,
+    "frozen": 8,
+    "poison": 4,
+    "slowed": 3,
+    "blinded": 3,
+    "exposed": 25,
+    "stunned": 8,
+    "confused": 4,
+    "weakened": 23.3,
+    "paralyzed": 5,
+    "shield_self": 20,
+    "empower_ally": 10
+  },
+  "tolerance": 0.6,
+  "support_pp": {
+    "heal": 16.7,
+    "rally": 50,
+    "smite": 5,
+    "dispel": 4,
+    "shield": 25,
+    "cleanse": 4,
+    "consume": 4,
+    "empower": 20,
+    "quicken": 13.3,
+    "heal_all": 60,
+    "focus_crd": 5,
+    "focus_crit": 20,
+    "shield_all": 75
+  }
+}
+```
+
+<a id="key-v2-roles"></a>
+
+### v2_roles
+
+Combat v2: the numbers of the 12 role passives (plan 4). Breaker: hits ignore pierce of Defense and deal shield_x to shields. Striker: +crit_add crit chance, +critx_add crit damage. Flurry: a basic attack strikes again with extra_chance at extra_x. Finisher: +bonus damage to a target below line HP. Survivor: heals lifesteal of the damage it deals, at most cap_maxhp of its max HP a hit. Cleaver: basic attacks also hit every other foe for splash; Hunt: +hunt_bonus damage and an area active adds hunt_area_x of its area value. Warden: allies take ally_dr less while it stands; enemies pick it taunt_w times as often. Medic: after each action heals the most hurt ally heal_after of its max HP. Controller: its debuffs ignore resolve_ignore of enemy resolve and last dur_add steps longer. Spotter: its basic attack Exposes basic_expose for basic_expose_dur steps. Herald: its basic attack Empowers the strongest attacker basic_empower. Artillery: its basic attack deals basic_x x CP and cannot miss (true_strike). The class, label and passive text are in the roles table. Nothing reads this key until combat_v2 is on.
+
+Shape: `object { artillery: object { basic_x: number, true_strike: boolean }, breaker: object { pierce: number, shield_x: number }, cleaver: object { hunt_area_x: number, hunt_bonus: number, splash: number }, controller: object { dur_add: number, resolve_ignore: number }, finisher: object { bonus: number, line: number }, flurry: object { extra_chance: number, extra_x: number }, herald: object { basic_empower: number }, medic: object { heal_after: number }, spotter: object { basic_expose: number, basic_expose_dur: number }, striker: object { crit_add: number, critx_add: number }, survivor: object { cap_maxhp: number, lifesteal: number }, warden: object { ally_dr: number, taunt_w: number } }`
+
+```json
+{
+  "medic": {
+    "heal_after": 0.05
+  },
+  "flurry": {
+    "extra_x": 0.5,
+    "extra_chance": 0.2
+  },
+  "herald": {
+    "basic_empower": 0.15
+  },
+  "warden": {
+    "ally_dr": 0.08,
+    "taunt_w": 2
+  },
+  "breaker": {
+    "pierce": 0.3,
+    "shield_x": 1.5
+  },
+  "cleaver": {
+    "splash": 0.6,
+    "hunt_bonus": 0.1,
+    "hunt_area_x": 0.2
+  },
+  "spotter": {
+    "basic_expose": 0.15,
+    "basic_expose_dur": 2
+  },
+  "striker": {
+    "crit_add": 0.08,
+    "critx_add": 0.2
+  },
+  "finisher": {
+    "line": 0.3,
+    "bonus": 0.4
+  },
+  "survivor": {
+    "cap_maxhp": 0.08,
+    "lifesteal": 0.15
+  },
+  "artillery": {
+    "basic_x": 0.25,
+    "true_strike": true
+  },
+  "controller": {
+    "dur_add": 1,
+    "resolve_ignore": 0.5
+  }
+}
+```
+
+<a id="key-v2-speed"></a>
+
+### v2_speed
+
+Combat v2: turn system B (plan 3.1, decided). Each clock step every standing unit adds its speed to its meter; a unit at act_at acts and loses act_at (speed act_at = one action a step). Card speed = role_base[role] x (1 + v2_stats.spd.pct x SPD points) x status multipliers, with the status multiplier kept from status_min_x to safety_max_x. A unit acts at most max_actions_per_step times in one step. Enemy speeds: v2_enemy (Hunt) and v2_dungeon.kinds. Rule: status_min_x is not above safety_max_x. Nothing reads this key until combat_v2 is on (PR E2).
+
+Shape: `object { act_at: number, max_actions_per_step: number, role_base: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, safety_max_x: number, status_min_x: number }`
+
+```json
+{
+  "act_at": 100,
+  "role_base": {
+    "medic": 24,
+    "flurry": 18,
+    "herald": 24,
+    "warden": 24,
+    "breaker": 16,
+    "cleaver": 15,
+    "spotter": 23,
+    "striker": 17,
+    "finisher": 17,
+    "survivor": 15,
+    "artillery": 20,
+    "controller": 20
+  },
+  "safety_max_x": 1.6,
+  "status_min_x": 0.4,
+  "max_actions_per_step": 4
+}
+```
+
+<a id="key-v2-stats"></a>
+
+### v2_stats
+
+Combat v2: the 9 stats of every card (plan 2.2), per stat point, with max_per_stat points in one stat. atk.flat = CP for each point; def.pct = less damage taken for each point, up to def.cap; hp.flat = HP for each point; crit damage = crd.base + crd.pct x points; crit chance = crt.base + adds + crt.pct x points, up to crt.cap; abl.pct = more for the active's amounts for each point; ddg.pct = dodge for each point (single hits; area hits x ddg.area_x), up to ddg.cap; acc.pct = less own miss and less enemy resolve for each point; spd.pct = more speed for each point. Tuned in the simulator (v2sim, 2026-10-18); the Combat Lab confirms them. Nothing reads this key until the progress / mode flags of combat_v2 are on.
+
+Shape: `object { abl: object { pct: number }, acc: object { pct: number }, atk: object { flat: number }, crd: object { base: number, pct: number }, crt: object { base: number, cap: number, pct: number }, ddg: object { area_x: number, cap: number, pct: number }, def: object { cap: number, pct: number }, hp: object { flat: number }, max_per_stat: number, spd: object { pct: number } }`
+
+```json
+{
+  "hp": {
+    "flat": 8
+  },
+  "abl": {
+    "pct": 0.05
+  },
+  "acc": {
+    "pct": 0.02
+  },
+  "atk": {
+    "flat": 3
+  },
+  "crd": {
+    "pct": 0.1,
+    "base": 2
+  },
+  "crt": {
+    "cap": 0.6,
+    "pct": 0.04,
+    "base": 0.1
+  },
+  "ddg": {
+    "cap": 0.3,
+    "pct": 0.03,
+    "area_x": 0.5
+  },
+  "def": {
+    "cap": 0.3,
+    "pct": 0.03
+  },
+  "spd": {
+    "pct": 0.03
+  },
+  "max_per_stat": 10
+}
+```
+
+<a id="key-v2-status"></a>
+
+### v2_status
+
+Combat v2: the numbers of the 16 statuses and the enemy state Enraged (plan 6). Durations count clock steps: dur on an enemy, dur_card on a card (cards act less often). Poison: each stack ticks tick x ref HP at step end; stack burst_at bursts for burst x ref HP, then Poison resets. Burn: each stack ticks tick_x x the Poison tick then loses decay stacks, max stacks max; a Burning unit heals heal_x; x vs_healer_x vs a healer. Stunned / Frozen: skip the next action (max_life = the safety limit of steps). Paralyzed: each action fails with fail. Blinded: +miss. Confused: chance that a single attack hits a wrong target (self_x of its attack). Slowed / Quickened: speed x x. Chill: each stack -dmg damage and -spd speed; at freeze_at stacks Frozen. Exposed / Weakened: value caps cap. Shielded: at most cap_maxhp x max HP. Empowered: at most cap. Enraged: x x for dur steps. hunt_ref_hp = the ref HP of the Hunt boss (the Dungeon uses the foe max HP). The family, the stacking rule, the icon and the rule text of each status are in the statuses table. Nothing reads this key until combat_v2 is on.
+
+Shape: `object { blinded: object { dur: number, dur_card: number, miss: number }, burn: object { decay: number, heal_x: number, ignore_shield: boolean, max: number, tick_x: number, vs_healer_x: number }, chill: object { dmg: number, dur: number, dur_card: number, freeze_at: number, spd: number }, confused: object { chance: number, dur: number, dur_card: number, self_x: number }, empowered: object { cap: number }, enraged: object { dur: number, x: number }, exposed: object { cap: number, dur: number, dur_card: number }, focused: object { dur: number }, frozen: object { max_life: number, max_life_card: number }, hunt_ref_hp: number, mark: object { dur: number }, paralyzed: object { dur: number, dur_card: number, fail: number }, poison: object { burst: number, burst_at: number, dur: number, dur_card: number, ignore_shield: boolean, tick: number }, quickened: object { dur: number, dur_card: number, x: number }, shielded: object { cap_maxhp: number }, sleep: object { dur: number, dur_card: number }, slowed: object { dur: number, dur_card: number, x: number }, stunned: object { max_life: number, max_life_card: number }, weakened: object { cap: number, dur: number, dur_card: number } }`
+
+```json
+{
+  "burn": {
+    "max": 5,
+    "decay": 1,
+    "heal_x": 0.5,
+    "tick_x": 1.5,
+    "vs_healer_x": 1.5,
+    "ignore_shield": true
+  },
+  "mark": {
+    "dur": 4
+  },
+  "chill": {
+    "dmg": 0.08,
+    "dur": 3,
+    "spd": 0.08,
+    "dur_card": 10,
+    "freeze_at": 3
+  },
+  "sleep": {
+    "dur": 3,
+    "dur_card": 10
+  },
+  "frozen": {
+    "max_life": 4,
+    "max_life_card": 12
+  },
+  "poison": {
+    "dur": 4,
+    "tick": 0.02,
+    "burst": 0.12,
+    "burst_at": 3,
+    "dur_card": 8,
+    "ignore_shield": true
+  },
+  "slowed": {
+    "x": 0.7,
+    "dur": 3,
+    "dur_card": 10
+  },
+  "blinded": {
+    "dur": 2,
+    "miss": 0.25,
+    "dur_card": 8
+  },
+  "enraged": {
+    "x": 1.4,
+    "dur": 2
+  },
+  "exposed": {
+    "cap": 1,
+    "dur": 2,
+    "dur_card": 8
+  },
+  "focused": {
+    "dur": 10
+  },
+  "stunned": {
+    "max_life": 4,
+    "max_life_card": 12
+  },
+  "confused": {
+    "dur": 2,
+    "chance": 0.3,
+    "self_x": 0.5,
+    "dur_card": 8
+  },
+  "shielded": {
+    "cap_maxhp": 1
+  },
+  "weakened": {
+    "cap": 0.6,
+    "dur": 2,
+    "dur_card": 10
+  },
+  "empowered": {
+    "cap": 1.5
+  },
+  "paralyzed": {
+    "dur": 3,
+    "fail": 0.5,
+    "dur_card": 10
+  },
+  "quickened": {
+    "x": 1.3,
+    "dur": 3,
+    "dur_card": 10
+  },
+  "hunt_ref_hp": 700
+}
+```
+
+<a id="key-v2-support"></a>
+
+### v2_support
+
+Combat v2: supports (plan 2.1). A support's basic attack hits for basic_x x CP (Artillery: v2_roles.artillery.basic_x). Support amounts scale by F = (CP_base / power_ref) ^ power_exp, so rarity and stars scale the numbers, not the blocks. An enabler of a rarity in enabler_extra_stack applies one more stack (a proposal). Nothing reads this key until combat_v2 is on.
+
+Shape: `object { basic_x: number, enabler_extra_stack: array(3) of string, power_exp: number, power_ref: number }`
+
+```json
+{
+  "basic_x": 0.18,
+  "power_exp": 0.1,
+  "power_ref": 25,
+  "enabler_extra_stack": [
+    "full_art",
+    "event",
+    "gold"
+  ]
 }
 ```
 
