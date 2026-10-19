@@ -769,3 +769,10 @@ because every later part reads them.
   so the Lab sets them again for v2, and a v2 change must never move v1 (P6).
 - Found in config.json: the Flurry text says "25% chance", the number `v2_roles.flurry.extra_chance` is 0.2 (the plan says 20%). The text is not
   copied (the E1 passive text names the number as `{extra_chance}`).
+- 2026-10-19 (after PR #449, the Combat Lab items; Nathan approved): Regrowth `below_half_x` 1 (no x2 below half) and `boss_heal` 0.004, the
+  boss HP factor `v2_enemy.asc3_hp_x` (1.7, a first proposal), the "Weak to: role" week (`weak_role_x` 0.3, `weak_role_rules.controller`: no damage,
+  control +1 boss action), the support area smite (`v2_support.area_one_foe_x` 0.2), the Empower stack cap (`v2_status.empowered.stack_cap` 0.5,
+  the switch stays false), the free cure (`v2_pp.support_pp.cure` 0), the monster status moves (`v2_dungeon.moves_v2`) and the monster passive
+  numbers (`v2_dungeon.monster_passives` kinds, `v2_dungeon.passive_params`). Left out: the counter cap check line and its accepted pairs
+  (simulator checks), the two simulator switches `on`, the monster move names and own passives (`dungeon_monsters` rows, PR E7), the texts, and
+  an unread copy of the Pack number.
