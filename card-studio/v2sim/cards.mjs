@@ -49,7 +49,8 @@ export function blockPP(cfg, tid, b) {
     case 'crit_add': return k * b.v;
     case 'pierce': return k * b.v * R.enemy_def / (1 - R.enemy_def);
     case 'true_strike': return k * R.miss;
-    case 'area': return k * b.x * R.foes_other;
+    case 'area': return att ? k * b.x * R.foes_other : P.support_pp.smite * b.x * R.foes_other * sk; // support area smite (P3): smite price x the other foes
+    case 'cure': return P.support_pp.cure * sk; // Revision 5: the cure and its immunity are free (0 PP)
     case 'payoff_dmg': case 'payoff_crit': return k * b.v * R.payoff;
     case 'per_stack': return k * b.v * R.stacks * R.payoff;
     case 'per_kind': return k * b.v * R.kinds * R.payoff;

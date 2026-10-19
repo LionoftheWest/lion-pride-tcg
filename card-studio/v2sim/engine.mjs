@@ -4,11 +4,16 @@
 // (highest meter first). Speed 100 = one action a step. After the actions: ticks (Poison, Burn, regrowth), expiry.
 // Durations, the 40-step cap and the Hunt daily cap count clock steps. Each unit has its own random stream
 // (hash of the fight seed and its slot), so a change on one card moves the other units' draws as little as possible.
+//
+// Enemy rules: a unit's mechanics (mech) read their numbers from v2_enemy.mechanics, v2_dungeon.passive_params or
+// v2_boss_rules, merged with the unit's own params (u.P). A named Hunt boss (v2_bosses) adds resists (immune statuses),
+// counter moves (bossMove) and rules. Timed enemy states (Fade, Calcify, ...) live in u.ext = { key: { v, until } }.
 import { F } from './formulas.mjs';
 import { mkRng, hash } from './util.mjs';
 
 export const CONTROL = ['stunned', 'frozen', 'sleep', 'paralyzed'];
 const BOONS = ['shielded', 'empowered', 'focused', 'quickened', 'enraged'];
+const SINGLE_MOVES = ['strike', 'heavy', 'flurry', 'drain', 'stun', 'poison', 'hellfire', 'frost_punch', 'squeeze', 'infect'];
 
 export class Battle {
   constructor(cfg, { cards, enemies, mode = 'hunt', policy, seed = 1, cap, tier = null }) {
@@ -19,13 +24,24 @@ export class Battle {
     this.enemies = enemies.map((e, i) => this.unit('enemy', e, i, seed));
     this.units = [...this.cards, ...this.enemies];
     this.S = { dealt: 0, healedEnemy: 0, taken: 0, applied: {}, resisted: {}, immuneBlocked: {}, controlSkips: 0, enemyTurns: 0, enemyActs: 0,
-      actives: 0, basics: 0, misses: 0, attacks: 0, crits: 0, bursts: 0, freezes: 0, wrongTarget: 0, wake: 0, paraFail: 0, byCard: {}, hitsTaken: {} };
+      actives: 0, basics: 0, misses: 0, attacks: 0, crits: 0, bursts: 0, freezes: 0, wrongTarget: 0, wake: 0, paraFail: 0, byCard: {}, hitsTaken: {},
+      cured: 0, cureBlocked: 0, healedCards: 0, reflected: 0, counterMoves: {}, cardStatuses: {}, cataclysms: 0, bans: 0 };
+    this.healedStep = 0; this.lastSupport = null;
     this.ended = null;
+  }
+  // The numbers of one mechanic: the global params, then the unit's own (a per-boss value, for example purify every 2).
+  mechParams(name, own) {
+    const c = this.cfg; const base = c.v2_enemy.mechanics[name] || c.v2_dungeon.passive_params?.[name] || c.v2_boss_rules?.[name] || {};
+    return own ? { ...base, ...own } : base;
   }
   unit(side, d, idx, seed) {
     const rng = mkRng(hash(seed, side, idx, d.key || d.name || ''));
     const u = { ...d, side, idx, id: `${side}${idx}`, rng, st: {}, down: (d.hp ?? 1) <= 0, immUntil: -1, meter: rng() * 100, charge: this.cfg.v2_charge.start,
-      shield: d.shield || 0, mech: new Set(d.mech || []), turn: 0, charging: false, held: 0 };
+      shield: d.shield || 0, mech: new Set(d.mech || []), turn: 0, charging: false, held: 0, immune: new Set(d.resists || []), ext: {}, immuneTo: {}, P: {} };
+    for (const m of u.mech) u.P[m] = this.mechParams(m, d.params?.[m]);
+    if (u.mech.has('plated')) u.def = Math.max(u.def || 0, u.P.plated.def);
+    if (u.mech.has('fade')) u.evasion = (u.evasion || 0) + u.P.fade.evasion_add;
+    if (u.mech.has('brood')) u.brood = u.P.brood.start;
     if (u.hp === undefined) u.hp = u.maxHp;
     return u;
   }
@@ -36,11 +52,18 @@ export class Battle {
   refHp(u) { return u.side === 'enemy' && this.mode === 'hunt' ? this.cfg.v2_status.hunt_ref_hp : u.maxHp; }
   isBoss(u) { return u.side === 'enemy' && this.mode === 'hunt'; }
   ablOf(u) { return u.abl || 1; }
+  // a rule of a standing enemy (bloodrot, brittle, time_lock): its params, else null
+  standing(name) { for (const e of this.enemies) if (!e.down && e.mech.has(name)) return e.P[name]; return null; }
+  // a timed state of a unit (u.ext[key]), else the default
+  ext(u, key, dflt = null) { const s = u.ext[key]; return s && s.until > this.step ? s.v : dflt; }
+  // a timed state of any standing enemy
+  extAny(key) { for (const e of this.enemies) if (!e.down) { const v = this.ext(e, key); if (v !== null) return { e, v }; } return null; }
 
   // ---------- speed ----------
   speedOf(u) {
     const S = this.cfg.v2_status; let m = 1;
-    if (u.st.slowed) m *= u.st.slowed.v; if (u.st.quickened) m *= u.st.quickened.v;
+    if (u.st.slowed) m *= u.st.slowed.v;
+    if (u.st.quickened && !(u.side === 'card' && this.standing('time_lock'))) m *= u.st.quickened.v;
     if (u.st.chill) m *= 1 - S.chill.spd * u.st.chill.stacks;
     return F.effSpeed(this.cfg, u.speedBase, u.spdMult || 1, m);
   }
@@ -52,19 +75,33 @@ export class Battle {
     if (CONTROL.includes(name) && this.isBoss(tgt)) d = Math.min(d, this.cfg.v2_control.boss_max_dur);
     return d + extra;
   }
+  // a negative status that the target blocked: counts for Tilt and Rage Spiral
+  blocked(src, tgt, name, kind) {
+    this.S[kind][name] = (this.S[kind][name] || 0) + 1;
+    if (tgt.side === 'enemy' && src && src.side === 'card') {
+      tgt.blockedN = (tgt.blockedN || 0) + 1;
+      if (tgt.mech.has('tilt')) this.apply(tgt, tgt, 'enraged', { value: tgt.P.tilt.x, dur: tgt.P.tilt.dur });
+      if (CONTROL.includes(name) && (tgt.mech.has('rubberband') || this.ext(tgt, 'rubberband')) && tgt.rubberStep !== this.step) { tgt.rubberStep = this.step; tgt.meter += 100; }
+    }
+    return false;
+  }
   apply(src, tgt, name, o = {}) {
     if (!tgt || tgt.down) return false;
-    const cfg = this.cfg, S = cfg.v2_status, M = cfg.v2_enemy.mechanics;
+    const cfg = this.cfg, S = cfg.v2_status;
     const neg = S.negative.includes(name) || name === 'stunned';
-    for (const m of tgt.mech) if (M[m]?.immune?.includes(name)) { this.S.immuneBlocked[name] = (this.S.immuneBlocked[name] || 0) + 1; return false; }
+    if (name === 'chill' && tgt.mech.has('permafrost_heart') && src && src.side === 'card' && !src.down) { this.S.reflected++; this.apply(null, src, 'chill', { stacks: o.stacks || 1 }); }
+    if (tgt.immune.has(name)) return this.blocked(src, tgt, name, 'immuneBlocked');
+    for (const m of tgt.mech) if (tgt.P[m]?.immune?.includes(name)) return this.blocked(src, tgt, name, 'immuneBlocked');
+    if (neg && tgt.side === 'card' && (tgt.immuneTo[name] ?? -1) > this.step) { this.S.cureBlocked++; return false; }
     if (neg && src && src.side !== tgt.side) {
       let res = tgt.resolve || 0;
       if (src.side === 'card') res = Math.max(0, res * (src.role === 'controller' ? 1 - cfg.v2_roles.controller.resolve_ignore : 1) - (src.acc || 0) * cfg.v2_hit.resolve_acc / cfg.v2_stats.acc.pct);
-      if (res > 0 && src.rng() < res) { this.S.resisted[name] = (this.S.resisted[name] || 0) + 1; return false; }
+      if (res > 0 && src.rng() < res) return this.blocked(src, tgt, name, 'resisted');
     }
-    if (CONTROL.includes(name) && tgt.mech.has('unstoppable') && (src || tgt).rng() < M.unstoppable.control_fail) { this.S.resisted[name] = (this.S.resisted[name] || 0) + 1; return false; }
+    if (CONTROL.includes(name) && tgt.mech.has('unstoppable') && (src || tgt).rng() < tgt.P.unstoppable.control_fail) return this.blocked(src, tgt, name, 'resisted');
+    if (CONTROL.includes(name) && src && src.side === 'card' && this.ext(tgt, 'desync_control')) { delete tgt.ext.desync_control; return this.blocked(src, tgt, name, 'resisted'); }
     if (CONTROL.includes(name)) {
-      if (CONTROL.some(c => tgt.st[c]) || this.step < tgt.immUntil) { this.S.immuneBlocked[name] = (this.S.immuneBlocked[name] || 0) + 1; return false; }
+      if (CONTROL.some(c => tgt.st[c]) || this.step < tgt.immUntil) return this.blocked(src, tgt, name, 'immuneBlocked');
       const life = name === 'stunned' || name === 'frozen' ? (tgt.side === 'card' ? S[name].max_life_card : S[name].max_life) : this.dur(tgt, name, src);
       tgt.st[name] = { until: this.step + (this.isBoss(tgt) && name !== 'stunned' && name !== 'frozen' ? cfg.v2_control.boss_max_dur : life) };
       if (name === 'frozen') { delete tgt.st.chill; this.S.freezes++; }
@@ -84,8 +121,8 @@ export class Battle {
       }
       tgt.st.chill = { stacks: n, until: this.step + this.dur(tgt, 'chill', src) };
     } else if (name === 'exposed') {
-      const cap = tgt.mech.has('thick_hide') ? M.thick_hide.expose_cap : S.exposed.cap;
-      const cur = tgt.st.exposed ? tgt.st.exposed.v : 0; tgt.st.exposed = { v: Math.min(cap, cur + o.value * (tgt.mech.has('dispeller') ? M.dispeller.x : 1)), until: this.step + this.dur(tgt, 'exposed', src) };
+      const cap = tgt.mech.has('thick_hide') ? tgt.P.thick_hide.expose_cap : S.exposed.cap;
+      const cur = tgt.st.exposed ? tgt.st.exposed.v : 0; tgt.st.exposed = { v: Math.min(cap, cur + o.value * (tgt.mech.has('dispeller') ? tgt.P.dispeller.x : 1)), until: this.step + this.dur(tgt, 'exposed', src) };
     } else if (name === 'weakened') {
       const cur = tgt.st.weakened ? tgt.st.weakened.v : 0; tgt.st.weakened = { v: Math.min(S.weakened.cap, cur + o.value), until: this.step + this.dur(tgt, 'weakened', src) };
     } else if (name === 'mark') {
@@ -95,8 +132,13 @@ export class Battle {
     } else if (name === 'blinded' || name === 'confused' || name === 'enraged' || name === 'focused') {
       tgt.st[name] = { v: o.value ?? 1, crd: o.crd, until: this.step + (o.dur ?? this.dur(tgt, name, src)) };
     } else if (name === 'empowered') {
-      const cur = tgt.st.empowered ? tgt.st.empowered.v : 0; tgt.st.empowered = { v: Math.min(S.empowered.cap, S.empowered.stack ? cur + o.value : Math.max(cur, o.value)) }; // stack: P4 what-if (Lab item), default OFF
+      // P4 (Lab item): stack = false -> the higher value stays (today). stack = true -> Empowers add up to stack_cap (+50% = x1.5).
+      const E = S.empowered, cur = tgt.st.empowered ? tgt.st.empowered.v : 0;
+      tgt.st.empowered = { v: E.stack ? Math.min(E.stack_cap ?? E.cap, cur + o.value) : Math.min(E.cap, Math.max(cur, o.value)) };
     } else throw new Error(`apply: unknown status ${name}`);
+    if (o.locked && tgt.st[name]) tgt.st[name].locked = true;
+    if (neg && src && src.side === 'card' && tgt.side === 'enemy') tgt.lastDebuffer = src;
+    if (neg && tgt.side === 'card' && src && src.side === 'enemy') this.S.cardStatuses[name] = (this.S.cardStatuses[name] || 0) + 1;
     this.S.applied[name] = (this.S.applied[name] || 0) + 1;
     return true;
   }
@@ -105,47 +147,85 @@ export class Battle {
     delete u.st[name];
     if (CONTROL.includes(name)) { const C = this.cfg.v2_control; u.immUntil = this.step + (u.side === 'card' ? C.immune_card : this.isBoss(u) ? C.boss_immune : C.immune); }
   }
-  cleanseNeg(u) { for (const s of this.cfg.v2_status.negative) this.remove(u, s); }
+  cleanseNeg(u) { for (const s of this.cfg.v2_status.negative) if (!u.st[s]?.locked) this.remove(u, s); }
   vuln(t) { return 1 + (t.st.exposed ? t.st.exposed.v : 0); }
+  // Free cure (Revision 5): remove the listed statuses from one ally and make it immune to them for `immune` steps.
+  cure(u, b) {
+    const S = this.cfg.v2_status; const list = b.statuses.includes('all') ? S.negative : b.statuses;
+    const t = this.policy.allyFor(this, u, 'cure', list); if (!t) return null;
+    let n = 0; for (const s of list) if (t.st[s] && !t.st[s].locked) { this.remove(t, s); n++; }
+    for (const s of list) t.immuneTo[s] = Math.max(t.immuneTo[s] ?? -1, this.step + (b.immune || 0));
+    if (n && this.extAny('rot')) { for (const s of BOONS) delete t.st[s]; t.shield = 0; }
+    this.S.cured += n; return t;
+  }
 
   // ---------- damage ----------
   // amount = raw damage before the target's Defense. o: { pierce, ignoreShield, shieldX, tick, kind }
   damage(src, tgt, amount, o = {}) {
+    this.lastShieldLost = 0;
     if (tgt.down || amount <= 0) return 0;
     let a = F.afterDefense(amount, tgt.def || 0, o.pierce || 0);
     if (tgt.side === 'card') {
       const w = this.cards.find(c => c.role === 'warden' && !c.down && c !== tgt);
       if (w) a *= 1 - this.cfg.v2_roles.warden.ally_dr;
     }
-    if (tgt.mech.has('steadfast') && this.negKinds(tgt) < this.cfg.v2_enemy.mechanics.steadfast.kinds) a *= 1 - this.cfg.v2_enemy.mechanics.steadfast.dr;
+    if (tgt.mech.has('steadfast') && this.negKinds(tgt) < this.ext(tgt, 'steadfast_kinds', tgt.P.steadfast.kinds)) a *= 1 - tgt.P.steadfast.dr;
+    if (tgt.brood) {
+      a *= 1 - tgt.P.brood.dr * tgt.brood;
+      if ((src && src.role === 'cleaver' && !o.tick) || o.kind === 'burn') tgt.brood--;
+    }
     if (!o.tick) a = Math.max(this.cfg.v2_hit.min_dmg, a);
     let absorbed = 0;
     if (tgt.shield > 0 && !o.ignoreShield) {
       const sx = o.shieldX || 1; const cap = tgt.shield / sx; absorbed = Math.min(a, cap);
-      tgt.shield = Math.max(0, tgt.shield - absorbed * sx); a -= absorbed;
+      tgt.shield = Math.max(0, tgt.shield - absorbed * sx); a -= absorbed; this.lastShieldLost = absorbed * sx;
     }
     const hpLoss = Math.min(tgt.hp, a); tgt.hp -= a;
     if (tgt.st.sleep && !o.tick) { this.remove(tgt, 'sleep'); this.S.wake++; }
     const tot = absorbed + hpLoss;
     if (tgt.side === 'enemy') { this.S.dealt += tot; if (src && src.side === 'card') this.S.byCard[src.idx] = (this.S.byCard[src.idx] || 0) + tot; }
     else { this.S.taken += tot; if (!o.tick) this.S.hitsTaken[tgt.idx] = (this.S.hitsTaken[tgt.idx] || 0) + 1; }
-    if (tgt.hp <= 0) { tgt.hp = 0; tgt.down = true; tgt.st = {}; tgt.shield = 0; }
+    if (tgt.hp <= 0) this.fall(tgt);
     return tot;
+  }
+  fall(tgt) {
+    if (tgt.mech.has('undying') && !tgt.undyingUsed && !tgt.st.burn && !tgt.st.poison) { tgt.undyingUsed = true; tgt.hp = tgt.P.undying.hp * tgt.maxHp; return; }
+    const volatile = tgt.mech.has('volatile_core') && !tgt.st.stunned && !tgt.st.frozen;
+    tgt.hp = 0; tgt.down = true; tgt.st = {}; tgt.shield = 0;
+    if (volatile) for (const c of this.alive('card')) this.enemyHit(tgt, c, tgt.P.volatile_core.x, true);
   }
   heal(u, amount) {
     if (u.down || amount <= 0) return 0;
+    if (u.side === 'card') {
+      const br = this.standing('bloodrot'); if (br) amount *= br.card_heal_x;
+      const cut = this.ext(u, 'heal_cut'); if (cut !== null) amount *= cut;
+    }
     const h = Math.min(u.maxHp - u.hp, F.healAmount(this.cfg, amount, !!u.st.burn)); u.hp += h;
-    if (u.side === 'enemy') this.S.healedEnemy += h; return h;
+    if (u.side === 'enemy') this.S.healedEnemy += h;
+    else if (h > 0) {
+      this.S.healedCards += h; this.healedStep += h; u.healedStep = (u.healedStep || 0) + h;
+      const m = this.extAny('heal_mirror'); if (m) this.heal(m.e, h * m.v);
+    }
+    return h;
   }
-  addShield(u, amount) { if (u.down) return; u.shield = Math.min(u.maxHp * this.cfg.v2_status.shielded.cap_maxhp, u.shield + amount); }
+  addShield(u, amount) {
+    if (u.down) return;
+    if (u.side === 'card') {
+      const br = this.standing('brittle'); if (br) amount *= br.card_shield_x;
+      const cal = this.extAny('card_shield_x'); if (cal) amount *= cal.v;
+    }
+    u.shield = Math.min(u.maxHp * this.cfg.v2_status.shielded.cap_maxhp, u.shield + amount);
+  }
 
-  // One hit of a card on an enemy (or on an ally when Confused). o: { x, critAdd, pierce, trueStrike, bonus, critBonus, vsX, shieldX }
+  // One hit of a card on an enemy (or on an ally when Confused). o: { x, critAdd, pierce, trueStrike, bonus, critBonus, vsX, shieldX, kind }
+  // kind: 'extra' (a Flurry second strike), 'splash' (a Cleaver splash), 'area' (an area hit): Mirror Hide cuts them.
   cardHit(src, tgt, o) {
     const cfg = this.cfg, R = cfg.v2_roles, ab = this.ablOf(src);
+    if (o.kind && tgt.mech.has('mirror_hide')) { const mx = o.kind === 'extra' ? tgt.P.mirror_hide.extra_x : tgt.P.mirror_hide.splash_x; if (!mx) return { dealt: 0, crit: false, miss: false }; o = { ...o, x: o.x * mx }; }
     this.S.attacks++;
     const marked = !!tgt.st.mark;
     if (!o.trueStrike && !marked) {
-      const miss = F.missChance(cfg.v2_hit.miss, tgt.evasion || 0, src.st.blinded ? cfg.v2_status.blinded.miss : 0, src.acc || 0);
+      const miss = F.missChance(cfg.v2_hit.miss, (tgt.evasion || 0) + this.ext(tgt, 'evade', 0), src.st.blinded ? cfg.v2_status.blinded.miss : 0, src.acc || 0);
       if (src.rng() < miss) { this.S.misses++; return { dealt: 0, crit: false, miss: true }; }
     }
     let mult = o.x * (cfg.v2_hit.roll_min + src.rng() * cfg.v2_hit.roll_span);
@@ -155,7 +235,7 @@ export class Battle {
     critC = F.critChance(0, critC, cfg.v2_stats.crt.cap + (src.st.focused ? src.st.focused.v : 0));
     const crit = canCrit && src.rng() < critC;
     if (crit) { this.S.crits++; mult *= src.critx + (src.role === 'striker' ? R.striker.critx_add * ab : 0) + (src.st.focused?.crd || 0); }
-    if (src.st.empowered) mult *= 1 + src.st.empowered.v * (tgt.mech.has('dispeller') ? cfg.v2_enemy.mechanics.dispeller.x : 1);
+    if (src.st.empowered) mult *= 1 + src.st.empowered.v * (tgt.mech.has('dispeller') ? tgt.P.dispeller.x : 1) * this.ext(tgt, 'emp_x', 1);
     if (src.st.weakened) mult *= 1 - src.st.weakened.v;
     if (src.st.chill) mult *= 1 - cfg.v2_status.chill.dmg * src.st.chill.stacks;
     mult *= this.vuln(tgt);
@@ -163,6 +243,7 @@ export class Battle {
     let bonus = o.bonus || 0;
     if (src.role === 'finisher' && tgt.hp / tgt.maxHp < R.finisher.line) bonus += R.finisher.bonus * ab;
     if (src.role === 'cleaver' && this.alive('enemy').length === 1) bonus += R.cleaver.hunt_bonus * ab;
+    if (tgt.weakRole && src.role === tgt.weakRole) bonus += cfg.v2_enemy.weak_role_x;
     mult *= 1 + bonus;
     if (o.vsX) mult *= o.vsX;
     const pierce = Math.max(o.pierce || 0, src.role === 'breaker' ? R.breaker.pierce : 0);
@@ -180,22 +261,25 @@ export class Battle {
     if (this.isBoss(e) && e.hp / e.maxHp < B.rage_at) m *= B.rage_x;
     if (e.st.weakened) m *= 1 - e.st.weakened.v;
     if (e.st.chill) m *= 1 - this.cfg.v2_status.chill.dmg * e.st.chill.stacks;
+    if (e.mech.has('pack')) m *= 1 + e.P.pack.atk_per_foe * this.alive('enemy').length;
     return m;
   }
-  enemyHit(e, tgt, x, area = false) {
+  enemyHit(e, tgt, x, area = false, o = {}) {
     const cfg = this.cfg; if (!tgt || tgt.down) return 0;
     if (e.st.blinded && e.rng() < cfg.v2_status.blinded.miss) { this.S.misses++; return 0; }
     if (!e.mech.has('true_strike')) {
       const dg = F.dodgeChance(tgt.ddg || 0, e.keen || 0, area ? cfg.v2_stats.ddg.area_x : 1);
       if (dg > 0 && tgt.rng() < dg) return 0;
     }
+    if (area && e.mech.has('swarm') && tgt.cls === 'support') x *= e.P.swarm.x;
     const raw = e.atk * x * (cfg.v2_hit.roll_min + e.rng() * cfg.v2_hit.roll_span) * this.enemyMult(e) * this.vuln(tgt);
-    const M = cfg.v2_enemy.mechanics;
-    const dealt = this.damage(e, tgt, raw, { pierce: e.mech.has('sunder') ? M.sunder.pierce : 0, shieldX: e.mech.has('shatter') ? M.shatter.shield_x : 1 });
+    const dealt = this.damage(e, tgt, raw, { pierce: e.mech.has('sunder') ? e.P.sunder.pierce : 0, shieldX: e.mech.has('shatter') ? e.P.shatter.shield_x : 1, ignoreShield: !!o.ignoreShield });
+    const lost = this.lastShieldLost;
+    if (e.mech.has('crush') && lost > 0 && !tgt.down) this.damage(e, tgt, lost * e.P.crush.x, { tick: true, ignoreShield: true, pierce: 1, kind: 'crush' });
     if (!area && !tgt.down) {
-      if (e.mech.has('frost_aura')) this.apply(e, tgt, 'chill', { stacks: M.frost_aura.chill });
-      if (e.mech.has('venom')) this.apply(e, tgt, 'poison', { stacks: M.venom.poison });
-      if (e.mech.has('burning')) this.apply(e, tgt, 'burn', { stacks: M.burning.burn });
+      if (e.mech.has('frost_aura')) this.apply(e, tgt, 'chill', { stacks: e.P.frost_aura.chill });
+      if (e.mech.has('venom')) this.apply(e, tgt, 'poison', { stacks: e.P.venom.poison });
+      if (e.mech.has('burning')) this.apply(e, tgt, 'burn', { stacks: e.P.burning.burn });
     }
     if (area && e.mech.has('slowing') && !tgt.down) this.apply(e, tgt, 'slowed', {});
     return dealt;
@@ -209,8 +293,8 @@ export class Battle {
   // ---------- the clock ----------
   run() { while (!this.ended) this.tickStep(); return this; }
   tickStep() {
-    this.step++;
-    for (const u of this.units) if (!u.down) u.meter += F.meterGain(this.speedOf(u));
+    this.step++; this.healedStep = 0;
+    for (const u of this.units) { u.healedStep = 0; if (!u.down) u.meter += F.meterGain(this.speedOf(u)); }
     const maxA = this.cfg.v2_speed.max_actions_per_step;
     for (let guard = 0; guard < this.units.length * maxA; guard++) {
       let best = null; for (const u of this.units) if (!u.down && u.meter >= 100 && (!best || u.meter > best.meter)) best = u;
@@ -228,19 +312,23 @@ export class Battle {
     return false;
   }
   endStep() {
-    const cfg = this.cfg, S = cfg.v2_status, M = cfg.v2_enemy.mechanics;
+    const cfg = this.cfg, S = cfg.v2_status;
     for (const u of this.units) {
       if (u.down) continue;
-      if (u.st.poison) this.damage(null, u, F.poisonTick(cfg, u.st.poison.stacks, this.refHp(u)) * this.vuln(u), { tick: true, ignoreShield: true, kind: 'poison' });
+      if (u.st.poison) {
+        this.damage(null, u, F.poisonTick(cfg, u.st.poison.stacks, this.refHp(u)) * this.vuln(u), { tick: true, ignoreShield: true, kind: 'poison' });
+        if (!u.down && u.mech.has('plaguebearer')) { const a = this.alive('card'); if (a.length) this.apply(u, a[Math.floor(u.rng() * a.length)], 'poison', { stacks: u.P.plaguebearer.poison }); }
+      }
       if (!u.down && u.st.burn) {
         const healer = u.mech.has('regrowth') || u.healer;
         this.damage(null, u, F.burnTick(cfg, u.st.burn.stacks, this.refHp(u)) * this.vuln(u) * (healer ? S.burn.vs_healer_x : 1), { tick: true, ignoreShield: true, kind: 'burn' });
         if (u.st.burn) { u.st.burn.stacks -= S.burn.decay; if (u.st.burn.stacks <= 0) delete u.st.burn; }
       }
       if (!u.down && u.mech.has('regrowth')) {
-        const ref = this.isBoss(u) ? cfg.v2_enemy.boss_heal_ref : u.maxHp;
-        this.heal(u, ref * M.regrowth.heal * (u.hp / u.maxHp < 0.5 ? M.regrowth.below_half_x : 1));
+        const R = u.P.regrowth; const ref = this.isBoss(u) ? cfg.v2_enemy.boss_heal_ref * (R.boss_heal ?? R.heal) : u.maxHp * R.heal;
+        this.heal(u, ref * (u.hp / u.maxHp < 0.5 ? R.below_half_x : 1));
       }
+      if (!u.down && u.mech.has('siphon') && this.healedStep > 0) this.heal(u, this.healedStep * u.P.siphon.x);
       for (const [k, s] of Object.entries(u.st)) if (s.until !== undefined && s.until <= this.step) this.remove(u, k);
     }
   }
@@ -250,12 +338,13 @@ export class Battle {
     u.turn++;
     if (u.side === 'enemy') {
       this.S.enemyTurns++;
-      if (u.mech.has('purify') && u.turn % this.cfg.v2_enemy.mechanics.purify.every === 0) this.cleanseNeg(u);
+      if (u.mech.has('purify') && u.turn % u.P.purify.every === 0) this.cleanseNeg(u);
       if (u.mech.has('elusive')) delete u.st.mark;
     }
     if (u.st.stunned || u.st.frozen) { this.remove(u, u.st.stunned ? 'stunned' : 'frozen'); this.S.controlSkips++; if (u.side === 'enemy') u.charging = false; return; }
     if (u.st.sleep) { this.S.controlSkips++; if (u.side === 'enemy') u.charging = false; return; }
     if (u.st.paralyzed && u.rng() < this.cfg.v2_status.paralyzed.fail) { this.S.controlSkips++; this.S.paraFail++; if (u.side === 'enemy') u.charging = false; return; }
+    if (u.side === 'card' && u.banned > 0) { u.banned--; this.S.bans++; return; }
     if (u.side === 'enemy') { this.S.enemyActs++; return this.enemyAct(u); }
     return this.cardAct(u);
   }
@@ -268,6 +357,7 @@ export class Battle {
     if (use) { this.S.actives++; this.doActive(u, tgt); u.charge = 0; u.held = 0; }
     else { this.S.basics++; this.doBasic(u, tgt); if (ready) u.held++; else u.charge++; }
     if (u.role === 'medic') { const h = this.mostHurt(); if (h) this.heal(h, this.cfg.v2_roles.medic.heal_after * this.ablOf(u) * h.maxHp); }
+    if (u.cls === 'support') this.lastSupport = u;
   }
   mostHurt() { const a = this.alive('card'); let b = null; for (const c of a) if (c.hp < c.maxHp && (!b || c.hp / c.maxHp < b.hp / b.maxHp)) b = c; return b; }
   bestAttacker(exclude) { let b = null; for (const c of this.alive('card')) if (c.cls === 'attacker' && c !== exclude && (!b || c.cp > b.cp)) b = c; return b; }
@@ -284,17 +374,27 @@ export class Battle {
     const wrong = this.confusedRedirect(u);
     if (wrong) { this.damage(u, wrong, u.cp * (u.cls === 'support' ? this.cfg.v2_support.basic_x : 1) * this.cfg.v2_status.confused.self_x); return; }
     if (u.cls === 'support') {
-      const x = u.role === 'artillery' ? R.artillery.basic_x : this.cfg.v2_support.basic_x;
-      const r = this.cardHit(u, tgt, { x, trueStrike: u.role === 'artillery' && R.artillery.true_strike });
+      let x = u.role === 'artillery' ? R.artillery.basic_x : this.cfg.v2_support.basic_x, ts = u.role === 'artillery' && R.artillery.true_strike;
+      if (u.role === 'artillery' && tgt.mech.has('rollback')) { x = tgt.P.rollback.artillery_basic_x; ts = tgt.P.rollback.artillery_true_strike; }
+      const r = this.cardHit(u, tgt, { x, trueStrike: ts });
       if (r.dealt > 0) this.consumeMark(tgt);
       if (u.role === 'spotter' && r.dealt > 0) this.apply(u, tgt, 'exposed', { value: R.spotter.basic_expose * ab });
       if (u.role === 'herald') { const b = this.bestAttacker(); if (b) this.apply(u, b, 'empowered', { value: R.herald.basic_empower * ab }); }
       return;
     }
     const r = this.cardHit(u, tgt, { x: 1 });
-    if (u.role === 'flurry' && u.rng() < R.flurry.extra_chance * ab && !tgt.down) this.cardHit(u, tgt, { x: R.flurry.extra_x });
-    if (u.role === 'cleaver') for (const e of this.alive('enemy')) if (e !== tgt) this.cardHit(u, e, { x: R.cleaver.splash * ab });
+    if (u.role === 'flurry' && u.rng() < R.flurry.extra_chance * ab && !tgt.down) this.cardHit(u, tgt, { x: R.flurry.extra_x, kind: 'extra' });
+    if (u.role === 'cleaver') for (const e of this.alive('enemy')) if (e !== tgt) this.cardHit(u, e, { x: R.cleaver.splash * ab, kind: 'splash' });
     delete u.st.empowered; this.consumeMark(tgt);
+  }
+
+  // A support smite on its target: Rollback (x0.5), Hitbox Desync (the next smite misses), Mirror (the next smite hits its caster).
+  smite(u, tgt, x, vsX) {
+    if (tgt.mech.has('rollback')) x *= tgt.P.rollback.smite_x;
+    if (this.ext(tgt, 'desync_smite')) { delete tgt.ext.desync_smite; this.S.misses++; return 0; }
+    if (this.ext(tgt, 'mirror_smite')) { delete tgt.ext.mirror_smite; this.damage(tgt, u, u.cp * x * vsX); return 0; }
+    const r = this.cardHit(u, tgt, { x, trueStrike: true, vsX }); this.consumeMark(tgt); tgt.lastSmite = r.dealt;
+    return r.dealt;
   }
 
   // The unique active. Attacker blocks shape the hit. Support blocks are effects.
@@ -329,6 +429,7 @@ export class Battle {
         default: throw new Error(`doActive: block ${b.k} not for attackers`);
       }
       if (this.alive('enemy').length === 1 && area) { o.bonus += area * cfg.v2_roles.cleaver.hunt_area_x; area = 0; }
+      if (o.n > 1 && tgt.mech.has('mirror_hide')) o.x *= tgt.P.mirror_hide.strikes_x;
       let dealt = 0, anyCrit = false;
       const ridersOn = (t, all) => { for (const b of rid) if ((!all || b.all) && u.rng() < Math.min(1, b.chance * (b.chance < 1 ? ab : 1))) this.apply(u, t, b.status, b); };
       for (let i = 0; i < o.n && !tgt.down; i++) {
@@ -336,7 +437,7 @@ export class Battle {
         if (!r.miss) ridersOn(tgt, false);
         if (r.crit) for (const b of onCrit) if (u.rng() < b.chance) this.apply(u, tgt, b.status, b);
       }
-      if (area) for (const e of this.alive('enemy')) if (e !== tgt) { const r = this.cardHit(u, e, { ...o, x: area, bonus: 0, vsX: null }); dealt += r.dealt; if (!r.miss) ridersOn(e, true); }
+      if (area) for (const e of this.alive('enemy')) if (e !== tgt) { const r = this.cardHit(u, e, { ...o, x: area, bonus: 0, vsX: null, kind: 'area' }); dealt += r.dealt; if (!r.miss) ridersOn(e, true); }
       if (lifesteal && dealt > 0) this.heal(u, lifesteal * dealt);
       if (guardUp && dealt > 0) this.addShield(u, guardUp * dealt);
       delete u.st.empowered; this.consumeMark(tgt);
@@ -344,23 +445,25 @@ export class Battle {
     }
     // support
     const critRoll = () => (u.rng() < u.crit ? u.critx : 1);
-    let smiteX = 0, vsX = 1, dealt = 0;
+    let smiteX = 0, vsX = 1, areaX = 0, cured = null;
     for (const b of B) {
       switch (b.k) {
-        case 'shield': { const t = this.policy.allyFor(this, u, 'shield'); if (t) this.addShield(t, b.v * ab * critRoll() * t.maxHp); break; }
+        case 'shield': { const t = b.to === 'cured' && cured && !cured.down ? cured : this.policy.allyFor(this, u, 'shield'); if (t) this.addShield(t, b.v * ab * critRoll() * t.maxHp); break; }
         case 'shield_all': { const c = critRoll(); for (const t of this.alive('card')) this.addShield(t, b.v * ab * c * t.maxHp); break; }
         case 'heal': { const t = this.policy.allyFor(this, u, 'heal'); if (t) this.heal(t, b.v * ab * critRoll() * t.maxHp); break; }
         case 'cleanse': for (const t of this.alive('card')) this.cleanseNeg(t); break;
+        case 'cure': cured = this.cure(u, b); break;
         case 'empower': { const t = this.policy.allyFor(this, u, 'empower'); if (t) this.apply(u, t, 'empowered', { value: b.v * ab * critRoll() }); break; }
         case 'rally': { const c = critRoll(); for (const t of this.alive('card')) if (t.cls === 'attacker') this.apply(u, t, 'empowered', { value: b.v * ab * c }); break; }
         case 'focus': { const t = this.policy.allyFor(this, u, 'empower'); if (t) this.apply(u, t, 'focused', { value: b.crit * ab, crd: b.crd * ab }); break; }
         case 'quicken': { const ts = b.all ? this.alive('card').filter(c => c.cls === 'attacker') : [this.policy.allyFor(this, u, 'empower')]; for (const t of ts) if (t) this.apply(u, t, 'quickened', { value: 1 + b.v * ab }); break; }
         case 'dispel': for (const s of BOONS) delete tgt.st[s]; tgt.shield = 0; break;
         case 'smite': smiteX = b.x * ab; break;
+        case 'area': areaX = b.x * ab; break;
         case 'vs_status': if (this.has(tgt, b.status)) vsX = b.x; break;
         case 'consume': {
           if (tgt.st.burn) { let s = tgt.st.burn.stacks, tot = 0; while (s > 0) { tot += F.burnTick(cfg, s, this.refHp(tgt)); s -= cfg.v2_status.burn.decay; }
-            delete tgt.st.burn; dealt += this.damage(u, tgt, tot * b.x * this.vuln(tgt), { tick: true, ignoreShield: true, kind: 'detonate' }); }
+            delete tgt.st.burn; this.damage(u, tgt, tot * b.x * this.vuln(tgt), { tick: true, ignoreShield: true, kind: 'detonate' }); }
           break; }
         case 'apply': {
           if (u.rng() >= Math.min(1, b.chance * (b.chance < 1 ? ab : 1))) break;
@@ -369,7 +472,12 @@ export class Battle {
         default: throw new Error(`doActive: block ${b.k} not for supports`);
       }
     }
-    if (smiteX) { const r = this.cardHit(u, tgt, { x: smiteX, trueStrike: true, vsX }); dealt += r.dealt; this.consumeMark(tgt); }
+    // Support area smite (P3): the smite on the target, the area value on every other foe. One foe: + area_one_foe_x of the area value.
+    if (areaX && !smiteX) throw new Error(`doActive: ${u.active.id}: an area block needs a smite block`);
+    const others = areaX ? this.alive('enemy').filter(e => e !== tgt) : [];
+    if (areaX && !others.length) smiteX += areaX * cfg.v2_support.area_one_foe_x;
+    if (smiteX) this.smite(u, tgt, smiteX, vsX);
+    for (const e of others) this.cardHit(u, e, { x: areaX, trueStrike: true, kind: 'area' });
   }
 
   // ---------- enemy AI ----------
@@ -378,7 +486,9 @@ export class Battle {
     if (this.isBoss(e)) {
       const B = cfg.v2_enemy.boss_moves; const k = e.turn % B.cycle;
       if (k === B.cycle - 1) { e.charging = true; return; }
-      if (k === 0) { e.charging = false; for (const c of this.alive('card')) this.enemyHit(e, c, B.cataclysm_x, true); return; }
+      if (k === 0) { e.charging = false; this.S.cataclysms++; for (const c of this.alive('card')) this.enemyHit(e, c, B.cataclysm_x, true);
+        if (e.mech.has('rollout')) for (const c of this.alive('card')) this.apply(e, c, 'weakened', { value: e.P.rollout.weaken }); return; }
+      if (e.moves2 && e.moves2.length && e.rng() < e.counterShare) return this.bossMove(e, e.moves2[Math.floor(e.rng() * e.moves2.length)]);
       const r = e.rng(); let t = 0; const pick = n => { t += B[n]; return r < t; };
       const single = r < B.strike + B.slam + B.drain + B.stun && !(r >= B.strike && r < B.strike + B.slam);
       if (single) { const w = this.confusedRedirect(e); if (w) { this.damage(e, w, e.atk * cfg.v2_status.confused.self_x * this.enemyMult(e)); return; } }
@@ -392,15 +502,17 @@ export class Battle {
       return;
     }
     const P = cfg.v2_dungeon.pool_moves;
-    if (e.charge) {
+    if (e.cataclysm) {
       const k = e.turn % P.cycle;
       if (k === P.cycle - 1) { e.charging = true; return; }
-      if (k === 0) { e.charging = false; for (const c of this.alive('card')) this.enemyHit(e, c, P.cataclysm_x, true); return; }
+      if (k === 0) { e.charging = false; this.S.cataclysms++; for (const c of this.alive('card')) this.enemyHit(e, c, P.cataclysm_x, true); return; }
     }
+    if (e.mech.has('bulwark') && e.turn % e.P.bulwark.every === 0) { this.addShield(e, e.maxHp * e.P.bulwark.guard); return; }
     const tot = e.moves.reduce((s, m) => s + m[1], 0); let r = e.rng() * tot, mv = e.moves[0][0];
     for (const [m, w] of e.moves) { r -= w; if (r < 0) { mv = m; break; } }
     const wrong = this.confusedRedirect(e);
-    if (wrong && ['strike', 'heavy', 'flurry', 'drain', 'stun', 'poison'].includes(mv)) { this.damage(e, wrong, e.atk * cfg.v2_status.confused.self_x * this.enemyMult(e)); return; }
+    if (wrong && SINGLE_MOVES.includes(mv)) { this.damage(e, wrong, e.atk * cfg.v2_status.confused.self_x * this.enemyMult(e)); return; }
+    const V = cfg.v2_dungeon.moves_v2;
     switch (mv) {
       case 'strike': return this.enemyHit(e, this.pickCard(e), 1);
       case 'heavy': return this.enemyHit(e, this.pickCard(e), P.heavy_x);
@@ -413,8 +525,71 @@ export class Battle {
       case 'guard': this.addShield(e, e.maxHp * P.guard); return;
       case 'enrage': this.apply(e, e, 'enraged', { value: cfg.v2_status.enraged.x, dur: cfg.v2_status.enraged.dur }); return;
       case 'curse': { const c = this.pickCard(e); if (c) this.apply(e, c, 'weakened', { value: P.curse_weaken }); return; }
+      // monsters-v2.md 3.1 status moves (v2_dungeon.moves_v2)
+      case 'hellfire': { const c = this.pickCard(e); this.enemyHit(e, c, V.hellfire.x); if (c && !c.down) this.apply(e, c, 'burn', { stacks: V.hellfire.burn }); return; }
+      case 'frost_punch': { const c = this.pickCard(e); this.enemyHit(e, c, V.frost_punch.x); if (c && !c.down) this.apply(e, c, 'chill', { stacks: V.frost_punch.chill }); return; }
+      case 'squeeze': { const c = this.pickCard(e); this.enemyHit(e, c, V.squeeze.x); if (c && !c.down) this.apply(e, c, V.squeeze.status, {}); return; }
+      case 'rattle': { const c = this.pickCard(e); if (c) this.apply(e, c, 'exposed', { value: V.rattle.exposed }); return; }
+      case 'infect': { const c = this.pickCard(e); this.enemyHit(e, c, V.infect.x); if (c && !c.down) { this.apply(e, c, 'poison', { stacks: V.infect.poison }); c.ext.heal_cut = { v: 0, until: this.step + V.infect.no_heal }; } return; }
       case 'idle': return;
       default: throw new Error(`enemyAct: move ${mv}`);
+    }
+  }
+
+  // ---------- named boss counter moves (v2_bosses.*.moves) ----------
+  bossTarget(e, m) {
+    const a = this.alive('card'); if (!a.length) return null;
+    const sup = a.filter(c => c.cls === 'support'); const low = l => l.reduce((b, c) => (!b || c.hp / c.maxHp < b.hp / b.maxHp ? c : b), null);
+    switch (m.tgt || 'random') {
+      case 'random': return this.pickCard(e);
+      case 'lowest': return low(a);
+      case 'support': return sup.length ? sup[Math.floor(e.rng() * sup.length)] : this.pickCard(e);
+      case 'weakest_support': return sup.length ? low(sup) : this.pickCard(e);
+      case 'strongest_attacker': return this.bestAttacker() || this.pickCard(e);
+      case 'empowered': { const em = a.filter(c => c.st.empowered); return em.length ? em.reduce((b, c) => (c.cp > b.cp ? c : b)) : this.pickCard(e); }
+      case 'shielded': case 'biggest_shield': { const s = a.filter(c => c.shield > 0); return s.length ? s.reduce((b, c) => (c.shield > b.shield ? c : b)) : this.pickCard(e); }
+      case 'frozen': { const f = a.filter(c => c.st.frozen); return f.length ? f[0] : this.pickCard(e); }
+      case 'last_support': return this.lastSupport && !this.lastSupport.down ? this.lastSupport : this.pickCard(e);
+      default: throw new Error(`bossTarget: ${m.tgt}`);
+    }
+  }
+  bossMove(e, m) {
+    const cfg = this.cfg, ref = cfg.v2_enemy.boss_heal_ref;
+    this.S.counterMoves[m.id] = (this.S.counterMoves[m.id] || 0) + 1;
+    const targets = () => { const a = this.alive('card'); if (m.tgt === 'all') return a; if (m.tgt === 'n') { const p = [...a], o = []; while (o.length < m.n && p.length) o.push(p.splice(Math.floor(e.rng() * p.length), 1)[0]); return o; } const t = this.bossTarget(e, m); return t ? [t] : []; };
+    switch (m.k) {
+      case 'hit': {
+        const w = this.confusedRedirect(e); if (w) { this.damage(e, w, e.atk * cfg.v2_status.confused.self_x * this.enemyMult(e)); return; }
+        const t = this.bossTarget(e, m); if (!t) return;
+        const x = m.x * (m.vs_shielded && t.shield > 0 ? m.vs_shielded : 1) * (m.vs_frozen && t.st.frozen ? m.vs_frozen : 1);
+        for (let i = 0; i < (m.n || 1) && !t.down; i++) this.enemyHit(e, t, x, false, { ignoreShield: m.ignore_shield });
+        if (t.down) { if (m.enrage_on_kill) this.apply(e, e, 'enraged', { value: cfg.v2_enemy.boss_moves.enrage_x, dur: cfg.v2_enemy.boss_moves.enrage_dur }); return; }
+        if (m.apply) this.apply(e, t, m.apply.status, m.apply);
+        if (m.heal_cut) t.ext.heal_cut = { v: m.heal_cut.x, until: this.step + m.heal_cut.dur };
+        if (m.decay && t.healedStep > 0) this.damage(e, t, t.healedStep, { tick: true, ignoreShield: true, pierce: 1, kind: 'decay' });
+        return;
+      }
+      case 'area': for (const c of this.alive('card')) this.enemyHit(e, c, m.x * (m.vs_role?.[c.role] || 1) * (m.vs_cls?.[c.cls] || 1) * (m.vs_last_debuffer && c === e.lastDebuffer ? m.vs_last_debuffer : 1), true); return;
+      case 'apply': for (const t of targets()) this.apply(e, t, m.status, m); return;
+      case 'guard': this.addShield(e, m.v * ref); return;
+      case 'heal': this.heal(e, m.v * ref); return;
+      case 'cleanse_self': { const list = m.statuses || cfg.v2_status.negative; for (const s of list) if (e.st[s]) { this.remove(e, s); e.cleared = (e.cleared || 0) + 1; } return; }
+      case 'cash_out': this.heal(e, ref * Math.min(m.max, m.per * (e.cleared || 0))); e.cleared = 0; return;
+      case 'enrage': this.apply(e, e, 'enraged', { value: m.x, dur: m.dur }); return;
+      case 'spiral': { const n = Math.min(m.max, e.blockedN || 0); if (n) this.apply(e, e, 'enraged', { value: 1 + m.per * n, dur: m.dur }); return; }
+      case 'evade': e.ext.evade = { v: m.v, until: this.step + m.dur }; return;
+      case 'charge': for (const c of this.alive('card')) if ((!m.role || c.role === m.role) && (!m.cls || c.cls === m.cls)) c.charge = Math.max(0, c.charge - m.n); return;
+      case 'strip': for (const c of this.alive('card')) delete c.st[m.status]; return;
+      case 'strip_shields': for (const c of this.alive('card')) { const lost = c.shield; c.shield = 0; if (m.crush && lost > 0) this.damage(e, c, lost * m.crush, { tick: true, ignoreShield: true, pierce: 1, kind: 'crush' }); } return;
+      case 'skip': { const p = this.alive('card'); for (let i = 0; i < m.n && p.length; i++) { const c = p.splice(Math.floor(e.rng() * p.length), 1)[0]; c.banned = (c.banned || 0) + 1; } return; }
+      case 'extra_action': e.meter += 100; return;
+      case 'brood': e.brood = Math.min(e.P.brood?.max ?? 5, (e.brood || 0) + m.n); return;
+      case 'state': e.ext[m.key] = { v: m.v, until: this.step + m.dur }; return;
+      case 'undo_smite': if (e.lastSmite > 0) { this.heal(e, e.lastSmite); e.lastSmite = 0; } return;
+      case 'desync_smite': e.ext.desync_smite = { v: 1, until: Infinity }; return;
+      case 'mirror_smite': e.ext.mirror_smite = { v: 1, until: Infinity }; return;
+      case 'siphon': if (this.healedStep > 0) this.heal(e, this.healedStep); return;
+      default: throw new Error(`bossMove: kind ${m.k}`);
     }
   }
 }

@@ -13,7 +13,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeCard, classOf, ROLES } from './cards.mjs';
-import { huntDay, dungeonRun, gauntletRun, makeFoe } from './modes.mjs';
+import { huntDay, dungeonRun, gauntletRun, makeFoe, setFoeMech } from './modes.mjs';
 import { Battle } from './engine.mjs';
 import { POLICIES } from './policy.mjs';
 import { HERE, loadFixture, mkRng, hash, mean, median, table, fmt, pct, ratio } from './util.mjs';
@@ -79,7 +79,7 @@ export function room(cfg, squad, kind, floor, mech, runs, seed) {
   const n = kind === 'horde' ? 4 : 1; let s = 0, won = 0;
   for (let i = 0; i < runs; i++) {
     const rng = mkRng(hash(seed, 'room', kind, floor, i));
-    const foes = Array.from({ length: n }, () => { const f = makeFoe(cfg, floor, kind === 'horde' ? 3 : 5, kind, rng); f.mech = mech ? [mech] : []; f.healer = f.mech.includes('regrowth') || f.moves.some(([mv]) => mv === 'regenerate' || mv === 'drain'); return f; });
+    const foes = Array.from({ length: n }, () => setFoeMech(makeFoe(cfg, floor, kind === 'horde' ? 3 : 5, kind, rng), mech ? [mech] : []));
     const tot = foes.reduce((a, f) => a + f.maxHp, 0);
     const b = new Battle(cfg, { cards: squad.map(c => ({ ...c, hp: c.maxHp, shield: 0 })), enemies: foes, mode: 'dungeon', policy: POLICIES.best, seed: hash(seed, 'room', kind, i) }).run();
     if (b.ended === 'won') { won++; s += 1 + (b.cap - b.step) / b.cap; }
