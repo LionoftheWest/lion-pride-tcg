@@ -32,7 +32,8 @@ export function guardRoom(cfg, squad, floor, N, runs, seed) {
 }
 
 // The pure part: cuts, ranks and the checks from a score matrix O[profile][team][content] (content = hunt|inv or guard|inv).
-export function counterMatrix(O, { bosses, teams, mythic = false, capMin = 0.65 }) {
+// The cap counts the Hunt boss only: the Dungeon guardian is the hard final room (Nathan 2026-10-19). accepted = 'team/boss' pairs that Nathan accepted as edge cases.
+export function counterMatrix(O, { bosses, teams, mythic = false, capMin = 0.65, accepted = [] }) {
   const cells = { hunt: INVS.map(i => `hunt|${i}`), guard: INVS.map(i => `guard|${i}`) };
   const med = (p, c) => median(teams.map(t => O[p][t][c])) || 1e-9;
   const V = {};
@@ -45,9 +46,11 @@ export function counterMatrix(O, { bosses, teams, mythic = false, capMin = 0.65 
   for (const t of teams) { const en = [];
     for (const p of bosses) for (const mode of ['hunt', 'guard']) en.push({ p, mode, cut: V[p][mode].cut[t], rank: V[p][mode].rank[t] });
     per[t] = { low: en.filter(x => x.cut <= RULE_A).sort((a, b) => a.cut - b.cut), near: en.filter(x => x.cut > RULE_A && x.cut <= 0.85), top: en.filter(x => x.rank <= TOP).sort((a, b) => a.rank - b.rank), min: en.reduce((m, x) => (x.cut < m.cut ? x : m)) }; }
-  const capFails = mythic ? [] : teams.flatMap(t => bosses.flatMap(p => ['hunt', 'guard'].filter(m => V[p][m].cut[t] < capMin).map(m => `${t} ${p}/${m === 'hunt' ? 'H' : 'D'} ${V[p][m].cut[t].toFixed(2)}`)));
+  const below = mythic ? [] : teams.flatMap(t => bosses.filter(p => V[p].hunt.cut[t] < capMin).map(p => ({ t, p, x: V[p].hunt.cut[t] })));
+  const capFails = below.filter(b => !accepted.includes(`${b.t}/${b.p}`)).map(b => `${b.t} ${b.p}/H ${b.x.toFixed(2)}`);
+  const capAccepted = below.filter(b => accepted.includes(`${b.t}/${b.p}`)).map(b => `${b.t} ${b.p}/H ${b.x.toFixed(2)}`);
   const checks = [
-    { id: 'cap', what: `counter cap: no Normal or Heroic boss cuts a team below x${capMin}${mythic ? ' (Mythic: not checked)' : ''}`, fails: capFails },
+    { id: 'cap', what: `counter cap: no Normal or Heroic Hunt boss cuts a team below x${capMin} (the Dungeon guardian is the hard final room: not checked)${mythic ? ' (Mythic: not checked)' : ''}${capAccepted.length ? `; accepted edge cases: ${capAccepted.join(', ')}` : ''}`, fails: capFails },
     { id: 'A', what: `rule A: every team has at least 2 enemies (boss x Hunt or Dungeon) at x${RULE_A} or lower`, fails: teams.filter(t => per[t].low.length < 2) },
     { id: 'B', what: `rule B: every team is top ${TOP} against at least 2 enemies`, fails: teams.filter(t => per[t].top.length < 2) },
   ].map(c => ({ ...c, ok: !c.fails.length }));
@@ -74,7 +77,7 @@ export function monsters(cfg0, { runs = 200, seed = 1, tier = 'Heroic', teamList
     }
   }
   const teams = TM.map(t => t.id), name = Object.fromEntries(TM.map(t => [t.id, t.name]));
-  const R = counterMatrix(O, { bosses: BK, teams, mythic: tier === 'Mythic', capMin: cfg.v2_enemy.counter_cut_min });
+  const R = counterMatrix(O, { bosses: BK, teams, mythic: tier === 'Mythic', capMin: cfg.v2_enemy.counter_cut_min, accepted: cfg.v2_enemy.counter_cap_accepted || [] });
   const bn = p => cfg.v2_bosses[p].name.replace(/^The /, '');
   const cell = (p, m, t) => { const x = R.V[p][m], c = x.cut[t].toFixed(2), r = x.rank[t]; return `${x.cut[t] < 0.8 ? `**${c}**` : c}${r <= TOP ? ` #${r}` : ''}`; };
 

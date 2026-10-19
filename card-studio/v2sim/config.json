@@ -550,7 +550,12 @@
         "control_add": 1
       }
     },
-    "_weak_role": "A \"Weak to: role\" week: cards of that role deal +weak_role_x. weak_role_rules overrides a role: a Controller week boosts control, not damage (Nathan 2026-10-19): damage_x 0, and each control of a Controller on the boss lasts control_add more boss action."
+    "_weak_role": "A \"Weak to: role\" week: cards of that role deal +weak_role_x. weak_role_rules overrides a role: a Controller week boosts control, not damage (Nathan 2026-10-19): damage_x 0, and each control of a Controller on the boss lasts control_add more boss action.",
+    "counter_cap_accepted": [
+      "field-hospital/hydra",
+      "open-season/warlord"
+    ],
+    "_counter_cap": "The counter cap (counter_cut_min x0.65) applies to the Normal and Heroic Hunt boss only (Nathan 2026-10-19). The Dungeon guardian is the hard final room, so the cap does not apply to it. counter_cap_accepted = team/boss Hunt pairs that Nathan accepted as edge cases: Field Hospital vs the Patch-Note Hydra (x0.62, its designed weakness) and Open Season vs the Rage-Quit Warlord (x0.65, on the line)."
   },
   "v2_hunt": {
     "round_cap": 40,
@@ -2004,24 +2009,28 @@
       "mythic_resists": [
         "mark"
       ],
-      "hp_factor": 1.35,
+      "hp_factor": 0.87,
       "counter_share": 0.4,
       "moves": [
         {
-          "id": "hitbox_desync",
-          "k": "desync_smite"
+          "id": "lag_hit",
+          "k": "hit",
+          "x": 1,
+          "tgt": "random"
         },
         {
-          "id": "mirror",
-          "k": "mirror_smite"
+          "id": "packet_storm",
+          "k": "area",
+          "x": 0.35
         },
         {
-          "id": "ping_spike",
-          "k": "charge",
-          "role": "artillery",
-          "n": 1
+          "id": "lag_spike",
+          "k": "hit",
+          "x": 1.5,
+          "tgt": "random"
         }
-      ]
+      ],
+      "_approx": "Nathan 2026-10-19: its rule alone counters Artillery. The counter moves are generic (a hit, an area hit, a heavy hit): the smite moves (Rollback heal, Hitbox Desync, Mirror) and Ping Spike took Party Games to x0.44. hp_factor 0.87 measured with these moves."
     },
     "vampire": {
       "name": "Grind Vampire",
@@ -2597,7 +2606,7 @@
       "_approx": "Cauterize risk is a display rule (Burn halves its heal, as for every heal), so the Hydra has 3 counter moves."
     },
     "_guard": "A boss Guard (Rattle, Dig In, Ice Wall, Hold: \"Guard 10%\") is 10% of boss_heal_ref (300), not of the boss max HP: the Hunt heals use the same reference (a guard of 10% of 136,000 HP would block a whole day).",
-    "_tuning": "Nathan approved 2026-10-19 (the counter cap x0.65): Hydra Regrow 3% -> 1.5% and Regrowth 0.6% -> 0.4%; Netcode loses its Rollback heal move; Grind Vampire Bloodrot rule 40% -> 60% and its Bloodrot move 10% for 8 steps -> 40% for 4 steps; AFK Warzombie Infect no-heal 8 -> 4 steps and its Undying echo 25% -> 10%."
+    "_tuning": "Nathan approved 2026-10-19 (the counter cap x0.65): Hydra Regrow 3% -> 1.5% and Regrowth 0.6% -> 0.4%; Netcode loses its Rollback heal move; Grind Vampire Bloodrot rule 40% -> 60% and its Bloodrot move 10% for 8 steps -> 40% for 4 steps; AFK Warzombie Infect no-heal 8 -> 4 steps and its Undying echo 25% -> 10%. Netcode: all 3 counter moves are generic (Nathan 2026-10-19)."
   },
   "v2_boss_rules": {
     "_rule": "Numbers of the boss rules (signatures, Mythic adds). A rule that changes the cards (bloodrot, brittle, time_lock) works while a unit with it stands. A rule that changes hits on the unit (rollback, mirror_hide, plated, fade) works on that unit.",

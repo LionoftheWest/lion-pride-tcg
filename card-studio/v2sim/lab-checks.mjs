@@ -162,10 +162,11 @@ export function labChecks(cfg0) {
     out.push(C('gauntlet.depth', 'a 0-star weekly squad reaches floor 4+ on average (the Dungeon foes gave about 1.2)', '>= 4', +fl.toFixed(2), fl >= 4)); }
   { const teams = ['t0', 't1', 't2', 't3'], O = { neutral: {}, b1: {} };
     for (const t of teams) { O.neutral[t] = { 'hunt|casual': 100, 'hunt|active': 100, 'guard|casual': 1, 'guard|active': 1 }; O.b1[t] = { ...O.neutral[t] }; }
-    O.b1.t0 = { 'hunt|casual': 60, 'hunt|active': 60, 'guard|casual': 1, 'guard|active': 1 };
-    const capMin = cfg.v2_enemy.counter_cut_min, h = counterMatrix(O, { bosses: ['b1'], teams, capMin }), m = counterMatrix(O, { bosses: ['b1'], teams, capMin, mythic: true });
-    const cap = c => c.checks.find(x => x.id === 'cap').ok;
-    out.push(C('counter.cap', 'counter cap check: a Heroic cut x0.60 FAILS, the same cut at Mythic is allowed', 'FAIL, PASS', `${cap(h) ? 'PASS' : 'FAIL'}, ${cap(m) ? 'PASS' : 'FAIL'}`, !cap(h) && cap(m))); }
+    O.b1.t0 = { 'hunt|casual': 60, 'hunt|active': 60, 'guard|casual': 1, 'guard|active': 1 }; O.b1.t1 = { ...O.b1.t1, 'guard|casual': 0.5, 'guard|active': 0.5 };
+    const capMin = cfg.v2_enemy.counter_cut_min, mk = o => counterMatrix(O, { bosses: ['b1'], teams, capMin, ...o });
+    const cap = c => c.checks.find(x => x.id === 'cap'); const h = cap(mk({})), m = cap(mk({ mythic: true })), a = cap(mk({ accepted: ['t0/b1'] }));
+    const r = `${h.ok ? 'PASS' : 'FAIL'} (${h.fails.join(';')}), Mythic ${m.ok ? 'PASS' : 'FAIL'}, accepted ${a.ok ? 'PASS' : 'FAIL'}`;
+    out.push(C('counter.cap', 'counter cap check: a Heroic Hunt cut x0.60 FAILS, a guardian cut x0.50 does not count, Mythic and an accepted pair pass', 'FAIL (t0 only), Mythic PASS, accepted PASS', r, !h.ok && h.fails.length === 1 && h.fails[0].startsWith('t0 ') && m.ok && a.ok)); }
 
   // ---------- 7. Flurry ----------
   { const f = cfg.v2_roles.flurry, pc = `${Math.round(f.extra_chance * 100)}%`;
