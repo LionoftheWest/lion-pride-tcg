@@ -11,6 +11,8 @@ node --test card-studio/v2sim/*.test.mjs
 ```
 
 Experiments: `fairness`, `shapes`, `survival`, `stat-weights`, `speed`, `statuses`, `archetypes`, `pp` (the PP table).
+`teams` (in `teams.mjs`) runs the 20 "no meta" teams of `teams.json` with the 130 approved Set 1 actives in the Hunt (a neutral boss and 18 counter bosses), the Dungeon (run, horde, guardian and 18 counter guardians) and the Gauntlet, at casual and active, and reports 5 no-meta checks (a strong somewhere, b has a weakness, c not best everywhere, d overall within x0.8-x1.2 of the median team, e casual teams clear floor 3) and a team x content matrix. About 30 s. A what-if on one card: `--patch '{"v2_templates":{"s1.<card key>":{...}}}'`.
+  The actives are UNRELEASED card designs and stay PRIVATE: `teams` reads them from `$V2SIM_ACTIVES`, else from `../discord-card-ideas/set1-actives.json` beside the repo. Never commit that file. The unit tests use the synthetic `teams-test-fixture.json`, so `node --test` passes without it.
 `targets` (in `targets.mjs`) measures every tuning target of 2026-10-18 in about 10 s and writes a PASS/FAIL table plus a JSON file. `--tag name` adds a suffix to the report names (for before/after).
 Each report goes to `card-studio/out/v2sim/<experiment>.md` (the `out/` folder is not committed). The seeds are fixed, so a run repeats.
 On a laptop, `all` takes about 35 s. The slowest experiment (`stat-weights`) takes about 17 s.
@@ -28,6 +30,7 @@ On a laptop, `all` takes about 35 s. The slowest experiment (`stat-weights`) tak
 | `policy.mjs` | `auto` (the Auto button) and `best` (holds payoffs for their status, kill targets, control on a Charging boss) |
 | `modes.mjs` | The Hunt boss and a Hunt day, Dungeon foes, floors and runs, the Gauntlet |
 | `experiments.mjs`, `run.mjs` | The 7 experiments and the CLI |
+| `teams.json`, `teams.mjs`, `teams-test-fixture.json` | The 20 test teams (card keys only), the `teams` experiment, and a synthetic fixture (made-up cards and teams) for the unit tests. The real actives are in the private notes folder |
 | `checks.mjs`, `*.test.mjs` | Invariant checks (formulas, meter, statuses, immunity, fuzz) and planted faults |
 
 ## What the model does
