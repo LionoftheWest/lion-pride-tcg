@@ -14,6 +14,7 @@
  *   LAB_LOCK_OWNER=<name> LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/fight-timing.mjs
  *   CANDIDATE=../tcg-bot/supabase/x.sql LAB_LOCK_OWNER=<name> LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/fight-timing.mjs [call ...]
  *   ... fight-timing.mjs combat_effect combat_effect_hit hunt_fight_state dungeon_fight_state    the effect engine alone (opt-in, F-3 PR 4b: after the file is applied)
+ *   ... fight-timing.mjs combat_v2_advance combat_v2_turn_order    combat v2 alone (opt-in, PR E2: after combat_v2_turn_meter.sql is applied)
  *   TIMING_BATCH=30 TIMING_REQUESTS=10    the size of a batch and the number of requests (default 30 and 10 = 300 calls)
  * LOCAL copy only (docs/foundations.md "Performance and cost budget" rule 2). Each request takes the shared lock when LAB_LOCK_OWNER is set (lab-lib.mjs).
  */
@@ -81,8 +82,24 @@ const ENGINE_CALLS = {
   hunt_fight_state: [HUNT, "hunt_fight_state(v_h, v_p, (now() at time zone 'America/Denver')::date, 82, 24)"],
   dungeon_fight_state: [DUNGEON, "dungeon_fight_state((select x from dungeon_runs x where x.player_id = v_p and x.status = 'active'), 24, null)"],
 };
+// Combat v2 alone (PR E2, combat_v2_turn_meter.sql). OPT-IN like the engine calls: they exist only after the file is applied. A Hunt-sized v2 state
+// (8 cards of 8 roles with Speed points and tempo statuses, one boss of speed 100, meters 0): combat_v2_advance runs several steps to the first actor.
+const V2_STATE = `st := '{"v": 2, "mode": "hunt", "round": 0, "clock": 0, "squad": [1, 2, 3, 4, 5, 6, 7, 8], "marks": {}, "facts": {"passives": [], "cards": {}}, "ext": {},
+    "cards": {"1": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "breaker", "spd": 3, "status": {}},
+              "2": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "striker", "spd": 0, "status": {"slowed": {"until": 5}}},
+              "3": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "flurry", "spd": 10, "status": {}},
+              "4": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "finisher", "spd": 2, "status": {"chill": {"stacks": 2, "until": 3}}},
+              "5": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "survivor", "spd": 0, "status": {}},
+              "6": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "cleaver", "spd": 5, "status": {"quickened": {"until": 9}}},
+              "7": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "warden", "spd": 4, "status": {}},
+              "8": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "medic", "spd": 0, "status": {}}},
+    "enemies": [{"hp": 70000, "max": 70000, "meter": 0, "charge": 0, "speed": 100, "status": {}}]}'::jsonb;`;
+const V2_CALLS = {
+  combat_v2_advance: [V2_STATE, 'combat_v2_advance(st)'],
+  combat_v2_turn_order: [V2_STATE, 'combat_v2_turn_order(st, 6)'],
+};
 const DEFAULT_CALLS = Object.keys(CALLS);
-Object.assign(CALLS, ENGINE_CALLS);
+Object.assign(CALLS, ENGINE_CALLS, V2_CALLS);
 
 const request = (call, parity) => {
   const [fixture, expr] = CALLS[call];
