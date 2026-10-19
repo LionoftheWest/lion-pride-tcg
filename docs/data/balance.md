@@ -2149,7 +2149,7 @@ Shape: `object { artillery: object { basic_x: number, true_strike: boolean }, br
   },
   "cleaver": {
     "splash": 0.6,
-    "hunt_bonus": 0.1,
+    "hunt_bonus": 0.05,
     "hunt_area_x": 0.2
   },
   "spotter": {
@@ -2261,9 +2261,9 @@ Shape: `object { abl: object { pct: number }, acc: object { pct: number }, atk: 
 
 ### v2_status
 
-Combat v2: the numbers of the 16 statuses and the enemy state Enraged (plan 6). Durations count clock steps: dur on an enemy, dur_card on a card (cards act less often). Poison: each stack ticks tick x ref HP at step end; stack burst_at bursts for burst x ref HP, then Poison resets. Burn: each stack ticks tick_x x the Poison tick then loses decay stacks, max stacks max; a Burning unit heals heal_x; x vs_healer_x vs a healer. Stunned / Frozen: skip the next action (max_life = the safety limit of steps). Paralyzed: each action fails with fail. Blinded: +miss. Confused: chance that a single attack hits a wrong target (self_x of its attack). Slowed / Quickened: speed x x. Chill: each stack -dmg damage and -spd speed; at freeze_at stacks Frozen. Exposed / Weakened: value caps cap. Shielded: at most cap_maxhp x max HP. Empowered: at most cap. Enraged: x x for dur steps. hunt_ref_hp = the ref HP of the Hunt boss (the Dungeon uses the foe max HP). The family, the stacking rule, the icon and the rule text of each status are in the statuses table. Nothing reads this key until combat_v2 is on.
+Combat v2: the numbers of the 16 statuses and the enemy state Enraged (plan 6). Durations count clock steps: dur on an enemy, dur_card on a card (cards act less often). Poison: each stack ticks tick x ref HP at step end; stack burst_at bursts for burst x ref HP, then Poison resets. Burn: each stack ticks tick_x x the Poison tick then loses decay stacks, max stacks max; a Burning unit heals heal_x; x vs_healer_x vs a healer. Stunned / Frozen: skip the next action (max_life = the safety limit of steps). Paralyzed: each action fails with fail. Blinded: +miss. Confused: chance that a single attack hits a wrong target (self_x of its attack). Slowed / Quickened: speed x x. Chill: each stack -dmg damage and -spd speed; at freeze_at stacks Frozen. Exposed / Weakened: value caps cap. Shielded: at most cap_maxhp x max HP. Empowered: at most cap. Empowered stack: false = a new Empower replaces a lower one (today), true = Empowers add up to the cap (the P4 what-if of the teams test, a Combat Lab item). Enraged: x x for dur steps. hunt_ref_hp = the ref HP of the Hunt boss (the Dungeon uses the foe max HP). The family, the stacking rule, the icon and the rule text of each status are in the statuses table. Nothing reads this key until combat_v2 is on.
 
-Shape: `object { blinded: object { dur: number, dur_card: number, miss: number }, burn: object { decay: number, heal_x: number, ignore_shield: boolean, max: number, tick_x: number, vs_healer_x: number }, chill: object { dmg: number, dur: number, dur_card: number, freeze_at: number, spd: number }, confused: object { chance: number, dur: number, dur_card: number, self_x: number }, empowered: object { cap: number }, enraged: object { dur: number, x: number }, exposed: object { cap: number, dur: number, dur_card: number }, focused: object { dur: number }, frozen: object { max_life: number, max_life_card: number }, hunt_ref_hp: number, mark: object { dur: number }, paralyzed: object { dur: number, dur_card: number, fail: number }, poison: object { burst: number, burst_at: number, dur: number, dur_card: number, ignore_shield: boolean, tick: number }, quickened: object { dur: number, dur_card: number, x: number }, shielded: object { cap_maxhp: number }, sleep: object { dur: number, dur_card: number }, slowed: object { dur: number, dur_card: number, x: number }, stunned: object { max_life: number, max_life_card: number }, weakened: object { cap: number, dur: number, dur_card: number } }`
+Shape: `object { blinded: object { dur: number, dur_card: number, miss: number }, burn: object { decay: number, heal_x: number, ignore_shield: boolean, max: number, tick_x: number, vs_healer_x: number }, chill: object { dmg: number, dur: number, dur_card: number, freeze_at: number, spd: number }, confused: object { chance: number, dur: number, dur_card: number, self_x: number }, empowered: object { cap: number, stack: boolean }, enraged: object { dur: number, x: number }, exposed: object { cap: number, dur: number, dur_card: number }, focused: object { dur: number }, frozen: object { max_life: number, max_life_card: number }, hunt_ref_hp: number, mark: object { dur: number }, paralyzed: object { dur: number, dur_card: number, fail: number }, poison: object { burst: number, burst_at: number, dur: number, dur_card: number, ignore_shield: boolean, tick: number }, quickened: object { dur: number, dur_card: number, x: number }, shielded: object { cap_maxhp: number }, sleep: object { dur: number, dur_card: number }, slowed: object { dur: number, dur_card: number, x: number }, stunned: object { max_life: number, max_life_card: number }, weakened: object { cap: number, dur: number, dur_card: number } }`
 
 ```json
 {
@@ -2342,7 +2342,8 @@ Shape: `object { blinded: object { dur: number, dur_card: number, miss: number }
     "dur_card": 10
   },
   "empowered": {
-    "cap": 1.5
+    "cap": 1.5,
+    "stack": false
   },
   "paralyzed": {
     "dur": 3,
