@@ -10,7 +10,8 @@ import './localdb-guard.mjs';
  *   1. The flag: combat_v2 has the four capabilities, all false, and combat_v2_on is false for each. Each capability set alone turns on that one only.
  *   2. The reader FAILS CLOSED: a string "true", a number, null, a missing capability, a list, a scalar value, no row, an unknown capability (even one
  *      that the value holds), a NULL mode, and a read error (the balance table renamed) all give false.
- *   3. Every v2 key exists with a note, and its value matches card-studio/v2sim/config.json leaf by leaf. Every config leaf of these keys is either in
+ *   3. Every v2 key exists with a note, and its value matches card-studio/v2sim/config.json leaf by leaf (after the later value changes: the balance
+ *      part of combat_v2_abilities.sql, E6, runs after this file in the block, as on live). Every config leaf of these keys is either in
  *      balance or in LEFT_OUT with a reason; every balance leaf that config has not is in ADDED with its source in the plan.
  *   4. The shape and the limits: for EVERY leaf of every spec, planted bad values (a wrong type, below and above the limits, a fraction for a whole
  *      number, an unknown word, a missing or an extra key, a list too long or too short, a repeated item) are each refused by balance_check_combat_v2
@@ -29,6 +30,11 @@ assertLocal('test-combat-v2-balance.mjs');
 const FILE = process.env.MIG || fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_flags_balance.sql', import.meta.url));
 let mig = readFileSync(FILE, 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 const CONFIG = JSON.parse(readFileSync(fileURLToPath(new URL('../v2sim/config.json', import.meta.url)), 'utf8'));
+// The later value changes of the v2 keys (they need only this file): the balance part of combat_v2_abilities.sql (E6: v2_pp.support_pp.shield_all
+// 100, the P1 price of plan 5.2) between its markers. It runs after this file in the block, as on live, so the values match config.json.
+const E6 = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_abilities.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
+const LATER = E6.slice(E6.indexOf('-- @balance-begin'), E6.indexOf('-- @balance-end'));
+if (!LATER.includes('shield_all')) throw new Error('combat_v2_abilities.sql has no balance part between -- @balance-begin and -- @balance-end');
 
 const MUT = {
   flag_on: ['\'{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}\',', '\'{"gauntlet": true, "dungeon": false, "hunt": false, "progress": false}\','],
@@ -110,7 +116,10 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'combat_v2_status_on', 'combat_v2_draw', 'combat_v2_hit',   // E4 combat_v2_hit.sql
   'combat_v2_status_numbers', 'combat_v2_unit_path', 'combat_v2_units', 'combat_v2_up', 'combat_v2_status_check', 'combat_v2_status_drop', 'combat_v2_fall',
   'combat_v2_status_remove', 'combat_v2_damage', 'combat_v2_hit_apply', 'combat_v2_heal', 'combat_v2_status_apply', 'combat_v2_status_cure',
-  'combat_v2_status_strip', 'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next'];   // E5 combat_v2_status_rules.sql
+  'combat_v2_status_strip', 'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next',   // E5 combat_v2_status_rules.sql
+  'ability_v2_spec', 'balance_check_ability_v2', 'ability_v2_numbers', 'ability_v2_block_pp', 'ability_v2_pp', 'ability_v2_text', 'ability_v2_silver_text', 'ability_v2_check',
+  'combat_v2_action_numbers', 'combat_v2_draws_rest', 'combat_effect_v2_blocks', 'combat_effect_v2_hit', 'combat_effect_v2_basic', 'combat_effect_v2_active',
+  'combat_v2_card_act'];   // E6 combat_v2_abilities.sql
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
 const body = String.raw`do $t$
@@ -123,6 +132,7 @@ begin
   delete from public.balance where key = any(keys);
   alter table public.balance enable trigger user;
   execute $m$${mig}$m$;
+  execute $m$${LATER}$m$;
 
   -- 3. the keys, the notes and the values (the values go to the script, which compares them with config.json)
   for k in select unnest(keys) loop

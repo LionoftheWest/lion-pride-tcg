@@ -34,10 +34,10 @@ export function chargeOf(cfg, tid) { const t = cfg.v2_templates[tid]; return t.c
 
 // ---------- PP prices (base numbers, before rarity scaling) ----------
 export function blockPP(cfg, tid, b) {
-  const t = cfg.v2_templates[tid]; const P = cfg.v2_pp, R = P.ref; const C = chargeOf(cfg, tid) + 1;
+  const t = cfg.v2_templates[tid]; const P = cfg.v2_pp, R = P.ref, A = cfg.ability_v2.pp; const C = chargeOf(cfg, tid) + 1;
   const att = classOf(t.role) === 'attacker';
-  const k = 40 / C;                     // attackers: 40 x V / C
-  const sk = 2 / C;                     // supports: library price x 2 / C
+  const k = A.att_k / C;                // attackers: att_k (40) x V / C   (config ability_v2 = balance ability_v2, PR E6)
+  const sk = A.sup_cycle / C;           // supports: library price x sup_cycle (2) / C
   const strikes = (t.blocks.find(x => x.k === 'strikes') || { n: 1 }).n;
   const sv = (st, b) => { const base = P.status_pp[st];
     if (['exposed', 'weakened', 'mark'].includes(st)) return base * (b.value ?? 0.1);
@@ -54,9 +54,9 @@ export function blockPP(cfg, tid, b) {
     case 'payoff_dmg': case 'payoff_crit': return k * b.v * R.payoff;
     case 'per_stack': return k * b.v * R.stacks * R.payoff;
     case 'per_kind': return k * b.v * R.kinds * R.payoff;
-    case 'vs_status': return (att ? k : sk * 10 / 3) * (b.x - 1) * R.frozen_share * R.payoff;
+    case 'vs_status': return (att ? k : sk * A.sup_vs_k) * (b.x - 1) * R.frozen_share * R.payoff;
     case 'execute': return k * b.v * b.line;
-    case 'line_status': return 0.5 * b.statuses.length;
+    case 'line_status': return A.line_status * b.statuses.length;
     case 'lifesteal': case 'guard_up': return k * b.v * R.heal_value;
     case 'shield_break': return k * (b.x - 1) * R.shield_share * R.payoff;
     case 'on_crit': return sv(b.status, b) * b.chance * R.crit_share * (att ? 1 / C : sk) * (b.status === 'stunned' ? 1 : 1);
@@ -64,10 +64,11 @@ export function blockPP(cfg, tid, b) {
     case 'shield': return P.support_pp.shield * b.v * sk;
     case 'shield_all': return P.support_pp.shield_all * b.v * sk;
     case 'heal': return P.support_pp.heal * b.v * sk;
+    case 'heal_all': return P.support_pp.heal_all * b.v * sk; // all_allies (PR E6)
     case 'empower': return P.support_pp.empower * b.v * sk;
     case 'rally': return P.support_pp.rally * b.v * sk;
-    case 'quicken': return P.support_pp.quicken * b.v * sk * (b.all ? 1.5 : 1);
-    case 'focus': return (P.support_pp.focus_crit * b.crit + P.support_pp.focus_crd * b.crd) * sk;
+    case 'quicken': return P.support_pp.quicken * b.v * sk * (b.all ? A.quicken_all_x : 1);
+    case 'focus': return (P.support_pp.focus_crit * b.crit + P.support_pp.focus_crd * (b.crd || 0)) * sk;
     case 'smite': return P.support_pp.smite * b.x * sk;
     case 'cleanse': return P.support_pp.cleanse * sk;
     case 'dispel': return P.support_pp.dispel * sk;

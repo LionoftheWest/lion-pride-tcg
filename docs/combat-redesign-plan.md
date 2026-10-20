@@ -44,7 +44,7 @@ for later modes. Every card has a clear job. The squad mix decides the strategy.
 | P2 | One rule, written once, for each status and each stat. Same rule on both sides (cards and enemies) | Today two affinity rules share one field. Card "Curse" and enemy "weaken" are two words for one idea |
 | P3 | Every number in `balance`. No combat math in JS. No effect-name branch outside `combat_effect*` | The 3 CI checks of PR #435 (C1, C2, C3) enforce this. v2 keeps them |
 | P4 | Fair for players without high rarities. Every role works at Normal rarity | Today a Gold 0-star card has x14 the CP of a Normal 0-star card |
-| P5 | Readable in one Discord window. Card text 8-14 words. Max 3 status icons on a unit, then "+N" | Most synergy rules are hidden today. Support texts show no number |
+| P5 | Readable in one Discord window. Card text 6-20 words (Nathan 2026-10-20; was 8-14). Max 3 status icons on a unit, then "+N" | Most synergy rules are hidden today. Support texts show no number |
 | P6 | Flag OFF = today, exactly. v2 is built beside v1 and goes live mode by mode | The fight flow changes, so today's goldens cannot prove v2. They prove v1 stays the same |
 | P7 | Live progress keeps its value. Nobody loses stars or points without a refund | 1,443 ascended rows and 2,486 spent points exist [L] |
 
@@ -63,7 +63,7 @@ for later modes. Every card has a clear job. The squad mix decides the strategy.
 |---|---|---|
 | Basic attack | A plain hit. Supports hit for 0.18 x CP [T] (Artillery 0.25 x CP [T]) | No text. The same for every card |
 | Role passive | Always on. The same for every card of the role | The role icon. A tap shows one line |
-| Unique active | The card's own ability. It charges over the card's own turns | The only card text: name + 8 to 14 words |
+| Unique active | The card's own ability. It charges over the card's own turns | The only card text: name + 6 to 20 words (Nathan 2026-10-20; was 8 to 14) |
 
 - **Charge** [T]: the active is ready after 2 own turns that did not use it (attackers) or 1 own turn (supports).
   The charge starts at 0 in each fight (each Hunt day).
@@ -246,7 +246,9 @@ An active is a short list of **blocks**. Each block has a price in power points 
 | Payoff | A bonus vs or with a status that another card makes | "+X% damage vs Poisoned", "+X% crit vs Poisoned", "Stunned, Frozen, Asleep or Marked count as low HP", "x2 vs Frozen" |
 | Scaler | A bonus that grows | "+X% per Chill stack", "+X% per different status", "+X% per living foe", "+damage = Y% of own shield" |
 
-Card text limits [P]: 1 main block, at most 1 rider, at most 1 condition, at most 8 engine steps [L limit]. Text 8 to 14 words [D].
+Card text limits: at most 1 rider [D, 5.3], at most 8 blocks (engine steps) [L limit], text 6 to 20 words [D Nathan 2026-10-20, the card text style; was 8 to 14].
+"1 main block" and "at most 1 condition" stay proposals [P]: the approved support actives have up to 4 main blocks, so the validator (E6) checks ONE main hit
+for an attacker only.
 
 ### 5.2 PP costs and the budget
 
@@ -305,7 +307,7 @@ They are placeholders. Each real card gets its own ability in section 12.
 `ability_kinds` and `ability_ok()` exist and check every live ability today [L]. v2 extends them:
 - Every block row has its PP price (`ability_kinds.power`, the column exists [L]) and its allowed roles.
 - A v2 ability passes only when: the sum is 10 +/- 0.6 PP (13 at Silver), the blocks fit the role, the limits of 5.1 hold,
-  every status and trigger is built, and the text has 8 to 14 words.
+  every status and trigger is built, and the text has 6 to 20 words (E6: the numbers are in balance ability_v2).
 - The card text is **generated from the blocks** (one text pattern per block), so the text always matches the data.
 - `enables[]` and `pays[]` are derived from the blocks (apply steps vs `target_has` conditions). Auto and the "Makes / Uses" chips read them.
 - A planted bad ability (over budget, wrong role, reserved part) must be refused (acceptance test).
@@ -618,7 +620,7 @@ One table per batch, one row per card:
 |---|---|
 | Card | the card name and type |
 | Role | the proposed role, and one line why (lore) |
-| Active | name + card text (8 to 14 words), as the card will show it |
+| Active | name + card text (6 to 20 words), as the card will show it |
 | Blocks | the block list with PP (sum 10 +/- 0.6) |
 | Silver | the upgraded line |
 | Makes / Uses | the statuses it enables and the statuses it pays off |
@@ -758,7 +760,7 @@ because every later part reads them.
 | Live progress loses value | ASC-3 keeps every 5-star value. level grant, top-up, refunds and one free reset. a dry run first |
 | Gold pulls lose their value | The end gap stays x2-2.5 (dial D 0.22). D is one balance number, easy to change with `balance_log` |
 | A silver bullet appears | PP budget 10 per subject, payoff x0.6, counter bosses, the archetype test per batch and per Hunt week |
-| Too much to read | 8-14 words per card, generated text, max 3 status icons, the visual language set before screens |
+| Too much to read | 6-20 words per card, generated text, max 3 status icons, the visual language set before screens |
 | Speed dominates | +3% a point, x1.30 from points, x1.6 total. the cap counts steps. measured: Speed best for 1 of 8 roles |
 | Control locks a boss | One shared control immunity, 1-step boss control, the no-lock bound as a test |
 | 203 abilities take too long or drift | The studio builder and the validator. batches by role. Nathan reviews tables, not free text |

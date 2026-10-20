@@ -1187,6 +1187,27 @@
     },
     "_cure": "cure = 0 PP: the cure and its immunity are free (Revision 5, Nathan approved 2026-10-18). A support area block costs smite x area x ref.foes_other."
   },
+  "ability_v2": {
+    "_rule": "The price-model numbers of the ability blocks beside v2_pp (PR E6, balance ability_v2: one number, one home). pp.att_k: an attacker block costs att_k / C x the basic hits it adds (C = v2_charge + 1). pp.sup_cycle: a support library price x sup_cycle / C. pp.sup_vs_k: the support x-vs-status factor (10/3). pp.line_status: the PP of each status of an execute list. pp.quicken_all_x: quicken on every attacker. silver: the Silver upgrade (plan 5.3: + pp PP at stars stars). limits: blocks, riders and the card text words (Nathan 2026-10-20: 6 to 20). k1_shield: the shield of the Glossary cure keyword.",
+    "pp": {
+      "att_k": 40,
+      "sup_cycle": 2,
+      "sup_vs_k": 3.3333333333333335,
+      "line_status": 0.5,
+      "quicken_all_x": 1.5
+    },
+    "silver": {
+      "stars": 3,
+      "pp": 3
+    },
+    "limits": {
+      "blocks": 8,
+      "riders": 1,
+      "words_min": 6,
+      "words_max": 20
+    },
+    "k1_shield": 0.12
+  },
   "v2_templates": {
     "_rule": "the placeholder UNIQUE ACTIVE of a card = one template of its role, chosen by hash(subject key) mod the role's template count. Numbers fill the 10 PP budget (check: node run.mjs pp).",
     "breaker.crush": {
