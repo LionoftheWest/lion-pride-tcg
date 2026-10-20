@@ -7,11 +7,53 @@ The weekly Hunt (raid boss), squads, the combat rules, the logs of each fight, p
 
 ## Contents
 
-Tables (17): [ability_kinds](#table-ability-kinds), [card_effect_cooldowns](#table-card-effect-cooldowns), [card_plays](#table-card-plays), [combat_actions](#table-combat-actions), [discord_effects](#table-discord-effects), [effect_primitives](#table-effect-primitives), [hunt_adjustments](#table-hunt-adjustments), [hunt_card_hp](#table-hunt-card-hp), [hunt_combat_log](#table-hunt-combat-log), [hunt_combat_state](#table-hunt-combat-state), [hunt_events](#table-hunt-events), [hunt_hits](#table-hunt-hits), [hunt_squads](#table-hunt-squads), [hunts](#table-hunts), [player_effects](#table-player-effects), [roles](#table-roles), [statuses](#table-statuses)
+Tables (18): [ability_blocks](#table-ability-blocks), [ability_kinds](#table-ability-kinds), [card_effect_cooldowns](#table-card-effect-cooldowns), [card_plays](#table-card-plays), [combat_actions](#table-combat-actions), [discord_effects](#table-discord-effects), [effect_primitives](#table-effect-primitives), [hunt_adjustments](#table-hunt-adjustments), [hunt_card_hp](#table-hunt-card-hp), [hunt_combat_log](#table-hunt-combat-log), [hunt_combat_state](#table-hunt-combat-state), [hunt_events](#table-hunt-events), [hunt_hits](#table-hunt-hits), [hunt_squads](#table-hunt-squads), [hunts](#table-hunts), [player_effects](#table-player-effects), [roles](#table-roles), [statuses](#table-statuses)
 
-Functions (151): [ability_check(jsonb)](#fn-ability-check-jsonb), [ability_cond_check(jsonb,jsonb)](#fn-ability-cond-check-jsonb-jsonb), [ability_fields_check(jsonb)](#fn-ability-fields-check-jsonb), [ability_kinds_check()](#fn-ability-kinds-check), [ability_kinds_recheck()](#fn-ability-kinds-recheck), [ability_ok(jsonb)](#fn-ability-ok-jsonb), [ability_power(jsonb)](#fn-ability-power-jsonb), [ability_ref_check(text,jsonb)](#fn-ability-ref-check-text-jsonb), [ability_step_check(text,jsonb,jsonb)](#fn-ability-step-check-text-jsonb-jsonb), [ability_value_check(jsonb,jsonb)](#fn-ability-value-check-jsonb-jsonb), [adventure_gate(text)](#fn-adventure-gate-text), [arm_on_open()](#fn-arm-on-open), [arm_player_effects(text)](#fn-arm-player-effects-text), [card_combat(text,integer,numeric,jsonb,jsonb)](#fn-card-combat-text-integer-numeric-jsonb-jsonb), [card_combat(text,integer,numeric,jsonb)](#fn-card-combat-text-integer-numeric-jsonb), [card_effect_active(text,text)](#fn-card-effect-active-text-text), [card_element(text[])](#fn-card-element-text), [card_max_hp(integer,numeric,numeric)](#fn-card-max-hp-integer-numeric-numeric), [card_max_hp(integer)](#fn-card-max-hp-integer), [close_due_hunts()](#fn-close-due-hunts), [close_hunt(bigint)](#fn-close-hunt-bigint), [combat_absorb(integer,integer)](#fn-combat-absorb-integer-integer), [combat_aff_scale(integer)](#fn-combat-aff-scale-integer), [combat_area_roll(numeric,numeric,numeric)](#fn-combat-area-roll-numeric-numeric-numeric), [combat_burn(numeric)](#fn-combat-burn-numeric), [combat_card_facts(text[],text[])](#fn-combat-card-facts-text-text), [combat_cooldown(integer,numeric)](#fn-combat-cooldown-integer-numeric), [combat_crit_chance(boolean,text,numeric,jsonb)](#fn-combat-crit-chance-boolean-text-numeric-jsonb), [combat_crit_chance_mods(boolean,jsonb,jsonb)](#fn-combat-crit-chance-mods-boolean-jsonb-jsonb), [combat_effect(jsonb,bigint,text,jsonb)](#fn-combat-effect-jsonb-bigint-text-jsonb), [combat_effect_changes(jsonb,jsonb,jsonb)](#fn-combat-effect-changes-jsonb-jsonb-jsonb), [combat_effect_count(jsonb,jsonb)](#fn-combat-effect-count-jsonb-jsonb), [combat_effect_hit(jsonb,bigint,text,jsonb)](#fn-combat-effect-hit-jsonb-bigint-text-jsonb), [combat_effect_mark(jsonb,text,jsonb)](#fn-combat-effect-mark-jsonb-text-jsonb), [combat_effect_num(jsonb)](#fn-combat-effect-num-jsonb), [combat_effect_set(jsonb,text,text,jsonb)](#fn-combat-effect-set-jsonb-text-text-jsonb), [combat_effect_use(jsonb,bigint,jsonb)](#fn-combat-effect-use-jsonb-bigint-jsonb), [combat_effect_value(jsonb,jsonb)](#fn-combat-effect-value-jsonb-jsonb), [combat_effect_when(jsonb,jsonb,jsonb)](#fn-combat-effect-when-jsonb-jsonb-jsonb), [combat_element(text,text)](#fn-combat-element-text-text), [combat_element_map()](#fn-combat-element-map), [combat_enemy_act(numeric,numeric,integer,integer,numeric,bigint)](#fn-combat-enemy-act-numeric-numeric-integer-integer-numeric-bigint), [combat_enemy_mult(numeric,integer,numeric,integer,integer,boolean,numeric,boolean)](#fn-combat-enemy-mult-numeric-integer-numeric-integer-integer-boolean-numeric-boolean), [combat_hit(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint)](#fn-combat-hit-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint), [combat_hit_core(integer,numeric,numeric,numeric,numeric,numeric,numeric,boolean,numeric,jsonb,jsonb)](#fn-combat-hit-core-integer-numeric-numeric-numeric-numeric-numeric-numeric-boolean-numeric-jsonb-jsonb), [combat_hit_elem(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint,text,text)](#fn-combat-hit-elem-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint-text-text), [combat_lifesteal(integer,numeric,integer)](#fn-combat-lifesteal-integer-numeric-integer), [combat_miss(boolean)](#fn-combat-miss-boolean), [combat_pool_act(numeric,numeric,integer,integer,numeric,integer,jsonb,boolean)](#fn-combat-pool-act-numeric-numeric-integer-integer-numeric-integer-jsonb-boolean), [combat_regen(bigint)](#fn-combat-regen-bigint), [combat_squad(text[],boolean,jsonb,jsonb)](#fn-combat-squad-text-boolean-jsonb-jsonb), [combat_squad_core(jsonb,boolean,jsonb,jsonb)](#fn-combat-squad-core-jsonb-boolean-jsonb-jsonb), [combat_squad_value(jsonb,integer,jsonb)](#fn-combat-squad-value-jsonb-integer-jsonb), [combat_stun_immune(integer,integer)](#fn-combat-stun-immune-integer-integer), [combat_thorns(integer)](#fn-combat-thorns-integer), [combat_v2_advance(jsonb,jsonb)](#fn-combat-v2-advance-jsonb-jsonb), [combat_v2_advance(jsonb)](#fn-combat-v2-advance-jsonb), [combat_v2_confused_target(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-confused-target-jsonb-jsonb-jsonb-jsonb), [combat_v2_damage(jsonb,jsonb,numeric,jsonb,jsonb)](#fn-combat-v2-damage-jsonb-jsonb-numeric-jsonb-jsonb), [combat_v2_draw(jsonb,integer)](#fn-combat-v2-draw-jsonb-integer), [combat_v2_fall(jsonb)](#fn-combat-v2-fall-jsonb), [combat_v2_heal(jsonb,jsonb,numeric,jsonb)](#fn-combat-v2-heal-jsonb-jsonb-numeric-jsonb), [combat_v2_hit(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-hit-jsonb-jsonb-jsonb-jsonb), [combat_v2_hit(jsonb,jsonb,jsonb)](#fn-combat-v2-hit-jsonb-jsonb-jsonb), [combat_v2_hit_apply(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-hit-apply-jsonb-jsonb-jsonb-jsonb), [combat_v2_next(jsonb,jsonb,jsonb)](#fn-combat-v2-next-jsonb-jsonb-jsonb), [combat_v2_numbers(text[])](#fn-combat-v2-numbers-text), [combat_v2_on(text)](#fn-combat-v2-on-text), [combat_v2_speed(jsonb,integer,jsonb)](#fn-combat-v2-speed-jsonb-integer-jsonb), [combat_v2_stats(numeric,jsonb,text,jsonb)](#fn-combat-v2-stats-numeric-jsonb-text-jsonb), [combat_v2_status_apply(jsonb,jsonb,text,jsonb,jsonb)](#fn-combat-v2-status-apply-jsonb-jsonb-text-jsonb-jsonb), [combat_v2_status_check(jsonb,jsonb,text)](#fn-combat-v2-status-check-jsonb-jsonb-text), [combat_v2_status_cure(jsonb,jsonb,jsonb,integer,jsonb)](#fn-combat-v2-status-cure-jsonb-jsonb-jsonb-integer-jsonb), [combat_v2_status_drop(jsonb,text,text,boolean,integer,jsonb)](#fn-combat-v2-status-drop-jsonb-text-text-boolean-integer-jsonb), [combat_v2_status_numbers()](#fn-combat-v2-status-numbers), [combat_v2_status_on(jsonb,text,integer)](#fn-combat-v2-status-on-jsonb-text-integer), [combat_v2_status_remove(jsonb,jsonb,text,jsonb)](#fn-combat-v2-status-remove-jsonb-jsonb-text-jsonb), [combat_v2_status_strip(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-status-strip-jsonb-jsonb-jsonb-jsonb), [combat_v2_step_end(jsonb,jsonb)](#fn-combat-v2-step-end-jsonb-jsonb), [combat_v2_turn_order(jsonb,integer)](#fn-combat-v2-turn-order-jsonb-integer), [combat_v2_turn_start(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-turn-start-jsonb-jsonb-jsonb-jsonb), [combat_v2_unit_path(jsonb,jsonb)](#fn-combat-v2-unit-path-jsonb-jsonb), [combat_v2_units(jsonb)](#fn-combat-v2-units-jsonb), [combat_v2_up(jsonb)](#fn-combat-v2-up-jsonb), [combat_weak(jsonb,jsonb,text,text,text,text[],integer)](#fn-combat-weak-jsonb-jsonb-text-text-text-text-integer), [combat_weak_mult(integer,integer,integer,jsonb)](#fn-combat-weak-mult-integer-integer-integer-jsonb), [daily_raid_board(timestamp with time zone)](#fn-daily-raid-board-timestamp-with-time-zone), [deployable_power(integer)](#fn-deployable-power-integer), [effect_preview(text)](#fn-effect-preview-text), [effect_preview_card(text,integer,jsonb,jsonb)](#fn-effect-preview-card-text-integer-jsonb-jsonb), [element_aliases()](#fn-element-aliases), [element_of(text)](#fn-element-of-text), [fight_change_check(jsonb)](#fn-fight-change-check-jsonb), [fight_state_check(jsonb)](#fn-fight-state-check-jsonb), [fight_state_check_v2(jsonb)](#fn-fight-state-check-v2-jsonb), [fight_state_v2_from_v1(jsonb)](#fn-fight-state-v2-from-v1-jsonb), [hunt_attack(text,bigint,bigint)](#fn-hunt-attack-text-bigint-bigint), [hunt_autopick(text,bigint,integer)](#fn-hunt-autopick-text-bigint-integer), [hunt_autopick_add(jsonb[],jsonb,integer[],integer[],integer[],integer[],boolean[],integer,integer,integer,integer)](#fn-hunt-autopick-add-jsonb-jsonb-integer-integer-integer-integer-boolean-integer-integer-integer-integer), [hunt_autopick_pool(jsonb,integer)](#fn-hunt-autopick-pool-jsonb-integer), [hunt_autopick_sups(integer,integer[],integer[],integer[],boolean[],integer,text[],text[],numeric[],jsonb[],numeric[],jsonb)](#fn-hunt-autopick-sups-integer-integer-integer-integer-boolean-integer-text-text-numeric-jsonb-numeric-jsonb), [hunt_autopick_val(jsonb[],integer[],integer[],jsonb)](#fn-hunt-autopick-val-jsonb-integer-integer-jsonb), [hunt_boss_move_list(text)](#fn-hunt-boss-move-list-text), [hunt_card_cap()](#fn-hunt-card-cap), [hunt_card_crits(text,bigint)](#fn-hunt-card-crits-text-bigint), [hunt_combat_stats(bigint)](#fn-hunt-combat-stats-bigint), [hunt_commit_card(bigint,text,bigint,date,integer)](#fn-hunt-commit-card-bigint-text-bigint-date-integer), [hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)](#fn-hunt-counter-act-bigint-text-date-bigint-integer-numeric-numeric-text-text-integer-integer-integer-numeric), [hunt_counter_cd(bigint,text,date,text,integer,integer)](#fn-hunt-counter-cd-bigint-text-date-text-integer-integer), [hunt_counter_hit(bigint,text,date,bigint,integer,boolean)](#fn-hunt-counter-hit-bigint-text-date-bigint-integer-boolean), [hunt_counter_mult(text)](#fn-hunt-counter-mult-text), [hunt_counter_num(text,text)](#fn-hunt-counter-num-text-text), [hunt_counter_pick(bigint,text,date,text,text)](#fn-hunt-counter-pick-bigint-text-date-text-text), [hunt_counter_text(text)](#fn-hunt-counter-text-text), [hunt_counter_tick(bigint,text,date,bigint,integer)](#fn-hunt-counter-tick-bigint-text-date-bigint-integer), [hunt_damage_reconcile(bigint)](#fn-hunt-damage-reconcile-bigint), [hunt_effect_apply(bigint,text,date,jsonb)](#fn-hunt-effect-apply-bigint-text-date-jsonb), [hunt_fight_state(bigint,text,date,bigint,bigint)](#fn-hunt-fight-state-bigint-text-date-bigint-bigint), [hunt_fight_state_info(bigint,text,date,jsonb,jsonb,bigint,jsonb,bigint)](#fn-hunt-fight-state-info-bigint-text-date-jsonb-jsonb-bigint-jsonb-bigint), [hunt_fight_summary()](#fn-hunt-fight-summary), [hunt_hit_mods(jsonb,bigint,bigint)](#fn-hunt-hit-mods-jsonb-bigint-bigint), [hunt_leaderboard(bigint,integer)](#fn-hunt-leaderboard-bigint-integer), [hunt_mark_on(jsonb,text,integer)](#fn-hunt-mark-on-jsonb-text-integer), [hunt_marks_patch(bigint,text,date,jsonb)](#fn-hunt-marks-patch-bigint-text-date-jsonb), [hunt_mt_slot(text,timestamp with time zone)](#fn-hunt-mt-slot-text-timestamp-with-time-zone), [hunt_next_mt(integer,integer,timestamp with time zone)](#fn-hunt-next-mt-integer-integer-timestamp-with-time-zone), [hunt_pass_turn(text,bigint)](#fn-hunt-pass-turn-text-bigint), [hunt_pick_pool(text,bigint,bigint[])](#fn-hunt-pick-pool-text-bigint-bigint), [hunt_round_cap()](#fn-hunt-round-cap), [hunt_squad_allows(bigint,text,date,bigint)](#fn-hunt-squad-allows-bigint-text-date-bigint), [hunt_squad_cards(bigint,text,date,bigint)](#fn-hunt-squad-cards-bigint-text-date-bigint), [hunt_squad_done(bigint,text,date,integer)](#fn-hunt-squad-done-bigint-text-date-integer), [hunt_squad_value(text,bigint,bigint[])](#fn-hunt-squad-value-text-bigint-bigint), [hunt_state_round(bigint,text,date)](#fn-hunt-state-round-bigint-text-date), [hunt_support(text,bigint,bigint,bigint)](#fn-hunt-support-text-bigint-bigint-bigint), [hunt_view(text,bigint,date)](#fn-hunt-view-text-bigint-date), [lock_hunt_squad(text,bigint,bigint[])](#fn-lock-hunt-squad-text-bigint-bigint), [next_hunt_close()](#fn-next-hunt-close), [next_hunt_spawn()](#fn-next-hunt-spawn), [nudge_hunt(bigint)](#fn-nudge-hunt-bigint), [play_card_effect(text,bigint,text)](#fn-play-card-effect-text-bigint-text), [play_card_effect_choice(text,bigint,text,integer)](#fn-play-card-effect-choice-text-bigint-text-integer), [refund_card_play(bigint,text)](#fn-refund-card-play-bigint-text), [roles_check()](#fn-roles-check), [settle_hunt(bigint)](#fn-settle-hunt-bigint), [spawn_hunt(integer,text)](#fn-spawn-hunt-integer-text), [spawn_weekly_boss(timestamp with time zone,bigint,text)](#fn-spawn-weekly-boss-timestamp-with-time-zone-bigint-text), [statuses_check()](#fn-statuses-check), [subjects_ability_check()](#fn-subjects-ability-check), [take_player_effect(text,text)](#fn-take-player-effect-text-text), [use_effect_charge(text,text)](#fn-use-effect-charge-text-text)
+Functions (174): [ability_blocks_check()](#fn-ability-blocks-check), [ability_check(jsonb)](#fn-ability-check-jsonb), [ability_cond_check(jsonb,jsonb)](#fn-ability-cond-check-jsonb-jsonb), [ability_fields_check(jsonb)](#fn-ability-fields-check-jsonb), [ability_kinds_check()](#fn-ability-kinds-check), [ability_kinds_recheck()](#fn-ability-kinds-recheck), [ability_ok(jsonb)](#fn-ability-ok-jsonb), [ability_power(jsonb)](#fn-ability-power-jsonb), [ability_ref_check(text,jsonb)](#fn-ability-ref-check-text-jsonb), [ability_step_check(text,jsonb,jsonb)](#fn-ability-step-check-text-jsonb-jsonb), [ability_v2_block_pp(jsonb,text,numeric,jsonb)](#fn-ability-v2-block-pp-jsonb-text-numeric-jsonb), [ability_v2_cap(text)](#fn-ability-v2-cap-text), [ability_v2_check(text,jsonb,jsonb)](#fn-ability-v2-check-text-jsonb-jsonb), [ability_v2_field_error(text,jsonb,jsonb)](#fn-ability-v2-field-error-text-jsonb-jsonb), [ability_v2_field_types()](#fn-ability-v2-field-types), [ability_v2_fill(text,jsonb)](#fn-ability-v2-fill-text-jsonb), [ability_v2_numbers()](#fn-ability-v2-numbers), [ability_v2_pct(numeric)](#fn-ability-v2-pct-numeric), [ability_v2_pp(text,jsonb,jsonb)](#fn-ability-v2-pp-text-jsonb-jsonb), [ability_v2_silver_text(text,jsonb,jsonb,jsonb)](#fn-ability-v2-silver-text-text-jsonb-jsonb-jsonb), [ability_v2_spec()](#fn-ability-v2-spec), [ability_v2_text(text,jsonb,jsonb)](#fn-ability-v2-text-text-jsonb-jsonb), [ability_v2_vals(jsonb)](#fn-ability-v2-vals-jsonb), [ability_v2_verb(jsonb,jsonb,text,boolean)](#fn-ability-v2-verb-jsonb-jsonb-text-boolean), [ability_v2_words(text)](#fn-ability-v2-words-text), [ability_value_check(jsonb,jsonb)](#fn-ability-value-check-jsonb-jsonb), [adventure_gate(text)](#fn-adventure-gate-text), [arm_on_open()](#fn-arm-on-open), [arm_player_effects(text)](#fn-arm-player-effects-text), [card_combat(text,integer,numeric,jsonb,jsonb)](#fn-card-combat-text-integer-numeric-jsonb-jsonb), [card_combat(text,integer,numeric,jsonb)](#fn-card-combat-text-integer-numeric-jsonb), [card_effect_active(text,text)](#fn-card-effect-active-text-text), [card_element(text[])](#fn-card-element-text), [card_max_hp(integer,numeric,numeric)](#fn-card-max-hp-integer-numeric-numeric), [card_max_hp(integer)](#fn-card-max-hp-integer), [close_due_hunts()](#fn-close-due-hunts), [close_hunt(bigint)](#fn-close-hunt-bigint), [combat_absorb(integer,integer)](#fn-combat-absorb-integer-integer), [combat_aff_scale(integer)](#fn-combat-aff-scale-integer), [combat_area_roll(numeric,numeric,numeric)](#fn-combat-area-roll-numeric-numeric-numeric), [combat_burn(numeric)](#fn-combat-burn-numeric), [combat_card_facts(text[],text[])](#fn-combat-card-facts-text-text), [combat_cooldown(integer,numeric)](#fn-combat-cooldown-integer-numeric), [combat_crit_chance(boolean,text,numeric,jsonb)](#fn-combat-crit-chance-boolean-text-numeric-jsonb), [combat_crit_chance_mods(boolean,jsonb,jsonb)](#fn-combat-crit-chance-mods-boolean-jsonb-jsonb), [combat_effect(jsonb,bigint,text,jsonb)](#fn-combat-effect-jsonb-bigint-text-jsonb), [combat_effect_changes(jsonb,jsonb,jsonb)](#fn-combat-effect-changes-jsonb-jsonb-jsonb), [combat_effect_count(jsonb,jsonb)](#fn-combat-effect-count-jsonb-jsonb), [combat_effect_hit(jsonb,bigint,text,jsonb)](#fn-combat-effect-hit-jsonb-bigint-text-jsonb), [combat_effect_mark(jsonb,text,jsonb)](#fn-combat-effect-mark-jsonb-text-jsonb), [combat_effect_num(jsonb)](#fn-combat-effect-num-jsonb), [combat_effect_set(jsonb,text,text,jsonb)](#fn-combat-effect-set-jsonb-text-text-jsonb), [combat_effect_use(jsonb,bigint,jsonb)](#fn-combat-effect-use-jsonb-bigint-jsonb), [combat_effect_v2_active(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-active-jsonb-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_basic(jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-basic-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_blocks(jsonb,jsonb)](#fn-combat-effect-v2-blocks-jsonb-jsonb), [combat_effect_v2_hit(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-hit-jsonb-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_effect_value(jsonb,jsonb)](#fn-combat-effect-value-jsonb-jsonb), [combat_effect_when(jsonb,jsonb,jsonb)](#fn-combat-effect-when-jsonb-jsonb-jsonb), [combat_element(text,text)](#fn-combat-element-text-text), [combat_element_map()](#fn-combat-element-map), [combat_enemy_act(numeric,numeric,integer,integer,numeric,bigint)](#fn-combat-enemy-act-numeric-numeric-integer-integer-numeric-bigint), [combat_enemy_mult(numeric,integer,numeric,integer,integer,boolean,numeric,boolean)](#fn-combat-enemy-mult-numeric-integer-numeric-integer-integer-boolean-numeric-boolean), [combat_hit(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint)](#fn-combat-hit-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint), [combat_hit_core(integer,numeric,numeric,numeric,numeric,numeric,numeric,boolean,numeric,jsonb,jsonb)](#fn-combat-hit-core-integer-numeric-numeric-numeric-numeric-numeric-numeric-boolean-numeric-jsonb-jsonb), [combat_hit_elem(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint,text,text)](#fn-combat-hit-elem-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint-text-text), [combat_lifesteal(integer,numeric,integer)](#fn-combat-lifesteal-integer-numeric-integer), [combat_miss(boolean)](#fn-combat-miss-boolean), [combat_pool_act(numeric,numeric,integer,integer,numeric,integer,jsonb,boolean)](#fn-combat-pool-act-numeric-numeric-integer-integer-numeric-integer-jsonb-boolean), [combat_regen(bigint)](#fn-combat-regen-bigint), [combat_squad(text[],boolean,jsonb,jsonb)](#fn-combat-squad-text-boolean-jsonb-jsonb), [combat_squad_core(jsonb,boolean,jsonb,jsonb)](#fn-combat-squad-core-jsonb-boolean-jsonb-jsonb), [combat_squad_value(jsonb,integer,jsonb)](#fn-combat-squad-value-jsonb-integer-jsonb), [combat_stun_immune(integer,integer)](#fn-combat-stun-immune-integer-integer), [combat_thorns(integer)](#fn-combat-thorns-integer), [combat_v2_action_numbers()](#fn-combat-v2-action-numbers), [combat_v2_advance(jsonb,jsonb)](#fn-combat-v2-advance-jsonb-jsonb), [combat_v2_advance(jsonb)](#fn-combat-v2-advance-jsonb), [combat_v2_card_act(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-card-act-jsonb-jsonb-jsonb-jsonb), [combat_v2_confused_target(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-confused-target-jsonb-jsonb-jsonb-jsonb), [combat_v2_damage(jsonb,jsonb,numeric,jsonb,jsonb)](#fn-combat-v2-damage-jsonb-jsonb-numeric-jsonb-jsonb), [combat_v2_draw(jsonb,integer)](#fn-combat-v2-draw-jsonb-integer), [combat_v2_draws_rest(jsonb,integer)](#fn-combat-v2-draws-rest-jsonb-integer), [combat_v2_fall(jsonb)](#fn-combat-v2-fall-jsonb), [combat_v2_heal(jsonb,jsonb,numeric,jsonb)](#fn-combat-v2-heal-jsonb-jsonb-numeric-jsonb), [combat_v2_hit(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-hit-jsonb-jsonb-jsonb-jsonb), [combat_v2_hit(jsonb,jsonb,jsonb)](#fn-combat-v2-hit-jsonb-jsonb-jsonb), [combat_v2_hit_apply(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-hit-apply-jsonb-jsonb-jsonb-jsonb), [combat_v2_next(jsonb,jsonb,jsonb)](#fn-combat-v2-next-jsonb-jsonb-jsonb), [combat_v2_numbers(text[])](#fn-combat-v2-numbers-text), [combat_v2_on(text)](#fn-combat-v2-on-text), [combat_v2_speed(jsonb,integer,jsonb)](#fn-combat-v2-speed-jsonb-integer-jsonb), [combat_v2_stats(numeric,jsonb,text,jsonb)](#fn-combat-v2-stats-numeric-jsonb-text-jsonb), [combat_v2_status_apply(jsonb,jsonb,text,jsonb,jsonb)](#fn-combat-v2-status-apply-jsonb-jsonb-text-jsonb-jsonb), [combat_v2_status_check(jsonb,jsonb,text)](#fn-combat-v2-status-check-jsonb-jsonb-text), [combat_v2_status_cure(jsonb,jsonb,jsonb,integer,jsonb)](#fn-combat-v2-status-cure-jsonb-jsonb-jsonb-integer-jsonb), [combat_v2_status_drop(jsonb,text,text,boolean,integer,jsonb)](#fn-combat-v2-status-drop-jsonb-text-text-boolean-integer-jsonb), [combat_v2_status_numbers()](#fn-combat-v2-status-numbers), [combat_v2_status_on(jsonb,text,integer)](#fn-combat-v2-status-on-jsonb-text-integer), [combat_v2_status_remove(jsonb,jsonb,text,jsonb)](#fn-combat-v2-status-remove-jsonb-jsonb-text-jsonb), [combat_v2_status_strip(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-status-strip-jsonb-jsonb-jsonb-jsonb), [combat_v2_step_end(jsonb,jsonb)](#fn-combat-v2-step-end-jsonb-jsonb), [combat_v2_turn_order(jsonb,integer)](#fn-combat-v2-turn-order-jsonb-integer), [combat_v2_turn_start(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-turn-start-jsonb-jsonb-jsonb-jsonb), [combat_v2_unit_path(jsonb,jsonb)](#fn-combat-v2-unit-path-jsonb-jsonb), [combat_v2_units(jsonb)](#fn-combat-v2-units-jsonb), [combat_v2_up(jsonb)](#fn-combat-v2-up-jsonb), [combat_weak(jsonb,jsonb,text,text,text,text[],integer)](#fn-combat-weak-jsonb-jsonb-text-text-text-text-integer), [combat_weak_mult(integer,integer,integer,jsonb)](#fn-combat-weak-mult-integer-integer-integer-jsonb), [daily_raid_board(timestamp with time zone)](#fn-daily-raid-board-timestamp-with-time-zone), [deployable_power(integer)](#fn-deployable-power-integer), [effect_preview(text)](#fn-effect-preview-text), [effect_preview_card(text,integer,jsonb,jsonb)](#fn-effect-preview-card-text-integer-jsonb-jsonb), [element_aliases()](#fn-element-aliases), [element_of(text)](#fn-element-of-text), [fight_change_check(jsonb)](#fn-fight-change-check-jsonb), [fight_state_check(jsonb)](#fn-fight-state-check-jsonb), [fight_state_check_v2(jsonb)](#fn-fight-state-check-v2-jsonb), [fight_state_v2_from_v1(jsonb)](#fn-fight-state-v2-from-v1-jsonb), [hunt_attack(text,bigint,bigint)](#fn-hunt-attack-text-bigint-bigint), [hunt_autopick(text,bigint,integer)](#fn-hunt-autopick-text-bigint-integer), [hunt_autopick_add(jsonb[],jsonb,integer[],integer[],integer[],integer[],boolean[],integer,integer,integer,integer)](#fn-hunt-autopick-add-jsonb-jsonb-integer-integer-integer-integer-boolean-integer-integer-integer-integer), [hunt_autopick_pool(jsonb,integer)](#fn-hunt-autopick-pool-jsonb-integer), [hunt_autopick_sups(integer,integer[],integer[],integer[],boolean[],integer,text[],text[],numeric[],jsonb[],numeric[],jsonb)](#fn-hunt-autopick-sups-integer-integer-integer-integer-boolean-integer-text-text-numeric-jsonb-numeric-jsonb), [hunt_autopick_val(jsonb[],integer[],integer[],jsonb)](#fn-hunt-autopick-val-jsonb-integer-integer-jsonb), [hunt_boss_move_list(text)](#fn-hunt-boss-move-list-text), [hunt_card_cap()](#fn-hunt-card-cap), [hunt_card_crits(text,bigint)](#fn-hunt-card-crits-text-bigint), [hunt_combat_stats(bigint)](#fn-hunt-combat-stats-bigint), [hunt_commit_card(bigint,text,bigint,date,integer)](#fn-hunt-commit-card-bigint-text-bigint-date-integer), [hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)](#fn-hunt-counter-act-bigint-text-date-bigint-integer-numeric-numeric-text-text-integer-integer-integer-numeric), [hunt_counter_cd(bigint,text,date,text,integer,integer)](#fn-hunt-counter-cd-bigint-text-date-text-integer-integer), [hunt_counter_hit(bigint,text,date,bigint,integer,boolean)](#fn-hunt-counter-hit-bigint-text-date-bigint-integer-boolean), [hunt_counter_mult(text)](#fn-hunt-counter-mult-text), [hunt_counter_num(text,text)](#fn-hunt-counter-num-text-text), [hunt_counter_pick(bigint,text,date,text,text)](#fn-hunt-counter-pick-bigint-text-date-text-text), [hunt_counter_text(text)](#fn-hunt-counter-text-text), [hunt_counter_tick(bigint,text,date,bigint,integer)](#fn-hunt-counter-tick-bigint-text-date-bigint-integer), [hunt_damage_reconcile(bigint)](#fn-hunt-damage-reconcile-bigint), [hunt_effect_apply(bigint,text,date,jsonb)](#fn-hunt-effect-apply-bigint-text-date-jsonb), [hunt_fight_state(bigint,text,date,bigint,bigint)](#fn-hunt-fight-state-bigint-text-date-bigint-bigint), [hunt_fight_state_info(bigint,text,date,jsonb,jsonb,bigint,jsonb,bigint)](#fn-hunt-fight-state-info-bigint-text-date-jsonb-jsonb-bigint-jsonb-bigint), [hunt_fight_summary()](#fn-hunt-fight-summary), [hunt_hit_mods(jsonb,bigint,bigint)](#fn-hunt-hit-mods-jsonb-bigint-bigint), [hunt_leaderboard(bigint,integer)](#fn-hunt-leaderboard-bigint-integer), [hunt_mark_on(jsonb,text,integer)](#fn-hunt-mark-on-jsonb-text-integer), [hunt_marks_patch(bigint,text,date,jsonb)](#fn-hunt-marks-patch-bigint-text-date-jsonb), [hunt_mt_slot(text,timestamp with time zone)](#fn-hunt-mt-slot-text-timestamp-with-time-zone), [hunt_next_mt(integer,integer,timestamp with time zone)](#fn-hunt-next-mt-integer-integer-timestamp-with-time-zone), [hunt_pass_turn(text,bigint)](#fn-hunt-pass-turn-text-bigint), [hunt_pick_pool(text,bigint,bigint[])](#fn-hunt-pick-pool-text-bigint-bigint), [hunt_round_cap()](#fn-hunt-round-cap), [hunt_squad_allows(bigint,text,date,bigint)](#fn-hunt-squad-allows-bigint-text-date-bigint), [hunt_squad_cards(bigint,text,date,bigint)](#fn-hunt-squad-cards-bigint-text-date-bigint), [hunt_squad_done(bigint,text,date,integer)](#fn-hunt-squad-done-bigint-text-date-integer), [hunt_squad_value(text,bigint,bigint[])](#fn-hunt-squad-value-text-bigint-bigint), [hunt_state_round(bigint,text,date)](#fn-hunt-state-round-bigint-text-date), [hunt_support(text,bigint,bigint,bigint)](#fn-hunt-support-text-bigint-bigint-bigint), [hunt_view(text,bigint,date)](#fn-hunt-view-text-bigint-date), [lock_hunt_squad(text,bigint,bigint[])](#fn-lock-hunt-squad-text-bigint-bigint), [next_hunt_close()](#fn-next-hunt-close), [next_hunt_spawn()](#fn-next-hunt-spawn), [nudge_hunt(bigint)](#fn-nudge-hunt-bigint), [play_card_effect(text,bigint,text)](#fn-play-card-effect-text-bigint-text), [play_card_effect_choice(text,bigint,text,integer)](#fn-play-card-effect-choice-text-bigint-text-integer), [refund_card_play(bigint,text)](#fn-refund-card-play-bigint-text), [roles_check()](#fn-roles-check), [settle_hunt(bigint)](#fn-settle-hunt-bigint), [spawn_hunt(integer,text)](#fn-spawn-hunt-integer-text), [spawn_weekly_boss(timestamp with time zone,bigint,text)](#fn-spawn-weekly-boss-timestamp-with-time-zone-bigint-text), [statuses_check()](#fn-statuses-check), [subjects_ability_check()](#fn-subjects-ability-check), [take_player_effect(text,text)](#fn-take-player-effect-text-text), [use_effect_charge(text,text)](#fn-use-effect-charge-text-text)
 
 ## Tables
+
+<a id="table-ability-blocks"></a>
+
+### ability_blocks
+
+Table. Combat v2: the block library of the unique actives (plan 5.1, 9.1; combat_v2_abilities.sql). One row per block: the menu of the studio builder (T1), the price rule (ability_v2_block_pp computes it from balance v2_pp and ability_v2), the card text patterns (ability_v2_text) and the Silver bonus pattern. reserved NOT NULL = not built (the validator refuses it). No number is in a row: the numbers are in balance and in each ability. Beside the v1 table ability_kinds (no v1 reader sees these rows).
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `key` | text | not null |  | The block code of an ability block ({"k": key, ...}). |
+| `ord` | smallint | not null |  | The order of the menu. |
+| `grp` | text | not null |  | The group of plan 5.1: main, modifier (shapes the main hit), rider, payoff, scaler, condition, trigger. |
+| `classes` | text[] | not null |  | The classes that may use the block (attacker, support): the simulator doActive refuses the others. |
+| `once` | boolean | not null | `true` | true = at most one block of this key in one active. |
+| `fields` | jsonb | not null | `'{}'::jsonb` | The fields of the block: {field: {type, required}}; the types are ability_v2_field_types(). |
+| `amount` | text | null |  | The number that the Silver upgrade (type 1, a stronger number) may raise; NULL = none. |
+| `scaled` | text[] | not null | `'{}'::text[]` | The numbers of a support block that the support factor F (card_combat_v2 power) scales in a fight (plan 2.1: rarity scales the numbers, not the blocks). |
+| `price` | text | null |  | The PP price rule in words (plan 5.2); ability_v2_block_pp computes it. NULL only for a reserved block. |
+| `text` | jsonb | not null | `'{}'::jsonb` | The card text patterns of the block (plan 5.4): {field} = the value in % rounded up, {field#} = the number, {n*} = twice / N times, {x*} = double / triple / N times the, {A} / {L} / {S} = the adjective / label / verb of the status, {ally}, {enemy}, {enemy_pos}, {targets}, {list}. |
+| `silver` | jsonb | not null | `'{}'::jsonb` | The Silver bonus pattern (the card text style R12): {d} = the raise of the amount in %, rounded up. |
+| `rule` | text | not null |  | One line: what the block does (the builder menu). |
+| `reserved` | text | null |  | NOT NULL = the block is not built yet, with the reason (no rule or no price): the validator refuses it. |
+| `note` | text | null |  | A note for the designer. |
+| `updated_at` | timestamp with time zone | not null | `now()` | When the row last changed. |
+
+- Primary key: `PRIMARY KEY (key)`
+- Unique: `ability_blocks_ord_key` `UNIQUE (ord)`
+- Foreign keys: none
+- Check constraints: 
+  - `ability_blocks_amount_check`: `CHECK (((amount IS NULL) OR (amount ~ '^[a-z_]+$'::text)))`
+  - `ability_blocks_check`: `CHECK (((reserved IS NULL) = (price IS NOT NULL)))`
+  - `ability_blocks_check1`: `CHECK (((reserved IS NOT NULL) OR (text <> '{}'::jsonb)))`
+  - `ability_blocks_classes_check`: `CHECK (((cardinality(classes) >= 1) AND (classes <@ ARRAY['attacker'::text, 'support'::text])))`
+  - `ability_blocks_fields_check`: `CHECK ((jsonb_typeof(fields) = 'object'::text))`
+  - `ability_blocks_grp_check`: `CHECK ((grp = ANY (ARRAY['main'::text, 'modifier'::text, 'rider'::text, 'payoff'::text, 'scaler'::text, 'condition'::text, 'trigger'::text])))`
+  - `ability_blocks_key_check`: `CHECK ((key ~ '^[a-z_]+$'::text))`
+  - `ability_blocks_ord_check`: `CHECK ((ord >= 1))`
+  - `ability_blocks_reserved_check`: `CHECK (((reserved IS NULL) OR (reserved <> ''::text)))`
+  - `ability_blocks_rule_check`: `CHECK (((rule <> ''::text) AND (rule !~ '[0-9]'::text)))`
+  - `ability_blocks_silver_check`: `CHECK (((jsonb_typeof(silver) = 'object'::text) AND ((silver)::text !~ '[0-9]'::text)))`
+  - `ability_blocks_text_check`: `CHECK (((jsonb_typeof(text) = 'object'::text) AND ((text)::text !~ '[0-9]'::text)))`
+- Row level security: on. Policies: none
 
 <a id="table-ability-kinds"></a>
 
@@ -515,12 +557,15 @@ Table. [combat] Combat v2: the 16 statuses of plan 6.1 (kind status), the end st
 | `rule` | text | not null |  | The one-line rule shown on tap. No digit: each number is a {leaf} of the numbers object (statuses_check). |
 | `note` | text | null |  | A note for the designers (sources, links to other rules). |
 | `updated_at` | timestamp with time zone | not null | `now()` | The last change of the row. |
+| `verb` | text | null |  | The card text verb of a status that a block can apply (the card text style 2.1, combat_v2_abilities.sql): {t} = the target word, {n} = stacks, {v} = a value in %. NULL = no block applies it (Frozen is the end state of Chill). |
+| `adj` | text | null |  | The card text adjective of the status ("Against Poisoned targets", "Cure an ally of Stunned"): the card text style 2.1. combat_v2_abilities.sql. |
 
 - Primary key: `PRIMARY KEY (key)`
 - Unique: `statuses_ord_key` `UNIQUE (ord)`
 - Foreign keys: 
   - `statuses_end_state_fkey` to [statuses](hunt-and-combat.md#table-statuses): `FOREIGN KEY (end_state) REFERENCES statuses(key)`
 - Check constraints: 
+  - `statuses_adj_check`: `CHECK (((adj IS NULL) OR ((adj <> ''::text) AND (adj = btrim(adj)) AND (adj !~ '[0-9]'::text))))`
   - `statuses_check`: `CHECK (((end_state ~ '^[a-z_]+$'::text) AND (end_state <> key)))`
   - `statuses_check1`: `CHECK ((on_enemy OR on_card))`
   - `statuses_check2`: `CHECK ((((stacking = ANY (ARRAY['add'::text, 'add_decay'::text])) = (max_stacks IS NOT NULL)) OR (kind = 'enemy_state'::text)))`
@@ -538,9 +583,20 @@ Table. [combat] Combat v2: the 16 statuses of plan 6.1 (kind status), the end st
   - `statuses_numbers_check`: `CHECK ((numbers ~ '^[a-z0-9_]+(\.[a-z0-9_]+)*$'::text))`
   - `statuses_ord_check`: `CHECK ((ord >= 1))`
   - `statuses_stacking_check`: `CHECK ((stacking = ANY (ARRAY['none'::text, 'add'::text, 'add_cap'::text, 'add_decay'::text, 'higher'::text])))`
+  - `statuses_verb_check`: `CHECK (((verb IS NULL) OR ((verb <> ''::text) AND (verb !~ '[0-9]'::text) AND (verb ~~ '%{%}%'::text))))`
 - Row level security: on. Policies: none
 
 ## Functions
+
+<a id="fn-ability-blocks-check"></a>
+
+### ability_blocks_check()
+
+- Function: `ability_blocks_check()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (before insert, update on ability_blocks): every field is {type of ability_v2_field_types, required}, the amount and the scaled fields are number fields, every text and silver pattern is a text. combat_v2_abilities.sql.
 
 <a id="fn-ability-check-jsonb"></a>
 
@@ -631,6 +687,156 @@ F-3 4a: NULL when a value ref (field:<name>, balance:<key>.<leaf>, potency, coun
 - Security definer: no
 
 F-3 4a: NULL when one step of an ability kind is valid for the slot and the fields, else the reason. Refuses reserved triggers, primitives, statuses and buff stats.
+
+<a id="fn-ability-v2-block-pp-jsonb-text-numeric-jsonb"></a>
+
+### ability_v2_block_pp(jsonb,text,numeric,jsonb)
+
+- Function: `ability_v2_block_pp(p_block jsonb, p_class text, p_strikes numeric, p_b jsonb)`
+- Returns: `numeric`
+- Security definer: no
+
+[combat] Combat v2 (plan 5.2): the PP of ONE ability block for a class (the simulator blockPP): attacker blocks att_k / C x the extra basic hits they add, support blocks their v2_pp.support_pp price x sup_cycle / C, riders status_pp x amount x chance (attacker x strikes / C), C = v2_charge.<class> + 1. NULL for a block with no price. PURE. combat_v2_abilities.sql.
+
+<a id="fn-ability-v2-cap-text"></a>
+
+### ability_v2_cap(text)
+
+- Function: `ability_v2_cap(p text)`
+- Returns: `text`
+- Security definer: no
+
+[combat] Card text: the first letter in upper case (a sentence start). PURE.
+
+<a id="fn-ability-v2-check-text-jsonb-jsonb"></a>
+
+### ability_v2_check(text,jsonb,jsonb)
+
+- Function: `ability_v2_check(p_role text, p_ability jsonb, p_b jsonb DEFAULT NULL::jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 THE ABILITY VALIDATOR (plan 5.4): checks an active {name, blocks, silver} for a role: every block built (not reserved) and of the class, fields and statuses, once, one main hit for an attacker, smite for a support area / vs_status, execute for line_status, cure before a shield to the cured ally, at most limits.riders riders, PP = budget +/- tolerance, Silver = type 1 on the amount of one block at budget + silver.pp, the card text words_min to words_max words. Answer {ok, errors, role, class, pp, silver_pp, text, words, forms, silver_text, enables, pays}. Reads only. combat_v2_abilities.sql.
+
+<a id="fn-ability-v2-field-error-text-jsonb-jsonb"></a>
+
+### ability_v2_field_error(text,jsonb,jsonb)
+
+- Function: `ability_v2_field_error(p_type text, p_v jsonb, p_st jsonb)`
+- Returns: `text`
+- Security definer: no
+
+[combat] The ability validator: one field value against its type (ability_v2_field_types); NULL = fine, else the problem. PURE. combat_v2_abilities.sql.
+
+<a id="fn-ability-v2-field-types"></a>
+
+### ability_v2_field_types()
+
+- Function: `ability_v2_field_types()`
+- Returns: `text[]`
+- Security definer: no
+
+[combat] The field types of an ability block (ability_blocks.fields): num_pos, num_x (above 1), num_nonneg, share (above 0, at most 1), int_pos, int_many (above 1), int_nonneg, flag, status_rider (a harmful enemy status with a verb), status_enemy, status_stack, status_decay, status_list, cure_list (["all"] or harmful card statuses), to_cured. combat_v2_abilities.sql.
+
+<a id="fn-ability-v2-fill-text-jsonb"></a>
+
+### ability_v2_fill(text,jsonb)
+
+- Function: `ability_v2_fill(p_pattern text, p_vals jsonb)`
+- Returns: `text`
+- Security definer: no
+
+[combat] Card text: fills the {name} places of a pattern with the values. PURE.
+
+<a id="fn-ability-v2-numbers"></a>
+
+### ability_v2_numbers()
+
+- Function: `ability_v2_numbers()`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] The numbers of the ability validator and the card text in one read: balance v2_pp, v2_charge, v2_status, ability_v2, plus statuses (label, adj, verb, negative, stacking, sides) and blocks (the ability_blocks rows as data). combat_v2_abilities.sql.
+
+<a id="fn-ability-v2-pct-numeric"></a>
+
+### ability_v2_pct(numeric)
+
+- Function: `ability_v2_pct(p numeric)`
+- Returns: `text`
+- Security definer: no
+
+[combat] Card text: a share as a whole % rounded up (Nathan 2026-10-20: a card shows whole numbers, rounded up; 0.565 -> 57). PURE.
+
+<a id="fn-ability-v2-pp-text-jsonb-jsonb"></a>
+
+### ability_v2_pp(text,jsonb,jsonb)
+
+- Function: `ability_v2_pp(p_class text, p_blocks jsonb, p_b jsonb)`
+- Returns: `numeric`
+- Security definer: no
+
+[combat] Combat v2 (plan 5.2): the PP of an active = the sum of ability_v2_block_pp over its blocks (the strikes count prices the attacker riders). PURE. combat_v2_abilities.sql.
+
+<a id="fn-ability-v2-silver-text-text-jsonb-jsonb-jsonb"></a>
+
+### ability_v2_silver_text(text,jsonb,jsonb,jsonb)
+
+- Function: `ability_v2_silver_text(p_class text, p_blocks jsonb, p_silver jsonb, p_b jsonb DEFAULT NULL::jsonb)`
+- Returns: `text`
+- Security definer: no
+
+[combat] Combat v2 (plan 5.3, the card text style R12): the Silver line = only the bonus: "+", the raise of the amount in % rounded up, and the unit of the block (ability_blocks.silver). combat_v2_abilities.sql.
+
+<a id="fn-ability-v2-spec"></a>
+
+### ability_v2_spec()
+
+- Function: `ability_v2_spec()`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] The fixed shape with the limits of the balance key ability_v2 (pp att_k, sup_cycle, sup_vs_k, line_status, quicken_all_x; silver stars, pp; limits blocks, riders, words_min, words_max; k1_shield). combat_v2_abilities.sql.
+
+<a id="fn-ability-v2-text-text-jsonb-jsonb"></a>
+
+### ability_v2_text(text,jsonb,jsonb)
+
+- Function: `ability_v2_text(p_class text, p_blocks jsonb, p_b jsonb DEFAULT NULL::jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 (plan 5.4): the card text of an active, generated from its blocks with the patterns of ability_blocks and the words of statuses (the card text style of 2026-10-20: "the target" on attackers, "the enemy" then "it" on supports, "an ally" then "it", the Glossary keyword K1 for a cure with the k1_shield shield, whole numbers rounded up; the short forms S1 to S5 only above ability_v2.limits.words_max). Answer {text, words, forms}. combat_v2_abilities.sql.
+
+<a id="fn-ability-v2-vals-jsonb"></a>
+
+### ability_v2_vals(jsonb)
+
+- Function: `ability_v2_vals(p_block jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Card text: the pattern values of one block: {f} = % rounded up (n, immune, stacks: the number), {f#} = the number, {n*} = twice / N times, {x*} = double / triple / N times the. PURE.
+
+<a id="fn-ability-v2-verb-jsonb-jsonb-text-boolean"></a>
+
+### ability_v2_verb(jsonb,jsonb,text,boolean)
+
+- Function: `ability_v2_verb(p_status jsonb, p_block jsonb, p_target text, p_append boolean)`
+- Returns: `text`
+- Security definer: no
+
+[combat] Card text: the verb of a status (statuses.verb) with its stacks, its value in % and the target word; a verb with no target place gets " to <target>" when p_append. PURE.
+
+<a id="fn-ability-v2-words-text"></a>
+
+### ability_v2_words(text)
+
+- Function: `ability_v2_words(p text)`
+- Returns: `integer`
+- Security definer: no
+
+[combat] Card text: the number of words. PURE.
 
 <a id="fn-ability-value-check-jsonb-jsonb"></a>
 
@@ -912,6 +1118,46 @@ F-3 4b: a helper of combat_effect: puts values on a card or an enemy of the work
 
 F-3 4b: the trigger use of combat_effect (a support card): Packet Loss, the affinity count, the counters, then the ally, team or enemy step, in today's order with today's refusals.
 
+<a id="fn-combat-effect-v2-active-jsonb-jsonb-jsonb-jsonb-jsonb-jsonb"></a>
+
+### combat_effect_v2_active(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)
+
+- Function: `combat_effect_v2_active(p_state jsonb, p_actor jsonb, p_target jsonb, p_ally jsonb, p_draws jsonb, p_b jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2: the unique active (the simulator doActive). An attacker: Confused, the shape of its hits (ABL raises the amounts), each hit then its riders (their draws AFTER the hit) and on_crit, the area hits, lifesteal, guard_up, then Empowered and the Mark end. A support: its blocks in order (a crit roll for shield, heal, empower, rally and an Expose / Weaken / Mark), the smite last (area: every other enemy). Answer {state, hits, draws}. VOLATILE. combat_v2_abilities.sql.
+
+<a id="fn-combat-effect-v2-basic-jsonb-jsonb-jsonb-jsonb-jsonb"></a>
+
+### combat_effect_v2_basic(jsonb,jsonb,jsonb,jsonb,jsonb)
+
+- Function: `combat_effect_v2_basic(p_state jsonb, p_actor jsonb, p_target jsonb, p_draws jsonb, p_b jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2: the basic attack (the simulator doBasic): Confused, the hit, the Flurry second strike (its draw after the hit), the Cleaver splash, the support basic (Artillery, the Spotter Expose, the Herald Empower of the strongest attacker); then Empowered and the Mark of the target end. Answer {state, hits, draws}. VOLATILE. combat_v2_abilities.sql.
+
+<a id="fn-combat-effect-v2-blocks-jsonb-jsonb"></a>
+
+### combat_effect_v2_blocks(jsonb,jsonb)
+
+- Function: `combat_effect_v2_blocks(p_unit jsonb, p_b jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 (plan 2.1): the active blocks of a unit as the fight uses them: a support's scaled numbers (ability_blocks.scaled) x its factor F (power), every stacks + extra_stack. PURE. combat_v2_abilities.sql.
+
+<a id="fn-combat-effect-v2-hit-jsonb-jsonb-jsonb-jsonb-jsonb-jsonb"></a>
+
+### combat_effect_v2_hit(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)
+
+- Function: `combat_effect_v2_hit(p_state jsonb, p_att jsonb, p_tgt jsonb, p_ctx jsonb, p_draws jsonb, p_b jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2: one card hit of a v2 state: combat_v2_hit (with the clock, the mode and the standing enemies) written by combat_v2_hit_apply, then the Survivor heal. Answer {state, hit}. VOLATILE. combat_v2_abilities.sql.
+
 <a id="fn-combat-effect-value-jsonb-jsonb"></a>
 
 ### combat_effect_value(jsonb,jsonb)
@@ -1092,6 +1338,16 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 
 [combat] The Thorns passive: the damage that comes back to the attacking card, a share of its damage (balance key boss_passives). Internal helper of hunt_attack and dungeon_enemy_turn.
 
+<a id="fn-combat-v2-action-numbers"></a>
+
+### combat_v2_action_numbers()
+
+- Function: `combat_v2_action_numbers()`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2: the numbers of a card action in one read: combat_v2_status_numbers, v2_support, v2_charge, stacking (the stacking rule of each status) and blocks (classes, scaled, reserved of each ability block). combat_v2_abilities.sql.
+
 <a id="fn-combat-v2-advance-jsonb-jsonb"></a>
 
 ### combat_v2_advance(jsonb,jsonb)
@@ -1111,6 +1367,16 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Security definer: no
 
 [combat] combat_v2_advance(state, numbers) with the numbers of balance v2_speed, v2_stats, v2_status, v2_hunt and v2_dungeon. Reads only. combat_v2_turn_meter.sql.
+
+<a id="fn-combat-v2-card-act-jsonb-jsonb-jsonb-jsonb"></a>
+
+### combat_v2_card_act(jsonb,jsonb,jsonb,jsonb)
+
+- Function: `combat_v2_card_act(p_state jsonb, p_actor jsonb, p_opts jsonb DEFAULT NULL::jsonb, p_b jsonb DEFAULT NULL::jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 (plan 2.1, 3.2): ONE action of a standing card of a v2 state: the active (opts.use, charged after v2_charge.<class> own turns) or the basic attack, on opts.target (an enemy) and opts.ally (the ally of the single-ally blocks); then the charge (0, or +1, or held +1 when full) and the Medic passive. Draws from opts.draws in a fixed order (else random()). Answer {state, action, hits, draws}. VOLATILE. No v1 function calls it.
 
 <a id="fn-combat-v2-confused-target-jsonb-jsonb-jsonb-jsonb"></a>
 
@@ -1142,6 +1408,16 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 
 [combat] Combat v2: the random number of one draw slot of a hit: the slot of the list p_draws (numbers from 0 to below 1; a missing slot raises), or random() when p_draws is NULL. VOLATILE. combat_v2_hit.sql.
 
+<a id="fn-combat-v2-draws-rest-jsonb-integer"></a>
+
+### combat_v2_draws_rest(jsonb,integer)
+
+- Function: `combat_v2_draws_rest(p_draws jsonb, p_n integer)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2: the draws after the first n (NULL stays NULL: random()). PURE. combat_v2_abilities.sql.
+
 <a id="fn-combat-v2-fall-jsonb"></a>
 
 ### combat_v2_fall(jsonb)
@@ -1170,7 +1446,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 hit core (plan 2.2, 4, 6): one hit of a card on an enemy (ctx.side card: miss = base + evasion + Blinded - acc unless true strike or Marked; roll; crit min(cap + Focused, crt + adds + Striker) unless Ironhide and not Marked, x crd; Empowered (Dispeller), Weakened, Chill, Exposed, Mark, Finisher, Cleaver, vs_x; Breaker pierce and shield break) or of an enemy on a card (ctx.side enemy: Blinded; Dodge ddg x (1 - keen), area x area_x, not vs true_strike; roll; Enraged, boss rage, Weakened, Chill, Exposed; Sunder, Shatter). Damage = raw x (1 - def x (1 - pierce)), Warden ally_dr, min_dmg, then the shield (shielded / guarded) absorbs first. Draw slots in a fixed order (card: [miss], roll, [crit]; enemy: [Blinded], [dodge], roll) from ctx.draws or random(); riders draw after. Answer {hit, miss, dodged, crit, dmg, absorbed, shield_after, hp_loss, hp_after, down, heal, draws, ...}. Writes nothing; numbers from p_b. No v1 function calls it.
+[combat] Combat v2 hit core (plan 2.2, 4, 6): one hit of a card on an enemy (ctx.side card: miss = base + evasion + Blinded - acc unless true strike or Marked; roll; crit min(cap + Focused, crt + adds + Striker) unless Ironhide and not Marked, x (crd + Striker + Focused crd); Empowered (Dispeller), Weakened, Chill, Exposed, Mark, Finisher, Cleaver, vs_x; Breaker pierce and shield break) or of an enemy on a card (ctx.side enemy: Blinded; Dodge ddg x (1 - keen), area x area_x, not vs true_strike; roll; Enraged, boss rage, Weakened, Chill, Exposed; Sunder, Shatter). Damage = raw x (1 - def x (1 - pierce)), Warden ally_dr, min_dmg, then the shield (shielded / guarded) absorbs first. Draw slots in a fixed order (card: [miss], roll, [crit]; enemy: [Blinded], [dodge], roll) from ctx.draws or random(); riders draw after. Answer {hit, miss, dodged, crit, dmg, absorbed, shield_after, hp_loss, hp_after, down, heal, draws, ...}. Writes nothing; numbers from p_b. combat_v2_hit.sql, Focused crd: combat_v2_abilities.sql.
 
 <a id="fn-combat-v2-hit-jsonb-jsonb-jsonb"></a>
 
@@ -1230,7 +1506,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `numeric`
 - Security definer: no
 
-[combat] Combat v2 (plan 3.1): the speed of one fight-state unit in one clock step. base (unit.speed, else v2_speed.role_base[unit.role]) x min(safety_max_x, max(status_min_x, (1 + v2_stats.spd.pct x min(unit.spd, max_per_stat)) x Slowed x Quickened x (1 - chill.spd x Chill stacks))); a status counts while its until is not below the step. PURE. combat_v2_turn_meter.sql.
+[combat] Combat v2 (plan 3.1): the speed of a unit at a clock step: base (unit speed, else v2_speed.role_base) x min(safety_max_x, max(status_min_x, (1 + spd.pct x points) x Slowed x Quickened (its value, else quickened.x) x (1 - chill.spd x stacks))). IMMUTABLE. combat_v2_turn_meter.sql, Quickened value: combat_v2_abilities.sql.
 
 <a id="fn-combat-v2-stats-numeric-jsonb-text-jsonb"></a>
 
@@ -1250,7 +1526,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 (plan 6): puts one status on one unit of a fight state v 2: down, mechanic immunity, the cure immunity of a card, resolve (Controller, Accuracy), Unstoppable, the ONE control immunity and the Hunt boss limit (boss_max_dur), then the stacking rule (Poison and the Toxic burst, Burn max, Chill to Frozen, Exposed and Weakened caps, Thick Hide, Dispeller, Mark and Empowered higher, shields up to cap_maxhp). Durations dur / dur_card + Controller dur_add. Draw slots [resolve], [unstoppable], then the end state. Answer {state, applied, reason, frozen, burst, draws}. VOLATILE. No v1 function calls it.
+[combat] Combat v2 (plan 6): puts one status on one unit of a fight state v 2: down, mechanic immunity, the cure immunity of a card, resolve (Controller, Accuracy), Unstoppable, the ONE control immunity and the Hunt boss limit (boss_max_dur), then the stacking rule (Poison and the Toxic burst, Burn max, Chill to Frozen, Exposed and Weakened caps, Thick Hide, Dispeller, Mark and Empowered higher, shields up to cap_maxhp; Quickened takes a value = its speed multiplier, Focused takes crd = its crit damage). Durations dur / dur_card + Controller dur_add. Draw slots [resolve], [unstoppable], then the end state. Answer {state, applied, reason, frozen, burst, draws}. VOLATILE. combat_v2_status_rules.sql, Quickened value and Focused crd: combat_v2_abilities.sql.
 
 <a id="fn-combat-v2-status-check-jsonb-jsonb-text"></a>
 
@@ -1490,7 +1766,7 @@ F-3 4b: the shape check of a fight state: the list of problems (empty = fine). U
 - Returns: `text[]`
 - Security definer: no
 
-[combat] The shape check of a fight state v = 2 (plan 9.1): the v1 rules plus clock, and meter, charge and status{} on each card and enemy (known statuses that apply to that side; stacks, value, until only). The v1 status keys are refused in a v2 state. The list of problems (empty = fine). Used by the tests; v2 later.
+[combat] The shape check of a fight state v = 2 (plan 9.1): the v1 rules plus clock, and meter, charge and status{} on each card and enemy (known statuses of that side with stacks, value, until only; Focused also crd, combat_v2_abilities.sql); the v1 status keys are refused. Answer: the list of problems (empty = fine).
 
 <a id="fn-fight-state-v2-from-v1-jsonb"></a>
 

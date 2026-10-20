@@ -959,3 +959,68 @@ because every later part reads them.
   bound (the Hunt boss skips at most 14 of 40 turns = 0.350 <= 0.353), the draws, SQL = the simulator on 600 random status sequences (23,316
   ops) and on 120 random fights (6,814 actions, 711 skips), the fuzz (3,200 ops), 23 refusals, md5 of the 437 other functions unchanged;
   MUTATE=all: baseline PASS, 83 planted faults caught).
+
+### 19.2 E6: the ability blocks (`tcg-bot/supabase/combat_v2_abilities.sql`)
+
+- Needs `combat_v2_status_rules.sql` (E5) first. No v1 function calls the new functions or reads the new table, and no v1 function changes (the test
+  compares the md5 of every other public function: 451). The flag stays OFF. The reference is the simulator (`cards.mjs` blockPP and makeCard,
+  `engine.mjs` cardAct, doBasic, doActive, cure, smite).
+- **The block library** `ability_blocks` (5.1, 9.1): one row per block with its group, classes, fields and types, the amount that Silver raises, the
+  support numbers that F scales, the price rule, the card text patterns (5.4: one pattern per block), the Silver bonus pattern and a one-line rule.
+  No number is in a row. Built: the 31 blocks of the simulator, among them the trigger `on_crit`, the targets `all_enemies` (`area`) and `all_allies`
+  (`shield_all`, `heal_all`, `rally`, quicken all, `cleanse`), and `heal_all` (the 5.2 price "Heal all allies"; the simulator got the block too).
+  Reserved rows (the validator refuses them, with the reason): the trigger `on_kill` and the conditions `self_has`, `enemy_charging`, `foes_alive`
+  and the value `self:shield` of 9.1. No rule says what they do and 5.2 has no price for them (decisions for Nathan).
+- Not rows of `ability_kinds` (9.1 said "new rows"): its v1 trigger and the v1 readers (`ability_check`, the studio list, `ability_kinds_recheck`)
+  would see them. The new table stands beside it (rule 9: v2 objects beside v1).
+- **Balance** `ability_v2` (a new key with its own shape `ability_v2_spec` and trigger; not named `v2_*`, so V1's spec function stays): the
+  price-model numbers that the simulator had in its code (`pp.att_k` 40, `pp.sup_cycle` 2, `pp.sup_vs_k` 10/3, `pp.line_status` 0.5,
+  `pp.quicken_all_x` 1.5), the Silver rule (`silver.stars` 3, `silver.pp` 3), the limits (`limits.blocks` 8, `limits.riders` 1 (5.3), the card
+  text `words_min` 6 to `words_max` 20 (Nathan 2026-10-20; was 8 to 14)) and `k1_shield` 0.12 (the shield that the Glossary keyword "Cure ... for N
+  steps" names). `v2sim/config.json` has the same key and `cards.mjs` reads it (one number, one home).
+  `v2_pp.support_pp.shield_all` 75 -> 100 (5.2, the P1 price; config.json since PR #454), logged by nathan, only while it is 75.
+- **The validator** `ability_v2_check(role, ability)` (5.4): an ability is `{name, blocks [...], silver {block, field, value}}`. It passes only
+  when every block is built and of the role's class, its fields have the right types and statuses (a rider status needs a verb: Frozen has none),
+  a block marked once is there once, an attacker has ONE main hit (`hit` or `strikes`), a support `area` or `vs_status` has a `smite`, a
+  `line_status` has an `execute`, a shield "to the cured ally" comes after a `cure`, the riders are at most `limits.riders`, the PP is 10 +/- 0.6,
+  the Silver raises the amount of ONE block (type 1) to 13 +/- 0.6 PP (type 2 "more chance" is cut; types 3 and 4 wait for the guardian price
+  factor; a field that is not the amount is refused), and the text has 6 to 20 words. The answer has the PP, the text, the Silver line and
+  `enables` / `pays` (the "Makes / Uses" chips).
+- **The PP** `ability_v2_pp` = the simulator `blockPP` for every block (C = `v2_charge.<class>` + 1).
+- **The card text** `ability_v2_text` is generated from the blocks with the patterns of `ability_blocks` and the words of the statuses (new columns
+  `statuses.verb` and `statuses.adj`): whole numbers rounded up (Nathan 2026-10-20), "the target" on attackers, "the enemy" then "it" on supports,
+  "an ally" then "it" (two single-ally blocks are one sentence), the keyword K1 for a cure with the `k1_shield` shield, and the short forms S1 to S5
+  only above 20 words. `ability_v2_silver_text`: only the bonus ("+23% damage"), the raise rounded up.
+- **The card action** `combat_v2_card_act(state, actor, opts)`: one action of a card: the active when `opts.use` and the charge is full
+  (`v2_charge.<class>` own turns), else the basic attack. `opts.target` is the enemy, `opts.ally` the ally of every single-ally block (the card text
+  says "an ally ... it"). The basic attack: Confused, the hit, the Flurry second strike (its draw after the hit), the Cleaver splash, the support
+  basic (Artillery, the Spotter Expose, the Herald Empower of the strongest attacker), then Empowered and the Mark of the target end. The attacker
+  active: the shape of its hits (ABL raises the amounts), each hit then its riders (their draws AFTER the hit, 6.2) and `on_crit`, the area hits,
+  lifesteal and guard_up. The support active: its blocks in order (one crit roll for each shield, heal, empower and rally block and for an Expose,
+  Weaken or Mark), the smite last. Then the charge (0 after the active; +1, or `held` +1 when full) and the Medic passive (the most hurt ally).
+- **The Focused crit damage and the Quickened amount** (E4 left the first to E6): a Focused status may hold `crd` (added to the crit damage of a crit),
+  a Quickened status may hold `value` (its speed multiplier; a quicken block sets 1 + v x ABL; none = `quickened.x`). Four earlier v2 functions are
+  REPLACED with that one change each: `fight_state_check_v2` (E1), `combat_v2_speed` (E2), `combat_v2_hit` (E4), `combat_v2_status_apply` (E5). With
+  no `crd` and no Quickened value their answers are the E1 to E5 answers (the test proves it). `SUPERSEDED.md` now lists those files for them.
+- Found: the simulator drew the hit of a support smite on a target that an earlier block of the same active had downed (a Toxic burst). The simulator
+  now skips that smite, as SQL does (no change to `targets`: the same 20 PASS, 2 FAIL, 1 CHECK). The simulator focus price read `crd` with no default.
+- Found: test-combat-v2-balance.mjs compared `v2_pp` with config.json, where PR #454 had already set `shield_all` 100; it now runs the balance part of
+  this file after V1 (as on live), between the markers `-- @balance-begin` and `-- @balance-end`.
+- Checked against the approved private Set 1 actives (they stay private): the validator accepts 129 of 130 with PP = the simulator; the one refused is
+  the "one random status" approximation (4 riders of 25%). The generated text equals the approved text for 95 of the 100 actives that the simulator
+  runs exactly; the 5 others: 6.75% now shows as 7% (whole numbers rounded up), two texts with "Then", one "the strongest one", one "This never misses".
+- Not in E6: the storage of the abilities (`subjects.ability_v2`, 9.1) and the studio builder (T1); the policy choices of Auto (which ally, when to
+  use the active: E8); the boss and monster moves (E7).
+- Proof (copy 2: 4e, V1, E1 to E5 applied): the goldens with CANDIDATE = this file (Hunt 183, Dungeon 240, boss counters 128 fights: no
+  difference); then the file applied on copy 2: the flag OFF in all 4 modes; `test-effect-shadow.mjs` 3623 cases, 0 different, MUTATE=all baseline PASS
+  and every mutation caught; every v2 test PASS (V1 13, E1 15, E2 42, E3 30, E4 90, E5 89, E6 59); `test-all-local.mjs` 144/147, the 3 failures the
+  generated files (db/schema, SUPERSEDED.md, docs/data), which pass after the regeneration; `fight-timing.mjs` with the candidate, 3 runs: each run had
+  one or two calls above 1.10, never the same one (dungeon_enemy_turn 1.179, dungeon_pass_turn 1.128, hunt_card_crits 1.186, hunt_autopick 1.163; no v1
+  call reaches an E6 function); 3 more runs of those 4 calls: 0.865 to 1.069; BASE against BASE: 0.987 to 1.040. Alone: `combat_v2_card_act` (a Flurry
+  active, 3 strikes with riders) 2.7 ms, a Herald basic attack 1.8 ms, a Medic active 1.7 ms, `ability_v2_check` 1.3 ms. The simulator `targets` run is
+  the same before and after the simulator changes (20 PASS, 2 FAIL, 1 CHECK). The three combat CI checks PASS.
+- Test: `card-studio/scripts/test-combat-v2-abilities.mjs` (59 checks: 31 fixed card actions with explicit draws, 36 planted bad abilities each refused
+  with its message, the 42 templates, SQL = the simulator on the PP of 2000 random abilities (the largest relative difference 7.6e-16) and on 120 random
+  fights (3067 actions: 454 actives, 745 basic attacks, 69 skips; equal action by action), the card texts and the Silver line, the private Set 1 actives
+  when the private file exists, the fuzz (535 actions, each replayed with its draws); MUTATE=all at V2_FIGHTS=30 V2_FUZZ=15 V2_PP=400: baseline PASS and
+  73 planted faults caught, before and after the apply, among them a rider that draws before the hit and the Flurry draw before the hit).

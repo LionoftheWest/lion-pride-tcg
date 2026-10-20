@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (129)
+## Superseded files (132)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -38,7 +38,10 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `card_sets.sql` | SUPERSEDED: reverts `public.open_packs(text, bigint[], integer, text)` (live = `set_pools.sql`); reverts `public.pullable_sets(text)` (live = `set_pools.sql`); changes table `draw_pool`: view |  |
 | `combat_actions.sql` | SUPERSEDED: reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `f3_engine_hunt.sql`) | a re-run stops at an error today: combat_actions.sql: the live hunt_support changed since this file was built. Rebuild from the live text. |
 | `combat_core.sql` | SUPERSEDED: reverts `public.combat_crit_chance(boolean, text, numeric, jsonb)` (live = `f3_engine_hunt.sql`); reverts `public.combat_hit(integer, numeric, numeric, numeric, numeric, numeric, numeric, text, numeric, numeric, boolean, numeric, bigint, bigint)` (live = `f3_engine_hunt.sql`); reverts `public.combat_pool_act(numeric, numeric, integer, integer, numeric, integer, jsonb, boolean)` (live = `f3_engine_cleanup.sql`); reverts `public.combat_squad(text[], boolean, jsonb, jsonb)` (live = `f3_one_combat_math.sql`); brings back `public.combat_support_value(text, numeric, numeric, integer)`, which live does not have; reverts `public.combat_weak(jsonb, jsonb, text, text, text, text[], integer)` (live = `f2_set_not_season.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `f3_engine_hunt.sql`) | a re-run stops at an error today: syntax error at or near "notify"; alone, `create or replace function public.hunt_support(p_p...` fails: syntax error at or near "notify" |
-| `combat_v2_turn_meter.sql` | SUPERSEDED: reverts `public.combat_v2_turn_order(jsonb, integer)` (live = `combat_v2_status_rules.sql`) |  |
+| `combat_v2_hit.sql` | SUPERSEDED: reverts `public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_abilities.sql`) |  |
+| `combat_v2_status_rules.sql` | SUPERSEDED: reverts `public.combat_v2_status_apply(jsonb, jsonb, text, jsonb, jsonb)` (live = `combat_v2_abilities.sql`) |  |
+| `combat_v2_statuses_roles.sql` | SUPERSEDED: reverts `public.fight_state_check_v2(jsonb)` (live = `combat_v2_abilities.sql`) |  |
+| `combat_v2_turn_meter.sql` | SUPERSEDED: reverts `public.combat_v2_speed(jsonb, integer, jsonb)` (live = `combat_v2_abilities.sql`); reverts `public.combat_v2_turn_order(jsonb, integer)` (live = `combat_v2_status_rules.sql`) |  |
 | `dailies.sql` | SUPERSEDED: reverts `public.add_voice_minutes(text[])` (live = `game_vars_readers.sql`); reverts `public.checkin_streak(text, date)` (live = `effects_outside.sql`); reverts `public.claim_daily(text, text)` (live = `game_vars_all.sql`); reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`); reverts `public.dailies_view(text)` (live = `game_vars_all.sql`); reverts `public.earned_today(text)` (live = `pack_ledger_strict.sql`) |  |
 | `dailies_adventure.sql` | SUPERSEDED: reverts `public.claim_daily(text, text)` (live = `game_vars_all.sql`); reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`) | a re-run stops at an error today: dailies_adventure.sql: the live dailies_tasks changed since this file was built. Rebuild from the live text. |
 | `dailies_hunt_any.sql` | SUPERSEDED: reverts `public.dailies_tasks(text)` (live = `balance_economy.sql`) |  |
@@ -167,8 +170,8 @@ a one-time grant or a settings value would run again.
 - `adventure_gate.sql`: balance
 - `auction_confirm_24h.sql`: auctions
 - `card_effects_enable_a1.sql`: effect_primitives
+- `combat_v2_abilities.sql`: ability_blocks, balance, set_config(), statuses
 - `combat_v2_flags_balance.sql`: balance, set_config()
-- `combat_v2_statuses_roles.sql`: roles, statuses
 - `d191_s1_frame_grant.sql`: achievement_claims
 - `d191_s1_origins_frame.sql`: balance
 - `d191_set_rewards.sql`: achievement_claims, balance, players
@@ -203,9 +206,9 @@ a one-time grant or a settings value would run again.
 - `stat_reset_gift.sql`: stat_reset_gifts (DO block)
 - `ui_v3_flag.sql`: settings
 
-## No change (28)
+## No change (26)
 
-`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `combat_v2_hit.sql`, `combat_v2_stats.sql`, `combat_v2_status_rules.sql`, `d191_pack_color_check.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_finish_room.sql`, `f3_elements_beats.sql`, `f3_engine_hunt.sql`, `f3_one_power_number.sql`, `first_pack_ping.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
+`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `card_tags.sql`, `combat_v2_stats.sql`, `d191_pack_color_check.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_finish_room.sql`, `f3_elements_beats.sql`, `f3_engine_hunt.sql`, `f3_one_power_number.sql`, `first_pack_ping.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
 
 ## Live functions that no file gives (1)
 

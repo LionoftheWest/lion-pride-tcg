@@ -15,7 +15,7 @@ grant execute on function public.combat_v2_hit(jsonb, jsonb, jsonb) to postgres;
 grant execute on function public.combat_v2_hit(jsonb, jsonb, jsonb) to service_role;
 
 -- @function public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)
--- md5: ae31c51b7eb51fb755039678528c2d57   (md5(replace(pg_get_functiondef('public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)'::regprocedure), chr(13), '')))
+-- md5: 9cbe6c966bed58d2c6afd0c600d7618a   (md5(replace(pg_get_functiondef('public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)'::regprocedure), chr(13), '')))
 -- owner: postgres
 CREATE OR REPLACE FUNCTION public.combat_v2_hit(p_att jsonb, p_tgt jsonb, p_ctx jsonb, p_b jsonb)
  RETURNS jsonb
@@ -100,7 +100,8 @@ begin
       crit := d < critc;
     end if;
     if crit then
-      mult := mult * (coalesce((p_att->>'crd')::numeric, (st->'crd'->>'base')::numeric) + case when role = 'striker' then (ro->'striker'->>'critx_add')::numeric * ab else 0 end);
+      mult := mult * (coalesce((p_att->>'crd')::numeric, (st->'crd'->>'base')::numeric) + case when role = 'striker' then (ro->'striker'->>'critx_add')::numeric * ab else 0 end
+                         + coalesce((combat_v2_status_on(p_att, 'focused', clk)->>'crd')::numeric, 0));
     end if;
     -- 4. the multipliers
     s := combat_v2_status_on(p_att, 'empowered', clk);

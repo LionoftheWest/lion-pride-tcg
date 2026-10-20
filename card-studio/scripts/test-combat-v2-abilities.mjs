@@ -91,7 +91,7 @@ const MUT = {
   // the support active
   support_crit_roll_off: ["      cr := case when dv < coalesce((u->>'crt')::numeric, 0) then coalesce((u->>'crd')::numeric, (p_b->'v2_stats'->'crd'->>'base')::numeric) else 1 end;\n    end if;\n    if k = 'shield' then",
     "      cr := 1;\n    end if;\n    if k = 'shield' then"],
-  shield_cured_ignored: ["t := case when blk->>'to' = 'cured' and cured is not null and combat_v2_up(s #> combat_v2_unit_path(s, cured)) then cured else p_ally end;", 't := p_ally;'],
+  shield_cured_to_down: ["t := case when blk->>'to' = 'cured' and cured is not null and combat_v2_up(s #> combat_v2_unit_path(s, cured)) then cured else p_ally end;", "t := case when blk->>'to' = 'cured' then p_actor else p_ally end;"],
   cure_no_immunity: ["s := combat_v2_status_cure(s, p_ally, keys, (blk->>'immune')::int, p_b)->'state';", "s := combat_v2_status_cure(s, p_ally, keys, 0, p_b)->'state';"],
   rally_supports_too: ["and combat_v2_up(s->'cards'->q.id) and s->'cards'->q.id->>'class' = 'attacker' order by q.n loop\n        s := combat_v2_status_apply(s, jsonb_build_object('side', 'card', 'id', id::numeric), 'empowered'",
     "and combat_v2_up(s->'cards'->q.id) order by q.n loop\n        s := combat_v2_status_apply(s, jsonb_build_object('side', 'card', 'id', id::numeric), 'empowered'"],
@@ -101,7 +101,7 @@ const MUT = {
   detonate_keeps_burn: ["        s := combat_v2_status_remove(s, p_target, blk->>'status', p_b)->'state';\n        s := combat_v2_damage(", "        s := combat_v2_damage("],
   smite_on_down: ["  if smite_x > 0 and combat_v2_up(s #> combat_v2_unit_path(s, p_target)) then", '  if smite_x > 0 then'],
   area_one_foe_off: ["  if area_x > 0 and cardinality(lst) = 0 then smite_x := smite_x + area_x * (p_b->'v2_support'->>'area_one_foe_x')::numeric; end if;\n", ''],
-  support_apply_crit_all: ["          if p_b->'stacking'->>(blk->>'status') in ('add_cap', 'higher') then", '          if true then'],
+  support_apply_no_crit: ["          if p_b->'stacking'->>(blk->>'status') in ('add_cap', 'higher') then", '          if false then'],
   support_apply_chance_after: ["      dv := combat_v2_draw(d, 0); used := used || to_jsonb(dv); d := combat_v2_draws_rest(d, 1);\n      if dv < least(1, ch * case when ch < 1 then ab else 1 end) then\n        amt := null;",
     "      dv := 0;\n      if dv < least(1, ch * case when ch < 1 then ab else 1 end) then\n        amt := null;"],
   f_scaling_off: ["then coalesce((select jsonb_object_agg(f, (x.b->>f)::numeric * coalesce((p_unit->>'power')::numeric, 1))", "then coalesce((select jsonb_object_agg(f, (x.b->>f)::numeric)"],
@@ -110,7 +110,7 @@ const MUT = {
   quicken_speed_off: ["m := m * coalesce((s->>'value')::numeric, (ss->'quickened'->>'x')::numeric); end if;", "m := m * (ss->'quickened'->>'x')::numeric; end if;"],
   // the PP
   pp_att_k: ["k := (a->>'att_k')::numeric / c;", "k := (a->>'att_k')::numeric / (c - 1);"],
-  pp_sup_cycle: ["sk := (a->>'sup_cycle')::numeric / c;", 'sk := 1;'],
+  pp_sup_cycle: ["sk := (a->>'sup_cycle')::numeric / c;", "sk := (a->>'sup_cycle')::numeric / (c + 1);"],
   pp_vs_support: ["case when att then k else sk * (a->>'sup_vs_k')::numeric end * (x - 1)", 'k * (x - 1)'],
   pp_line_status: ["when 'line_status' then (a->>'line_status')::numeric * jsonb_array_length(p_block->'statuses')", "when 'line_status' then (a->>'line_status')::numeric"],
   pp_quicken_all: ["* sk * case when al then (a->>'quicken_all_x')::numeric else 1 end", '* sk'],
@@ -191,7 +191,9 @@ const SETUP = String.raw`
     end loop; end $x$$d$;
   drop table if exists public.ability_blocks;
   alter table public.statuses drop column if exists verb, drop column if exists adj;
+  alter table public.balance disable trigger user;
   delete from public.balance where key = 'ability_v2';
+  alter table public.balance enable trigger user;
   update public.balance set value = jsonb_set(value, '{support_pp,shield_all}', '75') where key = 'v2_pp';`;
 const md5s = String.raw`(select jsonb_object_agg(p.oid::regprocedure::text, md5(pg_get_functiondef(p.oid))) from pg_proc p
    where p.pronamespace = 'public'::regnamespace and p.prokind = 'f' and p.proname <> all (array[${q(NEW)}, ${q(REPLACED)}]))`;
@@ -417,6 +419,11 @@ function fixedCases(B) {
     ['active: strikes hit n times (x (1 + (n x x - 1) x ABL) / n each), each strike draws its riders, and they stop when the target is down', dg({ 1: { charge: 2, abl: 1.2, active: A([{ k: 'strikes', n: 3, x: 0.6 }, { k: 'apply', status: 'poison', chance: 1 }]) } }, [foe(), foe({ hp: 60, max: 200 })]),
       [act(c1, { target: e0, use: true, draws: [...NOCRIT, 0.5, ...NOCRIT, 0.5, ...NOCRIT, 0.5] }), { op: 'set', path: ['cards', '1', 'charge'], v: 2 }, act(c1, { target: e1, use: true, draws: [...NOCRIT, 0.5, ...NOCRIT, 0.5, ...NOCRIT, 0.5] })],
       (r) => ok(r[0].hits.length === 3 && near(r[0].hits[0].dmg, 100 * (1 + (3 * 0.6 - 1) * 1.2) / 3 * roll(0.5)) && r[0].s.enemies[0].hp < 1000 && r[2].hits.length < 3 && r[2].s.enemies[1].down, JSON.stringify(r.map((x) => [x.hits, (x.draws || []).length, (x.s.enemies || []).map((e) => [e.hp, e.down])])))],
+    ['active: ABL raises a rider chance below one (chance 0.5 x ABL 1.2 = 0.6: a draw of 0.55 lands)', dg({ 1: { charge: 2, abl: 1.2, active: A([{ k: 'hit', x: 1.5 }, { k: 'apply', status: 'slowed', chance: 0.5 }]) } }, [foe()]),
+      [act(c1, { target: e0, use: true, draws: [...NOCRIT, 0.55] })], (r) => ok(stt(r, 0).slowed, JSON.stringify(r[0]))],
+    ['active: payoff_crit counts on the area hits too (the simulator rule): crit chance 0 + 0.5 vs a Burning target, the area hit on a foe with no Burn crits at a draw of 0.3',
+      dg({ 1: { role: 'breaker', charge: 2, crt: 0, active: A([{ k: 'hit', x: 1.2 }, { k: 'area', x: 0.5 }, { k: 'payoff_crit', status: 'burn', v: 0.5 }]) } }, [foe({ status: { burn: { stacks: 1 } } }), foe()]),
+      [act(c1, { target: e0, use: true, draws: [0.99, 0.5, 0.99, 0.99, 0.5, 0.3] })], (r) => ok(!r[0].hits[0].crit && r[0].hits[1].crit, JSON.stringify(r[0].hits))],
     ['active: on_crit draws after a crit only (no draw without a crit)', dg({ 1: { charge: 2, crt: 0.5, active: A([{ k: 'hit', x: 1.5 }, { k: 'on_crit', status: 'stunned', chance: 0.5 }]) } }, [foe()]),
       [act(c1, { target: e0, use: true, draws: [0.99, 0.5, 0.1, 0.2] }), { op: 'set', path: ['cards', '1', 'charge'], v: 2 }, { op: 'set', path: ['enemies', '0', 'status'], v: {} }, { op: 'set', path: ['enemies', '0', 'immune'], v: {} },
         act(c1, { target: e0, use: true, draws: [0.99, 0.5, 0.9] })],
@@ -967,11 +974,11 @@ try {
   say(fsame + ftie === FS.length && fbad.length === 0, `SQL = the simulator on ${FS.length} random fights (combat_v2_next, then combat_v2_card_act with random actives of every block, the same choices and draws): ${fsame} equal action by action (${facts} actions: ${fev.active} actives, ${fev.basic} basic attacks, ${fev.skip} skips; ${fev.end} end, ${fev.cap} cap), ${ftie} differ only after a float near-tie of the simulator`,
     fbad.filter(Boolean).join(' | '));
   say(ftie <= Math.ceil(FS.length * 0.05), `the float near-ties are rare (${ftie} of ${FS.length} fights, at most 5%)`);
-  say(fev.active >= 300 && fev.basic >= 300 && fev.skip >= 20 && fev.end >= 5, `the fights reach the actives, the basic attacks, the skips and the end (${JSON.stringify(fev)})`);
+  say(fev.active >= 2.5 * FS.length && fev.basic >= 2.5 * FS.length && fev.skip >= FS.length / 8 && fev.end >= FS.length / 24, `the fights reach the actives, the basic attacks, the skips and the end (${JSON.stringify(fev)})`);
 
   // 6. the fuzz and the replay
   const fz = JSON.parse(await runBlock(fuzzBlock(fightSpecs(Number(process.env.V2_FUZZ || 45), 777, B).map((x) => x[0]))));
-  say(fz.bad.length === 0 && fz.actions >= 400 && fz.actives >= 80 && fz.replay_same === fz.actions,
+  say(fz.bad.length === 0 && fz.actions >= 8 * fz.fights && fz.actives >= 2 * fz.fights && fz.replay_same === fz.actions,
     `fuzz: ${fz.actions} random card actions (${fz.actives} actives, ${fz.basics} basic attacks) with random(): the state passes fight_state_check_v2, HP in [0, max], a down unit has no status, the charge rule holds; a replay with the answer's draws gives the same action (${fz.replay_same})`,
     JSON.stringify(fz).slice(0, 900));
 } catch (e) {

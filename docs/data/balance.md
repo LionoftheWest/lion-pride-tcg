@@ -12,6 +12,7 @@ The values below are the values of the database that made this page.
 The triggers on `balance` check each change:
 
 - `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
+- `balance_check_ability_v2` (`balance_check_ability_v2()`): Trigger (before insert, update on balance): the key ability_v2 must match its fixed shape and limits (ability_v2_spec, walked by balance_shape_errors) and words_min must not be above words_max. Every other key passes. combat_v2_abilities.sql.
 - `balance_check_boss_counters` (`balance_check_boss_counters()`): Trigger (before insert, update on balance): boss_counters must hold only numbers; share, boss_share and the move shares (heal, shield, empower, expose, smite, share, keep, curse, back) from 0 to 1; rounds, wait, plays, cards and hits whole numbers (plays and hits at least 1); hit sizes and multipliers above 0; the weights add up to more than 0. boss_passives: the counter passive numbers (plague_x, shatterer_x, dispeller_x, juggernaut_x, juggernaut_stun_fail, plague_cleanse) from 0 to 1.
 - `balance_check_combat` (`balance_check_combat()`): Trigger (before insert, update on balance): combat.element_bonus must be a number from 1 to 2, combat.element_penalty a number from 0.5 to 1 and combat.auto_elements true or false (f3_element_bonus.sql, f3_auto_elements.sql). A key that is absent is not checked.
 - `balance_check_combat_v2` (`balance_check_combat_v2()`): Trigger (before insert, update on balance): every combat v2 key must match its fixed shape and limits (balance_v2_spec): no missing, extra or wrong leaf. A key named v2_* with no shape is refused. Extra rules: v2_asc (the curve from 0 to 1, never falling; base not above top; every card rarity has a base or an alias), v2_enemy (the boss move chances add up to 1). The limits of v2_speed keep status_min_x at or below 1 and safety_max_x at or above 1. combat_v2_flags_balance.sql.
@@ -27,7 +28,38 @@ The triggers on `balance` check each change:
 
 ## Keys
 
-[achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [welcome_packs](#key-welcome-packs)
+[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [welcome_packs](#key-welcome-packs)
+
+<a id="key-ability-v2"></a>
+
+### ability_v2
+
+Combat v2: the ability rules of the validator and the card text (plan 5; combat_v2_abilities.sql). pp = the price model of the ability blocks beside v2_pp: an attacker block costs att_k / C x the extra basic hits it adds (C = v2_charge.<class> + 1 own turns a cycle); a support block costs its v2_pp.support_pp price x sup_cycle / C; a support "x damage vs a status" costs sup_vs_k x sup_cycle / C x (x - 1) x the frozen share x the payoff share; each status of an execute list costs line_status; quicken on every attacker costs quicken_all_x times. silver = the Silver upgrade (plan 5.3): at stars stars the active gets pp more PP on one amount (type 1). limits = blocks (the most blocks of one active, the engine step limit), riders (at most this many riders, plan 5.3), words_min to words_max words of card text (Nathan 2026-10-20, the card text style; replaces 8 to 14). k1_shield = the shield of the cured ally that the Glossary keyword "Cure ... for N steps" names. Read by ability_v2_check, the studio builder (T1) and the simulator (config.json ability_v2); no fight reads it. Shape: ability_v2_spec (trigger balance_check_ability_v2).
+
+Shape: `object { k1_shield: number, limits: object { blocks: number, riders: number, words_max: number, words_min: number }, pp: object { att_k: number, line_status: number, quicken_all_x: number, sup_cycle: number, sup_vs_k: number }, silver: object { pp: number, stars: number } }`
+
+```json
+{
+  "pp": {
+    "att_k": 40,
+    "sup_vs_k": 3.3333333333333335,
+    "sup_cycle": 2,
+    "line_status": 0.5,
+    "quicken_all_x": 1.5
+  },
+  "limits": {
+    "blocks": 8,
+    "riders": 1,
+    "words_max": 20,
+    "words_min": 6
+  },
+  "silver": {
+    "pp": 3,
+    "stars": 3
+  },
+  "k1_shield": 0.12
+}
+```
 
 <a id="key-achievement-rewards"></a>
 
@@ -2176,7 +2208,7 @@ Shape: `object { budget: number, ref: object { crit_share: number, enemy_def: nu
     "heal_all": 60,
     "focus_crd": 5,
     "focus_crit": 20,
-    "shield_all": 75
+    "shield_all": 100
   }
 }
 ```

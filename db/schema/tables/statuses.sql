@@ -23,10 +23,13 @@ create table public.statuses (
   numbers text,
   rule text not null,
   note text,
-  updated_at timestamp with time zone default now() not null
+  updated_at timestamp with time zone default now() not null,
+  verb text,
+  adj text
 );
 
 -- @constraints
+alter table public.statuses add constraint statuses_adj_check CHECK (((adj IS NULL) OR ((adj <> ''::text) AND (adj = btrim(adj)) AND (adj !~ '[0-9]'::text))));
 alter table public.statuses add constraint statuses_check CHECK (((end_state ~ '^[a-z_]+$'::text) AND (end_state <> key)));
 alter table public.statuses add constraint statuses_check1 CHECK ((on_enemy OR on_card));
 alter table public.statuses add constraint statuses_check2 CHECK ((((stacking = ANY (ARRAY['add'::text, 'add_decay'::text])) = (max_stacks IS NOT NULL)) OR (kind = 'enemy_state'::text)));
@@ -47,6 +50,7 @@ alter table public.statuses add constraint statuses_ord_check CHECK ((ord >= 1))
 alter table public.statuses add constraint statuses_ord_key UNIQUE (ord);
 alter table public.statuses add constraint statuses_pkey PRIMARY KEY (key);
 alter table public.statuses add constraint statuses_stacking_check CHECK ((stacking = ANY (ARRAY['none'::text, 'add'::text, 'add_cap'::text, 'add_decay'::text, 'higher'::text])));
+alter table public.statuses add constraint statuses_verb_check CHECK (((verb IS NULL) OR ((verb <> ''::text) AND (verb !~ '[0-9]'::text) AND (verb ~~ '%{%}%'::text))));
 
 -- @indexes
 CREATE UNIQUE INDEX statuses_ord_key ON public.statuses USING btree (ord);
