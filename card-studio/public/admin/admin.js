@@ -255,6 +255,8 @@ const NAV = [
   { id: 'cards', label: 'Cards', icon: 'palette', match: /^\/cards(\/|$)/ },
   // Sets (sets.js, F-2 PR 3): create a set, pack art, cover card, the set pools. Like Cards, it uses the studio API (/api/sets).
   { id: 'sets', label: 'Sets', icon: 'package', match: /^\/sets(\/|$)/ },
+  // Abilities (abilities.js, combat v2 PR T1): the ability builder; every check runs ability_v2_check on the LOCAL copy (/api/admin/abilities).
+  { id: 'abilities', label: 'Abilities', icon: 'zap', match: /^\/abilities(\/|$)/ },
   { id: 'card-stats', label: 'Card stats', icon: 'layers', match: /^\/(card-stats$|card\/)/ },
   { id: 'hunt', label: 'Hunt', icon: 'swords', match: /^\/hunts?(\/|$)/ },
   { id: 'dungeon', label: 'Dungeon', icon: 'castle' },
@@ -1229,6 +1231,8 @@ const ROUTES = [
     h, icon, api, panel, table, pageHead, fill, when, N, label, kpi, statusTag, errorState, session, render })).catch((e) => main.replaceChildren(errorState(e)))],
   // The card editor (cards.js, F-2). It uses the studio API (/api/cards ...), not /api/admin, so it works with ADMIN_VIEW off.
   [/^\/cards(?:\/([^/]+))?$/, (main, a, q) => import('./cards.js').then((m) => m.pageCardEditor(main, a, q, { h, icon, pageHead, errorState, render }))
+    .catch((e) => main.replaceChildren(errorState(e)))],
+  [/^\/abilities(?:\/([^/]+))?$/, (main, a, q) => import('./abilities.js').then((m) => m.pageAbilities(main, a, q, { h, icon, pageHead, panel, statusTag, errorState, render }))
     .catch((e) => main.replaceChildren(errorState(e)))],
   [/^\/sets(?:\/([^/]+))?$/, (main, a, q) => import('./sets.js').then((m) => m.pageSets(main, a, q, { h, icon, pageHead, errorState, render }))
     .catch((e) => main.replaceChildren(errorState(e)))],

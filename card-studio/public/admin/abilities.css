@@ -1,0 +1,35 @@
+/* The ability builder of the Admin view (abilities.js, combat v2 PR T1). Only the tokens and parts of admin.css and cards.css. */
+.ab-new { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ab-new .field { width: 220px; }
+.ab-edit { display: grid; gap: 16px; min-width: 0; }
+.tbl tr.ab-cur td { background: var(--selected); }
+.ab-blocks { display: grid; gap: 10px; margin-bottom: 12px; }
+.ab-block { background: var(--raised); border: 1px solid var(--divider); border-radius: 10px; padding: 10px 12px 0; }
+.ab-block.attach { margin-left: 24px; border-left: 3px solid var(--gold); }
+.ab-bhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
+.ab-bkey { font-weight: 600; }
+.ab-tag { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-2); border: 1px solid var(--edge); border-radius: 6px; padding: 0 6px; }
+.ab-bpp { color: var(--gold); margin-left: auto; }
+.ab-btools { display: inline-flex; gap: 4px; }
+.ab-rule { margin: 0 0 8px; }
+.ab-add .field { max-width: 320px; width: 100%; }
+.ab-opt { display: grid; grid-template-columns: minmax(0, 1fr) 90px 36px; gap: 8px; margin-bottom: 8px; }
+.chip.on { border-color: var(--gold); color: var(--text); background: var(--selected); }
+.ab-check { display: grid; gap: 14px; }
+.ab-meter { display: grid; gap: 8px; }
+.ab-mhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ab-ppv { font-size: 16px; font-weight: 600; }
+.ab-bar { position: relative; }
+.ab-bar > span { position: relative; }
+.ab-band { position: absolute; top: 0; bottom: 0; background: var(--edge); }
+.ab-text { display: grid; gap: 4px; }
+.ab-cardtext { margin: 0; font-size: 15px; line-height: 1.45; color: var(--text); overflow-wrap: anywhere; }
+.ab-silver { margin: 0; font: 600 14px var(--mono); color: var(--gold); }
+.ab-chiprow { display: grid; gap: 4px; }
+.ab-chiprow .chips { margin-bottom: 0; }
+.ab-errors { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; }
+.ab-errors li { display: flex; gap: 6px; align-items: flex-start; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .ab-block.attach { margin-left: 12px; }
+  .ab-new .field { width: 100%; }
+}

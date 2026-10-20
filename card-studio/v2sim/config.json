@@ -1188,7 +1188,7 @@
     "_cure": "cure = 0 PP: the cure and its immunity are free (Revision 5, Nathan approved 2026-10-18). A support area block costs smite x area x ref.foes_other."
   },
   "ability_v2": {
-    "_rule": "The price-model numbers of the ability blocks beside v2_pp (PR E6, balance ability_v2: one number, one home). pp.att_k: an attacker block costs att_k / C x the basic hits it adds (C = v2_charge + 1). pp.sup_cycle: a support library price x sup_cycle / C. pp.sup_vs_k: the support x-vs-status factor (10/3). pp.line_status: the PP of each status of an execute list. pp.quicken_all_x: quicken on every attacker. silver: the Silver upgrade (plan 5.3: + pp PP at stars stars). limits: blocks, riders and the card text words (Nathan 2026-10-20: 6 to 20). k1_shield: the shield of the Glossary cure keyword.",
+    "_rule": "The price-model numbers of the ability blocks beside v2_pp (PR E6, balance ability_v2: one number, one home). pp.att_k: an attacker block costs att_k / C x the basic hits it adds (C = v2_charge + 1). pp.sup_cycle: a support library price x sup_cycle / C. pp.sup_vs_k: the support x-vs-status factor (10/3). pp.line_status: the PP of each status of an execute list. pp.quicken_all_x: quicken on every attacker. silver: the Silver upgrade (plan 5.3: + pp PP at stars stars). limits: blocks, riders and the card text words (Nathan 2026-10-20: 6 to 20). k1_shield: the shield of the Glossary cure keyword. share (PR T1, Nathan 2026-10-20 decisions 1 and 2; measured by run.mjs shares, 2000 runs, seed 1): the share of the actives where a condition is true (self_has, enemy_charging, foes_alive, self_shield: the condition costs the block it gates x (share - 1), so the pair costs the block x share) and on_kill (an attacker active downs its target while another enemy stands: the trigger costs like on_crit with this share). ref.per_ally: the mean number of other standing attackers at an attacker active (the scaler per_ally).",
     "pp": {
       "att_k": 40,
       "sup_cycle": 2,
@@ -1206,7 +1206,17 @@
       "words_min": 6,
       "words_max": 20
     },
-    "k1_shield": 0.12
+    "k1_shield": 0.12,
+    "share": {
+      "on_kill": 0.02,
+      "enemy_charging": 0.08,
+      "foes_alive": 0.09,
+      "self_shield": 0.21,
+      "self_has": 0.1
+    },
+    "ref": {
+      "per_ally": 2.4
+    }
   },
   "v2_templates": {
     "_rule": "the placeholder UNIQUE ACTIVE of a card = one template of its role, chosen by hash(subject key) mod the role's template count. Numbers fill the 10 PP budget (check: node run.mjs pp).",

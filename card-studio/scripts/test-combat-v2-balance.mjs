@@ -119,7 +119,9 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'combat_v2_status_strip', 'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next',   // E5 combat_v2_status_rules.sql
   'ability_v2_spec', 'balance_check_ability_v2', 'ability_v2_numbers', 'ability_v2_block_pp', 'ability_v2_pp', 'ability_v2_text', 'ability_v2_silver_text', 'ability_v2_check',
   'combat_v2_action_numbers', 'combat_v2_draws_rest', 'combat_effect_v2_blocks', 'combat_effect_v2_hit', 'combat_effect_v2_basic', 'combat_effect_v2_active',
-  'combat_v2_card_act'];   // E6 combat_v2_abilities.sql
+  'combat_v2_card_act',   // E6 combat_v2_abilities.sql
+  'ability_v2_pps', 'ability_v2_or', 'ability_v2_clause', 'ability_v2_ally_word', 'ability_v2_options', 'ability_v2_coin', 'combat_effect_v2_has', 'combat_effect_v2_ally_to',
+  'combat_effect_v2_gate', 'combat_effect_v2_count', 'combat_effect_v2_amount', 'subjects_ability_v2_check'];   // T1 combat_v2_ability_builder.sql
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
 const body = String.raw`do $t$

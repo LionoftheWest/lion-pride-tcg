@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (132)
+## Superseded files (133)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -38,6 +38,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `card_sets.sql` | SUPERSEDED: reverts `public.open_packs(text, bigint[], integer, text)` (live = `set_pools.sql`); reverts `public.pullable_sets(text)` (live = `set_pools.sql`); changes table `draw_pool`: view |  |
 | `combat_actions.sql` | SUPERSEDED: reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `f3_engine_hunt.sql`) | a re-run stops at an error today: combat_actions.sql: the live hunt_support changed since this file was built. Rebuild from the live text. |
 | `combat_core.sql` | SUPERSEDED: reverts `public.combat_crit_chance(boolean, text, numeric, jsonb)` (live = `f3_engine_hunt.sql`); reverts `public.combat_hit(integer, numeric, numeric, numeric, numeric, numeric, numeric, text, numeric, numeric, boolean, numeric, bigint, bigint)` (live = `f3_engine_hunt.sql`); reverts `public.combat_pool_act(numeric, numeric, integer, integer, numeric, integer, jsonb, boolean)` (live = `f3_engine_cleanup.sql`); reverts `public.combat_squad(text[], boolean, jsonb, jsonb)` (live = `f3_one_combat_math.sql`); brings back `public.combat_support_value(text, numeric, numeric, integer)`, which live does not have; reverts `public.combat_weak(jsonb, jsonb, text, text, text, text[], integer)` (live = `f2_set_not_season.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `f3_engine_hunt.sql`) | a re-run stops at an error today: syntax error at or near "notify"; alone, `create or replace function public.hunt_support(p_p...` fails: syntax error at or near "notify" |
+| `combat_v2_abilities.sql` | SUPERSEDED: reverts `public.ability_v2_block_pp(jsonb, text, numeric, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_check(text, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_field_error(text, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_field_types()` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_numbers()` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_pp(text, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_silver_text(text, jsonb, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_spec()` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_text(text, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.combat_effect_v2_active(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.combat_v2_action_numbers()` (live = `combat_v2_ability_builder.sql`) |  |
 | `combat_v2_hit.sql` | SUPERSEDED: reverts `public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_abilities.sql`) |  |
 | `combat_v2_status_rules.sql` | SUPERSEDED: reverts `public.combat_v2_status_apply(jsonb, jsonb, text, jsonb, jsonb)` (live = `combat_v2_abilities.sql`) |  |
 | `combat_v2_statuses_roles.sql` | SUPERSEDED: reverts `public.fight_state_check_v2(jsonb)` (live = `combat_v2_abilities.sql`) |  |
@@ -170,7 +171,7 @@ a one-time grant or a settings value would run again.
 - `adventure_gate.sql`: balance
 - `auction_confirm_24h.sql`: auctions
 - `card_effects_enable_a1.sql`: effect_primitives
-- `combat_v2_abilities.sql`: ability_blocks, balance, set_config(), statuses
+- `combat_v2_ability_builder.sql`: ability_blocks, balance, set_config()
 - `combat_v2_flags_balance.sql`: balance, set_config()
 - `d191_s1_frame_grant.sql`: achievement_claims
 - `d191_s1_origins_frame.sql`: balance

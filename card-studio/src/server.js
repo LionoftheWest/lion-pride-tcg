@@ -13,6 +13,7 @@ import { adminRouter } from './admin-routes.js';
 import { eventsRouter } from './admin-events-routes.js';
 import { adminWriteRouter } from './admin-write.js';
 import { setsRouter } from './sets-routes.js';
+import { abilityBuilderRouter } from './ability-builder-routes.js';
 import { loadVocab, saveVocab, vocabView, addValue } from './tag-vocab.js';
 import { studioAuth, loadSecret } from './studio-auth.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic, ANIMATED } from './rarity.js';
@@ -68,6 +69,8 @@ export const app = express();
 // STUDIO_PASS set = a session cookie (the /login page) or Basic Auth; STUDIO_PASS empty = this PC only.
 app.use(studioAuth({ secret: loadSecret(join(ROOT, '.studio-secret')) }));
 app.use(express.json({ limit: '30mb' }));
+// The ability builder (combat v2 PR T1, src/ability-builder-routes.js): checks on the LOCAL copy, writes a private batch file. Before the read-only router.
+app.use('/api/admin/abilities', abilityBuilderRouter());
 // The Events editor (writes; src/admin-events-routes.js): mounted before the read-only router, which refuses POST.
 app.use('/api/admin/events', eventsRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
 // The Admin view data (read only): flag ADMIN_VIEW=1 (src/admin-routes.js). The pages: public/admin/ (/admin/).

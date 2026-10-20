@@ -8,9 +8,10 @@ import { EXPERIMENTS } from './experiments.mjs';
 import { targets } from './targets.mjs';
 import { teams } from './teams.mjs';
 import { monsters } from './monsters.mjs';
+import { shares } from './shares.mjs';
 import { HERE, loadConfig, patch } from './util.mjs';
 
-const ALL = { ...EXPERIMENTS, targets, teams, monsters };
+const ALL = { ...EXPERIMENTS, targets, teams, monsters, shares };
 const args = process.argv.slice(2);
 const opt = k => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : undefined; };
 const name = args[0];

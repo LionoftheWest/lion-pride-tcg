@@ -1024,3 +1024,59 @@ because every later part reads them.
   fights (3067 actions: 454 actives, 745 basic attacks, 69 skips; equal action by action), the card texts and the Silver line, the private Set 1 actives
   when the private file exists, the fuzz (535 actions, each replayed with its draws); MUTATE=all at V2_FIGHTS=30 V2_FUZZ=15 V2_PP=400: baseline PASS and
   73 planted faults caught, before and after the apply, among them a rider that draws before the hit and the Flurry draw before the hit).
+
+### 19.3 T1: the ability builder and the new blocks (`tcg-bot/supabase/combat_v2_ability_builder.sql`)
+
+Nathan's decisions of 2026-10-20 (all agreed): (1) `on_kill` is a rider trigger like `on_crit`, with a kill share in balance; (2) the conditions
+`self_has`, `enemy_charging`, `foes_alive`, `self_shield` cost the raw price x the share of the time they are true, one share for each condition in
+balance; (3) a `random_apply` block ("one random status") costs the mean of its options and counts as one rider; (4) build the blocks that the ~30
+approximated Set 1 actives need; (5) the 5 text differences of E6 are accepted. Silver: only type 1.
+
+- Needs E6. No v1 function calls a new or replaced function or reads `subjects.ability_v2`; the flag stays OFF; the md5 of the other 469 public
+  functions is the same after the file. The reference is the simulator (`cards.mjs` blockPP, `engine.mjs` doActive).
+- **The shares (decision 2), measured** with `node card-studio/v2sim/run.mjs shares --runs 2000` (new experiment `v2sim/shares.mjs`): at every
+  active use of the standard squads (Hunt Heroic 8 cards, Dungeon run 5 cards, Normal, active, policy best), the share where the condition holds;
+  each share = the mean of Hunt and Dungeon. Seed 1 (seed 7 within 0.003): on_kill 0.022 (attacker actives that down the target while another
+  enemy stands), enemy_charging 0.082, foes_alive 0.093, self_shield 0.210, self_has 0.096 (the mean of Empowered, Focused, Quickened and a shield;
+  the single statuses go from 0 to 0.09), per_ally 2.40 other standing attackers. Balance `ability_v2.share` = 0.02, 0.08, 0.09, 0.21, 0.1 and
+  `ability_v2.ref.per_ally` = 2.4 (config.json the same; one number, one home).
+- **Attachments** (new columns `ability_blocks.attach` gate | amount and `hosts`): an attachment changes the block right before it (its host), one
+  for each host. Gates (`self_has {status}`, `enemy_charging`, `foes_alive` = 2 or more enemies, `self_shield`): the host works only while the
+  condition holds; price host x (share - 1), so the pair costs host x share. Amount attachments: `target_has {status | statuses, x}` (host x (x - 1) x
+  payoff, x frozen_share for a control list), `ally_below {line, x}` (host x (x - 1) x line), `more_per {v, status?}` (+v for each stack, or each other
+  harmful status, on the enemy: the host at v x ref.stacks or ref.kinds x payoff), `coin {alt, chance}` (the mean of the two amounts).
+- **Other new parts**: `on_kill` (attackers; after a main hit and its riders, when the target is down: a chance for the status on the next standing
+  enemy; status x chance x share.on_kill / C; one rider), `random_apply {options, chance?}` (2 to 6 options with no value status; one pick draw; the
+  mean price; one rider), `per_ally {v}` (+v damage for each other standing attacker; att_k / C x v x ref.per_ally), the target field `to`
+  (`most_hurt` = the lowest HP share, `strongest` = the attacker with the most power) on shield, heal, empower, focus, quicken and lifesteal (same price),
+  `apply per` (a support value status x the stacks or the other statuses on the enemy; status x value x (the count the active adds + ref x payoff)),
+  the field `statuses` ("any of") on payoff_dmg, payoff_crit and vs_status (priced as one status, as the approved batches), and payoff_dmg and crit_add
+  on a support smite (smite x v x payoff; smite x x x v x (crd.base - 1)).
+- **Card text**: a gate is a clause ("... while this card is Empowered"), target_has / ally_below a sentence ("Shield twice as much if it is below 30%
+  HP."), more_per and coin a clause ("+10% more for each Poison stack on the enemy", "+70% or +30% damage, with a 50% chance of each"), lists read
+  "Paralyzed, Blinded, or Slowed", "the most hurt ally", "the strongest attacker", "Kills Stun the next enemy.", "Add one at random: ...". A heal with
+  a `to` target right after a heal_all says "more". The E6 functions that the file replaces give the E6 answer on E6 abilities (342 abilities and 81
+  card actions compared in the test).
+- **Storage** `subjects.ability_v2` = `{role, name, blocks, silver}` (NULL = none); the trigger `subjects_ability_v2_check` refuses a value that
+  `ability_v2_check` refuses. Plan 9.1 said the role is a tag `role:<key>`: it is in the value for now, because a new tag changes `tag_slugs`, which
+  v1 combat reads (the flag OFF must change nothing). The tag can come with M1.
+- **The builder**: Admin view section "Abilities" (`#/abilities`, `public/admin/abilities.js`, `src/ability-builder-routes.js`), in the approved
+  Admin layout (one design for all Admin pages, Nathan 2026-10-07). Pick the role, the blocks of the library, the numbers; the PP meter, the PP of
+  each block, the card text, the Silver line, "Makes / Uses" and the errors come from ONE `ability_v2_check` call on the LOCAL copy. Save checks
+  every row again and writes a PRIVATE batch file (default `discord-card-ideas/batches/`, outside the repo). `push-abilities.mjs --v2 <batch>`
+  checks every row on the target first (one refused row = nothing written), writes `subjects.ability_v2`, and `--dry` shows 0 after a push.
+- **Set 1 (private, counts only)**: the 130 approved actives as a T1 batch (20 approximations rebuilt with the T1 blocks): the validator accepts
+  127 of 130; the generated text equals the approved text for 121 of 130. Refused (price questions for Nathan, in the PR): a support
+  vs_status with a status list (8.90 PP: the support vs_status price does not scale with the smite), a per_ally scaler (7.07 PP at the measured 2.4
+  allies), an apply per on stacks (10.70 PP). The 9 text differences: the 5 accepted E6 ones, two "Then" (accepted class), one pair of applies that
+  the approved text joins with "and" (two sentences here) and the phrasing of the refused apply per.
+- Proof (copy 2: V1, E1 to E6 applied): the goldens with CANDIDATE = this file (Hunt 183 fights, Dungeon 240 fights, boss counters 128 fights: no
+  difference); `test-combat-v2-t1.mjs` PASS 38 (the E6 answers on 342 abilities and 81 card actions; md5 of 469 other functions unchanged; SQL = the
+  simulator on the PP of every block of 1500 random T1 abilities (largest relative difference 1.1e-15) and again with changed numbers; 120 random
+  fights with T1 actives, 3009 actions, equal action by action (1 differs only after a float near-tie of the simulator); 15 fixed cases with explicit
+  draws; 22 planted bad abilities each refused with its message; 21 card texts; Silver; the storage trigger; fuzz 550 actions replayed);
+  MUTATE=all (V2_FIGHTS=30 V2_FUZZ=10 V2_PP=300): baseline PASS and 45 planted faults caught. The E6 test PASS 59 and the earlier v2 tests PASS.
+  Then the file applied on copy 2 (`rehearse-sql.mjs`): `test-all-local.mjs` 143 PASS; the failures were the 3 generated files (pass after the
+  regeneration), the caller lists of 3 earlier v2 tests (the T1 functions added, as E6 did) and the push test (a Windows exit crash, fixed).
+  `test-ability-builder-routes.mjs` PASS 8 (no database), `test-push-abilities-v2.mjs` PASS 6 (copy 2: --dry, push, --dry = 0, one refused row =
+  nothing written). The simulator `targets` report is the same before and after the simulator change (60 runs).

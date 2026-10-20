@@ -16,7 +16,8 @@ create table public.subjects (
   ability jsonb,
   tags jsonb default '{}'::jsonb not null,
   tag_slugs text[] default '{}'::text[] not null,
-  effect jsonb
+  effect jsonb,
+  ability_v2 jsonb
 );
 
 -- @constraints
@@ -45,4 +46,5 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 
 -- @triggers
 CREATE TRIGGER subjects_ability_check BEFORE INSERT OR UPDATE OF ability ON public.subjects FOR EACH ROW EXECUTE FUNCTION subjects_ability_check();
+CREATE TRIGGER subjects_ability_v2_check BEFORE INSERT OR UPDATE OF ability_v2 ON public.subjects FOR EACH ROW EXECUTE FUNCTION subjects_ability_v2_check();
 CREATE TRIGGER subjects_flatten_tags_trg BEFORE INSERT OR UPDATE OF tags ON public.subjects FOR EACH ROW EXECUTE FUNCTION subjects_flatten_tags();

@@ -174,6 +174,9 @@ const NEW = ['ability_v2_spec', 'balance_check_ability_v2', 'ability_v2_field_ty
   'ability_v2_field_error', 'ability_v2_check', 'combat_v2_action_numbers', 'combat_v2_draws_rest', 'combat_effect_v2_blocks', 'combat_effect_v2_hit',
   'combat_effect_v2_basic', 'combat_effect_v2_active', 'combat_v2_card_act'];
 const REPLACED = ['fight_state_check_v2', 'combat_v2_speed', 'combat_v2_hit', 'combat_v2_status_apply'];
+// The functions of PR T1 (combat_v2_ability_builder.sql) on a copy where it is applied: they call these functions by design (they are not v1 callers).
+const T1_FUNCS = ['ability_v2_pps', 'ability_v2_or', 'ability_v2_clause', 'ability_v2_ally_word', 'ability_v2_options', 'ability_v2_coin', 'combat_effect_v2_has',
+  'combat_effect_v2_ally_to', 'combat_effect_v2_gate', 'combat_effect_v2_count', 'combat_effect_v2_amount', 'subjects_ability_v2_check'];
 const q = (a) => a.map((n) => `'${n}'`).join(', ');
 // The state before the file, also when it is already applied on this copy: its functions, its table, its trigger, its columns and its balance key go,
 // v2_pp.support_pp.shield_all goes back to 75 (the V1 value), and E1 to E5 put back the four functions that the file replaces.
@@ -315,7 +318,7 @@ begin
     and (select relrowsecurity from pg_class where oid = 'public.ability_blocks'::regclass)
     and not has_table_privilege('anon', 'public.ability_blocks', 'select') and not has_table_privilege('authenticated', 'public.ability_blocks', 'select'), 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}])
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(T1_FUNCS)}])
      and p.prosrc ~ '(ability_v2_|combat_effect_v2_|combat_v2_action_numbers|combat_v2_draws_rest|combat_v2_card_act|ability_blocks)';
   res := res || jsonb_build_object('case', 'no other function calls the new functions or reads ability_blocks (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on';
@@ -846,7 +849,8 @@ try {
   for (const r of results.filter((x) => !['NUMBERS', 'ABILITY_V2', 'LIBRARY'].includes(x.case))) { const { case: name, ok, ...rest } = r; say(ok, name, JSON.stringify(rest).slice(0, 900)); }
   const CONFIG = loadConfig();
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
-  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2));
+  // share and ref are the keys of PR T1 (combat_v2_ability_builder.sql, test-combat-v2-t1.mjs): this file does not add them
+  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(share|ref)\./.test(p)));
   const lp = [...bal].filter(([p, v]) => cfgL.get(p) !== v).concat([...cfgL].filter(([p]) => !bal.has(p)));
   say(lp.length === 0 && bal.size === 12, `balance ability_v2 = config.json ability_v2 (${bal.size} leaves equal; one number, one home for the simulator and SQL)`, JSON.stringify(lp));
   say(CONFIG.v2_pp.support_pp.shield_all === 100 && AB.v2_pp.support_pp.shield_all === 100, 'v2_pp.support_pp.shield_all is 100 in balance and in config.json (the P1 price, plan 5.2)');
