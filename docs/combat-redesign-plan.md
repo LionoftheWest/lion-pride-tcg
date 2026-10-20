@@ -746,3 +746,33 @@ because every later part reads them.
 | 203 abilities take too long or drift | The studio builder and the validator. batches by role. Nathan reviews tables, not free text |
 | Rollback needed | One flag per mode. v1 stays until all three modes run on v2 |
 | Member data in the public repo | Aggregates only in docs. review files with art and names stay in the private design repo |
+
+---
+
+## 17. Phase 1 as built (2026-10-18, local copy 2 only)
+
+### 17.1 V1: the flag and the v2 balance keys (`tcg-bot/supabase/combat_v2_flags_balance.sql`)
+
+- Needs `f3_engine_cleanup.sql` (F-3 PR 4e) first. Nothing reads the new keys. No v1 function changes.
+- `balance combat_v2` = `{gauntlet, dungeon, hunt, progress}`, all false. `combat_v2_on(mode)` is the one reader. It returns true only for the
+  JSON boolean true of one of the four names. A missing key, another type, another name, a NULL mode or a read error gives false.
+- 17 number keys: `v2_stats`, `v2_card_hp`, `v2_asc`, `v2_level`, `card_level`, `v2_support`, `v2_speed`, `v2_charge`, `v2_hit`, `v2_roles`,
+  `v2_status`, `v2_control`, `v2_enemy`, `v2_dungeon`, `v2_hunt`, `v2_pp`, `v2_power`. The values are the leaves of `v2sim/config.json` (306 leaves,
+  compared by the test). Each key has a note and a FIXED shape: `balance_v2_spec(key)` gives every leaf with its type and limits,
+  `balance_shape_errors` walks it, and the trigger `balance_check_combat_v2` refuses a missing, extra or wrong leaf and a `v2_*` key with no shape.
+  Extra rules: the ASC-3 curve (0 to 1, never falls), base not above top, every card rarity has a base or an alias, the boss move chances add up to 1.
+- Left out of balance, with the reason in the test (`LEFT_OUT`): the role class and texts and the status family and negative list (they are columns of
+  the E1 tables), the live floor plan and room rules, the monster rows (`dungeon_monsters`, PR E7), the mechanic texts (PR E7), the simulator-only dials.
+- Added beside config.json (`ADDED`): `combat_v2`, `card_level` (plan 2.4, a proposal), `v2_power` (plan 2.5; k = 1 for every role until E9 fits it),
+  `v2_speed.act_at` (100, plan 3.1), and `charge: false` on the 3 Dungeon room kinds that do not charge (a fixed shape).
+- v2 has its own copy of numbers that equal live v1 numbers today (`v2_hit.miss`, the Hunt boss HP and ATK, the foe growth): ASC-3 raises card CP,
+  so the Lab sets them again for v2, and a v2 change must never move v1 (P6).
+- Found in config.json: the Flurry text says "25% chance", the number `v2_roles.flurry.extra_chance` is 0.2 (the plan says 20%). The text is not
+  copied (the E1 passive text names the number as `{extra_chance}`).
+- 2026-10-19 (after PR #449, the Combat Lab items; Nathan approved): Regrowth `below_half_x` 1 (no x2 below half) and `boss_heal` 0.004, the
+  boss HP factor `v2_enemy.asc3_hp_x` (1.7, a first proposal), the "Weak to: role" week (`weak_role_x` 0.3, `weak_role_rules.controller`: no damage,
+  control +1 boss action), the support area smite (`v2_support.area_one_foe_x` 0.2), the Empower stack cap (`v2_status.empowered.stack_cap` 0.5,
+  the switch stays false), the free cure (`v2_pp.support_pp.cure` 0), the monster status moves (`v2_dungeon.moves_v2`) and the monster passive
+  numbers (`v2_dungeon.monster_passives` kinds, `v2_dungeon.passive_params`). Left out: the counter cap check line and its accepted pairs
+  (simulator checks), the two simulator switches `on`, the monster move names and own passives (`dungeon_monsters` rows, PR E7), the texts, and
+  an unread copy of the Pack number.
