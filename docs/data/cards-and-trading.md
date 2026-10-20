@@ -422,6 +422,7 @@ Table. [cards] One row per card subject (the character or thing on the card), sh
 | `tags` | jsonb | not null | `'{}'::jsonb` | The card tags as JSON facets (for example type, class, origin, traits). Each facet is a string or a list. The card studio and the tag scripts set it. |
 | `tag_slugs` | text[] | not null | `'{}'::text[]` | The tags as flat 'facet:value' text in lower case (traits become trait:). The trigger subjects_flatten_tags fills it from tags. Do not write it directly. |
 | `effect` | jsonb | null |  | The prank or boon effect of the card as JSON (name, desc, primitive, base, cooldown_h), or null. push-effects.mjs sets it. play_card_effect reads it. |
+| `ability_v2` | jsonb | null |  | Combat v2: the unique active of the subject (plan 9.1): {role, name, blocks, silver}. NULL = none yet (the v1 column ability stays). A write must pass ability_v2_check(role, {name, blocks, silver}) (trigger subjects_ability_v2_check). Written by card-studio/scripts/push-abilities.mjs --v2 from a batch file of the studio ability builder (plan 12.1). No fight reads it while the flag combat_v2 is OFF. combat_v2_ability_builder.sql. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Unique: `subjects_key_key` `UNIQUE (key)`

@@ -9,7 +9,7 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 Tables (7): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (15): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules)
+Functions (16): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules), [subjects_ability_v2_check()](#fn-subjects-ability-v2-check)
 
 ## Tables
 
@@ -335,3 +335,13 @@ Trigger on set_includes: refuses a cycle (the included set reaches the set), und
 - Security definer: no
 
 Trigger on set_pool: refuses a card whose home set is the pool set.
+
+<a id="fn-subjects-ability-v2-check"></a>
+
+### subjects_ability_v2_check()
+
+- Function: `subjects_ability_v2_check()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (before insert, update of ability_v2 on subjects): a v2 ability {role, name, blocks, silver} must pass ability_v2_check; NULL passes. combat_v2_ability_builder.sql.

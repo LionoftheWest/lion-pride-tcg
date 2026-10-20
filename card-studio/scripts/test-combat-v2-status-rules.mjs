@@ -183,7 +183,9 @@ const NEW = ['combat_v2_status_numbers', 'combat_v2_unit_path', 'combat_v2_units
   'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next'];
 const REPLACED = 'combat_v2_turn_order';
 // the combat v2 functions of the later PRs that call these on purpose (v2 callers, not v1; every one is named here)
-const V2_CALLERS = ['combat_v2_action_numbers', 'combat_effect_v2_hit', 'combat_effect_v2_basic', 'combat_effect_v2_active', 'combat_v2_card_act'];   // E6 combat_v2_abilities.sql
+const V2_CALLERS = ['combat_v2_action_numbers', 'combat_effect_v2_hit', 'combat_effect_v2_basic', 'combat_effect_v2_active', 'combat_v2_card_act',   // E6 combat_v2_abilities.sql
+  'ability_v2_pps', 'ability_v2_or', 'ability_v2_clause', 'ability_v2_ally_word', 'ability_v2_options', 'ability_v2_coin', 'combat_effect_v2_has', 'combat_effect_v2_ally_to',
+  'combat_effect_v2_gate', 'combat_effect_v2_count', 'combat_effect_v2_amount', 'subjects_ability_v2_check'];   // T1 combat_v2_ability_builder.sql
 const q = (a) => a.map((n) => `'${n}'`).join(', ');
 const SETUP = String.raw`
   perform set_config('balance.by', 'test', true);

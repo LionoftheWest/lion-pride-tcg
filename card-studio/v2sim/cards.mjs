@@ -33,12 +33,23 @@ export function templateFor(cfg, subjKey, role) { const t = templatesOf(cfg, rol
 export function chargeOf(cfg, tid) { const t = cfg.v2_templates[tid]; return t.charge ?? cfg.v2_charge[classOf(t.role)]; }
 
 // ---------- PP prices (base numbers, before rarity scaling) ----------
+// PR T1 (Nathan 2026-10-20): the attachments. An attachment follows the block it changes (its host, the block right before it; one each):
+// the gates (the host works only while the condition holds; price = host x (share - 1), so the pair costs the host x share), target_has (the host
+// amount x x while the enemy has a status), ally_below (x x while the ally is below the line), more_per (+v for each stack or status on the enemy)
+// and coin (the host amount is v with the chance, else alt).
+export const GATES = ['self_has', 'enemy_charging', 'foes_alive', 'self_shield'];
+export const ATTACH = [...GATES, 'target_has', 'ally_below', 'more_per', 'coin'];
+export const AMOUNT_FIELD = { shield: 'v', shield_all: 'v', heal: 'v', heal_all: 'v', empower: 'v', rally: 'v', quicken: 'v', focus: 'crit', apply: 'value' };
+export const CONTROL_ST = ['stunned', 'frozen', 'sleep', 'paralyzed'];
+// The numbers of a support block that the factor F scales in a fight (makeCard; SQL ability_blocks.scaled): v, x, value and alt, not the multipliers.
+export const scaledFields = (b) => (['vs_status', 'consume', 'target_has', 'ally_below'].includes(b.k) ? [] : ['v', 'x', 'value', 'alt']);
 export function blockPP(cfg, tid, b) {
   const t = cfg.v2_templates[tid]; const P = cfg.v2_pp, R = P.ref, A = cfg.ability_v2.pp; const C = chargeOf(cfg, tid) + 1;
   const att = classOf(t.role) === 'attacker';
   const k = A.att_k / C;                // attackers: att_k (40) x V / C   (config ability_v2 = balance ability_v2, PR E6)
   const sk = A.sup_cycle / C;           // supports: library price x sup_cycle (2) / C
   const strikes = (t.blocks.find(x => x.k === 'strikes') || { n: 1 }).n;
+  const B = t.blocks; const i = B.indexOf(b); const host = i > 0 ? B[i - 1] : null;
   const sv = (st, b) => { const base = P.status_pp[st];
     if (['exposed', 'weakened', 'mark'].includes(st)) return base * (b.value ?? 0.1);
     if (['poison', 'burn', 'chill'].includes(st)) return base * (b.stacks || 1);
@@ -46,12 +57,23 @@ export function blockPP(cfg, tid, b) {
   switch (b.k) {
     case 'hit': return k * (b.x - 1);
     case 'strikes': return k * (b.n * b.x - 1);
-    case 'crit_add': return k * b.v;
+    case 'crit_add': if (att) return k * b.v; // support: crit chance on the smite, priced at the crit damage it adds (PR T1)
+      return P.support_pp.smite * B.find(x => x.k === 'smite').x * b.v * (cfg.v2_stats.crd.base - 1) * sk;
+    case 'per_ally': return k * b.v * cfg.ability_v2.ref.per_ally;
+    case 'random_apply': return b.options.reduce((s, o) => s + sv(o.status, o), 0) / b.options.length * (b.chance ?? 1) * (att ? strikes / C : sk);
+    case 'on_kill': return sv(b.status, b) * b.chance * cfg.ability_v2.share.on_kill * (att ? 1 / C : sk);
+    case 'self_has': case 'enemy_charging': case 'foes_alive': case 'self_shield': return blockPP(cfg, tid, host) * (cfg.ability_v2.share[b.k] - 1);
+    case 'target_has': { const sts = b.statuses || [b.status];
+      return blockPP(cfg, tid, host) * (b.x - 1) * R.payoff * (sts.every(x => CONTROL_ST.includes(x)) ? R.frozen_share : 1); }
+    case 'ally_below': return blockPP(cfg, tid, host) * (b.x - 1) * b.line;
+    case 'more_per': return blockPP(cfg, tid, { ...host, [AMOUNT_FIELD[host.k]]: b.v }) * (b.status ? R.stacks : R.kinds) * R.payoff;
+    case 'coin': return (blockPP(cfg, tid, { ...host, [AMOUNT_FIELD[host.k]]: b.alt }) - blockPP(cfg, tid, host)) * (1 - b.chance);
     case 'pierce': return k * b.v * R.enemy_def / (1 - R.enemy_def);
     case 'true_strike': return k * R.miss;
     case 'area': return att ? k * b.x * R.foes_other : P.support_pp.smite * b.x * R.foes_other * sk; // support area smite (P3): smite price x the other foes
     case 'cure': return P.support_pp.cure * sk; // Revision 5: the cure and its immunity are free (0 PP)
-    case 'payoff_dmg': case 'payoff_crit': return k * b.v * R.payoff;
+    case 'payoff_dmg': return att ? k * b.v * R.payoff : P.support_pp.smite * b.v * sk * R.payoff; // support: +v on the smite (PR T1)
+    case 'payoff_crit': return k * b.v * R.payoff;
     case 'per_stack': return k * b.v * R.stacks * R.payoff;
     case 'per_kind': return k * b.v * R.kinds * R.payoff;
     case 'vs_status': return (att ? k : sk * A.sup_vs_k) * (b.x - 1) * R.frozen_share * R.payoff;
@@ -60,7 +82,13 @@ export function blockPP(cfg, tid, b) {
     case 'lifesteal': case 'guard_up': return k * b.v * R.heal_value;
     case 'shield_break': return k * (b.x - 1) * R.shield_share * R.payoff;
     case 'on_crit': return sv(b.status, b) * b.chance * R.crit_share * (att ? 1 / C : sk) * (b.status === 'stunned' ? 1 : 1);
-    case 'apply': return sv(b.status, b) * b.chance * (att ? strikes / C : sk) * (b.all ? 1 + R.foes_other : 1);
+    case 'apply': {
+      if (b.per) { // PR T1: the value x the count of stacks (or statuses) on the enemy: the count this active adds + the reference count x the payoff share
+        const prev = B.slice(0, i).filter(x => x.k === 'apply' && x.chance >= 1);
+        const own = b.per === 'kinds' ? new Set(prev.map(x => x.status).filter(x => x !== b.status)).size : prev.filter(x => x.status === b.per).reduce((s, x) => s + (x.stacks || 1), 0);
+        return sv(b.status, b) * b.chance * sk * (own + (b.per === 'kinds' ? R.kinds : R.stacks) * R.payoff);
+      }
+      return sv(b.status, b) * b.chance * (att ? strikes / C : sk) * (b.all ? 1 + R.foes_other : 1); }
     case 'shield': return P.support_pp.shield * b.v * sk;
     case 'shield_all': return P.support_pp.shield_all * b.v * sk;
     case 'heal': return P.support_pp.heal * b.v * sk;
@@ -112,7 +140,7 @@ export function makeCard(cfg, spec) {
   const extra = cfg.v2_support.enabler_extra_stack.includes(spec.rarity) ? 1 : 0;
   const blocks = t.blocks.map(b => {
     const c = { ...b };
-    if (cls === 'support') for (const f of ['v', 'x', 'value']) if (typeof c[f] === 'number' && c.k !== 'vs_status' && c.k !== 'consume') c[f] = c[f] * pw;
+    if (cls === 'support') for (const f of scaledFields(c)) if (typeof c[f] === 'number') c[f] = c[f] * pw;
     if (c.stacks) c.stacks += extra;
     return c;
   });

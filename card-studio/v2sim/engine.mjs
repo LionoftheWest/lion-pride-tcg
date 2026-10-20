@@ -10,6 +10,7 @@
 // counter moves (bossMove) and rules. Timed enemy states (Fade, Calcify, ...) live in u.ext = { key: { v, until } }.
 import { F } from './formulas.mjs';
 import { mkRng, hash } from './util.mjs';
+import { ATTACH, GATES, AMOUNT_FIELD } from './cards.mjs';
 
 export const CONTROL = ['stunned', 'frozen', 'sleep', 'paralyzed'];
 const BOONS = ['shielded', 'empowered', 'focused', 'quickened', 'enraged'];
@@ -49,6 +50,27 @@ export class Battle {
   has(u, s) { return !!u.st[s]; }
   val(u, s) { return u.st[s] ? (u.st[s].v ?? u.st[s].stacks ?? 1) : 0; }
   negKinds(u) { return this.cfg.v2_status.negative.filter(s => u.st[s]).length; }
+  // PR T1: a status or any status of a list (the field status or statuses of a block)
+  hasAny(u, b) { return b.statuses ? b.statuses.some(s => this.has(u, s)) : this.has(u, b.status); }
+  // PR T1: the ally of a block with a target: most_hurt = the lowest HP share (the first in the fixed order on a tie), strongest = the attacker with the most power
+  allyTo(to) {
+    const a = this.alive('card');
+    if (to === 'most_hurt') return a.reduce((m, c) => (!m || c.hp / c.maxHp < m.hp / m.maxHp ? c : m), null);
+    if (to === 'strongest') return a.filter(c => c.cls === 'attacker').reduce((m, c) => (!m || c.cp > m.cp ? c : m), null);
+    throw new Error(`allyTo: unknown target ${to}`);
+  }
+  // PR T1: a gate (a condition on the block before it) holds now
+  gateOn(u, tgt, a) {
+    switch (a.k) {
+      case 'self_has': return this.has(u, a.status);
+      case 'self_shield': return (u.shield || 0) > 0;
+      case 'enemy_charging': return !!tgt.charging;
+      case 'foes_alive': return this.alive('enemy').length >= 2;
+      default: throw new Error(`gateOn: ${a.k}`);
+    }
+  }
+  // PR T1: the count of a "for each": the stacks of a status on the enemy, or its harmful statuses other than the one the host block applies
+  countOn(tgt, status, except) { return status ? (tgt.st[status]?.stacks || 0) : this.negKinds(tgt) - (except && this.cfg.v2_status.negative.includes(except) && tgt.st[except] ? 1 : 0); }
   refHp(u) { return u.side === 'enemy' && this.mode === 'hunt' ? this.cfg.v2_status.hunt_ref_hp : u.maxHp; }
   isBoss(u) { return u.side === 'enemy' && this.mode === 'hunt'; }
   ablOf(u) { return u.abl || 1; }
@@ -393,12 +415,12 @@ export class Battle {
   }
 
   // A support smite on its target: Rollback (x0.5), Hitbox Desync (the next smite misses), Mirror (the next smite hits its caster).
-  smite(u, tgt, x, vsX) {
+  smite(u, tgt, x, vsX, more = {}) {
     if (tgt.down) return 0; // the target fell to an earlier block of the same active (a Toxic burst): no hit and no draw (PR E6, the same rule in SQL)
     if (tgt.mech.has('rollback')) x *= tgt.P.rollback.smite_x;
     if (this.ext(tgt, 'desync_smite')) { delete tgt.ext.desync_smite; this.S.misses++; return 0; }
     if (this.ext(tgt, 'mirror_smite')) { delete tgt.ext.mirror_smite; this.damage(tgt, u, u.cp * x * vsX); return 0; }
-    const r = this.cardHit(u, tgt, { x, trueStrike: true, vsX }); this.consumeMark(tgt); tgt.lastSmite = r.dealt;
+    const r = this.cardHit(u, tgt, { x, trueStrike: true, vsX, bonus: more.bonus || 0, critAdd: more.critAdd || 0 }); this.consumeMark(tgt); tgt.lastSmite = r.dealt;
     return r.dealt;
   }
 
@@ -409,72 +431,103 @@ export class Battle {
       const wrong = this.confusedRedirect(u);
       if (wrong) { this.damage(u, wrong, u.cp * cfg.v2_status.confused.self_x); return; }
       const o = { x: 1, n: 1, critAdd: 0, pierce: 0, trueStrike: false, bonus: 0, critBonus: 0, shieldX: 1 };
-      let area = 0, lifesteal = 0, guardUp = 0; const rid = [], onCrit = [];
-      for (const b of B) switch (b.k) {
+      let area = 0, lifesteal = 0, guardUp = 0, stealTo = null; const rid = [], onCrit = [], onKill = [];
+      // PR T1: an attachment is read with its host; a gate that does not hold now turns its host off for this active
+      for (let j = 0; j < B.length; j++) { const b = B[j]; if (ATTACH.includes(b.k)) continue;
+      const a = ATTACH.includes(B[j + 1]?.k) ? B[j + 1] : null;
+      if (a && GATES.includes(a.k) && !this.gateOn(u, tgt, a)) continue;
+      switch (b.k) {
         case 'hit': o.x = 1 + (b.x - 1) * ab; break;
         case 'strikes': o.n = b.n; o.x = (1 + (b.n * b.x - 1) * ab) / b.n; break;
         case 'crit_add': o.critAdd += b.v * ab; break;
         case 'pierce': o.pierce = Math.max(o.pierce, b.v); break;
         case 'true_strike': o.trueStrike = true; break;
         case 'area': area = b.x * ab; break;
-        case 'payoff_dmg': if (this.has(tgt, b.status)) o.bonus += b.v * ab; break;
-        case 'payoff_crit': if (this.has(tgt, b.status)) o.critBonus += b.v * ab; break;
+        case 'payoff_dmg': if (this.hasAny(tgt, b)) o.bonus += b.v * ab; break;
+        case 'payoff_crit': if (this.hasAny(tgt, b)) o.critBonus += b.v * ab; break;
+        case 'per_ally': o.bonus += b.v * ab * this.alive('card').filter(c => c !== u && c.cls === 'attacker').length; break;
         case 'per_stack': o.bonus += b.v * ab * (tgt.st[b.status]?.stacks || 0); break;
         case 'per_kind': o.bonus += b.v * ab * this.negKinds(tgt); break;
-        case 'vs_status': if (this.has(tgt, b.status)) o.vsX = b.x; break;
+        case 'vs_status': if (this.hasAny(tgt, b)) o.vsX = b.x; break;
         case 'execute': {
           const line = B.find(x => x.k === 'line_status');
           if (tgt.hp / tgt.maxHp < b.line || (line && line.statuses.some(s => this.has(tgt, s)))) o.bonus += b.v * ab; break; }
         case 'line_status': break;
-        case 'lifesteal': lifesteal = b.v * ab; break;
+        case 'lifesteal': lifesteal = b.v * ab; stealTo = b.to || null; break;
         case 'guard_up': guardUp = b.v * ab; break;
         case 'shield_break': o.shieldX = b.x; break;
-        case 'apply': rid.push(b); break;
+        case 'apply': case 'random_apply': rid.push(b); break;
         case 'on_crit': onCrit.push(b); break;
+        case 'on_kill': onKill.push(b); break;
         default: throw new Error(`doActive: block ${b.k} not for attackers`);
-      }
+      } }
       if (this.alive('enemy').length === 1 && area) { o.bonus += area * cfg.v2_roles.cleaver.hunt_area_x; area = 0; }
       if (o.n > 1 && tgt.mech.has('mirror_hide')) o.x *= tgt.P.mirror_hide.strikes_x;
       let dealt = 0, anyCrit = false;
-      const ridersOn = (t, all) => { for (const b of rid) if ((!all || b.all) && u.rng() < Math.min(1, b.chance * (b.chance < 1 ? ab : 1))) this.apply(u, t, b.status, b); };
+      const ridersOn = (t, all) => { for (const b of rid) { const ch = b.chance ?? 1;
+        if ((!all || b.all) && u.rng() < Math.min(1, ch * (ch < 1 ? ab : 1))) {
+          if (b.k === 'random_apply') { const op = b.options[Math.floor(u.rng() * b.options.length)]; this.apply(u, t, op.status, op); } // PR T1: one random status
+          else this.apply(u, t, b.status, b);
+        } } };
       for (let i = 0; i < o.n && !tgt.down; i++) {
         const r = this.cardHit(u, tgt, o); dealt += r.dealt; anyCrit ||= r.crit;
         if (!r.miss) ridersOn(tgt, false);
         if (r.crit) for (const b of onCrit) if (u.rng() < b.chance) this.apply(u, tgt, b.status, b);
+        // PR T1: on_kill: the target is down after this hit (and its riders): a chance to put the status on the next standing enemy
+        if (onKill.length && tgt.down) { const nx = this.alive('enemy')[0]; if (nx) for (const b of onKill) if (u.rng() < b.chance) this.apply(u, nx, b.status, b); }
       }
       if (area) for (const e of this.alive('enemy')) if (e !== tgt) { const r = this.cardHit(u, e, { ...o, x: area, bonus: 0, vsX: null, kind: 'area' }); dealt += r.dealt; if (!r.miss) ridersOn(e, true); }
-      if (lifesteal && dealt > 0) this.heal(u, lifesteal * dealt);
+      if (lifesteal && dealt > 0) { const t = stealTo ? this.allyTo(stealTo) : u; if (t) this.heal(t, lifesteal * dealt); }
       if (guardUp && dealt > 0) this.addShield(u, guardUp * dealt);
       delete u.st.empowered; this.consumeMark(tgt);
       return;
     }
     // support
     const critRoll = () => (u.rng() < u.crit ? u.critx : 1);
-    let smiteX = 0, vsX = 1, areaX = 0, cured = null;
-    for (const b of B) {
+    let smiteX = 0, vsX = 1, areaX = 0, cured = null, sBonus = 0, sCrit = 0;
+    for (let j = 0; j < B.length; j++) {
+      const b = B[j]; if (ATTACH.includes(b.k)) continue;
+      // PR T1: the attachment of this block (the next block): a gate turns it off; coin, more_per, target_has and ally_below change its amount
+      const a = ATTACH.includes(B[j + 1]?.k) ? B[j + 1] : null;
+      if (a && GATES.includes(a.k) && !this.gateOn(u, tgt, a)) continue;
+      const amount = (t) => { let v = b[AMOUNT_FIELD[b.k]];
+        if (a?.k === 'coin') v = u.rng() < a.chance ? v : a.alt;
+        if (a?.k === 'more_per') v += a.v * this.countOn(tgt, a.status, b.k === 'apply' ? b.status : null);
+        if (a?.k === 'target_has' && this.hasAny(tgt, a)) v *= a.x;
+        if (a?.k === 'ally_below' && t && t.hp / t.maxHp < a.line) v *= a.x;
+        return v; };
+      const ally = (kind) => (b.to && b.to !== 'cured' ? this.allyTo(b.to) : this.policy.allyFor(this, u, kind));
       switch (b.k) {
-        case 'shield': { const t = b.to === 'cured' && cured && !cured.down ? cured : this.policy.allyFor(this, u, 'shield'); if (t) this.addShield(t, b.v * ab * critRoll() * t.maxHp); break; }
-        case 'shield_all': { const c = critRoll(); for (const t of this.alive('card')) this.addShield(t, b.v * ab * c * t.maxHp); break; }
-        case 'heal': { const t = this.policy.allyFor(this, u, 'heal'); if (t) this.heal(t, b.v * ab * critRoll() * t.maxHp); break; }
-        case 'heal_all': { const c = critRoll(); for (const t of this.alive('card')) this.heal(t, b.v * ab * c * t.maxHp); break; } // all_allies (PR E6)
+        case 'shield': { const t = b.to === 'cured' && cured && !cured.down ? cured : ally('shield'); if (t) this.addShield(t, amount(t) * ab * critRoll() * t.maxHp); break; }
+        case 'shield_all': { const v = amount(null), c = critRoll(); for (const t of this.alive('card')) this.addShield(t, v * ab * c * t.maxHp); break; }
+        case 'heal': { const t = ally('heal'); if (t) this.heal(t, amount(t) * ab * critRoll() * t.maxHp); break; }
+        case 'heal_all': { const v = amount(null), c = critRoll(); for (const t of this.alive('card')) this.heal(t, v * ab * c * t.maxHp); break; } // all_allies (PR E6)
         case 'cleanse': for (const t of this.alive('card')) this.cleanseNeg(t); break;
         case 'cure': cured = this.cure(u, b); break;
-        case 'empower': { const t = this.policy.allyFor(this, u, 'empower'); if (t) this.apply(u, t, 'empowered', { value: b.v * ab * critRoll() }); break; }
-        case 'rally': { const c = critRoll(); for (const t of this.alive('card')) if (t.cls === 'attacker') this.apply(u, t, 'empowered', { value: b.v * ab * c }); break; }
-        case 'focus': { const t = this.policy.allyFor(this, u, 'empower'); if (t) this.apply(u, t, 'focused', { value: b.crit * ab, crd: b.crd * ab }); break; }
-        case 'quicken': { const ts = b.all ? this.alive('card').filter(c => c.cls === 'attacker') : [this.policy.allyFor(this, u, 'empower')]; for (const t of ts) if (t) this.apply(u, t, 'quickened', { value: 1 + b.v * ab }); break; }
+        case 'empower': { const t = ally('empower'); if (t) this.apply(u, t, 'empowered', { value: amount(t) * ab * critRoll() }); break; }
+        case 'rally': { const v = amount(null), c = critRoll(); for (const t of this.alive('card')) if (t.cls === 'attacker') this.apply(u, t, 'empowered', { value: v * ab * c }); break; }
+        case 'focus': { const t = ally('empower'); if (t) this.apply(u, t, 'focused', { value: amount(t) * ab, crd: b.crd * ab }); break; }
+        case 'quicken': { if (b.all) { const v = amount(null); for (const t of this.alive('card').filter(c => c.cls === 'attacker')) this.apply(u, t, 'quickened', { value: 1 + v * ab }); }
+          else { const t = ally('empower'); if (t) this.apply(u, t, 'quickened', { value: 1 + amount(t) * ab }); } break; }
         case 'dispel': for (const s of BOONS) delete tgt.st[s]; tgt.shield = 0; break;
         case 'smite': smiteX = b.x * ab; break;
         case 'area': areaX = b.x * ab; break;
-        case 'vs_status': if (this.has(tgt, b.status)) vsX = b.x; break;
+        case 'vs_status': if (this.hasAny(tgt, b)) vsX = b.x; break;
+        case 'payoff_dmg': if (this.hasAny(tgt, b)) sBonus += b.v * ab; break; // PR T1: +v on the smite
+        case 'crit_add': sCrit += b.v * ab; break; // PR T1: crit chance on the smite
         case 'consume': {
           if (tgt.st.burn) { let s = tgt.st.burn.stacks, tot = 0; while (s > 0) { tot += F.burnTick(cfg, s, this.refHp(tgt)); s -= cfg.v2_status.burn.decay; }
             delete tgt.st.burn; this.damage(u, tgt, tot * b.x * this.vuln(tgt), { tick: true, ignoreShield: true, kind: 'detonate' }); }
           break; }
         case 'apply': {
           if (u.rng() >= Math.min(1, b.chance * (b.chance < 1 ? ab : 1))) break;
-          const amt = b.value !== undefined ? { ...b, value: b.value * ab * (['exposed', 'weakened', 'mark'].includes(b.status) ? critRoll() : 1) } : b;
-          this.apply(u, tgt, b.status, amt); break; }
+          if (b.value === undefined) { this.apply(u, tgt, b.status, b); break; }
+          let v = amount(null);
+          if (b.per) { const n = this.countOn(tgt, b.per === 'kinds' ? null : b.per, b.status); if (!n) break; v *= n; } // PR T1: x the count; none = no status
+          this.apply(u, tgt, b.status, { ...b, value: v * ab * (['exposed', 'weakened', 'mark'].includes(b.status) ? critRoll() : 1) }); break; }
+        case 'random_apply': { const ch = b.chance ?? 1; // PR T1: one random status of the options
+          if (u.rng() >= Math.min(1, ch * (ch < 1 ? ab : 1))) break;
+          const op = b.options[Math.floor(u.rng() * b.options.length)]; this.apply(u, tgt, op.status, op); break; }
         default: throw new Error(`doActive: block ${b.k} not for supports`);
       }
     }
@@ -482,7 +535,7 @@ export class Battle {
     if (areaX && !smiteX) throw new Error(`doActive: ${u.active.id}: an area block needs a smite block`);
     const others = areaX ? this.alive('enemy').filter(e => e !== tgt) : [];
     if (areaX && !others.length) smiteX += areaX * cfg.v2_support.area_one_foe_x;
-    if (smiteX) this.smite(u, tgt, smiteX, vsX);
+    if (smiteX) this.smite(u, tgt, smiteX, vsX, { bonus: sBonus, critAdd: sCrit });
     for (const e of others) this.cardHit(u, e, { x: areaX, trueStrike: true, kind: 'area' });
   }
 

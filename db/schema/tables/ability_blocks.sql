@@ -20,11 +20,15 @@ create table public.ability_blocks (
   rule text not null,
   reserved text,
   note text,
-  updated_at timestamp with time zone default now() not null
+  updated_at timestamp with time zone default now() not null,
+  attach text,
+  hosts text[]
 );
 
 -- @constraints
 alter table public.ability_blocks add constraint ability_blocks_amount_check CHECK (((amount IS NULL) OR (amount ~ '^[a-z_]+$'::text)));
+alter table public.ability_blocks add constraint ability_blocks_attach_check CHECK (((attach IS NULL) OR (attach = ANY (ARRAY['gate'::text, 'amount'::text]))));
+alter table public.ability_blocks add constraint ability_blocks_attach_hosts CHECK ((((attach IS NULL) = (hosts IS NULL)) AND ((hosts IS NULL) OR (cardinality(hosts) >= 1))));
 alter table public.ability_blocks add constraint ability_blocks_check CHECK (((reserved IS NULL) = (price IS NOT NULL)));
 alter table public.ability_blocks add constraint ability_blocks_check1 CHECK (((reserved IS NOT NULL) OR (text <> '{}'::jsonb)));
 alter table public.ability_blocks add constraint ability_blocks_classes_check CHECK (((cardinality(classes) >= 1) AND (classes <@ ARRAY['attacker'::text, 'support'::text])));
