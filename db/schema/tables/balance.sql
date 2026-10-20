@@ -29,6 +29,7 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 
 -- @triggers
 CREATE TRIGGER balance_check BEFORE INSERT OR DELETE OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check();
+CREATE TRIGGER balance_check_ability_v2 BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_ability_v2();
 CREATE TRIGGER balance_check_boss_counters BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_boss_counters();
 CREATE TRIGGER balance_check_combat BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_combat();
 CREATE TRIGGER balance_check_combat_v2 BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_combat_v2();

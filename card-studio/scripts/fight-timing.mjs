@@ -19,6 +19,8 @@
  *   ... fight-timing.mjs combat_v2_hit    the v2 hit core alone (opt-in, PR E4: after combat_v2_hit.sql is applied)
  *   ... fight-timing.mjs combat_v2_status_apply combat_v2_step_end combat_v2_next combat_v2_turn_order    the v2 status rules (opt-in, PR E5: after
  *       combat_v2_status_rules.sql is applied)
+ *   ... fight-timing.mjs combat_v2_card_act combat_v2_card_act_basic combat_v2_card_act_support ability_v2_check    the v2 card actions and the ability
+ *       validator (opt-in, PR E6: after combat_v2_abilities.sql is applied)
  *   TIMING_BATCH=30 TIMING_REQUESTS=10    the size of a batch and the number of requests (default 30 and 10 = 300 calls)
  * LOCAL copy only (docs/foundations.md "Performance and cost budget" rule 2). Each request takes the shared lock when LAB_LOCK_OWNER is set (lab-lib.mjs).
  */
@@ -109,6 +111,26 @@ const V2_STATE_E5 = `st := '{"v": 2, "mode": "hunt", "round": 0, "clock": 3, "sq
               "8": {"hp": 90, "max": 90, "down": false, "meter": 30, "charge": 0, "role": "medic", "status": {"sleep": {"until": 4}}}},
     "enemies": [{"hp": 70000, "max": 70000, "meter": 60, "charge": 0, "speed": 100, "resolve": 0.1, "def": 0.15,
                  "status": {"poison": {"stacks": 2, "until": 7}, "burn": {"stacks": 4}, "exposed": {"value": 0.3, "until": 3}, "guarded": {"value": 500}}}]}'::jsonb;`;
+// PR E6 (combat_v2_abilities.sql): the E5 state with the stat line of card_combat_v2 and an active on each card (charged), statuses on both sides.
+const V2_STATE_E6 = `st := '{"v": 2, "mode": "hunt", "round": 0, "clock": 3, "squad": [1, 2, 3, 4, 5, 6, 7, 8], "marks": {}, "facts": {"passives": [], "cards": {}}, "ext": {},
+    "cards": {"1": {"hp": 90, "max": 90, "down": false, "meter": 40, "charge": 1, "role": "controller", "class": "support", "atk": 60, "crt": 0.1, "crd": 2, "abl": 1.1, "acc": 0.04, "power": 1.2,
+                    "status": {"poison": {"stacks": 2, "until": 9}}, "active": {"blocks": [{"k": "apply", "status": "stunned", "chance": 1}, {"k": "apply", "status": "weakened", "chance": 1, "value": 0.086}]}},
+              "2": {"hp": 70, "max": 90, "down": false, "meter": 10, "charge": 2, "role": "striker", "class": "attacker", "atk": 120, "crt": 0.3, "crd": 2.2, "abl": 1.1,
+                    "status": {"slowed": {"until": 5}, "burn": {"stacks": 3}}, "active": {"blocks": [{"k": "hit", "x": 1.5}, {"k": "crit_add", "v": 0.2}, {"k": "on_crit", "status": "stunned", "chance": 0.5}]}},
+              "3": {"hp": 90, "max": 90, "down": false, "meter": 70, "charge": 2, "role": "flurry", "class": "attacker", "atk": 110, "crt": 0.2, "crd": 2, "abl": 1.2, "extra_stack": 1,
+                    "status": {"shielded": {"value": 20}}, "active": {"blocks": [{"k": "strikes", "n": 3, "x": 0.565}, {"k": "apply", "status": "poison", "chance": 0.25, "stacks": 1}]}},
+              "4": {"hp": 90, "max": 90, "down": false, "meter": 20, "charge": 2, "role": "finisher", "class": "attacker", "atk": 100, "crt": 0.1, "crd": 2,
+                    "status": {"chill": {"stacks": 2, "until": 3}}, "active": {"blocks": [{"k": "hit", "x": 1.4}, {"k": "execute", "line": 0.25, "v": 0.8}, {"k": "line_status", "statuses": ["stunned", "frozen", "sleep", "mark"]}]}},
+              "5": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 2, "role": "survivor", "class": "attacker", "atk": 100, "crt": 0.1, "crd": 2, "status": {"blinded": {"until": 3}},
+                    "active": {"blocks": [{"k": "hit", "x": 1.5}, {"k": "lifesteal", "v": 0.3}, {"k": "apply", "status": "weakened", "chance": 1, "value": 0.2}]}},
+              "6": {"hp": 90, "max": 90, "down": false, "meter": 55, "charge": 1, "role": "herald", "class": "support", "atk": 50, "crt": 0.1, "crd": 2, "abl": 1.1, "power": 1.1,
+                    "status": {"quickened": {"until": 9}}, "active": {"blocks": [{"k": "quicken", "v": 0.3, "all": true}, {"k": "empower", "v": 0.2}]}},
+              "7": {"hp": 90, "max": 90, "down": false, "meter": 80, "charge": 1, "role": "warden", "class": "support", "atk": 50, "crt": 0.1, "crd": 2, "def": 0.09,
+                    "status": {}, "active": {"blocks": [{"k": "shield_all", "v": 0.1}]}},
+              "8": {"hp": 60, "max": 90, "down": false, "meter": 30, "charge": 1, "role": "medic", "class": "support", "atk": 50, "crt": 0.1, "crd": 2, "abl": 1.2, "status": {},
+                    "active": {"blocks": [{"k": "cure", "statuses": ["all"], "immune": 4}, {"k": "shield", "v": 0.12, "to": "cured"}, {"k": "quicken", "v": 0.3}, {"k": "empower", "v": 0.15}]}}},
+    "enemies": [{"hp": 70000, "max": 70000, "meter": 60, "charge": 0, "speed": 100, "atk": 73, "resolve": 0.1, "def": 0.15, "evasion": 0.04,
+                 "status": {"poison": {"stacks": 2, "until": 7}, "burn": {"stacks": 4}, "exposed": {"value": 0.3, "until": 3}, "guarded": {"value": 500}}}]}'::jsonb;`;
 const V2_CALLS = {
   combat_v2_advance: [V2_STATE, 'combat_v2_advance(st)'],
   combat_v2_turn_order: [V2_STATE, 'combat_v2_turn_order(st, 6)'],
@@ -123,6 +145,12 @@ const V2_CALLS = {
   combat_v2_status_apply: [V2_STATE_E5, `combat_v2_status_apply(st, '{"side": "enemy", "id": 0}', 'chill', '{"stacks": 3, "src": {"side": "card", "id": 1}}'::jsonb)`],
   combat_v2_step_end: [V2_STATE_E5, 'combat_v2_step_end(st)'],
   combat_v2_next: [V2_STATE_E5, 'combat_v2_next(st)'],
+  // PR E6 (combat_v2_abilities.sql): one card action: the Flurry active (3 strikes, a rider after each), the Herald basic attack (the Empower of the
+  // strongest attacker), the Medic active (cure, shield to the cured ally, quicken, empower, then the Medic passive); and the validator on one active.
+  combat_v2_card_act: [V2_STATE_E6, `combat_v2_card_act(st, '{"side": "card", "id": 3}', '{"use": true, "target": {"side": "enemy", "id": 0}}'::jsonb)`],
+  combat_v2_card_act_basic: [V2_STATE_E6, `combat_v2_card_act(st, '{"side": "card", "id": 6}', '{"target": {"side": "enemy", "id": 0}}'::jsonb)`],
+  combat_v2_card_act_support: [V2_STATE_E6, `combat_v2_card_act(st, '{"side": "card", "id": 8}', '{"use": true, "target": {"side": "enemy", "id": 0}, "ally": {"side": "card", "id": 2}}'::jsonb)`],
+  ability_v2_check: ['st := null;', `ability_v2_check('striker', '{"name": "Thunderclap", "blocks": [{"k": "hit", "x": 1.5}, {"k": "crit_add", "v": 0.2}, {"k": "on_crit", "status": "stunned", "chance": 0.5}], "silver": {"block": 1, "field": "x", "value": 1.725}}'::jsonb)`],
 };
 const DEFAULT_CALLS = Object.keys(CALLS);
 Object.assign(CALLS, ENGINE_CALLS, V2_CALLS);

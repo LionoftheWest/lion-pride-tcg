@@ -154,7 +154,8 @@ const NEW = ['combat_v2_hit', 'combat_v2_draw', 'combat_v2_status_on'];
 // the combat v2 functions of the later PRs that call these on purpose (v2 callers, not v1; every one is named here)
 const V2_CALLERS = ['combat_v2_status_numbers', 'combat_v2_unit_path', 'combat_v2_units', 'combat_v2_up', 'combat_v2_status_check', 'combat_v2_status_drop',
   'combat_v2_fall', 'combat_v2_status_remove', 'combat_v2_damage', 'combat_v2_hit_apply', 'combat_v2_heal', 'combat_v2_status_apply', 'combat_v2_status_cure',
-  'combat_v2_status_strip', 'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next', 'combat_v2_turn_order'];   // E5 combat_v2_status_rules.sql
+  'combat_v2_status_strip', 'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next', 'combat_v2_turn_order',   // E5 combat_v2_status_rules.sql
+  'combat_effect_v2_hit', 'combat_effect_v2_basic', 'combat_effect_v2_active', 'combat_v2_card_act'];   // E6 combat_v2_abilities.sql
 const KEYS = ['v2_hit', 'v2_stats', 'v2_status', 'v2_roles', 'v2_enemy', 'v2_support'];
 const SETUP = String.raw`
   perform set_config('balance.by', 'test', true);

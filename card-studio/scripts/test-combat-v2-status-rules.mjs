@@ -182,6 +182,8 @@ const NEW = ['combat_v2_status_numbers', 'combat_v2_unit_path', 'combat_v2_units
   'combat_v2_status_remove', 'combat_v2_damage', 'combat_v2_hit_apply', 'combat_v2_heal', 'combat_v2_status_apply', 'combat_v2_status_cure', 'combat_v2_status_strip',
   'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next'];
 const REPLACED = 'combat_v2_turn_order';
+// the combat v2 functions of the later PRs that call these on purpose (v2 callers, not v1; every one is named here)
+const V2_CALLERS = ['combat_v2_action_numbers', 'combat_effect_v2_hit', 'combat_effect_v2_basic', 'combat_effect_v2_active', 'combat_v2_card_act'];   // E6 combat_v2_abilities.sql
 const q = (a) => a.map((n) => `'${n}'`).join(', ');
 const SETUP = String.raw`
   perform set_config('balance.by', 'test', true);
@@ -297,7 +299,7 @@ begin
    where p.pronamespace = 'public'::regnamespace and p.proname in (${q(NEW)}, '${REPLACED}') and coalesce(obj_description(p.oid, 'pg_proc'), '') = '';
   res := res || jsonb_build_object('case', 'every function has a comment', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, '${REPLACED}'])
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, '${REPLACED}', ${q(V2_CALLERS)}])
      and p.prosrc ~ '(combat_v2_status_(numbers|check|drop|remove|apply|cure|strip)|combat_v2_unit_path|combat_v2_units|combat_v2_up\(|combat_v2_damage|combat_v2_hit_apply|combat_v2_heal|combat_v2_step_end|combat_v2_turn_start|combat_v2_confused_target|combat_v2_next|combat_v2_fall|combat_v2_turn_order)';
   res := res || jsonb_build_object('case', 'no other function calls the new functions or the strip (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on';

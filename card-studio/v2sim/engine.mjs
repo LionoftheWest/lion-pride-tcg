@@ -394,6 +394,7 @@ export class Battle {
 
   // A support smite on its target: Rollback (x0.5), Hitbox Desync (the next smite misses), Mirror (the next smite hits its caster).
   smite(u, tgt, x, vsX) {
+    if (tgt.down) return 0; // the target fell to an earlier block of the same active (a Toxic burst): no hit and no draw (PR E6, the same rule in SQL)
     if (tgt.mech.has('rollback')) x *= tgt.P.rollback.smite_x;
     if (this.ext(tgt, 'desync_smite')) { delete tgt.ext.desync_smite; this.S.misses++; return 0; }
     if (this.ext(tgt, 'mirror_smite')) { delete tgt.ext.mirror_smite; this.damage(tgt, u, u.cp * x * vsX); return 0; }
@@ -455,6 +456,7 @@ export class Battle {
         case 'shield': { const t = b.to === 'cured' && cured && !cured.down ? cured : this.policy.allyFor(this, u, 'shield'); if (t) this.addShield(t, b.v * ab * critRoll() * t.maxHp); break; }
         case 'shield_all': { const c = critRoll(); for (const t of this.alive('card')) this.addShield(t, b.v * ab * c * t.maxHp); break; }
         case 'heal': { const t = this.policy.allyFor(this, u, 'heal'); if (t) this.heal(t, b.v * ab * critRoll() * t.maxHp); break; }
+        case 'heal_all': { const c = critRoll(); for (const t of this.alive('card')) this.heal(t, b.v * ab * c * t.maxHp); break; } // all_allies (PR E6)
         case 'cleanse': for (const t of this.alive('card')) this.cleanseNeg(t); break;
         case 'cure': cured = this.cure(u, b); break;
         case 'empower': { const t = this.policy.allyFor(this, u, 'empower'); if (t) this.apply(u, t, 'empowered', { value: b.v * ab * critRoll() }); break; }
