@@ -853,3 +853,41 @@ because every later part reads them.
   alone: 0.15 to 0.17 ms.
 - Test: `card-studio/scripts/test-combat-v2-stats.mjs` (30 checks; SQL = the simulator on 23,160 cards, the largest relative difference
   3.3e-16; MUTATE=all: 29 planted faults caught).
+
+### 18.3 E4: the hit core (`tcg-bot/supabase/combat_v2_hit.sql`)
+
+- Needs `combat_v2_stats.sql` (E3) first. No v1 function calls the new functions, and no other function changes (the test compares the md5 of
+  every other public function: 434).
+- `combat_v2_hit(attacker, target, ctx, numbers)` (VOLATILE: it can draw `random()`; it writes nothing and reads no table): one hit.
+  `ctx.side` = `card` (a card hits an enemy) or `enemy` (an enemy hits a card). The units carry the stat line of `card_combat_v2` as rates (`atk`,
+  `crt`, `crd`, `abl`, `acc`, `def`, `ddg`; a card also `role` and `class`; an enemy `evasion`, `keen`, `mechanics`) and their `status{}`.
+  - Card hit: miss = max(0, `v2_hit.miss` + evasion + Blinded - acc), no roll for a true strike or a Marked target. The roll. Crit chance =
+    min(`crt.cap` + Focused, crt + adds + Focused + Striker), no crit vs Ironhide unless Marked; a crit x (crd + Striker). Empowered (Dispeller),
+    Weakened, Chill, Exposed, Mark, Finisher, Cleaver, `bonus`, `vs_x`. Breaker Pierce and shield break. `ctx.basic`: the support and Artillery
+    basic attack (x and the Artillery true strike).
+  - Enemy hit: Blinded, then Dodge = ddg x (1 - keen) (area hits x `ddg.area_x`; none vs the mechanic `true_strike`), the roll, Enraged, the Hunt
+    boss rage, Weakened, Chill, Exposed. Sunder and Shatter.
+  - Damage: raw x (1 - def x (1 - min(1, pierce))), Warden `ally_dr` on a card target, at least `min_dmg`, then the shield (`shielded` of a card,
+    `guarded` of an enemy) absorbs first (shield / shield_x). The Survivor heal amount (the heal rules are the caller's, E5).
+  - Draw slots in a fixed order: a card hit [miss], roll, [crit]; an enemy hit [Blinded], [dodge], roll. From `ctx.draws`, else `random()`.
+    The answer lists the draws used (a replay gives the same hit). Riders and the Flurry second strike draw after the hit (E6).
+  - Answer: `{side, hit, miss, dodged, crit, true_strike, marked, chance, crit_chance, roll, raw, pierce, shield_x, dmg, absorbed, shield_after,
+    hp_loss, hp_after, down, heal, draws}`. A down target: no draw, no damage.
+- `combat_v2_hit(attacker, target, ctx)` reads the numbers. `combat_v2_status_on` (a status that counts at the clock: the E2 rule) and
+  `combat_v2_draw` (one slot) are helpers.
+- No new balance key or leaf: every number of the hit is a V1 leaf. C1 scope: `^combat_` covers the new functions (a planted literal fails C1).
+- The card class is read from the unit (`card_combat_v2` gives it), not from balance: `v2_roles` has no class leaf (V1 left it out, the
+  `roles` table holds it).
+- Not in E4: Steadfast and the other new enemy passives (E7), Sleep waking, Burn on heals (E5), Confused, Flurry, Cleaver splash, riders
+  (E6). The simulator focus block also adds crit damage (`st.focused.crd`): the v2 status shape has no such key, so E6 decides it.
+- Proof (copy 2, refreshed from live; 4e, V1, E1, E2, E3 applied): the goldens with CANDIDATE = this file (Hunt 183, Dungeon 240, boss
+  counters 128 fights: no difference); `test-effect-shadow.mjs` after the apply 3623 cases, 0 different, MUTATE=all baseline PASS and 23 caught;
+  `test-all-local.mjs` after the apply 142/145, the 3 failures the generated files (db/schema, SUPERSEDED.md, docs/data), which pass after the
+  regeneration; `fight-timing.mjs` 3 runs: runs 2 and 3 PASS, run 1 had `dungeon_auto_rounds` at 1.110 (no v1 call reaches an E4 function;
+  3 more runs of it: 0.996, 0.973, 0.999; BASE against BASE: 0.897). `combat_v2_hit` alone (a Striker on a Hunt boss, every step of the card
+  path): 0.28 to 0.40 ms.
+- Test: `card-studio/scripts/test-combat-v2-hit.mjs` (90 checks: 64 fixed cases, the 13 simulator hit checks with 4000 hits each, SQL = the
+  simulator on 12,000 hits with the same draws, the draw order with `setseed`, 16 refusals; MUTATE=all: 73 planted faults caught, among them
+  Defense and Pierce). The largest relative difference SQL vs simulator is 9.0e-11, on a shield remainder of 0.00077 after
+  shield - absorbed x shield_x: the simulator subtracts two nearly equal floats there (absolute difference 7e-14). All other numbers agree to
+  float noise.
