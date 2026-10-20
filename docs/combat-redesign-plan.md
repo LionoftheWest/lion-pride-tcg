@@ -263,7 +263,7 @@ Tuned prices (`v2_pp`) [T]:
 | Status application (`status_pp`, PP per 1.0 of value or per stack) | PP | Support main (`support_pp`) | PP |
 |---|---|---|---|
 | Poison, per stack | 4 | Shield, per 1.0 x max HP | 25 |
-| Burn, per stack | 1.5 | Shield all allies | 75 |
+| Burn, per stack | 1.5 | Shield all allies (P1 price, was 75) [D Nathan 2026-10-18] | 100 |
 | Chill, per stack | 2 | Heal, per 1.0 x max HP | 16.7 |
 | Mark, per 1.0 | 16 | Heal all allies | 60 |
 | Exposed, per 1.0 | 25 | Empower, per 1.0 | 20 |
@@ -279,7 +279,22 @@ They are placeholders. Each real card gets its own ability in section 12.
 ### 5.3 The Silver upgrade [D one rule for all cards]
 
 - At 3 stars (Silver) the active is upgraded. It is not a second ability and not a second button [L, foundations F-3 item 10].
-- One rule for every card [D]: **+3 PP**, spent as **+50% rider chance**, or **+50% of the main number** if the card has no rider [P numbers from the effect library].
+- One rule for every card [D]: **+3 PP** at Silver.
+- **The Silver upgrade types [D Nathan 2026-10-20, "Silver: yes"].** A measured sample of 12 cards (v2sim, 2 cards for each type, private notes)
+  compared each type with the "+number" Silver at the same +3 PP. In line = x0.67 to x1.5 of the "+number" value.
+
+  | Type | Decision | Reason (measured) |
+  |---|---|---|
+  | 1. A stronger number (+3 PP on the main number) | **KEEP, the default** for most cards | The reference. Simple text. No new engine part |
+  | 2. More rider chance | **CUT** | A crit rider cannot hold 3 PP. The cards that can hold 3 PP measured x1.0 at best, below x0.7 in most contents |
+  | 3. A new small rider | **PILOT, supports only** (for example a sure Slow or Blind) | In line in Dungeon runs and hordes, too strong against one big enemy |
+  | 4. One more stack | **PILOT, supports only** (for example +1 Burn). **Never an extra Poison stack on an attacker** | In line in most contents, x4 to x5 against a guardian |
+  | 5. One more target (a second ally) | **DEFERRED** | x2 to x9 even at half the amount. It needs a "second ally" target rule with a measured price first |
+  | 6. Faster charge or starts charged | **CUT** | "1 turn faster" costs +5 to +10 PP. "Starts charged" changes from x0.7 to x10.8 with the fight length |
+
+- Before the pilot of types 3 and 4, measure a guardian price factor for Burn and Poison stacks [D Nathan 2026-10-20].
+  The ticks are a share of the foe max HP (6.1), so the fixed `status_pp` price is too low against a big-HP guardian.
+- Type 3 makes the Silver add a block, not only change a number. The validator keeps the limit of 1 rider (5.1).
 - The validator accepts 13 PP at Silver for this rule only. The card shows the Silver line greyed out until 3 stars.
 - The Gauntlet never has the upgrade (0 stars) [L].
 - This rule removes the old conflict "stun +1 round vs the stun limit 1" (it changes a chance or an amount, never a control duration).
