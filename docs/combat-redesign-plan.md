@@ -935,7 +935,7 @@ because every later part reads them.
   240, boss counters 128 fights: no difference); `test-effect-shadow.mjs` after the apply 3623 cases, 0 different, MUTATE=all baseline PASS and
   23 caught; the flag OFF in all 4 modes after the apply; `test-all-local.mjs` after the apply 139/146: the generated files (pass after the
   regeneration), `test-combat-v2-hit.mjs` (its caller check now names the E5 v2 callers: PASS), `test-golden-mutations.mjs` (the 300 s limit
-  under load; alone PASS in 194 s), and the 2 studio tests that fail the same way before the apply (no card art files on a fresh copy 2);
+  under load; alone PASS in 194 s), and the 2 studio tests that failed the same way before the apply (both PASS after the rebase on #452);
   `fight-timing.mjs` 3 of 3 runs PASS (ratios 0.847 to 1.098). Alone: `combat_v2_status_apply` 0.47 ms, `combat_v2_step_end` 2.0 ms,
   `combat_v2_next` 3.3 ms, `combat_v2_turn_order` 1.3 ms (the Hunt-sized state of `fight-timing.mjs`).
 - Test: `card-studio/scripts/test-combat-v2-status-rules.mjs` (89 checks: 64 fixed cases with explicit draws, the simulator rates, the no-lock
