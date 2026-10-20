@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, unlinkSync, rmSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { join, dirname } from 'node:path';
@@ -53,29 +53,54 @@ export function fillHtml(card, rarity, artUrl, mask = false, frame = null, artis
     .replaceAll('%%ART%%', art);
 }
 
+/** Wait until a file exists, is not empty and its size is the same on two reads in a row.
+ * Throws when the file is not complete after tries x ms. */
+export async function waitForFile(path, tries = 120, ms = 250) {
+  let last = -1;
+  for (let t = 0; t < tries; t++) {
+    const size = existsSync(path) ? statSync(path).size : -1;
+    if (size > 0 && size === last) return path;
+    last = size;
+    await new Promise((r) => setTimeout(r, ms));
+  }
+  throw new Error(`no screenshot: ${path}`);
+}
+
 /** Screenshot an HTML string to a transparent PNG via headless Edge (async, so
- * the studio server stays responsive while a card renders). */
-async function shootHtml(html, outPng, scale, tmpName) {
+ * the studio server stays responsive while a card renders).
+ * Headless Edge sometimes returns before it writes the screenshot (observed 2026-10-20): the face, mask and
+ * text-mask renders of one card then mixed. So each call gets its own HTML file and its own Edge profile,
+ * the old PNG is removed first, and the call waits for the complete new file. The pixels do not change.
+ * exec is a parameter for the test only (scripts/render-wait.test.mjs). */
+export async function shootHtml(html, outPng, scale, tmpName, { exec = execFileP, tries, ms } = {}) {
   mkdirSync(dirname(outPng), { recursive: true });
-  const tmp = join(dirname(outPng), tmpName);
+  const uniq = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+  const tmp = join(dirname(outPng), tmpName.replace(/\.html$/, `-${uniq}.html`));
   writeFileSync(tmp, html, 'utf8');
+  try { unlinkSync(outPng); } catch {}
 
   // A unique Edge profile per render, so parallel renders never collide on a
   // shared --user-data-dir (which fails with "Command failed").
-  const profile = `${process.env.TEMP}\\edge-cardgen-${tmpName.replace(/[^a-z0-9]/gi, '_')}`;
-  await execFileP(
-    EDGE,
-    [
-      '--headless=new', '--disable-gpu', '--no-sandbox',
-      `--user-data-dir=${profile}`,
-      '--hide-scrollbars', `--force-device-scale-factor=${scale}`,
-      '--default-background-color=00000000',
-      '--virtual-time-budget=4000',
-      `--screenshot=${outPng}`, '--window-size=500,700',
-      'file:///' + tmp.replace(/\\/g, '/'),
-    ],
-  );
-  return outPng;
+  const profile = `${process.env.TEMP}\\edge-cardgen-${tmpName.replace(/[^a-z0-9]/gi, '_')}-${uniq}`;
+  try {
+    await exec(
+      EDGE,
+      [
+        '--headless=new', '--disable-gpu', '--no-sandbox',
+        `--user-data-dir=${profile}`,
+        '--hide-scrollbars', `--force-device-scale-factor=${scale}`,
+        '--default-background-color=00000000',
+        '--virtual-time-budget=4000',
+        `--screenshot=${outPng}`, '--window-size=500,700',
+        'file:///' + tmp.replace(/\\/g, '/'),
+      ],
+    );
+    return await waitForFile(outPng, tries, ms);
+  } finally {
+    // The names are unique now, so remove them (no growth of the out folder and TEMP).
+    try { unlinkSync(tmp); } catch {}
+    try { rmSync(profile, { recursive: true, force: true, maxRetries: 3 }); } catch {}
+  }
 }
 
 /** Render one card face to a PNG via headless Edge. Returns the output path. */
