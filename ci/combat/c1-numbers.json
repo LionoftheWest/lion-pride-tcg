@@ -2,7 +2,7 @@
   "note": "Combat check 1 (c1-numbers.mjs, docs/f3-effect-engine.md section 3). scope: the fight functions (regular expressions on the function name). always: literals that are never a combat number. allow: { function: { literal: { count, reason } } }. A RATCHET: a count may only go down (the check fails when the live snapshot has fewer). A new combat number goes into balance; it is allowed here only with a reason why it is not a balance number. f3_engine_cleanup.sql (4e) moved the Flurry hits (combat_pool_act 2) and the poison rounds (dungeon_enemy_turn 3) to balance pool_moves.",
   "scope": [
     "^combat_",
-    "^card_combat$",
+    "^card_combat(_v2)?$",
     "^card_max_hp$",
     "^fight_",
     "^hunt_(attack|support|pass_turn|counter_|card_crits|autopick|squad_value|effect_apply|fight_state|hit_mods|state_round|commit_card|boss_move_list|marks_patch|mark_on)",

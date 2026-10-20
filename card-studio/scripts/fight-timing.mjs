@@ -15,6 +15,7 @@
  *   CANDIDATE=../tcg-bot/supabase/x.sql LAB_LOCK_OWNER=<name> LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/fight-timing.mjs [call ...]
  *   ... fight-timing.mjs combat_effect combat_effect_hit hunt_fight_state dungeon_fight_state    the effect engine alone (opt-in, F-3 PR 4b: after the file is applied)
  *   ... fight-timing.mjs combat_v2_advance combat_v2_turn_order    combat v2 alone (opt-in, PR E2: after combat_v2_turn_meter.sql is applied)
+ *   ... fight-timing.mjs card_combat_v2    the v2 stat line alone (opt-in, PR E3: after combat_v2_stats.sql is applied)
  *   TIMING_BATCH=30 TIMING_REQUESTS=10    the size of a batch and the number of requests (default 30 and 10 = 300 calls)
  * LOCAL copy only (docs/foundations.md "Performance and cost budget" rule 2). Each request takes the shared lock when LAB_LOCK_OWNER is set (lab-lib.mjs).
  */
@@ -97,6 +98,8 @@ const V2_STATE = `st := '{"v": 2, "mode": "hunt", "round": 0, "clock": 0, "squad
 const V2_CALLS = {
   combat_v2_advance: [V2_STATE, 'combat_v2_advance(st)'],
   combat_v2_turn_order: [V2_STATE, 'combat_v2_turn_order(st, 6)'],
+  // PR E3 (combat_v2_stats.sql): the stat line of one card (a Gold 3-star Striker at level 15 with 15 points)
+  card_combat_v2: ['st := null;', `card_combat_v2('gold', 3, 1, 15, '{"atk": 5, "hp": 5, "spd": 5}'::jsonb, 'striker')`],
 };
 const DEFAULT_CALLS = Object.keys(CALLS);
 Object.assign(CALLS, ENGINE_CALLS, V2_CALLS);

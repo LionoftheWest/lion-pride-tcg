@@ -829,3 +829,27 @@ because every later part reads them.
   `fight-timing.mjs` 3 runs, the highest v1 ratio 1.024. The new functions alone (`fight-timing.mjs combat_v2_advance combat_v2_turn_order`,
   a Hunt-sized state of 8 cards and a boss): `combat_v2_advance` 0.27 to 0.31 ms, `combat_v2_turn_order(state, 6)` 0.96 to 1.02 ms.
 - Test: `card-studio/scripts/test-combat-v2-meter.mjs` (42 checks; MUTATE=all: 25 planted faults caught).
+
+### 18.2 E3: the 9 stats (`tcg-bot/supabase/combat_v2_stats.sql`)
+
+- Needs `combat_v2_turn_meter.sql` (E2) first. `card_combat` (v1) and its helpers are not changed (the test compares their md5).
+  Nothing calls the new functions yet: the card levels and the v2 points come with PR M1.
+- `combat_v2_stats(cp_base, points, role, numbers)` (IMMUTABLE): the 9 stats of plan 2.2, each point count up to `max_per_stat`:
+  `atk` = cp_base + `atk.flat` x ATK, `hp` = `v2_card_hp.base` + `per_cp` x cp_base + `hp.flat` x HP, `def`, `crt`, `ddg` with their caps,
+  `crd`, `abl`, `acc`, and `spd` = `combat_v2_speed` of the role (E2: the one speed formula). The role passive adds (for example the
+  Striker crit) are not in these numbers: the hit core applies them (E4), as in the simulator.
+- `card_combat_v2(rarity, stars, cp_mod, level, points, role)`: ASC-3 (`v2_asc`, the alias, stars clamped 0 to 5), the level (clamped to
+  `max_level`) and its points, the catch-up dial D (`cp_base` = cp_asc + D x level / max_level x (target - cp_asc)), the 9 stats, the support
+  factor F = (cp_base / `power_ref`) ^ `power_exp` (1 for an attacker), the extra stack of an enabler rarity, and the role from the `roles`
+  table (class, label, passive text, `v2_roles` numbers, base speed). It refuses an unknown rarity or role, a negative level, a bad point
+  key or count, and more points than the level gives. The numbers are exact (no rounding); a screen rounds.
+- No new balance key. C1 scope: `card_combat_v2` (`ci/combat/c1-numbers.json`).
+- Found: with today's numbers the caps of Defense, Dodge and Crit % cannot bind (10 points x 3% = the 30% cap; 10% + 40% < 60%). The
+  simulator check had the same gap. The test raises the per-point values inside its rolled-back block to prove each cap.
+- Proof (copy 2; 4e, V1, E1, E2 applied): the goldens with CANDIDATE = this file (Hunt 183, Dungeon 240, boss counters 128 fights: no
+  difference); `test-effect-shadow.mjs` after the apply 3623 cases, 0 different, MUTATE=all baseline PASS and 23 caught; `fight-timing.mjs`
+  3 runs: runs 1 and 2 PASS; run 3 had `dungeon_enemy_turn` at 1.138 on a loaded machine (BASE mean 0.63 ms, usual 0.33 ms). That call does
+  not call any E3 function. 3 more runs of it: 0.958, 1.010, 1.032; BASE against BASE in the same period: 0.857 (noise). `card_combat_v2`
+  alone: 0.15 to 0.17 ms.
+- Test: `card-studio/scripts/test-combat-v2-stats.mjs` (30 checks; SQL = the simulator on 23,160 cards, the largest relative difference
+  3.3e-16; MUTATE=all: 29 planted faults caught).
