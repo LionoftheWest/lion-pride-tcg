@@ -107,7 +107,10 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   // the combat v2 functions of the later PRs, which read the keys on purpose (v2 objects beside v1; every reader is named here)
   'combat_v2_numbers', 'combat_v2_speed', 'combat_v2_advance', 'combat_v2_turn_order',   // E2 combat_v2_turn_meter.sql
   'combat_v2_stats', 'card_combat_v2',   // E3 combat_v2_stats.sql
-  'combat_v2_status_on', 'combat_v2_draw', 'combat_v2_hit'];   // E4 combat_v2_hit.sql
+  'combat_v2_status_on', 'combat_v2_draw', 'combat_v2_hit',   // E4 combat_v2_hit.sql
+  'combat_v2_status_numbers', 'combat_v2_unit_path', 'combat_v2_units', 'combat_v2_up', 'combat_v2_status_check', 'combat_v2_status_drop', 'combat_v2_fall',
+  'combat_v2_status_remove', 'combat_v2_damage', 'combat_v2_hit_apply', 'combat_v2_heal', 'combat_v2_status_apply', 'combat_v2_status_cure',
+  'combat_v2_status_strip', 'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next'];   // E5 combat_v2_status_rules.sql
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
 const body = String.raw`do $t$

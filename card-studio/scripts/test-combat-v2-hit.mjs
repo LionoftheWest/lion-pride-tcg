@@ -151,6 +151,10 @@ if (process.env.MUTATE) {
 for (const t of [V1, E1, E2, E3, mig]) if (['$m$', '$t$', '$d$', '$x$'].some((x) => t.includes(x))) throw new Error('the migrations must not contain $m$, $t$, $d$ or $x$');
 
 const NEW = ['combat_v2_hit', 'combat_v2_draw', 'combat_v2_status_on'];
+// the combat v2 functions of the later PRs that call these on purpose (v2 callers, not v1; every one is named here)
+const V2_CALLERS = ['combat_v2_status_numbers', 'combat_v2_unit_path', 'combat_v2_units', 'combat_v2_up', 'combat_v2_status_check', 'combat_v2_status_drop',
+  'combat_v2_fall', 'combat_v2_status_remove', 'combat_v2_damage', 'combat_v2_hit_apply', 'combat_v2_heal', 'combat_v2_status_apply', 'combat_v2_status_cure',
+  'combat_v2_status_strip', 'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next', 'combat_v2_turn_order'];   // E5 combat_v2_status_rules.sql
 const KEYS = ['v2_hit', 'v2_stats', 'v2_status', 'v2_roles', 'v2_enemy', 'v2_support'];
 const SETUP = String.raw`
   perform set_config('balance.by', 'test', true);
@@ -224,7 +228,7 @@ begin
    where p.pronamespace = 'public'::regnamespace and p.proname in (${NEW.map((n) => `'${n}'`).join(', ')}) and coalesce(obj_description(p.oid, 'pg_proc'), '') = '';
   res := res || jsonb_build_object('case', 'every function has a comment', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${NEW.map((n) => `'${n}'`).join(', ')}]) and p.prosrc ~ '(combat_v2_hit|combat_v2_draw|combat_v2_status_on)';
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${NEW.concat(V2_CALLERS).map((n) => `'${n}'`).join(', ')}]) and p.prosrc ~ '(combat_v2_hit|combat_v2_draw|combat_v2_status_on)';
   res := res || jsonb_build_object('case', 'no other function calls the new functions (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
   execute $m$${mig}$m$;
   res := res || jsonb_build_object('case', 'idempotent: the file runs a second time', 'ok', true);
