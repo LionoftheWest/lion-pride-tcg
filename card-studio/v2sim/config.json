@@ -1171,7 +1171,7 @@
     },
     "support_pp": {
       "shield": 25,
-      "shield_all": 75,
+      "shield_all": 100,
       "heal": 16.7,
       "heal_all": 60,
       "empower": 20,
@@ -1556,7 +1556,7 @@
       "blocks": [
         {
           "k": "shield_all",
-          "v": 0.133
+          "v": 0.1
         }
       ]
     },

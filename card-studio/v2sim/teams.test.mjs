@@ -27,7 +27,7 @@ test('the repo holds no real actives: the test fixture is synthetic only', () =>
 
 // ---------- data ----------
 test('private actives: 130 approved actives, valid roles, every one at 10 +/- 0.6 PP (P1 price: shield every ally 100 PP per 1.0)', { skip: skipPriv }, () => {
-  const c = withSet1(patch(cfg, { v2_pp: { support_pp: { shield_all: 100 } } }), S1); const keys = Object.keys(S1);
+  const c = withSet1(cfg, S1); const keys = Object.keys(S1);
   assert.equal(keys.length, 130);
   for (const k of keys) {
     assert.ok(subj.has(k), `${k} is not a fixture subject`);
