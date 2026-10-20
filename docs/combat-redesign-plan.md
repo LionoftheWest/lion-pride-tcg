@@ -891,3 +891,54 @@ because every later part reads them.
   Defense and Pierce). The largest relative difference SQL vs simulator is 9.0e-11, on a shield remainder of 0.00077 after
   shield - absorbed x shield_x: the simulator subtracts two nearly equal floats there (absolute difference 7e-14). All other numbers agree to
   float noise.
+
+## 19. Phase 3 as built (local copy 2 only)
+
+### 19.1 E5: the 16 statuses (`tcg-bot/supabase/combat_v2_status_rules.sql`)
+
+- Needs `combat_v2_hit.sql` (E4) first. No v1 function calls the new functions, and no v1 function changes (the test compares the md5 of every
+  other public function: 437). The flag stays OFF.
+- The reference is the simulator (`engine.mjs` Battle.apply, remove, cure, damage, heal, endStep, act, confusedRedirect, tickStep).
+- New unit key of a v2 state: `immune` = `{control: <step>, <status>: <step>}`, each the LAST step of an immunity (the `until` rule of a status).
+  `immune.control` is the ONE control immunity (plan 6.2); `immune.<status>` is the cure immunity of a card.
+- `combat_v2_status_apply(state, target, key, opts)`: down, mechanic immunity (Toxic-born, Fireborn, Frostborn), the cure immunity of a card,
+  resolve (Controller `resolve_ignore`, Accuracy), Unstoppable, the one control immunity (one control at a time), the Hunt boss limit
+  (`v2_control.boss_max_dur`), then the stacking rule of the status (Poison and the Toxic burst, Burn up to `max`, Chill to Frozen, the caps of Exposed
+  and Weakened, Thick Hide, Dispeller, Mark and Empowered "the higher stays" (or `empowered.stack`), shields up to `cap_maxhp`). Durations: `dur` on an
+  enemy, `dur_card` on a card, + the Controller `dur_add` on the other side.
+- `combat_v2_status_remove`, `combat_v2_status_cure` (one target, the listed negative statuses, and the cure immunity for N steps: the Medic rule),
+  `combat_v2_status_strip` (the boosts and the shields: the dispel and the boss move strip), `combat_v2_damage` (ticks, the Toxic burst, a
+  Confused self hit: Defense, the Warden, min_dmg unless a tick, the shield unless it is ignored; damage that is not a tick wakes Sleep),
+  `combat_v2_hit_apply` (writes an E4 hit, wakes Sleep), `combat_v2_heal` (a Burning unit heals x `heal_x`).
+- `combat_v2_step_end(state)`: Poison and Burn ticks (x `vs_healer_x` vs a healer: the flag `healer` or the mechanic regrowth), Burn decay, then the
+  statuses whose `until` is not above the clock end (a control starts the immunity). Once a step (`ext.step_end`). No draw.
+- `combat_v2_turn_start(state, actor)`: Stunned and Frozen skip and end, Sleep skips, Paralyzed skips on a draw. `combat_v2_confused_target`: the
+  wrong target of a single attack (2 draws).
+- `combat_v2_next(state)`: the driver. E2's `combat_v2_advance` runs the clock to the next actor over several steps, so a caller could not put the
+  step-end tick between the steps. `combat_v2_next` runs one step at a time (the step cap of `combat_v2_advance` set to clock + 1), runs the step end
+  between the steps, stops with `end` when one side has no standing unit (the simulator `checkEnd`), then the turn start of the actor.
+- `combat_v2_turn_order(state, n)` is REPLACED (E2 made it; `combat_v2_turn_meter.sql` is now listed in SUPERSEDED.md for it): each entry of a
+  unit that skips that action has `skip` (stunned, frozen: the next projected action only; sleep), a Paralyzed one `may_fail`. With no control status
+  the answer is the E2 answer (the test proves it). The speed statuses already change the strip through `combat_v2_speed`.
+- Draw slots: apply [resolve], [Unstoppable], then the end state (Chill to Frozen: [Unstoppable]); turn start [Paralyzed]; Confused [chance], [pick].
+- No new balance key or leaf: every number is a V1 leaf. The cure immunity steps come from the ability block (E6), as in the simulator Lab check.
+- Found: a unit can hold Chill and Frozen together (a new Chill on a Frozen unit starts again from 0; the simulator does the same). Not a lock: a
+  second freeze is refused by the one control immunity.
+- Found and fixed: the Hunt boss limit. The `v2_control` note says a control on the Hunt boss lasts AT MOST `boss_max_dur` steps, but the
+  simulator (`engine.mjs` apply) and the first SQL draft set Sleep and Paralyzed on the boss to EXACTLY `boss_max_dur`. With the live value (1)
+  both give 1 step, so no test saw it (a planted removal of the rule passed). With `boss_max_dur` above `dur` (the shape allows 10) a Sleep on the
+  boss would last longer than on a foe. Both now take min(dur (+ dur_add), `boss_max_dur`); a fixed case with `boss_max_dur` 10 proves it.
+- Found: `shield / shield_x` in numeric rounds; a shield that takes all it can is now used up exactly (0), not a rest of 5e-17.
+- Not in E5: the Weak-to-Controller week (`control_add`), Tilt, Rubberband, Permafrost Heart, Desync, Purify every Nth action, Elusive,
+  Plaguebearer, Regrowth heals, Steadfast, Undying, the Cataclysm cancel by a skip (E7); the charge, the riders and the actions (E6).
+- Proof (copy 2, refreshed from live 2026-10-20, where 4e, V1, E1 to E4 are live): the goldens with CANDIDATE = this file (Hunt 183, Dungeon
+  240, boss counters 128 fights: no difference); `test-effect-shadow.mjs` after the apply 3623 cases, 0 different, MUTATE=all baseline PASS and
+  23 caught; the flag OFF in all 4 modes after the apply; `test-all-local.mjs` after the apply 139/146: the generated files (pass after the
+  regeneration), `test-combat-v2-hit.mjs` (its caller check now names the E5 v2 callers: PASS), `test-golden-mutations.mjs` (the 300 s limit
+  under load; alone PASS in 194 s), and the 2 studio tests that fail the same way before the apply (no card art files on a fresh copy 2);
+  `fight-timing.mjs` 3 of 3 runs PASS (ratios 0.847 to 1.098). Alone: `combat_v2_status_apply` 0.47 ms, `combat_v2_step_end` 2.0 ms,
+  `combat_v2_next` 3.3 ms, `combat_v2_turn_order` 1.3 ms (the Hunt-sized state of `fight-timing.mjs`).
+- Test: `card-studio/scripts/test-combat-v2-status-rules.mjs` (89 checks: 64 fixed cases with explicit draws, the simulator rates, the no-lock
+  bound (the Hunt boss skips at most 14 of 40 turns = 0.350 <= 0.353), the draws, SQL = the simulator on 600 random status sequences (23,316
+  ops) and on 120 random fights (6,814 actions, 711 skips), the fuzz (3,200 ops), 23 refusals, md5 of the 437 other functions unchanged;
+  MUTATE=all: baseline PASS, 83 planted faults caught).

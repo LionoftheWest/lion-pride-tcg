@@ -17,6 +17,8 @@
  *   ... fight-timing.mjs combat_v2_advance combat_v2_turn_order    combat v2 alone (opt-in, PR E2: after combat_v2_turn_meter.sql is applied)
  *   ... fight-timing.mjs card_combat_v2    the v2 stat line alone (opt-in, PR E3: after combat_v2_stats.sql is applied)
  *   ... fight-timing.mjs combat_v2_hit    the v2 hit core alone (opt-in, PR E4: after combat_v2_hit.sql is applied)
+ *   ... fight-timing.mjs combat_v2_status_apply combat_v2_step_end combat_v2_next combat_v2_turn_order    the v2 status rules (opt-in, PR E5: after
+ *       combat_v2_status_rules.sql is applied)
  *   TIMING_BATCH=30 TIMING_REQUESTS=10    the size of a batch and the number of requests (default 30 and 10 = 300 calls)
  * LOCAL copy only (docs/foundations.md "Performance and cost budget" rule 2). Each request takes the shared lock when LAB_LOCK_OWNER is set (lab-lib.mjs).
  */
@@ -96,6 +98,17 @@ const V2_STATE = `st := '{"v": 2, "mode": "hunt", "round": 0, "clock": 0, "squad
               "7": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "warden", "spd": 4, "status": {}},
               "8": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "medic", "spd": 0, "status": {}}},
     "enemies": [{"hp": 70000, "max": 70000, "meter": 0, "charge": 0, "speed": 100, "status": {}}]}'::jsonb;`;
+const V2_STATE_E5 = `st := '{"v": 2, "mode": "hunt", "round": 0, "clock": 3, "squad": [1, 2, 3, 4, 5, 6, 7, 8], "marks": {}, "facts": {"passives": [], "cards": {}}, "ext": {},
+    "cards": {"1": {"hp": 90, "max": 90, "down": false, "meter": 40, "charge": 0, "role": "controller", "acc": 0.04, "status": {"poison": {"stacks": 2, "until": 9}}},
+              "2": {"hp": 90, "max": 90, "down": false, "meter": 10, "charge": 0, "role": "striker", "status": {"slowed": {"until": 5}, "burn": {"stacks": 3}}},
+              "3": {"hp": 90, "max": 90, "down": false, "meter": 70, "charge": 0, "role": "flurry", "status": {"shielded": {"value": 20}}},
+              "4": {"hp": 90, "max": 90, "down": false, "meter": 20, "charge": 0, "role": "finisher", "status": {"chill": {"stacks": 2, "until": 3}, "poison": {"stacks": 1, "until": 6}}},
+              "5": {"hp": 90, "max": 90, "down": false, "meter": 0, "charge": 0, "role": "survivor", "status": {"blinded": {"until": 3}}},
+              "6": {"hp": 90, "max": 90, "down": false, "meter": 55, "charge": 0, "role": "cleaver", "status": {"quickened": {"until": 9}}},
+              "7": {"hp": 90, "max": 90, "down": false, "meter": 80, "charge": 0, "role": "warden", "def": 0.09, "status": {}},
+              "8": {"hp": 90, "max": 90, "down": false, "meter": 30, "charge": 0, "role": "medic", "status": {"sleep": {"until": 4}}}},
+    "enemies": [{"hp": 70000, "max": 70000, "meter": 60, "charge": 0, "speed": 100, "resolve": 0.1, "def": 0.15,
+                 "status": {"poison": {"stacks": 2, "until": 7}, "burn": {"stacks": 4}, "exposed": {"value": 0.3, "until": 3}, "guarded": {"value": 500}}}]}'::jsonb;`;
 const V2_CALLS = {
   combat_v2_advance: [V2_STATE, 'combat_v2_advance(st)'],
   combat_v2_turn_order: [V2_STATE, 'combat_v2_turn_order(st, 6)'],
@@ -105,6 +118,11 @@ const V2_CALLS = {
   combat_v2_hit: ['st := null;', `combat_v2_hit('{"role": "striker", "class": "attacker", "atk": 180, "crt": 0.3, "crd": 2.4, "abl": 1.25, "acc": 0.04, "hp": 300, "max": 300, "status": {"empowered": {"value": 0.3}, "focused": {"value": 0.1, "until": 9}}}'::jsonb,
     '{"atk": 73, "def": 0.15, "evasion": 0.04, "keen": 0, "hp": 50000, "max": 80000, "mechanics": ["ironhide"], "status": {"exposed": {"value": 0.15, "until": 9}, "mark": {"value": 0.3, "until": 9}, "guarded": {"value": 40}}}'::jsonb,
     '{"side": "card", "clock": 3, "mode": "hunt", "foes_alive": 1}'::jsonb)`],
+  // PR E5 (combat_v2_status_rules.sql): the status rules on a Hunt-sized state at clock 3 with Poison, Burn and tempo statuses on cards and the boss:
+  // one status put on the boss (Chill 3 = Frozen with a resolve draw), the step-end tick of every unit, and the driver to the next action.
+  combat_v2_status_apply: [V2_STATE_E5, `combat_v2_status_apply(st, '{"side": "enemy", "id": 0}', 'chill', '{"stacks": 3, "src": {"side": "card", "id": 1}}'::jsonb)`],
+  combat_v2_step_end: [V2_STATE_E5, 'combat_v2_step_end(st)'],
+  combat_v2_next: [V2_STATE_E5, 'combat_v2_next(st)'],
 };
 const DEFAULT_CALLS = Object.keys(CALLS);
 Object.assign(CALLS, ENGINE_CALLS, V2_CALLS);

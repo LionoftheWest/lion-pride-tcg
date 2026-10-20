@@ -103,7 +103,8 @@ export class Battle {
     if (CONTROL.includes(name)) {
       if (CONTROL.some(c => tgt.st[c]) || this.step < tgt.immUntil) return this.blocked(src, tgt, name, 'immuneBlocked');
       const life = name === 'stunned' || name === 'frozen' ? (tgt.side === 'card' ? S[name].max_life_card : S[name].max_life) : this.dur(tgt, name, src);
-      tgt.st[name] = { until: this.step + (this.isBoss(tgt) && name !== 'stunned' && name !== 'frozen' ? cfg.v2_control.boss_max_dur : life) };
+      // the Hunt boss limit is "at most" boss_max_dur (the v2_control note): dur() takes the min, so a Sleep never lasts longer on the boss than on a foe
+      tgt.st[name] = { until: this.step + life };
       // a "Weak to: Controllers" week (weak_role_rules.controller.control_add): the control lasts N more actions of the target
       const add = src && tgt.weakRole && src.role === tgt.weakRole ? cfg.v2_enemy.weak_role_rules?.[src.role]?.control_add || 0 : 0;
       if (add) { if (name === 'stunned' || name === 'frozen') tgt.st[name].extra = add; else tgt.st[name].until += add; }

@@ -20,7 +20,7 @@
 --       6. a control status (statuses.immunity = control: Stunned, Frozen, Sleep, Paralyzed): refused while one of them is on the unit or the control
 --          immunity counts ("control_immune"). Stunned and Frozen (duration next_action) last until the next action, with the safety limit max_life
 --          (max_life_card on a card); Sleep and Paralyzed last dur / dur_card (+ the Controller dur_add); on the Hunt boss Sleep and Paralyzed last
---          v2_control.boss_max_dur. A status with an end state (Chill ends in Frozen) is removed when its end state lands.
+--          at most v2_control.boss_max_dur (the balance note: "at most"). A status with an end state (Chill ends in Frozen) is removed when its end state lands.
 --       7. the stacking rule of the key: Poison adds stacks (dur); the stack burst_at makes the Toxic burst (burst x ref HP x (1 + Exposed), a tick that
 --          ignores shields) and Poison resets. Burn adds stacks up to max (no end step). Chill adds stacks (dur); at freeze_at it applies Frozen (with no
 --          source: no resolve) and Chill clears; when Frozen cannot land, Chill stays at freeze_at - 1. Exposed adds up to cap (Thick Hide: expose_cap;
@@ -327,8 +327,6 @@ begin
     end if;
     if srow->>'duration' = 'next_action' then
       dur := case when boss then (ss->p_key->>'max_life')::int when side = 'card' then (ss->p_key->>'max_life_card')::int else (ss->p_key->>'max_life')::int end;
-    elsif boss then
-      dur := (ctl->>'boss_max_dur')::int;
     end if;
     u := jsonb_set(u, array['status', p_key], jsonb_build_object('until', clk + dur));
     -- a status that ends in this one (Chill ends in Frozen) clears

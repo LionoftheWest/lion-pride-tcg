@@ -57,7 +57,8 @@ const MUT = {
   card_immunity_short: ["n := case when p_side = 'card' then (c->>'immune_card')::int", "n := case when p_side = 'card' then (c->>'immune')::int"],
   boss_immunity_wrong: ["when p_boss then (c->>'boss_immune')::int else", "when p_boss then (c->>'immune_card')::int else"],
   // the Hunt boss limit
-  boss_limit_off: ['    elsif boss then\n      dur := (ctl->>\'boss_max_dur\')::int;\n', '\n'],
+  boss_limit_off: ["  if ctrl and boss then dur := least(dur, (ctl->>'boss_max_dur')::int); end if;\n", ''],
+  boss_limit_exact: ["else (ss->p_key->>'max_life')::int end;\n    end if;", "else (ss->p_key->>'max_life')::int end;\n    elsif boss then\n      dur := (ctl->>'boss_max_dur')::int;\n    end if;"],
   boss_stun_life_card: ["dur := case when boss then (ss->p_key->>'max_life')::int when side = 'card'", "dur := case when boss then (ss->p_key->>'max_life_card')::int when side = 'card'"],
   // Poison and the Toxic burst
   burst_at_plus_one: ["if n >= (ss->'poison'->>'burst_at')::int then", "if n > (ss->'poison'->>'burst_at')::int then"],
@@ -400,6 +401,12 @@ function fixedCases(B) {
       [apply(c2, 'stunned', { src: e0 }), apply(e0, 'stunned', ctl), { op: 'turn', t: e0 }, { op: 'clock', n: CT.boss_immune }, apply(e0, 'sleep', ctl), { op: 'set', path: ['enemies', '0', 'status'], v: {} }, { op: 'set', path: ['enemies', '0', 'immune'], v: {} }, apply(e0, 'paralyzed', ctl)],
       (r) => ok(st(r, 0, 'cards', 2).stunned.until === 5 + S.stunned.max_life_card && st(r, 1).stunned.until === 5 + S.stunned.max_life && im(r, 2).control === 5 + CT.boss_immune - 1
         && st(r, 4).sleep.until === 5 + CT.boss_immune + CT.boss_max_dur && st(r, 7).paralyzed.until === 5 + CT.boss_immune + CT.boss_max_dur, JSON.stringify(r.map((x) => [x.reason, x.u.enemies[0]])))],
+    ['the Hunt boss limit is AT MOST boss_max_dur (the v2_control note): with boss_max_dur above dur, Sleep and Paralyzed on the boss last dur (+ dur_add), not boss_max_dur',
+      { mode: 'hunt', clock: 5, cards: { 1: { role: 'controller' } }, enemies: [{ max: 50000, hp: 50000, speed: 100 }] },
+      [apply(e0, 'sleep'), { op: 'set', path: ['enemies', '0', 'status'], v: {} }, apply(e0, 'paralyzed', ctl)],
+      (r, b) => ok(st(r, 0).sleep.until === 5 + Math.min(S.sleep.dur, 10) && st(r, 2).paralyzed.until === 5 + Math.min(S.paralyzed.dur + R.controller.dur_add, 10)
+        && S.sleep.dur < 10, JSON.stringify(r.map((x) => [x.reason, x.u.enemies[0]]))),
+      { v2_control: { ...CT, boss_max_dur: 10 } }],
     ['Sleep and Paralyzed on a foe: dur + the Controller dur_add; on a card: dur_card', dg({ 1: { role: 'controller' }, 2: {} }, [foe(), foe()], { clock: 1 }),
       [apply(e0, 'sleep', ctl), apply(e1, 'paralyzed'), apply(c2, 'sleep', { src: e0 })],
       (r) => ok(st(r, 0).sleep.until === 1 + S.sleep.dur + R.controller.dur_add && st(r, 1, 'enemies', 1).paralyzed.until === 1 + S.paralyzed.dur && st(r, 2, 'cards', 2).sleep.until === 1 + S.sleep.dur_card, JSON.stringify(r.map((x) => x.u)))],
