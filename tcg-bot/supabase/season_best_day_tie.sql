@@ -1,0 +1,80 @@
+-- season_best_day_tie.sql (2026-10-21): one fixed day for the season best of the Dungeon view.
+-- Before: dungeon_view_core picked season_best with "order by floor desc, room desc, turns limit 1". Two daily runs of a member
+-- with the same floor, room and turns (two days, or two runs on one day) had no fixed order, so the day that the view showed
+-- could change between two calls (the plan, the heap order). The floor and the room were always correct.
+-- Now: then the day (the EARLIEST day of the tie), then the run id (the lower run, for a tie on one day). Nathan approved
+-- (2026-10-21). No other change. gauntlet_view needs no change: its "best" is the member row of gauntlet_board, which has a
+-- fixed order since board_tie_order.sql.
+-- Test: card-studio/scripts/test-season-best-day-tie.mjs (rolled back; MUTATE=<name> must FAIL). Idempotent.
+
+-- GUARD (the combat_core.sql rule): the replaced function must be the live text this file was built from (or the text this
+-- file made).
+do $g$
+declare m text;
+begin
+  select md5(replace(pg_get_functiondef('public.dungeon_view_core(text, boolean)'::regprocedure), chr(13), '')) into strict m;
+  if m not in ('f0c15ac99cceb5247d6e4a741c8e27ab', 'ac0f1ef00e1aca70e3069b88d4af0bed') then
+    raise exception 'season_best_day_tie.sql: the live dungeon_view_core(text, boolean) changed since this file was built. Rebuild it from the live text.';
+  end if;
+end $g$;
+-- GUARD-END
+
+CREATE OR REPLACE FUNCTION public.dungeon_view_core(p_player text, p_mine boolean)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare cfg jsonb := dungeon_cfg(); v_day date := dungeon_day(); d jsonb; r dungeon_runs; v_rank int; v_mine jsonb := '{}'::jsonb;
+  v_b jsonb; v_cost jsonb; v_h0 int; v_board jsonb; v_left int; v_lastrun jsonb;
+begin
+  if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
+  perform dungeon_settle(id, 'abandoned', false) from dungeon_runs where player_id = p_player and status = 'active' and day < v_day;
+  d := dungeon_generate(v_day);
+  -- The newest run of today. When it is over and the member has a run left (game_var dungeon_runs_per_day), run is null (the screen offers a new run)
+  -- and last_run has the run that ended.
+  select * into r from dungeon_runs where player_id = p_player and day = v_day and mode = 'daily' order by attempt desc limit 1;
+  v_left := greatest(game_var('dungeon_runs_per_day')::int - (select count(*) from dungeon_runs where player_id = p_player and day = v_day and mode = 'daily')::int, 0);
+  if r.status = 'over' and v_left > 0 then
+    v_lastrun := jsonb_build_object('id', r.id, 'attempt', r.attempt, 'ended_by', r.ended_by, 'floor', r.floor, 'room', r.room, 'turns', r.turns);
+    r := null;
+  end if;
+  v_board := dungeon_board(v_day, 1000);   -- read ONCE: the member's rank and the top 3 both come from it
+  select (e->>'rank')::int into v_rank from jsonb_array_elements(v_board) e where e->>'player_id' = p_player;
+  if p_mine then
+    v_b := card_balance(); v_cost := balance_get('dungeon')->'cost'; v_h0 := card_max_hp(0);
+    -- card_combat once per DIFFERENT input (perf_five_slow_calls.sql), joined back to each card.
+    v_mine := jsonb_build_object('mine', (
+             with own as materialized (
+               select pc.card_id, c.id, s.type, c.rarity::text rarity, pc.ascension, s.cp_mod, pc.stat_points, s.tag_slugs
+                 from player_cards pc join cards c on c.id = pc.card_id join subjects s on s.id = c.subject_id
+                where pc.player_id = p_player and pc.quantity > 0),
+             kc as materialized (
+               select k.rarity, k.ascension, k.cp_mod, k.stat_points, card_combat(k.rarity, k.ascension, k.cp_mod, k.stat_points, v_b) cmb
+                 from (select distinct rarity, ascension, cp_mod, stat_points from own) k)
+             select coalesce(jsonb_agg(jsonb_build_object('id', o.id, 'type', o.type, 'rarity', o.rarity,
+               'cost', coalesce((v_cost->>o.rarity)::numeric, balance_num('dungeon', 'cost', o.rarity))::int, 'cp', (x.cmb->>'cp')::int,
+               'hp', case when o.type in ('Character', 'Creature') then (x.cmb->>'hp')::int else v_h0 end,
+               'slugs', coalesce(to_jsonb(o.tag_slugs), '[]'::jsonb)) order by (x.cmb->>'cp')::int desc), '[]'::jsonb)
+             from own o join kc x on x.rarity = o.rarity and x.ascension is not distinct from o.ascension
+                  and x.cp_mod is not distinct from o.cp_mod and x.stat_points is not distinct from o.stat_points));
+  end if;
+  return jsonb_build_object('ok', true, 'day', v_day, 'next_at', (v_day + 1)::timestamp at time zone 'America/Denver',
+    'name', d->>'name', 'rule', d->'rule', 'budget', coalesce((d->'rule'->>'budget')::int, balance_num('dungeon', 'budget')::int),
+    'squad', balance_num('dungeon', 'squad')::int, 'cost', cfg->'cost', 'gate', adventure_gate(p_player), 'cap', game_dungeon_shards(balance_num('dungeon_rewards', 'run_shards_cap')::int),
+    'run', case when r.id is null then null else jsonb_build_object('id', r.id, 'status', r.status, 'ended_by', r.ended_by,
+      'floor', r.floor, 'room', r.room, 'turns', r.turns, 'shards', r.shards, 'cards', to_jsonb(r.cards), 'squad', to_jsonb(r.squad),
+      'state', r.state, 'rank', v_rank) end,
+    -- The rooms of the member's floor: a room ahead is "?" (only the guardian shows).
+    'rooms', (select jsonb_agg(jsonb_build_object(
+               'type', case when rm.i < coalesce(r.room, 1) or (rm.i = coalesce(r.room, 1) and r.id is not null) or rm.v->>'type' = 'guardian' then rm.v->>'type' else 'unknown' end,
+               'name', case when rm.v->>'type' = 'guardian' then rm.v->'foes'->0->>'name' end) order by rm.i)
+             from jsonb_array_elements(d->'floors'->(coalesce(r.floor, 1) - 1)) with ordinality rm(v, i)),
+    'floors', jsonb_array_length(d->'floors'),
+    'runs_today', (select count(*) from dungeon_runs where day = v_day and mode = 'daily'),
+    'runs_left', v_left, 'last_run', v_lastrun,
+    'top', (select coalesce(jsonb_agg(e order by o), '[]'::jsonb) from jsonb_array_elements(v_board) with ordinality t(e, o) where o <= 3),
+    'season_best', (select jsonb_build_object('floor', floor, 'room', room, 'day', day) from dungeon_runs where player_id = p_player and mode = 'daily'
+                    order by floor desc, room desc, turns, day, id limit 1)) || v_mine;
+end $function$;
+
+notify pgrst, 'reload schema';
