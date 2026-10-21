@@ -31,13 +31,17 @@ const ONE_TIME = {
   'test-balance-economy.mjs': 'the acceptance test of balance_economy.sql: it applies that file and compares old with new. The file is SUPERSEDED (SUPERSEDED.md: 7 of its functions were replaced by later files), so its guard refuses a re-run; --old has the no-change case that must fail by design. Its numbers are read by the later tests',
   'test-gift-claims.mjs': 'the launch-day conversion of the 211 x 20 grants (gift_claims.sql refuses it now: done on 2026-10-01)',
 };
+// The time limit of one test is 300 s. These long tests take most of that alone, and they reached it under load
+// (rehearsals of 2026-10-20 and 2026-10-21: golden-mutations about 214 s alone, studio-preview 246 s).
+const LIMIT_S = { 'test-golden-mutations.mjs': 900, 'test-studio-preview.mjs': 600 };
 const logDir = join(root, 'out', 'localdb-tests'); mkdirSync(logDir, { recursive: true });
 const run = (file) => new Promise((resolve) => {
   const t0 = Date.now();
   const p = spawn(process.execPath, ['--import', './scripts/localdb-preload.mjs', join('scripts', file), ...(ARGS[file] || [])], { cwd: root, env: { ...process.env, LOCALDB: '1', LOCALDB_QUIET: '1' } });
   let out = '';
   p.stdout.on('data', (d) => { out += d; }); p.stderr.on('data', (d) => { out += d; });
-  const kill = setTimeout(() => { out += '\n[timeout 300 s]'; p.kill(); }, 300_000);
+  const limit = LIMIT_S[file] || 300;
+  const kill = setTimeout(() => { out += `\n[timeout ${limit} s]`; p.kill(); }, limit * 1000);
   p.on('close', (code) => { clearTimeout(kill); resolve({ code, out, s: ((Date.now() - t0) / 1000).toFixed(1) }); });
 });
 let pass = 0, skipped = 0; const failed = [];
