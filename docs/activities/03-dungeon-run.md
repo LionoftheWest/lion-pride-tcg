@@ -135,7 +135,9 @@ The choices make each run a set of decisions, not only a check of the collection
 
 - One board, separate from the other boards. The rank is the deepest point: the floor,
   then the room ("4F Room 3").
-- A tie: fewer turns wins. Then the earlier finish wins.
+- A tie: fewer turns wins. Then the earlier finish wins (an active run counts as now). Then the member id, so a
+  full tie always has the same order on every screen and for the prizes (`board_tie_order.sql`). For two runs of one
+  member with the same values, the earlier run counts.
 - Two views of the one board: **Today** and **Season best**.
 - Each row shows the squad that the member used. Members learn from the best runs.
 
