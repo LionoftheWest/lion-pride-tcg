@@ -431,7 +431,7 @@ export class Battle {
       const wrong = this.confusedRedirect(u);
       if (wrong) { this.damage(u, wrong, u.cp * cfg.v2_status.confused.self_x); return; }
       const o = { x: 1, n: 1, critAdd: 0, pierce: 0, trueStrike: false, bonus: 0, critBonus: 0, shieldX: 1 };
-      let area = 0, lifesteal = 0, guardUp = 0, stealTo = null; const rid = [], onCrit = [], onKill = [];
+      let area = 0, lifesteal = 0, guardUp = 0, stealTo = null; const rid = [], onCrit = [], onKill = [], pays = [];
       // PR T1: an attachment is read with its host; a gate that does not hold now turns its host off for this active
       for (let j = 0; j < B.length; j++) { const b = B[j]; if (ATTACH.includes(b.k)) continue;
       const a = ATTACH.includes(B[j + 1]?.k) ? B[j + 1] : null;
@@ -443,8 +443,8 @@ export class Battle {
         case 'pierce': o.pierce = Math.max(o.pierce, b.v); break;
         case 'true_strike': o.trueStrike = true; break;
         case 'area': area = b.x * ab; break;
-        case 'payoff_dmg': if (this.hasAny(tgt, b)) o.bonus += b.v * ab; break;
-        case 'payoff_crit': if (this.hasAny(tgt, b)) o.critBonus += b.v * ab; break;
+        case 'payoff_dmg': if (this.hasAny(tgt, b)) o.bonus += b.v * ab; pays.push(b); break;
+        case 'payoff_crit': if (this.hasAny(tgt, b)) o.critBonus += b.v * ab; pays.push(b); break;
         case 'per_ally': o.bonus += b.v * ab * this.alive('card').filter(c => c !== u && c.cls === 'attacker').length; break;
         case 'per_stack': o.bonus += b.v * ab * (tgt.st[b.status]?.stacks || 0); break;
         case 'per_kind': o.bonus += b.v * ab * this.negKinds(tgt); break;
@@ -476,7 +476,11 @@ export class Battle {
         // PR T1: on_kill: the target is down after this hit (and its riders): a chance to put the status on the next standing enemy
         if (onKill.length && tgt.down) { const nx = this.alive('enemy')[0]; if (nx) for (const b of onKill) if (u.rng() < b.chance) this.apply(u, nx, b.status, b); }
       }
-      if (area) for (const e of this.alive('enemy')) if (e !== tgt) { const r = this.cardHit(u, e, { ...o, x: area, bonus: 0, vsX: null, kind: 'area' }); dealt += r.dealt; if (!r.miss) ridersOn(e, true); }
+      // PR T1b (5): the payoffs count on each area hit against THAT enemy's statuses (before its hit). The balance shape decides: with no
+      // share.area_payoff (the E6 and T1 files) an area hit has no payoff_dmg and keeps the crit bonus of the main target.
+      const areaPay = cfg.ability_v2?.share?.area_payoff !== undefined;
+      const payOn = (e) => { let bo = 0, cb = 0; for (const b of pays) if (this.hasAny(e, b)) { if (b.k === 'payoff_dmg') bo += b.v * ab; else cb += b.v * ab; } return { bonus: bo, critBonus: cb }; };
+      if (area) for (const e of this.alive('enemy')) if (e !== tgt) { const r = this.cardHit(u, e, { ...o, x: area, bonus: 0, vsX: null, kind: 'area', ...(areaPay ? payOn(e) : {}) }); dealt += r.dealt; if (!r.miss) ridersOn(e, true); }
       if (lifesteal && dealt > 0) { const t = stealTo ? this.allyTo(stealTo) : u; if (t) this.heal(t, lifesteal * dealt); }
       if (guardUp && dealt > 0) this.addShield(u, guardUp * dealt);
       delete u.st.empowered; this.consumeMark(tgt);
