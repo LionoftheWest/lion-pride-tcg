@@ -15,7 +15,7 @@ grant execute on function public.combat_v2_hit(jsonb, jsonb, jsonb) to postgres;
 grant execute on function public.combat_v2_hit(jsonb, jsonb, jsonb) to service_role;
 
 -- @function public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)
--- md5: 9cbe6c966bed58d2c6afd0c600d7618a   (md5(replace(pg_get_functiondef('public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)'::regprocedure), chr(13), '')))
+-- md5: bc456e1afb479405db97127009027db0   (md5(replace(pg_get_functiondef('public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)'::regprocedure), chr(13), '')))
 -- owner: postgres
 CREATE OR REPLACE FUNCTION public.combat_v2_hit(p_att jsonb, p_tgt jsonb, p_ctx jsonb, p_b jsonb)
  RETURNS jsonb
@@ -23,17 +23,17 @@ CREATE OR REPLACE FUNCTION public.combat_v2_hit(p_att jsonb, p_tgt jsonb, p_ctx 
  SET search_path TO 'public'
 AS $function$
 declare
-  h jsonb := p_b->'v2_hit'; st jsonb := p_b->'v2_stats'; ss jsonb := p_b->'v2_status'; ro jsonb := p_b->'v2_roles';
-  me jsonb := p_b->'v2_enemy'->'mechanics'; bm jsonb := p_b->'v2_enemy'->'boss_moves';
+  h jsonb := p_b->'v2_hit'; st jsonb := p_b->'v2_stats'; ss jsonb := p_b->'v2_status'; ro jsonb := p_b->'v2_roles'; en jsonb := p_b->'v2_enemy';
+  bm jsonb := p_b->'v2_enemy'->'boss_moves';
   ctx jsonb := coalesce(p_ctx, '{}'::jsonb);
   side text := ctx->>'side'; clk int; draws jsonb := ctx->'draws'; used jsonb := '[]'::jsonb; d numeric;
   role text := p_att->>'role'; rn jsonb; tmech jsonb := coalesce(p_tgt->'mechanics', '[]'::jsonb); amech jsonb := coalesce(p_att->'mechanics', '[]'::jsonb);
   ab numeric; x numeric; mult numeric; roll numeric; chance numeric := 0; critc numeric := 0; foc numeric := 0; bonus numeric;
-  ts boolean; marked boolean := false; can_crit boolean; crit boolean := false; s jsonb; k text;
+  ts boolean; marked boolean := false; can_crit boolean; crit boolean := false; s jsonb; k text; mp jsonb; mx numeric;
   raw numeric := 0; pierce numeric := 0; sx numeric := 1; a numeric; shield numeric; absorbed numeric := 0; hp_loss numeric := 0;
-  thp numeric; tmax numeric; heal numeric := 0; shield_key text;
+  thp numeric; tmax numeric; heal numeric := 0; shield_key text; brood int; brood_after int; lim numeric;
 begin
-  if h is null or st is null or ss is null or ro is null or me is null or bm is null or p_b->'v2_support' is null then
+  if h is null or st is null or ss is null or ro is null or en is null or bm is null or p_b->'v2_support' is null then
     raise exception 'combat_v2_hit: no balance value for v2_hit, v2_stats, v2_status, v2_roles, v2_enemy or v2_support';
   end if;
   if side is null or side not in ('card', 'enemy') then raise exception 'combat_v2_hit: ctx.side must be card (a card hits an enemy) or enemy (%)', side; end if;
@@ -52,7 +52,7 @@ begin
     end if;
   end if;
   for k in select jsonb_array_elements_text(tmech) union all select jsonb_array_elements_text(amech) loop
-    if not me ? k then raise exception 'combat_v2_hit: % is not a mechanic of v2_enemy.mechanics', k; end if;
+    perform combat_v2_mech(p_b, null, k);
   end loop;
   thp := (p_tgt->>'hp')::numeric; tmax := (p_tgt->>'max')::numeric;
   shield_key := case when side = 'card' then 'guarded' else 'shielded' end;
@@ -60,7 +60,7 @@ begin
   if coalesce((p_tgt->>'down')::boolean, false) or thp <= 0 then
     return jsonb_build_object('side', side, 'hit', false, 'miss', false, 'dodged', false, 'crit', false, 'true_strike', false, 'marked', false,
       'dmg', 0, 'absorbed', 0, 'hp_loss', 0, 'hp_after', greatest(thp, 0), 'shield_after', coalesce((combat_v2_status_on(p_tgt, shield_key, clk)->>'value')::numeric, 0),
-      'down', true, 'heal', 0, 'draws', used);
+      'down', true, 'heal', 0, 'lost', 0, 'draws', used);
   end if;
 
   if side = 'card' then
@@ -70,19 +70,30 @@ begin
                   case when coalesce((ctx->>'basic')::boolean, false) then
                     case when role = 'artillery' then (ro->'artillery'->>'basic_x')::numeric
                          when p_att->>'class' = 'support' then (p_b->'v2_support'->>'basic_x')::numeric end end, 1);
+    -- Mirror Hide: a second strike, a splash or an area hit
+    if ctx->>'kind' is not null and tmech ? 'mirror_hide' then
+      mp := combat_v2_mech(p_b, p_tgt, 'mirror_hide');
+      mx := case when ctx->>'kind' = 'extra' then (mp->>'extra_x')::numeric else (mp->>'splash_x')::numeric end;
+      if mx = 0 then
+        return jsonb_build_object('side', side, 'hit', false, 'miss', false, 'dodged', false, 'crit', false, 'true_strike', false, 'marked', false, 'mirrored', true,
+          'dmg', 0, 'absorbed', 0, 'hp_loss', 0, 'hp_after', thp, 'shield_after', coalesce((combat_v2_status_on(p_tgt, shield_key, clk)->>'value')::numeric, 0),
+          'down', false, 'heal', 0, 'lost', 0, 'draws', used);
+      end if;
+      x := x * mx;
+    end if;
     ts := coalesce((ctx->>'true_strike')::boolean, false)
           or (coalesce((ctx->>'basic')::boolean, false) and role = 'artillery' and coalesce((ro->'artillery'->>'true_strike')::boolean, false));
     s := combat_v2_status_on(p_tgt, 'mark', clk); marked := s is not null;
-    -- 1. miss
+    -- 1. miss (the target's evasion + its timed evade)
     if not ts and not marked then
-      chance := greatest(0, (h->>'miss')::numeric + coalesce((p_tgt->>'evasion')::numeric, 0)
+      chance := greatest(0, (h->>'miss')::numeric + coalesce((p_tgt->>'evasion')::numeric, 0) + coalesce((combat_v2_timed(p_tgt, 'evade', clk))::text::numeric, 0)
                 + case when combat_v2_status_on(p_att, 'blinded', clk) is not null then (ss->'blinded'->>'miss')::numeric else 0 end
                 - coalesce((p_att->>'acc')::numeric, 0));
       d := combat_v2_draw(draws, jsonb_array_length(used)); used := used || to_jsonb(d);
       if d < chance then
         return jsonb_build_object('side', side, 'hit', false, 'miss', true, 'dodged', false, 'crit', false, 'true_strike', ts, 'marked', false, 'chance', chance,
           'dmg', 0, 'absorbed', 0, 'hp_loss', 0, 'hp_after', thp, 'shield_after', coalesce((combat_v2_status_on(p_tgt, shield_key, clk)->>'value')::numeric, 0),
-          'down', false, 'heal', 0, 'draws', used);
+          'down', false, 'heal', 0, 'lost', 0, 'draws', used);
       end if;
     end if;
     -- 2. the roll
@@ -103,9 +114,12 @@ begin
       mult := mult * (coalesce((p_att->>'crd')::numeric, (st->'crd'->>'base')::numeric) + case when role = 'striker' then (ro->'striker'->>'critx_add')::numeric * ab else 0 end
                          + coalesce((combat_v2_status_on(p_att, 'focused', clk)->>'crd')::numeric, 0));
     end if;
-    -- 4. the multipliers
+    -- 4. the multipliers (Empowered x Dispeller x the timed emp_x of the target)
     s := combat_v2_status_on(p_att, 'empowered', clk);
-    if s is not null then mult := mult * (1 + (s->>'value')::numeric * case when tmech ? 'dispeller' then (me->'dispeller'->>'x')::numeric else 1 end); end if;
+    if s is not null then
+      mult := mult * (1 + (s->>'value')::numeric * case when tmech ? 'dispeller' then (combat_v2_mech(p_b, p_tgt, 'dispeller')->>'x')::numeric else 1 end
+                          * coalesce((combat_v2_timed(p_tgt, 'emp_x', clk))::text::numeric, 1));
+    end if;
     s := combat_v2_status_on(p_att, 'weakened', clk);
     if s is not null then mult := mult * (1 - (s->>'value')::numeric); end if;
     s := combat_v2_status_on(p_att, 'chill', clk);
@@ -115,6 +129,10 @@ begin
     bonus := coalesce((ctx->>'bonus')::numeric, 0);
     if role = 'finisher' and thp / tmax < (ro->'finisher'->>'line')::numeric then bonus := bonus + (ro->'finisher'->>'bonus')::numeric * ab; end if;
     if role = 'cleaver' and (ctx->>'foes_alive')::int = 1 then bonus := bonus + (ro->'cleaver'->>'hunt_bonus')::numeric * ab; end if;
+    -- the "Weak to: role" week of the target
+    if p_tgt->>'weak_role' is not null and p_tgt->>'weak_role' = role then
+      bonus := bonus + coalesce((en->'weak_role_rules'->role->>'damage_x')::numeric, (en->>'weak_role_x')::numeric);
+    end if;
     mult := mult * (1 + bonus);
     if coalesce((ctx->>'vs_x')::numeric, 0) <> 0 then mult := mult * (ctx->>'vs_x')::numeric; end if;
     -- 5. Pierce and shield break (the Breaker passive)
@@ -132,7 +150,7 @@ begin
       if d < chance then
         return jsonb_build_object('side', side, 'hit', false, 'miss', true, 'dodged', false, 'crit', false, 'true_strike', ts, 'marked', false, 'chance', chance,
           'dmg', 0, 'absorbed', 0, 'hp_loss', 0, 'hp_after', thp, 'shield_after', coalesce((combat_v2_status_on(p_tgt, shield_key, clk)->>'value')::numeric, 0),
-          'down', false, 'heal', 0, 'draws', used);
+          'down', false, 'heal', 0, 'lost', 0, 'draws', used);
       end if;
     end if;
     -- 2. Dodge (single hits; area hits x area_x)
@@ -144,10 +162,12 @@ begin
         if d < chance then
           return jsonb_build_object('side', side, 'hit', false, 'miss', false, 'dodged', true, 'crit', false, 'true_strike', ts, 'marked', false, 'chance', chance,
             'dmg', 0, 'absorbed', 0, 'hp_loss', 0, 'hp_after', thp, 'shield_after', coalesce((combat_v2_status_on(p_tgt, shield_key, clk)->>'value')::numeric, 0),
-            'down', false, 'heal', 0, 'draws', used);
+            'down', false, 'heal', 0, 'lost', 0, 'draws', used);
         end if;
       end if;
     end if;
+    -- Swarm: an area hit on a support card
+    if coalesce((ctx->>'area')::boolean, false) and amech ? 'swarm' and p_tgt->>'class' = 'support' then x := x * (combat_v2_mech(p_b, p_att, 'swarm')->>'x')::numeric; end if;
     -- 3. the roll and the enemy multipliers
     d := combat_v2_draw(draws, jsonb_array_length(used)); used := used || to_jsonb(d);
     roll := (h->>'roll_min')::numeric + d * (h->>'roll_span')::numeric;
@@ -161,20 +181,33 @@ begin
     if s is not null then mult := mult * (1 - (s->>'value')::numeric); end if;
     s := combat_v2_status_on(p_att, 'chill', clk);
     if s is not null then mult := mult * (1 - (ss->'chill'->>'dmg')::numeric * coalesce((s->>'stacks')::numeric, 1)); end if;
+    -- Pack: + atk_per_foe for each standing enemy
+    if amech ? 'pack' then mult := mult * (1 + (combat_v2_mech(p_b, p_att, 'pack')->>'atk_per_foe')::numeric * coalesce((ctx->>'foes_alive')::numeric, 0)); end if;
     mult := mult * (1 + coalesce((combat_v2_status_on(p_tgt, 'exposed', clk)->>'value')::numeric, 0));
-    -- 4. Sunder and Shatter
-    pierce := greatest(coalesce((ctx->>'pierce')::numeric, 0), case when amech ? 'sunder' then (me->'sunder'->>'pierce')::numeric else 0 end);
-    sx := greatest(coalesce((ctx->>'shield_x')::numeric, 1), case when amech ? 'shatter' then (me->'shatter'->>'shield_x')::numeric else 1 end);
+    -- 4. Sunder and Shatter (the unit's own params count)
+    pierce := greatest(coalesce((ctx->>'pierce')::numeric, 0), case when amech ? 'sunder' then (combat_v2_mech(p_b, p_att, 'sunder')->>'pierce')::numeric else 0 end);
+    sx := greatest(coalesce((ctx->>'shield_x')::numeric, 1), case when amech ? 'shatter' then (combat_v2_mech(p_b, p_att, 'shatter')->>'shield_x')::numeric else 1 end);
     raw := (p_att->>'atk')::numeric * mult;
   end if;
 
   -- ---------------------------------------------------------------- the damage (simulator Battle.damage)
   shield := coalesce((combat_v2_status_on(p_tgt, shield_key, clk)->>'value')::numeric, 0);
+  brood := coalesce((p_tgt->>'brood')::int, 0); brood_after := brood;
   if raw > 0 then
     a := raw * (1 - coalesce((p_tgt->>'def')::numeric, 0) * (1 - least(1, pierce)));
     if side = 'enemy' and coalesce((ctx->>'warden')::boolean, false) then a := a * (1 - (ro->'warden'->>'ally_dr')::numeric); end if;
+    -- Steadfast and Brood (an enemy target)
+    if tmech ? 'steadfast' then
+      mp := combat_v2_mech(p_b, p_tgt, 'steadfast');
+      lim := coalesce((combat_v2_timed(p_tgt, 'steadfast_kinds', clk))::text::numeric, (mp->>'kinds')::numeric);
+      if combat_v2_neg_kinds(p_tgt, clk, p_b) < lim then a := a * (1 - (mp->>'dr')::numeric); end if;
+    end if;
+    if brood > 0 then
+      a := a * (1 - (combat_v2_mech(p_b, p_tgt, 'brood')->>'dr')::numeric * brood);
+      if side = 'card' and role = 'cleaver' then brood_after := brood - 1; end if;
+    end if;
     a := greatest((h->>'min_dmg')::numeric, a);
-    if shield > 0 then
+    if shield > 0 and not coalesce((ctx->>'ignore_shield')::boolean, false) then
       absorbed := least(a, shield / sx);
       shield := greatest(0, shield - absorbed * sx);
       a := a - absorbed;
@@ -188,7 +221,8 @@ begin
   return jsonb_build_object('side', side, 'hit', true, 'miss', false, 'dodged', false, 'crit', crit, 'true_strike', ts, 'marked', marked,
     'chance', chance, 'crit_chance', case when side = 'card' and can_crit then critc else 0 end, 'roll', roll, 'raw', raw, 'pierce', pierce, 'shield_x', sx,
     'dmg', absorbed + hp_loss, 'absorbed', absorbed, 'shield_after', shield, 'hp_loss', hp_loss, 'hp_after', greatest(0, thp - hp_loss),
-    'down', thp - hp_loss <= 0, 'heal', heal, 'draws', used);
+    'down', thp - hp_loss <= 0, 'heal', heal, 'lost', absorbed * sx, 'draws', used)
+    || case when brood > 0 then jsonb_build_object('brood_after', brood_after) else '{}'::jsonb end;
 end $function$;
 -- @grants public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)
 grant execute on function public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb) to postgres;

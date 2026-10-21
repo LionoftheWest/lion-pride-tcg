@@ -1159,3 +1159,65 @@ Nathan approved question 1 of the T1b PR on 2026-10-20. Needs T1b. No fight read
   planted faults caught. Goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. After the apply:
   E6 PASS 59, T1 PASS 38, T1b PASS 28; v2sim `node --test` PASS 187; the `targets` report is the same. Private Set 1: the validator accepts
   130 of 130 (no Set 1 active has a gate or on_kill). After this PR, SUPERSEDED.md lists `combat_v2_ability_prices.sql`: T1b goes live first.
+
+## 20. Phase 4 as built (local copy 2 only)
+
+### 20.1 E7: the monsters (`tcg-bot/supabase/combat_v2_monsters.sql`)
+
+- Needs `combat_v2_min_share.sql` (T1c) first. No v1 function calls a new or replaced function or reads the new tables or `enemy_v2`, and no v1
+  function changes (the test compares the md5 of every other public function: 476). The flag stays OFF. The reference is the simulator (`engine.mjs`
+  act, enemyAct, bossMove, bossTarget, enemyHit, pickCard, apply, blocked, damage, fall, heal, endStep; `modes.mjs` makeBoss, makeFoe, ownPassives).
+- **Balance** `enemy_v2` (a new key with its own fixed shape `enemy_v2_spec` and trigger; not named `v2_*`, so V1's spec function stays):
+  `rules.<name>` = the numbers of the 15 boss rules of `config.json v2_boss_rules` (Undying keeps its one home in `v2_dungeon.passive_params`),
+  `bosses.<key>` = the numbers of the 16 named Hunt bosses (`hp_factor`, `counter_share`, `params` = its own mechanic numbers, `moves.<id>`).
+- **The mechanics as data** `enemy_mechanics`: one row for each of the 38 enemy mechanics of the simulator (the 18 of `v2_enemy.mechanics`, the 5
+  of `v2_dungeon.passive_params`, the 15 boss rules): kind, label, the balance object of its numbers, `on_boss` / `on_foe`, the one-line text (card
+  text style: "this enemy", "a card", no digit, each number a `{leaf}`), `counters` / `favors` (the archetypes of 7.4, only where the plan settles
+  it). Not rows of the v1 table `passives` (9.1 said "new rows in passives"): `passives_for` and `dungeon_make_foe` would draw them (rule 9).
+- **The monsters** `dungeon_monsters_v2` (8.3): the 10 monsters with their own copy of HP and ATK, the v1 moves with the v2 status moves of
+  `v2_dungeon.moves_v2` (Acid Spit, Hellfire, Frost Punch, Ink Blast, Rattle, ...), the own passive and its room kinds, and the raptor Pack aura.
+- **The counter bosses** `hunt_bosses_v2` (8.4): the 16 named bosses of `config.json v2_bosses` (5 of them with the `_approx` note: the simulator runs a near form of the design): resists, the
+  signature mechanics, the Mythic adds, the words of each counter move (the numbers are in `enemy_v2`), `weak_to` (empty: Nathan's choice).
+- **The enemy action** `combat_v2_enemy_act`: the Hunt boss (Charging the turn before the Cataclysm, the Cataclysm every `boss_moves.cycle` turns
+  with Rollout, a counter move with `counter_share`, else the move table) and a Dungeon foe (the Cataclysm of a kind that charges, Bulwark, the
+  weighted moves with the v2 status moves). `combat_v2_boss_move` runs the 21 counter move kinds; `combat_v2_boss_target`, `combat_v2_pick_card`
+  (Warden taunt), `combat_v2_enemy_hit` (Crush, Frost Aura, Venom, Burning, Slowing, Swarm, Pack).
+- **The E5 leftovers** (19.1): the Weak-to-Controller week (`control_add`), Tilt, Rubberband, Permafrost Heart, Desync, Purify every Nth action,
+  Elusive, Plaguebearer, Regrowth heals, Steadfast, Undying, Volatile Core, and the Cataclysm cancel: a skipped enemy turn ends Charging.
+- **Replaced** (each gives its T1c answer on a state with no E7 key and no E7 mechanic; the test proves it on 60 random fights): 16 functions of E1,
+  E2, E4, E5, E6, T1 and T1b (the list is in the head of the file). `SUPERSEDED.md` now lists those files for them.
+- **The builders** `combat_v2_hunt_boss(tier, key)` (HP = `v2_enemy.hunt.<tier>.hp` x `asc3_hp_x` x `hp_factor`; Plated, Fade, Brood) and
+  `combat_v2_dungeon_foe(monster, floor, room, kind)`, and **the template** `hunt_boss_v2_card(key, tier)`: Weak to, Resists (+ Mythic), Signature
+  (label, text and numbers of each mechanic), Counters and Bring.
+- Not built: the rotation rule of 8.4 (the countered archetype is not the same as in the last 2 weeks); it belongs to the weekly Hunt spawn (R3).
+- One simulator change: Regrowth and the regenerate move read the HP line `v2_enemy.boss_moves.rage_at` (0.5) instead of the literal 0.5, so
+  SQL has no literal (C1). The value is the same, so no fight changes.
+- Found: parallel runs of the planted faults serialize on the locks of the replaced functions and can deadlock; a deadlocked run FAILS for a
+  reason that is not the fault (a false catch). The test now runs one at a time and runs a deadlocked run again.
+- Found: 4 planted faults passed at the small MUTATE sizes (the timed Steadfast line of Stand Firm, Volatile Core while Stunned, the step-end draws
+  before the turn-start draws, the card heal count for Decay). A fixed case for each now catches it.
+- **The Lab** (`card-studio/scripts/lab-combat-v2-passives.mjs`, local copy only): each of the 38 mechanics alone on the Dungeon guardian of
+  floor 7 against each of the 11 archetype squads of `v2sim/experiments.mjs` (Normal 2 stars level 10), 200 simulator fights a cell (policy
+  best), and 858 SQL fights (2 a cell, a simple shared policy) that equal the simulator fight by fight (857; 1 differs only after a float near-tie
+  of the simulator: a meter of 99.99999999999996 against the exact 100 of SQL). The cut = the win rate with the mechanic / without it.
+  - Out of line, walls every squad (median cut below 0.6): Steadfast 0.13, Plated 0.16, Bulwark 0.23, Fade 0.36, Brood 0.37, Undying 0.52,
+    Regrowth 0.58. Steadfast, Plated, Fade and Brood are Hunt boss rules: on a Dungeon guardian they are far too strong.
+  - Hard counters (one archetype below x0.5): Ironhide vs Crit Chain x0.01, Toxic-born vs Toxic x0.15, Slowing vs Wall x0.16, Venom vs Cleave
+    x0.24, Fireborn vs Wildfire x0.37, Unstoppable vs Lockdown x0.40, Dispeller vs Herald's Court x0.40, Burning vs Cleave x0.46, Purify vs
+    Lockdown x0.49, Thick Hide vs Cleave x0.49. Plan 7.4 targets a counter cut of x0.63 to x0.93.
+  - No effect in this room (x1.00 for every archetype): True Strike, Time Lock, Bloodrot, Rollout. The Lab does not say why; the Hunt
+    boss Lab (R3) measures them where they appear.
+  - Wall is the weakest squad (31% with no mechanic) and is the lowest archetype under 12 of the 38 mechanics.
+- **Proof** (copy 2, refreshed from live 2026-10-21 with V1 to T1c live): `test-combat-v2-monsters.mjs` PASS all 133 (md5 of 476 other
+  functions unchanged; no v1 caller; the flag OFF in all 4 modes; data = config.json; 13 planted rows and 6 planted balance values refused;
+  the T1c answers on 60 random fights with no E7 key, 1363 actions; 109 fixed cases with explicit draws; the builders for the 16 bosses at
+  each tier and 120 random foes; the template; SQL = the simulator on 320 random fights, 8974 actions (5553 enemy actions, 1675 counter moves,
+  359 skips), equal action by action, 0 near-ties; fuzz 1043 actions replayed). MUTATE=all (V2_FIGHTS=30 V2_FUZZ=10 V2_OLD=20) after the
+  apply: baseline PASS all 133 and 110 of 110 planted faults caught. Goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128
+  fights, no difference. Then the file applied (`rehearse-sql.mjs`): grants OK; `test-all-local.mjs` 146 of 153 PASS (2 one-time skipped); the 7
+  failures were the 3 generated files and the caller lists of 4 earlier v2 tests (the E7 functions added, as E6 and T1 did); all 7 PASS after.
+  Every v2 test PASS (V1 13, E1 15, E2 42, E3 30, E4 90, E5 89, E6 59, T1 38, T1b 28, T1c 25). v2sim `node --test` PASS 187.
+  `fight-timing.mjs`: 9 of 10 calls within 1.10; `dungeon_finish_room` 1.237, again 1.255, 0.991, 1.029, BASE against BASE 0.923 (copy 2
+  has the file, so both sides run the same code: noise).
+- **Open questions** (in the PR): the out-of-line mechanics above (which are Hunt-only, and the numbers of the rest); the `weak_to` tags of the
+  16 bosses; the rotation rule (where it is built); the `counters` / `favors` that the plan does not settle.

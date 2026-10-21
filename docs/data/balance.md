@@ -18,6 +18,7 @@ The triggers on `balance` check each change:
 - `balance_check_combat_v2` (`balance_check_combat_v2()`): Trigger (before insert, update on balance): every combat v2 key must match its fixed shape and limits (balance_v2_spec): no missing, extra or wrong leaf. A key named v2_* with no shape is refused. Extra rules: v2_asc (the curve from 0 to 1, never falling; base not above top; every card rarity has a base or an alias), v2_enemy (the boss move chances add up to 1). The limits of v2_speed keep status_min_x at or below 1 and safety_max_x at or above 1. combat_v2_flags_balance.sql.
 - `balance_check_dungeon` (`balance_check_dungeon()`): Trigger (before insert, update on balance): dungeon_rewards tier_weights, chest.shards, chest.card_chance and offers heal / buff / shards / ward / revive must be 5 numbers (tier 1 to 5), tier_weights must add up to more than 0, the Shards whole numbers, chest.card_chance and door.gamble_rare at most 1, door.rare_tier and offers.min_tier whole numbers from 1 to 5. (balance_check keeps every leaf and its type, so boss_hp_estimate keeps its 4 numbers.)
 - `balance_check_economy` (`balance_check_economy()`): Trigger (before insert, update on balance): the pulls rates must add up to 1, pulls pack_size must be a whole number from 1 to 20, daily streak_cycle must be at least 1.
+- `balance_check_enemy_v2` (`balance_check_enemy_v2()`): Trigger (before insert, update on balance): the key enemy_v2 must match its fixed shape and limits (enemy_v2_spec, walked by balance_shape_errors) and rules.brood.start must not be above rules.brood.max. Every other key passes. combat_v2_monsters.sql.
 - `balance_check_report_shots` (`balance_check_report_shots()`): Trigger (before insert, update on balance): the shape of the key report_shots (report_shots.sql): keep_days, per_report and max_bytes whole numbers of at least 1, per_report at most 9, max_bytes at most 5242880 (the Activity reads at most 5 MB of an upload).
 - `balance_check_runs` (`balance_check_runs()`): Trigger (before insert or update on balance): dungeon_runs_per_day and gauntlet_runs_per_day must be whole numbers from 1 to 10.
 - `balance_check_settings` (`balance_check_settings()`): Trigger (before insert, update on balance): the shapes of the keys dungeon, gauntlet and adventure_gate (balance_settings_numbers.sql) and dungeon_rewards.chest_rarity. dungeon: squad, budget, floors, round_cap and rules.budget whole numbers of at least 1; a cost for every card rarity; hp_growth, atk_growth, foe_mult hp / atk above 0; rest_heal and rest_revive shares from 0 to 1; fight_min and horde_min whole numbers 1 to 8; fight_spread and horde_spread whole numbers 1 to 4; early_floors a whole number 0 to 30; early_hp and early_atk from 0.1 to 1; foe_heal_cap from 0 to 5; room_weights numbers that add up to more than 0. gauntlet: budget a whole number of at least 1; room_weights the same, without treasure. adventure_gate: attackers a whole number. dungeon_rewards.chest_rarity: tiers 1 to 5, each 3 numbers that add up to more than 0.
@@ -28,7 +29,7 @@ The triggers on `balance` check each change:
 
 ## Keys
 
-[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [welcome_packs](#key-welcome-packs)
+[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [welcome_packs](#key-welcome-packs)
 
 <a id="key-ability-v2"></a>
 
@@ -1336,6 +1337,416 @@ Shape: `object { full_art: object { cd: number, power: number }, gold: object { 
   "illustrated_rare": {
     "cd": 0.9,
     "power": 1.15
+  }
+}
+```
+
+<a id="key-enemy-v2"></a>
+
+### enemy_v2
+
+Combat v2: the monsters (plan 8; combat_v2_monsters.sql). rules.<name> = the numbers of the boss rules (fade evasion_add; plated def = the Defense it has at least; rollback smite_x on smites and artillery_basic_x on Artillery basics, which then can miss unless artillery_true_strike; bloodrot card_heal_x on card heals while it stands; brittle card_shield_x on card shields while it stands; time_lock: Quickened does nothing on cards while it stands; mirror_hide extra_x on second strikes, splash_x on splash and area hits, strikes_x on multi-strike actives; tilt: a blocked harmful status Enrages it x for dur steps; siphon x times the card heals of the step; crush x of the shield a hit removed; rubberband: after a blocked control it acts again, once a step; rollout Weakened weaken on every card at each Cataclysm; swarm x on support cards from area hits; brood dr less damage for each stack, start stacks, at most max; permafrost_heart: a Chill on it comes back to the card). Undying has its one home in v2_dungeon.passive_params.undying. bosses.<key> = the numbers of each named Hunt boss (the words are rows of hunt_bosses_v2): hp_factor (Hunt boss HP = v2_enemy.hunt.<tier>.hp x v2_enemy.asc3_hp_x x hp_factor), counter_share (the share of its normal turns that use a counter move), params.<mechanic> (its own numbers of a mechanic, over the base numbers), moves.<id> (the numbers of each counter move). The texts are in enemy_mechanics. Read by the v2 enemy functions and the simulator (config.json v2_boss_rules and v2_bosses); nothing reads it until combat_v2 hunt, dungeon or gauntlet is on. Shape: enemy_v2_spec (trigger balance_check_enemy_v2).
+
+Shape: `object { bosses: object { banwave: object { counter_share: number, hp_factor: number, moves: object { appeal_denied: object { x: number }, ban: object { n: number }, shadow_ban: object {  }, wave: object { n: number } }, params: object {  } }, camper_colossus: object { counter_share: number, hp_factor: number, moves: object { bash: object { vs_shielded: number, x: number }, hold: object { v: number }, push: object { x: number }, stand_firm: object { dur: number, v: number } }, params: object { steadfast: object { dr: number } } }, frost_lich: object { counter_share: number, hp_factor: number, moves: object { frost_nova: object { stacks: number }, glacial: object { n: number }, ice_wall: object { v: number }, shatter_bones: object { vs_frozen: number, x: number } }, params: object { frost_aura: object { chill: number } } }, hydra: object { counter_share: number, hp_factor: number, moves: object { bite: object { apply: object { stacks: number }, x: number }, new_head: object {  }, regrow: object { v: number } }, params: object { regrowth: object { boss_heal: number } } }, lagspike: object { counter_share: number, hp_factor: number, moves: object { desync: object { dur: number, v: number }, lag_spike: object { n: number }, packet_loss: object {  }, rubberband: object { dur: number, v: number } }, params: object {  } }, maw: object { counter_share: number, hp_factor: number, moves: object { counter_pick: object { value: number }, nerf: object {  }, patch_notes: object { dur: number, v: number }, tier_list: object { x: number } }, params: object { dispeller: object { x: number } } }, netcode: object { counter_share: number, hp_factor: number, moves: object { lag_hit: object { x: number }, lag_spike: object { x: number }, packet_storm: object { x: number } }, params: object {  } }, nightshade: object { counter_share: number, hp_factor: number, moves: object { demotion: object { apply: object { value: number }, x: number }, fade: object { dur: number, v: number }, nightshade: object { apply: object { stacks: number }, x: number }, veil: object {  } }, params: object {  } }, pumpkin: object { counter_share: number, hp_factor: number, moves: object { hotfix: object { value: number }, patch: object { n: number }, rollout: object { value: number }, rot: object { dur: number, v: number } }, params: object { purify: object { every: number } } }, salt_miner: object { counter_share: number, hp_factor: number, moves: object { cash_out: object { max: number, per: number }, dig_in: object { v: number }, grind: object { x: number }, salt_spray: object {  } }, params: object { purify: object { every: number } } }, skeleton: object { counter_share: number, hp_factor: number, moves: object { bone_pierce: object { x: number }, calcify: object { dur: number, v: number }, rattle: object { v: number }, stuck: object { x: number } }, params: object {  } }, smurf: object { counter_share: number, hp_factor: number, moves: object { bully: object { x: number }, crush: object { crush: number }, fake_rank: object { vs_shielded: number, x: number }, shatter: object {  } }, params: object {  } }, vampire: object { counter_share: number, hp_factor: number, moves: object { anemia: object { vs_role: object { medic: number }, x: number }, bloodrot: object { heal_cut: object { dur: number, x: number }, x: number }, feast: object { x: number }, siphon: object {  } }, params: object {  } }, warlord: object { counter_share: number, hp_factor: number, moves: object { alt_f4: object {  }, flame: object { vs_last_debuffer: number, x: number }, rage_spiral: object { dur: number, max: number, per: number }, tilt: object { dur: number, x: number } }, params: object {  } }, warzombie: object { counter_share: number, hp_factor: number, moves: object { decay: object { x: number }, groan: object { n: number }, infect: object { apply: object { stacks: number }, heal_cut: object { dur: number, x: number }, x: number }, undying: object { dur: number, v: number } }, params: object {  } }, zerg: object { counter_share: number, hp_factor: number, moves: object { brood: object { n: number }, overrun: object { x: number }, rush: object { n: number, x: number }, swarm: object { vs_cls: object { support: number }, x: number } }, params: object {  } } }, rules: object { bloodrot: object { card_heal_x: number }, brittle: object { card_shield_x: number }, brood: object { dr: number, max: number, start: number }, crush: object { x: number }, fade: object { evasion_add: number }, mirror_hide: object { extra_x: number, splash_x: number, strikes_x: number }, permafrost_heart: object {  }, plated: object { def: number }, rollback: object { artillery_basic_x: number, artillery_true_strike: boolean, smite_x: number }, rollout: object { weaken: number }, rubberband: object {  }, siphon: object { x: number }, swarm: object { x: number }, tilt: object { dur: number, x: number }, time_lock: object {  } } }`
+
+```json
+{
+  "rules": {
+    "fade": {
+      "evasion_add": 0.3
+    },
+    "tilt": {
+      "x": 1.4,
+      "dur": 2
+    },
+    "brood": {
+      "dr": 0.06,
+      "max": 5,
+      "start": 5
+    },
+    "crush": {
+      "x": 0.5
+    },
+    "swarm": {
+      "x": 2
+    },
+    "plated": {
+      "def": 0.5
+    },
+    "siphon": {
+      "x": 1
+    },
+    "brittle": {
+      "card_shield_x": 0.4
+    },
+    "rollout": {
+      "weaken": 0.3
+    },
+    "bloodrot": {
+      "card_heal_x": 0.6
+    },
+    "rollback": {
+      "smite_x": 0.5,
+      "artillery_basic_x": 0.18,
+      "artillery_true_strike": false
+    },
+    "time_lock": {},
+    "rubberband": {},
+    "mirror_hide": {
+      "extra_x": 0,
+      "splash_x": 0,
+      "strikes_x": 0.7
+    },
+    "permafrost_heart": {}
+  },
+  "bosses": {
+    "maw": {
+      "moves": {
+        "nerf": {},
+        "tier_list": {
+          "x": 2
+        },
+        "patch_notes": {
+          "v": 0.5,
+          "dur": 999
+        },
+        "counter_pick": {
+          "value": 0.2
+        }
+      },
+      "params": {
+        "dispeller": {
+          "x": 0
+        }
+      },
+      "hp_factor": 1.1,
+      "counter_share": 0.4
+    },
+    "zerg": {
+      "moves": {
+        "rush": {
+          "n": 2,
+          "x": 1
+        },
+        "brood": {
+          "n": 1
+        },
+        "swarm": {
+          "x": 0.35,
+          "vs_cls": {
+            "support": 3
+          }
+        },
+        "overrun": {
+          "x": 1
+        }
+      },
+      "params": {},
+      "hp_factor": 0.64,
+      "counter_share": 0.55
+    },
+    "hydra": {
+      "moves": {
+        "bite": {
+          "x": 1,
+          "apply": {
+            "stacks": 1
+          }
+        },
+        "regrow": {
+          "v": 0.015
+        },
+        "new_head": {}
+      },
+      "params": {
+        "regrowth": {
+          "boss_heal": 0.004
+        }
+      },
+      "hp_factor": 0.9,
+      "counter_share": 0.4
+    },
+    "smurf": {
+      "moves": {
+        "bully": {
+          "x": 1
+        },
+        "crush": {
+          "crush": 0.5
+        },
+        "shatter": {},
+        "fake_rank": {
+          "x": 1,
+          "vs_shielded": 2
+        }
+      },
+      "params": {},
+      "hp_factor": 1.26,
+      "counter_share": 0.55
+    },
+    "banwave": {
+      "moves": {
+        "ban": {
+          "n": 2
+        },
+        "wave": {
+          "n": 1
+        },
+        "shadow_ban": {},
+        "appeal_denied": {
+          "x": 2
+        }
+      },
+      "params": {},
+      "hp_factor": 1.02,
+      "counter_share": 0.4
+    },
+    "netcode": {
+      "moves": {
+        "lag_hit": {
+          "x": 1
+        },
+        "lag_spike": {
+          "x": 1.5
+        },
+        "packet_storm": {
+          "x": 0.35
+        }
+      },
+      "params": {},
+      "hp_factor": 0.87,
+      "counter_share": 0.4
+    },
+    "pumpkin": {
+      "moves": {
+        "rot": {
+          "v": 1,
+          "dur": 999
+        },
+        "patch": {
+          "n": 1
+        },
+        "hotfix": {
+          "value": 0.3
+        },
+        "rollout": {
+          "value": 0.3
+        }
+      },
+      "params": {
+        "purify": {
+          "every": 2
+        }
+      },
+      "hp_factor": 0.95,
+      "counter_share": 0.4
+    },
+    "vampire": {
+      "moves": {
+        "feast": {
+          "x": 1
+        },
+        "anemia": {
+          "x": 0.35,
+          "vs_role": {
+            "medic": 2
+          }
+        },
+        "siphon": {},
+        "bloodrot": {
+          "x": 1,
+          "heal_cut": {
+            "x": 0.4,
+            "dur": 4
+          }
+        }
+      },
+      "params": {},
+      "hp_factor": 0.92,
+      "counter_share": 0.55
+    },
+    "warlord": {
+      "moves": {
+        "tilt": {
+          "x": 1.4,
+          "dur": 2
+        },
+        "flame": {
+          "x": 0.35,
+          "vs_last_debuffer": 2
+        },
+        "alt_f4": {},
+        "rage_spiral": {
+          "dur": 2,
+          "max": 3,
+          "per": 0.2
+        }
+      },
+      "params": {},
+      "hp_factor": 0.71,
+      "counter_share": 0.4
+    },
+    "lagspike": {
+      "moves": {
+        "desync": {
+          "v": 1,
+          "dur": 999
+        },
+        "lag_spike": {
+          "n": 1
+        },
+        "rubberband": {
+          "v": 1,
+          "dur": 8
+        },
+        "packet_loss": {}
+      },
+      "params": {},
+      "hp_factor": 0.88,
+      "counter_share": 0.4
+    },
+    "skeleton": {
+      "moves": {
+        "stuck": {
+          "x": 1
+        },
+        "rattle": {
+          "v": 0.1
+        },
+        "calcify": {
+          "v": 0.5,
+          "dur": 8
+        },
+        "bone_pierce": {
+          "x": 1
+        }
+      },
+      "params": {},
+      "hp_factor": 0.79,
+      "counter_share": 0.55
+    },
+    "warzombie": {
+      "moves": {
+        "decay": {
+          "x": 1
+        },
+        "groan": {
+          "n": 1
+        },
+        "infect": {
+          "x": 0.35,
+          "apply": {
+            "stacks": 2
+          },
+          "heal_cut": {
+            "x": 0,
+            "dur": 4
+          }
+        },
+        "undying": {
+          "v": 0.1,
+          "dur": 8
+        }
+      },
+      "params": {},
+      "hp_factor": 1.08,
+      "counter_share": 0.4
+    },
+    "frost_lich": {
+      "moves": {
+        "glacial": {
+          "n": 2
+        },
+        "ice_wall": {
+          "v": 0.1
+        },
+        "frost_nova": {
+          "stacks": 1
+        },
+        "shatter_bones": {
+          "x": 1,
+          "vs_frozen": 2
+        }
+      },
+      "params": {
+        "frost_aura": {
+          "chill": 2
+        }
+      },
+      "hp_factor": 0.93,
+      "counter_share": 0.4
+    },
+    "nightshade": {
+      "moves": {
+        "fade": {
+          "v": 0.1,
+          "dur": 4
+        },
+        "veil": {},
+        "demotion": {
+          "x": 1,
+          "apply": {
+            "value": 0.2
+          }
+        },
+        "nightshade": {
+          "x": 1,
+          "apply": {
+            "stacks": 1
+          }
+        }
+      },
+      "params": {},
+      "hp_factor": 0.73,
+      "counter_share": 0.4
+    },
+    "salt_miner": {
+      "moves": {
+        "grind": {
+          "x": 0.35
+        },
+        "dig_in": {
+          "v": 0.1
+        },
+        "cash_out": {
+          "max": 0.06,
+          "per": 0.02
+        },
+        "salt_spray": {}
+      },
+      "params": {
+        "purify": {
+          "every": 2
+        }
+      },
+      "hp_factor": 1.03,
+      "counter_share": 0.4
+    },
+    "camper_colossus": {
+      "moves": {
+        "bash": {
+          "x": 1,
+          "vs_shielded": 2
+        },
+        "hold": {
+          "v": 0.1
+        },
+        "push": {
+          "x": 0.35
+        },
+        "stand_firm": {
+          "v": 4,
+          "dur": 4
+        }
+      },
+      "params": {
+        "steadfast": {
+          "dr": 0.5
+        }
+      },
+      "hp_factor": 0.57,
+      "counter_share": 0.4
+    }
   }
 }
 ```

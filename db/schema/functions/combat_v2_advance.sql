@@ -16,7 +16,7 @@ grant execute on function public.combat_v2_advance(jsonb) to postgres;
 grant execute on function public.combat_v2_advance(jsonb) to service_role;
 
 -- @function public.combat_v2_advance(jsonb, jsonb)
--- md5: c6bd327a678ab00dbbef9dacbf945658   (md5(replace(pg_get_functiondef('public.combat_v2_advance(jsonb, jsonb)'::regprocedure), chr(13), '')))
+-- md5: 789133d46dbd4f415d2c10434fc5b309   (md5(replace(pg_get_functiondef('public.combat_v2_advance(jsonb, jsonb)'::regprocedure), chr(13), '')))
 -- owner: postgres
 CREATE OR REPLACE FUNCTION public.combat_v2_advance(p jsonb, p_b jsonb)
  RETURNS jsonb
@@ -27,7 +27,7 @@ AS $function$
 declare
   act_at numeric := (p_b->'v2_speed'->>'act_at')::numeric;
   max_a int := (p_b->'v2_speed'->>'max_actions_per_step')::int;
-  cap int; clk int; steps int := 0; n int := 0; i int; best int; ev text;
+  cap int; clk int; steps int := 0; n int := 0; i int; best int; ev text; tl boolean := false;
   u_side text[] := '{}'; u_key text[] := '{}'; u_json jsonb[] := '{}'; u_meter numeric[] := '{}'; u_acts int[] := '{}'; u_up boolean[] := '{}';
   r record; cards jsonb; foes jsonb; u jsonb;
 begin
@@ -60,6 +60,7 @@ begin
     u_meter[i] := (u_json[i]->>'meter')::numeric;
     u_acts[i] := coalesce((u_json[i]->>'acts')::int, 0);
     u_up[i] := not coalesce((u_json[i]->>'down')::boolean, false) and coalesce((u_json[i]->>'hp')::numeric, 0) > 0;
+    if u_up[i] and u_side[i] = 'enemy' and coalesce(u_json[i]->'mechanics' ? 'time_lock', false) then tl := true; end if;
   end loop;
 
   loop
@@ -76,7 +77,11 @@ begin
     clk := clk + 1; steps := steps + 1;
     for i in 1 .. n loop
       u_acts[i] := 0;
-      if u_up[i] then u_meter[i] := u_meter[i] + combat_v2_speed(u_json[i], clk, p_b); end if;
+      if u_up[i] then
+        u_meter[i] := u_meter[i] + combat_v2_speed(case when tl and u_side[i] = 'card'
+                                                         then u_json[i] || jsonb_build_object('status', coalesce(u_json[i]->'status', '{}'::jsonb) - 'quickened')
+                                                         else u_json[i] end, clk, p_b);
+      end if;
     end loop;
   end loop;
 

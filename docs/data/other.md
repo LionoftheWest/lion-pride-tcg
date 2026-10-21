@@ -7,9 +7,9 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 ## Contents
 
-Tables (7): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
+Tables (8): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [enemy_mechanics](#table-enemy-mechanics), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (16): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules), [subjects_ability_v2_check()](#fn-subjects-ability-v2-check)
+Functions (18): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [enemy_mechanics_check()](#fn-enemy-mechanics-check), [enemy_v2_spec()](#fn-enemy-v2-spec), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules), [subjects_ability_v2_check()](#fn-subjects-ability-v2-check)
 
 ## Tables
 
@@ -87,6 +87,41 @@ Table. [combat] One row (id 1): the alias map and the canonical element list tha
 - Foreign keys: none
 - Check constraints: 
   - `elements_cache_id_check`: `CHECK ((id = 1))`
+- Row level security: on. Policies: none
+
+<a id="table-enemy-mechanics"></a>
+
+### enemy_mechanics
+
+Table. Combat v2 enemy mechanics (plan 8.2, 9.1; combat_v2_monsters.sql): one row for each mechanic of the simulator. kind passive (v2_enemy.mechanics, v2_dungeon.passive_params) or rule (a boss rule, enemy_v2.rules); numbers = the balance object of its numbers; on_boss / on_foe = where it can appear; text = the one-line text (each number a {leaf} of numbers, no digit); counters / favors = the archetypes of plan 7.4 that it counters or favors (the boss template: Signature and Bring). Beside the v1 table passives, which v1 combat reads. Service role only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `key` | text | not null |  | The mechanic key (the simulator mech name). |
+| `ord` | smallint | not null |  | The order in lists. |
+| `kind` | text | not null |  | passive (v2_enemy.mechanics, v2_dungeon.passive_params) or rule (a boss rule of enemy_v2.rules). |
+| `label` | text | not null |  | The name on the boss card and the enemy tooltip. |
+| `numbers` | text | not null |  | The balance object that holds its numbers (each {leaf} of text is a number of it). |
+| `on_boss` | boolean | not null |  | It can be a signature or rule of a Hunt boss. |
+| `on_foe` | boolean | not null |  | It can be a passive of a Dungeon or Gauntlet foe (the pool, a monster's own passive or aura). |
+| `text` | text | not null |  | The one-line text (the card text style; each number a {leaf} of numbers; no digit). |
+| `counters` | text[] | not null | `'{}'::text[]` | The archetypes of plan 7.4 that it counters (only where the plan settles it). |
+| `favors` | text[] | not null | `'{}'::text[]` | The archetypes of plan 7.4 that it favors: the Bring chip (only where the plan settles it). |
+| `note` | text | null |  | A free note. |
+| `updated_at` | timestamp with time zone | not null | `now()` | Set by the trigger on each write. |
+
+- Primary key: `PRIMARY KEY (key)`
+- Unique: `enemy_mechanics_ord_key` `UNIQUE (ord)`
+- Foreign keys: none
+- Check constraints: 
+  - `enemy_mechanics_check`: `CHECK ((on_boss OR on_foe))`
+  - `enemy_mechanics_counters_check`: `CHECK ((counters <@ ARRAY['toxic'::text, 'wildfire'::text, 'shatter'::text, 'mark_hunt'::text, 'wall'::text, 'crit_chain'::text, 'cleave'::text, 'lockdown'::text, 'pile_on'::text, 'heralds_court'::text]))`
+  - `enemy_mechanics_favors_check`: `CHECK ((favors <@ ARRAY['toxic'::text, 'wildfire'::text, 'shatter'::text, 'mark_hunt'::text, 'wall'::text, 'crit_chain'::text, 'cleave'::text, 'lockdown'::text, 'pile_on'::text, 'heralds_court'::text]))`
+  - `enemy_mechanics_key_check`: `CHECK ((key ~ '^[a-z_]+$'::text))`
+  - `enemy_mechanics_kind_check`: `CHECK ((kind = ANY (ARRAY['passive'::text, 'rule'::text])))`
+  - `enemy_mechanics_label_check`: `CHECK (((label <> ''::text) AND (label = btrim(label))))`
+  - `enemy_mechanics_numbers_check`: `CHECK ((numbers ~ '^[a-z0-9_]+(\.[a-z0-9_]+)+$'::text))`
+  - `enemy_mechanics_ord_check`: `CHECK ((ord >= 1))`
 - Row level security: on. Policies: none
 
 <a id="table-passives"></a>
@@ -265,6 +300,26 @@ F-3: the trigger of elements: refuses a word that another element has, and sets 
 - Security definer: no
 
 [combat] The one list of elements for GET /api/elements: key, name, ord, aliases, glyph, color, color2, weak_to (the primary counter), dungeon_foe, and the approved counter pairs: beats (the keys this element beats) and beaten_by (the keys that beat it), both in the order of elements.ord. A pair with proposal = true is not returned. The client never works the pairs out.
+
+<a id="fn-enemy-mechanics-check"></a>
+
+### enemy_mechanics_check()
+
+- Function: `enemy_mechanics_check()`
+- Returns: `trigger`
+- Security definer: no
+
+Trigger (before insert, update on enemy_mechanics): numbers is a balance object, the text names only its {leaf} numbers and has no digit (balance_text_errors), and no foe, debuff, negative, you, semicolon or parenthesis (the card text style). combat_v2_monsters.sql.
+
+<a id="fn-enemy-v2-spec"></a>
+
+### enemy_v2_spec()
+
+- Function: `enemy_v2_spec()`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] The fixed shape with the limits of the balance key enemy_v2 (rules: the numbers of the boss rules; bosses.<key>: hp_factor, counter_share, params, moves.<id>). combat_v2_monsters.sql.
 
 <a id="fn-owned-card-power-text"></a>
 
