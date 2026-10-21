@@ -849,8 +849,9 @@ try {
   for (const r of results.filter((x) => !['NUMBERS', 'ABILITY_V2', 'LIBRARY'].includes(x.case))) { const { case: name, ok, ...rest } = r; say(ok, name, JSON.stringify(rest).slice(0, 900)); }
   const CONFIG = loadConfig();
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
-  // share and ref are the keys of PR T1 (combat_v2_ability_builder.sql, test-combat-v2-t1.mjs): this file does not add them
-  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(share|ref)\./.test(p)));
+  // share and ref are the keys of PR T1 (combat_v2_ability_builder.sql, test-combat-v2-t1.mjs), pp.vs_smite a key of PR T1b (combat_v2_ability_prices.sql,
+  // test-combat-v2-t1b.mjs): this file does not add them
+  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(share|ref)\./.test(p) && p !== 'pp.vs_smite'));
   const lp = [...bal].filter(([p, v]) => cfgL.get(p) !== v).concat([...cfgL].filter(([p]) => !bal.has(p)));
   say(lp.length === 0 && bal.size === 12, `balance ability_v2 = config.json ability_v2 (${bal.size} leaves equal; one number, one home for the simulator and SQL)`, JSON.stringify(lp));
   say(CONFIG.v2_pp.support_pp.shield_all === 100 && AB.v2_pp.support_pp.shield_all === 100, 'v2_pp.support_pp.shield_all is 100 in balance and in config.json (the P1 price, plan 5.2)');
@@ -862,7 +863,8 @@ try {
     `the block library: the ${built.length} blocks of the simulator (blockPP, doActive) are built; reserved (no rule, no price): ${reserved.join(', ')}`, JSON.stringify({ built, reserved }));
   const verbs = Object.entries(LIB.verbs).filter(([, v]) => v).map(([k]) => k).sort();
   say(eq(verbs, [...NEG_RIDERS].sort()) && LIB.adjs === 19, `statuses.verb on the ${verbs.length} statuses that a block applies (not Frozen), statuses.adj on all 19`, JSON.stringify(LIB.verbs));
-  const cfg = patch(CONFIG, { ...B, ability_v2: AB.ability_v2, v2_pp: AB.v2_pp });
+  // the simulator takes ability_v2 of this file as a whole (a patch would keep the later keys of config.json, whose presence turns on the T1b rules)
+  const cfg = patch(CONFIG, { ...B, v2_pp: AB.v2_pp }); cfg.ability_v2 = JSON.parse(JSON.stringify(AB.ability_v2));
 
   // 2. the fixed cases of the card action
   const FIX = fixedCases(B);

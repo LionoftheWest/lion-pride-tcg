@@ -710,7 +710,7 @@ F-3 4a: NULL when one step of an ability kind is valid for the slot and the fiel
 - Returns: `numeric`
 - Security definer: no
 
-[combat] Combat v2 (plan 5.2): the PP of ONE ability block that needs no other block (the simulator blockPP): attacker blocks att_k / C x the extra basic hits they add, support blocks their v2_pp.support_pp price x sup_cycle / C, riders status_pp x amount x chance (attacker x strikes / C), on_kill x share.on_kill, random_apply the mean of its options, per_ally x ref.per_ally, a support payoff_dmg smite x v x payoff. NULL for an attachment, a support crit_add and an apply per (ability_v2_pps). PURE. combat_v2_ability_builder.sql.
+[combat] Combat v2 (plan 5.2): the PP of ONE ability block that needs no other block (the simulator blockPP): attacker blocks att_k / C x the extra basic hits they add, support blocks their v2_pp.support_pp price x sup_cycle / C, riders status_pp x amount x chance (attacker x strikes / C), on_kill x share.on_kill, random_apply the mean of its options, per_ally x ref.per_ally, a support payoff_dmg smite x v x the share. A status list: the share of its condition + ref.list_extra for each added status, at most 1 (PR T1b). NULL for an attachment, a support crit_add, a support vs_status and an apply per (ability_v2_pps). PURE. combat_v2_ability_prices.sql.
 
 <a id="fn-ability-v2-cap-text"></a>
 
@@ -840,7 +840,7 @@ F-3 4a: NULL when one step of an ability kind is valid for the slot and the fiel
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 (plan 5.2, PR T1): the PP of each block of an active, in order: a gate = its host x (share - 1), target_has = host x (x - 1) x payoff (x frozen_share for a control list), ally_below = host x (x - 1) x line, more_per = the host at v x ref.stacks or ref.kinds x payoff, coin = (the host at alt - the host) x (1 - chance), a support crit_add = smite x x x v x (crd.base - 1) x sup_cycle / C, an apply per = status x value x chance x sup_cycle / C x (the count this active adds + ref x payoff); every other block ability_v2_block_pp. PURE. combat_v2_ability_builder.sql.
+[combat] Combat v2 (plan 5.2): the PP of each block of an active, in order: a gate = its host x (share - 1) (self_has: share.self_has_each of its status, PR T1b), target_has = host x (x - 1) x the share (payoff, x frozen_share for a control list, + ref.list_extra for each added status, at most 1), ally_below = host x (x - 1) x line, more_per = the host at v x ref.stacks or ref.kinds x payoff, coin = (the host at alt - the host) x (1 - chance), a support crit_add = smite x x x v x (crd.base - 1) x sup_cycle / C, a support vs_status = smite price x the smite x (x - 1) x pp.vs_smite x the share x sup_cycle / C (PR T1b), an attacker payoff with an area block = the payoff x (1 + area x ref.foes_other x share.area_payoff) (PR T1b), an apply per = status x value x chance x sup_cycle / C x (the count this active adds + ref x payoff); every other block ability_v2_block_pp. PURE. combat_v2_ability_prices.sql.
 
 <a id="fn-ability-v2-silver-text-text-jsonb-jsonb-jsonb"></a>
 
@@ -860,7 +860,7 @@ F-3 4a: NULL when one step of an ability kind is valid for the slot and the fiel
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] The fixed shape with the limits of the balance key ability_v2 (pp att_k, sup_cycle, sup_vs_k, line_status, quicken_all_x; silver stars, pp; limits blocks, riders, words_min, words_max; k1_shield; share on_kill, enemy_charging, foes_alive, self_shield, self_has; ref per_ally). combat_v2_abilities.sql, share and ref: combat_v2_ability_builder.sql.
+[combat] The fixed shape with the limits of the balance key ability_v2 (pp att_k, sup_cycle, sup_vs_k (not read since T1b), vs_smite, line_status, quicken_all_x; silver stars, pp; limits blocks, riders, words_min, words_max; k1_shield; share on_kill, enemy_charging, foes_alive, self_shield, self_has (not read since T1b), self_has_each (one share for each card status), area_payoff; ref per_ally, list_extra). combat_v2_abilities.sql, share and ref: combat_v2_ability_builder.sql, vs_smite, self_has_each, area_payoff, list_extra: combat_v2_ability_prices.sql.
 
 <a id="fn-ability-v2-text-text-jsonb-jsonb"></a>
 
@@ -1190,7 +1190,7 @@ F-3 4b: the trigger use of combat_effect (a support card): Packet Loss, the affi
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2: the unique active (the simulator doActive). An attacker: Confused, the shape of its hits (ABL raises the amounts; a gate turns its host off; per_ally; status lists), each hit then its riders (apply, random_apply: their draws AFTER the hit), on_crit and on_kill (the next standing enemy), the area hits, lifesteal (to: an ally), guard_up, then Empowered and the Mark end. A support: its blocks in order with their attachments ("to" allies; coin draws before the crit roll; a crit roll for shield, heal, empower, rally and an Expose / Weaken / Mark; apply per; random_apply), the smite last (vs_status, payoff_dmg, crit_add; area: every other enemy). Answer {state, hits, draws}. VOLATILE. combat_v2_abilities.sql, T1 parts: combat_v2_ability_builder.sql.
+[combat] Combat v2: the unique active (the simulator doActive). An attacker: Confused, the shape of its hits (ABL raises the amounts; a gate turns its host off; per_ally; status lists), each hit then its riders (apply, random_apply: their draws AFTER the hit), on_crit and on_kill (the next standing enemy), the area hits (the payoffs count on each area hit against that enemy's statuses, PR T1b), lifesteal (to: an ally), guard_up, then Empowered and the Mark end. A support: its blocks in order with their attachments ("to" allies; coin draws before the crit roll; a crit roll for shield, heal, empower, rally and an Expose / Weaken / Mark; apply per; random_apply), the smite last (vs_status, payoff_dmg, crit_add; area: every other enemy). Answer {state, hits, draws}. VOLATILE. combat_v2_abilities.sql, T1 parts: combat_v2_ability_builder.sql, the area payoffs: combat_v2_ability_prices.sql.
 
 <a id="fn-combat-effect-v2-ally-to-jsonb-text"></a>
 

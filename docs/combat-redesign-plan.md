@@ -701,6 +701,7 @@ Each PR: a worktree from the latest `origin/main`, rehearsed on the local copy, 
 | 3 | E5 | The 16 statuses, the step-end tick, families, control immunity, boss limit | the 64 status checks as SQL tests. no-lock bound. fuzz (HP in range) | Medium |
 | 3 | E6 | Abilities: block rows with PP, `ability_v2_check`, charge, new conditions, triggers `on_crit` / `on_kill`, targets `all_enemies` / `all_allies` | planted bad abilities refused. rider draws after the hit (a mutation fails) | Medium |
 | 3 | T1 | Studio ability builder (12.1) | it refuses what the validator refuses. push `--dry` diff 0 | Low |
+| 3 | T1b | The T1 follow-up: the prices of Nathan's 6 decisions of 2026-10-20 (19.4) | SQL = the simulator. a planted fault for each decision fails the test on a green baseline | Low |
 | 4 | E7 | Monsters: new passives as data, foe moves, the Hunt boss template, counter bosses | Lab: each passive x each archetype. boss counters golden for v1 unchanged | Medium |
 | 4 | E8 | Auto v2: Dungeon Auto plays each ready card. Hunt auto-pick with role answers and the pair score | Auto reaches 85% or more of a scripted best play | Medium |
 | 4 | E9 | Power number `card_power_v2` and squad value in SQL. client shows it only | rank correlation report. C3 passes | Low |
@@ -1080,3 +1081,48 @@ approximated Set 1 actives need; (5) the 5 text differences of E6 are accepted. 
   regeneration), the caller lists of 3 earlier v2 tests (the T1 functions added, as E6 did) and the push test (a Windows exit crash, fixed).
   `test-ability-builder-routes.mjs` PASS 8 (no database), `test-push-abilities-v2.mjs` PASS 6 (copy 2: --dry, push, --dry = 0, one refused row =
   nothing written). The simulator `targets` report is the same before and after the simulator change (60 runs).
+
+### 19.4 T1b: the follow-up of T1 (`tcg-bot/supabase/combat_v2_ability_prices.sql`)
+
+Nathan approved the 6 recommendations of the T1 PR on 2026-10-20. Needs T1. No v1 function calls a replaced function, the flag stays OFF, and the
+md5 of the other 488 public functions is the same after the file. Replaced from T1 (one change each): `ability_v2_spec`, `ability_v2_block_pp`,
+`ability_v2_pps`, `combat_effect_v2_active`. The reference is the simulator (`cards.mjs` blockPP, `engine.mjs` doActive).
+
+| # | Decision | What is built | Measured number (balance `ability_v2`) |
+|---|---|---|---|
+| 1a | A support "x times the damage vs a status" gets a raw price, measured first | price = smite price x the smite x (x - 1) x `pp.vs_smite` x the condition share (frozen_share x payoff, as an attacker) x sup_cycle / C. It grows with the smite | `pp.vs_smite` = 0.9 |
+| 1b | The per-ally scaler: +13% for each ally | card number in the private batch | - |
+| 1c | The "for each Poison stack" Weaken: 3.5% | card number in the private batch | - |
+| 2 | `self_has`: one share for each status | `share.self_has_each.<status>` (15 card statuses) | 0 to 0.089 |
+| 3 | A status list: an extra price for each added status | the share of the condition + `ref.list_extra` x (statuses - 1), at most 1 | `ref.list_extra` = 0.039 |
+| 4 | `on_kill` keeps the next standing enemy | no change; a fixed case and a planted fault pin it (the fixed order, not the lowest HP) | - |
+| 5 | A payoff also counts on each area hit | payoff_dmg and payoff_crit of an attacker with an area block count on each area hit against the statuses of THAT enemy. Price x (1 + area x ref.foes_other x `share.area_payoff`) | `share.area_payoff` = 0.003 |
+| 6 | The two text differences stay | no change | - |
+
+- **The measurements** (`node card-studio/v2sim/run.mjs shares --runs 2000`, seed 1; seed 7 within 0.002; the method is in the head of
+  `v2sim/shares.mjs`):
+  - `pp.vs_smite`: the card value of `targets` row 6 (net Hunt Heroic damage of the card + 4 reference cards) of an Artillery card
+    [sure Chill 1, smite S] against the same card with vs_status Chill x2 (always true: its own Chill is on the enemy at each smite) and
+    against the card with smite S + 1 (5 PP more). Measured PP of the vs_status / (smite price x S x (x - 1)) = 0.899 at S = 1.2, 1.52 and 1.7.
+  - `share.self_has_each`: the share of the actives where the card has the status (the T1 probe): Empowered 0.089, Quickened 0.082, Weakened
+    0.061, Poison 0.04, Chill 0.032, Slowed 0.025, Exposed 0.009, Blinded 0.008, Burn 0.006, Focused 0.004, and 0 for Stunned, Frozen, Asleep,
+    Paralyzed and Confused.
+  - `ref.list_extra`: the mean share of the actives whose target has one given harmful status (13 statuses; Hunt 0.051, Dungeon 0.028).
+  - `share.area_payoff`: at the attacker actives with an area block while 2 or more enemies stand (Dungeon run and a horde room at floor 9,
+    1311 actives), the share of the other enemies with a status / the share of the main targets with it.
+- **The balance keeps every old leaf.** `balance_check` refuses a value that loses a leaf or changes its type. So `pp.sup_vs_k` and the T1
+  number `share.self_has` stay in balance, and no function reads them after T1b. The new numbers are new leaves. The simulator reads the shape:
+  without the T1b leaves (the E6 and T1 files) it keeps the E6 and T1 rules, so the E6 and T1 tests still compare their own files.
+- **Set 1 (private, counts only)**: the validator accepts 130 of 130 (T1: 127). The generated text equals the approved text for 121 of 130.
+  The private approved texts got the numbers of 1b and 1c (backups in `discord-card-ideas/backups/`).
+- **Proof** (copy 2, T1 applied): the goldens with CANDIDATE = this file (Hunt 183, Dungeon 240, boss counters 128 fights: no difference);
+  `test-combat-v2-t1b.mjs` PASS 28; MUTATE=all (V2_FIGHTS=30 V2_FUZZ=10 V2_PP=300): baseline PASS, 23 planted faults caught (at least one for
+  each decision). The E6 test PASS 59 and the T1 test PASS 38 (both now take `ability_v2` of their own file as a whole and skip the T1b leaves
+  in their balance comparison). The simulator `targets` report is the same before and after (20 PASS, 2 FAIL, 1 CHECK); `node --test` of v2sim
+  PASS 182. Then the file applied on copy 2 (`rehearse-sql.mjs`): grants check OK; `test-all-local.mjs` 145 of 151
+  PASS (2 one-time skipped). The 6 failures: the 2 generated files (db/schema, SUPERSEDED.md: PASS after the regeneration) and 4 tests that read
+  `card-studio/.env`, which a fresh worktree does not have (PASS with a local-only .env; test-ability-sync prints PASS all, then the known Windows
+  exit crash). The flag combat_v2 is OFF in all 4 modes on copy 2. After this PR, SUPERSEDED.md lists `combat_v2_ability_builder.sql`: T1 goes
+  live first.
+- **Open questions** (in the PR): the 5 statuses with a self_has share of 0; the measured control share at a support smite (about 0.001)
+  against the assumed frozen_share x payoff (0.12); `share.area_payoff` with an area status partner; the two balance leaves that no function reads.

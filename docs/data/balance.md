@@ -34,27 +34,47 @@ The triggers on `balance` check each change:
 
 ### ability_v2
 
-Combat v2: the ability rules of the validator and the card text (plan 5; combat_v2_abilities.sql). pp = the price model of the ability blocks beside v2_pp: an attacker block costs att_k / C x the extra basic hits it adds (C = v2_charge.<class> + 1 own turns a cycle); a support block costs its v2_pp.support_pp price x sup_cycle / C; a support "x damage vs a status" costs sup_vs_k x sup_cycle / C x (x - 1) x the frozen share x the payoff share; each status of an execute list costs line_status; quicken on every attacker costs quicken_all_x times. silver = the Silver upgrade (plan 5.3): at stars stars the active gets pp more PP on one amount (type 1). limits = blocks (the most blocks of one active, the engine step limit), riders (at most this many riders, plan 5.3), words_min to words_max words of card text (Nathan 2026-10-20, the card text style; replaces 8 to 14). k1_shield = the shield of the cured ally that the Glossary keyword "Cure ... for N steps" names. Read by ability_v2_check, the studio builder (T1) and the simulator (config.json ability_v2); no fight reads it. Shape: ability_v2_spec (trigger balance_check_ability_v2). share (PR T1, Nathan 2026-10-20 decisions 1 and 2; measured by card-studio/v2sim/run.mjs shares, 2000 runs, seed 1) = the share of the actives where a condition is true: a gate (self_has, enemy_charging, foes_alive, self_shield) costs its host x (share - 1), so the pair costs the host x the share; on_kill = an attacker active downs its target while another enemy stands (the trigger costs like on_crit with this share). ref.per_ally = the mean number of other standing attackers at an attacker active (the scaler per_ally).
+Combat v2: the ability rules of the validator and the card text (plan 5; combat_v2_abilities.sql). pp = the price model of the ability blocks beside v2_pp: an attacker block costs att_k / C x the extra basic hits it adds (C = v2_charge.<class> + 1 own turns a cycle); a support block costs its v2_pp.support_pp price x sup_cycle / C; a support "x damage vs a status" costs sup_vs_k x sup_cycle / C x (x - 1) x the frozen share x the payoff share; each status of an execute list costs line_status; quicken on every attacker costs quicken_all_x times. silver = the Silver upgrade (plan 5.3): at stars stars the active gets pp more PP on one amount (type 1). limits = blocks (the most blocks of one active, the engine step limit), riders (at most this many riders, plan 5.3), words_min to words_max words of card text (Nathan 2026-10-20, the card text style; replaces 8 to 14). k1_shield = the shield of the cured ally that the Glossary keyword "Cure ... for N steps" names. Read by ability_v2_check, the studio builder (T1) and the simulator (config.json ability_v2); no fight reads it. Shape: ability_v2_spec (trigger balance_check_ability_v2). share (PR T1, Nathan 2026-10-20 decisions 1 and 2; measured by card-studio/v2sim/run.mjs shares, 2000 runs, seed 1) = the share of the actives where a condition is true: a gate (self_has, enemy_charging, foes_alive, self_shield) costs its host x (share - 1), so the pair costs the host x the share; on_kill = an attacker active downs its target while another enemy stands (the trigger costs like on_crit with this share). ref.per_ally = the mean number of other standing attackers at an attacker active (the scaler per_ally). PR T1b (Nathan 2026-10-20, the 6 approved recommendations; measured by card-studio/v2sim/run.mjs shares, 2000 runs, seed 1): pp.vs_smite = the measured raw value of x times the damage on a support smite, per smite price x the smite x (x - 1) (no T1b function reads pp.sup_vs_k, a fixed smite size: it stays, a balance leaf is never removed); share.self_has_each = one share for each card status (the share of the actives where this card has it; no T1b function reads the one share share.self_has, which stays); share.area_payoff = the share of the other enemies with a status / the share of the main targets with it, at the area actives (a payoff counts on each area hit); ref.list_extra = the share that each added status of a list adds to the share of its condition (at most 1).
 
-Shape: `object { k1_shield: number, limits: object { blocks: number, riders: number, words_max: number, words_min: number }, pp: object { att_k: number, line_status: number, quicken_all_x: number, sup_cycle: number, sup_vs_k: number }, ref: object { per_ally: number }, share: object { enemy_charging: number, foes_alive: number, on_kill: number, self_has: number, self_shield: number }, silver: object { pp: number, stars: number } }`
+Shape: `object { k1_shield: number, limits: object { blocks: number, riders: number, words_max: number, words_min: number }, pp: object { att_k: number, line_status: number, quicken_all_x: number, sup_cycle: number, sup_vs_k: number, vs_smite: number }, ref: object { list_extra: number, per_ally: number }, share: object { area_payoff: number, enemy_charging: number, foes_alive: number, on_kill: number, self_has: number, self_has_each: object { blinded: number, burn: number, chill: number, confused: number, empowered: number, exposed: number, focused: number, frozen: number, paralyzed: number, poison: number, quickened: number, sleep: number, slowed: number, stunned: number, weakened: number }, self_shield: number }, silver: object { pp: number, stars: number } }`
 
 ```json
 {
   "pp": {
     "att_k": 40,
     "sup_vs_k": 3.3333333333333335,
+    "vs_smite": 0.9,
     "sup_cycle": 2,
     "line_status": 0.5,
     "quicken_all_x": 1.5
   },
   "ref": {
-    "per_ally": 2.4
+    "per_ally": 2.4,
+    "list_extra": 0.039
   },
   "share": {
     "on_kill": 0.02,
     "self_has": 0.1,
     "foes_alive": 0.09,
+    "area_payoff": 0.003,
     "self_shield": 0.21,
+    "self_has_each": {
+      "burn": 0.006,
+      "chill": 0.032,
+      "sleep": 0,
+      "frozen": 0,
+      "poison": 0.04,
+      "slowed": 0.025,
+      "blinded": 0.008,
+      "exposed": 0.009,
+      "focused": 0.004,
+      "stunned": 0,
+      "confused": 0,
+      "weakened": 0.061,
+      "empowered": 0.089,
+      "paralyzed": 0,
+      "quickened": 0.082
+    },
     "enemy_charging": 0.08
   },
   "limits": {

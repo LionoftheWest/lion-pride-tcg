@@ -1188,11 +1188,12 @@
     "_cure": "cure = 0 PP: the cure and its immunity are free (Revision 5, Nathan approved 2026-10-18). A support area block costs smite x area x ref.foes_other."
   },
   "ability_v2": {
-    "_rule": "The price-model numbers of the ability blocks beside v2_pp (PR E6, balance ability_v2: one number, one home). pp.att_k: an attacker block costs att_k / C x the basic hits it adds (C = v2_charge + 1). pp.sup_cycle: a support library price x sup_cycle / C. pp.sup_vs_k: the support x-vs-status factor (10/3). pp.line_status: the PP of each status of an execute list. pp.quicken_all_x: quicken on every attacker. silver: the Silver upgrade (plan 5.3: + pp PP at stars stars). limits: blocks, riders and the card text words (Nathan 2026-10-20: 6 to 20). k1_shield: the shield of the Glossary cure keyword. share (PR T1, Nathan 2026-10-20 decisions 1 and 2; measured by run.mjs shares, 2000 runs, seed 1): the share of the actives where a condition is true (self_has, enemy_charging, foes_alive, self_shield: the condition costs the block it gates x (share - 1), so the pair costs the block x share) and on_kill (an attacker active downs its target while another enemy stands: the trigger costs like on_crit with this share). ref.per_ally: the mean number of other standing attackers at an attacker active (the scaler per_ally).",
+    "_rule": "The price-model numbers of the ability blocks beside v2_pp (PR E6, balance ability_v2: one number, one home). pp.att_k: an attacker block costs att_k / C x the basic hits it adds (C = v2_charge + 1). pp.sup_cycle: a support library price x sup_cycle / C. pp.sup_vs_k: the support x-vs-status factor (10/3; not read since PR T1b, a balance leaf is never removed). pp.vs_smite (PR T1b, measured by run.mjs shares): the raw value of x times the damage on a support smite, per smite price x the smite x (x - 1). pp.line_status: the PP of each status of an execute list. pp.quicken_all_x: quicken on every attacker. silver: the Silver upgrade (plan 5.3: + pp PP at stars stars). limits: blocks, riders and the card text words (Nathan 2026-10-20: 6 to 20). k1_shield: the shield of the Glossary cure keyword. share (PR T1, Nathan 2026-10-20 decisions 1 and 2; measured by run.mjs shares, 2000 runs, seed 1): the share of the actives where a condition is true (self_has, enemy_charging, foes_alive, self_shield: the condition costs the block it gates x (share - 1), so the pair costs the block x share) and on_kill (an attacker active downs its target while another enemy stands: the trigger costs like on_crit with this share). ref.per_ally: the mean number of other standing attackers at an attacker active (the scaler per_ally). PR T1b (Nathan 2026-10-20, the 6 approved recommendations; run.mjs shares, 2000 runs, seed 1): share.self_has_each = one share for each card status (share.self_has, the T1 single share, is not read since T1b); share.area_payoff = the share of the other enemies with a status / the share of the main targets with it at the area actives (a payoff also counts on each area hit: x (1 + area x ref.foes_other x area_payoff)); ref.list_extra = the share that each added status of a list (\"any of\") adds to the share of its condition, at most 1.",
     "pp": {
       "att_k": 40,
       "sup_cycle": 2,
       "sup_vs_k": 3.3333333333333335,
+      "vs_smite": 0.9,
       "line_status": 0.5,
       "quicken_all_x": 1.5
     },
@@ -1212,10 +1213,29 @@
       "enemy_charging": 0.08,
       "foes_alive": 0.09,
       "self_shield": 0.21,
-      "self_has": 0.1
+      "self_has": 0.1,
+      "self_has_each": {
+        "empowered": 0.089,
+        "focused": 0.004,
+        "quickened": 0.082,
+        "poison": 0.04,
+        "burn": 0.006,
+        "chill": 0.032,
+        "weakened": 0.061,
+        "stunned": 0,
+        "slowed": 0.025,
+        "blinded": 0.008,
+        "confused": 0,
+        "frozen": 0,
+        "sleep": 0,
+        "paralyzed": 0,
+        "exposed": 0.009
+      },
+      "area_payoff": 0.003
     },
     "ref": {
-      "per_ally": 2.4
+      "per_ally": 2.4,
+      "list_extra": 0.039
     }
   },
   "v2_templates": {

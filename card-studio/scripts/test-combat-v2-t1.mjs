@@ -744,7 +744,9 @@ try {
   const NUM = results.find((r) => r.case === 'NUMBERS'); const B = NUM.b, AB = NUM.ab;
   for (const r of results.filter((x) => !['NUMBERS', 'ABILITY_V2', 'LIBRARY'].includes(x.case))) { const { case: name, ok, ...rest } = r; say(ok, name, JSON.stringify(rest).slice(0, 900)); }
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
-  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2));
+  // pp.vs_smite, share.self_has_each, share.area_payoff and ref.list_extra are the keys of PR T1b (combat_v2_ability_prices.sql, test-combat-v2-t1b.mjs)
+  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)),
+    cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(pp\.vs_smite|share\.area_payoff|ref\.list_extra)$|^share\.self_has_each\./.test(p)));
   const lp = [...bal].filter(([p, v]) => cfgL.get(p) !== v).concat([...cfgL].filter(([p]) => !bal.has(p)));
   say(lp.length === 0 && bal.size === 18, `balance ability_v2 = config.json ability_v2 (${bal.size} leaves equal, with share and ref; one number, one home)`, JSON.stringify(lp));
   const LIB = results.find((r) => r.case === 'LIBRARY').rows;
@@ -753,7 +755,8 @@ try {
   say(LIB.every((r) => !r.reserved) && T1KEYS.every((k) => lk.has(k)) && LIB.length === 42 && GATES.every((g) => lk.get(g).attach === 'gate')
       && ['target_has', 'ally_below', 'more_per', 'coin'].every((k) => lk.get(k).attach === 'amount') && LIB.filter((r) => r.attach).length === 8 && eq(lk.get('on_kill').classes, ['attacker']),
     `the block library: ${LIB.length} rows, none reserved; the T1 parts are rows (${T1KEYS.join(', ')}); 4 gates and 4 amount attachments with their hosts; on_kill is for attackers`, JSON.stringify(LIB.filter((r) => r.reserved || r.attach)));
-  const cfg = patch(CONFIG, { ...B, ability_v2: AB.ability_v2, v2_pp: AB.v2_pp, v2_stats: AB.v2_stats });
+  // the simulator takes ability_v2 of this file as a whole (a patch would keep the T1b keys of config.json, whose presence turns on the T1b rules)
+  const cfg = patch(CONFIG, { ...B, v2_pp: AB.v2_pp, v2_stats: AB.v2_stats }); cfg.ability_v2 = JSON.parse(JSON.stringify(AB.ability_v2));
 
   // the fixed cases
   const FIX = fixedCases(B, AB);
