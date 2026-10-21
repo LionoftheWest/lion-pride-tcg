@@ -63,7 +63,7 @@ const MUT = {
   slowing_always: ['and combat_v2_up(s #> tpath) and (ch >= 1 or dv < ch) then', 'and combat_v2_up(s #> tpath) then'],
   slowing_no_draw: ["      if ch < 1 then dv := combat_v2_draw(d, 0); used := used || to_jsonb(dv); d := combat_v2_draws_rest(d, 1); end if;\n", '      dv := 0;\n'],
   // ONE SOURCE for the Weak to role (combat_v2_hunt_boss)
-  weak_from_table_off: ["    wr := (select substr(q.x, 6) from unnest(rw.weak_to) with ordinality q(x, n) where q.x like 'role:%' order by q.n limit 1);\n", ''],
+  weak_from_table_off: ["    wr := (select regexp_replace(q.x, '^role:', '') from unnest(rw.weak_to) with ordinality q(x, n) where q.x like 'role:%' order by q.n limit 1);\n", ''],
   weak_role_not_on_unit: ["       || case when wr is not null then jsonb_build_object('weak_role', wr) else '{}'::jsonb end;\n", "       || '{}'::jsonb;\n"],
   weak_opt_allowed: ["  if o ? 'weak_role' then raise exception 'combat_v2_hunt_boss: no opts.weak_role (the Weak to role comes from hunt_bosses_v2.weak_to)'; end if;\n", ''],
   tier_boss_any_mech: ["      if not exists (select 1 from public.enemy_mechanics y where y.key = m #>> '{}' and y.on_boss) then", '      if false then'],
@@ -71,9 +71,9 @@ const MUT = {
   foe_any_mech: ["    if not exists (select 1 from public.enemy_mechanics y where y.key = m and y.on_foe) then", '    if false then'],
   // the Weak to rows (hunt_bosses_v2_check and the 16 tags)
   weak_check_any_tag: ["    if k !~ '^role:' then raise exception", '    if false then raise exception'],
-  weak_check_support: ["    if substr(k, 6) in ('warden', 'medic', 'spotter', 'herald') then", '    if false then'],
+  weak_check_support: ["    if regexp_replace(k, '^role:', '') in ('warden', 'medic', 'spotter', 'herald') then", '    if false then'],
   weak_check_two_roles: ["  if (select count(*) from unnest(new.weak_to) x where x like 'role:%') > 1 then raise exception", '  if false then raise exception'],
-  weak_check_unknown_role: ["    if not exists (select 1 from public.roles r where r.key = substr(k, 6)) then raise exception", '    if false then raise exception'],
+  weak_check_unknown_role: ["    if not exists (select 1 from public.roles r where r.key = regexp_replace(k, '^role:', '')) then raise exception", '    if false then raise exception'],
   weak_tag_typo: ["update public.hunt_bosses_v2 set weak_to = '{role:cleaver}' where key = 'zerg'", "update public.hunt_bosses_v2 set weak_to = '{role:striker}' where key = 'zerg'"],
   weak_tag_missing: ["update public.hunt_bosses_v2 set weak_to = '{role:controller}' where key = 'warlord' and weak_to = '{}';\n", ''],
   weak_tag_overwrite: ["update public.hunt_bosses_v2 set weak_to = '{role:cleaver}' where key = 'zerg' and weak_to = '{}';", "update public.hunt_bosses_v2 set weak_to = '{role:cleaver}' where key = 'zerg';"],

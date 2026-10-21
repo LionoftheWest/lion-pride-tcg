@@ -192,8 +192,8 @@ begin
     -- E7 tuning (Nathan 2026-10-21): only role tags (the fight reads the role; no element or family weakness), one role a boss, a role of roles, and
     -- never a support role with no week rule (Warden, Medic, Spotter, Herald: their week changes nothing; the Controller has weak_role_rules)
     if k !~ '^role:' then raise exception 'hunt_bosses_v2 %: weak_to % is not a role tag (no element or family weakness)', new.key, k; end if;
-    if not exists (select 1 from public.roles r where r.key = substr(k, 6)) then raise exception 'hunt_bosses_v2 %: weak_to % is not a role of roles', new.key, k; end if;
-    if substr(k, 6) in ('warden', 'medic', 'spotter', 'herald') then
+    if not exists (select 1 from public.roles r where r.key = regexp_replace(k, '^role:', '')) then raise exception 'hunt_bosses_v2 %: weak_to % is not a role of roles', new.key, k; end if;
+    if regexp_replace(k, '^role:', '') in ('warden', 'medic', 'spotter', 'herald') then
       raise exception 'hunt_bosses_v2 %: weak_to % is a support role with no week rule (no Warden, Medic, Spotter or Herald week)', new.key, k;
     end if;
   end loop;
@@ -513,7 +513,7 @@ begin
       mn := coalesce(nb->'moves'->(m->>'id'), '{}'::jsonb);
       moves := moves || jsonb_build_array(m || (mn - 'apply') || case when m ? 'apply' or mn ? 'apply' then jsonb_build_object('apply', coalesce(m->'apply', '{}'::jsonb) || coalesce(mn->'apply', '{}'::jsonb)) else '{}'::jsonb end);
     end loop;
-    wr := (select substr(q.x, 6) from unnest(rw.weak_to) with ordinality q(x, n) where q.x like 'role:%' order by q.n limit 1);
+    wr := (select regexp_replace(q.x, '^role:', '') from unnest(rw.weak_to) with ordinality q(x, n) where q.x like 'role:%' order by q.n limit 1);
   else
     mech := coalesce(o->'sigs', '[]'::jsonb);
     -- E7 tuning: a tier boss takes only boss mechanics (enemy_mechanics.on_boss)
