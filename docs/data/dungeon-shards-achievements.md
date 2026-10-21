@@ -501,7 +501,7 @@ POST /api/dungeon/auto: plays up to p_max Auto rounds (a useful support, then th
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/dungeon/board, dungeon_view and dungeon_pay: the daily board of a day (default today): the best run of each member, ranked by floor, room, turns, end time. Returns a jsonb array with rank, member and depth.
+GET /api/dungeon/board, dungeon_view and dungeon_pay: the daily board of a day (default today): the best run of each member, ranked by floor, room, turns, end time (an active run: now), then the member id, so a tie always has the same order (board_tie_order.sql). Returns a jsonb array with rank, member and depth.
 
 <a id="fn-dungeon-card-text-bigint"></a>
 
@@ -971,7 +971,7 @@ The Dungeon view without the member card list (key mine). The Home slide reads i
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/gauntlet/board, gauntlet_view and dungeon_pay: the Gauntlet board of a week (default this week). Each member's best run of the week counts. Returns a jsonb array with rank and runs.
+GET /api/gauntlet/board, gauntlet_view and dungeon_pay: the Gauntlet board of a week (default this week). Each member's best run of the week counts, ranked by floor, room, turns, end time (an active run: now), then the member id, so a tie always has the same order (board_tie_order.sql). Returns a jsonb array with rank and runs.
 
 <a id="fn-gauntlet-cfg"></a>
 
