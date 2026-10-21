@@ -157,7 +157,11 @@ const V2_CALLERS = ['combat_v2_status_numbers', 'combat_v2_unit_path', 'combat_v
   'combat_v2_status_strip', 'combat_v2_step_end', 'combat_v2_turn_start', 'combat_v2_confused_target', 'combat_v2_next', 'combat_v2_turn_order',   // E5 combat_v2_status_rules.sql
   'combat_effect_v2_hit', 'combat_effect_v2_basic', 'combat_effect_v2_active', 'combat_v2_card_act',   // E6 combat_v2_abilities.sql
   'ability_v2_pps', 'ability_v2_or', 'ability_v2_clause', 'ability_v2_ally_word', 'ability_v2_options', 'ability_v2_coin', 'combat_effect_v2_has', 'combat_effect_v2_ally_to',
-  'combat_effect_v2_gate', 'combat_effect_v2_count', 'combat_effect_v2_amount', 'subjects_ability_v2_check'];   // T1 combat_v2_ability_builder.sql
+  'combat_effect_v2_gate', 'combat_effect_v2_count', 'combat_effect_v2_amount', 'subjects_ability_v2_check',   // T1 combat_v2_ability_builder.sql
+  'enemy_v2_spec', 'balance_check_enemy_v2', 'enemy_mechanics_check', 'dungeon_monsters_v2_check', 'hunt_bosses_v2_check', 'combat_v2_enemy_numbers', 'combat_v2_mech',
+  'combat_v2_timed', 'combat_v2_timed_any', 'combat_v2_standing_rule', 'combat_v2_neg_kinds', 'combat_v2_healed', 'combat_v2_blocked', 'combat_v2_drop', 'combat_v2_volatile',
+  'combat_v2_pick_card', 'combat_v2_enemy_mult', 'combat_v2_enemy_hit', 'combat_v2_boss_target', 'combat_v2_boss_move', 'combat_v2_enemy_act', 'combat_v2_hunt_boss',
+  'combat_v2_dungeon_foe', 'hunt_boss_v2_card'];   // E7 combat_v2_monsters.sql
 const KEYS = ['v2_hit', 'v2_stats', 'v2_status', 'v2_roles', 'v2_enemy', 'v2_support'];
 const SETUP = String.raw`
   perform set_config('balance.by', 'test', true);

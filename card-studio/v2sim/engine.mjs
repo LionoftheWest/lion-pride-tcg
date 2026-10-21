@@ -352,7 +352,7 @@ export class Battle {
       }
       if (!u.down && u.mech.has('regrowth')) {
         const R = u.P.regrowth; const ref = this.isBoss(u) ? cfg.v2_enemy.boss_heal_ref * (R.boss_heal ?? R.heal) : u.maxHp * R.heal;
-        this.heal(u, ref * (u.hp / u.maxHp < 0.5 ? R.below_half_x : 1));
+        this.heal(u, ref * (u.hp / u.maxHp < cfg.v2_enemy.boss_moves.rage_at ? R.below_half_x : 1)); // the HP line of v1 (boss_moves.rage_at), not a literal (PR E7)
       }
       if (!u.down && u.mech.has('siphon') && this.healedStep > 0) this.heal(u, this.healedStep * u.P.siphon.x);
       for (const [k, s] of Object.entries(u.st)) if (s.until !== undefined && s.until <= this.step) this.remove(u, k);
@@ -584,7 +584,7 @@ export class Battle {
       case 'drain': { const d = this.enemyHit(e, this.pickCard(e), P.drain_x); this.heal(e, e.maxHp * P.drain_heal); return d; }
       case 'stun': { const c = this.pickCard(e); this.enemyHit(e, c, P.stun_x); if (c && !c.down) this.apply(e, c, 'stunned'); return; }
       case 'poison': { const c = this.pickCard(e); this.enemyHit(e, c, P.poison_x); if (c && !c.down) this.apply(e, c, 'poison', { stacks: 1 }); return; }
-      case 'regenerate': this.heal(e, e.maxHp * (e.hp / e.maxHp < 0.5 ? P.regenerate_heal_rage : P.regenerate_heal)); return;
+      case 'regenerate': this.heal(e, e.maxHp * (e.hp / e.maxHp < cfg.v2_enemy.boss_moves.rage_at ? P.regenerate_heal_rage : P.regenerate_heal)); return; // the v1 line (PR E7)
       case 'guard': this.addShield(e, e.maxHp * P.guard); return;
       case 'enrage': this.apply(e, e, 'enraged', { value: cfg.v2_status.enraged.x, dur: cfg.v2_status.enraged.dur }); return;
       case 'curse': { const c = this.pickCard(e); if (c) this.apply(e, c, 'weakened', { value: P.curse_weaken }); return; }
