@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadConfig, loadFixture, patch, HERE } from './util.mjs';
-import { templatePP, classOf, ROLES, makeCard } from './cards.mjs';
+import { templatePP, classOf, ROLES, makeCard, minShareErrors } from './cards.mjs';
 import { loadTeams, loadSet1, hasSet1, ACTIVES_PATH, withSet1, teamSpecs, isCommon, contents, noMetaChecks, measureTeam, teams, BAND, MAX_FIRSTS } from './teams.mjs';
 
 const cfg = loadConfig(), TM = loadTeams();
@@ -26,7 +26,7 @@ test('the repo holds no real actives: the test fixture is synthetic only', () =>
 });
 
 // ---------- data ----------
-test('private actives: 130 approved actives, valid roles, every one at 10 +/- 0.6 PP (P1 price: shield every ally 100 PP per 1.0)', { skip: skipPriv }, () => {
+test('private actives: 130 approved actives, valid roles, every one at 10 +/- 0.6 PP (P1 price: shield every ally 100 PP per 1.0), no condition below limits.min_share', { skip: skipPriv }, () => {
   const c = withSet1(cfg, S1); const keys = Object.keys(S1);
   assert.equal(keys.length, 130);
   for (const k of keys) {
@@ -34,6 +34,7 @@ test('private actives: 130 approved actives, valid roles, every one at 10 +/- 0.
     assert.ok(ROLES.includes(role(k)), `${k}: role ${role(k)}`);
     const pp = templatePP(c, `s1.${k}`);
     assert.ok(Math.abs(pp - cfg.v2_pp.budget) <= cfg.v2_pp.tolerance + 1e-9, `${k}: ${pp.toFixed(2)} PP`);
+    assert.deepEqual(minShareErrors(c, c.v2_templates[`s1.${k}`].blocks), [], `${k}: a condition below limits.min_share`);
   }
 });
 
