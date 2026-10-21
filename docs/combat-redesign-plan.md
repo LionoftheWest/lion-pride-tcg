@@ -469,11 +469,11 @@ archetype. Today the Dungeon counters cut most archetypes by only 2% to 6% [T], 
 ### 8.4 The weekly Hunt boss template [P]
 
 The boss card shows three lines, all icons with one-line tooltips:
-1. **Weak to:** 1 to 3 rule tags (today's rule, rule tags only).
+1. **Weak to:** 1 to 3 rule tags (today's rule, rule tags only). Built (E7b, Nathan 2026-10-21): ONE role tag a boss (`hunt_bosses_v2.weak_to`), never Warden, Medic, Spotter or Herald, no element or family tag; the fight reads this tag (one source).
 2. **Resists:** 0 to 2 tags and 1 immune status family (for example "Immune: Poison").
 3. **Signature:** 1 passive (Mythic: 2 [T]) that counters 1 archetype, and a **"Bring"** chip with 2 archetypes that it favors.
 
-Rotation rule [P]: the countered archetype is not the same as in the last 2 weeks. The favored archetypes change each week.
+Rotation rule [P]: the countered archetype is not the same as in the last 2 weeks. The favored archetypes change each week. DEFERRED (Nathan 2026-10-21): built with the weekly Hunt spawn (R3), together with the Counters / Bring chips.
 Today's 12 counter bosses keep their moves, renamed into the status families [L moves]. New counter bosses for the families with no
 counter today [P]: a Poison-immune Purify boss, a Mirror Hide + Elusive boss, a Frostborn Frost Aura boss, a Regrowth + Undying boss,
 a Steadfast boss. Names and art are Nathan's choice.
@@ -704,6 +704,7 @@ Each PR: a worktree from the latest `origin/main`, rehearsed on the local copy, 
 | 3 | T1b | The T1 follow-up: the prices of Nathan's 6 decisions of 2026-10-20 (19.4) | SQL = the simulator. a planted fault for each decision fails the test on a green baseline | Low |
 | 3 | T1c | The minimum share of a condition (19.5) | SQL = the simulator. planted faults fail the test on a green baseline | Low |
 | 4 | E7 | Monsters: new passives as data, foe moves, the Hunt boss template, counter bosses | Lab: each passive x each archetype. boss counters golden for v1 unchanged | Medium |
+| 4 | E7b | The E7 follow-up (20.2): monster tuning, the Weak to tags as one source | Lab before / after. SQL = the simulator. a planted fault for each change | Low |
 | 4 | E8 | Auto v2: Dungeon Auto plays each ready card. Hunt auto-pick with role answers and the pair score | Auto reaches 85% or more of a scripted best play | Medium |
 | 4 | E9 | Power number `card_power_v2` and squad value in SQL. client shows it only | rank correlation report. C3 passes | Low |
 | 5 | B1-B10 | Card batches (section 12), data only, pushed after each approval | validator passes every row. `targets` per batch | Low |
@@ -1221,3 +1222,30 @@ Nathan approved question 1 of the T1b PR on 2026-10-20. Needs T1b. No fight read
   has the file, so both sides run the same code: noise).
 - **Open questions** (in the PR): the out-of-line mechanics above (which are Hunt-only, and the numbers of the rest); the `weak_to` tags of the
   16 bosses; the rotation rule (where it is built); the `counters` / `favors` that the plan does not settle.
+
+### 20.2 E7b: the monster tuning and the Weak to tags (`tcg-bot/supabase/combat_v2_monster_tuning.sql`)
+
+Nathan's 7 decisions of 2026-10-21 (the open questions of E7). Needs E7. The flag stays OFF; no v1 function calls a replaced function.
+- **Hunt boss only** (decision 1): Steadfast, Plated, Fade and Brood had `on_foe` false already. Now `combat_v2_dungeon_foe` refuses any mechanic
+  with `on_foe` false, and `combat_v2_hunt_boss` refuses a tier-boss signature with `on_boss` false. The Lab measures each mechanic where it can appear:
+  the Dungeon table has only the 20 foe mechanics, the new Hunt table has the 30 boss mechanics (Heroic tier boss, 8-card squads, casual and active).
+  In the Hunt the four rules cut every squad alike (raw median Steadfast x0.56, Plated x0.55, Fade x0.67, Brood x0.67; the named bosses pay it back
+  with their `hp_factor`) and counter no squad (lowest field-relative cut x0.88 to x0.96). Steadfast favors Pile On (x1.53), Brood favors Cleave (x1.37).
+- **Walls** (decision 2), numbers only: Bulwark every 2nd action 20% -> every 3rd action 18%; Undying 25% -> 15%; Regrowth on a Dungeon foe 1% -> 0.7% a
+  step (the Hunt boss keeps 0.4% of the reference HP). Dungeon median cut before -> after: Bulwark x0.26 -> x0.67, Undying x0.51 -> x0.66, Regrowth
+  x0.51 -> x0.65 (800 fights a cell).
+- **Hard counters** (decision 3): Ironhide, Venom and Slowing get one number each. Ironhide: unless Marked, cards have `crit_x` 0.7 of their crit chance
+  (was: no crit); Crit Chain x0.01 -> x0.69. Venom: a single hit poisons with the chance 0.35 (was: every hit; one draw); Cleave x0.39 -> x0.70.
+  Slowing: an area hit Slows with the chance 0.4 (one draw); Slowing is a Hunt-only mechanic, so it was tuned on the Hunt boss: raw median x0.62 -> x0.76.
+  The value 0 (crit_x) and 1 (chance) give the E7 rule, with no draw. The other counters below x0.5 stay the counter of the day: Toxic-born vs Toxic
+  x0.13, Fireborn vs Wildfire x0.37, Unstoppable vs Lockdown x0.41 (Dungeon); Bulwark, Undying and Regrowth still cut Wall (the weakest squad, 31% with
+  no mechanic) to x0.08, x0.33 and x0.22. Dispeller (Hunt only) is x0.88 or more in the Hunt.
+- **The Weak to tags** (decisions 4 and 6): the 16 primary role tags of Nathan's table in `hunt_bosses_v2.weak_to` and `config.json v2_bosses.<key>.weak_to`.
+  ONE SOURCE: `combat_v2_hunt_boss` puts the role of that tag on the boss (`weak_role`) and refuses `opts.weak_role`; the simulator `makeBoss` does the same
+  (a `weakRole` option stays only for the unnamed tier boss of the experiments). `hunt_bosses_v2_check` refuses a tag that is not a role tag, a second
+  role tag, an unknown role, and Warden, Medic, Spotter or Herald.
+- **The Weak to size** (decision 5), the Lab table (Heroic, the 16 bosses, 300 days a cell): the favored squad's median gain is x1.10 at
+  `weak_role_x` 0.3, x1.16 at 0.5, x1.22 at 0.7 (the 14 damage weeks; the 2 Controller weeks have their own rule and gain x1.05 to x1.07). The balance
+  value stays 0.3; Nathan chooses it from the table.
+- **Deferred** (decision 7): the rotation rule of 8.4 and the Counters / Bring chips: with the weekly Hunt spawn (R3).
+- Proof: in the PR (test-combat-v2-monster-tuning.mjs, the planted faults, the goldens with this file as the candidate, the full local suite).

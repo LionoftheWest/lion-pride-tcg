@@ -10,7 +10,9 @@ const sample = (rng, arr, n) => { const a = [...arr], o = []; while (o.length < 
 // ---------- the Hunt boss ----------
 // boss = a key of v2_bosses (a named boss: resists, signature rules, Mythic rules, counter moves, hp_factor), else the
 // tier boss with `sigs` (or random signatures). HP = tier HP x asc3_hp_x x hp_factor (Nathan approved 2026-10-19).
-// weakRole = a "Weak to: role" week: cards of that role deal +weak_role_x.
+// The "Weak to: role" week: cards of that role deal +weak_role_x. A named boss reads its role from its own Weak to tags (v2_bosses.<key>.weak_to =
+// hunt_bosses_v2.weak_to: one source, E7 tuning); weakRole is only for the unnamed tier boss (an experiment knob: that boss has no row and no Weak to).
+export const weakRoleOf = B => { const t = (B.weak_to || []).find(x => x.startsWith('role:')); return t ? t.slice(5) : null; };
 export const bossKeys = cfg => Object.keys(cfg.v2_bosses).filter(k => !k.startsWith('_'));
 export function bossMechs(cfg, boss, tier) {
   const B = cfg.v2_bosses[boss]; if (!B) throw new Error(`unknown boss ${boss}`);
@@ -21,12 +23,13 @@ export function makeBoss(cfg, tier, { sigs, rng, startFrac, boss, weakRole } = {
   const T = cfg.v2_enemy.hunt[tier]; if (!T) throw new Error(`makeBoss: tier ${tier}`);
   const r = rng || mkRng(1);
   const N = boss ? bossMechs(cfg, boss, tier) : null;
+  if (N && weakRole) throw new Error(`makeBoss: the boss ${boss} reads its Weak to role from v2_bosses.${boss}.weak_to (no weakRole option)`);
   const mech = N ? N.mech : (sigs ?? sample(r, cfg.v2_enemy.signature_pool, T.signatures));
   const [lo, hi] = cfg.v2_enemy.start_hp_frac; const f = startFrac ?? (lo + r() * (hi - lo));
   const hp = T.hp * (cfg.v2_enemy.asc3_hp_x ?? 1) * (N ? N.B.hp_factor ?? 1 : 1);
   return { key: boss ? `boss-${boss}` : `boss-${tier}`, name: N ? N.B.name : `${tier} boss`, maxHp: hp, hp: hp * f, atk: T.atk * T.atk_x * cfg.v2_enemy.hunt_atk_scale,
     def: T.def, evasion: T.evasion, resolve: T.resolve, keen: T.keen, speedBase: T.speed, spdMult: 1, mech, resists: N ? N.resists : [], params: N ? N.params : {},
-    moves2: N ? N.B.moves : null, counterShare: N ? N.B.counter_share ?? 0.4 : 0, weakRole: weakRole || null, healer: mech.includes('regrowth') };
+    moves2: N ? N.B.moves : null, counterShare: N ? N.B.counter_share ?? 0.4 : 0, weakRole: N ? weakRoleOf(N.B) : weakRole || null, healer: mech.includes('regrowth') };
 }
 
 // ---------- Dungeon foes ----------

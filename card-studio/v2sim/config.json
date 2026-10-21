@@ -465,7 +465,9 @@
         "text": "Every 3rd action it removes all its negative statuses."
       },
       "ironhide": {
-        "text": "Cannot be crit unless Marked."
+        "crit_x": 0.7,
+        "text": "Unless Marked, cards have x0.7 of their crit chance against it.",
+        "_tuning": "Nathan approved 2026-10-21 (E7 follow-up): the Lab sets the number (combat_v2_monster_tuning.sql). Was: no crit unless Marked (Crit Chain x0.01 on the guardian)."
       },
       "true_strike": {
         "text": "Its hits cannot be dodged."
@@ -475,11 +477,11 @@
         "text": "Its hits deal x2 to shields."
       },
       "regrowth": {
-        "heal": 0.01,
+        "heal": 0.007,
         "below_half_x": 1,
-        "text": "Hunt boss: heals 0.4% of the reference HP each step. Dungeon foe: 1% of its max HP each step. No x2 below half. Burn halves it.",
+        "text": "Hunt boss: heals 0.4% of the reference HP each step. Dungeon foe: 0.7% of its max HP each step. No x2 below half. Burn halves it.",
         "boss_heal": 0.004,
-        "_tuning": "Nathan approved 2026-10-19 (monsters-v2.md 9.4): boss 1% x2 below half -> 0.4% flat, foes 1% flat."
+        "_tuning": "Nathan approved 2026-10-19 (monsters-v2.md 9.4): boss 1% x2 below half -> 0.4% flat, foes 1% flat. Nathan approved 2026-10-21 (E7 follow-up): the Lab sets the number (combat_v2_monster_tuning.sql). Foes 1% -> 0.7%."
       },
       "frost_aura": {
         "chill": 1,
@@ -495,7 +497,9 @@
       },
       "venom": {
         "poison": 1,
-        "text": "Its single hits Poison the card 1."
+        "chance": 0.35,
+        "text": "Each single hit has a 35% chance to Poison the card 1.",
+        "_tuning": "Nathan approved 2026-10-21 (E7 follow-up): the Lab sets the number (combat_v2_monster_tuning.sql). Was: every single hit (Cleave x0.24 on the guardian)."
       },
       "burning": {
         "burn": 2,
@@ -506,7 +510,9 @@
         "text": "Its hits ignore 50% of card Defense."
       },
       "slowing": {
-        "text": "Its area hits Slow every card hit."
+        "chance": 0.4,
+        "text": "Each area hit has a 40% chance to Slow the card it hits.",
+        "_tuning": "Nathan approved 2026-10-21 (E7 follow-up): the Lab sets the number (combat_v2_monster_tuning.sql). Measured on the Hunt boss (Slowing is a Hunt-only mechanic). Was: every area hit."
       },
       "elusive": {
         "text": "Marks on it fall off at its turn."
@@ -998,17 +1004,19 @@
     "passive_params": {
       "_rule": "Numbers of the new Dungeon passives (not counter mechanics of the teams test, so they are not in v2_enemy.mechanics).",
       "bulwark": {
-        "every": 2,
-        "guard": 0.2,
-        "text": "Every 2nd action is a Guard (20% of its max HP)."
+        "every": 3,
+        "guard": 0.18,
+        "text": "Every 3rd action is a Guard (18% of its max HP).",
+        "_tuning": "Nathan approved 2026-10-21 (E7 follow-up): the Lab sets the number (combat_v2_monster_tuning.sql). Was every 2nd action, 20%."
       },
       "plaguebearer": {
         "poison": 1,
         "text": "Each Poison tick on it puts Poison 1 on a random card."
       },
       "undying": {
-        "hp": 0.25,
-        "text": "Revives once at 25% HP, unless Burning or Poisoned."
+        "hp": 0.15,
+        "text": "Revives once at 15% HP, unless Burning or Poisoned.",
+        "_tuning": "Nathan approved 2026-10-21 (E7 follow-up): the Lab sets the number (combat_v2_monster_tuning.sql). Was 25%."
       },
       "volatile_core": {
         "x": 0.5,
@@ -1995,6 +2003,9 @@
           "x": 0.35,
           "vs_last_debuffer": 2
         }
+      ],
+      "weak_to": [
+        "role:controller"
       ]
     },
     "nightshade": {
@@ -2045,6 +2056,9 @@
             "stacks": 1
           }
         }
+      ],
+      "weak_to": [
+        "role:breaker"
       ]
     },
     "netcode": {
@@ -2082,7 +2096,10 @@
           "tgt": "random"
         }
       ],
-      "_approx": "Nathan 2026-10-19: its rule alone counters Artillery. The counter moves are generic (a hit, an area hit, a heavy hit): the smite moves (Rollback heal, Hitbox Desync, Mirror) and Ping Spike took Party Games to x0.44. hp_factor 0.87 measured with these moves."
+      "_approx": "Nathan 2026-10-19: its rule alone counters Artillery. The counter moves are generic (a hit, an area hit, a heavy hit): the smite moves (Rollback heal, Hitbox Desync, Mirror) and Ping Spike took Party Games to x0.44. hp_factor 0.87 measured with these moves.",
+      "weak_to": [
+        "role:survivor"
+      ]
     },
     "vampire": {
       "name": "Grind Vampire",
@@ -2125,6 +2142,9 @@
             "medic": 2
           }
         }
+      ],
+      "weak_to": [
+        "role:artillery"
       ]
     },
     "warzombie": {
@@ -2176,7 +2196,10 @@
           "dur": 8
         }
       ],
-      "_approx": "Undying (Mythic: revive once at 25% unless Burning or Poisoned) never fires in a Hunt day (the boss does not fall). Its counter move Undying runs as: for 8 steps, each card heal also heals it 10% of that heal."
+      "_approx": "Undying (Mythic: revive once at 25% unless Burning or Poisoned) never fires in a Hunt day (the boss does not fall). Its counter move Undying runs as: for 8 steps, each card heal also heals it 10% of that heal.",
+      "weak_to": [
+        "role:striker"
+      ]
     },
     "maw": {
       "name": "Maw of the Meta",
@@ -2220,6 +2243,9 @@
           "value": 0.2,
           "tgt": "strongest_attacker"
         }
+      ],
+      "weak_to": [
+        "role:cleaver"
       ]
     },
     "smurf": {
@@ -2260,6 +2286,9 @@
           "tgt": "shielded",
           "vs_shielded": 2
         }
+      ],
+      "weak_to": [
+        "role:flurry"
       ]
     },
     "skeleton": {
@@ -2302,6 +2331,9 @@
             "status": "slowed"
           }
         }
+      ],
+      "weak_to": [
+        "role:breaker"
       ]
     },
     "pumpkin": {
@@ -2352,7 +2384,10 @@
           "n": 1
         }
       ],
-      "_approx": "Rollout (Mythic add) runs as Weakened 30% on every card at each Cataclysm. Hotfix: a cure cannot remove that Weakened."
+      "_approx": "Rollout (Mythic add) runs as Weakened 30% on every card at each Cataclysm. Hotfix: a cure cannot remove that Weakened.",
+      "weak_to": [
+        "role:survivor"
+      ]
     },
     "lagspike": {
       "name": "Lagspike Parasite",
@@ -2399,7 +2434,10 @@
           "tgt": "support"
         }
       ],
-      "_approx": "It resists every control, so Desync and Rubberband rarely matter. Rubberband: after a blocked control it acts again (once a step)."
+      "_approx": "It resists every control, so Desync and Rubberband rarely matter. Rubberband: after a blocked control it acts again (once a step).",
+      "weak_to": [
+        "role:finisher"
+      ]
     },
     "banwave": {
       "name": "Ban-Wave Demon",
@@ -2435,6 +2473,9 @@
           "k": "strip",
           "status": "quickened"
         }
+      ],
+      "weak_to": [
+        "role:striker"
       ]
     },
     "zerg": {
@@ -2477,7 +2518,10 @@
           "enrage_on_kill": true
         }
       ],
-      "_approx": "Brood starts at 5 stacks a day (5 is also the cap). A hit by a Cleaver card or a Burn tick removes 1. The Brood move adds 1. hp_factor 0.57 is the proxy value (Brood was not built when it was measured)."
+      "_approx": "Brood starts at 5 stacks a day (5 is also the cap). A hit by a Cleaver card or a Burn tick removes 1. The Brood move adds 1. hp_factor 0.57 is the proxy value (Brood was not built when it was measured).",
+      "weak_to": [
+        "role:cleaver"
+      ]
     },
     "salt_miner": {
       "name": "The Salt Miner",
@@ -2523,6 +2567,9 @@
           "per": 0.02,
           "max": 0.06
         }
+      ],
+      "weak_to": [
+        "role:breaker"
       ]
     },
     "frost_lich": {
@@ -2572,6 +2619,9 @@
           "tgt": "frozen",
           "vs_frozen": 2
         }
+      ],
+      "weak_to": [
+        "role:flurry"
       ]
     },
     "camper_colossus": {
@@ -2616,6 +2666,9 @@
           "k": "area",
           "x": 0.35
         }
+      ],
+      "weak_to": [
+        "role:controller"
       ]
     },
     "hydra": {
@@ -2655,10 +2708,14 @@
           }
         }
       ],
-      "_approx": "Cauterize risk is a display rule (Burn halves its heal, as for every heal), so the Hydra has 3 counter moves."
+      "_approx": "Cauterize risk is a display rule (Burn halves its heal, as for every heal), so the Hydra has 3 counter moves.",
+      "weak_to": [
+        "role:artillery"
+      ]
     },
     "_guard": "A boss Guard (Rattle, Dig In, Ice Wall, Hold: \"Guard 10%\") is 10% of boss_heal_ref (300), not of the boss max HP: the Hunt heals use the same reference (a guard of 10% of 136,000 HP would block a whole day).",
-    "_tuning": "Nathan approved 2026-10-19 (the counter cap x0.65): Hydra Regrow 3% -> 1.5% and Regrowth 0.6% -> 0.4%; Netcode loses its Rollback heal move; Grind Vampire Bloodrot rule 40% -> 60% and its Bloodrot move 10% for 8 steps -> 40% for 4 steps; AFK Warzombie Infect no-heal 8 -> 4 steps and its Undying echo 25% -> 10%. Netcode: all 3 counter moves are generic (Nathan 2026-10-19)."
+    "_tuning": "Nathan approved 2026-10-19 (the counter cap x0.65): Hydra Regrow 3% -> 1.5% and Regrowth 0.6% -> 0.4%; Netcode loses its Rollback heal move; Grind Vampire Bloodrot rule 40% -> 60% and its Bloodrot move 10% for 8 steps -> 40% for 4 steps; AFK Warzombie Infect no-heal 8 -> 4 steps and its Undying echo 25% -> 10%. Netcode: all 3 counter moves are generic (Nathan 2026-10-19).",
+    "_weak_to": "weak_to = the \"Weak to\" rule tags of the boss card (Nathan approved the 16 primary role tags 2026-10-21, ui-audit E7-weak-to). The fight reads the first role: tag (makeBoss; SQL combat_v2_hunt_boss reads hunt_bosses_v2.weak_to): one source."
   },
   "v2_boss_rules": {
     "_rule": "Numbers of the boss rules (signatures, Mythic adds). A rule that changes the cards (bloodrot, brittle, time_lock) works while a unit with it stands. A rule that changes hits on the unit (rollback, mirror_hide, plated, fade) works on that unit.",
@@ -2710,8 +2767,8 @@
       "text": "After a control on it is blocked, it acts again (once a step)."
     },
     "undying": {
-      "hp": 0.25,
-      "text": "Revives once at 25% HP, unless Burning or Poisoned."
+      "hp": 0.15,
+      "text": "Revives once at 15% HP, unless Burning or Poisoned."
     },
     "rollout": {
       "weaken": 0.3,

@@ -72,14 +72,14 @@ export function labChecks(cfg0) {
   { const f = setFoeMech(dummyFoe({ moves: [['idle', 1]], own: [] }), ['plaguebearer']); const b = fight(cfg, [tank(cfg)], [f]); b.enemies[0].st.poison = { stacks: 1, until: 99 }; b.step = 1; b.endStep();
     out.push(C('foe.plaguebearer', 'Plaguebearer: a Poison tick on it puts Poison 1 on a card', 'card Poison 1', `card Poison ${b.cards[0].st.poison?.stacks || 0}`, b.cards[0].st.poison?.stacks === 1)); }
   { const b = fight(cfg, [tank(cfg)], [big({ maxHp: 1000, hp: 1000, mech: ['undying'] }), big({ maxHp: 1000, hp: 1000, mech: ['undying'] })]); const [u1, u2] = b.enemies;
-    b.damage(null, u1, 5000, { tick: true }); const rev = !u1.down && near(u1.hp, 250, 1e-6); b.damage(null, u1, 5000, { tick: true }); const second = u1.down;
+    b.damage(null, u1, 5000, { tick: true }); const rev = !u1.down && near(u1.hp, 150, 1e-6); b.damage(null, u1, 5000, { tick: true }); const second = u1.down;
     u2.st.poison = { stacks: 1, until: 99 }; b.damage(null, u2, 5000, { tick: true });
-    out.push(C('foe.undying', 'Undying: revives once at 25%, not twice, not when Poisoned', 'revive, falls, falls', `${rev ? 'revive' : 'no'}, ${second ? 'falls' : 'stands'}, ${u2.down ? 'falls' : 'stands'}`, rev && second && u2.down)); }
+    out.push(C('foe.undying', 'Undying: revives once at 15% (E7 tuning), not twice, not when Poisoned', 'revive, falls, falls', `${rev ? 'revive' : 'no'}, ${second ? 'falls' : 'stands'}, ${u2.down ? 'falls' : 'stands'}`, rev && second && u2.down)); }
   { const vc = stun => { const b = fight(cfg, [tank(cfg), tank(cfg)], [big({ maxHp: 100, hp: 100, atk: 50, mech: ['volatile_core'] }), big()]); if (stun) b.enemies[0].st.stunned = { until: 99 }; b.damage(null, b.enemies[0], 500, { tick: true }); return b.cards.filter(c => c.hp < c.maxHp).length; };
     const a = vc(false), s = vc(true); out.push(C('foe.volatile', 'Volatile Core: on death it hits every card, unless Stunned', '2, 0', `${a}, ${s}`, a === 2 && s === 0)); }
   { const b = fight(cfg, [tank(cfg, { speedBase: 1 })], [big({ maxHp: 1000, hp: 1000, mech: ['bulwark'], moves: [['idle', 1]], speedBase: 100 })]); b.enemies[0].meter = 0;
-    b.tickStep(); const s1 = b.enemies[0].shield; b.tickStep(); const s2 = b.enemies[0].shield;
-    out.push(C('foe.bulwark', 'Bulwark: every 2nd action is a Guard of 20% max HP', '0, 200', `${s1}, ${s2}`, s1 === 0 && near(s2, 200, 1e-6))); }
+    b.tickStep(); b.tickStep(); const s1 = b.enemies[0].shield; b.tickStep(); const s2 = b.enemies[0].shield;
+    out.push(C('foe.bulwark', 'Bulwark: every 3rd action is a Guard of 18% max HP (E7 tuning)', '0, 180', `${s1}, ${s2}`, s1 === 0 && near(s2, 180, 1e-6))); }
   { const b = fight(cfg, [tank(cfg)], [big({ mech: ['pack'] }), big(), big()]); const m = b.enemyMult(b.enemies[0]);
     out.push(C('foe.pack', 'Pack: +5% ATK per living foe (3 foes = x1.15)', 1.15, +m.toFixed(4), near(m, 1.15, 1e-9))); }
   { const boss = { ...makeBoss(cfg, 'Heroic', { boss: 'nightshade', startFrac: 1 }), counterShare: 1, moves2: [{ id: 'nightshade', k: 'hit', x: 1, tgt: 'random', apply: { status: 'poison', stacks: 1 } }] };
@@ -103,7 +103,7 @@ export function labChecks(cfg0) {
     out.push(C('boss.resists', 'Resists: Exposed on the Warlord is blocked; Tilt (Mythic only) Enrages it', 'blocked, Heroic calm, Mythic Enraged', `${r ? 'landed' : 'blocked'}, Heroic ${tilt ? 'Enraged' : 'calm'}, Mythic ${bm.enemies[0].st.enraged ? 'Enraged' : 'calm'}`, !r && !tilt && !!bm.enemies[0].st.enraged)); }
   { const b = fight(cfg, [tank(cfg)], [makeBoss(cfg, 'Heroic', { sigs: ['regrowth'], startFrac: 0.3 })], { mode: 'hunt' }), d = fight(cfg, [tank(cfg)], [big({ maxHp: 1000, hp: 300, mech: ['regrowth'] })]);
     const bo = b.enemies[0], fo = d.enemies[0]; const h0 = bo.hp, f0 = fo.hp; b.step = 1; b.endStep(); d.step = 1; d.endStep(); const hb = bo.hp - h0, hf = fo.hp - f0;
-    out.push(C('regrowth', 'Regrowth: Hunt boss 0.4% of 3,000 a step (12) and no x2 below half; foe 1% of its max HP', '12, 10', `${hb.toFixed(2)}, ${hf.toFixed(2)}`, near(hb, 12, 1e-6) && near(hf, 10, 1e-6))); }
+    out.push(C('regrowth', 'Regrowth: Hunt boss 0.4% of 3,000 a step (12) and no x2 below half; foe 0.7% of its max HP (E7 tuning)', '12, 7', `${hb.toFixed(2)}, ${hf.toFixed(2)}`, near(hb, 12, 1e-6) && near(hf, 7, 1e-6))); }
   { const dmg = (bk, tid) => { const e = bk ? makeBoss(cfg, 'Heroic', { boss: bk, startFrac: 1 }) : big(); e.def = 0; e.evasion = 0; const b = fight(F0, [mk(tid)], [e], { mode: 'hunt' }); const h0 = b.enemies[0].hp; b.doActive(b.cards[0], b.enemies[0]); return h0 - b.enemies[0].hp; };
     const r = dmg('netcode', 'lab.smite') / dmg(null, 'lab.smite');
     out.push(C('boss.rollback', 'Rollback (Netcode Mutant): smites on it deal 50%', 0.5, +r.toFixed(4), near(r, 0.5, 1e-6))); }
@@ -136,6 +136,17 @@ export function labChecks(cfg0) {
     const hit = weak => { const e = big(); e.weakRole = weak; const b = fight(F0, [{ ...dummyCard(F0, { role: 'controller' }), role: 'controller', crit: 0 }], [e]); return b.cardHit(b.cards[0], b.enemies[0], { x: 1, trueStrike: true }).dealt; };
     const s0 = skips(null), s1 = skips('controller'), dmg = hit('controller') / hit(null);
     out.push(C('boss.weak_controller', 'a Controller week boosts control, not damage: a Stun skips 2 boss actions (1 normally), Controller hits x1.00', '1, 2, 1.00', `${s0}, ${s1}, ${dmg.toFixed(2)}`, s0 === 1 && s1 === 2 && near(dmg, 1, 1e-9))); }
+  // E7 tuning: a named boss reads its Weak to role from its own tags (one source); the tier boss has none; a weakRole option on a named boss throws
+  { const w = k => makeBoss(cfg, 'Heroic', { boss: k, startFrac: 1 }).weakRole; let threw = false; try { makeBoss(cfg, 'Heroic', { boss: 'zerg', weakRole: 'striker' }); } catch { threw = true; }
+    const tags = bossMechs(cfg, 'zerg', 'Heroic').B.weak_to || [];
+    out.push(C('boss.weak_to', 'Weak to (E7 tuning): Zerg-Rush Queen (role:cleaver) is weak to Cleavers, Warlord (role:controller) to Controllers; the tier boss to none; no weakRole option on a named boss', 'cleaver, controller, -, throws', `${w('zerg')}, ${w('warlord')}, ${makeBoss(cfg, 'Heroic', { sigs: [], startFrac: 1 }).weakRole || '-'}, ${threw ? 'throws' : 'no'}`,
+      w('zerg') === 'cleaver' && tags[0] === 'role:cleaver' && w('warlord') === 'controller' && makeBoss(cfg, 'Heroic', { sigs: [], startFrac: 1 }).weakRole === null && threw)); }
+  // E7 tuning: Venom and Slowing work with their chance (the share of hits that apply the status, 2,000 hits on a card that never falls)
+  { const share = (mech, st, area) => { const b = fight(cfg, [tank(cfg, { maxHp: 1e9, hp: 1e9, ddg: 0 })], [big({ atk: 1, mech: [mech] })]); const c = b.cards[0], e = b.enemies[0]; let n = 0;
+      for (let i = 0; i < 2000; i++) { delete c.st[st]; c.immuneTo = {}; b.enemyHit(e, c, 1, area); if (c.st[st]) n++; } return n / 2000; };
+    const v = share('venom', 'poison', false), s = share('slowing', 'slowed', true), V = cfg.v2_enemy.mechanics;
+    out.push(C('foe.rider_chance', `Venom poisons ${V.venom.chance} of single hits, Slowing Slows ${V.slowing.chance} of area hits (E7 tuning)`, `${V.venom.chance}, ${V.slowing.chance}`, `${v.toFixed(3)}, ${s.toFixed(3)}`,
+      near(v, V.venom.chance, 0.04) && near(s, V.slowing.chance, 0.04) && V.venom.chance < 1 && V.slowing.chance < 1)); }
   { const B = cfg.v2_bosses, mv = (b, id) => (B[b].moves || []).find(m => m.id === id);
     const got = { hydra_regrow: mv('hydra', 'regrow')?.v, hydra_regrowth: B.hydra.params?.regrowth?.boss_heal, netcode_heal_move: !!mv('netcode', 'rollback'), vampire_cut: mv('vampire', 'bloodrot')?.heal_cut, warzombie_infect: mv('warzombie', 'infect')?.heal_cut?.dur, warzombie_echo: mv('warzombie', 'undying')?.v };
     const ok = got.hydra_regrow === 0.015 && got.hydra_regrowth === 0.004 && !got.netcode_heal_move && got.vampire_cut?.x === 0.4 && got.vampire_cut?.dur === 4 && got.warzombie_infect === 4 && got.warzombie_echo === 0.1;

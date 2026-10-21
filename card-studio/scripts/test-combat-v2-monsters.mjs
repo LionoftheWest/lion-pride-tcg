@@ -251,6 +251,8 @@ const SETUP = String.raw`
   drop table if exists public.enemy_mechanics;
   alter table public.balance disable trigger user;
   delete from public.balance where key = 'enemy_v2';
+  -- the E7-era values of v2_enemy and v2_dungeon (V1 puts them back): combat_v2_monster_tuning.sql, applied later on a copy, changed them
+  delete from public.balance where key in ('v2_enemy', 'v2_dungeon');
   alter table public.balance enable trigger user;
   execute $m$${V1}$m$;
   execute $m$${E1}$m$;
@@ -1115,7 +1117,9 @@ const NUMBERS = async () => JSON.parse(await runBlock(String.raw`do $t$ declare 
   b := combat_v2_enemy_numbers();
   raise exception 'RESULT:%', jsonb_build_object('b', b, 'ab', ability_v2_numbers())::text; end $t$;`));
 // the simulator config with the numbers of the database (the balance values replace config.json; ability_v2 as a whole)
-const simCfg = (N) => { const B = { ...N.b }; delete B.enemy_v2; const c = patch(CONFIG, { ...B, v2_pp: N.ab.v2_pp }); c.ability_v2 = JSON.parse(JSON.stringify(N.ab.ability_v2)); return c; };
+const simCfg = (N) => { const B = { ...N.b }; delete B.enemy_v2; const c = patch(CONFIG, { ...B, v2_pp: N.ab.v2_pp }); c.ability_v2 = JSON.parse(JSON.stringify(N.ab.ability_v2));
+  // the rules of this file: Ironhide has no crit, Venom and Slowing work on every hit (combat_v2_monster_tuning.sql, later, added crit_x and chance)
+  const M = c.v2_enemy.mechanics; M.ironhide = { ...M.ironhide, crit_x: 0 }; delete M.venom.chance; delete M.slowing.chance; return c; };
 export async function parity(FS, cfg) {
   let fsame = 0, ftie = 0, facts = 0; const fbad = []; const fev = { end: 0, cap: 0, skip: 0, active: 0, basic: 0, enemy: 0, counter: 0 };
   for (let i = 0; i < FS.length; i += 8) {

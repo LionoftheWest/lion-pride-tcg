@@ -61,6 +61,8 @@ const FAULTS = [
   ['boss.siphon', 'the engine loses Siphon', dropMech('siphon')],
   ['boss.crush', 'the engine loses Crush', dropMech('crush')],
   ['boss.weak_role', 'the weak-to-role bonus is 0', cfgFault({ v2_enemy: { weak_role_x: 0 } })],
+  ['boss.weak_to', 'the named boss loses its Weak to tag (two homes again: a caller must give the role)', cfgFault({ v2_bosses: { zerg: { weak_to: [] } } })],
+  ['foe.rider_chance', 'Venom poisons every single hit again (the chance is lost)', swap('enemyHit', o => function (e, t, x, area, op) { const r = o.call(this, e, t, x, area, op); if (!area && e.mech.has('venom') && !t.down && !t.st.poison) this.apply(e, t, 'poison', { stacks: 1 }); return r; })],
   ['boss.weak_controller', 'a Controller week gives control no extra action', cfgFault({ v2_enemy: { weak_role_rules: { controller: { control_add: 0 } } } })],
   ['boss.cap_numbers', 'the Hydra keeps its old Regrow', cfgFault({ v2_bosses: { hydra: { moves: [{ id: 'regrow', k: 'heal', v: 0.03 }, { id: 'new_head', k: 'extra_action' }, { id: 'bite', k: 'hit', x: 1, tgt: 'random', apply: { status: 'poison', stacks: 1 } }] } } })],
   ['boss.moves', 'one counter move kind has no handler', swap('bossMove', o => function (e, m) { if (m.k === 'charge') throw new Error('no handler: charge'); return o.call(this, e, m); })],

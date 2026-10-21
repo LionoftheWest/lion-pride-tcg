@@ -15,7 +15,7 @@ grant execute on function public.combat_v2_hit(jsonb, jsonb, jsonb) to postgres;
 grant execute on function public.combat_v2_hit(jsonb, jsonb, jsonb) to service_role;
 
 -- @function public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)
--- md5: bc456e1afb479405db97127009027db0   (md5(replace(pg_get_functiondef('public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)'::regprocedure), chr(13), '')))
+-- md5: f4dfcc7c6d771a6bda7be9cb84d82001   (md5(replace(pg_get_functiondef('public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)'::regprocedure), chr(13), '')))
 -- owner: postgres
 CREATE OR REPLACE FUNCTION public.combat_v2_hit(p_att jsonb, p_tgt jsonb, p_ctx jsonb, p_b jsonb)
  RETURNS jsonb
@@ -23,6 +23,7 @@ CREATE OR REPLACE FUNCTION public.combat_v2_hit(p_att jsonb, p_tgt jsonb, p_ctx 
  SET search_path TO 'public'
 AS $function$
 declare
+  ihx numeric;
   h jsonb := p_b->'v2_hit'; st jsonb := p_b->'v2_stats'; ss jsonb := p_b->'v2_status'; ro jsonb := p_b->'v2_roles'; en jsonb := p_b->'v2_enemy';
   bm jsonb := p_b->'v2_enemy'->'boss_moves';
   ctx jsonb := coalesce(p_ctx, '{}'::jsonb);
@@ -100,12 +101,13 @@ begin
     d := combat_v2_draw(draws, jsonb_array_length(used)); used := used || to_jsonb(d);
     roll := (h->>'roll_min')::numeric + d * (h->>'roll_span')::numeric;
     mult := x * roll;
-    -- 3. crit (Ironhide: no crit unless Marked)
-    can_crit := not (tmech ? 'ironhide' and not marked);
+    -- 3. crit (Ironhide, E7 tuning: unless Marked, the crit chance is x ironhide.crit_x; 0 = no crit and no draw)
+    ihx := case when tmech ? 'ironhide' and not marked then coalesce((combat_v2_mech(p_b, p_tgt, 'ironhide')->>'crit_x')::numeric, 0) else 1 end;
+    can_crit := ihx > 0;
     foc := coalesce((combat_v2_status_on(p_att, 'focused', clk)->>'value')::numeric, 0);
     critc := coalesce((p_att->>'crt')::numeric, 0) + coalesce((ctx->>'crit_add')::numeric, 0) + coalesce((ctx->>'crit_bonus')::numeric, 0) + foc
              + case when role = 'striker' then (ro->'striker'->>'crit_add')::numeric * ab else 0 end;
-    critc := least((st->'crt'->>'cap')::numeric + foc, critc);
+    critc := least((st->'crt'->>'cap')::numeric + foc, critc) * ihx;
     if can_crit then
       d := combat_v2_draw(draws, jsonb_array_length(used)); used := used || to_jsonb(d);
       crit := d < critc;

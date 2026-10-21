@@ -124,7 +124,7 @@ export function statusChecks(cfg, n = 4000) {
   const dfn = hits(() => {}, { foe: { def: 0.3 } }); const pr = hits(() => {}, { foe: { def: 0.3 }, hit: { pierce: 1 } });
   out.push(C('defense', 'enemy Defense 30%: 70% damage. Pierce 100%: full damage', '0.70, 1.00', `${(dfn.mean / base.mean).toFixed(3)}, ${(pr.mean / base.mean).toFixed(3)}`, near(dfn.mean / base.mean, 0.7, 0.03) && near(pr.mean / base.mean, 1.0, 0.03)));
   const cr = hits(() => {}, { card: { crit: 0.5 } }); const ih = hits(() => {}, { card: { crit: 0.5 }, foe: { mech: ['ironhide'] } }); const ihm = hits((b, c, e) => b.apply(c, e, 'mark', { value: 0.0001 }), { card: { crit: 0.5 }, foe: { mech: ['ironhide'] } });
-  out.push(C('ironhide', 'Ironhide: no crit, unless Marked (crits per landed hit)', '0.50, 0.00, 0.50', `${cr.crits.toFixed(2)}, ${ih.crits.toFixed(2)}, ${ihm.crits.toFixed(2)}`, near(cr.crits, 0.5, 0.03) && ih.crits === 0 && near(ihm.crits, 0.5, 0.03)));
+  out.push(C('ironhide', 'Ironhide: x0.7 crit chance (E7 tuning), the full chance when Marked (crits per landed hit)', '0.50, 0.35, 0.50', `${cr.crits.toFixed(2)}, ${ih.crits.toFixed(2)}, ${ihm.crits.toFixed(2)}`, near(cr.crits, 0.5, 0.03) && near(ih.crits, 0.35, 0.03) && near(ihm.crits, 0.5, 0.03)));
   // enemy side: dodge, true strike, Weakened enemy, shields, shield break
   const eh = (o = {}, k = n) => { const b = mini(cfg, [dummyCard(cfg, { maxHp: 1e7, hp: 1e7, def: 0, ...o.card })], [dummyFoe({ atk: 100, ...o.foe })], { seed: 5 }); const c = b.cards[0], e = b.enemies[0];
     let land = 0, d = 0; for (let i = 0; i < k; i++) { o.setup?.(b, c, e); const x = b.enemyHit(e, c, 1); d += x; if (x > 0) land++; } return { land: land / k, mean: d / k }; };

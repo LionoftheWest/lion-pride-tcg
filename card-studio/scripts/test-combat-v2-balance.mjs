@@ -35,6 +35,10 @@ const CONFIG = JSON.parse(readFileSync(fileURLToPath(new URL('../v2sim/config.js
 const E6 = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_abilities.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
 const LATER = E6.slice(E6.indexOf('-- @balance-begin'), E6.indexOf('-- @balance-end'));
 if (!LATER.includes('shield_all')) throw new Error('combat_v2_abilities.sql has no balance part between -- @balance-begin and -- @balance-end');
+// The balance part of combat_v2_monster_tuning.sql (the E7 tuning: balance_v2_spec with 3 new leaves, the tuned values) runs after E6 in the block, as on live.
+const TUNE = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_monster_tuning.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
+let LATER2 = TUNE.slice(TUNE.indexOf('-- @balance-begin'), TUNE.indexOf('-- @balance-end'));
+if (!LATER2.includes('create or replace function public.balance_v2_spec')) throw new Error('combat_v2_monster_tuning.sql has no balance part with balance_v2_spec');
 
 const MUT = {
   flag_on: ['\'{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}\',', '\'{"gauntlet": true, "dungeon": false, "hunt": false, "progress": false}\','],
@@ -101,6 +105,8 @@ if (process.env.MUTATE) {
   const m = MUT[process.env.MUTATE];
   if (!m || mig.split(m[0]).length !== 2) throw new Error(`the mutation ${process.env.MUTATE} does not match the migration exactly once`);
   mig = mig.split(m[0]).join(m[1]);
+  // a mutation of the V1 shape text also lands in the copy of balance_v2_spec in the tuning file (it replaces the function after V1)
+  if (LATER2.includes(m[0])) LATER2 = LATER2.split(m[0]).join(m[1]);
 }
 if (['$m$', '$t$', '$p$'].some((x) => mig.includes(x))) throw new Error('the migration must not contain $m$, $t$ or $p$');
 
@@ -139,6 +145,7 @@ begin
   alter table public.balance enable trigger user;
   execute $m$${mig}$m$;
   execute $m$${LATER}$m$;
+  execute $m$${LATER2}$m$;
 
   -- 3. the keys, the notes and the values (the values go to the script, which compares them with config.json)
   for k in select unnest(keys) loop
@@ -197,6 +204,7 @@ begin
   alter table public.balance enable trigger user;
   res := res || jsonb_build_object('case', 'the reader fails closed (12 cases: wrong types, missing, list, scalar, unknown or NULL name, a read error, no row)', 'ok', cardinality(bad) = 0, 'bad', bad);
   execute $m$${mig}$m$;   -- the flag row back (the file inserts it again)
+  execute $m$${LATER2}$m$;   -- the shape of the E7 tuning back (the file put the V1 shape back)
 
   -- 4. the shape and the limits: planted values, each refused by balance_check_combat_v2 alone
   alter table public.balance disable trigger balance_check;

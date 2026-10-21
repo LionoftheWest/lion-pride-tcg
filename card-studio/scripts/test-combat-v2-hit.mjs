@@ -461,6 +461,8 @@ try {
   const B = results.find((r) => r.case === 'NUMBERS').b;
   for (const r of results.filter((x) => x.case !== 'NUMBERS')) { const { case: name, ok, ...rest } = r; say(ok, name, JSON.stringify(rest).slice(0, 900)); }
   const cfg = patch(loadConfig(), B);
+  // the rules of this file: Ironhide has no crit and no crit draw (combat_v2_monster_tuning.sql, later, gave it crit_x; config.json has the new number)
+  cfg.v2_enemy.mechanics.ironhide = { ...cfg.v2_enemy.mechanics.ironhide, crit_x: 0 }; delete cfg.v2_enemy.mechanics.venom.chance; delete cfg.v2_enemy.mechanics.slowing.chance;
 
   // 1. the fixed cases and 5. the refusals (one block)
   const FIX = fixedCases(B);
