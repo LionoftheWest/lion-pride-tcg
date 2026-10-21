@@ -851,7 +851,7 @@ try {
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
   // share and ref are the keys of PR T1 (combat_v2_ability_builder.sql, test-combat-v2-t1.mjs), pp.vs_smite a key of PR T1b (combat_v2_ability_prices.sql,
   // test-combat-v2-t1b.mjs): this file does not add them
-  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(share|ref)\./.test(p) && p !== 'pp.vs_smite'));
+  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(share|ref)\./.test(p) && p !== 'pp.vs_smite' && p !== 'limits.min_share'));
   const lp = [...bal].filter(([p, v]) => cfgL.get(p) !== v).concat([...cfgL].filter(([p]) => !bal.has(p)));
   say(lp.length === 0 && bal.size === 12, `balance ability_v2 = config.json ability_v2 (${bal.size} leaves equal; one number, one home for the simulator and SQL)`, JSON.stringify(lp));
   say(CONFIG.v2_pp.support_pp.shield_all === 100 && AB.v2_pp.support_pp.shield_all === 100, 'v2_pp.support_pp.shield_all is 100 in balance and in config.json (the P1 price, plan 5.2)');

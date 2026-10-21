@@ -50,6 +50,15 @@ export const scaledFields = (b) => (['vs_status', 'consume', 'target_has', 'ally
 //   share.area_payoff) (before T1b: no share.area_payoff, 0).
 export const listShare = (cfg, base, b) => Math.min(1, base + (cfg.ability_v2.ref?.list_extra ?? 0) * ((b.statuses ? b.statuses.length : 1) - 1));
 export const gateShare = (cfg, b) => (b.k === 'self_has' && cfg.ability_v2.share.self_has_each ? cfg.ability_v2.share.self_has_each[b.status] : cfg.ability_v2.share[b.k]);
+// The minimum share (Nathan 2026-10-20, approved after PR T1b; SQL ability_v2_check, combat_v2_min_share.sql): a condition with a measured share (a gate:
+// self_has with the share of its status, enemy_charging, foes_alive, self_shield; the trigger on_kill) below ability_v2.limits.min_share is refused. Such a
+// block costs almost 0 PP and almost never works. Answer: the refused blocks [{block (1 = the first), k, status, share}]; [] = none.
+export const measuredShare = (cfg, b) => (GATES.includes(b.k) ? gateShare(cfg, b) : b.k === 'on_kill' ? cfg.ability_v2.share.on_kill : undefined);
+export function minShareErrors(cfg, blocks) {
+  const m = cfg.ability_v2.limits?.min_share;
+  if (typeof m !== 'number') throw new Error('minShareErrors: config ability_v2 has no limits.min_share');
+  return blocks.flatMap((b, i) => { const s = measuredShare(cfg, b); return typeof s === 'number' && s < m ? [{ block: i + 1, k: b.k, status: b.status, share: s }] : []; });
+}
 export function blockPP(cfg, tid, b) {
   const t = cfg.v2_templates[tid]; const P = cfg.v2_pp, R = P.ref, A = cfg.ability_v2.pp; const C = chargeOf(cfg, tid) + 1;
   const att = classOf(t.role) === 'attacker';

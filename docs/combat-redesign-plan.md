@@ -702,6 +702,7 @@ Each PR: a worktree from the latest `origin/main`, rehearsed on the local copy, 
 | 3 | E6 | Abilities: block rows with PP, `ability_v2_check`, charge, new conditions, triggers `on_crit` / `on_kill`, targets `all_enemies` / `all_allies` | planted bad abilities refused. rider draws after the hit (a mutation fails) | Medium |
 | 3 | T1 | Studio ability builder (12.1) | it refuses what the validator refuses. push `--dry` diff 0 | Low |
 | 3 | T1b | The T1 follow-up: the prices of Nathan's 6 decisions of 2026-10-20 (19.4) | SQL = the simulator. a planted fault for each decision fails the test on a green baseline | Low |
+| 3 | T1c | The minimum share of a condition (19.5) | SQL = the simulator. planted faults fail the test on a green baseline | Low |
 | 4 | E7 | Monsters: new passives as data, foe moves, the Hunt boss template, counter bosses | Lab: each passive x each archetype. boss counters golden for v1 unchanged | Medium |
 | 4 | E8 | Auto v2: Dungeon Auto plays each ready card. Hunt auto-pick with role answers and the pair score | Auto reaches 85% or more of a scripted best play | Medium |
 | 4 | E9 | Power number `card_power_v2` and squad value in SQL. client shows it only | rank correlation report. C3 passes | Low |
@@ -724,6 +725,8 @@ because every later part reads them.
 - Migrations: rehearse with `rehearse-sql.mjs`, apply with `apply-sql.mjs --live` before the code that needs them, then
   `check-schema-drift.mjs --live` = 0 differences. Deploy with `ops/deploy.sh`.
 - Rollback: set the mode's flag OFF. v1 code and data stay until v1 retires (a later cleanup PR after all three modes run on v2).
+- Before Set 1 goes live: the two Combat Lab measurements of 19.5 (L1 the vs_status share with a control partner, L2 the area payoff share
+  with the designed teams) [D Nathan 2026-10-20].
 
 ---
 
@@ -1126,3 +1129,33 @@ md5 of the other 488 public functions is the same after the file. Replaced from 
   live first.
 - **Open questions** (in the PR): the 5 statuses with a self_has share of 0; the measured control share at a support smite (about 0.001)
   against the assumed frozen_share x payoff (0.12); `share.area_payoff` with an area status partner; the two balance leaves that no function reads.
+
+### 19.5 T1c: the minimum share of a condition (`tcg-bot/supabase/combat_v2_min_share.sql`)
+
+Nathan approved question 1 of the T1b PR on 2026-10-20. Needs T1b. No fight reads the validator, the flag stays OFF, and the md5 of the other
+490 public functions is the same after the file. Replaced: `ability_v2_spec` (+ `limits.min_share`) and `ability_v2_check` (+ the rule).
+
+- **The rule.** The validator refuses a condition whose MEASURED share is below `ability_v2.limits.min_share` (0.01, a balance number with
+  the limits 0 to 0.2; 0 turns the rule off). Such a block costs almost 0 PP and almost never works. The conditions with a measured share:
+  the gates `self_has` (`share.self_has_each.<status>`), `enemy_charging`, `foes_alive`, `self_shield`, and the trigger `on_kill`
+  (`share.on_kill`). Today it refuses `self_has` on Stunned, Frozen, Asleep, Paralyzed, Confused (0), Focused (0.004), Burn (0.006),
+  Blinded (0.008) and Exposed (0.009). The error: "block N (self_has stunned): the condition is true at only 0 of the actives (the measured
+  share), below the minimum 0.01 (limits.min_share): ...". These errors come last, so the PP, the card text and the Silver answer stay as before.
+  No `limits.min_share` in the numbers = an exception (it never accepts by a missing number).
+- **Not in the rule:** the assumed reference shares of `v2_pp.ref` (`payoff` 0.6, `frozen_share` x `payoff` 0.12 of target_has, vs_status
+  and the payoffs). They are not measured. L1 below measures the vs_status share.
+- **The simulator** has the same rule (`v2sim/cards.mjs` `minShareErrors`). The template check and the private Set 1 test use it.
+- **Retired but kept:** `pp.sup_vs_k` (since T1b: `pp.vs_smite`) and `share.self_has` (since T1b: `share.self_has_each`). No function reads
+  them. They stay in balance until the balance guard can retire a leaf (`balance_check` refuses a value that loses a leaf).
+
+**Before Set 1 goes live: two Combat Lab measurements** [D Nathan 2026-10-20]. No number changes until they run.
+- **L1 the vs_status share.** Today 0.12 is ASSUMED (`v2_pp.ref.frozen_share` x `payoff`). Measure the share of the actives where the target
+  has a control status when the squad has a partner that applies controls (a Controller), for attackers AND supports. A T1b probe of the 20
+  teams measured about 0.001 at the support smites and about 0.01 at all actives.
+- **L2 the area payoff share.** Today `share.area_payoff` = 0.003, from the standard squads (no area status partner). In the horde rooms of the
+  20 designed teams it measured about 0.15. Measure it again with the designed teams.
+- **Proof** (copy 2, T1b applied): `test-combat-v2-min-share.mjs` PASS 25 (973 abilities: the errors are the T1b errors + the new errors,
+  every other answer is the T1b answer; SQL = the simulator on the refused blocks, also with changed numbers); MUTATE=all: baseline PASS, 14
+  planted faults caught. Goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. After the apply:
+  E6 PASS 59, T1 PASS 38, T1b PASS 28; v2sim `node --test` PASS 187; the `targets` report is the same. Private Set 1: the validator accepts
+  130 of 130 (no Set 1 active has a gate or on_kill). After this PR, SUPERSEDED.md lists `combat_v2_ability_prices.sql`: T1b goes live first.

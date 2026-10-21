@@ -746,7 +746,7 @@ try {
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
   // pp.vs_smite, share.self_has_each, share.area_payoff and ref.list_extra are the keys of PR T1b (combat_v2_ability_prices.sql, test-combat-v2-t1b.mjs)
   const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)),
-    cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(pp\.vs_smite|share\.area_payoff|ref\.list_extra)$|^share\.self_has_each\./.test(p)));
+    cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(pp\.vs_smite|share\.area_payoff|ref\.list_extra|limits\.min_share)$|^share\.self_has_each\./.test(p)));
   const lp = [...bal].filter(([p, v]) => cfgL.get(p) !== v).concat([...cfgL].filter(([p]) => !bal.has(p)));
   say(lp.length === 0 && bal.size === 18, `balance ability_v2 = config.json ability_v2 (${bal.size} leaves equal, with share and ref; one number, one home)`, JSON.stringify(lp));
   const LIB = results.find((r) => r.case === 'LIBRARY').rows;

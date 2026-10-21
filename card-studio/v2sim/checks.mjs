@@ -2,7 +2,7 @@
 // Used by the unit tests (node --test) and by experiment 6 (statuses). Each check returns { id, what, expect, got, ok }.
 import { Battle, CONTROL } from './engine.mjs';
 import { F } from './formulas.mjs';
-import { makeCard, templatePP, templatesOf, ROLES } from './cards.mjs';
+import { makeCard, templatePP, templatesOf, ROLES, minShareErrors } from './cards.mjs';
 import { POLICIES } from './policy.mjs';
 import { mkRng, mean } from './util.mjs';
 
@@ -33,7 +33,8 @@ export function formulaChecks(cfg) {
   out.push(C('level.points', 'level 30 = 30 points', 30, F.levelPoints(cfg, 30), F.levelPoints(cfg, 30) === 30));
   const P = F.poisonTick(cfg, 2, 1000); out.push(C('poison.tick', 'Poison tick = stacks x 2% x ref HP', 40, P, near(P, 40, 1e-9)));
   const Bt = F.burnTick(cfg, 3, 1000); out.push(C('burn.tick', 'Burn tick = stacks x 1.5 x Poison tick', 90, Bt, near(Bt, 90, 1e-9)));
-  for (const role of ROLES) for (const t of templatesOf(cfg, role)) { const pp = templatePP(cfg, t); out.push(C(`pp.${t}`, `${t} costs the 10 PP budget`, cfg.v2_pp.budget, +pp.toFixed(2), Math.abs(pp - cfg.v2_pp.budget) <= cfg.v2_pp.tolerance)); }
+  for (const role of ROLES) for (const t of templatesOf(cfg, role)) { const pp = templatePP(cfg, t); const low = minShareErrors(cfg, cfg.v2_templates[t].blocks).length;
+    out.push(C(`pp.${t}`, `${t} costs the 10 PP budget and has no condition below limits.min_share`, cfg.v2_pp.budget, +pp.toFixed(2), Math.abs(pp - cfg.v2_pp.budget) <= cfg.v2_pp.tolerance && low === 0)); }
   return out;
 }
 

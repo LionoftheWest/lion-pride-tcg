@@ -730,7 +730,7 @@ F-3 4a: NULL when one step of an ability kind is valid for the slot and the fiel
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 THE ABILITY VALIDATOR (plan 5.4): checks an active {name, blocks, silver} for a role: every block built (not reserved) and of the class, fields and statuses (status or statuses, one of the two), once, one main hit for an attacker, smite for a support area / vs_status / payoff_dmg / crit_add, execute for line_status, cure before a shield to the cured ally, an attachment right after a host of its hosts list (one each), apply per on a support value status, at most limits.riders riders (apply, on_crit, on_kill, random_apply), PP = budget +/- tolerance, Silver = type 1 on the amount of one block at budget + silver.pp, the card text words_min to words_max words. Answer {ok, errors, role, class, pp, pps, silver_pp, text, words, forms, silver_text, enables, pays}. Reads only. combat_v2_ability_builder.sql.
+[combat] Combat v2 THE ABILITY VALIDATOR (plan 5.4): checks an active {name, blocks, silver} for a role: every block built (not reserved) and of the class, fields and statuses (status or statuses, one of the two), once, a condition with a measured share (self_has with share.self_has_each of its status, enemy_charging, foes_alive, self_shield, on_kill) at or above limits.min_share, one main hit for an attacker, smite for a support area / vs_status / payoff_dmg / crit_add, execute for line_status, cure before a shield to the cured ally, an attachment right after a host of its hosts list (one each), apply per on a support value status, at most limits.riders riders (apply, on_crit, on_kill, random_apply), PP = budget +/- tolerance, Silver = type 1 on the amount of one block at budget + silver.pp, the card text words_min to words_max words. Answer {ok, errors, role, class, pp, pps, silver_pp, text, words, forms, silver_text, enables, pays}. Raises when balance ability_v2 has no limits.min_share. Reads only. combat_v2_ability_builder.sql, the minimum share: combat_v2_min_share.sql.
 
 <a id="fn-ability-v2-clause-text-text"></a>
 
@@ -860,7 +860,7 @@ F-3 4a: NULL when one step of an ability kind is valid for the slot and the fiel
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] The fixed shape with the limits of the balance key ability_v2 (pp att_k, sup_cycle, sup_vs_k (not read since T1b), vs_smite, line_status, quicken_all_x; silver stars, pp; limits blocks, riders, words_min, words_max; k1_shield; share on_kill, enemy_charging, foes_alive, self_shield, self_has (not read since T1b), self_has_each (one share for each card status), area_payoff; ref per_ally, list_extra). combat_v2_abilities.sql, share and ref: combat_v2_ability_builder.sql, vs_smite, self_has_each, area_payoff, list_extra: combat_v2_ability_prices.sql.
+[combat] The fixed shape with the limits of the balance key ability_v2 (pp att_k, sup_cycle, sup_vs_k (retired but kept: not read since T1b), vs_smite, line_status, quicken_all_x; silver stars, pp; limits blocks, riders, words_min, words_max, min_share; k1_shield; share on_kill, enemy_charging, foes_alive, self_shield, self_has (retired but kept: not read since T1b), self_has_each (one share for each card status), area_payoff; ref per_ally, list_extra). combat_v2_abilities.sql, share and ref: combat_v2_ability_builder.sql, vs_smite, self_has_each, area_payoff, list_extra: combat_v2_ability_prices.sql, min_share: combat_v2_min_share.sql.
 
 <a id="fn-ability-v2-text-text-jsonb-jsonb"></a>
 
