@@ -139,6 +139,9 @@ The choices make each run a set of decisions, not only a check of the collection
   full tie always has the same order on every screen and for the prizes (`board_tie_order.sql`). For two runs of one
   member with the same values, the earlier run counts.
 - Two views of the one board: **Today** and **Season best**.
+- The member's own season best (`dungeon_view_core`, `season_best`): the deepest floor, then the room, then fewer
+  turns. A tie: the earliest day shows, then the lower run id, so two calls always show the same day
+  (`season_best_day_tie.sql`).
 - Each row shows the squad that the member used. Members learn from the best runs.
 
 ## 8. Draft Dungeon (Monday)
