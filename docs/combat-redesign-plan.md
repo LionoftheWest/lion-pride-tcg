@@ -705,6 +705,7 @@ Each PR: a worktree from the latest `origin/main`, rehearsed on the local copy, 
 | 3 | T1c | The minimum share of a condition (19.5) | SQL = the simulator. planted faults fail the test on a green baseline | Low |
 | 4 | E7 | Monsters: new passives as data, foe moves, the Hunt boss template, counter bosses | Lab: each passive x each archetype. boss counters golden for v1 unchanged | Medium |
 | 4 | E7b | The E7 follow-up (20.2): monster tuning, the Weak to tags as one source | Lab before / after. SQL = the simulator. a planted fault for each change | Low |
+| 4 | E7c | The second E7 follow-up (20.3): `weak_role_x` 0.5, the Warlord's own Ironhide | SQL = the simulator. a planted fault for each change | Low |
 | 4 | E8 | Auto v2: Dungeon Auto plays each ready card. Hunt auto-pick with role answers and the pair score | Auto reaches 85% or more of a scripted best play | Medium |
 | 4 | E9 | Power number `card_power_v2` and squad value in SQL. client shows it only | rank correlation report. C3 passes | Low |
 | 5 | B1-B10 | Card batches (section 12), data only, pushed after each approval | validator passes every row. `targets` per batch | Low |
@@ -1246,6 +1247,6 @@ Nathan's 7 decisions of 2026-10-21 (the open questions of E7). Needs E7. The fla
   role tag, an unknown role, and Warden, Medic, Spotter or Herald.
 - **The Weak to size** (decision 5), the Lab table (Heroic, the 16 bosses, 300 days a cell): the favored squad's median gain is x1.10 at
   `weak_role_x` 0.3, x1.16 at 0.5, x1.22 at 0.7 (the 14 damage weeks; the 2 Controller weeks have their own rule and gain x1.05 to x1.07). The balance
-  value stays 0.3; Nathan chooses it from the table.
+  value stays 0.3; Nathan chooses it from the table (he chose 0.5 after the PR: 20.3).
 - **Deferred** (decision 7): the rotation rule of 8.4 and the Counters / Bring chips: with the weekly Hunt spawn (R3).
 - Proof: in the PR (test-combat-v2-monster-tuning.mjs, the planted faults, the goldens with this file as the candidate, the full local suite).
