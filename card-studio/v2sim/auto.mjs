@@ -11,10 +11,12 @@
 //   x (1 + the Weak to bonus of the boss for its role: v2_enemy.weak_role_rules[role].damage_x, else weak_role_x)
 //   x the pair score: pair_floor for a payoff card with no maker of its status among the other picked cards (plan 5.2 floor rule, the effect library
 //     6.2 "pair score"), else 1.
-// The squad: the best `supports` supports (at most max_same_support of one support role) and the best attackers for the other slots; a class that is
-// short fills from the other. The pair score needs the squad, so the pick runs again with the pair scores of the last squad, at most `passes` times
-// (it stops when the squad does not change). Ties: the lower card id first. No random number.
-import { ROLES, makeCard, templatesOf, cardPool } from './cards.mjs';
+// The squad (the shape rule, plan 20.7): the best `supports` supports (at most max_same_support of one support role) and the best attackers for the
+// other slots, a short class filled from the other; then the next support takes the slot of the lowest picked attacker while its score is higher, up
+// to `supports_max` supports (no supports_max, as in the E8 row: supports_max = supports, no swap). The pair score needs the squad, so the pick runs
+// again with the pair scores of the last squad, at most `passes` times (it stops when the squad does not change). Ties: the lower card id first. No
+// random number.
+import { ROLES, ATTACKER_ROLES, makeCard, templatesOf, cardPool } from './cards.mjs';
 import { huntDay, dungeonRun, bossKeys, weakRoleOf, bossMechs } from './modes.mjs';
 import { paysOf, makesOf } from './policy.mjs';
 import { ARCHETYPES, dngPick, strength } from './experiments.mjs';
@@ -39,24 +41,34 @@ export function pairOf(cfg, c, S) {
   if (!pays.length) return 1;
   return S.some((o) => o.id !== c.id && makesOf(cfg, o.role, o.blocks).some((s) => pays.includes(s))) ? 1 : cfg.auto_v2.pick.pair_floor;
 }
-function choose(cfg, pool, score, cap) {
-  const P = cfg.auto_v2.pick;
+function choose(cfg, pool, score, cap, boss = {}) {
+  const P = cfg.auto_v2.pick; const L = P.lab || {};
   const ord = (a, b) => score(b) - score(a) || a.id - b.id;
+  const same = (r) => (L.weak_same !== undefined && r === boss.weak_role ? L.weak_same : P.max_same_support);
   const att = pool.filter((c) => c.class === 'attacker').sort(ord);
   const sup = []; const per = {};
-  for (const c of pool.filter((x) => x.class === 'support').sort(ord)) { if ((per[c.role] || 0) >= P.max_same_support) continue; per[c.role] = (per[c.role] || 0) + 1; sup.push(c); }
-  let nS = Math.min(P.supports, sup.length, cap); const nA = Math.max(0, Math.min(cap - nS, att.length));
+  for (const c of pool.filter((x) => x.class === 'support').sort(ord)) { if ((per[c.role] || 0) >= same(c.role)) continue; per[c.role] = (per[c.role] || 0) + 1; sup.push(c); }
+  // the shape rule (plan 20.7): `supports` supports first, a short class fills from the other; then the next support takes the slot of the lowest
+  // picked attacker while its score is higher, up to supports_max (the E8 row has no supports_max: no swap). Lab-only options (not in
+  // balance and not in SQL; run.mjs shapepick): lab.by_weak fixes the support count by the class of the Weak to role, lab.weak_same is the role limit
+  // of the Weak to role, lab.w weighs a support score in the swap.
+  let lo = P.supports, hi = P.supports_max ?? P.supports;
+  if (L.by_weak && boss.weak_role) lo = hi = L.by_weak[ATTACKER_ROLES.includes(boss.weak_role) ? 'attacker' : 'support'];
+  if (lo > hi) throw new Error('autoPick: supports must not be above supports_max');
+  const w = L.w ?? 1;
+  let nS = Math.min(lo, sup.length, cap); let nA = Math.max(0, Math.min(cap - nS, att.length));
   if (nS + nA < cap) nS = Math.min(sup.length, cap - nA);
+  while (nA > 0 && nS < Math.min(hi, sup.length) && w * score(sup[nS]) > score(att[nA - 1])) { nS++; nA--; }
   return [...att.slice(0, nA), ...sup.slice(0, nS)];
 }
 /** The Hunt auto-pick: {ids (attackers first, each class by score), rows [{id, role, score, base, off, ans, weak, pair}], passes}. */
 export function autoPick(cfg, pool, boss, cap) {
   const B = new Map(pool.map((c) => [c.id, pickBase(cfg, c, boss)]));
-  let S = choose(cfg, pool, (c) => B.get(c.id).base, cap); let passes = 0;
+  let S = choose(cfg, pool, (c) => B.get(c.id).base, cap, boss); let passes = 0;
   for (let p = 0; p < cfg.auto_v2.pick.passes; p++) {
     const prev = S;
     const sc = new Map(pool.map((c) => [c.id, B.get(c.id).base * pairOf(cfg, c, prev)]));
-    S = choose(cfg, pool, (c) => sc.get(c.id), cap); passes = p + 1;
+    S = choose(cfg, pool, (c) => sc.get(c.id), cap, boss); passes = p + 1;
     if (S.map((c) => c.id).sort((a, b) => a - b).join() === prev.map((c) => c.id).sort((a, b) => a - b).join()) break;
   }
   const rows = S.map((c) => { const b = B.get(c.id); const pr = pairOf(cfg, c, S); return { id: c.id, role: c.role, ...b, pair: pr, score: b.base * pr }; });

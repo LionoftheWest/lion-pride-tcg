@@ -1582,7 +1582,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `integer[]`
 - Security definer: no
 
-[combat] Combat v2 Auto: one pass of the Hunt auto-pick (the supports and attackers by score, the support role limit). combat_v2_auto.sql.
+[combat] Combat v2 Auto: one pass of the Hunt auto-pick with the shape rule (plan 20.7): the best `supports` supports (at most max_same_support of one role) and the best attackers, a short class filled from the other; then a support takes the slot of the lowest picked attacker while its score is higher, up to supports_max. combat_v2_autopick_shape.sql.
 
 <a id="fn-combat-v2-autopick-pair-jsonb-jsonb-integer-jsonb"></a>
 

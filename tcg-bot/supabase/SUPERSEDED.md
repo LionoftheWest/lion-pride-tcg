@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (139)
+## Superseded files (140)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -41,6 +41,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `combat_v2_abilities.sql` | SUPERSEDED: reverts `public.ability_v2_block_pp(jsonb, text, numeric, jsonb)` (live = `combat_v2_ability_prices.sql`); reverts `public.ability_v2_check(text, jsonb, jsonb)` (live = `combat_v2_min_share.sql`); reverts `public.ability_v2_field_error(text, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_field_types()` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_numbers()` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_pp(text, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_silver_text(text, jsonb, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.ability_v2_spec()` (live = `combat_v2_min_share.sql`); reverts `public.ability_v2_text(text, jsonb, jsonb)` (live = `combat_v2_ability_builder.sql`); reverts `public.combat_effect_v2_active(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_effect_v2_basic(jsonb, jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_effect_v2_hit(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_action_numbers()` (live = `combat_v2_ability_builder.sql`); reverts `public.combat_v2_card_act(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_status_apply(jsonb, jsonb, text, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.fight_state_check_v2(jsonb)` (live = `combat_v2_monsters.sql`) |  |
 | `combat_v2_ability_builder.sql` | SUPERSEDED: reverts `public.ability_v2_block_pp(jsonb, text, numeric, jsonb)` (live = `combat_v2_ability_prices.sql`); reverts `public.ability_v2_check(text, jsonb, jsonb)` (live = `combat_v2_min_share.sql`); reverts `public.ability_v2_pps(text, jsonb, jsonb)` (live = `combat_v2_ability_prices.sql`); reverts `public.ability_v2_spec()` (live = `combat_v2_min_share.sql`); reverts `public.combat_effect_v2_active(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_effect_v2_gate(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`) |  |
 | `combat_v2_ability_prices.sql` | SUPERSEDED: reverts `public.ability_v2_spec()` (live = `combat_v2_min_share.sql`); reverts `public.combat_effect_v2_active(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`) |  |
+| `combat_v2_auto.sql` | SUPERSEDED: reverts `public.auto_v2_spec()` (live = `combat_v2_autopick_shape.sql`); reverts `public.balance_check_auto_v2()` (live = `combat_v2_autopick_shape.sql`); reverts `public.combat_v2_autopick_choose(jsonb, jsonb, integer, jsonb)` (live = `combat_v2_autopick_shape.sql`) |  |
 | `combat_v2_flags_balance.sql` | SUPERSEDED: reverts `public.balance_shape_errors(jsonb, jsonb, text)` (live = `combat_v2_testers.sql`); reverts `public.balance_v2_spec(text)` (live = `combat_v2_power.sql`) |  |
 | `combat_v2_hit.sql` | SUPERSEDED: reverts `public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`) |  |
 | `combat_v2_monster_tuning.sql` | SUPERSEDED: reverts `public.balance_v2_spec(text)` (live = `combat_v2_power.sql`) |  |
@@ -177,7 +178,7 @@ a one-time grant or a settings value would run again.
 - `adventure_gate.sql`: balance
 - `auction_confirm_24h.sql`: auctions
 - `card_effects_enable_a1.sql`: effect_primitives
-- `combat_v2_auto.sql`: balance, set_config()
+- `combat_v2_autopick_shape.sql`: balance, set_config()
 - `combat_v2_e7_followup.sql`: balance, set_config()
 - `combat_v2_min_share.sql`: balance, set_config()
 - `combat_v2_power.sql`: balance, set_config()
