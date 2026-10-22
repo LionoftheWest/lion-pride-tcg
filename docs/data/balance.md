@@ -13,6 +13,7 @@ The triggers on `balance` check each change:
 
 - `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type (except the ids of combat_v2.testers, which may be removed: combat_v2_testers.sql), and a bad stars row. Sets updated_at and updated_by.
 - `balance_check_ability_v2` (`balance_check_ability_v2()`): Trigger (before insert, update on balance): the key ability_v2 must match its fixed shape and limits (ability_v2_spec, walked by balance_shape_errors) and words_min must not be above words_max. Every other key passes. combat_v2_abilities.sql.
+- `balance_check_auto_v2` (`balance_check_auto_v2()`): Trigger (before insert, update on balance): the key auto_v2 must match its fixed shape and limits (auto_v2_spec, walked by balance_shape_errors). Every other key passes. combat_v2_auto.sql.
 - `balance_check_boss_counters` (`balance_check_boss_counters()`): Trigger (before insert, update on balance): boss_counters must hold only numbers; share, boss_share and the move shares (heal, shield, empower, expose, smite, share, keep, curse, back) from 0 to 1; rounds, wait, plays, cards and hits whole numbers (plays and hits at least 1); hit sizes and multipliers above 0; the weights add up to more than 0. boss_passives: the counter passive numbers (plague_x, shatterer_x, dispeller_x, juggernaut_x, juggernaut_stun_fail, plague_cleanse) from 0 to 1.
 - `balance_check_combat` (`balance_check_combat()`): Trigger (before insert, update on balance): combat.element_bonus must be a number from 1 to 2, combat.element_penalty a number from 0.5 to 1 and combat.auto_elements true or false (f3_element_bonus.sql, f3_auto_elements.sql). A key that is absent is not checked.
 - `balance_check_combat_v2` (`balance_check_combat_v2()`): Trigger (before insert, update on balance): every combat v2 key must match its fixed shape and limits (balance_v2_spec): no missing, extra or wrong leaf. A key named v2_* with no shape is refused. Extra rules: v2_asc (the curve from 0 to 1, never falling; base not above top; every card rarity has a base or an alias), v2_enemy (the boss move chances add up to 1). The limits of v2_speed keep status_min_x at or below 1 and safety_max_x at or above 1. combat_v2_flags_balance.sql.
@@ -29,7 +30,7 @@ The triggers on `balance` check each change:
 
 ## Keys
 
-[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [welcome_packs](#key-welcome-packs)
+[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [auto_v2](#key-auto-v2), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [welcome_packs](#key-welcome-packs)
 
 <a id="key-ability-v2"></a>
 
@@ -392,6 +393,464 @@ Shape: `object { full_art: array(5) of number, gold: array(5) of number, illustr
     8,
     11
   ]
+}
+```
+
+<a id="key-auto-v2"></a>
+
+### auto_v2
+
+Combat v2 Auto v2 (PR E8, plan 14.1 row E8; combat_v2_auto.sql). fight = the numbers of the fight decision (combat_v2_auto; simulator policy.mjs autov2): hold_max = the ready turns an active may wait; a single shield is useful while an enemy is Charging or a card is below shield_below of its max HP with a shield below shield_have of it; shield_all at shield_all_count cards below shield_all_below; a heal below heal_below; a value status (Exposed, Weakened, Mark, Blinded, Slowed) counts as gone when it ends within refresh steps; a Dungeon kill target has HP + Guard of at most kill_x x the attack; an Empower, Focus or Quicken goes to the free attacker with the most attack x (ready_x when its active is charged) x (meter + 1); a per_kind active waits for per_kind_min harmful statuses on the target; passive_makes = the statuses that a role passive makes (the Spotter basic attack Exposes). pick = the Hunt auto-pick (combat_v2_autopick; auto.mjs autoPick), a card score = its offense (attack x (1 + crit chance x (crit damage - 1)) x speed, plan 2.5) x the role answers x the Weak to bonus x the pair score: supports = the support slots (the rest attackers; a short class fills from the other), max_same_support = the most supports of one role, pair_floor = the factor of a payoff card with no maker of its status among the other picked cards (plan 5.2: at least 80 percent with no partner), passes = the pair passes (supports 4 and max_same_support 1 are measured on the tuning pools of PR E8), answers.<mechanic>.<role> = the measured value of the role against that boss mechanic relative to the field (node card-studio/v2sim/run.mjs answers: the mean of seeds 1 and 7, 800 Hunt days a template; 1 = no answer). config.json auto_v2 has the same value. Nothing reads it until a v2 mode is on. Shape: auto_v2_spec (trigger balance_check_auto_v2).
+
+Shape: `object { fight: object { heal_below: number, hold_max: number, kill_x: number, passive_makes: object { spotter: array(1) of string }, per_kind_min: number, ready_x: number, refresh: number, shield_all_below: number, shield_all_count: number, shield_below: number, shield_have: number }, pick: object { answers: object { bloodrot: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, brittle: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, brood: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, crush: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, dispeller: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, elusive: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, fade: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, frost_aura: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, ironhide: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, mirror_hide: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, permafrost_heart: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, plated: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, purify: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, regrowth: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, rollback: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, rollout: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, rubberband: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, shatter: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, siphon: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, slowing: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, steadfast: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, sunder: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, swarm: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, thick_hide: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, tilt: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, time_lock: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, true_strike: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, undying: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, unstoppable: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, venom: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number } }, max_same_support: number, pair_floor: number, passes: number, supports: number } }`
+
+```json
+{
+  "pick": {
+    "passes": 3,
+    "answers": {
+      "fade": {
+        "medic": 0.95,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1.23,
+        "controller": 1
+      },
+      "tilt": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "brood": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1.1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1.06,
+        "controller": 1
+      },
+      "crush": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 0.91,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "swarm": {
+        "medic": 0.91,
+        "flurry": 1.06,
+        "herald": 0.93,
+        "warden": 0.91,
+        "breaker": 1.05,
+        "cleaver": 1.05,
+        "spotter": 1,
+        "striker": 1.05,
+        "finisher": 1.05,
+        "survivor": 1,
+        "artillery": 0.89,
+        "controller": 1
+      },
+      "venom": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "plated": {
+        "medic": 0.92,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1.12,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "purify": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 0.9,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 0.91
+      },
+      "siphon": {
+        "medic": 0.61,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "sunder": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "brittle": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 0.9,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "elusive": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "rollout": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 0.92,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "shatter": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 0.92,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "slowing": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 0.94,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "undying": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "bloodrot": {
+        "medic": 0.95,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "ironhide": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "regrowth": {
+        "medic": 0.84,
+        "flurry": 1.05,
+        "herald": 1,
+        "warden": 0.9,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1.12,
+        "controller": 0.9
+      },
+      "rollback": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 0.88,
+        "controller": 1
+      },
+      "dispeller": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 0.87,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 0.88,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "steadfast": {
+        "medic": 0.92,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1.09
+      },
+      "time_lock": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 0.95,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "frost_aura": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "rubberband": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "thick_hide": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 0.89,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "mirror_hide": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "true_strike": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "unstoppable": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      },
+      "permafrost_heart": {
+        "medic": 1,
+        "flurry": 1,
+        "herald": 1,
+        "warden": 1,
+        "breaker": 1,
+        "cleaver": 1,
+        "spotter": 1,
+        "striker": 1,
+        "finisher": 1,
+        "survivor": 1,
+        "artillery": 1,
+        "controller": 1
+      }
+    },
+    "supports": 4,
+    "pair_floor": 0.8,
+    "max_same_support": 1
+  },
+  "fight": {
+    "kill_x": 0.9,
+    "ready_x": 1.6,
+    "refresh": 1,
+    "hold_max": 2,
+    "heal_below": 0.6,
+    "shield_have": 0.1,
+    "per_kind_min": 2,
+    "shield_below": 0.75,
+    "passive_makes": {
+      "spotter": [
+        "exposed"
+      ]
+    },
+    "shield_all_below": 0.9,
+    "shield_all_count": 2
+  }
 }
 ```
 

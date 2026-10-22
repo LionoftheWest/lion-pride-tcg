@@ -236,6 +236,8 @@ const E6NEW = ['ability_v2_spec', 'balance_check_ability_v2', 'ability_v2_field_
   'ability_v2_pct', 'ability_v2_fill', 'ability_v2_cap', 'ability_v2_vals', 'ability_v2_verb', 'ability_v2_words', 'ability_v2_text', 'ability_v2_silver_text',
   'ability_v2_field_error', 'ability_v2_check', 'combat_v2_action_numbers', 'combat_v2_draws_rest', 'combat_effect_v2_blocks', 'combat_effect_v2_hit',
   'combat_effect_v2_basic', 'combat_effect_v2_active', 'combat_v2_card_act'];
+// The functions of PR E8 (combat_v2_auto.sql) on a copy where it is applied: Auto v2 reads the earlier v2 functions by design (not a v1 caller).
+const E8_AUTO = ['combat_v2_auto', 'combat_v2_auto_target', 'combat_v2_auto_charging', 'combat_v2_auto_pays', 'combat_v2_auto_makes', 'combat_v2_autopick', 'combat_v2_autopick_choose', 'combat_v2_autopick_pair', 'auto_v2_spec', 'balance_check_auto_v2'];
 const q = (a) => a.map((n) => `'${n}'`).join(', ');
 // The state before the file, also when it is already applied: its functions, tables and balance key go, then the chain V1 to T1c runs again (the SETUP of
 // the T1c test: it puts back every function that this file replaces).
@@ -641,7 +643,7 @@ begin
   end loop;
   res := res || jsonb_build_object('case', 'the three tables: a comment on the table and every column; RLS on; no access for anon / authenticated', 'ok', ok, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}]) and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...REPLACED, ...NEW_SIGS])}])
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E8_AUTO)}]) and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...REPLACED, ...NEW_SIGS])}])
      and p.prosrc ~ '${NEW_RE}';
   res := res || jsonb_build_object('case', 'no other function calls the new functions or reads the new tables or enemy_v2 (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on';

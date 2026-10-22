@@ -133,6 +133,8 @@ const E6NEW = ['ability_v2_spec', 'balance_check_ability_v2', 'ability_v2_field_
   'ability_v2_pct', 'ability_v2_fill', 'ability_v2_cap', 'ability_v2_vals', 'ability_v2_verb', 'ability_v2_words', 'ability_v2_text', 'ability_v2_silver_text',
   'ability_v2_field_error', 'ability_v2_check', 'combat_v2_action_numbers', 'combat_v2_draws_rest', 'combat_effect_v2_blocks', 'combat_effect_v2_hit',
   'combat_effect_v2_basic', 'combat_effect_v2_active', 'combat_v2_card_act'];
+// The functions of PR E8 (combat_v2_auto.sql) on a copy where it is applied: Auto v2 reads the earlier v2 functions by design (not a v1 caller).
+const E8_AUTO = ['combat_v2_auto', 'combat_v2_auto_target', 'combat_v2_auto_charging', 'combat_v2_auto_pays', 'combat_v2_auto_makes', 'combat_v2_autopick', 'combat_v2_autopick_choose', 'combat_v2_autopick_pair', 'auto_v2_spec', 'balance_check_auto_v2'];
 const q = (a) => a.map((n) => `'${n}'`).join(', ');
 // The state before the file, also when it is already applied: E6's own SETUP (its table, functions, columns and balance key go), then E6, then this
 // file's functions and the column subjects.ability_v2 go.
@@ -527,7 +529,7 @@ begin
     and coalesce(col_description('public.ability_blocks'::regclass, (select attnum from pg_attribute where attrelid = 'public.ability_blocks'::regclass and attname = 'attach')), '') <> ''
     and coalesce(col_description('public.ability_blocks'::regclass, (select attnum from pg_attribute where attrelid = 'public.ability_blocks'::regclass and attname = 'hosts')), '') <> '', 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E6NEW)}])
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E6NEW)}, ${q(E8_AUTO)}])
      and (p.prosrc ~ '(ability_v2_pps|ability_v2_or|ability_v2_clause|ability_v2_ally_word|ability_v2_options|ability_v2_coin|combat_effect_v2_has|combat_effect_v2_ally_to|combat_effect_v2_gate|combat_effect_v2_count|combat_effect_v2_amount)'
           or p.prosrc ~ 'ability_v2[^_]' or p.prosrc ~ '(ability_v2_check|ability_v2_text|ability_v2_pp|combat_effect_v2_active)');
   res := res || jsonb_build_object('case', 'no other function calls the new or the replaced functions or reads subjects.ability_v2 (no v1 caller; only the T1 and E6 functions)', 'ok', o = '[]'::jsonb, 'got', o);
