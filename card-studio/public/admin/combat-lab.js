@@ -116,7 +116,8 @@ function fightPanel(setup) {
   const squadSeg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Squad' }, autoBtn, pickBtn);
   const cardBox = h('div', { class: 'cl-cards', id: 'cl-cards' });
   const levelIn = h('input', { class: 'field cl-num', id: 'cl-level', type: 'number', min: '0', max: '30', value: '0' });
-  levelIn.addEventListener('change', () => { if (st.player) loadCards(); });
+  let loadedLevel = null; // a blur fires change again: load only when the level moved (a reload moved the Run button under the click)
+  levelIn.addEventListener('change', () => { if (st.player && Number(levelIn.value) !== loadedLevel) loadCards(); });
   const drawSquad = () => {
     autoBtn.className = st.auto ? 'on' : ''; pickBtn.className = st.auto ? '' : 'on';
     autoBtn.textContent = `Auto: best ${size()}`;
@@ -135,9 +136,12 @@ function fightPanel(setup) {
       })));
   };
   async function loadCards() {
-    cardBox.replaceChildren(h('div', { class: 'state' }, h('span', { class: 'spin' }), 'Reading the cards'));
+    loadedLevel = Number(levelIn.value) || 0;
+    if (!cardBox.childNodes.length) cardBox.replaceChildren(h('div', { class: 'state' }, h('span', { class: 'spin' }), 'Reading the cards'));
+    cardBox.classList.add('loading-dim');
     try { st.cards = (await getJ(`${API}/player/${encodeURIComponent(st.player.id)}/cards?level=${Number(levelIn.value) || 0}`)).rows; st.pick = new Set([...st.pick].filter((id) => st.cards.some((c) => c.card_id === id))); drawSquad(); }
     catch (e) { cardBox.replaceChildren(h('span', { class: 'err' }, e.message)); }
+    cardBox.classList.remove('loading-dim');
   }
   function choose(m) {
     st.player = m; st.pick = new Set();
