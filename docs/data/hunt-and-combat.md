@@ -285,7 +285,7 @@ Table. Combat v2 named Hunt bosses (plan 8.4; combat_v2_monsters.sql; config.jso
 | `mythic` | text[] | not null | `'{}'::text[]` | The mechanics that it adds at Mythic. |
 | `mythic_resists` | text[] | not null | `'{}'::text[]` | The resists that it adds at Mythic. |
 | `moves` | jsonb | not null |  | The words of its counter moves [{id, k, tgt, status, statuses, key, role, cls, apply {status}, flags}]; the numbers are in balance enemy_v2.bosses.<key>.moves.<id>. |
-| `weak_to` | text[] | not null | `'{}'::text[]` | The Weak to line: 1 to 3 rule tags (Nathan's choice; empty until he picks them). |
+| `weak_to` | text[] | not null | `'{}'::text[]` | The Weak to line: one role tag role:<role> (Nathan approved the 16 tags 2026-10-21; combat_v2_monster_tuning.sql). The fight reads this role (combat_v2_hunt_boss puts it on the boss as weak_role): one source. Never Warden, Medic, Spotter or Herald (their week changes nothing), no element or family tag. |
 | `note` | text | null |  | What the simulator runs instead of the design. |
 | `updated_at` | timestamp with time zone | not null | `now()` | Set by the trigger on each write. |
 
@@ -1612,7 +1612,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 (plan 8.3): a Dungeon or Gauntlet foe as a v2 unit (the simulator makeFoe): the growth of the floor and room, the room kind, its own passive and aura, the caller's pool passives, its moves; Plated, Fade, Brood. Reads only. combat_v2_monsters.sql.
+[combat] Combat v2 (plan 8.3): a Dungeon or Gauntlet foe as a v2 unit (the simulator makeFoe): the growth of the floor and room, the room kind, its own passive and aura, the caller's pool passives (on_foe mechanics only: a Hunt boss mechanic raises), its moves; Plated, Fade, Brood. Reads only. combat_v2_monster_tuning.sql.
 
 <a id="fn-combat-v2-enemy-act-jsonb-jsonb-jsonb-jsonb"></a>
 
@@ -1632,7 +1632,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 (plan 8): one enemy hit on a card (the simulator enemyHit): combat_v2_hit written on the card, then Crush, the single-hit riders Frost Aura, Venom, Burning, and Slowing on an area hit. Answer {state, dealt, hit, draws}. VOLATILE. combat_v2_monsters.sql.
+[combat] Combat v2 (plan 8.2): one enemy hit on a card (the simulator enemyHit): combat_v2_hit, then Crush on the lost shield, then the single-hit riders Frost Aura, Venom (with the chance venom.chance: one draw below 1) and Burning, or the area rider Slowing (with the chance slowing.chance). Answer {state, dealt, hit, draws}. combat_v2_monster_tuning.sql.
 
 <a id="fn-combat-v2-enemy-mult-jsonb-jsonb-jsonb"></a>
 
@@ -1692,7 +1692,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 hit core (plan 2.2, 4, 6, 8): one hit of a card on an enemy (miss = base + evasion + timed evade + Blinded - acc unless true strike or Marked; roll; crit unless Ironhide and not Marked; Empowered x Dispeller x timed emp_x, Weakened, Chill, Exposed, Mark, Finisher, Cleaver, the Weak-to week, vs_x; Breaker; Mirror Hide on ctx.kind extra, splash, area) or of an enemy on a card (Blinded; Dodge; Swarm; roll; Enraged, boss rage, Weakened, Chill, Pack, Exposed; Sunder, Shatter; ignore_shield). Damage = raw x (1 - def x (1 - pierce)), Warden, Steadfast, Brood, min_dmg, then the shield. The mechanic numbers with the unit's own params (combat_v2_mech). Draw slots card: [miss], roll, [crit]; enemy: [Blinded], [dodge], roll. Answer {hit, miss, dodged, crit, dmg, absorbed, lost, shield_after, hp_after, down, heal, brood_after, mirrored, draws, ...}. Writes nothing. combat_v2_hit.sql, Focused crd: combat_v2_abilities.sql, the enemy mechanics: combat_v2_monsters.sql.
+[combat] Combat v2 hit core (plan 2.2, 4, 6, 8): one hit of a card on an enemy (ctx.side card: miss = base + evasion + timed evade + Blinded - acc unless true strike or Marked; roll; crit min(cap + Focused, crt + adds + Striker), x ironhide.crit_x on an Ironhide target that is not Marked (0 = no crit and no draw), x crd; Mirror Hide on kinds; Empowered (Dispeller, emp_x), Weakened, Chill, Exposed, Mark, Finisher, Cleaver, the Weak to role week, vs_x; Breaker pierce and shield break) or of an enemy on a card (ctx.side enemy: Blinded; Dodge; roll; Enraged, boss rage, Weakened, Chill, Exposed, Pack, Swarm; Sunder, Shatter). Damage = raw x (1 - def x (1 - pierce)), Warden ally_dr, Steadfast, Brood, min_dmg, then the shield. Draw slots in a fixed order (card: [miss], roll, [crit]; enemy: [Blinded], [dodge], roll). Writes nothing; numbers from p_b. No v1 function calls it. combat_v2_monster_tuning.sql.
 
 <a id="fn-combat-v2-hit-jsonb-jsonb-jsonb"></a>
 
@@ -1722,7 +1722,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 (plan 8.4): the Hunt boss of a tier as a v2 unit (the simulator makeBoss): a named boss of hunt_bosses_v2 (sig, Mythic adds, resists, params, counter moves with the numbers of enemy_v2) or the tier boss with opts.sigs; HP = tier HP x asc3_hp_x x hp_factor x opts.start_frac; Plated, Fade, Brood; opts.weak_role. Reads only. combat_v2_monsters.sql.
+[combat] Combat v2 (plan 8.4): the Hunt boss of a tier as a v2 unit (the simulator makeBoss): a named boss of hunt_bosses_v2 (sig, Mythic adds, resists, params, counter moves with the numbers of enemy_v2, weak_role = the role: tag of its weak_to: one source) or the tier boss with opts.sigs (on_boss mechanics only, no weak role); HP = tier HP x asc3_hp_x x hp_factor x opts.start_frac; Plated, Fade, Brood. opts.weak_role raises. Reads only. combat_v2_monster_tuning.sql.
 
 <a id="fn-combat-v2-mech-jsonb-jsonb-text"></a>
 
@@ -2202,7 +2202,7 @@ F-3: the team value of a squad in the auto-pick search (combat_squad_value).
 - Returns: `trigger`
 - Security definer: no
 
-Trigger (before insert, update on hunt_bosses_v2): sig and mythic are boss mechanics of enemy_mechanics, resists are harmful enemy statuses, weak_to are rule tags, every move has a new id, a known kind, no number (numbers go in balance) and its numbers in balance enemy_v2.bosses.<key>.moves (the same moves). combat_v2_monsters.sql.
+Trigger (before insert, update on hunt_bosses_v2): sig and mythic are boss mechanics of enemy_mechanics, resists are harmful enemy statuses, weak_to holds only role tags (no element or family tag), at most one, of a role of roles and never Warden, Medic, Spotter or Herald (no week rule), every move has a new id, a known kind, no number (numbers go in balance) and its numbers in balance enemy_v2.bosses.<key>.moves (the same moves). combat_v2_monster_tuning.sql.
 
 <a id="fn-hunt-card-cap"></a>
 

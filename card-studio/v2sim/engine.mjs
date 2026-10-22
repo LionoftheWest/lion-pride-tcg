@@ -255,10 +255,12 @@ export class Battle {
       if (src.rng() < miss) { this.S.misses++; return { dealt: 0, crit: false, miss: true }; }
     }
     let mult = o.x * (cfg.v2_hit.roll_min + src.rng() * cfg.v2_hit.roll_span);
-    const canCrit = !(tgt.mech.has('ironhide') && !marked);
+    // Ironhide (E7 tuning): unless Marked, the crit chance is x crit_x (0 = no crit and no crit draw: the E7 rule)
+    const ihx = tgt.mech.has('ironhide') && !marked ? tgt.P.ironhide.crit_x || 0 : 1;
+    const canCrit = ihx > 0;
     let critC = src.crit + (o.critAdd || 0) + (o.critBonus || 0) + (src.st.focused ? src.st.focused.v : 0);
     if (src.role === 'striker') critC += R.striker.crit_add * ab;
-    critC = F.critChance(0, critC, cfg.v2_stats.crt.cap + (src.st.focused ? src.st.focused.v : 0));
+    critC = F.critChance(0, critC, cfg.v2_stats.crt.cap + (src.st.focused ? src.st.focused.v : 0)) * ihx;
     const crit = canCrit && src.rng() < critC;
     if (crit) { this.S.crits++; mult *= src.critx + (src.role === 'striker' ? R.striker.critx_add * ab : 0) + (src.st.focused?.crd || 0); }
     if (src.st.empowered) mult *= 1 + src.st.empowered.v * (tgt.mech.has('dispeller') ? tgt.P.dispeller.x : 1) * this.ext(tgt, 'emp_x', 1);
@@ -304,10 +306,12 @@ export class Battle {
     if (e.mech.has('crush') && lost > 0 && !tgt.down) this.damage(e, tgt, lost * e.P.crush.x, { tick: true, ignoreShield: true, pierce: 1, kind: 'crush' });
     if (!area && !tgt.down) {
       if (e.mech.has('frost_aura')) this.apply(e, tgt, 'chill', { stacks: e.P.frost_aura.chill });
-      if (e.mech.has('venom')) this.apply(e, tgt, 'poison', { stacks: e.P.venom.poison });
+      // Venom (E7 tuning): a single hit poisons with the chance venom.chance (1 or no chance = always, with no draw: the E7 rule)
+      if (e.mech.has('venom') && ((e.P.venom.chance ?? 1) >= 1 || e.rng() < e.P.venom.chance)) this.apply(e, tgt, 'poison', { stacks: e.P.venom.poison });
       if (e.mech.has('burning')) this.apply(e, tgt, 'burn', { stacks: e.P.burning.burn });
     }
-    if (area && e.mech.has('slowing') && !tgt.down) this.apply(e, tgt, 'slowed', {});
+    // Slowing (E7 tuning): an area hit Slows with the chance slowing.chance (1 or no chance = always, with no draw: the E7 rule)
+    if (area && e.mech.has('slowing') && !tgt.down && ((e.P.slowing.chance ?? 1) >= 1 || e.rng() < e.P.slowing.chance)) this.apply(e, tgt, 'slowed', {});
     return dealt;
   }
   pickCard(e) {
