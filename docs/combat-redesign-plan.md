@@ -1480,3 +1480,16 @@ The reference is the simulator `v2sim/power.mjs` (`cardPower`, `squadValue`; the
      Recommendation: keep it (the same rule as the pick, plan 5.2), measure again after the Set 1 abilities are pushed.
   4. The scale: the mean Normal 0-star level-0 card shows 100 (the 42 templates: 62 to 134); Normal 2 stars level 15: mean 568; Gold 0 stars level 0: mean
      1016; Gold 5 stars level 30: mean 4201 (2504 to 6097). Recommendation: keep; Nathan may choose another reference with the screen design (U0).
+- **Proof** (copy 2, V1 to E8 and the tester list applied): `test-combat-v2-power.mjs` PASS all 44, before and after the apply: the md5 of the 527 other
+  public functions is the same (the E8 auto-pick included); only `balance_v2_spec` changes, and its spec of every other key is the same; no other function
+  calls a new function; the flag OFF; balance = config.json; the status families = the copy in power.mjs; 8 planted values refused; the file runs twice;
+  17 fixed Power cases and 4 fixed squad values (hand-computed: each term, each family rule, the extra stack, k, scale, the rounding, the pair rule); 5 + 5 refusals; the 7-argument form on 840 cards;
+  monotone in stars and level for the 42 templates x Normal and Gold; SQL = the simulator on 300 random cards end to end, on 300 random abilities with
+  attachments (0 rounding near-ties) and on 120 random squads. MUTATE=all (V2_CARDS=40 V2_SQUADS=20, before the apply): baseline PASS all 44 in the same run,
+  39 of 39 planted faults caught (36 SQL, 3 simulator). Goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
+  Then the file applied (`rehearse-sql.mjs`): grants OK; `test-all-local.mjs` 157 of 163 PASS (2 one-time skipped); the 6 failures were the caller lists of 4
+  earlier v2 tests (the E9 functions added, as E6, T1, E7 and E8 did), the V1 config compare (v2_power is now compared by the E9 test) and SUPERSEDED.md; all 6
+  PASS after the fixes and the regeneration. `test-combat-lab-routes.mjs` PASS 18, `test-combat-lab-nowrite.mjs` PASS 6 (the Power of every squad card and
+  the squad value; nothing written in 22 tables). Combat checks C1 (+ the scope `^card_power_v2`), C2, C3 PASS; `node --test card-studio/v2sim/*.test.mjs`
+  PASS 190.
+- Go-live order: SUPERSEDED.md now lists `combat_v2_testers.sql` (this file replaces `balance_v2_spec`), so the tester file goes live before this file.

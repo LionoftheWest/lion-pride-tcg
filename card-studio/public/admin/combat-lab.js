@@ -241,7 +241,7 @@ function result(r) {
   sp.body.append(...[k.table({ phone: 'recs', title: 'name', rows: r.squad, cols: [
     { key: 'name', label: 'Card', fmt: (s) => h('span', { class: 'cl-cname' }, k.rarityDot(s.rarity), `${s.name} ${'*'.repeat(s.stars || 0)}`) },
     { key: 'role', label: 'Role', fmt: (s) => `${s.v2?.passive?.label || k.label(s.role)} (${s.v2?.class || '-'})` },
-    { key: 'power', label: 'Power', r: true, fmt: (s) => (s.power && s.power.power != null ? h('div', null, h('div', { class: 'num' }, num(s.power.power)), h('div', { class: 'cs-note' }, powerNote(s.power)))
+    { key: 'power', label: 'Power', r: true, fmt: (s) => (s.power && s.power.power != null ? h('div', null, h('div', { class: 'num' }, num(s.power.power)), h('div', { class: 'cs-note' }, ...powerNote(s.power)))
       : s.power?.error ? h('span', { class: 'err' }, s.power.error) : '-') },
     ...STAT.map(([key, lbl, d]) => ({ key, label: lbl, r: true, fmt: (s) => fmt(s.v2?.stats?.[key], d) })),
     { key: 'active', label: 'Active', fmt: (s) => h('div', { class: 'cl-active' }, h('strong', null, s.active.name), s.active.source === 'placeholder' ? h('span', { class: 'cs-note' }, ' placeholder') : null,
@@ -295,7 +295,8 @@ const AUTO_WHY = { charging: 'not charged', ready: 'charged', held: 'held too lo
   hold_execute: 'waits for the HP line', hold_gate: 'waits for its condition', hold_kinds: 'waits for more statuses', hold_charging: 'waits for Charging', no_enemy: 'no enemy' };
 // the parts of a Power number as SQL gives them (card_power_v2): offense, survival, role k, and the value term of a support active (smite, dot, control PP)
 const powerNote = (p) => [`offense ${num(p.offense)}`, `survival ${num(p.survival)}`, `k ${+Number(p.k).toFixed(3)}`,
-  Number(p.v) > 0 ? `active value ${+Number(p.v).toFixed(2)} (PP smite ${+Number(p.pp?.smite).toFixed(1)}, dot ${+Number(p.pp?.dot).toFixed(1)}, control ${+Number(p.pp?.control).toFixed(1)})` : null].filter(Boolean).join(', ');
+  Number(p.v) > 0 ? `active value ${+Number(p.v).toFixed(2)}` : null, Number(p.v) > 0 ? `PP smite ${+Number(p.pp?.smite).toFixed(1)}, dot ${+Number(p.pp?.dot).toFixed(1)}, control ${+Number(p.pp?.control).toFixed(1)}` : null]
+  .filter(Boolean).map((t) => h('div', null, t));
 const pickNote = (x) => [`offense ${num(x.off)}`, Number(x.weak) !== 1 ? `Weak to x${+Number(x.weak).toFixed(2)}` : null, Number(x.ans) !== 1 ? `answers x${+Number(x.ans).toFixed(2)}` : null,
   Number(x.pair) !== 1 ? `pair x${+Number(x.pair).toFixed(2)}` : null].filter(Boolean).join(', ');
 
