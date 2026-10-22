@@ -211,8 +211,6 @@ function fightPanel(setup) {
 
 /* ================= the answer ================= */
 const kpi = (lbl, val, sub) => h('div', { class: 'kpi' }, h('div', { class: 'lbl' }, lbl), h('div', { class: 'val num' }, val), sub ? h('div', { class: 'sub' }, sub) : null);
-const fill = (text, numbers) => String(text || '').replace(/\{([a-z0-9_.]+)\}/g, (m, leaf) => {
-  const v = leaf.split('.').reduce((o, x) => (o && typeof o === 'object' ? o[x] : undefined), numbers || {});
   return v == null ? m : typeof v === 'number' && v > 0 && v < 1 ? `${+(v * 100).toFixed(1)}%` : String(v);
 });
 const stTxt = (s, v) => `${k.label(s)}${typeof v === 'number' ? ` ${+Number(v).toFixed(2)}` : ''}`;
@@ -240,7 +238,7 @@ function result(r) {
     { key: 'role', label: 'Role', fmt: (s) => `${s.v2?.passive?.label || k.label(s.role)} (${s.v2?.class || '-'})` },
     ...STAT.map(([key, lbl, d]) => ({ key, label: lbl, r: true, fmt: (s) => fmt(s.v2?.stats?.[key], d) })),
     { key: 'active', label: 'Active', fmt: (s) => h('div', { class: 'cl-active' }, h('strong', null, s.active.name), s.active.source === 'placeholder' ? h('span', { class: 'cs-note' }, ' placeholder') : null,
-      h('div', null, s.active.text || s.active.error || '-'), h('div', { class: 'cs-note' }, `Charge: ${s.charge_need} own turns. ${fill(s.v2?.passive?.text, s.v2?.passive?.numbers)}`)) },
+      h('div', null, s.active.text || s.active.error || '-'), h('div', { class: 'cs-note' }, `Charge: ${s.charge_need} own turns. ${s.passive_text || ''}`)) },
     { key: 'dealt', label: 'Damage', r: true, fmt: (s) => num(s.dealt) },
   ] })].flat());
 
@@ -259,7 +257,8 @@ function result(r) {
 }
 
 function enemyCard(e, i, name, r) {
-  const mechs = (e.mechanics || []).map((m) => r.mechanics?.[m] ? h('li', null, h('strong', null, r.mechanics[m].label), ` ${fill(r.mechanics[m].text, r.mechanics[m].numbers)}`) : h('li', null, k.label(m)));
+  // the server fills each text with the unit's OWN numbers (a named boss: hunt_boss_v2_card); no number math here
+  const mechs = (e.lines || []).map((m) => h('li', null, h('strong', null, m.label), m.mythic ? h('span', { class: 'cs-note' }, ' (Mythic)') : null, m.text ? ` ${m.text}` : null));
   const bc = i === 0 ? r.boss_card : null;
   const chips = (lbl, list) => (list && list.length ? h('div', { class: 'cl-line' }, h('span', { class: 'lbl' }, lbl), h('div', { class: 'chips' }, list.map((x) => h('span', { class: 'chip' }, typeof x === 'string' ? x : x.label || x.key || JSON.stringify(x))))) : null);
   const moves = (e.moves2 || e.moves || []).map((m) => k.label(m.id || m.k));

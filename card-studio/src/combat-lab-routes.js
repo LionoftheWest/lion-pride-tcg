@@ -216,6 +216,33 @@ begin
 end $t$;`;
 }
 
+// ---------------------------------------------------------------------------------------------------- the mechanic lines (the text with its OWN numbers)
+/** One number of a mechanic text, readable: a count (a whole number of 1 or more) or a "{x} times" factor stays a number (2, 1.4); a share or a
+ * multiplier below 1 is a percent (0 -> 0%, 0.7 -> 70%, 0.004 -> 0.4%). true / false -> yes / no. */
+export function fmtNum(v, times = false) {
+  if (typeof v === 'boolean') return v ? 'yes' : 'no';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '?';
+  if (times || (Number.isInteger(n) && n >= 1)) return String(+n.toFixed(3));
+  return `${+(n * 100).toFixed(1)}%`;
+}
+/** A mechanic text with every {leaf} filled from ITS numbers (a dotted leaf reads a nested number). A leaf with no number shows "?" (never a "{"). */
+export function fillMech(text, numbers) {
+  return String(text || '').replace(/{([a-z0-9_.]+)}( times)?/g, (m, leaf, times) => {
+    const v = leaf.split('.').reduce((o, x) => (o && typeof o === 'object' ? o[x] : undefined), numbers || {});
+    return `${v === undefined || v === null ? '?' : fmtNum(v, !!times)}${times || ''}`;
+  });
+}
+/** The mechanic lines of a named Hunt boss: hunt_boss_v2_card(key, tier).signature, each text filled with the card's OWN numbers (the boss's
+ * params over the base numbers: enemy_v2.bosses.<key>.params, for example the Warlord's Ironhide crit_x 0). */
+export function bossLines(card) {
+  return (card?.signature || []).map((x) => ({ key: x.key, label: x.label, mythic: !!x.mythic, text: fillMech(x.text, x.numbers) }));
+}
+/** The mechanic lines of a unit with no boss card (a Dungeon foe, the tier boss): enemy_mechanics with the balance numbers (they have no params). */
+export function unitLines(unit, mechanics) {
+  return (unit?.mechanics || []).map((k) => { const m = mechanics?.[k]; return m ? { key: k, label: m.label, text: fillMech(m.text, m.numbers) } : { key: k, label: k, text: '' }; });
+}
+
 // ---------------------------------------------------------------------------------------------------- the log and the totals (no combat math: diffs only)
 const unitKey = (ref) => `${ref.side}:${ref.side === 'enemy' ? Number(ref.id) : String(ref.id)}`;
 /** The changes between two snaps: [{unit, hp: [before, after], add: {status: v}, drop: [status], down: true|undefined}]. */
@@ -394,8 +421,11 @@ end $t$;`)).r || [];
     const shaped = shapeFight(raw);
     const squad = raw.squad.map((s) => { const c = pick[s.slot - 1]; return { slot: s.slot, unit: `card:${s.slot}`, card_id: c.card_id, name: c.name, rarity: c.rarity, stars: c.stars,
       role: c.role, active: { ...c.active, text: s.text ?? c.active.text, error: s.text_error || null }, charge_need: s.charge_need, v2: s.v2,
+      passive_text: fillMech(s.v2?.passive?.text, s.v2?.passive?.numbers),
       dealt: shaped.totals.by_card[`card:${s.slot}`] || 0 }; });
-    return { squad, enemies: raw.enemies, boss_card: raw.boss_card, mechanics: raw.mechanics, turn_order: raw.turn_order, start: raw.start, ...shaped };
+    // each enemy with its mechanic lines: the named boss from its own card (its own numbers), the others from enemy_mechanics
+    const enemies = raw.enemies.map((e, i) => ({ ...e, lines: i === 0 && raw.boss_card ? bossLines(raw.boss_card) : unitLines(e, raw.mechanics) }));
+    return { squad, enemies, boss_card: raw.boss_card, mechanics: raw.mechanics, turn_order: raw.turn_order, start: raw.start, ...shaped };
   };
 
   r.post('/fight', wrap(async (req, res) => {
