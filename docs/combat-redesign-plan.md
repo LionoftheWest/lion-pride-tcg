@@ -1624,8 +1624,10 @@ score. No per-boss tuning. The flag `combat_v2` stays OFF; nothing in play calls
   5: 5}). MUTATE=all (before the apply): baseline PASS all 31 in the same run, 24 of 24 planted faults caught (22 SQL, 2 simulator).
   Goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. `test-combat-v2-auto.mjs` (E8) PASS all 86 (its
   config compare now takes the E8 shape: `supports` 4, no `supports_max`). Then the file applied (`rehearse-sql.mjs`): grants OK; the generated files
-  regenerated (`docs/data` with the tester id of the local copy masked: the generator refuses a Discord id, and main has none).
-  `node --test card-studio/v2sim/*.test.mjs` PASS 190.
+  regenerated (`docs/data` with the tester id of the local copy masked: the generator refuses a Discord id, and main has none);
+  `test-all-local.mjs` 164 of 164 PASS (2 one-time skipped), this test and the E8 and E9 tests included. After the rebase on the L1/L2 merge:
+  `test-combat-lab-routes.mjs` PASS 23, `test-combat-lab-nowrite.mjs` PASS 6, `node --test card-studio/v2sim/*.test.mjs` PASS 204, Combat checks
+  C1, C2, C3 PASS.
 - **Go-live order**: SUPERSEDED.md now lists `combat_v2_auto.sql` (this file replaces 3 of its functions), so E8 and E9 go live before this file.
 - **Open** (with the recommendation):
   1. The 3 bosses still below x0.85 on seed 1 (Camper Colossus 0.762, Maw 0.812, AFK Warzombie 0.775): the searched best of Camper Colossus and Maw takes 2
