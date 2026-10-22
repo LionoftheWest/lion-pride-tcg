@@ -5,6 +5,8 @@
 //     RUN. The server runs the REAL v2 SQL functions on the LOCAL copy in a block that rolls back (src/combat-lab-routes.js). This page draws the
 //     answer only: no combat math here. Compare (Hunt): the same squad in v1 (hunt_attack on a private test boss) and in v2.
 //     PR E9: the Power number of each card (card_power_v2, in the card list and the squad table) and the squad value (combat_v2_squad_value) come from SQL.
+//  3. L1 and L2 (plan 19.5, read-only): the last report of `node card-studio/v2sim/run.mjs lab12` (GET /l12): the measured condition shares beside
+//     the numbers that the prices use today. Numbers only.
 // Every text goes in as textContent.
 
 const API = '/api/admin/combat-lab';
@@ -41,6 +43,29 @@ export async function pageCombatLab(main, args, q, helpers) {
     ' ', setup.ready ? k.statusTag('pass', 'v2 functions found') : k.statusTag('fail', setup.error || 'no v2 E7 functions on the local copy')));
   main.append(testersPanel(setup));
   if (setup.ready) main.append(fightPanel(setup));
+  main.append(l12Panel());
+}
+
+/* ================= 3. L1 and L2: the measured condition shares (read-only) ================= */
+function l12Panel() {
+  const p = k.panel('Measurements L1 and L2', { sub: 'The share of the actives where a condition holds, measured in the simulator with the 20 designed teams (plan 19.5). Read-only: the numbers do not change a price.' });
+  const box = h('div', { id: 'cl-l12' }, h('div', { class: 'state' }, h('span', { class: 'spin' }), 'Reading the report'));
+  p.body.append(box);
+  const cell = (x) => (x ? h('div', null, h('div', { class: 'num' }, x.mean.toFixed(4)), h('div', { class: 'cs-note' }, `${x.lo.toFixed(4)} to ${x.hi.toFixed(4)}`)) : '-');
+  getJ(`${API}/l12`).then((r) => {
+    if (!r.report) { box.replaceChildren(h('p', { class: 'subtitle' }, r.error || 'No report yet.', ' Run: ', h('code', null, r.run))); return; }
+    const R = r.report;
+    box.replaceChildren(
+      h('p', { class: 'subtitle' }, `${R.teams} teams, ${R.runs} runs a team and content, seeds ${R.seeds.join(', ')}${R.pairs ? `, ${R.pairs} pairing squads` : ''}. A cell: the mean over the seeds, and the lowest to the highest seed. Report of ${new Date(R.written_at).toLocaleString()}.`),
+      ...[k.table({ phone: 'recs', title: 'label', rows: R.rows, cols: [
+        { key: 'id', label: 'Lab', fmt: (x) => x.id },
+        { key: 'label', label: 'Where', fmt: (x) => x.label },
+        { key: 'now', label: 'Price uses today', r: true, fmt: (x) => (x.now == null ? '-' : h('span', { class: 'num' }, String(Math.round(x.now * 10000) / 10000))) },
+        ...R.policies.map((pol) => ({ key: pol, label: `Measured, policy ${pol}`, r: true, fmt: (x) => cell(x.by[pol]) })),
+      ] })].flat(),
+      h('p', { class: 'cs-note mt' }, 'L1 =the target has a control status (Stunned, Frozen, Sleep, Paralyzed); the price of vs_status uses frozen_share x payoff. L2 = the other enemies with a status / the main target with it, at the area hits; the price uses share.area_payoff.'));
+  }).catch((e) => box.replaceChildren(k.errorState(e, () => k.render())));
+  return p.el;
 }
 
 /* ================= 1. the flag and the testers ================= */

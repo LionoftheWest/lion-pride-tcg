@@ -1164,6 +1164,69 @@ Nathan approved question 1 of the T1b PR on 2026-10-20. Needs T1b. No fight read
   E6 PASS 59, T1 PASS 38, T1b PASS 28; v2sim `node --test` PASS 187; the `targets` report is the same. Private Set 1: the validator accepts
   130 of 130 (no Set 1 active has a gate or on_kill). After this PR, SUPERSEDED.md lists `combat_v2_ability_prices.sql`: T1b goes live first.
 
+### 19.6 L1 and L2: the measurements (simulator only, no number changed)
+
+The two Combat Lab measurements of 19.5 [D Nathan 2026-10-20]. This PR measures them and changes no balance number. The decision is Nathan's.
+
+- **How.** `node card-studio/v2sim/run.mjs lab12 --runs 300 --seeds 5` (`v2sim/lab12.mjs`, about 4 minutes), then `run.mjs lab12prices`.
+  The 20 designed teams (`teams.json`) with the private Set 1 actives, Normal rarity, casual and active investment. The contents: the Hunt day
+  (Heroic), the Dungeon run, a horde room (4 foes), a guardian room, the Gauntlet. Two policies: `best` (the team test) and `autov2` (the
+  Auto of E8, which holds a payoff active while a partner makes its status). Each number = the mean over seeds 1-5 (the lowest to the highest seed).
+  A probe on `Battle.doActive` reads the target BEFORE the blocks run.
+- **The Admin Lab** shows the last report read-only (`GET /api/admin/combat-lab/l12`, the panel "Measurements L1 and L2"): numbers only, no
+  card key, no card text, no database.
+- **L1 the vs_status share** (the target has Stunned, Frozen, Sleep or Paralyzed; assumed 0.12):
+
+  | Group (all contents) | best | autov2 |
+  |---|---|---|
+  | Attackers, squad with a control partner | 0.069 (0.067-0.071) | 0.080 (0.078-0.082) |
+  | Supports, squad with a control partner | 0.012 (0.012-0.012) | 0.034 (0.033-0.034) |
+  | Support smites, squad with a control partner | 0.0012 (0.0008-0.0014) | 0.0012 (0.0008-0.0014) |
+  | Attackers, squad with a Controller partner | 0.226 (0.220-0.231) | 0.334 (0.328-0.340) |
+  | Supports, squad with a Controller partner | 0.049 (0.048-0.049) | 0.163 (0.162-0.164) |
+  | The cards that pay off a control, on their own status | 0.164 (0.159-0.168) | 0.292 (0.287-0.297) |
+  | Pairing: a Set 1 Artillery card beside a Controller (27 squads) | 0.128 (0.126-0.130) | 0.080 (0.078-0.081) |
+
+  Per content (attackers, control partner, best / autov2): Hunt 0.058 / 0.062, Dungeon run 0.061 / 0.065, horde 0.072 / 0.114, guardian
+  0.093 / 0.105, Gauntlet 0.065 / 0.070. The full tables per content are in the report `out/v2sim/lab12.md`.
+  The T1b probe numbers come back: the support smites 0.0012 (T1b: about 0.001), all actives 0.009 / 0.016 (T1b: about 0.01). The 20
+  designed teams never put an Artillery card beside a Controller. So the pairing measures that case.
+- **L2 the area payoff share** (assumed `share.area_payoff` 0.003; the standard squads still measure 0.0030):
+
+  | Content | best | autov2 | area actives a seed |
+  |---|---|---|---|
+  | Dungeon run + horde (the T1b contents) | 0.150 (0.104-0.176) | 0.078 (0.046-0.103) | about 900 |
+  | Horde room | 0.156 (0.109-0.193) | 0.081 (0.048-0.114) | about 760 |
+  | Dungeon run | 0.095 (0.039-0.174) | 0.046 (0-0.073) | about 115 |
+  | Gauntlet | 0.106 (0.042-0.188) | 0.025 (0-0.071) | about 50 |
+  | The area payoff cards, on their paid statuses | 0.336 (0.272-0.378) | 0.003 (0-0.007) | about 190-300 |
+
+  The Hunt and the guardian room have one enemy: no area hits. The T1b number (about 0.15) comes back with `best`. The spread is wide,
+  because few designed teams have an area attacker.
+- **The price effect** (`lab12prices`, the simulator price = SQL `ability_v2_block_pp`). The validator rules that read these numbers: the PP
+  budget 10 +/- 0.6 (no Set 1 active has a Silver). The private Set 1 batch: counts only.
+
+  | Variant | Set 1 prices that change | Largest change | Set 1 accepted (today 130 of 130) | Placeholders (42) |
+  |---|---|---|---|---|
+  | L1 = control payers, autov2 (0.292), both classes | 2 | +2.29 PP | 128 | 2 change, 40 accepted |
+  | L1 = control payers, best (0.164), both classes | 2 | +0.58 PP | 130 | 2 change, 41 accepted |
+  | L1 split: attackers 0.292, supports 0.080 (a new leaf) | 2 | +2.29 PP | 129 | 2 change, 41 accepted |
+  | L1 = pairing, autov2 (0.080), both classes | 2 | -0.54 PP | 130 | 2 change, 42 accepted |
+  | L2 = 0.150 (best) | 2 | +0.12 PP | 130 | 0 change |
+  | L2 = 0.078 (autov2) | 2 | +0.06 PP | 130 | 0 change |
+
+- **Recommendation (for Nathan).**
+  1. L1: keep `frozen_share` 0.2 and `payoff` 0.6 (0.12) for Set 1. The supports beside a Controller measure 0.08-0.13, around 0.12.
+     The attackers that pay off a control measure 0.16 (best) to 0.29 (Auto v2), above 0.12. Only 2 of the 130 Set 1 abilities have that
+     price. At 0.29 they cost up to 2.3 PP more, and 1 or 2 fail the budget. If Nathan wants the attacker number, it needs a new balance leaf
+     (a split by class) and a new design for those abilities. Open: the payer share pools the attackers and the supports.
+  2. L2: keep `share.area_payoff` 0.003. The two policies disagree (0.15 and 0.08 for all statuses, 0.34 and 0.003 for the paid statuses),
+     and the spread is wide. Every measured value moves 2 Set 1 prices by 0.12 PP or less and changes no validator answer.
+- **Proof.** `node --test card-studio/v2sim/lab12.test.mjs`: the baseline (14 checks) green, 12 planted faults (each part of the measurement) caught,
+  green again after. The `price` check fails when the class patch is swapped (a manual mutation). `node --test card-studio/v2sim/*.test.mjs`
+  PASS 204. `node card-studio/scripts/test-combat-lab-routes.mjs` PASS 23 (L12: the route, a bad file, no file, numbers only, no query).
+  CI runs neither test (they need no database: run them by hand).
+
 ## 20. Phase 4 as built (local copy 2 only)
 
 ### 20.1 E7: the monsters (`tcg-bot/supabase/combat_v2_monsters.sql`)

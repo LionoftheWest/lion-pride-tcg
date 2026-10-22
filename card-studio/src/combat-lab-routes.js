@@ -13,6 +13,9 @@
  *   GET  /player/:id/cards  the member's cards with the v2 role and the v2 active (subjects.ability_v2, else the simulator placeholder) and its text
  *   POST /fight             {player, cards: [card ids] | 'auto', mode: hunt|dungeon, boss, tier, start_hp, monster, kind, floor, room, foes, level, seed}
  *                           the squad (v2 stats, role passive, active text), the enemy card, the turn order, the action log and the totals
+ *   GET  /l12               the Combat Lab measurements L1 and L2 (plan 19.5, read-only): the last report of `node card-studio/v2sim/run.mjs lab12`
+ *                           (out/v2sim/lab12.json, made from the private Set 1 actives; the page shows numbers only: no card key, no card text) as rows
+ *                           (v2sim/lab12.mjs l12Rows) with the number that the price uses today. No database. ok with report null when no run exists.
  *   POST /compare           the same body, mode hunt: the same squad in v1 (hunt_attack, the live fight, on a PRIVATE test boss of the tier, a test
  *                           member with copies of the cards, rolled back: the admin sim of src/admin-write.js) and in v2 (this lab), totals side by side
  * The tester list (balance combat_v2.testers) is NOT edited here: the page uses the balance editor (/api/admin/edit: review, test, apply, admin log).
@@ -24,7 +27,23 @@ import express from 'express';
 import { adminGate } from './admin-routes.js';
 import { localCopy, lit, readRes, BadRequest } from './admin-write.js';
 import { roleOf, templateFor, allocate, classOf, ROLES } from '../v2sim/cards.mjs';
-import { loadConfig } from '../v2sim/util.mjs';
+import { loadConfig, HERE as V2SIM } from '../v2sim/util.mjs';
+import { l12Rows } from '../v2sim/lab12.mjs';
+import { readFileSync, statSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+/** The default report file of `run.mjs lab12` (card-studio/out/v2sim, not committed). */
+export const L12_FILE = join(V2SIM, '..', 'out', 'v2sim', 'lab12.json');
+/** The L1/L2 report of a run.mjs lab12 JSON file: null when there is no file; an error text when the file has another shape. */
+export function l12Report(file, cfg) {
+  if (!existsSync(file)) return null;
+  let j; try { j = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { return { error: `the report file is not JSON (${e.message})` }; }
+  const M = j?.measure, S = j?.summary;
+  if (!M || !S || typeof S !== 'object' || !Object.keys(S).length) return { error: 'the report file has no measure and summary (run node card-studio/v2sim/run.mjs lab12 again)' };
+  let rows; try { rows = l12Rows(S, cfg); } catch (e) { return { error: `the report file has another shape (${e.message})` }; }
+  return { written_at: statSync(file).mtime.toISOString(), runs: M.runs, seeds: M.seeds, teams: M.teams, pairs: M.pairs ?? null, standard: M.standard ?? null,
+    policies: Object.keys(S), rows };
+}
 
 export const MODES = ['hunt', 'dungeon'];
 export const MAX_ACTIONS = 600; // a safety bound of the driver loop (a Hunt day of 40 steps has about 100 actions)
@@ -336,7 +355,7 @@ export function shapeFight(raw) {
 }
 
 // ---------------------------------------------------------------------------------------------------- the router
-export function combatLabRouter({ local = localCopy(), env = process.env, cfg = loadConfig() } = {}) {
+export function combatLabRouter({ local = localCopy(), env = process.env, cfg = loadConfig(), l12File = L12_FILE } = {}) {
   const r = express.Router();
   r.use(adminGate(env));
   r.use((req, res, next) => {
@@ -390,6 +409,12 @@ export function combatLabRouter({ local = localCopy(), env = process.env, cfg = 
     if (x.error) return res.json({ ok: true, local: info, ready: false, error: String(x.error).split('\n')[0] });
     res.json({ ok: true, local: info, ready: !!x.has_e7, has_testers: !!x.has_testers, flag: x.flag || null, bosses: x.bosses || [], monsters: x.monsters || [],
       kinds: x.kinds || [], tiers: ['Normal', 'Heroic', 'Mythic'].filter((t) => (x.tiers || []).includes(t)), floors: Number(x.floors) || null, sizes: await sizes() });
+  }));
+
+  // the Combat Lab measurements L1 and L2 (read-only: a file of the simulator, no database)
+  r.get('/l12', wrap(async (req, res) => {
+    const rep = l12Report(l12File, cfg);
+    res.json({ ok: true, report: rep && !rep.error ? rep : null, error: rep?.error || null, run: 'node card-studio/v2sim/run.mjs lab12 --runs 300 --seeds 5' });
   }));
 
   r.get('/players', wrap(async (req, res) => {
