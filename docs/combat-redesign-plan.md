@@ -1634,3 +1634,12 @@ score. No per-boss tuning. The flag `combat_v2` stays OFF; nothing in play calls
      Controllers, which `max_same_support` 1 forbids, and "a role twice" is not better on the tuning set. Recommendation: no per-boss rule; measure
      again when the Set 1 abilities are pushed (the shapes depend on the real actives).
   2. The swap weight (x1.2 is the best held-out variant). Recommendation: keep 1 (no new number); measure it on a new tuning seed before any change.
+     **Measured 2026-10-22 (closed: keep 1).** `run.mjs shapepick` on two new seeds of 32 pools (mean, count below x0.85):
+
+     | Seed | E8 | 3 to 5 (built, weight 1) | 3 to 5, supports x1.2 |
+     |---|---|---|---|
+     | 303 | x0.879 (7) | x0.894 (5) | x0.884 (7) |
+     | 404 | x0.867 (4) | x0.878 (6) | x0.887 (5) |
+
+     The x1.2 weight is worse on seed 303 and better on seed 404, so it is not a stable gain. The weight stays 1. The built rule has a higher mean than E8 on
+     both new seeds. Its count below x0.85 is lower on seed 303 (5 against 7) and higher on seed 404 (6 against 4).
