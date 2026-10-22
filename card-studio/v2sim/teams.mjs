@@ -37,6 +37,25 @@ export function loadSet1() {
   return JSON.parse(readFileSync(p, 'utf8')).cards;
 }
 
+// The Set 1 batch (PR T1: the 130 actives as ability_v2 rows, the 20 approximations rebuilt with the T1 blocks; the file that push-abilities.mjs pushes).
+// PRIVATE too. Path: env V2SIM_SET1_BATCH, else <repo parent>/discord-card-ideas/batches/set1-t1.json. Returns the shape of loadSet1: {key: {role, active, blocks}}.
+export const SET1_BATCH_PATH = () => process.env.V2SIM_SET1_BATCH || join(HERE, '..', '..', '..', 'discord-card-ideas', 'batches', 'set1-t1.json');
+export const hasSet1Batch = () => existsSync(SET1_BATCH_PATH());
+export function set1FromRows(rows) {
+  const out = {};
+  for (const r of rows) {
+    if (!r.key || !r.role || !Array.isArray(r.ability?.blocks)) throw new Error('teams: a Set 1 batch row needs key, role and ability.blocks');
+    if (out[r.key]) throw new Error('teams: a Set 1 batch has a card key twice');
+    out[r.key] = { role: r.role, active: r.ability.name, blocks: r.ability.blocks };
+  }
+  return out;
+}
+export function loadSet1Batch() {
+  const p = SET1_BATCH_PATH();
+  if (!existsSync(p)) throw new Error(`teams: the private Set 1 batch is missing (${p}). Set V2SIM_SET1_BATCH to its path. It is private: never commit it to this repo.`);
+  return set1FromRows(JSON.parse(readFileSync(p, 'utf8')).rows);
+}
+
 // The config with every Set 1 active as template "s1.<card key>". A template that the config already has (a --patch what-if) wins.
 export function withSet1(cfg, set1 = loadSet1()) {
   const out = { ...cfg, v2_templates: { ...cfg.v2_templates } };
