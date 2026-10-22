@@ -265,7 +265,11 @@ export function shapeFight(raw) {
     prev = e.post;
   }
   // step-end ticks on enemies count as damage dealt (Poison, Burn); heals of an enemy between actions count as enemy heals
-  for (const ev of events) if (ev.kind === 'step') for (const c of ev.changes) if (c.hp && c.unit.startsWith('enemy:')) { const loss = c.hp[0] - c.hp[1]; if (loss > 0) toEnemies += loss; else healEnemy -= loss; }
+  // (and step-end ticks on cards count as damage taken)
+  for (const ev of events) if (ev.kind === 'step') for (const c of ev.changes) if (c.hp) {
+    const loss = c.hp[0] - c.hp[1];
+    if (c.unit.startsWith('enemy:')) { if (loss > 0) toEnemies += loss; else healEnemy -= loss; } else if (loss > 0) toCards += loss;
+  }
   const final = f.final || {};
   const cardsDown = Object.entries(final).filter(([k, v]) => k.startsWith('card:') && v[2]).length;
   const enemiesDown = Object.entries(final).filter(([k, v]) => k.startsWith('enemy:') && v[2]).length;
