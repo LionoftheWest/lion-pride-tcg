@@ -1633,6 +1633,7 @@ score. No per-boss tuning. The flag `combat_v2` stays OFF; nothing in play calls
   1. The 3 bosses still below x0.85 on seed 1 (Camper Colossus 0.762, Maw 0.812, AFK Warzombie 0.775): the searched best of Camper Colossus and Maw takes 2
      Controllers, which `max_same_support` 1 forbids, and "a role twice" is not better on the tuning set. Recommendation: no per-boss rule; measure
      again when the Set 1 abilities are pushed (the shapes depend on the real actives).
+     **Measured with the real Set 1 actives 2026-10-22 (20.8): keep the live rule.** No candidate is better on the tuning seed and on every held-out seed.
   2. The swap weight (x1.2 is the best held-out variant). Recommendation: keep 1 (no new number); measure it on a new tuning seed before any change.
      **Measured 2026-10-22 (closed: keep 1).** `run.mjs shapepick` on two new seeds of 32 pools (mean, count below x0.85):
 
@@ -1643,3 +1644,78 @@ score. No per-boss tuning. The flag `combat_v2` stays OFF; nothing in play calls
 
      The x1.2 weight is worse on seed 303 and better on seed 404, so it is not a stable gain. The weight stays 1. The built rule has a higher mean than E8 on
      both new seeds. Its count below x0.85 is lower on seed 303 (5 against 7) and higher on seed 404 (6 against 4).
+
+### 20.8 The Hunt auto-pick with the real Set 1 actives (measurement only)
+
+The next step of 20.7 Open item 1: measure the shape rule with the real Set 1 actives, not the placeholder templates. Nothing is built: no SQL, no balance
+number, no apply. The Set 1 actives are PRIVATE: this section gives counts, roles and ratios only.
+
+- **The Lab** (`node card-studio/v2sim/run.mjs shapepick --set1 --seed S [--ref best|max]`, v2sim `shape.mjs`): the E8 protocol of 20.7 with one change.
+  The pools are drawn from the private Set 1 batch (`batches/set1-t1.json` beside the repo, or `$V2SIM_SET1_BATCH`; 130 cards, 128 with a pullable
+  finish). Each pool card has its Set 1 role and its own active. The pool size (20), the rarity rule (a pullable finish of the live subject), the
+  investment rule, the 16 bosses, the search (24 days, from the E8 pick and the top 8 by attack) and the 150 evaluation days do not change. Tuning seed
+  101; held-out seeds 1, 202, 303 and 404 (2 pools a boss, 32 pools a seed, 160 pools in total). The template mode does not change: seed 1 gives the
+  numbers of 20.7 again (E8 x0.878, live rule x0.897).
+- **One part of the protocol cannot use the real actives**: the reference play `best` scripts only the placeholder template ids (payoff holds, execute
+  lines). On a Set 1 active it does not hold a payoff or a gated active, but Auto v2 does. So the reference is weaker than the protocol intends.
+  Check: `--ref max` (the reference play of each squad = the better of `best` and `autov2`, in the search and in the evaluation). With `--ref max` each
+  mean changes by 0.006 or less, and the choice below does not change. Auto beats the reference in 4 of 160 pools with `best`, and in 4 of 160 with `max`.
+- **Result** (reference `best`; "x0.881 (3)" = the mean ratio and the bosses below x0.85; the last column = the paired mean difference to the live rule
+  over the 160 pools, with the standard error):
+
+  | Candidate | Tuning 101 | Held-out 1 | Held-out 202 | Held-out 303 | Held-out 404 | Against the live rule, 160 pools |
+  |---|---|---|---|---|---|---|
+  | E8: 4 supports, 1 of a role | x0.850 (8) | x0.843 (7) | x0.852 (7) | x0.835 (7) | x0.875 (6) | -0.019 (0.005) |
+  | The Weak to role may take 2 slots | x0.845 (9) | x0.858 (5) | x0.853 (8) | x0.840 (7) | x0.879 (6) | -0.015 (0.006) |
+  | Any support role 2 slots | x0.845 (9) | x0.872 (7) | x0.864 (6) | x0.839 (8) | x0.902 (2) | -0.005 (0.008) |
+  | 3 supports | x0.879 (3) | x0.835 (8) | x0.863 (6) | x0.816 (8) | x0.865 (7) | -0.019 (0.004) |
+  | 5 supports | x0.806 (10) | x0.808 (10) | x0.815 (9) | x0.814 (11) | x0.828 (7) | -0.056 (0.008) |
+  | By the Weak to class: attacker 3, support 5 | x0.873 (4) | x0.821 (9) | x0.862 (5) | x0.835 (6) | x0.863 (5) | -0.019 (0.005) |
+  | By the Weak to class: attacker 3, support 4 | x0.874 (5) | x0.828 (9) | x0.868 (5) | x0.828 (8) | x0.873 (6) | -0.016 (0.004) |
+  | By the Weak to class 3 / 4 + the Weak to role 2 slots | x0.869 (6) | x0.843 (7) | x0.869 (6) | x0.832 (8) | x0.877 (6) | -0.012 (0.005) |
+  | **3 to 5 supports by score (LIVE)** | **x0.881 (3)** | **x0.855 (7)** | **x0.877 (4)** | **x0.854 (6)** | **x0.883 (6)** | 0 |
+  | 3 to 5, a support score x0.8 in the swap | x0.882 (3) | x0.851 (8) | x0.869 (4) | x0.836 (7) | x0.885 (5) | -0.005 (0.002) |
+  | 3 to 5, a support score x1.2 in the swap | x0.886 (3) | x0.859 (5) | x0.882 (4) | x0.851 (7) | x0.879 (6) | +0.002 (0.002) |
+  | 3 to 5 + the Weak to role 2 slots | x0.872 (5) | x0.864 (6) | x0.879 (4) | x0.852 (5) | x0.882 (6) | -0.000 (0.002) |
+  | 2 to 6 (and 2 to 5) by score | x0.881 (5) | x0.850 (7) | x0.887 (6) | x0.852 (6) | x0.873 (7) | -0.001 (0.004) |
+  | 3 to 4 by score | x0.881 (3) | x0.852 (7) | x0.873 (4) | x0.844 (7) | x0.884 (6) | -0.003 (0.002) |
+  | 4 to 5 by score | x0.850 (8) | x0.847 (7) | x0.856 (7) | x0.845 (7) | x0.873 (6) | -0.016 (0.004) |
+
+  The named bosses (the mean of the 2 pools; E8 / live / any support role 2 slots / the Weak to role 2 slots / 3 to 5 + the Weak to role 2 slots):
+
+  | Seed | Camper Colossus | Maw | AFK Warzombie | Skeleton | Pumpkin | Grind Vampire |
+  |---|---|---|---|---|---|---|
+  | 101 | .785/.900/.915/.829/.900 | .858/.947/.812/.858/.947 | .821/.876/.819/.821/.876 | .867/.883/.928/.867/.883 | .798/.885/.777/.798/.885 | .848/.857/.801/.801/.829 |
+  | 1 | .731/.741/.958/.958/.855 | .800/.812/.804/.800/.812 | .905/.827/.757/.905/.827 | .861/.776/.779/.861/.776 | .945/.945/.956/.945/.945 | .830/.875/.953/.858/.930 |
+  | 202 | .906/.877/.960/.951/.889 | .825/.916/.825/.825/.916 | .886/.914/.930/.886/.914 | .872/.866/.840/.872/.866 | .870/.939/.940/.870/.939 | .783/.868/.822/.795/.880 |
+  | 303 | .768/.743/.724/.784/.760 | .901/.898/.886/.901/.898 | .879/.875/.913/.879/.875 | .899/.908/.842/.899/.908 | .755/.823/.808/.755/.823 | .821/.832/.834/.830/.833 |
+  | 404 | .881/.843/.943/.943/.843 | .869/.934/.869/.869/.934 | .906/.899/.912/.906/.899 | .865/.843/.890/.865/.843 | .950/.950/.950/.950/.950 | .908/.910/.957/.919/.893 |
+
+- **The choice**: no candidate has a higher mean AND no more bosses below x0.85 than the live rule on the tuning seed and on all 4 held-out seeds.
+  - The live rule is better than E8 on every seed: +0.019 (standard error 0.005) over the 160 pools. This confirms 20.7 with the real actives.
+  - The closest candidate is the x1.2 swap weight: +0.002 (0.002). It is lower on seeds 303 and 404 (the same result as 20.7 Open item 2).
+  - "Any support role 2 slots" lifts Camper Colossus on 4 of 5 seeds, but its mean is lower on 3 of 5 seeds (-0.005, standard error 0.008).
+    "The Weak to role 2 slots" is lower overall (-0.015, 0.006).
+- **The low bosses change from seed to seed.** Live rule, the seeds (of 5) with the boss below x0.85: Hydra 5, Camper Colossus 3, Rage-Quit Warlord 3,
+  Nightshade 3, Netcode 2, Lagspike 2, Skeleton 2, and 1 each for Maw, AFK Warzombie, Pumpkin, Grind Vampire, Ban-Wave and Zerg. With 2 pools a boss,
+  one pool moves a boss mean by much. Only Hydra (Weak to Artillery) and the two Weak to Controller bosses are low on most seeds.
+- **Pick or pool**: mostly a pick (score) problem. It is not a pool problem, and it is a shape problem only in one case.
+  - The Lab also searches the best squad INSIDE the live shape (3 to 5 supports, 1 of a role), from the live pick, played by Auto v2. It reaches x0.950
+    of the searched best on average (80 boss-seed cells). Only 3 of 80 cells are below x0.85. So the live shape permits a good squad, but the per-card
+    score does not find it.
+  - The pool holds the Weak to role. Controller is the largest Set 1 role (13% of the draw list): the pools of Camper Colossus hold 1.5 to 4 Controllers.
+    Cleaver and Breaker are the smallest roles (5.5% each). For the 6 named bosses, the searched best takes 0 to 2.5 Weak to cards (pool mean), and the
+    live pick 0 to 2.5.
+  - The exception is Camper Colossus on seed 1: the best inside the live shape reaches only x0.772. Its pools hold 4 Controllers, and the searched best
+    takes 2. There, the role limit (`max_same_support` 1) is the cause. On the other 4 seeds the best inside the shape is x0.886 or more.
+  - The searched best squads with the real actives, by support count: {1: 5, 2: 17, 3: 33, 4: 53, 5: 31, 6: 17, 7: 4}; a support role twice or more in
+    101 of 160 pools. The real actives give more supports and more doubles than the templates (20.7).
+- **Recommendation**: keep the live rule (3 to 5 by score, `max_same_support` 1). Build no new shape rule now. The remaining gap is in the per-card
+  score (the E8 offense score does not see the value of a real active). A later step can measure a score change on these Set 1 pools (tuning seed 101,
+  held-out 1, 202, 303 and 404). Do not add a per-boss rule.
+- **Proof**: `shape.test.mjs` (in `node --test card-studio/v2sim/*.test.mjs`): the baseline (6 checks) is green in the same run; 5 of 5 planted faults are
+  caught (the placeholder role, the pullable rule ignored, the own active dropped, the cp_mod ignored, the template draw list in the Set 1 mode); the
+  checks are green again after the faults. The check on the private batch skips with a message when the file is missing (CI).
+  `node --test card-studio/v2sim/*.test.mjs` PASS 212.
+- **Open**: the per-card score on the real actives (above). A scripted reference play for the Set 1 payoffs is not built; this section uses `--ref max`
+  as the check.
