@@ -50,6 +50,9 @@ const T1B = read('combat_v2_ability_prices.sql');
 const T1C = read('combat_v2_min_share.sql');
 const E7 = read('combat_v2_monsters.sql');
 let mig = process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '') : read('combat_v2_monster_tuning.sql');
+// the E7 follow-up test (test-combat-v2-e7-followup.mjs) imports the blocks below and runs them with this file + combat_v2_e7_followup.sql
+export const setMig = (s) => { mig = s; };
+const isMain = /test-combat-v2-monster-tuning\.mjs$/.test(process.argv[1] || '');
 
 const MUT = {
   // Ironhide crit_x (combat_v2_hit)
@@ -99,7 +102,7 @@ const MUT = {
 };
 
 
-if (process.env.MUTATE === 'all') {
+if (isMain && process.env.MUTATE === 'all') {
   let ok = true;
   // one run at a time by default (MUT_JOBS=1): each block replaces the same functions (the chain runs again in it) and holds their locks until its
   // rollback, so parallel runs wait for each other and can deadlock (measured 2026-10-21: 4 jobs took 10 minutes for 4 runs; one run alone 88 s).
@@ -133,7 +136,7 @@ if (process.env.MUTATE === 'all') {
   console.log(ok ? `mutations: baseline PASS, all ${caughtN} of ${Object.keys(MUT).length} caught` : `mutations: FAIL (a red baseline or a mutation not caught: ${caughtN} of ${Object.keys(MUT).length} caught)`);
   process.exit(ok ? 0 : 1);
 }
-if (process.env.MUTATE) {
+if (isMain && process.env.MUTATE) {
   const m = MUT[process.env.MUTATE];
   const n = !m ? 0 : m[0] instanceof RegExp ? (mig.match(new RegExp(m[0].source, 'g')) || []).length : mig.split(m[0]).length - 1;
   if (n !== 1) throw new Error(`the mutation ${process.env.MUTATE} does not match the migration exactly once (${n})`);
@@ -160,7 +163,7 @@ const E6NEW = ['ability_v2_spec', 'balance_check_ability_v2', 'ability_v2_field_
 const q = (a) => a.map((n) => `'${n}'`).join(', ');
 // The state before the file, also when it is already applied: the E7 functions, tables and balance key go, v2_enemy and v2_dungeon go (V1 puts back the
 // E7-era values), then the chain V1 to T1c and E7 runs again (the SETUP of the E7 test + E7).
-const SETUP = String.raw`
+export const SETUP = String.raw`
   perform set_config('balance.by', 'test', true);
   execute $d$do $x$ declare f text; begin
     for f in select p.oid::regprocedure::text from pg_proc p where p.pronamespace = 'public'::regnamespace
@@ -324,7 +327,7 @@ export const state = (sc) => ({
   marks: {}, facts: { passives: [], cards: {} }, ext: sc.ext || {} });
 
 // ---------------------------------------------------------------------------------------------------------------- the SQL fight driver
-const FIGHT_DRIVER = String.raw`
+export const FIGHT_DRIVER = String.raw`
   create or replace function pg_temp.e7sum(s jsonb) returns jsonb language sql as $x$
     select jsonb_build_object('clock', s->'clock',
       'cards', coalesce((select jsonb_object_agg(c.key, jsonb_build_object('hp', c.value->'hp', 'down', c.value->'down', 'status', c.value->'status',
@@ -642,7 +645,7 @@ const oldBlock = (specs, withMig) => String.raw`do $t$ declare out jsonb := '[]'
 
 
 // ---------------------------------------------------------------------------------------------------------------- the fixed cases (explicit draws, hand-computed answers)
-const DRIVER = String.raw`
+export const DRIVER = String.raw`
   create or replace function pg_temp.e7run(p_s jsonb, p_ops jsonb, p_b jsonb) returns jsonb language plpgsql as $x$
   declare s jsonb := p_s; op jsonb; r jsonb; out jsonb := '[]';
   begin
@@ -675,7 +678,7 @@ const DRIVER = String.raw`
     end loop;
     return out;
   end $x$;`;
-const runOps = async (cases) => JSON.parse(await runBlock(String.raw`do $t$
+export const runOps = async (cases) => JSON.parse(await runBlock(String.raw`do $t$
 declare out jsonb := '[]'; x jsonb; b jsonb;
 begin
   ${SETUP}
@@ -743,7 +746,7 @@ function fixedCases() {
 
 // ---------------------------------------------------------------------------------------------------------------- the builders, the template and ONE SOURCE
 // agree: the card line, the fight unit, and a hit of the weak role on the built boss with and without its weak_role (the ratio is 1 + the week bonus)
-const buildBlock = (items) => String.raw`do $t$ declare out jsonb := '[]'; x jsonb; b jsonb; u jsonb; c jsonb; ctx jsonb; h1 jsonb; h2 jsonb; begin
+export const buildBlock = (items) => String.raw`do $t$ declare out jsonb := '[]'; x jsonb; b jsonb; u jsonb; c jsonb; ctx jsonb; h1 jsonb; h2 jsonb; begin
   ${SETUP}
   execute $m$${mig}$m$;
   b := combat_v2_enemy_numbers();
@@ -826,7 +829,7 @@ const NUMBERS = async () => JSON.parse(await runBlock(String.raw`do $t$ declare 
   b := combat_v2_enemy_numbers();
   raise exception 'RESULT:%', jsonb_build_object('b', b, 'ab', ability_v2_numbers())::text; end $t$;`));
 // the simulator config with the numbers of the database (the balance values replace config.json; ability_v2 as a whole)
-const simCfg = (N) => { const B = { ...N.b }; delete B.enemy_v2; const c = patch(CONFIG, { ...B, v2_pp: N.ab.v2_pp }); c.ability_v2 = JSON.parse(JSON.stringify(N.ab.ability_v2)); return c; };
+export const simCfg = (N) => { const B = { ...N.b }; delete B.enemy_v2; const c = patch(CONFIG, { ...B, v2_pp: N.ab.v2_pp }); c.ability_v2 = JSON.parse(JSON.stringify(N.ab.ability_v2)); return c; };
 export async function parity(FS, cfg) {
   let fsame = 0, ftie = 0, facts = 0; const fbad = []; const fev = { end: 0, cap: 0, skip: 0, active: 0, basic: 0, enemy: 0, counter: 0 };
   for (let i = 0; i < FS.length; i += 8) {
@@ -870,7 +873,6 @@ export async function parity(FS, cfg) {
 }
 
 
-const isMain = /test-combat-v2-monster-tuning\.mjs$/.test(process.argv[1] || '');
 if (isMain) {
 try {
   const ONLY = process.env.ONLY || '';
