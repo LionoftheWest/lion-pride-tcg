@@ -3038,28 +3038,34 @@ Shape: `object { converge_d: number, max_level: number, points_per_level: number
 
 ### v2_power
 
-Combat v2: the Power number of a card (plan 2.5). Offense (attacker) = CP x (1 + crit x (critdmg - 1)) x hit chance x speed x (1 + abl_x x (ABL - 1)); Offense (support) = (basic hit + support_abl_ref x F x ABL) x the crit term x speed; Survival = HP / (1 - DEF) / (1 - ddg_x x DDG); Power = Offense x Survival x k[role]. k is 1 for every role here = NOT FITTED YET: E9 adds the smite, status and control value to the Offense term (decision 3) and fits k on the Lab (target 0.85 to 1.15). Read by card_power_v2 (PR E9); no fight reads it.
+Combat v2: the Power number of a card (plan 2.5, decision 3; PR E9, combat_v2_power.sql; read by card_power_v2 and combat_v2_squad_value; no fight and no pick reads it). Offense (attacker) = atk x (1 + crt x (crd - 1)) x hit chance x speed x (1 + abl_x x (ABL - 1)); Offense (support) = (v2_support.basic_x x atk x hit chance + support_abl_ref x F x ABL + F x ABL x atk x u x V) x the crit factor x speed, V = value.smite x PP(smite blocks) + value.dot x PP(Poison and Burn blocks) + value.control x PP(control blocks), u = 1 / (v2_pp.support_pp.smite x ability_v2.pp.sup_cycle); the hit chance is against the Heroic boss (v2_hit.miss + v2_enemy.hunt.Heroic.evasion - ACC); Survival = HP / (1 - DEF) / (1 - ddg_x x DDG); Power = Offense x Survival x k[role] x scale, shown rounded. value = the share of the PP of each family that shows in the measured value (fitted on the 42 reference templates, Hunt and Dungeon together). k = the role scale: the measured Hunt value of the role's reference cards / their formula value, / the mean of the roles (node card-studio/v2sim/run.mjs power; target 0.85 to 1.15 before the fit: the E9 formula gives 0.94 to 1.10, the plan 2.5 formula of V1 gave 0.90 to 1.46). scale = the mean Power of a Normal 0-star level-0 card of each placeholder template is 100. Refit k after each balance change (plan 2.5). config.json v2_power has the same value.
 
-Shape: `object { abl_x: number, ddg_x: number, k: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, support_abl_ref: number }`
+Shape: `object { abl_x: number, ddg_x: number, k: object { artillery: number, breaker: number, cleaver: number, controller: number, finisher: number, flurry: number, herald: number, medic: number, spotter: number, striker: number, survivor: number, warden: number }, scale: number, support_abl_ref: number, value: object { control: number, dot: number, smite: number } }`
 
 ```json
 {
   "k": {
-    "medic": 1,
-    "flurry": 1,
-    "herald": 1,
-    "warden": 1,
-    "breaker": 1,
-    "cleaver": 1,
-    "spotter": 1,
-    "striker": 1,
-    "finisher": 1,
-    "survivor": 1,
-    "artillery": 1,
-    "controller": 1
+    "medic": 0.951,
+    "flurry": 0.956,
+    "herald": 0.992,
+    "warden": 1.009,
+    "breaker": 0.942,
+    "cleaver": 1.014,
+    "spotter": 0.997,
+    "striker": 1.003,
+    "finisher": 0.98,
+    "survivor": 1.011,
+    "artillery": 1.045,
+    "controller": 1.099
   },
   "abl_x": 0.25,
   "ddg_x": 0.7,
+  "scale": 0.00195,
+  "value": {
+    "dot": 0.175,
+    "smite": 0.2,
+    "control": 0.1
+  },
   "support_abl_ref": 25
 }
 ```

@@ -642,7 +642,7 @@ Returns the number at a path in a balance value, for example balance_num('daily'
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] The fixed shape with the limits of each combat v2 balance key (combat_v2, v2_stats, v2_card_hp, v2_asc, v2_level, card_level, v2_support, v2_speed, v2_charge, v2_hit, v2_roles, v2_status, v2_control, v2_enemy, v2_dungeon, v2_hunt, v2_pp, v2_power); NULL for every other key. A new v2 leaf needs a new spec in this function. The E7 tuning added v2_enemy.mechanics.ironhide.crit_x, venom.chance and slowing.chance (combat_v2_monster_tuning.sql); combat_v2.testers (0 to 20 Discord ids, no id twice): combat_v2_testers.sql.
+[combat] The fixed shape with the limits of each combat v2 balance key (combat_v2, v2_stats, v2_card_hp, v2_asc, v2_level, card_level, v2_support, v2_speed, v2_charge, v2_hit, v2_roles, v2_status, v2_control, v2_enemy, v2_dungeon, v2_hunt, v2_pp, v2_power); NULL for every other key. A new v2 leaf needs a new spec in this function. The E7 tuning added v2_enemy.mechanics.ironhide.crit_x, venom.chance and slowing.chance (combat_v2_monster_tuning.sql); combat_v2.testers (0 to 20 Discord ids, no id twice): combat_v2_testers.sql; v2_power.value and v2_power.scale (the Power number, PR E9): combat_v2_power.sql.
 
 <a id="fn-balance-who"></a>
 

@@ -193,7 +193,8 @@ begin
   res := res || jsonb_build_object('case', 'no change in play: the md5 of every other public function (' || (select count(*) from jsonb_object_keys(before)) || ') is the same after the file (no function is replaced)', 'ok',
     before = after and (select count(*) from jsonb_object_keys(before)) > 400, 'got', (select jsonb_agg(k2) from jsonb_object_keys(after) k2 where before->k2 is distinct from after->k2));
   select coalesce(jsonb_agg(p.proname order by p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace
-    and p.prosrc ~ '\m(${NEWNAMES.join('|')})\M' and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q(NEWSIG)}]);
+    and p.prosrc ~ '\m(${NEWNAMES.join('|')})\M' and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q(NEWSIG)}])
+    and p.proname <> all (array['card_power_v2_numbers', 'card_power_v2_families', 'card_power_v2', 'combat_v2_squad_value']);   -- the E9 squad value (combat_v2_power.sql) uses the E8 pair rule by design (no v1 caller)
   res := res || jsonb_build_object('case', 'no other function calls a new function (no v1 caller, nothing in play)', 'ok', o = '[]'::jsonb, 'got', o);
   select value into o from balance where key = 'combat_v2';
   res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);

@@ -81,10 +81,10 @@ const MUT = {
   spec_wide: ['"value": {"smite": "num 0 2",', '"value": {"smite": "num 0 9",'],
   spec_other_key: ['  when \'v2_hunt\' then \'{"round_cap": "int 1 200"}\'::jsonb', '  when \'v2_hunt\' then \'{"round_cap": "int 1 300"}\'::jsonb'],
   update_always: ["where key = 'v2_power' and not (value ? 'value');", "where key = 'v2_power';"],
-  flag_on: ['-- ============================================================ 6. server only, comments',
-    "update public.balance set value = jsonb_set(value, '{hunt}', 'true') where key = 'combat_v2';\n-- ============================================================ 6. server only, comments"],
-  v1_touched: ['-- ============================================================ 6. server only, comments',
-    "create or replace function public.card_max_hp(p_cp integer, p_floor numeric, p_per_cp numeric) returns integer language sql immutable set search_path = public as $fn$ select greatest(p_floor, round(p_cp * p_per_cp))::int  $fn$;\n-- ============================================================ 6. server only, comments"],
+  flag_on: ['-- ============================================================ 5. server only, comments',
+    "update public.balance set value = jsonb_set(value, '{hunt}', 'true') where key = 'combat_v2';\n-- ============================================================ 5. server only, comments"],
+  v1_touched: ['-- ============================================================ 5. server only, comments',
+    "create or replace function public.card_max_hp(p_cp integer, p_floor numeric, p_per_cp numeric) returns integer language sql immutable set search_path = public as $fn$ select greatest(p_floor, round(p_cp * p_per_cp))::int  $fn$;\n-- ============================================================ 5. server only, comments"],
   grant_anon: ["    execute format('grant execute on function public.%s to service_role', f);", "    execute format('grant execute on function public.%s to service_role, anon', f);"],
   volatile_power: ["create or replace function public.card_power_v2(p_card jsonb, p_blocks jsonb, p_b jsonb default null) returns jsonb language plpgsql stable",
     'create or replace function public.card_power_v2(p_card jsonb, p_blocks jsonb, p_b jsonb default null) returns jsonb language plpgsql volatile'],
@@ -196,7 +196,7 @@ begin
     and p.prosrc ~ '\mbalance_v2_spec\M' and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...NEWSIG, ...REPSIG])}]);
   res := res || jsonb_build_object('case', 'balance_v2_spec has its two callers (the V1 trigger balance_check_combat_v2 and the tester reader combat_v2_on, which reads the spec of combat_v2: the same)', 'ok', o = '["balance_check_combat_v2", "combat_v2_on"]'::jsonb, 'got', o);
   select value into o from balance where key = 'combat_v2';
-  res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);
+  res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o - 'testers');
   select jsonb_object_agg(replace(p.oid::regprocedure::text, ' ', ''), p.provolatile) into o from pg_proc p where p.pronamespace = 'public'::regnamespace and replace(p.oid::regprocedure::text, ' ', '') in (${q([...NEWSIG, ...REPSIG])});
   res := res || jsonb_build_object('case', 'the ${NEWSIG.length} new and ${REPSIG.length} replaced functions exist with their volatility (the Power STABLE: it reads balance and the statuses; no draw)', 'ok', o = ${sqlLit({ ...NEW, ...REPLACED })}::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.oid::regprocedure::text || ' ' || r2x), '[]') into o from pg_proc p cross join unnest(array['anon', 'authenticated']) r2x
