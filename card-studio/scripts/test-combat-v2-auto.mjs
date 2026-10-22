@@ -149,7 +149,18 @@ if (process.env.MUTATE) {
   }
 }
 for (const t of [TUNE, FU, mig]) if (['$m$', '$t$', '$d$', '$x$', '$q$'].some((x) => t.includes(x))) throw new Error('the migrations must not contain $m$, $t$, $d$, $x$ or $q$');
-const CHAIN = `${SETUP}\n  execute $m$${TUNE}$m$;\n  execute $m$${FU}$m$;`;
+// The chain before this file, then the state before this file also when it is applied (its functions, its trigger and its balance row go), so a planted
+// fault in the data, the comments or the shape is seen after the apply too.
+const E8DROP = ['auto_v2_spec', 'balance_check_auto_v2', 'combat_v2_auto_pays', 'combat_v2_auto_makes', 'combat_v2_auto_charging', 'combat_v2_auto_target', 'combat_v2_auto',
+  'combat_v2_autopick_choose', 'combat_v2_autopick_pair', 'combat_v2_autopick'];
+const CHAIN = `${SETUP}\n  execute $m$${TUNE}$m$;\n  execute $m$${FU}$m$;
+  execute $d$do $x$ declare f text; begin
+    for f in select p.oid::regprocedure::text from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in (${E8DROP.map((n) => `'${n}'`).join(', ')}) loop
+      execute 'drop function ' || f || ' cascade';
+    end loop; end $x$$d$;
+  alter table public.balance disable trigger user;
+  delete from public.balance where key = 'auto_v2';
+  alter table public.balance enable trigger user;`;
 
 // the new functions (by signature) and their volatility
 const NEW = { 'auto_v2_spec()': 'i', 'balance_check_auto_v2()': 'v', 'combat_v2_auto_pays(jsonb)': 'i', 'combat_v2_auto_makes(text,jsonb,jsonb)': 'i',

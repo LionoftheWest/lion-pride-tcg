@@ -1353,5 +1353,12 @@ new function, and the flag stays OFF. The reference is the simulator: `v2sim/pol
     Camper Colossus 0.74, Hydra 0.89. 12 of 16 bosses at x0.85 or more.
 - **Open**: the 4 bosses below x0.85 in the pick (the search finds template combinations that no per-card score sees; the E9 Power number is the next
   step), whether the pair score and the role answers stay (their measured effect is within the noise), a Dungeon squad pick.
-- Proof: in the PR (test-combat-v2-auto.mjs with its planted faults, test-combat-lab-routes.mjs, test-combat-lab-nowrite.mjs, the goldens with this file as
-  the candidate, the full local suite).
+- SQL = the simulator on the Lab: 88 Lab fights (4 for each archetype and mode, the same draws) 87 equal (result, steps, every HP, 523 actives), 1 differs
+  only after a float near-tie of the simulator; the 32 Lab picks give the same squad in the same order.
+- Found, not fixed (E4/E5, not this file): numeric shield arithmetic can leave a shield or a Guard of about 1e-17 where the simulator float gives 0 (1 of
+  160 test fights). The test counts it apart.
+- Proof (copy 2, V1 to E7c and the tester list applied): `test-combat-v2-auto.mjs` 86 checks (no other function changes, md5 of 518; 52 fixed decisions;
+  SQL = the simulator on 565 decisions of random states, on 160 random fights played by Auto v2 (4158 actions, 1455 card decisions, 0 near-ties), and on
+  300 random pools; 11 fixed picks and 7 refusals; fuzz 860 actions); MUTATE=all: baseline PASS and every planted fault caught (see the PR). Goldens with
+  CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. Then the file applied (`rehearse-sql.mjs`): grants OK; the earlier
+  v2 tests got the E8 functions in their caller lists (as E6, T1 and E7 did); the generated files regenerated. Combat checks C1, C2, C3 PASS.
