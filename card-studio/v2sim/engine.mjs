@@ -1,7 +1,7 @@
 // engine.mjs - one combat v2 fight: speed meter with a hidden clock, statuses, the damage pipeline, card and enemy actions.
 //
 // Clock step ("round"): every standing unit adds its speed to its meter. A unit with meter >= 100 acts and loses 100
-// (highest meter first). Speed 100 = one action a step. After the actions: ticks (Poison, Burn, regrowth), expiry.
+// (highest meter first), at most v2_speed.max_actions_per_step times in one step (each unit). Speed 100 = one action a step. After the actions: ticks (Poison, Burn, regrowth), expiry.
 // Durations, the 40-step cap and the Hunt daily cap count clock steps. Each unit has its own random stream
 // (hash of the fight seed and its slot), so a change on one card moves the other units' draws as little as possible.
 //
@@ -324,12 +324,15 @@ export class Battle {
   run() { while (!this.ended) this.tickStep(); return this; }
   tickStep() {
     this.step++; this.healedStep = 0;
-    for (const u of this.units) { u.healedStep = 0; if (!u.down) u.meter += F.meterGain(this.speedOf(u)); }
+    for (const u of this.units) { u.healedStep = 0; u.acts = 0; if (!u.down) u.meter += F.meterGain(this.speedOf(u)); }
+    // The action limit counts for EACH unit, the same as SQL combat_v2_advance: a unit acts at most max_actions_per_step times in one
+    // step (u.acts), and the rest of its meter waits for the next step. Only an extra_action move (the Hydra's New Head) can reach it.
+    // A unit that comes in during the step starts at 0 actions. Each unit has a limited number of actions, so the loop ends.
     const maxA = this.cfg.v2_speed.max_actions_per_step;
-    for (let guard = 0; guard < this.units.length * maxA; guard++) {
-      let best = null; for (const u of this.units) if (!u.down && u.meter >= 100 && (!best || u.meter > best.meter)) best = u;
+    for (;;) {
+      let best = null; for (const u of this.units) if (!u.down && u.meter >= 100 && (u.acts || 0) < maxA && (!best || u.meter > best.meter)) best = u;
       if (!best) break;
-      best.meter -= 100; this.act(best);
+      best.meter -= 100; best.acts = (best.acts || 0) + 1; this.act(best);
       if (this.checkEnd()) return;
     }
     this.endStep();
