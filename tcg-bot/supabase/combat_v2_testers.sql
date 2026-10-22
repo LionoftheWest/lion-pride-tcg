@@ -10,6 +10,8 @@
 --     the player id is in combat_v2.testers. It FAILS CLOSED like the reader of one argument: a NULL mode or player, an unknown capability, a value
 --     that does not match the fixed shape, no row and any error give false for the tester part.
 --   combat_v2_on(mode) does not change.
+--   balance_check (replaced: the text of balance_table.sql + one exemption): an update may remove an id of combat_v2.testers. Before, every list item was a
+--     leaf that may never go, so a tester could be added but never removed.
 -- NO CHANGE IN PLAY: no v1 function calls combat_v2_on (either form), the four modes stay false and the list is empty. The go-live steps R1 to R3 call
 -- the new reader. Idempotent (the list is added only when the value has none). Server only.
 -- Test: card-studio/scripts/test-combat-v2-testers.mjs (rolled back; MUTATE=all must catch every mutation).
@@ -195,6 +197,39 @@ returns jsonb language sql immutable set search_path = public as $fn$
   end;
 $fn$;
 
+-- ============================================================ 2b. the generic balance trigger: a tester can be removed
+-- balance_check refuses an update that loses a leaf, and the items of a list are leaves (testers.0, testers.1, ...): a shorter tester list was refused,
+-- so a tester could never be removed. The ids of combat_v2.testers are not game numbers that a reader needs: they are exempt from that one rule.
+-- Everything else is the text of balance_table.sql (db/schema/functions/balance_check.sql).
+create or replace function public.balance_check() returns trigger language plpgsql set search_path to 'public' as $fn$
+declare v_bad text;
+begin
+  if tg_op = 'DELETE' then
+    raise exception 'balance: the key % is read by the game; change its value, do not delete it', old.key;
+  end if;
+  select string_agg(array_to_string(n.path, '.'), ', ') into v_bad from balance_leaves(new.value) n where n.num < 0;
+  if v_bad is not null then raise exception 'balance %: negative number at %', new.key, v_bad; end if;
+  if tg_op = 'UPDATE' then
+    select string_agg(array_to_string(o.path, '.') || ' (' || o.typ || ')', ', ') into v_bad
+      from balance_leaves(old.value) o
+     where o.typ <> 'object' and o.typ <> 'array'
+       and not (new.key = 'combat_v2' and o.path[1] = 'testers')   -- combat_v2_testers.sql: the tester ids may go
+       and not exists (select 1 from balance_leaves(new.value) n where n.path = o.path and n.typ = o.typ);
+    if v_bad is not null then
+      raise exception 'balance %: the new value lost or changed the type of %', new.key, v_bad;
+    end if;
+    new.updated_at := now();
+    new.updated_by := balance_who();
+  end if;
+  if new.key = 'stars' then
+    select string_agg(r.key, ', ') into v_bad from jsonb_each(new.value) r
+     where jsonb_typeof(r.value) <> 'array' or jsonb_array_length(r.value) <> 6
+        or exists (select 1 from jsonb_array_elements(r.value) x where jsonb_typeof(x) <> 'number' or (x #>> '{}')::numeric <= 0);
+    if v_bad is not null then raise exception 'balance stars: % must be 6 numbers above 0 (0 to 5 stars)', v_bad; end if;
+  end if;
+  return new;
+end $fn$;
+
 -- ============================================================ 3. the value: an empty tester list (an existing list stays)
 select set_config('balance.by', 'nathan', true);
 update public.balance set value = value || '{"testers": []}'::jsonb,
@@ -222,7 +257,7 @@ end $fn$;
 do $g$
 declare f text;
 begin
-  foreach f in array array['balance_shape_errors(jsonb, jsonb, text)', 'balance_v2_spec(text)', 'combat_v2_on(text, text)'] loop
+  foreach f in array array['balance_shape_errors(jsonb, jsonb, text)', 'balance_v2_spec(text)', 'combat_v2_on(text, text)', 'balance_check()'] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
     execute format('grant execute on function public.%s to service_role', f);
   end loop;
@@ -230,6 +265,7 @@ end $g$;
 
 comment on function public.balance_shape_errors(jsonb, jsonb, text) is $cm$[combat] The shape walker of the combat v2 balance keys (combat_v2_flags_balance.sql): the list of problems of a value against a spec ("num lo hi", "int lo hi", "bool", "enum a|b", "discord_id" = a string of 17 to 20 digits, an object with exactly its keys, ["list"|"set", spec, min, max]); empty = fine. discord_id: combat_v2_testers.sql.$cm$;
 comment on function public.balance_v2_spec(text) is $cm$[combat] The fixed shape with the limits of each combat v2 balance key (combat_v2, v2_stats, v2_card_hp, v2_asc, v2_level, card_level, v2_support, v2_speed, v2_charge, v2_hit, v2_roles, v2_status, v2_control, v2_enemy, v2_dungeon, v2_hunt, v2_pp, v2_power); NULL for every other key. A new v2 leaf needs a new spec in this function. The E7 tuning added v2_enemy.mechanics.ironhide.crit_x, venom.chance and slowing.chance (combat_v2_monster_tuning.sql); combat_v2.testers (0 to 20 Discord ids, no id twice): combat_v2_testers.sql.$cm$;
+comment on function public.balance_check() is $cm$Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type (except the ids of combat_v2.testers, which may be removed: combat_v2_testers.sql), and a bad stars row. Sets updated_at and updated_by.$cm$;
 comment on function public.combat_v2_on(text, text) is $cm$[combat] The combat v2 switch for one player (plan 14.2, the go-live steps): true when combat_v2_on(p_mode) is true (the mode is on for everyone), or when p_mode is gauntlet, dungeon, hunt or progress and p_player is in balance combat_v2.testers. The tester part fails closed: a NULL mode or player, an unknown capability, a value that does not match the fixed shape (balance_v2_spec), no row or any error gives false. No v1 function calls it. combat_v2_testers.sql.$cm$;
 
 notify pgrst, 'reload schema';

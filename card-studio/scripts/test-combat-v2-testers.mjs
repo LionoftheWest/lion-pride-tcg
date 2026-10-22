@@ -32,6 +32,9 @@ let mig = readFileSync(FILE, 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrs
 const fnText = (src, head, end) => { const i = src.indexOf(head); const j = src.indexOf(end, i); if (i < 0 || j < 0) throw new Error(`no ${head}`); return src.slice(i, j + end.length); };
 const WALKER_V1 = fnText(rd('combat_v2_flags_balance.sql'), 'create or replace function public.balance_shape_errors(', '\nend $fn$;\n');
 const SPEC_E7B = fnText(rd('combat_v2_monster_tuning.sql'), 'create or replace function public.balance_v2_spec(', '\n$fn$;\n');
+// the generic balance trigger before the file (balance_table.sql; its $$ quotes become $fn$ so the block can run it)
+const CHECK_OLD = fnText(rd('balance_table.sql'), 'create or replace function public.balance_check()', '\nend $$;\n').replace("as $$\n", 'as $fn$\n').replace('\nend $$;\n', '\nend $fn$;\n');
+if (!CHECK_OLD.includes('lost or changed the type') || CHECK_OLD.includes('testers') || CHECK_OLD.includes('$$')) throw new Error('balance_table.sql balance_check is not the text before this file');
 if (!WALKER_V1.includes("raise exception 'balance_shape_errors: unknown spec %'") || !SPEC_E7B.includes('"crit_x"')) throw new Error('the earlier function texts were not found');
 
 const MUT = {
@@ -49,6 +52,8 @@ const MUT = {
   value_not_empty: [`value || '{"testers": []}'::jsonb`, `value || '{"testers": ["100000000000000009"]}'::jsonb`],
   value_overwrite: [" where key = 'combat_v2' and not value ? 'testers';", " where key = 'combat_v2';"],
   value_mode_on: [`value || '{"testers": []}'::jsonb`, `value || '{"testers": [], "hunt": true}'::jsonb`],
+  check_no_exempt: ["       and not (new.key = 'combat_v2' and o.path[1] = 'testers')   -- combat_v2_testers.sql: the tester ids may go\n", ''],
+  check_exempt_all: ["and not (new.key = 'combat_v2' and o.path[1] = 'testers')", "and not (o.path[1] = 'testers' or o.typ = 'string')"],
   grant_anon: ["comment on function public.combat_v2_on(text, text) is", 'grant execute on function public.combat_v2_on(text, text) to anon;\ncomment on function public.combat_v2_on(text, text) is'],
 };
 // a planted change of ANOTHER function (the md5 cases must catch it): the file also replaces combat_v2_on(text)
@@ -89,7 +94,7 @@ if (['$m$', '$t$'].some((x) => mig.includes(x) || WALKER_V1.includes(x) || SPEC_
 
 // sample ids only: 18 digits, not members
 const T1 = '100000000000000001', T2 = '100000000000000002', NT = '100000000000000003';
-const MINE = ['balance_shape_errors(jsonb,jsonb,text)', 'balance_v2_spec(text)', 'combat_v2_on(text,text)'];
+const MINE = ['balance_shape_errors(jsonb,jsonb,text)', 'balance_v2_spec(text)', 'combat_v2_on(text,text)', 'balance_check()'];
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 const body = String.raw`do $t$
 declare res jsonb := '[]'; bad text[] := '{}'; ok boolean; v jsonb; v0 jsonb; md5a jsonb; md5b jsonb; one_a text; one_b text; c text; k text; pl jsonb;
@@ -99,6 +104,7 @@ begin
   -- 0. the state before the file (also when the file is applied on this copy)
   execute $m$${WALKER_V1}$m$;
   execute $m$${SPEC_E7B}$m$;
+  execute $m$${CHECK_OLD}$m$;
   drop function if exists public.combat_v2_on(text, text);
   alter table public.balance disable trigger user;
   update public.balance set value = (value - 'testers') || '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}' where key = 'combat_v2';
@@ -213,6 +219,25 @@ begin
   exception when others then bad := bad || ('refused a valid list: ' || sqlerrm);
   end;
   res := res || jsonb_build_object('case', 'balance_check_combat_v2 refuses 10 bad tester lists and accepts [] and 20 ids', 'ok', cardinality(bad) = 0, 'bad', bad);
+  -- a tester can be removed (balance_check: the ids of combat_v2.testers may go), and no other list item may go
+  bad := '{}';
+  update public.balance set value = jsonb_set(v0, '{testers}', jsonb_build_array(T1, T2)) where key = 'combat_v2';
+  begin
+    update public.balance set value = jsonb_set(v0, '{testers}', jsonb_build_array(T2)) where key = 'combat_v2';
+    update public.balance set value = jsonb_set(v0, '{testers}', '[]') where key = 'combat_v2';
+  exception when others then bad := bad || ('a tester could not be removed: ' || sqlerrm);
+  end;
+  begin
+    update public.balance set value = jsonb_set(value, '{enabler_extra_stack}', (value->'enabler_extra_stack') - 0) where key = 'v2_support';
+    bad := bad || 'v2_support.enabler_extra_stack lost an item and was accepted'::text;
+  exception when others then if sqlerrm not like '%lost or changed the type%' then bad := bad || ('another error: ' || sqlerrm); end if;
+  end;
+  begin
+    update public.balance set value = jsonb_set(v0, '{testers}', '[]') - 'hunt' where key = 'combat_v2';
+    bad := bad || 'combat_v2 lost the leaf hunt and was accepted'::text;
+  exception when others then null;
+  end;
+  res := res || jsonb_build_object('case', 'a tester can be removed; another list item (v2_support) and another combat_v2 leaf still cannot go', 'ok', cardinality(bad) = 0, 'bad', bad);
 
   -- 6. no other function changes; no caller
   select jsonb_object_agg(p.oid::regprocedure::text, md5(pg_get_functiondef(p.oid))) into md5b from pg_proc p
