@@ -677,6 +677,8 @@ begin
 end $t$;`;
 
 // the data against config.json (one number, one home: the simulator and SQL read the same numbers)
+// the params of a boss as E7 has them: combat_v2_e7_followup.sql, later, gave the Warlord its own Ironhide (params.ironhide.crit_x 0)
+const e7Params = (k, p) => { if (k !== 'warlord') return p; const o = { ...p }; delete o.ironhide; return o; };
 function checkData(D) {
   const out = [];
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
@@ -693,7 +695,7 @@ function checkData(D) {
     if (!R || !N) { bb.push(`${k}: missing`); continue; }
     if (R.name !== C.name || JSON.stringify(R.resists) !== JSON.stringify(C.resists) || JSON.stringify(R.sig) !== JSON.stringify(C.sig) || JSON.stringify(R.mythic) !== JSON.stringify(C.mythic || [])
       || JSON.stringify(R.mythic_resists) !== JSON.stringify(C.mythic_resists || [])) bb.push(`${k}: words`);
-    if (N.hp_factor !== C.hp_factor || N.counter_share !== C.counter_share || JSON.stringify(canon(N.params)) !== JSON.stringify(canon(C.params || {}))) bb.push(`${k}: numbers`);
+    if (N.hp_factor !== C.hp_factor || N.counter_share !== C.counter_share || JSON.stringify(canon(N.params)) !== JSON.stringify(canon(e7Params(k, C.params || {})))) bb.push(`${k}: numbers`);
     const merged = R.moves.map((m) => { const n = N.moves[m.id] || {}; const o = { ...m, ...n }; if (m.apply || n.apply) o.apply = { ...(m.apply || {}), ...(n.apply || {}) }; return o; });
     if (JSON.stringify(canon(merged)) !== JSON.stringify(canon(C.moves))) bb.push(`${k}: moves ${JSON.stringify(merged)} vs ${JSON.stringify(C.moves)}`);
     if ((R.note || null) === null && C._approx) bb.push(`${k}: the note of the simulator approximation is missing`);

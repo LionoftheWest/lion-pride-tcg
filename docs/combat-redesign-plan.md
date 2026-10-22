@@ -705,6 +705,7 @@ Each PR: a worktree from the latest `origin/main`, rehearsed on the local copy, 
 | 3 | T1c | The minimum share of a condition (19.5) | SQL = the simulator. planted faults fail the test on a green baseline | Low |
 | 4 | E7 | Monsters: new passives as data, foe moves, the Hunt boss template, counter bosses | Lab: each passive x each archetype. boss counters golden for v1 unchanged | Medium |
 | 4 | E7b | The E7 follow-up (20.2): monster tuning, the Weak to tags as one source | Lab before / after. SQL = the simulator. a planted fault for each change | Low |
+| 4 | E7c | The second E7 follow-up (20.3): `weak_role_x` 0.5, the Warlord's own Ironhide | SQL = the simulator. a planted fault for each change | Low |
 | 4 | E8 | Auto v2: Dungeon Auto plays each ready card. Hunt auto-pick with role answers and the pair score | Auto reaches 85% or more of a scripted best play | Medium |
 | 4 | E9 | Power number `card_power_v2` and squad value in SQL. client shows it only | rank correlation report. C3 passes | Low |
 | 5 | B1-B10 | Card batches (section 12), data only, pushed after each approval | validator passes every row. `targets` per batch | Low |
@@ -1246,6 +1247,22 @@ Nathan's 7 decisions of 2026-10-21 (the open questions of E7). Needs E7. The fla
   role tag, an unknown role, and Warden, Medic, Spotter or Herald.
 - **The Weak to size** (decision 5), the Lab table (Heroic, the 16 bosses, 300 days a cell): the favored squad's median gain is x1.10 at
   `weak_role_x` 0.3, x1.16 at 0.5, x1.22 at 0.7 (the 14 damage weeks; the 2 Controller weeks have their own rule and gain x1.05 to x1.07). The balance
-  value stays 0.3; Nathan chooses it from the table.
+  value stays 0.3; Nathan chooses it from the table (he chose 0.5 after the PR: 20.3).
 - **Deferred** (decision 7): the rotation rule of 8.4 and the Counters / Bring chips: with the weekly Hunt spawn (R3).
 - Proof: in the PR (test-combat-v2-monster-tuning.mjs, the planted faults, the goldens with this file as the candidate, the full local suite).
+
+### 20.3 E7c: `weak_role_x` 0.5 and the Warlord's own Ironhide (`tcg-bot/supabase/combat_v2_e7_followup.sql`)
+
+Nathan approved two items after PR #463 (2026-10-21). Needs E7b. The flag stays OFF.
+- **The Weak to size**: `v2_enemy.weak_role_x` 0.3 -> 0.5 (the Lab table of 20.2: the favored squad's median gain x1.16). A balance update, so
+  `balance_log` records it. `config.json` has the same value, and the Lab check `boss.weak_role` pins +50%.
+- **The Rage-Quit Warlord keeps the full Ironhide**: `enemy_v2.bosses.warlord.params.ironhide.crit_x` = 0 (the numbers of a named boss are in
+  balance `enemy_v2.bosses.<key>`; `hunt_bosses_v2` holds the words). `enemy_v2_spec` gets the one leaf. The global Ironhide stays `crit_x` 0.7 (the
+  Mythic Netcode and the Mythic Maw keep it). No fight code changed: `combat_v2_mech` and the simulator `mechParams` already put a boss's own params
+  over the base numbers, and the boss card shows the merged number. The Warlord resists Mark, so in play cards never crit on it.
+- Lab (`lab-combat-v2-passives.mjs --only warlord`, Heroic, 11 archetypes, 300 days a cell): Crit Chain cut on the Warlord (net damage / no
+  Ironhide) x0.86 -> x0.54, field-relative x0.93 -> x0.73; the median cut of all squads x0.92 -> x0.74 (the Warlord's `hp_factor` 0.71 was measured
+  with the E7 rule, no crit, so it fits the full Ironhide).
+- Found, not fixed (a gap of E7): the simulator caps the actions of a step for all units together, SQL caps each unit (`max_actions_per_step`).
+  Only the Hydra's New Head (`extra_action`) reaches the cap; the test counts such fights apart.
+- Proof: in the PR (test-combat-v2-e7-followup.mjs, the planted faults, the goldens with this file as the candidate, the full local suite).

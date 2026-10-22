@@ -39,6 +39,10 @@ if (!LATER.includes('shield_all')) throw new Error('combat_v2_abilities.sql has 
 const TUNE = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_monster_tuning.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
 let LATER2 = TUNE.slice(TUNE.indexOf('-- @balance-begin'), TUNE.indexOf('-- @balance-end'));
 if (!LATER2.includes('create or replace function public.balance_v2_spec')) throw new Error('combat_v2_monster_tuning.sql has no balance part with balance_v2_spec');
+// The balance part of combat_v2_e7_followup.sql (weak_role_x 0.3 -> 0.5) runs after the E7 tuning part in the block, as on live.
+const FU = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_e7_followup.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
+const LATER3 = FU.slice(FU.indexOf('-- @balance-begin'), FU.indexOf('-- @balance-end'));
+if (!LATER3.includes('{weak_role_x}')) throw new Error('combat_v2_e7_followup.sql has no balance part with weak_role_x');
 
 const MUT = {
   flag_on: ['\'{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}\',', '\'{"gauntlet": true, "dungeon": false, "hunt": false, "progress": false}\','],
@@ -147,6 +151,7 @@ begin
   execute $m$${mig}$m$;
   execute $m$${LATER}$m$;
   execute $m$${LATER2}$m$;
+  execute $m$${LATER3}$m$;
 
   -- 3. the keys, the notes and the values (the values go to the script, which compares them with config.json)
   for k in select unnest(keys) loop
