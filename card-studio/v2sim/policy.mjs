@@ -81,3 +81,123 @@ export const best = {
   },
 };
 export const POLICIES = { auto, best };
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Auto v2 (PR E8, plan 14.1 row E8; tcg-bot/supabase/combat_v2_auto.sql combat_v2_auto is the SQL twin, decision for decision). Generic: it reads the
+// blocks of each active (what it makes and what it pays off: the ability_v2_check "Makes / Uses" rule), the role hint roles.auto (config v2_role_auto =
+// the roles table) and the numbers of balance auto_v2.fight (config auto_v2). It never reads a template id and never draws a random number. One decision
+// for each card action: use the charged active or the basic attack, the enemy target, and ONE ally for every single-ally block of the active.
+// The decision is made before the action (the SQL caller passes it to combat_v2_card_act), so allyFor returns the ally of that decision.
+export const PAY_KEYS = ['payoff_dmg', 'payoff_crit', 'vs_status', 'per_stack', 'target_has', 'more_per', 'consume'];
+const PAY_LISTS = ['line_status', 'payoff_dmg', 'payoff_crit', 'vs_status', 'target_has'];
+const VALUE_ST = ['exposed', 'weakened', 'mark', 'blinded', 'slowed'];
+const THREAT_ST = [...CONTROL, 'weakened', 'blinded'];
+const ALLY_KEYS = ['cure', 'shield', 'heal', 'empower', 'focus', 'quicken'];
+const GATE_KEYS = ['self_has', 'enemy_charging', 'foes_alive', 'self_shield'];
+const ATTACH_KEYS = [...GATE_KEYS, 'target_has', 'ally_below', 'more_per', 'coin'];
+/** The statuses that an active pays off: ability_v2_check "pays", and the status that a consume block uses up (Detonate needs Burn). */
+export function paysOf(blocks) {
+  const out = [];
+  const add = (s) => { if (s && !out.includes(s)) out.push(s); };
+  for (const x of blocks || []) {
+    if (PAY_KEYS.includes(x.k)) add(x.status);
+    if (x.k === 'apply' && x.per && x.per !== 'kinds') add(x.per);
+    if (PAY_LISTS.includes(x.k) && Array.isArray(x.statuses)) x.statuses.forEach(add);
+  }
+  return out;
+}
+/** The statuses that an active makes (ability_v2_check "enables"), Frozen for a Chill maker (Chill ends in Frozen), and the role passive
+ * (auto_v2.fight.passive_makes, for example the Spotter basic attack Exposes). */
+export function makesOf(cfg, role, blocks) {
+  const out = [];
+  const add = (s) => { if (s && !out.includes(s)) out.push(s); };
+  for (const x of blocks || []) {
+    if (['apply', 'on_crit', 'on_kill'].includes(x.k)) add(x.status);
+    if (x.k === 'random_apply') for (const o of x.options || []) add(o.status);
+  }
+  if (out.includes('chill')) add('frozen');
+  for (const s of cfg.auto_v2.fight.passive_makes[role] || []) add(s);
+  return out;
+}
+const lowestFoe = (foes) => foes.reduce((m, e) => (!m || e.hp < m.hp ? e : m), null);
+const threatFoe = (foes) => foes.reduce((m, e) => (!m || e.atk > m.atk ? e : m), null);
+function autoTarget(b, u, use) {
+  const A = b.cfg.auto_v2.fight; const foes = b.alive('enemy');
+  if (b.mode === 'hunt') return foes[0];
+  const B = u.active.blocks;
+  if (u.cls === 'support') return use && B.some((x) => x.k === 'apply' && THREAT_ST.includes(x.status)) ? threatFoe(foes) : lowestFoe(foes);
+  if (use) { const P = paysOf(B); if (P.length) { const t = foes.find((e) => P.some((s) => e.st[s])); if (t) return t; } }
+  return foes.find((e) => e.hp + e.shield <= u.cp * A.kill_x) || lowestFoe(foes);
+}
+function blockUseful(b, u, tgt, x) {
+  const A = b.cfg.auto_v2.fight; const cards = b.alive('card');
+  const charging = b.alive('enemy').some((e) => e.charging);
+  const has = (c, list) => list.some((s) => c.st[s] && !c.st[s].locked);
+  switch (x.k) {
+    case 'shield': return charging || cards.some((c) => c.hp / c.maxHp < A.shield_below && c.shield < A.shield_have * c.maxHp);
+    case 'shield_all': return charging || cards.filter((c) => c.hp / c.maxHp < A.shield_all_below).length >= A.shield_all_count;
+    case 'heal': case 'heal_all': return cards.some((c) => c.hp / c.maxHp < A.heal_below);
+    case 'cleanse': return cards.some((c) => has(c, b.cfg.v2_status.negative));
+    case 'cure': return cards.some((c) => has(c, x.statuses.includes('all') ? b.cfg.v2_status.negative : x.statuses));
+    case 'empower': case 'rally': case 'focus': case 'quicken': return cards.some((c) => c.cls === 'attacker');
+    case 'apply': {
+      if (CONTROL.includes(x.status)) return !CONTROL.some((c) => tgt.st[c]) && b.step >= tgt.immUntil;
+      if (VALUE_ST.includes(x.status)) return !tgt.st[x.status] || (tgt.st[x.status].until - b.step) <= A.refresh;
+      return true;
+    }
+    default: return !ATTACH_KEYS.includes(x.k);
+  }
+}
+function autoUse(b, u) {
+  const A = b.cfg.auto_v2.fight; const B = u.active.blocks;
+  if (u.held >= A.hold_max) return { use: true, why: 'held' };
+  const tgt = autoTarget(b, u, true);
+  if (u.cls === 'support') {
+    const hint = b.cfg.v2_role_auto?.[u.role] || {};
+    if (hint.hold_for === 'charging' && B.some((x) => x.k === 'apply' && CONTROL.includes(x.status)) && (b.isBoss(tgt) || tgt.cataclysm) && !tgt.charging && b.step >= tgt.immUntil)
+      return { use: false, why: 'hold_charging' };
+    return B.some((x) => blockUseful(b, u, tgt, x)) ? { use: true, why: 'useful' } : { use: false, why: 'not_useful' };
+  }
+  const ex = B.find((x) => x.k === 'execute');
+  if (ex) {
+    const ls = B.find((x) => x.k === 'line_status');
+    return tgt.hp / tgt.maxHp < ex.line || (ls && ls.statuses.some((s) => tgt.st[s])) ? { use: true, why: 'execute' } : { use: false, why: 'hold_execute' };
+  }
+  for (let j = 0; j + 1 < B.length; j++) if (GATE_KEYS.includes(B[j + 1].k) && !b.gateOn(u, tgt, B[j + 1])) return { use: false, why: 'hold_gate' };
+  const P = paysOf(B);
+  if (P.length && !P.some((s) => tgt.st[s]) && b.alive('card').some((c) => c !== u && makesOf(b.cfg, c.role, c.active.blocks).some((s) => P.includes(s)))) return { use: false, why: 'hold_pay' };
+  if (B.some((x) => x.k === 'per_kind') && b.negKinds(tgt) < A.per_kind_min) return { use: false, why: 'hold_kinds' };
+  return { use: true, why: 'ready' };
+}
+function autoAlly(b, u, use) {
+  const A = b.cfg.auto_v2.fight; const cards = b.alive('card');
+  const hurt = () => b.mostHurt() || cards[0];
+  const x = use ? u.active.blocks.find((y) => ALLY_KEYS.includes(y.k) && !(y.k === 'quicken' && y.all) && (!y.to || y.to === 'cured')) : null;
+  const kind = x ? (x.k === 'focus' || x.k === 'quicken' ? 'empower' : x.k) : null;
+  if (kind === 'cure') {
+    const list = x.statuses.includes('all') ? b.cfg.v2_status.negative : x.statuses;
+    const n = (c) => list.filter((s) => c.st[s] && !c.st[s].locked).length; const t = cards.reduce((m, c) => (!m || n(c) > n(m) ? c : m), null);
+    return t && n(t) > 0 ? t : hurt();
+  }
+  if (kind === 'shield') return cards.reduce((m, c) => (!m || (c.hp + c.shield) / c.maxHp < (m.hp + m.shield) / m.maxHp ? c : m), null);
+  if (kind === 'empower') {
+    const sc = (c) => c.cp * (c.charge >= c.active.charge ? A.ready_x : 1) * (c.meter + 1);
+    const free = cards.filter((c) => c.cls === 'attacker' && !c.st.empowered); const att = cards.filter((c) => c.cls === 'attacker');
+    if (free.length) return free.reduce((m, c) => (!m || sc(c) > sc(m) ? c : m), null);
+    if (att.length) return att.reduce((m, c) => (!m || c.cp > m.cp ? c : m), null);
+  }
+  return hurt();
+}
+/** The whole decision of one card action (the SQL combat_v2_auto answer): {use, why, target, ally}. */
+export function autoDecide(b, u) {
+  const ready = u.charge >= u.active.charge;
+  const d = ready ? autoUse(b, u) : { use: false, why: 'charging' };
+  return { u, use: d.use, why: d.why, target: autoTarget(b, u, d.use), ally: autoAlly(b, u, d.use) };
+}
+export const autov2 = {
+  name: 'autov2',
+  useActive(b, u) { b._auto = autoDecide(b, u); b._auto.fresh = true; return b._auto.use; },
+  target(b, u) { if (!b._auto || b._auto.u !== u || !b._auto.fresh) b._auto = autoDecide(b, u); b._auto.fresh = false; return b._auto.target; },
+  allyFor(b, u) { return b._auto && b._auto.u === u ? b._auto.ally : autoDecide(b, u).ally; },
+};
+POLICIES.autov2 = autov2;
