@@ -137,6 +137,7 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'combat_v2_pick_card', 'combat_v2_enemy_mult', 'combat_v2_enemy_hit', 'combat_v2_boss_target', 'combat_v2_boss_move', 'combat_v2_enemy_act', 'combat_v2_hunt_boss',
   'combat_v2_dungeon_foe', 'hunt_boss_v2_card',   // E7 combat_v2_monsters.sql
   'combat_v2_auto', 'combat_v2_auto_target', 'combat_v2_auto_charging', 'combat_v2_auto_pays', 'combat_v2_auto_makes', 'combat_v2_autopick', 'combat_v2_autopick_choose', 'combat_v2_autopick_pair', 'auto_v2_spec', 'balance_check_auto_v2',   // E8 combat_v2_auto.sql
+  'card_power_v2_numbers', 'card_power_v2_families', 'card_power_v2', 'combat_v2_squad_value',   // E9 combat_v2_power.sql (the Power number reads v2_power, v2_hit, v2_enemy and v2_support by design; no fight reads it)
   'balance_check'];   // combat_v2_testers.sql: the generic balance trigger names combat_v2 only to let a tester id go (it reads no mode)
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
@@ -388,7 +389,8 @@ for (const r of results) {
   if (name === 'VALUES') {
     const vals = rest.vals; const problems = [];
     const bal = new Map(Object.entries(vals).flatMap(([k, v]) => leaves(v, [k])).map(([p, v]) => [p, JSON.stringify(v)]));
-    const cfg = new Map(KEYS.filter((k) => CONFIG[k]).flatMap((k) => leaves(CONFIG[k], [k])).map(([p, v]) => [p, JSON.stringify(v)]));
+    // v2_power: PR E9 fits it (k, value, scale; config.json v2_power has the E9 value); this block applies the V1 row, so test-combat-v2-power.mjs compares it
+    const cfg = new Map(KEYS.filter((k) => CONFIG[k] && k !== 'v2_power').flatMap((k) => leaves(CONFIG[k], [k])).map(([p, v]) => [p, JSON.stringify(v)]));
     for (const [p, v] of bal) {
       if (cfg.has(p)) { if (cfg.get(p) !== v) problems.push(`${p}: balance ${v}, config.json ${cfg.get(p)}`); }
       else if (!Object.keys(ADDED).some((a) => matches(a, p))) problems.push(`${p}: in balance, not in config.json and not in ADDED`);

@@ -5,6 +5,8 @@
 //
 // THE PICK (one squad for a Hunt day from a pool of the member's cards; boss = {mechanics, weak_role}): each card has a score =
 //   its offense value (plan 2.5 Offense without the hit chance: attack (CP with the ATK points) x (1 + crit chance x (crit damage - 1)) x speed)
+//   [a Lab option of PR E9 (run.mjs powerpick): a pool card with a number `power` scores by it in place of the offense. The SQL combat_v2_autopick has
+//   no such option: the Lab measured the Power score lower than the offense score (plan 20.6)]
 //   x answers[m][role] for each boss mechanic m (the measured role value against m; 1 when absent)
 //   x (1 + the Weak to bonus of the boss for its role: v2_enemy.weak_role_rules[role].damage_x, else weak_role_x)
 //   x the pair score: pair_floor for a payoff card with no maker of its status among the other picked cards (plan 5.2 floor rule, the effect library
@@ -20,14 +22,16 @@ import { mkRng, hash, mean, median, table, ratio, fmt } from './util.mjs';
 import { hasSet1, withSet1, loadTeams, teamSpecs } from './teams.mjs';
 import { buildSquad } from './modes.mjs';
 
-/** The score parts of one pool card. c = {id, role, class, atk, crt, crd, spd, blocks}; boss = {mechanics, weak_role}. */
+/** The score parts of one pool card. c = {id, role, class, atk, crt, crd, spd, blocks, power?}; boss = {mechanics, weak_role}. val = the offense (E8), or
+ * c.power when it is a number (the PR E9 Lab option, not in SQL). */
 export function pickBase(cfg, c, boss) {
   const P = cfg.auto_v2.pick; const E = cfg.v2_enemy;
   const off = c.atk * (1 + c.crt * (c.crd - 1)) * c.spd;
   let ans = 1;
   for (const m of boss.mechanics || []) { const x = P.answers[m]?.[c.role]; if (x !== undefined) ans *= x; }
   const weak = c.role === boss.weak_role ? 1 + (E.weak_role_rules?.[c.role]?.damage_x ?? E.weak_role_x) : 1;
-  return { off, ans, weak, base: off * ans * weak };
+  const val = typeof c.power === 'number' ? c.power : off;
+  return { off, power: typeof c.power === 'number' ? c.power : null, val, ans, weak, base: val * ans * weak };
 }
 /** The pair score of a card in a squad S (the other picked cards make one of the statuses that it pays off, else pair_floor). */
 export function pairOf(cfg, c, S) {

@@ -147,6 +147,8 @@ Power              = Offense x Survival x k[role]
 - Today k is 0.87 (Medic) to 1.44 (Artillery) [T]. The support Offense term does not count smite, Poison or control.
   The fix is formula work, not balance work (decision 3, section 15).
 - Refit k after each balance change (a Lab step, section 10).
+- Built in E9 (20.6): the support Offense counts the PP of its smite, dot (Poison, Burn) and control blocks x `v2_power.value`; k with that formula is
+  0.94 to 1.10 (stored), Spearman 0.876 overall, 0.980 attackers, 0.782 supports (Hunt). SQL: `card_power_v2`, `combat_v2_squad_value`.
 
 ---
 
@@ -1362,3 +1364,132 @@ new function, and the flag stays OFF. The reference is the simulator: `v2sim/pol
   300 random pools; 11 fixed picks and 7 refusals; fuzz 860 actions); MUTATE=all after the apply: baseline PASS and 53 of 53 planted faults caught. Goldens with
   CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. Then the file applied (`rehearse-sql.mjs`): grants OK; the earlier
   v2 tests got the E8 functions in their caller lists (as E6, T1 and E7 did); the generated files regenerated. Combat checks C1, C2, C3 PASS.
+
+### 20.6 E9: the Power number (`tcg-bot/supabase/combat_v2_power.sql`)
+
+Plan row E9: "Power number `card_power_v2` and squad value in SQL. client shows it only", acceptance "rank correlation report. C3 passes", and decision 3
+(section 15): "add the smite, status and control value of the active to the Offense term in E9, then refit k (target 0.85-1.15)". Needs E8. One function is
+replaced (`balance_v2_spec`: the v2_power leaves only; the spec of every other key is the same); nothing in play calls a new function; the flag stays OFF.
+The reference is the simulator `v2sim/power.mjs` (`cardPower`, `squadValue`; the Lab: `node card-studio/v2sim/run.mjs power` and `powerpick`).
+
+- **The formula** (`card_power_v2(card, blocks)`, the card = `card_combat_v2`, the blocks = the BASE blocks of the active):
+  - crit factor cx = 1 + crt x (crd - 1); hit chance = 1 - max(0, `v2_hit.miss` + `v2_enemy.hunt.Heroic.evasion` - ACC) (the Heroic boss: the boss of the fit).
+  - Offense (attacker) = atk x cx x hit chance x speed x (1 + `abl_x` x (ABL - 1)) (plan 2.5, unchanged).
+  - Offense (support) = (`v2_support.basic_x` x atk x hit chance + `support_abl_ref` x F x ABL + F x ABL x atk x u x V) x cx x speed, with
+    V = `value.smite` x PP(smite) + `value.dot` x PP(dot) + `value.control` x PP(control) and u = 1 / (`support_pp.smite` x `sup_cycle`) (the attack share
+    of one PP: a smite of 1.0 x CP costs smite x sup_cycle / C PP). This is decision 3.
+  - Survival = HP / (1 - DEF) / (1 - `ddg_x` x DDG). Power = Offense x Survival x k[role] x `scale`; the card shows round(Power).
+  - The families of the blocks (`card_power_v2_families`): smite = smite, area, vs_status, payoff_dmg, crit_add, consume of a support (the smite and what
+    changes it); dot = a status block (apply, on_crit, on_kill; random_apply when all its options are in one family) of the statuses family `dot` (Poison,
+    Burn); control = the same for the family `control` (Stunned, Frozen, Sleep, Paralyzed); an attachment counts in the family of its host; the rest is
+    other (shield, heal, boosts, cure, Exposed, Weakened, Mark, Chill, ...). PP = `ability_v2_pps` (the 5.2 price list) on the blocks with the extra stack.
+  - Why dot and not every status: with every status in the family, the Spotter (Exposed) fell to k 0.86 (the Exposed value is in the old generic term
+    already). With Poison and Burn ("smite, Poison or control", decision 3 text), every role is inside the target.
+  - The attacker term has no value term: every active costs the same budget, and the attacker k is inside the target with no change.
+- **Balance** `v2_power` (V1 key; this file updates it ONCE: a row that has `value` keeps its numbers): k fitted, `value` {smite 0.2, dot 0.175, control
+  0.1}, `scale` 0.00195 (the mean Power of a Normal 0-star level-0 card of each placeholder template = 100). `config.json v2_power` has the same value.
+  The value weights: one grid fit on the 42 reference templates (Normal 2 stars level 15, the card + the 4 reference cards of experiment 4), the sum of the
+  template-level spreads of the Hunt and the Dungeon (3 numbers, one per family); then k per role on the Hunt (12 numbers, mean 1).
+- **The squad value** `combat_v2_squad_value(cards)` = the sum of Power x the pair score of each card (the E8 pair rule: `pair_floor` for a payoff card with
+  no maker of its status among the other cards). `card_power_v2(rarity, stars, mod, level, points, role, blocks)` gives the Power from the card facts.
+- **The k refit** (`run.mjs power`, Hunt Heroic net damage a day of the card + 4 reference cards, policy autov2, 1500 days a template; fit on seed 9, check
+  on fresh days of seed 19):
+
+  | Role | k before (plan 2.5, V1) | k with the E9 formula (stored) | Check: E9 x stored k, fresh days | Dungeon k before | Dungeon k E9 |
+  |---|---|---|---|---|---|
+  | Breaker | 0.90 | 0.942 | 1.01 | 0.88 | 0.92 |
+  | Striker | 0.96 | 1.003 | 0.99 | 0.87 | 0.91 |
+  | Flurry | 0.91 | 0.956 | 0.99 | 0.84 | 0.87 |
+  | Finisher | 0.93 | 0.980 | 0.99 | 0.88 | 0.91 |
+  | Survivor | 0.96 | 1.011 | 1.01 | 1.00 | 1.04 |
+  | Cleaver | 0.97 | 1.014 | 0.99 | 0.97 | 1.01 |
+  | Warden | 0.96 | 1.009 | 1.00 | 0.96 | 1.00 |
+  | Medic | 0.91 | 0.951 | 1.00 | 1.33 | 1.39 |
+  | Controller | 1.15 | 1.099 | 1.01 | 1.17 | 1.11 |
+  | Spotter | 0.95 | 0.997 | 0.98 | 0.94 | 0.99 |
+  | Herald | 0.95 | 0.992 | 1.01 | 0.91 | 0.95 |
+  | Artillery | 1.46 | 1.045 | 1.01 | 1.25 | 0.90 |
+
+  Before: 0.90 to 1.46 (outside the target: Artillery, Controller). E9: 0.94 to 1.10 (inside 0.85 to 1.15). In the Dungeon the Medic stays at 1.39 (a heal
+  is worth more there; one Power number for both modes).
+- **The rank correlation report** (Spearman; 240 random cards: random role, finish, stars, level and build; Hunt 300 days, Dungeon 60 runs a card):
+
+  | Mode | Formula | All cards | Attackers | Supports | Mean within one role |
+  |---|---|---|---|---|---|
+  | Hunt | naive CP x HP | 0.625 | 0.912 | 0.606 | 0.822 |
+  | Hunt | plan 2.5 (V1, k = 1) | 0.818 | 0.982 | 0.630 | 0.901 |
+  | Hunt | E9 Power | 0.876 | 0.980 | 0.782 | 0.900 |
+  | Dungeon | naive CP x HP | 0.558 | 0.883 | 0.518 | 0.807 |
+  | Dungeon | plan 2.5 (V1, k = 1) | 0.706 | 0.918 | 0.517 | 0.876 |
+  | Dungeon | E9 Power | 0.681 | 0.928 | 0.525 | 0.877 |
+
+  Per role (E9, Hunt / Dungeon): Breaker 0.98 / 0.90, Striker 1.00 / 0.98, Flurry 0.98 / 0.96, Finisher 0.98 / 0.86, Survivor 0.97 / 0.94, Cleaver 0.97 / 0.98,
+  Warden 0.78 / 0.77, Medic 0.92 / 0.94, Controller 0.84 / 0.90, Spotter 0.74 / 0.73, Herald 0.77 / 0.68, Artillery 0.88 / 0.89.
+  Per squad (120 random squads of real cards; Hunt 8 cards, Dungeon the first 5): sum of CP 0.888 / 0.669, sum of plan 2.5 0.922 / 0.613, sum of E9 Power
+  0.941 / 0.635, squad value (Power x pair score) 0.937 / 0.645.
+- **The Hunt auto-pick with the Power number** (owner approval of 2026-10-22: use the Power in the pick score and measure per boss). `run.mjs powerpick`
+  (v2sim `powerPickLab`): the E8 Lab protocol (the same pools, seeds, searched reference and evaluation days as 20.5), and four Power variants in the
+  score (Power x the role answers x the Weak to bonus x the pair score). The "before" column reproduces the E8 numbers of 20.5 exactly.
+  Held-out pools (seed 1, 2 pools of 20 real cards a boss, Heroic, 150 fresh days):
+
+  | Boss | Weak to | E8 offense score (before) | E9 Power score (after) | Power for attackers only |
+  |---|---|---|---|---|
+  | Rage-Quit Warlord | controller | x0.864 | x0.869 | x0.869 |
+  | Nightshade | breaker | x0.874 | x0.887 | x0.873 |
+  | Netcode | survivor | x0.929 | x0.898 | x0.929 |
+  | Grind Vampire | artillery | x0.946 | x0.911 | x0.936 |
+  | AFK Warzombie | striker | x0.870 | x0.905 | x0.905 |
+  | Maw | cleaver | x0.812 | x0.826 | x0.836 |
+  | Smurf | flurry | x0.952 | x0.952 | x0.952 |
+  | Skeleton | breaker | x0.815 | x0.760 | x0.788 |
+  | Pumpkin | survivor | x0.825 | x0.825 | x0.825 |
+  | Lagspike | finisher | x0.932 | x0.794 | x0.887 |
+  | Banwave | striker | x0.926 | x0.923 | x0.956 |
+  | Zerg | cleaver | x0.892 | x0.910 | x0.892 |
+  | Salt Miner | breaker | x0.870 | x0.870 | x0.870 |
+  | Frost Lich | flurry | x0.909 | x0.816 | x0.934 |
+  | Camper Colossus | controller | x0.741 | x0.730 | x0.730 |
+  | Hydra | artillery | x0.886 | x0.851 | x0.872 |
+  | MEAN | | x0.878 | x0.858 | x0.878 |
+  | Bosses below x0.85 | | 4 | 6 | 4 |
+
+  The same on the tuning pools (seed 101): E8 x0.888 (5 below), E9 Power x0.868 (7 below), Power for attackers only x0.881 (5 below). On a larger held-out
+  set (seed 202, 6 pools a boss, 96 pools): E8 x0.877 (4 below), E9 Power x0.860 (8 below), Power without Survival x0.857, Power for supports only x0.861,
+  Power for attackers only x0.873 (5 below).
+  - **Result: the Power score does not improve the pick.** It is lower on all three pool sets; for attackers alone it is equal or a little lower. So
+    `combat_v2_autopick` is NOT changed (it keeps the E8 offense score); the simulator keeps the Power score as a Lab option (`autoPick` reads a pool card's
+    `power`; `run.mjs powerpick`).
+  - Why: the Power is the value of a card beside 4 fixed reference cards (2 attackers + Warden + Spotter). In an 8-card squad with 4 attackers, the
+    amplifiers (Herald, Spotter) and the Medic are worth more and a second damage source (Artillery) less. Support roles picked over the 32 seed-1 pools:
+    searched best Herald 24, Medic 23, Spotter 21, Controller 17, Warden 15, Artillery 12; E8 Artillery 18; E9 Power Artillery 22 (fewer Controllers and
+    Medics). Cards in common with the searched best (of 8): E8 6.13, E9 Power 6.03, Power for attackers 6.19.
+  - Why 4 bosses stay below x0.85 (Camper Colossus x0.741, Maw x0.812, Skeleton x0.815, Pumpkin x0.825): the searched best squad has a SHAPE that the pick
+    rules forbid. In 27 of the 32 seed-1 pools the best squad breaks a pick rule (12: a support role twice, against `max_same_support` 1; 22: not 4
+    supports, against `supports` 4); in 5 of the 8 pools of these 4 bosses. Camper Colossus (Weak to Controller) and Maw: the best takes 2 Controllers;
+    Skeleton: 2 Spotters, or 3 supports; Pumpkin: 6 attackers and 2 supports. No per-card score reaches a squad that the shape rules forbid, so a better
+    card number cannot close this gap.
+- **Not built**: a player-card form (`card_power_v2` for `player_cards`: needs the live levels and v2 points of M1) and any Activity screen (U0: the
+  Activity shows the SQL number only, CI check C3). The Admin "Combat v2 Lab" shows the Power of each card (the card list and the squad table, with its
+  offense, survival, k and active value) and the squad value (a KPI of the fight).
+- **Open** (with the recommendation):
+  1. The pick score: keep the E8 offense score (measured better). To lift the 4 bosses, measure a shape rule next (for example the Weak to support role may
+     take 2 slots, or 3 to 5 supports by the boss answers) on the tuning pools, then on held-out pools; do not tune per boss.
+  2. The Dungeon: one Power number for both modes leaves the Medic at k 1.39 in the Dungeon and the Dungeon squad correlation at 0.645 (the sum of CP:
+     0.669). Recommendation: measure a Dungeon survival weight or a Dungeon k with R2 (Dungeon v2 ON), before the Power shows on a Dungeon screen.
+  3. The pair score in the squad value: its measured effect is within the noise (Hunt 0.941 without, 0.937 with; Dungeon 0.635 without, 0.645 with).
+     Recommendation: keep it (the same rule as the pick, plan 5.2), measure again after the Set 1 abilities are pushed.
+  4. The scale: the mean Normal 0-star level-0 card shows 100 (the 42 templates: 62 to 134); Normal 2 stars level 15: mean 568; Gold 0 stars level 0: mean
+     1016; Gold 5 stars level 30: mean 4201 (2504 to 6097). Recommendation: keep; Nathan may choose another reference with the screen design (U0).
+- **Proof** (copy 2, V1 to E8 and the tester list applied): `test-combat-v2-power.mjs` PASS all 44, before and after the apply: the md5 of the 527 other
+  public functions is the same (the E8 auto-pick included); only `balance_v2_spec` changes, and its spec of every other key is the same; no other function
+  calls a new function; the flag OFF; balance = config.json; the status families = the copy in power.mjs; 8 planted values refused; the file runs twice;
+  17 fixed Power cases and 4 fixed squad values (hand-computed: each term, each family rule, the extra stack, k, scale, the rounding, the pair rule); 5 + 5 refusals; the 7-argument form on 840 cards;
+  monotone in stars and level for the 42 templates x Normal and Gold; SQL = the simulator on 300 random cards end to end, on 300 random abilities with
+  attachments (0 rounding near-ties) and on 120 random squads. MUTATE=all (V2_CARDS=40 V2_SQUADS=20, before the apply): baseline PASS all 44 in the same run,
+  39 of 39 planted faults caught (36 SQL, 3 simulator). Goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
+  Then the file applied (`rehearse-sql.mjs`): grants OK; `test-all-local.mjs` 157 of 163 PASS (2 one-time skipped); the 6 failures were the caller lists of 4
+  earlier v2 tests (the E9 functions added, as E6, T1, E7 and E8 did), the V1 config compare (v2_power is now compared by the E9 test) and SUPERSEDED.md; all 6
+  PASS after the fixes and the regeneration. `test-combat-lab-routes.mjs` PASS 18, `test-combat-lab-nowrite.mjs` PASS 6 (the Power of every squad card and
+  the squad value; nothing written in 22 tables). Combat checks C1 (+ the scope `^card_power_v2`), C2, C3 PASS; `node --test card-studio/v2sim/*.test.mjs`
+  PASS 190.
+- Go-live order: SUPERSEDED.md now lists `combat_v2_testers.sql` (this file replaces `balance_v2_spec`), so the tester file goes live before this file.

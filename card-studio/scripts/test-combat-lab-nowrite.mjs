@@ -6,7 +6,7 @@ import './localdb-guard.mjs';
  * The member: the member of the local copy with the most cards (never printed: no member data in the output). The fights use the real v2 SQL functions.
  * Invariants:
  *   W1 the Hunt fight answers (a named boss, an action log with card and boss actions, totals); Auto v2 (PR E8): the squad from the Hunt auto-pick, the
- *      Auto choice on every card action
+ *      Auto choice on every card action; PR E9: the Power number of every squad card and the squad value (when the copy has the E9 functions)
  *   W2 the Dungeon fight answers (a guardian, an action log, a result)
  *   W3 the compare answers (v1 hunt_attack on a private test boss, v2 totals)
  *   W4 after the three: every count and sum of 22 tables is the same as before (players, player_cards, the 3 ledgers, hunts, hunt_hits, hunt_squads,
@@ -49,6 +49,12 @@ check(`W1 the Hunt fight answers: ${hunt.squad?.length} cards vs a named boss, $
 const cardEv = (hunt.events || []).filter((e) => e.kind === 'card');
 check(`W1 Auto v2 (PR E8): the Hunt squad comes from the auto-pick (${(hunt.squad || []).filter((s) => s.pick).length} cards with a pick score) and every card action carries the Auto choice (${cardEv.length} actions: ${[...new Set(cardEv.map((e) => e.auto?.why))].join(', ')})`,
   cardEv.length > 0 && cardEv.every((e) => e.auto && e.auto.why && e.auto.target) && (hunt.squad || []).every((s) => s.pick && s.pick.score > 0), cardEv.slice(0, 2));
+// PR E9: with the E9 functions on the copy, every squad card has its Power number and the squad has its value (from SQL)
+const [e9] = await local.sql(`select to_regprocedure('public.card_power_v2(jsonb, jsonb, jsonb)') is not null as on`);
+const pw = (hunt.squad || []).map((s) => s.power?.power);
+check(e9?.on ? `W1 the Power number (PR E9): every squad card has its Power (${pw.join(', ')}) and the squad value is ${hunt.squad_value?.shown} (card_power_v2, combat_v2_squad_value)`
+  : 'W1 the Power number (PR E9): the copy has no E9 functions, so the fight shows no Power and no squad value',
+  e9?.on ? pw.length === 8 && pw.every((x) => Number.isInteger(x) && x > 0) && hunt.squad_value?.value > 0 : (hunt.squad || []).every((s) => !s.power) && !hunt.squad_value, { pw, sv: hunt.squad_value });
 const dng = await post('/fight',{ player: pick.id, mode: 'dungeon', cards: 'auto', monster: mon.key, kind: 'guardian', floor: 3, room: 5, foes: 1, level: 10, seed: 12 });
 check(`W2 the Dungeon fight answers: ${dng.squad?.length} cards vs a guardian, ${dng.totals?.actions} actions, ${dng.totals?.result}`,
   dng.status === 200 && dng.ok && dng.squad?.length >= 1 && kinds(dng).has('card') && ['won', 'lost', 'step cap'].includes(dng.totals?.result), { status: dng.status, error: dng.error });

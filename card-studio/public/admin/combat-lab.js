@@ -4,6 +4,7 @@
 //  2. The fight viewer: a member of the local copy, a squad of the member's own cards (or auto: the Hunt auto-pick, the best N by v2 CP in the Dungeon), a Hunt boss or Dungeon foes,
 //     RUN. The server runs the REAL v2 SQL functions on the LOCAL copy in a block that rolls back (src/combat-lab-routes.js). This page draws the
 //     answer only: no combat math here. Compare (Hunt): the same squad in v1 (hunt_attack on a private test boss) and in v2.
+//     PR E9: the Power number of each card (card_power_v2, in the card list and the squad table) and the squad value (combat_v2_squad_value) come from SQL.
 // Every text goes in as textContent.
 
 const API = '/api/admin/combat-lab';
@@ -137,7 +138,7 @@ function fightPanel(setup) {
             drawSquad();
           } }),
           h('span', { class: 'cl-cname' }, k.rarityDot(c.rarity), c.name, h('span', { class: 'cs-note' }, ` ${'*'.repeat(c.stars || 0)}`)),
-          h('span', { class: 'cs-note' }, `${k.label(c.role)} - CP ${fmt(c.cp, 1)} - ${c.active.name}${c.active.source === 'placeholder' ? ' (placeholder)' : ''}`));
+          h('span', { class: 'cs-note' }, `${k.label(c.role)} - Power ${num(c.power)} - CP ${fmt(c.cp, 1)} - ${c.active.name}${c.active.source === 'placeholder' ? ' (placeholder)' : ''}`));
       })));
   };
   async function loadCards() {
@@ -232,13 +233,16 @@ function result(r) {
     kpi('Steps', `${T.steps} of ${T.cap ?? '-'}`, `${T.actions} actions`),
     kpi('Crits / misses', `${T.crits} / ${T.misses}`, `${T.actives} actives, ${T.basics} basics, ${T.skips} skips`),
     kpi('Damage taken', num(T.damage_taken), `${T.cards_down} card${T.cards_down === 1 ? '' : 's'} down`),
-    kpi('Enemies down', `${T.enemies_down} of ${r.enemies.length}`));
+    kpi('Enemies down', `${T.enemies_down} of ${r.enemies.length}`),
+    kpi('Squad value', r.squad_value ? num(r.squad_value.shown) : '-', r.squad_value ? 'the Power of each card x its pair score (combat_v2_squad_value)' : 'no E9 functions on the local copy'));
 
   // the squad
   const sp = k.panel('Squad', { sub: `${r.squad.length} cards, level ${r.request.level}. v2 stats from card_combat_v2; the active from subjects.ability_v2, else the simulator placeholder.` });
   sp.body.append(...[k.table({ phone: 'recs', title: 'name', rows: r.squad, cols: [
     { key: 'name', label: 'Card', fmt: (s) => h('span', { class: 'cl-cname' }, k.rarityDot(s.rarity), `${s.name} ${'*'.repeat(s.stars || 0)}`) },
     { key: 'role', label: 'Role', fmt: (s) => `${s.v2?.passive?.label || k.label(s.role)} (${s.v2?.class || '-'})` },
+    { key: 'power', label: 'Power', r: true, fmt: (s) => (s.power && s.power.power != null ? h('div', null, h('div', { class: 'num' }, num(s.power.power)), h('div', { class: 'cs-note' }, ...powerNote(s.power)))
+      : s.power?.error ? h('span', { class: 'err' }, s.power.error) : '-') },
     ...STAT.map(([key, lbl, d]) => ({ key, label: lbl, r: true, fmt: (s) => fmt(s.v2?.stats?.[key], d) })),
     { key: 'active', label: 'Active', fmt: (s) => h('div', { class: 'cl-active' }, h('strong', null, s.active.name), s.active.source === 'placeholder' ? h('span', { class: 'cs-note' }, ' placeholder') : null,
       h('div', null, s.active.text || s.active.error || '-'), h('div', { class: 'cs-note' }, `Charge: ${s.charge_need} own turns. ${s.passive_text || ''}`)) },
@@ -289,6 +293,10 @@ function changeText(c, nm) {
 // the Auto v2 choice of a card action (combat_v2_auto why)
 const AUTO_WHY = { charging: 'not charged', ready: 'charged', held: 'held too long', useful: 'useful now', not_useful: 'not useful now', hold_pay: 'waits for its status',
   hold_execute: 'waits for the HP line', hold_gate: 'waits for its condition', hold_kinds: 'waits for more statuses', hold_charging: 'waits for Charging', no_enemy: 'no enemy' };
+// the parts of a Power number as SQL gives them (card_power_v2): offense, survival, role k, and the value term of a support active (smite, dot, control PP)
+const powerNote = (p) => [`offense ${num(p.offense)}`, `survival ${num(p.survival)}`, `k ${+Number(p.k).toFixed(3)}`,
+  Number(p.v) > 0 ? `active value ${+Number(p.v).toFixed(2)}` : null, Number(p.v) > 0 ? `PP smite ${+Number(p.pp?.smite).toFixed(1)}, dot ${+Number(p.pp?.dot).toFixed(1)}, control ${+Number(p.pp?.control).toFixed(1)}` : null]
+  .filter(Boolean).map((t) => h('div', null, t));
 const pickNote = (x) => [`offense ${num(x.off)}`, Number(x.weak) !== 1 ? `Weak to x${+Number(x.weak).toFixed(2)}` : null, Number(x.ans) !== 1 ? `answers x${+Number(x.ans).toFixed(2)}` : null,
   Number(x.pair) !== 1 ? `pair x${+Number(x.pair).toFixed(2)}` : null].filter(Boolean).join(', ');
 
