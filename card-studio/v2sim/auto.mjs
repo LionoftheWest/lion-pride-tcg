@@ -4,6 +4,7 @@
 // The fight policy is POLICIES.autov2 (policy.mjs). The numbers are config auto_v2 (= balance auto_v2).
 //
 // THE PICK (one squad for a Hunt day from a pool of the member's cards; boss = {mechanics, weak_role}): each card has a score =
+//   its value: the Power number of the card (PR E9: the pool card's power, SQL card_power_v2 / power.mjs cardPower) when the pool card has one, else (E8)
 //   its offense value (plan 2.5 Offense without the hit chance: attack (CP with the ATK points) x (1 + crit chance x (crit damage - 1)) x speed)
 //   x answers[m][role] for each boss mechanic m (the measured role value against m; 1 when absent)
 //   x (1 + the Weak to bonus of the boss for its role: v2_enemy.weak_role_rules[role].damage_x, else weak_role_x)
@@ -20,14 +21,16 @@ import { mkRng, hash, mean, median, table, ratio, fmt } from './util.mjs';
 import { hasSet1, withSet1, loadTeams, teamSpecs } from './teams.mjs';
 import { buildSquad } from './modes.mjs';
 
-/** The score parts of one pool card. c = {id, role, class, atk, crt, crd, spd, blocks}; boss = {mechanics, weak_role}. */
+/** The score parts of one pool card. c = {id, role, class, atk, crt, crd, spd, blocks, power?}; boss = {mechanics, weak_role}. val = c.power (PR E9) when it
+ * is a number, else the offense (E8). */
 export function pickBase(cfg, c, boss) {
   const P = cfg.auto_v2.pick; const E = cfg.v2_enemy;
   const off = c.atk * (1 + c.crt * (c.crd - 1)) * c.spd;
   let ans = 1;
   for (const m of boss.mechanics || []) { const x = P.answers[m]?.[c.role]; if (x !== undefined) ans *= x; }
   const weak = c.role === boss.weak_role ? 1 + (E.weak_role_rules?.[c.role]?.damage_x ?? E.weak_role_x) : 1;
-  return { off, ans, weak, base: off * ans * weak };
+  const val = typeof c.power === 'number' ? c.power : off;
+  return { off, power: typeof c.power === 'number' ? c.power : null, val, ans, weak, base: val * ans * weak };
 }
 /** The pair score of a card in a squad S (the other picked cards make one of the statuses that it pays off, else pair_floor). */
 export function pairOf(cfg, c, S) {

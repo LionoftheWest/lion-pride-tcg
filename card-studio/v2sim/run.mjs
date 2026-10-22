@@ -1,7 +1,7 @@
 // run.mjs - the v2sim CLI.
 //   node card-studio/v2sim/run.mjs <experiment|all> [--runs N] [--seed S] [--config file.json] [--patch '{"v2_x": {...}}'] [--tag name]
 // Experiments: fairness, shapes, survival, stat-weights, speed, statuses, archetypes, pp, targets, teams, monsters (--tier Mythic), shares, auto and answers (PR E8,
-// auto.mjs); all = every experiment except targets, teams, monsters, shares, auto and answers.
+// auto.mjs), power and powerpick (PR E9, power.mjs); all = every experiment except targets, teams, monsters, shares, auto, answers, power and powerpick.
 // Reports go to card-studio/out/v2sim/<experiment>[-tag].md (out/ is not committed). targets also writes <...>.json.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,10 +10,11 @@ import { targets } from './targets.mjs';
 import { teams } from './teams.mjs';
 import { monsters } from './monsters.mjs';
 import { shares } from './shares.mjs';
-import { autoLab, answersExperiment } from './auto.mjs';
+import { autoLab, answersExperiment, pairOf } from './auto.mjs';
+import { powerLab, powerPickLab } from './power.mjs';
 import { HERE, loadConfig, patch } from './util.mjs';
 
-const ALL = { ...EXPERIMENTS, targets, teams, monsters, shares, auto: autoLab, answers: answersExperiment };
+const ALL = { ...EXPERIMENTS, targets, teams, monsters, shares, auto: autoLab, answers: answersExperiment, power: (c, o) => powerLab(c, { ...o, pairOf }), powerpick: powerPickLab };
 const args = process.argv.slice(2);
 const opt = k => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : undefined; };
 const name = args[0];
