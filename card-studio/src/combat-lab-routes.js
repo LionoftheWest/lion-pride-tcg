@@ -1,5 +1,5 @@
 /**
- * The Admin view "Combat v2 Lab" (docs/combat-redesign-plan.md 20.3): see a combat v2 fight of a real member's cards before v2 goes live.
+ * The Admin view "Combat v2 Lab" (docs/combat-redesign-plan.md 20.4): see a combat v2 fight of a real member's cards before v2 goes live.
  * Every fight runs the REAL v2 SQL functions (card_combat_v2, combat_v2_hunt_boss, combat_v2_dungeon_foe, combat_v2_next, combat_v2_card_act,
  * combat_v2_enemy_act, combat_v2_turn_order, hunt_boss_v2_card, ability_v2_text) on the LOCAL copy, inside ONE DO block that always ends with a
  * RAISE: nothing is kept (no player row, no ledger row, no hunt row, no balance_log row). The v2 functions are pure (state in, state out); the block
@@ -19,7 +19,7 @@
  */
 import express from 'express';
 import { adminGate } from './admin-routes.js';
-import { localCopy, lit, readRes } from './admin-write.js';
+import { localCopy, lit, readRes, BadRequest } from './admin-write.js';
 import { roleOf, templateFor, allocate, classOf, ROLES } from '../v2sim/cards.mjs';
 import { loadConfig } from '../v2sim/util.mjs';
 
@@ -28,7 +28,6 @@ export const MAX_ACTIONS = 600; // a safety bound of the driver loop (a Hunt day
 const ID = /^[A-Za-z0-9_]{1,40}$/;
 const KEY = /^[a-z_]{1,40}$/;
 const jlit = (v) => `${lit(JSON.stringify(v))}::jsonb`;
-class BadRequest extends Error {}
 
 const intIn = (v, name, min, max, dflt) => {
   if (v === undefined || v === null || v === '') return dflt;
@@ -346,11 +345,18 @@ export function combatLabRouter({ local = localCopy(), env = process.env, cfg = 
     if (!list.length) return [];
     const bal = await one(`select (select value from balance where key = 'v2_level') as v2_level, (select value from balance where key = 'v2_stats') as v2_stats`);
     const specs = list.map((c) => { const a = activeOf(cfg, c); return { card: c, a, cls: classOf(a.role), points: pointsOf(cfg, a.role, level, bal) }; });
-    // one query: the level-L v2 CP (card_combat_v2 cp_base) and the card text of the active (ability_v2_text) of each card
-    const lines = (await one(`select coalesce(jsonb_agg(jsonb_build_object(
-        'cp', (card_combat_v2(x->>'rarity', (x->>'stars')::int, (x->>'cp_mod')::numeric, (x->>'level')::int, x->'points', x->>'role')->>'cp_base')::numeric,
-        'text', ability_v2_text(x->>'cls', x->'blocks')->>'text') order by o), '[]'::jsonb) as r
-      from jsonb_array_elements(${jlit(specs.map((s) => ({ rarity: s.card.rarity, stars: s.card.stars, cp_mod: Number(s.card.cp_mod), level, points: s.points, role: s.a.role, cls: s.cls, blocks: s.a.blocks })))}) with ordinality q(x, o)`)).r || [];
+    // one rolled-back block: the level-L v2 CP (card_combat_v2 cp_base) and the card text of the active (ability_v2_text) of each card; a card that
+    // one of them refuses gets null (the fight shows the error)
+    const lines = (await block(`do $t$ declare out jsonb := '[]'; x jsonb; cp numeric; tx text;
+begin
+  for x in select v from jsonb_array_elements(${jlit(specs.map((s) => ({ rarity: s.card.rarity, stars: s.card.stars, cp_mod: Number(s.card.cp_mod), level, points: s.points, role: s.a.role, cls: s.cls, blocks: s.a.blocks })))}) with ordinality q(v, o) order by o loop
+    begin cp := (card_combat_v2(x->>'rarity', (x->>'stars')::int, (x->>'cp_mod')::numeric, (x->>'level')::int, x->'points', x->>'role')->>'cp_base')::numeric;
+    exception when others then cp := null; end;
+    begin tx := ability_v2_text(x->>'cls', x->'blocks')->>'text'; exception when others then tx := null; end;
+    out := out || jsonb_build_array(jsonb_build_object('cp', cp, 'text', tx));
+  end loop;
+  raise exception 'RES %', jsonb_build_object('r', out);
+end $t$;`)).r || [];
     return specs.map((s, i) => ({ card_id: Number(s.card.card_id), name: s.card.name, rarity: s.card.rarity, stars: s.card.stars, cp_mod: Number(s.card.cp_mod), role: s.a.role, class: s.cls,
       active: { name: s.a.name, source: s.a.source, template: s.a.template || null, text: lines[i]?.text || null },
       blocks: s.a.blocks, points: s.points, cp: lines[i]?.cp ?? null }));

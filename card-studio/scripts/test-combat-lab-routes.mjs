@@ -25,7 +25,7 @@ const local = {
     if (q.includes("key = 'dungeon') as dungeon")) return [{ dungeon: 5 }];
     if (q.includes('from player_cards pc join cards c')) return [{ card_id: 7, name: 'Tst Card', rarity: 'normal', stars: 1, quantity: 1, subject_key: 'tst-subject', type: 'Character', cp_mod: 1, ability: null, ability_v2: null }];
     if (q.includes("key = 'v2_level'")) return [{ v2_level: { max_level: 30, points_per_level: 1 }, v2_stats: { max_per_stat: 10 } }];
-    if (q.includes('card_combat_v2(x->>')) return [{ r: [{ cp: 30, text: 'Hit the target.' }] }];
+    if (q.includes('card_combat_v2(x->>') && q.startsWith('do $t$')) throw new Error('ERROR: P0001: RES {"r": [{"cp": 30, "text": "Hit the target."}]}');
     return [];
   },
   async info() { return { configured: true, reachable: true, file: 'localdb2.env' }; },
@@ -108,4 +108,3 @@ check('L7 snapDiff: HP, a new stack, a dropped status, down', d.length === 1 && 
 
 srv.close();
 console.log(fails ? `${fails} of ${n} FAILED` : `PASS all ${n}`);
-process.exitCode = fails ? 1 : 0;

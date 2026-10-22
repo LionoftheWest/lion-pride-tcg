@@ -1,4 +1,4 @@
-// Lion Pride TCG - Admin view: the Combat v2 Lab (docs/combat-redesign-plan.md 20.3). One page, #/combat-lab:
+// Lion Pride TCG - Admin view: the Combat v2 Lab (docs/combat-redesign-plan.md 20.4). One page, #/combat-lab:
 //  1. The flag and the testers: the four modes of balance combat_v2 and the tester list. Add or remove a tester with the balance editor of Phase 2
 //     (Review the live value -> Test on the local copy -> Apply live -> the Admin log and balance_log). No other write path.
 //  2. The fight viewer: a member of the local copy, a squad of the member's own cards (or auto: the best N by v2 CP), a Hunt boss or Dungeon foes,

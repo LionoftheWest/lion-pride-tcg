@@ -1,4 +1,4 @@
--- combat_v2_testers.sql (2026-10-21): combat v2, the tester list (docs/combat-redesign-plan.md 14.2 and 20.3). Needs combat_v2_monster_tuning.sql (E7b)
+-- combat_v2_testers.sql (2026-10-21): combat v2, the tester list (docs/combat-redesign-plan.md 14.2 and 20.4). Needs combat_v2_monster_tuning.sql (E7b)
 -- first (this file replaces its balance_v2_spec: the E7b text + one leaf).
 -- Before: the flag combat_v2 is one boolean for each capability (gauntlet, dungeon, hunt, progress), all false; a mode is on for everyone or for nobody.
 -- After this file:
