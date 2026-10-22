@@ -1266,3 +1266,28 @@ Nathan approved two items after PR #463 (2026-10-21). Needs E7b. The flag stays 
 - Found, not fixed (a gap of E7): the simulator caps the actions of a step for all units together, SQL caps each unit (`max_actions_per_step`).
   Only the Hydra's New Head (`extra_action`) reaches the cap; the test counts such fights apart.
 - Proof: in the PR (test-combat-v2-e7-followup.mjs, the planted faults, the goldens with this file as the candidate, the full local suite).
+
+### 20.4 The tester list and the Admin "Combat v2 Lab" (`tcg-bot/supabase/combat_v2_testers.sql`)
+
+Nathan asked for a tester unit to see the v2 changes. No v1 function calls `combat_v2_on` yet and there is no v2 fight screen (U0), so a tester
+list alone shows nothing. Two parts:
+- **The tester list** (for the go-live steps R1 to R3): `balance combat_v2.testers` = 0 to 20 Discord ids (a string of 17 to 20 digits, no id twice),
+  `[]` now; the four modes stay false. `combat_v2_on(mode, player)` = `combat_v2_on(mode)` OR (one of the four modes AND the player is in the list).
+  The tester part fails closed (NULL, an unknown mode, a value that does not match the fixed shape, no row, a read error). `combat_v2_on(mode)` does
+  not change. No v1 function calls either form. `balance_shape_errors` has the new spec word `discord_id`; `balance_v2_spec` = the E7b text + the list.
+- **Found and fixed**: the generic trigger `balance_check` refuses an update that loses a leaf, and list items are leaves, so a tester could be
+  added but never removed. `balance_check` (replaced: the text of `balance_table.sql`) exempts only the ids of `combat_v2.testers`.
+- **The Admin page** `#/combat-lab` (`public/admin/combat-lab.js`, `src/combat-lab-routes.js`):
+  - Flag and testers: the four modes and the list; add or remove an id with the Phase 2 balance editor (review, test on the local copy, apply
+    live, the Admin log and `balance_log`). No other write path.
+  - Fight viewer: a member of the LOCAL copy, a squad of the member's own cards (or auto: the best N by v2 CP), a Hunt boss of `hunt_bosses_v2`
+    (or the tier boss) at a tier and a start HP, or Dungeon foes (`combat_v2_dungeon_foe`: monster, room kind, floor, room, 1 to 4 foes), a card
+    level and a seed. The real v2 SQL functions run in ONE block on the local copy that always ends with a RAISE (nothing is kept). It shows
+    the squad (the v2 stats of `card_combat_v2`, the role passive, the active and its text: `subjects.ability_v2`, else the simulator placeholder of
+    the role), the boss card (`hunt_boss_v2_card`: Weak to, resists, mechanics, counter moves, counters, bring), the turn order, the action log
+    (actor, active or basic, each hit with crit and miss, the HP, status and Charging changes of every unit, the step-end ticks, downs) and the totals.
+  - Compare (Hunt): the same cards in v1 (`hunt_attack`, the admin sim: a test member with copies of the cards, a PRIVATE test boss of the tier
+    with no passive, rolled back) and in v2. The Dungeon has no compare: the v1 Dungeon is a run of rooms with no one-fight path.
+  - Limits: the policy is the simple Lab policy (Auto v2 is E8); the stat points are the simulator build of the role (no live card levels before M1).
+- Proof: in the PR (test-combat-v2-testers.mjs with its planted faults, test-combat-lab-routes.mjs, test-combat-lab-nowrite.mjs, the goldens with
+  this file as the candidate, the full local suite).

@@ -442,7 +442,7 @@ Adds 1 voice minute today to each given member who has a players row. The bot (v
 - Returns: `trigger`
 - Security definer: no
 
-Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
+Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type (except the ids of combat_v2.testers, which may be removed: combat_v2_testers.sql), and a bad stars row. Sets updated_at and updated_by.
 
 <a id="fn-balance-check-ability-v2"></a>
 
@@ -612,7 +612,7 @@ Returns the number at a path in a balance value, for example balance_num('daily'
 - Returns: `text[]`
 - Security definer: no
 
-[combat] The shape walker of the combat v2 balance keys (combat_v2_flags_balance.sql): the list of problems of a value against a spec ("num lo hi", "int lo hi", "bool", "enum a|b", an object with exactly its keys, ["list"|"set", spec, min, max]); empty = fine.
+[combat] The shape walker of the combat v2 balance keys (combat_v2_flags_balance.sql): the list of problems of a value against a spec ("num lo hi", "int lo hi", "bool", "enum a|b", "discord_id" = a string of 17 to 20 digits, an object with exactly its keys, ["list"|"set", spec, min, max]); empty = fine. discord_id: combat_v2_testers.sql.
 
 <a id="fn-balance-text-errors-text-text"></a>
 
@@ -632,7 +632,7 @@ Returns the number at a path in a balance value, for example balance_num('daily'
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] The fixed shape with the limits of each combat v2 balance key (combat_v2, v2_stats, v2_card_hp, v2_asc, v2_level, card_level, v2_support, v2_speed, v2_charge, v2_hit, v2_roles, v2_status, v2_control, v2_enemy, v2_dungeon, v2_hunt, v2_pp, v2_power); NULL for every other key. A new v2 leaf needs a new spec in this function. The E7 tuning added v2_enemy.mechanics.ironhide.crit_x, venom.chance and slowing.chance. combat_v2_monster_tuning.sql (the V1 text of combat_v2_flags_balance.sql + these leaves).
+[combat] The fixed shape with the limits of each combat v2 balance key (combat_v2, v2_stats, v2_card_hp, v2_asc, v2_level, card_level, v2_support, v2_speed, v2_charge, v2_hit, v2_roles, v2_status, v2_control, v2_enemy, v2_dungeon, v2_hunt, v2_pp, v2_power); NULL for every other key. A new v2 leaf needs a new spec in this function. The E7 tuning added v2_enemy.mechanics.ironhide.crit_x, venom.chance and slowing.chance (combat_v2_monster_tuning.sql); combat_v2.testers (0 to 20 Discord ids, no id twice): combat_v2_testers.sql.
 
 <a id="fn-balance-who"></a>
 

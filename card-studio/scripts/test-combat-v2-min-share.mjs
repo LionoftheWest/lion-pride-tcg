@@ -178,7 +178,7 @@ begin
    where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(T1NEW)}, ${q(E6NEW)}]) and p.prosrc ~ 'ability_v2_check';
   res := res || jsonb_build_object('case', 'no function but the subjects trigger calls the validator (no fight reads it)', 'ok', o = '[]'::jsonb, 'got', o);
   select value into v from balance where key = 'combat_v2';
-  res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', v = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', v);
+  res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (v - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', v);   -- the tester list (combat_v2_testers.sql) is not a mode
   -- balance
   select value into v from balance where key = 'ability_v2';
   res := res || jsonb_build_object('case', 'ABILITY_V2', 'ok', true, 'v', v);

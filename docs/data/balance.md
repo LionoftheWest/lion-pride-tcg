@@ -11,7 +11,7 @@ The values below are the values of the database that made this page.
 
 The triggers on `balance` check each change:
 
-- `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type, and a bad stars row. Sets updated_at and updated_by.
+- `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type (except the ids of combat_v2.testers, which may be removed: combat_v2_testers.sql), and a bad stars row. Sets updated_at and updated_by.
 - `balance_check_ability_v2` (`balance_check_ability_v2()`): Trigger (before insert, update on balance): the key ability_v2 must match its fixed shape and limits (ability_v2_spec, walked by balance_shape_errors) and words_min must not be above words_max. Every other key passes. combat_v2_abilities.sql.
 - `balance_check_boss_counters` (`balance_check_boss_counters()`): Trigger (before insert, update on balance): boss_counters must hold only numbers; share, boss_share and the move shares (heal, shield, empower, expose, smite, share, keep, curse, back) from 0 to 1; rounds, wait, plays, cards and hits whole numbers (plays and hits at least 1); hit sizes and multipliers above 0; the weights add up to more than 0. boss_passives: the counter passive numbers (plague_x, shatterer_x, dispeller_x, juggernaut_x, juggernaut_stun_fail, plague_cleanse) from 0 to 1.
 - `balance_check_combat` (`balance_check_combat()`): Trigger (before insert, update on balance): combat.element_bonus must be a number from 1 to 2, combat.element_penalty a number from 0.5 to 1 and combat.auto_elements true or false (f3_element_bonus.sql, f3_auto_elements.sql). A key that is absent is not checked.
@@ -894,14 +894,15 @@ Shape: `object { auto_elements: boolean, block: number, block_x: number, crit: n
 
 ### combat_v2
 
-The combat v2 switch (docs/combat-redesign-plan.md 14.2; combat_v2_flags_balance.sql). One boolean for each capability: gauntlet, dungeon, hunt (the fights of that mode play combat v2) and progress (card levels, the 9 stats and ASC-3). All false = combat v1 everywhere, exactly as before. Read ONLY through combat_v2_on(mode), which fails closed (a missing key, a value that is not true or false, an unknown capability or an error = false). The order to go live: Gauntlet, then Dungeon (with progress), then Hunt, each mode at least one full week; the Hunt only between two Hunts. Rollback: set the mode false. Shape: exactly these four booleans (balance_check_combat_v2).
+The combat v2 switch (docs/combat-redesign-plan.md 14.2; combat_v2_flags_balance.sql). One boolean for each capability: gauntlet, dungeon, hunt (the fights of that mode play combat v2) and progress (card levels, the 9 stats and ASC-3). All false = combat v1 everywhere, exactly as before. Read ONLY through combat_v2_on(mode), which fails closed (a missing key, a value that is not true or false, an unknown capability or an error = false). The order to go live: Gauntlet, then Dungeon (with progress), then Hunt, each mode at least one full week; the Hunt only between two Hunts. Rollback: set the mode false. testers: a list of Discord ids (0 to 20) that play the v2 modes before everyone (combat_v2_testers.sql); combat_v2_on(mode, player) reads it, combat_v2_on(mode) does not. Add or remove an id only in the Admin view (Combat v2 Lab), never in a file. Shape: exactly these four booleans and the tester list (balance_check_combat_v2).
 
-Shape: `object { dungeon: boolean, gauntlet: boolean, hunt: boolean, progress: boolean }`
+Shape: `object { dungeon: boolean, gauntlet: boolean, hunt: boolean, progress: boolean, testers: array(0) of nothing }`
 
 ```json
 {
   "hunt": false,
   "dungeon": false,
+  "testers": [],
   "gauntlet": false,
   "progress": false
 }

@@ -257,6 +257,8 @@ const NAV = [
   { id: 'sets', label: 'Sets', icon: 'package', match: /^\/sets(\/|$)/ },
   // Abilities (abilities.js, combat v2 PR T1): the ability builder; every check runs ability_v2_check on the LOCAL copy (/api/admin/abilities).
   { id: 'abilities', label: 'Abilities', icon: 'zap', match: /^\/abilities(\/|$)/ },
+  // Combat v2 Lab (combat-lab.js): the v2 tester list (the balance editor) and the v2 fight viewer on the LOCAL copy (/api/admin/combat-lab).
+  { id: 'combat-lab', label: 'Combat v2 Lab', icon: 'flask', match: /^\/combat-lab(\/|$)/ },
   { id: 'card-stats', label: 'Card stats', icon: 'layers', match: /^\/(card-stats$|card\/)/ },
   { id: 'hunt', label: 'Hunt', icon: 'swords', match: /^\/hunts?(\/|$)/ },
   { id: 'dungeon', label: 'Dungeon', icon: 'castle' },
@@ -1233,6 +1235,8 @@ const ROUTES = [
   [/^\/cards(?:\/([^/]+))?$/, (main, a, q) => import('./cards.js').then((m) => m.pageCardEditor(main, a, q, { h, icon, pageHead, errorState, render }))
     .catch((e) => main.replaceChildren(errorState(e)))],
   [/^\/abilities(?:\/([^/]+))?$/, (main, a, q) => import('./abilities.js').then((m) => m.pageAbilities(main, a, q, { h, icon, pageHead, panel, statusTag, errorState, render }))
+    .catch((e) => main.replaceChildren(errorState(e)))],
+  [/^\/combat-lab$/, (main, a, q) => import('./combat-lab.js').then((m) => m.pageCombatLab(main, a, q, { h, icon, api, pageHead, panel, table, statusTag, errorState, N, label, RARITY, rarityDot, ED, render }))
     .catch((e) => main.replaceChildren(errorState(e)))],
   [/^\/sets(?:\/([^/]+))?$/, (main, a, q) => import('./sets.js').then((m) => m.pageSets(main, a, q, { h, icon, pageHead, errorState, render }))
     .catch((e) => main.replaceChildren(errorState(e)))],

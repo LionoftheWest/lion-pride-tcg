@@ -562,7 +562,7 @@ begin
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on';
   res := res || jsonb_build_object('case', 'the flag combat_v2 has no reader but combat_v2_on (flag OFF changes nothing)', 'ok', o = '[]'::jsonb, 'got', o);
   select value into o from balance where key = 'combat_v2';
-  res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', o = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);
+  res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);   -- the tester list (combat_v2_testers.sql) is not a mode
   -- the data
   res := res || jsonb_build_object('case', 'DATA', 'ok', true,
     'v2_enemy', (select value from balance where key = 'v2_enemy'), 'v2_dungeon', (select value from balance where key = 'v2_dungeon'),

@@ -145,7 +145,7 @@ begin
   select coalesce(jsonb_agg(p.proname order by p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ '\menemy_v2_spec\M' and p.proname <> 'enemy_v2_spec';
   res := res || jsonb_build_object('case', 'only the balance trigger balance_check_enemy_v2 calls enemy_v2_spec (no v1 caller)', 'ok', o = '["balance_check_enemy_v2"]'::jsonb, 'got', o);
   select value into o from balance where key = 'combat_v2';
-  res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', o = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);
+  res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);   -- the tester list (combat_v2_testers.sql) is not a mode
   select coalesce(jsonb_agg(r2x), '[]') into o from unnest(array['anon', 'authenticated']) r2x where has_function_privilege(r2x, 'public.enemy_v2_spec()'::regprocedure, 'execute');
   res := res || jsonb_build_object('case', 'server only: anon and authenticated cannot run enemy_v2_spec', 'ok', o = '[]'::jsonb, 'got', o);
   res := res || jsonb_build_object('case', 'the comment of enemy_v2_spec names this file', 'ok', coalesce(obj_description('public.enemy_v2_spec()'::regprocedure, 'pg_proc'), '') like '%combat_v2_e7_followup.sql%');
