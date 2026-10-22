@@ -428,6 +428,9 @@ try {
   }
   say(exactDiffs.length === 0, `the simulator step loop in exact numbers: ${ALL.length} fights, the same actor and step for every action`, exactDiffs.slice(0, 4).join(' | '));
   say(edges.length <= 6, `float edges of the simulator (exact ties that float numbers break): ${edges.length} of ${ALL.length} fights${edges.length ? ': ' + edges.join(', ') : ''}`, 'too many: the exact replay may not follow the simulator rules');
+  // the fixed scenarios have whole-number speeds and no float tie: an edge there is a rule difference (2026-10-21: the old simulator action limit for
+  // all units together hid as an "edge" in meter.limit), not a float edge
+  { const fe = edges.filter((x) => x.startsWith('meter.')); say(fe.length === 0, `no float edge in the ${fixedScenarios.length} fixed scenarios (whole-number speeds): the simulator = the exact replay there, also at the action limit`, fe.join(', ')); }
   say(diffs.length === 0, `the simulator engine (float): the other ${ALL.length - edges.length} of ${ALL.length} fights (${fixedScenarios.length} fixed + ${randoms.length} random), ${actions} actions (${ties} in a step with another action): the same actor and step for every action`, diffs.slice(0, 4).join(' | '));
   say(bad.length === 0, `every fight ends at its cap with event cap, and every state after every call passes fight_state_check_v2`, bad.slice(0, 4).join(' | '));
   // 3a. the speed of one unit
