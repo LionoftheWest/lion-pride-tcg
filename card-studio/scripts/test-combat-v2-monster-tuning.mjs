@@ -211,7 +211,7 @@ const VALUE_ST = ['exposed', 'weakened', 'mark'], STACK_ST = ['poison', 'burn', 
 const ENEMY_ST = [...NEG_RIDERS, 'frozen'];
 const CARD_NEG = NEG_RIDERS.filter((s) => s !== 'mark').concat(['frozen']);
 function statusOpts(rng, st) { const o = {}; if (STACK_ST.includes(st) && rng() < 0.6) o.stacks = 1 + Math.floor(rng() * 3); if (VALUE_ST.includes(st)) o.value = [0.1, 0.2, 0.3, 0.45][Math.floor(rng() * 4)]; return o; }
-function genAbility(rng, cls) {
+export function genAbility(rng, cls) {
   const pick = (a) => a[Math.floor(rng() * a.length)]; const r2 = (a, b) => Math.round((a + rng() * (b - a)) * 1000) / 1000; const ch = (p) => rng() < p;
   const B = [];
   if (cls === 'attacker') {
@@ -252,7 +252,7 @@ function genAbility(rng, cls) {
   return B;
 }
 // The simulator's view of a support's blocks (makeCard: v, x, value x F for a support except vs_status and consume; stacks + extra)
-const simBlocks = (u) => u.active.blocks.map((b) => { const c = { ...b }; if (u.class === 'support') for (const f of ['v', 'x', 'value']) if (typeof c[f] === 'number' && c.k !== 'vs_status' && c.k !== 'consume') c[f] = c[f] * (u.power ?? 1); if (c.stacks) c.stacks += u.extra_stack || 0; return c; });
+export const simBlocks = (u) => u.active.blocks.map((b) => { const c = { ...b }; if (u.class === 'support') for (const f of ['v', 'x', 'value']) if (typeof c[f] === 'number' && c.k !== 'vs_status' && c.k !== 'consume') c[f] = c[f] * (u.power ?? 1); if (c.stacks) c.stacks += u.extra_stack || 0; return c; });
 
 // ---------------------------------------------------------------------------------------------------------------- random enemies
 const CONFIG = loadConfig();
@@ -430,7 +430,7 @@ export function simSum(H) {
   };
   return { clock: clk, cards: Object.fromEntries(ids.map((id, k) => [id, one(b.cards[k])])), enemies: b.enemies.map(one) };
 }
-function sqlSum(u0, cfg) {
+export function sqlSum(u0, cfg) {
   const clk = u0.clock;
   const tm = (t) => Object.fromEntries(Object.entries(t || {}).filter(([, v]) => v.until === null || v.until === undefined || v.until > clk));
   const f = (u, card) => {
@@ -443,7 +443,7 @@ function sqlSum(u0, cfg) {
   };
   return { clock: clk, cards: Object.fromEntries(Object.entries(u0.cards).map(([k, u]) => [k, f(u, true)])), enemies: u0.enemies.map((u) => f(u, false)) };
 }
-function sameSum(a, b, rel = 1e-9) {
+export function sameSum(a, b, rel = 1e-9) {
   const bad = [];
   const num = (x, y, at) => { if (Math.abs(Number(x) - Number(y)) > rel * Math.max(1, Math.abs(Number(y)))) bad.push(`${at}: SQL ${x} sim ${y}`); };
   if (a.clock !== b.clock) bad.push(`clock ${a.clock} ${b.clock}`);

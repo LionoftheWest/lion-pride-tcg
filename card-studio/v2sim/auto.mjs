@@ -180,13 +180,8 @@ export function autoLab(cfg, { runs = 300, seed = 1, pools = 2, poolSize = 20, s
       tr.hunt.push(r.autov2.h / r.best.h); tr.dungeon.push(r.autov2.d / r.best.d); tr.huntOld.push(r.auto.h / r.best.h); tr.dungeonOld.push(r.auto.d / r.best.d);
     }
     const q = (a) => `${ratio(Math.min(...a), 3)} / ${ratio(median(a), 3)} / ${ratio(Math.max(...a), 3)}`;
-    md += `
-## 3. The ${tr.hunt.length} designed teams (teams.json) with the private Set 1 actives (aggregates only)
-
-`;
-    md += 'The policy best scripts only the placeholder template ids, so on the real actives it plays like the old Auto. Lowest / median / highest over the teams.
-
-';
+    md += `\n## 3. The ${tr.hunt.length} designed teams (teams.json) with the private Set 1 actives (aggregates only)\n\n`;
+    md += 'The policy best scripts only the placeholder template ids, so on the real actives it plays like the old Auto. Lowest / median / highest over the teams.\n\n';
     md += table(['mode', 'Auto v2 / best', 'old Auto / best'], [['Hunt Heroic net/day', q(tr.hunt), q(tr.huntOld)], ['Dungeon run floors', q(tr.dungeon), q(tr.dungeonOld)]]);
     head.push(`The ${tr.hunt.length} designed teams with the private Set 1 actives, Auto v2 / best: Hunt lowest ${ratio(Math.min(...tr.hunt), 3)}, Dungeon lowest ${ratio(Math.min(...tr.dungeon), 3)}.`);
   }
