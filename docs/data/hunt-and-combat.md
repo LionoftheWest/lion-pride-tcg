@@ -1572,7 +1572,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 THE HUNT AUTO-PICK (plan 14.1 E8): the squad of cap cards from a pool [{id, role, class, atk, crt, crd, spd, blocks}] against a boss {mechanics, weak_role}: score = the offense (atk x (1 + crt x (crd - 1)) x spd, plan 2.5) x the role answers (auto_v2.pick.answers) x the Weak to bonus x the pair score; {ids, rows, passes}. No draw, no write. The simulator twin: v2sim auto.mjs autoPick. combat_v2_auto.sql.
+[combat] Combat v2 THE HUNT AUTO-PICK (plan 14.1 E8, plan 20.10): the squad of cap cards from a pool [{id, role, class, atk, crt, crd, spd, blocks, pick_factor}] against a boss {mechanics, weak_role}: score = the offense (atk x (1 + crt x (crd - 1)) x spd, plan 2.5) x the active term (a support with pick_factor: pick_factor ^ auto_v2.pick.active_x; else 1) x the role answers (auto_v2.pick.answers) x the Weak to bonus x the pair score; {ids, rows, passes}. No draw, no write. The simulator twin: v2sim auto.mjs autoPick. combat_v2_autopick_active.sql.
 
 <a id="fn-combat-v2-autopick-choose-jsonb-jsonb-integer-jsonb"></a>
 

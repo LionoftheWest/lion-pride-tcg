@@ -92,10 +92,10 @@ begin
        or jsonb_typeof(x->'spd') is distinct from 'number' or jsonb_typeof(coalesce(x->'blocks', '[]'::jsonb)) <> 'array' then
       raise exception 'combat_v2_autopick: each pool card needs a whole id of 1 or more, a role of roles with its class, the numbers atk, crt, crd and spd (card_combat_v2) and a list of blocks (%)', x::text;
     end if;
-    -- the measured active factor (subjects.ability_v2.pick_factor): absent or JSON null = none
+    -- the measured active factor (the card fact pick_factor of its active): absent or JSON null = none
     fx := nullif(x->'pick_factor', 'null'::jsonb);
     if fx is not null and (jsonb_typeof(fx) <> 'number' or (fx::text)::numeric <= 0) then
-      raise exception 'combat_v2_autopick: pick_factor of a pool card must be a number above 0 (subjects.ability_v2.pick_factor) (%)', x::text;
+      raise exception 'combat_v2_autopick: pick_factor of a pool card must be a number above 0 (the measured active factor of its active) (%)', x::text;
     end if;
     -- the offense value (plan 2.5 Offense without the hit chance): attack x the crit factor x speed
     off := (x->>'atk')::numeric * (1 + (x->>'crt')::numeric * ((x->>'crd')::numeric - 1)) * (x->>'spd')::numeric;

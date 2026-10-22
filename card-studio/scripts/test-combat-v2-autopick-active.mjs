@@ -69,7 +69,7 @@ const MUT = {
   act_not_in_choose: ["base := base || jsonb_build_object(x->>'id', off * act * ans * weak);", "base := base || jsonb_build_object(x->>'id', off * ans * weak);"],
   act_not_in_rows: ["'off', off, 'act', act, 'ans', ans, 'weak', weak, 'base', off * act * ans * weak));", "'off', off, 'act', act, 'ans', ans, 'weak', weak, 'base', off * ans * weak));"],
   null_factor_refused: ["fx := nullif(x->'pick_factor', 'null'::jsonb);", "fx := x->'pick_factor';"],
-  factor_check_off: ["    raise exception 'combat_v2_autopick: pick_factor of a pool card must be a number above 0 (subjects.ability_v2.pick_factor) (%)', x::text;\n", ''],
+  factor_check_off: ["    raise exception 'combat_v2_autopick: pick_factor of a pool card must be a number above 0 (the measured active factor of its active) (%)', x::text;\n", ''],
   active_x_check_off: ["  if pk ? 'active_x' and jsonb_typeof(pk->'active_x') is distinct from 'number' then raise exception 'combat_v2_autopick: auto_v2.pick.active_x must be a number (balance auto_v2)'; end if;\n", ''],
   // the data and the shape
   spec_wide: ['"active_x":"num 0 2"', '"active_x":"num 0 3"'],
