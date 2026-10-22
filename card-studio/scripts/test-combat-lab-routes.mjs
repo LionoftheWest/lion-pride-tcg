@@ -14,16 +14,19 @@
  *   L10 Auto v2 (PR E8): every card choice of the fight comes from combat_v2_auto and the log carries it; the Hunt squad "auto" is ONE rolled-back
  *       block of combat_v2_autopick (pickSql: the named boss's mechanics and Weak to role, the tier boss with none), and its order is the fight order
  *   L11 the Power number (PR E9): the fight block reads card_power_v2 and combat_v2_squad_value (SQL only), guarded by to_regprocedure
+ *   L12 the L1/L2 report (GET /l12, plan 19.5): read-only, no database query; no run = report null; a bad file = an error, never a crash; the rows
+ *       carry the numbers of the summary and the price numbers of today (frozen_share x payoff, share.area_payoff); numbers only (no card key)
  * The DB proof (nothing written on the local copy) is scripts/test-combat-lab-nowrite.mjs.
  */
 import express from 'express';
-import { combatLabRouter, parseFight, activeOf, shapeFight, snapDiff, fightSql, v1Sql, fillMech, bossLines, pickSql } from '../src/combat-lab-routes.js';
+import { combatLabRouter, l12Report, parseFight, activeOf, shapeFight, snapDiff, fightSql, v1Sql, fillMech, bossLines, pickSql } from '../src/combat-lab-routes.js';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdtempSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadConfig } from '../v2sim/util.mjs';
+import { loadConfig, HERE as V2SIM } from '../v2sim/util.mjs';
+import { measureL12, l12Summary } from '../v2sim/lab12.mjs';
 
 let fails = 0, n = 0;
 const check = (name, ok, got) => { n++; if (!ok) fails++; console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : '  ' + JSON.stringify(got).slice(0, 400)}`); };
@@ -149,4 +152,32 @@ check('L9 fillMech: 0% / 70% / a count / "1.4 times" / 0.4% / a nested leaf, a m
   && bl[0].text === 'cards have 0% of their crit chance' && bl[0].mythic, { t9, bl });
 
 srv.close();
+
+// L12 the L1/L2 report (a synthetic measurement: the test fixture teams and cards, never the private Set 1 actives)
+{
+  const dir = mkdtempSync(join(tmpdir(), 'cl-l12-'));
+  const SYN = JSON.parse(readFileSync(join(V2SIM, 'teams-test-fixture.json'), 'utf8'));
+  const M = measureL12(cfg, { runs: 1, seeds: 2, seed: 3, teamList: SYN.teams.slice(0, 3), actives: SYN.cards, standard: false });
+  const S = l12Summary(M);
+  const good = join(dir, 'lab12.json'), bad = join(dir, 'bad.json'), none = join(dir, 'none.json');
+  writeFileSync(good, JSON.stringify({ measure: M, summary: S })); writeFileSync(bad, '{"measure": 1}');
+  const at = async (file, env = { ADMIN_VIEW: '1' }) => { const app = express(); app.use('/api/admin/combat-lab', combatLabRouter({ local, env, l12File: file }));
+    const sv = await new Promise((ok) => { const x = app.listen(0, '127.0.0.1', () => ok(x)); });
+    try { const rr = await fetch(`http://127.0.0.1:${sv.address().port}/api/admin/combat-lab/l12`); return { status: rr.status, j: await rr.json().catch(() => null) }; } finally { sv.close(); } };
+  queries.length = 0;
+  const off = await at(good, {}), g = await at(good), b = await at(bad), z = await at(none);
+  check('L12 ADMIN_VIEW off: /l12 is 404', off.status === 404, off.status);
+  const rows = g.j?.report?.rows || [];
+  const R = cfg.v2_pp.ref;
+  const att = rows.find((x) => x.label.startsWith('Attackers, squad with a control partner'));
+  const pool = rows.find((x) => x.id === 'L2' && x.label.startsWith('Dungeon run + horde'));
+  check('L12 the report: rows of L1 and L2 with the summary numbers (mean, lowest, highest seed of each policy) and the price numbers of today',
+    g.status === 200 && g.j.ok && rows.length >= 10 && rows.some((x) => x.id === 'L2') && att && Math.abs(att.now - R.frozen_share * R.payoff) < 1e-12
+    && pool.now === cfg.ability_v2.share.area_payoff && att.by.autov2?.mean === S.autov2.l1.all.attacker.control.mean && att.by.best?.hi === S.best.l1.all.attacker.control.hi
+    && g.j.report.seeds.join() === '3,4' && g.j.report.policies.join() === 'best,autov2', { status: g.status, n: rows.length, att, pool });
+  check('L12 numbers only: no card key or card text in the answer', !/syn-|s1.|"blocks"|"active"/.test(JSON.stringify(g.j)), JSON.stringify(g.j).slice(0, 200));
+  check('L12 a bad file = report null with an error; no file = report null, the run command; never a crash',
+    b.status === 200 && b.j.report === null && /no measure/.test(b.j.error) && z.status === 200 && z.j.report === null && z.j.error === null && /run.mjs lab12/.test(z.j.run) && l12Report(none, cfg) === null, { b: b.j, z: z.j });
+  check('L12 the report reads no database (no query)', queries.length === 0, queries.map((q) => q.slice(0, 60)));
+}
 console.log(fails ? `${fails} of ${n} FAILED` : `PASS all ${n}`);
