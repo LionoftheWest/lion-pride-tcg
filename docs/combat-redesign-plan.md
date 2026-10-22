@@ -1222,6 +1222,8 @@ The two Combat Lab measurements of 19.5 [D Nathan 2026-10-20]. This PR measures 
      (a split by class) and a new design for those abilities. Open: the payer share pools the attackers and the supports.
   2. L2: keep `share.area_payoff` 0.003. The two policies disagree (0.15 and 0.08 for all statuses, 0.34 and 0.003 for the paid statuses),
      and the spread is wide. Every measured value moves 2 Set 1 prices by 0.12 PP or less and changes no validator answer.
+- **Decision [D Nathan 2026-10-22: "Agreed on your recommendation"].** Set 1 keeps `frozen_share` 0.2, `payoff` 0.6 and
+  `share.area_payoff` 0.003. No balance number changes. The L1/L2 condition of 19.5 for Set 1 is met.
 - **Proof.** `node --test card-studio/v2sim/lab12.test.mjs`: the baseline (14 checks) green, 12 planted faults (each part of the measurement) caught,
   green again after. The `price` check fails when the class patch is swapped (a manual mutation). `node --test card-studio/v2sim/*.test.mjs`
   PASS 204. `node card-studio/scripts/test-combat-lab-routes.mjs` PASS 23 (L12: the route, a bad file, no file, numbers only, no query).
