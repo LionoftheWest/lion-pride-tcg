@@ -547,9 +547,9 @@
       }
     },
     "asc3_hp_x": 1.7,
-    "weak_role_x": 0.3,
+    "weak_role_x": 0.5,
     "counter_cut_min": 0.65,
-    "_boss_hp": "Hunt boss HP = tier HP x asc3_hp_x x the boss hp_factor (Nathan approved 2026-10-19, 9.3). asc3_hp_x 1.7 is a first proposal. hp_factor = the measured median Hunt damage vs the neutral boss (mean of casual and active, run.mjs monsters, 2026-10-19, with the counter moves; Nathan approved). weak_role_x: a \"Weak to: role\" week, cards of that role deal +30% (9.6). counter_cut_min: a Normal or Heroic boss may cut a team to x0.65 at most (9.2), a check in run.mjs monsters.",
+    "_boss_hp": "Hunt boss HP = tier HP x asc3_hp_x x the boss hp_factor (Nathan approved 2026-10-19, 9.3). asc3_hp_x 1.7 is a first proposal. hp_factor = the measured median Hunt damage vs the neutral boss (mean of casual and active, run.mjs monsters, 2026-10-19, with the counter moves; Nathan approved). weak_role_x: a \"Weak to: role\" week, cards of that role deal +50% (9.6; 0.3 until the E7 follow-up: Nathan chose 0.5 from the Lab table of PR #463, 2026-10-21). counter_cut_min: a Normal or Heroic boss may cut a team to x0.65 at most (9.2), a check in run.mjs monsters.",
     "weak_role_rules": {
       "controller": {
         "damage_x": 0,
@@ -1974,6 +1974,11 @@
       "sig": [
         "ironhide"
       ],
+      "params": {
+        "ironhide": {
+          "crit_x": 0
+        }
+      },
       "mythic": [
         "tilt"
       ],

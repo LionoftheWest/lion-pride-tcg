@@ -130,7 +130,7 @@ export function labChecks(cfg0) {
     const a = run([]), c = run(['crush']); out.push(C('boss.crush', 'Crush: the hit card also takes 50% of the shield the hit removed', '0, 10', `${a.toFixed(1)}, ${c.toFixed(1)}`, near(a, 0, 1e-6) && near(c, 10, 1e-6))); }
   { const hit = (role, weak) => { const e = big(); e.weakRole = weak; const b = fight(F0, [{ ...dummyCard(F0, { role }), role, crit: 0, acc: 1 }], [e]); return b.cardHit(b.cards[0], b.enemies[0], { x: 1, trueStrike: true }).dealt; };
     const r = hit('spotter', 'spotter') / hit('spotter', null), o = hit('spotter', 'herald') / hit('spotter', null);
-    out.push(C('boss.weak_role', '"Weak to: role" week: that role deals +30%, the other roles do not', '1.30, 1.00', `${r.toFixed(3)}, ${o.toFixed(3)}`, near(r, 1.3, 1e-6) && near(o, 1, 1e-6))); }
+    out.push(C('boss.weak_role', '"Weak to: role" week: that role deals +50% (weak_role_x 0.5, Nathan 2026-10-21), the other roles do not', '1.50, 1.00', `${r.toFixed(3)}, ${o.toFixed(3)}`, near(r, 1.5, 1e-6) && near(o, 1, 1e-6))); }
   { const skips = weak => { const boss = { ...makeBoss(cfg, 'Heroic', { boss: undefined, sigs: [], startFrac: 1, weakRole: weak }), resolve: 0 }; const b = fight(cfg, [{ ...tank(cfg, { role: 'controller', speedBase: 1 }), role: 'controller' }], [boss], { mode: 'hunt' });
       const e = b.enemies[0]; e.meter = 0; b.apply(b.cards[0], e, 'stunned'); for (let i = 0; i < 4; i++) b.tickStep(); return b.S.controlSkips; };
     const hit = weak => { const e = big(); e.weakRole = weak; const b = fight(F0, [{ ...dummyCard(F0, { role: 'controller' }), role: 'controller', crit: 0 }], [e]); return b.cardHit(b.cards[0], b.enemies[0], { x: 1, trueStrike: true }).dealt; };

@@ -20,6 +20,9 @@ import './localdb-guard.mjs';
  * 3. THE WEAK TO SIZE (decision 5): the 16 named bosses at Heroic with their Weak to tag (config.json v2_bosses.<key>.weak_to = hunt_bosses_v2.weak_to),
  *    the 11 archetypes, casual and active, --weak-runs days a cell (default 300), for weak_role_x 0.3, 0.5 and 0.7 and with no tag: the favored squad of each
  *    boss (Nathan's table of 2026-10-21) gains (its damage with the tag / with no tag) and its rank among the 11 squads (field-relative score).
+ * 4. THE WARLORD'S IRONHIDE (the E7 follow-up, combat_v2_e7_followup.sql): the Rage-Quit Warlord at Heroic, the 11 archetypes, casual and active,
+ *    --weak-runs days a cell, with its own crit_x 0 (after) and with the global crit_x (before); cut = the net damage / the net damage on the same boss
+ *    with no Ironhide; rel = cut / the median cut. --only warlord runs this part alone.
  * --before: the E7 numbers and rules (no crit_x, no chance; the E7 Regrowth, Bulwark and Undying numbers) for the "before" table: only combat_v2_monsters.sql
  * runs in the blocks, and the copy must not have combat_v2_monster_tuning.sql applied (the script checks it).
  * The tables go to card-studio/out/lab/combat-v2-passives.md (not committed); the head lines print.
@@ -49,7 +52,7 @@ const FAVORED = { warlord: 'Lockdown', nightshade: "Herald's Court", netcode: 'W
 
 // the files that run in each block (idempotent, rolled back), so the Lab works before and after they are applied
 const rd = (f) => readFileSync(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
-const MIG = (BEFORE ? [rd('combat_v2_monsters.sql')] : [rd('combat_v2_monsters.sql'), rd('combat_v2_monster_tuning.sql')]).map((m) => `execute $m$${m}$m$;`).join('\n');
+const MIG = (BEFORE ? [rd('combat_v2_monsters.sql')] : [rd('combat_v2_monsters.sql'), rd('combat_v2_monster_tuning.sql'), rd('combat_v2_e7_followup.sql')]).map((m) => `execute $m$${m}$m$;`).join('\n');
 
 // the numbers of the database (the balance values replace config.json) and the places of each mechanic (enemy_mechanics.on_boss / on_foe)
 const N = JSON.parse(await runBlock(String.raw`do $t$ begin ${MIG} raise exception 'RESULT:%', jsonb_build_object('b', combat_v2_enemy_numbers(), 'ab', ability_v2_numbers(),
@@ -299,6 +302,31 @@ if (!BEFORE && (!ONLY || ONLY === 'weak')) {
   md += `## 3. Weak to: the size of weak_role_x (decision 5)\n\n${wh.map((h) => `- ${h}`).join('\n')}\n\nGain = the favored squad's net damage with the tag / with no tag (the mean of casual and active). Rank = its place among the 11 squads (field-relative score), with no tag to with the tag. Others = the median gain of the 10 other squads.\n\n`;
   md += table(['weak_role_x', 'median gain (favored)', 'range', 'gain in x1.10-x1.20', 'median rank gain', 'favored in the top 3'], srows) + '\n';
   md += table(['boss', 'Weak to', 'favored', ...WEAK_X.map((x) => `x = ${x}: gain, rank`), `others ${WEAK_X.join(' / ')}`], rows) + '\n';
+}
+
+// ---------------------------------------------------------------------------------------------------------------- 4. the Warlord's own Ironhide
+if (!BEFORE && (!ONLY || ONLY === 'warlord')) {
+  const t0 = Date.now(); const W = cfg.v2_bosses.warlord;
+  const variant = (params, sig) => { const c = JSON.parse(JSON.stringify(cfg)); c.v2_bosses.warlord.params = params; c.v2_bosses.warlord.sig = sig; return c; };
+  const own = W.params?.ironhide?.crit_x;
+  const V = { after: cfg, before: variant({}, W.sig), none: variant({}, W.sig.filter((m) => m !== 'ironhide')) };
+  const D = {};
+  for (const [vk, c] of Object.entries(V)) { D[vk] = {};
+    for (const a of ARCH) { D[vk][a] = {};
+      for (const inv of ['casual', 'active']) { const sq = huntSquad(c, a, inv); const v = []; for (let i = 0; i < WRUNS; i++) v.push(huntDay(c, sq, { tier: 'Heroic', boss: 'warlord', seed: hash('lab-warlord', a, inv, i) }).net); D[vk][a][inv] = mean(v); } } }
+  const cut = (vk, a) => mean(['casual', 'active'].map((inv) => D[vk][a][inv] / D.none[a][inv]));
+  const rows = []; const res = {};
+  for (const vk of ['before', 'after']) {
+    const cuts = Object.fromEntries(ARCH.map((a) => [a, cut(vk, a)])); const med = median(Object.values(cuts));
+    const lo = ARCH.reduce((w, a) => (cuts[a] < cuts[w] ? a : w), ARCH[0]);
+    res[vk] = { cc: cuts['Crit Chain'], rel: cuts['Crit Chain'] / med, med };
+    rows.push([vk === 'before' ? `before (global crit_x ${cfg.v2_enemy.mechanics.ironhide.crit_x})` : `after (own crit_x ${own})`, ...ARCH.map((a) => cuts[a].toFixed(2)), `x${med.toFixed(2)}`, `${short(lo)} x${(cuts[lo] / med).toFixed(2)}`]);
+  }
+  const wh = [`Warlord: the Rage-Quit Warlord at Heroic, ${ARCH.length} archetypes (8 cards, casual and active), ${WRUNS} days a cell, the same seeds for each variant; ${((Date.now() - t0) / 1000).toFixed(0)} s.`,
+    `Warlord: Crit Chain cut (net damage / no Ironhide) x${res.before.cc.toFixed(2)} -> x${res.after.cc.toFixed(2)}, field-relative x${res.before.rel.toFixed(2)} -> x${res.after.rel.toFixed(2)}; the median cut x${res.before.med.toFixed(2)} -> x${res.after.med.toFixed(2)}.`];
+  head.push(...wh);
+  md += `## 4. The Warlord's own Ironhide (the E7 follow-up)\n\n${wh.map((h) => `- ${h}`).join('\n')}\n\nCell = cut: the net damage of a Heroic day on the Warlord / on the Warlord with no Ironhide (the mean of casual and active). rel = cut / the median cut.\n\n`;
+  md += table(['variant', ...ARCH.map(short), 'median cut', 'lowest rel'], rows) + '\n';
 }
 
 mkdirSync(new URL('../out/lab/', import.meta.url), { recursive: true });

@@ -43,7 +43,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `combat_v2_ability_prices.sql` | SUPERSEDED: reverts `public.ability_v2_spec()` (live = `combat_v2_min_share.sql`); reverts `public.combat_effect_v2_active(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`) |  |
 | `combat_v2_flags_balance.sql` | SUPERSEDED: reverts `public.balance_v2_spec(text)` (live = `combat_v2_monster_tuning.sql`) |  |
 | `combat_v2_hit.sql` | SUPERSEDED: reverts `public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`) |  |
-| `combat_v2_monsters.sql` | SUPERSEDED: reverts `public.combat_v2_dungeon_foe(text, integer, integer, text, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_enemy_hit(jsonb, jsonb, jsonb, numeric, boolean, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_hunt_boss(text, text, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.hunt_bosses_v2_check()` (live = `combat_v2_monster_tuning.sql`) |  |
+| `combat_v2_monsters.sql` | SUPERSEDED: reverts `public.combat_v2_dungeon_foe(text, integer, integer, text, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_enemy_hit(jsonb, jsonb, jsonb, numeric, boolean, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_hunt_boss(text, text, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.enemy_v2_spec()` (live = `combat_v2_e7_followup.sql`); reverts `public.hunt_bosses_v2_check()` (live = `combat_v2_monster_tuning.sql`) |  |
 | `combat_v2_status_rules.sql` | SUPERSEDED: reverts `public.combat_v2_damage(jsonb, jsonb, numeric, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_heal(jsonb, jsonb, numeric, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_hit_apply(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_next(jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_status_apply(jsonb, jsonb, text, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_status_cure(jsonb, jsonb, jsonb, integer, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_step_end(jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_turn_start(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`) |  |
 | `combat_v2_statuses_roles.sql` | SUPERSEDED: reverts `public.fight_state_check_v2(jsonb)` (live = `combat_v2_monsters.sql`) |  |
 | `combat_v2_turn_meter.sql` | SUPERSEDED: reverts `public.combat_v2_advance(jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_speed(jsonb, integer, jsonb)` (live = `combat_v2_abilities.sql`); reverts `public.combat_v2_turn_order(jsonb, integer)` (live = `combat_v2_status_rules.sql`) |  |
@@ -165,7 +165,7 @@ A file runs as one transaction, so an error rolls the whole file back.
 
 - `fix_search_path.sql`: a re-run stops at an error today: function public.combat_support_value(text, numeric, numeric, integer) does not exist
 
-## No structure change, but a re-run writes rows (40)
+## No structure change, but a re-run writes rows (41)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -175,6 +175,7 @@ a one-time grant or a settings value would run again.
 - `adventure_gate.sql`: balance
 - `auction_confirm_24h.sql`: auctions
 - `card_effects_enable_a1.sql`: effect_primitives
+- `combat_v2_e7_followup.sql`: balance, set_config()
 - `combat_v2_min_share.sql`: balance, set_config()
 - `combat_v2_monster_tuning.sql`: balance, enemy_mechanics, hunt_bosses_v2, set_config()
 - `d191_s1_frame_grant.sql`: achievement_claims

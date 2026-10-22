@@ -319,7 +319,7 @@ Trigger (before insert, update on enemy_mechanics): numbers is a balance object,
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] The fixed shape with the limits of the balance key enemy_v2 (rules: the numbers of the boss rules; bosses.<key>: hp_factor, counter_share, params, moves.<id>). combat_v2_monsters.sql.
+[combat] The fixed shape with the limits of the balance key enemy_v2 (rules: the numbers of the boss rules; bosses.<key>: hp_factor, counter_share, params, moves.<id>). combat_v2_monsters.sql; the Warlord's params.ironhide.crit_x: combat_v2_e7_followup.sql.
 
 <a id="fn-owned-card-power-text"></a>
 
