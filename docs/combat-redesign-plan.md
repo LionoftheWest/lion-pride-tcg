@@ -1719,3 +1719,138 @@ number, no apply. The Set 1 actives are PRIVATE: this section gives counts, role
   `node --test card-studio/v2sim/*.test.mjs` PASS 212.
 - **Open**: the per-card score on the real actives (above). A scripted reference play for the Set 1 payoffs is not built; this section uses `--ref max`
   as the check.
+  **Measured 2026-10-22 (20.9): the offense does not see a support's active; "offense x the measured active factor" is the candidate for a build PR.**
+
+### 20.9 The per-card score of the Hunt auto-pick with the real Set 1 actives (measurement only)
+
+The next step of 20.8: the live shape permits a good squad, but the per-card score does not find it. Goal: find the score term that ranks the cards
+wrong, and measure general score candidates (no per-boss rule). Nothing is built: no SQL, no balance number, no apply. The Set 1 actives are PRIVATE:
+this section gives roles, terms, counts and ratios only.
+
+- **The Lab** (`node card-studio/v2sim/run.mjs scorepick --set1 --seed S [--ref max]`, `scoresum`, `answers1`; v2sim `score.mjs`): the protocol of 20.8
+  (the same pools, the same searched reference, play `best`, 150 evaluation days). The live shape rule (3 to 5 supports by score, `max_same_support` 1)
+  is in every candidate. Each candidate changes one part of the score (value x role answers x Weak to bonus x pair score), for the pick only. Tuning seed
+  101; held-out seeds 1, 202, 303 and 404 (32 pools a seed, 160 pools). The live column gives the numbers of 20.8 again on all five seeds.
+- **Why the score misses** (the live pick against the best squad inside the live shape, 160 pools; v2sim `whyMisses`). The live pick reaches x0.870 of
+  the searched best, the best inside the shape x0.950. The two squads differ in 147 of 160 pools. Each card that the live pick misses is paired with a
+  card that it takes instead, then the term that favors the wrong card is counted:
+
+  | Kind of pair | Pairs | The wrong term | Offense, picked / missed (mean) |
+  |---|---|---|---|
+  | The same role | 81 | a tie 45 (the same offense, the lower card id wins), offense 31, pair 5 | x1.21 |
+  | Another role of the same class | 127 | offense 86, pair 15, answers 12, Weak to 11, none 3 | x1.29 |
+  | Across the class | 62 | offense 49, pair 5, Weak to 4, answers 3, none 1 | x1.44 |
+
+  - The term that ranks the cards wrong is the offense. It measures the attack, but the value of a support is its active (a heal, a shield, a boost).
+    Two cards of one role with the same finish and investment have the same offense, so the score cannot choose between them: 45 ties.
+    The most frequent misses are Medic for Medic (26), Warden for Warden (13), Controller for Controller (12), Herald (11) and Spotter (11).
+  - The best squad inside the shape takes more supports: 3.61 against 3.39 (the low boss cells: 3.85 against 3.46). In 49 of the 62 cross-class pairs
+    the missed card is a support with a lower offense.
+  - The role answers, the Weak to bonus and the pair score are the wrong term in few pairs (12 + 11 + 15 of 127 in the same class).
+  - The E9 active term (the PP of smite, Poison and Burn, control) does not help: in the same-class pairs it is higher on the picked cards (0.047) than
+    on the missed cards (0.034).
+  - The low boss cells (52 pools, live x0.801, inside the shape x0.936) show the same pattern: offense 74 of 109 pairs, a tie 16.
+- **The candidates**:
+  - "Offense + active x L": the support value = offense x (1 + L x the E9 active share F x ABL x u x V, decision 3 of 20.6).
+  - "Offense x measured active ^ g": the value = offense x the measured active factor ^ g. The factor of an active = the strength of a Normal casual card
+    of its role with this active (cp_mod 1, the card + the 4 reference cards of experiment 4, Hunt Heroic, no mechanic, policy `autov2`, 400 days) / the
+    mean of the actives of its role. It is one number for each active, measured once, as a card fact. Set 1 supports: 0.89 to 1.18 (Warden 0.96 to 1.05,
+    Medic 0.89 to 1.09, Controller 0.91 to 1.18, Spotter 0.92 to 1.09, Herald 0.92 to 1.09, Artillery 0.91 to 1.08); attackers 0.98 to 1.05. A second set
+    of 400 fresh days: Spearman 0.970 over the 70 support actives, median difference 0.010, largest 0.042.
+  - "E9 Power": the Power number of 20.6 as the value (with and without Survival).
+  - "Weak to +w, every role": the Weak to bonus of the pick = 1 + w for every role. The live Controller has `damage_x` 0, so its bonus is 1 now.
+  - "Answers Set 1": the role answers measured again with the Set 1 actives (`run.mjs answers1`: each mechanic of the 16 named bosses, each Set 1 card
+    of a role, policy `autov2`, 400 days, seeds 1 and 7). 19 of 180 cells differ from the live table, by 0.02 to 0.11 (for example Medic vs Plated and
+    vs Steadfast 1 against 0.92, Spotter vs Fade 1.11 against 1).
+  - "No role answers", "no pair score": the term set to 1.
+- **Result** (reference `best`; "x0.904 (1)" = the mean ratio and the bosses below x0.85; the last column = the paired mean difference to the live score
+  over the 160 pools, with the standard error):
+
+  | Candidate | Tuning 101 | Held-out 1 | Held-out 202 | Held-out 303 | Held-out 404 | Against the live score, 160 pools |
+  |---|---|---|---|---|---|---|
+  | **Live: the E8 offense** | **x0.881 (3)** | **x0.855 (7)** | **x0.877 (4)** | **x0.854 (6)** | **x0.883 (6)** | 0 |
+  | Offense + active x0.5 (supports) | x0.872 (3) | x0.845 (7) | x0.875 (4) | x0.832 (10) | x0.874 (6) | -0.010 (0.004) |
+  | Offense + active x1 (supports) | x0.854 (5) | x0.843 (7) | x0.875 (4) | x0.830 (10) | x0.859 (7) | -0.018 (0.005) |
+  | Offense + active x2 (supports) | x0.841 (7) | x0.831 (9) | x0.873 (4) | x0.825 (10) | x0.854 (7) | -0.025 (0.005) |
+  | Offense + active x1 (all cards) | x0.854 (5) | x0.844 (7) | x0.875 (4) | x0.830 (10) | x0.859 (7) | -0.018 (0.005) |
+  | **Offense x measured active (supports) (CHOSEN)** | **x0.904 (1)** | **x0.884 (5)** | **x0.882 (3)** | **x0.876 (4)** | **x0.893 (3)** | **+0.018 (0.005)** |
+  | Offense x measured active (all cards) | x0.904 (1) | x0.884 (5) | x0.881 (4) | x0.876 (4) | x0.893 (3) | +0.018 (0.005) |
+  | Offense x measured active ^0.5 (all cards) | x0.898 (2) | x0.897 (5) | x0.878 (4) | x0.873 (5) | x0.895 (3) | +0.018 (0.005) |
+  | Offense x measured active ^2 (all cards) | x0.897 (1) | x0.885 (5) | x0.879 (5) | x0.877 (5) | x0.891 (4) | +0.016 (0.006) |
+  | E9 Power | x0.852 (5) | x0.845 (7) | x0.855 (6) | x0.823 (10) | x0.859 (7) | -0.023 (0.005) |
+  | E9 Power without Survival | x0.845 (5) | x0.824 (8) | x0.848 (7) | x0.804 (11) | x0.842 (8) | -0.037 (0.006) |
+  | Weak to +0.25, every role | x0.878 (3) | x0.856 (7) | x0.870 (5) | x0.854 (6) | x0.884 (6) | -0.002 (0.001) |
+  | Weak to +0.5, every role | x0.881 (3) | x0.855 (7) | x0.877 (4) | x0.854 (6) | x0.883 (6) | 0 (no pick changes) |
+  | Weak to +1.0, every role | x0.876 (3) | x0.844 (8) | x0.874 (5) | x0.851 (7) | x0.875 (6) | -0.006 (0.002) |
+  | No Weak to bonus | x0.879 (3) | x0.851 (7) | x0.864 (6) | x0.850 (7) | x0.883 (5) | -0.005 (0.002) |
+  | No role answers | x0.883 (4) | x0.854 (6) | x0.869 (5) | x0.856 (6) | x0.878 (5) | -0.002 (0.003) |
+  | Answers Set 1 | x0.883 (4) | x0.855 (7) | x0.877 (4) | x0.851 (6) | x0.880 (5) | -0.001 (0.002) |
+  | Answers Set 1 + Weak to +0.5, every role | x0.883 (4) | x0.855 (7) | x0.877 (4) | x0.849 (6) | x0.879 (5) | -0.001 (0.002) |
+  | No pair score | x0.879 (3) | x0.857 (7) | x0.873 (4) | x0.846 (6) | x0.876 (7) | -0.004 (0.002) |
+  | Offense + active x1 (supports) + Weak to +0.5 | x0.856 (5) | x0.843 (7) | x0.875 (4) | x0.830 (10) | x0.859 (7) | -0.018 (0.004) |
+
+- **The choice** (made on the tuning seed, then checked on the held-out seeds): "offense x measured active" with g = 1 has the highest tuning mean
+  (x0.904) and the fewest bosses below x0.85 (1 against 3). The supports-only form has the same tuning result and needs no number for the attackers, so
+  it is the chosen form. Held-out: the mean is up and the count below x0.85 is lower on each of the 4 seeds. Over the 160 pools: +0.018 (standard error
+  0.005), 60 pools better, 30 worse. The bosses below x0.85 on the 5 seeds: 26 against 16.
+  - Checks: with `--ref max` (20.8) the live score gives x0.879 (4), x0.850 (8), x0.873 (5), x0.851 (6), x0.886 (6) and the chosen form x0.901 (3),
+    x0.880 (5), x0.879 (3), x0.874 (4), x0.896 (4): +0.018 (0.005), better on every seed. Two new seeds (505, 606): live x0.880 (5) and x0.847 (9),
+    chosen x0.908 (4) and x0.867 (7). Over the 7 seeds (224 pools): +0.020 (0.005), 79 pools better, 42 worse.
+  - "Offense + active" and "E9 Power" are lower on every seed: the E9 active term favors the Artillery and the Controller (smite and control PP) and gives
+    0 to a heal, a shield or a boost. This confirms 20.6 with the real actives.
+  - The Weak to bonus, the role answers (live, none or measured on Set 1) and the pair score: each change is within about 2 standard errors of 0 or lower.
+    "Weak to +0.5, every role" changes no pick in the 160 pools (inferred: the pick of the two Weak to Controller bosses already takes a Controller).
+- **The named bosses** (the mean of the 2 pools; seeds 101 / 1 / 202 / 303 / 404; live and chosen):
+
+  | Boss | Weak to | Live | Chosen | Seeds below x0.85 |
+  |---|---|---|---|---|
+  | Hydra | artillery | .834/.737/.840/.826/.848 | .863/.831/.827/.818/.852 | 5 -> 3 |
+  | Camper Colossus | controller | .900/.741/.877/.743/.843 | .902/.741/.866/.743/.843 | 3 -> 3 |
+  | Rage-Quit Warlord | controller | .884/.878/.748/.705/.817 | .884/.845/.774/.686/.828 | 3 -> 4 |
+  | Nightshade | breaker | .829/.822/.923/.787/.976 | .840/.840/.941/.883/.953 | 3 -> 2 |
+  | Lagspike | finisher | .775/.860/.830/.903/.914 | .939/.861/.876/.935/.967 | 2 -> 0 |
+  | Netcode | survivor | .939/.812/.816/.863/.882 | .939/.935/.884/.863/.989 | 2 -> 0 |
+  | Skeleton | breaker | .883/.776/.866/.908/.843 | .937/.955/.866/.908/.862 | 2 -> 0 |
+  | Ban-Wave | striker | .915/.888/.852/.944/.827 | .928/.884/.839/.937/.827 | 1 -> 2 |
+
+  The other bosses below x0.85 with the live score on one seed: AFK Warzombie (seed 1, .827 -> .768) and Grind Vampire (seed 303, .832 -> .832) stay
+  below with the chosen form; Maw, Pumpkin and Zerg rise above x0.85.
+  - Hydra: the Weak to bonus and the Regrowth answer (Artillery 1.12) favor the Artillery. In 2 pairs an Artillery is picked over a better support.
+  - Camper Colossus: no score candidate moves it. The best inside the shape reaches x0.886 or more on 4 seeds and x0.772 on seed 1 (the role limit, 20.8).
+    Its pairs: Controller ties (3), and the Steadfast answers (Controller 1.09, Medic 0.92) favor the wrong support (3).
+  - Rage-Quit Warlord: 12 of its 20 pairs are attackers of another role ranked by the offense (for example a Striker picked over a Cleaver or a Flurry).
+    The Ironhide answers are 1 for every role in the live table and in the Set 1 measurement. Inferred, not verified: the measurement uses Ironhide on
+    the tier boss, not the Warlord's own Ironhide (20.3). A Warlord row would be a per-boss rule, so it is not measured.
+- **The template pools** (`scorepick` without `--set1`, 2 pools a boss, 32 pools a seed; 20.7 used 6 pools a boss on seed 202, so its live number
+  differs):
+
+  | Candidate | 101 | 1 | 202 | 505 | 606 | Against the live score |
+  |---|---|---|---|---|---|---|
+  | Live | x0.900 (5) | x0.897 (3) | x0.902 (4) | x0.867 (6) | x0.900 (2) | 0 |
+  | **Offense x measured active (supports)** | **x0.922 (3)** | **x0.902 (4)** | **x0.910 (3)** | **x0.899 (4)** | **x0.928 (2)** | **+0.012 (0.006) on 101, 1, 202; +0.019 (0.005) on 160 pools** |
+  | Offense x measured active ^0.5 (all cards) | x0.923 (4) | x0.906 (3) | x0.909 (3) | x0.899 (4) | x0.925 (3) | +0.019 (0.005) |
+  | E9 Power | x0.885 (4) | x0.836 (9) | x0.868 (8) | x0.843 (8) | x0.896 (3) | -0.028 (0.007) |
+  | Answers Set 1 | x0.900 (5) | x0.902 (3) | x0.906 (4) | x0.859 (6) | x0.897 (2) | -0.000 (0.002) |
+
+  The chosen form has a higher mean on all 5 template seeds. On seed 1 one more boss is below x0.85 (Hydra .906 -> .836; Camper Colossus .762 -> .846,
+  AFK Warzombie .775 -> .847). The template named bosses (101 / 1 / 202): Hydra .919/.906/.803 -> 1.003/.836/.903, Camper Colossus .835/.762/.986 ->
+  .846/.846/.970, Rage-Quit Warlord .871/.867/.823 -> .847/.878/.838. The template result does not break, but by the strict count rule it is not better
+  on seed 1.
+- **Recommendation**: keep the live score now. Build "offense x the measured active factor (supports)" in a later PR. It would need:
+  1. A card fact for each support active: its measured factor (70 Set 1 support actives today), stored with the active (the ability row), written by a
+     simulator script and measured again when an active changes. It is a card fact (as `cp_mod`), not a balance number.
+  2. One balance leaf `auto_v2.pick.active_x` (the exponent: 1; 0 = the live score; limits 0 to 2), with its note and the `auto_v2_spec` shape.
+  3. `combat_v2_autopick` reads the factor (missing = 1) and multiplies the offense of a support by factor ^ `active_x`. The shape rule, the role answers,
+     the Weak to bonus and the pair score do not change. The attackers keep the offense (their factors are 0.98 to 1.05).
+
+  Do not use the E9 Power or the E9 active term as the pick score. Do not change the Weak to bonus or the role answers (no candidate is better).
+- **Proof**: `score.test.mjs` (in `node --test card-studio/v2sim/*.test.mjs`): the baseline (6 checks: the active share = the E9 term of power.mjs, the
+  measured factor has the role mean 1 and orders two hand-made heals, a value candidate and a Weak to patch reach the pick only, the diagnosis finds a tie
+  and a cross-class pair and puts no card id in its output, the paired summary) is green in the same run. 7 of 7 planted faults are caught, each by its
+  own check only. The checks are green again after the faults. The check on the private batch runs the Lab on the real actives and finds 0 private
+  strings (card keys, active names) in its output. It skips with a message when the file is missing (CI). `node --test card-studio/v2sim/*.test.mjs`
+  PASS 222.
+- **Open**:
+  1. Camper Colossus and Rage-Quit Warlord do not rise with any general score candidate (above). Hydra rises but stays below x0.85 on 3 of 5 seeds.
+  2. A block formula that predicts the measured factor (no measured number for each active) is not measured.
+  3. Template seed 1: one more boss below x0.85 with the chosen form. Measure it again with the build PR (SQL = the simulator on the Lab pools).

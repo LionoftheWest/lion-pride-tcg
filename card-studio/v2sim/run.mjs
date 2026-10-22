@@ -14,12 +14,14 @@ import { teams } from './teams.mjs';
 import { monsters } from './monsters.mjs';
 import { shares } from './shares.mjs';
 import { autoLab, answersExperiment, pairOf } from './auto.mjs';
+import { scorePickLab, scoreSum, answersSet1Experiment } from './score.mjs';
 import { powerLab, powerPickLab } from './power.mjs';
 import { lab12, lab12prices } from './lab12.mjs';
 import { shapePickLab } from './shape.mjs';
 import { HERE, loadConfig, patch } from './util.mjs';
 
-const ALL = { ...EXPERIMENTS, targets, teams, monsters, shares, auto: autoLab, answers: answersExperiment, power: (c, o) => powerLab(c, { ...o, pairOf }), powerpick: powerPickLab, lab12, lab12prices, shapepick: shapePickLab };
+const ALL = { ...EXPERIMENTS, targets, teams, monsters, shares, auto: autoLab, answers: answersExperiment, power: (c, o) => powerLab(c, { ...o, pairOf }), powerpick: powerPickLab, lab12, lab12prices, shapepick: shapePickLab,
+  scorepick: (c, o) => scorePickLab(c, { ...o, save: true }), scoresum: (c, o) => scoreSum(c, { mode: o.set1 ? 'set1' : 'template', ...(o.ref ? { ref: o.ref } : {}), ...(o.seedlist ? { seeds: o.seedlist } : {}) }), answers1: answersSet1Experiment };
 const args = process.argv.slice(2);
 const opt = k => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : undefined; };
 const flag = k => args.includes(`--${k}`);
@@ -36,7 +38,7 @@ const outDir = join(HERE, '..', 'out', 'v2sim'); mkdirSync(outDir, { recursive: 
 const list = name === 'all' ? Object.keys(EXPERIMENTS) : [name];
 for (const n of list) {
   const t0 = Date.now();
-  const r = ALL[n](cfg, { ...(runs ? { runs } : {}), seed, ...(opt('tier') ? { tier: opt('tier') } : {}), ...(opt('seeds') ? { seeds: Number(opt('seeds')) } : {}), ...(opt('pools') ? { pools: Number(opt('pools')) } : {}), ...(flag('set1') ? { set1: true } : {}), ...(opt('ref') ? { ref: opt('ref') } : {}) });
+  const r = ALL[n](cfg, { ...(runs ? { runs } : {}), seed, ...(opt('tier') ? { tier: opt('tier') } : {}), ...(opt('seeds') ? { seeds: Number(opt('seeds')) } : {}), ...(opt('pools') ? { pools: Number(opt('pools')) } : {}), ...(flag('set1') ? { set1: true } : {}), ...(opt('ref') ? { ref: opt('ref') } : {}), ...(opt('seedlist') ? { seedlist: opt('seedlist').split(',').map(Number) } : {}) });
   const s = ((Date.now() - t0) / 1000).toFixed(1);
   const md = r.md + `\n---\nRun: \`node card-studio/v2sim/run.mjs ${n}${runs ? ` --runs ${runs}` : ''} --seed ${seed}${opt('tier') ? ` --tier ${opt('tier')}` : ''}${opt('seeds') ? ` --seeds ${opt('seeds')}` : ''}${opt('pools') ? ` --pools ${opt('pools')}` : ''}${flag('set1') ? ' --set1' : ''}${opt('ref') ? ` --ref ${opt('ref')}` : ''}${opt('patch') ? ` --patch '${opt('patch')}'` : ''}\`, ${s} s.\n\n## Headline\n\n` + r.head.map(h => `- ${h}`).join('\n') + '\n';
   writeFileSync(join(outDir, `${n}${tag}.md`), md);

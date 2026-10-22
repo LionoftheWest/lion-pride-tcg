@@ -35,8 +35,9 @@ export function poolSource(cfg, { set1 } = {}) {
 /** One pool set: for each boss and pool the pool, the E8 pick, the searched best squad and its value (the E8 protocol). */
 // ref: the reference play of a squad: 'best' (the E8 protocol) or 'max' (the better of best and autov2 on the same days, in the search and the evaluation).
 // src: poolSource (default: the template pools). shapeSearch: also search the best squad that keeps the live shape rule (lo..hi supports, at most
-// maxSame of one support role), from the live pick (the ceiling of any per-card score under that shape).
-export function referencePools(cfg0, { seed = 1, pools = 2, poolSize = 20, searchDays = 24, evalDays = 150, bosses, src, ref = 'best', shapeSearch = false } = {}) {
+// maxSame of one support role), from the live pick (the ceiling of any per-card score under that shape). cache (score.mjs, plan 20.9): {get(key, pi),
+// set(key, pi, v)} keeps the searched squads and their values (ids and numbers only), so that a second run skips the search; the pools are drawn again.
+export function referencePools(cfg0, { seed = 1, pools = 2, poolSize = 20, searchDays = 24, evalDays = 150, bosses, src, ref = 'best', shapeSearch = false, cache } = {}) {
   const P = src || poolSource(cfg0); const cfg = P.cfg; const pool0 = P.pool0;
   if (pool0.length < poolSize) throw new Error(`referencePools: the draw list has ${pool0.length} cards, fewer than the pool size ${poolSize}`);
   if (!['best', 'max'].includes(ref)) throw new Error(`referencePools: ref must be best or max (${ref})`);
@@ -70,14 +71,16 @@ export function referencePools(cfg0, { seed = 1, pools = 2, poolSize = 20, searc
         }
         return best;
       };
-      const best = search([e8, top]);
-      const vB = refDays(sq(best), key, evalDays, `eval-${pi}`);
+      const hit = cache?.get(key, pi);
+      const best = hit ? hit.best : search([e8, top]);
+      const vB = hit ? hit.vB : refDays(sq(best), key, evalDays, `eval-${pi}`);
       const ev = (ids) => days(sq(ids), key, 'autov2', evalDays, `eval-${pi}`);
       const r = { key, pi, boss, pool, best, vB, eval: ev };
       if (shapeSearch) {   // the best squad inside the live shape rule (from the live pick), played by autov2 as the candidates are
         const keeps = (ids) => { const x = shapeOf(pool, ids); return x.supports >= lo && x.supports <= hi && x.maxSame <= maxSame; };
-        r.inShape = search([autoPick(cfg, pool, boss, 8).ids], keeps); r.vShape = ev(r.inShape);
+        if (hit?.inShape) { r.inShape = hit.inShape; r.vShape = hit.vShape; } else { r.inShape = search([autoPick(cfg, pool, boss, 8).ids], keeps); r.vShape = ev(r.inShape); }
       }
+      if (cache && (!hit || (shapeSearch && !hit.inShape))) cache.set(key, pi, { best, vB, ...(shapeSearch ? { inShape: r.inShape, vShape: r.vShape } : {}) });
       out.push(r);
     }
   }
