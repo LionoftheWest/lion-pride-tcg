@@ -21,13 +21,16 @@ import './localdb-guard.mjs';
  *   5. ONE SOURCE for the Weak to role: the card line, the fight unit, the simulator and config.json name the same role, and a hit of that role deals
  *      x(1 + 0.5) in SQL (the Controller: its own rule).
  *   6. SQL = the simulator action by action on random fights (the Warlord with crit-heavy squads, the 16 named bosses with their Weak to role, forced
- *      Ironhide, and general fights); the named bosses carry the params of the SQL builder.
+ *      Ironhide, and general fights); the named bosses carry the params of the SQL builder. No fight is left out.
+ *   7. The action limit counts for EACH unit (combat_v2_advance and the simulator tickStep): fixed Hydra fights where New Head reaches
+ *      max_actions_per_step actions in one step are equal action by action (ONLY=limit runs this part alone).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { runBlock, assertLocal } from './lab-lib.mjs';
 import { Battle } from '../v2sim/engine.mjs';
+import { F } from '../v2sim/formulas.mjs';
 import { makeBoss, bossKeys, weakRoleOf } from '../v2sim/modes.mjs';
 import { POLICIES } from '../v2sim/policy.mjs';
 import { loadConfig } from '../v2sim/util.mjs';
@@ -68,6 +71,23 @@ const SIM_MUT = {
   sim_weak_x_old: () => { SIMFAULT.weak = 0.3; },
   sim_config_no_warlord_param: () => { delete CONFIG.v2_bosses.warlord.params; },
   sim_config_weak_old: () => { CONFIG.v2_enemy.weak_role_x = 0.3; },
+  // the old simulator step loop (before 2026-10-21): the action limit for ALL units together (units x max_actions_per_step), not for each unit
+  sim_all_units_limit: () => {
+    Battle.prototype.tickStep = function () {
+      this.step++; this.healedStep = 0;
+      for (const u of this.units) { u.healedStep = 0; if (!u.down) u.meter += F.meterGain(this.speedOf(u)); }
+      const maxA = this.cfg.v2_speed.max_actions_per_step;
+      for (let guard = 0; guard < this.units.length * maxA; guard++) {
+        let best = null; for (const u of this.units) if (!u.down && u.meter >= 100 && (!best || u.meter > best.meter)) best = u;
+        if (!best) break;
+        best.meter -= 100; this.act(best);
+        if (this.checkEnd()) return;
+      }
+      this.endStep();
+      this.checkEnd();
+      if (!this.ended && this.step >= this.cap) this.ended = 'cap';
+    };
+  },
 };
 const SIMFAULT = {};
 
@@ -282,18 +302,32 @@ try {
     // the named bosses carry the params of the SQL builder (the database value), not the copy of config.json
     let wl = 0;
     for (const [st] of FS) for (const e of st.enemies) if (e.boss) { e.params = unitOf(e.boss, 'Heroic').params; if (e.boss === 'warlord') wl++; }
-    // A KNOWN GAP of E7, not of this file (found 2026-10-21; the same fights differ without this file): the simulator caps the actions of a step for all
-    // units together (tickStep: units x max_actions_per_step), SQL caps each unit (combat_v2_advance: max_actions_per_step). Only an extra_action move
-    // (the Hydra's New Head) takes one unit over the cap. A fight where the simulator lets one unit act more than the cap in one step is counted apart.
-    const maxA = cfg.v2_speed.max_actions_per_step;
-    const capGap = (st, script) => { const n = {}; for (const a of simFight(cfg, st, script)) if (a.event === 'act') { const k = `${a.u.clock}:${a.actor.side}${a.actor.id}`; n[k] = (n[k] || 0) + 1; if (n[k] > maxA) return true; } return false; };
-    const gap = FS.filter(([st, script]) => capGap(st, script)); const FS2 = FS.filter((f) => !gap.includes(f));
-    const P = await parity(FS2, cfg);
-    say(P.fsame + P.ftie === FS2.length && P.fbad.length === 0, `SQL = the simulator on ${FS2.length} random fights (${wl} with the Warlord and crit-heavy squads, the ${BOSSES.length} named bosses with their Weak to role, forced Ironhide, general): ${P.fsame} equal action by action (${P.facts} actions: ${P.fev.enemy} enemy actions of which ${P.fev.counter} counter moves, ${P.fev.active} actives, ${P.fev.basic} basic attacks, ${P.fev.skip} skips), ${P.ftie} differ only after a float near-tie of the simulator`,
+    // The action limit: SQL (combat_v2_advance) and the simulator (tickStep) both limit EACH unit to max_actions_per_step actions in one step
+    // (fixed 2026-10-21; before, the simulator limited all units together and 1 Hydra fight in 132 differed). No fight is left out: a difference FAILS.
+    const P = await parity(FS, cfg);
+    say(P.fsame + P.ftie === FS.length && P.fbad.length === 0, `SQL = the simulator on ${FS.length} random fights (${wl} with the Warlord and crit-heavy squads, the ${BOSSES.length} named bosses with their Weak to role, forced Ironhide, general): ${P.fsame} equal action by action (${P.facts} actions: ${P.fev.enemy} enemy actions of which ${P.fev.counter} counter moves, ${P.fev.active} actives, ${P.fev.basic} basic attacks, ${P.fev.skip} skips), ${P.ftie} differ only after a float near-tie of the simulator`,
       P.fbad.filter(Boolean).join(' | '));
-    say(P.ftie <= Math.ceil(FS2.length * 0.05), `the float near-ties are rare (${P.ftie} of ${FS2.length} fights, at most 5%)`);
-    say(gap.length <= 2 && gap.every(([st]) => st.enemies.some((e) => e.boss === 'hydra')), `the known E7 cap gap (not this file): ${gap.length} of ${FS.length} fights left out, each a Hydra fight where New Head takes the boss over ${maxA} actions in one step (the simulator caps all units together, SQL each unit)`,
-      JSON.stringify(gap.map(([st]) => st.enemies.map((e) => e.boss || e.monster))));
+    say(P.ftie <= Math.ceil(FS.length * 0.05), `the float near-ties are rare (${P.ftie} of ${FS.length} fights, at most 5%)`);
+  }
+  if (!ONLY || ONLY === 'parity' || ONLY === 'limit') {
+    // Fixed fights: the Hydra uses only New Head (extra_action: meter + act_at), so it chains actions and reaches the limit in one step. Each draw
+    // is the same number, which picks New Head (counter_share 1). SQL = the simulator action by action, and the Hydra reaches the limit.
+    const maxA = cfg.v2_speed.max_actions_per_step; const hb = CONFIG.v2_bosses.hydra;
+    const nh = hb.moves.findIndex((m) => m.k === 'extra_action'); const d = (nh + 0.5) / hb.moves.length;
+    const hydra = (o = {}) => ({ speed: 100, meter: 0, max: 30000, hp: 30000, atk: 40, def: 0.1, evasion: 0, resolve: 0, keen: 0, status: {}, mechanics: [...hb.sig],
+      turn: 1, charging: false, healer: hb.sig.includes('regrowth'), boss: 'hydra', resists: [...hb.resists], params: unitOf('hydra', 'Heroic').params,
+      moves2: JSON.parse(JSON.stringify(hb.moves)), counter_share: 1, ...o });
+    const tank = (role, o = {}) => ({ role, speed: B.v2_speed.role_base[role], max: 400, hp: 400, atk: 40, ...o });
+    const script = (n) => Array.from({ length: n }, () => ({ draws: Array(160).fill(d), use: false, tp: 0, ap: 0 }));
+    const HY = [
+      [state({ mode: 'hunt', clock: 0, squad: [1, 2], cards: { 1: tank('warden'), 2: tank('medic') }, enemies: [hydra()] }), script(40)],
+      [state({ mode: 'hunt', clock: 0, squad: [3, 7, 9], cards: { 3: tank('striker', { meter: 50 }), 7: tank('flurry', { meter: 90 }), 9: tank('warden') }, enemies: [hydra({ meter: 60 })] }), script(60)],
+    ];
+    const reach = HY.map(([st, sc]) => { const n = {}; for (const a of simFight(cfg, st, sc)) if (a.event === 'act') { const k = `${a.u.clock}:${a.actor.side}${a.actor.id}`; n[k] = (n[k] || 0) + 1; } return Math.max(...Object.entries(n).filter(([k]) => k.endsWith('enemy0')).map(([, v]) => v)); });
+    say(reach.every((r) => r === maxA), `fixed: the Hydra (New Head only) reaches the limit of ${maxA} actions in one step in the simulator, and never more (most in one step: ${reach.join(', ')})`, JSON.stringify(reach));
+    const PH = await parity(HY, cfg);
+    say(PH.fsame === HY.length && PH.fbad.length === 0, `fixed: SQL = the simulator action by action on ${HY.length} Hydra fights that reach the limit (${PH.facts} actions, ${PH.fev.counter} counter moves, ${PH.ftie} near-ties)`,
+      PH.fbad.filter(Boolean).join(' | '));
   }
 } catch (e) {
   fail++; total++;

@@ -10,6 +10,8 @@ import './localdb-guard.mjs';
  *   P3 a batch with ONE row that ability_v2_check refuses writes nothing (exit 1, "Refused (nothing written)")
  *   P4 the trigger subjects_ability_v2_check refuses a bad ability written directly
  *   P5 a batch with a key twice or a row with no role is refused before any write
+ * Safety: the test refuses to start while a subject holds a "Tst ..." ability (left from an earlier run). The restore at the end checks each
+ * write, tries again with a short wait, and prints FAIL with the error and the SQL that puts the old value back.
  */
 import { spawnSync } from 'node:child_process';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
@@ -25,6 +27,17 @@ const check = (name, ok, got) => { n++; if (!ok) fails++; console.log(`${ok ? 'P
 const probe = await supabase.from('subjects').select('id, key, ability_v2').order('id').limit(2);
 if (probe.error && /ability_v2/.test(probe.error.message)) { console.log('SKIP the column subjects.ability_v2 is not on the local copy: apply combat_v2_ability_builder.sql first'); process.exit(0); }
 if (probe.error || probe.data.length < 2) { console.log(`FAIL the local copy has no two subjects (${probe.error?.message})`); process.exit(1); }
+// A test ability ("Tst ...") that an earlier run left (2026-10-21: a restore failed under load and left "Tst Guard" on subject 25, so the next
+// run failed P1/P2). The test REFUSES to start and does not clean it: it cannot know the value from before that run, and a guess would
+// overwrite a real ability. The restore below prints the exact old value when it fails.
+const left = await supabase.from('subjects').select('id, key, ability_v2').like('ability_v2->>name', 'Tst %');
+if (left.error) { console.log(`FAIL cannot check for test abilities left from an earlier run: ${left.error.message}`); process.exit(1); }
+if (left.data.length) {
+  console.log(`FAIL ${left.data.length} subject(s) hold a test ability from an earlier run: ${left.data.map((x) => `id ${x.id} (${x.key}) "${x.ability_v2.name}"`).join(', ')}`);
+  console.log('  Clean the copy first: run the SQL that the failed run printed ("restore FAILED ... run: update public.subjects ..."),');
+  console.log('  or refresh the copy (localdb/refresh.sh, docs/foundations.md), which takes the real values again. Then run this test again.');
+  process.exit(1);
+}
 const [s1, s2] = probe.data;
 const dir = mkdtempSync(join(tmpdir(), 'push-v2-'));
 const script = fileURLToPath(new URL('./push-abilities.mjs', import.meta.url));
@@ -32,6 +45,23 @@ const push = (file, dry) => spawnSync(process.execPath, [...process.execArgv, sc
 const read = async () => { const { data } = await supabase.from('subjects').select('key, ability_v2').in('id', [s1.id, s2.id]); return Object.fromEntries(data.map((x) => [x.key, x.ability_v2])); };
 const A1 = { name: 'Tst Guard', blocks: [{ k: 'shield', v: 0.3, to: 'most_hurt' }, { k: 'ally_below', line: 0.3, x: 2 }], silver: { block: 1, field: 'v', value: 0.4 } };
 const A2 = { name: 'Tst Hit', blocks: [{ k: 'hit', x: 1.75 }, { k: 'on_kill', status: 'slowed', chance: 1 }] };
+// one restore: up to RESTORE_TRIES writes with a short wait between them; then a read checks the value. Answers null (done) or the last error.
+const RESTORE_TRIES = 4;
+async function restore(s) {
+  let last = null;
+  for (let t = 1; t <= RESTORE_TRIES; t++) {
+    try {
+      const { error } = await supabase.from('subjects').update({ ability_v2: s.ability_v2 }).eq('id', s.id);
+      if (error) throw new Error(error.message);
+      const { data, error: e2 } = await supabase.from('subjects').select('ability_v2').eq('id', s.id).single();
+      if (e2) throw new Error(`read after the write: ${e2.message}`);
+      if (JSON.stringify(data.ability_v2 ?? null) === JSON.stringify(s.ability_v2 ?? null)) return null;
+      throw new Error(`the value after the write is ${JSON.stringify(data.ability_v2).slice(0, 200)}`);
+    } catch (e) { last = e.message || String(e); }
+    if (t < RESTORE_TRIES) await new Promise((r) => setTimeout(r, 500 * t));
+  }
+  return last;
+}
 const batch = (rows, name) => { const f = join(dir, `${name}.json`); writeFileSync(f, JSON.stringify({ rows })); return f; };
 try {
   const good = batch([{ key: s1.key, role: 'warden', ability: A1 }, { key: s2.key, role: 'striker', ability: A2 }], 'good');
@@ -62,7 +92,15 @@ try {
   const a = push(twice, false), b = push(norole, false);
   check('P5 a key twice and a row with no role are refused before any write', a.status === 1 && /twice/.test(a.stderr) && b.status === 1 && /needs key, role and ability/.test(b.stderr), [a.stderr, b.stderr]);
 } finally {
-  for (const s of [s1, s2]) await supabase.from('subjects').update({ ability_v2: s.ability_v2 }).eq('id', s.id);
+  // Put back the old ability_v2 and CHECK each write: under load an update can fail, and an ignored error left a test ability on the copy.
+  for (const s of [s1, s2]) {
+    const err = await restore(s);
+    if (err) {
+      fails++; n++;
+      console.log(`FAIL restore FAILED for subject id ${s.id} (${s.key}) after ${RESTORE_TRIES} tries: ${err}`);
+      console.log(`  The copy keeps a test ability. Run: update public.subjects set ability_v2 = ${s.ability_v2 == null ? 'null' : `'${JSON.stringify(s.ability_v2).replace(/'/g, "''")}'::jsonb`} where id = ${s.id};`);
+    }
+  }
   rmSync(dir, { recursive: true, force: true });
 }
 const restored = await read();
