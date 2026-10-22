@@ -1,0 +1,50 @@
+/* The Combat v2 Lab of the Admin view (combat-lab.js). Only the tokens and parts of admin.css and cards.css. */
+.cl-step { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--divider); }
+.cl-step:last-child { border-bottom: 0; }
+.cl-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.cl-row .cs-field { margin-bottom: 0; }
+.cl-form { display: flex; gap: 12px; flex-wrap: wrap; }
+.cl-form .cs-field { margin-bottom: 0; min-width: 140px; }
+.cl-num { width: 110px; }
+#cl-q { max-width: 360px; width: 100%; }
+.cl-found { display: flex; gap: 6px; flex-wrap: wrap; }
+.cl-found .chip { cursor: pointer; }
+.cl-who { font-size: 14px; }
+.cl-cardlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; max-height: 320px; overflow-y: auto; }
+.cl-card { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 2px 8px; padding: 8px; border: 1px solid var(--divider); border-radius: 8px; cursor: pointer; }
+.cl-card.on { border-color: var(--gold); background: var(--selected); }
+.cl-card .cs-note { grid-column: 2; font-size: 12px; overflow-wrap: anywhere; }
+.cl-cname { display: inline-flex; gap: 6px; align-items: center; overflow-wrap: anywhere; }
+.cl-tlist { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+.cl-tlist li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.cl-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cl-add .field { width: 240px; }
+.cl-active { min-width: 220px; max-width: 360px; overflow-wrap: anywhere; }
+.cl-enemy { display: grid; gap: 8px; padding-bottom: 12px; }
+.cl-enemy + .cl-enemy { border-top: 1px solid var(--divider); padding-top: 12px; }
+.cl-line { display: grid; gap: 4px; }
+.cl-line .chips { margin-bottom: 0; }
+.cl-mechs { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; }
+.cl-order { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 13px; }
+.cl-order li.enemy { color: var(--danger-text); }
+.cl-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
+.cl-ev { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--divider); }
+.cl-ev.enemy .cl-what { color: var(--danger-text); }
+.cl-ev.skip .cl-what, .cl-ev.step { color: var(--text-2); }
+.cl-n { color: var(--muted); font-size: 12px; }
+.cl-chgs { display: flex; gap: 4px 12px; flex-wrap: wrap; margin-top: 2px; font-size: 12px; color: var(--text-2); }
+.cl-chg { overflow-wrap: anywhere; }
+.cl-chg.down { color: var(--danger-text); font-weight: 600; }
+.cl-cmp h3 { margin: 0 0 4px; font-size: 16px; }
+.cl-cmp dl { margin: 8px 0 0; display: grid; gap: 4px; }
+.cl-cmp dl div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--divider); padding: 4px 0; }
+.cl-cmp dt { color: var(--text-2); }
+.cl-cmp dd { margin: 0; }
+@media (max-width: 760px) {
+  .cl-num { width: 100%; }
+  .cl-form .cs-field { min-width: 0; flex: 1 1 40%; }
+  .cl-add .field { width: 100%; }
+  .cl-cardlist { grid-template-columns: minmax(0, 1fr); }
+  .cl-ev { grid-template-columns: 56px minmax(0, 1fr); }
+  .cl-active { min-width: 0; }
+}

@@ -14,6 +14,7 @@ import { eventsRouter } from './admin-events-routes.js';
 import { adminWriteRouter } from './admin-write.js';
 import { setsRouter } from './sets-routes.js';
 import { abilityBuilderRouter } from './ability-builder-routes.js';
+import { combatLabRouter } from './combat-lab-routes.js';
 import { loadVocab, saveVocab, vocabView, addValue } from './tag-vocab.js';
 import { studioAuth, loadSecret } from './studio-auth.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic, ANIMATED } from './rarity.js';
@@ -71,6 +72,8 @@ app.use(studioAuth({ secret: loadSecret(join(ROOT, '.studio-secret')) }));
 app.use(express.json({ limit: '30mb' }));
 // The ability builder (combat v2 PR T1, src/ability-builder-routes.js): checks on the LOCAL copy, writes a private batch file. Before the read-only router.
 app.use('/api/admin/abilities', abilityBuilderRouter());
+// The Combat v2 Lab (src/combat-lab-routes.js): v2 fights of a member's cards on the LOCAL copy, in a block that rolls back. Before the read-only router.
+app.use('/api/admin/combat-lab', combatLabRouter());
 // The Events editor (writes; src/admin-events-routes.js): mounted before the read-only router, which refuses POST.
 app.use('/api/admin/events', eventsRouter({ rpc: (fn, args) => supabase.rpc(fn, args), db: supabase }));
 // The Admin view data (read only): flag ADMIN_VIEW=1 (src/admin-routes.js). The pages: public/admin/ (/admin/).
