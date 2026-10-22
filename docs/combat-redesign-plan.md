@@ -1359,6 +1359,6 @@ new function, and the flag stays OFF. The reference is the simulator: `v2sim/pol
   160 test fights). The test counts it apart.
 - Proof (copy 2, V1 to E7c and the tester list applied): `test-combat-v2-auto.mjs` 86 checks (no other function changes, md5 of 518; 52 fixed decisions;
   SQL = the simulator on 565 decisions of random states, on 160 random fights played by Auto v2 (4158 actions, 1455 card decisions, 0 near-ties), and on
-  300 random pools; 11 fixed picks and 7 refusals; fuzz 860 actions); MUTATE=all: baseline PASS and every planted fault caught (see the PR). Goldens with
+  300 random pools; 11 fixed picks and 7 refusals; fuzz 860 actions); MUTATE=all after the apply: baseline PASS and 53 of 53 planted faults caught. Goldens with
   CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. Then the file applied (`rehearse-sql.mjs`): grants OK; the earlier
   v2 tests got the E8 functions in their caller lists (as E6, T1 and E7 did); the generated files regenerated. Combat checks C1, C2, C3 PASS.
