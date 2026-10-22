@@ -67,7 +67,7 @@ const MUT = {
   hold_charging_off: ["      if hint = 'charging'\n", "      if hint = 'never'\n"],
   hold_charging_dungeon: ["         and (s->>'mode' = 'hunt' or coalesce((tu->>'cataclysm')::boolean, false)) and not coalesce((tu->>'charging')::boolean, false)", "         and not coalesce((tu->>'charging')::boolean, false)"],
   // the targets
-  hunt_target_lowest: ["  if s->>'mode' = 'hunt' then\n    t := (select q.id from combat_v2_units(s) q where q.side = 'enemy' and combat_v2_up(s->'enemies'->(q.id::int)) order by q.n limit 1);\n  elsif", "  if false then\n    t := null;\n  elsif"],
+  // (no planted fault on the Hunt target rule: a Hunt state has one enemy, so every target rule gives the boss: an equivalent mutation)
   threat_lowest: ["             order by (s->'enemies'->(q.id::int)->>'atk')::numeric desc, q.n limit 1);", "             order by (s->'enemies'->(q.id::int)->>'hp')::numeric, q.n limit 1);"],
   kill_off: ["                 <= (p_unit->>'atk')::numeric * (p_f->>'kill_x')::numeric", '                 < 0'],
   kill_no_guard: ["             and (s->'enemies'->(q.id::int)->>'hp')::numeric + coalesce((combat_v2_status_on(s->'enemies'->(q.id::int), 'guarded', clk)->>'value')::numeric, 0)", "             and (s->'enemies'->(q.id::int)->>'hp')::numeric"],
@@ -313,7 +313,8 @@ function fixedDecisions() {
   add('a shield, every card at full HP, no Charging enemy: not useful (basic attack)', { cards: { 1: att(), 2: W([{ k: 'shield', v: 0.4 }]) }, enemies: [foe()] }, 2, { use: false, why: 'not_useful', target: En(0), ally: Cr(1) });
   add('a shield, card 1 at 50% HP with no shield: useful, the ally is card 1', { cards: { 1: att({ hp: 50 }), 2: W([{ k: 'shield', v: 0.4 }]) }, enemies: [foe()] }, 2, { use: true, why: 'useful', ally: Cr(1) });
   add('a shield, card 1 at 50% HP with a shield of 20 (above 10%): not useful', { cards: { 1: att({ hp: 50, status: { shielded: { value: 20 } } }), 2: W([{ k: 'shield', v: 0.4 }]) }, enemies: [foe()] }, 2, { use: false, why: 'not_useful' });
-  add('a shield while a foe is Charging: useful; the ally is the lowest HP + shield share (card 2 at 60 + 0 below card 1 at 50 + 30)', { cards: { 1: att({ hp: 50, status: { shielded: { value: 30 } } }), 2: W([{ k: 'shield', v: 0.4 }], { hp: 60 }) }, enemies: [foe({ charging: true })] }, 2, { use: true, why: 'useful', ally: Cr(2) });
+  add('a shield while a foe is Charging, every card at 80% (no hurt card): useful; the ally is the lowest HP + shield share (card 2 at 80 + 0 below card 1 at 80 + 30)', { cards: { 1: att({ hp: 80, status: { shielded: { value: 30 } } }), 2: W([{ k: 'shield', v: 0.4 }], { hp: 80 }) }, enemies: [foe({ charging: true })] }, 2, { use: true, why: 'useful', ally: Cr(2) });
+  add('the same squad with no Charging foe: not useful', { cards: { 1: att({ hp: 80, status: { shielded: { value: 30 } } }), 2: W([{ k: 'shield', v: 0.4 }], { hp: 80 }) }, enemies: [foe()] }, 2, { use: false, why: 'not_useful' });
   add('shield_all with 2 cards below 90%: useful', { cards: { 1: att({ hp: 80 }), 2: W([{ k: 'shield_all', v: 0.1 }], { hp: 85 }) }, enemies: [foe()] }, 2, { use: true, why: 'useful' });
   add('shield_all with 1 card below 90%: not useful', { cards: { 1: att({ hp: 80 }), 2: W([{ k: 'shield_all', v: 0.1 }]) }, enemies: [foe()] }, 2, { use: false, why: 'not_useful' });
   const M = (blocks, o = {}) => ({ role: 'medic', charge: 1, active: { blocks }, ...o });
