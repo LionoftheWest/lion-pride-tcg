@@ -13,6 +13,7 @@
  *   L9 a mechanic text: every {leaf} is filled from the given numbers (0 -> 0%, 0.7 -> 70%, a count, "{x} times"), never a "{"
  *   L10 Auto v2 (PR E8): every card choice of the fight comes from combat_v2_auto and the log carries it; the Hunt squad "auto" is ONE rolled-back
  *       block of combat_v2_autopick (pickSql: the named boss's mechanics and Weak to role, the tier boss with none), and its order is the fight order
+ *   L11 the Power number (PR E9): the fight block reads card_power_v2 and combat_v2_squad_value (SQL only), guarded by to_regprocedure
  * The DB proof (nothing written on the local copy) is scripts/test-combat-lab-nowrite.mjs.
  */
 import express from 'express';
@@ -91,6 +92,9 @@ check('L4 the fight block calls the real v2 functions and writes no table', ['ca
 check('L10 the fight takes every card choice from Auto v2 (combat_v2_auto: use, target, ally) and logs it (no simple policy left)',
   /dec := combat_v2_auto\(s, r->'actor', p_b, null\);/.test(sql) && sql.includes("jsonb_build_object('use', dec->'use', 'target', dec->'target', 'ally', dec->'ally')")
   && sql.includes("'auto', jsonb_build_object('use', dec->'use', 'why', dec->'why')") && !/use := coalesce\(\(u->>'charge'\)/.test(sql), sql.slice(0, 120));
+check('L11 the Power number (PR E9): the fight block reads card_power_v2 for each card and combat_v2_squad_value for the squad (SQL; no power math in JS), each call guarded by to_regprocedure (a copy with no E9 functions shows no Power)',
+  sql.includes("pw := card_power_v2(cc, x->'blocks', null);") && sql.includes('sv := combat_v2_squad_value(pws, null, null);')
+  && sql.includes("to_regprocedure('public.card_power_v2(jsonb, jsonb, jsonb)') is not null") && sql.includes("'squad_value', sv"), sql.slice(0, 200));
 const ps = pickSql({ ...f, size: 8 }, [{ card_id: 7, rarity: 'normal', stars: 1, cp_mod: 1, level: 0, points: {}, role: 'striker', blocks: [] }]);
 const pt = pickSql({ ...f, boss: null, size: 8 }, [{ card_id: 7, rarity: 'normal', stars: 1, cp_mod: 1, level: 0, points: {}, role: 'striker', blocks: [] }]);
 check('L10 pickSql: the named boss gives its mechanics and Weak to role (combat_v2_hunt_boss), the tier boss none; the cap is the squad size; rolled back',

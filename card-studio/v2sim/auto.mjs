@@ -4,8 +4,9 @@
 // The fight policy is POLICIES.autov2 (policy.mjs). The numbers are config auto_v2 (= balance auto_v2).
 //
 // THE PICK (one squad for a Hunt day from a pool of the member's cards; boss = {mechanics, weak_role}): each card has a score =
-//   its value: the Power number of the card (PR E9: the pool card's power, SQL card_power_v2 / power.mjs cardPower) when the pool card has one, else (E8)
 //   its offense value (plan 2.5 Offense without the hit chance: attack (CP with the ATK points) x (1 + crit chance x (crit damage - 1)) x speed)
+//   [a Lab option of PR E9 (run.mjs powerpick): a pool card with a number `power` scores by it in place of the offense. The SQL combat_v2_autopick has
+//   no such option: the Lab measured the Power score lower than the offense score (plan 20.6)]
 //   x answers[m][role] for each boss mechanic m (the measured role value against m; 1 when absent)
 //   x (1 + the Weak to bonus of the boss for its role: v2_enemy.weak_role_rules[role].damage_x, else weak_role_x)
 //   x the pair score: pair_floor for a payoff card with no maker of its status among the other picked cards (plan 5.2 floor rule, the effect library
@@ -21,8 +22,8 @@ import { mkRng, hash, mean, median, table, ratio, fmt } from './util.mjs';
 import { hasSet1, withSet1, loadTeams, teamSpecs } from './teams.mjs';
 import { buildSquad } from './modes.mjs';
 
-/** The score parts of one pool card. c = {id, role, class, atk, crt, crd, spd, blocks, power?}; boss = {mechanics, weak_role}. val = c.power (PR E9) when it
- * is a number, else the offense (E8). */
+/** The score parts of one pool card. c = {id, role, class, atk, crt, crd, spd, blocks, power?}; boss = {mechanics, weak_role}. val = the offense (E8), or
+ * c.power when it is a number (the PR E9 Lab option, not in SQL). */
 export function pickBase(cfg, c, boss) {
   const P = cfg.auto_v2.pick; const E = cfg.v2_enemy;
   const off = c.atk * (1 + c.crt * (c.crd - 1)) * c.spd;

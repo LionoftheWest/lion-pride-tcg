@@ -3,6 +3,7 @@
   "scope": [
     "^combat_",
     "^card_combat(_v2)?$",
+    "^card_power_v2",
     "^card_max_hp$",
     "^fight_",
     "^hunt_(attack|support|pass_turn|counter_|card_crits|autopick|squad_value|effect_apply|fight_state|hit_mods|state_round|commit_card|boss_move_list|marks_patch|mark_on)",

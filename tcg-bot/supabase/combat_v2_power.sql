@@ -1,9 +1,9 @@
 -- combat_v2_power.sql (2026-10-22): combat v2, phase 4, PR E9: the Power number (docs/combat-redesign-plan.md 2.5, decision 3 of section 15, 14.1 row E9,
 -- section 20.6).
 -- Needs combat_v2_auto.sql (E8) first, and so the tester list, E7c, E7b, E7, T1c, T1b, T1, E6, E5, E4, E3, E2, E1 and V1.
--- Before: balance v2_power (V1) held the plan 2.5 formula numbers with k = 1 for every role ("not fitted yet"); no function read it. The Hunt auto-pick
--- (E8) scored a card by its offense only (attack x crit factor x speed). The v1 numbers (card_powers, hunt_squad_value) stay as they are.
--- After this file (the reference is the simulator card-studio/v2sim/power.mjs: cardPower, squadValue; auto.mjs autoPick):
+-- Before: balance v2_power (V1) held the plan 2.5 formula numbers with k = 1 for every role ("not fitted yet"); no function read it. The v1 numbers
+-- (card_powers, hunt_squad_value) stay as they are.
+-- After this file (the reference is the simulator card-studio/v2sim/power.mjs: cardPower, squadValue):
 --   BALANCE v2_power: + value (decision 3: the share of the PP of the smite, dot and control blocks of a support active that counts in its Offense) and
 --     scale; k = the fitted role scale. Measured by node card-studio/v2sim/run.mjs power (plan 20.6). config.json v2_power has the same value (the test
 --     compares them). balance_v2_spec (replaced: the text of combat_v2_testers.sql + the leaves value and scale) gives the fixed shape and the limits.
@@ -21,10 +21,9 @@
 --   combat_v2_squad_value(cards, numbers, auto) (STABLE): the squad value = the sum of power x the pair score of each card in the squad (E8
 --     combat_v2_autopick_pair: pair_floor for a payoff card with no maker of its status among the other cards). cards = [{id, role, class, power, blocks}].
 --   card_power_v2_numbers(): the numbers that card_power_v2 reads (ability_v2_numbers + v2_power, v2_hit, v2_enemy, v2_support + the status families).
---   combat_v2_autopick (REPLACED, the E8 text + one rule): a pool card may carry its Power number (power); its score uses the Power in place of the offense.
---     A pool card with no power scores as in E8 (the E8 test proves it), so nothing else changes.
--- REPLACED: balance_v2_spec (the v2_power leaves) and combat_v2_autopick (the power of a pool card). No v1 function calls a new or replaced function; the
--- flag combat_v2 stays OFF. Every number is in balance (C1: only 0 and 1 in the bodies). Idempotent: a second run keeps a changed value. Server only.
+--   NOT CHANGED: the Hunt auto-pick combat_v2_autopick (E8) keeps its offense score. The plan 20.6 Lab measured the Power number in the pick score (the
+--     same pools, seeds and searched reference as E8): it is lower than the E8 score on the tuning pools and on the held-out pools (an open question).
+-- REPLACED: balance_v2_spec (the v2_power leaves only). No v1 function calls a new or replaced function; the flag combat_v2 stays OFF. Every number is in balance (C1: only 0 and 1 in the bodies). Idempotent: a second run keeps a changed value. Server only.
 -- Test: card-studio/scripts/test-combat-v2-power.mjs (rolled back; SQL = the simulator; MUTATE=all must catch every mutation).
 -- Lab: node card-studio/v2sim/run.mjs power and powerpick.
 
@@ -161,7 +160,7 @@ comment on function public.balance_v2_spec(text) is $cm$[combat] The fixed shape
 select set_config('balance.by', 'nathan', true);
 update public.balance set
   value = value || '{"k":{"breaker":0.942,"striker":1.003,"flurry":0.956,"finisher":0.98,"survivor":1.011,"cleaver":1.014,"warden":1.009,"medic":0.951,"controller":1.099,"spotter":0.997,"herald":0.992,"artillery":1.045},"value":{"smite":0.2,"dot":0.175,"control":0.1},"scale":0.00195}'::jsonb,
-  note = $n$Combat v2: the Power number of a card (plan 2.5, decision 3; PR E9, combat_v2_power.sql; read by card_power_v2, combat_v2_squad_value and the Hunt auto-pick combat_v2_autopick; no fight reads it). Offense (attacker) = atk x (1 + crt x (crd - 1)) x hit chance x speed x (1 + abl_x x (ABL - 1)); Offense (support) = (v2_support.basic_x x atk x hit chance + support_abl_ref x F x ABL + F x ABL x atk x u x V) x the crit factor x speed, V = value.smite x PP(smite blocks) + value.dot x PP(Poison and Burn blocks) + value.control x PP(control blocks), u = 1 / (v2_pp.support_pp.smite x ability_v2.pp.sup_cycle); the hit chance is against the Heroic boss (v2_hit.miss + v2_enemy.hunt.Heroic.evasion - ACC); Survival = HP / (1 - DEF) / (1 - ddg_x x DDG); Power = Offense x Survival x k[role] x scale, shown rounded. value = the share of the PP of each family that shows in the measured value (fitted on the 42 reference templates, Hunt and Dungeon together). k = the role scale: the measured Hunt value of the role's reference cards / their formula value, / the mean of the roles (node card-studio/v2sim/run.mjs power; target 0.85 to 1.15 before the fit: the E9 formula gives 0.94 to 1.10, the plan 2.5 formula of V1 gave 0.90 to 1.46). scale = the mean Power of a Normal 0-star level-0 card of each placeholder template is 100. Refit k after each balance change (plan 2.5). config.json v2_power has the same value.$n$
+  note = $n$Combat v2: the Power number of a card (plan 2.5, decision 3; PR E9, combat_v2_power.sql; read by card_power_v2 and combat_v2_squad_value; no fight and no pick reads it). Offense (attacker) = atk x (1 + crt x (crd - 1)) x hit chance x speed x (1 + abl_x x (ABL - 1)); Offense (support) = (v2_support.basic_x x atk x hit chance + support_abl_ref x F x ABL + F x ABL x atk x u x V) x the crit factor x speed, V = value.smite x PP(smite blocks) + value.dot x PP(Poison and Burn blocks) + value.control x PP(control blocks), u = 1 / (v2_pp.support_pp.smite x ability_v2.pp.sup_cycle); the hit chance is against the Heroic boss (v2_hit.miss + v2_enemy.hunt.Heroic.evasion - ACC); Survival = HP / (1 - DEF) / (1 - ddg_x x DDG); Power = Offense x Survival x k[role] x scale, shown rounded. value = the share of the PP of each family that shows in the measured value (fitted on the 42 reference templates, Hunt and Dungeon together). k = the role scale: the measured Hunt value of the role's reference cards / their formula value, / the mean of the roles (node card-studio/v2sim/run.mjs power; target 0.85 to 1.15 before the fit: the E9 formula gives 0.94 to 1.10, the plan 2.5 formula of V1 gave 0.90 to 1.46). scale = the mean Power of a Normal 0-star level-0 card of each placeholder template is 100. Refit k after each balance change (plan 2.5). config.json v2_power has the same value.$n$
 where key = 'v2_power' and not (value ? 'value');
 -- @balance-end
 
@@ -275,70 +274,11 @@ begin
   return jsonb_build_object('value', total, 'shown', round(total)::bigint, 'cards', rows);
 end $fn$;
 
--- ============================================================ 5. the Hunt auto-pick with the Power number (REPLACED: the E8 text of combat_v2_auto.sql + the power of a pool card)
-create or replace function public.combat_v2_autopick(p_pool jsonb, p_boss jsonb, p_cap integer, p_b jsonb default null, p_a jsonb default null)
-returns jsonb language plpgsql stable set search_path = public as $fn$
-declare
-  b jsonb := coalesce(p_b, combat_v2_enemy_numbers());
-  a jsonb := coalesce(p_a, (select value from public.balance where key = 'auto_v2'));
-  pk jsonb; en jsonb; cs jsonb := '[]'; base jsonb := '{}'; sc jsonb; ids integer[]; prev integer[]; passes int := 0; x jsonb; c jsonb;
-  off numeric; val numeric; ans numeric; weak numeric; mk text[]; py text[]; m text; role text; rows jsonb := '[]'; p int; pr numeric; id int;
-begin
-  if a is null or jsonb_typeof(a->'pick') is distinct from 'object' then raise exception 'combat_v2_autopick: no value for auto_v2.pick (balance auto_v2)'; end if;
-  if b->'v2_enemy' is null then raise exception 'combat_v2_autopick: no value for v2_enemy (combat_v2_enemy_numbers)'; end if;
-  pk := a->'pick'; en := b->'v2_enemy';
-  if jsonb_typeof(p_pool) is distinct from 'array' then raise exception 'combat_v2_autopick: pool must be a list of cards ({id, role, class, atk, crt, crd, spd, blocks})'; end if;
-  if jsonb_typeof(p_boss) is distinct from 'object' then raise exception 'combat_v2_autopick: boss must be an object ({mechanics, weak_role})'; end if;
-  if p_cap is null or p_cap < 1 then raise exception 'combat_v2_autopick: cap must be a whole number of 1 or more'; end if;
-  if (select count(distinct x2->>'id') from jsonb_array_elements(p_pool) x2) <> jsonb_array_length(p_pool) then raise exception 'combat_v2_autopick: a card id is twice in the pool'; end if;
-  for x in select v from jsonb_array_elements(p_pool) v loop
-    role := x->>'role';
-    if jsonb_typeof(x->'id') is distinct from 'number' or (x->>'id')::numeric < 1 or (x->>'id')::numeric % 1 <> 0
-       or not exists (select 1 from public.roles r where r.key = role and r.class = x->>'class')
-       or jsonb_typeof(x->'atk') is distinct from 'number' or jsonb_typeof(x->'crt') is distinct from 'number' or jsonb_typeof(x->'crd') is distinct from 'number'
-       or jsonb_typeof(x->'spd') is distinct from 'number' or jsonb_typeof(coalesce(x->'blocks', '[]'::jsonb)) <> 'array' then
-      raise exception 'combat_v2_autopick: each pool card needs a whole id of 1 or more, a role of roles with its class, the numbers atk, crt, crd and spd (card_combat_v2) and a list of blocks (%)', x::text;
-    end if;
-    -- E9: the Power number of the card (card_power_v2 value), when the pool card has one
-    if x ? 'power' and (jsonb_typeof(x->'power') is distinct from 'number' or (x->>'power')::numeric < 0) then
-      raise exception 'combat_v2_autopick: the power of a pool card must be a number of 0 or more (card_power_v2 value) (%)', x::text;
-    end if;
-    -- the offense value (plan 2.5 Offense without the hit chance): attack x the crit factor x speed
-    off := (x->>'atk')::numeric * (1 + (x->>'crt')::numeric * ((x->>'crd')::numeric - 1)) * (x->>'spd')::numeric;
-    val := coalesce((x->>'power')::numeric, off);
-    ans := 1;
-    for m in select jsonb_array_elements_text(coalesce(p_boss->'mechanics', '[]'::jsonb)) loop
-      if pk->'answers'->m->role is not null then ans := ans * (pk->'answers'->m->>role)::numeric; end if;
-    end loop;
-    weak := case when role = p_boss->>'weak_role' then 1 + coalesce((en->'weak_role_rules'->role->>'damage_x')::numeric, (en->>'weak_role_x')::numeric) else 1 end;
-    mk := combat_v2_auto_makes(role, x->'blocks', a); py := combat_v2_auto_pays(x->'blocks');
-    cs := cs || jsonb_build_array(jsonb_build_object('id', (x->>'id')::int, 'role', role, 'class', x->>'class', 'makes', to_jsonb(mk), 'pays', to_jsonb(py),
-      'off', off, 'power', x->'power', 'val', val, 'ans', ans, 'weak', weak, 'base', val * ans * weak));
-    base := base || jsonb_build_object(x->>'id', val * ans * weak);
-  end loop;
-  ids := combat_v2_autopick_choose(cs, base, p_cap, pk);
-  for p in 1 .. (pk->>'passes')::int loop
-    prev := ids; sc := '{}';
-    for c in select v from jsonb_array_elements(cs) v loop
-      sc := sc || jsonb_build_object(c->>'id', (c->>'base')::numeric * combat_v2_autopick_pair(c, cs, prev, pk));
-    end loop;
-    ids := combat_v2_autopick_choose(cs, sc, p_cap, pk); passes := p;
-    exit when (select array_agg(y order by y) from unnest(ids) y) is not distinct from (select array_agg(y order by y) from unnest(prev) y);
-  end loop;
-  foreach id in array ids loop
-    c := (select v from jsonb_array_elements(cs) v where (v->>'id')::int = id);
-    pr := combat_v2_autopick_pair(c, cs, ids, pk);
-    rows := rows || jsonb_build_array(jsonb_build_object('id', id, 'role', c->>'role', 'off', c->'off', 'power', c->'power', 'val', c->'val', 'ans', c->'ans', 'weak', c->'weak',
-      'base', c->'base', 'pair', pr, 'score', (c->>'base')::numeric * pr));
-  end loop;
-  return jsonb_build_object('ids', to_jsonb(ids), 'rows', rows, 'passes', passes);
-end $fn$;
-
--- ============================================================ 6. server only, comments
+-- ============================================================ 5. server only, comments
 do $do$ declare f text; begin
   foreach f in array array['card_power_v2_numbers()', 'card_power_v2_families(text, jsonb, jsonb)', 'card_power_v2(jsonb, jsonb, jsonb)',
     'card_power_v2(text, integer, numeric, integer, jsonb, text, jsonb)', 'combat_v2_squad_value(jsonb, jsonb, jsonb)',
-    'combat_v2_autopick(jsonb, jsonb, integer, jsonb, jsonb)', 'balance_v2_spec(text)'] loop
+    'balance_v2_spec(text)'] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
     execute format('grant execute on function public.%s to service_role', f);
   end loop;
@@ -348,6 +288,5 @@ comment on function public.card_power_v2_families(text, jsonb, jsonb) is $cm$[co
 comment on function public.card_power_v2(jsonb, jsonb, jsonb) is $cm$[combat] Combat v2 THE POWER NUMBER of one card (plan 2.5, decision 3, PR E9): Offense x Survival x k[role] x scale from card_combat_v2 (stats, support factor F, extra stack) and the base blocks of the active; a support Offense counts the PP of its smite, dot and control blocks x balance v2_power.value. {power (rounded, the number a card shows), value, offense, survival, k, scale, hit, crit_x, v, pp, families}. The client shows it only (CI check C3). The simulator twin: v2sim power.mjs cardPower. combat_v2_power.sql.$cm$;
 comment on function public.card_power_v2(text, integer, numeric, integer, jsonb, text, jsonb) is $cm$[combat] Combat v2 Power number from the card facts (rarity, stars, cp_mod, level, points, role, blocks): card_combat_v2, then card_power_v2. combat_v2_power.sql.$cm$;
 comment on function public.combat_v2_squad_value(jsonb, jsonb, jsonb) is $cm$[combat] Combat v2 SQUAD VALUE (plan 14.1 E9): the sum of the Power of each card x its pair score in the squad (combat_v2_autopick_pair: pair_floor for a payoff card with no maker of its status among the other cards). cards = [{id, role, power (card_power_v2 value), blocks}]; {value, shown, cards [{id, power, pair, value}]}. The simulator twin: v2sim power.mjs squadValue. combat_v2_power.sql.$cm$;
-comment on function public.combat_v2_autopick(jsonb, jsonb, integer, jsonb, jsonb) is $cm$[combat] Combat v2 THE HUNT AUTO-PICK (plan 14.1 E8, E9): the squad of cap cards from a pool [{id, role, class, atk, crt, crd, spd, blocks, power?}] against a boss {mechanics, weak_role}: score = the card value (its Power number, card_power_v2 value, when the pool card has one (E9); else the offense atk x (1 + crt x (crd - 1)) x spd, E8) x the role answers (auto_v2.pick.answers) x the Weak to bonus x the pair score; {ids, rows, passes}. No draw, no write. The simulator twin: v2sim auto.mjs autoPick. combat_v2_auto.sql, replaced by combat_v2_power.sql.$cm$;
 
 notify pgrst, 'reload schema';

@@ -6,18 +6,18 @@ import './localdb-guard.mjs';
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-combat-v2-power.mjs     must PASS
  *   MUTATE=<name> ...                                                                           must FAIL, for every name in MUT and SIM_MUT below
  *   MUTATE=all ...                                                                              the baseline (must PASS), then every mutation
- *   V2_CARDS (default 300), V2_POOLS (default 200), V2_SQUADS (default 120): the sizes of the random parts.
- * The reference is the simulator card-studio/v2sim: power.mjs cardPower, powerOf, blockFamilies and auto.mjs autoPick, pairOf, with the numbers of the database.
+ *   V2_CARDS (default 300), V2_SQUADS (default 120): the sizes of the random parts.
+ * The reference is the simulator card-studio/v2sim: power.mjs cardPower, powerOf, blockFamilies and auto.mjs pairOf, with the numbers of the database.
  * Invariants:
- *   1. No change in play: no other public function changes (md5) except the 2 replaced ones (balance_v2_spec: the v2_power leaves only, the spec of every other
- *      key is the same; combat_v2_autopick: a pool with no power picks as in E8), no v1 function calls a new or replaced function, the flag combat_v2 stays
- *      OFF; volatility, server only, comments, the file runs twice and keeps a changed value.
+ *   1. No change in play: no other public function changes (md5; the E8 auto-pick included) except the one replaced (balance_v2_spec: the v2_power leaves
+ *      only, the spec of every other key is the same), no v1 function calls a new function, the flag combat_v2 stays OFF; volatility, server only,
+ *      comments, the file runs twice and keeps a changed value.
  *   2. Data: balance v2_power = config.json v2_power (one number, one home), the status families = the copy in power.mjs, the note names the file,
  *      balance_log has the update by nathan, the fixed shape refuses planted values.
  *   3. The fixed cases (hand-computed): each term of the formula, each family rule, the extra stack, k and scale, the rounding, the 7-argument form;
- *      the squad value and its pair rule; the pick with and without a Power number; the refusals.
+ *      the squad value and its pair rule; the refusals.
  *   4. SQL = the simulator on random cards (the placeholder templates from the card facts, and random abilities with attachments on the stats of
- *      card_combat_v2), on random squads (the squad value) and on random pools with and without a Power number (the pick).
+ *      card_combat_v2) and on random squads (the squad value).
  *   5. Monotone: for every placeholder template and finish, the Power rises with the stars and with the level (the role build).
  */
 import { readFileSync } from 'node:fs';
@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { runBlock as runBlock1, assertLocal, sqlLit } from './lab-lib.mjs';
 import { ROLES, classOf, templatesOf, makeCard, buildFor, STATS } from '../v2sim/cards.mjs';
-import { autoPick, pairOf } from '../v2sim/auto.mjs';
+import { pairOf } from '../v2sim/auto.mjs';
 import { cardPower, powerOf, blockFamilies, SMITE_BLOCKS, STATUS_FAMILY } from '../v2sim/power.mjs';
 import { loadConfig, mkRng } from '../v2sim/util.mjs';
 import { SETUP, simCfg, genAbility } from './test-combat-v2-monster-tuning.mjs';
@@ -75,10 +75,6 @@ const MUT = {
   squad_no_pair: ['    pr := combat_v2_autopick_pair(c, cs, ids, a->\'pick\');', '    pr := 1;'],
   squad_dup_ok: ["  if (select count(distinct x2->>'id') from jsonb_array_elements(p_cards) x2) <> jsonb_array_length(p_cards) then raise exception 'combat_v2_squad_value: a card id is twice in the squad'; end if;\n", ''],
   squad_negative_ok: ["       or jsonb_typeof(x->'power') is distinct from 'number' or (x->>'power')::numeric < 0 or jsonb_typeof(coalesce(x->'blocks', '[]'::jsonb)) <> 'array' then\n      raise exception 'combat_v2_squad_value", "       or jsonb_typeof(x->'power') is distinct from 'number' or jsonb_typeof(coalesce(x->'blocks', '[]'::jsonb)) <> 'array' then\n      raise exception 'combat_v2_squad_value"],
-  // the pick
-  pick_power_ignored: ['    val := coalesce((x->>\'power\')::numeric, off);', '    val := off;'],
-  pick_power_any: ["    if x ? 'power' and (jsonb_typeof(x->'power') is distinct from 'number' or (x->>'power')::numeric < 0) then", '    if false then'],
-  pick_e8_broken: ['    val := coalesce((x->>\'power\')::numeric, off);', '    val := coalesce((x->>\'power\')::numeric, off / (x->>\'spd\')::numeric);'],
   // the data, the shape, play, rights, comments
   data_k: ['"controller":1.099', '"controller":1.199'],
   data_value: ['"value":{"smite":0.2,"dot":0.175,"control":0.1}', '"value":{"smite":0.2,"dot":0.2,"control":0.1}'],
@@ -158,7 +154,7 @@ const CHAIN = `${SETUP}\n  execute $m$${TUNE}$m$;\n  execute $m$${FU}$m$;\n  exe
 // the new and replaced functions (by signature) and their volatility
 const NEW = { 'card_power_v2_numbers()': 's', 'card_power_v2_families(text,jsonb,jsonb)': 'i', 'card_power_v2(jsonb,jsonb,jsonb)': 's',
   'card_power_v2(text,integer,numeric,integer,jsonb,text,jsonb)': 's', 'combat_v2_squad_value(jsonb,jsonb,jsonb)': 's' };
-const REPLACED = { 'balance_v2_spec(text)': 'i', 'combat_v2_autopick(jsonb,jsonb,integer,jsonb,jsonb)': 's' };
+const REPLACED = { 'balance_v2_spec(text)': 'i' };
 const NEWSIG = Object.keys(NEW), REPSIG = Object.keys(REPLACED);
 const NEWNAMES = [...new Set(NEWSIG.map((x) => x.split('(')[0]))];
 const q = (a) => a.map((n) => `'${n}'`).join(', ');
@@ -186,7 +182,7 @@ begin
   after := ${md5s([...NEWSIG, ...REPSIG])};
   ra := ${md5s([])};
   select jsonb_object_agg(k, balance_v2_spec(k)) into sa from unnest(array[${q(SPEC_KEYS)}]) k;
-  res := res || jsonb_build_object('case', 'no change in play: the md5 of every other public function (' || (select count(*) from jsonb_object_keys(before)) || ') is the same after the file', 'ok',
+  res := res || jsonb_build_object('case', 'no change in play: the md5 of every other public function (' || (select count(*) from jsonb_object_keys(before)) || ', the E8 auto-pick included) is the same after the file', 'ok',
     before = after and (select count(*) from jsonb_object_keys(before)) > 400, 'got', (select jsonb_agg(k2) from jsonb_object_keys(after) k2 where before->k2 is distinct from after->k2));
   res := res || jsonb_build_object('case', 'the file replaces exactly ${REPSIG.length} functions (${REPSIG.join(', ')})', 'ok',
     (select count(*) from jsonb_object_keys(ra) k2 where replace(k2, ' ', '') = any(array[${q(REPSIG)}]) and rb->k2 is distinct from ra->k2) = ${REPSIG.length},
@@ -194,8 +190,8 @@ begin
   res := res || jsonb_build_object('case', 'balance_v2_spec: the spec of every other v2 key (${SPEC_KEYS.length}) is the same; only v2_power gets the leaves value and scale', 'ok',
     sb = sa and balance_v2_spec('v2_power') ? 'value' and balance_v2_spec('v2_power') ? 'scale', 'got', (select jsonb_agg(k2) from jsonb_object_keys(sa) k2 where sb->k2 is distinct from sa->k2));
   select coalesce(jsonb_agg(p.proname order by p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace
-    and p.prosrc ~ '\m(${NEWNAMES.join('|')}|combat_v2_autopick)\M' and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...NEWSIG, ...REPSIG])}]);
-  res := res || jsonb_build_object('case', 'no other function calls a new function or the replaced auto-pick (nothing in play)', 'ok', o = '[]'::jsonb, 'got', o);
+    and p.prosrc ~ '\m(${NEWNAMES.join('|')})\M' and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...NEWSIG, ...REPSIG])}]);
+  res := res || jsonb_build_object('case', 'no other function calls a new function (nothing in play)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname order by p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace
     and p.prosrc ~ '\mbalance_v2_spec\M' and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...NEWSIG, ...REPSIG])}]);
   res := res || jsonb_build_object('case', 'balance_v2_spec has its two callers (the V1 trigger balance_check_combat_v2 and the tester reader combat_v2_on, which reads the spec of combat_v2: the same)', 'ok', o = '["balance_check_combat_v2", "combat_v2_on"]'::jsonb, 'got', o);
@@ -265,6 +261,8 @@ function fixedCases(cfg) {
   c = C('striker', { abl: 1.5 }); add('an attacker with ABL 1.5: x (1 + abl_x x 0.5)', c, [{ k: 'hit', x: 1.45 }], { value: W(c, att(c)) });
   c = C('striker', { acc: 0.3 }); add('Accuracy above miss + evasion: the hit chance is 1 (no more)', c, [], { value: W(c, att(c)), hit: 1 });
   c = C('breaker', { def: 0.3, ddg: 0.3 }); add('Defense 0.3 and Dodge 0.3: Survival = HP / 0.7 / (1 - ddg_x x 0.3)', c, [], { value: W(c, att(c)), survival: surv(c) });
+  c = C('finisher'); add('an attacker on_kill Stun: control (the on_kill trigger is a status block); the PP of the family is its price', c, [{ k: 'hit', x: 1.3 }, { k: 'on_kill', status: 'stunned', chance: 0.5 }],
+    { value: W(c, att(c)), families: ['other', 'control'], pp: { control: ST.stunned * 0.5 * cfg.ability_v2.share.on_kill / (cfg.v2_charge.attacker + 1) } });
   c = C('striker'); add('an attacker with a Poison rider and a crit_add: families other, other, dot; no value term (the attacker formula)', c, [{ k: 'hit', x: 1.3 }, { k: 'crit_add', v: 0.2 }, { k: 'apply', status: 'poison', stacks: 1, chance: 0.5 }],
     { value: W(c, att(c)), families: ['other', 'other', 'dot'], v: 0 });
   c = C('warden'); add('a support with a shield only: (basic + support_abl_ref x F x ABL) x crit x speed; the shield is other (no value term)', c, [{ k: 'shield', v: 0.4 }],
@@ -353,34 +351,6 @@ const squadBlock = (items) => String.raw`do $t$ declare out jsonb := '[]'; x jso
   end loop;
   raise exception 'RESULT:%', out::text; end $t$;`;
 const simSquad = (cfg, cards) => { const S = cards.map((c) => ({ id: c.id, role: c.role, blocks: c.blocks })); let v = 0; const rows = S.map((c, i) => { const pr = pairOf(cfg, c, S); v += cards[i].power * pr; return { id: c.id, pair: pr }; }); return { value: v, rows }; };
-const pickBlock = (items) => String.raw`do $t$ declare out jsonb := '[]'; x jsonb; b jsonb; begin
-  ${CHAIN}
-  execute $m$${mig}$m$;
-  b := combat_v2_enemy_numbers();
-  for x in select v from jsonb_array_elements(${sqlLit(items)}::jsonb) v loop
-    begin out := out || jsonb_build_array(combat_v2_autopick(x->'pool', x->'boss', (x->>'cap')::int, b, null));
-    exception when others then out := out || jsonb_build_array(jsonb_build_object('error', sqlerrm)); end;
-  end loop;
-  raise exception 'RESULT:%', out::text; end $t$;`;
-const pcard = (id, role, atk, o = {}) => ({ id, role, class: classOf(role), atk, crt: 0.1, crd: 2, spd: 20, blocks: [{ k: classOf(role) === 'attacker' ? 'hit' : 'smite', x: 1.2 }], ...o });
-function poolSpecs(n, seed, cfg, withPower) {
-  const rng = mkRng(seed); const pick = (a) => a[Math.floor(rng() * a.length)];
-  const mechs = Object.keys(cfg.auto_v2.pick.answers); const out = [];
-  for (let i = 0; i < n; i++) {
-    const size = 1 + Math.floor(rng() * 24); const pool = []; const used = new Set();
-    while (pool.length < size) {
-      const id = 1 + Math.floor(rng() * 60); if (used.has(id)) continue; used.add(id);
-      const role = pick(ROLES); const cls = classOf(role);
-      pool.push({ id, role, class: cls, atk: Math.round((40 + rng() * 260) * 100) / 100, crt: pick([0.1, 0.18, 0.3, 0.5]), crd: pick([2, 2.2, 2.5]),
-        spd: cfg.v2_speed.role_base[role] * pick([1, 1.09, 1.3]), blocks: genAbility(rng, cls), ...(withPower ? { power: Math.round((50 + rng() * 3000) * 1000) / 1000 } : {}) });
-    }
-    out.push({ pool, boss: { mechanics: Array.from({ length: Math.floor(rng() * 4) }, () => pick(mechs)), ...(rng() < 0.6 ? { weak_role: pick(ROLES) } : {}) }, cap: rng() < 0.7 ? 8 : 1 + Math.floor(rng() * 8) });
-  }
-  return out;
-}
-const pickNearTie = (cfg, it) => { const sc = it.pool.map((c) => [c.class, (typeof c.power === 'number' ? c.power : c.atk * (1 + c.crt * (c.crd - 1)) * c.spd)]);
-  for (let a = 0; a < sc.length; a++) for (let b = a + 1; b < sc.length; b++) if (sc[a][0] === sc[b][0] && near(sc[a][1], sc[b][1])) return true; return false; };
-
 // ---------------------------------------------------------------------------------------------------------------- run
 let fail = 0, total = 0;
 const say = (ok, name, extra = '') => { total++; if (!ok) fail++; console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : ' ' + extra}`); };
@@ -444,18 +414,6 @@ try {
     SQ.forEach(([name, cards, want], i) => { const w = simSquad(cfg, cards); say(!sg[i].error && near(sg[i].value, want) && near(w.value, want) && sg[i].shown === Math.round(want), `squad value: ${name}`, JSON.stringify({ sql: sg[i], sim: w.value, want })); });
     const se = SQE.filter((e, i) => !String(sg[SQ.length + i].error || '').includes(e[2])).map((e) => `${e[0]}: ${JSON.stringify(sg[SQ.length + SQE.indexOf(e)])}`);
     say(se.length === 0, `combat_v2_squad_value refuses ${SQE.length} bad squads (${SQE.map((e) => e[0]).join(', ')})`, se.join(' | '));
-    // the pick with the Power number
-    const PK = [
-      ['the Power number decides: a Striker of attack 150 with Power 100 falls below a Flurry of attack 100 with Power 200', [pcard(1, 'striker', 150, { power: 100 }), pcard(2, 'flurry', 100, { power: 200 })], 1, '[2]'],
-      ['no Power number: the E8 offense decides (attack 150 over 100)', [pcard(1, 'striker', 150), pcard(2, 'flurry', 100)], 1, '[1]'],
-      ['the Weak to bonus multiplies the Power: Power 120 x 1.5 (weak striker) beats Power 150', [pcard(1, 'breaker', 100, { power: 150 }), pcard(2, 'striker', 100, { power: 120 })], 1, '[2]', 'striker'],
-      ['a payoff card x pair_floor with the Power: 110 x 0.8 falls below 100', [pcard(1, 'striker', 100, { power: 110, blocks: pay }), pcard(2, 'flurry', 100, { power: 100 }), pcard(3, 'warden', 60, { power: 60 })], 2, '[2,3]']];
-    const PE = [['a power as text', [pcard(1, 'striker', 100, { power: '100' })], 'the power of a pool card'], ['a negative power', [pcard(1, 'striker', 100, { power: -5 })], 'the power of a pool card']];
-    const pg = JSON.parse(await runBlock(pickBlock([...PK.map((p) => ({ pool: p[1], boss: { mechanics: [], ...(p[4] ? { weak_role: p[4] } : {}) }, cap: p[2] })), ...PE.map((p) => ({ pool: p[1], boss: {}, cap: 1 }))])));
-    PK.forEach(([name, pool, cap, want, wr], i) => { const w = autoPick(cfg, pool, { mechanics: [], ...(wr ? { weak_role: wr } : {}) }, cap);
-      say(!pg[i].error && JSON.stringify(pg[i].ids) === want && JSON.stringify(w.ids) === want, `pick: ${name}`, JSON.stringify({ sql: pg[i], sim: w.ids })); });
-    const pe = PE.filter((e, i) => !String(pg[PK.length + i].error || '').includes(e[2])).map((e) => `${e[0]}: ${JSON.stringify(pg[PK.length + PE.indexOf(e)])}`);
-    say(pe.length === 0, `combat_v2_autopick refuses ${PE.length} bad Power numbers (${PE.map((e) => e[0]).join(', ')})`, pe.join(' | '));
   }
   if (!ONLY || ONLY === 'random') {
     const nc = Number(process.env.V2_CARDS || 300);
@@ -493,18 +451,6 @@ try {
       if (!a.error && near(a.value, w.value) && a.cards.every((x, k) => Number(x.pair) === w.rows[k].pair)) { sameS++; floors += w.rows.filter((x) => x.pair < 1).length; }
       else if (badS.length < 4) badS.push(`squad ${i}: SQL ${JSON.stringify(a).slice(0, 200)} sim ${w.value}`); });
     say(sameS === SQS.length && floors > 0, `SQL = the simulator on ${SQS.length} random squads (the squad value and each pair score; ${floors} cards at pair_floor)`, badS.join(' | '));
-    // the pick: random pools with a Power number, and with none (the E8 contract)
-    const np = Number(process.env.V2_POOLS || 200);
-    for (const withPower of [true, false]) {
-      const PS = poolSpecs(withPower ? np : Math.ceil(np / 2), withPower ? 3401 : 3402, cfg, withPower);
-      const po = []; for (let i = 0; i < PS.length; i += 60) po.push(...JSON.parse(await runBlock(pickBlock(PS.slice(i, i + 60)))));
-      let same = 0, tie = 0; const bad = [];
-      PS.forEach((it, i) => { const w = autoPick(cfg, it.pool, it.boss, it.cap); const a = po[i];
-        const ok = !a.error && JSON.stringify(a.ids) === JSON.stringify(w.ids) && a.passes === w.passes
-          && a.rows.every((r, k) => near(r.score, w.rows[k].score) && Number(r.pair) === w.rows[k].pair);
-        if (ok) same++; else if (pickNearTie(cfg, it)) tie++; else if (bad.length < 4) bad.push(`pool ${i}: SQL ${JSON.stringify(a.error || a.ids)} sim ${JSON.stringify(w.ids)}`); });
-      say(same + tie === PS.length && bad.length === 0 && tie <= Math.ceil(PS.length * 0.02), `SQL = the simulator on ${PS.length} random pools ${withPower ? 'WITH a Power number (the E9 score)' : 'with NO Power number (the E8 contract: the offense score)'}: ${same} with the same ids, order, passes and scores, ${tie} differ only at a float near-tie of two scores`, bad.join(' | '));
-    }
   }
 } catch (e) {
   fail++; total++;

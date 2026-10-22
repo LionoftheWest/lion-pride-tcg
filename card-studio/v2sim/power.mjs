@@ -208,7 +208,8 @@ export function powerPickLab(cfg, { seed = 1, pools = 2, poolSize = 20, searchDa
   const pool0 = cardPool(cfg).filter((p) => p.pullable.length);
   const keys = bosses || bossKeys(cfg); const V = Object.keys(variants);
   const days = (sq, key, policy, n, tag) => { let s = 0; for (let i = 0; i < n; i++) s += huntDay(cfg, sq, { tier: 'Heroic', boss: key, seed: hash(seed, tag, i), policy }).net; return s / n; };
-  const rows = []; const all = Object.fromEntries(V.map((v) => [v, []])); const per = {};
+  const rows = []; const all = Object.fromEntries(V.map((v) => [v, []])); const per = {}; const mix = { best: {} }; const overlap = Object.fromEntries(V.map((v) => [v, []])); const detail = {};
+  for (const v of V) mix[v] = {};
   for (const key of keys) {
     const boss = pickBoss(cfg, key, 'Heroic'); const r = Object.fromEntries(V.map((v) => [v, []])); const same = Object.fromEntries(V.map((v) => [v, 0]));
     for (let pi = 0; pi < pools; pi++) {
@@ -234,6 +235,10 @@ export function powerPickLab(cfg, { seed = 1, pools = 2, poolSize = 20, searchDa
         if (cv > bestV) { bestV = cv; best = cur; }
       }
       const vB = days(sq(best), key, 'best', evalDays, `eval-${pi}`); const memo = new Map();
+      const roleOfId = new Map(pool.map((c) => [c.id, c.role])); const supRoles = (ids) => ids.map((id) => roleOfId.get(id)).filter((r) => classOf(r) === 'support');
+      for (const r of supRoles(best)) mix.best[r] = (mix.best[r] || 0) + 1;
+      for (const v of V) { for (const r of supRoles(picks[v])) mix[v][r] = (mix[v][r] || 0) + 1; overlap[v].push(picks[v].filter((id) => best.includes(id)).length); }
+      (detail[key] ||= []).push({ best: best.map((id) => roleOfId.get(id)), ...Object.fromEntries(V.map((v) => [v, picks[v].map((id) => roleOfId.get(id))])) });
       for (const v of V) { const k = [...picks[v]].sort((a, b) => a - b).join(); if (!memo.has(k)) memo.set(k, days(sq(picks[v]), key, 'autov2', evalDays, `eval-${pi}`));
         r[v].push(memo.get(k) / vB); if (k === [...e8].sort((a, b) => a - b).join()) same[v]++; }
     }
@@ -244,6 +249,12 @@ export function powerPickLab(cfg, { seed = 1, pools = 2, poolSize = 20, searchDa
   md += `${pools} pools of ${poolSize} real cards a boss (seed ${seed}), Heroic; search ${searchDays} days a squad, evaluation ${evalDays} fresh days. Ratio = Auto (the pick of the variant + Auto v2) / the searched best squad with the scripted best play (the same reference for every variant).\n\n`;
   md += table(['boss', 'Weak to', 'mechanics', ...V.map((v) => `${v} (mean)`)], [...rows, ['MEAN', '', '', ...V.map((v) => ratio(mean(all[v]), 3))], ['bosses below x0.85', '', '', ...V.map((v) => String(keys.filter((k) => per[k][v].mean < 0.85).length))]]);
   md += `\nThe same squad as the E8 pick (pools): ${V.map((v) => `${v} ${keys.reduce((s, k) => s + per[k][v].same, 0)} of ${keys.length * pools}`).join(', ')}.\n`;
+  const SR = ['warden', 'medic', 'controller', 'spotter', 'herald', 'artillery'];
+  md += `
+### The support roles picked (all pools) and the cards in common with the searched best squad (of 8)
+
+` + table(['squad', ...SR, 'cards in common with the best (mean)'], [['searched best', ...SR.map((r) => String(mix.best[r] || 0)), '8'], ...V.map((v) => [v, ...SR.map((r) => String(mix[v][r] || 0)), fmt(mean(overlap[v]), 2)])]);
   head.push(`Pick per boss (${pools} pools a boss, seed ${seed}): ${V.map((v) => `${v} mean ${ratio(mean(all[v]), 3)}, below x0.85 ${keys.filter((k) => per[k][v].mean < 0.85).length}`).join('; ')}.`);
-  return { md, head, data: { per, all } };
+  head.push(`Support roles: best ${JSON.stringify(mix.best)}; ${V.map((v) => `${v} ${JSON.stringify(mix[v])} (in common with the best ${fmt(mean(overlap[v]), 2)})`).join('; ')}.`);
+  return { md, head, data: { per, all, mix, overlap, detail } };
 }

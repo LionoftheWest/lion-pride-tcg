@@ -6,6 +6,8 @@
  * is the second guard. Every card choice comes from Auto v2 (combat_v2_auto, PR E8: use the charged active unless a rule holds it, the target, the
  * ally); the log shows the Auto choice of each card action. The Hunt squad "auto" is the Hunt auto-pick (combat_v2_autopick: the offense value, the
  * role answers of the boss, the Weak to bonus and the pair score); the Dungeon squad "auto" stays the best N by v2 CP (E8 has no Dungeon pick).
+ * PR E9: the Power number of each card (card_power_v2) and the squad value (combat_v2_squad_value) come from SQL and are shown as they are (no math
+ * here). A local copy with no E9 functions shows no Power (to_regprocedure guards each call).
  *   GET  /setup             the local copy, the v2 functions there, the named Hunt bosses, the tiers, the Dungeon monsters and room kinds, the squad sizes
  *   GET  /players?q=        members of the local copy by name or id (20 at most)
  *   GET  /player/:id/cards  the member's cards with the v2 role and the v2 active (subjects.ability_v2, else the simulator placeholder) and its text
@@ -146,6 +148,7 @@ export function fightSql(f, squad, { maxActions = MAX_ACTIONS } = {}) {
   return `set statement_timeout = 120000;
 do $t$
 declare b jsonb; s jsonb; cards jsonb := '{}'; info jsonb := '[]'; en jsonb := '[]'; card jsonb; x jsonb; i int; cc jsonb; res jsonb; mech jsonb; txt jsonb;
+  pw jsonb; pws jsonb := '[]'; sv jsonb; e9 boolean := to_regprocedure('public.card_power_v2(jsonb, jsonb, jsonb)') is not null;
 begin
   ${DRIVER}
   perform setseed(${(f.seed % 1000000) / 1000000});
@@ -153,6 +156,10 @@ begin
   for x, i in select v, o::int from jsonb_array_elements(${jlit(squad)}) with ordinality q(v, o) loop
     cc := card_combat_v2(x->>'rarity', (x->>'stars')::int, (x->>'cp_mod')::numeric, (x->>'level')::int, x->'points', x->>'role');
     begin txt := ability_v2_text(cc->>'class', x->'blocks'); exception when others then txt := jsonb_build_object('text', null, 'error', sqlerrm); end;
+    -- PR E9: the Power number (card_power_v2) of the card, and its entry of the squad value
+    pw := null;
+    if e9 then begin pw := card_power_v2(cc, x->'blocks', null); exception when others then pw := jsonb_build_object('error', sqlerrm); end; end if;
+    if pw ? 'value' then pws := pws || jsonb_build_array(jsonb_build_object('id', i, 'role', cc->>'role', 'power', pw->'value', 'blocks', x->'blocks')); end if;
     cards := cards || jsonb_build_object(i::text, jsonb_build_object('role', cc->>'role', 'class', cc->>'class',
       'atk', cc->'stats'->'atk', 'crt', cc->'stats'->'crt', 'crd', cc->'stats'->'crd', 'abl', cc->'stats'->'abl', 'acc', cc->'stats'->'acc',
       'def', cc->'stats'->'def', 'ddg', cc->'stats'->'ddg', 'max', cc->'stats'->'hp', 'hp', cc->'stats'->'hp', 'down', false,
@@ -160,14 +167,15 @@ begin
       'meter', round((random() * 100)::numeric, 2), 'charge', (b->'v2_charge'->>'start')::int, 'held', 0, 'status', '{}'::jsonb,
       'active', jsonb_build_object('blocks', x->'blocks')));
     info := info || jsonb_build_array(jsonb_build_object('slot', i, 'card_id', x->'card_id', 'v2', cc, 'text', txt->'text', 'text_error', txt->'error',
-      'charge_need', (b->'v2_charge'->>(cc->>'class'))::int));
+      'charge_need', (b->'v2_charge'->>(cc->>'class'))::int, 'power', pw));
   end loop;
+  if e9 and jsonb_array_length(pws) = jsonb_array_length(info) then sv := combat_v2_squad_value(pws, null, null); end if;
   ${enemies}
   s := jsonb_build_object('v', 2, 'mode', ${lit(f.mode)}, 'round', 0, 'clock', 0, 'squad', (select jsonb_agg(g) from generate_series(1, jsonb_array_length(info)) g),
     'cards', cards, 'enemies', en, 'marks', '{}'::jsonb, 'facts', jsonb_build_object('passives', '[]'::jsonb, 'cards', '{}'::jsonb), 'ext', '{}'::jsonb);
   select coalesce(jsonb_object_agg(m.key, jsonb_build_object('label', m.label, 'text', m.text, 'kind', m.kind, 'numbers', balance_path(m.numbers))), '{}'::jsonb) into mech
     from public.enemy_mechanics m where exists (select 1 from jsonb_array_elements(en) e where e->'mechanics' ? m.key);
-  res := jsonb_build_object('squad', info, 'enemies', en, 'boss_card', card, 'mechanics', mech,
+  res := jsonb_build_object('squad', info, 'squad_value', sv, 'enemies', en, 'boss_card', card, 'mechanics', mech,
     'turn_order', combat_v2_turn_order(s, 12), 'start', pg_temp.v2lab_snap(s), 'cap', b->${f.mode === 'hunt' ? "'v2_hunt'" : "'v2_dungeon'"}->'round_cap',
     'fight', pg_temp.v2lab_fight(s, b, ${Number(maxActions)}));
   raise exception 'RES %', res;
@@ -404,19 +412,23 @@ export function combatLabRouter({ local = localCopy(), env = process.env, cfg = 
     const specs = list.map((c) => { const a = activeOf(cfg, c); return { card: c, a, cls: classOf(a.role), points: pointsOf(cfg, a.role, level, bal) }; });
     // one rolled-back block: the level-L v2 CP (card_combat_v2 cp_base) and the card text of the active (ability_v2_text) of each card; a card that
     // one of them refuses gets null (the fight shows the error)
-    const lines = (await block(`do $t$ declare out jsonb := '[]'; x jsonb; cp numeric; tx text;
+    const lines = (await block(`do $t$ declare out jsonb := '[]'; x jsonb; cp numeric; tx text; pw jsonb; e9 boolean := to_regprocedure('public.card_power_v2(text, integer, numeric, integer, jsonb, text, jsonb)') is not null;
 begin
   for x in select v from jsonb_array_elements(${jlit(specs.map((s) => ({ rarity: s.card.rarity, stars: s.card.stars, cp_mod: Number(s.card.cp_mod), level, points: s.points, role: s.a.role, cls: s.cls, blocks: s.a.blocks })))}) with ordinality q(v, o) order by o loop
     begin cp := (card_combat_v2(x->>'rarity', (x->>'stars')::int, (x->>'cp_mod')::numeric, (x->>'level')::int, x->'points', x->>'role')->>'cp_base')::numeric;
     exception when others then cp := null; end;
     begin tx := ability_v2_text(x->>'cls', x->'blocks')->>'text'; exception when others then tx := null; end;
-    out := out || jsonb_build_array(jsonb_build_object('cp', cp, 'text', tx));
+    -- PR E9: the Power number at this level (card_power_v2 from the card facts)
+    pw := null;
+    if e9 then begin pw := card_power_v2(x->>'rarity', (x->>'stars')::int, (x->>'cp_mod')::numeric, (x->>'level')::int, x->'points', x->>'role', x->'blocks')->'power';
+      exception when others then pw := null; end; end if;
+    out := out || jsonb_build_array(jsonb_build_object('cp', cp, 'text', tx, 'power', pw));
   end loop;
   raise exception 'RES %', jsonb_build_object('r', out);
 end $t$;`)).r || [];
     return specs.map((s, i) => ({ card_id: Number(s.card.card_id), name: s.card.name, rarity: s.card.rarity, stars: s.card.stars, cp_mod: Number(s.card.cp_mod), role: s.a.role, class: s.cls,
       active: { name: s.a.name, source: s.a.source, template: s.a.template || null, text: lines[i]?.text || null },
-      blocks: s.a.blocks, points: s.points, cp: lines[i]?.cp ?? null }));
+      blocks: s.a.blocks, points: s.points, cp: lines[i]?.cp ?? null, power: lines[i]?.power ?? null }));
   };
   r.get('/player/:id/cards', wrap(async (req, res) => {
     if (!ID.test(req.params.id)) throw new BadRequest('id must be a member id');
@@ -448,12 +460,12 @@ end $t$;`)).r || [];
     const raw = await block(fightSql(f, pick.map((c) => ({ card_id: c.card_id, rarity: c.rarity, stars: c.stars, cp_mod: c.cp_mod, level: f.level, points: c.points, role: c.role, blocks: c.blocks }))));
     const shaped = shapeFight(raw);
     const squad = raw.squad.map((s) => { const c = pick[s.slot - 1]; return { slot: s.slot, unit: `card:${s.slot}`, card_id: c.card_id, name: c.name, rarity: c.rarity, stars: c.stars,
-      role: c.role, active: { ...c.active, text: s.text ?? c.active.text, error: s.text_error || null }, charge_need: s.charge_need, v2: s.v2, pick: c.pick || null,
+      role: c.role, active: { ...c.active, text: s.text ?? c.active.text, error: s.text_error || null }, charge_need: s.charge_need, v2: s.v2, pick: c.pick || null, power: s.power || null,
       passive_text: fillMech(s.v2?.passive?.text, s.v2?.passive?.numbers),
       dealt: shaped.totals.by_card[`card:${s.slot}`] || 0 }; });
     // each enemy with its mechanic lines: the named boss from its own card (its own numbers), the others from enemy_mechanics
     const enemies = raw.enemies.map((e, i) => ({ ...e, lines: i === 0 && raw.boss_card ? bossLines(raw.boss_card) : unitLines(e, raw.mechanics) }));
-    return { squad, enemies, boss_card: raw.boss_card, mechanics: raw.mechanics, turn_order: raw.turn_order, start: raw.start, ...shaped };
+    return { squad, squad_value: raw.squad_value || null, enemies, boss_card: raw.boss_card, mechanics: raw.mechanics, turn_order: raw.turn_order, start: raw.start, ...shaped };
   };
 
   r.post('/fight', wrap(async (req, res) => {
