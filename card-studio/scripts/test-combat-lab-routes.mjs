@@ -9,10 +9,17 @@
  *   L5 the compare is for the Hunt only (400 for the Dungeon), and its v1 side fights a PRIVATE test boss with a test member (never a live boss row)
  *   L6 the active: subjects.ability_v2 when the card has one, else the simulator placeholder of its role (the same template for the same subject)
  *   L7 the log and the totals come from the state diffs only: damage, enemy heals, crits, misses, downs and the result
+ *   L8 the page module (public/admin/combat-lab.js) parses as an ES module (a syntax error there gives a blank page that no other test sees)
+ *   L9 a mechanic text: every {leaf} is filled from the given numbers (0 -> 0%, 0.7 -> 70%, a count, "{x} times"), never a "{"
  * The DB proof (nothing written on the local copy) is scripts/test-combat-lab-nowrite.mjs.
  */
 import express from 'express';
-import { combatLabRouter, parseFight, activeOf, shapeFight, snapDiff, fightSql, v1Sql } from '../src/combat-lab-routes.js';
+import { combatLabRouter, parseFight, activeOf, shapeFight, snapDiff, fightSql, v1Sql, fillMech, bossLines } from '../src/combat-lab-routes.js';
+import { spawnSync } from 'node:child_process';
+import { copyFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../v2sim/util.mjs';
 
 let fails = 0, n = 0;
@@ -105,6 +112,20 @@ check('L7 totals from the diffs: damage 170 (150 hit + 20 tick), enemy heal 10, 
   && s.totals.by_card['card:1'] === 150 && s.events.some((e) => e.kind === 'step') && s.events.filter((e) => e.kind !== 'step').length === 2, s.totals);
 const d = snapDiff({ 'enemy:0': snap(10, 10, false, { mark: true, chill: 1 }) }, { 'enemy:0': snap(0, 10, true, { chill: 2 }) });
 check('L7 snapDiff: HP, a new stack, a dropped status, down', d.length === 1 && d[0].down && d[0].add.chill === 2 && d[0].drop[0] === 'mark' && d[0].hp[1] === 0, d);
+
+// L8
+const tmpMod = join(mkdtempSync(join(tmpdir(), 'cl-page-')), 'combat-lab.mjs');
+copyFileSync(fileURLToPath(new URL('../public/admin/combat-lab.js', import.meta.url)), tmpMod);
+const chk = spawnSync(process.execPath, ['--check', tmpMod], { encoding: 'utf8' });
+check('L8 public/admin/combat-lab.js parses as an ES module', chk.status === 0, (chk.stderr || '').slice(0, 300));
+// L9
+const t9 = [fillMech('cards have {crit_x} of their crit chance', { crit_x: 0 }), fillMech('cards have {crit_x} of their crit chance', { crit_x: 0.7 }),
+  fillMech('Every {every} actions', { every: 3 }), fillMech('deals {x} times the damage for {dur} steps', { x: 1.4, dur: 2 }), fillMech('heals {heal}', { heal: 0.004 }),
+  fillMech('{a.b} and {gone}', { a: { b: 0.5 } })];
+const bl = bossLines({ signature: [{ key: 'ironhide', label: 'Ironhide', mythic: true, text: 'cards have {crit_x} of their crit chance', numbers: { crit_x: 0 } }] });
+check('L9 fillMech: 0% / 70% / a count / "1.4 times" / 0.4% / a nested leaf, a missing leaf is "?", never a "{"; bossLines uses the card numbers',
+  JSON.stringify(t9) === JSON.stringify(['cards have 0% of their crit chance', 'cards have 70% of their crit chance', 'Every 3 actions', 'deals 1.4 times the damage for 2 steps', 'heals 0.4%', '50% and ?'])
+  && bl[0].text === 'cards have 0% of their crit chance' && bl[0].mythic, { t9, bl });
 
 srv.close();
 console.log(fails ? `${fails} of ${n} FAILED` : `PASS all ${n}`);

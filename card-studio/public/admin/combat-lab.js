@@ -211,8 +211,6 @@ function fightPanel(setup) {
 
 /* ================= the answer ================= */
 const kpi = (lbl, val, sub) => h('div', { class: 'kpi' }, h('div', { class: 'lbl' }, lbl), h('div', { class: 'val num' }, val), sub ? h('div', { class: 'sub' }, sub) : null);
-  return v == null ? m : typeof v === 'number' && v > 0 && v < 1 ? `${+(v * 100).toFixed(1)}%` : String(v);
-});
 const stTxt = (s, v) => `${k.label(s)}${typeof v === 'number' ? ` ${+Number(v).toFixed(2)}` : ''}`;
 
 function result(r) {
