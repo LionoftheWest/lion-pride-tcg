@@ -442,7 +442,7 @@ function autoSpecs(n, seed, B, opts = {}) {
   });
 }
 async function parity(FS, cfg, Aval) {
-  let fsame = 0, ftie = 0, facts = 0, fdec = 0; const fbad = []; const why = {};
+  let fsame = 0, ftie = 0, facts = 0, fdec = 0, frem = 0; const fbad = []; const why = {};
   for (let i = 0; i < FS.length; i += 8) {
     const part = FS.slice(i, i + 8);
     const out = JSON.parse(await runBlock(String.raw`do $t$ declare out jsonb := '[]'; x jsonb; b jsonb; a jsonb; begin
@@ -458,7 +458,7 @@ async function parity(FS, cfg, Aval) {
     out.forEach((sq, j) => {
       const [st, script] = part[j]; let sim;
       try { sim = simFightAuto(cfg, st, script); } catch (e) { fbad.push(`fight ${i + j}: simulator error ${e.message}`); return; }
-      let diff = null;
+      let diff = null; let remSeen = false;
       for (let k = 0; k < Math.max(sq.length, sim.length); k++) {
         const a = sq[k], w = sim[k];
         if (a && a.event === 'error') { diff = { k, msg: `SQL error ${a.error}`, tie: false }; break; }
@@ -472,14 +472,19 @@ async function parity(FS, cfg, Aval) {
           if (a.n !== w.n) m.push(`draws SQL ${a.n} sim ${w.n}`);
           if ((a.dec || w.dec) && !sameDec(a.dec, w.dec || {})) m.push(`decision SQL ${JSON.stringify(a.dec)} sim ${JSON.stringify(w.dec)}`);
         }
-        m.push(...sameSum(sqlSum(a.u, cfg), w.u));
+        // A KNOWN remainder of the engine (E4/E5, not this file; plan 18.3 and 19.1): numeric shield arithmetic can leave a shield or a Guard of about
+        // 1e-17 where the simulator float gives 0 (the simulator drops a shield below 1e-9). Such a remainder is removed here and COUNTED (rem), never hidden.
+        const su = sqlSum(a.u, cfg);
+        for (const x of [...Object.values(su.cards), ...su.enemies]) for (const sk of ['shielded', 'guarded']) if (x.status[sk] && Math.abs(Number(x.status[sk].value)) < 1e-9) { delete x.status[sk]; remSeen = true; }
+        m.push(...sameSum(su, w.u));
         if (m.length) { diff = { k, msg: m.slice(0, 3).join('; '), tie: w.nearTie }; break; }
         if (a.event === 'act') { facts++; if (a.dec) { fdec++; why[a.dec.why] = (why[a.dec.why] || 0) + 1; } }
       }
+      if (remSeen) frem++;
       if (!diff) fsame++; else if (diff.tie) ftie++; else if (fbad.length < 6) fbad.push(`fight ${i + j} action ${diff.k}: ${diff.msg}`); else fbad.push('');
     });
   }
-  return { fsame, ftie, facts, fdec, fbad, why };
+  return { fsame, ftie, facts, fdec, frem, fbad, why };
 }
 
 // ---------------------------------------------------------------------------------------------------------------- the auto-pick
@@ -649,6 +654,7 @@ try {
     say(P.fsame + P.ftie === FS.length && P.fbad.length === 0, `SQL = the simulator on ${FS.length} random fights played by Auto v2: ${P.fsame} equal action by action (${P.facts} actions, ${P.fdec} card decisions: ${JSON.stringify(P.why)}), ${P.ftie} differ only after a float near-tie of the simulator`,
       P.fbad.filter(Boolean).join(' | '));
     say(P.ftie <= Math.ceil(FS.length * 0.05), `the float near-ties are rare (${P.ftie} of ${FS.length} fights, at most 5%)`);
+    say(P.frem <= Math.ceil(FS.length * 0.05), `the known engine remainder (a numeric shield or Guard below 1e-9 that the simulator float makes 0; E4/E5, not this file) is rare: ${P.frem} of ${FS.length} fights, at most 5%`);
     say(P.fdec >= 8 * FS.length && (P.why.useful || 0) > 0 && (P.why.ready || 0) > 0, `the fights reach the card decisions (${P.fdec} decisions)`, JSON.stringify(P.why));
   }
   if (!ONLY || ONLY === 'pick') {

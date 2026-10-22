@@ -211,8 +211,8 @@ begin
         why := case when use then 'execute' else 'hold_execute' end;
       else
         why := null;
-        for i in 0 .. n - 2 loop
-          nx := blocks->(i + 1);
+        for i in 1 .. n - 1 loop
+          nx := blocks->i;
           if b->'blocks'->(nx->>'k')->>'attach' = 'gate' and not combat_effect_v2_gate(s, u, tu, nx) then why := 'hold_gate'; exit; end if;
         end loop;
         if why is null then

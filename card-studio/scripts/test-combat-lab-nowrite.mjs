@@ -5,7 +5,8 @@ import './localdb-guard.mjs';
  *   LOCALDB=1 LOCALDB_ENV=<copy env> node --import ./scripts/localdb-preload.mjs scripts/test-combat-lab-nowrite.mjs     must PASS
  * The member: the member of the local copy with the most cards (never printed: no member data in the output). The fights use the real v2 SQL functions.
  * Invariants:
- *   W1 the Hunt fight answers (a named boss, an action log with card and boss actions, totals)
+ *   W1 the Hunt fight answers (a named boss, an action log with card and boss actions, totals); Auto v2 (PR E8): the squad from the Hunt auto-pick, the
+ *      Auto choice on every card action
  *   W2 the Dungeon fight answers (a guardian, an action log, a result)
  *   W3 the compare answers (v1 hunt_attack on a private test boss, v2 totals)
  *   W4 after the three: every count and sum of 22 tables is the same as before (players, player_cards, the 3 ledgers, hunts, hunt_hits, hunt_squads,
@@ -45,7 +46,10 @@ const hunt = await post('/fight', { player: pick.id, mode: 'hunt', cards: 'auto'
 const kinds = (r) => new Set((r.events || []).map((e) => e.kind));
 check(`W1 the Hunt fight answers: ${hunt.squad?.length} cards vs a named boss, ${hunt.totals?.actions} actions, ${hunt.totals?.result}, damage ${hunt.totals?.net}`,
   hunt.status === 200 && hunt.ok && hunt.squad?.length === 8 && hunt.boss_card && kinds(hunt).has('card') && kinds(hunt).has('enemy') && hunt.totals.net > 0, { status: hunt.status, error: hunt.error });
-const dng = await post('/fight', { player: pick.id, mode: 'dungeon', cards: 'auto', monster: mon.key, kind: 'guardian', floor: 3, room: 5, foes: 1, level: 10, seed: 12 });
+const cardEv = (hunt.events || []).filter((e) => e.kind === 'card');
+check(`W1 Auto v2 (PR E8): the Hunt squad comes from the auto-pick (${(hunt.squad || []).filter((s) => s.pick).length} cards with a pick score) and every card action carries the Auto choice (${cardEv.length} actions: ${[...new Set(cardEv.map((e) => e.auto?.why))].join(', ')})`,
+  cardEv.length > 0 && cardEv.every((e) => e.auto && e.auto.why && e.auto.target) && (hunt.squad || []).every((s) => s.pick && s.pick.score > 0), cardEv.slice(0, 2));
+const dng = await post('/fight',{ player: pick.id, mode: 'dungeon', cards: 'auto', monster: mon.key, kind: 'guardian', floor: 3, room: 5, foes: 1, level: 10, seed: 12 });
 check(`W2 the Dungeon fight answers: ${dng.squad?.length} cards vs a guardian, ${dng.totals?.actions} actions, ${dng.totals?.result}`,
   dng.status === 200 && dng.ok && dng.squad?.length >= 1 && kinds(dng).has('card') && ['won', 'lost', 'step cap'].includes(dng.totals?.result), { status: dng.status, error: dng.error });
 const cmp = await post('/compare', { player: pick.id, mode: 'hunt', cards: 'auto', boss: boss.key, tier: 'Heroic', start_hp: 1, level: 10, seed: 11 });
