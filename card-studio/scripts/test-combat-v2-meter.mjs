@@ -16,7 +16,7 @@ import './localdb-guard.mjs';
  *      meters, Slowed / Quickened / Chill with an end step, down units, Hunt and Dungeon caps, a start clock above 0): the whole actor sequence with the
  *      step of each action is equal, and every state after every call passes fight_state_check_v2.
  *   3. The rules that the simulator does not show alone: the tie order (higher meter, then squad order (not the card id), then the other cards, then
- *      the enemies), the per-unit limit of max_actions_per_step actions in one step (and the acts key), down units do not fill and do not act, the
+ *      the enemies), the per-unit limit of max_actions_per_step actions in one step (and the acts key; the simulator has the same limit), down units do not fill and do not act, the
  *      step cap of each mode (Hunt v2_hunt.round_cap; Dungeon and Gauntlet v2_dungeon.round_cap), "none" with no standing unit, a status that ends
  *      in its "until" step, the turn-order strip = the advance sequence, and the refusals (a v1 state, a unit with no role and no speed, bad points).
  *   4. Pure and server only: combat_v2_speed and combat_v2_advance(state, numbers) are IMMUTABLE, the 1-argument forms STABLE, anon and authenticated
@@ -134,13 +134,14 @@ const dCmp = (a, b) => { const sc = Math.max(a.s, b.s); const x = up(a, sc), y =
 const dNeg = (a) => ({ n: -a.n, s: a.s });
 function exactSeq(cfg, sc) {
   const V = cfg.v2_speed, P = cfg.v2_stats, S = cfg.v2_status, act = D(V.act_at);
-  const mk = (u, side, id) => ({ side, id, down: !!u.down, st: u.status || {}, meter: D(u.meter || 0), base: D(u.speed ?? V.role_base[u.role]),
+  const mk = (u, side, id) => ({ side, id, down: !!u.down, st: u.status || {}, meter: D(u.meter || 0), base: D(u.speed ?? V.role_base[u.role]), acts: 0,
     x: dAdd(D(1), dMul(D(P.spd.pct), D(Math.min(u.spd || 0, P.max_per_stat)))) });
   const units = [...sc.squad.map((id) => mk(sc.cards[id], 'card', id)), ...sc.enemies.map((e, i) => mk(e, 'enemy', i))];
   const seq = []; let step = sc.clock || 0;
   while (step < sc.cap) {
     step++;
     for (const u of units) {
+      u.acts = 0;
       if (u.down) continue;
       const on = (k) => u.st[k] && (u.st[k].until === undefined || u.st[k].until >= step);
       let m = D(1);
@@ -152,15 +153,15 @@ function exactSeq(cfg, sc) {
     }
     for (;;) {
       let best = null;
-      for (const u of units) if (!u.down && dCmp(u.meter, act) >= 0 && (!best || dCmp(u.meter, best.meter) > 0)) best = u;
+      for (const u of units) if (!u.down && dCmp(u.meter, act) >= 0 && u.acts < V.max_actions_per_step && (!best || dCmp(u.meter, best.meter) > 0)) best = u;
       if (!best) break;
-      best.meter = dAdd(best.meter, dNeg(act)); seq.push(`${best.side}:${best.id}@${step}`);
+      best.meter = dAdd(best.meter, dNeg(act)); best.acts++; seq.push(`${best.side}:${best.id}@${step}`);
     }
   }
   return seq;
 }
 
-// 60 seeded random fights (no unit above max_actions_per_step x act_at: there the per-unit limit of the file differs from the simulator on purpose)
+// 60 seeded random fights (the fixed scenarios meter.limit* cover the units above max_actions_per_step x act_at)
 function randomFights() {
   const out = [];
   for (let k = 0; k < 60; k++) {
@@ -229,6 +230,9 @@ fixedScenarios.push({ id: 'meter.quickened', cap: 100, ...one(100, { status: { q
 fixedScenarios.push({ id: 'meter.chill', cap: 100, ...one(100, { status: { chill: { stacks: 2, until: 1000 } } }) });
 fixedScenarios.push({ id: 'meter.slowed_ends', cap: 20, ...one(100, { status: { slowed: { until: 10 } } }) });
 fixedScenarios.push({ id: 'meter.no_until', cap: 30, ...one(100, { status: { slowed: {} } }) });
+// the per-unit limit of max_actions_per_step actions in one step (the simulator limits each unit since 2026-10-21, the same as SQL)
+fixedScenarios.push({ id: 'meter.limit', cap: 10, ...one(1000) });
+fixedScenarios.push({ id: 'meter.limit_mixed', cap: 12, mode: 'hunt', squad: [4, 2], cards: { 4: { speed: 450, meter: 30 }, 2: { role: 'flurry', spd: 6 } }, enemies: [{ speed: 1000, meter: 99 }, { speed: 230 }] });
 const randoms = randomFights();
 const ALL = [...fixedScenarios, ...randoms];
 
