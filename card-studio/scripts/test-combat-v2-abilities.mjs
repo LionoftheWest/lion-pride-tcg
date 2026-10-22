@@ -182,7 +182,8 @@ const T1_FUNCS = ['ability_v2_pps', 'ability_v2_or', 'ability_v2_clause', 'abili
 const E7_FUNCS = ['enemy_v2_spec', 'balance_check_enemy_v2', 'enemy_mechanics_check', 'dungeon_monsters_v2_check', 'hunt_bosses_v2_check', 'combat_v2_enemy_numbers',
   'combat_v2_mech', 'combat_v2_timed', 'combat_v2_timed_any', 'combat_v2_standing_rule', 'combat_v2_neg_kinds', 'combat_v2_healed', 'combat_v2_blocked', 'combat_v2_drop',
   'combat_v2_volatile', 'combat_v2_pick_card', 'combat_v2_enemy_mult', 'combat_v2_enemy_hit', 'combat_v2_boss_target', 'combat_v2_boss_move', 'combat_v2_enemy_act',
-  'combat_v2_hunt_boss', 'combat_v2_dungeon_foe', 'hunt_boss_v2_card', 'combat_v2_step_end'];
+  'combat_v2_hunt_boss', 'combat_v2_dungeon_foe', 'hunt_boss_v2_card', 'combat_v2_step_end',
+  'combat_v2_auto', 'combat_v2_auto_target', 'combat_v2_auto_charging', 'combat_v2_auto_pays', 'combat_v2_auto_makes', 'combat_v2_autopick', 'combat_v2_autopick_choose', 'combat_v2_autopick_pair', 'auto_v2_spec', 'balance_check_auto_v2'];   // E8 combat_v2_auto.sql (Auto v2 reads the E6 blocks and calls the E5 helpers by design)
 const q =(a) => a.map((n) => `'${n}'`).join(', ');
 // The state before the file, also when it is already applied on this copy: its functions, its table, its trigger, its columns and its balance key go,
 // v2_pp.support_pp.shield_all goes back to 75 (the V1 value), and E1 to E5 put back the four functions that the file replaces.

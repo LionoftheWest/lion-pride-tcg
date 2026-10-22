@@ -3,8 +3,9 @@
  * Every fight runs the REAL v2 SQL functions (card_combat_v2, combat_v2_hunt_boss, combat_v2_dungeon_foe, combat_v2_next, combat_v2_card_act,
  * combat_v2_enemy_act, combat_v2_turn_order, hunt_boss_v2_card, ability_v2_text) on the LOCAL copy, inside ONE DO block that always ends with a
  * RAISE: nothing is kept (no player row, no ledger row, no hunt row, no balance_log row). The v2 functions are pure (state in, state out); the block
- * is the second guard. The policy is the simple shared policy of the Combat Lab (lab-combat-v2-passives.mjs): the first standing enemy, the active
- * when it is charged, the most hurt ally (Auto v2 is PR E8).
+ * is the second guard. Every card choice comes from Auto v2 (combat_v2_auto, PR E8: use the charged active unless a rule holds it, the target, the
+ * ally); the log shows the Auto choice of each card action. The Hunt squad "auto" is the Hunt auto-pick (combat_v2_autopick: the offense value, the
+ * role answers of the boss, the Weak to bonus and the pair score); the Dungeon squad "auto" stays the best N by v2 CP (E8 has no Dungeon pick).
  *   GET  /setup             the local copy, the v2 functions there, the named Hunt bosses, the tiers, the Dungeon monsters and room kinds, the squad sizes
  *   GET  /players?q=        members of the local copy by name or id (20 at most)
  *   GET  /player/:id/cards  the member's cards with the v2 role and the v2 active (subjects.ability_v2, else the simulator placeholder) and its text
@@ -89,7 +90,7 @@ export function pointsOf(cfg, role, level, b) {
 }
 
 // ---------------------------------------------------------------------------------------------------- the SQL of one fight
-// The driver: a pg_temp function made and undone inside the block. It plays the fight with the simple shared policy and records each event.
+// The driver: a pg_temp function made and undone inside the block. It plays the fight with Auto v2 (combat_v2_auto) and records each event.
 // snap = {"card:<id>" | "enemy:<i>": [hp, max, down, {status: stacks or value}, charge, charging]}: the screen diffs two snaps (damage, statuses, deaths).
 const DRIVER = String.raw`
 create function pg_temp.v2lab_snap(s jsonb) returns jsonb language sql as $x$
@@ -100,7 +101,7 @@ create function pg_temp.v2lab_snap(s jsonb) returns jsonb language sql as $x$
   from combat_v2_units(s) q cross join lateral (select s #> case when q.side = 'card' then array['cards', q.id] else array['enemies', q.id] end as v) u;
 $x$;
 create function pg_temp.v2lab_fight(p_s jsonb, p_b jsonb, p_max int) returns jsonb language plpgsql as $x$
-declare s jsonb := p_s; r jsonb; a jsonb; t jsonb; al jsonb; u jsonb; ev text := 'act'; n int := 0; id text; best text; use boolean; pre jsonb;
+declare s jsonb := p_s; r jsonb; a jsonb; dec jsonb; ev text := 'act'; n int := 0; pre jsonb;
   log jsonb := '[]'; ent jsonb;
 begin
   loop
@@ -116,16 +117,14 @@ begin
       continue;
     end if;
     if r->'actor'->>'side' = 'card' then
-      t := (select jsonb_build_object('side', 'enemy', 'id', q.id::numeric) from combat_v2_units(s) q where q.side = 'enemy' and combat_v2_up(s->'enemies'->(q.id::int)) order by q.n limit 1);
-      best := null;
-      for id in select q.id from combat_v2_units(s) q where q.side = 'card' and combat_v2_up(s->'cards'->q.id) order by q.n loop
-        if best is null or (s->'cards'->id->>'hp')::numeric / (s->'cards'->id->>'max')::numeric < (s->'cards'->best->>'hp')::numeric / (s->'cards'->best->>'max')::numeric then best := id; end if;
-      end loop;
-      al := jsonb_build_object('side', 'card', 'id', best::numeric);
-      u := s #> combat_v2_unit_path(s, r->'actor');
-      use := coalesce((u->>'charge')::int, 0) >= (p_b->'v2_charge'->>(u->>'class'))::int;
-      a := combat_v2_card_act(s, r->'actor', jsonb_build_object('use', use, 'target', t, 'ally', al), p_b);
-      ent := ent || jsonb_build_object('action', a->'action', 'target', t, 'hits', coalesce(a->'hits', '[]'::jsonb));
+      -- Auto v2 (PR E8): the active or the basic attack, the target and the ally
+      dec := combat_v2_auto(s, r->'actor', p_b, null);
+      a := combat_v2_card_act(s, r->'actor', jsonb_build_object('use', dec->'use', 'target', dec->'target', 'ally', dec->'ally'), p_b);
+      -- the ally shows only for an active with a single-ally block (every other action gets the most hurt ally, which it does not use)
+      ent := ent || jsonb_build_object('action', a->'action', 'target', dec->'target', 'auto', jsonb_build_object('use', dec->'use', 'why', dec->'why'),
+        'ally', case when (dec->>'use')::boolean and exists (select 1 from jsonb_array_elements(coalesce(s #> (combat_v2_unit_path(s, r->'actor') || '{active,blocks}'::text[]), '[]'::jsonb)) x
+                            where x->>'k' in ('cure', 'shield', 'heal', 'empower', 'focus') or (x->>'k' = 'quicken' and not coalesce((x->>'all')::boolean, false))) then dec->'ally' end,
+        'hits', coalesce(a->'hits', '[]'::jsonb));
     else
       a := combat_v2_enemy_act(s, r->'actor', '{}'::jsonb, p_b);
       ent := ent || jsonb_build_object('move', a->'move');
@@ -172,6 +171,28 @@ begin
     'turn_order', combat_v2_turn_order(s, 12), 'start', pg_temp.v2lab_snap(s), 'cap', b->${f.mode === 'hunt' ? "'v2_hunt'" : "'v2_dungeon'"}->'round_cap',
     'fight', pg_temp.v2lab_fight(s, b, ${Number(maxActions)}));
   raise exception 'RES %', res;
+end $t$;`;
+}
+
+/** The Hunt auto-pick (combat_v2_autopick) of a member's cards against the boss of the fight: a DO block that always raises (RES {ids, rows, passes}).
+ * all = [{card_id, rarity, stars, cp_mod, level, points, role, blocks}]. A named boss gives its mechanics and its Weak to role (combat_v2_hunt_boss); the
+ * tier boss draws its signatures in the fight, so its pick has no mechanics and no Weak to role. A card that card_combat_v2 refuses is left out. */
+export function pickSql(f, all) {
+  return `set statement_timeout = 120000;
+do $t$
+declare b jsonb; u jsonb := '{}'; pool jsonb := '[]'; x jsonb; cc jsonb;
+begin
+  b := combat_v2_enemy_numbers();
+  ${f.boss ? `u := combat_v2_hunt_boss(${lit(f.tier)}, ${lit(f.boss)}, '{"start_frac": 1}'::jsonb, b);` : ''}
+  for x in select v from jsonb_array_elements(${jlit(all)}) v loop
+    begin
+      cc := card_combat_v2(x->>'rarity', (x->>'stars')::int, (x->>'cp_mod')::numeric, (x->>'level')::int, x->'points', x->>'role');
+      pool := pool || jsonb_build_array(jsonb_build_object('id', x->'card_id', 'role', cc->>'role', 'class', cc->>'class', 'atk', cc->'stats'->'atk',
+        'crt', cc->'stats'->'crt', 'crd', cc->'stats'->'crd', 'spd', cc->'stats'->'spd', 'blocks', x->'blocks'));
+    exception when others then null;
+    end;
+  end loop;
+  raise exception 'RES %', combat_v2_autopick(pool, jsonb_build_object('mechanics', coalesce(u->'mechanics', '[]'::jsonb), 'weak_role', u->'weak_role'), ${Number(f.size)}, b, null);
 end $t$;`;
 }
 
@@ -275,7 +296,7 @@ export function shapeFight(raw) {
     if (e.event !== 'act') { prev = e.pre; break; }
     const changes = snapDiff(e.pre, e.post);
     const ev = { kind: e.skip ? 'skip' : e.actor.side === 'card' ? 'card' : 'enemy', n: e.n, clock: e.clock, actor: unitKey(e.actor), reason: e.reason || null,
-      action: e.action || null, move: e.move || null, hits: (e.hits || []).map((h) => ({ target: h.target ? unitKey(h.target) : null, dmg: Number(h.dmg) || 0, crit: !!h.crit, miss: !!h.miss,
+      action: e.action || null, move: e.move || null, auto: e.auto ? { why: e.auto.why, target: e.target ? unitKey(e.target) : null, ally: e.ally ? unitKey(e.ally) : null } : null, hits: (e.hits || []).map((h) => ({ target: h.target ? unitKey(h.target) : null, dmg: Number(h.dmg) || 0, crit: !!h.crit, miss: !!h.miss,
         tag: h.extra ? 'extra' : h.splash ? 'splash' : h.area ? 'area' : h.mirrored ? 'mirrored' : h.desync ? 'desync' : null })), changes };
     if (e.skip) skips++;
     if (ev.kind === 'card') { if (e.action === 'active') actives++; else if (e.action === 'basic') basics++; }
@@ -408,7 +429,14 @@ end $t$;`)).r || [];
     const all = await cardsOf(f.player, f.level);
     if (!all.length) throw new BadRequest('the member has no cards on the local copy');
     let pick;
-    if (f.cards === 'auto') pick = [...all].sort((a, b) => (b.cp ?? 0) - (a.cp ?? 0) || a.card_id - b.card_id).slice(0, f.size);
+    if (f.cards === 'auto' && f.mode === 'hunt') {
+      // the Hunt auto-pick (Auto v2, PR E8)
+      const r = await block(pickSql(f, all.map((c) => ({ card_id: c.card_id, rarity: c.rarity, stars: c.stars, cp_mod: c.cp_mod, level: f.level, points: c.points, role: c.role, blocks: c.blocks }))));
+      pick = (r.ids || []).map((id) => all.find((c) => c.card_id === Number(id))).filter(Boolean);
+      if (!pick.length) throw new BadRequest('the auto-pick found no card that card_combat_v2 accepts');
+      const why = new Map((r.rows || []).map((x) => [Number(x.id), x]));
+      pick = pick.map((c) => ({ ...c, pick: why.get(c.card_id) || null }));
+    } else if (f.cards === 'auto') pick = [...all].sort((a, b) => (b.cp ?? 0) - (a.cp ?? 0) || a.card_id - b.card_id).slice(0, f.size);
     else {
       pick = f.cards.map((id) => all.find((c) => c.card_id === id));
       const miss = f.cards.filter((id, i) => !pick[i]);
@@ -420,7 +448,7 @@ end $t$;`)).r || [];
     const raw = await block(fightSql(f, pick.map((c) => ({ card_id: c.card_id, rarity: c.rarity, stars: c.stars, cp_mod: c.cp_mod, level: f.level, points: c.points, role: c.role, blocks: c.blocks }))));
     const shaped = shapeFight(raw);
     const squad = raw.squad.map((s) => { const c = pick[s.slot - 1]; return { slot: s.slot, unit: `card:${s.slot}`, card_id: c.card_id, name: c.name, rarity: c.rarity, stars: c.stars,
-      role: c.role, active: { ...c.active, text: s.text ?? c.active.text, error: s.text_error || null }, charge_need: s.charge_need, v2: s.v2,
+      role: c.role, active: { ...c.active, text: s.text ?? c.active.text, error: s.text_error || null }, charge_need: s.charge_need, v2: s.v2, pick: c.pick || null,
       passive_text: fillMech(s.v2?.passive?.text, s.v2?.passive?.numbers),
       dealt: shaped.totals.by_card[`card:${s.slot}`] || 0 }; });
     // each enemy with its mechanic lines: the named boss from its own card (its own numbers), the others from enemy_mechanics
@@ -442,7 +470,7 @@ end $t$;`)).r || [];
     const v1 = await block(v1Sql(f, pick.map((c) => c.card_id)));
     res.json({ ok: true, request: f, squad: v2.squad.map(({ slot, card_id, name, role }) => ({ slot, card_id, name, role })),
       v1: { ...v1, rule: 'v1 hunt_attack on a private test boss of the tier with no passive (the admin sim)' },
-      v2: { ...v2.totals, boss: f.boss, rule: 'v2 on the chosen boss, the simple shared policy' } });
+      v2: { ...v2.totals, boss: f.boss, rule: 'v2 on the chosen boss, Auto v2 (combat_v2_auto)' } });
   }));
   return r;
 }

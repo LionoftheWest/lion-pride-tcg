@@ -11,10 +11,12 @@
  *   L7 the log and the totals come from the state diffs only: damage, enemy heals, crits, misses, downs and the result
  *   L8 the page module (public/admin/combat-lab.js) parses as an ES module (a syntax error there gives a blank page that no other test sees)
  *   L9 a mechanic text: every {leaf} is filled from the given numbers (0 -> 0%, 0.7 -> 70%, a count, "{x} times"), never a "{"
+ *   L10 Auto v2 (PR E8): every card choice of the fight comes from combat_v2_auto and the log carries it; the Hunt squad "auto" is ONE rolled-back
+ *       block of combat_v2_autopick (pickSql: the named boss's mechanics and Weak to role, the tier boss with none), and its order is the fight order
  * The DB proof (nothing written on the local copy) is scripts/test-combat-lab-nowrite.mjs.
  */
 import express from 'express';
-import { combatLabRouter, parseFight, activeOf, shapeFight, snapDiff, fightSql, v1Sql, fillMech, bossLines } from '../src/combat-lab-routes.js';
+import { combatLabRouter, parseFight, activeOf, shapeFight, snapDiff, fightSql, v1Sql, fillMech, bossLines, pickSql } from '../src/combat-lab-routes.js';
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -28,6 +30,7 @@ const queries = [];
 const local = {
   async sql(q) {
     queries.push(q);
+    if (/^set statement_timeout/.test(q) && q.includes('combat_v2_autopick(')) throw new Error('ERROR: P0001: RES {"ids": [7], "rows": [{"id": 7, "role": "striker", "off": 10, "ans": 1, "weak": 1.5, "pair": 1, "base": 15, "score": 15}], "passes": 1}');
     if (/^set statement_timeout/.test(q)) { const e = new Error(`ERROR: P0001: RES {"squad": [], "enemies": [], "fight": {"end": "cap", "log": [], "final": {}}}`); throw e; }
     if (q.includes("key = 'dungeon') as dungeon")) return [{ dungeon: 5 }];
     if (q.includes('from player_cards pc join cards c')) return [{ card_id: 7, name: 'Tst Card', rarity: 'normal', stars: 1, quantity: 1, subject_key: 'tst-subject', type: 'Character', cp_mod: 1, ability: null, ability_v2: null }];
@@ -75,13 +78,24 @@ check('L3 parseFight refuses the same 10 requests', threw === bad.length, threw)
 // L4
 queries.length = 0;
 r = await post('/fight', HUNT); const j = await r.json();
-const blocks = queries.filter((q) => /^set statement_timeout/.test(q));
+const blocks = queries.filter((q) => /^set statement_timeout/.test(q) && q.includes('v2lab_fight'));
+const picks = queries.filter((q) => /^set statement_timeout/.test(q) && q.includes('combat_v2_autopick('));
+check('L10 the Hunt squad "auto" = ONE rolled-back block of combat_v2_autopick before the fight', picks.length === 1 && /raise exception 'RES %', combat_v2_autopick\(/.test(picks[0])
+  && !/\b(insert into|update \w+ set|delete from)\b/i.test(picks[0]), picks.map((q) => q.slice(0, 120)));
 check('L4 one fight = ONE DO block that ends with RAISE (rolled back) on the local copy', r.status === 200 && j.ok && blocks.length === 1
   && /\ndo \$t\$/.test(blocks[0]) && /raise exception 'RES %', res;\nend \$t\$;$/.test(blocks[0]) && !/\b(insert|update|delete)\s/i.test(blocks[0]), [r.status, j.error, blocks.length]);
 const f = parseFight(HUNT);
 const sql = fightSql(f, [{ card_id: 7, rarity: 'normal', stars: 1, cp_mod: 1, level: 0, points: {}, role: 'striker', blocks: [{ k: 'hit', x: 1.4 }] }]);
-check('L4 the fight block calls the real v2 functions and writes no table', ['card_combat_v2(', 'combat_v2_hunt_boss(', 'combat_v2_next(', 'combat_v2_card_act(', 'combat_v2_enemy_act(',
+check('L4 the fight block calls the real v2 functions and writes no table', ['card_combat_v2(', 'combat_v2_hunt_boss(', 'combat_v2_next(', 'combat_v2_auto(', 'combat_v2_card_act(', 'combat_v2_enemy_act(',
   'combat_v2_turn_order(', 'hunt_boss_v2_card('].every((x) => sql.includes(x)) && !/\b(insert into|update \w+ set|delete from)\b/i.test(sql), sql.slice(0, 200));
+check('L10 the fight takes every card choice from Auto v2 (combat_v2_auto: use, target, ally) and logs it (no simple policy left)',
+  /dec := combat_v2_auto\(s, r->'actor', p_b, null\);/.test(sql) && sql.includes("jsonb_build_object('use', dec->'use', 'target', dec->'target', 'ally', dec->'ally')")
+  && sql.includes("'auto', jsonb_build_object('use', dec->'use', 'why', dec->'why')") && !/use := coalesce\(\(u->>'charge'\)/.test(sql), sql.slice(0, 120));
+const ps = pickSql({ ...f, size: 8 }, [{ card_id: 7, rarity: 'normal', stars: 1, cp_mod: 1, level: 0, points: {}, role: 'striker', blocks: [] }]);
+const pt = pickSql({ ...f, boss: null, size: 8 }, [{ card_id: 7, rarity: 'normal', stars: 1, cp_mod: 1, level: 0, points: {}, role: 'striker', blocks: [] }]);
+check('L10 pickSql: the named boss gives its mechanics and Weak to role (combat_v2_hunt_boss), the tier boss none; the cap is the squad size; rolled back',
+  ps.includes("combat_v2_hunt_boss('Heroic', 'warlord'") && !pt.includes('combat_v2_hunt_boss(') && /combat_v2_autopick\(pool, [^\n]*, 8, b, null\);/.test(ps)
+  && ps.includes("'crt', cc->'stats'->'crt'") && ps.includes("'spd', cc->'stats'->'spd'"), ps.slice(0, 200));
 const v1 = v1Sql({ ...f, player: "tst_o'brien" }, [7, 8]);
 check('L5 the v1 side: a test member, a private test boss row, the member id quoted, rolled back', v1.includes("'tst_v2lab_cmp'") && v1.includes("'tst_o''brien'")
   && v1.includes("insert into hunts (name, tier") && /raise exception 'RES %'/.test(v1) && !/from hunts where/.test(v1), v1.slice(0, 200));
@@ -102,6 +116,7 @@ check('L6 ability_v2 first; else the placeholder of the role (warden for shield)
 const snap = (hp, max, down = false, st = {}) => [hp, max, down, st, 0, false];
 const raw = { cap: 40, start: { 'card:1': snap(100, 100), 'enemy:0': snap(1000, 1000) }, fight: { end: 'cap', actions: 3, clock: 40, log: [
   { event: 'act', n: 1, clock: 1, actor: { side: 'card', id: '1' }, action: 'active', hits: [{ target: { side: 'enemy', id: 0 }, dmg: 150, crit: true, miss: false }],
+    auto: { use: true, why: 'ready' }, target: { side: 'enemy', id: 0 }, ally: { side: 'card', id: 1 },
     pre: { 'card:1': snap(100, 100), 'enemy:0': snap(1000, 1000) }, post: { 'card:1': snap(100, 100), 'enemy:0': snap(850, 1000, false, { poison: 2 }) } },
   { event: 'act', n: 2, clock: 2, actor: { side: 'enemy', id: 0 }, move: 'strike', ticks: [{ side: 'enemy', id: 0, status: 'poison', dmg: 20 }],
     pre: { 'card:1': snap(100, 100), 'enemy:0': snap(830, 1000, false, { poison: 2 }) }, post: { 'card:1': snap(0, 100, true), 'enemy:0': snap(840, 1000, false, { poison: 2 }) } },
@@ -111,6 +126,8 @@ check('L7 totals from the diffs: damage 170 (150 hit + 20 tick), enemy heal 10, 
   s.totals.damage === 170 && s.totals.enemy_heal === 10 && s.totals.net === 160 && s.totals.crits === 1 && s.totals.cards_down === 1 && s.totals.result === 'step cap'
   && s.totals.by_card['card:1'] === 150 && s.events.some((e) => e.kind === 'step') && s.events.filter((e) => e.kind !== 'step').length === 2, s.totals);
 const d = snapDiff({ 'enemy:0': snap(10, 10, false, { mark: true, chill: 1 }) }, { 'enemy:0': snap(0, 10, true, { chill: 2 }) });
+const ce = s.events.find((e) => e.kind === 'card');
+check('L10 the log carries the Auto v2 choice of a card action (why, target, ally)', ce?.auto?.why === 'ready' && ce.auto.target === 'enemy:0' && ce.auto.ally === 'card:1', ce);
 check('L7 snapDiff: HP, a new stack, a dropped status, down', d.length === 1 && d[0].down && d[0].add.chill === 2 && d[0].drop[0] === 'mark' && d[0].hp[1] === 0, d);
 
 // L8

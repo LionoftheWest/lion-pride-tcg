@@ -161,7 +161,8 @@ const V2_CALLERS = ['combat_v2_status_numbers', 'combat_v2_unit_path', 'combat_v
   'enemy_v2_spec', 'balance_check_enemy_v2', 'enemy_mechanics_check', 'dungeon_monsters_v2_check', 'hunt_bosses_v2_check', 'combat_v2_enemy_numbers', 'combat_v2_mech',
   'combat_v2_timed', 'combat_v2_timed_any', 'combat_v2_standing_rule', 'combat_v2_neg_kinds', 'combat_v2_healed', 'combat_v2_blocked', 'combat_v2_drop', 'combat_v2_volatile',
   'combat_v2_pick_card', 'combat_v2_enemy_mult', 'combat_v2_enemy_hit', 'combat_v2_boss_target', 'combat_v2_boss_move', 'combat_v2_enemy_act', 'combat_v2_hunt_boss',
-  'combat_v2_dungeon_foe', 'hunt_boss_v2_card'];   // E7 combat_v2_monsters.sql
+  'combat_v2_dungeon_foe', 'hunt_boss_v2_card',   // E7 combat_v2_monsters.sql
+  'combat_v2_auto', 'combat_v2_auto_target', 'combat_v2_auto_charging', 'combat_v2_auto_pays', 'combat_v2_auto_makes', 'combat_v2_autopick', 'combat_v2_autopick_choose', 'combat_v2_autopick_pair', 'auto_v2_spec', 'balance_check_auto_v2'];   // E8 combat_v2_auto.sql
 const KEYS = ['v2_hit', 'v2_stats', 'v2_status', 'v2_roles', 'v2_enemy', 'v2_support'];
 const SETUP = String.raw`
   perform set_config('balance.by', 'test', true);

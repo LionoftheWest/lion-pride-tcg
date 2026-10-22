@@ -1288,6 +1288,77 @@ list alone shows nothing. Two parts:
     (actor, active or basic, each hit with crit and miss, the HP, status and Charging changes of every unit, the step-end ticks, downs) and the totals.
   - Compare (Hunt): the same cards in v1 (`hunt_attack`, the admin sim: a test member with copies of the cards, a PRIVATE test boss of the tier
     with no passive, rolled back) and in v2. The Dungeon has no compare: the v1 Dungeon is a run of rooms with no one-fight path.
-  - Limits: the policy is the simple Lab policy (Auto v2 is E8); the stat points are the simulator build of the role (no live card levels before M1).
+  - Limits: the policy was the simple Lab policy until E8 (since E8: Auto v2, 20.5); the stat points are the simulator build of the role (no live card levels before M1).
 - Proof: in the PR (test-combat-v2-testers.mjs with its planted faults, test-combat-lab-routes.mjs, test-combat-lab-nowrite.mjs, the goldens with
   this file as the candidate, the full local suite).
+
+### 20.5 E8: Auto v2 (`tcg-bot/supabase/combat_v2_auto.sql`)
+
+Plan row E8: "Dungeon Auto plays each ready card. Hunt auto-pick with role answers and the pair score", acceptance "Auto reaches 85% or more of a
+scripted best play". Needs E7c. No function is replaced (the md5 of the other 518 public functions is the same after the file), nothing in play calls a
+new function, and the flag stays OFF. The reference is the simulator: `v2sim/policy.mjs` `autov2` (the fight) and `v2sim/auto.mjs` `autoPick` (the pick).
+
+- **The fight decision** `combat_v2_auto(state, actor, numbers, auto)`: `{use, why, target, ally}` for `combat_v2_card_act`. It reads the blocks of each
+  active (what it makes and what it pays off: the "Makes / Uses" rule of 5.4, + `consume`, + Frozen for a Chill maker, + the role passive
+  `auto_v2.fight.passive_makes`), the role hint `roles.auto` and balance `auto_v2.fight`. No template id, no random draw, no write. Every charged active is
+  used unless a rule holds it, at most `hold_max` ready turns:
+  - an attacker holds an execute active until the target is below its line or has a line status, an active with a gate (T1) until the gate holds,
+    an active that pays off a status until the target has it while another standing card makes it, a `per_kind` active until `per_kind_min` statuses;
+  - a support uses its active when one of its blocks is useful now (a shield while an enemy is Charging or a card is hurt, a heal below `heal_below`, a
+    cure or a cleanse on a harmful status that is not locked, a boost while an attacker stands, a control on a target that is not controlled or immune,
+    a value status that is missing or ends within `refresh` steps, any other block); the Controller (`roles.auto.hold_for` = charging) holds a control
+    active for a Charging enemy (the Hunt boss or a foe with a Cataclysm).
+  - Target: the Hunt boss; in the Dungeon a control, Weakened or Blinded support active takes the foe with the most attack, a payoff attacker active the
+    first foe with a paid status, else the first foe the card can down (`kill_x`), else the lowest HP foe. Ally (one ally for every single-ally block, as
+    `combat_v2_card_act` takes it): a cure takes the ally with the most listed statuses, a shield the lowest HP + shield share, an Empower, Focus or Quicken
+    the free attacker with the most attack x (`ready_x` when charged) x (meter + 1); else the most hurt ally.
+- **The Hunt auto-pick** `combat_v2_autopick(pool, boss, cap, numbers, auto)`: a score for each card = its offense (2.5 without the hit chance: attack x
+  (1 + crit x (crit damage - 1)) x speed) x the role answers of the boss mechanics (`auto_v2.pick.answers`) x the Weak to bonus x the pair score
+  (`pair_floor` 0.8 for a payoff card with no maker of its status among the other picked cards: the 5.2 floor rule). The best `supports` (4) supports, at
+  most `max_same_support` (1) of one role, and the best attackers; a short class fills from the other; again with the pair scores of the squad (at most
+  `passes`). The tier boss draws its signatures in the fight, so its pick has no mechanics.
+- **Balance** `auto_v2` (a new key, its own fixed shape `auto_v2_spec` and trigger; config.json `auto_v2` has the same value): `fight` (10 numbers and
+  `passive_makes`), `pick` (supports, max_same_support, pair_floor, passes, and the full answers table: 30 boss mechanics x 12 roles, 1 = no answer).
+  - The answers are measured (`node card-studio/v2sim/run.mjs answers`): each mechanic alone on the Heroic tier boss, the strength of each role template
+    (+ 4 reference cards) with / without it, relative to the median role, the mean of seeds 1 and 7 (800 days a template). 36 cells differ from 1 (for
+    example Medic x0.61 vs Siphon, Artillery x1.23 vs Fade, Breaker x1.12 vs Plated, Cleaver x1.10 vs Brood).
+  - `supports` 4 and `max_same_support` 1 are measured on 32 tuning pools (seed 101). The offense value replaced the plain attack (tuning mean x0.84 ->
+    x0.88). Measured on the same pools: without the pair score x0.88, without the answers x0.89 (both within the noise of the pools).
+- **The Admin "Combat v2 Lab"** (20.4) now plays every card with `combat_v2_auto` and shows the Auto choice of each card action in the log (why, target,
+  ally); its Hunt squad "auto" is the auto-pick (the squad table shows the pick score). The Dungeon "auto" squad stays the best N by v2 CP (E8 has no
+  Dungeon pick).
+- **The Lab** (`card-studio/scripts/lab-combat-v2-auto.mjs`, the simulator tables with the numbers of the database, and SQL = the simulator on the Lab
+  fights and picks). "Scripted best play" = the simulator policy `best` (it scripts each placeholder template: payoff holds, kill targets, control on a
+  Charging boss). The pick reference is stronger: a squad that a local search finds (swap one card at a time, 24 days a squad, the best policy).
+  Held-out pools (seed 1), 300 days a cell:
+
+  | Archetype | Hunt: Auto v2 / best | Hunt: old Auto / best | Dungeon: Auto v2 / best | Dungeon: old Auto / best |
+  |---|---|---|---|---|
+  | Neutral | x1.00 | x0.98 | x1.00 | x1.00 |
+  | Toxic | x1.00 | x0.99 | x1.00 | x0.99 |
+  | Wildfire | x1.00 | x0.99 | x1.00 | x0.99 |
+  | Shatter | x1.00 | x1.04 | x1.00 | x1.00 |
+  | Mark and Hunt | x1.01 | x0.95 | x1.00 | x1.00 |
+  | Wall | x1.00 | x1.00 | x1.00 | x0.99 |
+  | Crit Chain | x1.00 | x0.95 | x1.00 | x0.98 |
+  | Cleave | x1.00 | x1.01 | x1.00 | x1.00 |
+  | Lockdown | x1.02 | x1.16 | x1.00 | x0.99 |
+  | Pile On | x1.00 | x1.01 | x1.00 | x0.99 |
+  | Herald's Court | x1.00 | x0.99 | x1.00 | x0.99 |
+
+  - The 20 designed teams with the private Set 1 actives (aggregates): Auto v2 / best Hunt x0.949 to x1.010 (median x0.988), Dungeon x0.975 to x1.007.
+  - The Hunt pick + fight (2 pools of 20 real cards for each of the 16 named bosses): Auto / searched best mean x0.878 (lowest pool x0.641, Camper
+    Colossus); the old Lab pick (top 8 by attack + the simple Auto) x0.724. Per boss (mean): Warlord 0.86, Nightshade 0.87, Netcode 0.93, Vampire 0.95,
+    Warzombie 0.87, Maw 0.81, Smurf 0.95, Skeleton 0.82, Pumpkin 0.83, Lagspike 0.93, Banwave 0.93, Zerg 0.89, Salt Miner 0.87, Frost Lich 0.91,
+    Camper Colossus 0.74, Hydra 0.89. 12 of 16 bosses at x0.85 or more.
+- **Open**: the 4 bosses below x0.85 in the pick (the search finds template combinations that no per-card score sees; the E9 Power number is the next
+  step), whether the pair score and the role answers stay (their measured effect is within the noise), a Dungeon squad pick.
+- SQL = the simulator on the Lab: 88 Lab fights (4 for each archetype and mode, the same draws) 87 equal (result, steps, every HP, 523 actives), 1 differs
+  only after a float near-tie of the simulator; the 32 Lab picks give the same squad in the same order.
+- Found, not fixed (E4/E5, not this file): numeric shield arithmetic can leave a shield or a Guard of about 1e-17 where the simulator float gives 0 (1 of
+  160 test fights). The test counts it apart.
+- Proof (copy 2, V1 to E7c and the tester list applied): `test-combat-v2-auto.mjs` 86 checks (no other function changes, md5 of 518; 52 fixed decisions;
+  SQL = the simulator on 565 decisions of random states, on 160 random fights played by Auto v2 (4158 actions, 1455 card decisions, 0 near-ties), and on
+  300 random pools; 11 fixed picks and 7 refusals; fuzz 860 actions); MUTATE=all after the apply: baseline PASS and 53 of 53 planted faults caught. Goldens with
+  CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. Then the file applied (`rehearse-sql.mjs`): grants OK; the earlier
+  v2 tests got the E8 functions in their caller lists (as E6, T1 and E7 did); the generated files regenerated. Combat checks C1, C2, C3 PASS.

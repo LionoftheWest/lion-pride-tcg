@@ -1,7 +1,7 @@
 // Lion Pride TCG - Admin view: the Combat v2 Lab (docs/combat-redesign-plan.md 20.4). One page, #/combat-lab:
 //  1. The flag and the testers: the four modes of balance combat_v2 and the tester list. Add or remove a tester with the balance editor of Phase 2
 //     (Review the live value -> Test on the local copy -> Apply live -> the Admin log and balance_log). No other write path.
-//  2. The fight viewer: a member of the local copy, a squad of the member's own cards (or auto: the best N by v2 CP), a Hunt boss or Dungeon foes,
+//  2. The fight viewer: a member of the local copy, a squad of the member's own cards (or auto: the Hunt auto-pick, the best N by v2 CP in the Dungeon), a Hunt boss or Dungeon foes,
 //     RUN. The server runs the REAL v2 SQL functions on the LOCAL copy in a block that rolls back (src/combat-lab-routes.js). This page draws the
 //     answer only: no combat math here. Compare (Hunt): the same squad in v1 (hunt_attack on a private test boss) and in v2.
 // Every text goes in as textContent.
@@ -89,7 +89,7 @@ function fightPanel(setup) {
   const sizes = setup.sizes || { hunt: 8, dungeon: 5 };
   const size = () => sizes[st.mode];
   const wrap = h('div', { class: 'stack' });
-  const p = k.panel('Fight viewer', { sub: 'The simple Lab policy: the first standing enemy, the active when it is charged, the most hurt ally (Auto v2 comes with PR E8). Stat points: the simulator build of the role at the card level (no live card levels yet).' });
+  const p = k.panel('Fight viewer', { sub: 'Auto v2 (combat_v2_auto, PR E8) makes every card choice: the active or the basic attack, the target and the ally. The log shows the Auto choice of each card action. Stat points: the simulator build of the role at the card level (no live card levels yet).' });
   wrap.append(p.el);
 
   // member search
@@ -120,9 +120,14 @@ function fightPanel(setup) {
   levelIn.addEventListener('change', () => { if (st.player && Number(levelIn.value) !== loadedLevel) loadCards(); });
   const drawSquad = () => {
     autoBtn.className = st.auto ? 'on' : ''; pickBtn.className = st.auto ? '' : 'on';
-    autoBtn.textContent = `Auto: best ${size()}`;
+    autoBtn.textContent = st.mode === 'hunt' ? 'Auto-pick' : `Auto: best ${size()}`;
     if (!st.player) { cardBox.replaceChildren(); return; }
-    if (st.auto) { cardBox.replaceChildren(h('p', { class: 'subtitle' }, `The ${size()} cards with the highest v2 CP at level ${levelIn.value || 0}.`)); return; }
+    if (st.auto) {
+      cardBox.replaceChildren(h('p', { class: 'subtitle' }, st.mode === 'hunt'
+        ? `The Hunt auto-pick (combat_v2_autopick) of ${size()} cards at level ${levelIn.value || 0}: offense x the role answers of the boss x the Weak to bonus x the pair score.`
+        : `The ${size()} cards with the highest v2 CP at level ${levelIn.value || 0}.`));
+      return;
+    }
     cardBox.replaceChildren(h('p', { class: 'subtitle' }, `Chosen ${st.pick.size} of ${size()}.`),
       h('div', { class: 'cl-cardlist' }, st.cards.map((c) => {
         const on = st.pick.has(c.card_id);
@@ -238,6 +243,8 @@ function result(r) {
     { key: 'active', label: 'Active', fmt: (s) => h('div', { class: 'cl-active' }, h('strong', null, s.active.name), s.active.source === 'placeholder' ? h('span', { class: 'cs-note' }, ' placeholder') : null,
       h('div', null, s.active.text || s.active.error || '-'), h('div', { class: 'cs-note' }, `Charge: ${s.charge_need} own turns. ${s.passive_text || ''}`)) },
     { key: 'dealt', label: 'Damage', r: true, fmt: (s) => num(s.dealt) },
+    ...(r.squad.some((s) => s.pick) ? [{ key: 'pick', label: 'Pick score', r: true, fmt: (s) => (s.pick ? h('div', null, h('div', { class: 'num' }, num(s.pick.score)),
+      h('div', { class: 'cs-note' }, pickNote(s.pick))) : '-') }] : []),
   ] })].flat());
 
   // the enemy card
@@ -279,6 +286,12 @@ function changeText(c, nm) {
   return out.length ? h('span', { class: `cl-chg${c.down ? ' down' : ''}` }, h('b', null, nm(c.unit)), ` ${out.join(', ')}`) : null;
 }
 
+// the Auto v2 choice of a card action (combat_v2_auto why)
+const AUTO_WHY = { charging: 'not charged', ready: 'charged', held: 'held too long', useful: 'useful now', not_useful: 'not useful now', hold_pay: 'waits for its status',
+  hold_execute: 'waits for the HP line', hold_gate: 'waits for its condition', hold_kinds: 'waits for more statuses', hold_charging: 'waits for Charging', no_enemy: 'no enemy' };
+const pickNote = (x) => [`offense ${num(x.off)}`, Number(x.weak) !== 1 ? `Weak to x${+Number(x.weak).toFixed(2)}` : null, Number(x.ans) !== 1 ? `answers x${+Number(x.ans).toFixed(2)}` : null,
+  Number(x.pair) !== 1 ? `pair x${+Number(x.pair).toFixed(2)}` : null].filter(Boolean).join(', ');
+
 function logRow(e, nm) {
   const chg = (e.changes || []).map((c) => changeText(c, nm)).filter(Boolean);
   if (e.kind === 'step') {
@@ -293,8 +306,9 @@ function logRow(e, nm) {
     const hits = e.hits.map((x) => `${x.miss ? 'miss' : num(x.dmg)}${x.crit ? ' CRIT' : ''}${x.tag ? ` ${x.tag}` : ''}${x.target ? ` on ${nm(x.target)}` : ''}`);
     what = `${who}: ${e.action === 'active' ? 'ACTIVE' : 'basic'}${hits.length ? ` - ${hits.join(', ')}` : ''}`;
   } else what = `${who}: ${k.label(e.move || 'move')}`;
+  const auto = e.kind === 'card' && e.auto ? h('span', { class: 'cs-note cl-auto' }, ` Auto: ${AUTO_WHY[e.auto.why] || e.auto.why}${e.auto.target ? `, target ${nm(e.auto.target)}` : ''}${e.action === 'active' && e.auto.ally ? `, ally ${nm(e.auto.ally)}` : ''}`) : null;
   return h('li', { class: `cl-ev ${e.kind}` }, h('span', { class: 'cl-n num' }, `#${e.n} s${e.clock}`),
-    h('div', null, h('div', { class: 'cl-what' }, what), chg.length ? h('div', { class: 'cl-chgs' }, chg) : null));
+    h('div', null, h('div', { class: 'cl-what' }, what, auto), chg.length ? h('div', { class: 'cl-chgs' }, chg) : null));
 }
 
 function compareView(r) {

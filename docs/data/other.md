@@ -9,7 +9,7 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 Tables (8): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [enemy_mechanics](#table-enemy-mechanics), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (18): [alias_list_ok(text[])](#fn-alias-list-ok-text), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [enemy_mechanics_check()](#fn-enemy-mechanics-check), [enemy_v2_spec()](#fn-enemy-v2-spec), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules), [subjects_ability_v2_check()](#fn-subjects-ability-v2-check)
+Functions (19): [alias_list_ok(text[])](#fn-alias-list-ok-text), [auto_v2_spec()](#fn-auto-v2-spec), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [enemy_mechanics_check()](#fn-enemy-mechanics-check), [enemy_v2_spec()](#fn-enemy-v2-spec), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules), [subjects_ability_v2_check()](#fn-subjects-ability-v2-check)
 
 ## Tables
 
@@ -230,6 +230,16 @@ Table. [cards] F-2 set pools: a card of another set added to the pull pool of se
 - Security definer: no
 
 F-3: true when a list of element words is not empty and has only lower case, trimmed words with no repeat (the check of elements.aliases).
+
+<a id="fn-auto-v2-spec"></a>
+
+### auto_v2_spec()
+
+- Function: `auto_v2_spec()`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] The fixed shape with the limits of the balance key auto_v2 (fight: the numbers of the Auto v2 fight decision; pick: the numbers of the Hunt auto-pick and answers.<mechanic>.<role>). combat_v2_auto.sql.
 
 <a id="fn-element-beats-text-text"></a>
 
