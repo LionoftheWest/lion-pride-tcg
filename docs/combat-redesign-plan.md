@@ -1558,3 +1558,79 @@ The reference is the simulator `v2sim/power.mjs` (`cardPower`, `squadValue`; the
   the squad value; nothing written in 22 tables). Combat checks C1 (+ the scope `^card_power_v2`), C2, C3 PASS; `node --test card-studio/v2sim/*.test.mjs`
   PASS 190.
 - Go-live order: SUPERSEDED.md now lists `combat_v2_testers.sql` (this file replaces `balance_v2_spec`), so the tester file goes live before this file.
+
+### 20.7 The shape rule of the Hunt auto-pick (`tcg-bot/supabase/combat_v2_autopick_shape.sql`)
+
+The next step of 20.6 Open item 1: the searched best squad often has a shape that the E8 pick rules forbid (not 4 supports; a support role twice).
+Goal: measure looser shape rules, build one only if it is better on the tuning pools AND on the held-out pools. The per-card score stays the E8 offense
+score. No per-boss tuning. The flag `combat_v2` stays OFF; nothing in play calls the changed function.
+
+- **The Lab** (`node card-studio/v2sim/run.mjs shapepick --seed S --pools N`, v2sim `shape.mjs`): the E8 protocol of 20.5 and 20.6 (the same pools of 20
+  real cards a boss, Heroic, the same searched reference: a local search from the E8 pick and from the top 8 by attack, 24 days a squad, policy `best`;
+  150 fresh evaluation days; ratio = the pick of the candidate + Auto v2 / the searched best). The reference does not depend on the candidate. Each
+  candidate is a patch of `auto_v2.pick`. Tuning set: seed 101 (2 pools a boss, 32 pools). Held-out: seed 202 (6 pools a boss, 96 pools) and seed 1
+  (2 pools a boss, 32 pools). "x0.900 (5)" = the mean ratio and the bosses below x0.85; then the paired mean difference to E8 over the pools (standard error):
+
+  | Candidate | Tuning (seed 101) | Held-out (seed 202) | Held-out (seed 1) |
+  |---|---|---|---|
+  | E8: 4 supports, 1 of a role | x0.888 (5) | x0.877 (4) | x0.878 (4) |
+  | The Weak to role may take 2 slots | x0.885 (5) -0.003 (0.003) | x0.879 (4) +0.003 (0.002) | x0.881 (4) +0.003 (0.002) |
+  | Any support role 2 slots | x0.875 (6) -0.013 (0.021) | x0.872 (4) -0.004 (0.009) | x0.895 (1) +0.017 (0.014) |
+  | 3 supports | x0.880 (6) -0.008 (0.018) | x0.868 (7) -0.008 (0.008) | x0.881 (4) +0.003 (0.017) |
+  | 5 supports | x0.832 (12) -0.056 (0.013) | x0.839 (10) -0.038 (0.007) | x0.841 (8) -0.037 (0.011) |
+  | By the Weak to class: attacker 3, support 5 supports | x0.877 (7) -0.011 (0.017) | x0.861 (9) -0.015 (0.008) | x0.873 (5) -0.004 (0.017) |
+  | By the Weak to class: attacker 3, support 4 | x0.893 (5) +0.005 (0.015) | x0.869 (7) -0.008 (0.007) | x0.879 (4) +0.001 (0.016) |
+  | By the Weak to class 3 / 4 + the Weak to role 2 slots | x0.890 (5) +0.002 (0.015) | x0.872 (7) -0.005 (0.007) | x0.882 (4) +0.004 (0.016) |
+  | **3 to 5 supports by score (BUILT)** | **x0.900 (5) +0.012 (0.013)** | **x0.885 (4) +0.008 (0.006)** | **x0.897 (3) +0.019 (0.010)** |
+  | 3 to 5, a support score x0.8 in the swap | x0.899 (4) +0.011 (0.015) | x0.882 (4) +0.005 (0.007) | x0.897 (3) +0.019 (0.011) |
+  | 3 to 5, a support score x1.2 in the swap | x0.894 (5) +0.006 (0.013) | x0.889 (2) +0.013 (0.005) | x0.901 (3) +0.023 (0.011) |
+  | 3 to 5 + the Weak to role 2 slots | x0.893 (5) +0.005 (0.017) | x0.887 (4) +0.011 (0.007) | x0.896 (3) +0.018 (0.010) |
+  | 2 to 6 (and 2 to 5) by score | x0.887 (5) -0.000 (0.018) | x0.881 (6) +0.005 (0.009) | x0.856 (5) -0.022 (0.014) |
+  | 3 to 4 by score | x0.897 (5) +0.009 (0.013) | x0.883 (4) +0.006 (0.005) | x0.896 (3) +0.018 (0.010) |
+  | 4 to 5 by score | x0.891 (5) +0.003 (0.002) | x0.879 (4) +0.002 (0.003) | x0.879 (4) +0.001 (0.001) |
+
+  The E8 row reproduces 20.5 and 20.6 exactly (seed 1: x0.878, Camper Colossus 0.741, Maw 0.812, Skeleton 0.815, Pumpkin 0.825; seed 101: x0.888, 5 below;
+  seed 202: x0.877, 4 below). The run is deterministic: a second run gave the same numbers.
+- **The choice** (made on the tuning set, then checked on the held-out sets): "3 to 5 supports by score" has the highest tuning mean (x0.900) with no
+  more bosses below x0.85 (5 = E8). The x0.8 variant has 4 below on the tuning set but needs a weight that is not in the E8 score; it is lower on both
+  held-out sets. Held-out check: seed 202 x0.877 -> x0.885 (4 -> 4 below; 46 pools better, 27 worse), seed 1 x0.878 -> x0.897 (4 -> 3 below; 15 better,
+  5 worse). The mean rises on all three sets and the count below x0.85 is not higher on any set, so it is built.
+  - The gain is small against the pool noise: on each set the paired difference is within about 1 to 2 standard errors of 0. Over the 160 pools of
+    the three sets together: +0.011 (standard error 0.005), 77 pools better, 41 worse. It is not better for each boss.
+  - The 4 bosses of 20.6 on seed 1: Camper Colossus 0.741 -> 0.762, Maw 0.812 -> 0.812, Skeleton 0.815 -> 0.906, Pumpkin 0.825 -> 0.861. Two of the four
+    rise above x0.85. Other bosses fall: AFK Warzombie 0.870 -> 0.775 (seed 1; on seed 202 0.877 -> 0.865), Grind Vampire 0.946 -> 0.901 (seed 1;
+    0.891 -> 0.828 on seed 101). So the bosses below x0.85 on seed 1 are Camper Colossus, Maw and AFK Warzombie.
+  - The x1.2 variant is the best on the held-out sets (x0.889, 2 below on seed 202), but it is not the best on the tuning set. A choice from the held-out
+    numbers would be a tuning on the held-out pools, so it is an open item.
+  - The searched best squads by support count: seed 101 {2: 2, 3: 14, 4: 9, 5: 6, 6: 1}; seed 1 {1: 1, 2: 2, 3: 14, 4: 10, 5: 5}; seed 202 {1: 2, 2: 9,
+    3: 24, 4: 38, 5: 21, 6: 2}. A support role twice or more: 11 of 32, 12 of 32 and 47 of 96 pools. "A role twice" alone is not better on the tuning set.
+- **The rule** (`combat_v2_autopick_choose`, one pass of the pick; `auto.mjs` choose): the best `supports` (3) supports (at most `max_same_support` of
+  one role) and the best attackers for the other slots, a short class filled from the other; then the next support takes the slot of the lowest
+  picked attacker while its score is higher, up to `supports_max` (5) supports. A tie keeps the attacker. The pair passes, the score and the order of the
+  result do not change. With no `supports_max` (the E8 row) `supports_max` = `supports`: the E8 shape.
+- **Balance** `auto_v2.pick`: `supports` 4 -> 3 (now the least support count) and the new leaf `supports_max` 5 ("int 0 8"). The file updates the row
+  ONCE (a row that has `supports_max` keeps its numbers). The E8 leaf `supports` stays, because `balance_check` refuses an update that removes a leaf.
+  `auto_v2_spec` (replaced) has the new leaf; `balance_check_auto_v2` (replaced) also refuses `supports` above `supports_max`. The note explains both.
+  config.json `auto_v2` has the same value.
+- **Replaced**: `auto_v2_spec`, `balance_check_auto_v2`, `combat_v2_autopick_choose`. `combat_v2_autopick` and every other function do not change.
+- **Not changed**: the per-card score, the role answers, the pair score, `max_same_support` 1, the Dungeon (no Dungeon pick), any screen. The simulator
+  keeps the other candidates as Lab-only options of `auto.mjs` choose (`pick.lab`: `by_weak`, `weak_same`, `w`; not in balance and not in SQL).
+- **Proof** (copy 2, V1 to E9 applied): `test-combat-v2-autopick-shape.mjs` PASS all 31, before and after the apply: the md5 of the 530 other public
+  functions is the same (`combat_v2_autopick` and `combat_v2_autopick_pair` included); exactly the 3 functions are replaced and none is added; their
+  callers are the same; the flag OFF; balance = config.json; 5 planted values refused; the file runs twice; 14 fixed picks (hand-computed: `supports`
+  first, the swap, `supports_max`, a tie, the role limit, a short class of each kind, the Weak to bonus in the swap, the E8 shape from the numbers and
+  from a row with no `supports_max`, cap 2, the pair pass, the id order) and 3 refusals; SQL = the simulator on 400 random pools (194 with a random
+  shape and role limit, 108 with a swap, 0 near-ties) and on the 64 Lab pools of real cards of seeds 1 and 101 (squads by support count {3: 42, 4: 17,
+  5: 5}). MUTATE=all (before the apply): baseline PASS all 31 in the same run, 24 of 24 planted faults caught (22 SQL, 2 simulator).
+  Goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. `test-combat-v2-auto.mjs` (E8) PASS all 86 (its
+  config compare now takes the E8 shape: `supports` 4, no `supports_max`). Then the file applied (`rehearse-sql.mjs`): grants OK; the generated files
+  regenerated (`docs/data` with the tester id of the local copy masked: the generator refuses a Discord id, and main has none);
+  `test-all-local.mjs` 164 of 164 PASS (2 one-time skipped), this test and the E8 and E9 tests included. After the rebase on the L1/L2 merge:
+  `test-combat-lab-routes.mjs` PASS 23, `test-combat-lab-nowrite.mjs` PASS 6, `node --test card-studio/v2sim/*.test.mjs` PASS 204, Combat checks
+  C1, C2, C3 PASS.
+- **Go-live order**: SUPERSEDED.md now lists `combat_v2_auto.sql` (this file replaces 3 of its functions), so E8 and E9 go live before this file.
+- **Open** (with the recommendation):
+  1. The 3 bosses still below x0.85 on seed 1 (Camper Colossus 0.762, Maw 0.812, AFK Warzombie 0.775): the searched best of Camper Colossus and Maw takes 2
+     Controllers, which `max_same_support` 1 forbids, and "a role twice" is not better on the tuning set. Recommendation: no per-boss rule; measure
+     again when the Set 1 abilities are pushed (the shapes depend on the real actives).
+  2. The swap weight (x1.2 is the best held-out variant). Recommendation: keep 1 (no new number); measure it on a new tuning seed before any change.

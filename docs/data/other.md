@@ -239,7 +239,7 @@ F-3: true when a list of element words is not empty and has only lower case, tri
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] The fixed shape with the limits of the balance key auto_v2 (fight: the numbers of the Auto v2 fight decision; pick: the numbers of the Hunt auto-pick and answers.<mechanic>.<role>). combat_v2_auto.sql.
+[combat] The fixed shape with the limits of the balance key auto_v2 (fight: the numbers of the Auto v2 fight decision; pick: the numbers of the Hunt auto-pick with supports and supports_max, and answers.<mechanic>.<role>). combat_v2_autopick_shape.sql.
 
 <a id="fn-element-beats-text-text"></a>
 

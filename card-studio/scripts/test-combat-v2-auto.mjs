@@ -224,7 +224,10 @@ end $t$;`;
 
 function checkData(D) {
   const out = [];
-  const want = { fight: CONFIG.auto_v2.fight, pick: CONFIG.auto_v2.pick };
+  // the E8 row has the E8 shape (supports 4, no supports_max); the shape PR (combat_v2_autopick_shape.sql) sets supports 3 and adds supports_max,
+  // and test-combat-v2-autopick-shape.mjs compares the full value with config.json
+  const { supports_max: _max, ...pick } = CONFIG.auto_v2.pick;
+  const want = { fight: CONFIG.auto_v2.fight, pick: { ...pick, supports: 4 } };
   out.push([JSON.stringify(canon(D.auto_v2)) === JSON.stringify(canon(want)), 'ONE NUMBER, ONE HOME: balance auto_v2 = config.json auto_v2 (the simulator reads config.json)', JSON.stringify(D.auto_v2).slice(0, 300)]);
   const A = D.auto_v2.pick.answers; const mechs = Object.keys(A);
   out.push([mechs.length >= 25 && mechs.every((m) => ROLES.every((r) => typeof A[m][r] === 'number') && Object.keys(A[m]).length === ROLES.length),

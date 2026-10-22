@@ -462,7 +462,7 @@ Trigger (before insert, update on balance): the key ability_v2 must match its fi
 - Returns: `trigger`
 - Security definer: no
 
-Trigger (before insert, update on balance): the key auto_v2 must match its fixed shape and limits (auto_v2_spec, walked by balance_shape_errors). Every other key passes. combat_v2_auto.sql.
+Trigger (before insert, update on balance): the key auto_v2 must match its fixed shape and limits (auto_v2_spec, walked by balance_shape_errors), and pick.supports must not be above pick.supports_max. Every other key passes. combat_v2_autopick_shape.sql.
 
 <a id="fn-balance-check-boss-counters"></a>
 
