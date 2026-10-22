@@ -63,7 +63,7 @@ function testersPanel(setup) {
     const canEdit = ED?.state?.on && has;
     const idIn = h('input', { class: 'field', id: 'cl-tester-id', placeholder: 'Discord id (17 to 20 digits)', inputmode: 'numeric', maxlength: '20' });
     const msg = h('p', { class: 'cs-msg', role: 'status' });
-    box.replaceChildren(
+    box.replaceChildren(...[
       h('div', { class: 'lbl' }, `Modes (${where})`), modes,
       h('div', { class: 'lbl mt' }, `Testers: ${list.length} of 20`),
       !has ? h('p', { class: 'subtitle' }, `The ${where === 'LOCAL' ? 'local' : 'live'} combat_v2 has no tester list yet: apply combat_v2_testers.sql first.`) : null,
@@ -77,7 +77,7 @@ function testersPanel(setup) {
         if (list.length >= 20) { msg.textContent = 'The list has 20 ids (the limit).'; return; }
         msg.textContent = ''; edit([...list, id], 'Add a v2 tester');
       } }, icon('userplus'), 'Add tester'), msg)
-        : !ED?.state?.on ? h('p', { class: 'subtitle' }, 'Turn on the editors (ADMIN_EDIT=1) to add or remove a tester.') : null);
+        : !ED?.state?.on ? h('p', { class: 'subtitle' }, 'Turn on the editors (ADMIN_EDIT=1) to add or remove a tester.') : null].filter(Boolean));
   };
   draw();
   return p.el;
@@ -222,7 +222,7 @@ function result(r) {
   const nm = (u) => names[u] || u;
 
   const head = h('div', { class: 'kpis', id: 'cl-totals' },
-    kpi('Result', T.result, r.request.mode === 'hunt' ? 'a Hunt day ends at the step cap' : null),
+    kpi('Result', r.request.mode === 'hunt' && T.result === 'lost' ? 'squad down' : T.result, r.request.mode === 'hunt' ? 'a Hunt day ends at the step cap' : null),
     kpi(r.request.mode === 'hunt' ? 'Damage (net)' : 'Damage', num(T.net), T.enemy_heal ? `enemy heals ${num(T.enemy_heal)}` : null),
     kpi('Steps', `${T.steps} of ${T.cap ?? '-'}`, `${T.actions} actions`),
     kpi('Crits / misses', `${T.crits} / ${T.misses}`, `${T.actives} actives, ${T.basics} basics, ${T.skips} skips`),

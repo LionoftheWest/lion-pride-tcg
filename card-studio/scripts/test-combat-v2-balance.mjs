@@ -131,7 +131,8 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'enemy_v2_spec', 'balance_check_enemy_v2', 'enemy_mechanics_check', 'dungeon_monsters_v2_check', 'hunt_bosses_v2_check', 'combat_v2_enemy_numbers', 'combat_v2_mech',
   'combat_v2_timed', 'combat_v2_timed_any', 'combat_v2_standing_rule', 'combat_v2_neg_kinds', 'combat_v2_healed', 'combat_v2_blocked', 'combat_v2_drop', 'combat_v2_volatile',
   'combat_v2_pick_card', 'combat_v2_enemy_mult', 'combat_v2_enemy_hit', 'combat_v2_boss_target', 'combat_v2_boss_move', 'combat_v2_enemy_act', 'combat_v2_hunt_boss',
-  'combat_v2_dungeon_foe', 'hunt_boss_v2_card'];   // E7 combat_v2_monsters.sql
+  'combat_v2_dungeon_foe', 'hunt_boss_v2_card',   // E7 combat_v2_monsters.sql
+  'balance_check'];   // combat_v2_testers.sql: the generic balance trigger names combat_v2 only to let a tester id go (it reads no mode)
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
 const body = String.raw`do $t$

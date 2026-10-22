@@ -21,3 +21,28 @@ end $function$;
 -- @grants public.combat_v2_on(text)
 grant execute on function public.combat_v2_on(text) to postgres;
 grant execute on function public.combat_v2_on(text) to service_role;
+
+-- @function public.combat_v2_on(text, text)
+-- md5: 6d4deec20fe94cfc32828ee2852d0c0f   (md5(replace(pg_get_functiondef('public.combat_v2_on(text, text)'::regprocedure), chr(13), '')))
+-- owner: postgres
+CREATE OR REPLACE FUNCTION public.combat_v2_on(p_mode text, p_player text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+declare v jsonb;
+begin
+  -- on for everyone: the reader of one argument (unchanged)
+  if combat_v2_on(p_mode) then return true; end if;
+  -- a tester: one of the four capabilities, a player id, and a value of the fixed shape (a bad shape = no tester)
+  if p_mode is null or p_mode not in ('gauntlet', 'dungeon', 'hunt', 'progress') or p_player is null then return false; end if;
+  select b.value into v from balance b where b.key = 'combat_v2';
+  if v is null or cardinality(balance_shape_errors(v, balance_v2_spec('combat_v2'), '')) > 0 then return false; end if;
+  return coalesce(v->'testers' ? p_player, false);
+exception when others then
+  return false;
+end $function$;
+-- @grants public.combat_v2_on(text, text)
+grant execute on function public.combat_v2_on(text, text) to postgres;
+grant execute on function public.combat_v2_on(text, text) to service_role;

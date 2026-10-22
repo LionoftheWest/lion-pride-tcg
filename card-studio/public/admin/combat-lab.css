@@ -48,3 +48,4 @@
   .cl-ev { grid-template-columns: 56px minmax(0, 1fr); }
   .cl-active { min-width: 0; }
 }
+.cl-step > .seg { justify-self: start; }

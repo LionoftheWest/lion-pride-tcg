@@ -301,9 +301,18 @@ export function combatLabRouter({ local = localCopy(), env = process.env, cfg = 
   const rows = (q) => local.sql(q);
   const one = async (q) => (await rows(q))[0] || {};
   // a rolled-back block: its RES or the error text
+  // (a deadlock with another rolled-back run of DDL on the same copy, for example a test that replaces a function, runs the block again: at most 3 times)
   const block = async (q) => {
-    try { await local.sql(q); } catch (e) { if (e instanceof BadRequest) throw e; const out = readRes(e.message); if (out.error) throw new Error(out.error); return out.res; }
-    throw new Error('the fight block did not roll back');
+    for (let k = 0; ; k++) {
+      try { await local.sql(q); } catch (e) {
+        if (e instanceof BadRequest) throw e;
+        const out = readRes(e.message);
+        if (out.error && /deadlock detected/.test(out.error) && k < 2) continue;
+        if (out.error) throw new Error(out.error);
+        return out.res;
+      }
+      throw new Error('the fight block did not roll back');
+    }
   };
 
   const sizes = async () => {
